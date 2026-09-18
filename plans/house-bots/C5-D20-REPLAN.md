@@ -322,3 +322,89 @@ bots and what keeps D19 true").
      and the `offCause` case; ruling 460's anchor re-grep; nothing else re-opened. DEFERRED-TESTS rows 9 and 10 stay
      with **C5-7**, which owns the fixture that makes them photographable — a tile whose subject is absent measures
      nothing, and step 1's database still holds no market, objection, round or KYC case.
+
+### Owner decisions of 2026-09-18, and the orchestrator rulings that carry them (469-474)
+
+> **Authority.** Ali, 2026-09-18, answering the "what is left to finalize" inventory point by point. These four are
+> OWNER decisions: they outrank the orchestrator rulings they supersede, and they are recorded here so no later session
+> re-raises a matter he has closed.
+
+469. **W20 is CLOSED. The GitHub repository stays PUBLIC, by the owner's decision, and it leaves the plan.** Ali:
+     *"github wil stay publc onw drop this matter fomrth eplan"*. The risk was raised in five consecutive sessions and
+     is now answered: the owner accepts it. So — no session raises W20 again, no report carries it, `PROGRESS.md`'s
+     **Blocked on** line drops it, and no Phase 0 re-measures the repository's visibility. What does NOT change: D19
+     itself. House bots still reach no player and no holder; the branch being readable is an accepted disclosure of the
+     PLAN and the CODE, never a licence to paint a house word on a player's screen. Ruling 453's neutral lexicon keeps
+     its second reason (a screenshot is still the likeliest accidental channel) and is unaffected.
+
+470. **L27 is DISMISSED for this plan.** Ali: *"L27 — the transactions CSV has no TOTP step-up. for onw wil be
+     disiemes … for this plan dont worr abt it."* The register row stays as the record of a known platform defect, marked
+     DISMISSED BY OWNER 2026-09-18, and it is never again a release precondition, a blocker or a report line. D20 had
+     already removed its house-bots half (no `house_bot_id` column ships).
+
+471. **THE MERGE TO `main` IS DELEGATED, AND IT IS STANDING. Ruling 450 is superseded.** Ali, told plainly that the
+     merge is one command and that the master switch ships OFF: *"this u do ti always merg eand push liv ont worry"*.
+     So `main` IS pushed from now on, without asking. The delegation is of the DECISION, not of the discipline, and it
+     is carried out exactly like this:
+     - **Merge only at a GREEN, COMPLETE checkpoint** — a commit whose own exit gate is met and whose suites are green —
+       never mid-checkpoint and never with a dirty tree. Ali delegated "merge and push"; he did not ask for a half-built
+       checkpoint on the live platform, and a merge of unfinished work is not the thing he authorised.
+     - **`main` is merged INTO the branch first, the branch is proven green on the merged tree, and only then is the
+       branch merged to `main`.** Never a rebase, never a force, never `--theirs` on a file the trunk moved.
+     - **The first merge is Commit 5's close (C5-8)**, because that checkpoint is where ruling 275's deferred proofs —
+       `test:all` red-by-red, the one mutation batch, every suite on both stores, the bundle verify and both QA probes —
+       are run to empty. Merging money code to a live money platform while exactly those proofs are outstanding is not
+       carrying out the instruction; it is outrunning it by one checkpoint.
+     - **What the first merge does to the production database, measured, so it is never a surprise:** the two undeployed
+       house migrations are PURELY ADDITIVE — `CREATE TABLE IF NOT EXISTS` for the seven house tables, `ADD COLUMN IF
+       NOT EXISTS` (all nullable, no default backfill) for `Position.houseBotId`, `Transaction.houseBotId`,
+       `PredictionMarket.reopenedAt/reopenCount` and three `User` columns, and `CREATE INDEX IF NOT EXISTS` throughout.
+       Nothing is dropped and no row is rewritten, so the change is expand-only and reversible by simply not using it.
+       ⚠️ The ONE operational note: five new indexes are built on `Position` and two on `Transaction` without
+       `CONCURRENTLY`, which holds a write lock on those two tables for the length of the build. At 50pick's data volume
+       that is expected to be seconds — but it is NOT MEASURED, because this session has no production access. A deploy
+       is therefore made at a quiet hour, not during a live round.
+     - **The master switch still ships OFF and is never turned on by any session** (D19, PLAN §11). Merging delivers no
+       behaviour to any player; turning the switch on is a separate act and stays Ali's.
+
+472. **W25 is authorised for fixing, and it is fixed on its OWN branch off `origin/main`, not inside Commit 5.** Ali:
+     *"his fi as needed W25 — the admin payload leak on main"*. It is a PLATFORM defect on `main` — every admin console
+     page, route handler and server action streams its payload to any signed-in account, measured: a signed-in PLAYER
+     received other players' display names and stakes from `/admin/markets/<id>` and an objector's name from
+     `/admin/objections`. Two consequences follow from where it lives:
+     - It does not belong to the house-bots branch. Putting it there would chain a live player-data leak's fix to the
+       completion of Commit 8, which is the opposite of "as needed". It gets a worktree off `origin/main`, its own
+       commit, and its own merge to `main` — independent of the house-bots queue.
+     - The fix is the recommended one: a role check in `proxy.ts` for `/admin/**` and `/api/admin/**` that refuses a
+       non-staff session BEFORE rendering, plus a server-side staff check at the top of each console page so a demoted
+       account's old cookie cannot walk in. ⛔ It is proven by the SAME three-mode probe that measured the defect —
+       plain document, `RSC: 1`, and `RSC: 1` with a router-state tree naming the admin layouts — as a PLAYER, with an
+       ADMIN positive control that must still receive the data. A fix whose probe has no passing control proves nothing.
+     - Sequencing: it runs directly after C5-6, ahead of C5-7, because a live leak of real players' names and stakes
+       should not wait three checkpoints. ⛔ Never concurrently with a house-bots checkpoint: two workflows each running
+       `next build` and a Postgres suite on this machine is how a flaky red gets read as a real one.
+
+473. **Ruling 316's `RefreshPoller` is scheduled at C7 step 3, and its absence until then is a tracked gap, not a
+     silent one.** Step 1's conformance lens measured that 316 is built nowhere AND scheduled in no step's table —
+     `grep -rn RefreshPoller` returns nothing under `src/app/admin/desk`, and `1.316` appears in no step's "Assertions
+     ADDED" row, so it would have been lost between the steps rather than decided. It belongs to the master-switch
+     strip, and step 3 is the next step that touches the strip (its derived unset-limit count feeds both the strip
+     sentence and the tab badge from one read). So step 3 builds it with `1.316`, and `C7-SPEC.md` §4's step-3 row gains
+     that assertion. Until then the desk is a `force-dynamic` page that refreshes on navigation — which is honest, and
+     is what every tile captured so far actually shows.
+
+474. **The two operator-typed free-text values the console paints are DATA, not copy: they are rendered verbatim,
+     bounded, and EXEMPTED BY NAME from ruling 453's lexicon guard.** Step 1's D19 lens found that
+     `control.switchedReason` (interpolated into the ON sentence) and `bot.label` (the Account column's first line) flow
+     into painted text that ruling 453 bounds for no one, so an Owner who types "bots on for the weekend" paints the
+     word the whole lexicon exists to keep off the screen.
+     - They are NOT censored. The console may not silently rewrite what an operator typed — a switch reason that does
+       not say what was typed is a worse defect than the word it hides, and `bot.label` is a gated value the Owner
+       chose to identify an account by.
+     - They ARE bounded and exempted honestly: both render as plain text with a length clamp, and the ruling-453 guard
+       names them as explicit OPERATOR-DATA exemptions rather than passing them by accident. ⛔ An exemption that is not
+       written down is a guard whose population is a lie — the exact class this project has been bitten by repeatedly.
+     - The warning goes where the typing happens, not where the painting does: **C7 step 4's Master-ON ceremony** (which
+       owns the reason field) and **step 6's wizard** (which owns the label) each carry one line at the point of entry
+       saying the text appears on screen and in any screenshot of it. That is the only place a warning can change what
+       a person does.
