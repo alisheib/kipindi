@@ -4,7 +4,7 @@ import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTime } from "@/lib/utils";
-import { getReportPack, PACK_STEPS, currentPackPeriod, type ReportPack } from "@/lib/server/report-pack";
+import { getReportPack, PACK_STEPS, PACK_HISTORY_INCOMPLETE_LINE, currentPackPeriod, type ReportPack } from "@/lib/server/report-pack";
 import { currentSession } from "@/lib/server/auth-service";
 import { ReportPackControls, CopyHash } from "./report-pack-controls";
 
@@ -34,6 +34,23 @@ export async function ReportPackCard() {
         </Chip>
       }
     >
+      {/* ⛔ THE DANGER STATE, ABOVE THE CHAIN (C5-SPEC ruling 214). The pack's own history could not
+          be read to the end, so the chain, both signature slots and the state chip below are derived
+          from a window that may not hold every transition. It is stated where the officer looks
+          FIRST, because everything under it is the thing they must not trust. */}
+      {pack.historyIncomplete && (
+        <div className="mb-3 flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg px-3 py-2.5 text-body-sm text-danger-fg">
+          <I.alertCircle s={15} className="mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">{PACK_HISTORY_INCOMPLETE_LINE}</p>
+            <p className="mt-0.5">
+              The audit read hit its row limit, so the chain below may be missing a signature that
+              already exists. Read this pack&apos;s history in the audit log before signing anything.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* State chain — Draft → Prepared → Approved → Submitted → Acknowledged. */}
       <ScrollX label="Report pack signing chain" className="-mx-1 px-1">
         <ol className="flex min-w-[520px] items-center">
@@ -115,7 +132,14 @@ export async function ReportPackCard() {
 
       {/* Action for the current state (guarded server-side). */}
       <div className="mt-4 border-t border-dashed border-border-subtle pt-3">
-        {sealed ? (
+        {/* ⛔ NO CONTROL IS OFFERED OVER AN UNREADABLE HISTORY. The four server actions refuse it
+            anyway (`readPackForTransition`), and a button whose only outcome is a refusal trains an
+            officer to press through a warning. */}
+        {pack.historyIncomplete ? (
+          <p className="text-body-sm text-text-muted">
+            Signing is unavailable until the pack&apos;s history can be read completely.
+          </p>
+        ) : sealed ? (
           <div className="flex items-start gap-2.5">
             <I.shieldcheck s={16} className="mt-0.5 shrink-0" style={{ color: "var(--gold-400)" }} />
             <p className="text-body-sm text-text-muted">
@@ -126,9 +150,11 @@ export async function ReportPackCard() {
         ) : (
           <ReportPackControls period={period} state={pack.state} isPreparer={isPreparer} />
         )}
-        <p className="mt-2 text-center font-mono text-[10px] text-text-subtle">
-          Submit stays locked until the pack is prepared by one officer and approved by a second.
-        </p>
+        {!pack.historyIncomplete && (
+          <p className="mt-2 text-center font-mono text-[10px] text-text-subtle">
+            Submit stays locked until the pack is prepared by one officer and approved by a second.
+          </p>
+        )}
       </div>
     </AdminCard>
   );

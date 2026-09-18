@@ -1663,6 +1663,202 @@ if (STORE === "memory") {
   });
 }
 
+/* ═══ §0 · ruling 215 · R8's source pins: no ring read in the report population; every `rg.*` write is listed ═══ */
+
+/**
+ * ⛔ THE POPULATION, BY NAME AND BY PREFIX (ruling 215, as D20 left it). `house-liquidity.ts` and
+ * `attest.ts` belonged to struck rulings 201/202 and were DELETED by C5-5b, so they are not here — and
+ * a pin whose population silently shrinks to files that no longer exist is a pin that cannot fail.
+ * Both named files are therefore REQUIRED to be present, and the count is held to a floor.
+ */
+export const R8_RING_POPULATION_FILES = ["src/lib/server/report-pack.ts", "src/lib/server/reports/catalogue.ts"] as const;
+export const R8_RING_POPULATION_PREFIX = "src/lib/server/house-bot/";
+/** Measured at this commit by running the pin: 36 — the two named files + 34 modules under
+ *  `src/lib/server/house-bot/`. The floor is one below, so a deleted module is not a false red while a
+ *  population that collapsed to the two named files still is. */
+export const R8_RING_POPULATION_FLOOR = 35;
+
+export function r8RingPopulation(files: string[]): string[] {
+  return files.filter((f) => (R8_RING_POPULATION_FILES as readonly string[]).includes(f) || f.startsWith(R8_RING_POPULATION_PREFIX));
+}
+
+/**
+ * Whole-word `getAuditPage` in the population — the RING reader.
+ *
+ * ⚠️ WORD BOUNDARIES ARE THE WHOLE POINT. `getAuditPageDurable` is the TABLE reader and
+ * `catalogue.ts` legitimately imports and calls it for the ISO 27001 export; a substring match would
+ * report it and the only way to go green would be to weaken the pin.
+ */
+export function ringReadHits(files: Array<{ rel: string; code: string }>): string[] {
+  const out: string[] = [];
+  for (const { rel, code } of files) {
+    for (const name of ["getAuditPage", "getAuditForTarget", "getAuditForActor", "getAuditById"]) {
+      if (new RegExp(`\\b${name}\\b`).test(code)) out.push(`${rel}: ${name}`);
+    }
+  }
+  return out;
+}
+
+/** The string literals a node can evaluate to: itself, or BOTH arms of a ternary (recursively). */
+function literalArms(n: ts.Node | undefined): string[] {
+  if (!n) return [];
+  const own = literalText(n);
+  if (own != null) return [own];
+  if (ts.isConditionalExpression(n)) return [...literalArms(n.whenTrue), ...literalArms(n.whenFalse)];
+  if (ts.isParenthesizedExpression(n)) return literalArms(n.expression);
+  return [];
+}
+
+/**
+ * Every action a file WRITES: the string value of the `action:` property of an `audit({...})` call,
+ * both ternary arms included.
+ *
+ * ⛔ IT IS THE WRITE SITE, NOT THE WORD. A comparison (`e.action === "rg.reality_check.continued"`)
+ * and a freeze `ref` literal (`ref: { via: "rg.self_exclusion.reopened" }`) name the same strings and
+ * write nothing; a pin that matched the literal anywhere would report both, and the only way green
+ * would be an exemption list that also hides a real writer.
+ */
+export function auditActionWrites(file: string, code: string): string[] {
+  if (!code.includes("audit(")) return [];
+  const out: string[] = [];
+  walkTree(parse(file, code), (n) => {
+    if (!ts.isCallExpression(n)) return;
+    const callee = n.expression.getText();
+    if (callee !== "audit" && !callee.endsWith(".audit")) return;
+    const arg = n.arguments[0];
+    if (!arg || !ts.isObjectLiteralExpression(arg)) return;
+    for (const p of arg.properties) {
+      if (ts.isPropertyAssignment(p) && p.name.getText() === "action") out.push(...literalArms(p.initializer));
+    }
+  });
+  return out;
+}
+
+/** The `RG_AUDIT_ACTIONS` list as `catalogue.ts` declares it, read from the syntax tree. */
+export function declaredRgActions(code: string): string[] {
+  const out: string[] = [];
+  walkTree(parse("src/lib/server/reports/catalogue.ts", code), (n) => {
+    if (!ts.isVariableDeclaration(n) || !ts.isIdentifier(n.name) || n.name.text !== "RG_AUDIT_ACTIONS" || !n.initializer) return;
+    walkTree(n.initializer as unknown as ts.SourceFile, (d) => { const t = literalText(d); if (t != null) out.push(t); });
+  });
+  return out;
+}
+
+/** Both directions: an `rg.*` write nobody listed, and a listed action nobody writes. */
+export function rgListDrift(files: Array<{ rel: string; code: string }>, declared: string[]): { unlisted: string[]; writerless: string[]; written: string[] } {
+  const written = new Set<string>();
+  const unlisted: string[] = [];
+  for (const { rel, code } of files) {
+    for (const a of auditActionWrites(rel, code)) {
+      if (!a.startsWith("rg.")) continue;
+      written.add(a);
+      if (!declared.includes(a)) unlisted.push(`${rel}: ${a}`);
+    }
+  }
+  return { unlisted, writerless: declared.filter((a) => !written.has(a)), written: [...written].sort() };
+}
+
+if (STORE === "memory") {
+  section("§0 · ruling 215 · R8's source pins: the report population reads no audit RING, and RG_AUDIT_ACTIONS is exactly the rg.* actions written");
+  await guard("0.215", () => {
+    const all = srcFiles();
+    const population = r8RingPopulation(all);
+    const named = (R8_RING_POPULATION_FILES as readonly string[]).filter((f) => population.includes(f));
+    ok("0.215.0 · the population is real and both named files still exist (a population that shrinks to deleted files is a pin that cannot fail)",
+      population.length >= R8_RING_POPULATION_FLOOR && named.length === R8_RING_POPULATION_FILES.length,
+      `${population.length} files (floor ${R8_RING_POPULATION_FLOOR}) · named present ${j(named)}`);
+    const files = population.map((rel) => ({ rel, code: decomment(read(rel)) }));
+    ok("0.215.1 · ⛔ no file in the population reads the in-memory audit ring: R8's swap holds, and a report that claims completeness never comes from a per-container ring that empties on every deploy",
+      ringReadHits(files).length === 0, j(ringReadHits(files)));
+    // CONTROLS — the whole-word rule, seen both ways.
+    const planted = ringReadHits([{ rel: "src/lib/server/reports/planted.ts", code: `const rows = getAuditPage({ category: "ADMIN", limit: 10000 });` }]);
+    const benign = ringReadHits([{ rel: "src/lib/server/reports/benign.ts", code: `import { getAuditPageDurable } from "../audit";\nconst { entries } = await getAuditPageDurable({ limit: 25000 });` }]);
+    ok("0.215.c1 · CONTROL · a planted file calling getAuditPage IS reported, and one calling only getAuditPageDurable is NOT (word boundaries, not substrings)",
+      planted.length === 1 && benign.length === 0, j({ planted, benign }));
+    const realDurable = read("src/lib/server/reports/catalogue.ts");
+    ok("0.215.c2 · CONTROL · the real catalogue.ts still calls getAuditPageDurable — the benign shape above is the shape this file actually has, not an invented one",
+      /\bgetAuditPageDurable\(/.test(decomment(realDurable)), "");
+
+    // ── the RG list, in both directions ──
+    const declared = declaredRgActions(realDurable);
+    const srcAll = all.map((rel) => ({ rel, code: decomment(read(rel)) }));
+    const drift = rgListDrift(srcAll, declared);
+    ok("0.215.2 · the declared list was really read (six actions at this commit)", declared.length >= 6, j(declared));
+    ok("0.215.3 · ⛔ every rg.* action WRITTEN under src/ is in RG_AUDIT_ACTIONS — an action the report's reader does not name is an activation the regulator's document never shows",
+      drift.unlisted.length === 0, j(drift.unlisted));
+    ok("0.215.4 · ⛔ …and every action in RG_AUDIT_ACTIONS has a writer: a list of actions that cannot occur is a list nobody can measure (rg.reality_check.continued is READ and never written — L30)",
+      drift.writerless.length === 0, `declared ${j(declared)} · written ${j(drift.written)}`);
+    ok("0.215.5 · the walker sees the real writers, both ternary arms included (rg.limit.changed and rg.limit.increase.deferred are the two arms of ONE audit call)",
+      drift.written.includes("rg.limit.changed") && drift.written.includes("rg.limit.increase.deferred") && drift.written.includes("rg.self_exclusion.reopened"),
+      j(drift.written));
+    // CONTROLS — a write is reported; a read-only comparison and a freeze `ref` literal are not.
+    const write = rgListDrift([{ rel: "src/lib/server/planted-write.ts", code: `audit({ category: "COMPLIANCE", action: "rg.reality_check.continued", actorId: userId, targetType: "User", targetId: userId });` }], declared);
+    const compare = rgListDrift([{ rel: "src/app/admin/compliance/planted-page.tsx", code: `const continued = rgEvents.filter((e) => e.action === "rg.reality_check.continued").length;` }], declared);
+    const freezeRef = rgListDrift([{ rel: "src/app/admin/players/[id]/planted-actions.ts", code: `await removeWalletFreeze(userId, "SELF_EXCLUSION", { actorId: officerId, note: reason, ref: { via: "rg.never_listed.here" } });` }], declared);
+    ok("0.215.c3 · CONTROL · a planted WRITE of an unlisted rg.* action is reported; the compliance page's read-only comparison and the wallet-freeze `ref` literal are NOT",
+      write.unlisted.length === 1 && compare.unlisted.length === 0 && freezeRef.unlisted.length === 0, j({ write: write.unlisted, compare: compare.unlisted, freezeRef: freezeRef.unlisted }));
+    const ternary = rgListDrift([{ rel: "src/lib/server/planted-ternary.ts", code: `audit({ category: "COMPLIANCE", action: deferred ? "rg.limit.increase.deferred" : "rg.limit.never_listed", actorId: userId });` }], declared);
+    ok("0.215.c4 · CONTROL · BOTH arms of a ternary action are read: a planted ternary whose SECOND arm is unlisted is reported once, and its listed arm is not",
+      ternary.unlisted.length === 1 && ternary.unlisted[0].endsWith("rg.limit.never_listed"), j(ternary.unlisted));
+    const listedWrite = rgListDrift([{ rel: "src/lib/server/planted-listed.ts", code: `audit({ category: "COMPLIANCE", action: "rg.cooling_off.activated", actorId: userId });` }], declared);
+    ok("0.215.c5 · CONTROL · a write of a LISTED action is not reported (the pin reports drift, not rg.* itself)", listedWrite.unlisted.length === 0, j(listedWrite.unlisted));
+  });
+
+  section("§0 · ruling 214 · every pack transition reads its pack through the refusing reader, before any append");
+  await guard("0.214", () => {
+    const rel = "src/app/admin/reports/pack-actions.ts";
+    const code = decomment(read(rel));
+    const sf = parse(rel, code);
+    const ACTIONS = ["prepareReportPack", "approveReportPack", "submitReportPack", "acknowledgeReportPack"];
+    const found: string[] = [];
+    const bad: string[] = [];
+    walkTree(sf, (n) => {
+      if (!ts.isFunctionDeclaration(n) || !n.name || !ACTIONS.includes(n.name.text) || !n.body) return;
+      const name = n.name.text;
+      found.push(name);
+      let guardAt = -1, firstAppendAt = -1;
+      walkTree(n.body as unknown as ts.SourceFile, (d) => {
+        if (!ts.isCallExpression(d)) return;
+        const callee = d.expression.getText();
+        if (callee === "readPackForTransition" && guardAt < 0) guardAt = d.getStart();
+        if ((callee === "audit" || callee.endsWith(".audit") || callee === "twoOfficerGate") && firstAppendAt < 0) firstAppendAt = d.getStart();
+      });
+      if (guardAt < 0) bad.push(`${name}: never calls readPackForTransition`);
+      else if (firstAppendAt >= 0 && firstAppendAt < guardAt) bad.push(`${name}: appends before the guard`);
+    });
+    ok("0.214.0 · all four maker-checker actions were found in the file (a pin over three of them would pass while the fourth signed a pack on an unreadable history)",
+      j(found.sort()) === j([...ACTIONS].sort()), j(found));
+    ok("0.214.1 · ⛔ each of the four calls readPackForTransition BEFORE any audit append or two-officer gate — a refusal after the append puts the signature on the chain and tells the officer it was blocked",
+      bad.length === 0, j(bad));
+    ok("0.214.2 · ⛔ …and none of them reads the pack any other way: `getReportPack` appears nowhere in the actions file, so the refusing reader is the only door",
+      !/\bgetReportPack\b/.test(code), "");
+    // CONTROLS — each shape reported.
+    const order = (body: string) => {
+      const c = `export async function prepareReportPack(formData: FormData) {${body}}\nexport async function approveReportPack(f: FormData) { const r = await readPackForTransition(p); if (!r.ok) return r; audit({}); }\nexport async function submitReportPack(f: FormData) { const r = await readPackForTransition(p); if (!r.ok) return r; audit({}); }\nexport async function acknowledgeReportPack(f: FormData) { const r = await readPackForTransition(p); if (!r.ok) return r; audit({}); }`;
+      const sfp = parse("src/app/admin/reports/planted-actions.ts", c);
+      const out: string[] = [];
+      walkTree(sfp, (n) => {
+        if (!ts.isFunctionDeclaration(n) || !n.name || n.name.text !== "prepareReportPack" || !n.body) return;
+        let g = -1, a = -1;
+        walkTree(n.body as unknown as ts.SourceFile, (d) => {
+          if (!ts.isCallExpression(d)) return;
+          const callee = d.expression.getText();
+          if (callee === "readPackForTransition" && g < 0) g = d.getStart();
+          if ((callee === "audit" || callee === "twoOfficerGate") && a < 0) a = d.getStart();
+        });
+        if (g < 0) out.push("never calls readPackForTransition");
+        else if (a >= 0 && a < g) out.push("appends before the guard");
+      });
+      return out;
+    };
+    const missing = order(` const pack = await getReportPack(period); audit({ action: "pack.prepared" }); `);
+    const late = order(` audit({ action: "pack.prepared" }); const r = await readPackForTransition(period); if (!r.ok) return r; `);
+    const good = order(` const r = await readPackForTransition(period); if (!r.ok) return r; audit({ action: "pack.prepared" }); `);
+    ok("0.214.c1 · CONTROL · an action that never calls the guard is reported, one that appends BEFORE it is reported, and the real order is not",
+      missing.length === 1 && late.length === 1 && good.length === 0, j({ missing, late, good }));
+  });
+}
+
 /* ═══ §3 · ruling 170 · an OFFICER's own "Export my data" and feed name nothing about house bots (both stores) ═══════ */
 // An officer is a player of their own account too, and the DSAR queue writes their actions with THEM as actor: the
 // fulfilled erasure spreads the routine's counts (`houseBots`, `houseBotNotificationsRedacted`, always present, 0 for an
@@ -1945,6 +2141,128 @@ await guard("4", async () => {
   ok("4.260.6 · ⛔ only a STAFF role is ever in the audience: while a grant row lets the PLAYER role view the audit log's domain, a player is still outside and reads no row; CONTROL: the grant really answered true, and restored it answers false",
     playerGrantView === true && playerWithGrant === false && Array.isArray(playerRowsWithGrant) && playerRowsWithGrant.length === 0 && playerGrantAfter === false,
     j({ auditDomain, playerGrantView, playerWithGrant, playerRows: Array.isArray(playerRowsWithGrant) ? playerRowsWithGrant.length : playerRowsWithGrant, playerGrantAfter }));
+});
+
+/* ═══ §8 · rulings 214 and 216 · R8: the pack and the RG report read the audit TABLE ═══════════════════ */
+//
+// ⛔ THIS SECTION RUNS LAST ON PURPOSE. Its Postgres half EMPTIES `globalThis.__50PICK_AUDIT_RING` — the
+// "every deploy" state — and a section after it would read an empty ring and think nothing had happened.
+section("§8 · rulings 214, 216 · the report pack and the RG engagement read the durable audit table, not the ring");
+await guard("8", async () => {
+  const AUD: Any = await import("../../src/lib/server/audit.ts");
+  const RP: Any = await import("../../src/lib/server/report-pack.ts");
+  const CAT: Any = await import("../../src/lib/server/reports/catalogue.ts");
+
+  const OFFICER_A = "usr_r8_officer_a";
+  const OFFICER_B = "usr_r8_officer_b";
+  const packRow = (period: string, action: string, actorId: string, payload: Any = { period }) => AUD.audit({
+    category: "ADMIN", action, actorId, targetType: "ReportPack", targetId: RP.packIdFor(period), payload,
+  });
+  /** Every `pack.*` transition row on one pack, read the way the pack itself is read. */
+  const historyRows = async (period: string): Promise<number> =>
+    (await AUD.getAuditForTargetsDurable({
+      targetType: "ReportPack", targetIds: [RP.packIdFor(period)], actions: [...RP.PACK_STATE_ACTIONS],
+      sinceIso: "1970-01-01T00:00:00.000Z", limit: 1000,
+    })).entries.length;
+
+  /* ── 8.214.1 · the crowd-out ruling 214 (1) chose the by-TARGETS reader to survive ─────────────── */
+  // Our pack is signed FIRST, then sixty newer `pack.prepared` rows land on OTHER months' packs. A reader
+  // that applies its limit BEFORE the target filter sees only those sixty and calls our pack a DRAFT —
+  // which invites a second Prepare and a second officer signature on a filing already signed.
+  const CROWD = "2031-01";
+  await packRow(CROWD, "pack.prepared", OFFICER_A, { period: CROWD, sha256: "a".repeat(64), sizeBytes: 12, filename: `GB-${CROWD}.pdf`, reference: "REF-CROWD" });
+  await packRow(CROWD, "pack.approved", OFFICER_B);
+  for (let i = 0; i < 60; i++) await packRow(`2030-${String((i % 12) + 1).padStart(2, "0")}`, "pack.prepared", OFFICER_A, { period: "other", n: i });
+  await AUD.auditFlush();
+  const crowded = await RP.getReportPack(CROWD);
+  const byActions = await AUD.getAuditByActionsDurable([...RP.PACK_STATE_ACTIONS], { category: "ADMIN", limit: 50 });
+  const ourRowsInWindow = byActions.entries.filter((e: Any) => e.targetId === RP.packIdFor(CROWD)).length;
+  ok("8.214.1 · ⛔ sixty newer pack rows on OTHER months do NOT move this pack: target AND action are filtered in SQL over @@index([targetType, targetId]), so its own transitions can never be crowded out of the window",
+    crowded.state === "approved" && crowded.preparedBy === OFFICER_A && crowded.approvedBy === OFFICER_B && crowded.historyIncomplete === false,
+    j({ state: crowded.state, preparedBy: crowded.preparedBy, approvedBy: crowded.approvedBy, historyIncomplete: crowded.historyIncomplete }));
+  ok("8.214.1b · ⛔ CONTROL · the crowd-out is REAL: the by-ACTIONS reader at the same limit returns none of this pack's rows, so ruling 214 (1)'s choice of reader is what 8.214.1 measures — not a difference that does not exist",
+    byActions.entries.length === 50 && ourRowsInWindow === 0, j({ window: byActions.entries.length, ourRowsInWindow, truncated: byActions.truncated }));
+  ok("8.214.1c · …and the artifact is still read off the prepare row (the swap changed the reader, not what a pack carries)",
+    crowded.artifact?.sha256 === "a".repeat(64) && crowded.artifact?.reference === "REF-CROWD" && crowded.periodLabel === "January 2031",
+    j(crowded.artifact));
+
+  /* ── 8.214.2 · a TRUNCATED history refuses every transition, and refuses BEFORE it ───────────────── */
+  const CUT = "2031-02";
+  for (let i = 0; i < 51; i++) await packRow(CUT, "pack.prepared", OFFICER_A, { period: CUT, attempt: i });
+  await AUD.auditFlush();
+  const cut = await RP.getReportPack(CUT);
+  ok("8.214.2 · ⛔ a pack whose own history hit the read limit reports historyIncomplete — it does NOT throw, because the card renders above both tabs of /admin/reports and a throw takes the whole page down",
+    cut.historyIncomplete === true && cut.state === "prepared", j({ historyIncomplete: cut.historyIncomplete, state: cut.state }));
+  const rowsBefore = await historyRows(CUT);
+  const refusal = await RP.readPackForTransition(CUT);
+  const rowsAfter = await historyRows(CUT);
+  const afterState = await RP.getReportPack(CUT);
+  ok("8.214.3 · ⛔ every pack transition refuses it: readPackForTransition — the ONLY door all four maker-checker actions read their pack through — returns ok:false with the danger line",
+    refusal.ok === false && typeof refusal.error === "string" && refusal.error.startsWith(RP.PACK_HISTORY_INCOMPLETE_LINE),
+    j(refusal));
+  ok("8.214.4 · ⛔ …and the OTHER half: nothing was written. The pack's transition rows and its derived state are identical after the refusal — a refusal that arrives after the append puts the signature on the immutable chain and tells the officer they were blocked",
+    rowsAfter === rowsBefore && afterState.state === cut.state && afterState.preparedAt === cut.preparedAt && afterState.historyIncomplete === true,
+    j({ rowsBefore, rowsAfter, before: cut.state, after: afterState.state }));
+  const clean = await RP.readPackForTransition(CROWD);
+  ok("8.214.5 · CONTROL · the refusal is not unconditional: the untruncated pack of 8.214.1 passes the same door and hands back its pack",
+    clean.ok === true && clean.pack?.state === "approved" && clean.pack?.historyIncomplete === false, j({ ok: clean.ok, state: clean.pack?.state }));
+
+  /* ── 8.214.6 · the RG engagement's copy and its truncation sentence ──────────────────────────────── */
+  const rgSection = (r: Any) => (r.sections ?? []).find((s: Any) => s.title === "Self-exclusion & cool-off events");
+  const rgPlain = await CAT.buildRgEngagement("usr_r8_generator");
+  ok("8.214.6 · the RG engagement names the audit LOG, not the ring — in the section description and in the note (the ring is per-container and empties on every deploy; the note claimed those activations were written to it and shown above)",
+    rgSection(rgPlain)?.description === "Activations recorded in the compliance audit log (most recent first)."
+    && (rgPlain.notes ?? []).some((n: string) => n === "Limit changes, self-exclusions, and cool-offs are written to the COMPLIANCE audit log and shown above."),
+    j({ description: rgSection(rgPlain)?.description, notes: rgPlain.notes }));
+  ok("8.214.7 · …and RG_AUDIT_ACTIONS is the closed list the reader is given (six written actions; the read-only rg.reality_check.continued is not one of them — L30)",
+    Array.isArray(CAT.RG_AUDIT_ACTIONS) && CAT.RG_AUDIT_ACTIONS.length === 6 && !CAT.RG_AUDIT_ACTIONS.includes("rg.reality_check.continued"),
+    j(CAT.RG_AUDIT_ACTIONS));
+
+  /* ── 8.216 · POSTGRES ONLY · the ring emptied, which is the state every deploy produces ──────────── */
+  if (STORE !== "postgres") {
+    ok("8.216.store · the ring-emptied proofs are the Postgres half (here the durable readers fall back to the ring, audit.ts:633-637, so emptying it would measure the fallback and not the table)", true, "memory child");
+    return;
+  }
+
+  const RING = "2031-03";
+  await packRow(RING, "pack.prepared", OFFICER_A, { period: RING, sha256: "b".repeat(64), sizeBytes: 34, filename: `GB-${RING}.pdf`, reference: "REF-RING" });
+  await packRow(RING, "pack.approved", OFFICER_B);
+  for (let i = 0; i < 201; i++) {
+    await AUD.audit({
+      category: "COMPLIANCE", action: CAT.RG_AUDIT_ACTIONS[i % CAT.RG_AUDIT_ACTIONS.length],
+      actorId: `usr_r8_rg_${i}`, targetType: "User", targetId: `usr_r8_rg_${i}`, payload: { n: i },
+    });
+  }
+  await AUD.auditFlush();
+
+  // ⛔ THE RING IS EMPTIED IN PLACE, not reassigned: `audit.ts` binds `ring` to this array once at import,
+  // so a fresh array on globalThis would leave the module reading the old one and prove nothing.
+  const ringBefore = AUD.auditRingSize();
+  (globalThis as Any).__50PICK_AUDIT_RING.length = 0;
+  ok("8.216.0 · the ring really was full and is now empty — this is the state a deploy produces, and hydrate never refills a process that has already hydrated",
+    ringBefore > 200 && AUD.auditRingSize() === 0, `${ringBefore} → ${AUD.auditRingSize()}`);
+
+  const fromTable = await RP.getReportPack(RING);
+  ok("8.216.1 · ⛔ with the ring EMPTY the pack still reads approved, with the preparing officer and the artifact — the durable read is the source, and R8's swap is what makes the state survive a deploy",
+    fromTable.state === "approved" && fromTable.preparedBy === OFFICER_A && fromTable.approvedBy === OFFICER_B
+    && fromTable.historyIncomplete === false && fromTable.artifact?.sha256 === "b".repeat(64),
+    j({ state: fromTable.state, preparedBy: fromTable.preparedBy, historyIncomplete: fromTable.historyIncomplete, sha: fromTable.artifact?.sha256 }));
+  const ringRows = AUD.getAuditPage({ category: "ADMIN", limit: 10000 }).filter((e: Any) => e.targetId === RP.packIdFor(RING));
+  ok("8.216.2 · ⛔ CONTROL · THE DISCRIMINATOR IS LIVE: in this same process the RING reader now returns NONE of those pack rows. Without this, 8.216.1 would pass whether or not the ring was emptied and whether or not the swap was ever made",
+    ringRows.length === 0 && AUD.getAuditPage({ limit: 10000 }).filter((e: Any) => e.action.startsWith("pack.")).length === 0,
+    `ring rows for this pack: ${ringRows.length} · pack rows anywhere in the ring: ${AUD.getAuditPage({ limit: 10000 }).filter((e: Any) => e.action.startsWith("pack.")).length}`);
+
+  const rgTrunc = await CAT.buildRgEngagement("usr_r8_generator");
+  const sec = rgSection(rgTrunc);
+  ok("8.216.3 · ⛔ with the ring EMPTY the RG engagement still tabulates 200 activations off the table, and SAYS it is capped — a section that silently stops at its limit reads as a complete one, on the document a regulator asks for",
+    sec?.rows?.length === 200 && /^Activations recorded in the compliance audit log \(most recent first\)\. Showing the most recent 200 of 20\d\.$/.test(sec?.description ?? ""),
+    j({ rows: sec?.rows?.length, description: sec?.description }));
+  ok("8.216.4 · ⛔ CONTROL · the RG discriminator is live too: the ring reader returns none of those 201 rg.* rows in this process",
+    AUD.getAuditPage({ category: "COMPLIANCE", limit: 10000 }).filter((e: Any) => e.action.startsWith("rg.")).length === 0,
+    `${AUD.getAuditPage({ category: "COMPLIANCE", limit: 10000 }).length} COMPLIANCE rows in the ring`);
+  ok("8.216.5 · …and the rows it printed are real rg.* activations with masked players, newest first",
+    (sec?.rows ?? []).every((r: Any) => typeof r.event === "string" && r.event.length > 0 && typeof r.player === "string" && !r.player.startsWith("usr_")),
+    j((sec?.rows ?? []).slice(0, 2)));
 });
 
 /* ═══ both stores · the store this child really runs on ══════════════════════════════════════════════ */

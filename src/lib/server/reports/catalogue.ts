@@ -11,7 +11,7 @@
 
 import { createHash } from "node:crypto";
 import { db } from "../store";
-import { getAuditPage, getAuditPageDurable, verifyChain, verifyChainFull } from "../audit";
+import { getAuditByActionsDurable, getAuditPageDurable, verifyChain, verifyChainFull } from "../audit";
 import {
   providerSummary, depositsTotal, withdrawalsTotal,
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,
@@ -853,6 +853,34 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
 // 8 · RESPONSIBLE-GAMBLING ENGAGEMENT  (internal · RG audit)
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Every `rg.*` audit action the platform WRITES today — a CLOSED, exported list, passed to the
+ * durable read so the database filters on it instead of the reader scanning a category window.
+ *
+ * ⛔ IT IS A LIST OF ACTIONS THAT OCCUR, NOT OF ACTIONS WE IMAGINE. `rg.reality_check.continued`
+ * is READ (`/admin/compliance`) and never written by any code path — reality-check prompts fire
+ * client-side and nothing posts them back (PROGRESS L30). Putting it here would make this a list
+ * whose membership nobody can measure, and `test:house-bot-reports` §0 walks every `audit({...})`
+ * call under `src/` in both directions: an `rg.*` written and not listed is red, and an entry here
+ * with no writer is red.
+ *
+ * Writers, measured: `responsible-gambling.ts` (the limit change and its deferred twin,
+ * self-exclusion, cooling-off), `market-service.ts` (the session-time refusal),
+ * `admin/players/[id]/actions.ts` (an officer reopening a served exclusion).
+ */
+export const RG_AUDIT_ACTIONS = [
+  "rg.limit.changed",
+  "rg.limit.increase.deferred",
+  "rg.self_exclusion.activated",
+  "rg.cooling_off.activated",
+  "rg.session_limit.enforced",
+  "rg.self_exclusion.reopened",
+] as const;
+
+/** Rows of RG history this document tabulates. Past it the section says so, in the platform's own
+ *  truncation sentence — the same shape the match-integrity refunds table uses. */
+const RG_EVENT_LIMIT = 200;
+
 export async function buildRgEngagement(generatorId: string): Promise<Report> {
   const roster = await rgRosterCounts();
   const now = Date.now();
@@ -883,15 +911,23 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
     });
   }
 
-  // Self-exclusion / cool-off events from the COMPLIANCE audit ring (rg.* actions).
-  const events = getAuditPage({ category: "COMPLIANCE", limit: 500 })
-    .filter((e) => e.action.startsWith("rg."))
-    .slice(0, 200)
-    .map((e) => ({
-      at: formatDateTime(e.createdAt),
-      event: e.action.replace("rg.", "").replace(/[._]/g, " "),
-      player: e.targetId ? maskUserId(e.targetId) : "—",
-    }));
+  // Self-exclusion / cool-off events from the COMPLIANCE audit TABLE (rg.* actions).
+  //
+  // 🔴 IT WAS THE RING, AND THE RING IS NOT THE LOG (C5-SPEC ruling 214). `getAuditPage` served at
+  // most the last 500 entries of ONE container's in-memory ring, across every category — so a busy
+  // hour of wallet and market rows pushed every self-exclusion out of the window, and a deploy
+  // emptied it entirely. This document then printed an EMPTY "Self-exclusion & cool-off events"
+  // table under a note claiming those activations are written to the log and shown above.
+  //
+  // ⭐ THE CATEGORY IS PASSED as well as the actions: `AuditLog` has no index on `action`, and
+  // `@@index([category, createdAt])` turns a walk of the whole chain into a range scan of one
+  // category. Every action in the list is COMPLIANCE by construction.
+  const rg = await getAuditByActionsDurable(RG_AUDIT_ACTIONS, { category: "COMPLIANCE", limit: RG_EVENT_LIMIT });
+  const events = rg.entries.map((e) => ({
+    at: formatDateTime(e.createdAt),
+    event: e.action.replace("rg.", "").replace(/[._]/g, " "),
+    player: e.targetId ? maskUserId(e.targetId) : "—",
+  }));
 
   return {
     title: "Responsible-gambling engagement",
@@ -930,7 +966,13 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
       {
         title: "Self-exclusion & cool-off events",
         titleSw: "Matukio ya kujizuia",
-        description: "Activations recorded in the compliance audit ring (most recent first).",
+        // ⛔ A CAPPED TABLE SAYS SO, in the platform's own sentence (`reports-verify-live.mts`
+        // recognises "Showing the most recent"). A section that silently stops at its limit reads
+        // as a complete one, and this is the document a regulator asks for.
+        description: rg.truncated
+          ? `Activations recorded in the compliance audit log (most recent first). Showing the most recent `
+            + `${events.length.toLocaleString("en-US")} of ${rg.total.toLocaleString("en-US")}.`
+          : "Activations recorded in the compliance audit log (most recent first).",
         columns: [
           { header: "When", key: "at", width: 22 },
           { header: "Event", key: "event", width: 28 },
@@ -940,7 +982,7 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
       },
     ],
     notes: [
-      "Limit changes, self-exclusions, and cool-offs are written to the COMPLIANCE audit ring and shown above.",
+      "Limit changes, self-exclusions, and cool-offs are written to the COMPLIANCE audit log and shown above.",
       "Reality-check prompts fire client-side every 30 min (LCCP SR 3.4.1); per-fire counts are not yet centrally persisted, so they are not tabulated here — wire a server beacon to add them.",
       "Player identifiers are masked; the full record is available in the player drill-in.",
     ],

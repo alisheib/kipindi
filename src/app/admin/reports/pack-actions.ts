@@ -15,7 +15,7 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { twoOfficerGate } from "@/lib/server/two-officer";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
-import { getReportPack, packIdFor, currentPackPeriod } from "@/lib/server/report-pack";
+import { readPackForTransition, packIdFor, currentPackPeriod } from "@/lib/server/report-pack";
 import { buildGbtMonthly } from "@/lib/server/reports/catalogue";
 import { renderPdf } from "@/lib/server/reports/pdf";
 
@@ -32,13 +32,21 @@ async function requireSigningOfficer(): Promise<{ userId: string; sessionId: str
   return g.ok ? { userId: g.userId, sessionId: g.sessionId } : { error: g.error };
 }
 
+/* ⛔ NOT ONE OF THESE FOUR CALLS `getReportPack` (C5-SPEC ruling 214). They all read through
+   `readPackForTransition`, which refuses when the pack's own history could not be read completely —
+   BEFORE the state check, before `twoOfficerGate`, before the artifact render, and before any
+   `audit()` append. A refusal written after the append would put a signature on the immutable chain
+   while telling the officer they were blocked, which is the exact defect the clause exists for. */
+
 /** Prepare — the maker generates the pack, hashes the rendered PDF, and signs. */
 export async function prepareReportPack(formData: FormData): Promise<ActionResult> {
   const gate = await requireSigningOfficer();
   if ("error" in gate) return { ok: false, error: gate.error };
 
   const period = String(formData.get("period") ?? "") || currentPackPeriod();
-  const pack = await getReportPack(period);
+  const read = await readPackForTransition(period);
+  if (!read.ok) return read;
+  const pack = read.pack;
   if (pack.state !== "draft") return { ok: false, error: `Pack is already ${pack.state}. Prepare is only valid from Draft.` };
 
   // Real artifact: render the actual monthly PDF and hash its bytes.
@@ -71,7 +79,9 @@ export async function approveReportPack(formData: FormData): Promise<ActionResul
   if ("error" in gate) return { ok: false, error: gate.error };
 
   const period = String(formData.get("period") ?? "") || currentPackPeriod();
-  const pack = await getReportPack(period);
+  const read = await readPackForTransition(period);
+  if (!read.ok) return read;
+  const pack = read.pack;
   if (pack.state !== "prepared") return { ok: false, error: `Pack must be Prepared before approval (currently ${pack.state}).` };
   const conflict = twoOfficerGate({
     makerId: pack.preparedBy,
@@ -91,7 +101,9 @@ export async function submitReportPack(formData: FormData): Promise<ActionResult
   if ("error" in gate) return { ok: false, error: gate.error };
 
   const period = String(formData.get("period") ?? "") || currentPackPeriod();
-  const pack = await getReportPack(period);
+  const read = await readPackForTransition(period);
+  if (!read.ok) return read;
+  const pack = read.pack;
   if (pack.state !== "approved") return { ok: false, error: `Pack must be Approved by a second officer before submission (currently ${pack.state}).` };
   audit({ category: "ADMIN", action: "pack.submitted", actorId: gate.userId, targetType: "ReportPack", targetId: packIdFor(period), payload: { period, artifactSha256: pack.artifact?.sha256 ?? null } });
   revalidatePath("/admin/reports");
@@ -105,7 +117,9 @@ export async function acknowledgeReportPack(formData: FormData): Promise<ActionR
 
   const period = String(formData.get("period") ?? "") || currentPackPeriod();
   const reference = String(formData.get("reference") ?? "").trim().slice(0, 120) || null;
-  const pack = await getReportPack(period);
+  const read = await readPackForTransition(period);
+  if (!read.ok) return read;
+  const pack = read.pack;
   if (pack.state !== "submitted") return { ok: false, error: `Pack must be Submitted before it can be acknowledged (currently ${pack.state}).` };
   audit({ category: "ADMIN", action: "pack.acknowledged", actorId: gate.userId, targetType: "ReportPack", targetId: packIdFor(period), payload: { period, reference } });
   revalidatePath("/admin/reports");

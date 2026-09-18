@@ -12,7 +12,7 @@
  * fabricated: every signature is a real actor + real timestamp, and the
  * artifact hash is the sha256 of the actual rendered PDF.
  */
-import { getAuditPage } from "./audit";
+import { getAuditForTargetsDurable } from "./audit";
 import { officerLabel } from "./actor-label";
 // The ONE place the platform decides what a day is — see `packPeriodBounds`.
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
@@ -28,6 +28,26 @@ export const PACK_STEPS: { state: PackState; label: string; sw: string }[] = [
 ];
 
 export type PackArtifact = { filename: string; sizeBytes: number; sha256: string; reference: string };
+
+/**
+ * The four transitions the pack's state is derived from — a CLOSED list, passed to the durable
+ * read so the database filters on it.
+ *
+ * The other action written on this same target is `pack.approve.conflict_blocked` (a refused
+ * self-approval, `pack-actions.ts`). It is deliberately NOT here: it is not a transition, and
+ * naming it would let refusals crowd the real signatures out of the read below.
+ */
+export const PACK_STATE_ACTIONS = ["pack.prepared", "pack.approved", "pack.submitted", "pack.acknowledged"] as const;
+
+/** How many rows of a pack's own history the durable read takes. Four transitions plus their
+ *  re-runs; past this the history is reported INCOMPLETE rather than silently cut. */
+const PACK_HISTORY_LIMIT = 50;
+
+/**
+ * The one sentence a truncated pack history prints, on the card and in every refusal, so the
+ * screen and the server say the same words.
+ */
+export const PACK_HISTORY_INCOMPLETE_LINE = "Pack history could not be read completely — do not sign";
 
 export type ReportPack = {
   packId: string;
@@ -46,6 +66,12 @@ export type ReportPack = {
   acknowledgedAt: string | null;
   acknowledgedRef: string | null;
   artifact: PackArtifact | null;
+  /**
+   * The durable read hit its limit, so `state` and the signatures below are derived from a window
+   * that may not hold every transition. TRUE means "do not sign": the card says so and every
+   * transition refuses.
+   */
+  historyIncomplete: boolean;
 };
 
 /** The statutory pack's period key. The Gaming Board monthly pack reports the
@@ -85,13 +111,38 @@ export function packIdFor(period: string): string {
 }
 
 
-/** Derive the pack's current state + signatures from the audit trail. */
+/**
+ * Derive the pack's current state + signatures from the audit trail.
+ *
+ * 🔴 IT READS THE AUDIT TABLE, NOT THE RING (C5-SPEC ruling 214). `getAuditPage` serves
+ * `globalThis.__50PICK_AUDIT_RING`, which is per-container, capped at 10,000 GLOBALLY across every
+ * category, and EMPTIES ON EVERY DEPLOY. So the same pack read "acknowledged" on a warm instance and
+ * "draft" on one that had just restarted — and a pack that reads Draft invites a second Prepare, with
+ * a second officer signature on a statutory filing that was already signed and filed.
+ *
+ * ⛔ AND IT IS `getAuditForTargetsDurable`, NOT `getAuditByActionsDurable`. The by-actions reader
+ * applies its LIMIT BEFORE any target filter, so the rows of every OTHER month's pack — and the
+ * `pack.approve.conflict_blocked` rows written on this very target — would eat the window and the
+ * state would be derived from a read that no longer holds its own transitions. This one filters
+ * target AND action in SQL, over `@@index([targetType, targetId])`.
+ *
+ * ⚠️ IT NEVER THROWS ON A TRUNCATED READ. `ReportPackCard` renders ABOVE both tabs of
+ * `/admin/reports`, so a throw here takes the whole page down (the library with it), and inside the
+ * four server actions it is an uncaught exception rather than a refusal an officer can read. The
+ * truncation is reported as `historyIncomplete`, the card prints the danger line, and
+ * `readPackForTransition` below refuses every transition before it happens.
+ */
 export async function getReportPack(period = currentPackPeriod()): Promise<ReportPack> {
   const packId = packIdFor(period);
   // Newest-first; the first match of each action is its latest occurrence.
-  const events = getAuditPage({ category: "ADMIN", limit: 10000 }).filter(
-    (e) => e.targetId === packId && e.action.startsWith("pack."),
-  );
+  const { entries: events, truncated } = await getAuditForTargetsDurable({
+    targetType: "ReportPack",
+    targetIds: [packId],
+    actions: [...PACK_STATE_ACTIONS],
+    // Genesis: a pack's signatures are its whole life, and a window would silently drop an old one.
+    sinceIso: "1970-01-01T00:00:00.000Z",
+    limit: PACK_HISTORY_LIMIT,
+  });
   const prepared = events.find((e) => e.action === "pack.prepared");
   const approved = events.find((e) => e.action === "pack.approved");
   const submitted = events.find((e) => e.action === "pack.submitted");
@@ -119,6 +170,7 @@ export async function getReportPack(period = currentPackPeriod()): Promise<Repor
     period,
     periodLabel: packPeriodLabel(period),
     state,
+    historyIncomplete: truncated,
     preparedBy: prepared?.actorId ?? null,
     preparedByName,
     preparedAt: prepared?.createdAt ?? null,
@@ -132,4 +184,28 @@ export async function getReportPack(period = currentPackPeriod()): Promise<Repor
     acknowledgedRef: (acknowledged?.payload as { reference?: string } | undefined)?.reference ?? null,
     artifact,
   };
+}
+
+/**
+ * ⛔ THE ONE WAY A TRANSITION READS ITS PACK (ruling 214). Every one of the four maker-checker
+ * actions takes its pack from here, so a history the platform could not read completely refuses
+ * the transition BEFORE anything is written — never after.
+ *
+ * A refusal that arrives after the `audit()` append is not a refusal: the signature is on the
+ * chain and the officer is told it was blocked. That is the defect this function exists to make
+ * structurally impossible, which is why the actions never call `getReportPack` themselves.
+ */
+export async function readPackForTransition(
+  period: string,
+): Promise<{ ok: true; pack: ReportPack } | { ok: false; error: string }> {
+  const pack = await getReportPack(period);
+  if (pack.historyIncomplete) {
+    return {
+      ok: false,
+      error: `${PACK_HISTORY_INCOMPLETE_LINE}. The pack's signing history hit the read limit, `
+        + "so the state shown here may not be its real state. Read the pack's history in the audit "
+        + "log before any further signature.",
+    };
+  }
+  return { ok: true, pack };
 }

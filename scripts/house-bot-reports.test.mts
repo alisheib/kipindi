@@ -27,6 +27,16 @@
  * §4.S5's R2 parts and surfaces (rulings 192–194, 196, and 259's DISPLAY cases 4.259.1 and 4.259.4), and the §0 pins of
  * rulings 179, 180, 183, 186 (1)(3)(4), 191's R9 population, 192, 194, 197 and 259's display wiring.
  *
+ * ⭐ CHECKPOINT C5-6 (R8, C5-SPEC rulings 214–216) RAISED THEM AGAIN, to counts MEASURED by running the
+ * suite on both stores: **memory 110, Postgres 31**. What it added: §0's ruling-215 source pins (the report
+ * population reads no audit ring, with the whole-word control that `getAuditPageDurable` is not a hit; and
+ * `RG_AUDIT_ACTIONS` is exactly the `rg.*` actions written under `src/`, in BOTH directions, with the
+ * ternary, read-only-comparison and freeze-`ref` controls), §0's ruling-214 pin that all four maker-checker
+ * actions read their pack only through `readPackForTransition` and before any append, and §8 — the pack
+ * read surviving sixty newer packs' rows, a truncated history refusing every transition with NOTHING
+ * written, the RG copy, and on Postgres the RING EMPTIED IN PLACE with the ring reader as the live
+ * discriminator.
+ *
  * ⛔ WHAT C5-5b REMOVED AND ITS FIXER PUT BACK: §4's BEHAVIOURAL cases for the gate D20 KEEPS (the replan's §2 row for
  * rulings 259–260). They went out with the display section that held them, leaving `houseConsoleAudience` and
  * `houseAuditForConsole` — the only thing standing between a signed-in player and every house audit row a console page
@@ -42,4 +52,4 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 85, postgres: 16 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 110, postgres: 31 }, dbPrefix: "hb_reports" });
