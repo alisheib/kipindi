@@ -1,9 +1,14 @@
 # The Up & Down board crash on ONE player's phone — 2026-09-18
 
-**Status:** ⛔ **STILL OPEN.** Two real crashes on this surface have been found and fixed (§4, §5.4)
-and **neither is confirmed** as what Dhiresh Kaba saw. §3's chart tie is **disproven** as his
-cause — Ali reproduced the crash with the chart not mounted (§5). His handset's actual exception
-has never been captured, and 50pick cannot capture one (§5.2). **Read §5 before §2–4.**
+**Status:** ✅ **ROOT CAUSE FOUND AND FIXED — §6.** It was **browser auto-translation**, not our
+data and not our logic. The real exception was captured off Dhiresh Kaba's own handset the moment
+the platform could report one (§5.7):
+
+> `NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child
+> of this node.` — Android 10, Chrome 152 Mobile
+
+⭐ **"Only on one phone" was a per-device BROWSER SETTING all along.** Neither of the two crashes
+fixed on the way (§4 chart tie, §5.4 `Intl.format`) was his — both are real and both stay fixed.
 **Authority:** this file. Everything below was measured, not assumed — and where a claim has
 since been falsified it is struck through rather than quietly deleted.
 
@@ -262,7 +267,81 @@ tab**, and the one tab that matters is on the handset being tested. Pushing mid-
 the middle of the diagnosis. ⇒ **push once he has finished testing**, and have the player fully
 close and reopen the browser afterwards rather than only refreshing.
 
-## 6 · How to search for a bug like this one (the method, for next time)
+## 6 · ✅ THE ANSWER — a translator rewriting the DOM under React
+
+### 6.1 What it actually was
+
+Google Translate does **not** edit text in place. It **replaces every text node**, wrapping each
+translation in its own `<font style="vertical-align: inherit;">`. React is still holding
+references to the ORIGINAL nodes, so the next re-render — for this player, the board repainting
+after a bet that had **already succeeded** — asks a parent to remove a child that is no longer its
+child. The DOM throws `NotFoundError`, the throw escapes render, and `app/updown/error.tsx`
+replaces the whole board with *"Ukurasa huu umekumbana na tatizo"*.
+
+⭐ **AND IT RETRO-EXPLAINS §1.** Ali reported the screen in ENGLISH — *"page not found"*, *"this
+page has encountered a problem"* — for a **Swahili-default** site. That was never a translation
+Ali was making for us. **His phone was showing him Google's English translation**, which is the
+same fact as the bug.
+
+| the puzzle | the answer |
+|---|---|
+| only ONE handset | auto-translate is a **per-device browser setting** |
+| nothing in Railway logs | a client throw is served **200** and carries no digest (§5.2) |
+| the bet SUCCEEDED, then the page died | the crash is in the **re-render after the mutation** |
+| never reproducible signed out, locally, or in any suite | it is not in our data or our logic at all |
+| English text on a Swahili site | the translator, visible in plain sight from message one |
+
+### 6.2 The fix — two layers, because neither is sufficient alone
+
+**① PREVENT** — `<meta name="google" content="notranslate">`, `translate="no"` and the
+`notranslate` class on `<html>` (`src/app/layout.tsx`).
+⭐ **This is the PRODUCT-correct call, not merely the crash-avoiding one.** 50pick ships a
+reviewed trilingual dictionary (sw/en/zh) whose money wording is deliberate — *"Stake returned"*,
+*"You win X if Up"*, *"Your funds are safe"*. A machine paraphrase of those sentences on a
+regulated real-money surface is a compliance and trust hazard well before it is a rendering one,
+and the honest route already exists: the in-app SW/EN/ZH switcher, which swaps our own vetted
+strings and cannot crash.
+
+**② SURVIVE** — `installDomTranslationGuard()` (`src/lib/client/dom-translation-guard.ts`),
+installed at **module scope** as the first child of `<body>`.
+⛔ Layer ① is **advisory**. Google honours it; an in-app webview (Facebook/Instagram — a large
+share of this product's traffic), an extension, or a vendor ROM translator need not. Layer ②
+makes `removeChild`/`insertBefore` tolerant of a node another agent has re-parented.
+⭐ **Swallowing is safe here and is not a masked bug:** the guard fires on exactly the condition
+the DOM rejects — the node is *already not a child*. "Remove this child" whose answer is "it is
+not here" is a no-op by definition.
+⛔ **AND IT IS NEVER SILENT** — every interception is reported to `/api/client-error` (throttled
+to once per load). Downgrading a fatal crash on a money surface to a reported, survivable event
+is the point; hiding it would not be.
+
+**Guard:** `npm run test:translation-safety` — 24 assertions in `predeploy`. §3 is BEHAVIOURAL,
+not spelling: it builds a minimal DOM that throws exactly as a browser does, proves the unguarded
+path throws (control), then proves the guard neutralises it, **still performs genuine removals**,
+and **appends rather than drops** content on a stale `insertBefore`.
+
+### 6.3 ⚠️ What is NOT proven, stated plainly
+
+`scripts/live/translate-crash-repro.mjs` **does not reproduce it.** With the guard uninstalled as
+a control it survived 171 translated text nodes and five landed unmount triggers — the
+one-second countdown, the Raundi↔Chati subtree, and a full client-side route change — and the
+script exits **3** saying so rather than claiming a pass.
+
+⭐ **Why the simulation is weaker than the real thing:** real Translate also installs a
+**MutationObserver and re-translates continuously**, racing React's commits. React 19 absorbs a
+one-shot swap (a text-only change is written via `nodeValue`, touching no re-parented node); what
+it does not absorb is a swap landing *between* a render and its commit. Faithful reproduction
+needs real Google Translate on a real device.
+
+⇒ The fix rests on **the real captured exception** plus **the behavioural guard**, not on that
+script. Do not read a green run of it as "the bug is gone" — it has never gone red.
+
+### 6.4 For the player, right now
+
+On that handset, Chrome → **⋮ → Translate → "Show original"**, or *"Never translate this site"*
+on the prompt. That stops it before any deploy reaches him. After the deploy, a full browser
+close-and-reopen (not a refresh) puts him on the fixed bundle.
+
+## 7 · How to search for a bug like this one (the method, for next time)
 
 1. **Get the exact words on the screen.** "Page not found" and "this page has encountered a
    problem" are different faults. Grep the copy: `src/app/not-found.tsx` vs
@@ -278,6 +357,31 @@ close and reopen the browser afterwards rather than only refreshing.
    reports a pass.
 5. **Prefer a deterministic unit guard over a live sweep** for anything data-dependent. The live
    matrix was green on production while the bug was real.
+
+### ⭐ What the SECOND session added, and it is the part that actually worked
+
+6. ⭐⭐ **WHEN THE LOGS CANNOT SEE IT, STOP GUESSING AND BUILD THE INSTRUMENT.** Two sessions
+   were spent reading code and finding *other* real bugs. What ended it, in minutes, was making
+   the error boundary report itself (`/api/client-error`). ⛔ **The hours before that were spent
+   inferring; the answer arrived the moment something MEASURED.** If a class of fault is
+   structurally invisible — 200, no digest, no server log — the instrument IS the work, and
+   building it should come first, not after every other theory is exhausted.
+7. ⭐ **"Only on one device" is not only `localStorage` — item 3 above was too narrow and it cost
+   a session.** The full list, in order of how easily it hides: a **browser setting** (auto-
+   translate, an extension, a reader mode), per-device storage, the in-app webview a link was
+   opened from, viewport, then the locale cookie. **A page translator rewrites the DOM under
+   React and nothing server-side can ever see it.**
+8. ⭐ **The words the reporter used were EVIDENCE, not noise.** Ali quoted the screen in ENGLISH
+   from message one, on a **Swahili-default** site. That single mismatch *was* the bug, in plain
+   sight, before any code was read. When a report's language does not match the product's, ask
+   why before asking what.
+9. ⛔ **A repro that will not go red is not a repro — say so.** `translate-crash-repro.mjs`
+   survived 171 translated nodes and five landed unmount triggers with the guard REMOVED, and
+   exits 3 rather than claiming a pass. Publishing the negative is what stops the next person
+   trusting it. §6.3.
+10. ⚠️ **Fixing a real bug you found on the way is not the same as fixing THE bug.** Two genuine
+   crashes were found and shipped (§4, §5.4) and **neither was his**. Say which is which, every
+   time, or the next reader inherits a false "fixed".
 
 ---
 
