@@ -428,6 +428,7 @@
     "test:updown-bars": "tsx scripts/updown-bars.test.mts",
     "test:ops-audit-flush": "tsx scripts/ops-audit-flush.test.mts",
     "test:tracker-hygiene": "tsx scripts/tracker-hygiene.test.mts",
+    "test:deferred-register": "tsx scripts/deferred-register.test.mts",
     "test:mobile-visual-plan": "tsx scripts/mobile-visual-plan.test.mts",
     "red:mobile-visual-plan": "node scripts/mobile-visual-plan-red.mjs",
     "test:marketing-setup-plan": "tsx scripts/marketing-setup-plan.test.mts",

@@ -1030,6 +1030,25 @@ bots and what keeps D19 true").
        because a hand-numbered register re-raises this class every time it is appended to, the id
        column gains a uniqueness check in the same pass — a duplicate id, or a row in §3 whose text
        says NOT MEASURED, goes RED. **Deriving the population is not enough if the ids are typed.**
+     - ⭐ **BUILT AND MEASURED THE SAME DAY, and the finding was LARGER than this ruling first stated.**
+       `grep -rn DEFERRED-TESTS scripts/ package.json` returned **one prose mention inside a comment and no
+       reader at all** — so the register that gates both Commit 5 and Commit 7’s close had **never been
+       machine-checked**, which is why all three defects survived. The fix is therefore not an id check but a
+       suite: `scripts/deferred-register.test.mts` / `npm run test:deferred-register`, whose population is
+       DERIVED (sections from the file’s own `##` headings, each section’s column count from ITS OWN header
+       row), so a section added tomorrow is inside every assertion on the day it lands.
+       **Seen RED first on four real failures, then green at 14 passed / 0 failed**, every control firing.
+       Two defects this ruling had NOT named were found by the guard, not by reading:
+       · **row 22 carried an unescaped pipe inside the code span `auto|scroll`**, so it rendered as SEVEN
+         columns in a six-column section — in any markdown viewer, not only to the parser.
+       · ⛔ **the file’s own blocking sentence was still the PRE-502 text** (“until C5-8 has run this file to
+         empty”) — the very wording ruling 502 declared UNSATISFIABLE. 502 scoped the gate and never reached
+         the file it governs, so §1c, §1d and §1e were each invisible to it and their rows blocked NOTHING.
+         That is a ruling-516 propagation failure inside the register 516 exists to protect.
+       ⚠️ **The guard’s own first draft cried wolf** and was corrected before it was trusted: it flagged row 14,
+       whose result legitimately reads “66 passed, 0 failed, 0 NOT MEASURED”. The pattern now carries a
+       lookbehind so a COUNT is not read as an obligation — and because a narrowing with no control is how a
+       guard stops covering what it was written for, `9.c5` and `9.c5b` pin BOTH directions.
 
 536. **ALI'S UNATTENDED-RUN AUTHORITY, RECORDED IN HIS OWN WORDS, AND THE PUSH DISCIPLINE IT
      REQUIRES.** 2026-09-18, granted through the approval prompt after three separate restatements:
