@@ -1,4 +1,4 @@
-import { AdminCard } from "@/components/admin/admin-shell";
+import { AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -17,7 +17,25 @@ function kb(bytes: number): string {
 /** ADM1 — the monthly Gaming Board pack with its maker-checker signing chain. */
 export async function ReportPackCard() {
   const period = currentPackPeriod();
-  const pack: ReportPack = await getReportPack(period);
+  /**
+   * ⛔ THIS CARD RENDERS ABOVE BOTH TABS OF /admin/reports, so a throw here takes the KPI strip, the
+   * daily P&L and the whole report library down with it. The read is a DATABASE read since C5-SPEC
+   * ruling 214's swap — it can fail where the old ring filter could not — and the platform already
+   * has the honest answer for a read that failed: `AdminLoadError`, amber, "this may not be empty".
+   * ⚠️ It is NOT caught into a default pack: that would paint DRAFT, and a pack that reads Draft
+   * invites a second Prepare on a filing that may already be signed. A failed read says it failed.
+   */
+  let pack: ReportPack;
+  try {
+    pack = await getReportPack(period);
+  } catch (e) {
+    console.error("[report-pack] card read failed:", (e as Error)?.message ?? e);
+    return (
+      <AdminCard title="Regulator pack · Gaming Board monthly" sw="Kifurushi cha mdhibiti">
+        <AdminLoadError what="the regulator pack" />
+      </AdminCard>
+    );
+  }
   const session = await currentSession();
   const isPreparer = !!session && pack.preparedBy === session.userId;
 

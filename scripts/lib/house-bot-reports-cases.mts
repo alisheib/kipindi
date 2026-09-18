@@ -1663,6 +1663,28 @@ if (STORE === "memory") {
   });
 }
 
+/** ruling 214 · the shapes `ReportPackCard`'s read must and must not have. Written as regex
+ *  LITERALS, never `new RegExp("…")`: a pattern built from a string has to survive two layers of
+ *  escaping, and the copy that lost a backslash matches something else while still looking right. */
+const RE_CARD_GUARD = /try\s*\{[\s\S]{0,240}await getReportPack\(/;
+const RE_CARD_CATCH = /catch\s*[({]/;  // `catch (e)` AND the binding-less `catch {` — a pin that knew only one of them called the other shape UNGUARDED (found by 0.214.c2's own plant).
+const RE_CARD_LOADERR = /<AdminLoadError\b/;
+const RE_CARD_DEFAULT = /state:\s*"(draft|prepared|approved|submitted|acknowledged)"/;
+const PLANT_CARD_UNGUARDED = [
+  "export async function ReportPackCard() {",
+  "  const pack = await getReportPack(period);",
+  "  return <AdminCard>{pack.state}</AdminCard>;",
+  "}",
+].join("\n");
+const PLANT_CARD_DEFAULTED = [
+  "export async function ReportPackCard() {",
+  "  let pack;",
+  "  try { pack = await getReportPack(period); }",
+  '  catch { pack = { state: "draft", historyIncomplete: true }; }',
+  '  return <AdminCard><AdminLoadError what="the regulator pack" />{pack.state}</AdminCard>;',
+  "}",
+].join("\n");
+
 /* ═══ §0 · ruling 215 · R8's source pins: no ring read in the report population; every `rg.*` write is listed ═══ */
 
 /**
@@ -1851,6 +1873,26 @@ if (STORE === "memory") {
       });
       return out;
     };
+    // The CARD's own half: it renders above both tabs, so its read is caught and answered with the
+    // platform's read-failed state — never caught into a default pack, which would paint DRAFT.
+    const cardRel = "src/app/admin/reports/report-pack-card.tsx";
+    const card = decomment(read(cardRel));
+    /* Caught-and-answered, and answered HONESTLY: the read is guarded, the platform's read-failed
+       state is what it renders, and nothing in the file writes a pack state literal. */
+    const cardGuard = (code: string) => ({
+      guarded: RE_CARD_GUARD.test(code) && RE_CARD_CATCH.test(code) && RE_CARD_LOADERR.test(code),
+      defaulted: RE_CARD_DEFAULT.test(code),
+    });
+    const real = cardGuard(card);
+    ok("0.214.3 · ⛔ ReportPackCard CATCHES its own read and renders the platform's read-failed state: the durable swap made this read able to fail, and a throw here takes the KPI strip, the daily P&L and the whole report library down with it",
+      real.guarded, j(real));
+    ok("0.214.4 · ⛔ …and it is NOT caught into a default pack: no pack-state literal is written in that file, so a failed read can never paint DRAFT on a filing that may already be signed",
+      !real.defaulted, j(real));
+    const unguarded = cardGuard(PLANT_CARD_UNGUARDED);
+    const defaulted = cardGuard(PLANT_CARD_DEFAULTED);
+    ok("0.214.c2 · CONTROL · a planted card that calls getReportPack with NO catch is reported as unguarded, and one that catches into a DEFAULT pack is reported as defaulted — the second is the shape that would paint DRAFT over a history nobody could read",
+      unguarded.guarded === false && unguarded.defaulted === false && defaulted.guarded === true && defaulted.defaulted === true,
+      j({ unguarded, defaulted }));
     const missing = order(` const pack = await getReportPack(period); audit({ action: "pack.prepared" }); `);
     const late = order(` audit({ action: "pack.prepared" }); const r = await readPackForTransition(period); if (!r.ok) return r; `);
     const good = order(` const r = await readPackForTransition(period); if (!r.ok) return r; audit({ action: "pack.prepared" }); `);
@@ -2263,6 +2305,27 @@ await guard("8", async () => {
   ok("8.216.5 · …and the rows it printed are real rg.* activations with masked players, newest first",
     (sec?.rows ?? []).every((r: Any) => typeof r.event === "string" && r.event.length > 0 && typeof r.player === "string" && !r.player.startsWith("usr_")),
     j((sec?.rows ?? []).slice(0, 2)));
+
+  /* ── 8.214.8 · the read that FAILS, which the swap itself created ────────────────────────────── */
+  // ⛔ `getAuditPage` was a synchronous array filter and could not fail. A TABLE read can — a lost
+  // connection, a migration in flight — so the swap introduced a throw on the path of a page that
+  // renders above both tabs and of four server actions. The table is RENAMED to produce a real
+  // failure (the technique engine 10.10 already uses), never a stubbed reader, because a stub proves
+  // the stub. It is renamed back in `finally`, and 8.214.9 is the control that it really came back.
+  const P: Any = await import("../../src/lib/server/prisma.ts");
+  let broke: Any = null;
+  try {
+    await P.prisma().$executeRawUnsafe('ALTER TABLE "AuditLog" RENAME TO "AuditLog_c56"');
+    broke = await RP.readPackForTransition(CROWD).catch((e: Any) => ({ threw: String(e?.message ?? e) }));
+  } finally {
+    await P.prisma().$executeRawUnsafe('ALTER TABLE "AuditLog_c56" RENAME TO "AuditLog"').catch(() => {});
+  }
+  ok("8.214.8 · ⛔ a pack history that could not be read AT ALL is a REFUSAL, not an exception: the transition returns ok:false with the danger line, so an officer reads a sentence instead of a stack and no transition can depend on where a throw landed",
+    broke?.threw === undefined && broke?.ok === false && String(broke?.error ?? "").startsWith(RP.PACK_HISTORY_INCOMPLETE_LINE),
+    j(broke));
+  const backAgain = await RP.readPackForTransition(CROWD);
+  ok("8.214.9 · CONTROL · the table really was gone and really is back: the same pack that refused a moment ago now passes the same door with its state intact, so 8.214.8 measured a failed read and not a permanent refusal",
+    backAgain.ok === true && backAgain.pack?.state === "approved", j({ ok: backAgain.ok, state: backAgain.pack?.state }));
 });
 
 /* ═══ both stores · the store this child really runs on ══════════════════════════════════════════════ */

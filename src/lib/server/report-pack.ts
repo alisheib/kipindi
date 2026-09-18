@@ -198,7 +198,25 @@ export async function getReportPack(period = currentPackPeriod()): Promise<Repor
 export async function readPackForTransition(
   period: string,
 ): Promise<{ ok: true; pack: ReportPack } | { ok: false; error: string }> {
-  const pack = await getReportPack(period);
+  /**
+   * ⛔ A READ THAT FAILED IS A REFUSAL, NOT AN EXCEPTION — and this branch exists because the swap
+   * to the durable reader CREATED it. `getAuditPage` was a synchronous array filter and could not
+   * fail; a table read can (a lost connection, a migration in flight). Left to throw, the officer's
+   * Prepare would reject with a stack rather than a sentence, and the one thing that must never
+   * happen — a transition on a history the platform could not read — would depend on where the
+   * throw landed. It is caught HERE, before the state check, so the answer is always a refusal.
+   */
+  let pack: ReportPack;
+  try {
+    pack = await getReportPack(period);
+  } catch (e) {
+    console.error("[report-pack] durable history read failed:", (e as Error)?.message ?? e);
+    return {
+      ok: false,
+      error: `${PACK_HISTORY_INCOMPLETE_LINE}. The pack's signing history could not be read at all, `
+        + "so nothing here says what has already been signed. Try again in a moment.",
+    };
+  }
   if (pack.historyIncomplete) {
     return {
       ok: false,

@@ -35,7 +35,9 @@
  * actions read their pack only through `readPackForTransition` and before any append, and §8 — the pack
  * read surviving sixty newer packs' rows, a truncated history refusing every transition with NOTHING
  * written, the RG copy, and on Postgres the RING EMPTIED IN PLACE with the ring reader as the live
- * discriminator.
+ * discriminator. Its finish added the failed-read half the swap itself created (the card catches its
+ * own read and renders the platform read-failed state; a transition that cannot read at all REFUSES),
+ * and the floors rose again to the measured **memory 113, Postgres 33**.
  *
  * ⛔ WHAT C5-5b REMOVED AND ITS FIXER PUT BACK: §4's BEHAVIOURAL cases for the gate D20 KEEPS (the replan's §2 row for
  * rulings 259–260). They went out with the display section that held them, leaving `houseConsoleAudience` and
@@ -52,4 +54,4 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 110, postgres: 31 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 113, postgres: 33 }, dbPrefix: "hb_reports" });
