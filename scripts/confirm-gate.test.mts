@@ -9,8 +9,9 @@
  * for a control whose entire purpose is to be hard to fire by accident.
  *
  * Four live call sites did exactly that, and three were RBAC-destructive on /admin/staff and
- * /admin/roles — the two OWNER_ONLY_PREFIXES. The most privileged surface in the product was
- * where the gate silently wasn't.
+ * /admin/roles — which at that reading (2026-08-28) were the whole of OWNER_ONLY_PREFIXES; the
+ * list has since grown. The most privileged surface in the product was where the gate silently
+ * wasn't.
  *
  * ⛔ THE OBVIOUS GUARD IS THE USELESS ONE, and the scan said so before this file existed:
  * grepping for `tier="hard"` and counting passes on exactly the broken shape, because the

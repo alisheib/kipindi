@@ -365,7 +365,7 @@ section("§3 · houseBotEligibility — every blocking row in its contexts");
   await w.limits({ maxDesignatedBots: 1 });
   const other = await holder();
   const full = (await E.houseBotEligibility(other, { context: "designate", actorId: OFFICER })).blocking.find((r: Any) => r.code === "ROSTER_FULL");
-  ok("3.11 · roster full → ROSTER_FULL (\"Roster full (1 of 1)\") linking to Limits", full?.short === "Roster full (1 of 1)" && full?.href === "/admin/house-bots?tab=limits", j(full));
+  ok("3.11 · roster full → ROSTER_FULL (\"Roster full (1 of 1)\") linking to Limits", full?.short === "Roster full (1 of 1)" && full?.href === "/admin/desk?tab=limits", j(full));
   await w.limits({ maxDesignatedBots: 20 });
 
   // Ruling 157: a filed erasure request voids consent through the hook, and §3.16–3.17 below prove OTHER start rows.
@@ -651,7 +651,7 @@ section("§6 · C8 — same password after a self-exclusion still needs a fresh 
 
   const s1 = await start(botId);
   ok("6.3 · Start before re-verify → CONSENT with the C8 copy and a ?reverify=1 fix",
-    s1.ok === false && s1.code === "CONSENT" && /^Can't start: their self-exclusion on .+ ended their permission\. Enter their password to confirm it again\.$/.test(s1.message) && s1.href === `/admin/house-bots/${botId}?reverify=1`, j(s1));
+    s1.ok === false && s1.code === "CONSENT" && /^Can't start: their self-exclusion on .+ ended their permission\. Enter their password to confirm it again\.$/.test(s1.message) && s1.href === `/admin/desk/${botId}?reverify=1`, j(s1));
 
   // H2 refuses on its own: force the bot ACTIVE as a Start that skipped the check would.
   await w.dal.houseBotStore.setStatus(botId, { from: ["AUTO_PAUSED"], to: "ACTIVE", pauseReason: null, pausedFromStatus: null });
@@ -764,7 +764,7 @@ section("§7 · reverifyHouseBot and startHouseBot");
   await w.dal.houseBotStore.setStatus(r.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
   await w.setCaps(r.botId, { stakeMaxTzs: null });
   const unset = await start(r.botId);
-  ok("7.9 · an unset cap → RULES with the field and a ?tab=rules link", unset.ok === false && unset.code === "RULES" && unset.field === "stakeMaxTzs" && unset.href === `/admin/house-bots/${r.botId}?tab=rules`, j(unset));
+  ok("7.9 · an unset cap → RULES with the field and a ?tab=rules link", unset.ok === false && unset.code === "RULES" && unset.field === "stakeMaxTzs" && unset.href === `/admin/desk/${r.botId}?tab=rules`, j(unset));
   const removed = await w.dal.houseBotStore.setStatus(r.botId, { from: ["PAUSED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } });
   ok("7.10 · a removed bot → Start and re-verify both refuse", !!removed && (await start(r.botId)).code === "REMOVED" && (await reverify(r.botId, PW)).code === "BOT_REMOVED");
 }
@@ -777,7 +777,7 @@ section("§8 · erasure refuses a live bot, then pseudonymises it");
   rlReset();
   const d = await desig(h, { label: "Rehema Desk", note: "Rehema's account" });
   await w.dal.houseBotEventStore.append({ houseBotId: d.bot.id, userId: h, marketId: null, kind: "PAUSED", fromStatus: "PAUSED", toStatus: "PAUSED", reason: "asked by Rehema", actorId: OFFICER, payload: null });
-  await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Rehema Desk" paused`, titleSw: `Boti "Rehema Desk" imesimamishwa`, titleZh: `机器人 "Rehema Desk" 已暂停`, bodyEn: "fixture", bodySw: "fixture sw", bodyZh: "固定", href: `/admin/house-bots/${d.bot.id}` });
+  await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Rehema Desk" paused`, titleSw: `Boti "Rehema Desk" imesimamishwa`, titleZh: `机器人 "Rehema Desk" 已暂停`, bodyEn: "fixture", bodySw: "fixture sw", bodyZh: "固定", href: `/admin/desk/${d.bot.id}` });
   await w.setUserFields(h, { status: "CLOSED", closedAt: new Date().toISOString() });
   // Ruling 156: the refusal is the backstop for a hook that did not run — with it running, A5 removes the bot first.
   const req = await withoutInAppHook(() => fileDsarRequest({ userId: h, type: "ERASURE" }));
@@ -788,7 +788,7 @@ section("§8 · erasure refuses a live bot, then pseudonymises it");
   const f1 = await tryFulfil();
   const f2 = await tryFulfil();
   const alerts = ((await w.db.notification.findByUser(OFFICER, 500)) as Any[]).filter(blocked).length - alertsBefore;
-  ok("8.1 · a live bot → the erasure refuses with the R6 copy naming the bot", f1.ok === false && f1.error === `This account is still house bot ${d.bot.id}. The owner must remove it at /admin/house-bots/${d.bot.id} before it can be erased.`, j(f1));
+  ok("8.1 · a live bot → the erasure refuses with the R6 copy naming the bot", f1.ok === false && f1.error === `This account is still house bot ${d.bot.id}. The owner must remove it at /admin/desk/${d.bot.id} before it can be erased.`, j(f1));
   ok("8.1b · the request stays PENDING, and nothing was erased (label, phone kept)",
     listDsarRequests().find((r: Any) => r.id === req.id)?.status === "PENDING" && (await bot(d.bot.id)).label === "Rehema Desk" && !String((await user(h)).phoneE164).startsWith("erased:"));
   ok("8.1c · exactly one owner alert across two refused attempts", f2.ok === false && alerts === 1, `alerts=${alerts}`);
@@ -800,7 +800,7 @@ section("§8 · erasure refuses a live bot, then pseudonymises it");
   ok("8.2 · after Remove the erasure runs and counts one house bot", f3.ok === true && f3.erasure?.counts?.houseBots === 1, j(f3.erasure?.counts));
   ok("8.2b · label → \"Erased <TAIL6>\", note and removedReason → [erased], event reasons → [erased]",
     b.label === `Erased ${tail}` && b.note === "[erased]" && b.removedReason === "[erased]" && (await events(d.bot.id)).every((e: Any) => e.reason == null || e.reason === "[erased]"), j({ label: b.label, note: b.note }));
-  const inbox = ((await w.db.notification.findByUser(OFFICER, 500)) as Any[]).filter((n) => n.titleEn.includes("paused") && n.href === `/admin/house-bots/${d.bot.id}`);
+  const inbox = ((await w.db.notification.findByUser(OFFICER, 500)) as Any[]).filter((n) => n.titleEn.includes("paused") && n.href === `/admin/desk/${d.bot.id}`);
   ok("8.2c · the quoted label in an admin's inbox → \"Erased bot <TAIL6>\" in every language, counted",
     inbox.length === 1 && inbox[0].titleEn === `House bot "Erased bot ${tail}" paused` && !JSON.stringify(inbox[0]).includes("Rehema Desk") && f3.erasure.counts.houseBotNotificationsRedacted >= 1, j(inbox[0]));
   const { anonymizeClosedAccount }: Any = await import("../../src/lib/server/erasure.ts");
@@ -1004,19 +1004,19 @@ section("§11 · review fixes — consent that lands mid-check, repeat episodes,
     const hx = await holder();
     rlReset();
     const dx = await desig(hx, { label: "Shared Desk" });
-    await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Shared Desk" paused · X`, titleSw: "x", titleZh: "机器人", bodyEn: "x", bodySw: "x sw", bodyZh: "固定", href: `/admin/house-bots/${dx.bot.id}` });
+    await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Shared Desk" paused · X`, titleSw: "x", titleZh: "机器人", bodyEn: "x", bodySw: "x sw", bodyZh: "固定", href: `/admin/desk/${dx.bot.id}` });
     await w.dal.houseBotStore.setStatus(dx.bot.id, { from: ["PAUSED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } });
     await sleep(5);
     const hy = await holder();
     rlReset();
     const dy = await desig(hy, { label: "Shared Desk" });
-    await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Shared Desk" paused · Y`, titleSw: "y", titleZh: "机器人", bodyEn: "y", bodySw: "y sw", bodyZh: "固定", href: `/admin/house-bots/${dy.bot.id}` });
+    await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Shared Desk" paused · Y`, titleSw: "y", titleZh: "机器人", bodyEn: "y", bodySw: "y sw", bodyZh: "固定", href: `/admin/desk/${dy.bot.id}` });
     await w.setUserFields(hx, { status: "CLOSED", closedAt: new Date().toISOString() });
     const { anonymizeClosedAccount }: Any = await import("../../src/lib/server/erasure.ts");
     const res = await anonymizeClosedAccount(hx);
     const rows = (await w.db.notification.findByUser(OFFICER, 1000)) as Any[];
-    const x = rows.find((n) => n.href === `/admin/house-bots/${dx.bot.id}`);
-    const y = rows.find((n) => n.href === `/admin/house-bots/${dy.bot.id}`);
+    const x = rows.find((n) => n.href === `/admin/desk/${dx.bot.id}`);
+    const y = rows.find((n) => n.href === `/admin/desk/${dy.bot.id}`);
     ok("11.11 · the erased bot's notice is renamed; the live bot with the freed label keeps its name; one row counted",
       res.ok === true && x?.titleEn.includes("Erased bot") && y?.titleEn === `House bot "Shared Desk" paused · Y` && res.counts.houseBotNotificationsRedacted === 1, j({ x: x?.titleEn, y: y?.titleEn, n: res.counts?.houseBotNotificationsRedacted }));
   }

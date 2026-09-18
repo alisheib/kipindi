@@ -26,11 +26,18 @@ import { crumbsFromPath } from "@/components/admin/admin-nav-groups";
  * (support). Its gate is its own layout, and the players list and `/admin/players/[id]` carry theirs, so no gate
  * wraps another and every entry re-decides.
  * ⛔ A missing session, a non-staff account or a missing `x-pathname` renders the restricted panel: never children.
+ *
+ * ⭐ `title` — ONE optional server-passed word, and it exists for an ID, not for a style (C7-SPEC ruling 301).
+ * This gate titles its own restricted panel from the LAST URL SEGMENT, and `looksLikeId` keeps a prefixed,
+ * digit-bearing segment VERBATIM — so on a detail route whose last segment is a record id, the panel's heading is that
+ * raw id, in a body this layout streams to whoever asked (ruling 259 measured a signed-in PLAYER receiving a console
+ * page's whole server payload). A section whose detail route ends in an id therefore passes its own section word here
+ * and the id never becomes a heading. ⛔ The default is today's behaviour exactly, so no other section changes.
  */
-export async function AdminSectionGate({ children }: { children: React.ReactNode }) {
+export async function AdminSectionGate({ children, title: titleProp }: { children: React.ReactNode; title?: string }) {
   const h = await headers();
   const path = h.get("x-pathname") ?? "";
-  const title = crumbsFromPath(path || "/admin").at(-1) ?? "Restricted";
+  const title = titleProp ?? crumbsFromPath(path || "/admin").at(-1) ?? "Restricted";
   const session = await currentSession();
   const user = session ? await Promise.resolve(db.user.findById(session.userId)).catch(() => null) : null;
   if (!session || !user || !isStaffRole(user.role) || !path.startsWith("/admin")) {

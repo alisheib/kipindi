@@ -1102,8 +1102,12 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * its ids. `houseStakeForConsole` and `houseBotLabelsForConsole` were un-built with the display (D20, C5-5b); their names
  * stay here as needles, so a console file that calls one again is measured by the same rules (0.260.1 holds their call
  * count at exactly 0).
+ * ⭐ `houseRosterForConsole` — C7-SPEC ruling 340, added with C7 step 1. It is the first of the QUERY-shaped readers:
+ * `(viewerUserId, route)`, the audience resolved inside it before any read, a PAINTED view model or `null` out. Every
+ * new reader joins this table with its arity in the SAME change as its first call site, or the arity pin, the
+ * signed-in-viewer pin and the own-route pin stop measuring it.
  */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -1556,7 +1560,14 @@ if (STORE === "memory") {
     ok("0.260.1 · ⛔ D19 · every audit row a console file reads — every file under src/app/admin/, src/app/api/admin/ and src/components/admin/, read from disk, and every row reader the audit module exports, its exports classified to the last name — goes straight to houseAuditForConsole; EVERY call of every gate export names the signed-in viewer and the file's own console route; the three struck display readers (D20) are called NOWHERE; no console file reaches the audit module or the gate by import(), a namespace or a re-export, and none imports a house read module — or keeps what one returns — outside the system page's engine card (only the fire-and-forget holder and money hooks read nothing back); and every file OUTSIDE the console that calls a row reader is classified",
       r.problems.length === 0 && auditExports.length === 0 && r.population >= 200 && j(auditReaders) === j([...AUDIT_ROW_READERS].sort()) && r.readerCalls >= 18 && r.gateCalls >= 17
         && r.consoleGateCalls.houseAuditForConsole >= 17
-        && r.consoleGateCalls.houseStakeForConsole === 0 && r.consoleGateCalls.houseBotLabelsForConsole === 0 && r.consoleGateCalls.houseConsoleAudience === 0
+        /* ⭐ C7 STEP 1 CHANGED THE AUDIENCE CLAUSE, AND ONLY THAT CLAUSE (C7-SPEC ruling 340). It read
+         * `houseConsoleAudience === 0`, which was true only while no console page decided its own audience; the desk's
+         * page does, so it becomes a FLOOR at the count this commit MEASURES — never a loose `>= 0` and never deleted.
+         * `houseRosterForConsole` gets its own floor for the same reason. ⛔ The `houseAuditForConsole >= 17` floor is
+         * left exactly as it is: a floor is raised only by the session that measures a higher number, never lowered.
+         * ⛔ The two struck display readers stay pinned at EXACTLY 0. */
+        && r.consoleGateCalls.houseStakeForConsole === 0 && r.consoleGateCalls.houseBotLabelsForConsole === 0
+        && r.consoleGateCalls.houseConsoleAudience >= 1 && r.consoleGateCalls.houseRosterForConsole >= 1
         && r.readerFiles.length >= 14 && MEASURED_LEAKS.every((f) => r.readerFiles.includes(f)) && j(r.outsideReaderFiles) === j(Object.keys(AUDIT_READERS_OUTSIDE_CONSOLE).sort()),
       j({ population: r.population, readerCalls: r.readerCalls, gateCalls: r.gateCalls, consoleGateCalls: r.consoleGateCalls, readerFiles: r.readerFiles, outsideReaderFiles: r.outsideReaderFiles, auditReaders, auditExports, problems: r.problems }));
 

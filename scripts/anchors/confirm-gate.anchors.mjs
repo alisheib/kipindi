@@ -8,7 +8,8 @@
  * ── WHAT THESE MUTATIONS ARE ─────────────────────────────────────────────────
  * S-17 (scan #1, 2026-08-28): `ConfirmModal` computed `isHard = tier === "hard" && !!typedWord`,
  * so a hard tier with no word rendered an ordinary one-click confirm wearing the styling of a
- * gate. Four live sites did that; three were RBAC-destructive on the two OWNER_ONLY_PREFIXES.
+ * gate. Four live sites did that; three were RBAC-destructive on /admin/staff and /admin/roles,
+ * which at that reading were the whole of OWNER_ONLY_PREFIXES; the list has since grown.
  *
  * ⭐ 1 IS THE DEFECT ITSELF, at a call site. ⭐ 2 AND 4 ARE THE TWO WAYS THE PRIMITIVE CAN BE
  * QUIETLY UNDONE — reverting the union to optionals, and restoring the fail-open `armed`

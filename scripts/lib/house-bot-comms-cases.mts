@@ -67,7 +67,9 @@ await guard("1", async () => {
     after.a === before.a + 1 && after.b === before.b + 1, j({ before, after }));
   ok("1.2 · …and no player is told about a house bot's roster", (await countHouse(player)) === beforePlayer);
   const row = await newest(ADMIN_B);
-  ok("1.3 · the row is a HOUSE_BOT bell with a link into the bot's history", row?.kind === "HOUSE_BOT" && /^\/admin\/house-bots\/hb_comms1\?tab=history&event=hbe_comms1$/.test(row?.href ?? ""), j(row?.href));
+  // C7-SPEC rulings 319, 320, 452 · re-anchored to the SAME defect (a bell that does not land on the event it is
+  // about), with the segment the console actually ships at. The whole href is still compared, character for character.
+  ok("1.3 · the row is a HOUSE_BOT bell with a link into the account's history", row?.kind === "HOUSE_BOT" && /^\/admin\/desk\/hb_comms1\?tab=history&event=hbe_comms1$/.test(row?.href ?? ""), j(row?.href));
 });
 
 /* ═══ §2 · the holder is told NOTHING (owner ruling D19c, C4 ruling 149) ═════════════════════════════
@@ -246,7 +248,14 @@ await guard("7", async () => {
   const hrefs = [...new Set(all.map((r) => r.href).filter(Boolean))] as string[];
   ok("7.1 · every href is absolute", hrefs.every((h) => h.startsWith("/")), hrefs.filter((h) => !h.startsWith("/")).join(" · ") || "-");
   /** A route that commit 7 builds. Named here so "it does not resolve yet" can never be mistaken for "it is broken". */
-  const COMMIT_7 = ["/admin/house-bots"];
+  /* C7-SPEC rulings 319, 320 · the segment and this constant move TOGETHER. Measured: 7.2 resolves every notifier
+     href a house alert actually produces against `src/app`, skipping only paths under this list — so a `COMMIT_7` of
+     `["/admin/desk"]` beside hrefs still reading `/admin/house-bots/<id>` fails 7.2 on day one, and a list holding
+     BOTH prefixes fails 7.3. Re-pointing all 29 literals and swapping this one string in the same commit keeps the
+     list at one entry and both cases green, while `/admin/desk/[id]` and `/admin/desk/new` are still unbuilt — which
+     is exactly what the exemption is for. ⛔ When all three pages exist, this constant and case 7.3 are DELETED
+     together, and 7.2 resolves the desk's hrefs for real instead of skipping them (C7 step 7). */
+  const COMMIT_7 = ["/admin/desk"];
   const missing: string[] = [];
   for (const h of hrefs) {
     const path = h.split("?")[0].split("#")[0];

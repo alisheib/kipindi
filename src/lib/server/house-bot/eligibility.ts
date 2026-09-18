@@ -34,6 +34,7 @@ import { holderCauses, rgLockStands } from "@/lib/house-bot/consent";
 import type { ConsentVoidCause, HolderCause } from "@/lib/house-bot/pause-reasons";
 import { OFFICER_EMAIL_WINDOW_DAYS } from "@/lib/house-bot/constants";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
+import { CONSOLE_LIMITS_HREF, consoleBotHref, consoleBotTabHref, consoleReverifyHref } from "@/lib/house-bot/console-routes";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
 
 export type EligibilityContext = "designate" | "reverify" | "start";
@@ -294,12 +295,12 @@ export async function houseBotEligibility(
   // ── designate: the roster ──────────────────────────────────────────────────────────────────────────
   if (context === "designate") {
     const live = await houseBotStore.findLiveByUserId(userId);
-    if (live) blocking.push(row("ALREADY_LIVE_BOT", `Already house bot “${live.label}”`, "This account is already a house bot.", `/admin/house-bots/${live.id}`));
+    if (live) blocking.push(row("ALREADY_LIVE_BOT", `Already house bot “${live.label}”`, "This account is already a house bot.", consoleBotHref(live.id)));
     if (opts.actorId && opts.actorId === userId) blocking.push(row("OWN_ACCOUNT", "Your own account", "You can't designate your own account."));
     const [count, control] = await Promise.all([houseBotStore.countLive(), houseBotControlStore.get()]);
     if (count >= control.maxDesignatedBots) {
       blocking.push(row("ROSTER_FULL", `Roster full (${count} of ${control.maxDesignatedBots})`,
-        `The roster is full (${count} of ${control.maxDesignatedBots}). Remove a bot or raise Max designated bots on Limits →`, "/admin/house-bots?tab=limits"));
+        `The roster is full (${count} of ${control.maxDesignatedBots}). Remove an account or raise the roster limit on Limits →`, CONSOLE_LIMITS_HREF));
     }
   }
 
@@ -349,12 +350,12 @@ export async function houseBotEligibility(
       const pw = causes.find((c) => c.code === "PASSWORD_CHANGED");
       if (pw) {
         blocking.push(row("PASSWORD_CHANGED", "Password changed",
-          `Can't start: their password changed on ${day(pw.changedAt)}. Enter the new password first.`, `/admin/house-bots/${bot.id}?reverify=1`));
+          `Can't start: their password changed on ${day(pw.changedAt)}. Enter the new password first.`, consoleReverifyHref(bot.id)));
       }
       const cv = causes.find((c) => c.code === "CONSENT_VOID");
       if (cv) {
         blocking.push(row("CONSENT_VOID", "Permission ended",
-          `Can't start: ${CONSENT_VOID_PHRASE[cv.cause]} on ${day(cv.at)} ended their permission. Enter their password to confirm it again.`, `/admin/house-bots/${bot.id}?reverify=1`));
+          `Can't start: ${CONSENT_VOID_PHRASE[cv.cause]} on ${day(cv.at)} ended their permission. Enter their password to confirm it again.`, consoleReverifyHref(bot.id)));
       }
       // The RG backstop (04 A3): a self-exclusion or break after the last verification refuses, even if no
       // detector ever wrote the void. A failed read already refused above.
@@ -369,13 +370,13 @@ export async function houseBotEligibility(
           ? `began on ${day(new Date(startedMs).toISOString())}`
           : `ran until ${day(new Date(endedMs).toISOString())}`;
         blocking.push(row("RG_SINCE_VERIFIED", "Permission ended",
-          `Can't start: a self-exclusion or break ${when}, after their permission was last confirmed. Enter their password to confirm it again.`, `/admin/house-bots/${bot.id}?reverify=1`));
+          `Can't start: a self-exclusion or break ${when}, after their permission was last confirmed. Enter their password to confirm it again.`, consoleReverifyHref(bot.id)));
       }
       if (bot.capDailyLossTzs != null) {
         const today = await houseDayBook(eatDayKey(nowMs), bot.id);
         if (today.realisedLossTzs >= bot.capDailyLossTzs) {
           blocking.push(row("DAILY_LOSS_STOP", "Daily loss cap reached",
-            `Can't start: today's settled loss TZS ${fmt(today.realisedLossTzs)} has reached the daily loss cap TZS ${fmt(bot.capDailyLossTzs)}. Raise the cap or wait until 00:00 EAT.`, `/admin/house-bots/${bot.id}?tab=rules`));
+            `Can't start: today's settled loss TZS ${fmt(today.realisedLossTzs)} has reached the daily loss cap TZS ${fmt(bot.capDailyLossTzs)}. Raise the cap or wait until 00:00 EAT.`, consoleBotTabHref(bot.id, "rules")));
         }
       }
       if (ownerLossBlocked) {

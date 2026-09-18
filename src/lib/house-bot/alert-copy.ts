@@ -27,6 +27,7 @@ export const MONEY_EVENT_CODES = [
   "deposited", "requested_withdrawal", "withdrawal_held", "withdrew", "withdrawal_failed", "withdrawal_rejected", "adjusted",
 ] as const;
 import { sideWordIn } from "@/lib/side-label";
+import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, consoleActivityHref, consoleBotHref, consoleBotTabHref } from "./console-routes";
 
 export type MoneyEventCode = (typeof MONEY_EVENT_CODES)[number];
 export const isMoneyEventCode = (v: string): v is MoneyEventCode => (MONEY_EVENT_CODES as readonly string[]).includes(v);
@@ -192,13 +193,19 @@ const botName = (c: AlertContext): string => (c.label ? `"${c.label}"` : c.botId
 const who = (c: AlertContext): string => c.handle ?? "a player";
 
 /* ── Where each alert sends the reader (04:1065, ruling 14; every link must still resolve 60 days later) ── */
+/* ⛔ EVERY CONSOLE HREF COMES FROM `console-routes.ts` (C7-SPEC ruling 319). The segment used to be typed here four
+   times in three spellings; a literal left behind after the rename would be an officer-facing link to a route that
+   does not exist. */
 const feed = (c: AlertContext): string => {
-  const base = c.botId ? `/admin/house-bots/${c.botId}?tab=activity&range=all` : "/admin/house-bots?tab=activity&range=all";
+  const base = consoleActivityHref(c.botId, { range: "all" });
   return c.intentId ? `${base}&outcome=failed&intent=${c.intentId}` : base;
 };
 const market = (c: AlertContext): string => (c.marketId ? `/admin/markets/${c.marketId}` : feed(c));
-const rulesTab = (c: AlertContext): string => (c.botId ? `/admin/house-bots/${c.botId}?tab=rules` : "/admin/house-bots?tab=limits");
-const moneyTab = (c: AlertContext): string => (c.botId ? `/admin/house-bots/${c.botId}?tab=money` : "/admin/house-bots");
+const rulesTab = (c: AlertContext): string => (c.botId ? consoleBotTabHref(c.botId, "rules") : CONSOLE_LIMITS_HREF);
+/* ⛔ NO `?tab=money` (ruling 369, owner ruling D20): the per-account transactions tab is not built, and ruling 456
+   settled it for good — the door to a holder's money is `/admin/transactions`, a platform surface. So this sends the
+   reader to the account's own page, never to a tab that will not exist. */
+const moneyTab = (c: AlertContext): string => (c.botId ? consoleBotHref(c.botId) : CONSOLE_ROUTE);
 
 type Row = (c: AlertContext) => Omit<AlertRow, "href" | "severity"> & { href?: string; severity?: AlertSeverity };
 
@@ -286,7 +293,7 @@ const ROWS = {
     bodyEn: `Limits version ${num(c.detail?.version)} is newer than this container understands. No house stake is placed until every container is on the new build.`,
     bodySw: `Toleo la vikomo ${num(c.detail?.version)} ni jipya kuliko kontena hili linavyoelewa. Hakuna dau la nyumba litakalowekwa hadi kila kontena liwe kwenye toleo jipya.`,
     bodyZh: `限额版本 ${num(c.detail?.version)} 比本容器所能理解的更新。在所有容器升级前不会下任何平台投注。`,
-    href: "/admin/house-bots?tab=limits",
+    href: CONSOLE_LIMITS_HREF,
     severity: "warning" as const,
   }),
   BOUNDS_CLAMP: (c) => ({
@@ -365,7 +372,7 @@ const ROWS = {
     bodyEn: `"${str(c.detail?.productLine, "unknown")}" is outside the product policy, so nothing was placed.`,
     bodySw: `"${str(c.detail?.productLine, "haijulikani")}" iko nje ya sera ya bidhaa, kwa hiyo hakuna dau lililowekwa.`,
     bodyZh: `“${str(c.detail?.productLine, "未知")}”不在产品政策范围内，因此未下注。`,
-    href: "/admin/house-bots?tab=limits",
+    href: CONSOLE_LIMITS_HREF,
   }),
   UD_BORN_UNLOCKED: (c) => ({
     titleEn: `An Up & Down round opened unlocked · ${c.at}`,

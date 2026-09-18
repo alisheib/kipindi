@@ -74,6 +74,7 @@ import { revokeUserSessions } from "./session-registry";
 import type { KycExtraRequest } from "./store";
 import { pseudonymiseAgentApplications, purgeAgentDocumentsForUser } from "./agent-application-service";
 import { houseBotAlertOnceStore, houseBotStore } from "./house-bot-dal";
+import { consoleBotHref } from "@/lib/house-bot/console-routes";
 import { withLock } from "./locks";
 import { ALERT_KEY } from "@/lib/house-bot/constants";
 
@@ -210,7 +211,7 @@ export async function anonymizeClosedAccount(
     return {
       ok: false,
       reason: "house_bot_live",
-      error: `This account is still house bot ${liveBot.id}. The owner must remove it at /admin/house-bots/${liveBot.id} before it can be erased.`,
+      error: `This account is still house bot ${liveBot.id}. The owner must remove it at ${consoleBotHref(liveBot.id)} before it can be erased.`,
     };
   }
 

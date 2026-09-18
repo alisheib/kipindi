@@ -40,6 +40,7 @@ import {
   rulesStartProblems, validateLabel, validateNote, CAP_FIELDS, type HouseBotCaps, type RulesContext,
 } from "@/lib/house-bot/rules";
 import { formatEat } from "@/lib/house-bot/clock";
+import { CONSOLE_LIMITS_HREF, consoleBotTabHref, consoleReverifyHref } from "@/lib/house-bot/console-routes";
 import { houseBotStatusWord } from "./status-display";
 
 /* ═══ Audit ═══════════════════════════════════════════════════════════════════════════════════════ */
@@ -216,10 +217,21 @@ export async function verifyHouseBotPassword(input: {
 
 /* ═══ Designate (02 §3.2, 04 C4 designate order, C9, A3) ═══════════════════════════════════════════ */
 
+/**
+ * ⛔ `rosterFull` IS RENDERED ON THE CONSOLE, SO IT IS IN THE NEUTRAL LEXICON (C7-SPEC ruling 453, which outranks §2).
+ * It was "Remove a bot or raise Max designated bots on Limits →". The desk's head action shows this sentence VISIBLY
+ * beside a disabled button (ruling 314), so those words would have sat in every screenshot of a full roster — and a
+ * screenshot is the likeliest accidental disclosure channel this project has, on a PUBLIC repository. An entry is an
+ * "account"; a ceiling is a "limit". ⚠️ `eligibility.ts`'s ROSTER_FULL row spells the same sentence (it cannot import
+ * this module — `designation.ts` imports IT, so the dependency would be a cycle); `test:house-bot-console` 1.314 pins
+ * the two byte-identical, which is what keeps the "two spellings" defect ruling 314 names from coming back.
+ * ⚠️ `alreadyBot` and the eligibility rows the WIZARD renders still carry the feature's words; they are that surface's
+ * own neutral pass (C7 step 6), recorded by ruling 432 rather than half-changed here.
+ */
 export const DESIGNATE_COPY = {
   passwordChanged: "Their password changed a moment ago — enter the new one.",
   alreadyBot: "This account is already a house bot.",
-  rosterFull: (n: number, max: number) => `The roster is full (${n} of ${max}). Remove a bot or raise Max designated bots on Limits →`,
+  rosterFull: (n: number, max: number) => `The roster is full (${n} of ${max}). Remove an account or raise the roster limit on Limits →`,
 } as const;
 
 export type DesignateResult =
@@ -309,7 +321,7 @@ export async function designateHouseBot(input: {
   }
   if (written.kind === "changed") return { ok: false, code: "PASSWORD_CHANGED", field: "password", message: DESIGNATE_COPY.passwordChanged };
   if (written.kind === "blocked") return { ok: false, code: "INELIGIBLE", message: written.row.message, row: written.row };
-  if (written.kind === "full") return { ok: false, code: "ROSTER_FULL", message: DESIGNATE_COPY.rosterFull(written.count, written.max), href: "/admin/house-bots?tab=limits" };
+  if (written.kind === "full") return { ok: false, code: "ROSTER_FULL", message: DESIGNATE_COPY.rosterFull(written.count, written.max), href: CONSOLE_LIMITS_HREF };
 
   // After the locks: the COMPLIANCE row (R7 — no label, note or fingerprint). The holder is told nothing (D19c, ruling 149).
   await houseAudit("house_bot.designated", officerId, { type: "HouseBot", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });
@@ -473,7 +485,7 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
       : parsed.code === "RULES_OUTDATED"
         ? "Can't start: the rules were saved in an older format. Open Rules, review the converted values, Save, then Start."
         : "Can't start: the saved rules can't be read. Rules → Save → Start.";
-    return { ok: false, code: "RULES", message, field: parsed.field, href: `/admin/house-bots/${botId}?tab=rules` };
+    return { ok: false, code: "RULES", message, field: parsed.field, href: consoleBotTabHref(botId, "rules") };
   }
   const caps = Object.fromEntries(CAP_FIELDS.map((k) => [k, bot[k]])) as HouseBotCaps;
   const problems = rulesStartProblems(parsed.rules, caps, input.rulesContext, { botId, label: bot.label });
@@ -504,7 +516,7 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
   }));
   if (written.kind === "removed") return { ok: false, code: "REMOVED", message: VERIFY_COPY.removed };
   if (written.kind === "already") return { ok: true, alreadyRunning: true, masterOn: control.enabled };
-  if (written.kind === "changed") return { ok: false, code: "CHANGED", message: "Can't start: their password or permission changed a moment ago. Enter their password to confirm it again.", href: `/admin/house-bots/${botId}?reverify=1` };
+  if (written.kind === "changed") return { ok: false, code: "CHANGED", message: "Can't start: their password or permission changed a moment ago. Enter their password to confirm it again.", href: consoleReverifyHref(botId) };
 
   await houseAudit("house_bot.started", officerId, { type: "HouseBot", id: botId }, { botId, holderUserId: bot.userId, from: written.from, to: "ACTIVE", rulesVersion: bot.rulesVersion });
   return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled };

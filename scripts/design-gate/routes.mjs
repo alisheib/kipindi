@@ -21,6 +21,13 @@ export const ADMIN_ROUTES = [
   "/admin/payments", "/admin/transactions", "/admin/approvals", "/admin/kyc", "/admin/kyc/refused", "/admin/bonuses", "/admin/affiliate", "/admin/invites",
   "/admin/compliance", "/admin/agents", "/admin/aml", "/admin/self-exclusions", "/admin/privacy", "/admin/retention", "/admin/moderation",
   "/admin/audit", "/admin/events", "/admin/system", "/admin/config", "/admin/insights", "/admin/staff", "/admin/roles",
+  /* C7-SPEC ruling 329 · the Owner's desk, in the ops cluster beside /admin/staff and /admin/roles. Entering this list
+   * is what makes SIX instruments measure it with no per-script edit — `measure.mjs`, `admin-shell-seal.mjs`,
+   * `tab-candidates.mjs`, `admin-load-budget.mjs`, `design-gate/redo.cjs` and `responsive-audit.mjs`. ⛔ NO `?tab=`
+   * entry (tabs are discovered from `data-section-rail`) and NO dynamic route: this list holds only static paths, and
+   * a drive handed an unresolvable id reports a false failure. ⚠️ `/admin/desk/new` joins it with the page that
+   * serves it (C7 step 6) — a route in this list that 404s is a red for a page nobody built. */
+  "/admin/desk",
 ];
 
 /** Public player routes — reachable signed OUT, which is how they are driven while the

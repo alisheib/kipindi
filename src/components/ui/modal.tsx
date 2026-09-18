@@ -399,8 +399,9 @@ type ConfirmModalBase = {
  * matters for a control whose entire job is to be hard to fire by accident.
  *
  * Four live call sites did exactly that, and three of them were RBAC-destructive on
- * /admin/staff and /admin/roles — the two OWNER_ONLY_PREFIXES. The most privileged surface
- * in the product was where the gate silently wasn't.
+ * /admin/staff and /admin/roles — which at that reading (2026-08-28) were the whole of
+ * OWNER_ONLY_PREFIXES; the list has since grown. The most privileged surface in the product
+ * was where the gate silently wasn't.
  *
  * ⭐ A GUARD THAT COUNTS `tier="hard"` OCCURRENCES CANNOT SEE THIS. The string was present;
  * the pairing was absent. So the pairing is made unrepresentable instead of merely audited.

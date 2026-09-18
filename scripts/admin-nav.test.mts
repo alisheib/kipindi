@@ -80,6 +80,9 @@ const ok = (label: string, cond: boolean, extra = "") => {
     ["/admin/kyc/refused", "kyc"],
     ["/admin/resolver/mkt_abc", "resolver"],
     ["/admin/resolver-queue", "resolver"],
+    // C7-SPEC rulings 321, 326 · the desk, and the two sub-routes that must resolve to the SAME item: a nav entry
+    // that fails to highlight looks like a design choice, and on an Owner-only section it would look like a refusal.
+    ["/admin/desk", "desk"],
   ];
   for (const [path, expected] of cases) {
     const got = activeKeyFromPath(path);
@@ -93,6 +96,12 @@ const ok = (label: string, cond: boolean, extra = "") => {
      activeKeyFromPath("/admin/players/cohorts") === "cohorts", activeKeyFromPath("/admin/players/cohorts"));
   ok("5 · /admin/resolver-queue beats /admin/resolver",
      activeKeyFromPath("/admin/resolver-queue") === "resolver");
+  /* C7-SPEC ruling 326 · the desk's two sub-routes highlight the SECTION's item, the `["/admin/kyc/usr_123", "kyc"]`
+     precedent. ⛔ The record id is a 24-hex `hb_` segment, which `looksLikeId` keeps verbatim — the exact shape the
+     section gate's neutral `title` exists for (ruling 301) — so the id form is asserted, not only the word form. */
+  ok("5 · /admin/desk/new → desk", activeKeyFromPath("/admin/desk/new") === "desk", activeKeyFromPath("/admin/desk/new"));
+  ok("5 · /admin/desk/<a 24-hex record id> → desk",
+     activeKeyFromPath("/admin/desk/hb_0123456789abcdef01234567") === "desk", activeKeyFromPath("/admin/desk/hb_0123456789abcdef01234567"));
   ok("5 · bare /admin is the overview", activeKeyFromPath("/admin") === "overview");
   ok("5 · an unknown admin route falls back to overview, never crashes",
      activeKeyFromPath("/admin/does-not-exist") === "overview");
@@ -140,6 +149,12 @@ const ok = (label: string, cond: boolean, extra = "") => {
     "/admin/staff/[id]": "staff member detail — from the /admin/staff list",
     // Functional sub-routes, reached by a control rather than a menu.
     "/admin/markets/new": "the 'New market' button on /admin/markets",
+    /* C7-SPEC ruling 326 owes TWO rows here — `/admin/desk/new` and `/admin/desk/[id]` — and they are NOT added yet,
+     * measured: §7's own staleness half is `Object.keys(REACHED_WITHOUT_NAV).filter((p) => !pages.includes(p))`, so a
+     * row for a page the crawler cannot find is reported STALE and this suite goes red. The allowlist must not outlive
+     * the pages it excuses, and it must not PRECEDE them either. Each row lands in the commit that adds its page
+     * (C7 step 4 for the detail route, step 6 for the wizard). ⛔ Not a skipped assertion: `/admin/desk` itself is
+     * covered by §7's nav-href half by construction, and §4/§5 pin the resolver for both sub-routes today. */
     "/admin/totp-verify": "the 2FA step-up interstitial — redirected to by requireAdminTotp, never navigated to",
   };
 

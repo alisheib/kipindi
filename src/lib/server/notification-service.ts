@@ -28,6 +28,7 @@ import { formatTzs, formatDateShort } from "@/lib/utils";
 // overdue-review alert), and the label that alert names a player by.
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { displayLabel } from "@/lib/display-label";
+import { CONSOLE_ROUTE, consoleActivityHref, consoleBotHref, consoleEventHref, consoleReverifyHref } from "@/lib/house-bot/console-routes";
 import type { LocalizedText } from "@/lib/localized";
 import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
 import type { NotificationFilter, NotificationSort } from "@/lib/notification-filters";
@@ -2142,7 +2143,7 @@ export async function notifyAdminsHouseBotErasureBlocked(opts: { botId: string; 
   const { houseBotAlertRecipients, playerHandle } = await import("./house-bot/alerts");
   const recipients = await houseBotAlertRecipients();
   const holder = playerHandle(opts.holderUserId);
-  const href = `/admin/house-bots/${opts.botId}`;
+  const href = consoleBotHref(opts.botId);
   let delivered = 0;
   for (const r of recipients) {
     const landed = await notify({
@@ -2246,7 +2247,7 @@ export async function notifyAdminsHouseBotBet(opts: {
     bodyEn: `Placed automatically at ${opts.at} EAT. Reference ${opts.intentId}.`,
     bodySw: `Limewekwa kiotomatiki saa ${opts.at} EAT. Kumbukumbu ${opts.intentId}.`,
     bodyZh: `已于东非时间 ${opts.at} 自动下注。参考号 ${opts.intentId}。`,
-    href: `/admin/house-bots/${opts.botId}?tab=activity&range=all&intent=${opts.intentId}`,
+    href: `${consoleActivityHref(opts.botId, { range: "all" })}&intent=${opts.intentId}`,
   }, "house-bot-bet");
 }
 
@@ -2267,7 +2268,7 @@ export async function notifyAdminsHouseBotStaffChosen(opts: {
   const how = opts.entry === "MANUAL" ? `Enter now by ${opts.byName}` : `target by ${opts.byName}`;
   const howSw = opts.entry === "MANUAL" ? `Ingia sasa na ${opts.byName}` : `lengo la ${opts.byName}`;
   const howZh = opts.entry === "MANUAL" ? `由 ${opts.byName} 立即下注` : `由 ${opts.byName} 设定的目标`;
-  const href = `/admin/house-bots/${opts.botId}?tab=activity&range=all&intent=${opts.intentId}`;
+  const href = `${consoleActivityHref(opts.botId, { range: "all" })}&intent=${opts.intentId}`;
   return fanOutHouseAdmin(recipients, {
     titleEn: `Staff-chosen · Bot "${opts.label}" ${sideWord.en} ${amount} on ${opts.marketTitle} · ${how} · ${opts.at}`,
     titleSw: `Iliyochaguliwa na wafanyakazi · Boti "${opts.label}" ${sideWord.sw} ${amount} kwenye ${opts.marketTitle} · ${howSw} · ${opts.at}`,
@@ -2316,7 +2317,7 @@ export async function notifyAdminsHouseBotHourSummary(opts: {
     bodyEn: `Between ${opts.fromHH} and ${opts.toHH} EAT house bots placed ${opts.count} stakes totalling ${amount}.${beyond}${staff}`,
     bodySw: `Kati ya saa ${opts.fromHH} na ${opts.toHH} EAT boti za nyumba ziliweka dau ${opts.count} zenye jumla ya ${amount}.${beyondSw}${staffSw}`,
     bodyZh: `东非时间 ${opts.fromHH} 至 ${opts.toHH}，平台机器人共下注 ${opts.count} 笔，合计 ${amount}。${beyondZh}${staffZh}`,
-    href: `/admin/house-bots?tab=activity&range=custom&from=${encodeURIComponent(opts.fromHH)}&to=${encodeURIComponent(opts.toHH)}`,
+    href: `${consoleActivityHref(null, { range: "custom" })}&from=${encodeURIComponent(opts.fromHH)}&to=${encodeURIComponent(opts.toHH)}`,
   }, "house-bot-hour-summary");
 }
 
@@ -2336,8 +2337,8 @@ export async function notifyAdminsHouseBotPaused(opts: {
   const v = opts.variant;
   const cancelled = opts.cancelled ?? 0;
   const bot = `"${opts.label}"`;
-  const reverify = `/admin/house-bots/${opts.botId}?reverify=1`;
-  const plain = `/admin/house-bots/${opts.botId}`;
+  const reverify = consoleReverifyHref(opts.botId);
+  const plain = consoleBotHref(opts.botId);
   const how = opts.how ?? "";
   const stopped = cancelled > 0
     ? `The bot stopped and cancelled ${cancelled} queued stake${cancelled === 1 ? "" : "s"}.`
@@ -2466,7 +2467,7 @@ export async function notifyAdminsHouseBotSwitch(opts: {
     titleSw: on ? `Boti za nyumba zimewashwa${by} · ${opts.at}` : `Boti za nyumba zimezimwa — ${cause} · ${opts.at}`,
     titleZh: on ? `平台机器人已开启${by} · ${opts.at}` : `平台机器人已关闭——${cause} · ${opts.at}`,
     bodyEn, bodySw, bodyZh,
-    href: "/admin/house-bots",
+    href: CONSOLE_ROUTE,
     email: {
       subject: on ? "House bots switched ON" : `House bots switched OFF — ${cause}`,
       eyebrow: "House bots · master switch",
@@ -2477,7 +2478,7 @@ export async function notifyAdminsHouseBotSwitch(opts: {
         ...(opts.byName ? [{ label: "By", value: opts.byName }] : []),
         ...(on ? [] : [{ label: "Stakes cancelled", value: String(opts.cancelled ?? 0) }]),
       ],
-      cta: { href: "/admin/house-bots", label: "Open house bots" },
+      cta: { href: CONSOLE_ROUTE, label: "Open the desk" },
     },
   }, "house-bot-switch");
 }
@@ -2570,7 +2571,7 @@ export async function notifyAdminsHouseBotRoster(opts: {
   const said = isRosterEventCode(opts.event)
     ? ROSTER_SENTENCE[opts.event](detail)
     : { en: "The bot changed.", sw: "Boti imebadilika.", zh: "该机器人已更改。" };
-  const href = `/admin/house-bots/${opts.botId}?tab=history&event=${opts.eventId}`;
+  const href = consoleEventHref(opts.botId, opts.eventId);
   return fanOutHouseAdmin(recipients, {
     titleEn: `House bot "${opts.label}" · ${opts.event} · ${opts.at}`,
     titleSw: `Boti "${opts.label}" · ${opts.event} · ${opts.at}`,

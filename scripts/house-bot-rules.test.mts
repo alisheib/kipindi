@@ -326,6 +326,12 @@ section("§0 · module law");
     "./clock",
     "./constants",
     "./pause-reasons",
+    // C7-SPEC ruling 319 · the console's ONE route home. A sibling PURE module of this folder, under this same law
+    // (no "use client", no server value import, no node import), holding the section's route, its tab keys and every
+    // href built from them. `rules.ts` re-exports `LIMITS_TAB_HREF` from it and `alert-copy.ts` builds its links
+    // through it, so the segment is typed in exactly one file. ⛔ Not a widening of the server-import rule: this is
+    // an intra-folder specifier, the same class as `./clock` and `./constants`.
+    "./console-routes",
   ]);
 
   /** Every import or re-export: its specifier and whether the whole statement is `type`-only. */
@@ -648,7 +654,10 @@ section("§3 · cross-field rules — the rules form");
   saves("3.R-FILL-LEAD-POLLS · 7 min saves", saveRules({ rules: (r) => { r.modes.polls.fill = true; r.fill.leadPollsMin = 7; } }));
 
   // Against a SET global (04 C6): raising a bot above it is refused here; lowering the global is §3's limits half.
-  ok("3.href · the limits href is absolute", LIMITS_TAB_HREF === "/admin/house-bots?tab=limits");
+  // C7-SPEC rulings 319, 320, 452 · the console ships at `/admin/desk` and the segment is typed in ONE file, so this
+  // pins the re-export's value rather than a second spelling of it. ⛔ Re-anchored to the SAME defect (a relative or
+  // drifted limits href), never relaxed: it still compares the whole string, digit for digit.
+  ok("3.href · the limits href is absolute and is the console's own route", LIMITS_TAB_HREF === "/admin/desk?tab=limits");
   refuses("3.R-SMAX-LE-GPM · a max stake above the global per-market limit is refused, linking to Limits",
     saveRules({ ctx: ctxWith({ limits: limitsOf({ gCapPerMarketTzs: 5_000 }) }) }),
     "stakeMaxTzs", "R-SMAX-LE-GPM", "Max stake TZS 10,000 is above the global per-market limit TZS 5,000.", LIMITS_TAB_HREF);

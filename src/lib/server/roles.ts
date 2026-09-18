@@ -282,11 +282,12 @@ export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: Admi
   ["/admin/audit", "compliance"],
   ["/admin/approvals", "compliance"],
   ["/admin/kyc", "compliance"],
-  // ops (staff/roles here only for route/nav completeness — Owner-only gate is separate)
+  // ops (staff, roles and the desk here only for route/nav completeness — the Owner-only gate is separate)
   ["/admin/system", "ops"],
   ["/admin/ai-usage", "ops"],
   ["/admin/staff", "ops"],
   ["/admin/roles", "ops"],
+  ["/admin/desk", "ops"],
 ];
 
 /** Resolve an /admin path to its domain. Unknown /admin/* routes fail CLOSED to
@@ -334,9 +335,14 @@ export function assertRouteDomainsComplete(routePrefixes: readonly string[]): st
   return problems;
 }
 
-/** The two Owner-only surfaces — role assignment + the grant matrix. Gated ADMIN
- *  regardless of any `ops` grant (checked in the layout ahead of the domain gate). */
-export const OWNER_ONLY_PREFIXES = ["/admin/staff", "/admin/roles"] as const;
+/** The THREE Owner-only surfaces — role assignment, the grant matrix and the desk. Gated ADMIN
+ *  regardless of any `ops` grant (checked in the layout ahead of the domain gate).
+ *  ⛔ THE `ops` DOMAIN IS NOT THE GATE, AND THAT IS WHY THE DESK IS LISTED HERE. No non-ADMIN role holds `ops` in
+ *  `DEFAULT_GRANTS` — but the Owner can grant `ops` view to any role LIVE at /admin/roles with no redeploy, so an
+ *  `ops`-only argument is one grant edit away from opening a surface. The desk also carries a SECOND belt of its own
+ *  (`HOUSE_CONSOLE_PREFIX` in `house-console-read.ts`), because this is a list a merge can drop and this file is
+ *  named in PLAN §11 as expected merge-conflict ground. `/new` and `/<id>` inherit through the prefix match below. */
+export const OWNER_ONLY_PREFIXES = ["/admin/staff", "/admin/roles", "/admin/desk"] as const;
 export function isOwnerOnlyPath(path: string): boolean {
   return OWNER_ONLY_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));
 }

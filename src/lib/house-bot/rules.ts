@@ -22,6 +22,7 @@
  */
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
 import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
+import { CONSOLE_LIMITS_HREF as LIMITS_TAB_HREF, consoleBotTabHref } from "./console-routes";
 import {
   EAT_LABEL,
   MINUTES_PER_DAY,
@@ -1378,8 +1379,10 @@ export function validateField(
 // Cross-field rules — the only source of them (04 C6)
 // ---------------------------------------------------------------------------
 
-/** Where a limits refusal sends the owner. Absolute, like every refusal href (N1 §6). */
-export const LIMITS_TAB_HREF = "/admin/house-bots?tab=limits";
+/** Where a limits refusal sends the owner. Absolute, like every refusal href (N1 §6).
+ *  ⛔ A RE-EXPORT, NOT A THIRD SPELLING (C7-SPEC ruling 319). This constant was one of three literals for one link;
+ *  its value now lives in `console-routes.ts` with the route it points at. */
+export { LIMITS_TAB_HREF };
 
 type CrossFieldRuleShape = {
   id: string;
@@ -2463,7 +2466,7 @@ export function rulesStartProblems(
 ): { refusals: FieldError[]; warnings: string[] } {
   const refusals: FieldError[] = [];
   const label = opts.label ?? DEFAULT_BOT_LABEL;
-  const rulesHref = opts.botId ? `/admin/house-bots/${opts.botId}?tab=rules` : undefined;
+  const rulesHref = opts.botId ? consoleBotTabHref(opts.botId, "rules") : undefined;
 
   for (const cap of REQUIRED_FOR_START) {
     if (caps[cap] === null) {

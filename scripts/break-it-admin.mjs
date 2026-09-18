@@ -74,6 +74,10 @@ const ADMIN_ROUTES = [
   "/admin/totp-verify",
   "/admin/privacy",
   "/admin/retention",
+  /* C7-SPEC ruling 329 · the Owner's desk. ⚠️ RECORDED, so this is never read as more than it is: A1 and B1 decide on
+   * `p.url()`, so they measure what is PAINTED, not what is SENT — they do NOT substitute for
+   * `qa:house-bot-console-probe` 4.1, which reads the response BODY of a signed-in non-audience viewer. */
+  "/admin/desk",
 ];
 
 // =========================================================

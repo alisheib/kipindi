@@ -4,9 +4,11 @@
  * pull in the session + step-up-2FA + audit deps.
  *
  * `requireStaff(domain)` REPLACES the per-file `ensureAdmin()`/`requireAdmin()` copied
- * across every admin `actions.ts`. `requireOwner()` gates the two Owner-only surfaces
- * (staff-role assignment + the grant matrix), which are never routed through the grant
- * table (ADMIN hardcoded) so the Owner can't be locked out and no role can self-grant.
+ * across every admin `actions.ts`. `requireOwner()` gates every Owner-only surface
+ * (staff-role assignment, the grant matrix and `/admin/desk`), which are never routed through
+ * the grant table (ADMIN hardcoded) so the Owner can't be locked out and no role can self-grant.
+ * ⚠️ The list is `OWNER_ONLY_PREFIXES` in `roles.ts` and it GREW on 2026-09-18; read it there
+ * rather than counting from this sentence.
  */
 import { redirect } from "next/navigation";
 import { currentSession } from "./auth-service";

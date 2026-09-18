@@ -420,8 +420,19 @@ try {
    * designation writes `house_bot.password_verified` and `house_bot.designated` against that holder. A route the ADMIN no
    * longer hits is reclassified NOT MEASURED by the loop below, so shrinking this list turns a proof into a non-measurement.
    */
-  const MUST_CARRY = ["/admin/audit", "/admin/audit?category=SYSTEM", "/admin/audit?category=COMPLIANCE", "/admin/audit?category=ADMIN", `/admin/players/[id]<holder>`, `/admin/players/[id]<holder>?tab=audit`, `/admin/kyc/[id]<holder>`];
-  ok("4.3 · CONTROL · the ADMIN's own responses still carry house data where it exists after D20's un-build — the audit log (default, SYSTEM, COMPLIANCE and ADMIN, where the house actions and the value rows are), the holder's player page with and without its audit tab, and the KYC case's durable target read",
+  /**
+   * ⭐ `/admin/desk` JOINS THE LIST WITH THE PAGE (C7-SPEC ruling 315). A console page the ADMIN control reads as
+   * SILENT would otherwise be reclassified `4.nm` NOT MEASURED by the loop below — a page whose zero-hit result for
+   * every other viewer proves nothing. What makes the desk's own body a hit is its OWN copy, not a planted audit row:
+   * the roster renders the designated account's LABEL, which is one of this probe's needles. ⛔ So the house fixture
+   * must leave at least one designated account, and the checkpoint READS the printed 4.3 line to confirm the control
+   * is non-empty on `/admin/desk` BY NAME — never on the audit routes alone.
+   * ⚠️ `?tab=` instances of the desk stay OUT of this list while the roster is the only panel: ruling 315's reason
+   * (the strip's own sentence being a words-family hit) does not hold under ruling 453, which made every rendered
+   * sentence neutral. The label is the hit, and the label is on the roster.
+   */
+  const MUST_CARRY = ["/admin/audit", "/admin/audit?category=SYSTEM", "/admin/audit?category=COMPLIANCE", "/admin/audit?category=ADMIN", `/admin/players/[id]<holder>`, `/admin/players/[id]<holder>?tab=audit`, `/admin/kyc/[id]<holder>`, "/admin/desk"];
+  ok("4.3 · CONTROL · the ADMIN's own responses still carry house data where it exists after D20's un-build — the audit log (default, SYSTEM, COMPLIANCE and ADMIN, where the house actions and the value rows are), the holder's player page with and without its audit tab, the KYC case's durable target read, and the desk's own roster",
     MUST_CARRY.every((r) => adminHitRoutes.has(r)), `missing: ${MUST_CARRY.filter((r) => !adminHitRoutes.has(r)).join(", ") || "none"} · ADMIN carries house data on ${adminHitRoutes.size} route instances`);
   const silent = [...new Set(rows.map((r) => r.route))].filter((r) => !adminHitRoutes.has(r)).sort();
   for (const r of silent) notMeasured(`4.nm · ${r}`, "the ADMIN control carries no house data there, so its absence for the other viewers proves nothing about that page");

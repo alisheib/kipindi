@@ -34,8 +34,10 @@ const CRUMB_LABELS: Record<string, string> = {
  * produced was computed once per HARD load and then preserved across every soft navigation
  * inside the console (`E-70`). Moving it here lets `admin-crumbs.tsx` re-derive it from
  * `usePathname()` on the client, exactly as `admin-sidebar-nav.tsx` already did for the
- * highlight. ⚠️ Keep it PURE and free of server imports — two client components import from
- * this module.
+ * highlight. ⚠️ Keep it PURE and free of server imports — THREE client components import from
+ * this module (`admin-crumbs.tsx`, `admin-sidebar-nav.tsx`, `admin-mobile-nav.tsx`), so everything
+ * in it ships to the browser: measured, a built chunk carries `CRUMB_LABELS` and `ROUTE_KEYS`
+ * verbatim. Every label and key here is therefore public text, whoever the page was rendered for.
  */
 export function crumbsFromPath(path: string): string[] {
   const parts = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
@@ -92,6 +94,14 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
        * else comes out. ⛔ Without this entry `test:admin-nav` §7 reports the page as having
        * no way in — a route nobody can reach from the console is a route nobody reads. */
       { href: "/admin/house", label: "House", key: "house", domain: "accounting" },
+      /* ⭐ THE DESK — the Owner's own trading desk, beside the book it is read against. `ownerOnly` is the ONLY flag
+       * that removes an item before serialisation: `filterNavGroups` is called SERVER-side in `AdminSidebar` and
+       * `AdminTopBar`, and `isOwner` comes from the STORED role, so this item never enters a non-Owner's payload.
+       * ⛔ Its label and key carry no feature word and no record id, and there is NO `CRUMB_LABELS` entry: the
+       * title-caser already yields "Desk", and a `CRUMB_LABELS` row is the one place a neutral segment could be
+       * mapped back to something else inside a client chunk — this module is value-imported by THREE `"use client"`
+       * components, and a built chunk of this codebase ships `ROUTE_KEYS` and `CRUMB_LABELS` verbatim. */
+      { href: "/admin/desk", label: "Desk", key: "desk", domain: "ops", ownerOnly: true },
       { href: "/admin/reports", label: "Reports", key: "reports", domain: "accounting" },
       { href: "/admin/payments", label: "Payments ops", key: "payments", domain: "accounting" },
       { href: "/admin/transactions", label: "Transactions", key: "transactions", domain: "accounting" },
@@ -269,6 +279,11 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/events", "events"],
   ["/admin/transactions", "transactions"],
   ["/admin/2fa", "2fa"],
+  // Its position is FREE: no entry here is a prefix of "/admin/desk" and it is a prefix of none.
+  // ⚠️ Recorded so it is never "fixed": `activeKeyFromPath` matches with a BARE `startsWith`, while
+  // `domainForPath` (roles.ts) matches `=== prefix || startsWith(prefix + "/")`. The two resolvers
+  // disagree BY DESIGN, so a future sibling prefix is checked against the bare form, here.
+  ["/admin/desk", "desk"],
 ];
 
 /** THE resolver. One definition — imported by the layout and the sidebar alike. */

@@ -114,6 +114,11 @@ ok("unknown /admin route fails CLOSED to ops", domainForPath("/admin/does-not-ex
 ok("/admin/staff is Owner-only", isOwnerOnlyPath("/admin/staff"));
 ok("/admin/roles is Owner-only", isOwnerOnlyPath("/admin/roles"));
 ok("/admin/players is NOT Owner-only", !isOwnerOnlyPath("/admin/players"));
+// C7-SPEC rulings 322, 327 · the desk, and its two sub-routes through the prefix match.
+ok("/admin/desk is Owner-only", isOwnerOnlyPath("/admin/desk"));
+ok("/admin/desk/<a 24-hex record id> is Owner-only", isOwnerOnlyPath("/admin/desk/hb_0123456789abcdef01234567"));
+ok("/admin/desk/new is Owner-only", isOwnerOnlyPath("/admin/desk/new"));
+ok("/admin/desk → ops", domainForPath("/admin/desk") === "ops", domainForPath("/admin/desk"));
 
 // Completeness: every real admin nav route (minus the TOTP-exempt gate pages) + the
 // alias + Owner-only routes maps explicitly to a domain, and no prefix is shadowed.
@@ -171,6 +176,7 @@ async function navKeysFor(role: Role): Promise<Set<string>> {
 {
   const owner = await navKeysFor("ADMIN");
   ok("Owner nav shows Access (staff + roles)", owner.has("staff") && owner.has("roles"));
+  ok("Owner nav shows the desk", owner.has("desk"));
   ok("Owner nav shows money + compliance + markets", owner.has("finance") && owner.has("compliance") && owner.has("markets"));
 
   const fin = await navKeysFor("FINANCE");
@@ -190,12 +196,29 @@ async function navKeysFor(role: Role): Promise<Set<string>> {
   ok("Auditor nav shows accounting + compliance (view)", aud.has("finance") && aud.has("compliance"));
   ok("Auditor nav HIDES Access + trading", !aud.has("staff") && !aud.has("markets"));
 
-  // Access (staff/roles) is Owner-only for EVERY non-Owner role; 2FA setup shows for all staff.
+  // Access (staff/roles) and the desk are Owner-only for EVERY non-Owner role; 2FA setup shows for all staff.
   for (const r of ["COMPLIANCE", "MODERATOR", "FINANCE", "GROWTH", "AUDITOR", "SUPPORT"] as Role[]) {
     const n = await navKeysFor(r);
-    ok(`${r} nav HIDES staff + roles (Owner-only)`, !n.has("staff") && !n.has("roles"));
+    ok(`${r} nav HIDES staff + roles + desk (Owner-only)`, !n.has("staff") && !n.has("roles") && !n.has("desk"));
     ok(`${r} nav shows 2FA setup (all staff)`, n.has("2fa"));
   }
+}
+
+/* ── 13. ⛔ THE DESK'S GATE IS NOT ITS DOMAIN — C7-SPEC rulings 322, 327, 341 ──────────────────
+ * The desk maps to `ops` for route/nav completeness only. `ops` is DB-backed: the Owner can grant it to any role
+ * LIVE at /admin/roles with no redeploy, so if the domain WERE the gate, the console would be one grant edit from
+ * SUPPORT. This writes that grant and asserts the desk is still hidden and still Owner-only.
+ * ⚠️ The §9 teardown pattern is used deliberately: the grant is reset before anything else reads the matrix, or it
+ * would leak into a later per-role loop and this pin would break the suite it is protecting. */
+{
+  __resetGrantsForTest();
+  await setRoleGrant("SUPPORT", "ops", true, false, "tester");
+  ok("13 · a live `ops` view grant does NOT open the desk — it is still Owner-only", isOwnerOnlyPath("/admin/desk"));
+  ok("13 · …and SUPPORT holds the ops view grant that was just written", await canView("SUPPORT", "ops"));
+  const sup = await navKeysFor("SUPPORT");
+  ok("13 · …and the desk is still absent from SUPPORT's nav (ownerOnly, not the domain)", !sup.has("desk"), [...sup].join(","));
+  await resetRoleGrantsToDefaults();
+  ok("13 · teardown · the ops grant is back to its default (SUPPORT cannot view ops)", !(await canView("SUPPORT", "ops")));
 }
 
 console.log(`\nrbac: ${pass} passed, ${fail} failed`);
