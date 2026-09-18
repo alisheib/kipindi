@@ -672,6 +672,68 @@ import type { ConsoleTab } from "@/lib/house-bot/console-routes";`,
     expect: "1.412 · 433 · the section renders a typed control EXACTLY when a limits-save is wired",
     suite: "console-mem",
   },
+  /* ── C7 STEP 2 · the D19 section's own seven, each naming the assertion 506 assigned to this step ───────── */
+  {
+    name: "381-codename · the document title stops being the ONE neutral codename, in a string served 200 to any signed-in account",
+    file: PAGE,
+    from: `export const metadata = { title: "Admin · Desk" };`,
+    to: `export const metadata = { title: "Admin · Desk console" };`,
+    expect: "1.381 · the three server-rendered strings take the codename",
+    suite: "console-mem",
+  },
+  {
+    name: "384-type-import · the section's client file reaches a house module by TYPE — erased by the bundler, invisible to the disclosure walker",
+    file: LIVE,
+    from: `import { useEventStream } from "@/lib/use-event-stream";`,
+    to: `import { useEventStream } from "@/lib/use-event-stream";
+import type { ConsoleRosterView } from "@/lib/server/house-console-read";`,
+    expect: "1.384 · no client file of the section carries a house module SPECIFIER",
+    suite: "console-mem",
+  },
+  {
+    name: "386-kind · the live strip compares a notification KIND, putting the literal HOUSE_BOT into a public chunk",
+    file: LIVE,
+    from: `    const up = () => setHolds((n) => n + 1);`,
+    to: `    const up = () => { if (String(window.name) === "HOUSE_BOT") return; setHolds((n) => n + 1); };`,
+    expect: "1.386 · and it inspects NO kind",
+    suite: "console-mem",
+  },
+  {
+    name: "389-utils · the section's client file imports `@/lib/utils`' date helpers, which reach server platform config from a chunk (E-322)",
+    file: LIVE,
+    from: `import { LIVE_ROUND_MS } from "@/lib/refresh-cadence";`,
+    to: `import { LIVE_ROUND_MS } from "@/lib/refresh-cadence";
+import { formatEat } from "@/lib/utils";`,
+    expect: "1.389 · no client file of the section imports `@/lib/utils`' date helpers",
+    suite: "console-mem",
+  },
+  {
+    name: "342-nocache · the viewer lookup stops being memoised per render pass, restoring the N+1 `sensitive.tsx` measured and closed",
+    file: GATE,
+    from: `const viewerRow = cache(async (viewerUserId: string) => db.user.findById(viewerUserId));`,
+    to: `const viewerRow = async (viewerUserId: string) => db.user.findById(viewerUserId);`,
+    expect: "1.342 · the viewer lookup is wrapped in React `cache()` inside the gate module",
+    suite: "console-mem",
+  },
+  {
+    name: "343-header · the page builds a gate argument from a header, which the own-route pin reports as a VALUE and cannot measure",
+    file: PAGE,
+    from: `  const sp = await searchParams;
+  const tab = consoleTab(sp.tab);`,
+    to: `  const sp = await searchParams;
+  const tab = consoleTab(sp.tab);
+  void (typeof headers === "function" ? "x-pathname" : null);`,
+    expect: "1.343 · and no gate argument is built from a header",
+    suite: "console-mem",
+  },
+  {
+    name: "332-holder-exclusion · a silent holder-exclusion clause enters the gate, locking a one-owner platform out of its own controls",
+    file: GATE,
+    from: `    if (isHouseConsoleRoute(route)) return isAdmin(viewer.role);`,
+    to: `    if (isHouseConsoleRoute(route)) return isAdmin(viewer.role) && !(await houseBotStore.findLiveByUserId(viewerUserId));`,
+    expect: "1.332 · X13 · no holder-exclusion clause exists in the gate",
+    suite: "console-mem",
+  },
   {
     name: "421-limits · the limits panel paints bars with no control row, against limits it could not read",
     file: GATE,
