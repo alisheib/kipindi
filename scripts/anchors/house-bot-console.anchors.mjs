@@ -572,6 +572,14 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
+    name: "409-count-as-money · a bets-per-day COUNT is painted in `.amount`, the class that means money everywhere else in this kit",
+    file: GATE,
+    from: `      money: FIELD_META[field].unit === "TZS",`,
+    to: `      money: true,`,
+    expect: "1.409 · every limit row says whether it is MONEY",
+    suite: "console-mem",
+  },
+  {
     name: "409-amount · the caption's figures lose `.amount`, so money is painted in prose and may break mid-number",
     file: PAGE,
     from: `              <span className="whitespace-nowrap">{h.word}{" "}<span className="amount tabular-nums">{h.figure}</span>{h.suffix}</span>`,

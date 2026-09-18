@@ -166,7 +166,7 @@ function LimitBody({ row }: { row: ConsoleLimitRow }) {
     <>
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <span className="text-body-sm text-text">{row.name}</span>
-        <span className={row.unset ? "text-body-sm text-text-tertiary" : "amount tabular-nums text-body-sm text-text"}>{row.value}</span>
+        <span className={row.unset ? "text-body-sm text-text-tertiary" : row.money ? "amount tabular-nums text-body-sm text-text" : "font-mono tabular-nums text-body-sm text-text"}>{row.value}</span>
       </div>
       {row.caption ? <p className="mt-0.5 text-body-sm text-warning-fg">{row.caption}</p> : null}
     </>
@@ -488,9 +488,17 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
               /* 372(c) · a whole-panel failure is the kit's own treatment — never a card of bars at zero. */
               <AdminLoadError what="limit usage" />
             ) : (
-              <div className="space-y-4">
-                {usageRows.map((r) => <UsageBar key={r.name} row={r} unsetHref={view.limitsFirstUnsetHref} />)}
-              </div>
+              /* ⛔ THE SAME 640 COLUMN THE LIMITS LIST BELOW IT USES, AND IT WAS READ OFF THE TILE. At 1280 the card
+                 is the page's full width, so a 10px `ProgressBar` track ran 640→1228px with a 0% fill: five of them
+                 read as horizontal RULES above their captions, indistinguishable from a divider, and the card sat at
+                 a different width from the limits card directly beneath it. A meter that reads as a rule is not a
+                 meter (§A4: the shape is the signal, never the colour). `FormColumn` is the kit's own measure token,
+                 which is why no width is hand-typed here. */
+              <FormColumn measure="form">
+                <div className="space-y-4">
+                  {usageRows.map((r) => <UsageBar key={r.name} row={r} unsetHref={view.limitsFirstUnsetHref} />)}
+                </div>
+              </FormColumn>
             )}
           </AdminCard>
 

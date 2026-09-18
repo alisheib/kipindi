@@ -28,7 +28,8 @@
  * **memory 154, Postgres 86** (ruling 513 added 4.453.c2, hence 154 rather than 153), and RAISED AGAIN at C7
  * step 3 to what this run PRINTED with the limits tab, the caption pair and the live trigger in it:
  * **memory 210, Postgres 117**, and again at step 2 with the D19 §5 and 398's roll-call in it: **memory 238,
- * Postgres 121**. ⛔ A floor only ever rises, and
+ * Postgres 121**, and once more with the limits list's money/count face pinned: **memory 240, Postgres 122**.
+ * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
  * ⚠️ `red:house-bot-console` carries the mutations for every assertion here; it is run once at the commit close.
@@ -38,6 +39,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 238, postgres: 121 },
+  minPass: { memory: 240, postgres: 122 },
   dbPrefix: "hb_console",
 });

@@ -1617,6 +1617,18 @@ anything to read. The three `FILL` values land NOW (392(b)) because step 2 also 
 FAILURE, and a failure with no fixture ready is a step 4 that cannot run its own probe. 1.398's roll-call carries 1.399
 with `step: 4` and its reason, so it is TRACKED rather than silently absent.
 
+**(g) A LIVE PAGE CANNOT BE MEASURED WITH `networkidle`, AND THE CONSOLE'S OWN VISUAL GATE HAD TO BE TOLD.**
+MEASURED the day the strip's `RefreshPoller` landed: `qa:house-bots-visual` navigated with `waitUntil: "networkidle"`,
+the desk now holds a persistent SSE connection open (`useEventStream`, rulings 316/386), and a page with an open
+`EventSource` NEVER reaches network idle — every navigation timed out at 60 s and the gate could not reach the surface
+it exists to measure AT ALL. ⛔ This is the class this programme keeps paying for, in its rarest form: a legitimate
+product change silently blinded an instrument, and nothing said so except a timeout. `networkidle` was never the
+property being asserted; what matters is that the DATA has landed before the tile. The gate now waits on `load` plus
+the kit's own `[data-section-rail]` — which this console renders only after its gated reader returns — and then
+settles. ⛔ No assertion of that gate was weakened: all twenty of its checks ran at 360 and 1280 after the change, with
+every control firing. **Every later step that adds a live element to a captured surface inherits this: a wait is on the
+DATA, never on the network going quiet.**
+
 **Why.** Each clause was found by running a guard and reading what it printed, not by re-reading the spec. A step that
 silently deviates teaches the next step a false premise, which is the wrong-AUTHORITY class this programme has paid for
 repeatedly.
@@ -1625,7 +1637,9 @@ repeatedly.
 CONTROL showing all four `FIELD_META` labels DO carry a word, plus `364-label`; (c) the reader's own arity in
 `CONSOLE_GATES` and 0.260.1's pins, green at memory 118; (d) 1.306's spy with its positive control, and 1.342's
 recorded limit; (e) `npm run test:tab-anchors` resolving `#limits-first-unset` to `"limits"` by name, and 1.315's RAW
-tab list; (f) 1.398's roll-call, which PRINTS every later assertion with its step.
+tab list; (f) 1.398's roll-call, which PRINTS every later assertion with its step; (g) `qa:house-bots-visual` at
+**20 passed, 0 failed, 2 NOT MEASURED** on `/admin/desk?tab=limits` at 360 and 1280 — including §5.6's served 453 scan
+over the rendered body AND its `aria-label`/`title`/`placeholder`/`alt` attributes, with its own planted control.
 
 
 ---

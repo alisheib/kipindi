@@ -921,6 +921,15 @@ section("§2 · the strip, the band, the roster and every failure");
     /* ⛔ AND EVERY LABEL AND SECTION THE PANEL PAINTS IS NEUTRAL (ruling 453, 432(f) amended): four `FIELD_META`
      * labels and one section name carry a word this section may not render, and `gCapStaffChosenDailyTzs` — the one
      * ruling 364 requires a USAGE ROW for — is the one 432(f) missed. */
+    /* ⛔ A COUNT IS NOT MONEY (ruling 409), AND THE FIRST PASS GOT IT WRONG — read off desk-globals-1280.png, where
+     * "Bets per minute 20" and "Bets per day 28,800" were painted in `.amount`, the class that means "this is a money
+     * figure" everywhere in this kit and that is `white-space: nowrap`. The roster's own cell already distinguishes
+     * them (`ConsoleUsageCell.money`); the limits list did not. The flag is derived from `FIELD_META`'s UNIT, so a
+     * field that changes unit cannot drift away from the face it is painted in. */
+    ok("1.409 · every limit row says whether it is MONEY, derived from `FIELD_META`'s own unit — never a count in the money face",
+      u3.limits.every((l: Any, i: number) => l.money === (R.FIELD_META[(R.LIMIT_FIELDS as readonly string[])[i]].unit === "TZS"))
+        && u3.limits.filter((l: Any) => l.money).length >= 5 && u3.limits.filter((l: Any) => !l.money).length >= 5,
+      j(u3.limits.map((l: Any) => [l.name, l.money, l.value])));
     const painted = [...u3.limits.flatMap((l: Any) => [l.name, l.section, l.value]), ...u3.usage.map((r: Any) => r.name)];
     ok("1.364 · 453 · every limit name, section and value the panel paints is neutral, over the WHOLE limit table",
       painted.length >= 40 && painted.every((s: string) => !NEUTRAL.test(s)), j(painted.filter((s: string) => NEUTRAL.test(s))));
@@ -1610,6 +1619,8 @@ export default function Ruling513Control() {
     ok("1.401 · every money element under the section carries `amount` at its own call site, and none of them is on a tracked or micro rung",
       moneySites.length >= 3 && moneySites.every((c) => !/text-micro|text-caption|tracking-/.test(c)),
       j(moneySites));
+    ok("1.401 · 409 · the limits list chooses its face from the ROW, so a count never lands in `.amount`",
+      /row\.money \? "amount tabular-nums text-body-sm text-text" : "font-mono tabular-nums text-body-sm text-text"/.test(pageCode), "");
     ok("1.401 · CONTROL · the walked money sites are the ones the page really paints — the roster's figure, the bar caption's figures and the limit list's value",
       pageCode.includes('const figure = cell.money ? "amount tabular-nums"')
         && pageCode.includes('<span className="amount tabular-nums">{h.figure}</span>')

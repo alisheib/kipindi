@@ -90,8 +90,17 @@ try {
     for (const width of WIDTHS) {
       const p = await ctx.newPage();
       await p.setViewportSize({ width, height: 900 });
-      const resp = await p.goto(BASE + route, { waitUntil: "networkidle", timeout: 60_000 });
+      /* 🔴 `load`, NOT `networkidle`, AND THE RAIL IS THE DATA WAIT. MEASURED 2026-09-18, the day C7 step 3 mounted
+         the desk's live strip: the page opens a persistent SSE connection to `/api/events` (`useEventStream`, rulings
+         316/386), and a page holding an EventSource open NEVER reaches `networkidle` — every navigation here timed
+         out at 60s and this gate could not reach the surface it exists to measure at all. `networkidle` was never the
+         property being asserted; what matters is that the DATA has landed before the tile, so the wait is the kit's
+         own `[data-section-rail]`, which the console renders only after its gated reader returns. ⛔ The screenshot
+         still comes after an explicit settle, so a late paint is not caught mid-frame. */
+      const resp = await p.goto(BASE + route, { waitUntil: "load", timeout: 60_000 });
       if (!resp || /\/auth\//.test(p.url())) { nm(`${route} @${width}`, `landed on ${p.url()}`); await p.close(); continue; }
+      await p.waitForSelector("[data-section-rail], .admin-tbl, [data-field-measure]", { timeout: 30_000 }).catch(() => null);
+      await p.waitForTimeout(600);
       // The dev overlay is never part of a tile.
       await p.addStyleTag({ content: "nextjs-portal{display:none!important}" });
       const tag = `${route.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "root"}-${width}`;

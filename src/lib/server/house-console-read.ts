@@ -705,6 +705,10 @@ export type ConsoleLimitRow = {
   name: string;
   /** The stored value, formatted for its unit, or "Not set". */
   value: string;
+  /** ⛔ A COUNT IS NOT MONEY (ruling 409, and the roster's own `ConsoleUsageCell.money`). `.amount` means "this is a
+   *  money figure" everywhere in this kit and it is `white-space: nowrap`; putting a bets-per-day count of 20 inside
+   *  it says the wrong thing about the number and buys nothing. The page reads this to choose the face. */
+  money: boolean;
   unset: boolean;
   /** 364's caption when it is unset; null otherwise. */
   caption: string | null;
@@ -819,6 +823,7 @@ export async function houseUsageForConsole(
       section: CONSOLE_LIMIT_SECTION[FIELD_META[field].section] ?? FIELD_META[field].section,
       name: consoleLimitLabel(field),
       value: limitValue(field, raw),
+      money: FIELD_META[field].unit === "TZS",
       unset,
       caption: unset ? unsetCaptionFor(field) : null,
       firstUnset,
