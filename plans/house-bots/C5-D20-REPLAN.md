@@ -1073,3 +1073,33 @@ bots and what keeps D19 true").
        with an accurate PROGRESS pushed has handed over; one that stops with the work in its head
        has lost it. ⚠️ This is not new — it is the rule the 2026-09-18 usage limit proved, when a
        whole checkpoint's review was destroyed and **only the committed work survived**.
+
+
+537. **THE LIMITS PANEL IS NOT READ-ONLY: ruling 433(a) is REVERSED and the SAVE is built.** Taken under
+     ruling 500(e) — *a decision that turns out wrong is reversed by a new numbered ruling that says what was
+     believed, what was measured, and what changed.*
+     - **What was believed.** C7 step 3 shipped the limits tab read-only under its own ruling 433(a), on the
+       ground that there is “no limits-SAVE service in this repository”, so a typed control would be the dead
+       control ruling 432(a) refuses.
+     - **What was measured** at `42a4c8ca`, by the orchestrator, before accepting the report:
+       · `houseBotControlStore.saveLimits` **EXISTS** — interface `house-bot-dal.ts:1308`, and BOTH twins
+         (`:1984` memory, `:3133` Prisma) — with CAS semantics
+         (`saveLimits(baseVersion, patch, tx?) → CasResult<StoredHouseBotControl>`).
+       · Its whole validation surface is **already proven green**: `test:house-bot-rules` **521 passed / 0
+         failed**, covering `L-LOSS-LE-DAY`, `N1-c`, `L-DAY-GE-MIN`, `L-CPP-LE-DAY` and the rest.
+       · `house_bot.limits_saved` is **already classified** `COMPLIANCE` at `constants.ts:730`.
+     - **What changes.** What is missing is **ONE SERVER ACTION**, not a service. 432(a) forbids a control
+       with nothing behind it; it does not license leaving a control UNBUILT when the thing behind it is
+       built, tested and CAS-safe. C7-SPEC §3 step 3 names the guarded form by ruling number (**412**), and
+       Ali’s standing instruction for this run is a console he can **DRIVE** — `/admin/desk` renders real
+       data and every control is disabled. A read-only limits tab does not advance that goal, and deferring
+       it is a **scope narrowing**, which the orchestrator does not accept from a build agent.
+     - ⛔ **What the build must not lose.** The action gates on the **STORED role**, never `session.role`
+       (522 measured that a cookie cannot answer the demoted-account question); it goes through a NAMED
+       reader/writer with its `CONSOLE_GATES` entry (259/340/512); ruling 523 applies, because a server
+       action is a POST to whatever URL the browser is on and no path rule can see it, so the gate is IN the
+       action; the CAS conflict must **refuse, never clobber**, and its case must hold **two real writers**
+       — a concurrency check that serialises itself proves nothing. `1.412` currently ties a typed control to
+       the ABSENCE of a save and must be rewritten to fail in BOTH directions.
+     - The precedent is `src/app/admin/config/{actions.ts,config-form.tsx}` — a global-settings form with a
+       guarded save. It is copied, not reinvented: the platform kit is the only look.
