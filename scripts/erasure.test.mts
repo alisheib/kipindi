@@ -32,6 +32,19 @@
  * found two surfaces the hand-written brief missed — the referrer's notification body and
  * `KycSubmission.extraRequests` — which is the entire argument for writing it that way.
  *
+ * ⭐ §2b AND THE SIX HOUSE BUCKETS IN §8 ARE R6 (04 A5; C5-SPEC ruling 244). A holder's account can
+ * BE a house bot, and then the holder's name is on the bot's label, its case-insensitive key, the
+ * officer's note and reason, every reason on its events and presses, and in an officer's inbox — a
+ * row erasure does not own. §2b proves the routine REFUSES while the bot is live (nothing erased,
+ * one owner alert across two attempts) and §8 sweeps all six tables afterwards.
+ *
+ * ⛔ WHAT THIS SUITE DOES NOT PROVE, AND WHERE IT IS PROVEN INSTEAD — cited, never duplicated:
+ *   · the request staying PENDING through the DSAR queue, the R6 refusal copy on the admin surface
+ *     and the re-run reporting zero — `test:house-bot-designation` §8, on BOTH stores;
+ *   · that a holder CLOSING their account removes the bot in the first place, with
+ *     `HOUSE_BOT_ENGINE=false` — `test:house-bot-engine` 19.8b (ruling 245), on both stores. That is
+ *     the path that makes §2b's refusal a backstop rather than the everyday case.
+ *
  * Proved red by `npm run red:erasure`.
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
@@ -52,6 +65,10 @@ import { verifyChain, getAuditPage } from "../src/lib/server/audit.ts";
 import { computeTrialBalance } from "../src/lib/server/ledger.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { notifyReferralJoined } from "../src/lib/server/notification-service.ts";
+// 04 A5 / R6 (C5-SPEC ruling 244): the six house tables a holder's erasure has to reach or sweep.
+import {
+  houseBotStore, houseBotEventStore, houseBotIntentStore, pressStore, targetStore, newHouseId,
+} from "../src/lib/server/house-bot-dal.ts";
 
 /** Captured before any section silences the service's console chatter. */
 const LOG = console.log.bind(console);
@@ -243,6 +260,147 @@ section("2 · it REFUSES an account that is not closed");
   const missing = await anonymizeClosedAccount("usr_does_not_exist", { now: NOW });
   ok("2.3 an unknown id is refused as not_found, not as a silent success",
     !missing.ok && missing.reason === "not_found");
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// HOUSE-BOT FIXTURE — the account is (or was) a house bot, and every table that
+// carries the holder's NAME because of it (04 A5, R6; C5-SPEC ruling 244).
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// ⛔ EVERY WRITE GOES THROUGH `db` AND THE DAL, NEVER THE SERVICE LAYER. `designateHouseBot`,
+// `selfExclude` and `fileDsarRequest` all fire the in-app holder hook asynchronously (C4-SPEC
+// ruling 127), and that hook REMOVES the bot on a CLOSED account — it would race §2b and remove
+// the very bot whose refusal §2b exists to measure, so the backstop would never run and the
+// section would pass on an empty fact. Ruling 156's suspension is therefore not needed here:
+// nothing below calls a writer that fires it.
+//
+// ⚠️ THE ADMIN NOTIFICATION IS SCOPED, and the scope is the fixture's own trap. `erasure.ts`
+// redacts HOUSE_BOT rows whose href names THIS bot or that were written inside its designation
+// window (review LI-9: an unscoped rewrite would rename another holder's live bot in every
+// officer's inbox). A fixture row outside that scope leaves 8.b red for a fixture reason and
+// sends the next reader hunting a defect that is not there.
+const ADMIN = "usr_erase_admin";
+await db.user.create({
+  id: ADMIN, phoneE164: "+255712000222", email: "ops@example.tz", emailVerifiedAt: iso(NOW - 300 * DAY),
+  passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+  role: "ADMIN", status: "ACTIVE", locale: "EN", displayName: "Owner", dob: null,
+  region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW - 300 * DAY),
+  marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+  createdAt: iso(NOW - 300 * DAY), updatedAt: iso(NOW - 300 * DAY), lastLoginAt: null, closedAt: null,
+} as never);
+
+const DESIGNATED_AT = iso(NOW - 60 * DAY);
+const BOT_ID = newHouseId("bot");
+await houseBotStore.designate({
+  bot: {
+    id: BOT_ID, userId: SUBJECT, label: NAME, labelKey: NAME.toLowerCase(),
+    // The officer's own note — free text, and the place a holder's name most often ends up.
+    note: `${NAME} agreed to this over the phone`,
+    passwordFingerprint: "fp_erase_case",
+    verifiedAt: DESIGNATED_AT, verifiedById: ADMIN, designatedAt: DESIGNATED_AT, designatedById: ADMIN,
+    rules: { schemaVersion: 1 },
+    stakeMinTzs: null, stakeMaxTzs: null, capPerMarketTzs: null, capDailyStakeTzs: null,
+    capDailyLossTzs: null, capOpenExposureTzs: null, balanceFloorTzs: null, freqMinGapSec: null,
+    freqMaxPerHour: null, freqMaxPerDay: null, freqMaxPerMarket: null, capStaffChosenPerDay: null,
+    capStaffChosenDailyTzs: null, targetsMaxActive: null,
+  },
+  event: { actorId: ADMIN, reason: null, payload: null },
+} as never);
+await houseBotStore.setVerified(BOT_ID, { fingerprint: "fp_erase_case", verifiedById: ADMIN, verifiedAt: DESIGNATED_AT });
+
+// An event and a press whose officer REASONS name the holder.
+await houseBotEventStore.append({
+  houseBotId: BOT_ID, userId: SUBJECT, marketId: null, kind: "PAUSED",
+  fromStatus: "PAUSED", toStatus: "PAUSED", reason: `${NAME} asked us to stop for a week`,
+  actorId: ADMIN, payload: null,
+} as never);
+const PRESS_ID = newHouseId("press");
+await pressStore.insertChecking({
+  id: PRESS_ID, actorId: ADMIN, submitId: "11111111-2222-4333-8444-555555555555",
+  purpose: "ENTER_NOW", houseBotId: BOT_ID, marketId: "mkt_erase", targetId: null, intentId: null,
+  reason: `${NAME} said the poll was mispriced`,
+} as never);
+
+// An intent and a target: erasure KEEPS them (ids, markers, amounts are the money record), so
+// they carry no name — and §8 sweeps them anyway, because the day one does is the day it matters.
+const INTENT_ID = newHouseId("intent");
+await houseBotIntentStore.insert({
+  id: INTENT_ID, houseBotId: BOT_ID, botUserId: SUBJECT, kind: "FILL", anchorKey: "mkt_erase",
+  marketId: "mkt_erase", productLine: "MARKET", triggerPositionId: null, triggerUserId: null,
+  targetId: null, requestedById: null, entryCondition: null, side: "YES", stakeTzs: 1000,
+  dueAt: iso(NOW + 3_600_000), deadlineAt: iso(NOW + 7_200_000), staleAt: iso(NOW + 7_200_000),
+  status: "PENDING", reasonCode: null, why: null, decision: {}, attempts: 0, transientAttempts: 0,
+  nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: null, finishedAt: null, alertedAt: null,
+} as never);
+const TARGET_ID = newHouseId("target");
+await targetStore.insert({
+  id: TARGET_ID, houseBotId: BOT_ID, marketId: "mkt_erase_target", delayMinSec: 30, delayMaxSec: 90,
+  timingFrom: "STAKE", reactTo: "FIRST", createdById: ADMIN,
+  snapshot: { titleEn: "Will the shilling hold?", category: "macro", cutoff: iso(NOW + 5 * DAY), rawYes: 10, rawNo: 12 },
+} as never);
+
+// The officer's inbox: a HOUSE_BOT row quoting the label, inside the designation window, with the
+// bot id in its href — the shape `notifyAdminsHouseBot*` really writes.
+await db.notification.create({
+  id: "ntf_erase_admin_house", userId: ADMIN, kind: "HOUSE_BOT",
+  titleEn: `House bot "${NAME}" paused`, titleSw: `Boti "${NAME}" imesimamishwa`, titleZh: `机器人 "${NAME}" 已暂停`,
+  bodyEn: `House bot "${NAME}" stopped on its holder's request.`,
+  bodySw: `Boti "${NAME}" imesimama kwa ombi la mmiliki.`,
+  bodyZh: `机器人 "${NAME}" 已按持有人请求停止。`,
+  href: `/admin/desk/${BOT_ID}`, readAt: null, dismissedAt: null, createdAt: iso(NOW - 50 * DAY),
+} as never);
+
+// ═════════════════════════════════════════════════════════════════════════════
+section("2b · it REFUSES a live house bot — before any destructive write");
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  /**
+   * ⛔ THE REFUSAL IS ONLY REACHABLE ON A CLOSED ACCOUNT (`erasure.ts:185-193` refuses anything
+   * else first), so this runs against the SUBJECT — already CLOSED — with its bot still live. An
+   * erased account could no longer be verified, paused for a cause or recognised by its owner
+   * while stakes kept landing in its name; the owner removes the bot, and the officer re-runs.
+   *
+   * ⭐ TWO CALLS, ONE ALERT. `erasure-blocked:<botId>` is claimed once per bot, so a second
+   * attempt must not fill an owner's inbox — and a send that reached nobody gives the claim back,
+   * which is why the ADMIN above exists at all.
+   */
+  const blocked = (n: { kind: string; titleEn: string }) => n.kind === "HOUSE_BOT" && n.titleEn.startsWith("Erasure blocked");
+  const before = (await db.notification.findByUser(ADMIN, 100)).filter(blocked).length;
+  /**
+   * ⛔ A THROW IS A REFUSAL NOBODY CAN READ — RECORDED AS A FAILED ASSERTION, NEVER AS A CRASHED
+   * SUITE (the shape `test:house-bot-designation` §8 already uses). Without the guard above, the
+   * routine runs on and the DAL refuses again under its row locks (`erasure.ts:432` throws) — which
+   * exits the process before a single assertion has fired. A harness cannot tell that from a gate
+   * falling over, so the mutation that removes the guard would prove NOTHING instead of proving this.
+   */
+  const tryErase = () => anonymizeClosedAccount(SUBJECT, { now: NOW })
+    .catch((e: unknown) => ({ ok: false as const, reason: "threw" as const, error: `THREW: ${(e as Error)?.message ?? e}` }));
+  const first = await tryErase();
+  const second = await tryErase();
+  const alerts = (await db.notification.findByUser(ADMIN, 100)).filter(blocked).length - before;
+  ok("2b.1 🔴 a CLOSED account that is still a live house bot is refused, with the reason and the bot named",
+    !first.ok && first.reason === "house_bot_live"
+      && (first as { error: string }).error === `This account is still house bot ${BOT_ID}. The owner must remove it at /admin/desk/${BOT_ID} before it can be erased.`,
+    JSON.stringify(first));
+  const u = await db.user.findById(SUBJECT);
+  const bot = await houseBotStore.get(BOT_ID);
+  ok("2b.2 🔴 …and NOTHING was erased: the phone and the display name are untouched, and so is the bot's label",
+    u?.phoneE164 === PHONE && u?.displayName === NAME && bot?.label === NAME,
+    `phone=${u?.phoneE164} name=${u?.displayName} label=${bot?.label}`);
+  ok("2b.3 the second attempt is refused the same way", !second.ok && second.reason === "house_bot_live");
+  ok("2b.4 ⭐ exactly ONE 'Erasure blocked' row in the owner's inbox ACROSS TWO CALLS — AlertOnce is per bot, not per attempt",
+    alerts === 1, `${alerts} alerts`);
+  ok("2b.5 CONTROL · the alert really is the house-bot one, and it names the bot rather than the holder",
+    (await db.notification.findByUser(ADMIN, 100)).some((n) => blocked(n) && n.titleEn.includes(BOT_ID) && !n.bodyEn.includes(NAME)),
+    "a notification row outlives the holder's erasure — it may never carry their name");
+
+  // The owner removes it, which is what the refusal told them to do. §3 then runs for real.
+  await houseBotStore.setStatus(BOT_ID, {
+    from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null,
+    removal: { byId: ADMIN, reason: `${NAME} closed the account`, cause: "MANUAL" },
+  });
+  ok("2b.6 the owner's Remove lands, so §3 measures the erasure and not the refusal",
+    (await houseBotStore.get(BOT_ID))?.status === "REMOVED");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -514,6 +672,9 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     ["the national ID", NIDA],
     ["the name-form mask", nameMask],
     ["the phone-form mask", phoneMask],
+    // ⭐ LOWERCASED, because `HouseBot.labelKey` is the case-insensitive live-uniqueness key and a
+    // name-shaped label survives there in lower case after the label itself has been rewritten.
+    ["the display name, lowercased", NAME.toLowerCase()],
   ];
   // Statutory holders, each with the reason it may keep the value.
   const ALLOWED: Record<string, string> = {
@@ -533,14 +694,55 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     positions: await positionStore.values(),
     pushSubs: await db.pushSub.listForUser(SUBJECT),
     audit: getAuditPage({ limit: 10_000 }),
+    // ── the six house tables (04 A5, R6; C5-SPEC ruling 244) ──────────────────────────────
+    // ⛔ THE OFFICER'S INBOX IS A BUCKET OF ITS OWN. It is the one surface erasure does not own:
+    // the row belongs to an ADMIN, and `deleteAllForUser(SUBJECT)` cannot reach it. It is the
+    // house-bot twin of the referrer's notification this sweep found on the first pass.
+    notificationsAdmin: await db.notification.findByUser(ADMIN, 100),
+    houseBots: await houseBotStore.listByUserId(SUBJECT),
+    houseBotEvents: await houseBotEventStore.listByBot(BOT_ID, { limit: 100 }),
+    // ⭐ INTENTS AND TARGETS ARE KEPT BY DESIGN — ids, markers, stakes and times are the money
+    // record. They are swept anyway: the day an officer's sentence lands in one is the day this
+    // matters, and a table nobody walks is a table nobody can clear.
+    houseBotIntents: { one: await houseBotIntentStore.get(INTENT_ID), feed: await houseBotIntentStore.listFeed({ houseBotId: BOT_ID, limit: 50 }) },
+    // ⚠️ THE WINDOW IS THE WALL CLOCK, NOT `NOW`. The DAL stamps a press with the real time, while
+    // this suite's fixtures sit at the frozen `NOW` — a window built from `NOW` alone ends BEFORE the
+    // press was written and the bucket comes back empty, which 8.0e below is what catches.
+    houseBotPresses: await pressStore.listRegister({ fromIso: iso(NOW - 365 * DAY), toIso: iso(Date.now() + DAY), houseBotId: BOT_ID, limit: 100 }),
+    houseBotTargets: await targetStore.listForBot(BOT_ID, "all", null),
   };
-  ok("8.0 CONTROL · the sweep really read something", Object.keys(buckets).length >= 10);
+  ok("8.0 CONTROL · the sweep really read something", Object.keys(buckets).length >= 16,
+    `${Object.keys(buckets).length} buckets`);
   // ⛔ "0 rows returned" and "the query is broken" look identical, so the buckets that must
   // still HAVE content are named and required to. The two that erasure empties by design
   // are excluded here and asserted empty in §6.9 / §7.2 instead — excluding them silently
   // is how a sweep comes to pass over an unread store.
+  //
+  // ⛔ THE SIX HOUSE BUCKETS GO IN HERE IN THE SAME EDIT AS THE BUCKETS THEMSELVES. A bucket that
+  // is always empty passes every 8.b below for the wrong reason — "no trace of the name" and "no
+  // rows at all" are the same JSON, and the second one proves nothing.
   const MUST_HAVE_CONTENT = ["users", "kyc", "txns", "wallets", "notificationsReferrer",
-    "comments", "sourceOfFunds", "positions", "audit"] as const;
+    "comments", "sourceOfFunds", "positions", "audit",
+    "notificationsAdmin", "houseBots", "houseBotEvents", "houseBotIntents", "houseBotPresses",
+    "houseBotTargets"] as const;
+  /**
+   * ⛔ AND A PAGE-SHAPED BUCKET NEEDS ITS OWN COUNT. `{"rows":[],"nextCursor":null}` is 30
+   * characters, so the length test above passes an EMPTY keyset page — which is exactly the
+   * "always empty, so always clean" failure the six house buckets were added to avoid. Counted
+   * here, by name, with the number printed.
+   */
+  const houseCounts = {
+    notificationsAdmin: (buckets.notificationsAdmin as unknown[]).length,
+    houseBots: (buckets.houseBots as unknown[]).length,
+    houseBotEvents: (buckets.houseBotEvents as { rows: unknown[] }).rows.length,
+    houseBotIntentOne: (buckets.houseBotIntents as { one: unknown }).one == null ? 0 : 1,
+    houseBotIntentFeed: (buckets.houseBotIntents as { feed: { rows: unknown[] } }).feed.rows.length,
+    houseBotPresses: (buckets.houseBotPresses as { rows: unknown[] }).rows.length,
+    houseBotTargets: (buckets.houseBotTargets as { rows: unknown[] }).rows.length,
+  };
+  ok("8.0e CONTROL · every one of the six house buckets really holds rows — an empty keyset page is 30 " +
+     "characters of JSON and would sail through 8.0b while proving nothing",
+    Object.values(houseCounts).every((n) => n >= 1), JSON.stringify(houseCounts));
   ok("8.0b CONTROL · every bucket that should still hold rows does — a clean result is a " +
      "clean bucket, not an unread one",
     MUST_HAVE_CONTENT.every((k) => JSON.stringify(buckets[k] ?? null).length > 20),
@@ -551,6 +753,12 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     const poisoned = { users: [{ id: "x", phoneE164: PHONE }] };
     ok("8.0c CONTROL · the sweep's own predicate FINDS a planted needle",
       JSON.stringify(poisoned).includes(PHONE));
+    // ⭐ AND THE LOWERCASED ONE, over a bucket shaped like the house roster: a `labelKey` still
+    // carrying the holder's name would be found, so 8.b over `houseBots` is not decoration.
+    const poisonedKey = { houseBots: [{ id: BOT_ID, label: "Erased ABC123", labelKey: NAME.toLowerCase() }] };
+    ok("8.0d CONTROL · the sweep FINDS a name-shaped labelKey a rewritten label would have hidden",
+      JSON.stringify(poisonedKey).includes(NAME.toLowerCase())
+        && !JSON.stringify(poisonedKey).includes(NAME));
   }
 
   for (const [label, needle] of NEEDLES) {

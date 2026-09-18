@@ -176,6 +176,45 @@ export const MUTATIONS = [
   { const w = await db.wallet.findByUserId(userId); if (w) await db.wallet.update(w.id, { balance: 0 }); }`,
   },
   {
+    // ⛔ 04 A5 / R6 · THE OFFICER'S INBOX, THE ONE SURFACE ERASURE DOES NOT OWN. The row belongs to
+    // an ADMIN, so `deleteAllForUser(SUBJECT)` cannot reach it, and it quotes the bot's label —
+    // which is the holder's own name whenever an officer typed it there. With the scoped rewrite
+    // gone the label survives in every officer's inbox, for as long as the row does.
+    name: "house-bot-label-left-in-the-officers-inbox (the holder's name survives where erasure does not own the row)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `    counts.houseBotNotificationsRedacted += await db.notification.redactFragment(\`"\${bot.label}"\`, \`"Erased bot \${tail}"\`, {
+      kind: "HOUSE_BOT", hrefIncludes: bot.id, createdFrom: bot.designatedAt, createdTo: bot.removedAt ?? new Date().toISOString(),
+    });`,
+    to: `    counts.houseBotNotificationsRedacted += 0;`,
+  },
+  {
+    // 04 A5 / R6 · the pseudonymisation that rewrites the label, its case-insensitive key, the
+    // officer's note, the removal reason and every reason on the bot's events and presses.
+    //
+    // ⛔ THE SHAPE IS DELIBERATE, AND DELETING THE CALL INSTEAD WOULD PROVE NOTHING. `house` would
+    // be undefined and the very next line (`if (!house.ok) throw …`) would raise a TypeError before
+    // §8 ever ran — a crash, which `erasure-red.mjs` refuses to count as a catch, and which reads
+    // exactly like a gate falling over. A plausible SUCCESS is returned instead, so the routine
+    // reports a complete erasure and §8 is the thing that has to notice.
+    name: "house-rows-never-pseudonymised (a complete-looking erasure that leaves the name on the bot, its events and its presses)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `  const house = await houseBotStore.pseudonymiseForUser(userId);`,
+    to: `  const house = { ok: true as const, bots: 0, events: 0, presses: 0 };`,
+  },
+  {
+    // 🔴 04 A5 / R6 · THE LIVE-BOT REFUSAL REMOVED. An erased account can no longer be verified,
+    // paused for a cause or recognised by its owner — while stakes keep landing in its name,
+    // because the bot is still running. The guard is the only thing standing between a typo on a
+    // DSAR queue and a live desk placing bets from a destroyed account.
+    name: "no-live-house-bot-guard (a running bot's account is erased out from under it)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `  if (liveBot) {`,
+    to: `  if (false) {`,
+  },
+  {
     // The in-memory twin of the fingerprint read, gutted. `tsc` cannot catch a missing
     // in-memory half, and a Prisma-only method throws in every unit test — so this is the
     // shape of a DAL half that silently stops answering.

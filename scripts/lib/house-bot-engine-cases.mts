@@ -3674,6 +3674,42 @@ await guard("19", async () => {
     ok("19.8 · R6, ruling 127 · the holder hook runs whatever HOUSE_BOT_ENGINE says (the bot is still stopped with the engine switched off)",
       rE?.applied?.kind === "paused" && (await botRow(env.botId)).pauseReason === "ACCOUNT_SUSPENDED", j(rE));
     await retire(env.botId);
+
+    // 19.8b · R6, ruling 245 · THE CLOSURE with the engine off, which nothing covered at HEAD.
+    // 19.8 above is a SUSPENSION (the bot is paused, not removed); §19 row 5's closure runs with
+    // HOUSE_BOT_ENGINE UNSET; and lifecycle 3.3 only shows that the L2 SWEEP reads no env. So the one
+    // path R6 actually depends on — a holder closes their account while the engine is switched off —
+    // had no case. It matters because erasure's live-bot refusal (04 A5) is the BACKSTOP for this: if
+    // a closure with the engine off left the bot alive, every erasure on that account would refuse,
+    // and a desk would keep staking from an account its owner has closed.
+    //
+    // ⚠️ Ruling 156's suspension is not needed here and is deliberately not taken: `setUserFields`
+    // is a direct DAL write, so no platform writer fires the in-app hook, and this case drives the
+    // hook itself exactly once. Suspending it would only hide a race that cannot happen.
+    const envC = await w.bot();
+    const recC = recorder();
+    const prevEnvC = process.env[K.HOUSE_BOT_ENGINE_ENV];
+    process.env[K.HOUSE_BOT_ENGINE_ENV] = "false";
+    let rC: Any = null;
+    let duringEnvC: string | undefined = "not read";
+    try {
+      await w.setUserFields(envC.userId, { status: "CLOSED", closedAt: iso() });
+      rC = await hook(envC.userId, "ACCOUNT_CLOSED", recC);
+      duringEnvC = process.env[K.HOUSE_BOT_ENGINE_ENV];
+    } finally {
+      if (prevEnvC === undefined) delete process.env[K.HOUSE_BOT_ENGINE_ENV];
+      else process.env[K.HOUSE_BOT_ENGINE_ENV] = prevEnvC;
+    }
+    const botC = await botRow(envC.botId);
+    const envReadC = process.env[K.HOUSE_BOT_ENGINE_ENV];
+    ok("19.8b · R6, ruling 245 · a CLOSED account with HOUSE_BOT_ENGINE=false still leaves the bot REMOVED(ACCOUNT_CLOSED), and the owner is told — the engine switch never keeps a desk alive on an account its holder has closed",
+      rC?.kind === "applied" && rC?.applied?.kind === "removed" && botC.status === "REMOVED"
+        && botC.removedCause === "ACCOUNT_CLOSED" && recC.n(envC.userId, "botStopped") === 1,
+      j({ rC, status: botC.status, cause: botC.removedCause, fns: recC.fns(envC.userId) }));
+    ok("19.8b-env · CONTROL · the env really READ \"false\" at the moment the hook ran, and is restored afterwards — an unset variable would make 19.8b the same case as §19 row 5, which already passes",
+      duringEnvC === "false" && envReadC === prevEnvC,
+      `prev=${String(prevEnvC)} during=${String(duringEnvC)} after=${String(envReadC)}`);
+    await retire(envC.botId);
   }
 
   /* ── 19.A · every A2 row, first through the hook, then through the sweep with no hook at all ── */
