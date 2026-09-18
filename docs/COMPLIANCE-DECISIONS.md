@@ -6,6 +6,46 @@
 
 ---
 
+## 2026-09-18 · D20's consequence for the ISO 27001 export — the regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the count
+
+**Status:** decided on branch `house-bots` (build ruling 501), to be built **before Commit 8**. ⚠️ **Prospective, not live:** the
+master switch ships OFF, so no `house_bot.*` row exists on production today — which is precisely why it is settled before the
+release commit rather than after. ⚠️ **Flagged to Ali as the one build decision here with a regulatory consequence:** he may want
+his compliance advisor's eye on the wording of the exclusion note.
+
+**The gap, measured at `a1aa2e69`.** D20 already ruled the general case — no report, CSV, memo, column, line, chip, tag or record
+names house bots anywhere — and it struck the purpose-built regulator index that read the audit table. The GENERIC one was left
+behind, and it is the one artefact that physically leaves the company:
+
+- `src/lib/server/reports/catalogue.ts:474` reads the whole durable audit table **unfiltered** —
+  `getAuditPageDurable({ limit: ISO_EXPORT_LIMIT })`, and that reader (`src/lib/server/audit.ts:507`) offers only `limit` and
+  `category`, never an action filter.
+- The builder prints `action: e.action` at `:553` and `target: ${e.targetType}:…` at `:555`, verbatim.
+- House rows carry **31 distinct `house_bot.*` action names** (`src/lib/house-bot/constants.ts` `HOUSE_AUDIT`) and
+  `targetType: "HouseBot"` (written by `src/lib/server/house-bot/press-audit.ts`).
+- The file classifies itself `classification: "Regulator hand-off"` at `:490`.
+
+So the document that goes to a regulator would name the feature and its record ids. This is a conformance gap against a decision
+already taken, not a new question of principle.
+
+**The decision: EXCLUDE, not neutralise, and not leave.**
+1. `getAuditPageDurable` gains the `excludeActions` parameter its sibling `getAuditForActorDurable` already carries
+   (`src/lib/server/audit.ts:758`); the ISO builder passes `Object.keys(HOUSE_AUDIT)`.
+2. **The report's own notes state that rows were excluded, and how many.** Renaming house actions into a neutral form would
+   falsify an audit trail, which for an ISO 27001 artefact is worse than omitting from it; dropping rows silently would make a
+   regulator document lie by omission. Stating the exclusion and its count is the only option that is both D20-compliant and
+   honest.
+3. The read goes behind a NAMED reader with a pin, and the house-report suite's entry for `catalogue.ts` is re-worded to assert a
+   **content** property, not only the gating property it asserts today — the half-answer is why the file passed its own review.
+
+**Who can reach it:** ADMIN plus any role holding `accounting` view (COMPLIANCE, FINANCE, AUDITOR by default), each behind TOTP.
+⛔ **Not reachable by a PLAYER or an AGENT** — `DEFAULT_GRANTS` excludes them by type.
+
+**What does not change:** every owner action still writes its audit row in the `HOUSE_AUDIT` category, and the chain is intact.
+The exclusion is a property of one exported DOCUMENT, never of the record itself.
+
+---
+
 ## 2026-09-15 (third) · Privacy v2026-09-15.3 — §5 states Google Analytics' retention: event data 2 months, user data 14 months
 
 **Owner report (Ali, 2026-09-15):** the GA4 property's Data retention is set to **event data 2 months** and **user data
@@ -152,11 +192,11 @@ moving the notice first.
 |---|---|
 | D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. |
 | D2/D7 | ⛔ **REVERSED by D19a (2026-09-16): no public text at all.** (Superseded text:) Amend the published Rules and Terms (en/sw/zh): a carve-out from the prohibited-conduct list for accounts 50pick operates, plus one disclosure line. **Effective on deploy, with no 14-day notice** (owner ruling; 50pick reports to GBT). |
-| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance). |
+| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance) ⛔ **— but it never RENDERS it (corrected 2026-09-18; a consequence of D20 through replan ruling 266, sharpened by C7 ruling 459, that the marking passes missed).** The wallet read exists and is used to derive a funded **STATE**; **no console surface paints a bare balance anywhere**, because it is a real person's money figure, it is the one number on these screens belonging to someone other than 50pick, and it is the one most likely to sit in a screenshot. |
 | D3b | **No payment feature.** The holder tops up through the normal deposit flow and is reimbursed out of band. While their bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
 | D4 | A **roster** of bots, each with its own rules. One master switch plus global limits. |
 | D5 | Consent = the owner types the account's **password** (only). |
-| D6 | Publicly the bot is **exactly like a player**: counts, avatars and the leaderboard. Admin analytics still separate house from players. Statutory figures include everything. |
+| D6 | Publicly the bot is **exactly like a player**: counts, avatars and the leaderboard. ~~Admin analytics still separate house from players.~~ ⛔ **REVERSED by D20a (2026-09-17); marked 2026-09-18, a line the D20 pass missed:** admin analytics do **not** separate house from players — every admin count, the finance and insights figures and the harm and AML detectors carry no house memo, column, split, exclusion or line. Statutory figures include everything (unchanged, D20d). |
 | D8 | **Live activity feed**, plus per-bet bell alerts **capped per hour** (then an hourly summary). Money events and auto-pauses always go to bell + email. |
 | D9 | Everything else was decided by Claude, following platform precedent (cited inline). |
 
@@ -168,7 +208,7 @@ moving the notice first.
 | D11 | Any RG pause voids consent: fresh password + Start after it clears | RG outranks every other door |
 | D12 | Holder bets on a market against their own bot → one admin alert per market (AlertOnce); their player path is never refused | I1 |
 | D13 | Lowering a global cap is allowed, with a consequence preview; raising a bot cap above a set global cap is refused | risk-reducing edits never blocked |
-| D14 | House-liquidity regulator report + CSV ship in v1 | Ali reports everything to GBT |
+| D14 | ⛔ **STRUCK by D20b (2026-09-17) and un-built at C5-5b; marked 2026-09-18, a line the D20 pass missed.** There is no house-liquidity report and no house CSV — never built, never shipped. Reports treat a house account exactly like any player's. ~~House-liquidity regulator report + CSV ship in v1~~ | ~~Ali reports everything to GBT~~ — he still does, through the ordinary statutory figures, which include house rows (D20d). |
 | D15 | Build starts only when the other session's KYC-at-withdrawal work is on `origin/main` | hooks touch the same wallet-freeze and RG code |
 | D16 | Master switch tone brand; holder-password field `new-password` + ignore attributes | PLAN §15 X5; password-manager trap |
 
@@ -212,7 +252,7 @@ Ali was shown the exact sentences the change would touch and the risk in leaving
 |---|---|
 | D19a | **No public text.** The two rulebooks, Terms, the privacy notice, the FAQ, the home copy and the chatbot keep the words they have today: no prohibited-conduct carve-out, no disclosure line, no Terms §4 paragraph, no privacy lawful-basis line, no META or `TERMS_VERSION` bump, no announcement. **This reverses D2/D7 and P1**, and it leaves the published rulebooks prohibiting bots and shared accounts while 50pick operates house accounts (accepted risk 21). Ali reports that the Gaming Board of Tanzania told him his answers are legally valid; no document is on file. |
 | D19b | ⛔ **Report half reversed by D20 (2026-09-17): no house-liquidity report or CSV is built; the private draft stays.** (Was:) The **private** Gaming Board draft (`BOARD-DISCLOSURE-HOUSE-BOTS.md`, DRAFT FOR ALI) and the admin-console house-liquidity report and CSV are still built. Ali decides if and when the draft is sent. |
-| D19c | **The holder sees nothing.** Stakes 50pick places on a holder's account look exactly like the holder's own bets — no chip, no explanatory line, no liquidity label on outcome notices, no house wording in any refusal — and the holder receives **no** house-bot notices or emails at all. Every alert goes to admins only. Consent stays what D5 says it is: the holder types their password. |
+| D19c | **The holder sees nothing.** Stakes 50pick places on a holder's account look exactly like the holder's own bets — no chip, no explanatory line, no liquidity label on outcome notices, no house wording in any refusal — and the holder receives **no** house-bot notices or emails at all. Every alert goes to admins only. Consent stays what D5 says it is ⚠️ **(corrected 2026-09-18, ruling 503: the OWNER types the HOLDER's account password, verified like a sign-in and never creating a session — `:158` and `:201` stand; the holder agrees privately and supplies it, and no field anywhere lets the holder type it. The consent is unchanged; only the sentence describing who types is.)** ~~the holder types their password.~~ |
 | D19d | The chatbot **discloses nothing and may never lie**: a guard keeps "never bets against you", "independent", "cannot influence", "all stakes are from real players", "fully automated", "only automated", "no person decides", "no one at 50pick chooses" and any naming or confirming of an account out of the system prompt and `faq8a`, in all three locales. |
 | D19e | W18 is moot (no rule text moves) and W19 is superseded (there is no privacy line). |
 
@@ -241,7 +281,7 @@ Nothing of the struck work ever reached production.
 |---|---|---|
 | "Do not build" house-backed liquidity | `docs/F6-LIQUIDITY-DESIGN.md` §4 | the recommendation |
 | "Never discretionary" | F6 §3.3 and §4 R5 | the market and the moment only (D17); never the side or the amount |
-| The mandatory conditions | F6 §5 conditions 1–4 and 6 | condition 1 (written GBT approval) is waived by owner ruling D1, not satisfied; condition 4 is replaced by display-only resolution (I10); condition 5 is built; condition 6 is replaced by one rulebook and Terms disclosure line (D2, D6) |
+| The mandatory conditions | F6 §5 conditions 1–4 and 6 | condition 1 (written GBT approval) is waived by owner ruling D1, not satisfied; ~~condition 4 is replaced by display-only resolution (I10)~~; condition 5 is built; ~~condition 6 is replaced by one rulebook and Terms disclosure line (D2, D6)~~ ⛔ **CORRECTED 2026-09-18 — two clauses this row still stated as current, missed by the D19a and D20 passes.** Condition 4: there is **no display** to resolve by — C5-5b un-built the exposure display (see "What deliberately does NOT change" below), so what replaces condition 4 is the `staff-stake-self-decided` admin alert and the press's audit row (replan ruling 264), not a display. Condition 6: **D19a reversed D2/D7 entirely**, so there is **no** rulebook carve-out and **no** Terms disclosure line — the published rulebooks are unamended and still prohibit bots and shared accounts (accepted risk 21), which is the risk Ali read and accepted, not a satisfied condition. |
 | Seed at lock, never at open; house kept out of player metrics | `docs/UPDOWN-FINAL-DESIGN.md` D3 | the mechanism: an automated OPENER may stake at open, and house positions appear publicly like a player's (D6) |
 | Seed returned at stake, takes no profit | UPDOWN G2 | a house stake shares in winnings like any later stake |
 | Caps as "the only control" | UPDOWN G4 | caps work alongside the penalty box, the closeness rule, the exit-window hold and a settled-loss master stop |
@@ -258,7 +298,7 @@ Nothing of the struck work ever reached production.
 ### What deliberately does NOT change
 - The fee stays a function of the pools and the outcome, never of who bet.
 - Statutory figures include house rows (D6).
-- No officer-conflict block on resolve, void, reopen or objection rulings for a market the house holds (I10; the 2026-07-24 guardrail). House exposure is displayed instead.
+- No officer-conflict block on resolve, void, reopen or objection rulings for a market the house holds (I10; the 2026-07-24 guardrail). ~~House exposure is displayed instead.~~ ⛔ **CORRECTED 2026-09-18 (D20, 2026-09-17; the marking pass missed this line).** There is **no** house-exposure display: checkpoint C5-5b un-built it, and the files are measured absent — `src/lib/house-bot/exposure-copy.ts`, `src/components/admin/exposure-line.tsx` and `src/lib/server/house-bot/exposure.ts` do not exist, and nothing in `src/` renders an exposure figure. This is the line that mattered most, because a **regulator-facing record was telling a reader that a mitigation is in place that is not**. The mitigation that actually exists for this risk is the `staff-stake-self-decided` admin alert (replan ruling 264) and the press's own audit row — see accepted risk 20 below, which was marked correctly.
 - No early entry before a player's free exit closes.
 - No Enter now on Up & Down.
 - No SMS for house-only notices.
@@ -294,7 +334,7 @@ The two house migrations are applied to production from the build machine with `
 | W13 | Products for targets | targets are polls only |
 | W14 | Target defaults; early entry | target defaults reactTo FIRST and timingFrom STAKE, early entry not built |
 | W15 | Counterparty share limit | counterparty share limit 50% |
-| W16 | Staff-edge alert | staff-edge alert at 15 points or TZS 100,000 |
+| W16 | Staff-edge alert | ⛔ **STRUCK by D20b (2026-09-17), un-built at C5-5b (replan rulings 265, 267); marked 2026-09-18, a line the D20 pass missed.** There is **no staff-edge alert and no staff-edge scorecard** — the default below was never built and is not in force. Accepted risk 13 below records the consequence, which Ali accepted knowingly (D20d): risk 13 has no report or alert measure. ~~staff-edge alert at 15 points or TZS 100,000~~ |
 
 ### Accepted risks
 
@@ -304,18 +344,18 @@ names no house-liquidity processing. Under D19 none of that text changes, so the
 its own published rules prohibit and its notice does not describe. A player who learns of it, or a regulator, could
 call that misleading. Ali accepted this on 2026-09-16 after being shown the sentences and an alternative neutral
 wording, and reports that the Gaming Board told him his answers are legally valid (no document on file; REL-4 asks for
-one). The holder's own consent is unaffected: they agree privately and type their own password (D5).
+one). The holder's own consent is unaffected: they agree privately and give the owner their password (D5). ⚠️ **Corrected 2026-09-18 (ruling 503).** This sentence read "and type their own password", which the built code contradicts: `src/lib/server/house-bot/designation.ts` addresses the OFFICER throughout — `:79` `empty: "Enter their password."`, `:102` "That isn't their current password.", `:109` "Check the holder's password for an owner" — and **no field anywhere lets the holder type it**. D5 is the OWNER typing the HOLDER's account password, verified like a sign-in and never creating a session; `:158` and `:201` stand as written. ⛔ **The consent itself does not change** — the holder still agrees privately and still supplies the password; what the record stops saying is that the holder types it into a wizard, because no such wizard field exists.
 1. **Licence class and levies.** House stakes are taxed within the fee, and the pool becomes a "book" (F6 §3). Ali reports to GBT.
 2. **Consent is knowledge, not proof.** Password-only (D5). Officer resets are blocked, but resets before the 2026-09-11 audit genesis are invisible.
 3. **Exploitation is bounded, not eliminated.** Alt accounts farming counters are capped per account, and G4 still applies. Caps, penalty box, closeness rule and exit-window hold are the controls.
 4. **The holder sees house positions live** (they could front-run with an alt account). House stakes also count against their own RG loss limit, which auto-pauses the bot.
 5. **Throughput.** Bot bets serialise on `house:control` (ms-long), and the holder shares the `bet.place` rate bucket (min gap ≥ 20s).
-6. **Delivery.** Merge conflicts with the parallel session are likely. `overlapSeconds` in production is unverified; the design is correct either way. sw/zh legal text needs native review. The leaderboard shows the holder's display name.
+6. **Delivery.** Merge conflicts with the parallel session are likely. `overlapSeconds` in production is unverified; the design is correct either way. ~~sw/zh legal text needs native review.~~ ⛔ **MOOT by D19a (2026-09-16); marked 2026-09-18, a line the D19a pass missed:** no rulebook, Terms, privacy, FAQ or chatbot text changes at all, so this build produces **no** sw/zh legal text to review. The leaderboard shows the holder's display name.
 7. A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13). Recommended hardening, as a separate platform commit: revoke at the three writers, re-mint the session of the device that made the change, and add login copy `kp_revoked=pw`. House consent is unaffected either way, because consent is the fingerprint, never a session. (also recorded as hardening H1, C9)
 
 Risks 8–12 (release and verification) are appended to this entry in build commit 8.
 
-13. **Selection edge, bounded not eliminated.** Staff choose the poll and the moment, and can decline after seeing the computed side. They can also see what players cannot: positions with owner names and phones on the admin market page, AML views, and AI poll data (reasoning, confidence, reviewer). The side can't be typed, but it can be matched by waiting until the thinner side is the side they favour. Bounds: the blackout (AI result check recorded, or market reopened), the formula side and amount, staff-chosen caps inside the locks, the counterparty share limit and pro-rata counterparty caps, a durable record of every press (placed or refused), previews per officer, the vetoes register, ~~and the monthly staff-edge scorecard with its alert (W16)~~ — ⛔ **D20** (2026-09-17, entry above): the scorecard and the staff-edge alert are struck and un-built (replan rulings 265, 267); risk 13 has no report or alert measure, which Ali accepted knowingly (D20d).
+13. **Selection edge, bounded not eliminated.** Staff choose the poll and the moment, and can decline after seeing the computed side. They can also see what players cannot: positions with owner names and phones on the admin market page, AML views, and AI poll data (reasoning, confidence, reviewer). The side can't be typed, but it can be matched by waiting until the thinner side is the side they favour. Bounds: the blackout (AI result check recorded, or market reopened), the formula side and amount, staff-chosen caps inside the locks, the counterparty share limit and pro-rata counterparty caps, a durable record of every press (placed or refused), previews per officer, ~~the vetoes register~~ (⛔ **corrected 2026-09-18:** the presses-and-vetoes REGISTER surface was struck with R1 by D20 and never built; its DAL reader `listRegister` / `PressRegisterFilter` survives with no consumer and is scheduled for deletion by replan ruling 504. What bounds this risk is the durable audit row named just before, not a register anyone can open), ~~and the monthly staff-edge scorecard with its alert (W16)~~ — ⛔ **D20** (2026-09-17, entry above): the scorecard and the staff-edge alert are struck and un-built (replan rulings 265, 267); risk 13 has no report or alert measure, which Ali accepted knowingly (D20d).
 14. New with D17: a person chooses the moment of an opener stake and of any stake; opening empty markets is already superseded (UPDOWN D3, automated OPENER).
 15. **Void after a staff-chosen stake.** A single admin can still void or reopen a market holding one (no officer lock: I10 and the 2026-07-24 guardrail). ~~Mitigation is display, the R9 `houseStake.staffChosen` payload,~~ ⛔ **D20** (2026-09-17): the display, the R9 payload and the R1 row are struck and un-built (C5-5b). The mitigation is the `staff-stake-voided` admin alert (replan ruling 264) and the press's own audit row.
 16. **Amounts are deterministic,** so a repeated Enter now stake is recognisable (D6 fingerprint). With no jitter, an amount can't be re-rolled either.
