@@ -1364,6 +1364,82 @@ No ruling NUMBER was dropped: both "REFUTED" verdicts (301, 317) and the two REF
 
 ---
 
+
+### Added during the build — ruling 432 (C7 step 1, 2026-09-18)
+
+#### 432. What the FIRST RENDER of `/admin/desk` forced, decided here rather than improvised at the next step
+
+**Decision.** Seven things. Each is a place where a §2 ruling's factual premise did not hold against the code or against
+the screen, and the code and the screen win (§0's own rule). Every one is measured, not argued.
+
+**(a) A control whose page is not built is rendered DISABLED, never linked.** `/admin/desk/new` has no page until step
+6, so ruling 314/403's primary action would have been a 404 on the one control the head carries. It renders
+`<Button size="md" variant="primary" disabled>` at every roster size, with 314's VISIBLE reason beside it when the
+roster is full, and becomes a real link in the same change as the page it opens. The master switch is disabled for the
+same reason and it is the same rule: the Master-ON ceremony, the typed word and the kill switch are step 4's (388, 415),
+and an operable-looking switch with nothing behind it is a lie about a control that moves money. ⛔ Neither is a
+"pending state": a disabled control with its reason on screen is a STATE; a live control that 404s is a defect.
+
+**(b) The roster's money cells WRAP, and the SUBJECT column gets a floor — ruling 373's fallback is unbuildable.**
+Measured at 360 on the served page with five accounts: a usage pair bound into one line by the kit's
+`.admin-tbl td.tabular` nowrap made each money column **243 px**, put the second money answer at **357→600 on a 360
+viewport**, and — because `.admin-tbl` is `width: 100%` — left the ACCOUNT column laid out at **93 px**, the G-4/G-5
+defect the kit documents. 373's named fallback (move the cap into the column HEADER) cannot be built: the cap is PER
+ACCOUNT, and the fixture alone holds three different values and one unset. So the reader returns each usage cell as
+`{ text, used, limit }` — `text` is still 361's ONE grammar and is what the cell reads as (verified in the served HTML:
+`textContent === "used TZS 0 of TZS 9,999,999"`) — and the page renders the two halves as separate `.amount` spans in a
+cell that does NOT carry `.tabular`, so the cell may break between them while each amount stays indivisible. With a
+`min-w-[150px]` floor on the Account column only, the re-measurement at 360 is: account 21→171, loss answer 171→358
+(INSIDE the strip), exposure 358→514 (one ScrollX scroll away, which is the kit's own documented answer for a figure
+wider than its box). ⛔ The TABLE still carries no `min-w-*`: a width on the table stretches every column.
+
+**(c) `DESIGNATE_COPY.rosterFull` is amended in its one home, because the console renders it.** It said "Remove a bot
+or raise Max designated bots on Limits →" and the desk shows that sentence VISIBLY beside a disabled button — so those
+words would sit in every screenshot of a full roster, which is precisely what ruling 453 exists to stop. It now reads
+"Remove an account or raise the roster limit on Limits →". `eligibility.ts`'s ROSTER_FULL row spells the same sentence
+(it cannot import `designation.ts` — that module imports IT, so the dependency would be a cycle) and
+`test:house-bot-console` 1.314 pins the two byte-identical.
+
+**(d) The whole roster-full sentence is the link.** The server's sentence already ENDS "…on Limits →", so appending a
+separate "Limits" link printed the word twice with the arrow orphaned between them — read off the first 1280 tile. The
+call site links the sentence instead of adding words of its own.
+
+**(e) In 421's schema state the roster is not listed and the strip stands down.** Only the CONTROL row is missing, so
+the accounts still read — and the first render showed a page headed "The desk is not set up on this database" with five
+accounts listed beneath it, saying two opposite things at once, plus the same fact a third time in a strip that had no
+chip and no Toggle left to show. 421 asks for ONE Callout: the strip is not rendered, `rows` is `[]`, and
+`AdminTableEmpty` names the cause.
+
+**(f) The way-out caption is NOT on the roster at step 1, and ruling 311 owes a neutral pass before it is.** Measured:
+`PAUSE_REASON_WAY_OUT.HOLDER_WITHDREW.copy` is "The holder stopped **liquidity** stakes themselves…" — a house
+VOCABULARY word — and several other rows say "remove the bot" / "the bot was removed". Under ruling 453 none of those
+may reach the screen. The Status cell therefore renders the chip alone (311's own assertions are step 4's per §4), and
+step 4 must rule the neutral rewrite of that map before it renders any of it. The same is owed for
+`eligibility.ts`'s "Already house bot “X”" / "This account is already a house bot." (the WIZARD's surface, step 6) and
+for the three `FIELD_META` labels measured to carry the word — `maxDesignatedBots`, `gCapStaffChosenPerDay`,
+`gTargetsMaxActive`, all three on the LIMITS tab, step 3.
+
+**(g) Two columns and one anchor arrive with their readers, not before.** The roster renders SEVEN columns, not 310's
+eight: "Last bet" needs a last-placement instant, and the only reader that has one is `botRateUsage` — ruling 351, step
+5, where adding a store member also brings `test:dal-parity` and both twins. And `CONSOLE_LIMITS_FIRST_UNSET_HREF` is
+not written: `test:tab-anchors` requires the id a `#fragment` names to be RENDERED on the tab the href selects, and the
+limits panel that carries `#limits-first-unset` is step 3's — so the strip links to `CONSOLE_LIMITS_HREF` until then.
+⛔ Likewise `REACHED_WITHOUT_NAV` gains its two rows with the pages they excuse: §7's own staleness half reports a row
+whose page the crawler cannot find, so the allowlist may not PRECEDE the pages either.
+
+**Why.** Every clause above was found by reading a render or a guard's printed population, not by re-reading the spec.
+A step that silently deviates teaches the next step a false premise, which is the wrong-AUTHORITY class this programme
+has paid for repeatedly.
+
+**Proof.** (a) the disabled control is visible in every surface-1 tile read at 360 and 1280; (b) the two 360
+measurements above, taken before and after, plus `test:house-bot-console` 1.373 and 1.407 re-anchored to the same
+defect; (c) 1.314's byte-identity pin; (d) read off the tile; (e) 1.421, extended to assert `rows.length === 0` and a
+cause-naming empty state, with its own declared mutation; (f) recorded here and in `openIssues` — no code renders the
+copy, so there is nothing to assert yet; (g) 1.310's header case is written for the seven columns that exist and names
+the eighth as step 5's, so it must be updated when the column lands.
+
+---
+
 ## §7 Open questions for Ali — one line each, numbered
 
 1. **The section's name in the navbar and the URL:** (1) "Desk" at `/admin/desk` — my ruling, ships today; or (2) another word you give me.

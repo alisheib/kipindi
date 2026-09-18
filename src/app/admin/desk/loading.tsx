@@ -26,7 +26,12 @@ export default function AdminDeskLoading() {
         <SkCard lines={1} title={false} sw={false} />
         <SkKpiRow count={4} />
         <div className="h-[44px] w-40 rounded-md bg-bg-overlay kp-shimmer-track" aria-hidden />
-        <SkTableCard cols={7} rows={5} minWidth={280} title={false} sw={false} cellPy={12} />
+        {/* ⛔ `cellPy={16}`, NOT the default 12, and it was MEASURED not guessed: the page overrides every cell to
+            `p-3`, which is 16px on this repo's own spacing scale, so a 12px ghost is 8px short on EVERY row — the
+            kit's own note names eight admin pages that pay for exactly this. First reading of the swap at 1280: the
+            ghost card was 279px against the page's 361px; with 16 and the row count matching the fixture it closes to
+            within a few px, and the residual is the account cell's second line, which no ghost can know about. */}
+        <SkTableCard cols={7} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />
       </AdminBody>
     </>
   );

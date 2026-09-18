@@ -39,7 +39,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseRosterForConsole, houseConsoleAudience } from "@/lib/server/house-console-read";
+import { houseRosterForConsole, houseConsoleAudience, type ConsoleUsageCell } from "@/lib/server/house-console-read";
 import { CONSOLE_TABS, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
 
 /** ⛔ A static neutral title (ruling 402). No route here exports a `generateMetadata` that reads a record. */
@@ -49,6 +49,21 @@ export const metadata = { title: "Admin · Desk" };
 export const dynamic = "force-dynamic";
 
 const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster" };
+
+/**
+ * One usage cell's two halves. The server owns the sentence (ruling 361's one grammar); this only lays it out, so the
+ * used figure and its limit can sit on two lines in a narrow column while each amount stays indivisible.
+ * ⛔ `tabular-nums` on the SPANS, not the cell: it is what keeps digits aligned column to column, and putting it on the
+ * `<td>` would re-bind the pair into one unbreakable line through the kit's own `.admin-tbl td.tabular-nums` rule.
+ */
+function Usage({ cell }: { cell: ConsoleUsageCell }) {
+  return (
+    <>
+      <span className="amount tabular-nums">{cell.used}</span>
+      {cell.limit && <> <span className="amount tabular-nums">{cell.limit}</span></>}
+    </>
+  );
+}
 
 export default async function AdminDeskPage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE ANY READ (rulings 300, 380). */
@@ -70,32 +85,40 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
       <AdminPageHead
         title="Desk"
         sw="Dawati"
+        /* 403 · ONE control in the actions slot. 314 · when the roster is full it is rendered DISABLED with the
+           reason VISIBLE beside it — never carried by a `title` alone, and never `hidden` on a `.btn`. The sentence is
+           the server's own, with the CONFIGURED maximum interpolated, never the literal 5.
+           ⛔ AND IT IS DISABLED AT THIS CHECKPOINT WHATEVER THE ROSTER HOLDS, because the wizard it opens is C7 step
+           6's: `/admin/desk/new` has no page yet, so a live link here would be a primary action that answers 404 —
+           a dead control, which is worse than a control that says it is not ready. It becomes a real link with the
+           page it opens, in the same change. */
         actions={
-          rosterFull ? (
-            /* 314 · disabled, with the reason VISIBLE beside it — never carried by a `title` alone, and never
-               `hidden` on a `.btn`. The sentence is the server's own, with the CONFIGURED maximum interpolated. */
-            <span className="flex items-center gap-2 flex-wrap justify-end">
-              {/* ⛔ `text-body-sm` (13px), NOT `text-caption` (11px). Ruling 310 wrote `text-caption` for the
-                  section's secondary lines, but §T4's reading floor is 12.5px and `test:type-scale` §3 counts every
-                  sub-floor prose site into a ratchet that may only shrink: 13px is the SMALLEST key above the floor,
-                  and this is a sentence an officer must read to know why a button is disabled. */}
-              <span className="text-body-sm text-text-secondary max-w-[38ch]">
-                {view.rosterFullReason}{" "}
-                <Link href={view.limitsHref as Route} className="text-brand-300 hover:underline">Limits</Link>
-              </span>
-              <Button size="md" variant="primary" disabled>Designate an account</Button>
-            </span>
-          ) : (
-            <Link href={view.designateHref as Route} className="btn btn-primary btn-md inline-flex items-center gap-1.5">
-              Designate an account
-            </Link>
-          )
+          <span className="flex items-center gap-2 flex-wrap justify-end">
+            {rosterFull && (
+              /* ⛔ `text-body-sm` (13px), NOT `text-caption` (11px). Ruling 310 wrote `text-caption` for the
+                 section's secondary lines, but §T4's reading floor is 12.5px and `test:type-scale` §3 counts every
+                 sub-floor prose site into a ratchet that may only shrink: 13px is the SMALLEST key above the floor,
+                 and this is a sentence an officer must read to know why a button is disabled. */
+              /* ⛔ THE WHOLE SENTENCE IS THE LINK, and the first render is why: the server's sentence already ENDS
+                 "…raise the roster limit on Limits →", so appending a separate "Limits" link printed the word twice
+                 with the arrow orphaned between them ("on Limits → Limits"). The sentence is the server's to own
+                 (ruling 314), so the call site links it rather than adding words of its own. */
+              <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline max-w-[38ch]">
+                {view.rosterFullReason}
+              </Link>
+            )}
+            <Button size="md" variant="primary" disabled>Designate an account</Button>
+          </span>
         }
       />
 
       <AdminBody>
         {/* ⭐ THE MASTER-SWITCH STRIP, ABOVE THE RAIL ON EVERY TAB (ruling 306; DA §K 7d — a control that starts or
-            stops something in production does not sit behind a click). */}
+            stops something in production does not sit behind a click).
+            ⛔ NOT RENDERED IN 421's SCHEMA STATE, and the first render is why: with no control row there is no chip and
+            no Toggle, so the card became a lone sentence sitting directly above a Callout that said the same thing and
+            an empty state that said it a third time. 421 asks for ONE Callout; the strip stands down and lets it be. */}
+        {!view.schemaMissing && (
         <AdminCard padding="p-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-start gap-3 min-w-0">
@@ -107,7 +130,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                   number and never a hand-copied list, because a typed count renders "Set 0" while the press fails
                   with no explanation on screen. */}
               {view.unsetRequired > 0 && (
-                <Link href={view.limitsHref as Route} className="text-body-sm text-warning-fg hover:underline">
+                <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
                   Set {view.unsetRequired} global limit{view.unsetRequired === 1 ? "" : "s"} first →
                 </Link>
               )}
@@ -124,6 +147,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
             </div>
           </div>
         </AdminCard>
+        )}
 
         {/* 421 · the feature's tables are not on this database. A STATE, not a crash and not a zero: no band, no
             switch, and the roster's empty state names this cause. */}
@@ -185,7 +209,10 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                 <table className="admin-tbl">
                   <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                     <tr>
-                      <th scope="col" className="text-left p-3">Account</th>
+                      {/* ⛔ A FLOOR ON THE SUBJECT COLUMN, MEASURED. `.admin-tbl` is `width: 100%`, so without it the
+                          account column absorbed the whole shortfall and laid out at 93px at 360 — the label and the
+                          handle crushed together, which is the G-4/G-5 defect the kit documents one file over. */}
+                      <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
                       <th scope="col" className="text-right p-3">Loss today (projected)</th>
                       <th scope="col" className="text-right p-3">Exposure</th>
                       <th scope="col" className="text-left p-3">Status</th>
@@ -209,14 +236,17 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                                 /admin/agents' own shape for the same thing, and it clears §T4's 12.5px floor. */}
                             <div className="font-mono text-body-sm text-text-subtle">{r.handle}</div>
                           </td>
-                          {/* Money SECOND and THIRD — the answer columns — each one object on its own line. */}
-                          <td className="p-3 tabular text-right"><span className="amount">{r.lossCell}</span></td>
-                          <td className="p-3 tabular text-right"><span className="amount">{r.exposureCell}</span></td>
+                          {/* Money SECOND and THIRD — the ANSWER columns. Each amount is one object (`.amount` is
+                              `white-space: nowrap` in the kit), and the CELL may break between the used figure and its
+                              limit — which is why it does NOT carry `.tabular`, whose nowrap would bind the pair into
+                              one 243px line and push the second answer off a 360 screen (measured; see the reader). */}
+                          <td className="p-3 text-right"><Usage cell={r.lossCell} /></td>
+                          <td className="p-3 text-right"><Usage cell={r.exposureCell} /></td>
                           <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
-                          <td className="p-3 tabular text-text-secondary">{r.betsCell}</td>
+                          <td className="p-3 text-text-secondary"><Usage cell={r.betsCell} /></td>
                           <td className="p-3 text-text-secondary">{r.products}</td>
                           <td className="p-3 text-right">
-                            <Link href={r.href as Route} className="row-link text-brand-300 hover:underline">open →</Link>
+                            <Link href={r.href as Route} className="row-link whitespace-nowrap text-brand-300 hover:underline">open →</Link>
                           </td>
                         </tr>
                       ))

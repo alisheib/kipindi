@@ -134,11 +134,11 @@ export type ConsoleRosterRow = {
   statusWord: string;
   statusChip: StatusChipVariant;
   /** Projected loss used of its limit, in 361's grammar, or "Not set". */
-  lossCell: string;
+  lossCell: ConsoleUsageCell;
   /** Open stake used of its limit, in 361's grammar, or "Not set". */
-  exposureCell: string;
+  exposureCell: ConsoleUsageCell;
   /** Stakes placed today of the per-day count limit, in 361's grammar, or "Not set". */
-  betsCell: string;
+  betsCell: ConsoleUsageCell;
   /** The saved scope words, from `FIELD_META`'s own labels. */
   products: string;
 };
@@ -160,6 +160,8 @@ export type ConsoleRosterView = {
   unsetRequired: number;
   limitsHref: string;
   /** The head action, and its VISIBLE disabled reason when the roster is full (314). */
+  /** The wizard's own route. ⚠️ Painted but NOT LINKED at C7 step 1: `/admin/desk/new` has no page until step 6, and a
+   *  primary action that answers 404 is a dead control. The head renders the button disabled until then. */
   designateHref: string;
   rosterFullReason: string | null;
   /** The band (303, 304, 404). Empty when there is no control row to measure against (421). */
@@ -171,17 +173,39 @@ export type ConsoleRosterView = {
   empty: ConsoleEmpty | null;
 };
 
-/** 361's one usage grammar for money. An unset limit is a STATE, never a figure. */
-function moneyUsage(used: number, limit: number | null): string {
-  if (limit == null) return "Not set";
-  return `used ${formatTzs(Math.max(0, used))} of ${formatTzs(limit)}`;
+/**
+ * One usage cell. `text` is ruling 361's ONE grammar and is what a suite asserts and what the cell reads as; `used` and
+ * `limit` are the same sentence's two halves, so the CELL may break between them while each amount stays one object.
+ *
+ * ⛔ WHY THE TWO HALVES EXIST, MEASURED (2026-09-18, 360 px, five accounts on the real page). `.amount` is
+ * `white-space: nowrap` and the kit's `.admin-tbl td.tabular` adds nowrap to the whole cell, so a pair rendered as one
+ * string made each money column **243 px** wide: the second money answer ran 357→600 on a 360 viewport — out of the
+ * visible strip — and, because `.admin-tbl` is `width: 100%`, the ACCOUNT column absorbed the shortfall and laid out at
+ * **93 px**, the G-4/G-5 defect the kit documents. Ruling 373's named fallback (move the cap into the column HEADER)
+ * cannot be built here: the cap is PER ACCOUNT, and the fixture alone holds three different values and one unset. So the
+ * pair wraps instead — two amounts, each indivisible, on two lines in a narrow cell. Nothing is compacted, nothing is
+ * clipped, and the limit stays beside its usage, which is what ruling 266 requires.
+ */
+export type ConsoleUsageCell = { text: string; used: string; limit: string | null };
+
+/** 361's one usage grammar for money. An unset limit is a STATE, never a figure and never a bar at zero. */
+function moneyUsage(used: number, limit: number | null): ConsoleUsageCell {
+  if (limit == null) return { text: "Not set", used: "Not set", limit: null };
+  const u = `used ${formatTzs(Math.max(0, used))}`;
+  const l = `of ${formatTzs(limit)}`;
+  return { text: `${u} ${l}`, used: u, limit: l };
 }
 
 /** 361's one usage grammar for a count limit. */
-function countUsage(used: number, limit: number | null, noun: string): string {
-  if (limit == null) return "Not set";
-  return `used ${formatNumber(Math.max(0, used))} of ${formatNumber(limit)} ${noun}`;
+function countUsage(used: number, limit: number | null, noun: string): ConsoleUsageCell {
+  if (limit == null) return { text: "Not set", used: "Not set", limit: null };
+  const u = `used ${formatNumber(Math.max(0, used))}`;
+  const l = `of ${formatNumber(limit)} ${noun}`;
+  return { text: `${u} ${l}`, used: u, limit: l };
 }
+
+/** A read that FAILED renders an em dash — never a zero, and never an empty cell (ruling 355). */
+const UNREADABLE: ConsoleUsageCell = { text: "—", used: "—", limit: null };
 
 /**
  * One money tile: ONE compact amount in the value, the limit NAMED in the delta as a proportion with no second
@@ -261,7 +285,11 @@ export async function houseRosterForConsole(
          ...(control?.switchedReason ? [`reason: ${control.switchedReason}`] : [])].join(" · ")
       : "The desk is off. Nothing will be staked.";
 
-  const rows: ConsoleRosterRow[] | null = roster == null ? null : roster.map((bot) => {
+  /* ⛔ 421 · WITH NO CONTROL ROW THE ROSTER IS NOT RENDERED AT ALL, and that is a correction the first render forced.
+   * A page headed "The desk is not set up on this database" with five accounts listed beneath it says two opposite
+   * things at once — and the accounts are real, because only the control row is missing. The desk cannot stake and
+   * cannot be designated without that row, so the table names THAT cause instead of listing rows no control governs. */
+  const rows: ConsoleRosterRow[] | null = schemaMissing ? [] : roster == null ? null : roster.map((bot) => {
     const book = dayBooks?.get(bot.id) ?? null;
     const open = exposure?.get(bot.id) ?? null;
     const parsed = parseCtx ? parseHouseBotRules(bot.rules, parseCtx) : null;
@@ -274,9 +302,9 @@ export async function houseRosterForConsole(
       statusWord: display.word,
       statusChip: display.chip,
       /* ⛔ A FAILED READ IS NEVER A ZERO (355). A bot absent from the day map is a documented zero and IS rendered. */
-      lossCell: dayBooks == null ? "—" : moneyUsage(book?.projectedLossTzs ?? 0, bot.capDailyLossTzs),
-      exposureCell: exposure == null ? "—" : moneyUsage(open ?? 0, bot.capOpenExposureTzs),
-      betsCell: dayBooks == null ? "—" : countUsage(book?.bets ?? 0, bot.freqMaxPerDay, "bets"),
+      lossCell: dayBooks == null ? UNREADABLE : moneyUsage(book?.projectedLossTzs ?? 0, bot.capDailyLossTzs),
+      exposureCell: exposure == null ? UNREADABLE : moneyUsage(open ?? 0, bot.capOpenExposureTzs),
+      betsCell: dayBooks == null ? UNREADABLE : countUsage(book?.bets ?? 0, bot.freqMaxPerDay, "bets"),
       products: parsed == null ? "couldn't read"
         : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
           : "couldn't read",

@@ -251,19 +251,19 @@ section("§2 · the strip, the band, the roster and every failure");
   ok("1.310 · no row carries a net or a bare balance, and each holder is a handle, never a name or a phone",
     v.rows.every((r: Any) => /^Player #/.test(r.handle)) && !/\bnet\b|\bbalance\b/i.test(j(v.rows)), j(v.rows.map((r: Any) => r.handle)));
   ok("1.310 · an account with NO stakes today reads used TZS 0 of its limit — a documented zero, not a failure",
-    v.rows[0].lossCell === `used ${formatTzs(0)} of ${formatTzs(50_000)}`, j(v.rows[0]));
+    v.rows[0].lossCell.text === `used ${formatTzs(0)} of ${formatTzs(50_000)}` && v.rows[0].lossCell.used === `used ${formatTzs(0)}` && v.rows[0].lossCell.limit === `of ${formatTzs(50_000)}`, j(v.rows[0]));
   ok("1.310 · an account whose loss limit is UNSET reads 'Not set', never a bar at zero",
-    v.rows[1].lossCell === "Not set" && v.rows[1].betsCell === "Not set", j(v.rows[1]));
+    v.rows[1].lossCell.text === "Not set" && v.rows[1].lossCell.limit === null && v.rows[1].betsCell.text === "Not set", j(v.rows[1]));
 
   /* 1.361 · ONE grammar for every figure the console formats. */
   const USAGE = /^used (TZS [\d,]+|\d[\d,]*)( of (TZS [\d,]+|\d[\d,]*))?( bets)?$/;
-  const cells = v.rows.flatMap((r: Any) => [r.lossCell, r.exposureCell, r.betsCell]).filter((c: string) => c !== "Not set" && c !== "—");
+  const cells = v.rows.flatMap((r: Any) => [r.lossCell, r.exposureCell, r.betsCell]).map((c: Any) => c.text).filter((c: string) => c !== "Not set" && c !== "—");
   ok("1.361 · every usage cell matches the one fixed grammar — lower-case 'used', no percentage, no 'remaining', no arrow",
     cells.length >= 4 && cells.every((c: string) => USAGE.test(c)), j(cells));
 
   /* 1.347's identity: the band's exposure equals the SUM of the rows it renders. Asserted on the painted figures, so
    * a band read from a second query could not satisfy it while a stake settled between the two statements. */
-  const rowExposure = v.rows.map((r: Any) => Number((r.exposureCell.match(/used TZS ([\d,]+)/) ?? [0, "0"])[1].replace(/,/g, "")));
+  const rowExposure = v.rows.map((r: Any) => Number((r.exposureCell.text.match(/used TZS ([\d,]+)/) ?? [0, "0"])[1].replace(/,/g, "")));
   const bandExposure = Number((String(v.tiles[2].value).match(/([\d,.]+)/) ?? [0, "0"])[1].replace(/,/g, ""));
   ok("1.347 · the band's exposure is the arithmetic SUM of the rendered row figures (identity, not a literal)",
     bandExposure === rowExposure.reduce((a: number, b: number) => a + b, 0), j({ bandExposure, rowExposure }));
@@ -299,13 +299,13 @@ section("§2 · the strip, the band, the roster and every failure");
   ok("1.355 · a failed MONEY read renders the kit's `unavailable` tile and the cell '—' — never a fabricated TZS 0",
     plants.day.tiles[0].unavailable === true && plants.day.tiles[1].unavailable === true
       && plants.day.tiles[2].unavailable !== true && plants.day.tiles[3].unavailable !== true
-      && plants.day.rows.every((r: Any) => r.lossCell === "—" && r.betsCell === "—"), j(plants.day.tiles));
+      && plants.day.rows.every((r: Any) => r.lossCell.text === "—" && r.lossCell.limit === null && r.betsCell.text === "—"), j(plants.day.tiles));
   ok("1.355 · …and the roster still renders its rows: one tile's failure suppresses neither the others nor the table",
     plants.day.rows !== null && plants.day.rows.length === 3, j(plants.day.rows?.length));
   /* 1.355.c1 · the CONTROL: the same render with nothing rejecting must carry the real figures, so a case that cannot
    * tell the two apart goes red. */
   ok("1.355.c1 · CONTROL · with no rejection the same tiles carry real figures and no `unavailable`",
-    v.tiles.every((t: Any) => t.unavailable !== true) && v.rows.every((r: Any) => r.lossCell !== "—"), j(v.tiles.map((t: Any) => t.value)));
+    v.tiles.every((t: Any) => t.unavailable !== true) && v.rows.every((r: Any) => r.lossCell.text !== "—"), j(v.tiles.map((t: Any) => t.value)));
 
   /* 1.421 · a house schema the migration has not reached is a STATE, not a crash and not a zero. */
   const realCtl2 = w.dal.houseBotControlStore.get;
@@ -313,9 +313,14 @@ section("§2 · the strip, the band, the roster and every failure");
     w.dal.houseBotControlStore.get = () => Promise.reject(new w.dal.HouseSchemaNotReady("planted"));
     plants.schema = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
   } finally { w.dal.houseBotControlStore.get = realCtl2; }
-  ok("1.421 · a `HouseSchemaNotReady` renders the schema STATE: no tile at all, no switch, and an empty state naming that cause",
+  /* ⛔ AND THE ROSTER IS NOT LISTED, which the first render forced as a correction: only the CONTROL row is missing, so
+   * the accounts still read — and a page headed "the desk is not set up on this database" with five accounts listed
+   * beneath it says two opposite things at once. The table names the cause instead. */
+  ok("1.421 · a `HouseSchemaNotReady` renders the schema STATE: no tile at all, no switch, NO ROSTER ROW, and an empty state naming that cause",
     plants.schema.schemaMissing === true && plants.schema.tiles.length === 0 && plants.schema.on === null
-      && plants.schema.chip === null && !/TZS/.test(j(plants.schema)), j({ tiles: plants.schema.tiles.length, on: plants.schema.on }));
+      && plants.schema.chip === null && plants.schema.rows.length === 0 && plants.schema.empty !== null
+      && /not set up on this database/.test(plants.schema.empty.title) && !/TZS/.test(j(plants.schema)),
+    j({ tiles: plants.schema.tiles.length, on: plants.schema.on, rows: plants.schema.rows.length, empty: plants.schema.empty }));
   try {
     w.dal.houseBotControlStore.get = () => Promise.reject(new Error("a generic read failure"));
     plants.generic = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
@@ -346,7 +351,7 @@ section("§3 · nothing the desk renders names the feature");
   const copy = [
     view.stateSentence, view.rosterFullReason, view.empty?.title, view.empty?.body,
     ...view.tiles.flatMap((t: Any) => [t.label, t.value, t.delta]),
-    ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, r.lossCell, r.exposureCell, r.betsCell, r.products]),
+    ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, r.lossCell.text, r.exposureCell.text, r.betsCell.text, r.products]),
     view.chip?.word,
   ].filter((s: unknown): s is string => typeof s === "string");
   const hits = copy.filter((s) => NEUTRAL.test(s));
@@ -386,6 +391,24 @@ if (STORE === "memory") {
   ok("4.453 · the three sentences ruling 453 FIXES are the ones in the code, word for word",
     gateCode.includes("The desk is off. Nothing will be staked.") && pageCode.includes('aria-label="Desk master switch"')
       && pageCode.includes('title="Desk"') && gateCode.includes('label: "Accounts"'), "");
+
+  /* 1.301 · THE SECTION GATE'S NEUTRAL `title`, AND WHY IT IS AN ID FIX RATHER THAN A WORD FIX. The gate titles its own
+   * restricted panel from the LAST URL SEGMENT, and `looksLikeId` keeps a prefixed, digit-bearing segment VERBATIM — so
+   * on the detail route the panel's heading would BE the record id, in a body the layout streams to any signed-in
+   * account (ruling 259). Measured here on the real resolver, so the prop can never be "tidied away" as cosmetic.
+   * ⚠️ The served half of this is NOT MEASURED until the detail route exists (C7 step 4): `/admin/desk/<id>` has no
+   * page yet, so it 404s before any layout paints — recorded in `DEFERRED-TESTS.md`, never claimed as passed. */
+  const NAV: Any = await import("../../src/components/admin/admin-nav-groups.ts");
+  const ID_PATH = "/admin/desk/hb_0123456789abcdef01234567";
+  ok("1.301 · without the prop the gate would head its restricted panel with the raw record id — the resolver is measured, not assumed",
+    NAV.crumbsFromPath(ID_PATH).at(-1) === "hb_0123456789abcdef01234567"
+      && NAV.crumbsFromPath("/admin/desk").at(-1) === "Desk", j(NAV.crumbsFromPath(ID_PATH)));
+  ok("1.301 · …so the section layout passes the neutral section word itself, as a literal, and adds no condition of its own",
+    /<AdminSectionGate title="Desk">\{children\}<\/AdminSectionGate>/.test(decomment(read(LAYOUT)))
+      && !/isAdmin|houseConsoleAudience|currentSession/.test(decomment(read(LAYOUT))), "");
+  ok("1.301 · …and the gate's `title` prop is OPTIONAL, so no other section changes",
+    /title\?: string/.test(read("src/components/admin/admin-section-gate.tsx"))
+      && /titleProp \?\? crumbsFromPath/.test(read("src/components/admin/admin-section-gate.tsx")), "");
 
   /* 1.300 / 1.380 · the gate is awaited FIRST, with a STRING LITERAL route, before the reader. */
   const gateAt = pageCode.indexOf('houseConsoleAudience(session?.userId ?? null, "/admin/desk")');
@@ -472,11 +495,21 @@ if (STORE === "memory") {
     headers[1] === "Loss today (projected)", headers[1]);
   ok("1.373 · no header reads 'House stake', 'Today net' or 'Live balance'",
     !/House stake|house stake|Today net|Live balance/.test(pageCode), "");
-  ok("1.373 · the money-bearing table carries NO `min-w-*`: `.admin-tbl` is width:100%, so a minimum width pushes the answer column out of view at 360",
+  /* 1.373 · THE TABLE ITSELF CARRIES NO `min-w-*`, and the money CELLS carry no `.tabular`, and both are the same
+     decision, MEASURED at 360 on the real page: a pair bound into one unbreakable line made each money column 243px,
+     put the second answer at 357→600 on a 360 viewport, and left the account column at 93px. Ruling 373's named
+     fallback (the cap in the column HEADER) is unbuildable — the cap is PER ACCOUNT. So the pair WRAPS: each amount
+     stays indivisible through the kit's own `.amount` nowrap, and the subject column gets a floor of its own. */
+  ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column",
     /<table className="admin-tbl">/.test(pageCode), "");
-  ok("1.407 · every `<th>` carries `scope=\"col\"`, and both money cells carry `tabular` with their figure in `.amount`",
+  ok("1.373 · …and only the SUBJECT column carries a floor, so it can never absorb the whole shortfall again",
+    /<th scope="col" className="text-left p-3 min-w-\[150px\]">Account<\/th>/.test(pageCode)
+      && (pageCode.match(/min-w-\[/g) ?? []).length === 1, "");
+  ok("1.407 · every `<th>` carries `scope=\"col\"`, and every money figure is an `.amount` with `tabular-nums` in a right-aligned cell that is NOT bound by `.tabular`",
     headers.length === (thead.match(/scope="col"/g) ?? []).length
-      && (pageCode.match(/className="p-3 tabular text-right"><span className="amount">/g) ?? []).length === 2, "");
+      && (pageCode.match(/<td className="p-3 text-right"><Usage cell=/g) ?? []).length === 2
+      && (pageCode.match(/className="amount tabular-nums"/g) ?? []).length === 2
+      && !/td className="[^"]*\btabular\b/.test(pageCode), "");
   ok("1.407 · the way out is the kit's `.row-link`, and the call site writes no case of its own",
     /className="row-link[^"]*">open →/.test(pageCode), "");
 
@@ -506,8 +539,13 @@ if (STORE === "memory") {
   const ghosts = [...decomment(read(LOADING)).matchAll(/<(Sk[A-Za-z]+|div)\b/g)].map((m) => m[1]);
   ok("1.417 · the loader's ghost sequence matches the page's card sequence, one ghost per card, in order: strip, band, rail, table",
     j(ghosts) === j(["SkCard", "SkKpiRow", "div", "SkTableCard"]), j(ghosts));
-  ok("1.417 · the table ghost states the page's real facts — seven columns, no pager (the roster is bounded by the configured maximum)",
-    /cols=\{7\}/.test(read(LOADING)) && !/pager/.test(read(LOADING)), "");
+  /* ⛔ `cellPy` IS A FACT ABOUT THE PAGE, NOT A DEFAULT. The page overrides every cell to `p-3`, which is 16px on this
+     repo's own spacing scale, so a 12px ghost is 8px short on every row — measured on the swap at 1280 (279px of ghost
+     against 361px of table). The assertion reads the PAGE's own padding class and requires the ghost to agree with it,
+     so the pair cannot drift apart in either direction. */
+  ok("1.417 · the table ghost states the page's real facts — seven columns, no pager, and a cell padding READ from the page's own class",
+    /cols=\{7\}/.test(read(LOADING)) && !/pager/.test(read(LOADING))
+      && /className="p-3/.test(pageCode) === /cellPy=\{16\}/.test(read(LOADING)), "");
 
   /* 1.403 · a gloss only where the word already ships. */
   const glosses = [...sectionFiles.flatMap((f) => [...read(f).matchAll(/sw="([^"]+)"/g)].map((m) => m[1]))];
