@@ -1106,6 +1106,10 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * `(viewerUserId, route)`, the audience resolved inside it before any read, a PAINTED view model or `null` out. Every
  * new reader joins this table with its arity in the SAME change as its first call site, or the arity pin, the
  * signed-in-viewer pin and the own-route pin stop measuring it.
+ * ⛔ AND THAT SENTENCE IS NOW A GUARD, NOT AN INSTRUCTION (ruling 512): case 0.512 compares this table with the gate
+ * module's own exports in BOTH directions, so a new gated reader added without its entry is red the day it is written
+ * and an entry naming no export is red the day the reader goes. Only `CONSOLE_GATE_STRUCK`'s two D20 needles may sit
+ * here without an export, and only while the run measures them at 0 calls.
  */
 export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
@@ -1326,6 +1330,66 @@ export function auditExportProblems(file: string, code: string): string[] {
     }
   });
   return problems;
+}
+
+/* ─── ruling 512 · the gate table is held to the gate module's own exports, in BOTH directions ─────────────────── */
+
+/** The module `CONSOLE_GATES` is a table OF. Its exports are what 0.512 compares the table against. */
+export const CONSOLE_GATE_MODULE = "src/lib/server/house-console-read.ts";
+/**
+ * The two gate exports owner ruling D20 UN-BUILT with the display (C5-5b). Their names stay in `CONSOLE_GATES` as
+ * NEEDLES — 0.260.1 pins each at EXACTLY 0 calls — so a console file that calls one again is measured by the same rules.
+ * ⛔ THIS IS THE ONLY EXEMPTION 0.512 GRANTS, AND IT POLICES ITSELF THREE WAYS, because an exemption list is how a
+ * completeness check comes to exempt the thing it exists to police: a needle is exempt only while the SAME RUN measures
+ * its call count at 0; a needle that is EXPORTED again is red (it came back and nobody noticed); and the list's own
+ * length is pinned by 0.512's case, so a third name cannot be quietly added here to launder a missing entry.
+ */
+export const CONSOLE_GATE_STRUCK = ["houseBotLabelsForConsole", "houseStakeForConsole"] as const;
+/**
+ * Every OTHER export of the gate module, none of which is a gated reader: the route prefix, the route test, and the
+ * painted view types the readers return. 0.512 holds the module's exports to exactly these three lists, so a new gated
+ * reader — the defect class ruling 259 measured, 72 of 606 non-staff responses carrying house audit rows before
+ * gating — cannot ship without a `CONSOLE_GATES` entry, and therefore cannot ship without its arity, its
+ * signed-in-viewer and its own-route pins.
+ */
+export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleEmpty", "ConsoleKpiTile", "ConsoleRosterRow",
+  "ConsoleRosterView", "ConsoleUsageCell", "ConsoleUsageHalf", "HOUSE_CONSOLE_PREFIX", "isHouseConsoleRoute"] as const;
+
+/**
+ * Ruling 512. `CONSOLE_GATES` is five names typed by hand and nothing compared it with the module it describes, while
+ * case 0.260.1 in this same file already holds the AUDIT module's exports to the last name. Both directions:
+ *   · an EXPORT with no entry — a new gated reader added without one, which is how a hole ships silently;
+ *   · an ENTRY with no export — a table naming a reader that is gone, which makes its arity and viewer pins vacuous.
+ * `gateCalls` is 0.260.1's own measured call count per entry, so the struck-needle exemption is conditioned on a number
+ * this run measured rather than on a promise made here.
+ */
+export function consoleGateExportProblems(
+  file: string, code: string, gates: Readonly<Record<string, number>>, gateCalls: Readonly<Record<string, number>>,
+): { exports: string[]; problems: string[] } {
+  const problems: string[] = [];
+  const names = exportedNames(file, code);
+  const entries = Object.keys(gates);
+  const struck = CONSOLE_GATE_STRUCK as readonly string[];
+  const nonReaders = CONSOLE_GATE_NON_READERS as readonly string[];
+  for (const name of names) {
+    if (entries.includes(name) || nonReaders.includes(name)) continue;
+    problems.push(`${file}: exports ${name}, which is neither a CONSOLE_GATES entry nor a declared non-reader — a gated reader ships with its entry or not at all`);
+  }
+  for (const name of entries) {
+    if (names.includes(name)) continue;
+    if (!struck.includes(name)) { problems.push(`${file}: CONSOLE_GATES names ${name}, which this module does not export (the table is stale, and ${name}'s arity and viewer pins measure nothing)`); continue; }
+    const calls = gateCalls[name];
+    if (calls !== 0) problems.push(`${file}: ${name} is a struck NEEDLE exempted from the export check, but this run measured ${calls} call(s) of it — the exemption holds only at 0`);
+  }
+  for (const name of struck) if (names.includes(name)) problems.push(`${file}: exports ${name} again — it was un-built under D20 and its CONSOLE_GATES entry is a needle, not a reader`);
+  for (const name of nonReaders) if (!names.includes(name)) problems.push(`${file}: no longer exports ${name} (the non-reader classification is stale)`);
+  walkTree(parse(file, code), (n) => {
+    const exported = (ts.canHaveModifiers(n) ? ts.getModifiers(n) ?? [] : []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+    if (ts.isExportDeclaration(n) || ts.isExportAssignment(n) || (exported && (ts.isClassDeclaration(n) || ts.isEnumDeclaration(n) || ts.isModuleDeclaration(n)))) {
+      problems.push(`${file}: an export the classification cannot read: ${n.getText().replace(/\s+/g, " ").slice(0, 80)}`);
+    }
+  });
+  return { exports: names, problems };
 }
 
 if (STORE === "memory") {
@@ -1570,6 +1634,47 @@ if (STORE === "memory") {
         && r.consoleGateCalls.houseConsoleAudience >= 1 && r.consoleGateCalls.houseRosterForConsole >= 1
         && r.readerFiles.length >= 14 && MEASURED_LEAKS.every((f) => r.readerFiles.includes(f)) && j(r.outsideReaderFiles) === j(Object.keys(AUDIT_READERS_OUTSIDE_CONSOLE).sort()),
       j({ population: r.population, readerCalls: r.readerCalls, gateCalls: r.gateCalls, consoleGateCalls: r.consoleGateCalls, readerFiles: r.readerFiles, outsideReaderFiles: r.outsideReaderFiles, auditReaders, auditExports, problems: r.problems }));
+
+    /* ⛔ 0.512 · RULING 512 · THE GATE TABLE IS HELD TO THE GATE MODULE'S OWN EXPORTS, BOTH WAYS. `CONSOLE_GATES` is
+     * five names typed by hand and nothing compared it with the module it describes — while 0.260.1 directly above
+     * already holds the AUDIT module's exports to the last name, so the pattern existed in this very file and was
+     * simply not applied to the gate. A new gated reader added without its entry is ruling 259's MEASURED defect class
+     * (72 of 606 non-staff responses carried house audit rows before gating) and it would ship with no arity pin, no
+     * signed-in-viewer pin and no own-route pin measuring it — silently, because a hand-typed table cannot notice. */
+    const gateModuleCode = code5(CONSOLE_GATE_MODULE);
+    const gateExports = consoleGateExportProblems(CONSOLE_GATE_MODULE, gateModuleCode, CONSOLE_GATES, r.consoleGateCalls);
+    ok("0.512 · ⛔ D19 · CONSOLE_GATES and the gate module's own exports agree to the last name in BOTH directions — no exported reader without an entry, no entry without an export, and the two D20-struck needles are exempt only while THIS run measures them at exactly 0 calls",
+      gateExports.problems.length === 0 && gateModuleCode.length > 5_000 && gateExports.exports.length >= 12
+        && Object.keys(CONSOLE_GATES).length >= 5 && CONSOLE_GATE_STRUCK.length === 2,
+      j({ exports: gateExports.exports, entries: Object.keys(CONSOLE_GATES), struck: CONSOLE_GATE_STRUCK, problems: gateExports.problems }));
+    {
+      /* ⛔ THE PLANTS ARE WHOLE DECLARATIONS APPENDED TO THE MODULE, not string edits, so each one is a thing the
+       * compiler would accept — which is what makes them the shape a real change takes. */
+      const NEW_READER = `
+export async function houseLimitsForConsole(viewerUserId: string | null, route: string): Promise<string | null> { return route.length > 0 ? viewerUserId : null; }
+`;
+      const NEEDLE_BACK = `
+export async function houseStakeForConsole(viewerUserId: string | null, route: string, ids: string[]): Promise<Map<string, number>> { return new Map(ids.map((i) => [i, viewerUserId === route ? 1 : 0])); }
+`;
+      const gp = (code: string, gates: Readonly<Record<string, number>>, calls: Readonly<Record<string, number>>) =>
+        consoleGateExportProblems(CONSOLE_GATE_MODULE, code, gates, calls).problems;
+      const fired = {
+        exportNoEntry: gp(gateModuleCode + NEW_READER, CONSOLE_GATES, r.consoleGateCalls),
+        entryNoExport: gp(gateModuleCode, { ...CONSOLE_GATES, houseRefusalForConsole: 2 }, { ...r.consoleGateCalls, houseRefusalForConsole: 0 }),
+        needleExported: gp(gateModuleCode + NEEDLE_BACK, CONSOLE_GATES, r.consoleGateCalls),
+        needleCalled: gp(gateModuleCode, CONSOLE_GATES, { ...r.consoleGateCalls, houseStakeForConsole: 1 }),
+        nonReaderGone: gp(plant(gateModuleCode, "export type ConsoleKpiTile", "export type ConsoleKpiTileRenamed"), CONSOLE_GATES, r.consoleGateCalls),
+        untouched: gp(gateModuleCode, CONSOLE_GATES, r.consoleGateCalls),
+      };
+      ok("0.512.c1 · CONTROL · a new exported gated reader with no entry, an entry naming no export, a struck needle exported again, a struck needle this run measured a call of, and a declared non-reader that stopped being exported are each reported; the real module against the real table is not",
+        fired.exportNoEntry.some((p) => p.includes("exports houseLimitsForConsole, which is neither a CONSOLE_GATES entry"))
+          && fired.entryNoExport.some((p) => p.includes("CONSOLE_GATES names houseRefusalForConsole, which this module does not export"))
+          && fired.needleExported.some((p) => p.includes("exports houseStakeForConsole again"))
+          && fired.needleCalled.some((p) => p.includes("this run measured 1 call(s) of it"))
+          && fired.nonReaderGone.some((p) => p.includes("no longer exports ConsoleKpiTile"))
+          && fired.untouched.length === 0,
+        j(fired));
+    }
 
     const PLAYER = "src/app/admin/players/[id]/page.tsx", AUDIT = "src/app/admin/audit/page.tsx", KYC = "src/app/admin/kyc/[id]/page.tsx";
     const PLAYER_READ = "[...(getAuditForActor(id, 200) ?? []), ...(getAuditForTarget(\"User\", id, 200) ?? [])]";
