@@ -119,7 +119,12 @@ try {
                  no way to read it. Whether the ANSWER column needs scrolling at all is §5.2's question, and it is
                  asked there — where 432(b)'s arithmetic says the second money pair cannot fit 360px beside a
                  readable subject column. */
-              return { left: r.left, right: r.right, reachable: p.scrollWidth > p.clientWidth + 1 };
+              /* ⛔ AND `hidden` IS NOT REACHABLE. The box-selection regex above keeps `hidden` on purpose — an
+                 `overflow-x: hidden` ancestor IS the box that clips — but the kit's rule that a box "defers rather
+                 than clips" is true only of `auto` and `scroll`. Computing `reachable` from `scrollWidth >
+                 clientWidth` ALONE exempted a figure genuinely sliced by a hidden-overflow edge, which is precisely
+                 the defect class §5.1 exists to catch. */
+              return { left: r.left, right: r.right, reachable: /auto|scroll/.test(cs.overflowX) && p.scrollWidth > p.clientWidth + 1 };
             }
           }
           return { left: 0, right: window.innerWidth, reachable: false };
@@ -182,10 +187,15 @@ try {
           const r = td.querySelector("div")?.getBoundingClientRect() ?? td.getBoundingClientRect();
           return { left: Math.round(r.left), right: Math.round(r.right) };
         });
-        return { clipped, tiles, shortControls, controlCount: controls.length, tap, firstCells, emptyBoxes, scrollable, ownText: own.innerText, attrs, body: document.body.innerText, vw: window.innerWidth };
+        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, emptyBoxes, scrollable, ownText: own.innerText, attrs, body: document.body.innerText, vw: window.innerWidth };
       });
 
       ok(`§5.1 ${route} @${width} · no money figure is clipped by a box that cannot scroll, and none is broken across two lines`, facts.clipped.length === 0, facts.clipped.join(" | "));
+      // ⛔ A CONTROL FOR THE §A5 GATE, and it was the one new check in this file that had none while §5.3, §5.4 and
+      // §5.6 each gained one in the same commit: an empty selector reports zero clipped figures and reads as
+      // compliance — and this run moved `tabular` off the `<td>` onto the figure span, i.e. edited the very class
+      // surface the selector depends on.
+      ok(`§5.1 ${route} @${width} · CONTROL · the money scan reached at least one figure`, facts.moneyCount >= 1, `${facts.moneyCount} money spans`);
       ok(`§5.3 ${route} @${width} · no tile carries two amounts`, facts.tiles.every((t) => t.amounts <= 1), facts.tiles.filter((t) => t.amounts > 1).map((t) => t.text).join(" | "));
       ok(`§5.3 ${route} @${width} · no KPI delta carries a currency-prefixed figure`, facts.tiles.every((t) => !/TZS\s*[\d,]/.test(t.delta)), facts.tiles.map((t) => t.delta).filter((d) => /TZS\s*[\d,]/.test(d)).join(" | "));
       // ⛔ A CONTROL FOR THE CHECK ABOVE: an empty selector reads exactly like compliance.
