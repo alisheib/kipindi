@@ -959,6 +959,106 @@ section("§2 · the strip, the band, the roster and every failure");
     STATES.push(["limits-panel", u3], ["limits-unset-required", u2]);
   }
 
+  /* ━━ 1.348 · THE EAT DAY IS DERIVED ONCE PER RENDER, AND EVERY READ THAT NEEDS ONE IS GIVEN IT ━━━━━━━━━━━
+   *
+   * ⛔ RULING 348's PROOF (c) HAD NO ASSERTION ANYWHERE — `grep` for `1.348` found nothing in any suite, and §4
+   * scheduled it in no step. It is written here, and the day-key half is asserted BEHAVIOURALLY rather than as a
+   * source count, because the defect it names is not visible in the source at all: `readDeskCore` derives the key
+   * and the docblock says "DERIVED ONCE PER RENDER, HERE", while the limits panel's FIFTH read
+   * (`staffChosenPlacedToday`) derived a SECOND day inside the DAL — `eatDayKey(Date.now())` on memory and the
+   * DATABASE CLOCK on Prisma. Across EAT midnight, or under app/DB clock skew, ONE card then showed two days.
+   * ⚠️ Ruling 433(c) is AMENDED by this: dropping `dayKey` from the reader's `query` did not remove the second
+   * derivation, it only moved it out of the module's sight.
+   */
+  {
+    const CLOCK: Any = await import("../../src/lib/house-bot/clock.ts");
+    await w.limits({ gCapStaffChosenDailyTzs: 500_000 });
+
+    /* Two staff-chosen PLACED stakes: one finished inside YESTERDAY's EAT day, one inside TODAY's. A read that
+       honours a passed day returns exactly one of them; a read that derives its own always returns today's. */
+    const todayKey: string = CLOCK.eatDayKey(Date.now());
+    const yKey: string = CLOCK.eatDayKey(CLOCK.eatDayStartMs(todayKey) - 1);
+    const midOf = (k: string) => new Date(CLOCK.eatDayStartMs(k) + 12 * 3_600_000).toISOString();
+    const poll = await w.poll();
+    const plant = async (finishedAt: string, stakeTzs: number) => {
+      const id = w.constants.HOUSE_ID_PREFIX ? `${w.constants.HOUSE_ID_PREFIX.intent}${w.uid("x")}` : w.uid("hbi_");
+      await w.dal.houseBotIntentStore.insert({
+        id, houseBotId: b1.botId, botUserId: b1.userId, kind: "MANUAL", marketId: poll.id, productLine: "MARKET",
+        anchorKey: w.constants.manualAnchorKey(OFFICER, crypto.randomUUID()), triggerPositionId: null, triggerUserId: null, targetId: null,
+        requestedById: OFFICER, entryCondition: "THIN", side: "YES", stakeTzs,
+        dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000), status: "PLACED", reasonCode: null,
+        why: null, decision: {}, attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null,
+        claimedUntil: null, positionId: `pos_${id}`, finishedAt, alertedAt: null,
+      });
+    };
+    await plant(midOf(yKey), 7_000);
+    await plant(midOf(todayKey), 3_000);
+
+    /* ⛔ (a) BOTH TWINS HONOUR A PASSED DAY, AND THE TWO ANSWERS DIFFER. Without the widening the argument is
+       ignored and both calls return today's 3,000 — which is the whole defect, on either store. */
+    const forYesterday = await w.dal.houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey: yKey });
+    const forToday = await w.dal.houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey: todayKey });
+    const forNow = await w.dal.houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null });
+    ok("1.348 · `staffChosenPlacedToday` answers the day it is GIVEN, and a day it was not given is a different answer — on this store",
+      forYesterday.stakeTzs === 7_000 && forYesterday.count === 1
+        && forToday.stakeTzs === 3_000 && forToday.count === 1
+        && forNow.stakeTzs === forToday.stakeTzs,
+      j({ forYesterday, forToday, forNow, yKey, todayKey }));
+
+    /* ⛔ (b) AND THE RENDER PASSES ITS OWN KEY TO IT. The spy records the INPUT the reader handed the DAL; the
+       shell's `dayKey` is the key the render derived. One card, one day — asserted, not claimed in a docblock.
+       ⚠️ THE CONTROL IS AN IDENTITY CHECK, NOT A CALL THROUGH THE HANDLE JUST PATCHED: a control that calls the spy
+       itself fires whatever the reader did, which is the class this whole review is about. */
+    const realFn = w.dal.houseBotIntentStore.staffChosenPlacedToday;
+    const seen: Any[] = [];
+    let live: Any;
+    let calledHandle: Any = null;
+    try {
+      w.dal.houseBotIntentStore.staffChosenPlacedToday = function (this: Any, input: Any, tx?: Any) {
+        calledHandle = w.dal.houseBotIntentStore.staffChosenPlacedToday;
+        seen.push(input);
+        return realFn.call(this, input, tx);
+      };
+      live = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    } finally {
+      w.dal.houseBotIntentStore.staffChosenPlacedToday = realFn;
+    }
+    ok("1.348 · the limits panel's fifth read is handed the RENDER's own day key — the page cannot straddle EAT midnight and paint two days on one card",
+      seen.length === 1 && typeof live.dayKey === "string" && /^\d{4}-\d{2}-\d{2}$/.test(live.dayKey)
+        && seen[0].dayKey === live.dayKey && seen[0].houseBotId === null,
+      j({ passed: seen, dayKey: live.dayKey }));
+    ok("1.348 · CONTROL · the spy IS the handle the reader called (an identity check — a control that calls through its own patch fires either way)",
+      calledHandle !== null && calledHandle !== realFn && w.dal.houseBotIntentStore.staffChosenPlacedToday === realFn,
+      j({ recorded: seen.length, restored: w.dal.houseBotIntentStore.staffChosenPlacedToday === realFn }));
+
+    /* ⛔ (c) AND THE PAINTED FIGURE IS THAT DAY's FIGURE. `ConsoleDeskShell.dayKey` had NO reader anywhere before
+       this case — a field on a view model nothing reads is a field nobody can be wrong about. It is read here, and
+       it is what ties the row to the window. */
+    const staffRow = live.usage[4];
+    const direct = await w.dal.houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey: live.dayKey });
+    ok("1.348 · the targeted-and-manual usage row is the figure for the render's OWN day, read back through the same door",
+      staffRow.usedTzs === direct.stakeTzs && staffRow.usedTzs === forToday.stakeTzs && live.dayKey === todayKey,
+      j({ row: staffRow.usedTzs, direct: direct.stakeTzs, dayKey: live.dayKey }));
+
+    /* ⛔ (d) 348's SOURCE HALF: ONE derivation in the whole gated-reader module, and never the PLANNER's clock.
+       348 names `dbClock()` by name as the wrong one — the seam refuses on `eatDayKey(Date.now())`, so a console
+       measuring the database's day can disagree with the gate it is reporting on. */
+    if (STORE === "memory") {
+      const gateSrc = decomment(read(GATE));
+      ok("1.348 · exactly ONE `eatDayKey(` call in the whole gated-reader module, and no `dbClock(` anywhere in it",
+        (gateSrc.match(/eatDayKey\(/g) ?? []).length === 1 && !/dbClock\(/.test(gateSrc),
+        j({ eatDayKey: (gateSrc.match(/eatDayKey\(/g) ?? []).length, dbClock: /dbClock\(/.test(gateSrc) }));
+      /* ⛔ AND THE FIFTH READ REALLY IS GIVEN IT AT SOURCE. The behavioural case above proves today's code; this
+         pins the SHAPE, so a future panel that adds a sixth read without a key is reported beside it. */
+      ok("1.348 · `readDeskCore` takes a FACTORY of the day key, and the fifth read is called with it",
+        /readDeskCore<T>\(extra: \(dayKey: string\) => Promise<T>\)/.test(gateSrc)
+          && /staffChosenPlacedToday\(\{ houseBotId: query\.houseBotId, dayKey \}\)/.test(gateSrc)
+          && /readDeskCore\(\(dayKey\) =>/.test(gateSrc),
+        j({ factory: /readDeskCore<T>\(extra: \(dayKey: string\) => Promise<T>\)/.test(gateSrc) }));
+    }
+    await w.limits();
+  }
+
   /* ⛔ 1.366 / 1.367 · TWO LOSS ROWS AGAINST ONE CAP, THE DISPLAY CLAMPED AT ZERO, AND AT/OVER SAID IN WORDS.
    * The reader is NOT clamped: `foldDayBook` keeps a negative realised loss, which is a PROFIT, and every gate and
    * stop still reads it. What is clamped is the RENDER, because "−TZS 12,000 of TZS 50,000" is "Today's net" wearing

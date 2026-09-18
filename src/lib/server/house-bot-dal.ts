@@ -1509,8 +1509,18 @@ export interface HouseBotIntentStore {
   listAlertRepair(limit: number): Promise<StoredHouseBotIntent[]>;
   /** Staff-chosen PLACED stakes (MANUAL or targeted) finished in `[fromIso, toIso)`. */
   staffChosenPlaced(input: { houseBotId: string | null; fromIso: string; toIso: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
-  /** The same for the current EAT day, its start computed from DB `now()` (N1 §2). */
-  staffChosenPlacedToday(input: { houseBotId: string | null }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
+  /**
+   * The same for ONE EAT day. With no `dayKey` it is the CURRENT day, each twin on its own clock — the memory
+   * twin's `eatDayKey(Date.now())`, the Prisma twin's DB `now()` (N1 §2) — which is what the seam and
+   * `cap-precheck` ask for at the moment they refuse a stake.
+   * ⛔ `dayKey` IS FOR A READER THAT HAS ALREADY DERIVED ITS DAY (C7-SPEC ruling 348). The console derives the
+   * EAT day ONCE per render and every figure on the page is measured over it; this read used to derive a SECOND
+   * day of its own — a second `eatDayKey(Date.now())` in the memory twin and the DATABASE CLOCK in the Prisma
+   * one — so across EAT midnight, or under app/DB clock skew, ONE card could show two days. Passing the render's
+   * key removes the second derivation for that path. Both twins answer the same window for the same key, which
+   * `test:dal-parity` holds.
+   */
+  staffChosenPlacedToday(input: { houseBotId: string | null; dayKey?: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
   /** The activity feed, newest first, keyset-paged (C7). */
   listFeed(filter: IntentFeedFilter, tx?: HouseTx): Promise<Page<StoredHouseBotIntent>>;
 }
@@ -2534,9 +2544,11 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
       && ms(i.finishedAt) >= from && ms(i.finishedAt) < to && (houseBotId == null || i.houseBotId === houseBotId));
     return { count: rows.length, stakeTzs: rows.reduce((s, i) => s + i.stakeTzs, 0) };
   },
-  async staffChosenPlacedToday({ houseBotId }) {
-    const w = eatDayWindow(eatDayKey(Date.now()));
-    if (!w) throw new Error("house-bot-dal: could not compute the current EAT day");
+  async staffChosenPlacedToday({ houseBotId, dayKey }) {
+    /* ⛔ THE CALLER'S DAY WHEN IT HAS ONE (ruling 348). Deriving one here as well is a SECOND derivation, and a
+       render that straddles EAT midnight then paints two days on one card. */
+    const w = eatDayWindow(dayKey ?? eatDayKey(Date.now()));
+    if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey ?? "(now)")}`);
     return memoryHouseBotIntents.staffChosenPlaced({
       houseBotId, fromIso: new Date(w.fromMs).toISOString(), toIso: new Date(w.toMs).toISOString(),
     });
@@ -3713,7 +3725,19 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
     return staffChosenSums(tx, houseBotId, (p) =>
       `"finishedAt" >= ${p.col("HouseBotIntent", "finishedAt", fromIso)} AND "finishedAt" < ${p.col("HouseBotIntent", "finishedAt", toIso)}`);
   },
-  async staffChosenPlacedToday({ houseBotId }, tx) {
+  async staffChosenPlacedToday({ houseBotId, dayKey }, tx) {
+    /* ⛔ A PASSED DAY IS BOUND, NOT RE-DERIVED (ruling 348). `EAT_TODAY_*_SQL` is the DATABASE CLOCK, which is
+       the derivation 348 names by name as the wrong one for a console figure: the seam refuses on
+       `eatDayKey(Date.now())`, so a console reading DB-today can disagree with the gate it is reporting on.
+       With a key the window is the same one `staffChosenPlaced` binds, so the two twins cannot drift. */
+    if (dayKey != null) {
+      const w = eatDayWindow(dayKey);
+      if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey)}`);
+      const fromIso = new Date(w.fromMs).toISOString();
+      const toIso = new Date(w.toMs).toISOString();
+      return staffChosenSums(tx, houseBotId, (p) =>
+        `"finishedAt" >= ${p.col("HouseBotIntent", "finishedAt", fromIso)} AND "finishedAt" < ${p.col("HouseBotIntent", "finishedAt", toIso)}`);
+    }
     return staffChosenSums(tx, houseBotId, () => `"finishedAt" >= ${EAT_TODAY_FROM_SQL} AND "finishedAt" < ${EAT_TODAY_TO_SQL}`);
   },
   async listFeed(filter, tx) {

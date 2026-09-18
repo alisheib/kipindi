@@ -370,16 +370,25 @@ function productWords(updown: boolean, polls: boolean): string {
  * ⛔ THE FIFTH READ IS THE PANEL'S OWN, AND IT IS SETTLED WITH THE OTHER FOUR (432(q)). The roster passes
  * `loadParseContext()` (the Products column's words); the limits panel passes `staffChosenPlacedToday`. Exactly one
  * extra read, inside the one settled set, so no panel can add a second read outside it without moving this line.
+ * ⛔ IT IS A FACTORY, NOT A PROMISE, AND THAT IS RULING 348 (corrected 2026-09-18). A promise is built BEFORE this
+ * function derives the day, so the fifth read could not be given the render's key and derived its own instead.
+ * Taking `(dayKey) => Promise<T>` is what lets the key reach it while the read still starts inside the one
+ * settled set.
  *
  * ⛔ SETTLED, NOT `Promise.all` (ruling 355): one failed read never blanks the page, and each failure is attributed to
  * ITS figure — a failed roster read is `AdminLoadError`, a failed money read is the tile's `unavailable` and the cell's
  * "—", never a zero.
  *
  * ⛔ THE EAT DAY KEY IS DERIVED ONCE PER RENDER, HERE, through the SEAM's own derivation (`eatDayKey(Date.now())`,
- * ruling 348). ⚠️ RECORDED DEVIATION from ruling 372(a), which drafted `dayKey` as a member of the usage reader's
- * `query`: a console page may not import `@/lib/house-bot/clock` (ruling 340's pin, `test:house-bot-console` 1.340),
- * so a page passing the day key would have to derive a house value itself. The derivation stays where the roster
- * already does it, the page passes only `houseBotId`, and the reader's arity is unchanged at three.
+ * ruling 348) — AND IT IS NOW PASSED TO EVERY READ THAT NEEDS A DAY, which is what makes that sentence true.
+ * ⚠️ RECORDED DEVIATION from ruling 372(a), which drafted `dayKey` as a member of the usage reader's `query`: a
+ * console page may not import `@/lib/house-bot/clock` (ruling 340's pin, `test:house-bot-console` 1.340), so a page
+ * passing the day key would have to derive a house value itself. The derivation stays where the roster already does
+ * it, the page passes only `houseBotId`, and the reader's arity is unchanged at three.
+ * ⛔ AND 433(c) WAS WRONG ABOUT ITS CONSEQUENCE (amended, replan review 2026-09-18). Dropping the query member did
+ * NOT remove the second derivation — it only moved it out of sight: `staffChosenPlacedToday` derived its own day
+ * inside the DAL, `eatDayKey(Date.now())` on memory and the DATABASE CLOCK on Prisma. Keeping the key inside this
+ * module is not the same as deriving it once, and the fifth read is the one that proved the difference.
  */
 type DeskCore = {
   dayKey: string;
@@ -391,14 +400,14 @@ type DeskCore = {
   exposure: Map<string, number> | null;
 };
 
-async function readDeskCore<T>(extra: Promise<T>): Promise<{ core: DeskCore; extra: T | null }> {
+async function readDeskCore<T>(extra: (dayKey: string) => Promise<T>): Promise<{ core: DeskCore; extra: T | null }> {
   const dayKey = eatDayKey(Date.now());
   const [controlR, rosterR, dayR, exposureR, extraR] = await Promise.allSettled([
     houseBotControlStore.get(),
     houseBotStore.listNonRemoved(),
     houseDayBooks(dayKey),
     houseBookStore.openExposure(null),
-    extra,
+    extra(dayKey),
   ]);
   /* 421 · a schema the migration has not reached is a STATE. It is never an error boundary, never `AdminLoadError`
    * and never an empty roster with no cause. */
@@ -549,7 +558,7 @@ export async function houseRosterForConsole(
 ): Promise<ConsoleRosterView | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
-  const { core, extra: parseCtx } = await readDeskCore(loadParseContext());
+  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());
   const shell = deskShell(core);
   const { roster, dayBooks, exposure, schemaMissing, controlUnreadable, control } = core;
 
@@ -801,7 +810,15 @@ export async function houseUsageForConsole(
 ): Promise<ConsoleLimitsView | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
-  const { core, extra: staffChosen } = await readDeskCore(houseBotIntentStore.staffChosenPlacedToday({ houseBotId: query.houseBotId }));
+  /* ⛔ THE RENDER'S OWN DAY KEY, PASSED (C7-SPEC ruling 348). The call was `staffChosenPlacedToday({ houseBotId })`
+     and the DAL then derived a SECOND day of its own — `eatDayKey(Date.now())` in the memory twin, the DATABASE
+     CLOCK in the Prisma one. 348 fixes the key at ONE derivation per render, from the SEAM's clock, precisely so
+     that a page cannot straddle EAT midnight and paint two days on one card; this reader's own docblock said
+     'DERIVED ONCE PER RENDER, HERE' while this row was deriving its own. `readDeskCore` therefore takes a
+     FACTORY rather than a promise, so the extra read is created with the key already in hand and stays inside
+     the one settled set (432(q)). */
+  const { core, extra: staffChosen } = await readDeskCore((dayKey) =>
+    houseBotIntentStore.staffChosenPlacedToday({ houseBotId: query.houseBotId, dayKey }));
   const shell = deskShell(core);
   const { control, dayBooks, exposure, schemaMissing } = core;
 

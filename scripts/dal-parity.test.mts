@@ -483,6 +483,26 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ok("6.sealed.sql · targetStore.insert stamps createdAt and effectiveFrom from one database now(), by hand",
       /now\(\), now\(\) \+ \(/.test(insert) && /TARGET_ARMING_SEC/.test(insert) && !/insertSql\(/.test(insert));
   }
+  {
+    /* ⛔ ONE DAY PER RENDER, IN BOTH TWINS (C7-SPEC ruling 348). `staffChosenPlacedToday` used to derive its own
+       EAT day in each twin — `eatDayKey(Date.now())` in memory, the DATABASE CLOCK (`EAT_TODAY_FROM_SQL`) in
+       Prisma — so a console that had already derived the render's day got a SECOND, possibly different, day back
+       and one card could show two of them. A twin that accepted `dayKey` and quietly ignored it would be the same
+       defect wearing the fix's signature, which is why both bodies are read, not just the interface.
+       ⚠️ How they BEHAVE on the two stores is `test:house-bot-console` 1.348, which runs on both. */
+    const priIntents = region(houseDalSrc, "const prismaHouseBotIntents:");
+    const memIntentsSrc = region(houseDalSrc, "const memoryHouseBotIntents:");
+    const priToday = objectMethod(priIntents, "staffChosenPlacedToday");
+    const memToday = objectMethod(memIntentsSrc, "staffChosenPlacedToday");
+    ok("6.twin.348 · staffChosenPlacedToday takes the caller's dayKey and USES it, in both twins — never a second derivation of its own",
+      /\{ houseBotId, dayKey \}/.test(priToday) && /\{ houseBotId, dayKey \}/.test(memToday)
+        && /eatDayWindow\(dayKey \?\? eatDayKey\(Date\.now\(\)\)\)/.test(memToday)
+        && /if \(dayKey != null\)[\s\S]*eatDayWindow\(dayKey\)[\s\S]*p\.col\("HouseBotIntent", "finishedAt", fromIso\)/.test(priToday),
+      `memory ${memToday.length} chars · prisma ${priToday.length} chars`);
+    ok("6.twin.348 · CONTROL · both method bodies were really found, and the DB-clock branch is still there for the callers that ask for TODAY",
+      memToday.length > 60 && priToday.length > 120 && /EAT_TODAY_FROM_SQL/.test(priToday),
+      `memory ${memToday.length} · prisma ${priToday.length}`);
+  }
 
   // Every name the migrations fix, mirrored for the memory twin — no database needed to compare.
   const migDir = join(ROOT, "prisma/migrations");
