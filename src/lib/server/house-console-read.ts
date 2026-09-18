@@ -41,6 +41,7 @@ import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
 import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, DEFAULT_TAB, type ConsoleTab } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 import { FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, type LimitField } from "@/lib/house-bot/rules";
+import { wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
 import { saveHouseBotLimits } from "./house-bot/limits-save";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl } from "./house-bot-dal";
@@ -328,6 +329,18 @@ function edgeClause(used: number, limit: number): string {
 const UNREADABLE: ConsoleUsageCell = { text: "—", used: "—", limit: null, money: false, halves: [], edgeText: "" };
 
 /**
+ * ⛔ WHAT AN UNSET LIMIT ACTUALLY DOES, IN ONE HOME (replan ruling 547). `over(cap, value)` in the seam is
+ * `cap == null || value > cap`, so an unset limit REFUSES EVERY STAKE — and that is true whether the desk is on or
+ * off. The KPI tile has said it since step 1; the usage caption said something else entirely, and this is now the
+ * one place either of them reads it from.
+ */
+const UNSET_CONSEQUENCE = "nothing can be staked until this limit is set";
+
+/** ⛔ The two readings of an unset REQUIRED limit (replan ruling 547) — the ON one built from the tile's own words. */
+const REQUIRED_UNSET_ON = `Not set — ${UNSET_CONSEQUENCE}.`;
+const REQUIRED_UNSET_OFF = "Not set — the master switch cannot be turned on.";
+
+/**
  * One money tile: ONE compact amount in the value, the limit NAMED in the delta as a proportion with no second
  * amount (ruling 404 — the delta slot is a letter-spaced `text-micro` rung, and §M4 forbids tracking over an amount).
  * ⛔ `Math.floor`, not `round`: a rounded proportion prints "100%" at 99.6%, which is not true.
@@ -336,7 +349,7 @@ function moneyTile(label: string, used: number, limit: number | null, limitLabel
   /* ⛔ NO ARROW IN A DELTA (ruling 432(i)). The delta slot is a plain `<span>` inside `AdminKpi` — it has never been a
    * link and cannot become one — so "set it on Limits →" pointed an officer at a control that does not exist on this
    * rung and at a tab that has no panel until step 3. It names the CONSEQUENCE instead. */
-  if (limit == null) return { label, value: "Not set", delta: "nothing can be staked until this limit is set" };
+  if (limit == null) return { label, value: "Not set", delta: UNSET_CONSEQUENCE };
   const shown = Math.max(0, used);
   const pct = limit > 0 ? Math.floor((shown / limit) * 100) : 100;
   return { label, value: formatTzsCompact(shown), delta: `${formatNumber(pct)}% of ${limitLabel.toLowerCase()}` };
@@ -392,6 +405,56 @@ const operatorBound = (value: string): number => OPERATOR_DATA_EXEMPT.find((e) =
  */
 function stripLinkedTail(s: string): string {
   return s.endsWith("→") ? s.slice(0, -1).trimEnd() : s;
+}
+
+/**
+ * ⛔ THE CONSOLE'S OWN WAY OUT OF A PAUSE, WHERE THE SHARED ONE CARRIES A WORD 453 FORBIDS (ruling 432(f), owed at
+ * step 4 and discharged here).
+ *
+ * MEASURED against `scripts/lib/house-bot-vocabulary.mjs`: SEVEN of the twenty-two rows of `PAUSE_REASON_WAY_OUT`
+ * name the feature in the sentence an officer reads — six on the bare word *bot* (`ACCOUNT_MISSING`,
+ * `WALLET_MISSING`, `ACCOUNT_CLOSED`, `IDENTITY_REFUSED`, `HOLDER_ERASURE_REQUEST`, `UNMAPPED_REFUSAL`) and one on
+ * *liquidity* (`HOLDER_WITHDREW`: "The holder stopped liquidity stakes themselves"). Ruling 432(f) found the last
+ * of those on the first render and rendered the chip ALONE rather than the caption, with the neutral pass owed to
+ * the step that would paint it. This is that step: the detail page's strip and the roster's status cell both carry
+ * it, so it is written now.
+ *
+ * ⛔ AN OVERRIDE, NOT A REWRITE OF `pause-reasons.ts` — the same decision 432(b) took for `FIELD_META`, for the same
+ * reason. Those sentences are also the engine's and the admin bell's internal vocabulary, which D19 exempts (an
+ * alert about a bot goes to admins only) and which no screenshot-facing surface renders. Ruling 453 binds what the
+ * CONSOLE renders, and the console's copy has one home: this module. Rewriting the shared table would change words
+ * on surfaces 453 does not govern in order to fix one it does — and it would move text the rules suite pins.
+ * ⛔ THE POPULATION IS DERIVED, NOT TYPED. `test:house-bot-console` requires an entry for every way-out whose shared
+ * copy carries a word AND requires every entry here to replace one that really does, so a missing override and an
+ * override nobody ruled are reported equally loudly. 432(f) itself was written from a hand reading and named ONE of
+ * these seven; 433(b) and replan 539 are the same class, twice over.
+ * ⛔ `{label}` SURVIVES: the shared table's one placeholder is filled by the same `wayOutCopy` the engine uses.
+ */
+const CONSOLE_WAY_OUT: Readonly<Record<string, string>> = {
+  ACCOUNT_MISSING: "Their account could not be found. Start once it reads again, or remove it from the desk.",
+  WALLET_MISSING: "Restore their wallet — settlement is blocked for every player until then. Removing it from the desk does not bypass it.",
+  ACCOUNT_CLOSED: "Account closed — it was removed from the desk. Recover the float out of band.",
+  IDENTITY_REFUSED: "An officer must reopen the refusal; then Re-verify and Start. Removing it from the desk is recommended.",
+  HOLDER_ERASURE_REQUEST: "Resolve their erasure request or remove it from the desk. If they withdraw it: Re-verify, then Start.",
+  HOLDER_WITHDREW: "The holder stopped the stakes themselves. Only a fresh password they give you can restart it.",
+  UNMAPPED_REFUSAL: "A bet refusal this build doesn't recognise paused it. Read the activity feed before starting again.",
+};
+
+/**
+ * The key a cause's way out is overridden by. ⛔ It is NOT the cause code alone: `wayOutForCause` answers with two
+ * SHARED objects that belong to no single code — the consent-void way out and support's temporary-password one —
+ * and keying on the code would silently give each of them the wrong override the day either stops being neutral.
+ */
+export function consoleWayOutKey(cause: { code: string; method?: string | null }): string {
+  if (cause.code === "CONSENT_VOID") return "CONSENT_VOID";
+  if (cause.code === "PASSWORD_CHANGED" && cause.method === "OFFICER_TEMP") return "OFFICER_TEMP";
+  return cause.code;
+}
+
+/** One live cause's way out, in the console's own words where the shared table's carries a word 453 forbids. */
+export function consoleWayOutCopy(cause: HolderCause, label: string): string {
+  const own = CONSOLE_WAY_OUT[consoleWayOutKey(cause)];
+  return own ? own.replaceAll("{label}", label) : wayOutCopy(wayOutForCause(cause), label);
 }
 
 /** The scope words a row shows, from `FIELD_META`'s own labels — never typed beside the field. */
@@ -824,8 +887,23 @@ export function consoleLimitLabel(field: LimitField): string {
  * ⛔ IT IS EXPORTED AND ASSERTED AT THE FUNCTION LEVEL, because the LIMITS tab renders globals only — every row on it
  * falls in one of the first two branches, so the third would be an unexecuted branch with no proof until step 4.
  */
-export function unsetCaptionFor(field: string): string {
-  if ((REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field)) return "Not set — the master switch cannot be turned on.";
+export function unsetCaptionFor(field: string, on: boolean): string {
+  /* ⛔ THE REQUIRED BRANCH SPLITS ON THE RENDER'S OWN SWITCH STATE (replan ruling 547), and the state it was blind
+   * to is REACHABLE: a required limit can be cleared AFTER the desk is switched on. Measured on a served build at
+   * 360 and 1280 (`strip-on-360.png`, `strip-on-1280.png`): the chip read ON, the strip's own "Set N global limits
+   * first →" was correctly absent — ruling 306's fix — and ~500px lower this card still said "the master switch
+   * cannot be turned on." Two opposite statements about one switch, on one screen, on the card that stops money.
+   * ⛔ 306's FIX WAS APPLIED TO THE STRIP ONLY, which is why this survived a whole checkpoint: the caption chose by
+   * MEMBERSHIP in `REQUIRED_FOR_MASTER_ON` alone and had no reference to `on` at all.
+   * ⛔ AND THE ON-BRANCH'S SENTENCE IS NOT NEW COPY — it is the consequence the KPI tile above has spelled since
+   * step 1, read from the one home both now share. With the desk ON and a required cap unset, `over(cap, value)`
+   * refuses every stake, so that is the true and only thing to say. */
+  /* ⚠️ BOTH SENTENCES ARE NAMED CONSTANTS, so the declared mutation that removes the branch can anchor on a line
+   * that is not a template literal — an anchor cannot carry a backtick or a `${}` (the anchors file says so in its
+   * own header, and `test:red-anchors` refuses an anchor it cannot resolve exactly once). */
+  if ((REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field)) {
+    return on ? REQUIRED_UNSET_ON : REQUIRED_UNSET_OFF;
+  }
   if (isClearExempt(field)) return "Not set — targeted and manual stakes cannot be placed.";
   return "Not set — this account cannot place a bet.";
 }
@@ -955,9 +1033,9 @@ function usageRow(name: string, used: number | null, limit: number | null): Cons
 }
 
 /** An unset usage row: NO bar, and 364's caption chosen by the field's own membership. */
-function unsetUsageRow(name: string, field: LimitField): ConsoleUsageRow {
+function unsetUsageRow(name: string, field: LimitField, on: boolean): ConsoleUsageRow {
   const r = usageRow(name, 0, null);
-  return { ...r, unsetCaption: unsetCaptionFor(field), unsetLinked: (REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field) };
+  return { ...r, unsetCaption: unsetCaptionFor(field, on), unsetLinked: (REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field) };
 }
 
 /**
@@ -998,7 +1076,7 @@ export async function houseUsageForConsole(
     const money = (field: LimitField, used: number | null, scope?: string) => {
       const name = scope ? `${consoleLimitLabel(field)} (${scope})` : consoleLimitLabel(field);
       const limit = control[field];
-      return limit == null ? unsetUsageRow(name, field) : usageRow(name, used, limit);
+      return limit == null ? unsetUsageRow(name, field, control.enabled) : usageRow(name, used, limit);
     };
     /* ⛔ 364's SET, and ⛔ TWO LOSS ROWS AGAINST ONE CAP (366) — never collapsed, because the gate and the stop read
      * different figures: the seam refuses a new stake on PROJECTED loss, and a bot is auto-paused only on SETTLED
@@ -1042,7 +1120,7 @@ export async function houseUsageForConsole(
       optional: FIELD_META[field].nullable,
       money: unit === "TZS",
       unset,
-      caption: unset ? unsetCaptionFor(field) : null,
+      caption: unset ? unsetCaptionFor(field, control.enabled) : null,
       firstUnset,
     };
   });

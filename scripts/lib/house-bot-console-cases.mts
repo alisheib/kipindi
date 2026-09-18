@@ -976,12 +976,68 @@ section("§2 · the strip, the band, the roster and every failure");
     const MASTER = "Not set — the master switch cannot be turned on.";
     const TARGETED = "Not set — targeted and manual stakes cannot be placed.";
     const ACCOUNT = "Not set — this account cannot place a bet.";
-    ok("1.364 · every member of `REQUIRED_FOR_MASTER_ON` gets the master-switch caption, and the list is not empty",
-      REQ.length >= 8 && REQ.every((f) => GATEM.unsetCaptionFor(f) === MASTER), j(REQ.filter((f) => GATEM.unsetCaptionFor(f) !== MASTER)));
+    /* ⚠️ EVERY CALL NOW PASSES THE RENDER'S SWITCH STATE (replan ruling 547). The chooser took the field alone and
+     * had no reference to `on` at all, which is how "the master switch cannot be turned on" came to sit under a chip
+     * reading ON. These three assert the SWITCH-OFF reading; the ON reading is its own case below. */
+    const off = (f: string) => GATEM.unsetCaptionFor(f, false);
+    ok("1.364 · every member of `REQUIRED_FOR_MASTER_ON` gets the master-switch caption while the desk is OFF, and the list is not empty",
+      REQ.length >= 8 && REQ.every((f) => off(f) === MASTER), j(REQ.filter((f) => off(f) !== MASTER)));
     ok("1.364 · every member of `CLEAR_EXEMPT` gets the targeted-and-manual caption — the blanket sentence would be a LIE on a staff-chosen cap",
-      EXEMPT.length >= 7 && EXEMPT.every((f) => GATEM.unsetCaptionFor(f) === TARGETED), j(EXEMPT.filter((f) => GATEM.unsetCaptionFor(f) !== TARGETED)));
+      EXEMPT.length >= 7 && EXEMPT.every((f) => off(f) === TARGETED), j(EXEMPT.filter((f) => off(f) !== TARGETED)));
     ok("1.364 · every cap the seam reads UNCONDITIONALLY gets the third caption, and it says `account` — ruling 453 outranks 364's own wording",
-      UNCONDITIONAL.every((f) => GATEM.unsetCaptionFor(f) === ACCOUNT) && !NEUTRAL.test(ACCOUNT), j(UNCONDITIONAL.map((f) => GATEM.unsetCaptionFor(f))));
+      UNCONDITIONAL.every((f) => off(f) === ACCOUNT) && !NEUTRAL.test(ACCOUNT), j(UNCONDITIONAL.map((f) => off(f))));
+    /* ━━ 1.547 · RULING 306's DEFECT, ONE CARD LOWER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * Found by rendering the ON state, which no tile of this section had ever carried: the chip read ON, 306's own
+     * fix held in the STRIP — "Set N global limits first →" correctly absent — and about 500px lower the usage card
+     * still said "the master switch cannot be turned on." Two opposite statements about one switch, on one screen,
+     * on the card that stops money.
+     * ⚠️ The state is REACHABLE: a required limit can be cleared AFTER the desk is switched on, which is exactly how
+     * the tile that found this was taken.
+     * ⛔ AND THE ON SENTENCE IS NOT NEW COPY — it is the consequence the KPI tile has spelled since step 1, which is
+     * what makes it the right one: with the desk ON and a required cap unset, `over(cap, value)` is
+     * `cap == null || value > cap`, so every stake is refused. The two are asserted to be the SAME STRING, so a
+     * later edit cannot drift one from the other. */
+    {
+      const onCap = (f: string) => GATEM.unsetCaptionFor(f, true);
+      ok("1.547 · with the desk ON, a required limit's unset caption states the CONSEQUENCE — never that a switch already on cannot be turned on",
+        REQ.every((f) => onCap(f) !== MASTER && onCap(f).startsWith("Not set —") && /nothing can be staked until this limit is set/.test(onCap(f))),
+        j([...new Set(REQ.map(onCap))]));
+      ok("1.547 · …and the OFF reading is unchanged, so the split is a BRANCH and not a rewrite",
+        REQ.every((f) => off(f) === MASTER) && new Set(REQ.map(onCap)).size === 1 && onCap(REQ[0]) !== off(REQ[0]),
+        j({ on: onCap(REQ[0]), off: off(REQ[0]) }));
+
+      /* ⛔ AND THE STATE THE TILE ACTUALLY SHOWED, RENDERED — the panel with the desk ON and a required cap cleared.
+       * A function-level split alone would not have caught this: the defect was that the PANEL never told the
+       * chooser what the strip already knew. So the two cards are read off ONE render and compared to each other. */
+      await w.limits({ gCapOpenExposureTzs: null });
+      await w.switchOn();
+      const onPanel = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+      const onRow = (onPanel.limits as Any[]).find((l: Any) => l.unset && l.name === GATEM.consoleLimitLabel("gCapOpenExposureTzs")) ?? null;
+      const onBar = (onPanel.usage as Any[]).find((u: Any) => u.unsetCaption !== null) ?? null;
+      const unsetTile = (onPanel.tiles as Any[]).find((t: Any) => t.value === "Not set") ?? null;
+      ok("1.547 · RENDERED · with the chip reading ON, neither the usage bar nor the limits list says the master switch cannot be turned on",
+        onPanel.on === true && onPanel.limitsFirstReason === null
+          && onRow !== null && onBar !== null
+          && !/master switch cannot be turned on/.test(onRow.caption)
+          && !/master switch cannot be turned on/.test(onBar.unsetCaption),
+        j({ on: onPanel.on, strip: onPanel.limitsFirstReason, row: onRow && onRow.caption, bar: onBar && onBar.unsetCaption }));
+      /* ⛔ ONE HOME, COMPARED AGAINST THE TILE ITSELF: the sentence the ON caption spends is the KPI tile's own
+       * delta for an unset limit, read off the SAME painted view model rather than re-typed in this file. */
+      ok("1.547 · CONTROL · that sentence is the KPI tile's own delta for an unset limit — ONE home, compared on one render, never typed twice",
+        unsetTile !== null && onRow !== null && onRow.caption === `Not set — ${unsetTile.delta}.`
+          && onBar !== null && onBar.unsetCaption === onRow.caption,
+        j({ caption: onRow && onRow.caption, delta: unsetTile && unsetTile.delta }));
+      /* ⛔ AND THE OFF STATE STILL SAYS THE SWITCH SENTENCE ON THE SAME PANEL, so the case above measures the BRANCH
+       * and not the disappearance of a sentence. */
+      await w.switchOff();
+      const offPanel = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+      const offRow = (offPanel.limits as Any[]).find((l: Any) => l.unset && l.name === GATEM.consoleLimitLabel("gCapOpenExposureTzs")) ?? null;
+      ok("1.547 · CONTROL · switched OFF, the very same row says the master switch cannot be turned on — and the strip says it too",
+        offPanel.on === false && offRow !== null && /master switch cannot be turned on/.test(offRow.caption)
+          && offPanel.limitsFirstReason !== null,
+        j({ on: offPanel.on, row: offRow && offRow.caption, strip: offPanel.limitsFirstReason }));
+      await w.limits();
+    }
     /* ⛔ THE THREE POPULATIONS DO NOT OVERLAP, so the chooser's ORDER is not doing the deciding for it. */
     ok("1.364 · CONTROL · the three populations are disjoint and the three captions differ, so the branch order is not what makes the case pass",
       new Set([MASTER, TARGETED, ACCOUNT]).size === 3
@@ -1742,7 +1798,7 @@ section("§2b · the limits save");
      * ⛔ THE POPULATION IS EVERY HINT THE PANEL RENDERS, derived from the rows, not the four that were wrong. */
     {
       const hints = view0.limits.map((l: Any) => l.hint).filter((h: Any) => typeof h === "string") as string[];
-      const captions = LIMITS.map((f) => GATEM.unsetCaptionFor(f));
+      const captions = LIMITS.map((f) => GATEM.unsetCaptionFor(f, false));
       ok("2.537 · 432(n) · not one hint this panel renders says \"Not set\" — the unset consequence has ONE home, and a hint is true in every state",
         hints.length >= 8 && hints.every((h) => !/Not set/i.test(h)), j(hints.filter((h) => /Not set/i.test(h))));
       ok("2.537 · 432(n) · CONTROL · the ONE home really does say it — every caption `unsetCaptionFor` produces opens with \"Not set\", so the absence above is a measurement and not an empty population",
@@ -1886,6 +1942,63 @@ try {
   await w.switchOff();
 } catch (err) {
   ok("1.351 · the rate reader's fixture ran", false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2d · THE WAY OUT OF A PAUSE, IN THE CONSOLE'S OWN WORDS (ruling 432(f), owed since step 1 and discharged here)
+ *
+ * Ruling 311 renders, under the status chip, `wayOutCopy(wayOutForCause(sortCauses(causes)[0]), label)` — the
+ * sentence that tells an officer how to get an account running again. 432(f) measured ONE of those sentences
+ * carrying a forbidden word (`HOLDER_WITHDREW`'s "liquidity stakes") and rendered the chip ALONE at step 1, owing
+ * the neutral pass to the step that would paint the caption. This is that step, and the population is DERIVED:
+ * every way-out whose shared copy carries a word must be overridden, and every override must replace one that does.
+ * ⛔ A HAND READING IS WHAT PUT 432(f) ONE SHORT — it named the `liquidity` row and none of the six `bot` ones, the
+ * same class 433(b) and replan 539 found twice over on `FIELD_META`. So the guard enumerates the table, not a
+ * reviewer.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+section("§2d · the way out of a pause, neutral (ruling 432(f))");
+{
+  const PR: Any = await import("../../src/lib/house-bot/pause-reasons.ts");
+  /* The whole population: every `PAUSE_REASON_WAY_OUT` row, plus the two SHARED way-outs that belong to no single
+   * code — `wayOutForCause` answers with them for CONSENT_VOID and for support's temporary password, so a guard
+   * that walked the record alone would never scan either. */
+  const CAUSES: Array<{ code: string; method?: string }> = [
+    ...Object.keys(PR.PAUSE_REASON_WAY_OUT).map((code) => ({ code })),
+    { code: "CONSENT_VOID" },
+    { code: "PASSWORD_CHANGED", method: "OFFICER_TEMP" },
+  ];
+  const LABEL = "Account one";
+  const shared = (c: Any) => PR.wayOutCopy(PR.wayOutForCause(c), LABEL) as string;
+  const painted = (c: Any) => GATEM.consoleWayOutCopy(c, LABEL) as string;
+  const carries = (s: string) => NEUTRAL.test(s) || (houseHits(s) ?? []).length > 0;
+
+  const DIRTY = CAUSES.filter((c) => carries(shared(c)));
+  const OVERRIDDEN = CAUSES.filter((c) => painted(c) !== shared(c));
+  ok("1.311 · 432(f) · the population is not empty: the SHARED table really does carry a forbidden word in more than one row",
+    DIRTY.length >= 7, j(DIRTY.map((c) => GATEM.consoleWayOutKey(c))));
+  ok("1.311 · 432(f) · not one way-out sentence the console paints carries a house-vocabulary word, over the WHOLE table",
+    CAUSES.every((c) => !carries(painted(c))), j(CAUSES.filter((c) => carries(painted(c))).map((c) => [GATEM.consoleWayOutKey(c), painted(c)])));
+  ok("1.311 · 432(f) · CONTROL · the two sets are EQUAL — every dirty sentence is overridden, and no already-clean one is",
+    j(DIRTY.map((c) => GATEM.consoleWayOutKey(c)).sort()) === j(OVERRIDDEN.map((c) => GATEM.consoleWayOutKey(c)).sort()),
+    j({ dirty: DIRTY.map((c) => GATEM.consoleWayOutKey(c)), overridden: OVERRIDDEN.map((c) => GATEM.consoleWayOutKey(c)) }));
+  /* ⛔ THE SHARED TABLE IS NOT REWRITTEN (432(b)'s own decision, applied to the same class): those sentences are the
+   * engine's and the admin bell's internal vocabulary, which D19 exempts. The override lives in the console's one
+   * copy home, and the shared row it replaces still says what it always said. */
+  ok("1.311 · 432(f) · CONTROL · `pause-reasons.ts` is UNTOUCHED — the fix is an override in the console's copy home, not a rewrite of the engine's own words",
+    DIRTY.every((c) => carries(shared(c))) && /liquidity/.test(shared({ code: "HOLDER_WITHDREW" })), "");
+  /* ⛔ THE KEY IS NOT THE CAUSE CODE ALONE. Two causes answer with SHARED way-out objects, so keying on the code
+   * would hand each of them the wrong override the day either stopped being neutral. */
+  ok("1.311 · 432(f) · the override key separates the two SHARED way-outs from the codes that reach them",
+    GATEM.consoleWayOutKey({ code: "CONSENT_VOID" }) === "CONSENT_VOID"
+      && GATEM.consoleWayOutKey({ code: "PASSWORD_CHANGED", method: "OFFICER_TEMP" }) === "OFFICER_TEMP"
+      && GATEM.consoleWayOutKey({ code: "PASSWORD_CHANGED" }) === "PASSWORD_CHANGED"
+      && shared({ code: "PASSWORD_CHANGED", method: "OFFICER_TEMP" }) !== shared({ code: "PASSWORD_CHANGED" }), "");
+  /* ⛔ AND `{label}` STILL RESOLVES: the one placeholder the shared table spends is filled by the same helper the
+   * engine uses, so an overridden sentence cannot ship a raw brace onto the screen. */
+  ok("1.311 · 432(f) · no painted sentence carries an unresolved placeholder, and the one row that HAS a placeholder still fills it",
+    CAUSES.every((c) => !painted(c).includes("{label}"))
+      && painted({ code: "RULES_OUTDATED" }).includes(LABEL), j(painted({ code: "RULES_OUTDATED" })));
 }
 
 } catch (err) {

@@ -147,7 +147,7 @@ export const MUTATIONS = [
   {
     name: "304-notset · an unset limit renders a zero usage instead of a block",
     file: GATE,
-    from: `  if (limit == null) return { label, value: "Not set", delta: "nothing can be staked until this limit is set" };`,
+    from: `  if (limit == null) return { label, value: "Not set", delta: UNSET_CONSEQUENCE };`,
     to: `  if (limit == null) return { label, value: formatTzsCompact(Math.max(0, used)), delta: "0% of the limit" };`,
     expect: "1.304 · all three money limits NULL renders three 'Not set' tiles",
     suite: "console-mem",
@@ -517,8 +517,11 @@ export const MUTATIONS = [
   {
     name: "364-master · the required caption stops naming the master switch, so an unset required limit explains nothing",
     file: GATE,
-    from: `  if ((REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field)) return "Not set — the master switch cannot be turned on.";`,
-    to: `  if (false as boolean) return "Not set — the master switch cannot be turned on.";`,
+    /* ⚠️ RE-ANCHORED at C7 step 4: replan ruling 547 split this branch on the render's switch state, so the
+       one-line form no longer exists. The DEFECT is unchanged — the REQUIRED branch never fires, and an unset
+       required limit explains nothing. */
+    from: `  if ((REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field)) {`,
+    to: `  if (false as boolean) {`,
     expect: "1.364 · every member of `REQUIRED_FOR_MASTER_ON` gets the master-switch caption",
     suite: "console-mem",
   },
@@ -533,7 +536,7 @@ export const MUTATIONS = [
   {
     name: "364-bar-at-zero · an UNSET cap renders a bar at zero, saying headroom where the gate refuses everything",
     file: GATE,
-    from: `      return limit == null ? unsetUsageRow(name, field) : usageRow(name, used, limit);`,
+    from: `      return limit == null ? unsetUsageRow(name, field, control.enabled) : usageRow(name, used, limit);`,
     to: `      return usageRow(name, used ?? 0, limit ?? 0);`,
     expect: "1.364 · an UNSET cap renders NO bar and one of the three captions",
     suite: "console-mem",
@@ -1234,6 +1237,25 @@ import { formatEat } from "@/lib/utils";`,
     from: `      if (row.lastPlacedAt == null || at > ms(row.lastPlacedAt)) row.lastPlacedAt = new Date(at).toISOString();`,
     to: `      if (row.lastPlacedAt == null || at < ms(row.lastPlacedAt)) row.lastPlacedAt = new Date(at).toISOString();`,
     expect: "1.351 · one account's rate usage",
+    suite: "console-mem",
+  },
+  /* ── C7 step 4 · replan ruling 547 and ruling 432(f) — the two sentences step 3 left saying the wrong thing. ─ */
+  {
+    /* The caption goes back to choosing by MEMBERSHIP alone, with no reference to the render's switch state -- which is the shape that painted “the master switch cannot be turned on” under a chip reading ON. */
+    name: "547-caption-blind · the unset caption stops asking whether the desk is already on",
+    file: GATE,
+    from: `    return on ? REQUIRED_UNSET_ON : REQUIRED_UNSET_OFF;`,
+    to: `    return REQUIRED_UNSET_OFF;`,
+    expect: "1.547 · with the desk ON",
+    suite: "console-mem",
+  },
+  {
+    /* ONE key moves from a row whose shared sentence carries the feature's own word to a row whose sentence is already neutral. That is BOTH halves of the derived population at once: a dirty sentence with no override, and an override for a sentence nobody had to rename. */
+    name: "432f-wayout-key · the neutral way-out override moves onto a row that never needed one",
+    file: GATE,
+    from: `  HOLDER_WITHDREW: "The holder stopped the stakes themselves. Only a fresh password they give you can restart it.",`,
+    to: `  MANUAL: "The holder stopped the stakes themselves. Only a fresh password they give you can restart it.",`,
+    expect: "1.311 · 432(f) · not one way-out sentence",
     suite: "console-mem",
   },
 ];
