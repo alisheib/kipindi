@@ -2369,12 +2369,15 @@ export default function Ruling513Control() {
     /* ⛔ `BUILT_THROUGH` IS READ OFF THE TREE, NOT TYPED. It was a hand ratchet with no tie to anything the build
      * produces, so a step-4 build that forgot to bump it would silently stop requiring 1.399 — the roll-call would
      * report every owed assertion as present because none was owed. Each rung is the artefact that step creates. */
-    const BUILT_THROUGH =
-      existsSync(join(ROOT, `${SECTION}/new/page.tsx`)) ? 6
-        : (CR.CONSOLE_TABS as readonly string[]).includes("activity") ? 5
-          : existsSync(join(ROOT, DETAIL_PAGE)) ? 4
-            : (CR.CONSOLE_TABS as readonly string[]).includes("limits") ? 3
-              : 1;
+    const rung = (hasWizard: boolean, hasActivity: boolean, hasDetail: boolean, hasLimits: boolean) =>
+      hasWizard ? 6 : hasActivity ? 5 : hasDetail ? 4 : hasLimits ? 3 : 1;
+    const tree = {
+      wizard: existsSync(join(ROOT, `${SECTION}/new/page.tsx`)),
+      activity: (CR.CONSOLE_TABS as readonly string[]).includes("activity"),
+      detail: existsSync(join(ROOT, DETAIL_PAGE)),
+      limits: (CR.CONSOLE_TABS as readonly string[]).includes("limits"),
+    };
+    const BUILT_THROUGH = rung(tree.wizard, tree.activity, tree.detail, tree.limits);
     type Owed = { id: string; step: number; owner: string; what: string };
     const D19: Owed[] = [
       { id: "1.380", step: 1, owner: "console", what: "the gate's position, the literal route, force-dynamic, no gate in the loader" },
@@ -2430,11 +2433,15 @@ export default function Ruling513Control() {
       j({ builtThrough: BUILT_THROUGH, dueHere: dueHere.length, area5: area5.length, notInRollCall: area5.filter((id) => !D19.some((d) => d.id === id)), missing: missing.map((d) => `${d.id} (${d.what})`), later: later.map((d) => `${d.id}@step${d.step}:${d.owner}`) }));
     /* ⛔ AND THE DERIVATION IS SHOWN TO HAVE READ THE SPEC: an empty slice makes `every` trivially true, which is
      * the population trap the roll-call itself was written against. */
-    ok("1.398 · CONTROL · Area 5 was really parsed out of C7-SPEC §2, and `BUILT_THROUGH` is read off the tree rather than typed",
+    /* ⛔ AND THE LADDER REALLY MOVES WITH THE TREE. A ratchet read off disk is worth nothing if the reading is a
+     * constant, so `rung` is exercised over every rung it can return — and the tree's own four facts are PRINTED, so
+     * the step that adds the detail page or the wizard sees the number change rather than having to trust it.
+     * ⚠️ This control does NOT assert today's tree shape: a step-4 build must not go red here for building step 4. */
+    ok("1.398 · CONTROL · Area 5 was really parsed out of C7-SPEC §2, and `BUILT_THROUGH` is a LADDER over the tree — not a constant, and not typed",
       area5Src.length > 2_000 && area5.includes("1.380") && area5.includes("1.399")
-        && BUILT_THROUGH === ((CR.CONSOLE_TABS as readonly string[]).includes("limits") ? 3 : 1)
-        && !existsSync(join(ROOT, DETAIL_PAGE)) && !existsSync(join(ROOT, `${SECTION}/new/page.tsx`)),
-      j({ area5Chars: area5Src.length, area5, builtThrough: BUILT_THROUGH }));
+        && j([rung(false, false, false, false), rung(false, false, false, true), rung(false, false, true, true), rung(false, true, true, true), rung(true, true, true, true)]) === j([1, 3, 4, 5, 6])
+        && BUILT_THROUGH === rung(tree.wizard, tree.activity, tree.detail, tree.limits),
+      j({ area5Chars: area5Src.length, area5, tree, builtThrough: BUILT_THROUGH }));
     /* ⛔ THE CONTROL IS THE POINT: the roll-call must be able to report an id that was never written, which is the
      * failure mode it exists for. An invented id is looked for and must NOT be found; a real one must be. */
     ok("1.398 · CONTROL · the roll-call reads this run's own labels — an id that was never written IS reported, and one that was is not",

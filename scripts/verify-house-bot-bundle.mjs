@@ -225,10 +225,16 @@ console.log(`PRESENCE · the build contains the console: ${JSON.stringify(presen
    */
   const CONTROL = sentences[0] ?? "";
   const plantedHits = controlBody ? hitsIn(`${controlBody}\n/* ${CONTROL} */`) : [];
+  /* ⚠️ NOT `length === 1`: MEASURED on the first run of this control, the plant reported TWO — the sentence list
+     is read off one module and one of its sentences is a SUBSTRING of another, so planting the longer one plants
+     both. That is an overlap in the POPULATION, not a scan that over-reports, so what is required is that every
+     hit be explained BY the plant: the planted sentence is among them and nothing else is.
+     ⛔ The ORIGINAL still has to report none, which is the half that makes this a control at all. */
   const controlWorks = CONTROL.length > 0 && controlBody.length > 0
-    && plantedHits.length === 1 && plantedHits[0] === CONTROL && hitsIn(controlBody).length === 0;
+    && plantedHits.includes(CONTROL) && plantedHits.every((x) => CONTROL.includes(x))
+    && hitsIn(controlBody).length === 0;
   console.log(`${provenance.length === 0 && sentences.length >= 5 && controlWorks ? "PASS" : "FAIL"} provenance · 385 · none of the ${sentences.length} server-written console sentences appears in the public bundle, the prerendered documents or public/${provenance.length ? ` — ${provenance.slice(0, 5).join(" · ")}` : ""}${sentences.length < 5 ? " — the sentence list is too small to be a population" : ""}`);
-  console.log(`${controlWorks ? "PASS" : "FAIL"} provenance · CONTROL · 396 · the same scan reports a server sentence planted into ${JSON.stringify(controlFile)} — a real artefact it walks — and reports none in the original${controlWorks ? "" : ` — plantedHits ${plantedHits.length}, body ${controlBody.length} chars`}`);
+  console.log(`${controlWorks ? "PASS" : "FAIL"} provenance · CONTROL · 396 · the same scan reports a server sentence planted into ${JSON.stringify(controlFile)} — a real artefact it walks — and reports none in the original${controlWorks ? "" : ` — plantedHits ${plantedHits.length} ${JSON.stringify(plantedHits.map((x) => x.slice(0, 32)))}, body ${controlBody.length} chars`}`);
   if (provenance.length > 0 || sentences.length < 5 || !controlWorks) process.exit(1);
 }
 
