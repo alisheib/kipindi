@@ -82,6 +82,20 @@ memo or column (W21, W22 moot).
   `c5-s5`, and later lists — each struck mutation listed as removed with its code, never counted as run); the 3-lens
   review over the whole commit; `docs/HOUSE-BOTS.md` (reports treat bots as players; no house report), C5-SPEC banner,
   PROGRESS row ✅.
+  - ⛔ **ADDED 2026-09-18 (ruling 516), and both are preconditions of the red-by-red, not afterthoughts.**
+    **(a) Ruling 467's baseline move.** After merging `origin/main` and BEFORE running `test:all` anywhere:
+    `git -C F:/kipindi-old-build checkout --detach <the merged main sha>`, then ruling 465's own test
+    (`git diff --stat <old>..<new> -- prisma/schema.prisma`; non-empty → `npx prisma generate` in that worktree only),
+    then both suites. A baseline three commits behind the branch's merge base does not measure what it claims: every
+    red `main` acquired since appears only on this side and is blamed on this branch, and every red `main` has since
+    fixed appears only on the baseline side and is silently excused. The instrument must be the audited one, and the
+    PROGRESS row records the sha it was measured at — a baseline whose commit is not written down is not a control.
+    `npm ci`, `npm install` and `npm rebuild` stay forbidden there as everywhere.
+    **(b) Any git operation this checkpoint performs on another branch uses the TEMPORARY-WORKTREE recipe already
+    written in `PROGRESS.md` at REL-4 step 2** (`git worktree add --detach <repo>-rel4 …` → work → push →
+    `git worktree remove`), never the main checkout another session may be inside, and never a rebase or a force. On a
+    conflict: stop, remove the temporary worktree, and resolve on the branch — never at the gate. ⛔ Read rulings 471
+    and 450 in §5 before any cross-branch step, and confirm with Ali.
 
 ## 4. What D20 changes in later commits (for their spec sessions)
 
@@ -189,6 +203,10 @@ bots and what keeps D19 true").
      Every technical decision is taken without asking, every green step is pushed to `origin/house-bots`, and after the
      build `plans/house-bots/DEFERRED-TESTS.md` is run to empty. **`main` is not pushed and production is not touched**,
      for six reasons that all point the same way:
+     > ⚠️ **CROSS-REFERENCE, added 2026-09-18 under ruling 516: read ruling 471 below before acting on this clause.**
+     > 471 records a later owner instruction on the same subject, and reasons (a)-(f) here are the record of why this
+     > clause was right when it was taken. Neither is acted on from memory, and neither is quietly dropped: a session
+     > that reads only one of the two will get this wrong in one direction or the other. Confirm with Ali.
      - (a) Ali's own standing rules for this same run, given as rules that do not bend: *never push main, never rebase,
        never touch production, never turn the master switch on, never weaken a guard*. A later sentence of encouragement
        does not repeal an enumerated prohibition; where the two readings differ, the irreversible one needs his word.
@@ -213,6 +231,11 @@ bots and what keeps D19 true").
      reasoning, and reported in the morning as a decision already taken — never as a pending item. The only exceptions
      are the two things no session may decide: an outward action on Ali's account (W20's repository visibility) and the
      merge to `main` (450).
+     > ⚠️ **ADDED 2026-09-18 under ruling 516: this list of exceptions is NOT complete — ruling 500(c) is the current
+     > one and it is wider.** Also outside any session's authority: turning the master switch ON; weakening a guard,
+     > lowering a floor, widening an exemption or deleting a proof to make something pass; and any outward action on
+     > Ali's own accounts. Ruling 500 also extends 451 from one night's licence into a standing rule. ⛔ Nothing in
+     > this paragraph is acted on without reading rulings 469, 471 and 500 in full, in this file.
 
 462. **C5-5b's unread 360 tiles are captured inside Commit 7 step 1's single server session.** Register rows 9 and 10
      (the seven un-built surfaces whose changed region sat off-frame at 360, and the four phase-D dialogs) stayed
