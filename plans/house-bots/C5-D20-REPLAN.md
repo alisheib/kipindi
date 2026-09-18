@@ -241,3 +241,30 @@ bots and what keeps D19 true").
      The remaining sweeps are ONE register row for the commit-close visual pass, so the matrix is completed once, with a
      server already up, rather than nine times. Every tile is still opened and READ — ruling 275 never permitted an
      unread capture, and the visual lens caught seven tiles last checkpoint whose subject sat off-frame.
+
+465. **`npx prisma generate` is permitted in ANY worktree after a fast-forward that changed `prisma/schema.prisma`, and
+     is REQUIRED there.** Ruling 274 permitted it for checkpoint C5-5b on Ali-Blade15 only. But C5-5b removed four
+     columns from the schema and the undeployed migration, so every OTHER worktree that fast-forwards past `e77c9312`
+     has a generated client describing columns the schema no longer has — a stale client is a correctness hazard, not a
+     convenience, and the ban exists only to protect a parallel session's `node_modules`. So: after a fast-forward,
+     `git diff --stat <old>..HEAD -- prisma/schema.prisma`; if it is non-empty, run `npx prisma generate` once in that
+     worktree before any suite or `tsc`. `npm ci`, `npm install` and `npm rebuild` stay forbidden, and a worktree whose
+     schema did not change must still not run it.
+
+466. **A resuming session does ONLY what RESUME AT names. Ali, 2026-09-18: "make sur eteh enw seiso dons tod hte wastin
+     time work just whast needed."** This is a standing pace ruling beside 275, and it is concrete:
+     - **Read only these:** the `▶ RESUME HERE` bullet, `C7-SPEC.md` §8 plus the §2 rulings for the step in hand, and
+       `C5-D20-REPLAN.md` §3 and §5. ⛔ Do NOT re-read `C5-SPEC.md` (358 KB), `01-scenario-register.md` (495 KB),
+       `04-amendments.md` (436 KB), `PLAN.md` or the C4 extracts unless a ruling you are building cites a specific line
+       in one. They are the record, not the brief.
+     - **Do not re-audit closed work.** C5-5b is ✅ with its numbers recorded; Commit 7 step 1's build is measured. A
+       resuming session verifies what it CHANGES, not what a previous session already proved.
+     - **Do not re-take a decided ruling.** Rulings 168–275 and 300–464 are taken. A question already answered is
+       answered; where a ruling is wrong on a fact, report the deviation and apply its intent (that is not a re-take).
+     - **Do not run a research or analysis pass where a named fix list already exists.** Step 1's open findings are
+       enumerated one by one in RESUME AT with file and line — go straight to fixing them, each with a case seen red
+       first. A fresh review of the same code before fixing it is the repetition ruling 275 drops.
+     - **Do not re-photograph a surface already read**, and do not re-run a green suite no changed file reaches
+       (ruling 275), or any test whose result is already certain.
+     - What is NEVER trimmed: `tsc` before a push, a case for each new or changed behaviour, the render of a screen the
+       step changes, the adversarial review of NEW code, and the register row for anything skipped.
