@@ -92,7 +92,6 @@ section("PHASE 1: Seed large volume of polls across categories + states");
 updateAIPollConfig({
   minConfidence: 50,
   minLeadTimeHours: 1,
-  maxLeadTimeDays: 365,
   maxBatchPerRun: 50,
   dailyTarget: 1000,
 }, ACTOR);

@@ -290,10 +290,39 @@ console.log("\n── 8 · the surfaces are WIRED to it (asserting the call, nev
   // THREE consumers on this page, and all three must read the same server field: the poll bound,
   // the pod's ticker, and the auto-advance. Two agreeing while the third drifts is how a page
   // polls past a handover it has already made, or holds a ticker it has already navigated off.
+  /**
+   * ⛔ NAMED, NOT COUNTED — and the count was both too brittle AND too weak (2026-09-18).
+   *
+   * This asserted `matches.length === 3`. A FOURTH legitimate consumer then appeared —
+   * `UpDownResultAnnouncer`, which reads the same server instant for a different job — and the
+   * gate went red on a page that was entirely correct, where it sat in the red baseline.
+   *
+   * ⭐ AND THE COUNT WAS NEVER THE RULE THE COMMENT ABOVE STATES. `=== 3` is satisfied by
+   * "the pod drifted onto a different field AND someone added a fourth site" — the exact
+   * divergence this exists to catch, passing. Naming the three is strictly stronger: each must
+   * read `round.resolvedAtMs` itself, and a fifth consumer is free to appear without lying
+   * about the other three.
+   */
+  const readsResolved = (s: string) => /settledAtMs[:=]\s*\{?round\.resolvedAtMs\}?/.test(s);
+  /**
+   * ⛔ BOUNDED BY THE SYNTAX, NEVER BY A CHARACTER COUNT. The first version of this capped each
+   * block at 200/400 chars and `<UpDownHandover …/>` is ~600 — so `autoAdvance` read `false`
+   * about a prop that was right there. That is the identical failure mode this session just
+   * repaired in `lock-tx-threading` (a fixed `span = 4000` that silently disarmed a MONEY
+   * assertion): a bound set by how much a block happens to contain is not a bound, and its
+   * failure looks exactly like a real defect. Non-greedy to the element's own close instead.
+   */
+  const pollBound = /handoverPollUntil\(\{[\s\S]*?\}\)/.exec(page)?.[0] ?? "";
+  const podProp = /handover=\{\{[\s\S]*?\}\}/.exec(page)?.[0] ?? "";
+  const advProp = /<UpDownHandover[\s\S]*?\/>/.exec(page)?.[0] ?? "";
   ok("8.4d ⭐ all THREE round-page consumers read `round.resolvedAtMs` — the poll bound, the pod "
     + "and the auto-advance",
-    (page.match(/settledAtMs[:=]\s*\{?round\.resolvedAtMs\}?/g) ?? []).length === 3,
-    `${(page.match(/settledAtMs[:=]\s*\{?round\.resolvedAtMs\}?/g) ?? []).length} of 3 call sites`);
+    [pollBound, podProp, advProp].every((s) => s.length > 0 && readsResolved(s)),
+    `pollBound=${readsResolved(pollBound)} pod=${readsResolved(podProp)} autoAdvance=${readsResolved(advProp)}`
+    + " (a `false` on a found block is a real drift; an empty block means the site was renamed)");
+  // ⛔ CONTROL · the matcher must be able to say NO, or 8.4d is decoration.
+  ok("8.4d-control · a consumer reading a DIFFERENT field is detected",
+    !readsResolved("settledAtMs={round.closesAtMs}"));
   ok("8.4e ⛔ and NO surface reaches for the device clock to decide a handover phase",
     [card, pod, adv].every((s) => !/handoverClock\(\{[^}]*Date\.now\(\)/s.test(s)));
   ok("8.5 ⛔ and no surface re-derives the successor's instants — they come from the payload",

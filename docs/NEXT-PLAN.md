@@ -33,6 +33,20 @@ Ali, 2026-09-15: *"later any session please start with the mobile visual plan an
 | **Next** | Session S1 → U1 (baseline instrument + QA player) and U2 (density setting + switch). Two units per session |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit** |
 
+## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟠 **PLANNED 2026-09-16 · RUNS WHEN ALI SAYS SO, ON ANY PC** · 0/52 units ✅ · 0/25 defects ✅
+
+Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marketing campaign and contacts setup"* · *"make it perfectly working for 50pick, perfect design and logic."*
+**▶ Work order and tracker: [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md). Open it at §0 (RESUME AT), then §0a (the copy-paste session prompt), then §1 (status board).**
+
+| | |
+|---|---|
+| **Which machine, which session** | Any PC with `F:\kipindi-main` on `main`. §0a is the whole contract: the plan file is the planner, and its §0 + §1 are the progress tracker, guarded by `npm run test:marketing-setup-plan` — so a fresh session on a fresh machine knows where the programme stands without memory. ⛔ Not the House Bots checkout, which runs its own programme in parallel |
+| **Why** | Marketing needs an admin address book (single + bulk import, duplicate detection, a pre-flight that writes nothing, a progress bar that counts rows written, export) and an SMS broadcast engine. The SMS rail went live on Blackball on 2026-09-16 — and **nothing on this platform checks marketing consent, suppression, opt-out or responsible-gambling exclusion before any SMS** |
+| **Shape** | 52 units in four phases: foundations and permission (one phone key, the Tanzanian number library, septet arithmetic, the statutory footer, consent ledger, suppression, opt-out, the one gate, RG, 18+, send window, frequency cap) → the contacts book → campaigns (composer, audience, confirm, approval, enqueue, slice, pump, receipts, live page, budget) → declarations, the operator's guide, and a ledger-capped live drive. Defects D1–D25, 46 owner decisions taken on delegation, 10 legal questions each with a built safe default |
+| **Law** | 🔴 A gaming advertisement needs Gaming Board approval and unsolicited SMS needs its **prior written** approval (GN 478T reg 56(1), GBT Advertising Code cl. 2.2.6) — so the broadcast surface ships **built and closed** until Ali records that approval |
+| **Next** | Session S1 → U1 (one phone key + the wire refusal) and U2 (the Tanzanian number library). Two units per session |
+| **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit**. The tracker guard asserts the two doors agree |
+
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 
 Ali's go-live instruction, 2026-09-11. **▶ Record and runbook:

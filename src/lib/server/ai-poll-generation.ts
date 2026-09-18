@@ -55,6 +55,8 @@ export type FilterReason =
   | "invalid_date"
   | "past_date"
   | "resolution_too_soon"
+  /** RETIRED 2026-09-17 — never emitted now that there is no maximum resolution date. Kept so
+   *  the polls FILTERED under the old 240-day cap still type-check and show their reason. */
   | "resolution_too_far"
   | "no_options"
   | "duplicate_options"
@@ -544,9 +546,11 @@ async function validateAndFilter(
     quality.push({ label: "Resolution criterion", score: 90, status: "good" });
   }
 
-  // Date validation — must be a valid date, in the future, and inside the
-  // operator-configured lead-time window (not resolving in an hour, not in
-  // three years). This is the core "never an expired poll" guarantee.
+  // Date validation — must be a valid date, in the future, and at least the operator's
+  // minimum lead time away (not resolving in an hour). This is the core "never an expired
+  // poll" guarantee. ⛔ There is deliberately NO latest date (Ali, 2026-09-17): the 240-day
+  // cap that stood here refused 46 production polls — a 2026/27 league season, AFCON 2027 —
+  // that management wanted to publish. See docs/COMPLIANCE-DECISIONS.md § 2026-09-17.
   const cfg = getAIPollConfig();
   if (!isValidDate(sanitised.resolutionAt)) {
     reasons.push("invalid_date");
@@ -555,16 +559,12 @@ async function validateAndFilter(
     const resTime = new Date(sanitised.resolutionAt).getTime();
     const now = Date.now();
     const minTime = now + cfg.minLeadTimeHours * 3_600_000;
-    const maxTime = now + cfg.maxLeadTimeDays * 86_400_000;
     if (resTime < now) {
       reasons.push("past_date");
       quality.push({ label: "Resolution date (in the past)", score: 0, status: "bad" });
     } else if (resTime < minTime) {
       reasons.push("resolution_too_soon");
       quality.push({ label: `Resolution date (under ${cfg.minLeadTimeHours}h away)`, score: 15, status: "bad" });
-    } else if (resTime > maxTime) {
-      reasons.push("resolution_too_far");
-      quality.push({ label: `Resolution date (over ${cfg.maxLeadTimeDays}d away)`, score: 35, status: "warning" });
     } else {
       quality.push({ label: "Resolution date", score: 100, status: "good" });
     }
@@ -701,7 +701,6 @@ async function validateAndFilter(
     "invalid_date",
     "past_date",
     "resolution_too_soon",
-    "resolution_too_far",
     "no_options",
     "too_few_options",
     "no_sources",
@@ -1120,17 +1119,17 @@ export type IdeaFilterResult = { kept: PollIdea[]; dropped: Array<{ idea: PollId
 /**
  * Tier-1.5 — FREE code-side filter of brainstormed ideas before paying for the
  * expensive Tier-2 enrichment. Drops ideas with an invalid/banned category, an
- * unparseable/out-of-window date, an empty title, or a duplicate (vs the existing
+ * unparseable or too-soon date, an empty title, or a duplicate (vs the existing
  * board AND earlier ideas in the same batch). Pure + deterministic so it's unit
  * tested. Uses the SAME normaliseTitle + VALID_CATEGORIES as the post-hoc filter,
  * with a 24h grace on the lower date bound (the guess is day-granular; Tier 2 +
- * validateAndFilter enforce the real window).
+ * validateAndFilter enforce the real floor). There is no upper date bound — see
+ * the date validation in validateAndFilter.
  */
 export function filterIdeas(
   ideas: PollIdea[],
   opts: {
     minLeadHours: number;
-    maxLeadDays: number;
     avoidTitles: string[];
     now: number;
     /** When supplied, drop any idea whose resolved category is NOT in this set
@@ -1142,7 +1141,6 @@ export function filterIdeas(
   },
 ): IdeaFilterResult {
   const earliest = opts.now + opts.minLeadHours * 3_600_000 - 86_400_000; // 24h grace
-  const latest = opts.now + opts.maxLeadDays * 86_400_000;
   const seen = new Set(opts.avoidTitles.map(normaliseTitle).filter(Boolean));
   const kept: PollIdea[] = [];
   const dropped: Array<{ idea: PollIdea; reason: string }> = [];
@@ -1158,7 +1156,6 @@ export function filterIdeas(
     const t = Date.parse(idea.resolutionDateGuess);
     if (!Number.isFinite(t)) { dropped.push({ idea, reason: "invalid_date" }); continue; }
     if (t < earliest) { dropped.push({ idea, reason: "resolution_too_soon" }); continue; }
-    if (t > latest) { dropped.push({ idea, reason: "resolution_too_far" }); continue; }
     if (seen.has(fp)) { dropped.push({ idea, reason: "duplicate" }); continue; }
     seen.add(fp);
     kept.push({ ...idea, category: outCat });
@@ -1245,7 +1242,7 @@ export async function generateAIPollBatch(opts: {
   } catch { /* ideation is best-effort — top-up below covers a total failure */ }
 
   // ── Tier 1.5: free filter (also drops any idea in a non-generatable category) ──
-  const { kept } = filterIdeas(ideas, { minLeadHours: cfg.minLeadTimeHours, maxLeadDays: cfg.maxLeadTimeDays, avoidTitles: liveAvoid, now: Date.now(), generatableCategories: generatableSet });
+  const { kept } = filterIdeas(ideas, { minLeadHours: cfg.minLeadTimeHours, avoidTitles: liveAvoid, now: Date.now(), generatableCategories: generatableSet });
   audit({ category: "ADMIN", action: "aipoll.batch_ideated", actorId: opts.actorId, targetType: "AIPoll", targetId: "batch", payload: { ideasReturned: ideas.length, keptAfterFilter: kept.length, requested: n } });
 
   // ── Tier 2: enrich survivors (up to n), each pinned to its idea ──

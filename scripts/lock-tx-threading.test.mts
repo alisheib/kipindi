@@ -41,11 +41,35 @@ function ok(label: string, cond: boolean, detail = "") {
   else { fail++; console.log(`  FAIL ${label}${detail ? ` · ${detail}` : ""}`); }
 }
 
-/** The body of `fn`, from its opening line onward. */
-function blockAfter(src: string, anchor: string, span = 4000): string {
+/**
+ * The anchored function/callback, bounded by WHERE IT ACTUALLY ENDS — never by a char count.
+ *
+ * 🔴 IT USED TO TAKE A FIXED `span = 4000`, AND THAT SILENTLY DISARMED A MONEY ASSERTION.
+ * §2.3 checks that `withdraw`'s Phase A creates its `Transaction` row **on the lock's
+ * transaction** — the one thing standing between a rolled-back balance move and a ledger row
+ * that survives it. Comments inside that function grew past 4000 characters, the window stopped
+ * reaching `}, tx);`, and the assertion began reporting a money defect **on code that was
+ * correct**. Measured 2026-09-18: the same regex matches the file, and any window ≥ 6000.
+ *
+ * ⛔ AND WIDENING THE NUMBER IS NOT THE FIX — it is the bug's second occurrence. `creditInternal`
+ * on line ~141 was already carrying a hand-tuned `9000` for exactly this reason, so the pattern
+ * had failed once, been patched with a bigger constant, and come back at a different call site.
+ * A bound that depends on how much prose a function carries is not a bound.
+ *
+ * ⭐ A control that cries wolf is a control that has been switched off: an operator who has
+ * learned that `lock-tx-threading` is "always red" will not read it on the day it is right.
+ * That is how this suite came to sit in a 22-strong red baseline nobody investigates.
+ *
+ * The block now runs from the anchor to the enclosing top-level function's closing brace — a
+ * `}` in the first column, which is how every function in this file's targets closes. Callers
+ * get the WHOLE function, so no assertion below can be truncated out of existence, and §0
+ * proves the bound actually reached the end.
+ */
+function blockAfter(src: string, anchor: string): string {
   const i = src.indexOf(anchor);
   if (i < 0) return "";
-  return src.slice(i, i + span);
+  const end = src.indexOf("\n}", i);
+  return end < 0 ? src.slice(i) : src.slice(i, end + 2);
 }
 
 /**
@@ -81,6 +105,37 @@ console.log("\n§1 · the premise — prisma-dal resolves its client from the AR
   ok("1.2  prisma-dal never reads the lock store",
     !dal.includes("currentLockTx") && !dal.includes("lockStore"));
   ok("1.3  withLock does pass its tx to the callback", locks.includes("() => fn(tx)"));
+}
+
+// ── §0 · ⛔ THE BOUND ITSELF, because a truncated block reports a defect that is not there ──
+//
+// 🔴 THIS SECTION EXISTS BECAUSE §2.3 SPENT AN UNKNOWN TIME RED ON CORRECT CODE. `blockAfter`
+// took a fixed 4000-char window; `withdraw` grew past it; the window stopped reaching
+// `}, tx);` and the gate began reporting a money defect on a money path that was fine. The
+// assertions below can only be trusted if the text they scan actually contains the end of the
+// function — so that is asserted FIRST, and loudly, rather than assumed.
+//
+// ⭐ Each anchor is paired with a string that can ONLY appear at or near the END of its target.
+// If a bound ever truncates again, these fail with "block truncated" instead of the assertion
+// silently going blind — the difference between a gate that is wrong and a gate that is off.
+console.log("\n§0 · the scanned blocks reach the END of their function");
+{
+  const bounded: Array<[string, string, string]> = [
+    ["withdraw Phase A", "const hold = await withLock(`wallet:${userId}`,", "}, tx);"],
+    ["settleWithdrawalFailed", "export async function settleWithdrawalFailed", "}"],
+    ["creditInternal", "export async function creditInternal", "}"],
+    ["settleWithdrawalConfirmed", "async function settleWithdrawalConfirmed", "}"],
+  ];
+  for (const [label, anchor, tail] of bounded) {
+    const blk = blockAfter(wallet, anchor);
+    ok(`0.${bounded.findIndex((b) => b[0] === label) + 1}  ${label} — block found and not truncated`,
+      blk.length > 0 && blk.includes(tail),
+      blk.length === 0 ? "anchor not found — the function was renamed" : "block truncated before its end");
+  }
+  // ⛔ CONTROL · the truncation test must be able to FAIL, or §0 is decoration. A 200-char
+  // window over Phase A cannot reach `}, tx);`, and that is exactly the old bug's shape.
+  const truncated = wallet.slice(wallet.indexOf("const hold = await withLock(`wallet:${userId}`,"), wallet.indexOf("const hold = await withLock(`wallet:${userId}`,") + 200);
+  ok("0.5  control · a deliberately truncated block IS detected", !truncated.includes("}, tx);"));
 }
 
 // ── §2 · withdraw's Phase A takes the tx and hands it to BOTH writes ─────────
@@ -138,7 +193,7 @@ console.log("\n§2c · creditInternal refuses rather than inventing a balance");
   // file's own span has had to grow, and the reason §3 re-runs every pattern against fixed
   // text: a scanner that under-reads accuses working code exactly as loudly as it misses
   // broken code.
-  const credit = codeOnly(blockAfter(wallet, "export async function creditInternal", 9000));
+  const credit = codeOnly(blockAfter(wallet, "export async function creditInternal"));
   ok("2c.1  its lock callback NAMES the transaction",
     /withLock\(`wallet:\$\{userId\}`,\s*async \(tx\)/.test(credit),
     "callback is `async ()` — the credit, the txn row and the ledger group autocommit apart");

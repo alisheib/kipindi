@@ -49,11 +49,11 @@ export type AIPollConfig = {
    *  Range 0..1_000_000 — set it to whatever cadence you want. */
   dailyTarget: number;
   /** A generated poll must resolve at least this many hours in the future.
-   *  Kills "resolves in 1 hour" polls that are useless to bet on. */
+   *  Kills "resolves in 1 hour" polls that are useless to bet on.
+   *  ⛔ There is deliberately NO maximum. The 240-day `maxLeadTimeDays` cap was removed
+   *  (Ali, 2026-09-17) — it refused the season-long and next-year markets management wanted
+   *  to publish. Read docs/COMPLIANCE-DECISIONS.md § 2026-09-17 before adding one back. */
   minLeadTimeHours: number;
-  /** A generated poll must resolve within this many days. Long-dated polls
-   *  tie up liquidity and are hard to keep accurate. */
-  maxLeadTimeDays: number;
   /** Minimum model self-confidence (0..100) for a poll to reach review.
    *  Higher = stricter / fewer but cleaner polls. */
   minConfidence: number;
@@ -83,9 +83,6 @@ function defaults(): AIPollConfig {
       : true,
     dailyTarget: envInt("AI_POLL_DAILY_TARGET", 3, 0, 1_000_000),
     minLeadTimeHours: envInt("AI_POLL_MIN_LEAD_HOURS", 24, 1, 24 * 365),
-    // 240d (~8 months) so naturally year-end-framed markets (e.g. "by 31 Dec")
-    // pass when generated mid-year, while still capping runaway long-dated polls.
-    maxLeadTimeDays: envInt("AI_POLL_MAX_LEAD_DAYS", 240, 1, 365 * 3),
     // 50, not 60: Sonnet rates its own confidence conservatively, so many sound
     // polls self-score 50–59 and were being filtered before a human ever saw
     // them — double-gating, since every poll is human-reviewed before publish.
@@ -121,8 +118,6 @@ export function updateAIPollConfig(
     cur.dailyTarget = clampInt(patch.dailyTarget, 0, 1_000_000, cur.dailyTarget);
   if (patch.minLeadTimeHours !== undefined)
     cur.minLeadTimeHours = clampInt(patch.minLeadTimeHours, 1, 24 * 365, cur.minLeadTimeHours);
-  if (patch.maxLeadTimeDays !== undefined)
-    cur.maxLeadTimeDays = clampInt(patch.maxLeadTimeDays, 1, 365 * 3, cur.maxLeadTimeDays);
   if (patch.minConfidence !== undefined)
     cur.minConfidence = clampInt(patch.minConfidence, 0, 100, cur.minConfidence);
   if (patch.maxBatchPerRun !== undefined)

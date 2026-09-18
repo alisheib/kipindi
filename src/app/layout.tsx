@@ -8,6 +8,7 @@ import { isChatbotEnabled } from "@/lib/server/ai-controls";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { ScrollRestore } from "@/components/ui/scroll-restore";
 import { GoogleTag } from "@/components/analytics/google-tag";
+import { DomTranslationGuard } from "@/components/layout/dom-translation-guard";
 import { SiteVisitBeacon } from "@/components/analytics/site-visit-beacon";
 import { appUrl } from "@/lib/app-url";
 import "./globals.css";
@@ -110,7 +111,33 @@ export const metadata: Metadata = {
     apple: { url: "/icons/apple-touch-180.png", sizes: "180x180" },
   },
   robots: { index: true, follow: true },
-  other: { "mobile-web-app-capable": "yes" },
+  /**
+   * 🔴 `notranslate` — A LICENSED MONEY PRODUCT MUST NOT LET A MACHINE REWRITE ITS COPY.
+   * Reported by Ali 2026-09-18 and captured off the player's own handset:
+   *
+   *   NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is
+   *   not a child of this node.        (Android 10, Chrome 152 Mobile)
+   *
+   * Google Translate REPLACES text nodes (wrapping each in its own `<font>`), so the nodes
+   * React is holding references to are no longer the nodes in the document. The next re-render
+   * — here, the board repainting after a bet — asks the DOM to remove a child that has been
+   * swapped underneath it, and the throw takes the whole route to its error boundary. It looked
+   * like "only on one phone" for two sessions because **auto-translate is a per-device browser
+   * setting**, which nothing in our data, our logs or our test suites can see.
+   *
+   * ⭐ AND BLOCKING IT IS THE PRODUCT-CORRECT CALL, not merely the crash-avoiding one. 50pick
+   * ships a reviewed trilingual dictionary (sw/en/zh) whose betting and money wording is
+   * deliberate — "Stake returned", "You win X if Up", "Your funds are safe". A machine
+   * paraphrase of those sentences on a regulated real-money surface is a compliance and trust
+   * hazard well before it is a rendering one, and this product already has the honest route: the
+   * in-app SW/EN/ZH switcher, which swaps our own vetted strings and cannot crash.
+   *
+   * ⚠️ IT IS ADVISORY, AND THAT IS WHY IT IS ONLY HALF THE FIX. Google honours it; an in-app
+   * webview (Facebook/Instagram), an extension, or another translator need not. The belt is
+   * `installDomTranslationGuard()` — see `src/lib/client/dom-translation-guard.ts`.
+   * Guard: `npm run test:translation-safety`.
+   */
+  other: { "mobile-web-app-capable": "yes", google: "notranslate" },
   openGraph: {
     type: "website",
     siteName: "50pick",
@@ -149,9 +176,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Chatbot on/off (AI toolkit). Default ON if the read fails — a config hiccup must
   // never silently hide a working help widget.
   const chatbotEnabled = await isChatbotEnabled().catch(() => true);
+  // ⛔ `translate="no"` + the `notranslate` class are the ATTRIBUTE half of the
+  // `google: "notranslate"` meta in `metadata` above; browsers honour the two in different
+  // places, so both are set. See that comment for WHY this product blocks machine translation
+  // at all, and `dom-translation-guard.ts` for what protects us when a translator ignores both.
   return (
-    <html lang={lang} suppressHydrationWarning className={`${sora.variable} ${inter.variable} ${jbm.variable}`}>
+    <html lang={lang} translate="no" suppressHydrationWarning className={`notranslate ${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
+        {/* ⛔ FIRST IN THE BODY, DELIBERATELY. Makes `removeChild`/`insertBefore` tolerant of a
+            page translator that has re-parented React's nodes — the crash that took the Up & Down
+            board off a player's phone on 2026-09-18 and read as "only one handset" for two
+            sessions. It renders nothing; the position is about load order, not layout. */}
+        <DomTranslationGuard />
         {/* GA4 — live hosts only, never on /admin or a tokened page, addresses scrubbed. Read the
             component's header before touching it; Privacy §4/§7 describe exactly this. */}
         <GoogleTag />

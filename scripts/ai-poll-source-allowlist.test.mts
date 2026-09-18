@@ -164,7 +164,7 @@ await seedDefaultSources();
       { titleEn: "Idea in other with no source", category: "other", resolutionDateGuess: future(30), why: "hot" },
       { titleEn: "Idea in infra folds to macro", category: "infrastructure", resolutionDateGuess: future(30), why: "hot" },
     ],
-    { minLeadHours: 24, maxLeadDays: 240, avoidTitles: [], now: Date.now(), generatableCategories: generatable },
+    { minLeadHours: 24, avoidTitles: [], now: Date.now(), generatableCategories: generatable },
   );
   ok("8a macro idea kept", res.kept.some((i) => i.titleEn.includes("macro that is fine")), JSON.stringify(res.kept.map((i) => i.category)));
   ok("8b 'other' idea dropped as not_generatable", res.dropped.some((d) => d.reason === "not_generatable" && d.idea.category === "other"), JSON.stringify(res.dropped.map((d) => d.reason)));

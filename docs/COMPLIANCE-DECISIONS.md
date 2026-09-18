@@ -53,6 +53,36 @@ The exclusion is a property of one exported DOCUMENT, never of the record itself
 
 ---
 
+## 2026-09-17 · AI polls have no maximum resolution date — the 240-day cap is removed
+
+**Owner decision (Ali, 2026-09-17): *"we don't care about max date, it makes no sense."*** Management
+reported that AI poll generation refused any market resolving "after a long while", citing policy. It was
+not a licence rule: it was `maxLeadTimeDays`, an in-house quality/liquidity preference (default 180, raised
+to 240 on 2026-06-10). A read-only production probe the same day found it had filtered **46 of 785** AI
+polls, three of them that morning — the 2026/27 NBC Premier League top scorer, at 241, 304 and 306 days —
+plus Arsenal's 2026/27 title, AFCON 2027 and FY2027 dividends. `AI_POLL_MAX_LEAD_DAYS` was not set on
+Railway and no `aipoll.config_updated` audit row exists, so the cap had been 240 throughout.
+
+**What changed.** The cap is gone from all four places it lived: the generation and ideation prompts (both
+named a latest date, so the model refused on its own before any check ran), the free idea filter
+(`filterIdeas`), the validator (`resolution_too_far` was a hard fail), and the *Generation settings* field
+"Max horizon (d)" with its config key and env var. The minimum lead time and every other check are
+unchanged. `resolution_too_far` stays in the `FilterReason` type and the label map only, never emitted, so
+the 46 polls filtered under it still show their reason.
+
+**⚠️ The compliance control this touches.** Two of the 46 were election questions — *"Will William Ruto
+win the 2027 Kenyan Presidential Election?"* and a 2027 French presidential poll — and the cap was the
+**only** reason either was filtered. The GBT ban on politics and elections is enforced by generation-prompt
+rule 6 and by the reviewing officer; the validator's `BANNED_CATEGORIES` checks the category *label*, not
+the subject. Raised with Ali before the change; he confirmed every other check stays as it is. A political
+question filed under a non-political category now reaches **Pending review**, and the officer is the
+control that refuses it.
+
+**⛔ Do not restore a maximum resolution date without a new entry here.** Guarded by `test:ai-polls`: a
+999-day idea is kept, a 400-day poll reaches review, and neither prompt names a date past the earliest one.
+
+---
+
 ## 2026-09-15 (third) · Privacy v2026-09-15.3 — §5 states Google Analytics' retention: event data 2 months, user data 14 months
 
 **Owner report (Ali, 2026-09-15):** the GA4 property's Data retention is set to **event data 2 months** and **user data

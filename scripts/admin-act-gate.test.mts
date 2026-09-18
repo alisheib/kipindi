@@ -56,17 +56,40 @@ console.log("\ntest:admin-act-gate — every acting control consults the gate\n"
 // ── §1 · the mechanism is mounted in the shell ────────────────────────────────────
 console.log("§1 the shell");
 {
+  /**
+   * ⛔ THE SHELL IS `AdminSectionGate`, NOT `admin/layout.tsx` — REPOINTED 2026-09-18.
+   *
+   * This section read `src/app/admin/layout.tsx` and had been red ever since **E-381 §6 item 10
+   * (2026-09-14)**, which MOVED both gates out of that file on purpose. The layout computed them
+   * from `x-pathname`, so they froze at the hard-loaded page and every soft navigation after it
+   * was gated for the WRONG route. They now live in `AdminSectionGate`, rendered by each
+   * section's own layout so they re-execute on entry. The layout says so in its own comment.
+   *
+   * ⭐ So the mechanism was correct and the guard was looking at the old address — a gate pinned
+   * to a path the code walked away from. It reported an RBAC hole on a console that has one,
+   * which is the most expensive kind of false alarm: the next reader learns to scroll past it.
+   * `test:admin-section-gate` already passes against the new home (with a server).
+   *
+   * ⛔ §1f IS NEW AND IS THE REASON THIS CANNOT SILENTLY ROT AGAIN: the layout must NOT carry a
+   * second copy. Two act gates computing `domain` from different sources is precisely the drift
+   * this file exists to catch, and a leftover would make both this section and the section-gate
+   * suite green while the console disagreed with itself.
+   */
+  const gate = decomment(readFileSync(join(ROOT, "src/components/admin/admin-section-gate.tsx"), "utf8"));
   const layout = decomment(readFileSync(join(ROOT, "src/app/admin/layout.tsx"), "utf8"));
-  ok("§1 the layout computes canAct for the route's domain", /\bcanAct\s*\(\s*viewerRole\s*,\s*domain\s*\)/.test(layout));
-  ok("§1 it mounts AdminActProvider", /<AdminActProvider\b/.test(layout));
+  ok("§1 the section gate computes canAct for the route's domain", /\bcanAct\s*\(\s*role\s*,\s*domain\s*\)/.test(gate));
+  ok("§1 it mounts AdminActProvider", /<AdminActProvider\b/.test(gate));
   // ⛔ THE DOMAIN MUST BE THE SAME ONE THE VIEW GATE USES, or the two gates can disagree
   // about which domain a route belongs to — which is the drift control-gates.ts exists for.
   ok("§1 the act gate reads `domain` from the same domainForPath(path) as the view gate",
-    /const domain = domainForPath\(path\)/.test(layout) && /canAct\(viewerRole, domain\)/.test(layout));
-  ok("§1 a read-only viewer gets the banner", /<ActReadOnlyBanner\b/.test(layout));
+    /const domain = domainForPath\(path\)/.test(gate) && /canAct\(role, domain\)/.test(gate));
+  ok("§1 a read-only viewer gets the banner", /<ActReadOnlyBanner\b/.test(gate));
   // Owner-only routes are ADMIN-gated ahead of the domain check; the act gate must agree.
   ok("§1 owner-only routes gate act on isAdmin, not on the ops grant",
-    /ownerOnly \? isAdmin\(viewerRole\) : await canAct/.test(layout));
+    /ownerOnly \? isAdmin\(role\) : await canAct/.test(gate));
+  ok("§1f ⛔ the layout keeps NO second act gate — one gate, one domain source",
+    !/<AdminActProvider\b/.test(layout) && !/\bcanAct\s*\(/.test(layout),
+    "a leftover gate in the layout would re-introduce the soft-navigation freeze E-381 removed");
 }
 
 // ── §2 · the gate module keeps its default and its explanation ────────────────────

@@ -3,7 +3,7 @@
  *
  * Injects a fake AIProvider and drives the real generate → validate → filter
  * pipeline to prove the accuracy + safety guarantees:
- *   - future-only dates (past / too-soon / too-far all rejected)
+ *   - future-only dates (past / too-soon rejected; far-dated accepted — no maximum since 2026-09-17)
  *   - banned category, XSS, missing sources, low confidence rejected
  *   - duplicate detection (normalised, vs prior polls)
  *   - clean future poll reaches PENDING_REVIEW
@@ -60,7 +60,7 @@ const ACTOR = "test_officer";
 console.log("\n=== AI POLL HARDENING ===\n");
 
 // Reset config to known defaults for deterministic assertions.
-updateAIPollConfig({ minConfidence: 60, minLeadTimeHours: 24, maxLeadTimeDays: 180 }, ACTOR);
+updateAIPollConfig({ minConfidence: 60, minLeadTimeHours: 24 }, ACTOR);
 
 // 1 · Clean future poll → PENDING_REVIEW
 fakeProvider(() => okResp(gen()));
@@ -79,10 +79,10 @@ fakeProvider(() => okResp(gen({ titleEn: "Will X happen too soon B?", resolution
 p = await generateAIPoll({ category: "sports", actorId: ACTOR });
 check("resolves under lead-time floor is FILTERED", p.state === "FILTERED" && p.filterReasons.includes("resolution_too_soon"), p.filterReasons.join(","));
 
-// 4 · Too far (> 180d) → FILTERED (resolution_too_far)
-fakeProvider(() => okResp(gen({ titleEn: "Will X happen too far C?", resolutionAt: days(400) })));
+// 4 · Far-dated (400d) → PENDING_REVIEW. There is no maximum resolution date (owner decision 2026-09-17).
+fakeProvider(() => okResp(gen({ titleEn: "Will X happen far in the future C?", resolutionAt: days(400) })));
 p = await generateAIPoll({ category: "sports", actorId: ACTOR });
-check("resolves beyond horizon is FILTERED", p.state === "FILTERED" && p.filterReasons.includes("resolution_too_far"), p.filterReasons.join(","));
+check("far-dated poll reaches PENDING_REVIEW", p.state === "PENDING_REVIEW" && p.filterReasons.length === 0, `${p.state} ${p.filterReasons.join(",")}`);
 
 // 5 · Banned category → FILTERED (banned_category). Request a GENERATABLE
 // category so the poll reaches validation; the provider then returns a banned

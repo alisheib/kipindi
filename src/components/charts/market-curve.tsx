@@ -25,6 +25,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { IChartApi, ISeriesApi, UTCTimestamp } from "lightweight-charts";
 import { makeInkResolver, tokRaw } from "./ink-bridge";
+import { ascUnique } from "./chart-series";
 
 export type CurvePoint = { t: string; ts: number; p: number };
 
@@ -143,7 +144,10 @@ export function MarketCurve({
     if (!chart || !s || !engineReady) return;
     const pts = series[range] ?? [];
     const tzShift = -new Date().getTimezoneOffset() * 60;
-    s.setData(pts.map((p) => ({ time: (Math.round(p.ts / 1000) + tzShift) as UTCTimestamp, value: p.p })));
+    // ⛔ `ascUnique` — this site never sorted at all, and `Math.round(ts / 1000)` collapses
+    //    two points inside one second onto one axis slot. A tie throws out of the effect and
+    //    takes the whole route with it (chart-series.ts records the incident).
+    s.setData(ascUnique(pts.map((p) => ({ time: (Math.round(p.ts / 1000) + tzShift) as UTCTimestamp, value: p.p }))));
     if (fitKeyRef.current !== range) {
       chart.timeScale().fitContent();
       fitKeyRef.current = range;

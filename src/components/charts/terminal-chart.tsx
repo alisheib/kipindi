@@ -42,6 +42,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { IChartApi, ISeriesApi, IPriceLine, UTCTimestamp } from "lightweight-charts";
 import { fmtEAT } from "@/lib/updown-source-label";
 import { makeInkResolver, tokRaw } from "./ink-bridge";
+import { ascUnique } from "./chart-series";
 
 export type TerminalRange = "15M" | "30M" | "1H" | "6H" | "12H" | "24H" | "7D";
 export type TerminalStyle = "line" | "candles";
@@ -329,8 +330,11 @@ export function TerminalChart({
         // Dropped/empty buckets keep their axis width — an outage stays visible
         // instead of candles closing ranks (F19).
         ...data.series.gaps.map((t) => ({ time: at(t) })),
-      ].sort((a, b) => (a.time as number) - (b.time as number));
-      s.setData(bars);
+      ];
+      // ⛔ `ascUnique`, not `.sort()` — `at()` rounds ms to whole seconds, so a sorted list can
+      //    still tie and a tie THROWS out of this effect (see chart-series.ts). A gap must
+      //    never win a tie against a candle; the helper owns that rule.
+      s.setData(ascUnique(bars));
       seriesListRef.current.push(s);
       lastSeries = s;
       legendModeRef.current = "candles";
@@ -352,11 +356,12 @@ export function TerminalChart({
           priceLineVisible: false,
         });
         chart.priceScale("kp-vol").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 }, visible: false });
-        hv.setData(data.series.candles.map((c) => ({
+        // ⛔ This one was neither sorted NOR collapsed — the bars above at least sorted.
+        hv.setData(ascUnique(data.series.candles.map((c) => ({
           time: at(c.t),
           value: c.v ?? 0,
           color: c.c >= c.o ? ink("--yes-400", c.forming ? 0.18 : 0.3) : ink("--no-400", c.forming ? 0.18 : 0.3),
-        })));
+        }))));
         seriesListRef.current.push(hv as never);
       }
     } else {
@@ -397,8 +402,9 @@ export function TerminalChart({
         });
         const items: Array<{ time: UTCTimestamp; value?: number }> = run.map((p) => ({ time: at(p.t), value: p.price! }));
         if (idx === 0) for (const t of gapTimes) items.push({ time: at(t) });
-        items.sort((a, b) => (a.time as number) - (b.time as number));
-        s.setData(items);
+        // ⛔ The gap markers land in the SAME array as real readings, so this is the site
+        //    where a whitespace item could erase a price outright. `ascUnique` keeps the price.
+        s.setData(ascUnique(items));
         seriesListRef.current.push(s);
         lastSeries = s;
       });

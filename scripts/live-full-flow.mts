@@ -93,7 +93,7 @@ console.log("\n" + "=".repeat(72));
 console.log("LIVE FULL-FLOW  ·  real API  ·  generate → review → publish → bet");
 console.log("=".repeat(72));
 
-updateAIPollConfig({ webSearchEnabled: true, minConfidence: 60, minLeadTimeHours: 24, maxLeadTimeDays: 240 }, OFFICER);
+updateAIPollConfig({ webSearchEnabled: true, minConfidence: 60, minLeadTimeHours: 24 }, OFFICER);
 seedDefaultSources();
 
 // 1 · GENERATE one poll per category

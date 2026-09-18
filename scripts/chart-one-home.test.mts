@@ -73,6 +73,14 @@ const EXEMPT = new Map<string, string>([
   ["components/positions/countdown-ring.tsx", "time-remaining UI on a position row — a clock, not a data chart"],
   ["components/positions/pnl-summary-strip.tsx", "NeedleDial win-rate gauge — the brand needle motif (±26° tilt), same object as TippingBar's needle"],
   ["components/ui/identity-avatar.tsx", "generative avatar art seeded from an id — identity, not data"],
+  // ⭐ The same object as `components/brand.tsx` above, which is exempt for "brand primitives
+  // (TippingBar, needle, MARKS)" — these are the vendor marks split out of that file, and the
+  // file's own header says they "live beside brand.tsx, under its documented exception".
+  // D1 fires because the Instagram glyph is `<path fill={…} d={…}>` — a `d=` EXPRESSION, which
+  // is the detector's signature for a computed series. Here it is a STATIC vendor outline held
+  // in a constant beside its gradient id; nothing reads a series. ⛔ §3.2 keeps this honest: if
+  // the file ever stops matching a detector this entry fails and must be deleted.
+  ["components/ui/social-marks.tsx", "Instagram/TikTok vendor logos — a static brand outline in a `d={}` constant, the marks half of brand.tsx's documented exception; no data series"],
   ["components/updown/round-stake-panel.tsx", "a glyph chosen by variable (an arrow constant), not computed from a series"],
   ["app/updown/[roundId]/page.tsx", "a glyph chosen by variable (outcomeArrow constant), not computed from a series"],
 ]);

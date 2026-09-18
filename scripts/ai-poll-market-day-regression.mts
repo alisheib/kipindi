@@ -93,7 +93,7 @@ const OFFICER = "officer_marketday";
 console.log("\n=== AI POLL · NORMAL MARKET DAY REGRESSION ===\n");
 
 // Production-like config; web search off so the fake provider is deterministic.
-updateAIPollConfig({ webSearchEnabled: false, dailyTarget: 3, minConfidence: 60, minLeadTimeHours: 24, maxLeadTimeDays: 180, maxBatchPerRun: 25 }, OFFICER);
+updateAIPollConfig({ webSearchEnabled: false, dailyTarget: 3, minConfidence: 60, minLeadTimeHours: 24, maxBatchPerRun: 25 }, OFFICER);
 
 // ── MORNING: a day's worth of generations, queued in order ──
 console.log("--- MORNING · batch generation ---");

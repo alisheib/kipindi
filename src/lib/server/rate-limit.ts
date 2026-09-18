@@ -101,6 +101,11 @@ export const RATE_RULES: Record<string, RateRule> = {
   // First-party visit counter (/api/pv), per IP. A real visitor sends one beacon per page; 60 burst and 30/min steady
   // covers fast browsing on a shared mobile-carrier IP, and stops one client from inflating the counts.
   "pv.ip":         { capacity: 60, refillPerMin: 30 },
+  // Client-side crash reports (/api/client-error), per IP. ⚠️ DELIBERATELY TIGHT: a page that
+  // crashes in a render LOOP would otherwise beacon on every re-render, and the point of this
+  // endpoint is to learn that a crash happened — the tenth copy teaches nothing. 5 burst,
+  // ~1/min steady is enough to catch a reload-crash-reload cycle without funding a flood.
+  "clientError.ip": { capacity: 5, refillPerMin: 1 },
 };
 
 export type RateResult = { allowed: boolean; remaining: number; retryAfterSec: number };

@@ -27,6 +27,7 @@ import { BoardViz } from "@/components/charts/board-viz";
 import { OutcomeCubes } from "@/components/charts/outcome-cubes";
 import { UpDownChartLab } from "@/components/charts/updown-chart-lab";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+import { msOrNull } from "@/lib/updown-card-phase";
 import { usd } from "@/lib/usd-price";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +60,11 @@ export default async function UpDownPage({
   // the query that SUCCEEDED and found nothing.
   const board = await getBoard({
     assetKey: sp.asset,
-    durationMinutes: sp.d ? Number(sp.d) : undefined,
+    /* ⛔ A URL-SUPPLIED NUMBER IS NOT A NUMBER UNTIL IT IS CHECKED (2026-09-18). `?d=abc` made
+       `Number(sp.d)` **NaN** and `?d=-5` a negative duration, and both were passed straight
+       into the board query as a real filter value. Anything unreadable is now simply absent,
+       which is the same thing as "no duration filter" and the branch below already handles it. */
+    durationMinutes: Number.isInteger(Number(sp.d)) && Number(sp.d) > 0 ? Number(sp.d) : undefined,
     userId: session?.userId,
   });
 
@@ -288,7 +293,14 @@ export default async function UpDownPage({
                     : null
                 }
                 closesAtMs={Date.parse(r.closesAt)}
-                selectionClosesAtMs={r.selectionClosedAt ? Date.parse(r.selectionClosedAt) : null}
+                /* ⛔ `msOrNull`, NOT `x ? Date.parse(x) : null` (2026-09-18). `Date.parse` answers
+                   **NaN** for a string it cannot read, and NaN is not null, so the old spelling
+                   handed NaN straight to the card. ✅ What that fixes: `formatClock(NaN)` threw
+                   `RangeError` out of render into the route error boundary, losing the whole board
+                   to a clock caption. ⛔ What it does NOT fix: `roundPhase`'s `pastLock` collapses
+                   for null exactly as it did for NaN, so an unreadable lock instant still reads as
+                   "no betting window" — see `msOrNull`'s own header. */
+                selectionClosesAtMs={msOrNull(r.selectionClosedAt)}
                 serverNowMs={r.serverNowMs}
                 expectedResultAtMs={/* E-99 · null under the sample floor → no clock, never a
                                         guessed one. */ r.expectedResultAtMs}
