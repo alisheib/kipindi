@@ -21,8 +21,15 @@ behind, and it is the one artefact that physically leaves the company:
   `getAuditPageDurable({ limit: ISO_EXPORT_LIMIT })`, and that reader (`src/lib/server/audit.ts:507`) offers only `limit` and
   `category`, never an action filter.
 - The builder prints `action: e.action` at `:553` and `target: ${e.targetType}:…` at `:555`, verbatim.
-- House rows carry **31 distinct `house_bot.*` action names** (`src/lib/house-bot/constants.ts` `HOUSE_AUDIT`) and
-  `targetType: "HouseBot"` (written by `src/lib/server/house-bot/press-audit.ts`).
+- House rows carry **31 distinct `house_bot.*` action names** (`src/lib/house-bot/constants.ts` `HOUSE_AUDIT`) and a
+  house `targetType`. ⚠️ **Corrected 2026-09-18 (build ruling 520): this line first named ONE writer and ONE target type,
+  and both were understatements in a regulator-facing record.** Re-measured at head: the writers are FOUR —
+  `src/lib/server/house-bot/designation.ts` (`houseAudit`), `…/outcomes.ts` (`engineAudit`, called by
+  `kill-switch.ts:80`, `outcomes.ts:207` and `planner.ts:241`), `…/holder-hook.ts:227` and `…/press-audit.ts:33` — and
+  the target types are THREE: `"HouseBot"`, **`"HouseBotControl"`** and `"User"`. The first two name the feature in the
+  export’s `target` column. ⛔ The decision below is unaffected, and this is why: the exclusion is by ACTION name, and
+  every row from every one of those writers carries a `house_bot.*` action — so `Object.keys(HOUSE_AUDIT)` covers all
+  four writers and all three target types, which a fix aimed at one writer would not have.
 - The file classifies itself `classification: "Regulator hand-off"` at `:490`.
 
 So the document that goes to a regulator would name the feature and its record ids. This is a conformance gap against a decision
