@@ -141,6 +141,15 @@ ok(`0.store · the store is NAMED and the world agrees (${STORE})`,
 await w.user({ id: OFFICER, role: "ADMIN" });
 await w.limits();
 
+/* ⛔ THE BEHAVIOURAL REGION (§1 + §2) IS GUARDED, BECAUSE A THROW IN IT USED TO BLIND EVERY SECTION BELOW.
+ * MEASURED, 2026-09-18, with the declared `355-all` defect injected (`Promise.allSettled` → `Promise.all`): every
+ * settled result loses its `status` field, the whole view model collapses to nulls, and §2 died on a `TypeError` at
+ * the first roster row — so §3's lexicon scan and §4's entire source law never ran, and the ONE assertion that names
+ * that defect (1.355's settling-combinator pin, which lives in §4) never printed. The suite was red, but on three
+ * unrelated labels: what the declaration file calls WRONG-ASSERTION, and a guard that goes red for the wrong reason
+ * will go green for the wrong reason too. A throw is now REPORTED as a failure of its own and the static guards below
+ * still run. ⚠️ The body keeps its own indentation: re-indenting 500 lines would bury the one line that changed. */
+try {
 section("§1 · the audience, decided on the STORED role, through the gate");
 {
   /* 1.341 · every role, and the two non-staff ones, against BOTH belts. ⛔ The `ops` view grant is WRITTEN for a
@@ -644,6 +653,12 @@ section("§2 · the strip, the band, the roster and every failure");
     ["off", offView], ["on", onView], ["loss-stop", lossStop], ["stale-cause", staleCause],
     ["no-actor", noActor], ["sunset-full", sunsetFull], ["roster-full", plainFull],
     ["empty-off", emptyOff], ["empty-on", emptyOn]);
+}
+} catch (err) {
+  /* ⛔ NOT A SWALLOW. The throw is an assertion of its own, it is printed with its stack, and §3 and §4 still run — a
+   * partially filled `STATES` makes 3.453's own population floor fail too, which is the correct second report. */
+  ok("0.throw · no behavioural case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 300));
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
