@@ -1210,3 +1210,31 @@ bots and what keeps D19 true").
      once. `test:red-anchors` proves RESOLUTION; only applying it and re-evaluating the predicate proves it
      turns its assertion RED. The two are not the same, and this build shipped 100 declarations on the
      first kind of proof alone.
+
+
+542. **THE MONEY GATE HAS THE SAME CLOCK SPLIT B2 JUST FIXED ON THE CONSOLE, AND THIS ONE CAN REFUSE OR
+     ALLOW A REAL STAKE.** Surfaced by the fixer while discharging B2 and deliberately left untouched as
+     outside its brief — correctly, because it is the money path. Measured at `3f3a8635`,
+     `src/lib/server/house-bot/cap-precheck.ts`:
+     · `:89` `const day = eatDayKey(opts.nowMs);` — the gate DOES derive an EAT day, once.
+     · `:93` `houseDayBook(day, bot.id)` and `:96` `houseDayBook(day, null)` — both honour it.
+     · `:100` `staffChosenPlacedToday({ houseBotId: bot.id })` and `:101` `…({ houseBotId: null })` —
+       **neither passes it.** The member now takes an optional `dayKey` (B2's fix) and, without one,
+       derives its own: the memory twin a second `Date.now()`, the Prisma twin the **DATABASE CLOCK**.
+     So `loadCapFacts` measures the day books on the APP clock and staff-chosen usage on the DB clock,
+     inside ONE decision. Across EAT midnight, or under any app/DB skew, the gate can refuse a stake that
+     is within its limits or allow one that is over them — and ruling 348 exists precisely to stop one
+     render straddling two days. The console was fixed; the gate the console REPORTS ON was not.
+     - **The fix is one argument**, now that the member accepts it: pass the already-derived `day` at both
+       call sites, so the gate is internally consistent and agrees with the console that paints it.
+     - ⛔ **It is a MONEY path, so it is not a one-line commit.** It takes a case on BOTH stores that fails
+       without it — a fixture whose day book and staff-chosen window fall on opposite sides of EAT
+       midnight — seen RED first, plus a declared mutation. The bet-concurrency rules in
+       `market-service.ts` are read before touching it.
+     - ⚠️ **This is prospective, not live:** the master switch ships OFF and no account is designated, so
+       no stake has ever been gated by it in production. That is why it is fixed now rather than hot-fixed.
+     - ⛔ **And the general lesson, which is why this is a ruling and not a bug report:** B2 fixed the
+       reader that DISPLAYS a figure and left the gate that ENFORCES it. A correction applied to the
+       surface a defect was noticed on, rather than to the class, leaves the more expensive half standing.
+       When a clock, a key or a window is derived twice, every call site of that member is re-measured —
+       not only the one the review happened to open.
