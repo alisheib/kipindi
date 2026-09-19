@@ -76,6 +76,34 @@ console.log("\n[admin-section-gate] §0 every console page sits under AdminSecti
   // vacuously and stop meaning anything.
   ok("§0b CONTROL · §0b actually inspected pages (it is not vacuous)",
     pages.length - EXEMPT.size >= 45, `${pages.length} pages − ${EXEMPT.size} exempt`);
+
+  // ── §0c · W25 · NO ADMIN PAGE MAY NAME A RECORD IN ITS DOCUMENT TITLE. ──
+  // ⛔ `generateMetadata` runs BEFORE and INDEPENDENTLY of the page body, so neither belt reaches it. Belt 1 refuses
+  // a non-staff cookie, but belt 2 exists for the cookie that still SAYS staff after a demotion — and such a viewer
+  // was refused the body while still being handed the record's title in the tab, the history entry and the flight
+  // payload. Measured: FOUR admin pages did this (players/[id] named the player; ai-polls/[id], house/[marketId] and
+  // markets/[id] named the record), and the first count of it said ONE, because the grep window was eight lines and
+  // the other three reach their data through different accessors. A count is not a measurement until it can fail.
+  // ⛔ It was also an ORACLE: "Market not found" for a missing record versus a real title for a live one enumerated
+  // which ids exist, with no gate consulted. `/admin/desk/[id]` states the same rule for itself (ruling 402).
+  const titled = [];
+  for (const page of pages) {
+    const rel = relative(ADMIN, page).split(sep).slice(0, -1).join("/");
+    const src = readFileSync(page, "utf8");
+    const i = src.indexOf("export async function generateMetadata");
+    if (i < 0) continue;                       // a static `export const metadata` is the shape this asks for
+    const open = src.indexOf("{", src.indexOf(")", i));
+    let d = 0, end = -1;
+    for (let j = open; j < src.length; j++) {
+      if (src[j] === "{") d++;
+      else if (src[j] === "}") { d--; if (d === 0) { end = j; break; } }
+    }
+    const body = end > 0 ? src.slice(open, end + 1) : src.slice(i);
+    // Any read at all inside generateMetadata: the title can then only be built from what was read.
+    if (/\b(db|prisma|pc)\s*[.(]|\bget[A-Z]\w*\s*\(|\bStore\s*\.|\bfindById\s*\(/.test(body)) titled.push(rel || "(root)");
+  }
+  ok("§0c W25 · no admin page reads a record inside generateMetadata (it runs outside every gate)",
+    titled.length === 0, titled.join(", "));
   // Code only: line comments first, then block and JSX comments (the history of the move is written in comments).
   const root = readFileSync(join(ADMIN, "layout.tsx"), "utf8").replace(/^[ \t]*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
   ok("§0 the root admin layout no longer decides view/act (it is frozen across soft navigations)",

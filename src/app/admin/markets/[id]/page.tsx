@@ -30,13 +30,21 @@ import { KpiGrid } from "@/components/admin/admin-body";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  let m: Awaited<ReturnType<typeof getMarket>> | null = null;
-  try { m = await getMarket(id); } catch { /* graceful */ }
-  if (!m) return { title: "Market not found" };
-  return { title: `Admin · Predictors — ${m.titleEn.slice(0, 50)}` };
-}
+/**
+ * ⛔ W25 — `generateMetadata` RUNS OUTSIDE EVERY GATE, so it may not name the record.
+ *
+ * Metadata is produced before and independently of the page body, so neither belt reaches it: belt 1 (the edge)
+ * refuses a non-staff cookie, but belt 2 exists for the account whose cookie still SAYS staff after a demotion —
+ * and such a viewer was refused the body while still being handed the record's title in the browser tab, the
+ * history entry and the flight payload. ⛔ The probe cannot see this: its non-staff viewers never get past the
+ * edge, so no response of theirs carries it. Found by reading, not by testing.
+ *
+ * ⛔ AND THE DYNAMIC TITLE WAS ALSO AN ORACLE. "Market not found" for a missing record versus a real title for a
+ * live one let anyone holding a URL enumerate which record ids exist, by title alone, with no gate consulted.
+ * `/admin/desk/[id]` states the same rule for itself (ruling 402): the record's own label is a GATED value and
+ * never reaches the tab. A heading that names the record is correct — it is inside the gate. A document title is not.
+ */
+export const metadata = { title: "Admin · Predictors" };
 
 const SIDE_OPTIONS = [
   { value: "", label: "Both sides" },
