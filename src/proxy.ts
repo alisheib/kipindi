@@ -244,6 +244,15 @@ export async function proxy(req: NextRequest) {
     // entitled to /admin, and deleting it would sign a player out of the site for visiting a URL.
     // ⚠️ Coarse and subtractive only: it refuses an account whose own cookie says it is not staff. A demoted
     // account's stale cookie still passes here and is caught by the per-page stored-row gate (belt 2).
+    // ⚠️ A KNOWN GAP IN THIS BELT, STATED RATHER THAN GLOSSED, and the reason belt 2 is not redundant.
+    // `config.matcher` (:285) excludes `_next/static`, `_next/image`, `favicon.ico` and ANY path ending in an image
+    // extension — so this function never runs for `/admin/players/<anything>.png`, which a dynamic `[id]` segment
+    // happily matches. The edge is therefore skippable by URL shape alone, without any router-state trickery.
+    // ⭐ It is not exploitable for disclosure today, and the reason is worth writing down: the id must resolve, and
+    // `<id>.png` never does — `findById` answers null and the page answers `notFound()`. But "not exploitable
+    // because the lookup fails" is a property of the DATA, not of the gate, and a future route whose segment is not
+    // an id would not have it. The page's own gate (belt 2) runs regardless of this matcher, which is exactly why
+    // every admin page carries one and why neither belt is described as sufficient alone.
     if (pathname.startsWith("/admin") && !isStaffRole(session.role)) {
       const url = req.nextUrl.clone();
       url.pathname = "/auth/admin";
