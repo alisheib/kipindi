@@ -212,12 +212,36 @@ export async function plannerPass(ctx: TickContext, deps: PlannerDeps): Promise<
     })) marks.hourlyKey = hourKey;
   }
 
+  /* ⭐ X1's DUTY-NAME HALF (PROGRESS's proposed control X1; replan rulings 507, 549 — C7 step 4).
+   * "Today a stuck summary or a failed loss check is only in the server log; the strip would say it in plain words."
+   * The pass already knows: `out.duties[name]` is "ok", "skipped" or "failed: <message>". What was missing is a
+   * DURABLE home, and it is the heartbeat row's own `extra` field — the columns are KEY-SCOPED exactly as `beatAt`
+   * is, so `beat:planner`'s carry the PLANNER's facts, the way `beat:poller:<instance>`'s carry that instance's
+   * claim failures (`worker.ts`). Nothing here is rendered: the console reads the row and writes its own words.
+   * ⛔ NAMES ONLY, NEVER THE MESSAGE. A duty's error text is an arbitrary database or vendor string; it can name a
+   * bot, a market or an account, and this row is read by a console surface. The NAME is a closed list (`DutyName`).
+   * ⛔ AND A FAILED PASS DOES NOT BEAT. When a MONEY duty failed the row is written through `upsert`, which touches
+   * no `beatAt` — the same rule `worker.ts` follows and for the same reason: a pass that failed must not look alive.
+   * A pass whose money duties all held still beats, and carries the non-money failure beside it, which is exactly
+   * X1's "Summaries delayed" case. */
+  const failedDuties = (Object.entries(out.duties) as Array<[DutyName, string]>)
+    .filter(([, verdict]) => verdict.startsWith("failed:"))
+    .map(([name]) => name);
+  const dutyFacts = failedDuties.length > 0
+    ? { pollerErrorCode: failedDuties.join(","), pollerErrorAt: iso(nowMs) }
+    : { pollerErrorCode: null };
   if (money.every(Boolean)) {
     try {
-      await houseBotRuntimeStore.beat(RUNTIME_KEY.plannerBeat);
+      await houseBotRuntimeStore.beat(RUNTIME_KEY.plannerBeat, dutyFacts);
       out.beat = true;
     } catch (e) {
       console.error("[house-bot] planner beat failed:", errMessage(e));
+    }
+  } else {
+    try {
+      await houseBotRuntimeStore.upsert(RUNTIME_KEY.plannerBeat, dutyFacts);
+    } catch (e) {
+      console.error("[house-bot] planner duty record failed:", errMessage(e));
     }
   }
   return out;

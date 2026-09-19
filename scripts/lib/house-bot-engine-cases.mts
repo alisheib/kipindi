@@ -2077,6 +2077,69 @@ await guard("16", async () => {
     const empty = await passSafe({ state: st, instanceId: idle }, recorder().alerts);
     ok("16.43 · A24 · nothing due → claimed 0 and NO beat (a process that cannot claim never looks healthy)", empty.claimed === 0 && empty.beat !== true && (await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.pollerBeat(idle))) == null, j(empty));
   }
+
+  /* ── 16.514 A24's POLLER-FAILURE LIMB — dead end to end until C7 step 4 (replan rulings 514, 549) ──
+   * MEASURED before this build: POLLER_FAILURE_ALERT_AFTER had exactly ONE occurrence in the tree (its own
+   * definition), ALERT_KEY.pollerFailing had NO writer, and pollerErrorAt, pollerErrorCode, pollerErrorStreak and
+   * the durable skewMs had no writer ANYWHERE — the whole limb, not only the alert, inside a commit marked CLOSED.
+   * A poller whose claim statement keeps throwing claims nothing, so it fires nothing, so no outcome, no alert and
+   * no audit is ever written and every other instrument reads "quiet".
+   * ⛔ THE FAILURE IS RECORDED WITHOUT A BEAT: beat() stamps beatAt, and a failed pass that looked alive is the
+   * precise defect A24 exists for, so the write goes through upsert. */
+  {
+    const instanceId = `hb-test-a24-${process.pid}`;
+    const key = K.RUNTIME_KEY.pollerBeat(instanceId);
+    const st = { ...EN2.engineState(), started: true, stopping: false, skewMs: 0, inFlight: new Map() };
+    const realClaim = S.houseBotIntentStore.claimBatch;
+    const failingAlerts = recorder();
+    const firedAlerts = () => failingAlerts.calls.filter((c: Any) => c.fn === "once" && String(c.key).startsWith("engine:poller_failing"));
+    try {
+      S.houseBotIntentStore.claimBatch = async () => { throw new Error("claim statement exploded"); };
+      const first = await passSafe({ state: st, instanceId }, failingAlerts.alerts);
+      const afterFirst: Any = await S.houseBotRuntimeStore.get(key);
+      ok("16.514a · ⛔ A24 · a CLAIM that throws is recorded on this instance's own heartbeat row — the instant, the code and a streak of 1 — and NO beatAt is written, because a failed pass must never look alive",
+        first?.claimed === 0 && first?.failure?.streak === 1 && afterFirst != null
+          && afterFirst.pollerErrorAt != null && String(afterFirst.pollerErrorCode).includes("claim statement exploded")
+          && afterFirst.pollerErrorStreak === 1 && afterFirst.beatAt == null,
+        j({ first, row: afterFirst && { at: afterFirst.pollerErrorAt, code: afterFirst.pollerErrorCode, streak: afterFirst.pollerErrorStreak, beatAt: afterFirst.beatAt, skewMs: afterFirst.skewMs } }));
+      ok("16.514b · …and the durable skewMs is written with it — until this build it lived only in process memory and died with the container",
+        afterFirst?.skewMs === 0, j({ skewMs: afterFirst?.skewMs }));
+
+      /* ⛔ THE ALERT IS THE ASSERTION RULING 514 ASKED FOR, AND IT FAILS WHEN ALERT_KEY.pollerFailing HAS NO
+       * WRITER — which is exactly the tree this case was written against. The streak is the ROW's, not the
+       * process's: a container that crash-loops every ten failures would otherwise never reach the threshold, and
+       * a crash-looping poller is the commonest shape this alert exists for. */
+      const before = firedAlerts().length;
+      for (let n = 2; n <= K.POLLER_FAILURE_ALERT_AFTER; n++) await passSafe({ state: st, instanceId }, failingAlerts.alerts);
+      const atThreshold: Any = await S.houseBotRuntimeStore.get(key);
+      const fired = firedAlerts();
+      ok("16.514c · ⭐ RULING 514 · POLLER_FAILURE_ALERT_AFTER failed claims in a row send ONE engine:poller_failing alert — the constant's second occurrence in this tree, and the key's first writer anywhere",
+        before === 0 && atThreshold?.pollerErrorStreak === K.POLLER_FAILURE_ALERT_AFTER && fired.length === 1 && fired[0]?.code === "POLLER_FAILING",
+        j({ before, after: K.POLLER_FAILURE_ALERT_AFTER, streak: atThreshold?.pollerErrorStreak, fired: fired.map((c: Any) => ({ key: c.key, code: c.code })) }));
+      const again = await passSafe({ state: st, instanceId }, failingAlerts.alerts);
+      ok("16.514d · …and the next failure in the same EAT hour tells nobody a second time (the AlertOnce claim), while the streak keeps counting",
+        firedAlerts().length === 1 && again?.failure?.streak === K.POLLER_FAILURE_ALERT_AFTER + 1 && again?.failure?.alerted === false,
+        j({ alerts: firedAlerts().length, failure: again?.failure }));
+      ok("16.514e · CONTROL · every failed pass above really reached this row — the streak is the ROW's own count, so a case that never wrote could not have produced it, and still no beat",
+        atThreshold?.beatAt == null && again?.claimed === 0, j({ beatAt: atThreshold?.beatAt, claimed: again?.claimed }));
+    } finally {
+      S.houseBotIntentStore.claimBatch = realClaim;
+    }
+
+    /* The recovery half: a claim that succeeds beats, resets the streak and writes the skew — and does NOT erase
+     * the last error, because the Callout tells "failing" from "not running" by which of the two is fresher. */
+    const b = await botWith();
+    const p = await lockedPoll();
+    await S.houseBotIntentStore.insert(pendingRow(b, p.m.id));
+    const good = await passSafe({ state: { ...st, skewMs: 37 }, instanceId }, recorder().alerts);
+    const recovered: Any = await S.houseBotRuntimeStore.get(key);
+    ok("16.514f · A24 · the next claim that SUCCEEDS beats, resets the streak to 0 and writes the measured skew — and KEEPS the last error, which is the only thing that tells a recovered poller from one that has never failed",
+      good?.claimed === 1 && good?.beat === true && recovered?.pollerErrorStreak === 0 && recovered?.beatAt != null
+        && recovered?.skewMs === 37 && recovered?.pollerErrorAt != null && String(recovered?.pollerErrorCode).includes("claim statement exploded"),
+      j({ good: good && { claimed: good.claimed, beat: good.beat, threw: good.threw }, row: recovered && { streak: recovered.pollerErrorStreak, beatAt: recovered.beatAt, skewMs: recovered.skewMs, code: recovered.pollerErrorCode } }));
+    ok("16.514g · CONTROL · the claim really was restored — the pass above claimed and fired a real row, so the reset is a measurement and not an unreached patch",
+      good?.results?.length === 1, j({ results: good?.results?.length }));
+  }
   {
     const b = await botWith();
     const claimAs = async (me: string) => {
@@ -2688,6 +2751,83 @@ await guard("17", async () => {
   const left = (await P.$queryRawUnsafe(`SELECT count(*)::int AS "n" FROM "HouseBotAlertOnce" WHERE "key" LIKE $1::text`, `${tag}:%`)) as Any[];
   ok("17.76 · ruling 86 · 5,001 throttle rows past 30 days are purged in ONE nightly run (two batches of 5,000); the young row stays",
     (r?.houseBotAlertOncePurged ?? 0) >= 5_001 && left[0]?.n === 1, j({ purged: r?.houseBotAlertOncePurged, threw: r?.threw, left }));
+});
+
+/* ── 17.507 X1's DUTY-NAME HALF — the planner's failed duties, DURABLE (PROGRESS X1; replan rulings 507, 549) ──
+ * "Today a stuck summary or a failed loss check is only in the server log; the strip would say it in plain words."
+ * The pass has always KNOWN which duty failed — `out.duties[name]` is "ok", "skipped" or "failed: <message>" — and
+ * that knowledge died with the tick. It now rides the heartbeat row's own `extra` field, key-scoped exactly as
+ * `beatAt` is, so `beat:planner` carries the PLANNER's facts the way `beat:poller:<instance>` carries that
+ * instance's claim failures (A24, `worker.ts`).
+ * ⛔ NAMES ONLY, NEVER THE MESSAGE: a duty's error text is an arbitrary database or vendor string and can name a
+ * bot, a market or an account, and a console surface reads this row.
+ * ⛔ AND A FAILED MONEY DUTY STILL DOES NOT BEAT (ruling 98) — the record is written through `upsert`. */
+await guard("17", async () => {
+  const w = await loadWorld();
+  if (!(await w.db.user.findById(WORLD_OFFICER))) await w.user({ id: WORLD_OFFICER, role: "ADMIN" });
+  await w.limits();
+  await w.switchOn();
+  const S = HDAL;
+  const PLK = K.RUNTIME_KEY.plannerBeat;
+  const quiet = {
+    placed: async () => {}, once: async () => {}, security: async () => {},
+    botStopped: async () => {}, switchedOff: async () => {},
+  };
+  const bounds = async () => ({ minStake: 1_000, maxStake: 10_000_000, refillPerMin: 10 });
+  const ctx = () => ({ state: { ...EN2.engineState(), planner: { oversightAtMs: null, hourlyKey: null, scan: {} } }, instanceId: `hb-test-x1-${process.pid}` });
+  const runPass = async (): Promise<Any> => { try { return await PL.plannerPass(ctx(), { alerts: quiet, liveBounds: bounds }); } catch (e) { return { threw: String((e as Error)?.message ?? e) }; } };
+  const failedOf = (p: Any): string[] => Object.entries(p?.duties ?? {}).filter(([, v]) => String(v).startsWith("failed:")).map(([n]) => n);
+  const mirrors = (p: Any, row: Any): boolean => {
+    const f = failedOf(p);
+    return row?.pollerErrorCode === (f.length > 0 ? f.join(",") : null);
+  };
+
+  /* (1) a NON-money duty fails: the pass still beats, and the row names the duty. */
+  const realRepair = S.houseBotIntentStore.listAlertRepair;
+  let withNonMoney: Any, rowNonMoney: Any;
+  try {
+    S.houseBotIntentStore.listAlertRepair = async () => { throw new Error("alert repair read exploded"); };
+    withNonMoney = await runPass();
+    rowNonMoney = await S.houseBotRuntimeStore.get(PLK);
+  } finally {
+    S.houseBotIntentStore.listAlertRepair = realRepair;
+  }
+  ok("17.507a · ⭐ X1 · a NON-money duty that fails is named on the planner's own heartbeat row, and the pass still BEATS — which is exactly X1's 'Summaries delayed' case",
+    failedOf(withNonMoney).includes("alertRepair") && withNonMoney?.beat === true
+      && String(rowNonMoney?.pollerErrorCode).split(",").includes("alertRepair") && rowNonMoney?.beatAt != null && rowNonMoney?.pollerErrorAt != null,
+    j({ duties: withNonMoney?.duties, row: rowNonMoney && { code: rowNonMoney.pollerErrorCode, at: rowNonMoney.pollerErrorAt, beatAt: rowNonMoney.beatAt } }));
+  ok("17.507b · …and it is the NAME, never the message — the row carries only members of the closed DutyName list, so a database string that named a bot, a market or an account could never reach a console surface through it",
+    String(rowNonMoney?.pollerErrorCode ?? "").split(",").every((n: string) => /^[A-Za-z]+$/.test(n))
+      && !String(rowNonMoney?.pollerErrorCode ?? "").includes("exploded"),
+    j({ code: rowNonMoney?.pollerErrorCode }));
+  ok("17.507c · CONTROL · the row MIRRORS this pass's own duties map — so the value above was produced by the pass under test and not left behind by an earlier one",
+    mirrors(withNonMoney, rowNonMoney), j({ failed: failedOf(withNonMoney), code: rowNonMoney?.pollerErrorCode }));
+
+  /* (2) a MONEY duty fails: the duty is recorded and NO beat is written (ruling 98 + A24's own law). */
+  const beatBefore = (await S.houseBotRuntimeStore.get(PLK))?.beatAt ?? null;
+  const realDeadline = S.houseBotIntentStore.expirePastDeadline;
+  let withMoney: Any, rowMoney: Any;
+  try {
+    S.houseBotIntentStore.expirePastDeadline = async () => { throw new Error("deadline sweep exploded"); };
+    withMoney = await runPass();
+    rowMoney = await S.houseBotRuntimeStore.get(PLK);
+  } finally {
+    S.houseBotIntentStore.expirePastDeadline = realDeadline;
+  }
+  ok("17.507d · ⛔ a MONEY duty that fails is recorded on the row and writes NO beat — a pass that failed must never look alive, which is the whole reason this record does not ride beat()",
+    failedOf(withMoney).includes("deadline") && withMoney?.beat !== true
+      && String(rowMoney?.pollerErrorCode).split(",").includes("deadline") && (rowMoney?.beatAt ?? null) === beatBefore,
+    j({ failed: failedOf(withMoney), beat: withMoney?.beat, beatBefore, beatAfter: rowMoney?.beatAt, code: rowMoney?.pollerErrorCode }));
+  ok("17.507e · CONTROL · the beat really could have moved — the pass before this one wrote one, so an unchanged beatAt is a measurement and not an absent writer",
+    beatBefore != null, j({ beatBefore }));
+
+  /* (3) the clean pass: nothing failed, so the row says nothing failed. A record that only ever GROWS would report
+   * a duty that recovered an hour ago as still broken, which is the stale-verdict class this programme pays for. */
+  const clean = await runPass();
+  const rowClean: Any = await S.houseBotRuntimeStore.get(PLK);
+  ok("17.507f · a pass whose duties all held clears the record — the row mirrors the pass, so a duty that recovered is not reported as still broken",
+    mirrors(clean, rowClean) && (failedOf(clean).length > 0 || rowClean?.pollerErrorCode === null),
+    j({ failed: failedOf(clean), code: rowClean?.pollerErrorCode }));
 });
 
 /* ═══ §18 · the trigger: the post-commit hook and the sweep (PLAN §4.3, 04 A11, A12, A21, A24, R5, N2 §4; C4-SPEC rulings 90–110, 114–115) ═══ */

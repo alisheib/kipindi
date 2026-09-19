@@ -24,8 +24,49 @@ const FIRE = "src/lib/server/house-bot/fire.ts";
 const PLANNER = "src/lib/server/house-bot/planner.ts";
 const DECIDE = "src/lib/server/house-bot/decide.ts";
 const DAL = "src/lib/server/house-bot-dal.ts";
+/* ⭐ C7 step 4b · the poller's own pass, where A24's failure limb finally has a writer (replan ruling 514). */
+const WORKER = "src/lib/server/house-bot/worker.ts";
 
 export const MUTATIONS = [
+  /* ── C7 step 4b · A24's poller-failure limb and X1's duty names (replan rulings 514, 507, 549) ─────────────────
+   * Each of these four puts back a state the tree was ACTUALLY in until this build: no alert at the threshold, no
+   * durable record at all, or a failed pass writing the beat that makes it look alive. */
+  {
+    name: "514-no-alert · the poller-failure threshold tells nobody (ALERT_KEY.pollerFailing back to having no writer)",
+    file: WORKER,
+    from: "  const alerted = streak >= POLLER_FAILURE_ALERT_AFTER\n    ? await alertOnce(ALERT_KEY.pollerFailing(), alerts, { code: \"POLLER_FAILING\", detail: { streak, error: code } })\n    : false;",
+    to: "  const alerted = false;",
+    expect: "16.514c · ⭐ RULING 514",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "514-beat-on-failure · a failed claim writes the BEAT, so a poller that claims nothing looks alive",
+    file: WORKER,
+    from: "    await houseBotRuntimeStore.upsert(key, {",
+    to: "    await houseBotRuntimeStore.beat(key, {",
+    expect: "16.514a · ⛔ A24",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "507-no-duty-names · the planner's failed duties die with the tick again",
+    file: PLANNER,
+    from: "    ? { pollerErrorCode: failedDuties.join(\",\"), pollerErrorAt: iso(nowMs) }",
+    to: "    ? { pollerErrorCode: null }",
+    expect: "17.507a · ⭐ X1",
+    suite: "engine-mem",
+    sections: "17",
+  },
+  {
+    name: "507-beat-on-failed-money · a pass whose MONEY duty failed writes the beat anyway (ruling 98 undone)",
+    file: PLANNER,
+    from: "      await houseBotRuntimeStore.upsert(RUNTIME_KEY.plannerBeat, dutyFacts);",
+    to: "      await houseBotRuntimeStore.beat(RUNTIME_KEY.plannerBeat, dutyFacts);",
+    expect: "17.507d · ⛔ a MONEY duty that fails",
+    suite: "engine-mem",
+    sections: "17",
+  },
   // ── N1 (04-amendments.md:3795-3804, `red:house-bot-engine` commit 4) ──────────────────────────────────────────────
 
   // N1-1 · 04:3796 — fire takes the new thin side instead of skipping CONDITION_GONE (H0 then meets a side the row
