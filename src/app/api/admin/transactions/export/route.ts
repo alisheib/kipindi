@@ -25,6 +25,7 @@ import { canView, mayReveal } from "@/lib/server/rbac";
 import { maskPhone } from "@/lib/phone-normalize";
 import { audit } from "@/lib/server/audit";
 import { db, TXN_TYPES } from "@/lib/server/store";
+import { checkAdminTotp } from "@/lib/server/admin-guard";
 import { attentionOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
 import type { StoredTxn } from "@/lib/server/store";
@@ -87,6 +88,14 @@ export async function GET(req: Request) {
   const u = session ? await db.user.findById(session.userId).catch(() => null) : null;
   if (!session || !u || !(u.role === "ADMIN" || (await canView(u.role, "accounting")))) {
     // Same shape as any other missing route — don't confirm the endpoint exists.
+    return new NextResponse("Not Found", { status: 404 });
+  }
+  // ⛔ W25 — AND IT WAS THE ONLY /api/admin ROUTE WITH NO SECOND FACTOR. `admission`, `agent-doc`, `kyc-doc`,
+  // `updown-timing` and `reports/[id]` all call `checkAdminTotp` after their role check; this one did not, while
+  // serving every player's money rows as a CSV. A direct GET to this URL skips the admin layout's TOTP gate
+  // entirely, which is the same reasoning `reports/[id]:41-43` records for itself (audit finding B3).
+  // 404 rather than 403 here, unlike reports: this route's established shape is not to confirm it exists at all.
+  if ((await checkAdminTotp(session.userId, session.sessionId)) !== "ok") {
     return new NextResponse("Not Found", { status: 404 });
   }
 
