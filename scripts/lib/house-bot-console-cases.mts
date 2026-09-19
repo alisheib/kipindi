@@ -1022,6 +1022,28 @@ section("§2 · the strip, the band, the roster and every failure");
     ok("1.415 · a second OFF changes nothing and says so — and it is never refused, because a stop that is refused is the one refusal this console must not have",
       stopAgain.ok === true && stopAgain.changed === false, j(stopAgain));
 
+    /* ⛔ THE ONE BRANCH WHERE THE SHARED SENTENCE WOULD REACH A SCREEN, AND NO ORDINARY RUN REACHES IT — which is
+     * exactly why it needs a case rather than a comment. `SWITCH_OFF_COPY.WRITE_FAILED` reads "Could not reach the
+     * database. House bots were NOT switched off…": correct on the ops script and in the admin bell, which D19
+     * exempts, and three words of the feature's own name on the one surface ruling 453 exists to keep neutral.
+     * ⚠️ FOUND BY APPLYING THE DECLARED MUTATION AND RE-EVALUATING IT (replan ruling 541), not by reading: the
+     * first `415-shared-copy` declaration was MISSED, because the branch it aimed at was exercised by nothing. */
+    const realOff = w.dal.houseBotControlStore.switchOff;
+    let offFailed: Any;
+    try {
+      w.dal.houseBotControlStore.switchOff = async () => { throw new Error("the control row could not be written"); };
+      offFailed = await callSwitch(OFFICER, { to: "OFF", reason: "stopping, with the database unreachable" });
+    } finally {
+      w.dal.houseBotControlStore.switchOff = realOff;
+    }
+    ok("1.415 · 453 · a kill switch whose WRITE FAILED says so in the console's own neutral words, and names the remedy — never the shared sentence, which names the feature three words in",
+      offFailed?.ok === false && typeof offFailed.error === "string" && offFailed.error.length > 8
+        && !NEUTRAL.test(offFailed.error) && offFailed.error !== FEEDC.SWITCH_OFF_COPY.WRITE_FAILED
+        && offFailed.threw === undefined,
+      j(offFailed));
+    ok("1.415 · 453 · CONTROL · the shared sentence this branch replaced DOES name the feature, so the case above is a comparison with something rather than with nothing",
+      NEUTRAL.test(FEEDC.SWITCH_OFF_COPY.WRITE_FAILED), j(FEEDC.SWITCH_OFF_COPY.WRITE_FAILED));
+
     /* ⛔ 453 · EVERY WORD EITHER DIALOG CAN PAINT, SCANNED — the titles, the bodies, both button labels, the field
      * labels, the typed word, the hints and both toast titles, in BOTH directions. */
     const ceremonyStrings = [plainFull.switchDialog, onNow.switchDialog]

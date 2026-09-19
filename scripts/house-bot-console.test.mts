@@ -62,7 +62,7 @@
  * the arming predicate's eight branches, the server's four refusals, the act itself and the kill switch, ruling
  * 547 re-verified in the state it was written about and reached through the console for the first time, and
  * 432(j) widened from two states to four — to what `npm run test:house-bot-console` PRINTED on that run:
- * **memory 395, Postgres 249**. Every one of those assertions was seen RED first, against a tree with the gated
+ * **memory 397, Postgres 251**. Every one of those assertions was seen RED first, against a tree with the gated
  * writer and its service removed: **16 failed on memory**, with no throw and with §3 and §4 still running.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
@@ -74,6 +74,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 395, postgres: 249 },
+  minPass: { memory: 397, postgres: 251 },
   dbPrefix: "hb_console",
 });

@@ -80,7 +80,10 @@ export const MUTATIONS = [
     file: GATE,
     from: `  if (!off.ok) return { ok: false, error: SWITCH_COPY.offFailed };`,
     to: `  if (!off.ok) return { ok: false, error: off.message };`,
-    expect: "1.415 · ⭐ THE KILL SWITCH STOPS THE DESK",
+    /* ⚠️ RE-AIMED under replan ruling 541: the first form named the kill switch's SUCCESS case, which this
+       defect cannot reach — the branch it changes only runs when the OFF WRITE FAILS, and no case reached it.
+       The case was written (a throwing control-row write) and the declaration now names it. */
+    expect: "1.415 · 453 · a kill switch whose WRITE FAILED says so in the console's own neutral words",
     suite: "console-mem",
   },
   {
