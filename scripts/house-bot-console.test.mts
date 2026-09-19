@@ -50,8 +50,11 @@
  * and two count rows, the balance-FLOOR state in all four of its branches, X6, the rules and targets panels, the
  * REMOVED read set measured with six spies, and "Last bet" on both surfaces — to what `npm run test:house-bot-console`
  * PRINTED on that run: **memory 367, Postgres 225**, and **368 / 226** after the step's own renders found a
- * REMOVED account painting  for a read 358 says it never takes, and three rows spending a scope
+ * REMOVED account painting `AdminLoadError` for a read 358 says it never takes, and three rows spending a scope
  * word their own cap already carried.
+ * ⭐ RAISED ONCE MORE with 1.435, the account page's own source law — six `removed` guards, three pure tab
+ * tests, the RAW file yielding exactly the closed tab list, and no failure treatment a removed account can
+ * reach: **memory 372, Postgres 230**.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -62,6 +65,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 368, postgres: 226 },
+  minPass: { memory: 372, postgres: 230 },
   dbPrefix: "hb_console",
 });

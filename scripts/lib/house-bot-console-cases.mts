@@ -2334,6 +2334,49 @@ try {
 } catch (err) {
   ok("1.358 · the account page's fixture ran", false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
 }
+
+  /* ━━ 1.435 · A REMOVED ACCOUNT RENDERS NO RAIL AND NO OVERVIEW CARD (ruling 435(a)) ━━━━━━━━━━━━━━━━━━━━━━━━
+   * Read off `acct-removed-360.png` and `acct-removed-1280.png`: under the terminal Callout the overview painted
+   * `AdminLoadError` — "Couldn't load limit usage · A data read failed — this may not be empty" — an EMPTY
+   * "Balance floor" card and a "Last bet —" card. Nothing had failed. Ruling 358 names wallet, cap, rate and
+   * target reads as the ones a removed account does NOT take, and 355 reserves the kit's failure treatment for a
+   * read that DID fail; this is 421's distinction one route over, got wrong in the same direction.
+   * ⛔ AND THE SECOND READING IS THE ONE THAT SETTLED THE SHAPE: guarding the three cards left a rail whose
+   * Overview tab rendered 600px of NOTHING and whose Targets tab would have painted the same failure treatment one
+   * click away — ruling 312's dead control, which on this route is a property of the RECORD and not only of the
+   * build. So the rail is not rendered at all, and the one thing a removed account still holds is shown directly.
+   * ⛔ THE GUARD IS INSIDE EACH PANEL, NEVER A SECOND TERM IN THE TAB TEST (433(e)): a second term makes a panel
+   * read as "above the rail", which is the strongest possible answer and a PASS that proves nothing. */
+  {
+    const detail = decomment(read(DETAIL_PAGE));
+    const guards = (detail.match(/\{!view\.removed && \(/g) ?? []).length;
+    ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and both other panels",
+      /* ⚠️ THE SOURCE IS DECOMMENTED, so a pin may not reach for a comment as its landmark — measured on the
+         first run of this very assertion, which looked for the `312` note above the rail and found nothing. */
+      guards === 6 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
+        && /\{view\.removed && \(\s*<AdminCard title="Saved rules">/.test(detail),
+      j({ guards }));
+    /* ⛔ AND THE TAB TESTS ARE STILL PURE, which is what keeps `test:tab-anchors` and the served probe able to read
+     * this page's panels at all. */
+    ok("1.435 · 433(e) · every tab test is the tab and NOTHING else, so no panel reads as `above the rail`",
+      (detail.match(/\{tab === "[a-z]+" && \(<>/g) ?? []).length === CR.CONSOLE_DETAIL_TABS.length
+        && !/tab === "[a-z]+" && [a-z]/.test(detail),
+      j((detail.match(/\{tab === "[a-z]+" && \(<>/g) ?? [])));
+    /* ⛔ AND THE RAW FILE — COMMENTS AND ALL — YIELDS EXACTLY THE CLOSED LIST, which is the OTHER half of 433(e)
+     * and the half this page broke on the day it was written: the served probe discovers a page tab with
+     * `/tab === "([a-z-]+)"/g` over `readFileSync`, so a COMMENT quoting the idiom invents a key no panel answers
+     * and the probe then requests a page that does not exist. Measured here: the first draft of this file spelled
+     * the opener inside a comment and invented a tab. */
+    const detailRawTabs = [...new Set([...read(DETAIL_PAGE).matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]))];
+    ok("1.435 · 433(e) · the RAW account page yields exactly the closed tab list — no comment invents a key no panel answers",
+      j(detailRawTabs) === j([...CR.CONSOLE_DETAIL_TABS]), j(detailRawTabs));
+    /* ⛔ AND THE PAGE NEVER PAINTS THE KIT'S FAILURE TREATMENT FOR A REMOVED ACCOUNT: every `AdminLoadError` on it
+     * sits inside a `!view.removed` guard or behind a `=== null` test that a removed account cannot reach. */
+    ok("1.435 · 355 · the account page carries no `AdminLoadError` a REMOVED account can reach — a read that was never taken has not failed",
+      (detail.match(/<AdminLoadError/g) ?? []).length === 4
+        && detail.indexOf('{view.removed && (') < detail.indexOf('{tab === "overview"'),
+      j({ loadErrors: (detail.match(/<AdminLoadError/g) ?? []).length }));
+  }
 } catch (err) {
   /* ⛔ NOT A SWALLOW. The throw is an assertion of its own, it is printed with its stack, and §3 and §4 still run — a
    * partially filled `STATES` makes 3.453's own population floor fail too, which is the correct second report. */

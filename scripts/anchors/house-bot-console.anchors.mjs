@@ -34,6 +34,8 @@ const SAVE = "src/lib/server/house-bot/limits-save.ts";
 const REFUSED = "src/app/admin/kyc/refused/page.tsx";
 /* ⭐ C7 step 4 · the house DAL, for `botRateUsage` — the one new seam member ruling 351 allows. */
 const DAL = "src/lib/server/house-bot-dal.ts";
+/* ⭐ C7 step 4 · the account page. */
+const DETAIL = "src/app/admin/desk/[id]/page.tsx";
 
 export const MUTATIONS = [
   /* ── Ruling 453 · THE NEUTRAL LEXICON. Four mutations, one per sentence the ruling fixes. ─────────────────────── */
@@ -1261,6 +1263,75 @@ import { formatEat } from "@/lib/utils";`,
     from: `  HOLDER_WITHDREW: "The holder stopped the stakes themselves. Only a fresh password they give you can restart it.",`,
     to: `  MANUAL: "The holder stopped the stakes themselves. Only a fresh password they give you can restart it.",`,
     expect: "1.311 · 432(f) · not one way-out sentence",
+    suite: "console-mem",
+  },
+  /* ── C7 step 4 · the account page, its three answers, its floor STATE, X6, and the two roster columns ── */
+  {
+    /* Under ruling 259 a signed-in player reaches this route. With the order swapped, a real id and an invented one answer differently for a viewer outside the audience — and the difference is a STATUS CODE, which no vocabulary needle can see. */
+    name: "399-oracle · the record check runs BEFORE the audience verdict, so the 404 becomes an id oracle",
+    file: DETAIL,
+    from: `  if (!answer) return null;
+  if (!answer.found) notFound();`,
+    to: `  if (!answer.found) notFound();
+  if (!answer) return null;`,
+    expect: "1.399 · the audience verdict is AWAITED",
+    suite: "console-mem",
+  },
+  {
+    /* Ruling 358 fixes a removed account's read set as the row, its final state and its saved rules. With the branch dead it reads the holder's wallet, the day book, the exposure, the rate and the targets — five reads for an account that can never stake again, which is what D20 removed. */
+    name: "358-removed-reads · a REMOVED account falls through to the live read set",
+    file: GATE,
+    from: `  if (removed) {`,
+    to: `  if (false as boolean) {`,
+    expect: "1.358 · its read set is the row",
+    suite: "console-mem",
+  },
+  {
+    /* Ruling 459 withdrew 368's last exception: the holder's balance is the one number on these screens belonging to someone other than 50pick, and the decision the sentence supports is answered by a STATE. */
+    name: "368-balance · the floor sentence spends the holder's own balance",
+    file: GATE,
+    from: `  const row = bot;`,
+    to: `  const row = bot;
+  if (holder && floorSentence) floorSentence = String(holder.walletBalance) + floorSentence;`,
+    expect: "1.368 · 459 · the holder's own balance appears NOWHERE",
+    suite: "console-mem",
+  },
+  {
+    /* `WALLET_MISSING` is a PauseReason and not a `HolderCause`, so a causes test compiles and is FALSE for ever — ruling 541's mutation-aimed-at-nothing, in the product rather than in a guard. */
+    name: "507-x6 · X6 reads a live CAUSE again, which is the shape that could never be true",
+    file: GATE,
+    from: `  const settlementBlocked = holder != null && holder.walletBalance == null;`,
+    to: `  const settlementBlocked = causes.some((c) => c.code === "WALLET_MISSING");`,
+    expect: "1.507 · X6 · a MISSING holder wallet",
+    suite: "console-mem",
+  },
+  {
+    /* `openExposure` has no day filter, so an exposure figure under a heading that says nothing about its window reads as today's — a mislabelled amount, which is the §C2 defect 363 exists for. */
+    name: "363-scope · the exposure row loses the scope word ruling 363 argues its whole case from",
+    file: GATE,
+    from: `    capRow("capOpenExposureTzs", "open now", openStake),`,
+    to: `    capRow("capOpenExposureTzs", "", openStake),`,
+    expect: "1.363 · the exposure row is scoped",
+    suite: "console-mem",
+  },
+  {
+    /* 432(h)'s whole subject: the first control an officer reaches on the deliverable must open the account it names, and the column exists exactly when that page does. */
+    name: "432h-href · the roster's way out stops pointing at the page it opens",
+    file: GATE,
+    from: `      href: consoleBotHref(bot.id),`,
+    to: `      href: "",`,
+    expect: "1.432h · every roster row carries a way-out href",
+    suite: "console-mem",
+  },
+  {
+    /* Read off `acct-removed-1280.png`: the Overview tab rendered 600px of NOTHING and the Targets tab would have painted the kit's failure treatment for a read ruling 358 says is never taken. */
+    name: "435a-removed-cards · a REMOVED account gets its rail back, and an empty panel behind it",
+    file: DETAIL,
+    from: `        {!view.removed && (
+        /* 312 · the rail carries exactly the tabs whose panels exist.`,
+    to: `        {true && (
+        /* 312 · the rail carries exactly the tabs whose panels exist.`,
+    expect: "1.435 · 358 · every card of the account page is guarded",
     suite: "console-mem",
   },
 ];

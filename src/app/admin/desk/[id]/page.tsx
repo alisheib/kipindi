@@ -234,11 +234,15 @@ export default async function AdminDeskAccountPage({
 
         {tab === "rules" && (<>
           {/* ⛔ EVERY PANEL IS GUARDED BY `removed` FROM THE INSIDE, NEVER BY A SECOND TERM IN THE TAB TEST
-              (ruling 433(e)): `test:tab-anchors` decides which tab owns a rendered id by the nearest
-              `{tab === "x" && (<>` opener, and the served probe discovers this page's tabs with the same
-              expression over the RAW file — so a second term would make a panel read as "above the rail", which is
-              the strongest possible answer and a PASS that proves nothing. A removed account's panels are empty
-              because the block above already shows the one thing it still holds. */}
+              (ruling 433(e)): `test:tab-anchors` decides which tab owns a rendered id by the nearest panel opener
+              above it, and the served probe discovers this page's tabs with the same expression over the RAW file
+              — so a second term would make a panel read as "above the rail", which is the strongest possible
+              answer and a PASS that proves nothing. A removed account's panels are empty because the block above
+              already shows the one thing it still holds.
+              ⚠️ AND THIS COMMENT MAY NOT SPELL THE OPENER, which is the other half of 433(e) and which the first
+              draft of this very sentence broke: the probe reads the RAW file, so a comment quoting the idiom
+              invents a tab key no panel answers and the probe then requests a page that does not exist. Measured
+              here, on the day it was written. */}
           {!view.removed && (<>
           {/* 508 · the saved rules, as VALUES. ⛔ There is no per-account rules SAVE in this repository, so no typed
               control is drawn and the reason sits beside the card (432(a), 432(j)) — a field that silently discards
