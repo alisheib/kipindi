@@ -343,6 +343,30 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
           </Callout>
         )}
 
+        {/* ⭐ THE ENGINE-HEALTH CALLOUT, ABOVE THE BAND ON EVERY TAB (rulings 309, 352, 353, 354, 414; replan
+            435(e)). ⛔ The tone, the wording and WHETHER IT RENDERS AT ALL are the server's: 353's verdict needs the
+            master switch, which the one reader already holds, so there is no second control read in this render.
+            ⛔ `role="alert"` ONLY on the danger rows (414) — an alert that fires on every page load trains an
+            officer to ignore the one that matters — and the Callout is stably KEYED so the strip's 20 s refresh
+            does not re-announce a state that has not changed (309).
+            ⛔ IT NEVER RENDERS WITH THE DESK OFF: the strip one card up already says "The desk is off. Nothing will
+            be staked.", and 432(n) refuses one state saying one fact twice. */}
+        {view.engine && (
+          <Callout
+            key={view.engine.noticeKey}
+            tone={view.engine.tone}
+            size="md"
+            surface="panel"
+            emphasis="strong"
+            {...(view.engine.alert ? { role: "alert" as const } : {})}
+            title={view.engine.title}
+            meta={view.engine.meta ?? undefined}
+          >
+            {view.engine.body}
+            {view.engine.caption && <span className="block text-body-sm text-text-tertiary mt-1">{view.engine.caption}</span>}
+          </Callout>
+        )}
+
         {/* 308 · one branch per auto-off cause. A stale cause left on the row while the switch is ON renders none.
             ⛔ AND NO BODY HERE REPEATS THE STRIP'S OWN SENTENCE (ruling 432(n)). The strip two cards up says "The desk
             is off. Nothing will be staked." — ruling 453 fixes those words verbatim for EVERY off cause — and all

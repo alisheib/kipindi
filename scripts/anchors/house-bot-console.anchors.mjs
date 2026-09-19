@@ -40,6 +40,23 @@ const DETAIL = "src/app/admin/desk/[id]/page.tsx";
 const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
 
 export const MUTATIONS = [
+  /* ── C7 step 4b · the engine-health Callout, the console half (rulings 414, 435(e); X1). ───────────────────── */
+  {
+    name: "414-notice-absent · the engine Callout is never painted, so a dead engine is invisible on the one page that could say so",
+    file: GATE,
+    from: `    engine,`,
+    to: `    engine: null,`,
+    expect: "1.353 · 414 · a STALE engine paints the DANGER Callout",
+    suite: "console-mem",
+  },
+  {
+    name: "X1-duty-identifier · a failed duty reaches the owner's screen as the engine's own identifier",
+    file: GATE,
+    from: `  return CONSOLE_DUTY_PHRASE[name] ?? name;`,
+    to: `  return name;`,
+    expect: "1.414 · X1 · every member of the planner's own `DutyName` union has a neutral phrase",
+    suite: "console-mem",
+  },
   /* ── C7 step 4b · THE MASTER-SWITCH CEREMONY (rulings 388, 415; owner-delegated 454; replan ruling 549) ────────
    * Each puts back a state the console was ACTUALLY in, or one it could plausibly have shipped in: a ceremony the
    * server does not check, a control offered in a state its service refuses, or a stop that can be refused. */
@@ -256,9 +273,11 @@ export const MUTATIONS = [
     name: "355-all · the reads are combined with Promise.all, so one failure blanks the page",
     file: GATE,
     /* ⚠️ RE-ANCHORED at C7 step 4: the set grew a sixth member when "Last bet" brought ruling 351's rate
-       reader with it. THE DEFECT IS UNCHANGED — one failed read blanks the whole page instead of its own cell. */
-    from: `  const [controlR, rosterR, dayR, exposureR, extraR, extraBR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, extraR, extraBR] = await Promise.all([`,
+       reader with it. RE-ANCHORED AGAIN at step 4b: a SEVENTH, the engine's durable beats, which ruling 435(e)
+       puts inside this same door rather than behind a second one. THE DEFECT IS UNCHANGED — one failed read
+       blanks the whole page instead of its own cell. */
+    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.allSettled([`,
+    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.all([`,
     expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
     suite: "console-mem",
   },

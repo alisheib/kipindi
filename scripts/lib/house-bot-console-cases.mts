@@ -1061,6 +1061,114 @@ section("§2 · the strip, the band, the roster and every failure");
     await w.switchOff();
   }
 
+  /* ══ THE ENGINE-HEALTH CALLOUT, INSIDE THE ONE DOOR (rulings 309, 352, 353, 354, 414; replan 435(e), 507, 514) ══
+   * ⛔ 435(e) · NOT a second gated reader. 353's verdict needs the master switch, which the reader has already read,
+   * so a second door would put a SECOND control read in one render — 433(d)'s named refusal. These cases read the
+   * notice off the SAME painted view model the page renders, with real runtime rows behind it. */
+  {
+    const KC: Any = await import("../../src/lib/house-bot/constants.ts");
+    const RK = KC.RUNTIME_KEY;
+    const ENGINE_KEY = RK.engine("case-i1");
+    const POLLER_KEY = RK.pollerBeat("case-i1");
+    const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+    const BLANK = { beatAt: null, bootAt: null, pollerErrorAt: null, pollerErrorCode: null, pollerErrorStreak: 0, skewMs: null };
+    const setRuntime = async (rows: Array<[string, Any]>) => {
+      for (const key of [ENGINE_KEY, POLLER_KEY, RK.plannerBeat]) await w.dal.houseBotRuntimeStore.upsert(key, { ...BLANK });
+      for (const [key, patch] of rows) await w.dal.houseBotRuntimeStore.upsert(key, patch);
+    };
+    /** The desk ON, with the runtime rows this case planted behind it — the page's own view model, not a helper's. */
+    const noticeFor = async (rows: Array<[string, Any]>): Promise<Any> => {
+      await setRuntime(rows);
+      return (await withControl({ enabled: true, offCause: null })).engine ?? null;
+    };
+
+    const stale = await noticeFor([[ENGINE_KEY, { bootAt: ago(600_000) }], [RK.plannerBeat, { beatAt: ago(45_000) }]]);
+    ok("1.353 · 414 · a STALE engine paints the DANGER Callout with `role=\"alert\"`, and its meta says when the planner was last seen",
+      stale?.tone === "danger" && stale?.alert === true && typeof stale?.title === "string"
+        && String(stale?.meta).startsWith("Last seen:") && typeof stale?.noticeKey === "string",
+      j(stale));
+    const healthy = await noticeFor([[ENGINE_KEY, { bootAt: ago(600_000) }], [RK.plannerBeat, { beatAt: ago(5_000) }]]);
+    ok("1.353 · …and a live planner with NO poller beat at all paints NOTHING — the idle-engine false alarm PLAN.md:450's OR would have printed on the console's gravest statement",
+      healthy === null, j(healthy));
+    const booting = await noticeFor([[ENGINE_KEY, { bootAt: ago(20_000) }]]);
+    ok("1.414 · a boot inside the grace is NEUTRAL and does NOT announce — an alert that fires on every deploy trains an officer to ignore the one that matters",
+      booting?.tone === "neutral" && booting?.alert === false, j(booting));
+    const failing = await noticeFor([
+      [ENGINE_KEY, { bootAt: ago(600_000) }], [RK.plannerBeat, { beatAt: ago(5_000) }],
+      [POLLER_KEY, { beatAt: ago(120_000), pollerErrorAt: ago(4_000), pollerErrorCode: "claim exploded", pollerErrorStreak: 11 }],
+    ]);
+    ok("1.414 · ⭐ 514 · a poller ERROR newer than its own beat is DANGER and announces — the condition A24 exists for, and the one that had no writer at all before this step",
+      failing?.tone === "danger" && failing?.alert === true && /\b11\b/.test(String(failing?.body)) && !/TZS/.test(String(failing?.body)),
+      j(failing));
+    const duty = await noticeFor([
+      [ENGINE_KEY, { bootAt: ago(600_000) }],
+      [RK.plannerBeat, { beatAt: ago(5_000), pollerErrorAt: ago(5_000), pollerErrorCode: "hourly,lossStops" }],
+    ]);
+    ok("1.414 · ⭐ X1 · a live engine whose last pass failed a duty is a WARNING that does not announce, and the duties are named in the console's own words — never as identifiers and never as the database's message",
+      duty?.tone === "warning" && duty?.alert === false
+        && String(duty?.body).includes(GATEM.consoleDutyPhrase("hourly")) && String(duty?.body).includes(GATEM.consoleDutyPhrase("lossStops"))
+        && !String(duty?.body).includes("lossStops") && !String(duty?.body).includes("hourly,"),
+      j(duty));
+
+    /* ⛔ 354(c) · A FAILED BEAT READ IS NEVER AN ABSENT CARD AND NEVER A HEALTHY-LOOKING ONE. */
+    const realInstances = w.dal.houseBotRuntimeStore.listInstances;
+    let unreadable: Any;
+    try {
+      w.dal.houseBotRuntimeStore.listInstances = async () => { throw new Error("the runtime rows could not be read"); };
+      unreadable = (await withControl({ enabled: true, offCause: null })).engine ?? null;
+    } finally {
+      w.dal.houseBotRuntimeStore.listInstances = realInstances;
+    }
+    ok("1.354 · 309 · beats that could NOT be read paint the DANGER Callout with meta 'Last seen: unknown' — never an absent card, and never a healthy band",
+      unreadable?.tone === "danger" && unreadable?.alert === true && unreadable?.meta === "Last seen: unknown", j(unreadable));
+    ok("1.354 · CONTROL · the same render with the read WORKING does not paint that meta, so the sentence above came from the failure and not from every render",
+      (await noticeFor([[ENGINE_KEY, { bootAt: ago(600_000) }], [RK.plannerBeat, { beatAt: ago(45_000) }]]))?.meta !== "Last seen: unknown", "");
+
+    /* ⛔ 432(n) · THE SWITCH BEING OFF SAYS NOTHING HERE, because the strip one card up already says it. */
+    await setRuntime([[ENGINE_KEY, { bootAt: ago(600_000) }], [RK.plannerBeat, { beatAt: ago(45_000) }]]);
+    const offView = await withControl({ enabled: false, offCause: "MANUAL" });
+    ok("1.414 · 432(n) · with the desk OFF the engine Callout is not painted at all — the strip one card up already says 'The desk is off. Nothing will be staked.'",
+      (offView.engine ?? null) === null && offView.stateSentence === "The desk is off. Nothing will be staked.", j(offView.engine));
+
+    /* ⛔ 309 · ONE BEAT READ PER RENDER, measured with a spy that is shown able to fire. */
+    let instanceReads = 0;
+    try {
+      w.dal.houseBotRuntimeStore.listInstances = (...a: Any[]) => { instanceReads++; return realInstances.apply(w.dal.houseBotRuntimeStore, a as Any); };
+      await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    } finally {
+      w.dal.houseBotRuntimeStore.listInstances = realInstances;
+    }
+    ok("1.309 · exactly ONE beat read per render pass, inside the one settled set — the engine facts are not a second door (435(e))",
+      instanceReads === 1, j({ instanceReads }));
+
+    /* ⛔ X1 · EVERY DUTY THE PLANNER CAN NAME HAS A PHRASE, over the POPULATION DERIVED FROM THE PLANNER'S OWN
+     * UNION — never a list typed here, because a duty added later would then reach an owner's screen as an
+     * identifier and nothing would go red on the day it happened (ruling 513's class). */
+    const plannerSrc = decomment(read("src/lib/server/house-bot/planner.ts"));
+    const unionText = /export type DutyName\s*=([\s\S]*?);/.exec(plannerSrc)?.[1] ?? "";
+    const dutyNames = [...unionText.matchAll(/"([A-Za-z]+)"/g)].map((m) => m[1]);
+    ok("1.414 · X1 · every member of the planner's own `DutyName` union has a neutral phrase, over a population DERIVED from that union rather than typed here",
+      dutyNames.length >= 15 && dutyNames.every((n: string) => GATEM.consoleDutyPhrase(n) !== n && !NEUTRAL.test(GATEM.consoleDutyPhrase(n))),
+      j({ duties: dutyNames.length, missing: dutyNames.filter((n: string) => GATEM.consoleDutyPhrase(n) === n) }));
+    ok("1.414 · X1 · CONTROL · the union really was parsed (it names the money duties by their own spellings) and an INVENTED duty falls through to its bare name, which is the window the case above keeps one run long",
+      dutyNames.includes("deadline") && dutyNames.includes("lossStops") && dutyNames.includes("hourly")
+        && GATEM.consoleDutyPhrase("notADuty") === "notADuty",
+      j(dutyNames.slice(0, 4)));
+
+    /* ⛔ 453 · EVERY SENTENCE THE CALLOUT CAN PAINT, OVER EVERY VERDICT THIS RUN REACHED. */
+    const noticeStrings = [stale, booting, failing, duty, unreadable, healthy]
+      .filter((n: Any) => n !== null)
+      .flatMap((n: Any) => [n.title, n.body, n.meta, n.caption])
+      .filter((v: unknown): v is string => typeof v === "string");
+    ok("1.414 · 453 · not one word of any engine Callout names the feature, and the scan had five distinct verdicts' copy in it",
+      noticeStrings.length >= 12 && noticeStrings.every((s: string) => !NEUTRAL.test(s)) && houseHits(noticeStrings.join(" ")).length === 0,
+      j({ scanned: noticeStrings.length, hits: noticeStrings.filter((s: string) => NEUTRAL.test(s)) }));
+    ok("1.414 · 453 · CONTROL · the scan really covered five different verdicts, each with its own stable key, so a refresh cannot re-announce a state that has not changed (309)",
+      new Set([stale, booting, failing, duty, unreadable].map((n: Any) => n?.noticeKey)).size === 5, "");
+
+    await setRuntime([]);
+  }
+
   /* ⛔ AN INERT POINTER CARRIES NO ARROW (ruling 432(i)), AND THIS IS THE HALF THAT WAS MISSED. The server's
    * roster-full sentence is written for a LINK and ENDS "…raise the roster limit on Limits →". While the limits tab
    * has no panel the page paints it as PLAIN TEXT — arrow and all — so the head promised a navigation to a tab

@@ -64,6 +64,10 @@
  * 432(j) widened from two states to four — to what `npm run test:house-bot-console` PRINTED on that run:
  * **memory 397, Postgres 251**. Every one of those assertions was seen RED first, against a tree with the gated
  * writer and its service removed: **16 failed on memory**, with no throw and with §3 and §4 still running.
+ * ⭐ RAISED AGAIN with the ENGINE-HEALTH CALLOUT inside the one door (ruling 435(e)) — the tone table over five
+ * verdicts, 354(c)'s unreadable beats, X1's duty phrases over a population derived from the planner's own
+ * union, one beat read per render and 432(n)'s silence with the desk off — to what the run PRINTED:
+ * **memory 410, Postgres 264**. Seen RED first with the notice absent: 7 failed on memory.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -74,6 +78,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 397, postgres: 251 },
+  minPass: { memory: 410, postgres: 264 },
   dbPrefix: "hb_console",
 });

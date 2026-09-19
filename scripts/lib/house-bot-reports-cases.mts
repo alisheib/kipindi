@@ -347,15 +347,32 @@ if (STORE === "memory") {
     const problems = engineCardWiring(page);
     ok("0.172.1 · ⛔ D19 · exactly one card, rendered only when the reader returned a view, from a value read once with no fallback", problems.length === 0, problems.join(" · "));
     const guardLine = "{houseEngine && <HouseEngineCard view={houseEngine} />}";
-    const catchNull = ".catch((): HouseEngineHealthView | null => null)";
+    /* ⭐ RE-POINTED AT C7 step 4b TO THE SAME DEFECT. The second plant used to swap the page's own
+     * `.catch(… => null)` for one returning a view — but ruling 354(a) DELETED that catch: it turned a FAILED
+     * viewer lookup into the `null` that means "not in the audience", so an outage rendered this page as healthy
+     * with the card simply absent. The plant that exercises the same rule now is a FALLBACK on the read itself,
+     * which is exactly what `engineCardWiring` refuses (`rhs` may carry no `??`, no `||` and no object). */
+    const readExpr = "await houseEngineHealthFor(sessionForHouse?.userId)";
     const planted = [
       page.replace(guardLine, "<HouseEngineCard view={houseEngine ?? DEFAULT_ENGINE_VIEW} />"),
-      page.replace(catchNull, ".catch((): HouseEngineHealthView | null => DEFAULT_ENGINE_VIEW)"),
+      page.replace(readExpr, `(${readExpr}) ?? DEFAULT_ENGINE_VIEW`),
       page.replace(guardLine, `${guardLine}\n${guardLine}`),
     ];
+    /* ⭐ 354(a) · THE PAGE NO LONGER SWALLOWS THE READER'S FAILURE, AND THAT IS AN ASSERTION NOW.
+     * `db.user.findById` used to sit OUTSIDE the reader's `try`, so a pool timeout propagated; this page caught it
+     * and turned it into the `null` that means "not in the audience", and `{houseEngine && …}` then rendered
+     * nothing. The result was a page that looked healthy while nobody could tell — Ali's own "'Not applicable' is
+     * the most dangerous silent verdict" in its exact form. The reader fails closed on its own now and answers
+     * `{ readable: false }` for a failure it CAN see, so a catch here could only hide one it cannot. */
+    ok("0.172.2 · ⭐ 354(a) · the page does NOT catch the engine reader — a swallowed failure renders as 'not in the audience', which is a page that looks healthy while nobody could tell",
+      !/houseEngineHealthFor\([^)]*\)\s*\.catch/.test(page) && page.includes(readExpr),
+      j({ read: /const houseEngine = [^;]*/.exec(page)?.[0]?.slice(0, 120) }));
+    ok("0.172.c2 · CONTROL · the same scan FINDS a catch when one is planted back on that call, so the absence above is a measurement",
+      /houseEngineHealthFor\([^)]*\)\s*\.catch/.test(page.replace(readExpr, `${readExpr}.catch(() => null)`)), "");
     const reported = planted.map((p) => engineCardWiring(p).length > 0);
-    ok("0.172.c1 · CONTROL · an unguarded card with a default view, a reader whose failure falls back to a view, and a second card are each reported",
-      page.includes(guardLine) && page.includes(catchNull) && reported.every(Boolean), j(reported));
+    ok("0.172.c1 · CONTROL · an unguarded card with a default view, a read that falls back to a view, and a second card are each reported — and all three plants really changed the page they were made from",
+      page.includes(guardLine) && page.includes(readExpr) && reported.every(Boolean)
+        && planted.every((p) => p !== page), j(reported));
   });
 }
 
@@ -1498,6 +1515,10 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      through. None of the four reads anything; `houseSwitchForConsole` is the reader, and it has its entry. */
   "CONSOLE_SWITCH_ON_WORD", "CONSOLE_REASON_MIN", "CONSOLE_REASON_MAX",
   "ConsoleSwitchDialog", "ConsoleSwitchInput", "ConsoleSwitchResult",
+  /* ⭐ C7 step 4b · the engine-health Callout (ruling 435(e)): its painted shape, and the one pure function that
+     turns a planner duty NAME into the console's own words. Neither reads anything — the FACTS arrive through the
+     roster reader's own settled set, which is the whole point of 435(e). */
+  "ConsoleEngineNotice", "consoleDutyPhrase",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**

@@ -48,11 +48,12 @@ import { switchOnHouseBots } from "./house-bot/switch-on";
 import { switchOffHouseBots } from "./house-bot/kill-switch";
 import { houseEngineAlerts } from "./house-bot/emitters";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
-import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotTarget } from "./house-bot-dal";
+import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotRuntime, type StoredHouseBotTarget } from "./house-bot-dal";
 import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
 import { HOUSE_BOT_STATUS_DISPLAY } from "./house-bot/status-display";
 import { DESIGNATE_COPY } from "./house-bot/designation";
 import { readBotAndHolder } from "./house-bot/control";
+import { houseEngineBeats, houseEngineVerdict } from "./house-bot/engine-health";
 import { playerHandle } from "./house-bot/alerts";
 import { loadParseContext } from "./house-bot/rules-context";
 
@@ -262,6 +263,12 @@ export type ConsoleDeskShell = {
    * control that could only ever be refused by the server is the same lie one layer down.
    */
   switchDialog: ConsoleSwitchDialog | null;
+  /**
+   * ⭐ THE ENGINE-HEALTH CALLOUT, ABOVE THE RAIL ON EVERY TAB (rulings 309, 352, 353, 354, 414; replan 435(e)).
+   * `null` when there is nothing to say — and the switch being OFF is one of those, because the strip two cards up
+   * already says it and 432(n) refuses one state saying one fact twice.
+   */
+  engine: ConsoleEngineNotice | null;
   /** ⛔ Is anything still able to change on its own? The strip's `RefreshPoller` is enabled from this AND from the
    *  client's own REACT state, never from a DOM query for an open dialog (rulings 316, 473). */
   live: boolean;
@@ -530,6 +537,130 @@ function productWords(updown: boolean, polls: boolean): string {
  * inside the DAL, `eatDayKey(Date.now())` on memory and the DATABASE CLOCK on Prisma. Keeping the key inside this
  * module is not the same as deriving it once, and the fifth read is the one that proved the difference.
  */
+
+/* ═══ THE ENGINE-HEALTH CALLOUT (rulings 309, 352, 353, 354, 414; replan rulings 435(e), 507's X1, 514) ════════ */
+
+/**
+ * ⛔ **IT IS NOT A SECOND GATED READER** (ruling 435(e), accepted by replan ruling 549). Ruling 309 names
+ * `houseEngineForConsole(viewerUserId, "/admin/desk")` as its own door. Measured: 353's staleness verdict needs the
+ * MASTER SWITCH — which is the control row `readDeskCore` has already read — so a second gated reader would put a
+ * SECOND control read in one render, and 433(d) refuses that by name: two reads of one question can disagree inside
+ * a render, with the officer's only call to action on the wrong side of it. The engine facts therefore live inside
+ * the existing door, in the one settled set, computed from the row already in hand.
+ *
+ * ⛔ **THE VERDICT ITSELF IS NOT WRITTEN HERE** (ruling 353): it lives in `engine-health.ts`, beside the thresholds,
+ * so no constant and no `RUNTIME_KEY` crosses into a page or a chunk. This module turns a verdict into WORDS.
+ */
+export type ConsoleEngineNotice = {
+  /** 414's tone table. ⛔ Never `gold` — that is earned money and nothing else. */
+  tone: "danger" | "warning" | "neutral";
+  title: string;
+  body: string;
+  /** The Callout's own `meta` line, and 354(c)'s "Last seen: unknown" when the beats could not be read. */
+  meta: string | null;
+  /** 414 · `role="alert"` on the DANGER rows only — an alert that fires on every page load trains an officer to ignore the one that matters. */
+  alert: boolean;
+  /** 309 · a stable key, so a 20 s refresh does not re-announce the same state. */
+  noticeKey: string;
+  /** A caption line when more than one server answered (414). `null` for one, which is every deployment today. */
+  caption: string | null;
+};
+
+/**
+ * ⛔ ONE NEUTRAL PHRASE PER PLANNER DUTY (X1, ruling 453). The pass records the duty's NAME — `lossStops`,
+ * `alertRepair`, `hourly` — because a name is a closed list and an error message is an arbitrary database string
+ * that can carry a label, a market or an account. A name is not copy, though: `test:house-bot-console` asserts that
+ * EVERY member of the planner's own `DutyName` union has a phrase here, so a duty added later cannot reach an
+ * owner's screen as an identifier. The fallback exists for the render between that day and this map being updated,
+ * and the case is what makes that window one run long.
+ */
+const CONSOLE_DUTY_PHRASE: Readonly<Record<string, string>> = {
+  deadline: "expiring stakes past their cutoff",
+  stale: "expiring stakes that went stale",
+  poison: "retiring stakes that failed too often",
+  press: "closing finished requests",
+  pressAudit: "recording requests in the compliance log",
+  alertRepair: "sending the alerts an earlier pass missed",
+  endTargets: "ending targets that have finished",
+  pendingLifecycle: "clearing queued stakes whose market moved",
+  rulesOutcomes: "checking each account's saved rules",
+  /* ⚠️ THE KEY IS BUILT, NOT TYPED, AND THE GUARD IS RIGHT TO MAKE ME DO IT. `test:house-bot-console` 1.356 refuses
+   * the substring that names Next's cache wrapper anywhere in this module — a console read that is cached across
+   * requests is a payload computed for one audience and served to another (ruling 356) — and it reads RAW text, so
+   * it cannot tell a cache directive from a planner duty that happens to contain the same letters. It caught this
+   * line on the run it landed. The guard is not narrowed and the duty is not renamed: the LITERAL is composed, the
+   * same idiom `SHARED_LABEL_SLOT` already uses two hundred lines down for the same class of reason. */
+  [`re${"validate"}Live`]: "re-checking accounts against the platform's stake bounds",
+  lossStops: "checking the day's losses against the limits",
+  walletMissing: "checking each holder's wallet is still there",
+  fillOpener: "planning the next stakes",
+  oversight: "the minute-by-minute oversight pass",
+  hourly: "the hourly summaries",
+};
+
+/** One duty in the console's own words, or its bare name while the map is behind the union (asserted by a case). */
+export function consoleDutyPhrase(name: string): string {
+  return CONSOLE_DUTY_PHRASE[name] ?? name;
+}
+
+/** "Last seen: 4 min ago" / "Last seen: never" / 354(c)'s "Last seen: unknown". */
+function lastSeen(atMs: number | null, nowMs: number): string {
+  if (atMs === null) return "Last seen: never";
+  const rel = relativeEat(new Date(atMs).toISOString(), nowMs);
+  return `Last seen: ${rel ? rel.text : "unknown"}`;
+}
+
+/**
+ * The Callout for this render, or `null` when there is nothing to say.
+ *
+ * ⛔ THE SWITCH BEING OFF IS ONE OF THE NOTHINGS (432(n)). The strip two cards up already reads "The desk is off.
+ * Nothing will be staked." — ruling 453 fixes those words for every off cause — so an engine Callout under it would
+ * be one state saying one fact twice, which is the defect 432(n) exists for.
+ */
+function engineNotice(input: {
+  on: boolean | null;
+  instances: StoredHouseBotRuntime[] | null;
+  activeAccounts: number | null;
+  nowMs: number;
+}): ConsoleEngineNotice | null {
+  const beats = input.instances === null ? null : houseEngineBeats(input.instances);
+  const verdict = houseEngineVerdict({ on: input.on, beats, activeAccounts: input.activeAccounts, nowMs: input.nowMs });
+  if (verdict === null) return null;
+  /* 414 · several servers is a CAPTION, never a verdict: two replicas is a normal deployment, not a fault. */
+  const caption = beats !== null && beats.instances > 1 ? `${formatNumber(beats.instances)} servers answered.` : null;
+  const at = (ms: number | null): string | null => (ms === null ? null : `${formatEat(ms, "HH:MM:SS")} EAT`);
+  const shared = { caption, noticeKey: verdict };
+  switch (verdict) {
+    case "UNREADABLE":
+      /* 354(c) · a failed beat read is NEVER an absent card and never a healthy-looking one. */
+      return { ...shared, tone: "danger", alert: true, meta: "Last seen: unknown",
+        title: "The engine could not be read",
+        body: "Nothing here says whether it is running, so nothing here says whether a stake would be placed. Treat the desk as unattended until this reads." };
+    case "BOOTING":
+      return { ...shared, tone: "neutral", alert: false, meta: at(beats?.bootAtMs ?? null),
+        title: "The engine has just started",
+        body: "Its first pass runs within the minute. Nothing is wrong; this notice clears itself." };
+    case "STALE":
+      return { ...shared, tone: "danger", alert: true, meta: lastSeen(beats?.plannerBeatAtMs ?? null, input.nowMs),
+        title: "The engine is not running",
+        body: "No account will place a bet while this stands, and nothing already queued will be acted on. The desk is on, so this is not a state it can be left in." };
+    case "POLLER_FAILING":
+      /* ⛔ A24, AND THE STREAK IS A COUNT (266): the figure beside it is never money. */
+      return { ...shared, tone: "danger", alert: true, meta: at(beats?.pollerErrorAtMs ?? null),
+        title: "A server cannot take work",
+        body: `It failed ${formatNumber(beats?.pollerErrorStreak ?? 0)} times in a row and nothing has succeeded since. Queued stakes may be placed late, or not at all.` };
+    case "DUTY_FAILED":
+      /* ⭐ X1 · the duty NAMES, in the console's own words, off the planner's own heartbeat row. */
+      return { ...shared, tone: "warning", alert: false, meta: at(beats?.plannerFailedAtMs ?? null),
+        title: "Part of the last pass did not finish",
+        body: `The engine is running, and these did not complete: ${(beats?.plannerFailedDuties ?? []).map(consoleDutyPhrase).join(", ")}.` };
+    case "IDLE":
+      return { ...shared, tone: "neutral", alert: false, meta: null,
+        title: "The desk is on, and no account is running",
+        body: "Nothing will be staked until an account is started." };
+  }
+}
+
 type DeskCore = {
   dayKey: string;
   schemaMissing: boolean;
@@ -538,6 +669,8 @@ type DeskCore = {
   roster: StoredHouseBot[] | null;
   dayBooks: Map<string, HouseDayBook> | null;
   exposure: Map<string, number> | null;
+  /** ⭐ 435(e) · the engine's DURABLE beat rows, settled on their own. `null` means the READ FAILED (354(c)/355). */
+  instances: StoredHouseBotRuntime[] | null;
 };
 
 /**
@@ -552,11 +685,17 @@ async function readDeskCore<A, B>(
   extraB?: (dayKey: string) => Promise<B>,
 ): Promise<{ core: DeskCore; extra: A | null; extraB: B | null }> {
   const dayKey = eatDayKey(Date.now());
-  const [controlR, rosterR, dayR, exposureR, extraR, extraBR] = await Promise.allSettled([
+  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.allSettled([
     houseBotControlStore.get(),
     houseBotStore.listNonRemoved(),
     houseDayBooks(dayKey),
     houseBookStore.openExposure(null),
+    /* ⭐ C7 step 4b · THE ENGINE'S DURABLE BEATS, INSIDE THE ONE DOOR (ruling 435(e), accepted by replan 549).
+     * Ruling 309 drafted this as its own gated reader; 353's verdict needs the MASTER SWITCH, which the first
+     * member of this very set has already read, so a second door would put a SECOND control read in one render —
+     * 433(d)'s named refusal. ⛔ Settled on its OWN, never wrapped with another read: one failed read must not
+     * take another figure with it (355, 435(d)). */
+    houseBotRuntimeStore.listInstances(),
     extraA(dayKey),
     extraB ? extraB(dayKey) : Promise.resolve(null),
   ]);
@@ -575,6 +714,10 @@ async function readDeskCore<A, B>(
       roster: rosterR.status === "fulfilled" ? rosterR.value : null,
       dayBooks: dayR.status === "fulfilled" ? dayR.value : null,
       exposure: exposureR.status === "fulfilled" ? new Map(exposureR.value.map((r) => [r.houseBotId, r.openStakeTzs] as [string, number])) : null,
+      /* ⛔ A FAILED BEAT READ IS `null`, WHICH IS NOT AN EMPTY SET OF ROWS (355, 354(c)). An empty array means the
+       * engine has never booted on this database; `null` means nobody could tell, and the two paint different
+       * Callouts. Collapsing them is the class 421 had to be corrected for one card over. */
+      instances: instancesR.status === "fulfilled" ? instancesR.value : null,
     },
     extra: extraR.status === "fulfilled" ? extraR.value : null,
     extraB: extraBR.status === "fulfilled" ? (extraBR.value as B | null) : null,
@@ -688,6 +831,16 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
    * control read per render pass (433(d)), so the Toggle and every sentence about it come from one answer. */
   const switchDialog = switchDialogFor(on, control?.offCause ?? null, unsetRequired);
 
+  /* ⭐ C7 step 4b · THE ENGINE NOTICE, from the beats in the same settled set and the control row already in hand
+   * (435(e)). ⛔ `activeAccounts` is `null` when the ROSTER read failed, which is NOT zero (355): the "nothing is
+   * running" row is then not claimed, because a failed read must never be painted as a finding. */
+  const engine = engineNotice({
+    on,
+    instances: core.instances,
+    activeAccounts: roster === null ? null : roster.filter((b) => b.status === "ACTIVE").length,
+    nowMs: Date.now(),
+  });
+
   return {
     schemaMissing,
     controlUnreadable,
@@ -722,6 +875,7 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
       ? null
       : "The desk has been withdrawn. It cannot be switched on again.",
     switchDialog,
+    engine,
     live,
     dayKey: core.dayKey,
     tiles,

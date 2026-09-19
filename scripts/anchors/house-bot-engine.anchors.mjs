@@ -26,8 +26,40 @@ const DECIDE = "src/lib/server/house-bot/decide.ts";
 const DAL = "src/lib/server/house-bot-dal.ts";
 /* ⭐ C7 step 4b · the poller's own pass, where A24's failure limb finally has a writer (replan ruling 514). */
 const WORKER = "src/lib/server/house-bot/worker.ts";
+/* ⭐ C7 step 4b · the one server-side staleness predicate the console renders (rulings 352, 353, 354). */
+const HEALTH = "src/lib/server/house-bot/engine-health.ts";
 
 export const MUTATIONS = [
+  /* ── C7 step 4b · THE STALENESS VERDICT (rulings 352, 353, 354; replan 435(e)) ───────────────────────────────
+   * Two of these put back exactly what the PLAN specified and ruling 353 measured wrong — the poller inside the OR,
+   * and no boot grace — so they are the two controls 353's own Proof asks for, declared rather than described. */
+  {
+    name: "353-poller-or · PLAN.md:450's OR is back, so an idle healthy engine paints the console's gravest statement",
+    file: HEALTH,
+    from: `  if (beats.plannerBeatAtMs === null || nowMs - beats.plannerBeatAtMs > ENGINE_STALE_MS) return "STALE";`,
+    to: `  if (beats.plannerBeatAtMs === null || nowMs - beats.plannerBeatAtMs > ENGINE_STALE_MS || beats.pollerBeatAtMs === null) return "STALE";`,
+    expect: "20.2 · ⭐ 353 · the SAME rows with the planner beat 10 s old and still no poller beat → NOT stale",
+    suite: "engine-mem",
+    sections: "20",
+  },
+  {
+    name: "353-no-grace · the boot grace is dropped, so every deploy paints the danger Callout while the engine is starting",
+    file: HEALTH,
+    from: `  const booting = beats.bootAtMs !== null && nowMs - beats.bootAtMs <= BOOT_GRACE_MS;`,
+    to: `  const booting = false;`,
+    expect: "20.3 · 353 · switch ON, booted 30 s ago, NO beats at all → BOOTING",
+    suite: "engine-mem",
+    sections: "20",
+  },
+  {
+    name: "354-unreadable-healthy · a beat read that FAILED renders as healthy — 'Not applicable' as the silent verdict, exactly",
+    file: HEALTH,
+    from: `  if (beats === null) return "UNREADABLE";`,
+    to: `  if (beats === null) return null;`,
+    expect: "20.7 · 354(c) · beats that could NOT be read answer UNREADABLE",
+    suite: "engine-mem",
+    sections: "20",
+  },
   /* ── C7 step 4b · A24's poller-failure limb and X1's duty names (replan rulings 514, 507, 549) ─────────────────
    * Each of these four puts back a state the tree was ACTUALLY in until this build: no alert at the threshold, no
    * durable record at all, or a failed pass writing the beat that makes it look alive. */

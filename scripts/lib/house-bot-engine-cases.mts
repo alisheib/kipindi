@@ -4380,6 +4380,119 @@ await guard("19", async () => {
 });
 HH.suspendInAppHolderHookForCases(false);
 
+/* ═══ §20 · the engine-health verdict the console renders (04 A24; C7-SPEC rulings 309, 352, 353, 354, 414) ═════
+ * ⛔ ONE SERVER-SIDE PREDICATE, and it lives beside the thresholds so no constant and no `RUNTIME_KEY` crosses into
+ * a page or a client chunk (353). These cases are PURE: they hand the predicate rows and instants, which is the only
+ * way to exercise a boot grace and a 45-second-old beat without waiting 45 seconds.
+ * ⛔ AND THE VERDICT REVERSES `PLAN.md:450`'s OR, which is the whole reason it needed a case: the poller writes its
+ * beat only after a CLAIM, so a perfectly healthy engine with nothing due writes none, and PLAN's OR would paint
+ * "the engine is not running" on it. An alarm that is usually wrong is one nobody reads. */
+section("§20 · houseEngineVerdict and houseEngineBeats");
+await guard("20", async () => {
+  const EH: Any = await import("../../src/lib/server/house-bot/engine-health.ts");
+  const NOW = Date.UTC(2026, 8, 19, 12, 0, 0);
+  const iso20 = (agoMs: number) => new Date(NOW - agoMs).toISOString();
+  const row = (key: string, o: Any = {}): Any => ({
+    key, hourKey: null, countInHour: 0, rateLimitedHourKey: null, rateLimitedCount: 0, sweepPlacedAt: null,
+    sweepPositionId: null, scopeFrom: null, errorStreak: 0, transientSince: null, boundsHash: null,
+    exitConfigHash: null, rulesFutureSince: null, engineEnabled: null, bootAt: null, beatAt: null,
+    pollerErrorAt: null, pollerErrorCode: null, pollerErrorStreak: 0, skewMs: null, updatedAt: iso20(0), ...o,
+  });
+  /* ⛔ EVERY CALL IS CAUGHT (E25 lesson): an ABSENT predicate must be a failed ASSERTION per case, not one throw
+   * that reports the whole section under a single label and says nothing about which rule is missing. */
+  const beatsOf = (rows: Any[]): Any => { try { return EH.houseEngineBeats(rows); } catch { return null; } };
+  const verdict = (rows: Any[] | null, o: Any = {}): Any => {
+    try {
+      return EH.houseEngineVerdict({
+        /* ⚠️ `??` COALESCES NULL, and `on: null` (the unreadable-control state) is a case of its own — so the
+         * default is chosen by PRESENCE, not by a nullish fallback. Measured: the first form turned `on: null`
+         * into `true` and the case failed for the harness's reason rather than the product's. */
+        on: "on" in o ? o.on : true, beats: rows === null ? null : EH.houseEngineBeats(rows),
+        activeAccounts: o.activeAccounts ?? 1, nowMs: NOW,
+      });
+    } catch { return "THREW"; }
+  };
+  const ENGINE = K.RUNTIME_KEY.engine("i-1");
+  const PLANNER = K.RUNTIME_KEY.plannerBeat;
+  const POLLER = K.RUNTIME_KEY.pollerBeat("i-1");
+
+  /* ── 353's four, in its own order ── */
+  ok("20.1 · 353 · switch ON, booted 10 min ago, the planner beat 45 s old and NO poller beat at all → STALE",
+    verdict([row(ENGINE, { bootAt: iso20(600_000) }), row(PLANNER, { beatAt: iso20(45_000) })]) === "STALE", "");
+  ok("20.2 · ⭐ 353 · the SAME rows with the planner beat 10 s old and still no poller beat → NOT stale — the idle-engine false alarm, which is red under PLAN.md:450's OR",
+    verdict([row(ENGINE, { bootAt: iso20(600_000) }), row(PLANNER, { beatAt: iso20(10_000) })]) === null, "");
+  ok("20.3 · 353 · switch ON, booted 30 s ago, NO beats at all → BOOTING, not stale — without the grace every deploy paints the danger row (FIRST_TICK_DELAY_MS is 20 s)",
+    verdict([row(ENGINE, { bootAt: iso20(30_000) })]) === "BOOTING", "");
+  ok("20.4 · 353 · …and the same instance at boot + 91 s with no planner beat → STALE",
+    verdict([row(ENGINE, { bootAt: iso20(91_000) })]) === "STALE", "");
+  ok("20.5 · 353 · switch OFF with no beats at all → NOTHING is said, because the strip already says the desk is off",
+    verdict([], { on: false }) === null && verdict(null, { on: false }) === null && verdict([], { on: null }) === null, "");
+  ok("20.6 · 353 · CONTROL · the grace and the threshold are the SHIPPED constants, not numbers typed into this case",
+    K.BOOT_GRACE_MS === 90_000 && K.ENGINE_STALE_MS === 30_000 && K.PLANNER_INTERVAL_MS === 15_000, j({ grace: K.BOOT_GRACE_MS, stale: K.ENGINE_STALE_MS }));
+
+  /* ── 354(c) · a beat read that FAILED is never an absent card and never a healthy one ── */
+  ok("20.7 · 354(c) · beats that could NOT be read answer UNREADABLE — never a healthy band, and never the same answer as 'no rows', which is a different fact",
+    verdict(null) === "UNREADABLE" && verdict([]) === "STALE", "");
+
+  /* ── A24 · the poller's own failure, which had no writer at all before C7 step 4b (replan ruling 514) ── */
+  const live = [row(ENGINE, { bootAt: iso20(600_000) }), row(PLANNER, { beatAt: iso20(5_000) })];
+  ok("20.8 · ⭐ A24/514 · a poller ERROR newer than that poller's own beat → POLLER_FAILING",
+    verdict([...live, row(POLLER, { beatAt: iso20(60_000), pollerErrorAt: iso20(3_000), pollerErrorStreak: 12 })]) === "POLLER_FAILING", "");
+  ok("20.9 · …and an error OLDER than the beat that followed it says nothing — a poller that recovered is not a poller that is failing",
+    verdict([...live, row(POLLER, { beatAt: iso20(2_000), pollerErrorAt: iso20(60_000), pollerErrorStreak: 0 })]) === null, "");
+  ok("20.10 · ⛔ 353 · a poller with NO beat at all never makes the verdict stale on its own — the poller beats only after a CLAIM, so an idle one writes nothing",
+    verdict(live) === null && verdict([...live, row(POLLER, { beatAt: null })]) === null, "");
+
+  /* ── X1 · the planner's failed duty NAMES, off the planner row's own key-scoped column ── */
+  ok("20.11 · ⭐ X1 · a live planner whose last pass failed a duty → DUTY_FAILED, and the NAMES come off the planner row",
+    verdict([row(ENGINE, { bootAt: iso20(600_000) }), row(PLANNER, { beatAt: iso20(5_000), pollerErrorCode: "hourly,alertRepair", pollerErrorAt: iso20(5_000) })]) === "DUTY_FAILED", "");
+  ok("20.12 · X1 · the fold reads those names off the PLANNER row and the claim failure off the POLLER row — the columns are key-scoped, and reading them off the wrong family is the one way to get this wrong",
+    (() => {
+      const b = beatsOf([
+        row(PLANNER, { beatAt: iso20(5_000), pollerErrorCode: "hourly,alertRepair", pollerErrorAt: iso20(5_000) }),
+        row(POLLER, { beatAt: iso20(60_000), pollerErrorAt: iso20(3_000), pollerErrorCode: "claim exploded", pollerErrorStreak: 12, skewMs: 41 }),
+      ]);
+      return j(b?.plannerFailedDuties) === j(["hourly", "alertRepair"]) && b?.pollerErrorStreak === 12 && b?.skewMs === 41
+        && b?.pollerErrorAtMs === Date.parse(iso20(3_000)) && b?.plannerFailedAtMs === Date.parse(iso20(5_000));
+    })(), "");
+  ok("20.13 · X1 · CONTROL · an empty duty column is NO duties, never one duty named the empty string",
+    j(beatsOf([row(PLANNER, { pollerErrorCode: "" })])?.plannerFailedDuties) === j([])
+      && j(beatsOf([row(PLANNER, { pollerErrorCode: null })])?.plannerFailedDuties) === j([]), "");
+
+  /* ── 414 · several instances is a CAPTION, and A23's "latest boot" is the newest of them ── */
+  ok("20.14 · 352 · the newest boot wins across instances, and the instance COUNT is what a caption is built from",
+    (() => {
+      const b = beatsOf([
+        row(K.RUNTIME_KEY.engine("i-1"), { bootAt: iso20(600_000) }),
+        row(K.RUNTIME_KEY.engine("i-2"), { bootAt: iso20(30_000) }),
+        row(PLANNER, { beatAt: iso20(5_000) }),
+      ]);
+      return b?.instances === 2 && b?.bootAtMs === Date.parse(iso20(30_000));
+    })(), "");
+  ok("20.15 · …and a third replica's rows move the poller and the boot but never the PLANNER's beat, which is the one the verdict rests on",
+    (() => {
+      const base = [row(ENGINE, { bootAt: iso20(600_000) }), row(PLANNER, { beatAt: iso20(45_000) })];
+      const withThird = [...base, row(K.RUNTIME_KEY.pollerBeat("i-3"), { beatAt: iso20(1_000) }), row(K.RUNTIME_KEY.engine("i-3"), { bootAt: iso20(1_000) })];
+      return verdict(base) === "STALE" && beatsOf(withThird)?.plannerBeatAtMs === Date.parse(iso20(45_000));
+    })(), "");
+
+  /* ── the two 355 distinctions the band already pays for, one card over ── */
+  ok("20.16 · 355 · a roster read that FAILED is not zero: the 'nothing is running' row is not claimed when the count is unknown",
+    verdict(live, { activeAccounts: null }) === null && verdict(live, { activeAccounts: 0 }) === "IDLE" && verdict(live, { activeAccounts: 2 }) === null, "");
+  ok("20.17 · CONTROL · every verdict this predicate can answer was reached by a case in THIS run",
+    (() => {
+      const reached = new Set([
+        verdict([row(ENGINE, { bootAt: iso20(600_000) }), row(PLANNER, { beatAt: iso20(45_000) })]),
+        verdict([row(ENGINE, { bootAt: iso20(30_000) })]),
+        verdict(null),
+        verdict([...live, row(POLLER, { beatAt: iso20(60_000), pollerErrorAt: iso20(3_000) })]),
+        verdict([row(ENGINE, { bootAt: iso20(600_000) }), row(PLANNER, { beatAt: iso20(5_000), pollerErrorCode: "hourly" })]),
+        verdict(live, { activeAccounts: 0 }),
+      ].filter((v) => v !== null));
+      return j([...reached].sort()) === j(["BOOTING", "DUTY_FAILED", "IDLE", "POLLER_FAILING", "STALE", "UNREADABLE"]);
+    })(), "");
+});
+
 /* ⛔ RULING 505's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
  * `red:house-bot-engine` matches a run's FAIL lines with `result.fails.find((l) => l.includes(d.expect))`, so an
  * `expect` that is not a substring of any label this suite can print is classed WRONG-ASSERTION, `missed++`, and the
