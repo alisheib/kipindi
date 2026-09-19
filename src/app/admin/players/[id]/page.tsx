@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
+import { AdminSectionGate } from "@/components/admin/admin-section-gate";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -73,13 +74,41 @@ const CATEGORY_VARIANT: Record<AuditCategory, "royal" | "danger" | "success" | "
   SYSTEM:     "neutral",
 };
 
-export default async function AdminPlayerDetailPage({ params, searchParams }: {
+type PlayerDetailProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{
     tab?: string;
     txpage?: string; txsort?: string; txdir?: string;
   }>;
-}) {
+};
+
+/**
+ * W25 BELT 2 — the gate is the page's own, and it reads the STORED row.
+ *
+ * ⛔ THIS PAGE USED TO DECIDE NOTHING ABOUT THE VIEWER BEFORE IT READ AND WROTE. Measured by
+ * `qa:platform-pii-probe` on the unfixed build: two unrelated PLAYER accounts received this page — and all six of its
+ * tabs — with status 200, carrying the subject's display name and stake, in plain document mode as well as both
+ * flight modes. Its only belt was a layout, and a flight whose `Next-Router-State-Tree` names that layout skips it.
+ *
+ * ⛔ AND THE WRITE WAS WORSE THAN THE READ. The COMPLIANCE row `player.record_viewed` was recorded with
+ * `actorId` = whoever asked, BEFORE the viewer was known — so each probe account wrote 42 rows naming ITSELF as the
+ * officer who opened another player's file. That is evidence corruption. It is fixed here structurally rather than by
+ * reordering two statements: the write lives inside the content component, and a non-staff viewer never reaches it
+ * because `AdminSectionGate` returns the restricted panel INSTEAD of these children.
+ *
+ * ⛔ WHY NOT "make `audit()` refuse a non-staff actorId", as the W25 brief (ruling 522) said. Measured: players and
+ * agents legitimately write their own audit rows across AUTH, SECURITY, ADMIN, COMPLIANCE and SYSTEM — `user.login`
+ * (`auth-service.ts:588`), `auth.login.account_locked` (`:1036`), the whole agent-application path
+ * (`agent-application-service.ts:302`, `:530`, `:602`, `:749`, `:794`, `:1735`), `affiliate.account.created`
+ * (`affiliate-service.ts:166`). A blanket refusal would have silently torn holes in the audit chain platform-wide.
+ * The defect was never "a player wrote a row"; it was "a player wrote a row asserting an OFFICER acted". That is a
+ * call-site fact, and it is fixed at the call site.
+ */
+export default async function AdminPlayerDetailPage(props: PlayerDetailProps) {
+  return <AdminSectionGate title="Players"><AdminPlayerDetailContent {...props} /></AdminSectionGate>;
+}
+
+async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailProps) {
   const { id } = await params;
   const sp = await searchParams;
   const tab = sp.tab ?? "activity";
