@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -24,7 +25,20 @@ const STATUS_CHIP: Record<string, "active" | "resolved" | "paused" | "pending"> 
   DRAFT: "pending", SENDING: "active", SENT: "resolved", CANCELLED: "paused",
 };
 
-export default async function AdminCampaignDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> }) {
+type CampaignDetailProps = { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> };
+
+/**
+ * W25 belt 2 — the STORED-ROW gate, asked in the PAGE, because a flight request that names the
+ * admin layouts skips them while this page still runs and streams its payload. The gate re-reads
+ * the user row, so a demoted officer's still-valid cookie does not get in.
+ * ⛔ An explicit `title` (C7-SPEC ruling 301): the last URL segment here is a campaign id, and
+ * without this the restricted panel's heading would BECOME that id in a body served to the asker.
+ */
+export default async function AdminCampaignDetailPage(props: CampaignDetailProps) {
+  return <AdminPageGate title="Invites"><AdminCampaignDetailContent {...props} /></AdminPageGate>;
+}
+
+async function AdminCampaignDetailContent({ params, searchParams }: CampaignDetailProps) {
   const { id } = await params;
   const sp = await searchParams;
   let detail: Awaited<ReturnType<typeof getCampaignDetail>> = null;

@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { getProposalsConfig, type ProposalsState } from "@/lib/server/proposals-config";
@@ -25,7 +26,13 @@ const STATE_CHIP: Record<ProposalsState, { variant: "active" | "gold" | "warning
  * The route is gated by the admin layout (role + TOTP); each action re-checks
  * the role server-side. Votes only rank the queue — the officer decides.
  */
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
 export default async function AdminProposalsPage() {
+  return <AdminPageGate title="Proposals"><AdminProposalsContent /></AdminPageGate>;
+}
+
+async function AdminProposalsContent() {
   const config = getProposalsConfig();
   const stats = await getAdminProposalStats();
   const queue = await getAdminQueue("all");

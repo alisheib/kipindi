@@ -34,6 +34,7 @@ import { getEffectiveConfig } from "@/lib/server/market-config";
 import { houseAccountBalances, trialBalance } from "@/lib/server/ledger";
 import { Stat } from "@/components/ui/stat";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 import type { Route } from "next";
@@ -54,7 +55,14 @@ const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
 export const metadata = { title: "Admin · Finance" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string; feepage?: string; tab?: string }> }) {
+type FinanceSearch = { range?: string; from?: string; to?: string; feepage?: string; tab?: string };
+
+/** E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render (a flight request can skip the layouts). */
+export default async function AdminFinancePage(props: { searchParams: Promise<FinanceSearch> }) {
+  return <AdminPageGate title="Finance"><AdminFinanceContent {...props} /></AdminPageGate>;
+}
+
+async function AdminFinanceContent({ searchParams }: { searchParams: Promise<FinanceSearch> }) {
   // Money data is MONEY_ROLES only — NEVER MODERATOR (roles.ts). The admin layout
   // only gates ADMIN_CONSOLE_ROLES (which DOES include MODERATOR), so without this
   // a moderator could read owner-grade GGR/NGR and the top-contributor list.

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
 import { txnTypeLabel } from "@/components/admin/status-badge";
 import { TWO_PERSON_THRESHOLD_TZS } from "../aml/constants";
@@ -39,6 +40,18 @@ export const dynamic = "force-dynamic";
 
 type KycField = "priority" | "waited" | "user" | "name" | "docs" | "held";
 
+type AdminApprovalsPageProps = {
+  searchParams: Promise<{
+    kycpage?: string; kycsort?: string; kycdir?: string;
+    amlpage?: string; amlsort?: string; amldir?: string;
+    sofpage?: string; sofsort?: string; sofdir?: string;
+  }>;
+};
+
+export default async function AdminApprovalsPage(props: AdminApprovalsPageProps) {
+  return <AdminPageGate title="Approvals"><AdminApprovalsContent {...props} /></AdminPageGate>;
+}
+
 /**
  * /admin/approvals — the officer queues that need a decision.
  *
@@ -54,15 +67,9 @@ type KycField = "priority" | "waited" | "user" | "name" | "docs" | "held";
  * ⭐ 2026-09-14 (E-400 ⑦d): the KYC tile and table hold the files WITH US only (`isFileWithUs`), so this page and
  * /admin/kyc give one number; a file we asked more of is the player's move and is counted beside, never in, the queue.
  */
-export default async function AdminApprovalsPage({
+async function AdminApprovalsContent({
   searchParams,
-}: {
-  searchParams: Promise<{
-    kycpage?: string; kycsort?: string; kycdir?: string;
-    amlpage?: string; amlsort?: string; amldir?: string;
-    sofpage?: string; sofsort?: string; sofdir?: string;
-  }>;
-}) {
+}: AdminApprovalsPageProps) {
   const sp = await searchParams;
   const now = Date.now();
   const session = await currentSession();

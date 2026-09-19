@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Tabs } from "@/components/ui/tabs";
 import { parseSort, applySort } from "@/components/admin/admin-sort";
@@ -67,9 +68,7 @@ function fmtDate(iso: string) {
   return formatDateTimeSafe(iso);
 }
 
-export default async function AdminAIPollsPage({
-  searchParams,
-}: {
+type AIPollsPageProps = {
   searchParams: Promise<{
     q?: string;
     state?: string;
@@ -86,7 +85,19 @@ export default async function AdminAIPollsPage({
     apage?: string;
     tab?: string;
   }>;
-}) {
+};
+
+/**
+ * W25 belt 2 — the STORED-ROW gate, asked in the PAGE. The section layout asks it too, but a
+ * flight request whose router state names the admin layouts skips them and this page still runs
+ * and streams its payload; a gate in the page body cannot be skipped that way. It re-reads the
+ * user row, so a demoted officer's still-valid cookie does not get in.
+ */
+export default async function AdminAIPollsPage(props: AIPollsPageProps) {
+  return <AdminPageGate title="AI polls"><AdminAIPollsContent {...props} /></AdminPageGate>;
+}
+
+async function AdminAIPollsContent({ searchParams }: AIPollsPageProps) {
   const sp = await searchParams;
   const counts = await countAIPollsByState();
   const spend = await aiPollSpend();

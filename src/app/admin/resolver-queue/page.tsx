@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SentinelSourceChip } from "@/components/admin/sentinel-source-chip";
 import { sentinelSourceVerdict } from "@/lib/server/market-sentinel";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { RefreshButton } from "@/components/admin/refresh-button";
@@ -79,11 +80,17 @@ function timeUntil(iso: string): { label: string; tone: "default" | "soon" | "ov
   return { label: `${Math.floor(h / 24)}d`, tone: "default" };
 }
 
-export default async function ResolverQueuePage({
-  searchParams,
-}: {
+type ResolverQueuePageProps = {
   searchParams: Promise<{ window?: string; category?: string; q?: string; page?: string; sort?: string }>;
-}) {
+};
+
+export default async function ResolverQueuePage(props: ResolverQueuePageProps) {
+  return <AdminPageGate title="Resolver queue"><ResolverQueueContent {...props} /></AdminPageGate>;
+}
+
+async function ResolverQueueContent({
+  searchParams,
+}: ResolverQueuePageProps) {
   const sp = await searchParams;
   const windowFilter = (WINDOW_OPTIONS as readonly { value: string }[]).some((o) => o.value === sp.window) ? sp.window! : "24h";
 

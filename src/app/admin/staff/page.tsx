@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { Chip } from "@/components/ui/chip";
 import { Sensitive } from "@/components/ui/sensitive";
 import { Avatar } from "@/components/ui/avatar";
@@ -26,7 +27,12 @@ function roleChipVariant(role: string): "gold" | "info" | "neutral" {
   return "neutral";
 }
 
+/** W25 BELT 2 — the page's own gate, reading the STORED role row (a cookie's role is a photograph). */
 export default async function AdminStaffPage() {
+  return <AdminPageGate title="Staff"><AdminStaffContent /></AdminPageGate>;
+}
+
+async function AdminStaffContent() {
   // Owner-only (the layout already enforces isOwnerOnlyPath; belt-and-suspenders here).
   const session = await currentSession();
   if (!session || !isAdmin(session.role)) {

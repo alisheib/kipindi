@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { AdminAreaChart } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
@@ -28,7 +29,13 @@ type MatchStub = {
 export const metadata = { title: "Admin · Live ops" };
 export const dynamic = "force-dynamic";
 
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
 export default async function AdminLivePage() {
+  return <AdminPageGate title="Live"><AdminLiveContent /></AdminPageGate>;
+}
+
+async function AdminLiveContent() {
   const liveMatches = (matches as MatchStub[]).filter((m) => m.status === "live");
   // A-5: null (not 0) on a failed read → an explicit "couldn't compute" tile.
   const ggr = await grossGamingRevenue("today").catch(() => null);

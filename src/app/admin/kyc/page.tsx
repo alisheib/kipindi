@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -92,15 +93,20 @@ type UsField = "priority" | "waiting" | "held" | "attempts";
 type PlField = "held" | "opened" | "attempts";
 type FdField = "held" | "attempts";
 
-export default async function KycQueuePage({
-  searchParams,
-}: {
+type KycQueueProps = {
   searchParams: Promise<{
     ussort?: string; usdir?: string; uspage?: string;
     plsort?: string; pldir?: string; plpage?: string;
     fdsort?: string; fddir?: string; fdpage?: string;
   }>;
-}) {
+};
+
+/** W25 belt 2 — the stored-row gate, in the PAGE: a flight request naming this section's layout skips the layout. */
+export default async function KycQueuePage(props: KycQueueProps) {
+  return <AdminPageGate title="KYC"><KycQueueContent {...props} /></AdminPageGate>;
+}
+
+async function KycQueueContent({ searchParams }: KycQueueProps) {
   const sp = await searchParams;
   const now = Date.now();
   const session = await currentSession();

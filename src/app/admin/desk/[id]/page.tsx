@@ -31,6 +31,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminBody } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -57,13 +58,35 @@ export const dynamic = "force-dynamic";
 
 const TAB_LABEL: Record<(typeof CONSOLE_DETAIL_TABS)[number], string> = { overview: "Overview", rules: "Rules", targets: "Targets" };
 
-export default async function AdminDeskAccountPage({
-  params,
-  searchParams,
-}: {
+type DeskAccountProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ tab?: string | string[]; tpage?: string | string[] }>;
-}) {
+};
+
+/**
+ * W25 BELT 2 — this page carries its OWN gate, on the viewer's STORED row.
+ *
+ * ⭐ IT ARRIVED UNGATED THROUGH A MERGE, AND THE RATCHET IS WHAT CAUGHT IT. This page did not exist when the 53-page
+ * retrofit landed; it came in with `origin/main` `8416a37c` (C7 step 4a). `admin-section-gate.test.mjs` §0b named it
+ * immediately — which is the entire argument for a ratchet over a sweep: a sweep is true on the day it is run, and a
+ * ratchet is true afterwards.
+ *
+ * ⛔ `title="Desk"` IS LOAD-BEARING (C7-SPEC ruling 301). The gate titles its restricted panel from the LAST URL
+ * SEGMENT, and this route's last segment is a house-bot record id — so without an explicit section title the panel's
+ * heading would BE that raw id, printed in a body served to whoever asked. Under D19 that is the one thing this
+ * section may never do.
+ *
+ * ⛔ ADDITIVE. The page's own verdict below (awaited before the record is read, ruling 399) is KEPT VERBATIM: it is
+ * the feature's audience rule, which is narrower than "is a staff member". This gate answers the platform question.
+ */
+export default async function AdminDeskAccountPage(props: DeskAccountProps) {
+  return <AdminPageGate title="Desk"><AdminDeskAccountContent {...props} /></AdminPageGate>;
+}
+
+async function AdminDeskAccountContent({
+  params,
+  searchParams,
+}: DeskAccountProps) {
   /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE THE RECORD IS READ AND BEFORE `notFound()` CAN BE REACHED (399).
      ⚠️ `searchParams` is read ABOVE the gate only because the Targets pager's page number is an argument to it.
      It is the REQUEST's own query string and no record is touched to obtain it, so the verdict still precedes

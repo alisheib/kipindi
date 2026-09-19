@@ -14,6 +14,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -33,13 +34,21 @@ import { readGameTotals, readGameEntries, countGameEntryLines, readRateChangesBe
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: Promise<{ marketId: string }> }) {
-  const { marketId } = await params;
-  // ⚠️ Title garnish only — a failed read here must never decide whether the page renders.
-  const meta = await marketStore.bookByIds([marketId]).catch(() => null);
-  const title = meta?.get(marketId)?.titleEn;
-  return { title: title ? `Admin · House — ${title.slice(0, 50)}` : "Admin · House — one game" };
-}
+/**
+ * ⛔ W25 — `generateMetadata` RUNS OUTSIDE EVERY GATE, so it may not name the record.
+ *
+ * Metadata is produced before and independently of the page body, so neither belt reaches it: belt 1 (the edge)
+ * refuses a non-staff cookie, but belt 2 exists for the account whose cookie still SAYS staff after a demotion —
+ * and such a viewer was refused the body while still being handed the record's title in the browser tab, the
+ * history entry and the flight payload. ⛔ The probe cannot see this: its non-staff viewers never get past the
+ * edge, so no response of theirs carries it. Found by reading, not by testing.
+ *
+ * ⛔ AND THE DYNAMIC TITLE WAS ALSO AN ORACLE. "Game not found" for a missing record versus a real title for a
+ * live one let anyone holding a URL enumerate which record ids exist, by title alone, with no gate consulted.
+ * `/admin/desk/[id]` states the same rule for itself (ruling 402): the record's own label is a GATED value and
+ * never reaches the tab. A heading that names the record is correct — it is inside the gate. A document title is not.
+ */
+export const metadata = { title: "Admin · House — one game" };
 
 function Amt({ v }: { v: number }) {
   return <span className="amount">{formatTzs(v)}</span>;
@@ -48,12 +57,23 @@ function Signed({ v }: { v: number }) {
   return <span className="amount">{v > 0 ? "+" : ""}{formatTzs(v)}</span>;
 }
 
-export default async function HouseGamePage({
-  params, searchParams,
-}: {
+type HouseGameProps = {
   params: Promise<{ marketId: string }>;
   searchParams: Promise<{ epage?: string }>;
-}) {
+};
+
+/**
+ * E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render (a flight request can skip the layouts).
+ * ⛔ `title="House"` is EXPLICIT and load-bearing (C7-SPEC ruling 301): this route's last segment is the market id,
+ * so the default title would make the restricted panel's heading that raw id, in a body served to whoever asked.
+ */
+export default async function HouseGamePage(props: HouseGameProps) {
+  return <AdminPageGate title="House"><HouseGameContent {...props} /></AdminPageGate>;
+}
+
+async function HouseGameContent({
+  params, searchParams,
+}: HouseGameProps) {
   const session = await currentSession();
   if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
     return <AdminRestricted title="House" sw="Nyumba" need="Admin or Compliance" />;

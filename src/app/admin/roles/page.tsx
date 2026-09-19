@@ -1,6 +1,7 @@
 import { Tabs } from "@/components/ui/tabs";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { currentSession } from "@/lib/server/auth-service";
 import { isAdmin } from "@/lib/server/roles";
 import { getGrantMatrix, getReadMatrix } from "@/lib/server/rbac";
@@ -24,11 +25,16 @@ const TABS = [
   { id: "reads", label: "Reads" },
 ] as const;
 
-export default async function AdminRolesPage({
-  searchParams,
-}: {
+type RolesPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+};
+
+/** W25 BELT 2 — the page's own gate, reading the STORED role row (a cookie's role is a photograph). */
+export default async function AdminRolesPage(props: RolesPageProps) {
+  return <AdminPageGate title="Role permissions"><AdminRolesContent {...props} /></AdminPageGate>;
+}
+
+async function AdminRolesContent({ searchParams }: RolesPageProps) {
   const session = await currentSession();
   if (!session || !isAdmin(session.role)) {
     return <AdminRestricted title="Role permissions" sw="Ruhusa za wajibu" need="Owner (ADMIN) only" />;

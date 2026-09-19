@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
@@ -23,11 +24,15 @@ const LEDGER_CHIP: Record<string, "resolved" | "pending" | "objection"> = { PAID
  * The route is gated by the admin layout (role + TOTP); the save action
  * re-checks the role for defence-in-depth.
  */
-export default async function AdminAffiliatePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ lsort?: string; ldir?: string; lpage?: string }>;
-}) {
+type AffiliateProps = { searchParams: Promise<{ lsort?: string; ldir?: string; lpage?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminAffiliatePage(props: AffiliateProps) {
+  return <AdminPageGate title="Affiliate"><AdminAffiliateContent {...props} /></AdminPageGate>;
+}
+
+async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
   const sp = await searchParams;
   const config = getAffiliateConfig();
   const stats = await getAdminAffiliateStats();

@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminFunnelChart, AdminBarList } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -30,7 +31,12 @@ export const dynamic = "force-dynamic";
 
 const pct = (num: number, den: number) => (den > 0 ? `${Math.round((num / den) * 100)}%` : "—");
 
+/** E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render (a flight request can skip the layouts). */
 export default async function InsightsPage() {
+  return <AdminPageGate title="Insights"><InsightsContent /></AdminPageGate>;
+}
+
+async function InsightsContent() {
   const session = await currentSession();
   // Owner-grade economics — moderators must not read this. Return BEFORE any of
   // the restricted data is computed.

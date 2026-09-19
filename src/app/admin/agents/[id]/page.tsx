@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminBody } from "@/components/admin/admin-body";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
@@ -42,7 +43,20 @@ const DOC_LABEL: Record<AgentDocType, string> = {
  * the rail says WHY: the server computes the preconditions once, here, and the rail renders
  * the reasons rather than a mute button.
  */
-export default async function AgentApplicationPage({ params }: { params: Promise<{ id: string }> }) {
+type AgentApplicationProps = { params: Promise<{ id: string }> };
+
+/**
+ * W25 belt 2 — the STORED-ROW gate, asked in the PAGE, because a flight request that names the
+ * admin layouts skips them while this page still runs and streams its payload. The gate re-reads
+ * the user row, so a demoted officer's still-valid cookie does not get in.
+ * ⛔ An explicit `title` (C7-SPEC ruling 301): the last URL segment here is an application id, and
+ * without this the restricted panel's heading would BECOME that id in a body served to the asker.
+ */
+export default async function AgentApplicationPage(props: AgentApplicationProps) {
+  return <AdminPageGate title="Agents"><AgentApplicationContent {...props} /></AdminPageGate>;
+}
+
+async function AgentApplicationContent({ params }: AgentApplicationProps) {
   const { id } = await params;
   const app = await db.agentApplication.findById(id);
   if (!app) notFound();

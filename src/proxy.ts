@@ -19,6 +19,9 @@
  *    re-redirect — the edge guarantee is on top of, not instead of.
  */
 import { NextResponse, type NextRequest } from "next/server";
+// Pure + client-safe by its own header (no DB, no server-only imports), so the Edge runtime can use it.
+// Importing it rather than re-listing the staff roles here keeps ONE source of truth for "who is staff".
+import { isStaffRole } from "@/lib/server/roles";
 
 // Must match COOKIE_NAME in src/lib/server/session.ts
 const SESSION_COOKIE = "kp_session";
@@ -70,10 +73,25 @@ function timingSafeEq(a: Uint8Array, b: Uint8Array): boolean {
   for (let i = 0; i < a.length; i++) r |= a[i] ^ b[i];
   return r === 0;
 }
-async function isSessionCookieValid(token: string | undefined): Promise<boolean> {
-  if (!token) return false;
+/**
+ * W25 BELT 1 — the verified payload, not just a yes/no.
+ *
+ * ⛔ WHY THIS REPLACED A BOOLEAN. Until W25 this returned `true`/`false` and the only questions asked of a protected
+ * path were "does the HMAC match" and "has `exp` passed" — a session-EXISTS gate, not a role gate. Measured on the
+ * unfixed build by `qa:platform-pii-probe`: two ordinary PLAYER accounts received another player's display name and
+ * stake from 13 admin route instances, every one a 200, in plain document mode as well as both flight modes. The role
+ * was already decoded here and thrown away by the `as { exp?: number }` cast — this widens the cast and keeps it.
+ *
+ * ⚠️ THE COOKIE'S ROLE IS A PHOTOGRAPH, NOT A FACT. `src/lib/server/session.ts:57-63` says so of the sibling field
+ * `kycStatus`, and it is just as true of `role`: a demotion never reaches an already-minted cookie. So this belt is
+ * deliberately COARSE and SUBTRACTIVE — it refuses an account whose own cookie admits it is not staff, and it is not,
+ * and must never be described as, a replacement for the live-row check. Belt 2 (the per-page stored-row gate) answers
+ * the demoted-cookie question; the Edge runtime cannot reach the database to answer it here.
+ */
+async function readVerifiedSession(token: string | undefined): Promise<{ role?: string } | null> {
+  if (!token) return null;
   const dot = token.indexOf(".");
-  if (dot <= 0 || dot >= token.length - 1) return false;
+  if (dot <= 0 || dot >= token.length - 1) return null;
   const b64 = token.slice(0, dot);
   const mac = token.slice(dot + 1);
   // Web Crypto HMAC. Same key as src/lib/server/crypto.ts's
@@ -95,16 +113,16 @@ async function isSessionCookieValid(token: string | undefined): Promise<boolean>
     const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(b64));
     const expected = new Uint8Array(sig);
     let actual: Uint8Array;
-    try { actual = b64uToBytes(mac); } catch { return false; }
-    if (!timingSafeEq(expected, actual)) return false;
+    try { actual = b64uToBytes(mac); } catch { return null; }
+    if (!timingSafeEq(expected, actual)) return null;
     // Also check exp claim — best-effort base64 decode.
     try {
-      const payload = JSON.parse(new TextDecoder().decode(b64uToBytes(b64))) as { exp?: number };
-      if (payload.exp && Date.now() > payload.exp) return false;
-    } catch { return false; }
-    return true;
+      const payload = JSON.parse(new TextDecoder().decode(b64uToBytes(b64))) as { exp?: number; role?: string };
+      if (payload.exp && Date.now() > payload.exp) return null;
+      return { role: payload.role };
+    } catch { return null; }
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -206,8 +224,8 @@ export async function proxy(req: NextRequest) {
   // has begun, so the second-line page check is necessary but not
   // sufficient — this is the primary line).
   if (isProtected(pathname)) {
-    const ok = await isSessionCookieValid(cookie);
-    if (!ok) {
+    const session = await readVerifiedSession(cookie);
+    if (!session) {
       const url = req.nextUrl.clone();
       // Admin routes → admin login; player routes → player login.
       url.pathname = pathname.startsWith("/admin") ? "/auth/admin" : "/auth/login";
@@ -217,6 +235,29 @@ export async function proxy(req: NextRequest) {
       // re-presenting it. Path + name must match the issuer.
       if (cookie) res.cookies.delete(SESSION_COOKIE);
       return withSecurityHeaders(res, secure);
+    }
+    // ── W25 BELT 1: /admin is staff-only at the edge, whatever the router state says. ──
+    // ⛔ THIS IS THE LINE THAT CLOSES THE MEASURED LEAK. A layout is not a gate: a flight whose
+    // `Next-Router-State-Tree` names the admin layouts skips them and the page under them still runs and streams.
+    // The edge sees every request regardless of router state, so it is the only place a single check covers all
+    // three request shapes. The cookie is NOT cleared here — the session is perfectly valid, it is simply not
+    // entitled to /admin, and deleting it would sign a player out of the site for visiting a URL.
+    // ⚠️ Coarse and subtractive only: it refuses an account whose own cookie says it is not staff. A demoted
+    // account's stale cookie still passes here and is caught by the per-page stored-row gate (belt 2).
+    // ⚠️ A KNOWN GAP IN THIS BELT, STATED RATHER THAN GLOSSED, and the reason belt 2 is not redundant.
+    // `config.matcher` (:285) excludes `_next/static`, `_next/image`, `favicon.ico` and ANY path ending in an image
+    // extension — so this function never runs for `/admin/players/<anything>.png`, which a dynamic `[id]` segment
+    // happily matches. The edge is therefore skippable by URL shape alone, without any router-state trickery.
+    // ⭐ It is not exploitable for disclosure today, and the reason is worth writing down: the id must resolve, and
+    // `<id>.png` never does — `findById` answers null and the page answers `notFound()`. But "not exploitable
+    // because the lookup fails" is a property of the DATA, not of the gate, and a future route whose segment is not
+    // an id would not have it. The page's own gate (belt 2) runs regardless of this matcher, which is exactly why
+    // every admin page carries one and why neither belt is described as sufficient alone.
+    if (pathname.startsWith("/admin") && !isStaffRole(session.role)) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/auth/admin";
+      url.search = `?next=${encodeURIComponent(pathname + search)}`;
+      return withSecurityHeaders(NextResponse.redirect(url, 307), secure);
     }
   }
 

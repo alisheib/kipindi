@@ -1,5 +1,6 @@
 import type * as React from "react";
 import Link from "next/link";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminAreaChart, AdminMeter } from "@/components/admin/admin-charts";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -132,7 +133,13 @@ function one(v: string | string[] | undefined): string {
   return Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
 }
 
-export default async function AdminAiUsagePage({ searchParams }: { searchParams: Promise<SP> }) {
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminAiUsagePage(props: { searchParams: Promise<SP> }) {
+  return <AdminPageGate title="AI usage"><AdminAiUsageContent {...props} /></AdminPageGate>;
+}
+
+async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   /** ⛔ THE TAB IS A URL FACT (DG-S-03), so it survives a refresh, a Back and a shared link. */
   const AI_TABS = ["cycles", "settings", "usage"] as const;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
 import { KpiGrid } from "@/components/admin/admin-body";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -37,11 +38,16 @@ const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "wa
   { id: "sx-register",    title: "Self-exclusion register", sub: "Cross-operator format · monthly",      tone: "neutral" },
 ];
 
-export default async function AdminCompliancePage({
-  searchParams,
-}: {
+type AdminComplianceProps = {
   searchParams: Promise<{ page?: string; sort?: string; dir?: string; tab?: string }>;
-}) {
+};
+
+/** W25 belt 2 — the stored-row gate, in the PAGE: a flight request naming this section's layout skips the layout. */
+export default async function AdminCompliancePage(props: AdminComplianceProps) {
+  return <AdminPageGate title="Compliance"><AdminComplianceContent {...props} /></AdminPageGate>;
+}
+
+async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
   const sp = await searchParams;
   /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link. */
   const CMP_TABS = ["platform", "kyc", "safety", "integrity"] as const;

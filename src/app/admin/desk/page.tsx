@@ -30,6 +30,7 @@
 import { Fragment } from "react";
 import type { Route } from "next";
 import Link from "next/link";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -180,7 +181,22 @@ export function UsageBar({ row, unsetHref }: { row: ConsoleUsageRow; unsetHref: 
   );
 }
 
-export default async function AdminDeskPage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
+type DeskProps = { searchParams: Promise<{ tab?: string | string[] }> };
+
+/**
+ * W25 BELT 2 — this page carries its OWN gate, decided on the viewer's STORED row. A flight request whose router
+ * state names the section layout skips that layout, so the only gate a page cannot lose is the one it holds itself.
+ *
+ * ⛔ ADDITIVE, AND DELIBERATELY REDUNDANT HERE. `houseConsoleAudience` inside the content already answers on the
+ * stored role and is KEPT VERBATIM: it is this section's own audience rule (D19 — the feature is never named to
+ * anyone outside it), which is NARROWER than "is a staff member". The gate answers the platform question; the
+ * audience answers the feature's. Removing either would widen the other's blind spot.
+ */
+export default async function AdminDeskPage(props: DeskProps) {
+  return <AdminPageGate title="Desk"><AdminDeskContent {...props} /></AdminPageGate>;
+}
+
+async function AdminDeskContent({ searchParams }: DeskProps) {
   /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE ANY READ (rulings 300, 380). */
   const session = await currentSession();
   if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/desk"))) return null;

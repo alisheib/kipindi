@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { listForModeration } from "@/lib/server/comments-store";
 import { ModerationQueue } from "./moderation-client";
@@ -7,7 +8,13 @@ import { KpiGrid } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · Comment moderation" };
 export const dynamic = "force-dynamic";
 
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
 export default async function AdminModerationPage() {
+  return <AdminPageGate title="Moderation"><AdminModerationContent /></AdminPageGate>;
+}
+
+async function AdminModerationContent() {
   // A-5: a failed queue read must NOT show "the queue is clear" / all-zero counts
   // — a false "nothing to moderate". Show an explicit "couldn't load" instead.
   let failed = false;

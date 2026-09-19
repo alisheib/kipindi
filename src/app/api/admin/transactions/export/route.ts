@@ -25,6 +25,7 @@ import { canView, mayReveal } from "@/lib/server/rbac";
 import { maskPhone } from "@/lib/phone-normalize";
 import { audit } from "@/lib/server/audit";
 import { db, TXN_TYPES } from "@/lib/server/store";
+import { checkAdminTotp } from "@/lib/server/admin-guard";
 import { attentionOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
 import type { StoredTxn } from "@/lib/server/store";
@@ -70,9 +71,31 @@ function toRow(t: StoredTxn, full: boolean): string {
 }
 
 export async function GET(req: Request) {
+  // ⛔ W25 — THIS ROUTE TRUSTED THE COOKIE, AND IT WAS THE ONLY ONE THAT DID.
+  //
+  // It decided on `session.role` — the role stamped into the signed cookie when the session was minted — with no
+  // database read. Its six siblings under /api/admin all re-read the stored row (reports/[id]:36, kyc-doc:36,
+  // agent-doc:25, admission:34, updown-timing:58). `session.ts:57-63` states the principle of the sibling field
+  // `kycStatus` verbatim: a PHOTOGRAPH, NOT A FACT — never decide anything on it. A demotion never reaches an
+  // already-minted cookie, so a revoked officer kept this export until their session expired.
+  //
+  // ⭐ MEASURED, not reasoned. `qa:platform-pii-probe` with a viewer whose cookie claims ADMIN over a stored PLAYER
+  // row: this route answered 200 and the body carried another player's STAKE, while all 354 page requests from the
+  // same cookie were correctly refused by belt 2. It was the single hole left, and it only became visible once the
+  // probe could mint that viewer at all — the earlier runs sent plain PLAYER cookies, which belt 1 turned away at
+  // the edge before anything could be measured.
   const session = await currentSession();
-  if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
+  const u = session ? await db.user.findById(session.userId).catch(() => null) : null;
+  if (!session || !u || !(u.role === "ADMIN" || (await canView(u.role, "accounting")))) {
     // Same shape as any other missing route — don't confirm the endpoint exists.
+    return new NextResponse("Not Found", { status: 404 });
+  }
+  // ⛔ W25 — AND IT WAS THE ONLY /api/admin ROUTE WITH NO SECOND FACTOR. `admission`, `agent-doc`, `kyc-doc`,
+  // `updown-timing` and `reports/[id]` all call `checkAdminTotp` after their role check; this one did not, while
+  // serving every player's money rows as a CSV. A direct GET to this URL skips the admin layout's TOTP gate
+  // entirely, which is the same reasoning `reports/[id]:41-43` records for itself (audit finding B3).
+  // 404 rather than 403 here, unlike reports: this route's established shape is not to confirm it exists at all.
+  if ((await checkAdminTotp(session.userId, session.sessionId)) !== "ok") {
     return new NextResponse("Not Found", { status: 404 });
   }
 

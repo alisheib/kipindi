@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { AdminMeter } from "@/components/admin/admin-charts";
@@ -39,7 +40,15 @@ const ageLabel = (msv: number) => {
   return `${Math.max(0, Math.floor(msv / 60_000))}m`;
 };
 
-export default async function PaymentsOpsPage({ searchParams }: { searchParams: Promise<{ page?: string; tab?: string }> }) {
+type PaymentsProps = { searchParams: Promise<{ page?: string; tab?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function PaymentsOpsPage(props: PaymentsProps) {
+  return <AdminPageGate title="Payments"><PaymentsOpsContent {...props} /></AdminPageGate>;
+}
+
+async function PaymentsOpsContent({ searchParams }: PaymentsProps) {
   const sp = await searchParams;
   // `railProbes` asks each Selcom payout endpoint whether it is provisioned for this
   // vendor. It moves NO money (a signed status query for a transid that does not

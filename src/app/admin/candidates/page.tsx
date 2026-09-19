@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { ScoreBadge } from "@/components/admin/score-badge";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -52,9 +53,7 @@ function fmtDate(iso: string) {
   return formatDateTimeSafe(iso);
 }
 
-export default async function AdminCandidatesPage({
-  searchParams,
-}: {
+type CandidatesProps = {
   searchParams: Promise<{
     q?: string;
     state?: string;
@@ -70,7 +69,15 @@ export default async function AdminCandidatesPage({
     adir?: string;
     apage?: string;
   }>;
-}) {
+};
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminCandidatesPage(props: CandidatesProps) {
+  return <AdminPageGate title="Candidates"><AdminCandidatesContent {...props} /></AdminPageGate>;
+}
+
+async function AdminCandidatesContent({ searchParams }: CandidatesProps) {
   const sp = await searchParams;
   // Guard the loads so a transient store/AI-spend error degrades to zeros/empty
   // lists instead of 500ing the whole candidates console (matches sibling pages).

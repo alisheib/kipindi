@@ -29,6 +29,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
@@ -110,7 +111,12 @@ function Signed({ v }: { v: number }) {
   return <span className="amount">{v > 0 ? "+" : ""}{formatTzs(v)}</span>;
 }
 
-export default async function AdminHousePage({ searchParams }: { searchParams: Promise<SP> }) {
+/** E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render (a flight request can skip the layouts). */
+export default async function AdminHousePage(props: { searchParams: Promise<SP> }) {
+  return <AdminPageGate title="House"><AdminHouseContent {...props} /></AdminPageGate>;
+}
+
+async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }) {
   /* ⛔ THE GATE COMES FIRST, BEFORE ANY MONEY READ. Verbatim from `/admin/finance`: the admin
    * layout gates ADMIN_CONSOLE_ROLES, which INCLUDES MODERATOR, so without this a moderator
    * could read the owner's net retained, his solvency line and his per-game revenue. */

@@ -36,7 +36,9 @@ console.log("\n[admin-section-gate] §0 every console page sits under AdminSecti
   const pages = [];
   const walk = (d) => { for (const n of readdirSync(d)) { const p = join(d, n); if (statSync(p).isDirectory()) walk(p); else if (n === "page.tsx") pages.push(p); } };
   walk(ADMIN);
-  const gated = (file) => /AdminSectionGate/.test(readFileSync(file, "utf8"));
+  // W25: a PAGE gates with AdminPageGate (refuse only — the layout above it already carries the read-only banner),
+  // a LAYOUT gates with AdminSectionGate. Both are the same gate and the same refusal, so both count as gated here.
+  const gated = (file) => /<(AdminSectionGate|AdminPageGate)\b/.test(readFileSync(file, "utf8"));
   const ungated = [];
   for (const page of pages) {
     const rel = relative(ADMIN, page).split(sep).slice(0, -1).join("/");
@@ -53,6 +55,100 @@ console.log("\n[admin-section-gate] §0 every console page sits under AdminSecti
   }
   ok(`§0 ratchet · ${pages.length} console pages found`, pages.length >= 45, String(pages.length));
   ok("§0 every page is gated where a navigation re-runs the gate", ungated.length === 0, ungated.join(", "));
+
+  // ── §0b · W25 · A LAYOUT IS NOT ENOUGH. The gate must be IN THE PAGE. ──
+  // ⛔ WHY THIS ASSERTION EXISTS, measured not supposed. Until W25 this suite passed a page whose ONLY gate was an
+  // ancestor layout — the `found` walk above. A layout is skippable: a flight request whose `Next-Router-State-Tree`
+  // names the admin layouts skips them, and the page under them still runs its own async function and streams its
+  // whole server payload. `qa:platform-pii-probe` measured the consequence on the unfixed build — two ordinary PLAYER
+  // accounts received another player's display name and stake from 13 admin route instances, every one a 200.
+  // So the walk above is kept (it still proves a navigation re-runs a gate) and this is added beside it: the page
+  // itself must refuse, because the page itself is the thing that cannot be skipped.
+  const layoutOnly = [];
+  for (const page of pages) {
+    const rel = relative(ADMIN, page).split(sep).slice(0, -1).join("/");
+    if (EXEMPT.has(rel)) continue;
+    if (!gated(page)) layoutOnly.push(rel || "(root)");
+  }
+  ok("§0b W25 · every page carries its OWN gate, because a flight can skip every layout above it",
+    layoutOnly.length === 0, layoutOnly.join(", "));
+
+  // ── §0b′ · THE GATE MUST BE THE PAGE'S WHOLE RETURNED BODY, not a string that appears in the file. ──
+  // ⛔ WHY THE SUBSTRING TEST ABOVE IS NOT ENOUGH, and this is the assertion that actually holds the belt. `gated()`
+  // is `/<(AdminSectionGate|AdminPageGate)\b/.test(rawFileBytes)` — it cannot tell a rendered gate from the WORD.
+  // Four spellings satisfy it while the gate is absent or inert, and the first is one `<` away from text already in
+  // this tree (`kyc/refused/page.tsx:87`, `players/[id]/page.tsx:104` both name the gate in prose):
+  //   (a) the tag only inside a comment, gate deleted;
+  //   (b) the tag only inside a string literal;
+  //   (c) rendered CONDITIONALLY — inert whenever the condition says so;
+  //   (d) wrapping only PART of the body — the worst, because `admin-section-gate.tsx` refuses by returning
+  //       <AdminRestricted/> INSTEAD of children, so anything outside the wrapper streams to a refused viewer anyway.
+  // ⭐ AND THIS IS THE ONLY AUTOMATIC PROOF THERE IS. `test:admin-section-gate` is in `predeploy`;
+  // `qa:platform-pii-probe` is NOT — `scripts/test-all.mjs:44` collects only `test:`-prefixed scripts — and the probe
+  // itself prints NOT MEASURED for ~103 of 119 route instances. So for most of the console this file is the belt.
+  // ⛔ The remedy is the one this same suite already applies 60 lines below to the root layout (`:108` strips
+  // comments before testing) and the one `layout-staleness.test.mts:114-131` applies to layouts: strip, pin the
+  // shape, and plant defects that must be REFUSED. Measured before enforcing: all 54 gated pages already match the
+  // canonical spelling, so this is zero churn.
+  const stripCode = (s) => s
+    .replace(/^[ \t]*\/\/.*$/gm, "")
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  const PAGE_GATE_BODY = /return <(AdminSectionGate|AdminPageGate)(?: [a-zA-Z]+="[^"{}$]*")*>\s*<[A-Z]\w*(?:\s[^<>]*)?\/>\s*<\/\1>;/;
+  const inert = [];
+  for (const page of pages) {
+    const rel = relative(ADMIN, page).split(sep).slice(0, -1).join("/");
+    if (EXEMPT.has(rel)) continue;
+    if (!PAGE_GATE_BODY.test(stripCode(readFileSync(page, "utf8")))) inert.push(rel || "(root)");
+  }
+  ok("§0b′ W25 · the gate is the page's whole returned body, not a word in the file",
+    inert.length === 0, inert.join(", "));
+
+  // ⛔ AND IT MUST REFUSE EVERY WAY OF FAKING IT. A count-only control proves the assertion LOOKED; only a planted
+  // defect proves it can REJECT. Each of these passed the substring test.
+  const CANON = 'export default async function P(props: X) {\n  return <AdminPageGate title="Affiliate"><C {...props} /></AdminPageGate>;\n}\n';
+  const PLANTED = {
+    "comment": '/** this page used to wrap itself in <AdminPageGate>; the layout carries it now */\nexport default async function P(props: X) {\n  return <C {...props} />;\n}\n',
+    "string": 'const GATE_TAG = "<AdminPageGate>";\nexport default async function P(props: X) {\n  return <C {...props} />;\n}\n',
+    "conditional": 'export default async function P(props: X) {\n  return off ? <C {...props} /> : <AdminPageGate title="A"><C {...props} /></AdminPageGate>;\n}\n',
+    "partial wrap": 'export default async function P(props: X) {\n  return (<>\n    <AdminPageHead title={p.displayName} />\n    <AdminPageGate title="A"><C {...props} /></AdminPageGate>\n  </>);\n}\n',
+  };
+  const notRefused = Object.entries(PLANTED).filter(([, src]) => PAGE_GATE_BODY.test(stripCode(src))).map(([k]) => k);
+  ok("§0b′ CONTROL · every inert-gate spelling is REFUSED, and the canonical one is ACCEPTED",
+    notRefused.length === 0 && PAGE_GATE_BODY.test(stripCode(CANON)),
+    notRefused.length ? `slipped through: ${notRefused.join(", ")}` : `${Object.keys(PLANTED).length} spellings refused, canonical accepted`);
+
+  // Kept beside the shape pin: it still guards against the EXEMPT set swallowing the corpus.
+  ok("§0b CONTROL · §0b actually inspected pages (it is not vacuous)",
+    pages.length - EXEMPT.size >= 45, `${pages.length} pages − ${EXEMPT.size} exempt`);
+
+  // ── §0c · W25 · NO ADMIN PAGE MAY NAME A RECORD IN ITS DOCUMENT TITLE. ──
+  // ⛔ `generateMetadata` runs BEFORE and INDEPENDENTLY of the page body, so neither belt reaches it. Belt 1 refuses
+  // a non-staff cookie, but belt 2 exists for the cookie that still SAYS staff after a demotion — and such a viewer
+  // was refused the body while still being handed the record's title in the tab, the history entry and the flight
+  // payload. Measured: FOUR admin pages did this (players/[id] named the player; ai-polls/[id], house/[marketId] and
+  // markets/[id] named the record), and the first count of it said ONE, because the grep window was eight lines and
+  // the other three reach their data through different accessors. A count is not a measurement until it can fail.
+  // ⛔ It was also an ORACLE: "Market not found" for a missing record versus a real title for a live one enumerated
+  // which ids exist, with no gate consulted. `/admin/desk/[id]` states the same rule for itself (ruling 402).
+  const titled = [];
+  for (const page of pages) {
+    const rel = relative(ADMIN, page).split(sep).slice(0, -1).join("/");
+    const src = readFileSync(page, "utf8");
+    const i = src.indexOf("export async function generateMetadata");
+    if (i < 0) continue;                       // a static `export const metadata` is the shape this asks for
+    const open = src.indexOf("{", src.indexOf(")", i));
+    let d = 0, end = -1;
+    for (let j = open; j < src.length; j++) {
+      if (src[j] === "{") d++;
+      else if (src[j] === "}") { d--; if (d === 0) { end = j; break; } }
+    }
+    const body = end > 0 ? src.slice(open, end + 1) : src.slice(i);
+    // Any read at all inside generateMetadata: the title can then only be built from what was read.
+    if (/\b(db|prisma|pc)\s*[.(]|\bget[A-Z]\w*\s*\(|\bStore\s*\.|\bfindById\s*\(/.test(body)) titled.push(rel || "(root)");
+  }
+  ok("§0c W25 · no admin page reads a record inside generateMetadata (it runs outside every gate)",
+    titled.length === 0, titled.join(", "));
   // Code only: line comments first, then block and JSX comments (the history of the move is written in comments).
   const root = readFileSync(join(ADMIN, "layout.tsx"), "utf8").replace(/^[ \t]*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
   ok("§0 the root admin layout no longer decides view/act (it is frozen across soft navigations)",

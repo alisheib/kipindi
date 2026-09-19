@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { KpiGrid } from "@/components/admin/admin-body";
 import { AdminBody } from "@/components/admin/admin-body";
@@ -50,6 +51,13 @@ const STATE_VARIANT: Record<CaseState, "warning" | "neutral" | "info" | "danger"
 export const metadata = { title: "Admin · Refused players' balances" };
 export const dynamic = "force-dynamic";
 
+type RefusedFundsReportProps = { searchParams: Promise<{ apage?: string; dpage?: string }> };
+
+/** W25 belt 2 — the stored-row gate, in the PAGE: a flight request naming this section's layout skips the layout. */
+export default async function RefusedFundsReportPage(props: RefusedFundsReportProps) {
+  return <AdminPageGate title="KYC"><RefusedFundsReportContent {...props} /></AdminPageGate>;
+}
+
 /**
  * S1 — THE REPORT AN INSPECTOR CAN BE HANDED (owner ruling, Ali, 2026-09-13).
  *
@@ -64,11 +72,7 @@ export const dynamic = "force-dynamic";
  * all-clear on the one page built to prove there is none.
  * ⚠️ English-only by design, like the rest of the staff console.
  */
-export default async function RefusedFundsReportPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ apage?: string; dpage?: string }>;
-}) {
+async function RefusedFundsReportContent({ searchParams }: RefusedFundsReportProps) {
   const sp = await searchParams;
   // 🔴 ASKED BEFORE ANY WALLET IS READ (audit session 95, 2026-09-14) — the same money gate as /admin/kyc and the case
   // page. This report rendered every refused player's balance to any role the compliance route admits; without money

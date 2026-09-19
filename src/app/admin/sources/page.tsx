@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { I } from "@/components/ui/glyphs";
@@ -19,7 +20,15 @@ export const dynamic = "force-dynamic";
 
 const CATEGORIES: MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
 
-export default async function AdminSourcesPage({ searchParams }: { searchParams: Promise<{ cat?: string }> }) {
+type SourcesProps = { searchParams: Promise<{ cat?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminSourcesPage(props: SourcesProps) {
+  return <AdminPageGate title="Sources"><AdminSourcesContent {...props} /></AdminPageGate>;
+}
+
+async function AdminSourcesContent({ searchParams }: SourcesProps) {
   await seedDefaultSources();
   const all = await listSources();
   const enabled = all.filter((s) => s.enabled);
