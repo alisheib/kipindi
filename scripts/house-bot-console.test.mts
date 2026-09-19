@@ -55,6 +55,9 @@
  * ⭐ RAISED ONCE MORE with 1.435, the account page's own source law — six `removed` guards, three pure tab
  * tests, the RAW file yielding exactly the closed tab list, and no failure treatment a removed account can
  * reach: **memory 372, Postgres 230**.
+ * AND ONCE MORE with 1.350, replan ruling 506 s last homeless assertion for this step — ruling 350 s two
+ * lists held against the console s one door, with ruling 504 s two decided members read off the tree:
+ * **memory 376, Postgres 230** (the source pins run in the memory child only).
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -65,6 +68,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 372, postgres: 230 },
+  minPass: { memory: 376, postgres: 230 },
   dbPrefix: "hb_console",
 });

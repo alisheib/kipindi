@@ -3694,6 +3694,50 @@ export default function Ruling513Control() {
   }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §4b · 1.350 — THE NAMED LIST OF DAL MEMBERS THE CONSOLE NEEDS, AND THE LIST IT DOES NOT (ruling 350; replan 506)
+ *
+ * ⛔ WHY IT LANDS HERE. Ruling 350 is the only guard over its own two lists, and replan ruling 506 found it homeless:
+ * named by a Proof clause as its own instrument and written in no suite. Step 4 is where it belongs, because the
+ * member-by-member decision ruling 504 forced — `lastStoppedAt` deleted, `veto` kept with its callers named — is
+ * exactly this ruling's subject, and because this step added the one member 350's KEEP list allows (`botRateUsage`).
+ * ⛔ THE POPULATION IS THE GATE MODULE, not the whole tree: what 350 governs is what the CONSOLE reads. A member on
+ * the NOT-NEEDED list may live on an engine caller's account (350 says so in as many words); what it may not do is
+ * appear behind the console's one door.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+if (STORE === "memory") {
+  section("§4b · ruling 350's two lists, over the console's one door");
+  const gate350 = decomment(read(GATE));
+  /* Ruling 350's NOT-NEEDED half, verbatim from the ruling. ⛔ A member here may exist in the DAL on an ENGINE
+   * caller's account; what it may not do is appear inside the console's gate module. */
+  const NOT_NEEDED = ["recordDisclosure", "listOverlapping", "listByKindsInWindow", "listByUserKinds", "countByBot",
+    "counteredPositionsCount", "listInWindow", "countRegister", "entryRows", "stakeRows", "feeInputs", "ledgerRows",
+    "positionsForUser", "txnPageForUser", "houseBotBook", "houseStaffScorecard", "houseStakeByMarket",
+    "houseStakeForAudit", "placedTimes", "botUsage", "marketUsage", "counterpartyToday", "lockedPool",
+    "staffChosenPlacedSince", "placedInWindow", "staffChosenPlaced", "listAlertRepair", "listActive",
+    "activeForMarket", "everStopped", "lastStoppedAt", "listForPress", "drawOpenerSide", "findOpenerDraw",
+    "pruneInstanceRows", "blackoutRow", "rawProductLine", "roundLock", "marketView", "plannableMarkets",
+    "triggerPage", "triggerAccount", "intentFreshness", "revertPlacedInMemory"];
+  const reached = NOT_NEEDED.filter((m) => new RegExp(`\\.${m}\\(`).test(gate350));
+  ok("1.350 · not one member of ruling 350's NOT-NEEDED list is called behind the console's one door",
+    reached.length === 0 && NOT_NEEDED.length >= 40, j({ reached, population: NOT_NEEDED.length }));
+  ok("1.350 · CONTROL · the detector finds a member the door DOES call, so the zero above is a measurement",
+    /\.listNonRemoved\(/.test(gate350) && /\.botRateUsage\(/.test(gate350)
+      && new RegExp("\\.placedTimesXyz\\(").test(gate350) === false, "");
+  /* ⛔ AND THE TWO MEMBERS RULING 504 DECIDED ARE DECIDED IN THE TREE, not only in a plan file: one is GONE from the
+   * house DAL entirely, and the other is still the interface plus both twins with its behavioural callers intact. */
+  const dal350 = decomment(read("src/lib/server/house-bot-dal.ts"));
+  ok("1.350 · 504 · `lastStoppedAt` is gone from the DAL and `veto` is still the interface plus BOTH twins — the two members 350's mechanism had left undecided",
+    !new RegExp("(^|[^A-Za-z])(async )?lastStoppedAt\\(", "m").test(dal350)
+      && (dal350.split("veto(").length - 1) >= 3, j({ veto: dal350.split("veto(").length - 1 }));
+  /* ⛔ AND THE ONE MEMBER THIS STEP ADDED IS ON 350's KEEP LIST BY NAME — 351 is the ruling that put it there, and
+   * a member added to the seam without a cited scope line is exactly what C5-5b's exit rule deletes. */
+  ok("1.350 · 351 · the one seam member this step added is the one ruling 351 names, and it is the ONLY new one",
+    /botRateUsage\(input: \{ houseBotId: string \| null \}/.test(dal350)
+      && (dal350.match(/botRateUsage\(/g) ?? []).length === 3, j({ named: (dal350.match(/botRateUsage\(/g) ?? []).length }));
+}
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-console [${STORE}]: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
