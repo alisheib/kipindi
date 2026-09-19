@@ -1169,6 +1169,94 @@ section("§2 · the strip, the band, the roster and every failure");
     await setRuntime([]);
   }
 
+  /* ══ REPLAN RULING 548 · THE BREADCRUMB PAINTS NO RECORD ID ON THIS SECTION ═══════════════════════════════════
+   * Read off C7 step 4's own tile: `/admin/desk/hb_32320_2` rendered the crumb "Admin / Desk / hb_32320_2".
+   * ⚠️ AND IT IS DELIBERATELY NOT RECORDED AS A DISCLOSURE. The crumb is built from the URL segment the viewer
+   * THEMSELVES requested, so it cannot tell a non-audience viewer an id they did not already hold — at worst it
+   * echoes back what they typed, which is the opposite direction from ruling 259's class. What it IS is a
+   * SCREENSHOT channel, which is the exact reason 453 is stricter than its adjudicator asked. And nothing saw it:
+   * the bounded-id needle wants 24 hex characters and that id shape has none.
+   * ⛔ THE POPULATION IS EVERY CRUMB THIS CONSOLE CAN RENDER, DERIVED FROM ITS OWN ROUTE HOME — never a typed list
+   * of paths, because the next href builder added to that module would fall outside it in silence. */
+  {
+    const { crumbsFromPath, assertNavKeysResolve }: Any = await import("../../src/components/admin/admin-nav-groups.ts");
+    const RECORD_ID = "hb_32320_2";
+    /* Every href the console's ONE route home can build for a record, taken from the module rather than typed. */
+    const consolePaths: string[] = [
+      CR.CONSOLE_ROUTE,
+      CR.CONSOLE_NEW_ROUTE,
+      CR.consoleBotHref(RECORD_ID),
+      ...CR.CONSOLE_DETAIL_TABS.map((t: string) => CR.consoleBotTabHref(RECORD_ID, t)),
+      CR.consoleReverifyHref(RECORD_ID),
+      CR.consoleActivityHref(RECORD_ID),
+      CR.consoleEventHref(RECORD_ID, "hbe_00000000000000000000abcd"),
+    ].map((h: string) => h.split("?")[0].split("#")[0]);
+    const crumbsOf = (p: string): string[] => crumbsFromPath(p);
+    const painted = consolePaths.filter((p) => crumbsOf(p).some((c: string) => c.includes(RECORD_ID)));
+    ok("1.548 · not one crumb this console can render paints a record id — the population is every href its ONE route home builds, not a typed list of paths",
+      consolePaths.length >= 7 && painted.length === 0, j({ paths: consolePaths.length, painted }));
+    ok("1.548 · …and the id segment renders a NEUTRAL word instead, the way ruling 313 already gives the detail route a ghost title — never a blank, which would read as a broken trail",
+      j(crumbsOf(CR.consoleBotHref(RECORD_ID))) === j(["Admin", "Desk", "Account"])
+        && !NEUTRAL.test(crumbsOf(CR.consoleBotHref(RECORD_ID)).join(" ")),
+      j(crumbsOf(CR.consoleBotHref(RECORD_ID))));
+    /* ⛔ THE FIX IS IN THE CRUMB BUILDER'S OWN HOME AND IS KEYED BY THE SECTION, NOT BY AN ID PREFIX. `looksLikeId`
+     * keeps ANY digit-bearing segment containing an underscore, so adding one more prefix to its allowlist would
+     * leave the NEXT prefix to re-land the same defect — which is exactly what happened here, since `hb_` was never
+     * on that allowlist and was kept by the generic rule. */
+    const navSrc = decomment(read("src/components/admin/admin-nav-groups.ts"));
+    ok("1.548 · the fix is in the crumb builder's own home, keyed by the SECTION KEY — not a prefix added to `looksLikeId`, which the next prefix would walk straight past",
+      /const ID_CRUMB: Record<string, string> = \{/.test(navSrc)
+        && /^\s*if \(\/\^\(usr\|mkt\|udr\|txn\|kyc\)_\/i\.test\(p\)\) return true;$/m.test(navSrc)
+        && !/hb_/.test(navSrc), j({ hasTable: /ID_CRUMB/.test(navSrc) }));
+    ok("1.548 · CONTROL · a section that does NOT declare its ids maskable still paints them — so the zero above is a masked section and not a crumb builder that has stopped rendering ids at all",
+      crumbsOf("/admin/players/usr_6e24abc123def456789012").includes("usr_6e24abc123def456789012")
+        && crumbsOf(`/admin/kyc/${RECORD_ID}`).includes(RECORD_ID), "");
+    ok("1.548 · CONTROL · the mask's own population is the ROUTE TABLE: an entry naming a key no route emits is reported, and the real table is not",
+      j(assertNavKeysResolve()) === j([]), j(assertNavKeysResolve()));
+  }
+
+  /* ══ 432(f)'s `eligibility.ts` HALF — MEASURED, AND TIED BY EXISTENCE TO THE SURFACE THAT WOULD RENDER IT ══════
+   * 432(f) named TWO of that module's sentences ("Already house bot “X”", "This account is already a house bot.").
+   * Its `PAUSE_REASON_WAY_OUT` half was then measured at SEVEN dirty rows where the ruling had named one, so this
+   * one is DERIVED rather than read off the ruling — and the same under-count holds: the walk below prints what it
+   * finds and the floor only rises.
+   * ⛔ NO OVERRIDE COPY IS WRITTEN HERE, AND THAT IS 432(a)'s RULE APPLIED TO COPY. The wizard is C7 step 6's;
+   * eleven rewritten sentences that nothing renders is a writer with no reader, and each carries interpolated data
+   * whose shape that surface has not settled. What lands instead is the MEASUREMENT and an EXISTENCE TIE — the
+   * idiom 432(h) used for the way-out column and 433(a) for the limits form — so the step that renders an
+   * eligibility row cannot ship without the override, and cannot ship the override with nothing rendering it. */
+  {
+    const ELIG = "src/lib/server/house-bot/eligibility.ts";
+    const eligLiterals = domLiterals(ELIG, read(ELIG));
+    const dirtyRows = eligLiterals.filter((s: string) => s.length > 2 && NEUTRAL.test(s));
+    ok("1.432f · every sentence `eligibility.ts` can put on a screen is WALKED, and the ones carrying a house word are COUNTED rather than taken from the ruling — which named two",
+      /* ⛔ THE FLOOR IS WHAT THIS RUN MEASURED — FOURTEEN, where ruling 432(f) named two — and it only rises. */
+      dirtyRows.length >= 14 && dirtyRows.some((s: string) => s.toLowerCase().includes("already")),
+      j({ dirty: dirtyRows.length, scanned: eligLiterals.length }));
+    ok("1.432f · CONTROL · the walk really read that module and can say NO — a module SPECIFIER is not copy, its neutral sentences are not counted, and a planted sentence IS",
+      eligLiterals.length > dirtyRows.length
+        && !eligLiterals.includes("@/lib/house-bot/constants")
+        && domLiterals("x.ts", `const x = "Their account is closed.";`).every((s: string) => !NEUTRAL.test(s))
+        && domLiterals("x.ts", `const x = "This account is already a house bot.";`).some((s: string) => NEUTRAL.test(s)),
+      j({ all: eligLiterals.length, dirty: dirtyRows.length }));
+
+    /* ⛔ THE TIE. `houseCheckForConsole` is ruling 359's reader and does not exist yet; the day it does, this goes
+     * red unless the console's own override goes with it. Both directions, so neither half can ship alone. */
+    const namesElig = (code: string) => /eligibility|EligibilityRow|houseBotEligibility/.test(code);
+    const hasOverride = (code: string) => /CONSOLE_ELIGIBILITY/.test(code);
+    const consumers = [...sectionFiles, GATE].map((f: string) => decomment(read(f)));
+    const sectionNamesEligibility = consumers.some(namesElig);
+    const overrideExists = consumers.some(hasOverride);
+    ok("1.432f · the section renders an eligibility row ⟺ the console's own override for those sentences exists — so C7 step 6 can ship neither half alone",
+      sectionNamesEligibility === overrideExists, j({ sectionNamesEligibility, overrideExists, files: consumers.length }));
+    ok("1.432f · CONTROL · both detectors fire when their subject is planted into a copy of the REAL gate module, and neither fires on the original — so the equality above is a measurement, not two unreached scans",
+      (() => {
+        const real = decomment(read(GATE));
+        return !namesElig(real) && namesElig(`${real}\nimport { houseBotEligibility } from "./house-bot/eligibility";`)
+          && !hasOverride(real) && hasOverride(`${real}\nconst CONSOLE_ELIGIBILITY = {};`);
+      })(), "");
+  }
+
   /* ⛔ AN INERT POINTER CARRIES NO ARROW (ruling 432(i)), AND THIS IS THE HALF THAT WAS MISSED. The server's
    * roster-full sentence is written for a LINK and ENDS "…raise the roster limit on Limits →". While the limits tab
    * has no panel the page paints it as PLAIN TEXT — arrow and all — so the head promised a navigation to a tab
@@ -2939,9 +3027,19 @@ export default function Ruling513Control() {
    * page yet, so it 404s before any layout paints — recorded in `DEFERRED-TESTS.md`, never claimed as passed. */
   const NAV: Any = await import("../../src/components/admin/admin-nav-groups.ts");
   const ID_PATH = "/admin/desk/hb_0123456789abcdef01234567";
-  ok("1.301 · without the prop the gate would head its restricted panel with the raw record id — the resolver is measured, not assumed",
-    NAV.crumbsFromPath(ID_PATH).at(-1) === "hb_0123456789abcdef01234567"
-      && NAV.crumbsFromPath("/admin/desk").at(-1) === "Desk", j(NAV.crumbsFromPath(ID_PATH)));
+  /* ⭐ RE-EXPRESSED AT C7 STEP 4b, AND IT IS A SECOND BELT RATHER THAN A WEAKENING. This read "without the prop the
+   * gate would head its panel with the raw record id", measured on the resolver — and replan ruling 548 has since
+   * made the resolver itself mask this section's ids, so that sentence is no longer true HERE. The REASON the prop
+   * exists is unchanged and is still measured, on a section that declares no mask; what this now also pins is that
+   * BOTH mechanisms are in place on the desk, so losing either one alone still leaves the panel neutral. An
+   * assertion whose premise a later fix invalidates must be re-aimed at the same subject, never deleted and never
+   * quietly satisfied by the thing it was written to catch. */
+  ok("1.301 · 548 · the resolver still paints a raw record id for a section that declares no mask — the reason the gate's `title` prop exists, measured rather than assumed",
+    NAV.crumbsFromPath("/admin/kyc/hb_0123456789abcdef01234567").at(-1) === "hb_0123456789abcdef01234567"
+      && NAV.crumbsFromPath("/admin/desk").at(-1) === "Desk", j(NAV.crumbsFromPath("/admin/kyc/hb_0123456789abcdef01234567")));
+  ok("1.301 · 548 · …and on THIS section the id is neutral for two independent reasons: the gate is handed a literal title, and the crumb builder masks the segment — so losing either alone still leaves the panel neutral",
+    NAV.crumbsFromPath(ID_PATH).at(-1) === "Account"
+      && /<AdminSectionGate title="Desk">/.test(decomment(read(LAYOUT))), j(NAV.crumbsFromPath(ID_PATH)));
   ok("1.301 · …so the section layout passes the neutral section word itself, as a literal, and adds no condition of its own",
     /<AdminSectionGate title="Desk">\{children\}<\/AdminSectionGate>/.test(decomment(read(LAYOUT)))
       && !/isAdmin|houseConsoleAudience|currentSession/.test(decomment(read(LAYOUT))), "");

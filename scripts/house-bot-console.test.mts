@@ -68,6 +68,9 @@
  * verdicts, 354(c)'s unreadable beats, X1's duty phrases over a population derived from the planner's own
  * union, one beat read per render and 432(n)'s silence with the desk off — to what the run PRINTED:
  * **memory 410, Postgres 264**. Seen RED first with the notice absent: 7 failed on memory.
+ * ⭐ RAISED AGAIN with replan ruling 548's breadcrumb mask and 432(f)'s eligibility half MEASURED — 14 dirty
+ * sentences where the ruling named two, tied by existence to the surface that would render them — to what the run
+ * PRINTED: **memory 420, Postgres 273**.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -78,6 +81,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 410, postgres: 264 },
+  minPass: { memory: 420, postgres: 273 },
   dbPrefix: "hb_console",
 });

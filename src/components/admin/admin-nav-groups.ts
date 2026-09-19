@@ -39,12 +39,37 @@ const CRUMB_LABELS: Record<string, string> = {
  * in it ships to the browser: measured, a built chunk carries `CRUMB_LABELS` and `ROUTE_KEYS`
  * verbatim. Every label and key here is therefore public text, whoever the page was rendered for.
  */
+/**
+ * ⛔ SECTIONS WHOSE RECORD ID MAY NOT BE PAINTED IN A CRUMB — the key the resolver emits, and the NEUTRAL word its
+ * id segment renders as instead (replan ruling 548).
+ *
+ * ⚠️ WHAT THIS IS, AND WHAT IT IS NOT. A crumb is built from the URL segment the viewer THEMSELVES requested, so it
+ * cannot tell anyone an id they did not already hold — at worst it echoes back what they typed. It is not ruling
+ * 259's class, which is a payload carrying a value the viewer did not supply, and recording it as one would teach
+ * the next reader that both cost the same. What it IS is a SCREENSHOT channel, which is the exact reason ruling 453
+ * is stricter than its adjudicator asked: the owner works by screenshot and this repository is public, so a crumb
+ * reading `hb_…` names a feature's own id scheme the moment one image leaves the screen. And no guard saw it: the
+ * bounded-id needle wants 24 hex characters, which that id shape does not have.
+ *
+ * ⛔ IT IS KEYED BY THE SECTION KEY, NOT BY AN ID PREFIX, AND THAT IS THE WHOLE FIX. `looksLikeId` keeps any
+ * digit-bearing segment containing an underscore, so adding one more prefix to its allowlist would leave the NEXT
+ * prefix to re-land the same defect. The population here is the route table's own keys — `assertNavKeysResolve()`
+ * reports an entry no route can emit — so a section either declares its ids maskable or it does not, once.
+ * ⛔ AND THE WORD IS NEUTRAL (ruling 453): this module is value-imported by THREE `"use client"` components and a
+ * built chunk of this codebase ships its tables verbatim, so every word here is public whoever the page was for.
+ */
+const ID_CRUMB: Record<string, string> = {
+  desk: "Account",
+};
+
 export function crumbsFromPath(path: string): string[] {
   const parts = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
   if (parts.length === 0) return ["Admin", "Overview"];
-  // Title-case the words; an id segment is kept exactly as it is in the URL (see `looksLikeId`).
+  // The neutral placeholder this section's ids render as, or `undefined` for a section that paints them (548).
+  const masked = ID_CRUMB[activeKeyFromPath(path)];
+  // Title-case the words; an id segment is kept exactly as it is in the URL unless its section masks it.
   return ["Admin", ...parts.map((p) =>
-    CRUMB_LABELS[p] ?? (looksLikeId(p) ? p : p.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())))];
+    CRUMB_LABELS[p] ?? (looksLikeId(p) ? (masked ?? p) : p.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())))];
 }
 
 /**
@@ -312,6 +337,13 @@ export function assertNavKeysResolve(): string[] {
   const problems: string[] = [];
   for (const [prefix, key] of ROUTE_KEYS) {
     if (!owned.has(key)) problems.push(`route "${prefix}" resolves to key "${key}", which no nav item owns`);
+  }
+  /* ⛔ AND AN `ID_CRUMB` ENTRY NO ROUTE CAN EMIT IS A MASK THAT MASKS NOTHING (replan ruling 548). It is the same
+   * failure as a key no nav item owns: the section's ids would go on being painted and nothing would say so. The
+   * population is the route table itself, so this cannot rot into a hand-kept list. */
+  const emitted = new Set(ROUTE_KEYS.map(([, key]) => key));
+  for (const key of Object.keys(ID_CRUMB)) {
+    if (!emitted.has(key)) problems.push(`ID_CRUMB names "${key}", which no route prefix resolves to — its record ids would still be painted in the crumb`);
   }
   // Ordering: a prefix that EXTENDS an earlier one is unreachable, because the
   // earlier (shorter) prefix matches first.
