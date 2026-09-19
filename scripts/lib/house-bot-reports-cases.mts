@@ -1258,7 +1258,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * argument. The pin's job is unchanged and undiminished: a call with the wrong number of arguments is still red,
  * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
  * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseSwitchForConsole: 3, houseAccountActForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -1527,6 +1527,12 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
   /* ⭐ C7 step 4b · the account action row (ruling 415): the word that arms a removal, what the row posts and
      what it gets back, and one act's finished copy. The gated WRITER is , above. */
   "CONSOLE_REMOVE_WORD", "ConsoleAccountActDialog", "ConsoleAccountActInput", "ConsoleAccountActKind", "ConsoleAccountActResult",
+  /* ⭐ C7 step 6 · the designate wizard's own CONSTANT, its painted shapes and the one pure function that turns an
+     eligibility CODE into the console's own sentence. `consoleCheckSentence` is a table lookup with a fallback: it
+     awaits nothing, names no store and decides no audience, which is what 0.512b checks rather than takes on trust.
+     The three gated doors — the lookup, the check and the write — each have their `CONSOLE_GATES` entry above. */
+  "CONSOLE_PICKER_EMPTY", "ConsoleCheckRow", "ConsoleCheckView", "ConsoleDesignateInput", "ConsoleDesignateResult",
+  "ConsoleFunded", "ConsolePickerAnswer", "ConsolePickerRow", "consoleCheckSentence",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**

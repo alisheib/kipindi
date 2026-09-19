@@ -37,8 +37,9 @@ import { db } from "./store";
 import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath } from "./roles";
 import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
+import type { StoredUser } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
-import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, DEFAULT_TAB, consoleBotHref, type ConsoleTab } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleNewHref, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
 import { sortCauses, wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
@@ -51,7 +52,16 @@ import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotRuntime, type StoredHouseBotTarget } from "./house-bot-dal";
 import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
 import { HOUSE_BOT_STATUS_DISPLAY } from "./house-bot/status-display";
-import { DESIGNATE_COPY, reverifyHouseBot, startHouseBot } from "./house-bot/designation";
+import { DESIGNATE_COPY, designateHouseBot, reverifyHouseBot, startHouseBot } from "./house-bot/designation";
+/* ⭐ C7 step 6 · the wizard's own reads and its one grammar. `eligibility.ts` is named HERE and nowhere near a
+ * page: a console file may import no module under `src/lib/server/house-bot/` (ruling 340), which is exactly why
+ * the check card is served by a gated reader rather than by the page. */
+import { houseBotEligibility } from "./house-bot/eligibility";
+import { positionStore } from "./market-dal";
+import { rateCheckAsync } from "./rate-limit";
+import { displayLabel } from "@/lib/display-label";
+import { parseQuery, matchesQuery, fieldNames, ACCOUNT_PICKER_SEARCH } from "@/lib/search";
+import { LABEL_COPY, LABEL_MAX_CHARS, LABEL_MIN_CHARS, TEXT_MAX_CHARS, validateLabel, validateNote } from "@/lib/house-bot/rules";
 import { readBotAndHolder } from "./house-bot/control";
 import { houseEngineBeats, houseEngineVerdict } from "./house-bot/engine-health";
 import { pauseHouseBot, removeHouseBot } from "./house-bot/roster-actions";
@@ -240,10 +250,25 @@ export type ConsoleDeskShell = {
   /** The SAME sentence without its linked tail, for the states where the limits panel does not exist and the page
    *  paints plain text — an arrow on inert text promises a navigation that resolves back to this page (432(i)). */
   rosterFullPlain: string | null;
-  /** Why the head action is disabled when the roster is NOT full — a disabled control with no reason reads as broken.
-   *  ⛔ It names ITS OWN control: this sentence and `switchReason` are painted on the same screen, and 432(n) forbids
-   *  one state saying the same fact twice. */
-  actionReason: string;
+  /**
+   * Why the head action is NOT a live link — and `null` when it is, because there is nothing to explain about a
+   * control that works (432(j) read the other way round).
+   * ⛔ IT IS NULL WHEN THE ROSTER IS FULL TOO, AND THAT IS 432(n) RATHER THAN A HOLE: the roster-full sentence sits
+   * in the same flex row, three characters from the button, and IS the reason. Exactly one sentence beside a
+   * disabled control, never both and never neither.
+   * ⛔ It names ITS OWN control: this sentence and `switchReason` are painted on the same screen, and 432(n)
+   * forbids one state saying the same fact twice.
+   */
+  actionReason: string | null;
+  /**
+   * ⭐ C7 STEP 6 · THE WIZARD THE HEAD ACTION OPENS, AND IT ARRIVED WITH THE PAGE IT OPENS (432(h)).
+   * Until `/admin/desk/new/page.tsx` existed the head action was rendered DISABLED whatever the roster held,
+   * because a primary action answering the app-root 404 is the dead control 432(a) refuses.
+   * `test:house-bot-console` ties the link and the file together in both directions.
+   */
+  designateHref: string;
+  /** True when the head action is a real link — exactly when `actionReason` and `rosterFullReason` are both null. */
+  designateLive: boolean;
   /**
    * Why the master switch cannot be operated, beside it (432(j)) — and `null` in exactly two cases: when the switch
    * IS operable (`switchDialog` is then the ceremony it opens), and when the sentence beside it already says why.
@@ -809,6 +834,9 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
    * read must not silently forbid a legitimate designation.
    * ⛔ AND A WITHDRAWN DESK IS OFFERED NO REMEDY (ruling 432(m)): the SUNSET Callout says "nothing can be designated",
    * so a sentence beside it saying "raise the roster limit" would contradict it on the same screen. */
+  /* ⛔ A WITHDRAWN DESK, DERIVED ONCE (432(m)). It governs the roster-full remedy AND, from C7 step 6, whether the
+   * head action is a link at all — two answers to one fact, so the fact is read in one place. */
+  const withdrawn = control != null && control.enabled === false && control.offCause === "SUNSET";
   const rosterFullReason = control && roster && roster.length >= control.maxDesignatedBots && control.offCause !== "SUNSET"
     ? DESIGNATE_COPY.rosterFull(roster.length, control.maxDesignatedBots)
     : null;
@@ -856,13 +884,18 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
     limitsFirstUnsetHref: CONSOLE_LIMITS_FIRST_UNSET_HREF,
     rosterFullReason,
     rosterFullPlain,
-    /* 432(j) · a disabled control with no reason on screen reads as a broken page, and in four of the captured states
-     * the roster-full sentence is null — so every state carries one.
-     * ⛔ AND EACH ONE NAMES ITS OWN CONTROL (ruling 432(n)). Both said "Not ready on this build yet.", and the page
-     * paints them on ONE screen — beside the disabled "Designate an account" in the head and beside the disabled
-     * Toggle in the strip, about 105px apart at 1280 and two blocks apart at 360. Two identical right-aligned
-     * sentences read as a rendering fault rather than as two reasons, and neither said which control it was about. */
-    actionReason: "Designating an account is not ready on this build yet.",
+    /* ⭐ C7 STEP 6 TURNED THE HEAD ACTION ON, so its reason is no longer a build note — and the assertion that
+     * demanded a sentence in every state is re-aimed rather than deleted (432(j) with 432(n) beside it):
+     *   · the desk is WITHDRAWN → this sentence, because the SUNSET Callout above already says nothing can be
+     *     designated and 432(m) refuses a "raise the roster limit" remedy that would contradict it;
+     *   · the roster is FULL → `null`, because `rosterFullReason` sits in the same flex row and IS the reason;
+     *   · otherwise → `null`, because the action is a live link to the wizard and a working control explains
+     *     nothing.
+     * ⛔ Never the switch's own words: the two sit about 105px apart at 1280 and read as a rendering fault when
+     * they match, which is the defect the previous pair of identical sentences actually produced. */
+    actionReason: withdrawn ? "The desk has been withdrawn, so no account can be designated." : null,
+    designateHref: CONSOLE_NEW_ROUTE,
+    designateLive: !withdrawn && rosterFullReason === null,
     /* ⭐ C7 step 4b · THE SWITCH IS OPERABLE NOW, so its reason is no longer a build note. It is the reason the
      * switch cannot be operated in the one state where a sentence is owed and nothing else on the strip supplies
      * one — a WITHDRAWN desk. ⛔ THE OTHER THREE ARE `null` FOR STATED REASONS, not by omission:
@@ -2448,5 +2481,447 @@ export async function houseDetailForConsole(
     targetsTotal,
     targetsPage: shownPage,
     targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
+  };
+}
+
+
+/* ═══ C7 STEP 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368 as amended by 459, 382, 383, 387, 412) ════════
+ *
+ * ⛔ THREE MORE DOORS, EACH QUERY-SHAPED AND EACH WITH ITS `CONSOLE_GATES` ENTRY (rulings 340, 512). The wizard is
+ * three surfaces — a lookup, a check and a write — and every one of them is a POST an ordinary player can make:
+ * ruling 383 measured 200 of the 221 server-action ids in this build's manifest inside publicly downloadable chunks,
+ * so the action's own gate is the only protection there is. Each resolves the viewer's STORED row FIRST and reads
+ * nothing before the verdict.
+ *
+ * ⛔ THE COPY IS THE CONSOLE'S OWN (owner-delegated ruling 453). `eligibility.ts` writes twenty-five blocking rows
+ * and seven warnings in the ENGINE'S vocabulary — measured, they say "Only a player account can provide liquidity.",
+ * "This account is already a house bot.", "Liquidity stakes can't continue — resolve the request or remove the bot."
+ * D19 exempts those: they are the engine's and the admin bell's internal words and no screenshot-facing surface
+ * renders them. This one would. So the check card paints a sentence per CODE from the table below, the population is
+ * derived from the service's own two unions rather than typed here, and nothing the wizard renders comes from a
+ * shared table. The same decision 432(f) took for `PAUSE_REASON_WAY_OUT` and 432(b) for `FIELD_META`, for the same
+ * reason, and never a rewrite of the engine's own words.
+ */
+
+/** At most ten options (412). ⛔ A bound on the ANSWER, not on the query — the officer types more, not less. */
+const CONSOLE_PICKER_MAX = 10;
+/** Before a lookup runs at all: two characters. A one-character search is a directory walk with extra steps. */
+const CONSOLE_PICKER_MIN_QUERY = 2;
+
+/**
+ * ⛔ THE ONE ANSWER A SEARCH THAT FINDS NOTHING GIVES, AND IT IS THE SAME ANSWER A REFUSED CALLER GETS (387(c)).
+ * Never a count, never "no match", never a masked row: nothing may distinguish "you are not the owner" from
+ * "nothing found", because the action id is readable off the public bundle and any signed-in account can POST it.
+ */
+export const CONSOLE_PICKER_EMPTY = "Nothing to show.";
+
+/** One option in the picker's listbox. ⛔ No phone and no email: the PHONE is the check card's, through `Sensitive`. */
+export type ConsolePickerRow = {
+  userId: string;
+  /**
+   * `playerHandle(userId)` — "Player #TAIL". ⛔ THE ONLY WAY AN OPTION NAMES A PERSON, and it is the same rule
+   * ruling 346 sets for the roster: never a display name, never a phone, never an email. The officer searched BY
+   * one of those, so the option only has to say which account matched; the identity they can act on is the check
+   * card's, where the phone goes through the platform's own server gate (359).
+   */
+  handle: string;
+  /** Where choosing this option goes — built in the route module, never spelled at a call site (319). */
+  href: string;
+  /** Why this option cannot be chosen, or `null`. Rendered beneath it, with `aria-disabled` (412). */
+  reason: string | null;
+};
+
+/**
+ * What the picker answers. ⛔ `note` and `count` are BOTH empty for a refused caller and for a search that found
+ * nothing, so the two are byte-identical (387(c)).
+ */
+export type ConsolePickerAnswer = { rows: ConsolePickerRow[]; note: string | null; count: string };
+
+/** Why an option cannot be chosen — decided on the account row and the ONE roster read, never per-row eligibility. */
+const PICKER_REASON = {
+  onDesk: "Already on the desk",
+  staff: "A staff account",
+  agent: "An agent account",
+  closed: "The account is closed",
+  inactive: "The account is not active",
+  noPassword: "No password set",
+  self: "Your own account",
+} as const;
+
+/**
+ * THE ACCOUNT LOOKUP, GATED (rulings 259, 340, 383, 387). Arity THREE: the signed-in viewer, the calling file's own
+ * console route as a STRING LITERAL, and the query the officer typed.
+ *
+ * ⛔ THE RATE LIMIT IS ON THE CALLER, NOT THE QUERY (387(e)). A bucket keyed on what was typed can be sidestepped
+ * by typing something else, which is the whole of a directory walk.
+ * ⛔ NO PER-ROW ELIGIBILITY, AND NO WALLET READ AT ALL (356). An option's reason is decided on the account row and
+ * on the ONE roster read; running the full check ten times would pull ten players' live balances, responsible-gambling
+ * settings and data-rights queues into a lookup, and ruling 368 argues its whole case from exactly that harm.
+ */
+export async function houseAccountsForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  query: string,
+): Promise<ConsolePickerAnswer> {
+  const refused: ConsolePickerAnswer = { rows: [], note: CONSOLE_PICKER_EMPTY, count: "" };
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return refused;
+
+  const q = typeof query === "string" ? query.trim() : "";
+  /* ⛔ A SHORT QUERY READS NOTHING AND SAYS NOTHING. The officer has not asked a question yet, so there is no
+     answer to give and no empty state to paint — the field's own hint is what is on screen. */
+  if (q.length < CONSOLE_PICKER_MIN_QUERY) return { rows: [], note: null, count: "" };
+
+  const gate = await rateCheckAsync(viewerUserId, "desk.picker");
+  if (!gate.allowed) return refused;
+
+  let users: StoredUser[] = [];
+  let live: StoredHouseBot[] = [];
+  try {
+    const [usersR, liveR] = await Promise.allSettled([
+      (async () => db.user.list())(),
+      (async () => houseBotStore.listNonRemoved())(),
+    ]);
+    if (usersR.status !== "fulfilled") return refused;
+    users = usersR.value;
+    live = liveR.status === "fulfilled" ? liveR.value : [];
+  } catch {
+    return refused;
+  }
+
+  const onDesk = new Set(live.map((b) => b.userId));
+  const parsed = parseQuery(q, { fields: fieldNames(ACCOUNT_PICKER_SEARCH) });
+  /* ⚠️ `displayLabel` is COMPUTED and not a column (the grammar says so in its own docblock), so it is supplied
+     on the record handed to the matcher — the same shape `/admin/players` uses. */
+  const hits = users.filter((u) => matchesQuery(
+    parsed,
+    { ...u, displayLabel: displayLabel(u) } as unknown as Record<string, string | null | undefined>,
+    ACCOUNT_PICKER_SEARCH,
+  ));
+
+  const rows: ConsolePickerRow[] = hits.slice(0, CONSOLE_PICKER_MAX).map((u) => ({
+    userId: u.id,
+    handle: playerHandle(u.id),
+    href: consoleNewHref({ userId: u.id }),
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),
+  }));
+
+  if (rows.length === 0) return refused;
+  const blocked = rows.filter((r) => r.reason !== null).length;
+  const shown = `${formatNumber(rows.length)} ${rows.length === 1 ? "account" : "accounts"}`;
+  return {
+    rows,
+    note: null,
+    /* 412 · the polite live count, and it says how many of what is on screen cannot be chosen — the one fact a
+       reader cannot get by counting the rows. */
+    count: blocked === 0 ? shown : `${shown}${SEP}${formatNumber(blocked)} cannot be chosen`,
+  };
+}
+
+/** One option's refusal, from the account row and the roster read alone. `null` when nothing on either stops it. */
+function pickerReason(u: StoredUser, onDesk: boolean, isSelf: boolean): string | null {
+  if (onDesk) return PICKER_REASON.onDesk;
+  if (isSelf) return PICKER_REASON.self;
+  if (u.role === "AGENT") return PICKER_REASON.agent;
+  if (u.role !== "PLAYER") return PICKER_REASON.staff;
+  if (u.status === "CLOSED" || u.closedAt != null) return PICKER_REASON.closed;
+  if (u.status !== "ACTIVE" && u.status !== "COOLED_OFF") return PICKER_REASON.inactive;
+  if (!u.passwordHash || !u.passwordSalt) return PICKER_REASON.noPassword;
+  return null;
+}
+
+/**
+ * ⛔ THE CONSOLE'S OWN SENTENCE FOR EVERY ELIGIBILITY ROW (ruling 453, and the same shape `CONSOLE_ACT_REFUSAL`
+ * already has one card over).
+ *
+ * MEASURED against `scripts/lib/house-bot-vocabulary.mjs`: of the twenty-five blocking rows and seven warnings
+ * `eligibility.ts` writes, ELEVEN name the feature in the sentence an officer reads — on *liquidity*
+ * (`AGENT_ACCOUNT`, `STAFF_ACCOUNT`, `ERASURE_REQUEST`), on the bare word *bot* (`ALREADY_LIVE_BOT`,
+ * `ACCOUNT_CLOSED`, `WALLET_MISSING`, `IDENTITY_REFUSED`, `PASSWORD_CHANGED`), on *house stakes*
+ * (`ACCOUNT_CLOSED`, `OWNER_LOSS_LIMIT`, `RECRUITED`) and on *house bot* itself.
+ * ⛔ SO THE TABLE COVERS EVERY CODE, NOT ONLY THE DIRTY ONES. A per-row "override it if it is dirty" rule cannot
+ * be checked from source — the shared sentences are built at run time out of dates, counts and names — so the
+ * console answers from its own closed table for all thirty-two, and `test:house-bot-console` derives the population
+ * from `ELIGIBILITY_BLOCKING_CODES` and `ELIGIBILITY_WARNING_CODES` themselves. A code added to either union later
+ * cannot reach an owner's screen as the shared sentence or as a bare identifier.
+ * ⚠️ WHAT IS LOST BY IT IS NAMED: the DATES and FIGURES the shared rows interpolate do not come through. The
+ * console says what is stopping the designation and carries the row's own `href` to the thing that has to change;
+ * the holder's own screens carry the detail, which is where a player's dates and money legitimately are (456).
+ */
+const CONSOLE_ELIGIBILITY_COPY: Readonly<Record<string, string>> = {
+  ACCOUNT_MISSING: "No account with that ID.",
+  STAFF_ACCOUNT: "This is a staff account. Only a player's own account can be used here.",
+  AGENT_ACCOUNT: "This is an agent account. Only a player's own account can be used here.",
+  ACCOUNT_CLOSED: "This account is closed and cannot be reopened, so it cannot be used here.",
+  NOT_ACTIVE: "This account is not active.",
+  NO_PASSWORD: "This account has no password, so the holder cannot give their permission.",
+  RG_LOCKED: "The holder is self-excluded or on a break. Their permission cannot be asked for until it ends.",
+  RG_UNREADABLE: "Couldn't read their responsible-gambling settings. Refresh to try again.",
+  WALLET_MISSING: "This account has no wallet.",
+  WALLET_NOT_ACTIVE: "Their wallet is not active, so nothing could be staked from it.",
+  BALANCE_UNREADABLE: "Their wallet could not be read. Refresh to try again.",
+  ALREADY_LIVE_BOT: "This account is already on the desk.",
+  OWN_ACCOUNT: "You can't use your own account.",
+  ROSTER_FULL: "The desk is at its maximum. Remove an account or raise the roster limit first.",
+  ERASURE_REQUEST: "They have asked for their data to be erased. Resolve that request first.",
+  ERASURE_UNREADABLE: "Couldn't read the data-rights queue. Refresh to try again.",
+  SIGN_IN_LOCKED: "Their sign-in is locked after wrong passwords. Ask them to sign in once, then try again.",
+  PASSWORD_SET_BY_SUPPORT: "Their password was last set through support. Ask them to change it themselves in Account settings first.",
+  PASSWORD_HISTORY_UNREADABLE: "Couldn't read how their password was last set. Refresh to try again.",
+  IDENTITY_REFUSED: "Their identity check was finally refused. An officer must reopen it first.",
+  PASSWORD_CHANGED: "Their password changed. Ask them for the new one.",
+  CONSENT_VOID: "Their permission has ended. It has to be given again.",
+  RG_SINCE_VERIFIED: "A self-exclusion or break has run since their permission was last confirmed.",
+  DAILY_LOSS_STOP: "The day's loss limit has already been reached.",
+  OWNER_LOSS_LIMIT: "Their own daily loss limit has been reached.",
+  EMAIL_UNVERIFIED: "Their email is not confirmed, so they cannot top up until they confirm it.",
+  IDENTITY_NOT_APPROVED: "Their identity has never been approved, so they cannot withdraw until it is.",
+  RECRUITED: "An agent recruited them. No commission is paid on anything staked from the desk.",
+  OPEN_POSITIONS: "They hold open positions of their own. Those markets are skipped.",
+  PUBLIC_NAME: "The leaderboard shows the first word of their display name — suggest a nickname.",
+  NAME_RISK: "Their public display name could give away what this account is used for — ask them to change it.",
+  SIGN_IN_LOCKED_WARNING: "Their sign-in is locked after wrong passwords. Confirming their permission waits for the lock.",
+};
+
+/** One row of the check card, in the console's own words. ⛔ The service's sentence never crosses this line. */
+export type ConsoleCheckRow = { code: string; text: string; href: string | null };
+
+/**
+ * The console's sentence for one eligibility code. ⛔ A code with no entry answers a neutral fallback, never the
+ * service's own words and never a bare identifier.
+ */
+export function consoleCheckSentence(code: string): string {
+  return CONSOLE_ELIGIBILITY_COPY[code] ?? "Something on the holder's own account is stopping this.";
+}
+
+/** The account's funded STATE — never an amount (ruling 459, amending 368). */
+export type ConsoleFunded = { word: string; chip: StatusChipVariant; sentence: string };
+
+/**
+ * THE WIZARD'S WHOLE ACCOUNT-BOUND VIEW MODEL — the check card, the consent copy and the review summary, painted
+ * on the server from ONE read set (rulings 340, 355, 356, 359).
+ */
+export type ConsoleCheckView = {
+  userId: string;
+  handle: string;
+  /**
+   * ⛔ SERVER-ONLY (ruling 359). The page hands this to the platform's own SERVER `Sensitive` component, which
+   * resolves the viewer's stored role, calls `readCell`, and computes the mask itself — the raw value never
+   * becomes a client prop. A console file that built a masked value and rendered `SensitiveReveal` would answer
+   * READ-TIERS in a `.tsx`, which `sensitive.tsx` forbids in as many words.
+   */
+  phoneE164: string | null;
+  /** 456 · the platform surface where an admin may legitimately read this player's money. */
+  holderHref: string;
+  /** ⛔ A STATE, NEVER A BALANCE (459). `null` when the wallet could not be read — a blocking row then says so. */
+  funded: ConsoleFunded | null;
+  /** Why the wallet's own bonus money is not part of that state. A FACT, and it reads nothing. */
+  bonusCaption: string;
+  /** How many markets they are in on their own account, or an em dash when the read failed. */
+  openPositions: string;
+  /** Whether this account has been on the desk before, in words. `null` when it never has. */
+  priorNote: string | null;
+  blocking: ConsoleCheckRow[];
+  warnings: ConsoleCheckRow[];
+  eligible: boolean;
+  /** Why Continue is not live — `null` when it is (432(j) read the other way round). */
+  continueReason: string | null;
+  /** The wizard's own four hrefs, built in the route module (319) — never composed at a call site. */
+  findHref: string;
+  checkHref: string;
+  consentHref: string;
+  reviewHref: string;
+  /** The bounds the review step's two fields are held to, so the client types no number of its own. */
+  labelMax: number;
+  noteMax: number;
+};
+
+/**
+ * THE WIZARD'S GATED READER (rulings 340, 356, 359, 512). Arity THREE: the signed-in viewer, the calling file's own
+ * console route as a STRING LITERAL, and the account being checked.
+ *
+ * ⛔ EXACTLY ONE WALLET READ, AND IT IS THE ONE `houseBotEligibility` ALREADY TAKES (356). The funded STATE is
+ * built from the balance that check returns; nothing here reads the wallet a second time, and nothing paints the
+ * figure (459).
+ * ⛔ A REFUSED VIEWER GETS `null` AND NOTHING ELSE — no handle, no sentence, no id (259, 399).
+ */
+export async function houseCheckForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  userId: string,
+): Promise<ConsoleCheckView | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const id = typeof userId === "string" ? userId : "";
+  if (id.length === 0) return null;
+
+  /* ⛔ ONE SETTLED SET (355): a failed prior-designation read or a failed position read must not blank the card
+     that says whether this account can be used at all.
+     ⚠️ EACH MEMORY-STORE READ IS WRAPPED IN AN ASYNC THUNK, because the memory twin returns PLAIN VALUES and a
+     synchronous throw inside the array literal would escape `allSettled` altogether. */
+  const [elR, userR, priorR, positionsR] = await Promise.allSettled([
+    houseBotEligibility(id, { context: "designate", actorId: viewerUserId }),
+    (async () => db.user.findById(id))(),
+    (async () => houseBotStore.listByUserId(id))(),
+    (async () => positionStore.listForUser(id, 100))(),
+  ]);
+
+  /* ⛔ A FAILED ELIGIBILITY READ IS NOT AN ELIGIBLE ACCOUNT (355). The card refuses with its own blocking row
+     rather than painting a card an officer could press Continue on. */
+  const el = elR.status === "fulfilled" ? elR.value : null;
+  const user = userR.status === "fulfilled" ? userR.value : null;
+  const prior = priorR.status === "fulfilled" ? priorR.value : null;
+  const positions = positionsR.status === "fulfilled" ? positionsR.value : null;
+
+  const row = (r: { code: string; href?: string }): ConsoleCheckRow =>
+    ({ code: r.code, text: consoleCheckSentence(r.code), href: r.href ?? null });
+
+  const blocking: ConsoleCheckRow[] = el === null
+    ? [{ code: "UNREADABLE", text: "This account could not be checked. Refresh to try again.", href: null }]
+    : el.blocking.map(row);
+  const warnings: ConsoleCheckRow[] = el === null ? [] : el.warnings.map(row);
+  const eligible = el !== null && el.eligible;
+
+  /* ⛔ 459 · A FUNDED STATE, NEVER A BARE BALANCE. Ruling 266 holds with no exception anywhere on this console:
+     the figure is a real person's wallet position — the one number on these screens belonging to somebody other
+     than the platform, and the one most likely to sit in a screenshot — and the decision this card supports,
+     "can this account fund anything at all", is answered by a state and not by a magnitude. The officer who wants
+     the figure is one link away on the holder's own money screen (456). "Funded" is a word this product already
+     ships (`KYC_STAGE.fundedNothingYet`), so nothing is invented here either. */
+  const balance = el?.balanceTzs ?? null;
+  const funded: ConsoleFunded | null = balance === null ? null : balance > 0
+    ? { word: "Funded", chip: TONE_CHIP.green, sentence: "There is money in this wallet, so a stake can be funded from it." }
+    : { word: "Not funded", chip: TONE_CHIP.slate, sentence: "This wallet is empty, so nothing can be staked from it until the holder puts money in." };
+
+  const open = positions === null ? null : positions.filter((x) => x.status === "OPEN" && x.houseBotId == null).length;
+  const priorCount = prior === null ? 0 : prior.filter((b) => b.status === "REMOVED").length;
+
+  return {
+    userId: id,
+    handle: playerHandle(id),
+    phoneE164: user?.phoneE164 ?? null,
+    holderHref: `/admin/transactions?q=${encodeURIComponent(id)}`,
+    funded,
+    bonusCaption: "Bonus money is never staked from the desk, whatever the wallet holds.",
+    openPositions: open === null ? EM_DASH : formatNumber(open),
+    priorNote: priorCount === 0
+      ? null
+      : priorCount === 1
+        ? "This account was on the desk once before and was removed."
+        : `This account was on the desk ${formatNumber(priorCount)} times before and was removed each time.`,
+    blocking,
+    warnings,
+    eligible,
+    /* 432(j) · a control that is not live says why, and it says a fact the rows above do not already carry: HOW
+       MANY of them are stopping it. 432(n) forbids one state saying the same thing twice. */
+    continueReason: eligible ? null : blocking.length === 1
+      ? "1 check is stopping this account."
+      : `${formatNumber(blocking.length)} checks are stopping this account.`,
+    findHref: CONSOLE_NEW_ROUTE,
+    checkHref: consoleNewHref({ userId: id }),
+    consentHref: consoleNewHref({ userId: id, step: "consent" }),
+    reviewHref: consoleNewHref({ userId: id, step: "review" }),
+    labelMax: LABEL_MAX_CHARS,
+    noteMax: TEXT_MAX_CHARS,
+  };
+}
+
+/** What the wizard's last step posts. ⛔ `password` is the HOLDER's and never becomes a session (owner ruling D5). */
+export type ConsoleDesignateInput = {
+  userId: string;
+  label: string;
+  note?: string;
+  password: string;
+  submitId?: string;
+};
+
+export type ConsoleDesignateResult =
+  | { ok: true; href: string; note: string }
+  /** `field` is the form's own control, never a column (D19); `href` is where the refusal says to go. */
+  | { ok: false; error: string; field?: "label" | "note" | "password"; href?: string };
+
+/** The wizard's own sentences — the console's, never a service's (453). */
+const DESIGNATE_FORM_COPY = {
+  labelLength: `Give it a name of ${LABEL_MIN_CHARS} to ${LABEL_MAX_CHARS} characters.`,
+  labelCharset: "Letters, numbers, spaces and - _ . # ' only.",
+  labelTaken: "That name is already in use on the desk. Choose another.",
+  noteLong: `At most ${TEXT_MAX_CHARS} characters — shorten it.`,
+  ineligible: "Something on the holder's own account is stopping this. Read the checks and clear them first.",
+  alreadyOnDesk: "This account is already on the desk.",
+  done: "It is on the desk, stopped, with no limits of its own set yet.",
+} as const;
+
+/**
+ * THE DESIGNATION, GATED (rulings 259, 340, 382, 383, 512, 522, 523).
+ *
+ * ⛔ THE VERDICT IS THE FIRST STATEMENT, ON THE STORED ROW, AND IT IS IN THE ACTION'S OWN PATH. A Next server
+ * action is a POST to whatever URL the browser happens to be on, so no middleware rule, no layout and no
+ * `AdminSectionGate` can see it, and a session cookie is a photograph of a role taken at sign-in.
+ * ⛔ ONE SHARED REFUSAL FOR EVERYONE OUTSIDE THE AUDIENCE (383), the same sentence every other console action
+ * answers with — no field, no href, no id, no count and no existence signal, and nothing is read or written on
+ * that path.
+ * ⛔ THE HOLDER'S PASSWORD PASSES STRAIGHT THROUGH to the one service that may check it. It is never logged,
+ * never echoed and never put in an audit payload.
+ */
+export async function houseDesignateForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  input: ConsoleDesignateInput,
+): Promise<ConsoleDesignateResult> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {
+    return { ok: false, error: CONSOLE_ACT_REFUSAL.refused };
+  }
+  const userId = typeof input.userId === "string" ? input.userId : "";
+  if (userId.length === 0) return { ok: false, error: CONSOLE_ACT_REFUSAL.NOT_FOUND };
+
+  /* ⛔ THE SHAPE IS REFUSED BEFORE A PASSWORD ATTEMPT IS SPENT. `verifyHouseBotPassword` counts against the
+     holder's own reserve, so a mistyped NAME must never cost one — which is also the order the service itself
+     takes, restated here so the console's own sentence is what an officer reads. */
+  const label = typeof input.label === "string" ? input.label : "";
+  const labelErr = validateLabel(label);
+  if (labelErr) {
+    return {
+      ok: false,
+      field: "label",
+      error: labelErr.message === LABEL_COPY.charset ? DESIGNATE_FORM_COPY.labelCharset : DESIGNATE_FORM_COPY.labelLength,
+    };
+  }
+  const note = typeof input.note === "string" ? input.note : "";
+  if (note.length > 0 && validateNote(note)) return { ok: false, field: "note", error: DESIGNATE_FORM_COPY.noteLong };
+
+  let done;
+  try {
+    done = await designateHouseBot({
+      officerId: viewerUserId,
+      userId,
+      label,
+      note: note.length > 0 ? note : null,
+      password: typeof input.password === "string" ? input.password : "",
+      submitId: typeof input.submitId === "string" ? input.submitId : null,
+    });
+  } catch {
+    return { ok: false, error: CONSOLE_ACT_REFUSAL.WRITE_FAILED };
+  }
+
+  if (done.ok) return { ok: true, href: consoleBotHref(done.bot.id), note: DESIGNATE_FORM_COPY.done };
+
+  /* ⛔ EVERY REFUSAL AN OFFICER READS IS THE CONSOLE'S OWN, KEYED BY CODE (453). `designateHouseBot` answers with
+     `eligibility.ts`'s and `rules.ts`'s sentences, and measured, those carry the feature's words — "Another bot is
+     already called …", "This account is already a house bot.", and fourteen more. The ONE exception is passed
+     through deliberately: `ROSTER_FULL` is already `DESIGNATE_COPY.rosterFull`, which ruling 314 forbids re-typing
+     anywhere and pins byte-identical to the head action's own sentence. */
+  if (done.code === "INVALID") {
+    return {
+      ok: false,
+      field: done.field === "note" ? "note" : "label",
+      error: done.field === "note" ? DESIGNATE_FORM_COPY.noteLong : DESIGNATE_FORM_COPY.labelTaken,
+    };
+  }
+  if (done.code === "ROSTER_FULL") return { ok: false, error: done.message, href: done.href };
+  if (done.code === "ALREADY_BOT") return { ok: false, error: DESIGNATE_FORM_COPY.alreadyOnDesk, href: done.href };
+  if (done.code === "PASSWORD_CHANGED") return { ok: false, field: "password", error: DESIGNATE_COPY.passwordChanged };
+  if (done.code === "INELIGIBLE") return { ok: false, error: DESIGNATE_FORM_COPY.ineligible };
+  return {
+    ok: false,
+    field: "password",
+    error: actRefusal(done.code, { attemptsBeforeLock: done.attemptsBeforeLock, retryAfterSec: done.retryAfterSec }),
   };
 }

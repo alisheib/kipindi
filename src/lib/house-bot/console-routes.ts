@@ -147,3 +147,34 @@ export function consoleReverifyHref(botId: string): string {
 export function consoleEventHref(botId: string, eventId: string): string {
   return `${CONSOLE_ROUTE}/${botId}?tab=history&event=${eventId}`;
 }
+
+/**
+ * ⭐ THE DESIGNATE WIZARD'S OWN STEP KEYS (C7 step 6; rulings 312, 319, 412).
+ *
+ * ⛔ THE SAME CLOSED-LIST LAW AS EVERY OTHER RAIL ON THIS SECTION: only keys whose panel is BUILT, and an
+ * unrecognised value resolves back rather than 404s (302). All four ship together — ruling 412 and Ali's standing
+ * "no pending states" rule both refuse a wizard with a step that says it is not ready.
+ * ⚠️ `step` is NOT spelled `tab`, and that is deliberate: the served probe discovers a page's panels by matching
+ * `tab === "…"` over the raw file, so a wizard written with `tab` would put four phantom instances of this route
+ * into the probe's own population — four requests for panels that are not tabs of anything.
+ */
+export const CONSOLE_WIZARD_STEPS = ["find", "check", "consent", "review"] as const;
+export type ConsoleWizardStep = (typeof CONSOLE_WIZARD_STEPS)[number];
+
+/**
+ * The step a request asked for. ⛔ WITHOUT AN ACCOUNT THERE IS ONLY ONE STEP: `?step=review` with no `?u=` would
+ * otherwise paint a form with nothing to designate — the dead control 432(a) refuses. With an account, an
+ * unrecognised or absent step is the CHECK, which is the first thing an officer must read about that account.
+ */
+export function consoleWizardStep(raw: string | string[] | undefined, hasAccount: boolean): ConsoleWizardStep {
+  const one = Array.isArray(raw) ? undefined : raw;
+  if (!hasAccount) return "find";
+  return one === "consent" || one === "review" ? one : "check";
+}
+
+/** Where the wizard is, for one account and one step. ⛔ Built here, never spelled at a call site (319). */
+export function consoleNewHref(opts: { userId?: string | null; step?: ConsoleWizardStep } = {}): string {
+  if (!opts.userId) return CONSOLE_NEW_ROUTE;
+  const step = opts.step && opts.step !== "find" && opts.step !== "check" ? `&step=${opts.step}` : "";
+  return `${CONSOLE_NEW_ROUTE}?u=${encodeURIComponent(opts.userId)}${step}`;
+}

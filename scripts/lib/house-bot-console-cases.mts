@@ -98,6 +98,11 @@ const sectionUnscannable = sectionAllFiles.filter((f) => !isScannable(f));
 const lexiconFiles = [...sectionFiles, GATE];
 /** The detail route's page — step 4's. Its EXISTENCE is what decides whether a row may carry a way-out link (432(h)). */
 const DETAIL_PAGE = `${SECTION}/[id]/page.tsx`;
+/** ⭐ C7 step 6 · the designate wizard: its page, its loader, its own actions file and its one client module. */
+const NEW_PAGE = `${SECTION}/new/page.tsx`;
+const NEW_LOADING = `${SECTION}/new/loading.tsx`;
+const NEW_ACTIONS = `${SECTION}/new/actions.ts`;
+const NEW_CLIENT = `${SECTION}/new/designate-wizard.tsx`;
 
 /**
  * ⛔ EVERY STRING OF A FILE THAT CAN REACH THE DOM, and only those (ruling 453). A module specifier is NOT one
@@ -850,15 +855,29 @@ section("§2 · the strip, the band, the roster and every failure");
   const onNow = await withControl({ enabled: true, offCause: null });
   const switchStates: Array<[string, Any]> = [["off · ready", plainFull], ["off · withdrawn", sunsetFull], ["off · a required limit unset", unsetOne], ["on", onNow]];
   const besideSwitch = (x: Any): string[] => [x.switchReason, x.limitsFirstReason].filter((s: unknown) => typeof s === "string" && s.length > 8);
+  /* ⭐ RE-AIMED AT C7 STEP 6, AND THE PREMISE REALLY DID CHANGE. The head action was DISABLED in every state while
+     the wizard had no page, so "every state carries a sentence beside it" was the right rule; step 6 made it a LIVE
+     LINK, and an assertion that kept demanding a sentence beside a working control would have been the fix
+     invalidating its own proof. It is therefore re-expressed over the states themselves, in BOTH directions and for
+     BOTH controls — the switch and the head action — rather than deleted:
+       · a disabled control ⇒ EXACTLY ONE sentence beside it, never both and never neither (432(j) with 432(n));
+       · a live control ⇒ no sentence at all;
+       · and in every state the switch's sentence is never the head action's words. */
+  const besideAction = (x: Any): string[] => [x.actionReason, x.rosterFullReason].filter((s: unknown) => typeof s === "string" && s.length > 8);
   ok("432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it — its own or the limits sentence, never both and never neither — and an OPERABLE one carries none",
     switchStates.every(([, x]) => ((x.switchDialog ?? null) === null ? besideSwitch(x).length === 1 : besideSwitch(x).length === 0))
-      && switchStates.every(([, x]) => typeof x.actionReason === "string" && x.actionReason.length > 8 && x.switchReason !== x.actionReason),
+      && switchStates.every(([, x]) => x.switchReason === null || x.switchReason !== x.actionReason),
     j(switchStates.map(([name, x]) => [name, x.switchDialog?.to ?? "disabled", besideSwitch(x).length])));
+  ok("432(j) · 432(n) · ⭐ THE HEAD ACTION OBEYS THE SAME RULE NOW THAT IT WORKS — a LIVE link carries no sentence, and a disabled one carries exactly one",
+    switchStates.every(([, x]) => (x.designateLive === true ? besideAction(x).length === 0 : besideAction(x).length === 1)),
+    j(switchStates.map(([name, x]) => [name, x.designateLive, besideAction(x).length])));
   ok("432(j) · CONTROL · the four states really are four different answers — two operable in opposite directions, one disabled with its own sentence and one disabled with the limits sentence — so the rule above was exercised and not satisfied by an empty population",
     plainFull.switchDialog?.to === "ON" && onNow.switchDialog?.to === "OFF"
       && (sunsetFull.switchDialog ?? null) === null && typeof sunsetFull.switchReason === "string" && sunsetFull.switchReason.toLowerCase().includes("switch")
       && (unsetOne.switchDialog ?? null) === null && (unsetOne.switchReason ?? null) === null && typeof unsetOne.limitsFirstReason === "string"
-      && plainFull.actionReason.toLowerCase().includes("designat"),
+      && plainFull.designateLive === false && plainFull.actionReason === null && plainFull.rosterFullReason !== null
+      && sunsetFull.designateLive === false && typeof sunsetFull.actionReason === "string"
+      && onNow.designateLive === true && onNow.actionReason === null && onNow.rosterFullReason === null,
     j({ plain: plainFull.switchDialog?.to, on: onNow.switchDialog?.to, sunset: sunsetFull.switchReason, unset: unsetOne.limitsFirstReason }));
 
   /* ══ THE MASTER-SWITCH CEREMONY (rulings 306, 388, 415; owner-delegated 454; replan ruling 549's 4b) ══════════
@@ -1249,11 +1268,18 @@ section("§2 · the strip, the band, the roster and every failure");
     const overrideExists = consumers.some(hasOverride);
     ok("1.432f · the section renders an eligibility row ⟺ the console's own override for those sentences exists — so C7 step 6 can ship neither half alone",
       sectionNamesEligibility === overrideExists, j({ sectionNamesEligibility, overrideExists, files: consumers.length }));
-    ok("1.432f · CONTROL · both detectors fire when their subject is planted into a copy of the REAL gate module, and neither fires on the original — so the equality above is a measurement, not two unreached scans",
+    /* ⭐ RE-AIMED AT C7 STEP 6, AND IT IS THE SAME MEASUREMENT FROM THE OTHER SIDE. The tie was written while the
+       wizard did not exist, so the control proved the detectors could fire by PLANTING each subject into a copy of a
+       module that carried neither. Both now really are in the module, so the plant would prove nothing and the
+       inverse does the work instead: each detector must STOP firing when its own subject's lines are taken out of a
+       copy, and must fire on the real file. A control whose premise a later step invalidates is re-aimed, never
+       deleted and never quietly satisfied by the thing it was written to catch. */
+    ok("1.432f · CONTROL · each detector fires on the REAL gate module and STOPS firing when its own subject's lines are removed from a copy — so the equality above is a measurement, not two unreached scans",
       (() => {
         const real = decomment(read(GATE));
-        return !namesElig(real) && namesElig(`${real}\nimport { houseBotEligibility } from "./house-bot/eligibility";`)
-          && !hasOverride(real) && hasOverride(`${real}\nconst CONSOLE_ELIGIBILITY = {};`);
+        const without = (drop: (l: string) => boolean) => real.split("\n").filter((l) => !drop(l)).join("\n");
+        return namesElig(real) && !namesElig(without(namesElig))
+          && hasOverride(real) && !hasOverride(without(hasOverride));
       })(), "");
   }
 
@@ -3019,6 +3045,185 @@ try {
         && detail.indexOf('{view.removed && (') < detail.indexOf('{tab === "overview"'),
       j({ loadErrors: (detail.match(/<AdminLoadError/g) ?? []).length }));
   }
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2f · THE DESIGNATE WIZARD — `/admin/desk/new` (C7-SPEC rulings 356, 359, 368/459, 382, 383, 387; C7 step 6)
+ *
+ * ⛔ THE THREE DOORS ARE THE WHOLE PROTECTION. Ruling 383 measured 200 of the 221 server-action ids in this build's
+ * manifest inside publicly downloadable chunks, so any signed-in account can POST the lookup, the check and the
+ * write. There is no layout, no nav and no page in that path — only each door's own verdict on the stored row.
+ * ⛔ AND THE REFUSAL MUST NOT BE AN ORACLE. A refused caller's answer is byte-identical for a real account, an
+ * invented one and one already on the desk, and the picker's empty answer is byte-identical to its refusal.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+section("§2f · the designate wizard (rulings 356, 359, 382, 383, 387)");
+try {
+  const ELIG: Any = await import("../../src/lib/server/house-bot/eligibility.ts");
+  const { hashPassword, randomId }: Any = await import("../../src/lib/server/crypto.ts");
+  /* ⛔ THE ROSTER LIMIT IS RAISED FOR THIS BLOCK ALONE, because §2 and §2e have already designated four
+     accounts against a default maximum of five and a ROSTER_FULL refusal here would be a fixture artefact
+     masquerading as the assertion's own answer. */
+  await w.limits({ maxDesignatedBots: 20 });
+  const PW = "candidate-password-v1";
+  /** A player with a REAL salted password, which is what `verifyHouseBotPassword` actually checks. */
+  const candidate = async (o: { balance?: number; role?: string } = {}): Promise<string> => {
+    const id = await w.user({ role: o.role ?? "PLAYER", balance: o.balance ?? 0 });
+    const salt = randomId(16);
+    await w.setUserFields(id, {
+      passwordHash: await hashPassword(PW, salt), passwordSalt: salt,
+      passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE",
+    });
+    return id;
+  };
+  const outsider = await w.user({ role: "PLAYER" });
+  /* A candidate that passes every check: a player, funded, with a password of their own. */
+  const good = await candidate({ balance: 250_000 });
+  /* A candidate that fails on a fact the check card must name in the CONSOLE's own words, not the service's. */
+  const staffer = await candidate({ role: "SUPPORT" });
+  /* A candidate with a password but an empty wallet — 459's "Not funded" state, which is NOT a blocking row. */
+  const empty = await candidate({ balance: 0 });
+
+  /* ━━ 1.359 · THE CHECK CARD IS READ THROUGH THE GATE, AND A REFUSED VIEWER RECEIVES NOTHING ━━━━━━━━━━━━━ */
+  const card = await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", good);
+  const refusedCard = await GATEM.houseCheckForConsole(outsider, "/admin/desk", good);
+  ok("1.359 · the wizard's check card is a PAINTED view model from the gated reader — the handle, the funded state, the open-position count and every check as a finished sentence",
+    card !== null && card.handle.startsWith("Player #") && card.eligible === true
+      && card.funded !== null && card.funded.word === "Funded"
+      && typeof card.openPositions === "string" && card.continueReason === null,
+    j({ handle: card && card.handle, funded: card && card.funded, open: card && card.openPositions }));
+  ok("1.359 · a viewer OUTSIDE the audience receives `null` and nothing else — no handle, no phone, no sentence and no id",
+    refusedCard === null && all(refusedCard) === "null" && !all(refusedCard).includes(good), j(all(refusedCard)));
+  /* ⛔ THE PHONE CROSSES AS A RAW SERVER-ONLY FIELD, because the platform's own SERVER `Sensitive` is what computes
+   * the mask and calls `readCell`. A reader that handed the page a pre-masked triple would move READ-TIERS into a
+   * `.tsx`, which `sensitive.tsx` forbids in as many words (359, corrected). */
+  ok("1.359 · the phone arrives RAW as a server-only field, so the platform's own `Sensitive` decides the mask — the reader never masks it and never names a read class",
+    card !== null && typeof card.phoneE164 === "string" && card.phoneE164.startsWith("+255")
+      && !/mask/i.test(all(card)), j({ shape: card && typeof card.phoneE164 }));
+  /* ⛔ 459 · A FUNDED STATE, NEVER AN AMOUNT. The seeded balance is a unique figure; it must appear nowhere in the
+   * painted card, in any form, and neither must a currency prefix. */
+  const emptyCard = await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", empty);
+  ok("1.359 · 459 · the card paints a funded STATE in both polarities and NO amount — not the balance, not a compacted form, not a TZS prefix anywhere",
+    card !== null && emptyCard !== null
+      && card.funded.word === "Funded" && emptyCard.funded.word === "Not funded"
+      && !all(card).includes("250000") && !all(card).includes("250,000") && !/TZS/.test(all(card))
+      && !/TZS/.test(all(emptyCard)),
+    j({ funded: card && card.funded.word, empty: emptyCard && emptyCard.funded.word }));
+  /* ⛔ AND EVERY SENTENCE IS THE CONSOLE'S OWN (453): the service's rows for this same account name the feature. */
+  const staffCard = await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", staffer);
+  const rawStaff = await ELIG.houseBotEligibility(staffer, { context: "designate", actorId: OFFICER });
+  ok("1.359 · 453 · every blocking and warning sentence the card paints is the CONSOLE's own, and not one of them carries a house-vocabulary word",
+    staffCard !== null && staffCard.eligible === false && staffCard.blocking.length >= 1
+      && !NEUTRAL.test(all(staffCard.blocking)) && !NEUTRAL.test(all(staffCard.warnings))
+      && staffCard.continueReason !== null,
+    j({ blocking: staffCard && staffCard.blocking, reason: staffCard && staffCard.continueReason }));
+  ok("1.359 · CONTROL · the SERVICE's own rows for that same account DO carry one, which is why the override exists",
+    rawStaff.blocking.length >= 1 && NEUTRAL.test(all(rawStaff.blocking)),
+    j(rawStaff.blocking.map((r: Any) => r.message).slice(0, 2)));
+  /* ⛔ AND THE POPULATION IS DERIVED FROM THE SERVICE'S OWN UNIONS, never typed here: a code added to either list
+   * later cannot reach an owner's screen as the shared sentence or as a bare identifier. */
+  {
+    const codes = [...ELIG.ELIGIBILITY_BLOCKING_CODES, ...ELIG.ELIGIBILITY_WARNING_CODES] as string[];
+    const missing = codes.filter((c) => GATEM.consoleCheckSentence(c) === GATEM.consoleCheckSentence("zz_no_such_code"));
+    const dirty = codes.filter((c) => NEUTRAL.test(GATEM.consoleCheckSentence(c)));
+    ok("1.359 · 453 · the console has a sentence of its own for EVERY code in the service's two unions, and not one of them names the feature",
+      codes.length >= 30 && missing.length === 0 && dirty.length === 0, j({ codes: codes.length, missing, dirty }));
+    ok("1.359 · CONTROL · an invented code answers the neutral fallback, so the `missing` zero above is a measurement and not an empty scan",
+      GATEM.consoleCheckSentence("zz_no_such_code").length > 20
+        && !NEUTRAL.test(GATEM.consoleCheckSentence("zz_no_such_code")),
+      GATEM.consoleCheckSentence("zz_no_such_code"));
+  }
+  /* ⛔ 356 · EXACTLY ONE WALLET READ FOR THE WHOLE CARD, and it is the one `houseBotEligibility` already takes. */
+  {
+    const spyW = { wallet: 0, user: 0 };
+    const origW = { wallet: w.db.wallet.findByUserId, user: w.db.user.findById };
+    try {
+      w.db.wallet.findByUserId = (...a: Any[]) => { spyW.wallet++; return origW.wallet.apply(w.db.wallet, a as Any); };
+      w.db.user.findById = (...a: Any[]) => { spyW.user++; return origW.user.apply(w.db.user, a as Any); };
+      await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", good);
+    } finally {
+      w.db.wallet.findByUserId = origW.wallet; w.db.user.findById = origW.user;
+    }
+    ok("1.356 · the wizard's check card performs EXACTLY ONE wallet read, and it is the one the eligibility check already takes",
+      spyW.wallet === 1, j(spyW));
+    ok("1.356 · CONTROL · the same render fired `db.user` reads through the very object the wallet spy watches, so the ONE above is a measurement on the module under test",
+      spyW.user >= 2, j(spyW));
+  }
+
+  /* ━━ 1.387 · THE PICKER IS NEUTRAL AND IS NOT AN ENUMERATION ORACLE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const hit = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", good);
+    const miss = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", "usr_no_such_account_at_all");
+    const refusedHit = await GATEM.houseAccountsForConsole(outsider, "/admin/desk", good);
+    const refusedMiss = await GATEM.houseAccountsForConsole(outsider, "/admin/desk", "usr_no_such_account_at_all");
+    const refusedUnknown = await GATEM.houseAccountsForConsole(outsider, "/admin/desk", "hb_0123456789abcdef01234567");
+    ok("1.387 · the owner's search finds the account by its id and paints the handle alone — never a name, a phone or an email",
+      hit.rows.length === 1 && hit.rows[0].userId === good && hit.rows[0].handle.startsWith("Player #")
+        && hit.rows[0].reason === null && !/\+255/.test(all(hit)), j(hit));
+    ok("1.387 · for a caller OUTSIDE the audience a matching query, a non-matching query and an unknown id answer IDENTICALLY — and identically to the owner's own empty answer",
+      all(refusedHit) === all(refusedMiss) && all(refusedMiss) === all(refusedUnknown)
+        && all(refusedHit) === all(miss) && refusedHit.rows.length === 0 && refusedHit.count === "",
+      j({ refusedHit, miss }));
+    ok("1.387 · CONTROL · the owner CAN tell those two apart, which is what makes the identity above a measurement",
+      all(hit) !== all(miss) && hit.count.length > 0 && miss.count === "", j({ hit: hit.count, miss: miss.count }));
+    /* ⛔ AN OPTION THAT CANNOT BE CHOSEN SAYS SO, from the account row and the ONE roster read — never a per-row
+     * eligibility check, which would pull ten players' balances and settings into a lookup. */
+    const staffHit = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", staffer);
+    ok("1.387 · an option that cannot be chosen carries its reason, and the reason names no feature word",
+      staffHit.rows.length === 1 && typeof staffHit.rows[0].reason === "string"
+        && !NEUTRAL.test(all(staffHit)) && staffHit.count.includes("cannot be chosen"), j(staffHit));
+    /* ⛔ A ONE-CHARACTER QUERY READS NOTHING AT ALL — the officer has not asked a question yet. */
+    const short = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", "a");
+    ok("1.387 · a query under the floor answers with no rows, no count and no sentence — and takes no read",
+      short.rows.length === 0 && short.note === null && short.count === "", j(short));
+  }
+
+  /* ━━ 1.383 · EVERY DOOR IS A PLAYER-CALLABLE ENDPOINT, AND ITS REFUSAL IS NOT AN ORACLE ━━━━━━━━━━━━━━━━━ */
+  {
+    const before = (await w.dal.houseBotStore.listNonRemoved()).length;
+    const real = await GATEM.houseDesignateForConsole(outsider, "/admin/desk", { userId: good, label: "Desk one", password: "whatever" });
+    const invented = await GATEM.houseDesignateForConsole(outsider, "/admin/desk", { userId: "usr_no_such_account_at_all", label: "Desk one", password: "whatever" });
+    const after = (await w.dal.houseBotStore.listNonRemoved()).length;
+    ok("1.383 · a caller outside the audience receives ONE fixed refusal — no field, no href, no id, no count and no existence signal — and it is the same answer for a real account and an invented one",
+      real.ok === false && all(real) === all(invented)
+        && (real as Any).field === undefined && (real as Any).href === undefined
+        && !all(real).includes(good) && !NEUTRAL.test(all(real)), j(real));
+    ok("1.383 · …and that path wrote NOTHING: the roster is unchanged on both sides of it",
+      before === after, j({ before, after }));
+    ok("1.383 · CONTROL · the OWNER's own refusal for the same input is a DIFFERENT answer, so the two above are a measurement and not an unreached door",
+      await (async () => {
+        const owned = await GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId: good, label: "Desk one", password: "definitely-wrong" });
+        return owned.ok === false && all(owned) !== all(real) && (owned as Any).field === "password";
+      })(), "");
+    /* ⛔ AND THE LABEL'S SHAPE IS REFUSED BEFORE A PASSWORD ATTEMPT IS SPENT, in the console's own words. */
+    const shortLabel = await GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId: good, label: "x", password: "" });
+    ok("1.383 · a mistyped name is refused on its own field, in the console's own words, before a password attempt is spent",
+      shortLabel.ok === false && (shortLabel as Any).field === "label" && !NEUTRAL.test(all(shortLabel)), j(shortLabel));
+  }
+
+  /* ━━ 1.359 · AND THE DESIGNATION ITSELF LANDS, WHICH IS WHAT MAKES EVERY REFUSAL ABOVE A REFUSAL ━━━━━━━━━ */
+  {
+    const done = await GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId: good, label: "Desk one", password: PW });
+    ok("1.359 · the owner's own designation LANDS, with a neutral note and the new account's own page as its way on",
+      done.ok === true && typeof (done as Any).href === "string" && !NEUTRAL.test(all(done)), j(done));
+    if (done.ok) {
+      /* ⛔ AND THE SECOND ATTEMPT ON THE SAME ACCOUNT IS REFUSED IN THE CONSOLE'S OWN WORDS — the service's own
+         sentence for this case reads "This account is already a house bot." */
+      const again = await GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId: good, label: "Desk two", password: PW });
+      ok("1.359 · 453 · a second designation of the same account is refused in the CONSOLE's words, never the service's",
+        again.ok === false && !NEUTRAL.test(all(again)), j(again));
+      /* ⛔ AND THE PICKER NOW SAYS SO ON THE OPTION ITSELF, from the one roster read. */
+      const now = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", good);
+      ok("1.387 · an account already on the desk comes back as an option that cannot be chosen, decided on the ONE roster read",
+        now.rows.length === 1 && now.rows[0].reason !== null && !NEUTRAL.test(all(now)), j(now));
+      STATES.push(["wizard-check", card]);
+      STATES.push(["wizard-check-blocked", staffCard]);
+      STATES.push(["wizard-picker", now]);
+    }
+  }
+} catch (err) {
+  ok("1.359 · the wizard's fixture ran", false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
 } catch (err) {
   /* ⛔ NOT A SWALLOW. The throw is an assertion of its own, it is printed with its stack, and §3 and §4 still run — a
    * partially filled `STATES` makes 3.453's own population floor fail too, which is the correct second report. */
@@ -3062,8 +3267,19 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
       .map(([, v]) => operatorExempt(v as string)),
     view.empty?.title, view.empty?.body,
     ...(view.tiles ?? []).flatMap((t: Any) => [t.label, t.value, t.delta]),
-    ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, r.lossCell.text, r.exposureCell.text, r.betsCell.text, r.products,
-      ...[r.lossCell, r.exposureCell, r.betsCell].flatMap((c: Any) => c.halves.flatMap((h: Any) => [h.word, h.suffix, c.edgeText]))]),
+    /* ⚠️ `rows` IS NOT ONE SHAPE ANY MORE (C7 step 6). The roster's row carries three usage cells; the wizard's
+       picker row carries a handle and a refusal. A scanner that assumed one shape CRASHED on the other — measured
+       here the day the wizard's states joined the list — and a crash in §3 skips §4's whole source law. So each
+       row contributes what it HAS, and the picker's own strings are scanned rather than dropped. */
+    ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, r.products, r.handle, r.reason,
+      ...[r.lossCell, r.exposureCell, r.betsCell].filter(Boolean).flatMap((c: Any) => [c.text, c.edgeText,
+        ...(c.halves ?? []).flatMap((h: Any) => [h.word, h.suffix])])]),
+    /* ⭐ C7 step 6 · THE WIZARD'S OWN COPY. Every blocking and warning sentence the check card paints is the
+       CONSOLE's own override of `eligibility.ts`'s rows, ELEVEN of which name the feature — so this is the branch
+       most likely to break 453 on this checkpoint, exactly as the limits panel was on the last one. */
+    ...(view.blocking ?? []).flatMap((r: Any) => [r.code, r.text]),
+    ...(view.warnings ?? []).flatMap((r: Any) => [r.code, r.text]),
+    view.funded?.word, view.funded?.sentence, view.bonusCaption, view.priorNote, view.continueReason, view.count,
     /* ⭐ C7 step 3 · THE LIMITS PANEL'S OWN COPY. Its five usage names come from `FIELD_META`, four of whose labels
        and one of whose section names carry a word this section may not render (432(f), amended) — so the branch most
        likely to break 453 on this checkpoint is the one that would have been outside the scan. */
@@ -3095,7 +3311,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
   ok("3.453 · not one painted string of ANY state carries a house-vocabulary word, or the words bot, house, liquidity or counter-stake",
     /* ⭐ THE FLOORS ROSE WITH C7 STEP 4's OWN STATES: 24/1528 at step 3, 32 states and 2,128 strings measured with
        the account page's five — active, both floor branches, settlement-blocked and removed — in the list. */
-    scanned.length >= 32 && total >= 2_128 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
+    scanned.length >= 35 && total >= 2_128 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
   /* ⛔ AND THE BRANCHES MOST LIKELY TO CARRY ONE ARE PROVEN PRESENT IN THE SCAN, by name — a state list that quietly
    * stopped producing the OFF sentence or an empty state would otherwise read as compliance. */
   const seen = new Set(scanned.flatMap(([, c]) => c));
@@ -3181,8 +3397,11 @@ if (STORE === "memory") {
   ok("4.453 · ⛔ RULING 453 · no string that can reach the DOM — in the section OR in the reader that writes its copy — carries a house word, in text, aria-*, title, placeholder or route metadata",
     /* ⭐ THE FLOOR ROSE WITH C7 STEP 4's OWN WALK: 297 at step 3, 597 measured with the account page and its
        loader inside the population. A floor only ever rises, and only to a count a run PRINTED. */
-    allLits.length >= 597 && litHits.length === 0
-      && sectionFiles.length >= 6 && [PAGE, LAYOUT, LOADING, LIVE, DETAIL_PAGE].every((f) => sectionFiles.includes(f))
+    /* ⭐ THE FLOOR ROSE WITH C7 STEP 6's OWN WALK: 597 at step 4, and the wizard's four files bring it higher again.
+       A floor only ever rises, and only to a count a run PRINTED. */
+    allLits.length >= 700 && litHits.length === 0
+      && sectionFiles.length >= 10
+      && [PAGE, LAYOUT, LOADING, LIVE, DETAIL_PAGE, NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT].every((f) => sectionFiles.includes(f))
       && sectionUnscannable.length === 0 && lexiconFiles.length === sectionFiles.length + 1,
     j({ files: lexiconFiles.length, section: sectionFiles.length, walked: sectionAllFiles, unscannable: sectionUnscannable, literals: allLits.length, hits: litHits }));
   /* ⛔ AND THE JSX PROSE IS PROVABLY IN THE POPULATION. `ts.isStringLiteral` does not match a `JsxText` node, so
@@ -3391,7 +3610,12 @@ export default function Ruling513Control() {
      it; a template built from `CONSOLE_ROUTE` would be invisible to that pin, which is the hole 319 and 343 are
      two halves of. The same allowance already covers `page.tsx` and `actions.ts` for the same reason, and the
      CONTROL below requires every named file to really hold the literal, so the list cannot be padded. */
-  const ALLOWED_ROUTE_FILES = new Set([ROUTES_MODULE, "src/lib/server/roles.ts", "src/components/admin/admin-nav-groups.ts", PAGE, ACTIONS, DETAIL_PAGE]);
+  /* ⭐ THE WIZARD AND ITS ACTIONS JOIN THE ALLOWANCE AT C7 STEP 6, FOR THE SAME REASON THE OTHER THREE PAGES DID
+     AND FOR NO OTHER: ruling 343 and case 0.260.1 require the route a gate call names to be a STRING LITERAL equal
+     to the calling file's own console route, precisely so the gate pin can READ it. A template built from
+     `CONSOLE_ROUTE` is invisible to that pin. The CONTROL below requires every named file to really hold the
+     literal and pins the list's LENGTH, so it cannot be padded to quiet a new typer. */
+  const ALLOWED_ROUTE_FILES = new Set([ROUTES_MODULE, "src/lib/server/roles.ts", "src/components/admin/admin-nav-groups.ts", PAGE, ACTIONS, DETAIL_PAGE, NEW_PAGE, NEW_ACTIONS]);
   const typers: string[] = [];
   const walkAll = (dir: string) => {
     for (const e of readdirSync(join(ROOT, dir))) {
@@ -3403,8 +3627,8 @@ export default function Ruling513Control() {
   walkAll("src");
   ok("1.319 · the console's route segment is typed in ONE module plus the RBAC and nav tables that must hold the prefix, and nowhere else in src/",
     typers.length === 0, typers.join(", "));
-  ok("1.319 · CONTROL · the allowance is exactly six files and every one of them really does hold the literal — a list that can be padded, or that carries a name earning nothing, is not a rule",
-    ALLOWED_ROUTE_FILES.size === 6
+  ok("1.319 · CONTROL · the allowance is exactly eight files and every one of them really does hold the literal — a list that can be padded, or that carries a name earning nothing, is not a rule",
+    ALLOWED_ROUTE_FILES.size === 8
       && [...ALLOWED_ROUTE_FILES].every((f) => decomment(read(f)).includes("/admin/desk")),
     j([...ALLOWED_ROUTE_FILES].filter((f) => !decomment(read(f)).includes("/admin/desk"))));
   ok("1.319 · the two sealed refusals take their href from that module, never from a literal",
@@ -3574,7 +3798,10 @@ export default function Ruling513Control() {
     /* ⭐ A FOURTH SITE AT C7 STEP 4 — the roster row's way out, which is the ONLY link on this page whose href is
        a per-row value. It is pinned in position like the other three: an `OR` widens, and the four are different
        answers to different questions. */
-    const WANT = ["unsetHref as Route", "view.limitsHref as Route", "view.limitsFirstUnsetHref as Route", "r.href as Route"];
+    /* ⭐ A FIFTH SITE AT C7 STEP 6 — the head's own primary action, which became a LINK with the page it opens
+       (432(h)). It is pinned in position like the other four: an `OR` widens, and the five are different answers to
+       different questions. */
+    const WANT = ["unsetHref as Route", "view.limitsHref as Route", "view.designateHref as Route", "view.limitsFirstUnsetHref as Route", "r.href as Route"];
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
       j(linkExprs) === j(WANT), j({ found: linkExprs, want: WANT }));
     /* ⛔ AND THE FRAGMENT HREF IS SPENT TWICE, both times on the field the strip promises: once as the strip's own
@@ -4071,14 +4298,42 @@ export default function Ruling513Control() {
     !/CRUMB_LABELS[\s\S]*?\n\};/.exec(nav)?.[0].includes("desk"), "");
 
   /* 1.420 · an actor is an id. */
-  ok("1.420 · the ON sentence names the actor by id and the reader performs NO lookup for one",
-    gateCode.includes("control?.switchedById") && !/displayLabel|displayName|phoneE164/.test(gateCode), "");
+  /* ⭐ RE-AIMED AT C7 STEP 6, AND THE SUBJECT IS UNCHANGED. This banned the three person-identifying tokens from the
+     WHOLE module, which held while the module read nothing about a person but a house bot's holder. The wizard's
+     check card has to hand the platform's own `Sensitive` a phone, and its picker has to MATCH on the computed
+     handle — neither is a lookup of an ACTOR, which is all ruling 420 governs. So the ban is held where it bites:
+     no display NAME anywhere at all (346's rule for the roster, applied to every console surface), the phone named
+     only as the SERVER-ONLY field `Sensitive` consumes, and `displayLabel` confined to the search matcher's own
+     record, never assigned to anything a page paints. */
+  {
+    const gateLines = gateCode.split("\n");
+    const labelLines = gateLines.filter((l) => l.includes("displayLabel"));
+    const phoneLines = gateLines.filter((l) => l.includes("phoneE164"));
+    ok("1.420 · the ON sentence names the actor by id and the module resolves NO name for one — no display name anywhere, the phone only as `Sensitive`'s server-only field, and the computed handle only inside the search matcher",
+      gateCode.includes("control?.switchedById")
+        && !/displayName/.test(gateCode)
+        && phoneLines.length === 2
+        && phoneLines.some((l) => l.includes("phoneE164: string | null;"))
+        && phoneLines.some((l) => l.includes("phoneE164: user?.phoneE164 ?? null,"))
+        && labelLines.length === 2
+        && labelLines.some((l) => l.trim().startsWith("import { displayLabel }"))
+        && labelLines.some((l) => l.includes("displayLabel: displayLabel(u)")),
+      j({ phoneLines: phoneLines.map((l) => l.trim().slice(0, 50)), labelLines: labelLines.map((l) => l.trim().slice(0, 50)) }));
+  }
   /* ⭐ TWO SITES AT C7 STEP 4 — the roster row and the account page's strip — and BOTH are `bot.userId`. The
      assertion is not a count for its own sake: `playerHandle` turns a user id into "Player #TAIL", and using it on
      an ACTOR would put a staff member behind a player's mask on a screen about a player's account. */
-  ok("1.420 · `playerHandle` is used for the HOLDER only, never for a staff actor — every call takes `bot.userId`",
-    (gateCode.match(/playerHandle\(/g) ?? []).length === 2
-      && (gateCode.match(/playerHandle\(bot\.userId\)/g) ?? []).length === 2, "");
+  /* ⭐ FOUR SITES AT C7 STEP 6 — the roster row, the account page's strip, and the wizard's picker option and check
+     card — and every one of them is the ACCOUNT HOLDER'S own id. The assertion is not a count for its own sake:
+     `playerHandle` turns a user id into "Player #TAIL", and using it on an ACTOR would put a staff member behind a
+     player's mask on a screen about a player's account. The wizard's two take the candidate's own id, which is the
+     holder-to-be; neither takes `switchedById`, `actorId` or `viewerUserId`, and that is what is pinned. */
+  {
+    const handleArgs = [...gateCode.matchAll(/playerHandle\(([^)]*)\)/g)].map((m) => m[1].trim());
+    const HOLDER_ARGS = ["bot.userId", "bot.userId", "u.id", "id"];
+    ok("1.420 · `playerHandle` is used for the HOLDER only, never for a staff actor — every call takes an account's own id, pinned by position",
+      j(handleArgs) === j(HOLDER_ARGS), j({ found: handleArgs, want: HOLDER_ARGS }));
+  }
 
   /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
    * §5 · THE D19 SECTION (C7-SPEC ruling 398; the assignments are replan ruling 506's)
@@ -4186,6 +4441,74 @@ export default function Ruling513Control() {
       })(),
       j({ clientFiles: clientFiles.length, sectionFiles: sectionFiles.length }));
 
+
+    /* ── 1.382 · EVERY CONSOLE ACTION EXPORT NAME AND EVERY GUARD LABEL IS HOUSE-FREE ──────────────────────────
+     * Measured (ruling 382): a server action's exported NAME survives verbatim into publicly downloadable chunks —
+     * `setRoleGrant`, `resetRoleGrants`, `addStaffByPhone`, `setStaffRole` and `buildDsarBundleAction` are each
+     * findable in `.next/static`. And measured in the code path: `requireOwner`/`requireStaff` write
+     * `privilege_escalation_blocked` with `targetId: action`, that action key is in no `HOUSE_AUDIT` set, and
+     * `exportUserData` is PLAYER-triggered from `/profile/account` — so a house-named guard label reaches the
+     * refused player's own data export. The population is DERIVED from disk, never typed: every `"use server"` file
+     * under the section, and every exported symbol of each. */
+    {
+      const actionFiles = sectionFiles.filter((f) => read(f).includes('"use server"'));
+      const exportNames = actionFiles.flatMap((f) => [...decomment(read(f)).matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_$]+)/g)].map((m) => m[1]));
+      const guardLabels = actionFiles.flatMap((f) => [...decomment(read(f)).matchAll(/require(?:Owner|Staff|HouseOwner)\(\s*"([^"]+)"/g)].map((m) => m[1]));
+      ok("1.382 · every exported symbol of every console `\"use server\"` file, and every literal it passes a guard as an `action`, is house-free by the SHARED vocabulary",
+        actionFiles.length >= 2 && exportNames.length >= 4
+          && exportNames.every((n) => houseHits(n).length === 0 && !NEUTRAL.test(n))
+          && guardLabels.every((n) => houseHits(n).length === 0 && !NEUTRAL.test(n)),
+        j({ files: actionFiles, exports: exportNames, guards: guardLabels }));
+      ok("1.382 · CONTROL · the same measure fires on the name ruling 382 forbids by name, and does NOT fire on the ones actually shipped",
+        NEUTRAL.test("startHouseBotAction") && houseHits("exportHouseBotCsvAction").length > 0
+          && exportNames.includes("designateDeskAccountAction") && !NEUTRAL.test("designateDeskAccountAction"),
+        j(exportNames));
+    }
+
+    /* ── 1.385 · COPY PROVENANCE: NO SENTENCE THE SERVER CAN EMIT APPEARS IN A CLIENT MODULE ───────────────────
+     * Ruling 385's own measurement is why this is not a style rule: MOST of the sentences this console emits carry
+     * no vocabulary word at all, so one typed into a client component ships to every visitor with the disclosure
+     * walk and the bundle scan both reporting clean. The test is therefore an INTERSECTION — every long string
+     * literal in a client file is required to be absent from the gate module's own copy — plus a floor on how much
+     * copy the server owns, so an empty intersection cannot read as compliance. */
+    {
+      const serverCopy = new Set(domLiterals(GATE, read(GATE)).filter((s) => s.length >= 25));
+      const clientCopy = clientFiles.flatMap((f) => domLiterals(f, read(f)).filter((s) => s.length >= 25).map((s) => [f, s] as const));
+      const shared = clientCopy.filter(([, s]) => serverCopy.has(s));
+      ok("1.385 · not one sentence the gate module can emit is ALSO typed into a console client file — every word about an account crosses the boundary as a prop",
+        serverCopy.size >= 60 && shared.length === 0, j({ serverSentences: serverCopy.size, clientSentences: clientCopy.length, shared }));
+      /* ⛔ AND THE CLIENT FILES DO OWN A FEW SENTENCES — about the FORM and the TRANSPORT, which the server cannot
+       * word because the request never reached it. They are named, so "no long strings at all" cannot pass for
+       * provenance. */
+      ok("1.385 · CONTROL · the intersection CAN fire — a server sentence copied into a client file is found, and the sentences the client legitimately owns are about the form and the transport, never about an account",
+        [...serverCopy].some((s) => clientCopy.concat([[NEW_CLIENT, [...serverCopy][0]] as const]).some(([, c]) => c === s))
+          && clientCopy.length >= 3 && !clientCopy.some(([, s]) => NEUTRAL.test(s)),
+        j(clientCopy.map(([, s]) => s.slice(0, 40)).slice(0, 6)));
+    }
+
+    /* ── 1.388 · DIALOG AND FORM COPY COMES FROM THE SERVER AS PROPS, AND NO TYPED WORD NAMES A BOT ────────────
+     * Measured (ruling 388): client component PROP NAMES survive minification into public chunks — `mayAct`,
+     * `domainLabel`, `subjectId`, `serverNow` and `alreadyClosed` are each findable in `.next/static` — so a prop
+     * named for the feature is published even when its value is not. Both halves are pinned: no prop name and no
+     * declared field of a client type carries a vocabulary word, and the arming word the ceremony checks is a prop
+     * rather than a literal. */
+    {
+      const propNames = clientFiles.flatMap((f) => [...decomment(read(f)).matchAll(/^\s{2}([a-zA-Z][A-Za-z0-9_]*)[,:]/gm)].map((m) => m[1]));
+      ok("1.388 · not one prop name, type field or string literal of any console client file carries a vocabulary word — the values AND the names are neutral",
+        clientFiles.length >= 3 && propNames.length >= 20
+          && propNames.every((n) => houseHits(n).length === 0 && !NEUTRAL.test(n))
+          && clientFiles.every((f) => domLiterals(f, read(f)).every((s) => !NEUTRAL.test(s))),
+        j({ clientFiles, props: [...new Set(propNames)].slice(0, 24) }));
+      /* ⛔ AND THE ARMING WORD ARRIVES AS A PROP. "BOTS ON" is not a vocabulary needle ✔ — which is precisely why
+       * it must not be relied on: it would ship a bot-shaped confirmation phrase to every visitor with no guard
+       * able to see it. The word is the server's, checked again on the way back. */
+      ok("1.388 · CONTROL · the measure fires on the prop name ruling 388 forbids, and the arming word is the SERVER's — no console client file types it",
+        NEUTRAL.test("houseBotLabel") && houseHits("houseBotLabel").length > 0
+          && !/BOTS ON/.test(clientCode) && !new RegExp(`"${GATEM.CONSOLE_SWITCH_ON_WORD}"`).test(clientCode)
+          && decomment(read(GATE)).includes(`CONSOLE_SWITCH_ON_WORD = "${GATEM.CONSOLE_SWITCH_ON_WORD}"`),
+        j({ word: GATEM.CONSOLE_SWITCH_ON_WORD }));
+    }
+
     /* ── 1.342 · THE AUDIENCE VERDICT IS RESOLVED ONCE PER RENDER PASS, INSIDE THE MODULE ────────────────────────
      * `db.user.findById` is a real `findUnique` returning the WHOLE row including `avatarDataUrl` — a column
      * `user.list()` explicitly omits for this reason — and the console asks the audience question several times per
@@ -4196,9 +4519,20 @@ export default function Ruling513Control() {
      * asserting "exactly one lookup" here would be green for a reason that has nothing to do with production. What
      * is asserted is what CAN be: the wrapper is in the module, the lookup is named ONCE, and no console file
      * resolves or receives the verdict itself. */
-    ok("1.342 · the viewer lookup is wrapped in React `cache()` inside the gate module, and `db.user.findById` is named EXACTLY ONCE there",
+    /* ⭐ RE-AIMED AT C7 STEP 6, NEVER WEAKENED. This counted EVERY `db.user.findById` in the module and required
+     * exactly one — which was the VIEWER's lookup and nothing else, until the wizard's check card had to read the
+     * SUBJECT's own row for a name and a phone. Those are two different questions: one decides who is looking and
+     * must be memoised per pass, the other is the record the page is about and is read once per render by
+     * construction. So the count is held where the ruling actually bites: the VIEWER is looked up in exactly one
+     * place, through the `cache()` wrapper, and every other call in the module is named and is not the viewer's. */
+    const viewerLookups = (gateCode.match(/db\.user\.findById\(viewerUserId\)/g) ?? []).length;
+    const allLookups = (gateCode.match(/db\.user\.findById\(/g) ?? []).length;
+    ok("1.342 · the viewer lookup is wrapped in React `cache()` inside the gate module, is named EXACTLY ONCE there, and is the only call that takes the viewer",
       /cache\(/.test(gateCode) && /import \{ cache \} from "react";/.test(gateCode)
-        && (gateCode.match(/db\.user\.findById/g) ?? []).length === 1, j((gateCode.match(/db\.user\.findById/g) ?? []).length));
+        && /const viewerRow = cache\(async \(viewerUserId: string\) => db\.user\.findById\(viewerUserId\)\)/.test(gateCode)
+        && viewerLookups === 1 && allLookups === 2
+        && /\(async \(\) => db\.user\.findById\(id\)\)\(\)/.test(gateCode),
+      j({ viewerLookups, allLookups }));
     ok("1.342 · …and it is the SAME shape `sensitive.tsx` already uses for the same lookup, so the console did not invent a second memo idiom",
       /const viewerRole = cache\(async \(\) => \{/.test(decomment(read("src/components/ui/sensitive.tsx"))), "");
     ok("1.342 · no file under the section resolves the verdict itself or takes it as a prop — the answer stays in the module that gates on it",

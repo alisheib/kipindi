@@ -239,10 +239,10 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
         /* 403 · ONE control in the actions slot. 314 · when the roster is full it is rendered DISABLED with the
            reason VISIBLE beside it — never carried by a `title` alone, and never `hidden` on a `.btn`. The sentence is
            the server's own, with the CONFIGURED maximum interpolated, never the literal 5.
-           ⛔ AND IT IS DISABLED AT THIS CHECKPOINT WHATEVER THE ROSTER HOLDS, because the wizard it opens is C7 step
-           6's: `/admin/desk/new` has no page yet, so a live link here would be a primary action that answers 404 —
-           a dead control, which is worse than a control that says it is not ready. It becomes a real link with the
-           page it opens, in the same change. */
+           ⭐ C7 STEP 6 MADE IT A REAL LINK, IN THE SAME CHANGE AS THE PAGE IT OPENS (432(h)). It was rendered
+           disabled whatever the roster held while `/admin/desk/new` had no page, because a primary action that
+           answers the app-root 404 is the dead control 432(a) refuses. It is now disabled in exactly two states,
+           each with ONE sentence beside it: the roster is full, or the desk has been withdrawn. */
         actions={
           <span className="flex items-center gap-2 flex-wrap justify-end">
             {/* ⛔ `text-body-sm` (13px), NOT `text-caption` (11px). Ruling 310 wrote `text-caption` for the
@@ -266,7 +266,14 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                   to the FUNCTION level (`stripLinkedTail`, `rosterFullPlain`) rather than being deleted, because a
                   branch whose proof is deleted the day it stops executing is how the next dead control ships. */}
             </span>
-            <Button size="md" variant="primary" disabled>Designate an account</Button>
+            {/* ⛔ A LINK WHEN IT WORKS, THE KIT'S DISABLED BUTTON WHEN IT DOES NOT (432(a), 432(h)). `Button` takes
+                no `href`, so the live form is the shipped `btn btn-primary btn-md` idiom on a `<Link>` — the same
+                shape `/admin/markets` uses for its own head action — at `btn-md`, which is the 44px rung ruling
+                412 fixes for this whole section. There is no `aria-disabled` link anywhere here: a disabled
+                control is a `<button>`, so a keyboard reaches a real disabled state rather than a dead anchor. */}
+            {view.designateLive
+              ? <Link href={view.designateHref as Route} className="btn btn-primary btn-md inline-flex items-center">Designate an account</Link>
+              : <Button size="md" variant="primary" disabled>Designate an account</Button>}
           </span>
         }
       />

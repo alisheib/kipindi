@@ -80,6 +80,34 @@ export const USER_SEARCH: EntitySchema = {
   default: ["id", "phoneE164", "displayName", "displayLabel"],
 };
 
+/**
+ * THE DESK'S ACCOUNT PICKER — the owner-only lookup behind `/admin/desk/new` (C7-SPEC ruling 387).
+ *
+ * ⛔ NOT `USER_SEARCH`, AND THE DIFFERENCE IS MEASURED. `USER_SEARCH` is `/admin/players`' own grammar: its default
+ * columns are `id / phoneE164 / displayName / displayLabel` and it advertises `name:`, `phone:`, `id:`, `status:`,
+ * `role:` and `handle:`. Widening it so the picker could also reach an email would change what a BARE token searches
+ * on the players console — a surface nobody asked to change — so the picker declares its own grammar instead, the
+ * same split `MY_TXN_SEARCH` had to make from `TXN_SEARCH` and `UD_ROUND_SEARCH` from the market one.
+ *
+ * ⛔ NO VOCABULARY WORD IN THE CONSTANT NAME, A FIELD, A COLUMN OR A DEFAULT (ruling 387). This file is MEASURED
+ * client-reachable — `test:house-bot-disclosure` §4 asserts it is inside the client population because the search box
+ * value-imports it — so a house-named constant here would be a feature identifier in a publicly downloadable chunk,
+ * which is exactly what 4.1 already forbids for the neighbouring `TXN_SEARCH`.
+ *
+ * ⚠️ `handle` is the COMPUTED `displayLabel(u)`, exactly as in `USER_SEARCH`: it exists only in JS, so the caller
+ * supplies it on the record it passes to `matchesQuery`, and this schema is never handed to `queryToWhere`.
+ */
+export const ACCOUNT_PICKER_SEARCH: EntitySchema = {
+  fields: {
+    name: { columns: ["displayName"], kind: "text" },
+    phone: { columns: ["phoneE164"], kind: "text" },
+    handle: { columns: ["displayLabel"], kind: "text" },
+    id: { columns: ["id"], kind: "exact" },
+  },
+  // What a bare token searches — what an officer actually holds: a pasted handle, a phone number, or an id.
+  default: ["id", "phoneE164", "displayName", "displayLabel"],
+};
+
 export const TXN_SEARCH: EntitySchema = {
   fields: {
     ref: { columns: ["providerRef"], kind: "text" },

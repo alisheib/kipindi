@@ -25,9 +25,11 @@ export const ADMIN_ROUTES = [
    * is what makes SIX instruments measure it with no per-script edit — `measure.mjs`, `admin-shell-seal.mjs`,
    * `tab-candidates.mjs`, `admin-load-budget.mjs`, `design-gate/redo.cjs` and `responsive-audit.mjs`. ⛔ NO `?tab=`
    * entry (tabs are discovered from `data-section-rail`) and NO dynamic route: this list holds only static paths, and
-   * a drive handed an unresolvable id reports a false failure. ⚠️ `/admin/desk/new` joins it with the page that
-   * serves it (C7 step 6) — a route in this list that 404s is a red for a page nobody built. */
-  "/admin/desk",
+   * a drive handed an unresolvable id reports a false failure. ⭐ `/admin/desk/new` JOINED IT AT C7 STEP 6, with the
+   * page that serves it — a route in this list that 404s is a red for a page nobody built, which is why it could
+   * not land earlier. ⛔ Its `?u=` and `?step=` states are NOT entries: the same rule as `?tab=`, and a drive handed
+   * an unresolvable account id would report a false failure. */
+  "/admin/desk", "/admin/desk/new",
 ];
 
 /** Public player routes — reachable signed OUT, which is how they are driven while the

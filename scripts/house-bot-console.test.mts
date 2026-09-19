@@ -78,8 +78,9 @@
  * ⭐ RAISED AGAIN at C7 step 4c with ruling 550(b)'s PAGER on the account page's Targets grid (the total is a
  * COUNTING read beside the paged one, the tab count is the account's own ACTIVE total and not the page's, and a
  * `?tpage=` past the end is served as the last page) and ruling 551(a)'s refusal destination (a section that masks
- * its record ids does not hand one back in a `next=` target) — to what the run PRINTED: **memory 448,
- * Postgres 297**. Seen RED first on six separate mutations, two at a time: total-from-page-length (total 20 where
+ * its record ids does not hand one back in a `next=` target) — and again at C7 step 6, to what THAT run printed:
+ * **memory 477, Postgres 320** (the designate wizard's own §2f, its three D19 source pins and the two re-aimed
+ * assertions its live head action forced). A floor only ever rises, and only to a count a run printed. Seen RED first on six separate mutations, two at a time: total-from-page-length (total 20 where
  * the set is 22), tab-count-from-page (20 on page 1, 2 on page 2), offset ignored (page 2 == page 1, union 20),
  * no clamp (`?tpage=99` answered 99), the helper returning its argument, and one of the four `next=` sites built
  * from the raw href (layout 3 built / 2 via the helper).
@@ -93,6 +94,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 448, postgres: 297 },
+  minPass: { memory: 477, postgres: 320 },
   dbPrefix: "hb_console",
 });

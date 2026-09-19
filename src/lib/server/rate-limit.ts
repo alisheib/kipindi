@@ -98,6 +98,10 @@ export const RATE_RULES: Record<string, RateRule> = {
   // House bots (02 §2.6 step 5, PLAN §6): an owner checking an account holder's password, keyed
   // `<officer>:<holder>`. A refusal here never touches the holder's own sign-in counter.
   "housebot.verify": { capacity: 3, refillPerMin: 0.2 },
+  // The owner's account lookup on the designation wizard (C7-SPEC ruling 387(e)): keyed on the CALLER, never on the
+  // query, so a wide search costs the same as a narrow one and no bucket can be exhausted on somebody else's behalf.
+  // Type-ahead, so the burst is generous and the steady rate is what stops a scripted directory walk.
+  "desk.picker":   { capacity: 30, refillPerMin: 15 },
   // First-party visit counter (/api/pv), per IP. A real visitor sends one beacon per page; 60 burst and 30/min steady
   // covers fast browsing on a shared mobile-carrier IP, and stops one client from inflating the counts.
   "pv.ip":         { capacity: 60, refillPerMin: 30 },

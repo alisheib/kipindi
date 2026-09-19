@@ -40,8 +40,165 @@ const DETAIL = "src/app/admin/desk/[id]/page.tsx";
 const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
 /* ⭐ C7 step 4b · the officer's two roster acts, which had no service under src/ at all before this step. */
 const ROSTER = "src/lib/server/house-bot/roster-actions.ts";
+/* ⭐ C7 step 6 · the designate wizard's own actions file and its one client module. */
+const NEW_ACTIONS = "src/app/admin/desk/new/actions.ts";
+const NEW_CLIENT = "src/app/admin/desk/new/designate-wizard.tsx";
 
 export const MUTATIONS = [
+  /* ── C7 step 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368/459, 382, 383, 385, 387, 388) ─────────────────────
+   * Each puts back a shape the wizard could plausibly have shipped in: a door that reads before it decides, a
+   * refusal that tells a player whether an account exists, a real person's balance on the one screen most likely to
+   * end up in a screenshot, or a service's own sentence passed through onto a surface 453 exists to keep neutral. */
+  {
+    name: "359-gate-late · the check card is built BEFORE the audience verdict, so a refused viewer's payload carries the account",
+    file: GATE,
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const id = typeof userId === "string" ? userId : "";
+  if (id.length === 0) return null;`,
+    to: `  const id = typeof userId === "string" ? userId : "";
+  if (id.length === 0) return null;`,
+    expect: "1.359 · a viewer OUTSIDE the audience receives `null` and nothing else",
+    suite: "console-mem",
+  },
+  {
+    name: "459-balance · the check card paints the holder's balance, which is the one exception ruling 459 withdrew",
+    file: GATE,
+    from: `    ? { word: "Funded", chip: TONE_CHIP.green, sentence: "There is money in this wallet, so a stake can be funded from it." }`,
+    to: `    ? { word: "Funded", chip: TONE_CHIP.green, sentence: \`Live balance \${formatTzs(balance)}.\` }`,
+    expect: "1.359 · 459 · the card paints a funded STATE in both polarities and NO amount",
+    suite: "console-mem",
+  },
+  {
+    name: "453-elig-passthrough · the check card renders the SERVICE's own eligibility sentences, which name the feature",
+    file: GATE,
+    from: `    ({ code: r.code, text: consoleCheckSentence(r.code), href: r.href ?? null });`,
+    to: `    ({ code: r.code, text: (r as { message?: string }).message ?? consoleCheckSentence(r.code), href: r.href ?? null });`,
+    expect: "1.359 · 453 · every blocking and warning sentence the card paints is the CONSOLE's own",
+    suite: "console-mem",
+  },
+  {
+    name: "453-elig-gap · one eligibility code loses its console sentence and falls back to the generic line",
+    file: GATE,
+    from: `  AGENT_ACCOUNT: "This is an agent account. Only a player's own account can be used here.",\n`,
+    to: ``,
+    expect: "1.359 · 453 · the console has a sentence of its own for EVERY code in the service's two unions",
+    suite: "console-mem",
+  },
+  {
+    name: "356-wizard-wallet · the check card reads the candidate's wallet a SECOND time, for a figure it never paints",
+    file: GATE,
+    from: `    (async () => positionStore.listForUser(id, 100))(),`,
+    to: `    (async () => positionStore.listForUser(id, 100))(),
+    (async () => db.wallet.findByUserId(id))(),`,
+    expect: "1.356 · the wizard's check card performs EXACTLY ONE wallet read",
+    suite: "console-mem",
+  },
+  {
+    name: "387-oracle · the picker's refusal carries a count, so a player can tell a match from a miss",
+    file: GATE,
+    from: `  const refused: ConsolePickerAnswer = { rows: [], note: CONSOLE_PICKER_EMPTY, count: "" };`,
+    to: `  const refused: ConsolePickerAnswer = { rows: [], note: CONSOLE_PICKER_EMPTY, count: "0 accounts" };`,
+    expect: "1.387 · for a caller OUTSIDE the audience a matching query, a non-matching query and an unknown id answer IDENTICALLY",
+    suite: "console-mem",
+  },
+  {
+    name: "387-phone · a picker option carries the account's phone, which never passed through the platform's own gate",
+    file: GATE,
+    from: `    handle: playerHandle(u.id),
+    href: consoleNewHref({ userId: u.id }),`,
+    to: `    handle: \`\${playerHandle(u.id)} \${u.phoneE164}\`,
+    href: consoleNewHref({ userId: u.id }),`,
+    expect: "1.387 · the owner's search finds the account by its id and paints the handle alone",
+    suite: "console-mem",
+  },
+  {
+    name: "387-blind · every picker option is offered as choosable, including one already on the desk",
+    file: GATE,
+    from: `  if (onDesk) return PICKER_REASON.onDesk;`,
+    to: `  if (false) return PICKER_REASON.onDesk;`,
+    expect: "1.387 · an option that cannot be chosen carries its reason",
+    suite: "console-mem",
+  },
+  {
+    name: "387-floor · a one-character query walks the whole account directory",
+    file: GATE,
+    from: `  if (q.length < CONSOLE_PICKER_MIN_QUERY) return { rows: [], note: null, count: "" };`,
+    to: `  if (q.length < 0) return { rows: [], note: null, count: "" };`,
+    expect: "1.387 · a query under the floor answers with no rows, no count and no sentence",
+    suite: "console-mem",
+  },
+  {
+    name: "383-refusal-field · the designation's refusal to a non-owner names a field, which is a shape only a real form gets",
+    file: GATE,
+    from: `    return { ok: false, error: CONSOLE_ACT_REFUSAL.refused };
+  }
+  const userId = typeof input.userId === "string" ? input.userId : "";`,
+    to: `    return { ok: false, error: CONSOLE_ACT_REFUSAL.refused, field: "password" };
+  }
+  const userId = typeof input.userId === "string" ? input.userId : "";`,
+    expect: "1.383 · a caller outside the audience receives ONE fixed refusal",
+    suite: "console-mem",
+  },
+  {
+    name: "383-label-late · the label's shape is checked AFTER the password, so a typo spends the holder's own attempt",
+    file: GATE,
+    from: `  const labelErr = validateLabel(label);`,
+    to: `  const labelErr = null as ReturnType<typeof validateLabel>;`,
+    expect: "1.383 · a mistyped name is refused on its own field",
+    suite: "console-mem",
+  },
+  {
+    name: "382-export · a console action takes the export name ruling 382 forbids, which ships verbatim in a public chunk",
+    file: NEW_ACTIONS,
+    from: `export async function designateDeskAccountAction(`,
+    to: `export async function designateHouseBotAction(`,
+    expect: "1.382 · every exported symbol of every console `\"use server\"` file",
+    suite: "console-mem",
+  },
+  {
+    name: "385-copy · a sentence the server owns is typed into the client file instead of arriving as a prop",
+    file: NEW_CLIENT,
+    from: `const TRANSPORT_FAILURE = "That did not reach the server. Nothing changed — try again.";`,
+    to: `const TRANSPORT_FAILURE = "There is money in this wallet, so a stake can be funded from it.";`,
+    expect: "1.385 · not one sentence the gate module can emit is ALSO typed into a console client file",
+    suite: "console-mem",
+  },
+  {
+    name: "388-prop · a client prop is named for the feature, and a prop name survives minification into a public chunk",
+    file: NEW_CLIENT,
+    from: `  checkHref,
+  labelMax,`,
+    to: `  houseBotLabel,
+  checkHref,
+  labelMax,`,
+    expect: "1.388 · not one prop name, type field or string literal of any console client file carries a vocabulary word",
+    suite: "console-mem",
+  },
+  {
+    name: "420-name · the console resolves a display name, putting a real person's name on the screenshot surface",
+    file: GATE,
+    from: `    phoneE164: user?.phoneE164 ?? null,`,
+    to: `    phoneE164: user?.phoneE164 ?? null,
+    displayName: user?.displayName ?? null,`,
+    expect: "1.420 · the ON sentence names the actor by id and the module resolves NO name for one",
+    suite: "console-mem",
+  },
+  {
+    name: "342-viewer · the subject's row is read through the VIEWER's id, which is how an N+1 on the wrong row ships",
+    file: GATE,
+    from: `    (async () => db.user.findById(id))(),`,
+    to: `    (async () => db.user.findById(viewerUserId))(),`,
+    expect: "1.342 · the viewer lookup is wrapped in React `cache()` inside the gate module",
+    suite: "console-mem",
+  },
+  {
+    name: "432h-wizard · the head action stops opening the wizard, so the deliverable's first control is inert again",
+    file: PAGE,
+    from: `              ? <Link href={view.designateHref as Route} className="btn btn-primary btn-md inline-flex items-center">Designate an account</Link>`,
+    to: `              ? <Button size="md" variant="primary" disabled>Designate an account</Button>`,
+    expect: "1.407 · 432(h) · …and the same rule for the wizard",
+    suite: "console-mem",
+  },
   /* ── C7 step 4b · THE ACCOUNT'S ACTION ROW (ruling 415; replan 549) ──────────────────────────────────────────
    * Each puts back a shape the console could plausibly have shipped in: an act offered in a state its service
    * cannot perform, a ceremony the server does not check, an officer's stop recorded as the engine's, or a
@@ -539,11 +696,15 @@ export const MUTATIONS = [
      * printed this defect as caught by an assertion about the roster-full remedy, and ruling 432(j)'s own clause
      * ("a disabled control carries a reason on screen in EVERY state") was guarded only through that case's
      * `actionReason.length > 8` half. It now names the dedicated case added at this finish. */
-    name: "432j-action-reason · the disabled head action loses the reason it carries when the roster is not full",
+    /* ⭐ RE-ANCHORED TO THE SAME DEFECT AT C7 STEP 6, because the LINE moved when the head action became a real
+     * link (432(h)): the reason is now `null` in every state but a WITHDRAWN desk, which is the one state where a
+     * disabled head action has nothing else beside it. Removing that branch leaves a disabled control with no
+     * sentence at all — the identical defect, at the identical site, reported by the case this step added for it. */
+    name: "432j-action-reason · the disabled head action loses the one reason it still carries, on a WITHDRAWN desk",
     file: GATE,
-    from: `    actionReason: "Designating an account is not ready on this build yet.",`,
-    to: `    actionReason: "",`,
-    expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
+    from: `    actionReason: withdrawn ? "The desk has been withdrawn, so no account can be designated." : null,`,
+    to: `    actionReason: null,`,
+    expect: "432(j) · 432(n) · ⭐ THE HEAD ACTION OBEYS THE SAME RULE NOW THAT IT WORKS",
     suite: "console-mem",
   },
   {
