@@ -35,8 +35,28 @@ const GATE = /\b(requireStaff|requireOwner|requireAdmin|softRequireStaff|softReq
  * and it even audits the refusal as `privilege_escalation_blocked`. That is the CORRECT shape (it reads the stored
  * row, not the cookie), so a scanner that demands a particular function NAME would report the best-written gate in
  * the codebase as ungated. What matters is that the viewer's entitlement is decided, so this matches the decision.
+ *
+ * ⛔ AND THE GROUPING IS LOAD-BEARING — the first version got it wrong and the review caught it. It read
+ * `…currentSession()…(canAct|canView|isStaffRole|isAdmin)\(|\brole === "ADMIN"` — a TOP-LEVEL alternation, so the
+ * second branch stood alone with no `currentSession()` prefix required. Any body containing the string
+ * `role === "ADMIN"` anywhere at all counted as gated, including a body that merely widens a column for an Owner
+ * after reading the data ungated. Both branches are now inside the group, so the decision must follow a session.
  */
-const INLINE_GATE = /\bcurrentSession\s*\(\s*\)[\s\S]{0,400}?\b(canAct|canView|isStaffRole|isAdmin)\s*\(|\brole\s*===\s*["']ADMIN["']/;
+const INLINE_GATE = /\bcurrentSession\s*\(\s*\)[\s\S]{0,400}?(\b(?:canAct|canView|isStaffRole|isAdmin)\s*\(|\brole\s*===\s*["']ADMIN["'])/;
+/**
+ * A HELPER's gate shape: read the stored row, then decide on the role. Used ONLY to classify file-local helpers.
+ *
+ * ⛔ WHY IT IS NOT USED ON ACTION BODIES, which is the whole distinction. Tightening INLINE_GATE to require a
+ * `currentSession()` prefix (correct — see above) immediately produced a false NEGATIVE of its own: it stopped
+ * recognising `markets/actions.ts:60 requireAdminOrThrow(userId, action)`, which is a perfectly good gate that reads
+ * `db.user.findById(userId)` then `canAct` and audits refusals — it just receives the viewer's id from its caller
+ * instead of resolving the session itself. Five money actions went red on a guard change, with their gates intact.
+ * So a HELPER that reads a row and decides on a role counts as a gate. An ACTION BODY that does the same does NOT,
+ * because the row an action reads is usually the SUBJECT's, not the viewer's — `db.user.findById(id)` followed by
+ * `u.role === "ADMIN"` is how a page widens a column for an Owner, not how it decides who may be here. §3 pins
+ * exactly that case.
+ */
+const STORED_ROW_DECISION = /\bfindById\s*\([\s\S]{0,400}?(\b(?:canAct|canView|isStaffRole|isAdmin)\s*\(|\brole\s*===\s*["']ADMIN["'])/;
 /** A data access: reading or writing the platform's state. */
 const ACCESS = /\b(db|prisma|pc)\s*[.(]|\baudit\s*\(|\bpostLedgerEntries\s*\(|\bwithLock\s*\(/;
 
@@ -70,10 +90,26 @@ walk(ADMIN);
  * `{ userId: string }` and every gate call in the real body is invisible. That made the scanner report
  * `payment-actions.ts` as ungated when every one of its actions opens with `await gate(…)`.
  * So: skip anything inside `<…>`, and take the first `{` at angle-depth 0.
+ *
+ * ⛔ AND THE SAME CLASS OF BUG A SECOND TIME, caught by the review rather than by me. The caller hands `from` = the
+ * index just past the opening `(` of the PARAMETER LIST, so a destructured or defaulted parameter puts a `{` before
+ * the body ever starts: `export async function act({ id }: { id: string }) {` returned the DESTRUCTURING brace, and
+ * the "body" became `{ id }` — again invisible to every gate check. So the parameter list is skipped by paren
+ * matching FIRST, and only then is the body brace sought. Two bugs, one root: reaching for the first `{` when the
+ * grammar has three different things that can produce one.
  */
 function bodyBrace(src, from) {
+  // 1 · skip the parameter list: `from` sits just after its opening paren.
+  let paren = 1, i = from;
+  for (; i < src.length && paren > 0; i++) {
+    const c = src[i];
+    if (c === "(") paren++;
+    else if (c === ")") paren--;
+  }
+  if (paren > 0) return -1;
+  // 2 · now the body brace, skipping any `<…>` return-type annotation.
   let angle = 0;
-  for (let i = from; i < src.length; i++) {
+  for (; i < src.length; i++) {
     const c = src[i];
     if (c === "<") angle++;
     else if (c === ">") { if (angle > 0) angle--; }
@@ -129,7 +165,7 @@ function localGateNames(src) {
       else if (c === "}") { depth--; if (depth === 0) { end = i; break; } }
     }
     if (end < 0) continue;
-    const b = src.slice(brace, end + 1); if (GATE.test(b) || INLINE_GATE.test(b)) names.add(name);
+    const b = src.slice(brace, end + 1); if (GATE.test(b) || INLINE_GATE.test(b) || STORED_ROW_DECISION.test(b)) names.add(name);
   }
   return names;
 }
@@ -246,6 +282,18 @@ console.log("\n[admin-action-gate] §3 CONTROL · the scanner catches what it ex
   ok("§3 an action whose gate runs AFTER the read is caught", violation(exportedFunctions(late)[0].body) === "the gate runs AFTER the first data access");
   ok("§3 a correctly gated action is NOT flagged", violation(exportedFunctions(good)[0].body) === null);
   ok("§3 an action that touches no data is NOT flagged", violation(exportedFunctions(inert)[0].body) === null);
+
+  // ── The three shapes that defeated earlier versions of this scanner. Each is a control, not a unit test:
+  // every one of them PASSED silently before the review, which is how a guard comes to be trusted while blind. ──
+  const destructured = `export async function d({ id }: { id: string }) { const u = await db.user.findById(id); return u; }`;
+  ok("§3 CONTROL · a DESTRUCTURED parameter does not hide the body (bodyBrace skipped the param list)",
+    exportedFunctions(destructured).length === 1 && violation(exportedFunctions(destructured)[0].body) === "no gate call at all");
+  const typedReturn = `export async function t(id: string): Promise<{ ok: boolean } | { error: string }> { const u = await db.user.findById(id); return u; }`;
+  ok("§3 CONTROL · an annotated RETURN TYPE does not hide the body",
+    exportedFunctions(typedReturn).length === 1 && violation(exportedFunctions(typedReturn)[0].body) === "no gate call at all");
+  const bareAdmin = `export async function b(id: string) { const u = await db.user.findById(id); return u.role === "ADMIN" ? u : null; }`;
+  ok("§3 CONTROL · a bare `role === \"ADMIN\"` AFTER the read is not mistaken for a gate",
+    violation(exportedFunctions(bareAdmin)[0].body) === "no gate call at all");
 }
 
 console.log(`\n${failures.length === 0 ? "ALL PASS" : "FAILURES"} — admin-action-gate: ${pass} passed, ${failures.length} failed`);
