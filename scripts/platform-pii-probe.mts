@@ -161,17 +161,39 @@ try {
   // ── the viewers. NON-STAFF ONLY as subjects; the ADMIN is the control, never a subject. ──
   const attacker: string = await w.user({ balance: 10_000 });
   const bystander: string = await w.user({ balance: 10_000 });
-  const mint = async (userId: string) => {
+  /**
+   * `roleOverride` exists for ONE viewer and it is the difference between measuring two belts and measuring one.
+   *
+   * ⛔ WHAT THE FIRST VERSION OF THIS PROBE ACTUALLY MEASURED. Every non-staff subject was minted with the role from
+   * its own stored row — PLAYER. Belt 1 (`proxy.ts:247`) 307s a non-staff cookie for /admin before Next renders
+   * anything, and `fetchFollowingRsc` follows a 307 only when its Location carries `_rsc=` while belt 1 replaces the
+   * whole query string with `?next=…`. So ~708 of the 722 "non-staff responses" were redirects with EMPTY BODIES, and
+   * `4.1 · 0 carrying` was a statement about the edge. Belt 2 — the 53-page retrofit — had no assertion that could go
+   * red: revert every `<AdminPageGate>` and this probe still reported ALL PASS with the same 22/103 split.
+   *
+   * ⭐ THE ONE VIEWER THAT REACHES BELT 2 is the shape belt 2 was built for and the shape nothing minted: a cookie
+   * whose `role` SAYS staff over a stored row that does not. `proxy.ts:85-89` says as much in its own words — the
+   * cookie's role is a photograph, a demotion never reaches an already-minted cookie, and belt 2 answers it. Such a
+   * request passes the edge and lands on the page's own stored-row gate, which is the only way that gate is measured.
+   */
+  const mint = async (userId: string, roleOverride?: string) => {
     const u = await w.db.user.findById(userId);
     const sessionId = `sess_${CRYPTO.randomId(16)}`;
     await REG.setActiveSessionId(userId, sessionId);
     const now = Date.now();
-    return `kp_session=${CRYPTO.signSession({ userId, sessionId, phoneE164: u.phoneE164, role: u.role, kycStatus: u.kycStatus ?? "NOT_STARTED", iat: now, exp: now + 6 * 86_400_000, lastSeenAt: now, playStartedAt: now })}`;
+    return `kp_session=${CRYPTO.signSession({ userId, sessionId, phoneE164: u.phoneE164, role: roleOverride ?? u.role, kycStatus: u.kycStatus ?? "NOT_STARTED", iat: now, exp: now + 6 * 86_400_000, lastSeenAt: now, playStartedAt: now })}`;
   };
-  const viewers: Array<[string, string]> = [["attacker", attacker], ["bystander", bystander], ["victim", victim], ["admin", A]];
+  // The demoted officer: stored row PLAYER, cookie says ADMIN. Belt 1 lets it through; belt 2 must refuse it.
+  const demoted: string = await w.user({ balance: 10_000 });
+  const viewers: Array<[string, string]> = [["attacker", attacker], ["bystander", bystander], ["demoted", demoted], ["victim", victim], ["admin", A]];
   const cookies: Record<string, string> = {};
-  for (const [k, id] of viewers) cookies[k] = await mint(id);
+  for (const [k, id] of viewers) cookies[k] = await mint(id, k === "demoted" ? "ADMIN" : undefined);
   const idOf: Record<string, string> = Object.fromEntries(viewers);
+  {
+    const row = await w.db.user.findById(demoted);
+    ok("2.demoted · the demoted officer's STORED row is PLAYER while its cookie claims ADMIN",
+      row?.role === "PLAYER" && cookies.demoted.length > 0, `stored role=${row?.role}`);
+  }
 
   // ── every admin page from disk; every dynamic segment filled; every tab the page names; every audit filter ──
   const pageRoutes: Array<{ route: string; file: string }> = [];
@@ -334,7 +356,7 @@ try {
   // ── the verdicts ──
   // The VICTIM is not a subject of 4.1: their own name on their own record is not a disclosure. The subjects are the
   // two unrelated non-staff accounts.
-  const SUBJECTS = new Set(["attacker", "bystander"]);
+  const SUBJECTS = new Set(["attacker", "bystander", "demoted"]);
   const nonStaff = rows.filter((r) => SUBJECTS.has(r.viewer));
   const leaks = nonStaff.filter((r) => (r.hits?.length ?? 0) > 0);
   const errored = rows.filter((r) => r.error);
@@ -345,6 +367,23 @@ try {
   const apiNonStaff = rows.filter((r) => r.mode === "api" && SUBJECTS.has(r.viewer));
   ok("4.2 · every admin API route refuses a non-staff session outright", apiNonStaff.every((r) => (r.status ?? 0) >= 400),
     apiNonStaff.filter((r) => (r.status ?? 0) < 400).slice(0, 6).map((r) => `${r.viewer} ${r.route} ${r.status}`).join(" | "));
+
+  // ── 4.5 · THE NON-VACUITY CONTROL FOR BELT 2, and the reason 4.1 is now worth anything for the page retrofit ──
+  // ⛔ A PASS THAT MEASURES THE WRONG THING IS THE FAILURE THIS WHOLE BRANCH EXISTS TO PREVENT. 4.1 counts a response
+  // clean when it carries no PII — and a 307 from the edge carries nothing at all. So before 4.1's verdict may be
+  // read as a statement about the PAGE gates, this asserts that the demoted officer's requests actually REACHED the
+  // pages: belt 1 must have let them through (its cookie says ADMIN), so they must answer 200, not 307. If this ever
+  // fails, 4.1 has gone back to measuring the edge and its PASS means nothing about the 53-page retrofit.
+  const demotedPages = rows.filter((r) => r.viewer === "demoted" && r.mode !== "api");
+  const demotedReached = demotedPages.filter((r) => r.status === 200);
+  const attackerPages = rows.filter((r) => r.viewer === "attacker" && r.mode !== "api");
+  const attackerRedirected = attackerPages.filter((r) => r.status === 307);
+  ok(`4.5 · CONTROL · the demoted officer's requests REACH the pages, so 4.1 measures belt 2 and not the edge (${demotedReached.length}/${demotedPages.length} answered 200)`,
+    demotedPages.length > 0 && demotedReached.length >= Math.floor(demotedPages.length * 0.8),
+    `demoted 200s: ${demotedReached.length} · 307s: ${demotedPages.filter((r) => r.status === 307).length}`);
+  ok(`4.5b · CONTROL · and a plain PLAYER is still stopped at the EDGE, so belt 1 is measured too (${attackerRedirected.length}/${attackerPages.length} redirected)`,
+    attackerPages.length > 0 && attackerRedirected.length >= Math.floor(attackerPages.length * 0.8),
+    `attacker 307s: ${attackerRedirected.length} · 200s: ${attackerPages.filter((r) => r.status === 200).length}`);
 
   // 4.3 — THE POSITIVE CONTROL. Only surfaces where the data provably exists may be named here: a control that can
   // never fire makes 4.1 unfalsifiable (the house probe learned this the expensive way, its rulings 315 and D20).
