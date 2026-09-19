@@ -3411,13 +3411,17 @@ if (STORE === "memory") {
   ok("4.453 · ⛔ RULING 453 · no string that can reach the DOM — in the section OR in the reader that writes its copy — carries a house word, in text, aria-*, title, placeholder or route metadata",
     /* ⭐ THE FLOOR ROSE WITH C7 STEP 4's OWN WALK: 297 at step 3, 597 measured with the account page and its
        loader inside the population. A floor only ever rises, and only to a count a run PRINTED. */
-    /* ⭐ THE FLOOR ROSE WITH C7 STEP 6's OWN WALK: 597 at step 4, and the wizard's four files bring it higher again.
-       A floor only ever rises, and only to a count a run PRINTED. */
-    allLits.length >= 700 && litHits.length === 0
+    /* ⭐ THE FLOOR ROSE WITH C7 STEP 6's OWN WALK: 597 at step 4, **1,332 measured** with the wizard's four files
+       inside the population. A floor only ever rises, and only to a count a run PRINTED — which is why the count is
+       now the FIRST thing the extra prints. */
+    allLits.length >= 1_332 && litHits.length === 0
       && sectionFiles.length >= 10
       && [PAGE, LAYOUT, LOADING, LIVE, DETAIL_PAGE, NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT].every((f) => sectionFiles.includes(f))
       && sectionUnscannable.length === 0 && lexiconFiles.length === sectionFiles.length + 1,
-    j({ files: lexiconFiles.length, section: sectionFiles.length, walked: sectionAllFiles, unscannable: sectionUnscannable, literals: allLits.length, hits: litHits }));
+    /* ⛔ THE COUNT COMES FIRST, because `j()` truncates at 260 characters and the walked FILE LIST pushed
+       `literals` off the end — so the number a later session must raise the floor TO was the one number this line
+       never printed. A floor that can only be raised to a printed count needs the count printed. */
+    j({ literals: allLits.length, files: lexiconFiles.length, section: sectionFiles.length, hits: litHits, unscannable: sectionUnscannable, walked: sectionAllFiles }));
   /* ⛔ AND THE JSX PROSE IS PROVABLY IN THE POPULATION. `ts.isStringLiteral` does not match a `JsxText` node, so
    * every string written as element content — every table header, every Callout body, the primary button's label —
    * was outside this guard, and the control could not reveal it because all three of its plants were attributes. */
