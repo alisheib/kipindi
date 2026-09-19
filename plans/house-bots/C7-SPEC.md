@@ -1669,6 +1669,62 @@ over the rendered body AND its `aria-label`/`title`/`placeholder`/`alt` attribut
 
 ⚠️ **THREE PAGES ARE REPORTED BY NAME AND DATE AND ARE **NOT** PATCHED HERE — they are W25's (replan ruling 538).** `/admin/kyc/[id]`, `/admin/kyc` and `/admin/approvals` carry PLAYER and STAFF PII, not house data; they are on `main` and therefore LIVE; and ruling 524 governs — *the instrument first, seen RED against the unfixed code, before any fix*. Patching them blind would close the one measurement that could prove the whole class shut. The list in `0.434` is named, dated and may only SHRINK: a fourth page joining it goes red on the day it lands.
 
+
+### Added during the build — ruling 435 (C7 step 4, 2026-09-19)
+
+#### 435. What the FIRST RENDER of `/admin/desk/[id]` forced, decided here rather than improvised at the next step
+
+**Decision.** Five things. Each is a place where a §2 ruling's factual premise did not hold against the code or against
+the screen, and the code and the screen win (§0's own rule). Every one is measured, not argued.
+
+**(a) A REMOVED ACCOUNT GETS NO RAIL AND NO OVERVIEW CARDS — AND THE FIRST FIX WAS ONLY HALF OF IT.** Read off
+`acct-removed-360.png` and `acct-removed-1280.png`: under the terminal Callout the overview painted
+`AdminLoadError` — "Couldn't load limit usage · A data read failed — this may not be empty" — an EMPTY "Balance floor"
+card, and a "Last bet —" card. Nothing had failed. Ruling 358 fixes a removed account's read set as the row, its final
+state and its saved rules, and names wallet, cap, rate and target reads as the things it does NOT take; ruling 355
+reserves the kit's failure treatment for a read that FAILED. This is 421's distinction one route over, and it was got
+wrong in the same direction. ⛔ **The second reading is what settled the shape.** Guarding the three cards left a rail
+whose Overview tab rendered 600 px of NOTHING and whose Targets tab would have painted the same failure treatment one
+click away — ruling 312's dead control, and on this route it is a property of the RECORD, not only of the build. So a
+removed account renders NO RAIL: the chip, the neutral Callout, and the one thing it still holds — what it was
+configured to do — as a record that says it cannot be changed. Each panel is guarded by `removed` FROM THE INSIDE,
+never by a second term in the tab test, because 433(e) measured that a second term makes a panel read as "above the
+rail", which is the strongest possible answer and a pass that proves nothing.
+
+**(b) THE SCOPE WORD IS RENDERED ONLY WHERE IT DISCRIMINATES.** Ruling 363 gives every money row a scope and argues
+the point from ONE of them: `openExposure` has no day filter ("Open stake right now, whatever day it was placed"), so
+an exposure figure under a "today" heading is a mislabelled amount. Spent on a row whose cap already names its window
+it says the same fact twice in adjacent words — read off the first 360 tile: **"Daily stake cap (today)"**,
+**"Bets per hour (this hour)"**, **"Bets per day (today)"**. 432(n) refuses exactly that. The word therefore stays on
+the exposure row 363 argues from and on the two rows that share ONE cap and are told apart by nothing else (366's
+projected and settled), and nowhere else. `test:house-bot-console` 1.363 now asserts exactly three parenthesised
+scopes and that no row carries `today` or `this hour` at all.
+
+**(c) THE ACCOUNT PAGE'S OWN DAY KEY IS A SECOND DERIVATION, AND 348 IS SATISFIED BY IT.** Ruling 348 fixes the EAT
+day at one derivation PER RENDER from the seam's own clock, and 433(c) was corrected once already for reading that as
+"one derivation per module". The account page is a different render of a different route: it derives its own key once
+and hands it to both reads that need a day (`houseDayBook`, `staffChosenPlacedToday`). The pin moved with it — it is
+now per READER SLICE, not a module count, because a module count would have had to rise every time a route was added,
+which is a ratchet that teaches a reader to raise it instead of reading it. `dbClock()` still appears nowhere.
+
+**(d) THE ROSTER'S READ SET IS SIX, AND BOTH EXTRAS SETTLE ON THEIR OWN.** 432(q) fixed it at five. "Last bet" needs a
+last-placement instant and the only reader that has one is `botRateUsage` — ruling 351's one new seam member, which
+this step added because the account page's two count rows need it too. ⛔ The two extras are settled INDEPENDENTLY,
+never wrapped in one `Promise.all` inside the settled set: one failed read must not take the other cell with it, which
+is the attribution 355 exists to keep. 1.347's pin is scoped to the desk reader's own slice for (c)'s reason.
+
+**(e) `houseEngineForConsole` IS NOT BUILT AS A SECOND GATED READER, AND THE ENGINE CALLOUT IS NOT BUILT AT THIS
+STEP.** Ruling 309 names `houseEngineForConsole(viewerUserId, "/admin/desk")` as its own gated read, and 353's
+staleness verdict needs the master switch — which is the control row `readDeskCore` has already read. A second gated
+reader on the desk would therefore put a SECOND control read in one render, which 433(d) refuses by name ("two reads
+of one question can disagree inside a render", with the officer's only call to action on the wrong side of it). The
+engine facts belong inside the existing door, in the one settled set, computed from the control row already in hand.
+⛔ **It is NOT built at this step and it is reported, not silently deferred:** with it go ruling 514's A24 poller-failure
+alert (whose writer would live in `worker.ts` through `upsert`, never through `beat()`, because `beat()` stamps
+`beatAt` and a failed pass that looked alive is the defect A24 exists for) and X1's duty-name half. The action row's
+dialogs and the master-switch ceremony are in the same position. Every one is named in this step's report with what it
+would take, so the next step starts from a measurement rather than from a premise.
+
 ---
 
 ## §7 Open questions for Ali — one line each, numbered
@@ -1715,4 +1771,4 @@ over the rendered body AND its `aria-label`/`title`/`placeholder`/`alt` attribut
 
 460. **Every anchor into a file C5-5b touched is re-grepped by TEXT before step 1 commits.** The completeness review ran while checkpoint C5-5b was deleting code, and it names six guard files modified mid-review (`dal-parity.test.mts`, `house-bot-disclosure.test.mts` and four others). Ruling 431 already says to re-grep; this makes it a **commit precondition**: step 1 does not commit until every Files-block anchor it relies on has been re-found by its quoted line text at the then-current HEAD, and any anchor that cannot be re-found is reported, never guessed.
 
-461. **This file is committed as `plans/house-bots/C7-SPEC.md` and is Commit 7's authority**, below D19, D20, ruling 266 and `C5-D20-REPLAN.md` §4's Commit 7 scope. It supersedes `PLAN.md` §8 and `03-design-spec.md` S1–S6 wherever §1 names them. Rulings 420–431 are the completeness review's own; 334–339 and 376–379 stay reserved and unspent; Commit 7's next new ruling is **434** *(corrected from **432** on 2026-09-18 under ruling 516: 432 was spent during step 1 — see "Added during the build — ruling 432" above — so a session obeying this line would have allocated it twice; and from **433** on 2026-09-18, spent by the step 3 + step 2 build — see "Added during the build — ruling 433" above)*, and the orchestrator's own rulings continue at **517** (475–499 belong to the checkpoint workflows). *(Updated 2026-09-18: **434 is spent** — see "Added during the build — ruling 434" above — so Commit 7's next new ruling is **435**.)*
+461. **This file is committed as `plans/house-bots/C7-SPEC.md` and is Commit 7's authority**, below D19, D20, ruling 266 and `C5-D20-REPLAN.md` §4's Commit 7 scope. It supersedes `PLAN.md` §8 and `03-design-spec.md` S1–S6 wherever §1 names them. Rulings 420–431 are the completeness review's own; 334–339 and 376–379 stay reserved and unspent; Commit 7's next new ruling is **434** *(corrected from **432** on 2026-09-18 under ruling 516: 432 was spent during step 1 — see "Added during the build — ruling 432" above — so a session obeying this line would have allocated it twice; and from **433** on 2026-09-18, spent by the step 3 + step 2 build — see "Added during the build — ruling 433" above)*, and the orchestrator's own rulings continue at **517** (475–499 belong to the checkpoint workflows). *(Updated 2026-09-18: **434 is spent** — see "Added during the build — ruling 434" above — so Commit 7's next new ruling is **435**.)* *(Updated 2026-09-19: **435 is spent** by the C7 step 4 build — see "Added during the build — ruling 435" above — so Commit 7's next new ruling is **436**.)*

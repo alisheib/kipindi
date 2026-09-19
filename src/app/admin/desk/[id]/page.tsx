@@ -131,8 +131,16 @@ export default async function AdminDeskAccountPage({
           </Callout>
         )}
 
-        {/* 312 · the rail carries exactly the tabs whose panels exist. `activity` and `history` join it at C7 step 5
-            with the readers behind them — a rail option with no panel is a dead control. */}
+        {/* ⭐ A REMOVED ACCOUNT GETS NO RAIL AT ALL, AND THAT WAS READ OFF A TILE (clause (a) of this step's own
+            ruling, second reading). The first fix stopped the removed page painting `AdminLoadError` for reads
+            ruling 358 says it never takes — and left a rail whose Overview tab rendered 600px of NOTHING and whose
+            Targets tab would have painted the same failure treatment one click away. Ruling 312's law is that a
+            rail option with no panel is a dead control; on this route that is a property of the RECORD, not only of
+            the build. A removed account has exactly one thing left to show — what it was configured to do — so the
+            page shows it, with no rail to click through and no empty panel behind one. */}
+        {!view.removed && (
+        /* 312 · the rail carries exactly the tabs whose panels exist. `activity` and `history` join it at C7 step 5
+           with the readers behind them. */
         <Tabs
           variant="line"
           ariaLabel="Account sections"
@@ -144,17 +152,49 @@ export default async function AdminDeskAccountPage({
             count: k === "targets" ? (view.targetsActive ?? undefined) : undefined,
           }))}
         />
+        )}
+
+        {/* 358 · THE ONE THING A REMOVED ACCOUNT STILL HOLDS: what it was configured to do. Kept as a record, never
+            editable, and named as such rather than left to a reader to infer from a disabled control. */}
+        {view.removed && (
+          <AdminCard title="Saved rules">
+            {rulesRows === null ? (
+              <AdminLoadError what="the saved rules" />
+            ) : (
+              <FormColumn measure="form">
+                <p className="text-body-sm text-text-tertiary mb-4">{view.rulesReason}</p>
+                <dl className="space-y-3">
+                  {rulesRows.map((r) => (
+                    <div key={`${r.section}-${r.name}`} className="flex items-baseline justify-between gap-4 flex-wrap">
+                      <dt className="text-body-sm text-text-secondary min-w-0">{r.name}</dt>
+                      <dd className="text-body-sm text-text text-right min-w-0">{r.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </FormColumn>
+            )}
+          </AdminCard>
+        )}
 
         {/* ⚠️ THE `(<>` … `</>)}` FORM IS LOAD-BEARING, NOT A HABIT (ruling 433(e)). `test:tab-anchors` decides which
             tab owns a rendered `id` by the nearest opener above it, and the served probe discovers this page's tabs
             by the same expression over the RAW file — so a second term in the condition, or the same expression in a
             comment, invents a panel that does not exist. */}
         {tab === "overview" && (<>
+          {/* ⭐ A REMOVED ACCOUNT'S OVERVIEW RENDERS NOTHING AT ALL, AND THAT WAS READ OFF A TILE (clause (a) of
+              this step's own ruling). The first render of `acct-removed-360.png` showed three cards under the
+              terminal Callout: `AdminLoadError` reading "Couldn't load limit usage — A data read failed — this may
+              not be empty", an EMPTY "Balance floor" card, and a "Last bet —" card. Every one of them is a lie in
+              its own way. Nothing failed: ruling 358 says a removed account reads no usage, no wallet and no rate,
+              so there was never a read to fail — and ruling 355 reserves the kit's failure treatment for a read
+              that FAILED, which is the same distinction 421 had to be corrected for one card over. The Callout
+              above the rail owns the state; the panel says nothing a second time (432(n)). */}
           {/* 363 · ONE money card, five money rows in the seam's own order, and the two count rows beside them.
               ⛔ TWO LOSS ROWS AGAINST ONE CAP (366): the seam refuses a new stake on PROJECTED loss and a stop
               fires only on SETTLED loss, so collapsing them would hide the figure one of the two acts on.
               ⛔ THE EXPOSURE ROW IS SCOPED "open now", NOT "today" (363): its reader has no day filter, so an
               exposure figure under a "today" heading would be a mislabelled amount. */}
+          {!view.removed && (
           <AdminCard title="Limit usage">
             {usageRows === null || countRows === null ? (
               <AdminLoadError what="limit usage" />
@@ -167,17 +207,21 @@ export default async function AdminDeskAccountPage({
               </FormColumn>
             )}
           </AdminCard>
+          )}
 
-          {/* ⛔ 368/459 · THE FLOOR STATE, NEVER THE BALANCE. `balanceFloorTzs` is a configured limit and may be
+          {!view.removed && (
+          /* ⛔ 368/459 · THE FLOOR STATE, NEVER THE BALANCE. `balanceFloorTzs` is a configured limit and may be
               named; the holder's balance belongs to a real person and is one link away on a platform surface. When
               the floor is not set, 364's third caption is the state instead — this page is the first surface that
-              reaches that branch, because every row of the limits tab falls in one of the other two. */}
+              reaches that branch, because every row of the limits tab falls in one of the other two. */
           <AdminCard title="Balance floor">
             <p className="text-body-sm text-text-secondary">{view.floorSentence ?? view.floorUnsetCaption}</p>
           </AdminCard>
+          )}
 
-          {/* 432(g) · the last placement, relative, with the absolute EAT time in `title`. "—" when it has never
-              staked — never a fabricated zero and never a date that is not one. */}
+          {!view.removed && (
+          /* 432(g) · the last placement, relative, with the absolute EAT time in `title`. "—" when it has never
+             staked — never a fabricated zero and never a date that is not one. */
           <AdminCard title="Last bet">
             {view.lastBet === null ? (
               <p className="text-body-sm text-text-tertiary">—</p>
@@ -185,9 +229,17 @@ export default async function AdminDeskAccountPage({
               <p className="text-body-sm text-text-secondary" title={view.lastBet.title}>{view.lastBet.text}</p>
             )}
           </AdminCard>
+          )}
         </>)}
 
         {tab === "rules" && (<>
+          {/* ⛔ EVERY PANEL IS GUARDED BY `removed` FROM THE INSIDE, NEVER BY A SECOND TERM IN THE TAB TEST
+              (ruling 433(e)): `test:tab-anchors` decides which tab owns a rendered id by the nearest
+              `{tab === "x" && (<>` opener, and the served probe discovers this page's tabs with the same
+              expression over the RAW file — so a second term would make a panel read as "above the rail", which is
+              the strongest possible answer and a PASS that proves nothing. A removed account's panels are empty
+              because the block above already shows the one thing it still holds. */}
+          {!view.removed && (<>
           {/* 508 · the saved rules, as VALUES. ⛔ There is no per-account rules SAVE in this repository, so no typed
               control is drawn and the reason sits beside the card (432(a), 432(j)) — a field that silently discards
               what an officer types is worse than one that says it cannot be edited. */}
@@ -211,9 +263,11 @@ export default async function AdminDeskAccountPage({
               </FormColumn>
             )}
           </AdminCard>
+          </>)}
         </>)}
 
         {tab === "targets" && (<>
+          {!view.removed && (<>
           {/* 508 · what this account has been pointed at, newest first. ⛔ No money here at all (365): a target is a
               scope decision, and a per-market figure would be the per-market house line D20 struck. */}
           <AdminCard padding="p-0">
@@ -253,6 +307,7 @@ export default async function AdminDeskAccountPage({
               </ScrollX>
             )}
           </AdminCard>
+          </>)}
         </>)}
       </AdminBody>
     </>

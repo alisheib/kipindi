@@ -1573,7 +1573,7 @@ export async function houseDetailForConsole(
    * renamed in `rules.ts` must move here, and the scope word is not decoration — "open now" is a different figure
    * from "today", and an exposure row under a "today" heading is a mislabelled amount. */
   const capRow = (field: CapField, scope: string, used: number | null): ConsoleUsageRow => {
-    const name = `${consoleLimitLabel(field)} (${scope})`;
+    const name = scope ? `${consoleLimitLabel(field)} (${scope})` : consoleLimitLabel(field);
     const limit = row[field] as number | null;
     if (limit == null) {
       const r = usageRow(name, 0, null);
@@ -1582,18 +1582,25 @@ export async function houseDetailForConsole(
     return usageRow(name, used, limit);
   };
   const usage: ConsoleUsageRow[] = [
-    capRow("capDailyStakeTzs", "today", book ? book.stakedTzs : null),
-    capRow("capDailyLossTzs", "projected, today", book ? book.projectedLossTzs : null),
-    capRow("capDailyLossTzs", "settled, today", book ? book.realisedLossTzs : null),
+    /* ⭐ THE SCOPE WORD IS RENDERED ONLY WHERE IT DISCRIMINATES, AND THAT WAS READ OFF A TILE (C7 step 4's own
+     * render, clause (b) of the ruling below). Ruling 363 gives every row a scope, and its stated REASON is the
+     * exposure row: `openExposure` has no day filter, so an exposure figure under a "today" heading is a
+     * mislabelled amount. Spent on a row whose cap already names its window it says the same fact twice in
+     * adjacent words — measured at 360: "Daily stake cap (today)", "Bets per hour (this hour)", "Bets per day
+     * (today)". 432(n) refuses exactly that. So the word stays where it separates two rows that share ONE cap
+     * (projected / settled, ruling 366) and on the exposure row that 363 argues from, and nowhere else. */
+    capRow("capDailyStakeTzs", "", book ? book.stakedTzs : null),
+    capRow("capDailyLossTzs", "projected", book ? book.projectedLossTzs : null),
+    capRow("capDailyLossTzs", "settled", book ? book.realisedLossTzs : null),
     capRow("capOpenExposureTzs", "open now", openStake),
-    capRow(ACCOUNT_TARGETED_DAILY_TZS_FIELD, "today", staffChosen ? staffChosen.stakeTzs : null),
+    capRow(ACCOUNT_TARGETED_DAILY_TZS_FIELD, "", staffChosen ? staffChosen.stakeTzs : null),
   ];
 
   /* ⛔ 363/351 · THE TWO COUNT ROWS, in 361's grammar with the noun outside the figure. They come from
    * `botRateUsage`, the market-free rate reader C7 step 4 added — never from `placedTimes(...).length`, which is an
    * unbounded row read on a page render in both twins. */
   const countRow = (field: CapField, scope: string, used: number | null, noun: string): ConsoleUsageRow => {
-    const name = `${consoleLimitLabel(field)} (${scope})`;
+    const name = scope ? `${consoleLimitLabel(field)} (${scope})` : consoleLimitLabel(field);
     const limit = row[field] as number | null;
     const shell = { name, halves: [] as ConsoleUsageHalf[], edgeText: "", unsetCaption: null as string | null, unsetLinked: false };
     if (used === null) return { ...shell, usedTzs: null, limitTzs: limit, captionText: `${name} · couldn't read — this is not zero`, unreadable: true };
@@ -1602,8 +1609,8 @@ export async function houseDetailForConsole(
     return { ...shell, usedTzs: Math.max(0, used), limitTzs: limit, halves: cell.halves, edgeText: cell.edgeText, captionText: `${name} · ${cell.text}`, unreadable: false };
   };
   const counts: ConsoleUsageRow[] = [
-    countRow("freqMaxPerHour", "this hour", rate ? rate.placedLastHour : null, "bets"),
-    countRow("freqMaxPerDay", "today", rate ? rate.placedLastDay : null, "bets"),
+    countRow("freqMaxPerHour", "", rate ? rate.placedLastHour : null, "bets"),
+    countRow("freqMaxPerDay", "", rate ? rate.placedLastDay : null, "bets"),
   ];
 
   const parsed = parseCtx ? parseHouseBotRules(bot.rules, parseCtx) : null;

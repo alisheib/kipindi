@@ -2088,9 +2088,26 @@ try {
       ["capDailyStakeTzs", "capDailyLossTzs", "capOpenExposureTzs", GATEM.ACCOUNT_TARGETED_DAILY_TZS_FIELD]
         .every((f: string) => names.some((n: string) => n.startsWith(GATEM.consoleLimitLabel(f)))),
       j({ names, labels: ["capDailyStakeTzs", "capOpenExposureTzs"].map((f) => GATEM.consoleLimitLabel(f)) }));
-    ok("1.363 · the exposure row is scoped `open now` and the day rows `today` — its reader has no day filter, so a `today` heading over it would be a mislabelled amount",
-      names.some((n: string) => n.endsWith("(open now)")) && names.filter((n: string) => n.includes("today")).length === 4,
+    /* ⭐ THE SCOPE WORD IS SPENT ONLY WHERE IT DISCRIMINATES, AND THAT WAS READ OFF A 360 TILE. Ruling 363 gives
+       every row a scope and argues the point from ONE of them: `openExposure` has no day filter, so an exposure
+       figure under a "today" heading is a mislabelled amount. Spent on a row whose cap already names its window it
+       says the same fact twice in adjacent words — measured on the first render: "Daily stake cap (today)",
+       "Bets per hour (this hour)", "Bets per day (today)". 432(n) refuses exactly that. So the word stays on the
+       exposure row 363 argues from, and on the two rows that share ONE cap and are told apart by nothing else
+       (366's projected and settled), and nowhere else. */
+    ok("1.363 · the exposure row is scoped `open now`, the two loss rows are told apart by theirs, and no other row spends a scope word its own cap already carries",
+      names.filter((n: string) => n.endsWith("(open now)")).length === 1
+        && j(lossRows.map((r: Any) => r.name).sort()) === j([
+          `${GATEM.consoleLimitLabel("capDailyLossTzs")} (projected)`,
+          `${GATEM.consoleLimitLabel("capDailyLossTzs")} (settled)`,
+        ].sort())
+        && names.filter((n: string) => /\(/.test(n)).length === 3
+        && !names.some((n: string) => /today|this hour/.test(n)),
       j(names));
+    ok("1.363 · 432(n) · CONTROL · the two count rows spend NO scope at all — their caps are named `per hour` and `per day`, so a scope word would say it twice",
+      v.counts.every((r: Any) => !/\(/.test(r.name))
+        && v.counts.map((r: Any) => r.name).join("|") === `${GATEM.consoleLimitLabel("freqMaxPerHour")}|${GATEM.consoleLimitLabel("freqMaxPerDay")}`,
+      j(v.counts.map((r: Any) => r.name)));
     /* ⛔ AND THE FIELD WHOSE IDENTIFIER CARRIES A NEEDLE IS SELECTED BY PROPERTY, NEVER TYPED (433(b)). */
     ok("1.363 · 433(b) · the targeted-and-manual cap is selected by PROPERTY and that selection is UNIQUE — typing its id would put the shared vocabulary's own word in a literal of the gate module",
       GATEM.ACCOUNT_TARGETED_DAILY_TZS_FIELD === "capStaffChosenDailyTzs"
