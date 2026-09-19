@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage } from "@/components/admin/admin-pagination";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -57,11 +58,15 @@ async function buildRoster() {
   return out.sort((a, b) => a.until.localeCompare(b.until));
 }
 
-export default async function AdminSelfExclusionsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string }>;
-}) {
+type SelfExclusionsProps = { searchParams: Promise<{ page?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminSelfExclusionsPage(props: SelfExclusionsProps) {
+  return <AdminPageGate title="Self Exclusions"><AdminSelfExclusionsContent {...props} /></AdminPageGate>;
+}
+
+async function AdminSelfExclusionsContent({ searchParams }: SelfExclusionsProps) {
   const sp = await searchParams;
   // A-5: track each read's failure. A failed roster/count read must NOT render a
   // fabricated "0 excluded" — on a compliance surface that reads as a false

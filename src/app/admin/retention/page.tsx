@@ -5,6 +5,7 @@
  * legal basis. The table below is the dataset GBT / TRA / FIU expect to see
  * during a periodic review.
  */
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
@@ -77,7 +78,15 @@ const SCHEDULE: Row[] = [
   { category: "Referee national-ID scans — third-party data", swahili: "Vitambulisho vya wadhamini", retentionYears: `${AGENT_REFEREE_DOC_HOLD_DAYS} days`, legalBasis: "PDPA 2022 §15 · the applicant's attested consent", trigger: "From the decision — immediately on rejection (a referee has no account to close)", storage: "R2 50pick-kyc (bytes purged nightly by code)" },
 ];
 
-export default async function AdminRetentionPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+type RetentionProps = { searchParams: Promise<{ tab?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminRetentionPage(props: RetentionProps) {
+  return <AdminPageGate title="Retention"><AdminRetentionContent {...props} /></AdminPageGate>;
+}
+
+async function AdminRetentionContent({ searchParams }: RetentionProps) {
   /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link. */
   const tab = (await searchParams).tab === "purge" ? "purge" : "schedule";
   const allUsers = await db.user.list();

@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -15,7 +16,15 @@ import { KpiGrid } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · Settlement" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminSettlementPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+type SettlementProps = { searchParams: Promise<{ page?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminSettlementPage(props: SettlementProps) {
+  return <AdminPageGate title="Settlement"><AdminSettlementContent {...props} /></AdminPageGate>;
+}
+
+async function AdminSettlementContent({ searchParams }: SettlementProps) {
   const sp = await searchParams;
   const [queue, health] = await Promise.all([listSettlementQueue(), getSettlementHealth()]);
   const ready = queue.filter((r) => r.state === "READY");

@@ -21,6 +21,7 @@ import { resolveRange } from "@/lib/server/date-range";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
@@ -140,10 +141,17 @@ const TEMPLATES = [
   },
 ];
 
-export default async function AdminReportsPage({
+type ReportsSearch = { page?: string; sort?: string; dir?: string; range?: string; from?: string; to?: string; cmp?: string; tab?: string };
+
+/** E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render (a flight request can skip the layouts). */
+export default async function AdminReportsPage(props: { searchParams: Promise<ReportsSearch> }) {
+  return <AdminPageGate title="Reports"><AdminReportsContent {...props} /></AdminPageGate>;
+}
+
+async function AdminReportsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; sort?: string; dir?: string; range?: string; from?: string; to?: string; cmp?: string; tab?: string }>;
+  searchParams: Promise<ReportsSearch>;
 }) {
   // Reports/exports expose regulator-grade data → CONFIG_ROLES only, NEVER
   // MODERATOR (roles.ts). The admin layout only gates ADMIN_CONSOLE_ROLES (which

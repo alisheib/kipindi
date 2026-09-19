@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { ComponentProps } from "react";
@@ -78,7 +79,19 @@ type SP = {
   rsort?: string; rdir?: string;
 };
 
-export default async function AdminAgentsPage({ searchParams }: { searchParams: Promise<SP> }) {
+type AgentsPageProps = { searchParams: Promise<SP> };
+
+/**
+ * W25 belt 2 — the STORED-ROW gate, asked in the PAGE. The section layout asks it too, but a
+ * flight request whose router state names the admin layouts skips them and still streams this
+ * page's payload; a gate in the page body cannot be skipped that way. It re-reads the user row,
+ * so a demoted officer's still-valid cookie does not get in. Wrap only — the content is unchanged.
+ */
+export default async function AdminAgentsPage(props: AgentsPageProps) {
+  return <AdminPageGate title="Agents"><AdminAgentsContent {...props} /></AdminPageGate>;
+}
+
+async function AdminAgentsContent({ searchParams }: AgentsPageProps) {
   const sp = await searchParams;
   const tab: Tab = (TABS as readonly string[]).includes(sp.tab ?? "") ? (sp.tab as Tab) : "applications";
   /**

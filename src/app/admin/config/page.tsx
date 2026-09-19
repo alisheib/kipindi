@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { I } from "@/components/ui/glyphs";
@@ -25,7 +26,15 @@ import { KpiGrid } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminConfigPage({ searchParams }: { searchParams: Promise<{ opage?: string; tab?: string }> }) {
+type ConfigProps = { searchParams: Promise<{ opage?: string; tab?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminConfigPage(props: ConfigProps) {
+  return <AdminPageGate title="Config"><AdminConfigContent {...props} /></AdminPageGate>;
+}
+
+async function AdminConfigContent({ searchParams }: ConfigProps) {
   const sp = await searchParams;
   const config = await getGlobalConfig().catch(() => DEFAULT_GLOBAL_CONFIG);
   const overrides = await listMarketOverrides().catch(() => []);

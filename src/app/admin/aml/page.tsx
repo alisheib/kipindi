@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { txnTypeLabel, amlFlagTypeLabel } from "@/components/admin/status-badge";
@@ -20,11 +21,17 @@ import { KpiGrid } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · AML queue" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminAmlPage({
-  searchParams,
-}: {
+type AmlProps = {
   searchParams: Promise<{ rpage?: string; rsort?: string; rdir?: string; spage?: string; ssort?: string; sdir?: string }>;
-}) {
+};
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminAmlPage(props: AmlProps) {
+  return <AdminPageGate title="AML"><AdminAmlContent {...props} /></AdminPageGate>;
+}
+
+async function AdminAmlContent({ searchParams }: AmlProps) {
   const sp = await searchParams;
   // A-5: track whether each read FAILED (vs genuinely empty). A DB blip must not
   // render a clean AML EDD queue or a fabricated "0 pending / 0 flags" — that is a

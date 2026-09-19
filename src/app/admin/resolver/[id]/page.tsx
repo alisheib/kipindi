@@ -3,6 +3,7 @@ import { SentinelSourceChip } from "@/components/admin/sentinel-source-chip";
 import { sentinelSourceVerdict } from "@/lib/server/market-sentinel";
 import Link from "next/link";
 import type { Route } from "next";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
@@ -25,7 +26,13 @@ export const metadata = { title: "Admin · Resolution ceremony" };
 export const dynamic = "force-dynamic";
 
 
-export default async function ResolutionCeremonyPage({ params }: { params: Promise<{ id: string }> }) {
+type ResolutionCeremonyPageProps = { params: Promise<{ id: string }> };
+
+export default async function ResolutionCeremonyPage(props: ResolutionCeremonyPageProps) {
+  return <AdminPageGate title="Resolver"><ResolutionCeremonyContent {...props} /></AdminPageGate>;
+}
+
+async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps) {
   const { id } = await params;
   const m = await getMarket(id).catch(() => null);
   if (!m) notFound();

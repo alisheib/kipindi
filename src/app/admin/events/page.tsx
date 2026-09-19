@@ -8,6 +8,7 @@
  * STEERED by an event a human already vouched for. Officer approval of the
  * resulting poll is still mandatory before it can become a market.
  */
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -25,7 +26,15 @@ import { AdminBody } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · Event calendar" };
 export const dynamic = "force-dynamic";
 
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself.
+ *  ⛔ ADDITIVE: the content's own `canView` check below is KEPT. Belt 2 answers "is this viewer still staff, per the
+ *  stored row"; that check answers "may this staff role see trading". Neither replaces the other. */
 export default async function AdminEventsPage() {
+  return <AdminPageGate title="Events"><AdminEventsContent /></AdminPageGate>;
+}
+
+async function AdminEventsContent() {
   const session = await currentSession();
   if (!session || !(session.role === "ADMIN" || (await canView(session.role, "trading")))) {
     return <AdminRestricted title="Events" sw="Matukio" need="Admin, Compliance or Moderator" />;

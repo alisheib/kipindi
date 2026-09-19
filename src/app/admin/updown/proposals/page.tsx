@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -130,11 +131,15 @@ function Indicators({ p }: { p: StoredProposal }) {
  *  itself rather than rendering an empty queue the officer reads as "nothing to do". */
 const STATES = ["PENDING_REVIEW", "APPROVED", "ARMED", "REJECTED", "FILTERED", "VALIDATION_FAILED", "GENERATING"] as const;
 
-export default async function UpDownProposalsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ state?: string; asset?: string; page?: string }>;
-}) {
+type UpDownProposalsProps = { searchParams: Promise<{ state?: string; asset?: string; page?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function UpDownProposalsPage(props: UpDownProposalsProps) {
+  return <AdminPageGate title="Proposals"><UpDownProposalsContent {...props} /></AdminPageGate>;
+}
+
+async function UpDownProposalsContent({ searchParams }: UpDownProposalsProps) {
   const sp = await searchParams;
   const [assets, allProposals, counts, cfg, aiOn] = await Promise.all([
     listAssets().catch(() => []),

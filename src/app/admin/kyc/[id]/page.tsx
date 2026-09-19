@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminMeter } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
@@ -92,7 +93,18 @@ function ageLabel(iso: string | null): string {
   return `${Math.floor(h / 24)}d`;
 }
 
-export default async function KycWorkstationPage({ params }: { params: Promise<{ id: string }> }) {
+type KycWorkstationProps = { params: Promise<{ id: string }> };
+
+/**
+ * W25 belt 2 — the stored-row gate, in the PAGE: a flight request naming this section's layout skips the layout.
+ * ⛔ `title` is explicit (C7-SPEC ruling 301): the last segment is a record id, and without it the restricted
+ * panel's heading would BE that id, in a body streamed to whoever asked.
+ */
+export default async function KycWorkstationPage(props: KycWorkstationProps) {
+  return <AdminPageGate title="KYC"><KycWorkstationContent {...props} /></AdminPageGate>;
+}
+
+async function KycWorkstationContent({ params }: KycWorkstationProps) {
   const { id } = await params;
   // db.kyc.findByUserId / db.user.findById are SYNC in the dev store — wrap so
   // .catch works whether the store returns a value or a Promise.

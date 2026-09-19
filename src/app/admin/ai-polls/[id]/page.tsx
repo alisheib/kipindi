@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
@@ -47,7 +48,20 @@ function fmtDate(iso: string) {
   return formatDateTimeSafe(iso);
 }
 
-export default async function PollDetailPage({ params }: { params: Promise<{ id: string }> }) {
+type PollDetailProps = { params: Promise<{ id: string }> };
+
+/**
+ * W25 belt 2 — the STORED-ROW gate, asked in the PAGE, because a flight request that names the
+ * admin layouts skips them while this page still runs and streams its payload. The gate re-reads
+ * the user row, so a demoted officer's still-valid cookie does not get in.
+ * ⛔ An explicit `title` (C7-SPEC ruling 301): the last URL segment here is a poll id, and without
+ * this the restricted panel's heading would BECOME that id in a body served to the asker.
+ */
+export default async function PollDetailPage(props: PollDetailProps) {
+  return <AdminPageGate title="AI polls"><PollDetailContent {...props} /></AdminPageGate>;
+}
+
+async function PollDetailContent({ params }: PollDetailProps) {
   const { id } = await params;
   let poll: Awaited<ReturnType<typeof getAIPoll>> = null;
   try { poll = await getAIPoll(id); } catch { /* graceful */ }

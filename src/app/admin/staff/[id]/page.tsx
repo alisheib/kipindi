@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
 import { Sensitive } from "@/components/ui/sensitive";
@@ -20,7 +21,18 @@ import { AdminBody } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · Staff member" };
 export const dynamic = "force-dynamic";
 
-export default async function StaffDetailPage({ params }: { params: Promise<{ id: string }> }) {
+type StaffDetailProps = { params: Promise<{ id: string }> };
+
+/**
+ * W25 BELT 2 — the page's own gate, reading the STORED role row (a cookie's role is a photograph).
+ * ⛔ `title` is explicit (C7-SPEC ruling 301): this route's last segment is a staff record id, and the gate
+ * titles its restricted panel from that segment — so without this the panel heading would BE the raw id.
+ */
+export default async function StaffDetailPage(props: StaffDetailProps) {
+  return <AdminPageGate title="Staff"><StaffDetailContent {...props} /></AdminPageGate>;
+}
+
+async function StaffDetailContent({ params }: StaffDetailProps) {
   const session = await currentSession();
   if (!session || !isAdmin(session.role)) {
     return <AdminRestricted title="Staff member" need="Owner (ADMIN) only" />;

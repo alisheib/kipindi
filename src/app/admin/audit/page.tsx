@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { KpiGrid } from "@/components/admin/admin-body";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -42,11 +43,16 @@ const CAT_VARIANT: Record<AuditCategory, "danger" | "live" | "resolved" | "pendi
   SYSTEM:     "neutral",
 };
 
-export default async function AdminAuditPage({
-  searchParams,
-}: {
+type AdminAuditProps = {
   searchParams: Promise<{ category?: string; actorId?: string; page?: string; sort?: string; dir?: string }>;
-}) {
+};
+
+/** W25 belt 2 — the stored-row gate, in the PAGE: a flight request naming this section's layout skips the layout. */
+export default async function AdminAuditPage(props: AdminAuditProps) {
+  return <AdminPageGate title="Audit"><AdminAuditContent {...props} /></AdminPageGate>;
+}
+
+async function AdminAuditContent({ searchParams }: AdminAuditProps) {
   const sp = await searchParams;
   // Validate against the closed CATEGORIES set so a stray ?category=BOGUS
   // does not silently render an empty page (operator wonders why).

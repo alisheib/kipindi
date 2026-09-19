@@ -34,7 +34,27 @@ import { crumbsFromPath } from "@/components/admin/admin-nav-groups";
  * page's whole server payload). A section whose detail route ends in an id therefore passes its own section word here
  * and the id never becomes a heading. ⛔ The default is today's behaviour exactly, so no other section changes.
  */
-export async function AdminSectionGate({ children, title: titleProp }: { children: React.ReactNode; title?: string }) {
+/**
+ * W25 BELT 2 — the page-level gate, which REFUSES but does not decorate.
+ *
+ * ⛔ WHY A SECOND ENTRY POINT AND NOT JUST A SECOND `<AdminSectionGate>`. W25 puts this gate inside every admin
+ * page as well as its section layout, because a layout is skippable: a flight whose `Next-Router-State-Tree` names
+ * the admin layouts skips them and the page under them still runs and streams. But the gate does two jobs — it
+ * REFUSES an unentitled viewer, and it DECORATES an entitled-but-read-only one with `ActReadOnlyBanner`. Only the
+ * first job needs repeating. Measured after the retrofit: 51 of the 53 gated pages sit under a section layout that
+ * already renders this gate, so a read-only officer would have been shown the same banner twice, on every one of
+ * them. The two pages with no section layout (`/admin`, `/admin/players`) still use `AdminSectionGate` itself and
+ * still carry the banner, because for them the page gate IS the only gate.
+ *
+ * So: a section LAYOUT renders `AdminSectionGate` (refuse + banner); a PAGE renders `AdminPageGate` (refuse only).
+ * The refusal, the Owner-only rule, the domain view check and the `AdminActProvider` value are identical in both —
+ * only the banner differs, so a skipped layout never costs a page its gate.
+ */
+export function AdminPageGate({ children, title }: { children: React.ReactNode; title?: string }) {
+  return <AdminSectionGate title={title} banner={false}>{children}</AdminSectionGate>;
+}
+
+export async function AdminSectionGate({ children, title: titleProp, banner = true }: { children: React.ReactNode; title?: string; banner?: boolean }) {
   const h = await headers();
   const path = h.get("x-pathname") ?? "";
   const title = titleProp ?? crumbsFromPath(path || "/admin").at(-1) ?? "Restricted";
@@ -54,7 +74,7 @@ export async function AdminSectionGate({ children, title: titleProp }: { childre
   const readOnly = !mayAct && DOMAIN_SUMMARY[domain].act !== "—";
   return (
     <AdminActProvider mayAct={mayAct} role={roleLabel(role)} domainLabel={DOMAIN_LABEL[domain]}>
-      {readOnly && <ActReadOnlyBanner role={roleLabel(role)} domainLabel={DOMAIN_LABEL[domain]} />}
+      {readOnly && banner && <ActReadOnlyBanner role={roleLabel(role)} domainLabel={DOMAIN_LABEL[domain]} />}
       {children}
     </AdminActProvider>
   );

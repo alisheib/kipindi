@@ -11,6 +11,7 @@
  *   · days are EAT days. A failed read shows "couldn't load", never a zero.
  * Growth domain (`roles.ts`), the same people who run affiliate, bonuses and invites.
  */
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminAreaChart, AdminBarList } from "@/components/admin/admin-charts";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -49,7 +50,15 @@ function everyDay(r: SiteVisitsReport): Array<{ day: string; views: number; visi
   return out;
 }
 
-export default async function AdminTrafficPage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
+type TrafficProps = { searchParams: Promise<{ range?: string; from?: string; to?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminTrafficPage(props: TrafficProps) {
+  return <AdminPageGate title="Traffic"><AdminTrafficContent {...props} /></AdminPageGate>;
+}
+
+async function AdminTrafficContent({ searchParams }: TrafficProps) {
   const sp = await searchParams;
   const range = resolveRange(sp, Date.now(), "28d");
   const fromDay = eatDayKey(new Date(range.start).getTime());

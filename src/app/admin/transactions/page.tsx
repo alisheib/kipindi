@@ -24,6 +24,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
@@ -65,7 +66,12 @@ const PROVIDERS = ["MPESA", "TIGO_PESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "T
 
 type SP = Record<string, string | undefined>;
 
-export default async function AdminTransactionsPage({ searchParams }: { searchParams: Promise<SP> }) {
+/** E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render (a flight request can skip the layouts). */
+export default async function AdminTransactionsPage(props: { searchParams: Promise<SP> }) {
+  return <AdminPageGate title="Transactions"><AdminTransactionsContent {...props} /></AdminPageGate>;
+}
+
+async function AdminTransactionsContent({ searchParams }: { searchParams: Promise<SP> }) {
   const session = await currentSession();
   if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
     return <AdminRestricted title="Transactions" sw="Miamala" need="Admin or Compliance" />;

@@ -3,6 +3,7 @@
  * - DSAR queue (PDPA + GDPR)
  * - Per-user export bundle (machine-readable JSON)
  */
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
@@ -23,11 +24,16 @@ import { KpiGrid } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · Privacy / DSAR" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminPrivacyPage({
-  searchParams,
-}: {
+type AdminPrivacyProps = {
   searchParams: Promise<{ page?: string; sort?: string; dir?: string }>;
-}) {
+};
+
+/** W25 belt 2 — the stored-row gate, in the PAGE: a flight request naming this section's layout skips the layout. */
+export default async function AdminPrivacyPage(props: AdminPrivacyProps) {
+  return <AdminPageGate title="Privacy"><AdminPrivacyContent {...props} /></AdminPageGate>;
+}
+
+async function AdminPrivacyContent({ searchParams }: AdminPrivacyProps) {
   const sp = await searchParams;
   const requests = listDsarRequests();
   const pending = requests.filter((r) => r.status === "PENDING");

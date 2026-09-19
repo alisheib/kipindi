@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { ObjectionStatusBadge } from "@/components/admin/status-badge";
@@ -27,7 +28,15 @@ const REASON_LABEL: Record<string, string> = {
   OTHER: OBJECTION.reasonOther.en,
 };
 
-export default async function AdminObjectionsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+type ObjectionsProps = { searchParams: Promise<{ page?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminObjectionsPage(props: ObjectionsProps) {
+  return <AdminPageGate title="Objections"><AdminObjectionsContent {...props} /></AdminPageGate>;
+}
+
+async function AdminObjectionsContent({ searchParams }: ObjectionsProps) {
   const sp = await searchParams;
   const objections = await listObjections();
   // Objections is MODERATOR-viewable (market-ops), but upholding/rejecting is

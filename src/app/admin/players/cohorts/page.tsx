@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi, AdminFunnel, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBarList, AdminMeter, AdminAreaChart } from "@/components/admin/admin-charts";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { db } from "@/lib/server/store";
 import { kycFunnel, userStatusCounts } from "@/lib/server/analytics";
 import { AccountStatusBadge, presentedAccountStatus } from "@/components/admin/status-badge";
@@ -51,7 +52,12 @@ function bucketByAge(all: Awaited<ReturnType<typeof db.user.list>>) {
   return Object.entries(buckets).map(([band, count]) => ({ band, count }));
 }
 
+/** W25 BELT 2 — the page's own gate, reading the STORED role row (a cookie's role is a photograph). */
 export default async function AdminCohortsPage() {
+  return <AdminPageGate title="Player cohorts"><AdminCohortsContent /></AdminPageGate>;
+}
+
+async function AdminCohortsContent() {
   // Guard like every sibling admin page (players/retention/privacy) — a transient
   // store error should degrade to empty cards, not 500 the whole cohorts screen.
   // `db.user.list()` is a Promise in prod (Prisma) but a sync array in the

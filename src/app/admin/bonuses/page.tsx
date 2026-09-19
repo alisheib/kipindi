@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
@@ -40,11 +41,15 @@ const SOURCE_LABEL: Record<string, string> = {
  * Route is gated by the admin layout (role + TOTP); each action re-checks the
  * role for defence-in-depth.
  */
-export default async function AdminBonusesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ gpage?: string; tab?: string }>;
-}) {
+type BonusesProps = { searchParams: Promise<{ gpage?: string; tab?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminBonusesPage(props: BonusesProps) {
+  return <AdminPageGate title="Bonuses"><AdminBonusesContent {...props} /></AdminPageGate>;
+}
+
+async function AdminBonusesContent({ searchParams }: BonusesProps) {
   const sp = await searchParams;
   /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link. */
   const BON_TABS = ["grants", "settings"] as const;

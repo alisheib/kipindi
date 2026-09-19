@@ -14,6 +14,7 @@ import Link from "next/link";
 import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -48,12 +49,23 @@ function Signed({ v }: { v: number }) {
   return <span className="amount">{v > 0 ? "+" : ""}{formatTzs(v)}</span>;
 }
 
-export default async function HouseGamePage({
-  params, searchParams,
-}: {
+type HouseGameProps = {
   params: Promise<{ marketId: string }>;
   searchParams: Promise<{ epage?: string }>;
-}) {
+};
+
+/**
+ * E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render (a flight request can skip the layouts).
+ * ⛔ `title="House"` is EXPLICIT and load-bearing (C7-SPEC ruling 301): this route's last segment is the market id,
+ * so the default title would make the restricted panel's heading that raw id, in a body served to whoever asked.
+ */
+export default async function HouseGamePage(props: HouseGameProps) {
+  return <AdminPageGate title="House"><HouseGameContent {...props} /></AdminPageGate>;
+}
+
+async function HouseGameContent({
+  params, searchParams,
+}: HouseGameProps) {
   const session = await currentSession();
   if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
     return <AdminRestricted title="House" sw="Nyumba" need="Admin or Compliance" />;

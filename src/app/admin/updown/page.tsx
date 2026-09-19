@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { Chip } from "@/components/ui/chip";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -54,7 +55,15 @@ function fmtTime(iso: string | null): string {
   return Number.isFinite(d.getTime()) ? d.toISOString().slice(11, 19) + " UTC" : "—";
 }
 
-export default async function AdminUpDownPage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string; tab?: string }> }) {
+type UpDownProps = { searchParams: Promise<{ range?: string; from?: string; to?: string; tab?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminUpDownPage(props: UpDownProps) {
+  return <AdminPageGate title="Up & Down"><AdminUpDownContent {...props} /></AdminPageGate>;
+}
+
+async function AdminUpDownContent({ searchParams }: UpDownProps) {
   const sp = await searchParams;
   // The economics card's window — presets + custom date+hour+minute, EAT-safe (default 30d).
   const range = resolveRange(sp, Date.now(), "30d");

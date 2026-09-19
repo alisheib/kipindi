@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -134,11 +135,15 @@ function bootstrapPhones(): string[] {
  * Its bands are alternative TASKS (nobody reads the rate limiter *against* the timezone), and
  * nothing load-bearing goes behind a click — see the block above the rail.
  */
-export default async function AdminSystemPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
+type SystemProps = { searchParams: Promise<{ tab?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminSystemPage(props: SystemProps) {
+  return <AdminPageGate title="System"><AdminSystemContent {...props} /></AdminPageGate>;
+}
+
+async function AdminSystemContent({ searchParams }: SystemProps) {
   /* ⛔ The tab is READ, never trusted: an unknown `?tab=` falls back to the landing rather than
      rendering an empty page. §K rule 7f — the tab set's home is this page's own definition. */
   const sp = await searchParams;

@@ -1,3 +1,4 @@
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { FormColumn } from "@/components/ui/form-column";
 import { getGlobalConfig } from "@/lib/server/market-config";
@@ -8,6 +9,10 @@ export const metadata = { title: "Admin · New market" };
 export const dynamic = "force-dynamic";
 
 export default async function NewMarketPage() {
+  return <AdminPageGate title="Markets"><NewMarketPageContent /></AdminPageGate>;
+}
+
+async function NewMarketPageContent() {
   // What this market WILL freeze at creation — shown read-only in the wizard so the
   // officer can see the fee model + estimate that new polls apply.
   const config = await getGlobalConfig();

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -18,7 +19,19 @@ const STATUS_CHIP: Record<string, "active" | "resolved" | "paused" | "pending"> 
   DRAFT: "pending", SENDING: "active", SENT: "resolved", CANCELLED: "paused",
 };
 
-export default async function AdminInvitesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+type InvitesPageProps = { searchParams: Promise<{ page?: string }> };
+
+/**
+ * W25 belt 2 — the STORED-ROW gate, asked in the PAGE. The section layout asks it too, but a
+ * flight request whose router state names the admin layouts skips them and this page still runs
+ * and streams its payload; a gate in the page body cannot be skipped that way. It re-reads the
+ * user row, so a demoted officer's still-valid cookie does not get in.
+ */
+export default async function AdminInvitesPage(props: InvitesPageProps) {
+  return <AdminPageGate title="Invites"><AdminInvitesContent {...props} /></AdminPageGate>;
+}
+
+async function AdminInvitesContent({ searchParams }: InvitesPageProps) {
   const sp = await searchParams;
   const [campaigns, stats] = await Promise.all([listCampaigns().catch(() => []), getInviteStats().catch(() => ({ campaigns: 0, totalInvites: 0, totalRegistered: 0, conversionPct: 0 }))]);
   const page = parsePage(sp.page, campaigns.length);

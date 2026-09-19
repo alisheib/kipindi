@@ -3,6 +3,7 @@ import { RecategoriseControl } from "@/app/admin/markets/recategorise-control";
 import { MARKET_CATEGORIES } from "@/lib/server/market-service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
@@ -66,13 +67,19 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "neutral
 // lookalike from the registry's real one — so a hand-rolled mask satisfied the ratchet while
 // consulting no matrix at all. Its `p.length <= 6 ? p` branch also printed short values IN FULL.
 
-export default async function MarketPredictorsPage({
-  params,
-  searchParams,
-}: {
+type MarketPredictorsPageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ q?: string; side?: string; status?: string; sort?: string; dir?: string; page?: string }>;
-}) {
+};
+
+export default async function MarketPredictorsPage(props: MarketPredictorsPageProps) {
+  return <AdminPageGate title="Markets"><MarketPredictorsContent {...props} /></AdminPageGate>;
+}
+
+async function MarketPredictorsContent({
+  params,
+  searchParams,
+}: MarketPredictorsPageProps) {
   const { id } = await params;
   let m: Awaited<ReturnType<typeof getMarket>> | null = null;
   try { m = await getMarket(id); } catch { /* graceful */ }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Chip } from "@/components/ui/chip";
@@ -49,11 +50,15 @@ const OVERDUE_SCAN_CAP = 200;
  * Now the row set is paged in the DATABASE (`roundStore.list` + `count` share one
  * `where`), and the totals below describe every matching round, not the visible slice.
  */
-export default async function AdminUpDownRoundsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ asset?: string; outcome?: string; page?: string }>;
-}) {
+type UpDownRoundsProps = { searchParams: Promise<{ asset?: string; outcome?: string; page?: string }> };
+
+/** W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
+ *  request whose router state names it, so the gate the page cannot lose is the one it carries itself. */
+export default async function AdminUpDownRoundsPage(props: UpDownRoundsProps) {
+  return <AdminPageGate title="Rounds"><AdminUpDownRoundsContent {...props} /></AdminPageGate>;
+}
+
+async function AdminUpDownRoundsContent({ searchParams }: UpDownRoundsProps) {
   const sp = await searchParams;
   const [assets, chains] = await Promise.all([listAssets().catch(() => []), listChains().catch(() => [])]);
   const assetById = new Map(assets.map((a) => [a.id, a]));

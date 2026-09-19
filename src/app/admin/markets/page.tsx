@@ -1,4 +1,5 @@
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
+import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { RefreshButton } from "@/components/admin/refresh-button";
@@ -37,11 +38,17 @@ function timeLeftStr(iso: string): string {
   return `${h}h`;
 }
 
-export default async function AdminMarketsPage({
-  searchParams,
-}: {
+type AdminMarketsPageProps = {
   searchParams: Promise<{ q?: string; status?: string; category?: string; page?: string; sort?: string; dir?: string }>;
-}) {
+};
+
+export default async function AdminMarketsPage(props: AdminMarketsPageProps) {
+  return <AdminPageGate title="Markets"><AdminMarketsContent {...props} /></AdminPageGate>;
+}
+
+async function AdminMarketsContent({
+  searchParams,
+}: AdminMarketsPageProps) {
   const sp = await searchParams;
   // E-18: this page is `trading`, but the emergency-void kill switch is `compliance`.
   // Ask the same question the action will ask before offering it.
