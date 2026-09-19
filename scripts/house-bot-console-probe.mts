@@ -519,6 +519,80 @@ try {
     }
     return { status: r.status as number, body: await r.text() };
   };
+  /* ═══ ⛔ THE ECHO CLASSIFIER (replan ruling 551(b)) — A DISCRIMINATION, NOT A DILUTION ═════════════════════
+   * 🔴 WHAT THIS IS FOR, MEASURED. The first run this probe ever made against a tree in which
+   * `/admin/desk/[id]` exists printed `leaks: 96` — 8 route instances × 4 non-admin viewers × 3 transports. The
+   * bodies were READ: no label, no canary amount, no vocabulary word in any of them. Every occurrence was the
+   * account id, and every occurrence sat in a position the REQUEST had put there — the login redirect's `next=`
+   * parameter (`NEXT_REDIRECT;replace;/auth/admin?next=%2Fadmin%2Fdesk%2Fhb_1d2a…;307;`) and Next's own flight
+   * router-state encodings of the requested route (the segment array, and the dynamic-segment triple). A viewer
+   * must already hold an id to have asked for it, so a body that hands it back tells them nothing they brought.
+   *
+   * ⛔ SO THE NEEDLE IS NOT NARROWED AND NOTHING IS DROPPED. A needle whose EVERY occurrence lies inside one of
+   * these request-derived positions is classified `echoed`, printed and COUNTED on its own line (4.1e). A needle
+   * with ONE occurrence anywhere else is a leak and turns 4.1 red, exactly as before. Apply the standing test —
+   * *would this still pass if the feature were absent?* A store-read id rendered into a cell, or returned in a
+   * payload field, is outside every echo span, is counted, and the gate goes red: 4.1c plants precisely that and
+   * REQUIRES it to be reported as a leak.
+   *
+   * ⛔ AND THE ECHO SET IS BUILT FROM THE REQUEST, NEVER FROM A VOCABULARY. The forms below are derived from the
+   * path this very request asked for; 4.1c's last half re-classifies the SAME body against a DIFFERENT request's
+   * forms and requires a LEAK, so "it is an id, therefore it is an echo" cannot pass here. It is fail-closed
+   * twice over: a needle the body does not literally contain comes out a leak, and so does any occurrence in an
+   * encoding these forms do not reproduce — an encoding change turns the gate red rather than quiet.
+   * ⛔ `MUST_CARRY` is untouched by all of this (ruling 530), and `leaks: 0` is still the merge condition. */
+  const jsonEsc = (t: string) => t.split("\\").join("\\\\").split('"').join('\\"');
+  const echoFormsFor = (path: string, segs: unknown[]): string[] => {
+    const pathname = path.split("?")[0];
+    const resolved = segs.map((x) => (Array.isArray(x) ? String(x[1]) : String(x)));
+    const base = [
+      /* the URL the viewer themselves asked for, raw and percent-encoded, as the login gate hands it back */
+      path, pathname, encodeURIComponent(path), encodeURIComponent(pathname),
+      /* Next's own router-state encodings of that same path. Two canonical forms, both observed in a real
+         body: the bare segment array, and the same array with the query string carried on its LAST segment
+         (`[\"\",\"admin\",\"desk\",\"hb_…?tab=targets\"]`), which is what an instance with a `?tab=` prints. */
+      JSON.stringify(["", ...resolved]),
+      ...(path.includes("?") ? [JSON.stringify(["", ...resolved.slice(0, -1), `${resolved[resolved.length - 1]}?${path.split("?").slice(1).join("?")}`])] : []),
+      ...segs.filter((x): x is unknown[] => Array.isArray(x)).map((x) => JSON.stringify(x)),
+    ].filter((f) => f.length > 1);
+    /* Both spellings: a flight payload inlined into a <script> string carries every quote backslash-escaped. */
+    return [...new Set(base.flatMap((f) => [f, jsonEsc(f)]))];
+  };
+  /** Every [start, end) in `body` at which one of `forms` appears. */
+  const echoSpans = (body: string, forms: string[]): Array<[number, number]> => {
+    const out: Array<[number, number]> = [];
+    for (const f of forms) for (let i = body.indexOf(f); i >= 0; i = body.indexOf(f, i + 1)) out.push([i, i + f.length]);
+    return out;
+  };
+  /**
+   * Split a response's needles in two. `leaks` holds every needle with at least one occurrence outside every
+   * request-derived span — and every needle the body does not contain at all, which cannot be an echo of anything.
+   */
+  const classifyHits = (body: string, found: string[], forms: string[]): { leaks: string[]; echoed: string[] } => {
+    const spans = echoSpans(body, forms);
+    const inside = (a: number, b: number) => spans.some(([x, y]) => x <= a && b <= y);
+    const leaks: string[] = [], echoed: string[] = [];
+    for (const n of found) {
+      let seen = 0, allInside = true;
+      for (let i = body.indexOf(n); i >= 0; i = body.indexOf(n, i + 1)) {
+        seen++;
+        if (!inside(i, i + n.length)) { allInside = false; break; }
+      }
+      (seen > 0 && allInside ? echoed : leaks).push(n);
+    }
+    return { leaks, echoed };
+  };
+  /** An index in `body` that no echo span covers — where 4.1c plants, so the plant cannot split an echo. */
+  const outsideEveryEchoSpan = (body: string, forms: string[]): number => {
+    const spans = echoSpans(body, forms);
+    for (let k = Math.floor(body.length / 2); k < body.length; k++) {
+      if (!spans.some(([x, y]) => x < k && k < y)) return k;
+    }
+    return body.length;
+  };
+  /** The one REAL body 4.1c plants into: a non-admin console response whose needles were ALL echoes. */
+  let echoSample: { viewer: string; route: string; mode: string; body: string; forms: string[]; echoed: string[] } | null = null;
+
   const fileName = (s: string) => s.replace(/[^A-Za-z0-9_.-]+/g, "_").slice(0, 150);
   // Warm the server's audit ring from the database (the ADMIN's first page view writes a row).
   await fetchFollowingRsc(`/admin/players/${holder}`, { cookie: cookies.admin, "sec-fetch-mode": "navigate" });
@@ -562,9 +636,16 @@ try {
       for (const [mode, headers] of modes) {
         try {
           const r = await fetchFollowingRsc(route.path, headers);
-          const hits = needles(r.body);
-          if (hits.length > 0 && viewer !== "admin") writeFileSync(join(OUT, "bodies", `${viewer}-${fileName(route.name)}-${mode.replace("+", "_")}.txt`), r.body);
-          rows.push({ viewer, route: route.name, mode, status: r.status, hits: hits.slice(0, 8) });
+          const found = needles(r.body);
+          /* ⛔ 551(b) · the split happens HERE, where the body is in hand — and the body of every response
+             that carries a needle of EITHER kind is written out, so a reader can check the verdict. */
+          const forms = echoFormsFor(route.path, route.segs);
+          const { leaks: hits, echoed } = classifyHits(r.body, found, forms);
+          if (found.length > 0 && viewer !== "admin") writeFileSync(join(OUT, "bodies", `${viewer}-${fileName(route.name)}-${mode.replace("+", "_")}.txt`), r.body);
+          if (echoSample === null && viewer !== "admin" && echoed.length > 0 && hits.length === 0) {
+            echoSample = { viewer, route: route.name, mode, body: r.body, forms, echoed };
+          }
+          rows.push({ viewer, route: route.name, path: route.path, mode, status: r.status, hits: hits.slice(0, 8), echoed: echoed.slice(0, 8) });
         } catch (e) { rows.push({ viewer, route: route.name, mode, error: String(e).slice(0, 200) }); }
       }
     }
@@ -573,9 +654,11 @@ try {
     for (const [viewer] of viewers) {
       try {
         const r = await fetchFollowingRsc(path, { cookie: cookies[viewer] });
-        const hits = needles(r.body);
-        if (hits.length > 0 && viewer !== "admin") writeFileSync(join(OUT, "bodies", `${viewer}-${fileName(path)}-api.txt`), r.body);
-        rows.push({ viewer, route: path, mode: "api", status: r.status, hits: hits.slice(0, 8) });
+        const found = needles(r.body);
+        /* An API route has no router state, so its echo set is the requested URL alone. */
+        const { leaks: hits, echoed } = classifyHits(r.body, found, echoFormsFor(path, path.split("?")[0].split("/").filter(Boolean)));
+        if (found.length > 0 && viewer !== "admin") writeFileSync(join(OUT, "bodies", `${viewer}-${fileName(path)}-api.txt`), r.body);
+        rows.push({ viewer, route: path, path, mode: "api", status: r.status, hits: hits.slice(0, 8), echoed: echoed.slice(0, 8) });
       } catch (e) { rows.push({ viewer, route: path, mode: "api", error: String(e).slice(0, 200) }); }
     }
   }
@@ -606,6 +689,51 @@ try {
   const judgedOnConsole = nonStaff.filter((r) => !PLAYER_STANDARD.has(r.viewer) && onConsole(r.route));
   ok(`4.1 · ⛔ D19 · no response carries a house word, an account's label or id, or a canary amount — to a player, the holder or a trigger player ANYWHERE (${judgedEverywhere.length} responses from three viewers), or to a non-owner staff officer on ${CONSOLE_PREFIX} (${judgedOnConsole.length} responses), over ${ROUTES.length} page instances and ${API_PATHS.length} API routes; ${nonStaff.length} non-staff responses in all`,
     judgedEverywhere.length > 0 && judgedOnConsole.length > 0 && leaks.length === 0, leaks.slice(0, 12).map((r) => `${r.viewer} ${r.route} ${r.mode} ${r.status}: ${r.hits.slice(0, 3).join("|")}`).join(" · "));
+  /**
+   * ⛔ 4.1e · THE ECHOES ARE PRINTED AND COUNTED, NEVER SILENTLY DROPPED (replan ruling 551(b)).
+   * A number that disappears from a report is a number nobody can argue with. Every needle the classifier moved
+   * out of `leaks` is counted here and held to a claim that can fail: it must be a literal piece of the URL the
+   * viewer themselves requested. A needle that is NOT in that URL cannot have been echoed out of it, and saying
+   * so here is what stops `echoed` becoming a place to put an inconvenient hit.
+   */
+  const echoedRows = nonStaff.filter((r) => (r.echoed?.length ?? 0) > 0 && (PLAYER_STANDARD.has(r.viewer) || onConsole(r.route)));
+  const notInUrl = echoedRows.flatMap((r: Any) => (r.echoed as string[]).filter((n) => !String(r.path ?? "").includes(n)).map((n) => `${r.viewer} ${r.route} ${r.mode}: ${n}`));
+  ok(`4.1e · ⛔ 551(b) · ECHOED, not leaked: ${echoedRows.length} of the ${judgedEverywhere.length + judgedOnConsole.length} judged responses carried a needle whose every occurrence lies in a position the REQUEST put there — and every one of them is a literal piece of the URL that viewer asked for`,
+    notInUrl.length === 0, notInUrl.slice(0, 8).join(" · "));
+  /**
+   * ⛔ 4.1c · THE PLANTED CONTROL, AND IT IS THE WHOLE JUSTIFICATION FOR 4.1e EXISTING AT ALL.
+   * A classifier that called everything an echo and a classifier that discriminates print the same `leaks: 0`.
+   * So a REAL body from this very run — one whose needles the classifier called echoes — has the SAME needle
+   * planted into two positions the product would use if it genuinely leaked: a rendered table cell and a JSON
+   * payload field. Both must come back as LEAKS. The plant goes in at an index no echo span covers, so it cannot
+   * work by splitting an echo in half.
+   * ⛔ And the fourth half pins where the verdict comes FROM: the untouched body, judged against a DIFFERENT
+   * request's echo forms, must be a LEAK. Without it "an id is an echo" would pass this control.
+   */
+  if (echoSample === null) {
+    ok("4.1c · CONTROL · a real body whose needles were all echoes was captured to plant into", false,
+      "no non-admin console response carried an echoed needle with no leak beside it — the control could not be run");
+  } else {
+    const ctl = echoSample;
+    const needle = ctl.echoed[0];
+    const at = outsideEveryEchoSpan(ctl.body, ctl.forms);
+    const plant = (piece: string) => `${ctl.body.slice(0, at)}${piece}${ctl.body.slice(at)}`;
+    const cellBody = plant(`<tr><td class="p-3 tabular">${needle}</td></tr>`);
+    const payloadBody = plant(`{"houseBotId":"${needle}","stakeTzs":${CANARY.botExposure}}`);
+    const asIs = classifyHits(ctl.body, [needle], ctl.forms);
+    const cell = classifyHits(cellBody, [needle], ctl.forms);
+    const payload = classifyHits(payloadBody, [needle], ctl.forms);
+    const otherForms = echoFormsFor("/admin/roles?tab=reads", ["admin", "roles"]);
+    const other = classifyHits(ctl.body, [needle], otherForms);
+    ok(`4.1c · CONTROL · on ${ctl.viewer} ${ctl.route} ${ctl.mode} the untouched body's needle is an ECHO — so the classifier is not simply calling everything a leak`,
+      asIs.echoed.length === 1 && asIs.leaks.length === 0, `${needle.slice(0, 10)}… · spans ${echoSpans(ctl.body, ctl.forms).length} · plant index ${at} of ${ctl.body.length}`);
+    ok("4.1c · CONTROL · ⭐ the SAME id planted into a RENDERED CELL of that same body is reported as a LEAK — a store-read id on a page still turns 4.1 red",
+      cell.leaks.length === 1 && cell.echoed.length === 0, `leaks ${cell.leaks.length} · echoed ${cell.echoed.length}`);
+    ok("4.1c · CONTROL · ⭐ …and planted into a JSON PAYLOAD FIELD beside a canary amount it is reported as a LEAK too",
+      payload.leaks.length === 1 && payload.echoed.length === 0, `leaks ${payload.leaks.length} · echoed ${payload.echoed.length}`);
+    ok("4.1c · CONTROL · the verdict is derived from THIS request: the untouched body judged against another route's echo forms is a LEAK, so `it is an id, therefore it is an echo` cannot pass here",
+      other.leaks.length === 1 && other.echoed.length === 0, `leaks ${other.leaks.length} · echoed ${other.echoed.length}`);
+  }
   /**
    * ⛔ 4.1b · 393 · THE OWNER-ONLY BRANCH, DRIVEN BY A REAL STAFF SESSION OVER THE WIRE, WITH ITS CONTROL.
    * Zero hits for this viewer is worth something only where the ADMIN has non-zero on the SAME instance — otherwise
@@ -673,7 +801,7 @@ try {
     MUST_CARRY.every((r) => adminHitRoutes.has(r)), `missing: ${MUST_CARRY.filter((r) => !adminHitRoutes.has(r)).join(", ") || "none"} · ADMIN carries house data on ${adminHitRoutes.size} route instances`);
   const silent = [...new Set(rows.map((r) => r.route))].filter((r) => !adminHitRoutes.has(r)).sort();
   for (const r of silent) notMeasured(`4.nm · ${r}`, "the ADMIN control carries no house data there, so its absence for the other viewers proves nothing about that page");
-  const summary = { requests: rows.length, nonStaff: nonStaff.length, leaks: leaks.length, staffConsoleResponses: staffConsole.length, staffElsewhereReported: staffElsewhere.length, canaryForms: CANARY_STRINGS.length, consoleInstances: consoleInstances.length, adminRouteInstancesWithHouseData: [...adminHitRoutes].sort(), notMeasured: silent,
+  const summary = { requests: rows.length, nonStaff: nonStaff.length, leaks: leaks.length, echoed: echoedRows.length, staffConsoleResponses: staffConsole.length, staffElsewhereReported: staffElsewhere.length, canaryForms: CANARY_STRINGS.length, consoleInstances: consoleInstances.length, adminRouteInstancesWithHouseData: [...adminHitRoutes].sort(), notMeasured: silent,
     statusesNonStaff: Object.entries(nonStaff.reduce((m: Record<string, number>, r) => { const k = String(r.status ?? "ERR"); m[k] = (m[k] ?? 0) + 1; return m; }, {})) };
   writeFileSync(join(OUT, "summary.json"), JSON.stringify(summary, null, 2));
   console.log(`\nsummary: ${JSON.stringify({ ...summary, adminRouteInstancesWithHouseData: summary.adminRouteInstancesWithHouseData.length, notMeasured: silent.length })}`);
