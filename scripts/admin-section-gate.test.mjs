@@ -72,8 +72,53 @@ console.log("\n[admin-section-gate] §0 every console page sits under AdminSecti
   }
   ok("§0b W25 · every page carries its OWN gate, because a flight can skip every layout above it",
     layoutOnly.length === 0, layoutOnly.join(", "));
-  // A control: the assertion must be able to fail. If the EXEMPT set ever swallowed every page, §0b would pass
-  // vacuously and stop meaning anything.
+
+  // ── §0b′ · THE GATE MUST BE THE PAGE'S WHOLE RETURNED BODY, not a string that appears in the file. ──
+  // ⛔ WHY THE SUBSTRING TEST ABOVE IS NOT ENOUGH, and this is the assertion that actually holds the belt. `gated()`
+  // is `/<(AdminSectionGate|AdminPageGate)\b/.test(rawFileBytes)` — it cannot tell a rendered gate from the WORD.
+  // Four spellings satisfy it while the gate is absent or inert, and the first is one `<` away from text already in
+  // this tree (`kyc/refused/page.tsx:87`, `players/[id]/page.tsx:104` both name the gate in prose):
+  //   (a) the tag only inside a comment, gate deleted;
+  //   (b) the tag only inside a string literal;
+  //   (c) rendered CONDITIONALLY — inert whenever the condition says so;
+  //   (d) wrapping only PART of the body — the worst, because `admin-section-gate.tsx` refuses by returning
+  //       <AdminRestricted/> INSTEAD of children, so anything outside the wrapper streams to a refused viewer anyway.
+  // ⭐ AND THIS IS THE ONLY AUTOMATIC PROOF THERE IS. `test:admin-section-gate` is in `predeploy`;
+  // `qa:platform-pii-probe` is NOT — `scripts/test-all.mjs:44` collects only `test:`-prefixed scripts — and the probe
+  // itself prints NOT MEASURED for ~103 of 119 route instances. So for most of the console this file is the belt.
+  // ⛔ The remedy is the one this same suite already applies 60 lines below to the root layout (`:108` strips
+  // comments before testing) and the one `layout-staleness.test.mts:114-131` applies to layouts: strip, pin the
+  // shape, and plant defects that must be REFUSED. Measured before enforcing: all 54 gated pages already match the
+  // canonical spelling, so this is zero churn.
+  const stripCode = (s) => s
+    .replace(/^[ \t]*\/\/.*$/gm, "")
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  const PAGE_GATE_BODY = /return <(AdminSectionGate|AdminPageGate)(?: [a-zA-Z]+="[^"{}$]*")*>\s*<[A-Z]\w*(?:\s[^<>]*)?\/>\s*<\/\1>;/;
+  const inert = [];
+  for (const page of pages) {
+    const rel = relative(ADMIN, page).split(sep).slice(0, -1).join("/");
+    if (EXEMPT.has(rel)) continue;
+    if (!PAGE_GATE_BODY.test(stripCode(readFileSync(page, "utf8")))) inert.push(rel || "(root)");
+  }
+  ok("§0b′ W25 · the gate is the page's whole returned body, not a word in the file",
+    inert.length === 0, inert.join(", "));
+
+  // ⛔ AND IT MUST REFUSE EVERY WAY OF FAKING IT. A count-only control proves the assertion LOOKED; only a planted
+  // defect proves it can REJECT. Each of these passed the substring test.
+  const CANON = 'export default async function P(props: X) {\n  return <AdminPageGate title="Affiliate"><C {...props} /></AdminPageGate>;\n}\n';
+  const PLANTED = {
+    "comment": '/** this page used to wrap itself in <AdminPageGate>; the layout carries it now */\nexport default async function P(props: X) {\n  return <C {...props} />;\n}\n',
+    "string": 'const GATE_TAG = "<AdminPageGate>";\nexport default async function P(props: X) {\n  return <C {...props} />;\n}\n',
+    "conditional": 'export default async function P(props: X) {\n  return off ? <C {...props} /> : <AdminPageGate title="A"><C {...props} /></AdminPageGate>;\n}\n',
+    "partial wrap": 'export default async function P(props: X) {\n  return (<>\n    <AdminPageHead title={p.displayName} />\n    <AdminPageGate title="A"><C {...props} /></AdminPageGate>\n  </>);\n}\n',
+  };
+  const notRefused = Object.entries(PLANTED).filter(([, src]) => PAGE_GATE_BODY.test(stripCode(src))).map(([k]) => k);
+  ok("§0b′ CONTROL · every inert-gate spelling is REFUSED, and the canonical one is ACCEPTED",
+    notRefused.length === 0 && PAGE_GATE_BODY.test(stripCode(CANON)),
+    notRefused.length ? `slipped through: ${notRefused.join(", ")}` : `${Object.keys(PLANTED).length} spellings refused, canonical accepted`);
+
+  // Kept beside the shape pin: it still guards against the EXEMPT set swallowing the corpus.
   ok("§0b CONTROL · §0b actually inspected pages (it is not vacuous)",
     pages.length - EXEMPT.size >= 45, `${pages.length} pages − ${EXEMPT.size} exempt`);
 

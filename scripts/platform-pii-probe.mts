@@ -37,6 +37,19 @@
  * That is evidence corruption, not disclosure, and no response-body rule can see it — so `4.4` re-reads the AuditLog
  * after the walk and asserts no such row names a non-staff actor.
  *
+ * ⛔ THIS PROBE RUNS IN NO PIPELINE, AND THAT IS A REAL LIMIT ON EVERY CLAIM MADE FROM IT.
+ * `scripts/test-all.mjs:44` collects only `test:`-prefixed scripts, and `predeploy` names none of the `qa:` ones. So
+ * `qa:platform-pii-probe` runs when somebody runs it, and at no other time — the same as its sibling
+ * `qa:house-bot-console-probe`, which is the repo's convention for a probe needing a fresh build, a server and a
+ * scratch cluster. It cannot simply be renamed `test:`: without those three it exits 3 (NOT MEASURED) and would fail
+ * `test:all` on every machine that has not just built.
+ * ⭐ SO WHAT ACTUALLY HOLDS THE BELT BETWEEN RUNS IS `test:admin-section-gate`, which IS in `predeploy` — its §0b′
+ * pins that every admin page's whole returned body is the gate, with planted defects that must be refused. That is
+ * why §0b was hardened from a substring test the moment this was measured: for the ~103 route instances this probe
+ * prints NOT MEASURED, the static ratchet is the only proof there is.
+ * ⛔ The release gate must therefore NAME this probe explicitly, the way the closing gates name the house one. A gate
+ * that only runs when someone remembers is not a gate; saying so here is the honest half of the claim.
+ *
  * ⛔ NEVER PORTS 3009, 3011, 3013, 3014 (other sessions own them) OR 3021 (the house console probe). This one uses 3022.
  * ⚠️ `qa:` is not part of `test:all`: it needs a fresh `next build`, a server and a scratch cluster. A build older than
  * any `src` file is refused, never measured.
