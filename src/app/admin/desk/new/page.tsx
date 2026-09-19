@@ -122,9 +122,11 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
               this is a position in a sequence, not usage against a limit, so it carries no caption of its own.
               ⚠️ `label` is `aria-label` only and paints nothing, which is why the words are written beside it. */}
           <div className="space-y-1.5">
-            <p className="font-mono text-micro eyebrow uppercase text-text-subtle">
-              Step {stepIndex} of {CONSOLE_WIZARD_STEPS.length} · {STEP_LABEL[step]}
-            </p>
+            {/* ⛔ 432(n) · THE COUNT IS SAID ONCE. The eyebrow read "Step 2 of 4 · WHAT WE ALREADY KNOW" with the
+                bar's own default line printing "2 OF 4 · 50%" 20px beneath it — one state saying one fact twice,
+                read off the first render at both widths. The bar keeps the kit's line (409); the eyebrow names the
+                step, which is the thing the bar cannot say. */}
+            <p className="font-mono text-micro eyebrow uppercase text-text-subtle">{STEP_LABEL[step]}</p>
             <ProgressBar value={stepIndex} max={CONSOLE_WIZARD_STEPS.length} label="Designation step" />
           </div>
 
@@ -139,7 +141,27 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
             </AdminCard>
           )}
 
-          {view !== null && step === "check" && (
+          {/* ⭐ NO ACCOUNT BEHIND THE `?u=` AT ALL — A STATE, NOT A CARD OF FACTS ABOUT NOTHING (355, 416). Read off
+              the first render: the card painted a handle built out of the typed id, an EMPTY "Phone" term, and
+              "Open positions 0" for an account that does not exist — a fabricated zero beside a labelled row with
+              nothing under it. The only honest things here are the cause and the way back. */}
+          {view !== null && step === "check" && view.accountMissing && (
+            <AdminCard
+              title="What we already know"
+              action={
+                <Link
+                  href={view.findHref as Route}
+                  className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"
+                >
+                  Search again
+                </Link>
+              }
+            >
+              <p className="text-body-sm text-text-secondary max-w-[60ch]">{view.blocking[0]?.text}</p>
+            </AdminCard>
+          )}
+
+          {view !== null && step === "check" && !view.accountMissing && (
             <>
               <AdminCard
                 title="What we already know"
@@ -163,15 +185,20 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
                     <dt className="font-mono text-micro eyebrow uppercase text-text-tertiary">Handle</dt>
                     <dd className="font-mono text-body-sm text-text-subtle">{view.handle}</dd>
                   </div>
-                  <div>
-                    <dt className="font-mono text-micro eyebrow uppercase text-text-tertiary">Phone</dt>
-                    {/* ⛔ 359 · THE PLATFORM'S OWN SERVER GATE decides whether this viewer sees the number at all,
-                        the mask, or the reveal control. Nothing here computes a mask and nothing here renders
-                        `SensitiveReveal`. */}
-                    <dd className="text-body-sm text-text">
-                      <Sensitive field="phone" subjectId={view.userId} value={view.phoneE164} domainAllows />
-                    </dd>
-                  </div>
+                  {/* ⛔ 359 · THE PLATFORM'S OWN SERVER GATE decides whether this viewer sees the number at all,
+                      the mask, or the reveal control. Nothing here computes a mask and nothing here renders
+                      `SensitiveReveal`.
+                      ⛔ AND THE TERM IS NOT DRAWN WITH NOTHING UNDER IT. `Sensitive` renders NOTHING when the value
+                      is absent or the viewer's read cell says `none`, so an unconditional `<dt>` is a labelled row
+                      that says nothing — read off the first render of the missing-account state. */}
+                  {view.phoneE164 !== null && (
+                    <div>
+                      <dt className="font-mono text-micro eyebrow uppercase text-text-tertiary">Phone</dt>
+                      <dd className="text-body-sm text-text">
+                        <Sensitive field="phone" subjectId={view.userId} value={view.phoneE164} domainAllows />
+                      </dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="font-mono text-micro eyebrow uppercase text-text-tertiary">Open positions</dt>
                     <dd className="font-mono text-body-sm text-text tabular-nums">{view.openPositions}</dd>

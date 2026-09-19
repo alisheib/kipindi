@@ -42,6 +42,7 @@ const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
 const ROSTER = "src/lib/server/house-bot/roster-actions.ts";
 /* ⭐ C7 step 6 · the designate wizard's own actions file and its one client module. */
 const NEW_ACTIONS = "src/app/admin/desk/new/actions.ts";
+const NEW_PAGE = "src/app/admin/desk/new/page.tsx";
 const NEW_CLIENT = "src/app/admin/desk/new/designate-wizard.tsx";
 
 export const MUTATIONS = [
@@ -49,6 +50,30 @@ export const MUTATIONS = [
    * Each puts back a shape the wizard could plausibly have shipped in: a door that reads before it decides, a
    * refusal that tells a player whether an account exists, a real person's balance on the one screen most likely to
    * end up in a screenshot, or a service's own sentence passed through onto a surface 453 exists to keep neutral. */
+  {
+    name: "359-missing-card · an account that does not exist gets a card of facts about nothing — a built handle, an empty term and a fabricated zero",
+    file: NEW_PAGE,
+    from: `          {view !== null && step === "check" && !view.accountMissing && (`,
+    to: `          {view !== null && step === "check" && (`,
+    expect: "1.359 · 355 · 416 · the wizard's fact grid, its funded state and its footer are all guarded by `accountMissing`",
+    suite: "console-mem",
+  },
+  {
+    name: "359-missing-flag · the reader stops reporting a missing account, so the page can never tell the two states apart",
+    file: GATE,
+    from: `    accountMissing: blocking.some((r) => r.code === "ACCOUNT_MISSING"),`,
+    to: `    accountMissing: false,`,
+    expect: "1.359 · 355 · a `?u=` with no account behind it answers `accountMissing`",
+    suite: "console-mem",
+  },
+  {
+    name: "359-phone-term · the Phone term is drawn unconditionally, so an account with no number gets a labelled row that says nothing",
+    file: NEW_PAGE,
+    from: `                  {view.phoneE164 !== null && (`,
+    to: `                  {true && (`,
+    expect: "1.359 · the Phone term is drawn only when there is a value",
+    suite: "console-mem",
+  },
   {
     name: "359-gate-late · the check card is built BEFORE the audience verdict, so a refused viewer's payload carries the account",
     file: GATE,

@@ -3149,6 +3149,20 @@ try {
       spyW.user >= 2, j(spyW));
   }
 
+  /* ━━ 1.359 · A `?u=` WITH NO ACCOUNT BEHIND IT IS A STATE, NOT A CARD OF FACTS ABOUT NOTHING ━━━━━━━━
+   * Read off the first render (355, 416): the card painted a HANDLE built out of the typed id, an EMPTY "Phone"
+   * term with nothing under it, and "Open positions 0" for an account that does not exist — a fabricated zero
+   * beside a labelled row that says nothing. */
+  {
+    const nothing = await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", "usr_no_such_account_at_all");
+    ok("1.359 · 355 · a `?u=` with no account behind it answers `accountMissing`, and the page has one honest thing to paint: the cause",
+      nothing !== null && nothing.accountMissing === true && nothing.eligible === false
+        && nothing.blocking.length === 1 && nothing.blocking[0].code === "ACCOUNT_MISSING"
+        && nothing.phoneE164 === null, j({ missing: nothing && nothing.accountMissing, blocking: nothing && nothing.blocking }));
+    ok("1.359 · CONTROL · a REAL account answers the opposite on both flags, so the state above is a measurement and not a shape every card carries",
+      card !== null && card.accountMissing === false && card.phoneE164 !== null, j({ missing: card && card.accountMissing }));
+  }
+
   /* ━━ 1.387 · THE PICKER IS NEUTRAL AND IS NOT AN ENUMERATION ORACLE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
   {
     const hit = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", good);
@@ -3923,6 +3937,50 @@ export default function Ruling513Control() {
     glosses.length >= 2 && glosses.every((g) => shipped.includes(g)), j(glosses));
   ok("1.403 · the page renders no `<main>`, no `<h1>` and no second header of its own",
     !/<main|<h1/.test(pageCode), "");
+
+  /* ⭐ C7 STEP 6 · THE WIZARD'S OWN SOURCE LAW, AND BOTH HALVES WERE READ OFF A TILE (355, 416, 359).
+   * · the fact grid and the footer are guarded by `!view.accountMissing`, so a card of facts about an account that
+   *   does not exist cannot be painted again;
+   * · the Phone TERM is guarded by the value, because `Sensitive` renders NOTHING when there is none and an
+   *   unconditional `<dt>` is a labelled row that says nothing. */
+  {
+    const wizardCode = decomment(read(NEW_PAGE));
+    ok("1.359 · 355 · 416 · the wizard's fact grid, its funded state and its footer are all guarded by `accountMissing`, and the missing state paints the cause and the way back instead",
+      /\{view !== null && step === "check" && view\.accountMissing && \(/.test(wizardCode)
+        && /\{view !== null && step === "check" && !view\.accountMissing && \(/.test(wizardCode)
+        && (wizardCode.match(/view\.accountMissing/g) ?? []).length === 2
+        && /\{view\.blocking\[0\]\?\.text\}/.test(wizardCode), "");
+    ok("1.359 · the Phone term is drawn only when there is a value for the platform's own gate to decide about",
+      /\{view\.phoneE164 !== null && \(/.test(wizardCode)
+        && (wizardCode.match(/<Sensitive /g) ?? []).length === 1
+        && !/SensitiveReveal/.test(wizardCode), "");
+    /* ⛔ AND THE WIZARD READS NOTHING OF ITS OWN (340): no house module, no DAL, no eligibility, no designation. */
+    ok("1.359 · 340 · no file under the wizard imports `eligibility.ts`, `designation.ts`, the DAL or `sensitive-reveal` — the check card is served by the gated reader alone",
+      [NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT].every((f) => {
+        const c = decomment(read(f));
+        return !/house-bot\/eligibility|house-bot\/designation|house-bot-dal|sensitive-reveal/.test(c);
+      }), "");
+  }
+
+  /* ⭐ C7 STEP 6 · THE WIZARD'S LOADER (rulings 313, 417), and BOTH of its facts were read off a tile.
+   * · it carries the page's REAL title, which is only safe because the title is neutral (313) — the ACCOUNT page's
+   *   loader is this section's one exception, because its real title is a gated value;
+   * · and it ghosts at the page's OWN MEASURE. Without `FormColumn measure="form"` the card ghost laid out at
+   *   998px against the page's 640 — a 358px horizontal jump on every swap, which is exactly the class 417 exists
+   *   for, read off `wiz-loading-1280.png`. */
+  {
+    const newLoader = decomment(read(NEW_LOADING));
+    const wizardSrc = decomment(read(NEW_PAGE));
+    ok("1.313 · the wizard's loader carries the REAL neutral head, and no string in it matches the shared vocabulary",
+      /<AdminPageHead title="Designate an account"/.test(newLoader)
+        && domLiterals(NEW_LOADING, read(NEW_LOADING)).every((x) => houseHits(x).length === 0 && !NEUTRAL.test(x)), "");
+    const newGhosts = [...newLoader.matchAll(/<(Sk[A-Za-z]+|FormColumn|div)[ />]/g)].map((m) => m[1]);
+    ok("1.417 · the wizard loader's ghost sequence matches the page's own order — the head's action, the page's measure, the step line's two rows, then the step card",
+      j(newGhosts) === j(["SkChip", "FormColumn", "div", "SkChip", "div", "SkFormCard"]), j(newGhosts));
+    ok("1.417 · …and it ghosts at the PAGE'S OWN MEASURE, so the swap cannot jump sideways",
+      /<FormColumn measure="form">/.test(newLoader) && /<FormColumn measure="form">/.test(wizardSrc)
+        && (wizardSrc.match(/<FormColumn measure="form">/g) ?? []).length === 1, "");
+  }
 
   /* 1.422 · read-only is unreachable BY CONSTRUCTION on an Owner-only route, so no page may draw one. */
   ok("1.422 · no file under the section renders `ActReadOnlyBanner`, reads `mayAct`, or declares a viewer/role/mayView/isOwner prop",

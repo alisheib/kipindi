@@ -65,7 +65,14 @@ function consoleRoutesFromSource() {
   const dflt = /export const DEFAULT_TAB: ConsoleTab = "([^"]+)"/.exec(src)?.[1] ?? "";
   const tabs = [...tabsRaw.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
   if (!route || !dflt || tabs.length === 0 || !tabs.includes(dflt)) return null;
-  return tabs.map((t) => (t === dflt ? route : `${route}?tab=${t}`));
+  /* ⭐ C7 STEP 6 · THE WIZARD JOINS THE DERIVED POPULATION, and it is replan ruling 539's lesson applied before
+     the fact rather than after it: the instrument that reads RENDERED text must visit every page of the section,
+     not only the tabs of one of them. Only the BARE route is derivable — its `?u=` states need an account id this
+     script cannot know — so the find step is permanent here and the account-bound steps are driven with
+     `KP_ROUTES` by the checkpoint that has a fixture. ⛔ REFUSED rather than defaulted if the constant moves. */
+  const wizard = /export const CONSOLE_NEW_ROUTE = `\$\{CONSOLE_ROUTE\}\/new`/.test(src) ? `${route}/new` : null;
+  if (!wizard) return null;
+  return [...tabs.map((t) => (t === dflt ? route : `${route}?tab=${t}`)), wizard];
 }
 const DERIVED_ROUTES = consoleRoutesFromSource();
 if (!process.env.KP_ROUTES && !DERIVED_ROUTES) {
@@ -158,10 +165,17 @@ try {
          all — so the wait could be satisfied by something that is not this section. `Tabs` marks a rail whose
          options own a URL with `data-section-rail`, and the console renders it only after its gated reader
          returns, on EVERY tab and in the schema-missing state alike. */
+      /* ⭐ C7 STEP 6 · THE WIZARD HAS NO RAIL, AND THAT IS ITS DESIGN, NOT A MISSING PAINT. `/admin/desk/new` is a
+         LINEAR four-step flow: ruling 312's law is that a rail option with no panel is a dead control, and a wizard's
+         steps are not tabs — so it renders a step line and a `role="progressbar"`, which its gated reader is the
+         same precondition for. The landmark is therefore chosen PER ROUTE rather than widened for every route: the
+         three-way OR ruling 540(b) struck admitted nodes the admin chrome paints on pages that are not this section
+         at all, and this does not — each route names exactly one landmark that only its own render produces. */
+      const READY = route.split("?")[0].endsWith("/new") ? '[role="progressbar"]' : "[data-section-rail]";
       try {
-        await p.waitForSelector("[data-section-rail]", { timeout: 30_000 });
+        await p.waitForSelector(READY, { timeout: 30_000 });
       } catch {
-        nm(`${route} @${width}`, "the section rail never painted, so the page's data never landed — no check below would have measured anything");
+        nm(`${route} @${width}`, `the route's own landmark ${READY} never painted, so the page's data never landed — no check below would have measured anything`);
         await p.close();
         continue;
       }
@@ -235,12 +249,30 @@ try {
            ⛔ `[role="switch"]` IS EXEMPT, with the kit's own reason: DG-A-02 gives the 26px Switch a 40px REACH
            through `.toggle-switch::after`, out of flow, so its bounding box is PAINT and not tap — `tap-target`'s
            own register says in as many words that "a bounding box cannot see that fix", and `qa:toggle-hit` is the
-           instrument that can. ⛔ The skip link is 1px by design (it is visually hidden until focused). */
+           instrument that can. ⛔ The skip link is 1px by design (it is visually hidden until focused).
+           ⭐ `.sensitive-reveal` IS EXEMPT FOR THE IDENTICAL, DOCUMENTED REASON, and it is added at C7 step 6 because
+           the designation wizard is the first console surface to render a masked field (ruling 359's phone, through
+           the platform's own SERVER `Sensitive`). `globals.css` measured that control at **86 × 15px** on
+           production and states why a 44px BOX is the wrong fix — it sits mid-sentence in the player header and
+           inside dense table cells, so a box would stretch the line and re-space every roster row — and gives it a
+           `::after` REACH of 15 + 13 + 13 = 41px, which clears `--tap-min` (40). A bounding box cannot see that
+           fix either. ⛔ THE EXEMPTION IS CONDITIONED ON THE REACH STILL EXISTING, asserted below, so deleting the
+           rule turns this red rather than leaving a 15px control silently exempt. */
         const tap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap-min")) || 44;
         const controls = [...document.querySelectorAll("button, a[href], [role='switch'], input, select")]
           .filter(vis)
           .filter((el) => !el.closest("thead") && el.getAttribute("role") !== "switch"
-            && !el.closest("[role='switch']") && el.getAttribute("href") !== "#main-content");
+            && !el.closest("[role='switch']") && el.getAttribute("href") !== "#main-content"
+            && !el.classList.contains("sensitive-reveal"));
+        /* The exempted controls, COUNTED, so the exemption can be shown to have been exercised rather than assumed. */
+        const revealCount = [...document.querySelectorAll(".sensitive-reveal")].filter(vis).length;
+        const revealReach = (() => {
+          const el = document.querySelector(".sensitive-reveal");
+          if (!el) return null;
+          const after = getComputedStyle(el, "::after");
+          const box = el.getBoundingClientRect();
+          return { top: after.top, bottom: after.bottom, content: after.content, height: Math.round(box.height) };
+        })();
         const shortControls = controls
           .filter((el) => el.getBoundingClientRect().height < tap - 0.5)
           .map((el) => `${el.tagName.toLowerCase()}:${Math.round(el.getBoundingClientRect().height)}px:${(el.textContent ?? "").trim().slice(0, 24)}`);
@@ -276,7 +308,7 @@ try {
            rather than inferred from position. */
         const operatorNodes = [...own.querySelectorAll("[data-operator-text]")];
         const operatorText = operatorNodes.map((el) => (el.textContent ?? "").trim()).filter(Boolean);
-        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, body: document.body.innerText, vw: window.innerWidth };
+        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
       });
 
       ok(`§5.1 ${route} @${width} · no money figure is clipped by a box that cannot scroll, and none is broken across two lines`, facts.clipped.length === 0, facts.clipped.join(" | "));
@@ -284,7 +316,20 @@ try {
       // §5.6 each gained one in the same commit: an empty selector reports zero clipped figures and reads as
       // compliance — and this run moved `tabular` off the `<td>` onto the figure span, i.e. edited the very class
       // surface the selector depends on.
-      ok(`§5.1 ${route} @${width} · CONTROL · the money scan reached at least one figure`, facts.moneyCount >= 1, `${facts.moneyCount} money spans`);
+      /* ⭐ C7 STEP 6 · THE WIZARD IS THE ONE CONSOLE SURFACE THAT PAINTS NO MONEY AT ALL, BY RULING, so on it the
+         control is INVERTED rather than exempted — which makes it a stronger assertion, not a quieter one.
+         Owner-delegated ruling 459 withdrew 368's "one plain balance" exception: the check card shows a funded
+         STATE because the figure is a real person's wallet position, the one number on these screens belonging to
+         somebody other than 50pick and the one most likely to sit in a screenshot. So `/admin/desk/new` must carry
+         ZERO money spans AND no currency prefix anywhere in its own subtree, and a single amount appearing there
+         turns this red. ⛔ Every OTHER route keeps the original control unchanged: a surface that should carry
+         money and carries none is still a failure, because an empty selector reads exactly like compliance. */
+      const MONEYLESS = route.split("?")[0].endsWith("/new");
+      ok(MONEYLESS
+        ? `§5.1 ${route} @${width} · CONTROL · ⛔ 459 · this surface paints NO money at all — no amount span and no currency prefix in its own subtree`
+        : `§5.1 ${route} @${width} · CONTROL · the money scan reached at least one figure`,
+        MONEYLESS ? facts.moneyCount === 0 && !/TZS/.test(facts.ownText) : facts.moneyCount >= 1,
+        `${facts.moneyCount} money spans`);
       ok(`§5.3 ${route} @${width} · no tile carries two amounts`, facts.tiles.every((t) => t.amounts <= 1), facts.tiles.filter((t) => t.amounts > 1).map((t) => t.text).join(" | "));
       ok(`§5.3 ${route} @${width} · no KPI delta carries a currency-prefixed figure`, facts.tiles.every((t) => !/TZS\s*[\d,]/.test(t.delta)), facts.tiles.map((t) => t.delta).filter((d) => /TZS\s*[\d,]/.test(d)).join(" | "));
       // ⛔ A CONTROL FOR THE CHECK ABOVE: an empty selector reads exactly like compliance.
@@ -292,6 +337,17 @@ try {
       ok(`§5.4 ${route} @${width} · every interactive control reaches the --tap-min token (${facts.tap}px)`, facts.shortControls.length === 0, facts.shortControls.join(" | "));
       // ⛔ A CONTROL FOR THE FLOOR: a scan that reached nothing reports 0 short controls and reads as compliance.
       ok(`§5.4 ${route} @${width} · CONTROL · the control scan reached the page`, facts.controlCount >= 3 && facts.tap >= 40, `${facts.controlCount} controls, tap ${facts.tap}px`);
+      /* ⛔ AN EXEMPTION IS NOT A PROMISE. Where a masked field really rendered, the reveal control's own `::after`
+         REACH is read off the page — so the exemption above holds only while the rule that justifies it exists.
+         Deleting `.sensitive-reveal::after` from `globals.css` turns this red instead of leaving a 15px control
+         quietly exempt, which is the shape every exemption list rots into. */
+      if (facts.revealCount > 0) {
+        const reach = facts.revealReach ?? {};
+        const px = (v) => Math.abs(parseFloat(v) || 0);
+        ok(`§5.4 ${route} @${width} · CONTROL · the exempted reveal control really carries its documented REACH — ${facts.revealCount} on this page, box ${reach.height}px, reach ${reach.height + px(reach.top) + px(reach.bottom)}px against the ${facts.tap}px token`,
+          reach.content === '""' && reach.height + px(reach.top) + px(reach.bottom) >= facts.tap,
+          JSON.stringify(reach));
+      }
       ok(`§5.6 ${route} @${width} · no house-vocabulary word anywhere in the rendered body`, houseHits(facts.body).length === 0, houseHits(facts.body).slice(0, 6).join(","));
       {
         // ⛔ RULING 453, over the console's OWN region and its attributes — the words `bot`, `house` and
@@ -311,7 +367,12 @@ try {
         ok(`§5.6 ${route} @${width} · CONTROL · the 453 scan fires on every word it adds, does NOT fire on an innocent look-alike, and really collected this page's aria-* attributes`,
           CONSOLE_EXTRA_SAMPLES.every((s) => consoleNeutralRegExp().test(s))
             && CONSOLE_BENIGN_SAMPLES.every((s) => !consoleNeutralRegExp().test(s))
-            && facts.attrs.length >= 6,
+            /* ⛔ THE FLOOR IS PER-POPULATION, AND THE TABBED PAGES' 6 IS NOT LOWERED. It was measured on a page that
+               paints an `aria-label` on the rail, on the switch and on every usage bar plus each bar's
+               `aria-valuetext`; a wizard STEP paints a rail-free form and collected 4 on the day this was written.
+               A floor that demanded 6 there would be the wrong-population defect, and a floor of 0 is the vacuity
+               trap. Both numbers are what a run PRINTED, and neither may fall. */
+            && facts.attrs.length >= (MONEYLESS ? 3 : 6),
           `${facts.attrs.length} attributes · benign hits ${JSON.stringify(CONSOLE_BENIGN_SAMPLES.filter((s) => consoleNeutralRegExp().test(s)))}`);
         /* ⛔ AND THE EXEMPTION IS EXACTLY THE TWO VALUES 474 NAMES. An exemption nobody measures is a guard whose
            population is a lie: a house word planted into the page's NON-exempt text must still fire, and the
@@ -349,8 +410,8 @@ try {
            make this gate exit 3 for ever the moment its route population grew past the roster — which is how a gate
            stops being read. What IS asserted instead is the fact itself, WITH the figures §5.1 measured on that same
            surface, so "no table" cannot stand in for "nothing rendered". */
-        ok(`§5.2 ${route} @${width} · this surface renders no `+"`.admin-tbl`"+`, so it has no money CELL to push out of a scroll strip — and §5.1 measured its figures where they are`,
-          facts.moneyCount >= 1, `${facts.moneyCount} money spans, ${facts.tableCount} tables`);
+        ok(`§5.2 ${route} @${width} · this surface renders no `+"`.admin-tbl`"+`, so it has no money CELL to push out of a scroll strip — and §5.1 ${MONEYLESS ? "proved it paints no money at all" : "measured its figures where they are"}`,
+          MONEYLESS ? facts.moneyCount === 0 : facts.moneyCount >= 1, `${facts.moneyCount} money spans, ${facts.tableCount} tables`);
       } else {
         nm(`§5.2 ${route} @${width}`, `a money table rendered with NO row (${facts.tableCount} table(s)), so the money columns' position was not measured`);
       }

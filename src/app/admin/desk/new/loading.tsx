@@ -1,6 +1,7 @@
 import { AdminPageHead } from "@/components/admin/admin-shell";
 import { AdminBody } from "@/components/admin/admin-body";
 import { SkChip, SkFormCard } from "@/components/admin/admin-skeletons";
+import { FormColumn } from "@/components/ui/form-column";
 
 /**
  * What is coming on the designation wizard, card for card and in the page's own order (C7-SPEC rulings 313, 417):
@@ -25,11 +26,16 @@ export default function AdminDeskNewLoading() {
           a ghost the wrong height is a layout jump, which is the rule `/admin/house`'s own loader states. */}
       <AdminPageHead title="Designate an account" actions={<SkChip className="h-[20px] w-28" />} />
       <AdminBody>
-        <div className="space-y-1.5">
-          <SkChip className="h-[14px] w-56" />
-          <div className="h-[10px] w-full rounded-pill bg-bg-overlay kp-shimmer-track" aria-hidden />
-        </div>
-        <SkFormCard fields={2} title sw={false} cols="grid-cols-1" fieldH={44} />
+        {/* ⛔ THE GHOST SITS AT THE PAGE'S OWN MEASURE, AND THE FIRST RENDER IS WHY (ruling 417). Without the
+            column the card ghost laid out at 998px against the page's 640 — a card-for-card mismatch of 358px and a
+            horizontal jump on every swap. `FormColumn measure="form"` is what the page itself wraps every step in. */}
+        <FormColumn measure="form">
+          <div className="space-y-1.5">
+            <SkChip className="h-[14px] w-56" />
+            <div className="h-[10px] w-full rounded-pill bg-bg-overlay kp-shimmer-track" aria-hidden />
+          </div>
+          <SkFormCard fields={2} title sw={false} cols="grid-cols-1" fieldH={44} />
+        </FormColumn>
       </AdminBody>
     </>
   );

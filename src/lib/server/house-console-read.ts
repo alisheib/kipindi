@@ -2723,6 +2723,13 @@ export type ConsoleCheckView = {
   blocking: ConsoleCheckRow[];
   warnings: ConsoleCheckRow[];
   eligible: boolean;
+  /**
+   * ⭐ THERE IS NO ACCOUNT BEHIND THIS `?u=` AT ALL — read off the first render (355, 416). The card painted
+   * HANDLE "Player #_00000" from the typed id, an EMPTY "Phone" term with nothing under it, and "Open positions 0"
+   * for an account that does not exist: a fabricated zero beside a labelled row that says nothing. A missing record
+   * is a STATE, and the page paints the state instead of the facts.
+   */
+  accountMissing: boolean;
   /** Why Continue is not live — `null` when it is (432(j) read the other way round). */
   continueReason: string | null;
   /** The wizard's own four hrefs, built in the route module (319) — never composed at a call site. */
@@ -2810,6 +2817,7 @@ export async function houseCheckForConsole(
     blocking,
     warnings,
     eligible,
+    accountMissing: blocking.some((r) => r.code === "ACCOUNT_MISSING"),
     /* 432(j) · a control that is not live says why, and it says a fact the rows above do not already carry: HOW
        MANY of them are stopping it. 432(n) forbids one state saying the same thing twice. */
     continueReason: eligible ? null : blocking.length === 1
