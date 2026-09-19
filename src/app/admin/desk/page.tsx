@@ -37,12 +37,26 @@ import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
+import { FormColumn } from "@/components/ui/form-column";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseRosterForConsole, houseConsoleAudience, type ConsoleUsageCell } from "@/lib/server/house-console-read";
+import { houseRosterForConsole, houseUsageForConsole, houseConsoleAudience, type ConsoleDeskShell, type ConsoleUsageCell, type ConsoleUsageRow } from "@/lib/server/house-console-read";
 import { CONSOLE_TABS, LIMITS_TAB_READY, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
+import { DeskLive } from "./desk-live";
+import { DeskLimitsForm } from "./limits-form";
+import { DeskSwitch } from "./switch-ceremony";
+/* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422). A client component under
+ * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
+ * act gate — and on an Owner-only route `mayAct` is `mayView`, so that consultation would be a branch that can
+ * never be false, which 1.422 refuses under this section by name. A Server Component is outside that population
+ * and is the right owner of the reference anyway.
+ * ⚠️ AND THE DIRECTIVE IS NOT QUOTED HERE. `test:house-bot-console` decides which files of the section are
+ * CLIENT files by reading each one RAW for that directive, comments included — so writing it in this sentence
+ * put `page.tsx` into the client population and made four unrelated assertions red. Measured 2026-09-18. */
+import { saveDeskLimitsAction, setDeskSwitchAction } from "./actions";
 
 /** ⛔ A static neutral title (ruling 402). No route here exports a `generateMetadata` that reads a record. */
 export const metadata = { title: "Admin · Desk" };
@@ -50,7 +64,12 @@ export const metadata = { title: "Admin · Desk" };
  *  audience and served to another — the population the bundle scan reads (rulings 302, 356, 380). */
 export const dynamic = "force-dynamic";
 
-const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster" };
+const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster", limits: "Limits" };
+
+/** The limits card's heading, in ONE home: it is also what the form suppresses so the page does not say it
+ *  twice (432(n)) — read off the first render of the form, where the card's title and the form's first group
+ *  printed the same two words 34px apart, at 1280 and at 360. */
+const LIMITS_CARD_TITLE = "Global limits";
 
 /**
  * One usage cell's two halves. The server owns the sentence (ruling 361's one grammar); this only lays it out, so the
@@ -67,7 +86,7 @@ const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Rost
  * ⚠️ Every space is an explicit `{" "}`: SWC has been measured dropping the space before text that follows a
  * `{expression}` across a line break on this codebase's own served pages ("hour<!-- -->of").
  */
-function Usage({ cell }: { cell: ConsoleUsageCell }) {
+export function Usage({ cell }: { cell: ConsoleUsageCell }) {
   if (cell.halves.length === 0) return <span className="text-text-tertiary">{cell.text}</span>;
   const figure = cell.money ? "amount tabular-nums" : "font-mono tabular-nums";
   return (
@@ -80,20 +99,98 @@ function Usage({ cell }: { cell: ConsoleUsageCell }) {
           <span className="whitespace-nowrap">{h.word}{" "}<span className={figure}>{h.figure}</span>{h.suffix}</span>
         </Fragment>
       ))}
+      {/* ⛔ RULING 367 — AND IN THIS CELL IT IS THE ONLY SIGNAL THERE IS. A roster cell has no bar, so nothing
+          else can say that a cap has been reached; on a bar it is what separates 100% from 140%, which the geometry
+          cannot. The clause carries its own leading space and is "" when the cap is not reached, so there is no
+          branch here to forget. ⛔ The tone is `text-text-secondary`, not a warning colour: colour is never this
+          signal (§A4), and the roster's own status chip is where a stopped account is coloured. */}
+      {cell.edgeText ? <span className="text-text-secondary">{cell.edgeText}</span> : null}
     </>
+  );
+}
+
+/**
+ * ONE USAGE BAR ON THE LIMITS TAB (rulings 362, 364, 367, 409).
+ *
+ * ⛔ AN UNSET LIMIT RENDERS NO BAR. `over(cap, value)` in the seam is `cap == null || value > cap`, so an unset cap
+ * REFUSES every stake — a bar at 0% would say "headroom" where the gate says "nothing at all". What renders instead
+ * is ONE of ruling 364's three captions, chosen by the field's own membership in the reader, never a blanket sentence.
+ * ⛔ A FAILED READ IS NOT A ZERO EITHER (372(c)): it says so, in words, and draws no bar.
+ * ⛔ THE CAPTION OPENS WITH THE CAP'S NAME, because `ProgressBar`'s `label` is `aria-label` ONLY and paints nothing
+ * — without it a card of five bars names its caps to a screen reader and to nobody else (409).
+ * ⛔ ONLY THE FIGURES ARE `.amount`, at their own call site (401): that class is `white-space: nowrap`, so wrapping
+ * the whole sentence in it would overflow a 360 card (§A6). The words wrap; the amounts do not.
+ */
+export function UsageBar({ row, unsetHref }: { row: ConsoleUsageRow; unsetHref: string }) {
+  if (row.unreadable) {
+    return (
+      <div>
+        <p className="text-body-sm text-text-secondary">{row.name}</p>
+        <p className="text-body-sm text-warning-fg">Couldn&apos;t read — this is not zero.</p>
+      </div>
+    );
+  }
+  if (row.limitTzs === null) {
+    return (
+      <div>
+        <p className="text-body-sm text-text-secondary">{row.name}</p>
+        <p className="text-body-sm text-warning-fg">
+          {row.unsetCaption}
+          {row.unsetLinked ? (
+            <>
+              {" "}
+              <Link href={unsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] hover:underline">Set it below →</Link>
+            </>
+          ) : null}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <ProgressBar
+      value={row.usedTzs ?? 0}
+      max={row.limitTzs}
+      tone="brand"
+      label={row.name}
+      captionText={row.captionText}
+      caption={
+        <>
+          {row.name}
+          {" · "}
+          {row.halves.map((h, i) => (
+            <Fragment key={h.word + h.figure}>
+              {i > 0 ? " " : null}
+              <span className="whitespace-nowrap">{h.word}{" "}<span className="amount tabular-nums">{h.figure}</span>{h.suffix}</span>
+            </Fragment>
+          ))}
+          {/* ⭐ RULING 544 — READ OFF THE TILES, AND THE MEASUREMENT IS THE WHOLE ARGUMENT. The bar is
+              `Math.min(100, …)`, so 100% and 185% paint the SAME full track: `limits-at-1280.png` and
+              `limits-over-1280.png` are pixel-identical in the meter and differ only in this clause. Set in
+              the sentence's own tone it is four words at the end of five near-identical grey lines, on the
+              one card that says whether the gate is refusing every stake.
+              ⛔ COLOUR IS NOT THE SIGNAL, IT IS THE SECOND ONE: the words "— at the limit" / "— over the
+              limit" stay, and `captionText` (the `aria-valuetext`) is untouched, so nothing here is carried
+              by colour alone. The tone is the one THIS CARD already spends on a cap that stops money — the
+              unset caption two branches up — so no new colour enters the section.
+              ⛔ THE ROSTER CELL IS DELIBERATELY NOT CHANGED. `Usage` states its own reason for staying
+              `text-text-secondary` — a roster row has a status chip to colour — and a bar has none. */}
+          {row.edgeText ? <span className="text-warning-fg">{row.edgeText}</span> : null}
+        </>
+      }
+    />
   );
 }
 
 type DeskProps = { searchParams: Promise<{ tab?: string | string[] }> };
 
 /**
- * W25 BELT 2 — this page's own gate, decided on the viewer's STORED row. The section layout is skipped by a flight
- * request whose router state names it, so the gate the page cannot lose is the one it carries itself.
+ * W25 BELT 2 — this page carries its OWN gate, decided on the viewer's STORED row. A flight request whose router
+ * state names the section layout skips that layout, so the only gate a page cannot lose is the one it holds itself.
  *
- * ⛔ ADDITIVE, AND DELIBERATELY REDUNDANT HERE. `houseConsoleAudience` below already answers on the stored role and
- * is KEPT VERBATIM: it is this section's own audience rule (D19 — the feature is never named to anyone outside it),
- * which is narrower than "is a staff member". The gate answers the platform question; the audience answers the
- * feature's. Removing either would widen the other's blind spot.
+ * ⛔ ADDITIVE, AND DELIBERATELY REDUNDANT HERE. `houseConsoleAudience` inside the content already answers on the
+ * stored role and is KEPT VERBATIM: it is this section's own audience rule (D19 — the feature is never named to
+ * anyone outside it), which is NARROWER than "is a staff member". The gate answers the platform question; the
+ * audience answers the feature's. Removing either would widen the other's blind spot.
  */
 export default async function AdminDeskPage(props: DeskProps) {
   return <AdminPageGate title="Desk"><AdminDeskContent {...props} /></AdminPageGate>;
@@ -104,15 +201,35 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
   const session = await currentSession();
   if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/desk"))) return null;
 
-  const view = await houseRosterForConsole(session?.userId ?? null, "/admin/desk");
-  if (!view) return null;
-
   /* An unknown `?tab=` resolves to the roster (ruling 302): a query string is not a resource, so it is never a 404
      and never a redirect, which would rewrite a bookmarked URL on every bare visit. */
   const sp = await searchParams;
   const tab = consoleTab(sp.tab);
 
+  /* ⛔ EXACTLY ONE GATED READER PER RENDER PASS, AND THE PANEL DECIDES WHICH (rulings 346, 406).
+   * Each reader returns the SAME shell — the strip, the auto-off Callout, the band and the rail's counts — built
+   * from its own single read set, so the strip is identical on every tab and the "Set N global limits first →"
+   * count beside the switch cannot disagree with the limits panel one click away. Calling both would put TWO control
+   * reads in one render, and two reads of one question can disagree inside a render (346's own defect, and the
+   * reason `countLive` is banned here). */
+  const rosterView = tab === "roster" ? await houseRosterForConsole(session?.userId ?? null, "/admin/desk") : null;
+  const limitsView = tab === "limits" ? await houseUsageForConsole(session?.userId ?? null, "/admin/desk", { houseBotId: null }) : null;
+  const view: ConsoleDeskShell | null = rosterView ?? limitsView;
+  if (!view) return null;
+
   const rosterFull = view.rosterFullReason !== null;
+  /* ⚠️ HOISTED SO EACH TAB GROUP CAN BE WRITTEN IN THE SHIPPED IDIOM — a tab test opening its fragment, with NOTHING else in
+     the condition. `test:tab-anchors` decides which tab OWNS a rendered `id` by that exact opener, and the served
+     probe discovers a page's tabs by `tab === "…"`; a second term in the condition made the limits anchor read as
+     "above the rail (every tab)", which is a PASS that proves nothing. Measured on this file, 2026-09-18.
+     ⛔ `?? null` is not a lost failure state: the page returned `null` above when the gate refused, and exactly one
+     of the two readers ran, so on each tab its own slice is the reader's own answer. */
+  const rosterRows = rosterView?.rows ?? null;
+  const rosterEmpty = rosterView?.empty ?? null;
+  const usageRows = limitsView?.usage ?? null;
+  const limitRows = limitsView?.limits ?? null;
+  /* The CAS token the form carries back. `null` on the roster tab and in both states with no row to save. */
+  const limitsVersion = limitsView?.limitsVersion ?? null;
 
   return (
     <>
@@ -135,21 +252,19 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                 ⛔ THE WHOLE SENTENCE IS THE LINK ONCE THERE IS A PANEL TO LINK TO, and the first render is why: the
                 server's sentence already ENDS "…raise the roster limit on Limits →", so appending a separate
                 "Limits" link printed the word twice with the arrow orphaned between them ("on Limits → Limits").
-                ⛔ AND IT IS NOT A LINK YET (ruling 432(i)): `?tab=limits` resolves BACK to the roster while the
-                closed tab list holds only `roster`, so a live link here repaints the identical page with no limits
-                form and no explanation — a dead control in the honest-looking half of 432(a).
                 ⛔ WHEN THE ROSTER IS NOT FULL THERE IS STILL A REASON ON SCREEN (432(j)): a disabled primary action
                 with nothing beside it reads as a broken page, and "0 of 5" is exactly when designation is
                 legitimate. */}
             <span className="text-body-sm text-text-secondary max-w-[38ch]">
-              {/* ⛔ THE INERT BRANCH PAINTS THE PLAIN FORM (ruling 432(i)). The server's sentence is written for a
-                  LINK and ENDS "…on Limits →"; rendered as plain text that arrow promised a navigation to a tab
-                  `consoleTab()` resolves straight back to this page, and named a rail option that is not on the rail
-                  — the rail below carries "Roster" alone. The sibling forty lines down already drops its arrow when
-                  inert; this site passed the linked string straight through. */}
               {rosterFull && LIMITS_TAB_READY
                 ? <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] hover:text-brand-300 hover:underline">{view.rosterFullReason}</Link>
                 : rosterFull ? view.rosterFullPlain : view.actionReason}
+              {/* ⭐ C7 STEP 3 TURNED THIS ON. `LIMITS_TAB_READY` is now true, so the whole sentence is the LINK and
+                  its trailing arrow means what it says. ⛔ THE INERT BRANCH STAYS: the flag is derived from
+                  `CONSOLE_TABS`, and steps 4 and 5 add `activity`, `history`, `rules` and `targets` under exactly
+                  this rule — a rendered link may never name a `?tab=` value with no panel behind it. Its proof moved
+                  to the FUNCTION level (`stripLinkedTail`, `rosterFullPlain`) rather than being deleted, because a
+                  branch whose proof is deleted the day it stops executing is how the next dead control ships. */}
             </span>
             <Button size="md" variant="primary" disabled>Designate an account</Button>
           </span>
@@ -183,30 +298,52 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
               {/* 306 · the count is DERIVED at render time over the limits the switch requires — never a typed
                   number and never a hand-copied list, because a typed count renders "Set 0" while the press fails
                   with no explanation on screen. ⛔ Not a link until the limits panel exists (432(i)). */}
-              {view.unsetRequired > 0 && (
+              {/* ⛔ THE SENTENCE IS THE SERVER'S, AND IT IS `null` WHEN THE SWITCH IS ALREADY ON (ruling 306).
+                  This read `view.unsetRequired > 0` with no reference to `view.on`, and the state is reachable — a
+                  limit can be cleared after the desk is switched on. Read off the first 1280 tile: the chip said ON,
+                  "On since 20:14:12 EAT …" sat beside it, and "Set 1 global limit first →" sat beside THAT. Two
+                  opposite instructions on one screen, in the card that stops money — 432(m)/(n)'s class.
+                  ⛔ AND THE WORDS HAVE ONE HOME. Both forms were spelled out here in JSX, so the only thing any suite
+                  could assert was the NUMBER; the text itself was unproved. The server writes both, from the ONE
+                  count the rail's badge also reads, and this site chooses only the SKIN. The badge keeps reading
+                  `view.unsetRequired` directly, because a COUNT stays honest in either state. */}
+              {view.limitsFirstReason !== null && (
+                /* ⛔ THE LINK CARRIES THE FRAGMENT, NOT JUST THE TAB (rulings 306, 406). `#limits-first-unset` is
+                   rendered on the FIRST unset required limit of the panel this href selects, and
+                   `test:tab-anchors` holds the two together — the id and the builder landed in the same change,
+                   because a fragment pointing at an anchor nothing renders is the defect that suite exists for. */
                 LIMITS_TAB_READY ? (
-                  <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
-                    Set {view.unsetRequired} global limit{view.unsetRequired === 1 ? "" : "s"} first →
+                  <Link href={view.limitsFirstUnsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
+                    {view.limitsFirstReason}
                   </Link>
                 ) : (
-                  <span className="text-body-sm text-warning-fg">
-                    Set {view.unsetRequired} global limit{view.unsetRequired === 1 ? "" : "s"} first
-                  </span>
+                  <span className="text-body-sm text-warning-fg">{view.limitsFirstPlain}</span>
                 )
               )}
               {view.on !== null && (
                 <span className="flex items-center gap-2 flex-wrap">
                   <span className="text-body-sm font-semibold text-text">Master switch</span>
                   {/* ⛔ `tone="brand"` in BOTH states: gold is earned money only, and claret means ON MEANS STOPPED —
-                      here ON means money can move. ⛔ DISABLED at this checkpoint, and that is a STATE, not a pending
-                      control: the switch's own ceremony (the typed word, the Master-ON modal, the kill switch) is
-                      C7 step 4's, and an operable-looking switch with nothing behind it would be a lie.
-                      ⛔ AND ITS REASON IS ON SCREEN BESIDE IT (432(j)) — a disabled control with no reason reads as a
-                      broken page, which is what the default OFF state showed on the first render. */}
-                  <Toggle on={view.on} tone="brand" disabled aria-label="Desk master switch" />
-                  <span className="text-body-sm text-text-tertiary">{view.switchReason}</span>
+                      here ON means money can move.
+                      ⭐ C7 STEP 4b · THE SWITCH IS OPERABLE, AND THE CEREMONY IS WHAT MAKES IT SO (rulings 388, 415;
+                      owner-delegated 454). The server decides whether there is an act to perform at all and hands
+                      down every word of the dialog; this site chooses only the SKIN. ⛔ It ships OFF: the ceremony
+                      is the act's machinery, and the row is `enabled = false` on every environment (owner ruling
+                      D1, PLAN §11).
+                      ⛔ AND WHERE THERE IS NO ACT, THE CONTROL IS DISABLED WITH ITS REASON BESIDE IT (432(a),
+                      432(j)) — a withdrawn desk, or one whose required limits are unset, where the strip's own
+                      "Set N global limits first →" three characters to the left is that reason (432(n)). A live
+                      control the server could only ever refuse is the same lie one layer down. */}
+                  {view.switchDialog
+                    ? <DeskSwitch on={view.on} copy={view.switchDialog} act={setDeskSwitchAction} />
+                    : <Toggle on={view.on} tone="brand" disabled aria-label="Desk master switch" />}
+                  {view.switchReason !== null && <span className="text-body-sm text-text-tertiary">{view.switchReason}</span>}
                 </span>
               )}
+              {/* ⭐ THE PAGE'S ONE LIVE TRIGGER (rulings 316, 473), AND IT IS IN THE STRIP FOR A REASON: the strip
+                  renders above the rail on EVERY tab, so a tab switch never remounts it and the page can never end
+                  up with two timers. It paints nothing. */}
+              <DeskLive live={view.live} />
             </div>
           </div>
           )}
@@ -219,6 +356,30 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
           <Callout tone="neutral" title="The desk is not set up on this database">
             Its tables are not present here, so nothing can be staked and nothing can be designated. The database this
             server reads has not had the desk&apos;s migration applied.
+          </Callout>
+        )}
+
+        {/* ⭐ THE ENGINE-HEALTH CALLOUT, ABOVE THE BAND ON EVERY TAB (rulings 309, 352, 353, 354, 414; replan
+            435(e)). ⛔ The tone, the wording and WHETHER IT RENDERS AT ALL are the server's: 353's verdict needs the
+            master switch, which the one reader already holds, so there is no second control read in this render.
+            ⛔ `role="alert"` ONLY on the danger rows (414) — an alert that fires on every page load trains an
+            officer to ignore the one that matters — and the Callout is stably KEYED so the strip's 20 s refresh
+            does not re-announce a state that has not changed (309).
+            ⛔ IT NEVER RENDERS WITH THE DESK OFF: the strip one card up already says "The desk is off. Nothing will
+            be staked.", and 432(n) refuses one state saying one fact twice. */}
+        {view.engine && (
+          <Callout
+            key={view.engine.noticeKey}
+            tone={view.engine.tone}
+            size="md"
+            surface="panel"
+            emphasis="strong"
+            {...(view.engine.alert ? { role: "alert" as const } : {})}
+            title={view.engine.title}
+            meta={view.engine.meta ?? undefined}
+          >
+            {view.engine.body}
+            {view.engine.caption && <span className="block text-body-sm text-text-tertiary mt-1">{view.engine.caption}</span>}
           </Callout>
         )}
 
@@ -263,12 +424,20 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
           variant="line"
           ariaLabel="Desk sections"
           value={tab}
-          tabs={CONSOLE_TABS.map((k) => ({ value: k, labelEn: TAB_LABEL[k], href: consoleTabHref(k) }))}
+          /* ⛔ THE BADGE AND THE STRIP'S SENTENCE ARE THE SAME NUMBER FROM THE SAME READ (rulings 306, 312). It is
+             one field of one object built from one control row, never counted twice: a badge that disagrees with the
+             sentence 40px above it is the defect this is written against, and `CountBadge` renders nothing at zero,
+             so a count may never stand in for a read's health. */
+          tabs={CONSOLE_TABS.map((k) => ({ value: k, labelEn: TAB_LABEL[k], href: consoleTabHref(k), count: k === "limits" ? view.unsetRequired : undefined }))}
         />
 
-        {tab === "roster" && (
+        {/* ⚠️ THE `(<>` … `</>)}` FORM IS LOAD-BEARING, NOT A HABIT. `test:tab-anchors` decides WHICH TAB owns a
+            rendered `id` by finding the nearest tab-group opener above it with no `</>)}` in between; a panel whose
+            opener does not take this exact form reads as ABOVE the rail, which is the strongest possible answer and
+            would let the limits anchor pass while sitting on any tab at all. */}
+        {tab === "roster" && (<>
           <AdminCard padding="p-0">
-            {view.rows === null ? (
+            {rosterRows === null ? (
               /* 355 · a FAILED read is never an empty state and never a zero. */
               <div className="p-4"><AdminLoadError what="the roster" /></div>
             ) : (
@@ -317,23 +486,39 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                       {/* ⛔ RIGHT-ALIGNED like the two money usages beside it: same grammar, same shape, so three
                           adjacent usage figures read on ONE axis instead of two (432(o)). */}
                       <th scope="col" className="text-right p-3 !whitespace-normal">Bets today</th>
+                      {/* ⭐ 432(g) · "LAST BET" ARRIVED WITH ITS READER. It needs a last-placement instant, and the
+                          only reader that has one is `botRateUsage` — ruling 351's one new seam member, added at
+                          this step because the account page's two count rows need it too. Left-aligned and not
+                          `tabular`: it is a phrase, not a figure, and putting it on the money axis would read as a
+                          third usage column. */}
+                      <th scope="col" className="text-left p-3">Last bet</th>
                       <th scope="col" className="text-left p-3">Products</th>
-                      {/* ⛔ NO WAY-OUT COLUMN AT THIS CHECKPOINT (ruling 432(h)) — `/admin/desk/[id]` has no page
-                          until C7 step 4, so every row's "open →" answered the app-root 404. It is the same rule
-                          432(a) applied to the head action and the master switch, and the same shape as 432(g)'s
-                          deferred columns: the column arrives with the page it opens. */}
+                      {/* ⭐ THE WAY OUT ARRIVED WITH THE PAGE IT OPENS (ruling 432(h)). Until `/admin/desk/[id]`
+                          had a page every row's "open →" answered the app-root 404 — the first control an officer
+                          reaches on the deliverable. `test:house-bot-console` ties the column to that FILE in both
+                          directions, so it could not ship early and could not be forgotten.
+                          ⛔ THE HEADER HAS NO WORD, and that is the kit's own shape for a row-link column
+                          (`/admin/kyc`, `/admin/approvals`): the link says what it does, and a header repeating it
+                          would spend a column name on nothing. */}
+                      <th scope="col" className="text-right p-3" />
                     </tr>
                   </thead>
                   <tbody>
-                    {view.empty ? (
+                    {rosterEmpty ? (
                       /* 416 with 310's precedence — the state the table is in NAMES ITS CAUSE: the desk being off
                          beats "none designated yet", and a failed read beat both above. */
-                      <AdminTableEmpty colSpan={6} title={view.empty.title} body={view.empty.body} />
+                      <AdminTableEmpty colSpan={8} title={rosterEmpty.title} body={rosterEmpty.body} />
                     ) : (
-                      view.rows.map((r) => (
+                      rosterRows.map((r) => (
                         <tr key={r.id} className="border-b border-border-subtle">
                           <td className="p-3">
-                            <div className="text-text">{r.label}</div>
+                            {/* ⛔ RULING 474 · THIS TEXT IS OPERATOR DATA, AND THE DOM SAYS SO. `bot.label` is what
+                                the Owner typed to identify an account; 453's lexicon binds this section's COPY and may
+                                not silently rewrite it, so it is exempted BY NAME — and an exemption a scanner cannot
+                                SEE is one that gets applied to whatever happens to be nearby. MEASURED 2026-09-18: the
+                                served gate had no such hook, so a fixture whose accounts were labelled "Bot 1–3" made
+                                §5.6 red at all six widths — on a value 474 says must never fail it. */}
+                            <div className="text-text" data-operator-text="label">{r.label}</div>
                             {/* The holder, as a HANDLE and nothing else (04 R6) — never a name, a phone or an email,
                                 because a row outlives the holder's erasure. 13px mono in a subdued tone is
                                 /admin/agents' own shape for the same thing, and it clears §T4's 12.5px floor. */}
@@ -347,7 +532,13 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                           <td className="p-3 text-right"><Usage cell={r.exposureCell} /></td>
                           <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                           <td className="p-3 text-right text-text-secondary"><Usage cell={r.betsCell} /></td>
+                          {/* ⛔ AN ACCOUNT THAT HAS NEVER STAKED READS "—", never a fabricated date and never a zero
+                              (§C2). The absolute EAT instant is in `title`, where the kit puts every exact time. */}
+                          <td className="p-3 text-text-secondary" title={r.lastBet?.title}>{r.lastBet?.text ?? "—"}</td>
                           <td className="p-3 text-text-secondary">{r.products}</td>
+                          <td className="p-3 text-right">
+                            <Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -356,7 +547,72 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
               </ScrollX>
             )}
           </AdminCard>
-        )}
+        </>)}
+
+        {tab === "limits" && (<>
+          {/* 364 · the all-bots twins of the per-account usage card: the daily stake cap, the daily loss cap read
+              TWICE against ONE limit (366 — the seam refuses a new stake on PROJECTED loss and a stop fires only on
+              SETTLED loss, so collapsing them would hide the figure one of the two controls acts on), the open
+              exposure cap scoped "open now", and the targeted-and-manual daily cap.
+              ⛔ NO ROW FOR THE PER-MARKET, PER-PLAYER OR COUNTERPARTY-SHARE CAPS (365): this console renders no
+              per-market, per-player or per-officer money figure, so a usage bar for one would be a figure with no
+              population an officer could act on. They appear in the list below as VALUES, which is not a usage. */}
+          {/* ⛔ NOT RENDERED IN 421's SCHEMA STATE, FOR THE REASON THE STRIP IS NOT (432(e), 432(n)). With no
+              control row this card and the one below it each painted an `AdminLoadError` — "limit usage" and "the
+              global limits" — directly under the Callout that had already said the tables are not on this database.
+              421 asks for ONE Callout; 355 reserves the kit's failure treatment for a read that FAILED, and a table
+              that is not on the database has not failed to be read. The reader now answers `[]` in that state and
+              `null` only for a real failure, so `AdminLoadError` below still means what it says. */}
+          {!view.schemaMissing && (
+          <AdminCard title="Limit usage">
+            {usageRows === null ? (
+              /* 372(c) · a whole-panel failure is the kit's own treatment — never a card of bars at zero. */
+              <AdminLoadError what="limit usage" />
+            ) : (
+              /* ⛔ THE SAME 640 COLUMN THE LIMITS LIST BELOW IT USES, AND IT WAS READ OFF THE TILE. At 1280 the card
+                 is the page's full width, so a 10px `ProgressBar` track ran 640→1228px with a 0% fill: five of them
+                 read as horizontal RULES above their captions, indistinguishable from a divider, and the card sat at
+                 a different width from the limits card directly beneath it. A meter that reads as a rule is not a
+                 meter (§A4: the shape is the signal, never the colour). `FormColumn` is the kit's own measure token,
+                 which is why no width is hand-typed here. */
+              <FormColumn measure="form">
+                <div className="space-y-4">
+                  {usageRows.map((r) => <UsageBar key={r.name} row={r} unsetHref={view.limitsFirstUnsetHref} />)}
+                </div>
+              </FormColumn>
+            )}
+          </AdminCard>
+          )}
+
+          {/* ⭐ THE PANEL STOPS BEING READ-ONLY (replan ruling 537, which REVERSES ruling 433(a)).
+              433(a) shipped this list read-only on the ground that "there is no limits-SAVE service in this
+              repository". Measured since: `houseBotControlStore.saveLimits` EXISTS in both twins with CAS
+              semantics, its whole validation surface is green, and `house_bot.limits_saved` is already classified
+              — what was missing was ONE SERVER ACTION. 432(a) forbids a control with nothing behind it; it does
+              not license leaving a control unbuilt when the thing behind it is built, tested and CAS-safe.
+              ⛔ THE COLUMN STAYS `FormColumn measure="form"` (412), which is why the measure did not move when the
+              inputs arrived — the read-only pass was already standing in the form's own column.
+              ⛔ NO FORM WITHOUT A BASE VERSION. `limitsVersion` is null exactly when there is no row to save
+              against, and a form whose base version is unknown could only ever clobber a second writer. */}
+          {!view.schemaMissing && (
+          <AdminCard title={LIMITS_CARD_TITLE}>
+            {limitRows === null || limitsVersion === null ? (
+              <AdminLoadError what="the global limits" />
+            ) : (
+              <FormColumn measure="form">
+                {/* ⛔ THE `id` IS A LITERAL AND IT IS WRITTEN HERE, IN THE PAGE, NOT IN THE FORM.
+                    `test:tab-anchors` reads THIS FILE as text for `id="limits-first-unset"` and decides which tab
+                    owns it by the nearest tab-group opener above it: an `id={cond ? "limits-first-unset" :
+                    undefined}` compiles, paints correctly and is INVISIBLE to it, and the same literal inside a
+                    component sits ABOVE every tab group and reads as "above the rail". Both were measured on this
+                    file. So the page NAMES the anchor and the form PLACES it, on the first unset required limit —
+                    which is what the strip's "Set N global limits first →" promises the officer will find. */}
+                <DeskLimitsForm rows={limitRows} baseVersion={limitsVersion} id="limits-first-unset" omitSection={LIMITS_CARD_TITLE} onSave={saveDeskLimitsAction} />
+              </FormColumn>
+            )}
+          </AdminCard>
+          )}
+        </>)}
       </AdminBody>
     </>
   );

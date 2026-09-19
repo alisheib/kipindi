@@ -25,7 +25,65 @@
  * — the value the suite was BORN with at `a897e47a` — while the run printed memory 153 / Postgres 86 at `98b5a2be`,
  * so the floor would not have noticed 93 memory cases and 58 Postgres cases vanishing. A floor that has never risen
  * is itself a finding, which is what 515 is. Raised to what `npm run test:house-bot-console` PRINTED at `d2f20795`:
- * **memory 154, Postgres 86** (ruling 513 added 4.453.c2, hence 154 rather than 153). ⛔ A floor only ever rises, and
+ * **memory 154, Postgres 86** (ruling 513 added 4.453.c2, hence 154 rather than 153), and RAISED AGAIN at C7
+ * step 3 to what this run PRINTED with the limits tab, the caption pair and the live trigger in it:
+ * **memory 210, Postgres 117**, and again at step 2 with the D19 §5 and 398's roll-call in it: **memory 238,
+ * Postgres 121**, and once more with the limits list's money/count face pinned: **memory 240, Postgres 122**,
+ * and again at replan ruling 539's fixes — the widened counter stem, the derived override population, the swept
+ * top-level copy and 513's raised floor: **memory 242, Postgres 124**, and again with ruling 348's own Proof
+ * written for the first time (1.348): **memory 248, Postgres 128**, and again at ruling 541's four dead
+ * mutations: **memory 250, Postgres 129**, and again with 306's sentence, 474's two clamps and 421's schema
+ * state: **memory 262, Postgres 140**.
+ * ⭐ RAISED AGAIN at replan ruling 537 — the limits SAVE, its refusal, its audit row, its CAS conflict under two
+ * real writers, its neutral keys and the rendered field list — to what `npm run test:house-bot-console` PRINTED
+ * on this run: **memory 307, Postgres 169** (303/166 before the served drive found the audit-failure lie and the card's doubled heading).
+ * ⭐ RAISED AGAIN by C7 step 3's VISUAL pass (ruling 544 and 432(n)'s placeholder), to what
+ * `npm run test:house-bot-console` PRINTED on that run: **memory 313, Postgres 173**. Both new assertions came
+ * off a served tile, not off the source: `limits-at-1280.png` and `limits-over-1280.png` are pixel-identical in
+ * the meter, `form-dirty-360.png` showed one field saying "Not set" twice, and `limits-unset-exempt-unsetfield-1280.png` showed four HINTS carrying the unset consequence a second time — one of them under a field whose own value read 200.
+ * ⭐ RAISED AGAIN at C7 step 4's first slice — `botRateUsage`, the one new seam member ruling 351 allows, with its
+ * hour/day windows, its identity with `botUsage`, its one-call roster read and the account that has never placed —
+ * to what `npm run test:house-bot-console` PRINTED on that run: **memory 318, Postgres 178**.
+ * ⭐ RAISED AGAIN with replan ruling 547's split caption and ruling 432(f)'s neutral way-out overrides, to what
+ * `npm run test:house-bot-console` PRINTED on that run: **memory 329, Postgres 189**.
+ * ⭐ RAISED AGAIN at C7 step 4 with the ACCOUNT PAGE in it — the three answers of ruling 399, the five money rows
+ * and two count rows, the balance-FLOOR state in all four of its branches, X6, the rules and targets panels, the
+ * REMOVED read set measured with six spies, and "Last bet" on both surfaces — to what `npm run test:house-bot-console`
+ * PRINTED on that run: **memory 367, Postgres 225**, and **368 / 226** after the step's own renders found a
+ * REMOVED account painting `AdminLoadError` for a read 358 says it never takes, and three rows spending a scope
+ * word their own cap already carried.
+ * ⭐ RAISED ONCE MORE with 1.435, the account page's own source law — six `removed` guards, three pure tab
+ * tests, the RAW file yielding exactly the closed tab list, and no failure treatment a removed account can
+ * reach: **memory 372, Postgres 230**.
+ * AND ONCE MORE with 1.350, replan ruling 506 s last homeless assertion for this step — ruling 350 s two
+ * lists held against the console s one door, with ruling 504 s two decided members read off the tree:
+ * **memory 376, Postgres 230** (the source pins run in the memory child only).
+ * ⭐ RAISED AGAIN at C7 step 4b with the MASTER-SWITCH CEREMONY in it — the typed word and where it is checked,
+ * the arming predicate's eight branches, the server's four refusals, the act itself and the kill switch, ruling
+ * 547 re-verified in the state it was written about and reached through the console for the first time, and
+ * 432(j) widened from two states to four — to what `npm run test:house-bot-console` PRINTED on that run:
+ * **memory 397, Postgres 251**. Every one of those assertions was seen RED first, against a tree with the gated
+ * writer and its service removed: **16 failed on memory**, with no throw and with §3 and §4 still running.
+ * ⭐ RAISED AGAIN with the ENGINE-HEALTH CALLOUT inside the one door (ruling 435(e)) — the tone table over five
+ * verdicts, 354(c)'s unreadable beats, X1's duty phrases over a population derived from the planner's own
+ * union, one beat read per render and 432(n)'s silence with the desk off — to what the run PRINTED:
+ * **memory 410, Postgres 264**. Seen RED first with the notice absent: 7 failed on memory.
+ * ⭐ RAISED AGAIN with replan ruling 548's breadcrumb mask and 432(f)'s eligibility half MEASURED — 14 dirty
+ * sentences where the ruling named two, tied by existence to the surface that would render them — to what the run
+ * PRINTED: **memory 420, Postgres 273**.
+ * ⭐ RAISED AGAIN with the ACCOUNT ACTION ROW — which acts each state allows, Pause and Remove as the OFFICER s
+ * acts rather than the engine s, the typed word checked on the server, every refusal in the console s own words
+ * over a population derived from the service unions, and 432(j) s state-with-no-reason closed — to what the run
+ * PRINTED: **memory 440, Postgres 293**. Seen RED first with the row s server half removed: 14 failed on memory.
+ * ⭐ RAISED AGAIN at C7 step 4c with ruling 550(b)'s PAGER on the account page's Targets grid (the total is a
+ * COUNTING read beside the paged one, the tab count is the account's own ACTIVE total and not the page's, and a
+ * `?tpage=` past the end is served as the last page) and ruling 551(a)'s refusal destination (a section that masks
+ * its record ids does not hand one back in a `next=` target) — to what the run PRINTED: **memory 448,
+ * Postgres 297**. Seen RED first on six separate mutations, two at a time: total-from-page-length (total 20 where
+ * the set is 22), tab-count-from-page (20 on page 1, 2 on page 2), offset ignored (page 2 == page 1, union 20),
+ * no clamp (`?tpage=99` answered 99), the helper returning its argument, and one of the four `next=` sites built
+ * from the raw href (layout 3 built / 2 via the helper).
+ * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
  * ⚠️ `red:house-bot-console` carries the mutations for every assertion here; it is run once at the commit close.
@@ -35,6 +93,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 154, postgres: 86 },
+  minPass: { memory: 448, postgres: 297 },
   dbPrefix: "hb_console",
 });

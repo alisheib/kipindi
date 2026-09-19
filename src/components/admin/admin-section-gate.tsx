@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { headers } from "next/headers";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -54,12 +55,26 @@ export function AdminPageGate({ children, title }: { children: React.ReactNode; 
   return <AdminSectionGate title={title} banner={false}>{children}</AdminSectionGate>;
 }
 
+/**
+ * THE VIEWER'S STORED ROW, RESOLVED ONCE PER RENDER PASS.
+ *
+ * ⛔ WHY THIS IS CACHED, measured rather than assumed. W25 put this gate inside every admin page as well as its
+ * section layout — deliberately, because a flight skips the layout and the page gate is the one that cannot be
+ * skipped. But on an ordinary document request BOTH now run, so every admin page render was paying a SECOND
+ * `SELECT … FROM "User" WHERE id = <the viewer>`, and `<Sensitive>` already pays a third for the same row on any
+ * page with a masked cell. `sensitive.tsx:48-52` documents why that query is not cheap: `db.user.findById` is a real
+ * `findUnique` returning the WHOLE row including `avatarDataUrl`, a column `user.list()` explicitly omits for this
+ * reason. React's `cache()` is per render pass, so this memoises the LOOKUP and decides nothing — the layout gate,
+ * the page gate and any nested gate now share one read, and the double-gating costs nothing but a function call.
+ */
+const viewerRow = cache(async (userId: string) => Promise.resolve(db.user.findById(userId)).catch(() => null));
+
 export async function AdminSectionGate({ children, title: titleProp, banner = true }: { children: React.ReactNode; title?: string; banner?: boolean }) {
   const h = await headers();
   const path = h.get("x-pathname") ?? "";
   const title = titleProp ?? crumbsFromPath(path || "/admin").at(-1) ?? "Restricted";
   const session = await currentSession();
-  const user = session ? await Promise.resolve(db.user.findById(session.userId)).catch(() => null) : null;
+  const user = session ? await viewerRow(session.userId) : null;
   if (!session || !user || !isStaffRole(user.role) || !path.startsWith("/admin")) {
     return <AdminRestricted title={title} need="a staff sign-in" />;
   }

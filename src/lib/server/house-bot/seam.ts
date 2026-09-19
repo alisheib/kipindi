@@ -185,7 +185,12 @@ export async function houseH2(input: {
   if (over(bot.stakeMaxTzs, stake)) return capReached("STAKE_MAX");
   if (over(bot.capPerMarketTzs, usage.stakeOnMarket + stake)) return capReached("PER_MARKET");
   if (bot.balanceFloorTzs == null || input.walletBalance - stake < bot.balanceFloorTzs) return capReached("BALANCE_FLOOR");
-  const today = await houseDayBook(eatDayKey(Date.now()), ctx.botId, tx);
+  /* ⛔ ONE DAY PER PASS, DERIVED ONCE (replan ruling 542, applying 348 to the path that ENFORCES a limit).
+     `staffChosenPlacedToday` below takes this same key; without it the member derived a SECOND day —
+     `eatDayKey(Date.now())` on the memory twin and the DATABASE CLOCK on the Prisma twin — so one H2 pass
+     measured its day book on the app clock and its staff-chosen usage on another. */
+  const day = eatDayKey(Date.now());
+  const today = await houseDayBook(day, ctx.botId, tx);
   if (over(bot.capDailyStakeTzs, today.stakedTzs + stake)) return capReached("DAILY_STAKE");
   if (over(bot.capDailyLossTzs, today.projectedLossTzs + stake)) return capReached("DAILY_LOSS_PROJECTED");
   if (over(bot.capOpenExposureTzs, (await houseOpenExposure(ctx.botId, tx)) + stake)) return capReached("EXPOSURE");
@@ -193,7 +198,7 @@ export async function houseH2(input: {
   // ── group 4 · staff-chosen caps and TARGET_ONCE (MANUAL, or a targeted COUNTER) ───────────────
   // H2_ORDER:staff
   if (intent.kind === "MANUAL" || intent.targetId != null) {
-    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId }, tx);
+    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId, dayKey: day }, tx);
     if (bot.capStaffChosenPerDay == null || staff.count >= bot.capStaffChosenPerDay) return capReached("STAFF_CHOSEN_PER_DAY");
     if (over(bot.capStaffChosenDailyTzs, staff.stakeTzs + stake)) return capReached("STAFF_CHOSEN_DAILY_STAKE");
     // N2 §3: `decision.reactTo` from the claimed row, never the live target — an update never changes a
@@ -326,7 +331,10 @@ export async function houseH4(input: {
   const control = await houseBotControlStore.get(tx);
   if (!control.enabled) return refuse({ ok: false, error: "House bots are off.", code: "SUSPENDED", reason: "house_disabled" });
 
-  const all = await houseDayBook(eatDayKey(Date.now()), null, tx);
+  /* ⛔ ONE DAY PER PASS (replan ruling 542) — the same rule as H2 above: the global staff-chosen read below
+     takes this key rather than deriving a second one from another clock. */
+  const day = eatDayKey(Date.now());
+  const all = await houseDayBook(day, null, tx);
   if (over(control.gCapDailyStakeTzs, all.stakedTzs + stake)) return refuse(capReached("GLOBAL_DAILY_STAKE"));
   if (over(control.gCapDailyLossTzs, all.projectedLossTzs + stake)) return refuse(capReached("GLOBAL_LOSS_PROJECTED"));
   if (over(control.gCapOpenExposureTzs, (await houseOpenExposure(null, tx)) + stake)) return refuse(capReached("GLOBAL_EXPOSURE"));
@@ -354,7 +362,7 @@ export async function houseH4(input: {
   }
 
   if (intent.kind === "MANUAL" || intent.targetId != null) {
-    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null }, tx);
+    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey: day }, tx);
     if (control.gCapStaffChosenPerDay == null || staff.count >= control.gCapStaffChosenPerDay) return refuse(capReached("GLOBAL_STAFF_CHOSEN_PER_DAY"));
     if (over(control.gCapStaffChosenDailyTzs, staff.stakeTzs + stake)) return refuse(capReached("GLOBAL_STAFF_CHOSEN_DAILY_STAKE"));
   }

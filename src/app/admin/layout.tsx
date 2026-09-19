@@ -13,7 +13,7 @@ import { ConfidentialBand, AdminSidebar, AdminTopBar, type AdminSession } from "
 import { TOTP_COOKIE_NAME, TOTP_TTL_SEC } from "@/lib/server/totp-cookie";
 import { isStaffRole, isAdmin } from "@/lib/server/roles";
 import { viewableDomains } from "@/lib/server/rbac";
-import { crumbsFromPath, activeKeyFromPath } from "@/components/admin/admin-nav-groups";
+import { crumbsFromPath, activeKeyFromPath, adminNextDest } from "@/components/admin/admin-nav-groups";
 
 /**
  * RBAC VIEW gate (2026-07-28). Console admission below admits any STAFF role; this
@@ -51,8 +51,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // officer lands back on the exact page after re-authenticating.
     const h0 = await headers();
     const dest = h0.get("x-href") ?? h0.get("x-pathname") ?? "";
+    /* ⛔ 551(a) · the destination is the SECTION for a section that masks its record ids — a refusal must not
+       hand the record id back out in its own redirect target. */
     const loginUrl = dest.startsWith("/admin") && !dest.startsWith("/auth")
-      ? `/auth/admin?next=${encodeURIComponent(dest)}`
+      ? `/auth/admin?next=${encodeURIComponent(adminNextDest(dest))}`
       : "/auth/admin";
     redirect(loginUrl as never);
   }
@@ -62,8 +64,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // Wrong role (e.g. player session) — send to admin login with deep-link preserved.
     const h0 = await headers();
     const dest = h0.get("x-href") ?? h0.get("x-pathname") ?? "";
+    /* ⛔ 551(a) · the destination is the SECTION for a section that masks its record ids — a refusal must not
+       hand the record id back out in its own redirect target. */
     const loginUrl = dest.startsWith("/admin") && !dest.startsWith("/auth")
-      ? `/auth/admin?next=${encodeURIComponent(dest)}`
+      ? `/auth/admin?next=${encodeURIComponent(adminNextDest(dest))}`
       : "/auth/admin";
     redirect(loginUrl as never);
   }
@@ -135,8 +139,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       // Clear stale/invalid cookie so the verify page starts clean.
       try { jar.delete(TOTP_COOKIE_NAME); } catch {}
       // Preserve the deep-link destination through the TOTP gate.
+      /* ⛔ 551(a) · same rule at the TOTP gate: the step-up keeps the officer's place, never the record id. */
       const dest = href.startsWith("/admin") && !href.startsWith("/admin/totp-verify") ? href : "";
-      redirect(dest ? `/admin/totp-verify?next=${encodeURIComponent(dest)}` : "/admin/totp-verify");
+      redirect(dest ? `/admin/totp-verify?next=${encodeURIComponent(adminNextDest(dest))}` : "/admin/totp-verify");
     }
     // Sliding refresh: re-issue the TOTP cookie on activity so an actively
     // working admin isn't kicked back to the TOTP gate at the hard 8h mark

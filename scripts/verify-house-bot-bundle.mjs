@@ -144,5 +144,99 @@ if (empty.length > 0) { console.log(`NOT MEASURED — no files in ${empty.map((p
 const { total, report } = scanPopulations(populations);
 console.log(`scanned ${populations.map((p) => `${p.files.length} files under ${p.name}`).join(" · ")} (build ${new Date(builtAt).toISOString()})`);
 for (const [key, r] of report) console.log(`FOUND ${key} ×${r.n} in ${r.files.size} file(s) · e.g. …${r.ctx}…`);
+
+/**
+ * ⛔ THE POSITIVE PRESENCE CONTROL (C7-SPEC ruling 396). A zero above means "no house vocabulary in the artefact"
+ * ONLY if the artefact actually CONTAINS the console. The freshness check two blocks up compares mtimes; it cannot
+ * tell a build that included the section from one produced before it existed, from a different checkout, or with the
+ * route tree-shaken away. So one declared NEUTRAL needle from the console's own client code must be FOUND under
+ * `.next/static`, or this pass prints NOT MEASURED instead of a pass.
+ *
+ * ⚠️ THE NEEDLE IS NEUTRAL BY CONSTRUCTION and that is the point: ruling 453 forbids the section from putting a
+ * feature word anywhere, so the thing that proves the console is in the build cannot itself be a house word. It is
+ * the custom window-event name the desk's own live strip registers — a string literal inside a `"use client"`
+ * component, used in its effect, so it survives tree-shaking.
+ * ⛔ IT IS READ FROM THE SOURCE, NEVER TYPED HERE: a needle typed twice is a needle that drifts, and this one would
+ * drift silently into "found nothing, therefore green".
+ */
+const CONSOLE_CLIENT = path.join(root, "src", "app", "admin", "desk", "desk-live.tsx");
+const staticFiles = populations.find((p) => p.name === ".next/static")?.files ?? [];
+let presenceOk = false;
+let presenceNeedle = "";
+let presenceFile = "";
+if (!fs.existsSync(CONSOLE_CLIENT)) {
+  console.log(`NOT MEASURED — the console's client module is not at ${path.relative(root, CONSOLE_CLIENT)}, so this scan cannot show the build contains the section`);
+  process.exit(2);
+}
+{
+  const src = fs.readFileSync(CONSOLE_CLIENT, "utf8");
+  presenceNeedle = (src.match(/"(50pick:desk:[a-z]+)"/) ?? [])[1] ?? "";
+  if (!presenceNeedle) {
+    console.log(`NOT MEASURED — ${path.relative(root, CONSOLE_CLIENT)} declares no neutral presence needle for this scan to look for`);
+    process.exit(2);
+  }
+  for (const f of staticFiles) {
+    if (!TEXT.test(f)) continue;
+    if (fs.readFileSync(f, "utf8").includes(presenceNeedle)) { presenceOk = true; presenceFile = path.relative(next, f).replace(/\\/g, "/"); break; }
+  }
+}
+if (!presenceOk) {
+  console.log(`NOT MEASURED — the console's own neutral needle ${JSON.stringify(presenceNeedle)} is in NO file under .next/static, so this build does not demonstrably contain the section and its zero proves nothing`);
+  process.exit(2);
+}
+console.log(`PRESENCE · the build contains the console: ${JSON.stringify(presenceNeedle)} found in ${presenceFile}`);
+
+/**
+ * ⛔ 385's PROVENANCE SECTION, over the SAME populations (ruling 396). The console's copy is written on the SERVER
+ * and handed to the client as finished strings; ruling 453 makes every one of those strings neutral, so the house
+ * vocabulary scan above can no longer see them at all. What a served artefact must still not contain is the console's
+ * own SENTENCES — a server sentence in a public chunk means a client module has re-typed it, which is the first step
+ * back to a client file that knows what the desk is.
+ * ⛔ THE SENTENCES ARE READ FROM THE SERVER SOURCE, not listed here, so the section cannot rot away from the copy.
+ */
+{
+  const GATE = path.join(root, "src", "lib", "server", "house-console-read.ts");
+  const sentences = fs.existsSync(GATE)
+    ? [...fs.readFileSync(GATE, "utf8").matchAll(/"([A-Z][^"\\]{24,120}[.?→])"/g)].map((m) => m[1])
+    : [];
+  /** The scan itself, over one body — the exact expression the sweep below uses, so the control can re-run it. */
+  const hitsIn = (body) => sentences.filter((sent) => body.includes(sent));
+  const provenance = [];
+  /* The FIRST real scanned body, kept for the control: a plant must go into an artefact this scan really walks. */
+  let controlFile = "";
+  let controlBody = "";
+  for (const pop of populations) {
+    for (const f of pop.files) {
+      if (!TEXT.test(f)) continue;
+      const body = fs.readFileSync(f, "utf8");
+      if (!controlBody && hitsIn(body).length === 0) { controlBody = body; controlFile = path.relative(pop.base, f).replace(/\\/g, "/"); }
+      for (const sent of hitsIn(body)) provenance.push(`${path.relative(pop.base, f).replace(/\\/g, "/")}: ${JSON.stringify(sent.slice(0, 48))}`);
+    }
+  }
+  /**
+   * ⛔ THE CONTROL EXERCISES THE SCAN, NOT A STRING IT JUST BUILT (replan ruling 540(a)).
+   * It read ``CONTROL.length > 0 && `var a=${JSON.stringify(CONTROL)};`.includes(CONTROL)`` — a string built to
+   * contain `CONTROL`, asked whether it contained `CONTROL`. The sentence regex excludes `"` and `\`, so
+   * `JSON.stringify` never escapes anything and the predicate was TAUTOLOGICALLY TRUE for any non-empty sentence,
+   * while it GATED `process.exit(1)`. Ruling 396 asks for a control that proves this scan can find a planted sentence
+   * in a REAL artefact; that proved nothing. *Would it still pass if the feature were absent?* Yes.
+   * Now: a server sentence is planted into a COPY of a real scanned body, the SAME `hitsIn` loop is re-run over it and
+   * must report exactly that sentence, and the ORIGINAL must still report none.
+   */
+  const CONTROL = sentences[0] ?? "";
+  const plantedHits = controlBody ? hitsIn(`${controlBody}\n/* ${CONTROL} */`) : [];
+  /* ⚠️ NOT `length === 1`: MEASURED on the first run of this control, the plant reported TWO — the sentence list
+     is read off one module and one of its sentences is a SUBSTRING of another, so planting the longer one plants
+     both. That is an overlap in the POPULATION, not a scan that over-reports, so what is required is that every
+     hit be explained BY the plant: the planted sentence is among them and nothing else is.
+     ⛔ The ORIGINAL still has to report none, which is the half that makes this a control at all. */
+  const controlWorks = CONTROL.length > 0 && controlBody.length > 0
+    && plantedHits.includes(CONTROL) && plantedHits.every((x) => CONTROL.includes(x))
+    && hitsIn(controlBody).length === 0;
+  console.log(`${provenance.length === 0 && sentences.length >= 5 && controlWorks ? "PASS" : "FAIL"} provenance · 385 · none of the ${sentences.length} server-written console sentences appears in the public bundle, the prerendered documents or public/${provenance.length ? ` — ${provenance.slice(0, 5).join(" · ")}` : ""}${sentences.length < 5 ? " — the sentence list is too small to be a population" : ""}`);
+  console.log(`${controlWorks ? "PASS" : "FAIL"} provenance · CONTROL · 396 · the same scan reports a server sentence planted into ${JSON.stringify(controlFile)} — a real artefact it walks — and reports none in the original${controlWorks ? "" : ` — plantedHits ${plantedHits.length} ${JSON.stringify(plantedHits.map((x) => x.slice(0, 32)))}, body ${controlBody.length} chars`}`);
+  if (provenance.length > 0 || sentences.length < 5 || !controlWorks) process.exit(1);
+}
+
 console.log(total === 0 ? "ALL PASS — verify:house-bot-bundle: no house-bot vocabulary in the public bundle, the prerendered documents or public/" : `FAIL — verify:house-bot-bundle: ${total} hit(s)`);
 process.exit(total === 0 ? 0 : 1);

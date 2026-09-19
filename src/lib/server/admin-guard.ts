@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { hasTotp } from "./totp";
 import { verifySession } from "./crypto";
 import { TOTP_COOKIE_NAME } from "./totp-cookie";
+import { adminNextDest } from "@/components/admin/admin-nav-groups";
 
 /**
  * Step-up 2FA gate for sensitive admin SERVER ACTIONS / route handlers.
@@ -65,7 +66,8 @@ export async function requireAdminTotp(userId: string, sessionId: string): Promi
   try {
     const href = (await headers()).get("x-href") ?? "";
     if (href.startsWith("/admin") && !href.startsWith("//") && !href.startsWith("/admin/totp-verify")) {
-      next = `?next=${encodeURIComponent(href)}`;
+      /* ⛔ 551(a) · a section that masks its record ids is returned to by SECTION, never by record. */
+      next = `?next=${encodeURIComponent(adminNextDest(href))}`;
     }
   } catch { /* no request scope (background caller) */ }
   if (status === "not-enrolled") redirect(`/admin/2fa/setup${next}`);

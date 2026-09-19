@@ -392,6 +392,12 @@ try {
   ok("4.3 · CONTROL · the ADMIN does carry the victim's PII on the pages that render it",
     MUST_CARRY.every((r) => adminHitRoutes.has(r)),
     `missing: ${MUST_CARRY.filter((r) => !adminHitRoutes.has(r)).join(", ") || "none"} · ADMIN carries PII on ${adminHitRoutes.size} route instances`);
+  // ⛔ AND THE CONTROL'S REACH IS PINNED, not just its three named entries. MUST_CARRY is hand-written, so if the
+  // fixture stopped planting PII on 19 of the 22 surfaces the ADMIN reaches, 4.3 would still pass on the three that
+  // remained and 4.1's silence everywhere else would go on reading as proof. The floor is the MEASURED value and may
+  // only ever rise: a drop means the fixture got thinner, which is exactly the failure this probe exists to refuse.
+  ok(`4.3b · CONTROL · the ADMIN control's REACH has not shrunk (floor 22, measured)`,
+    adminHitRoutes.size >= 22, `${adminHitRoutes.size} route instances carry the victim's PII for the ADMIN`);
   const silent = [...new Set(rows.map((r) => r.route))].filter((r) => !adminHitRoutes.has(r)).sort();
   for (const r of silent) notMeasured(`4.nm · ${r}`, "the ADMIN control carries no seeded PII there, so its absence for the other viewers proves nothing about that page");
 

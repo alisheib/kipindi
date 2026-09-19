@@ -1288,7 +1288,7 @@ Each step ends with `npx tsc --noEmit` at 0, the suites §4 assigns it, and a re
 |---|---|---|
 | 1 | `tsc`, `test:guards-exist`, `test:admin-nav`, `test:rbac`, `test:admin-section-gate`, `test:house-bot-console`, `test:measure`, `test:responsive`, `test:tap-target`, `test:ui-consistency`, `test:labels`, `test:chip-contract`, `test:section-rail`, `test:type-scale` | 1.300 (gate first, literal route, the `ops`-grant case), 1.301 (nine restricted-panel renders incl. an id path), 1.302 (tab fallback, 404 reserved), 1.303–1.304 (four tiles, one amount each, Not set, unavailable), 1.306 (derived count, brand tone, no gold/gilt), 1.310 (eight headers, no net, no balance, REMOVED absent), 1.312a (the rail renders exactly the closed list's keys — one at this step — and 302's fallback resolves every other `?tab=` to it; the four-key case is step 5's), 1.313 (loaders vocabulary-free), 1.420 (the actor id, zero actor lookups), 1.421 (the schema-not-ready state), 1.422 (the states roll-call and the no-read-only pin), 1.314 (the sentence compared to the exported function), 1.319 (one route home), 1.333 (no badge), 1.341, 1.346 (one read, zero `countLive`), 1.347 (the sum identity), 1.355 (eight failure plants), 1.356 (`force-dynamic`, wallet counts, no cache wrapper), 1.361, 1.373, 1.403 (gloss provenance), 1.404, 1.407, 1.417 (ghost parity); `test:admin-nav` §4/§5/§7 rows; `test:rbac` §7/§12 rows plus the ops-grant pin with teardown |
 | 2 | `qa:house-bot-console-probe`, `verify:house-bot-bundle`, `test:house-bot-disclosure`, `qa:admin-view-matrix` | probe 2.routes (raised floor, console-unfilled FAILURE), 4.1 (four non-audience viewers, 0 hits), 4.1b (staff viewer), 4.3 (`MUST_CARRY` incl. every console instance), 4.2b (walked API inventory), the canary section, 399's identical-answer case; bundle presence control + provenance section; disclosure 1.1/1.2 widened, 5.385; **+ ruling 506 (2026-09-18): 1.332, 1.342, 1.343, 1.381, 1.384, 1.386, 1.389, and ruling 398's case gains the roll-call of the D19 section's ACTUAL ids against 398's own closed list** |
-| 3 | + `test:filter-language`, `test:unsaved-changes`, `test:validation-focus`, `test:contrast` | 1.362 (caption, one built-in line), 1.364 (three captions by membership), 1.366 (the display clamp), 1.367 (at/over at every site), 1.372 (query-shaped reader, no zero on failure), 1.409 (cap name first, figures in `.amount`), 1.412 (md rungs, one guarded form, the focus union); **+ ruling 473 (2026-09-18): 1.316 (`RefreshPoller` in the strip on `LIVE_ROUND_MS`, enabled from REACT state)**; **+ ruling 506: 1.401, 1.405, 1.406** |
+| 3 | + `test:filter-language`, `test:unsaved-changes`, `test:validation-focus`, `test:contrast` | 1.362 (caption, one built-in line), 1.364 (three captions by membership), 1.366 (the display clamp), 1.367 (at/over at every site), 1.372 (query-shaped reader, no zero on failure), 1.409 (cap name first, figures in `.amount`), 1.412 (md rungs, one guarded form, the focus union); **+ ruling 473 (2026-09-18): 1.316 (`RefreshPoller` in the strip on `LIVE_ROUND_MS`, enabled from REACT state)**; **+ ruling 506: 1.401, 1.405, 1.406**; **+ 2026-09-18, the four-lens review: 1.348 — ruling 348's own Proof, which existed in NO suite and was scheduled in no step. Both stores, behavioural: both twins answer the day they are GIVEN, the render hands its fifth read `core.dayKey`, the painted row is that day's figure, and the source half pins ONE `eatDayKey(` with no `dbClock(`. Plus `test:dal-parity` 6.twin.348 over both method bodies** |
 | 4 | + `test:house-bot-engine`, `test:popup-fit`, `test:tab-anchors`, `test:reduce-motion`, `test:keyframes` | 353's four staleness cases with two controls, 1.309 (two-audience equality), 1.352 (no phantom fields), 1.354 (the undecidable panel), 1.358 (the REMOVED read set), 1.363 (five pairings against `FIELD_META`), 1.368, 1.413, 1.414, 1.415 (explicit tone, no hard tier), 1.418 (`print:hidden` only); **+ 2026-09-18: ruling 507's X6 settlement-blocked chip and X1's duty-name half (one case each, with a mutation); ruling 508's `rules` and `targets` panels and the "Enter now" control, with 319's grown tab list; ruling 514's A24 poller-failure alert wired end to end (a case that fails when `ALERT_KEY.pollerFailing` has no writer); ruling 504's decision on `lastStoppedAt` and `veto` — a behavioural case each, or their deletion with both names added to `dal-parity.test.mts`'s `NEVER` array; ruling 506's 1.350 and 1.408** |
 | 5 | + `test:dal-parity`, `test:house-bot-comms` | parity `6.twin` for `countFeed`, `listAll`, `countAll`, `botRateUsage`; `16.d20` still green with ONLY `"countFeed"` gone from its `NEVER` array; the NEW `16.feedShared`, `16.eventsShared` and `16.botRateUsage` (one statement, DB clock, no row projection); 1.312 (the four keys and their order, now that all four panels exist), 1.317 (page 2 of 41), 1.344 (620 rows), 1.345 (six facets), 1.351 (equality with the gate reader), 1.369 (no `?tab=money`, every alert href resolves), 1.410 |
 | 6 | + `test:read-tiers`, `qa:pending-bar`, `qa:chaos` | 1.359 (the wizard's gated read), 1.387 (identical empty+refusal), 1.382 (export and guard-label names, the audit row), 1.383 (guard first, one refusal shape) |
@@ -1523,6 +1523,296 @@ copy, so there is nothing to assert yet; (g) 1.310's header case is written for 
 
 ---
 
+### Added during the build — ruling 433 (C7 steps 3 + 2, 2026-09-18)
+
+#### 433. What the LIMITS TAB forced, decided here rather than improvised at the next step
+
+**Decision.** Six things. Each is a place where a §2 ruling's factual premise did not hold against the code, and the
+code wins (§0's own rule). Every one is measured, not argued.
+
+**(a) THE LIMITS PANEL IS READ-ONLY, WITH ITS REASON ON SCREEN, AND THE TYPED CONTROL IS TIED BY EXISTENCE TO THE SAVE
+THAT WOULD MAKE IT WRITABLE.** Ruling 412 specifies "one `FormColumn measure="form"`, every control `size="md"`, one
+guarded form per tab". MEASURED: there is no limits-SAVE anywhere in this repository. `houseBotControlStore.saveLimits`
+has **no caller under `src/`** (its only callers are the world fixture and `test:house-bot-rules`), and the audit action
+`house_bot.limits_saved` and the event kind `LIMITS_SAVED` have **no writer at all** — `alert-copy.ts` words a notice
+nothing sends. So the officer-facing "edit the limits" service layer is un-built, and no §3 step schedules it: step 4 is
+the bot page, 5 the feed, 6 the wizard, 7 the gates. Building a whole money-mutation service — its validation, its CAS
+conflict answer, its audit row, its event, its admin alert and its refusal copy — inside a step whose own rulings never
+mention it is the improvisation §0 forbids, and a form whose save is dead is the same dead control 432(a) refuses.
+⛔ And an EDITABLE field that silently discards what an officer types is **worse** than one that says it cannot be
+edited: it looks like it worked. So the panel renders the limits as VALUES, the save control is not drawn, and
+`limitsView.formReason` — "Editing limits is not ready on this build yet." — sits in the card's action slot, exactly as
+432(j) requires of every disabled control on this section.
+⛔ **THE TWO ARE TIED BY `existsSync`-SHAPED EQUALITY, the idiom 432(h) used for the way-out column.**
+`test:house-bot-console` 1.412 asserts `sectionRendersATypedControl === aLimitsSaveIsWiredUnderSrc`, and a second case
+asserts `sectionRendersATypedControl === sectionRendersUnsavedChangesGuard`. So the step that builds the save cannot
+ship inputs without the guard `test:unsaved-changes` requires, and cannot ship the guard without the inputs — and no
+checkpoint in between can ship a form that discards. `FormColumn measure="form"` is already the column the list sits in,
+so the 640 measure does not move when the fields arrive. ⛔ Ruling 412's `size="sm"` prohibition is scoped to FORM
+CONTROLS (`Input`, `Select`, `Textarea`, `Button`), not to `Chip size="sm"`, which the roster's status column already
+ships and which is the kit's own chip rung.
+**The save is owed at the step that builds a house money-mutation service, and it is named here so it is not lost.**
+
+**(b) FOUR `FIELD_META` LABELS AND ONE SECTION NAME ARE UNRENDERABLE ON THIS SECTION, NOT THREE — AND THE ONE 432(f)
+MISSED IS THE ONE RULING 364 REQUIRES A USAGE ROW FOR.** 432(f) named `maxDesignatedBots`, `gCapStaffChosenPerDay` and
+`gTargetsMaxActive`, each on the bare word *bots*. Measured against `scripts/lib/house-bot-vocabulary.mjs`:
+`gCapStaffChosenDailyTzs`'s label **"Staff-chosen daily limit"** and `FIELD_META`'s section name **"Staff-chosen"** are
+hits on `staff[- ]?chosen`, a word of the SHARED vocabulary — not one of 453's own four, which is why a reader checking
+only 453's list would pass them. The console must render that cap: it is ruling 364's fifth usage row.
+⛔ **The fix is an OVERRIDE in the gate module, not a rewrite of `FIELD_META`.** Those labels are also the engine's and
+the admin bell's internal vocabulary, which D19 exempts (an alert about a bot goes to admins only) and which no
+screenshot-facing surface renders. 453 binds what the CONSOLE renders, and the console's copy has one home. Rewriting
+the shared table would change words on surfaces 453 does not govern in order to fix one it does. The neutral forms are
+"Max designated accounts", "Targeted and manual stakes per day (all accounts)", "Targeted and manual daily limit",
+"Max active targets (all accounts)" and the section "Targeted and manual" — the same words ruling 364's own
+`CLEAR_EXEMPT` caption already uses, so the surface reads as one voice.
+⛔ **AND THE FIELD ID ITSELF MAY NOT BE TYPED AS A STRING IN THAT MODULE.** `gCapStaffChosenDailyTzs` matches
+`staff[- ]?chosen`, and 4.453 scans every string literal of the gate module — it cannot tell an identifier in string
+form from copy, and it is right not to try. The field is selected by a PROPERTY instead
+(`LIMIT_FIELDS.filter(isClearExempt).filter(unit === "TZS")`, asserted unique), and the section override's KEY is read
+from `FIELD_META` rather than written out.
+
+**(c) 372's `dayKey` QUERY MEMBER IS DROPPED, BECAUSE A CONSOLE PAGE MAY NOT DERIVE ONE.** 372(a) drafts the usage
+reader's query as `{ houseBotId, dayKey }`. Measured: ruling 348 requires the EAT day key to be derived ONCE per render
+from the SEAM's own clock, and `test:house-bot-console` 1.340 forbids any file under the section from importing
+`@/lib/house-bot/**` beyond the route module — so a page passing `dayKey` would have to derive a house value itself. The
+derivation stays inside the module, where `houseRosterForConsole` already does it; the query is `{ houseBotId }`; the
+arity stays THREE, so 0.260.1's arity, signed-in-viewer and own-route pins are unchanged.
+⛔ **AMENDED 2026-09-18 by the four-lens review — DROPPING THE PARAMETER DID NOT REMOVE THE SECOND DERIVATION, IT
+MOVED IT OUT OF SIGHT.** The clause argued that 348 is satisfied "because the derivation stays inside the module".
+It was not. The limits panel's FIFTH usage row took its window from
+`houseBotIntentStore.staffChosenPlacedToday(…)`, which derived a day of its OWN — a second `eatDayKey(Date.now())`
+in the memory twin and **the DATABASE CLOCK** (`EAT_TODAY_FROM_SQL`) in the Prisma one. 348 fixes the key at one
+derivation per render **from the seam's clock, not `dbClock()`**, precisely so a card cannot straddle EAT midnight
+or app/DB clock skew and show two days; `readDeskCore`'s own docblock claimed "DERIVED ONCE PER RENDER, HERE" while
+this row was deriving its own. **Fixed:** `staffChosenPlacedToday` takes an optional `dayKey` honoured by BOTH
+twins, `readDeskCore` takes a FACTORY `(dayKey) => Promise<T>` so the fifth read is created with the key in hand
+and still inside the one settled set (432(q)), and the console passes `core.dayKey`. The six GATE callers (the
+seam, `cap-precheck`, `enter-now`) pass nothing and keep today on their own clock, which is what they refuse on.
+The query member stays dropped and the arity stays THREE.
+
+**(d) EXACTLY ONE GATED READER PER RENDER PASS, AND THE SHELL IS SHARED — BECAUSE THE BADGE AND THE SENTENCE MUST BE
+ONE READ.** Ruling 306's derived unset-limit count now feeds the strip's sentence AND the rail's `CountBadge`, and
+ruling 406 puts the strip, both Callouts and the band above the rail on EVERY tab. If each panel read the control row
+for itself, the limits panel could paint a limit the strip's own count had not counted, one card apart on the same
+screen — 346's "two reads of one question can disagree inside a render" with the officer's only call to action on the
+wrong side of it. So the page calls `houseRosterForConsole` on `?tab=roster` and `houseUsageForConsole` on
+`?tab=limits`, each returns the same `ConsoleDeskShell` built from its own single read set, and a spy measures exactly
+one control read per pass with a control that shows the spy can fire.
+⛔ **AND IT IS NOT React `cache()`, WHICH WAS MEASURED UNPROVABLE HERE.** `cache()` memoises per RENDER PASS; outside
+one it is a pass-through (measured 2026-09-18 on this repo's own React: three calls of a `cache()`d function invoked
+the body three times). A one-read assertion resting on it would be green in a suite for a reason that has nothing to do
+with production. `cache()` IS used for ruling 342's viewer lookup, where the N+1 is real and the memo is the right
+production behaviour — and 1.342 asserts its SOURCE and RECORDS that limit in its own label rather than claiming a
+proof it cannot have.
+
+**(e) THE TAB-GROUP IDIOM IS LOAD-BEARING IN TWO GUARDS AT ONCE, AND A COMMENT THAT QUOTES IT BREAKS ONE OF THEM.**
+Measured on `page.tsx`: `test:tab-anchors` decides which tab OWNS a rendered `id` by the nearest `{tab === "x" && (<>`
+opener above it with no `</>)}` between — so a panel written `{tab === "limits" && limitsView && (<>` reads as **above
+the rail (every tab)**, which is the strongest possible answer and a PASS that proves nothing; and the same guard reads
+the FILE as text for `id="limits-first-unset"`, so an `id={cond ? "limits-first-unset" : undefined}` is invisible to it,
+and the same literal inside a helper component sits above every tab group and reads "above the rail" again. Both were
+seen. The panels are therefore written with the tab test and nothing else in the condition, the view slices are hoisted
+above the JSX, and the anchor's `<div>` is written out in both branches at the call site.
+⛔ **AND A COMMENT MAY NOT QUOTE THE IDIOM.** `qa:house-bot-console-probe` discovers a page's tabs with the same
+expression over the **RAW** file, so a comment spelling it invents a `?tab=` instance no panel answers and the probe
+requests a page that does not exist. Measured: four occurrences, two of them in prose. 1.315 now asserts the RAW file's
+deduped tab list, so the trap is caught where it happens.
+⛔ **The href literal is the same class.** `test:tab-anchors` matches `"/admin/<route>…#anchor"` in source text, so a
+fragment built from `` `${CONSOLE_ROUTE}…` `` is invisible to it. `CONSOLE_LIMITS_FIRST_UNSET_HREF` is therefore ONE
+whole literal, and 1.306 holds it equal to the composed form so the literal cannot rot.
+
+**(f) 1.399 IS STEP 4's, NOT STEP 2's.** §4's row 2 schedules "399's identical-answer case" here. Its subject is the
+`[id]` route answering identically for "no such record", "that record was removed" and "not the audience" — and
+`/admin/desk/[id]` has no page until step 4, so neither the probe's three fixtures nor a source pin on `notFound()` has
+anything to read. The three `FILL` values land NOW (392(b)) because step 2 also makes an unfilled console route a
+FAILURE, and a failure with no fixture ready is a step 4 that cannot run its own probe. 1.398's roll-call carries 1.399
+with `step: 4` and its reason, so it is TRACKED rather than silently absent.
+
+**(g) A LIVE PAGE CANNOT BE MEASURED WITH `networkidle`, AND THE CONSOLE'S OWN VISUAL GATE HAD TO BE TOLD.**
+MEASURED the day the strip's `RefreshPoller` landed: `qa:house-bots-visual` navigated with `waitUntil: "networkidle"`,
+the desk now holds a persistent SSE connection open (`useEventStream`, rulings 316/386), and a page with an open
+`EventSource` NEVER reaches network idle — every navigation timed out at 60 s and the gate could not reach the surface
+it exists to measure AT ALL. ⛔ This is the class this programme keeps paying for, in its rarest form: a legitimate
+product change silently blinded an instrument, and nothing said so except a timeout. `networkidle` was never the
+property being asserted; what matters is that the DATA has landed before the tile. The gate now waits on `load` plus
+the kit's own `[data-section-rail]` — which this console renders only after its gated reader returns — and then
+settles. ⛔ No assertion of that gate was weakened: all twenty of its checks ran at 360 and 1280 after the change, with
+every control firing. **Every later step that adds a live element to a captured surface inherits this: a wait is on the
+DATA, never on the network going quiet.**
+
+**Why.** Each clause was found by running a guard and reading what it printed, not by re-reading the spec. A step that
+silently deviates teaches the next step a false premise, which is the wrong-AUTHORITY class this programme has paid for
+repeatedly.
+
+**Proof.** (a) 1.412's two existence-tied cases plus the declared mutation `412-typed`; (b) 1.364's label case with its
+CONTROL showing all four `FIELD_META` labels DO carry a word, plus `364-label`; (c) the reader's own arity in
+`CONSOLE_GATES` and 0.260.1's pins, green at memory 118; (d) 1.306's spy with its positive control, and 1.342's
+recorded limit; (e) `npm run test:tab-anchors` resolving `#limits-first-unset` to `"limits"` by name, and 1.315's RAW
+tab list; (f) 1.398's roll-call, which PRINTS every later assertion with its step; (g) `qa:house-bots-visual` at
+**20 passed, 0 failed, 2 NOT MEASURED** on `/admin/desk?tab=limits` at 360 and 1280 — including §5.6's served 453 scan
+over the rendered body AND its `aria-label`/`title`/`placeholder`/`alt` attributes, with its own planted control.
+
+
+---
+
+### Added during the build — ruling 434 (C7 steps 3 + 2, 2026-09-18), and its guard (the review, same day)
+
+#### 434. A reader classified by the ACTIONS it reads says nothing about what its ROWS carry — and a fix one page deep is not a fix
+
+**Decision.** `src/lib/server/refused-funds.ts` sat in `AUDIT_READERS_OUTSIDE_CONSOLE` on the ground that its actions are never house actions. That is **true of the action and false of the payload**: `/admin/kyc/refused` rendered an officer's refused-funds justification **verbatim, in a `<td>`, status 200**, to a signed-in PLAYER, the holder and a trigger player, in all three modes — 9 responses captured. Ruling 259's class exactly: a layout's redirect changes what is PAINTED, not what is SENT. The page now decides its audience on the **STORED role** before it reads anything.
+
+⛔ **AND THE RULING HAD NO CASE AND NO MUTATION, which is why the review reopened it.** The only instrument that went red without the fix was `qa:house-bot-console-probe`, which `test:all` does not run — so the next page of the same shape would have shipped in silence. Added, 2026-09-18:
+- **`AUDIT_ROW_PAYLOAD`** — the half the classification table never carried. Every key of `AUDIT_READERS_OUTSIDE_CONSOLE` is classified `handedOn` (its rows, or a value resolved from them, reach a page's payload intact), `folded` (reduced to counts, keys or one notice inside the module), `stripped` (house actions excluded in the read, house keys stripped — rulings 154, 170) or `gated` (leaves only through the platform's own report gate). **Measured `handedOn`: `kyc-risk.ts` and `refused-funds.ts`.** A module added to the outside table with no payload classification is RED, so it cannot land outside the guard.
+- **`test:house-bot-reports` 0.434** — every `src/app/admin/**` page that IMPORTS from a `handedOn` module must await `houseConsoleAudience` before it calls anything it imported from one. Direct imports, not the transitive graph: what a page can render is what it imported and called, and the transitive reach reports pages whose read is `stripped`. **Control: `/admin/kyc/refused` minus its one guard line is reported by the same scan.**
+- **Declared mutation `434-refused-ungated`** (`suite: "reports-mem"`, the first declaration against the reports cases; `red-house-bot-console.mjs` gains that suite in the same change).
+
+⚠️ **THREE PAGES ARE REPORTED BY NAME AND DATE AND ARE **NOT** PATCHED HERE — they are W25's (replan ruling 538).** `/admin/kyc/[id]`, `/admin/kyc` and `/admin/approvals` carry PLAYER and STAFF PII, not house data; they are on `main` and therefore LIVE; and ruling 524 governs — *the instrument first, seen RED against the unfixed code, before any fix*. Patching them blind would close the one measurement that could prove the whole class shut. The list in `0.434` is named, dated and may only SHRINK: a fourth page joining it goes red on the day it lands.
+
+
+### Added during the build — ruling 435 (C7 step 4, 2026-09-19)
+
+#### 435. What the FIRST RENDER of `/admin/desk/[id]` forced, decided here rather than improvised at the next step
+
+**Decision.** Five things. Each is a place where a §2 ruling's factual premise did not hold against the code or against
+the screen, and the code and the screen win (§0's own rule). Every one is measured, not argued.
+
+**(a) A REMOVED ACCOUNT GETS NO RAIL AND NO OVERVIEW CARDS — AND THE FIRST FIX WAS ONLY HALF OF IT.** Read off
+`acct-removed-360.png` and `acct-removed-1280.png`: under the terminal Callout the overview painted
+`AdminLoadError` — "Couldn't load limit usage · A data read failed — this may not be empty" — an EMPTY "Balance floor"
+card, and a "Last bet —" card. Nothing had failed. Ruling 358 fixes a removed account's read set as the row, its final
+state and its saved rules, and names wallet, cap, rate and target reads as the things it does NOT take; ruling 355
+reserves the kit's failure treatment for a read that FAILED. This is 421's distinction one route over, and it was got
+wrong in the same direction. ⛔ **The second reading is what settled the shape.** Guarding the three cards left a rail
+whose Overview tab rendered 600 px of NOTHING and whose Targets tab would have painted the same failure treatment one
+click away — ruling 312's dead control, and on this route it is a property of the RECORD, not only of the build. So a
+removed account renders NO RAIL: the chip, the neutral Callout, and the one thing it still holds — what it was
+configured to do — as a record that says it cannot be changed. Each panel is guarded by `removed` FROM THE INSIDE,
+never by a second term in the tab test, because 433(e) measured that a second term makes a panel read as "above the
+rail", which is the strongest possible answer and a pass that proves nothing.
+
+**(b) THE SCOPE WORD IS RENDERED ONLY WHERE IT DISCRIMINATES.** Ruling 363 gives every money row a scope and argues
+the point from ONE of them: `openExposure` has no day filter ("Open stake right now, whatever day it was placed"), so
+an exposure figure under a "today" heading is a mislabelled amount. Spent on a row whose cap already names its window
+it says the same fact twice in adjacent words — read off the first 360 tile: **"Daily stake cap (today)"**,
+**"Bets per hour (this hour)"**, **"Bets per day (today)"**. 432(n) refuses exactly that. The word therefore stays on
+the exposure row 363 argues from and on the two rows that share ONE cap and are told apart by nothing else (366's
+projected and settled), and nowhere else. `test:house-bot-console` 1.363 now asserts exactly three parenthesised
+scopes and that no row carries `today` or `this hour` at all.
+
+**(c) THE ACCOUNT PAGE'S OWN DAY KEY IS A SECOND DERIVATION, AND 348 IS SATISFIED BY IT.** Ruling 348 fixes the EAT
+day at one derivation PER RENDER from the seam's own clock, and 433(c) was corrected once already for reading that as
+"one derivation per module". The account page is a different render of a different route: it derives its own key once
+and hands it to both reads that need a day (`houseDayBook`, `staffChosenPlacedToday`). The pin moved with it — it is
+now per READER SLICE, not a module count, because a module count would have had to rise every time a route was added,
+which is a ratchet that teaches a reader to raise it instead of reading it. `dbClock()` still appears nowhere.
+
+**(d) THE ROSTER'S READ SET IS SIX, AND BOTH EXTRAS SETTLE ON THEIR OWN.** 432(q) fixed it at five. "Last bet" needs a
+last-placement instant and the only reader that has one is `botRateUsage` — ruling 351's one new seam member, which
+this step added because the account page's two count rows need it too. ⛔ The two extras are settled INDEPENDENTLY,
+never wrapped in one `Promise.all` inside the settled set: one failed read must not take the other cell with it, which
+is the attribution 355 exists to keep. 1.347's pin is scoped to the desk reader's own slice for (c)'s reason.
+
+**(e) `houseEngineForConsole` IS NOT BUILT AS A SECOND GATED READER, AND THE ENGINE CALLOUT IS NOT BUILT AT THIS
+STEP.** Ruling 309 names `houseEngineForConsole(viewerUserId, "/admin/desk")` as its own gated read, and 353's
+staleness verdict needs the master switch — which is the control row `readDeskCore` has already read. A second gated
+reader on the desk would therefore put a SECOND control read in one render, which 433(d) refuses by name ("two reads
+of one question can disagree inside a render", with the officer's only call to action on the wrong side of it). The
+engine facts belong inside the existing door, in the one settled set, computed from the control row already in hand.
+⛔ **It is NOT built at this step and it is reported, not silently deferred:** with it go ruling 514's A24 poller-failure
+alert (whose writer would live in `worker.ts` through `upsert`, never through `beat()`, because `beat()` stamps
+`beatAt` and a failed pass that looked alive is the defect A24 exists for) and X1's duty-name half. The action row's
+dialogs and the master-switch ceremony are in the same position. Every one is named in this step's report with what it
+would take, so the next step starts from a measurement rather than from a premise.
+
+---
+
+### Added during the build — ruling 436 (C7 step 4b, 2026-09-19)
+
+#### 436. What the OPERABLE console forced — the ceremony, the action row, the engine Callout, and four things measured rather than assumed
+
+**Decision.** Nine things. Each is a place where a §2 or §8 ruling's factual premise did not hold against the code or
+against the screen, and the code and the screen win (§0's own rule). Every one is measured, not argued.
+
+**(a) 414's "ENGINE DISABLED BY CONFIGURATION" ROW IS NOT BUILT, BECAUSE NOTHING CAN WRITE ITS STATE.** 414's tone
+table gives a neutral row to an engine disabled by configuration. Measured: the ONLY writer of `engineEnabled`
+anywhere in the tree is `engine.ts:229`, which writes `true` on a SUCCESSFUL boot, and a REFUSED start writes no row
+at all — `test:house-bot-engine` 11.16 pins exactly that ("no boot row was written by a refused start"). So a
+disabled engine is INDISTINGUISHABLE from one that never booted, and it is already reported: as `STALE`, which is
+the true statement about it. A branch nothing can reach is ruling 432(a)'s dead control one layer down.
+
+**(b) THE STALENESS PREDICATE'S OWN ORDER IS THE DECISION, AND `UNREADABLE` COMES FIRST.** 353 says WHEN and 414
+says WHICH TONE, and neither says what happens when two rows could fire. The order is fixed here: unreadable →
+booting → stale → a poller failure newer than its own beat → a failed planner duty → nothing running → silence.
+⛔ The switch being OFF is in the SILENCE branch and that is 432(n), not an omission: the strip one card up already
+reads "The desk is off. Nothing will be staked." for every off cause, and one state may not say one fact twice.
+
+**(c) THE POLLER'S FAILURE RECORD IS KEY-SCOPED, AND THE SAME FOUR COLUMNS CARRY TWO MEANINGS.** A24's
+`pollerErrorAt`/`Code`/`Streak` on `beat:poller:<instance>` are that instance's CLAIM failures; on `beat:planner`
+the same columns carry X1's failed duty NAMES and when they failed. The columns are key-scoped exactly as `beatAt`
+is, and Commit 7 adds no schema field. Reading them off the wrong row family is the one way to get this wrong, so
+each is folded off exactly one family and `test:house-bot-engine` 20.12 pins the split.
+⛔ AND THE DUTY NAME IS A NAME, NEVER THE MESSAGE: a duty's error text is an arbitrary database or vendor string
+that can carry a label, a market or an account, and a console surface reads this row.
+
+**(d) THE CONSOLE BUILDS ITS OWN SENTENCE FROM A STRUCTURED RESULT — IT DOES NOT OVERRIDE A SHARED TABLE.**
+`SWITCH_OFF_COPY` names the feature three times over ("House bots are off…", "House bots were already off…",
+"…House bots were NOT switched off…"), and the four services behind the action row answer with messages of the same
+family — `eligibility.ts` alone carries FOURTEEN (measured; 432(f) named two). An override MAP would work today and
+re-land the moment a row is added to either table. So the console reads the STRUCTURED result (`ok`, `changed`,
+`drain`, `cancelled`, the refusal CODE) and writes its own words, and `test:house-bot-console` derives the code
+population from the service UNIONS themselves. ⚠️ What is lost is named: an INELIGIBLE Start no longer prints the
+eligibility row's own words; the console says what it knows and carries the service's `href` to the thing that has
+to change. The detail returns with 432(f)'s eligibility override, which `1.432f` ties to the wizard by existence.
+
+**(e) 432(f)'s `eligibility.ts` HALF IS MEASURED AND ITS COPY IS NOT WRITTEN, AND THAT IS 432(a) APPLIED TO COPY.**
+FOURTEEN of that module's rendered sentences carry a house word. The wizard is step 6's; fourteen rewritten
+sentences that nothing renders is a writer with no reader, and each carries interpolated data whose shape that
+surface has not settled. What lands is the MEASUREMENT and an EXISTENCE TIE — the section renders an eligibility
+row ⟺ the console's override exists — so step 6 can ship neither half alone.
+
+**(f) CANCEL-INTENT AND "ENTER NOW" ARE NAMED, NOT ABSENT.** Ruling 415 lists Cancel-intent beside the four acts and
+replan 508 schedules "Enter now" with this row. Both act on a QUEUED STAKE or on a MARKET, and this page has
+neither: the activity panel is C7 step 5's and the market picker is the wizard's neighbour. A control with nothing
+to act on is 432(a)'s dead control, so they land with the panel that gives them a subject.
+⛔ AND THE COMMIT 7 CONSTRAINT SURVIVES UNSPENT: when `cancelHouseBotIntentAction` and `removeHouseBotTargetAction`
+are built they run `getForUpdate(targetId, tx)` FIRST, in the same transaction (sealed N2 §6 step 2; review L1-03,
+refuted only on that condition). Nothing in this step took either name.
+
+**(g) START NEEDED A `RulesContext` AND NOTHING UNDER `src/` COULD BUILD ONE.** `loadParseContext()` built the
+PARSE third (chains, categories, durations); the other six members had no server-side producer at all, so the
+console's Start had nothing to hand `startHouseBot`. `loadRulesContext()` is added beside it, and every member comes
+from a NAMED platform resolver — `getGlobalConfig` for the bounds and the poll exit rates, `rateProfileFor` (the
+platform's OWN chain resolver) per chain, `MIN_SELECTION_WINDOW_MINUTES`, `RATE_RULES["bet.place"]`, the control row
+and the roster. ⛔ None is invented, because what reads them decides whether an account may start placing money. The
+wizard's rules form needs the identical object, which is why it lives in the shared module.
+
+**(h) THE 200-NOT-404 ON AN UNKNOWN ID IS THE PLATFORM'S, NOT THE DESK'S — MEASURED, AND RE-CLASSED.** C7 step 4a
+reported `notFound()` answering HTTP 200. Re-measured on a served build with the admin's own cookie:
+`/admin/desk/[id]` 200, `/admin/players/[id]` 200, `/admin/kyc/[id]` 200, `/admin/markets/[id]` 200 — every one with
+the not-found words in the body. It is a property of a streamed RSC page under a `loading.tsx`: the shell is on the
+wire before the reader resolves. ⚠️ It is NOT ruling 399's exposure in either direction — a status that is 200 for
+EVERY viewer is not an oracle at all, which is stronger than 399 asked for. The fix is a platform change across at
+least four sections and needs its own ruling; the desk moves WITH its neighbours, never alone.
+
+**(i) TWO THINGS WERE READ OFF THE FIRST DIALOG TILES AND FIXED IN THE SAME PASS.** The live character count painted
+a bare "300" — a figure with no basis is a figure an officer has to guess at, and the words are the SERVER's under
+388, so the copy object carries them. And at 360 the Remove dialog's title ran to within eleven pixels of the kit's
+own close button; the heading takes a right pad so it can never collide. Both were re-captured and re-read.
+
+**Why.** Every clause above was found by running a guard, reading what it printed, or opening a tile — not by
+re-reading the spec. A step that silently deviates teaches the next step a false premise.
+
+**Proof.** (a) `test:house-bot-engine` 11.16 and the predicate's own verdict list, 20.17's roll-call over every
+verdict this run reached; (b) 20.1–20.10 and `test:house-bot-console` 1.414's 432(n) case with the desk off;
+(c) 20.12 and 20.13, plus 16.514a–g on the poller's own family; (d) 1.415's derived code population with its
+control, and 1.415/453's scan of both the ceremony's and the action row's whole copy; (e) 1.432f's four cases;
+(f) recorded here and in `openIssues` — nothing is built, so nothing asserts it yet; (g) `loadRulesContext`'s own
+callers and the Start case that drives it end to end on both stores; (h) the four-route measurement above, recorded
+in `DEFERRED-TESTS` row 50; (i) the re-captured tiles at 360, 768 and 1280, opened and READ.
+
+---
+
 ## §7 Open questions for Ali — one line each, numbered
 
 1. **The section's name in the navbar and the URL:** (1) "Desk" at `/admin/desk` — my ruling, ships today; or (2) another word you give me.
@@ -1567,4 +1857,4 @@ copy, so there is nothing to assert yet; (g) 1.310's header case is written for 
 
 460. **Every anchor into a file C5-5b touched is re-grepped by TEXT before step 1 commits.** The completeness review ran while checkpoint C5-5b was deleting code, and it names six guard files modified mid-review (`dal-parity.test.mts`, `house-bot-disclosure.test.mts` and four others). Ruling 431 already says to re-grep; this makes it a **commit precondition**: step 1 does not commit until every Files-block anchor it relies on has been re-found by its quoted line text at the then-current HEAD, and any anchor that cannot be re-found is reported, never guessed.
 
-461. **This file is committed as `plans/house-bots/C7-SPEC.md` and is Commit 7's authority**, below D19, D20, ruling 266 and `C5-D20-REPLAN.md` §4's Commit 7 scope. It supersedes `PLAN.md` §8 and `03-design-spec.md` S1–S6 wherever §1 names them. Rulings 420–431 are the completeness review's own; 334–339 and 376–379 stay reserved and unspent; Commit 7's next new ruling is **433** *(corrected from **432** on 2026-09-18 under ruling 516: 432 was spent during step 1 — see "Added during the build — ruling 432" above — so a session obeying this line would have allocated it twice)*, and the orchestrator's own rulings continue at **517** (475–499 belong to the checkpoint workflows).
+461. **This file is committed as `plans/house-bots/C7-SPEC.md` and is Commit 7's authority**, below D19, D20, ruling 266 and `C5-D20-REPLAN.md` §4's Commit 7 scope. It supersedes `PLAN.md` §8 and `03-design-spec.md` S1–S6 wherever §1 names them. Rulings 420–431 are the completeness review's own; 334–339 and 376–379 stay reserved and unspent; Commit 7's next new ruling is **434** *(corrected from **432** on 2026-09-18 under ruling 516: 432 was spent during step 1 — see "Added during the build — ruling 432" above — so a session obeying this line would have allocated it twice; and from **433** on 2026-09-18, spent by the step 3 + step 2 build — see "Added during the build — ruling 433" above)*, and the orchestrator's own rulings continue at **517** (475–499 belong to the checkpoint workflows). *(Updated 2026-09-18: **434 is spent** — see "Added during the build — ruling 434" above — so Commit 7's next new ruling is **435**.)* *(Updated 2026-09-19: **435 is spent** by the C7 step 4 build — see "Added during the build — ruling 435" above — so Commit 7's next new ruling is **436**.)* *(Updated 2026-09-19: **436 is spent** by the C7 step 4b build — see "Added during the build — ruling 436" above — so Commit 7's next new ruling is **437**.)*

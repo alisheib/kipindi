@@ -97,8 +97,13 @@ export async function loadCapFacts(
   const allExposure = await houseOpenExposure(null);
   let staffChosen: CapFacts["staffChosen"] = null;
   if (opts.staffChosen) {
-    const mine = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: bot.id });
-    const all = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null });
+    /* ⛔ THE RENDER'S OWN DAY, PASSED (replan ruling 542). Without it this member derives a SECOND day of its own
+     * — `eatDayKey(Date.now())` on the memory twin and the DATABASE CLOCK on the Prisma twin — so one decision
+     * measured its day books on the app clock and its staff-chosen usage on another. Across EAT midnight, or under
+     * any app/DB skew, the gate could refuse a stake that is inside its limits or allow one that is over them.
+     * Ruling 348's rule, on the path that ENFORCES a limit rather than the one that paints it. */
+    const mine = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: bot.id, dayKey: day });
+    const all = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey: day });
     staffChosen = { count: mine.count, tzs: mine.stakeTzs, globalCount: all.count, globalTzs: all.stakeTzs };
   }
   let counterparty: CapFacts["counterparty"] = null;

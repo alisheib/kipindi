@@ -173,8 +173,14 @@ export async function ReportPackCard() {
         ) : (
           <ReportPackControls period={period} state={pack.state} isPreparer={isPreparer} />
         )}
+        {/* ⛔ `text-body-sm`, NOT `text-[10px]`. THIS IS A SENTENCE, AND §T4's READING FLOOR IS 12.5px — the rule
+            DG-A-14 settled by reading 48 strings that sat 2-4px under it wearing an eyebrow's clothes. It arrived
+            with C5-6 (commit 87d1311c), which shipped with no review and no render; the first tile taken of this
+            card (`reportpack-draft-360.png`) shows it at 10px, centred, under the one control on a statutory
+            filing. 13px is the LOWEST rung above the floor, and moving off a hand-typed size takes
+            `test:type-scale` §3 and §4 DOWN together. */}
         {!pack.historyIncomplete && (
-          <p className="mt-2 text-center font-mono text-[10px] text-text-subtle">
+          <p className="mt-2 text-center font-mono text-body-sm text-text-subtle">
             Submit stays locked until the pack is prepared by one officer and approved by a second.
           </p>
         )}
@@ -197,10 +203,16 @@ function SignSlot({ role, name, at }: { role: string; name: string | null; at: s
       {signed ? (
         <>
           <p className="mt-1 truncate text-body-sm font-semibold text-text" title={name!}>{name}</p>
-          {at && <p className="font-mono text-[10px] text-text-subtle">{formatDateTime(at)}</p>}
+          {/* ⛔ THE SECOND LINE OF A SIGNATURE SLOT TAKES THE PLATFORM'S OWN SHAPE FOR A SECOND LINE UNDER A NAME
+              — `font-mono text-body-sm` in a subdued tone, which is what `/admin/agents` and the desk's own
+              roster both use, and both chose it in writing because it CLEARS §T4's 12.5px floor. These two were
+              10px and 11px: the moment an officer signs a Gaming Board filing, and the state of a slot nobody has
+              signed, printed smaller than the eyebrow above them. Read off `reportpack-360.png` and
+              `reportpack-draft-360.png`. Both were hand-typed sizes, so this takes §3 and §4 down together. */}
+          {at && <p className="font-mono text-body-sm text-text-subtle">{formatDateTime(at)}</p>}
         </>
       ) : (
-        <p className="mt-1 font-mono text-[11px] italic text-text-subtle">{CEREMONY.awaitingSignature.en}</p>
+        <p className="mt-1 font-mono text-body-sm italic text-text-subtle">{CEREMONY.awaitingSignature.en}</p>
       )}
     </div>
   );

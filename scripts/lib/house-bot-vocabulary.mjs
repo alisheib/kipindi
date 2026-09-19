@@ -100,13 +100,30 @@ export function extendHouseWords(extra, flags = "i") {
 /**
  * ⛔ THE CONSOLE'S OWN LEXICON (owner-delegated ruling 453), COMPOSED ONCE AND SHARED — never a new regex (ruling 175).
  * 453 is stricter than the shared vocabulary: nothing the console renders may name the feature AT ALL, so the bare
- * words `bot`/`bots`, the bare word `house` and `counter-stake` are refused too, on top of every shared word.
+ * words `bot`/`bots`, the bare word `house` and the whole `counter`/`counterparty` stem are refused too, on top of
+ * every shared word.
  * ⛔ IT IS A FUNCTION, NOT A CONSTANT, because a shared `RegExp` object is a mutable thing to hand two consumers
  * (`lastIndex`, and `.test` on a `/g/` instance carries state); each caller gets its own.
  * ⚠️ IT IS NOT FOR A WHOLE PAGE BODY. The admin sidebar legitimately renders the nav label "House" for `/admin/house`,
  * so a consumer scanning a SERVED page passes the console section's own subtree, not `document.body`.
+ *
+ * ⛔ THE COUNTER STEM IS BARE, AND IT WAS MEASURED WRONG ONCE (replan ruling 539). It read `counter[- ]?stakes?`,
+ * which REQUIRES the word "stake" to follow — so it caught `counter-stake` and PASSED all three limit labels
+ * `/admin/desk?tab=limits` was actually painting, each of which names the mechanism without that second word. A
+ * lexicon that matches a VOCABULARY rather than a MEANING stops covering the moment a label is reworded, which is
+ * exactly what happened. The stem now takes the bare word with its inflections, plus the counterpart family.
+ * ⚠️ AND IT MUST STILL NOT MATCH AN INNOCENT WORD — both directions are pinned by controls
+ * (`CONSOLE_EXTRA_SAMPLES` and `CONSOLE_BENIGN_SAMPLES`): `encounter` has no word boundary BEFORE the stem and
+ * `countertop`/`countersign`/`countdown` none AFTER it, so none matches; `Counters`, `Counter TZS`, `Counterparty`
+ * and `counter-stake` all do. A widened stem with no accept-side control is one reword away from being switched
+ * off for crying wolf.
  */
-export const CONSOLE_EXTRA_WORDS = Object.freeze([String.raw`\bbots?\b`, String.raw`\bhouse\b`, String.raw`counter[- ]?stakes?`]);
+export const CONSOLE_EXTRA_WORDS = Object.freeze([
+  String.raw`\bbots?\b`,
+  String.raw`\bhouse\b`,
+  String.raw`\bcounter(?:s|ed|ing|stakes?)?\b`,
+  String.raw`\bcounterpart(?:y|ies|s)?\b`,
+]);
 
 /** The composed console lexicon — the shared words plus 453's four. One definition, two consumers (the suite and the visual gate). */
 export function consoleNeutralRegExp(flags = "i") {
@@ -114,7 +131,16 @@ export function consoleNeutralRegExp(flags = "i") {
 }
 
 /** What 453's own planted control plants, beside `HOUSE_WORD_SAMPLES`. */
-export const CONSOLE_EXTRA_SAMPLES = Object.freeze(["bot", "Bots", "the house", "counter-stake", "Counter stakes"]);
+export const CONSOLE_EXTRA_SAMPLES = Object.freeze([
+  "bot", "Bots", "the house", "counter-stake", "Counter stakes",
+  "Counters per player per day", "Counter TZS per player per day", "Counterparty share limit", "countered", "counterstake",
+]);
+
+/** ⛔ THE ACCEPT SIDE OF 453's LEXICON (ruling 539). None of these may match: a guard that has never been shown to
+ *  LET AN INNOCENT WORD THROUGH is a guard the next session switches off. */
+export const CONSOLE_BENIGN_SAMPLES = Object.freeze([
+  "encounter", "encounters", "encountered", "countertop", "countersign", "countdown", "accountable", "an account", "accounts",
+]);
 
 /** One sample per shared word family member — what every consumer's planted control and the subset pin plant. */
 export const HOUSE_WORD_SAMPLES = Object.freeze([

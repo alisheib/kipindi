@@ -2323,12 +2323,25 @@ export function validateHouseBotRules(
 }
 
 /**
+ * ⛔ WHAT THE LIMITS SAVE ACTUALLY NEEDS, NAMED (C7 ruling 537). It took a whole `RulesContext`, and
+ * it reads FOUR of that type's eleven members: the bounds context `checkNumber` passes through
+ * (`stakeBounds`, `betPlaceRefillPerMin`, `durations`) and `bots`, for the CONFLICT rows and the
+ * roster-lowering preview. The other seven — `chains`, `categories`, `exitRates`,
+ * `pollMinLifetimeMin`, `limits` — belong to the RULES form, and requiring them of a limits caller
+ * would make the console's save build a per-chain exit-rate table it never reads. A parameter type
+ * wider than the function's real dependency surface is a lie about what the caller must supply, and
+ * the caller pays for it in reads.
+ * ⚠️ Every existing caller passes a full `RulesContext`, which still satisfies this.
+ */
+export type LimitsContext = BoundsContext & Pick<RulesContext, "bots">;
+
+/**
  * The limits form's save. CONFLICT rules never refuse: they list the bots a lowered limit now sits
  * below, for the consequence preview (04 C6). `previews` carries the roster-lowering line (04 C10).
  */
 export function validateHouseBotLimits(
   input: Record<LimitField, unknown>,
-  ctx: RulesContext,
+  ctx: LimitsContext,
   prev?: { masterOn: boolean; limits: HouseBotLimits },
 ):
   | { ok: true; limits: HouseBotLimits; conflicts: HouseLimitConflict[]; previews: string[] }

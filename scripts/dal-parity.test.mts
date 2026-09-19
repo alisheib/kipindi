@@ -445,7 +445,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
 
   // The sealed store API (N1 §2, N2 §2): later commits and their suites call these names.
   const SEALED: Record<string, readonly string[]> = {
-    HouseBotTargetStore: ["insert", "casUpdate", "remove", "endActive", "listForBot", "activeForMarket", "everStopped", "countActive", "endAllForBot"],
+    HouseBotTargetStore: ["insert", "casUpdate", "remove", "endActive", "listForBot", "countForBot", "activeForMarket", "everStopped", "countActive", "endAllForBot"],
     HouseBotIntentStore: ["insertTargetedIfActive", "insertIgnoringConflict", "claimBatch", "claimById", "requeueTransient", "markPlaced", "expireStale", "cancelLive"],
     HouseBotPressStore: ["insertChecking", "refuse", "queue", "doneEnterNow", "doneInTx", "interruptStale", "claimAuditLease", "listAuditRepair"],
     HouseBotEventStore: ["drawOpenerSide", "findOpenerDraw"],
@@ -482,6 +482,26 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     const insert = objectMethod(region(houseDalSrc, "const prismaHouseBotTargets:"), "insert");
     ok("6.sealed.sql · targetStore.insert stamps createdAt and effectiveFrom from one database now(), by hand",
       /now\(\), now\(\) \+ \(/.test(insert) && /TARGET_ARMING_SEC/.test(insert) && !/insertSql\(/.test(insert));
+  }
+  {
+    /* ⛔ ONE DAY PER RENDER, IN BOTH TWINS (C7-SPEC ruling 348). `staffChosenPlacedToday` used to derive its own
+       EAT day in each twin — `eatDayKey(Date.now())` in memory, the DATABASE CLOCK (`EAT_TODAY_FROM_SQL`) in
+       Prisma — so a console that had already derived the render's day got a SECOND, possibly different, day back
+       and one card could show two of them. A twin that accepted `dayKey` and quietly ignored it would be the same
+       defect wearing the fix's signature, which is why both bodies are read, not just the interface.
+       ⚠️ How they BEHAVE on the two stores is `test:house-bot-console` 1.348, which runs on both. */
+    const priIntents = region(houseDalSrc, "const prismaHouseBotIntents:");
+    const memIntentsSrc = region(houseDalSrc, "const memoryHouseBotIntents:");
+    const priToday = objectMethod(priIntents, "staffChosenPlacedToday");
+    const memToday = objectMethod(memIntentsSrc, "staffChosenPlacedToday");
+    ok("6.twin.348 · staffChosenPlacedToday takes the caller's dayKey and USES it, in both twins — never a second derivation of its own",
+      /\{ houseBotId, dayKey \}/.test(priToday) && /\{ houseBotId, dayKey \}/.test(memToday)
+        && /eatDayWindow\(dayKey \?\? eatDayKey\(Date\.now\(\)\)\)/.test(memToday)
+        && /if \(dayKey != null\)[\s\S]*eatDayWindow\(dayKey\)[\s\S]*p\.col\("HouseBotIntent", "finishedAt", fromIso\)/.test(priToday),
+      `memory ${memToday.length} chars · prisma ${priToday.length} chars`);
+    ok("6.twin.348 · CONTROL · both method bodies were really found, and the DB-clock branch is still there for the callers that ask for TODAY",
+      memToday.length > 60 && priToday.length > 120 && /EAT_TODAY_FROM_SQL/.test(priToday),
+      `memory ${memToday.length} · prisma ${priToday.length}`);
   }
 
   // Every name the migrations fix, mirrored for the memory twin — no database needed to compare.
@@ -767,9 +787,16 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // and the platform members of rulings 210 (the transactions `house` filter), 224 (top contributors) and 233
   // (`leaderboard({excludeHouse})`) — every one of them a reader whose only consumers D20 struck. Their parity cases went
   // with them; what stays is the member a kept ruling still uses, plus the pin that the struck ones are gone from BOTH twins.
+  /* ⭐ `lastStoppedAt` JOINED THIS LIST AT C7 STEP 4 (replan ruling 504). It had ZERO occurrences anywhere outside
+   * the house DAL — no `src/` caller, no behavioural case, and no entry in `SEALED`'s own `HouseBotTargetStore` list
+   * — so 504's choice was "call it by name with a behavioural case, or delete it from the interface and both twins
+   * with its name added here". Step 4 deleted it: the figure is PER MARKET, so the only console surface that could
+   * have consumed it (the targets panel) would have issued one read per rendered row, which is the per-bot loop
+   * ruling 351 refuses; and ruling 350 had already put the member in its NOT-NEEDED half. `everStopped`, the
+   * predicate the never-retarget rule really decides on, stays with both twins and its two cases. */
   const NEVER = ["entryRows", "stakeRows", "feeInputs", "ledgerRows", "positionsForUser", "txnPageForUser", "listOverlapping",
     "listByKindsInWindow", "listByUserKinds", "countByBot", "countFeed", "counteredPositionsCount", "listInWindow", "countRegister",
-    "recordDisclosure"];
+    "recordDisclosure", "lastStoppedAt"];
   const declared = NEVER.filter((n) => new RegExp(`(^|[^A-Za-z])(async )?${n}\\(`, "m").test(houseDalSrc));
   ok("16.d20 · ⛔ D20 · not one struck step-3 member is declared or implemented in the house DAL (either twin)",
     declared.length === 0, declared.join(", "));
@@ -792,29 +819,56 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
    * halves are read from disk: the member must still be the interface plus BOTH twins, and the named caller must still
    * call it exactly once. ⛔ A row leaves this table only when the MEMBER is deleted — never by deleting the row.
    */
-  const KEPT_BY_A_NAMED_CALLER: ReadonlyArray<{ member: string; type?: string; caller: string; call: string; why: string }> = [
+  const KEPT_BY_A_NAMED_CALLER: ReadonlyArray<{ member: string; type?: string; caller: string; call: string; times?: number; why: string }> = [
     {
       member: "listRegister", type: "PressRegisterFilter", caller: "scripts/erasure.test.mts",
       call: "pressStore.listRegister({",
       why: "R6's erasure sweep reads the presses table for the erased holder's bot; that suite's houseBotPresses bucket and its 8.0e row count both die with the member",
     },
+    /* ⭐ `veto` — THE OTHER HALF OF RULING 504, DECIDED AT C7 STEP 4 AND KEPT. Unlike `lastStoppedAt` it already
+     * meets C5-5b's exit rule: two named behavioural callers, on both stores, asserting the two states the member
+     * exists for (an ENDED-DONE target becomes ENDED:VETOED; a second veto is a no-op). It is also the store member
+     * behind C7-SPEC §3 step 5's cancel action — a cited Commit 7 scope line — so it has a product caller scheduled
+     * as well as proven behaviour. What 504 was aiming at is the day those callers go away, which is what these two
+     * rows now catch by NAME and by COUNT. */
+    {
+      member: "veto", caller: "scripts/lib/house-bot-dal-cases.mts",
+      call: "targets.veto(", times: 2,
+      why: "c08.h and c08.i are the only assertions that a veto moves an ENDED DONE target to ENDED:VETOED and that a second veto is a no-op",
+    },
+    {
+      member: "veto", caller: "scripts/lib/house-bot-engine-cases.mts",
+      call: "targetStore.veto(",
+      why: "the engine suite's only drive of a staff veto through the real target store; C7 step 5's cancel action is its product caller",
+    },
   ];
   /** One row's problems, read from the two files it names. Both sources are DECOMMENTED, so a member or a call that survives only inside a comment counts as gone. */
-  const keptProblems = (row: { member: string; type?: string; caller: string; call: string }, dal: string, callerSrc: string | null): string[] => {
+  const keptProblems = (row: { member: string; type?: string; caller: string; call: string; times?: number }, dal: string, callerSrc: string | null): string[] => {
     const out: string[] = [];
     const inDal = dal.split(`${row.member}(`).length - 1;
     if (inDal < 3) out.push(`${row.member}: named ${inDal} times in the house DAL, not the interface plus BOTH twins`);
     if (row.type && !dal.includes(row.type)) out.push(`${row.member}: its filter type ${row.type} is gone from the house DAL`);
     if (callerSrc === null) { out.push(`${row.member}: its named caller ${row.caller} could not be read`); return out; }
+    /* ⛔ THE EXPECTED COUNT IS THE ROW'S OWN, AND IT DEFAULTS TO ONE. A row that names a caller holding TWO calls
+     * would otherwise be permanently red, which is a guard that teaches a reader to ignore it; and an exact count is
+     * no weaker than a fixed 1 — a call added or removed is still reported. */
+    const want = row.times ?? 1;
     const calls = callerSrc.split(row.call).length - 1;
-    if (calls !== 1) out.push(`${row.member}: ${row.caller} calls it ${calls} times, not exactly once — this member is kept ONLY by that caller`);
+    if (calls !== want) out.push(`${row.member}: ${row.caller} calls it ${calls} times, not exactly ${want} — this member is kept ONLY by its named callers`);
     return out;
   };
   const keptSrc = new Map([...new Set(KEPT_BY_A_NAMED_CALLER.map((r) => r.caller))]
     .map((rel) => [rel, decomment(readFileSync(join(ROOT, rel), "utf8"))] as const));
   const keptRows = KEPT_BY_A_NAMED_CALLER.flatMap((r) => keptProblems(r, houseDalSrc, keptSrc.get(r.caller) ?? null));
-  ok("16.504 · ⛔ 504/517 · every house DAL member kept ONLY by a named caller is still the interface plus BOTH twins, and that caller still calls it exactly once",
-    KEPT_BY_A_NAMED_CALLER.length >= 1 && keptRows.length === 0, keptRows.join(" · "));
+  ok("16.504 · ⛔ 504/517 · every house DAL member kept ONLY by a named caller is still the interface plus BOTH twins, and that caller still calls it exactly as often as the row says",
+    KEPT_BY_A_NAMED_CALLER.length >= 3 && keptRows.length === 0, keptRows.join(" · "));
+  /* ⛔ AND THE MEMBER 504 DELETED IS GONE FROM BOTH TWINS, not merely absent from this table (replan ruling 504,
+   * C7 step 4). `NEVER` above carries the name; this states the decision's other half in its own words so the two
+   * halves of 504 — one member kept with its callers named, one member deleted — read together. */
+  ok("16.504.del · ⛔ 504 · `lastStoppedAt` is gone from the interface and BOTH twins, and `everStopped` — the predicate the rule really decides on — is not",
+    !new RegExp("(^|[^A-Za-z])(async )?lastStoppedAt\\(", "m").test(houseDalSrc)
+      && (houseDalSrc.split("everStopped(").length - 1) >= 3,
+    `everStopped named ${houseDalSrc.split("everStopped(").length - 1} times`);
   {
     const R0 = KEPT_BY_A_NAMED_CALLER[0];
     const erasureSrc = keptSrc.get(R0.caller) ?? "";
@@ -832,6 +886,46 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
         && fired.callerUnreadable.some((p) => p.includes("could not be read"))
         && fired.untouched.length === 0,
       JSON.stringify(fired));
+  }
+  /**
+   * ⭐ `16.botRateUsage` — C7 STEP 4's ONE NEW SEAM MEMBER (C7-SPEC ruling 351).
+   *
+   * The console's per-account count rows and its "Last bet" column need one bot's market-free rate usage, and the
+   * roster needs every bot's. Ruling 351 fixes HOW: ONE statement per call, in `globalUsage`'s own `count(*) FILTER`
+   * shape on the DATABASE clock with a `GROUP BY`, never a row projection; and the memory twin accumulates into a
+   * map rather than materialising the matching positions. ⛔ Both are the difference between this member and
+   * `placedTimes`, whose two twins are unbounded and whose `.length` as a count is an unbounded row read on a page
+   * render. ⛔ `botUsage`'s `marketId` stays REQUIRED, which is why this is a new member and not an optional
+   * parameter: a caller with no market would read the PER_MARKET gate figures as zero.
+   */
+  {
+    const priSeamSrc = region(houseDalSrc, "const prismaHouseSeam:");
+    const memSeamSrc = region(houseDalSrc, "const memoryHouseSeam:");
+    const priRate = objectMethod(priSeamSrc, "botRateUsage");
+    const memRate = objectMethod(memSeamSrc, "botRateUsage");
+    const statements = (s: string) => s.split("await sql(").length - 1;
+    ok("16.botRateUsage · the Prisma twin is ONE statement of COUNTS on the database clock, grouped by bot, with no row projection",
+      statements(priRate) === 1
+        && /count\(\*\) FILTER \(WHERE "placedAt" > \$\{DB_CLOCK_UTC_SQL\}/.test(priRate)
+        && /GROUP BY "houseBotId" ORDER BY "houseBotId"/.test(priRate)
+        && !/SELECT "placedAt"/.test(priRate) && !/\bnow\(\)/.test(priRate),
+      `${statements(priRate)} statements · ${priRate.length} chars`);
+    ok("16.botRateUsage · the memory twin accumulates into a MAP and materialises no per-row array — the difference between it and `placedTimes`",
+      /const acc = new Map<string, HouseBotRateUsage>\(\)/.test(memRate) && /acc\.set\(/.test(memRate)
+        && !/out\.push\(/.test(memRate) && !/\.sort\(\(a, b\) => b - a\)/.test(memRate),
+      `${memRate.length} chars`);
+    /* ⛔ THE CONTROLS RULING 351 NAMES, each applied to the REAL body so a detector that cannot see the defect is
+     * reported here rather than on a page render: a Prisma twin that projects rows, and a Prisma twin that reads the
+     * REPLICA clock instead of the database's. */
+    const rowProjecting = priRate.replace("count(*) FILTER", `SELECT "placedAt" FROM "Position"; count(*) FILTER`);
+    const replicaClock = priRate.split("${DB_CLOCK_UTC_SQL}").join("now()");
+    ok("16.botRateUsage.c1 · CONTROL · a twin that projects rows and a twin that reads the replica clock are each caught, and the shipped body is not",
+      /SELECT "placedAt"/.test(rowProjecting) && /\bnow\(\)/.test(replicaClock)
+        && !/SELECT "placedAt"/.test(priRate) && !/\bnow\(\)/.test(priRate), "");
+    /* ⛔ AND `botUsage` STILL REQUIRES ITS MARKET (ruling 351's own prohibition): an optional market would turn a
+     * gate reader into one that reads `countOnMarket: 0` and waves a stake through. */
+    ok("16.botRateUsage · `botUsage`'s `marketId` is still REQUIRED and undefaulted",
+      /botUsage\(input: \{ houseBotId: string; marketId: string \}, tx\?: HouseTx\)/.test(houseDalSrc), "");
   }
   const filtersSrc = decomment(readFileSync(join(SRC, "lib/server/txn-filters.ts"), "utf8"));
   ok("16.d20.house · ⛔ D20 · no house filter survives in the transaction search grammar or its Prisma where (ruling 210 struck)",

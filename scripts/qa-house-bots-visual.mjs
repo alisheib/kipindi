@@ -2,7 +2,9 @@
  * qa:house-bots-visual — the desk's own visual gate (C7-SPEC rulings 318, 374, 404, 407, 419; §5's capture list).
  *
  *   KP_BASE=http://127.0.0.1:3021 npm run qa:house-bots-visual
- *   KP_BASE=… KP_ROUTES=/admin/desk KP_WIDTHS=360,1280 npm run qa:house-bots-visual
+ *   KP_BASE=… KP_ROUTES=/admin/desk KP_WIDTHS=360,1280 npm run qa:house-bots-visual   # KP_ROUTES OVERRIDES the
+ *   derived population — with it unset the routes are every tab of `CONSOLE_TABS`, read from the section's own
+ *   route module, so a tab added by a later step is inside this gate on the day its panel lands (ruling 539).
  *
  * ⛔ IT DRIVES A LOCAL `next start` AND NOTHING ELSE. `scripts/live/harness.mjs` defaults to production and holds
  * Ali's own console password; signing in with it would revoke his live session (50pick keeps ONE live session per
@@ -35,10 +37,10 @@
  * Tiles are VIEWPORT tiles, never `fullPage`, written under `KP_SHOTS` (default `.qa-house-bots/`, gitignored by the
  * `.qa-` prefix rule). Evidence is regenerable and stays out of the tracked tree (W20).
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
-import { houseHits, consoleNeutralRegExp, CONSOLE_EXTRA_SAMPLES } from "./lib/house-bot-vocabulary.mjs";
+import { houseHits, consoleNeutralRegExp, CONSOLE_EXTRA_SAMPLES, CONSOLE_BENIGN_SAMPLES } from "./lib/house-bot-vocabulary.mjs";
 
 const BASE = process.env.KP_BASE ?? "http://127.0.0.1:3021";
 if (!/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(BASE)) {
@@ -46,7 +48,54 @@ if (!/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(BASE)) {
   process.exit(2);
 }
 const WIDTHS = (process.env.KP_WIDTHS ?? "360,640,768,1024,1280,1920").split(",").map((n) => Number(n.trim())).filter(Boolean);
-const ROUTES = (process.env.KP_ROUTES ?? "/admin/desk").split(",").map((s) => s.trim()).filter(Boolean);
+/**
+ * ⛔ THE ROUTE POPULATION IS THE SECTION'S OWN TAB LIST, READ FROM DISK (replan ruling 539, hole 2).
+ * It was the single typed string "/admin/desk", so the entire limits tab — its five usage rows, its whole
+ * limits list, its `AdminLoadError` branches — went through NONE of §5.1, §5.3, §5.4 or §5.6, and the three
+ * labels naming the feature's own mechanism were painted for a day on the one surface this gate exists to keep
+ * neutral. The instrument that reads RENDERED text had never visited the page that was leaking.
+ * ⛔ IT IS PARSED, NOT IMPORTED, because this file is `.mjs` and `console-routes.ts` is TypeScript — and it is
+ * REFUSED rather than defaulted when the parse finds nothing: a derived population that silently falls back to a
+ * typed one is the typed one, with a comment claiming otherwise.
+ */
+function consoleRoutesFromSource() {
+  const src = readFileSync("src/lib/house-bot/console-routes.ts", "utf8");
+  const route = /export const CONSOLE_ROUTE = "([^"]+)"/.exec(src)?.[1] ?? "";
+  const tabsRaw = /export const CONSOLE_TABS = \[([^\]]*)\]/.exec(src)?.[1] ?? "";
+  const dflt = /export const DEFAULT_TAB: ConsoleTab = "([^"]+)"/.exec(src)?.[1] ?? "";
+  const tabs = [...tabsRaw.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  if (!route || !dflt || tabs.length === 0 || !tabs.includes(dflt)) return null;
+  return tabs.map((t) => (t === dflt ? route : `${route}?tab=${t}`));
+}
+const DERIVED_ROUTES = consoleRoutesFromSource();
+if (!process.env.KP_ROUTES && !DERIVED_ROUTES) {
+  console.error("REFUSED — qa:house-bots-visual could not read CONSOLE_ROUTE/CONSOLE_TABS/DEFAULT_TAB out of src/lib/house-bot/console-routes.ts.");
+  process.exit(2);
+}
+const ROUTES = process.env.KP_ROUTES
+  ? process.env.KP_ROUTES.split(",").map((s) => s.trim()).filter(Boolean)
+  : DERIVED_ROUTES;
+console.log(`routes (${process.env.KP_ROUTES ? "KP_ROUTES" : "derived from CONSOLE_TABS"}): ${ROUTES.join(" ")}`);
+/**
+ * ⛔ RULING 474's TWO OPERATOR-DATA VALUES, READ FROM THE READER'S OWN LIST — never typed here.
+ * `bot.label` and `control.switchedReason` are DATA an operator typed, not this console's copy: 453 may not
+ * silently rewrite them, and 474 exempts them BY NAME. This gate had no such exemption, so a roster whose
+ * accounts are labelled "Bot 1–3" made §5.6 red at all six widths on a value the ruling says must never fail it.
+ * ⛔ IT IS REFUSED rather than defaulted when the list cannot be read, and the two names are required to be
+ * EXACTLY the two: a third exemption cannot arrive here without being ruled.
+ */
+function operatorExemptNames() {
+  const src = readFileSync("src/lib/server/house-console-read.ts", "utf8");
+  const block = /export const OPERATOR_DATA_EXEMPT = Object\.freeze\(\[([\s\S]*?)\]\);/.exec(src)?.[1] ?? "";
+  return [...block.matchAll(/value:\s*"([^"]+)"/g)].map((m) => m[1]);
+}
+const OPERATOR_EXEMPT = operatorExemptNames();
+if (JSON.stringify(OPERATOR_EXEMPT) !== JSON.stringify(["label", "switchedReason"])) {
+  console.error(`REFUSED — OPERATOR_DATA_EXEMPT in src/lib/server/house-console-read.ts is ${JSON.stringify(OPERATOR_EXEMPT)}; this gate implements exactly ["label","switchedReason"] (ruling 474) and will not guess at a third.`);
+  process.exit(2);
+}
+/** The ON sentence's operator-typed tail — the same rule `test:house-bot-console` §3 applies to `stateSentence`. */
+const stripReasonTail = (text) => text.replace(/ ·\u00a0reason: [^\n]*/g, "");
 const SHOTS = process.env.KP_SHOTS ?? ".qa-house-bots";
 const PHONE = "+255700000000";
 const PASSWORD = process.env.KP_ADMIN_PASSWORD ?? "QaAdmin2026!";
@@ -90,8 +139,37 @@ try {
     for (const width of WIDTHS) {
       const p = await ctx.newPage();
       await p.setViewportSize({ width, height: 900 });
-      const resp = await p.goto(BASE + route, { waitUntil: "networkidle", timeout: 60_000 });
+      /* 🔴 `load`, NOT `networkidle`, AND THE RAIL IS THE DATA WAIT. MEASURED 2026-09-18, the day C7 step 3 mounted
+         the desk's live strip: the page opens a persistent SSE connection to `/api/events` (`useEventStream`, rulings
+         316/386), and a page holding an EventSource open NEVER reaches `networkidle` — every navigation here timed
+         out at 60s and this gate could not reach the surface it exists to measure at all. `networkidle` was never the
+         property being asserted; what matters is that the DATA has landed before the tile, so the wait is the kit's
+         own `[data-section-rail]`, which the console renders only after its gated reader returns. ⛔ The screenshot
+         still comes after an explicit settle, so a late paint is not caught mid-frame. */
+      const resp = await p.goto(BASE + route, { waitUntil: "load", timeout: 60_000 });
       if (!resp || /\/auth\//.test(p.url())) { nm(`${route} @${width}`, `landed on ${p.url()}`); await p.close(); continue; }
+      /* ⛔ THE DATA WAIT DECIDES WHETHER THIS TILE IS MEASURED AT ALL, AND IT MAY NOT SWALLOW ITS OWN TIMEOUT
+         (replan ruling 540(b)). It was `.catch(() => null)`, so a page whose gated reader never returned was
+         screenshotted anyway and all twenty checks below ran against an empty shell — zero clipped figures, zero
+         short controls, zero house words, and every one of them a PASS. A page that never painted its data is
+         NOT MEASURED, which is a report, not a verdict.
+         ⛔ AND IT IS `[data-section-rail]` ALONE. The three-way OR admitted `.admin-tbl` and
+         `[data-field-measure]` — nodes the admin chrome paints on pages that never render the console's rail at
+         all — so the wait could be satisfied by something that is not this section. `Tabs` marks a rail whose
+         options own a URL with `data-section-rail`, and the console renders it only after its gated reader
+         returns, on EVERY tab and in the schema-missing state alike. */
+      try {
+        await p.waitForSelector("[data-section-rail]", { timeout: 30_000 });
+      } catch {
+        nm(`${route} @${width}`, "the section rail never painted, so the page's data never landed — no check below would have measured anything");
+        await p.close();
+        continue;
+      }
+      /* ⛔ A CONDITION, NOT A SLEEP MARGIN (the standing trap: wait on the clock, never on a margin). Web fonts
+         decide every text metric this gate measures, and a tile taken before they load measures the fallback
+         face; two consecutive frames after that is the paint actually settling. `waitForTimeout(600)` asserted
+         neither and would have been wrong on a slower machine in exactly the direction that reads as a pass. */
+      await p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
       // The dev overlay is never part of a tile.
       await p.addStyleTag({ content: "nextjs-portal{display:none!important}" });
       const tag = `${route.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "root"}-${width}`;
@@ -177,17 +255,28 @@ try {
             return { text: (td.textContent ?? "").trim().slice(0, 24), left: Math.round(r.left), right: Math.round(r.right), boxLeft: Math.round(box.left), boxRight: Math.round(box.right) };
           });
         });
+        const tableCount = document.querySelectorAll("table.admin-tbl").length;
         const region = document.querySelector("table.admin-tbl")?.closest("[role='region']") ?? null;
         const scrollable = region ? region.scrollWidth > region.clientWidth + 1 : false;
         /* The console's own content region, for 453's stricter scan — the sidebar's "House" nav label is not ours. */
         const own = document.querySelector("main") ?? document.body;
-        const attrs = [...own.querySelectorAll("*")].flatMap((el) =>
-          ["aria-label", "title", "placeholder", "alt"].map((a) => el.getAttribute(a)).filter(Boolean));
+        /* ⛔ EVERY `aria-*` ATTRIBUTE, DERIVED FROM THE NODE (ruling 453 names `aria-*`, not four of them). The
+           list was hand-typed, and C7 step 3 shipped `aria-valuetext` on every usage bar carrying server copy —
+           a sentence written by the gated reader, outside this scan on the day it landed. */
+        const attrs = [...own.querySelectorAll("*")].flatMap((el) => [
+          ...[...el.attributes].filter((a) => a.name.startsWith("aria-")).map((a) => a.value),
+          ...["title", "placeholder", "alt"].map((a) => el.getAttribute(a)),
+        ].filter(Boolean));
         const emptyBoxes = [...document.querySelectorAll("table.admin-tbl tbody td[colspan]")].filter(vis).map((td) => {
           const r = td.querySelector("div")?.getBoundingClientRect() ?? td.getBoundingClientRect();
           return { left: Math.round(r.left), right: Math.round(r.right) };
         });
-        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, emptyBoxes, scrollable, ownText: own.innerText, attrs, body: document.body.innerText, vw: window.innerWidth };
+        /* ⛔ RULING 474 · THE OPERATOR'S OWN TEXT, COLLECTED SEPARATELY so the 453 scan can exempt exactly those
+           nodes and nothing else. The hook is written at the render site, so the exemption is VISIBLE in the DOM
+           rather than inferred from position. */
+        const operatorNodes = [...own.querySelectorAll("[data-operator-text]")];
+        const operatorText = operatorNodes.map((el) => (el.textContent ?? "").trim()).filter(Boolean);
+        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, body: document.body.innerText, vw: window.innerWidth };
       });
 
       ok(`§5.1 ${route} @${width} · no money figure is clipped by a box that cannot scroll, and none is broken across two lines`, facts.clipped.length === 0, facts.clipped.join(" | "));
@@ -208,12 +297,38 @@ try {
         // ⛔ RULING 453, over the console's OWN region and its attributes — the words `bot`, `house` and
         // `counter-stake` on top of the shared list, composed in the vocabulary module and never here (ruling 175).
         const neutral = consoleNeutralRegExp("gi");
-        const subject = `${facts.ownText}\n${facts.attrs.join("\n")}`;
+        /* ⛔ 474's TWO EXEMPTIONS, REMOVED BY NAME AND NOTHING ELSE: the marked nodes' own text, and the ON
+           sentence's `· reason:` tail. Everything else on the page stays in the subject. */
+        const exempted = facts.operatorText.reduce((acc, t) => acc.split(t).join(" "), `${facts.ownText}\n${facts.attrs.join("\n")}`);
+        const subject = stripReasonTail(exempted);
         const hits453 = [...subject.matchAll(neutral)].map((m) => m[0]);
         ok(`§5.6 ${route} @${width} · ⛔ RULING 453 · neither the console's own text NOR any of its aria-label/title/placeholder/alt names the feature`,
           hits453.length === 0, hits453.slice(0, 6).join(","));
-        ok(`§5.6 ${route} @${width} · CONTROL · the 453 scan fires on each of the words it adds, and the attributes were really collected`,
-          CONSOLE_EXTRA_SAMPLES.every((s) => consoleNeutralRegExp().test(s)) && facts.attrs.length > 0, `${facts.attrs.length} attributes`);
+        /* ⛔ BOTH DIRECTIONS, AND A MEASURED FLOOR (ruling 539; finding M9). `> 0` is satisfied by one stray
+           `alt`; this console paints an `aria-label` on the rail, on the switch and on every usage bar, plus each
+           bar's `aria-valuetext`. And a lexicon widened to a bare stem is worth nothing until it has been shown
+           to LET AN INNOCENT WORD THROUGH. */
+        ok(`§5.6 ${route} @${width} · CONTROL · the 453 scan fires on every word it adds, does NOT fire on an innocent look-alike, and really collected this page's aria-* attributes`,
+          CONSOLE_EXTRA_SAMPLES.every((s) => consoleNeutralRegExp().test(s))
+            && CONSOLE_BENIGN_SAMPLES.every((s) => !consoleNeutralRegExp().test(s))
+            && facts.attrs.length >= 6,
+          `${facts.attrs.length} attributes · benign hits ${JSON.stringify(CONSOLE_BENIGN_SAMPLES.filter((s) => consoleNeutralRegExp().test(s)))}`);
+        /* ⛔ AND THE EXEMPTION IS EXACTLY THE TWO VALUES 474 NAMES. An exemption nobody measures is a guard whose
+           population is a lie: a house word planted into the page's NON-exempt text must still fire, and the
+           removal must take only the marked nodes. */
+        {
+          const planted = `${subject} the house bots desk`;
+          const untouched = `${facts.ownText}\n${facts.attrs.join("\n")}`;
+          ok(`§5.6 ${route} @${width} · CONTROL · 474 · the operator-data exemption is exactly ${JSON.stringify(OPERATOR_EXEMPT)}, removes only the marked nodes, and a house word in the page's OWN text still fires`,
+            /* the plant fires — the exemption did not switch the scan off */
+            [...planted.matchAll(consoleNeutralRegExp("gi"))].length > 0
+              /* each marked node's text is gone … */
+              && facts.operatorText.every((t) => !subject.includes(t))
+              /* … and something was actually removed when there was anything to remove, so an exemption that
+                 matched nothing cannot read as one that worked */
+              && (facts.operatorText.length === 0 || subject.length < untouched.length),
+            `${facts.operatorText.length} operator node(s): ${JSON.stringify(facts.operatorText.slice(0, 4))}`);
+        }
       }
       if (facts.firstCells.length) {
         const [subject, first, second] = facts.firstCells;
@@ -228,8 +343,16 @@ try {
           ok(`§5.2 ${route} @${width} · …and the second money answer is reachable: the table's region really does scroll`,
             second == null || inBox(second) || facts.scrollable, JSON.stringify({ second, scrollable: facts.scrollable }));
         }
+      } else if (facts.tableCount === 0) {
+        /* ⛔ A SURFACE THAT RENDERS NO TABLE IS A POSITIVE FACT, NOT A SKIP. §5.2 asks where a money CELL sits in a
+           scroll container; a surface with no `.admin-tbl` has no such cell, and printing NOT MEASURED for it would
+           make this gate exit 3 for ever the moment its route population grew past the roster — which is how a gate
+           stops being read. What IS asserted instead is the fact itself, WITH the figures §5.1 measured on that same
+           surface, so "no table" cannot stand in for "nothing rendered". */
+        ok(`§5.2 ${route} @${width} · this surface renders no `+"`.admin-tbl`"+`, so it has no money CELL to push out of a scroll strip — and §5.1 measured its figures where they are`,
+          facts.moneyCount >= 1, `${facts.moneyCount} money spans, ${facts.tableCount} tables`);
       } else {
-        nm(`§5.2 ${route} @${width}`, "no roster row was rendered, so the money columns' position was not measured");
+        nm(`§5.2 ${route} @${width}`, `a money table rendered with NO row (${facts.tableCount} table(s)), so the money columns' position was not measured`);
       }
       if (facts.emptyBoxes.length) {
         ok(`§5.5 ${route} @${width} · every empty-state message box is inside the viewport`,

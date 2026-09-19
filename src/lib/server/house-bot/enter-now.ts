@@ -96,8 +96,11 @@ export async function loadEnterNowInput(
   const allDay = await houseDayBook(dayKey, null);
   const botExposure = await houseOpenExposure(botId);
   const allExposure = await houseOpenExposure(null);
-  const botStaff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: botId });
-  const allStaff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null });
+  /* ⛔ THE PREVIEW'S OWN DAY, PASSED (replan ruling 542). `dayKey` above is derived ONCE from the DATABASE clock
+     and both day books already honour it; without it here the member derived a second day of its own, so one preview
+     measured its day books on one clock and its staff-chosen usage on another. */
+  const botStaff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: botId, dayKey });
+  const allStaff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey });
   const wallet = await db.wallet.findByUserId(bot.userId);
   if (!wallet) throw new Error(`enter-now: the holder's wallet could not be read (bot ${botId})`);
   const botPlaced = await houseSeamStore.placedTimes({ houseBotId: botId, withinSec: BOT_RATE_WINDOW_SEC });

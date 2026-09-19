@@ -800,5 +800,126 @@ if (w.onPostgres) {
   }
 }
 
+// ═══ §9 · replan ruling 542 · the money gate reads ONE clock, not two ═════════════════════════
+/**
+ * ⛔ THE GATE MEASURED THE DAY BOOKS ON THE APP CLOCK AND STAFF-CHOSEN USAGE ON THE DATABASE CLOCK, INSIDE ONE
+ * DECISION. `loadCapFacts` derives an EAT day once from `opts.nowMs` and honours it for `houseDayBook(day, bot.id)`
+ * and `houseDayBook(day, null)` — and then called `staffChosenPlacedToday` with NO key, so the member derived its
+ * own: `eatDayKey(Date.now())` on the memory twin and the DATABASE CLOCK on the Prisma twin. Across EAT midnight, or
+ * under any app/DB skew, the gate could refuse a stake that is within its limits or allow one that is over them.
+ *
+ * ⛔ THE FIXTURE PUTS THE TWO WINDOWS ON OPPOSITE SIDES OF EAT MIDNIGHT, and it does it without writing a row the
+ * product could not write: a real staff-chosen stake is placed TODAY, and the gate is then asked about YESTERDAY.
+ * A gate reading ONE day answers "nothing yesterday" for every figure; a gate reading two answers "nothing" for the
+ * day books and "one stake of 2,000" for staff-chosen usage — the split itself, measured.
+ * ⛔ AND 9.4 IS THE CONTROL THAT MAKES 9.3 A MEASUREMENT: the same reads, asked about TODAY, DO see the stake, so a
+ * green 9.3 cannot come from an empty store or a fixture that never placed.
+ */
+section("§9 · ruling 542 · loadCapFacts measures every figure on the day it was GIVEN");
+{
+  const { loadCapFacts }: Any = await import("../../src/lib/server/house-bot/cap-precheck.ts");
+  await w.limits();
+  await w.switchOn();
+  const b = await w.bot();
+  const staked = 2_000;
+  const first = await manualOpener(b, staked);
+  const placed = await w.place(b, first.i);
+  ok("9.1 · fixture · a staff-chosen (Enter now) stake of 2,000 is placed TODAY", placed.ok === true, show(placed));
+
+  const nowMs = Date.now();
+  const yesterdayMs = nowMs - 86_400_000;
+  ok("9.2 · fixture · the two instants really do fall on different EAT days",
+    eatDayKey(nowMs) !== eatDayKey(yesterdayMs), `${eatDayKey(nowMs)} vs ${eatDayKey(yesterdayMs)}`);
+
+  const control = await w.dal.houseBotControlStore.get();
+  const bot = await w.dal.houseBotStore.get(b.botId);
+  const load = async (atMs: number) => {
+    const m = await w.poll({ graceMin: 0 });
+    return loadCapFacts(bot, m.id, { control, nowMs: atMs, staffChosen: true, counterpartyUserId: null });
+  };
+
+  /* ⛔ THE ASSERTION IS AN AGREEMENT, NOT A ZERO — AND THE FIRST FORM OF IT WAS DATE-FRAGILE.
+   * It read "yesterday is empty", which is true only while the whole suite runs inside ONE EAT day. Measured:
+   * the same case was green at 21:00 and RED at 00:50, because sections §0-§8 had placed their stakes before EAT
+   * midnight and §9's "yesterday" was no longer empty — a fixture that decides its own answer from the clock.
+   * What 542 is actually about is that EVERY figure in one decision names the SAME day, so that is what is
+   * asserted: each of the gate's five reads is compared with an INDEPENDENT read of the day it was given. */
+  const yKey = eatDayKey(yesterdayMs);
+  const tKey = eatDayKey(nowMs);
+  const own = async (dayKey: string, botId: string) => ({
+    bookBot: (await houseDayBook(dayKey, botId)).stakedTzs,
+    bookAll: (await houseDayBook(dayKey, null)).stakedTzs,
+    staffBot: await w.dal.houseBotIntentStore.staffChosenPlacedToday({ houseBotId: botId, dayKey }),
+    staffAll: await w.dal.houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey }),
+  });
+  const yOwn = await own(yKey, b.botId);
+  const tOwn = await own(tKey, b.botId);
+
+  const y = await load(yesterdayMs);
+  ok("9.3 · ⛔ 542 · asked about YESTERDAY, every one of the gate's five reads answers for YESTERDAY — one decision, one clock",
+    y.stakedToday === yOwn.bookBot && y.globalStakedToday === yOwn.bookAll
+      && y.staffChosen !== null
+      && y.staffChosen.count === yOwn.staffBot.count && y.staffChosen.tzs === yOwn.staffBot.stakeTzs
+      && y.staffChosen.globalCount === yOwn.staffAll.count && y.staffChosen.globalTzs === yOwn.staffAll.stakeTzs,
+    JSON.stringify({ gate: { bot: y.stakedToday, all: y.globalStakedToday, staff: y.staffChosen }, day: yOwn }));
+
+  const t = await load(nowMs);
+  ok("9.4 · CONTROL · asked about TODAY, the SAME five reads answer for today instead — so 9.3 measured the day it was given",
+    t.stakedToday === tOwn.bookBot && t.globalStakedToday === tOwn.bookAll
+      && t.staffChosen !== null
+      && t.staffChosen.count === tOwn.staffBot.count && t.staffChosen.tzs === tOwn.staffBot.stakeTzs
+      && t.staffChosen.globalCount === tOwn.staffAll.count && t.staffChosen.globalTzs === tOwn.staffAll.stakeTzs
+      && t.staffChosen.tzs >= staked,
+    JSON.stringify({ gate: { bot: t.stakedToday, all: t.globalStakedToday, staff: t.staffChosen }, day: tOwn }));
+
+  /* ⛔ AND THE TWO DAYS REALLY DO DIFFER, or 9.3 and 9.4 could both be satisfied by a gate that answers one
+   * day for every question. This is the fixture's whole job: a staff-chosen stake placed TODAY that yesterday's
+   * window cannot contain. */
+  ok("9.4 · CONTROL · the two EAT days give DIFFERENT staff-chosen answers, so 9.3 and 9.4 cannot both be satisfied by one day",
+    tOwn.staffAll.stakeTzs !== yOwn.staffAll.stakeTzs && tOwn.staffBot.stakeTzs !== yOwn.staffBot.stakeTzs,
+    JSON.stringify({ today: tOwn.staffAll, yesterday: yOwn.staffAll }));
+  /**
+   * ⛔ AND THE CLASS, NOT THE ONE CALL THE REVIEW HAPPENED TO OPEN (replan ruling 542's own lesson). 9.3 measures the
+   * GATE. The same member is reached from the seam's H2 and H4 inside the bet's own locks, from the Enter now
+   * preview, and from the console's limits reader — and every one of them already derives an EAT day of its own for
+   * the day books beside it. A correction applied to the surface a defect was noticed on leaves the more expensive
+   * half standing, so the population here is WALKED from `src/` rather than typed, with a floor that only rises: a
+   * NEW call site is inside this assertion on the day it lands.
+   * ⛔ THE DAL IS EXCLUDED BY NAME because it DECLARES and IMPLEMENTS the member (the optional key is its own
+   * signature); every other mention under `src/` is a caller. Comments are stripped through the shared
+   * `decomment` — three of these files discuss the member at length in prose.
+   */
+  if (STORE === "memory") {
+    const { readFileSync: rf, readdirSync: rd, statSync: st }: Any = await import("node:fs");
+    const { join: jn, dirname: dn }: Any = await import("node:path");
+    const { fileURLToPath: fu }: Any = await import("node:url");
+    const { decomment }: Any = await import("./decomment.mts");
+    const ROOT9 = jn(dn(fu(import.meta.url)), "..", "..");
+    const DAL = "src/lib/server/house-bot-dal.ts";
+    const walk9 = (dir: string, out: string[] = []): string[] => {
+      for (const e of rd(jn(ROOT9, dir))) {
+        const rel = `${dir}/${e}`;
+        if (st(jn(ROOT9, rel)).isDirectory()) walk9(rel, out);
+        else if (/\.tsx?$/.test(e) && rel !== DAL) out.push(rel);
+      }
+      return out;
+    };
+    const sites: Array<{ file: string; args: string }> = [];
+    for (const rel of walk9("src")) {
+      const code = decomment(rf(jn(ROOT9, rel), "utf8"));
+      for (const m of code.matchAll(/staffChosenPlacedToday\(\s*\{([^}]*)\}/g)) sites.push({ file: rel, args: m[1].trim() });
+    }
+    const dayless = sites.filter((s) => !/\bdayKey\b/.test(s.args));
+    ok("9.5 · ⛔ 542 · EVERY caller of `staffChosenPlacedToday` under src/ passes the day its own pass derived — the seam's two locks, the preview and the console reader, not only the gate 542 was noticed on",
+      sites.length >= 7 && dayless.length === 0,
+      JSON.stringify({ callSites: sites.length, files: [...new Set(sites.map((s) => s.file))], dayless }));
+    ok("9.5 · CONTROL · the walk really read the callers — the population names the gate, both seam passes, the preview and the console reader, and the DAL's own declaration is outside it",
+      ["src/lib/server/house-bot/cap-precheck.ts", "src/lib/server/house-bot/seam.ts", "src/lib/server/house-bot/enter-now.ts",
+        "src/lib/server/house-console-read.ts"].every((f) => sites.some((s) => s.file === f))
+        && sites.every((s) => s.file !== DAL),
+      JSON.stringify([...new Set(sites.map((s) => s.file))]));
+  }
+}
+
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);

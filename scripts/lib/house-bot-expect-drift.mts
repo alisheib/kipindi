@@ -49,6 +49,7 @@ export const ROLL_CALL_SITES: Readonly<Record<string, string>> = {
   "engine-pg": "scripts/lib/house-bot-engine-cases.mts · 1.505",
   "money-mem": "scripts/lib/house-bot-money-cases.mts · 1.505",
   "money-pg": "scripts/lib/house-bot-money-cases.mts · 1.505",
+  "reports-mem": "scripts/lib/house-bot-reports-cases.mts · 0.505b (ruling 434's declarations, memory child)",
   seam: "scripts/house-bot-seam.test.mts · 8.505 (reads BOTH anchors files that declare a seam entry)",
   "(none)": "scripts/house-book.test.mts · 16.505 and scripts/house-page.test.mts · 16.505, by SECTION TOKEN",
 };

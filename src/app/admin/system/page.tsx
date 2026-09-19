@@ -191,7 +191,12 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
   const bootstrap = bootstrapPhones();
   // ⛔ D19 (ruling 172): read for the house-alert audience only — every other viewer gets null and renders nothing.
   const sessionForHouse = await currentSession().catch(() => null);
-  const houseEngine = tab === "diagnostics" ? await houseEngineHealthFor(sessionForHouse?.userId).catch((): HouseEngineHealthView | null => null) : null;
+  /* ⛔ NO `.catch` HERE, AND ITS REMOVAL IS RULING 354(a) RATHER THAN A TIDY-UP. It turned a FAILED viewer
+   * lookup into the `null` that means "not in the audience", so a pool timeout rendered this page as healthy with
+   * the card simply absent — an unreadable state showing as fine, which is the one thing §C2 forbids. The reader
+   * itself now fails closed and answers `{ readable: false }` for a failure it CAN see, so a second catch here
+   * could only hide one it cannot. */
+  const houseEngine = tab === "diagnostics" ? await houseEngineHealthFor(sessionForHouse?.userId) : null;
 
   return (
     <>

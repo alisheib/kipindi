@@ -23,8 +23,140 @@ const ROLES = "src/lib/server/roles.ts";
 const DESIG = "src/lib/server/house-bot/designation.ts";
 /* ⛔ THIS FILE IS ITSELF A TARGET, for the one assertion whose subject is this file: 1.318's roll-call. */
 const ANCHORS = "scripts/anchors/house-bot-console.anchors.mjs";
+/* ⭐ C7 step 3 · the kit file the caption pair lives in, and the section's first client module. */
+const BAR = "src/components/ui/progress-bar.tsx";
+const LIVE = "src/app/admin/desk/desk-live.tsx";
+/* ⭐ replan ruling 537 · the limits SAVE: the action, the client form and the service behind them. */
+const ACTIONS = "src/app/admin/desk/actions.ts";
+const FORM = "src/app/admin/desk/limits-form.tsx";
+const SAVE = "src/lib/server/house-bot/limits-save.ts";
+/** The page ruling 434 was taken on — a platform surface, not a console one. */
+const REFUSED = "src/app/admin/kyc/refused/page.tsx";
+/* ⭐ C7 step 4 · the house DAL, for `botRateUsage` — the one new seam member ruling 351 allows. */
+const DAL = "src/lib/server/house-bot-dal.ts";
+/* ⭐ C7 step 4 · the account page. */
+const DETAIL = "src/app/admin/desk/[id]/page.tsx";
+/* ⭐ C7 step 4b · the master-switch ceremony's client half. */
+const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
+/* ⭐ C7 step 4b · the officer's two roster acts, which had no service under src/ at all before this step. */
+const ROSTER = "src/lib/server/house-bot/roster-actions.ts";
 
 export const MUTATIONS = [
+  /* ── C7 step 4b · THE ACCOUNT'S ACTION ROW (ruling 415; replan 549) ──────────────────────────────────────────
+   * Each puts back a shape the console could plausibly have shipped in: an act offered in a state its service
+   * cannot perform, a ceremony the server does not check, an officer's stop recorded as the engine's, or a
+   * service's own sentence passed through onto a surface ruling 453 exists to keep neutral. */
+  {
+    name: "415-acts-everywhere · every act is offered in every state, so Pause is drawn on an account that is not running",
+    file: GATE,
+    from: `function actDialogsFor(status: string): ConsoleAccountActDialog[] {\n  if (status === "REMOVED") return [];`,
+    to: `function actDialogsFor(status: string): ConsoleAccountActDialog[] {\n  status = "ACTIVE";\n  if (status === "REMOVED") return [];`,
+    expect: "1.415 · the action row offers exactly the acts this account's CURRENT state allows",
+    suite: "console-mem",
+  },
+  {
+    name: "415-remove-unchecked · the server stops checking Remove's typed word, so the ceremony is a browser courtesy",
+    file: GATE,
+    from: `    if ((typeof input.typed === "string" ? input.typed.trim() : "") !== CONSOLE_REMOVE_WORD) {\n      return { ok: false, error: ACT_COPY.removeWordWrong, field: "typed" };\n    }`,
+    to: ``,
+    expect: "1.415 · 388 · Remove is refused by the SERVER without the typed word",
+    suite: "console-mem",
+  },
+  {
+    name: "415-shared-refusal · the console passes a service's own refusal through, onto the one surface 453 keeps neutral",
+    file: GATE,
+    from: `        error: actRefusal(done.code, { attemptsBeforeLock: done.attemptsBeforeLock, retryAfterSec: done.retryAfterSec }),`,
+    to: `        error: done.message,`,
+    expect: "1.415 · 453 · every re-verify refusal is the CONSOLE's own sentence",
+    suite: "console-mem",
+  },
+  {
+    name: "415-engine-pause · an officer's stop is written as the ENGINE's, so a person and a worker are indistinguishable in a seven-year record",
+    file: ROSTER,
+    from: `      from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pauseDetail: null, pausedFromStatus: null,`,
+    to: `      from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: "WALLET_FROZEN", pauseDetail: null, pausedFromStatus: "ACTIVE",`,
+    expect: "1.415 · ⭐ PAUSE STOPS A RUNNING ACCOUNT",
+    suite: "console-mem",
+  },
+  {
+    name: "432j-no-status-note · a stopped account whose cause has cleared paints a claret chip with nothing under it again",
+    file: GATE,
+    from: `  if (wayOut !== null || status === "ACTIVE" || status === "REMOVED") return null;`,
+    to: `  return null;\n  if (wayOut !== null || status === "ACTIVE" || status === "REMOVED") return null;`,
+    expect: "1.415 · 432(j) · an AUTO-PAUSED account whose cause has since cleared carries an honest sentence",
+    suite: "console-mem",
+  },
+  /* ── C7 step 4b · the engine-health Callout, the console half (rulings 414, 435(e); X1). ───────────────────── */
+  {
+    name: "414-notice-absent · the engine Callout is never painted, so a dead engine is invisible on the one page that could say so",
+    file: GATE,
+    from: `    engine,`,
+    to: `    engine: null,`,
+    expect: "1.353 · 414 · a STALE engine paints the DANGER Callout",
+    suite: "console-mem",
+  },
+  {
+    name: "X1-duty-identifier · a failed duty reaches the owner's screen as the engine's own identifier",
+    file: GATE,
+    from: `  return CONSOLE_DUTY_PHRASE[name] ?? name;`,
+    to: `  return name;`,
+    expect: "1.414 · X1 · every member of the planner's own `DutyName` union has a neutral phrase",
+    suite: "console-mem",
+  },
+  /* ── C7 step 4b · THE MASTER-SWITCH CEREMONY (rulings 388, 415; owner-delegated 454; replan ruling 549) ────────
+   * Each puts back a state the console was ACTUALLY in, or one it could plausibly have shipped in: a ceremony the
+   * server does not check, a control offered in a state its service refuses, or a stop that can be refused. */
+  {
+    name: "454-word-unchecked · the server stops checking the typed word, so the ceremony is a browser courtesy",
+    file: GATE,
+    from: `    if ((typeof input.typed === "string" ? input.typed.trim() : "") !== CONSOLE_SWITCH_ON_WORD) {\n      return { ok: false, error: SWITCH_COPY.wordWrong };\n    }`,
+    to: ``,
+    expect: "1.454 · the SERVER refuses a word that only looks right",
+    suite: "console-mem",
+  },
+  {
+    name: "454-word-folded · the typed word is case-folded, so habit can arm the control that starts money",
+    file: CEREMONY,
+    from: `  return copy.word === null || typed.trim() === copy.word;`,
+    to: `  return copy.word === null || typed.trim().toUpperCase() === copy.word;`,
+    expect: "1.415 · 454 · the confirm arms only on a reason of the required length AND the word typed EXACTLY",
+    suite: "console-mem",
+  },
+  {
+    name: "306-switch-on-unset · the switch is offered while a required limit is unset, so the only act behind it is a refusal",
+    file: GATE,
+    from: `  if (unsetRequired > 0) return null;`,
+    to: ``,
+    expect: "1.306 · 454 · with a required limit unset the ceremony is REFUSED by the server",
+    suite: "console-mem",
+  },
+  {
+    name: "415-off-typed-word · the kill switch grows a typed word, so a stop waits on ceremony while money moves",
+    file: GATE,
+    from: `      word: null,\n      wordLabel: null,\n      wordPlaceholder: null,\n      doneTitle: "The desk is off",`,
+    to: `      word: CONSOLE_SWITCH_ON_WORD,\n      wordLabel: "Type it",\n      wordPlaceholder: null,\n      doneTitle: "The desk is off",`,
+    expect: "1.415 · the way OFF takes NO typed word and the way ON does",
+    suite: "console-mem",
+  },
+  {
+    name: "415-shared-copy · the console passes the kill switch's SHARED sentence through instead of building its own",
+    file: GATE,
+    from: `  if (!off.ok) return { ok: false, error: SWITCH_COPY.offFailed };`,
+    to: `  if (!off.ok) return { ok: false, error: off.message };`,
+    /* ⚠️ RE-AIMED under replan ruling 541: the first form named the kill switch's SUCCESS case, which this
+       defect cannot reach — the branch it changes only runs when the OFF WRITE FAILS, and no case reached it.
+       The case was written (a throwing control-row write) and the declaration now names it. */
+    expect: "1.415 · 453 · a kill switch whose WRITE FAILED says so in the console's own neutral words",
+    suite: "console-mem",
+  },
+  {
+    name: "432j-switch-operable · the disabled switch keeps its sentence while the ceremony is offered, so one state says one fact twice",
+    file: GATE,
+    from: `    switchReason: on == null || switchDialog !== null || limitsFirstReason !== null`,
+    to: `    switchReason: on == null`,
+    expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
+    suite: "console-mem",
+  },
   /* ── Ruling 453 · THE NEUTRAL LEXICON. Four mutations, one per sentence the ruling fixes. ─────────────────────── */
   {
     name: "453-title · the head title says the feature's name again",
@@ -71,8 +203,15 @@ export const MUTATIONS = [
   {
     name: "340-null · the reader reads first and decides afterwards",
     file: GATE,
-    from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;`,
-    to: `  const mayView = await houseConsoleAudience(viewerUserId, route);`,
+    /* ⚠️ RE-ANCHORED 2026-09-18 (B2, ruling 348): `readDeskCore` now takes a FACTORY, so the second quoted
+       line moved. THE DEFECT IS UNCHANGED — the verdict is resolved and then not acted on, and every read
+       below runs for a viewer outside the audience. */
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
+    to: `  const mayView = await houseConsoleAudience(viewerUserId, route);
+
+  const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
     expect: "1.300 · the reader refuses a PLAYER with `null` and performs ZERO store calls",
     suite: "console-mem",
   },
@@ -129,7 +268,7 @@ export const MUTATIONS = [
   {
     name: "304-notset · an unset limit renders a zero usage instead of a block",
     file: GATE,
-    from: `  if (limit == null) return { label, value: "Not set", delta: "nothing can be staked until this limit is set" };`,
+    from: `  if (limit == null) return { label, value: "Not set", delta: UNSET_CONSEQUENCE };`,
     to: `  if (limit == null) return { label, value: formatTzsCompact(Math.max(0, used)), delta: "0% of the limit" };`,
     expect: "1.304 · all three money limits NULL renders three 'Not set' tiles",
     suite: "console-mem",
@@ -155,8 +294,8 @@ export const MUTATIONS = [
   {
     name: "346-countlive · the Accounts tile takes a second count, which can disagree with the table beside it",
     file: GATE,
-    from: `        ? { label: "Accounts", value: \`\${formatNumber(roster.length)} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated of max" }`,
-    to: `        ? { label: "Accounts", value: \`\${formatNumber(await houseBotStore.countLive())} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated of max" }`,
+    from: `        ? { label: "Accounts", value: \`\${formatNumber(roster.length)} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated and the maximum" }`,
+    to: `        ? { label: "Accounts", value: \`\${formatNumber(await houseBotStore.countLive())} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated and the maximum" }`,
     expect: "1.346 · exactly ONE `listNonRemoved` and ZERO `countLive` per render",
     suite: "console-mem",
   },
@@ -179,8 +318,12 @@ export const MUTATIONS = [
   {
     name: "355-all · the reads are combined with Promise.all, so one failure blanks the page",
     file: GATE,
-    from: `  const [controlR, rosterR, dayR, exposureR, ctxR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, ctxR] = await Promise.all([`,
+    /* ⚠️ RE-ANCHORED at C7 step 4: the set grew a sixth member when "Last bet" brought ruling 351's rate
+       reader with it. RE-ANCHORED AGAIN at step 4b: a SEVENTH, the engine's durable beats, which ruling 435(e)
+       puts inside this same door rather than behind a second one. THE DEFECT IS UNCHANGED — one failed read
+       blanks the whole page instead of its own cell. */
+    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.allSettled([`,
+    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.all([`,
     expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
     suite: "console-mem",
   },
@@ -195,7 +338,7 @@ export const MUTATIONS = [
   {
     name: "361-grammar · the usage caption becomes a slash pair instead of the one fixed grammar",
     file: GATE,
-    from: `    text: \`used \${uf} of \${lf}\`, used: \`used \${uf}\`, limit: \`of \${lf}\`, money: true,`,
+    from: `    text: \`used \${uf} of \${lf}\${edgeText}\`, used: \`used \${uf}\`, limit: \`of \${lf}\`, money: true,`,
     to: `    text: \`\${uf} / \${lf}\`, used: \`used \${uf}\`, limit: \`of \${lf}\`, money: true,`,
     expect: "1.361 · every usage cell matches the one fixed grammar",
     suite: "console-mem",
@@ -221,8 +364,8 @@ export const MUTATIONS = [
   {
     name: "312-rail · a tab key is added to the closed list with no panel behind it",
     file: ROUTES,
-    from: `export const CONSOLE_TABS = ["roster"] as const;`,
-    to: `export const CONSOLE_TABS = ["roster", "limits"] as const;`,
+    from: `export const CONSOLE_TABS = ["roster", "limits"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "limits", "activity"] as const;`,
     expect: "1.312a · the rail's options come from the closed list",
     suite: "console-mem",
   },
@@ -312,8 +455,8 @@ export const MUTATIONS = [
   {
     name: "421-unreadable · a generic control-read failure is collapsed back into the no-control-row state",
     file: GATE,
-    from: `  const controlUnreadable = controlR.status === "rejected" && !schemaMissing;`,
-    to: `  const controlUnreadable = false as boolean;`,
+    from: `      controlUnreadable: controlR.status === "rejected" && !schemaMissing,`,
+    to: `      controlUnreadable: false as boolean,`,
     expect: "1.421 · a GENERIC control failure is NOT collapsed into the schema state",
     suite: "console-mem",
   },
@@ -336,8 +479,8 @@ export const MUTATIONS = [
   {
     name: "432l-day-fold · the band's day figures are folded over the ROSTER again, under-counting the limit the gate enforces",
     file: GATE,
-    from: `    [...(dayBooks?.values() ?? [])].reduce((n, b) => n + pick(b), 0);`,
-    to: `    (roster ?? []).reduce((n, b) => n + (dayBooks?.get(b.id) ? pick(dayBooks.get(b.id)!) : 0), 0);`,
+    from: `  const stakeUsed = sumDay(dayBooks, (b) => b.stakedTzs);`,
+    to: `  const stakeUsed = sumDay(dayBooks, (b) => ((roster ?? []).some((r) => r.id === b.houseBotId) ? b.stakedTzs : 0));`,
     expect: "1.347 · 432(l) · the band measures the GATE's population",
     suite: "console-mem",
   },
@@ -400,7 +543,7 @@ export const MUTATIONS = [
     file: GATE,
     from: `    actionReason: "Designating an account is not ready on this build yet.",`,
     to: `    actionReason: "",`,
-    expect: "432(j) · 432(n) · every disabled control on this rung carries its OWN reason",
+    expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
     suite: "console-mem",
   },
   {
@@ -430,9 +573,12 @@ export const MUTATIONS = [
   {
     name: "432q-second-context · a second parse-context read inside one render",
     file: GATE,
-    from: `    loadParseContext(),`,
-    to: `    loadParseContext(), loadParseContext(),`,
-    expect: "1.347 · 432(q) · the reader's read set is the four house reads plus EXACTLY ONE `loadParseContext()`",
+    /* ⚠️ RE-ANCHORED 2026-09-18 (B2, ruling 348) — the factory form. Same defect: a SECOND parse-context
+       read inside one render, outside the one settled set. */
+    from: `  const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
+    to: `  await loadParseContext();
+  const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
+    expect: "1.347 · 432(q) · the desk's read set is the four house reads plus EXACTLY ONE `loadParseContext()`",
     suite: "console-mem",
   },
   {
@@ -453,11 +599,553 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
-    name: "432i-dead-link · the limits sentence is a live link again while that tab has no panel",
+    name: "432i-dead-link · the link flag stops being DERIVED from the closed list, so a rail option and its link can drift apart",
     file: ROUTES,
     from: `export const LIMITS_TAB_READY: boolean = consoleTabExists("limits");`,
-    to: `export const LIMITS_TAB_READY: boolean = true;`,
-    expect: "1.312a · 432(i) · the page renders a LINK to the limits tab only when",
+    to: `export const LIMITS_TAB_READY: boolean = consoleTabExists("activity");`,
+    expect: "1.312a · 432(i) · both limits pointers are still GUARDED by the flag",
+    suite: "console-mem",
+  },
+  /* ── C7 STEP 3 · the limits tab, the kit's caption pair, 367's clause and the one live trigger ─────────────── */
+  {
+    name: "372-verdict · the USAGE reader reads first and decides afterwards — the second door past the gate",
+    file: GATE,
+    /* ⚠️ RE-ANCHORED 2026-09-18 (B2, ruling 348): the fifth read is now built by a factory that takes the
+       render's day key, so the quoted second line moved. THE DEFECT IS UNCHANGED — the usage reader resolves
+       its verdict and then reads anyway, the second door past the gate. The comment line is part of the anchor
+       only because the guard line alone is not unique: the roster reader opens with the identical statement. */
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  /* The render's own day key, passed to the fifth read`,
+    to: `  const mayView = await houseConsoleAudience(viewerUserId, route);
+
+  /* The render's own day key, passed to the fifth read`,
+    expect: "1.372 · the usage reader refuses a viewer outside the audience with `null` and performs ZERO store calls",
+    suite: "console-mem",
+  },
+  {
+    name: "372-zero · a FAILED money read renders a bar at TZS 0 instead of saying it could not be read",
+    file: GATE,
+    from: `  if (used === null) {`,
+    to: `  if (false as boolean) {`,
+    expect: "1.372 · a failed day read makes the stake and both loss rows say so",
+    suite: "console-mem",
+  },
+  {
+    name: "364-blanket · the draft's blanket caption is put back, so a staff-chosen cap is told it cannot place a bet",
+    file: GATE,
+    from: `  if (isClearExempt(field)) return "Not set — targeted and manual stakes cannot be placed.";`,
+    to: `  if (false as boolean) return "Not set — targeted and manual stakes cannot be placed.";`,
+    expect: "1.364 · every member of `CLEAR_EXEMPT` gets the targeted-and-manual caption",
+    suite: "console-mem",
+  },
+  {
+    name: "364-master · the required caption stops naming the master switch, so an unset required limit explains nothing",
+    file: GATE,
+    /* ⚠️ RE-ANCHORED at C7 step 4: replan ruling 547 split this branch on the render's switch state, so the
+       one-line form no longer exists. The DEFECT is unchanged — the REQUIRED branch never fires, and an unset
+       required limit explains nothing. */
+    from: `  if ((REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field)) {`,
+    to: `  if (false as boolean) {`,
+    expect: "1.364 · every member of `REQUIRED_FOR_MASTER_ON` gets the master-switch caption",
+    suite: "console-mem",
+  },
+  {
+    name: "364-label · the console's neutral label override is dropped, so `FIELD_META`'s own words reach the screen",
+    file: GATE,
+    from: `  return CONSOLE_LIMIT_LABEL[field] ?? FIELD_META[field].label;`,
+    to: `  return FIELD_META[field].label;`,
+    expect: "1.364 · 453 · every limit name, section and value the panel paints is neutral",
+    suite: "console-mem",
+  },
+  {
+    name: "364-bar-at-zero · an UNSET cap renders a bar at zero, saying headroom where the gate refuses everything",
+    file: GATE,
+    from: `      return limit == null ? unsetUsageRow(name, field, control.enabled) : usageRow(name, used, limit);`,
+    to: `      return usageRow(name, used ?? 0, limit ?? 0);`,
+    expect: "1.364 · an UNSET cap renders NO bar and one of the three captions",
+    suite: "console-mem",
+  },
+  {
+    name: "366-clamp · the settled loss row renders a cohort's PROFIT as a negative amount — today's net wearing a cap's label",
+    file: GATE,
+    from: `  const shown = Math.max(0, used);
+  const cell = moneyUsage(shown, limit);`,
+    to: `  const shown = used;
+  const cell = moneyUsage(shown, limit);`,
+    expect: "1.366 · the two loss rows are separate, share ONE cap, and the SETTLED one renders a profit as zero",
+    suite: "console-mem",
+  },
+  {
+    name: "367-clamp · the usage text is clamped to the limit, so 140% reads as 100% and the officer cannot see the breach",
+    file: GATE,
+    from: `  const uf = formatTzs(shown);`,
+    to: `  const uf = formatTzs(Math.min(shown, limit));`,
+    expect: "1.367 · usage OVER its limit says so in words",
+    suite: "console-mem",
+  },
+  {
+    name: "367-silent · the at/over clause is dropped, leaving a saturated bar as the only signal that a cap is reached",
+    file: GATE,
+    from: `  if (used === limit) return \` \${EM_DASH} at the limit\`;`,
+    to: `  if (false as boolean) return \` \${EM_DASH} at the limit\`;`,
+    expect: "1.367 · usage EQUAL to its limit says so in words",
+    suite: "console-mem",
+  },
+  {
+    name: "362-double · the kit prints BOTH lines, so a named cap sits above a tracked bare number",
+    file: BAR,
+    from: `      {caption ? (`,
+    to: `      {false ? (`,
+    expect: "1.362 · the kit's built-in numeric line renders ONLY when no caption is given",
+    suite: "console-mem",
+  },
+  {
+    name: "362-aria · the bar stops announcing its value, so the caption reaches the eye and nobody else",
+    file: BAR,
+    from: `        aria-valuetext={captionText}`,
+    to: `        aria-label={label}`,
+    /* ⚠️ RE-POINTED 2026-09-18: it named the BUILT-IN LINE assertion, which is a different subject. The
+       rendered case is the one that can see an announcement that never reaches the DOM. */
+    expect: "1.362 · RENDERED · with a caption the bar paints EXACTLY ONE line",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ THE DEFECT RULING 362 SPLIT THE PAIR FOR: `aria-valuetext` is a STRING attribute, so a ReactNode stamps
+       `[object Object]` into the DOM for every screen-reader user AND into any served body a scanner reads. No
+       source regex can see that — only a render can. */
+    name: "362-valuetext-node · the ReactNode caption is handed to `aria-valuetext`, which stamps [object Object]",
+    file: BAR,
+    from: `        aria-valuetext={captionText}`,
+    to: `        aria-valuetext={(caption ?? captionText) as unknown as string}`,
+    expect: "1.362 · RENDERED · with a caption the bar paints EXACTLY ONE line",
+    suite: "console-mem",
+  },
+  {
+    name: "409-name · the caption drops the cap's NAME, and `label` is aria-only, so a card of bars names its caps to nobody",
+    file: GATE,
+    from: `    captionText: \`\${name} · \${cell.text}\`,`,
+    to: `    captionText: cell.text,`,
+    expect: "1.409 · `captionText` is PLAIN",
+    suite: "console-mem",
+  },
+  {
+    name: "409-count-as-money · a bets-per-day COUNT is painted in `.amount`, the class that means money everywhere else in this kit",
+    file: GATE,
+    /* ⚠️ RE-ANCHORED, SAME DEFECT (replan ruling 537): the limits row now reads its unit ONCE into a local,
+       because the form needs the same unit for the money prefix and the percent suffix, so the quoted line moved. */
+    from: `      money: unit === "TZS",`,
+    to: `      money: true,`,
+    expect: "1.409 · every limit row says whether it is MONEY",
+    suite: "console-mem",
+  },
+  {
+    name: "409-amount · the caption's figures lose `.amount`, so money is painted in prose and may break mid-number",
+    file: PAGE,
+    from: `              <span className="whitespace-nowrap">{h.word}{" "}<span className="amount tabular-nums">{h.figure}</span>{h.suffix}</span>`,
+    to: `              <span className="whitespace-nowrap">{h.word}{" "}<span className="tabular-nums">{h.figure}</span>{h.suffix}</span>`,
+    expect: "1.409 · the caption's FIRST text node is the cap's name",
+    suite: "console-mem",
+  },
+  {
+    name: "405-badge · the rail's count is derived a SECOND time, so the badge can disagree with the sentence above it",
+    file: PAGE,
+    from: `count: k === "limits" ? view.unsetRequired : undefined`,
+    to: `count: k === "limits" ? view.tiles.filter((t) => t.value === "Not set").length : undefined`,
+    expect: "1.405 · the limits badge is `TabItem.count`",
+    suite: "console-mem",
+  },
+  {
+    name: "406-strip · the live trigger moves inside a tab group, so a tab switch remounts it and two timers can race",
+    file: PAGE,
+    from: `              <DeskLive live={view.live} />`,
+    to: `              {tab === "roster" ? <DeskLive live={view.live} /> : null}`,
+    expect: "1.406 · the strip, both Callouts, the band, the rail and the live trigger are ALL rendered before ANY `tab === ` condition",
+    suite: "console-mem",
+  },
+  {
+    name: "316-interval · the poller falls back to the kit's 30s default, which is the same size as 353's staleness threshold",
+    file: LIVE,
+    from: `      intervalMs={LIVE_ROUND_MS}`,
+    to: `      eventName="50pick:sse:notification"`,
+    expect: "1.316 · it polls on `LIVE_ROUND_MS`",
+    suite: "console-mem",
+  },
+  {
+    name: "316-dom · the hold is read from the DOM instead of React state — a CLOSED dialog left in the tree then silences the page",
+    file: LIVE,
+    from: `      enabled={deskPollerEnabled(live, holds)}`,
+    to: `      enabled={deskPollerEnabled(live, document.querySelectorAll("[role=dialog]").length)}`,
+    expect: "1.316 · `enabled` is composed from REACT STATE",
+    suite: "console-mem",
+  },
+  {
+    name: "316-live · `live` is always true, so a dead desk with the switch off and no account still polls every 20s",
+    file: GATE,
+    from: `  const live = on === true || (roster ?? []).some((b) => b.status === "ACTIVE" || b.status === "AUTO_PAUSED");`,
+    to: `  const live = true;`,
+    expect: "1.316 · CONTROL · with the switch off and no account at all `live` is FALSE",
+    suite: "console-mem",
+  },
+  {
+    name: "306-second-read · the limits panel reads the control row a SECOND time, so the badge and the sentence can disagree",
+    file: GATE,
+    from: `  const shell = deskShell(core);
+  const { control, dayBooks, exposure, schemaMissing } = core;`,
+    to: `  const shell = deskShell(core);
+  const { dayBooks, exposure, schemaMissing } = core;
+  const control = await houseBotControlStore.get().catch(() => null);`,
+    expect: "1.306 · 1.312 · each render pass reads the control row EXACTLY ONCE",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ RULING 434 HAD NO DECLARED MUTATION AND NO CASE IN `test:all` — the only instrument that went red without
+       the fix was `qa:house-bot-console-probe`, which `test:all` does not run. This is the leak it was taken on,
+       put back: the page reads `refusedFundsReport` — an officer's free-text justification, rendered in a `<td>`
+       — and 259 measured that a layout's redirect changes what is PAINTED, not what is SENT. */
+    name: "434-refused-ungated · the refused-funds page reads before it decides its audience, streaming an officer's justification to any signed-in account",
+    file: REFUSED,
+    from: `  if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/kyc/refused"))) return null;`,
+    to: `  void houseConsoleAudience;`,
+    expect: "0.434 · ⛔ D19/259 · every admin page that imports from an audit reader whose ROWS are handed on",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ 306 scopes the sentence to *when the switch cannot be turned on*. Without the `on !== true` term the
+       strip paints "Set 1 global limit first →" beside a chip reading ON and "On since 20:14:12 EAT" — two
+       opposite instructions on one screen, in the card that stops money. Measured on the first 1280 tile. */
+    name: "306-sentence-on · the strip instructs an officer to set limits beside a switch that is already ON",
+    file: GATE,
+    from: `  const limitsFirstReason = unsetRequired > 0 && on !== true`,
+    to: `  const limitsFirstReason = unsetRequired > 0`,
+    expect: "1.306 · 432(m) · with the switch ON the sentence is NOT painted",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ RULING 474: operator data is rendered verbatim but BOUNDED. Unclamped, a 300-code-point reason runs the
+       length of the strip — and into every screenshot of it. */
+    name: "474-reason-unclamped · an operator's 300-character switch reason is painted whole",
+    file: GATE,
+    from: `  const reasonText = control?.switchedReason ? clampOperatorText(control.switchedReason, operatorBound("switchedReason")) : null;`,
+    to: `  const reasonText = control?.switchedReason ?? null;`,
+    expect: "1.474 · a 300-code-point switch reason is BOUNDED at the render site",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ The second of 474's two exemptions, at ITS render site. */
+    name: "474-label-unclamped · an account's operator-chosen label is painted with no bound of its own",
+    file: GATE,
+    from: `      label: clampOperatorText(bot.label, operatorBound("label")),`,
+    to: `      label: bot.label,`,
+    expect: "1.474 · both exemptions are CLAMPED at their own render site",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ THE OTHER HALF OF 1.312a, WHICH NO DECLARED MUTATION EXERCISED (replan ruling 541(e)). `432i-dead-link`'s
+       polarity flip proves the LINK branch; nothing proved that both limits pointers are still GUARDED by the flag.
+       `1.318`'s roll-call only checks `expect`-drift — it never asks whether an assertion HAS a declaration — so the
+       gap was invisible. Dropping the guard ships the link unconditionally, which is the dead control 432(i) exists
+       for: the moment `limits` leaves `CONSOLE_TABS`, `consoleTab()` resolves the href back to the roster and the
+       sentence repaints the identical page with no explanation. */
+    name: "432i-unguarded · the head's roster-full sentence links whatever `CONSOLE_TABS` holds, so the flag stops deciding",
+    file: PAGE,
+    from: `              {rosterFull && LIMITS_TAB_READY`,
+    to: `              {rosterFull`,
+    expect: "1.312a · 432(i) · both limits pointers are still GUARDED by the flag",
+    suite: "console-mem",
+  },
+  {
+    name: "306-anchor-everywhere · every unset row carries the anchor, so `#limits-first-unset` names several elements",
+    file: GATE,
+    from: `    const firstUnset = unset && required && !firstUnsetTaken;`,
+    to: `    const firstUnset = unset && required;`,
+    expect: "1.306 · exactly ONE row of the limits list carries the anchor",
+    suite: "console-mem",
+  },
+  {
+    name: "306-anchor-href · the strip's link drops the fragment, so the officer lands on the tab and hunts for the field",
+    file: PAGE,
+    from: `                  <Link href={view.limitsFirstUnsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">`,
+    to: `                  <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">`,
+    expect: "1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION",
+    suite: "console-mem",
+  },
+  {
+    name: "401-client-house · the section's client file imports a house module by TYPE, which the bundler erases and the walker cannot see",
+    file: LIVE,
+    from: `import { LIVE_ROUND_MS } from "@/lib/refresh-cadence";`,
+    to: `import { LIVE_ROUND_MS } from "@/lib/refresh-cadence";
+import type { ConsoleTab } from "@/lib/house-bot/console-routes";`,
+    expect: "1.330 · 1.401 · no client file of the section names a house module in ANY import form",
+    suite: "console-mem",
+  },
+  /* ⚠️ RE-ANCHORED, SAME DEFECT, OTHER SIDE (replan ruling 537). It used to plant a typed control into a panel that
+     had none, which proved the tie while `typed` was false. The panel now HAS its control and its save, so the
+     declaration that still measures the tie is the one that takes the SAVE away and leaves the control standing —
+     the exact state 432(a) refuses, and the state ruling 433(a) believed the repository was already in. */
+  {
+    name: "412-typed · the typed limits control stands with no save behind it, discarding what an officer types",
+    file: SAVE,
+    from: `  const cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);`,
+    to: `  const cas = { ok: true, row: { ...control, limitsVersion: input.baseVersion + 1 } };`,
+    expect: "1.412 · 537 · a typed control, a wired limits SAVE",
+    suite: "console-mem",
+  },
+  {
+    name: "537-guard · the guarded form loses its UnsavedChangesGuard, so an in-app link discards what was typed in silence",
+    file: FORM,
+    from: `      <UnsavedChangesGuard
+        dirty={armed}`,
+    to: `      <UnsavedChangesGuardOff
+        dirty={armed}`,
+    expect: "1.412 · 537 · a typed control, a wired limits SAVE",
+    suite: "console-mem",
+  },
+  {
+    name: "537-bar · the singleton PendingChangesBar goes, so Save leaves the viewport on a form taller than the screen",
+    file: FORM,
+    from: `      <PendingChangesBar
+        dirty={armed}`,
+    to: `      <PendingChangesBarOff
+        dirty={armed}`,
+    expect: "1.412 · EXACTLY ONE guarded form on the tab",
+    suite: "console-mem",
+  },
+  {
+    name: "537-gate · the save stops deciding its audience — ruling 523's defect, on a POST no path rule can see",
+    file: GATE,
+    /* ⚠️ RE-ANCHORED at C7 step 4b: the ceremony's own gated writer opens with the SAME verdict line, so the
+       one-line form matched twice and `test:red-anchors` refused to inject it. The refusal sentence that follows
+       is what tells the two doors apart, and it is the save's. Same defect, same assertion. */
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {\n    return { ok: false, error: SAVE_COPY.refused };`,
+    to: `  if (typeof viewerUserId !== "string") {\n    return { ok: false, error: SAVE_COPY.refused };`,
+    expect: "2.537 · a PLAYER, a signed-in AUDITOR and an anonymous caller are each REFUSED",
+    suite: "console-mem",
+  },
+  /* ⚠️ THE FIRST FORM OF THIS DECLARATION WAS AIMED AT NOTHING (replan ruling 541's class, caught by driving it).
+     It re-read the version immediately before the write — but BOTH writers await that read before EITHER writes, so
+     both re-read the same number and the store's own conditional write still decided between them: the suite stayed
+     GREEN with the defect injected. What actually defeats "refuse, never clobber" is a RETRY: the loser re-reads
+     after losing and writes over the winner. That is the shape a well-meaning fix takes, and it is the one this
+     declaration now injects. */
+  {
+    name: "537-cas · the loser of the CAS RETRIES on the fresh version instead of being refused, so the second officer silently overwrites the first",
+    file: SAVE,
+    from: `  const cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);
+  if (!cas.ok) return { ok: false, code: "CONFLICT" };`,
+    to: `  let cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);
+  if (!cas.ok) cas = await houseBotControlStore.saveLimits((await houseBotControlStore.get()).limitsVersion, patch);
+  if (!cas.ok) return { ok: false, code: "CONFLICT" };`,
+    expect: "2.537 · TWO REAL WRITERS on ONE base version",
+    suite: "console-mem",
+  },
+  {
+    name: "537-cheap · a stale tab reaches the roster and the platform config before the CAS refuses it — three reads for a save that cannot land",
+    file: SAVE,
+    from: `  if (!Number.isInteger(input.baseVersion) || control.limitsVersion !== input.baseVersion) {`,
+    to: `  if (!Number.isInteger(input.baseVersion)) {`,
+    expect: "2.537 · a tab rendered from an older version is refused",
+    suite: "console-mem",
+  },
+  {
+    name: "537-partial · a post missing a field is accepted, so limits the officer never touched are silently CLEARED",
+    file: GATE,
+    from: `    if (typeof raw !== "string") return { ok: false, error: SAVE_COPY.stale };`,
+    to: `    if (typeof raw !== "string") continue;`,
+    expect: "2.537 · a post missing a field",
+    suite: "console-mem",
+  },
+  {
+    name: "537-unknown · a key the form does not own is ignored rather than refused",
+    file: GATE,
+    from: `  for (const key of Object.keys(input.values)) {
+    if (!LIMIT_FIELD_BY_KEY.has(key)) return { ok: false, error: SAVE_COPY.stale };
+  }`,
+    to: `  void LIMIT_FIELD_BY_KEY;`,
+    expect: "2.537 · a post missing a field",
+    suite: "console-mem",
+  },
+  {
+    name: "537-key-leak · a field's posted NAME becomes the column's own, which ships in the chunk and in the POST body under a neutral label",
+    file: GATE,
+    from: `  gCapStaffChosenDailyTzs: "targeted-daily-tzs",`,
+    to: `  gCapStaffChosenDailyTzs: "gCapStaffChosenDailyTzs",`,
+    expect: "2.537 · D19 · every key the form posts is neutral",
+    suite: "console-mem",
+  },
+  {
+    name: "537-name-drift · the rendered field name is derived from the label instead of the server's key, so the refusal's address stops matching it",
+    file: FORM,
+    from: `                    name={row.key}`,
+    to: `                    name={row.name.toLowerCase().replace(/ /g, "-")}`,
+    expect: "2.537 · RENDERED · D19 · every field's `name` and `data-field`",
+    suite: "console-mem",
+  },
+  {
+    name: "537-anchor · the strip's fragment is rendered on no field at all, so \"Set N global limits first →\" scrolls nowhere",
+    file: FORM,
+    from: `              return row.firstUnset ? (`,
+    to: `              return false ? (`,
+    expect: "2.537 · RENDERED · the strip's fragment lands on the FIRST unset required limit",
+    suite: "console-mem",
+  },
+  {
+    name: "537-dup-heading · the limits card names its own section twice — the card's title and the form's first group, 34px apart",
+    file: FORM,
+    from: `          {section.name === omitSection ? null : <p className="text-body-sm font-semibold text-text">{section.name}</p>}`
+      + ``,
+    to: `          <p className="text-body-sm font-semibold text-text">{section.name}</p>`,
+    expect: "2.537 · RENDERED · 432(n) · the group whose name the card already carries loses its heading",
+    suite: "console-mem",
+  },
+  {
+    name: "537-recorded · a compliance row that did not write is reported as written — the officer is told the record is safe when it is not",
+    file: SAVE,
+    from: `    recorded = false;`,
+    to: `    recorded = true;`,
+    expect: "2.537 · a save whose COMPLIANCE ROW cannot be written still reports the truth",
+    suite: "console-mem",
+  },
+  {
+    name: "537-audit-actor · the compliance row stops naming the officer who made the change",
+    file: SAVE,
+    from: `    actorId: input.actorId,`,
+    to: `    actorId: null,`,
+    expect: "2.537 · 420 · the row names the ACTOR BY ID",
+    suite: "console-mem",
+  },
+  {
+    name: "537-audit-action · the save writes its record under another action, so `house_bot.limits_saved` goes back to having no writer",
+    file: SAVE,
+    from: `    action: "house_bot.limits_saved",`,
+    to: `    action: "house_bot.rules_saved",`,
+    expect: "2.537 · …and it writes the COMPLIANCE row",
+    suite: "console-mem",
+  },
+  {
+    name: "537-hint-leak · the loss limit's hint falls back to the shared table's, which says the feature's name under a neutral label",
+    file: GATE,
+    from: `  gCapDailyLossTzs: "Counted by the day a stake was placed,`,
+    to: `  gCapDailyLossTzsUnused: "Counted by the day a stake was placed,`,
+    expect: "2.537 · 453 · every shared HINT that names the feature",
+    suite: "console-mem",
+  },
+  {
+    name: "537-refusal-leak · the clear-while-on refusal falls back to the shared sentence, which names the feature on the screen that refuses",
+    file: GATE,
+    from: `  "X-CLEAR-ON": "A limit can't be cleared while the desk is on.`,
+    to: `  "X-CLEAR-ON-UNUSED": "A limit can't be cleared while the desk is on.`,
+    expect: "2.537 · 453 · clearing a required limit while the desk is ON",
+    suite: "console-mem",
+  },
+  {
+    name: "537-focus · the refusal names a field and nothing takes the officer to it — §K rule 7d's own defect",
+    file: FORM,
+    from: `        const landed = focusFirstInvalid(form, [result.field]);`,
+    to: `        const landed = { ok: true, field: result.field, reason: "", ownedByTab: "" };`,
+    expect: "1.412 · §K 7d · every field carries `dataField` and `name`",
+    suite: "console-mem",
+  },
+  {
+    name: "537-revalidate · a REFUSED save revalidates the section, replacing the officer's own typing at the moment they are told to fix one field",
+    file: ACTIONS,
+    from: `    if (result.ok) revalidatePath(CONSOLE_ROUTE);`,
+    to: `    revalidatePath(CONSOLE_ROUTE);`,
+    expect: "1.537 · only a save that LANDED revalidates the section",
+    suite: "console-mem",
+  },
+  {
+    name: "537-action-route · the action asks the door about another section's route, which its own section gate does not answer for",
+    file: ACTIONS,
+    from: `houseLimitsSaveForConsole(session?.userId ?? null, "/admin/desk", input)`,
+    to: `houseLimitsSaveForConsole(session?.userId ?? null, "/admin/house", input)`,
+    expect: "1.537 · 523 · the action is",
+    suite: "console-mem",
+  },
+  /* ── C7 STEP 2 · the D19 section's own seven, each naming the assertion 506 assigned to this step ───────── */
+  {
+    name: "381-codename · the document title stops being the ONE neutral codename, in a string served 200 to any signed-in account",
+    file: PAGE,
+    from: `export const metadata = { title: "Admin · Desk" };`,
+    to: `export const metadata = { title: "Admin · Desk console" };`,
+    expect: "1.381 · the three server-rendered strings take the codename",
+    suite: "console-mem",
+  },
+  {
+    name: "384-type-import · the section's client file reaches a house module by TYPE — erased by the bundler, invisible to the disclosure walker",
+    file: LIVE,
+    from: `import { useEventStream } from "@/lib/use-event-stream";`,
+    to: `import { useEventStream } from "@/lib/use-event-stream";
+import type { ConsoleRosterView } from "@/lib/server/house-console-read";`,
+    expect: "1.384 · no client file of the section carries a house module SPECIFIER",
+    suite: "console-mem",
+  },
+  {
+    name: "386-kind · the live strip compares a notification KIND, putting the literal HOUSE_BOT into a public chunk",
+    file: LIVE,
+    from: `    const up = () => setHolds((n) => n + 1);`,
+    to: `    const up = () => { if (String(window.name) === "HOUSE_BOT") return; setHolds((n) => n + 1); };`,
+    expect: "1.386 · and it inspects NO kind",
+    suite: "console-mem",
+  },
+  {
+    name: "389-utils · the section's client file imports `@/lib/utils`' date helpers, which reach server platform config from a chunk (E-322)",
+    file: LIVE,
+    from: `import { LIVE_ROUND_MS } from "@/lib/refresh-cadence";`,
+    to: `import { LIVE_ROUND_MS } from "@/lib/refresh-cadence";
+import { formatEat } from "@/lib/utils";`,
+    expect: "1.389 · no client file of the section imports `@/lib/utils`' date helpers",
+    suite: "console-mem",
+  },
+  {
+    name: "342-nocache · the viewer lookup stops being memoised per render pass, restoring the N+1 `sensitive.tsx` measured and closed",
+    file: GATE,
+    from: `const viewerRow = cache(async (viewerUserId: string) => db.user.findById(viewerUserId));`,
+    to: `const viewerRow = async (viewerUserId: string) => db.user.findById(viewerUserId);`,
+    expect: "1.342 · the viewer lookup is wrapped in React `cache()` inside the gate module",
+    suite: "console-mem",
+  },
+  {
+    name: "343-header · the page builds a gate argument from a header, which the own-route pin reports as a VALUE and cannot measure",
+    file: PAGE,
+    from: `  const sp = await searchParams;
+  const tab = consoleTab(sp.tab);`,
+    to: `  const sp = await searchParams;
+  const tab = consoleTab(sp.tab);
+  void (typeof headers === "function" ? "x-pathname" : null);`,
+    expect: "1.343 · and no gate argument is built from a header",
+    suite: "console-mem",
+  },
+  {
+    name: "332-holder-exclusion · a silent holder-exclusion clause enters the gate, locking a one-owner platform out of its own controls",
+    file: GATE,
+    from: `    if (isHouseConsoleRoute(route)) return isAdmin(viewer.role);`,
+    to: `    if (isHouseConsoleRoute(route)) return isAdmin(viewer.role) && !(await houseBotStore.findLiveByUserId(viewerUserId));`,
+    expect: "1.332 · X13 · no holder-exclusion clause exists in the gate",
+    suite: "console-mem",
+  },
+  {
+    /* ⚠️ RE-AIMED 2026-09-18 (replan ruling 541(d)). It removed `schemaMissing ||` — a DEAD DISJUNCT, because
+       `schemaMissing` is only true when the control read REJECTED and therefore implies `control === null` in
+       every reachable state. The mutation changed nothing and could turn nothing red. The source no longer
+       carries the disjunct at all: a missing schema is a STATE (`[]`) and only a failed read is `null`, so the
+       two branches are genuinely distinct and there is something to take away. */
+    name: "421-limits · a missing schema is painted as a FAILED READ again — two AdminLoadError cards under the Callout that already said why",
+    file: GATE,
+    from: `  const usage: ConsoleUsageRow[] | null = schemaMissing ? [] : !control ? null : (() => {`,
+    to: `  const usage: ConsoleUsageRow[] | null = schemaMissing ? null : !control ? null : (() => {`,
+    expect: "1.421 · a missing schema leaves the limits panel with nothing to LIST",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ AND THE OTHER DIRECTION, WHICH IS THE HALF 355 ACTUALLY RESERVES `AdminLoadError` FOR. A read that
+       really failed must not become an empty card: an empty state is a fact about the data, and there is no
+       fact here — the row could not be read. */
+    name: "421-limits-failed · a control read that FAILED becomes an empty panel instead of the kit's failure treatment",
+    file: GATE,
+    from: `  const usage: ConsoleUsageRow[] | null = schemaMissing ? [] : !control ? null : (() => {`,
+    to: `  const usage: ConsoleUsageRow[] | null = schemaMissing ? [] : !control ? [] : (() => {`,
+    expect: "1.421 · CONTROL · a GENERIC control failure is NOT that state",
     suite: "console-mem",
   },
   {
@@ -495,7 +1183,10 @@ export const MUTATIONS = [
   {
     name: "417-cols · the loader's table ghost draws the column count the page no longer has",
     file: LOADING,
-    from: `        <SkTableCard cols={6} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />`,
+    /* ⚠️ RE-ANCHORED at C7 step 4: the roster went from SIX columns to EIGHT when the way-out and "Last bet"
+       columns arrived with the page and the reader they were waiting for. THE DEFECT IS UNCHANGED — a ghost with
+       a different column count from the table it stands in for. */
+    from: `        <SkTableCard cols={8} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />`,
     to: `        <SkTableCard cols={7} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />`,
     expect: "1.417 · the table ghost states the page's real facts",
     suite: "console-mem",
@@ -506,7 +1197,7 @@ export const MUTATIONS = [
     /* ⚠️ RE-ANCHORED at step 1's finish, to the SAME defect: the docblock's sentence moved onto a new line when
      * the head's action ghost was added, so the old anchor (` * the page's own 16px cell padding (`) no longer
      * resolved. The line quoted here still carries the claim the call site would contradict. */
-    from: `the page's own 16px cell padding (\`p-3\` on every cell`,
+    from: `the page's own 16px cell padding (SIX until`,
     to: `12px cell padding, because this page overrides no cell padding (\`p-3\` on every cell`,
     expect: "1.417 · …and the loader's own prose does not contradict it",
     suite: "console-mem",
@@ -544,9 +1235,12 @@ export const MUTATIONS = [
     /* ⛔ 432(j) + 432(n) · the master switch's reason goes back to the head action's WORD FOR WORD. */
     name: "432j-switch-reason · both disabled controls say the same seven words again",
     file: GATE,
-    from: `    switchReason: "The switch is not ready on this build yet.",`,
-    to: `    switchReason: "Designating an account is not ready on this build yet.",`,
-    expect: "432(j) · 432(n) · every disabled control on this rung carries its OWN reason",
+    /* ⭐ RE-ANCHORED at C7 step 4b to the SAME defect on the line that now carries it. The sentence moved when the
+       switch became operable — it is no longer a build note, it is the one state where a disabled switch owes its
+       own words — and the mutation still does exactly what it always did: make it the head action's sentence. */
+    from: `      : "The desk has been withdrawn. It cannot be switched on again.",`,
+    to: `      : "Designating an account is not ready on this build yet.",`,
+    expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
     suite: "console-mem",
   },
   {
@@ -623,6 +1317,148 @@ export const MUTATIONS = [
     from: 'expect: "1.356 ' + '· ZERO wallet reads",',
     to: 'expect: "1.356 ' + '· ZERO wallet reads from the holder",',
     expect: "1.318 · every declared `console-mem` mutation names an assertion THIS run actually printed",
+    suite: "console-mem",
+  },
+  /* ── C7 step 3's VISUAL pass · rulings 544 and 432(n), both found by reading a served tile. ───────────── */
+  {
+    /* ⚠️ THE MUTATION IS THE CODE AS IT SHIPPED BEFORE 544, which is the point: `ProgressBar` clamps at 100%, so
+     * `limits-at-1280.png` and `limits-over-1280.png` are pixel-identical in the meter and the clause is the only
+     * discriminator there is. Untoned, it is four grey words at the end of five grey lines. */
+    name: "544-edge-tone · the bar's at/over clause goes back to the sentence's own tone, where the geometry cannot say it",
+    file: PAGE,
+    from: `          {row.edgeText ? <span className="text-warning-fg">{row.edgeText}</span> : null}`,
+    to: `          {row.edgeText}`,
+    expect: "1.544 · the BAR's at/over clause carries the warning tone",
+    suite: "console-mem",
+  },
+  {
+    name: "432n-placeholder · an unset limit says \"Not set\" twice in one field — once in the box, once in the caption below it",
+    file: FORM,
+    from: `                    placeholder={row.optional && !row.unset ? "Not set" : undefined}`,
+    to: `                    placeholder={row.optional ? "Not set" : undefined}`,
+    expect: "2.537 · RENDERED · 432(n) · an UNSET limit says",
+    suite: "console-mem",
+  },
+  {
+    /* ⚠️ THE MUTATION PUTS BACK THE SHARED TABLE'S OWN CLAUSE, NEUTRALISED — which is exactly how it got in.
+       Under a SET field it prints "Not set" beside the field's own value; under an unset one it says 364's
+       caption a second time, 40px lower. */
+    name: "432n-hint-notset · a hint carries the unset consequence again, so the panel says it twice — and says it under a field that is SET",
+    file: GATE,
+    from: `  gTargetsMaxActive: "Across every account. The master switch does not need this limit.",`,
+    to: `  gTargetsMaxActive: "Across every account. Not set — no target can be added, and the master switch does not need this limit.",`,
+    expect: "2.537 · 432(n) · not one hint this panel renders says",
+    suite: "console-mem",
+  },
+  /* ── C7 step 4 · ruling 351's one new seam member. Both mutations land on the MEMORY twin, which is the twin
+     the `console-mem` child runs; the PRISMA twin's shape is `test:dal-parity` 16.botRateUsage's subject. ───── */
+  {
+    /* The two windows collapse into one, so the hour count reads the day's. The fixture places one stake NOW, one
+       two hours ago and one two days ago precisely so the two numbers differ — 1 and 2 — and a reader that answers
+       the same number twice cannot hide behind a fixture where they happen to agree. */
+    name: "351-window · the hour window becomes the day window, so `bets this hour` reads today's count",
+    file: DAL,
+    from: `      if (at > now - HOUR_MS) row.placedLastHour++;`,
+    to: `      if (at > now - DAY_MS) row.placedLastHour++;`,
+    expect: "1.351 · one account's rate usage",
+    suite: "console-mem",
+  },
+  {
+    /* `lastPlacedAt` takes the OLDEST placement instead of the newest — the `min`/`max` slip, which paints a
+       "Last bet" of two days ago on an account that staked a minute ago. */
+    name: "351-oldest · `lastPlacedAt` keeps the OLDEST placement instead of the newest",
+    file: DAL,
+    from: `      if (row.lastPlacedAt == null || at > ms(row.lastPlacedAt)) row.lastPlacedAt = new Date(at).toISOString();`,
+    to: `      if (row.lastPlacedAt == null || at < ms(row.lastPlacedAt)) row.lastPlacedAt = new Date(at).toISOString();`,
+    expect: "1.351 · one account's rate usage",
+    suite: "console-mem",
+  },
+  /* ── C7 step 4 · replan ruling 547 and ruling 432(f) — the two sentences step 3 left saying the wrong thing. ─ */
+  {
+    /* The caption goes back to choosing by MEMBERSHIP alone, with no reference to the render's switch state -- which is the shape that painted “the master switch cannot be turned on” under a chip reading ON. */
+    name: "547-caption-blind · the unset caption stops asking whether the desk is already on",
+    file: GATE,
+    from: `    return on ? REQUIRED_UNSET_ON : REQUIRED_UNSET_OFF;`,
+    to: `    return REQUIRED_UNSET_OFF;`,
+    expect: "1.547 · with the desk ON",
+    suite: "console-mem",
+  },
+  {
+    /* ONE key moves from a row whose shared sentence carries the feature's own word to a row whose sentence is already neutral. That is BOTH halves of the derived population at once: a dirty sentence with no override, and an override for a sentence nobody had to rename. */
+    name: "432f-wayout-key · the neutral way-out override moves onto a row that never needed one",
+    file: GATE,
+    from: `  HOLDER_WITHDREW: "The holder stopped the stakes themselves. Only a fresh password they give you can restart it.",`,
+    to: `  MANUAL: "The holder stopped the stakes themselves. Only a fresh password they give you can restart it.",`,
+    expect: "1.311 · 432(f) · not one way-out sentence",
+    suite: "console-mem",
+  },
+  /* ── C7 step 4 · the account page, its three answers, its floor STATE, X6, and the two roster columns ── */
+  {
+    /* Under ruling 259 a signed-in player reaches this route. With the order swapped, a real id and an invented one answer differently for a viewer outside the audience — and the difference is a STATUS CODE, which no vocabulary needle can see. */
+    name: "399-oracle · the record check runs BEFORE the audience verdict, so the 404 becomes an id oracle",
+    file: DETAIL,
+    from: `  if (!answer) return null;
+  if (!answer.found) notFound();`,
+    to: `  if (!answer.found) notFound();
+  if (!answer) return null;`,
+    expect: "1.399 · the audience verdict is AWAITED",
+    suite: "console-mem",
+  },
+  {
+    /* Ruling 358 fixes a removed account's read set as the row, its final state and its saved rules. With the branch dead it reads the holder's wallet, the day book, the exposure, the rate and the targets — five reads for an account that can never stake again, which is what D20 removed. */
+    name: "358-removed-reads · a REMOVED account falls through to the live read set",
+    file: GATE,
+    from: `  if (removed) {`,
+    to: `  if (false as boolean) {`,
+    expect: "1.358 · its read set is the row",
+    suite: "console-mem",
+  },
+  {
+    /* Ruling 459 withdrew 368's last exception: the holder's balance is the one number on these screens belonging to someone other than 50pick, and the decision the sentence supports is answered by a STATE. */
+    name: "368-balance · the floor sentence spends the holder's own balance",
+    file: GATE,
+    from: `  const row = bot;`,
+    to: `  const row = bot;
+  if (holder && floorSentence) floorSentence = String(holder.walletBalance) + floorSentence;`,
+    expect: "1.368 · 459 · the holder's own balance appears NOWHERE",
+    suite: "console-mem",
+  },
+  {
+    /* `WALLET_MISSING` is a PauseReason and not a `HolderCause`, so a causes test compiles and is FALSE for ever — ruling 541's mutation-aimed-at-nothing, in the product rather than in a guard. */
+    name: "507-x6 · X6 reads a live CAUSE again, which is the shape that could never be true",
+    file: GATE,
+    from: `  const settlementBlocked = holder != null && holder.walletBalance == null;`,
+    to: `  const settlementBlocked = causes.some((c) => c.code === "WALLET_MISSING");`,
+    expect: "1.507 · X6 · a MISSING holder wallet",
+    suite: "console-mem",
+  },
+  {
+    /* `openExposure` has no day filter, so an exposure figure under a heading that says nothing about its window reads as today's — a mislabelled amount, which is the §C2 defect 363 exists for. */
+    name: "363-scope · the exposure row loses the scope word ruling 363 argues its whole case from",
+    file: GATE,
+    from: `    capRow("capOpenExposureTzs", "open now", openStake),`,
+    to: `    capRow("capOpenExposureTzs", "", openStake),`,
+    expect: "1.363 · the exposure row is scoped",
+    suite: "console-mem",
+  },
+  {
+    /* 432(h)'s whole subject: the first control an officer reaches on the deliverable must open the account it names, and the column exists exactly when that page does. */
+    name: "432h-href · the roster's way out stops pointing at the page it opens",
+    file: GATE,
+    from: `      href: consoleBotHref(bot.id),`,
+    to: `      href: "",`,
+    expect: "1.432h · every roster row carries a way-out href",
+    suite: "console-mem",
+  },
+  {
+    /* Read off `acct-removed-1280.png`: the Overview tab rendered 600px of NOTHING and the Targets tab would have painted the kit's failure treatment for a read ruling 358 says is never taken. */
+    name: "435a-removed-cards · a REMOVED account gets its rail back, and an empty panel behind it",
+    file: DETAIL,
+    from: `        {!view.removed && (
+        /* 312 · the rail carries exactly the tabs whose panels exist.`,
+    to: `        {true && (
+        /* 312 · the rail carries exactly the tabs whose panels exist.`,
+    expect: "1.435 · 358 · every card of the account page is guarded",
     suite: "console-mem",
   },
 ];
