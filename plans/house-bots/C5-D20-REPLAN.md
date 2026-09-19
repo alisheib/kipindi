@@ -1451,3 +1451,91 @@ bots and what keeps D19 true").
        `houseBotStore.saveRules` has no `src/` caller — 432(a) refuses a control with nothing behind it,
        and ruling 537 reversed that logic for the LIMITS only, where the save existed. The distinction is
        the measurement, not the preference.
+
+
+550. **THE RELEASE GATE REFUSED THE MERGE, AND IT WAS RIGHT TO.** Ruling 534 binds the merge to all three
+     of 529's conditions; two failed. `origin/main` is unchanged at `66db674c`. ⛔ **A refusal with
+     evidence is the gate working, not the gate failing** — 500(c) forbids bending an instrument to make
+     something pass, and this is the instrument that decides what reaches players.
+     Two **branch-introduced** regressions, both on files that did not exist on `origin/main`, both caught
+     by suites that are GREEN there:
+     - **(a) `text-h3` COMPILES TO NOTHING.** ⭐ Orchestrator-verified directly: `tailwind.config.ts` has
+       **no `h3` fontSize key** (the ladder has `title-sm` 18px and `title-lg` 28px); `--type-h3: 20px`
+       exists only as a CSS variable for raw rules (`globals.css:216`, used at `:3547` and `:3790`). So
+       `<h2 className="text-h3 …">` in `switch-ceremony.tsx:191` and `[id]/account-actions.tsx:188`
+       **silently inherits the parent size** — and these are the only two uses of `text-h3` in all of
+       `src/`. The heading of the master-switch ceremony, the most consequential dialog on the console,
+       renders at a size nobody chose. Caught by `test:bridge` §7 (*every class-shaped colour token
+       compiles to a real rule*), which the briefing's inherited-red list did not carry because it has
+       never been red here before.
+     - **(b) `/admin/desk/[id]/page.tsx` renders a grid with no pager** — `test:grid-paging` 2.2, green on
+       `origin/main`. ⚠️ And note the shape: 528 recorded this suite as FIXED, and it is red again on a
+       file that did not exist when 528 was taken. A suite's green is a statement about a tree, not a
+       permanent property.
+     **Both are fixed before the gate is re-run.** ⛔ `grid-paging`'s fix is a pager, a declared reason, or
+     a `FIXED_GRIDS` entry earned on 528's own reasoning — never an `UNPAGED_DEBT` entry, which that file
+     forbids adding to.
+
+551. **THE PROBE'S 96 ARE URL ECHOES, NOT DISCLOSURES — AND THE ANSWER IS TO FIX THE PRODUCT FIRST AND
+     TEACH THE INSTRUMENT TO DISCRIMINATE SECOND, NEVER TO NARROW THE NEEDLE AND MOVE ON.**
+     `qa:house-bot-console-probe` printed `leaks: 96` on the first run it has ever made against a tree in
+     which `/admin/desk/[id]` exists (`DEFERRED-TESTS` row 44, finally discharged). 96 = **8 route
+     instances × 4 non-admin viewers × 3 transports**. The bodies were READ, not assumed:
+     - **No label, no canary amount, no vocabulary word in any of the 96.** The needle is the account id.
+     - For **player, holder and trigger** the body is a refusal —
+       `NEXT_REDIRECT;replace;/auth/admin?next=%2Fadmin%2Fdesk%2Fhb_1d2a…;307;`. The id is in the `next=`
+       target, i.e. **the URL the viewer themselves requested**.
+     - For the **non-owner COMPLIANCE officer** there is no redirect: the admin shell renders with
+       `<h1>Desk</h1>` and the neutral gate panel, and the id appears twice inside Next's own flight
+       router-state segment array `["","admin","desk","hb_1d2a…"]` — again the requested URL.
+     - **Ruling 357 holds** (the neutral panel heading does not paint the id) and **ruling 548's crumb
+       channel is NOT the one that fired.** The predicted breadcrumb was the wrong hypothesis; the
+       `next=` target and the RSC segment path were the real ones. Worth recording: a register row can be
+       right that something leaks and wrong about how.
+     - **Ruling 399's served half HOLDS.** All three fixture values answer **200**, and `<unknown>` echoes
+       its own id exactly as `<designated>` and `<removed>` echo theirs. A viewer must already hold an id
+       to see it returned, so the page is not an oracle.
+     - **The ADMIN control FIRED on all eight** (house data on 25 route instances), so the other viewers'
+       silence on those pages is a MEASUREMENT and not a blind zero. ⭐ And ruling 529's blind control is
+       now firing too — `/admin/kyc/[id]<holder>` reports `missing: none`. **Ruling 530's fix works.**
+     **The decision, in two parts and in this order:**
+     - **(a) THE PRODUCT MOVES FIRST.** `/admin/desk/**` stops putting the record id into the `next=`
+       redirect target — a refused officer is served just as well by `next=/admin/desk`, the section. That
+       removes three of the four viewer classes from the population outright, at no cost to anyone
+       legitimate. ⚠️ The flight router-state segment path is Next's own encoding of the route and cannot
+       be removed without changing the route shape; that half is inherent and is stated, not hidden.
+     - **(b) THEN THE INSTRUMENT LEARNS THE DIFFERENCE, WITH A CONTROL.** A needle whose every occurrence
+       lies in a position **derived from the request** (the `next=` parameter, the flight segment array) is
+       classified `echoed` — **printed and counted in its own line**, never silently dropped — and `leaks`
+       counts a needle in any **other** position. ⛔ **The control is the whole justification:** a planted
+       id in a non-echo position (a rendered cell, a payload field) must still be reported as a leak and
+       the control must be SEEN to fire. If that classification cannot be made reliably, the number stands
+       as printed and the gate stays refused.
+     - ⛔ **Why this is a discrimination and not a dilution.** Apply the standing test — *would this still
+       pass if the feature were absent?* A store-read id rendered into a page appears outside the echo
+       positions, is counted, and the gate goes red. What changes is that the probe stops reporting a
+       viewer's own URL back to itself as a disclosure, which is the same reasoning ruling 548 used for
+       the crumb and the same distinction ruling 260 drew between an action and a payload. ⛔ What does
+       NOT change: `leaks: 0` remains the merge condition, and no instance is removed from `MUST_CARRY` to
+       reach it (ruling 530).
+
+552. **THE BRIEFING'S "KNOWN INHERITED REDS" LIST WAS STALE, AND A STALE EXCUSE LIST IS HOW A REAL
+     REGRESSION GETS WAVED THROUGH.** Measured by the gate against `66db674c`: `chart-one-home`,
+     `lock-tx-threading`, `admin-act-gate`, `updown-handover`, `spacing-scale`, `layout-staleness`,
+     `needle-rest` and `admin-section-gate` are **GREEN on both sides now** — eight suites carried on a
+     list that tells every session to expect them red. And the two suites that actually WERE
+     branch-introduced regressions, `test:bridge` and `test:grid-paging`, were **not on the list at all**,
+     so nothing prepared a reader to treat them as new.
+     - ⛔ **A list of excuses must be re-derived from a run, not inherited from a document.** The list is
+       corrected to what the gate printed, with the baseline sha it was measured at written beside it, and
+       the correction is carried into `BRIEFING.md` **and** `plans/house-bots/tools/c7-step.js`, the
+       GENERATOR that hands it to every future step (ruling 516(iv): a ruling that does not reach the
+       generator re-raises the closed matter).
+     - ⚠️ **`test:popup-fit`'s unreviewed population grew 66 → 68**, and the two additions are exactly the
+       branch's two new dialogs. The failing line is genuinely inherited and the ratchet was rightly NOT
+       raised — but the two new dialogs now sit inside a population nobody has reviewed, which is not the
+       same as being reviewed and passing. Recorded, and owed before Commit 7 closes.
+     - ⚠️ **10 `db-scratch`-wrapped suites cannot run on the baseline** (`embedded-postgres` is absent
+       there and installing is forbidden). All 10 are green here, so no gate verdict rests on them — but
+       the baseline is not a complete control for that tenth of the suite set, and that is stated rather
+       than rounded off.
