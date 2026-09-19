@@ -1622,10 +1622,25 @@ bots and what keeps D19 true").
        are for, and that stays true after an owner's yes. The guard remains armed at
        `C:/kipindi-house-bots-hooks` and `F:/kipindi-house-bots-hooks`, and a session that finds it firing
        has found a worktree trying to do something it may not do.
-     - **The merge goes through this file's own REL-4 step 2 recipe** — a temporary detached release
-       worktree off `origin/main`, `merge --no-ff --no-edit origin/house-bots`, push, worktree removed.
-       553 declined that recipe because taking it *while the owner had not decided* would have been building
-       a path around a live refusal. That objection is spent: the recipe is the plan's sanctioned shape, and
+     - ⛔ **555's FIRST ANSWER ON THE ROUTE WAS WRONG, AND IS CORRECTED HERE RATHER THAN LEFT TO PROPAGATE.**
+       It said the merge goes through "a temporary detached release worktree off `origin/main`". That is the
+       recipe REL-4 step 2 records, and its stated reason — that a fresh worktree inherits no pre-push guard
+       because `core.hooksPath` is worktree-scoped — **was measured FALSE on 2026-09-18** and is already
+       corrected in `PROGRESS.md`'s RESUME block, which 555 failed to read before repeating the recipe.
+       **Re-measured independently on Ali-Blade15, 2026-09-19** with
+       `git config --show-origin --get core.hooksPath` across all four checkouts: `kipindi-house-bots`,
+       `kipindi-w25` and `kipindi-old-build` each resolve it from their OWN
+       `C:/kipindi-main/.git/worktrees/<name>/config.worktree`, all pointing at `C:/kipindi-house-bots-hooks`.
+       A linked worktree therefore arrives WITH the guard, not without it. The only checkout with none is
+       **`C:/kipindi-main`, the main repository directory itself** — the same shape the other machine measured.
+       - **So the sanctioned route is: push from `C:/kipindi-main` (or `F:/kipindi-main`).** A push is a pure
+         ref update: it does not edit, stage, check out or build there, so it does not breach the standing
+         prohibition on working in that checkout.
+       - ⭐ **The lesson, which is why this correction is a ruling and not an edit:** a ruling that names a
+         PROCEDURE must re-derive the procedure, not inherit it from the document it is amending. 555 quoted a
+         recipe whose own refutation was written four lines above the block it was answering.
+       553 declined a release worktree because taking it *while the owner had not decided* would have been
+       building a path around a live refusal. That objection is spent: the route above is sanctioned, and
        with the decision taken it is the authorised path rather than a way around one.
      - **471's discipline is untouched and still binds every merge:** only at a GREEN, COMPLETE checkpoint
        whose own exit gate is met and whose tree is clean; `origin/main` merged INTO the branch first and
