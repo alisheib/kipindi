@@ -469,6 +469,7 @@
     "qa:house-bot-bells": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-bell-shots.mts",
     "qa:house-bot-console-probe": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-console-probe.mts",
     "qa:platform-pii-probe": "tsx scripts/db-scratch.mts --run npx tsx scripts/platform-pii-probe.mts",
+    "test:admin-action-gate": "node scripts/admin-action-gate.test.mjs",
     "qa:house-bots-visual": "node scripts/qa-house-bots-visual.mjs",
     "test:updown-proposal": "tsx scripts/updown-proposal.test.mts",
     "test:updown-e2e-flow": "tsx scripts/updown-e2e-flow.test.mts",

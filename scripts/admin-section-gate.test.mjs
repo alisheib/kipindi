@@ -36,7 +36,9 @@ console.log("\n[admin-section-gate] §0 every console page sits under AdminSecti
   const pages = [];
   const walk = (d) => { for (const n of readdirSync(d)) { const p = join(d, n); if (statSync(p).isDirectory()) walk(p); else if (n === "page.tsx") pages.push(p); } };
   walk(ADMIN);
-  const gated = (file) => /AdminSectionGate/.test(readFileSync(file, "utf8"));
+  // W25: a PAGE gates with AdminPageGate (refuse only — the layout above it already carries the read-only banner),
+  // a LAYOUT gates with AdminSectionGate. Both are the same gate and the same refusal, so both count as gated here.
+  const gated = (file) => /<(AdminSectionGate|AdminPageGate)\b/.test(readFileSync(file, "utf8"));
   const ungated = [];
   for (const page of pages) {
     const rel = relative(ADMIN, page).split(sep).slice(0, -1).join("/");
@@ -53,6 +55,27 @@ console.log("\n[admin-section-gate] §0 every console page sits under AdminSecti
   }
   ok(`§0 ratchet · ${pages.length} console pages found`, pages.length >= 45, String(pages.length));
   ok("§0 every page is gated where a navigation re-runs the gate", ungated.length === 0, ungated.join(", "));
+
+  // ── §0b · W25 · A LAYOUT IS NOT ENOUGH. The gate must be IN THE PAGE. ──
+  // ⛔ WHY THIS ASSERTION EXISTS, measured not supposed. Until W25 this suite passed a page whose ONLY gate was an
+  // ancestor layout — the `found` walk above. A layout is skippable: a flight request whose `Next-Router-State-Tree`
+  // names the admin layouts skips them, and the page under them still runs its own async function and streams its
+  // whole server payload. `qa:platform-pii-probe` measured the consequence on the unfixed build — two ordinary PLAYER
+  // accounts received another player's display name and stake from 13 admin route instances, every one a 200.
+  // So the walk above is kept (it still proves a navigation re-runs a gate) and this is added beside it: the page
+  // itself must refuse, because the page itself is the thing that cannot be skipped.
+  const layoutOnly = [];
+  for (const page of pages) {
+    const rel = relative(ADMIN, page).split(sep).slice(0, -1).join("/");
+    if (EXEMPT.has(rel)) continue;
+    if (!gated(page)) layoutOnly.push(rel || "(root)");
+  }
+  ok("§0b W25 · every page carries its OWN gate, because a flight can skip every layout above it",
+    layoutOnly.length === 0, layoutOnly.join(", "));
+  // A control: the assertion must be able to fail. If the EXEMPT set ever swallowed every page, §0b would pass
+  // vacuously and stop meaning anything.
+  ok("§0b CONTROL · §0b actually inspected pages (it is not vacuous)",
+    pages.length - EXEMPT.size >= 45, `${pages.length} pages − ${EXEMPT.size} exempt`);
   // Code only: line comments first, then block and JSX comments (the history of the move is written in comments).
   const root = readFileSync(join(ADMIN, "layout.tsx"), "utf8").replace(/^[ \t]*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
   ok("§0 the root admin layout no longer decides view/act (it is frozen across soft navigations)",
