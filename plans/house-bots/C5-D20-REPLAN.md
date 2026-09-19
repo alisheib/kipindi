@@ -1539,3 +1539,69 @@ bots and what keeps D19 true").
        there and installing is forbidden). All 10 are green here, so no gate verdict rests on them — but
        the baseline is not a complete control for that tenth of the suite set, and that is stated rather
        than rounded off.
+
+
+553. **THE GATE IS GREEN ON ALL FOUR OF 534's CONDITIONS AND THE MERGE IS STILL REFUSED, BECAUSE AN ARMED
+     GUARD SAYS NO. THE ORCHESTRATOR WILL NOT ROUTE AROUND IT. THE DECISION IS ALI'S.**
+     Measured at `e7e7b325`, off ONE fresh build:
+     - **Red-by-red:** branch **366/379 green, 13 failing**; baseline `F:/kipindi-old-build` at `66db674c`
+       **354/378 green, 24 failing**. ⭐ **Suites red on the branch only: ZERO.** Eleven failing lines are
+       byte-identical; the two that differ are `red-anchors` (same 4 failing lines, more PASSES here) and
+       `popup-fit` (same failing line, same reviewed count, population 68 vs 66 — the branch's two new
+       dialogs, ratchet NOT raised).
+     - **D19 in the ARTEFACT:** `verify:house-bot-bundle` ALL PASS over 169 static + 9 prerendered + 35
+       public, **planted control firing**, and the provenance control planted a real server sentence into
+       an artefact the scan walks, found it, and reported none in the original.
+     - **The probe:** `leaks: 0`, `echoed: 96`, **ADMIN control firing on all 25 route instances**,
+       `missing: none`. 2,125 requests, 1,700 non-staff.
+     - **The visual gate:** 150 passed, 0 failed, 0 NOT MEASURED, full ladder.
+     **And then `git push origin house-bots:main` was refused by `pre-push`:**
+     `BLOCKED: house-bots worktree may not push main before REL-4` (`core.hooksPath =
+     F:/kipindi-house-bots-hooks`, verified by the orchestrator by reading the hook).
+     - ⛔ **THE REL-4 RECIPE IS NOT TAKEN, AND CALLING IT "SANCTIONED" WOULD BE THE EVASION.**
+       `PROGRESS.md` REL-4 step 2 describes a temporary release worktree and says in as many words that
+       *"the house-bots worktree's pre-push guard stays armed"* — i.e. the recipe works **because the
+       other checkout does not carry this hook**. That is routing around a guard armed on this worktree,
+       which is the one thing Ali's standing instruction names with a cost attached: *"if a guard blocks
+       you, STOP and tell Ali — do not build a path around it; that is what ended the thirteenth
+       session."* A recipe written down is still a bypass when the thing it bypasses is a live refusal.
+     - **Three further facts, each measured, that say this is not the orchestrator's call:** REL-4 is
+       **⬜ unreached** in `PROGRESS.md` and its own precondition is recording `overlapSeconds` from the
+       LIVE service config, which this programme may not read; `PROGRESS.md:70` marks the no-main-push
+       line **CONTESTED** and says *"confirm with Ali before any merge to `main`"*; and the sanctioned
+       shape is a `--no-ff` merge commit from a release worktree, not the fast-forward measured here.
+     - ⛔ **The hook is NOT disarmed, edited, or worked around, and no session may do so to satisfy this
+       ruling.** Disarming a safety guard to reach a green result is the exact inversion of what the guard
+       is for.
+     - **THE CONTRADICTION IS ITSELF THE FINDING, and it is recorded rather than resolved quietly.**
+       Rulings 471, 529, 534 and 536 delegate the merge; the hook and `PROGRESS.md:70` forbid it before
+       REL-4. Both are Ali's. A guard that contradicts a ruling means one of the two is stale, and which
+       one is stale is an owner's decision, not a technical one. ⛔ Note the precedent: `main` reached
+       `66db674c` because **Ali pushed it himself** — the hook has never been satisfied by this programme,
+       only bypassed by the owner's own hands.
+     - **What Ali decides, stated as two options and nothing else:** (a) push it himself, one command, the
+       way he did last time; or (b) authorise the guard's retirement — which is a deliberate act with its
+       own ruling, not a side effect of a green gate.
+     - ⚠️ **The evidence is banked either way and does not expire quietly**: re-running the gate will not
+       change this outcome, and any later session must re-measure rather than inherit this verdict, because
+       the tree will have moved.
+
+554. **RULING 551(a)'s PREDICTION WAS WRONG ON MEASUREMENT, and the record is corrected the way 531
+     corrected 524.** 551(a) said that taking the record id out of the `next=` redirect target would
+     *"remove three of the four viewer classes from the population outright"*.
+     - **What was measured after the fix:** no probe body contains `next=%2Fadmin%2Fdesk%2Fhb_` any more —
+       the refusal target is now `next=%2Fadmin%2Fdesk`, the section — **and `echoed` is still exactly
+       96.** The `next=` channel is closed and the population is unchanged.
+     - **Why:** Next's flight router-state array `["","admin","desk","hb_…"]` is carried in the redirect
+       page's **own RSC payload** too, so the player, the holder and the trigger keep an echo even with no
+       `next=` id at all. The framework's encoding of the route reaches every viewer class, not only the
+       one that renders the shell.
+     - **What this does NOT change:** the product fix stands on its own merit (a refused officer never
+       needed the id, and a section that will not PAINT its record id should not hand it back in a
+       redirect either), and the classifier's verdict is unaffected — all 96 are still literal pieces of
+       the URL each viewer asked for, proven by `4.1c`'s planted control, which reported a non-echo id as
+       a **LEAK** from a real served body.
+     - ⛔ **The lesson, which is why this is a ruling and not a footnote:** a ruling that predicts a NUMBER
+       must have that number re-measured after the fix, not assumed from the reasoning that produced it.
+       Two rulings in this programme have now predicted a population reduction that did not arrive (524's
+       premise, and this one), and both were caught only because someone re-ran the instrument.
