@@ -46,6 +46,7 @@ import { houseRosterForConsole, houseUsageForConsole, houseConsoleAudience, type
 import { CONSOLE_TABS, LIMITS_TAB_READY, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
 import { DeskLive } from "./desk-live";
 import { DeskLimitsForm } from "./limits-form";
+import { DeskSwitch } from "./switch-ceremony";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422). A client component under
  * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
  * act gate — and on an Owner-only route `mayAct` is `mayView`, so that consultation would be a branch that can
@@ -54,7 +55,7 @@ import { DeskLimitsForm } from "./limits-form";
  * ⚠️ AND THE DIRECTIVE IS NOT QUOTED HERE. `test:house-bot-console` decides which files of the section are
  * CLIENT files by reading each one RAW for that directive, comments included — so writing it in this sentence
  * put `page.tsx` into the client population and made four unrelated assertions red. Measured 2026-09-18. */
-import { saveDeskLimitsAction } from "./actions";
+import { saveDeskLimitsAction, setDeskSwitchAction } from "./actions";
 
 /** ⛔ A static neutral title (ruling 402). No route here exports a `generateMetadata` that reads a record. */
 export const metadata = { title: "Admin · Desk" };
@@ -307,13 +308,20 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                 <span className="flex items-center gap-2 flex-wrap">
                   <span className="text-body-sm font-semibold text-text">Master switch</span>
                   {/* ⛔ `tone="brand"` in BOTH states: gold is earned money only, and claret means ON MEANS STOPPED —
-                      here ON means money can move. ⛔ DISABLED at this checkpoint, and that is a STATE, not a pending
-                      control: the switch's own ceremony (the typed word, the Master-ON modal, the kill switch) is
-                      C7 step 4's, and an operable-looking switch with nothing behind it would be a lie.
-                      ⛔ AND ITS REASON IS ON SCREEN BESIDE IT (432(j)) — a disabled control with no reason reads as a
-                      broken page, which is what the default OFF state showed on the first render. */}
-                  <Toggle on={view.on} tone="brand" disabled aria-label="Desk master switch" />
-                  <span className="text-body-sm text-text-tertiary">{view.switchReason}</span>
+                      here ON means money can move.
+                      ⭐ C7 STEP 4b · THE SWITCH IS OPERABLE, AND THE CEREMONY IS WHAT MAKES IT SO (rulings 388, 415;
+                      owner-delegated 454). The server decides whether there is an act to perform at all and hands
+                      down every word of the dialog; this site chooses only the SKIN. ⛔ It ships OFF: the ceremony
+                      is the act's machinery, and the row is `enabled = false` on every environment (owner ruling
+                      D1, PLAN §11).
+                      ⛔ AND WHERE THERE IS NO ACT, THE CONTROL IS DISABLED WITH ITS REASON BESIDE IT (432(a),
+                      432(j)) — a withdrawn desk, or one whose required limits are unset, where the strip's own
+                      "Set N global limits first →" three characters to the left is that reason (432(n)). A live
+                      control the server could only ever refuse is the same lie one layer down. */}
+                  {view.switchDialog
+                    ? <DeskSwitch on={view.on} copy={view.switchDialog} act={setDeskSwitchAction} />
+                    : <Toggle on={view.on} tone="brand" disabled aria-label="Desk master switch" />}
+                  {view.switchReason !== null && <span className="text-body-sm text-text-tertiary">{view.switchReason}</span>}
                 </span>
               )}
               {/* ⭐ THE PAGE'S ONE LIVE TRIGGER (rulings 316, 473), AND IT IS IN THE STRIP FOR A REASON: the strip

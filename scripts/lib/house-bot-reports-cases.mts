@@ -1236,7 +1236,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * table for the same reason every reader does: ruling 523 measured that a server action is a POST to whatever URL the
  * browser is on, carrying a `Next-Action` id, so NO path rule can see it — the arity pin, the signed-in-viewer pin
  * and the own-route pin are the only things standing between it and ruling 259's measured defect class. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 3, houseSwitchForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -1491,6 +1491,13 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
   /* ⭐ C7 step 4 · the account page's two pure helpers: one target-end caption in the console's own words, and
      the relative "Last bet" phrase with its absolute EAT title. Neither reads anything. */
   "consoleTargetEndCaption", "relativeEat",
+  /* ⭐ C7 step 4b · the master-switch ceremony's own CONSTANTS and its posted/returned shapes. The typed word
+     (owner-delegated ruling 454) and the reason's bounds (415) live on the SERVER and are handed to the dialog as
+     props, because ruling 388 refuses a client file that carries the sentence or the word — and the word is
+     checked again on the way back, since a ceremony verified only in a browser is one a crafted POST walks
+     through. None of the four reads anything; `houseSwitchForConsole` is the reader, and it has its entry. */
+  "CONSOLE_SWITCH_ON_WORD", "CONSOLE_REASON_MIN", "CONSOLE_REASON_MAX",
+  "ConsoleSwitchDialog", "ConsoleSwitchInput", "ConsoleSwitchResult",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**

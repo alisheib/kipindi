@@ -44,6 +44,9 @@ import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearEx
 import { sortCauses, wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
 import { TARGET_END_CAPTION } from "@/lib/house-bot/feed-copy";
 import { saveHouseBotLimits } from "./house-bot/limits-save";
+import { switchOnHouseBots } from "./house-bot/switch-on";
+import { switchOffHouseBots } from "./house-bot/kill-switch";
+import { houseEngineAlerts } from "./house-bot/emitters";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotTarget } from "./house-bot-dal";
 import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
@@ -239,9 +242,26 @@ export type ConsoleDeskShell = {
    *  ⛔ It names ITS OWN control: this sentence and `switchReason` are painted on the same screen, and 432(n) forbids
    *  one state saying the same fact twice. */
   actionReason: string;
-  /** Why the master switch is disabled, beside it, whenever it is drawn (432(j)). ⛔ Never the same words as
-   *  `actionReason` — the two sit about 105px apart at 1280 and read as a rendering fault when they match. */
-  switchReason: string;
+  /**
+   * Why the master switch cannot be operated, beside it (432(j)) — and `null` in exactly two cases: when the switch
+   * IS operable (`switchDialog` is then the ceremony it opens), and when the sentence beside it already says why.
+   * ⛔ THE SECOND CASE IS 432(n), NOT A HOLE. With a required limit unset the strip already paints
+   * "Set N global limits first →" in the SAME flex row, three characters from the Toggle; a second sentence there
+   * would be one state saying one fact twice, which is the defect 432(n) exists for. `test:house-bot-console`
+   * asserts the pairing in BOTH directions, so a disabled switch with neither sentence beside it is red.
+   * ⛔ Never the same words as `actionReason` — the two sit about 105px apart at 1280 and read as a rendering
+   * fault when they match.
+   */
+  switchReason: string | null;
+  /**
+   * ⭐ THE MASTER-SWITCH CEREMONY (rulings 388, 415; owner-delegated 454; replan ruling 549's 4b). Every sentence
+   * and the typed word, built HERE and handed to the dialog as props — ruling 388 refuses a client file that
+   * carries a sentence about the feature, and 385 measured that most such sentences carry no vocabulary word any
+   * guard could see. ⛔ `null` means the switch is NOT operable, and the page then draws it disabled with
+   * `switchReason` or the limits sentence beside it: 432(a) refuses a live control with nothing behind it, and a
+   * control that could only ever be refused by the server is the same lie one layer down.
+   */
+  switchDialog: ConsoleSwitchDialog | null;
   /** ⛔ Is anything still able to change on its own? The strip's `RefreshPoller` is enabled from this AND from the
    *  client's own REACT state, never from a DOM query for an open dialog (rulings 316, 473). */
   live: boolean;
@@ -664,6 +684,10 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
    * dirty form and an open dialog — are REACT state and belong to the client component, never to a DOM query. */
   const live = on === true || (roster ?? []).some((b) => b.status === "ACTIVE" || b.status === "AUTO_PAUSED");
 
+  /* ⭐ C7 step 4b · the ceremony this render's state can actually open, from the control row already in hand — one
+   * control read per render pass (433(d)), so the Toggle and every sentence about it come from one answer. */
+  const switchDialog = switchDialogFor(on, control?.offCause ?? null, unsetRequired);
+
   return {
     schemaMissing,
     controlUnreadable,
@@ -685,7 +709,19 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
      * Toggle in the strip, about 105px apart at 1280 and two blocks apart at 360. Two identical right-aligned
      * sentences read as a rendering fault rather than as two reasons, and neither said which control it was about. */
     actionReason: "Designating an account is not ready on this build yet.",
-    switchReason: "The switch is not ready on this build yet.",
+    /* ⭐ C7 step 4b · THE SWITCH IS OPERABLE NOW, so its reason is no longer a build note. It is the reason the
+     * switch cannot be operated in the one state where a sentence is owed and nothing else on the strip supplies
+     * one — a WITHDRAWN desk. ⛔ THE OTHER THREE ARE `null` FOR STATED REASONS, not by omission:
+     *   · the ceremony exists (the control WORKS, so there is nothing to explain);
+     *   · a required limit is unset, and "Set N global limits first →" sits in the same flex row (432(n));
+     *   · the switch's state is unknown (`on == null`), where the strip paints 421's Callout or the kit's failure
+     *     treatment INSTEAD of the Toggle, so there is no disabled control to carry a reason at all.
+     * `test:house-bot-console` asserts the pairing in BOTH directions, so a disabled switch with neither its own
+     * sentence nor the limits sentence beside it is red. */
+    switchReason: on == null || switchDialog !== null || limitsFirstReason !== null
+      ? null
+      : "The desk has been withdrawn. It cannot be switched on again.",
+    switchDialog,
     live,
     dayKey: core.dayKey,
     tiles,
@@ -1263,6 +1299,232 @@ export async function houseLimitsSaveForConsole(
     error: (saved.rule !== null ? CONSOLE_LIMIT_REFUSAL[saved.rule] : undefined) ?? saved.message,
     field: CONSOLE_LIMIT_KEY[saved.field],
   };
+}
+
+/* ═══ THE MASTER-SWITCH CEREMONY (rulings 306, 388, 415, 420, 453, 474, 512, 522, 523; owner-delegated 454) ═════ */
+
+/**
+ * ⛔ THE TYPED WORD, IN ONE HOME, AND IT NAMES THE ACT RATHER THAN THE FEATURE (owner-delegated ruling 454).
+ * The draft's own feature-shaped phrase is struck, and this prose deliberately does not SPELL it — a raw-text guard
+ * reads comments too, and `test:house-bot-console` asserts that the struck phrase appears nowhere under this
+ * section or in this module. It is not a needle any guard can see (measured), so it would have shipped a feature-shaped
+ * confirmation phrase to every visitor with nothing able to report it — which is precisely why ruling 388 refuses
+ * to let a client file carry the word at all. The SERVER owns it, hands it down as a prop, and checks it again on
+ * the way back: a typed word verified only in the browser is a ceremony a crafted POST walks straight through,
+ * and this is the one act on the platform that starts money's own gate.
+ */
+export const CONSOLE_SWITCH_ON_WORD = "SWITCH ON";
+
+/** 415 · the reason field's bounds, shared by the control, its live count and the server's own refusal. */
+export const CONSOLE_REASON_MIN = 5;
+export const CONSOLE_REASON_MAX = 300;
+
+/**
+ * ⛔ EVERY SENTENCE THE CEREMONY CAN PAINT, IN ONE HOME, AND NEUTRAL (rulings 388, 453). A refusal an officer
+ * reads is the server's own; none of them names the feature, and 4.453 scans this module's literals.
+ *
+ * ⛔ AND NOT ONE OF THEM IS THE SERVICE'S OWN SENTENCE, WHICH IS THE POINT. `SWITCH_OFF_COPY` — the kill switch's
+ * shared copy since Commit 4 — reads "House bots are off. No bot will place a bet.", "House bots were already
+ * off…" and "…House bots were NOT switched off…". Those words are the ENGINE's and the admin bell's vocabulary,
+ * which D19 exempts, and they are correct where they are used; on this console they are three screenshots of the
+ * feature's name. ⛔ The fix is not an override MAP either: the console builds its own sentence from the
+ * STRUCTURED result (`ok`, `changed`, `drain`, `cancelled`), so nothing of that table reaches this section and a
+ * future row added to it cannot re-land here — which is the hand-chosen-population trap rulings 432(f) and 539
+ * both paid for.
+ */
+const SWITCH_COPY = {
+  refused: "You can't change the desk's master switch.",
+  reasonShort: `Say why, in ${CONSOLE_REASON_MIN} characters or more. It is kept with the change.`,
+  reasonLong: `Keep the reason under ${CONSOLE_REASON_MAX} characters.`,
+  wordWrong: `Type ${CONSOLE_SWITCH_ON_WORD} exactly, in capitals, to confirm.`,
+  SCHEMA: "The desk's tables are not present on this database, so nothing changed.",
+  UNREADABLE: "The desk's own state could not be read, so nothing changed.",
+  WITHDRAWN: "The desk has been withdrawn. It cannot be switched on again.",
+  WRITE_FAILED: "The desk could not be switched on. Nothing changed — try again.",
+  offFailed: "The database could not be reached, so the desk was NOT switched off. Try again, or turn on Maintenance mode.",
+  alreadyOn: "The desk was already on. Nothing changed.",
+  alreadyOff: "The desk was already off. Nothing changed.",
+  busy: "A stake already in its final step may still complete.",
+  /* ⛔ THE ACT LANDED AND ITS COMPLIANCE ROW DID NOT — the page says BOTH (replan rulings 537, 543). An officer
+     told "nothing changed" about a desk that IS on would switch it on again, and that is the one response this
+     record cannot survive. */
+  onNotRecorded: "The desk is on. ⚠️ Its compliance record could not be written — tell whoever keeps the records.",
+} as const;
+
+/** ⛔ 306's own count, worded as a REFUSAL rather than as an instruction — the strip already carries the link. */
+function switchLimitsRefusal(n: number): string {
+  return `Set ${n} global limit${n === 1 ? "" : "s"} first. Until every required limit is set, nothing can be staked.`;
+}
+
+/** What the stop cancelled, as a COUNT (ruling 266: never an amount, here or anywhere on this section). */
+function cancelledClause(n: number): string {
+  return n === 1 ? "1 queued stake was cancelled." : `${n} queued stakes were cancelled.`;
+}
+
+
+/**
+ * ⭐ EVERY WORD THE CEREMONY'S DIALOG PAINTS, BUILT ON THE SERVER (rulings 388, 415, 453; owner-delegated 454).
+ *
+ * ⛔ WHY A COPY OBJECT AND NOT A CLIENT FILE. Ruling 385 measured it: most of the sentences this console can emit
+ * carry NO vocabulary word at all, so one typed into a client component would ship to every visitor with
+ * `test:house-bot-disclosure` 1.1 and `verify:house-bot-bundle` both staying green. And ruling 388 measured the
+ * other half: client component PROP NAMES survive minification into public chunks, so even the names crossing this
+ * boundary are neutral. What the browser receives is a bag of finished strings about "the desk".
+ */
+export type ConsoleSwitchDialog = {
+  /** 453 · the Toggle's own label, fixed by the owner-delegated lexicon. */
+  ariaLabel: string;
+  /** Which way pressing the Toggle goes — the only thing the client decides is WHEN. */
+  to: "ON" | "OFF";
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  reasonLabel: string;
+  reasonHint: string;
+  reasonMin: number;
+  reasonMax: number;
+  /**
+   * ⛔ ON ONLY. `null` on the way OFF, and that is ruling 415's decision rather than an omission: a stop is the SAFE
+   * direction, and every second of ceremony in front of it is a second of money moving that an officer wanted
+   * stopped. The reason is still required both ways, because the record of WHY is what the next officer reads.
+   */
+  word: string | null;
+  wordLabel: string | null;
+  wordPlaceholder: string | null;
+  /** The toast the officer reads when it lands, and when it does not. */
+  doneTitle: string;
+  failTitle: string;
+};
+
+/**
+ * The ceremony for the direction this render can go, or `null` when the switch is not operable at all.
+ *
+ * ⛔ IT IS DERIVED FROM THE SAME ROW THE STRIP IS (433(d)): one control read per render pass, so the Toggle, its
+ * sentence, the rail's badge and the usage captions cannot disagree about the switch inside one screen — which is
+ * exactly the defect replan ruling 547 found one card lower and this step had to meet before shipping the switch.
+ */
+function switchDialogFor(on: boolean | null, offCause: string | null, unsetRequired: number): ConsoleSwitchDialog | null {
+  if (on == null) return null;
+  const base = {
+    ariaLabel: "Desk master switch",
+    cancelLabel: "Cancel",
+    reasonMin: CONSOLE_REASON_MIN,
+    reasonMax: CONSOLE_REASON_MAX,
+  };
+  if (on) {
+    return {
+      ...base,
+      to: "OFF",
+      title: "Switch the desk off",
+      body: "Nothing more will be staked and every queued stake is cancelled. A stake already in its final step may still complete.",
+      confirmLabel: "Switch off",
+      reasonLabel: "Why are you switching it off?",
+      reasonHint: "Kept with the change, and read by whoever switches it on again.",
+      word: null,
+      wordLabel: null,
+      wordPlaceholder: null,
+      doneTitle: "The desk is off",
+      failTitle: "The desk was not switched off",
+    };
+  }
+  /* ⛔ A WITHDRAWN DESK DOES NOT COME BACK BY A SWITCH, and a control that could only ever be refused is the dead
+     control 432(a) names. The reason goes beside the Toggle instead. */
+  if (offCause === "SUNSET") return null;
+  /* ⛔ AND NEITHER DOES ONE WHOSE REQUIRED LIMITS ARE UNSET. `over(cap, value)` in the seam is
+     `cap == null || value > cap`, so an unset required cap REFUSES EVERY STAKE: a desk switched on in that state
+     looks live and does nothing. The strip's own "Set N global limits first →" sits in the same row and is the
+     reason the officer reads, which is why `switchReason` is null there (432(n)). */
+  if (unsetRequired > 0) return null;
+  return {
+    ...base,
+    to: "ON",
+    title: "Switch the desk on",
+    body: "Every account that is running will start staking. Each stake is still held to the limits on this page, and to the account's own.",
+    confirmLabel: "Switch on",
+    reasonLabel: "Why are you switching it on?",
+    reasonHint: "Kept with the change, and shown on this strip until it is switched off.",
+    word: CONSOLE_SWITCH_ON_WORD,
+    wordLabel: `Type ${CONSOLE_SWITCH_ON_WORD} to confirm`,
+    wordPlaceholder: CONSOLE_SWITCH_ON_WORD,
+    doneTitle: "The desk is on",
+    failTitle: "The desk was not switched on",
+  };
+}
+/** What the ceremony posts: which way, why, and — for ON only — the word the officer typed. */
+export type ConsoleSwitchInput = { to: "ON" | "OFF"; reason: string; typed?: string };
+
+/**
+ * What it gets back. ⛔ A UNION the caller handles, never a throw: a thrown server action clears the client's
+ * pending state and shows the officer nothing, which on the control that starts money is the worst failure there
+ * is. `note` is the sentence beside the outcome — the already-in-that-state line, the drain line, the cancelled
+ * count, or 543's record-did-not-write warning — and `warn` says whether that sentence is a warning.
+ */
+export type ConsoleSwitchResult =
+  | { ok: true; on: boolean; changed: boolean; note: string | null; warn: boolean }
+  | { ok: false; error: string };
+
+/**
+ * THE MASTER SWITCH, GATED (rulings 259, 340, 512, 522, 523; replan ruling 549's 4b).
+ *
+ * ⛔ **IT IS THE ONE ACT NO TECHNICAL AUTHORITY CONVERTS INTO** (owner ruling D1; PLAN §11; replan ruling 500(c)).
+ * This function is the CEREMONY. Nothing in this repository calls it except the owner's own console action, the
+ * row ships `enabled = false` on every environment, and no run of this build turns it on anywhere but on a
+ * scratch database created and dropped by the run itself.
+ *
+ * ⛔ THE VERDICT IS THE FIRST STATEMENT, ON THE STORED ROW (rulings 522, 523). A Next server action is a POST to
+ * whatever URL the browser happens to be on, carrying a `Next-Action` id in a header: it has no path of its own,
+ * so no middleware rule, no layout and no `AdminSectionGate` can see it. And a session cookie is a PHOTOGRAPH of
+ * a role — an account demoted five minutes ago still carries ADMIN in its cookie, and the switch that starts
+ * money is exactly the thing that must not be decided by one.
+ *
+ * ⛔ THE TYPED WORD IS CHECKED HERE TOO, not only in the dialog (388, 454): see `CONSOLE_SWITCH_ON_WORD`.
+ *
+ * ⛔ THE REASON IS OPERATOR DATA AND IS BOUNDED, NEVER CENSORED (ruling 474). It is stored verbatim and the strip
+ * clamps it on the way out, so a 300-character reason cannot run the length of the card and into every
+ * screenshot of it.
+ */
+export async function houseSwitchForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  input: ConsoleSwitchInput,
+): Promise<ConsoleSwitchResult> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {
+    return { ok: false, error: SWITCH_COPY.refused };
+  }
+  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+  if (reason.length < CONSOLE_REASON_MIN) return { ok: false, error: SWITCH_COPY.reasonShort };
+  if (reason.length > CONSOLE_REASON_MAX) return { ok: false, error: SWITCH_COPY.reasonLong };
+
+  if (input.to === "ON") {
+    /* ⛔ THE WORD IS COMPARED EXACTLY, AFTER TRIMMING AND NOTHING ELSE. Case-folding it would let "switch on"
+       arm a control whose whole purpose is that it cannot be armed by habit. */
+    if ((typeof input.typed === "string" ? input.typed.trim() : "") !== CONSOLE_SWITCH_ON_WORD) {
+      return { ok: false, error: SWITCH_COPY.wordWrong };
+    }
+    const done = await switchOnHouseBots({ actorId: viewerUserId, reason });
+    if (!done.ok) {
+      return { ok: false, error: done.code === "LIMITS" ? switchLimitsRefusal(done.unsetRequired) : SWITCH_COPY[done.code] };
+    }
+    if (!done.changed) return { ok: true, on: true, changed: false, note: SWITCH_COPY.alreadyOn, warn: false };
+    return { ok: true, on: true, changed: true, note: done.recorded ? null : SWITCH_COPY.onNotRecorded, warn: !done.recorded };
+  }
+
+  /* ⛔ OFF TAKES NO TYPED WORD, AND THAT IS A DECISION (415). A stop is the SAFE direction, and every second of
+     ceremony in front of it is a second of money moving that an officer wanted stopped. The reason is still
+     required, because the record of WHY the desk stopped is what the next officer reads. */
+  const off = await switchOffHouseBots({ cause: "MANUAL", byId: viewerUserId, reason, alerts: houseEngineAlerts() });
+  if (!off.ok) return { ok: false, error: SWITCH_COPY.offFailed };
+  if (!off.changed) return { ok: true, on: false, changed: false, note: SWITCH_COPY.alreadyOff, warn: false };
+  /* ⛔ "BUSY" IS NEVER A FAILURE AND NEVER LEAVES THE SWITCH ON (04 A9): the drain only INFORMS, so it changes one
+     sentence — the honest one about a bet that may still be completing. */
+  const cancelled = off.cancelled > 0 ? cancelledClause(off.cancelled) : null;
+  if (off.drain === "busy") {
+    return { ok: true, on: false, changed: true, note: cancelled ? `${SWITCH_COPY.busy} ${cancelled}` : SWITCH_COPY.busy, warn: true };
+  }
+  /* A clean stop says only what the strip does not already say. 432(n): the strip repaints "The desk is off.
+     Nothing will be staked." on the very next read, so repeating it here would be the same fact twice. */
+  return { ok: true, on: false, changed: true, note: cancelled, warn: false };
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════

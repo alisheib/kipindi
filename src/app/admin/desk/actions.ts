@@ -29,6 +29,9 @@ import {
   houseLimitsSaveForConsole,
   type ConsoleLimitsSaveInput,
   type ConsoleLimitsSaveResult,
+  houseSwitchForConsole,
+  type ConsoleSwitchInput,
+  type ConsoleSwitchResult,
 } from "@/lib/server/house-console-read";
 import { CONSOLE_ROUTE } from "@/lib/house-bot/console-routes";
 
@@ -50,5 +53,29 @@ export async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promi
     return result;
   } catch (err) {
     return { ok: false, error: safeError(err, "Nothing was saved. Reload the page and try again.") };
+  }
+}
+
+/**
+ * ⭐ THE MASTER-SWITCH CEREMONY — the desk's one control that starts money (C7-SPEC rulings 306, 388, 415;
+ * owner-delegated 454; replan ruling 549's 4b).
+ *
+ * ⛔ THE SWITCH SHIPS OFF (owner ruling D1). This action is the CEREMONY, not the act: nothing calls it but the
+ * owner's own dialog, and the control row is `enabled = false` on every environment this branch has touched.
+ *
+ * ⛔ THE GATE IS INSIDE THE DOOR, NOT HERE (rulings 522, 523). This file resolves the session and hands a USER ID
+ * to the one named writer; it reads no role, names no store and takes no decision of its own.
+ *
+ * ⛔ A REFUSAL IS NOT A REVALIDATION. Only a change that LANDED invalidates the render — a refused ceremony must
+ * not wipe the reason the officer has just typed out from under them.
+ */
+export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<ConsoleSwitchResult> {
+  const session = await currentSession();
+  try {
+    const result = await houseSwitchForConsole(session?.userId ?? null, "/admin/desk", input);
+    if (result.ok && result.changed) revalidatePath(CONSOLE_ROUTE);
+    return result;
+  } catch (err) {
+    return { ok: false, error: safeError(err, "Nothing changed. Reload the page and try again.") };
   }
 }

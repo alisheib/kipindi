@@ -36,8 +36,61 @@ const REFUSED = "src/app/admin/kyc/refused/page.tsx";
 const DAL = "src/lib/server/house-bot-dal.ts";
 /* ⭐ C7 step 4 · the account page. */
 const DETAIL = "src/app/admin/desk/[id]/page.tsx";
+/* ⭐ C7 step 4b · the master-switch ceremony's client half. */
+const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
 
 export const MUTATIONS = [
+  /* ── C7 step 4b · THE MASTER-SWITCH CEREMONY (rulings 388, 415; owner-delegated 454; replan ruling 549) ────────
+   * Each puts back a state the console was ACTUALLY in, or one it could plausibly have shipped in: a ceremony the
+   * server does not check, a control offered in a state its service refuses, or a stop that can be refused. */
+  {
+    name: "454-word-unchecked · the server stops checking the typed word, so the ceremony is a browser courtesy",
+    file: GATE,
+    from: `    if ((typeof input.typed === "string" ? input.typed.trim() : "") !== CONSOLE_SWITCH_ON_WORD) {\n      return { ok: false, error: SWITCH_COPY.wordWrong };\n    }`,
+    to: ``,
+    expect: "1.454 · the SERVER refuses a word that only looks right",
+    suite: "console-mem",
+  },
+  {
+    name: "454-word-folded · the typed word is case-folded, so habit can arm the control that starts money",
+    file: CEREMONY,
+    from: `  return copy.word === null || typed.trim() === copy.word;`,
+    to: `  return copy.word === null || typed.trim().toUpperCase() === copy.word;`,
+    expect: "1.415 · 454 · the confirm arms only on a reason of the required length AND the word typed EXACTLY",
+    suite: "console-mem",
+  },
+  {
+    name: "306-switch-on-unset · the switch is offered while a required limit is unset, so the only act behind it is a refusal",
+    file: GATE,
+    from: `  if (unsetRequired > 0) return null;`,
+    to: ``,
+    expect: "1.306 · 454 · with a required limit unset the ceremony is REFUSED by the server",
+    suite: "console-mem",
+  },
+  {
+    name: "415-off-typed-word · the kill switch grows a typed word, so a stop waits on ceremony while money moves",
+    file: GATE,
+    from: `      word: null,\n      wordLabel: null,\n      wordPlaceholder: null,\n      doneTitle: "The desk is off",`,
+    to: `      word: CONSOLE_SWITCH_ON_WORD,\n      wordLabel: "Type it",\n      wordPlaceholder: null,\n      doneTitle: "The desk is off",`,
+    expect: "1.415 · the way OFF takes NO typed word and the way ON does",
+    suite: "console-mem",
+  },
+  {
+    name: "415-shared-copy · the console passes the kill switch's SHARED sentence through instead of building its own",
+    file: GATE,
+    from: `  if (!off.ok) return { ok: false, error: SWITCH_COPY.offFailed };`,
+    to: `  if (!off.ok) return { ok: false, error: off.message };`,
+    expect: "1.415 · ⭐ THE KILL SWITCH STOPS THE DESK",
+    suite: "console-mem",
+  },
+  {
+    name: "432j-switch-operable · the disabled switch keeps its sentence while the ceremony is offered, so one state says one fact twice",
+    file: GATE,
+    from: `    switchReason: on == null || switchDialog !== null || limitsFirstReason !== null`,
+    to: `    switchReason: on == null`,
+    expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
+    suite: "console-mem",
+  },
   /* ── Ruling 453 · THE NEUTRAL LEXICON. Four mutations, one per sentence the ruling fixes. ─────────────────────── */
   {
     name: "453-title · the head title says the feature's name again",
@@ -422,7 +475,7 @@ export const MUTATIONS = [
     file: GATE,
     from: `    actionReason: "Designating an account is not ready on this build yet.",`,
     to: `    actionReason: "",`,
-    expect: "432(j) · 432(n) · every disabled control on this rung carries its OWN reason",
+    expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
     suite: "console-mem",
   },
   {
@@ -793,8 +846,11 @@ import type { ConsoleTab } from "@/lib/house-bot/console-routes";`,
   {
     name: "537-gate · the save stops deciding its audience — ruling 523's defect, on a POST no path rule can see",
     file: GATE,
-    from: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {`,
-    to: `  if (typeof viewerUserId !== "string") {`,
+    /* ⚠️ RE-ANCHORED at C7 step 4b: the ceremony's own gated writer opens with the SAME verdict line, so the
+       one-line form matched twice and `test:red-anchors` refused to inject it. The refusal sentence that follows
+       is what tells the two doors apart, and it is the save's. Same defect, same assertion. */
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {\n    return { ok: false, error: SAVE_COPY.refused };`,
+    to: `  if (typeof viewerUserId !== "string") {\n    return { ok: false, error: SAVE_COPY.refused };`,
     expect: "2.537 · a PLAYER, a signed-in AUDITOR and an anonymous caller are each REFUSED",
     suite: "console-mem",
   },
@@ -1111,9 +1167,12 @@ import { formatEat } from "@/lib/utils";`,
     /* ⛔ 432(j) + 432(n) · the master switch's reason goes back to the head action's WORD FOR WORD. */
     name: "432j-switch-reason · both disabled controls say the same seven words again",
     file: GATE,
-    from: `    switchReason: "The switch is not ready on this build yet.",`,
-    to: `    switchReason: "Designating an account is not ready on this build yet.",`,
-    expect: "432(j) · 432(n) · every disabled control on this rung carries its OWN reason",
+    /* ⭐ RE-ANCHORED at C7 step 4b to the SAME defect on the line that now carries it. The sentence moved when the
+       switch became operable — it is no longer a build note, it is the one state where a disabled switch owes its
+       own words — and the mutation still does exactly what it always did: make it the head action's sentence. */
+    from: `      : "The desk has been withdrawn. It cannot be switched on again.",`,
+    to: `      : "Designating an account is not ready on this build yet.",`,
+    expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
     suite: "console-mem",
   },
   {

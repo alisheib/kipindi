@@ -135,6 +135,13 @@ const EXEMPT: Record<string, string> = {
   //    what the officer wrote. There is no state in which the work is lost.
   "app/admin/settlement/hold-button.tsx": "① fields open inside <Modal>, scrim-close disabled, and the note survives Cancel",
   "app/admin/objections/objection-decision.tsx": "① fields open inside <Modal>",
+  /* ⭐ THE SAME STRONGER FORM AS `hold-button.tsx`, and it is worth the extra words for the same reason. The desk's
+   *    master-switch ceremony (C7-SPEC ruling 415) opens its reason field and its typed arming word inside a
+   *    <Modal> that sets `closeOnScrim={!pending && !dirty}` — so once ANYTHING has been typed a stray click on the
+   *    scrim cannot dismiss it, and while the request is in flight neither the scrim, Esc nor ✕ can. There is no
+   *    navigation to guard: the only exits are Cancel and the confirm, and Cancel discards a CONFIRMATION rather
+   *    than work in progress. */
+  "app/admin/desk/switch-ceremony.tsx": "① the reason and the typed word open inside <Modal>, with scrim-close disabled once anything is typed",
   "app/admin/payments/reconcile-controls.tsx": "① fields open inside <Modal>",
   "app/admin/payments/stuck-payout-controls.tsx": "① fields open inside <Modal>",
   "app/admin/players/[id]/balance-adjust-controls.tsx": "① fields open inside <Modal>",

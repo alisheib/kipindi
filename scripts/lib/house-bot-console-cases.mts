@@ -837,15 +837,207 @@ section("§2 · the strip, the band, the roster and every failure");
    * as a rendering fault, not as two reasons, and neither one says WHICH control it is about.
    * ⛔ AND 432(j) HAD NO CASE OF ITS OWN: it was guarded only through 432(m)'s SUNSET case, whose label names another
    * ruling, so the declared mutation for it reported under the wrong ruling's name. */
-  ok("432(j) · 432(n) · every disabled control on this rung carries its OWN reason, and no two controls on one screen say the same words",
-    [plainFull, sunsetFull].every((x: Any) =>
-      typeof x.actionReason === "string" && x.actionReason.length > 8
-      && typeof x.switchReason === "string" && x.switchReason.length > 8
-      && x.actionReason !== x.switchReason),
-    j({ action: plainFull.actionReason, sw: plainFull.switchReason }));
-  ok("432(j) · CONTROL · both reasons were really read, and each names the CONTROL it belongs to rather than the build alone",
-    plainFull.actionReason.toLowerCase().includes("designat") && plainFull.switchReason.toLowerCase().includes("switch"),
-    j({ action: plainFull.actionReason, sw: plainFull.switchReason }));
+  /* ⭐ WIDENED AT C7 STEP 4b, NEVER WEAKENED. The switch is OPERABLE now, so "every disabled control carries a
+   * reason" has a different POPULATION: the head action is still disabled in every state, and the Toggle is
+   * disabled only in the states where there is no act to perform. An assertion that kept demanding a sentence
+   * beside an ENABLED control would have been the fix invalidating its own proof — so it is re-expressed over the
+   * states themselves, in BOTH directions, and it now covers FOUR where it covered two:
+   *   · disabled ⟹ EXACTLY ONE sentence beside it — its own, or the strip's "Set N global limits first →" three
+   *     characters to its left, never both (432(n)) and never neither (432(j));
+   *   · operable ⟹ NO sentence at all, because there is nothing to explain about a control that works;
+   *   · and in every state, the switch's sentence is never the head action's words. */
+  const unsetOne = await withControl({ enabled: false, offCause: "MANUAL", gCapOpenExposureTzs: null });
+  const onNow = await withControl({ enabled: true, offCause: null });
+  const switchStates: Array<[string, Any]> = [["off · ready", plainFull], ["off · withdrawn", sunsetFull], ["off · a required limit unset", unsetOne], ["on", onNow]];
+  const besideSwitch = (x: Any): string[] => [x.switchReason, x.limitsFirstReason].filter((s: unknown) => typeof s === "string" && s.length > 8);
+  ok("432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it — its own or the limits sentence, never both and never neither — and an OPERABLE one carries none",
+    switchStates.every(([, x]) => ((x.switchDialog ?? null) === null ? besideSwitch(x).length === 1 : besideSwitch(x).length === 0))
+      && switchStates.every(([, x]) => typeof x.actionReason === "string" && x.actionReason.length > 8 && x.switchReason !== x.actionReason),
+    j(switchStates.map(([name, x]) => [name, x.switchDialog?.to ?? "disabled", besideSwitch(x).length])));
+  ok("432(j) · CONTROL · the four states really are four different answers — two operable in opposite directions, one disabled with its own sentence and one disabled with the limits sentence — so the rule above was exercised and not satisfied by an empty population",
+    plainFull.switchDialog?.to === "ON" && onNow.switchDialog?.to === "OFF"
+      && (sunsetFull.switchDialog ?? null) === null && typeof sunsetFull.switchReason === "string" && sunsetFull.switchReason.toLowerCase().includes("switch")
+      && (unsetOne.switchDialog ?? null) === null && (unsetOne.switchReason ?? null) === null && typeof unsetOne.limitsFirstReason === "string"
+      && plainFull.actionReason.toLowerCase().includes("designat"),
+    j({ plain: plainFull.switchDialog?.to, on: onNow.switchDialog?.to, sunset: sunsetFull.switchReason, unset: unsetOne.limitsFirstReason }));
+
+  /* ══ THE MASTER-SWITCH CEREMONY (rulings 306, 388, 415; owner-delegated 454; replan ruling 549's 4b) ══════════
+   * ⛔ THE SWITCH SHIPS OFF (owner ruling D1). Every case below runs against a database this RUN created and drops
+   * — the two-store runner's own `CREATE DATABASE`/`DROP DATABASE` pair on the scratch cluster, or the memory
+   * store, which has no database at all. Nothing here reaches any other environment.
+   * ⛔ AND THE CEREMONY IS WHY THE CONTROL MAY EXIST. 432(a) refuses a live control with nothing behind it; this
+   * is the other half of that rule — a control whose server would only ever refuse it is the same lie one layer
+   * down, so the reader offers no dialog in the states the service refuses, and these cases hold the two together. */
+  {
+    const { deskSwitchArmed }: Any = await import("../../src/app/admin/desk/switch-ceremony.tsx");
+    const FEEDC: Any = await import("../../src/lib/house-bot/feed-copy.ts");
+    /* ⛔ EVERY CALL IS CAUGHT AND ASSERTED, NEVER HANDED TO THE SECTION GUARD (E25 lesson, and the engine suite's
+     * own idiom). A throw here would skip every later case in the guarded region — including §3's lexicon scan —
+     * and the suite would go red on three unrelated labels, which is what the declaration file calls
+     * WRONG-ASSERTION. It also makes the ABSENT state measurable case by case rather than as one throw. */
+    const callSwitch = async (viewer: string, input: Any): Promise<Any> => {
+      try { return await GATEM.houseSwitchForConsole(viewer, "/admin/desk", input); }
+      catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
+    };
+    const WORD = GATEM.CONSOLE_SWITCH_ON_WORD;
+    const MIN = GATEM.CONSOLE_REASON_MIN;
+    const MAX = GATEM.CONSOLE_REASON_MAX;
+    const REASON = "weekend cover";
+    /* ⛔ THE BLOCK SETS ITS OWN STARTING STATE. Earlier cases in §2 leave the row switched on or a limit cleared,
+     * and a ceremony case that inherits "already on" would assert nothing about switching on. Off, with every
+     * limit set, is the state the product ships in and the only one this block may start from.
+     * ⛔ EVERY LINE BELOW RUNS ON A DATABASE THIS RUN CREATED AND DROPS (the two-store runner's own
+     * CREATE/DROP pair on the scratch cluster) or on the memory store, which has no database at all. */
+    await w.switchOff();
+    await w.limits();
+
+    ok("1.454 · the typed word is SWITCH ON — it names the ACT, not the feature — and it is the SERVER's, handed to the dialog as a prop",
+      WORD === "SWITCH ON" && plainFull.switchDialog?.word === WORD && plainFull.switchDialog?.wordLabel?.includes(WORD) === true,
+      j({ WORD, dialog: plainFull.switchDialog?.word }));
+    /* ⛔ THE STRUCK PHRASE IS MEASURED OVER THE DERIVED POPULATION — every file of the section walked from disk
+     * plus the gate module, the same population 4.453 uses — because a hand-typed file list stops covering what it
+     * was written to cover (ruling 513). ⚠️ IT SCANS RAW TEXT, COMMENTS INCLUDED, and that caught its own home on
+     * the first run: the gate module's docblock SPELLED the struck phrase while explaining that it was struck. The
+     * prose was reworded; the guard was not. */
+    const struckPhrase = `BOTS${" "}ON`;
+    const struckScan = [...sectionFiles, GATE].filter((f: string) => read(f).includes(struckPhrase));
+    ok("1.454 · …and the draft's feature-shaped confirmation phrase is struck everywhere under the section and in the gate module — which matters precisely because it is not a needle any guard can see",
+      !all(plainFull.switchDialog).includes(struckPhrase) && struckScan.length === 0 && sectionFiles.length >= 6,
+      j({ hits: struckScan, scanned: sectionFiles.length + 1 }));
+    ok("1.454 · CONTROL · the same scan FINDS the phrase when it is planted in a copy of a real section file, so the zero above is a measurement and not an unreached walk",
+      [...sectionFiles, GATE].map((f: string) => `${read(f)}\n// ${struckPhrase}`).every((c: string) => c.includes(struckPhrase)), "");
+    ok("1.415 · the way OFF takes NO typed word and the way ON does — a stop is the SAFE direction, and ceremony in front of it is money still moving",
+      onNow.switchDialog?.to === "OFF" && onNow.switchDialog?.word === null && onNow.switchDialog?.wordLabel === null
+        && plainFull.switchDialog?.to === "ON" && typeof plainFull.switchDialog?.word === "string",
+      j({ off: onNow.switchDialog?.word, on: plainFull.switchDialog?.word }));
+    ok("1.415 · both directions still require a reason, with ONE pair of bounds shared by the field, its live count and the server's own refusal",
+      MIN === 5 && MAX === 300
+        && [onNow, plainFull].every((x: Any) => x.switchDialog?.reasonMin === MIN && x.switchDialog?.reasonMax === MAX && typeof x.switchDialog?.reasonLabel === "string"),
+      j({ MIN, MAX }));
+
+    /* ⛔ THE ARMING PREDICATE IS PURE AND EXPORTED, so every branch is measured DIRECTLY rather than through a
+     * render that can only reach one of them — and `Modal` returns null until it is mounted, so a static render
+     * of the dialog is NOT MEASURED by construction (415). */
+    const onCopy = { word: WORD, reasonMin: MIN, reasonMax: MAX };
+    const offCopy = { word: null, reasonMin: MIN, reasonMax: MAX };
+    /* ⛔ THE WHOLE BATTERY IS CAUGHT, so an ABSENT predicate is a failed assertion and not a throw that blinds
+     * every section below it. */
+    const armedTable = (): boolean => {
+      try {
+        return deskSwitchArmed(onCopy, REASON, WORD) === true
+          && deskSwitchArmed(onCopy, "no", WORD) === false
+          && deskSwitchArmed(onCopy, "x".repeat(Number(MAX) + 1), WORD) === false
+          && deskSwitchArmed(onCopy, REASON, "switch on") === false
+          && deskSwitchArmed(onCopy, REASON, "SWITCHON") === false
+          && deskSwitchArmed(onCopy, REASON, "") === false
+          && deskSwitchArmed(offCopy, REASON, "") === true
+          && deskSwitchArmed(offCopy, "no", "") === false;
+      } catch { return false; }
+    };
+    ok("1.415 · 454 · the confirm arms only on a reason of the required length AND the word typed EXACTLY — never case-folded, because 'switch on' must not arm a control that exists so it cannot be armed by habit",
+      armedTable(), "");
+
+    /* ⛔ AND THE SERVER CHECKS IT AGAIN. A ceremony verified only in a browser is one a crafted POST walks straight
+     * through, and this is the single act on the platform that opens money's own gate. */
+    const wrongWord = await callSwitch(OFFICER, { to: "ON", reason: REASON, typed: "switch on" });
+    const shortReason = await callSwitch(OFFICER, { to: "ON", reason: "no", typed: WORD });
+    const longReason = await callSwitch(OFFICER, { to: "ON", reason: "x".repeat(MAX + 1), typed: WORD });
+    ok("1.454 · the SERVER refuses a word that only looks right, and a reason outside the bounds — the dialog's own arming is a courtesy, not the gate",
+      wrongWord.ok === false && String(wrongWord.error).includes(WORD)
+        && shortReason.ok === false && longReason.ok === false && shortReason.error !== longReason.error,
+      j({ wrongWord: wrongWord.error, short: shortReason.error, long: longReason.error }));
+    ok("1.454 · CONTROL · the desk is still OFF after all three refusals — a refusal that wrote something would be the worst possible pass here",
+      (await w.dal.houseBotControlStore.get()).enabled === false, "");
+
+    /* ⛔ 300/380 · A VIEWER OUTSIDE THE AUDIENCE IS REFUSED BEFORE ANYTHING IS READ OR WRITTEN, and the refusal is
+     * not an oracle: it carries no state, no count and no figure (383). */
+    const playerId = await w.user({ role: "PLAYER" });
+    const refused = await callSwitch(playerId, { to: "ON", reason: REASON, typed: WORD });
+    ok("1.415 · 300 · a signed-in PLAYER's ceremony is refused, and the refusal names no state, no count and no figure",
+      refused.ok === false && typeof refused.error === "string" && refused.error.length > 8
+        && !/\d/.test(refused.error) && !NEUTRAL.test(refused.error)
+        && (await w.dal.houseBotControlStore.get()).enabled === false,
+      j(refused));
+
+    /* ⛔ 306 · THE REFUSAL THE STRIP PROMISES IS REAL. "Set N global limits first →" beside the Toggle would be a
+     * lie the officer could walk straight through if the service did not enforce it — and the consequence is not
+     * cosmetic: `over(cap, value)` in the seam is `cap == null || value > cap`, so an unset required cap REFUSES
+     * EVERY STAKE. A desk switched on in that state looks live and does nothing. */
+    const ctlBefore: Any = await w.dal.houseBotControlStore.get();
+    await w.dal.houseBotControlStore.saveLimits(ctlBefore.limitsVersion, { gCapOpenExposureTzs: null });
+    const unsetRefusal = await callSwitch(OFFICER, { to: "ON", reason: REASON, typed: WORD });
+    const unsetView = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    ok("1.306 · 454 · with a required limit unset the ceremony is REFUSED by the server, with the SAME derived count the strip paints — and the desk stays off",
+      unsetRefusal.ok === false && /\b1\b/.test(String(unsetRefusal.error))
+        && unsetView.unsetRequired === 1 && (unsetView.switchDialog ?? null) === null
+        && (await w.dal.houseBotControlStore.get()).enabled === false,
+      j({ error: unsetRefusal.error, unsetRequired: unsetView.unsetRequired, dialog: unsetView.switchDialog }));
+    await w.limits();
+
+    /* ⭐ THE ACT ITSELF, ON A DATABASE THIS RUN CREATED AND DROPS. */
+    const before: Any = await w.dal.houseBotControlStore.get();
+    const switched = await callSwitch(OFFICER, { to: "ON", reason: REASON, typed: WORD });
+    const after: Any = await w.dal.houseBotControlStore.get();
+    ok("1.415 · ⭐ THE CEREMONY MOVES THE SWITCH: the desk goes ON, the officer's own id and reason are on the row, and the off cause is cleared",
+      before.enabled === false && switched.ok === true && switched.changed === true && switched.on === true
+        && after.enabled === true && after.switchedById === OFFICER && after.switchedReason === REASON && after.offCause === null,
+      j({ ok: switched.ok, changed: switched.changed, by: after.switchedById, reason: after.switchedReason, offCause: after.offCause }));
+    ok("1.415 · …and the scope starts with it (04 A11, ruling 92) — a switch-on that left scope NULL would put every stake out of scope, and one that left an old instant would replay history",
+      typeof (await w.dal.houseBotRuntimeStore.get((await import("../../src/lib/house-bot/constants.ts") as Any).RUNTIME_KEY.global))?.scopeFrom === "string", "");
+    const onAgain = await callSwitch(OFFICER, { to: "ON", reason: "again, by mistake", typed: WORD });
+    ok("1.415 · a second ON changes NOTHING and says so — one ON, one event, one alert, whichever officer landed second",
+      onAgain.ok === true && onAgain.changed === false && typeof onAgain.note === "string" && onAgain.warn === false
+        && (await w.dal.houseBotControlStore.get()).switchedReason === REASON,
+      j({ changed: onAgain.changed, note: onAgain.note }));
+
+    /* ⭐ RULING 547, RE-VERIFIED IN THE ONE STATE IT WAS WRITTEN ABOUT AND WHICH HAD NEVER BEEN REACHABLE THROUGH
+     * THE UI. With the desk ON and a required cap unset, the usage card used to say "Not set — the master switch
+     * cannot be turned on." beside a chip reading ON: two opposite statements about one switch on one screen.
+     * 547's fix (`unsetCaptionFor(field, on)`) landed at C7 step 4a while the Toggle was still disabled, so the
+     * state could only be reached by writing the row by hand. It is reachable now, through the ceremony. */
+    const onCtl: Any = await w.dal.houseBotControlStore.get();
+    await w.dal.houseBotControlStore.saveLimits(onCtl.limitsVersion, { gCapOpenExposureTzs: null });
+    const onWithUnset = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    const unsetCaptions = [
+      ...(onWithUnset.usage as Any[]).map((u: Any) => u.unsetCaption),
+      ...(onWithUnset.limits as Any[]).filter((l: Any) => l.unset).map((l: Any) => l.caption),
+    ].filter((c: unknown): c is string => typeof c === "string");
+    ok("1.415 · 547 · with the desk switched ON through the CEREMONY, no usage caption and no limits row says the master switch cannot be turned on — the state ruling 547 was written about, reached through the console for the first time",
+      onWithUnset.on === true && unsetCaptions.length >= 2
+        && unsetCaptions.every((c: string) => !/master switch cannot be turned on/.test(c)),
+      j({ on: onWithUnset.on, captions: unsetCaptions }));
+    await w.limits();
+
+    /* ⭐ THE KILL SWITCH — the other direction, and the one that must never be blocked. */
+    const stopped = await callSwitch(OFFICER, { to: "OFF", reason: "stopping for the night" });
+    const offRow: Any = await w.dal.houseBotControlStore.get();
+    ok("1.415 · ⭐ THE KILL SWITCH STOPS THE DESK: off, with the officer's id and reason on the row and the MANUAL cause recorded",
+      stopped.ok === true && stopped.changed === true && stopped.on === false
+        && offRow.enabled === false && offRow.switchedById === OFFICER && offRow.offCause === "MANUAL",
+      j({ ok: stopped.ok, changed: stopped.changed, offCause: offRow.offCause }));
+    ok("1.415 · 266 · a stop reports what it cancelled as a COUNT or says nothing at all — never an amount, here or anywhere on this section",
+      stopped.ok === true && (stopped.note === null || (!/TZS/.test(String(stopped.note)) && !NEUTRAL.test(String(stopped.note)))),
+      j({ note: stopped.note }));
+    const stopAgain = await callSwitch(OFFICER, { to: "OFF", reason: "stopping again" });
+    ok("1.415 · a second OFF changes nothing and says so — and it is never refused, because a stop that is refused is the one refusal this console must not have",
+      stopAgain.ok === true && stopAgain.changed === false, j(stopAgain));
+
+    /* ⛔ 453 · EVERY WORD EITHER DIALOG CAN PAINT, SCANNED — the titles, the bodies, both button labels, the field
+     * labels, the typed word, the hints and both toast titles, in BOTH directions. */
+    const ceremonyStrings = [plainFull.switchDialog, onNow.switchDialog]
+      .flatMap((d: Any) => Object.values(d ?? {}))
+      .filter((v: unknown): v is string => typeof v === "string");
+    ok("1.415 · 453 · not one word of either ceremony names the feature, and the scan really had both dialogs' whole copy in it",
+      ceremonyStrings.length >= 20 && ceremonyStrings.every((s: string) => !NEUTRAL.test(s)) && houseHits(ceremonyStrings.join(" ")).length === 0,
+      j({ scanned: ceremonyStrings.length, hits: ceremonyStrings.filter((s: string) => NEUTRAL.test(s)) }));
+    ok("1.415 · 453 · CONTROL · the same scan fires on the kill switch's SHARED copy, which names the feature three times over — which is exactly why the console builds its own sentence from the structured result instead of passing that table through",
+      (() => {
+        const shared = Object.values(FEEDC.SWITCH_OFF_COPY) as string[];
+        return shared.length >= 3 && shared.some((s) => NEUTRAL.test(s)) && ceremonyStrings.every((s: string) => !shared.includes(s));
+      })(), j(Object.values(FEEDC.SWITCH_OFF_COPY).filter((s: Any) => NEUTRAL.test(String(s)))));
+
+    await w.switchOff();
+  }
 
   /* ⛔ AN INERT POINTER CARRIES NO ARROW (ruling 432(i)), AND THIS IS THE HALF THAT WAS MISSED. The server's
    * roster-full sentence is written for a LINK and ENDS "…raise the roster limit on Limits →". While the limits tab
