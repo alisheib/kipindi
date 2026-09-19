@@ -537,7 +537,7 @@ Run every Release command in **Git Bash**. S2 R0's "Rebase on origin/main" is su
 | REL-4 | See the steps below | ⬜ |
 | REL-5 | See the checks below | ⬜ |
 | REL-6 | "First switch-on" guide delivered to Ali: limits → designate → rules → Start → ON → watch the feed 15 min → OFF on any FAILED row or unexplained alert. Rollback plan: amendment S3 | ⬜ |
-| — | Ali switches house bots ON (his action, not a session's) | ⬜ |
+| — | **Ali switches house bots ON — his action, and his alone. ⛔ OWNER STATEMENT, 2026-09-19 (nineteenth session), his words: *"i wont ever turn thr switch on until usay so its ready and i fo"*.** So the sequence is fixed and neither half may be skipped: a session says, in writing and on evidence, that it is ready — then **Ali** turns it on. A session never turns it on, never asks him to turn it on early, and never treats a green gate as permission. And the first half is a real obligation, not a formality: "ready" is a statement this programme has to earn and state plainly, with the measurement behind it, because Ali has said he will wait for it. | ⬜ |
 
 **REL-2: migrations applied to production from the build machine**
 1. **Pre-check:** `MSYS_NO_PATHCONV=1 DATABASE_URL=<Postgres DATABASE_PUBLIC_URL> npx prisma migrate status` shows exactly the 2 house migrations pending.
