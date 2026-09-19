@@ -3188,10 +3188,34 @@ try {
     ok("1.387 · an option that cannot be chosen carries its reason, and the reason names no feature word",
       staffHit.rows.length === 1 && typeof staffHit.rows[0].reason === "string"
         && !NEUTRAL.test(all(staffHit)) && staffHit.count.includes("cannot be chosen"), j(staffHit));
-    /* ⛔ A ONE-CHARACTER QUERY READS NOTHING AT ALL — the officer has not asked a question yet. */
-    const short = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", "a");
+    /* ⛔ A ONE-CHARACTER QUERY READS NOTHING AT ALL — the officer has not asked a question yet.
+       ⛔ AND "TAKES NO READ" IS NOW MEASURED, NOT ASSERTED IN A TITLE (C7 step 6 review,
+       test-strength-picker-floor). The case checked the SHAPE of the answer and nothing else, so the half of the
+       label that names the property worth having was the half nothing tested. */
+    const spyQ = { users: 0, roster: 0 };
+    const origQ = { users: w.db.user.list, roster: w.dal.houseBotStore.listNonRemoved };
+    let short: Any = null;
+    try {
+      w.db.user.list = (...a: Any[]) => { spyQ.users++; return origQ.users.apply(w.db.user, a as Any); };
+      w.dal.houseBotStore.listNonRemoved = (...a: Any[]) => { spyQ.roster++; return origQ.roster.apply(w.dal.houseBotStore, a as Any); };
+      short = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", "a");
+    } finally {
+      w.db.user.list = origQ.users; w.dal.houseBotStore.listNonRemoved = origQ.roster;
+    }
+    const belowFloor = { ...spyQ };
+    try {
+      w.db.user.list = (...a: Any[]) => { spyQ.users++; return origQ.users.apply(w.db.user, a as Any); };
+      w.dal.houseBotStore.listNonRemoved = (...a: Any[]) => { spyQ.roster++; return origQ.roster.apply(w.dal.houseBotStore, a as Any); };
+      await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", good);
+    } finally {
+      w.db.user.list = origQ.users; w.dal.houseBotStore.listNonRemoved = origQ.roster;
+    }
     ok("1.387 · a query under the floor answers with no rows, no count and no sentence — and takes no read",
-      short.rows.length === 0 && short.note === null && short.count === "", j(short));
+      short.rows.length === 0 && short.note === null && short.count === ""
+        && belowFloor.users === 0 && belowFloor.roster === 0,
+      j({ short, belowFloor }));
+    ok("1.387 · CONTROL · a query AT the floor fires both of those reads through the very objects the spy watches, so the zeros above are a measurement and not an unreached patch",
+      spyQ.users >= 1 && spyQ.roster >= 1, j(spyQ));
   }
 
   /* ━━ 1.383 · EVERY DOOR IS A PLAYER-CALLABLE ENDPOINT, AND ITS REFUSAL IS NOT AN ORACLE ━━━━━━━━━━━━━━━━━ */

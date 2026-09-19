@@ -81,7 +81,7 @@
  * its record ids does not hand one back in a `next=` target) — and again at C7 step 6, to what THAT run printed:
  * **memory 485, Postgres 322** (the designate wizard's own §2f, its three D19 source pins and the two re-aimed
  * assertions its live head action forced).
- * ⭐ RAISED AGAIN at C7 step 6's FIX PASS, to what THAT run printed: **memory 514, Postgres 343** — the page's own
+ * ⭐ RAISED AGAIN at C7 step 6's FIX PASS, to what THAT run printed: **memory 515, Postgres 344** — the page's own
  * audience verdict (259/324/380, which the wizard decided only when a `?u=` was present), the counting reader
  * behind "Open positions" (344), the settled set's three failure branches (355), the picker's eight-role refusal
  * parity, its rate rule and its busy sentence (387), the ten-option cap with a count that does not lie about it,
@@ -100,6 +100,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 514, postgres: 343 },
+  minPass: { memory: 515, postgres: 344 },
   dbPrefix: "hb_console",
 });
