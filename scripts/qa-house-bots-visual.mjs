@@ -376,7 +376,13 @@ try {
                `aria-valuetext`; a wizard STEP paints a rail-free form and collected 4 on the day this was written.
                A floor that demanded 6 there would be the wrong-population defect, and a floor of 0 is the vacuity
                trap. Both numbers are what a run PRINTED, and neither may fall. */
-            && facts.attrs.length >= (MONEYLESS ? 3 : 6),
+            /* ⭐ RAISED TO WHAT A RUN PRINTED, OVER THE WHOLE POPULATION (C7 step 6's fix pass,
+               test-strength-visual-aria-floor). The wizard floor was 3 against a printed 4 — slack a floor may not
+               carry — and the first correction set it to 9, which was the wrong POPULATION: 9 is the find step,
+               measured without the consent and review steps in the list. All NINE wizard states at 1280 print
+               9 · 11 · 11 · 13 · 13 · 13 · 6 · 5 · 5, so the floor is FIVE — the lowest a run printed, which is what
+               a floor is. It only ever rises. */
+            && facts.attrs.length >= (MONEYLESS ? 5 : 6),
           `${facts.attrs.length} attributes · benign hits ${JSON.stringify(CONSOLE_BENIGN_SAMPLES.filter((s) => consoleNeutralRegExp().test(s)))}`);
         /* ⛔ AND THE EXEMPTION IS EXACTLY THE TWO VALUES 474 NAMES. An exemption nobody measures is a guard whose
            population is a lie: a house word planted into the page's NON-exempt text must still fire, and the

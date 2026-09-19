@@ -165,7 +165,10 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
               titleAs="h2"
               title={view.blocking[0]?.text}
               action={
-                <Link href={view.findHref as Route} className="btn btn-secondary btn-md inline-flex items-center justify-center">
+                /* ⛔ THE GHOST RUNG, BECAUSE THE SECONDARY ONE DOES NOT EXIST — and the FIRST render of this fix is
+                   what said so: the dead-end's only control painted as bare centred text with no ground at all.
+                   A dead class is a typo (§B8); the kit's button rungs are primary, ghost, danger, yes and no. */
+                <Link href={view.findHref as Route} className="btn btn-ghost btn-md inline-flex items-center justify-center">
                   Search again
                 </Link>
               }
@@ -299,11 +302,19 @@ function CheckNotice({ row, tone }: { row: ConsoleCheckRow; tone: "danger" | "wa
   return (
     <Callout tone={tone} role={tone === "danger" ? "alert" : undefined}>
       {row.text}
+      {/* ⛔ THE WAY OUT IS ITS OWN CONTROL, ON ITS OWN LINE, AT THE TAP FLOOR (C7 step 6's fix pass). The served
+          gate measured it at 14px mid-sentence — below `--tap-min` — on the already-on-desk state, and it read as
+          two words of the sentence rather than as the thing to press. ⚠️ The row layout of `Callout` renders no
+          `action` slot, so the control lives in the body. */}
       {row.href !== null && (
-        <>
-          {" "}
-          <Link href={row.href as Route} className="underline hover:text-brand-300">Open it</Link>
-        </>
+        <span className="block">
+          <Link
+            href={row.href as Route}
+            className="inline-flex items-center min-h-[var(--tap-min)] underline underline-offset-2 hover:text-brand-200"
+          >
+            Open it
+          </Link>
+        </span>
       )}
     </Callout>
   );

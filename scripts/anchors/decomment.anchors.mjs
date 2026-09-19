@@ -114,11 +114,16 @@ export const MUTATIONS = [
     check: "3.1 block-comments-first loses the code after a `/*` in a `//` line",
   },
   {
+    /* ⭐ RE-ANCHORED, SAME DEFECT (C7 step 6's fix pass). §3's population stopped at the TOP LEVEL of `scripts/`
+       while §5.2's worst case — the script with the largest comment-stripping delta in the whole corpus — moved
+       into `scripts/lib/`, so 5.3 went red on a population narrower than the corpus it claims to cover. The guard
+       now walks `scripts/` recursively and `test:decomment` rebuilds the same set; the defect this puts back is
+       unchanged: point the scan somewhere that is not `scripts/`, and §5.2's claim is idle. */
     name: "pii-in-logs-stops-reading-scripts",
     why: "§5.2 is about a real exposure. If nothing strips comments from scripts/, that claim is idle.",
     file: "scripts/pii-in-logs.test.mts",
-    from: "const scriptDir = readdirSync(join(root, \"scripts\"))",
-    to: "const scriptDir = readdirSync(join(root, \"src\"))",
+    from: "const scriptDir = walkScripts(\"scripts\");",
+    to: "const scriptDir = walkScripts(\"src\");",
     check: "5.1 a guard really does strip comments from scripts/, not only from src/",
   },
 ];
