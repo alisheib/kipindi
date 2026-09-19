@@ -158,6 +158,8 @@ function buildExpected(): Record<string, string> {
     "c08.p the row must name the target it is inserted under": "error:house-bot-dal: insertTargetedIfActive row.targetId must equal targetId",
     "c08.q consent void ends every ACTIVE target of the bot": "hbt_c08c,hbt_c08d:CONSENT_VOID",
     "c08.r active, ended and counted for the bot": "0:5:0",
+    "c08.r2 offset paging and the counting reader are two different answers": "p5,p4|p3,p2|p1||5|2|true",
+    "c08.r3 countForBot follows the same status filter as the list": "5:3:2:0",
     "c08.s delay min 4": "check:HouseBotTarget_delayMinSec_check",
     "c08.t delay max 601": "check:HouseBotTarget_delayMaxSec_check",
     "c08.u min 30 above max 10": "check:HouseBotTarget_delay_order_check",
@@ -591,6 +593,38 @@ async function runCases(): Promise<void> {
       const a = await targets.listForBot("hb_c08", "active", null);
       const e = await targets.listForBot("hb_c08", "ended", null);
       return `${a.rows.length}:${e.rows.length}:${await targets.countActive({ botId: "hb_c08" })}`;
+    });
+
+    /* ⛔ THE TARGETS PAGER'S TWO HALVES, AND THE ONE THING THAT MAKES THEM A PAIR (C7 step 4c, grid-paging §2.2).
+       The console's Targets grid is a NUMBERED pager, which needs two different answers from this store:
+       `listForBot(… offset)` for WHICH ROWS, and `countForBot` for HOW MANY THERE ARE. They are separate members
+       because `pageLimit` clamps every list reader in this DAL at 500 rows — so a total taken from a page read is
+       a number that stops rising, and a pager built on it would stop short of the last page while looking right.
+       ⛔ The ids ascend with insert order, so "newest first" is `p5…p1` on BOTH stores whether or not the memory
+       twin's millisecond `createdAt` ties where Postgres' microsecond one does not. */
+    await rec("c08.r2 offset paging and the counting reader are two different answers", async () => {
+      await mkUser("usr_c08p");
+      await designate("hb_c08p", "usr_c08p", "Case eight P");
+      const z2 = { houseBotId: "hb_c08p" };
+      for (const n of [1, 2, 3, 4, 5]) await targets.insert(target(`hbt_c08p${n}`, `mkt_c08p${n}`, z2));
+      const tail = (r: Any): string => r.rows.map((t: Any) => t.id.slice(-2)).join(",");
+      const p1 = await targets.listForBot("hb_c08p", "all", null, { limit: 2 });
+      const p2 = await targets.listForBot("hb_c08p", "all", null, { limit: 2, offset: 2 });
+      const p3 = await targets.listForBot("hb_c08p", "all", null, { limit: 2, offset: 4 });
+      const past = await targets.listForBot("hb_c08p", "all", null, { limit: 2, offset: 99 });
+      const total = await targets.countForBot("hb_c08p", "all");
+      return `${tail(p1)}|${tail(p2)}|${tail(p3)}|${tail(past)}|${total}|${p1.rows.length}|${p3.nextCursor === null}`;
+    });
+    /* The count follows the STATUS filter the list was given, or a pager on `?status=` would draw the wrong
+       last page — and it is the whole set, never the page. */
+    await rec("c08.r3 countForBot follows the same status filter as the list", async () => {
+      await targets.endActive("hbt_c08p2", "DONE");
+      await targets.remove("hbt_c08p3", OFFICER);
+      const all = await targets.countForBot("hb_c08p", "all");
+      const active = await targets.countForBot("hb_c08p", "active");
+      const ended = await targets.countForBot("hb_c08p", "ended");
+      const none = await targets.countForBot("hb_c08zzz", "all");
+      return `${all}:${active}:${ended}:${none}`;
     });
     const z = { houseBotId: "hb_c08z" };
     await rec("c08.s delay min 4", async () => (await targets.insert(target("hbt_c08s1", "mkt_c08s1", { ...z, delayMinSec: 4 }))).status);

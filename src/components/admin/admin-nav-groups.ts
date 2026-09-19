@@ -85,6 +85,36 @@ function looksLikeId(p: string): boolean {
   return p.includes("_") || /^[a-z0-9]{20,}$/i.test(p);
 }
 
+/**
+ * ⛔ THE DESTINATION A REFUSED OFFICER IS SENT BACK TO, WITH THE RECORD ID TAKEN OUT (replan ruling 551(a)).
+ *
+ * 🔴 WHAT THIS FIXES, MEASURED. `qa:house-bot-console-probe` printed `leaks: 96` on the first run it ever made
+ * against a tree in which `/admin/desk/[id]` exists. Every one of the 96 was the account id, and for the player,
+ * the holder and a trigger player the body was a REFUSAL:
+ * `NEXT_REDIRECT;replace;/auth/admin?next=%2Fadmin%2Fdesk%2Fhb_1d2a…;307;`. The admin shell preserves a
+ * deep-link destination through the login gate, and for a record route that destination IS the record id — so a
+ * refusal handed the id back inside the redirect target.
+ *
+ * ⚠️ AND THE HONEST HALF: the id was in the URL the viewer THEMSELVES requested, so no refusal ever told anyone an
+ * id they did not already hold. This is a screenshot-and-log channel of the same family as ruling 548's crumb, not
+ * ruling 259's payload class. It is fixed because a refused officer is served just as well by the SECTION — they
+ * land on `/admin/desk` and click the row — and because it removes three of the four viewer classes from the
+ * probe's population outright, at no cost to anyone legitimate.
+ *
+ * ⛔ THE POPULATION IS `ID_CRUMB`'s OWN, NOT A NEW LIST AND NOT AN ID PREFIX. A section that has declared it will
+ * not PAINT its record id does not hand that id back in a redirect target either; keying this off an id prefix
+ * would leave the next prefix to re-land the defect, which is the mistake ruling 548 named by name.
+ * ⛔ The query string goes WITH the id: `?tab=targets` describes the record, and a tab of a page nobody is being
+ * sent to is meaningless.
+ */
+export function adminNextDest(dest: string): string {
+  const path = dest.split("?")[0].split("#")[0];
+  if (!ID_CRUMB[activeKeyFromPath(path)]) return dest;
+  const parts = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
+  const cut = parts.findIndex(looksLikeId);
+  return cut < 0 ? dest : `/admin/${parts.slice(0, cut).join("/")}`;
+}
+
 /** A nav item carries the RBAC `domain` it belongs to (drives visibility). Two
  *  flags override the domain check: `allStaff` (always shown to any staff — e.g.
  *  2FA setup) and `ownerOnly` (only ADMIN — e.g. staff/roles). See `filterNavGroups`. */

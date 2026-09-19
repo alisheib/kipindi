@@ -2806,6 +2806,50 @@ try {
       j(v.rules.flatMap((r: Any) => [r.name, r.section, r.value]).filter((s: string) => NEUTRAL.test(s))));
     ok("1.508 · the targets panel reads this account's targets and counts the live ones — and an account with none is an EMPTY list, never a failed read",
       Array.isArray(v.targets) && v.targets.length === 0 && v.targetsActive === 0, j({ targets: v.targets, active: v.targetsActive }));
+
+    /* ━━ ⛔ THE TARGETS GRID PAGES, AND ITS TOTAL IS A COUNT AND NOT A PAGE LENGTH (C7 step 4c) ━━━━━━━━━━━━━━
+     * `test:grid-paging` 2.2 caught this route rendering a limit-20 read whole with no pager — the defect that
+     * suite exists for, and one the file could not have had on `origin/main` because the file did not exist there.
+     * ⛔ THE STANDING TEST, APPLIED: would this still pass if the pager were absent? No. `targetsTotal` must be
+     * the WHOLE set (22) while the page holds 20; a total read off `targets.length` answers 20, the control's
+     * last page becomes its first, and the case below goes red. The same for `targetsActive`, which used to be
+     * counted over the page's own rows and therefore changed as an officer paged.
+     */
+    {
+      const paged = await w.bot({});
+      const mk = (n: number): string => `mkt_pager_${String(n).padStart(2, "0")}`;
+      for (let n = 1; n <= 22; n++) {
+        await w.dal.targetStore.insert({
+          id: `hbt_pager_${String(n).padStart(2, "0")}`, houseBotId: paged.botId, marketId: mk(n),
+          delayMinSec: 10, delayMaxSec: 20, timingFrom: "STAKE", reactTo: "FIRST", createdById: OFFICER,
+          snapshot: { titleEn: `Poll ${n}`, category: "sports", cutoff: "2026-12-31T00:00:00.000Z", rawYes: 0, rawNo: 0 },
+        } as Any);
+      }
+      const p1 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, 1);
+      const p2 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, 2);
+      const ids = (x: Any): string[] => (x.targets ?? []).map((t: Any) => t.id);
+      ok("1.grid22 · the Targets grid serves ONE page of 20 and says how many there are in all — the total is a COUNTING read, never the page's own length",
+        p1.targets.length === 20 && p1.targetsTotal === 22 && p1.targetsPage === 1 && p1.targetsPerPage === 20
+          && p1.targetsTotal !== p1.targets.length,
+        j({ rows: p1.targets.length, total: p1.targetsTotal, page: p1.targetsPage, per: p1.targetsPerPage }));
+      ok("1.grid22 · page 2 is a DIFFERENT set of rows, and the two pages together are the whole set with nothing repeated and nothing lost",
+        p2.targets.length === 2 && p2.targetsPage === 2
+          && new Set([...ids(p1), ...ids(p2)]).size === 22
+          && ids(p1).every((id: string) => !ids(p2).includes(id)),
+        j({ p2: p2.targets.length, union: new Set([...ids(p1), ...ids(p2)]).size }));
+      /* ⛔ THE TAB COUNT IS THE WHOLE SET, NOT THE PAGE. It was `targetRows.filter(ACTIVE).length` over one page,
+         so the badge read 20 on page 1 and 2 on page 2 for the same account — a figure with no basis. */
+      ok("1.grid22 · the tab count is the account's own ACTIVE total and does not change as the officer pages",
+        p1.targetsActive === 22 && p2.targetsActive === 22 && p1.targetsActive === p2.targetsActive,
+        j({ p1: p1.targetsActive, p2: p2.targetsActive }));
+      /* ⛔ A HAND-TYPED PAGE PAST THE END IS SERVED AS THE LAST PAGE, never as an empty grid under a pager
+         pointing somewhere else — and a page number that is not a page at all reads as page 1. */
+      const over = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, 99);
+      const junk = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, Number("x"));
+      ok("1.grid22 · `?tpage=99` is served as the LAST page with its rows, and a page number that is not one reads as page 1",
+        over.targetsPage === 2 && j(ids(over)) === j(ids(p2)) && junk.targetsPage === 1 && j(ids(junk)) === j(ids(p1)),
+        j({ over: over.targetsPage, overRows: over.targets.length, junk: junk.targetsPage }));
+    }
     /* ⛔ 432(f), THE TARGET-END HALF: the population is DERIVED, not typed. Three of `TARGET_END_CAPTION`'s eleven
      * rows carry a word the console may not paint, and a hand reading is what left 432(f) one short on the way-out
      * table. Both directions: every dirty caption is overridden, and no already-clean one is. */
@@ -3234,6 +3278,40 @@ export default function Ruling513Control() {
   ok("1.301 · …and the gate's `title` prop is OPTIONAL, so no other section changes",
     /title\?: string/.test(read("src/components/admin/admin-section-gate.tsx"))
       && /titleProp \?\? crumbsFromPath/.test(read("src/components/admin/admin-section-gate.tsx")), "");
+
+  /* ━━ ⛔ 551(a) · A REFUSAL MAY NOT HAND THE RECORD ID BACK IN ITS OWN REDIRECT TARGET ━━━━━━━━━━━━━━━━━━━━━
+   * MEASURED, not predicted: `qa:house-bot-console-probe` printed `leaks: 96` = 8 route instances × 4 non-admin
+   * viewers × 3 transports, and for the player, the holder and a trigger player every single body was
+   * `NEXT_REDIRECT;replace;/auth/admin?next=%2Fadmin%2Fdesk%2Fhb_1d2a…;307;`. The admin shell carries a deep-link
+   * destination through the login gate, and on a record route that destination IS the record id.
+   * ⚠️ The id was in the URL the viewer themselves requested, so no refusal ever told anyone an id they did not
+   * hold — this is ruling 548's screenshot-and-log channel, not ruling 259's payload class. It is fixed anyway:
+   * the section serves a refused officer just as well, and it empties three quarters of the probe's population.
+   * ⛔ THE POPULATION IS `ID_CRUMB`'s, so the rule cannot be re-landed by a new id prefix, and BOTH directions are
+   * pinned: the desk loses its id, and a section that paints its ids keeps its deep link. */
+  {
+    const dest = (p: string): string => NAV.adminNextDest(p);
+    ok("1.551a · the desk's refusal destination is the SECTION — the record id is gone from the `next=` target, with the record's tab",
+      dest(ID_PATH) === "/admin/desk" && dest(`${ID_PATH}?tab=targets`) === "/admin/desk"
+        && !dest(ID_PATH).includes("hb_"), j({ bare: dest(ID_PATH), tabbed: dest(`${ID_PATH}?tab=targets`) }));
+    ok("1.551a · …and the SECTION's own deep link is untouched, so nothing legitimate is lost",
+      dest("/admin/desk") === "/admin/desk" && dest("/admin/desk?tab=limits") === "/admin/desk?tab=limits",
+      j([dest("/admin/desk"), dest("/admin/desk?tab=limits")]));
+    ok("1.551a · CONTROL · a section that does NOT mask its ids still keeps its deep link whole — this is a declared rule, not a blanket truncation of every admin URL",
+      dest("/admin/kyc/hb_0123456789abcdef01234567") === "/admin/kyc/hb_0123456789abcdef01234567"
+        && dest("/admin/players/usr_6e2412ab?tab=audit") === "/admin/players/usr_6e2412ab?tab=audit",
+      j([dest("/admin/kyc/hb_0123456789abcdef01234567"), dest("/admin/players/usr_6e2412ab?tab=audit")]));
+    /* ⛔ AND EVERY `next=` THE ADMIN SHELL BUILDS GOES THROUGH IT. Four sites build one — two login redirects and
+       the TOTP step-up in the layout, and the action guard's own. A site that skipped the helper would leak on
+       exactly the request that reached it, so the population is counted from disk, not trusted. */
+    const layoutSrc = decomment(read("src/app/admin/layout.tsx"));
+    const guardSrc = decomment(read("src/lib/server/admin-guard.ts"));
+    const built = (src: string): number => (src.match(/next=\$\{encodeURIComponent\(/g) ?? []).length;
+    const viaHelper = (src: string): number => (src.match(/next=\$\{encodeURIComponent\(adminNextDest\(/g) ?? []).length;
+    ok("1.551a · every `next=` target the admin shell builds is passed through `adminNextDest` — none is built from the raw href",
+      built(layoutSrc) === 3 && viaHelper(layoutSrc) === 3 && built(guardSrc) === 1 && viaHelper(guardSrc) === 1,
+      j({ layout: [built(layoutSrc), viaHelper(layoutSrc)], guard: [built(guardSrc), viaHelper(guardSrc)] }));
+  }
 
   /* 1.300 / 1.380 · the gate is awaited FIRST, with a STRING LITERAL route, before the reader. */
   const gateAt = pageCode.indexOf('houseConsoleAudience(session?.userId ?? null, "/admin/desk")');

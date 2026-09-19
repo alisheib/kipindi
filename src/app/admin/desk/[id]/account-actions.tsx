@@ -185,7 +185,7 @@ export function DeskAccountActions({
       >
         {open !== null && (
           <div className="space-y-4">
-            <h2 id={headingId} className="text-h3 text-text pr-8">{open.title}</h2>
+            <h2 id={headingId} className="font-display text-body-lg font-semibold text-text pr-8">{open.title}</h2>
             <p className="text-body-sm text-text-secondary">{open.body}</p>
 
             {open.passwordLabel !== null && (

@@ -188,7 +188,7 @@ export function DeskSwitch({
         initialFocus={reasonRef}
       >
         <div className="space-y-4">
-          <h2 id={headingId} className="text-h3 text-text pr-8">{copy.title}</h2>
+          <h2 id={headingId} className="font-display text-body-lg font-semibold text-text pr-8">{copy.title}</h2>
           <p className="text-body-sm text-text-secondary">{copy.body}</p>
 
           <Field label={copy.reasonLabel} hint={copy.reasonHint} dataField="reason">

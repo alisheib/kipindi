@@ -445,7 +445,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
 
   // The sealed store API (N1 §2, N2 §2): later commits and their suites call these names.
   const SEALED: Record<string, readonly string[]> = {
-    HouseBotTargetStore: ["insert", "casUpdate", "remove", "endActive", "listForBot", "activeForMarket", "everStopped", "countActive", "endAllForBot"],
+    HouseBotTargetStore: ["insert", "casUpdate", "remove", "endActive", "listForBot", "countForBot", "activeForMarket", "everStopped", "countActive", "endAllForBot"],
     HouseBotIntentStore: ["insertTargetedIfActive", "insertIgnoringConflict", "claimBatch", "claimById", "requeueTransient", "markPlaced", "expireStale", "cancelLive"],
     HouseBotPressStore: ["insertChecking", "refuse", "queue", "doneEnterNow", "doneInTx", "interruptStale", "claimAuditLease", "listAuditRepair"],
     HouseBotEventStore: ["drawOpenerSide", "findOpenerDraw"],

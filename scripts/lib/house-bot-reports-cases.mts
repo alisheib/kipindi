@@ -1252,8 +1252,13 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
 /* ⭐ C7 step 3b · replan ruling 537 · `houseLimitsSaveForConsole` is the section's first WRITER, and it joins this
  * table for the same reason every reader does: ruling 523 measured that a server action is a POST to whatever URL the
  * browser is on, carrying a `Next-Action` id, so NO path rule can see it — the arity pin, the signed-in-viewer pin
- * and the own-route pin are the only things standing between it and ruling 259's measured defect class. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3 };
+ * and the own-route pin are the only things standing between it and ruling 259's measured defect class.
+ * ⚠️ AND `houseDetailForConsole` IS PINNED AT **4**, NOT 3, FROM C7 STEP 4c — RE-ANCHORED, NEVER RELAXED. The
+ * account page's Targets grid gained a numbered pager, so the gate now takes the requested page as its fourth
+ * argument. The pin's job is unchanged and undiminished: a call with the wrong number of arguments is still red,
+ * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
+ * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseSwitchForConsole: 3, houseAccountActForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");

@@ -33,6 +33,7 @@ import { notFound } from "next/navigation";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
+import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
 import { FormColumn } from "@/components/ui/form-column";
@@ -61,18 +62,21 @@ export default async function AdminDeskAccountPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
+  searchParams: Promise<{ tab?: string | string[]; tpage?: string | string[] }>;
 }) {
-  /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE THE RECORD IS READ AND BEFORE `notFound()` CAN BE REACHED (399). */
+  /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE THE RECORD IS READ AND BEFORE `notFound()` CAN BE REACHED (399).
+     ⚠️ `searchParams` is read ABOVE the gate only because the Targets pager's page number is an argument to it.
+     It is the REQUEST's own query string and no record is touched to obtain it, so the verdict still precedes
+     every read of the record and `notFound()` still cannot be reached before the refusal. */
   const session = await currentSession();
   const { id } = await params;
-  const answer = await houseDetailForConsole(session?.userId ?? null, "/admin/desk", id);
+  const sp = await searchParams;
+  const tab = consoleDetailTab(sp.tab);
+  const tpageRaw = Array.isArray(sp.tpage) ? sp.tpage[0] : sp.tpage;
+  const answer = await houseDetailForConsole(session?.userId ?? null, "/admin/desk", id, Number(tpageRaw ?? 1));
   if (!answer) return null;
   if (!answer.found) notFound();
   const view = answer;
-
-  const sp = await searchParams;
-  const tab = consoleDetailTab(sp.tab);
   const rulesRows = view.rules;
   const targetRows = view.targets;
   const usageRows = view.usage;
@@ -335,6 +339,23 @@ export default async function AdminDeskAccountPage({
                   </tbody>
                 </table>
               </ScrollX>
+            )}
+            {/* ⛔ THE PAGER, AND WHY THE TOTAL IS NOT `targetRows.length` (grid-paging §2.2). Every target this
+                account has ever had is kept, so the list grows with every poll it is pointed at — a grid that
+                rendered one read whole would hide row 21 with nothing on the page to say so. `targetsTotal` is
+                the console reader's own COUNTING read; the house DAL clamps list readers at 500, so a total
+                taken from the page would stop the pager short of the last page. `tpage` and not `page` because
+                this grid shares its URL with the tab rail (and, later, any other list on this route). */}
+            {targetRows !== null && view.targetsTotal !== null && (
+              <div className="p-4 pt-0">
+                <AdminPagination
+                  total={view.targetsTotal}
+                  page={view.targetsPage}
+                  perPage={view.targetsPerPage}
+                  param="tpage"
+                  baseHref={buildBaseHref(`${CONSOLE_ROUTE}/${view.id}`, { tab: "targets" }, "tpage")}
+                />
+              </div>
             )}
           </AdminCard>
           </>)}

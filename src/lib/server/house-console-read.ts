@@ -1770,9 +1770,22 @@ export type ConsoleDetailView = {
   rules: ConsoleRuleRow[] | null;
   /** Why the rules are not editable here, beside the card (432(j)). */
   rulesReason: string;
-  /** 508 · this account's targets, newest first. ⛔ `null` means the read FAILED or was not taken (358). */
+  /** 508 · this account's targets, newest first — ONE PAGE of them. ⛔ `null` means the read FAILED or was not taken (358). */
   targets: ConsoleTargetRow[] | null;
   targetsActive: number | null;
+  /**
+   * ⛔ THE TARGETS PAGER'S THREE FACTS (grid-paging §2.2). The Targets tab lists every target this account has
+   * ever had, and that set has no ceiling: an ENDED target is kept as a record, so the list grows with every poll
+   * the account is ever pointed at. Rendering a limit-20 read whole would silently hide row 21 with nothing on the
+   * page to say so — the exact defect `test:grid-paging` exists for.
+   * ⛔ `targetsTotal` COMES FROM `countForBot`, NEVER FROM `targets.length`: the DAL clamps list readers at 500,
+   * so a total built from the page would lie and the pager would stop short of the last page.
+   */
+  targetsTotal: number | null;
+  /** The 1-indexed page `targets` holds, already clamped to the set (1 when there is nothing to page). */
+  targetsPage: number;
+  /** The page size the pager must be drawn with, so the page and the control can never disagree. */
+  targetsPerPage: number;
   /** ⭐ 415 · the acts this account's CURRENT state allows, each with every word its dialog paints (388). */
   acts: ConsoleAccountActDialog[];
   /** ⛔ 432(j) · what the chip means when NO live cause is beside it — never painted with . */
@@ -1785,6 +1798,18 @@ export type ConsoleDetailView = {
 
 /** What the account page's reader answers. ⛔ Three answers, and two of them are indistinguishable from outside (399). */
 export type ConsoleDetailAnswer = ConsoleDetailView | { found: false };
+
+/**
+ * The Targets tab's page size. It is the admin table size the shared pager already defaults to, written here
+ * rather than imported because `@/components/ui/pagination` is a CLIENT-reachable module and this one is
+ * server-only — the render takes the number from the view, so the page and its control cannot disagree.
+ */
+const CONSOLE_TARGETS_PER_PAGE = 20;
+
+/** `?tpage=` as a whole page number. Anything else — absent, 0, -3, 1.5, NaN — is page 1. */
+function consolePageNumber(raw: number | undefined): number {
+  return Number.isSafeInteger(raw) && (raw as number) >= 1 ? (raw as number) : 1;
+}
 
 /**
  * ⛔ THE CONSOLE'S OWN WORDS FOR A TARGET'S END, WHERE THE SHARED CAPTION CARRIES ONE 453 FORBIDS.
@@ -2182,6 +2207,8 @@ export async function houseDetailForConsole(
   viewerUserId: string | null | undefined,
   route: string,
   id: string,
+  /** The Targets tab's 1-indexed page, straight off `?tpage=`. Anything that is not a whole page reads as 1. */
+  targetsPage?: number,
 ): Promise<ConsoleDetailAnswer | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
@@ -2248,6 +2275,9 @@ export async function houseDetailForConsole(
       statusNote: null,
       targets: null,
       targetsActive: null,
+      targetsTotal: null,
+      targetsPage: 1,
+      targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
     };
   }
 
@@ -2255,13 +2285,24 @@ export async function houseDetailForConsole(
    * ⛔ AND ONE WALLET READ, THROUGH THE ENGINE'S OWN SNAPSHOT (356, 368). `readBotAndHolder` is the function fire
    * itself calls, so this page and the engine can never disagree about why an account is stopped — which is
    * `control.ts`'s own stated reason for existing. It performs exactly one `db.wallet.findByUserId`. */
-  const [holderR, dayR, exposureR, staffR, rateR, targetsR, parseR] = await Promise.allSettled([
+  /* ⛔ THE TARGETS PAGER READS THREE THINGS, NOT ONE, AND EACH IS THE READER FOR ITS OWN QUESTION.
+   * · `listForBot(… offset)` is the PAGE — `pageLimit` clamps it at 500 rows, so it can answer "which rows"
+   *   and nothing else;
+   * · `countForBot(bot.id, "all")` is the TOTAL the pager draws its last page from. A total taken from the page
+   *   would read 20 for ever and the control would never appear at all;
+   * · `countActive({ botId })` is the TAB COUNT. It was read off the page's own rows before, which made the
+   *   badge "active targets among the newest 20" — a figure with no basis the moment a 21st target exists, and
+   *   one that would have changed as an officer paged. */
+  const wantPage = consolePageNumber(targetsPage);
+  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR] = await Promise.allSettled([
     readBotAndHolder(bot.id, { nowMs }),
     houseDayBook(dayKey, bot.id),
     houseOpenExposure(bot.id),
     houseBotIntentStore.staffChosenPlacedToday({ houseBotId: bot.id, dayKey }),
     houseSeamStore.botRateUsage({ houseBotId: bot.id }),
-    houseBotTargetStore.listForBot(bot.id, "all", null, { limit: 20 }),
+    houseBotTargetStore.listForBot(bot.id, "all", null, { limit: CONSOLE_TARGETS_PER_PAGE, offset: (wantPage - 1) * CONSOLE_TARGETS_PER_PAGE }),
+    houseBotTargetStore.countForBot(bot.id, "all"),
+    houseBotTargetStore.countActive({ botId: bot.id }),
     loadParseContext(),
   ]);
 
@@ -2272,7 +2313,20 @@ export async function houseDetailForConsole(
   const rate = rateR.status === "fulfilled"
     ? (rateR.value[0] ?? { houseBotId: bot.id, placedLastHour: 0, placedLastDay: 0, lastPlacedAt: null })
     : null;
-  const targetRows = targetsR.status === "fulfilled" ? targetsR.value.rows : null;
+  const targetsTotal = targetsCountR.status === "fulfilled" ? targetsCountR.value : null;
+  /* ⛔ A PAGE PAST THE END IS SERVED AS THE LAST PAGE, NOT AS AN EMPTY GRID. `?tpage=99` on a nine-page account
+   * would otherwise render a card with no rows and a pager pointing at a page that is not the one it drew. The
+   * re-read costs one statement and only ever happens on a page number a hand typed. */
+  const lastPage = targetsTotal == null ? wantPage : Math.max(1, Math.ceil(targetsTotal / CONSOLE_TARGETS_PER_PAGE));
+  const shownPage = Math.min(wantPage, lastPage);
+  let targetPage = targetsR.status === "fulfilled" ? targetsR.value : null;
+  if (targetPage != null && shownPage !== wantPage) {
+    try {
+      targetPage = await houseBotTargetStore.listForBot(bot.id, "all", null,
+        { limit: CONSOLE_TARGETS_PER_PAGE, offset: (shownPage - 1) * CONSOLE_TARGETS_PER_PAGE });
+    } catch { targetPage = null; }
+  }
+  const targetRows = targetPage == null ? null : targetPage.rows;
   const parseCtx = parseR.status === "fulfilled" ? parseR.value : null;
 
   /* ⛔ 311/413/432(f) · the way out of the FIRST live cause, in the console's own neutral words, finished on the
@@ -2390,6 +2444,9 @@ export async function houseDetailForConsole(
     acts: actDialogsFor(bot.status),
     statusNote: statusNoteFor(bot.status, bot.pauseReason, wayOut),
     targets,
-    targetsActive: targetRows == null ? null : targetRows.filter((t: StoredHouseBotTarget) => t.status === "ACTIVE").length,
+    targetsActive: targetsActiveR.status === "fulfilled" ? targetsActiveR.value : null,
+    targetsTotal,
+    targetsPage: shownPage,
+    targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
   };
 }

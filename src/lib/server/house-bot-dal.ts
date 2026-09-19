@@ -1546,8 +1546,18 @@ export interface HouseBotTargetStore {
    * vetoed.
    */
   veto(targetId: string, tx?: HouseTx): Promise<{ row: StoredHouseBotTarget; previousEndCause: TargetEndCause | null } | null>;
-  /** The Targets tab: newest first, 20 by default, keyset-paged. */
-  listForBot(botId: string, status: TargetListStatus, cursor: KeysetCursor | null, opts?: { limit?: number }, tx?: HouseTx): Promise<Page<StoredHouseBotTarget>>;
+  /** The Targets tab: newest first, 20 by default, keyset-paged — or `offset`-skipped for a numbered pager. */
+  listForBot(botId: string, status: TargetListStatus, cursor: KeysetCursor | null, opts?: { limit?: number; offset?: number }, tx?: HouseTx): Promise<Page<StoredHouseBotTarget>>;
+  /**
+   * ⛔ THE COUNTING READER THE TARGETS PAGER NEEDS, AND WHY IT IS A SECOND MEMBER RATHER THAN A FIELD ON THE PAGE.
+   * `AdminPagination` needs a REAL total to draw "page 3 of 9", and `pageLimit` clamps every list reader in this
+   * DAL at 500 rows — so a total taken from `listForBot` would read 500 for ever on the day an account passes it,
+   * and the pager would silently stop at a page that is not the last. This counts the whole filtered set, in one
+   * statement, and returns no row to anybody.
+   * ⚠️ `countActive` is NOT this: it counts ACTIVE targets only (and across all accounts when `botId` is omitted),
+   * while the Targets tab lists `all` — every target the account has ever had, which is the set that grows.
+   */
+  countForBot(botId: string, status: TargetListStatus, tx?: HouseTx): Promise<number>;
   /** ACTIVE targets, optionally only those created at or before a pass's DB now (N2 §4). */
   listActive(opts?: { createdAtOrBefore?: string }, tx?: HouseTx): Promise<StoredHouseBotTarget[]>;
   activeForMarket(marketId: string, tx?: HouseTx): Promise<StoredHouseBotTarget | null>;
@@ -1985,13 +1995,14 @@ function memSnapshot(): () => void {
 }
 
 /** Newest first by `(createdAt, id)`, strictly after the cursor — the memory keyset (C7). */
-function memPage<R extends { createdAt: string; id: string }>(rows: R[], cursor: KeysetCursor | null | undefined, limit: number): Page<R> {
+function memPage<R extends { createdAt: string; id: string }>(rows: R[], cursor: KeysetCursor | null | undefined, limit: number, offset = 0): Page<R> {
   const n = pageLimit(limit);
+  const skip = wholeArg("offset", offset);
   const sorted = rows.sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
   const after = cursor
     ? sorted.filter((r) => ms(r.createdAt) < ms(cursor.createdAt) || (ms(r.createdAt) === ms(cursor.createdAt) && r.id < cursor.id))
     : sorted;
-  const page = after.slice(0, n + 1);
+  const page = after.slice(skip, skip + n + 1);
   const more = page.length > n;
   const out = page.slice(0, n).map(clone);
   const last = out[out.length - 1];
@@ -2676,7 +2687,11 @@ const memoryHouseBotTargets: HouseBotTargetStore = {
   async listForBot(botId, status, cursor, opts) {
     const want = TARGET_LIST_STATUSES[status];
     return memPage([...memTargets.values()].filter((t) => t.houseBotId === botId && want.includes(t.status)),
-      cursor, opts?.limit ?? TARGET_PAGE_SIZE);
+      cursor, opts?.limit ?? TARGET_PAGE_SIZE, opts?.offset ?? 0);
+  },
+  async countForBot(botId, status) {
+    const want = TARGET_LIST_STATUSES[status];
+    return [...memTargets.values()].filter((t) => t.houseBotId === botId && want.includes(t.status)).length;
   },
   async listActive(opts) {
     return [...memTargets.values()]
@@ -3100,17 +3115,20 @@ async function exec(tx: HouseTx | undefined, text: string, values: readonly unkn
   }
 }
 
-/** One keyset page, newest first by `("createdAt", "id")` (C7). */
+/** One keyset page, newest first by `("createdAt", "id")` (C7), optionally skipping `offset` rows first.
+ *  ⛔ `offset` IS FOR A NUMBERED PAGER ONLY, and it is a SKIP, never a total: `pageLimit` clamps every list
+ *  reader at 500 rows, so a caller that needs "how many are there" asks a COUNTING reader, never this one. */
 async function sqlPage<R extends { createdAt: string; id: string }>(
   tx: HouseTx | undefined, table: HouseTable, where: string[], p: Params,
-  cursor: KeysetCursor | null | undefined, limit: number, map: (r: RawRow) => R,
+  cursor: KeysetCursor | null | undefined, limit: number, map: (r: RawRow) => R, offset = 0,
 ): Promise<Page<R>> {
   const n = pageLimit(limit);
+  const skip = wholeArg("offset", offset);
   if (cursor) {
     where.push(`("createdAt", "id") < (${p.raw(new Date(ms(cursor.createdAt)).toISOString(), "timestamptz")}, ${p.raw(cursor.id, "text")})`);
   }
   const text = `SELECT * FROM "${table}" WHERE ${where.length ? where.join(" AND ") : "true"}`
-    + ` ORDER BY "createdAt" DESC, "id" DESC LIMIT ${p.raw(n + 1, "int")}`;
+    + ` ORDER BY "createdAt" DESC, "id" DESC LIMIT ${p.raw(n + 1, "int")} OFFSET ${p.raw(skip, "int")}`;
   const raws = await sql(tx, text, p.values);
   const rows = raws.slice(0, n).map(map);
   const last = rows[rows.length - 1];
@@ -3875,7 +3893,13 @@ const prismaHouseBotTargets: HouseBotTargetStore = {
   async listForBot(botId, status, cursor, opts, tx) {
     const p = new Params();
     const where = [`"houseBotId" = ${p.raw(botId, "text")}`, `"status" = ANY(${p.raw([...TARGET_LIST_STATUSES[status]], "text[]")})`];
-    return sqlPage(tx, "HouseBotTarget", where, p, cursor, opts?.limit ?? TARGET_PAGE_SIZE, toHouseBotTarget);
+    return sqlPage(tx, "HouseBotTarget", where, p, cursor, opts?.limit ?? TARGET_PAGE_SIZE, toHouseBotTarget, opts?.offset ?? 0);
+  },
+  async countForBot(botId, status, tx) {
+    const p = new Params();
+    const where = [`"houseBotId" = ${p.raw(botId, "text")}`, `"status" = ANY(${p.raw([...TARGET_LIST_STATUSES[status]], "text[]")})`];
+    const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotTarget" WHERE ${where.join(" AND ")}`, p.values);
+    return Number(rows[0]?.n ?? 0);
   },
   async listActive(opts, tx) {
     const p = new Params();
