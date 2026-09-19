@@ -1387,3 +1387,67 @@ bots and what keeps D19 true").
        a second argument in a visual pass, on the same day step 4 will rebuild the switch's whole story, is churn
        for no reachable defect. It is written down with its measurement so step 4 cannot ship the ceremony without
        meeting it.
+
+
+548. **THE BREADCRUMB PAINTS THE RECORD ID VERBATIM — REAL, FIXED, AND DELIBERATELY DOWNGRADED FROM THE
+     SEVERITY IT WAS REPORTED AT.** C7 step 4 read it off its own tile: `/admin/desk/hb_32320_2` renders
+     the crumb **`Admin / Desk / hb_32320_2`**. The builder called it *"the most serious thing I found and
+     did not close."* Measured, it is not, and saying so precisely is the point of this ruling.
+     - **The mechanism, confirmed.** `src/components/admin/admin-nav-groups.ts:57-61`: `looksLikeId`
+       returns true for any digit-bearing segment containing an underscore. `hb_` is **not** in the prefix
+       allowlist (`usr|mkt|udr|txn|kyc`) — it is kept by that generic second rule. The crumb is a SHELL
+       element, so ruling 301's neutral panel title does not replace it and ruling 357 closed the id
+       channel through the panel heading only.
+     - ⛔ **Why it is NOT a disclosure, and why overstating it would have been its own defect.** The crumb
+       is built from the URL segment **the viewer themselves requested**. It cannot tell a non-audience
+       viewer an id they did not already hold — at worst it echoes back what they typed. Ruling 259's
+       class is a payload carrying a value the viewer did not supply; this is the opposite direction. A
+       register that records this beside the `/admin/kyc/[id]` officer-name leak would teach the next
+       session that both cost the same, and they do not.
+     - **What it IS, and it is still worth fixing.** A **screenshot channel**, which is the exact reason
+       ruling 453 is stricter than its adjudicator asked: Ali works by screenshot and the repository is
+       public, so a crumb reading `hb_…` names the feature's own id scheme the moment one image leaves the
+       screen. And no guard sees it — the bounded-id needle requires 24 hex (`hb[iethp]?_[0-9a-f]{24}`)
+       and `hb_32320_2` does not match.
+     - **The fix.** The desk's `[id]` crumb segment renders a NEUTRAL placeholder, the way ruling 313
+       already gives the detail route a ghost title, rather than the raw id — ⛔ and it is fixed **in the
+       crumb builder's own home**, not by adding `hb_` to a list, because the next prefix would re-land it.
+       The guard's population is every crumb the console renders, derived from the route table.
+     - ⛔ **And the half that IS unmeasured stays open:** `qa:house-bot-console-probe` has **never run
+       against a tree in which `/admin/desk/[id]` exists**, so ruling 399's served half — that a missing
+       record and a refused viewer answer identically — is asserted in source and on both stores but not
+       on the wire. `DEFERRED-TESTS` row 44 holds it, and it is owed before Commit 7 closes.
+
+549. **C7 STEP 4 IS SPLIT: 4a IS DONE, 4b IS NAMED — and the split is recorded rather than the step being
+     called closed.** The builder delivered the account page and stopped honestly, reporting what it had
+     not built instead of thinning the brief to fit. That is the correct behaviour and the record should
+     say so.
+     - **4a, BUILT and proven:** `houseDetailForConsole` (358) · the strip from the one server map
+       (311/413) · **1.399** (three distinct answers, verdict before `notFound()`, both stores) · the
+       balance-FLOOR STATE in all four branches, never an amount (368/459) · the Limit usage card's five
+       money and two count rows (363/351/366/367) · **X6** (507) · 508's `rules` and `targets` panels ·
+       the read-only REMOVED state · `botRateUsage` with both twins and a parity case · **504 DECIDED**
+       (`lastStoppedAt` DELETED with its name in `NEVER`; `veto` KEPT with its callers named and COUNTED)
+       · 432(h)/432(g)'s way-out column and Last bet · 432(f)'s way-out and target-end halves — measured
+       at **SEVEN** dirty rows where 432(f) had named one · 506's 1.350 and 1.408 · replan ruling **547**.
+       Floors `test:house-bot-console` **376 / 230**, `dal-parity` 1357/0, `red-anchors` 2230/4 (the same
+       inherited four), 11 mutations applied and re-evaluated, 0 missed.
+     - ⛔ **4b, OWED and unbuilt — this is the half that makes the console operable:** the **master-switch
+       ceremony** (388, 415, 454's typed `SWITCH ON`, the kill switch) · the action row's dialogs (Start,
+       Pause, Re-verify, Remove, Cancel) · 508's **"Enter now"** · the **engine-health Callout**
+       (309/352/353/354/414) · **ruling 514's A24 alert** · **X1's duty-name half** · 432(f)'s
+       `eligibility.ts` half (step 6's surface).
+     - ⚠️ **A24 is deader than ruling 514 said.** 514 recorded that `POLLER_FAILURE_ALERT_AFTER` has one
+       occurrence and `ALERT_KEY.pollerFailing` no writer. Measured at step 4: `pollerErrorAt`,
+       `pollerErrorCode`, `pollerErrorStreak` and the durable `skewMs` have **no writer anywhere** — the
+       whole limb is dead, not only the alert. The writer belongs in `worker.ts` through
+       `houseBotRuntimeStore.upsert`, ⛔ **never `beat()`**, because `beat()` stamps `beatAt` and a failed
+       pass that looked alive is the precise defect A24 exists for.
+     - **Ruling 435(e) is accepted:** `houseEngineForConsole` is NOT a second gated reader — 353's
+       staleness verdict needs the control row `readDeskCore` has already read, and a second gated reader
+       would put a SECOND control read in one render, which 433(d) refuses by name. The engine facts go
+       inside the existing door, in the one settled set.
+     - **Also accepted, with its reasoning:** the `rules` panel renders VALUES, not inputs, because
+       `houseBotStore.saveRules` has no `src/` caller — 432(a) refuses a control with nothing behind it,
+       and ruling 537 reversed that logic for the LIMITS only, where the save existed. The distinction is
+       the measurement, not the preference.
