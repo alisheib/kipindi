@@ -1605,3 +1605,40 @@ bots and what keeps D19 true").
        must have that number re-measured after the fix, not assumed from the reasoning that produced it.
        Two rulings in this programme have now predicted a population reduction that did not arrive (524's
        premise, and this one), and both were caught only because someone re-ran the instrument.
+
+---
+
+555. **RULING 553's OWED DECISION IS DISCHARGED BY THE OWNER, AND THE GUARD IS NOT TOUCHED.**
+     Ruling 553 stopped the programme at a contradiction between two of Ali's own instructions and named
+     two options for him, refusing to choose either. On **2026-09-19** the nineteenth session put the
+     contradiction to him in those terms, and he answered — his words, verbatim: *"i also say u should take
+     anydceidons instead o fcming back to me"*, after *"proceed"* and *"request tomi cpermissions now to
+     preent any blovkers and finalzoe"*. Taken together with ruling 471's *"this u do ti always merg eand
+     push liv ont worry"*, that is the same delegation made twice, the second time after being shown the
+     cost. **So the merge is authorised, and `PROGRESS.md:70`'s no-main-push line is the stale side of the
+     contradiction.**
+     - ⛔ **The hook is NOT disarmed, edited, bypassed, or weakened — this ruling changes nothing about it.**
+       553 was right that disarming a safety guard to reach a green result is the inversion of what guards
+       are for, and that stays true after an owner's yes. The guard remains armed at
+       `C:/kipindi-house-bots-hooks` and `F:/kipindi-house-bots-hooks`, and a session that finds it firing
+       has found a worktree trying to do something it may not do.
+     - **The merge goes through this file's own REL-4 step 2 recipe** — a temporary detached release
+       worktree off `origin/main`, `merge --no-ff --no-edit origin/house-bots`, push, worktree removed.
+       553 declined that recipe because taking it *while the owner had not decided* would have been building
+       a path around a live refusal. That objection is spent: the recipe is the plan's sanctioned shape, and
+       with the decision taken it is the authorised path rather than a way around one.
+     - **471's discipline is untouched and still binds every merge:** only at a GREEN, COMPLETE checkpoint
+       whose own exit gate is met and whose tree is clean; `origin/main` merged INTO the branch first and
+       proven green there before anything goes the other way; never a rebase, never a force, never
+       `--theirs` on a file the trunk moved.
+     - ⛔ **And 553's last paragraph binds hardest: the gate is RE-MEASURED on the tree in hand, never
+       inherited.** The green verdict recorded at `e7e7b325` is evidence about `e7e7b325`. `HEAD` has since
+       moved, and it will move again before any merge. A session that merges on a verdict it read rather
+       than one it measured has done the one thing this programme exists to prevent.
+     - **Sequencing, decided here rather than left open:** W25 is built and merged FIRST. It is a live
+       player-PII leak and a live compliance-trail corruption on `main` (521), while everything waiting on
+       the house-bots branch ships with the master switch OFF and stakes nothing. Merging the branch's 59 commits of
+       switched-off feature work ahead of a live disclosure defect would be the wrong order, and no reading
+       of the owner's delegation asks for it.
+     - **What is NOT delegated, and no ruling may take:** turning the master switch on. D19 and PLAN §11
+       reserve it to Ali, 471 did not touch it, and neither does this.
