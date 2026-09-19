@@ -42,6 +42,12 @@ import { currentSession } from "@/lib/server/auth-service";
 import { houseDetailForConsole } from "@/lib/server/house-console-read";
 import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
+/* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422): a client component under
+ * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
+ * act gate — and on an Owner-only route `mayAct` IS `mayView`, so that consultation would be a branch that can
+ * never be false, which 1.422 refuses under this section by name. */
+import { runDeskAccountAction } from "../actions";
+import { DeskAccountActions } from "./account-actions";
 
 /** ⛔ A static neutral title (ruling 402). The account's own label is a GATED value and never reaches the tab. */
 export const metadata = { title: "Admin · Desk" };
@@ -103,6 +109,12 @@ export default async function AdminDeskAccountPage({
                     432(f)). Seven of the shared table's twenty-two sentences name the feature; the console
                     overrides those in its copy home rather than rewriting the engine's own vocabulary. */}
                 {view.wayOut && <p className="text-body-sm text-text-secondary mt-1 max-w-[60ch]">{view.wayOut}</p>}
+                {/* ⛔ 432(j) · THE STATE WITH NO REASON BESIDE IT, WHICH C7 STEP 4a MEASURED AND LEFT OPEN. The way
+                    out comes from the account's LIVE causes (311's law), so an AUTO-PAUSED account whose cause has
+                    since cleared painted a claret chip with NOTHING under it — and that account can be Started
+                    right now. A state with no reason on screen reads as a broken page. ⛔ The two are never both
+                    painted: this is what the chip means when there is no live cause left. */}
+                {view.statusNote && <p className="text-body-sm text-text-secondary mt-1 max-w-[60ch]">{view.statusNote}</p>}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
@@ -121,6 +133,20 @@ export default async function AdminDeskAccountPage({
               </Link>
             </div>
           </div>
+
+          {/* ⭐ THE ACTION ROW (C7-SPEC ruling 415; replan 549's 4b) — the half that makes this page OPERABLE. The
+              server decides which acts this account's CURRENT state allows and hands down every word each dialog
+              paints; this site chooses only where the row sits. ⛔ A REMOVED account gets an empty list and the
+              component renders nothing, which is ruling 358's read-only page rather than a row of dead buttons.
+              ⛔ Start is offered on a stopped account even though its service may refuse it: the refusal, with the
+              href it carries, IS the workflow — it names what has to change. That is not the control-that-can-only
+              -refuse 432(a) forbids, which is why the switch three cards up is disabled in that state and this is
+              not. */}
+          {view.acts.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-border-subtle">
+              <DeskAccountActions acts={view.acts} id={view.id} act={runDeskAccountAction} />
+            </div>
+          )}
         </AdminCard>
 
         {/* 358 · A REMOVED ACCOUNT IS READ-ONLY, AND THE CALLOUT IS THE STATE — not a failure and not an empty page.

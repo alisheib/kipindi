@@ -142,6 +142,13 @@ const EXEMPT: Record<string, string> = {
    *    navigation to guard: the only exits are Cancel and the confirm, and Cancel discards a CONFIRMATION rather
    *    than work in progress. */
   "app/admin/desk/switch-ceremony.tsx": "① the reason and the typed word open inside <Modal>, with scrim-close disabled once anything is typed",
+  /* ⭐ THE SAME FORM, AND ONE FIELD STRONGER STILL. The account's action row (C7-SPEC ruling 415) opens its
+   *    reason, the holder's password and the typed word inside a <Modal> with the same
+   *    `closeOnScrim={!pending && !dirty}`, and it CLEARS the password on every exit including the refusal path —
+   *    the one value on that page belonging to somebody else must not sit on screen waiting for a stray Enter.
+   *    There is nothing to carry across a navigation, because there is no navigation: Cancel and the confirm are
+   *    the only exits, and Cancel discards a CONFIRMATION rather than work in progress. */
+  "app/admin/desk/[id]/account-actions.tsx": "① the reason, the holder's password and the typed word open inside <Modal>, with scrim-close disabled once anything is typed",
   "app/admin/payments/reconcile-controls.tsx": "① fields open inside <Modal>",
   "app/admin/payments/stuck-payout-controls.tsx": "① fields open inside <Modal>",
   "app/admin/players/[id]/balance-adjust-controls.tsx": "① fields open inside <Modal>",

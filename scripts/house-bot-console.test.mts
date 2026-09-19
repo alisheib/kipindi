@@ -71,6 +71,10 @@
  * ⭐ RAISED AGAIN with replan ruling 548's breadcrumb mask and 432(f)'s eligibility half MEASURED — 14 dirty
  * sentences where the ruling named two, tied by existence to the surface that would render them — to what the run
  * PRINTED: **memory 420, Postgres 273**.
+ * ⭐ RAISED AGAIN with the ACCOUNT ACTION ROW — which acts each state allows, Pause and Remove as the OFFICER s
+ * acts rather than the engine s, the typed word checked on the server, every refusal in the console s own words
+ * over a population derived from the service unions, and 432(j) s state-with-no-reason closed — to what the run
+ * PRINTED: **memory 440, Postgres 293**. Seen RED first with the row s server half removed: 14 failed on memory.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -81,6 +85,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 420, postgres: 273 },
+  minPass: { memory: 440, postgres: 293 },
   dbPrefix: "hb_console",
 });

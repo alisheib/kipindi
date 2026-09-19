@@ -51,11 +51,12 @@ import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotRuntime, type StoredHouseBotTarget } from "./house-bot-dal";
 import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
 import { HOUSE_BOT_STATUS_DISPLAY } from "./house-bot/status-display";
-import { DESIGNATE_COPY } from "./house-bot/designation";
+import { DESIGNATE_COPY, reverifyHouseBot, startHouseBot } from "./house-bot/designation";
 import { readBotAndHolder } from "./house-bot/control";
 import { houseEngineBeats, houseEngineVerdict } from "./house-bot/engine-health";
+import { pauseHouseBot, removeHouseBot } from "./house-bot/roster-actions";
 import { playerHandle } from "./house-bot/alerts";
-import { loadParseContext } from "./house-bot/rules-context";
+import { loadParseContext, loadRulesContext } from "./house-bot/rules-context";
 
 /**
  * ⛔ THE SECOND BELT (C7-SPEC ruling 341). `OWNER_ONLY_PREFIXES` in `roles.ts` carries `/admin/desk` too, and it is the
@@ -1768,6 +1769,10 @@ export type ConsoleDetailView = {
   /** 508 · this account's targets, newest first. ⛔ `null` means the read FAILED or was not taken (358). */
   targets: ConsoleTargetRow[] | null;
   targetsActive: number | null;
+  /** ⭐ 415 · the acts this account's CURRENT state allows, each with every word its dialog paints (388). */
+  acts: ConsoleAccountActDialog[];
+  /** ⛔ 432(j) · what the chip means when NO live cause is beside it — never painted with . */
+  statusNote: string | null;
   /** 456 · the door to the holder's own money, which is a platform surface. */
   holderHref: string;
   /** The EAT day every figure on this render was measured over — derived ONCE (348). */
@@ -1848,6 +1853,320 @@ function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1): ConsoleRuleRow[] 
 }
 
 /**
+
+/* ═══ THE ACCOUNT'S ACTION ROW (rulings 388, 415, 420, 453, 512, 522, 523; replan ruling 549's 4b) ═════════════ */
+
+/**
+ * The four acts an officer can perform on ONE account from this page.
+ *
+ * ⛔ FOUR, AND THE OTHER THREE ARE NAMED RATHER THAN QUIETLY ABSENT. Ruling 415 lists Cancel-intent beside these,
+ * and replan ruling 508 schedules "Enter now" with this row. Both act on a QUEUED STAKE or on a MARKET, and this
+ * page has neither: the activity panel is C7 step 5's and the market picker is the wizard's neighbour. A control
+ * with nothing to act on is the dead control 432(a) refuses, so they land with the panel that gives them a
+ * subject — and `test:house-bot-console` ties them to it by existence, the idiom 432(h) used for the way-out
+ * column, so the step that adds the panel cannot forget them.
+ */
+export type ConsoleAccountActKind = "START" | "PAUSE" | "REVERIFY" | "REMOVE";
+
+/** What the action row posts. ⛔ `password` is the HOLDER's, for re-verify only, and it never becomes a session. */
+export type ConsoleAccountActInput = {
+  id: string;
+  act: ConsoleAccountActKind;
+  reason?: string;
+  password?: string;
+  typed?: string;
+};
+
+export type ConsoleAccountActResult =
+  | { ok: true; changed: boolean; note: string | null; warn: boolean }
+  /** `field` is the dialog's own control, never a column (D19); `href` is where the refusal says to go. */
+  | { ok: false; error: string; field?: "reason" | "password" | "typed"; href?: string };
+
+/**
+ * ⛔ EVERY REFUSAL AN OFFICER READS IS THE CONSOLE'S OWN, KEYED BY CODE (ruling 453).
+ *
+ * The services behind this row answer with a `message`, and those sentences are the ENGINE's and the admin bell's
+ * vocabulary, which D19 exempts — measured, they say "This bot was removed.", "Nothing to verify — the bot is
+ * running.", "The bot is running…", and `eligibility.ts` carries FOURTEEN more. None of them may reach a surface a
+ * screenshot can leave. So nothing this row renders comes from a shared table: the code is a closed list, and
+ * `test:house-bot-console` derives that list from the service UNIONS themselves and requires a sentence for every
+ * member — so a code added later cannot reach an owner's screen as the shared sentence or as a bare identifier.
+ *
+ * ⚠️ AND WHAT IS LOST BY IT IS NAMED: an INELIGIBLE Start no longer prints the eligibility row's own words. The
+ * console says what it knows and carries the service's `href` to the thing that has to change; the detail returns
+ * with 432(f)'s eligibility override, which `1.432f` ties to the wizard by existence.
+ */
+const CONSOLE_ACT_REFUSAL: Readonly<Record<string, string>> = {
+  refused: "You can't change this account.",
+  NOT_FOUND: "That account is not on the desk any more. Reload the desk.",
+  ACCOUNT_MISSING: "That account is not on the desk any more. Reload the desk.",
+  REMOVED: "This account was removed from the desk. Nothing on it can be changed.",
+  BOT_REMOVED: "This account was removed from the desk. Nothing on it can be changed.",
+  SCHEMA: "The desk's tables are not present on this database, so nothing changed.",
+  UNREADABLE: "The desk's own state could not be read, so nothing changed.",
+  WRITE_FAILED: "That could not be written. Nothing changed — try again.",
+  INELIGIBLE: "This account cannot start yet. Open it and clear what is stopping it first.",
+  CONSENT: "The holder's permission is not current. Confirm it again with their password, then start.",
+  /* ⛔ ONE SENTENCE FOR TWO SERVICE OUTCOMES, AND IT IS TRUE OF BOTH. `startHouseBot` answers RULES when the
+     saved rules cannot be PARSED and when a parsed rule REFUSES the start (no product chosen, no entry mode, a
+     min gap under the floor) — measured, the first draft here said "can't be read", which is false of the second
+     and is the commonest of the two. The href the service supplies takes the officer to the tab either way. */
+  RULES: "The saved rules do not allow a start yet. Open Rules, review them, save, then start.",
+  LOSS_CAP: "The day's loss limit has already been reached, so nothing more can be staked today.",
+  OWNER_LOSS_LIMIT: "The holder's own loss limit has been reached, so nothing more can be staked today.",
+  CHANGED: "Their password or permission changed a moment ago. Confirm it again, then start.",
+  EMPTY: "Enter the holder's password.",
+  DUPLICATE_SUBMIT: "That was already sent — wait for its answer.",
+  NOTHING_TO_VERIFY: "There is nothing to confirm: this account is running.",
+  BOT_ACTIVE: "This account is running. It stops itself when the password changes — try again in a moment.",
+  BLOCKED: "Something on the holder's own account is stopping this. Open the account to see what.",
+  CHANGED_AGAIN: "Their password changed again while you were typing. Ask them for the newest one.",
+  RESERVED: "Stop here — the last attempts belong to the holder. Ask them to sign in once, then try again.",
+  WRONG_PASSWORD: "That password is not right.",
+  RATE_LIMITED: "Too many checks from your console. Try again shortly.",
+};
+
+/** The word an officer types to arm a removal (415). ⛔ Neutral, and the SERVER checks it, like `SWITCH ON`. */
+export const CONSOLE_REMOVE_WORD = "REMOVE";
+
+/**
+ * ⭐ ONE ACT'S DIALOG, BUILT ON THE SERVER (rulings 388, 415; owner-delegated 453). Every word the officer reads —
+ * the button, the title, the body, both labels, the typed word and both toast titles — crosses the boundary as a
+ * finished string, because ruling 385 measured that most of the sentences this console can emit carry NO
+ * vocabulary word at all: one typed into a client component would ship to every visitor with the disclosure walk
+ * and the bundle scan both reporting clean.
+ */
+export type ConsoleAccountActDialog = {
+  act: ConsoleAccountActKind;
+  /** The row's own button. */
+  label: string;
+  /** 415 · claret is for the one act that cannot be undone; everything else is primary. */
+  tone: "brand" | "claret";
+  /** 415 · a `Modal` FORM (a reason, a password, a typed word) or a plain confirm. */
+  form: boolean;
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  reasonLabel: string | null;
+  reasonHint: string | null;
+  reasonMin: number;
+  reasonMax: number;
+  passwordLabel: string | null;
+  passwordHint: string | null;
+  word: string | null;
+  wordLabel: string | null;
+  wordPlaceholder: string | null;
+  doneTitle: string;
+  failTitle: string;
+};
+
+const ACT_BASE = { cancelLabel: "Cancel", reasonMin: CONSOLE_REASON_MIN, reasonMax: CONSOLE_REASON_MAX } as const;
+const NO_FIELDS = {
+  reasonLabel: null, reasonHint: null, passwordLabel: null, passwordHint: null,
+  word: null, wordLabel: null, wordPlaceholder: null,
+} as const;
+
+/**
+ * The acts this account's CURRENT state allows, in the order an officer reads them.
+ *
+ * ⛔ AN ACT IS OFFERED ONLY WHERE ITS SERVICE CAN PERFORM IT (432(a)): Pause moves an ACTIVE account and nothing
+ * else, Re-verify refuses one that is running, and a REMOVED account has no act left at all — which is why ruling
+ * 358's read-only page renders no row.
+ * ⚠️ START IS OFFERED ON AN AUTO-PAUSED ACCOUNT ON PURPOSE. Its service may refuse it — a live cause, a stale
+ * consent, the day's loss limit — and that refusal, with the href it carries, IS the workflow: it tells the
+ * officer what to fix. That is not a control that can ONLY refuse, which is the thing 432(a) forbids.
+ */
+function actDialogsFor(status: string): ConsoleAccountActDialog[] {
+  if (status === "REMOVED") return [];
+  const out: ConsoleAccountActDialog[] = [];
+  if (status !== "ACTIVE") {
+    out.push({
+      ...ACT_BASE, ...NO_FIELDS, act: "START", label: "Start", tone: "brand", form: false,
+      title: "Start this account",
+      body: "It begins placing stakes as soon as the desk's master switch is on, within the limits on this page and the desk's own.",
+      confirmLabel: "Start", doneTitle: "Started", failTitle: "It did not start",
+    });
+    out.push({
+      ...ACT_BASE, ...NO_FIELDS, act: "REVERIFY", label: "Confirm permission", tone: "brand", form: true,
+      title: "Confirm the holder's permission",
+      body: "Type the holder's own password. It is checked once and never kept: it creates no sign-in, no session and no record of a login.",
+      confirmLabel: "Confirm", doneTitle: "Permission confirmed", failTitle: "It was not confirmed",
+      passwordLabel: "The holder's password",
+      passwordHint: "Ask them for it. The last two attempts are always kept for the holder, so this can never lock them out.",
+    });
+  }
+  if (status === "ACTIVE") {
+    out.push({
+      ...ACT_BASE, ...NO_FIELDS, act: "PAUSE", label: "Pause", tone: "brand", form: false,
+      title: "Pause this account",
+      body: "It stops placing stakes at once, and every stake it has queued is cancelled. Nothing else about it changes.",
+      confirmLabel: "Pause", doneTitle: "Paused", failTitle: "It did not pause",
+    });
+  }
+  out.push({
+    ...ACT_BASE, ...NO_FIELDS, act: "REMOVE", label: "Remove", tone: "claret", form: true,
+    title: "Remove this account from the desk",
+    body: "This cannot be undone. Every queued stake is cancelled and every target ends. The account itself is untouched and stays the holder's own.",
+    confirmLabel: "Remove", doneTitle: "Removed", failTitle: "It was not removed",
+    reasonLabel: "Why are you removing it?",
+    reasonHint: "Kept with the record of the removal.",
+    word: CONSOLE_REMOVE_WORD,
+    wordLabel: `Type ${CONSOLE_REMOVE_WORD} to confirm`,
+    wordPlaceholder: CONSOLE_REMOVE_WORD,
+  });
+  return out;
+}
+
+/**
+ * ⛔ 432(j) ON THE ACCOUNT PAGE — THE STATE WITH NO REASON BESIDE IT, WHICH C7 STEP 4a MEASURED AND LEFT OPEN.
+ *
+ * The way out comes from the account's LIVE causes (ruling 311's law), so an AUTO_PAUSED account whose cause has
+ * since cleared paints a claret chip with NOTHING under it — and that account can be Started right now. A state
+ * with no reason on screen reads as a broken page (432(j)), and this one reads as a broken page that is also
+ * refusing to say what an officer may do about it.
+ * ⛔ IT IS NOT A SECOND WAY-OUT SENTENCE. `wayOut` is what a LIVE cause requires; this is what the chip means when
+ * there is no live cause left, and the two are never both painted.
+ */
+function statusNoteFor(status: string, pauseReason: string | null, wayOut: string | null): string | null {
+  if (wayOut !== null || status === "ACTIVE" || status === "REMOVED") return null;
+  if (pauseReason === "NEW") return "This account has never been started.";
+  if (pauseReason === "MANUAL") return "An officer stopped this account. Nothing is stopping it now — Start it when you are ready.";
+  return "It was stopped automatically, and whatever stopped it has since cleared. Nothing is stopping it now — Start it when you are ready.";
+}
+
+/**
+ * The console's sentence for a refusal, with the two figures the officer actually needs added from the result's own
+ * STRUCTURED fields rather than from the service's sentence — so nothing is lost by refusing to quote it.
+ */
+function actRefusal(code: string, extra: { attemptsBeforeLock?: number | null; retryAfterSec?: number | null } = {}): string {
+  const base = CONSOLE_ACT_REFUSAL[code] ?? CONSOLE_ACT_REFUSAL.refused;
+  if (code === "WRONG_PASSWORD" && typeof extra.attemptsBeforeLock === "number") {
+    return `${base} ${extra.attemptsBeforeLock === 1 ? "1 attempt left before the last two are held for the holder." : `${formatNumber(extra.attemptsBeforeLock)} attempts left before the last two are held for the holder.`}`;
+  }
+  if (code === "RATE_LIMITED" && typeof extra.retryAfterSec === "number") {
+    const s = Math.max(0, Math.floor(extra.retryAfterSec));
+    return `${base.replace(" Try again shortly.", "")} Try again in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}.`;
+  }
+  return base;
+}
+
+/**
+ * ONE ACCOUNT'S ACTION ROW, GATED (rulings 259, 340, 512, 522, 523).
+ *
+ * ⛔ THE VERDICT IS THE FIRST STATEMENT, ON THE STORED ROW, AND IT IS IN THE ACTION'S OWN PATH (522, 523) — a Next
+ * server action is a POST to whatever URL the browser happens to be on, so no middleware rule, no layout and no
+ * `AdminSectionGate` can see it, and a cookie is a photograph of a role taken at sign-in.
+ *
+ * ⛔ THE HOLDER'S PASSWORD NEVER BECOMES A SESSION (02 §2.7, owner ruling D5). It is handed to
+ * `verifyHouseBotPassword` through `reverifyHouseBot`, checked once in memory, and dropped: no session, no cookie,
+ * no `lastLoginAt`, no sign-in audit. It is never logged, never echoed and never put in an audit payload.
+ *
+ * ⛔ AND AN ACT THAT LANDED WITHOUT ITS COMPLIANCE ROW SAYS BOTH (replan rulings 537, 543).
+ */
+export async function houseAccountActForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  input: ConsoleAccountActInput,
+): Promise<ConsoleAccountActResult> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {
+    return { ok: false, error: CONSOLE_ACT_REFUSAL.refused };
+  }
+  const id = typeof input.id === "string" ? input.id : "";
+  if (id.length === 0) return { ok: false, error: CONSOLE_ACT_REFUSAL.NOT_FOUND };
+
+  if (input.act === "START") {
+    /* ⛔ THE RULES CONTEXT IS THE LIVE PLATFORM (04 F5), read here rather than by the page: a console file may name
+     * no house read module (340), and a Start validated against a stale context would accept rules the seam then
+     * refuses every stake against. */
+    let started;
+    try {
+      started = await startHouseBot({ officerId: viewerUserId, botId: id, rulesContext: await loadRulesContext() });
+    } catch {
+      return { ok: false, error: CONSOLE_ACT_REFUSAL.WRITE_FAILED };
+    }
+    if (!started.ok) return { ok: false, error: actRefusal(started.code), href: started.href };
+    /* ⛔ 04 C10 / C3-SPEC ruling 10 · AN ACCOUNT STARTS WHILE THE DESK IS OFF, and the officer is told so rather
+     * than left to read a green chip beside a switch that is off. */
+    return {
+      ok: true, changed: !started.alreadyRunning,
+      note: started.alreadyRunning ? ACT_COPY.alreadyRunning : started.masterOn ? null : ACT_COPY.startedWhileOff,
+      warn: !started.masterOn && !started.alreadyRunning,
+    };
+  }
+
+  if (input.act === "REVERIFY") {
+    const password = typeof input.password === "string" ? input.password : "";
+    let done;
+    try {
+      done = await reverifyHouseBot({ officerId: viewerUserId, botId: id, password });
+    } catch {
+      return { ok: false, error: CONSOLE_ACT_REFUSAL.WRITE_FAILED, field: "password" };
+    }
+    if (!done.ok) {
+      return {
+        ok: false,
+        error: actRefusal(done.code, { attemptsBeforeLock: done.attemptsBeforeLock, retryAfterSec: done.retryAfterSec }),
+        field: done.field ?? "password",
+      };
+    }
+    /* ⛔ RE-VERIFY NEVER STARTS THE ACCOUNT (the service's own rule): it confirms the permission, and Start runs
+     * every Start check afterwards. `wasActive` is what tells the officer the account was running before. */
+    return { ok: true, changed: true, note: done.wasActive ? ACT_COPY.verifiedWasActive : ACT_COPY.verified, warn: false };
+  }
+
+  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+  if (input.act === "REMOVE") {
+    /* ⛔ THE TYPED WORD IS CHECKED ON THE SERVER TOO (388, 415) — a ceremony verified only in a browser is one a
+     * crafted POST walks straight through, and a removal cannot be undone. */
+    if ((typeof input.typed === "string" ? input.typed.trim() : "") !== CONSOLE_REMOVE_WORD) {
+      return { ok: false, error: ACT_COPY.removeWordWrong, field: "typed" };
+    }
+    if (reason.length < CONSOLE_REASON_MIN) return { ok: false, error: ACT_COPY.reasonShort, field: "reason" };
+    if (reason.length > CONSOLE_REASON_MAX) return { ok: false, error: ACT_COPY.reasonLong, field: "reason" };
+    const removed = await removeHouseBot({ actorId: viewerUserId, botId: id, reason });
+    if (!removed.ok) return { ok: false, error: actRefusal(removed.code) };
+    if (!removed.changed) return { ok: true, changed: false, note: ACT_COPY.alreadyRemoved, warn: false };
+    return {
+      ok: true, changed: true,
+      note: removed.recorded ? actCounts(removed.cancelled, removed.targetsEnded) : ACT_COPY.notRecorded,
+      warn: !removed.recorded,
+    };
+  }
+
+  const paused = await pauseHouseBot({ actorId: viewerUserId, botId: id, reason: reason.length > 0 ? reason : null });
+  if (!paused.ok) return { ok: false, error: actRefusal(paused.code) };
+  if (!paused.changed) return { ok: true, changed: false, note: ACT_COPY.alreadyPaused, warn: false };
+  return {
+    ok: true, changed: true,
+    note: paused.recorded ? actCounts(paused.cancelled, 0) : ACT_COPY.notRecorded,
+    warn: !paused.recorded,
+  };
+}
+
+/** What an act cancelled and ended, as COUNTS (ruling 266: never an amount, here or anywhere on this section). */
+function actCounts(cancelled: number, targetsEnded: number): string | null {
+  const parts: string[] = [];
+  if (cancelled > 0) parts.push(cancelled === 1 ? "1 queued stake was cancelled" : `${formatNumber(cancelled)} queued stakes were cancelled`);
+  if (targetsEnded > 0) parts.push(targetsEnded === 1 ? "1 target was ended" : `${formatNumber(targetsEnded)} targets were ended`);
+  return parts.length === 0 ? null : `${parts.join(" and ")}.`;
+}
+
+/** The action row's own sentences — the console's, never a service's (453). */
+const ACT_COPY = {
+  alreadyRunning: "This account was already running. Nothing changed.",
+  alreadyPaused: "This account was not running. Nothing changed.",
+  alreadyRemoved: "This account was already removed. Nothing changed.",
+  startedWhileOff: "It is started, but the desk's master switch is off, so nothing will be staked until the desk is switched on.",
+  verified: "The holder's permission is confirmed again. Start the account when you are ready.",
+  verifiedWasActive: "The holder's permission is confirmed again. It was running before it stopped — Start it when you are ready.",
+  removeWordWrong: `Type ${CONSOLE_REMOVE_WORD} exactly, in capitals, to confirm.`,
+  reasonShort: `Say why, in ${CONSOLE_REASON_MIN} characters or more. It is kept with the change.`,
+  reasonLong: `Keep the reason under ${CONSOLE_REASON_MAX} characters.`,
+  notRecorded: "It is done. ⚠️ Its compliance record could not be written — tell whoever keeps the records.",
+} as const;
+
+/**
  * THE ACCOUNT PAGE'S GATED READER (rulings 340, 358, 372). Query-shaped, arity THREE: the signed-in viewer, the
  * calling file's own console route as a STRING LITERAL, and the record id. The audience is resolved FIRST and every
  * read is issued only after the verdict, so a refused viewer's payload carries no label, no id, no figure and no
@@ -1918,6 +2237,9 @@ export async function houseDetailForConsole(
       lastBet: null,
       rules: removedRules,
       rulesReason: "A removed account's rules are kept as a record and cannot be changed.",
+      /* 358 · a REMOVED account has no act left, which is why this page renders no action row at all. */
+      acts: [],
+      statusNote: null,
       targets: null,
       targetsActive: null,
     };
@@ -2058,6 +2380,9 @@ export async function houseDetailForConsole(
     rules,
     /* 432(j) · a control that is not drawn still says why, beside the card it would have been in. */
     rulesReason: "Editing an account's rules is not ready on this build yet.",
+    /* ⭐ 415 · the action row, from the status the reader already holds — no second read decides what is offered. */
+    acts: actDialogsFor(bot.status),
+    statusNote: statusNoteFor(bot.status, bot.pauseReason, wayOut),
     targets,
     targetsActive: targetRows == null ? null : targetRows.filter((t: StoredHouseBotTarget) => t.status === "ACTIVE").length,
   };

@@ -1253,7 +1253,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * table for the same reason every reader does: ruling 523 measured that a server action is a POST to whatever URL the
  * browser is on, carrying a `Next-Action` id, so NO path rule can see it — the arity pin, the signed-in-viewer pin
  * and the own-route pin are the only things standing between it and ruling 259's measured defect class. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 3, houseSwitchForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -1519,6 +1519,9 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      turns a planner duty NAME into the console's own words. Neither reads anything — the FACTS arrive through the
      roster reader's own settled set, which is the whole point of 435(e). */
   "ConsoleEngineNotice", "consoleDutyPhrase",
+  /* ⭐ C7 step 4b · the account action row (ruling 415): the word that arms a removal, what the row posts and
+     what it gets back, and one act's finished copy. The gated WRITER is , above. */
+  "CONSOLE_REMOVE_WORD", "ConsoleAccountActDialog", "ConsoleAccountActInput", "ConsoleAccountActKind", "ConsoleAccountActResult",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**

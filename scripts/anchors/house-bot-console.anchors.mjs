@@ -38,8 +38,54 @@ const DAL = "src/lib/server/house-bot-dal.ts";
 const DETAIL = "src/app/admin/desk/[id]/page.tsx";
 /* ⭐ C7 step 4b · the master-switch ceremony's client half. */
 const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
+/* ⭐ C7 step 4b · the officer's two roster acts, which had no service under src/ at all before this step. */
+const ROSTER = "src/lib/server/house-bot/roster-actions.ts";
 
 export const MUTATIONS = [
+  /* ── C7 step 4b · THE ACCOUNT'S ACTION ROW (ruling 415; replan 549) ──────────────────────────────────────────
+   * Each puts back a shape the console could plausibly have shipped in: an act offered in a state its service
+   * cannot perform, a ceremony the server does not check, an officer's stop recorded as the engine's, or a
+   * service's own sentence passed through onto a surface ruling 453 exists to keep neutral. */
+  {
+    name: "415-acts-everywhere · every act is offered in every state, so Pause is drawn on an account that is not running",
+    file: GATE,
+    from: `function actDialogsFor(status: string): ConsoleAccountActDialog[] {\n  if (status === "REMOVED") return [];`,
+    to: `function actDialogsFor(status: string): ConsoleAccountActDialog[] {\n  status = "ACTIVE";\n  if (status === "REMOVED") return [];`,
+    expect: "1.415 · the action row offers exactly the acts this account's CURRENT state allows",
+    suite: "console-mem",
+  },
+  {
+    name: "415-remove-unchecked · the server stops checking Remove's typed word, so the ceremony is a browser courtesy",
+    file: GATE,
+    from: `    if ((typeof input.typed === "string" ? input.typed.trim() : "") !== CONSOLE_REMOVE_WORD) {\n      return { ok: false, error: ACT_COPY.removeWordWrong, field: "typed" };\n    }`,
+    to: ``,
+    expect: "1.415 · 388 · Remove is refused by the SERVER without the typed word",
+    suite: "console-mem",
+  },
+  {
+    name: "415-shared-refusal · the console passes a service's own refusal through, onto the one surface 453 keeps neutral",
+    file: GATE,
+    from: `        error: actRefusal(done.code, { attemptsBeforeLock: done.attemptsBeforeLock, retryAfterSec: done.retryAfterSec }),`,
+    to: `        error: done.message,`,
+    expect: "1.415 · 453 · every re-verify refusal is the CONSOLE's own sentence",
+    suite: "console-mem",
+  },
+  {
+    name: "415-engine-pause · an officer's stop is written as the ENGINE's, so a person and a worker are indistinguishable in a seven-year record",
+    file: ROSTER,
+    from: `      from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pauseDetail: null, pausedFromStatus: null,`,
+    to: `      from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: "WALLET_FROZEN", pauseDetail: null, pausedFromStatus: "ACTIVE",`,
+    expect: "1.415 · ⭐ PAUSE STOPS A RUNNING ACCOUNT",
+    suite: "console-mem",
+  },
+  {
+    name: "432j-no-status-note · a stopped account whose cause has cleared paints a claret chip with nothing under it again",
+    file: GATE,
+    from: `  if (wayOut !== null || status === "ACTIVE" || status === "REMOVED") return null;`,
+    to: `  return null;\n  if (wayOut !== null || status === "ACTIVE" || status === "REMOVED") return null;`,
+    expect: "1.415 · 432(j) · an AUTO-PAUSED account whose cause has since cleared carries an honest sentence",
+    suite: "console-mem",
+  },
   /* ── C7 step 4b · the engine-health Callout, the console half (rulings 414, 435(e); X1). ───────────────────── */
   {
     name: "414-notice-absent · the engine Callout is never painted, so a dead engine is invisible on the one page that could say so",

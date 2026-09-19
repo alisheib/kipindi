@@ -1257,6 +1257,194 @@ section("§2 · the strip, the band, the roster and every failure");
       })(), "");
   }
 
+  /* ══ THE ACCOUNT'S ACTION ROW (rulings 388, 415, 420, 453; replan ruling 549's 4b) ════════════════════════════
+   * The half that makes the account page OPERABLE. Pause and Remove had NO service under `src/` at all before this
+   * step — `outcomes.ts`'s `stopBot` is the ENGINE's stop, with a cause, no actor and a SYSTEM audit, and
+   * collapsing the two would make "the engine stopped it" and "a person stopped it" indistinguishable in a record
+   * kept seven years. */
+  {
+    const { deskActArmed }: Any = await import("../../src/app/admin/desk/[id]/account-actions.tsx");
+    const DESIG: Any = await import("../../src/lib/server/house-bot/designation.ts");
+    const callAct = async (viewer: string, input: Any): Promise<Any> => {
+      try { return await GATEM.houseAccountActForConsole(viewer, "/admin/desk", input); }
+      catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
+    };
+    const detail = async (id: string): Promise<Any> => GATEM.houseDetailForConsole(OFFICER, "/admin/desk", id);
+    const statusOf = async (id: string): Promise<string> => (await w.dal.houseBotStore.get(id))?.status ?? "GONE";
+    const actsOf = (v: Any): string[] => (v.acts ?? []).map((a: Any) => a.act);
+
+    /* ── which acts each state allows (432(a): never a control whose service cannot perform it) ── */
+    const live = await w.bot();
+    const paused = await w.bot();
+    await w.dal.houseBotStore.setStatus(paused.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    const autoPaused = await w.bot();
+    await w.dal.houseBotStore.setStatus(autoPaused.botId, { from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: "WALLET_FROZEN", pausedFromStatus: "ACTIVE" });
+    const goneAcct = await w.bot();
+    await w.dal.houseBotStore.setStatus(goneAcct.botId, { from: ["ACTIVE"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } });
+
+    const vLive = await detail(live.botId);
+    const vPaused = await detail(paused.botId);
+    const vAuto = await detail(autoPaused.botId);
+    const vGone = await detail(goneAcct.botId);
+    ok("1.415 · the action row offers exactly the acts this account's CURRENT state allows — Pause only on a running account, Start and Confirm permission only on a stopped one, Remove on anything that is still on the desk",
+      j(actsOf(vLive)) === j(["PAUSE", "REMOVE"])
+        && j(actsOf(vPaused)) === j(["START", "REVERIFY", "REMOVE"])
+        && j(actsOf(vAuto)) === j(["START", "REVERIFY", "REMOVE"]),
+      j({ live: actsOf(vLive), paused: actsOf(vPaused), auto: actsOf(vAuto) }));
+    ok("1.415 · 358 · a REMOVED account gets NO row at all — not a row of dead buttons, which is what a read-only page would otherwise be",
+      j(actsOf(vGone)) === j([]) && vGone.removed === true, j(actsOf(vGone)));
+    ok("1.415 · 415 · Remove is the ONE act that wears claret and the one that arms on a typed word; everything else is primary and takes no word",
+      ((vLive.acts ?? []) as Any[]).every((a: Any) => (a.act === "REMOVE") === (a.tone === "claret"))
+        && ((vLive.acts ?? []) as Any[]).every((a: Any) => (a.act === "REMOVE") === (a.word !== null))
+        && ((vPaused.acts ?? []) as Any[]).find((a: Any) => a.act === "REVERIFY")?.passwordLabel !== null,
+      j(((vLive.acts ?? []) as Any[]).map((a: Any) => [a.act, a.tone, a.word])));
+
+    /* ⛔ 432(j) ON THIS PAGE — THE STATE WITH NO REASON BESIDE IT, WHICH STEP 4a MEASURED AND LEFT OPEN. */
+    ok("1.415 · 432(j) · an AUTO-PAUSED account whose cause has since cleared carries an honest sentence, and it can be Started right now — a claret chip with nothing under it reads as a broken page",
+      typeof vAuto.statusNote === "string" && vAuto.statusNote.length > 20 && vAuto.wayOut === null
+        && actsOf(vAuto).includes("START") && !NEUTRAL.test(vAuto.statusNote),
+      j({ note: vAuto.statusNote, wayOut: vAuto.wayOut }));
+    ok("1.415 · 432(j) · …and the two are NEVER both painted: a running account has neither, and a state with a LIVE cause carries the way out instead",
+      vLive.statusNote === null && vLive.wayOut === null && vGone.statusNote === null
+        && typeof vPaused.statusNote === "string",
+      j({ live: [vLive.statusNote, vLive.wayOut], removed: vGone.statusNote, paused: vPaused.statusNote }));
+
+    /* ── PAUSE, the act itself ── */
+    const pausedOut = await callAct(OFFICER, { id: live.botId, act: "PAUSE" });
+    const pausedRow: Any = await w.dal.houseBotStore.get(live.botId);
+    ok("1.415 · ⭐ PAUSE STOPS A RUNNING ACCOUNT: PAUSED with the MANUAL reason, written by the officer — never the engine's AUTO_PAUSED, which carries a cause, no actor and a SYSTEM audit",
+      pausedOut.ok === true && pausedOut.changed === true
+        && pausedRow?.status === "PAUSED" && pausedRow?.pauseReason === "MANUAL",
+      j({ ok: pausedOut.ok, changed: pausedOut.changed, status: pausedRow?.status, reason: pausedRow?.pauseReason }));
+    const pausedTwice = await callAct(OFFICER, { id: live.botId, act: "PAUSE" });
+    ok("1.415 · a second Pause changes NOTHING and says so — the write is conditional, so two officers produce one act, one event and one alert",
+      pausedTwice.ok === true && pausedTwice.changed === false && typeof pausedTwice.note === "string",
+      j(pausedTwice));
+    ok("1.415 · 266 · what an act cancelled is reported as a COUNT or not at all — never an amount, here or anywhere on this section",
+      [pausedOut, pausedTwice].every((r: Any) => r.note === null || (!/TZS/.test(String(r.note)) && !NEUTRAL.test(String(r.note)))),
+      j({ a: pausedOut.note, b: pausedTwice.note }));
+
+    /* ── REMOVE: the typed word and the reason are checked on the SERVER, and the act ends the targets with it ── */
+    const noWord = await callAct(OFFICER, { id: paused.botId, act: "REMOVE", reason: "closing this account" });
+    const noReason = await callAct(OFFICER, { id: paused.botId, act: "REMOVE", reason: "no", typed: GATEM.CONSOLE_REMOVE_WORD });
+    ok("1.415 · 388 · Remove is refused by the SERVER without the typed word and without a reason of the required length — a ceremony verified only in a browser is one a crafted POST walks straight through",
+      noWord.ok === false && noWord.field === "typed" && String(noWord.error).includes(GATEM.CONSOLE_REMOVE_WORD)
+        && noReason.ok === false && noReason.field === "reason"
+        && (await statusOf(paused.botId)) === "PAUSED",
+      j({ noWord: noWord.error, noReason: noReason.error }));
+    const removed = await callAct(OFFICER, { id: paused.botId, act: "REMOVE", reason: "closing this account", typed: GATEM.CONSOLE_REMOVE_WORD });
+    const removedRow: Any = await w.dal.houseBotStore.get(paused.botId);
+    ok("1.415 · ⭐ REMOVE takes the account off the desk, with the officer's id and free text on the row and the MANUAL cause recorded",
+      removed.ok === true && removed.changed === true && removedRow?.status === "REMOVED"
+        && removedRow?.removedById === OFFICER && removedRow?.removedCause === "MANUAL",
+      j({ ok: removed.ok, status: removedRow?.status, by: removedRow?.removedById, cause: removedRow?.removedCause }));
+    ok("1.415 · …and a second Remove changes nothing rather than refusing — an act that already happened is not an error",
+      (await callAct(OFFICER, { id: paused.botId, act: "REMOVE", reason: "closing this account", typed: GATEM.CONSOLE_REMOVE_WORD })).changed === false, "");
+
+    /* ── RE-VERIFY: the refusals are the console's own words. The happy path is the SERVICE's, proven on its own
+       suite (`test:house-bot-designation`) with a real scrypt password; this world's holder hash is a fixture, so
+       driving it here would measure the fixture rather than the product. ── */
+    const wrongPw = await callAct(OFFICER, { id: autoPaused.botId, act: "REVERIFY", password: "not-their-password" });
+    const noPw = await callAct(OFFICER, { id: autoPaused.botId, act: "REVERIFY", password: "" });
+    const runningReverify = await callAct(OFFICER, { id: goneAcct.botId, act: "REVERIFY", password: "x" });
+    ok("1.415 · 453 · every re-verify refusal is the CONSOLE's own sentence, names the field to fix, and carries no house word — the service's own copy says 'This bot was removed.' and 'the bot is running'",
+      [wrongPw, noPw, runningReverify].every((r: Any) => r.ok === false && typeof r.error === "string" && r.error.length > 8 && !NEUTRAL.test(r.error))
+        && noPw.field === "password" && wrongPw.error !== noPw.error,
+      j({ wrong: wrongPw.error, empty: noPw.error, removed: runningReverify.error }));
+    ok("1.415 · 453 · CONTROL · the shared sentences those replaced DO name the feature, so the case above is a comparison with something rather than with nothing",
+      NEUTRAL.test(DESIG.VERIFY_COPY.removed) && NEUTRAL.test(DESIG.REVERIFY_COPY.running),
+      j({ removed: DESIG.VERIFY_COPY.removed, running: DESIG.REVERIFY_COPY.running }));
+
+    /* ── START: it is OFFERED on a stopped account even though its service may refuse it, and the refusal IS the
+       workflow. ⛔ C10 · an account starts while the desk is OFF, and the officer is told so. ── */
+    const freshStart = await w.bot({ caps: { freqMinGapSec: 20 } });
+    await w.dal.houseBotStore.setStatus(freshStart.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    /* ⚠️ THE FIXTURE'S HOLDER NEEDS A SALT, AND THE SERVICE IS RIGHT TO REFUSE WITHOUT ONE. The world writes a
+     * placeholder hash and no salt, so the eligibility read answers NO_PASSWORD — "this account has no password …
+     * it can't give or confirm permission" — which is the product being correct about a fixture, not a defect.
+     * Measured by driving that read directly when the first form of this case went red. */
+    await w.setUserFields(freshStart.userId, { passwordSalt: "case-salt-for-start" });
+    /* ⚠️ AND REAL RULES, FOR THE SAME REASON. The world writes `{ schemaVersion: 1 }` — a stub that parses to
+     * nothing — so Start answers RULES: "the saved rules can't be read … Open Rules, review them, save, then
+     * start." Correct product behaviour on a stub, and a second thing the fixture owed rather than the service. */
+    {
+      const cur: Any = await w.dal.houseBotStore.get(freshStart.botId);
+      const rules: Any = R.DEFAULT_RULES_V1({ stakeBounds: { minTzs: 1_000, maxTzs: 10_000_000 } });
+      /* A product, an entry mode and a min gap at the floor — the three `rulesStartProblems` refuses a start
+         without, measured by driving it directly. The default document chooses none of them. */
+      rules.scope.products.polls = true;
+      rules.scope.categories = ["macro"];
+      rules.modes.polls = { counter: true, fill: true, opener: true };
+      const saved = await w.dal.houseBotStore.saveRules(freshStart.botId, cur.rulesVersion, { rules });
+      if (!saved.ok) throw new Error("the Start fixture could not save its rules");
+    }
+    const started = await callAct(OFFICER, { id: freshStart.botId, act: "START" });
+    ok("1.415 · ⭐ C10 · START moves a stopped account, and when the desk's master switch is OFF the officer is TOLD so rather than left reading a green chip beside a switch that is off",
+      /* ⛔ NO OR-ESCAPE HERE. An assertion that also accepts "it was already running" would pass on a fixture
+         that never started, which is exactly what the first form of this case did before the fixture was
+         given its salt, its rules and its min gap. */
+      started.ok === true && started.changed === true && (await statusOf(freshStart.botId)) === "ACTIVE"
+        && started.warn === true && typeof started.note === "string" && /switch/i.test(started.note) && !NEUTRAL.test(started.note),
+      j({ ok: started.ok, error: started.error, changed: started.changed, note: started.note, warn: started.warn, status: await statusOf(freshStart.botId) }));
+    const startRemoved = await callAct(OFFICER, { id: goneAcct.botId, act: "START" });
+    ok("1.415 · 453 · a Start the service refuses answers in the CONSOLE's own words, never the service's",
+      startRemoved.ok === false && typeof startRemoved.error === "string" && !NEUTRAL.test(startRemoved.error), j(startRemoved));
+
+    /* ⛔ THE REFUSAL MAP COVERS EVERY CODE BOTH SERVICE UNIONS CAN ANSWER, over a population DERIVED from the
+     * source unions — never a list typed here, because a code added later would then reach an owner's screen as
+     * the shared sentence or as a bare identifier, and nothing would go red on the day it happened. */
+    const desigSrc = decomment(read("src/lib/server/house-bot/designation.ts"));
+    const codesOf = (re: RegExp): string[] => [...(re.exec(desigSrc)?.[1] ?? "").matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]);
+    const serviceCodes = [...new Set([
+      ...codesOf(/export type VerifyRefusalCode\s*=([\s\S]*?);/),
+      ...codesOf(/export type ReverifyResult\s*=([\s\S]*?)\n\s*\n/),
+      ...codesOf(/export type StartResult\s*=([\s\S]*?)\n\s*\n/),
+      ...["NOT_FOUND", "REMOVED", "SCHEMA", "UNREADABLE", "WRITE_FAILED"],
+    ])];
+    const gateSrc = read(GATE);
+    const missing = serviceCodes.filter((c) => !new RegExp(`\\n  ${c}: "`).test(gateSrc));
+    ok("1.415 · 453 · every refusal code the four services can answer has the console's OWN sentence, over a population DERIVED from their source unions rather than typed in this case",
+      serviceCodes.length >= 18 && missing.length === 0, j({ codes: serviceCodes.length, missing }));
+    ok("1.415 · 453 · CONTROL · the unions really were parsed — they name the codes this case drove — and an INVENTED code is reported missing, so the zero above is a measurement",
+      serviceCodes.includes("WRONG_PASSWORD") && serviceCodes.includes("INELIGIBLE") && serviceCodes.includes("EMPTY")
+        && !new RegExp(`\\n  NOT_A_REAL_CODE: "`).test(gateSrc),
+      j(serviceCodes.slice(0, 6)));
+
+    /* ⛔ THE ARMING PREDICATE IS PURE AND EXPORTED, so every branch is measured directly — `Modal` returns null
+     * until it is mounted, so a static render of a dialog is NOT MEASURED by construction (415). */
+    const removeCopy = ((vLive.acts ?? []) as Any[]).find((a: Any) => a.act === "REMOVE");
+    const pauseCopy = ((vLive.acts ?? []) as Any[]).find((a: Any) => a.act === "PAUSE");
+    const pwCopy = ((vPaused.acts ?? []) as Any[]).find((a: Any) => a.act === "REVERIFY");
+    ok("1.415 · the confirm arms only when every field the act ASKS FOR is filled — and a field it does not ask for is never a reason to refuse",
+      (() => {
+        try {
+          const full = { reason: "closing this account", password: "pw", typed: GATEM.CONSOLE_REMOVE_WORD };
+          return deskActArmed(pauseCopy, { reason: "", password: "", typed: "" }) === true
+            && deskActArmed(removeCopy, full) === true
+            && deskActArmed(removeCopy, { ...full, typed: "remove" }) === false
+            && deskActArmed(removeCopy, { ...full, reason: "no" }) === false
+            && deskActArmed(pwCopy, { reason: "", password: "pw", typed: "" }) === true
+            && deskActArmed(pwCopy, { reason: "", password: "", typed: "" }) === false;
+        } catch { return false; }
+      })(), "");
+
+    /* ⛔ 453 · EVERY WORD OF EVERY DIALOG, over all four acts. */
+    const actStrings = [...((vLive.acts ?? []) as Any[]), ...((vPaused.acts ?? []) as Any[])]
+      .flatMap((a: Any) => Object.values(a))
+      .filter((s: unknown): s is string => typeof s === "string");
+    ok("1.415 · 453 · not one word of any act's dialog names the feature, and the scan had all four acts' whole copy in it",
+      actStrings.length >= 40 && actStrings.every((s: string) => !NEUTRAL.test(s)) && houseHits(actStrings.join(" ")).length === 0,
+      j({ scanned: actStrings.length, hits: actStrings.filter((s: string) => NEUTRAL.test(s)) }));
+
+    /* ⛔ 300/380 · A VIEWER OUTSIDE THE AUDIENCE IS REFUSED BEFORE ANYTHING IS READ OR WRITTEN. */
+    const playerAct = await callAct(await w.user({ role: "PLAYER" }), { id: autoPaused.botId, act: "PAUSE" });
+    ok("1.415 · 300 · a signed-in PLAYER's act is refused, the account does not move, and the refusal names no state and no figure",
+      playerAct.ok === false && typeof playerAct.error === "string" && playerAct.error.length > 8
+        && !/\d/.test(playerAct.error) && !NEUTRAL.test(playerAct.error)
+        && (await statusOf(autoPaused.botId)) === "AUTO_PAUSED",
+      j(playerAct));
+  }
+
   /* ⛔ AN INERT POINTER CARRIES NO ARROW (ruling 432(i)), AND THIS IS THE HALF THAT WAS MISSED. The server's
    * roster-full sentence is written for a LINK and ENDS "…raise the roster limit on Limits →". While the limits tab
    * has no panel the page paints it as PLAIN TEXT — arrow and all — so the head promised a navigation to a tab

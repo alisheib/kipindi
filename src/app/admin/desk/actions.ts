@@ -32,6 +32,9 @@ import {
   houseSwitchForConsole,
   type ConsoleSwitchInput,
   type ConsoleSwitchResult,
+  houseAccountActForConsole,
+  type ConsoleAccountActInput,
+  type ConsoleAccountActResult,
 } from "@/lib/server/house-console-read";
 import { CONSOLE_ROUTE } from "@/lib/house-bot/console-routes";
 
@@ -74,6 +77,30 @@ export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<Co
   try {
     const result = await houseSwitchForConsole(session?.userId ?? null, "/admin/desk", input);
     if (result.ok && result.changed) revalidatePath(CONSOLE_ROUTE);
+    return result;
+  } catch (err) {
+    return { ok: false, error: safeError(err, "Nothing changed. Reload the page and try again.") };
+  }
+}
+
+/**
+ * ⭐ THE ACCOUNT'S ACTION ROW — Start, Pause, Confirm permission, Remove (C7-SPEC ruling 415; replan 549's 4b).
+ *
+ * ⛔ THE GATE IS INSIDE THE DOOR (rulings 522, 523), and the HOLDER's password passes straight through to the one
+ * service that checks it: this file never reads it, never logs it and never keeps it.
+ *
+ * ⛔ IT REVALIDATES THE ACCOUNT'S OWN PAGE AND THE DESK'S. Pausing or removing an account changes the roster, the
+ * band and the strip's own "is anything still live?" answer, so a stale desk behind a changed account is a page
+ * saying two things at once — the class 432(n) refuses within one screen, here across two.
+ */
+export async function runDeskAccountAction(input: ConsoleAccountActInput): Promise<ConsoleAccountActResult> {
+  const session = await currentSession();
+  try {
+    const result = await houseAccountActForConsole(session?.userId ?? null, "/admin/desk", input);
+    if (result.ok && result.changed) {
+      revalidatePath(CONSOLE_ROUTE);
+      revalidatePath(`${CONSOLE_ROUTE}/${input.id}`);
+    }
     return result;
   } catch (err) {
     return { ok: false, error: safeError(err, "Nothing changed. Reload the page and try again.") };
