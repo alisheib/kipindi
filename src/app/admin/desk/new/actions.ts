@@ -49,8 +49,11 @@ import { CONSOLE_ROUTE } from "@/lib/house-bot/console-routes";
  * and leaves an officer looking at a spinner that has stopped meaning anything.
  */
 export async function findDeskAccountsAction(query: string): Promise<ConsolePickerAnswer> {
-  const session = await currentSession();
+  /* ⛔ THE SESSION READ IS INSIDE THE TRY (C7 step 6 review, d19-hunt-10). It sat above it, so the one failure the
+     catch exists to turn into a shape — a read that throws — was the one failure that could still throw the
+     action. The gated door treats an absent viewer as refused, so nothing else changes. */
   try {
+    const session = await currentSession();
     return await houseAccountsForConsole(session?.userId ?? null, "/admin/desk", query);
   } catch {
     return { rows: [], note: CONSOLE_PICKER_EMPTY, count: "" };
@@ -67,12 +70,19 @@ export async function findDeskAccountsAction(query: string): Promise<ConsolePick
  * one changed nothing and must not wipe what the officer has just typed out from under them.
  */
 export async function designateDeskAccountAction(input: ConsoleDesignateInput): Promise<ConsoleDesignateResult> {
-  const session = await currentSession();
+  /* ⛔ ONLY WHAT CAN FAIL BEFORE THE WRITE IS INSIDE THE TRY THAT SAYS NOTHING WAS WRITTEN (C7 step 6 review,
+     d19-hunt-07). `revalidatePath` sat inside it, so a throw from the REVALIDATION — after the designation had
+     already landed — reported the exact opposite of the truth on the one action that admits an account to the
+     desk, and the officer's natural retry then met a refusal for an account that was already on it. */
+  let result: ConsoleDesignateResult;
   try {
-    const result = await houseDesignateForConsole(session?.userId ?? null, "/admin/desk", input);
-    if (result.ok) revalidatePath(CONSOLE_ROUTE);
-    return result;
+    const session = await currentSession();
+    result = await houseDesignateForConsole(session?.userId ?? null, "/admin/desk", input);
   } catch (err) {
     return { ok: false, error: safeError(err, "Nothing was written. Reload the page and try again.") };
   }
+  if (result.ok) {
+    try { revalidatePath(CONSOLE_ROUTE); } catch { /* the write landed; a stale roster is the smaller harm */ }
+  }
+  return result;
 }

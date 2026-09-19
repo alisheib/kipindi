@@ -1021,6 +1021,30 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("16.ownRounds.c1 · CONTROL · a memory twin that counts every round and a SQL twin without the filter are each caught",
     !/if \(p\.houseBotId == null\) e\.ownRounds \+= 1;/.test(dtMem.replace("if (p.houseBotId == null) e.ownRounds += 1;", "e.ownRounds += 1;"))
       && !/\(count\(\*\) filter \(where p\."houseBotId" is null\)\)::int\s+as "ownRounds"/.test(dtPri.replace(`(count(*) filter (where p."houseBotId" is null))::int`, "count(*)::int")));
+
+  /* ⭐ C7 step 6 · THE ONE NEW STORE MEMBER OF THIS COMMIT, AND BOTH TWINS IN THE SAME CHANGE (the standing rule).
+   *
+   * 🔴 WHY IT EXISTS. The designation wizard's check card reported "Open positions" as
+   * `listForUser(id, 100).filter(OPEN).length` — a PAGE, newest-first over every status — so a holder with a
+   * hundred settled positions newer than their open ones was painted 0 open beside a warning saying they hold
+   * some, on the card that decides whether their account may be admitted to the desk. Ruling 344 in one line: a
+   * paged reader structurally cannot report a population.
+   *
+   * ⛔ SO THE PARITY THAT MATTERS IS THAT NEITHER TWIN PAGES. The memory twin must not `slice`, and the Prisma twin
+   * must be a `count`, not a `findMany` whose rows are then counted in the app. */
+  const cntMem = objectMethod(region(marketDalSrc, "const memoryPositions"), "countOwnOpenForUser");
+  const cntPri = objectMethod(region(marketDalSrc, "const prismaPositions"), "countOwnOpenForUser");
+  ok("16.countOwnOpen · ruling 344 · both twins implement `countOwnOpenForUser`, both exclude a house-marked row, and NEITHER pages — no `slice`, no `take`, no `findMany`",
+    cntMem.length > 40 && cntPri.length > 40
+      && /p\.status === "OPEN" && p\.houseBotId == null/.test(cntMem) && !/slice\(|take:|limit/.test(cntMem)
+      && /position\.count\(\{ where: \{ userId, status: "OPEN", houseBotId: null \} \}\)/.test(cntPri)
+      && !/findMany|take:|slice\(/.test(cntPri)
+      && /countOwnOpenForUser\(userId: string\): Promise<number>;/.test(marketDalSrc),
+    JSON.stringify({ mem: cntMem.replace(/\s+/g, " ").slice(0, 120), pri: cntPri.replace(/\s+/g, " ").slice(0, 120) }));
+  ok("16.countOwnOpen.c1 · CONTROL · the same two needles catch a twin that pages and a twin that counts every status — the exact two shapes this member was written to replace",
+    !/p\.status === "OPEN" && p\.houseBotId == null/.test(cntMem.replace('p.status === "OPEN" && p.houseBotId == null', 'p.status === "OPEN"'))
+      && /slice\(/.test(`${cntMem}.slice(0, limit)`)
+      && !/position\.count\(\{ where: \{ userId, status: "OPEN", houseBotId: null \} \}\)/.test(cntPri.replace("position.count(", "position.findMany(")));
 }
 
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);

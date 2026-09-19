@@ -218,12 +218,23 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
   const MUST_BE_READ = ["src/lib/status-tone.ts", "src/lib/search/fields.ts", "src/components/ui/search-box.tsx", "src/app/admin/system/system-client.tsx"];
   const unread = MUST_BE_READ.filter((p) => !reachedRel.has(p));
   ok("4.0 · the law's named client surfaces are inside §1's population (status-tone, the search grammar, the search box, the system client)", unread.length === 0, unread.join(", "));
-  const { TXN_SEARCH } = await import("../src/lib/search/fields.ts") as { TXN_SEARCH: { fields: Record<string, { columns: string[] }>; default: string[] } };
   type TxnGrammar = { fields: Record<string, { columns: string[] }>; default?: string[] };
+  /* ⭐ C7 step 6 · THE PICKER'S GRAMMAR JOINS THE MEASURE (ruling 387's Proof, which NAMED this extension and was
+   * never built). `fields.ts` is value-imported by the client search box — §4.0 above asserts it is inside the
+   * client population — so every field name, column and default in it ships in a publicly downloadable chunk. 4.1
+   * measured `TXN_SEARCH` alone, so a `house`-named key added to the designation picker's own schema later would
+   * have shipped with every suite green. */
+  const { TXN_SEARCH, ACCOUNT_PICKER_SEARCH, USER_SEARCH } = await import("../src/lib/search/fields.ts") as { TXN_SEARCH: Required<TxnGrammar>; ACCOUNT_PICKER_SEARCH: Required<TxnGrammar>; USER_SEARCH: Required<TxnGrammar> };
   /** 4.1's ONE measure, used by 4.1 and its control alike: every field name, column and default that says house. */
   const houseKeysOf = (s: TxnGrammar) => [...Object.keys(s.fields), ...Object.values(s.fields).flatMap((x) => x.columns), ...(s.default ?? [])].filter((k) => /house/i.test(k));
   const txnHouse = houseKeysOf(TXN_SEARCH);
-  ok("4.1 · R1's house filter is never a TXN_SEARCH field, column or default (the client search box imports it)", Object.keys(TXN_SEARCH.fields).length >= 5 && txnHouse.length === 0, txnHouse.join(", "));
+  const pickerHouse = houseKeysOf(ACCOUNT_PICKER_SEARCH);
+  ok("4.1 · R1's house filter is never a TXN_SEARCH field, column or default, and the designation picker's own grammar carries none either (the client search box imports both)", Object.keys(TXN_SEARCH.fields).length >= 5 && txnHouse.length === 0 && Object.keys(ACCOUNT_PICKER_SEARCH.fields).length >= 4 && pickerHouse.length === 0, [...txnHouse, ...pickerHouse].join(", "));
+  /* ⛔ AND `USER_SEARCH` IS UNCHANGED BY THE PICKER (ruling 387's Proof, second half — also never built). The
+   * picker needed a grammar of its own; the temptation was to widen the one /admin/players already ships, which
+   * would have changed what a bare token matches on a surface nobody asked to change. Pinned BY VALUE, because the
+   * report cited `test:search-adoption` for this and that suite measures search-box adoption, not byte identity. */
+  ok("4.1b · USER_SEARCH's fields and default are byte-identical to the ones origin/main ships — the picker took a grammar of its own rather than widening the platform's", JSON.stringify(USER_SEARCH.fields) === JSON.stringify({ name: { columns: ["displayName"], kind: "text" }, phone: { columns: ["phoneE164"], kind: "text" }, id: { columns: ["id"], kind: "exact" }, status: { columns: ["status"], kind: "exact" }, role: { columns: ["role"], kind: "exact" }, handle: { columns: ["displayLabel"], kind: "text" } }) && JSON.stringify(USER_SEARCH.default) === JSON.stringify(["id", "phoneE164", "displayName", "displayLabel"]), JSON.stringify({ fields: USER_SEARCH.fields, default: USER_SEARCH.default }));
   const reportsReached = [...reachedRel].filter((p) => p.startsWith("src/lib/server/reports/"));
   ok("4.2 · no report builder module (src/lib/server/reports/) is reachable from a client component", reportsReached.length === 0, reportsReached.join(", "));
 
@@ -276,6 +287,11 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
   const plantedTxn: TxnGrammar = { fields: { ...TXN_SEARCH.fields, house: { columns: ["houseBotId"] } }, default: [...TXN_SEARCH.default, "houseBotId"] };
   const plantedHouse = houseKeysOf(plantedTxn);
   ok("4.c5 · CONTROL · a planted `house` field, its column and a house default in a TXN_SEARCH copy are each reported by 4.1's own measure", plantedHouse.length === 3, plantedHouse.join(", "));
+  // ⛔ AND THE SAME MEASURE OVER THE PICKER'S OWN GRAMMAR — 4.1 now asserts two populations, and a control that
+  // exercised only one would leave the second's zero unproved, which is the population trap in miniature.
+  const plantedPicker: TxnGrammar = { fields: { ...ACCOUNT_PICKER_SEARCH.fields, house: { columns: ["houseStake"] } }, default: [...ACCOUNT_PICKER_SEARCH.default, "houseBotId"] };
+  const plantedPickerHouse = houseKeysOf(plantedPicker);
+  ok("4.c5b · CONTROL · a planted `house` field, its column and a house default in an ACCOUNT_PICKER_SEARCH copy are each reported by the SAME measure", plantedPickerHouse.length === 3, plantedPickerHouse.join(", "));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure: ${pass} passed, ${fail} failed`);
@@ -286,9 +302,9 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure:
  * with `process.exit(fail === 0 ? 0 : 1)` and nothing else, a run in which EVERY case silently stopped
  * executing printed "ALL PASS — 0 passed, 0 failed" and exited 0.
  * The floor below is the count `npm run test:house-bot-disclosure` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
- * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
+ * only ever RISES, and only to a number a run printed (raised 29 to 31 at C7 step 6's fix pass, when ruling 387's Proof finally got its two halves) — never to an arithmetic guess.
  */
-const MIN_ASSERTIONS = 29;
+const MIN_ASSERTIONS = 31;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

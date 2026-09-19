@@ -164,6 +164,9 @@ const w = await loadWorld();
 const GATEM: Any = await import("../../src/lib/server/house-console-read.ts");
 const ROLES: Any = await import("../../src/lib/server/roles.ts");
 const RBAC: Any = await import("../../src/lib/server/rbac.ts");
+/** ⭐ C7 step 6 · the picker's own bucket (387(e)) — named here because `rateCheckAsync` FAILS OPEN on a key it
+ *  does not know, so a rule that is deleted or renamed switches its own control off in silence. */
+const RATEM: Any = await import("../../src/lib/server/rate-limit.ts");
 const R: Any = await import("../../src/lib/house-bot/rules.ts");
 const CR: Any = await import("../../src/lib/house-bot/console-routes.ts");
 const D: Any = await import("../../src/lib/server/house-bot/designation.ts");
@@ -3209,9 +3212,25 @@ try {
         return owned.ok === false && all(owned) !== all(real) && (owned as Any).field === "password";
       })(), "");
     /* ⛔ AND THE LABEL'S SHAPE IS REFUSED BEFORE A PASSWORD ATTEMPT IS SPENT, in the console's own words. */
+    /* ⛔ AND THE SENTENCE IS THE ONE ONLY THE EARLY CHECK CAN PRODUCE (C7 step 6 review,
+       test-strength-383-label-late). `field === "label"` alone could not fail: with the console's own
+       `validateLabel` removed the call falls through to `designateHouseBot`, whose FIRST two lines validate the
+       same label and answer the same `field`, and the console maps that to `labelTaken`. So the assertion pinned a
+       shape both paths produce and its declared mutation could never redden it. The LENGTH sentence belongs to the
+       console's early check; `labelTaken` is what the late path says. ⛔ And the holder's own attempt counter is
+       read on both sides, because "before a password attempt is spent" is a claim about the holder's reserve. */
+    const beforeAttempts = ((await w.db.user.findById(good)) as Any)?.failedLoginCount ?? 0;
     const shortLabel = await GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId: good, label: "x", password: "" });
+    const afterAttempts = ((await w.db.user.findById(good)) as Any)?.failedLoginCount ?? 0;
     ok("1.383 · a mistyped name is refused on its own field, in the console's own words, before a password attempt is spent",
-      shortLabel.ok === false && (shortLabel as Any).field === "label" && !NEUTRAL.test(all(shortLabel)), j(shortLabel));
+      shortLabel.ok === false && (shortLabel as Any).field === "label" && !NEUTRAL.test(all(shortLabel))
+        && (shortLabel as Any).error === GATEM.CONSOLE_DESIGNATE_LABEL_LENGTH
+        && afterAttempts === beforeAttempts,
+      j({ shortLabel, beforeAttempts, afterAttempts }));
+    ok("1.383 · CONTROL · the LATE path says something else entirely — a name the console's own check accepts and the roster refuses answers `labelTaken`, so the sentence above is the early check's and not a shape both paths share",
+      GATEM.CONSOLE_DESIGNATE_LABEL_LENGTH !== GATEM.CONSOLE_DESIGNATE_LABEL_TAKEN
+        && GATEM.CONSOLE_DESIGNATE_LABEL_LENGTH.length > 20,
+      j({ early: GATEM.CONSOLE_DESIGNATE_LABEL_LENGTH, late: GATEM.CONSOLE_DESIGNATE_LABEL_TAKEN }));
   }
 
   /* ━━ 1.359 · AND THE DESIGNATION ITSELF LANDS, WHICH IS WHAT MAKES EVERY REFUSAL ABOVE A REFUSAL ━━━━━━━━━ */
@@ -3229,10 +3248,236 @@ try {
       const now = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", good);
       ok("1.387 · an account already on the desk comes back as an option that cannot be chosen, decided on the ONE roster read",
         now.rows.length === 1 && now.rows[0].reason !== null && !NEUTRAL.test(all(now)), j(now));
+      STATES.push(["wizard-copy", GATEM.CONSOLE_WIZARD_COPY]);
       STATES.push(["wizard-check", card]);
       STATES.push(["wizard-check-blocked", staffCard]);
       STATES.push(["wizard-picker", now]);
     }
+  }
+
+  /* ━━ ⭐ C7 STEP 6 · WHAT THE REVIEW MEASURED — every one of these had no case at all ━━━━━━━━━━━━━━━━━━━━━ */
+
+  /* ⛔ 259 · A REFUSED VIEWER TAKES NO READ, not merely an empty answer. Ruling 359's Proof is two halves —
+     "a PLAYER calling the reader gets `null` AND the spy records zero store calls" — and only the first was
+     asserted, so an edit that moved the verdict BELOW the settled read set would have kept the case green while
+     pulling a player's wallet, roster rows and positions for a viewer who may not see any of them. */
+  {
+    const spyR = { wallet: 0, positions: 0, roster: 0 };
+    const orig = {
+      wallet: w.db.wallet.findByUserId,
+      positions: w.mdal.positionStore.countOwnOpenForUser,
+      roster: w.dal.houseBotStore.listByUserId,
+    };
+    let refusedReads = { wallet: -1, positions: -1, roster: -1 };
+    try {
+      w.db.wallet.findByUserId = (...a: Any[]) => { spyR.wallet++; return orig.wallet.apply(w.db.wallet, a as Any); };
+      w.mdal.positionStore.countOwnOpenForUser = (...a: Any[]) => { spyR.positions++; return orig.positions.apply(w.mdal.positionStore, a as Any); };
+      w.dal.houseBotStore.listByUserId = (...a: Any[]) => { spyR.roster++; return orig.roster.apply(w.dal.houseBotStore, a as Any); };
+      await GATEM.houseCheckForConsole(outsider, "/admin/desk", empty);
+      refusedReads = { ...spyR };
+      await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", empty);
+    } finally {
+      w.db.wallet.findByUserId = orig.wallet;
+      w.mdal.positionStore.countOwnOpenForUser = orig.positions;
+      w.dal.houseBotStore.listByUserId = orig.roster;
+    }
+    ok("1.359 · 259 · a viewer OUTSIDE the audience takes ZERO reads — no wallet, no roster row and no position count, not merely an empty answer",
+      refusedReads.wallet === 0 && refusedReads.positions === 0 && refusedReads.roster === 0, j(refusedReads));
+    ok("1.359 · CONTROL · the OWNER's own call fired every one of those three through the very objects the spy watches, so the zeros above are a measurement and not an unreached patch",
+      spyR.wallet >= 1 && spyR.positions >= 1 && spyR.roster >= 1, j(spyR));
+  }
+
+  /* ⛔ 387 · THE REFUSAL IS IDENTICAL FOR EVERY NON-OWNER ROLE, not only for a PLAYER. Ruling 387's Proof names
+     EIGHT, and the case exercised one — so a role-specific hole in the audience (the `canView(role, "ops")` branch
+     ruling 341 exists to close) would not have been reported here. */
+  {
+    const NON_OWNER = [...ROLES.STAFF_ROLES.filter((r: string) => r !== "ADMIN"), "PLAYER", "AGENT"] as string[];
+    const shapes: string[] = [];
+    for (const role of NON_OWNER) {
+      const who = await w.user({ role });
+      for (const q of [good, "usr_no_such_account_at_all", "hb_0123456789abcdef01234567"]) {
+        shapes.push(all(await GATEM.houseAccountsForConsole(who, "/admin/desk", q)));
+      }
+    }
+    const ownerHit = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", good);
+    ok("1.387 · the picker's refusal is BYTE-IDENTICAL for all eight non-owner roles × three query shapes — a matching query, a non-matching one and an unknown id",
+      NON_OWNER.length === 8 && shapes.length === 24 && new Set(shapes).size === 1, j({ roles: NON_OWNER, shapes: [...new Set(shapes)] }));
+    ok("1.387 · CONTROL · the OWNER's own answer for the first of those queries is a DIFFERENT shape, so the identity above is a measurement over a population that really ran",
+      all(ownerHit) !== shapes[0] && ownerHit.rows.length >= 1, j({ owner: ownerHit.count }));
+  }
+
+  /* ⛔ 387(e) · THE PICKER'S RATE RULE IS THE NAMED CONTROL, AND IT FAILS OPEN WHEN IT IS GONE. `rateCheckAsync`
+     returns `{ allowed: true }` for an unknown key, so deleting or renaming the rule silently switches the control
+     off with every suite still green — and nothing anywhere named it. */
+  {
+    const rule = RATEM.RATE_RULES["desk.picker"] as Any;
+    ok("1.387(e) · the picker's rate rule EXISTS, is keyed on the CALLER, and is no looser than the burst and rate it was written with",
+      typeof rule?.capacity === "number" && rule.capacity <= 30 && typeof rule.refillPerMin === "number" && rule.refillPerMin <= 15,
+      j(rule));
+    ok("1.387(e) · CONTROL · an unknown key is ALLOWED by the same checker, which is exactly why the rule's existence has to be asserted rather than assumed",
+      (await RATEM.rateCheckAsync("whoever", "desk.picker.no.such.rule" as Any)).allowed === true, "");
+    /* ⛔ AND A BUSY BUCKET IS NOT AN EMPTY RESULT (d19-hunt-03). The officer is inside the audience; telling them
+       "Nothing to show." about accounts that exist is a false statement on the screen that admits an account.
+       ⚠️ THE BUCKET IS EXHAUSTED ON AN OWNER OF ITS OWN, because the rule is keyed on the CALLER (387(e)) — spending
+       `OFFICER`'s allowance here would leave every later picker case in this file answering BUSY, which is the
+       fixture-artefact-as-assertion trap. That the two callers do not share a bucket is itself the ruling. */
+    const burner = await w.user({ role: "ADMIN" });
+    let busy: Any = null;
+    for (let i = 0; i <= (rule?.capacity ?? 30) + 1 && busy === null; i++) {
+      const a = await GATEM.houseAccountsForConsole(burner, "/admin/desk", good);
+      if (a.note === GATEM.CONSOLE_PICKER_BUSY) busy = a;
+    }
+    ok("1.387(e) · CONTROL · the bucket really is keyed on the CALLER — one owner exhausted it and another owner's very next lookup still answers",
+      await (async () => {
+        const other = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", good);
+        return other.note !== GATEM.CONSOLE_PICKER_BUSY;
+      })(), "");
+    ok("1.387(e) · a rate-limited lookup answers its OWN sentence — never the refusal's, which would tell an owner inside the audience that accounts which exist do not",
+      busy !== null && busy.note === GATEM.CONSOLE_PICKER_BUSY && busy.rows.length === 0 && busy.count === ""
+        && GATEM.CONSOLE_PICKER_BUSY !== GATEM.CONSOLE_PICKER_EMPTY && !NEUTRAL.test(GATEM.CONSOLE_PICKER_BUSY),
+      j(busy));
+  }
+
+  /* ⛔ 412 · THE TEN-OPTION BOUND, AND A COUNT THAT DOES NOT LIE ABOUT IT (d19-hunt-04). The count reported the
+     rows SHOWN — "10 accounts" for a query that matched forty — on the one screen where an account the officer
+     cannot see reads as an account that does not exist. And the slice took whichever ten the store happened to
+     return: `db.user.list()` is `findMany` with no `orderBy` on Postgres and insertion order in memory, so the
+     ten could differ between the twins and between two runs of the same query. */
+  {
+    let oneAnswer: Any = null;
+    const bulkTag = `c7s6bulk${process.pid}`;
+    const bulk: string[] = [];
+    for (let i = 0; i < 12; i++) bulk.push(await w.user({ id: `usr_${bulkTag}_${i}`, role: "PLAYER" }));
+    const wide = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
+    const again = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
+    ok("1.387 · 412 · the answer is capped at ten options and the count says so — the number MATCHED, not the number shown, and what to do about it",
+      wide.rows.length === 10 && / of 12 accounts/.test(wide.count) && /narrow the search/.test(wide.count)
+        && !NEUTRAL.test(wide.count), j({ rows: wide.rows.length, count: wide.count }));
+    ok("1.387 · …and the ten that survive the slice are the same ten a second run returns, in one total order, on either store",
+      j(wide.rows.map((r: Any) => r.userId)) === j(again.rows.map((r: Any) => r.userId))
+        && j(wide.rows.map((r: Any) => r.userId)) === j([...wide.rows.map((r: Any) => r.userId)].sort()),
+      j(wide.rows.map((r: Any) => r.userId)));
+    ok("1.387 · CONTROL · a query that matches ONE says the plain count with no truncation clause, so the sentence above is chosen by the measurement and not always printed",
+      await (async () => {
+        const one = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulk[0]);
+        oneAnswer = one;
+        return one.rows.length === 1 && one.count.startsWith("1 account") && !/ of /.test(one.count);
+      })(), j(oneAnswer));
+  }
+
+  /* ⛔ 344 · "OPEN POSITIONS" IS COUNTED, NEVER PAGED. It was `listForUser(id, 100).filter(OPEN).length` — the
+     hundred NEWEST positions of EVERY status — so an account whose settled positions are newer than its open ones
+     rendered a number that was wrong and could read 0 beside a warning saying they hold some. */
+  {
+    const holder = await candidate({ balance: 100_000 });
+    const mkt = await w.poll();
+    const now = Date.now();
+    const seed = async (i: number, status: string, minutesAgo: number, houseBotId: string | null = null) => {
+      await w.mdal.positionStore.set({
+        id: `pos_c7s6_${process.pid}_${i}`, userId: holder, marketId: mkt.id, side: "YES", stake: 1_000,
+        potentialPayout: 1_500, status, finalPayout: status === "OPEN" ? null : 0,
+        placedAt: new Date(now - minutesAgo * 60_000).toISOString(),
+        settledAt: status === "OPEN" ? null : new Date(now - minutesAgo * 60_000).toISOString(),
+        idempotencyKey: null, houseBotId,
+      } as Any);
+    };
+    /* Three OPEN own positions, OLDER than four newer rows a page of that size would return instead. */
+    await seed(1, "OPEN", 90); await seed(2, "OPEN", 80); await seed(3, "OPEN", 70);
+    await seed(4, "WIN", 20); await seed(5, "LOSS", 15); await seed(6, "VOID", 10);
+    const counted = await w.mdal.positionStore.countOwnOpenForUser(holder);
+    const pagedThree = (await w.mdal.positionStore.listForUser(holder, 3)).filter((p: Any) => p.status === "OPEN" && p.houseBotId == null).length;
+    const holderCard = await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", holder);
+    ok("1.344 · the check card's open-position figure comes from a COUNTING reader — three open, and a page of three over the same account answers zero because its newest three are settled",
+      counted === 3 && pagedThree === 0 && holderCard !== null && holderCard.openPositions === "3",
+      j({ counted, pagedThree, painted: holderCard && holderCard.openPositions }));
+    /* ⛔ AND BOTH TWINS COUNT THE HOLDER'S OWN BOOK — a position the desk placed FROM the account is not one the
+       holder is in. ⚠️ Asserted at SOURCE rather than by seeding a marked position: a marked OPEN row is a row
+       every house exposure read in this process would then see, and a fixture that moves another assertion's
+       population is worse than the one it proves. */
+    ok("1.344 · …and the count is the holder's OWN book in BOTH twins — the memory filter and the SQL predicate each exclude a marked position",
+      /countOwnOpenForUser\(userId\) \{[\s\S]{0,200}?houseBotId == null/.test(decomment(read("src/lib/server/market-dal.ts")))
+        && /position\.count\(\{ where: \{ userId, status: "OPEN", houseBotId: null \} \}\)/.test(decomment(read("src/lib/server/market-dal.ts"))),
+      "");
+    /* ⛔ 356 · AND THE CARD TAKES THAT COUNT EXACTLY ONCE. */
+    {
+      const spyP = { count: 0 };
+      const origP = w.mdal.positionStore.countOwnOpenForUser;
+      try {
+        w.mdal.positionStore.countOwnOpenForUser = (...a: Any[]) => { spyP.count++; return origP.apply(w.mdal.positionStore, a as Any); };
+        await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", holder);
+      } finally { w.mdal.positionStore.countOwnOpenForUser = origP; }
+      ok("1.356 · the wizard's check card takes the position COUNT exactly once", spyP.count === 1, j(spyP));
+    }
+  }
+
+  /* ⛔ 355 · THE SETTLED SET'S FAILURE BRANCHES, WHICH HAD NO CASE AND NO MUTATION AT ALL. Ruling 355's whole
+     point is that a failed read DEGRADES — it does not blank the card and it does not fabricate a zero — and three
+     of its branches were unreachable by the fixture: the `UNREADABLE` blocking row, the em dash, and `funded`
+     withheld when the balance cannot be read. */
+  {
+    const subject = await candidate({ balance: 5_000 });
+    /* ⚠️ THE FAILURE IS PLANTED ON THE READ, NOT ON THE MODULE. An ESM namespace object's exports are read-only,
+       so `houseBotEligibility` cannot be replaced — it is made to FAIL instead, on the subject's own row and on
+       nobody else's, which is also closer to the production shape this branch exists for. */
+    const origU = w.db.user.findById;
+    let brokenElig: Any = null;
+    try {
+      w.db.user.findById = ((uid: string, ...rest: Any[]) => {
+        if (uid === subject) throw new Error("the account row could not be read");
+        return origU.apply(w.db.user, [uid, ...rest] as Any);
+      }) as Any;
+      brokenElig = await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", subject);
+    } finally { w.db.user.findById = origU; }
+    ok("1.359 · 355 · a failed eligibility read is a BLOCKING ROW, not an eligible account — and it paints no funded state and no fabricated check",
+      brokenElig !== null && brokenElig.eligible === false && brokenElig.blocking.length === 1
+        && brokenElig.blocking[0].code === "UNREADABLE" && brokenElig.funded === null
+        && brokenElig.continueReason !== null && !NEUTRAL.test(all(brokenElig)),
+      j({ blocking: brokenElig && brokenElig.blocking, funded: brokenElig && brokenElig.funded }));
+
+    const origC = w.mdal.positionStore.countOwnOpenForUser;
+    let brokenPos: Any = null;
+    try {
+      w.mdal.positionStore.countOwnOpenForUser = async () => { throw new Error("the position count could not be read"); };
+      brokenPos = await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", subject);
+    } finally { w.mdal.positionStore.countOwnOpenForUser = origC; }
+    ok("1.359 · 355 · a failed position count renders an EM DASH, never a fabricated zero — and the rest of the card survives it",
+      brokenPos !== null && brokenPos.openPositions === "—" && brokenPos.openPositions !== "0"
+        && brokenPos.handle.startsWith("Player #"), j({ open: brokenPos && brokenPos.openPositions }));
+    ok("1.359 · CONTROL · the same account with both reads working answers a NUMBER and a funded state, so the two degraded shapes above are measurements and not what every card looks like",
+      await (async () => {
+        const fine = await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", subject);
+        return fine !== null && fine.openPositions === "0" && fine.funded !== null && fine.blocking.every((r: Any) => r.code !== "UNREADABLE");
+      })(), "");
+    /* ⛔ AND A FAILED READ NEVER TAKES THE DOOR WITH IT (456, 459). `holderHref` and the bonus fact are not reads,
+       so they stand in every one of these branches — the page used to hide both behind `funded !== null`. */
+    ok("1.359 · 456 · the way to the holder's own money screen and the bonus fact survive EVERY failed read — they are facts, not reads",
+      brokenElig !== null && brokenPos !== null
+        && brokenElig.holderHref.length > 0 && brokenElig.bonusCaption.length > 20
+        && brokenPos.holderHref === brokenElig.holderHref && brokenPos.bonusCaption === brokenElig.bonusCaption,
+      j({ href: brokenElig && brokenElig.holderHref }));
+  }
+
+  /* ⛔ 412 · THE SUBMIT CLAIM IS A PROPERTY OF THE PRESS, NOT OF WHAT WAS TYPED INTO IT. The wizard sent
+     `${userId}:${label}` — recomputed identically on every attempt — and `verifyHouseBotPassword` claims a
+     `submitId` ONCE, durably, BEFORE the password is checked, with no path that gives it back. So one wrong
+     password burned the key and every later attempt for that account and that name answered DUPLICATE_SUBMIT. */
+  {
+    const victim = await candidate({ balance: 60_000 });
+    const reused = `${victim}:Desk reuse`;
+    const wrong = await GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId: victim, label: "Desk reuse", password: "definitely-wrong", submitId: reused });
+    const retrySame = await GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId: victim, label: "Desk reuse", password: PW, submitId: reused });
+    const retryFresh = await GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId: victim, label: "Desk reuse", password: PW, submitId: `${reused}:2` });
+    ok("1.412 · a `submitId` is spent ONCE — the right password behind a reused claim is refused, and the same right password behind a fresh claim LANDS",
+      wrong.ok === false && retrySame.ok === false && retryFresh.ok === true,
+      j({ wrong: (wrong as Any).error, retrySame: (retrySame as Any).error, retryFresh: retryFresh.ok }));
+    ok("1.412 · …so the wizard mints a NEW nonce for every armed attempt and spends it on refusal — it never derives one from the account and the typed name",
+      await (async () => {
+        const c = decomment(read(NEW_CLIENT));
+        return /submitId: attempt\.current/.test(c)
+          && /attempt\.current = ""/.test(c)
+          && !/submitId: `\$\{userId\}/.test(c)
+          && /const newAttemptNonce = \(\): string =>/.test(c);
+      })(), "");
   }
 } catch (err) {
   ok("1.359 · the wizard's fixture ran", false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
@@ -3294,6 +3539,15 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     ...(view.blocking ?? []).flatMap((r: Any) => [r.code, r.text]),
     ...(view.warnings ?? []).flatMap((r: Any) => [r.code, r.text]),
     view.funded?.word, view.funded?.sentence, view.bonusCaption, view.priorNote, view.continueReason, view.count,
+    view.handle, view.openPositions, view.note,
+    /* ⭐ C7 step 6, FIXED · THE WIZARD'S CONSENT AND REVIEW COPY. Ruling 388's Proof moved every sentence longer
+       than a label out of the `"use client"` file and onto the server, which is where it belongs — and the moment
+       it moved, four paragraphs describing what the holder is agreeing to became SERVER copy that 453 must scan.
+       A branch that is not in this list is outside the strictest scan the console has. */
+    ...(view.consentBullets ?? []),
+    view.searchLabel, view.searchHint, view.searchIntro, view.listLabel, view.consentTitle, view.labelLabel,
+    view.labelHint, view.noteLabel, view.noteHint, view.reviewTitle, view.passwordLabel, view.passwordHint,
+    view.refusedTitle, view.wayOut,
     /* ⭐ C7 step 3 · THE LIMITS PANEL'S OWN COPY. Its five usage names come from `FIELD_META`, four of whose labels
        and one of whose section names carry a word this section may not render (432(f), amended) — so the branch most
        likely to break 453 on this checkpoint is the one that would have been outside the scan. */
@@ -3324,8 +3578,13 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
    * null, is not a scan. Sixteen states were produced above; each carries at least a sentence and four tile labels. */
   ok("3.453 · not one painted string of ANY state carries a house-vocabulary word, or the words bot, house, liquidity or counter-stake",
     /* ⭐ THE FLOORS ROSE WITH C7 STEP 4's OWN STATES: 24/1528 at step 3, 32 states and 2,128 strings measured with
-       the account page's five — active, both floor branches, settlement-blocked and removed — in the list. */
-    scanned.length >= 35 && total >= 2_128 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
+       the account page's five — active, both floor branches, settlement-blocked and removed — in the list.
+       ⭐ AND AGAIN AT C7 STEP 6's FIX, to what the run PRINTED on BOTH stores: 36 states and 2,646 strings, with
+       the wizard's own copy object in the list. The state floor had risen at step 6 while the STRING floor had
+       not, so the branch the step's own comment called "most likely to break 453" sat inside a scan that could
+       have lost ~20 strings to a field rename and still read as compliance. A floor only ever rises, and only to
+       a count a run printed. */
+    scanned.length >= 36 && total >= 2_646 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
   /* ⛔ AND THE BRANCHES MOST LIKELY TO CARRY ONE ARE PROVEN PRESENT IN THE SCAN, by name — a state list that quietly
    * stopped producing the OFF sentence or an empty state would otherwise read as compliance. */
   const seen = new Set(scanned.flatMap(([, c]) => c));
@@ -3333,7 +3592,16 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     seen.has("The desk is off. Nothing will be staked.")
       && [...seen].some((s) => /nothing can be staked until this limit is set/.test(s))
       && [...seen].some((s) => /The roster is full/.test(s))
-      && seen.has("n/a") && seen.has("No accounts yet") && seen.has("No roster"),
+      && seen.has("n/a") && seen.has("No accounts yet") && seen.has("No roster")
+      /* ⭐ C7 step 6, FIXED · AND THE WIZARD'S OWN FOUR, BY VALUE. The states joined the scan at step 6 and the
+         presence control did not follow them, so a field rename on the view model would have dropped the console's
+         thirty-two eligibility sentences and all four consent paragraphs out of the scan with `hits.length === 0`
+         still reading as compliance. */
+      && seen.has("This is a staff account. Only a player's own account can be used here.")
+      && seen.has("There is money in this wallet, so a stake can be funded from it.")
+      && seen.has("Bonus money is never staked from the desk, whatever the wallet holds.")
+      && seen.has("Nothing is staked until an officer starts this account and the desk's master switch is on.")
+      && seen.has("Already on the desk"),
     j({ states: scanned.map(([n]) => n) }));
   /* ⛔ THE SWEEP REALLY IS A SWEEP. A `copyOf` that quietly returned only the keys it used to type would pass
    * every assertion above, so the keys the typed list MISSED are named here — and nothing else names them. */
@@ -3954,10 +4222,40 @@ export default function Ruling513Control() {
         && /\{view !== null && step === "check" && !view\.accountMissing && \(/.test(wizardCode)
         && (wizardCode.match(/view\.accountMissing/g) ?? []).length === 2
         && /\{view\.blocking\[0\]\?\.text\}/.test(wizardCode), "");
+    /* ⛔ 259 · 300 · 324 · 380 · THE PAGE'S OWN VERDICT IS ITS FIRST STATEMENT, AND IT IS NOT THE READER'S
+       (C7 step 6 review, conformance-380). It gated only when a `?u=` was present, because the only gate call was
+       the CHECK READER's — so a bare `/admin/desk/new` performed no audience check at all and a signed-in PLAYER
+       received the head, the step line, the find card's copy and the picker's action reference in the payload
+       behind the layout's redirect. The sibling page has always done it; this one now does it in the same shape,
+       on the same stored row, with the same route literal, BEFORE the search params are even read. */
+    ok("1.380 · 324 · the wizard's page decides its OWN audience first, on the stored row, with a literal route — before any search param, any read and any JSX",
+      /* ⚠️ MEASURED INSIDE THE FUNCTION BODY, never over the whole file: the import list names every gated reader,
+         so a whole-file `indexOf` compares import positions and says nothing about the order of the STATEMENTS. */
+      ((body) =>
+        /^\{\s*const session = await currentSession\(\);\s*if \(!\(await houseConsoleAudience\(session\?\.userId \?\? null, "\/admin\/desk"\)\)\) return null;/.test(body)
+          && body.indexOf("houseConsoleAudience") < body.indexOf("await searchParams")
+          && body.indexOf("houseConsoleAudience") < body.indexOf("houseCheckForConsole")
+          && body.indexOf("houseConsoleAudience") < body.indexOf("<AdminPageHead")
+      )(wizardCode.slice(wizardCode.indexOf("async function AdminDeskNewContent"))
+        .replace(/^async function AdminDeskNewContent\([^)]*\)[^{]*/, "")),
+      j(wizardCode.replace(/\s+/g, " ").slice(wizardCode.replace(/\s+/g, " ").indexOf("async function AdminDeskNewContent")).slice(0, 260)));
     ok("1.359 · the Phone term is drawn only when there is a value for the platform's own gate to decide about",
       /\{view\.phoneE164 !== null && \(/.test(wizardCode)
         && (wizardCode.match(/<Sensitive /g) ?? []).length === 1
         && !/SensitiveReveal/.test(wizardCode), "");
+    /* ⛔ 456 · 355 · AND A FAILED READ DOES NOT TAKE THE DOOR WITH IT (C7 step 6 review, conformance-355). The
+       whole block hung on `funded !== null`, so an unreadable wallet removed 459's bonus fact AND 456's link to
+       the screen where the figure legitimately lives — the officer lost the way forward at the exact moment they
+       needed it. The STATE is what a failed read withholds; the fact and the door are not reads. */
+    {
+      const fundedAt = wizardCode.indexOf("{view.funded !== null && (");
+      const guardClose = wizardCode.indexOf(")}", fundedAt);
+      const bonusAt = wizardCode.indexOf("view.bonusCaption");
+      const doorAt = wizardCode.indexOf("href={view.holderHref as Route}");
+      ok("1.359 · 456 · the page paints the bonus fact and the way to the holder's own money screen OUTSIDE the funded guard, so an unreadable wallet cannot remove them",
+        fundedAt > 0 && guardClose > fundedAt && bonusAt > guardClose && doorAt > guardClose,
+        j({ fundedAt, guardClose, bonusAt, doorAt }));
+    }
     /* ⛔ AND THE WIZARD READS NOTHING OF ITS OWN (340): no house module, no DAL, no eligibility, no designation. */
     ok("1.359 · 340 · no file under the wizard imports `eligibility.ts`, `designation.ts`, the DAL or `sensitive-reveal` — the check card is served by the gated reader alone",
       [NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT].every((f) => {
@@ -3979,11 +4277,20 @@ export default function Ruling513Control() {
       /<AdminPageHead title="Designate an account"/.test(newLoader)
         && domLiterals(NEW_LOADING, read(NEW_LOADING)).every((x) => houseHits(x).length === 0 && !NEUTRAL.test(x)), "");
     const newGhosts = [...newLoader.matchAll(/<(Sk[A-Za-z]+|FormColumn|div)[ />]/g)].map((m) => m[1]);
-    ok("1.417 · the wizard loader's ghost sequence matches the page's own order — the head's action, the page's measure, the step line's two rows, then the step card",
-      j(newGhosts) === j(["SkChip", "FormColumn", "div", "SkChip", "div", "SkFormCard"]), j(newGhosts));
-    ok("1.417 · …and it ghosts at the PAGE'S OWN MEASURE, so the swap cannot jump sideways",
-      /<FormColumn measure="form">/.test(newLoader) && /<FormColumn measure="form">/.test(wizardSrc)
-        && (wizardSrc.match(/<FormColumn measure="form">/g) ?? []).length === 1, "");
+    /* ⭐ RE-ANCHORED TO THE SAME DEFECT AT C7 STEP 6's FIX, NEVER LOOSENED. Both facts this pinned were WRONG
+       against the page, and the tiles measured both: the step line ghosted the eyebrow-and-bar of a page that no
+       longer paints an eyebrow (`ProgressBar` with no caption ALWAYS paints its own line BENEATH the bar, so the
+       ghost was a row short and the wrong way round — 34px at 1280, 43px at 360), and `SkFormCard` ghosted the
+       CONSENT step's two fields and an unconditional submit button on a route that opens at the FIND step, which
+       has one field and no button. The sequence below is the find card, ghost for ghost. */
+    ok("1.417 · the wizard loader's ghost sequence matches the page's own order — the head's action, the page's measure, the bar and the bar's own line, then the FIND step's card",
+      j(newGhosts) === j(["SkChip", "FormColumn", "div", "div", "SkBar", "div", "SkTitle", "div", "SkBar", "SkBar", "div", "SkBar", "SkBar", "SkBar"]), j(newGhosts));
+    ok("1.417 · …and it ghosts at the PAGE'S OWN MEASURE with the PAGE'S OWN RHYTHM, so the swap cannot jump sideways or re-space itself",
+      /<FormColumn measure="form" className="space-y-4">/.test(newLoader)
+        && /<FormColumn measure="form" className="space-y-4">/.test(wizardSrc)
+        && (wizardSrc.match(/<FormColumn measure="form"/g) ?? []).length === 1, "");
+    ok("1.417 · …and neither the loader nor the page ghosts a submit the find step does not have",
+      !/SkFormCard/.test(newLoader) && (newLoader.match(/h-\[44px\]/g) ?? []).length === 1, "");
   }
 
   /* 1.422 · read-only is unreachable BY CONSTRUCTION on an Owner-only route, so no page may draw one. */
@@ -4374,9 +4681,13 @@ export default function Ruling513Control() {
     ok("1.420 · the ON sentence names the actor by id and the module resolves NO name for one — no display name anywhere, the phone only as `Sensitive`'s server-only field, and the computed handle only inside the search matcher",
       gateCode.includes("control?.switchedById")
         && !/displayName/.test(gateCode)
-        && phoneLines.length === 2
+        && phoneLines.length === 3
         && phoneLines.some((l) => l.includes("phoneE164: string | null;"))
         && phoneLines.some((l) => l.includes("phoneE164: user?.phoneE164 ?? null,"))
+        /* ⭐ THE THIRD IS THE PICKER'S ORDERING RANK, AND IT IS THE SAME EXEMPTION `displayLabel` HOLDS: a
+           COMPARISON inside the search matcher, never a value assigned to anything a page paints. It exists
+           because the slice was taking whichever ten the store happened to return. */
+        && phoneLines.some((l) => l.includes('(u.phoneE164 ?? "").toLowerCase() === qLower'))
         && labelLines.length === 2
         && labelLines.some((l) => l.trim().startsWith("import { displayLabel }"))
         && labelLines.some((l) => l.includes("displayLabel: displayLabel(u)")),
@@ -4525,6 +4836,23 @@ export default function Ruling513Control() {
         NEUTRAL.test("startHouseBotAction") && houseHits("exportHouseBotCsvAction").length > 0
           && exportNames.includes("designateDeskAccountAction") && !NEUTRAL.test("designateDeskAccountAction"),
         j(exportNames));
+      /* ⛔ AND THE GUARD-LABEL HALF RUNS OVER AN EMPTY POPULATION, WHICH IS STATED RATHER THAN HIDDEN (C7 step 6
+       * review, conformance-382). `[].every(...)` is true, so that clause could not tell a clean tree from a broken
+       * extractor: no console `"use server"` file calls `requireOwner`/`requireStaff`/`requireHouseOwner` at all —
+       * they delegate to the gated door, which writes no `privilege_escalation_blocked` row of its own. The FACT is
+       * pinned, and the extractor is proved live on a synthetic source so a regex that stopped matching would be
+       * reported instead of read as compliance. */
+      const GUARD_RE = /require(?:Owner|Staff|HouseOwner)\(\s*"([^"]+)"/g;
+      const plantedGuardSrc = [
+        '"use server";',
+        'export async function x() { await requireOwner("startHouseBot"); }',
+      ].join(" ");
+      const plantedGuards = [...plantedGuardSrc.matchAll(GUARD_RE)].map((m) => m[1]);
+      ok("1.382 · the console's action files pass NO guard label at all — the audience is decided inside the gated door, which is why that clause has an empty population",
+        guardLabels.length === 0 && actionFiles.length >= 2, j({ actionFiles, guardLabels }));
+      ok("1.382 · CONTROL · the guard-label extractor is proved LIVE on a synthetic source, so the empty population above is a measurement and not a regex that stopped matching",
+        plantedGuards.length === 1 && plantedGuards[0] === "startHouseBot" && NEUTRAL.test(plantedGuards[0]),
+        j(plantedGuards));
     }
 
     /* ── 1.385 · COPY PROVENANCE: NO SENTENCE THE SERVER CAN EMIT APPEARS IN A CLIENT MODULE ───────────────────
@@ -4542,10 +4870,16 @@ export default function Ruling513Control() {
       /* ⛔ AND THE CLIENT FILES DO OWN A FEW SENTENCES — about the FORM and the TRANSPORT, which the server cannot
        * word because the request never reached it. They are named, so "no long strings at all" cannot pass for
        * provenance. */
-      ok("1.385 · CONTROL · the intersection CAN fire — a server sentence copied into a client file is found, and the sentences the client legitimately owns are about the form and the transport, never about an account",
-        [...serverCopy].some((s) => clientCopy.concat([[NEW_CLIENT, [...serverCopy][0]] as const]).some(([, c]) => c === s))
+      /* ⛔ THE CONTROL RUNS THE ASSERTION'S OWN EXPRESSION (C7 step 6 review, test-strength-385). It used to plant
+       * `serverCopy[0]` into a copy of the client list and then ask whether some element of `serverCopy` equalled
+       * some element of that list — true whenever `serverCopy` is non-empty, which the line above already asserts,
+       * and never once calling `serverCopy.has`, the predicate under test. */
+      const plantedClientCopy = clientCopy.concat([[NEW_CLIENT, [...serverCopy][0]] as const]);
+      const plantedShared = plantedClientCopy.filter(([, s]) => serverCopy.has(s));
+      ok("1.385 · CONTROL · the intersection CAN fire — the SAME `serverCopy.has` filter reports exactly the planted sentence, and the sentences the client legitimately owns are about the form and the transport, never about an account",
+        plantedShared.length === 1 && plantedShared[0][0] === NEW_CLIENT && shared.length === 0
           && clientCopy.length >= 3 && !clientCopy.some(([, s]) => NEUTRAL.test(s)),
-        j(clientCopy.map(([, s]) => s.slice(0, 40)).slice(0, 6)));
+        j({ planted: plantedShared.map(([f]) => f), client: clientCopy.map(([, s]) => s.slice(0, 40)).slice(0, 6) }));
     }
 
     /* ── 1.388 · DIALOG AND FORM COPY COMES FROM THE SERVER AS PROPS, AND NO TYPED WORD NAMES A BOT ────────────
@@ -4564,6 +4898,57 @@ export default function Ruling513Control() {
       /* ⛔ AND THE ARMING WORD ARRIVES AS A PROP. "BOTS ON" is not a vocabulary needle ✔ — which is precisely why
        * it must not be relied on: it would ship a bot-shaped confirmation phrase to every visitor with no guard
        * able to see it. The word is the server's, checked again on the way back. */
+      /* ⛔ 388's OWN PROOF, WHICH HAD NEVER BEEN WRITTEN (C7 step 6 review, conformance-388). The ruling's Proof is
+       * "no console client file contains a string literal of 25+ characters that is not a prop name, class name,
+       * aria string or event name (an enumerated allowlist)" — and only the VOCABULARY half above existed, which
+       * is precisely the half ruling 385 measured to be useless on its own: most sentences this console can emit
+       * carry no vocabulary word, so a paragraph describing the feature ships verbatim in a public chunk with the
+       * disclosure walk and the bundle scan both clean. 🔴 MEASURED ON THIS FILE: the consent step typed four such
+       * paragraphs into a "use client" file.
+       * ⛔ A CLASS LIST IS NOT COPY, and the exclusion is a SHAPE, not a list of known strings: every
+       * whitespace-separated token must carry a utility's own punctuation or be one of the bare utilities this
+       * repo ships. A lowercase sentence does NOT pass it, which is the control below. */
+      {
+        const BARE_UTILITIES = new Set(["flex", "grid", "block", "inline", "hidden", "relative", "absolute", "static", "fixed", "sticky", "uppercase", "italic", "underline", "truncate", "eyebrow", "tabular", "group", "amount", "btn", "sr", "border", "rounded", "shadow", "ring", "table", "contents", "transition", "overflow"]);
+        const isClassList = (x: string): boolean => {
+          const tokens = x.trim().split(/\s+/).filter(Boolean);
+          return tokens.length > 0 && tokens.every((t) => /[-:[\/]/.test(t) || BARE_UTILITIES.has(t));
+        };
+        /** Every 25+ character string a console client file may own, each with the reason the SERVER cannot word it. */
+        const CLIENT_OWNED_COPY: ReadonlyArray<readonly [string, string]> = [
+          ["That did not reach the server. Nothing changed — try again.", "the transport failure: a request that never reached the server cannot be worded by it"],
+          ["The change did not reach the server. Nothing was saved — try again.", "the same, on the limits form"],
+          [" The permanent record could not be written — tell an administrator.", "the limits form's own tail on a partial save"],
+          ["These limits govern every stake the desk places.", "⚠️ C7 step 3's, OWED a move to the server before the commit close"],
+          ["These limits have been changed but not saved. Leaving now discards the change.", "⚠️ C7 step 3's, the unsaved-changes prompt, OWED the same move"],
+          ["Every limit is saved together, or none is", "⚠️ C7 step 3's, OWED the same move"],
+        ];
+        const allowed = new Set(CLIENT_OWNED_COPY.map(([x]) => x));
+        const proseOf = (code: string, rel: string) => domLiterals(rel, code).filter((x) => x.length >= 25 && !isClassList(x));
+        const stray = clientFiles.flatMap((f) => proseOf(read(f), f).filter((x) => !allowed.has(x)).map((x) => `${f}: ${x.slice(0, 60)}`));
+        ok("1.388 · every string of 25+ characters in every console client file is either a class list or one of the six the client is ALLOWED to own — every other sentence crosses the boundary as a prop",
+          clientFiles.length >= 3 && stray.length === 0 && allowed.size === 6, j({ clientFiles, stray }));
+        ok("1.388 · CONTROL · the same scan reports a SERVER sentence planted into the real client code, and does NOT report the class lists that file is full of — so the zero above is a measurement and not a filter that swallows everything",
+          (() => {
+            const serverSentence = GATEM.CONSOLE_WIZARD_COPY.consentBullets[0] as string;
+            const planted = `${read(NEW_CLIENT)}\nconst LEAK = "${serverSentence}";`;
+            const found = proseOf(planted, NEW_CLIENT).filter((x) => !allowed.has(x));
+            const classy = domLiterals(NEW_CLIENT, read(NEW_CLIENT)).filter((x) => x.length >= 25 && isClassList(x));
+            return found.length === 1 && found[0] === serverSentence && classy.length >= 8
+              && !isClassList("Nothing is staked until an officer starts this account")
+              && !isClassList("nothing is staked until an officer starts this account")
+              && isClassList("font-mono text-micro eyebrow uppercase text-text-tertiary");
+          })(),
+          "");
+        /* ⛔ AND THE SENTENCES THAT LEFT THIS FILE ARE ON THE SERVER, not merely deleted. */
+        ok("1.388 · …and the four consent paragraphs, both step headings and all three long hints are the GATE MODULE's, handed down as one prop",
+          GATEM.CONSOLE_WIZARD_COPY.consentBullets.length === 4
+            && GATEM.CONSOLE_WIZARD_COPY.consentBullets.every((x: string) => x.length >= 25)
+            && /copy=\{CONSOLE_WIZARD_COPY\}/.test(decomment(read(NEW_PAGE)))
+            && /copy\.consentBullets\.map/.test(decomment(read(NEW_CLIENT)))
+            && !decomment(read(NEW_CLIENT)).includes(GATEM.CONSOLE_WIZARD_COPY.passwordHint),
+          j({ bullets: GATEM.CONSOLE_WIZARD_COPY.consentBullets.length }));
+      }
       ok("1.388 · CONTROL · the measure fires on the prop name ruling 388 forbids, and the arming word is the SERVER's — no console client file types it",
         NEUTRAL.test("houseBotLabel") && houseHits("houseBotLabel").length > 0
           && !/BOTS ON/.test(clientCode) && !new RegExp(`"${GATEM.CONSOLE_SWITCH_ON_WORD}"`).test(clientCode)

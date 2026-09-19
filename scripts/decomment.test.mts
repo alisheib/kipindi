@@ -298,8 +298,8 @@ section("5 · why the fix is a literal-aware scanner and not an ordering");
 
 const piiSrc = readFileSync(join(SCRIPTS, "pii-in-logs.test.mts"), "utf8");
 check("5.1 a guard really does strip comments from scripts/, not only from src/",
-  /readdirSync\(join\(root, "scripts"\)\)/.test(piiSrc),
-  "pii-in-logs §3 scans scripts/*.mts; if that stopped, 5.2 is about nothing.");
+  /const scriptDir = walkScripts\("scripts"\);/.test(piiSrc) && /else if \(\/\\\.\(mts\|mjs\)\$\/\.test\(e\)\) out\.push\(rel\);/.test(piiSrc),
+  "pii-in-logs §3 walks scripts/ recursively for .mts/.mjs; if that stopped, 5.2 and 5.3 are about nothing.");
 
 let worst = { f: "", loss: 0 };
 for (const f of scriptFiles) {
@@ -312,7 +312,12 @@ check("5.2 the E-186 repair would go blind over a script this repo really reads"
   "If nothing trips it any more, keep the scanner anyway — but re-derive this note.");
 log(`  note  worst case: ${worst.f} — ${worst.loss} characters lost to line-comments-first`);
 
-const scanSet = readdirSync(SCRIPTS).filter((f) => /\.(mts|mjs)$/.test(f)).map((f) => `scripts/${f}`);
+/* ⛔ THE MIRROR FOLLOWED THE GUARD (C7 step 6's fix pass). Both sets were `readdirSync(scripts)` — the TOP LEVEL
+   only — and this project's largest test sources now live in `scripts/lib/`, so the file that wins the measurement
+   above stopped being inside the population it names. `pii-in-logs` §3 now walks `scripts/` recursively, and this
+   set is rebuilt the same way so 5.3 keeps asserting the two are the SAME set rather than two lists that agreed
+   by accident. */
+const scanSet = walk(SCRIPTS, /\.(mts|mjs)$/).map((f) => rel(f));
 check("5.3 …and that script is inside the set pii-in-logs §3 scans",
   worst.f !== "" && scanSet.includes(worst.f),
   `${worst.f} is not in the ${scanSet.length}-file scan set`);

@@ -43,6 +43,10 @@ const SUITES = {
   /* ⭐ The reports cases, memory child only — §0's source pins (0.260.1, 0.434, 0.512) run there and a Postgres
      round trip measures nothing they assert. Added with ruling 434's first declared mutation. */
   "reports-mem": { cmd: "npx tsx scripts/lib/house-bot-reports-cases.mts", env: MEM_ENV },
+  /* ⭐ C7 step 6's fix pass · the disclosure suite, for ruling 387's grammar half. `src/lib/search/fields.ts` is
+     value-imported by the client search box, so a house-named key in the picker's own schema ships in a public
+     chunk — and the only suite that measures that population is this one. */
+  disclosure: { cmd: "npx tsx scripts/house-bot-disclosure.test.mts", env: {} },
 };
 const SUMMARY = /^\s*(?:ALL PASS|FAILURES) — /;
 

@@ -59,7 +59,10 @@ export const ROLL_CALL_SITES: Readonly<Record<string, string>> = {
  * every declaration under one of these keys can still rot into WRONG-ASSERTION unseen. Ruling 505 named five call
  * sites plus the console; these seven keys were outside it. Measured at `46117372`: 164 of the 185 declarations in the
  * house anchors files are audited, and these 21 are not.
- * ⛔ Its LENGTH is pinned by 0.505, so a new key cannot be dropped in here to silence the check without the pin being
+ * ⛔ Its LENGTH is pinned by 0.505 — 7 through C7 step 4c, EIGHT from C7 step 6's fix pass, when ruling 387's
+ * search-grammar half finally got a declared mutation and the only suite able to measure its subject
+ * (`src/lib/search/fields.ts`, value-imported by the client search box) was the disclosure one — so a new key
+ * cannot be dropped in here to silence the check without the pin being
  * edited in the same change — and a key listed here that appears in NO house anchors file is reported STALE.
  */
 export const ROLL_CALL_OWED: Readonly<Record<string, string>> = {
@@ -70,6 +73,7 @@ export const ROLL_CALL_OWED: Readonly<Record<string, string>> = {
   "info-edge-mem": "1 declaration · scripts/lib/house-bot-info-edge-cases.mts",
   rbac: "2 declarations · scripts/rbac.test.mts — a PLATFORM suite, outside the house campaign's files",
   "admin-nav": "1 declaration · scripts/admin-nav.test.mts — a PLATFORM suite, outside the house campaign's files",
+  disclosure: "1 declaration · scripts/house-bot-disclosure.test.mts — a single-run suite with no cases file and no `expect`-drift roll-call of its own; the declaration it carries is ruling 387's search-grammar half, whose subject (`src/lib/search/fields.ts`) no other house suite can reach",
 };
 
 export type DriftReport = {

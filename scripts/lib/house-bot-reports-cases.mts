@@ -640,7 +640,7 @@ if (STORE === "memory") {
     const audited = declared.filter((k) => Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     const owed = declared.filter((k) => !Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     ok("0.505 · ⛔ RULING 505 · every suite key declared in ANY scripts/anchors/house*.anchors.mjs — the files walked from disk, never typed — either HAS an expect-drift roll-call or is recorded as owed with its reason, and neither table names a key no anchors file declares",
-      problems.length === 0 && anchorFiles.length >= 6 && audited + owed >= 185 && Object.keys(ROLL_CALL_OWED).length === 7,
+      problems.length === 0 && anchorFiles.length >= 6 && audited + owed >= 185 && Object.keys(ROLL_CALL_OWED).length === 8,
       j({ anchorFiles, keys: Object.fromEntries([...keys].sort()), audited, owed, problems }));
     /* ⛔ AND THE CONTROL, over the same detector: a key that no table names, and a table entry no file declares. */
     const detect = (ks: Map<string, number>, sites: Record<string, string>, owedList: Record<string, string>): string[] => {
@@ -1533,6 +1533,15 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      The three gated doors — the lookup, the check and the write — each have their `CONSOLE_GATES` entry above. */
   "CONSOLE_PICKER_EMPTY", "ConsoleCheckRow", "ConsoleCheckView", "ConsoleDesignateInput", "ConsoleDesignateResult",
   "ConsoleFunded", "ConsolePickerAnswer", "ConsolePickerRow", "consoleCheckSentence",
+  /* ⭐ C7 step 6's FIX PASS · four more CONSTANTS, each of them pure copy, and each named here because the review
+     found the thing it exists for. `CONSOLE_PICKER_BUSY` is the sentence a rate-limited lookup answers, which is
+     NOT the refusal's (387(c)'s parity is between a refused caller and a search that found nothing, and an owner
+     already inside the audience is neither). `CONSOLE_WIZARD_COPY` is every sentence longer than a label that the
+     wizard paints — ruling 388's Proof moved them off the `"use client"` file, where they were shipping verbatim
+     in a public chunk. And the two label sentences are exported BY NAME because a case that pins only
+     `field === "label"` cannot tell the console's early check from the service's late one: both answer that field,
+     so only the SENTENCE distinguishes them. None of the four awaits, reaches a store or decides an audience. */
+  "CONSOLE_PICKER_BUSY", "CONSOLE_WIZARD_COPY", "CONSOLE_DESIGNATE_LABEL_LENGTH", "CONSOLE_DESIGNATE_LABEL_TAKEN",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**

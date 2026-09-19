@@ -2515,6 +2515,16 @@ const CONSOLE_PICKER_MIN_QUERY = 2;
  */
 export const CONSOLE_PICKER_EMPTY = "Nothing to show.";
 
+/**
+ * ⛔ A BUSY BUCKET IS NOT AN EMPTY RESULT, AND SAYING IT WAS IS A LIE TO THE OWNER (C7 step 6 review, d19-hunt-03).
+ * The rate branch answered the byte-identical `refused` shape, so an officer who had already passed the audience gate
+ * was told "Nothing to show." about accounts that exist — on the one screen where "it is not there" is read as "that
+ * account does not exist". 387(c)'s parity is between a REFUSED CALLER and a search that found nothing; a caller
+ * already inside the audience is neither, and this branch is only reachable AFTER the verdict has passed, so it
+ * reveals nothing a refused caller can ask for.
+ */
+export const CONSOLE_PICKER_BUSY = "Too many searches at once. Wait a moment and try again.";
+
 /** One option in the picker's listbox. ⛔ No phone and no email: the PHONE is the check card's, through `Sensitive`. */
 export type ConsolePickerRow = {
   userId: string;
@@ -2564,15 +2574,22 @@ export async function houseAccountsForConsole(
   query: string,
 ): Promise<ConsolePickerAnswer> {
   const refused: ConsolePickerAnswer = { rows: [], note: CONSOLE_PICKER_EMPTY, count: "" };
-  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return refused;
 
-  const q = typeof query === "string" ? query.trim() : "";
-  /* ⛔ A SHORT QUERY READS NOTHING AND SAYS NOTHING. The officer has not asked a question yet, so there is no
+  /* ⛔ THE FLOOR IS DECIDED BEFORE THE AUDIENCE IS, AND IT IS THE ONLY THING THAT MAY BE (C7 step 6 review,
+     d19-hunt-08). A short query reads nothing, decides nothing and its answer is a constant — so answering it
+     first is what makes the two shapes below indistinguishable. Below the audience check it was the ONE branch
+     where the refusal and the ordinary answer differed (`note: null` against "Nothing to show."), so a signed-in
+     player could learn from a one-character POST that they were outside the audience.
+     ⛔ A SHORT QUERY READS NOTHING AND SAYS NOTHING. The officer has not asked a question yet, so there is no
      answer to give and no empty state to paint — the field's own hint is what is on screen. */
+  const q = typeof query === "string" ? query.trim() : "";
   if (q.length < CONSOLE_PICKER_MIN_QUERY) return { rows: [], note: null, count: "" };
 
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return refused;
+
+  /* ⛔ AND THE BUSY ANSWER IS ITS OWN, because this line is only reachable once the verdict has passed. */
   const gate = await rateCheckAsync(viewerUserId, "desk.picker");
-  if (!gate.allowed) return refused;
+  if (!gate.allowed) return { rows: [], note: CONSOLE_PICKER_BUSY, count: "" };
 
   let users: StoredUser[] = [];
   let live: StoredHouseBot[] = [];
@@ -2598,6 +2615,16 @@ export async function houseAccountsForConsole(
     ACCOUNT_PICKER_SEARCH,
   ));
 
+  /* ⛔ THE TEN THAT SURVIVE THE SLICE ARE THE SAME TEN A SECOND RUN RETURNS (C7 step 6 review, d19-hunt-04).
+     `db.user.list()` is `findMany` with no `orderBy` on Postgres and insertion order in memory, so the slice was
+     taking whichever ten the store happened to hand back — a different ten between the two twins, and possibly a
+     different ten on two runs of the same query. An exact id match, then an exact phone match, then the id: total,
+     stable, and it puts the row the officer pasted at the top where they are looking for it. */
+  const qLower = q.toLowerCase();
+  const matchRank = (u: StoredUser): number =>
+    u.id.toLowerCase() === qLower ? 0 : (u.phoneE164 ?? "").toLowerCase() === qLower ? 1 : 2;
+  hits.sort((a, b) => matchRank(a) - matchRank(b) || a.id.localeCompare(b.id));
+
   const rows: ConsolePickerRow[] = hits.slice(0, CONSOLE_PICKER_MAX).map((u) => ({
     userId: u.id,
     handle: playerHandle(u.id),
@@ -2607,7 +2634,12 @@ export async function houseAccountsForConsole(
 
   if (rows.length === 0) return refused;
   const blocked = rows.filter((r) => r.reason !== null).length;
-  const shown = `${formatNumber(rows.length)} ${rows.length === 1 ? "account" : "accounts"}`;
+  /* ⛔ THE COUNT SAYS WHAT IS TRUE, NOT WHAT IS ON SCREEN (C7 step 6 review, d19-hunt-04). "10 accounts" when
+     forty matched is a false sentence on the one screen where an account the officer cannot see reads as an
+     account that does not exist — so a truncated answer says so and says what to do about it. */
+  const shown = hits.length > CONSOLE_PICKER_MAX
+    ? `${formatNumber(rows.length)} of ${formatNumber(hits.length)} accounts${SEP}narrow the search`
+    : `${formatNumber(rows.length)} ${rows.length === 1 ? "account" : "accounts"}`;
   return {
     rows,
     note: null,
@@ -2738,9 +2770,49 @@ export type ConsoleCheckView = {
   consentHref: string;
   reviewHref: string;
   /** The bounds the review step's two fields are held to, so the client types no number of its own. */
+  labelMin: number;
   labelMax: number;
   noteMax: number;
 };
+
+/**
+ * ⛔ EVERY SENTENCE THE WIZARD PAINTS THAT IS LONGER THAN A LABEL, BUILT HERE (ruling 388, whose Proof is
+ * "no console client file contains a string literal of 25+ characters that is not a prop name, class name, aria
+ * string or event name").
+ *
+ * 🔴 WHAT WAS SHIPPING, AND WHY NO GUARD SAW IT. The consent step typed its four sentences into a `"use client"`
+ * file, so they went verbatim into a publicly downloadable chunk — "Stakes are placed from this account, out of
+ * the money in its own wallet…", "Nothing is staked until an officer starts this account and the desk's master
+ * switch is on." Ruling 385 measured exactly this: MOST of the sentences this console can emit carry no
+ * vocabulary word at all, so `test:house-bot-disclosure` 1.1 and `verify:house-bot-bundle` both report clean
+ * while a paragraph describing the feature sits in a public asset. The words are neutral (453); publishing them
+ * is the harm, and the only place a guard can see it is the boundary they cross.
+ *
+ * ⛔ THE BOUNDS ARE INTERPOLATED HERE TOO, so the client types no number of its own and cannot disagree with
+ * `validateLabel`. ⚠️ The apostrophe is the real one: JSX entities are the page's problem, not the copy's.
+ */
+export const CONSOLE_WIZARD_COPY = {
+  searchLabel: "Search for an account",
+  searchHint: "A handle, a phone number, or an account ID.",
+  searchIntro: "Search by handle, phone number or account ID. Only a player's own account can be used here, and only with their permission.",
+  listLabel: "Accounts",
+  consentTitle: "What the holder agrees to",
+  consentBullets: [
+    "Stakes are placed from this account, out of the money in its own wallet, within the limits set for it and for the desk.",
+    "Their permission is confirmed with their own password, checked once and never kept. It creates no sign-in and no session.",
+    "They can end it at any time from their own account, and it ends by itself if they take a break, self-exclude, close the account or ask for their data to be erased.",
+    "Nothing is staked until an officer starts this account and the desk's master switch is on.",
+  ],
+  labelLabel: "A name for this account on the desk",
+  labelHint: `${LABEL_MIN_CHARS} to ${LABEL_MAX_CHARS} characters. It is shown to officers only.`,
+  noteLabel: "Why (optional)",
+  noteHint: `Up to ${TEXT_MAX_CHARS} characters. Kept with the record.`,
+  reviewTitle: "Confirm with the holder",
+  passwordLabel: "The holder's password",
+  passwordHint: "Ask them for it. It is checked once and never kept, and the last two attempts are always held for them so this can never lock them out.",
+  refusedTitle: "It was not designated",
+  wayOut: "Open it",
+} as const;
 
 /**
  * THE WIZARD'S GATED READER (rulings 340, 356, 359, 512). Arity THREE: the signed-in viewer, the calling file's own
@@ -2768,7 +2840,11 @@ export async function houseCheckForConsole(
     houseBotEligibility(id, { context: "designate", actorId: viewerUserId }),
     (async () => db.user.findById(id))(),
     (async () => houseBotStore.listByUserId(id))(),
-    (async () => positionStore.listForUser(id, 100))(),
+    /* ⛔ A COUNTING READER, NEVER A PAGE (ruling 344; C7 step 6 review, conformance-344). This was
+       `listForUser(id, 100).filter(OPEN).length` — the hundred NEWEST positions of every status, filtered in
+       JS — so an account with a hundred settled positions newer than its open ones rendered "Open positions 0"
+       on the card that decides whether it may be designated, beside a warning saying it holds some. */
+    (async () => positionStore.countOwnOpenForUser(id))(),
   ]);
 
   /* ⛔ A FAILED ELIGIBILITY READ IS NOT AN ELIGIBLE ACCOUNT (355). The card refuses with its own blocking row
@@ -2798,7 +2874,7 @@ export async function houseCheckForConsole(
     ? { word: "Funded", chip: TONE_CHIP.green, sentence: "There is money in this wallet, so a stake can be funded from it." }
     : { word: "Not funded", chip: TONE_CHIP.slate, sentence: "This wallet is empty, so nothing can be staked from it until the holder puts money in." };
 
-  const open = positions === null ? null : positions.filter((x) => x.status === "OPEN" && x.houseBotId == null).length;
+  const open = positions;
   const priorCount = prior === null ? 0 : prior.filter((b) => b.status === "REMOVED").length;
 
   return {
@@ -2827,6 +2903,7 @@ export async function houseCheckForConsole(
     checkHref: consoleNewHref({ userId: id }),
     consentHref: consoleNewHref({ userId: id, step: "consent" }),
     reviewHref: consoleNewHref({ userId: id, step: "review" }),
+    labelMin: LABEL_MIN_CHARS,
     labelMax: LABEL_MAX_CHARS,
     noteMax: TEXT_MAX_CHARS,
   };
@@ -2846,11 +2923,21 @@ export type ConsoleDesignateResult =
   /** `field` is the form's own control, never a column (D19); `href` is where the refusal says to go. */
   | { ok: false; error: string; field?: "label" | "note" | "password"; href?: string };
 
+/**
+ * ⛔ THE TWO LABEL SENTENCES, EXPORTED BY NAME (C7 step 6 review, test-strength-383-label-late). The EARLY check —
+ * the console's own `validateLabel`, before a password attempt is spent — answers the LENGTH sentence; the LATE
+ * path, `designateHouseBot`'s own refusal, answers `labelTaken`. A case that pins only `field === "label"` cannot
+ * tell the two apart, because both paths produce it, so the assertion that the shape is refused BEFORE the service
+ * is reached has to name the sentence only the early check can say.
+ */
+export const CONSOLE_DESIGNATE_LABEL_LENGTH = `Give it a name of ${LABEL_MIN_CHARS} to ${LABEL_MAX_CHARS} characters.`;
+export const CONSOLE_DESIGNATE_LABEL_TAKEN = "That name is already in use on the desk. Choose another.";
+
 /** The wizard's own sentences — the console's, never a service's (453). */
 const DESIGNATE_FORM_COPY = {
-  labelLength: `Give it a name of ${LABEL_MIN_CHARS} to ${LABEL_MAX_CHARS} characters.`,
+  labelLength: CONSOLE_DESIGNATE_LABEL_LENGTH,
   labelCharset: "Letters, numbers, spaces and - _ . # ' only.",
-  labelTaken: "That name is already in use on the desk. Choose another.",
+  labelTaken: CONSOLE_DESIGNATE_LABEL_TAKEN,
   noteLong: `At most ${TEXT_MAX_CHARS} characters — shorten it.`,
   ineligible: "Something on the holder's own account is stopping this. Read the checks and clear them first.",
   alreadyOnDesk: "This account is already on the desk.",

@@ -259,7 +259,11 @@ try {
            fix either. ⛔ THE EXEMPTION IS CONDITIONED ON THE REACH STILL EXISTING, asserted below, so deleting the
            rule turns this red rather than leaving a 15px control silently exempt. */
         const tap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap-min")) || 44;
-        const controls = [...document.querySelectorAll("button, a[href], [role='switch'], input, select")]
+        /* ⛔ AN OPTION IS A CONTROL (C7 step 6 review, conformance-412 / visual-13). Ruling 412 fixes each
+           `li role="option"` at 44px, and the selector saw `button, a, input, select` only — so the picker's
+           options were outside the floor entirely, and the ruling's own rung was measured nowhere. Widened, never
+           narrowed: nothing that was measured before has left this list. */
+        const controls = [...document.querySelectorAll("button, a[href], [role='switch'], [role='option'], input, select")]
           .filter(vis)
           .filter((el) => !el.closest("thead") && el.getAttribute("role") !== "switch"
             && !el.closest("[role='switch']") && el.getAttribute("href") !== "#main-content"

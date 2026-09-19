@@ -160,11 +160,23 @@ section("3b · tests read recipients from the outbox, not from stdout");
  * write one gets a red build and a pointer, instead of a passing test that proves less than
  * they think.
  */
-const testFiles = walk("scripts").length ? [] : [];  // scripts/ is not under src/; walk it directly
-const scriptDir = readdirSync(join(root, "scripts"))
-  .filter((f) => /\.(mts|mjs)$/.test(f))
-  .map((f) => `scripts/${f}`);
-void testFiles;
+/* ⛔ THE WHOLE OF `scripts/`, NOT ITS TOP LEVEL (C7 step 6's fix pass). This read `readdirSync` on the directory
+   itself, so every suite whose cases live in `scripts/lib/` — which is where this project's largest test sources
+   now are — was outside the scan. `test:decomment` 5.3 is the guard that noticed: it takes the script with the
+   largest comment-stripping delta in the whole corpus and asserts it is inside THIS population, and the file that
+   won that measurement lives in `scripts/lib/`. A population narrower than the corpus it claims to cover is the
+   wrong-population defect, so the walk is recursive and the two suites' sets are the same set. */
+const walkScripts = (dir: string): string[] => {
+  const out: string[] = [];
+  for (const e of readdirSync(join(root, dir))) {
+    const rel = `${dir}/${e}`;
+    if (e === "node_modules" || e === ".next") continue;
+    if (statSync(join(root, rel)).isDirectory()) out.push(...walkScripts(rel));
+    else if (/\.(mts|mjs)$/.test(e)) out.push(rel);
+  }
+  return out;
+};
+const scriptDir = walkScripts("scripts");
 
 // A log line that carries an email address AND is being matched for one — the shape that
 // silently became unfalsifiable when the address started being masked.

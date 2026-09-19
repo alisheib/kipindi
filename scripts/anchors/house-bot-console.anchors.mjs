@@ -110,10 +110,12 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
+    /* ⭐ RE-ANCHORED AT C7 STEP 6's FIX, SAME DEFECT: the settled set's fourth read is now a COUNT, not a page
+       (ruling 344), so the line the second wallet read is planted beside changed with it. */
     name: "356-wizard-wallet · the check card reads the candidate's wallet a SECOND time, for a figure it never paints",
     file: GATE,
-    from: `    (async () => positionStore.listForUser(id, 100))(),`,
-    to: `    (async () => positionStore.listForUser(id, 100))(),
+    from: `    (async () => positionStore.countOwnOpenForUser(id))(),`,
+    to: `    (async () => positionStore.countOwnOpenForUser(id))(),
     (async () => db.wallet.findByUserId(id))(),`,
     expect: "1.356 · the wizard's check card performs EXACTLY ONE wallet read",
     suite: "console-mem",
@@ -137,11 +139,15 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
+    /* ⭐ THE `expect` IS RE-AIMED, NOT THE MUTATION (C7 step 6 review, test-strength-387-blind). It named the
+       assertion whose fixture is a SUPPORT account, refused two branches later by the role test and never through
+       `onDesk` at all — so the line it named stayed green and the harness reported WRONG-ASSERTION. The line this
+       defect really reddens is the roster one. */
     name: "387-blind · every picker option is offered as choosable, including one already on the desk",
     file: GATE,
     from: `  if (onDesk) return PICKER_REASON.onDesk;`,
     to: `  if (false) return PICKER_REASON.onDesk;`,
-    expect: "1.387 · an option that cannot be chosen carries its reason",
+    expect: "1.387 · an account already on the desk comes back as an option that cannot be chosen",
     suite: "console-mem",
   },
   {
@@ -192,10 +198,10 @@ export const MUTATIONS = [
     name: "388-prop · a client prop is named for the feature, and a prop name survives minification into a public chunk",
     file: NEW_CLIENT,
     from: `  checkHref,
-  labelMax,`,
+  labelMin,`,
     to: `  houseBotLabel,
   checkHref,
-  labelMax,`,
+  labelMin,`,
     expect: "1.388 · not one prop name, type field or string literal of any console client file carries a vocabulary word",
     suite: "console-mem",
   },
@@ -223,6 +229,138 @@ export const MUTATIONS = [
     to: `              ? <Button size="md" variant="primary" disabled>Designate an account</Button>`,
     expect: "1.407 · 432(h) · …and the same rule for the wizard",
     suite: "console-mem",
+  },
+  /* ── C7 step 6 · WHAT THE FIX PASS ADDED (rulings 259/324/380, 344, 355, 387, 388, 412) ───────────────────────
+   * Each is a shape the wizard ACTUALLY shipped in and a review measured: a page that gated only when a `?u=` was
+   * present, a population built from a page, a failed read painted as a state, a picker whose count lied about its
+   * own bound, a feature paragraph typed into a public chunk, and an idempotency key derived from what the officer
+   * typed — which bricked the control after one wrong password. */
+  {
+    name: "380-page-gate · the wizard's page decides its audience only when a `?u=` is present, so a bare /admin/desk/new streams to any signed-in account",
+    file: NEW_PAGE,
+    from: `  if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/desk"))) return null;
+  const sp = await searchParams;`,
+    to: `  const sp = await searchParams;`,
+    expect: "1.380 · 324 · the wizard's page decides its OWN audience first",
+    suite: "console-mem",
+  },
+  {
+    name: "344-paged-count · `Open positions` is built from a PAGE again, so an account whose settled rows are newer reads zero open",
+    file: GATE,
+    from: `    (async () => positionStore.countOwnOpenForUser(id))(),`,
+    to: `    (async () => (await positionStore.listForUser(id, 3)).filter((x) => x.status === "OPEN" && x.houseBotId == null).length)(),`,
+    expect: "1.344 · the check card's open-position figure comes from a COUNTING reader",
+    suite: "console-mem",
+  },
+  {
+    name: "355-unreadable-row · a failed eligibility read stops saying so, so an unreadable account paints as a card with nothing wrong with it",
+    file: GATE,
+    from: `  const blocking: ConsoleCheckRow[] = el === null
+    ? [{ code: "UNREADABLE", text: "This account could not be checked. Refresh to try again.", href: null }]
+    : el.blocking.map(row);`,
+    to: `  const blocking: ConsoleCheckRow[] = el === null ? [] : el.blocking.map(row);`,
+    expect: "1.359 · 355 · a failed eligibility read is a BLOCKING ROW, not an eligible account",
+    suite: "console-mem",
+  },
+  {
+    name: "355-open-zero · a failed position count renders a fabricated zero instead of the em dash",
+    file: GATE,
+    from: `    openPositions: open === null ? EM_DASH : formatNumber(open),`,
+    to: `    openPositions: formatNumber(open ?? 0),`,
+    expect: "1.359 · 355 · a failed position count renders an EM DASH, never a fabricated zero",
+    suite: "console-mem",
+  },
+  {
+    name: "355-door-hidden · the bonus fact and the way to the holder's own money screen go back inside the funded guard, so a failed wallet read takes the door with it",
+    file: NEW_PAGE,
+    from: `                <div className="mt-4 pt-4 border-t border-border-subtle">
+                  {view.funded !== null && (`,
+    to: `                <div className="mt-4 pt-4 border-t border-border-subtle">
+                  {view.funded !== null && view.bonusCaption.length > 0 && (`,
+    expect: "1.359 · 456 · the page paints the bonus fact and the way to the holder's own money screen OUTSIDE the funded guard",
+    suite: "console-mem",
+  },
+  {
+    name: "387-busy-lies · a rate-limited lookup answers the refusal, telling an owner inside the audience that accounts which exist do not",
+    file: GATE,
+    from: `  if (!gate.allowed) return { rows: [], note: CONSOLE_PICKER_BUSY, count: "" };`,
+    to: `  if (!gate.allowed) return refused;`,
+    expect: "1.387(e) · a rate-limited lookup answers its OWN sentence",
+    suite: "console-mem",
+  },
+  {
+    name: "387-rate-rule · the picker's rate rule is deleted, and `rateCheckAsync` fails OPEN on a key it does not know",
+    file: "src/lib/server/rate-limit.ts",
+    from: `  "desk.picker":   { capacity: 30, refillPerMin: 15 },`,
+    to: ``,
+    expect: "1.387(e) · the picker's rate rule EXISTS, is keyed on the CALLER",
+    suite: "console-mem",
+  },
+  {
+    name: "387-cap · the ten-option bound becomes a hundred, so a listbox with no scroll box of its own runs off the page",
+    file: GATE,
+    from: `  const rows: ConsolePickerRow[] = hits.slice(0, CONSOLE_PICKER_MAX).map((u) => ({`,
+    to: `  const rows: ConsolePickerRow[] = hits.slice(0, 100).map((u) => ({`,
+    expect: "1.387 · 412 · the answer is capped at ten options and the count says so",
+    suite: "console-mem",
+  },
+  {
+    name: "387-count-lie · the live count reports the rows SHOWN, so a query matching forty says `10 accounts`",
+    file: GATE,
+    from: `  const shown = hits.length > CONSOLE_PICKER_MAX
+    ? \`\${formatNumber(rows.length)} of \${formatNumber(hits.length)} accounts\${SEP}narrow the search\`
+    : \`\${formatNumber(rows.length)} \${rows.length === 1 ? "account" : "accounts"}\`;`,
+    to: `  const shown = \`\${formatNumber(rows.length)} \${rows.length === 1 ? "account" : "accounts"}\`;`,
+    expect: "1.387 · 412 · the answer is capped at ten options and the count says so",
+    suite: "console-mem",
+  },
+  {
+    name: "387-order · the slice takes whichever ten the store happened to return, so the two twins can answer different tens",
+    file: GATE,
+    from: `  hits.sort((a, b) => matchRank(a) - matchRank(b) || a.id.localeCompare(b.id));`,
+    to: ``,
+    expect: "1.387 · …and the ten that survive the slice are the same ten a second run returns",
+    suite: "console-mem",
+  },
+  {
+    name: "412-nonce · the submit claim goes back to the account and the typed name, so one wrong password bricks the control for 30 days",
+    file: NEW_CLIENT,
+    from: `        result = await designate({ userId, label, note, password, submitId: attempt.current });`,
+    to: `        result = await designate({ userId, label, note, password, submitId: \`\${userId}:\${label}\` });`,
+    expect: "1.412 · …so the wizard mints a NEW nonce for every armed attempt",
+    suite: "console-mem",
+  },
+  {
+    name: "388-25char · a sentence about the feature is typed into the client file, where no vocabulary guard can see it",
+    file: NEW_CLIENT,
+    from: `/** What the designation posts and what it gets back — declared structurally, for ruling 384's reason above. */`,
+    to: `const LEAK = "Stakes are placed from this account, out of the money in its own wallet, within the limits set for it and for the desk.";
+/** What the designation posts and what it gets back — declared structurally, for ruling 384's reason above. */`,
+    expect: "1.388 · every string of 25+ characters in every console client file is either a class list or one of the six",
+    suite: "console-mem",
+  },
+  {
+    name: "382-guard-extractor · the guard-label extractor stops matching, and an empty population reads as compliance",
+    file: "scripts/lib/house-bot-console-cases.mts",
+    from: `      const GUARD_RE = /require(?:Owner|Staff|HouseOwner)\\(\\s*"([^"]+)"/g;`,
+    to: `      const GUARD_RE = /requireNothingAtAll\\(\\s*"([^"]+)"/g;`,
+    expect: "1.382 · CONTROL · the guard-label extractor is proved LIVE on a synthetic source",
+    suite: "console-mem",
+  },
+  {
+    name: "387-grammar · a house-named column is added to the picker's own search grammar, which the client search box value-imports",
+    file: "src/lib/search/fields.ts",
+    from: `    handle: { columns: ["displayLabel"], kind: "text" },
+    id: { columns: ["id"], kind: "exact" },
+  },
+  // What a bare token searches — what an officer actually holds: a pasted handle, a phone number, or an id.`,
+    to: `    handle: { columns: ["displayLabel"], kind: "text" },
+    id: { columns: ["id"], kind: "exact" },
+    house: { columns: ["houseBotId"], kind: "exact" },
+  },
+  // What a bare token searches — what an officer actually holds: a pasted handle, a phone number, or an id.`,
+    expect: "4.1 · R1's house filter is never a TXN_SEARCH field, column or default, and the designation picker's own grammar carries none either",
+    suite: "disclosure",
   },
   /* ── C7 step 4b · THE ACCOUNT'S ACTION ROW (ruling 415; replan 549) ──────────────────────────────────────────
    * Each puts back a shape the console could plausibly have shipped in: an act offered in a state its service

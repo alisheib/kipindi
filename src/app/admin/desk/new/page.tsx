@@ -47,8 +47,8 @@ import { FormColumn } from "@/components/ui/form-column";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Sensitive } from "@/components/ui/sensitive";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseCheckForConsole, type ConsoleCheckRow } from "@/lib/server/house-console-read";
-import { CONSOLE_ROUTE, CONSOLE_WIZARD_STEPS, consoleWizardStep, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
+import { houseCheckForConsole, houseConsoleAudience, CONSOLE_WIZARD_COPY, type ConsoleCheckRow } from "@/lib/server/house-console-read";
+import { CONSOLE_ROUTE, CONSOLE_WIZARD_STEPS, consoleWizardStep } from "@/lib/house-bot/console-routes";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTIONS AND HANDS THEM DOWN (ruling 422): a client component under
  * `src/app/admin` that imports an actions module joins `test:admin-act-gate`'s population and must consult the act
  * gate — and on an Owner-only route `mayAct` IS `mayView`, so that consultation would be a branch that can never be
@@ -61,13 +61,14 @@ export const metadata = { title: "Admin · Desk" };
 /** ⛔ Every answer on this page is a live check against live limits (rulings 302, 356, 380). */
 export const dynamic = "force-dynamic";
 
-/** What each step is called on screen, in the rail-free step line. ONE home, beside the closed list it indexes. */
-const STEP_LABEL: Record<ConsoleWizardStep, string> = {
-  find: "Find the account",
-  check: "What we already know",
-  consent: "What the holder agrees to",
-  review: "Confirm with the holder",
-};
+/**
+ * ⛔ THE LINK TREATMENT FOR AN IN-BODY WAY OUT, WRITTEN ONCE (C7 step 6 review, visual-6). Every one of these had
+ * hover-only affordance — no underline, no brand ink, nothing at rest — which on a phone is no affordance at all:
+ * at 360 the missing-account card read as three left-aligned sentences of which one, invisibly, was the way back.
+ * The Callout's own way-out link two blocks below was already underlined, so the page contradicted itself.
+ */
+const WAY_OUT_LINK =
+  "inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-brand-300 underline underline-offset-2 hover:text-brand-200";
 
 type DeskNewProps = {
   searchParams: Promise<{ u?: string | string[]; step?: string | string[] }>;
@@ -87,6 +88,12 @@ export default async function AdminDeskNewPage(props: DeskNewProps) {
 
 async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
   const session = await currentSession();
+  /* ⛔ THE PAGE'S OWN VERDICT IS ITS FIRST STATEMENT, BEFORE ANY READ AND BEFORE ANY JSX (rulings 259, 300, 324,
+     380). It was the READER's alone, and the reader only ran when a `?u=` was present — so a bare
+     `/admin/desk/new` performed no audience check at all and any signed-in PLAYER received the head, the step
+     line, the find card's copy and the picker's server-action reference in the payload behind the layout's
+     redirect. Ruling 259 measured that class: the layout's verdict changes what is PAINTED, not what is SENT. */
+  if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/desk"))) return null;
   const sp = await searchParams;
   const uRaw = Array.isArray(sp.u) ? sp.u[0] : sp.u;
   const chosen = (uRaw ?? "").trim();
@@ -107,37 +114,38 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
       <AdminPageHead
         title="Designate an account"
         actions={
-          <Link
-            href={CONSOLE_ROUTE as Route}
-            className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"
-          >
+          <Link href={CONSOLE_ROUTE as Route} className={WAY_OUT_LINK}>
             Back to the desk
           </Link>
         }
       />
 
       <AdminBody>
-        <FormColumn measure="form">
+        {/* ⛔ THE COLUMN CARRIES THE CONSOLE'S RHYTHM (C7 step 6 review, visual-1). `FormColumn` is a max-width
+            wrapper and nothing else, and `AdminBody`'s own spacing reaches only its ONE direct child — so the
+            step line, the card, all three Callouts and the action row were laid out flush at 0px, read off the
+            tiles at x=870. The desk's own page wraps its FormColumn body for exactly this reason. */}
+        <FormColumn measure="form" className="space-y-4">
           {/* ⛔ THE STEP LINE IS THE PAGE'S ONLY PROGRESS SIGNAL, and the bar keeps the kit's DEFAULT line (409):
               this is a position in a sequence, not usage against a limit, so it carries no caption of its own.
-              ⚠️ `label` is `aria-label` only and paints nothing, which is why the words are written beside it. */}
-          <div className="space-y-1.5">
-            {/* ⛔ 432(n) · THE COUNT IS SAID ONCE. The eyebrow read "Step 2 of 4 · WHAT WE ALREADY KNOW" with the
-                bar's own default line printing "2 OF 4 · 50%" 20px beneath it — one state saying one fact twice,
-                read off the first render at both widths. The bar keeps the kit's line (409); the eyebrow names the
-                step, which is the thing the bar cannot say. */}
-            <p className="font-mono text-micro eyebrow uppercase text-text-subtle">{STEP_LABEL[step]}</p>
-            <ProgressBar value={stepIndex} max={CONSOLE_WIZARD_STEPS.length} label="Designation step" />
-          </div>
+              ⛔ 432(n) · AND THE STEP'S NAME IS SAID ONCE (C7 step 6 review, visual-9). An eyebrow above the bar
+              repeated, in capitals, the very words of the card heading 76px below it — one state saying one fact
+              twice, which is the class 432(n) was raised on. The bar says the POSITION, which the heading cannot;
+              the heading says the NAME, which the bar cannot. ⚠️ `label` is `aria-label` only and paints nothing.
+              ⭐ It is also what makes the loader honest: the step line is now two rows, and two is what it ghosts. */}
+          <ProgressBar value={stepIndex} max={CONSOLE_WIZARD_STEPS.length} label="Designation step" />
 
           {step === "find" && (
             <AdminCard title="Find the account">
-              <p className="text-body-sm text-text-secondary mb-4 max-w-[60ch]">
-                Search by handle, phone number or account ID. Only a player&apos;s own account can be used here, and
-                only with their permission.
-              </p>
-              {/* ⛔ THE ACTION ARRIVES AS A PROP, never as an import in the client file (ruling 422). */}
-              <DeskAccountPicker find={findDeskAccountsAction} />
+              <p className="text-body-sm text-text-secondary mb-4 max-w-[60ch]">{CONSOLE_WIZARD_COPY.searchIntro}</p>
+              {/* ⛔ THE ACTION ARRIVES AS A PROP, never as an import in the client file (ruling 422), and so does
+                  every sentence longer than a label (ruling 388). */}
+              <DeskAccountPicker
+                find={findDeskAccountsAction}
+                searchLabel={CONSOLE_WIZARD_COPY.searchLabel}
+                searchHint={CONSOLE_WIZARD_COPY.searchHint}
+                listLabel={CONSOLE_WIZARD_COPY.listLabel}
+              />
             </AdminCard>
           )}
 
@@ -145,20 +153,23 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
               the first render: the card painted a handle built out of the typed id, an EMPTY "Phone" term, and
               "Open positions 0" for an account that does not exist — a fabricated zero beside a labelled row with
               nothing under it. The only honest things here are the cause and the way back. */}
+          {/* ⛔ A DEAD END IS A DEFECT, AND THE KIT HAS THE SHAPE FOR THIS (C7 step 6 review, visual-15). The
+              missing-account state was an ordinary card whose only way out was a text link in the header slot: at
+              360 it rendered as three stacked sentences with nothing to press. `Callout layout="stack"` is the
+              form the kit documents for "the notice IS the page" — a plate, the cause as the title, and a real
+              control as the way forward. */}
           {view !== null && step === "check" && view.accountMissing && (
-            <AdminCard
-              title="What we already know"
+            <Callout
+              tone="neutral"
+              layout="stack"
+              titleAs="h2"
+              title={view.blocking[0]?.text}
               action={
-                <Link
-                  href={view.findHref as Route}
-                  className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"
-                >
+                <Link href={view.findHref as Route} className="btn btn-secondary btn-md inline-flex items-center justify-center">
                   Search again
                 </Link>
               }
-            >
-              <p className="text-body-sm text-text-secondary max-w-[60ch]">{view.blocking[0]?.text}</p>
-            </AdminCard>
+            />
           )}
 
           {view !== null && step === "check" && !view.accountMissing && (
@@ -166,10 +177,7 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
               <AdminCard
                 title="What we already know"
                 action={
-                  <Link
-                    href={view.findHref as Route}
-                    className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"
-                  >
+                  <Link href={view.findHref as Route} className={WAY_OUT_LINK}>
                     Search again
                   </Link>
                 }
@@ -181,9 +189,14 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
                     the platform knows about it. A display name rendered here would put a real person's name on the
                     one screen most likely to end up in a screenshot, for no decision it supports. */}
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* ⛔ ONE WORD FOR ONE VALUE, AND THE PRIMARY VALUE IS THE PRIMARY INK (C7 step 6 review,
+                      visual-5, visual-10). This term read "Handle" while the review step called the identical
+                      value "Account" and the desk's own roster header calls the column ACCOUNT — and the value
+                      was the only `dd` on the card painted in the muted sub-line ink, which the console reserves
+                      for a gloss UNDER a value, so the most important fact on the card was its dimmest. */}
                   <div>
-                    <dt className="font-mono text-micro eyebrow uppercase text-text-tertiary">Handle</dt>
-                    <dd className="font-mono text-body-sm text-text-subtle">{view.handle}</dd>
+                    <dt className="font-mono text-micro eyebrow uppercase text-text-tertiary">Account</dt>
+                    <dd className="font-mono text-body-sm text-text">{view.handle}</dd>
                   </div>
                   {/* ⛔ 359 · THE PLATFORM'S OWN SERVER GATE decides whether this viewer sees the number at all,
                       the mask, or the reveal control. Nothing here computes a mask and nothing here renders
@@ -207,21 +220,24 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
 
                 {/* ⛔ 459 · A FUNDED STATE, NEVER A BALANCE. `null` means the wallet could not be read, and a
                     blocking row below says so — a failed read is never painted as a state (355). */}
-                {view.funded !== null && (
-                  <div className="mt-4 pt-4 border-t border-border-subtle">
+                {/* ⛔ A FAILED READ MUST NOT TAKE THE DOOR WITH IT (rulings 355, 456, 459; C7 step 6 review,
+                    conformance-355). The whole block hung on `funded !== null`, so an unreadable wallet silently
+                    removed 456's link to the screen where the figure legitimately lives AND the bonus fact — the
+                    officer lost the way forward at the exact moment they needed it. The STATE is what a failed
+                    read withholds (a blocking row above already names the cause); the door and the fact are not
+                    reads at all and stay. */}
+                <div className="mt-4 pt-4 border-t border-border-subtle">
+                  {view.funded !== null && (
                     <div className="flex items-start gap-3 flex-wrap">
                       <Chip size="sm" variant={view.funded.chip}>{view.funded.word}</Chip>
                       <p className="text-body-sm text-text-secondary min-w-0 max-w-[60ch]">{view.funded.sentence}</p>
                     </div>
-                    <p className="text-body-sm text-text-subtle mt-1.5 max-w-[60ch]">{view.bonusCaption}</p>
-                    <Link
-                      href={view.holderHref as Route}
-                      className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"
-                    >
-                      Open the holder&apos;s own money screen
-                    </Link>
-                  </div>
-                )}
+                  )}
+                  <p className="text-body-sm text-text-subtle mt-1.5 max-w-[60ch]">{view.bonusCaption}</p>
+                  <Link href={view.holderHref as Route} className={WAY_OUT_LINK}>
+                    Open the holder&apos;s own money screen
+                  </Link>
+                </div>
 
                 {view.priorNote !== null && (
                   <p className="text-body-sm text-text-secondary mt-4 max-w-[60ch]">{view.priorNote}</p>
@@ -235,7 +251,12 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
 
               {/* ⛔ 432(j) · A CONTROL THAT IS NOT LIVE SAYS WHY, VISIBLY, and it says a fact the rows above do not
                   already carry — how many of them are stopping it (432(n)). */}
-              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
+              {/* ⛔ THE REASON READS BEFORE THE CONTROL AT EVERY WIDTH (C7 step 6 review, visual-11).
+                  `flex-col-reverse` is the kit's DIALOG-FOOTER idiom, where the first child is a button; applied
+                  to a row whose first child is a SENTENCE it inverted cause and effect at 360 — the officer met a
+                  dead control first and its explanation second. The desk's own action row already uses this shape
+                  and its comment records that it was chosen over end-justification for the same wrapping. */}
+              <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-end">
                 {view.continueReason !== null && (
                   <span className="text-body-sm text-text-secondary max-w-[38ch]">{view.continueReason}</span>
                 )}
@@ -257,8 +278,10 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
               consentHref={view.consentHref}
               reviewHref={view.reviewHref}
               checkHref={view.checkHref}
+              labelMin={view.labelMin}
               labelMax={view.labelMax}
               noteMax={view.noteMax}
+              copy={CONSOLE_WIZARD_COPY}
               designate={designateDeskAccountAction}
             />
           )}
