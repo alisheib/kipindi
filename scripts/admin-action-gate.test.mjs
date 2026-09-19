@@ -168,6 +168,66 @@ ok(`§1 ratchet · ${files.length} "use server" files under src/app/admin, ${sca
 ok("§1 every exported admin action calls a gate before its first data access",
   offenders.length === 0, offenders.slice(0, 20).join(" | "));
 
+/**
+ * §4 · THE PINNED RATCHET — because the guard's own reasoning is path-independent and its scope was a path.
+ *
+ * ⛔ THE HOLE THE REVIEW FOUND. §1 walks `src/app/admin` only. But this guard's header says why it exists: a server
+ * action POSTs to whatever URL the browser is on, NOT to its own source path. That argument does not stop at a
+ * directory — and `src/app/markets/actions.ts` is a `"use server"` file outside the walk holding six
+ * admin-privileged writes: resolveMarketAction (:125, settles a market and pays out), recategoriseMarketAction
+ * (:166), adminReopenMarketAction (:191, resumes betting), emergencyVoidMarketAction (:211, voids a LIVE pool and
+ * refunds every stake), createMarketAction (:244) and restoreCommentAction (:398). All six ARE gated today, by
+ * `requireAdminOrThrow` (:60) which reads the stored row then `canAct` and audits refusals as
+ * privilege_escalation_blocked. There was no exploit. There was also nothing holding it true: delete the gate from
+ * resolveMarketAction and BOTH ratchets stayed green, on the six actions where the consequence is money.
+ *
+ * ⭐ SO THE RULE IS A RATCHET, NOT A SWEEP: an action that is admin-gated today may not quietly stop being. Every
+ * `"use server"` file under `src/app` is scanned; every exported function that gates is discovered; and the set
+ * below pins what was gated when this was written. A pinned entry that stops being discovered means its gate was
+ * removed — RED. A newly discovered one must be added here deliberately, which is the point: adding an
+ * admin-privileged action becomes a decision somebody writes down.
+ */
+const PINNED_GATED = [
+  "markets/actions.ts::resolveMarketAction",
+  "markets/actions.ts::recategoriseMarketAction",
+  "markets/actions.ts::adminReopenMarketAction",
+  "markets/actions.ts::emergencyVoidMarketAction",
+  "markets/actions.ts::createMarketAction",
+  "markets/actions.ts::restoreCommentAction",
+];
+
+console.log("\n[admin-action-gate] §4 an action that is admin-gated today may not quietly stop being");
+{
+  const APP = join(ROOT, "src", "app");
+  const allActionFiles = [];
+  const walkApp = (d) => {
+    for (const n of readdirSync(d)) {
+      const p = join(d, n);
+      if (statSync(p).isDirectory()) walkApp(p);
+      else if (/\.(ts|tsx)$/.test(n) && /^\s*["']use server["']/m.test(readFileSync(p, "utf8"))) allActionFiles.push(p);
+    }
+  };
+  walkApp(APP);
+  const discovered = new Set();
+  for (const file of allActionFiles) {
+    const rel = relative(APP, file).split(sep).join("/");
+    if (rel.startsWith("admin/")) continue;            // §1 already covers the admin tree, wholesale
+    const src = readFileSync(file, "utf8");
+    const locals = localGateNames(src);
+    for (const fn of exportedFunctions(src)) {
+      const pattern = locals.size ? new RegExp(`${GATE.source}|\\b(${[...locals].join("|")})\\s*\\(`) : GATE;
+      if (pattern.test(fn.body) || INLINE_GATE.test(fn.body)) discovered.add(`${rel}::${fn.name}`);
+    }
+  }
+  const lost = PINNED_GATED.filter((p) => !discovered.has(p));
+  const unpinned = [...discovered].filter((d) => !PINNED_GATED.includes(d)).sort();
+  ok(`§4 ratchet · ${allActionFiles.length} "use server" files under src/app, ${discovered.size} gated actions discovered outside the admin tree`,
+    allActionFiles.length >= 45, `${allActionFiles.length} files`);
+  ok("§4 every action pinned as admin-gated still has its gate", lost.length === 0, lost.join(", "));
+  ok("§4 no admin-gated action outside the admin tree is unpinned (add it to PINNED_GATED deliberately)",
+    unpinned.length === 0, unpinned.join(", "));
+}
+
 console.log("\n[admin-action-gate] §2 the scanner understands both export shapes");
 {
   const fnDecl = `export async function alpha(x: string) { await requireStaff("ops"); await db.user.findById(x); }`;
