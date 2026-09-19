@@ -1236,7 +1236,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * table for the same reason every reader does: ruling 523 measured that a server action is a POST to whatever URL the
  * browser is on, carrying a `Next-Action` id, so NO path rule can see it — the arity pin, the signed-in-viewer pin
  * and the own-route pin are the only things standing between it and ruling 259's measured defect class. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -1477,16 +1477,20 @@ export const CONSOLE_GATE_STRUCK = ["houseBotLabelsForConsole", "houseStakeForCo
  * gating — cannot ship without a `CONSOLE_GATES` entry, and therefore cannot ship without its arity, its
  * signed-in-viewer and its own-route pins.
  */
-export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell", "ConsoleEmpty", "ConsoleKpiTile",
+export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell", "ConsoleDetailAnswer",
+  "ConsoleDetailView", "ConsoleEmpty", "ConsoleKpiTile",
   "ConsoleLimitRow", "ConsoleLimitsSaveInput", "ConsoleLimitsSaveResult", "ConsoleLimitsView", "ConsoleRosterRow",
-  "ConsoleRosterView", "ConsoleUsageCell",
+  "ConsoleRosterView", "ConsoleRuleRow", "ConsoleTargetRow", "ConsoleUsageCell",
   "ConsoleUsageHalf", "ConsoleUsageQuery", "ConsoleUsageRow", "HOUSE_CONSOLE_PREFIX", "OPERATOR_DATA_EXEMPT",
-  "TARGETED_DAILY_TZS_FIELD", "clampOperatorText", "consoleLimitLabel",
+  "ACCOUNT_TARGETED_DAILY_TZS_FIELD", "TARGETED_DAILY_TZS_FIELD", "clampOperatorText", "consoleLimitLabel",
   /* ⭐ C7 step 4 · ruling 432(f)'s neutral way-out override. Both are PURE COPY: `consoleWayOutKey` maps a live cause
      to the key its sentence is overridden by, and `consoleWayOutCopy` picks the console's sentence or the shared one
      and fills its `{label}`. Neither awaits, reaches `db.`, names a store member or decides an audience — which is
      what 0.512b checks rather than takes on trust. */
   "consoleWayOutCopy", "consoleWayOutKey",
+  /* ⭐ C7 step 4 · the account page's two pure helpers: one target-end caption in the console's own words, and
+     the relative "Last bet" phrase with its absolute EAT title. Neither reads anything. */
+  "consoleTargetEndCaption", "relativeEat",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
@@ -1928,8 +1932,8 @@ export async function houseStakeForConsole(viewerUserId: string | null, route: s
       /* ⛔ AND THE CHECK CAN FIRE, on each of the four things it refuses, planted into a REAL declared non-reader. */
       const plantInto = (body: string) => plant(
         gateModuleCode,
-        "export function consoleLimitLabel(field: LimitField): string {",
-        `export function consoleLimitLabel(field: LimitField): string {
+        "export function consoleLimitLabel(field: FieldId): string {",
+        `export function consoleLimitLabel(field: FieldId): string {
   ${body}`,
       );
       const firedNR = {

@@ -87,10 +87,10 @@ export const MUTATIONS = [
        below runs for a viewer outside the audience. */
     from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
-  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());`,
+  const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
     to: `  const mayView = await houseConsoleAudience(viewerUserId, route);
 
-  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());`,
+  const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
     expect: "1.300 · the reader refuses a PLAYER with `null` and performs ZERO store calls",
     suite: "console-mem",
   },
@@ -197,8 +197,10 @@ export const MUTATIONS = [
   {
     name: "355-all · the reads are combined with Promise.all, so one failure blanks the page",
     file: GATE,
-    from: `  const [controlR, rosterR, dayR, exposureR, extraR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, extraR] = await Promise.all([`,
+    /* ⚠️ RE-ANCHORED at C7 step 4: the set grew a sixth member when "Last bet" brought ruling 351's rate
+       reader with it. THE DEFECT IS UNCHANGED — one failed read blanks the whole page instead of its own cell. */
+    from: `  const [controlR, rosterR, dayR, exposureR, extraR, extraBR] = await Promise.allSettled([`,
+    to: `  const [controlR, rosterR, dayR, exposureR, extraR, extraBR] = await Promise.all([`,
     expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
     suite: "console-mem",
   },
@@ -450,10 +452,10 @@ export const MUTATIONS = [
     file: GATE,
     /* ⚠️ RE-ANCHORED 2026-09-18 (B2, ruling 348) — the factory form. Same defect: a SECOND parse-context
        read inside one render, outside the one settled set. */
-    from: `  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());`,
+    from: `  const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
     to: `  await loadParseContext();
-  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());`,
-    expect: "1.347 · 432(q) · the reader's read set is the four house reads plus EXACTLY ONE `loadParseContext()`",
+  const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
+    expect: "1.347 · 432(q) · the desk's read set is the four house reads plus EXACTLY ONE `loadParseContext()`",
     suite: "console-mem",
   },
   {
@@ -1055,7 +1057,10 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "417-cols · the loader's table ghost draws the column count the page no longer has",
     file: LOADING,
-    from: `        <SkTableCard cols={6} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />`,
+    /* ⚠️ RE-ANCHORED at C7 step 4: the roster went from SIX columns to EIGHT when the way-out and "Last bet"
+       columns arrived with the page and the reader they were waiting for. THE DEFECT IS UNCHANGED — a ghost with
+       a different column count from the table it stands in for. */
+    from: `        <SkTableCard cols={8} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />`,
     to: `        <SkTableCard cols={7} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />`,
     expect: "1.417 · the table ghost states the page's real facts",
     suite: "console-mem",
@@ -1066,7 +1071,7 @@ import { formatEat } from "@/lib/utils";`,
     /* ⚠️ RE-ANCHORED at step 1's finish, to the SAME defect: the docblock's sentence moved onto a new line when
      * the head's action ghost was added, so the old anchor (` * the page's own 16px cell padding (`) no longer
      * resolved. The line quoted here still carries the claim the call site would contradict. */
-    from: `the page's own 16px cell padding (\`p-3\` on every cell`,
+    from: `the page's own 16px cell padding (SIX until`,
     to: `12px cell padding, because this page overrides no cell padding (\`p-3\` on every cell`,
     expect: "1.417 · …and the loader's own prose does not contradict it",
     suite: "console-mem",

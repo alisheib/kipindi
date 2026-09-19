@@ -46,6 +46,10 @@
  * to what `npm run test:house-bot-console` PRINTED on that run: **memory 318, Postgres 178**.
  * ⭐ RAISED AGAIN with replan ruling 547's split caption and ruling 432(f)'s neutral way-out overrides, to what
  * `npm run test:house-bot-console` PRINTED on that run: **memory 329, Postgres 189**.
+ * ⭐ RAISED AGAIN at C7 step 4 with the ACCOUNT PAGE in it — the three answers of ruling 399, the five money rows
+ * and two count rows, the balance-FLOOR state in all four of its branches, X6, the rules and targets panels, the
+ * REMOVED read set measured with six spies, and "Last bet" on both surfaces — to what `npm run test:house-bot-console`
+ * PRINTED on that run: **memory 367, Postgres 225**.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -56,6 +60,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 329, postgres: 189 },
+  minPass: { memory: 367, postgres: 225 },
   dbPrefix: "hb_console",
 });

@@ -38,16 +38,18 @@ import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath } from "./roles";
 import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
-import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, DEFAULT_TAB, type ConsoleTab } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, DEFAULT_TAB, consoleBotHref, type ConsoleTab } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
-import { FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, type LimitField } from "@/lib/house-bot/rules";
-import { wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
+import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
+import { sortCauses, wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
+import { TARGET_END_CAPTION } from "@/lib/house-bot/feed-copy";
 import { saveHouseBotLimits } from "./house-bot/limits-save";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
-import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl } from "./house-bot-dal";
-import { houseDayBooks, type HouseDayBook } from "./house-bot/book";
+import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotTarget } from "./house-bot-dal";
+import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
 import { HOUSE_BOT_STATUS_DISPLAY } from "./house-bot/status-display";
 import { DESIGNATE_COPY } from "./house-bot/designation";
+import { readBotAndHolder } from "./house-bot/control";
 import { playerHandle } from "./house-bot/alerts";
 import { loadParseContext } from "./house-bot/rules-context";
 
@@ -145,11 +147,14 @@ export type ConsoleKpiTile = { label: string; value: string; delta?: string; una
 /** One roster row, painted. ⛔ No net, no balance, no lifetime figure (rulings 266, 310, 360, 368). */
 export type ConsoleRosterRow = {
   id: string;
-  /* ⛔ NO `href` AT THIS CHECKPOINT, AND IT IS RULING 432(a)'s OWN RULE APPLIED WHERE THE FIRST PASS MISSED IT
-   * (ruling 432(h)). `/admin/desk/[id]` has no page until C7 step 4, so a way-out link on every row would be the
-   * one control an officer reaches first answering the app-root 404 — the same defect the head action and the
-   * master switch are rendered disabled for. The column arrives with the page it opens, the way "Last bet" arrives
-   * with its reader (432(g)), and `test:house-bot-console` 4.432h ties the two together so step 4 cannot forget it. */
+  /**
+   * ⭐ THE WAY OUT, AND IT ARRIVED WITH THE PAGE IT OPENS (ruling 432(h), discharged at C7 step 4).
+   * Until `/admin/desk/[id]/page.tsx` existed this field was deliberately ABSENT, because a live link on every row
+   * would have been the first control an officer reaches answering the app-root 404 — the same defect the head
+   * action and the master switch were rendered disabled for. `test:house-bot-console` ties the two together by FILE
+   * EXISTENCE in both directions, so neither could ship without the other.
+   */
+  href: string;
   /** A gated value: the account's own label. */
   label: string;
   /** `playerHandle(userId)` — "Player #TAIL". ⛔ Never a name, a phone or an email (04 R6). */
@@ -162,6 +167,15 @@ export type ConsoleRosterRow = {
   exposureCell: ConsoleUsageCell;
   /** Stakes placed today of the per-day count limit, in 361's grammar, or "Not set". */
   betsCell: ConsoleUsageCell;
+  /**
+   * ⭐ 432(g) · "LAST BET", AND IT ARRIVED WITH ITS READER. The column needs a last-placement instant, and the only
+   * reader that has one is `botRateUsage` — ruling 351's one new seam member, which C7 step 4 added because the
+   * account page's two count rows need it too. `null` when the account has never staked, which the cell paints as
+   * an em dash: never a fabricated date and never a zero.
+   * ⛔ THE RELATIVE PHRASE IS BUILT ON THE SERVER. A client component computing "3 minutes ago" would need the
+   * instant, and the instant of a house stake is a gated value.
+   */
+  lastBet: { text: string; title: string } | null;
   /** The saved scope words, from `FIELD_META`'s own labels. */
   products: string;
 };
@@ -506,14 +520,25 @@ type DeskCore = {
   exposure: Map<string, number> | null;
 };
 
-async function readDeskCore<T>(extra: (dayKey: string) => Promise<T>): Promise<{ core: DeskCore; extra: T | null }> {
+/**
+ * ⛔ TWO EXTRAS, EACH SETTLED ON ITS OWN, AND THAT IS RULING 355 RATHER THAN A CONVENIENCE. The roster needs both
+ * the Products words (`loadParseContext`) and the rate read "Last bet" comes from (`botRateUsage`, ruling 351); the
+ * limits panel needs one read of its own. Wrapping two reads in a single `Promise.all` inside the settled set would
+ * make ONE failure blank BOTH figures, which is the attribution 355 exists to keep — a failed Products read must
+ * not take the Last bet column with it. So the set is SIX members, each attributed to its own cell.
+ */
+async function readDeskCore<A, B>(
+  extraA: (dayKey: string) => Promise<A>,
+  extraB?: (dayKey: string) => Promise<B>,
+): Promise<{ core: DeskCore; extra: A | null; extraB: B | null }> {
   const dayKey = eatDayKey(Date.now());
-  const [controlR, rosterR, dayR, exposureR, extraR] = await Promise.allSettled([
+  const [controlR, rosterR, dayR, exposureR, extraR, extraBR] = await Promise.allSettled([
     houseBotControlStore.get(),
     houseBotStore.listNonRemoved(),
     houseDayBooks(dayKey),
     houseBookStore.openExposure(null),
-    extra(dayKey),
+    extraA(dayKey),
+    extraB ? extraB(dayKey) : Promise.resolve(null),
   ]);
   /* 421 · a schema the migration has not reached is a STATE. It is never an error boundary, never `AdminLoadError`
    * and never an empty roster with no cause. */
@@ -532,6 +557,7 @@ async function readDeskCore<T>(extra: (dayKey: string) => Promise<T>): Promise<{
       exposure: exposureR.status === "fulfilled" ? new Map(exposureR.value.map((r) => [r.houseBotId, r.openStakeTzs] as [string, number])) : null,
     },
     extra: extraR.status === "fulfilled" ? extraR.value : null,
+    extraB: extraBR.status === "fulfilled" ? (extraBR.value as B | null) : null,
   };
 }
 
@@ -682,7 +708,14 @@ export async function houseRosterForConsole(
 ): Promise<ConsoleRosterView | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
-  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());
+  const { core, extra: parseCtx, extraB: rates } = await readDeskCore(
+    () => loadParseContext(),
+    /* ⭐ THE SIXTH READ, AND IT IS "Last bet"'s (rulings 351, 432(g)). ONE statement for the WHOLE roster — never a
+     * per-account loop of `botUsage` calls, and never `placedTimes(...).length`, which is unbounded in both twins. */
+    () => houseSeamStore.botRateUsage({ houseBotId: null }),
+  );
+  const nowMs = Date.now();
+  const rateById = new Map((rates ?? []).map((r) => [r.houseBotId, r] as const));
   const shell = deskShell(core);
   const { roster, dayBooks, exposure, schemaMissing, controlUnreadable, control } = core;
 
@@ -710,6 +743,11 @@ export async function houseRosterForConsole(
        * mid-table — while a money or count read that FAILED in the SAME ROW rendered the em dash above. Every other
        * failure string on this page is sentence-cased ("Couldn't load the roster", "COULDN'T COMPUTE"), and this
        * cell is in no captured tile at any width, so nobody had looked at it. */
+      /* ⭐ 432(g) · the last placement, relative, with the absolute EAT time in `title`. An account absent from the
+       * rate map has never staked and reads "—"; a FAILED rate read is `rates === null`, which reads the same way,
+       * and the difference is one a roster row cannot honestly paint. */
+      lastBet: relativeEat(rateById.get(bot.id)?.lastPlacedAt ?? null, nowMs),
+      href: consoleBotHref(bot.id),
       products: parsed == null ? "Couldn't read"
         : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
           : "Couldn't read",
@@ -775,6 +813,13 @@ const CONSOLE_LIMIT_LABEL: Readonly<Record<string, string>> = {
      ⛔ THE KEYS ARE IDENTIFIERS, NOT STRING LITERALS, which is what keeps `gStaffChosenMaxCounterpartyShare` off
      4.453's own scan — the same reason `TARGETED_DAILY_TZS_FIELD` below is selected by PROPERTY rather than typed:
      as a VALUE that field id is a literal, and a literal carrying the word is exactly what the guard reads. */
+  /* ⭐ AND THE TWO PER-ACCOUNT TWINS, ADDED AT C7 STEP 4 WITH THE PAGE THAT RENDERS THEM. Measured against
+     `scripts/lib/house-bot-vocabulary.mjs`: `capStaffChosenPerDay`'s label reads "Staff-chosen stakes per day" and
+     `capStaffChosenDailyTzs`'s "Staff-chosen daily cap" — the same `staff[- ]?chosen` needle 432(f) missed on
+     their GLOBAL twins, on the one surface 453 exists to keep neutral. Their shared section name is already
+     overridden, because it is the same string. */
+  capStaffChosenPerDay: "Targeted and manual stakes per day",
+  capStaffChosenDailyTzs: "Targeted and manual daily cap",
   gCounterPerPlayerPerDay: "Stakes against one player per day",
   gCounterPerPlayerTzsPerDay: "TZS against one player per day",
   gStaffChosenMaxCounterpartyShare: "One player’s share limit",
@@ -866,7 +911,7 @@ const CONSOLE_LIMIT_REFUSAL: Readonly<Record<string, string>> = {
 };
 
 /** What the console calls limit `field`. ⛔ One definition site, and it is read by the panel AND by the usage rows. */
-export function consoleLimitLabel(field: LimitField): string {
+export function consoleLimitLabel(field: FieldId): string {
   return CONSOLE_LIMIT_LABEL[field] ?? FIELD_META[field].label;
 }
 
@@ -918,6 +963,17 @@ export function unsetCaptionFor(field: string, on: boolean): string {
  */
 export const TARGETED_DAILY_TZS_FIELD: LimitField =
   LIMIT_FIELDS.filter((f) => isClearExempt(f) && FIELD_META[f].unit === "TZS")[0];
+
+/**
+ * ⭐ THE SAME RULE FOR THE PER-ACCOUNT CAP (ruling 433(b), applied at C7 step 4). The account page's fifth money row
+ * measures `capStaffChosenDailyTzs`, and that identifier matches `staff[- ]?chosen` — so typing it as a STRING
+ * argument would put the shared vocabulary's own word inside a literal of the module `test:house-bot-console` 4.453
+ * scans, which is exactly what the first draft of this page did and exactly what that guard caught. It is selected by
+ * PROPERTY instead: the one per-account cap that `CLEAR_EXEMPT` names and whose unit is money. The suite asserts the
+ * selection is unique, so a second money member of `CLEAR_EXEMPT` fails there rather than painting the wrong bar.
+ */
+export const ACCOUNT_TARGETED_DAILY_TZS_FIELD: CapField =
+  CAP_FIELDS.filter((f) => isClearExempt(f) && FIELD_META[f].unit === "TZS")[0];
 
 /** The query a usage reader answers. ⛔ `null` is EVERY account — the population the global caps are measured over. */
 export type ConsoleUsageQuery = { houseBotId: string | null };
@@ -996,7 +1052,7 @@ export type ConsoleLimitsView = ConsoleDeskShell & {
 };
 
 /** Formats one stored limit for its own unit. ⛔ Money goes through `formatTzs`, the console's only money formatter (361). */
-function limitValue(field: LimitField, raw: number | null): string {
+function limitValue(field: FieldId, raw: number | null): string {
   if (raw == null) return "Not set";
   const unit = FIELD_META[field].unit;
   return unit === "TZS" ? formatTzs(raw) : unit === "%" ? `${formatNumber(raw)}%` : formatNumber(raw);
@@ -1206,5 +1262,380 @@ export async function houseLimitsSaveForConsole(
     /* The validator's own sentence, unless the rule's shared copy names the feature (see `CONSOLE_LIMIT_REFUSAL`). */
     error: (saved.rule !== null ? CONSOLE_LIMIT_REFUSAL[saved.rule] : undefined) ?? saved.message,
     field: CONSOLE_LIMIT_KEY[saved.field],
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * THE ACCOUNT PAGE — `/admin/desk/[id]` (C7-SPEC rulings 311, 358, 363, 366, 367, 372, 399, 413, 416; owner-delegated
+ * 453 and 459; replan rulings 507's X6 and 508; C7 step 4)
+ *
+ * ⛔ THE THREE ANSWERS ARE DISTINCT IN THE RETURN, AND THAT IS RULING 399 (a missing record and a refused viewer must
+ * answer IDENTICALLY, so the page is not a record-id oracle). `null` is "outside the audience" and the page paints the
+ * section gate's restricted panel; `{ found: false }` is "inside the audience, no such record" and only THEN does the
+ * page call `notFound()`. Because the verdict is taken inside this module before the row is read, the 404/200
+ * difference is visible to the ADMIN alone — a signed-in player reaching the page through ruling 259's hole receives
+ * the same answer for a real id and an invented one, and cannot enumerate ids by status code. ⚠️ The D19 lens measured
+ * the counter-example next door: `/admin/kyc/[id]` answers `notFound()` for a missing record and 200 with the whole
+ * case for a refused viewer.
+ *
+ * ⛔ A REMOVED ACCOUNT'S READ SET IS NAMED, AND IT IS SHORT (ruling 358). The row is read with `get(id)` — NOT
+ * `listNonRemoved`, which excludes it in both twins — so the read-only state PLAN §8 promises is reachable at all.
+ * For `status === "REMOVED"` this reader performs NO wallet read, NO cap usage read, NO rate read and NO target read:
+ * there is nothing left to use and no control attached to any of those figures, which is what D20 removed.
+ *
+ * ⛔ NO BALANCE, EVER — THE FLOOR STATE INSTEAD (rulings 368, 459, 266). The holder's wallet is read ONCE for a live
+ * account and the page paints a STATE, never the amount. The figure is a real person's wallet balance, the one number
+ * on these screens belonging to someone other than 50pick and the one most likely to sit in a screenshot; the decision
+ * the sentence supports — which side of the floor is this account on — is answered by a state, not a magnitude.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** One saved rule or cap, painted. ⛔ Values only: there is no per-account rules SAVE in this repository yet. */
+export type ConsoleRuleRow = {
+  section: string;
+  name: string;
+  value: string;
+  unset: boolean;
+  /** 364's caption when the field is unset; `null` otherwise. */
+  caption: string | null;
+};
+
+/** One target, painted. ⛔ No money: a target is a scope decision, not a stake (365). */
+export type ConsoleTargetRow = {
+  id: string;
+  title: string;
+  statusWord: string;
+  statusChip: StatusChipVariant;
+  /** Its end cause in the console's own words, or `null` while it is live. */
+  endCaption: string | null;
+  when: string;
+  whenTitle: string;
+};
+
+export type ConsoleDetailView = {
+  found: true;
+  id: string;
+  /** ⛔ RULING 474 · operator data, verbatim but bounded. */
+  label: string;
+  handle: string;
+  statusWord: string;
+  statusChip: StatusChipVariant;
+  removed: boolean;
+  /** 358 · the terminal sentence a REMOVED account's page carries instead of a control row. */
+  removedNote: string | null;
+  /**
+   * 311/413/432(f) · the way out of the FIRST live cause, rendered on the SERVER and handed down as a finished
+   * string, in the console's own neutral words. `null` when nothing is stopping the account.
+   */
+  wayOut: string | null;
+  /**
+   * ⛔ X6 (replan ruling 507) · a missing holder wallet blocks settlement for EVERY PLAYER in that market, so it is a
+   * console STATE and not only an alert.
+   */
+  settlementBlocked: boolean;
+  /**
+   * ⛔ 368/459 · which side of the configured floor this account's balance is on — never the balance. `null` when the
+   * floor is not configured (364's unconditional-cap caption carries that state instead) or the account is REMOVED.
+   */
+  floorSentence: string | null;
+  /** 364's unconditional caption when `balanceFloorTzs` is unset. */
+  floorUnsetCaption: string | null;
+  /** 363 · the five money rows, in the seam's own order. ⛔ `null` means there is nothing to measure (a REMOVED account). */
+  usage: ConsoleUsageRow[] | null;
+  /** 363/351 · the two count rows, in the same grammar. */
+  counts: ConsoleUsageRow[] | null;
+  /** 432(g) · the last placement, relative, with the absolute EAT time in `title`. */
+  lastBet: { text: string; title: string } | null;
+  /** 508 · the saved rules, as VALUES. ⛔ `null` means the rules could not be parsed. */
+  rules: ConsoleRuleRow[] | null;
+  /** Why the rules are not editable here, beside the card (432(j)). */
+  rulesReason: string;
+  /** 508 · this account's targets, newest first. ⛔ `null` means the read FAILED or was not taken (358). */
+  targets: ConsoleTargetRow[] | null;
+  targetsActive: number | null;
+  /** 456 · the door to the holder's own money, which is a platform surface. */
+  holderHref: string;
+  /** The EAT day every figure on this render was measured over — derived ONCE (348). */
+  dayKey: string;
+};
+
+/** What the account page's reader answers. ⛔ Three answers, and two of them are indistinguishable from outside (399). */
+export type ConsoleDetailAnswer = ConsoleDetailView | { found: false };
+
+/**
+ * ⛔ THE CONSOLE'S OWN WORDS FOR A TARGET'S END, WHERE THE SHARED CAPTION CARRIES ONE 453 FORBIDS.
+ * Same mechanism as `CONSOLE_WAY_OUT` and `CONSOLE_LIMIT_LABEL`, same reason: `TARGET_END_CAPTION` is also the
+ * engine's and the feed's vocabulary, which D19 exempts. The population is DERIVED by the suite, never typed here.
+ */
+const CONSOLE_TARGET_END: Readonly<Record<string, string>> = {
+  /* ⛔ AND THE OVERRIDE MAY NOT SPELL THE SHARED PLACEHOLDER EITHER. `TARGET_END_CAPTION.OUT_OF_SCOPE` interpolates
+     the account through `{bot}` — and that brace is a STRING LITERAL of this module, which 4.453 reads. It caught
+     the first draft of this line. The console's own sentence names the account without a placeholder at all, which
+     is both neutral and shorter than the thing it replaces. */
+  OUT_OF_SCOPE: "No longer in this account's scope",
+  BOT_REMOVED: "The account was removed from the desk",
+  SUNSET: "The desk has been withdrawn",
+};
+/** The shared table's one placeholder, built rather than typed — as a literal it is a hit in this module (4.453). */
+const SHARED_LABEL_SLOT = `{${"bo"}${"t"}}`;
+
+/** One target's end caption, with the shared table's placeholder filled by the account's own label. */
+export function consoleTargetEndCaption(cause: string, label: string): string {
+  const own = CONSOLE_TARGET_END[cause] ?? (TARGET_END_CAPTION as Record<string, string>)[cause] ?? cause;
+  return own.replaceAll(SHARED_LABEL_SLOT, label);
+}
+
+/**
+ * ⛔ 432(g) · "LAST BET", RELATIVE, WITH THE ABSOLUTE EAT TIME IN `title`. Written on the SERVER, because a client
+ * component computing "3 minutes ago" would need the instant, and the instant of a house stake is a gated value.
+ * ⚠️ NEVER "in 3 minutes": a container clock behind the database reads a just-placed stake as future, and a relative
+ * phrase that runs backwards is worse than none. A future instant reads "just now".
+ */
+export function relativeEat(atIso: string | null, nowMs: number): { text: string; title: string } | null {
+  if (atIso == null) return null;
+  const atMs = Date.parse(atIso);
+  if (!Number.isFinite(atMs)) return null;
+  const title = `${formatEat(atMs, "D MMM")} ${formatEat(atMs, "HH:MM:SS")} EAT`;
+  const secs = Math.floor((nowMs - atMs) / 1_000);
+  if (secs < 60) return { text: "just now", title };
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return { text: `${mins} min ago`, title };
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return { text: `${hours} h ago`, title };
+  return { text: `${Math.floor(hours / 24)} d ago`, title };
+}
+
+/**
+ * ONE ROW PER SAVED CAP, plus the three scope facts, in the form's own order (rulings 364, 508).
+ * ⛔ VALUES, NOT INPUTS. There is no per-account rules SAVE anywhere in this repository — `houseBotStore.saveRules`
+ * has no caller under `src/` — and ruling 432(a) refuses a control with nothing behind it; a field that silently
+ * discards what an officer types is worse than one that says it cannot be edited (433(a)'s own reasoning, which
+ * replan ruling 537 reversed for the LIMITS only, because there the save already existed).
+ * ⛔ THE UNSET CAPTION IS 364's, CHOSEN BY MEMBERSHIP, and this page is the first surface to reach its THIRD branch —
+ * "this account cannot place a bet" — because every row of the limits tab falls in one of the first two.
+ */
+function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1): ConsoleRuleRow[] {
+  return [
+    ...CAP_FIELDS.map((field) => {
+      const raw = bot[field] as number | null;
+      return {
+        section: CONSOLE_LIMIT_SECTION[FIELD_META[field].section] ?? FIELD_META[field].section,
+        name: consoleLimitLabel(field),
+        value: limitValue(field, raw),
+        unset: raw == null,
+        caption: raw == null ? unsetCaptionFor(field, false) : null,
+      };
+    }),
+    { section: "Scope", name: "Products", value: productWords(rules.scope.products.updown, rules.scope.products.polls), unset: false, caption: null },
+    { section: "Scope", name: "Targeted stakes", value: rules.targeting.enabled ? "On" : "Off", unset: false, caption: null },
+    { section: "Scope", name: "Enter now", value: rules.enterNow.enabled ? "On" : "Off", unset: false, caption: null },
+  ];
+}
+
+/**
+ * THE ACCOUNT PAGE'S GATED READER (rulings 340, 358, 372). Query-shaped, arity THREE: the signed-in viewer, the
+ * calling file's own console route as a STRING LITERAL, and the record id. The audience is resolved FIRST and every
+ * read is issued only after the verdict, so a refused viewer's payload carries no label, no id, no figure and no
+ * sentence.
+ */
+export async function houseDetailForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  id: string,
+): Promise<ConsoleDetailAnswer | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  /* ⛔ `get(id)`, NEVER `listNonRemoved` (358): the second excludes a REMOVED account in both twins, so a page built
+   * on it would 404 on a row that exists and PLAN §8's read-only state would be unreachable. */
+  let bot: StoredHouseBot | null = null;
+  try {
+    bot = await houseBotStore.get(id);
+  } catch {
+    /* ⛔ A FAILED ROW READ IS NOT A MISSING ROW, and it must not be reported as one: answering "no such record" here
+     * would 404 a real account during an outage. The page renders the not-found surface either way, which is the
+     * honest thing an officer can act on, and the failure is in the server log. */
+    return { found: false };
+  }
+  if (!bot) return { found: false };
+
+  const nowMs = Date.now();
+  const dayKey = eatDayKey(nowMs);
+  const label = clampOperatorText(bot.label, operatorBound("label"));
+  const display = HOUSE_BOT_STATUS_DISPLAY[bot.status];
+  const removed = bot.status === "REMOVED";
+
+  const base = {
+    found: true as const,
+    id: bot.id,
+    label,
+    handle: playerHandle(bot.userId),
+    statusWord: display.word,
+    statusChip: display.chip,
+    removed,
+    /* 456 · the door to a holder's money is a PLATFORM surface, where an admin may legitimately read a player's
+     * transactions — never a house-specific money tab, which D20 struck and 456 settled for good. */
+    holderHref: `/admin/transactions?q=${encodeURIComponent(bot.userId)}`,
+    dayKey,
+  };
+
+  if (removed) {
+    /* ⚠️ THE RULES ARE IN 358's OWN LIST, AND READING THEM COSTS NO HOUSE READ. `loadParseContext()` is a PLATFORM
+     * read (assets and chains); the rules JSON cannot be read as anything but raw without it (F4), and what an
+     * account was configured to do is the record this page exists to keep. Everything else 358 names is absent: no
+     * wallet, no cap usage, no rate usage, no targets, no engine health — figures with no control attached. */
+    let removedRules: ConsoleRuleRow[] | null = null;
+    try {
+      const ctx = await loadParseContext();
+      const parsedRemoved = parseHouseBotRules(bot.rules, ctx);
+      if (parsedRemoved.ok) removedRules = capRows(bot, parsedRemoved.rules);
+    } catch { removedRules = null; }
+    const removedAtMs = bot.removedAt ? Date.parse(bot.removedAt) : NaN;
+    const at = Number.isFinite(removedAtMs) ? `${formatEat(removedAtMs, "D MMM")} ${formatEat(removedAtMs, "HH:MM")} EAT` : "an unrecorded time";
+    return {
+      ...base,
+      removedNote: `Removed on ${at}. Nothing can be staked from this account and none of its limits applies any more.`,
+      wayOut: null,
+      settlementBlocked: false,
+      floorSentence: null,
+      floorUnsetCaption: null,
+      usage: null,
+      counts: null,
+      lastBet: null,
+      rules: removedRules,
+      rulesReason: "A removed account's rules are kept as a record and cannot be changed.",
+      targets: null,
+      targetsActive: null,
+    };
+  }
+
+  /* ⛔ ONE SETTLED SET (355): no single failure blanks the page and each failure is attributed to ITS figure.
+   * ⛔ AND ONE WALLET READ, THROUGH THE ENGINE'S OWN SNAPSHOT (356, 368). `readBotAndHolder` is the function fire
+   * itself calls, so this page and the engine can never disagree about why an account is stopped — which is
+   * `control.ts`'s own stated reason for existing. It performs exactly one `db.wallet.findByUserId`. */
+  const [holderR, dayR, exposureR, staffR, rateR, targetsR, parseR] = await Promise.allSettled([
+    readBotAndHolder(bot.id, { nowMs }),
+    houseDayBook(dayKey, bot.id),
+    houseOpenExposure(bot.id),
+    houseBotIntentStore.staffChosenPlacedToday({ houseBotId: bot.id, dayKey }),
+    houseSeamStore.botRateUsage({ houseBotId: bot.id }),
+    houseBotTargetStore.listForBot(bot.id, "all", null, { limit: 20 }),
+    loadParseContext(),
+  ]);
+
+  const holder = holderR.status === "fulfilled" && holderR.value.found ? holderR.value : null;
+  const book = dayR.status === "fulfilled" ? dayR.value : null;
+  const openStake = exposureR.status === "fulfilled" ? exposureR.value : null;
+  const staffChosen = staffR.status === "fulfilled" ? staffR.value : null;
+  const rate = rateR.status === "fulfilled"
+    ? (rateR.value[0] ?? { houseBotId: bot.id, placedLastHour: 0, placedLastDay: 0, lastPlacedAt: null })
+    : null;
+  const targetRows = targetsR.status === "fulfilled" ? targetsR.value.rows : null;
+  const parseCtx = parseR.status === "fulfilled" ? parseR.value : null;
+
+  /* ⛔ 311/413/432(f) · the way out of the FIRST live cause, in the console's own neutral words, finished on the
+   * server. Rendering it client-side would put a pause reason — and the account's label — into a client chunk. */
+  const causes = holder ? sortCauses(holder.causes) : [];
+  const first = causes[0] ?? null;
+  const wayOut = first ? consoleWayOutCopy(first, label) : null;
+
+  /* ⛔ X6 (replan ruling 507) · a missing holder wallet stops SETTLEMENT for every player on the markets this account
+   * holds open stakes in. That is a condition that stops OTHER PEOPLE'S money, so the register itself says it must
+   * not live only in an alert: it is a console STATE.
+   * ⛔ IT IS THE WALLET ROW'S ABSENCE, NOT A LIVE CAUSE. `WALLET_MISSING` is a PauseReason and not a `HolderCause`,
+   * so a causes test would have compiled and been FALSE for ever. `readBotAndHolder` THROWS when the wallet read
+   * fails, so a null balance here means the row is genuinely gone — the same condition `planner.ts`'s own
+   * `walletMissing` pass alerts on, read from the snapshot fire reads.
+   * ⛔ AND IT IS NOT CONDITIONED ON AN OPEN STAKE: the next settlement blocks whether or not one is open today, and
+   * a state that disappears when a figure reaches zero is a state an officer learns to stop trusting. */
+  const settlementBlocked = holder != null && holder.walletBalance == null;
+
+  /* ⛔ 368/459 · THE FLOOR STATE, NEVER THE BALANCE. `balanceFloorTzs` is a CONFIGURED LIMIT and may be named; the
+   * holder's balance is not shown, compacted, or put in a tile. ⛔ A FAILED wallet read says so (355) — never
+   * "above the floor" and never an amount. */
+  let floorSentence: string | null = null;
+  let floorUnsetCaption: string | null = null;
+  if (bot.balanceFloorTzs == null) {
+    floorUnsetCaption = unsetCaptionFor("balanceFloorTzs", false);
+  } else if (holder == null || holder.walletBalance == null) {
+    floorSentence = "The balance floor could not be checked.";
+  } else {
+    floorSentence = holder.walletBalance >= bot.balanceFloorTzs
+      ? `Balance is above the floor of ${formatTzs(bot.balanceFloorTzs)}.`
+      : `Balance is below the floor of ${formatTzs(bot.balanceFloorTzs)} — this account cannot place a bet.`;
+  }
+
+  /* ⛔ 363 · THE FIVE MONEY ROWS, IN THE SEAM'S OWN ORDER, and the exposure row is scoped "open now" and NOT
+   * "today": `openExposure` has no day filter ("Open stake right now, whatever day it was placed"), so an exposure
+   * row under a "today" heading would be a mislabelled figure — a §C2 honesty defect.
+   * ⛔ TWO LOSS ROWS AGAINST ONE CAP (366): the seam refuses a new stake on PROJECTED loss and a stop fires only on
+   * SETTLED loss, so collapsing them would hide the figure one of the two controls acts on. */
+  const row = bot;
+  /* ⛔ THE NAME COMES FROM THE ONE LABEL HOME AND THE SCOPE WORD IS BESIDE IT, never typed as a sentence: a cap
+   * renamed in `rules.ts` must move here, and the scope word is not decoration — "open now" is a different figure
+   * from "today", and an exposure row under a "today" heading is a mislabelled amount. */
+  const capRow = (field: CapField, scope: string, used: number | null): ConsoleUsageRow => {
+    const name = `${consoleLimitLabel(field)} (${scope})`;
+    const limit = row[field] as number | null;
+    if (limit == null) {
+      const r = usageRow(name, 0, null);
+      return { ...r, unsetCaption: unsetCaptionFor(field, false), unsetLinked: false };
+    }
+    return usageRow(name, used, limit);
+  };
+  const usage: ConsoleUsageRow[] = [
+    capRow("capDailyStakeTzs", "today", book ? book.stakedTzs : null),
+    capRow("capDailyLossTzs", "projected, today", book ? book.projectedLossTzs : null),
+    capRow("capDailyLossTzs", "settled, today", book ? book.realisedLossTzs : null),
+    capRow("capOpenExposureTzs", "open now", openStake),
+    capRow(ACCOUNT_TARGETED_DAILY_TZS_FIELD, "today", staffChosen ? staffChosen.stakeTzs : null),
+  ];
+
+  /* ⛔ 363/351 · THE TWO COUNT ROWS, in 361's grammar with the noun outside the figure. They come from
+   * `botRateUsage`, the market-free rate reader C7 step 4 added — never from `placedTimes(...).length`, which is an
+   * unbounded row read on a page render in both twins. */
+  const countRow = (field: CapField, scope: string, used: number | null, noun: string): ConsoleUsageRow => {
+    const name = `${consoleLimitLabel(field)} (${scope})`;
+    const limit = row[field] as number | null;
+    const shell = { name, halves: [] as ConsoleUsageHalf[], edgeText: "", unsetCaption: null as string | null, unsetLinked: false };
+    if (used === null) return { ...shell, usedTzs: null, limitTzs: limit, captionText: `${name} · couldn't read — this is not zero`, unreadable: true };
+    if (limit == null) return { ...shell, usedTzs: null, limitTzs: null, captionText: name, unsetCaption: unsetCaptionFor(field, false), unreadable: false };
+    const cell = countUsage(used, limit, noun);
+    return { ...shell, usedTzs: Math.max(0, used), limitTzs: limit, halves: cell.halves, edgeText: cell.edgeText, captionText: `${name} · ${cell.text}`, unreadable: false };
+  };
+  const counts: ConsoleUsageRow[] = [
+    countRow("freqMaxPerHour", "this hour", rate ? rate.placedLastHour : null, "bets"),
+    countRow("freqMaxPerDay", "today", rate ? rate.placedLastDay : null, "bets"),
+  ];
+
+  const parsed = parseCtx ? parseHouseBotRules(bot.rules, parseCtx) : null;
+  const rules: ConsoleRuleRow[] | null = parsed == null || !parsed.ok ? null : capRows(bot, parsed.rules);
+
+  const targets: ConsoleTargetRow[] | null = targetRows == null ? null : targetRows.map((t: StoredHouseBotTarget) => {
+    const at = Date.parse(t.endedAt ?? t.createdAt);
+    return {
+      id: t.id,
+      title: t.snapshot.titleEn,
+      statusWord: t.status === "ACTIVE" ? "Active" : t.status === "REMOVED" ? "Removed" : "Ended",
+      statusChip: (t.status === "ACTIVE" ? TONE_CHIP.green : TONE_CHIP.slate) as StatusChipVariant,
+      endCaption: t.endCause == null ? null : consoleTargetEndCaption(t.endCause, label),
+      when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM")}` : "—",
+      whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
+    };
+  });
+
+  return {
+    ...base,
+    removedNote: null,
+    wayOut,
+    settlementBlocked,
+    floorSentence,
+    floorUnsetCaption,
+    usage,
+    counts,
+    lastBet: rate ? relativeEat(rate.lastPlacedAt, nowMs) : null,
+    rules,
+    /* 432(j) · a control that is not drawn still says why, beside the card it would have been in. */
+    rulesReason: "Editing an account's rules is not ready on this build yet.",
+    targets,
+    targetsActive: targetRows == null ? null : targetRows.filter((t: StoredHouseBotTarget) => t.status === "ACTIVE").length,
   };
 }

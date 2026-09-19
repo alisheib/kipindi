@@ -102,6 +102,32 @@ export function consoleActivityHref(botId?: string | null, opts: { range?: strin
   return botId ? `${CONSOLE_ROUTE}/${botId}?tab=activity${range}` : `${CONSOLE_ROUTE}?tab=activity${range}`;
 }
 
+/**
+ * ⭐ THE ACCOUNT PAGE'S OWN TAB KEYS (C7 step 4, rulings 312, 319 as amended by replan ruling 508).
+ *
+ * ⛔ THE SAME CLOSED-LIST LAW AS THE LANDING PAGE'S: only keys whose panel is BUILT. `rules` and `targets` land with
+ * this page under ruling 508 — bells and letters that already shipped link to `?tab=rules`, and §5 captures all three,
+ * so striking them would have broken live hrefs to fix a drafting gap. `activity` and `history` join at C7 step 5 with
+ * the readers behind them (`listFeed`/`countFeed`, `listAll`/`countAll`), never before: a rail option with no panel is
+ * a dead control, and `consoleDetailTab` resolves every other value back to `overview`.
+ */
+export const CONSOLE_DETAIL_TABS = ["overview", "rules", "targets"] as const;
+export type ConsoleDetailTab = (typeof CONSOLE_DETAIL_TABS)[number];
+
+/** The account page's default panel, and what any unrecognised `?tab=` value resolves to (ruling 302). */
+export const DEFAULT_DETAIL_TAB: ConsoleDetailTab = "overview";
+
+/** The account-page tab a request asked for, or `DEFAULT_DETAIL_TAB`. Never a 404 and never a redirect (302). */
+export function consoleDetailTab(raw: string | string[] | undefined): ConsoleDetailTab {
+  const one = Array.isArray(raw) ? undefined : raw;
+  return (CONSOLE_DETAIL_TABS as readonly string[]).includes(one ?? "") ? (one as ConsoleDetailTab) : DEFAULT_DETAIL_TAB;
+}
+
+/** True when the account page's tab key `t` has a panel behind it (the detail half of 432(i)). */
+export function consoleDetailTabExists(t: string): boolean {
+  return (CONSOLE_DETAIL_TABS as readonly string[]).includes(t);
+}
+
 /** One account's page. */
 export function consoleBotHref(botId: string): string {
   return `${CONSOLE_ROUTE}/${botId}`;

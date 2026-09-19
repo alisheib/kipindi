@@ -149,12 +149,12 @@ const ok = (label: string, cond: boolean, extra = "") => {
     "/admin/staff/[id]": "staff member detail — from the /admin/staff list",
     // Functional sub-routes, reached by a control rather than a menu.
     "/admin/markets/new": "the 'New market' button on /admin/markets",
-    /* C7-SPEC ruling 326 owes TWO rows here — `/admin/desk/new` and `/admin/desk/[id]` — and they are NOT added yet,
-     * measured: §7's own staleness half is `Object.keys(REACHED_WITHOUT_NAV).filter((p) => !pages.includes(p))`, so a
-     * row for a page the crawler cannot find is reported STALE and this suite goes red. The allowlist must not outlive
-     * the pages it excuses, and it must not PRECEDE them either. Each row lands in the commit that adds its page
-     * (C7 step 4 for the detail route, step 6 for the wizard). ⛔ Not a skipped assertion: `/admin/desk` itself is
-     * covered by §7's nav-href half by construction, and §4/§5 pin the resolver for both sub-routes today. */
+    /* ⭐ C7-SPEC ruling 326's FIRST row, landing in the commit that adds its page (C7 step 4). The second —
+     * `/admin/desk/new` — is still absent and still deliberate: §7's own staleness half is
+     * `Object.keys(REACHED_WITHOUT_NAV).filter((p) => !pages.includes(p))`, so a row for a page the crawler cannot
+     * find is reported STALE and this suite goes red. The allowlist must not outlive the pages it excuses, and it
+     * must not PRECEDE them either. The wizard's row lands at C7 step 6 with its page. */
+    "/admin/desk/[id]": "one account's page — from the way-out link on every row of the roster table on /admin/desk, and from the bell and letter targets that name an account",
     "/admin/totp-verify": "the 2FA step-up interstitial — redirected to by requireAdminTotp, never navigated to",
   };
 

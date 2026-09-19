@@ -84,7 +84,7 @@ const LIMITS_CARD_TITLE = "Global limits";
  * ⚠️ Every space is an explicit `{" "}`: SWC has been measured dropping the space before text that follows a
  * `{expression}` across a line break on this codebase's own served pages ("hour<!-- -->of").
  */
-function Usage({ cell }: { cell: ConsoleUsageCell }) {
+export function Usage({ cell }: { cell: ConsoleUsageCell }) {
   if (cell.halves.length === 0) return <span className="text-text-tertiary">{cell.text}</span>;
   const figure = cell.money ? "amount tabular-nums" : "font-mono tabular-nums";
   return (
@@ -119,7 +119,7 @@ function Usage({ cell }: { cell: ConsoleUsageCell }) {
  * ⛔ ONLY THE FIGURES ARE `.amount`, at their own call site (401): that class is `white-space: nowrap`, so wrapping
  * the whole sentence in it would overflow a 360 card (§A6). The words wrap; the amounts do not.
  */
-function UsageBar({ row, unsetHref }: { row: ConsoleUsageRow; unsetHref: string }) {
+export function UsageBar({ row, unsetHref }: { row: ConsoleUsageRow; unsetHref: string }) {
   if (row.unreadable) {
     return (
       <div>
@@ -438,18 +438,28 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                       {/* ⛔ RIGHT-ALIGNED like the two money usages beside it: same grammar, same shape, so three
                           adjacent usage figures read on ONE axis instead of two (432(o)). */}
                       <th scope="col" className="text-right p-3 !whitespace-normal">Bets today</th>
+                      {/* ⭐ 432(g) · "LAST BET" ARRIVED WITH ITS READER. It needs a last-placement instant, and the
+                          only reader that has one is `botRateUsage` — ruling 351's one new seam member, added at
+                          this step because the account page's two count rows need it too. Left-aligned and not
+                          `tabular`: it is a phrase, not a figure, and putting it on the money axis would read as a
+                          third usage column. */}
+                      <th scope="col" className="text-left p-3">Last bet</th>
                       <th scope="col" className="text-left p-3">Products</th>
-                      {/* ⛔ NO WAY-OUT COLUMN AT THIS CHECKPOINT (ruling 432(h)) — `/admin/desk/[id]` has no page
-                          until C7 step 4, so every row's "open →" answered the app-root 404. It is the same rule
-                          432(a) applied to the head action and the master switch, and the same shape as 432(g)'s
-                          deferred columns: the column arrives with the page it opens. */}
+                      {/* ⭐ THE WAY OUT ARRIVED WITH THE PAGE IT OPENS (ruling 432(h)). Until `/admin/desk/[id]`
+                          had a page every row's "open →" answered the app-root 404 — the first control an officer
+                          reaches on the deliverable. `test:house-bot-console` ties the column to that FILE in both
+                          directions, so it could not ship early and could not be forgotten.
+                          ⛔ THE HEADER HAS NO WORD, and that is the kit's own shape for a row-link column
+                          (`/admin/kyc`, `/admin/approvals`): the link says what it does, and a header repeating it
+                          would spend a column name on nothing. */}
+                      <th scope="col" className="text-right p-3" />
                     </tr>
                   </thead>
                   <tbody>
                     {rosterEmpty ? (
                       /* 416 with 310's precedence — the state the table is in NAMES ITS CAUSE: the desk being off
                          beats "none designated yet", and a failed read beat both above. */
-                      <AdminTableEmpty colSpan={6} title={rosterEmpty.title} body={rosterEmpty.body} />
+                      <AdminTableEmpty colSpan={8} title={rosterEmpty.title} body={rosterEmpty.body} />
                     ) : (
                       rosterRows.map((r) => (
                         <tr key={r.id} className="border-b border-border-subtle">
@@ -474,7 +484,13 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                           <td className="p-3 text-right"><Usage cell={r.exposureCell} /></td>
                           <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                           <td className="p-3 text-right text-text-secondary"><Usage cell={r.betsCell} /></td>
+                          {/* ⛔ AN ACCOUNT THAT HAS NEVER STAKED READS "—", never a fabricated date and never a zero
+                              (§C2). The absolute EAT instant is in `title`, where the kit puts every exact time. */}
+                          <td className="p-3 text-text-secondary" title={r.lastBet?.title}>{r.lastBet?.text ?? "—"}</td>
                           <td className="p-3 text-text-secondary">{r.products}</td>
+                          <td className="p-3 text-right">
+                            <Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>
+                          </td>
                         </tr>
                       ))
                     )}

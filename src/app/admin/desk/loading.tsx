@@ -15,7 +15,8 @@ import { SkCard, SkChip, SkKpiRow, SkTableCard } from "@/components/admin/admin-
  *
  * ⛔ EVERY GHOST STATES THE PAGE'S REAL FACTS: the head's own action row, one strip line with no title and no gloss,
  * four tiles on the page's own ladder, the rail at 44px (a missing rail ghost is a 64px jump on the swap), and the
- * roster table at SIX columns with the page's own 16px cell padding (`p-3` on every cell, which is 16px on this
+ * roster table at EIGHT columns with the page's own 16px cell padding (SIX until C7 step 4 gave the
+ * way-out and Last bet columns their page and their reader — rulings 432(h), 432(g)) (`p-3` on every cell, which is 16px on this
  * repo's overridden spacing scale — see the call site below, where that number is stated once and measured by
  * `test:house-bot-console` 1.417).
  * ⛔ NO PAGER GHOST: the roster is bounded by the configured maximum (1–20), so it renders none.
@@ -40,7 +41,7 @@ export default function AdminDeskLoading() {
             kit's own note names eight admin pages that pay for exactly this. First reading of the swap at 1280: the
             ghost card was 279px against the page's 361px; with 16 and the row count matching the fixture it closes to
             within a few px, and the residual is the account cell's second line, which no ghost can know about. */}
-        <SkTableCard cols={6} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />
+        <SkTableCard cols={8} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />
       </AdminBody>
     </>
   );
