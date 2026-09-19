@@ -352,8 +352,22 @@ export type IntentFeedFilter = {
   fromIso?: string;
   toIso?: string;
   cursor?: KeysetCursor | null;
+  /**
+   * ⭐ C7 STEP 5 (ruling 345). `AdminPagination` draws a NUMBERED `?page=N` link for every page in its window, so
+   * the feed's page N must be reachable without walking N−1 cursors. `offset` is what makes that link resolve.
+   * ⛔ It does not replace the cursor: both twins still order by `("createdAt","id") DESC` and a cursor read is
+   * still what the engine's own walkers use. A caller passes one or the other.
+   */
+  offset?: number;
   limit: number;
 };
+
+/**
+ * What `countFeed` takes: the feed's population WITHOUT any of the three paging words (ruling 345).
+ * ⛔ Stated as an `Omit` of the filter itself, deliberately — a hand-copied twin of the facet list is how a badge
+ * ends up counting a different population from the rows beside it, which is the whole defect 344 and 345 exist for.
+ */
+export type IntentFeedCount = Omit<IntentFeedFilter, "cursor" | "limit" | "offset">;
 
 export type PressRegisterFilter = {
   fromIso: string;
@@ -1424,6 +1438,21 @@ export interface HouseBotEventStore {
    */
   drawOpenerSide(input: { marketId: string; houseBotId: string | null; side: IntentSide; actorId: string | null; drawnFor: OpenerDrawnFor }): Promise<{ side: IntentSide; eventId: string; drawn: boolean }>;
   findOpenerDraw(marketId: string, tx?: HouseTx): Promise<StoredHouseBotEvent | null>;
+  /**
+   * ⭐ THE CONSOLE'S HISTORY TAB (C7 step 5, ruling 317). EVERY bot's events and the control row's together,
+   * newest first, `offset`-paged for a numbered pager.
+   * ⛔ IT IS NOT `listByBot` WITH A WIDER SCOPE AND IT IS NOT A CAPPED `listByKinds`. `listByBot` is keyset-paged,
+   * and `Pagination` requires a `total` that a keyset reader structurally cannot give (ruling 317); a cap presented
+   * as a page is a list that silently ends, and these events are the only durable record of who switched what.
+   */
+  listAll(opts: { limit: number; offset?: number; kinds?: readonly HouseBotEventKind[] }, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
+  /**
+   * That list's population, from ONE named predicate shared with `listAll` in each twin — `memEventMatches` in
+   * memory, `eventWhere` on Postgres (ruling 317, pinned by `test:dal-parity` 16.eventsShared).
+   * ⛔ A counting reader, never `listAll(...).length`: `pageLimit` clamps the page to 500 and the count must not be
+   * clamped with it (ruling 344).
+   */
+  countAll(opts: { kinds?: readonly HouseBotEventKind[] }, tx?: HouseTx): Promise<number>;
 }
 
 export interface HouseBotIntentStore {
@@ -1521,8 +1550,18 @@ export interface HouseBotIntentStore {
    * `test:dal-parity` holds.
    */
   staffChosenPlacedToday(input: { houseBotId: string | null; dayKey?: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
-  /** The activity feed, newest first, keyset-paged (C7). */
+  /** The activity feed, newest first, keyset-paged, and `offset`-paged for a numbered pager (C7, ruling 345). */
   listFeed(filter: IntentFeedFilter, tx?: HouseTx): Promise<Page<StoredHouseBotIntent>>;
+  /**
+   * ⭐ THE ACTIVITY FEED'S POPULATION (C7 step 5, ruling 345). The count badge on the `activity` tab and the
+   * `total` its `AdminPagination` requires both come from here.
+   * ⛔ IT SHARES ONE NAMED PREDICATE WITH `listFeed` IN EACH TWIN — `memFeedMatches` in memory, `feedWhere` on
+   * Postgres (ruling 177's shape, pinned by `test:dal-parity` 16.feedShared). A count whose condition is written a
+   * second time is a badge that can disagree with the rows underneath it on the same screen.
+   * ⛔ AND IT IS A COUNTING READER, NEVER A PAGED ONE (ruling 344): `pageLimit` clamps every page to 500, so a
+   * total assembled from `listFeed` rows is a confident wrong number that links a pager at pages nothing serves.
+   */
+  countFeed(filter: IntentFeedCount, tx?: HouseTx): Promise<number>;
 }
 
 export interface HouseBotTargetStore {
@@ -2288,6 +2327,17 @@ const memoryHouseBotAlertOnce: HouseBotAlertOnceStore = {
   },
 };
 
+/**
+ * ⭐ THE HISTORY TAB'S ONE PREDICATE, MEMORY SIDE (C7 step 5, ruling 317; ruling 177's shape).
+ * `listAll` and `countAll` both derive their population from here and nowhere else. ⛔ Writing the condition a
+ * second time inside the count is exactly what `test:dal-parity` 16.eventsShared reports: a pager whose total was
+ * measured over a different population than its rows links at pages that render nothing.
+ */
+function memEventMatches(opts: { kinds?: readonly HouseBotEventKind[] }): (e: StoredHouseBotEvent) => boolean {
+  const kinds: readonly string[] | undefined = opts.kinds;
+  return (e) => !kinds || kinds.includes(e.kind);
+}
+
 const memoryHouseBotEvents: HouseBotEventStore = {
   async append(e) {
     return memWrite("HouseBotEvent", { ...e, id: newHouseId("event"), auditId: null, createdAt: nowIso() }, "insert");
@@ -2306,6 +2356,16 @@ const memoryHouseBotEvents: HouseBotEventStore = {
     const kinds: readonly string[] | undefined = opts.kinds;
     return memPage([...memEvents.values()].filter((e) => e.houseBotId === houseBotId && (!kinds || kinds.includes(e.kind))),
       opts.cursor, opts.limit);
+  },
+  async listAll(opts) {
+    return [...memEvents.values()]
+      .filter(memEventMatches(opts))
+      .sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+      .slice(wholeArg("offset", opts.offset ?? 0), wholeArg("offset", opts.offset ?? 0) + pageLimit(opts.limit))
+      .map(clone);
+  },
+  async countAll(opts) {
+    return [...memEvents.values()].filter(memEventMatches(opts)).length;
   },
   async listByKinds(kinds, opts) {
     const want: readonly string[] = kinds;
@@ -2376,6 +2436,26 @@ function anchorConflictSql(kind: IntentKind): string {
 
 /** A planner scan row's market is out of every house scope when its title marks a demo (`isDemoMarket`'s prefix). */
 const DEMO_PREFIX = "Demo · ";
+
+/**
+ * ⭐ THE ACTIVITY FEED'S ONE PREDICATE, MEMORY SIDE (C7 step 5, ruling 345; ruling 177's shape).
+ * `listFeed` and `countFeed` both derive their population from here. ⛔ The six facets live in ONE place because
+ * the count badge and the rows it sits above are read separately: a condition written twice is a badge that says
+ * 41 over a table that can only ever show 38, and nothing on the screen reveals which one is wrong.
+ * `test:dal-parity` 16.feedShared pins that both members name this function.
+ */
+function memFeedMatches(filter: IntentFeedCount): (i: StoredHouseBotIntent) => boolean {
+  const kinds: readonly string[] | undefined = filter.kinds;
+  const statuses: readonly string[] | undefined = filter.statuses;
+  return (i) =>
+    (filter.houseBotId === undefined || i.houseBotId === filter.houseBotId)
+    && (filter.productLine === undefined || i.productLine === filter.productLine)
+    && (!kinds || kinds.includes(i.kind))
+    && (!statuses || statuses.includes(i.status))
+    && (filter.targetId === undefined || i.targetId === filter.targetId)
+    && (filter.fromIso === undefined || ms(i.createdAt) >= ms(filter.fromIso))
+    && (filter.toIso === undefined || ms(i.createdAt) < ms(filter.toIso));
+}
 
 const memoryHouseBotIntents: HouseBotIntentStore = {
   async insert(row) {
@@ -2598,16 +2678,10 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
     });
   },
   async listFeed(filter) {
-    const kinds: readonly string[] | undefined = filter.kinds;
-    const statuses: readonly string[] | undefined = filter.statuses;
-    return memPage([...memIntents.values()].filter((i) =>
-      (filter.houseBotId === undefined || i.houseBotId === filter.houseBotId)
-      && (filter.productLine === undefined || i.productLine === filter.productLine)
-      && (!kinds || kinds.includes(i.kind))
-      && (!statuses || statuses.includes(i.status))
-      && (filter.targetId === undefined || i.targetId === filter.targetId)
-      && (filter.fromIso === undefined || ms(i.createdAt) >= ms(filter.fromIso))
-      && (filter.toIso === undefined || ms(i.createdAt) < ms(filter.toIso))), filter.cursor, filter.limit);
+    return memPage([...memIntents.values()].filter(memFeedMatches(filter)), filter.cursor, filter.limit, filter.offset ?? 0);
+  },
+  async countFeed(filter) {
+    return [...memIntents.values()].filter(memFeedMatches(filter)).length;
   },
 };
 
@@ -3462,6 +3536,18 @@ const prismaHouseBotAlertOnce: HouseBotAlertOnceStore = {
   },
 };
 
+/**
+ * ⭐ THE HISTORY TAB'S ONE PREDICATE, POSTGRES SIDE (C7 step 5, ruling 317; ruling 177's shape).
+ * `listAll` and `countAll` both build their `WHERE` from here, into the SAME `Params` the caller passes.
+ * ⛔ The pager's `total` and the rows it pages are the one place a second-written condition is invisible: the
+ * numbers agree on page 1 and disagree only at the end of the list. `test:dal-parity` 16.eventsShared pins it.
+ */
+function eventWhere(opts: { kinds?: readonly HouseBotEventKind[] }, p: Params): string[] {
+  const where: string[] = [];
+  if (opts.kinds) where.push(`"kind" = ANY(${p.raw([...opts.kinds], "text[]")})`);
+  return where;
+}
+
 const prismaHouseBotEvents: HouseBotEventStore = {
   async append(e, tx) {
     const p = new Params();
@@ -3483,6 +3569,20 @@ const prismaHouseBotEvents: HouseBotEventStore = {
     const where = [`"houseBotId" = ${p.raw(houseBotId, "text")}`];
     if (opts.kinds) where.push(`"kind" = ANY(${p.raw([...opts.kinds], "text[]")})`);
     return sqlPage(tx, "HouseBotEvent", where, p, opts.cursor, opts.limit, toHouseBotEvent);
+  },
+  async listAll(opts, tx) {
+    const p = new Params();
+    const where = eventWhere(opts, p);
+    const text = `SELECT * FROM "HouseBotEvent" WHERE ${where.length ? where.join(" AND ") : "true"}`
+      + ` ORDER BY "createdAt" DESC, "id" DESC LIMIT ${p.raw(pageLimit(opts.limit), "int")}`
+      + ` OFFSET ${p.raw(wholeArg("offset", opts.offset ?? 0), "int")}`;
+    return (await sql(tx, text, p.values)).map(toHouseBotEvent);
+  },
+  async countAll(opts, tx) {
+    const p = new Params();
+    const where = eventWhere(opts, p);
+    const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE ${where.length ? where.join(" AND ") : "true"}`, p.values);
+    return Number(rows[0]?.n ?? 0);
   },
   async listByKinds(kinds, opts, tx) {
     const p = new Params();
@@ -3539,6 +3639,26 @@ async function staffChosenSums(tx: HouseTx | undefined, houseBotId: string | nul
   const rows = await sql(tx, `SELECT count(*)::int AS "n", coalesce(sum("stakeTzs"), 0)::text AS "tzs"`
     + ` FROM "HouseBotIntent" WHERE ${where.join(" AND ")}`, p.values);
   return { count: Number(rows[0]?.n ?? 0), stakeTzs: Number(rows[0]?.tzs ?? 0) };
+}
+
+/**
+ * ⭐ THE ACTIVITY FEED'S ONE PREDICATE, POSTGRES SIDE (C7 step 5, ruling 345; ruling 177's shape).
+ * `listFeed` and `countFeed` both build their `WHERE` from here, binding into the SAME `Params` the caller
+ * passes — so the count and the page are measured over one condition with one set of bound values.
+ * ⛔ Each facet is a plain predicate, never `$n IS NULL OR …`, for the reason `staffChosenSums` above states:
+ * a three-valued disjunction hides the index from the planner. `test:dal-parity` 16.feedShared pins both members
+ * onto this function.
+ */
+function feedWhere(filter: IntentFeedCount, p: Params): string[] {
+  const where: string[] = [];
+  if (filter.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(filter.houseBotId, "text")}`);
+  if (filter.productLine !== undefined) where.push(`"productLine" = ${p.raw(filter.productLine, "text")}`);
+  if (filter.kinds) where.push(`"kind" = ANY(${p.raw([...filter.kinds], "text[]")})`);
+  if (filter.statuses) where.push(`"status" = ANY(${p.raw([...filter.statuses], "text[]")})`);
+  if (filter.targetId !== undefined) where.push(`"targetId" = ${p.raw(filter.targetId, "text")}`);
+  if (filter.fromIso !== undefined) where.push(`"createdAt" >= ${p.col("HouseBotIntent", "createdAt", filter.fromIso)}`);
+  if (filter.toIso !== undefined) where.push(`"createdAt" < ${p.col("HouseBotIntent", "createdAt", filter.toIso)}`);
+  return where;
 }
 
 const prismaHouseBotIntents: HouseBotIntentStore = {
@@ -3804,15 +3924,13 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
   },
   async listFeed(filter, tx) {
     const p = new Params();
-    const where: string[] = [];
-    if (filter.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(filter.houseBotId, "text")}`);
-    if (filter.productLine !== undefined) where.push(`"productLine" = ${p.raw(filter.productLine, "text")}`);
-    if (filter.kinds) where.push(`"kind" = ANY(${p.raw([...filter.kinds], "text[]")})`);
-    if (filter.statuses) where.push(`"status" = ANY(${p.raw([...filter.statuses], "text[]")})`);
-    if (filter.targetId !== undefined) where.push(`"targetId" = ${p.raw(filter.targetId, "text")}`);
-    if (filter.fromIso !== undefined) where.push(`"createdAt" >= ${p.col("HouseBotIntent", "createdAt", filter.fromIso)}`);
-    if (filter.toIso !== undefined) where.push(`"createdAt" < ${p.col("HouseBotIntent", "createdAt", filter.toIso)}`);
-    return sqlPage(tx, "HouseBotIntent", where, p, filter.cursor, filter.limit, toHouseBotIntent);
+    return sqlPage(tx, "HouseBotIntent", feedWhere(filter, p), p, filter.cursor, filter.limit, toHouseBotIntent, filter.offset ?? 0);
+  },
+  async countFeed(filter, tx) {
+    const p = new Params();
+    const where = feedWhere(filter, p);
+    const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotIntent" WHERE ${where.length ? where.join(" AND ") : "true"}`, p.values);
+    return Number(rows[0]?.n ?? 0);
   },
 };
 

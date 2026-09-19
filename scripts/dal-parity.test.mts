@@ -794,8 +794,16 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
    * have consumed it (the targets panel) would have issued one read per rendered row, which is the per-bot loop
    * ruling 351 refuses; and ruling 350 had already put the member in its NOT-NEEDED half. `everStopped`, the
    * predicate the never-retarget rule really decides on, stays with both twins and its two cases. */
+  /* ⭐ `countFeed` LEFT THIS LIST AT C7 STEP 5 (C7-SPEC ruling 345), and it is the ONE name that left.
+   * C5-5b struck it with R1's presses register, which was then its only consumer. Commit 7's activity tab gives it a
+   * different one: `AdminPagination` requires a `total` that ruling 344 forbids taking from the rows, so the feed's
+   * badge and pager need a reader whose job is to count. It returns with `offset` on `listFeed` and with BOTH members
+   * deriving their population from ONE named predicate per twin — which is what `16.feedShared` below now covers, and
+   * why the absence pin could be relaxed for this name without losing anything it was protecting.
+   * ⛔ EVERY OTHER MEMBER STAYS, and the pin is not relaxed to a prefix or a regex: one name, named. `countRegister`
+   * in particular did NOT come back — the presses register is still struck, and 345 says so in the same breath. */
   const NEVER = ["entryRows", "stakeRows", "feeInputs", "ledgerRows", "positionsForUser", "txnPageForUser", "listOverlapping",
-    "listByKindsInWindow", "listByUserKinds", "countByBot", "countFeed", "counteredPositionsCount", "listInWindow", "countRegister",
+    "listByKindsInWindow", "listByUserKinds", "countByBot", "counteredPositionsCount", "listInWindow", "countRegister",
     "recordDisclosure", "lastStoppedAt"];
   const declared = NEVER.filter((n) => new RegExp(`(^|[^A-Za-z])(async )?${n}\\(`, "m").test(houseDalSrc));
   ok("16.d20 · ⛔ D20 · not one struck step-3 member is declared or implemented in the house DAL (either twin)",
@@ -927,6 +935,53 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ok("16.botRateUsage · `botUsage`'s `marketId` is still REQUIRED and undefaulted",
       /botUsage\(input: \{ houseBotId: string; marketId: string \}, tx\?: HouseTx\)/.test(houseDalSrc), "");
   }
+
+  /**
+   * ⭐ C7 STEP 5 · ONE PREDICATE BEHIND EACH PAGER'S ROWS AND ITS TOTAL (C7-SPEC rulings 345 and 317, ruling 177's
+   * shape). `AdminPagination` takes a `total` that ruling 344 forbids taking from the rows, so each of the console's
+   * two paged panels reads its population through a SECOND member — and the moment the page's condition and the
+   * count's condition are written in two places they can drift apart. The failure is quiet by construction: the two
+   * numbers agree on page 1 and disagree only at the end of the list, where nobody is looking.
+   * ⛔ So both members of each pair must NAME the twin's one predicate function rather than restate its condition.
+   */
+  {
+    const memIntents = region(houseDalSrc, "const memoryHouseBotIntents:");
+    const priIntents = region(houseDalSrc, "const prismaHouseBotIntents:");
+    const memEvents = region(houseDalSrc, "const memoryHouseBotEvents:");
+    const priEvents = region(houseDalSrc, "const prismaHouseBotEvents:");
+    const pair = (obj: string, a: string, b: string, needle: RegExp) =>
+      needle.test(objectMethod(obj, a)) && needle.test(objectMethod(obj, b));
+
+    ok("16.feedShared · ⭐ 345 · listFeed and countFeed derive one population from ONE named predicate per twin (memFeedMatches / feedWhere)",
+      pair(memIntents, "listFeed", "countFeed", /memFeedMatches\(filter\)/)
+        && pair(priIntents, "listFeed", "countFeed", /feedWhere\(filter, p\)/)
+        && /^function memFeedMatches\(/m.test(houseDalSrc) && /^function feedWhere\(/m.test(houseDalSrc),
+      `mem ${objectMethod(memIntents, "countFeed").length} chars · pri ${objectMethod(priIntents, "countFeed").length} chars`);
+
+    ok("16.eventsShared · ⭐ 317 · listAll and countAll derive one population from ONE named predicate per twin (memEventMatches / eventWhere)",
+      pair(memEvents, "listAll", "countAll", /memEventMatches\(opts\)/)
+        && pair(priEvents, "listAll", "countAll", /eventWhere\(opts, p\)/)
+        && /^function memEventMatches\(/m.test(houseDalSrc) && /^function eventWhere\(/m.test(houseDalSrc),
+      `mem ${objectMethod(memEvents, "countAll").length} chars · pri ${objectMethod(priEvents, "countAll").length} chars`);
+
+    /* ⛔ THE CONTROL RULINGS 345 AND 317 BOTH ASK FOR: a count whose condition is written a SECOND time is reported.
+     * Applied to the real shipped bodies, so a detector that cannot see the defect fails here and not on a render. */
+    const restatedMem = objectMethod(memIntents, "countFeed").split("memFeedMatches(filter)").join("(i) => i.kind === filter.kinds?.[0]");
+    const restatedPri = objectMethod(priIntents, "countFeed").split("feedWhere(filter, p)").join(`[\`"kind" = ANY($1)\`]`);
+    const restatedEvt = objectMethod(priEvents, "countAll").split("eventWhere(opts, p)").join(`[\`"kind" = ANY($1)\`]`);
+    ok("16.feedShared.c1 · CONTROL · a count that restates its condition instead of naming the predicate is caught, in all three shapes, and the shipped bodies are not",
+      !/memFeedMatches\(filter\)/.test(restatedMem) && !/feedWhere\(filter, p\)/.test(restatedPri) && !/eventWhere\(opts, p\)/.test(restatedEvt)
+        && /memFeedMatches\(filter\)/.test(objectMethod(memIntents, "countFeed"))
+        && /feedWhere\(filter, p\)/.test(objectMethod(priIntents, "countFeed"))
+        && /eventWhere\(opts, p\)/.test(objectMethod(priEvents, "countAll")), "");
+
+    /* ⛔ AND NEITHER COUNT MAY BE A PAGED READ WEARING A COUNT'S NAME (ruling 344): `pageLimit` clamps every page to
+     * 500, so a total folded from rows is a confident wrong number that links the pager at pages nothing serves. */
+    ok("16.feedShared · ⛔ 344 · neither counting reader pages, slices or reads through its twin's list member",
+      !/pageLimit|memPage|sqlPage|\.slice\(/.test(objectMethod(memIntents, "countFeed") + objectMethod(priIntents, "countFeed")
+        + objectMethod(memEvents, "countAll") + objectMethod(priEvents, "countAll")), "");
+  }
+
   const filtersSrc = decomment(readFileSync(join(SRC, "lib/server/txn-filters.ts"), "utf8"));
   ok("16.d20.house · ⛔ D20 · no house filter survives in the transaction search grammar or its Prisma where (ruling 210 struck)",
     filtersSrc.length > 2_000 && !/f\.house/.test(filtersSrc) && !/house\?:/.test(filtersSrc) && !/houseBotId/.test(filtersSrc), filtersSrc.length.toString());
