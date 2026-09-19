@@ -50,6 +50,7 @@ export type DeskActCopy = {
   cancelLabel: string;
   reasonLabel: string | null;
   reasonHint: string | null;
+  reasonCountLabel: string;
   reasonMin: number;
   reasonMax: number;
   passwordLabel: string | null;
@@ -184,7 +185,7 @@ export function DeskAccountActions({
       >
         {open !== null && (
           <div className="space-y-4">
-            <h2 id={headingId} className="text-h3 text-text">{open.title}</h2>
+            <h2 id={headingId} className="text-h3 text-text pr-8">{open.title}</h2>
             <p className="text-body-sm text-text-secondary">{open.body}</p>
 
             {open.passwordLabel !== null && (
@@ -212,8 +213,9 @@ export function DeskAccountActions({
                     disabled={pending}
                   />
                 </Field>
-                <p className="text-body-sm text-text-subtle font-mono tabular-nums" aria-live="polite">
-                  {open.reasonMax - v.reason.trim().length}
+                {/* ⛔ A LIVE COUNT WITH ITS BASIS BESIDE IT (388, §C2) — read off the first 360 tile. */}
+                <p className="text-body-sm text-text-subtle" aria-live="polite">
+                  <span className="font-mono tabular-nums">{open.reasonMax - v.reason.trim().length}</span>{" "}{open.reasonCountLabel}
                 </p>
               </>
             )}

@@ -60,6 +60,7 @@ export type DeskSwitchCopy = {
   cancelLabel: string;
   reasonLabel: string;
   reasonHint: string;
+  reasonCountLabel: string;
   reasonMin: number;
   reasonMax: number;
   word: string | null;
@@ -187,7 +188,7 @@ export function DeskSwitch({
         initialFocus={reasonRef}
       >
         <div className="space-y-4">
-          <h2 id={headingId} className="text-h3 text-text">{copy.title}</h2>
+          <h2 id={headingId} className="text-h3 text-text pr-8">{copy.title}</h2>
           <p className="text-body-sm text-text-secondary">{copy.body}</p>
 
           <Field label={copy.reasonLabel} hint={copy.reasonHint} dataField="reason">
@@ -200,8 +201,11 @@ export function DeskSwitch({
               disabled={pending}
             />
           </Field>
-          {/* A live count, so the bound is visible before it is met rather than announced by a refusal. */}
-          <p className="text-body-sm text-text-subtle font-mono tabular-nums" aria-live="polite">{left}</p>
+          {/* ⛔ A LIVE COUNT WITH ITS BASIS BESIDE IT. Read off the first 360 tile: it painted a bare "300" and
+              an officer could not tell what it counted. The WORDS are the server's (388); only the figure is ours. */}
+          <p className="text-body-sm text-text-subtle" aria-live="polite">
+            <span className="font-mono tabular-nums">{left}</span>{" "}{copy.reasonCountLabel}
+          </p>
 
           {copy.word !== null && copy.wordLabel !== null && (
             <Field label={copy.wordLabel} dataField="typed">

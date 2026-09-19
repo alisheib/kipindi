@@ -1050,7 +1050,7 @@ section("§2 · the strip, the band, the roster and every failure");
       .flatMap((d: Any) => Object.values(d ?? {}))
       .filter((v: unknown): v is string => typeof v === "string");
     ok("1.415 · 453 · not one word of either ceremony names the feature, and the scan really had both dialogs' whole copy in it",
-      ceremonyStrings.length >= 20 && ceremonyStrings.every((s: string) => !NEUTRAL.test(s)) && houseHits(ceremonyStrings.join(" ")).length === 0,
+      ceremonyStrings.length >= 22 && ceremonyStrings.every((s: string) => !NEUTRAL.test(s)) && houseHits(ceremonyStrings.join(" ")).length === 0,
       j({ scanned: ceremonyStrings.length, hits: ceremonyStrings.filter((s: string) => NEUTRAL.test(s)) }));
     ok("1.415 · 453 · CONTROL · the same scan fires on the kill switch's SHARED copy, which names the feature three times over — which is exactly why the console builds its own sentence from the structured result instead of passing that table through",
       (() => {
@@ -1433,7 +1433,7 @@ section("§2 · the strip, the band, the roster and every failure");
       .flatMap((a: Any) => Object.values(a))
       .filter((s: unknown): s is string => typeof s === "string");
     ok("1.415 · 453 · not one word of any act's dialog names the feature, and the scan had all four acts' whole copy in it",
-      actStrings.length >= 40 && actStrings.every((s: string) => !NEUTRAL.test(s)) && houseHits(actStrings.join(" ")).length === 0,
+      actStrings.length >= 44 && actStrings.every((s: string) => !NEUTRAL.test(s)) && houseHits(actStrings.join(" ")).length === 0,
       j({ scanned: actStrings.length, hits: actStrings.filter((s: string) => NEUTRAL.test(s)) }));
 
     /* ⛔ 300/380 · A VIEWER OUTSIDE THE AUDIENCE IS REFUSED BEFORE ANYTHING IS READ OR WRITTEN. */

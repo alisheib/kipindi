@@ -1727,6 +1727,92 @@ would take, so the next step starts from a measurement rather than from a premis
 
 ---
 
+### Added during the build — ruling 436 (C7 step 4b, 2026-09-19)
+
+#### 436. What the OPERABLE console forced — the ceremony, the action row, the engine Callout, and four things measured rather than assumed
+
+**Decision.** Nine things. Each is a place where a §2 or §8 ruling's factual premise did not hold against the code or
+against the screen, and the code and the screen win (§0's own rule). Every one is measured, not argued.
+
+**(a) 414's "ENGINE DISABLED BY CONFIGURATION" ROW IS NOT BUILT, BECAUSE NOTHING CAN WRITE ITS STATE.** 414's tone
+table gives a neutral row to an engine disabled by configuration. Measured: the ONLY writer of `engineEnabled`
+anywhere in the tree is `engine.ts:229`, which writes `true` on a SUCCESSFUL boot, and a REFUSED start writes no row
+at all — `test:house-bot-engine` 11.16 pins exactly that ("no boot row was written by a refused start"). So a
+disabled engine is INDISTINGUISHABLE from one that never booted, and it is already reported: as `STALE`, which is
+the true statement about it. A branch nothing can reach is ruling 432(a)'s dead control one layer down.
+
+**(b) THE STALENESS PREDICATE'S OWN ORDER IS THE DECISION, AND `UNREADABLE` COMES FIRST.** 353 says WHEN and 414
+says WHICH TONE, and neither says what happens when two rows could fire. The order is fixed here: unreadable →
+booting → stale → a poller failure newer than its own beat → a failed planner duty → nothing running → silence.
+⛔ The switch being OFF is in the SILENCE branch and that is 432(n), not an omission: the strip one card up already
+reads "The desk is off. Nothing will be staked." for every off cause, and one state may not say one fact twice.
+
+**(c) THE POLLER'S FAILURE RECORD IS KEY-SCOPED, AND THE SAME FOUR COLUMNS CARRY TWO MEANINGS.** A24's
+`pollerErrorAt`/`Code`/`Streak` on `beat:poller:<instance>` are that instance's CLAIM failures; on `beat:planner`
+the same columns carry X1's failed duty NAMES and when they failed. The columns are key-scoped exactly as `beatAt`
+is, and Commit 7 adds no schema field. Reading them off the wrong row family is the one way to get this wrong, so
+each is folded off exactly one family and `test:house-bot-engine` 20.12 pins the split.
+⛔ AND THE DUTY NAME IS A NAME, NEVER THE MESSAGE: a duty's error text is an arbitrary database or vendor string
+that can carry a label, a market or an account, and a console surface reads this row.
+
+**(d) THE CONSOLE BUILDS ITS OWN SENTENCE FROM A STRUCTURED RESULT — IT DOES NOT OVERRIDE A SHARED TABLE.**
+`SWITCH_OFF_COPY` names the feature three times over ("House bots are off…", "House bots were already off…",
+"…House bots were NOT switched off…"), and the four services behind the action row answer with messages of the same
+family — `eligibility.ts` alone carries FOURTEEN (measured; 432(f) named two). An override MAP would work today and
+re-land the moment a row is added to either table. So the console reads the STRUCTURED result (`ok`, `changed`,
+`drain`, `cancelled`, the refusal CODE) and writes its own words, and `test:house-bot-console` derives the code
+population from the service UNIONS themselves. ⚠️ What is lost is named: an INELIGIBLE Start no longer prints the
+eligibility row's own words; the console says what it knows and carries the service's `href` to the thing that has
+to change. The detail returns with 432(f)'s eligibility override, which `1.432f` ties to the wizard by existence.
+
+**(e) 432(f)'s `eligibility.ts` HALF IS MEASURED AND ITS COPY IS NOT WRITTEN, AND THAT IS 432(a) APPLIED TO COPY.**
+FOURTEEN of that module's rendered sentences carry a house word. The wizard is step 6's; fourteen rewritten
+sentences that nothing renders is a writer with no reader, and each carries interpolated data whose shape that
+surface has not settled. What lands is the MEASUREMENT and an EXISTENCE TIE — the section renders an eligibility
+row ⟺ the console's override exists — so step 6 can ship neither half alone.
+
+**(f) CANCEL-INTENT AND "ENTER NOW" ARE NAMED, NOT ABSENT.** Ruling 415 lists Cancel-intent beside the four acts and
+replan 508 schedules "Enter now" with this row. Both act on a QUEUED STAKE or on a MARKET, and this page has
+neither: the activity panel is C7 step 5's and the market picker is the wizard's neighbour. A control with nothing
+to act on is 432(a)'s dead control, so they land with the panel that gives them a subject.
+⛔ AND THE COMMIT 7 CONSTRAINT SURVIVES UNSPENT: when `cancelHouseBotIntentAction` and `removeHouseBotTargetAction`
+are built they run `getForUpdate(targetId, tx)` FIRST, in the same transaction (sealed N2 §6 step 2; review L1-03,
+refuted only on that condition). Nothing in this step took either name.
+
+**(g) START NEEDED A `RulesContext` AND NOTHING UNDER `src/` COULD BUILD ONE.** `loadParseContext()` built the
+PARSE third (chains, categories, durations); the other six members had no server-side producer at all, so the
+console's Start had nothing to hand `startHouseBot`. `loadRulesContext()` is added beside it, and every member comes
+from a NAMED platform resolver — `getGlobalConfig` for the bounds and the poll exit rates, `rateProfileFor` (the
+platform's OWN chain resolver) per chain, `MIN_SELECTION_WINDOW_MINUTES`, `RATE_RULES["bet.place"]`, the control row
+and the roster. ⛔ None is invented, because what reads them decides whether an account may start placing money. The
+wizard's rules form needs the identical object, which is why it lives in the shared module.
+
+**(h) THE 200-NOT-404 ON AN UNKNOWN ID IS THE PLATFORM'S, NOT THE DESK'S — MEASURED, AND RE-CLASSED.** C7 step 4a
+reported `notFound()` answering HTTP 200. Re-measured on a served build with the admin's own cookie:
+`/admin/desk/[id]` 200, `/admin/players/[id]` 200, `/admin/kyc/[id]` 200, `/admin/markets/[id]` 200 — every one with
+the not-found words in the body. It is a property of a streamed RSC page under a `loading.tsx`: the shell is on the
+wire before the reader resolves. ⚠️ It is NOT ruling 399's exposure in either direction — a status that is 200 for
+EVERY viewer is not an oracle at all, which is stronger than 399 asked for. The fix is a platform change across at
+least four sections and needs its own ruling; the desk moves WITH its neighbours, never alone.
+
+**(i) TWO THINGS WERE READ OFF THE FIRST DIALOG TILES AND FIXED IN THE SAME PASS.** The live character count painted
+a bare "300" — a figure with no basis is a figure an officer has to guess at, and the words are the SERVER's under
+388, so the copy object carries them. And at 360 the Remove dialog's title ran to within eleven pixels of the kit's
+own close button; the heading takes a right pad so it can never collide. Both were re-captured and re-read.
+
+**Why.** Every clause above was found by running a guard, reading what it printed, or opening a tile — not by
+re-reading the spec. A step that silently deviates teaches the next step a false premise.
+
+**Proof.** (a) `test:house-bot-engine` 11.16 and the predicate's own verdict list, 20.17's roll-call over every
+verdict this run reached; (b) 20.1–20.10 and `test:house-bot-console` 1.414's 432(n) case with the desk off;
+(c) 20.12 and 20.13, plus 16.514a–g on the poller's own family; (d) 1.415's derived code population with its
+control, and 1.415/453's scan of both the ceremony's and the action row's whole copy; (e) 1.432f's four cases;
+(f) recorded here and in `openIssues` — nothing is built, so nothing asserts it yet; (g) `loadRulesContext`'s own
+callers and the Start case that drives it end to end on both stores; (h) the four-route measurement above, recorded
+in `DEFERRED-TESTS` row 50; (i) the re-captured tiles at 360, 768 and 1280, opened and READ.
+
+---
+
 ## §7 Open questions for Ali — one line each, numbered
 
 1. **The section's name in the navbar and the URL:** (1) "Desk" at `/admin/desk` — my ruling, ships today; or (2) another word you give me.
@@ -1771,4 +1857,4 @@ would take, so the next step starts from a measurement rather than from a premis
 
 460. **Every anchor into a file C5-5b touched is re-grepped by TEXT before step 1 commits.** The completeness review ran while checkpoint C5-5b was deleting code, and it names six guard files modified mid-review (`dal-parity.test.mts`, `house-bot-disclosure.test.mts` and four others). Ruling 431 already says to re-grep; this makes it a **commit precondition**: step 1 does not commit until every Files-block anchor it relies on has been re-found by its quoted line text at the then-current HEAD, and any anchor that cannot be re-found is reported, never guessed.
 
-461. **This file is committed as `plans/house-bots/C7-SPEC.md` and is Commit 7's authority**, below D19, D20, ruling 266 and `C5-D20-REPLAN.md` §4's Commit 7 scope. It supersedes `PLAN.md` §8 and `03-design-spec.md` S1–S6 wherever §1 names them. Rulings 420–431 are the completeness review's own; 334–339 and 376–379 stay reserved and unspent; Commit 7's next new ruling is **434** *(corrected from **432** on 2026-09-18 under ruling 516: 432 was spent during step 1 — see "Added during the build — ruling 432" above — so a session obeying this line would have allocated it twice; and from **433** on 2026-09-18, spent by the step 3 + step 2 build — see "Added during the build — ruling 433" above)*, and the orchestrator's own rulings continue at **517** (475–499 belong to the checkpoint workflows). *(Updated 2026-09-18: **434 is spent** — see "Added during the build — ruling 434" above — so Commit 7's next new ruling is **435**.)* *(Updated 2026-09-19: **435 is spent** by the C7 step 4 build — see "Added during the build — ruling 435" above — so Commit 7's next new ruling is **436**.)*
+461. **This file is committed as `plans/house-bots/C7-SPEC.md` and is Commit 7's authority**, below D19, D20, ruling 266 and `C5-D20-REPLAN.md` §4's Commit 7 scope. It supersedes `PLAN.md` §8 and `03-design-spec.md` S1–S6 wherever §1 names them. Rulings 420–431 are the completeness review's own; 334–339 and 376–379 stay reserved and unspent; Commit 7's next new ruling is **434** *(corrected from **432** on 2026-09-18 under ruling 516: 432 was spent during step 1 — see "Added during the build — ruling 432" above — so a session obeying this line would have allocated it twice; and from **433** on 2026-09-18, spent by the step 3 + step 2 build — see "Added during the build — ruling 433" above)*, and the orchestrator's own rulings continue at **517** (475–499 belong to the checkpoint workflows). *(Updated 2026-09-18: **434 is spent** — see "Added during the build — ruling 434" above — so Commit 7's next new ruling is **435**.)* *(Updated 2026-09-19: **435 is spent** by the C7 step 4 build — see "Added during the build — ruling 435" above — so Commit 7's next new ruling is **436**.)* *(Updated 2026-09-19: **436 is spent** by the C7 step 4b build — see "Added during the build — ruling 436" above — so Commit 7's next new ruling is **437**.)*

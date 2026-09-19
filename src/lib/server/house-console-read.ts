@@ -1537,6 +1537,9 @@ export type ConsoleSwitchDialog = {
   cancelLabel: string;
   reasonLabel: string;
   reasonHint: string;
+  /** ⛔ WHAT THE LIVE COUNT COUNTS. Read off the first 360 tile: it painted a bare "300", and a figure with no
+   *  basis is a figure an officer has to guess at — the class §C2 refuses. The WORDS are the server's (388). */
+  reasonCountLabel: string;
   reasonMin: number;
   reasonMax: number;
   /**
@@ -1564,6 +1567,7 @@ function switchDialogFor(on: boolean | null, offCause: string | null, unsetRequi
   const base = {
     ariaLabel: "Desk master switch",
     cancelLabel: "Cancel",
+    reasonCountLabel: "characters left",
     reasonMin: CONSOLE_REASON_MIN,
     reasonMax: CONSOLE_REASON_MAX,
   };
@@ -1950,6 +1954,8 @@ export type ConsoleAccountActDialog = {
   cancelLabel: string;
   reasonLabel: string | null;
   reasonHint: string | null;
+  /** ⛔ WHAT THE LIVE COUNT COUNTS — read off the first 360 tile, where it was a bare number (388, §C2). */
+  reasonCountLabel: string;
   reasonMin: number;
   reasonMax: number;
   passwordLabel: string | null;
@@ -1961,7 +1967,7 @@ export type ConsoleAccountActDialog = {
   failTitle: string;
 };
 
-const ACT_BASE = { cancelLabel: "Cancel", reasonMin: CONSOLE_REASON_MIN, reasonMax: CONSOLE_REASON_MAX } as const;
+const ACT_BASE = { cancelLabel: "Cancel", reasonCountLabel: "characters left", reasonMin: CONSOLE_REASON_MIN, reasonMax: CONSOLE_REASON_MAX } as const;
 const NO_FIELDS = {
   reasonLabel: null, reasonHint: null, passwordLabel: null, passwordHint: null,
   word: null, wordLabel: null, wordPlaceholder: null,
