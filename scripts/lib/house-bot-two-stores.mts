@@ -80,10 +80,33 @@ export async function runTwoStores(opts: { suite: string; casesFile: string; min
         `exit ${pgRun.exit} · ${pgRun.pass} passed (at least ${minFor("postgres")}) · ${pgRun.fail} failed`);
     }
   } finally {
+    /**
+     * ⛔ A CLEANUP THAT FAILS SILENTLY IS HOW A SHARED CLUSTER FILLS UP. This drop used to end in
+     * `.catch(() => {})`, so a database that could not be dropped — a backend still attached, a cluster that went
+     * away mid-run — left NOTHING on the screen and the run printed ALL PASS. Two scratch databases accumulated in
+     * one run of this lane before anybody looked; the cluster is shared by three lanes, and the next lane's
+     * `db-scratch` sees someone else's rubbish and cannot tell whose it is.
+     *
+     * ⛔ REPORTED, NOT FAILED. The exit code below is decided by `fail` alone and is untouched here: a suite that
+     * PASSED did pass, and turning a housekeeping problem into a red suite would teach the next session to ignore
+     * the red. So the failure is named, with the database and the cluster, and with the exact statement to run by
+     * hand — and `process.exitCode` is deliberately not set.
+     */
     const drop = new pg.Client({ connectionString: RAW });
-    await drop.connect();
-    await drop.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`).catch(() => {});
-    await drop.end();
+    try {
+      await drop.connect();
+      await drop.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`);
+    } catch (e) {
+      const why = e instanceof Error ? e.message : String(e);
+      console.error(`\n!! SCRATCH DATABASE NOT DROPPED — "${DB}" is still on the cluster at ${BASE}.`);
+      console.error(`!! It will sit there until someone removes it, and this cluster is shared. Drop it by hand:`);
+      console.error(`!!   psql "${BASE}/postgres" -c 'DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)'`);
+      console.error(`!! Reason: ${why}`);
+      console.error(`!! ⛔ The suite's own result is UNAFFECTED by this line — it is housekeeping, not an assertion.`);
+    } finally {
+      // The socket of a process that is about to exit. The DROP above is the claim; this is only its teardown.
+      try { await drop.end(); } catch { /* nothing left to report: the connection is already gone */ }
+    }
   }
   console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${opts.suite}: ${pass} passed, ${fail} failed`);
   process.exit(fail === 0 ? 0 : 1);
