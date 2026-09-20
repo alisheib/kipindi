@@ -382,8 +382,11 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
 - **Password UI (C4 console side):** `autoComplete=new-password` + password-manager ignore attributes; busy latch + `submitId`; the re-verify "start again" checkbox; reserved-attempts copy.
 - **Dialogs and states:** modals (C3, C7); switch and Start states (C10); live strip (C11); re-auth / STALE_BUILD / drafts (C12); consent UX (C8, C9).
 - **Wiring:** nav/RBAC; console audit pins (R7); FAILURE-INVENTORY §6.
-- **Ops scripts:** `ops:house-bots-off` (A9); `--drift` / `ops:house-bots-remark` (S3); feature state + `ops:house-bots-sunset` (F2).
-  - ⛔ **THESE FOUR WERE SCHEDULED IN NO STEP OF `C7-SPEC.md` (measured 2026-09-20: `grep -cE 'ops:house-bots|ops:preflight-house' plans/house-bots/C7-SPEC.md` = 0).** A builder working that spec step by step closed Commit 7 without them and nothing turned red — the shape rulings 473 and 506 had to rescue for twelve homeless assertions. They are now scheduled as **`C7-SPEC.md` §3 steps 8–13**, with their §4 suite rows. **RESUME THE OPS LANE AT STEP 10** (`ops:house-bots-off`).
+- **Ops scripts: ✅ ALL FOUR BUILT 2026-09-20.** `ops:house-bots-off` (A9); `ops:house-bots-status` **with `--drift`** / `ops:house-bots-remark` (S3); the `houseBots` feature state + `ops:house-bots-sunset` (F2).
+  - ⚠️ **THE `--drift` COMMIT SPLIT IS RESOLVED BY BUILDING, NOT BY RE-FILING.** This line assigned the FLAG to Commit 7 while the Commit 8 list below assigned the base command; 04's re-release law makes `--drift` reporting 0 a precondition of EVERY later house deploy, so **`scripts/ops-house-bots-status.mts` lands in Commit 7** and Commit 8 owns only the extra duties its own list names (the rollback figures, the per-market exposure, the +10 min recheck).
+  - ⛔ **THESE FOUR WERE SCHEDULED IN NO STEP OF `C7-SPEC.md` (measured 2026-09-20: `grep -cE 'ops:house-bots|ops:preflight-house' plans/house-bots/C7-SPEC.md` = 0).** A builder working that spec step by step closed Commit 7 without them and nothing turned red — the shape rulings 473 and 506 had to rescue for twelve homeless assertions. They are scheduled as **`C7-SPEC.md` §3 steps 8–13**, each now marked ✅ BUILT with its §4 suite row and its MEASURED floors.
+  - **Decisions taken while building them, recorded so they are not re-litigated:** **D-OPS-1** the terminal OFF does not cancel live intents (a lock-free script must not take a table-wide write) but prints the count it left and the exact statement that cancels them; **D-OPS-2** it writes no compliance row (a hand-written `AuditLog` INSERT would break the HMAC chain — the `SWITCH_OFF` event row is the record); **D-OPS-3** the remark writes none either, for a different reason — there is no `house_bot.remark` action and no REMARK event kind, both closed lists CHECK-constrained in SQL and owned by Commit 1 — so its printed REPORT is the record. All three are in `docs/HOUSE-BOTS.md` §11.
+  - **RESUME THE OPS LANE AT COMMIT 8's OWN LIST** — `ops:preflight-house-bot-migrations` (A23), `db:seed-house-bots-local`, `qa:house-bots-local`, and the Commit-8 duties of the status reader.
   - **✅ Step 8 (2026-09-20, branch `ops-lane`):** the lane's suite `test:house-bot-ops` (both stores) + `red:house-bot-ops` (in-process, `UNDECLARED_CEILING` untouched), and the `scripts/` marker gate ARMED BEFORE the scripts it guards — 18 planted controls, 18 SEEN RED. The walker is lifted to `scripts/lib/tracked-files.mts` and imported by both callers. Floors MEASURED: memory 16, postgres 1.
   - **✅ Step 9 (2026-09-20):** `HouseBotControlStore.markSunset()` and `HouseBookStore.openExposureByMarket()`, interface + both twins. ⛔ BLOCKER 1: `switchOff({ cause: "SUNSET" })` is conditional on `"enabled" = true` and matches NOTHING on the shipped OFF desk, so a sunset through it would strip the desk and leave no terminal marker. `test:dal-parity` §6 generated all four `6.twin` assertions with no edit to that file. Floors MEASURED: memory 28, postgres 13.
 - **Suites:** `test:house-bot-console`.
@@ -399,7 +402,8 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
 
 **Commit 8: end-to-end and release prep**
 - ⛔ **D20 (Ali, 2026-09-17):** L26 and L27 are no longer house-bots release preconditions (no house CSV column ships); they stay live platform defects for Ali. The final docs follow D20: reports treat house accounts as ordinary player accounts.
-- **Ops scripts:** `seed:house-bots-local`, `drive:house-bots-local`, `ops:house-bots-status`, `ops:preflight-house-bot-migrations` (A23).
+- ⚠️ **THE TWO KEY NAMES WERE CORRECTED 2026-09-20, everywhere at once** (`seed:house-bots-local` → `db:seed-house-bots-local`, `drive:house-bots-local` → `qa:house-bots-local`). Measured: `package.json` has exactly three `db:seed-*-local` keys and **no `drive:` namespace at all**, and every key pointing at a `*-drive` file is `qa:` (`qa:house` is the nearest sibling). A plan that keeps naming a command nothing answers to is the rot `test:docs` and `test:guards-exist` both exist to stop.
+- **Ops scripts:** `db:seed-house-bots-local`, `qa:house-bots-local`, `ops:preflight-house-bot-migrations` (A23), and the Commit-8 DUTIES of `ops:house-bots-status` — the file itself shipped in Commit 7 (see the note there), so this list owes its rollback figures (open house positions, live intents), the per-market exposure, the WALLET_MISSING condition and the +10 min recheck, not the command.
 - **Rehearsals (S4):** migrations under load, rollback, two processes, audit burst, two-admin ON.
 - **Docs:**
   - risks 8–12 (S5);
@@ -408,7 +412,7 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
   - A1 record.
 - **Scenario coverage gate** (below).
 - **N1/N2 drive:**
-  - **`drive:house-bots-local`** (local seeded DB only): Enter now THIN and OPENER; a poll target STAKE 10 s (lands from 5:07); EXIT_CLOSE 10 s (from 5:10); an Up & Down 3-min COUNTER 10/10.
+  - **`qa:house-bots-local`** (local seeded DB only): Enter now THIN and OPENER; a poll target STAKE 10 s (lands from 5:07); EXIT_CLOSE 10 s (from 5:10); an Up & Down 3-min COUNTER 10/10.
   - **Phase D:** a step for Esc with a choice open.
   - **S4 rehearsal 3:** includes inline fire vs poller.
   - **Release record:** prints "Enter now preview: NOT MEASURED in production (it writes)".
@@ -433,7 +437,7 @@ least one house-bot test assertion name or comment, or be listed here with a rea
 Run every Release command in **Git Bash**. S2 R0's "Rebase on origin/main" is superseded: **merge** `origin/main` (the branch is shared across machines). Any "rebase" instruction anywhere in these documents is superseded the same way.
 | Step | What | Status |
 |---|---|---|
-| REL-0 | **(T-1 day)** P0 re-run · merge `origin/main` · `git diff origin/main...house-bots --stat -- prisma/migrations` shows exactly the 2 house folders · `test:all`, every `red:house-bot-*`, `drive:house-bots-local`, `qa:house-bots-visual` and the S4 rehearsals green on this SHA · coverage gate met · `ops:preflight-house-bot-migrations` GO · **checklist sent to Ali, and his "go" received, explicitly naming REL-2** | ⬜ |
+| REL-0 | **(T-1 day)** P0 re-run · merge `origin/main` · `git diff origin/main...house-bots --stat -- prisma/migrations` shows exactly the 2 house folders · `test:all`, every `red:house-bot-*`, `qa:house-bots-local`, `qa:house-bots-visual` and the S4 rehearsals green on this SHA · coverage gate met · `ops:preflight-house-bot-migrations` GO · **checklist sent to Ali, and his "go" received, explicitly naming REL-2** | ⬜ |
 | REL-1 | Quiet hour chosen: preflight shows the bets in the last 15 min; not during the nightly trial balance; a window of at least 10 minutes | ⬜ |
 | REL-2 | See the steps below | ⬜ |
 | REL-3 | While the old container still serves: `houseBotSchemaReady()` query true · `HouseBotControl.enabled=false` · `/api/health` ok · Position count still rising | ⬜ |

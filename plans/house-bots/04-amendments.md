@@ -627,7 +627,7 @@ Engine modules may not import `StoredMarket`.
 *§2 migrations:*
 - Every statement uses `IF NOT EXISTS` with fixed names.
 - `ops:preflight-house-bot-migrations` (read-only) prints `now()`, the timezone, Position and Transaction row counts and sizes, and existing indexes, then GO or NO-GO.
-- Above 500k positions or 1M transactions, build the 4 marker indexes `CONCURRENTLY` by hand first, so the migration is a no-op.
+- Above 500k positions or 1M transactions, build the **FIVE** indexes `CONCURRENTLY` by hand first, so the migration is a no-op. ⛔ **Corrected 2026-09-20 by reading the migration rather than this line:** `20260916150100_house_bot_markers/migration.sql` says "five indexes" in its own header and its hand-apply block names five — four on `"houseBotId"` plus `Position_placedAt_id_idx`, the sweep keyset, which is built under the SAME `ACCESS EXCLUSIVE` lock and is exactly as capable of stalling the migration. A preflight that checked four would report GO on a database one index short. Read the five names FROM that file; never type them.
 - Merge only when `_prisma_migrations` shows both migrations finished and not rolled back. Never run `migrate resolve --applied` without checking the objects exist.
 
 *§4.2:*
@@ -1357,7 +1357,7 @@ I read the code in `C:\kipindi-main` at HEAD `ac411357`, without editing anythin
 
 **Test**
 - Source pin (positive control): no `getAuditPage` import in `report-pack.ts`, `server/house-bot/**`, or the ~~house and~~ RG builders in `catalogue.ts`. ⛔ **Superseded by D20 (Ali, 2026-09-17):** there are no house report builders (C5-SPEC rulings 199–208); the pin stands for the pack, `catalogue.ts` and the house-bot modules (ruling 215).
-- `drive:house-bots-local` (Postgres): pack prepared and approved, then 12,000 BET rows, then a fresh module → `getReportPack().state === "approved"`. The in-memory store can't prove this, because the durable reader falls back to the ring (`audit.ts:633-637`).
+- `qa:house-bots-local` (Postgres): pack prepared and approved, then 12,000 BET rows, then a fresh module → `getReportPack().state === "approved"`. The in-memory store can't prove this, because the durable reader falls back to the ring (`audit.ts:633-637`).
 
 ### R9 · MINOR · Record what resolvers and identity officers saw
 ⛔ **Superseded by D20 (Ali, 2026-09-17):** this whole section is struck. No decision audit (`market.adjudicated`, `market.emergency_void`, `objection.rejected`/`upheld`, `market.resolve.bulk`/`bulk_override`) carries `houseStake` or `houseStakes`, and the KYC card has no house line and `kycMoneyFacts` no house fields (C5-SPEC rulings 187–191 and 197, built in Commit 5 steps 4–5 and un-built in checkpoint C5-5b). Nothing in it stands.
@@ -1581,7 +1581,7 @@ Everything was checked against `C:\kipindi-main`. HEAD is `ac411357`, the KYC co
 
 | Step | Action | GO when |
 |---|---|---|
-| R0 (T-1 day) | S1 P0 re-run. Rebase on `origin/main`. `git diff origin/main...house-bots --stat -- prisma/migrations` shows exactly the 2 house folders. `test:all`, every `red:house-bot-*`, `drive:house-bots-local`, `qa:house-bots-visual` and the S4 rehearsals pass on this SHA. `ops:preflight-house-bot-migrations` says GO. Send Ali the checklist. | Ali's one-word "go" |
+| R0 (T-1 day) | S1 P0 re-run. Rebase on `origin/main`. `git diff origin/main...house-bots --stat -- prisma/migrations` shows exactly the 2 house folders. `test:all`, every `red:house-bot-*`, `qa:house-bots-local`, `qa:house-bots-visual` and the S4 rehearsals pass on this SHA. `ops:preflight-house-bot-migrations` says GO. Send Ali the checklist. | Ali's one-word "go" |
 | R1 | Pick a quiet hour: preflight prints the bets in the last 15 min. Not during the nightly trial balance. | ≥10-min window |
 | R2 | From this machine: `MSYS_NO_PATHCONV=1 DATABASE_URL=… npx prisma migrate deploy`. **On any failure:** preflight `--post` confirms no house object exists, then `prisma migrate resolve --rolled-back <name>`, then retry once later. **Never leave a failed row:** P3009 blocks every boot, and boot runs `migrate deploy`. | both rows finished |
 | R3 (old container still serving) | `houseBotSchemaReady()` query is true. `HouseBotControl.enabled=false`. `/api/health` `ok:true`. The Position count keeps rising (read-only check). | all true |

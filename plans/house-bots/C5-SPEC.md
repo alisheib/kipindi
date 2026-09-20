@@ -1732,7 +1732,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** the planted controls above, each seen red or green as stated.
 
 216. **R8 is proven on Postgres by emptying the ring, not by writing 10,000 rows.** On the Postgres half of
-     `test:house-bot-reports` (`drive:house-bots-local` is Commit 8's and has no package key): write `pack.prepared` (officer
+     `test:house-bot-reports` (`qa:house-bots-local` is Commit 8's and has no package key): write `pack.prepared` (officer
      A) and `pack.approved` (officer B) through `audit()` and await both; empty `globalThis.__50PICK_AUDIT_RING` in the same
      process (the ring is a `globalThis` array that `audit()` only appends to after the DB write, and hydrate never refills a
      process that has already hydrated — exactly the "empties on every deploy" state); assert `getReportPack(period).state`

@@ -542,7 +542,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 | 5 | ~~Reporting (§9) + resolver exposure display +~~ ~~holder chip / SellButton~~ · `test:house-bot-reports` ⛔ **Superseded by D20 (Ali, 2026-09-17):** the §9 reporting splits and the resolver exposure display are struck; Commit 5 is re-planned in `C5-D20-REPLAN.md` §3 (C5-5b un-build, C5-6 R8 + R6, C5-7 absence sweep and served layer, C5-8 closing gates), and the holder chip and SellButton fall under D19c. ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder chip and no SellButton `houseStake` state are built; a house stake looks exactly like the holder's own bet (D19c). |
 | 6 | ~~Public text (§10)~~ · `test:house-bot-disclosure` ⛔ **Superseded by D19 (Ali, 2026-09-16):** no public text; Commit 6 is the non-disclosure commit (the private Board draft, the chatbot guard D19d, docs, the absence suite). |
 | 7 | Console: `actions.ts`, routes, UserPicker + DAL search, nav/RBAC, FAILURE-INVENTORY · `test:house-bot-console` · `red:house-bot-console` · `qa:house-bots-visual` |
-| 8 | `seed:house-bots-local`, `drive:house-bots-local`, `ops:house-bots-status` · docs finalised · end-to-end drive · verification record |
+| 8 | `db:seed-house-bots-local`, `qa:house-bots-local`, `ops:house-bots-status` · docs finalised · end-to-end drive · verification record |
 
 **Release:** migrations applied to production from this machine first. **One merge to `main`** at a quiet hour: one deploy, which is a brief outage while `overlapSeconds` is null. The switch stays OFF and Ali turns it on.
 
@@ -565,7 +565,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 **Other checks**
 - **RED harnesses:** `red:house-bot-money` / `-engine` / `-console`. Each mutation must fail **its own** assertion, with an unmutated control.
 - **Existing gates touched:** `failure-reasons`, i18n, dal-parity, `cert-c1`/`c3`, admin-nav, rbac, admin-act-gate, orphan-actions, orphans, feedback-law, confirm-gate, unsaved-changes, ui-consistency, gold-is-money, house-page, docs, late-bet, rg-limit-race, bet-retry, money-invariants.
-- **Local Postgres, end to end** (`seed:` + `drive:house-bots-local`, loopback-only guard):
+- **Local Postgres, end to end** (`seed:` + `qa:house-bots-local`, loopback-only guard):
   - designate (balance shown), rules, switch ON, real player bet → COUNTER PLACED with markers;
   - FILL and OPENER;
   - OFF mid-delay → CANCELLED;

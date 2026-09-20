@@ -1175,7 +1175,7 @@ If he also holds his own stake, he may object.
 - **Expected:** Player bets are never blocked for more than a few hundred ms. Large tables get their indexes built CONCURRENTLY out of band first, so the migration is a no-op.
 - **Plan:** §2 Markers indexes (plan:159), Release (plan:506)
 - **Evidence:** prisma/migrations/20260913120000_kyc_at_withdrawal/migration.sql:34-35 (no CONCURRENTLY inside migrate deploy); scripts/ops-preflight-notification-idx.mts:32-40 (index lock duration scales with table size)
-- **Fix:** Add ops:preflight-house-bot-migrations (read-only; pg Client pattern). It prints DB now(), SHOW timezone, row counts and sizes for Position and Transaction, existing index names, and GO/NO-GO. Thresholds: Position > 500k or Transaction > 1M means CREATE INDEX CONCURRENTLY IF NOT EXISTS for the 4 indexes via a documented manual step before the migration, and every migration statement uses IF NOT EXISTS with identical names.
+- **Fix:** Add ops:preflight-house-bot-migrations (read-only; pg Client pattern). It prints DB now(), SHOW timezone, row counts and sizes for Position and Transaction, existing index names, and GO/NO-GO. Thresholds: Position > 500k or Transaction > 1M means CREATE INDEX CONCURRENTLY IF NOT EXISTS for the FIVE indexes via a documented manual step before the migration, and every migration statement uses IF NOT EXISTS with identical names. ⛔ **FIVE, corrected 2026-09-20 from the migration itself** — the four that name "houseBotId" plus Position_placedAt_id_idx, the sweep keyset, built under the same ACCESS EXCLUSIVE lock. ⚠️ And the preflight must read `indisvalid`, not index NAMES: a failed CONCURRENTLY build leaves an INVALID index under the same name and IF NOT EXISTS silently keeps it, so a by-name check cannot see the one failure that matters.
 - **Test:** test:dead-schema (IF NOT EXISTS, no CONCURRENTLY in the file); test:docs names the preflight script; its output is recorded in the verification record before release.
 
 ### ENG-09 [gap] After long downtime or an engine outage, hundreds of due intents fire late or burst, or are permanently skipped by rate caps
@@ -1874,7 +1874,7 @@ test:dal-parity covers the new filter.
 - getReportPack reads durably (getAuditByActionsDurable(['pack.prepared','pack.approved','pack.submitted','pack.acknowledged'], {category:'ADMIN'}) filtered by targetId).
 - buildRgEngagement uses the durable action reader.
 - A source pin forbids getAuditPage in report-pack.ts and catalogue.ts report builders.
-- **Test:** - drive:house-bots-local (loopback Postgres): write pack.prepared and pack.approved, then 12,000 BET rows, restart the module cache, and assert getReportPack().state === 'approved'.
+- **Test:** - qa:house-bots-local (loopback Postgres): write pack.prepared and pack.approved, then 12,000 BET rows, restart the module cache, and assert getReportPack().state === 'approved'.
 - test:house-bot-reports: a source pin, with a positive control, fails on any getAuditPage import in those files.
 
 ### CRA-04 [gap] The holder exercises his right of access: 'Export my data', or an officer builds his DSAR bundle during or after designation.
@@ -2782,7 +2782,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
 - **Test:**
   - `test:house-bot-engine` happy path on both stores: 1 press DONE, 1 intent PLACED, 1 `ENTER_NOW_REQUESTED`, 1 audit, 1 position of 9,000, 3 counterparty attributions of 3,000.
   - `test:house-bot-comms`: both admins get the uncapped bell and email, and no reason text appears in any notification row.
-  - `drive:house-bots-local` THIN case (local seeded database only).
+  - `qa:house-bots-local` THIN case (local seeded database only).
 - ⛔ **Superseded by D20 (Ali, 2026-09-17):** no decision audit carries an R9 `houseStake` (C5-SPEC rulings 187–191); the `house_bot.enter_now` row is untouched by D20. Coverage gate: partly struck by D20.
 - ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder receives no stake notice (D19c; C4 ruling 149). Coverage gate: partly struck by D19.
 
@@ -3358,7 +3358,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - `test:house-bot-rules`: `effectiveTargetTiming` = `decide.ts` on (b)–(g); constants test `LOCK_MARGIN_MS = 7000` ≥ A24's 5 s + 2 s.
   - `test:house-bot-engine`: `dueAt` for (a)–(g).
   - `test:house-bot-console`: frozen grace 5 with live grace 3 → 5:07; the action writes 0 rows.
-  - `drive:house-bots-local` (local seeded DB): (b), (c) and (a).
+  - `qa:house-bots-local` (local seeded DB): (b), (c) and (a).
   - `red:house-bot-engine`: "`dueAt = requested` without the exit hold" fails (b); "hold drops `LOCK_MARGIN_MS`" fails (d).
 
 ### TGT-21 [gap] "Get in 10 s after the player" while their exit is free; they cash out during the hold
