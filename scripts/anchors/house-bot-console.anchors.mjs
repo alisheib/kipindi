@@ -2225,7 +2225,7 @@ import { formatEat } from "@/lib/utils";`,
     file: MARKET,
     from: `    if (arr.length < n && !arr.includes(p.userId)) arr.push(p.userId);`,
     to: `    if (arr.length < n && !arr.includes(p.userId)) arr.push(p as unknown as string);`,
-    expect: "11.247.2 · ⛔ D19 · ruling 247 · HB-LC-39 / CRA-27 · every viewer · NOT ONE of them carries the fixture's bot, intent or event id",
+    expect: "11.247.2 · ⛔ D19 · ruling 247 · HB-LC-39 / CRA-27 · every viewer · NOT ONE of them carries the fixture's bot, intent, event, target or press id",
     suite: "reports-mem",
   },
   {
