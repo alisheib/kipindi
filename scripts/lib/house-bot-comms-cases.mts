@@ -329,11 +329,26 @@ await guard("7", async () => {
      that exists now. 7.2d asserted that `activity` and `history` were ABSENT from the landing list and that at
      least one delivered link was dead; both of those subjects are gone with this build, so the case is DELETED
      rather than loosened, and what replaces it is the same question asked of a planted link. */
-  ok("7.2d · CONTROL · a planted alert href naming a tab NOBODY built is reported in each shape, so the zero above is a scan and not a resolver that stopped matching",
+  /* 🔴 AND THE CROSS-SHAPE PROBES ARE THE HALF THAT MATTERS, MEASURED BY THE RED HARNESS RATHER THAN REASONED.
+     Written with only the four probes below the first line, this control PASSED with the declared defect
+     `7.2e-shape-flattened` injected — a resolver rewritten to `consoleDetailTabExists(t) || consoleTabExists(t)`,
+     which is exactly the collapse 7.2c's own docblock says would let a link to one rail pass on the strength of
+     the other. Every key it probed (`nowhere`, `activity`, `overview`) reads the SAME in both lists, so nothing
+     could tell the two apart. The two lists differ in exactly two members — `roster` is the landing rail's alone
+     and `overview` is the account page's alone — and each asked of the WRONG shape must be REFUSED. That pair is
+     the only question a flattened resolver cannot answer. ⛔ The members are derived from the closed lists
+     themselves, not typed here, so the probe follows the rails if either grows. */
+  const landingOnly = CR.CONSOLE_TABS.filter((t: string) => !(CR.CONSOLE_DETAIL_TABS as readonly string[]).includes(t));
+  const detailOnly = CR.CONSOLE_DETAIL_TABS.filter((t: string) => !(CR.CONSOLE_TABS as readonly string[]).includes(t));
+  ok("7.2d · CONTROL · a planted alert href naming a tab NOBODY built is reported in each shape, and a key that belongs to ONE rail is REFUSED when it is asked of the other — so the zero above is a scan, and the two rails are really being told apart",
     !exists({ shape: "landing", tab: "nowhere" }) && !exists({ shape: "detail", tab: "nowhere" })
       && exists({ shape: "landing", tab: "activity" }) && exists({ shape: "detail", tab: "overview" })
+      && landingOnly.length > 0 && detailOnly.length > 0
+      && landingOnly.every((t: string) => exists({ shape: "landing", tab: t }) && !exists({ shape: "detail", tab: t }))
+      && detailOnly.every((t: string) => exists({ shape: "detail", tab: t }) && !exists({ shape: "landing", tab: t }))
       && shapeOf("/admin/desk?tab=activity") === "landing"
-      && shapeOf("/admin/desk/hb_0123456789abcdef01234567?tab=activity") === "detail", "");
+      && shapeOf("/admin/desk/hb_0123456789abcdef01234567?tab=activity") === "detail",
+    j({ landingOnly, detailOnly }));
   ok("7.2b · CONTROL · the resolver still REFUSES a route nobody built, so the zero above is a measurement and not an empty walk",
     (() => {
       const parts = "/admin/desk/hb_0123456789abcdef01234567/nowhere-at-all".split("/").filter(Boolean);

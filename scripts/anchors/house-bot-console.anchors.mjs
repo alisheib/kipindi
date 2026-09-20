@@ -798,7 +798,7 @@ export const MUTATIONS = [
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
     to: `                        <th scope="col" className="text-left p-3">Account</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
-    expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
+    expect: "1.373 · EVERY panel that paints the subject column carries the SAME floor",
     suite: "console-mem",
   },
   {
@@ -1537,7 +1537,7 @@ import { formatEat } from "@/lib/utils";`,
     file: PAGE,
     from: `                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>`,
     to: `                      <th scope="col" className="text-left p-3">Status</th>`,
-    expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
+    expect: "1.373 · EVERY panel that paints the subject column carries the SAME floor",
     suite: "console-mem",
   },
   {
@@ -2543,7 +2543,7 @@ import { formatEat } from "@/lib/utils";`,
     file: PAGE,
     from: `                  total={feedView.feedTotal}`,
     to: `                  total={feedRows.length}`,
-    expect: "1.411 · both landing pagers take `total` from a COUNTING reader",
+    expect: "1.411 · both landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and neither is a rendered array's length",
     suite: "console-mem",
   },
   {
