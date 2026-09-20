@@ -79,14 +79,19 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
 
   // Reality-check engagement — read from audit (rg.* events)
   const rgEvents = await houseAuditForConsole(session?.userId ?? null, "/admin/compliance", getAuditPage({ category: "COMPLIANCE", limit: 200 }));
-  const continued = rgEvents.filter((e) => e.action === "rg.reality_check.continued").length;
+  /* 🔴 `rg.reality_check.continued` IS NOT READ HERE ANY MORE (L30, ruling 214). Nothing writes it — the prompts
+     fire client-side and no path posts them back, which `reports/catalogue.ts:860` states and relies on. Counting a
+     never-written action produced a permanent 0 that was then used as a TERM IN THE DENOMINATOR below, rebasing the
+     break and self-exclusion shares onto a population that excludes everyone who carried on. The counter is gone
+     rather than corrected: there is no correct value to read, only an absent measurement to stop implying. */
   const tookBreak = rgEvents.filter((e) => e.action === "rg.cooling_off.activated").length;
   const sxd = rgEvents.filter((e) => e.action === "rg.self_exclusion.activated").length;
   /* ⛔ NO `|| 1` (S-04, scan #1, 2026-08-28). Defaulting an empty denominator to 1 does not so
    * much avoid a division by zero as INVENT one observation, and every percentage below then
    * reads as a real measurement of nothing. The zero case is answered where it is RENDERED, by
    * saying there was no activity — not by choosing a denominator that makes the arithmetic run. */
-  const rcTotal = continued + tookBreak + sxd;
+  /** ⛔ RECORDED responses only, and the name says so. `rcTotal` implied a total of reality checks; it never was one. */
+  const rcRecorded = tookBreak + sxd;
 
   const kycConv = !kyc || kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
   // ⭐ E-103 · SHARE OF THE TOP STAGE, from the shared rule — see `funnel-share.ts`.
@@ -403,32 +408,47 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
                 measured rate of nothing; there was no activity to measure. The siblings already
                 make this distinction — they render "n/a" rather than 0 when the roster read
                 fails — so this is the row's own established grammar, not a new one. */}
-            {rcTotal === 0 ? (
+            {/* 🔴 L30 (ruling 214), fixed 2026-09-20 — AND IT WAS NOT A DEAD COUNTER, IT WAS A REBASED DENOMINATOR.
+                `rg.reality_check.continued` is read here and WRITTEN BY NOTHING: reality-check prompts fire
+                client-side and no path posts them back. `reports/catalogue.ts:860` already records that and excludes
+                the action by name, "a list of actions that OCCUR, not of actions we imagine".
+                ⛔ The damage was not the `0 continued` label. It was that `continued` sat inside `rcTotal`, the
+                denominator of all three percentages — so a zero that means UNRECORDED was silently counted as a
+                zero that means NOBODY, and the break and self-exclusion shares were rebased onto a population that
+                excludes everyone who simply carried on. On a regulator-facing row that is a misstatement of a
+                responsible-gambling rate, not a cosmetic one.
+                ⭐ So the segment and the term are both GONE, and the caption names the population it actually has.
+                The sentence beneath is the honest half: without it an officer reads "3 break · 1 self-excluded" as
+                "4 players saw a reality check", when the true number is unknown and larger. An unmeasured quantity
+                is stated as unmeasured — the same rule the em-dash below already follows for the empty window. */}
+            {rcRecorded === 0 ? (
               <>
                 <div className="font-mono font-bold text-title-md tabular text-text-tertiary">—</div>
                 <p className="font-mono text-micro eyebrow uppercase text-text-tertiary">
-                  no activity in window
+                  no recorded response in window
                 </p>
               </>
             ) : (
               <>
                 <AdminStackedBar
                   segments={[
-                    { flex: continued, color: "var(--text-tertiary)" },
                     { flex: tookBreak, color: "var(--warning-fg)" },
                     { flex: sxd, color: "var(--bet-lose)" },
                   ]}
                   height={14}
                 />
                 <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
-                  {continued} continued · {tookBreak} break · {sxd} self-excluded{" "}
+                  {tookBreak} break · {sxd} self-excluded{" "}
                   <span className="text-text-subtle">
-                    ({Math.round((continued / rcTotal) * 100)}/{Math.round((tookBreak / rcTotal) * 100)}/
-                    {Math.round((sxd / rcTotal) * 100)}% of {rcTotal})
+                    ({Math.round((tookBreak / rcRecorded) * 100)}/{Math.round((sxd / rcRecorded) * 100)}% of {rcRecorded})
                   </span>
                 </p>
               </>
             )}
+            <p className="text-body-sm text-text-tertiary mt-1">
+              Counts players who acted after a reality check. Carrying on is not recorded, so this is not the number
+              who saw one.
+            </p>
           </AdminCard>
         </div>
         <PlayerSafetyPanel sp={sp} />
