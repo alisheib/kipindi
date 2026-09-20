@@ -764,6 +764,8 @@
     "ops:levy-divergence": "node scripts/live/ops/levy-divergence.cjs",
     "ops:payments-now": "node scripts/live/ops/payments-now.cjs",
     "ops:updown-probe-bars": "tsx scripts/ops-updown-probe-bars.mts",
+    "test:house-bot-ops": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-ops.test.mts",
+    "red:house-bot-ops": "tsx scripts/lib/house-bot-ops-cases.mts --prove-red",
     "test:reset-identifier": "tsx scripts/reset-identifier.test.mts",
     "red:reset-identifier": "node scripts/reset-identifier-red.mjs",
     "qa:reset-identifier": "node scripts/reset-identifier-shots.mjs",
