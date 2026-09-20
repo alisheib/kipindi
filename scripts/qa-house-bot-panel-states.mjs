@@ -107,6 +107,11 @@ const PROBE = `() => {
   let whenWrapped = 0, whenWs = null, whenFvn = null;
   if (whenIdx >= 0) {
     for (const tr of rows) {
+      /* MEASURE THE RIGHT POPULATION. A panel with nothing to show still renders ONE tbody row — the
+         empty-state box, spanning every column — and that row has no When CELL at all. Counting it made
+         this assertion fail on the two filtered-to-zero states while the product was right, which is the
+         false positive that discredits a gate faster than a missed defect does. Data rows only. */
+      if (tr.children.length !== heads.length) continue;
       const td = tr.children[whenIdx]; if (!td) continue;
       const cs = getComputedStyle(td);
       whenWs = whenWs === null ? cs.whiteSpace : whenWs;
@@ -139,7 +144,7 @@ const PROBE = `() => {
     docOverflow: de.scrollWidth > vw + 1 ? de.scrollWidth + ">" + vw : null,
     escaping: esc.slice(0, 8), railBox, chips, heads, firstCells, rowCount: rows.length,
     money, tzs: tzsText ? tzsText.length : 0, pagerBox, callout, empty, tabs,
-    whenWrapped, whenWs, whenFvn, whenRows: whenIdx >= 0 ? rows.length : 0,
+    whenWrapped, whenWs, whenFvn, whenRows: whenIdx >= 0 ? rows.filter((tr) => tr.children.length === heads.length).length : 0,
     aria: aria.slice(0, 40),
     h1: (document.querySelector("main h1") || {}).textContent || "",
     lang: document.documentElement.lang || "",
