@@ -29,6 +29,14 @@
  * raised by adding this command — the command names `house-bot-c5`, a declaration file of that name exists, so it
  * counts as declaring. That was measured before and after, not assumed.
  *
+ * ⚠️ IT IS SLOW, AND THE NUMBER IS MEASURED RATHER THAN GUESSED: the `reports-mem` child costs ~37s a run and
+ * there are 67 of them, so a full sweep is ~45 minutes. `red:all`'s per-harness timeout defaults to 300s, so in a
+ * fleet run this harness reads TIME unless it is given room — ⛔ which is a premise to state, not to hide:
+ *     npm run red:all -- --timeout 4000          (the whole fleet, this harness included)
+ *     npm run red:house-bot-c5 -- --slice 0:12   (or drive it in batches, which is how it was first proved)
+ * ⛔ It is NOT excused from `red:all` by a skip list. A runner that hides a guard it cannot afford to run is the
+ * disease `red-all.mjs`'s own header exists to cure.
+ *
  * ⭐ `combineInto` — an entry that names another is not a mutation of its own; it is applied WITH the one it names.
  * `S4-M73` is written "(a) the call AND (b) the helper": applied alone, (a) calls an undefined helper, names no
  * requester token, and the suite stays GREEN. The pair is the defect.
@@ -36,8 +44,28 @@
 import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync, appendFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
 import { MUTATIONS as DECLARED } from "./anchors/house-bot-c5.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
+
+/**
+ * 🔴 A DEFECT THAT DOES NOT PARSE IS NOT THE REGISTER'S DEFECT — and it still prints CAUGHT.
+ *
+ * The prose registers delimit `from` and `to` with BACKTICKS, so a replacement containing a template literal
+ * (`${reason}.`) closes the delimiter early and an extractor taking "up to the next backtick" writes down a
+ * replacement that ends mid-expression. Four declarations reached this harness that way. Each RESOLVED, each
+ * injected, and each produced a file `esbuild` could not parse: six suite sections printed `threw — Transform
+ * failed` instead of asserting, the named assertion went red anyway because its scan is textual, and the run
+ * said CAUGHT. What had actually been proved was that a syntax error reddens things.
+ * ⛔ So every injected file is PARSED BEFORE IT IS WRITTEN, and a mutation whose file will not parse is
+ * BROKEN-INJECTION — a failure, never a catch. This is the `to` half of what `test:red-anchors` §3 does for
+ * the `from`, and nothing else in the repository asks it.
+ */
+const esbuild = createRequire(import.meta.url)("esbuild");
+const parses = (file, code) => {
+  try { esbuild.transformSync(code, { loader: file.endsWith("x") ? "tsx" : "ts", sourcefile: file }); return null; }
+  catch (e) { return `${file}: ${String(e.errors?.[0]?.text ?? e.message).slice(0, 160)}`; }
+};
 
 const argOf = (flag) => process.argv.find((a, i) => process.argv[i - 1] === flag);
 const ONLY = (argOf("--only") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -130,7 +158,7 @@ for (const key of [...new Set(PRIMARY.map((d) => d.suite))]) {
   console.log(`baseline green · ${key}`);
 }
 
-let caught = 0, missed = 0, wrong = 0, stale = 0;
+let caught = 0, missed = 0, wrong = 0, stale = 0, brokenInj = 0;
 for (const [i, d] of PRIMARY.entries()) {
   const edits = partsOf(d);
   const touched = [...new Set(edits.map((e) => e.file))];
@@ -145,6 +173,14 @@ for (const [i, d] of PRIMARY.entries()) {
     stale++;
     console.log(`${tag} STALE ${d.name}\n        ↳ ${broke}; the harness is measuring nothing`);
     if (LOG) appendFileSync(LOG, `${JSON.stringify({ name: d.name, verdict: "STALE", reason: broke })}\n`);
+    continue;
+  }
+  // ⛔ See `parses` above: a mutation whose file will not parse never reaches the suite.
+  const unparseable = [...mutated].map(([f, code]) => parses(f, code)).find(Boolean);
+  if (unparseable) {
+    brokenInj++;
+    console.log(`${tag} BROKEN-INJECTION ${d.name}\n        ↳ the injected file does not parse — ${unparseable}`);
+    if (LOG) appendFileSync(LOG, `${JSON.stringify({ name: d.name, verdict: "BROKEN-INJECTION", reason: unparseable })}\n`);
     continue;
   }
 
