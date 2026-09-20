@@ -628,9 +628,16 @@ await guard("11", async () => {
      * that alerted on every boot, UTC or not, would pass 11.15b–d HARDER than the right one.
      * ⛔ AND THE BELL IS RE-ARMED FIRST. 11.15b spent this EAT day's claim; left spent, a build that rang on EVERY
      * boot would be silenced here by the THROTTLE rather than by the zone check, and this control would pass on the
-     * broken build. The claim is handed back by the key the bell itself reported, so a wrong ring is visible.
+     * broken build, so a wrong ring must be made visible first.
+     * ⛔ AND IT IS RE-ARMED DETERMINISTICALLY, not off the bell that rang: on the very build this control exists to
+     * catch, an earlier boot may already have spent the claim, leaving no bell to read the key from.
+     * `claimWithEatSuffix` returns the real key whether or not it won it.
      * (Found by driving the `alerts-tz-rings-on-every-boot` mutation: this control was MISSED until this line.) */
-    await HDAL.houseBotAlertOnceStore.release(String(b1.calls[0]?.key)).catch(() => {});
+    {
+      const dbtz = K.ALERT_KEY.dbTimezone();
+      const { key } = await HDAL.houseBotAlertOnceStore.claimWithEatSuffix(dbtz.prefix, dbtz.unit);
+      await HDAL.houseBotAlertOnceStore.release(key).catch(() => {});
+    }
     fresh();
     const b4 = bell();
     const realBoot = HDAL.houseBotRuntimeStore.boot;
@@ -2245,6 +2252,20 @@ await guard("16", async () => {
     const rec = recorder();
     const bells = () => rec.calls.filter((c: Any) => c.fn === "once" && String(c.key).startsWith("engine:clock_skew"));
 
+    /* ⛔ RE-ARM DETERMINISTICALLY, NEVER OFF THE BELL THAT RANG. Reading the key back from an observed bell works
+     * only on a build where the bell rang — and the build these cases exist to catch is one where an EARLIER pass
+     * already spent this EAT day's claim, so there is no bell to read, `String(undefined)` is released instead, and
+     * the re-arming silently becomes a no-op that leaves the control masked exactly as before.
+     * `claimWithEatSuffix` returns the real key whether or not it won it, so this learns it in EVERY build.
+     * (Found by driving `alerts-skew-every-gate`: it was WRONG-ASSERTION until this helper existed.) */
+    const rearm = async (k: Any): Promise<string> => {
+      const { key } = await S.houseBotAlertOnceStore.claimWithEatSuffix(k.prefix, k.unit);
+      await S.houseBotAlertOnceStore.release(key).catch(() => {});
+      return key;
+    };
+
+    // Each case below measures its OWN condition, not whatever the sections above happened to leave behind.
+    await rearm(K.ALERT_KEY.clockSkew());
     const before = bells().length;
     const unknown = await passSafe({ state: { ...st, skewMs: null }, instanceId }, rec.alerts);
     ok("16.515a · ⛔ register:1218 · a clock that has NOT been measured stops the claims (SKEW_UNKNOWN) — and now RINGS: exactly one engine:clock_skew bell, code CLOCK_SKEW, the key's first writer anywhere in this tree",
@@ -2261,9 +2282,9 @@ await guard("16", async () => {
      * 16.515a spends this EAT day's AlertOnce claim. Left spent, the control below could not tell a build that
      * rings ONLY on a bad clock from one that rings on EVERY refused gate — the second one would be silenced by
      * the throttle, not by the predicate, and the control would pass on the broken build. So the claim is handed
-     * back by the very key the bell reported, and the control then runs against an ARMED bell, where a ring is
-     * visible. (Found by driving the `alerts-skew-every-gate` mutation: the control was MISSED until this line.) */
-    await S.houseBotAlertOnceStore.release(String(bells()[0]?.key)).catch(() => {});
+     * back, and the control then runs against an ARMED bell, where a wrong ring is visible.
+     * (Found by driving the `alerts-skew-every-gate` mutation: the control was MISSED until this line.) */
+    await rearm(K.ALERT_KEY.clockSkew());
 
     /* ⭐ POSITIVE CONTROLS — the gate reasons that must still be ALLOWED to be silent. NOT_STARTED and STOPPING are
      * a container booting or shutting down and FULL is back-pressure: the engine WORKING. A bell on any of them
