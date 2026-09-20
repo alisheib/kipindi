@@ -212,7 +212,38 @@ backticks, with the reason written beside it so it is not tidied back in — **n
 ⭐ This is the register's own lesson arriving from the other direction: a row that had been carried since
 `37cf48c3` on a recorded 9/0 was red when someone finally ran it, for a reason invented after the number.
 
-## What this lane will run next, and what it will not
+## What was run, and what it printed
+
+⭐ **Done 2026-09-21.** Twelve suite keys, each run in full, one at a time under `~/heavy-node-lock.sh` (the ops
+lane held it twice and this lane waited), against the scratch cluster on 5433 that this lane REUSES and does not
+own. Every count below is from this lane's own run.
+
+| Suite | Result | Note |
+|---|---|---|
+| `test:guards-exist` | **9 / 0** | ⛔ **8 / 1 first** — this lane's own phantom, fixed in the same commit. |
+| `test:house-bot-migrations` | **661 / 0** | ⛔ **660 / 1 first** — `d.8`'s §c13 pin rotted 3 → 7. Red on this branch, green on clean `origin/main`. |
+| `test:house-bot-caps` | **3 / 0** (mem 89 · pg 96) | ⛔ **pg 92 / 4** on a run straddling EAT midnight; 96 / 0 two minutes later. |
+| `test:house-bot-designation` | **3 / 0** (mem 169 · pg 161) | ⛔ **pg 160 / 1** first — case 6.9, the second recurrence in three days. |
+| `test:house-bot-money` | **3 / 0** (mem 131 · pg 149) | |
+| `test:house-bot-engine` | **3 / 0** (mem 751 · pg 730) | |
+| `test:house-bot-comms` | **3 / 0** (mem 52 · pg 50) | |
+| `test:house-bot-reports` | **3 / 0** (mem 227 · pg 77) | Re-run to clear the docblock edit, not owed by a row. |
+| `test:house-bot-seam` | **98 / 0** | |
+| `test:house-bot-rules` | **527 / 0** | ⚠️ The register records **521**. |
+| `test:house-bot-holder-lifecycle` | **16 / 0** | |
+| `test:house-bot-info-edge` | **3 / 0** (pg 5) | |
+| `test:filter-language` | **253 assertions, all green** | ⚠️ Row 74 records **244**. |
+| `test:red-anchors` | **2576 / 4** | All four inherited (`rg-doors` ×2, 4.1/4.2 at **66** vs ceiling 65). ⛔ NOT raised. |
+| `test:decomment` | **21 / 1** | 2.1 measures **22** vs ceiling 20. ⛔ NOT raised. |
+| `test:deferred-register` | **14 / 0** | 99 rows, ids unique, column counts right, every open section named. |
+
+**Rows cleared: 12, 25, 38, 45, 49, 54, 60, 70** — eight, each against a run that was DONE and PASSED.
+**Row 74 is HALF paid and stays open.** **Rows 16 and 42 are rewritten, not cleared.**
+**Rows 35, 40, 50 and 53 are flagged and cannot clear as written.**
+⛔ Three of the eight did not clear quietly — a row that had been carried was red the moment it was run, twice for
+a reason invented after the number it was carried on.
+
+## What this lane was going to run, and what it would not
 
 **Will run** (9 rows, no served page, no production, no build): the twelve distinct suite keys behind rows
 **12, 25, 38, 45, 49, 54, 60, 70** and the six-suite half of **74** — `test:guards-exist`, `test:house-bot-caps`,
