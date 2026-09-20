@@ -107,10 +107,20 @@ ecison" · "bots ar enoma player please".
      suite's DISPLAY helper, which slices at 260 characters — thirty keys serialise to ~600, so a renamed kind read
      as equal. Found by putting the defect back, not by re-reading the assertion. Every predicate this step wrote
      now reads `all`, and the finding is kept as a control.
-     **Numbers, from this pass:** `test:house-bot-console` **651 / 0** memory, **422 / 0** Postgres (both floors
+     🔴 **AND THEN THE RENDER FOUND THREE THINGS NO SUITE DID.** The panels were driven on a real `next dev` over a
+     throwaway scratch Postgres (`hb_render`, port 3021, dropped afterwards) and the SERVED markup was read:
+     (1) **`?kind=counter` and `data-chip="kind:counter"`, five times** — the rail derived its URL token as
+     `member.toLowerCase()`, so a word ruling 453 forbids reached the address bar and every screenshot of the
+     screen, with EVERY suite green (4.453 scans source literals and the token was computed; 3.453 scanned the
+     labels and not the keys; the bundle scan reads chunks and this is server markup). A token may now only be the
+     option's own painted word, slugged, so the one neutrality scan covers keys and hrefs by construction;
+     (2) a **`When` column reading one instant on twenty rows** under a "Newest first." claim — both panels now
+     state SECONDS; (3) a **singular heading above a plural sentence** on the same card. All three have an assertion
+     and a declared mutation. ⛔ *A build is not a render, and a green suite is not a screen.*
+     **Numbers, from this pass:** `test:house-bot-console` **659 / 0** memory, **430 / 0** Postgres (both floors
      raised to exactly these); `test:house-bot-comms` **48 / 46**; `test:house-bot-reports` **200 / 61**;
-     `test:dal-parity` **1376 / 0**; `test:filter-language` **253**; `red:house-bot-console` **16 caught, 0 missed,
-     0 files left dirty**; `test:red-anchors` **2470 / 4** (the four inherited; the ceiling NOT raised).
+     `test:dal-parity` **1376 / 0**; `test:filter-language` **253**; `red:house-bot-console` **19 caught, 0 missed,
+     0 files left dirty**; `test:red-anchors` **2476 / 4** (the four inherited; the ceiling NOT raised).
      ⛔ **What is still owed — DEFERRED rows 62, 68 and 71:** the LANDING panels and their desk-wide readers,
      `readDeskCore`'s THIRD extra slot for the rail's PENDING badge, the hour-summary emitter's ISO pair, the cancel
      write path (nothing under `src/` has ever created a press), and the §5 CAPTURES of the two account panels —
