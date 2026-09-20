@@ -18,6 +18,14 @@
  * `expect` names the c13 outcome KEY that must stop matching `EXPECTED` (there are no PASS/FAIL labels to
  * quote here), and `sections` is the `HB_DAL_CASES_ONLY` group.
  *
+ * ⭐ DRIVEN ON BOTH STORES, 2026-09-20, each restored byte-for-byte, and the two twins failed IDENTICALLY —
+ * `c13.d` → "none" and `c13.e` → `CLAIMED:w_c13_dead:1`, with `c13.f` and `c13.g` still correct in both. The
+ * Postgres half ran against a database this lane created and dropped (`hb_alerts_dal_<pid>`), never the fixed
+ * `hb_mig_*` names the migrations suite owns, and its full run matched `EXPECTED` on all 251 cases first.
+ * ⚠️ `claim-steal-live-mem` has no Postgres twin ON PURPOSE: the SQL's `"claimedUntil" < now()` cannot be
+ * deleted without also deleting the arm `claim-reclaim-pg` already covers, so a second entry would be the
+ * same mutation wearing a different name.
+ *
  * ⛔ A red anchor quotes SOURCE. Editing either claim twin must be paired with re-anchoring here.
  */
 const DAL = "src/lib/server/house-bot-dal.ts";

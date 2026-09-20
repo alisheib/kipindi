@@ -22,10 +22,8 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-/* ⭐ MEMORY RAISED 115 → 124 at §12 (the holder's own RG loss limit, and settlement into a CLOSED wallet), to what
- * `npx tsx scripts/lib/house-bot-money-cases.mts` PRINTED on the memory child of that run. ⚠️ POSTGRES LEFT AT 133
- * AND SAID SO: the shared scratch cluster on 5433 was serving another lane while this landed, so §12's nine on the
- * Postgres child are NOT MEASURED — and this suite's own header is the reason not to guess, since raising a floor to
- * an arithmetic sum nobody printed is the rot ruling 515 was filed about. The next run that has the cluster to
- * itself should print it and raise this half to 142. */
-await runTwoStores({ suite: "test:house-bot-money", casesFile: "scripts/lib/house-bot-money-cases.mts", minPass: { memory: 124, postgres: 133 }, dbPrefix: "hb_money" });
+/* ⭐ RAISED 115 → 124 / 133 → 142 at §12 (the holder's own RG loss limit, and settlement into a CLOSED wallet), to
+ * what `npm run test:house-bot-money` PRINTED on this run — BOTH children measured, neither number an arithmetic
+ * guess. The +9 in EACH child is the measurement: §12's nine assertions reaching both stores. A build where they
+ * reached only the memory twin would have shown +9 and +0, which is the divergence the pair exists to catch. */
+await runTwoStores({ suite: "test:house-bot-money", casesFile: "scripts/lib/house-bot-money-cases.mts", minPass: { memory: 124, postgres: 142 }, dbPrefix: "hb_money" });

@@ -169,12 +169,10 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  /* ⭐ MEMORY RAISED 706 → 710 at CA-19, to what `npx tsx scripts/lib/house-bot-console-cases.mts` PRINTED on
-   * the memory child of this run: the double-tapped Confirm, its two positive controls and the dialog's own
-   * nonce pin. ⚠️ POSTGRES LEFT AT 471 AND SAID SO: the shared scratch cluster on 5433 was serving another
-   * lane while this landed, so the Postgres child's count for these four was NOT MEASURED and a floor raised
-   * to a number nobody printed is exactly the rot ruling 515 was filed about. The next run that has the
-   * cluster to itself should print it and raise this half to 475. */
-  minPass: { memory: 710, postgres: 471 },
+  /* ⭐ RAISED 706 → 710 / 471 → 475 at CA-19 — the double-tapped Confirm, its two positive controls and the
+   * dialog's own nonce pin — to what `npm run test:house-bot-console` PRINTED on this run, BOTH children
+   * measured. The +4 in EACH child is the measurement, not bookkeeping: all four assertions reach both
+   * stores, and a build where they reached only the memory twin would have shown +4 and +0. */
+  minPass: { memory: 710, postgres: 475 },
   dbPrefix: "hb_console",
 });
