@@ -378,10 +378,23 @@ section("2b · it REFUSES a live house bot — before any destructive write");
   const first = await tryErase();
   const second = await tryErase();
   const alerts = (await db.notification.findByUser(ADMIN, 100)).filter(blocked).length - before;
-  ok("2b.1 🔴 a CLOSED account that is still a live house bot is refused, with the reason and the bot named",
+  /* ⛔ THE REASON CODE NAMES IT; THE SENTENCE DOES NOT (⛔ D19; C7 step 7 review d19-hunt-01). This string is handed
+     to `/admin/privacy` and painted by `dsar-controls.tsx`, which is a COMPLIANCE-domain route — so until 2026-09-20
+     a COMPLIANCE officer running a lawful erasure was shown the feature's name, the bounded id and the owner-only
+     console path in one sentence, from a control they are entitled to use and a section they are forbidden to open.
+     The identifying facts live on the ADMIN-only alert instead (2b.4/2b.5 below measure that it still carries them).
+     ⛔ The `reason` is unchanged, because every caller that BRANCHES branches on the code, never on the words. */
+  const firstError = (first as { error: string }).error;
+  ok("2b.1 🔴 a CLOSED account that is still a live house bot is refused, and the officer's SENTENCE names neither the feature, nor the id, nor the owner-only route — only the reason code does",
     !first.ok && first.reason === "house_bot_live"
-      && (first as { error: string }).error === `This account is still house bot ${BOT_ID}. The owner must remove it at /admin/desk/${BOT_ID} before it can be erased.`,
+      && firstError === "This account is still in use by an owner-managed account and cannot be erased yet. An owner has been told; the request stays open and can be run again once it is released."
+      && !firstError.includes(BOT_ID) && !firstError.includes("/admin/") && !/house|bot\b|liquidity/i.test(firstError),
     JSON.stringify(first));
+  ok("2b.1b CONTROL · the three absences above are real checks — the sentence this replaced fails every one of them",
+    (() => {
+      const old = `This account is still house bot ${BOT_ID}. The owner must remove it at /admin/desk/${BOT_ID} before it can be erased.`;
+      return old.includes(BOT_ID) && old.includes("/admin/") && /house|bot\b/i.test(old) && old !== firstError;
+    })(), "");
   const u = await db.user.findById(SUBJECT);
   const bot = await houseBotStore.get(BOT_ID);
   ok("2b.2 🔴 …and NOTHING was erased: the phone and the display name are untouched, and so is the bot's label",

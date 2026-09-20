@@ -788,7 +788,13 @@ section("§8 · erasure refuses a live bot, then pseudonymises it");
   const f1 = await tryFulfil();
   const f2 = await tryFulfil();
   const alerts = ((await w.db.notification.findByUser(OFFICER, 500)) as Any[]).filter(blocked).length - alertsBefore;
-  ok("8.1 · a live bot → the erasure refuses with the R6 copy naming the bot", f1.ok === false && f1.error === `This account is still house bot ${d.bot.id}. The owner must remove it at /admin/desk/${d.bot.id} before it can be erased.`, j(f1));
+  /* ⛔ THE R6 COPY NO LONGER NAMES THE BOT, AND THAT IS THE POINT (⛔ D19; C7 step 7 review d19-hunt-01): this string
+     reaches a COMPLIANCE officer on `/admin/privacy`, who is outside this feature's audience and forbidden the
+     owner-only console. The id and the console href stay on the ADMIN-only alert, which 8.1c below still counts. */
+  ok("8.1 · a live bot → the erasure refuses, and the officer's sentence names neither the bot nor the console",
+    f1.ok === false
+      && f1.error === "This account is still in use by an owner-managed account and cannot be erased yet. An owner has been told; the request stays open and can be run again once it is released."
+      && !String(f1.error).includes(d.bot.id) && !String(f1.error).includes("/admin/"), j(f1));
   ok("8.1b · the request stays PENDING, and nothing was erased (label, phone kept)",
     listDsarRequests().find((r: Any) => r.id === req.id)?.status === "PENDING" && (await bot(d.bot.id)).label === "Rehema Desk" && !String((await user(h)).phoneE164).startsWith("erased:"));
   ok("8.1c · exactly one owner alert across two refused attempts", f2.ok === false && alerts === 1, `alerts=${alerts}`);

@@ -47,8 +47,12 @@ import { CONSOLE_ROUTE } from "@/lib/house-bot/console-routes";
  * that says plainly that nothing may have applied.
  */
 export async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promise<ConsoleLimitsSaveResult> {
-  const session = await currentSession();
+  /* ⛔ THE SESSION READ IS INSIDE THE TRY (C7 step 6 review d19-hunt-10, applied to the other three at C7 step 7
+     review d19-hunt-05). It sat above it, so the one failure the catch exists to turn into a shape — a read that
+     throws — was the one failure that could still throw the action. The gated door treats an absent viewer as
+     refused, so nothing else changes. */
   try {
+    const session = await currentSession();
     const result = await houseLimitsSaveForConsole(session?.userId ?? null, "/admin/desk", input);
     /* Only a save that LANDED invalidates the render; a refusal changed nothing and must not make the officer's
        own typing disappear under a fresh server payload. */
@@ -73,14 +77,25 @@ export async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promi
  * not wipe the reason the officer has just typed out from under them.
  */
 export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<ConsoleSwitchResult> {
-  const session = await currentSession();
+  /* ⛔ THE SESSION READ IS INSIDE THE TRY (C7 step 6 review d19-hunt-10, applied to the other three at C7 step 7
+     review d19-hunt-05). It sat above it, so the one failure the catch exists to turn into a shape — a read that
+     throws — was the one failure that could still throw the action. The gated door treats an absent viewer as
+     refused, so nothing else changes. */
+  /* ⛔ ONLY WHAT CAN FAIL BEFORE THE ACT IS INSIDE THE TRY THAT SAYS NOTHING CHANGED (the shape
+     `designateDeskAccountAction` already carries, extended here at the C7 step 7 review). `revalidatePath` sat
+     inside it, so a throw from the REVALIDATION — after the ceremony had already landed — reported the exact
+     opposite of the truth on the one control that starts money. */
+  let result: ConsoleSwitchResult;
   try {
-    const result = await houseSwitchForConsole(session?.userId ?? null, "/admin/desk", input);
-    if (result.ok && result.changed) revalidatePath(CONSOLE_ROUTE);
-    return result;
+    const session = await currentSession();
+    result = await houseSwitchForConsole(session?.userId ?? null, "/admin/desk", input);
   } catch (err) {
     return { ok: false, error: safeError(err, "Nothing changed. Reload the page and try again.") };
   }
+  if (result.ok && result.changed) {
+    try { revalidatePath(CONSOLE_ROUTE); } catch { /* the switch landed; a stale strip is the smaller harm */ }
+  }
+  return result;
 }
 
 /**
@@ -94,15 +109,24 @@ export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<Co
  * saying two things at once — the class 432(n) refuses within one screen, here across two.
  */
 export async function runDeskAccountAction(input: ConsoleAccountActInput): Promise<ConsoleAccountActResult> {
-  const session = await currentSession();
+  /* ⛔ THE SESSION READ IS INSIDE THE TRY (C7 step 6 review d19-hunt-10, applied to the other three at C7 step 7
+     review d19-hunt-05). It sat above it, so the one failure the catch exists to turn into a shape — a read that
+     throws — was the one failure that could still throw the action. The gated door treats an absent viewer as
+     refused, so nothing else changes. */
+  /* ⛔ AND THE REVALIDATION IS OUTSIDE THAT TRY, for the same reason as the ceremony above: Pause and Remove have
+     already landed by then, and "Nothing changed" would be the opposite of the truth. */
+  let result: ConsoleAccountActResult;
   try {
-    const result = await houseAccountActForConsole(session?.userId ?? null, "/admin/desk", input);
-    if (result.ok && result.changed) {
-      revalidatePath(CONSOLE_ROUTE);
-      revalidatePath(`${CONSOLE_ROUTE}/${input.id}`);
-    }
-    return result;
+    const session = await currentSession();
+    result = await houseAccountActForConsole(session?.userId ?? null, "/admin/desk", input);
   } catch (err) {
     return { ok: false, error: safeError(err, "Nothing changed. Reload the page and try again.") };
   }
+  if (result.ok && result.changed) {
+    try {
+      revalidatePath(CONSOLE_ROUTE);
+      revalidatePath(`${CONSOLE_ROUTE}/${input.id}`);
+    } catch { /* the act landed; a stale roster is the smaller harm */ }
+  }
+  return result;
 }
