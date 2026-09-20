@@ -5592,9 +5592,17 @@ export default function Ruling513Control() {
     const EXTENDS_WAY_OUT = /<WayOutLink[^>]*\bclassName/;
     /** The component's props, pinned CLOSED: a `className` or a rest spread here would reopen the three-looks door. */
     const CLOSED_PROPS = /export function WayOutLink\(\{ href, children \}: \{ href: string; children: React\.ReactNode \}\)/;
-    /** A file re-typing the shared look: TODAY's treatment verbatim, or the hover-only one the review replaced. */
-    const RETYPES_TREATMENT = (code: string, treatment: string) =>
-      (treatment.length > 40 && code.includes(treatment)) || /hover:text-brand-300 hover:underline/.test(code);
+    /** A file re-typing TODAY's treatment verbatim. The DECLARING file is exempt from this one and only this one:
+     *  it is where the treatment lives, so it necessarily contains it. */
+    const RETYPES_TODAYS = (code: string, treatment: string) => treatment.length > 40 && code.includes(treatment);
+    /** ⛔ THE HOVER-ONLY TREATMENT THE REVIEW REPLACED — and NO file is exempt from this one, the declaring file
+     *  least of all. The C7 step 7 review's whole finding was that a way out with no underline and no brand ink at
+     *  rest is no affordance at all on a phone. If the ONE module that owns the shared look reverted to it, every
+     *  page in the section would wear it at once — the worst form of the defect, not an excused one.
+     *  ⛔ AND IT WAS EXEMPT UNTIL NOW (found by this repair's own verifier, 2026-09-20): the declaring file was
+     *  excused from BOTH halves when it should have been excused from one. Today's treatment does not contain this
+     *  string, so the clause cannot fire on the honest file — it can only fire on the regression. */
+    const RETYPES_LEGACY = (code: string) => /hover:text-brand-300 hover:underline/.test(code);
     /* ⛔ AND THE SHARED THING IS A COMPONENT, NOT THE CLASS STRING THE REVIEW FIRST WROTE (C7 step 7's review fix).
      * The review declared `WAY_OUT_LINK` in `console-routes.ts`; `test:house-bot-rules` 0.console-routes.ts refused
      * it, for a measured reason and not tidiness — Tailwind scans EVERY file, so a class-shaped string in a routes
@@ -5616,7 +5624,8 @@ export default function Ruling513Control() {
         const treatment = /className="([^"]*)"/.exec(wayOutSrc)?.[1] ?? "";
         const declarers = sectionFiles.filter((f) => DECLARES_WAY_OUT.test(decomment(read(f))));
         const users = sectionFiles.filter((f) => f !== WAY_OUT_FILE && /<WayOutLink[\s>]/.test(decomment(read(f))));
-        const retyped = sectionFiles.filter((f) => f !== WAY_OUT_FILE && RETYPES_TREATMENT(decomment(read(f)), treatment));
+        const retyped = sectionFiles.filter((f) => RETYPES_LEGACY(decomment(read(f)))
+          || (f !== WAY_OUT_FILE && RETYPES_TODAYS(decomment(read(f)), treatment)));
         const extended = sectionFiles.filter((f) => EXTENDS_WAY_OUT.test(decomment(read(f))));
         return treatment.length > 40 && declarers.length === 1 && declarers[0] === WAY_OUT_FILE
           && users.length >= 2 && retyped.length === 0 && extended.length === 0
@@ -5636,8 +5645,22 @@ export default function Ruling513Control() {
       (() => {
         const treatment = /className="([^"]*)"/.exec(decomment(read(WAY_OUT_FILE)))?.[1] ?? "";
         const real = decomment(read(DETAIL_PAGE));
-        return treatment.length > 40 && !RETYPES_TREATMENT(real, treatment)
-          && RETYPES_TREATMENT(`${real}\nclassName="${treatment}"\n`, treatment);
+        return treatment.length > 40 && !RETYPES_TODAYS(real, treatment)
+          && RETYPES_TODAYS(`${real}\nclassName="${treatment}"\n`, treatment);
+      })(), "");
+    /* ⛔ THE CONTROL FOR THE EXEMPTION ITSELF. The repair that re-aimed this assertion excused the DECLARING file
+     * from both re-typing clauses when it should have excused it from one, so the single module that owns the
+     * shared look could have reverted to the hover-only treatment and stayed green — every page in the section
+     * wearing the defect at once. This plants exactly that regression into the declaring file in memory and
+     * requires it to be reported. ⭐ It also asserts the honest file is NOT reported, so the clause is a
+     * measurement rather than a scan that fires on everything. */
+    ok("1.432 · CONTROL · the DECLARING file is NOT exempt from the hover-only treatment — the regression planted in way-out-link.tsx itself is reported",
+      (() => {
+        const wayOut = decomment(read(WAY_OUT_FILE));
+        const reverted = wayOut.replace(
+          /className="[^"]*"/,
+          'className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"');
+        return !RETYPES_LEGACY(wayOut) && RETYPES_LEGACY(reverted) && reverted !== wayOut;
       })(), "");
     ok("1.432 · CONTROL · a SECOND declaration planted in a real section file in memory is reported, so the ONE-declaration count is a measurement and not a scan that stopped matching",
       (() => {

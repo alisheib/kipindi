@@ -128,6 +128,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 570, postgres: 344 },
+  minPass: { memory: 571, postgres: 344 },
   dbPrefix: "hb_console",
 });
