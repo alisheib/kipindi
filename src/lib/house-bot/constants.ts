@@ -782,7 +782,15 @@ export const HOUSE_AUDIT_PAYLOAD_KEYS = [
   "changes",
   "counts",
   "eventId",
-  "reason",
+  /* ⛔ "reason" WAS HERE AND IS GONE (C5-6's review, 2026-09-20). This list is what R7 permits in a house audit
+     payload, and it permitted the one key that carried an officer's free text — `press-audit.ts` put
+     `reason: press.reason` into all four of its payloads. The audit log cannot be rewritten (no update, no delete
+     anywhere in src/; every row HMAC-chained), so a holder's name typed into that box outlived the holder's own
+     erasure. This guard tests KEY NAMES and never inspects a value, so permitting the key was permitting the text.
+     ⭐ Removing it is what makes the regression impossible rather than merely fixed: a future payload that adds
+     `reason` back now fails `isAllowedHouseAuditPayload` and the press goes unaudited-and-counted instead of
+     silently recording something erasure cannot reach. The reason still lives on the press row and the event,
+     both rewritten to `[erased]` by `pseudonymiseForUser`. */
   "marketId",
   "intentId",
   "targetId",
@@ -820,7 +828,17 @@ export const HOUSE_AUDIT_FORBIDDEN_KEYS = [
 ] as const;
 
 /** The hint under every reason field that lands in the audit log (R7). */
-export const HOUSE_REASON_HINT = "Kept permanently in the audit log — don't write the holder's name or number.";
+/**
+ * ⚠️ THE SENTENCE WAS TRUE AND IS NOT ANY MORE, so it is reworded rather than left to be wired by a later form
+ * author (C5-6's review, 2026-09-20). The reason no longer reaches the audit log at all — `press-audit.ts` stopped
+ * putting it there because the log cannot be rewritten and erasure could not follow it. It IS still kept on the
+ * press row and the event, which is where a compliance reader finds it and where `pseudonymiseForUser` can rewrite
+ * it to `[erased]`. So the warning stands, for a smaller and truthful reason: an erasure can reach this text, but a
+ * screenshot of it cannot, and a holder's name has no business in an operator's note either way.
+ * ⛔ This constant has NO READER anywhere in src/ or scripts/ — measured. It is wired by the Commit 7 form that
+ * takes the reason, and it must say something true on the day that happens.
+ */
+export const HOUSE_REASON_HINT = "Kept on the record until the account is erased — don't write the holder's name or number.";
 
 /** `changes[].before/after` are numbers or null, except these, which carry their enum strings. */
 const ENUM_CHANGE_FIELDS: readonly string[] = ["timingFrom", "reactTo"];

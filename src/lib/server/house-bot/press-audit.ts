@@ -11,6 +11,29 @@
  *
  * ⛔ NEVER GUESSED. A press whose record cannot be rebuilt (its intent or event missing, a payload outside the R7
  * allowlist) returns null and stays unaudited, counted by the caller.
+ *
+ * ⛔ AND NO OFFICER FREE TEXT, EVER — an erasure this module could not honour (C5-6's review, 2026-09-20).
+ *
+ * All four payloads here used to carry `reason: press.reason`, the officer's typed sentence. The audit log cannot
+ * be rewritten: `audit.ts` has only `create`, `findMany` and `count` — no update and no delete anywhere in `src/` —
+ * and every row is HMAC-chained (`prevHash`/`entryHash`), so redaction is STRUCTURALLY impossible rather than
+ * merely unimplemented. `erasure.ts:56-58` names `AuditLog` a table it "cannot reach". So an officer who typed a
+ * holder's name or number into that box put it somewhere the holder's own erasure could never follow.
+ *
+ * ⛔ THE R7 GUARD DID NOT CATCH IT AND COULD NOT. `isAllowedHouseAuditPayload` tests KEY NAMES; `"reason"` was on
+ * the allowed list, and no string VALUE is ever inspected. The guard's own comment states the harm it was written
+ * against — "a label or a holder's name written into it survives the holder's erasure" — while the key that
+ * carried one was permitted.
+ *
+ * ⭐ THE PROGRAMME ALREADY HELD THE OPPOSITE RULE, one module away. `roster-actions.ts:101-103`: "THE OFFICER'S
+ * REASON LIVES ON THE EVENT, NEVER IN THE AUDIT PAYLOAD (INT-10) — erasure rewrites one and cannot rewrite the
+ * other", and pause and remove genuinely carry none. This file was the ONLY house audit payload in `src/` carrying
+ * free text (measured across every HOUSE_AUDIT call site: designation, limits-save, outcomes, roster-actions,
+ * switch-on — all structured). It is now consistent with the rule the programme wrote for itself.
+ *
+ * ⚠️ NOTHING IS LOST TO A COMPLIANCE READER. The reason lives on the press row and on the matching
+ * `ENTER_NOW_REQUESTED` / `TARGET_*` event, both rewritten to `[erased]` by `pseudonymiseForUser`, and the audit
+ * row joins straight to the press through `HouseBotPress.auditId`. One join away, and erasable.
  */
 import { audit } from "../audit";
 import { HOUSE_AUDIT, isAllowedHouseAuditPayload, type HouseAuditAction } from "@/lib/house-bot/constants";
@@ -43,7 +66,7 @@ export function pressAuditEntry(
           ...base, action: "house_bot.enter_now",
           payload: {
             botId: press.houseBotId, holderUserId: ctx.holderUserId, marketId: i.marketId, intentId: i.id, side: i.side, stakeTzs: i.stakeTzs,
-            entryCondition: i.entryCondition, outcome: i.status, reason: press.reason,
+            entryCondition: i.entryCondition, outcome: i.status,
           },
         };
       }
@@ -52,21 +75,21 @@ export function pressAuditEntry(
     case "TARGET_ADD": {
       const e = event("TARGET_ADDED");
       if (press.state === "DONE" && e) {
-        entry = { ...base, action: "house_bot.target_added", payload: { botId: press.houseBotId, marketId: e.marketId, targetId: press.targetId ?? (e.payload as Record<string, unknown> | null)?.targetId, ...pick(e.payload, ["delayMinSec", "delayMaxSec", "timingFrom", "reactTo"]), reason: press.reason } };
+        entry = { ...base, action: "house_bot.target_added", payload: { botId: press.houseBotId, marketId: e.marketId, targetId: press.targetId ?? (e.payload as Record<string, unknown> | null)?.targetId, ...pick(e.payload, ["delayMinSec", "delayMaxSec", "timingFrom", "reactTo"]) } };
       }
       break;
     }
     case "TARGET_UPDATE": {
       const e = event("TARGET_UPDATED");
       if (press.state === "DONE" && e) {
-        entry = { ...base, action: "house_bot.target_updated", payload: { botId: press.houseBotId, marketId: e.marketId, targetId: press.targetId ?? (e.payload as Record<string, unknown> | null)?.targetId, ...pick(e.payload, ["changes"]), reason: press.reason } };
+        entry = { ...base, action: "house_bot.target_updated", payload: { botId: press.houseBotId, marketId: e.marketId, targetId: press.targetId ?? (e.payload as Record<string, unknown> | null)?.targetId, ...pick(e.payload, ["changes"]) } };
       }
       break;
     }
     case "TARGET_REMOVE": {
       const e = event("TARGET_REMOVED");
       if (press.state === "DONE" && e) {
-        entry = { ...base, action: "house_bot.target_removed", payload: { botId: press.houseBotId, marketId: e.marketId, targetId: press.targetId ?? (e.payload as Record<string, unknown> | null)?.targetId, ...pick(e.payload, ["outcome", "cancelled"]), reason: press.reason } };
+        entry = { ...base, action: "house_bot.target_removed", payload: { botId: press.houseBotId, marketId: e.marketId, targetId: press.targetId ?? (e.payload as Record<string, unknown> | null)?.targetId, ...pick(e.payload, ["outcome", "cancelled"]) } };
       }
       break;
     }

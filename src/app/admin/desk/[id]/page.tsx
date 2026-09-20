@@ -28,6 +28,7 @@
  * @see src/lib/server/house-console-read.ts · src/lib/house-bot/console-routes.ts · plans/house-bots/C7-SPEC.md
  */
 import type { Route } from "next";
+import { WayOutLink } from "../way-out-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
@@ -42,7 +43,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseDetailForConsole, type ConsoleRuleRow } from "@/lib/server/house-console-read";
-import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, WAY_OUT_LINK, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
+import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422): a client component under
  * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
@@ -153,9 +154,9 @@ async function AdminDeskAccountContent({
         title={view.label}
         titleIsOperatorText
         actions={
-          <Link href={CONSOLE_ROUTE as Route} className={WAY_OUT_LINK}>
+          <WayOutLink href={CONSOLE_ROUTE}>
             Back to the desk
-          </Link>
+          </WayOutLink>
         }
       />
 
@@ -196,9 +197,9 @@ async function AdminDeskAccountContent({
               {view.settlementBlocked && <Chip size="sm" variant="danger">Settlement blocked</Chip>}
               {/* 456 · the door to a holder's money is the PLATFORM's own transactions screen, where an admin may
                   legitimately read a player's money — never a money tab of this section, which D20 struck. */}
-              <Link href={view.holderHref as Route} className={WAY_OUT_LINK}>
+              <WayOutLink href={view.holderHref}>
                 Holder&apos;s transactions
-              </Link>
+              </WayOutLink>
             </div>
           </div>
 

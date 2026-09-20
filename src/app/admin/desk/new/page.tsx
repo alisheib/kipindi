@@ -36,6 +36,7 @@
  * @see src/lib/server/house-console-read.ts · src/lib/house-bot/console-routes.ts · plans/house-bots/C7-SPEC.md
  */
 import type { Route } from "next";
+import { WayOutLink } from "../way-out-link";
 import Link from "next/link";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
@@ -48,7 +49,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { Sensitive } from "@/components/ui/sensitive";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseCheckForConsole, houseConsoleAudience, CONSOLE_WIZARD_COPY, type ConsoleCheckRow } from "@/lib/server/house-console-read";
-import { CONSOLE_ROUTE, CONSOLE_WIZARD_STEPS, WAY_OUT_LINK, consoleWizardStep } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, CONSOLE_WIZARD_STEPS, consoleWizardStep } from "@/lib/house-bot/console-routes";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTIONS AND HANDS THEM DOWN (ruling 422): a client component under
  * `src/app/admin` that imports an actions module joins `test:admin-act-gate`'s population and must consult the act
  * gate — and on an Owner-only route `mayAct` IS `mayView`, so that consultation would be a branch that can never be
@@ -61,9 +62,11 @@ export const metadata = { title: "Admin · Desk" };
 /** ⛔ Every answer on this page is a live check against live limits (rulings 302, 356, 380). */
 export const dynamic = "force-dynamic";
 
-/* ⛔ `WAY_OUT_LINK` MOVED TO `console-routes.ts` AT THE C7 STEP 7 REVIEW (visual-2). It was declared here at step
-   6 and the account page, built two steps earlier, never got it — so one section shipped two link treatments for
-   one control. One definition, three pages. */
+/* ⛔ THE WAY BACK IS A COMPONENT, `<WayOutLink>` (../way-out-link). The C7 step 7 review hoisted it here as a
+   shared CLASS STRING in console-routes.ts, which test:house-bot-rules 0.console-routes.ts refuses: Tailwind scans
+   every file, so a class-shaped string in a routes module becomes CSS, and an invalid one once 500'd every route.
+   The review's reasoning — one shared treatment, because the section had shipped two looks for one control — was
+   right; only its home was wrong. */
 
 type DeskNewProps = {
   searchParams: Promise<{ u?: string | string[]; step?: string | string[] }>;
@@ -109,9 +112,9 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
       <AdminPageHead
         title="Designate an account"
         actions={
-          <Link href={CONSOLE_ROUTE as Route} className={WAY_OUT_LINK}>
+          <WayOutLink href={CONSOLE_ROUTE}>
             Back to the desk
-          </Link>
+          </WayOutLink>
         }
       />
 
@@ -175,9 +178,9 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
               <AdminCard
                 title="What we already know"
                 action={
-                  <Link href={view.findHref as Route} className={WAY_OUT_LINK}>
+                  <WayOutLink href={view.findHref}>
                     Search again
-                  </Link>
+                  </WayOutLink>
                 }
               >
                 {/* ⛔ ONE COLUMN AT 360, TWO FROM 640 — the measure is the form's, so no row can run wider than
@@ -232,9 +235,9 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
                     </div>
                   )}
                   <p className="text-body-sm text-text-subtle mt-1.5 max-w-[60ch]">{view.bonusCaption}</p>
-                  <Link href={view.holderHref as Route} className={WAY_OUT_LINK}>
+                  <WayOutLink href={view.holderHref}>
                     Open the holder&apos;s own money screen
-                  </Link>
+                  </WayOutLink>
                 </div>
 
                 {view.priorNote !== null && (
