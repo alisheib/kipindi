@@ -4449,7 +4449,17 @@ try {
     let oneAnswer: Any = null;
     const bulkTag = `c7s6bulk${process.pid}`;
     const bulk: string[] = [];
-    for (let i = 0; i < 12; i++) bulk.push(await w.user({ id: `usr_${bulkTag}_${i}`, role: "PLAYER" }));
+    /* ⛔ SEEDED 11 → 0, DESCENDING, AND THE DIRECTION IS LOAD-BEARING (C5-8 phase 4, 2026-09-20).
+     * The declared mutation `387-order` deletes the `hits.sort(…)` line in `house-console-read.ts`, and the
+     * batch reported this case **MISSED** under it — the guard could not see its own defect. Why: seeded
+     * 0 → 11 ASCENDING, the memory store answers in insertion order, the first ten are `_0 … _9`, and those
+     * ten are ALREADY in lexicographic order — so the total-order half below compared a list against a
+     * sorted copy of itself and passed whether the sort existed or not. Seeded descending, insertion order
+     * and id order disagree, and deleting the sort turns this case red. ⛔ Do not "tidy" this back into an
+     * ascending loop: the assertion becomes unfalsifiable again and nothing will say so.
+     * ⚠️ `bulk[0]` is therefore `usr_<tag>_11`; the single-match control below searches that whole id, which
+     * matches exactly one account either way. */
+    for (let i = 11; i >= 0; i--) bulk.push(await w.user({ id: `usr_${bulkTag}_${i}`, role: "PLAYER" }));
     const wide = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
     const again = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
     ok("1.387 · 412 · the answer is capped at ten options and the count says so — the number MATCHED, not the number shown, and what to do about it",
