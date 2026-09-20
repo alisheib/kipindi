@@ -118,13 +118,19 @@
  * a caller cannot add to the shared look). The +9 are the four repairs' own planted controls. ⛔ NONE of them was
  * loosened to go green: four declared mutations — `432-way-out`, `306-way-out-element`, `312a-linked-outside` and
  * `359-door-inside` — put each defect back on disk and every one was SEEN RED on the assertion it names.
- * ⭐ RAISED AGAIN AT C7 STEP 5's ACCOUNT HALF, to what THIS pass printed on both stores: **memory 650,
- * Postgres 421**. The account page grew its activity and history panels, and with them 78 new assertions and
+ * ⭐ RAISED AGAIN AT C7 STEP 5's ACCOUNT HALF, to what THIS pass printed on both stores: **memory 651,
+ * Postgres 422**. The account page grew its activity and history panels, and with them 78 new assertions and
  * their controls: the detail rail's closed list both ways, the TOTAL event-word map and the measurement of WHY it
  * has to be total (the lexicon is structurally blind to `HOLDER_AGAINST_BOT`), both pagers against COUNTING
  * readers, the facets moving rows and total together, every crafted query axis refused BY NAME, the two empty
  * states told apart from a failed read, a bell's anchor landing on the page its own row is on, and the prop-name
  * pin widened to the three spellings its old `[?:]` tail was blind to.
+ * 🔴 THE +1 OVER THE FIRST GREEN RUN IS THE RED HARNESS PAYING FOR ITSELF. The declared mutation
+ * `317-word-hole` renamed one kind of the TOTAL event-word map and the suite stayed GREEN: the totality
+ * comparison had been written with `j`, which is this file’s DISPLAY helper and slices at 260 characters,
+ * and thirty keys serialise to about 600. Every comparison this step wrote now reads `all`, and the extra
+ * assertion is the CONTROL that keeps the finding — it requires the whole-set comparison to report a rename
+ * 600 characters in and requires `j` NOT to.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -135,6 +141,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 650, postgres: 421 },
+  minPass: { memory: 651, postgres: 422 },
   dbPrefix: "hb_console",
 });

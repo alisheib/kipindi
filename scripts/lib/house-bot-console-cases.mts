@@ -3089,16 +3089,16 @@ try {
     const detail = decomment(detailRaw);
     const panelKeys = [...new Set([...detail.matchAll(/\{tab === "([a-z-]+)" && \(<>/g)].map((m) => m[1]))];
     ok("1.312 · the account page's rail is FIVE keys in rail order — overview · activity · rules · targets · history — and nothing else",
-      j([...CR.CONSOLE_DETAIL_TABS]) === j(["overview", "activity", "rules", "targets", "history"])
+      all([...CR.CONSOLE_DETAIL_TABS]) === all(["overview", "activity", "rules", "targets", "history"])
         && CR.DEFAULT_DETAIL_TAB === "overview", j([...CR.CONSOLE_DETAIL_TABS]));
     /* ⛔ BOTH DIRECTIONS, AND IN ORDER. A panel for every key is ruling 312's dead control; a key for every panel
        is the other half — a panel nothing can reach is dead code that reads as a feature in a diff. */
     ok("1.312 · a panel for every key AND a key for every panel, in the SAME order — read off the page as TEXT, which is how the served probe reads it too",
-      j(panelKeys) === j([...CR.CONSOLE_DETAIL_TABS]), j({ panelKeys, tabs: [...CR.CONSOLE_DETAIL_TABS] }));
+      all(panelKeys) === all([...CR.CONSOLE_DETAIL_TABS]), j({ panelKeys, tabs: [...CR.CONSOLE_DETAIL_TABS] }));
     ok("1.312 · CONTROL · the both-ways comparison really fires — a key with no panel and a panel with no key are each reported, and the shipped page is not",
-      j([...CR.CONSOLE_DETAIL_TABS, "money"]) !== j(panelKeys)
-        && j([...panelKeys, "money"]) !== j([...CR.CONSOLE_DETAIL_TABS])
-        && j(panelKeys) === j([...CR.CONSOLE_DETAIL_TABS]), "");
+      all([...CR.CONSOLE_DETAIL_TABS, "money"]) !== all(panelKeys)
+        && all([...panelKeys, "money"]) !== all([...CR.CONSOLE_DETAIL_TABS])
+        && all(panelKeys) === all([...CR.CONSOLE_DETAIL_TABS]), "");
     /* ⭐ 302's POSITIVE HALF, WHICH ONLY EXISTS ONCE A PANEL DOES: the two new keys now resolve to THEMSELVES. */
     ok("1.302 · `?tab=activity` and `?tab=history` resolve to themselves now that their panels exist — the fallback is for values with no panel, not for these",
       CR.consoleDetailTab("activity") === "activity" && CR.consoleDetailTab("history") === "history"
@@ -3125,7 +3125,7 @@ try {
     const sentenceCase = (k: string) => `${k[0].toUpperCase()}${k.slice(1)}`;
     ok("1.405 · the account rail's labels are the PAGE's own `TAB_LABEL`, one per key of the closed list, each the key in English sentence case",
       parsedLabels.length === CR.CONSOLE_DETAIL_TABS.length
-        && j(parsedLabels.map(([k]) => k)) === j([...CR.CONSOLE_DETAIL_TABS])
+        && all(parsedLabels.map(([k]) => k)) === all([...CR.CONSOLE_DETAIL_TABS])
         && parsedLabels.every(([k, v]) => v === sentenceCase(k))
         && /TAB_LABEL: Record<\(typeof CONSOLE_DETAIL_TABS\)\[number\], string>/.test(detail)
         && /labelEn: TAB_LABEL\[k\]/.test(detail), j(parsedLabels));
@@ -3138,7 +3138,7 @@ try {
        spelling `tab === "…"` invents a tab key no panel answers and the probe then requests a page nobody built. */
     const rawKeys = [...new Set([...detailRaw.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]))];
     ok("1.315 · the RAW account page still yields exactly the closed list after two panels were added — no comment on either invents a key",
-      j(rawKeys) === j([...CR.CONSOLE_DETAIL_TABS]), j(rawKeys));
+      all(rawKeys) === all([...CR.CONSOLE_DETAIL_TABS]), j(rawKeys));
   }
 
   /* ── 1.317 · THE EVENT WORD MAP IS TOTAL, NEUTRAL, AND HAS NO RAW-ENUM ESCAPE ─────────────────────────────── */
@@ -3147,8 +3147,23 @@ try {
     const WORD = GATEM.CONSOLE_EVENT_WORD as Record<string, string>;
     const kinds = [...K.EVENT_KINDS] as string[];
     ok("1.317 · the console's event word map is TOTAL over `EVENT_KINDS` — every kind has a word and no word names a kind that does not exist, compared member for member",
-      j(Object.keys(WORD).sort()) === j([...kinds].sort()) && kinds.length >= 30,
+      all(Object.keys(WORD).sort()) === all([...kinds].sort()) && kinds.length >= 30,
       j({ kinds: kinds.length, words: Object.keys(WORD).length }));
+    /* 🔴 AND THE COMPARISON READS THE WHOLE SERIALISATION, WHICH THIS SUITE'S OWN DISPLAY HELPER DOES NOT.
+     * `j` is `JSON.stringify(v)?.slice(0, 260)` — a helper for the line an assertion PRINTS — and the file says so
+     * two screens up: `all` is "the WHOLE serialisation, the only form an assertion may scan". Written with `j`,
+     * this comparison was TRUE with a kind renamed, because thirty keys serialise to roughly 600 characters and
+     * the rename sits well past the cut. MEASURED, not reasoned about: the declared mutation `317-word-hole` put
+     * that exact defect back and the suite stayed GREEN — the red harness found the hole in the guard, which is
+     * the entire reason a guard is driven instead of read. The control below keeps the finding.
+     */
+    ok("1.317 · CONTROL · the totality comparison reads the WHOLE key set — a kind renamed 600 characters in is reported, and the suite's 260-character DISPLAY helper would have hidden exactly that",
+      (() => {
+        const renamed = Object.keys(WORD).map((k) => (k === "SUNSET" ? "SUNSET_DISABLED" : k)).sort();
+        const kindsSorted = [...kinds].sort();
+        return all(renamed) !== all(kindsSorted) && j(renamed) === j(kindsSorted)
+          && all(kindsSorted) === all([...kinds].sort());
+      })(), "");
     ok("1.317 · 453 · not one of its words carries a house-vocabulary word, or the words this section additionally may not render",
       Object.values(WORD).every((v) => !NEUTRAL.test(v) && houseHits(v).length === 0),
       j(Object.entries(WORD).filter(([, v]) => NEUTRAL.test(v))));
@@ -3350,7 +3365,7 @@ try {
     const railed = await feedView({ outcome: "failed" });
     const groups = railed.feedFilters as Any[];
     ok("1.410 · the rail is THREE axes, each an 'Any …' option plus one per member of its own closed list, with the live one marked",
-      groups.length === 3 && j(groups.map((g) => g.param)) === j(["kind", "product", "outcome"])
+      groups.length === 3 && all(groups.map((g) => g.param)) === all(["kind", "product", "outcome"])
         && groups[0].options.length === 1 + (K_INTENT_KINDS as string[]).length
         && groups[2].options.some((o: Any) => o.on === true && o.key === "failed")
         && groups[0].options.filter((o: Any) => o.on).length === 1,
@@ -3376,7 +3391,7 @@ try {
       NEUTRAL.test("Counter · a sentence the console must never paint · TZS 9,999")
         && (await w.dal.houseBotIntentStore.get(feedIds[0]))!.why !== null, "");
     ok("1.453 · every painted feed field is a FINISHED string or a boolean — no id, no raw enum and no number crosses into the view model",
-      p1.feed.every((r: Any) => j(Object.keys(r).sort()) === j(["anchored", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
         && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
       j(Object.keys(p1.feed[0] ?? {}).sort()));
     ok("1.317 · every row's outcome word and type word come from the console's own TOTAL maps, and its note is the console's own sentence — never a raw enum",
@@ -3472,7 +3487,7 @@ try {
        where it belongs; this panel answers who, what and when from TYPED fields only. */
     ok("1.453 · 474 · no history row paints the officer's free-text reason — the fixture wrote one on every event and the panel carries who, what and when from typed fields alone",
       !histPainted.includes("an officer's own words")
-        && h1.history.every((r: Any) => j(Object.keys(r).sort()) === j(["anchored", "change", "eventWord", "moneyHref", "when", "whenTitle", "who"])),
+        && h1.history.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "change", "eventWord", "moneyHref", "when", "whenTitle", "who"])),
       j(Object.keys(h1.history[0] ?? {}).sort()));
     ok("1.317 · the Change cell is the ONE status map's words, never a raw status, and an event that changed no status carries none",
       h1.history.concat(h2.history).some((r: Any) => r.change === "Active → Paused")
@@ -3491,7 +3506,7 @@ try {
       !/^usr_[A-Za-z0-9_]+$/.test("Juma Mwakalinga") && /^usr_[A-Za-z0-9_]+$/.test(OFFICER), "");
     const hOver = await histView({ hpage: "9" });
     ok("1.317 · a history page past the end is served as the LAST page — the same idiom, never a second one",
-      hOver.historyPage === 2 && hOver.history.length === histTotal - 20 && j(hWho(hOver)) === j(hWho(h2)),
+      hOver.historyPage === 2 && hOver.history.length === histTotal - 20 && all(hWho(hOver)) === all(hWho(h2)),
       j({ page: hOver.historyPage, rows: hOver.history.length }));
     const hAnchor = await histView({ event: eventIds[0] });
     ok("1.302 · a bell's `&event=` lands on the page its row is on and marks it",
@@ -3588,7 +3603,7 @@ try {
     const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the activity table's headers are the control facts in order, with the money column SECOND and headed exactly `Stake`",
-      j(feedHeaders) === j(["When", "Stake", "Outcome", "Type", "Product", "Note"]), j(feedHeaders));
+      all(feedHeaders) === all(["When", "Stake", "Outcome", "Type", "Product", "Note"]), j(feedHeaders));
     ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
       /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
         && !/admin-tbl min-w-/.test(detail), "");
@@ -3597,7 +3612,7 @@ try {
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
-      j(histHeaders) === j(["When", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
+      all(histHeaders) === all(["When", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
     /* ⛔ AND EACH PANEL'S EMPTY STATE IS THE KIT'S, SO A FAILED READ CANNOT LOOK LIKE ONE. */
     ok("1.355 · each panel paints the kit's EMPTY state only on a `length === 0` branch and the kit's FAILURE state only on a `=== null` branch — the two can never be reached by the same condition",
       /feedRows === null \? \(/.test(detail) && /feedRows\.length === 0 \? \(/.test(detail)
