@@ -91,13 +91,18 @@ export async function setPlatformConfig(
   return { ok: true, config: next };
 }
 
-/** Synchronous read — returns the cached value (after first async hydration).
- *  Falls back to env var / default if never hydrated yet. Used by formatDate etc. */
-export function getPlatformTimezone(): string {
-  return globalThis.__50PICK_PLATFORM_CONFIG?.timezone
-    ?? process.env.PLATFORM_TIMEZONE
-    ?? "Africa/Dar_es_Salaam";
-}
+/**
+ * Synchronous read — returns the cached value (after first async hydration).
+ * Falls back to env var / default if never hydrated yet. Used by formatDate etc.
+ *
+ * ⛔ THE IMPLEMENTATION LIVES IN `@/lib/platform-timezone` NOW (L17, ruling 526), and this is a RE-EXPORT rather
+ * than a second copy. `src/lib/utils.ts` imported it from here, and this module reaches `./config-store` →
+ * `./prisma`; utils has 216 importers, many of them client components, so a client component's dependency graph
+ * ran to the Prisma client and only the bundler's tree-shaking kept the model names out of a public chunk.
+ * ⚠️ Re-exported rather than moved outright so every existing server call site keeps working unchanged and there
+ * is ONE implementation. Two copies of a fallback chain is how the two answers start disagreeing.
+ */
+export { getPlatformTimezone, DEFAULT_PLATFORM_TIMEZONE } from "@/lib/platform-timezone";
 
 /** Async, hydration-safe read of the global maintenance switch. Money paths
  *  (buyPosition, deposit) call this to pause NEW bets / deposits during an

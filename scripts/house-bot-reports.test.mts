@@ -39,7 +39,19 @@
  * own read and renders the platform read-failed state; a transition that cannot read at all REFUSES),
  * and the floors rose again to the measured **memory 113, Postgres 33**.
  *
- * ⭐ RAISED AGAIN 2026-09-18 (replan ruling 515), to what `npm run test:house-bot-reports` PRINTED at `d2f20795`:
+ * ⭐ RAISED AGAIN 2026-09-20 by C5-7's REVIEW FIX PASS, to what the suite PRINTED on both stores after it:
+ * **memory 200, Postgres 61** — measured by running it, never by arithmetic. What the review added: §11.247's
+ * serialiser (three readers answer with a `Map`, which `JSON.stringify` renders as `{}`, so the checkpoint's own
+ * declared mutation `247-seeds-raw` could not redden 11.247.2 — proved by applying it), the planner lease and its
+ * positive control on the unfiltered `leadershipSnapshot()`, the per-type bus breakdown with the resolve that makes
+ * the fourth type real, the target/press/label needles, the two raw-reader controls and the `/markets/[id]`
+ * whole-row-prop pin; 0.232's extracted bypass scan with controls for `.createMany(`/`.upsert(` and all three raw-SQL
+ * spellings, the anchors cross-check `0.232.2b`, the `positionId` create-only pin `0.232.4` and the `scripts/`
+ * population `0.232.5`; 0.L52's key-argument sweep `0.L52.3b` and the authority-doc pin `0.L52.4`; 0.235's
+ * aliased-import caller control; the ruling-250 REL-0 coverage roll-call `0.250`; and §11b's `0.354a`, the one
+ * BEHAVIOURAL case of the set — the engine card's audience failing closed on the viewer lookup, on both stores.
+ *
+ * ⭐ RAISED 2026-09-18 (replan ruling 515), to what `npm run test:house-bot-reports` PRINTED at `d2f20795`:
  * **memory 117, Postgres 33**, and RAISED AGAIN to **memory 118** the same day when ruling 518 added `0.505.c2` — the count that run printed, not an arithmetic guess. Postgres is unchanged because both cases added since — ruling 512's 0.512 export
  * completeness check with its control, and ruling 505's 0.505 roll-call population check with its control — are §0
  * source pins and run in the MEMORY child only, which is exactly why this floor is a pair and not a number.
@@ -59,4 +71,4 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 172, postgres: 51 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 200, postgres: 61 }, dbPrefix: "hb_reports" });

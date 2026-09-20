@@ -52,13 +52,26 @@ function deltaProps(cur: number, prior: number, compare: boolean, unit: "money" 
   return { delta: `${p >= 0 ? "+" : "−"}${Math.abs(p).toFixed(1)}% vs prior`, deltaDir: (p >= 0 ? "up" : "down") as "up" | "down" };
 }
 
+/**
+ * ⛔ THE ONE PLACE A FORMAT IS NAMED, because the eight-entry catalogue below used to name its own and SEVEN OF THE
+ * EIGHT WERE FALSE. They advertised "JSON (signed)", "FIU-format encrypted bundle", "CSV" and "GBT cross-operator
+ * CSV"; `GenerateButton` offers exactly two, `type Format = "xlsx" | "pdf"`, and
+ * `/api/admin/reports/[id]` refuses anything else with "Format must be xlsx or pdf" (route.ts:56).
+ * So an officer on a REGULATOR-FACING screen read "FIU-format encrypted bundle", pressed Generate, and was handed a
+ * spreadsheet. The badge is not decoration: it is the page telling the officer what they are about to send a regulator.
+ *
+ * ⭐ The field is DELETED rather than corrected. Eight copies of a fact that must equal one other fact is a drift
+ * generator — correcting them would leave the next entry free to invent a ninth format. The badges now read from the
+ * same two values the button can actually request, and `test:report-formats` pins these three files together.
+ */
+const REPORT_FORMATS = ["Excel", "PDF"] as const;
+
 const TEMPLATES = [
   {
     id: "daily-ops",
     title: "Daily operations report",
     sw: "Ripoti ya kila siku",
     body: "Total sales (stakes), number of tickets, GGR (net of refunds), TRA 10% + GBT 5% levy on operator commission, operator margin, hourly breakdown, deposits/withdrawals. One-page operational snapshot.",
-    formats: ["Excel", "PDF"],
     cadence: "Daily",
     severity: "medium",
     target: "Internal · ops",
@@ -68,7 +81,6 @@ const TEMPLATES = [
     title: "Monthly report",
     sw: "Ripoti ya kila mwezi",
     body: "Tanzania Gaming Board · 12-sheet workbook covering player register changes, GGR, NGR, deposit/withdraw flows, AML triggers, self-exclusion roster, integrity alerts, audit-chain proof. Signed JSON + accompanying PDF.",
-    formats: ["JSON (signed)", "PDF"],
     cadence: "Monthly · 5th of each month",
     severity: "high",
     target: "Regulator",
@@ -84,7 +96,6 @@ const TEMPLATES = [
     title: "Suspicious activity report (FIU)",
     sw: "Ripoti ya tuhuma · FIU",
     body: "Financial Intelligence Unit · suspicious activity flagged by AML triggers (single transaction ≥ TZS 1M, structuring, rapid-cycle pattern, an officer-recorded sanctions or PEP concern — there is no automated list feed). Filed within 7 days of identification per POCA Cap 423.",
-    formats: ["FIU-format encrypted bundle"],
     cadence: "On-trigger · within 7 days",
     severity: "critical",
     target: "FIU",
@@ -94,7 +105,6 @@ const TEMPLATES = [
     title: "ISO 27001 audit log export",
     sw: "Kumbukumbu · ISO",
     body: "Audit-log dump for ISO 27001 A.12.4 compliance. Includes HMAC chain proof so an external auditor can verify the log is intact end-to-end.",
-    formats: ["CSV", "JSON (signed)"],
     cadence: "Quarterly · or on demand",
     severity: "medium",
     target: "ISO 27001 auditor",
@@ -104,7 +114,6 @@ const TEMPLATES = [
     title: "KYC re-verification roster",
     sw: "Orodha · uthibitisho upya",
     body: "Players whose KYC is due for re-verification (every 24 months or on phone/region change). Drives the customer-comms team's outreach queue.",
-    formats: ["CSV"],
     cadence: "Weekly",
     severity: "medium",
     target: "Internal · customer comms",
@@ -114,7 +123,6 @@ const TEMPLATES = [
     title: "Cross-operator self-exclusion register",
     sw: "Sajili · kujizuia",
     body: "Anonymised + hashed list of currently self-excluded players, in the cross-operator format the GBT will adopt in Q3 2026. Blocks players from registering at any other licensed operator while excluded.",
-    formats: ["GBT cross-operator CSV"],
     cadence: "Daily SFTP",
     severity: "high",
     target: "GBT cross-operator register",
@@ -124,7 +132,6 @@ const TEMPLATES = [
     title: "Responsible-gambling engagement",
     sw: "Hali ya wachezaji",
     body: "Reality-check fire counts and player responses (continued / break / self-exclude), limit-change history, deferred increases. Used for LCCP-style RG audits.",
-    formats: ["CSV", "PDF"],
     cadence: "Monthly",
     severity: "medium",
     target: "Internal · RG audit",
@@ -134,7 +141,6 @@ const TEMPLATES = [
     title: "Match-integrity quarterly review",
     sw: "Uadilifu wa mechi",
     body: "Aggregated Sportradar Integrity Services alerts, voided bets, refunded stakes, voided pools, with case file per alert.",
-    formats: ["PDF"],
     cadence: "Quarterly",
     severity: "high",
     target: "Sportradar + GBT integrity unit",
@@ -540,7 +546,7 @@ async function AdminReportsContent({
                   <p className="text-body-sm text-text-secondary leading-relaxed">{t.body}</p>
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-2 mt-1 border-t border-border-subtle">
                     <div className="flex flex-wrap gap-1">
-                      {t.formats.map((f) => (
+                      {REPORT_FORMATS.map((f) => (
                         <span key={f} className="font-mono text-[10px] tracking-wider px-1.5 py-0.5 rounded-sm bg-bg-sunken text-text-tertiary whitespace-nowrap">
                           {f}
                         </span>

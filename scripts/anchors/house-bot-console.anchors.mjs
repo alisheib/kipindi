@@ -2050,11 +2050,56 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
+    /* ⛔ RE-POINTED AT C7 STEP 7's REVIEW FIX, AND THE DEFECT IT PLANTS IS THE SAME ONE. The shared thing became a
+       COMPONENT (`../way-out-link`) rather than the class string the review first put in `console-routes.ts`, which
+       `test:house-bot-rules` 0.console-routes.ts refused — Tailwind scans every file, so a class-shaped string in a
+       routes module becomes CSS and an invalid one once 500'd every route here. The old `from` line no longer
+       exists, so this anchor stopped resolving and the harness was measuring NOTHING. It now takes the account
+       page's real way out off the shared component and re-types the hover-only treatment by hand, which is exactly
+       the defect the name describes and exactly what 1.432's re-typed-treatment sweep is for. */
     name: "432-way-out · the account page re-types the hover-only link treatment the wizard's repair replaced, so one section ships two looks for one control",
     file: DETAIL,
-    from: `          <Link href={CONSOLE_ROUTE as Route} className={WAY_OUT_LINK}>`,
+    from: `          <WayOutLink href={CONSOLE_ROUTE}>`,
     to: `          <Link href={CONSOLE_ROUTE as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline">`,
     expect: "1.432 · the way-out link is declared ONCE",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ THE OTHER THREE ASSERTIONS THE SHARED-COMPONENT CHANGE BROKE GET DECLARED MUTATIONS OF THEIR OWN, in the
+       same pass that repaired them. Each one was re-aimed at a NEW shape, and a re-aimed assertion nobody has seen
+       go red is an assertion that has stopped measuring — which is precisely the state all four were left in.
+       ⭐ THIS ONE IS THE 432(i)/541(b) POSITIONAL PIN, and the defect is the one the pin was widened for: the head's
+       way out written back as a bare `<Link>` with the SAME href. The old scan could not see that difference at all
+       — it knew one element name — so this is the mutation that proves the pin now measures the ELEMENT beside the
+       href rather than simply expecting one fewer link. */
+    name: "306-way-out-element · the head's shared way out is re-typed as a bare <Link> with the same href, so the section paints one control two ways and the positional pin must say so",
+    file: PAGE,
+    from: `                ? <WayOutLink href={view.limitsHref}>{view.rosterFullReason}</WayOutLink>`,
+    to: `                ? <Link href={view.limitsHref as Route} className="underline">{view.rosterFullReason}</Link>`,
+    expect: "1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ 1.312a's OWN DEFECT: the LINKED roster-full sentence — the one that ends in an arrow — painted a second
+       time OUTSIDE every link, where the arrow is a promise of navigation nothing honours. The paint is ADDED
+       rather than swapped for the plain form, so the mutation lands on this assertion and not on the neighbour
+       that holds the inert form still BUILT. */
+    name: "312a-linked-outside · the head paints the LINKED roster-full sentence a second time outside every link, so an arrow sits on inert text",
+    file: PAGE,
+    from: `            <span className="text-body-sm text-text-secondary max-w-[38ch]">`,
+    to: `            <span className="text-body-sm text-text-secondary max-w-[38ch]">\n              {view.rosterFullReason}`,
+    expect: "1.312a · 432(i) · the head paints the LINKED roster-full sentence only inside the one guarded `<Link>`",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ 1.359/456's OWN DEFECT, and it is conformance-355's verbatim: the way to the holder's own money screen
+       painted INSIDE the `funded !== null` guard, so an unreadable wallet takes the door with the state — the
+       officer loses the way forward at the exact moment they need it. */
+    name: "359-door-inside · the way to the holder's own money screen is painted inside the funded guard, so a failed wallet read removes the door with the state",
+    file: NEW_PAGE,
+    from: `                  {view.funded !== null && (`,
+    to: `                  {view.funded !== null && (\n                    <WayOutLink href={view.holderHref}>Open the holder&apos;s own money screen</WayOutLink>`,
+    expect: "1.359 · 456 · the page paints the bonus fact and the way to the holder's own money screen OUTSIDE the funded guard",
     suite: "console-mem",
   },
   {
@@ -2225,7 +2270,7 @@ import { formatEat } from "@/lib/utils";`,
     file: MARKET,
     from: `    if (arr.length < n && !arr.includes(p.userId)) arr.push(p.userId);`,
     to: `    if (arr.length < n && !arr.includes(p.userId)) arr.push(p as unknown as string);`,
-    expect: "11.247.2 · ⛔ D19 · ruling 247 · HB-LC-39 / CRA-27 · every viewer · NOT ONE of them carries the fixture's bot, intent or event id",
+    expect: "11.247.2 · ⛔ D19 · ruling 247 · HB-LC-39 / CRA-27 · every viewer · NOT ONE of them carries the fixture's bot, intent, event, target or press id",
     suite: "reports-mem",
   },
   {

@@ -45,11 +45,30 @@ export type HouseEngineHealthView =
 /** The engine and schema state for `viewerUserId`, or `null` when that account is not in the house-alert audience. */
 export async function houseEngineHealthFor(viewerUserId: string | null | undefined): Promise<HouseEngineHealthView | null> {
   if (!viewerUserId) return null;
+  /**
+   * ⛔ **THE AUDIENCE LOOKUP HAS A TRY OF ITS OWN, AND ITS FAILURE ANSWERS `null`** (ruling 354(a); C5-7's review,
+   * major). Both halves used to sit under ONE `catch` that returned `{ readable: false }` — a TRUTHY view — so a
+   * failure of the VIEWER LOOKUP produced the card for a viewer whose audience had never been established. The
+   * failure branch is not blank: `HouseEngineCard` heads it "House bot engine" / "Injini ya boti za nyumba", two
+   * shared-vocabulary hits, and `/admin/system` renders to every staff account holding the `ops` VIEW grant. So a
+   * second, unmemoised `db.user.findById` timing out on an exhausted pool — on a page deliberately built to keep
+   * rendering through a database wobble — spelled this feature out, in two languages, to a viewer owner ruling D19
+   * does not allow to know it exists. `{ readable: false }` is 354(c)'s shape for a failed HEALTH read INSIDE the
+   * audience, and it may only ever be reached once `inHouseAlertAudience` has said yes.
+   *
+   * ⛔ AND IT STILL DOES NOT THROW (the half of 354(a) that was right): the lookup used to sit outside every `try`,
+   * so a pool timeout propagated and the only caller's `.catch` turned it into the `null` meaning "not in the
+   * audience". Failing closed means `null` — the same answer `houseConsoleAudience` gives — never an exception and
+   * never a card. The pin is `test:house-bot-reports` 0.354a.
+   */
+  let viewer: Awaited<ReturnType<typeof db.user.findById>>;
   try {
-    /* ⛔ 354(a) · THE LOOKUP IS INSIDE THE TRY. Outside it, a pool timeout propagated and the only caller turned it
-     * into the `null` that means "not in the audience" — so an outage rendered as "your role cannot view this". */
-    const viewer = await db.user.findById(viewerUserId);
-    if (!viewer || !inHouseAlertAudience(viewer.role)) return null;
+    viewer = await db.user.findById(viewerUserId);
+  } catch {
+    return null;
+  }
+  if (!viewer || !inHouseAlertAudience(viewer.role)) return null;
+  try {
     return { readable: true, schema: await houseBotSchemaReady(), engine: houseBotEngineHealth() };
   } catch {
     // An ADMIN whose read failed is told so; the page never turns a failed read into a healthy-looking card.

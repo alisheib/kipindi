@@ -108,6 +108,16 @@
  * clear. The branch now takes a server-computed `hasPhone`; 7.1 names `/admin/agents/page.tsx` alone again, as it
  * does on `origin/main`. `1.359` is re-aimed at the same defect with the ratchet's own detector reproduced as its
  * control, and `1.420`'s phone-line pin widens from THREE named lines to FOUR.
+ * ⭐ RAISED AGAIN AT THE C7 STEP 7 REVIEW's REGRESSION FIX, to what that run printed: **memory 570, Postgres 344**.
+ * The review replaced a shared CLASS STRING with a shared COMPONENT (`src/app/admin/desk/way-out-link.tsx`) and did
+ * not re-run this suite: four SOURCE assertions were left measuring a shape the section no longer has — 1.432's
+ * declaration sweep, 1.306's positional link pin, 1.312a's linked-sentence paint and 1.359/456's door outside the
+ * funded guard — and the `432-way-out` red anchor stopped resolving, so its harness was measuring nothing. Each was
+ * re-aimed at the NEW shape and each got STRICTER doing it (the element is pinned beside the href, the paint is
+ * counted, the door must be exactly one and must be a rendered link, and the component's props are pinned CLOSED so
+ * a caller cannot add to the shared look). The +9 are the four repairs' own planted controls. ⛔ NONE of them was
+ * loosened to go green: four declared mutations — `432-way-out`, `306-way-out-element`, `312a-linked-outside` and
+ * `359-door-inside` — put each defect back on disk and every one was SEEN RED on the assertion it names.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -118,6 +128,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 561, postgres: 344 },
+  minPass: { memory: 571, postgres: 344 },
   dbPrefix: "hb_console",
 });

@@ -184,7 +184,15 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       },
     ],
     notes: [
-      "GGR = total stakes − total payouts (voids/refunds excluded from both sides).",
+      // 🔴 L57 (C5-D20-REPLAN ruling 268), corrected 2026-09-20. This note went to the GAMING BOARD saying
+      // "voids/refunds excluded from both sides". The code has never done that: `report-money.ts:155` is
+      // `const ggr = stakes - payouts - refunds`, and that file's own header (:19-21) states the reason —
+      // a refunded stake was still counted in Stakes, so without subtracting it GGR is overstated by the whole
+      // refunded amount AND SO IS THE TRA/GBT LEVY BASE COMPUTED FROM IT. Two other notes in this same file
+      // already say it correctly (:723 "Sales − Payouts − Refunds", :763 "…− refunded stakes"), so the pack was
+      // internally inconsistent as well as wrong. A regulator note is a statement about our own arithmetic; it is
+      // re-derived from the function that computes the figure, never written from memory of the definition.
+      "GGR = total stakes − total payouts − refunded stakes. A refunded stake is returned in full and earns the operator nothing, so it is removed from the base.",
       "NGR = GGR − bonus cost − agent commission − payment-processing fees (pre-tax operator bottom line).",
       "Agent commission is contracted income paid to vetted agents out of the operator fee AFTER TRA and GBT levies; it does not reduce the levy base.",
       "All amounts in Tanzanian Shillings (TZS). Rounded to the nearest shilling.",
@@ -1003,10 +1011,39 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
   const refunds = (await db.txn.listAll()).filter((t) => t.type === "BET_REFUND");
   const refundTotal = refunds.reduce((s, t) => s + Math.abs(t.amount), 0);
 
+  /**
+   * 🔴 L57's third item — the missing "Resolution path" column, added 2026-09-20.
+   *
+   * The note above used to tell the regulator every void came from "the two-officer resolution flow". It does not:
+   * single-admin resolution is the permanent default and two-officer is an optional toggle
+   * (`scripts/two-admin-policy.test.mts`, owner decision 2026-07-24). Correcting the note to say the path is
+   * recorded per adjudication left an obvious gap — the pack then pointed at a record it did not print.
+   *
+   * ⛔ DERIVED FROM THE MARKET'S OWN STAGE FIELDS, not from a second read and not from the toggle's CURRENT value.
+   * The toggle's value today says nothing about how a market sealed last month; `market-service.ts:3335` records
+   * `resolutionAuth` on the adjudication for exactly that reason. The same two facts that drive it —
+   * `resolutionStage1By` and `resolutionStage2By` — are already on every row this builder has in hand, so the
+   * column costs no query and cannot disagree with the audit entry about the same market.
+   *
+   * ⛔ AND THE THIRD STATE IS NAMED. A void with no stage-2 officer is "single-officer"; with a DIFFERENT stage-2
+   * officer it is "two-officer"; with stage-2 equal to stage-1 it is neither, and printing either word would be a
+   * false statement about a dual control. That case is "—" and the note says unrecorded, because an em-dash is the
+   * honest answer for a path we cannot name — the same grammar the compliance card uses for an unmeasured rate.
+   */
+  const resolutionPath = (m: { resolutionStage1By?: string | null; resolutionStage2By?: string | null }) => {
+    const one = m.resolutionStage1By ?? null;
+    const two = m.resolutionStage2By ?? null;
+    if (!one && !two) return "—";
+    if (two && one && two !== one) return "Two-officer";
+    if (!two) return "Single-officer";
+    return "—";
+  };
+
   const marketRows: Row[] = voidedMarkets.map((m) => ({
     market: m.titleEn,
     category: m.category,
     voidedOn: (m.resolutionStage2At ?? m.updatedAt ?? "").slice(0, 10) || "—",
+    path: resolutionPath(m),
     pool: m.yesPool + m.noPool,
     predictors: m.predictorCount,
   }));
@@ -1046,6 +1083,9 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
           { header: "Market", key: "market", width: 46 },
           { header: "Category", key: "category", width: 16 },
           { header: "Voided on", key: "voidedOn", format: "date", width: 14 },
+          // L57 · the path that sealed THIS void, derived from its own stage officers — never from the toggle's
+          // current value, which says nothing about how a market sealed last month.
+          { header: "Resolution path", key: "path", width: 18 },
           { header: "Pool", sub: "TZS", key: "pool", format: "tzs", align: "right", width: 16 },
           { header: "Predictors", key: "predictors", format: "integer", align: "right", width: 12 },
         ],
@@ -1079,7 +1119,16 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
       },
     ],
     notes: [
-      "This report aggregates platform-side integrity activity: markets voided by the two-officer resolution flow and the resulting stake refunds.",
+      // 🔴 L57 (C5-D20-REPLAN ruling 268), corrected 2026-09-20. This note told the regulator the voids came from
+      // "the two-officer resolution flow", naming a control that is NOT in force by default. The owner decision of
+      // 2026-07-24, pinned end-to-end by `scripts/two-admin-policy.test.mts`, is the opposite: single-admin
+      // resolution is the PERMANENT DEFAULT in all money modes, a position-holding admin may resolve, and
+      // two-officer authorisation is an OPTIONAL TOGGLE with NO real-money hard-lock. Claiming a dual-control a
+      // regulator would weigh, while it may be switched off, is the most expensive sentence on this page.
+      // ⭐ The replacement does not swing to the other error either — it does not assert single-admin, because the
+      // toggle may be ON. It states what is true in both states and points at the record that answers it per case:
+      // the suite's own §D notes "the adjudication records which authorization path sealed it".
+      "This report aggregates platform-side integrity activity: markets voided through the resolution flow and the resulting stake refunds. The authorisation path that sealed each void — single-officer or two-officer, per the policy in force at the time — is printed per row under Resolution path, and is derived from that void's own stage officers. A dash means the path is not recorded for that market; the full case detail is in the market resolution audit trail.",
       "The Sportradar Integrity Services feed is a stub adapter — external alerts are not yet ingested. When live, per-alert case files will be appended here.",
       "Player identifiers are masked; full case detail is in the market resolution audit trail.",
     ],

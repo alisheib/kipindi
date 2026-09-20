@@ -1598,9 +1598,16 @@ export const prismaDb = {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data: Record<string, any> = {};
         for (const [k, v] of Object.entries(patch)) {
-          // ⛔ `houseBotId` is create-only (house bots, PLAN §2 I8): a patch can never re-mark or
-          // un-mark a ledger row. The memory twin drops the key the same way.
-          if (k === "createdAt" || k === "updatedAt" || k === "houseBotId") continue;
+          // ⛔ `houseBotId` AND `positionId` ARE BOTH CREATE-ONLY (house bots, PLAN §2 I8; C5-7's review). A patch can
+          // never re-mark or un-mark a ledger row — and, because it cannot, it must not be able to POSITION one
+          // either: `positionId` used to pass straight through, so an update could turn an unpositioned, unmarked row
+          // into a positioned one that is now permanently unmarkable. That row would sit in the holder's own
+          // `excludeHouseBets` wallet feed (a NULL marker is kept, `findByUser` below) and drop out of the house
+          // book's `returned` (`house-bot-dal.ts` requires `houseBotId IS NOT NULL`), and ruling 232's pin reads
+          // `.txn.create(` sites only, so nothing would report it. The two keys are create-only together or neither
+          // is. Measured when this landed: 28 `db.txn.update(` call sites in `src/`, none naming either key. The
+          // memory twin drops both the same way; the pin is `test:house-bot-reports` 0.232.4.
+          if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "positionId") continue;
           if (k === "completedAt" || k === "pendingNotifiedAt") {
             data[k] = v ? new Date(v as string) : null;
           } else {

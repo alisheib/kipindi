@@ -22,6 +22,8 @@ import { ROLL_CALL_SITES, ROLL_CALL_OWED, expectDriftReport, expectDriftControl,
 /* ⛔ The `reports-mem` declarations live in the console anchors file (ruling 434's is the first), and this suite
  * audits its own key there — 505's whole rule is that a suite key with no roll-call is audited by nobody. */
 import { MUTATIONS as CONSOLE_ANCHORS } from "../anchors/house-bot-console.anchors.mjs";
+/* ⛔ 0.232.2b OPENS THE MONEY ANCHORS instead of asserting against seven strings typed here (C5-7's review). */
+import { MUTATIONS as MONEY_ANCHORS } from "../anchors/house-bot-money.anchors.mjs";
 import { createHash } from "node:crypto";
 import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES, HOUSE_BENIGN_SAMPLES } from "./house-bot-vocabulary.mjs";
 
@@ -43,16 +45,45 @@ async function guard(label: string, fn: () => Promise<void> | void): Promise<voi
   try { await fn(); } catch (e) { ok(`${label} · threw`, false, String((e as Error)?.stack ?? e).split("\n").slice(0, 3).join(" | ")); }
 }
 
-/** Every `.ts`/`.tsx` file under `src/`, as a path relative to the repo root (forward slashes). */
+/**
+ * Every source file under `src/`, as a path relative to the repo root (forward slashes).
+ *
+ * ⛔ `.js`/`.mjs`/`.cjs` ARE IN THE WALK (C5-7's review, low). It matched `/\.(tsx?)$/`, so
+ * `src/lib/needle-haptics.js` and `src/lib/needle-physics.js` were outside EVERY pin that calls this — and the
+ * population every one of them prints ("1,081 src files") was the `.ts`/`.tsx` population wearing the name of the
+ * `src` population. A file that JavaScript can run is a file that can carry a house word or write a money row; the
+ * extension is not a reason to stop looking. `parse()` reads plain JS by the file's extension already.
+ */
 function srcFiles(): string[] {
   const out: string[] = [];
   const walk = (d: string) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
-      if (e.isDirectory()) walk(p); else if (/\.(tsx?)$/.test(e.name)) out.push(relative(ROOT, p).replace(/\\/g, "/"));
+      if (e.isDirectory()) walk(p); else if (/\.(tsx?|[cm]?js)$/.test(e.name)) out.push(relative(ROOT, p).replace(/\\/g, "/"));
     }
   };
   walk(join(ROOT, "src"));
+  return out;
+}
+
+/**
+ * Every tracked `.mjs`/`.cjs`/`.mts`/`.js` script under `scripts/`, one level of the tree, as repo-relative paths.
+ *
+ * ⛔ WHY THIS EXISTS (C5-7's review, medium). Ruling 232's population is `src/**`, and its own claim is that a money
+ * writer "cannot escape by living somewhere else" — but the ONE writer in this repository that files a positioned
+ * `Transaction` row around the DAL lives in `scripts/`, and the scope was stated honestly and then never measured.
+ * `0.232.5` reads this population the same way `0.232.1` reads `src/`.
+ */
+function scriptFiles(): string[] {
+  const out: string[] = [];
+  const walk = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) { if (e.name !== "node_modules") walk(p); }
+      else if (/\.(m?ts|[cm]?js)$/.test(e.name)) out.push(relative(ROOT, p).replace(/\\/g, "/"));
+    }
+  };
+  walk(join(ROOT, "scripts"));
   return out;
 }
 
@@ -560,7 +591,24 @@ if (STORE === "memory") {
   await guard("0.235", () => {
     const REG = "src/lib/server/comms-registry.ts";
     const DIGEST = "src/lib/server/updown-digest.ts";
-    /** Every `channelAllowed(` CALL under src/, from the tree, excluding the module that defines it. */
+    /**
+     * Every `channelAllowed(` CALL under src/, from the tree, excluding the module that defines it.
+     *
+     * ⛔ **AN ALIASED IMPORT BINDS A DIFFERENT NAME** (C5-7's review, low). The matcher took
+     * `n.expression.text === "channelAllowed"` only, so `import { channelAllowed as allowed }` followed by
+     * `allowed("WIN", { houseOnly: true })` was not a caller: the population read 1 and the claim that exactly one
+     * surface makes F6's decision was false while a second one made it. The import clause of each file is read
+     * first and the LOCAL name it binds is what the walker looks for — which is also what a reader of that file
+     * sees. 0.235.c2b plants the aliased form and requires it counted.
+     */
+    const localNamesFor = (sf: ts.SourceFile): Set<string> => {
+      const names = new Set<string>(["channelAllowed"]);
+      walkTree(sf, (n) => {
+        if (!ts.isImportSpecifier(n)) return;
+        if ((n.propertyName ?? n.name).text === "channelAllowed") names.add(n.name.text);
+      });
+      return names;
+    };
     const callersOf = (extra?: { file: string; code: string }) => {
       const out: string[] = [];
       const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
@@ -571,11 +619,12 @@ if (STORE === "memory") {
       for (const { rel, code } of files) {
         if (rel === REG || !code.includes("channelAllowed")) continue;
         const sf = parse(rel, code);
+        const names = localNamesFor(sf);
         walkTree(sf, (n) => {
           if (!ts.isCallExpression(n)) return;
           const fn = ts.isIdentifier(n.expression) ? n.expression.text
             : ts.isPropertyAccessExpression(n.expression) ? n.expression.name.text : "";
-          if (fn !== "channelAllowed") return;
+          if (!names.has(fn)) return;
           out.push(`${rel}:${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1}`);
         });
       }
@@ -604,6 +653,9 @@ if (STORE === "memory") {
     const planted = callersOf({ file: "src/app/planted/route.ts", code: `import { channelAllowed } from "@/lib/server/comms-registry";\nexport function GET() { return channelAllowed("WIN", { houseOnly: true }); }\n` });
     ok("0.235.c2 · CONTROL · a SECOND caller planted in a file of its own is found — so 0.235.1's count is a population read from the tree and would report the day another surface starts making F6's decision for itself",
       planted.length === 2 && planted.some((c) => c.startsWith("src/app/planted/route.ts:")), j(planted));
+    const aliased = callersOf({ file: "src/app/planted/aliased.ts", code: `import { channelAllowed as allowed } from "@/lib/server/comms-registry";\nexport function GET() { return allowed("WIN", { houseOnly: true }); }\n` });
+    ok("0.235.c2b · CONTROL · a second caller reached through an ALIASED import is found too — the matcher reads each file's import clause for the local name `channelAllowed` is bound to, so a rename at the import cannot hide a surface that makes F6's decision",
+      aliased.length === 2 && aliased.some((c) => c.startsWith("src/app/planted/aliased.ts:")), j(aliased));
     const blinded = callersOf({ file: DIGEST, code: digestCode.replace("channelAllowed(", "channelNotAllowed(") });
     ok("0.235.c3 · CONTROL · …and with the digest's own call renamed away the count falls to ZERO, which is the state this ruling found the platform in",
       blinded.length === 0, j(blinded));
@@ -653,7 +705,7 @@ if (STORE === "memory") {
   await guard("0.232", () => {
     type Marker = { kind: "spread" | "prop" | "ctx"; source: string };
     type Pid = { kind: "null" | "objId" | "ident" | "other"; text: string };
-    type Site = { file: string; line: number; pid: Pid | null; marker: Marker | null; literal: boolean };
+    type Site = { file: string; line: number; endLine: number; pid: Pid | null; marker: Marker | null; literal: boolean };
     const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
     const nameOf = (p: ts.ObjectLiteralElementLike): string | null =>
       p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) ? p.name.text : null;
@@ -664,9 +716,23 @@ if (STORE === "memory") {
       return x;
     };
 
-    /** `.txn.create(` calls, however the store is reached (`db.txn.create`, `w.dal.txn.create`). */
+    /**
+     * A WRITE-CREATE call on the `txn` store, however the store is reached (`db.txn.create`, `w.dal.txn.create`).
+     *
+     * ⛔ IT IS NOT ONLY `create` (C5-7's review, low). The rule's claim is that a money writer cannot escape by
+     * living somewhere else, but the shape of the escape is the MEMBER NAME, not the directory: `.txn.createMany(`
+     * or `.txn.upsert(` produced NO site at all, so such a write was in neither `positioned` (0.232.1's rule) nor
+     * `bypass` (0.232.3's scan), and every assertion here stayed green over a money writer filing house stakes as
+     * players'. The DAL has no such member today (`prisma-dal.ts` declares create/findBy…/update/listBy…), which
+     * is why this is a forward-looking hole and not a live defect — and why the member list is read here rather
+     * than assumed: a member added tomorrow lands inside the rule instead of outside it. `update` is deliberately
+     * NOT here: it cannot position a row any more (see 0.232.4), and adding it would put 28 call sites with no
+     * object literal into a population pinned at 18.
+     */
+    const TXN_WRITE_MEMBERS = ["create", "createMany", "upsert"] as const;
     const isTxnCreate = (n: ts.Node): n is ts.CallExpression =>
-      ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "create"
+      ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)
+      && (TXN_WRITE_MEMBERS as readonly string[]).includes(n.expression.name.text)
       && ts.isPropertyAccessExpression(n.expression.expression) && n.expression.expression.name.text === "txn";
 
     /** `<ident>.<prop>` as a pair, or null. */
@@ -762,8 +828,9 @@ if (STORE === "memory") {
         if (!isTxnCreate(n)) return;
         const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
         const arg = n.arguments[0] ? unwrap(n.arguments[0]) : undefined;
-        if (!arg || !ts.isObjectLiteralExpression(arg)) { out.push({ file, line, pid: null, marker: null, literal: false, call: n }); return; }
-        out.push({ file, line, pid: pidOf(arg), marker: markerOf(arg), literal: true, call: n });
+        const endLine = sf.getLineAndCharacterOfPosition(n.getEnd()).line + 1;
+        if (!arg || !ts.isObjectLiteralExpression(arg)) { out.push({ file, line, endLine, pid: null, marker: null, literal: false, call: n }); return; }
+        out.push({ file, line, endLine, pid: pidOf(arg), marker: markerOf(arg), literal: true, call: n });
       });
       return out;
     };
@@ -784,22 +851,51 @@ if (STORE === "memory") {
         : `positionId ${s.pid.text}.id but the marker reads ${s.marker.source} — the marker is copied from the WRONG object`;
     };
 
-    const all: Array<Site & { call: ts.CallExpression | null }> = [];
-    const bypass: string[] = [];
+    /**
+     * ⛔ **THE BYPASS SCAN IS ONE FUNCTION, AND THE CONTROLS CALL IT** (C5-7's review, medium). 0.232.3 was the one
+     * assertion of the four whose control did not run the shipped code: `0.232.c5` built its own `walkTree` with
+     * its own inline predicate, so changing `if (rel === DAL) continue` to `!==`, or deleting the `bypass.push`,
+     * left 0.232.3 passing forever over an empty population WITH ITS CONTROL STILL GREEN. It is extracted here so
+     * every control plants into a real file and reads the answer of the code that ships.
+     *
+     * ⛔ AND THE RAW-SQL HALF MATCHES THE SPELLINGS THIS CODEBASE ACTUALLY PRODUCES. It was
+     * `/INSERT\s+INTO\s+"Transaction"/i` — which cannot match a schema-qualified `INSERT INTO public."Transaction"`,
+     * and cannot match `INSERT INTO "${table}"`, the builder shape `house-bot-dal.ts:1026` already uses. Two of
+     * 0.232.3's three stated subjects had no control at all and the regex had never been shown to fire once. An
+     * INTERPOLATED table name is not something a static scan can read, so it is REPORTED unless the file is on a
+     * named, justified list that may only shrink — "not applicable" is not an answer this checkpoint accepts.
+     */
     const DAL = "src/lib/server/prisma-dal.ts";
-    const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
-    for (const { rel, code } of files) {
-      all.push(...txnSites(rel, code));
-      if (rel === DAL) continue;
+    const HOUSE_DAL = "src/lib/server/house-bot-dal.ts";
+    const MS_REL = "src/lib/server/market-service.ts";
+    const RAW_TXN_INSERT = /INSERT\s+INTO\s+(?:[A-Za-z_][\w$]*\s*\.\s*)?"Transaction"/i;
+    const RAW_DYNAMIC_INSERT = /INSERT\s+INTO\s+"\$\{/;
+    /** ⛔ The ONE file allowed to build an INSERT with an interpolated table, and 0.232.3b holds it to the reason. */
+    const DYNAMIC_INSERT_ALLOWED: readonly string[] = [HOUSE_DAL];
+    const bypassIn = (rel: string, code: string): string[] => {
+      const out: string[] = [];
+      if (rel === DAL) return out;
       const sf = parse(rel, code);
       walkTree(sf, (n) => {
         if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression)) return;
         const fn = n.expression.name.text;
-        if (fn !== "create" && fn !== "createMany") return;
+        if (!(TXN_WRITE_MEMBERS as readonly string[]).includes(fn)) return;
         if (!ts.isPropertyAccessExpression(n.expression.expression) || n.expression.expression.name.text !== "transaction") return;
-        bypass.push(`${rel}:${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1} .transaction.${fn}(`);
+        out.push(`${rel}:${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1} .transaction.${fn}(`);
       });
-      if (/INSERT\s+INTO\s+"Transaction"/i.test(code)) bypass.push(`${rel} raw INSERT INTO "Transaction"`);
+      if (RAW_TXN_INSERT.test(code)) out.push(`${rel} raw INSERT INTO Transaction`);
+      if (RAW_DYNAMIC_INSERT.test(code) && !DYNAMIC_INSERT_ALLOWED.includes(rel)) {
+        out.push(`${rel} raw INSERT INTO an INTERPOLATED table — this pin cannot read which one`);
+      }
+      return out;
+    };
+
+    const all: Array<Site & { call: ts.CallExpression | null }> = [];
+    const bypass: string[] = [];
+    const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
+    for (const { rel, code } of files) {
+      all.push(...txnSites(rel, code));
+      bypass.push(...bypassIn(rel, code));
     }
     const exempt = all.filter((s) => s.pid?.kind === "null");
     const positioned = all.filter((s) => s.pid?.kind !== "null");
@@ -811,10 +907,42 @@ if (STORE === "memory") {
     ok("0.232.1 · ⛔ RULING 232 · every positioned transaction write copies the marker FROM THE OBJECT WHOSE id IS ITS positionId — presence is not enough, because a marker copied from another position in scope is silent",
       offenders.length === 0, j(offenders));
     const marked = positioned.filter((s) => s.marker !== null).map((s) => `${s.file.split("/").pop()}:${s.line}`);
-    ok("0.232.2 · …and the seven marked sites are exactly the seven the money anchors quote (SEAM:txnMarker, SEAM:markerOrphan) — a site that moves is reported here before a mutation drive reports it as a rotted anchor",
+    ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
       j(marked) === j(["market-service.ts:1524", "market-service.ts:2792", "market-service.ts:3167", "market-service.ts:3577", "market-service.ts:3709", "market-service.ts:3850", "market-service.ts:4433"]), j(marked));
-    ok("0.232.3 · ⛔ nothing in tracked src/ writes a Transaction row around the DAL — no .transaction.create(, no .transaction.createMany(, no raw INSERT INTO Transaction outside prisma-dal.ts",
-      bypass.length === 0, j(bypass));
+
+    /**
+     * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
+     * read "the seven the money anchors quote" and then compared against seven literal strings typed in this file:
+     * it never touched an anchors file, and the money anchors declare a mutation for only TWO of the seven marker
+     * sites (`SEAM:txnMarker` → 1524, `SEAM:markerOrphan` → 2792). Five real marker sites — the cash-out, the
+     * one-sided refund, the void refund, the winner payout and the emergency void — have no declared mutation in
+     * any file under `scripts/`, so `test:red-anchors` never demonstrates that deleting their marker reddens
+     * anything. That is not fixed by a better sentence: it is MEASURED here and printed, so the number cannot
+     * quietly shrink, and the uncovered sites are named in `plans/house-bots/DEFERRED-TESTS.md`.
+     */
+    const anchorLines = new Set<number>();
+    const msRaw = read(MS_REL).replace(/\r\n/g, "\n");
+    for (const a of MONEY_ANCHORS as Array<{ file: string; from: string; to: string }>) {
+      if (a.file !== MS_REL) continue;
+      if (!a.from.includes("houseBotId")) continue;
+      const at = msRaw.indexOf(a.from.replace(/\r\n/g, "\n"));
+      if (at < 0) continue;
+      const startLine = msRaw.slice(0, at).split("\n").length;
+      const endLine = startLine + a.from.split("\n").length - 1;
+      for (let L = startLine; L <= endLine; L++) anchorLines.add(L);
+    }
+    const covered = positioned.filter((s) => s.marker !== null && [...anchorLines].some((L) => L >= s.line && L <= s.endLine));
+    const uncovered = positioned.filter((s) => s.marker !== null && !covered.includes(s)).map((s) => `${s.file.split("/").pop()}:${s.line}`);
+    ok("0.232.2b · the money anchors are READ, and the population of marker sites they declare a mutation for is printed: a marker site with no declared mutation is never demonstrated red by test:red-anchors, and this assertion is the only thing that says which and how many",
+      anchorLines.size > 0 && covered.length === 2 && uncovered.length === 5
+      && j(uncovered) === j(["market-service.ts:3167", "market-service.ts:3577", "market-service.ts:3709", "market-service.ts:3850", "market-service.ts:4433"]),
+      `${covered.length} of ${marked.length} marker sites carry a declared money-anchor mutation · uncovered (deferred by name): ${j(uncovered)}`);
+
+    ok("0.232.3 · ⛔ nothing in tracked src/ writes a Transaction row around the DAL — no .transaction.create(, .createMany( or .upsert(, no raw INSERT INTO \"Transaction\" (schema-qualified or not), and no INSERT into an INTERPOLATED table outside the one declared builder",
+      bypass.length === 0, `${files.length} src files scanned · ${j(bypass)}`);
+    ok("0.232.3b · …and the ONE file allowed to build an INSERT with an interpolated table still cannot aim it at Transaction: `insertSql` takes a `HouseTable`, not a string, so the type system decides which tables that builder can reach",
+      DYNAMIC_INSERT_ALLOWED.length === 1 && read(HOUSE_DAL).includes("function insertSql(table: HouseTable,"),
+      `allowed: ${j(DYNAMIC_INSERT_ALLOWED)}`);
 
     /* ── THE CONTROLS. Each plants a REAL defect in a REAL file's source and requires it to be reported ──────── */
     const MS = "src/lib/server/market-service.ts";
@@ -871,20 +999,119 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
       c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1524` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
 
-    const plantedDirect = (() => {
-      const code = ms.replace(`          await db.txn.create({`, `          await prisma.transaction.create({ data: {} });\n          await db.txn.create({`);
-      const sf = parse(MS, code);
-      const hits: string[] = [];
+    /* ⛔ THE BYPASS CONTROLS, AND THEY CALL `bypassIn` — THE CODE THAT SHIPS. The old 0.232.c5 re-implemented the
+       walk inline, so the loop that actually produces `bypass` was UNPLANTED: one character (`rel === DAL` →
+       `rel !== DAL`) would have left 0.232.3 passing forever over an empty population with its control still green.
+       Every one of 0.232.3's stated subjects is planted here, into a real file, and read back through `bypassIn`. */
+    const ANCHOR_CREATE = `          await db.txn.create({`;
+    const plantBypass = (line: string) => bypassIn(MS, ms.replace(ANCHOR_CREATE, `          ${line}\n${ANCHOR_CREATE}`));
+    const c5create = plantBypass(`await prisma.transaction.create({ data: {} });`);
+    const c5many = plantBypass(`await prisma.transaction.createMany({ data: [] });`);
+    const c5upsert = plantBypass(`await prisma.transaction.upsert({ where: { id: "x" }, create: {}, update: {} });`);
+    ok("0.232.c5 · CONTROL · a planted prisma.transaction.create / .createMany / .upsert outside the DAL is each reported BY THE SHIPPED SCAN — the control calls `bypassIn`, so deleting its push or inverting its DAL exclusion goes red here instead of passing silently",
+      ms.includes(ANCHOR_CREATE) && [c5create, c5many, c5upsert].every((r) => r.length === 1),
+      j({ create: c5create, createMany: c5many, upsert: c5upsert }));
+
+    /* ⛔ THE RAW-SQL LIMB, WHICH HAD NEVER BEEN SHOWN TO FIRE — in all three spellings this codebase can produce. */
+    const c5sqlPlain = bypassIn(MS, `${ms}\nasync function __c5raw(tx: unknown) { await sql(tx, \`INSERT INTO "Transaction" ("id") VALUES ($1)\`); }\n`);
+    const c5sqlSchema = bypassIn(MS, `${ms}\nasync function __c5raw(tx: unknown) { await sql(tx, \`INSERT INTO public."Transaction" ("id") VALUES ($1)\`); }\n`);
+    const c5sqlDyn = bypassIn(MS, `${ms}\nasync function __c5raw(tx: unknown, table: string) { await sql(tx, \`INSERT INTO "\${table}" ("id") VALUES ($1)\`); }\n`);
+    ok("0.232.c5b · CONTROL · the RAW-SQL limb reports all three spellings: INSERT INTO \"Transaction\", the schema-qualified public.\"Transaction\", and the INTERPOLATED table the tree's own builder already uses — the shape the old regex could not match, in the file that would carry it",
+      c5sqlPlain.length === 1 && c5sqlSchema.length === 1 && c5sqlDyn.length === 1,
+      j({ plain: c5sqlPlain, schema: c5sqlSchema, dynamic: c5sqlDyn }));
+
+    /* ⛔ THE ACCEPT SIDE: the DAL's own real writer is NOT reported, and the exclusion is DEMONSTRATED rather than
+       described — the same planted line, in the excluded file, must come back empty. */
+    const dalCode = decomment(read(DAL));
+    const c5dalReal = bypassIn(DAL, dalCode);
+    const c5dalPlanted = bypassIn(DAL, `${dalCode}\nasync function __c5dal() { await prisma.transaction.create({ data: {} }); }\n`);
+    const c5houseDal = bypassIn(HOUSE_DAL, decomment(read(HOUSE_DAL)));
+    ok("0.232.c5c · CONTROL · the accept side, demonstrated not described: prisma-dal.ts's own real .transaction.create( is NOT reported, a freshly planted one in that SAME file is not either (the exclusion is by file, and it is real), and house-bot-dal.ts's declared interpolated builder is not reported while every other file's would be",
+      read(DAL).includes(".transaction.create(") && c5dalReal.length === 0 && c5dalPlanted.length === 0 && c5houseDal.length === 0,
+      j({ dalReal: c5dalReal.length, dalPlanted: c5dalPlanted.length, houseDal: c5houseDal }));
+
+    /**
+     * ⛔ **0.232.4 · `positionId` IS CREATE-ONLY IN BOTH STORE TWINS** (C5-7's review, low). Both twins already drop
+     * `houseBotId` from an update patch so a ledger row can never be re-marked or un-marked — and neither dropped
+     * `positionId`, while this whole pin reads `.txn.create(` sites only. So `db.txn.update(id, { positionId })`
+     * turned an unpositioned, unmarked row into a positioned one that can NEVER be marked (the marker is create-only
+     * and the row already exists): it stays in the holder's own `excludeHouseBets` wallet feed and drops out of the
+     * house book's `returned`, with nothing anywhere to report it. Measured when this landed: 28 `db.txn.update(`
+     * call sites in `src/`, none naming either key. Both twins now drop both keys, and both spellings are pinned.
+     */
+    const storeTwin = decomment(read("src/lib/server/store.ts"));
+    const prismaTwin = decomment(read(DAL));
+    const MEMORY_DROP = `const { houseBotId: _marker, positionId: _positioned, ...rest } = patch;`;
+    const PRISMA_DROP = `if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "positionId") continue;`;
+    ok("0.232.4 · ⛔ both txn store twins drop houseBotId AND positionId from an update patch — a ledger row cannot be re-marked, un-marked, or POSITIONED after the fact, which is the one way a positioned row could exist that ruling 232's create-site scan can never see",
+      storeTwin.includes(MEMORY_DROP) && prismaTwin.includes(PRISMA_DROP),
+      j({ memory: storeTwin.includes(MEMORY_DROP), prisma: prismaTwin.includes(PRISMA_DROP) }));
+    ok("0.232.4.control · CONTROL · the pin REPORTS each twin the moment its own spelling stops dropping the key — so the two greens above are measurements of those two lines and not of strings that match nothing",
+      !storeTwin.replace(MEMORY_DROP, `const { houseBotId: _marker, ...rest } = patch;`).includes(MEMORY_DROP)
+      && !prismaTwin.replace(PRISMA_DROP, `if (k === "createdAt" || k === "updatedAt" || k === "houseBotId") continue;`).includes(PRISMA_DROP),
+      "both plants change their file");
+
+    /**
+     * ⛔ **0.232.5 · THE ONE REAL DAL BYPASS IN THIS REPOSITORY LIVES IN `scripts/`** (C5-7's review, medium).
+     * 0.232.3's scope (`src/**`) was stated honestly and then never measured against the place the escape actually
+     * happened: `scripts/delete-seed-markets.mjs` refunds every OPEN position on a seeded market with a bare
+     * `prisma.transaction.create` — no DAL, and (until this checkpoint) no marker copied from the position and a
+     * column name renamed away on 2026-07-02. Every positioned `prisma.transaction.create` in tracked `scripts/`
+     * is read from the tree and held to ruling 232's own rule: the marker comes from the object whose `id` is the
+     * write's `positionId`. `positionId: null` is exempt here as it is in `src/`.
+     */
+    const scriptPop = scriptFiles();
+    const scriptOffenders: Array<{ at: string; why: string | null }> = [];
+    let scriptPositioned = 0;
+    for (const rel of scriptPop) {
+      const code = decomment(read(rel));
+      if (!code.includes("transaction.create")) continue;
+      const sf = parse(rel, code);
       walkTree(sf, (n) => {
-        if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression)) return;
-        if (n.expression.name.text !== "create" && n.expression.name.text !== "createMany") return;
+        if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression) || n.expression.name.text !== "create") return;
         if (!ts.isPropertyAccessExpression(n.expression.expression) || n.expression.expression.name.text !== "transaction") return;
-        hits.push(oneLine(n.getText()).slice(0, 60));
+        const outer = n.arguments[0] ? unwrap(n.arguments[0]) : undefined;
+        if (!outer || !ts.isObjectLiteralExpression(outer)) return;
+        const dataProp = outer.properties.find((x) => ts.isPropertyAssignment(x) && nameOf(x) === "data") as ts.PropertyAssignment | undefined;
+        const lit = dataProp ? unwrap(dataProp.initializer) : outer;
+        if (!ts.isObjectLiteralExpression(lit)) return;
+        const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+        const site: Site & { call: ts.CallExpression | null } = { file: rel, line, endLine: sf.getLineAndCharacterOfPosition(n.getEnd()).line + 1, pid: pidOf(lit), marker: markerOf(lit), literal: true, call: n };
+        if (site.pid?.kind === "null" || site.pid == null) return;
+        scriptPositioned++;
+        const why = verdict(site);
+        if (why !== null) scriptOffenders.push({ at: `${rel}:${line}`, why });
       });
-      return hits;
-    })();
-    ok("0.232.c5 · CONTROL · a planted prisma.transaction.create outside the DAL is reported — and the DAL's own real one is NOT, because that is the writer every marked site goes through",
-      plantedDirect.length === 1 && read(DAL).includes(".transaction.create("), j(plantedDirect));
+    }
+    ok("0.232.5 · ⛔ every positioned prisma.transaction.create in tracked scripts/ copies the marker from the object whose id is its positionId — the one DAL bypass this repository actually contains lives here, outside src/, and its scope was stated and never measured until now",
+      scriptPositioned >= 1 && scriptOffenders.length === 0,
+      `${scriptPop.length} script files · ${scriptPositioned} positioned write(s) · ${j(scriptOffenders)}`);
+    const seedRel = "scripts/delete-seed-markets.mjs";
+    const seedCode = decomment(read(seedRel));
+    /* ⚠️ NO NEWLINE IN THE ANCHOR, and that is not a detail: `scripts/delete-seed-markets.mjs` is CRLF, so a plant
+       written with `\n` matches NOTHING and plants NOTHING — the silent pass this checkpoint exists to refuse (it
+       happened here once, and the assertion below now requires the plant to have CHANGED the source). */
+    const SEED_MARKER = `...(pos.houseBotId ? { houseBotId: pos.houseBotId } : {}),`;
+    const seedPlant = seedCode.replace(SEED_MARKER, "");
+    const seedSites = (code: string) => {
+      const sf = parse(seedRel, code);
+      const out: Array<string | null> = [];
+      walkTree(sf, (n) => {
+        if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression) || n.expression.name.text !== "create") return;
+        if (!ts.isPropertyAccessExpression(n.expression.expression) || n.expression.expression.name.text !== "transaction") return;
+        const outer = unwrap(n.arguments[0]!);
+        if (!ts.isObjectLiteralExpression(outer)) return;
+        const dataProp = outer.properties.find((x) => ts.isPropertyAssignment(x) && nameOf(x) === "data") as ts.PropertyAssignment | undefined;
+        const lit = unwrap(dataProp!.initializer);
+        if (!ts.isObjectLiteralExpression(lit)) return;
+        out.push(verdict({ file: seedRel, line: 0, endLine: 0, pid: pidOf(lit), marker: markerOf(lit), literal: true, call: n }));
+      });
+      return out;
+    };
+    ok("0.232.5.control · CONTROL · the real seed-cleanup refund is clean, and the SAME writer with its marker deleted is REPORTED as an unmarked positioned write — so 0.232.5's zero is a measurement of that file and not of an empty population",
+      seedCode.includes(`positionId: pos.id,`) && seedCode.includes(SEED_MARKER) && seedSites(seedCode).every((w) => w === null)
+      && seedPlant !== seedCode && seedSites(seedPlant).some((w) => /NO marker/.test(w ?? "")),
+      j({ clean: seedSites(seedCode), planted: seedSites(seedPlant) }));
   });
 }
 
@@ -934,15 +1161,38 @@ if (STORE === "memory") {
       });
       return out;
     };
-    /** Every `rateCheck` / `rateCheckAsync` call in one file, with the action argument as a LITERAL or `null`. */
-    const callSites = (file: string, code: string): Array<{ file: string; action: string | null; text: string }> => {
-      const out: Array<{ file: string; action: string | null; text: string }> = [];
+    /**
+     * Every `rateCheck` / `rateCheckAsync` call in one file, with the action argument as a LITERAL or `null` — and
+     * the KEY argument's own source text.
+     *
+     * ⛔ **THE KEY IS PAINTED TOO, AND THIS PIN READ ONLY THE ACTION** (C5-7's review, medium). The docblock above
+     * argues "A GUARD'S SCOPE IS PART OF ITS CLAIM" and then scoped itself one COLUMN short:
+     * `/admin/system` paints `b.action` at `page.tsx:640` **and `b.key.slice(0, 30)` at `:641`**, from the same
+     * snapshot, to the same ops VIEW audience. Nothing here ever read the FIRST argument of any call, so the
+     * rendered key half was unmeasured by this sweep and by anything else — `rateCheckAsync(botId, "desk.picker")`
+     * would have painted an `hb_…` id verbatim on an admin table with every assertion in this section green.
+     * Measured when this landed: 27 live call sites, none keying on a house identifier, so this was a coverage
+     * hole rather than a live defect — which is exactly when a guard is cheap to add and worth having.
+     *
+     * ⚠️ WHAT THE KEY SWEEP CAN AND CANNOT DECIDE, said plainly. It reads the argument's SOURCE TEXT, so it sees a
+     * literal, a template's static parts, and the identifier names a key is built from. A bare `botId` is NOT a
+     * vocabulary hit — the shared list deliberately excludes bare `bot` (`house-bot-vocabulary.mjs`), because
+     * `/admin/house` and the word "bot" live on `main` — so this catches `houseBotId`, `house_…`, `HouseBot…`, a
+     * bounded house id and every house WORD, and does not catch a house value reached through a neutral name. The
+     * value half is unreachable from a static read and is NOT MEASURED, by name, in DEFERRED-TESTS.
+     */
+    const callSites = (file: string, code: string): Array<{ file: string; action: string | null; key: string; text: string }> => {
+      const out: Array<{ file: string; action: string | null; key: string; text: string }> = [];
       walkTree(parse(file, code), (n) => {
         if (!ts.isCallExpression(n)) return;
         const fn = ts.isIdentifier(n.expression) ? n.expression.text
           : ts.isPropertyAccessExpression(n.expression) ? n.expression.name.text : "";
         if (fn !== "rateCheck" && fn !== "rateCheckAsync") return;
-        out.push({ file, action: literalText(n.arguments[1]), text: n.getText().slice(0, 90).replace(/\s+/g, " ") });
+        out.push({
+          file, action: literalText(n.arguments[1]),
+          key: n.arguments[0] ? n.arguments[0].getText().replace(/\s+/g, " ") : "",
+          text: n.getText().slice(0, 90).replace(/\s+/g, " "),
+        });
       });
       return out;
     };
@@ -999,6 +1249,57 @@ if (STORE === "memory") {
     ok("0.L52.3 · ⛔ every call site names a rule the table DECLARES — RATE_RULES is Record<string, RateRule>, so tsc cannot see a stale key and rateCheck returns allowed:true on one: a rename that missed a caller switches a live limiter off in silence",
       unknown.length === 0, j(unknown));
 
+    /* ── the KEY column, because /admin/system paints that too ─────────────────────────────────────── */
+    const keyDirty = sites.filter((s) => houseHits(s.key).length > 0);
+    ok("0.L52.3b · ⛔ D19 · L52 · NO rateCheck KEY argument names the shared vocabulary either — /admin/system paints `b.key.slice(0, 30)` in the column beside the action, from the same snapshot, to the same ops VIEW audience, so a bucket keyed on a house identifier would be painted verbatim to staff this feature has no audience with",
+      keyDirty.length === 0,
+      `${sites.length} keys read from the tree · offenders: ${j(keyDirty.map((s) => [s.file, s.key, houseHits(s.key)]))}`);
+    const keyPlant = (expr: string) => callSites("src/app/planted/keys.ts", `export async function f() { return rateCheckAsync(${expr}, "desk.picker"); }\n`);
+    const keySamples = [
+      ...HOUSE_IDENTIFIER_SAMPLES.map((i) => i),
+      ...HOUSE_ID_SAMPLES.map((i) => `\`${i}\``),
+      ...HOUSE_WORD_SAMPLES.map((w) => `\`${w}:\${userId}\``),
+    ];
+    const keyMissed = keySamples.filter((expr) => {
+      const planted = keyPlant(expr);
+      return planted.length !== 1 || houseHits(planted[0].key).length === 0;
+    });
+    const keyBenign = ["viewerUserId", "`${officerId}:${userId}`", "ip", "phone", "session.userId"];
+    const keyCried = keyBenign.filter((expr) => {
+      const planted = keyPlant(expr);
+      return planted.length !== 1 || houseHits(planted[0].key).length > 0;
+    });
+    ok("0.L52.c5 · CONTROL · every sample of all three families planted as a KEY — a bare identifier, a bounded id in a template, and a word joined to a real id — is read back from the tree and REPORTED, and the five keys the tree actually uses today (the viewer, the `${officer}:${holder}` pair, an IP, a phone, a session id) are each read back and NOT reported",
+      keyMissed.length === 0 && keyCried.length === 0 && keySamples.length >= 30,
+      `${keySamples.length} house plants · missed ${j(keyMissed)} · ${keyBenign.length} benign plants · falsely reported ${j(keyCried)}`);
+
+    /**
+     * ⛔ **THE AUTHORITY DOC IS IN THE POPULATION, BECAUSE THE RENAME LEFT IT BEHIND** (C5-7's review, medium).
+     * This section's own population is `srcFiles()`, which walks `src/` — so when L52 renamed the desk's rule key,
+     * `docs/HOUSE-BOTS.md` went on naming the OLD one in two places and no guard on this branch could report it.
+     * That doc is the feature's LAW, not history like the `plans/` files: a later session reads it, adds a caller
+     * against the key it names, and 0.L52.3 reports the stale key only AFTER the fact. The mention shape is the
+     * one this repository uses everywhere — `` `<key>` bucket `` — and every rule-shaped key written that way in
+     * that doc must be one `RATE_RULES` declares.
+     *
+     * ⚠️ SCOPE, NAMED: this doc only. Other docs name rate buckets of other features with their own histories and
+     * their own tables; widening the sweep to all of `docs/` would make this pin about them. A guard's scope is
+     * part of its claim — which is the lesson this whole section was written for.
+     */
+    const AUTHORITY_DOC = "docs/HOUSE-BOTS.md";
+    const docBuckets = (text: string): string[] =>
+      [...text.matchAll(/`([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)+)`\s+(?:rate\s+)?bucket/g)].map((mm) => mm[1]);
+    const docText = read(AUTHORITY_DOC);
+    const docNamed = docBuckets(docText);
+    const docStale = docNamed.filter((k) => !keys.includes(k));
+    ok("0.L52.4 · ⛔ every rate-limit bucket the feature's AUTHORITY doc names is one RATE_RULES declares — a rename that leaves the law naming a bucket that no longer exists teaches the next session the wrong key, and this section's src/-only population could never see it",
+      docNamed.length > 0 && docStale.length === 0,
+      `${AUTHORITY_DOC}: ${docNamed.length} bucket mention(s) ${j(docNamed)} · stale: ${j(docStale)}`);
+    const docPlant = docBuckets(`${docText}\n\nthe \`desk.verify.gone\` bucket {capacity 3}\n`);
+    ok("0.L52.c6 · CONTROL · the doc sweep READS the mention shape and REPORTS a key the table does not declare — so 0.L52.4's zero is a measurement of that document and not of a pattern that matches nothing in it",
+      docPlant.length === docNamed.length + 1 && docPlant.filter((k) => !keys.includes(k)).join("|") === "desk.verify.gone",
+      `${docNamed.length} → ${docPlant.length} mentions`);
+
     /* ⭐ THE DEFECT ITSELF, and it is the only control that proves this pin would have caught L52 rather than
      * something L52-shaped. The key this ruling removed is REBUILT from the shared sample by dropping its separator
      * (never re-typed here, so the word enters this file from the one module that owns it), planted, and required
@@ -1023,6 +1324,87 @@ if (STORE === "memory") {
 }
 
 if (STORE === "memory") {
+  /**
+   * ⛔ **§0 · RULING 250 · THE REL-0 COVERAGE ROLL-CALL, BUILT — BECAUSE C5-7 OWNED IT AND ANSWERED FOR FOUR IDS.**
+   *
+   * Ruling 250 (`C5-SPEC.md:2557-2596`) says a struck or reshaped scenario id counts as covered ONLY through an
+   * assertion that names it, and its Proof line is "the REL-0 coverage gate reads each id against an assertion
+   * label". C5-7 named FOUR — HB-LC-39/CRA-27, HB-ACC-12/CRA-04, CRA-10 and HB-ACC-13 — and `PROGRESS.md`'s
+   * Scenario coverage gate still read "Ids covered by tests ⬜ not measured yet". Measured here on 2026-09-20:
+   * of the ids ruling 250 itself lists, SEVEN are named somewhere under `src/` or `scripts/`, SEVEN are struck
+   * whole by owner ruling D20 and closed in the register, and the rest are NOT.
+   *
+   * ⛔ THE POINT IS NOT THE NUMBER, IT IS THAT THE NUMBER CANNOT BE SILENT AGAIN. Rule 4 of this checkpoint's law:
+   * "not applicable" is the most dangerous silent verdict. So an id is covered, or struck by D20 in the register,
+   * or NAMED with a reason in `plans/house-bots/DEFERRED-TESTS.md` — and this assertion is what makes the third
+   * option a written one instead of an omission. A gate not in the pipeline is not a gate; this one runs every day.
+   */
+  section("§0 · ruling 250 · the REL-0 scenario coverage roll-call for the ids this ruling names");
+  await guard("0.250", () => {
+    /* @roll-call-lists:start — ⛔ THE SEARCH MUST NOT FIND THIS FILE'S OWN LIST. The population includes this file
+       (it carries four of the ids in real assertion labels), so without stripping the declaration region the gate
+       reported all 49 ids "covered" on its first run — a scanner measuring itself, which is exactly the shape this
+       checkpoint exists to refuse. `bodyOf` removes everything between these two markers when it reads SELF, and
+       `0.250.c0` proves the strip really happens and really matters. */
+    /** Ruling 250's own lists, transcribed from `C5-SPEC.md:2557-2596`. Data, so a list that shrinks is visible. */
+    const NAMED_FORMS = ["HB-ACC-12", "CRA-04", "HB-ACC-13", "HB-ACC-14", "HB-ACC-32", "HB-ACC-40", "HB-LC-11",
+      "HB-LC-39", "CRA-27", "CRA-10", "CRA-17", "FS-25", "FS-30"];
+    const UNCHANGED = ["CRA-01", "CRA-02", "CRA-03", "CRA-07", "CRA-11", "CRA-12", "CRA-14", "CRA-16", "CRA-18",
+      "CRA-21", "CRA-22", "CRA-28", "CRA-30", "CRA-31", "CRA-32", "CRA-33", "CRA-34", "CRA-35", "CRA-36",
+      "HB-LC-17", "HB-LC-20", "HB-LC-26", "HB-LC-27", "HB-LC-34", "FS-05", "FS-22", "FS-26",
+      "TGT-28", "TGT-36", "TGT-38", "TGT-39", "CRA-08", "CRA-19", "CRA-20", "FS-29", "HB-LC-24"];
+    /** The seven D20 struck WHOLE, each closed by its own "Coverage gate: struck by D20" line in the register. */
+    const STRUCK_WHOLE = ["CRA-02", "CRA-11", "CRA-18", "CRA-33", "CRA-36", "HB-LC-17", "TGT-39"];
+    /* @roll-call-lists:end */
+    const ALL = [...new Set([...NAMED_FORMS, ...UNCHANGED])];
+
+    const REGISTER = "plans/house-bots/01-scenario-register.md";
+    const DEFERRED = "plans/house-bots/DEFERRED-TESTS.md";
+    const SELF = "scripts/lib/house-bot-reports-cases.mts";
+    const LIST_START = "@roll-call-lists" + ":start", LIST_END = "@roll-call-lists" + ":end";
+    const bodyOf = (rel: string): string => {
+      const code = read(rel);
+      if (rel !== SELF) return code;
+      const a = code.indexOf(LIST_START), b = code.indexOf(LIST_END);
+      return a >= 0 && b > a ? `${code.slice(0, a)}${code.slice(b)}` : code;
+    };
+    const population = [...srcFiles(), ...scriptFiles()];
+    const found = new Set<string>();
+    for (const rel of population) {
+      const code = bodyOf(rel);
+      for (const id of ALL) if (!found.has(id) && code.includes(id)) found.add(id);
+    }
+    const registerText = read(REGISTER);
+    const deferredText = read(DEFERRED);
+    const struckLines = (registerText.match(/Coverage gate: struck by D20/g) ?? []).length;
+    const covers = (id: string) => found.has(id) || STRUCK_WHOLE.includes(id) || deferredText.includes(id);
+    const undeclared = ALL.filter((id) => !covers(id));
+    const deferredOnly = ALL.filter((id) => !found.has(id) && !STRUCK_WHOLE.includes(id));
+
+    ok("0.250.0 · the population is real and it is printed: every id ruling 250 names, read against every tracked file under src/ and scripts/, with the register's D20 closures counted separately from the tree's hits",
+      ALL.length >= 45 && population.length > 1500 && struckLines === STRUCK_WHOLE.length && registerText.length > 0,
+      `${ALL.length} ids · ${population.length} files searched · ${found.size} named in the tree · ${struckLines} "struck by D20" closures in the register (expected ${STRUCK_WHOLE.length})`);
+    ok("0.250.1 · ⛔ RULING 250 · every id it names is COVERED by an assertion label or comment in the tree, STRUCK whole by D20 and closed in the register, or listed BY NAME with a reason in DEFERRED-TESTS.md — an id that is none of the three is reported here, so 'not measured yet' can never again be the whole record",
+      undeclared.length === 0,
+      `covered in tree: ${j([...found].sort())} · struck by D20: ${STRUCK_WHOLE.length} · deferred by name: ${deferredOnly.length} · UNDECLARED: ${j(undeclared)}`);
+
+    /* ⛔ THE CONTROLS. The gate's whole risk is that it reports clean because it searched nothing — or itself. */
+    const selfSample = deferredOnly[0] ?? null;
+    ok("0.250.c0 · CONTROL · the roll-call does not read its OWN declaration: the list region is stripped from this file before the search, and an id this file carries ONLY inside that list is still counted as NOT found — without the strip the gate reported all 49 ids covered on its first run, a scanner measuring itself",
+      selfSample !== null && read(SELF).includes(selfSample) && !bodyOf(SELF).includes(selfSample) && bodyOf(SELF).length < read(SELF).length,
+      `sample ${selfSample} · ${read(SELF).length - bodyOf(SELF).length} characters of declaration stripped`);
+    const ghost = "CRA-99";
+    const coversGhost = found.has(ghost) || STRUCK_WHOLE.includes(ghost) || deferredText.includes(ghost);
+    const realDeferred = deferredOnly[0] ?? null;
+    ok("0.250.c1 · CONTROL · an id that is in NO file, in no D20 closure and in no deferred row is REPORTED — and a real deferred id is NOT, so the third door is a door and not a hole",
+      !coversGhost && realDeferred !== null && deferredText.includes(realDeferred) && !found.has(realDeferred),
+      `ghost ${ghost} covered=${coversGhost} · sample deferred id ${realDeferred}`);
+    const seen = ALL.filter((id) => found.has(id));
+    ok("0.250.c2 · CONTROL · the tree search really finds ids: the four C5-7 named into assertion labels are among the hits, and an id typed nowhere is not — so `found` is a measurement of the tree and not an empty set",
+      ["HB-LC-39", "CRA-27", "HB-ACC-12", "CRA-04", "CRA-10", "HB-ACC-13"].every((id) => seen.includes(id)) && !found.has(ghost),
+      `${seen.length} of ${ALL.length} ids found in the tree`);
+  });
+
   section("§0 · ruling 175 · one absence vocabulary: every consumer imports it, none declares its own, broader lists extend it");
   await guard("0.175", () => {
     for (const file of VOCABULARY_CONSUMERS) {
@@ -3077,11 +3459,34 @@ await guard("11.247", async () => {
   const FAIRNESS: Any = await import("../../src/app/api/fairness/recent/route.ts");
   const HEALTH: Any = await import("../../src/app/api/health/route.ts");
   const HB: Any = await import("../../src/lib/server/house-bot-dal.ts");
+  const HIST: Any = await import("../../src/lib/server/market-history.ts");
+  const WATCH: Any = await import("../../src/lib/server/watchlist-service.ts");
+  const LEADER: Any = await import("../../src/lib/server/leader.ts");
+  const HBC: Any = await import("../../src/lib/house-bot/constants.ts");
+
+  /**
+   * ⛔ **THE SWEEP'S OWN SERIALISER, BECAUSE `JSON.stringify` CANNOT SEE INSIDE A `Map`.** C5-7's review, high.
+   * `JSON.stringify(new Map([["a", ["b"]]]))` is the two characters `{}` — a `Map` has no enumerable own properties
+   * and no `toJSON`. THREE of this sweep's readers answer with one (`traderSeedsByMarket`, `getCardCharts`,
+   * `countCommentsByMarkets`), so each of them contributed ZERO BYTES to the needle search for every viewer, and the
+   * checkpoint's own declared mutation `247-seeds-raw` / S7-M08 — which makes `traderSeedsByMarket` answer with raw
+   * position rows, marker and `hb:` bet key and all — could not have reddened 11.247.2. An absence proof whose
+   * instrument reads two characters is the exact shape rule 1 of this checkpoint's law refuses, and it is why
+   * 11.247.c5 below plants that mutation's own answer shape and requires it REPORTED before any verdict is read.
+   * `Set` and `bigint` are handled for the same reason: a container the serialiser does not know is a hole.
+   */
+  const sweepJson = (v: unknown): string =>
+    JSON.stringify(v, (_k, val) => {
+      if (val instanceof Map) return { "@Map": [...(val as Map<unknown, unknown>).entries()] };
+      if (val instanceof Set) return { "@Set": [...(val as Set<unknown>).values()] };
+      if (typeof val === "bigint") return String(val);
+      return val;
+    }) ?? String(v);
 
   /* ── the bus, captured from before the fixture moves anything ────────────────────────────────── */
+  const KNOWN_BUS = ["market:odds", "wallet:balance", "notification:new", "market:resolve"] as const;
   const frames: Array<{ type: string; data: unknown }> = [];
-  const stop = (["market:odds", "wallet:balance", "notification:new", "market:resolve"] as const)
-    .map((t) => BUS.subscribe(t, (data: unknown) => { frames.push({ type: t, data }); }));
+  const stop = KNOWN_BUS.map((t) => BUS.subscribe(t, (data: unknown) => { frames.push({ type: t, data }); }));
 
   /* ── the fixture ─────────────────────────────────────────────────────────────────────────────── */
   await w.limits();
@@ -3135,62 +3540,154 @@ await guard("11.247", async () => {
   const placed2 = await w.place(bot, i3);
   const voided = await SVC.emergencyVoidMarket({ marketId: m2.id, officerId: OFFICER, reason: "sweep fixture void" });
 
+  /* ⛔ A THIRD HOUSE-HELD MARKET, RESOLVED — BECAUSE ONE OF THE FOUR BUS TYPES HAD NO EMITTER ON ANY PATH THIS
+     FIXTURE DROVE (C5-7's review, high). Ruling 247 requires "every frame of the four KNOWN_EVENTS types captured
+     from the bus". Measured on the first run of the per-type breakdown below: market:odds 6, wallet:balance 8,
+     notification:new 7, **market:resolve 0** — `market:resolve` is emitted at exactly two sites
+     (`resolveDueMarket` and `resolveMarket`) and the fixture called neither, so adding `houseBotId` to that
+     payload type would have left this sweep green and its printed total unchanged. A resolve is driven here, on a
+     market the house holds a stake in, so the type is swept with house money in the room. */
+  const m3 = await w.poll();
+  const rBet = await SVC.buyPosition(PLAYER, { marketId: m3.id, side: "YES", stake: 15_000 });
+  if ((rBet as Any)?.ok) await w.backdate((rBet as Any).data.positionId, 120_000);
+  await w.ageHouseMinute();
+  const i4 = await w.intent(bot, m3.id, { side: "NO", stakeTzs: 3_000 });
+  const placed3 = await w.place(bot, i4);
+  const resolved = await SVC.resolveMarket({ marketId: m3.id, outcome: "YES", officerId: OFFICER, evidence: "sweep fixture resolve" });
+
+  /* ⛔ A TARGET ROW AND A PRESS ROW, BECAUSE RULING 247 NAMES FIVE NEEDLE CLASSES AND THE FIXTURE SUPPLIED THREE
+     (C5-7's review, medium). Its Needles line reads "the fixture's own bot, intent, event, target and press ids" —
+     and no `targetStore` or `pressStore` write appeared anywhere in this guard, so a target id or a press id
+     reaching a reader's output was not detectable here AT ALL: `IDS` could not hold what the fixture never made.
+     Both are bounded house ids (`hbt_`/`hbp_`), so they are needles in their own right and in the vocabulary's
+     `ids` family. */
+  const tgt = await HB.targetStore.insert({
+    id: HB.newHouseId("target"), houseBotId: bot.botId, marketId: m.id, delayMinSec: 5, delayMaxSec: 10,
+    timingFrom: "STAKE", reactTo: "FIRST", createdById: OFFICER,
+    snapshot: { titleEn: MARKET_TITLE, category: "macro", cutoff: w.iso(3_600_000), rawYes: 0, rawNo: 0 },
+  });
+  const press = await HB.pressStore.insertChecking({
+    id: HB.newHouseId("press"), actorId: OFFICER, submitId: crypto.randomUUID(), purpose: "ENTER_NOW",
+    houseBotId: bot.botId, marketId: m.id, targetId: tgt.id, intentId: i1.id, reason: "sweep fixture press",
+  });
+
+  /* ⛔ AND THE BOT'S OWN LABEL IS A NEEDLE. `label` is the one ARBITRARY, OWNER-CHOSEN house string in the system —
+     it matches no vocabulary pattern by construction, and it is the needle `test:erasure` uses. Read back from the
+     row rather than re-typed, so a fixture that stopped labelling its bot cannot quietly stop testing for one. */
+  const botRow = await HB.houseBotStore.get(bot.botId);
+
+  /* ⛔ THE PLANNER LEASE IS TAKEN BEFORE `/api/health` IS SWEPT — ruling 247 requires exactly this, and it was not
+     built (C5-7's review, high). `/api/health`'s ONLY house-bearing path is the `leadership` map, filtered to
+     `PUBLIC_LEASE_TASKS` at `src/app/api/health/route.ts:34`. With no lease taken in this process that map CANNOT
+     contain the planner key whatever the filter does, so four of the sweep's rows reported an absence produced by
+     the fixture. `HOUSE_PLANNER_TASK` is `house-bot`, a shared-vocabulary word, so the unfiltered snapshot is a
+     REAL needle in a REAL artefact — and 11.247.c6 below requires the sweep to find it there before 11.247.2's
+     zero on `/api/health` is read as anything. The lease is NOT released: §11.171 reads the same route after this. */
+  const leaseTaken = await LEADER.acquireLeadership(HBC.HOUSE_PLANNER_TASK);
+
   const housePositions = (await w.positionsOf(m.id)).filter((p: Any) => p.houseBotId != null);
   const playerPositions = (await w.positionsOf(m.id)).filter((p: Any) => p.houseBotId == null);
   for (const s of stop) s();
 
-  ok("11.247.0 · the fixture is real: a house stake on a poll, a countered trigger player with a penalty box, a holder comment, and an emergency void of a second house-held market — with the bus captured throughout",
-    placed?.ok === true && countered?.ok === true && placed2?.ok === true && housePositions.length >= 2 && playerPositions.length >= 2
-    && !!boxed?.id && comment?.ok === true && voided?.ok === true && frames.length > 0,
-    j({ housePositions: housePositions.length, playerPositions: playerPositions.length, placed: placed?.ok, countered: countered?.ok, voidMarketStake: placed2?.ok, boxed: !!boxed?.id, comment: comment?.ok, voided: voided?.ok, frames: frames.length, refusals: [placed, countered, placed2].filter((r: Any) => r?.ok !== true) }));
+  ok("11.247.0 · the fixture is real: a house stake on a poll, a countered trigger player with a penalty box, a holder comment, an emergency void of a second house-held market, a RESOLVE of a third, and a target and a press row about the bot — with the bus captured throughout",
+    placed?.ok === true && countered?.ok === true && placed2?.ok === true && placed3?.ok === true && resolved?.ok === true
+    && housePositions.length >= 2 && playerPositions.length >= 2
+    && !!boxed?.id && comment?.ok === true && voided?.ok === true && !!tgt?.id && (press as Any)?.ok !== false && frames.length > 0,
+    j({ housePositions: housePositions.length, playerPositions: playerPositions.length, placed: placed?.ok, countered: countered?.ok, voidMarketStake: placed2?.ok, resolveMarketStake: placed3?.ok, resolved: resolved?.ok, boxed: !!boxed?.id, comment: comment?.ok, voided: voided?.ok, target: !!tgt?.id, press: (press as Any)?.ok ?? !!(press as Any)?.id, frames: frames.length, refusals: [placed, countered, placed2, placed3, resolved].filter((r: Any) => r?.ok !== true) }));
 
   /* ── the needles ─────────────────────────────────────────────────────────────────────────────── */
-  const IDS = [bot.botId, bot.userId === HOLDER ? null : bot.userId, i1.id, i2.id, boxed.id, `hb:${i1.id}`, `hb:${i2.id}`].filter(Boolean) as string[];
+  /* ⛔ FIVE CLASSES, NOT THREE (ruling 247's Needles line, restored by C5-7's review): the bot, intent, event,
+     TARGET and PRESS ids, the `hb:` bet keys — and the bot's own `label`/`labelKey`, which match no vocabulary
+     pattern and are the only owner-chosen house strings the system holds. */
+  const IDS = [
+    bot.botId, bot.userId === HOLDER ? null : bot.userId, i1.id, i2.id, i3.id, i4.id, boxed.id, tgt.id,
+    (press as Any)?.row?.id ?? (press as Any)?.id ?? null,
+    `hb:${i1.id}`, `hb:${i2.id}`, `hb:${i4.id}`, botRow?.label ?? null, botRow?.labelKey ?? null,
+  ].filter(Boolean) as string[];
   const needlesIn = (text: string) => [
     ...IDS.filter((n) => text.includes(n)).map((n) => `id:${n}`),
     ...houseHitsByFamily(text).map((h) => `${h.family}:${h.word}`),
   ];
 
-  /* ── the readers, per viewer ─────────────────────────────────────────────────────────────────── */
-  const VIEWERS: Array<[string, string | undefined]> = [
-    ["signed out", undefined], ["another player", PLAYER], ["the holder", HOLDER], ["a trigger player", TRIGGER],
-  ];
-  /** Each reader: a name and a call. A reader that THROWS is recorded — never swallowed into a smaller sweep. */
-  const readers = (viewer: string | undefined): Array<[string, () => Promise<unknown>]> => [
+  /**
+   * ── the readers ───────────────────────────────────────────────────────────────────────────────
+   *
+   * ⛔ **THE PER-VIEWER DIMENSION IS APPLIED ONLY WHERE IT EXISTS** (C5-7's review, medium-low). The first version
+   * ran nine readers for each of four viewers and printed "36 sweeps · 4 viewers × 9 readers". EIGHT of the nine
+   * took no viewer argument and no session was established, so thirty-two of those thirty-six rows were byte-for-byte
+   * repeats: the printed population was four times the number of independent measurements, and rule 3 of this
+   * checkpoint's law is that the population must be visible WITHOUT re-reading the source. So the readers are split
+   * by what they actually take. A viewer-blind reader runs ONCE and says so; a reader a signed-in player's own
+   * screen is built from runs once per viewer, which is the dimension ruling 247 was aimed at.
+   *
+   * ⛔ AND THE READER SET GREW to the rest of what `/markets` and `/markets/[id]` are actually built from:
+   * `listMarkets`, `getSimilarMarkets`, `getCardCharts`, `countCommentsByMarkets` and `listWatchedMarketIds`. Three
+   * of those answer with a `Map` and were unreadable to the old serialiser; see `sweepJson`.
+   *
+   * ⛔ `listPositionsForUser` IS THE ONE READER DELIBERATELY OUTSIDE THE VERDICT, and the reason is the reason
+   * `listPositionsForMarket` is: it answers with RAW, UNPROJECTED position rows, and its viewer-facing caller
+   * (`src/app/markets/[id]/page.tsx:181`) is a SERVER component that reads fields one at a time and hands a client
+   * component scalars. Sweeping it as a leak would report the raw row the page never serialises — the "leak" would
+   * be the fixture's. It was in neither the population nor `DEFERRED-TESTS.md` before, which is rule 4's silent
+   * drop; it is now proved REPORTED by 11.247.c1b (so the sweep is not blind to it) and its caller is pinned by
+   * 11.247.c1d. What still cannot be swept HERE — the SERVED layer, and Up & Down's `getBoard`/`getRoundDetail`,
+   * which need a fixture this suite does not have — is NOT MEASURED by name in
+   * `plans/house-bots/DEFERRED-TESTS.md` §1j.
+   */
+  const anchor = await w.mdal.marketStore.get(m.id);
+  const PUBLIC_READERS: Array<[string, () => Promise<unknown>]> = [
     ["getMarket", () => SVC.getMarket(m.id)],
     ["getMarket(voided)", () => SVC.getMarket(m2.id)],
+    ["listMarkets", () => SVC.listMarkets()],
+    ["getSimilarMarkets", () => SVC.getSimilarMarkets(anchor, 6)],
+    ["getCardCharts", () => HIST.getCardCharts([m.id, m2.id])],
+    ["countCommentsByMarkets", () => COMMENTS.countCommentsByMarkets([m.id, m2.id])],
     ["leaderboard", () => w.mdal.positionStore.leaderboard(50)],
     ["leaderboardPlayerCounts", () => w.mdal.positionStore.leaderboardPlayerCounts()],
     ["traderSeedsByMarket", () => SVC.traderSeedsByMarket([m.id, m2.id], 3)],
     ["getTickerFeed", () => TICKER.getTickerFeed("en", 50)],
-    ["listComments", () => COMMENTS.listComments(m.id, viewer ?? null, { limit: 100 })],
+    ["listComments(signed out)", () => COMMENTS.listComments(m.id, null, { limit: 100 })],
     ["/api/fairness/recent", () => FAIRNESS.GET().then((r: Any) => r.text())],
     ["/api/health", () => HEALTH.GET().then((r: Any) => r.text())],
   ];
+  /** Readers that TAKE the viewer — the only ones for which "for each viewer" is a real dimension. */
+  const viewerReaders = (viewer: string): Array<[string, () => Promise<unknown>]> => [
+    ["listComments", () => COMMENTS.listComments(m.id, viewer, { limit: 100 })],
+    ["listWatchedMarketIds", () => WATCH.listWatchedMarketIds(viewer)],
+  ];
+  const SIGNED_IN: Array<[string, string]> = [["another player", PLAYER], ["the holder", HOLDER], ["a trigger player", TRIGGER]];
 
   const swept: string[] = [];
   const leaks: string[] = [];
   const threw: string[] = [];
-  for (const [label, viewer] of VIEWERS) {
-    for (const [name, call] of readers(viewer)) {
-      let text: string;
-      try { text = j(await call()); } catch (e) { threw.push(`${label}/${name}: ${String((e as Error)?.message ?? e).slice(0, 80)}`); continue; }
-      swept.push(`${label}/${name}`);
-      const hits = needlesIn(text);
-      if (hits.length > 0) leaks.push(`${label}/${name} → ${hits.slice(0, 4).join(", ")}`);
-    }
-  }
+  const sweep = async (label: string, call: () => Promise<unknown>) => {
+    let text: string;
+    try { text = sweepJson(await call()); } catch (e) { threw.push(`${label}: ${String((e as Error)?.message ?? e).slice(0, 80)}`); return; }
+    swept.push(label);
+    const hits = needlesIn(text);
+    if (hits.length > 0) leaks.push(`${label} → ${hits.slice(0, 4).join(", ")}`);
+  };
+  for (const [name, call] of PUBLIC_READERS) await sweep(`public/${name}`, call);
+  for (const [label, viewer] of SIGNED_IN) for (const [name, call] of viewerReaders(viewer)) await sweep(`${label}/${name}`, call);
   // Every captured bus frame, which is what /api/events forwards to a signed-in client.
   for (const f of frames) {
     swept.push(`bus/${f.type}`);
-    const hits = needlesIn(j(f));
+    const hits = needlesIn(sweepJson(f));
     if (hits.length > 0) leaks.push(`bus/${f.type} → ${hits.slice(0, 4).join(", ")}`);
   }
 
-  ok("11.247.1 · the population is real, and it is printed: every reader ran for every viewer, and every captured bus frame was swept — a reader that starts throwing leaves the sweep smaller and is NAMED here, never swallowed",
-    swept.length >= VIEWERS.length * 9 && threw.length === 0 && frames.length >= 1,
-    `${swept.length} sweeps · ${VIEWERS.length} viewers × ${readers(undefined).length} readers + ${frames.length} bus frames · threw: ${j(threw)}`);
-  ok("11.247.2 · ⛔ D19 · ruling 247 · HB-LC-39 / CRA-27 · every viewer · NOT ONE of them carries the fixture's bot, intent or event id, the hb: bet key, or a word, identifier or bounded id of the shared vocabulary — for a signed-out visitor, another player, the holder or the trigger player",
+  /* ⛔ THE BUS POPULATION IS PRINTED BY TYPE, NOT AS A TOTAL (C5-7's review, high). `frames.length >= 1` over an
+     evidence string reading "21 bus frames" is the same verdict whether the fixture exercised four of the four
+     KNOWN_EVENTS types or one — so a payload type that grew a house field on a path this fixture never drives
+     would leave the sweep green and the count unchanged. The breakdown is asserted, per type, and a type with no
+     frame is NAMED. */
+  const byType = Object.fromEntries(KNOWN_BUS.map((t) => [t, frames.filter((f) => f.type === t).length]));
+  const silentTypes = KNOWN_BUS.filter((t) => byType[t] === 0);
+  const expectedReads = PUBLIC_READERS.length + SIGNED_IN.length * viewerReaders(PLAYER).length;
+  ok("11.247.1 · the population is real, it is printed, and it is a count of INDEPENDENT measurements: each viewer-blind reader once, each viewer-facing reader once per signed-in viewer, and every captured bus frame BY TYPE — a reader that starts throwing leaves the sweep smaller and is NAMED here, never swallowed",
+    swept.length >= expectedReads && threw.length === 0 && silentTypes.length === 0,
+    `${swept.length - frames.length} reads (${PUBLIC_READERS.length} viewer-blind × 1 + ${SIGNED_IN.length} signed-in viewers × ${viewerReaders(PLAYER).length} viewer-facing) + ${frames.length} bus frames ${j(byType)} · silent types: ${j(silentTypes)} · threw: ${j(threw)}`);
+  ok("11.247.2 · ⛔ D19 · ruling 247 · HB-LC-39 / CRA-27 · every viewer · NOT ONE of them carries the fixture's bot, intent, event, target or press id, the hb: bet key, the bot's own label, or a word, identifier or bounded id of the shared vocabulary — for a signed-out visitor, another player, the holder or the trigger player",
     leaks.length === 0, j(leaks.slice(0, 8)));
 
   /* ── the controls, and they are the assertion ────────────────────────────────────────────────── */
@@ -3207,10 +3704,44 @@ await guard("11.247", async () => {
      `updown-board.myStakesByMarket` (the viewer's own positions, projected to six fields before anything
      sees them; pinned by 11.247.c1c). What it IS, is proof that this sweep can see a raw row when one
      is handed to it, on the same fixture, through the same needles as every reader above. */
+  /* ⛔ AND IT IS TWO FUNCTIONS, NOT ONE (C5-7's review, medium-low). `listPositionsForUser` is the SAME shape with
+     the SAME exemption — raw rows, a server-side caller that reads fields one at a time — and it was named in
+     neither the sweep nor the deferred register, which is a silent drop rather than a decision. Both are required
+     to be REPORTED here, so the pair of exemptions above is a measurement and not an assumption. */
   const rawService = j(await SVC.listPositionsForMarket(m.id));
-  ok("11.247.c1b · CONTROL (i, again, with a REAL reader) · the unprojected service read `listPositionsForMarket` IS reported — the bot id, both intent ids and the hb: bet key. A synthetic plant proves the needles; this proves them against a function the product actually has",
-    [`id:${bot.botId}`, `id:${i1.id}`, `id:hb:${i1.id}`].every((n) => needlesIn(rawService).includes(n)),
-    j(needlesIn(rawService).slice(0, 6)));
+  const rawUser = sweepJson(await SVC.listPositionsForUser(HOLDER, 100));
+  ok("11.247.c1b · CONTROL (i, again, with REAL readers) · BOTH unprojected service reads — `listPositionsForMarket` and the holder's own `listPositionsForUser` — ARE reported, with the bot id, the intent ids and the hb: bet key. A synthetic plant proves the needles; these prove them against two functions the product actually has, and they are the two the verdict deliberately excludes",
+    [`id:${bot.botId}`, `id:${i1.id}`, `id:hb:${i1.id}`].every((n) => needlesIn(rawService).includes(n))
+    && [`id:${bot.botId}`, `id:${i1.id}`].every((n) => needlesIn(rawUser).includes(n)),
+    j({ forMarket: needlesIn(rawService).slice(0, 4), forUser: needlesIn(rawUser).slice(0, 4) }));
+
+  /* ⛔ AND `listPositionsForUser`'s VIEWER-FACING CALLER IS PINNED, exactly as `myStakesByMarket` is by c1c. The
+     page is a SERVER component, so the raw row is safe only while it stays there: the row is safe if no JSX
+     attribute on that page is handed the position binding WHOLE (`prop={p}` or `{...p}`), because a whole row
+     crossing into a client component's props is a row in the RSC payload. The plant below hands `SellButton` the
+     spread and requires the pin to report it, so the zero is a measurement of the page and not of a walk that
+     reached nothing. */
+  const posPage = "src/app/markets/[id]/page.tsx";
+  const wholeRowProps = (code: string): string[] => {
+    const sf = parse(posPage, code);
+    const out: string[] = [];
+    walkTree(sf, (n) => {
+      if (ts.isJsxSpreadAttribute(n) && ts.isIdentifier(n.expression) && n.expression.text === "p") {
+        out.push(`spread {...p} at ${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1}`);
+      }
+      if (ts.isJsxAttribute(n) && n.initializer && ts.isJsxExpression(n.initializer)
+        && n.initializer.expression && ts.isIdentifier(n.initializer.expression) && n.initializer.expression.text === "p") {
+        out.push(`${n.name.getText()}={p} at ${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1}`);
+      }
+    });
+    return out;
+  };
+  const posCode = decomment(read(posPage));
+  const posPlant = posCode.replace("<SellButton", "<SellButton {...p}");
+  ok("11.247.c1d · the viewer-facing caller of `listPositionsForUser` keeps the raw row on the SERVER: no JSX attribute on /markets/[id] is handed the position binding whole — no `prop={p}`, no `{...p}` — so the marker cannot ride an RSC payload out of a page that only ever reads fields",
+    wholeRowProps(posCode).length === 0 && posCode.includes("listPositionsForUser"), j(wholeRowProps(posCode)));
+  ok("11.247.c1d.control · CONTROL · the plant really CHANGED the page and the pin REPORTS the spread — so c1d's zero is a measurement of this page and not of a walk that matched nothing",
+    posPlant !== posCode && wholeRowProps(posPlant).length === 1, `changed=${posPlant !== posCode} · ${j(wholeRowProps(posPlant))}`);
 
   /* ⛔ AND THE ONE CALLER THAT A VIEWER REACHES IS PINNED. `myStakesByMarket` is what a player's round
      detail is built from; it takes those raw rows and builds a SIX-FIELD item. If that literal ever
@@ -3260,6 +3791,102 @@ await guard("11.247", async () => {
     j({ titleInMarket: boardish.includes(MARKET_TITLE), holderOnLeaderboard: board.includes(HOLDER), leaderboardRows: (await w.mdal.positionStore.leaderboard(50)).length }));
   ok("11.247.c4 · D6 · HB-LC-39 · …and the holder is there as an ORDINARY PLAYER: the leaderboard row is the account's, with no marker and no house key on it",
     houseHits(board).length === 0 && !board.includes(bot.botId), j(houseHits(board).slice(0, 4)));
+
+  /* ⛔ CONTROL (iv) · THE SERIALISER, AND IT IS THIS CHECKPOINT'S OWN DECLARED MUTATION RUN AS A CONTROL.
+     `traderSeedsByMarket` answers with a `Map`, and the sweep used to serialise every answer with `JSON.stringify`,
+     which renders a `Map` as the two characters `{}`. Three of the readers above answer with one. Both halves are
+     asserted: the plain serialiser is BLIND to a known id inside the real reader's real answer, this one is not —
+     and a `Map` carrying a RAW POSITION ROW, which is exactly what mutation `247-seeds-raw` / S7-M08 makes
+     `traderSeedsByMarket` return, is REPORTED with the bot id and the `hb:` bet key on it. */
+  const seedsMap = await SVC.traderSeedsByMarket([m.id, m2.id], 3);
+  const seedsRaw = new Map([[m.id, [await w.mdal.positionStore.get(housePositions[0].id)]]]);
+  const rawHits = needlesIn(sweepJson(seedsRaw));
+  ok("11.247.c5 · CONTROL (iv) · THE SWEEP CAN SEE INSIDE A Map: JSON.stringify renders the real trader-seed answer as `{}` and finds nothing, this sweep's serialiser finds the seeded player's own id in it — and the SAME reader answering with raw position rows (the checkpoint's own declared mutation 247-seeds-raw) is REPORTED, bot id and hb: bet key and all",
+    seedsMap instanceof Map && seedsMap.size > 0
+    && j(seedsMap) === "{}" && !j(seedsMap).includes(PLAYER) && sweepJson(seedsMap).includes(PLAYER)
+    && rawHits.includes(`id:${bot.botId}`) && rawHits.some((h) => h.startsWith("id:hb:")),
+    `plain=${j(seedsMap)} · deep hit=${sweepJson(seedsMap).includes(PLAYER)} · raw-row hits ${j(rawHits.slice(0, 4))}`);
+
+  /* ⛔ CONTROL (v) · THE LEASE IS REALLY HELD, AND THE UNFILTERED SNAPSHOT REALLY CARRIES THE HOUSE WORD.
+     Ruling 247 names both halves in terms. Without the lease, `/api/health`'s `leadership` map cannot hold the
+     planner key whatever `PUBLIC_LEASE_TASKS` does, and the four `/api/health` rows above report an absence the
+     FIXTURE produced. With it, deleting that filter and returning `leadershipSnapshot()` whole goes red HERE. */
+  const rawLeases = sweepJson(LEADER.leadershipSnapshot());
+  ok("11.247.c6 · CONTROL (v) · the planner lease IS held while /api/health is swept, and the UNFILTERED leadershipSnapshot() names it — `house-bot` is a shared-vocabulary word, so the route's own filter is the only thing between that lease name and every visitor, and this sweep can see it when it is not applied",
+    leaseTaken === true && Object.keys(LEADER.leadershipSnapshot()).includes(HBC.HOUSE_PLANNER_TASK)
+    && needlesIn(rawLeases).length > 0 && houseHits(HBC.HOUSE_PLANNER_TASK).length > 0,
+    `leaseTaken=${leaseTaken} · tasks ${j(Object.keys(LEADER.leadershipSnapshot()))} · hits ${j(needlesIn(rawLeases).slice(0, 3))}`);
+
+  /* ⛔ CONTROL (vi) · THE TWO NEW NEEDLE CLASSES AND THE LABEL BITE. A needle that matches nothing is an absence
+     assertion with no instrument, so each is planted into a reader-SHAPED answer and required to be reported —
+     including `label`, which matches no vocabulary pattern and is found only because it is in `IDS`. */
+  const pressId = (press as Any)?.row?.id ?? (press as Any)?.id ?? null;
+  const plantedNeedles = needlesIn(sweepJson({ rows: [{ note: botRow.label, key: botRow.labelKey, t: tgt.id, p: pressId }] }));
+  ok("11.247.c7 · CONTROL (vi) · the target id, the press id and the bot's OWN LABEL are each REPORTED when planted into a reader-shaped answer — the label matches no vocabulary pattern, so without it in IDS the one arbitrary owner-chosen house string in the system would be invisible to this sweep",
+    typeof pressId === "string" && [`id:${tgt.id}`, `id:${pressId}`, `id:${botRow.label}`, `id:${botRow.labelKey}`].every((n) => plantedNeedles.includes(n)),
+    `pressId=${pressId} · label=${botRow?.label} · reported ${j(plantedNeedles.slice(0, 6))}`);
+});
+
+/**
+ * ⛔ **§11b · C5-7's REVIEW, MAJOR · THE ENGINE CARD'S AUDIENCE FAILS CLOSED, AND `{readable:false}` IS INSIDE IT.**
+ *
+ * `houseEngineHealthFor` had ONE `try` around both halves — the viewer lookup and the engine/schema read — and its
+ * `catch` returned `{ readable: false }`, a TRUTHY view. `/admin/system` renders `{houseEngine && <HouseEngineCard/>}`
+ * and that card's failure branch is headed "House bot engine" / "Injini ya boti za nyumba" — two shared-vocabulary
+ * hits. So a failure of the VIEWER LOOKUP produced the feature's name, in two languages, for a viewer whose audience
+ * had never been established: any staff account holding the `ops` VIEW grant, on a page deliberately built to keep
+ * rendering through a database wobble (its other reads each carry their own `catch`), with a SECOND, unmemoised
+ * `db.user.findById` to time out on an exhausted pool. Owner ruling D19 does not allow that viewer to know the
+ * feature exists. C7-SPEC ruling 354(a) specifies `null` here — the answer `houseConsoleAudience` gives — and
+ * 354(c)'s `{readable:false}` is for a failed HEALTH read INSIDE the audience.
+ *
+ * ⛔ AND L52's OWN LESSON IS WHY NO GUARD SAW IT: `test:house-bot-reports` 0.L52 is scoped to rule-table keys and
+ * their call sites, and ruling 453's console lexicon scans `src/app/admin/desk/**`. This string is painted by a page
+ * in ANOTHER admin section, from a module in `src/lib/server/`. A guard's scope is part of its claim.
+ */
+section("§11b · ruling 354(a) · the engine card's audience fails CLOSED on the viewer lookup — no card, no placeholder");
+await guard("0.354a", async () => {
+  const EH: Any = await import("../../src/lib/server/house-bot/engine-health.ts");
+  const { db }: Any = await import("../../src/lib/server/store.ts");
+  const mk = async (id: string, role: string) => {
+    const now = new Date().toISOString();
+    await db.user.create({
+      id, phoneE164: `+2557${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`, email: null,
+      passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+      role, status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
+      acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false, twoFactorEnabled: false,
+      avatarDataUrl: null, recruitedBy: null, createdAt: now, updatedAt: now, lastLoginAt: null, closedAt: null,
+    } as never);
+    return id;
+  };
+  const admin = await mk(`usr_354a_admin_${process.pid}`, "ADMIN");
+  const staff = await mk(`usr_354a_staff_${process.pid}`, "SUPPORT");
+
+  ok("0.354a.0 · the fixture is real: an ADMIN is IN the house-alert audience and gets a readable view, so the nulls below are refusals and not a function that answers null to everybody",
+    ((await EH.houseEngineHealthFor(admin)) as Any)?.readable === true, j(await EH.houseEngineHealthFor(admin)));
+  ok("0.354a.1 · ⛔ D19 · a signed-in NON-ADMIN staff account gets `null` — no card, no placeholder",
+    (await EH.houseEngineHealthFor(staff)) === null, j(await EH.houseEngineHealthFor(staff)));
+
+  /* ⛔ THE DEFECT ITSELF: the viewer lookup THROWS, so the audience is unknown. */
+  const realFind = db.user.findById;
+  let whenLookupFails: unknown;
+  try {
+    db.user.findById = async () => { throw new Error("pool timeout during the second, unmemoised read"); };
+    whenLookupFails = await EH.houseEngineHealthFor(staff);
+  } finally { db.user.findById = realFind; }
+  ok("0.354a.2 · ⛔ D19 · ruling 354(a) · when the VIEWER LOOKUP itself fails the answer is `null`, not `{readable:false}` — a view object is truthy, the page renders the card on it, and the card's failure branch names this feature in two languages to a viewer whose audience was never established",
+    whenLookupFails === null, j(whenLookupFails));
+  ok("0.354a.3 · CONTROL · the stub really was live — the real lookup is back and an ADMIN reads again, so 0.354a.2 measured a failing lookup and not a function that had stopped being called",
+    ((await EH.houseEngineHealthFor(admin)) as Any)?.readable === true, "restored");
+
+  /* ⛔ AND THE CARD REALLY DOES NAME THE FEATURE. Read out of the page, never typed here (ruling 175): the words
+     come from the file under test, so this control cannot drift from what the branch actually paints. */
+  const sysPage = read("src/app/admin/system/page.tsx");
+  const at = sysPage.indexOf("if (!view.readable)");
+  const card = /<AdminCard title="([^"]+)" sw="([^"]+)"/.exec(at >= 0 ? sysPage.slice(at, at + 400) : "");
+  ok("0.354a.c1 · CONTROL · the branch that `{readable:false}` renders REALLY names the feature: the card heading and its Swahili subtitle, read out of the page itself, are both shared-vocabulary hits — so answering `null` outside the audience is a D19 requirement and not a tidiness",
+    at >= 0 && !!card && houseHits(card[1]).length > 0 && houseHits(card[2]).length > 0,
+    j({ title: card?.[1], sw: card?.[2], hits: card ? [...houseHits(card[1]), ...houseHits(card[2])] : [] }));
 });
 
 /* ═══ §11 (ruling 171 slice) · the public /api/health body's raw-text paths name nothing (both stores) ═══════════ */

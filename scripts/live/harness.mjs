@@ -26,7 +26,37 @@ import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
 import { LOCAL_STAFF, LOCAL_STAFF_PASSWORD, LOCAL_ADMIN } from "../local-staff.mjs";
 
-export const BASE = process.env.LIVE_BASE ?? "https://50pick.tz";
+/**
+ * ⛔ THE TARGET IS NEVER PRODUCTION BY ACCIDENT. This line used to read
+ * `process.env.LIVE_BASE ?? "https://50pick.tz"`, so ANY of the fourteen scripts that import this harness — run with
+ * no environment set, which is how every npm script invokes them — drove a real browser against the LIVE MONEY
+ * PLATFORM and signed in as Ali's ADMIN account.
+ *
+ * ⭐ MEASURED, 2026-09-19, and it was not theoretical. `qa:chaos` and `qa:pending-bar` are two of those fourteen, and
+ * `plans/house-bots/C7-SPEC.md` §4 assigns BOTH to house-bot checkpoints whose own standing rules say "never touch
+ * production, not even a read". A session following its instructions exactly would have hit production. The step 6
+ * workflow reported the collision rather than running them, which is the only reason it did not happen.
+ *
+ * ⛔ AND THE CODEBASE WAS ALREADY SPLIT AGAINST ITSELF: five sibling drivers
+ * (`admin-act-gate-drive`, `admin-act-refusal-drive`, `admin-filter-drive`, `admin-privacy-gate-drive`,
+ * `admin-view-matrix-drive`) each declare their OWN `const BASE = process.env.LIVE_BASE ?? "http://localhost:3001"`,
+ * shadowing this export precisely because localhost is the sane default. This now agrees with them.
+ *
+ * ⚠️ WHY A LOUD BANNER RATHER THAN A HARD REFUSAL. Refusing without `LIVE_BASE` would break every one-command
+ * invocation, and a wrong-target run that FAILS VISIBLY (nothing is listening on 3001) is recoverable in seconds.
+ * The failure that is not recoverable is the silent one in the other direction. So the target is printed on every
+ * run, and production is reachable only by naming it.
+ * ⛔ `pre-deploy-live-check.mjs` is unaffected: it reads its own `BASE` env var and never imports this file.
+ */
+export const BASE = process.env.LIVE_BASE ?? "http://localhost:3001";
+{
+  const isProd = !/localhost|127\.0\.0\.1|\[::1\]/.test(BASE);
+  console.log(
+    isProd
+      ? `\n  ⛔ LIVE HARNESS TARGET: ${BASE} — THIS IS PRODUCTION. Every action below runs against real players' data.\n`
+      : `  · live harness target: ${BASE}  (set LIVE_BASE to point elsewhere)`,
+  );
+}
 export const SHOT = process.env.SHOT_DIR ?? ".";
 
 /** The QA personas. Phone is the 9-digit local part; the secret name is the env key. */

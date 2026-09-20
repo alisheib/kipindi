@@ -201,6 +201,27 @@ ok("⛔ D19 · the holder's own export KEEPS the bet row — the stake, the side
 ok("⛔ D19 · …and that row carries NEITHER house key, at any depth",
   !!holderBet && !("houseBotId" in (holderBet.payload ?? {})) && !("intentId" in (holderBet.payload ?? {})),
   JSON.stringify(Object.keys(holderBet?.payload ?? {})));
+/**
+ * ⛔ **THE TWO DOORS ARE NOT THE SAME INSTRUMENT HERE, AND SAYING SO IS THE POINT** (C5-7's review, medium-high).
+ * The loop below opens both, and the register claimed mutation `S7-X01` (dropping `withoutHouseAuditKeys`) turns
+ * BOTH red. It cannot: `buildDsarBundle` returns `generatedAt`, `schemaVersion`, `user`, `wallet`, `transactions`,
+ * `kyc`, `responsibleGambling`, `notificationsCount` and `rights` — **no audit section at all** — and this holder is
+ * created by `mkAccount` with a wallet and no transactions, so the officer bundle's JSON cannot contain the audit
+ * needle under any mutation of the stripper. That limb was passing on the bundle's SHAPE, not on stripping: an
+ * absence over a document that can never hold the needle, which is the vacuous verdict rule 1 of C5-7's law exists
+ * to refuse.
+ *
+ * So the limb keeps its place — it is a FLOOR, and the day the bundle grows an audit section it is the thing that
+ * catches an unstripped one — and it is given the control that makes it a measurement: the bundle document with the
+ * REAL durable audit rows attached is required to REPORT the needle. `S7-X01`'s declared red is corrected in the
+ * register to the player-export line alone, and `S7-X03` is added for the bundle's own money-row stripper.
+ */
+const bundleWithAudit = { ...(holderBundle as Record<string, Any>), auditEntries: { entries: durableHolder } };
+ok("6.CONTROL.bundle: the officer bundle has NO audit section today — and WOULD report the needle if it grew one: the same document with the real durable rows attached carries both house keys, so the absence asserted below is a measurement of a floor and not of a document that could never fail",
+  !("auditEntries" in ((holderBundle ?? {}) as Record<string, Any>))
+  && JSON.stringify(bundleWithAudit).includes(HOUSE_MARKER) && JSON.stringify(bundleWithAudit).includes(HOUSE_INTENT)
+  && houseHits(JSON.stringify(bundleWithAudit)).length > 0,
+  `bundle sections: ${Object.keys((holderBundle ?? {}) as Record<string, Any>).join(",")}`);
 for (const [door, file] of [["player export", holderExport], ["officer bundle", holderBundle]] as Array<[string, unknown]>) {
   const json = JSON.stringify(file);
   ok(`⛔ D19 · HB-ACC-12 / CRA-04 · D20 · the holder's ${door} carries no marker, no intent id and no vocabulary word at any depth (the record half is struck; the absence half is the whole of it)`,
