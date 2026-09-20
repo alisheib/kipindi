@@ -1444,15 +1444,24 @@ export interface HouseBotEventStore {
    * ⛔ IT IS NOT `listByBot` WITH A WIDER SCOPE AND IT IS NOT A CAPPED `listByKinds`. `listByBot` is keyset-paged,
    * and `Pagination` requires a `total` that a keyset reader structurally cannot give (ruling 317); a cap presented
    * as a page is a list that silently ends, and these events are the only durable record of who switched what.
+   *
+   * ⭐ `houseBotId` IS THE ACCOUNT PAGE'S OWN FACET (C7 step 5, the account half), AND IT IS A FACET OF THE SHARED
+   * PREDICATE RATHER THAN A SECOND READER. The account page's history is the same list narrowed to one record and
+   * it needs the same `total` for the same numbered pager, so narrowing `listByBot` would have meant a keyset
+   * reader with no total — the exact shape ruling 317 refuses one paragraph above. ⛔ It narrows `countAll` by the
+   * SAME word through the SAME predicate function (`memEventMatches` / `eventWhere`), which is what keeps the
+   * badge, the total and the rows measuring one population (`test:dal-parity` 16.eventsShared, 16.eventsBot).
+   * ⚠️ The control row's own events (`houseBotId: null` — SWITCH_ON, SWITCH_OFF, LIMITS_SAVED, SUNSET) fall OUT of
+   * a narrowed read, and that is correct: they are the desk's events, not the account's.
    */
-  listAll(opts: { limit: number; offset?: number; kinds?: readonly HouseBotEventKind[] }, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
+  listAll(opts: { limit: number; offset?: number; kinds?: readonly HouseBotEventKind[]; houseBotId?: string }, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
   /**
    * That list's population, from ONE named predicate shared with `listAll` in each twin — `memEventMatches` in
    * memory, `eventWhere` on Postgres (ruling 317, pinned by `test:dal-parity` 16.eventsShared).
    * ⛔ A counting reader, never `listAll(...).length`: `pageLimit` clamps the page to 500 and the count must not be
    * clamped with it (ruling 344).
    */
-  countAll(opts: { kinds?: readonly HouseBotEventKind[] }, tx?: HouseTx): Promise<number>;
+  countAll(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string }, tx?: HouseTx): Promise<number>;
 }
 
 export interface HouseBotIntentStore {
@@ -2333,9 +2342,11 @@ const memoryHouseBotAlertOnce: HouseBotAlertOnceStore = {
  * second time inside the count is exactly what `test:dal-parity` 16.eventsShared reports: a pager whose total was
  * measured over a different population than its rows links at pages that render nothing.
  */
-function memEventMatches(opts: { kinds?: readonly HouseBotEventKind[] }): (e: StoredHouseBotEvent) => boolean {
+function memEventMatches(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string }): (e: StoredHouseBotEvent) => boolean {
   const kinds: readonly string[] | undefined = opts.kinds;
-  return (e) => !kinds || kinds.includes(e.kind);
+  return (e) =>
+    (!kinds || kinds.includes(e.kind))
+    && (opts.houseBotId === undefined || e.houseBotId === opts.houseBotId);
 }
 
 const memoryHouseBotEvents: HouseBotEventStore = {
@@ -3542,9 +3553,10 @@ const prismaHouseBotAlertOnce: HouseBotAlertOnceStore = {
  * ⛔ The pager's `total` and the rows it pages are the one place a second-written condition is invisible: the
  * numbers agree on page 1 and disagree only at the end of the list. `test:dal-parity` 16.eventsShared pins it.
  */
-function eventWhere(opts: { kinds?: readonly HouseBotEventKind[] }, p: Params): string[] {
+function eventWhere(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string }, p: Params): string[] {
   const where: string[] = [];
   if (opts.kinds) where.push(`"kind" = ANY(${p.raw([...opts.kinds], "text[]")})`);
+  if (opts.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(opts.houseBotId, "text")}`);
   return where;
 }
 
