@@ -50,6 +50,7 @@ export const ROLL_CALL_SITES: Readonly<Record<string, string>> = {
   "money-mem": "scripts/lib/house-bot-money-cases.mts · 1.505",
   "money-pg": "scripts/lib/house-bot-money-cases.mts · 1.505",
   "reports-mem": "scripts/lib/house-bot-reports-cases.mts · 0.505b (ruling 434's declarations, memory child)",
+  "comms-mem": "scripts/lib/house-bot-comms-cases.mts · 7.505 (reads BOTH anchors files that declare a comms entry, memory child)",
   seam: "scripts/house-bot-seam.test.mts · 8.505 (reads BOTH anchors files that declare a seam entry)",
   "(none)": "scripts/house-book.test.mts · 16.505 and scripts/house-page.test.mts · 16.505, by SECTION TOKEN",
 };
@@ -57,20 +58,25 @@ export const ROLL_CALL_SITES: Readonly<Record<string, string>> = {
 /**
  * ⛔ THE KEYS RULING 505 DID NOT GIVE A ROLL-CALL, EACH NAMED. This is a RECORD OF WHAT IS OWED, never a permission:
  * every declaration under one of these keys can still rot into WRONG-ASSERTION unseen. Ruling 505 named five call
- * sites plus the console; these seven keys were outside it. Measured at `46117372`: 164 of the 185 declarations in the
- * house anchors files are audited, and these 21 are not.
- * ⛔ Its LENGTH is pinned by 0.505 — 7 through C7 step 4c, EIGHT from C7 step 6's fix pass, when ruling 387's
+ * sites plus the console; these keys were outside it.
+ * ⛔ NO COUNT IS RECORDED HERE ANY MORE, AND THAT IS THE REPAIR (C7 step 7 review, d19-hunt-04). This table used to
+ * carry a per-key declaration count and a measured total in prose — "164 of the 185" — and both rotted the moment a
+ * declaration was added: C7 step 7 put THREE declarations under `comms-mem` while the entry still said "1", and
+ * the total stood at 185 while the six house anchors files held 334. A recorded number rots; 0.505 already builds
+ * the per-key counts it needs and now PRINTS them, so the count is re-derived on every run and this table says only
+ * WHY a key has no roll-call.
+ * ⛔ Its LENGTH is pinned by 0.505 — 7 through C7 step 4c, EIGHT from C7 step 6's fix pass, and SEVEN again from
+ * the C7 step 7 review, which gave `comms-mem` the roll-call it was owed. The pin may only SHRINK. Ruling 387's
  * search-grammar half finally got a declared mutation and the only suite able to measure its subject
  * (`src/lib/search/fields.ts`, value-imported by the client search box) was the disclosure one — so a new key
  * cannot be dropped in here to silence the check without the pin being
  * edited in the same change — and a key listed here that appears in NO house anchors file is reported STALE.
  */
 export const ROLL_CALL_OWED: Readonly<Record<string, string>> = {
-  "caps-mem": "12 declarations · scripts/lib/house-bot-caps-cases.mts — the largest remainder, and the first candidate for the next ruling",
-  "caps-pg": "2 declarations · scripts/house-bot-caps.test.mts, the Postgres child of the same cases file",
-  "designation-mem": "2 declarations · scripts/lib/house-bot-designation-cases.mts",
-  "comms-mem": "1 declaration · scripts/lib/house-bot-comms-cases.mts",
-  "info-edge-mem": "1 declaration · scripts/lib/house-bot-info-edge-cases.mts",
+  "caps-mem": "scripts/lib/house-bot-caps-cases.mts — the largest remainder, and the first candidate for the next ruling",
+  "caps-pg": "scripts/house-bot-caps.test.mts, the Postgres child of the same cases file",
+  "designation-mem": "scripts/lib/house-bot-designation-cases.mts",
+  "info-edge-mem": "scripts/lib/house-bot-info-edge-cases.mts",
   rbac: "2 declarations · scripts/rbac.test.mts — a PLATFORM suite, outside the house campaign's files",
   "admin-nav": "1 declaration · scripts/admin-nav.test.mts — a PLATFORM suite, outside the house campaign's files",
   disclosure: "1 declaration · scripts/house-bot-disclosure.test.mts — a single-run suite with no cases file and no `expect`-drift roll-call of its own; the declaration it carries is ruling 387's search-grammar half, whose subject (`src/lib/search/fields.ts`) no other house suite can reach",

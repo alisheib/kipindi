@@ -1,6 +1,8 @@
 /**
- * The case list behind `test:house-bot-comms`. Run by that suite in two child processes — one on Postgres, one on
- * the memory store — never on its own.
+ * The case list behind `test:house-bot-comms`. Run by that suite in two child processes — one on Postgres, one
+ * on the memory store — and, since C7 step 7, DIRECTLY by `red:house-bot-console`'s `comms-mem` child, which is
+ * why every source pin here must be store-independent. ⛔ The old line said "never on its own"; the red harness
+ * made that false and nothing corrected it (C7 step 7 review, conformance-comms-docblock-stale).
  *
  * Sections:
  *   §1 recipients and channels · §2 the holder is told NOTHING (D19c) · §3 the caps and what the summary accounts for ·
@@ -12,14 +14,20 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./decomment.mts";
+import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./house-bot-expect-drift.mts";
+import { MUTATIONS as CONSOLE_MUTATIONS } from "../anchors/house-bot-console.anchors.mjs";
+import { MUTATIONS as ENGINE_MUTATIONS } from "../anchors/house-bot-engine.anchors.mjs";
 import { loadWorld, OFFICER } from "./house-bot-world.mts";
 
 type Any = any;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 let pass = 0, fail = 0;
+/** Every label this run printed, so the ruling-505 roll-call at the foot of this file measures instead of asserting `true`. */
+const emitted: string[] = [];
 const ok = (l: string, c: boolean, x = "") => {
   c ? pass++ : fail++;
+  emitted.push(l);
   console.log(`${c ? "PASS" : "FAIL"} [${STORE}] ${l}${x ? ` — ${x}` : ""}`);
 };
 const section = (t: string) => console.log(`\n[${STORE}] ${t}`);
@@ -36,6 +44,8 @@ const REG: Any = await import("../../src/lib/server/comms-registry.ts");
 const K: Any = await import("../../src/lib/house-bot/constants.ts");
 const { alertRow, ALERT_CODES }: Any = await import("../../src/lib/house-bot/alert-copy.ts");
 const RG: Any = await import("../../src/lib/server/responsible-gambling.ts");
+/** The console's own route grammar — §7 resolves the console's hrefs against it, tab and all. */
+const CR: Any = await import("../../src/lib/house-bot/console-routes.ts");
 
 ok(`0.store · the child runs on ${STORE}`, w.onPostgres === (STORE === "postgres"));
 
@@ -247,6 +257,17 @@ await guard("7", async () => {
   const all = [...(await houseRows(ADMIN_A)), ...(await houseRows(ADMIN_B)), ...(await houseRows((await w.dal.houseBotStore.listNonRemoved())[0]?.userId ?? ADMIN_A))];
   const hrefs = [...new Set(all.map((r) => r.href).filter(Boolean))] as string[];
   ok("7.1 · every href is absolute", hrefs.every((h) => h.startsWith("/")), hrefs.filter((h) => !h.startsWith("/")).join(" · ") || "-");
+  /* ⛔ THE WALK MUST HAVE HAD SOMETHING TO RESOLVE, AND THE CONSOLE'S OWN ROUTES MUST BE IN IT (C7 step 7 review,
+     conformance-320-href-population / test-strength-03). Retiring the `COMMIT_7` exemption left `7.2` with no
+     population floor at all: `hrefs` is whatever §1–§6 happened to emit, and `every`/`length === 0` are both
+     true of an empty array — so a run that produced no console href would have reported the exemption's
+     retirement as a clean measurement. `7.2b` controls the RESOLVER, which is a different question. */
+  const consoleHrefs = hrefs.filter((h) => h.split("?")[0] === CR.CONSOLE_ROUTE || h.split("?")[0].startsWith(`${CR.CONSOLE_ROUTE}/`));
+  ok("7.2a · the walk really had links to resolve, and the console's own routes are IN the set — the retired exemption's zero is a measurement and not an empty walk",
+    hrefs.length >= 8 && consoleHrefs.length >= 3
+      && consoleHrefs.some((h) => h.split("?")[0] === CR.CONSOLE_ROUTE)
+      && consoleHrefs.some((h) => /^\/admin\/desk\/hb_\w+$/.test(h.split("?")[0])),
+    j({ hrefs: hrefs.length, console: consoleHrefs.length, sample: consoleHrefs.slice(0, 4) }));
   /* ⭐ THE EXEMPTION IS RETIRED, AND THIS IS THE RECORD OF IT (C7-SPEC ruling 320, C7 step 7).
      `const COMMIT_7 = ["/admin/desk"]` and case `7.3` lived here together from C7 step 1 so that 7.2 could SKIP the
      console's own hrefs while `/admin/desk`, `/admin/desk/new` and `/admin/desk/[id]` were still being built one
@@ -272,6 +293,31 @@ await guard("7", async () => {
   }
   ok("7.2 · ⭐ 04:1077 · every link a house alert produces resolves to a page that exists today — the console's three routes included, with no exemption left",
     missing.length === 0, missing.join(" · ") || "-");
+  /* ⛔ THE PATH IS HALF THE LINK; THE `?tab=` IS THE OTHER HALF (C7 step 7 review, conformance-320 /
+     test-strength-04). `7.2` strips the query before resolving, so a link to a tab with NO PANEL scores as
+     "resolves to a page that exists today" while ruling 302's fallback quietly repaints the roster — an officer
+     following a bell lands on a screen that looks like it worked. MEASURED HERE, not assumed: the emitters
+     build `?tab=activity` and `?tab=history`, and `CONSOLE_TABS` holds neither, because C7 step 5 is not
+     built (DEFERRED row 62).
+     ⛔ `UNBUILT_TABS` IS A TRACKED DEBT, NOT A PERMISSION, AND IT CAN ONLY SHRINK. Each entry must name a tab
+     this tree really lacks: the moment step 5 lands, `consoleTabExists("activity")` is true, the entry is no
+     longer a gap, and this case goes RED until it is deleted — which is how a skip stops being remembered and
+     starts being tracked. A tab key that is NOT on this list and has no panel fails immediately. */
+  const UNBUILT_TABS = ["activity", "history"] as const;
+  const tabOf = (h: string) => new URLSearchParams(h.split("?")[1] ?? "").get("tab");
+  const detailHref = (h: string) => /^\/admin\/desk\/hb_\w+(\?|$)/.test(h);
+  const tabbed = consoleHrefs.map((h) => ({ h, tab: tabOf(h) })).filter((x) => x.tab !== null) as { h: string; tab: string }[];
+  const exists = (x: { h: string; tab: string }) => (detailHref(x.h) ? CR.consoleDetailTabExists(x.tab) : CR.consoleTabExists(x.tab));
+  const deadTabs = tabbed.filter((x) => !exists(x));
+  const staleDebt = UNBUILT_TABS.filter((t) => CR.consoleTabExists(t) || CR.consoleDetailTabExists(t));
+  ok("7.2c · every `?tab=` a house alert produces names a panel that is BUILT, or a tab this tree is RECORDED as not having yet — and a recorded one that now exists is reported so the record is deleted with the build",
+    deadTabs.every((x) => (UNBUILT_TABS as readonly string[]).includes(x.tab)) && staleDebt.length === 0,
+    j({ tabbed: tabbed.length, dead: deadTabs.map((x) => x.h), unbuilt: UNBUILT_TABS, staleDebt }));
+  ok("7.2d · ⛔ AND THE DEBT IS REAL, PRINTED, NOT INFERRED: the alerts DO link to a tab with no panel today, so 7.2c's tolerance is measuring something",
+    deadTabs.length >= 1 && tabbed.length >= 1
+      && !CR.consoleTabExists("activity") && !CR.consoleTabExists("history")
+      && CR.consoleTabExists("roster") && CR.consoleTabExists("limits"),
+    j({ dead: deadTabs.map((x) => `${x.h} → ${x.tab}`).slice(0, 4), tabs: CR.CONSOLE_TABS }));
   ok("7.2b · CONTROL · the resolver still REFUSES a route nobody built, so the zero above is a measurement and not an empty walk",
     (() => {
       const parts = "/admin/desk/hb_0123456789abcdef01234567/nowhere-at-all".split("/").filter(Boolean);
@@ -350,6 +396,31 @@ await guard("9", () => {
     /record only/.test(alertRow({ code: "STAFF_STAKE_VOIDED", at, money: (n: number) => `TZS ${n}`, detail: { action: "voided", titleEn: "A poll", side: "YES", stakeTzs: 1_000 } }).bodyEn)
       && /record only/.test(alertRow({ code: "STAFF_STAKE_SELF_DECIDED", at, money: (n: number) => `TZS ${n}`, detail: { action: "resolved", titleEn: "A poll" } }).bodyEn));
 });
+
+/* ⛔ RULING 505's ROLL-CALL OVER THIS SUITE'S DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS
+ * run printed. C7 step 7 added a `comms-mem` key to `red:house-bot-console` and two declarations under it, and
+ * gave neither any expect-drift coverage: `ROLL_CALL_OWED` recorded the key as owed, which is a record of a hole
+ * and not a guard, so the two `expect` strings could rot into WRONG-ASSERTION unseen — and 7.2's assertion TEXT
+ * was rewritten in the same step (C7 step 7 review, conformance-318-comms-expect-drift). `test:red-anchors` §3
+ * resolves the `from` text and never looks at `expect`, so its green says nothing about this.
+ * ⛔ BOTH anchors files that declare a `comms-mem` entry are read, for the reason the seam suite reads two: a
+ * declaration audited in neither file is exactly the hole 505 exists to close.
+ * ⛔ MEMORY ONLY. The Postgres child prints the same labels, and running it in both would double every count
+ * without measuring anything twice; `red:house-bot-console` drives the memory child. */
+if (STORE === "memory") {
+  const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
+  const LBL = "7.505 · every declared `comms-mem` mutation — from BOTH anchors files that declare one — names an assertion THIS run actually printed; an `expect` that matches no label can only ever report WRONG-ASSERTION";
+  const LBLC = "7.505 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  const input = {
+    suiteKeys: ["comms-mem"],
+    declarations: [...CONSOLE_MUTATIONS, ...ENGINE_MUTATIONS] as DeclaredMutation[],
+    emitted, source: selfCode, ownLabels: [LBL, LBLC],
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= 3 && rc.stale.length === 0, j(rc));
+  const control = expectDriftControl(input, 30);
+  ok(LBLC, control.pass, control.extra);
+}
 
 await w.dal.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

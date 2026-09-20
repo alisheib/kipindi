@@ -652,8 +652,8 @@ if (STORE === "memory") {
     const audited = declared.filter((k) => Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     const owed = declared.filter((k) => !Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     ok("0.505 · ⛔ RULING 505 · every suite key declared in ANY scripts/anchors/house*.anchors.mjs — the files walked from disk, never typed — either HAS an expect-drift roll-call or is recorded as owed with its reason, and neither table names a key no anchors file declares",
-      problems.length === 0 && anchorFiles.length >= 6 && audited + owed >= 185 && Object.keys(ROLL_CALL_OWED).length === 8,
-      j({ anchorFiles, keys: Object.fromEntries([...keys].sort()), audited, owed, problems }));
+      problems.length === 0 && anchorFiles.length >= 6 && audited + owed >= 354 && Object.keys(ROLL_CALL_OWED).length === 7,
+      j({ anchorFiles, keys: Object.fromEntries([...keys].sort()), audited, owed, total: audited + owed, owedKeys: Object.keys(ROLL_CALL_OWED).sort(), problems }));
     /* ⛔ AND THE CONTROL, over the same detector: a key that no table names, and a table entry no file declares. */
     const detect = (ks: Map<string, number>, sites: Record<string, string>, owedList: Record<string, string>): string[] => {
       const out: string[] = [];
