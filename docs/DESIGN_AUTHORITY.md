@@ -1825,7 +1825,7 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    in that file that refused `replace` was refusing a *silent rewrite of seven admin routes' history
    behaviour*, and that refusal still stands for every caller that does not ask. §K5 forbids forking
    the kit, so a rail that owns its URL asks for the prop rather than wrapping the control.
-   First caller: `src/app/admin/desk/[id]/activity-filters.tsx`.
+   First caller: `src/app/admin/desk/activity-filters.tsx` (rendered by both console pages).
    Guarded by `npm run test:filter-language` §6.6 (which counts `<DateTimeRangeFilter>` as a
    rank-taking control) and, for the caller, `test:house-bot-console` 1.410.
 

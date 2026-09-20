@@ -2298,7 +2298,18 @@ export async function notifyAdminsHouseBotStaffChosen(opts: {
 
 /** The hour just ended, for admins (C13). Bell only: the feed already has every row. */
 export async function notifyAdminsHouseBotHourSummary(opts: {
-  fromHH: string; toHH: string; count: number; stakeTzs: number; beyondCap: number; staffChosen: number; at: string;
+  /** The clock form the BODY reads — "Between 13:00 and 14:00 EAT". */
+  fromHH: string; toHH: string;
+  /**
+   * ⛔ THE SAME WINDOW IN THE FORM THE LINK NEEDS, AND THE NAME SAYS WHICH FORM THAT IS. It is an EAT wall clock
+   * shaped `YYYY-MM-DDTHH:MM` — NOT an ISO instant. The console's window parser refuses `14:00` (no date) and
+   * refuses `2026-09-20T13:00:00.000Z` too (its pattern is anchored at `HH:MM`, so the seconds/millis/`Z` tail does
+   * not match), and a refused `from` is answered SILENTLY with the last 24 hours still labelled "custom". Calling
+   * this field `fromIso` was itself part of the defect: it invited the caller to pass `toISOString()`, which is the
+   * wrong shape AND the wrong zone.
+   */
+  fromEat: string; toEat: string;
+  count: number; stakeTzs: number; beyondCap: number; staffChosen: number; at: string;
 }): Promise<number> {
   const { houseBotAlertRecipients } = await import("./house-bot/alerts");
   const recipients = await houseBotAlertRecipients();
@@ -2317,7 +2328,7 @@ export async function notifyAdminsHouseBotHourSummary(opts: {
     bodyEn: `Between ${opts.fromHH} and ${opts.toHH} EAT house bots placed ${opts.count} stakes totalling ${amount}.${beyond}${staff}`,
     bodySw: `Kati ya saa ${opts.fromHH} na ${opts.toHH} EAT boti za nyumba ziliweka dau ${opts.count} zenye jumla ya ${amount}.${beyondSw}${staffSw}`,
     bodyZh: `东非时间 ${opts.fromHH} 至 ${opts.toHH}，平台机器人共下注 ${opts.count} 笔，合计 ${amount}。${beyondZh}${staffZh}`,
-    href: `${consoleActivityHref(null, { range: "custom" })}&from=${encodeURIComponent(opts.fromHH)}&to=${encodeURIComponent(opts.toHH)}`,
+    href: `${consoleActivityHref(null, { range: "custom" })}&from=${encodeURIComponent(opts.fromEat)}&to=${encodeURIComponent(opts.toEat)}`,
   }, "house-bot-hour-summary");
 }
 

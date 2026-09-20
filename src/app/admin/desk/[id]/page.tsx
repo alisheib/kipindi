@@ -43,7 +43,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { currentSession } from "@/lib/server/auth-service";
 import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
-import { ActivityFilters } from "./activity-filters";
+import { ActivityFilters } from "../activity-filters";
 import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422): a client component under

@@ -198,6 +198,35 @@ await w.limits();
  * unrelated labels: what the declaration file calls WRONG-ASSERTION, and a guard that goes red for the wrong reason
  * will go green for the wrong reason too. A throw is now REPORTED as a failure of its own and the static guards below
  * still run. ⚠️ The body keeps its own indentation: re-indenting 500 lines would bury the one line that changed. */
+/**
+ * ⛔ ONE PANEL'S OWN SOURCE, AND IT IS A NARROWING RATHER THAN A WIDENING. The landing page carried two panels
+ * when its money rules were written, so a file-wide count of a money header or a column floor WAS that panel's
+ * count. With four panels a file-wide count answers about the page and not about the table, and the two answers
+ * diverge silently — a roster floor deleted while an activity floor is added reads as unchanged. Every scan
+ * that is about ONE table reads that table's own slice, which says strictly more than the count it replaces.
+ *
+ * ⛔ AND IT IS DECLARED HERE, ABOVE THE BEHAVIOURAL REGION'S OWN `try`, BECAUSE THREE SECTIONS NOW SLICE THE SAME
+ * PAGE AND THEY DO NOT SHARE ONE SCOPE. It was a local of §4, which runs on the memory child only; §2e3 runs on
+ * BOTH stores and called it, so the Postgres child threw `panelOf is not defined` — and a throw there does not
+ * fail one case, it ABORTS the child, which is exactly how §3's lexicon scan and §4's whole source law came to be
+ * skipped while the run still printed 414 passes.
+ * 🔴 AND MOVING IT TO COLUMN ZERO WAS NOT ENOUGH, WHICH IS THE SECOND HALF OF THE SAME LESSON AND IT COST A RUN.
+ * §1 and §2 sit inside ONE `try` that opens immediately below this block and closes past §2e3; a declaration
+ * written at column zero INSIDE that try is a local of it, reads exactly like a top-level one, and §4 — which is
+ * outside it — threw `pageRaw is not defined` and aborted the MEMORY child at 0 assertions while the Postgres
+ * child printed ALL PASS. Indentation is not scope. It is declared ABOVE the `try` so every section below can see
+ * it. ⛔ ONE definition, above every reader of it: a second copy is a second answer to "what is this panel",
+ * and this file has a 0.throw case precisely because a silent skip reads like a pass.
+ */
+const pageRaw = read(PAGE);
+const pageCode = decomment(pageRaw);
+const panelOf = (tab: string): string => {
+  const open = pageCode.indexOf(`{tab === "${tab}" && (<>`);
+  if (open < 0) return "";
+  const close = pageCode.indexOf("\n        </>)}", open);
+  return close < 0 ? pageCode.slice(open) : pageCode.slice(open, close);
+};
+
 try {
 section("§1 · the audience, decided on the STORED role, through the gate");
 {
@@ -3608,12 +3637,282 @@ try {
       j({ feed: onOverview.feed, history: onOverview.history }));
 
     STATES.push(["detail-activity", p1], ["detail-activity-filtered", railed], ["detail-activity-empty", bare], ["detail-history", h1]);
+
+    /* ══ C7 STEP 5 · THE LANDING HALF — THE DESK-WIDE PANELS, DRIVEN ═══════════════════════════════════════════
+     * The same fixture, read the other way round: 41 stakes on one account, one on a second, and the desk's own
+     * events beside both. What these measure that §2e2's cannot is the DIFFERENCE between the two shapes — a
+     * count that is the desk's and not one account's, a history that keeps the control row's own events, and a
+     * control an officer can act with. */
+    {
+      const { auditFlush, getAuditPage }: Any = await import("../../src/lib/server/audit.ts");
+      const CONST: Any = await import("../../src/lib/house-bot/constants.ts");
+      /* A viewer outside the audience, minted here: this block is its own scope, and a refusal proved with a
+         handle borrowed from another block is a refusal proved against a viewer nobody can see. */
+      const outsiderId = await w.user({ role: "PLAYER" });
+      const deskFeed = (qq: Record<string, unknown> = {}) =>
+        GATEM.houseFeedForConsole(OFFICER, "/admin/desk", { tab: "activity", ...qq });
+      const deskHist = (qq: Record<string, unknown> = {}) =>
+        GATEM.houseHistoryForConsole(OFFICER, "/admin/desk", { tab: "history", ...qq });
+
+      /* ⛔ THE GATE IS FIRST AND NOTHING IS READ BEFORE IT (rulings 259, 300, 340, 380). */
+      const realFeedList = w.dal.houseBotIntentStore.listFeed;
+      let refusedCalls = 0;
+      let refusedFeed: Any; let refusedHist: Any;
+      try {
+        w.dal.houseBotIntentStore.listFeed = (...a: Any[]) => { refusedCalls++; return realFeedList.apply(w.dal.houseBotIntentStore, a as Any); };
+        refusedFeed = await GATEM.houseFeedForConsole(outsiderId, "/admin/desk", { tab: "activity" });
+        refusedHist = await GATEM.houseHistoryForConsole(outsiderId, "/admin/desk", { tab: "history" });
+      } finally { w.dal.houseBotIntentStore.listFeed = realFeedList; }
+      ok("1.340 · both desk-wide readers refuse a viewer outside the audience with `null` and perform ZERO store calls — a refused payload carries no label, no handle, no amount and no sentence",
+        refusedFeed === null && refusedHist === null && refusedCalls === 0,
+        j({ feed: refusedFeed, history: refusedHist, calls: refusedCalls }));
+
+      const d1 = await deskFeed();
+      /* ⛔ EVERY NUMBER IN THIS BLOCK IS RE-DERIVED FROM THIS RUN AND NONE IS TYPED. The sections above leave
+         their own rows on the desk, so a hand-written total would be a number tied to the order this file happens
+         to run in — which is the recorded-number class, and it rots. What is asserted is the RELATIONSHIP: the
+         desk's population is the accounts' populations together, the pages tile it exactly, and the badge is a
+         count of one status across all of it. */
+      const deskTotal: number = d1.feedTotal;
+      const lastPage = Math.max(1, Math.ceil(deskTotal / d1.feedPerPage));
+      const d2 = await deskFeed({ page: "2" });
+      const d3 = await deskFeed({ page: String(lastPage) });
+      const rowKey = (v: Any): string[] => (v.feed ?? []).map((r: Any) => `${r.whenTitle}|${r.stake}`);
+      const pages: Any[] = [];
+      for (let n = 1; n <= lastPage; n++) pages.push(await deskFeed({ page: String(n) }));
+      const everyKey = pages.flatMap(rowKey);
+
+      /* ⛔ 344 · THE TOTAL IS A COUNTING READ, AND IT IS THE DESK'S — 42, not one account's 41. */
+      ok("1.411 · both landing pagers take `total` from a COUNTING reader and never from the page: the desk feed serves ONE page of 20 out of a total larger than it, and the total does not move as the officer pages",
+        d1.feed.length === d1.feedPerPage && d1.feedPerPage === 20 && d1.feedPage === 1
+          && deskTotal > d1.feed.length && lastPage >= 3
+          && d2.feedTotal === deskTotal && d3.feedTotal === deskTotal,
+        j({ rows: d1.feed.length, total: deskTotal, lastPage, lastRows: d3.feed.length }));
+      /* ⛔ WHAT A STABLE DECLARED ORDER BUYS, MEASURED THREE WAYS — and NOT by unique row keys, because a feed row
+         deliberately carries no id (D19: a bounded record id is the one thing this section may not put in a
+         response it does not have to) and two stakes in one second are a real state, not a fixture artefact.
+         (a) the pages TILE the total exactly, every page full but the last;
+         (b) a second read of every page returns the IDENTICAL sequence — an unstable order is one that moves
+             between two reads of the same address, which is precisely what a numbered pager cannot survive;
+         (c) no page repeats its neighbour's boundary row, which is how an unstable order shows one row twice and
+             hides another. */
+      const everyKeyAgain: string[] = [];
+      for (let n = 1; n <= lastPage; n++) everyKeyAgain.push(...rowKey(await deskFeed({ page: String(n) })));
+      ok("1.411 · the pages together are the whole desk with nothing repeated and nothing lost — they tile the total exactly, a second read returns the identical sequence, and no page repeats its neighbour's boundary row",
+        everyKey.length === deskTotal
+          && pages.every((pg, i) => pg.feed.length === (i + 1 < lastPage ? 20 : deskTotal - 20 * (lastPage - 1)))
+          && j(everyKey) === j(everyKeyAgain)
+          && pages.every((pg, i) => i + 1 >= lastPage || rowKey(pg)[pg.feed.length - 1] !== rowKey(pages[i + 1])[0]),
+        j({ total: deskTotal, perPage: pages.map((pg) => pg.feed.length), stable: j(everyKey) === j(everyKeyAgain) }));
+      /* ⛔ AND IT IS THE DESK'S POPULATION, NOT ONE ACCOUNT'S — the second account's stake is IN it, which is the
+         one difference between this reader and the account page's and the thing a scoped reader would drop. */
+      const acctTotal = (await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "activity" })).feedTotal;
+      const otherTotal = (await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", other.botId, { tab: "activity" })).feedTotal;
+      ok("1.411 · the desk feed is the DESK's population and not one account's: the second account's stake is IN it, and the desk's total is strictly larger than either account's",
+        everyKey.some((x) => x.endsWith(`|${formatTzs(7_000)}`))
+          && acctTotal === 41 && otherTotal === 1
+          && deskTotal > acctTotal && deskTotal >= acctTotal + otherTotal,
+        j({ deskTotal, acctTotal, otherTotal }));
+      /* ⛔ A PAGE PAST THE END IS SERVED AS THE LAST PAGE, and a page number that is not one is REFUSED BY NAME. */
+      const dOver = await deskFeed({ page: "999" });
+      const dJunk = await deskFeed({ page: "x" });
+      ok("1.411 · `?page=999` on the desk feed is served as the LAST page with its rows, and a page number that is not one reads as page 1 AND is reported as a refusal",
+        dOver.feedPage === lastPage && dOver.feed.length > 0 && dJunk.feedPage === 1 && dJunk.feed.length === 20
+          && typeof dJunk.queryRefusal === "string" && dJunk.queryRefusal.includes("page"),
+        j({ over: dOver.feedPage, lastPage, junk: dJunk.feedPage, refusal: dJunk.queryRefusal }));
+
+      /* ── 1.345 · THE ROWS AND THE TOTAL MOVE TOGETHER OVER EVERY FACET, ON THE DESK'S OWN POPULATION ────── */
+      /* ⛔ THE FACET IS MEASURED AGAINST THE STORE'S OWN COUNT OF THE SAME FACET, not against a typed number:
+         what this case is about is that the READER's rows and the READER's total agree with each other and with
+         the population, whatever that population happens to hold when this file runs. */
+      const deskAgree = async (qq: Record<string, unknown>, filter: Record<string, unknown>) => {
+        const v = await deskFeed(qq);
+        const want = await w.dal.houseBotIntentStore.countFeed(filter as Any);
+        return { total: v.feedTotal, rows: v.feed.length, want, ok: v.feedTotal === want && v.feed.length === Math.min(want, 20) && v.queryRefusal === null };
+      };
+      const dKind = await deskAgree({ kind: "manual" }, { kinds: ["MANUAL"] });
+      const dOutcome = await deskAgree({ outcome: "failed" }, { statuses: ["FAILED"] });
+      const dBoth = await deskAgree({ kind: "manual", outcome: "failed" }, { kinds: ["MANUAL"], statuses: ["FAILED"] });
+      ok("1.345 · the desk-wide feed's rows and total move together over every facet — type, outcome, and two at once — because ONE filter object feeds the page read and the count",
+        [dKind, dOutcome, dBoth].every((x) => x.ok), j({ dKind, dOutcome, dBoth }));
+      ok("1.345 · CONTROL · the facets really NARROW the desk's own population, and the two-facet answer is narrower than either of its halves",
+        dKind.total < deskTotal && dOutcome.total < deskTotal && dBoth.total < dKind.total && dBoth.total < dOutcome.total,
+        j({ all: deskTotal, dKind: dKind.total, dOutcome: dOutcome.total, dBoth: dBoth.total }));
+
+      /* ── 312 · THE BADGE IS THE DESK'S QUEUED STAKES, IT IS UNFILTERED BY THE RAIL, AND IT IS ON EVERY TAB ── */
+      const onRoster = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+      const onLimits = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+      const onHist = await deskHist();
+      const queued: number = await w.dal.houseBotIntentStore.countFeed({ statuses: ["PENDING"] });
+      ok("1.312 · the activity badge is the desk's QUEUED stakes, counted by a COUNTING reader over the same predicate the feed pages over, and it is the SAME number on all four tabs — one read in the shell, never one per panel",
+        queued > 0 && d1.pendingIntents === queued && onRoster.pendingIntents === queued
+          && onLimits.pendingIntents === queued && onHist.pendingIntents === queued,
+        j({ queued, feed: d1.pendingIntents, roster: onRoster.pendingIntents, limits: onLimits.pendingIntents, history: onHist.pendingIntents }));
+      ok("1.312 · …and it does NOT move as the officer filters: a bell's own narrowed address cannot change the number beside the tab it points at",
+        (await deskFeed({ kind: "manual" })).pendingIntents === queued
+          && (await deskFeed({ outcome: "failed" })).pendingIntents === queued
+          && (await deskFeed({ outcome: "queued" })).pendingIntents === queued
+          /* ⛔ AND THE ROWS REALLY DID MOVE UNDER IT, which is the half that makes the line above a measurement:
+             at least one of these filters answers a different number of rows from the badge, so a badge that was
+             quietly being recomputed from the filtered population could not have matched. */
+          && [dKind.total, dOutcome.total, dBoth.total].some((n) => n !== queued),
+        j({ filtered: (await deskFeed({ kind: "manual" })).pendingIntents, rowsThatFilter: [dKind.total, dOutcome.total, dBoth.total], queued }));
+      /* ⛔ AND IT IS `PENDING` ALONE — ruling 312's own word — never PENDING+CLAIMED: a CLAIMED stake is already in
+         flight and there is nothing left for an officer to cancel about it, so a badge counting it would offer a
+         number no control on the page can act on. */
+      ok("1.312 · CONTROL · the badge counts PENDING ALONE and not the LIVE pair, and the two are really different populations of this store",
+        queued === await w.dal.houseBotIntentStore.countFeed({ statuses: ["PENDING"] })
+          && (await w.dal.houseBotIntentStore.countFeed({ statuses: ["PENDING", "CLAIMED"] })) >= queued
+          && (await w.dal.houseBotIntentStore.countFeed({ statuses: ["CLAIMED"] })) >= 0,
+        j({ pending: queued, live: await w.dal.houseBotIntentStore.countFeed({ statuses: ["PENDING", "CLAIMED"] }) }));
+
+      /* ── 355 · A FAILED READ IS NEVER AN EMPTY TABLE, AND A FAILED COUNT IS NEVER A ZERO ─────────────────── */
+      const realList = w.dal.houseBotIntentStore.listFeed;
+      const realCount = w.dal.houseBotIntentStore.countFeed;
+      let feedListFailed: Any; let feedCountFailed: Any;
+      try {
+        w.dal.houseBotIntentStore.listFeed = async () => { throw new Error("planted desk feed page failure"); };
+        feedListFailed = await deskFeed();
+      } finally { w.dal.houseBotIntentStore.listFeed = realList; }
+      try {
+        w.dal.houseBotIntentStore.countFeed = async () => { throw new Error("planted desk feed count failure"); };
+        feedCountFailed = await deskFeed();
+      } finally { w.dal.houseBotIntentStore.countFeed = realCount; }
+      ok("1.355 · a FAILED desk read paints the kit's failure treatment and never an empty state: a failed page read answers `null` rows with the total intact, and a failed COUNT answers `null` for the total AND `null` for the badge — never a zero",
+        feedListFailed.feed === null && feedListFailed.feedTotal === deskTotal
+          && feedCountFailed.feedTotal === null && feedCountFailed.pendingIntents === null
+          && Array.isArray(feedCountFailed.feed),
+        j({ listFailed: { feed: feedListFailed.feed, total: feedListFailed.feedTotal },
+            countFailed: { total: feedCountFailed.feedTotal, badge: feedCountFailed.pendingIntents } }));
+      ok("1.355 · CONTROL · the store really was restored — the same call answers the whole desk again, so the two answers above came from the plants and not from a reader that lost its rows",
+        (await deskFeed()).feedTotal === deskTotal && (await deskFeed()).pendingIntents === queued, "");
+      /* ⛔ AND A FILTER THAT MATCHED NOTHING READS DIFFERENTLY FROM A LIST WITH NOTHING IN IT (416). */
+      const noMatch = await deskFeed({ kind: "manual", outcome: "cancelled", product: "up-down" });
+      ok("1.355 · 416 · an empty desk list and a filter that matched nothing say DIFFERENT things, and the unfiltered sentence is the DESK's own and not one account's",
+        noMatch.feedTotal === 0 && noMatch.feed.length === 0 && noMatch.feedFiltered === true
+          && noMatch.feedEmpty.title !== (await deskFeed()).feedEmpty.title
+          && (await deskFeed()).feedEmpty.body.includes("the desk")
+          && typeof noMatch.feedClearHref === "string" && noMatch.feedClearHref.includes("tab=activity"),
+        j({ filtered: noMatch.feedEmpty, unfiltered: (await deskFeed()).feedEmpty }));
+
+      /* ── 317 · THE DESK HISTORY KEEPS THE CONTROL ROW'S OWN EVENTS, WHICH A PER-ACCOUNT READ CORRECTLY DROPS ── */
+      await w.dal.houseBotEventStore.append({
+        houseBotId: null, userId: null, marketId: null, kind: "LIMITS_SAVED",
+        fromStatus: null, toStatus: null, reason: null, actorId: OFFICER, payload: { landing: true },
+      } as Any);
+      const deskH = await deskHist();
+      const acctH = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "history" });
+      ok("1.317 · the desk history carries the CONTROL ROW's own events — the switch, a limits save, the withdrawal — which belong to no account, and the per-account read correctly drops them",
+        deskH.historyTotal > acctH.historyTotal
+          && deskH.history.some((r: Any) => r.accountHref === null)
+          && acctH.history.length > 0,
+        j({ desk: deskH.historyTotal, account: acctH.historyTotal }));
+      /* ⛔ AND THE ROW SAYS WHOSE IT IS, IN THREE DISTINCT STATES — the operator's own text, the desk's own word,
+         and the console's word for an account the roster no longer holds. Never one standing in for another. */
+      ok("1.317 · 474 · every desk row NAMES the account it is about, and the desk's own rows say so in the console's own word rather than being blank or borrowing an account's name",
+        deskH.history.every((r: Any) => typeof r.accountName === "string" && r.accountName.length > 0)
+          && deskH.history.some((r: Any) => r.accountIsOperatorText === true && r.accountHref !== null)
+          && deskH.history.some((r: Any) => r.accountIsOperatorText === false && r.accountHref === null),
+        j(deskH.history.slice(0, 4).map((r: Any) => [r.accountName, r.accountIsOperatorText, r.accountHref !== null])));
+      ok("1.317 · the desk history pages against a COUNTING reader in the same declared order, and a page past the end is served as the LAST page",
+        (await deskHist({ hpage: "1" })).historyPage === 1
+          && (await deskHist({ hpage: "999" })).historyPage === Math.max(1, Math.ceil(deskH.historyTotal / deskH.historyPerPage))
+          && (await deskHist({ hpage: "999" })).history.length > 0,
+        j({ total: deskH.historyTotal, perPage: deskH.historyPerPage }));
+      /* ⛔ NO AMOUNT AND NO BALANCE REACHES A ROW, and the money door is the platform's own screen (266, 369, 456). */
+      ok("1.369 · not one desk history row carries an amount or a wallet balance — an OWNER_MONEY row carries a DOOR to the platform's own transactions screen instead",
+        deskH.history.every((r: Any) => !("amountTzs" in r) && !("balanceTzs" in r) && !/TZS/.test(all(r)))
+          && deskH.history.every((r: Any) => r.moneyHref === null || r.moneyHref.startsWith("/admin/transactions?q=")),
+        j(deskH.history.slice(0, 3)));
+      /* ⛔ AND NO FEED ROW CARRIES `why`, `decision` OR A TRIGGER PLAYER'S RAW ID. */
+      ok("1.453 · not one desk feed row carries the engine's own sentence, its decision blob or another player's raw id — the projection is finished strings and booleans",
+        d1.feed.every((r: Any) => !("why" in r) && !("decision" in r) && !("triggerUserId" in r))
+          && !all(d1.feed).includes("a sentence the console must never paint")
+          && !all(d1.feed).includes("usr_panel_trigger_player"),
+        j(d1.feed[0]));
+
+      /* ── 415 · THE STOP CONTROL, AND THE WRITE BEHIND IT ─────────────────────────────────────────────────── */
+      ok("1.415 · the stop control is offered on exactly the rows the badge counts — a QUEUED stake carries the id the control posts and every other row carries `null`, so no control is drawn over a stake the service could only refuse",
+        pages.flatMap((pg) => pg.feed).every((r: Any) => (r.statusWord === "Queued") === (r.cancelId !== null))
+          && pages.flatMap((pg) => pg.feed).filter((r: Any) => r.cancelId !== null).length === queued
+          && d1.cancelCopy !== null && typeof d1.cancelCopy.confirmLabel === "string",
+        j({ offered: pages.flatMap((pg) => pg.feed).filter((r: Any) => r.cancelId !== null).length, queued }));
+      ok("1.415 · 453 · not one word of the stop dialog names the feature, and the id it posts is never PAINTED — no row renders it",
+        Object.values(d1.cancelCopy as Record<string, unknown>).filter((v) => typeof v === "string")
+          .every((v) => !NEUTRAL.test(v as string) && houseHits(v as string).length === 0)
+          /* ⛔ POSTED, NEVER PAINTED: the id crosses as a PROP and no cell renders it. A bounded record id in
+             served markup is the one thing D19 says this section may never put in a response it does not have to,
+             and the difference between the two is exactly the difference between `id={…}` and `>{…}<`. */
+          && /<StopQueued id=\{r\.cancelId\}/.test(decomment(read(PAGE)))
+          && !/>\s*\{r\.cancelId\}/.test(decomment(read(PAGE)))
+          && !/\{r\.cancelId\}<\//.test(decomment(read(PAGE))),
+        j(d1.cancelCopy));
+      /* ⛔ THE BOUNDS ARE CHECKED ON THE SERVER TOO — a ceremony verified only in a browser is one a crafted POST
+         walks straight through, and this door is reachable by any signed-in account (383). */
+      const uuid = (n: number) => `00000000-0000-0000-0000-${String(900 + n).padStart(12, "0")}`;
+      const victim = pages.flatMap((pg) => pg.feed).find((r: Any) => r.cancelId !== null)!.cancelId as string;
+      const tooShort = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(1), reason: "no" });
+      const tooLong = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(2), reason: "z".repeat(400) });
+      const noId = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: "", submitId: uuid(3), reason: "a real reason" });
+      const badSubmit = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: "not-a-uuid", reason: "a real reason" });
+      const outsider = await GATEM.houseCancelIntentForConsole(outsiderId, "/admin/desk", { id: victim, submitId: uuid(4), reason: "a real reason" });
+      ok("1.415 · the cancel door validates the reason with the SAME bounds the control arms on, refuses a malformed idempotency key before it reads anything, and refuses a viewer outside the audience — each by its own sentence",
+        tooShort.ok === false && tooShort.field === "reason"
+          && tooLong.ok === false && tooLong.field === "reason"
+          && noId.ok === false && badSubmit.ok === false && outsider.ok === false
+          && new Set([tooShort.error, noId.error, badSubmit.error, outsider.error]).size === 4,
+        j({ tooShort: tooShort.error, tooLong: tooLong.error, noId: noId.error, badSubmit: badSubmit.error, outsider: outsider.error }));
+      ok("1.415 · CONTROL · the refusals really are refusals — the stake is still QUEUED after all five, so none of them wrote anything",
+        (await w.dal.houseBotIntentStore.get(victim))!.status === "PENDING", "");
+      /* ⛔ THE CANCEL LANDS, AND IT IS THE FIRST PRESS ANYTHING UNDER `src/` HAS EVER CREATED. */
+      const stopped = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(5), reason: "stopped by the officer for a test" });
+      const afterRow = await w.dal.houseBotIntentStore.get(victim);
+      ok("1.415 · the stop LANDS: the queued stake is CANCELLED, the result says so, and the badge falls by exactly one because it counts the same population the control acts on",
+        stopped.ok === true && stopped.changed === true
+          && afterRow!.status === "CANCELLED" && afterRow!.reasonCode === "CANCELLED_BY_ADMIN"
+          && (await deskFeed()).pendingIntents === queued - 1,
+        j({ stopped, status: afterRow!.status, badge: (await deskFeed()).pendingIntents, queued }));
+      const repeat = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(5), reason: "stopped by the officer for a test" });
+      ok("1.415 · a repeat of the SAME press is not a second cancel — the idempotency key is consulted BEFORE the row's status, so the officer is told what their own press did rather than that the stake had already left the queue",
+        repeat.ok === true && repeat.changed === true && (await deskFeed()).pendingIntents === queued - 1,
+        j({ repeat, badge: (await deskFeed()).pendingIntents, queued }));
+      const secondAttempt = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(6), reason: "a second attempt at a cancelled stake" });
+      ok("1.415 · a NEW press over a stake that has already left the queue is refused BY NAME — the officer is told what happened rather than met with a silent no-op, and its sentence is not the repeat's",
+        secondAttempt.ok === false && typeof secondAttempt.error === "string" && secondAttempt.error.length > 20,
+        j({ secondAttempt }));
+      /* ⛔ THE AUDIT KEY IS THE ONE `press-audit.ts` MAPS THIS PURPOSE TO, AND IT IS A `HOUSE_AUDIT` MEMBER —
+         membership is what keeps the row out of a player's own audit read, so a key renamed for neutrality would
+         silently leave the exclusion. */
+      await auditFlush();
+      const cancelRows = (getAuditPage({ limit: 10_000 }) as Any[]).filter((e) => e.action === "house_bot.staff_intent_cancelled");
+      ok("1.382 · the cancel's audit action is a `HOUSE_AUDIT` key — `house_bot.staff_intent_cancelled`, the one the press builder already maps this purpose to — and it names the ACTOR BY ID with no free text in the payload",
+        cancelRows.length >= 1
+          && cancelRows[0].category === CONST.HOUSE_AUDIT["house_bot.staff_intent_cancelled"]
+          && cancelRows[0].actorId === OFFICER
+          && CONST.isAllowedHouseAuditPayload(cancelRows[0].payload) === true
+          && !all(cancelRows[0].payload).includes("stopped by the officer for a test"),
+        j({ found: cancelRows.length, row: cancelRows[0] && { action: cancelRows[0].action, category: cancelRows[0].category, payload: cancelRows[0].payload } }));
+      ok("1.382 · CONTROL · the writerless ADMIN twin is still written by NOBODY, so the key above was chosen and not defaulted into",
+        CONST.HOUSE_AUDIT["house_bot.intent_cancelled"] === "ADMIN"
+          && (getAuditPage({ limit: 10_000 }) as Any[]).every((e) => e.action !== "house_bot.intent_cancelled"),
+        "");
+      /* ⛔ AND THE OFFICER'S REASON IS ON THE EVENT, WHERE ERASURE CAN REACH IT (INT-10). */
+      const cancelEvents = (await w.dal.houseBotEventStore.listAll({ limit: 200 })).filter((e: Any) => e.kind === "STAFF_INTENT_CANCELLED");
+      ok("1.382 · INT-10 · the officer's typed sentence is on the EVENT and never in the audit payload — erasure rewrites one and structurally cannot rewrite the other",
+        cancelEvents.length >= 1 && cancelEvents[0].reason === "stopped by the officer for a test"
+          && cancelEvents[0].actorId === OFFICER,
+        j({ events: cancelEvents.length, reason: cancelEvents[0]?.reason }));
+    }
   }
 
   /* ── 1.411 / 1.410 · THE PAGERS AND THE RAIL, AT THE RENDER SITE ──────────────────────────────────────────── */
   {
     const detail = decomment(read(DETAIL_PAGE));
-    const rail = `${SECTION}/[id]/activity-filters.tsx`;
+    /* ⭐ THE RAIL MOVED UP ONE DIRECTORY WHEN THE LANDING PANELS LANDED, AND THAT IS §K5 RATHER THAN TIDINESS:
+       both pages render the SAME activity rail, and two copies of one control is the exact defect this section
+       was pulled up on. It is still under `src/app/admin/desk/**`, which is what puts it inside 4.453's
+       `lexiconFiles` walk and 1.360's money walk at all. */
+    const rail = `${SECTION}/activity-filters.tsx`;
     const railSrc = decomment(read(rail));
     /* ⛔ BOTH PAGED PANELS DRAW THE SHARED PAGER, AND NEITHER TAKES ITS TOTAL FROM THE ROWS. */
     ok("1.411 · both paged panels render the shared `AdminPagination`, each with its OWN page parameter, and the account page now draws three pagers in all — targets, activity and history",
@@ -3685,6 +3984,130 @@ try {
         && /historyRows === null \? \(/.test(detail) && /historyRows\.length === 0 \? \(/.test(detail)
         && (detail.match(/<AdminTableEmpty/g) ?? []).length === 3, "");
   }
+
+
+
+/* ═══ §2e3 · THE LANDING PAGE'S TWO PANELS, AT THE RENDER SITE (C7 step 5's landing half) ══════════════
+ * ⛔ The behavioural half is driven above, on both stores. What only a source scan can say is that the PAGE spends
+ * what the reader gives it — the rail file both pages share, a pager whose base href carries the live filters, and
+ * a bell whose window the door can actually read. */
+section("§2e3 · the desk landing page's activity and history panels");
+{
+  /* The page's decommented source, under this section's own name — the ONE read hoisted above. */
+  const landing = pageCode;
+  const railFile = `${SECTION}/activity-filters.tsx`;
+  /* ⛔ ONE RAIL FILE, RENDERED BY BOTH PAGES (§K5). Two copies of one control is the defect this section was
+     pulled up on, and a second rail would also be a second `data-filter-rail` under one section (1.410). */
+  ok("1.410 · the landing activity panel renders the SAME rail file the account page does, with the reader's own groups, presets and default — and the section still holds exactly one rail file",
+    /<ActivityFilters groups=\{feedView\.feedFilters\} presets=\{feedView\.feedPresets\} presetDefault=\{feedView\.feedPresetDefault\} \/>/.test(landing)
+      && /<ActivityFilters groups=\{view\.feedFilters\} presets=\{view\.feedPresets\} presetDefault=\{view\.feedPresetDefault\} \/>/.test(decomment(read(DETAIL_PAGE)))
+      && sectionFiles.filter((f) => /data-filter-rail/.test(decomment(read(f)))).length === 1
+      && existsSync(join(ROOT, railFile)),
+    j({ rail: railFile, hooks: sectionFiles.filter((f) => /data-filter-rail/.test(decomment(read(f)))) }));
+  ok("1.410 · CONTROL · the scan really reads the landing page — a rail rendered with its own typed options instead of the reader's is reported",
+    !/<ActivityFilters groups=\{\[/.test(landing) && /<ActivityFilters groups=\{\[/.test('<ActivityFilters groups={[{ param: "kind" }]} />'), "");
+
+  /* ⛔ BOTH PAGERS TAKE THEIR TOTAL FROM A COUNTING FIELD AND THEIR BASE HREF FROM THE READER'S LIVE PARAMETERS.
+     A base href re-typed at the call site is how page 2 of a filtered list becomes page 2 of the unfiltered one. */
+  ok("1.411 · each landing pager's `baseHref` carries its own panel's live parameters, built from the VIEW and never re-typed at the call site, and each list owns its own page parameter",
+    /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, feedView\.feedParams, "page"\)\}/.test(landing)
+      && /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, historyView\.historyParams, "hpage"\)\}/.test(landing)
+      && /param="page"/.test(landing) && /param="hpage"/.test(landing)
+      && !/baseHref=\{buildBaseHref\(CONSOLE_ROUTE, \{/.test(landing),
+    "");
+  ok("1.411 · both landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and neither is a rendered array's length",
+    (landing.match(/<AdminPagination/g) ?? []).length === 2
+      && /total=\{feedView\.feedTotal\}/.test(landing) && /total=\{historyView\.historyTotal\}/.test(landing)
+      && !/total=\{[^}]*\.length\}/.test(landing)
+      && !/parsePage/.test(landing)
+      && /page=\{feedView\.feedPage\}/.test(landing) && /perPage=\{feedView\.feedPerPage\}/.test(landing),
+    j({ pagers: (landing.match(/<AdminPagination/g) ?? []).length }));
+  /* ⛔ AND THE UNPAGED PANELS DRAW NONE: the roster and the limits panel are whole reads, and a pager over a list
+     that is never paged is 432(a)'s dead control. */
+  ok("1.411 · the roster and limits panels draw NO pager — a numbered control over a list that is never paged is a control with nothing behind it",
+    !/<AdminPagination/.test(panelOf("roster")) && !/<AdminPagination/.test(panelOf("limits"))
+      && /<AdminPagination/.test(panelOf("activity")) && /<AdminPagination/.test(panelOf("history")),
+    "");
+  /* ⛔ EACH PANEL'S EMPTY STATE IS THE KIT'S AND IS REACHED ONLY BY A `length === 0` BRANCH; THE FAILURE STATE IS
+     REACHED ONLY BY A `=== null` BRANCH. The two can never be reached by one condition (355). */
+  ok("1.355 · each landing panel paints the kit's EMPTY state only on a `length === 0` branch and `AdminLoadError` only on a `=== null` branch — a failed read can never render as an empty table",
+    /feedRows === null \? \(/.test(landing) && /feedRows\.length === 0 \? \(/.test(landing)
+      && /historyRows === null \? \(/.test(landing) && /historyRows\.length === 0 \? \(/.test(landing)
+      && (panelOf("activity").match(/<AdminTableEmpty/g) ?? []).length === 1
+      && (panelOf("history").match(/<AdminTableEmpty/g) ?? []).length === 1
+      && (panelOf("activity").match(/<AdminLoadError/g) ?? []).length === 1
+      && (panelOf("history").match(/<AdminLoadError/g) ?? []).length === 1,
+    "");
+  /* ⛔ AND THE TWO FAILURE SENTENCES NAME THEIR OWN SUBJECT — "the desk's activity" is not "the desk's history",
+     and neither is "the roster": a failure treatment that does not say what failed is one an officer cannot act on. */
+  {
+    const whats = [...landing.matchAll(/<AdminLoadError what=\{?"([^"]+)"/g)].map((m) => m[1]);
+    ok("1.355 · every failure treatment on this page NAMES its own subject, and no two name the same one",
+      whats.length >= 4 && new Set(whats).size === whats.length
+        && whats.includes("the desk's activity") && whats.includes("the desk's history"),
+      j(whats));
+  }
+  /* ⛔ THE MONEY COLUMN OF THE DESK FEED IS THE KIT'S OWN MONEY SHAPE, ITS HEADER IS EXACTLY `Stake`, AND THE
+     SUBJECT COLUMN IS FIRST — the roster's own shape one card above, applied to this table's own subject. */
+  {
+    const feedThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("activity"))?.[0] ?? "";
+    const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
+    const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
+      j(feedHeaders) === j(["Account", "Stake", "When", "Outcome", "Type", "Product", "Note", ""]),
+      j(feedHeaders));
+    ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
+      j(histHeaders) === j(["Account", "When", "Event", "Change", "Who"]) && !/amount/.test(histThead),
+      j(histHeaders));
+    ok("1.373 · the desk feed's money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither landing table takes a `min-w-*` on the table itself",
+      /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(panelOf("activity"))
+        && !/admin-tbl min-w-/.test(landing), "");
+  }
+  /* ⛔ THE HOUR SUMMARY'S BELL LANDS ON THE WINDOW IT IS ABOUT. `parseEatLocal` requires a full instant and
+     answers null for `14:00`, so the clock form resolved to "custom" over the last 24 hours — a different window
+     under the name of the one the bell was about, with nothing on screen saying so. */
+  {
+    const notif = decomment(read("src/lib/server/notification-service.ts"));
+    const emit = decomment(read("src/lib/server/house-bot/emitters.ts"));
+    const DR: Any = await import("../../src/lib/server/date-range.ts");
+    /* ⛔ THE ASSERTION IS THE ROUND TRIP, NOT THE SPELLING. A scan that only forbade the clock form passed while
+       the link carried a full ISO instant — which the parser refuses just as completely. So the window the emitter
+       WRITES is handed to the resolver the door actually uses, and the span that comes back is compared with the
+       span that went in. That is the only form of this check that could not be satisfied by a wrong shape. */
+    const fromMs = Date.parse("2026-09-20T13:00:00.000Z");
+    const toMs = Date.parse("2026-09-20T14:00:00.000Z");
+    const nowMs = Date.parse("2026-09-20T18:00:00.000Z");
+    const round = (a: number, b: number) => {
+      const w = DR.resolveRange({ range: "custom", from: DR.formatEatLocal(a), to: DR.formatEatLocal(b) }, nowMs, "24h");
+      return { start: w.start, end: w.end };
+    };
+    const trip = round(fromMs, toMs);
+    ok("1.369 · the hour summary's bell lands on the HOUR IT IS ABOUT: the window the emitter writes, handed to the door's own resolver, comes back as exactly that window — same start, same end, to the minute",
+      trip.start === fromMs && trip.end === toMs
+        && /&from=\$\{encodeURIComponent\(opts\.fromEat\)\}&to=\$\{encodeURIComponent\(opts\.toEat\)\}/.test(notif)
+        && !/&from=\$\{encodeURIComponent\(opts\.(?:fromHH|fromIso)\)\}/.test(notif)
+        && /\$\{opts\.fromHH\}–\$\{opts\.toHH\}/.test(notif)
+        && /formatEatLocal\(Date\.parse\(fromIso\)\)/.test(emit),
+      j({ start: new Date(trip.start).toISOString(), end: new Date(trip.end).toISOString() }));
+    /* ⛔ THE CONTROL, AND IT IS THE ONE THAT WOULD HAVE CAUGHT THE FIRST FIX. BOTH wrong forms are driven through
+       the same resolver and BOTH must come back as something other than the asked hour — the clock form, and the
+       ISO instant that a field called `fromIso` invites. Measured: the ISO pair returns a 24-HOUR span, still
+       labelled "custom", with no refusal anywhere. A guard that cannot tell those two apart is not measuring the
+       bell, it is measuring a spelling. */
+    const clockTrip = DR.resolveRange({ range: "custom", from: "13:00", to: "14:00" }, nowMs, "24h");
+    const isoTrip = DR.resolveRange({ range: "custom", from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString() }, nowMs, "24h");
+    ok("1.369 · CONTROL · both forms the console CANNOT read are driven through the same resolver and both come back as a different window — the clock form and the full ISO instant alike — and the parser refuses each outright while accepting the one the emitter writes",
+      DR.parseEatLocal("13:00") === null
+        && DR.parseEatLocal(new Date(fromMs).toISOString()) === null
+        && DR.parseEatLocal(DR.formatEatLocal(fromMs)) !== null
+        && !(clockTrip.start === fromMs && clockTrip.end === toMs)
+        && !(isoTrip.start === fromMs && isoTrip.end === toMs)
+        && isoTrip.end - isoTrip.start === 24 * 3600_000
+        && isoTrip.preset === "custom",
+      j({ isoSpanHours: (isoTrip.end - isoTrip.start) / 3600_000, isoPreset: isoTrip.preset }));
+  }
+}
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §2f · THE DESIGNATE WIZARD — `/admin/desk/new` (C7-SPEC rulings 356, 359, 368/459, 382, 383, 387; C7 step 6)
@@ -4344,8 +4767,8 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
 
 if (STORE === "memory") {
   section("§4 · the section's source law");
-  const pageRaw = read(PAGE);
-  const pageCode = decomment(pageRaw);
+  /* ⛔ `pageRaw`, `pageCode` and `panelOf` are the TOP-LEVEL ones, declared once above §2e3 — this block used to
+     own them, and that scoping is what aborted the Postgres child. Nothing is re-read here on purpose. */
   const gateCode = decomment(read(GATE));
 
   /* 4.453 · THE GUARD RULING 453 ASKS FOR, over every string of the section AND of the gated reader that writes its
@@ -4823,15 +5246,24 @@ export default function Ruling513Control() {
       && decomment(read("src/lib/server/house-bot/eligibility.ts")).includes("Remove an account or raise the roster limit on Limits →")
       && D.DESIGNATE_COPY.rosterFull(1, 1).includes("Remove an account or raise the roster limit on Limits →"), "");
 
-  /* 1.312a · the rail renders exactly the closed list's keys — ONE at this step — and every other `?tab=` resolves
-   * to it. ⛔ A rail option whose panel is not written is a dead control. */
-  ok("1.312a · the rail's options come from the closed list, and the page renders a panel for every key in it",
+  /* 1.312 · the rail renders exactly the closed list's keys, in RAIL ORDER, and every other `?tab=` resolves to
+   * the roster. ⛔ A rail option whose panel is not written is a dead control.
+   * ⭐ FOUR KEYS AT C7 STEP 5's LANDING HALF, AND THE ORDER IS ASSERTED RATHER THAN THE COUNT: `roster · activity ·
+   * limits · history` is ruling 312's own rail order — who is on the desk, what it is doing, what would stop it,
+   * what was done to it — and a list with the right members in the wrong order is a rail an officer has to read
+   * twice. This line was `1.312a` and hard-coded the two-key list; it is REPLACED rather than relaxed. */
+  ok("1.312 · the rail's options come from the closed list, and the page renders a panel for every key in it — four keys, in rail order",
     /CONSOLE_TABS\.map/.test(pageCode) && CR.CONSOLE_TABS.every((k: string) => pageCode.includes(`tab === "${k}"`))
-      && CR.CONSOLE_TABS.length === 2 && j([...CR.CONSOLE_TABS]) === j(["roster", "limits"]), j(CR.CONSOLE_TABS));
+      && CR.CONSOLE_TABS.length === 4 && j([...CR.CONSOLE_TABS]) === j(["roster", "activity", "limits", "history"]), j(CR.CONSOLE_TABS));
+  /* ⛔ AND EVERY KEY'S PANEL IS REALLY THERE TO BE SLICED — the population trap a `panelOf` scan carries: an
+   * opener that moved would make every panel-scoped scan below read an EMPTY string and pass on nothing. */
+  ok("1.312 · CONTROL · each of the four panels is found and non-empty in the page's own source, so every panel-scoped scan below is measuring a table and not an empty slice",
+    CR.CONSOLE_TABS.every((k: string) => panelOf(k).length > 200) && panelOf("nowhere") === "",
+    j(CR.CONSOLE_TABS.map((k: string) => [k, panelOf(k).length])));
   /* ⛔ A TAB EXISTS ONLY WITH ITS PANEL (ruling 312), AND THE LIST GROWS ONE KEY PER PANEL. The `limits` key joined
    * it at C7 step 3 with the panel below; `activity` and `history` join at step 5. This case is what stops a rail
    * option shipping ahead of the thing it opens — a dead control in its honest-looking half (432(i)). */
-  ok("1.312a · the closed list holds a key for EVERY panel the page renders, and a panel for every key — neither ahead of the other",
+  ok("1.312 · the closed list holds a key for EVERY panel the page renders, and a panel for every key — neither ahead of the other",
     j([...new Set([...pageCode.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]))].sort()) === j([...CR.CONSOLE_TABS].sort()), "");
   for (const raw of [undefined, "", "limitz", "roster", ["roster", "limits"] as Any]) {
     ok(`1.302 · \`?tab=${j(raw)}\` resolves to the roster — never a 404 and never a redirect`, CR.consoleTab(raw) === "roster", j(CR.consoleTab(raw)));
@@ -4908,8 +5340,8 @@ export default function Ruling513Control() {
   /* ⛔ AND THE COUNT USAGE READS ON THE SAME AXIS AS THE TWO MONEY USAGES BESIDE IT (432(o)): same grammar, same
    * shape, three adjacent figures — left-aligning one of them put them on two axes. */
   ok("1.407 · 432(o) · every usage column is right-aligned, so three adjacent usage figures read on ONE axis",
-    (pageCode.match(/<th scope="col" className="text-right p-3 !whitespace-normal">/g) ?? []).length === 3
-      && (pageCode.match(/<td className="p-3 text-right(?: text-text-secondary)?"><Usage cell=/g) ?? []).length === 3, "");
+    (panelOf("roster").match(/<th scope="col" className="text-right p-3 !whitespace-normal">/g) ?? []).length === 3
+      && (panelOf("roster").match(/<td className="p-3 text-right(?: text-text-secondary)?"><Usage cell=/g) ?? []).length === 3, "");
   ok("1.373 · no header reads 'House stake', 'Today net' or 'Live balance'",
     !/House stake|house stake|Today net|Live balance/.test(pageCode), "");
   /* 1.373 · THE TABLE ITSELF CARRIES NO `min-w-*`, and the money CELLS carry no `.tabular`, and both are the same
@@ -4926,7 +5358,10 @@ export default function Ruling513Control() {
   ok("1.373 · …and only the SUBJECT and STATUS columns carry a floor — never a money column, which would pin its figure off-screen",
     /<th scope="col" className="text-left p-3 min-w-\[150px\]">Account<\/th>/.test(pageCode)
       && /<th scope="col" className="text-left p-3 min-w-\[128px\]">Status<\/th>/.test(pageCode)
-      && (pageCode.match(/min-w-\[/g) ?? []).length === 2
+      /* ⛔ THE ROSTER'S OWN TWO FLOORS, counted in the ROSTER's own slice — the other three panels have their own
+         subject columns and their own floors, and a page-wide count would let one be deleted while another is
+         added. ⛔ THE "NO MONEY FLOOR" HALF STAYS PAGE-WIDE, because it is a rule about every table here. */
+      && (panelOf("roster").match(/min-w-\[/g) ?? []).length === 2
       && !/text-right p-3[^"]*min-w-\[/.test(pageCode), "");
   /* ⛔ ONLY THE FIGURE IS IN `.amount` (ruling 409). Wrapping "used" and "of" inside it put prose in the money face
    * and made each unbreakable unit wider than the figure it protected — the constraint 432(b) was solving. A COUNT
@@ -4936,7 +5371,11 @@ export default function Ruling513Control() {
       && /const figure = cell\.money \? "amount tabular-nums" : "font-mono tabular-nums";/.test(pageCode)
       && (pageCode.match(/className=\{figure\}/g) ?? []).length === 1
       && !/className="amount tabular-nums">\{cell\./.test(pageCode)
-      && !/td className="[^"]*\btabular\b/.test(pageCode), "");
+      /* ⛔ THE ROSTER'S USAGE CELLS ARE NEVER BOUND BY `.tabular`, and that is this table's rule rather than the
+         page's: a usage cell carries a PAIR that must be allowed to wrap, while the activity panel's Stake cell is
+         ONE amount and takes the kit's own `tabular text-right` money shape (373). Measured at 360 on the real
+         page: binding the pair made each money column 243px and pushed the second answer off the screen. */
+      && !/td className="[^"]*\btabular\b/.test(panelOf("roster")), "");
   /* ⛔ THE WAY OUT EXISTS EXACTLY WHEN THE PAGE IT OPENS EXISTS (ruling 432(h)). Every row shipped a live
    * `open →` to `/admin/desk/<id>` while that route had no page, so the first control an officer reaches on the
    * deliverable answered the app-root 404 — the same defect the head action and the master switch are rendered
@@ -4999,7 +5438,11 @@ export default function Ruling513Control() {
     const linkExprs = exprsOf(pageCode);
     const openings = [...pageCode.matchAll(LINK_EL)].length;
     const ELEMENTS = ["Link", "WayOutLink"];
-    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.href as Route"];
+    /* ⭐ THREE MORE AT C7 STEP 5's LANDING HALF, EACH PINNED IN POSITION LIKE THE FIVE BEFORE THEM: the activity
+       row's account cell, the history row's account cell — ONE shape for one thing, which is why they are the same
+       expression — and the history row's door to the platform's transactions screen, which is what an OWNER_MONEY
+       row carries INSTEAD of an amount (266, 369(c), 456). An `OR` would widen; eight positions are eight answers. */
+    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
       j(linkExprs) === j(WANT) && j(elementsOf(pageCode)) === j(ELEMENTS) && linkExprs.length === openings,
       j({ found: linkExprs, want: WANT, elements: elementsOf(pageCode), openings }));
@@ -5102,9 +5545,17 @@ export default function Ruling513Control() {
     .map((m) => m[1].replace(/\s+/g, " ").trim());
   ok("1.308 · 432(n) · no auto-off Callout body repeats the strip's own OFF sentence — the strip says the desk is off, the Callout says WHY",
     calloutBodies.length >= 3 && calloutBodies.every((b) => !b.includes("Nothing will be staked")), j(calloutBodies));
-  ok("1.308 · 432(n) · CONTROL · the Callout bodies were really read, and the clause the strip owns IS the reader's own OFF sentence",
-    calloutBodies.length >= 3 && calloutBodies.every((b) => b.length > 40)
-      && gateCode.includes("The desk is off. Nothing will be staked."), j(calloutBodies.map((b) => b.length)));
+  /* ⛔ ONE CALLOUT ON THIS PAGE CARRIES NO COPY OF ITS OWN: the activity panel's refusal sentence is the SERVER's,
+     handed through as an expression (387 — an address that was not taken at its word says so, in the door's own
+     words). It is NAMED here rather than being allowed to shorten the floor for everything else, so a second
+     expression-bodied Callout — the way a hand-written sentence would sneak past a length rule — is reported. */
+  const EXPR_BODIES = ["{feedView.queryRefusal}"];
+  const proseBodies = calloutBodies.filter((b) => !EXPR_BODIES.includes(b));
+  ok("1.308 · 432(n) · CONTROL · the Callout bodies were really read, every body this page WORDS ITSELF is a real sentence, and the one expression body is the reader's own refusal",
+    proseBodies.length >= 3 && proseBodies.every((b) => b.length > 40)
+      && calloutBodies.length - proseBodies.length === 1
+      && gateCode.includes("The desk is off. Nothing will be staked."),
+    j({ prose: proseBodies.map((b) => b.length), expr: calloutBodies.length - proseBodies.length }));
 
   /* 1.361 · no banned formatter, here or in the gated reader. */
   const BANNED = ["formatTzsSigned", "formatTzsAbs", "formatWhole", "toLocaleString"];
@@ -5536,9 +5987,18 @@ export default function Ruling513Control() {
      * same number on the server — so the page spends the raw count EXACTLY ONCE, and a badge that disagrees with the
      * sentence 40px above it has nowhere to come from. Both forms of the sentence used to be spelled out in JSX
      * here, which is how the strip came to paint it beside a switch that was already on. */
-    ok("1.405 · the limits badge is `TabItem.count` — the kit's `CountBadge` — and the page spends the raw count EXACTLY ONCE, the strip's sentence coming from the server",
-      /count: k === "limits" \? view\.unsetRequired : undefined/.test(pageCode)
+    /* ⭐ TWO BADGES AT C7 STEP 5's LANDING HALF, AND EACH IS STILL ONE READ SPENT ONCE. `limits` carries the unset
+       count; `activity` carries the desk-wide QUEUED-stake count, which is a COUNTING read of the same predicate
+       the feed pages over and never `rows.length` (344). ⛔ `?? undefined` IS THE ASSERTION, NOT A CONVENIENCE: the
+       count is `number | null` and `null` is a FAILED read — `CountBadge` renders nothing at zero, so `?? 0` would
+       paint a failed read as "nothing queued", which is a count standing in for a read's health.
+       ⛔ ROSTER AND HISTORY CARRY NONE: a count of the rows in the table under it, and a count nothing on the page
+       can act on, are both badges that say nothing (432(a)). */
+    ok("1.405 · both badges are `TabItem.count` — the kit's `CountBadge` — each raw count is spent EXACTLY ONCE, a FAILED count paints no badge, and the strip's sentence still comes from the server",
+      /count: k === "limits" \? view\.unsetRequired : k === "activity" \? view\.pendingIntents \?\? undefined : undefined/.test(pageCode)
         && (pageCode.match(/view\.unsetRequired/g) ?? []).length === 1
+        && (pageCode.match(/view\.pendingIntents/g) ?? []).length === 1
+        && !/view\.pendingIntents \?\? 0/.test(pageCode)
         /* twice: the branch test and the LINK's own child. The plain form once, in the inert branch. */
         && (pageCode.match(/view\.limitsFirstReason/g) ?? []).length === 2
         && (pageCode.match(/view\.limitsFirstPlain/g) ?? []).length === 1
@@ -5577,11 +6037,13 @@ export default function Ruling513Control() {
     ok("1.406 · the strip, both Callouts, the band, the rail and the live trigger are ALL rendered before ANY `tab === ` condition in the body — no tab owns a control that stops money",
       bodyAt > 0 && firstTabCond > bodyAt && sites.every(([, at]) => at > bodyAt && at < firstTabCond),
       j({ bodyAt, firstTabCond, inside: sites.filter(([, at]) => !(at > bodyAt && at < firstTabCond)) }));
-    ok("1.406 · CONTROL · the two panels really are inside `?tab=` groups, and the FIRST condition in the body is a tab GROUP opener — so the assertion above has something to decide",
+    /* ⛔ THE COUNT IS DERIVED FROM THE CLOSED LIST, NOT TYPED: a panel group per key and no others, so a fifth
+       group with no key — or a key whose group was never written — is reported here as well as at 1.312. */
+    ok("1.406 · CONTROL · every panel really is inside its own `?tab=` group, and the FIRST condition in the body is a tab GROUP opener — so the assertion above has something to decide",
       firstPanel > 0 && firstTabCond === firstPanel + 1
         && pageCode.indexOf('{tab === "limits" && (<>') > firstPanel
-        && (pageCode.match(/\{tab === "[a-z-]+" && \(<>/g) ?? []).length === 2,
-      j({ firstPanel, firstTabCond }));
+        && (pageCode.match(/\{tab === "[a-z-]+" && \(<>/g) ?? []).length === CR.CONSOLE_TABS.length,
+      j({ firstPanel, firstTabCond, groups: (pageCode.match(/\{tab === "[a-z-]+" && \(<>/g) ?? []).length }));
   }
 
   /* ⛔ 1.412 / 537 · THE TYPED CONTROL, THE WIRED SAVE AND THE UNSAVED-CHANGES GUARD STAND OR FALL TOGETHER.
@@ -6059,12 +6521,22 @@ export default function Ruling513Control() {
      * is added here is the shape that pin cannot see from the other side: nothing under the section BUILDS that
      * argument from a header or a search param, which would report as a value rather than as a literal and would
      * let a mistyped route widen a page's read audience to a whole RBAC domain. */
-    const gateCalls = [...pageCode.matchAll(/house(?:ConsoleAudience|RosterForConsole|UsageForConsole|AuditForConsole)\(([^;]*?)\)/g)].map((m) => m[1]);
+    const gateCalls = [...pageCode.matchAll(/house(?:ConsoleAudience|RosterForConsole|UsageForConsole|AuditForConsole|FeedForConsole|HistoryForConsole)\(([^;]*?)\)/g)].map((m) => m[1]);
     ok("1.343 · every gate call under the section passes the literal `\"/admin/desk\"` as its route, and there are at least three of them",
       gateCalls.length >= 3 && gateCalls.every((a) => a.includes('"/admin/desk"')), j(gateCalls));
-    ok("1.343 · and no gate argument is built from a header, a search param or the route module — a literal is what the pin can measure",
-      !/headers\(\)|x-pathname|sp\.tab.*houseConsole|CONSOLE_ROUTE/.test(pageCode)
-        && (pageCode.match(/"\/admin\/desk"/g) ?? []).length === gateCalls.length, j(pageCode.match(/"\/admin\/desk"/g)));
+    /* ⛔ THE PIN IS ON THE ROUTE ARGUMENT ITSELF, WHICH IS STRICTLY STRONGER THAN THE FILE-WIDE SCAN IT REPLACES.
+       The old form forbade the identifier `CONSOLE_ROUTE` ANYWHERE in the page — which was true while no pager
+       existed and is the wrong rule now that ruling 319 requires the pager's own `baseHref` to be built from that
+       one module rather than from a literal. 343's subject was never the file: it is that the SECOND argument of
+       every gate call is the literal, because a route built from a value reads as a value to the arity pin and a
+       mistyped one would widen a page's read audience to a whole RBAC domain. So the second argument is compared
+       EXACTLY, and every `"/admin/desk"` literal in the file is still accounted for by a gate call. */
+    const routeArgs = gateCalls.map((a) => (a.split(",")[1] ?? "").trim());
+    ok("1.343 · and no gate argument is built from a header, a search param or the route module — every gate call's SECOND argument is the literal itself",
+      !/headers\(\)|x-pathname/.test(pageCode)
+        && routeArgs.length === gateCalls.length && routeArgs.every((a) => a === '"/admin/desk"')
+        && (pageCode.match(/"\/admin\/desk"/g) ?? []).length === gateCalls.length,
+      j({ routeArgs, literals: (pageCode.match(/"\/admin\/desk"/g) ?? []).length }));
     /* ⛔ THE CONTROL IS THE DERIVED FORM 343 REFUSES: a header value reads as a VALUE to the arity/own-route pin,
      * not as the literal it insists on, so a mistyped route would silently widen a page's read audience to a whole
      * RBAC domain — and the scan above must be able to see it. */
@@ -6640,19 +7112,17 @@ export default function Ruling513Control() {
     const rungs = ladder(tree);
     const BUILT_THROUGH = rungs.built;
     /* ⛔ THE HOLES THIS TREE IS RECORDED AS HAVING, AND IT IS A DEBT THAT CAN ONLY SHRINK — never a permission.
-     * ⭐ AND IT SHRANK ON 2026-09-20, SO THE RECORD IS REWRITTEN RATHER THAN LEFT STANDING. `5:activity` no longer
-     * means "C7 step 5 is unbuilt": the ACCOUNT PAGE's half IS built — `CONSOLE_DETAIL_TABS` carries `activity` and
-     * `history`, both panels page against COUNTING readers, the dense rail is declared in `ADMIN_SURFACES`, and
-     * 1.312, 1.302, 1.317, 1.344, 1.345, 1.355, 1.369, 1.373, 1.384, 1.405, 1.410, 1.411, 1.420 and 1.453 are all
-     * written above with planted controls. What this rung still records is the LANDING half, which is what the
-     * ladder reads: `CONSOLE_TABS` has neither key, the desk-wide feed and event-log reads behind them do not
-     * exist, and the cancel write path has never created a press. DEFERRED rows 62 and 71 carry it in full.
-     * ⛔ A record left describing work that is done is a WRONG AUTHORITY, and this programme has paid for that
-     * class more than once — so the entry is re-aimed in the same commit as the build, never merely kept.
-     * The moment the landing pair lands, `gaps` is empty, this entry no longer matches a real hole, and the case
-     * goes RED until it is deleted — which is the whole point: a skip is tracked, not remembered. An UNRECORDED
-     * hole fails immediately. */
-    const RECORDED_GAPS: readonly string[] = ["5:activity"];
+     * ⭐ IT IS EMPTY AS OF 2026-09-20, AND THE ENTRY WAS DELETED IN THE SAME COMMIT AS THE BUILD THAT PAID IT.
+     * `5:activity` recorded C7 step 5: first the whole step, then — when the ACCOUNT page's half landed — the
+     * LANDING half alone. Both halves are on disk now: `CONSOLE_TABS` carries `activity` and `history`, the two
+     * DESK-WIDE readers are behind them, the landing rail is the account page's own rail file, both panels page
+     * against COUNTING readers, and the cancel write path creates the first press anything under `src/` ever has.
+     * ⛔ A RECORD LEFT DESCRIBING WORK THAT IS DONE IS A WRONG AUTHORITY, and this programme has paid for that
+     * class more than once — so the list is emptied with the build rather than merely kept.
+     * ⛔ AND AN EMPTY LIST IS NOT A WEAKER GUARD: `rungs.gaps.every(...)` over an empty `RECORDED_GAPS` means any
+     * hole at all is reported by name, which is the strongest this case can be. An UNRECORDED hole fails
+     * immediately, and a recorded one that has since been built fails until its entry is deleted. */
+    const RECORDED_GAPS: readonly string[] = [];
     type Owed = { id: string; step: number; owner: string; what: string };
     const D19: Owed[] = [
       { id: "1.380", step: 1, owner: "console", what: "the gate's position, the literal route, force-dynamic, no gate in the loader" },
@@ -6709,12 +7179,22 @@ export default function Ruling513Control() {
     ok("1.398 · LADDER · every rung below the highest one this tree carries is either PRESENT or a hole this repository has recorded — an unrecorded hole is named here, and a recorded one that has since been built is named so the record is deleted with the build",
       rungs.gaps.every((g) => RECORDED_GAPS.includes(g)) && RECORDED_GAPS.every((g) => rungs.gaps.includes(g)),
       j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, recorded: RECORDED_GAPS, tree }));
-    ok("1.398 · LADDER · ⛔ AND THE HOLE IS REAL AND PRINTED, not inferred: this tree carries the closing step's artefact while `CONSOLE_TABS` has no `activity` key — C7 step 5's LANDING half is unbuilt (DEFERRED rows 62 and 71), while its ACCOUNT half is on disk beside it",
-      rungs.gaps.length === 1 && rungs.gaps[0] === "5:activity" && BUILT_THROUGH === 7 && tree.activity === false
-        /* ⛔ AND THE TWO HALVES ARE READ SEPARATELY, so this rung can never again be read as "step 5 is unbuilt":
-           the account page's panels EXIST and the landing page's do NOT, and both facts are printed. */
+    /* ⛔ THE POSITIVE HOLE CASE IS DELETED, NOT WEAKENED (C7 step 5, the landing half). It asserted
+     * `rungs.gaps.length === 1 && rungs.gaps[0] === "5:activity" && tree.activity === false` — that this tree
+     * REALLY had the hole the list recorded. Its subject is gone: there is no hole. Lowering it to `>= 0` would
+     * have left a line that can never fail, which is the shape this whole programme is written against.
+     * ⛔ WHAT REPLACES IT ASKS THE SAME QUESTION OF THE STATE THAT EXISTS NOW: the ladder is COMPLETE, and both
+     * halves of step 5 are read separately and PRINTED, so "step 5 is built" can never again be inferred from one
+     * of them. A rung that is true for the wrong half is exactly how this rung read "built through 7" over a
+     * console missing a whole area. */
+    ok("1.398 · LADDER · ⛔ THE LADDER IS COMPLETE AND BOTH HALVES OF STEP 5 ARE READ SEPARATELY: this tree carries the closing step's artefact AND `CONSOLE_TABS`'s two new keys AND `CONSOLE_DETAIL_TABS`'s — no rung is satisfied by the other half's build",
+      rungs.gaps.length === 0 && BUILT_THROUGH === 7 && tree.activity === true
+        && CR.consoleTabExists("activity") && CR.consoleTabExists("history")
         && CR.consoleDetailTabExists("activity") && CR.consoleDetailTabExists("history")
-        && !CR.consoleTabExists("history"),
+        /* ⛔ AND THE RUNG IS READ OFF THE LANDING LIST, which is the half it has always measured: a tree with the
+           detail panels alone must still report the hole, and the vector below proves it does. */
+        && ladder({ ...tree, activity: false }).gaps.length === 1
+        && ladder({ ...tree, activity: false }).gaps[0] === "5:activity",
       j({ gaps: rungs.gaps, landing: [...CR.CONSOLE_TABS], detail: [...CR.CONSOLE_DETAIL_TABS] }));
     /* ⛔ AND THE DERIVATION IS SHOWN TO HAVE READ THE SPEC: an empty slice makes `every` trivially true, which is
      * the population trap the roll-call itself was written against. */

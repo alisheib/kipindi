@@ -3398,8 +3398,9 @@ export type ConsoleDeskFeedRow = ConsoleFeedRow & {
 /** One row of the desk-wide history: the account page's row, plus whose account it is — or the desk's own. */
 export type ConsoleDeskEventRow = ConsoleEventRow & {
   accountName: string;
+  /** True only when `accountName` is the operator's own text — which is also exactly when `accountHref` opens a page. */
   accountIsOperatorText: boolean;
-  /** `null` for the control row's own events, which belong to no account and open no page. */
+  /** `null` for the control row's own events, which belong to no account and open no page (432(a)). */
   accountHref: string | null;
 };
 

@@ -232,7 +232,7 @@ const ADMIN_SURFACES = [
      gate does not know about, and declaring the file subjects it to §6.1-§6.8 — so its window filter and every
      one of its chips must take the dense rank, from that control's own module, or a 243-assertion suite goes red
      for a rail that looks right on screen. It is the FIRST declared rail whose hrefs are built on the server. */
-  "src/app/admin/desk/[id]/activity-filters.tsx",   // /admin/desk/[id]?tab=activity — type + product + outcome + window
+  "src/app/admin/desk/activity-filters.tsx",   // /admin/desk?tab=activity and /admin/desk/[id]?tab=activity — ONE rail, both pages: type + product + outcome + window
 ];
 
 /**

@@ -140,6 +140,18 @@
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
+ * ⭐ RAISED AGAIN AT C7 STEP 5's LANDING HALF, to what `npm run test:house-bot-console` PRINTED on this run:
+ * **memory 700, Postgres 470**. `CONSOLE_TABS` grew to its four keys in rail order and the desk-wide activity and
+ * history panels landed behind them, with the rail both pages now share, both pagers against COUNTING readers, the
+ * queued-stake badge read ONCE in the shell for all four tabs, and the hour summary's bell finally landing on the
+ * hour it is about.
+ * 🔴 AND THE MEMORY CHILD'S OWN +41 IS PARTLY A DEFECT THIS RUN FOUND IN THE HARNESS RATHER THAN IN THE
+ * BUILD. `pageRaw`, `pageCode` and `panelOf` were hoisted out of §4 so §2e3 could slice the same page — to column
+ * zero, which READS like the top level and is not: §1 and §2 sit inside one `try` that closes past §2e3, so the
+ * hoisted constants were locals of it and §4 threw `pageRaw is not defined`. The memory child ABORTED at 0
+ * assertions while the Postgres child printed ALL PASS, which is exactly the shape `0.throw` exists to refuse and
+ * exactly why a per-store floor is a PAIR. Indentation is not scope; the declaration now sits above the `try`.
+
  * ⚠️ `red:house-bot-console` carries the mutations for every assertion here; it is run once at the commit close.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
@@ -147,6 +159,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 659, postgres: 430 },
+  minPass: { memory: 700, postgres: 470 },
   dbPrefix: "hb_console",
 });

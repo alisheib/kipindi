@@ -83,6 +83,19 @@ export async function cancelQueuedStake(input: StaffCancelInput): Promise<StaffC
    * this shape, so a malformed one would otherwise surface as a constraint violation AFTER the row read. */
   if (!SUBMIT_ID_RE.test(input.submitId)) return { ok: false, code: "BAD_SUBMIT_ID" };
 
+  /* ⛔ THE IDEMPOTENCY KEY IS CONSULTED BEFORE THE ROW'S STATUS, AND THE ORDER IS THE WHOLE POINT OF THE KEY.
+   * A second press of one button — a double click, a retried request whose response was dropped — arrives with the
+   * SAME (officer, submit id) over a stake this very press has already moved out of PENDING. Reading the status
+   * first would answer "it had already left the queue", which is the officer's own act reported back to them as a
+   * refusal. ⛔ A press that did NOT reach DONE is not answered as success either: the transaction threw, nothing
+   * landed, and the row's existence means this key can never land again — the client mints a new one per dialog. */
+  const prior = await pressStore.findByActorSubmit(input.actorId, input.submitId).catch(() => null);
+  if (prior) {
+    return prior.state === "DONE"
+      ? { ok: true, changed: true, recorded: prior.auditId !== null }
+      : { ok: false, code: "WRITE_FAILED" };
+  }
+
   let intent;
   try {
     intent = await houseBotIntentStore.get(input.intentId);
@@ -112,8 +125,13 @@ export async function cancelQueuedStake(input: StaffCancelInput): Promise<StaffC
        * audit row joins to the press through `HouseBotPress.auditId`. One join away, and erasable. */
       reason: input.reason,
     });
-    /* A repeat of the same submit: the first press already decided this. Nothing is written twice. */
-    if (!inserted.ok) return { ok: true, changed: inserted.existing.state === "DONE", recorded: inserted.existing.auditId !== null };
+    /* The same answer from the other side: two presses that raced past the read above still insert once, and the
+       loser is told what the winner did rather than being allowed to write a second time. */
+    if (!inserted.ok) {
+      return inserted.existing.state === "DONE"
+        ? { ok: true, changed: true, recorded: inserted.existing.auditId !== null }
+        : { ok: false, code: "WRITE_FAILED" };
+    }
     press = inserted.row;
   } catch (err) {
     return { ok: false, code: err instanceof HouseSchemaNotReady ? "SCHEMA" : "WRITE_FAILED" };

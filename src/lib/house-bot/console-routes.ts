@@ -46,15 +46,21 @@ export const CONSOLE_NEW_ROUTE = `${CONSOLE_ROUTE}/new`;
  * The landing page's tab keys, in rail order, holding ONLY the keys whose panel exists (ruling 312).
  * `limits` joined it with its panel at C7 step 3.
  *
- * ⚠️ `activity` AND `history` ARE STILL OWED HERE, AND C7 STEP 5 DELIBERATELY DID NOT ADD THEM. Step 5's account
- * half built the two panels on `CONSOLE_DETAIL_TABS` below; this list is the DESK-WIDE pair, with its own readers
- * (the feed across every account, the event log including the control row's own events) and its own landing rail.
- * ⛔ Adding a key here before that panel exists is ruling 312's dead control, and it is also measured: comms case
- * 7.2d asserts `!consoleTabExists("activity") && !consoleTabExists("history")` today, because exactly one delivered
- * alert href — the hour summary's — is a LANDING `?tab=activity` link with no panel behind it, and that one dead
- * link is what keeps 7.2c's tolerance measuring anything at all.
+ * ⭐ `activity` AND `history` JOINED AT C7 STEP 5's LANDING HALF, WITH THE DESK-WIDE READERS BEHIND THEM —
+ * `houseFeedForConsole` (every account's stakes in one list) and `houseHistoryForConsole` (every account's changes
+ * AND the control row's own: the switch, a limits save, the withdrawal, which a per-account narrowing correctly
+ * drops). Each is a gated reader building ONE `readDeskCore` set, so all four tabs paint the same strip, the same
+ * band and the same queued-stake badge.
+ * ⛔ THE ORDER IS THE RAIL'S ORDER AND IT IS RULING 312's OWN: roster · activity · limits · history — who is on
+ * the desk, what it is doing, what would stop it, what was done to it.
+ * ⛔ THE LIST STILL GROWS ONLY WITH A PANEL. A rail option with no panel is a dead control, `?tab=` resolves
+ * against this list, and `consoleTabExists` is what every surface asks before it renders a link to one.
+ * ⚠️ THE ACCOUNT PAGE'S HALF LANDED FIRST, AND THE ORDER WAS FORCED (see `CONSOLE_DETAIL_TABS` below): comms case
+ * 7.2d asserted these two keys' ABSENCE while exactly one delivered alert href — the hour summary's — was a
+ * LANDING `?tab=activity` link with no panel behind it. That case is deleted with this build, because its subject
+ * is gone: there is no dead tab left for it to measure.
  */
-export const CONSOLE_TABS = ["roster", "limits"] as const;
+export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;
 export type ConsoleTab = (typeof CONSOLE_TABS)[number];
 
 /** The panel a bare visit renders, and what any unrecognised `?tab=` value resolves to (ruling 302). */
