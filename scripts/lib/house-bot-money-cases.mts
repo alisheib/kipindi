@@ -1032,6 +1032,102 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
   }
 }
 
+/* ═══ §12 · TWO PROPERTIES THAT ONLY A HOUSE FIXTURE COULD EVER SHOW BREAKING ════════════════════════════════
+ * ⛔ BOTH WERE OMISSION-ONLY BEFORE THIS SECTION (2026-09-20). Each is a "this must NOT happen" rule with real
+ * enforcement in `buyPosition` and NO fixture anywhere that could have shown it happening — and an absence with
+ * no fixture is not a proof, it is a place nobody looked. `test:failure-reasons` 8c pins the loss-limit REASON
+ * at SOURCE and 8c.loss-limit pins that `checkLossLimit` has exactly one player-refusing caller; neither of them
+ * drives a HOUSE stake through it, and the whole point of the house seam is that it is a second way to spend a
+ * player's money. §12 drives both, on the holder's own wallet, with the positive control beside each refusal.
+ * ⭐ THE ORDER IN `buyPosition` IS WHY THESE BIND AT ALL, and it is worth stating: the wallet-status gate
+ * (:1285) and the RG daily-loss gate (:1327) both run BEFORE `houseH2` (:1338). A house stake is a bet first.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§12 · the holder's own RG loss limit, and settlement into a CLOSED wallet");
+{
+  const RG: Any = await import("../../src/lib/server/responsible-gambling.ts");
+
+  /* ── 12.1 · THE HOLDER'S OWN DAILY LOSS LIMIT BINDS A HOUSE STAKE TOO ──────────────────────────────────
+   * The account is the holder's, so the limit they set for themselves is theirs to keep — an owner cannot
+   * spend past it by running a bot on their account. `checkLossLimit` refuses when
+   * `lossSoFar + stake > dailyLossLimit`, before a shilling moves. */
+  {
+    /* ⛔ BOTH MARKETS ARE OTHERWISE STAKEABLE — a locked NO stake each, so a FILL's entry condition is MET.
+     * The first draft used bare polls and 12.2 came back `house_condition_gone`, which would have left 12.1
+     * passing for a reason that has nothing to do with a loss limit. (It passes either way, because the RG
+     * gate runs before H3's condition check — but an assertion whose subject could be any of two refusals is
+     * not measuring the one it names.) */
+    await w.ageHouseMinute();
+    const over = (await pollWithLockedNo(10_000)).market;
+    const under = (await pollWithLockedNo(10_000)).market;
+    const b = await w.bot();
+    const before = (await w.bal(b.userId)).balance;
+    const set = await RG.setLimits(b.userId, { dailyLossLimit: 3_000 });
+    const limitNow = (await RG.getRgSettings(b.userId)).dailyLossLimit;
+    ok("12.0 · fixture · the holder's OWN daily loss limit is set and in force NOW (a tightening never waits)",
+      set.ok !== false && limitNow === 3_000, `${show(set)} · limit ${limitNow}`);
+
+    const tooBig = await w.place(b, await w.intent(b, over.id, { kind: "FILL", side: "YES", stakeTzs: 5_000 }));
+    ok("12.1 · ⛔ a HOUSE stake over the holder's OWN daily loss limit is REFUSED, and says why — the bot cannot spend past a limit the holder set for themselves",
+      tooBig.ok === false && tooBig.reason === "loss_limit_daily", show(tooBig));
+    ok("12.1b · …and the refusal moved NOTHING: the holder's balance is exactly what it was",
+      (await w.bal(b.userId)).balance === before, `${before} → ${(await w.bal(b.userId)).balance}`);
+
+    /* ⭐ POSITIVE CONTROL · a refusal needs one, or a seam that refused EVERY house stake would pass 12.1
+     * while the feature was dead. What must still be ALLOWED is a stake that FITS inside the same limit,
+     * on the same holder, with the same limit in force. */
+    const fits = await w.place(b, await w.intent(b, under.id, { kind: "FILL", side: "YES", stakeTzs: 1_000 }));
+    ok("12.2 · ⭐ POSITIVE CONTROL · a house stake that FITS the same limit still LANDS — the gate is a limit, not a wall",
+      fits.ok === true && (await w.bal(b.userId)).balance === before - 1_000, show(fits));
+  }
+
+  /* ── 12.3 · A CLOSED WALLET IS NEVER STAKED FROM — AND WHAT IS ALREADY OPEN IS STILL PAID ──────────────
+   * ⛔ THE TWO HALVES PULL IN OPPOSITE DIRECTIONS, which is why they belong in one fixture. Closing a wallet
+   * must stop new money going OUT of it; it must NOT strand money already committed. Settlement credits
+   * through `db.wallet.adjust` with no status check, deliberately — `settleMarket`'s own "REFUSE, NEVER
+   * SKIP" rule — and a future guard added there "for safety" would silently keep a holder's winnings. */
+  {
+    /* ⚠️ A FIXTURE OF TIME, not a widened cap. §12 runs after eleven sections of house stakes and the platform's
+     * own `gMaxBetsPerMinute` is a CHECK-bounded 20 — the first draft of 12.3 came back
+     * `house_cap_reached {"cap":"GLOBAL_BETS_PER_MINUTE"}`, which is the product being correct about a suite,
+     * not a defect. The per-minute cap has its own cases in `test:house-bot-caps`; this ages the window the
+     * same way §16 and the caps suite do rather than raising anything. */
+    await w.ageHouseMinute();
+    const { market } = await pollWithLockedNo(10_000);
+    const later = (await pollWithLockedNo(10_000)).market;
+    const b = await w.bot();
+    const placed = await w.place(b, await w.intent(b, market.id, { kind: "FILL", side: "YES", stakeTzs: 5_000 }));
+    ok("12.3 · fixture · the house stake lands while the wallet is ACTIVE", placed.ok === true, show(placed));
+
+    const wal = await w.bal(b.userId);
+    await w.db.wallet.update(wal.id, { status: "CLOSED" });
+    ok("12.3b · fixture · the holder's wallet really is CLOSED before the next two assertions read anything",
+      ((await w.bal(b.userId)) as Any).status === "CLOSED", `${((await w.bal(b.userId)) as Any).status}`);
+
+    const afterClose = await w.place(b, await w.intent(b, later.id, { kind: "FILL", side: "YES", stakeTzs: 1_000 }));
+    ok("12.4 · ⛔ no NEW house stake leaves a wallet that is not ACTIVE, and the refusal says which of the two it is",
+      afterClose.ok === false && afterClose.reason === "wallet_frozen", show(afterClose));
+
+    /* ⛔ AND THE OPEN ONE IS STILL PAID, INTO THAT SAME CLOSED WALLET. This is the half that would fail
+     * SILENTLY: a settlement that skipped the credit would leave the position OPEN while `settledAt` was
+     * stamped, and every settlement readout filters on `settledAt` being null — so nothing could ever find
+     * it again. The balance delta is the measurement; the position status alone would not catch a credit
+     * that landed somewhere else. */
+    const balBefore = (await w.bal(b.userId)).balance;
+    const res = await w.svc.resolveMarket({ marketId: market.id, outcome: "YES", officerId: OFFICER });
+    const st = await w.svc.settleMarket(market.id, { force: true });
+    const pos = await w.mdal.positionStore.get(placed.data.positionId);
+    const payout = (await w.txnsFor(pos.id)).find((t: Any) => t.type === "BET_PAYOUT");
+    const balAfter = (await w.bal(b.userId)).balance;
+    ok("12.5 · ⛔ a house stake already OPEN when the wallet CLOSED still settles INTO it — the position is WIN, the payout carries the marker, and the holder's balance rises by exactly that payout",
+      res.ok === true && st.ok === true && pos.status === "WIN"
+        && payout !== undefined && payout.houseBotId === b.botId
+        && balAfter - balBefore === payout.amount && payout.amount > 0,
+      `${show(res)} · ${show(st)} · ${pos.status} · payout ${payout?.amount} · ${balBefore} → ${balAfter}`);
+    ok("12.5b · …and the wallet was STILL closed when it was paid, so 12.5 is not a pass over an ACTIVE wallet",
+      ((await w.bal(b.userId)) as Any).status === "CLOSED", `${((await w.bal(b.userId)) as Any).status}`);
+  }
+}
+
 /* ⛔ RULING 505's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
  * `red:house-bot-money` matches a run's FAIL lines with `fails.find((l) => l.includes(d.expect))`, so an `expect` that
  * is not a substring of any label this suite can print is classed WRONG-ASSERTION, `missed++`, and the drive exits 1 —

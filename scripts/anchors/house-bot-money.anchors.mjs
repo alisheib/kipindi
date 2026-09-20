@@ -475,4 +475,48 @@ export const MUTATIONS = [
     expect: "0.232.1 ·",
     suite: "reports-mem",
   },
+  /* ── §12 · the two omission-only pins (2026-09-20) ───────────────────────────────────────────────────────────
+   * Each of these puts back a state the platform could plausibly be in — the loss-limit gate stepping over a
+   * house stake, the wallet gate letting a closed wallet pay, and a "safety" check added to settlement — and
+   * each must be caught by the §12 assertion that names it, with the positive control beside it staying green. */
+  {
+    name: "12-loss-limit-skips-house · the RG daily-loss gate steps over a house stake, so a bot spends past a limit the holder set for themselves",
+    file: SVC,
+    from: `    const lossCheck = await checkLossLimit(userId, opts.stake, lockTx);`,
+    to: `    const lossCheck = ctx.kind === "house" ? { allowed: true, reason: null } : await checkLossLimit(userId, opts.stake, lockTx);`,
+    expect: "12.1 · ⛔ a HOUSE stake over the holder's OWN daily loss limit is REFUSED",
+    suite: "money-mem",
+  },
+  {
+    /* ⭐ THE POSITIVE CONTROL'S OWN MUTATION. A gate that refuses EVERY stake once a limit exists passes 12.1
+     * perfectly while the holder can no longer bet at all — the failure mode a refusal-only assertion cannot
+     * see, and the reason 12.2 exists. */
+    name: "12-loss-limit-is-a-wall · any limit at all refuses every stake, so 12.1 passes while the holder's own betting is dead",
+    file: "src/lib/server/responsible-gambling.ts",
+    from: `  if (lossSoFar + stakeTzs > r.dailyLossLimit) {`,
+    to: `  if (lossSoFar + stakeTzs > 0) {`,
+    expect: "12.2 · ⭐ POSITIVE CONTROL · a house stake that FITS the same limit still LANDS",
+    suite: "money-mem",
+  },
+  {
+    name: "12-closed-wallet-stakes · the bet path stops requiring an ACTIVE wallet, so a CLOSED one still funds new house stakes",
+    file: SVC,
+    from: `    if (!wallet || wallet.status !== "ACTIVE") {`,
+    to: `    if (!wallet) {`,
+    expect: "12.4 · ⛔ no NEW house stake leaves a wallet that is not ACTIVE",
+    suite: "money-mem",
+  },
+  {
+    /* ⛔ THE ONE §12.5 EXISTS FOR, AND IT IS A SILENT FAILURE BY CONSTRUCTION. Someone adds a wallet-status
+     * check to settlement "for safety". The market still settles, `settledAt` is still stamped, no error is
+     * raised anywhere — and the holder's position stays OPEN with their winnings never paid, invisible to
+     * every settlement readout because they all filter on `settledAt` being null. This is exactly the shape
+     * `settleMarket`'s own "REFUSE, NEVER SKIP" comment records having shipped once already. */
+    name: "12-settle-skips-closed · settlement quietly SKIPS a closed wallet, stamping settledAt over a position it never paid",
+    file: SVC,
+    from: `    const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);\n    for (const p of myPositions) {\n      const w = await db.wallet.findByUserId(p.userId);`,
+    to: `    const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);\n    for (const p of myPositions) {\n      const w = await db.wallet.findByUserId(p.userId);\n      if (w && w.status === "CLOSED") continue;`,
+    expect: "12.5 · ⛔ a house stake already OPEN when the wallet CLOSED still settles INTO it",
+    suite: "money-mem",
+  },
 ];
