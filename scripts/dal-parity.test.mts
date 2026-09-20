@@ -980,6 +980,23 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
         && /opts\.houseBotId !== undefined/.test(priPred) && /"houseBotId" = /.test(priPred)
         && !/houseBotId/.test(objectMethod(memEvents, "listAll")) && !/houseBotId/.test(objectMethod(priEvents, "listAll")),
       `memPred ${memPred.length} chars · priPred ${priPred.length} chars`);
+    /* ⭐ AND THE ANCHOR'S FACET, BY THE SAME RULE AND FOR A HARDER REASON. A delivered bell links to
+     * `?tab=history&event=<id>`, and under a NUMBERED pager that link is only honourable by COUNTING the rows at or
+     * newer than the anchor and turning the rank into a page. A rank measured over a different condition from the
+     * rows it is a rank IN is 317's own defect wearing a different hat — so `fromIso` is a word of the shared
+     * predicate too, `>=` on both sides, matching `feedWhere`'s so the two panels resolve an anchor by ONE rule. */
+    const feedPred = (/function memFeedMatches\([\s\S]*?\n\}/.exec(houseDalSrc) ?? [""])[0];
+    ok("16.eventsAnchor · ⭐ 317 · the anchor facet `fromIso` is a word of the SHARED event predicate in both twins, inclusive (`>=`) and spelled the same way the feed's already is",
+      /opts\.fromIso === undefined \|\| ms\(e\.createdAt\) >= ms\(opts\.fromIso\)/.test(memPred)
+        && /opts\.fromIso !== undefined/.test(priPred) && /"createdAt" >= /.test(priPred)
+        && /filter\.fromIso === undefined \|\| ms\(i\.createdAt\) >= ms\(filter\.fromIso\)/.test(feedPred),
+      `feedPred ${feedPred.length} chars`);
+    ok("16.eventsAnchor.c1 · CONTROL · the same scan reports an EXCLUSIVE anchor bound — the off-by-one that puts a bell's own row on the previous page — and the shipped predicate is not reported",
+      (() => {
+        const exclusive = memPred.split("ms(e.createdAt) >= ms(opts.fromIso)").join("ms(e.createdAt) > ms(opts.fromIso)");
+        return !/ms\(e\.createdAt\) >= ms\(opts\.fromIso\)/.test(exclusive)
+          && /ms\(e\.createdAt\) >= ms\(opts\.fromIso\)/.test(memPred);
+      })(), "");
     ok("16.eventsBot.c1 · CONTROL · the same scan reports a facet moved OUT of the predicate and onto the list member, and the shipped bodies are not reported",
       (() => {
         const movedMem = memPred.split("opts.houseBotId === undefined || e.houseBotId === opts.houseBotId").join("true");

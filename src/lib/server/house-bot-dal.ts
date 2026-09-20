@@ -1453,15 +1453,22 @@ export interface HouseBotEventStore {
    * badge, the total and the rows measuring one population (`test:dal-parity` 16.eventsShared, 16.eventsBot).
    * ⚠️ The control row's own events (`houseBotId: null` — SWITCH_ON, SWITCH_OFF, LIMITS_SAVED, SUNSET) fall OUT of
    * a narrowed read, and that is correct: they are the desk's events, not the account's.
+   *
+   * ⭐ `fromIso` IS THE ANCHOR'S FACET, AND IT EXISTS SO A BELL LANDS ON THE RIGHT PAGE. A delivered alert links to
+   * `?tab=history&event=<id>`; under a NUMBERED pager that link can only be honoured by counting the rows at or
+   * newer than that event and turning the rank into a page number. ⛔ That is a COUNT of the same population, which
+   * is why the facet is a word of the shared predicate and not a second ordering: a rank measured over a different
+   * condition from the rows is the 317 defect wearing a different hat. `>=`, matching `feedWhere`'s own `fromIso`
+   * so the two panels resolve an anchor by one rule.
    */
-  listAll(opts: { limit: number; offset?: number; kinds?: readonly HouseBotEventKind[]; houseBotId?: string }, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
+  listAll(opts: { limit: number; offset?: number; kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
   /**
    * That list's population, from ONE named predicate shared with `listAll` in each twin — `memEventMatches` in
    * memory, `eventWhere` on Postgres (ruling 317, pinned by `test:dal-parity` 16.eventsShared).
    * ⛔ A counting reader, never `listAll(...).length`: `pageLimit` clamps the page to 500 and the count must not be
    * clamped with it (ruling 344).
    */
-  countAll(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string }, tx?: HouseTx): Promise<number>;
+  countAll(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }, tx?: HouseTx): Promise<number>;
 }
 
 export interface HouseBotIntentStore {
@@ -2342,11 +2349,12 @@ const memoryHouseBotAlertOnce: HouseBotAlertOnceStore = {
  * second time inside the count is exactly what `test:dal-parity` 16.eventsShared reports: a pager whose total was
  * measured over a different population than its rows links at pages that render nothing.
  */
-function memEventMatches(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string }): (e: StoredHouseBotEvent) => boolean {
+function memEventMatches(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }): (e: StoredHouseBotEvent) => boolean {
   const kinds: readonly string[] | undefined = opts.kinds;
   return (e) =>
     (!kinds || kinds.includes(e.kind))
-    && (opts.houseBotId === undefined || e.houseBotId === opts.houseBotId);
+    && (opts.houseBotId === undefined || e.houseBotId === opts.houseBotId)
+    && (opts.fromIso === undefined || ms(e.createdAt) >= ms(opts.fromIso));
 }
 
 const memoryHouseBotEvents: HouseBotEventStore = {
@@ -3553,10 +3561,11 @@ const prismaHouseBotAlertOnce: HouseBotAlertOnceStore = {
  * ⛔ The pager's `total` and the rows it pages are the one place a second-written condition is invisible: the
  * numbers agree on page 1 and disagree only at the end of the list. `test:dal-parity` 16.eventsShared pins it.
  */
-function eventWhere(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string }, p: Params): string[] {
+function eventWhere(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }, p: Params): string[] {
   const where: string[] = [];
   if (opts.kinds) where.push(`"kind" = ANY(${p.raw([...opts.kinds], "text[]")})`);
   if (opts.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(opts.houseBotId, "text")}`);
+  if (opts.fromIso !== undefined) where.push(`"createdAt" >= ${p.col("HouseBotEvent", "createdAt", opts.fromIso)}`);
   return where;
 }
 
