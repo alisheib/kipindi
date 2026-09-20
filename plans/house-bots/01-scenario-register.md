@@ -1443,7 +1443,7 @@ If he also holds his own stake, he may object.
 - **Expected:** The engine is unaffected (it uses no Redis). The bet path keeps its in-memory bucket. The console's notification:new refresh may not reach another container, and RefreshPoller covers it. The kill switch works.
 - **Plan:** §8 Live state (plan:410-412)
 - **Evidence:** src/lib/server/event-bus.ts:15-27 (Redis fan-out additive, fail-open); src/lib/server/admission.ts:36-42 (no Redis on the bet path); docs/POLISH-BACKLOG.md:211-213 (Redis inert in production)
-- **Test:** scripts/redis-failopen.test.mts extension: src/lib/server/house-bot/** imports no redis client.
+- **Test:** `test:redis-failopen` §N (`N.1`–`N.6`), written 2026-09-20. ~~scripts/redis-failopen.test.mts extension~~ — the extension this row named was never written (0 hits for `house-bot` in the suite's 700 lines) while the row read `[covered]`. §N now sweeps the **49** house-bot modules of `src/lib/server/house-bot/` and `src/lib/house-bot/` for a DIRECT `redis`, `ioredis` or `event-bus` import and prints that population, because an absence over an empty file list passes on every build. `N.3`–`N.3d` plant four real import shapes into a copy of `engine.ts` and require each to be reported; `N.5` proves the same detector finds `event-bus.ts:31`'s real Redis import, so the zero is an absence it could have broken. ⚠️ SCOPE: the DIRECT import only — `N.6` asserts the transitive path `emitters.ts → notification-service.ts → event-bus.ts → redis.ts` EXISTS and is ALLOWED, which is what this row's own Expected permits.
 
 ## console-ops (45)
 
