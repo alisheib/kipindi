@@ -91,6 +91,9 @@
  * no clamp (`?tpage=99` answered 99), the helper returning its argument, and one of the four `next=` sites built
  * from the raw href (layout 3 built / 2 via the helper).
  * ⭐ RAISED AGAIN at C7 STEP 7 — THE CLOSING GATES — to what `npm run test:house-bot-console` PRINTED on that
+ * ⭐ RAISED AGAIN at the C7 STEP 7 REVIEW, to what that run printed: **memory 561, Postgres 344** — the review's
+ * repairs to 1.370, 1.371, 1.390, 1.391, 1.395, 1.397 and 1.398 and its eight surface pins are SOURCE pins and run
+ * in the memory child alone, which is why only that half moved.
  * run: **memory 540, Postgres 344** (539 before the READ-TIERS finding below added its control). The Postgres half is unchanged to the case, and that is expected rather than
  * a miss: every assertion this step added is a SOURCE pin and the source pins run in the memory child only.
  * What landed: `1.371` (the results reader and the last of the fee derivation gone from house-bot CODE, over a
@@ -115,6 +118,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 540, postgres: 344 },
+  minPass: { memory: 561, postgres: 344 },
   dbPrefix: "hb_console",
 });

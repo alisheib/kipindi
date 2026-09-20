@@ -18,7 +18,7 @@ import { readFileSync, readdirSync, existsSync, statSync, writeFileSync, unlinkS
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
-import { decomment } from "./decomment.mts";
+import { blankLiterals, decomment } from "./decomment.mts";
 import { houseHits, consoleNeutralRegExp, HOUSE_WORD_SAMPLES, CONSOLE_EXTRA_SAMPLES, CONSOLE_BENIGN_SAMPLES } from "./house-bot-vocabulary.mjs";
 /* ⛔ THE DECLARED MUTATIONS ARE READ BY THIS SUITE, so an `expect` that names no label it can print is reported HERE,
  * by a suite that runs every day, instead of by a drive nobody has run (§4's roll-call at the foot of this file). */
@@ -3025,7 +3025,7 @@ try {
       /* ⚠️ THE SOURCE IS DECOMMENTED, so a pin may not reach for a comment as its landmark — measured on the
          first run of this very assertion, which looked for the `312` note above the rail and found nothing. */
       guards === 6 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
-        && /\{view\.removed && \(\s*<AdminCard title="Saved rules">/.test(detail),
+        && /\{view\.removed && \(\s*<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(detail),
       j({ guards }));
     /* ⛔ AND THE TAB TESTS ARE STILL PURE, which is what keeps `test:tab-anchors` and the served probe able to read
      * this page's panels at all. */
@@ -3044,7 +3044,12 @@ try {
     /* ⛔ AND THE PAGE NEVER PAINTS THE KIT'S FAILURE TREATMENT FOR A REMOVED ACCOUNT: every `AdminLoadError` on it
      * sits inside a `!view.removed` guard or behind a `=== null` test that a removed account cannot reach. */
     ok("1.435 · 355 · the account page carries no `AdminLoadError` a REMOVED account can reach — a read that was never taken has not failed",
-      (detail.match(/<AdminLoadError/g) ?? []).length === 4
+      /* ⛔ THREE SINCE THE C7 STEP 7 REVIEW, NOT FOUR, AND THE DROP IS THE FIX: the saved-rules card was two
+         copies of one list and is now one component used by both states (review visual-8), so its failure
+         treatment is written once. The read behind it IS taken on a removed account — the rules are parsed to
+         be shown as a record — so this one is reachable and correct; what 355 refuses is a failure treatment
+         for a read a removed account never takes. */
+      (detail.match(/<AdminLoadError/g) ?? []).length === 3
         && detail.indexOf('{view.removed && (') < detail.indexOf('{tab === "overview"'),
       j({ loadErrors: (detail.match(/<AdminLoadError/g) ?? []).length }));
   }
@@ -3903,9 +3908,17 @@ export default function Ruling513Control() {
    * ⛔ AND A NAME INSIDE A GUARD'S CLOSED LIST IS NOT A CALLER. `"houseBotBook"` survives as DATA in this suite's
    * own `STRUCK` array and in 1.350's NOT-NEEDED list — that is what keeps it out. So string and template literals
    * are stripped before the scan: what is looked for is the name as CODE. */
+  /* ⛔ THE STRIPPER IS THE SHARED SCANNER, AND THE THREE `.replace()` PASSES THAT WERE HERE WERE BLIND (C7 step 7
+   * review, conformance-371-blind-scan / test-strength-01). They paired delimiters with regexes, which cannot know
+   * they are standing inside a literal: MEASURED on this case's own 119-file population on 2026-09-20, they deleted
+   * 71% of THIS file, 81% of `house-bot-dal.ts` and more than 40% of 25 files, and a planted `houseBotBook` was
+   * INVISIBLE at 50%, 70% and 90% of this file while being found in the small file the control planted into — so
+   * the control passed over a detector that was blind across most of its own subject. That is the `E-189` shape,
+   * and `decomment.mts` is where this repo keeps the scanner that does not have it. `{ regex: true }` blanks regex
+   * BODIES as well, for the same reason the strings are blanked: a guard's own detector spelling a struck name is
+   * data about the name, not a use of it. ⛔ Never write a private stripper here again. */
   const STRUCK_GONE = ["houseBotBook", "HouseBotBook", "netTzs", "feeWithheldTzs", "byEntry", "feeInputs", "houseStaffScorecard"];
-  const stripLiterals = (code: string) =>
-    code.replace(/`(?:\\[\s\S]|[^`\\])*`/g, "``").replace(/"(?:\\[\s\S]|[^"\\])*"/g, '""').replace(/'(?:\\[\s\S]|[^'\\])*'/g, "''");
+  const stripLiterals = (code: string) => blankLiterals(code, { regex: true });
   const houseCodeFiles = (() => {
     const out: string[] = [];
     const walkFor = (dir: string, keep: (rel: string) => boolean) => {
@@ -3919,12 +3932,22 @@ export default function Ruling513Control() {
     walkFor("scripts", (rel) => /house|dal-parity/.test(rel));
     return out;
   })();
-  const struckHits = houseCodeFiles.flatMap((rel) => {
-    const code = stripLiterals(decomment(read(rel)));
-    return STRUCK_GONE.filter((n) => new RegExp(`\\b${n}\\b`).test(code)).map((n) => `${rel}:${n}`);
+  /* ⛔ AND THE STRIPPER IS HELD TO ITS OWN INVARIANT, PER FILE. A stripper that eats code fails SILENTLY — it
+   * reports zero over a text it has gutted — so the one thing that must be measured is that nothing was lost.
+   * `blankLiterals` replaces a literal's body with SPACES, so a correct pass returns EXACTLY the same number of
+   * characters it was given; the three `.replace()` passes this replaces returned 19% of `house-bot-dal.ts`. The
+   * per-file before/after counts are printed below, so a future desync is a line on the screen, not a quiet zero. */
+  const stripped = houseCodeFiles.map((rel) => {
+    const dec = decomment(read(rel));
+    const code = stripLiterals(dec);
+    return { rel, code, before: dec.length, after: code.length };
   });
+  const desynced = stripped.filter((f) => f.before !== f.after).map((f) => `${f.rel} ${f.before}→${f.after}`);
+  const struckHits = stripped.flatMap(({ rel, code }) =>
+    STRUCK_GONE.filter((n) => new RegExp(`\\b${n}\\b`).test(code)).map((n) => `${rel}:${n}`));
   ok("1.371 · no house-bot module and no house-bot guard names `houseBotBook`, `HouseBotBook`, `netTzs`, `feeWithheldTzs`, `byEntry`, `feeInputs` or `houseStaffScorecard` as CODE — the results reader and the last of the fee derivation are gone from the tree",
-    struckHits.length === 0 && houseCodeFiles.length >= 40, j({ hits: struckHits, population: houseCodeFiles.length }));
+    struckHits.length === 0 && houseCodeFiles.length >= 119 && desynced.length === 0,
+    j({ hits: struckHits, population: houseCodeFiles.length, desynced }));
   ok("1.371 · …and `book.ts` itself declares neither of them, while the three readers a console may reach are still exported — the deletion took the results reader, not the day book",
     (() => {
       const book = decomment(read("src/lib/server/house-bot/book.ts"));
@@ -3932,15 +3955,47 @@ export default function Ruling513Control() {
         && /export async function houseDayBook\(/.test(book) && /export async function houseDayBooks\(/.test(book)
         && /export async function houseOpenExposure\(/.test(book) && /export function foldDayBook\(/.test(book);
     })(), "");
-  ok("1.371 · CONTROL · the scan reads CODE, not comments and not guard lists — a planted caller is reported, while `book.ts`'s own record of the removal and this suite's `STRUCK` array are not",
+  /* ⛔ THE CONTROL PLANTS INTO THE BIG FILES, NOT ONLY THE SMALL ONE, AND THAT IS THE WHOLE REPAIR. It used to
+   * plant one caller into `book.ts` — 260 lines, and the one file where the retired stripper still worked — so it
+   * passed while the detector was blind over 25 of its own 119 files. Now the same name is planted at four DEPTHS
+   * of each of four large files, at a line the decommented text shows ending a statement (never inside a comment
+   * or a multi-line template), and every one of the sixteen must be reported. ⛔ A control that plants only where
+   * the detector is known to work measures the plant, not the detector. */
+  const plantSites = (raw: string): number[] => {
+    const dec = decomment(raw).split("\n");
+    const sites = dec.map((l, k) => ({ l, k })).filter((x) => /;\s*$/.test(x.l)).map((x) => x.k);
+    return [20, 40, 60, 80].map((p) =>
+      sites.reduce((b, k) => Math.abs(k - (dec.length * p) / 100) < Math.abs(b - (dec.length * p) / 100) ? k : b, sites[0]));
+  };
+  const plantProbe = (rel: string, name: string): string[] => {
+    const lines = read(rel).split("\n");
+    return plantSites(read(rel)).filter((at) => {
+      const m = [...lines.slice(0, at + 1), `const leakProbe = ${name};`, ...lines.slice(at + 1)].join("\n");
+      return !new RegExp(`\\b${name}\\b`).test(stripLiterals(decomment(m)));
+    }).map((at) => `${rel}:${at}`);
+  };
+  const blindSpots = [
+    ["scripts/lib/house-bot-console-cases.mts", "houseBotBook"],
+    ["src/lib/server/house-bot-dal.ts", "netTzs"],
+    ["src/lib/server/house-console-read.ts", "feeWithheldTzs"],
+    ["scripts/house-bot-rules.test.mts", "feeInputs"],
+  ].flatMap(([rel, name]) => plantProbe(rel, name));
+  ok("1.371 · CONTROL · the scan reads CODE, not comments and not guard lists — a planted caller is reported at FOUR depths of each of the four biggest files in the population, while `book.ts`'s own record of the removal and this suite's `STRUCK` array are not",
+    /* ⛔ AND THE CONTROL NEVER SPELLS A STRUCK NAME IN TEXT THE SCANNER KEEPS. A nested template inside an
+     * interpolation is CODE by this blanker's contract and is copied through verbatim — the loud direction —
+     * so writing the plant as one made this very file report itself. Both names come from `STRUCK_GONE`. */
     (() => {
+      const [READER, TYPE] = STRUCK_GONE;
       const real = read("src/lib/server/house-bot/book.ts");
-      const planted = `${stripLiterals(decomment(`${real}\nconst b = await houseBotBook({ houseBotId: null, range: "today", nowMs: 0 });\n`))}`;
+      const plantedSrc = `${real}\nconst b = await ${READER}({ houseBotId: null });\n`;
+      const planted = stripLiterals(decomment(plantedSrc));
       const recordOnly = stripLiterals(decomment(real));
-      return /\bhouseBotBook\b/.test(planted) && !/\bhouseBotBook\b/.test(recordOnly)
-        && real.includes("`houseBotBook` and the `HouseBotBook` type were deleted here")
-        && !/\bhouseBotBook\b/.test(stripLiterals(decomment(read("scripts/lib/house-bot-console-cases.mts"))));
-    })(), "");
+      const spelt = new RegExp(`\\b${READER}\\b`);
+      return blindSpots.length === 0
+        && spelt.test(planted) && !spelt.test(recordOnly)
+        && real.includes(`\`${READER}\` and the \`${TYPE}\` type were deleted here`)
+        && !spelt.test(stripLiterals(decomment(read("scripts/lib/house-bot-console-cases.mts"))));
+    })(), j({ blindSpots }));
 
   /* ── 1.370 · THE KILL SWITCH SHOWS NO HELD AMOUNT (ruling 370, C7 step 7) ────────────────────────────────────
    * Ruling 254 proposed putting the amount still at risk into `CAP_EXPOSURE`'s sentence, and 370 decides it NOT
@@ -3953,17 +4008,32 @@ export default function Ruling513Control() {
    * record D20 struck — or re-derived at render time, which the display-only law forbids. */
   {
     const feedCopy = read("src/lib/house-bot/feed-copy.ts");
-    const grabMap = (name: string) => {
-      const m = new RegExp(`export const ${name} = \\{[\\s\\S]*?\\n\\} as const`, "m").exec(feedCopy);
-      return m ? [...m[0].matchAll(/: "([^"]*)"/g)].map((x) => x[1]) : [];
-    };
+    /* ⛔ THE CAPTURE IS PROVED COMPLETE AGAINST THE BLOCK'S OWN KEY COUNT (C7 step 7 review, test-strength-06).
+     * It read `: "…"` only, so a sentence written as a TEMPLATE — which is the form an interpolated amount
+     * necessarily takes, i.e. EXACTLY the defect ruling 370 refuses — was silently dropped from the population,
+     * and a `>= 60` floor against a measured 64 absorbed four such drops without a word. Now all three value
+     * forms are read and the count is checked against the KEYS the block declares, so a dropped entry is a
+     * failure rather than a smaller number. */
+    const grabBlock = (name: string) =>
+      new RegExp(`export const ${name} = \\{[\\s\\S]*?\\n\\} as const`, "m").exec(feedCopy)?.[0] ?? "";
+    const grabKeys = (name: string) => (grabBlock(name).match(/^\s{2}[A-Z][A-Z_0-9]*:/gm) ?? []).length;
+    const grabMap = (name: string) =>
+      [...grabBlock(name).matchAll(/:\s*(?:"([^"]*)"|`([^`]*)`|'([^']*)')/g)].map((x) => x[1] ?? x[2] ?? x[3] ?? "");
     const MONEY_SHAPED = /TZS\s*[\d{]|\{(amount|tzs|stake|held|exposure|balance)\}|\d{1,3}(,\d{3})+/i;
     const engineSentences = grabMap("ENGINE_CODE_SENTENCE");
     const offSentences = grabMap("SWITCH_OFF_COPY");
-    ok("1.370 · not one `EngineCode` sentence and not one switch-off sentence carries a formatted amount or an amount placeholder — the words name the cap that stopped the stake, never the money behind it",
-      engineSentences.length >= 60 && offSentences.length === 4
+    ok("1.370 · not one `EngineCode` sentence and not one switch-off sentence carries a formatted amount or an amount placeholder — the words name the cap that stopped the stake, never the money behind it, and the capture is shown to have read EVERY key each block declares",
+      engineSentences.length === grabKeys("ENGINE_CODE_SENTENCE") && engineSentences.length >= 64
+        && offSentences.length === grabKeys("SWITCH_OFF_COPY") && offSentences.length === 4
         && ![...engineSentences, ...offSentences].some((s) => MONEY_SHAPED.test(s)),
-      j({ engine: engineSentences.length, off: offSentences.length, money: [...engineSentences, ...offSentences].filter((s) => MONEY_SHAPED.test(s)) }));
+      j({ engine: engineSentences.length, engineKeys: grabKeys("ENGINE_CODE_SENTENCE"), off: offSentences.length, offKeys: grabKeys("SWITCH_OFF_COPY"), money: [...engineSentences, ...offSentences].filter((s) => MONEY_SHAPED.test(s)) }));
+    ok("1.370 · CONTROL · a sentence written as a TEMPLATE with an interpolated amount — the very form the old capture dropped — is read and IS reported",
+      (() => {
+        const planted = feedCopy.replace('  NO_REACT_ZONE: "the stake came too close to betting close",', '  NO_REACT_ZONE: `the stake came too close to betting close, TZS 50,000 still held`,');
+        const block = new RegExp("export const ENGINE_CODE_SENTENCE = \\{[\\s\\S]*?\\n\\} as const", "m").exec(planted)?.[0] ?? "";
+        const vals = [...block.matchAll(/:\s*(?:"([^"]*)"|`([^`]*)`|'([^']*)')/g)].map((x) => x[1] ?? x[2] ?? x[3] ?? "");
+        return planted !== feedCopy && vals.length === grabKeys("ENGINE_CODE_SENTENCE") && vals.some((v) => MONEY_SHAPED.test(v));
+      })(), "");
     const killSrc = read("src/lib/server/house-bot/kill-switch.ts");
     const outcomeType = killSrc.slice(killSrc.indexOf("export type SwitchOffOutcome"), killSrc.indexOf("const errMessage"));
     ok("1.370 · `SwitchOffOutcome` carries no money field at all — it answers `changed`, a drain STATE and a COUNT, so there is no held figure for a later render to reach for",
@@ -4386,12 +4456,34 @@ export default function Ruling513Control() {
         && !/SensitiveReveal/.test(wizardCode)
         && !/phoneE164/.test(wizardCode.replace(/<Sensitive[\s\S]*?\/>/g, "")),
       j({ outsideSensitive: (wizardCode.replace(/<Sensitive[\s\S]*?\/>/g, "").match(/phoneE164/g) ?? []).length }));
-    ok("1.359 · CONTROL · the ratchet's own detector is reproduced here and shown to FIRE on the shape this page used to have — so the zero above is a measurement and not a scan that stopped matching",
+    /* ⚠️ THE CONTROL BELOW IS THE RATCHET'S CORE ONLY, AND THE LABEL NOW SAYS SO (C7 step 7 review,
+     * test-strength-10). It reproduces the `<Sensitive …/>` strip and the braced-expression match; it does NOT
+     * reproduce the ratchet's five skips (the allowlist, the reviewed-fragment key, the bare presence check, the
+     * ternary residue and the `mask*()` call). A second full copy of a shared detector is the drift ruling 175
+     * refuses everywhere else on this programme — so instead of copying more, the skips themselves are PINNED
+     * below, and a change to any of them is reported here rather than discovered by a red in another suite. */
+    ok("1.359 · CONTROL · the ratchet's CORE detector is reproduced here and shown to FIRE on the shape this page used to have — so the zero above is a measurement and not a scan that stopped matching",
       (() => {
         const seen = (code: string) => (code.replace(/<Sensitive[\s\S]*?\/>/g, "").match(/\{[^{}]*\.\bphoneE164\b[^{}]*\}/g) ?? []).length;
         return seen(wizardCode) === 0
           && seen(wizardCode.replace("{view.hasPhone && (", "{view.phoneE164 !== null && (")) === 1;
       })(), "");
+    /* ⛔ AND THE FIVE SKIPS THE COPY DOES NOT REPRODUCE ARE PINNED IN THE RATCHET'S OWN SOURCE, so `test:read-tiers`
+     * cannot change its detector with nothing here going red. The strings are the ratchet's, verbatim. */
+    ok("1.359 · and the five exclusions this control does NOT copy are still declared in test:read-tiers' own source — the detector may not drift on one side of a two-sided pin",
+      (() => {
+        const ratchet = decomment(read("scripts/read-tiers.test.mts"));
+        const skips = [
+          "GOVERNED_ALLOW.has(relf)",
+          "GOVERNED_REVIEWED.keys()",
+          "if (/^\\{[^{}]*&&\\s*\\($/.test(m.replace(/\\s+/g, \" \").trim())) continue;",
+          "if (/\\?\\s*:/.test(m)) continue;",
+          "if (/\\bmask[A-Z]\\w*\\s*\\(/.test(m)) continue;",
+        ];
+        const missing = skips.filter((t) => !ratchet.includes(t));
+        return missing.length === 0 && ratchet.includes("replace(/<Sensitive[\\s\\S]*?\\/>/g, \"\")");
+      })(),
+      j({ ratchetChars: decomment(read("scripts/read-tiers.test.mts")).length }));
     /* ⛔ 456 · 355 · AND A FAILED READ DOES NOT TAKE THE DOOR WITH IT (C7 step 6 review, conformance-355). The
        whole block hung on `funded !== null`, so an unreadable wallet removed 459's bonus fact AND 456's link to
        the screen where the figure legitimately lives — the officer lost the way forward at the exact moment they
@@ -5194,16 +5286,110 @@ export default function Ruling513Control() {
       [...decomment(read(f)).matchAll(/\bthrow\b([^;]{0,200})/g)].map((m) => `${f}:${m[1].replace(/\s+/g, " ").trim()}`));
     ok("1.390 · not one `throw` in the console's server modules or behind its one read door — every failure is a TYPED refusal, so `runAdminAction`'s 140-character echo of `e.message` has nothing of this feature to echo",
       throwSites.length === 0 && serverFiles.length >= 6, j({ throwSites, serverFiles: serverFiles.length }));
-    const refusalSentences = [...read(GATE).matchAll(/\n  ([A-Z][A-Z_]{2,}): "([^"]+)"/g)].map((m) => m[2]);
+    /* ⛔ THE SENTENCE SCAN READS THE DECOMMENTED SOURCE AT ANY INDENT, AND ITS FLOOR IS THE COUNT A RUN PRINTED
+     * (C7 step 7 review, test-strength-09). It read the RAW file, so a commented-out constant counted as a live
+     * refusal sentence; it required exactly two leading spaces, so a map nested one level deeper left the
+     * population silently; and its floor was 18 against a measured 71, which is 53 sentences that could vanish
+     * under a green `every`. */
+    const refusalSentences = [...decomment(read(GATE)).matchAll(/^\s*([A-Z][A-Z_]{2,}): "([^"]+)"/gm)].map((m) => m[2]);
     ok("1.390 · and every refusal SENTENCE the door can hand back is free of the shared vocabulary AND of 453's console lexicon — what an officer reads on a failure names the act, never the feature",
-      refusalSentences.length >= 18 && refusalSentences.every((s) => houseHits(s).length === 0 && !NEUTRAL.test(s)),
+      refusalSentences.length >= 71 && refusalSentences.every((s) => houseHits(s).length === 0 && !NEUTRAL.test(s)),
       j({ sentences: refusalSentences.length, hits: refusalSentences.filter((s) => houseHits(s).length > 0 || NEUTRAL.test(s)) }));
-    ok("1.390 · CONTROL · the scan really finds a throw, and really finds a sentence that names the feature — both planted into the REAL sources, and neither is there",
+    /* ⛔ AND THE OTHER DOOR THAT HANDS A HOUSE REFUSAL TO A NON-OWNER OFFICER (⛔ D19; C7 step 7 review,
+     * d19-hunt-01). `anonymizeClosedAccount` refuses a DSAR erasure while a live record exists, and `privacy.ts`
+     * passes that sentence to `/admin/privacy` — a COMPLIANCE-domain route, whose officer ruling 393 puts
+     * OUTSIDE this feature's audience and `OWNER_ONLY_PREFIXES` forbids the console to. Until 2026-09-20 the
+     * sentence carried the feature's name, the bounded id AND the console path, from a control that officer is
+     * entitled to use. It was outside 1.390's population — a refusal sentence the console's own scan could not
+     * see — which is why the population is now the SITE, not the module. */
+    const erasureSrc = decomment(read("src/lib/server/erasure.ts"));
+    const erasureRefusals = [...erasureSrc.matchAll(/error:\s*"([^"]+)"/g)].map((m) => m[1]);
+    ok("1.390 · and the ERASURE door's own refusal — the one house sentence a COMPLIANCE officer can make the platform print — names neither the feature, nor a record id, nor the owner-only route",
+      erasureRefusals.length >= 1
+        && erasureRefusals.every((t) => houseHits(t).length === 0 && !NEUTRAL.test(t))
+        && !/error:\s*`[^`]*\$\{[^}]*\bliveBot\b/.test(erasureSrc)
+        && !/consoleBotHref/.test(erasureSrc)
+        && /reason: "house_bot_live"/.test(erasureSrc),
+      j({ sentences: erasureRefusals.length, hits: erasureRefusals.filter((t) => houseHits(t).length > 0 || NEUTRAL.test(t)) }));
+    /* ⛔ BOTH HALVES ARE PLANTED INTO THE REAL SOURCES AND RE-EXTRACTED (C7 step 7 review,
+     * conformance-390-control-overclaims). The label already claimed that; only the throw half did it, and the
+     * lexicon half was asserted on two invented strings — so nothing showed that the SENTENCE extractor, run over
+     * the real gate, can fire on a real sentence. A label that claims more than its predicate is the over-claim
+     * this programme treats as a defect in itself. */
+    ok("1.390 · CONTROL · the scan really finds a throw, and really finds a sentence that names the feature — both planted into the REAL sources and RE-EXTRACTED from them, and neither is there",
       (() => {
         const planted = [...decomment(`${read(ACTIONS)}\nif (!x) throw new Error("house bots are off for this desk");\n`).matchAll(/\bthrow\b([^;]{0,200})/g)];
+        const mutatedGate = decomment(read(GATE)).replace('  NOT_FOUND: "That account', '  NOT_FOUND: "That house bot');
+        const reExtracted = [...mutatedGate.matchAll(/^\s*([A-Z][A-Z_]{2,}): "([^"]+)"/gm)].map((m) => m[2]);
+        const named = reExtracted.filter((t) => houseHits(t).length > 0 || NEUTRAL.test(t));
+        const erasureMutated = [...erasureSrc.replace("This account is still in use by an owner-managed account", "This account is still house bot hb_0123456789abcdef01234567").matchAll(/error:\s*"([^"]+)"/g)].map((m) => m[1]);
         return planted.length === 1 && houseHits(planted[0][1]).length > 0
-          && NEUTRAL.test("the house bots are paused") && houseHits("the liquidity desk failed").length > 0
+          && mutatedGate !== decomment(read(GATE)) && reExtracted.length === refusalSentences.length && named.length === 1
+          && erasureMutated.some((t) => houseHits(t).length > 0)
           && refusalSentences.length > 0 && !NEUTRAL.test(refusalSentences[0]);
+      })(), "");
+    /* ⛔ AND THE PROPERTY THAT ACTUALLY HOLDS THE NO-THROW LAW IS ASSERTED, not assumed (C7 step 7 review,
+     * test-strength-05). 1.390's population is the section's own files plus the gate; every module BEHIND the
+     * door does throw — `limits-save.ts`, `designation.ts`, `switch-on.ts` — and what stops those reaching
+     * `runAdminAction`'s 140-character echo is the `catch` in each action, which nothing measured. Deleting one
+     * would have left 1.390 green. */
+    /** Every `catch` body in `src`, its extent found by brace depth so a nested block cannot cut it short. */
+    const catchBodies = (body: string): string[] => {
+      const out: string[] = [];
+      const re = /catch\s*(?:\([^)]*\))?\s*\{/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(body)) !== null) {
+        const from = m.index + m[0].length;
+        let depth = 1;
+        let k = from;
+        for (; k < body.length && depth > 0; k++) {
+          if (body[k] === "{") depth++;
+          else if (body[k] === "}") depth--;
+        }
+        out.push(body.slice(from, Math.max(from, k - 1)));
+      }
+      return out;
+    };
+    const actionCatches = [ACTIONS, NEW_ACTIONS].flatMap((f) => {
+      const code = decomment(read(f));
+      return [...code.matchAll(/export async function (\w+)\(/g)].map((m) => {
+        const from = m.index ?? 0;
+        const nextIdx = code.indexOf("export async function", from + 10);
+        const body = code.slice(from, nextIdx === -1 ? code.length : nextIdx);
+        /* ⛔ A CATCH THAT RETURNS THE ACTION'S OWN REFUSAL SHAPE, which is not always `safeError`:
+           `findDeskAccountsAction` answers the picker's neutral empty answer, because ruling 387(c) says a
+           refused caller and a search that found nothing must be indistinguishable — so a message there would
+           be the oracle. And an action may carry a SECOND, deliberately empty catch around `revalidatePath`,
+           which is the shape that keeps a landed write from reporting "nothing changed". What every action must
+           do is CATCH, never rethrow, return its own shape from at least one catch, and build any `error`
+           string with `safeError`.
+           ⚠️ THE BODIES ARE FOUND BY BRACE DEPTH, not by a lazy regex: a lazy `\n  }` ran from the inline
+           revalidation catch to the function's own closing brace and swallowed the real one. */
+        const catches = catchBodies(body);
+        const guarded = catches.length >= 1
+          && catches.every((c) => !/\bthrow\b/.test(c))
+          && catches.some((c) => /return /.test(c))
+          && catches.every((c) => !/\berror:/.test(c) || /safeError\(/.test(c));
+        return { fn: `${f}:${m[1]}`, guarded };
+      });
+    });
+    ok("1.390 · and every exported console action turns a throw from BEHIND the door into a typed refusal — the `catch … safeError(` is what makes the no-throw law true of the modules 1.390 cannot see, and it is asserted per action rather than assumed",
+      actionCatches.length >= 5 && actionCatches.every((a) => a.guarded),
+      j({ actions: actionCatches.length, unguarded: actionCatches.filter((a) => !a.guarded).map((a) => a.fn) }));
+    ok("1.390 · CONTROL · that per-action scan really reports — an action whose catch is removed from the REAL source is named",
+      (() => {
+        const real = decomment(read(ACTIONS));
+        const code = real.replace("safeError(err, \"Nothing was saved. Reload the page and try again.\")", "String(err)");
+        const scan = (src: string) => [...src.matchAll(/export async function (\w+)\(/g)].map((m) => {
+          const from = m.index ?? 0;
+          const nextIdx = src.indexOf("export async function", from + 10);
+          const body = src.slice(from, nextIdx === -1 ? src.length : nextIdx);
+          const catches = catchBodies(body);
+          return catches.length >= 1 && catches.every((c) => !/\bthrow\b/.test(c))
+            && catches.some((c) => /return /.test(c))
+            && catches.every((c) => !/\berror:/.test(c) || /safeError\(/.test(c));
+        });
+        return code !== real && scan(real).every(Boolean) && scan(code).some((g) => !g);
       })(), "");
 
     /* ── 1.391 · CLIENT-SIDE DRAFTS LIVE OUTSIDE THE HOUSE MODULES, UNDER THE CODENAME, AND HOLD NO SECRET ───────
@@ -5216,18 +5402,168 @@ export default function Ruling513Control() {
       !existsSync(join(ROOT, "src/lib/house-bot/draft.ts"))
         && !/sessionStorage|localStorage|indexedDB|document\.cookie/.test(sectionCode)
         && sectionFiles.length >= 10, j({ files: sectionFiles.length }));
-    ok("1.391 · and the rule the first writer will meet is stated where it binds: the four key tests are exercised over the section's OWN client files, every one of which is shown to hold no key at all",
-      clientFilesHere.length >= 4
-        && clientFilesHere.every((f) => {
-          const code = decomment(read(f));
-          return !/sessionStorage|localStorage|indexedDB/.test(code)
-            && ![...code.matchAll(/"([^"\n]{2,80})"/g)].map((m) => m[1]).some((s) => /^hb[:_]/.test(s) || houseHits(s).length > 0);
-        }),
-      j({ clientFiles: clientFilesHere }));
-    ok("1.391 · CONTROL · each of the four key rules fires on a planted key — the feature's word, the struck `hb:` prefix, a hard-coded route and a secret — so the zeros above are measurements",
-      houseHits("house-bots:draft").length > 0 && /^hb[:_]/.test("hb:desk-draft")
-        && /pass|secret/i.test("desk:password") && "/admin/desk/new".includes("/admin/")
-        && !/^hb[:_]/.test("desk:draft") && houseHits("desk:draft").length === 0, "");
+    /* ⛔ ALL FOUR RULES ARE APPLIED TO THE WALKED STRINGS, not two of them (C7 step 7 review, test-strength-07).
+     * The label said four and the predicate ran two — the storage APIs and the key shape — while the secret rule
+     * and the hard-coded-route rule existed only as literals inside the control, so the control demonstrated
+     * capabilities the assertion never used. */
+    /* ⛔ THE LABEL NAMES WHAT THE PREDICATE MEASURES, AND NOT ONE RULE MORE. All four key rules live in
+     * `keyOffence`; two of them — the struck prefix and the feature's words — can be applied to EVERY string a
+     * client file holds, and two cannot: "password" is a legitimate FIELD LABEL on the account action dialog and
+     * "/admin/desk" is a legitimate href, so running the secret and route rules over every string would condemn
+     * the correct code. They bite on a storage KEY, and this section stores nothing — which is why the walk below
+     * proves the ABSENCE of storage and the control proves all four rules on a planted key. */
+    const keyOffence = (str: string) => /^hb[:_]/.test(str) || houseHits(str).length > 0 || /pass|secret|token/i.test(str) || str.startsWith("/admin/");
+    const alwaysOffends = (str: string) => /^hb[:_]/.test(str) || houseHits(str).length > 0;
+    const clientKeyHits = clientFilesHere.flatMap((f) => {
+      const code = decomment(read(f));
+      const storage = /sessionStorage|localStorage|indexedDB/.test(code) ? [`${f}:browser-storage`] : [];
+      return [...storage, ...[...code.matchAll(/"([^"\n]{2,80})"/g)].map((m) => m[1]).filter(alwaysOffends).map((t) => `${f}:${t}`)];
+    });
+    ok("1.391 · and the rule the first writer will meet is stated where it binds: the section's OWN client files are walked and shown to reach no browser storage at all and to hold no string carrying the struck `hb:` prefix or the feature's words — the secret and route rules bite on a storage KEY, and the control below shows all four firing on one",
+      clientFilesHere.length >= 5 && clientKeyHits.length === 0,
+      j({ clientFiles: clientFilesHere, hits: clientKeyHits }));
+    /* ⛔ THE CONTROL IS A VIRTUAL FILE, WHICH IS THE IDIOM 398 NAMES (C7 step 7 review, conformance-398-control-391).
+     * It used to test the four rules against four strings typed beside it and never ran the WALK — so it could not
+     * show that the walk over the section's real client files would report a planted key, which is the only thing
+     * a control over a walk is for. The real text of a real client file is mutated in memory and the SAME
+     * predicate is run over it. */
+    ok("1.391 · CONTROL · the WALK itself reports — a real client file's own text, given a draft key and a storage write in memory, is named by the same predicate that reports nothing over the real one",
+      (() => {
+        const live = clientFilesHere.find((f) => f.endsWith("desk-live.tsx")) ?? clientFilesHere[0];
+        const scan = (code: string, rule: (t: string) => boolean) => {
+          const storage = /sessionStorage|localStorage|indexedDB/.test(code) ? ["browser-storage"] : [];
+          return [...storage, ...[...code.matchAll(/"([^"\n]{2,80})"/g)].map((m) => m[1]).filter(rule)];
+        };
+        const real = decomment(read(live));
+        const virtual = `${real}\nconst DRAFT_KEY = "hb:desk-draft";\nsessionStorage.setItem(DRAFT_KEY, "1");\n`;
+        const found = scan(virtual, alwaysOffends);
+        /* All four rules, on the keys each exists for — and the neutral key the section would be allowed. */
+        const four = keyOffence("hb:desk-draft") && keyOffence("house-bots:draft") && keyOffence("desk:password") && keyOffence("/admin/desk/new");
+        return scan(real, alwaysOffends).length === 0 && found.includes("browser-storage") && found.includes("hb:desk-draft")
+          && four && !keyOffence("desk:draft") && houseHits("house-bots:draft").length > 0;
+      })(), "");
+
+    /* ══ C7 STEP 7 REVIEW · THE EIGHT SURFACE FINDINGS, EACH PINNED WHERE IT WAS FOUND ═══════════════════════════
+     * Every one of these was a render the step's own capture set had already been READ over, and every one is the
+     * kind of defect a screenshot proves and no suite was asking about. A pin is what stops the next pass having
+     * to look again. */
+
+    /* ⛔ 474 · THE OPERATOR HOOK IS ON EVERY SITE THAT PAINTS THE LABEL, AND THE POPULATION IS A GREP (review
+     * d19-hunt-03). It was wired on the roster cell alone; the DETAIL page renders the SAME operator value as its
+     * `<h1>` through `AdminPageHead`, which took a plain string and had nowhere to put a hook — so an
+     * Owner-chosen label was scanned by the served gate as if this repo had written it, which is exactly the
+     * defect the roster's own hook comment records as MEASURED on 2026-09-18. */
+    const labelSites = sectionFiles.flatMap((f) => {
+      const code = decomment(read(f));
+      return [...code.matchAll(/\b(?:view|r)\.label\b/g)].map((m) => ({ f, win: code.slice(Math.max(0, (m.index ?? 0) - 220), (m.index ?? 0) + 220) }));
+    });
+    const unhooked = labelSites.filter((x) => !/data-operator-text|titleIsOperatorText/.test(x.win)).map((x) => x.f);
+    ok("1.474 · EVERY site under the section that paints the account's own LABEL carries the 474 hook — the population is a walk for the value, not a list of the sites somebody remembered",
+      labelSites.length >= 2 && unhooked.length === 0
+        && /titleIsOperatorText \? \{ "data-operator-text": "label" \} : \{\}/.test(decomment(read("src/components/admin/admin-shell.tsx"))),
+      j({ sites: labelSites.length, unhooked }));
+    ok("1.474 · and the served gate removes the operator's marked text from the SHARED vocabulary scan as well as from 453's — one exemption, both scans",
+      (() => {
+        const gateSrc = decomment(read("scripts/qa-house-bots-visual.mjs"));
+        return (gateSrc.match(/facts\.operatorText\.reduce\(/g) ?? []).length >= 2
+          && /houseHits\(bodySubject\)/.test(gateSrc) && !/houseHits\(facts\.body\)/.test(gateSrc);
+      })(), "");
+    ok("1.474 · CONTROL · the label walk really reports — the detail page's own head, with its hook removed in memory, is named, and the real tree is not",
+      (() => {
+        const code = decomment(read(DETAIL_PAGE));
+        const scan = (src: string) => [...src.matchAll(/\b(?:view|r)\.label\b/g)]
+          .filter((m) => !/data-operator-text|titleIsOperatorText/.test(src.slice(Math.max(0, (m.index ?? 0) - 220), (m.index ?? 0) + 220))).length;
+        const stripped = code.replace("        titleIsOperatorText", "        sw={undefined}");
+        return scan(code) === 0 && stripped !== code && scan(stripped) === 1;
+      })(), "");
+
+    /* ⛔ 432 · ONE WAY-OUT LINK TREATMENT FOR THE SECTION (review visual-2). The wizard's repair declared the class
+     * string in its own file, so the account page — built two steps earlier — kept hover-only affordance: no
+     * underline and no brand ink at rest, which on a phone is no affordance at all. One section, two looks for one
+     * control, and the two sat one click apart. */
+    ok("1.432 · the way-out link is declared ONCE, in the three pages' one shared module, and every page under the section uses it by name — no file re-types the class string",
+      (() => {
+        const routes = decomment(read("src/lib/house-bot/console-routes.ts"));
+        const users = sectionFiles.filter((f) => /className=\{WAY_OUT_LINK\}/.test(decomment(read(f))));
+        const retyped = sectionFiles.filter((f) => /hover:text-brand-300 hover:underline/.test(decomment(read(f))));
+        return /export const WAY_OUT_LINK =/.test(routes) && users.length >= 2 && retyped.length === 0
+          && sectionFiles.filter((f) => /const WAY_OUT_LINK =/.test(decomment(read(f)))).length === 0;
+      })(),
+      j({ users: sectionFiles.filter((f) => /className=\{WAY_OUT_LINK\}/.test(decomment(read(f)))) }));
+    ok("1.432 · CONTROL · the re-typed-treatment scan really fires — the old hover-only class string is reported when it is put back into a real section file in memory",
+      (() => {
+        const real = decomment(read(DETAIL_PAGE));
+        const old = 'className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"';
+        return !/hover:text-brand-300 hover:underline/.test(real) && /hover:text-brand-300 hover:underline/.test(`${real}\n${old}\n`);
+      })(), "");
+
+    /* ⛔ 432 · THE STATUS CHIP CANNOT SHRINK (review visual-1). Read off `acct-autopaused-360.png`: "Auto-paused"
+     * broke at its hyphen into a two-line pill beside the one-line ACTIVE and PAUSED pills of the other states. The
+     * roster had already ruled on this exact break and fixed it with a column floor; the page that paints the SAME
+     * chip from the SAME server map got nothing. In a flex row a `size="sm"` chip is a shrinkable item. */
+    ok("1.432 · the account strip's status chip is pinned against the flex shrink that broke the longest status word across two lines at 360",
+      /<Chip size="sm" variant=\{view\.statusChip\} className="shrink-0">/.test(decomment(read(DETAIL_PAGE)))
+        && /AUTO_PAUSED: \{ word: "Auto-paused"/.test(decomment(read("src/lib/server/house-bot/status-display.ts"))),
+      "");
+
+    /* ⛔ 432(o) · THE BAND'S TILE NAMES THE SCOPE OF ITS CEILING (review visual-3). The tile folds the PROJECTED
+     * loss, the column 150px below heads it "(PROJECTED)", and the Limits tab splits the same ceiling into a
+     * projected row and a settled row — so an unqualified "of daily loss limit" was one figure under three names,
+     * two of them on one screen. The distinction decides which control acts. */
+    ok("1.432 · the LOSS TODAY tile names its ceiling with the SCOPE the figure actually has, and the label itself stays short because the kit truncates a KPI label",
+      (() => {
+        const gateSrc = decomment(read(GATE));
+        return /moneyTile\("Loss today", lossUsed, control\.gCapDailyLossTzs, `\$\{FIELD_META\.gCapDailyLossTzs\.label\} \(projected\)`\)/.test(gateSrc)
+          && /const lossUsed = Math\.max\(0, sumDay\(dayBooks, \(b\) => b\.projectedLossTzs\)\);/.test(gateSrc)
+          && /"projected"/.test(gateSrc) && /"settled"/.test(gateSrc);
+      })(), "");
+
+    /* ⛔ 388 · A REQUIRED FIELD SAYS SO (review visual-5). All three reason fields gate their primary button on
+     * `CONSOLE_REASON_MIN`, and the counter counts DOWN from the maximum — so an officer who typed the confirm word
+     * and no reason met a dead button with nothing on screen to explain it. Six admin dialogs next door already
+     * mark the same field. */
+    ok("1.388 · every reason field the console asks for is MARKED required, in the one copy home, and the floor that makes it required is still the shared constant",
+      (() => {
+        const gateSrc = decomment(read(GATE));
+        const labels = [...gateSrc.matchAll(/reasonLabel: "([^"]+)"/g)].map((m) => m[1]);
+        return labels.length === 3 && labels.every((t) => t.endsWith("(required)"))
+          && /export const CONSOLE_REASON_MIN = 5;/.test(gateSrc)
+          && /reason\.length < CONSOLE_REASON_MIN/.test(gateSrc);
+      })(),
+      j({ labels: [...decomment(read(GATE)).matchAll(/reasonLabel: "([^"]+)"/g)].map((m) => m[1]) }));
+
+    /* ⛔ 453 · ONE APOSTROPHE GLYPH ACROSS THE WHOLE CONSOLE (review visual-6). A single U+2019 sat in one Global
+     * limits row label among rows that all use the ASCII form — one row of that list would have rendered a
+     * different glyph from its neighbours, and it lives below the fold of every tile this branch has captured. */
+    ok("1.432 · not one curly apostrophe anywhere the console writes its own copy — the section's files and the gate use one glyph",
+      [GATE, ...sectionFiles].every((f) => !read(f).includes("\u2019")),
+      j({ dirty: [GATE, ...sectionFiles].filter((f) => read(f).includes("\u2019")) }));
+    ok("1.432 · CONTROL · that glyph scan really fires — the gate's own text with one curly apostrophe put back is reported",
+      !read(GATE).includes("\u2019") && `${read(GATE)}One player\u2019s share limit`.includes("\u2019"), "");
+
+    /* ⛔ 435 · A PERMANENT RECORD CARRIES ITS YEAR (review visual-7). The removal Callout is the one card whose
+     * whole purpose is to outlive the account, and it printed "Removed on 20 Sep 03:33 EAT" — a removal from a
+     * previous year reads as this year. The clock already offers the wider pattern; the section's other two EAT
+     * renderings are TODAY-scoped and correctly stay year-less. */
+    ok("1.435 · the removal record's date carries the YEAR, while the two TODAY-scoped times beside it correctly do not",
+      (() => {
+        const gateSrc = decomment(read(GATE));
+        return /formatEat\(removedAtMs, "D MMM YYYY"\)/.test(gateSrc)
+          && /case "D MMM YYYY":/.test(decomment(read("src/lib/house-bot/clock.ts")));
+      })(), "");
+
+    /* ⛔ 432(n) · THE SAVED-RULES CARD IS ONE COMPONENT, AND ITS ONE DIFFERENCE IS NAMED (review visual-8). It was
+     * two copies of one list that differed in exactly one line — the per-row caption — with nothing saying why, so
+     * the divergence was invisible and the next edit would have landed on one of them. */
+    ok("1.435 · the saved-rules card is declared ONCE and used by both states, and the caption difference is a named argument rather than a second copy of the markup",
+      (() => {
+        const code = decomment(read(DETAIL_PAGE));
+        return (code.match(/function SavedRulesCard\(/g) ?? []).length === 1
+          && (code.match(/<SavedRulesCard /g) ?? []).length === 2
+          && /<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(code)
+          && /<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions \/>/.test(code)
+          && (code.match(/<AdminCard title="Saved rules">/g) ?? []).length === 1;
+      })(), "");
 
     /* ── 1.395 · THE CONSOLE ADDS NO ADMIN API ROUTE, OVER THE WALKED INVENTORY ──────────────────────────────────
      * ⛔ THE POPULATION IS THE DISK WALK, NEVER A REQUESTED-PATH LIST. The probe's `API_PATHS` substitutes report-id
@@ -5248,24 +5584,39 @@ export default function Ruling513Control() {
       return out;
     })();
     ok("1.395 · not one route PATH in the walked API inventory carries a vocabulary hit in any segment, and the console's own segment appears in it nowhere",
-      apiRoutes.length >= 50 && apiRoutes.every((p) => houseHits(p).length === 0)
+      apiRoutes.length >= 62 && apiRoutes.every((p) => houseHits(p).length === 0)
         && apiRoutes.every((p) => !p.includes("/desk")),
       j({ routes: apiRoutes.length, hits: apiRoutes.filter((p) => houseHits(p).length > 0 || p.includes("/desk")) }));
-    ok("1.395 · and no file under `src/app/api/` names the console route or reaches its one read door — the desk is server-component and server-action only",
-      (() => {
-        const bad: string[] = [];
-        const walkFiles = (dir: string) => {
-          for (const e of readdirSync(join(ROOT, dir))) {
-            const rel = `${dir}/${e}`;
-            if (statSync(join(ROOT, rel)).isDirectory()) walkFiles(rel);
-            else if (/\.tsx?$/.test(e)) {
-              const code = decomment(read(rel));
-              if (code.includes("/admin/desk") || code.includes("house-console-read")) bad.push(rel);
-            }
+    /* ⛔ THE FILE WALK CARRIES ITS OWN POPULATION FLOOR AND ITS OWN CONTROL (C7 step 7 review, test-strength-11).
+     * It had neither: a renamed directory or a changed extension filter would collect nothing, `bad.length === 0`
+     * would be green for the wrong reason, and the extra printed nothing at all. The sibling control exercises the
+     * PATH inventory, which is a different predicate. */
+    const apiFileScan = (() => {
+      const scanned: string[] = [];
+      const bad: string[] = [];
+      const walkFiles = (dir: string) => {
+        for (const e of readdirSync(join(ROOT, dir))) {
+          const rel = `${dir}/${e}`;
+          if (statSync(join(ROOT, rel)).isDirectory()) walkFiles(rel);
+          else if (/\.tsx?$/.test(e)) {
+            scanned.push(rel);
+            const code = decomment(read(rel));
+            if (code.includes("/admin/desk") || code.includes("house-console-read")) bad.push(rel);
           }
-        };
-        walkFiles("src/app/api");
-        return bad.length === 0;
+        }
+      };
+      walkFiles("src/app/api");
+      return { scanned, bad };
+    })();
+    ok("1.395 · and no file under `src/app/api/` names the console route or reaches its one read door — the desk is server-component and server-action only",
+      apiFileScan.bad.length === 0 && apiFileScan.scanned.length >= 62,
+      j({ scanned: apiFileScan.scanned.length, bad: apiFileScan.bad }));
+    ok("1.395 · CONTROL · the FILE walk reports too — one real API file's own text, given the console route and the door's module name in memory, is named by the same predicate",
+      (() => {
+        const one = apiFileScan.scanned.find((f) => f.endsWith("health/route.ts")) ?? apiFileScan.scanned[0];
+        const hit = (code: string) => code.includes("/admin/desk") || code.includes("house-console-read");
+        const real = decomment(read(one));
+        return !hit(real) && hit(`${real}\nconst DESK = "/admin/desk";\n`) && hit(`${real}\nimport "@/lib/server/house-console-read";\n`);
       })(), "");
     ok("1.395 · CONTROL · the same predicate, run over the REAL inventory with one console route planted into it, reports — and over the real inventory alone it does not",
       (() => {
@@ -5290,11 +5641,17 @@ export default function Ruling513Control() {
         && /`enter now` — ⛔ NOT a vocabulary word/.test(vocabSrc)
         && /name: "Enter now"/.test(read(GATE)),
       j({ hits: houseHits("enter now") }));
-    ok("1.397 · CONTROL · promoting it WOULD redden the console — the extended pattern finds the desk's own rules row, while today's does not",
+    /* ⛔ THE CONTROL RUNS THE EXTENDED PATTERN OVER THE GATE'S OWN RENDERED ROWS (C7 step 7 review,
+     * test-strength-08). It used to build a regex beginning `enter now` and then check that it matched the string
+     * "Enter now", which cannot be false for any such regex — a tautology standing where the claim "it finds the
+     * desk's own rules row" belongs. The rows are right there in the gate's source. */
+    ok("1.397 · CONTROL · promoting it WOULD redden the console — the extended pattern finds the desk's own rules row IN THE GATE'S OWN RENDERED ROWS, while today's finds none of them",
       (() => {
         const withIt = new RegExp(`enter now|${(consoleNeutralRegExp("i") as RegExp).source}`, "i");
-        return withIt.test("Enter now") && !NEUTRAL.test("Enter now") && houseHits("liquidity").length > 0;
-      })(), "");
+        const rulesRows = [...read(GATE).matchAll(/name: "([^"]+)"/g)].map((m) => m[1]);
+        return rulesRows.length >= 3 && rulesRows.some((r) => withIt.test(r)) && !rulesRows.some((r) => NEUTRAL.test(r))
+          && !NEUTRAL.test("Enter now") && houseHits("liquidity").length > 0;
+      })(), j({ rows: [...read(GATE).matchAll(/name: "([^"]+)"/g)].map((m) => m[1]) }));
     /* ⛔ 397(a) · THE PROBE JOINS THE CLOSED LIST OF ABSENCE CONSUMERS. It imports `houseHits` and declares no
      * pattern of its own, and until this step the single-source pin did not cover it — an absence instrument
      * outside the list that keeps every absence instrument honest. Read from the list's own SOURCE, because
@@ -5323,12 +5680,24 @@ export default function Ruling513Control() {
       /from "\.\/house-bot-vocabulary\.mjs"/.test(selfSrc)
         && FAMILY_SOURCES.every((n) => !new RegExp(`(const|let|var)\\s+${n}\\s*=`).test(selfSrc))
         && /const NEUTRAL = consoleNeutralRegExp\(\);/.test(selfSrc)
-        && (selfSrc.match(/houseHits\(/g) ?? []).length >= 25,
+        && (selfSrc.match(/houseHits\(/g) ?? []).length >= 36,
       j({ houseHits: (selfSrc.match(/houseHits\(/g) ?? []).length }));
-    ok("1.397 · 397(e) · and the reason this file is NOT in `VOCABULARY_CONSUMERS` is written in that list's own source, so the deviation is where the next reader will look rather than in a plan nobody greps",
-      /house-bot-console-cases\.mts` is deliberately NOT here/.test(consumersSrc)
-        && /0\.175\.allow` exists precisely so/.test(consumersSrc)
-        && !consumers.includes("scripts/lib/house-bot-console-cases.mts"), "");
+    /* ⛔ A GUARD MAY RECORD A DEVIATION; IT MAY NOT MAKE THE RULING'S OWN REMEDY A FAILURE (C7 step 7 review,
+     * conformance-397e-pins-the-deviation). This case asserted `!consumers.includes(this file)` — so the session
+     * that DID the work 397(e) orders (join the list with a per-file `VOCABULARY_PATTERN_ALLOWLIST` entry, which
+     * is exactly the mechanism `0.175.allow` exists for and which the disclosure suite already uses) would have
+     * turned this suite RED for complying. The case now passes EITHER way — the deviation recorded, or the work
+     * done — and what it refuses is the third state: neither in the list nor explained. */
+    const deviationRecorded = /house-bot-console-cases\.mts` is deliberately NOT here/.test(consumersSrc)
+      && /0\.175\.allow` exists precisely so/.test(consumersSrc);
+    ok("1.397 · 397(e) · this file is EITHER inside `VOCABULARY_CONSUMERS` or the reason it is not is written in that list's own source — the deviation lives where the next reader looks, and doing the work the ruling asks for can never turn this red",
+      consumers.includes("scripts/lib/house-bot-console-cases.mts") || deviationRecorded,
+      j({ inList: consumers.includes("scripts/lib/house-bot-console-cases.mts"), deviationRecorded }));
+    ok("1.397 · 397(e) · CONTROL · the third state IS reported — neither in the list nor explained fails, while each of the two acceptable states passes",
+      (() => {
+        const decide = (inList: boolean, recorded: boolean) => inList || recorded;
+        return decide(true, false) && decide(false, true) && decide(true, true) && !decide(false, false);
+      })(), "");
     ok("1.397 · 397(e) · CONTROL · the family-source detector really fires — each of the four planted into this file's own text is reported, and none of them is there today",
       FAMILY_SOURCES.every((n) => new RegExp(`(const|let|var)\\s+${n}\\s*=`).test(`${selfSrc}\nconst ${n} = "x";`))
         && FAMILY_SOURCES.every((n) => !new RegExp(`(const|let|var)\\s+${n}\\s*=`).test(selfSrc)), "");
@@ -5351,8 +5720,22 @@ export default function Ruling513Control() {
      * struck (371), and the comms suite no longer carries the `COMMIT_7` exemption that let `7.2` skip the
      * console's own hrefs while its three pages were being built one at a time (320). Both are read as CODE, so
      * the record either file keeps of the removal in a comment cannot satisfy the ladder. */
-    const rung = (hasClosing: boolean, hasWizard: boolean, hasActivity: boolean, hasDetail: boolean, hasLimits: boolean) =>
-      hasClosing ? 7 : hasWizard ? 6 : hasActivity ? 5 : hasDetail ? 4 : hasLimits ? 3 : 1;
+    /* ⛔ THE LADDER IS READ FROM THE BOTTOM, AND A HOLE IS REPORTED RATHER THAN SKIPPED (C7 step 7 review,
+     * d19-hunt-02 / test-strength-02). It was a short-circuit chain with the TOP rung first, so a true higher
+     * rung masked a false lower one: MEASURED on this tree, `closing` is true and `activity` is FALSE — C7 step
+     * 5 was never built — and the chain returned 7 without ever looking at `activity`. The guard whose whole
+     * purpose is to refuse a silence therefore printed "built through 7" over a console missing a whole area,
+     * and its own docblock's invariant ("each rung is the artefact that step creates") was false as written.
+     * ⛔ `built` STAYS THE HIGHEST RUNG PRESENT, deliberately. Lowering it to the last unbroken rung would stop
+     * requiring the step-6 and step-7 D19 ids the tree DOES carry — a guard failing open to look tidier. The
+     * hole is reported beside it instead, and PRINTED every run. */
+    const RUNGS: ReadonlyArray<readonly [number, "limits" | "detail" | "activity" | "wizard" | "closing"]> =
+      [[3, "limits"], [4, "detail"], [5, "activity"], [6, "wizard"], [7, "closing"]];
+    const ladder = (t: Record<string, boolean>) => {
+      const present = RUNGS.filter(([, k]) => t[k]);
+      const built = present.length ? present[present.length - 1][0] : 1;
+      return { built, gaps: RUNGS.filter(([n, k]) => n <= built && !t[k]).map(([n, k]) => `${n}:${k}`) };
+    };
     const tree = {
       closing: !decomment(read("src/lib/server/house-bot/book.ts")).includes("houseBotBook")
         && !decomment(read("scripts/lib/house-bot-comms-cases.mts")).includes("COMMIT_7"),
@@ -5361,7 +5744,15 @@ export default function Ruling513Control() {
       detail: existsSync(join(ROOT, DETAIL_PAGE)),
       limits: (CR.CONSOLE_TABS as readonly string[]).includes("limits"),
     };
-    const BUILT_THROUGH = rung(tree.closing, tree.wizard, tree.activity, tree.detail, tree.limits);
+    const rungs = ladder(tree);
+    const BUILT_THROUGH = rungs.built;
+    /* ⛔ THE HOLES THIS TREE IS RECORDED AS HAVING, AND IT IS A DEBT THAT CAN ONLY SHRINK — never a permission.
+     * `5:activity` is C7 step 5, which C7 step 7 found unbuilt and which DEFERRED row 62 records in full: the
+     * feed and history panels, the rail's other two keys, the dense filter rail, `AdminPagination` and the
+     * assertions 1.312 (four keys), 1.317, 1.344, 1.345, 1.369 and 1.410. The moment those land, `gaps` is empty,
+     * this entry no longer matches a real hole, and the case goes RED until it is deleted — which is the whole
+     * point: a skip is tracked, not remembered. An UNRECORDED hole fails immediately. */
+    const RECORDED_GAPS: readonly string[] = ["5:activity"];
     type Owed = { id: string; step: number; owner: string; what: string };
     const D19: Owed[] = [
       { id: "1.380", step: 1, owner: "console", what: "the gate's position, the literal route, force-dynamic, no gate in the loader" },
@@ -5414,18 +5805,33 @@ export default function Ruling513Control() {
       missing.length === 0 && dueHere.length >= 19
         && area5.length >= 19 && area5.every((id) => D19.some((d) => d.id === id))
         && j(extras) === j(["1.332", "1.342", "1.343"]),
-      j({ builtThrough: BUILT_THROUGH, dueHere: dueHere.length, area5: area5.length, notInRollCall: area5.filter((id) => !D19.some((d) => d.id === id)), missing: missing.map((d) => `${d.id} (${d.what})`), later: later.map((d) => `${d.id}@step${d.step}:${d.owner}`) }));
+      j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, dueHere: dueHere.length, area5: area5.length, notInRollCall: area5.filter((id) => !D19.some((d) => d.id === id)), missing: missing.map((d) => `${d.id} (${d.what})`), later: later.map((d) => `${d.id}@step${d.step}:${d.owner}`) }));
+    ok("1.398 · LADDER · every rung below the highest one this tree carries is either PRESENT or a hole this repository has recorded — an unrecorded hole is named here, and a recorded one that has since been built is named so the record is deleted with the build",
+      rungs.gaps.every((g) => RECORDED_GAPS.includes(g)) && RECORDED_GAPS.every((g) => rungs.gaps.includes(g)),
+      j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, recorded: RECORDED_GAPS, tree }));
+    ok("1.398 · LADDER · ⛔ AND THE HOLE IS REAL AND PRINTED, not inferred: this tree carries the closing step's artefact while `CONSOLE_TABS` has no `activity` key — C7 step 5 is unbuilt (DEFERRED row 62)",
+      rungs.gaps.length === 1 && rungs.gaps[0] === "5:activity" && BUILT_THROUGH === 7 && tree.activity === false,
+      j({ gaps: rungs.gaps, tabs: CR.CONSOLE_TABS }));
     /* ⛔ AND THE DERIVATION IS SHOWN TO HAVE READ THE SPEC: an empty slice makes `every` trivially true, which is
      * the population trap the roll-call itself was written against. */
     /* ⛔ AND THE LADDER REALLY MOVES WITH THE TREE. A ratchet read off disk is worth nothing if the reading is a
      * constant, so `rung` is exercised over every rung it can return — and the tree's own four facts are PRINTED, so
      * the step that adds the detail page or the wizard sees the number change rather than having to trust it.
      * ⚠️ This control does NOT assert today's tree shape: a step-4 build must not go red here for building step 4. */
-    ok("1.398 · CONTROL · Area 5 was really parsed out of C7-SPEC §2, and `BUILT_THROUGH` is a LADDER over the tree — not a constant, and not typed",
-      area5Src.length > 2_000 && area5.includes("1.380") && area5.includes("1.399")
-        && j([rung(false, false, false, false, false), rung(false, false, false, false, true), rung(false, false, false, true, true), rung(false, false, true, true, true), rung(false, true, true, true, true), rung(true, true, true, true, true)]) === j([1, 3, 4, 5, 6, 7])
-        && BUILT_THROUGH === rung(tree.closing, tree.wizard, tree.activity, tree.detail, tree.limits),
-      j({ area5Chars: area5Src.length, area5, tree, builtThrough: BUILT_THROUGH }));
+    ok("1.398 · CONTROL · Area 5 was really parsed out of C7-SPEC §2, `BUILT_THROUGH` is a LADDER over the tree — not a constant, not typed — and the MIXED shape this tree actually has is exercised, which the nested-only vector never was",
+      (() => {
+        const t = (limits: boolean, detail: boolean, activity: boolean, wizard: boolean, closing: boolean) =>
+          ladder({ limits, detail, activity, wizard, closing });
+        const nested = [t(false, false, false, false, false), t(true, false, false, false, false), t(true, true, false, false, false),
+          t(true, true, true, false, false), t(true, true, true, true, false), t(true, true, true, true, true)];
+        const mixed = t(true, true, false, true, true);
+        return area5Src.length > 2_000 && area5.includes("1.380") && area5.includes("1.399")
+          && j(nested.map((r) => r.built)) === j([1, 3, 4, 5, 6, 7])
+          && nested.every((r) => r.gaps.length === 0)
+          && mixed.built === 7 && j(mixed.gaps) === j(["5:activity"])
+          && BUILT_THROUGH === ladder(tree).built;
+      })(),
+      j({ area5Chars: area5Src.length, area5, tree, builtThrough: BUILT_THROUGH, gaps: rungs.gaps }));
     /* ⛔ THE CONTROL IS THE POINT: the roll-call must be able to report an id that was never written, which is the
      * failure mode it exists for. An invented id is looked for and must NOT be found; a real one must be. */
     ok("1.398 · CONTROL · the roll-call reads this run's own labels — an id that was never written IS reported, and one that was is not",

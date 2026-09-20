@@ -56,6 +56,14 @@ const VOCAB = "scripts/lib/house-bot-vocabulary.mjs";
 const REPORTS = "scripts/lib/house-bot-reports-cases.mts";
 const CASES = "scripts/lib/house-bot-console-cases.mts";
 const COMMS = "scripts/lib/house-bot-comms-cases.mts";
+/* ⭐ ADDED AT THE C7 STEP 7 REVIEW. The erasure door is the one house refusal a COMPLIANCE officer can make the
+   platform print; the shared scanner is what 1.371's population is read through; the visual gate is where 474's
+   exemption is applied; the shell is where the account page's own head stamps that exemption. */
+const ERASURE = "src/lib/server/erasure.ts";
+const DECOMMENT = "scripts/lib/decomment.mts";
+const VISUAL = "scripts/qa-house-bots-visual.mjs";
+const SHELL = "src/components/admin/admin-shell.tsx";
+const CLOCK = "src/lib/house-bot/clock.ts";
 
 export const MUTATIONS = [
   /* ── C7 step 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368/459, 382, 383, 385, 387, 388) ─────────────────────
@@ -1923,14 +1931,17 @@ import { formatEat } from "@/lib/utils";`,
     file: REPORTS,
     from: "`scripts/lib/house-bot-console-cases.mts` is deliberately NOT here",
     to: "that file is elsewhere",
-    expect: "397(e) · and the reason this file is NOT in `VOCABULARY_CONSUMERS` is written in that list's own source",
+    expect: "397(e) · this file is EITHER inside `VOCABULARY_CONSUMERS` or the reason it is not is written in that list's own source",
     suite: "console-mem",
   },
   {
+    /* ⭐ RE-ANCHORED AT THE C7 STEP 7 REVIEW to the same defect. The short-circuit chain this quoted was replaced
+       by a rungs TABLE read from the bottom (review d19-hunt-02 / test-strength-02), so the defect is now written
+       as the table losing its top rung: `built` falls to 6 and the four assertions step 7 owes stop being owed. */
     name: "398-rung7 · the roll-call's ladder stops at step 6, so the four assertions step 7 owes stop being owed and their absence becomes invisible again",
     file: CASES,
-    from: `      hasClosing ? 7 : hasWizard ? 6 : hasActivity ? 5 : hasDetail ? 4 : hasLimits ? 3 : 1;`,
-    to: `      hasWizard ? 6 : hasActivity ? 5 : hasDetail ? 4 : hasLimits ? 3 : (hasClosing ? 1 : 1);`,
+    from: `      [[3, "limits"], [4, "detail"], [5, "activity"], [6, "wizard"], [7, "closing"]];`,
+    to: `      [[3, "limits"], [4, "detail"], [5, "activity"], [6, "wizard"]];`,
     expect: "1.398 · ROLL-CALL · every D19 assertion owed at or before the step this tree has built",
     suite: "console-mem",
   },
@@ -1948,6 +1959,170 @@ import { formatEat } from "@/lib/utils";`,
     from: `      const parts = "/admin/desk/hb_0123456789abcdef01234567/nowhere-at-all".split("/").filter(Boolean);`,
     to: `      const parts = "/admin/desk".split("/").filter(Boolean);`,
     expect: "7.2b · CONTROL · the resolver still REFUSES a route nobody built",
+    suite: "comms-mem",
+  },
+  /* ══ C7 STEP 7 REVIEW · THE DECLARATIONS THE FIXES OWE ═══════════════════════════════════════════════════════
+     Each names the assertion the review added or repaired, and each plants the defect the review MEASURED rather
+     than a convenient one. Four mutate GUARD files on purpose: an assertion whose SUBJECT is a guard can only be
+     shown able to fail by mutating that guard (`318-expect-drift` is the precedent on this register). */
+  {
+    name: "371-big-file · the struck results reader comes back in the BIGGEST file of the population, where the retired three-regex stripper was blind",
+    file: DAL,
+    from: `export const TARGET_TIMING_FIELDS = ["delayMinSec", "delayMaxSec", "timingFrom", "reactTo"] as const;`,
+    to: `export type HouseBotBookRow = { netTzs: number };\n\nexport const TARGET_TIMING_FIELDS = ["delayMinSec", "delayMaxSec", "timingFrom", "reactTo"] as const;`,
+    expect: "1.371 · no house-bot module and no house-bot guard names",
+    suite: "console-mem",
+  },
+  {
+    name: "371-desync · the shared literal blanker starts LOSING characters, which is the silent failure the per-file length invariant exists to catch",
+    file: DECOMMENT,
+    from: `      if (close !== -1) { out += c + blankRun(s.slice(i + 1, close)) + c; i = close + 1; continue; }`,
+    to: `      if (close !== -1) { out += c + c; i = close + 1; continue; }`,
+    expect: "1.371 · no house-bot module and no house-bot guard names",
+    suite: "console-mem",
+  },
+  {
+    name: "390-erasure-names · the DSAR refusal a COMPLIANCE officer reads names the feature, the record id and the owner-only route again",
+    file: ERASURE,
+    from: `      error: "This account is still in use by an owner-managed account and cannot be erased yet. An owner has been told; the request stays open and can be run again once it is released.",`,
+    to: `      error: "This account is still house bot hb_0123456789abcdef01234567. The owner must remove it at /admin/desk before it can be erased.",`,
+    expect: "1.390 · and the ERASURE door's own refusal",
+    suite: "console-mem",
+  },
+  {
+    name: "390-catch · a console action loses the catch that turns a throw from behind the door into a typed refusal",
+    file: ACTIONS,
+    from: `    return { ok: false, error: safeError(err, "Nothing was saved. Reload the page and try again.") };`,
+    to: `    return { ok: false, error: String(err) };`,
+    expect: "1.390 · and every exported console action turns a throw from BEHIND the door into a typed refusal",
+    suite: "console-mem",
+  },
+  {
+    name: "370-template-amount · an engine sentence is rewritten as a TEMPLATE carrying an interpolated amount — the exact form the old double-quote-only capture dropped",
+    file: FEED,
+    from: `  NO_REACT_ZONE: "the stake came too close to betting close",`,
+    to: "  NO_REACT_ZONE: `the stake came too close to betting close, TZS 50,000 still held`,",
+    expect: "1.370 · not one `EngineCode` sentence and not one switch-off sentence carries a formatted amount",
+    suite: "console-mem",
+  },
+  {
+    name: "395-file-floor · the API file walk's extension filter stops matching, so it scans nothing and reports a clean zero",
+    file: CASES,
+    from: `          else if (/\\.tsx?$/.test(e)) {\n            scanned.push(rel);`,
+    to: `          else if (/\\.never$/.test(e)) {\n            scanned.push(rel);`,
+    expect: "1.395 · and no file under `src/app/api/` names the console route",
+    suite: "console-mem",
+  },
+  {
+    name: "398-ladder-hole · the ladder stops computing its gaps, so a tree carrying the closing step's artefact with step 5 missing reads as complete",
+    file: CASES,
+    from: `      return { built, gaps: RUNGS.filter(([n, k]) => n <= built && !t[k]).map(([n, k]) => \`\${n}:\${k}\`) };`,
+    to: `      return { built, gaps: [] as string[] };`,
+    expect: "1.398 · LADDER · every rung below the highest one this tree carries",
+    suite: "console-mem",
+  },
+  {
+    name: "474-head-hook · the account page's own head stops marking the operator's label, so the served gate scans an Owner-chosen value as if this repo had written it",
+    file: DETAIL,
+    from: `        titleIsOperatorText`,
+    to: `        sw={undefined}`,
+    expect: "1.474 · EVERY site under the section that paints the account's own LABEL carries the 474 hook",
+    suite: "console-mem",
+  },
+  {
+    name: "474-shell-stamp · AdminPageHead stops stamping the hook it was given, so the prop is accepted and the attribute never reaches the DOM",
+    file: SHELL,
+    from: `          {...(titleIsOperatorText ? { "data-operator-text": "label" } : {})}`,
+    to: `          {...({})}`,
+    expect: "1.474 · EVERY site under the section that paints the account's own LABEL carries the 474 hook",
+    suite: "console-mem",
+  },
+  {
+    name: "474-shared-scan · the served gate goes back to running the SHARED vocabulary over the raw body, with no operator exemption",
+    file: VISUAL,
+    from: `        houseHits(bodySubject).length === 0, houseHits(bodySubject).slice(0, 6).join(","));`,
+    to: `        houseHits(facts.body).length === 0, houseHits(facts.body).slice(0, 6).join(","));`,
+    expect: "1.474 · and the served gate removes the operator's marked text from the SHARED vocabulary scan",
+    suite: "console-mem",
+  },
+  {
+    name: "432-way-out · the account page re-types the hover-only link treatment the wizard's repair replaced, so one section ships two looks for one control",
+    file: DETAIL,
+    from: `          <Link href={CONSOLE_ROUTE as Route} className={WAY_OUT_LINK}>`,
+    to: `          <Link href={CONSOLE_ROUTE as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline">`,
+    expect: "1.432 · the way-out link is declared ONCE",
+    suite: "console-mem",
+  },
+  {
+    name: "432-chip-shrink · the account strip's status chip becomes shrinkable again, which is what broke the longest status word across two lines at 360",
+    file: DETAIL,
+    from: `              <Chip size="sm" variant={view.statusChip} className="shrink-0">{view.statusWord}</Chip>`,
+    to: `              <Chip size="sm" variant={view.statusChip}>{view.statusWord}</Chip>`,
+    expect: "1.432 · the account strip's status chip is pinned against the flex shrink",
+    suite: "console-mem",
+  },
+  {
+    name: "432-loss-scope · the LOSS TODAY tile drops the scope from its ceiling, so the band and the column beside it name one figure two ways",
+    file: GATE,
+    from: "        ? moneyTile(\"Loss today\", lossUsed, control.gCapDailyLossTzs, `${FIELD_META.gCapDailyLossTzs.label} (projected)`)",
+    to: `        ? moneyTile("Loss today", lossUsed, control.gCapDailyLossTzs, FIELD_META.gCapDailyLossTzs.label)`,
+    expect: "1.432 · the LOSS TODAY tile names its ceiling with the SCOPE",
+    suite: "console-mem",
+  },
+  {
+    name: "432-apostrophe · one console label takes a curly apostrophe again, so one row of the limits list renders a different glyph from its neighbours",
+    file: GATE,
+    from: `  gStaffChosenMaxCounterpartyShare: "One player's share limit",`,
+    to: "  gStaffChosenMaxCounterpartyShare: \"One player\u2019s share limit\",",
+    expect: "1.432 · not one curly apostrophe anywhere the console writes its own copy",
+    suite: "console-mem",
+  },
+  {
+    name: "388-required · a reason field stops saying it is required, leaving a disarmed primary button with nothing on screen to explain it",
+    file: GATE,
+    from: `    reasonLabel: "Why are you switching it on? (required)",`,
+    to: `    reasonLabel: "Why are you switching it on?",`,
+    expect: "1.388 · every reason field the console asks for is MARKED required",
+    suite: "console-mem",
+  },
+  {
+    name: "435-year · the removal record's date loses its year, so a removal from a previous year reads as this year on the one card meant to outlive the account",
+    file: GATE,
+    from: "`${formatEat(removedAtMs, \"D MMM YYYY\")} ${formatEat(removedAtMs, \"HH:MM\")} EAT`",
+    to: "`${formatEat(removedAtMs, \"D MMM\")} ${formatEat(removedAtMs, \"HH:MM\")} EAT`",
+    expect: "1.435 · the removal record's date carries the YEAR",
+    suite: "console-mem",
+  },
+  {
+    name: "435-saved-rules · the removed account's saved-rules card starts painting the live captions again, so the page states a consequence its own removal Callout has just denied",
+    file: DETAIL,
+    from: `          <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions={false} />`,
+    to: `          <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions />`,
+    expect: "1.435 · the saved-rules card is declared ONCE and used by both states",
+    suite: "console-mem",
+  },
+  {
+    name: "320-population · the comms walk's console filter reports nothing, so the retired exemption's replacement resolves an EMPTY set and reads as compliance",
+    file: COMMS,
+    from: `  const consoleHrefs = hrefs.filter((h) => h.split("?")[0] === CR.CONSOLE_ROUTE || h.split("?")[0].startsWith(\`\${CR.CONSOLE_ROUTE}/\`));`,
+    to: `  const consoleHrefs = hrefs.filter(() => false);`,
+    expect: "7.2a · the walk really had links to resolve",
+    suite: "comms-mem",
+  },
+  {
+    name: "320-tab-debt-stale · a tab this tree is RECORDED as not having is built, and the record is left behind — the shape a tracked skip must refuse",
+    file: ROUTES,
+    from: `export const CONSOLE_TABS = ["roster", "limits"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "limits", "activity"] as const;`,
+    expect: "7.2c · every `?tab=` a house alert produces names a panel that is BUILT",
+    suite: "comms-mem",
+  },
+  {
+    name: "318-comms-drift · a comms-mem declaration expect rots into a label no run prints, which is the WRONG-ASSERTION class the roll-call exists to end",
+    file: ANCHORS,
+    from: "    to: `      const parts = \"/admin/desk\".split(\"/\").filter(Boolean);`,\n    expect: \"7.2b · CONTROL · the resolver still REFUSES a route nobody built\",",
+    to: "    to: `      const parts = \"/admin/desk\".split(\"/\").filter(Boolean);`,\n    expect: \"7.2z · CONTROL · a label no run of this suite prints\",",
+    expect: "7.505 · every declared `comms-mem` mutation",
     suite: "comms-mem",
   },
 ];
