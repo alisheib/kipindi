@@ -35,6 +35,9 @@ import {
   houseAccountActForConsole,
   type ConsoleAccountActInput,
   type ConsoleAccountActResult,
+  houseCancelIntentForConsole,
+  type ConsoleCancelInput,
+  type ConsoleCancelResult,
 } from "@/lib/server/house-console-read";
 import { CONSOLE_ROUTE } from "@/lib/house-bot/console-routes";
 
@@ -127,6 +130,43 @@ export async function runDeskAccountAction(input: ConsoleAccountActInput): Promi
       revalidatePath(CONSOLE_ROUTE);
       revalidatePath(`${CONSOLE_ROUTE}/${input.id}`);
     } catch { /* the act landed; a stale roster is the smaller harm */ }
+  }
+  return result;
+}
+
+/**
+ * ⭐ STOP ONE QUEUED STAKE — the desk's first write to the press table (C7-SPEC ruling 415; 04 N1 §2 press flow).
+ *
+ * ⛔ A FOURTH EXPORT, NOT A FOURTH `act` ON `runDeskAccountAction`. That door's `ConsoleAccountActInput` union is
+ * START / PAUSE / REVERIFY / REMOVE and every one of them addresses an ACCOUNT; this addresses one intent and
+ * carries a press's own idempotency key, which that union has no room for. Folding it in would have meant one
+ * door with two subjects and a shape that is half-ignored on every call.
+ *
+ * ⛔ THE GATE IS INSIDE THE DOOR (rulings 522, 523), and it is the FIRST thing the door does — this file resolves
+ * the session, hands a USER ID to the one named writer and takes no decision of its own: it reads no role, names
+ * no store and names no column.
+ *
+ * ⛔ THE EXPORT NAME AND ITS GUARD LABEL CARRY NO HOUSE WORD (ruling 382), while the AUDIT key the service writes
+ * is deliberately not renamed: membership in `HOUSE_AUDIT` is what keeps the row out of a player's own audit read.
+ *
+ * ⛔ A REFUSAL IS NOT A REVALIDATION, and the revalidation is OUTSIDE the try that says nothing changed — the
+ * stake has already been stopped by then, and "Nothing was stopped" would be the opposite of the truth.
+ */
+export async function cancelDeskIntentAction(input: ConsoleCancelInput): Promise<ConsoleCancelResult> {
+  /* ⛔ THE SESSION READ IS INSIDE THE TRY (C7 step 6 review d19-hunt-10): it sat above it on the other three, so
+     the one failure the catch exists to turn into a shape — a read that throws — was the one that could still
+     throw the action. The gated door treats an absent viewer as refused, so nothing else changes. */
+  let result: ConsoleCancelResult;
+  try {
+    const session = await currentSession();
+    result = await houseCancelIntentForConsole(session?.userId ?? null, "/admin/desk", input);
+  } catch (err) {
+    return { ok: false, error: safeError(err, "Nothing was stopped. Reload the page and try again.") };
+  }
+  if (result.ok && result.changed) {
+    /* The desk's own page: the rail's queued-stake badge, the activity table and the band all come back from the
+       same next read, so none of them can disagree with the row the officer has just stopped. */
+    try { revalidatePath(CONSOLE_ROUTE); } catch { /* the cancel landed; a stale table is the smaller harm */ }
   }
   return result;
 }

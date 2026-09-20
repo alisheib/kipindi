@@ -415,4 +415,64 @@ export const MUTATIONS = [
     expect: "9.5 ·",
     suite: "caps-mem",
   },
+
+  /* ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+   * §1j ROW 84 (C5-8, 2026-09-20) — THE FIVE MARKER SITES THAT HAD NO DECLARED MUTATION.
+   *
+   * `0.232.2b` printed `2 of 7` for as long as only `SEAM:txnMarker` and `SEAM:markerOrphan` were declared here.
+   * The other five money writes that carry the house marker — the cash-out, the one-sided refund, the void
+   * refund, the winner payout and the emergency void — each write a POSITIONED `Transaction` that copies
+   * `houseBotId` from the position whose id is its `positionId`, and deleting any one of those markers was
+   * demonstrated red by NOTHING. `0.232.1`'s rule is structural and store-independent, and `0.232.c1` already
+   * plants exactly this shape at `:2792` and requires one site to be reported — so the rule is known to work;
+   * what was missing was a declaration that drives it at the other five sites.
+   *
+   * ⛔ Each `from` was re-resolved against the tree before it was written, and each occurs EXACTLY ONCE — the
+   * `SEAM:` comment line is what makes it unique, because the spread line alone appears at six sites.
+   * ⛔ These run under `reports-mem` because `0.232` lives in the reports cases; that suite key is added to
+   * `red-house-bot-money.mjs`'s own map in the SAME commit. Adding declarations cannot move
+   * `UNDECLARED_CEILING` — its population is `red:*` npm KEYS, not declarations.
+   * ⭐ Landing these raises `0.232.2b` from `2 of 7` to `7 of 7`, which is the one direction that assertion was
+   * written to move: its whole purpose is that the number cannot quietly stay at two.
+   * ───────────────────────────────────────────────────────────────────────────────────────────────────────── */
+  {
+    name: "232-marker-cashout · the cash-out transaction stops carrying the house marker",
+    file: SVC,
+    from: `      // SEAM:markerCashout — unreachable for a house position after (e), kept so the rule has no exception.\n      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `      // SEAM:markerCashout — unreachable for a house position after (e), kept so the rule has no exception.\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-one-sided · the one-sided refund transaction stops carrying the house marker",
+    file: SVC,
+    from: `            // SEAM:markerOneSided\n            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `            // SEAM:markerOneSided\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-void · the void refund transaction stops carrying the house marker",
+    file: SVC,
+    from: `            // SEAM:markerVoid\n            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `            // SEAM:markerVoid\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-win · the winner payout transaction stops carrying the house marker",
+    file: SVC,
+    from: `            // SEAM:markerWin\n            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `            // SEAM:markerWin\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-emergency · the emergency-void transaction stops carrying the house marker",
+    file: SVC,
+    from: `            // SEAM:markerEmergency\n            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `            // SEAM:markerEmergency\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
 ];

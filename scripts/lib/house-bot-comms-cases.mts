@@ -296,28 +296,59 @@ await guard("7", async () => {
   /* ⛔ THE PATH IS HALF THE LINK; THE `?tab=` IS THE OTHER HALF (C7 step 7 review, conformance-320 /
      test-strength-04). `7.2` strips the query before resolving, so a link to a tab with NO PANEL scores as
      "resolves to a page that exists today" while ruling 302's fallback quietly repaints the roster — an officer
-     following a bell lands on a screen that looks like it worked. MEASURED HERE, not assumed: the emitters
-     build `?tab=activity` and `?tab=history`, and `CONSOLE_TABS` holds neither, because C7 step 5 is not
-     built (DEFERRED row 62).
-     ⛔ `UNBUILT_TABS` IS A TRACKED DEBT, NOT A PERMISSION, AND IT CAN ONLY SHRINK. Each entry must name a tab
-     this tree really lacks: the moment step 5 lands, `consoleTabExists("activity")` is true, the entry is no
-     longer a gap, and this case goes RED until it is deleted — which is how a skip stops being remembered and
-     starts being tracked. A tab key that is NOT on this list and has no panel fails immediately. */
-  const UNBUILT_TABS = ["activity", "history"] as const;
+     following a bell lands on a screen that looks like it worked.
+
+     ⭐ AND THE TOLERANCE IS GONE, WHICH IS A SHRINK AND THE ONLY DIRECTION THIS CASE MAY MOVE. `UNBUILT_TABS` was
+     a TRACKED DEBT of two entries — the LANDING `activity` and `history` keys — held while C7 step 5's account
+     half shipped first. Both panels are built now, so the debt list is DELETED with the build rather than left
+     standing: a recorded gap that no longer exists is a permission, and a permission is what this case refuses.
+     ⛔ THE ASSERTION IS NOW ZERO DEAD TABS WITH NO LIST AT ALL, which is strictly stronger than what stood here:
+     any `?tab=` an alert produces, in either shape, whose panel is not on disk fails immediately and has nowhere
+     to be recorded. `exists()` still resolves each href against ITS OWN closed list — the landing rail
+     (`CONSOLE_TABS`) and the account page's (`CONSOLE_DETAIL_TABS`) are separate lists with separate panels, and
+     collapsing them would let a link to one pass on the strength of the other. */
   const tabOf = (h: string) => new URLSearchParams(h.split("?")[1] ?? "").get("tab");
   const detailHref = (h: string) => /^\/admin\/desk\/hb_\w+(\?|$)/.test(h);
-  const tabbed = consoleHrefs.map((h) => ({ h, tab: tabOf(h) })).filter((x) => x.tab !== null) as { h: string; tab: string }[];
-  const exists = (x: { h: string; tab: string }) => (detailHref(x.h) ? CR.consoleDetailTabExists(x.tab) : CR.consoleTabExists(x.tab));
+  const shapeOf = (h: string) => (detailHref(h) ? "detail" : "landing");
+  const tabbed = consoleHrefs.map((h) => ({ h, tab: tabOf(h), shape: shapeOf(h) })).filter((x) => x.tab !== null) as { h: string; tab: string; shape: string }[];
+  const exists = (x: { shape: string; tab: string }) => (x.shape === "detail" ? CR.consoleDetailTabExists(x.tab) : CR.consoleTabExists(x.tab));
   const deadTabs = tabbed.filter((x) => !exists(x));
-  const staleDebt = UNBUILT_TABS.filter((t) => CR.consoleTabExists(t) || CR.consoleDetailTabExists(t));
-  ok("7.2c · every `?tab=` a house alert produces names a panel that is BUILT, or a tab this tree is RECORDED as not having yet — and a recorded one that now exists is reported so the record is deleted with the build",
-    deadTabs.every((x) => (UNBUILT_TABS as readonly string[]).includes(x.tab)) && staleDebt.length === 0,
-    j({ tabbed: tabbed.length, dead: deadTabs.map((x) => x.h), unbuilt: UNBUILT_TABS, staleDebt }));
-  ok("7.2d · ⛔ AND THE DEBT IS REAL, PRINTED, NOT INFERRED: the alerts DO link to a tab with no panel today, so 7.2c's tolerance is measuring something",
-    deadTabs.length >= 1 && tabbed.length >= 1
-      && !CR.consoleTabExists("activity") && !CR.consoleTabExists("history")
-      && CR.consoleTabExists("roster") && CR.consoleTabExists("limits"),
-    j({ dead: deadTabs.map((x) => `${x.h} → ${x.tab}`).slice(0, 4), tabs: CR.CONSOLE_TABS }));
+  ok("7.2c · every `?tab=` a house alert produces names a panel that is BUILT for its own SHAPE — no tolerance list, no recorded gap, and a dead tab in either shape fails here with nowhere to be written down",
+    deadTabs.length === 0,
+    j({ tabbed: tabbed.length, dead: deadTabs.map((x) => `${x.shape}:${x.tab}` ) }));
+  /* ⛔ AND THE WALK IS NOT EMPTY, which is the population trap a zero always carries: an alert set that produced
+     no `?tab=` at all would satisfy the line above while measuring nothing. Both shapes are PRINTED, and both
+     closed lists are shown to hold the two keys the debt list used to stand for. */
+  ok("7.2e · the zero above is a MEASUREMENT: the alerts really do produce `?tab=` links in BOTH shapes, and both closed lists carry `activity` and `history` with their panels",
+    tabbed.length >= 2
+      && tabbed.some((x) => x.shape === "landing") && tabbed.some((x) => x.shape === "detail")
+      && CR.consoleDetailTabExists("activity") && CR.consoleDetailTabExists("history")
+      && CR.consoleTabExists("activity") && CR.consoleTabExists("history"),
+    j({ landing: [...CR.CONSOLE_TABS], detail: [...CR.CONSOLE_DETAIL_TABS], shapes: tabbed.map((x) => `${x.shape}:${x.tab}`).slice(0, 6) }));
+  /* ⛔ AND THE RESOLVER REALLY REFUSES A TAB NOBODY BUILT — the control 7.2d used to be, re-aimed at the shape
+     that exists now. 7.2d asserted that `activity` and `history` were ABSENT from the landing list and that at
+     least one delivered link was dead; both of those subjects are gone with this build, so the case is DELETED
+     rather than loosened, and what replaces it is the same question asked of a planted link. */
+  /* 🔴 AND THE CROSS-SHAPE PROBES ARE THE HALF THAT MATTERS, MEASURED BY THE RED HARNESS RATHER THAN REASONED.
+     Written with only the four probes below the first line, this control PASSED with the declared defect
+     `7.2e-shape-flattened` injected — a resolver rewritten to `consoleDetailTabExists(t) || consoleTabExists(t)`,
+     which is exactly the collapse 7.2c's own docblock says would let a link to one rail pass on the strength of
+     the other. Every key it probed (`nowhere`, `activity`, `overview`) reads the SAME in both lists, so nothing
+     could tell the two apart. The two lists differ in exactly two members — `roster` is the landing rail's alone
+     and `overview` is the account page's alone — and each asked of the WRONG shape must be REFUSED. That pair is
+     the only question a flattened resolver cannot answer. ⛔ The members are derived from the closed lists
+     themselves, not typed here, so the probe follows the rails if either grows. */
+  const landingOnly = CR.CONSOLE_TABS.filter((t: string) => !(CR.CONSOLE_DETAIL_TABS as readonly string[]).includes(t));
+  const detailOnly = CR.CONSOLE_DETAIL_TABS.filter((t: string) => !(CR.CONSOLE_TABS as readonly string[]).includes(t));
+  ok("7.2d · CONTROL · a planted alert href naming a tab NOBODY built is reported in each shape, and a key that belongs to ONE rail is REFUSED when it is asked of the other — so the zero above is a scan, and the two rails are really being told apart",
+    !exists({ shape: "landing", tab: "nowhere" }) && !exists({ shape: "detail", tab: "nowhere" })
+      && exists({ shape: "landing", tab: "activity" }) && exists({ shape: "detail", tab: "overview" })
+      && landingOnly.length > 0 && detailOnly.length > 0
+      && landingOnly.every((t: string) => exists({ shape: "landing", tab: t }) && !exists({ shape: "detail", tab: t }))
+      && detailOnly.every((t: string) => exists({ shape: "detail", tab: t }) && !exists({ shape: "landing", tab: t }))
+      && shapeOf("/admin/desk?tab=activity") === "landing"
+      && shapeOf("/admin/desk/hb_0123456789abcdef01234567?tab=activity") === "detail",
+    j({ landingOnly, detailOnly }));
   ok("7.2b · CONTROL · the resolver still REFUSES a route nobody built, so the zero above is a measurement and not an empty walk",
     (() => {
       const parts = "/admin/desk/hb_0123456789abcdef01234567/nowhere-at-all".split("/").filter(Boolean);

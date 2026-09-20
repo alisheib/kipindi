@@ -71,7 +71,7 @@ const SHADOW_READS = [
  * It names the §6 cases that no mutation drives red, and those are exactly the ones whose subject is a
  * fixture this harness cannot reach: a control that builds its own degenerate input inside the cases module,
  * which is imported by identifier rather than read through `ROOT`. Each is two-directional in the suite
- * already, and each is a named row in `plans/house-bots/DEFERRED-TESTS.md` §1k (row 92) — NOT MEASURED with
+ * already, and each is a named row in `plans/house-bots/DEFERRED-TESTS.md` §1o (row 98) — NOT MEASURED with
  * its reason, never quietly dropped. ⛔ Raising this number is the one edit this file forbids; the count
  * comes DOWN to meet it.
  */

@@ -35,6 +35,7 @@ import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
+import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
@@ -44,8 +45,10 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseRosterForConsole, houseUsageForConsole, houseConsoleAudience, type ConsoleDeskShell, type ConsoleUsageCell, type ConsoleUsageRow } from "@/lib/server/house-console-read";
-import { CONSOLE_TABS, LIMITS_TAB_READY, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
+import { CONSOLE_REFUSAL_TITLE, houseRosterForConsole, houseUsageForConsole, houseFeedForConsole, houseHistoryForConsole, houseConsoleAudience, type ConsoleDeskShell, type ConsoleQuery, type ConsoleUsageCell, type ConsoleUsageRow } from "@/lib/server/house-console-read";
+import { CONSOLE_ROUTE, CONSOLE_TABS, LIMITS_TAB_READY, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
+import { ActivityFilters } from "./activity-filters";
+import { StopQueued } from "./stop-queued";
 import { DeskLive } from "./desk-live";
 import { DeskLimitsForm } from "./limits-form";
 import { DeskSwitch } from "./switch-ceremony";
@@ -57,7 +60,7 @@ import { DeskSwitch } from "./switch-ceremony";
  * ⚠️ AND THE DIRECTIVE IS NOT QUOTED HERE. `test:house-bot-console` decides which files of the section are
  * CLIENT files by reading each one RAW for that directive, comments included — so writing it in this sentence
  * put `page.tsx` into the client population and made four unrelated assertions red. Measured 2026-09-18. */
-import { saveDeskLimitsAction, setDeskSwitchAction } from "./actions";
+import { saveDeskLimitsAction, setDeskSwitchAction, cancelDeskIntentAction } from "./actions";
 
 /** ⛔ A static neutral title (ruling 402). No route here exports a `generateMetadata` that reads a record. */
 export const metadata = { title: "Admin · Desk" };
@@ -65,7 +68,7 @@ export const metadata = { title: "Admin · Desk" };
  *  audience and served to another — the population the bundle scan reads (rulings 302, 356, 380). */
 export const dynamic = "force-dynamic";
 
-const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster", limits: "Limits" };
+const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster", activity: "Activity", limits: "Limits", history: "History" };
 
 /** The limits card's heading, in ONE home: it is also what the form suppresses so the page does not say it
  *  twice (432(n)) — read off the first render of the form, where the card's title and the form's first group
@@ -182,7 +185,13 @@ export function UsageBar({ row, unsetHref }: { row: ConsoleUsageRow; unsetHref: 
   );
 }
 
-type DeskProps = { searchParams: Promise<{ tab?: string | string[] }> };
+/**
+ * ⛔ THE WHOLE QUERY STRING GOES TO THE DOOR, UNREAD BY THIS FILE (rulings 259, 383, 387). This page is served
+ * 200 to any signed-in account and a crafted address is free, so every value is checked against a closed list or a
+ * shape inside the gated reader — which also builds the rail's own links from that same parse, so the control an
+ * officer clicks and the read the server takes cannot disagree.
+ */
+type DeskProps = { searchParams: Promise<ConsoleQuery> };
 
 /**
  * W25 BELT 2 — this page carries its OWN gate, decided on the viewer's STORED row. A flight request whose router
@@ -214,8 +223,10 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
    * reads in one render, and two reads of one question can disagree inside a render (346's own defect, and the
    * reason `countLive` is banned here). */
   const rosterView = tab === "roster" ? await houseRosterForConsole(session?.userId ?? null, "/admin/desk") : null;
+  const feedView = tab === "activity" ? await houseFeedForConsole(session?.userId ?? null, "/admin/desk", sp) : null;
   const limitsView = tab === "limits" ? await houseUsageForConsole(session?.userId ?? null, "/admin/desk", { houseBotId: null }) : null;
-  const view: ConsoleDeskShell | null = rosterView ?? limitsView;
+  const historyView = tab === "history" ? await houseHistoryForConsole(session?.userId ?? null, "/admin/desk", sp) : null;
+  const view: ConsoleDeskShell | null = rosterView ?? feedView ?? limitsView ?? historyView;
   if (!view) return null;
 
   const rosterFull = view.rosterFullReason !== null;
@@ -231,6 +242,11 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
   const limitRows = limitsView?.limits ?? null;
   /* The CAS token the form carries back. `null` on the roster tab and in both states with no row to save. */
   const limitsVersion = limitsView?.limitsVersion ?? null;
+  /* ⭐ C7 STEP 5's LANDING HALF — hoisted for the same reason every other slice above is: a tab group's condition
+     carries NOTHING but the tab test, because `test:tab-anchors` and the served probe both read this file as TEXT.
+     ⛔ `null` is a read that FAILED and `[]` is a list with nothing in it — two different treatments (355). */
+  const feedRows = feedView?.feed ?? null;
+  const historyRows = historyView?.history ?? null;
 
   return (
     <>
@@ -436,7 +452,13 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
              one field of one object built from one control row, never counted twice: a badge that disagrees with the
              sentence 40px above it is the defect this is written against, and `CountBadge` renders nothing at zero,
              so a count may never stand in for a read's health. */
-          tabs={CONSOLE_TABS.map((k) => ({ value: k, labelEn: TAB_LABEL[k], href: consoleTabHref(k), count: k === "limits" ? view.unsetRequired : undefined }))}
+          /* ⭐ TWO BADGES, EACH ITS TAB'S OWN COUNTING READ, AND NEITHER STANDS IN FOR A READ'S HEALTH. `limits`
+             carries the unset-global count; `activity` carries how many stakes are QUEUED across the whole desk.
+             ⛔ `CountBadge` RENDERS NOTHING AT ZERO, so a FAILED count (`null`) paints no badge — and the panel
+             below paints `AdminLoadError` for that subject instead, because a missing badge is not a state.
+             ⛔ Roster and history carry none: a count of "how many accounts" is the table itself, and a count of
+             "how many changes" is a number nothing on the page can act on (432(a)). */
+          tabs={CONSOLE_TABS.map((k) => ({ value: k, labelEn: TAB_LABEL[k], href: consoleTabHref(k), count: k === "limits" ? view.unsetRequired : k === "activity" ? view.pendingIntents ?? undefined : undefined }))}
         />
 
         {/* ⚠️ THE `(<>` … `</>)}` FORM IS LOAD-BEARING, NOT A HABIT. `test:tab-anchors` decides WHICH TAB owns a
@@ -557,6 +579,135 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
           </AdminCard>
         </>)}
 
+        {tab === "activity" && (<>
+          {/* ⛔ THE PANEL IS GUARDED ONCE, INSIDE ITS OWN GROUP, AND NEVER BY A SECOND TERM IN THE TAB TEST
+              (ruling 433(e)): `test:tab-anchors` decides which tab owns a rendered id by the nearest panel opener
+              above it, and the served probe discovers this page's tabs with the same expression over the RAW file
+              — so a second term would make a panel read as "above the rail", the strongest possible answer and a
+              PASS that proves nothing. Exactly one reader ran this pass, so on this tab it is this one. */}
+          {feedView !== null && (<>
+          {/* ⭐ C7 STEP 5 · WHAT THE WHOLE DESK HAS TRIED TO STAKE, NEWEST FIRST, WITH WHAT HAPPENED TO EACH.
+              ⛔ THE RAIL IS THE ACCOUNT PAGE'S RAIL, THE SAME FILE (§K5): two copies of one control is the defect
+              this section was pulled up on, and the rail types no route, no closed list and no label — every
+              option's link is built from the SAME parse the read is taken with.
+              ⛔ ONE `data-filter-rail` under this section, and it is NOT on the `<Tabs>`.
+              ⛔ THE SUBJECT COLUMN IS FIRST AND THE MONEY IS SECOND, which is the roster's own shape one card
+              above: on a desk-wide list the subject is the ACCOUNT, and on the account page's own panel it is the
+              instant. One rule, each panel's own subject — never two shapes for one table.
+              ⛔ THE MONEY IS ONE STAKE, NEVER A SUM (266, 360 role C, 373), and no row carries `why`, `decision`
+              or a trigger player's id, for the reasons the reader states by name. */}
+          <ActivityFilters groups={feedView.feedFilters} presets={feedView.feedPresets} presetDefault={feedView.feedPresetDefault} />
+          {/* 387/432(j) · an address that was not taken at its word SAYS SO, naming each axis it dropped —
+              silently narrowing to something nobody asked for is the defect this sentence exists against. */}
+          {feedView.queryRefusal && (
+            <Callout tone="warning" title={CONSOLE_REFUSAL_TITLE}>{feedView.queryRefusal}</Callout>
+          )}
+          <AdminCard padding="p-0">
+            {/* ⛔ 355 · A FAILED READ IS NEVER AN EMPTY TABLE. `null` means nobody could tell; an empty array means
+                there is nothing there, and the two paint different treatments and say different things. */}
+            {feedRows === null ? (
+              <div className="p-4"><AdminLoadError what="the desk's activity" /></div>
+            ) : (
+              <>
+                <div className="px-4 pt-4">
+                  <p className="text-body-sm text-text-tertiary">{feedView.feedOrderNote}</p>
+                </div>
+                <ScrollX label="Desk activity">
+                  <table className="admin-tbl">
+                    <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+                      <tr>
+                        {/* ⛔ A FLOOR ON THE SUBJECT COLUMN, the roster's own measured one: without it the account
+                            column absorbs the whole shortfall at 360 and the label and the handle crush together. */}
+                        <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
+                        <th scope="col" className="text-left p-3">Type</th>
+                        <th scope="col" className="text-left p-3">Product</th>
+                        <th scope="col" className="text-left p-3 !whitespace-normal">Note</th>
+                        {/* ⛔ THE CONTROL COLUMN CARRIES NO HEADER WORD — the kit's own shape for a per-row control
+                            (`/admin/kyc`, `/admin/approvals`): the control says what it does, and a header
+                            repeating it would spend a column name on nothing. */}
+                        <th scope="col" className="text-right p-3" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {feedRows.length === 0 ? (
+                        <AdminTableEmpty colSpan={8} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
+                      ) : (
+                        feedRows.map((r, i) => (
+                          /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
+                             served markup, and a bounded record id is the one thing D19 says this section may
+                             never put in a response it does not have to. */
+                          <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
+                            <td className="p-3">
+                              {/* 🔴 AND IT IS NOT `.row-link`, WHICH IS THE POINT AND WAS FOUND ON A PHOTOGRAPH.
+                                  `.row-link` is the platform's row-EXIT style and it carries
+                                  `text-transform: uppercase` + `letter-spacing: .10em`; every one of its other call
+                                  sites wraps a FIXED WORD — "open →", "manage →". These two cells wrapped the
+                                  Owner's own typed label, and were the only two places in this repository where
+                                  that class held operator data. MEASURED off the served page with computed styles:
+                                  the roster painted `Evening desk - widest label yetX` with `text-transform: none`
+                                  while these two painted `EVENING DESK - WIDEST LABEL YETX` — the SAME label, two
+                                  looks, 40px apart on one screen, which is the exact defect this section was pulled
+                                  up on. ⛔ And 474 says operator data is bounded, never REWRITTEN: a CSS transform
+                                  rewrites it for every reader and into every screenshot.
+                                  ⛔ THE SHARED RULE IS NOT EDITED — it governs ten other pages and their fixed
+                                  words are right to be uppercase. The geometry that mattered is kept at the call
+                                  site (`inline-flex` + the `--tap-min` floor, the repo's own idiom), and only the
+                                  two declarations that rewrite the text are absent. */
+                              }
+                              {/* ⛔ RULING 474 · an account's label is OPERATOR DATA and the DOM says so — 453's
+                                  lexicon binds this section's COPY and may not silently rewrite what the Owner
+                                  typed. The two console words ("Removed from the desk", "Could not be read") are
+                                  the console's own and carry no hook, because they are not the Owner's text. */}
+                              {r.accountIsOperatorText
+                                ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                : <span className="text-text-tertiary">{r.accountName}</span>}
+                              {/* The holder, as a HANDLE and nothing else (04 R6) — never a name, a phone or an
+                                  email, because a row outlives the holder's erasure. */}
+                              {r.accountHandle && <div className="font-mono text-body-sm text-text-subtle">{r.accountHandle}</div>}
+                            </td>
+                            <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
+                            <td className="p-3 text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
+                            <td className="p-3 text-text">{r.typeWord}</td>
+                            <td className="p-3 text-text-secondary">{r.productWord}</td>
+                            <td className="p-3 text-text-secondary">{r.note ?? "\u2014"}</td>
+                            <td className="p-3 text-right">
+                              {/* ⛔ 432(a) · THE CONTROL IS DRAWN ONLY WHERE IT CAN DO SOMETHING. A stake already in
+                                  flight cannot be stopped — the service refuses it — so no button is offered over
+                                  one, and the rows that carry the control are exactly the rows the badge counts. */}
+                              {r.cancelId !== null && feedView.cancelCopy !== null && (
+                                <StopQueued id={r.cancelId} copy={feedView.cancelCopy} act={cancelDeskIntentAction} />
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollX>
+              </>
+            )}
+            {/* ⛔ THE TOTAL IS THE COUNTING READER'S, NEVER `feedRows.length` (344): the house DAL clamps every list
+                reader at 500 rows, so a total taken from the page would stop the pager short of the last page.
+                `page` and not a panel-local name, because the window filter resets exactly that word. */}
+            {feedRows !== null && feedView.feedTotal !== null && (
+              <div className="p-4 pt-0">
+                <AdminPagination
+                  total={feedView.feedTotal}
+                  page={feedView.feedPage}
+                  perPage={feedView.feedPerPage}
+                  param="page"
+                  baseHref={buildBaseHref(CONSOLE_ROUTE, feedView.feedParams, "page")}
+                />
+              </div>
+            )}
+          </AdminCard>
+          </>)}
+        </>)}
+
         {tab === "limits" && (<>
           {/* 364 · the all-bots twins of the per-account usage card: the daily stake cap, the daily loss cap read
               TWICE against ONE limit (366 — the seam refuses a new stake on PROJECTED loss and a stop fires only on
@@ -620,6 +771,85 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
             )}
           </AdminCard>
           )}
+        </>)}
+
+        {tab === "history" && (<>
+          {historyView !== null && (<>
+          {/* ⭐ C7 STEP 5 · EVERY CHANGE TO THE DESK AND TO THE ACCOUNTS ON IT, NEWEST FIRST — the durable record of
+              who did what. ⛔ IT CARRIES THE CONTROL ROW'S OWN EVENTS and the account page's cannot: the switch, a
+              limits save and the withdrawal belong to no account, so a per-account narrowing correctly drops them
+              and this list must not.
+              ⛔ NO AMOUNT AND NO BALANCE (266, 369(c), 456). `money-hook.ts` writes `amountTzs` and `balanceTzs`
+              — the HOLDER'S OWN WALLET BALANCE — onto every OWNER_MONEY event; this panel carries neither, and a
+              money row links instead to the platform's own transactions screen, where an admin may legitimately
+              read a player's money. ⛔ The Event cell is the console's own TOTAL word map, never a raw enum: the
+              lexicon cannot see `HOLDER_AGAINST_BOT` at all, because an underscore is a word character. */}
+          <AdminCard padding="p-0">
+            {historyRows === null ? (
+              <div className="p-4"><AdminLoadError what="the desk's history" /></div>
+            ) : (
+              <>
+                <div className="px-4 pt-4">
+                  <p className="text-body-sm text-text-tertiary">{historyView.historyOrderNote}</p>
+                </div>
+                <ScrollX label="Desk history">
+                  <table className="admin-tbl">
+                    <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+                      <tr>
+                        <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-left p-3 !whitespace-normal">Event</th>
+                        <th scope="col" className="text-left p-3">Change</th>
+                        <th scope="col" className="text-left p-3 !whitespace-normal">Who</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyRows.length === 0 ? (
+                        <AdminTableEmpty colSpan={5} title={historyView.historyEmpty.title} body={historyView.historyEmpty.body} />
+                      ) : (
+                        historyRows.map((r, i) => (
+                          <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
+                            <td className="p-3">
+                              {/* ⛔ THE SAME ACCOUNT CELL AS THE PANEL ABOVE (§K5, and the reason this section was
+                                  pulled up on): one shape for one thing. A row the desk itself owns — the switch,
+                                  a limits save, the withdrawal — belongs to no account and opens no page, so it is
+                                  the console's own word in plain text and not a link to nowhere (432(a)). */}
+                              {r.accountIsOperatorText
+                                ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                : <span className="text-text-tertiary">{r.accountName}</span>}
+                            </td>
+                            <td className="p-3 text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 text-text">
+                              {r.eventWord}
+                              {r.moneyHref && (
+                                <Link href={r.moneyHref as Route} className="block text-body-sm underline text-text-secondary">
+                                  Find it on the transactions screen
+                                </Link>
+                              )}
+                            </td>
+                            <td className="p-3 text-text-secondary">{r.change ?? "\u2014"}</td>
+                            <td className="p-3 font-mono text-body-sm text-text-subtle break-all">{r.who}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollX>
+              </>
+            )}
+            {historyRows !== null && historyView.historyTotal !== null && (
+              <div className="p-4 pt-0">
+                <AdminPagination
+                  total={historyView.historyTotal}
+                  page={historyView.historyPage}
+                  perPage={historyView.historyPerPage}
+                  param="hpage"
+                  baseHref={buildBaseHref(CONSOLE_ROUTE, historyView.historyParams, "hpage")}
+                />
+              </div>
+            )}
+          </AdminCard>
+          </>)}
         </>)}
       </AdminBody>
     </>

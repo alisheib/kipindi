@@ -1104,6 +1104,68 @@ Nothing outside this module types the segment after that pass. ⛔ The inventory
 
 **Proof.** `test:house-bot-console` 1.409: every money `ProgressBar` under the section passes BOTH `caption` and `captionText` (362), built from the SAME `value`/`max` expressions, with the cap's name as the caption's first text node and each figure in its own `.amount` span, and `captionText` matching 361's regex with no markup in it; no money bar is passed WITHOUT a caption (which would land it in the kit's tracked `text-micro` line); no call passes `tone="claret"`; the step bar passes no caption. Plus `qa:house-bots-visual` at 360 reading the limits tab for overflow. ⛔ `test:type-scale` §2 is NOT cited — it needs a literal `formatTzs*` call inside the element and cannot see a caption prop or the kit's own `toLocaleString`.
 
+**⭐ AMENDED 2026-09-20 (C7 step 5, the LANDING half — a dated amendment, built and measured).**
+1. **THE TOLERANCE LIST IS DELETED WITH THE BUILD, NOT LEFT STANDING.** The amendment above re-keyed `UNBUILT_TABS`
+   per shape and kept the two landing entries. Both panels exist now, so the list is GONE and comms `7.2c` asserts
+   **zero dead tabs with no tolerance at all** — strictly stronger than what it replaced: a dead `?tab=` in either
+   shape now fails with nowhere to be written down. `7.2d`'s subject (the two keys' ABSENCE) no longer exists, so
+   the case is deleted rather than loosened and its id carries a planted-href control instead. ⛔ A recorded gap
+   that no longer exists is a permission, and a permission is what that case refuses.
+2. **THE RAIL'S BADGE IS A MEMBER OF `readDeskCore`'s SETTLED SET, NEVER A CALLER'S EXTRA SLOT.** The rail renders
+   above the panels on EVERY tab (406), so all four landing readers must be able to paint it; as a positional
+   extra each reader would have carried it in a different slot, which is how two readers come to count two
+   populations under one number. It may not come from a second gated reader (the one-reader-per-render spy) nor
+   be counted from rows (344), and `null` is a FAILED count and never a zero — `CountBadge` paints nothing at
+   zero, so a count can never stand in for a read's health, and the panel below paints `AdminLoadError` instead.
+3. **ONE RAIL FILE, RENDERED BY BOTH PAGES.** `activity-filters.tsx` moves from `[id]/` to the section root. Two
+   copies of one control is the defect this section was pulled up on, and a second rail would also be a second
+   `data-filter-rail` under one section.
+4. **🔴 THE DESK OWNS BOTH OF ITS EMPTY SENTENCES, INCLUDING THE FILTERED ONE (416).** The first build kept the
+   SHELL's filtered sentence on the reasoning that "nothing matches this filter" is the same fact on either page.
+   Its BODY is not: it reads *"No stake on **this account** matches"*, and the landing page has no account to
+   name. Read off a served page. ⛔ Each subject owns its own PAIR; neither borrows the other's, and the guard
+   reads both BODIES in both directions — a guard that checks one side of a swap cannot see the swap.
+5. **🔴 `.row-link` MAY NOT WRAP OPERATOR TEXT (474).** The class is the platform's row-EXIT style and carries
+   `text-transform: uppercase`; wrapping the Owner's typed label in it REWROTE that label for every reader. The
+   roster painted `Evening desk - widest label yetX`, these two panels `EVENING DESK - WIDEST LABEL YETX` — one
+   label, two looks, 40px apart on one screen. Invisible to every scan here: it lives in a computed style. The
+   geometry stays at the call site; the two rewriting declarations go. Recorded at DESIGN_AUTHORITY 6e.
+6. **THE HOUR SUMMARY'S BELL CARRIES AN EAT WALL CLOCK, NOT AN ISO INSTANT AND NOT A CLOCK TIME.** `parseEatLocal`
+   refuses `14:00` (no date) AND refuses `2026-09-20T13:00:00.000Z` (its pattern is anchored at `HH:MM`), and a
+   refused `from` is answered SILENTLY with the last 24 hours still labelled "custom" — so both wrong forms land
+   the officer on a different window under the name of the right one. `formatEatLocal` is the parser's own
+   inverse, exported from the module that owns the parse. ⛔ The assertion is the ROUND TRIP, never a spelling,
+   and BOTH wrong forms are declared mutations: a scan that only forbade the clock form passed while the link
+   carried an ISO instant.
+
+**⭐ AMENDED 2026-09-20 (C7 step 5, the ACCOUNT half — a dated amendment, built and measured).**
+1. **THE ACCOUNT PAGE'S HALF LANDS FIRST, AND THE ORDER IS FORCED, NOT PREFERRED.** An earlier analysis concluded the
+   landing and account panels could not be split across two commits. MEASURED FALSE: comms case 7.2d asserts
+   `!consoleTabExists("activity") && !consoleTabExists("history")` AND `deadTabs.length >= 1`, and a run of
+   `test:house-bot-comms` prints ELEVEN `?tab=` alert hrefs — TEN detail links and exactly ONE landing link (the hour
+   summary's). Building the LANDING pair first reds 7.2d on arrival; building the ACCOUNT pair leaves that one link
+   dead and 7.2d measuring it. `UNBUILT_TABS` beside that case is re-keyed PER SHAPE, which DELETED the two detail
+   entries and kept the two landing ones — a shrink, which is the only direction that list may move.
+2. **`?page=N` PAST THE END IS SERVED AS THE LAST PAGE, not as an empty-page state.** The Proof clause above asked for
+   "the empty-page state rather than repeating page 1"; `src/lib/server/house-console-read.ts` already does the
+   opposite for the Targets grid (C7 step 4c), §0a forbids two paging idioms on one page, and an empty page under a
+   pager drawn from a real total is 432(a)'s dead control. The shipped idiom wins.
+3. **THE ACCOUNT PAGE'S HISTORY ROW IS When · Event · Change · Who — there is no Reason column.** An officer's reason
+   is unbounded operator text on a screenshot-facing surface, and every fact the row states is taken from TYPED
+   fields instead (`fromStatus`/`toStatus` through the ONE status map, the actor as an id, ruling 420). The reason
+   stays where it belongs, in the compliance audit. ⛔ An `OWNER_MONEY` row carries a DOOR to the platform's own
+   transactions screen and no amount at all (266, 369(c), 456) — `money-hook.ts` writes `amountTzs` AND the holder's
+   own `balanceTzs` onto every one of those events.
+4. **`listAll`/`countAll` GAIN TWO FACETS, both in the ONE shared predicate per twin:** `houseBotId`, because the
+   account page's history is the desk history narrowed to one record and needs the same `total`; and `fromIso`,
+   because a delivered bell's `&event=` can only be honoured under a NUMBERED pager by counting the rows at or newer
+   than the anchor. No schema field and no migration. `test:dal-parity` **16.eventsBot** and **16.eventsAnchor**.
+5. **THE EVENT WORD MAP IS TOTAL AND `WORD[kind] ?? kind` IS FORBIDDEN OUTRIGHT.** MEASURED: 453's lexicon opens with
+   `\bbots?\b`, an underscore is a word character, so `HOLDER_AGAINST_BOT` produces ZERO hits in every scan this
+   programme has. A raw-enum fallback would paint the feature's own name with nothing reporting it. So
+   `CONSOLE_EVENT_WORD` is `satisfies Record<HouseBotEventKind, string>` and `CONSOLE_SKIP_SENTENCE` is
+   `satisfies Record<EngineCode, string>` — `tsc` refuses either without its word.
+
 #### 410. Filters are `FilterPill rank="dense"` + `DateTimeRangeFilter rank="dense"` in ONE `data-filter-rail`, URL-backed with `replace`, and the file is REGISTERED
 
 **Decision.** The activity feed's filters are dense `FilterPill` groups for Bot, Product and Outcome, each introduced by `FilterGroupKey`, plus `DateTimeRangeFilter rank="dense" presetIds={["today","24h","7d"]}`, all inside one `<div data-filter-rail className="flex flex-wrap items-center gap-2">`. `QueryStrip` is NOT used (no caller under `src/app/admin`). Changing a filter navigates with `replace`, drops `page`, and mounts no second search state. The 32 px density comes from `rank="dense"` and nothing else — no `h-[32px]`, no inline style, no per-surface variant. **The filter file is added to `ADMIN_SURFACES` in `scripts/filter-language.test.mts` in the same commit**, or the new rail is invisible to the gate that owns it. Only the SELECTED pill carries an outline.
@@ -1112,6 +1174,23 @@ Nothing outside this module types the segment after that pass. ⛔ The inventory
 
 **Proof.** `test:filter-language` §6 over the new `ADMIN_SURFACES` entry, with `red:filter-language` as its control; `test:tap-target` §2.
 
+**⭐ AMENDED 2026-09-20 (C7 step 5, the ACCOUNT half — built and measured).**
+1. **THE RAIL IS A SERVER COMPONENT AND EVERY LINK IN IT IS SERVER-BUILT** (`src/app/admin/desk/[id]/activity-filters.tsx`,
+   declared in `ADMIN_SURFACES`). It types no route, no closed list and no label: every option's words and href are
+   built where the rest of this section's copy is built, so the control an officer clicks and the read the server
+   takes come from ONE parse. `/admin/house` already ships this idiom. ⛔ It is NOT a `"use client"` file, and that
+   is the point — a client file in this section would publish ITS OWN PROP NAMES into a public chunk.
+2. **THE ACCOUNT PAGE'S THREE AXES ARE Type · Product · Outcome**, not Bot · Product · Outcome: a page about ONE
+   account has no Bot axis, and a control that can only ever select the account you are looking at is 432(a)'s dead
+   control. `outcome` is spelled as the DELIVERED ALERTS already spell it (`&outcome=failed`, lowercase).
+3. **THE WINDOW GAINS `all` AS ITS FOURTH PRESET AND ITS DEFAULT**, because `alert-copy.ts` and two placement notices
+   already ship `&range=all`, and one account's own activity is a short list — a rail that opened narrowed would hide
+   the row an officer followed a bell to reach. `resolveRange` already carries `all`; nothing was added to it.
+4. **`DateTimeRangeFilter` GAINS ONE KIT PROP, `replace`, DEFAULTING TO PUSH** (with its design-system record), so not
+   one of the seven existing admin call sites changes behaviour. §K5 forbids forking the kit; the note in that file
+   refusing `replace` was refusing a silent rewrite of every caller, and it still stands for every caller that does
+   not ask.
+
 #### 411. Pagination is the kit pager at 20, carrying every live filter, and its ghost is drawn only where the list is unbounded
 
 **Decision.** The activity feed and the history tab page with `AdminPagination page total perPage={PER_PAGE} baseHref={buildBaseHref("/admin/desk", {tab, …filters})}`, using `parsePage`; `PER_PAGE` is taken from the primitive (20), never re-typed; every filter in force is carried in `baseHref` so paging never silently clears one, and changing a filter resets `page`. The loader draws a pager ghost ONLY where the row source is unbounded (the feed and the history). The roster gets none — not because it holds 5 rows, but because `maxDesignatedBots`' CEILING is 20, and 20 rows at 20 per page is a single page, so the pager returns null and a forced ghost would over-draw 77 px.
@@ -1119,6 +1198,26 @@ Nothing outside this module types the segment after that pass. ⛔ The inventory
 **Files.** `src/components/ui/pagination.tsx:13`, `:122`, `:148`, `:175` · `src/components/admin/admin-skeletons.tsx:240`, `:346` · `src/app/admin/agents/page.tsx:431` · `src/lib/house-bot/rules.ts:778`.
 
 **Proof.** `qa:house-bots-visual` — paging the feed with every filter set keeps the filters in the URL and the row count at 20; plus 417's loader/page parity (a pager ghost exists iff the page renders a pager).
+
+**⭐ AMENDED 2026-09-20 (C7 step 5, the ACCOUNT half — built and measured).**
+1. **`parsePage` IS NOT USED UNDER THIS SECTION, AND `PER_PAGE` IS NOT IMPORTED FROM THE PRIMITIVE.**
+   `@/components/ui/pagination` is a CLIENT-reachable module and the gate module is server-only, which is the reason
+   already written beside `CONSOLE_TARGETS_PER_PAGE` at C7 step 4c. So the page number is sanitised by the
+   server-only parse and the page size is stated beside that constant; the render takes BOTH from the view, so the
+   page and its control can never disagree. `PER_PAGE` is still never re-typed as a magic 20 at a call site.
+2. **THE ANCHOR IS NOT A FILTER AND IS NOT CARRIED FORWARD.** `&intent=`/`&event=` is a LANDING INSTRUCTION belonging
+   to the address a bell produced. Carrying it into every pager link and every chip would re-resolve a page under a
+   filter the anchor was never ranked in, and would echo a bounded record id into markup that has no need of it.
+   The anchor's own page is resolved by counting the rows at or newer than it INSIDE the same filter; a tie can only
+   inflate that rank, so the reader steps back ONE page on the rows it already holds before its single re-read,
+   which is exact for every tie block smaller than a page.
+3. **THE ACCOUNT PAGE'S PAGE PARAMETERS ARE `page` (activity), `hpage` (history) AND `tpage` (targets).** The activity
+   panel takes the platform's own `page` deliberately: `DateTimeRangeFilter` deletes exactly that word on any window
+   change, which is half of this ruling's "a filter change resets `page`" — and the window rail renders on the
+   activity tab alone, so the other two grids are untouched by it.
+4. **NO SUSPENSE BOUNDARY IS ADDED TO THE ACCOUNT PAGE.** Its ONE gated reader resolves before any panel renders, so a
+   boundary around a panel could never suspend; `[id]/loading.tsx` already ghosts the DEFAULT tab and is unchanged.
+   Ruling 417's parity is measured against that default, which is all a route fallback can know.
 
 #### 412. Forms: one `FormColumn measure="form"`, every control `size="md"`, one guarded form per tab, and a refusal that lands on the right field on the right tab
 

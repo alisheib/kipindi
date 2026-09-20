@@ -71,4 +71,8 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 200, postgres: 61 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 203, postgres: 64 }, dbPrefix: "hb_reports" });
+// ⭐ 200 → 203 and 61 → 64, C5-8 phase 3 (2026-09-20), IN THE SAME COMMIT AS THE ASSERTIONS THAT RAISED IT:
+// §1j row 77's three `11.247.c1e` lines (the OG route's read list, the `resolveWinShareToken` projection, and the
+// plant that makes the second one a measurement) run on BOTH children. A minimum that rises with the assertions is
+// a tightening; a minimum re-measured DOWNWARD to absorb a red is the move this programme refuses by name.

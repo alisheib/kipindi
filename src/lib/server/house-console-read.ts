@@ -39,8 +39,13 @@ import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
 import type { StoredUser } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
-import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleNewHref, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
+/* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
+ * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
+import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
+/* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
+import { resolveRange } from "./date-range";
 import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
 import { sortCauses, wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
 import { TARGET_END_CAPTION } from "@/lib/house-bot/feed-copy";
@@ -49,7 +54,7 @@ import { switchOnHouseBots } from "./house-bot/switch-on";
 import { switchOffHouseBots } from "./house-bot/kill-switch";
 import { houseEngineAlerts } from "./house-bot/emitters";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
-import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotRuntime, type StoredHouseBotTarget } from "./house-bot-dal";
+import { houseBotControlStore, houseBotEventStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type IntentFeedCount, type IntentProductLine, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotEvent, type StoredHouseBotIntent, type StoredHouseBotRuntime, type StoredHouseBotTarget } from "./house-bot-dal";
 import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
 import { HOUSE_BOT_STATUS_DISPLAY } from "./house-bot/status-display";
 import { DESIGNATE_COPY, designateHouseBot, reverifyHouseBot, startHouseBot } from "./house-bot/designation";
@@ -65,6 +70,7 @@ import { LABEL_COPY, LABEL_MAX_CHARS, LABEL_MIN_CHARS, TEXT_MAX_CHARS, validateL
 import { readBotAndHolder } from "./house-bot/control";
 import { houseEngineBeats, houseEngineVerdict } from "./house-bot/engine-health";
 import { pauseHouseBot, removeHouseBot } from "./house-bot/roster-actions";
+import { cancelQueuedStake } from "./house-bot/press-cancel";
 import { playerHandle } from "./house-bot/alerts";
 import { loadParseContext, loadRulesContext } from "./house-bot/rules-context";
 
@@ -302,6 +308,14 @@ export type ConsoleDeskShell = {
   dayKey: string;
   /** The band (303, 304, 404). Empty when there is no control row to measure against (421). */
   tiles: ConsoleKpiTile[];
+  /**
+   * ⭐ C7 STEP 5 · THE ACTIVITY TAB'S BADGE — how many stakes are QUEUED across the whole desk, on every tab.
+   * ⛔ `null` IS A FAILED COUNT AND IS NOT ZERO. `CountBadge` renders nothing at zero, so a count may never stand
+   * in for a read's health: a failed count paints NO badge and the activity panel paints `AdminLoadError` for that
+   * subject instead (355). ⛔ It does not move as the officer filters — ruling 312 scopes it to the desk, not to
+   * the rail, so a bell's own narrowed address cannot change the number beside the tab it is pointing at.
+   */
+  pendingIntents: number | null;
 };
 
 export type ConsoleRosterView = ConsoleDeskShell & {
@@ -687,6 +701,14 @@ function engineNotice(input: {
   }
 }
 
+/**
+ * ⛔ THE POPULATION THE ACTIVITY BADGE COUNTS, AND IT IS RULING 312's OWN WORD — "pending", one member of
+ * `INTENT_STATUSES`. Never `LIVE_INTENT_STATUSES` (PENDING + CLAIMED): a CLAIMED stake has already been taken up by
+ * the engine and there is nothing left for an officer to cancel about it, so a badge counting it would offer a
+ * number no control on the page can act on. Written ONCE, read by the badge and by the cancel control's own rule.
+ */
+const CONSOLE_PENDING_STATUSES = ["PENDING"] as const satisfies readonly IntentStatus[];
+
 type DeskCore = {
   dayKey: string;
   schemaMissing: boolean;
@@ -697,21 +719,39 @@ type DeskCore = {
   exposure: Map<string, number> | null;
   /** ⭐ 435(e) · the engine's DURABLE beat rows, settled on their own. `null` means the READ FAILED (354(c)/355). */
   instances: StoredHouseBotRuntime[] | null;
+  /**
+   * ⭐ C7 STEP 5 (the LANDING half) · HOW MANY STAKES ARE QUEUED ACROSS THE WHOLE DESK — the activity tab's badge.
+   * ⛔ IT IS A MEMBER OF THE CORE SET AND NOT A CALLER'S EXTRA, AND THE REASON IS MEASURED, NOT PREFERRED. The rail
+   * renders ABOVE the panels on EVERY tab (406), so every one of the four landing readers has to be able to paint
+   * this badge; as a positional extra each reader would have carried it in a different slot, which is precisely how
+   * two readers come to count two different populations under one number. It is a SHELL fact, and the shell is what
+   * this function exists to build.
+   * ⛔ IT MAY NOT COME FROM A SECOND GATED READER (the one-reader-per-render spy) AND MAY NOT BE COUNTED FROM ROWS
+   * (ruling 344): the rows are one clamped page, the badge is the population.
+   * ⛔ `["PENDING"]` ALONE, ruling 312's own word, never `LIVE_INTENT_STATUSES` (PENDING + CLAIMED): a CLAIMED stake
+   * is already in flight and there is nothing an officer can still cancel about it.
+   * ⛔ `null` means the COUNT READ FAILED, which is not zero — `CountBadge` renders nothing at zero, so a count can
+   * never stand in for a read's health and the panel paints `AdminLoadError` for that subject instead.
+   */
+  pendingIntents: number | null;
 };
 
 /**
  * ⛔ TWO EXTRAS, EACH SETTLED ON ITS OWN, AND THAT IS RULING 355 RATHER THAN A CONVENIENCE. The roster needs both
  * the Products words (`loadParseContext`) and the rate read "Last bet" comes from (`botRateUsage`, ruling 351); the
- * limits panel needs one read of its own. Wrapping two reads in a single `Promise.all` inside the settled set would
- * make ONE failure blank BOTH figures, which is the attribution 355 exists to keep — a failed Products read must
- * not take the Last bet column with it. So the set is SIX members, each attributed to its own cell.
+ * limits panel needs one read of its own, and each landing panel needs its own page and its own total. Wrapping two
+ * reads in a single `Promise.all` inside the settled set would make ONE failure blank BOTH figures, which is the
+ * attribution 355 exists to keep — a failed Products read must not take the Last bet column with it.
+ * ⛔ SEVEN MEMBERS, AND THE COUNT IS STATED HERE BECAUSE IT WAS ONCE WRONG IN THIS VERY DOCBLOCK: the array below is
+ * the control row, the roster, the day books, the open exposure, the engine's beats, the QUEUED-stake count the
+ * rail's badge paints, and the caller's two extras.
  */
 async function readDeskCore<A, B>(
   extraA: (dayKey: string) => Promise<A>,
   extraB?: (dayKey: string) => Promise<B>,
 ): Promise<{ core: DeskCore; extra: A | null; extraB: B | null }> {
   const dayKey = eatDayKey(Date.now());
-  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.allSettled([
+  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.allSettled([
     houseBotControlStore.get(),
     houseBotStore.listNonRemoved(),
     houseDayBooks(dayKey),
@@ -722,6 +762,10 @@ async function readDeskCore<A, B>(
      * 433(d)'s named refusal. ⛔ Settled on its OWN, never wrapped with another read: one failed read must not
      * take another figure with it (355, 435(d)). */
     houseBotRuntimeStore.listInstances(),
+    /* ⭐ C7 step 5 · THE RAIL'S BADGE, COUNTED ACROSS EVERY ACCOUNT AND UNFILTERED BY THE RAIL (ruling 312). It is a
+     * COUNTING reader over the same shared predicate the feed pages over, never `listFeed(...).length` (344), and it
+     * is settled on its OWN so a failed count cannot blank a figure beside it (355). */
+    houseBotIntentStore.countFeed({ statuses: CONSOLE_PENDING_STATUSES }),
     extraA(dayKey),
     extraB ? extraB(dayKey) : Promise.resolve(null),
   ]);
@@ -744,6 +788,8 @@ async function readDeskCore<A, B>(
        * engine has never booted on this database; `null` means nobody could tell, and the two paint different
        * Callouts. Collapsing them is the class 421 had to be corrected for one card over. */
       instances: instancesR.status === "fulfilled" ? instancesR.value : null,
+      /* ⛔ `null` IS A FAILED COUNT, NOT A ZERO (355, and the badge's own rule above). */
+      pendingIntents: pendingR.status === "fulfilled" ? pendingR.value : null,
     },
     extra: extraR.status === "fulfilled" ? extraR.value : null,
     extraB: extraBR.status === "fulfilled" ? (extraBR.value as B | null) : null,
@@ -920,6 +966,9 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
     live,
     dayKey: core.dayKey,
     tiles,
+    /* ⛔ ONE NUMBER, ONE READ, ON EVERY TAB — the badge cannot disagree with itself between two panels, and it is
+     * `null` rather than 0 when the count could not be taken (355). */
+    pendingIntents: core.pendingIntents,
   };
 }
 
@@ -1846,6 +1895,41 @@ export type ConsoleDetailView = {
   targetsPage: number;
   /** The page size the pager must be drawn with, so the page and the control can never disagree. */
   targetsPerPage: number;
+  /* ── C7 step 5 · THE ACTIVITY PANEL ──────────────────────────────────────────────────────────────────────────
+   * ⛔ THREE ANSWERS, AND THEY ARE NOT INTERCHANGEABLE (rulings 355, 421, and the correction already recorded at
+   * `houseUsageForConsole`): `[]` is a list with nothing in it, `null` is a read that FAILED and paints the kit's
+   * failure treatment, and a REMOVED account takes neither read at all (358) so it is `null` for the same reason
+   * its usage is. The page tells the two apart by `removed`, which it already holds. */
+  feed: ConsoleFeedRow[] | null;
+  /** ⛔ FROM `countFeed`, NEVER `feed.length` (ruling 344): `pageLimit` clamps every list reader at 500 rows. */
+  feedTotal: number | null;
+  feedPage: number;
+  feedPerPage: number;
+  /** The rail, finished — labels, hrefs and which chip is in force (ruling 410). */
+  feedFilters: ConsoleFilterGroup[];
+  /** The window presets the rail offers and the one a bare visit is on — the page types neither. */
+  feedPresets: readonly string[];
+  feedPresetDefault: string;
+  /** Every live parameter of this panel, for the pager's own `baseHref` (411: the page number is the only one it owns). */
+  feedParams: Record<string, string | undefined>;
+  /** Which empty state belongs to THIS read — an unfiltered list with nothing in it reads differently from a filter that matched nothing. */
+  feedEmpty: ConsoleEmpty;
+  /** True when the rail is narrowing anything at all, so the panel can offer one way back (432(a)). */
+  feedFiltered: boolean;
+  /** Where "clear the filter" goes. */
+  feedClearHref: string;
+  /** The declared order, said once, where a reader of the table can see it. */
+  feedOrderNote: string;
+  /* ── C7 step 5 · THE HISTORY PANEL ───────────────────────────────────────────────────────────────────────── */
+  history: ConsoleEventRow[] | null;
+  historyTotal: number | null;
+  historyPage: number;
+  historyPerPage: number;
+  historyParams: Record<string, string | undefined>;
+  historyEmpty: ConsoleEmpty;
+  historyOrderNote: string;
+  /** ⛔ ONE sentence naming every axis of the address that was thrown away, or `null` (rulings 387, 432(j)). */
+  queryRefusal: string | null;
   /** ⭐ 415 · the acts this account's CURRENT state allows, each with every word its dialog paints (388). */
   acts: ConsoleAccountActDialog[];
   /** ⛔ 432(j) · what the chip means when NO live cause is beside it — never painted with . */
@@ -1869,6 +1953,685 @@ const CONSOLE_TARGETS_PER_PAGE = 20;
 /** `?tpage=` as a whole page number. Anything else — absent, 0, -3, 1.5, NaN — is page 1. */
 function consolePageNumber(raw: number | undefined): number {
   return Number.isSafeInteger(raw) && (raw as number) >= 1 ? (raw as number) : 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * C7 STEP 5 (the account half) · THE ACTIVITY PANEL AND THE HISTORY PANEL
+ *
+ * ⛔ **THE TWO PANELS RIDE THE ACCOUNT PAGE'S ONE GATED READER** (rulings 340, 346, 433(d)). `houseDetailForConsole`
+ * already resolves the audience, reads the record and settles every other figure this route paints; a second door for
+ * the feed would put two audience verdicts and two control reads in ONE render, which is the named refusal 433(d)
+ * carries and the spy `test:house-bot-console` 1.306 measures. So the query arrives at the SAME door and the slices
+ * come back inside the SAME view model.
+ *
+ * ⛔ **THE PAGE SIZE AND THE PAGE NUMBER ARE SERVER-ONLY** (the reason already written at `CONSOLE_TARGETS_PER_PAGE`):
+ * `@/components/ui/pagination` is a CLIENT-reachable module, so the numbers are stated here and the render takes them
+ * from the view — the page and its control can never disagree.
+ *
+ * ⛔ **THE ORDER IS DECLARED, AND IT IS THE SAME ORDER IN BOTH READERS OF EACH PAIR.** Both twins list intents and
+ * events `("createdAt", "id") DESC` (`memPage`/`sqlPage`, `memoryHouseBotEvents.listAll`/`prismaHouseBotEvents.listAll`)
+ * and both counting readers measure the SAME predicate. A numbered pager over an unstable order shows one row twice
+ * and hides another, which is a defect nothing on the screen reveals.
+ *
+ * ⛔ **WHAT THE PROJECTION MAY NOT CARRY** (rulings 360, 361, 453; owner ruling D20). `intent.why` is composed in
+ * `server/house-bot/decide.ts` and opens with a word 453 forbids, embeds formatted amounts and, on one branch, a POOL
+ * TOTAL — an aggregate of other people's money, which is no role of ruling 360. `intent.decision` is an untyped blob.
+ * `intent.triggerUserId` is another player's raw id; the rule is `playerHandle`. None of the three is projected, and
+ * no source guard could see them if they were: 4.453 collects LITERALS of this section, and a sentence composed in a
+ * module outside it is in neither population.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * The two panels' page sizes. Written HERE and not imported, for the reason `CONSOLE_TARGETS_PER_PAGE` states one
+ * screen up: `@/components/ui/pagination` is client-reachable and this module is server-only.
+ */
+const CONSOLE_FEED_PER_PAGE = 20;
+const CONSOLE_HISTORY_PER_PAGE = 20;
+
+/**
+ * ⛔ **THE EVENT WORD MAP IS TOTAL, AND `WORD[kind] ?? kind` IS FORBIDDEN OUTRIGHT** (rulings 317, 453).
+ *
+ * MEASURED, not assumed. `EVENT_KINDS` holds `HOLDER_AGAINST_BOT`, and 453's lexicon opens with a `\bbots?\b`
+ * word-boundary pattern — an UNDERSCORE IS A WORD CHARACTER, so there is no boundary before `BOT` and the lexicon
+ * cannot see that kind at all. `STAFF_EVENT_WORD` in `feed-copy.ts` is `Partial` and covers 8 of the 30, and one of
+ * its eight is itself a word of the shared vocabulary. So a raw-enum fallback would paint the feature's own name on
+ * an officer's screen and NOTHING would report it — not 4.453, not 3.453, not the bundle scan.
+ * ⛔ Therefore: a TOTAL `Record<HouseBotEventKind, string>`, so `tsc` itself refuses a kind added without a word, and
+ * an assertion that no value of it matches the console's own lexicon.
+ */
+export const CONSOLE_EVENT_WORD = {
+  DESIGNATED: "Added to the desk",
+  VERIFIED: "Holder's permission confirmed",
+  STARTED: "Started",
+  PAUSED: "Paused by an officer",
+  AUTO_PAUSED: "Stopped by a limit",
+  RULES_SAVED: "Rules saved",
+  REMOVED: "Removed from the desk",
+  SWITCH_ON: "The desk was switched on",
+  SWITCH_OFF: "The desk was switched off",
+  LIMITS_SAVED: "Desk limits saved",
+  OWNER_MONEY: "The holder's money moved",
+  CREDENTIAL_CHANGED: "Sign-in details changed",
+  HOLDER_CAUSE_ADDED: "The holder's own account raised a block",
+  CONSENT_VOIDED: "The holder's permission ended",
+  HOLDER_AGAINST_BOT: "The holder staked against this account",
+  HOLDER_EMAIL_CHANGED: "The holder's email changed",
+  HOLDER_2FA_ON: "The holder turned two-step sign-in on",
+  HOLDER_2FA_OFF: "The holder turned two-step sign-in off",
+  PENALTY_BOXED: "A player was put in the penalty box",
+  REIMBURSEMENT_RECORDED: "A reimbursement was recorded",
+  BOARD_DISCLOSURE_RECORDED: "A Board disclosure was recorded",
+  SUNSET: "The desk was withdrawn",
+  ENTER_NOW_PREVIEWED: "A manual stake was previewed",
+  ENTER_NOW_REQUESTED: "A manual stake was requested",
+  OPENER_SIDE_DRAWN: "The opening side was drawn",
+  TARGET_ADDED: "A target was added",
+  TARGET_UPDATED: "A target was changed",
+  TARGET_REMOVED: "A target was stopped",
+  TARGET_ENDED: "A target ended",
+  STAFF_INTENT_CANCELLED: "A queued stake was cancelled",
+} as const satisfies Record<HouseBotEventKind, string>;
+
+/** One intent kind, in the console's own words. ⛔ TOTAL, for exactly the reason the event map states. */
+const CONSOLE_INTENT_KIND_WORD = {
+  COUNTER: "Responding",
+  FILL: "Filling",
+  OPENER: "Opening",
+  MANUAL: "Manual",
+} as const satisfies Record<IntentKind, string>;
+
+/** One intent status, its word and its chip. ⛔ TOTAL, and the chip comes from the ONE tone table (ruling 311). */
+const CONSOLE_INTENT_STATUS = {
+  PENDING: { word: "Queued", chip: TONE_CHIP.royal },
+  CLAIMED: { word: "In flight", chip: TONE_CHIP.broadcast },
+  PLACED: { word: "Placed", chip: TONE_CHIP.green },
+  SKIPPED: { word: "Skipped", chip: TONE_CHIP.slate },
+  EXPIRED: { word: "Expired", chip: TONE_CHIP.slate },
+  FAILED: { word: "Failed", chip: TONE_CHIP.rose },
+  CANCELLED: { word: "Cancelled", chip: TONE_CHIP.claret },
+} as const satisfies Record<IntentStatus, { word: string; chip: StatusChipVariant }>;
+
+/** One product line, in the platform's own screen words — the same two `/admin/house` already paints. */
+const CONSOLE_PRODUCT_WORD = {
+  MARKET: "Polls",
+  UPDOWN: "Up & Down",
+} as const satisfies Record<IntentProductLine, string>;
+
+/**
+ * ⛔ **THE CONSOLE'S OWN SENTENCE FOR EVERY ENGINE OUTCOME** (rulings 370(c), 453), TOTAL over `EngineCode`.
+ *
+ * `feed-copy.ts`'s own table names the feature in plain English in more than twenty of its rows — measured:
+ * `MASTER_OFF`, `PRODUCT_NOT_SUPPORTED`, the six `CAP_GLOBAL_*` rows, every `{bot}` placeholder, and the two
+ * staff-chosen rows whose sentences are themselves words of the shared vocabulary. Ruling 370(c) forbids a CLIENT
+ * importing that module; nothing forbade the SERVER painting it into the officer's DOM, which 453 does forbid. So
+ * this is an OVERRIDE, the same decision 432(f) took for `PAUSE_REASON_WAY_OUT` and 432(b) for `FIELD_META`, and for
+ * the same reason: the engine's own words are the engine's, and the console's copy has one home.
+ * ⛔ TOTAL, so a code added to the engine without a console sentence is a compile error rather than a blank cell.
+ */
+const CONSOLE_SKIP_SENTENCE = {
+  OUTSIDE_SCHEDULE: "Outside this account's schedule",
+  POOL_BAND: "The pool was outside this account's band",
+  NOT_REACTING: "This account did not react this time",
+  TRIGGER_STAKE_RANGE: "The player's stake was outside this account's range",
+  NO_REACT_ZONE: "The stake came too close to betting close",
+  EXIT_WINDOW_TOO_LATE: "The player's exit window closes too late to react in time",
+  UD_CLOSENESS: "The price had already moved too far from the round's open",
+  UD_NO_PRICE: "The round has no open price or targets",
+  PENALTY_BOX: "That player is in today's penalty box",
+  MARKET_HELD: "Another account, or a queued stake, already held this market",
+  NO_ELIGIBLE_BOT: "No account could take it",
+  STAKE_BELOW_MIN: "What was left after the limits was below the minimum",
+  MAINTENANCE: "50pick was in maintenance",
+  CUTOFF: "Too close to betting close",
+  MARKET_NOT_LIVE: "The market was no longer open",
+  MARKET_GONE: "The market no longer exists",
+  MASTER_OFF: "The desk was switched off",
+  BOT_NOT_ACTIVE: "This account was not running",
+  TRIGGER_EXITED: "The player cashed out first",
+  CONDITION_GONE: "The market's money changed first, so its side no longer held",
+  BUSY_TIMEOUT: "50pick stayed busy until it was too late",
+  UNMAPPED: "Refused for a reason the engine does not recognise",
+  INTERNAL: "An internal error stopped it",
+  STAKE_BOUNDS_CHANGED: "The platform's own stake limits changed",
+  POISON: "It failed three times",
+  NO_CUTOFF: "The poll has no betting close",
+  UD_NO_ROUND: "The Up & Down market has no round",
+  PRODUCT_NOT_SUPPORTED: "The desk does not stake on this product",
+  UD_STALE_PRICE: "No fresh price was available",
+  MARKET_REOPENED: "The market was reopened",
+  CHAIN_NOT_RUNNING: "The Up & Down chain was not running",
+  HOLDER_RECRUIT: "The player was recruited by an account holder",
+  STALE: "50pick was busy until the time limit passed",
+  CANCELLED_BY_ADMIN: "An officer stopped it before it was placed",
+  INFO_BLACKOUT: "An AI result check is recorded on this market, or it was reopened after one",
+  TARGET_REMOVED: "The target was stopped",
+  TARGET_ENDED: "The target ended",
+  COUNTERPARTY_CONCENTRATION: "One player held too much of the locked money",
+  CAP_OPPOSITE_SIDE: "This account already held the other side of this market",
+  OUT_OF_SCOPE: "This account's rules no longer cover this market",
+  CAP_STAKE_MIN: "Below this account's smallest allowed stake",
+  CAP_STAKE_MAX: "Above this account's largest allowed stake",
+  CAP_PER_MARKET: "This account's per-market TZS limit was reached",
+  CAP_BALANCE_FLOOR: "The holder's balance was below the floor",
+  CAP_DAILY_STAKE: "This account's daily stake limit was reached",
+  CAP_DAILY_LOSS_PROJECTED: "This account's daily loss limit could have been passed",
+  CAP_EXPOSURE: "This account's open exposure limit was reached",
+  CAP_STAFF_CHOSEN_PER_DAY: "This account had used today's manual stakes",
+  CAP_STAFF_CHOSEN_DAILY_STAKE: "This account's manual TZS limit for today was reached",
+  CAP_TARGET_ONCE: "The target reacts to the first stake only, and one reaction is already placed",
+  CAP_MIN_GAP: "This account's minimum gap between bets applied",
+  CAP_PER_HOUR: "This account's hourly bet limit was reached",
+  CAP_PER_DAY: "This account's daily bet limit was reached",
+  CAP_PER_MARKET_COUNT: "This account's bets-per-market limit was reached",
+  CAP_GLOBAL_PER_MARKET: "The desk's per-market TZS limit was reached",
+  CAP_GLOBAL_DAILY_STAKE: "The desk's daily stake limit was reached",
+  CAP_GLOBAL_LOSS_PROJECTED: "The desk's daily loss limit could have been passed",
+  CAP_GLOBAL_EXPOSURE: "The desk's open exposure limit was reached",
+  CAP_GLOBAL_BETS_PER_MINUTE: "The desk's bets-per-minute limit applied",
+  CAP_GLOBAL_BETS_PER_DAY: "The desk's daily bet limit was reached",
+  CAP_COUNTERPARTY_COUNT: "That player had been met as often as allowed today",
+  CAP_COUNTERPARTY_TZS: "The TZS set against that player today reached its limit",
+  CAP_GLOBAL_STAFF_CHOSEN_PER_DAY: "The desk had used today's manual stakes",
+  CAP_GLOBAL_STAFF_CHOSEN_DAILY_STAKE: "The desk's manual TZS limit for today was reached",
+} as const satisfies Record<EngineCode, string>;
+
+/**
+ * The window the activity rail offers, and the one a bare visit is on.
+ * ⭐ `all` IS THE DEFAULT AND IT IS THE FOURTH WINDOW ON PURPOSE. Delivered bells already link with `&range=all`
+ * (`alert-copy.ts`'s feed href and the two placement notices), and one account's own activity is a short list — a
+ * rail that opened narrowed would hide the row the officer followed a bell to reach, which is 432(a) pointing the
+ * other way. The three narrowing presets are the platform's own ids, so "today" means one thing everywhere.
+ */
+const CONSOLE_FEED_PRESETS = ["today", "24h", "7d", "all"] as const;
+const CONSOLE_FEED_PRESET_DEFAULT = "all";
+
+/**
+ * ⛔ **THE URL TOKEN IS THE CONSOLE'S OWN WORD, SLUGGED — NEVER THE ENUM, LOWERCASED** (ruling 453).
+ *
+ * 🔴 READ OFF A SERVED PAGE, NOT REASONED ABOUT. The first build of this rail derived each option's query value
+ * with `member.toLowerCase()`, and `/admin/desk/<id>?tab=activity` came back carrying
+ * `href="…&kind=counter"` and `data-chip="kind:counter"` FIVE times — a word 453's lexicon forbids, in served
+ * markup and in the address bar, where it lands in every screenshot of the screen. NOTHING reported it: 4.453
+ * scans source LITERALS and the token was computed at runtime; 3.453 scanned the painted LABELS and not the keys;
+ * the bundle scan reads chunks and this is server markup. Every suite was green.
+ *
+ * ⛔ So the rule is inverted and made self-enforcing: a token may only ever be the option's OWN painted word,
+ * slugged — which means a token can never carry a word its label does not, and the ONE neutrality scan over the
+ * labels now covers the keys and the hrefs by construction. The parse reads the same table, so the control an
+ * officer clicks and the read the server takes are still one function.
+ */
+const consoleSlug = (word: string): string => word.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+/** One option of one filter group — a finished label, a finished href and whether it is the one in force. */
+export type ConsoleFilterOption = { key: string; label: string; href: string; on: boolean };
+/**
+ * One axis of the activity rail. `param` is the REAL query-parameter name, because `FilterPill`'s `testId`
+ * contract is "axis:value using the REAL query-param name and value" and a driver rebuilds a URL from it.
+ */
+export type ConsoleFilterGroup = { param: string; label: string; options: ConsoleFilterOption[] };
+
+/** One row of the activity panel. ⛔ No intent id, no `why`, no `decision`, no trigger player's id. */
+export type ConsoleFeedRow = {
+  when: string;
+  whenTitle: string;
+  /** ⛔ ONE intent's own stake, formatted, never a sum (rulings 266, 360 role C, 373). */
+  stake: string;
+  statusWord: string;
+  statusChip: StatusChipVariant;
+  typeWord: string;
+  productWord: string;
+  /** The console's own sentence for the engine's outcome code, or `null` for a row that simply landed. */
+  note: string | null;
+  /** True for the ONE row a delivered bell's `&intent=` names. ⛔ A flag, never the id — an id in an attribute is served markup. */
+  anchored: boolean;
+};
+
+/** One row of the history panel. ⛔ No amount from any payload, and no free-text reason (see the reader). */
+export type ConsoleEventRow = {
+  when: string;
+  whenTitle: string;
+  /** `CONSOLE_EVENT_WORD[kind]`, always — never the raw enum and never a `?? kind` fallback. */
+  eventWord: string;
+  /** The status change this event recorded, in the ONE status map's words, or `null` when it changed no status. */
+  change: string | null;
+  /** The actor's own id, or the console's word for the engine — ruling 420: an actor is an id, never a name. */
+  who: string;
+  /**
+   * ⛔ 266/369(c) · AN `OWNER_MONEY` ROW CARRIES A DOOR, NEVER A FIGURE. `money-hook.ts` writes `amountTzs` and
+   * `balanceTzs` — the holder's own wallet balance — onto every one of those events. Ruling 266 allows money only
+   * as usage against a configured limit and 456 settled that the door to a holder's money is the platform's own
+   * transactions screen. So the row links there by transaction id and paints no amount at all.
+   */
+  moneyHref: string | null;
+  anchored: boolean;
+};
+
+/**
+ * What EITHER console page hands its own door: the REQUEST's query string, untouched.
+ *
+ * ⛔ **THE DOOR VALIDATES, NOT THE PAGE, AND NOT THE RAIL** (rulings 259, 383, 387). A console page is served 200 to
+ * any signed-in account and a crafted address is free, so every value below is read here, checked against a CLOSED
+ * list here, and refused here. The rail's own hrefs are built from the SAME parse, so the control an officer clicks
+ * and the read the server takes cannot disagree — there is one function, not two.
+ *
+ * ⭐ ONE SHAPE FOR BOTH PAGES, AND IT WAS CALLED `ConsoleDetailQuery` UNTIL THE LANDING PANELS LANDED. The landing
+ * page's address carries the same axes — the same window, the same three chips, the same two bell anchors and the
+ * same two page numbers — so a second type would have been a second parse wearing a different name, which is the
+ * one thing 383 and 387 are written against. `tpage` is the Targets grid's own page number and is simply absent
+ * from a landing address; an absent parameter is page 1 in either shape.
+ */
+export type ConsoleQuery = {
+  tab?: string | string[];
+  tpage?: string | string[];
+  page?: string | string[];
+  hpage?: string | string[];
+  range?: string | string[];
+  from?: string | string[];
+  to?: string | string[];
+  kind?: string | string[];
+  product?: string | string[];
+  outcome?: string | string[];
+  intent?: string | string[];
+  event?: string | string[];
+};
+
+/** The parsed, validated query. `refusals` names every axis that was thrown away, by its own screen word. */
+type ConsoleParsed = {
+  /** The panel this address selects, resolved against the CALLER's own closed list (see `tabOf`). */
+  tab: string;
+  tpage: number;
+  page: number;
+  pageAsked: boolean;
+  hpage: number;
+  hpageAsked: boolean;
+  preset: string;
+  from: string | null;
+  to: string | null;
+  fromIso: string | undefined;
+  toIso: string | undefined;
+  kind: IntentKind | null;
+  product: IntentProductLine | null;
+  outcome: IntentStatus | null;
+  intentId: string | null;
+  eventId: string | null;
+  refusals: string[];
+};
+
+/** One value of a repeated or array-shaped parameter is no value at all — a repeated parameter is a refusal. */
+function oneParam(raw: string | string[] | undefined): { value: string | null; repeated: boolean } {
+  if (raw === undefined) return { value: null, repeated: false };
+  if (Array.isArray(raw)) return { value: null, repeated: raw.length > 0 };
+  const v = raw.trim();
+  return { value: v.length === 0 ? null : v, repeated: false };
+}
+
+/**
+ * ⛔ A BOUNDED ID, CHECKED BY SHAPE BEFORE IT IS USED FOR ANYTHING. The two anchor parameters arrive from a
+ * delivered bell, so they are real ids in practice and arbitrary text in principle. They are never interpolated
+ * into markup and never used as a filter; this refuses the rest before they are compared at all.
+ */
+const CONSOLE_ANCHOR_SHAPE = /^hb[ie]_[A-Za-z0-9_]{1,48}$/;
+
+/**
+ * The closed-list member one URL token addresses, or `null`. ⛔ MATCHED ON THE TOKEN, never on the enum spelled in
+ * lower case: the enum carries the feature's own vocabulary and an address is the one place this section cannot
+ * take a word back (see `consoleSlug`).
+ */
+function fromClosedList(axis: ConsoleFeedAxis, value: string | null): string | null {
+  if (value == null) return null;
+  const v = value.toLowerCase();
+  return CONSOLE_FEED_AXES[axis].members.find((m) => consoleAxisToken(axis, m) === v) ?? null;
+}
+
+/**
+ * THE ONE PARSE. Every axis of the account page's address, validated against a closed list or a shape, with every
+ * refusal NAMED so the page can say what it ignored rather than silently narrowing to something nobody asked for.
+ */
+function parseConsoleQuery(
+  query: ConsoleQuery | undefined,
+  nowMs: number,
+  /**
+   * ⛔ THE ONE DIFFERENCE BETWEEN THE TWO SHAPES, PASSED IN RATHER THAN BRANCHED ON. The landing rail and the
+   * account page's rail are separate CLOSED LISTS with separate panels (`consoleTab` / `consoleDetailTab`), and a
+   * parse that decided between them itself would be the second spelling of the filter this function exists to
+   * prevent. Everything below this line is identical for both, which is why there is one parse and not two.
+   */
+  tabOf: (raw: string | string[] | undefined) => string,
+): ConsoleParsed {
+  const q = query ?? {};
+  const refusals: string[] = [];
+  const say = (axis: string) => { if (!refusals.includes(axis)) refusals.push(axis); };
+
+  const pageOf = (raw: string | string[] | undefined, axis: string): { n: number; asked: boolean } => {
+    const one = oneParam(raw);
+    if (one.repeated) { say(axis); return { n: 1, asked: false }; }
+    if (one.value == null) return { n: 1, asked: false };
+    const n = Number(one.value);
+    if (!Number.isSafeInteger(n) || n < 1) { say(axis); return { n: 1, asked: false }; }
+    return { n: consolePageNumber(n), asked: true };
+  };
+
+  const closed = <T extends string>(raw: string | string[] | undefined, axis: ConsoleFeedAxis, said: string): T | null => {
+    const one = oneParam(raw);
+    if (one.repeated) { say(said); return null; }
+    if (one.value == null) return null;
+    const hit = fromClosedList(axis, one.value);
+    if (hit == null) say(said);
+    return hit as T | null;
+  };
+
+  const anchor = (raw: string | string[] | undefined, prefix: string): string | null => {
+    const one = oneParam(raw);
+    if (one.repeated) { say("link"); return null; }
+    if (one.value == null) return null;
+    if (!CONSOLE_ANCHOR_SHAPE.test(one.value) || !one.value.startsWith(prefix)) { say("link"); return null; }
+    return one.value;
+  };
+
+  const targets = pageOf(q.tpage, "page");
+  const feedPage = pageOf(q.page, "page");
+  const history = pageOf(q.hpage, "page");
+
+  /* ⛔ THE WINDOW IS THE PLATFORM'S OWN RESOLVER, so "today" means one span on every screen (`lib/query/windows.ts`'s
+   * own header states the rule). `all` is the console's fourth window and is the ABSENCE of a bound rather than a
+   * bound at the epoch: a count with no window is a count, and a `createdAt >= 1970` predicate is a slower way to
+   * say the same thing. A preset nobody offers is refused, not silently honoured. */
+  const rangeOne = oneParam(q.range);
+  if (rangeOne.repeated) say("window");
+  const fromOne = oneParam(q.from);
+  const toOne = oneParam(q.to);
+  if (fromOne.repeated || toOne.repeated) say("window");
+  const askedPreset = rangeOne.value;
+  const custom = askedPreset === "custom" || fromOne.value != null || toOne.value != null;
+  let preset = CONSOLE_FEED_PRESET_DEFAULT;
+  let fromIso: string | undefined;
+  let toIso: string | undefined;
+  if (custom) {
+    const win = resolveRange({ range: "custom", from: fromOne.value, to: toOne.value }, nowMs, CONSOLE_FEED_PRESET_DEFAULT);
+    preset = "custom";
+    fromIso = new Date(win.start).toISOString();
+    toIso = new Date(win.end).toISOString();
+  } else if (askedPreset != null && askedPreset !== CONSOLE_FEED_PRESET_DEFAULT) {
+    if (!(CONSOLE_FEED_PRESETS as readonly string[]).includes(askedPreset)) {
+      say("window");
+    } else {
+      const win = resolveRange({ range: askedPreset }, nowMs, CONSOLE_FEED_PRESET_DEFAULT);
+      preset = askedPreset;
+      fromIso = new Date(win.start).toISOString();
+      toIso = new Date(win.end).toISOString();
+    }
+  }
+
+  return {
+    tab: tabOf(q.tab),
+    tpage: targets.n,
+    page: feedPage.n,
+    pageAsked: feedPage.asked,
+    hpage: history.n,
+    hpageAsked: history.asked,
+    preset,
+    from: custom ? fromOne.value : null,
+    to: custom ? toOne.value : null,
+    fromIso,
+    toIso,
+    kind: closed<IntentKind>(q.kind, "kind", "type"),
+    product: closed<IntentProductLine>(q.product, "product", "product"),
+    outcome: closed<IntentStatus>(q.outcome, "outcome", "outcome"),
+    intentId: anchor(q.intent, "hbi_"),
+    eventId: anchor(q.event, "hbe_"),
+    refusals,
+  };
+}
+
+/** The refusal Callout's own heading — number-agnostic, because the sentence beneath it is not (read off a tile). */
+export const CONSOLE_REFUSAL_TITLE = "This address was not used in full";
+
+/** What a refused axis is called on screen, and the one sentence that says an address was not taken at its word. */
+function consoleRefusalSentence(refusals: readonly string[]): string | null {
+  if (refusals.length === 0) return null;
+  const list = refusals.length === 1
+    ? refusals[0]
+    : `${refusals.slice(0, -1).join(", ")} and ${refusals[refusals.length - 1]}`;
+  return refusals.length === 1
+    ? `One part of this address was not understood and was ignored: ${list}. The rest of the filter is in force.`
+    : `Parts of this address were not understood and were ignored: ${list}. The rest of the filter is in force.`;
+}
+
+/**
+ * Every live FILTER of the activity panel, as the pager's `baseHref` and the rail's own links need them.
+ *
+ * ⛔ THE BELL'S ANCHOR IS NOT ONE OF THEM, DELIBERATELY. `&intent=` is a LANDING INSTRUCTION — "show me the page
+ * this row is on" — and it belongs to the address the bell produced, not to every link the officer clicks
+ * afterwards. Carrying it forward would re-resolve a page under a filter the anchor was never ranked in, and it
+ * would echo a bounded record id into every pager link and every chip on the rail, which is the one thing this
+ * section may never put in a response it does not have to.
+ */
+function consoleFeedParams(p: ConsoleParsed): Record<string, string | undefined> {
+  return {
+    tab: "activity",
+    range: p.preset === CONSOLE_FEED_PRESET_DEFAULT ? undefined : p.preset,
+    from: p.from ?? undefined,
+    to: p.to ?? undefined,
+    kind: p.kind ? consoleAxisToken("kind", p.kind) : undefined,
+    product: p.product ? consoleAxisToken("product", p.product) : undefined,
+    outcome: p.outcome ? consoleAxisToken("outcome", p.outcome) : undefined,
+  };
+}
+
+/**
+ * One rail link: the panel's own page, the live parameters, one axis changed — and `page` dropped (ruling 411).
+ * ⛔ `base` IS A FINISHED ROUTE THE CALLER GOT FROM `console-routes.ts` (`CONSOLE_ROUTE` for the desk, `consoleBotHref`
+ * for one account) and is never composed here: ruling 319 puts the segment in one module, and a rail that built its
+ * own path would be the second spelling of the route this section was pulled up on.
+ */
+function consoleFeedLink(base: string, params: Record<string, string | undefined>, patch: Record<string, string | undefined>): string {
+  const merged: Record<string, string | undefined> = { ...params, ...patch };
+  const qs = Object.entries(merged)
+    .filter(([, v]) => v != null && v !== "")
+    .map(([k, v]) => `${k}=${encodeURIComponent(v as string)}`)
+    .join("&");
+  return qs ? `${base}?${qs}` : base;
+}
+
+/**
+ * ⭐ THE RAIL'S THREE AXES, IN ONE TABLE — the parse below and the render above both read it, so the control an
+ * officer clicks and the read the server takes cannot be two different spellings of the same filter.
+ * ⛔ A page about ONE account has no Bot axis: a control that can only ever select the account you are looking at
+ * is the dead control 432(a) refuses. The landing rail's own axes are that page's, when it is built.
+ */
+export const CONSOLE_FEED_AXES = {
+  kind: { label: "Type", all: "Any type", members: INTENT_KINDS as readonly string[], word: CONSOLE_INTENT_KIND_WORD as Readonly<Record<string, string>> },
+  product: { label: "Product", all: "Any product", members: INTENT_PRODUCT_LINES as readonly string[], word: CONSOLE_PRODUCT_WORD as Readonly<Record<string, string>> },
+  outcome: {
+    label: "Outcome", all: "Any outcome", members: INTENT_STATUSES as readonly string[],
+    word: Object.fromEntries(INTENT_STATUSES.map((st) => [st, CONSOLE_INTENT_STATUS[st].word])) as Readonly<Record<string, string>>,
+  },
+} as const;
+export type ConsoleFeedAxis = keyof typeof CONSOLE_FEED_AXES;
+
+/** The URL token one member of one axis is addressed by — its own painted word, slugged, and nothing else. */
+function consoleAxisToken(axis: ConsoleFeedAxis, member: string): string {
+  return consoleSlug(CONSOLE_FEED_AXES[axis].word[member] ?? member);
+}
+
+/**
+ * The activity rail, built where every other painted string of this section is built. ⛔ The rail file receives
+ * FINISHED labels and FINISHED hrefs: it types no route, no enum and no closed list, so nothing about the feature
+ * can reach it by name — and every string below is inside 4.453's and 3.453's scans, which a label typed at a call
+ * site one directory away would not be.
+ */
+function consoleFeedGroups(base: string, p: ConsoleParsed): ConsoleFilterGroup[] {
+  const params = consoleFeedParams(p);
+  const live: Readonly<Record<ConsoleFeedAxis, string | null>> = { kind: p.kind, product: p.product, outcome: p.outcome };
+  return (Object.keys(CONSOLE_FEED_AXES) as ConsoleFeedAxis[]).map((axis) => {
+    const a = CONSOLE_FEED_AXES[axis];
+    return {
+      param: axis,
+      label: a.label,
+      options: [
+        { key: "", label: a.all, href: consoleFeedLink(base, params, { [axis]: undefined }), on: live[axis] == null },
+        ...a.members.map((m) => ({
+          key: consoleAxisToken(axis, m),
+          label: a.word[m] ?? m,
+          href: consoleFeedLink(base, params, { [axis]: consoleAxisToken(axis, m) }),
+          on: live[axis] === m,
+        })),
+      ],
+    };
+  });
+}
+
+/** The activity panel's empty states — one for a list with nothing in it, one for a filter that matched nothing. */
+const CONSOLE_FEED_EMPTY: ConsoleEmpty = {
+  title: "Nothing staked yet",
+  body: "Every stake this account tries appears here, newest first, with what happened to it.",
+};
+const CONSOLE_FEED_EMPTY_FILTERED: ConsoleEmpty = {
+  title: "Nothing matches this filter",
+  body: "No stake on this account matches what the rail above is set to. Widen the window or clear a chip.",
+};
+const CONSOLE_HISTORY_EMPTY: ConsoleEmpty = {
+  title: "No changes yet",
+  body: "Every change to this account is kept here, newest first — who made it and when.",
+};
+
+/** The order BOTH panels are read in, said once where a reader of the table can see it (`("createdAt","id") DESC`). */
+const CONSOLE_ORDER_NOTE = "Newest first.";
+
+/**
+ * Everything the two panels paint that does NOT depend on their rows: the rail, the live parameters, the window the
+ * rail offers, the empty state this read has earned and the refusal sentence.
+ *
+ * ⛔ IT IS BUILT FOR EVERY STATE, INCLUDING A REMOVED ACCOUNT'S (358). A removed account takes neither list read, so
+ * its rows are `null` — but the SHAPE is the same, because a view model whose keys appear and disappear is how a page
+ * comes to read `undefined.length` on the one state nobody rendered.
+ */
+function consolePanelShell(base: string, p: ConsoleParsed): Pick<ConsoleDetailView,
+  "feedPage" | "feedPerPage" | "feedFilters" | "feedPresets" | "feedPresetDefault" | "feedParams" | "feedEmpty"
+  | "feedFiltered" | "feedClearHref" | "feedOrderNote" | "historyPage" | "historyPerPage" | "historyParams"
+  | "historyEmpty" | "historyOrderNote" | "queryRefusal"> {
+  const filtered = p.kind != null || p.product != null || p.outcome != null || p.preset !== CONSOLE_FEED_PRESET_DEFAULT;
+  return {
+    feedPage: p.page,
+    feedPerPage: CONSOLE_FEED_PER_PAGE,
+    feedFilters: consoleFeedGroups(base, p),
+    feedPresets: CONSOLE_FEED_PRESETS,
+    feedPresetDefault: CONSOLE_FEED_PRESET_DEFAULT,
+    feedParams: consoleFeedParams(p),
+    feedEmpty: filtered ? CONSOLE_FEED_EMPTY_FILTERED : CONSOLE_FEED_EMPTY,
+    feedFiltered: filtered,
+    feedClearHref: consoleFeedLink(base, { tab: "activity" }, {}),
+    feedOrderNote: CONSOLE_ORDER_NOTE,
+    historyPage: p.hpage,
+    historyPerPage: CONSOLE_HISTORY_PER_PAGE,
+    /* The history panel has no rail, so its only live parameter is the tab — and, for the reason above, the
+       bell's `&event=` anchor is not carried into the pager's own links either. */
+    historyParams: { tab: "history" },
+    historyEmpty: CONSOLE_HISTORY_EMPTY,
+    historyOrderNote: CONSOLE_ORDER_NOTE,
+    queryRefusal: consoleRefusalSentence(p.refusals),
+  };
+}
+
+/**
+ * ⛔ **A BELL MUST LAND ON THE PAGE ITS OWN ROW IS ON** (ruling 302's other half, and 432(a)'s). A delivered alert
+ * links to `&intent=<id>` or `&event=<id>`; under a NUMBERED pager, honouring that link means counting the rows at or
+ * newer than the anchor INSIDE the same filter and turning the rank into a page number. Anything less is an officer
+ * following a bell onto a screen that looks like it worked.
+ * ⛔ THE RANK IS COUNTED OVER THE SAME PREDICATE THE ROWS ARE PAGED OVER — the anchor's own `createdAt` replaces only
+ * the window's lower bound, every other facet is kept. A rank measured over a different population is a page number
+ * with no basis. An anchor outside the filter has no page in it and the panel stays where the officer asked to be.
+ * ⚠️ It runs ONLY when a bell was followed and no page was typed, so an ordinary render takes neither read.
+ */
+async function consoleFeedAnchorPage(anchorId: string, filter: IntentFeedCount, fallback: number): Promise<number> {
+  try {
+    const row = await houseBotIntentStore.get(anchorId);
+    if (!row) return fallback;
+    /* ⛔ THE ACCOUNT FACET IS CHECKED ONLY WHEN THERE IS ONE. On the DESK-WIDE feed `houseBotId` is absent — that is
+     * the whole population — and comparing a real id with `undefined` would have refused every anchor the landing
+     * page was ever sent, silently, on the one link a bell produces. */
+    if (filter.houseBotId !== undefined && row.houseBotId !== filter.houseBotId) return fallback;
+    if (filter.fromIso !== undefined && Date.parse(row.createdAt) < Date.parse(filter.fromIso)) return fallback;
+    if (filter.toIso !== undefined && Date.parse(row.createdAt) >= Date.parse(filter.toIso)) return fallback;
+    const rank = await houseBotIntentStore.countFeed({ ...filter, fromIso: row.createdAt });
+    return rank > 0 ? Math.max(1, Math.ceil(rank / CONSOLE_FEED_PER_PAGE)) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * The history panel's half of the same rule, over the event log's own shared predicate.
+ * ⛔ `botId` IS `null` ON THE DESK-WIDE LOG, and that is not "any account": it is the population that also holds the
+ * CONTROL ROW's own events (`houseBotId: null` — the switch, the limits save, the withdrawal), which a per-account
+ * narrowing correctly drops and the desk's own history must not.
+ */
+async function consoleHistoryAnchorPage(anchorId: string, botId: string | null, fallback: number): Promise<number> {
+  try {
+    const row = await houseBotEventStore.get(anchorId);
+    if (!row) return fallback;
+    if (botId !== null && row.houseBotId !== botId) return fallback;
+    const rank = await houseBotEventStore.countAll({ ...(botId !== null ? { houseBotId: botId } : {}), fromIso: row.createdAt });
+    return rank > 0 ? Math.max(1, Math.ceil(rank / CONSOLE_HISTORY_PER_PAGE)) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * ⛔ A PAGE PAST THE END IS SERVED AS THE LAST PAGE — the idiom this section already ships for the Targets grid, and
+ * the one §0a allows it to have. A numbered pager drawn from a real total beside a card with no rows is 432(a)'s dead
+ * control; an "empty page 3" is a state nobody can act on.
+ */
+function consoleLastPage(total: number | null, want: number, perPage: number): number {
+  if (total == null) return want;
+  return Math.min(want, Math.max(1, Math.ceil(total / perPage)));
+}
+
+/** One intent, painted. ⛔ Finished strings and booleans only — see the section header for what may not cross. */
+function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null): ConsoleFeedRow {
+  const at = Date.parse(i.createdAt);
+  /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
+     instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
+     not be used to check it. The targets grid keeps minutes: a target is a rare, deliberate act. A stake is not. */
+  const status = CONSOLE_INTENT_STATUS[i.status];
+  const code = i.reasonCode;
+  return {
+    when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")}` : "—",
+    whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM YYYY")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
+    stake: formatTzs(i.stakeTzs),
+    statusWord: status.word,
+    statusChip: status.chip,
+    typeWord: CONSOLE_INTENT_KIND_WORD[i.kind],
+    productWord: CONSOLE_PRODUCT_WORD[i.productLine],
+    /* ⛔ THE CONSOLE'S OWN SENTENCE OR NOTHING — never `intent.why`, and never the engine's own table. An outcome
+     * code this build does not know paints no sentence rather than a raw enum (453). */
+    note: code != null && Object.prototype.hasOwnProperty.call(CONSOLE_SKIP_SENTENCE, code)
+      ? (CONSOLE_SKIP_SENTENCE as Record<string, string>)[code]
+      : null,
+    anchored: anchorId != null && i.id === anchorId,
+  };
+}
+
+/** One event, painted. ⛔ No payload amount and no wallet balance reaches this row — a door does (266, 369(c), 456). */
+function consoleEventRow(e: StoredHouseBotEvent, anchorId: string | null): ConsoleEventRow {
+  const at = Date.parse(e.createdAt);
+  const word = (s: string | null): string | null => (s != null && s in HOUSE_BOT_STATUS_DISPLAY
+    ? HOUSE_BOT_STATUS_DISPLAY[s as keyof typeof HOUSE_BOT_STATUS_DISPLAY].word : null);
+  const from = word(e.fromStatus);
+  const to = word(e.toStatus);
+  const txn = e.payload != null && typeof e.payload.txnId === "string" ? e.payload.txnId : null;
+  return {
+    when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")}` : "—",
+    whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM YYYY")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
+    eventWord: CONSOLE_EVENT_WORD[e.kind],
+    change: to == null ? null : from == null ? to : `${from} → ${to}`,
+    /* ⛔ 420 · AN ACTOR IS AN ID, NEVER A NAME. The same rule the ON sentence already follows one card up; a name
+     * would put a staff member's identity on a screen a record id is already masked out of. */
+    who: e.actorId ?? "System",
+    moneyHref: txn ? `/admin/transactions?q=${encodeURIComponent(txn)}` : null,
+    anchored: anchorId != null && e.id === anchorId,
+  };
 }
 
 /**
@@ -2270,10 +3033,20 @@ export async function houseDetailForConsole(
   viewerUserId: string | null | undefined,
   route: string,
   id: string,
-  /** The Targets tab's 1-indexed page, straight off `?tpage=`. Anything that is not a whole page reads as 1. */
-  targetsPage?: number,
+  /**
+   * ⛔ THE REQUEST'S OWN QUERY STRING, UNTOUCHED, AND THE DOOR VALIDATES IT (rulings 259, 383, 387). It arrives as
+   * the page received it — every value a string, an array or absent — and `parseConsoleQuery` checks each axis against its own list
+   * against a CLOSED list or a shape before anything is read with it. The rail's own links are built from the SAME
+   * parse, so the control an officer clicks and the read the server takes cannot disagree: one function, not two.
+   * ⚠️ It replaced a bare `targetsPage: number` at C7 step 5 and the gate's ARITY IS UNCHANGED AT FOUR — the pin
+   * moves with a door's shape, it is never dropped.
+   */
+  query?: ConsoleQuery,
 ): Promise<ConsoleDetailAnswer | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const nowMs = Date.now();
+  const q = parseConsoleQuery(query, nowMs, consoleDetailTab);
 
   /* ⛔ `get(id)`, NEVER `listNonRemoved` (358): the second excludes a REMOVED account in both twins, so a page built
    * on it would 404 on a row that exists and PLAN §8's read-only state would be unreachable. */
@@ -2288,7 +3061,6 @@ export async function houseDetailForConsole(
   }
   if (!bot) return { found: false };
 
-  const nowMs = Date.now();
   const dayKey = eatDayKey(nowMs);
   const label = clampOperatorText(bot.label, operatorBound("label"));
   const display = HOUSE_BOT_STATUS_DISPLAY[bot.status];
@@ -2341,6 +3113,13 @@ export async function houseDetailForConsole(
       targetsTotal: null,
       targetsPage: 1,
       targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
+      /* 358 · a removed account takes neither list read, so both slices are `null` — the state the page reads as
+       * "there was never a read to fail", which is the distinction 355 and 421 exist to keep. */
+      ...consolePanelShell(consoleBotHref(bot.id), q),
+      feed: null,
+      feedTotal: null,
+      history: null,
+      historyTotal: null,
     };
   }
 
@@ -2356,8 +3135,29 @@ export async function houseDetailForConsole(
    * · `countActive({ botId })` is the TAB COUNT. It was read off the page's own rows before, which made the
    *   badge "active targets among the newest 20" — a figure with no basis the moment a 21st target exists, and
    *   one that would have changed as an officer paged. */
-  const wantPage = consolePageNumber(targetsPage);
-  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR] = await Promise.allSettled([
+  const wantPage = q.tpage;
+  /* ⭐ C7 STEP 5 · THE TWO PANELS' READS JOIN THE SAME SETTLED SET, AND ONLY THE TAB IN VIEW TAKES ITS OWN.
+   * ⛔ Each is settled on its OWN, never wrapped with another read (355, 435(d)): a failed row read must not blank
+   * the total beside it, because `null` rows and a real total say different things and paint different treatments.
+   * ⛔ ONE FILTER OBJECT feeds both the page and the count (ruling 345): the moment the two are written separately
+   * the badge above a table counts a population the table cannot show, and nothing on the screen says which is wrong. */
+  const wantFeed = q.tab === "activity";
+  const wantHistory = q.tab === "history";
+  const feedFilter: IntentFeedCount = {
+    houseBotId: bot.id,
+    ...(q.product ? { productLine: q.product } : {}),
+    ...(q.kind ? { kinds: [q.kind] } : {}),
+    ...(q.outcome ? { statuses: [q.outcome] } : {}),
+    ...(q.fromIso ? { fromIso: q.fromIso } : {}),
+    ...(q.toIso ? { toIso: q.toIso } : {}),
+  };
+  /* A bell was followed and no page was typed: resolve the anchor's own page before the set is issued. */
+  const wantFeedPage = wantFeed && q.intentId && !q.pageAsked
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;
+  const wantHistoryPage = wantHistory && q.eventId && !q.hpageAsked
+    ? await consoleHistoryAnchorPage(q.eventId, bot.id, q.hpage) : q.hpage;
+  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR,
+    feedR, feedCountR, historyR, historyCountR] = await Promise.allSettled([
     readBotAndHolder(bot.id, { nowMs }),
     houseDayBook(dayKey, bot.id),
     houseOpenExposure(bot.id),
@@ -2367,6 +3167,14 @@ export async function houseDetailForConsole(
     houseBotTargetStore.countForBot(bot.id, "all"),
     houseBotTargetStore.countActive({ botId: bot.id }),
     loadParseContext(),
+    wantFeed
+      ? houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantFeedPage - 1) * CONSOLE_FEED_PER_PAGE })
+      : Promise.resolve(null),
+    wantFeed ? houseBotIntentStore.countFeed(feedFilter) : Promise.resolve(null),
+    wantHistory
+      ? houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantHistoryPage - 1) * CONSOLE_HISTORY_PER_PAGE })
+      : Promise.resolve(null),
+    wantHistory ? houseBotEventStore.countAll({ houseBotId: bot.id }) : Promise.resolve(null),
   ]);
 
   const holder = holderR.status === "fulfilled" && holderR.value.found ? holderR.value : null;
@@ -2391,6 +3199,43 @@ export async function houseDetailForConsole(
   }
   const targetRows = targetPage == null ? null : targetPage.rows;
   const parseCtx = parseR.status === "fulfilled" ? parseR.value : null;
+
+  /* ⭐ C7 STEP 5 · THE TWO PANELS, IN THE SHIPPED IDIOM AND NOT A SECOND ONE (§0a).
+   * ⛔ The total comes from the COUNTING reader and never from the rows (344); the page past the end is served as
+   * the LAST page, which is what the Targets grid twelve lines up already does; and a FAILED read is `null`, which
+   * the page paints as the kit's failure treatment and never as an empty table (355). */
+  /* ⛔ THE ANCHOR'S RANK IS INCLUSIVE, SO A TIE INFLATES IT — AND THE STEP BACK IS WHAT MAKES IT EXACT.
+   * `countFeed({ fromIso: row.createdAt })` counts rows at or newer than the anchor, so rows sharing the anchor's
+   * millisecond are counted with it and the rank can only be too LARGE, never too small — which pushes the computed
+   * page LATER, never earlier. The rows are already in hand, so the correction costs no read of its own: if the
+   * anchor is not among them, the page is stepped back ONCE, before the single re-read below. That is exact for any
+   * tie block smaller than a page, which is every physically possible one — the per-minute cap is at most twenty
+   * stakes across the whole desk, so twenty stakes by ONE account inside one millisecond cannot happen. */
+  const feedTotal = wantFeed && feedCountR.status === "fulfilled" ? feedCountR.value : null;
+  let feedPageRows = wantFeed && feedR.status === "fulfilled" ? feedR.value : null;
+  let feedShown = consoleLastPage(feedTotal, wantFeedPage, CONSOLE_FEED_PER_PAGE);
+  if (wantFeed && q.intentId != null && !q.pageAsked && feedShown === wantFeedPage && feedShown > 1
+    && feedPageRows != null && !feedPageRows.rows.some((i) => i.id === q.intentId)) feedShown -= 1;
+  if (wantFeed && feedPageRows != null && feedShown !== wantFeedPage) {
+    try {
+      feedPageRows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (feedShown - 1) * CONSOLE_FEED_PER_PAGE });
+    } catch { feedPageRows = null; }
+  }
+  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));
+
+  const historyTotal = wantHistory && historyCountR.status === "fulfilled" ? historyCountR.value : null;
+  let historyPageRows = wantHistory && historyR.status === "fulfilled" ? historyR.value : null;
+  let historyShown = consoleLastPage(historyTotal, wantHistoryPage, CONSOLE_HISTORY_PER_PAGE);
+  if (wantHistory && q.eventId != null && !q.hpageAsked && historyShown === wantHistoryPage && historyShown > 1
+    && historyPageRows != null && !historyPageRows.some((e) => e.id === q.eventId)) historyShown -= 1;
+  if (wantHistory && historyPageRows != null && historyShown !== wantHistoryPage) {
+    try {
+      historyPageRows = await houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (historyShown - 1) * CONSOLE_HISTORY_PER_PAGE });
+    } catch { historyPageRows = null; }
+  }
+  const history: ConsoleEventRow[] | null = historyPageRows == null ? null
+    : historyPageRows.map((e) => consoleEventRow(e, q.eventId));
 
   /* ⛔ 311/413/432(f) · the way out of the FIRST live cause, in the console's own neutral words, finished on the
    * server. Rendering it client-side would put a pause reason — and the account's label — into a client chunk. */
@@ -2511,9 +3356,418 @@ export async function houseDetailForConsole(
     targetsTotal,
     targetsPage: shownPage,
     targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
+    ...consolePanelShell(consoleBotHref(bot.id), q),
+    /* ⛔ THE PAGE THE ROWS REALLY CAME FROM, never the one the address asked for — the pager and the table cannot
+     * disagree about which page is on screen. */
+    feedPage: feedShown,
+    historyPage: historyShown,
+    feed,
+    feedTotal,
+    history,
+    historyTotal,
   };
 }
 
+
+
+/* ═══ C7 STEP 5 (the LANDING half) · THE DESK-WIDE ACTIVITY AND HISTORY PANELS ════════════════════════════════
+ *
+ * ⛔ **TWO MORE GATED DOORS, EACH QUERY-SHAPED, EACH WITH ITS `CONSOLE_GATES` ENTRY** (rulings 259, 340, 512).
+ * The account page's two panels answer about ONE record; these answer about the DESK — every account's stakes in
+ * one list, and every account's changes together with the CONTROL ROW's own (the switch, the limits save, the
+ * withdrawal), which a per-account narrowing correctly drops and the desk's own history must not lose.
+ *
+ * ⛔ **ONE READER PER RENDER PASS, STILL** (rulings 346, 406, 433(d)). Each returns the SAME `ConsoleDeskShell` the
+ * roster and limits readers return, built from ONE `readDeskCore` call — so the strip, the band and the rail's
+ * badge are identical on all four tabs and cannot be two reads of one question inside one render.
+ *
+ * ⛔ **THE PANELS ARE THE ACCOUNT PAGE'S PANELS, WIDENED — NOT A SECOND PAIR** (§0a). The same parse, the same
+ * rail builder, the same page-size constants, the same "a page past the end is the LAST page" idiom and the same
+ * anchor rule. What is added is the column that only a desk-wide list needs: WHOSE stake it was.
+ */
+
+/** ⛔ The three honest answers to "which account is this row about", each a different fact (355, 358). */
+const CONSOLE_ACCOUNT_UNREADABLE = "Could not be read";
+const CONSOLE_ACCOUNT_GONE = "Removed from the desk";
+/** An event of the CONTROL ROW itself — the switch, a limits save, the withdrawal. It belongs to no account. */
+const CONSOLE_ACCOUNT_DESK = "The desk";
+
+/** One row of the desk-wide activity panel: the account page's row, plus whose stake it was. */
+export type ConsoleDeskFeedRow = ConsoleFeedRow & {
+  /**
+   * ⛔ RULING 474 · THE ACCOUNT'S OWN LABEL IS OPERATOR DATA, verbatim but bounded — or one of the two console
+   * words above when the roster read failed or the account has since been removed. Three states, three sentences,
+   * never one standing in for another.
+   */
+  accountName: string;
+  /** True when `accountName` is the operator's own text, so the DOM can say so (474's own hook). */
+  accountIsOperatorText: boolean;
+  /** The holder, as a HANDLE and nothing else (04 R6) — `null` when the account could not be named. */
+  accountHandle: string | null;
+  /** That account's own page. ⛔ Built by `console-routes.ts`, never spelled at a call site (319). */
+  accountHref: string;
+  /**
+   * ⛔ THE ID THE CANCEL CONTROL POSTS, AND `null` ON EVERY ROW THAT CANNOT BE STOPPED. Only a QUEUED stake can
+   * be: a CLAIMED one is already in flight and `cancelPending` refuses it, so offering the control there would be
+   * the dead control 432(a) forbids. It is POSTED and never PAINTED — no row renders it.
+   */
+  cancelId: string | null;
+};
+
+/** One row of the desk-wide history: the account page's row, plus whose account it is — or the desk's own. */
+export type ConsoleDeskEventRow = ConsoleEventRow & {
+  accountName: string;
+  /** True only when `accountName` is the operator's own text — which is also exactly when `accountHref` opens a page. */
+  accountIsOperatorText: boolean;
+  /** `null` for the control row's own events, which belong to no account and open no page (432(a)). */
+  accountHref: string | null;
+};
+
+/**
+ * ⭐ THE CANCEL CONTROL'S FINISHED COPY (rulings 388, 415, 453) — ONE object for the whole panel and not one per
+ * row, because twenty identical dialogs in one payload is twenty chances for them to stop being identical.
+ * ⛔ Every word crosses the boundary as a finished string: ruling 385 measured that most of this console's
+ * sentences carry NO vocabulary word at all, so one typed into a client file would ship to every visitor with the
+ * disclosure walk and the bundle scan both reporting clean.
+ */
+export type ConsoleCancelCopy = {
+  label: string;
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  reasonLabel: string;
+  reasonHint: string;
+  reasonCountLabel: string;
+  reasonMin: number;
+  reasonMax: number;
+  doneTitle: string;
+  failTitle: string;
+};
+
+const CONSOLE_CANCEL_COPY: ConsoleCancelCopy = {
+  label: "Stop it",
+  title: "Stop this queued stake",
+  body: "This stake has not been placed yet. Stopping it means it never will be, and the record keeps who stopped it and why.",
+  confirmLabel: "Stop the stake",
+  cancelLabel: "Cancel",
+  /* ⛔ 388 · A REQUIRED FIELD SAYS SO. The primary button is armed on `CONSOLE_REASON_MIN` and the counter counts
+     DOWN, so a field that did not say it was required met an officer with a dead button and nothing explaining it. */
+  reasonLabel: "Why are you stopping it? (required)",
+  reasonHint: "This is kept on the record. Do not type anyone's name, number or address.",
+  reasonCountLabel: "characters left",
+  reasonMin: CONSOLE_REASON_MIN,
+  reasonMax: CONSOLE_REASON_MAX,
+  doneTitle: "The stake was stopped",
+  failTitle: "Nothing was stopped",
+};
+
+/** The desk-wide activity panel. ⛔ Same shell, same rail, same pager, one more column. */
+export type ConsoleFeedView = ConsoleDeskShell
+  & Pick<ConsoleDetailView, "feedPage" | "feedPerPage" | "feedFilters" | "feedPresets" | "feedPresetDefault"
+    | "feedParams" | "feedEmpty" | "feedFiltered" | "feedClearHref" | "feedOrderNote" | "queryRefusal">
+  & {
+    /** ⛔ `null` is a read that FAILED (355) — `AdminLoadError`, never an empty table. */
+    feed: ConsoleDeskFeedRow[] | null;
+    /** ⛔ FROM `countFeed`, NEVER `feed.length` (344): `pageLimit` clamps every list reader at 500 rows. */
+    feedTotal: number | null;
+    /** `null` when this render offers no cancel at all, so the page draws no control rather than a dead one. */
+    cancelCopy: ConsoleCancelCopy | null;
+  };
+
+/** The desk-wide history panel. */
+export type ConsoleHistoryView = ConsoleDeskShell
+  & Pick<ConsoleDetailView, "historyPage" | "historyPerPage" | "historyParams" | "historyEmpty" | "historyOrderNote" | "queryRefusal">
+  & {
+    history: ConsoleDeskEventRow[] | null;
+    historyTotal: number | null;
+  };
+
+/** The desk's own empty states. ⛔ DIFFERENT WORDS from the account page's: "this account" and "the desk" are
+ *  different subjects, and an officer who reads the second sentence on the wrong panel learns the wrong fact (416). */
+const CONSOLE_DESK_FEED_EMPTY: ConsoleEmpty = {
+  title: "Nothing staked yet",
+  body: "Every stake the desk tries appears here, newest first, with what happened to it.",
+};
+/**
+ * 🔴 AND THE FILTERED ONE IS THE DESK'S TOO, WHICH THE FIRST BUILD GOT WRONG AND EVERY SUITE PASSED.
+ * The reader used to keep the SHELL's filtered sentence here, on the reasoning that "nothing matches this filter"
+ * is the same fact on either page. It is not: that sentence's BODY reads "No stake on **this account** matches",
+ * and on the page that lists every account there is no such account. Read off the served page at
+ * `?tab=activity&kind=manual&outcome=cancelled&product=up-down` — the account page's sentence, painted on the
+ * desk. ⛔ 416's whole point is that two different subjects say different things, and the assertion that was
+ * meant to hold this compared only the TITLES and then checked the UNFILTERED body for the word "desk", so the
+ * one string that was wrong is the one string it never read.
+ */
+const CONSOLE_DESK_FEED_EMPTY_FILTERED: ConsoleEmpty = {
+  title: "Nothing matches this filter",
+  body: "No stake anywhere on the desk matches what the rail above is set to. Widen the window or clear a chip.",
+};
+const CONSOLE_DESK_HISTORY_EMPTY: ConsoleEmpty = {
+  title: "No changes yet",
+  body: "Every change to the desk and to the accounts on it is kept here, newest first — who made it and when.",
+};
+
+/**
+ * Which account a row is about, from the roster the shell already read — never a second read and never a read per
+ * row (ruling 351's own refusal of the per-bot loop).
+ * ⛔ THE THREE STATES ARE KEPT APART: the roster read FAILED (nobody can tell), the account is not on the roster
+ * (it was removed, which is a fact about the row), or it is there and the label is the operator's own text.
+ */
+function consoleAccountCell(
+  roster: ReadonlyMap<string, StoredHouseBot> | null,
+  houseBotId: string | null,
+): { accountName: string; accountIsOperatorText: boolean; accountHandle: string | null } {
+  if (houseBotId === null) return { accountName: CONSOLE_ACCOUNT_DESK, accountIsOperatorText: false, accountHandle: null };
+  if (roster === null) return { accountName: CONSOLE_ACCOUNT_UNREADABLE, accountIsOperatorText: false, accountHandle: null };
+  const found = roster.get(houseBotId);
+  if (!found) return { accountName: CONSOLE_ACCOUNT_GONE, accountIsOperatorText: false, accountHandle: null };
+  return {
+    accountName: clampOperatorText(found.label, operatorBound("label")),
+    accountIsOperatorText: true,
+    accountHandle: playerHandle(found.userId),
+  };
+}
+
+/** The roster the shell already holds, keyed — built once per render, never per row. */
+function consoleRosterMap(roster: StoredHouseBot[] | null): ReadonlyMap<string, StoredHouseBot> | null {
+  return roster === null ? null : new Map(roster.map((b) => [b.id, b] as [string, StoredHouseBot]));
+}
+
+/**
+ * ⭐ THE DESK-WIDE ACTIVITY PANEL'S GATED READER (rulings 312, 317, 340, 344, 345, 355, 410, 411).
+ *
+ * ⛔ THE AUDIENCE IS RESOLVED FIRST AND NOTHING IS READ BEFORE THE VERDICT, so a refused viewer's payload carries
+ * no label, no handle, no amount and no sentence.
+ * ⛔ ONE FILTER OBJECT FEEDS THE PAGE AND THE TOTAL (ruling 345). The moment the two are written separately the
+ * pager counts a population the table cannot show, and nothing on the screen says which of them is wrong.
+ * ⛔ THE ORDER IS THE DAL'S OWN `("createdAt","id") DESC`, in BOTH the listing reader and the counting reader — a
+ * numbered pager over an unstable order shows one row twice and hides another.
+ */
+export async function houseFeedForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  query?: ConsoleQuery,
+): Promise<ConsoleFeedView | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const q = parseConsoleQuery(query, Date.now(), consoleTab);
+  /* ⛔ NO ACCOUNT FACET AT ALL — the desk IS the population. An empty-string or "any" sentinel would be a fourth
+   * spelling of "no filter" that the shared predicate would then have to know about. */
+  const feedFilter: IntentFeedCount = {
+    ...(q.product ? { productLine: q.product as IntentProductLine } : {}),
+    ...(q.kind ? { kinds: [q.kind as IntentKind] } : {}),
+    ...(q.outcome ? { statuses: [q.outcome as IntentStatus] } : {}),
+    ...(q.fromIso ? { fromIso: q.fromIso } : {}),
+    ...(q.toIso ? { toIso: q.toIso } : {}),
+  };
+  /* A bell was followed and no page was typed: resolve the anchor's own page before the set is issued. */
+  const wantPage = q.intentId && !q.pageAsked
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;
+
+  const { core, extra: pageRead, extraB: totalRead } = await readDeskCore(
+    () => houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantPage - 1) * CONSOLE_FEED_PER_PAGE }),
+    () => houseBotIntentStore.countFeed(feedFilter),
+  );
+  const shell = deskShell(core);
+
+  const feedTotal = totalRead;
+  let rows = pageRead;
+  let shown = consoleLastPage(feedTotal, wantPage, CONSOLE_FEED_PER_PAGE);
+  /* ⛔ THE ANCHOR'S RANK IS INCLUSIVE, SO A TIE INFLATES IT — the step back is what makes it exact, and it costs no
+   * read: the rows are already in hand (the whole argument is written at the account page's own reader). */
+  if (q.intentId != null && !q.pageAsked && shown === wantPage && shown > 1
+    && rows != null && !rows.rows.some((i) => i.id === q.intentId)) shown -= 1;
+  if (rows != null && shown !== wantPage) {
+    try {
+      rows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (shown - 1) * CONSOLE_FEED_PER_PAGE });
+    } catch { rows = null; }
+  }
+
+  const byId = consoleRosterMap(core.roster);
+  const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({
+    ...consoleFeedRow(i, q.intentId),
+    ...consoleAccountCell(byId, i.houseBotId),
+    accountHref: consoleBotHref(i.houseBotId),
+    /* ⛔ ONE POPULATION FOR THE BADGE AND FOR THE CONTROL (the `CONSOLE_PENDING_STATUSES` table): a row the badge
+     * counts is a row an officer can stop, and a row it does not count offers no control at all. */
+    cancelId: (CONSOLE_PENDING_STATUSES as readonly string[]).includes(i.status) ? i.id : null,
+  }));
+
+  const panel = consolePanelShell(CONSOLE_ROUTE, q);
+  return {
+    ...shell,
+    feedPage: shown,
+    feedPerPage: panel.feedPerPage,
+    feedFilters: panel.feedFilters,
+    feedPresets: panel.feedPresets,
+    feedPresetDefault: panel.feedPresetDefault,
+    feedParams: panel.feedParams,
+    /* ⛔ THE DESK'S OWN WORDS FOR BOTH EMPTY STATES, AND THAT IS A CORRECTION A RENDER HAD TO MAKE. The filtered
+     * branch used to hand back the SHELL's sentence, whose body names "this account" — on the one page that has
+     * no account to name. Each subject has its own pair (416); neither borrows the other's. */
+    feedEmpty: panel.feedFiltered ? CONSOLE_DESK_FEED_EMPTY_FILTERED : CONSOLE_DESK_FEED_EMPTY,
+    feedFiltered: panel.feedFiltered,
+    feedClearHref: panel.feedClearHref,
+    feedOrderNote: panel.feedOrderNote,
+    queryRefusal: panel.queryRefusal,
+    feed,
+    feedTotal,
+    /* ⛔ NO CONTROL WHERE THERE IS NOTHING TO STOP (432(a)). A failed read offers none either: `feed` is `null` and
+     * the panel paints the kit's failure treatment instead of a table with buttons in it. */
+    cancelCopy: feed != null && feed.some((r) => r.cancelId !== null) ? CONSOLE_CANCEL_COPY : null,
+  };
+}
+
+/**
+ * ⭐ THE DESK-WIDE HISTORY PANEL'S GATED READER (rulings 317, 340, 344, 355, 411, 420).
+ *
+ * ⛔ IT CARRIES THE CONTROL ROW'S OWN EVENTS, and that is the difference from the account page's history: the
+ * switch, a limits save and the withdrawal are the DESK's changes and belong to no account, so the desk-wide read
+ * takes no account facet at all.
+ * ⛔ NO AMOUNT AND NO BALANCE FROM ANY PAYLOAD (266, 369(c), 456) — the row carries a door to the platform's own
+ * transactions screen instead, exactly as the account page's does.
+ */
+export async function houseHistoryForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  query?: ConsoleQuery,
+): Promise<ConsoleHistoryView | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const q = parseConsoleQuery(query, Date.now(), consoleTab);
+  const wantPage = q.eventId && !q.hpageAsked
+    ? await consoleHistoryAnchorPage(q.eventId, null, q.hpage) : q.hpage;
+
+  const { core, extra: pageRead, extraB: totalRead } = await readDeskCore(
+    () => houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantPage - 1) * CONSOLE_HISTORY_PER_PAGE }),
+    () => houseBotEventStore.countAll({}),
+  );
+  const shell = deskShell(core);
+
+  const historyTotal = totalRead;
+  let rows = pageRead;
+  let shown = consoleLastPage(historyTotal, wantPage, CONSOLE_HISTORY_PER_PAGE);
+  if (q.eventId != null && !q.hpageAsked && shown === wantPage && shown > 1
+    && rows != null && !rows.some((e) => e.id === q.eventId)) shown -= 1;
+  if (rows != null && shown !== wantPage) {
+    try {
+      rows = await houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (shown - 1) * CONSOLE_HISTORY_PER_PAGE });
+    } catch { rows = null; }
+  }
+
+  const byId = consoleRosterMap(core.roster);
+  const history: ConsoleDeskEventRow[] | null = rows == null ? null : rows.map((e) => {
+    const cell = consoleAccountCell(byId, e.houseBotId);
+    return {
+      ...consoleEventRow(e, q.eventId),
+      accountName: cell.accountName,
+      accountIsOperatorText: cell.accountIsOperatorText,
+      accountHref: e.houseBotId === null ? null : consoleBotHref(e.houseBotId),
+    };
+  });
+
+  const panel = consolePanelShell(CONSOLE_ROUTE, q);
+  return {
+    ...shell,
+    historyPage: shown,
+    historyPerPage: panel.historyPerPage,
+    historyParams: panel.historyParams,
+    historyEmpty: CONSOLE_DESK_HISTORY_EMPTY,
+    historyOrderNote: panel.historyOrderNote,
+    queryRefusal: panel.queryRefusal,
+    history,
+    historyTotal,
+  };
+}
+
+
+/* ═══ C7 STEP 5 (the LANDING half) · THE CANCEL DOOR (rulings 340, 350, 382, 415, 512, 522, 523) ═════════════
+ *
+ * ⛔ **THE FIRST WRITE THIS SECTION EVER MAKES TO THE PRESS TABLE**, and it is behind the same named door every
+ * console read goes through: a Next server action is a POST to whatever URL the browser is on, carrying an id in a
+ * header, so no middleware rule, no layout and no page gate can see it. The action's own gate is the only
+ * protection there is, and it decides on the viewer's STORED row (522) rather than on a session cookie's
+ * photograph of it.
+ *
+ * ⛔ **THE EXPORT NAME AND THE GUARD LABEL ARE NEUTRAL; THE AUDIT KEY IS NOT RENAMED** (ruling 382, and the trap it
+ * inverts). Membership in `HOUSE_AUDIT` is what keeps this row out of a player's own audit read, so a key minted to
+ * sound neutral would silently leave that exclusion. The key is `press-audit.ts`'s own, written at the service.
+ */
+
+/** What the cancel control posts. ⛔ `id` is the QUEUED stake; `submitId` is the browser's own idempotency key. */
+export type ConsoleCancelInput = { id: string; submitId: string; reason: string };
+
+/**
+ * What it gets back. ⛔ A union the caller must handle, never a throw: a thrown server action clears the client's
+ * pending state and shows the officer nothing, which on a control that stops money is the worst failure there is.
+ */
+export type ConsoleCancelResult =
+  | { ok: true; changed: boolean; note: string | null; warn: boolean }
+  | { ok: false; error: string; field?: "reason" };
+
+/**
+ * ⛔ ONE SENTENCE PER REFUSAL CODE, IN THE CONSOLE'S OWN NEUTRAL WORDS (453) — never the service's code and never a
+ * raw enum. A control that says only "it did not work" is a control an officer cannot act on (432(j)).
+ */
+const CONSOLE_CANCEL_REFUSAL: Readonly<Record<string, string>> = {
+  refused: "You do not have access to this.",
+  NOT_FOUND: "That stake is no longer on record. Reload the page.",
+  NOT_PENDING: "It had already left the queue, so nothing was stopped. Reload the page to see where it went.",
+  SCHEMA: "The desk is not set up on this database, so nothing could be stopped.",
+  UNREADABLE: "That stake could not be read, so nothing was stopped. Try again.",
+  WRITE_FAILED: "Nothing was stopped. Try again.",
+  BAD_SUBMIT_ID: "Nothing was stopped. Reload the page and try again.",
+  reasonShort: `Say why, in at least ${CONSOLE_REASON_MIN} characters.`,
+  reasonLong: `That is longer than ${CONSOLE_REASON_MAX} characters.`,
+};
+
+/** What the officer is told when the cancel landed but its decision record did not (the repair writes it later). */
+const CONSOLE_CANCEL_NOTE = {
+  done: "The stake was stopped.",
+  notRecorded: "The stake was stopped, but the decision record has not been written yet. It will be.",
+};
+
+/**
+ * Stop one queued stake, as the signed-in officer.
+ *
+ * ⛔ ARITY THREE, like every other write door on this section: the viewer, the calling file's own console route as a
+ * STRING LITERAL, and what the control posted. ⛔ The audience is resolved FIRST and nothing is read before the
+ * verdict, so a refused caller cannot use this as an oracle for whether a record id exists.
+ * ⛔ THE REASON IS VALIDATED HERE WITH THE SAME BOUNDS THE CONTROL ARMS ON (`CONSOLE_REASON_MIN`/`MAX`, the pair the
+ * dialog's own copy carries) — a ceremony verified only in a browser is one a crafted POST walks straight through.
+ */
+export async function houseCancelIntentForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  input: ConsoleCancelInput,
+): Promise<ConsoleCancelResult> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {
+    return { ok: false, error: CONSOLE_CANCEL_REFUSAL.refused };
+  }
+  const id = typeof input.id === "string" ? input.id : "";
+  if (id.length === 0) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.NOT_FOUND };
+  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+  if (reason.length < CONSOLE_REASON_MIN) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonShort, field: "reason" };
+  if (reason.length > CONSOLE_REASON_MAX) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonLong, field: "reason" };
+
+  const done = await cancelQueuedStake({
+    actorId: viewerUserId,
+    intentId: id,
+    submitId: typeof input.submitId === "string" ? input.submitId : "",
+    reason,
+  });
+  if (!done.ok) return { ok: false, error: CONSOLE_CANCEL_REFUSAL[done.code] ?? CONSOLE_CANCEL_REFUSAL.WRITE_FAILED };
+  /* ⛔ A REPEAT OF ONE PRESS IS NOT A SECOND CANCEL, and it is not a failure either: the first press already did
+   * this, so the officer is told the truth about the stake rather than about their second click. */
+  if (!done.changed) return { ok: true, changed: false, note: CONSOLE_CANCEL_NOTE.done, warn: false };
+  return {
+    ok: true,
+    changed: true,
+    note: done.recorded ? CONSOLE_CANCEL_NOTE.done : CONSOLE_CANCEL_NOTE.notRecorded,
+    warn: !done.recorded,
+  };
+}
 
 /* ═══ C7 STEP 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368 as amended by 459, 382, 383, 387, 412) ════════
  *

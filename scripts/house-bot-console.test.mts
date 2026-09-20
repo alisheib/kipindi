@@ -118,9 +118,50 @@
  * a caller cannot add to the shared look). The +9 are the four repairs' own planted controls. ⛔ NONE of them was
  * loosened to go green: four declared mutations — `432-way-out`, `306-way-out-element`, `312a-linked-outside` and
  * `359-door-inside` — put each defect back on disk and every one was SEEN RED on the assertion it names.
+ * ⭐ RAISED AGAIN AT C7 STEP 5's ACCOUNT HALF, to what THIS pass printed on both stores: **memory 659,
+ * Postgres 430**. The account page grew its activity and history panels, and with them 78 new assertions and
+ * their controls: the detail rail's closed list both ways, the TOTAL event-word map and the measurement of WHY it
+ * has to be total (the lexicon is structurally blind to `HOLDER_AGAINST_BOT`), both pagers against COUNTING
+ * readers, the facets moving rows and total together, every crafted query axis refused BY NAME, the two empty
+ * states told apart from a failed read, a bell's anchor landing on the page its own row is on, and the prop-name
+ * pin widened to the three spellings its old `[?:]` tail was blind to.
+ * 🔴 THE +1 OVER THE FIRST GREEN RUN IS THE RED HARNESS PAYING FOR ITSELF. The declared mutation
+ * `317-word-hole` renamed one kind of the TOTAL event-word map and the suite stayed GREEN: the totality
+ * comparison had been written with `j`, which is this file’s DISPLAY helper and slices at 260 characters,
+ * and thirty keys serialise to about 600. Every comparison this step wrote now reads `all`, and the extra
+ * assertion is the CONTROL that keeps the finding — it requires the whole-set comparison to report a rename
+ * 600 characters in and requires `j` NOT to.
+ * 🔴 AND THE +8 AFTER THAT ARE THE RENDER PAYING FOR ITSELF. The panels were driven on a SERVED page over a
+ * scratch Postgres, and the markup carried `href="…&kind=counter"` and `data-chip="kind:counter"` five times —
+ * a word 453 forbids, in the address bar, with EVERY SUITE GREEN (4.453 scans source literals and the token was
+ * computed; 3.453 scanned the labels and not the keys; the bundle scan reads chunks and this is server markup).
+ * The same reading found a `When` column that read one minute on twenty rows under a "Newest first." claim, and
+ * a singular heading above a plural sentence on one card. All three are fixed and all three now have a case.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
+ * ⭐ RAISED AGAIN AT C7 STEP 5's LANDING HALF, to what `npm run test:house-bot-console` PRINTED on this run:
+ * **memory 700, Postgres 470**. `CONSOLE_TABS` grew to its four keys in rail order and the desk-wide activity and
+ * history panels landed behind them, with the rail both pages now share, both pagers against COUNTING readers, the
+ * queued-stake badge read ONCE in the shell for all four tabs, and the hour summary's bell finally landing on the
+ * hour it is about.
+ * 🔴 AND THE MEMORY CHILD'S OWN +41 IS PARTLY A DEFECT THIS RUN FOUND IN THE HARNESS RATHER THAN IN THE
+ * BUILD. `pageRaw`, `pageCode` and `panelOf` were hoisted out of §4 so §2e3 could slice the same page — to column
+ * zero, which READS like the top level and is not: §1 and §2 sit inside one `try` that closes past §2e3, so the
+ * hoisted constants were locals of it and §4 threw `pageRaw is not defined`. The memory child ABORTED at 0
+ * assertions while the Postgres child printed ALL PASS, which is exactly the shape `0.throw` exists to refuse and
+ * exactly why a per-store floor is a PAIR. Indentation is not scope; the declaration now sits above the `try`.
+
+ * 🔴 RAISED AGAIN BY THE LANDING RENDER, WHICH FOUND TWO DEFECTS EVERY SUITE HERE HAD PASSED —
+ * **memory 706, Postgres 471**. (1) The desk-wide panel handed back the SHELL's filtered empty state, whose
+ * body reads "No stake on **this account** matches" — on the one page that has no account to name; the
+ * assertion meant to hold that compared only the two TITLES and then checked the UNFILTERED body for the word
+ * "desk", so the one string that was wrong is the one string nothing read. (2) The Owner's own typed label was
+ * wrapped in `.row-link`, the platform's row-EXIT class, whose `text-transform: uppercase` REWROTE it: the
+ * roster painted `Evening desk - widest label yetX` and these two panels painted `EVENING DESK - WIDEST LABEL
+ * YETX`, one label in two looks 40px apart on one screen. That one was invisible to every scan in this
+ * repository — it lives in a COMPUTED STYLE, and only a photograph and `getComputedStyle` could see it.
+
  * ⚠️ `red:house-bot-console` carries the mutations for every assertion here; it is run once at the commit close.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
@@ -128,6 +169,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 571, postgres: 344 },
+  minPass: { memory: 706, postgres: 471 },
   dbPrefix: "hb_console",
 });

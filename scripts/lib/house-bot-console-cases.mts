@@ -198,6 +198,35 @@ await w.limits();
  * unrelated labels: what the declaration file calls WRONG-ASSERTION, and a guard that goes red for the wrong reason
  * will go green for the wrong reason too. A throw is now REPORTED as a failure of its own and the static guards below
  * still run. ⚠️ The body keeps its own indentation: re-indenting 500 lines would bury the one line that changed. */
+/**
+ * ⛔ ONE PANEL'S OWN SOURCE, AND IT IS A NARROWING RATHER THAN A WIDENING. The landing page carried two panels
+ * when its money rules were written, so a file-wide count of a money header or a column floor WAS that panel's
+ * count. With four panels a file-wide count answers about the page and not about the table, and the two answers
+ * diverge silently — a roster floor deleted while an activity floor is added reads as unchanged. Every scan
+ * that is about ONE table reads that table's own slice, which says strictly more than the count it replaces.
+ *
+ * ⛔ AND IT IS DECLARED HERE, ABOVE THE BEHAVIOURAL REGION'S OWN `try`, BECAUSE THREE SECTIONS NOW SLICE THE SAME
+ * PAGE AND THEY DO NOT SHARE ONE SCOPE. It was a local of §4, which runs on the memory child only; §2e3 runs on
+ * BOTH stores and called it, so the Postgres child threw `panelOf is not defined` — and a throw there does not
+ * fail one case, it ABORTS the child, which is exactly how §3's lexicon scan and §4's whole source law came to be
+ * skipped while the run still printed 414 passes.
+ * 🔴 AND MOVING IT TO COLUMN ZERO WAS NOT ENOUGH, WHICH IS THE SECOND HALF OF THE SAME LESSON AND IT COST A RUN.
+ * §1 and §2 sit inside ONE `try` that opens immediately below this block and closes past §2e3; a declaration
+ * written at column zero INSIDE that try is a local of it, reads exactly like a top-level one, and §4 — which is
+ * outside it — threw `pageRaw is not defined` and aborted the MEMORY child at 0 assertions while the Postgres
+ * child printed ALL PASS. Indentation is not scope. It is declared ABOVE the `try` so every section below can see
+ * it. ⛔ ONE definition, above every reader of it: a second copy is a second answer to "what is this panel",
+ * and this file has a 0.throw case precisely because a silent skip reads like a pass.
+ */
+const pageRaw = read(PAGE);
+const pageCode = decomment(pageRaw);
+const panelOf = (tab: string): string => {
+  const open = pageCode.indexOf(`{tab === "${tab}" && (<>`);
+  if (open < 0) return "";
+  const close = pageCode.indexOf("\n        </>)}", open);
+  return close < 0 ? pageCode.slice(open) : pageCode.slice(open, close);
+};
+
 try {
 section("§1 · the audience, decided on the STORED role, through the gate");
 {
@@ -381,7 +410,12 @@ section("§2 · the strip, the band, the roster and every failure");
                and the ACCOUNT PAGE's own label — which is the head of that page and therefore the string most
                likely to sit in a screenshot of it. */
             && /label: clampOperatorText\(bot\.label, operatorBound\("label"\)\),/.test(gateSrc)
-            && (gateSrc.match(/clampOperatorText\(/g) ?? []).length === 4
+            /* ⭐ A FIFTH SITE AT C7 STEP 5's LANDING HALF: the desk-wide feed and history each name the account a
+               row is about, and that name is the operator's own text on a page that lists every account at once
+               — so it is bounded by the SAME named bound, read from the same list, at the one site both panels
+               get it from. */
+            && /accountName: clampOperatorText\(found\.label, operatorBound\("label"\)\),/.test(gateSrc)
+            && (gateSrc.match(/clampOperatorText\(/g) ?? []).length === 5
             && !/maxCodePoints: \d+/.test(gateSrc.slice(gateSrc.indexOf("function clampOperatorText"))),
           j({ sites: (gateSrc.match(/clampOperatorText\(/g) ?? []).length }));
       }
@@ -2863,8 +2897,11 @@ try {
           snapshot: { titleEn: `Poll ${n}`, category: "sports", cutoff: "2026-12-31T00:00:00.000Z", rawYes: 0, rawNo: 0 },
         } as Any);
       }
-      const p1 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, 1);
-      const p2 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, 2);
+      /* ⛔ THE DOOR IS DRIVEN WITH THE ADDRESS ITSELF, NOT WITH A PRE-PARSED NUMBER (C7 step 5). Its fourth argument
+         became the REQUEST's own query string when the two panels landed — so these calls now exercise the
+         validation too, which a hand-parsed `2` walked straight past. The arity is unchanged at four. */
+      const p1 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, { tab: "targets", tpage: "1" });
+      const p2 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, { tab: "targets", tpage: "2" });
       const ids = (x: Any): string[] => (x.targets ?? []).map((t: Any) => t.id);
       ok("1.grid22 · the Targets grid serves ONE page of 20 and says how many there are in all — the total is a COUNTING read, never the page's own length",
         p1.targets.length === 20 && p1.targetsTotal === 22 && p1.targetsPage === 1 && p1.targetsPerPage === 20
@@ -2882,8 +2919,8 @@ try {
         j({ p1: p1.targetsActive, p2: p2.targetsActive }));
       /* ⛔ A HAND-TYPED PAGE PAST THE END IS SERVED AS THE LAST PAGE, never as an empty grid under a pager
          pointing somewhere else — and a page number that is not a page at all reads as page 1. */
-      const over = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, 99);
-      const junk = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, Number("x"));
+      const over = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, { tab: "targets", tpage: "99" });
+      const junk = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, { tab: "targets", tpage: "x" });
       ok("1.grid22 · `?tpage=99` is served as the LAST page with its rows, and a page number that is not one reads as page 1",
         over.targetsPage === 2 && j(ids(over)) === j(ids(p2)) && junk.targetsPage === 1 && j(ids(junk)) === j(ids(p1)),
         j({ over: over.targetsPage, overRows: over.targets.length, junk: junk.targetsPage }));
@@ -3030,10 +3067,14 @@ try {
   {
     const detail = decomment(read(DETAIL_PAGE));
     const guards = (detail.match(/\{!view\.removed && \(/g) ?? []).length;
-    ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and both other panels",
+    /* ⭐ SIX BECAME EIGHT AT C7 STEP 5, AND THE RULE IS UNCHANGED: every card of this page is guarded by `removed`
+       from the INSIDE. The two new panels are two more guards — the activity panel and the history panel — and the
+       number is an EQUALITY, not a floor, so a panel that ships without its guard is still red. Re-derived from a
+       run of this suite on both stores, never carried over from the last one. */
+    ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and all four other panels",
       /* ⚠️ THE SOURCE IS DECOMMENTED, so a pin may not reach for a comment as its landmark — measured on the
          first run of this very assertion, which looked for the `312` note above the rail and found nothing. */
-      guards === 6 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
+      guards === 8 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
         && /\{view\.removed && \(\s*<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(detail),
       j({ guards }));
     /* ⛔ AND THE TAB TESTS ARE STILL PURE, which is what keeps `test:tab-anchors` and the served probe able to read
@@ -3058,10 +3099,1033 @@ try {
          treatment is written once. The read behind it IS taken on a removed account — the rules are parsed to
          be shown as a record — so this one is reachable and correct; what 355 refuses is a failure treatment
          for a read a removed account never takes. */
-      (detail.match(/<AdminLoadError/g) ?? []).length === 3
+      (detail.match(/<AdminLoadError/g) ?? []).length === 5 /* ⭐ FIVE SINCE C7 STEP 5: the activity panel and the
+           history panel each own one, each INSIDE its own `!view.removed` guard — a removed account takes neither
+           list read, and a read that was never taken has not failed. Still an EQUALITY; re-derived from this run. */
         && detail.indexOf('{view.removed && (') < detail.indexOf('{tab === "overview"'),
       j({ loadErrors: (detail.match(/<AdminLoadError/g) ?? []).length }));
   }
+
+  /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   * §2e2 · C7 STEP 5 — THE ACCOUNT PAGE'S TWO PANELS (rulings 312, 317, 344, 345, 355, 369, 410, 411, 453)
+   *
+   * ⛔ WHY THE ACCOUNT HALF LANDED FIRST, MEASURED. `scripts/lib/house-bot-comms-cases.mts` case 7.2d asserts
+   * `!consoleTabExists("activity") && !consoleTabExists("history")` AND `deadTabs.length >= 1`. A run of that
+   * suite prints ELEVEN `?tab=` hrefs — ten DETAIL links and exactly one LANDING link (the hour summary's) — so a
+   * landing-panels-first build reds 7.2d on arrival while this one leaves that single landing link dead and 7.2d
+   * measuring it. The debt list beside that case is keyed per SHAPE for the same reason.
+   * ════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+  section("§2e2 · the account page's activity and history panels");
+
+  /* ── 1.312 · THE DETAIL RAIL'S CLOSED LIST, BOTH DIRECTIONS ───────────────────────────────────────────────── */
+  {
+    const detailRaw = read(DETAIL_PAGE);
+    const detail = decomment(detailRaw);
+    const panelKeys = [...new Set([...detail.matchAll(/\{tab === "([a-z-]+)" && \(<>/g)].map((m) => m[1]))];
+    ok("1.312 · the account page's rail is FIVE keys in rail order — overview · activity · rules · targets · history — and nothing else",
+      all([...CR.CONSOLE_DETAIL_TABS]) === all(["overview", "activity", "rules", "targets", "history"])
+        && CR.DEFAULT_DETAIL_TAB === "overview", j([...CR.CONSOLE_DETAIL_TABS]));
+    /* ⛔ BOTH DIRECTIONS, AND IN ORDER. A panel for every key is ruling 312's dead control; a key for every panel
+       is the other half — a panel nothing can reach is dead code that reads as a feature in a diff. */
+    ok("1.312 · a panel for every key AND a key for every panel, in the SAME order — read off the page as TEXT, which is how the served probe reads it too",
+      all(panelKeys) === all([...CR.CONSOLE_DETAIL_TABS]), j({ panelKeys, tabs: [...CR.CONSOLE_DETAIL_TABS] }));
+    ok("1.312 · CONTROL · the both-ways comparison really fires — a key with no panel and a panel with no key are each reported, and the shipped page is not",
+      all([...CR.CONSOLE_DETAIL_TABS, "money"]) !== all(panelKeys)
+        && all([...panelKeys, "money"]) !== all([...CR.CONSOLE_DETAIL_TABS])
+        && all(panelKeys) === all([...CR.CONSOLE_DETAIL_TABS]), "");
+    /* ⭐ 302's POSITIVE HALF, WHICH ONLY EXISTS ONCE A PANEL DOES: the two new keys now resolve to THEMSELVES. */
+    ok("1.302 · `?tab=activity` and `?tab=history` resolve to themselves now that their panels exist — the fallback is for values with no panel, not for these",
+      CR.consoleDetailTab("activity") === "activity" && CR.consoleDetailTab("history") === "history"
+        && CR.consoleDetailTabExists("activity") && CR.consoleDetailTabExists("history"), "");
+    ok("1.302 · …and every value with no panel still resolves to the default — absent, empty, misspelled, a repeated parameter and a struck key alike, never a 404 and never a redirect",
+      [undefined, "", "Activity", "money", "hist0ry"].every((v) => CR.consoleDetailTab(v as Any) === "overview")
+        && CR.consoleDetailTab(["activity", "history"] as Any) === "overview", "");
+    /* ⛔ RULING 312's OWN PROOF CLAUSE, WHICH GREP SHOWS HAS NEVER BEEN ASSERTED ANYWHERE: the design gate holds
+       the PAGE and not a tab of it. A `?tab=` entry there would make the gate photograph one panel and call it the
+       route, and the next panel would ship unphotographed with a green gate. */
+    {
+      const gateRoutes = read("scripts/design-gate/routes.mjs");
+      const deskEntries = [...gateRoutes.matchAll(/"(\/admin\/desk[^"]*)"/g)].map((m) => m[1]);
+      ok("1.312 · 329 · the design gate holds the console's PAGES and no `?tab=` of them — ruling 312's own Proof clause, asserted here for the first time",
+        deskEntries.length >= 2 && deskEntries.includes(CR.CONSOLE_ROUTE) && deskEntries.includes(CR.CONSOLE_NEW_ROUTE)
+          && deskEntries.every((r) => !r.includes("?")), j(deskEntries));
+      ok("1.312 · 329 · CONTROL · the scan really reads that file and would see a query entry — planted, it is reported; the shipped list is not",
+        [...`${gateRoutes}\n  "/admin/desk?tab=activity",`.matchAll(/"(\/admin\/desk[^"]*)"/g)].some((m) => m[1].includes("?"))
+          && deskEntries.every((r) => !r.includes("?")), "");
+    }
+    /* ── 1.405 · THE DETAIL RAIL'S LABELS, READ FROM THE PAGE'S OWN TABLE ──────────────────────────────────── */
+    const tabTable = detail.slice(detail.indexOf("const TAB_LABEL"), detail.indexOf("};", detail.indexOf("const TAB_LABEL")));
+    const parsedLabels = [...tabTable.matchAll(/(\w+):\s*"([^"]*)"/g)].map((m) => [m[1], m[2]] as const);
+    const sentenceCase = (k: string) => `${k[0].toUpperCase()}${k.slice(1)}`;
+    ok("1.405 · the account rail's labels are the PAGE's own `TAB_LABEL`, one per key of the closed list, each the key in English sentence case",
+      parsedLabels.length === CR.CONSOLE_DETAIL_TABS.length
+        && all(parsedLabels.map(([k]) => k)) === all([...CR.CONSOLE_DETAIL_TABS])
+        && parsedLabels.every(([k, v]) => v === sentenceCase(k))
+        && /TAB_LABEL: Record<\(typeof CONSOLE_DETAIL_TABS\)\[number\], string>/.test(detail)
+        && /labelEn: TAB_LABEL\[k\]/.test(detail), j(parsedLabels));
+    ok("1.405 · CONTROL · the parse really read the page's table, and a label that is NOT the key in sentence case is reported",
+      parsedLabels.length === 5 && parsedLabels.every(([, v]) => v.length >= 4)
+        && !([["activity", "Feed"]] as Array<readonly [string, string]>).every(([k, v]) => v === sentenceCase(k))
+        && ([["activity", "Activity"]] as Array<readonly [string, string]>).every(([k, v]) => v === sentenceCase(k)),
+      j(parsedLabels.length));
+    /* ⛔ AND NO DOCBLOCK MAY QUOTE THE PANEL IDIOM (433(e)): the served probe reads the RAW file, so a comment
+       spelling `tab === "…"` invents a tab key no panel answers and the probe then requests a page nobody built. */
+    const rawKeys = [...new Set([...detailRaw.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]))];
+    ok("1.315 · the RAW account page still yields exactly the closed list after two panels were added — no comment on either invents a key",
+      all(rawKeys) === all([...CR.CONSOLE_DETAIL_TABS]), j(rawKeys));
+  }
+
+  /* ── 1.317 · THE EVENT WORD MAP IS TOTAL, NEUTRAL, AND HAS NO RAW-ENUM ESCAPE ─────────────────────────────── */
+  {
+    const K = (await import("../../src/lib/house-bot/constants.ts")) as Any;
+    const WORD = GATEM.CONSOLE_EVENT_WORD as Record<string, string>;
+    const kinds = [...K.EVENT_KINDS] as string[];
+    ok("1.317 · the console's event word map is TOTAL over `EVENT_KINDS` — every kind has a word and no word names a kind that does not exist, compared member for member",
+      all(Object.keys(WORD).sort()) === all([...kinds].sort()) && kinds.length >= 30,
+      j({ kinds: kinds.length, words: Object.keys(WORD).length }));
+    /* 🔴 AND THE COMPARISON READS THE WHOLE SERIALISATION, WHICH THIS SUITE'S OWN DISPLAY HELPER DOES NOT.
+     * `j` is `JSON.stringify(v)?.slice(0, 260)` — a helper for the line an assertion PRINTS — and the file says so
+     * two screens up: `all` is "the WHOLE serialisation, the only form an assertion may scan". Written with `j`,
+     * this comparison was TRUE with a kind renamed, because thirty keys serialise to roughly 600 characters and
+     * the rename sits well past the cut. MEASURED, not reasoned about: the declared mutation `317-word-hole` put
+     * that exact defect back and the suite stayed GREEN — the red harness found the hole in the guard, which is
+     * the entire reason a guard is driven instead of read. The control below keeps the finding.
+     */
+    ok("1.317 · CONTROL · the totality comparison reads the WHOLE key set — a kind renamed 600 characters in is reported, and the suite's 260-character DISPLAY helper would have hidden exactly that",
+      (() => {
+        const renamed = Object.keys(WORD).map((k) => (k === "SUNSET" ? "SUNSET_DISABLED" : k)).sort();
+        const kindsSorted = [...kinds].sort();
+        return all(renamed) !== all(kindsSorted) && j(renamed) === j(kindsSorted)
+          && all(kindsSorted) === all([...kinds].sort());
+      })(), "");
+    ok("1.317 · 453 · not one of its words carries a house-vocabulary word, or the words this section additionally may not render",
+      Object.values(WORD).every((v) => !NEUTRAL.test(v) && houseHits(v).length === 0),
+      j(Object.entries(WORD).filter(([, v]) => NEUTRAL.test(v))));
+    /* ⛔ AND THIS IS WHY TOTALITY IS THE GUARD RATHER THAN A SCAN. `CONSOLE_EXTRA_WORDS` opens with a `\bbots?\b`
+       word-boundary pattern and an UNDERSCORE IS A WORD CHARACTER — so there is no boundary before `BOT` in
+       `HOLDER_AGAINST_BOT` and the lexicon cannot see that kind at all. A `WORD[kind] ?? kind` fallback would have
+       painted the feature's own name with NOTHING reporting it: not this scan, not 4.453, not the bundle scan. */
+    ok("1.317 · ⛔ MEASURED · the lexicon is BLIND to `HOLDER_AGAINST_BOT` — an underscore is a word character, so `\\bbots?\\b` has no boundary before BOT — which is exactly why the map is TOTAL and tsc-enforced instead of scanned",
+      kinds.includes("HOLDER_AGAINST_BOT")
+        && !NEUTRAL.test("HOLDER_AGAINST_BOT") && houseHits("HOLDER_AGAINST_BOT").length === 0
+        && NEUTRAL.test("HOLDER AGAINST BOT"),
+      j({ blind: !NEUTRAL.test("HOLDER_AGAINST_BOT"), spaced: NEUTRAL.test("HOLDER AGAINST BOT") }));
+    ok("1.317 · CONTROL · the same scan DOES fire on a word that names the feature, so the zero above is a measurement and not an empty walk",
+      NEUTRAL.test("The holder staked against this bot") && Object.values(WORD).length >= 30, "");
+    /* ⛔ AND NO RAW-ENUM ESCAPE EXISTS BESIDE IT — not in the gate module, not in either panel. */
+    const gateSrcNow = decomment(read(GATE));
+    ok("1.317 · 453 · no raw-enum fallback survives anywhere the two panels are built — no `?? kind`, no `?? e.kind`, and no `?? code`",
+      !/\?\?\s*(?:e\.)?kind\b/.test(gateSrcNow) && !/\?\?\s*code\b/.test(gateSrcNow)
+        && !/\?\?\s*(?:r\.)?(?:kind|reasonCode|status)\b/.test(decomment(read(DETAIL_PAGE))),
+      "");
+    ok("1.317 · CONTROL · that scan really fires on the fallback it forbids",
+      /\?\?\s*(?:e\.)?kind\b/.test("eventWord: STAFF_EVENT_WORD[e.kind] ?? e.kind,"), "");
+    /* ⛔ AND THE SHARED TABLE IS NOT THE CONSOLE'S: `feed-copy.ts` is `Partial` and one of its own words is a
+       needle of the shared vocabulary, so a console that reached for it would paint the feature behind the gate. */
+    const FC = (await import("../../src/lib/house-bot/feed-copy.ts")) as Any;
+    const staffWords = Object.values(FC.STAFF_EVENT_WORD ?? {}) as string[];
+    ok("1.317 · 370(c) · the ENGINE's own event words are NOT the console's — that table is partial and at least one of its words is a needle of the shared vocabulary, and no file under the section imports it",
+      staffWords.length > 0 && staffWords.length < kinds.length
+        && staffWords.some((s) => NEUTRAL.test(s))
+        && sectionFiles.every((f) => !decomment(read(f)).includes("feed-copy")),
+      j({ partial: staffWords.length, kinds: kinds.length, needles: staffWords.filter((s) => NEUTRAL.test(s)) }));
+  }
+
+  /* ── THE PANELS, DRIVEN (both stores) ─────────────────────────────────────────────────────────────────────── */
+  {
+    const KC = (await import("../../src/lib/house-bot/constants.ts")) as Any;
+    const K_INTENT_KINDS = KC.INTENT_KINDS as readonly string[];
+    const K_INTENT_STATUSES = KC.INTENT_STATUSES as readonly string[];
+    const panels = await w.bot({});
+    const other = await w.bot({});
+    /* 41 stakes on 41 distinct markets — `anchorKey` for a FILL row IS the market, so distinct markets is what
+       makes a set this size insertable at all. The instants are separated on purpose: rows that share a
+       millisecond are a fixture artefact, and a pager is about a real order. */
+    const feedIds: string[] = [];
+    const KINDS = ["COUNTER", "FILL", "OPENER", "MANUAL"] as const;
+    const STATUSES = ["PENDING", "PLACED", "SKIPPED", "FAILED", "CANCELLED"] as const;
+    for (let n = 1; n <= 41; n++) {
+      const id = `hbi_panel_${String(n).padStart(2, "0")}`;
+      const kind = KINDS[n % 4];
+      const status = STATUSES[n % 5];
+      const manual = kind === "MANUAL";
+      const counter = kind === "COUNTER";
+      /* Every row satisfies the table's own CHECKs, so the fixture is the shape production really stores:
+         a COUNTER is anchored on its trigger position, a MANUAL on a submit id and always on a poll, and a
+         PLACED row holds the position it placed. */
+      const submitId = `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
+      await w.dal.houseBotIntentStore.insert({
+        id, houseBotId: panels.botId, botUserId: panels.userId, kind,
+        anchorKey: counter ? `pos_panel_${n}` : manual ? `manual:${OFFICER}:${submitId}` : `mkt_panel_${n}`,
+        marketId: `mkt_panel_${n}`, productLine: !manual && n % 3 === 0 ? "UPDOWN" : "MARKET",
+        triggerPositionId: counter ? `pos_panel_${n}` : null,
+        triggerUserId: counter ? "usr_panel_trigger_player" : null,
+        targetId: null, requestedById: manual ? OFFICER : null,
+        entryCondition: manual ? "THIN" : null, side: "YES", stakeTzs: 1_000 + n,
+        dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000),
+        status, reasonCode: status === "SKIPPED" ? "CAP_PER_HOUR" : status === "FAILED" ? "INTERNAL" : null,
+        why: "Counter · a sentence the console must never paint · TZS 9,999",
+        decision: { snapshot: "blob" }, attempts: 0, transientAttempts: 0, nextAttemptAt: null,
+        claimedBy: null, claimedUntil: null,
+        positionId: status === "PLACED" ? `pos_placed_panel_${n}` : null,
+        finishedAt: null, alertedAt: null,
+      } as Any);
+      feedIds.push(id);
+      await new Promise((r) => setTimeout(r, 2));
+    }
+    /* One stake on the OTHER account, so every count below is shown to be scoped and not a whole-table count. */
+    await w.dal.houseBotIntentStore.insert({
+      id: "hbi_panel_other", houseBotId: other.botId, botUserId: other.userId, kind: "FILL",
+      anchorKey: "mkt_panel_other", marketId: "mkt_panel_other", productLine: "MARKET",
+      triggerPositionId: null, triggerUserId: null, targetId: null, requestedById: null, entryCondition: null,
+      side: "NO", stakeTzs: 7_000, dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000),
+      status: "PLACED", reasonCode: null, why: null, decision: {}, attempts: 0, transientAttempts: 0,
+      nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: "pos_placed_panel_other",
+      finishedAt: null, alertedAt: null,
+    } as Any);
+
+    const feedView = (qq: Record<string, unknown> = {}) =>
+      GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "activity", ...qq });
+
+    const p1 = await feedView();
+    const p2 = await feedView({ page: "2" });
+    const p3 = await feedView({ page: "3" });
+    const ids = (v: Any): string[] => (v.feed ?? []).map((r: Any) => `${r.whenTitle}|${r.stake}`);
+
+    /* ⛔ 344 · THE TOTAL IS A COUNTING READ AND NEVER THE PAGE'S OWN LENGTH. */
+    ok("1.344 · the activity panel serves ONE page of 20 and says how many there are in all — the total is a COUNTING read, never the page's own length",
+      p1.feed.length === 20 && p1.feedTotal === 41 && p1.feedPage === 1 && p1.feedPerPage === 20
+        && p1.feedTotal !== p1.feed.length, j({ rows: p1.feed.length, total: p1.feedTotal, page: p1.feedPage }));
+    ok("1.344 · …and the total does not move as the officer pages, because it is not read off the page",
+      p2.feedTotal === 41 && p3.feedTotal === 41 && p2.feed.length === 20 && p3.feed.length === 1,
+      j({ p2: p2.feed.length, p3: p3.feed.length, totals: [p1.feedTotal, p2.feedTotal, p3.feedTotal] }));
+    ok("1.344 · the three pages together are the whole set with nothing repeated and nothing lost",
+      new Set([...ids(p1), ...ids(p2), ...ids(p3)]).size === 41
+        && ids(p1).every((x) => !ids(p2).includes(x)) && ids(p2).every((x) => !ids(p3).includes(x)),
+      j({ union: new Set([...ids(p1), ...ids(p2), ...ids(p3)]).size }));
+    /* ⛔ AND THE COUNT IS THIS ACCOUNT'S, not the table's: the other account's stake is in neither. */
+    ok("1.344 · the total and the rows are scoped to THIS account — the second account's stake is in neither, so the count is a scoped count and not a table count",
+      p1.feedTotal === 41 && !ids(p1).concat(ids(p2), ids(p3)).some((x) => x.endsWith(`|${formatTzs(7_000)}`)),
+      j({ total: p1.feedTotal }));
+    /* ⛔ A HAND-TYPED PAGE PAST THE END IS SERVED AS THE LAST PAGE — the idiom this section already ships. */
+    const over = await feedView({ page: "99" });
+    const junk = await feedView({ page: "x" });
+    ok("1.411 · `?page=99` is served as the LAST page with its rows, and a page number that is not one reads as page 1 AND is reported as a refusal",
+      over.feedPage === 3 && over.feed.length === 1 && junk.feedPage === 1 && junk.feed.length === 20
+        && typeof junk.queryRefusal === "string" && junk.queryRefusal.includes("page"),
+      j({ over: over.feedPage, junk: junk.feedPage, refusal: junk.queryRefusal }));
+
+    /* ── 1.345 · THE ROWS AND THE TOTAL MOVE TOGETHER OVER EVERY FACET ───────────────────────────────────── */
+    const agree = async (qq: Record<string, unknown>, want: number) => {
+      const v = await feedView(qq);
+      return { total: v.feedTotal, rows: v.feed.length, want, ok: v.feedTotal === want && v.feed.length === Math.min(want, 20) && v.queryRefusal === null };
+    };
+    const byKind = await agree({ kind: "manual" }, 10);
+    /* ⚠️ `up-down`, NOT `updown`: a URL token is the option's own painted word slugged, never the enum lowercased
+       — see the leak recorded at `consoleSlug`. The fixture asks for it the way an officer's browser would. */
+    const byProduct = await agree({ product: "up-down" }, 9);
+    const byOutcome = await agree({ outcome: "failed" }, 8);
+    const byBoth = await agree({ kind: "manual", outcome: "failed" }, 2);
+    ok("1.345 · the listing reader and the COUNTING reader are called with the same facets, so the rows and the total move together over each one — type, product, outcome, and two at once",
+      [byKind, byProduct, byOutcome, byBoth].every((x) => x.ok),
+      j({ byKind, byProduct, byOutcome, byBoth }));
+    ok("1.345 · CONTROL · the facets really NARROW — each of the four answers fewer rows than the unfiltered 41, and the two-facet answer is narrower than either of its halves",
+      byKind.total < 41 && byProduct.total < 41 && byOutcome.total < 41
+        && byBoth.total < byKind.total && byBoth.total < byOutcome.total,
+      j({ all: 41, byKind: byKind.total, byProduct: byProduct.total, byOutcome: byOutcome.total, byBoth: byBoth.total }));
+    /* ⛔ SOURCE HALF · ONE FILTER OBJECT, spread into the page read and passed whole to the count — a hand-copied
+       twin of the facet list is how a total comes to measure a different population from the rows above it. */
+    const gateNow = decomment(read(GATE));
+    ok("1.345 · SOURCE · there is ONE filter object: the count takes it whole and the page read spreads it with only the paging words added",
+      /const feedFilter: IntentFeedCount = \{/.test(gateNow)
+        && /houseBotIntentStore\.countFeed\(feedFilter\)/.test(gateNow)
+        /* ⭐ FOUR SITES SINCE THE LANDING HALF: each panel reads its page ONCE and re-reads it ONCE when the
+           address asked for a page past the end, and every one of the four spreads the SAME filter object with
+           only the paging words added. ⛔ The count is an EQUALITY: a fifth read built from a hand-copied facet
+           list is exactly the drift this case exists for. */
+        && (gateNow.match(/listFeed\(\{ \.\.\.feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset:/g) ?? []).length === 4
+        /* ⛔ AND THE DESK-WIDE COUNT TAKES THE SAME OBJECT WHOLE, exactly as the account page's does. */
+        && (gateNow.match(/countFeed\(feedFilter\)/g) ?? []).length === 2,
+      j({ countCalls: (gateNow.match(/countFeed\(/g) ?? []).length }));
+
+    /* ── 1.355 · A FAILED READ IS NEVER AN EMPTY STATE, AND EACH FAILURE IS ATTRIBUTED TO ITS OWN FIGURE ──── */
+    const realList = w.dal.houseBotIntentStore.listFeed;
+    const realCount = w.dal.houseBotIntentStore.countFeed;
+    let listFailed: Any; let countFailed: Any;
+    try {
+      w.dal.houseBotIntentStore.listFeed = async () => { throw new Error("planted feed page failure"); };
+      listFailed = await feedView();
+    } finally { w.dal.houseBotIntentStore.listFeed = realList; }
+    try {
+      w.dal.houseBotIntentStore.countFeed = async () => { throw new Error("planted feed count failure"); };
+      countFailed = await feedView();
+    } finally { w.dal.houseBotIntentStore.countFeed = realCount; }
+    ok("1.355 · a failed activity read is `feed === null` — the page's AdminLoadError — and NEVER an empty list, which says a different thing",
+      listFailed.feed === null && Array.isArray(p1.feed), j({ failed: listFailed.feed, ok: Array.isArray(p1.feed) }));
+    ok("1.355 · …and the failure is attributed to ITS figure: a failed PAGE read leaves the rest of the account page whole, and a failed COUNT leaves the rows",
+      listFailed.label === p1.label && listFailed.usage !== null
+        && countFailed.feedTotal === null && Array.isArray(countFailed.feed) && countFailed.feed.length === 20,
+      j({ countRows: countFailed.feed?.length, countTotal: countFailed.feedTotal }));
+    ok("1.355 · CONTROL · both planted failures RESOLVED — the reader settles its reads, so one rejection never propagates out of the door",
+      listFailed !== null && listFailed.found === true && countFailed !== null && countFailed.found === true, "");
+
+    /* ── EMPTY, AND THE TWO EMPTIES ARE DIFFERENT SENTENCES ──────────────────────────────────────────────── */
+    const empty = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", other.botId, { tab: "activity", outcome: "expired" });
+    const emptyBare = await w.bot({});
+    const bare = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", emptyBare.botId, { tab: "activity" });
+    ok("1.355 · an account with nothing to show answers an EMPTY LIST and its own empty state — never null, which is a failed read",
+      Array.isArray(bare.feed) && bare.feed.length === 0 && bare.feedTotal === 0
+        && bare.feedFiltered === false && bare.feedEmpty.title === "Nothing staked yet", j(bare.feedEmpty));
+    ok("1.355 · 432(j) · a FILTER that matched nothing says so in different words, and offers the way back — an empty list and an empty filter are not the same state",
+      empty.feed.length === 0 && empty.feedFiltered === true
+        && empty.feedEmpty.title !== bare.feedEmpty.title
+        && typeof empty.feedClearHref === "string" && !empty.feedClearHref.includes("outcome="),
+      j({ filtered: empty.feedEmpty, bare: bare.feedEmpty, clear: empty.feedClearHref }));
+
+    /* ── VALIDATION · EVERY AXIS CHECKED IN THE DOOR, EVERY REFUSAL NAMED ────────────────────────────────── */
+    const smuggle = await feedView({ outcome: "'; DROP TABLE", kind: "<script>", product: "MARKET_OR_1=1" });
+    ok("1.302 · a bypassed client smuggles NOTHING past the door: three crafted axes narrow nothing, and the answer is the unfiltered list",
+      smuggle.feedTotal === 41 && smuggle.feed.length === 20 && smuggle.feedFiltered === false,
+      j({ total: smuggle.feedTotal, filtered: smuggle.feedFiltered }));
+    ok("1.302 · 432(j) · …and every refused axis is NAMED, by its own screen word, in one sentence — never a silent narrowing",
+      typeof smuggle.queryRefusal === "string"
+        && ["type", "product", "outcome"].every((axis) => smuggle.queryRefusal.includes(axis)),
+      j(smuggle.queryRefusal));
+    const repeated = await feedView({ outcome: ["failed", "placed"] });
+    ok("1.302 · a REPEATED parameter is one value for nobody — it is refused and named, never resolved to whichever arrived first",
+      repeated.feedTotal === 41 && repeated.feedFiltered === false
+        && typeof repeated.queryRefusal === "string" && repeated.queryRefusal.includes("outcome"),
+      j({ total: repeated.feedTotal, refusal: repeated.queryRefusal }));
+    ok("1.302 · CONTROL · the SAME axes with real values are honoured and NOTHING is refused, so the refusals above are a measurement and not a door that refuses everything",
+      byOutcome.ok && (await feedView({ outcome: "failed" })).queryRefusal === null, "");
+    const badWindow = await feedView({ range: "3000y" });
+    ok("1.302 · a window preset the rail does not offer is refused and named, and the panel stays on the window it was on",
+      badWindow.feedTotal === 41 && typeof badWindow.queryRefusal === "string" && badWindow.queryRefusal.includes("window"),
+      j({ refusal: badWindow.queryRefusal }));
+
+    /* ── THE RAIL IS BUILT FROM THE SAME PARSE, SO THE CONTROL AND THE READ CANNOT DISAGREE ──────────────── */
+    const railed = await feedView({ outcome: "failed" });
+    const groups = railed.feedFilters as Any[];
+    ok("1.410 · the rail is THREE axes, each an 'Any …' option plus one per member of its own closed list, with the live one marked",
+      groups.length === 3 && all(groups.map((g) => g.param)) === all(["kind", "product", "outcome"])
+        && groups[0].options.length === 1 + (K_INTENT_KINDS as string[]).length
+        && groups[2].options.some((o: Any) => o.on === true && o.key === "failed")
+        && groups[0].options.filter((o: Any) => o.on).length === 1,
+      j(groups.map((g) => ({ param: g.param, options: g.options.length, on: g.options.filter((o: Any) => o.on).length }))));
+    ok("1.411 · every rail link carries the tab and every OTHER live filter, and DROPS the page — a filter change that kept the page lands on one the narrowed list no longer has",
+      groups.every((g) => g.options.every((o: Any) => o.href.includes("tab=activity") && !/[?&]page=/.test(o.href)))
+        && groups[0].options.some((o: Any) => o.href.includes("outcome=failed")),
+      j(groups[0].options.map((o: Any) => o.href).slice(0, 3)));
+    /* 🔴 EVERY OPTION'S KEY AND EVERY LINK IT BUILDS, NOT ONLY ITS LABEL — AND THIS GUARD EXISTS BECAUSE THE
+       FIRST BUILD OF THIS RAIL LEAKED. Read off a SERVED page on a scratch database, not reasoned about: with the
+       token derived as `member.toLowerCase()`, `/admin/desk/<id>?tab=activity` came back carrying
+       `href="…&kind=counter"` and `data-chip="kind:counter"` five times — a word 453 forbids, in served markup and
+       in the address bar, where it lands in every screenshot of the screen. ⛔ AND EVERY SUITE WAS GREEN: 4.453
+       scans source LITERALS and the token is computed at runtime; 3.453 scanned the painted LABELS and not the
+       keys; `verify:house-bot-bundle` reads chunks and this is server markup. The rule is now inverted — a token
+       may only be the option's OWN painted word, slugged — and this is the assertion that keeps it.
+       ⚠️ Only the QUERY half of each href is scanned: the PATH necessarily carries the record id the viewer
+       themselves asked for, which ruling 548 settled is not a disclosure and is not this rule's subject. */
+    const railQuery = (href: string) => decodeURIComponent(href.split("?")[1] ?? "");
+    ok("1.453 · every option KEY and every link the rail builds is neutral too — a token is the option's own painted word slugged, never the enum lowercased",
+      groups.every((g) => g.options.every((o: Any) =>
+        !NEUTRAL.test(o.key) && houseHits(o.key).length === 0
+        && !NEUTRAL.test(railQuery(o.href)) && houseHits(railQuery(o.href)).length === 0)),
+      j(groups.flatMap((g) => g.options.map((o: Any) => o.key)).filter((k: string) => NEUTRAL.test(k))));
+    ok("1.453 · CONTROL · the token the first build shipped IS a hit and the token it ships now is not — so the zero above is a measurement and not a scan that stopped matching",
+      NEUTRAL.test("counter") && NEUTRAL.test("kind=counter") && NEUTRAL.test("tab=activity&kind=counter")
+        && !NEUTRAL.test("kind=responding") && !NEUTRAL.test("tab=activity&kind=responding"), "");
+    ok("1.453 · …and each axis's tokens are DISTINCT, so two members can never slug to one address and silently filter for each other",
+      groups.every((g) => new Set(g.options.map((o: Any) => o.key)).size === g.options.length),
+      j(groups.map((g) => ({ param: g.param, keys: g.options.map((o: Any) => o.key) }))));
+    /* ⛔ AND THE TOKEN THE RAIL PUBLISHES IS THE TOKEN THE DOOR READS — one table, read from both ends, so a
+       control an officer clicks can never address a filter the server does not recognise. */
+    ok("1.453 · the rail's token and the door's parse are ONE table — every option the rail publishes round-trips through the door and narrows the list it says it will",
+      (await Promise.all(groups.flatMap((g) => g.options.filter((o: Any) => o.key !== "").map(async (o: Any) => {
+        const v = await feedView({ [g.param]: o.key });
+        return v.queryRefusal === null && v.feedFiltered === true;
+      })))).every(Boolean),
+      j(groups.flatMap((g) => g.options.map((o: Any) => `${g.param}=${o.key}`)).slice(0, 6)));
+    ok("1.410 · 453 · not one option label, group label or empty-state sentence of either panel names the feature",
+      groups.flatMap((g) => [g.label, ...g.options.map((o: Any) => o.label)])
+        .concat([railed.feedEmpty.title, railed.feedEmpty.body, railed.feedOrderNote, railed.historyEmpty.title, railed.historyEmpty.body])
+        .every((s: string) => !NEUTRAL.test(s) && houseHits(s).length === 0),
+      j(groups.flatMap((g) => g.options.map((o: Any) => o.label)).filter((s: string) => NEUTRAL.test(s))));
+
+    /* ── 1.453 / D20 · WHAT THE ROW MAY NOT CARRY ───────────────────────────────────────────────────────── */
+    const painted = JSON.stringify(p1.feed);
+    ok("1.453 · D20 · no feed row carries the engine's composed sentence, its decision blob or another player's id — and the fixture PLANTED all three, so this is a measurement",
+      !painted.includes("a sentence the console must never paint") && !painted.includes("TZS 9,999")
+        && !painted.includes("blob") && !painted.includes("usr_panel_trigger_player")
+        && !NEUTRAL.test(painted),
+      j(Object.keys(p1.feed[0] ?? {})));
+    ok("1.453 · CONTROL · the planted sentence really IS a lexicon hit and really IS on the stored row, so its absence above is an omission that was checked",
+      NEUTRAL.test("Counter · a sentence the console must never paint · TZS 9,999")
+        && (await w.dal.houseBotIntentStore.get(feedIds[0]))!.why !== null, "");
+    ok("1.453 · every painted feed field is a FINISHED string or a boolean — no id, no raw enum and no number crosses into the view model",
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+        && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
+      j(Object.keys(p1.feed[0] ?? {}).sort()));
+    ok("1.317 · every row's outcome word and type word come from the console's own TOTAL maps, and its note is the console's own sentence — never a raw enum",
+      p1.feed.every((r: Any) => !(K_INTENT_STATUSES as string[]).includes(r.statusWord) && !(K_INTENT_KINDS as string[]).includes(r.typeWord))
+        && p1.feed.some((r: Any) => typeof r.note === "string" && r.note.length > 10)
+        && p1.feed.every((r: Any) => r.note === null || !/^[A-Z_]+$/.test(r.note)),
+      j([...new Set(p1.feed.map((r: Any) => r.statusWord))]));
+
+    /* ── THE BELL LANDS ON THE PAGE ITS OWN ROW IS ON ───────────────────────────────────────────────────── */
+    const oldest = feedIds[0];
+    const anchored = await feedView({ intent: oldest });
+    ok("1.302 · a bell's `&intent=` resolves the row's page SERVER-SIDE and lands on it — page 3 of 41, with the row itself marked",
+      anchored.feedPage === 3 && anchored.feed.some((r: Any) => r.anchored === true)
+        && anchored.feed.filter((r: Any) => r.anchored).length === 1,
+      j({ page: anchored.feedPage, marked: anchored.feed.filter((r: Any) => r.anchored).length }));
+    ok("1.302 · CONTROL · the same panel WITHOUT the anchor is on page 1 and marks nothing, so the jump above came from the anchor",
+      p1.feedPage === 1 && p1.feed.every((r: Any) => r.anchored === false), "");
+    ok("1.302 · an explicit `?page=` WINS over the anchor — an officer who typed a page is not moved off it",
+      (await feedView({ intent: oldest, page: "1" })).feedPage === 1, "");
+    const foreign = await feedView({ intent: "hbi_panel_other" });
+    const junkAnchor = await feedView({ intent: "../../etc/passwd" });
+    ok("1.302 · an anchor naming ANOTHER account's row, and one that is not an id at all, both leave the panel where it was — and the malformed one is refused and named",
+      foreign.feedPage === 1 && junkAnchor.feedPage === 1
+        && typeof junkAnchor.queryRefusal === "string" && junkAnchor.queryRefusal.includes("link")
+        && foreign.queryRefusal === null,
+      j({ foreign: foreign.feedPage, junk: junkAnchor.feedPage, refusal: junkAnchor.queryRefusal }));
+
+    /* ── THE HISTORY PANEL ──────────────────────────────────────────────────────────────────────────────── */
+    const eventIds: string[] = [];
+    const EV = ["STARTED", "PAUSED", "RULES_SAVED", "HOLDER_AGAINST_BOT", "OWNER_MONEY"] as const;
+    /* ⛔ THE BASE IS READ, NEVER GUESSED: designating an account writes its own DESIGNATED event, so the total this
+       panel answers is that row plus what this fixture adds. A number typed here would rot the day designation
+       records one more thing. */
+    const histBase = (await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "history" })).historyTotal as number;
+    /* ⚠️ EVERY ROW GETS A DISTINCT PAINTED ACTOR, because the pager's disjointness has to be measured on what the
+       panel PAINTS — and `whenTitle` is a second, which twenty-three rows two milliseconds apart share. One row is
+       left actorless so the engine's own branch ("System") is painted too. */
+    for (let n = 1; n <= 23; n++) {
+      const kind = EV[n % 5];
+      const e = await w.dal.houseBotEventStore.append({
+        houseBotId: panels.botId, userId: null, marketId: null, kind,
+        fromStatus: kind === "PAUSED" ? "ACTIVE" : null, toStatus: kind === "PAUSED" ? "PAUSED" : kind === "STARTED" ? "ACTIVE" : null,
+        reason: "an officer's own words, which this panel does not paint",
+        actorId: n === 7 ? null : `usr_panel_actor_${String(n).padStart(2, "0")}`,
+        payload: kind === "OWNER_MONEY" ? { event: "DEPOSIT", amountTzs: 500_000, balanceTzs: 9_900_000, txnId: `txn_panel_${n}` } : null,
+      } as Any);
+      eventIds.push(e.id);
+      await new Promise((r) => setTimeout(r, 2));
+    }
+    const histTotal = histBase + 23;
+    /* One event on the OTHER account and one CONTROL-ROW event, so the scope below is measured twice over. */
+    await w.dal.houseBotEventStore.append({ houseBotId: other.botId, userId: null, marketId: null, kind: "STARTED", fromStatus: null, toStatus: "ACTIVE", reason: null, actorId: OFFICER, payload: null } as Any);
+    await w.dal.houseBotEventStore.append({ houseBotId: null, userId: null, marketId: null, kind: "SWITCH_ON", fromStatus: null, toStatus: null, reason: null, actorId: OFFICER, payload: null } as Any);
+
+    const histView = (qq: Record<string, unknown> = {}) =>
+      GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "history", ...qq });
+    const h1 = await histView();
+    const h2 = await histView({ hpage: "2" });
+    const hWho = (v: Any): string[] => (v.history ?? []).map((r: Any) => r.who);
+    ok("1.317 · the history panel serves ONE page of 20 with a COUNTING total, and page 2 holds the rest",
+      h1.history.length === 20 && h1.historyTotal === histTotal && h1.historyPage === 1 && h1.historyPerPage === 20
+        && h2.history.length === histTotal - 20 && h2.historyTotal === histTotal && h1.historyTotal !== h1.history.length,
+      j({ p1: h1.history.length, total: h1.historyTotal, p2: h2.history.length, base: histBase }));
+    ok("1.317 · the two pages are the whole set with nothing repeated, and the panel is scoped to THIS account — the second account's event and the desk-wide SWITCH_ON are in neither",
+      new Set([...hWho(h1), ...hWho(h2)]).size === histTotal
+        && hWho(h1).every((x) => !hWho(h2).includes(x))
+        && !h1.history.concat(h2.history).some((r: Any) => r.eventWord === GATEM.CONSOLE_EVENT_WORD.SWITCH_ON),
+      j({ union: new Set([...hWho(h1), ...hWho(h2)]).size, total: histTotal }));
+    ok("1.317 · every Event cell is the console's own word — the blind kind `HOLDER_AGAINST_BOT` included — and NOT one raw enum reaches a row",
+      h1.history.concat(h2.history).some((r: Any) => r.eventWord === GATEM.CONSOLE_EVENT_WORD.HOLDER_AGAINST_BOT)
+        && h1.history.concat(h2.history).every((r: Any) => !/^[A-Z_]+$/.test(r.eventWord) && !NEUTRAL.test(r.eventWord)),
+      j([...new Set(h1.history.map((r: Any) => r.eventWord))]));
+    /* ⛔ 266 / 369(c) / 456 · NO AMOUNT AND NO BALANCE — and the fixture PLANTED both on every money row. */
+    const histPainted = JSON.stringify(h1.history.concat(h2.history));
+    ok("1.369 · 266 · no history row carries an amount or the holder's wallet balance — the fixture planted 500,000 and 9,900,000 on every money event and neither reaches the view",
+      !histPainted.includes("500,000") && !histPainted.includes("500000")
+        && !histPainted.includes("9,900,000") && !histPainted.includes("9900000")
+        && !histPainted.includes("amountTzs") && !histPainted.includes("balanceTzs"),
+      j(Object.keys(h1.history[0] ?? {})));
+    ok("1.369 · 456 · a money row carries a DOOR instead: the platform's own transactions screen, by transaction id",
+      h1.history.concat(h2.history).some((r: Any) => typeof r.moneyHref === "string" && r.moneyHref.startsWith("/admin/transactions?q=txn_panel_"))
+        && h1.history.concat(h2.history).filter((r: Any) => r.moneyHref !== null).every((r: Any) => !/\d{3},\d{3}/.test(r.moneyHref)),
+      j(h1.history.find((r: Any) => r.moneyHref)?.moneyHref));
+    ok("1.369 · SOURCE · no file under the section, and no line of the gate module, reads `payload.amountTzs` or `payload.balanceTzs`, and neither `?tab=money` nor `formatTzsSigned` survives anywhere under the section",
+      sectionFiles.concat([GATE]).every((f) => {
+        const s = decomment(read(f));
+        return !/payload\.amountTzs|payload\.balanceTzs|\?tab=money|formatTzsSigned/.test(s);
+      }), "");
+    ok("1.369 · CONTROL · that scan fires on each of the four things it forbids",
+      /payload\.amountTzs/.test("const a = e.payload.amountTzs;") && /payload\.balanceTzs/.test("e.payload.balanceTzs")
+        && /\?tab=money/.test("/admin/desk/x?tab=money") && /formatTzsSigned/.test("formatTzsSigned(n)"), "");
+    /* ⛔ THE OFFICER'S OWN WORDS ARE NOT PAINTED HERE. A reason is unbounded operator text and the audit trail is
+       where it belongs; this panel answers who, what and when from TYPED fields only. */
+    ok("1.453 · 474 · no history row paints the officer's free-text reason — the fixture wrote one on every event and the panel carries who, what and when from typed fields alone",
+      !histPainted.includes("an officer's own words")
+        && h1.history.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "change", "eventWord", "moneyHref", "when", "whenTitle", "who"])),
+      j(Object.keys(h1.history[0] ?? {}).sort()));
+    ok("1.317 · the Change cell is the ONE status map's words, never a raw status, and an event that changed no status carries none",
+      h1.history.concat(h2.history).some((r: Any) => r.change === "Active → Paused")
+        && h1.history.concat(h2.history).every((r: Any) => r.change === null || !/[A-Z_]{4,}/.test(r.change)),
+      j([...new Set(h1.history.concat(h2.history).map((r: Any) => r.change))]));
+    /* ⛔ 420 · AN ACTOR IS AN ID, NEVER A NAME — the same rule the ON sentence one card up already follows. A
+       name here would put a staff member's identity on a screen a record id is itself masked out of (548), and the
+       console resolves no name for an actor at all. An event nobody pressed reads as the engine's own word. */
+    const whoAll = h1.history.concat(h2.history).map((r: Any) => r.who as string);
+    ok("1.420 · every actor cell is a raw account ID or the console's word for the engine — never a display name, and the reader resolves no name for one",
+      whoAll.length > 0 && whoAll.every((x) => x === "System" || /^usr_[A-Za-z0-9_]+$/.test(x))
+        && whoAll.includes("System")
+        && !/displayName|firstName|fullName/.test(decomment(read(GATE))),
+      j([...new Set(whoAll)].slice(0, 4)));
+    ok("1.420 · CONTROL · the same scan rejects a display name, so the shape above is a measurement",
+      !/^usr_[A-Za-z0-9_]+$/.test("Juma Mwakalinga") && /^usr_[A-Za-z0-9_]+$/.test(OFFICER), "");
+    /* 🔴 BOTH PANELS' `When` CELL STATES SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM`, twenty
+       rows of a busy account all read "20 Sep 15:10" — so the ONE column that states the order could not be used to
+       check it, and "Newest first." was a claim the screen could not support. The targets grid keeps minutes on
+       purpose: a target is a rare, deliberate act; a stake is not. */
+    const SECONDS = /^\d{1,2} [A-Z][a-z]{2} \d{2}:\d{2}:\d{2}$/;
+    ok("1.373 · both panels' `When` cell states SECONDS, and its `title` carries the absolute EAT instant — a time column under a 'newest first' order that cannot tell two rows apart is a claim the screen does not support",
+      p1.feed.every((r: Any) => SECONDS.test(r.when) && r.whenTitle.endsWith(" EAT"))
+        && h1.history.every((r: Any) => SECONDS.test(r.when) && r.whenTitle.endsWith(" EAT")),
+      j({ feed: p1.feed[0]?.when, history: h1.history[0]?.when }));
+    ok("1.373 · CONTROL · the minute-only form the targets grid keeps is NOT accepted by that scan, and the shipped form is",
+      !SECONDS.test("20 Sep 15:10") && SECONDS.test("20 Sep 15:10:07"), "");
+
+    const hOver = await histView({ hpage: "9" });
+    ok("1.317 · a history page past the end is served as the LAST page — the same idiom, never a second one",
+      hOver.historyPage === 2 && hOver.history.length === histTotal - 20 && all(hWho(hOver)) === all(hWho(h2)),
+      j({ page: hOver.historyPage, rows: hOver.history.length }));
+    const hAnchor = await histView({ event: eventIds[0] });
+    ok("1.302 · a bell's `&event=` lands on the page its row is on and marks it",
+      hAnchor.historyPage === 2 && hAnchor.history.filter((r: Any) => r.anchored).length === 1,
+      j({ page: hAnchor.historyPage, marked: hAnchor.history.filter((r: Any) => r.anchored).length }));
+    const realAll = w.dal.houseBotEventStore.listAll;
+    let histFailed: Any;
+    try {
+      w.dal.houseBotEventStore.listAll = async () => { throw new Error("planted history failure"); };
+      histFailed = await histView();
+    } finally { w.dal.houseBotEventStore.listAll = realAll; }
+    ok("1.355 · a failed history read is `history === null` — the kit's failure treatment — and never an empty list",
+      histFailed.history === null && Array.isArray(h1.history), j({ failed: histFailed.history }));
+    /* ⛔ AN EMPTY READ AND A FAILED ONE ARE DIFFERENT ANSWERS, AND THE DIFFERENCE IS THE POINT (355, 421).
+       ⚠️ NO ACCOUNT ON THIS PLATFORM HAS AN EMPTY HISTORY — designating one writes its own DESIGNATED event — so
+       the empty READ is planted rather than waited for. The plant is named and it is the honest one: the store
+       answers no rows and a count of zero, which is exactly what a fresh migration would answer. */
+    const realAllEmpty = w.dal.houseBotEventStore.listAll;
+    const realCountEmpty = w.dal.houseBotEventStore.countAll;
+    let histEmpty: Any;
+    try {
+      w.dal.houseBotEventStore.listAll = async () => [];
+      w.dal.houseBotEventStore.countAll = async () => 0;
+      histEmpty = await histView();
+    } finally {
+      w.dal.houseBotEventStore.listAll = realAllEmpty;
+      w.dal.houseBotEventStore.countAll = realCountEmpty;
+    }
+    ok("1.355 · an empty history READ answers an EMPTY LIST and its own empty state — never null, which is what a FAILED read answers one line above",
+      Array.isArray(histEmpty.history) && histEmpty.history.length === 0 && histEmpty.historyTotal === 0
+        && histEmpty.historyEmpty.title === "No changes yet"
+        && histFailed.history === null,
+      j({ empty: histEmpty.history, failed: histFailed.history }));
+    ok("1.355 · CONTROL · the store really was restored — the same call answers the whole set again, so the two answers above came from the plants and not from a reader that lost its rows",
+      (await histView()).historyTotal === histTotal, "");
+
+    /* ⛔ A PANEL THAT IS NOT IN VIEW TAKES NO LIST READ AT ALL — so the account page's other three tabs do not pay
+       for these two, and the one-reader-per-render law is not quietly turned into a one-reader-five-reads law. */
+    const onOverview = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, {});
+    ok("1.306 · the overview tab takes NEITHER list read — the two panels' reads are taken only for the tab in view",
+      onOverview.feed === null && onOverview.feedTotal === null
+        && onOverview.history === null && onOverview.historyTotal === null
+        && onOverview.usage !== null,
+      j({ feed: onOverview.feed, history: onOverview.history }));
+
+    STATES.push(["detail-activity", p1], ["detail-activity-filtered", railed], ["detail-activity-empty", bare], ["detail-history", h1]);
+
+    /* ══ C7 STEP 5 · THE LANDING HALF — THE DESK-WIDE PANELS, DRIVEN ═══════════════════════════════════════════
+     * The same fixture, read the other way round: 41 stakes on one account, one on a second, and the desk's own
+     * events beside both. What these measure that §2e2's cannot is the DIFFERENCE between the two shapes — a
+     * count that is the desk's and not one account's, a history that keeps the control row's own events, and a
+     * control an officer can act with. */
+    {
+      const { auditFlush, getAuditPage }: Any = await import("../../src/lib/server/audit.ts");
+      const CONST: Any = await import("../../src/lib/house-bot/constants.ts");
+      /* A viewer outside the audience, minted here: this block is its own scope, and a refusal proved with a
+         handle borrowed from another block is a refusal proved against a viewer nobody can see. */
+      const outsiderId = await w.user({ role: "PLAYER" });
+      const deskFeed = (qq: Record<string, unknown> = {}) =>
+        GATEM.houseFeedForConsole(OFFICER, "/admin/desk", { tab: "activity", ...qq });
+      const deskHist = (qq: Record<string, unknown> = {}) =>
+        GATEM.houseHistoryForConsole(OFFICER, "/admin/desk", { tab: "history", ...qq });
+
+      /* ⛔ THE GATE IS FIRST AND NOTHING IS READ BEFORE IT (rulings 259, 300, 340, 380). */
+      const realFeedList = w.dal.houseBotIntentStore.listFeed;
+      let refusedCalls = 0;
+      let refusedFeed: Any; let refusedHist: Any;
+      try {
+        w.dal.houseBotIntentStore.listFeed = (...a: Any[]) => { refusedCalls++; return realFeedList.apply(w.dal.houseBotIntentStore, a as Any); };
+        refusedFeed = await GATEM.houseFeedForConsole(outsiderId, "/admin/desk", { tab: "activity" });
+        refusedHist = await GATEM.houseHistoryForConsole(outsiderId, "/admin/desk", { tab: "history" });
+      } finally { w.dal.houseBotIntentStore.listFeed = realFeedList; }
+      ok("1.340 · both desk-wide readers refuse a viewer outside the audience with `null` and perform ZERO store calls — a refused payload carries no label, no handle, no amount and no sentence",
+        refusedFeed === null && refusedHist === null && refusedCalls === 0,
+        j({ feed: refusedFeed, history: refusedHist, calls: refusedCalls }));
+
+      const d1 = await deskFeed();
+      /* ⛔ EVERY NUMBER IN THIS BLOCK IS RE-DERIVED FROM THIS RUN AND NONE IS TYPED. The sections above leave
+         their own rows on the desk, so a hand-written total would be a number tied to the order this file happens
+         to run in — which is the recorded-number class, and it rots. What is asserted is the RELATIONSHIP: the
+         desk's population is the accounts' populations together, the pages tile it exactly, and the badge is a
+         count of one status across all of it. */
+      const deskTotal: number = d1.feedTotal;
+      const lastPage = Math.max(1, Math.ceil(deskTotal / d1.feedPerPage));
+      const d2 = await deskFeed({ page: "2" });
+      const d3 = await deskFeed({ page: String(lastPage) });
+      const rowKey = (v: Any): string[] => (v.feed ?? []).map((r: Any) => `${r.whenTitle}|${r.stake}`);
+      const pages: Any[] = [];
+      for (let n = 1; n <= lastPage; n++) pages.push(await deskFeed({ page: String(n) }));
+      const everyKey = pages.flatMap(rowKey);
+
+      /* ⛔ 344 · THE TOTAL IS A COUNTING READ, AND IT IS THE DESK'S — 42, not one account's 41. */
+      ok("1.411 · both landing pagers take `total` from a COUNTING reader and never from the page: the desk feed serves ONE page of 20 out of a total larger than it, and the total does not move as the officer pages",
+        d1.feed.length === d1.feedPerPage && d1.feedPerPage === 20 && d1.feedPage === 1
+          && deskTotal > d1.feed.length && lastPage >= 3
+          && d2.feedTotal === deskTotal && d3.feedTotal === deskTotal,
+        j({ rows: d1.feed.length, total: deskTotal, lastPage, lastRows: d3.feed.length }));
+      /* ⛔ WHAT A STABLE DECLARED ORDER BUYS, MEASURED THREE WAYS — and NOT by unique row keys, because a feed row
+         deliberately carries no id (D19: a bounded record id is the one thing this section may not put in a
+         response it does not have to) and two stakes in one second are a real state, not a fixture artefact.
+         (a) the pages TILE the total exactly, every page full but the last;
+         (b) a second read of every page returns the IDENTICAL sequence — an unstable order is one that moves
+             between two reads of the same address, which is precisely what a numbered pager cannot survive;
+         (c) no page repeats its neighbour's boundary row, which is how an unstable order shows one row twice and
+             hides another. */
+      const everyKeyAgain: string[] = [];
+      for (let n = 1; n <= lastPage; n++) everyKeyAgain.push(...rowKey(await deskFeed({ page: String(n) })));
+      ok("1.411 · the pages together are the whole desk with nothing repeated and nothing lost — they tile the total exactly, a second read returns the identical sequence, and no page repeats its neighbour's boundary row",
+        everyKey.length === deskTotal
+          && pages.every((pg, i) => pg.feed.length === (i + 1 < lastPage ? 20 : deskTotal - 20 * (lastPage - 1)))
+          && j(everyKey) === j(everyKeyAgain)
+          && pages.every((pg, i) => i + 1 >= lastPage || rowKey(pg)[pg.feed.length - 1] !== rowKey(pages[i + 1])[0]),
+        j({ total: deskTotal, perPage: pages.map((pg) => pg.feed.length), stable: j(everyKey) === j(everyKeyAgain) }));
+      /* ⛔ AND IT IS THE DESK'S POPULATION, NOT ONE ACCOUNT'S — the second account's stake is IN it, which is the
+         one difference between this reader and the account page's and the thing a scoped reader would drop. */
+      const acctTotal = (await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "activity" })).feedTotal;
+      const otherTotal = (await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", other.botId, { tab: "activity" })).feedTotal;
+      ok("1.411 · the desk feed is the DESK's population and not one account's: the second account's stake is IN it, and the desk's total is strictly larger than either account's",
+        everyKey.some((x) => x.endsWith(`|${formatTzs(7_000)}`))
+          && acctTotal === 41 && otherTotal === 1
+          && deskTotal > acctTotal && deskTotal >= acctTotal + otherTotal,
+        j({ deskTotal, acctTotal, otherTotal }));
+      /* ⛔ A PAGE PAST THE END IS SERVED AS THE LAST PAGE, and a page number that is not one is REFUSED BY NAME. */
+      const dOver = await deskFeed({ page: "999" });
+      const dJunk = await deskFeed({ page: "x" });
+      ok("1.411 · `?page=999` on the desk feed is served as the LAST page with its rows, and a page number that is not one reads as page 1 AND is reported as a refusal",
+        dOver.feedPage === lastPage && dOver.feed.length > 0 && dJunk.feedPage === 1 && dJunk.feed.length === 20
+          && typeof dJunk.queryRefusal === "string" && dJunk.queryRefusal.includes("page"),
+        j({ over: dOver.feedPage, lastPage, junk: dJunk.feedPage, refusal: dJunk.queryRefusal }));
+
+      /* ── 1.345 · THE ROWS AND THE TOTAL MOVE TOGETHER OVER EVERY FACET, ON THE DESK'S OWN POPULATION ────── */
+      /* ⛔ THE FACET IS MEASURED AGAINST THE STORE'S OWN COUNT OF THE SAME FACET, not against a typed number:
+         what this case is about is that the READER's rows and the READER's total agree with each other and with
+         the population, whatever that population happens to hold when this file runs. */
+      const deskAgree = async (qq: Record<string, unknown>, filter: Record<string, unknown>) => {
+        const v = await deskFeed(qq);
+        const want = await w.dal.houseBotIntentStore.countFeed(filter as Any);
+        return { total: v.feedTotal, rows: v.feed.length, want, ok: v.feedTotal === want && v.feed.length === Math.min(want, 20) && v.queryRefusal === null };
+      };
+      const dKind = await deskAgree({ kind: "manual" }, { kinds: ["MANUAL"] });
+      const dOutcome = await deskAgree({ outcome: "failed" }, { statuses: ["FAILED"] });
+      const dBoth = await deskAgree({ kind: "manual", outcome: "failed" }, { kinds: ["MANUAL"], statuses: ["FAILED"] });
+      ok("1.345 · the desk-wide feed's rows and total move together over every facet — type, outcome, and two at once — because ONE filter object feeds the page read and the count",
+        [dKind, dOutcome, dBoth].every((x) => x.ok), j({ dKind, dOutcome, dBoth }));
+      ok("1.345 · CONTROL · the facets really NARROW the desk's own population, and the two-facet answer is narrower than either of its halves",
+        dKind.total < deskTotal && dOutcome.total < deskTotal && dBoth.total < dKind.total && dBoth.total < dOutcome.total,
+        j({ all: deskTotal, dKind: dKind.total, dOutcome: dOutcome.total, dBoth: dBoth.total }));
+
+      /* ── 312 · THE BADGE IS THE DESK'S QUEUED STAKES, IT IS UNFILTERED BY THE RAIL, AND IT IS ON EVERY TAB ── */
+      const onRoster = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+      const onLimits = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+      const onHist = await deskHist();
+      const queued: number = await w.dal.houseBotIntentStore.countFeed({ statuses: ["PENDING"] });
+      ok("1.312 · the activity badge is the desk's QUEUED stakes, counted by a COUNTING reader over the same predicate the feed pages over, and it is the SAME number on all four tabs — one read in the shell, never one per panel",
+        queued > 0 && d1.pendingIntents === queued && onRoster.pendingIntents === queued
+          && onLimits.pendingIntents === queued && onHist.pendingIntents === queued,
+        j({ queued, feed: d1.pendingIntents, roster: onRoster.pendingIntents, limits: onLimits.pendingIntents, history: onHist.pendingIntents }));
+      ok("1.312 · …and it does NOT move as the officer filters: a bell's own narrowed address cannot change the number beside the tab it points at",
+        (await deskFeed({ kind: "manual" })).pendingIntents === queued
+          && (await deskFeed({ outcome: "failed" })).pendingIntents === queued
+          && (await deskFeed({ outcome: "queued" })).pendingIntents === queued
+          /* ⛔ AND THE ROWS REALLY DID MOVE UNDER IT, which is the half that makes the line above a measurement:
+             at least one of these filters answers a different number of rows from the badge, so a badge that was
+             quietly being recomputed from the filtered population could not have matched. */
+          && [dKind.total, dOutcome.total, dBoth.total].some((n) => n !== queued),
+        j({ filtered: (await deskFeed({ kind: "manual" })).pendingIntents, rowsThatFilter: [dKind.total, dOutcome.total, dBoth.total], queued }));
+      /* ⛔ AND IT IS `PENDING` ALONE — ruling 312's own word — never PENDING+CLAIMED: a CLAIMED stake is already in
+         flight and there is nothing left for an officer to cancel about it, so a badge counting it would offer a
+         number no control on the page can act on. */
+      ok("1.312 · CONTROL · the badge counts PENDING ALONE and not the LIVE pair, and the two are really different populations of this store",
+        queued === await w.dal.houseBotIntentStore.countFeed({ statuses: ["PENDING"] })
+          && (await w.dal.houseBotIntentStore.countFeed({ statuses: ["PENDING", "CLAIMED"] })) >= queued
+          && (await w.dal.houseBotIntentStore.countFeed({ statuses: ["CLAIMED"] })) >= 0,
+        j({ pending: queued, live: await w.dal.houseBotIntentStore.countFeed({ statuses: ["PENDING", "CLAIMED"] }) }));
+
+      /* ── 355 · A FAILED READ IS NEVER AN EMPTY TABLE, AND A FAILED COUNT IS NEVER A ZERO ─────────────────── */
+      const realList = w.dal.houseBotIntentStore.listFeed;
+      const realCount = w.dal.houseBotIntentStore.countFeed;
+      let feedListFailed: Any; let feedCountFailed: Any;
+      try {
+        w.dal.houseBotIntentStore.listFeed = async () => { throw new Error("planted desk feed page failure"); };
+        feedListFailed = await deskFeed();
+      } finally { w.dal.houseBotIntentStore.listFeed = realList; }
+      try {
+        w.dal.houseBotIntentStore.countFeed = async () => { throw new Error("planted desk feed count failure"); };
+        feedCountFailed = await deskFeed();
+      } finally { w.dal.houseBotIntentStore.countFeed = realCount; }
+      ok("1.355 · a FAILED desk read paints the kit's failure treatment and never an empty state: a failed page read answers `null` rows with the total intact, and a failed COUNT answers `null` for the total AND `null` for the badge — never a zero",
+        feedListFailed.feed === null && feedListFailed.feedTotal === deskTotal
+          && feedCountFailed.feedTotal === null && feedCountFailed.pendingIntents === null
+          && Array.isArray(feedCountFailed.feed),
+        j({ listFailed: { feed: feedListFailed.feed, total: feedListFailed.feedTotal },
+            countFailed: { total: feedCountFailed.feedTotal, badge: feedCountFailed.pendingIntents } }));
+      ok("1.355 · CONTROL · the store really was restored — the same call answers the whole desk again, so the two answers above came from the plants and not from a reader that lost its rows",
+        (await deskFeed()).feedTotal === deskTotal && (await deskFeed()).pendingIntents === queued, "");
+      /* ⛔ AND A FILTER THAT MATCHED NOTHING READS DIFFERENTLY FROM A LIST WITH NOTHING IN IT (416). */
+      const noMatch = await deskFeed({ kind: "manual", outcome: "cancelled", product: "up-down" });
+      /* 🔴 THE `body` IS READ NOW, AND IT IS READ BECAUSE THE RENDER FOUND WHAT THIS LINE COULD NOT. The first
+         version compared the two TITLES and then checked the UNFILTERED body for the word "desk" — so the FILTERED
+         body, the one string the reader borrowed from the account page, was the one string nothing looked at. It
+         said "No stake on **this account** matches" on the page that lists every account, and was read off a
+         served page at `?tab=activity&kind=manual&outcome=cancelled&product=up-down` with every suite green.
+         ⛔ BOTH SUBJECTS ARE NOW HELD APART IN BOTH DIRECTIONS: each of the desk's two sentences names the DESK and
+         never an account, and each of the account page's names the ACCOUNT and never the desk. A guard that
+         checks one side of a swap cannot see the swap. */
+      const deskPlain = await deskFeed();
+      const acctNoMatch = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "activity", kind: "manual", outcome: "cancelled", product: "up-down" });
+      const acctPlain = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "activity" });
+      const namesDesk = (e: Any) => /\bthe desk\b/.test(e.body) && !/this account/.test(e.body);
+      const namesAccount = (e: Any) => /this account/.test(e.body) && !/\bthe desk\b/.test(e.body);
+      ok("1.355 · 416 · an empty desk list and a filter that matched nothing say DIFFERENT things, and BOTH of the desk's sentences name the DESK — body included, which is where the account page's sentence was found painted on the landing page",
+        noMatch.feedTotal === 0 && noMatch.feed.length === 0 && noMatch.feedFiltered === true
+          && noMatch.feedEmpty.title !== deskPlain.feedEmpty.title
+          && namesDesk(deskPlain.feedEmpty) && namesDesk(noMatch.feedEmpty)
+          && typeof noMatch.feedClearHref === "string" && noMatch.feedClearHref.includes("tab=activity"),
+        j({ filtered: noMatch.feedEmpty.body, unfiltered: deskPlain.feedEmpty.body }));
+      ok("1.355 · 416 · CONTROL · the ACCOUNT page's own pair names the ACCOUNT in both states and never the desk, so the line above is a swap that would be reported in either direction and not a word that happens to appear",
+        acctNoMatch.feedFiltered === true && namesAccount(acctNoMatch.feedEmpty) && namesAccount(acctPlain.feedEmpty)
+          && acctNoMatch.feedEmpty.body !== noMatch.feedEmpty.body
+          && acctPlain.feedEmpty.body !== deskPlain.feedEmpty.body,
+        j({ acctFiltered: acctNoMatch.feedEmpty.body, acctPlain: acctPlain.feedEmpty.body }));
+
+      /* ── 317 · THE DESK HISTORY KEEPS THE CONTROL ROW'S OWN EVENTS, WHICH A PER-ACCOUNT READ CORRECTLY DROPS ── */
+      await w.dal.houseBotEventStore.append({
+        houseBotId: null, userId: null, marketId: null, kind: "LIMITS_SAVED",
+        fromStatus: null, toStatus: null, reason: null, actorId: OFFICER, payload: { landing: true },
+      } as Any);
+      const deskH = await deskHist();
+      const acctH = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "history" });
+      ok("1.317 · the desk history carries the CONTROL ROW's own events — the switch, a limits save, the withdrawal — which belong to no account, and the per-account read correctly drops them",
+        deskH.historyTotal > acctH.historyTotal
+          && deskH.history.some((r: Any) => r.accountHref === null)
+          && acctH.history.length > 0,
+        j({ desk: deskH.historyTotal, account: acctH.historyTotal }));
+      /* ⛔ AND THE ROW SAYS WHOSE IT IS, IN THREE DISTINCT STATES — the operator's own text, the desk's own word,
+         and the console's word for an account the roster no longer holds. Never one standing in for another. */
+      ok("1.317 · 474 · every desk row NAMES the account it is about, and the desk's own rows say so in the console's own word rather than being blank or borrowing an account's name",
+        deskH.history.every((r: Any) => typeof r.accountName === "string" && r.accountName.length > 0)
+          && deskH.history.some((r: Any) => r.accountIsOperatorText === true && r.accountHref !== null)
+          && deskH.history.some((r: Any) => r.accountIsOperatorText === false && r.accountHref === null),
+        j(deskH.history.slice(0, 4).map((r: Any) => [r.accountName, r.accountIsOperatorText, r.accountHref !== null])));
+      ok("1.317 · the desk history pages against a COUNTING reader in the same declared order, and a page past the end is served as the LAST page",
+        (await deskHist({ hpage: "1" })).historyPage === 1
+          && (await deskHist({ hpage: "999" })).historyPage === Math.max(1, Math.ceil(deskH.historyTotal / deskH.historyPerPage))
+          && (await deskHist({ hpage: "999" })).history.length > 0,
+        j({ total: deskH.historyTotal, perPage: deskH.historyPerPage }));
+      /* ⛔ NO AMOUNT AND NO BALANCE REACHES A ROW, and the money door is the platform's own screen (266, 369, 456). */
+      ok("1.369 · not one desk history row carries an amount or a wallet balance — an OWNER_MONEY row carries a DOOR to the platform's own transactions screen instead",
+        deskH.history.every((r: Any) => !("amountTzs" in r) && !("balanceTzs" in r) && !/TZS/.test(all(r)))
+          && deskH.history.every((r: Any) => r.moneyHref === null || r.moneyHref.startsWith("/admin/transactions?q=")),
+        j(deskH.history.slice(0, 3)));
+      /* ⛔ AND NO FEED ROW CARRIES `why`, `decision` OR A TRIGGER PLAYER'S RAW ID. */
+      ok("1.453 · not one desk feed row carries the engine's own sentence, its decision blob or another player's raw id — the projection is finished strings and booleans",
+        d1.feed.every((r: Any) => !("why" in r) && !("decision" in r) && !("triggerUserId" in r))
+          && !all(d1.feed).includes("a sentence the console must never paint")
+          && !all(d1.feed).includes("usr_panel_trigger_player"),
+        j(d1.feed[0]));
+
+      /* ── 415 · THE STOP CONTROL, AND THE WRITE BEHIND IT ─────────────────────────────────────────────────── */
+      ok("1.415 · the stop control is offered on exactly the rows the badge counts — a QUEUED stake carries the id the control posts and every other row carries `null`, so no control is drawn over a stake the service could only refuse",
+        pages.flatMap((pg) => pg.feed).every((r: Any) => (r.statusWord === "Queued") === (r.cancelId !== null))
+          && pages.flatMap((pg) => pg.feed).filter((r: Any) => r.cancelId !== null).length === queued
+          && d1.cancelCopy !== null && typeof d1.cancelCopy.confirmLabel === "string",
+        j({ offered: pages.flatMap((pg) => pg.feed).filter((r: Any) => r.cancelId !== null).length, queued }));
+      ok("1.415 · 453 · not one word of the stop dialog names the feature, and the id it posts is never PAINTED — no row renders it",
+        Object.values(d1.cancelCopy as Record<string, unknown>).filter((v) => typeof v === "string")
+          .every((v) => !NEUTRAL.test(v as string) && houseHits(v as string).length === 0)
+          /* ⛔ POSTED, NEVER PAINTED: the id crosses as a PROP and no cell renders it. A bounded record id in
+             served markup is the one thing D19 says this section may never put in a response it does not have to,
+             and the difference between the two is exactly the difference between `id={…}` and `>{…}<`. */
+          && /<StopQueued id=\{r\.cancelId\}/.test(decomment(read(PAGE)))
+          && !/>\s*\{r\.cancelId\}/.test(decomment(read(PAGE)))
+          && !/\{r\.cancelId\}<\//.test(decomment(read(PAGE))),
+        j(d1.cancelCopy));
+      /* ⛔ THE BOUNDS ARE CHECKED ON THE SERVER TOO — a ceremony verified only in a browser is one a crafted POST
+         walks straight through, and this door is reachable by any signed-in account (383). */
+      const uuid = (n: number) => `00000000-0000-0000-0000-${String(900 + n).padStart(12, "0")}`;
+      const victim = pages.flatMap((pg) => pg.feed).find((r: Any) => r.cancelId !== null)!.cancelId as string;
+      const tooShort = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(1), reason: "no" });
+      const tooLong = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(2), reason: "z".repeat(400) });
+      const noId = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: "", submitId: uuid(3), reason: "a real reason" });
+      const badSubmit = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: "not-a-uuid", reason: "a real reason" });
+      const outsider = await GATEM.houseCancelIntentForConsole(outsiderId, "/admin/desk", { id: victim, submitId: uuid(4), reason: "a real reason" });
+      ok("1.415 · the cancel door validates the reason with the SAME bounds the control arms on, refuses a malformed idempotency key before it reads anything, and refuses a viewer outside the audience — each by its own sentence",
+        tooShort.ok === false && tooShort.field === "reason"
+          && tooLong.ok === false && tooLong.field === "reason"
+          && noId.ok === false && badSubmit.ok === false && outsider.ok === false
+          && new Set([tooShort.error, noId.error, badSubmit.error, outsider.error]).size === 4,
+        j({ tooShort: tooShort.error, tooLong: tooLong.error, noId: noId.error, badSubmit: badSubmit.error, outsider: outsider.error }));
+      ok("1.415 · CONTROL · the refusals really are refusals — the stake is still QUEUED after all five, so none of them wrote anything",
+        (await w.dal.houseBotIntentStore.get(victim))!.status === "PENDING", "");
+      /* ⛔ THE CANCEL LANDS, AND IT IS THE FIRST PRESS ANYTHING UNDER `src/` HAS EVER CREATED. */
+      const stopped = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(5), reason: "stopped by the officer for a test" });
+      const afterRow = await w.dal.houseBotIntentStore.get(victim);
+      ok("1.415 · the stop LANDS: the queued stake is CANCELLED, the result says so, and the badge falls by exactly one because it counts the same population the control acts on",
+        stopped.ok === true && stopped.changed === true
+          && afterRow!.status === "CANCELLED" && afterRow!.reasonCode === "CANCELLED_BY_ADMIN"
+          && (await deskFeed()).pendingIntents === queued - 1,
+        j({ stopped, status: afterRow!.status, badge: (await deskFeed()).pendingIntents, queued }));
+      const repeat = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(5), reason: "stopped by the officer for a test" });
+      ok("1.415 · a repeat of the SAME press is not a second cancel — the idempotency key is consulted BEFORE the row's status, so the officer is told what their own press did rather than that the stake had already left the queue",
+        repeat.ok === true && repeat.changed === true && (await deskFeed()).pendingIntents === queued - 1,
+        j({ repeat, badge: (await deskFeed()).pendingIntents, queued }));
+      const secondAttempt = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: victim, submitId: uuid(6), reason: "a second attempt at a cancelled stake" });
+      ok("1.415 · a NEW press over a stake that has already left the queue is refused BY NAME — the officer is told what happened rather than met with a silent no-op, and its sentence is not the repeat's",
+        secondAttempt.ok === false && typeof secondAttempt.error === "string" && secondAttempt.error.length > 20,
+        j({ secondAttempt }));
+      /* ⛔ THE AUDIT KEY IS THE ONE `press-audit.ts` MAPS THIS PURPOSE TO, AND IT IS A `HOUSE_AUDIT` MEMBER —
+         membership is what keeps the row out of a player's own audit read, so a key renamed for neutrality would
+         silently leave the exclusion. */
+      await auditFlush();
+      const cancelRows = (getAuditPage({ limit: 10_000 }) as Any[]).filter((e) => e.action === "house_bot.staff_intent_cancelled");
+      ok("1.382 · the cancel's audit action is a `HOUSE_AUDIT` key — `house_bot.staff_intent_cancelled`, the one the press builder already maps this purpose to — and it names the ACTOR BY ID with no free text in the payload",
+        cancelRows.length >= 1
+          && cancelRows[0].category === CONST.HOUSE_AUDIT["house_bot.staff_intent_cancelled"]
+          && cancelRows[0].actorId === OFFICER
+          && CONST.isAllowedHouseAuditPayload(cancelRows[0].payload) === true
+          && !all(cancelRows[0].payload).includes("stopped by the officer for a test"),
+        j({ found: cancelRows.length, row: cancelRows[0] && { action: cancelRows[0].action, category: cancelRows[0].category, payload: cancelRows[0].payload } }));
+      ok("1.382 · CONTROL · the writerless ADMIN twin is still written by NOBODY, so the key above was chosen and not defaulted into",
+        CONST.HOUSE_AUDIT["house_bot.intent_cancelled"] === "ADMIN"
+          && (getAuditPage({ limit: 10_000 }) as Any[]).every((e) => e.action !== "house_bot.intent_cancelled"),
+        "");
+      /* ⛔ AND THE OFFICER'S REASON IS ON THE EVENT, WHERE ERASURE CAN REACH IT (INT-10). */
+      const cancelEvents = (await w.dal.houseBotEventStore.listAll({ limit: 200 })).filter((e: Any) => e.kind === "STAFF_INTENT_CANCELLED");
+      ok("1.382 · INT-10 · the officer's typed sentence is on the EVENT and never in the audit payload — erasure rewrites one and structurally cannot rewrite the other",
+        cancelEvents.length >= 1 && cancelEvents[0].reason === "stopped by the officer for a test"
+          && cancelEvents[0].actorId === OFFICER,
+        j({ events: cancelEvents.length, reason: cancelEvents[0]?.reason }));
+    }
+  }
+
+  /* ── 1.411 / 1.410 · THE PAGERS AND THE RAIL, AT THE RENDER SITE ──────────────────────────────────────────── */
+  {
+    const detail = decomment(read(DETAIL_PAGE));
+    /* ⭐ THE RAIL MOVED UP ONE DIRECTORY WHEN THE LANDING PANELS LANDED, AND THAT IS §K5 RATHER THAN TIDINESS:
+       both pages render the SAME activity rail, and two copies of one control is the exact defect this section
+       was pulled up on. It is still under `src/app/admin/desk/**`, which is what puts it inside 4.453's
+       `lexiconFiles` walk and 1.360's money walk at all. */
+    const rail = `${SECTION}/activity-filters.tsx`;
+    const railSrc = decomment(read(rail));
+    /* ⛔ BOTH PAGED PANELS DRAW THE SHARED PAGER, AND NEITHER TAKES ITS TOTAL FROM THE ROWS. */
+    ok("1.411 · both paged panels render the shared `AdminPagination`, each with its OWN page parameter, and the account page now draws three pagers in all — targets, activity and history",
+      (detail.match(/<AdminPagination/g) ?? []).length === 3
+        && /param="page"/.test(detail) && /param="hpage"/.test(detail) && /param="tpage"/.test(detail),
+      j({ pagers: (detail.match(/<AdminPagination/g) ?? []).length }));
+    ok("1.411 · every `total` is a COUNTING field of the view and never a rendered array's length, and the page and page size come from the view too — never `parsePage`, whose module is client-reachable",
+      /total=\{view\.feedTotal\}/.test(detail) && /total=\{view\.historyTotal\}/.test(detail) && /total=\{view\.targetsTotal\}/.test(detail)
+        && !/total=\{[^}]*\.length\}/.test(detail) && !/parsePage/.test(detail)
+        && /page=\{view\.feedPage\}/.test(detail) && /perPage=\{view\.feedPerPage\}/.test(detail),
+      "");
+    ok("1.411 · CONTROL · that scan fires on a total taken from the rows, which is the defect ruling 344 exists for",
+      /total=\{[^}]*\.length\}/.test("<AdminPagination total={feedRows.length} />"), "");
+    ok("1.411 · each pager's `baseHref` carries its own panel's live parameters, built from the VIEW and never re-typed at the call site",
+      /baseHref=\{buildBaseHref\(`\$\{CONSOLE_ROUTE\}\/\$\{view\.id\}`, view\.feedParams, "page"\)\}/.test(detail)
+        && /baseHref=\{buildBaseHref\(`\$\{CONSOLE_ROUTE\}\/\$\{view\.id\}`, view\.historyParams, "hpage"\)\}/.test(detail),
+      "");
+    /* ⛔ THE RAIL IS ONE, IT IS UNDER THE SECTION, AND IT IS NOT ON THE `<Tabs>`. */
+    const railHooks = sectionFiles.filter((f) => /data-filter-rail/.test(decomment(read(f))));
+    ok("1.410 · exactly ONE `data-filter-rail` exists under the whole section, it is in the rail's own file, and the `<Tabs>` element carries none",
+      railHooks.length === 1 && railHooks[0] === rail
+        && (railSrc.match(/data-filter-rail/g) ?? []).length === 1
+        && !/<Tabs[\s\S]*?data-filter-rail/.test(detail),
+      j(railHooks));
+    ok("1.410 · every rank-taking control on the rail takes the DENSE rank and `replace` — a filter is not a navigation, and a rail half at one height is worse than either",
+      (railSrc.match(/<(?:FilterPill|DateTimeRangeFilter)\b/g) ?? []).length === 2
+        && (railSrc.match(/rank="dense"/g) ?? []).length === 2
+        && (railSrc.match(/\breplace\b/g) ?? []).length === 2
+        && !/QueryStrip/.test(railSrc) && !/h-\[32px\]|32px/.test(railSrc),
+      j({ controls: (railSrc.match(/<(?:FilterPill|DateTimeRangeFilter)\b/g) ?? []).length }));
+    ok("1.410 · the rail is DECLARED in the filter-language gate's own surface list, which is what subjects it to that suite's §6 rules at all",
+      read("scripts/filter-language.test.mts").includes(`"${rail}"`), rail);
+    /* ⛔ AND THE RAIL FILE REACHES NOTHING: no route literal, no closed list, no house module, and no server module. */
+    ok("1.453 · the rail file types no route, no closed list and no house module — every label and every href arrives as a finished server-built string",
+      !/\/admin\/desk/.test(railSrc) && !/@\/lib\/house-bot|@\/lib\/server|house-bot-dal|console-routes/.test(railSrc)
+        && !/COUNTER|OPENER|PENDING|MARKET|UPDOWN/.test(railSrc)
+        && /groups\.map/.test(railSrc), "");
+    ok("1.453 · CONTROL · each of those three scans fires on the thing it forbids",
+      /\/admin\/desk/.test('href={`/admin/desk/${id}?tab=activity`}') && /@\/lib\/house-bot/.test('import { CONSOLE_ROUTE } from "@/lib/house-bot/console-routes";')
+        && /COUNTER/.test('const KINDS = ["COUNTER"];'), "");
+    /* ⛔ THE MONEY COLUMN IS SECOND, IT IS THE KIT'S OWN MONEY SHAPE, AND THE TABLE TAKES NO MIN-WIDTH. */
+    const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
+    const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    ok("1.373 · the activity table's headers are the control facts in order, with the money column SECOND and headed exactly `Stake`",
+      all(feedHeaders) === all(["When", "Stake", "Outcome", "Type", "Product", "Note"]), j(feedHeaders));
+    ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
+      /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
+        && !/admin-tbl min-w-/.test(detail), "");
+    ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
+      feedHeaders.length === 6 && !feedHeaders.includes("Event"), j(feedHeaders));
+    const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
+    const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
+      all(histHeaders) === all(["When", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
+    /* 🔴 THE REFUSAL'S HEADING IS NUMBER-AGNOSTIC, AND THAT TOO WAS READ OFF A TILE: a singular title
+       ("Part of this address was not used") sat above a plural sentence ("Parts of this address were …"), one
+       above the other, on the same card. The heading comes from the SERVER like every other sentence here, so the
+       two cannot be reworded apart. */
+    ok("1.302 · 432(n) · the refusal card's heading is number-agnostic and comes from the reader, so it can never disagree with the sentence beneath it",
+      !/\bParts?\b/.test(GATEM.CONSOLE_REFUSAL_TITLE as string)
+        && /title=\{CONSOLE_REFUSAL_TITLE\}/.test(detail)
+        && !NEUTRAL.test(GATEM.CONSOLE_REFUSAL_TITLE as string),
+      j(GATEM.CONSOLE_REFUSAL_TITLE));
+    ok("1.302 · CONTROL · the heading the first build shipped IS reported by that scan",
+      /\bParts?\b/.test("Part of this address was not used"), "");
+    /* ⛔ AND EACH PANEL'S EMPTY STATE IS THE KIT'S, SO A FAILED READ CANNOT LOOK LIKE ONE. */
+    ok("1.355 · each panel paints the kit's EMPTY state only on a `length === 0` branch and the kit's FAILURE state only on a `=== null` branch — the two can never be reached by the same condition",
+      /feedRows === null \? \(/.test(detail) && /feedRows\.length === 0 \? \(/.test(detail)
+        && /historyRows === null \? \(/.test(detail) && /historyRows\.length === 0 \? \(/.test(detail)
+        && (detail.match(/<AdminTableEmpty/g) ?? []).length === 3, "");
+  }
+
+
+
+/* ═══ §2e3 · THE LANDING PAGE'S TWO PANELS, AT THE RENDER SITE (C7 step 5's landing half) ══════════════
+ * ⛔ The behavioural half is driven above, on both stores. What only a source scan can say is that the PAGE spends
+ * what the reader gives it — the rail file both pages share, a pager whose base href carries the live filters, and
+ * a bell whose window the door can actually read. */
+section("§2e3 · the desk landing page's activity and history panels");
+{
+  /* The page's decommented source, under this section's own name — the ONE read hoisted above. */
+  const landing = pageCode;
+  const railFile = `${SECTION}/activity-filters.tsx`;
+  /* ⛔ ONE RAIL FILE, RENDERED BY BOTH PAGES (§K5). Two copies of one control is the defect this section was
+     pulled up on, and a second rail would also be a second `data-filter-rail` under one section (1.410). */
+  ok("1.410 · the landing activity panel renders the SAME rail file the account page does, with the reader's own groups, presets and default — and the section still holds exactly one rail file",
+    /<ActivityFilters groups=\{feedView\.feedFilters\} presets=\{feedView\.feedPresets\} presetDefault=\{feedView\.feedPresetDefault\} \/>/.test(landing)
+      && /<ActivityFilters groups=\{view\.feedFilters\} presets=\{view\.feedPresets\} presetDefault=\{view\.feedPresetDefault\} \/>/.test(decomment(read(DETAIL_PAGE)))
+      && sectionFiles.filter((f) => /data-filter-rail/.test(decomment(read(f)))).length === 1
+      && existsSync(join(ROOT, railFile)),
+    j({ rail: railFile, hooks: sectionFiles.filter((f) => /data-filter-rail/.test(decomment(read(f)))) }));
+  ok("1.410 · CONTROL · the scan really reads the landing page — a rail rendered with its own typed options instead of the reader's is reported",
+    !/<ActivityFilters groups=\{\[/.test(landing) && /<ActivityFilters groups=\{\[/.test('<ActivityFilters groups={[{ param: "kind" }]} />'), "");
+
+  /* ⛔ BOTH PAGERS TAKE THEIR TOTAL FROM A COUNTING FIELD AND THEIR BASE HREF FROM THE READER'S LIVE PARAMETERS.
+     A base href re-typed at the call site is how page 2 of a filtered list becomes page 2 of the unfiltered one. */
+  ok("1.411 · each landing pager's `baseHref` carries its own panel's live parameters, built from the VIEW and never re-typed at the call site, and each list owns its own page parameter",
+    /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, feedView\.feedParams, "page"\)\}/.test(landing)
+      && /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, historyView\.historyParams, "hpage"\)\}/.test(landing)
+      && /param="page"/.test(landing) && /param="hpage"/.test(landing)
+      && !/baseHref=\{buildBaseHref\(CONSOLE_ROUTE, \{/.test(landing),
+    "");
+  ok("1.411 · both landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and neither is a rendered array's length",
+    (landing.match(/<AdminPagination/g) ?? []).length === 2
+      && /total=\{feedView\.feedTotal\}/.test(landing) && /total=\{historyView\.historyTotal\}/.test(landing)
+      && !/total=\{[^}]*\.length\}/.test(landing)
+      && !/parsePage/.test(landing)
+      && /page=\{feedView\.feedPage\}/.test(landing) && /perPage=\{feedView\.feedPerPage\}/.test(landing),
+    j({ pagers: (landing.match(/<AdminPagination/g) ?? []).length }));
+  /* ⛔ AND THE UNPAGED PANELS DRAW NONE: the roster and the limits panel are whole reads, and a pager over a list
+     that is never paged is 432(a)'s dead control. */
+  ok("1.411 · the roster and limits panels draw NO pager — a numbered control over a list that is never paged is a control with nothing behind it",
+    !/<AdminPagination/.test(panelOf("roster")) && !/<AdminPagination/.test(panelOf("limits"))
+      && /<AdminPagination/.test(panelOf("activity")) && /<AdminPagination/.test(panelOf("history")),
+    "");
+  /* ⛔ EACH PANEL'S EMPTY STATE IS THE KIT'S AND IS REACHED ONLY BY A `length === 0` BRANCH; THE FAILURE STATE IS
+     REACHED ONLY BY A `=== null` BRANCH. The two can never be reached by one condition (355). */
+  ok("1.355 · each landing panel paints the kit's EMPTY state only on a `length === 0` branch and `AdminLoadError` only on a `=== null` branch — a failed read can never render as an empty table",
+    /feedRows === null \? \(/.test(landing) && /feedRows\.length === 0 \? \(/.test(landing)
+      && /historyRows === null \? \(/.test(landing) && /historyRows\.length === 0 \? \(/.test(landing)
+      && (panelOf("activity").match(/<AdminTableEmpty/g) ?? []).length === 1
+      && (panelOf("history").match(/<AdminTableEmpty/g) ?? []).length === 1
+      && (panelOf("activity").match(/<AdminLoadError/g) ?? []).length === 1
+      && (panelOf("history").match(/<AdminLoadError/g) ?? []).length === 1,
+    "");
+  /* ⛔ AND THE TWO FAILURE SENTENCES NAME THEIR OWN SUBJECT — "the desk's activity" is not "the desk's history",
+     and neither is "the roster": a failure treatment that does not say what failed is one an officer cannot act on. */
+  {
+    const whats = [...landing.matchAll(/<AdminLoadError what=\{?"([^"]+)"/g)].map((m) => m[1]);
+    ok("1.355 · every failure treatment on this page NAMES its own subject, and no two name the same one",
+      whats.length >= 4 && new Set(whats).size === whats.length
+        && whats.includes("the desk's activity") && whats.includes("the desk's history"),
+      j(whats));
+  }
+  /* ⛔ THE MONEY COLUMN OF THE DESK FEED IS THE KIT'S OWN MONEY SHAPE, ITS HEADER IS EXACTLY `Stake`, AND THE
+     SUBJECT COLUMN IS FIRST — the roster's own shape one card above, applied to this table's own subject. */
+  {
+    const feedThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("activity"))?.[0] ?? "";
+    const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
+    const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
+      j(feedHeaders) === j(["Account", "Stake", "When", "Outcome", "Type", "Product", "Note", ""]),
+      j(feedHeaders));
+    ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
+      j(histHeaders) === j(["Account", "When", "Event", "Change", "Who"]) && !/amount/.test(histThead),
+      j(histHeaders));
+    ok("1.373 · the desk feed's money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither landing table takes a `min-w-*` on the table itself",
+      /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(panelOf("activity"))
+        && !/admin-tbl min-w-/.test(landing), "");
+  }
+  /* ⛔ THE HOUR SUMMARY'S BELL LANDS ON THE WINDOW IT IS ABOUT. `parseEatLocal` requires a full instant and
+     answers null for `14:00`, so the clock form resolved to "custom" over the last 24 hours — a different window
+     under the name of the one the bell was about, with nothing on screen saying so. */
+  {
+    const notif = decomment(read("src/lib/server/notification-service.ts"));
+    const emit = decomment(read("src/lib/server/house-bot/emitters.ts"));
+    const DR: Any = await import("../../src/lib/server/date-range.ts");
+    /* ⛔ THE ASSERTION IS THE ROUND TRIP, NOT THE SPELLING. A scan that only forbade the clock form passed while
+       the link carried a full ISO instant — which the parser refuses just as completely. So the window the emitter
+       WRITES is handed to the resolver the door actually uses, and the span that comes back is compared with the
+       span that went in. That is the only form of this check that could not be satisfied by a wrong shape. */
+    const fromMs = Date.parse("2026-09-20T13:00:00.000Z");
+    const toMs = Date.parse("2026-09-20T14:00:00.000Z");
+    const nowMs = Date.parse("2026-09-20T18:00:00.000Z");
+    const round = (a: number, b: number) => {
+      const w = DR.resolveRange({ range: "custom", from: DR.formatEatLocal(a), to: DR.formatEatLocal(b) }, nowMs, "24h");
+      return { start: w.start, end: w.end };
+    };
+    const trip = round(fromMs, toMs);
+    ok("1.369 · the hour summary's bell lands on the HOUR IT IS ABOUT: the window the emitter writes, handed to the door's own resolver, comes back as exactly that window — same start, same end, to the minute",
+      trip.start === fromMs && trip.end === toMs
+        && /&from=\$\{encodeURIComponent\(opts\.fromEat\)\}&to=\$\{encodeURIComponent\(opts\.toEat\)\}/.test(notif)
+        && !/&from=\$\{encodeURIComponent\(opts\.(?:fromHH|fromIso)\)\}/.test(notif)
+        && /\$\{opts\.fromHH\}–\$\{opts\.toHH\}/.test(notif)
+        && /formatEatLocal\(Date\.parse\(fromIso\)\)/.test(emit),
+      j({ start: new Date(trip.start).toISOString(), end: new Date(trip.end).toISOString() }));
+    /* ⛔ THE CONTROL, AND IT IS THE ONE THAT WOULD HAVE CAUGHT THE FIRST FIX. BOTH wrong forms are driven through
+       the same resolver and BOTH must come back as something other than the asked hour — the clock form, and the
+       ISO instant that a field called `fromIso` invites. Measured: the ISO pair returns a 24-HOUR span, still
+       labelled "custom", with no refusal anywhere. A guard that cannot tell those two apart is not measuring the
+       bell, it is measuring a spelling. */
+    const clockTrip = DR.resolveRange({ range: "custom", from: "13:00", to: "14:00" }, nowMs, "24h");
+    const isoTrip = DR.resolveRange({ range: "custom", from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString() }, nowMs, "24h");
+    ok("1.369 · CONTROL · both forms the console CANNOT read are driven through the same resolver and both come back as a different window — the clock form and the full ISO instant alike — and the parser refuses each outright while accepting the one the emitter writes",
+      DR.parseEatLocal("13:00") === null
+        && DR.parseEatLocal(new Date(fromMs).toISOString()) === null
+        && DR.parseEatLocal(DR.formatEatLocal(fromMs)) !== null
+        && !(clockTrip.start === fromMs && clockTrip.end === toMs)
+        && !(isoTrip.start === fromMs && isoTrip.end === toMs)
+        && isoTrip.end - isoTrip.start === 24 * 3600_000
+        && isoTrip.preset === "custom",
+      j({ isoSpanHours: (isoTrip.end - isoTrip.start) / 3600_000, isoPreset: isoTrip.preset }));
+  }
+}
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §2f · THE DESIGNATE WIZARD — `/admin/desk/new` (C7-SPEC rulings 356, 359, 368/459, 382, 383, 387; C7 step 6)
@@ -3385,7 +4449,17 @@ try {
     let oneAnswer: Any = null;
     const bulkTag = `c7s6bulk${process.pid}`;
     const bulk: string[] = [];
-    for (let i = 0; i < 12; i++) bulk.push(await w.user({ id: `usr_${bulkTag}_${i}`, role: "PLAYER" }));
+    /* ⛔ SEEDED 11 → 0, DESCENDING, AND THE DIRECTION IS LOAD-BEARING (C5-8 phase 4, 2026-09-20).
+     * The declared mutation `387-order` deletes the `hits.sort(…)` line in `house-console-read.ts`, and the
+     * batch reported this case **MISSED** under it — the guard could not see its own defect. Why: seeded
+     * 0 → 11 ASCENDING, the memory store answers in insertion order, the first ten are `_0 … _9`, and those
+     * ten are ALREADY in lexicographic order — so the total-order half below compared a list against a
+     * sorted copy of itself and passed whether the sort existed or not. Seeded descending, insertion order
+     * and id order disagree, and deleting the sort turns this case red. ⛔ Do not "tidy" this back into an
+     * ascending loop: the assertion becomes unfalsifiable again and nothing will say so.
+     * ⚠️ `bulk[0]` is therefore `usr_<tag>_11`; the single-match control below searches that whole id, which
+     * matches exactly one account either way. */
+    for (let i = 11; i >= 0; i--) bulk.push(await w.user({ id: `usr_${bulkTag}_${i}`, role: "PLAYER" }));
     const wide = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
     const again = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
     ok("1.387 · 412 · the answer is capped at ten options and the count says so — the number MATCHED, not the number shown, and what to do about it",
@@ -3606,6 +4680,21 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
       ...r.halves.flatMap((h: Any) => [h.word, h.suffix])]),
     ...(view.rules ?? []).flatMap((r: Any) => [r.section, r.name, r.value, r.caption]),
     ...(view.targets ?? []).flatMap((t: Any) => [t.statusWord, t.endCaption, t.when]),
+    /* ⭐ C7 STEP 5 · THE TWO PANELS' OWN COPY. Both are built from tables the console had to write for itself:
+       the event word map is TOTAL over 30 kinds because the lexicon is structurally BLIND to one of them, and the
+       outcome sentence map is TOTAL over 64 engine codes because `feed-copy.ts`'s own table names the feature in
+       more than twenty rows. Those are the two branches most likely to break 453 on this checkpoint, so leaving
+       them out of the strictest scan the console has would be the silent-hole class 513 and 539 both record. The
+       rail's group labels and option labels are here too — a filter label is copy, and it reaches the DOM. */
+    ...(view.feedFilters ?? []).flatMap((g: Any) => [g.label, ...(g.options ?? []).map((o: Any) => o.label)]),
+    view.feedEmpty?.title, view.feedEmpty?.body, view.historyEmpty?.title, view.historyEmpty?.body,
+    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.statusWord, r.typeWord, r.productWord, r.note]),
+    ...(view.history ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.eventWord, r.change, r.who, r.moneyHref]),
+    ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
+    /* ⛔ AND THE WHOLE OF BOTH TOTAL MAPS, NOT ONLY THE ROWS THIS FIXTURE HAPPENED TO PAINT. A word map scanned
+       through its rendered rows is scanned at whatever coverage the fixture reached; scanned whole it is scanned
+       at 100%, which is the only coverage a TOTAL map is worth having. */
+    ...Object.values(GATEM.CONSOLE_EVENT_WORD as Record<string, string>),
   ].filter((s: unknown): s is string => typeof s === "string");
 
   const fresh = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
@@ -3621,8 +4710,13 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        the wizard's own copy object in the list. The state floor had risen at step 6 while the STRING floor had
        not, so the branch the step's own comment called "most likely to break 453" sat inside a scan that could
        have lost ~20 strings to a field rename and still read as compliance. A floor only ever rises, and only to
-       a count a run printed. */
-    scanned.length >= 36 && total >= 2_646 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
+       a count a run printed.
+       ⭐ AND AGAIN AT C7 STEP 5's ACCOUNT HALF, to what THIS pass printed on BOTH stores: 40 states and 4,883
+       strings, with the activity panel's rows, the history panel's rows, the rail's own labels, both empty states
+       and the whole of the TOTAL event-word map in the list. The two panels' copy would otherwise have contributed
+       ZERO strings while `hits.length === 0` still read as compliance — the silent-hole class rulings 513 and 539
+       both record, and the reason both halves of the floor are raised together. */
+    scanned.length >= 40 && total >= 4_883 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
   /* ⛔ AND THE BRANCHES MOST LIKELY TO CARRY ONE ARE PROVEN PRESENT IN THE SCAN, by name — a state list that quietly
    * stopped producing the OFF sentence or an empty state would otherwise read as compliance. */
   const seen = new Set(scanned.flatMap(([, c]) => c));
@@ -3701,8 +4795,8 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
 
 if (STORE === "memory") {
   section("§4 · the section's source law");
-  const pageRaw = read(PAGE);
-  const pageCode = decomment(pageRaw);
+  /* ⛔ `pageRaw`, `pageCode` and `panelOf` are the TOP-LEVEL ones, declared once above §2e3 — this block used to
+     own them, and that scoping is what aborted the Postgres child. Nothing is re-read here on purpose. */
   const gateCode = decomment(read(GATE));
 
   /* 4.453 · THE GUARD RULING 453 ASKS FOR, over every string of the section AND of the gated reader that writes its
@@ -4084,9 +5178,49 @@ export default function Ruling513Control() {
       walkFor("src");
       return hits;
     })();
-    ok("1.375 · `reimbursement_recorded` has no writer anywhere under `src/` — its only two occurrences are the declarations Commit 1 made, and no console file names it",
-      writers.length === 0 && !/reimbursement/i.test(sectionCode)
-        && auditKeys.includes("house_bot.reimbursement_recorded"), j({ writers }));
+    /* ⭐ C7 STEP 5 · THE SCAN GAINED A TERM AND ACCOUNTED FOR ITS ONE HIT; IT DID NOT LOSE ONE.
+     * The word-shaped walk above is deliberately broad, and the account page's history tab gave it its first
+     * legitimate hit: `CONSOLE_EVENT_WORD` is a TOTAL `Record<HouseBotEventKind, string>` — `tsc` refuses a kind
+     * without a word — so the console's own neutral sentence for the `REIMBURSEMENT_RECORDED` EVENT KIND lives in
+     * the gate module. An event word is not a writer, and a rule that convicts a word map for a writer's crime is
+     * a rule that gets exempted and then protects nothing.
+     * ⛔ SO THE HIT IS ACCOUNTED FOR BY NAME AND BY SHAPE, NEVER EXEMPTED BY FILE: the only file that may name the
+     * word is the gate module, the occurrence must be a VALUE of that map, and — the term that did not exist
+     * before — NOTHING under `src/` may write the AUDIT KEY, which is what "not built" actually means. A second
+     * file naming the word, or the same file calling anything with the key, is still red. */
+    const ACCOUNTED = "src/lib/server/house-console-read.ts";
+    const unaccounted = writers.filter((f) => f !== ACCOUNTED);
+    const gateWordMap = (() => {
+      const src = decomment(read(ACCOUNTED));
+      const at = src.indexOf("export const CONSOLE_EVENT_WORD");
+      return at < 0 ? "" : src.slice(at, src.indexOf("} as const satisfies", at));
+    })();
+    const keyWriters = (() => {
+      const hits: string[] = [];
+      const walkFor = (dir: string) => {
+        for (const e of readdirSync(join(ROOT, dir))) {
+          const rel = `${dir}/${e}`;
+          if (statSync(join(ROOT, rel)).isDirectory()) { if (e !== "node_modules") walkFor(rel); }
+          else if (/\.tsx?$/.test(e) && rel !== "src/lib/house-bot/constants.ts"
+            && /house_bot\.reimbursement_recorded/.test(decomment(read(rel)))) hits.push(rel);
+        }
+      };
+      walkFor("src");
+      return hits;
+    })();
+    ok("1.375 · `reimbursement_recorded` has no writer anywhere under `src/` — nothing names its AUDIT KEY, the one file that names the word is the gate module's TOTAL event-word map, and no other file under `src/` names it at all",
+      keyWriters.length === 0
+        && unaccounted.length === 0
+        && gateWordMap.includes("REIMBURSEMENT_RECORDED:")
+        && /reimbursement/i.test(gateWordMap)
+        && !/reimbursement/i.test(sectionCode)
+        && auditKeys.includes("house_bot.reimbursement_recorded"), j({ writers, unaccounted, keyWriters }));
+    ok("1.375 · CONTROL · both halves of the accounting really fire — the word planted in a SECOND file is reported, and the audit key planted in the gate module's own body is reported, while the shipped tree is not",
+      (() => {
+        const plantedWord = [...writers, "src/lib/server/store.ts"].filter((f) => f !== ACCOUNTED);
+        const plantedKey = /house_bot\.reimbursement_recorded/.test('await writeHouseAudit("house_bot.reimbursement_recorded", {});');
+        return plantedWord.length === 1 && plantedKey && unaccounted.length === 0 && keyWriters.length === 0;
+      })(), "");
     ok("1.375 · and `HOUSE_AUDIT`'s key set is PINNED at its post-un-build size, so a re-introduction is a ruling rather than one more line in a map",
       auditKeys.length === 31 && auditKeys.every((k) => k.startsWith("house_bot.")), j({ keys: auditKeys.length }));
     ok("1.375 · CONTROL · the writer scan really finds the word — planted into a real console file it is reported, and the real file does not carry it",
@@ -4140,15 +5274,24 @@ export default function Ruling513Control() {
       && decomment(read("src/lib/server/house-bot/eligibility.ts")).includes("Remove an account or raise the roster limit on Limits →")
       && D.DESIGNATE_COPY.rosterFull(1, 1).includes("Remove an account or raise the roster limit on Limits →"), "");
 
-  /* 1.312a · the rail renders exactly the closed list's keys — ONE at this step — and every other `?tab=` resolves
-   * to it. ⛔ A rail option whose panel is not written is a dead control. */
-  ok("1.312a · the rail's options come from the closed list, and the page renders a panel for every key in it",
+  /* 1.312 · the rail renders exactly the closed list's keys, in RAIL ORDER, and every other `?tab=` resolves to
+   * the roster. ⛔ A rail option whose panel is not written is a dead control.
+   * ⭐ FOUR KEYS AT C7 STEP 5's LANDING HALF, AND THE ORDER IS ASSERTED RATHER THAN THE COUNT: `roster · activity ·
+   * limits · history` is ruling 312's own rail order — who is on the desk, what it is doing, what would stop it,
+   * what was done to it — and a list with the right members in the wrong order is a rail an officer has to read
+   * twice. This line was `1.312a` and hard-coded the two-key list; it is REPLACED rather than relaxed. */
+  ok("1.312 · the rail's options come from the closed list, and the page renders a panel for every key in it — four keys, in rail order",
     /CONSOLE_TABS\.map/.test(pageCode) && CR.CONSOLE_TABS.every((k: string) => pageCode.includes(`tab === "${k}"`))
-      && CR.CONSOLE_TABS.length === 2 && j([...CR.CONSOLE_TABS]) === j(["roster", "limits"]), j(CR.CONSOLE_TABS));
+      && CR.CONSOLE_TABS.length === 4 && j([...CR.CONSOLE_TABS]) === j(["roster", "activity", "limits", "history"]), j(CR.CONSOLE_TABS));
+  /* ⛔ AND EVERY KEY'S PANEL IS REALLY THERE TO BE SLICED — the population trap a `panelOf` scan carries: an
+   * opener that moved would make every panel-scoped scan below read an EMPTY string and pass on nothing. */
+  ok("1.312 · CONTROL · each of the four panels is found and non-empty in the page's own source, so every panel-scoped scan below is measuring a table and not an empty slice",
+    CR.CONSOLE_TABS.every((k: string) => panelOf(k).length > 200) && panelOf("nowhere") === "",
+    j(CR.CONSOLE_TABS.map((k: string) => [k, panelOf(k).length])));
   /* ⛔ A TAB EXISTS ONLY WITH ITS PANEL (ruling 312), AND THE LIST GROWS ONE KEY PER PANEL. The `limits` key joined
    * it at C7 step 3 with the panel below; `activity` and `history` join at step 5. This case is what stops a rail
    * option shipping ahead of the thing it opens — a dead control in its honest-looking half (432(i)). */
-  ok("1.312a · the closed list holds a key for EVERY panel the page renders, and a panel for every key — neither ahead of the other",
+  ok("1.312 · the closed list holds a key for EVERY panel the page renders, and a panel for every key — neither ahead of the other",
     j([...new Set([...pageCode.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]))].sort()) === j([...CR.CONSOLE_TABS].sort()), "");
   for (const raw of [undefined, "", "limitz", "roster", ["roster", "limits"] as Any]) {
     ok(`1.302 · \`?tab=${j(raw)}\` resolves to the roster — never a 404 and never a redirect`, CR.consoleTab(raw) === "roster", j(CR.consoleTab(raw)));
@@ -4225,8 +5368,8 @@ export default function Ruling513Control() {
   /* ⛔ AND THE COUNT USAGE READS ON THE SAME AXIS AS THE TWO MONEY USAGES BESIDE IT (432(o)): same grammar, same
    * shape, three adjacent figures — left-aligning one of them put them on two axes. */
   ok("1.407 · 432(o) · every usage column is right-aligned, so three adjacent usage figures read on ONE axis",
-    (pageCode.match(/<th scope="col" className="text-right p-3 !whitespace-normal">/g) ?? []).length === 3
-      && (pageCode.match(/<td className="p-3 text-right(?: text-text-secondary)?"><Usage cell=/g) ?? []).length === 3, "");
+    (panelOf("roster").match(/<th scope="col" className="text-right p-3 !whitespace-normal">/g) ?? []).length === 3
+      && (panelOf("roster").match(/<td className="p-3 text-right(?: text-text-secondary)?"><Usage cell=/g) ?? []).length === 3, "");
   ok("1.373 · no header reads 'House stake', 'Today net' or 'Live balance'",
     !/House stake|house stake|Today net|Live balance/.test(pageCode), "");
   /* 1.373 · THE TABLE ITSELF CARRIES NO `min-w-*`, and the money CELLS carry no `.tabular`, and both are the same
@@ -4234,16 +5377,71 @@ export default function Ruling513Control() {
      put the second answer at 357→600 on a 360 viewport, and left the account column at 93px. Ruling 373's named
      fallback (the cap in the column HEADER) is unbuildable — the cap is PER ACCOUNT. So the pair WRAPS: each amount
      stays indivisible through the kit's own `.amount` nowrap, and the subject column gets a floor of its own. */
-  ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column",
-    /<table className="admin-tbl">/.test(pageCode), "");
+  /* 🔴 THIS LINE WAS A PRESENCE CHECK AND THE LANDING HALF SILENTLY BROKE IT. With ONE table on the page,
+     `/<table className="admin-tbl">/` answered about THE table; with FOUR panels there are three, and a width
+     added to the money-bearing one passes on the strength of the other two still being bare. Measured here, not
+     reasoned: the declared mutation `373-minw` could not even be INJECTED any more (its anchor matched 3×) — the
+     red harness reported the rot, and the repair is to ask about EVERY table rather than about ANY table.
+     ⛔ DERIVED, NEVER TYPED: the openers are read off the page and each must be the bare one, so a fifth panel's
+     table is inside this rule on the day it is written. */
+  const tableOpeners = [...pageCode.matchAll(/<table className="[^"]*"/g)].map((m: Any) => m[0]);
+  ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column — and EVERY table on this page is the bare kit opener, derived from the page rather than asked of one of them",
+    tableOpeners.length >= 3 && tableOpeners.every((t: string) => t === '<table className="admin-tbl"'),
+    j({ openers: [...new Set(tableOpeners)], count: tableOpeners.length }));
+  ok("1.373 · CONTROL · the sweep really would report ONE widened table among bare ones, which is what the presence check it replaced could not do",
+    (() => {
+      const widened = [...tableOpeners, '<table className="admin-tbl min-w-[720px]"'];
+      return widened.some((t: string) => t !== '<table className="admin-tbl"')
+        && /<table className="admin-tbl">/.test(pageCode);
+    })(), "");
   /* ⛔ NO MONEY COLUMN CARRIES A FLOOR — only the SUBJECT and the STATUS column do, and each for a measured reason:
    * without the subject floor the account column absorbed the whole shortfall and laid out at 93px at 360; without
    * the status floor the AUTO-PAUSED chip rendered as a TWO-LINE pill beside single-line ones at every width up to
    * 1280, and it cannot be fixed on the Chip (an inline `whiteSpace: "normal"` beats any class). Ruling 432(b), (o). */
+  /* 🔴 AND THE SUBJECT FLOOR WAS THE SAME PRESENCE CHECK, BROKEN THE SAME WAY. Three panels paint an
+     `Account` subject column now, so a floor deleted from ONE of them passed on the strength of the other two.
+     Every panel that paints that header is read out of its OWN slice and must carry the floor — derived from the
+     closed tab list, so a panel written tomorrow is inside the rule without anyone remembering to add it. */
+  const subjectCols = CR.CONSOLE_TABS
+    .map((k: string) => [k, /<th scope="col" className="([^"]*)">Account<\/th>/.exec(panelOf(k))?.[1] ?? null] as [string, string | null])
+    .filter(([, c]) => c !== null) as [string, string][];
+  /* 🔴 474 · OPERATOR TEXT IS BOUNDED, NEVER REWRITTEN — AND A CSS TRANSFORM IS A REWRITE. Found on a
+     PHOTOGRAPH, not in any source scan: `.row-link` carries `text-transform: uppercase` and
+     `letter-spacing: .10em`, and the landing panels wrapped the Owner's own typed label in it. Computed styles
+     off the served page: the roster painted `Evening desk - widest label yetX` with `text-transform: none`,
+     these two painted `EVENING DESK - WIDEST LABEL YETX` — one label, two looks, 40px apart on one screen.
+     ⛔ THE RULE IS DERIVED FROM THE STYLESHEET, NOT TYPED HERE: whatever `.row-link` is declared to do, no
+     element carrying `data-operator-text` may carry that class. So if the shared rule is ever changed, this
+     stays a statement about the class the section's fixed words use, and the reason is re-read from disk. */
+  {
+    const css = read("src/app/globals.css");
+    const rule = /\.row-link\.row-link\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    const operatorSites = [...pageCode.matchAll(/className="([^"]*)"[^>]*data-operator-text/g)].map((m: Any) => m[1]);
+    const detailSites = [...decomment(read(DETAIL_PAGE)).matchAll(/className="([^"]*)"[^>]*data-operator-text/g)].map((m: Any) => m[1]);
+    ok("1.474 · not one element that carries the Owner's OWN TEXT wears the row-exit class, whose declared job includes rewriting the case — the platform's fixed words keep it, operator data never does",
+      /text-transform:\s*uppercase/.test(rule)
+        && operatorSites.length >= 3 && [...operatorSites, ...detailSites].every((c: string) => !/\brow-link\b/.test(c)),
+      j({ rule: rule.replace(/\s+/g, " ").trim().slice(0, 90), sites: operatorSites.length + detailSites.length }));
+    ok("1.474 · CONTROL · the class really IS still used on this page for its own purpose — a FIXED word, the roster's way out — so the line above is a rule about what it may WRAP and not a ban that emptied itself",
+      /className="row-link[^"]*"[^>]*>open →</.test(pageCode)
+        && (pageCode.match(/\brow-link\b/g) ?? []).length >= 1
+        && !/row-link[^"]*"[^>]*data-operator-text/.test(pageCode),
+      j({ rowLinkUses: (pageCode.match(/\brow-link\b/g) ?? []).length }));
+    /* ⛔ AND THE SUBJECT CELL KEEPS THE TAP FLOOR THE CLASS WAS GIVING IT, read from the token rather than typed. */
+    ok("1.474 · …and dropping the class did not drop the tap floor with it: each operator-text link carries the `--tap-min` floor at its own site, the repo's own idiom for exactly that",
+      operatorSites.filter((c: string) => /\bhover:underline\b/.test(c)).every((c: string) => /min-h-\[var\(--tap-min\)\]/.test(c)),
+      j(operatorSites));
+  }
+  ok("1.373 · EVERY panel that paints the subject column carries the SAME floor, read out of that panel's own slice — a floor deleted from one table can no longer pass on another table still having one",
+    subjectCols.length >= 3 && subjectCols.every(([, c]) => /min-w-\[150px\]/.test(c)),
+    j(subjectCols));
   ok("1.373 · …and only the SUBJECT and STATUS columns carry a floor — never a money column, which would pin its figure off-screen",
     /<th scope="col" className="text-left p-3 min-w-\[150px\]">Account<\/th>/.test(pageCode)
       && /<th scope="col" className="text-left p-3 min-w-\[128px\]">Status<\/th>/.test(pageCode)
-      && (pageCode.match(/min-w-\[/g) ?? []).length === 2
+      /* ⛔ THE ROSTER'S OWN TWO FLOORS, counted in the ROSTER's own slice — the other three panels have their own
+         subject columns and their own floors, and a page-wide count would let one be deleted while another is
+         added. ⛔ THE "NO MONEY FLOOR" HALF STAYS PAGE-WIDE, because it is a rule about every table here. */
+      && (panelOf("roster").match(/min-w-\[/g) ?? []).length === 2
       && !/text-right p-3[^"]*min-w-\[/.test(pageCode), "");
   /* ⛔ ONLY THE FIGURE IS IN `.amount` (ruling 409). Wrapping "used" and "of" inside it put prose in the money face
    * and made each unbreakable unit wider than the figure it protected — the constraint 432(b) was solving. A COUNT
@@ -4253,7 +5451,11 @@ export default function Ruling513Control() {
       && /const figure = cell\.money \? "amount tabular-nums" : "font-mono tabular-nums";/.test(pageCode)
       && (pageCode.match(/className=\{figure\}/g) ?? []).length === 1
       && !/className="amount tabular-nums">\{cell\./.test(pageCode)
-      && !/td className="[^"]*\btabular\b/.test(pageCode), "");
+      /* ⛔ THE ROSTER'S USAGE CELLS ARE NEVER BOUND BY `.tabular`, and that is this table's rule rather than the
+         page's: a usage cell carries a PAIR that must be allowed to wrap, while the activity panel's Stake cell is
+         ONE amount and takes the kit's own `tabular text-right` money shape (373). Measured at 360 on the real
+         page: binding the pair made each money column 243px and pushed the second answer off the screen. */
+      && !/td className="[^"]*\btabular\b/.test(panelOf("roster")), "");
   /* ⛔ THE WAY OUT EXISTS EXACTLY WHEN THE PAGE IT OPENS EXISTS (ruling 432(h)). Every row shipped a live
    * `open →` to `/admin/desk/<id>` while that route had no page, so the first control an officer reaches on the
    * deliverable answered the app-root 404 — the same defect the head action and the master switch are rendered
@@ -4316,7 +5518,11 @@ export default function Ruling513Control() {
     const linkExprs = exprsOf(pageCode);
     const openings = [...pageCode.matchAll(LINK_EL)].length;
     const ELEMENTS = ["Link", "WayOutLink"];
-    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.href as Route"];
+    /* ⭐ THREE MORE AT C7 STEP 5's LANDING HALF, EACH PINNED IN POSITION LIKE THE FIVE BEFORE THEM: the activity
+       row's account cell, the history row's account cell — ONE shape for one thing, which is why they are the same
+       expression — and the history row's door to the platform's transactions screen, which is what an OWNER_MONEY
+       row carries INSTEAD of an amount (266, 369(c), 456). An `OR` would widen; eight positions are eight answers. */
+    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
       j(linkExprs) === j(WANT) && j(elementsOf(pageCode)) === j(ELEMENTS) && linkExprs.length === openings,
       j({ found: linkExprs, want: WANT, elements: elementsOf(pageCode), openings }));
@@ -4419,9 +5625,17 @@ export default function Ruling513Control() {
     .map((m) => m[1].replace(/\s+/g, " ").trim());
   ok("1.308 · 432(n) · no auto-off Callout body repeats the strip's own OFF sentence — the strip says the desk is off, the Callout says WHY",
     calloutBodies.length >= 3 && calloutBodies.every((b) => !b.includes("Nothing will be staked")), j(calloutBodies));
-  ok("1.308 · 432(n) · CONTROL · the Callout bodies were really read, and the clause the strip owns IS the reader's own OFF sentence",
-    calloutBodies.length >= 3 && calloutBodies.every((b) => b.length > 40)
-      && gateCode.includes("The desk is off. Nothing will be staked."), j(calloutBodies.map((b) => b.length)));
+  /* ⛔ ONE CALLOUT ON THIS PAGE CARRIES NO COPY OF ITS OWN: the activity panel's refusal sentence is the SERVER's,
+     handed through as an expression (387 — an address that was not taken at its word says so, in the door's own
+     words). It is NAMED here rather than being allowed to shorten the floor for everything else, so a second
+     expression-bodied Callout — the way a hand-written sentence would sneak past a length rule — is reported. */
+  const EXPR_BODIES = ["{feedView.queryRefusal}"];
+  const proseBodies = calloutBodies.filter((b) => !EXPR_BODIES.includes(b));
+  ok("1.308 · 432(n) · CONTROL · the Callout bodies were really read, every body this page WORDS ITSELF is a real sentence, and the one expression body is the reader's own refusal",
+    proseBodies.length >= 3 && proseBodies.every((b) => b.length > 40)
+      && calloutBodies.length - proseBodies.length === 1
+      && gateCode.includes("The desk is off. Nothing will be staked."),
+    j({ prose: proseBodies.map((b) => b.length), expr: calloutBodies.length - proseBodies.length }));
 
   /* 1.361 · no banned formatter, here or in the gated reader. */
   const BANNED = ["formatTzsSigned", "formatTzsAbs", "formatWhole", "toLocaleString"];
@@ -4853,9 +6067,18 @@ export default function Ruling513Control() {
      * same number on the server — so the page spends the raw count EXACTLY ONCE, and a badge that disagrees with the
      * sentence 40px above it has nowhere to come from. Both forms of the sentence used to be spelled out in JSX
      * here, which is how the strip came to paint it beside a switch that was already on. */
-    ok("1.405 · the limits badge is `TabItem.count` — the kit's `CountBadge` — and the page spends the raw count EXACTLY ONCE, the strip's sentence coming from the server",
-      /count: k === "limits" \? view\.unsetRequired : undefined/.test(pageCode)
+    /* ⭐ TWO BADGES AT C7 STEP 5's LANDING HALF, AND EACH IS STILL ONE READ SPENT ONCE. `limits` carries the unset
+       count; `activity` carries the desk-wide QUEUED-stake count, which is a COUNTING read of the same predicate
+       the feed pages over and never `rows.length` (344). ⛔ `?? undefined` IS THE ASSERTION, NOT A CONVENIENCE: the
+       count is `number | null` and `null` is a FAILED read — `CountBadge` renders nothing at zero, so `?? 0` would
+       paint a failed read as "nothing queued", which is a count standing in for a read's health.
+       ⛔ ROSTER AND HISTORY CARRY NONE: a count of the rows in the table under it, and a count nothing on the page
+       can act on, are both badges that say nothing (432(a)). */
+    ok("1.405 · both badges are `TabItem.count` — the kit's `CountBadge` — each raw count is spent EXACTLY ONCE, a FAILED count paints no badge, and the strip's sentence still comes from the server",
+      /count: k === "limits" \? view\.unsetRequired : k === "activity" \? view\.pendingIntents \?\? undefined : undefined/.test(pageCode)
         && (pageCode.match(/view\.unsetRequired/g) ?? []).length === 1
+        && (pageCode.match(/view\.pendingIntents/g) ?? []).length === 1
+        && !/view\.pendingIntents \?\? 0/.test(pageCode)
         /* twice: the branch test and the LINK's own child. The plain form once, in the inert branch. */
         && (pageCode.match(/view\.limitsFirstReason/g) ?? []).length === 2
         && (pageCode.match(/view\.limitsFirstPlain/g) ?? []).length === 1
@@ -4894,11 +6117,13 @@ export default function Ruling513Control() {
     ok("1.406 · the strip, both Callouts, the band, the rail and the live trigger are ALL rendered before ANY `tab === ` condition in the body — no tab owns a control that stops money",
       bodyAt > 0 && firstTabCond > bodyAt && sites.every(([, at]) => at > bodyAt && at < firstTabCond),
       j({ bodyAt, firstTabCond, inside: sites.filter(([, at]) => !(at > bodyAt && at < firstTabCond)) }));
-    ok("1.406 · CONTROL · the two panels really are inside `?tab=` groups, and the FIRST condition in the body is a tab GROUP opener — so the assertion above has something to decide",
+    /* ⛔ THE COUNT IS DERIVED FROM THE CLOSED LIST, NOT TYPED: a panel group per key and no others, so a fifth
+       group with no key — or a key whose group was never written — is reported here as well as at 1.312. */
+    ok("1.406 · CONTROL · every panel really is inside its own `?tab=` group, and the FIRST condition in the body is a tab GROUP opener — so the assertion above has something to decide",
       firstPanel > 0 && firstTabCond === firstPanel + 1
         && pageCode.indexOf('{tab === "limits" && (<>') > firstPanel
-        && (pageCode.match(/\{tab === "[a-z-]+" && \(<>/g) ?? []).length === 2,
-      j({ firstPanel, firstTabCond }));
+        && (pageCode.match(/\{tab === "[a-z-]+" && \(<>/g) ?? []).length === CR.CONSOLE_TABS.length,
+      j({ firstPanel, firstTabCond, groups: (pageCode.match(/\{tab === "[a-z-]+" && \(<>/g) ?? []).length }));
   }
 
   /* ⛔ 1.412 / 537 · THE TYPED CONTROL, THE WIRED SAVE AND THE UNSAVED-CHANGES GUARD STAND OR FALL TOGETHER.
@@ -5050,7 +6275,11 @@ export default function Ruling513Control() {
      holder-to-be; neither takes `switchedById`, `actorId` or `viewerUserId`, and that is what is pinned. */
   {
     const handleArgs = [...gateCode.matchAll(/playerHandle\(([^)]*)\)/g)].map((m) => m[1].trim());
-    const HOLDER_ARGS = ["bot.userId", "bot.userId", "u.id", "id"];
+  /* ⭐ FIVE SITES AT C7 STEP 5's LANDING HALF — the desk-wide feed and history name WHOSE account each row is
+     about, and the third argument below is that account's own `userId`, read from the roster the shell already
+     holds. It is the HOLDER again, never `e.actorId`: the history's Who column carries the ACTOR, by id and never
+     behind a player's mask, and the two are three lines apart in the same row. */
+    const HOLDER_ARGS = ["bot.userId", "bot.userId", "found.userId", "u.id", "id"];
     ok("1.420 · `playerHandle` is used for the HOLDER only, never for a staff actor — every call takes an account's own id, pinned by position",
       j(handleArgs) === j(HOLDER_ARGS), j({ found: handleArgs, want: HOLDER_ARGS }));
   }
@@ -5109,9 +6338,36 @@ export default function Ruling513Control() {
         const planted = `${clientCode}\nimport type { ConsoleTab } from "@/lib/house-bot/console-routes";`;
         return HOUSE_SPECIFIERS.some((m) => planted.includes(m));
       })(), "");
-    ok("1.384 · every client file receives a plain view model: no house-shaped prop name, and nothing but primitives crosses the boundary",
-      clientFiles.every((f) => !/\b(bot|house|liquidity|counterStake)[A-Za-z]*\s*[?:]/.test(decomment(read(f))))
-        && /export function DeskLive\(\{ live \}: \{ live: boolean \}\)/.test(decomment(read(liveFile))), "");
+    /* ⭐ THE PIN IS WIDENED AT C7 STEP 5, AND IT MEASURED LESS THAN ITS LABEL CLAIMED.
+     * It read `\s*[?:]`, which matches ONLY an inline props-type annotation. Measured: that tail misses an imported
+     * props ALIAS (`type P = { botId: string }`, destructured at the call), a JSX ATTRIBUTE at a server call site
+     * (`<CancelIntent botId={…} />`) and a PROPERTY READ in client code (`const botLabel = row.label`) — and all
+     * three put the bare word into `.next/static`. `verify:house-bot-bundle`'s identifier family knows `houseBotId`
+     * and NOT bare `botId`, and 4.453 exempts identifiers by construction, so ruling 401's prop-name obligation had
+     * in practice no guard at all for those three shapes.
+     * ⛔ SO THE TAIL GAINS `=` AND THE POPULATION GAINS THE WHOLE SECTION — a prop name is published by the file
+     * that DECLARES it and by the file that PASSES it, and one of those two is usually a server file. It is never
+     * narrowed to buy a green run: the control below plants each of the three spellings it was blind to. */
+    const PROP_NAME = /\b(bot|house|liquidity|counterStake)[A-Za-z]*\s*[?:=]/;
+    /* ⛔ AND THE SERVER HALF IS THE JSX ATTRIBUTE, NOT EVERY OBJECT KEY. A prop name is published when it CROSSES
+     * the client boundary, and a server file crosses it at a JSX attribute — `<CancelIntent botId={…} />` — never
+     * at an argument one server function hands another. Measured: `page.tsx` passes `{ houseBotId: null }` to a
+     * GATED READER, which is a server-to-server call that reaches no chunk at all, and a rule that convicted it
+     * would be a rule someone exempts, and then it protects nothing. `[^<>]*` so the scan cannot run past a tag. */
+    const JSX_PROP = /<[A-Z][A-Za-z0-9]*\s[^<>]*\b(bot|house|liquidity|counterStake)[A-Za-z]*\s*=/;
+    const propHits = clientFiles.filter((f) => PROP_NAME.test(decomment(read(f))))
+      .concat(sectionFiles.filter((f) => JSX_PROP.test(decomment(read(f)))));
+    ok("1.384 · 401 · no house-shaped PROP NAME crosses the client boundary anywhere in this section — not declared in a client file, not read there, and not passed as a JSX attribute by a server one",
+      propHits.length === 0 && clientFiles.length >= 1 && sectionFiles.length >= 6
+        && /export function DeskLive\(\{ live \}: \{ live: boolean \}\)/.test(decomment(read(liveFile))),
+      j({ propHits, clientFiles: clientFiles.length, sectionFiles: sectionFiles.length }));
+    ok("1.384 · 401 · CONTROL · the pin fires on ALL THREE spellings the old `[?:]` tail was blind to — an imported props alias, a property read and a server call site's JSX attribute — still fires on the inline props type it always caught, and does NOT fire on the server-to-server argument that is not a prop at all",
+      PROP_NAME.test("type P = { botId: string }")
+        && PROP_NAME.test("const botLabel = row.label;")
+        && JSX_PROP.test("<CancelIntent botId={row.id} className=\"x\" />")
+        && PROP_NAME.test("function X({ houseStake }: { houseStake: string })")
+        && !PROP_NAME.test("const account = view.label;")
+        && !JSX_PROP.test("await houseUsageForConsole(id, \"/admin/desk\", { houseBotId: null })"), "");
 
     /* ── 1.386 · THE LIVE-REFRESH TRIGGER NAMES NO NOTIFICATION KIND ────────────────────────────────────────────
      * `HOUSE_BOT` is matched by the identifier family, so a kind comparison in client code is a hit in the
@@ -5345,12 +6601,22 @@ export default function Ruling513Control() {
      * is added here is the shape that pin cannot see from the other side: nothing under the section BUILDS that
      * argument from a header or a search param, which would report as a value rather than as a literal and would
      * let a mistyped route widen a page's read audience to a whole RBAC domain. */
-    const gateCalls = [...pageCode.matchAll(/house(?:ConsoleAudience|RosterForConsole|UsageForConsole|AuditForConsole)\(([^;]*?)\)/g)].map((m) => m[1]);
+    const gateCalls = [...pageCode.matchAll(/house(?:ConsoleAudience|RosterForConsole|UsageForConsole|AuditForConsole|FeedForConsole|HistoryForConsole)\(([^;]*?)\)/g)].map((m) => m[1]);
     ok("1.343 · every gate call under the section passes the literal `\"/admin/desk\"` as its route, and there are at least three of them",
       gateCalls.length >= 3 && gateCalls.every((a) => a.includes('"/admin/desk"')), j(gateCalls));
-    ok("1.343 · and no gate argument is built from a header, a search param or the route module — a literal is what the pin can measure",
-      !/headers\(\)|x-pathname|sp\.tab.*houseConsole|CONSOLE_ROUTE/.test(pageCode)
-        && (pageCode.match(/"\/admin\/desk"/g) ?? []).length === gateCalls.length, j(pageCode.match(/"\/admin\/desk"/g)));
+    /* ⛔ THE PIN IS ON THE ROUTE ARGUMENT ITSELF, WHICH IS STRICTLY STRONGER THAN THE FILE-WIDE SCAN IT REPLACES.
+       The old form forbade the identifier `CONSOLE_ROUTE` ANYWHERE in the page — which was true while no pager
+       existed and is the wrong rule now that ruling 319 requires the pager's own `baseHref` to be built from that
+       one module rather than from a literal. 343's subject was never the file: it is that the SECOND argument of
+       every gate call is the literal, because a route built from a value reads as a value to the arity pin and a
+       mistyped one would widen a page's read audience to a whole RBAC domain. So the second argument is compared
+       EXACTLY, and every `"/admin/desk"` literal in the file is still accounted for by a gate call. */
+    const routeArgs = gateCalls.map((a) => (a.split(",")[1] ?? "").trim());
+    ok("1.343 · and no gate argument is built from a header, a search param or the route module — every gate call's SECOND argument is the literal itself",
+      !/headers\(\)|x-pathname/.test(pageCode)
+        && routeArgs.length === gateCalls.length && routeArgs.every((a) => a === '"/admin/desk"')
+        && (pageCode.match(/"\/admin\/desk"/g) ?? []).length === gateCalls.length,
+      j({ routeArgs, literals: (pageCode.match(/"\/admin\/desk"/g) ?? []).length }));
     /* ⛔ THE CONTROL IS THE DERIVED FORM 343 REFUSES: a header value reads as a VALUE to the arity/own-route pin,
      * not as the literal it insists on, so a mistyped route would silently widen a page's read audience to a whole
      * RBAC domain — and the scan above must be able to see it. */
@@ -5705,7 +6971,7 @@ export default function Ruling513Control() {
       (() => {
         const gateSrc = decomment(read(GATE));
         const labels = [...gateSrc.matchAll(/reasonLabel: "([^"]+)"/g)].map((m) => m[1]);
-        return labels.length === 3 && labels.every((t) => t.endsWith("(required)"))
+        return labels.length === 4 && labels.every((t) => t.endsWith("(required)"))
           && /export const CONSOLE_REASON_MIN = 5;/.test(gateSrc)
           && /reason\.length < CONSOLE_REASON_MIN/.test(gateSrc);
       })(),
@@ -5926,12 +7192,17 @@ export default function Ruling513Control() {
     const rungs = ladder(tree);
     const BUILT_THROUGH = rungs.built;
     /* ⛔ THE HOLES THIS TREE IS RECORDED AS HAVING, AND IT IS A DEBT THAT CAN ONLY SHRINK — never a permission.
-     * `5:activity` is C7 step 5, which C7 step 7 found unbuilt and which DEFERRED row 62 records in full: the
-     * feed and history panels, the rail's other two keys, the dense filter rail, `AdminPagination` and the
-     * assertions 1.312 (four keys), 1.317, 1.344, 1.345, 1.369 and 1.410. The moment those land, `gaps` is empty,
-     * this entry no longer matches a real hole, and the case goes RED until it is deleted — which is the whole
-     * point: a skip is tracked, not remembered. An UNRECORDED hole fails immediately. */
-    const RECORDED_GAPS: readonly string[] = ["5:activity"];
+     * ⭐ IT IS EMPTY AS OF 2026-09-20, AND THE ENTRY WAS DELETED IN THE SAME COMMIT AS THE BUILD THAT PAID IT.
+     * `5:activity` recorded C7 step 5: first the whole step, then — when the ACCOUNT page's half landed — the
+     * LANDING half alone. Both halves are on disk now: `CONSOLE_TABS` carries `activity` and `history`, the two
+     * DESK-WIDE readers are behind them, the landing rail is the account page's own rail file, both panels page
+     * against COUNTING readers, and the cancel write path creates the first press anything under `src/` ever has.
+     * ⛔ A RECORD LEFT DESCRIBING WORK THAT IS DONE IS A WRONG AUTHORITY, and this programme has paid for that
+     * class more than once — so the list is emptied with the build rather than merely kept.
+     * ⛔ AND AN EMPTY LIST IS NOT A WEAKER GUARD: `rungs.gaps.every(...)` over an empty `RECORDED_GAPS` means any
+     * hole at all is reported by name, which is the strongest this case can be. An UNRECORDED hole fails
+     * immediately, and a recorded one that has since been built fails until its entry is deleted. */
+    const RECORDED_GAPS: readonly string[] = [];
     type Owed = { id: string; step: number; owner: string; what: string };
     const D19: Owed[] = [
       { id: "1.380", step: 1, owner: "console", what: "the gate's position, the literal route, force-dynamic, no gate in the loader" },
@@ -5988,9 +7259,23 @@ export default function Ruling513Control() {
     ok("1.398 · LADDER · every rung below the highest one this tree carries is either PRESENT or a hole this repository has recorded — an unrecorded hole is named here, and a recorded one that has since been built is named so the record is deleted with the build",
       rungs.gaps.every((g) => RECORDED_GAPS.includes(g)) && RECORDED_GAPS.every((g) => rungs.gaps.includes(g)),
       j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, recorded: RECORDED_GAPS, tree }));
-    ok("1.398 · LADDER · ⛔ AND THE HOLE IS REAL AND PRINTED, not inferred: this tree carries the closing step's artefact while `CONSOLE_TABS` has no `activity` key — C7 step 5 is unbuilt (DEFERRED row 62)",
-      rungs.gaps.length === 1 && rungs.gaps[0] === "5:activity" && BUILT_THROUGH === 7 && tree.activity === false,
-      j({ gaps: rungs.gaps, tabs: CR.CONSOLE_TABS }));
+    /* ⛔ THE POSITIVE HOLE CASE IS DELETED, NOT WEAKENED (C7 step 5, the landing half). It asserted
+     * `rungs.gaps.length === 1 && rungs.gaps[0] === "5:activity" && tree.activity === false` — that this tree
+     * REALLY had the hole the list recorded. Its subject is gone: there is no hole. Lowering it to `>= 0` would
+     * have left a line that can never fail, which is the shape this whole programme is written against.
+     * ⛔ WHAT REPLACES IT ASKS THE SAME QUESTION OF THE STATE THAT EXISTS NOW: the ladder is COMPLETE, and both
+     * halves of step 5 are read separately and PRINTED, so "step 5 is built" can never again be inferred from one
+     * of them. A rung that is true for the wrong half is exactly how this rung read "built through 7" over a
+     * console missing a whole area. */
+    ok("1.398 · LADDER · ⛔ THE LADDER IS COMPLETE AND BOTH HALVES OF STEP 5 ARE READ SEPARATELY: this tree carries the closing step's artefact AND `CONSOLE_TABS`'s two new keys AND `CONSOLE_DETAIL_TABS`'s — no rung is satisfied by the other half's build",
+      rungs.gaps.length === 0 && BUILT_THROUGH === 7 && tree.activity === true
+        && CR.consoleTabExists("activity") && CR.consoleTabExists("history")
+        && CR.consoleDetailTabExists("activity") && CR.consoleDetailTabExists("history")
+        /* ⛔ AND THE RUNG IS READ OFF THE LANDING LIST, which is the half it has always measured: a tree with the
+           detail panels alone must still report the hole, and the vector below proves it does. */
+        && ladder({ ...tree, activity: false }).gaps.length === 1
+        && ladder({ ...tree, activity: false }).gaps[0] === "5:activity",
+      j({ gaps: rungs.gaps, landing: [...CR.CONSOLE_TABS], detail: [...CR.CONSOLE_DETAIL_TABS] }));
     /* ⛔ AND THE DERIVATION IS SHOWN TO HAVE READ THE SPEC: an empty slice makes `every` trivially true, which is
      * the population trap the roll-call itself was written against. */
     /* ⛔ AND THE LADDER REALLY MOVES WITH THE TREE. A ratchet read off disk is worth nothing if the reading is a

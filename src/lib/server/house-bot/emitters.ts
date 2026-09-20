@@ -29,6 +29,7 @@ import {
   notifyAdminsHouseBotAlert, notifyAdminsHouseBotBet, notifyAdminsHouseBotHourSummary, notifyAdminsHouseBotMoneyEvent,
   notifyAdminsHouseBotPaused, notifyAdminsHouseBotRoster, notifyAdminsHouseBotStaffChosen, notifyAdminsHouseBotSwitch,
 } from "../notification-service";
+import { formatEatLocal } from "../date-range";
 import { db } from "../store";
 import { playerHandle } from "./alerts";
 import type { HolderAlerts } from "./holder-hook";
@@ -108,10 +109,26 @@ async function announceOnce(message: EngineAlertMessage): Promise<void> {
   const at = nowAt();
   const detail = message.detail ?? {};
   if (message.code === "HOUR_SUMMARY_ADMINS") {
-    const from = typeof detail.fromIso === "string" ? hhmm(Date.parse(detail.fromIso)) : "";
-    const to = typeof detail.toIso === "string" ? hhmm(Date.parse(detail.toIso)) : "";
+    /* ⛔ TWO FORMS OF ONE WINDOW, AND THEY ARE NOT INTERCHANGEABLE (C7 step 5's landing half). The BODY reads
+     * "Between 13:00 and 14:00 EAT", which is the clock form a person reads; the LINK must carry the form the
+     * console's window parser accepts, and that is NEITHER of the two obvious candidates:
+     *   · `14:00` — the clock form — is refused outright (`parseEatLocal` requires a date), and
+     *   · `2026-09-20T13:00:00.000Z` — the ISO instant on the alert's own detail — is ALSO refused, because the
+     *     parser's pattern is anchored at `HH:MM` and a seconds/millis/`Z` tail does not match it.
+     * ⛔ AND A REFUSED `from` IS SILENT: `resolveRange`'s custom branch has no "I could not read that" path, so it
+     * falls back to `now - 24h → now` and still labels the window **custom**. Both wrong forms therefore land the
+     * officer on the last 24 hours under the name of the hour the bell is about, with nothing on screen saying so.
+     * ⛔ THE ZONE IS THE OTHER HALF: the parser reads an EAT wall clock, so a `…Z` instant would shift the window
+     * by three hours even once its shape matched. `formatEatLocal` is the parser's own inverse, exported from the
+     * module that owns the parse, so the two cannot drift. */
+    const fromIso = typeof detail.fromIso === "string" ? detail.fromIso : "";
+    const toIso = typeof detail.toIso === "string" ? detail.toIso : "";
+    const from = fromIso ? hhmm(Date.parse(fromIso)) : "";
+    const to = toIso ? hhmm(Date.parse(toIso)) : "";
     await safe("hour summary", () => notifyAdminsHouseBotHourSummary({
       fromHH: from, toHH: to,
+      fromEat: fromIso ? formatEatLocal(Date.parse(fromIso)) : "",
+      toEat: toIso ? formatEatLocal(Date.parse(toIso)) : "",
       count: Number(detail.count ?? 0), stakeTzs: Number(detail.stakeTzs ?? 0),
       beyondCap: Number(detail.beyondCap ?? 0), staffChosen: Number(detail.staffChosen ?? 0), at,
     }));

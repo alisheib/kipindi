@@ -44,9 +44,23 @@ export const CONSOLE_NEW_ROUTE = `${CONSOLE_ROUTE}/new`;
 
 /**
  * The landing page's tab keys, in rail order, holding ONLY the keys whose panel exists (ruling 312).
- * `limits` joined it with its panel at C7 step 3; `activity` and `history` join it with theirs at step 5.
+ * `limits` joined it with its panel at C7 step 3.
+ *
+ * ⭐ `activity` AND `history` JOINED AT C7 STEP 5's LANDING HALF, WITH THE DESK-WIDE READERS BEHIND THEM —
+ * `houseFeedForConsole` (every account's stakes in one list) and `houseHistoryForConsole` (every account's changes
+ * AND the control row's own: the switch, a limits save, the withdrawal, which a per-account narrowing correctly
+ * drops). Each is a gated reader building ONE `readDeskCore` set, so all four tabs paint the same strip, the same
+ * band and the same queued-stake badge.
+ * ⛔ THE ORDER IS THE RAIL'S ORDER AND IT IS RULING 312's OWN: roster · activity · limits · history — who is on
+ * the desk, what it is doing, what would stop it, what was done to it.
+ * ⛔ THE LIST STILL GROWS ONLY WITH A PANEL. A rail option with no panel is a dead control, `?tab=` resolves
+ * against this list, and `consoleTabExists` is what every surface asks before it renders a link to one.
+ * ⚠️ THE ACCOUNT PAGE'S HALF LANDED FIRST, AND THE ORDER WAS FORCED (see `CONSOLE_DETAIL_TABS` below): comms case
+ * 7.2d asserted these two keys' ABSENCE while exactly one delivered alert href — the hour summary's — was a
+ * LANDING `?tab=activity` link with no panel behind it. That case is deleted with this build, because its subject
+ * is gone: there is no dead tab left for it to measure.
  */
-export const CONSOLE_TABS = ["roster", "limits"] as const;
+export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;
 export type ConsoleTab = (typeof CONSOLE_TABS)[number];
 
 /** The panel a bare visit renders, and what any unrecognised `?tab=` value resolves to (ruling 302). */
@@ -118,11 +132,19 @@ export function consoleActivityHref(botId?: string | null, opts: { range?: strin
  *
  * ⛔ THE SAME CLOSED-LIST LAW AS THE LANDING PAGE'S: only keys whose panel is BUILT. `rules` and `targets` land with
  * this page under ruling 508 — bells and letters that already shipped link to `?tab=rules`, and §5 captures all three,
- * so striking them would have broken live hrefs to fix a drafting gap. `activity` and `history` join at C7 step 5 with
- * the readers behind them (`listFeed`/`countFeed`, `listAll`/`countAll`), never before: a rail option with no panel is
- * a dead control, and `consoleDetailTab` resolves every other value back to `overview`.
+ * so striking them would have broken live hrefs to fix a drafting gap. A rail option with no panel is a dead control,
+ * and `consoleDetailTab` resolves every other value back to `overview`.
+ *
+ * ⭐ `activity` AND `history` JOINED AT C7 STEP 5 WITH THE READERS BEHIND THEM — `listFeed`/`countFeed` and
+ * `listAll`/`countAll`, both narrowed to this account through the ONE predicate each twin's list and count share.
+ * ⛔ THE ACCOUNT PAGE'S HALF LANDS BEFORE THE LANDING PAGE'S, AND THE ORDER IS FORCED, NOT PREFERRED. Measured on
+ * this tree: `scripts/lib/house-bot-comms-cases.mts` case 7.2d asserts `!consoleTabExists("activity") &&
+ * !consoleTabExists("history")` AND `deadTabs.length >= 1`, and of the eleven `?tab=` hrefs a run of the comms
+ * suite produces, TEN are detail links and exactly ONE is a landing link. So building the LANDING panels first
+ * reds 7.2d at once, while building these leaves that one landing link dead and 7.2d measuring it. The debt list
+ * beside that case is keyed PER SHAPE for the same reason.
  */
-export const CONSOLE_DETAIL_TABS = ["overview", "rules", "targets"] as const;
+export const CONSOLE_DETAIL_TABS = ["overview", "activity", "rules", "targets", "history"] as const;
 export type ConsoleDetailTab = (typeof CONSOLE_DETAIL_TABS)[number];
 
 /** The account page's default panel, and what any unrecognised `?tab=` value resolves to (ruling 302). */

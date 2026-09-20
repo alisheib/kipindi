@@ -37,6 +37,11 @@ const SUITES = {
   "designation-mem": "npx tsx scripts/lib/house-bot-designation-cases.mts",
   "money-pg": "npx tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-money.test.mts",
   "caps-pg": "npx tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-caps.test.mts",
+  /* ⭐ C5-8 · §1j row 84's five marker declarations. `0.232` — the rule that every POSITIONED transaction write
+     copies the marker from the object whose id is its `positionId` — lives in the reports cases, so the five
+     money-marker mutations declared in `house-bot-money.anchors.mjs` name this suite. Memory child only: the
+     rule is a syntax-tree read of `market-service.ts` and a Postgres round trip measures nothing it asserts. */
+  "reports-mem": "npx tsx scripts/lib/house-bot-reports-cases.mts",
 };
 const MEM_ENV = { ...process.env, DATABASE_URL: "", USE_PRISMA_DAL: "false", HB_MONEY_STORE: "memory" };
 const envFor = (suite) => (suite.endsWith("-mem") ? MEM_ENV : process.env);

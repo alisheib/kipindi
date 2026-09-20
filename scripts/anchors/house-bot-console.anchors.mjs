@@ -40,6 +40,11 @@ const DETAIL = "src/app/admin/desk/[id]/page.tsx";
 const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
 /* ⭐ C7 step 4b · the officer's two roster acts, which had no service under src/ at all before this step. */
 const ROSTER = "src/lib/server/house-bot/roster-actions.ts";
+/* ⭐ C7 step 5 (the account half) · the activity panel's own filter rail. */
+const RAIL = "src/app/admin/desk/activity-filters.tsx";
+/** C7 step 5's landing half: the first press anything under `src/` creates, and the bell that links to its panel. */
+const PRESS_CANCEL = "src/lib/server/house-bot/press-cancel.ts";
+const NOTIF = "src/lib/server/notification-service.ts";
 /* ⭐ C7 step 6 · the designate wizard's own actions file and its one client module. */
 const NEW_ACTIONS = "src/app/admin/desk/new/actions.ts";
 const NEW_PAGE = "src/app/admin/desk/new/page.tsx";
@@ -666,10 +671,13 @@ export const MUTATIONS = [
     file: GATE,
     /* ⚠️ RE-ANCHORED at C7 step 4: the set grew a sixth member when "Last bet" brought ruling 351's rate
        reader with it. RE-ANCHORED AGAIN at step 4b: a SEVENTH, the engine's durable beats, which ruling 435(e)
-       puts inside this same door rather than behind a second one. THE DEFECT IS UNCHANGED — one failed read
-       blanks the whole page instead of its own cell. */
-    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.all([`,
+       puts inside this same door rather than behind a second one. RE-ANCHORED AGAIN at C7 step 5's landing
+       half: an EIGHTH, the rail's queued-stake badge, which is a SHELL fact and so belongs to this set rather
+       than to a caller's slot. 🔴 EACH TIME IT WAS THE RED HARNESS THAT REPORTED THE ROT, never a reading — an
+       anchor that stops resolving is a mutation that silently stops being driven. THE DEFECT IS UNCHANGED — one
+       failed read blanks the whole page instead of its own cell. */
+    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.allSettled([`,
+    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.all([`,
     expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
     suite: "console-mem",
   },
@@ -708,11 +716,16 @@ export const MUTATIONS = [
 
   /* ── Rulings 302, 312, 313, 319, 403, 407, 417 · the section's own law. ───────────────────────────────────────── */
   {
+    /* ⚠️ RE-POINTED 2026-09-20 (C7 step 5's landing half). Its `from` was the TWO-key literal and its `to`
+       added `activity` — both of which stopped existing when the landing panels landed, so `test:red-anchors` §3
+       ("every DECLARED anchor resolves exactly once") would have gone red on the text rather than on the rule.
+       ⛔ IT IS RE-AIMED, NOT DELETED: the defect is unchanged — a key on the rail with no panel behind it — and
+       the new `to` is a FIFTH key nothing renders. */
     name: "312-rail · a tab key is added to the closed list with no panel behind it",
     file: ROUTES,
-    from: `export const CONSOLE_TABS = ["roster", "limits"] as const;`,
-    to: `export const CONSOLE_TABS = ["roster", "limits", "activity"] as const;`,
-    expect: "1.312a · the rail's options come from the closed list",
+    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history", "money"] as const;`,
+    expect: "1.312 · the rail's options come from the closed list",
     suite: "console-mem",
   },
   {
@@ -766,17 +779,26 @@ export const MUTATIONS = [
   {
     name: "373-minw · the money TABLE takes a min-width again, which stretches every column and pushes the answer out of view at 360",
     file: PAGE,
-    from: `                <table className="admin-tbl">`,
-    to: `                <table className="admin-tbl min-w-[720px]">`,
+    /* ⚠️ RE-ANCHORED at C7 step 5's landing half: the page carries THREE of these openers now, the anchor
+       matched 3× and the harness refused to inject — which is how the presence check this fires is known to have
+       been broken by the same change. The label above it is what makes the money-bearing one unique. */
+    from: `                <ScrollX label="Desk activity">
+                  <table className="admin-tbl">`,
+    to: `                <ScrollX label="Desk activity">
+                  <table className="admin-tbl min-w-[720px]">`,
     expect: "1.373 · the money-bearing TABLE carries no `min-w-*` of its own",
     suite: "console-mem",
   },
   {
     name: "373-subject · the subject column loses its floor, so it absorbs the whole shortfall at 360 again",
     file: PAGE,
-    from: `                      <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>`,
-    to: `                      <th scope="col" className="text-left p-3">Account</th>`,
-    expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
+    /* ⚠️ RE-ANCHORED at C7 step 5's landing half, same rot and same finding: three panels paint this header, so
+       the anchor matched 3×. The `Stake` header on the next line is the money-bearing panel's own. */
+    from: `                        <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
+    to: `                        <th scope="col" className="text-left p-3">Account</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
+    expect: "1.373 · EVERY panel that paints the subject column carries the SAME floor",
     suite: "console-mem",
   },
   {
@@ -952,7 +974,11 @@ export const MUTATIONS = [
     name: "432i-dead-link · the link flag stops being DERIVED from the closed list, so a rail option and its link can drift apart",
     file: ROUTES,
     from: `export const LIMITS_TAB_READY: boolean = consoleTabExists("limits");`,
-    to: `export const LIMITS_TAB_READY: boolean = consoleTabExists("activity");`,
+    /* ⚠️ RE-POINTED 2026-09-20. `to` flipped the flag to `consoleTabExists("activity")` — which was FALSE while
+       the landing panels were unbuilt and is TRUE now, so the mutation would have left the flag true, produced no
+       failure at all, and been reported NOT-RED (a missed mutation, which exits 1). It is aimed at a key that
+       exists nowhere, which is the state the old `to` was standing in for. */
+    to: `export const LIMITS_TAB_READY: boolean = consoleTabExists("money");`,
     expect: "1.312a · 432(i) · both limits pointers are still GUARDED by the flag",
     suite: "console-mem",
   },
@@ -1100,9 +1126,9 @@ export const MUTATIONS = [
   {
     name: "405-badge · the rail's count is derived a SECOND time, so the badge can disagree with the sentence above it",
     file: PAGE,
-    from: `count: k === "limits" ? view.unsetRequired : undefined`,
-    to: `count: k === "limits" ? view.tiles.filter((t) => t.value === "Not set").length : undefined`,
-    expect: "1.405 · the limits badge is `TabItem.count`",
+    from: `count: k === "limits" ? view.unsetRequired : k === "activity" ? view.pendingIntents ?? undefined : undefined`,
+    to: `count: k === "limits" ? view.tiles.filter((t) => t.value === "Not set").length : k === "activity" ? view.pendingIntents ?? undefined : undefined`,
+    expect: "1.405 · both badges are `TabItem.count`",
     suite: "console-mem",
   },
   {
@@ -1511,7 +1537,7 @@ import { formatEat } from "@/lib/utils";`,
     file: PAGE,
     from: `                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>`,
     to: `                      <th scope="col" className="text-left p-3">Status</th>`,
-    expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
+    expect: "1.373 · EVERY panel that paints the subject column carries the SAME floor",
     suite: "console-mem",
   },
   {
@@ -2159,11 +2185,34 @@ import { formatEat } from "@/lib/utils";`,
     suite: "comms-mem",
   },
   {
-    name: "320-tab-debt-stale · a tab this tree is RECORDED as not having is built, and the record is left behind — the shape a tracked skip must refuse",
+    /* ⚠️ REPLACED TWICE ON 2026-09-20 (C7 step 5's landing half), and the second repair is the one worth reading.
+       Its subject was a RECORDED DEBT left standing after its panel was built, and there is no debt list any more:
+       7.2c asserts ZERO dead tabs with no tolerance at all. The first replacement pointed at the RIGHT defect — a
+       panel deleted while its key stays on the rail — and filed it under the WRONG SUITE and the WRONG LABEL.
+       🔴 MEASURED, not reasoned: the comms suite reads `console-routes.ts` and nothing else of the section, so a
+       deleted PANEL is invisible to it and this mutation would have been reported WRONG-ASSERTION — which is the
+       exact class ruling 505's roll-call exists to end, caught by that roll-call on its first run. And the label it
+       named scans `tab === "…"` occurrences, which `false && tab === "history"` still satisfies. It is filed under
+       `console-mem` against the assertion that slices each panel OUT of the page's source, where an unreachable
+       group reads as an empty slice. The comms half of the same rule gets its own entry below, aimed at the thing
+       the comms suite CAN see: the KEY going missing while an alert still links to it. */
+    name: "320-tab-panel-gone · a panel is deleted while its key stays on the rail, so every alert linking to it lands on a screen that quietly repaints the roster",
+    file: PAGE,
+    from: `        {tab === "history" && (<>`,
+    to: `        {false && tab === "history" && (<>`,
+    expect: "1.312 · CONTROL · each of the four panels is found and non-empty in the page's own source",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ THE COMMS HALF OF RULING 312, AND IT IS WHAT 7.2c MEASURES NOW THAT THE TOLERANCE LIST IS GONE: a tab key
+       leaves the closed list while the alerts still link to it, so every bell carrying that `?tab=` lands on a
+       screen that quietly repaints the roster (302's fallback) with nothing saying the panel was not shown. The
+       hour summary's own link is the one this fires on. */
+    name: "320-tab-key-gone · the landing rail loses a key while a delivered alert still links to it, so the bell lands on a screen that silently repaints the roster",
     file: ROUTES,
-    from: `export const CONSOLE_TABS = ["roster", "limits"] as const;`,
-    to: `export const CONSOLE_TABS = ["roster", "limits", "activity"] as const;`,
-    expect: "7.2c · every `?tab=` a house alert produces names a panel that is BUILT",
+    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "limits", "history"] as const;`,
+    expect: "7.2c · every `?tab=` a house alert produces names a panel that is BUILT for its own SHAPE",
     suite: "comms-mem",
   },
   {
@@ -2287,6 +2336,382 @@ import { formatEat } from "@/lib/utils";`,
       houseBotId: p.houseBotId,
       side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",`,
     expect: "11.247.c1c · the one viewer-facing caller of that raw read PROJECTS",
+    suite: "reports-mem",
+  },
+
+  /* ══ C7 STEP 5 (THE ACCOUNT HALF) · THE ACTIVITY AND HISTORY PANELS ═══════════════════════════════════════════
+   * ⛔ ONE DECLARATION PER GUARD FAMILY THE STEP ADDED, and each one puts back the defect its own assertion was
+   * written against — never a defect that merely goes red somewhere. The three declarations the plan expected to
+   * BREAK at this step (`312-rail`, `320-tab-debt-stale`, `432i-dead-link`) did NOT break, and the reason is the
+   * ordering: all three are anchored on the LANDING rail's closed list, which this step deliberately left alone.
+   * ══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+  {
+    name: "312-detail-rail · a key joins the ACCOUNT page's closed list with no panel behind it — ruling 312's dead control, one route over from where it was first measured",
+    file: ROUTES,
+    from: `export const CONSOLE_DETAIL_TABS = ["overview", "activity", "rules", "targets", "history"] as const;`,
+    to: `export const CONSOLE_DETAIL_TABS = ["overview", "activity", "rules", "targets", "history", "money"] as const;`,
+    expect: "1.312 · a panel for every key AND a key for every panel",
+    suite: "console-mem",
+  },
+  {
+    name: "317-word-hole · one kind loses its console word, so the TOTAL map stops being total and a raw enum is one render away",
+    file: GATE,
+    from: `  SUNSET: "The desk was withdrawn",`,
+    to: `  SUNSET_DISABLED: "The desk was withdrawn",`,
+    expect: "1.317 · the console's event word map is TOTAL over `EVENT_KINDS`",
+    suite: "console-mem",
+  },
+  {
+    name: "317-word-names-it · the word for the kind the LEXICON IS BLIND TO names the feature — the exact leak the map exists to make impossible",
+    file: GATE,
+    from: `  HOLDER_AGAINST_BOT: "The holder staked against this account",`,
+    to: `  HOLDER_AGAINST_BOT: "The holder staked against this bot",`,
+    expect: "1.317 · 453 · not one of its words carries a house-vocabulary word",
+    suite: "console-mem",
+  },
+  {
+    name: "317-raw-enum-fallback · the history's Event cell grows a `?? kind` escape, which paints the raw enum for any kind the map has lost",
+    file: GATE,
+    from: `    eventWord: CONSOLE_EVENT_WORD[e.kind],`,
+    to: `    eventWord: (CONSOLE_EVENT_WORD as Record<string, string>)[e.kind] ?? e.kind,`,
+    expect: "1.317 · 453 · no raw-enum fallback survives",
+    suite: "console-mem",
+  },
+  {
+    name: "345-facet-drift · the COUNTING reader drops the rail's facets, so the total counts a population the table cannot show — 344/345's own defect, and the one that is invisible until the last page",
+    file: GATE,
+    from: `    wantFeed ? houseBotIntentStore.countFeed(feedFilter) : Promise.resolve(null),`,
+    to: `    wantFeed ? houseBotIntentStore.countFeed({ houseBotId: bot.id }) : Promise.resolve(null),`,
+    expect: "1.345 · the listing reader and the COUNTING reader are called with the same facets",
+    suite: "console-mem",
+  },
+  {
+    name: "411-past-the-end · a page past the end stops being served as the LAST page, so a hand-typed `?page=99` renders a card with no rows under a pager pointing somewhere else",
+    file: GATE,
+    from: `  if (total == null) return want;
+  return Math.min(want, Math.max(1, Math.ceil(total / perPage)));`,
+    to: `  if (total == null) return want;
+  return Math.max(1, want - 0);`,
+    expect: "1.411 · `?page=99` is served as the LAST page",
+    suite: "console-mem",
+  },
+  {
+    name: "355-failed-reads-empty · a FAILED activity read answers an empty list, so the kit's failure treatment is never reached and a read that nobody could take looks like an account that has done nothing",
+    file: GATE,
+    from: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    to: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? []
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    expect: "1.355 · a failed activity read is `feed === null`",
+    suite: "console-mem",
+  },
+  {
+    name: "302-refusal-silent · a crafted filter axis is thrown away WITHOUT being named, so the panel narrows to something nobody asked for and says nothing",
+    file: GATE,
+    from: `    if (hit == null) say(said);`,
+    to: `    if (hit == null) { void said; }`,
+    expect: "1.302 · 432(j) · …and every refused axis is NAMED",
+    suite: "console-mem",
+  },
+  {
+    name: "302-smuggle · the door stops checking a filter axis against its closed list and passes the typed value straight into the read — the bypassed-client defect ruling 383 measured the whole shape of",
+    file: GATE,
+    from: `    const hit = fromClosedList(axis, one.value);
+    if (hit == null) say(said);
+    return hit as T | null;`,
+    to: `    const hit = fromClosedList(axis, one.value);
+    if (hit == null) say(said);
+    return (hit ?? one.value) as T | null;`,
+    expect: "1.302 · a bypassed client smuggles NOTHING past the door",
+    suite: "console-mem",
+  },
+  {
+    name: "302-anchor-ignored · a bell's `&intent=` stops resolving its row's page, so an officer who followed an alert lands on page 1 and the row the alert is about is nowhere on the screen",
+    file: GATE,
+    from: `  const wantFeedPage = wantFeed && q.intentId && !q.pageAsked
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;`,
+    to: `  const wantFeedPage = q.page;`,
+    expect: "1.302 · a bell's `&intent=` resolves the row's page SERVER-SIDE",
+    suite: "console-mem",
+  },
+  {
+    name: "369-balance-in-the-link · the money row's DOOR carries the holder's own wallet balance in its query string — ruling 266's bare balance, smuggled through an href instead of a cell",
+    file: GATE,
+    from: "    moneyHref: txn ? `/admin/transactions?q=${encodeURIComponent(txn)}` : null,",
+    to: "    moneyHref: txn ? `/admin/transactions?q=${encodeURIComponent(txn)}&b=${String(e.payload?.balanceTzs ?? \"\")}` : null,",
+    expect: "1.369 · 266 · no history row carries an amount or the holder's wallet balance",
+    suite: "console-mem",
+  },
+  {
+    name: "453-why-painted · the feed row paints the engine's own composed sentence, which opens with a word 453 forbids and embeds formatted money and a pool total — and NO source guard can see it, because it is composed in a module outside the section",
+    file: GATE,
+    from: `    stake: formatTzs(i.stakeTzs),`,
+    to: `    stake: i.why ?? formatTzs(i.stakeTzs),`,
+    expect: "1.453 · D20 · no feed row carries the engine's composed sentence",
+    suite: "console-mem",
+  },
+  {
+    name: "410-rail-rank · the window filter drops the dense rank, so one rail is 44px beside 32px chips — the same control at two sizes on one screen",
+    file: RAIL,
+    from: `      <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />`,
+    to: `      <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />`,
+    expect: "1.410 · every rank-taking control on the rail takes the DENSE rank",
+    suite: "console-mem",
+  },
+  {
+    name: "384-prop-name · a server call site passes a house-shaped PROP NAME across the client boundary, where minification keeps it and the bundle scan's identifier family does not know it",
+    file: DETAIL,
+    from: `          <ActivityFilters groups={view.feedFilters} presets={view.feedPresets} presetDefault={view.feedPresetDefault} />`,
+    to: `          <ActivityFilters botGroups={view.feedFilters} presets={view.feedPresets} presetDefault={view.feedPresetDefault} />`,
+    expect: "1.384 · 401 · no house-shaped PROP NAME crosses the client boundary",
+    suite: "console-mem",
+  },
+  {
+    name: "411-total-from-rows · the activity pager takes its total from the RENDERED rows, so it reads 20 for ever and the control never reaches the last page",
+    file: DETAIL,
+    from: `                  total={view.feedTotal}`,
+    to: `                  total={feedRows.length}`,
+    expect: "1.411 · every `total` is a COUNTING field of the view and never a rendered array's length",
+    suite: "console-mem",
+  },
+  {
+    /* ⚠️ RE-POINTED 2026-09-20. It mutated `UNBUILT_TABS`, the tolerance list — which is DELETED with the build
+       that paid it, so the text no longer exists. ⛔ Its question survives and is asked of what replaced the list:
+       the two rails are separate closed lists, and a resolver that stopped telling them apart would let a link to
+       one pass on the strength of the other. */
+    name: "7.2e-shape-flattened · the alert-link resolver stops telling the two rails apart, so a landing link passes on the strength of the account page's closed list",
+    file: COMMS,
+    from: `  const exists = (x: { shape: string; tab: string }) => (x.shape === "detail" ? CR.consoleDetailTabExists(x.tab) : CR.consoleTabExists(x.tab));`,
+    to: `  const exists = (x: { shape: string; tab: string }) => CR.consoleDetailTabExists(x.tab) || CR.consoleTabExists(x.tab);`,
+    expect: "7.2d · CONTROL · a planted alert href naming a tab NOBODY built",
+    suite: "comms-mem",
+  },
+
+  /* ══ THE THREE THE SERVED PAGE FOUND, WHICH NO SUITE DID ═══════════════════════════════════════════════════
+   * Each of these shipped GREEN and was read off a real render of the account page on a scratch database. They
+   * are declared here so the next session cannot lose what the render cost to find. */
+  {
+    name: "453-enum-token · the rail's URL token goes back to the enum lowercased, so `?kind=counter` reaches the address bar and `data-chip=\"kind:counter\"` reaches served markup — MEASURED, five times, with every suite green",
+    file: GATE,
+    from: `  return consoleSlug(CONSOLE_FEED_AXES[axis].word[member] ?? member);`,
+    to: `  return member.toLowerCase();`,
+    expect: "1.453 · every option KEY and every link the rail builds is neutral too",
+    suite: "console-mem",
+  },
+  {
+    name: "373-minute-only · the activity row's When cell drops its seconds, so twenty rows of a busy account all read one instant under a column that claims to be newest first",
+    file: GATE,
+    from: `    when: Number.isFinite(at) ? \`\${formatEat(at, "D MMM")} \${formatEat(at, "HH:MM:SS")}\` : "—",
+    whenTitle: Number.isFinite(at) ? \`\${formatEat(at, "D MMM YYYY")} \${formatEat(at, "HH:MM:SS")} EAT\` : "—",
+    stake: formatTzs(i.stakeTzs),`,
+    to: `    when: Number.isFinite(at) ? \`\${formatEat(at, "D MMM")} \${formatEat(at, "HH:MM")}\` : "—",
+    whenTitle: Number.isFinite(at) ? \`\${formatEat(at, "D MMM YYYY")} \${formatEat(at, "HH:MM:SS")} EAT\` : "—",
+    stake: formatTzs(i.stakeTzs),`,
+    expect: "1.373 · both panels' `When` cell states SECONDS",
+    suite: "console-mem",
+  },
+  {
+    name: "302-heading-plural · the refusal card's heading goes back to a SINGULAR title, which sat above a plural sentence on the same card",
+    file: GATE,
+    from: `export const CONSOLE_REFUSAL_TITLE = "This address was not used in full";`,
+    to: `export const CONSOLE_REFUSAL_TITLE = "Part of this address was not used";`,
+    expect: "1.302 · 432(n) · the refusal card's heading is number-agnostic",
+    suite: "console-mem",
+  },
+
+  /* ══ C7 STEP 5 · THE LANDING HALF ═════════════════════════════════════════════════
+   * An anchor that RESOLVES is not an assertion that went red (ruling 275). One declaration per new assertion,
+   * each with the label a green run printed — copied out of the run's own output, never written by hand. */
+  {
+    name: "312-rail-order · the four keys are kept but the rail order is scrambled, so an officer reads the desk's own sequence in the wrong order",
+    file: ROUTES,
+    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "limits", "activity", "history"] as const;`,
+    expect: "1.312 · the rail's options come from the closed list",
+    suite: "console-mem",
+  },
+  {
+    name: "312-badge-zero · a FAILED queued-stake count is painted as a zero, so a read that could not be taken reads as \"nothing queued\" and the badge stands in for the read's health",
+    file: PAGE,
+    from: `k === "activity" ? view.pendingIntents ?? undefined : undefined`,
+    to: `k === "activity" ? view.pendingIntents ?? 0 : undefined`,
+    expect: "1.405 · both badges are `TabItem.count`",
+    suite: "console-mem",
+  },
+  {
+    name: "344-landing-total-from-rows · the desk feed's pager takes its total from the rendered page, so it stops at 500 rows for ever and hides every page past it",
+    file: PAGE,
+    from: `                  total={feedView.feedTotal}`,
+    to: `                  total={feedRows.length}`,
+    expect: "1.411 · both landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and neither is a rendered array's length",
+    suite: "console-mem",
+  },
+  {
+    name: "345-landing-facet-drift · the desk feed's COUNT is taken over a different population from its rows, so the pager counts stakes the table cannot show",
+    file: GATE,
+    from: `    () => houseBotIntentStore.countFeed(feedFilter),`,
+    to: `    () => houseBotIntentStore.countFeed({}),`,
+    expect: "1.345 · the desk-wide feed's rows and total move together",
+    suite: "console-mem",
+  },
+  {
+    name: "317-landing-history-narrowed · the desk history narrows to one account, which silently drops the CONTROL ROW's own events — the switch, the limits save, the withdrawal",
+    file: GATE,
+    from: `    () => houseBotEventStore.countAll({}),`,
+    to: `    () => houseBotEventStore.countAll({ houseBotId: "hb_none" }),`,
+    expect: "1.317 · the desk history carries the CONTROL ROW's own events",
+    suite: "console-mem",
+  },
+  {
+    name: "355-landing-badge-blanks-panel · a failed desk-feed read is answered with an empty list, so a read nobody could take renders as \"nothing staked yet\"",
+    file: GATE,
+    from: `  const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({`,
+    to: `  const feed: ConsoleDeskFeedRow[] | null = rows == null ? [] : rows.rows.map((i) => ({`,
+    expect: "1.355 · a FAILED desk read paints the kit's failure treatment",
+    suite: "console-mem",
+  },
+  {
+    name: "415-cancel-on-any-row · the stop control is offered over a stake the engine has already claimed, which the service can only ever refuse",
+    file: GATE,
+    from: `    cancelId: (CONSOLE_PENDING_STATUSES as readonly string[]).includes(i.status) ? i.id : null,`,
+    to: `    cancelId: i.id,`,
+    expect: "1.415 · the stop control is offered on exactly the rows the badge counts",
+    suite: "console-mem",
+  },
+  {
+    name: "415-cancel-reason-unchecked · the cancel door stops checking the reason, so a bypassed client posts an empty decision record onto a live money control",
+    file: GATE,
+    from: `  if (reason.length < CONSOLE_REASON_MIN) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonShort, field: "reason" };`,
+    to: `  if (false) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonShort, field: "reason" };`,
+    expect: "1.415 · the cancel door validates the reason with the SAME bounds the control arms on",
+    suite: "console-mem",
+  },
+  {
+    name: "382-cancel-audit-key · the cancel's audit key is renamed to the neutral-sounding ADMIN one, which silently leaves HOUSE_AUDIT and puts a house row in a player's own audit read",
+    file: PRESS_CANCEL,
+    from: `      purpose: "STAFF_CANCEL",`,
+    to: `      purpose: "ENTER_NOW",`,
+    expect: "1.382 · the cancel's audit action is a `HOUSE_AUDIT` key",
+    suite: "console-mem",
+  },
+  {
+    name: "410-landing-rail-absent · the desk activity panel drops its rail, so the window and the three chips the bells link to have nothing to select",
+    file: PAGE,
+    from: `          <ActivityFilters groups={feedView.feedFilters} presets={feedView.feedPresets} presetDefault={feedView.feedPresetDefault} />`,
+    to: ``,
+    expect: "1.410 · the landing activity panel renders the SAME rail file",
+    suite: "console-mem",
+  },
+  {
+    name: "411-landing-basehref-bare · the desk feed's pager builds its baseHref without the live filters, so page 2 of a filtered list is page 2 of the unfiltered one",
+    file: PAGE,
+    from: `                  baseHref={buildBaseHref(CONSOLE_ROUTE, feedView.feedParams, "page")}`,
+    to: `                  baseHref={buildBaseHref(CONSOLE_ROUTE, { tab: "activity" }, "page")}`,
+    expect: "1.411 · each landing pager's `baseHref` carries its own panel's live parameters",
+    suite: "console-mem",
+  },
+  /* ⛔ THE BELL'S WINDOW HAS TWO WRONG FORMS AND THEY ARE DECLARED SEPARATELY, because the control beside the
+   * assertion says in so many words that a guard which cannot tell them apart is measuring a spelling rather than
+   * the bell. One mutation per way the defect can be written is the rule this programme keeps paying to relearn. */
+  {
+    name: "369-bell-clock-href · the hour summary's link goes back to the HH:MM clock form, which the console's window parser cannot read — so the bell lands on a \"custom\" label over the last 24 hours",
+    file: NOTIF,
+    from: `&from=\${encodeURIComponent(opts.fromEat)}&to=\${encodeURIComponent(opts.toEat)}\`,`,
+    to: `&from=\${encodeURIComponent(opts.fromHH)}&to=\${encodeURIComponent(opts.toHH)}\`,`,
+    expect: "1.369 · the hour summary's bell lands on the HOUR IT IS ABOUT",
+    suite: "console-mem",
+  },
+  {
+    name: "369-bell-iso-href · the hour summary's link carries the alert's own ISO instant, which the parser refuses just as completely — the form a field once called `fromIso` invited",
+    file: NOTIF,
+    from: `&from=\${encodeURIComponent(opts.fromEat)}&to=\${encodeURIComponent(opts.toEat)}\`,`,
+    to: `&from=\${encodeURIComponent(opts.fromIso)}&to=\${encodeURIComponent(opts.toIso)}\`,`,
+    expect: "1.369 · the hour summary's bell lands on the HOUR IT IS ABOUT",
+    suite: "console-mem",
+  },
+  /* ══ THE TWO THE LANDING RENDER FOUND, WHICH NO SUITE DID ══════════════════════════════════
+   * Both shipped GREEN and were read off a real render of the LANDING page on a scratch database — the first
+   * out of the served markup, the second only out of COMPUTED STYLES, which no scan of source could reach. */
+  {
+    name: "416-desk-borrows-account-sentence · the desk-wide panel hands back the shell's filtered empty state, whose body names \"this account\" on the one page that has no account to name",
+    file: GATE,
+    from: `    feedEmpty: panel.feedFiltered ? CONSOLE_DESK_FEED_EMPTY_FILTERED : CONSOLE_DESK_FEED_EMPTY,`,
+    to: `    feedEmpty: panel.feedFiltered ? panel.feedEmpty : CONSOLE_DESK_FEED_EMPTY,`,
+    expect: "1.355 · 416 · an empty desk list and a filter that matched nothing say DIFFERENT things",
+    suite: "console-mem",
+  },
+  {
+    name: "474-row-link-on-operator-text · the Owner's own typed label goes back inside the row-EXIT class, whose `text-transform: uppercase` rewrites it for every reader and every screenshot",
+    file: PAGE,
+    from: `                              {r.accountIsOperatorText
+                                ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                : <span className="text-text-tertiary">{r.accountName}</span>}
+                              {/* The holder, as a HANDLE and nothing else (04 R6)`,
+    to: `                              {r.accountIsOperatorText
+                                ? <Link href={r.accountHref as Route} className="row-link text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                : <span className="text-text-tertiary">{r.accountName}</span>}
+                              {/* The holder, as a HANDLE and nothing else (04 R6)`,
+    expect: "1.474 · not one element that carries the Owner's OWN TEXT wears the row-exit class",
+    suite: "console-mem",
+  },
+  {
+    name: "474-landing-label-unclamped · the desk feed's account cell paints the Owner's label unbounded, on the one page that lists every account at once",
+    file: GATE,
+    from: `    accountName: clampOperatorText(found.label, operatorBound("label")),`,
+    to: `    accountName: found.label,`,
+    expect: "1.474 · both exemptions are CLAMPED at their own render site",
+    suite: "console-mem",
+  },
+
+  /* ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+   * §1c ROW 27 (C5-8, 2026-09-20) — R8's ASSERTIONS GET A MUTATION DRIVE FOR THE FIRST TIME.
+   *
+   * ⛔ READ THIS BEFORE COUNTING THESE AGAINST THE ROW. Row 27 owes "the ten mutations listed in this
+   * checkpoint's report". Measured at this HEAD: that list is in NO tracked file — `grep -l` over
+   * `plans/house-bots/tools/*.json` matches nothing, and no anchors file names `report-pack`,
+   * `reports/catalogue` or `pack-actions`. The report that listed them lives in a session transcript, which on
+   * this programme is not a place a gate may live, so the ten AS LISTED are unrecoverable and this is not a
+   * transcription of them. What these four are is the sanctioned route taken instead — the same route §2e point
+   * 3 chose for the 92: CONVERSION into `scripts/anchors/`, which puts each one under `test:red-anchors` §3, the
+   * instrument that re-resolves every `from` against the tree every single day.
+   *
+   * ⚠️ THEY LIVE IN THE CONSOLE'S FILE FOR ONE REASON ONLY: it is the declaration list of the harness that runs
+   * `reports-mem`, where R8's assertions print. Nothing about them is console work.
+   * ⚠️ FOUR, NOT TEN, AND THE SHORTFALL IS NAMED: R8's remaining assertions are the §8.216 family, which the
+   * memory child SKIPS by its own design (`8.216.store` says so — with the ring emptied, the durable readers
+   * fall back to the ring, so the memory child would measure the fallback and not the table). Driving those
+   * needs a `reports-pg` suite key, which no red harness declares today. Row 27 stays OPEN with that remainder.
+   * ───────────────────────────────────────────────────────────────────────────────────────────────────────── */
+  {
+    name: "R8-215-ring · the ISO export goes back to the in-memory audit RING, which empties on every deploy — the exact swap R8 made, undone",
+    file: "src/lib/server/reports/catalogue.ts",
+    from: `  const { entries, total, truncated } = await getAuditPageDurable({ limit: ISO_EXPORT_LIMIT });`,
+    to: `  const { entries, total, truncated } = await getAuditPage({ limit: ISO_EXPORT_LIMIT });`,
+    expect: "0.215.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "R8-215-action-dropped · an rg.* action a real writer under src/ still writes falls out of RG_AUDIT_ACTIONS, so the regulator's document silently stops showing that activation",
+    file: "src/lib/server/reports/catalogue.ts",
+    from: `  "rg.self_exclusion.reopened",\n] as const;`,
+    to: `] as const;`,
+    expect: "0.215.3 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "R8-214-getpack-door · a maker-checker action reads its pack through getReportPack instead of the one refusing door, so a transition proceeds on a history that could not be read",
+    file: "src/app/admin/reports/pack-actions.ts",
+    from: `  const read = await readPackForTransition(period);\n  if (!read.ok) return read;\n  const pack = read.pack;\n  if (pack.state !== "draft") return { ok: false, error: \`Pack is already \${pack.state}. Prepare is only valid from Draft.\` };`,
+    to: `  const read = { ok: true, pack: await getReportPack(period) };\n  if (!read.ok) return read;\n  const pack = read.pack;\n  if (pack.state !== "draft") return { ok: false, error: \`Pack is already \${pack.state}. Prepare is only valid from Draft.\` };`,
+    expect: "0.214.2 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "R8-214-card-uncaught · ReportPackCard stops catching its own read, so one failed durable read takes the KPI strip, the daily P&L and the whole report library down with it",
+    file: "src/app/admin/reports/report-pack-card.tsx",
+    from: `    pack = await getReportPack(period);\n  } catch (e) {`,
+    to: `    pack = await getReportPack(period);\n  } finally {`,
+    expect: "0.214.3 ·",
     suite: "reports-mem",
   },
 ];

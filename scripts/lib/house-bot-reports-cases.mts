@@ -901,9 +901,18 @@ if (STORE === "memory") {
     }
     const covered = positioned.filter((s) => s.marker !== null && [...anchorLines].some((L) => L >= s.line && L <= s.endLine));
     const uncovered = positioned.filter((s) => s.marker !== null && !covered.includes(s)).map((s) => `${s.file.split("/").pop()}:${s.line}`);
-    ok("0.232.2b · the money anchors are READ, and the population of marker sites they declare a mutation for is printed: a marker site with no declared mutation is never demonstrated red by test:red-anchors, and this assertion is the only thing that says which and how many",
-      anchorLines.size > 0 && covered.length === 2 && uncovered.length === 5
-      && j(uncovered) === j(["market-service.ts:3167", "market-service.ts:3577", "market-service.ts:3709", "market-service.ts:3850", "market-service.ts:4433"]),
+    /* ⭐ RAISED 2 → 7 BY C5-8 (2026-09-20), §1j row 84, and this is the only direction this assertion may move.
+       Until today the five sites this printed as "uncovered (deferred by name)" — the cash-out (`:3167`), the
+       one-sided refund (`:3577`), the void refund (`:3709`), the winner payout (`:3850`) and the emergency void
+       (`:4433`) — had NO declared mutation in any file under `scripts/`, so `test:red-anchors` never demonstrated
+       that deleting their marker reddens anything. All five are now declared in
+       `scripts/anchors/house-bot-money.anchors.mjs` and run by `red:house-bot-money` under `reports-mem`.
+       ⛔ The deferral list is GONE rather than shortened, and the equality is EXACT on both numbers: a site that
+       loses its declaration takes this red, which is the whole point of counting instead of asserting a sentence.
+       ⛔ This is a TIGHTENING. Never re-loosen it to absorb a red — a declaration that stops resolving is a
+       finding for `test:red-anchors` §3 to report, not a number for this line to accommodate. */
+    ok("0.232.2b · the money anchors are READ, and EVERY marker site they declare a mutation for is printed: a marker site with no declared mutation is never demonstrated red by test:red-anchors, and this assertion is the only thing that says which and how many",
+      anchorLines.size > 0 && covered.length === marked.length && uncovered.length === 0,
       `${covered.length} of ${marked.length} marker sites carry a declared money-anchor mutation · uncovered (deferred by name): ${j(uncovered)}`);
 
     ok("0.232.3 · ⛔ nothing in tracked src/ writes a Transaction row around the DAL — no .transaction.create(, .createMany( or .upsert(, no raw INSERT INTO \"Transaction\" (schema-qualified or not), and no INSERT into an INTERPOLATED table outside the one declared builder",
@@ -2103,7 +2112,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * argument. The pin's job is unchanged and undiminished: a call with the wrong number of arguments is still red,
  * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
  * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -2387,6 +2396,21 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      `field === "label"` cannot tell the console's early check from the service's late one: both answer that field,
      so only the SENTENCE distinguishes them. None of the four awaits, reaches a store or decides an audience. */
   "CONSOLE_PICKER_BUSY", "CONSOLE_WIZARD_COPY", "CONSOLE_DESIGNATE_LABEL_LENGTH", "CONSOLE_DESIGNATE_LABEL_TAKEN",
+  /* ⭐ C7 step 5 (the account half) · the two panels' painted SHAPES, the query shape the door validates, and ONE
+     constant: `CONSOLE_EVENT_WORD`, a TOTAL `Record<HouseBotEventKind, string>`. It is exported so the suite can
+     compare its key set with `EVENT_KINDS` member for member rather than regexing the source for a fallback — the
+     strongest form of "no raw enum reaches the screen", and the one a source scan cannot give. It is pure copy:
+     it awaits nothing, names no store and decides no audience, which is what 0.512b checks rather than assumes.
+     ⛔ The two panels' READER is `houseDetailForConsole`, which has its `CONSOLE_GATES` entry above — the arity
+     pin MOVED with the door's shape at this step (a query object in place of a bare page number) and stayed at 4. */
+  "CONSOLE_EVENT_WORD", "CONSOLE_FEED_AXES", "CONSOLE_REFUSAL_TITLE", "ConsoleQuery", "ConsoleEventRow", "ConsoleFeedAxis", "ConsoleFeedRow",
+  "ConsoleFilterGroup", "ConsoleFilterOption",
+  /* ⭐ C7 step 5 (the LANDING half) · the two desk-wide panels' painted SHAPES and the cancel control's finished
+     copy. Every one of them is a TYPE: it awaits nothing, names no store and decides no audience, which is what
+     0.512b checks rather than takes on trust. ⛔ Their READERS are `houseFeedForConsole` and
+     `houseHistoryForConsole`, each with its own `CONSOLE_GATES` entry above at arity THREE — the viewer, the
+     calling file's own route as a string literal, and the REQUEST's untouched query string. */
+  "ConsoleCancelCopy", "ConsoleCancelInput", "ConsoleCancelResult", "ConsoleDeskEventRow", "ConsoleDeskFeedRow", "ConsoleFeedView", "ConsoleHistoryView",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
@@ -3738,6 +3762,38 @@ await guard("11.247", async () => {
     boardSrc.includes(ITEM) && c1cPlant !== boardSrc && !c1cPlant.includes(ITEM),
     `changed=${c1cPlant !== boardSrc}`);
 
+  /* ⛔ ROW 77 · THE OG HANDLER'S OWN READ LIST, DERIVED RATHER THAN ASSUMED (C5-8 phase 3, 2026-09-20).
+     Ruling 247 asks the builder to OPEN `/api/og/market/[id]` and add ITS data reads to this sweep.
+     `DEFERRED-TESTS.md` §1j row 77 recorded, correctly, that nobody ever had: the handler was not opened
+     and its read list was not derived, so `getMarket` being swept here was an assumption ABOUT the route
+     rather than a measurement OF it. Opened now. It makes exactly TWO data reads — `getMarket(id)`
+     (`route.tsx:47`), which this sweep already drives for all four viewers, and `resolveWinShareToken(…)`
+     (`:56`), which was in NO sweep, NO register and NO anchors file.
+     ⭐ AND IT IS EXACTLY THE SHAPE `c1c` EXISTS FOR: that reader reaches a RAW position row
+     (`positionStore.get`), whose Postgres column set carries `houseBotId`. What holds the absence is its
+     PROJECTION, so the projection is pinned — with a planted control, because a needle that matches
+     nothing passes vacuously, which is the defect c1c's own header records being caught once already. */
+  const ogSrc = decomment(read("src/app/api/og/market/[id]/route.tsx")).replace(/\r\n/g, "\n");
+  const ogReads = [...ogSrc.matchAll(/await\s+([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]).sort();
+  ok("11.247.c1e · 247 · the OG image route's data reads are exactly the two this sweep accounts for — `getMarket`, driven for all four viewers above, and `resolveWinShareToken`, pinned below — so a third reader arriving in that handler is reported here by name instead of riding out unswept",
+    ogReads.join(",") === "getMarket,resolveWinShareToken", j(ogReads));
+  const shareSrc = decomment(read("src/lib/server/share-token.ts")).replace(/\r\n/g, "\n");
+  const WIN_SHARE = `  return {
+    marketId: pos.marketId,
+    marketTitle: m.titleEn,
+    side: pos.side,
+    stake: pos.stake,
+    payout: pos.finalPayout,
+    net: pos.finalPayout - pos.stake,
+  };`;
+  ok("11.247.c1e · 247 · …and the second of the two PROJECTS: `resolveWinShareToken` reads the raw position row and answers a fixed six-field share — the marker is not one of the six, so nothing house can reach the OG image's text",
+    shareSrc.includes(WIN_SHARE) && shareSrc.includes("positionStore.get("),
+    shareSrc.includes(WIN_SHARE) ? "six fields, no marker" : shareSrc.includes("resolveWinShareToken") ? "the projection literal has MOVED — re-read it" : "resolveWinShareToken is gone");
+  const c1ePlant = shareSrc.replace(WIN_SHARE, WIN_SHARE.replace("    marketId: pos.marketId,", "    marketId: pos.marketId,\n    houseBotId: pos.houseBotId,"));
+  ok("11.247.c1e.control · CONTROL · the plant really CHANGED the source and the pin then REPORTS it — so c1e's verdict is a measurement of those six fields and not of a string that matches nothing",
+    shareSrc.includes(WIN_SHARE) && c1ePlant !== shareSrc && !c1ePlant.includes(WIN_SHARE),
+    `changed=${c1ePlant !== shareSrc}`);
+
   /* ⛔ CONTROL (ii) IS STORE-SPECIFIC, AND SAYING SO IS THE POINT. On Postgres every Position row has a
      `houseBotId` COLUMN, so an unprojected raw row is a leak by design whatever its value — a projection
      that returned raw rows would be caught on a fixture with no house money in it at all. In memory the
@@ -4236,8 +4292,15 @@ if (STORE === "memory") {
   const selfCode = decomment(read("scripts/lib/house-bot-reports-cases.mts"));
   const LBL = "0.505b · every declared `reports-mem` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
   const LBLC = "0.505b · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  /* ⛔ BOTH ANCHORS FILES, NOT JUST THE CONSOLE'S (C5-8, 2026-09-20). Until today this roll-call read
+     `CONSOLE_ANCHORS` alone, which was complete only because the console's file was the only one declaring a
+     `reports-mem` mutation. §1j row 84's five marker mutations are declared in `house-bot-money.anchors.mjs` and
+     also name `reports-mem` — and had they been added without this line, they would have been a suite key
+     "declared in a house anchors file with no roll-call", which is the exact thing ruling 505 exists to refuse.
+     The roll-call now reads the union, so the guard covers the population it claims to cover. */
   const input = {
-    suiteKeys: ["reports-mem"], declarations: CONSOLE_ANCHORS as DeclaredMutation[],
+    suiteKeys: ["reports-mem"],
+    declarations: [...CONSOLE_ANCHORS, ...MONEY_ANCHORS] as DeclaredMutation[],
     emitted, source: selfCode, ownLabels: [LBL, LBLC],
   };
   const rc = expectDriftReport(input);

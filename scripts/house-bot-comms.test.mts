@@ -18,4 +18,4 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-comms", casesFile: "scripts/lib/house-bot-comms-cases.mts", minPass: { memory: 47, postgres: 45 }, dbPrefix: "hb_comms" });
+await runTwoStores({ suite: "test:house-bot-comms", casesFile: "scripts/lib/house-bot-comms-cases.mts", minPass: { memory: 48, postgres: 46 }, dbPrefix: "hb_comms" });

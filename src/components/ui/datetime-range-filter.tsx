@@ -60,11 +60,20 @@ export function DateTimeRangeFilter({
   defaultPreset = "7d",
   allowCustom = true,
   rank = "primary",
+  replace = false,
   className,
 }: {
   presetIds?: readonly string[];
   defaultPreset?: string;
   allowCustom?: boolean;
+  /**
+   * ⭐ A FILTER IS NOT A NAVIGATION (kit README §3) — `FilterPill` has taken this prop since S-07 and this rail
+   * could not, so a rail built from both controls had one half that stacked history and one half that did not.
+   * ⛔ IT DEFAULTS TO `false`, WHICH IS PUSH, AND THAT IS DELIBERATE: the seven existing admin call sites have
+   * always pushed, and quietly rewriting their history behaviour is not a design fix (the note at `hrefForPreset`
+   * below said exactly this, and still holds for every caller that does not ask). A rail that owns its URL asks.
+   */
+  replace?: boolean;
   /**
    * ⛔ THE ADMIN DENSITY IS THE CALLER'S TO ASK FOR, NEVER THIS FILE'S TO ASSUME. Every admin
    * call site passes `rank="dense"` (32px, `--h-control-xs`); the default stays the 44px player
@@ -110,7 +119,11 @@ export function DateTimeRangeFilter({
     mut(p);
     p.delete("page"); // any window change resets pagination
     const qs = p.toString();
-    router.push((qs ? `${pathname}?${qs}` : pathname) as never, { scroll: false });
+    const to = (qs ? `${pathname}?${qs}` : pathname) as never;
+    /* ⛔ ONE DECISION, TWO DOORS. `hrefForPreset` below builds the same URL for the `<Link>`; this runs for the
+       Custom panel's Apply and Clear. Both must obey the caller's `replace`, or a rail stacks history on one half
+       of itself and not the other. */
+    if (replace) router.replace(to, { scroll: false }); else router.push(to, { scroll: false });
   };
 
   const pickPreset = (id: string) => {
@@ -139,8 +152,10 @@ export function DateTimeRangeFilter({
    *
    * ⛔ THESE TWO MUST NEVER DIVERGE. `pickPreset` still runs (the Clear button inside the custom
    * panel calls it), so if it ever learns a new parameter this must learn it in the same edit.
-   * ⚠️ `push`, not `replace` — deliberately unchanged. The rail has always pushed, and quietly
-   * rewriting seven admin routes' history behaviour is not a design fix.
+   * ⚠️ `push` UNLESS THE CALLER ASKS FOR `replace`, and the DEFAULT is unchanged on purpose: the rail
+   * has always pushed, and quietly rewriting seven admin routes' history behaviour is not a design
+   * fix. The `replace` prop above is opt-in, for a rail that owns its URL; the `<Link>` here forwards
+   * exactly what `pushParams` obeys, so the two doors can never disagree.
    */
   const hrefForPreset = (id: string) => {
     const p = new URLSearchParams(sp.toString());
@@ -168,6 +183,7 @@ export function DateTimeRangeFilter({
             on={activeId === id}
             rank={rank}
             semantics="tab"
+            replace={replace}
             scroll={false}
             testId={`range:${id}`}
             onClick={() => setOpen(false)}
