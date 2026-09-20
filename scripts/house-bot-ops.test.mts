@@ -1,5 +1,6 @@
 /**
- * HOUSE-BOT OPS — the suite for Commit 7's four ops scripts and the DAL members they need.
+ * HOUSE-BOT OPS — the suite for Commit 7's four ops scripts, Commit 8's preflight, seed and drive,
+ * and the DAL members they need.
  *
  *   npm run test:house-bot-ops
  *
@@ -70,7 +71,19 @@
  *     plus the false positive that detector really produced); thirteen more in the Postgres child, which
  *     DELETES a holder wallet and PUTS IT BACK — the condition reported and then CLEARED on the same
  *     account — and proves the recheck's delta detector by placing a stake BETWEEN its two reads.
+ *   · memory 76, postgres 104 — step 10: §8, `db:seed-house-bots-local`, the world a human opens.
+ *     Five more in the memory child (the loopback refusal read as a TRIPLE — host, production AND an
+ *     exit, because a test that warns and carries on reads in a diff exactly like one that refuses; the
+ *     admin credential proved to be DERIVED from the seed that owns it rather than re-typed; the switch
+ *     law; the positive control that it really does reach the three services; and the refusal DRIVEN
+ *     with a non-loopback URL). Eleven more in the Postgres child, which gives the seed A DATABASE OF
+ *     ITS OWN, runs it BEFORE `migrate deploy` (it must refuse, not half-write a world), then runs it,
+ *     then READS THE FOUR ACCOUNTS BACK out of the database — never from what the seed believed it
+ *     wrote — proves the AUTO_PAUSED one got there through a real password change (its consent
+ *     fingerprint no longer matches its holder's), tries the printed admin credential against the
+ *     stored hash with a one-character control beside it, and runs the seed a SECOND time to prove it
+ *     refuses rather than quietly seeding a second roster.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 71, postgres: 93 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 76, postgres: 104 }, dbPrefix: "hb_ops" });

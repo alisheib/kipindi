@@ -82,8 +82,18 @@ if (admin.status !== 0) {
   console.error(`REFUSED — the admin seed failed:\n${admin.stdout ?? ""}${admin.stderr ?? ""}`);
   process.exit(1);
 }
-const ADMIN_PHONE = "+255700000000";
-const ADMIN_PASSWORD = "QaAdmin2026!";
+// ⛔ THE CREDENTIAL IS READ OUT OF THAT SEED'S OWN OUTPUT, NEVER RE-TYPED HERE. Both of its branches
+// print `<id> · <phone> / <password>`. A copy of the phone and password typed into this file would be
+// right on the day it was written and would hand a human a password that no longer opens anything the
+// day `seed-admin-local.mts` changes either one — a failure whose first symptom is a sign-in page the
+// operator blames on the desk.
+const cred = /· (\+\d+) \/ (\S+)/.exec(admin.stdout ?? "");
+if (!cred) {
+  console.error(`REFUSED — the admin seed did not print the credential line this script hands the human:\n${admin.stdout ?? ""}`);
+  process.exit(1);
+}
+const ADMIN_PHONE = cred[1];
+const ADMIN_PASSWORD = cred[2];
 
 // ── the world ──────────────────────────────────────────────────────────────────────────────────
 const { loadWorld }: Any = await import("./lib/house-bot-world.mts");

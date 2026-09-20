@@ -406,6 +406,31 @@ export function auditPopulation(files: readonly string[], body: (rel: string) =>
 const sameSet = (a: readonly string[], b: readonly string[]): boolean =>
   a.length === b.length && [...a].sort().join("|") === [...b].sort().join("|");
 
+/**
+ * Does a script that WRITES to whatever database it is handed refuse one that is not loopback?
+ *
+ * ⛔ READ AS THREE PARTS, BECAUSE TWO OF THEM PASS ON THEIR OWN AND MEAN NOTHING. Naming the
+ * production hosts catches a URL that says `rlwy.net` and nothing else — a staging copy, a
+ * colleague's laptop, a tunnel — so the HOST test is the one that actually bounds the blast radius.
+ * And a test that warns instead of exiting reads, in a diff, exactly like a test that refuses:
+ * `ops.pop.3`'s sibling failure, one level down. All three, or it is not a refusal.
+ *
+ * ⛔ The seed and the drive are the only two scripts in this lane that write a world rather than read
+ * one; the ops scripts are pointed at production BY DESIGN and are covered by `ops.off.7` instead.
+ */
+export function loopbackRefusal(code: string): { hostTest: boolean; namesProduction: boolean; exits: boolean } {
+  return {
+    hostTest: code.includes(String.raw`127\.0\.0\.1`) || code.includes(`"127.0.0.1"`),
+    namesProduction: /rlwy\\?\.net/.test(code),
+    exits: /(?:loopback only|Loopback only)/.test(code) && /process\.exit\(2\)/.test(code),
+  };
+}
+
+/** A credential TYPED into a file that another file owns — right the day it is written, wrong the day that file changes. */
+export function typedAdminCredential(code: string): string[] {
+  return [...code.matchAll(/const\s+ADMIN_(?:PHONE|PASSWORD)\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 // The allowlists. ⛔ NAMES, NEVER COUNTS — a ratchet on a number can be satisfied by deleting an
 // unrelated line. Compared as a SET in BOTH directions, so a new offender and a stale exemption
@@ -510,6 +535,23 @@ const PLANTED = {
   preflightTypedTables: 'const HOUSE = ["HouseBot", "HouseBotControl", "HouseBotRuntime", "HouseBotAlertOnce", "HouseBotEvent", "HouseBotIntent", "HouseBotTarget", "HouseBotPress"];',
   /** The same eight reached through the module the engine's own gate reads. MUST NOT be reported. */
   preflightImportedTables: 'import { HOUSE_SCHEMA_TABLES } from "../src/lib/server/house-bot/schema-ready.ts";\nconst missing = HOUSE_SCHEMA_TABLES.filter((t) => !present.includes(t));',
+  /**
+   * ⛔ THE SEED WITH ITS HOST TEST GONE. It still names production, so a reviewer skimming for
+   * "rlwy" would find it — and it would then designate REAL players as house bots on any database
+   * whose URL does not happen to say rlwy.net, a staging copy included.
+   */
+  seedNoHostTest: 'const url = process.env.DATABASE_URL ?? "";\nif (/rlwy\\.net|railway\\.app/i.test(url)) { console.error("REFUSED — production."); process.exit(2); }\nawait designateHouseBot(input);',
+  /**
+   * ⛔ THE SHAPE THAT IS WORSE THAN NO GUARD: it asks the right question and carries on anyway.
+   * A refusal that only warns reads, in a diff, exactly like a refusal that refuses.
+   */
+  seedTestsButRuns: 'if (!/@(localhost|127\\.0\\.0\\.1)[:/]/i.test(url)) console.warn("loopback only, probably");\nawait designateHouseBot(input);',
+  /** The refusal as the seed really writes it — host, production and an exit. MUST NOT be reported. */
+  seedRefuses: 'if (/rlwy\\.net|railway\\.app|50pick\\.tz/i.test(url)) { console.error("REFUSED — production."); process.exit(2); }\nif (!/@(localhost|127\\.0\\.0\\.1)[:/]/i.test(url)) { console.error("REFUSED — loopback only."); process.exit(2); }',
+  /** ⛔ THE CREDENTIAL RE-TYPED instead of read out of the seed that owns it — right the day it is written. */
+  seedTypedPassword: 'const ADMIN_PHONE = "+255700000000";\nconst ADMIN_PASSWORD = "QaAdmin2026!";',
+  /** The same credential read out of the admin seed's own output. MUST NOT be reported. */
+  seedDerivedPassword: 'const cred = /· (\\+\\d+) \\/ (\\S+)/.exec(admin.stdout ?? "");\nconst ADMIN_PHONE = cred[1];\nconst ADMIN_PASSWORD = cred[2];',
 };
 /* @ops-planted:end */
 
@@ -619,6 +661,22 @@ export function redCases(): RedCase[] {
       typedTableLiterals(PLANTED.preflightTypedTables, HOUSE_TABLE_NAMES).length === 8, typedTableLiterals(PLANTED.preflightTypedTables, HOUSE_TABLE_NAMES));
     add("pre.7 · CONTROL · the same eight reached through schema-ready.ts's export type none of them",
       typedTableLiterals(PLANTED.preflightImportedTables, HOUSE_TABLE_NAMES).length === 0 && /HOUSE_SCHEMA_TABLES/.test(PLANTED.preflightImportedTables), "imported");
+  }
+
+  {
+    // ⛔ THE SEED'S TWO REFUSALS. It is the only script in this lane that DESIGNATES accounts, and a
+    // designation on a real database is a money-and-consent act on a real person's account.
+    add("seed.6 · a seed whose HOST test is gone — still naming production, so a skim for `rlwy` finds it — is reported",
+      loopbackRefusal(PLANTED.seedNoHostTest).hostTest === false && loopbackRefusal(PLANTED.seedNoHostTest).namesProduction === true,
+      j(loopbackRefusal(PLANTED.seedNoHostTest)));
+    add("seed.6 · ⭐ a seed that ASKS the right question and carries on anyway is reported — the shape that reads, in a diff, exactly like a refusal",
+      loopbackRefusal(PLANTED.seedTestsButRuns).exits === false, j(loopbackRefusal(PLANTED.seedTestsButRuns)));
+    add("seed.6 · CONTROL · the refusal as the seed really writes it — host, production and an exit — is NOT reported",
+      Object.values(loopbackRefusal(PLANTED.seedRefuses)).every(Boolean), j(loopbackRefusal(PLANTED.seedRefuses)));
+    add("seed.4 · a credential TYPED into the seed instead of read from the admin seed that owns it is reported",
+      typedAdminCredential(PLANTED.seedTypedPassword).length === 2, typedAdminCredential(PLANTED.seedTypedPassword));
+    add("seed.4 · CONTROL · the same credential read out of that seed's own output types nothing",
+      typedAdminCredential(PLANTED.seedDerivedPassword).length === 0 && /admin\.stdout/.test(PLANTED.seedDerivedPassword), "derived");
   }
 
   {
@@ -1559,9 +1617,10 @@ if (STORE === "memory") {
   section("§8s · db:seed-house-bots-local — the refusals, before any database is opened");
   await guard("seed.src", () => {
     const body = bodyOf(SEED_SCRIPT);
-    ok("seed.6 · SOURCE · it refuses any DATABASE_URL that is not loopback, and names production explicitly — designating a REAL player as a house bot is a money-and-consent act on a live account",
-      /loopback only/i.test(body) && /127\\\.0\\\.0\\\.1/.test(body) && /rlwy\\\.net\|railway\\\.app\|50pick\\\.tz\|railway\\\.internal/.test(body),
-      j({ loopback: /loopback only/i.test(body) }));
+    ok("seed.6 · SOURCE · it refuses any DATABASE_URL that is not loopback, names production explicitly AND EXITS — designating a REAL player as a house bot is a money-and-consent act on a live account",
+      Object.values(loopbackRefusal(body)).every(Boolean), j(loopbackRefusal(body)));
+    ok("seed.4s · SOURCE · the admin credential it hands the human is READ OUT of `scripts/seed-admin-local.mts`'s own output, never re-typed here — a typed copy is right the day it is written and hands out a dead password the day that file changes either half",
+      typedAdminCredential(body).length === 0 && /admin\.stdout/.test(body), j(typedAdminCredential(body)));
     ok("seed.7 · SOURCE · ⛔ the seed cannot turn the master switch on — no switchOn, no `\"enabled\" = true`, no ON-shaped flag. The world it writes is a desk with a roster and no house money in it",
       switchOnSites(body).length === 0 && onFlagSites(body).length === 0, j(switchOnSites(body)));
     ok("seed.8 · SOURCE · POSITIVE CONTROL · …and it DOES reach the real services: designateHouseBot, startHouseBot and the holder hook — so the absences above are a choice, not a file that writes nothing",
@@ -1627,6 +1686,20 @@ if (STORE === "postgres") {
 
         const removed = bots.find((b) => b.status === "REMOVED");
         ok("seed.3 · the REMOVED account carries a removal cause", !!removed && !!removed.removedCause, j({ cause: removed?.removedCause }));
+
+        // ⛔ THE CREDENTIAL THE SEED PRINTS IS TRIED AGAINST THE ROW IT WROTE. Everything else here is
+        // about the desk; this is about the door. A world nobody can sign in to is a world nobody opens,
+        // and the failure would present as "the admin password is wrong", which nobody would look for here.
+        const printed = /admin\s+(\+\d+)\s*\/\s*(\S+)/.exec(run.out);
+        const { verifyPassword }: Any = await import("../../src/lib/server/crypto.ts");
+        const adminRow = printed ? (await c2.query(`SELECT "id", "role", "status", "passwordHash", "passwordSalt" FROM "User" WHERE "phoneE164" = $1`, [printed[1]])).rows[0] as Any : null;
+        const opens = adminRow ? await verifyPassword(printed![2], adminRow.passwordSalt, adminRow.passwordHash) : false;
+        ok("seed.4 · the admin credential the seed PRINTS actually opens the account it wrote — parsed out of the run's own output and verified against the stored hash, so a re-typed or stale password cannot be handed to a human",
+          !!adminRow && adminRow.role === "ADMIN" && adminRow.status === "ACTIVE" && opens === true,
+          j({ phone: printed?.[1], role: adminRow?.role, status: adminRow?.status, opens }));
+        const wrongOpens = adminRow ? await verifyPassword(`${printed![2]}x`, adminRow.passwordSalt, adminRow.passwordHash) : true;
+        ok("seed.4c · CONTROL · one character more and the SAME verifier says no — so seed.4's yes is a measurement and not a function that returns true",
+          wrongOpens === false, j({ wrongOpens }));
 
         const ctl = (await c2.query(`SELECT "enabled", "offCause" FROM "HouseBotControl"`)).rows[0] as Any;
         const marked = Number((await c2.query(`SELECT count(*)::int AS n FROM "Position" WHERE "houseBotId" IS NOT NULL`)).rows[0].n);
