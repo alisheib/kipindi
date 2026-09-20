@@ -91,6 +91,8 @@ The invariant column is PLAN's wording (I2 with its PLAN §18 amendment). "Guard
 
 Every house table is on the chain purge's NEVER list (`src/lib/server/chain-purge.ts`, DATA-RETENTION §7.1). This is the chain purge only: `HouseBotAlertOnce` is still purged at 30 days by the retention pass, and per-instance `HouseBotRuntime` rows after 24 h.
 
+⛔ **Until 2026-09-20 that sentence was true only as prose** — `grep -c "HouseBot" src/lib/server/chain-purge.ts` returned **1**, the comment itself, and the only enforcement was a source scan over a hand-written array of six non-house model names. It is now a guarded Prisma client over a **derived** population (name prefix, the soft key `houseBotId`, or an owned relation into the family), so a ninth house table is protected without anyone remembering that file, and the purge **refuses while any intent on the chain's markets is PENDING or CLAIMED** (04 A16; CRA-15's sentence, kept by D20's supersession note). See DATA-RETENTION §7.7 — `src/lib/server/purge-protected.ts`, `npm run qa:purge-protected`.
+
 **Columns added to existing tables**
 
 | Column | Written | Rule |
