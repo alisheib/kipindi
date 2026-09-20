@@ -10,7 +10,42 @@
  * DELETE   · UpDownRound (the price story), Comment, Watchlist, MarketSnapshot
  * REDACT   · PredictionMarket survives as a stamped tombstone — titles and resolution
  *            criterion blanked, pools / feeSnapshot / resolvedOutcome / settledAt KEPT
- * NEVER    · Position, Transaction, LedgerEntry, HousePoolLedger, AuditLog, UpDownObservation, HouseBot, HouseBotControl, HouseBotRuntime, HouseBotAlertOnce, HouseBotEvent, HouseBotIntent, HouseBotTarget, HouseBotPress
+ * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, Position, Transaction, UpDownObservation
+ *
+ * ═══ ⛔ AND THE NEVER LINE ABOVE IS ENFORCED, WHICH UNTIL 2026-09-20 IT WAS NOT ═══
+ *
+ * 🔴 THE DEFECT, SIGNED OFF INSIDE A COMMIT MARKED COMPLETE. That line named the house tables,
+ * and `grep -c "HouseBot" src/lib/server/chain-purge.ts` returned **1** — the comment was the
+ * only occurrence in the file. The sole thing that bit was `chain-purge.test.mts` §5, a source
+ * scan over a hand-written array of SIX names; the eight house tables were in the docblock, in
+ * `04-amendments.md` A20 and in nothing that could fail. A NEVER list nothing enforces is the
+ * `retention.ts` F-01 shape exactly: a published statement about what we do, that we do not do.
+ *
+ * ⭐ WHAT ENFORCES IT NOW, and it is not eight more strings in an array:
+ *
+ *   · `pc()` HANDS OUT A GUARDED CLIENT. `guardProtectedModels` (see `purge-protected.ts`)
+ *     refuses every mutating call — create/update/upsert/delete and their `*Many` forms — on any
+ *     protected model, allows every READ (a purge is entitled to count what it must not touch),
+ *     refuses raw execution outright because SQL strings walk past a per-model proxy, and
+ *     re-wraps the interactive client handed to `$transaction(fn)` so the bypass is not one
+ *     refactor away. This module can no longer express the forbidden write.
+ *   · THE POPULATION IS DERIVED, NOT LISTED. One rule — name prefix `HouseBot`, OR the soft key
+ *     `houseBotId` (the idiom this schema actually uses: four house tables and both money tables
+ *     carry it with no Prisma relation), OR a relation to something already in the family, to a
+ *     fixed point — read by two instruments: the generated client's DMMF at runtime, and
+ *     `prisma/schema.prisma` itself in `test:chain-purge` §10, which bites BEFORE
+ *     `prisma generate` has run. A ninth house table is protected without anyone remembering
+ *     this file. Only the six statutory singletons are named one at a time, because no property
+ *     of the schema picks out exactly those six.
+ *   · THE LINE ABOVE IS A CHECKED ARTEFACT. §12 parses it and holds it equal to `neverList()`,
+ *     so the prose cannot drift from the guard a second time.
+ *
+ * ⚠️ IT IS THE PURGE'S NEVER LIST, NOT A GLOBAL BAN, and `HouseBotAlertOnce` is the case that
+ * proves the distinction matters: it is on this list AND `retention.purge.daily` deletes it every
+ * night in batches of 5,000. Both are correct — 04 A20 gives the alert THROTTLE rows 30 days
+ * while bots, events and intents are kept 7 years. No chain purge may destroy them; retention's
+ * own published schedule is a different authority, and the guard is applied to this module's
+ * client alone.
  *
  * This is not a new idea; it is the idiom this platform already uses wherever it must remove
  * data without losing provability. The retention engine BLANKS AIPoll payload columns rather
@@ -64,12 +99,22 @@ import { prisma, hasDatabase } from "./prisma";
 import { audit } from "./audit";
 import { chainStore, roundStore, assetStore } from "./updown-dal";
 import { loadConfig, saveConfig } from "./config-store";
+import { guardProtectedModels } from "./purge-protected";
+import { houseBotIntentStore } from "./house-bot-dal";
+import { LIVE_INTENT_STATUSES } from "@/lib/house-bot/constants";
 import { createHash } from "node:crypto";
 
+/**
+ * ⛔ EVERY PRISMA CALL IN THIS FILE GOES THROUGH THE GUARD, and that is the point of routing them
+ * all through one accessor. `guardProtectedModels` cannot be forgotten at a call site because
+ * there is no other way to obtain a client here — the raw `prisma()` result never escapes this
+ * function. A future edit that reaches for a protected table gets a thrown
+ * `PurgeProtectedTableError` naming the model, not a silent deletion.
+ */
 function pc() {
   const c = prisma();
   if (!c) throw new Error("chain-purge: DATABASE_URL required");
-  return c;
+  return guardProtectedModels(c);
 }
 
 /** ⛔ A NAMED SENTINEL, never NULL and never "". Redacted must be distinguishable from
@@ -155,7 +200,55 @@ export async function checkPreconditions(chainId: string): Promise<Precondition>
     }
   }
 
+  // 4 · ⭐ LIVE HOUSE INTENTS — the precondition 04 A16 calls for, in the register's own words.
+  //
+  //     AUTHORITY: `04-amendments.md` A16's lifecycle table, "Chain purge" row — *"purge refused
+  //     while PENDING/CLAIMED intents exist"* — and `01-scenario-register.md` CRA-15, which
+  //     writes the sentence out: *"N house intents are still live — cancel them or let them
+  //     expire first"*. ⚠️ CRA-15 was PARTLY struck by D20 on 2026-09-17: the cost-panel rows and
+  //     the evidence-pack field are gone, because no record splits house money out. Its own
+  //     supersession note is explicit that *"the live-intent precondition and the NEVER list are
+  //     untouched by D20"*, which is why this is here and the cost rows are not.
+  //
+  //     ⛔ WHY IT IS A REFUSAL AND NOT A RACE. An intent is PENDING or CLAIMED for seconds: a
+  //     worker is about to place a real house bet against one of these markets. Purging through
+  //     that writes a Position and a Transaction onto a market whose round has just been deleted
+  //     and whose title is being blanked in the same breath — the money lands after the evidence
+  //     pack was sealed, so the pack is not the pre-purge truth any more and the verification's
+  //     whole population is wrong. Waiting costs the officer a minute; racing costs the pack.
+  //
+  //     ⚠️ LAST, DELIBERATELY. The three refusals above are structural — a chain is ARCHIVED or
+  //     it is not — and this one usually clears itself within a minute. An officer should be told
+  //     the permanent obstacles before the transient one.
+  //
+  //     ⚠️ TWO READS, ONE STATUS CONSTANT. `LIVE_INTENT_STATUSES` is imported rather than
+  //     retyped, so "live" cannot come to mean two things. With a database this is one indexed
+  //     count over every market at once (`@@index([marketId, status])`); without one it walks the
+  //     in-memory store market by market, which is what makes the refusal DRIVABLE in
+  //     `test:chain-purge` instead of only assertable as source. A per-market query against
+  //     Postgres would be an N+1 over a year of 5-minute rounds — 105,120 of them.
+  const liveIntents = await countLiveHouseIntents(rounds.map((r) => r.marketId));
+  if (liveIntents > 0) {
+    return {
+      ok: false,
+      error: `${liveIntents} house intents are still live — cancel them or let them expire first. They are about to place real bets on ${label}'s markets, and a purge that races them seals its evidence pack before the money lands.`,
+    };
+  }
+
   return { ok: true };
+}
+
+/** PENDING or CLAIMED `HouseBotIntent` rows on any of these markets. 0 for an empty chain. */
+async function countLiveHouseIntents(marketIds: readonly string[]): Promise<number> {
+  if (marketIds.length === 0) return 0;
+  if (hasDatabase()) {
+    return pc().houseBotIntent.count({
+      where: { marketId: { in: [...marketIds] }, status: { in: [...LIVE_INTENT_STATUSES] } },
+    });
+  }
+  let live = 0;
+  for (const marketId of marketIds) live += (await houseBotIntentStore.listLiveOnMarket(marketId)).length;
+  return live;
 }
 
 /**
