@@ -763,10 +763,78 @@ asserts the ORDER, not just the presence. A gate not in the pipeline is not a ga
 ## 11. Runbook
 
 ### Release (R0–R6)
-⏳ Written in commit 8.
+
+Seven steps. ⛔ **Ali's "go" sits between R0 and R1 and nothing may be done ahead of it.** His words, recorded
+2026-09-19: *he will not turn the switch on until a session tells him, in writing and on evidence, that it is
+ready.* So the sequence is fixed — a session states readiness, Ali decides — and a green gate is never permission.
+
+| Step | What it is | How it is proved |
+|---|---|---|
+| **R0** (T-1 day) | Merge `origin/main`. Everything green on ONE SHA. Checklist to Ali. | `npm run test:all`, every `red:house-bot-*`, `npm run qa:house-bots-local`, `npm run qa:house-bots-visual`, the S4 rehearsals, the coverage gate, `npm run ops:release-migration-parity` GO and `npm run ops:preflight-house-bot-migrations` GO |
+| **R1** | A quiet hour is CHOSEN — not computed. | The preflight prints the bets in the last 15 minutes as evidence; ⛔ never during the nightly trial balance, and never a window under 10 minutes |
+| **R2** | The migrations, if any are still pending. ⚠️ **Struck for THIS release** — see below. | `npx prisma migrate status` against the production URL, then `migrate deploy`, then each row's checksum |
+| **R3** | While the OLD container still serves: the schema read is true, the switch is `false`, `/api/health` is ok, the Position count is still rising. | `npm run ops:house-bots-status` and one `/api/health` read |
+| **R4** | Merge and deploy. | The deployed commit re-derived from the live response header, never from a recorded number |
+| **R5** | Five figures, on the live database: **OFF · 0 accounts · 0 marked rows · an engine boot instant · a fresh planner beat**. | One run of `npm run ops:house-bots-status` |
+| **R6** | The first switch-on guide goes to Ali. | The section below |
+
+⛔ **R0's third condition was rewritten on 2026-09-20, and this is the note that says why.** It used to read
+*"`git diff origin/main...house-bots --stat -- prisma/migrations` shows exactly the 2 house folders"*. That
+sentence described a world in which the house DDL was unmerged. Ali pushed the branch himself on 2026-09-18, so
+both folders are in the MERGE BASE, and a three-dot diff only ever shows what the merge base lacks: the true
+value is now permanently **0** and can never again be 2. Nothing executed the row — it was a checkbox — so the
+risk was never a red gate; it was an officer ticking a box whose sentence had stopped describing anything.
+`npm run ops:release-migration-parity` replaces it and checks what still decides whether the container boots:
+
+1. **Byte parity** of every migration folder both refs carry. `start` is `prisma migrate deploy && … && next start`,
+   so one edited byte in an already-applied migration fails the checksum, `next start` is never reached, and the
+   container does not boot — a platform-wide sign-in outage, not a bad release. A line-endings-only difference is
+   still a stopper and is reported as such, because the fix is different.
+2. **Forward difference** — folders here that the ref lacks. Each one applies the moment the new container starts
+   and must be named in Ali's "go".
+3. **Reverse difference** — folders on the ref that are missing here. The branch is behind; merge first.
+
+⛔ It is not a `test:` key and must not become one: it reads a remote-tracking ref, whose freshness belongs to the
+machine and not to the tree. ⛔ And it never fetches — an unresolvable ref is **NOT MEASURED (exit 3)**, never GO.
+
+⚠️ **R2 is struck for this release, and the reason is recorded rather than quietly dropped.** Its pre-check —
+*"`migrate status` shows exactly the 2 house migrations pending"* — is false by events: both are applied. Applying
+nothing needs no exception to *"migrations reach production only through the deploy"*, so striking R2 REMOVES a
+manual production write from the release. That is a safety improvement, but it changes what Ali is being asked to
+approve, so it is put to him at R0 and never edited away quietly. R2's text stands as the standing procedure for
+any FUTURE house migration.
 
 ### Migration preflight
-⏳ Written in commit 8.
+
+`npm run ops:preflight-house-bot-migrations` — **read-only**: no DDL, no DML, no transaction. Run it against the
+production database at R0 (with Ali's go) and again at R3. Seven sections; it exits **0 GO** or **1 NO-GO** and
+prints every number it counted.
+
+1. **The migration files it was written against** — the two house folders and their five index names are read OFF
+   `prisma/migrations/…_house_bot_markers/migration.sql`, never typed here. A split or renamed folder is reported
+   instead of silently skipped. ⚠️ It is **five**, not four: the four that name `houseBotId` plus the sweep keyset
+   `Position_placedAt_id_idx`, which is built under the same `ACCESS EXCLUSIVE` lock.
+2. **`now()` and the TIMEZONE — and it is a VERDICT, not a print.** The engine refuses to start on any zone
+   outside UTC. A non-UTC database lets both migrations apply perfectly and then leaves the engine silently dead on
+   every replica, which is the worst shape a release can take: green everywhere, and nothing running.
+3. **Position and Transaction rows and sizes**, against the A23 ceilings of **500,000** and **1,000,000**. Over
+   either one it is a NO-GO that points at the hand-apply block in the markers migration by file and line: build
+   the five indexes `CONCURRENTLY` by hand first, so the migration is a no-op.
+4. **The eight house tables and the seven marker columns**, imported from the module the engine's own readiness
+   gate uses — so the preflight and the engine cannot disagree about what "migrated" means.
+5. **The five indexes, through `indisvalid`.** ⛔ Not by name: a failed `CONCURRENTLY` build leaves an INVALID
+   index under the SAME name, and the migration's `IF NOT EXISTS` would keep it. An index that exists but is
+   invalid is a NO-GO a by-name check cannot see.
+6. **The migration history** — a `_prisma_migrations` scan for any unclean row. `migrate deploy` stops at the
+   FIRST one, so an unrelated stuck migration would present as the house migration breaking production.
+7. **Bets in the last 15 minutes** — evidence for R1's judgement, printed and never turned into a verdict. A quiet
+   hour is chosen by a person; fifteen minutes of history cannot tell you whether the next fifteen are quiet.
+
+⛔ **What cannot be measured before the day:** the production row counts and sizes, and whether any of the five
+indexes already exists there as INVALID. Both need a production read, which this programme is barred from taking
+outside R0. Everything else — every catalogue query, both threshold branches, the timezone verdict, the unclean
+scan — is exercised on scratch Postgres by `npm run test:house-bot-ops`, which runs the preflight before AND after
+`migrate deploy` on a database of its own and then breaks it one fault at a time.
 
 ### Rollback levers
 
@@ -848,7 +916,40 @@ exits 0 — so a half-finished run is safe to repeat. Sunset is also structurall
 `switchOnHouseBots` refuses `offCause = SUNSET` outright, with code `WITHDRAWN`.
 
 ### First switch-on
-⏳ Written in commit 8.
+
+⛔ **This is Ali's action and his alone.** A session never turns the switch on, never asks him to turn it on
+early, and never treats a green gate as permission. What follows is the guide he is handed at R6 — nothing in it
+is a step a session performs on his behalf.
+
+**Before the day, on a machine that is not production.** `npm run db:scratch` in one terminal, then
+`npm run db:seed-house-bots-local`, then `DISABLE_ADMIN_TOTP=true npm run start`: that is the same desk with four
+accounts in the four states, and it is the right place to practise the sequence below. `npm run qa:house-bots-local`
+drives the real engine against a scratch database if you want to watch a stake appear without one being at risk.
+
+**The sequence, in order. Each step is refused if the one before it was skipped.**
+
+1. **Limits first.** Global limits govern every stake the desk can place. Set them before an account exists, so
+   there is never a moment when an account is startable and unbounded.
+2. **Designate** a holder account. It is a real player account with a real password, and the officer types that
+   password: the desk records a consent fingerprint from it. ⚠️ If the holder later changes their password, the
+   fingerprint stops matching and the account AUTO-PAUSES itself — that is the product working, not a fault.
+3. **Rules.** Nothing is in scope on a new account: every mode is off, Enter now and targeting are off, and the
+   minimum gap must be at least 20 seconds before it will start. Open only what you intend to watch.
+4. **Start** the account. It is now ACTIVE and still cannot stake, because the master switch is off.
+5. **ON.** The master switch is the last step, and it is the one that costs money.
+6. **Watch the feed for 15 minutes.** ⛔ Switch **OFF** on ANY failed row or any alert you cannot explain. Switching
+   off is free and reversible; leaving it on while you work out what a row means is not.
+
+**If anything at all looks wrong.** Reach for the console's master **OFF** first — it is under 1.5 seconds and
+cancels every live intent. Only if the console itself cannot be used (a deploy changed the action ids under an
+open tab, or the app cannot reach the database) reach for `npm run ops:house-bots-off -- --apply`, and read the
+"Rollback levers" section above first: it leaves the live intents standing and writes no compliance row, both by
+design and both stated on its screen. After any rollback window, `npm run ops:house-bots-status -- --drift` must
+report 0 on all three legs before house bots go near production again.
+
+**What "it is working" looks like.** `npm run ops:house-bots-status` prints the five release figures and four more
+the rollback runbook owns — open house positions, live intents, exposure per market, and whether any settlement is
+blocked. Every figure names the population it counts. ⛔ A figure with no population named is not a measurement.
 
 ---
 

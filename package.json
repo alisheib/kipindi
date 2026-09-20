@@ -771,6 +771,7 @@
     "ops:house-bots-remark": "tsx scripts/ops-house-bots-remark.mts",
     "ops:house-bots-sunset": "tsx scripts/ops-house-bots-sunset.mts",
     "ops:preflight-house-bot-migrations": "tsx scripts/ops-preflight-house-bot-migrations.mts",
+    "ops:release-migration-parity": "tsx scripts/ops-release-migration-parity.mts",
     "db:seed-house-bots-local": "tsx scripts/seed-house-bots-local.mts",
     "qa:house-bots-local": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bots-local-drive.mts",
     "red:house-bot-chatbot": "tsx scripts/house-bot-chatbot-red.mts",

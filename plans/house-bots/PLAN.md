@@ -565,7 +565,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 **Other checks**
 - **RED harnesses:** `red:house-bot-money` / `-engine` / `-console`. Each mutation must fail **its own** assertion, with an unmutated control.
 - **Existing gates touched:** `failure-reasons`, i18n, dal-parity, `cert-c1`/`c3`, admin-nav, rbac, admin-act-gate, orphan-actions, orphans, feedback-law, confirm-gate, unsaved-changes, ui-consistency, gold-is-money, house-page, docs, late-bet, rg-limit-race, bet-retry, money-invariants.
-- **Local Postgres, end to end** (`seed:` + `qa:house-bots-local`, loopback-only guard):
+- **Local Postgres, end to end** (`npm run db:seed-house-bots-local` + `npm run qa:house-bots-local`, loopback-only guard — the last `seed:` spelling, corrected 2026-09-20: there is no `seed:` namespace in `package.json` and never was):
   - designate (balance shown), rules, switch ON, real player bet → COUNTER PLACED with markers;
   - FILL and OPENER;
   - OFF mid-delay → CANCELLED;

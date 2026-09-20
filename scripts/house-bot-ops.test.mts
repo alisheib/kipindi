@@ -83,7 +83,19 @@
  *     fingerprint no longer matches its holder's), tries the printed admin credential against the
  *     stored hash with a one-character control beside it, and runs the seed a SECOND time to prove it
  *     refuses rather than quietly seeding a second roster.
+ *   · memory 89, postgres 104 — step 12's gate: §9, `ops:release-migration-parity`, the rewrite of the
+ *     release condition that went obsolete without ever going red. Thirteen more in the memory child
+ *     and none in the Postgres one — it is pure git. ⭐ THE MUTATIONS ARE REAL GIT TREES: each case
+ *     builds a synthetic commit with `commit-tree` over a TEMPORARY index, so the working tree, the
+ *     real index and every other lane's files are untouched, and what lands on disk is a few loose
+ *     objects nothing references. It drives the gate against a ref with one edited byte (CONTENT), the
+ *     same bytes in CRLF (diagnosed as LINE ENDINGS ONLY — a stopper with a different fix), a ref that
+ *     does NOT carry the house DDL (the condition's ORIGINAL reading, still biting), a ref carrying a
+ *     migration this tree lacks (BEHIND), a ref differing OUTSIDE `prisma/migrations` (still GO — the
+ *     gate is scoped to what decides whether the container boots), and an unresolvable ref (exit 3 NOT
+ *     MEASURED, never GO). ⛔ The cases never name `origin/main`: this suite is discovered by
+ *     `test:all`, and a remote-tracking ref is a property of the machine, not of the tree.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 76, postgres: 104 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 89, postgres: 104 }, dbPrefix: "hb_ops" });

@@ -50,9 +50,10 @@
  * harness that rewrites the repo while a second lane is editing it is the standing incident.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { spawn, spawnSync } from "node:child_process";
-import { readFileSync, existsSync } from "node:fs";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { readFileSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { decomment } from "./decomment.mts";
 import { REPO_ROOT, scriptFiles } from "./tracked-files.mts";
 // ⛔ PURE MODULES ONLY AT THE TOP OF THIS FILE — `--prove-red` runs it with no database and no store chosen.
@@ -426,6 +427,24 @@ export function loopbackRefusal(code: string): { hostTest: boolean; namesProduct
   };
 }
 
+/**
+ * Which git subcommands a script actually RUNS, split by whether they can change anything.
+ *
+ * ⭐ IT IS THE ARGUMENT POSITION, NEVER THE WORD. The first attempt at this pin searched the body for
+ * `fetch` and went red on the release gate's own screen sentence — `Run \`git fetch origin\` yourself`
+ * — which is the script TELLING the operator to do the thing it refuses to do. A detector that cannot
+ * tell a subcommand from a sentence about a subcommand gets switched off within a week.
+ */
+export function gitVerbs(code: string): { readOnly: string[]; writing: string[] } {
+  const READ_ONLY = new Set(["rev-parse", "ls-tree", "show", "cat-file", "log", "diff", "ls-files", "status", "config"]);
+  const WRITING = new Set(["fetch", "pull", "push", "ls-remote", "remote", "clone", "checkout", "switch", "reset", "commit", "add", "rm", "mv", "merge", "rebase", "stash", "update-index", "write-tree", "commit-tree", "hash-object", "gc", "prune"]);
+  const seen = [...code.matchAll(/\[\s*"([a-z][a-z-]*)"/g)].map((m) => m[1]);
+  return {
+    readOnly: [...new Set(seen.filter((v) => READ_ONLY.has(v)))].sort(),
+    writing: [...new Set(seen.filter((v) => WRITING.has(v)))].sort(),
+  };
+}
+
 /** A credential TYPED into a file that another file owns — right the day it is written, wrong the day that file changes. */
 export function typedAdminCredential(code: string): string[] {
   return [...code.matchAll(/const\s+ADMIN_(?:PHONE|PASSWORD)\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
@@ -552,6 +571,12 @@ const PLANTED = {
   seedTypedPassword: 'const ADMIN_PHONE = "+255700000000";\nconst ADMIN_PASSWORD = "QaAdmin2026!";',
   /** The same credential read out of the admin seed's own output. MUST NOT be reported. */
   seedDerivedPassword: 'const cred = /· (\\+\\d+) \\/ (\\S+)/.exec(admin.stdout ?? "");\nconst ADMIN_PHONE = cred[1];\nconst ADMIN_PASSWORD = cred[2];',
+  /** ⛔ A RELEASE GATE THAT REFRESHES THE REF IT MEASURES — the helpful edit a reviewer would make. */
+  parityFetches: 'execFileSync("git", ["fetch", "origin", "main"], { cwd: ROOT });\nconst theirs = git(["ls-tree", "-r", "--name-only", REF]);',
+  /** The same gate reading only what this checkout already has. MUST NOT be reported. */
+  parityReadsOnly: 'const refSha = git(["rev-parse", "--verify", `${REF}^{commit}`]);\nconst files = git(["ls-tree", "-r", "--name-only", ref, "--", "prisma/migrations"]);\nconst bytes = execFileSync("git", ["show", `${ref}:${path}`]);',
+  /** ⭐ THE FALSE POSITIVE THIS DETECTOR REALLY PRODUCED: the gate's own sentence TELLING the operator to fetch. MUST NOT be reported. */
+  paritySaysFetch: 'console.error("Run `git fetch origin` yourself and re-run. This script never fetches.");',
 };
 /* @ops-planted:end */
 
@@ -677,6 +702,14 @@ export function redCases(): RedCase[] {
       typedAdminCredential(PLANTED.seedTypedPassword).length === 2, typedAdminCredential(PLANTED.seedTypedPassword));
     add("seed.4 · CONTROL · the same credential read out of that seed's own output types nothing",
       typedAdminCredential(PLANTED.seedDerivedPassword).length === 0 && /admin\.stdout/.test(PLANTED.seedDerivedPassword), "derived");
+
+    // ⛔ THE RELEASE GATE'S ONE LAW: it reads, it never refreshes.
+    add("rel.src.1 · a release gate that FETCHES the ref it measures is reported — it would change its own answer in the act of reading it",
+      gitVerbs(PLANTED.parityFetches).writing.includes("fetch"), j(gitVerbs(PLANTED.parityFetches)));
+    add("rel.src.1 · CONTROL · the same gate reading only what the checkout already has is NOT reported, and its read-only verbs are named",
+      gitVerbs(PLANTED.parityReadsOnly).writing.length === 0 && gitVerbs(PLANTED.parityReadsOnly).readOnly.length >= 3, j(gitVerbs(PLANTED.parityReadsOnly)));
+    add("rel.src.1 · ⭐ CONTROL, AND IT IS A FALSE POSITIVE THIS DETECTOR REALLY PRODUCED · the gate's own screen sentence TELLING the operator to fetch is a sentence, not a subcommand, and is NOT reported",
+      gitVerbs(PLANTED.paritySaysFetch).writing.length === 0 && /git fetch origin/.test(PLANTED.paritySaysFetch), "a sentence about fetch is not a fetch");
   }
 
   {
@@ -1718,6 +1751,126 @@ if (STORE === "postgres") {
       }
     } finally {
       await withAdmin(async (a) => { await a.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`); });
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// §9 · ops:release-migration-parity — REL-0(c) rewritten, and DRIVEN over real git trees.
+//
+// ⛔ THE CASES NEVER NAME `origin/main`, and that is deliberate rather than convenient: this suite is
+// discovered by `test:all`, and a remote-tracking ref is a property of the MACHINE, not of the tree —
+// on a checkout that has not fetched, an assertion about it would be red for a reason that has nothing
+// to do with the code. Every case here compares HEAD against a ref this process MAKES.
+//
+// ⭐ AND THE MUTATIONS ARE REAL GIT TREES, not string bodies. A synthetic commit is built with
+// `commit-tree` over a temporary index (`GIT_INDEX_FILE`), so the working tree, the real index and
+// every other lane's files are untouched — the standing rule after a red harness once left a live
+// payout gate disabled by editing the repo it was measuring. What lands on disk is a handful of loose
+// objects nothing references.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+if (STORE === "memory") {
+  section("§9 · ops:release-migration-parity — the obsolete release condition, rewritten and driven");
+  const PARITY_SCRIPT = "scripts/ops-release-migration-parity.mts";
+  const IDX = join(tmpdir(), `hb-ops-parity-${process.pid}.idx`);
+  const git = (args: string[], env: Record<string, string> = {}, input?: Buffer | string): string =>
+    execFileSync("git", args, { cwd: REPO_ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, env: { ...process.env, ...env }, input }).trim();
+  /** A commit that exists only as git objects: HEAD's tree with one path edited, added or removed. */
+  const synth = (msg: string, edit: (idx: (args: string[], input?: Buffer | string) => string) => void): string => {
+    const env = { GIT_INDEX_FILE: IDX };
+    git(["read-tree", "HEAD"], env);
+    edit((args, input) => git(args, env, input));
+    return git(["commit-tree", git(["write-tree"], env), "-p", git(["rev-parse", "HEAD"]), "-m", msg]);
+  };
+  const MIGS = "prisma/migrations";
+
+  await guard("rel.src", () => {
+    const body = bodyOf(PARITY_SCRIPT);
+    ok("rel.src.1 · SOURCE · ⛔ every git subcommand it RUNS is read-only — no fetch, no ls-remote, nothing that writes. A gate that refreshed the ref it measures would change its own answer in the act of reading it, and would need the network in the room where the checklist is read aloud",
+      gitVerbs(body).writing.length === 0, j(gitVerbs(body)));
+    ok("rel.src.2 · SOURCE · POSITIVE CONTROL · …and it really does run some: `ls-tree` and `show`, hashing BYTES rather than a decoded string — so the absence above is a choice and not a file that reads nothing",
+      gitVerbs(body).readOnly.includes("ls-tree") && gitVerbs(body).readOnly.includes("show") && /createHash\("sha256"\)/.test(body), j(gitVerbs(body).readOnly));
+    ok("rel.src.3 · SOURCE · it is NOT a `test:` key and cannot be discovered by `test:all` — release-time facts belong to release-time commands",
+      !Object.keys((JSON.parse(read("package.json")) as Any).scripts).some((k) => k.startsWith("test:") && (JSON.parse(read("package.json")) as Any).scripts[k].includes("ops-release-migration-parity")),
+      "no test: key runs it");
+  });
+
+  await guard("rel", () => {
+    try {
+      // ⭐ THE POSITIVE CONTROL FIRST, AND IT IS THE ONE THAT MATTERS: a gate that could only ever say
+      // NO-GO would satisfy every case below without measuring anything.
+      const go = runOps(PARITY_SCRIPT, ["--ref", "HEAD"]);
+      ok("rel.1 · ⭐ POSITIVE CONTROL · HEAD against itself is GO and exits 0 — every NO-GO below is therefore a measured DIFFERENCE and not a script that can only refuse",
+        go.code === 0 && /✅ GO/.test(go.out), `exit ${go.code}`);
+      ok("rel.1b · …and it PRINTS the population it compared: the folder count on each ref, and the identical/EOL/content split, so a comparison over nothing cannot read as a clean pass",
+        /migration folders: (\d+) on/.test(go.out) && /identical: \d+ · line endings only: \d+ · content: \d+/.test(go.out),
+        (go.out.match(/identical: .*/) ?? [""])[0]);
+
+      const houseDirs = (git(["ls-tree", "--name-only", "HEAD", `${MIGS}/`]).split("\n"))
+        .map((l) => l.trim().replace(`${MIGS}/`, "")).filter((f) => /_house_bot_(?:tables|markers)$/.test(f)).sort();
+      ok("rel.0 · the two house migration folders are read OUT of the tree, never typed into this suite",
+        houseDirs.length === 2, j(houseDirs));
+      const target = `${MIGS}/${houseDirs[1] ?? houseDirs[0]}/migration.sql`;
+      const original = execFileSync("git", ["show", `HEAD:${target}`], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 });
+
+      // 1 · ONE EDITED BYTE in an already-applied migration.
+      const edited = synth("planted: a tidied comment in an applied migration", (idx) => {
+        const sha = idx(["hash-object", "-w", "--stdin"], Buffer.concat([original, Buffer.from("\n-- tidied\n")]));
+        idx(["update-index", "--add", "--cacheinfo", `100644,${sha},${target}`]);
+      });
+      const r1 = runOps(PARITY_SCRIPT, ["--ref", edited]);
+      ok("rel.2 · a single edited byte in an ALREADY APPLIED migration is reported as a CONTENT difference and exits 1 — `migrate deploy` fails its checksum, `next start` is never reached, and the container does not boot",
+        r1.code === 1 && /CONTENT differs/.test(r1.out) && r1.out.includes(houseDirs[1] ?? houseDirs[0]), `exit ${r1.code} · ${(r1.out.match(/content: \d+/) ?? [""])[0]}`);
+
+      // 2 · THE SAME BYTES, CRLF. A stopper too, but a different diagnosis and a different fix.
+      const crlf = synth("planted: the same statements, CRLF", (idx) => {
+        const sha = idx(["hash-object", "-w", "--stdin"], Buffer.from(original.toString("latin1").replace(/\r\n/g, "\n").replace(/\n/g, "\r\n"), "latin1"));
+        idx(["update-index", "--add", "--cacheinfo", `100644,${sha},${target}`]);
+      });
+      const r2 = runOps(PARITY_SCRIPT, ["--ref", crlf]);
+      ok("rel.3 · ⭐ the same statements with CRLF endings are reported as a stopper AND diagnosed as LINE ENDINGS ONLY — still a failed deploy, but the fix is an EOL round-trip and not an edit to revert, and a gate that printed only 'differs' would send the operator to rewrite a file that is already right",
+        r2.code === 1 && /LINE ENDINGS ONLY/.test(r2.out) && !/CONTENT differs/.test(r2.out), `exit ${r2.code} · ${(r2.out.match(/line endings only: \d+/) ?? [""])[0]}`);
+
+      // 3 · THE ORIGINAL CONDITION'S OWN FAILURE MODE, still reported: the house DDL not yet merged.
+      const missing = synth("planted: the ref does not carry the house markers migration", (idx) => {
+        idx(["update-index", "--force-remove", target]);
+      });
+      const r3 = runOps(PARITY_SCRIPT, ["--ref", missing]);
+      ok("rel.4 · ⛔ REL-0(c)'s ORIGINAL READING, PRESERVED RATHER THAN DELETED: against a ref that does NOT carry the house DDL, the gate says so by name and exits 1 — the condition still bites in the world it was written for, it simply is not this one",
+        r3.code === 1 && /is on HEAD but not on/.test(r3.out) && /REL-2 must be re-instated/.test(r3.out), `exit ${r3.code}`);
+      ok("rel.4b · …and it reports the same folder as an unreviewed FORWARD migration — DDL that applies the moment the new container starts, which is exactly what Ali's 'go' has to name",
+        /on HEAD and not on .* … 1/.test(r3.out) && /apply the moment the new container starts/.test(r3.out), (r3.out.match(/on HEAD and not on .* … \d+/) ?? [""])[0]);
+
+      // 4 · THE BRANCH IS BEHIND.
+      const ahead = synth("planted: the ref carries a migration this tree does not", (idx) => {
+        const sha = idx(["hash-object", "-w", "--stdin"], Buffer.from('-- planted\nALTER TABLE "Position" ADD COLUMN "plantedCol" TEXT;\n'));
+        idx(["update-index", "--add", "--cacheinfo", `100644,${sha},${MIGS}/29991231120000_planted_later/migration.sql`]);
+      });
+      const r4 = runOps(PARITY_SCRIPT, ["--ref", ahead]);
+      ok("rel.5 · a migration on the ref that this tree does not carry is reported as BEHIND and exits 1 — deploying it would hand production a migration history missing a row its own database already records",
+        r4.code === 1 && /branch is BEHIND/.test(r4.out) && /29991231120000_planted_later/.test(r4.out), `exit ${r4.code}`);
+
+      // 5 · SCOPE. A difference OUTSIDE prisma/migrations must not move the verdict.
+      const elsewhere = synth("planted: a changed file that is not a migration", (idx) => {
+        const sha = idx(["hash-object", "-w", "--stdin"], Buffer.from("# planted, and none of this gate's business\n"));
+        idx(["update-index", "--add", "--cacheinfo", `100644,${sha},docs/PLANTED-NOT-A-MIGRATION.md`]);
+      });
+      const r5 = runOps(PARITY_SCRIPT, ["--ref", elsewhere]);
+      ok("rel.6 · ⭐ CONTROL · a ref that differs from HEAD OUTSIDE `prisma/migrations` is still GO — the gate is scoped to the files that decide whether the container boots, not to 'the refs differ', which would be red on every release by construction",
+        r5.code === 0 && /✅ GO/.test(r5.out), `exit ${r5.code}`);
+
+      // 6 · A REF THIS CHECKOUT CANNOT RESOLVE IS NOT MEASURED — never GO, and never a silent pass.
+      const nm = runOps(PARITY_SCRIPT, ["--ref", "origin/a-ref-that-does-not-exist"]);
+      // ⭐ THE VERDICT LINE, NOT THE WORD. The first form of this assertion searched the whole output for
+      // "GO" and went red on the script's own sentence — "NOT MEASURED is never GO" — which is the file
+      // stating the very rule being asserted. A false positive this detector really produced.
+      ok("rel.7 · an unresolvable ref exits 3 NOT MEASURED, names the ref it could not resolve, and tells the operator to fetch — ⛔ it does not fetch for them, and it reaches NEITHER verdict line",
+        nm.code === 3 && /NOT MEASURED/.test(nm.out) && /a-ref-that-does-not-exist/.test(nm.out)
+        && !/✅ GO/.test(nm.out) && !/🔴 NO-GO/.test(nm.out), `exit ${nm.code}`);
+    } finally {
+      // The temporary index is the only thing this section puts on disk outside git's own object store.
+      try { rmSync(IDX, { force: true }); } catch { /* it may never have been written */ }
     }
   });
 }

@@ -107,7 +107,7 @@ Run release commands in **Git Bash**. S2 R0's "rebase" is superseded by merge.
 
 | Step | What |
 |---|---|
-| REL-0 | T-1 day: P0 re-run, merge, migrations diff = 2 house folders, everything green, coverage gate met, preflight GO. **Send Ali the checklist and wait for his "go", which must name REL-2.** |
+| REL-0 | T-1 day: P0 re-run, merge, `ops:release-migration-parity` GO (⛔ **rewritten 2026-09-20** — the old "migrations diff = 2 house folders" is permanently 0 since the branch reached `main` on 2026-09-18; parity, forward 0 and reverse 0 replace it, and the original reading still fires if the house DDL is ever absent from the target ref), everything green, coverage gate met, preflight GO. **Send Ali the checklist and wait for his "go"** — ⚠️ REL-2 is STRUCK for this release (both migrations already applied), which removes a manual production write and must be put to him rather than edited away. |
 | REL-1 | Quiet window of at least 10 minutes. |
 | REL-2 | Pre-check `migrate status` against production (exactly 2 pending), then apply the migrations from the build machine, both with `DATABASE_URL=<Postgres DATABASE_PUBLIC_URL>`. This is an explicit exception to the skill's deploy-only rule. Checksums match the git blob's LF or CRLF hash; a mismatch alone is never a failed apply. |
 | REL-3 | Old container still healthy on the new schema. |
