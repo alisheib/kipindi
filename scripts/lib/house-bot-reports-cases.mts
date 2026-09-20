@@ -19,6 +19,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "typescript";
 import { decomment } from "./decomment.mts";
 import { srcFiles, scriptFiles } from "./tracked-files.mts";
+/** ⭐ The print measure 0.198.3 and `test:house-bot-disclosure` §5.2 now SHARE — see that module's header for why. */
+import { printedTexts } from "./player-surface-text.mts";
 import { ROLL_CALL_SITES, ROLL_CALL_OWED, expectDriftReport, expectDriftControl, type DeclaredMutation } from "./house-bot-expect-drift.mts";
 /* ⛔ The `reports-mem` declarations live in the console anchors file (ruling 434's is the first), and this suite
  * audits its own key there — 505's whole rule is that a suite key with no roll-call is audited by nobody. */
@@ -1951,14 +1953,16 @@ export function exportedNames(file: string, code: string): string[] {
   });
   return [...out].sort();
 }
-/** Every string a declaration or a file can print: string literals, the text parts of template literals and JSX text. */
-function printedTexts(file: string, text: string): string {
-  const out: string[] = [];
-  walkTree(parse(file, text), (n) => {
-    if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n) || ts.isJsxText(n)) out.push(n.text);
-  });
-  return out.join(" ");
-}
+/**
+ * ⭐ MOVED TO `scripts/lib/player-surface-text.mts` BY COMMIT 6 (2026-09-20), body unchanged, and imported back here so
+ * there is exactly ONE print measure on the platform. `0.198.3` runs it over exactly TWO files (`PLAYER_SURFACE_FILES`)
+ * while `0.198.1`'s IMPORT measure runs over the whole 400-plus player population — so a house sentence written as JSX
+ * text into the rulebooks, the FAQ, the home page or the leaderboard was held by nothing static.
+ * `test:house-bot-disclosure` §5.2 closes that gap over the full population. It could not import it from HERE: this
+ * module RUNS its cases on import (the two-store child loads it), so a pure suite has to take the measure from a pure
+ * module. A second COPY of the measure was the other option, and ruling 175's header records what copies of an absence
+ * measure do: the three that each wrote their own word pattern drifted until two guards disagreed about one file.
+ */
 /**
  * One player notifier's problems: a missing declaration, a named R2 export, a house WORD in anything it can print (the
  * vocabulary's words family over its strings and template text — its code keeps the standing option of C4 ruling 145,

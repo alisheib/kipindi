@@ -288,7 +288,7 @@ Ali was shown the exact sentences the change would touch and the risk in leaving
 | # | Ruling |
 |---|---|
 | D19a | **No public text.** The two rulebooks, Terms, the privacy notice, the FAQ, the home copy and the chatbot keep the words they have today: no prohibited-conduct carve-out, no disclosure line, no Terms §4 paragraph, no privacy lawful-basis line, no META or `TERMS_VERSION` bump, no announcement. **This reverses D2/D7 and P1**, and it leaves the published rulebooks prohibiting bots and shared accounts while 50pick operates house accounts (accepted risk 21). Ali reports that the Gaming Board of Tanzania told him his answers are legally valid; no document is on file. |
-| D19b | ⛔ **Report half reversed by D20 (2026-09-17): no house-liquidity report or CSV is built; the private draft stays.** (Was:) The **private** Gaming Board draft (`BOARD-DISCLOSURE-HOUSE-BOTS.md`, DRAFT FOR ALI) and the admin-console house-liquidity report and CSV are still built. Ali decides if and when the draft is sent. |
+| D19b | ⛔ **STRUCK 2026-09-20 by D21: there is no Gaming Board draft at all.** `BOARD-DISCLOSURE-HOUSE-BOTS.md` was never written and is not to be written — see "Owner ruling D21" above. ⛔ **Report half already reversed by D20 (2026-09-17): no house-liquidity report or CSV is built.** (Was:) The **private** Gaming Board draft (`BOARD-DISCLOSURE-HOUSE-BOTS.md`, DRAFT FOR ALI) and the admin-console house-liquidity report and CSV are still built. Ali decides if and when the draft is sent. |
 | D19c | **The holder sees nothing.** Stakes 50pick places on a holder's account look exactly like the holder's own bets — no chip, no explanatory line, no liquidity label on outcome notices, no house wording in any refusal — and the holder receives **no** house-bot notices or emails at all. Every alert goes to admins only. Consent stays what D5 says it is ⚠️ **(corrected 2026-09-18, ruling 503: the OWNER types the HOLDER's account password, verified like a sign-in and never creating a session — `:158` and `:201` stand; the holder agrees privately and supplies it, and no field anywhere lets the holder type it. The consent is unchanged; only the sentence describing who types is.)** ~~the holder types their password.~~ |
 | D19d | The chatbot **discloses nothing and may never lie**: a guard keeps "never bets against you", "independent", "cannot influence", "all stakes are from real players", "fully automated", "only automated", "no person decides", "no one at 50pick chooses" and any naming or confirming of an account out of the system prompt and `faq8a`, in all three locales. |
 | D19e | W18 is moot (no rule text moves) and W19 is superseded (there is no privacy line). |
@@ -311,6 +311,21 @@ players" — "normal players everywhere" for reports, and "drop them all" for th
 
 The branch record is `plans/house-bots/PROGRESS.md` under "OWNER RULING D20" and `plans/house-bots/C5-D20-REPLAN.md`.
 Nothing of the struck work ever reached production.
+
+### Owner ruling D21 (Ali, 2026-09-20) — the Gaming Board needs nothing, and the private draft is struck
+
+⚠️ **THIS IS A VERBAL OWNER REPORT, NOT A REGULATOR DOCUMENT.** It is the same kind of record as D19a's sentence above,
+and it is written here so that a stranger reading it in a year cannot mistake it for a paper the Gaming Board of
+Tanzania issued. **Ali reports** that the Board does not need a disclosure about house bots and would not act on one;
+**no document is on file**, none was requested and none is expected.
+
+| # | Ruling |
+|---|---|
+| D21a | **No Board paper is owed or written.** `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` is **STRUCK 2026-09-20**. It never existed — measured every way on 2026-09-20 — and it is not to be created. Nine documents of record cited it as a live authority; each citation now carries a dated strike note pointing here, so no later session rebuilds it from a stale plan. `test:house-bot-disclosure` §8.1 and §8.2 hold both halves. |
+| D21b | **The reasoning is D20, which is already built.** House stakes count in GGR and in the levies **as player activity, with no house memo**, so the statutory figures the Board receives are identical whichever account placed the stake. There is nothing in those figures for a disclosure to correct. |
+| D21c | **It satisfies no condition and weakens no control.** F6 §5 condition 1 (written GBT approval) stays **waived by owner ruling D1, not satisfied** — its wording is unchanged and is pinned word for word by `test:house-bot-disclosure` d.5. A regulator not wanting a disclosure is not a licence to drop a guard: every control D19, D19d and D20 name stands exactly as built. |
+| D21d | **Accepted risk 21 is unaffected, and is the coherent route.** It is a matter between 50pick and its own **players**, through the rules 50pick itself published — not a Board matter. ⛔ It may **not** be "solved" by rewriting the rulebooks to carve house accounts out: any carve-out a player can read **discloses the feature** and breaches D19, which outranks. d.4 pins the three published sentences the risk rests on, so a carve-out turns the suite red. |
+| D21e | **The dormant enum value stays.** `BOARD_DISCLOSURE_RECORDED` is APPLIED on production inside `prisma/migrations/20260916150000_house_bot_tables/migration.sql`, so the Postgres enum keeps it and `constants.ts` keeps mirroring it. It is recorded as **deliberately dormant**, not removed: §8.4 pins that nothing can emit it, and §8.4b pins that it is still declared where the live database needs it. |
 
 ### Supersedes
 

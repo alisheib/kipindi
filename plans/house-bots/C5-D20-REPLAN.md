@@ -815,7 +815,7 @@ bots and what keeps D19 true").
 
 ⛔ These were never put to the verifier, so each is CHECKED before it is acted on. They belong to the propagation pass.
 
-1. `docs/HOUSE-BOTS.md:747` and `docs/COMPLIANCE-DECISIONS.md:214` describe `BOARD-DISCLOSURE-HOUSE-BOTS.md` **in the
+1. ⛔ **STRUCK 2026-09-20 (owner ruling D21): the finding is closed the other way — the file is never written, and both sentences now carry a dated strike note instead.** (Was:) `docs/HOUSE-BOTS.md:747` and `docs/COMPLIANCE-DECISIONS.md:214` describe `BOARD-DISCLOSURE-HOUSE-BOTS.md` **in the
    present tense, and the file does not exist** — it is Commit 6's, unbuilt. Under D19 and D20 that draft is the ONLY
    paper that discloses anything to anyone, so the disclosure-surface inventory currently asserts the content of a
    document nobody can read. Both sentences take the ⏳ marker the same files already use elsewhere for unbuilt work.

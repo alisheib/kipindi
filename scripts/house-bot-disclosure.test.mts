@@ -46,6 +46,12 @@ import { houseHits, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPL
  * `scripts/lib/house-bot-assurances.mjs`'s header for why, and 6.c11 for the pin that says so.
  */
 import { runChatbotCases } from "./lib/house-bot-chatbot-cases.mts";
+/**
+ * §0-pipe, §5, §8 and §docs · THE ABSENCE SUITE (Commit 6, 2026-09-20). Its own header carries the inventory of what
+ * every other guard on the platform already covers and builds only the space between them — including the two gates
+ * that ran in no pipeline at all, and the print measure that read two files while its twin read four hundred.
+ */
+import { runAbsenceCases } from "./lib/house-bot-absence-cases.mts";
 
 type Reader = { exists(p: string): boolean; read(p: string): string };
 const disk: Reader = { exists: (p) => existsSync(p) && statSync(p).isFile(), read: (p) => readFileSync(p, "utf8") };
@@ -201,9 +207,24 @@ section("§2 · CONTROLS — planted chains are found; type-only imports and ser
 section("§3 · the player copy the un-build replaced says something true and names nothing");
 {
   const { dict } = await import("../src/lib/i18n-dict.ts") as { dict: Record<string, { market: Record<string, string> }> };
-  const lines = (["en", "sw", "zh"] as const).map((l) => dict[l]?.market?.objNotEligible);
-  ok("3.1 · ruling 146 · objNotEligible exists in all three languages and names nothing",
+  /**
+   * ⭐ 7.4 (Commit 6, 2026-09-20) · THE LOCALES COME FROM THE DICTIONARY, NOT FROM A LIST TYPED HERE. This read
+   * `["en", "sw", "zh"]`, so the day a fourth language ships, the neutral copy it replaced would be demanded in three
+   * languages and the fourth would go unasserted with the suite green — the same shape as an English-only pattern run
+   * "in all three locales", which §6 exists because of. The population is printed so a dictionary that yields one key
+   * fails the floor instead of passing a loop of one.
+   */
+  const locales = Object.keys(dict);
+  const lines = locales.map((l) => dict[l]?.market?.objNotEligible);
+  ok(`3.0 · POPULATION · the locale list is \`Object.keys(dict)\` and yields ${locales.length} languages (${locales.join(", ")}), at least 3`,
+    locales.length >= 3, JSON.stringify(locales));
+  ok("3.1 · ruling 146 · objNotEligible exists in every locale the dictionary declares and names nothing",
     lines.every((s) => typeof s === "string" && s.length > 10) && lines.every((s) => houseHits(s!).length === 0 && !/50pick/i.test(s!)), JSON.stringify(lines));
+  ok("3.1c · CONTROL · the locale walk can fail: a fourth locale planted into a COPY of the dictionary's key set is demanded, and a house sentence planted into a copy of one locale's value is reported",
+    Object.keys({ ...dict, xx: {} }).length === locales.length + 1
+      && Object.keys({ ...dict, xx: { market: {} } }).map((l) => ({ ...dict, xx: { market: {} } } as Record<string, { market: Record<string, string> }>)[l]?.market?.objNotEligible).some((s) => typeof s !== "string")
+      && houseHits("Hili si soko la dau la nyumba.").length > 0,
+    JSON.stringify({ planted: "xx", houseSentenceReported: houseHits("Hili si soko la dau la nyumba.") }));
   const panel = readFileSync(join(SRC, "components", "markets", "resolution-panel.tsx"), "utf8");
   ok("3.2 · the resolution panel renders the neutral state with the neutral key", /state === "NOT_ELIGIBLE"[\s\S]{0,200}t\.market\.objNotEligible/.test(panel));
   ok("3.2b · ruling 158 · the payout-held box drops its objection invitation in exactly the NOT_ELIGIBLE state",
@@ -303,6 +324,9 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
 // ── §6 · the D19d chatbot guard ──────────────────────────────────────────────────────────────────────
 await runChatbotCases(ok, section, ROOT);
 
+// ── §0-pipe, §5, §8, §docs · the absence suite ───────────────────────────────────────────────────────
+await runAbsenceCases(ok, section, ROOT);
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure: ${pass} passed, ${fail} failed`);
 /**
  * ⛔ RULING 519 · THE FLOOR, AND WHY THIS SUITE HAD NONE. Ruling 515 raised every `minPass` the two-store runner
@@ -314,8 +338,10 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure:
  * only ever RISES, and only to a number a run printed (raised 29 to 31 at C7 step 6's fix pass, when ruling 387's Proof finally got its two halves) — never to an arithmetic guess.
  * ⭐ RAISED 31 → 66 by Commit 6 step (a), 2026-09-20, when §6 (the D19d chatbot guard) landed: 35 new cases, and the
  * number below is the one a green run PRINTED, not 31 plus a count of the `ok(` calls someone typed.
+ * ⭐ RAISED 66 → 108 by Commit 6 steps (b) and (c), 2026-09-20, when §0-pipe, §5, §8 and §docs landed (the absence
+ * suite) together with §3's own locale population. Again PRINTED, by the green run recorded in `HOUSE-BOTS.md` §12.
  */
-const MIN_ASSERTIONS = 66;
+const MIN_ASSERTIONS = 108;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

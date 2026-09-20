@@ -524,7 +524,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 - New `docs/HOUSE-BOTS.md` (authority: invariants→guards, model, engine, caps, eligibility and auto-pause matrix, console map, reporting table, alert matrix, disclosure surfaces, runbook, verification, risks). It names no script or npm key before that commit adds it.
 - `docs/RULES.md` §2.x; `docs/FLOWS.md` §9 (plus the two stale §3 rows); `docs/FAILURE-INVENTORY.md` §6.
 - Supersede banners on F6, UPDOWN-FINAL-DESIGN and feature-backlog.
-- `docs/README.md` index; `CLAUDE.md` pointer; `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` (DRAFT FOR ALI); `docs/LIVE-QA-CAMPAIGN.md` §6b handoff; memory update.
+- `docs/README.md` index; `CLAUDE.md` pointer; ~~`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` (DRAFT FOR ALI)~~ ⛔ **STRUCK 2026-09-20 (owner ruling D21): not written, not owed**; `docs/LIVE-QA-CAMPAIGN.md` §6b handoff; memory update.
 
 ## 11. Build order
 **Setup and working rules**

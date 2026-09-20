@@ -746,7 +746,7 @@ The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (39
 | A holder's own screens and notices | Nothing. A house stake looks exactly like the holder's own bet, and the holder receives no house-bot notice or email at all. |
 | The chatbot | Nothing — and it may never claim the opposite (D19d). ⭐ **This is the only surface a player can INTERROGATE**, so the guard is built to the artefact and not to a file: `test:house-bot-disclosure` §6 holds four channels — the live system prompt, the live channel's other player-read text (the capacity, empty-reply and trouble fallbacks), the **stub corpus** a rate-limited player is actually answered from, and `faq8a` plus the chat chrome in every locale `Object.keys(dict)` yields. The model is handed **no tools, no retrieval and no server-side context** (6.5, 6.5b), so it cannot repeat a house fact — it is never given one — and the prompt's `${...}` set is CLOSED (6.4), which refuses the next channel rather than policing the six that exist. The two live holes carrying operator-written text are the support email and dial target, and the shipped validator is executed against every plant to prove a sentence cannot be stored in either (6.9). 🔴 **6.2f closes a hole this build found in its own scope:** D19d is about lying, D19 is about the feature being NAMEABLE, and the shared lexicon (ruling 175) had never been run over this text at all — §1 does not follow a `"use server"` module and `verify:house-bot-bundle` reads rendered pages, which a system prompt never becomes. 0 hits over 25,271 characters on the day it was added. ⚠️ **What it does NOT hold, said out loud:** what the model IMPROVISES when asked a question its instructions never answer, and the support `phone` DISPLAY field — `plans/house-bots/DEFERRED-TESTS.md` §1k rows 89 and 90. ⛔ None of it required editing `src/app/_actions/chat.ts`, which 6.6 pins byte-identical to `origin/main`. |
 | Every other player surface | Nothing. The suite proves no player-facing string, in any locale, names a house bot, a liquidity stake or a 50pick stake. |
-| The Gaming Board of Tanzania (**private**) | `BOARD-DISCLOSURE-HOUSE-BOTS.md`, a draft for Ali, ~~plus the house-liquidity report and CSV in the admin console~~. Not a public surface. ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no house-liquidity report or CSV (C5-SPEC rulings 199–213); the draft is the only private paper, and it says reports and filings treat house accounts as ordinary player accounts, with no house memo. |
+| The Gaming Board of Tanzania | **Nothing, and no paper is owed.** ⛔ **STRUCK 2026-09-20 by owner ruling D21:** `BOARD-DISCLOSURE-HOUSE-BOTS.md` never existed and is not to be written. Ali reports that the Board needs no disclosure about house bots; no document is on file and none was requested. The reasoning is **D20, already built** — house stakes count in GGR and the levies as player activity with no house memo, so the statutory figures the Board receives are **identical whichever account placed the stake**, and there is nothing in them for a disclosure to correct. ⚠️ It satisfies **no** condition: F6 §5 condition 1 (written GBT approval) stays waived by D1 and NOT satisfied. ~~`BOARD-DISCLOSURE-HOUSE-BOTS.md`, a draft for Ali, plus the house-liquidity report and CSV in the admin console~~ (the report half was already struck by D20; C5-SPEC rulings 199–213). Held by `test:house-bot-disclosure` §8. |
 
 The commit-6 suite is therefore a **non-disclosure** suite: it fails if any of that text appears, and it pins the
 rulebooks, Terms and the privacy notice byte-identical to `origin/main`.
@@ -878,7 +878,17 @@ exits 0 — so a half-finished run is safe to repeat. Sunset is also structurall
 
 ## 13. Accepted risks
 
-Risks 1–6 are PLAN §13, risk 7 is amendment A1, and risks 13–20 are PLAN §16b, each verbatim. The House bots entry in `COMPLIANCE-DECISIONS.md` carries the same text.
+Risks 1–6 are PLAN §13, risk 7 is amendment A1, and risks 13–20 are PLAN §16b, each verbatim.
+
+⚠️ **THE TWIN IN `COMPLIANCE-DECISIONS.md` IS NOT WORD FOR WORD, AND SAYING SO IS THE POINT.** This line used to read
+"carries the same text", which was false and hid a real gap for four days: risk **21** was in that register in full and
+in this one not at all, and a reader who trusted the sentence never looked. Measured 2026-09-20, and held by
+`test:house-bot-disclosure` §docs:
+- **Risk 21 is now verbatim in both** (d.1 asserts text equality, not presence, so a paraphrase in either copy is red).
+- **Risks 13–20 are present by number in both** (d.2), but **13, 15 and 20 carry different supersede prose**: only the
+  `COMPLIANCE-DECISIONS.md` copy has the `listRegister` / ruling-517 correction. Reconciling those three is a docs job
+  nobody has been given; it is recorded in `plans/house-bots/DEFERRED-TESTS.md` §1L as NOT MEASURED with that reason,
+  never quietly dropped.
 
 1. **Licence class and levies.** House stakes are taxed within the fee, and the pool becomes a "book" (F6 §3). Ali reports to GBT.
 2. **Consent is knowledge, not proof.** Password-only (D5). Officer resets are blocked, but resets before the 2026-09-11 audit genesis are invisible.
@@ -898,6 +908,37 @@ Risks 8–12: ⏳ added in commit 8 (S5).
 18. **Consumed trigger.** A target removed or ended after a trigger was decided consumes that trigger. No other bot may react to it (one COUNTER row per trigger).
 19. **Counterparty concentration.** A staff-chosen stake can still be matched mostly against a few players' money. It is bounded by the share limit (refused when one account holds more than 50% of the locked opposite money, W15). It is also bounded by pro-rata counterparty caps: the stake counts toward the per-player daily counter limits of every account holding at least 25%.
 20. **An officer may decide a market holding a stake they chose** (resolve, void, reopen or an objection ruling). There is no refusal (2026-07-24 guardrail, I10). ~~The mitigations are display, audit and alert only: the viewer sees "of which chosen by you", the decision audit records `requestedBy`, and `staff-stake-self-decided` alerts every admin.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** "of which chosen by you" and `requestedBy` in the decision audit are struck (C5-SPEC rulings 187–191, 193); of that list only the `staff-stake-self-decided` alert to every admin (commit 4) is untouched by D20.
+
+**21 (added 2026-09-16 with D19).** The published rulebooks say "Bots, scripts and automated tools may not be used to
+place stakes" and "Multiple accounts, **shared accounts** and account sales are prohibited", and the privacy notice
+names no house-liquidity processing. Under D19 none of that text changes, so the platform operates accounts in a way
+its own published rules prohibit and its notice does not describe. A player who learns of it, or a regulator, could
+call that misleading. Ali accepted this on 2026-09-16 after being shown the sentences and an alternative neutral
+wording, and reports that the Gaming Board told him his answers are legally valid (no document on file; REL-4 asks for
+one). The holder's own consent is unaffected: they agree privately and give the owner their password (D5). ⚠️ **Corrected 2026-09-18 (ruling 503).** This sentence read "and type their own password", which the built code contradicts: `src/lib/server/house-bot/designation.ts` addresses the OFFICER throughout — `:79` `empty: "Enter their password."`, `:102` "That isn't their current password.", `:109` "Check the holder's password for an owner" — and **no field anywhere lets the holder type it**. D5 is the OWNER typing the HOLDER's account password, verified like a sign-in and never creating a session; `:158` and `:201` stand as written. ⛔ **The consent itself does not change** — the holder still agrees privately and still supplies the password; what the record stops saying is that the holder types it into a wizard, because no such wizard field exists.
+
+### Risk 21's premise, read out of the published rulebooks
+
+⭐ **MEASURED 2026-09-20, so the next reader does not have to re-derive it.** Risk 21 asserts that 50pick's own
+published rules prohibit what the feature does. Nobody had ever quoted them. They do, and here is where, in the files
+a player reads:
+
+| Where a player reads it | The sentence, verbatim |
+|---|---|
+| `src/app/legal/rules/_content-yes-no.tsx` | "One account per person. Multiple accounts, shared accounts and account sales are prohibited and may lead to forfeiture of winnings." |
+| `src/app/legal/rules/_content-yes-no.tsx` | "Bots, scripts and automated tools may not be used to place stakes or scrape the platform." |
+| `src/app/legal/rules/_content-up-down.tsx` (prohibited conduct) | "Using bots, scripts or automated tools to place stakes or scrape the platform." |
+
+The feature places stakes by automation on an **existing player account** designated with the holder's password, which
+the second sentence prohibits outright and which the first arguably reaches as a shared account — and the first
+attaches **forfeiture of winnings** to a player who does it. That is the whole of the accepted risk, and it is a matter
+between 50pick and its **players**, not a Gaming Board matter (owner ruling D21, 2026-09-20: the Board needs nothing,
+and under D20 the levy and GGR reach it identically as player activity).
+
+⛔ **It may not be "solved" by rewriting the rules.** Any carve-out for house accounts is text a player can read, and
+reading it **discloses the feature** — which D19 forbids and which outranks. The accepted-risk route is the coherent
+one and is the chosen one. `test:house-bot-disclosure` d.4 pins all three sentences as PRINTED text, so deleting or
+reversing one turns the suite red rather than passing quietly.
 
 ### Do not restore
 - No human-typed side.

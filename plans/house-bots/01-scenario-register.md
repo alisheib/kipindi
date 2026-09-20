@@ -2188,7 +2188,7 @@ Forbidden phrases: 'independent', 'cannot influence', 'never bets against you', 
 - ⛔ **Superseded by D19 (Ali, 2026-09-16):** no disclosure bullet and no faq8a sentence (D19a); the chatbot discloses nothing and may never lie: a guard keeps "never bets against you", "independent", "cannot influence", "all stakes are from real players", "fully automated", "only automated", "no person decides", "no one at 50pick chooses" and naming or confirming any account out of the system prompt and faq8a in all three locales (D19d). The support script in HOUSE-BOTS.md stands. Coverage gate: counts through Commit 6's D19d forbidden-phrase assertions (C5-SPEC ruling 250).
 
 ### CRA-24 [partial] The Board disclosure draft, and the switch being turned ON before it is sent.
-- **Trigger:** The owner switches the master ON while BOARD-DISCLOSURE-HOUSE-BOTS.md is still 'DRAFT FOR ALI'.
+- **Trigger:** ~~The owner switches the master ON while BOARD-DISCLOSURE-HOUSE-BOTS.md is still 'DRAFT FOR ALI'.~~ ⛔ **STRUCK 2026-09-20 (owner ruling D21):** there is no such draft and none is owed, so this trigger cannot occur.
 - **Expected:** The draft follows the KYC-at-withdrawal format and covers:
 - what 50pick does
 - an explicit request for written confirmation of the licence class

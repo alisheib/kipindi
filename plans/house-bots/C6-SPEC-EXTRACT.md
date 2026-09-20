@@ -19,8 +19,9 @@
 > chatbot text mentions them; no META or `TERMS_VERSION` bump; no announcement; a holder sees nothing on their own
 > account. The full ruling is in `PROGRESS.md` ("OWNER RULING D19") and `docs/COMPLIANCE-DECISIONS.md`.
 >
-> **What survives of commit 6:** the private Gaming Board draft (`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` + the
-> `BOARD_DISCLOSURE_SECTIONS` constant, §3.4 below), the chatbot's forbidden-phrase guard (D19d — the guard only, never
+> ⛔ **STRUCK 2026-09-20 (owner ruling D21): the Board draft and `BOARD_DISCLOSURE_SECTIONS` are struck; commit 6 is the chatbot guard, the absence suite and the docs. Every Board-draft line in THIS FILE is history, not an instruction.**
+> **What survives of commit 6:** ~~the private Gaming Board draft (`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` — STRUCK 2026-09-20 — plus the
+> `BOARD_DISCLOSURE_SECTIONS` constant, §3.4 below)~~, the chatbot's forbidden-phrase guard (D19d — the guard only, never
 > the disclosure bullet), the docs of record (§1 and the P3/P4 doc tests), and `test:house-bot-disclosure` **inverted
 > into a non-disclosure suite**: it fails if any player-facing string in any locale names a house bot, a liquidity
 > stake or a 50pick stake, and it pins the rulebooks, Terms and the privacy notice byte-identical to `origin/main`.
@@ -97,8 +98,8 @@ house sentence (:226).
 (`house-bot-dal.ts:158,160,473-474,1165-1166,1873,2017,3173-3174`; `recordDisclosure(sections)` on both stores), with
 event kind `BOARD_DISCLOSURE_RECORDED` (`constants.ts:277`) and audit key
 `"house_bot.board_disclosure_recorded": "COMPLIANCE"` (`constants.ts:746`).
-❗ **`BOARD_DISCLOSURE_SECTIONS` does not exist yet** (grep: nothing in `src`), and `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md`
-does not exist yet. Both are commit 6's (04:3610-3622).
+❗ **`BOARD_DISCLOSURE_SECTIONS` does not exist yet** (grep: nothing in `src`), and `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` ⛔ **STRUCK 2026-09-20 (owner ruling D21): NEITHER IS COMMIT 6's, AND NEITHER IS TO BE BUILT.** The constant is struck with the draft; `test:house-bot-disclosure` §8.1 and §8.3 pin both absences.
+~~does not exist yet. Both are commit 6's (04:3610-3622).~~
 
 ## 2. Where the public text lives (code @08c82f0f — re-derive every line)
 ⛔ **Superseded by D19 (Ali, 2026-09-16):** nothing in §2.1–§2.5 is edited: the rulebooks, Terms, privacy notice, FAQ, home copy and chatbot keep exactly their words on `main`, and the non-disclosure suite pins the rulebooks, Terms and the privacy notice byte-identical to `origin/main` (D19a). §2.4's `faq8a` and §2.5's prompt are where D19d's forbidden-phrase guard reads; §2.6's Swahili-first disclosure does not arise.
@@ -199,7 +200,7 @@ Also 01:2097: "faq8a gains one matching sentence in en/sw/zh. HOUSE-BOTS.md gets
 account; escalate to the owner."
 
 ### 3.4 The Board draft — sections are sealed, prose is not
-04:3610-3619 — `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` gains a section **"Stakes chosen by staff"** covering: Enter now
+⛔ **STRUCK 2026-09-20 (owner ruling D21) — the whole of §3.4 is history.** ~~04:3610-3619 — `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` gains a section **"Stakes chosen by staff"**~~ covering: Enter now
 (polls only); targets (polls only, 5–600 s, the absolute hold); the formula side and amount; the money the house may add
 to, and the share limit; the information blackout, including a reopen after a result check; staff-chosen caps, with NULL
 meaning off; press and veto records, the COMPLIANCE audits ~~and R1 sections (b)–(h)~~; the ~~three~~ alerts (every staff-chosen
@@ -275,7 +276,7 @@ no wiring there; `predeploy` is a hand-written chain that already contains `test
 10. **`test:labels` §3b** scans the player render tree for a typed side token where a player reads it — new rulebook
     prose must take sides from `sideWordIn`, never the literals.
 11. **`test:docs`** (link check only): every `scripts/<file>` and `npm run <name>` named in `docs/**` must exist, and
-    relative links must resolve — so `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` must exist before anything links to it, and
+    relative links must resolve — ~~so `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` must exist before anything links to it~~ ⛔ **STRUCK 2026-09-20 (D21): nothing links to it, because it is never written**, and
     `npm run test:house-bot-disclosure` may only be written in a doc once the key is in `package.json`.
 12. **`test:guards-exist`**: never cite `test:house-bot-disclosure` in code or a comment before its `package.json` key
     exists (the same trap C3 hit with `test:house-bot-designation`).
@@ -341,8 +342,8 @@ Baseline for "unchanged elsewhere": the clean-main worktree `F:/kipindi-old-buil
 8. **FAQ, hero and chatbot** — the `i18n-dict.ts` keys (en/sw/zh each, parity-safe) and the prompt bullet after
    today's `chat.ts:156`, leaving :152-153 byte-identical. Run `test:i18n`, `test:chat-safety`, `test:rate-copy`,
    `test:privacy-notice` §2c, `test:support-contact`.
-9. **Docs** — `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` (DRAFT FOR ALI, KYC-disclosure format, with "Stakes chosen by
-   staff"); `BOARD_DISCLOSURE_SECTIONS` in `src/lib/house-bot/constants.ts` equal to its headings (T12);
+9. **Docs** — ~~`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` (DRAFT FOR ALI, KYC-disclosure format, with "Stakes chosen by ⛔ **STRUCK 2026-09-20 (D21)**
+   staff"); `BOARD_DISCLOSURE_SECTIONS` in `src/lib/house-bot/constants.ts` equal to its headings (T12);~~ — both struck;
    `HOUSE-BOTS.md` §10 "Disclosure surfaces" + the support script (T13) + §12's commit-6 row; `RULES.md` §2.11
    "Stated" row; `PROGRESS.md` and the session log.
 10. **The suite** — `scripts/house-bot-disclosure.test.mts` per §7 below: pure, no database, locales from
@@ -408,7 +409,7 @@ Pure (no database, no server); it renders the JSX maps the way `test:rules-copy`
 - 7.4 locales come from `Object.keys(dict)`, so a fourth locale makes this demand copy for it (01:2592, FS-30).
 
 **§8 · the Board draft and its constant** (04:3610-3623, 01:2105-2113)
-- 8.1 `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` exists, is headed DRAFT FOR ALI, and contains every required section incl. "Stakes chosen by staff".
+- ~~8.1 `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` exists, is headed DRAFT FOR ALI, and contains every required section incl. "Stakes chosen by staff".~~ ⛔ **STRUCK 2026-09-20 (owner ruling D21). INVERTED:** §8.1 as built asserts the file does NOT exist, and §8.2 asserts every surviving citation of it carries a dated strike note.
 - 8.2 that section names: Enter now (polls only), targets (5–600 s, the absolute hold with the 7 s margin), the formula side and amount, the money the house may add to and the share limit, the blackout incl. reopen, the staff-chosen caps with NULL meaning off, press and veto records, ~~the three alerts~~, risks 13–20 (04:3611-3619, 04:4319). ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert is struck, so the section names two alerts (every staff-chosen stake, a self-decided market), not three.
 - 8.3 `BOARD_DISCLOSURE_SECTIONS` **equals** the draft's section headings, in order (04:3621).
 - 8.4 ⭐ CONTROL: a renamed heading, or an extra constant entry, is reported.

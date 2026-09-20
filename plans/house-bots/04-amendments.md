@@ -3667,7 +3667,7 @@ Body order:
 - **Chatbot:**
   - ~~The P1 bullet after `_actions/chat.ts:147` (re-derive) is unchanged.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no P1 chatbot bullet; the chatbot discloses nothing (D19d).
   - The forbidden-phrase list in `test:house-bot-disclosure` gains "fully automated", "only automated", "no person decides" and "no one at 50pick chooses".
-- **Board disclosure draft** (`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md`): new section "Stakes chosen by staff". It covers:
+- ~~**Board disclosure draft** (`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md`): new section "Stakes chosen by staff".~~ ⛔ **STRUCK 2026-09-20 (owner ruling D21):** no Board draft is written, so no section of it is either. Kept below only as the record of what the struck section would have covered:
   - Enter now (polls only);
   - targets (polls only, 5–600 s, the absolute hold);
   - the formula side and amount;

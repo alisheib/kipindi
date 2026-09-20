@@ -46,7 +46,7 @@ Ali will be away all day. He approves permissions and answers questions **only n
      fresh build; the holder-view and console probes; the review over the whole commit (one lens hunting API routes, DSAR
      deliverables, console pages as a non-staff session and admin client chunks); `docs/HOUSE-BOTS.md`; PROGRESS row ✅.
 2. **Commit 6**, the short non-disclosure commit (read `C6-SPEC-EXTRACT.md`'s banner first): the private Gaming Board draft (saying reports treat house accounts as ordinary player accounts, D20)
-   `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md`, the chatbot's forbidden-phrase guard (D19d), the docs, and `test:house-bot-disclosure`
+   ~~`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md`~~ ⛔ **STRUCK 2026-09-20 (owner ruling D21, `docs/COMPLIANCE-DECISIONS.md`): the Board needs nothing; this file never existed and is not to be written.** The chatbot's forbidden-phrase guard (D19d), the docs, and `test:house-bot-disclosure`
    extended into a NON-disclosure suite that pins the two rulebooks, Terms and the privacy notice **byte-identical to
    `origin/main`**.
 3. **Commit 7** (the console that controls the bots, per D20 — no results report, CSV or per-market house line) if context remains — and with it the two items Commit 4 deferred: **N1-9**'s mutation (an inline
