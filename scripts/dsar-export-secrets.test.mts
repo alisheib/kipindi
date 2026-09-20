@@ -232,7 +232,16 @@ section("7 · a trigger player's doors equal an identical account with no box an
  */
 const HB_DAL = await import("../src/lib/server/house-bot-dal.ts");
 
-/** ISO instants, ids and contact details differ between any two accounts; nothing else may. */
+/**
+ * ISO instants, ids and contact details differ between any two accounts; nothing else may.
+ *
+ * ⛔ IT REPLACES NAMED LITERALS, NOT AN ID PATTERN, for two reasons. Ruling 175 forbids this file
+ * declaring an identifier regex of its own — a per-file copy of the id shapes is exactly what that
+ * ruling exists to stop. And a pattern is the weaker instrument here anyway: it would also erase an id
+ * this comparison has never heard of, which is the one thing a leak would look like. Every id below is
+ * one this section CREATED, so anything else survives normalisation and shows up as a difference.
+ */
+const KNOWN_IDS: string[] = [];
 const normalise = (v: unknown): unknown => {
   if (Array.isArray(v)) return v.map(normalise);
   if (v && typeof v === "object") return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, normalise(x)]));
@@ -240,7 +249,7 @@ const normalise = (v: unknown): unknown => {
   let s = v;
   s = s.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g, "<TIME>");
   s = s.replace(/\+255\d+/g, "<PHONE>");
-  s = s.replace(/\b(?:u|usr|wal|txn|aud|ntf|pos|hb|hbi|hbe)_[A-Za-z0-9_]+/g, "<ID>");
+  for (const id of KNOWN_IDS) s = s.split(id).join("<ID>");
   return s;
 };
 /** Every key path in a document, sorted — so a section that exists on one side only is reported by name. */
@@ -252,6 +261,7 @@ const keyPaths = (v: unknown, at = "$"): string[] => {
 
 const TRIGGER = "u_dsar_trigger";
 const TWIN = "u_dsar_twin";
+KNOWN_IDS.push(TRIGGER, TWIN, `wal_${TRIGGER}`, `wal_${TWIN}`, "txn_trigger_1", "txn_twin_1", "txn_twin_extra");
 await mkAccount(TRIGGER, "+255700000044");
 await mkAccount(TWIN, "+255700000045");
 for (const [uid, txnId] of [[TRIGGER, "txn_trigger_1"], [TWIN, "txn_twin_1"]] as Array<[string, string]>) {

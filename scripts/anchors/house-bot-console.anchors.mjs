@@ -2216,4 +2216,32 @@ import { formatEat } from "@/lib/utils";`,
     expect: "0.235.3 · ⛔ RULING 149 · the helper's docstring no longer promises an hourly holder summary",
     suite: "reports-mem",
   },
+  {
+    /* ⛔ RULING 247's OWN DEFECT SHAPE: a reader that hands back the ROW instead of the projection. The
+       trader-seed reader is the best place to plant it because nothing about the change looks wrong —
+       it still answers "who is on this market", it is still one aggregate, and the extra field is
+       invisible until somebody serialises the answer to a signed-out visitor. */
+    name: "247-seeds-raw · the trader-seed reader answers with position ROWS, so the marker and the hb: bet key reach every viewer of a market",
+    file: MARKET,
+    from: `    if (arr.length < n && !arr.includes(p.userId)) arr.push(p.userId);`,
+    to: `    if (arr.length < n && !arr.includes(p.userId)) arr.push(p as unknown as string);`,
+    expect: "11.247.2 · ⛔ D19 · ruling 247 · NOT ONE of them carries the fixture's bot, intent or event id",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ THE ONE VIEWER-FACING CALLER OF THE RAW POSITION READ. `myStakesByMarket` is what a player's
+       round panel is built from; growing its item by one field puts the marker in the holder's own
+       round detail. 11.247.c1c is the only assertion whose subject is that six-field literal, and it
+       exists because no Up & Down fixture runs in this suite — a sweep that cannot reach a reader is
+       not a reason to leave the reader unguarded. */
+    name: "247-round-item-marker · the viewer's own round item grows the marker, so a holder's round panel carries it",
+    file: "src/lib/server/updown-board.ts",
+    from: `      id: p.id,
+      side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",`,
+    to: `      id: p.id,
+      houseBotId: p.houseBotId,
+      side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",`,
+    expect: "11.247.c1c · the one viewer-facing caller of that raw read PROJECTS",
+    suite: "reports-mem",
+  },
 ];

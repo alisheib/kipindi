@@ -3040,6 +3040,228 @@ await guard("9.235", async () => {
     j({ houseOnly: CR.channelAllowed("ROUND_RESULT", { houseOnly: true }), plain: CR.channelAllowed("ROUND_RESULT", {}) }));
 });
 
+/* ═══ §11 · ruling 247 · THE SERVICE-LAYER ABSENCE SWEEP, for every viewer, on both stores ═══════════ */
+
+/**
+ * ⛔ RULING 247. Every reader a player's screen is built from is called AS EACH VIEWER — signed out,
+ * another player, the holder, a trigger player — and its whole serialised output is searched for the
+ * fixture's own house ids and for the shared vocabulary. This is the layer between the database (where
+ * the marker legitimately lives) and the served page (248): a projection that leaks a raw row leaks it
+ * here first, and a page-level check would only find it after a designer happened to render the field.
+ *
+ * ⛔ THE THREE THINGS THAT MAKE IT EVIDENCE RATHER THAN A CLEAN VERDICT (the C5-7 law):
+ *   (i)   A PLANTED RAW READ IS FOUND. `positionStore.get(<the house position>)` is swept as if it were
+ *         one of the readers, and the sweep MUST report it. A sweep that cannot see the marker on a row
+ *         that carries it is measuring nothing, and this is the only control that says which.
+ *   (ii)  A RAW NON-HOUSE POSITION ROW IS FOUND TOO, because the identifier pattern counts `houseBotId`
+ *         WHATEVER ITS VALUE — so an unprojected raw row is a leak by design, even when no house stake
+ *         exists. This is the control that would have caught a projection returning raw rows on a
+ *         fixture that happened to have no house money in it.
+ *   (iii) THE FIXTURE'S OWN MARKET TITLE AND THE HOLDER'S DISPLAY NAME ARE FOUND in getBoard-class
+ *         output and in the leaderboard. Without this, every zero below is consistent with readers that
+ *         returned nothing at all.
+ *
+ * ⛔ AND THE POPULATION IS PRINTED — how many readers ran, per viewer, and how many bus frames were
+ * captured. A reader that starts throwing (and is swallowed) leaves the sweep smaller and quieter, and
+ * that is the shape this checkpoint exists to refuse. A reader that could not be exercised at all is
+ * NOT MEASURED, by name, in `plans/house-bots/DEFERRED-TESTS.md` — never silently dropped.
+ */
+section("§11 · ruling 247 · the service-layer absence sweep: every reader, every viewer, the fixture's own ids as needles");
+await guard("11.247", async () => {
+  const { loadWorld, OFFICER }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const SVC: Any = w.svc;
+  const BUS: Any = await import("../../src/lib/server/event-bus.ts");
+  const COMMENTS: Any = await import("../../src/lib/server/comments-store.ts");
+  const TICKER: Any = await import("../../src/lib/server/ticker-feed.ts");
+  const FAIRNESS: Any = await import("../../src/app/api/fairness/recent/route.ts");
+  const HEALTH: Any = await import("../../src/app/api/health/route.ts");
+  const HB: Any = await import("../../src/lib/server/house-bot-dal.ts");
+
+  /* ── the bus, captured from before the fixture moves anything ────────────────────────────────── */
+  const frames: Array<{ type: string; data: unknown }> = [];
+  const stop = (["market:odds", "wallet:balance", "notification:new", "market:resolve"] as const)
+    .map((t) => BUS.subscribe(t, (data: unknown) => { frames.push({ type: t, data }); }));
+
+  /* ── the fixture ─────────────────────────────────────────────────────────────────────────────── */
+  await w.limits();
+  await w.switchOn();
+  const bot = await w.bot();
+  const HOLDER = bot.userId;
+  await w.setUserFields(HOLDER, { displayName: "Holder Of Record" });
+  const PLAYER = await w.user({ balance: 500_000 });
+  await w.setUserFields(PLAYER, { displayName: "Ordinary Player" });
+  const TRIGGER = await w.user({ balance: 500_000 });
+  await w.setUserFields(TRIGGER, { displayName: "Trigger Player" });
+
+  const MARKET_TITLE = `Sweep poll ${process.pid}`;
+  const m = await w.poll();
+  await w.mdal.marketStore.set({ ...(await w.mdal.marketStore.get(m.id)), titleEn: MARKET_TITLE });
+
+  // A player's own stake, a trigger player's stake, and the house's answer to it.
+  /* ⚠️ BOTH PLAYER STAKES ARE BACKDATED, and the fixture does not work without it: the seam only
+     counts a stake as LOCKED once it is older than `LOCK_MARGIN_MS` (skew + claim guard), so a house
+     FILL against a pool placed a millisecond ago is refused `house_condition_gone`. A fixture of time,
+     exactly as `qa:house-bot-console-probe` uses it — never a relaxed condition. */
+  const pBet = await SVC.buyPosition(PLAYER, { marketId: m.id, side: "YES", stake: 20_000 });
+  const trig = await SVC.buyPosition(TRIGGER, { marketId: m.id, side: "YES", stake: 20_000 });
+  for (const r of [pBet, trig]) if ((r as Any)?.ok) await w.backdate((r as Any).data.positionId, 120_000);
+  /* ⚠️ `buyPosition` answers `{ positionId }`, and a COUNTER intent's anchorKey IS that id (the
+     HouseBotIntent_counter_anchor_check). Reading the wrong field here does not fail quietly — the
+     check constraint refuses the row — which is the database doing this checkpoint's job for it. */
+  const trigPositionId = (trig as Any)?.data?.positionId ?? null;
+  const i1 = await w.intent(bot, m.id, { side: "NO", stakeTzs: 10_000 });
+  const placed = await w.place(bot, i1);
+
+  // The trigger player's COUNTER intent and their penalty box — the two house rows ABOUT a player.
+  if (typeof trigPositionId !== "string") throw new Error("the trigger player's position id did not come back; the counter fixture would be a lie");
+  const i2 = await w.intent(bot, m.id, { kind: "COUNTER", side: "NO", stakeTzs: 5_000, triggerPositionId: trigPositionId, triggerUserId: TRIGGER });
+  const countered = await w.place(bot, i2);
+  const boxed = await HB.houseBotEventStore.append({
+    houseBotId: bot.botId, userId: TRIGGER, marketId: m.id, kind: "PENALTY_BOXED",
+    fromStatus: null, toStatus: null, reason: null, actorId: null,
+    payload: { day: "2026-08-02", cause: "CASHED_OUT_COUNTERED" },
+  });
+
+  // A holder comment, on the market their account holds a stake in.
+  const comment = await COMMENTS.addComment(HOLDER, m.id, "A comment from the account of record.", "NONE");
+
+  // An emergency void of a SECOND house-held market — its bus frames and notices exist while the sweep runs.
+  const m2 = await w.poll();
+  const vBet = await SVC.buyPosition(PLAYER, { marketId: m2.id, side: "NO", stake: 30_000 });
+  if ((vBet as Any)?.ok) await w.backdate((vBet as Any).data.positionId, 120_000);
+  await w.ageHouseMinute();
+  const i3 = await w.intent(bot, m2.id, { side: "YES", stakeTzs: 4_000 });
+  const placed2 = await w.place(bot, i3);
+  const voided = await SVC.emergencyVoidMarket({ marketId: m2.id, officerId: OFFICER, reason: "sweep fixture void" });
+
+  const housePositions = (await w.positionsOf(m.id)).filter((p: Any) => p.houseBotId != null);
+  const playerPositions = (await w.positionsOf(m.id)).filter((p: Any) => p.houseBotId == null);
+  for (const s of stop) s();
+
+  ok("11.247.0 · the fixture is real: a house stake on a poll, a countered trigger player with a penalty box, a holder comment, and an emergency void of a second house-held market — with the bus captured throughout",
+    placed?.ok === true && countered?.ok === true && placed2?.ok === true && housePositions.length >= 2 && playerPositions.length >= 2
+    && !!boxed?.id && comment?.ok === true && voided?.ok === true && frames.length > 0,
+    j({ housePositions: housePositions.length, playerPositions: playerPositions.length, placed: placed?.ok, countered: countered?.ok, voidMarketStake: placed2?.ok, boxed: !!boxed?.id, comment: comment?.ok, voided: voided?.ok, frames: frames.length, refusals: [placed, countered, placed2].filter((r: Any) => r?.ok !== true) }));
+
+  /* ── the needles ─────────────────────────────────────────────────────────────────────────────── */
+  const IDS = [bot.botId, bot.userId === HOLDER ? null : bot.userId, i1.id, i2.id, boxed.id, `hb:${i1.id}`, `hb:${i2.id}`].filter(Boolean) as string[];
+  const needlesIn = (text: string) => [
+    ...IDS.filter((n) => text.includes(n)).map((n) => `id:${n}`),
+    ...houseHitsByFamily(text).map((h) => `${h.family}:${h.word}`),
+  ];
+
+  /* ── the readers, per viewer ─────────────────────────────────────────────────────────────────── */
+  const VIEWERS: Array<[string, string | undefined]> = [
+    ["signed out", undefined], ["another player", PLAYER], ["the holder", HOLDER], ["a trigger player", TRIGGER],
+  ];
+  /** Each reader: a name and a call. A reader that THROWS is recorded — never swallowed into a smaller sweep. */
+  const readers = (viewer: string | undefined): Array<[string, () => Promise<unknown>]> => [
+    ["getMarket", () => SVC.getMarket(m.id)],
+    ["getMarket(voided)", () => SVC.getMarket(m2.id)],
+    ["leaderboard", () => w.mdal.positionStore.leaderboard(50)],
+    ["leaderboardPlayerCounts", () => w.mdal.positionStore.leaderboardPlayerCounts()],
+    ["traderSeedsByMarket", () => SVC.traderSeedsByMarket([m.id, m2.id], 3)],
+    ["getTickerFeed", () => TICKER.getTickerFeed("en", 50)],
+    ["listComments", () => COMMENTS.listComments(m.id, viewer ?? null, { limit: 100 })],
+    ["/api/fairness/recent", () => FAIRNESS.GET().then((r: Any) => r.text())],
+    ["/api/health", () => HEALTH.GET().then((r: Any) => r.text())],
+  ];
+
+  const swept: string[] = [];
+  const leaks: string[] = [];
+  const threw: string[] = [];
+  for (const [label, viewer] of VIEWERS) {
+    for (const [name, call] of readers(viewer)) {
+      let text: string;
+      try { text = j(await call()); } catch (e) { threw.push(`${label}/${name}: ${String((e as Error)?.message ?? e).slice(0, 80)}`); continue; }
+      swept.push(`${label}/${name}`);
+      const hits = needlesIn(text);
+      if (hits.length > 0) leaks.push(`${label}/${name} → ${hits.slice(0, 4).join(", ")}`);
+    }
+  }
+  // Every captured bus frame, which is what /api/events forwards to a signed-in client.
+  for (const f of frames) {
+    swept.push(`bus/${f.type}`);
+    const hits = needlesIn(j(f));
+    if (hits.length > 0) leaks.push(`bus/${f.type} → ${hits.slice(0, 4).join(", ")}`);
+  }
+
+  ok("11.247.1 · the population is real, and it is printed: every reader ran for every viewer, and every captured bus frame was swept — a reader that starts throwing leaves the sweep smaller and is NAMED here, never swallowed",
+    swept.length >= VIEWERS.length * 9 && threw.length === 0 && frames.length >= 1,
+    `${swept.length} sweeps · ${VIEWERS.length} viewers × ${readers(undefined).length} readers + ${frames.length} bus frames · threw: ${j(threw)}`);
+  ok("11.247.2 · ⛔ D19 · ruling 247 · NOT ONE of them carries the fixture's bot, intent or event id, the hb: bet key, or a word, identifier or bounded id of the shared vocabulary — for a signed-out visitor, another player, the holder or the trigger player",
+    leaks.length === 0, j(leaks.slice(0, 8)));
+
+  /* ── the controls, and they are the assertion ────────────────────────────────────────────────── */
+  const rawHouse = j(await w.mdal.positionStore.get(housePositions[0].id));
+  const rawPlayer = j(await w.mdal.positionStore.get(playerPositions[0].id));
+  ok("11.247.c1 · CONTROL (i) · a RAW read of the house position, swept exactly as a reader would be, IS reported — with the marker's value and the identifier both found. A sweep that cannot see this is measuring nothing",
+    needlesIn(rawHouse).some((h) => h.startsWith("id:")) && needlesIn(rawHouse).some((h) => h.includes("houseBotId")),
+    j(needlesIn(rawHouse).slice(0, 4)));
+  /* ⭐ THE BEST CONTROL IS A REAL READER, NOT A SYNTHETIC ONE. `listPositionsForMarket` is a SERVICE
+     function that returns position rows UNPROJECTED, marker and bet key and all. It is deliberately NOT
+     in the viewer sweep above — ruling 247 names the readers a player's screen is built from, and this
+     is not one of them: its four callers are `/admin/markets/[id]` and `/admin/resolver/[id]` (which
+     render cells, server-side), `objections-service` (the caller's own positions, server-side) and
+     `updown-board.myStakesByMarket` (the viewer's own positions, projected to six fields before anything
+     sees them; pinned by 11.247.c1c). What it IS, is proof that this sweep can see a raw row when one
+     is handed to it, on the same fixture, through the same needles as every reader above. */
+  const rawService = j(await SVC.listPositionsForMarket(m.id));
+  ok("11.247.c1b · CONTROL (i, again, with a REAL reader) · the unprojected service read `listPositionsForMarket` IS reported — the bot id, both intent ids and the hb: bet key. A synthetic plant proves the needles; this proves them against a function the product actually has",
+    [`id:${bot.botId}`, `id:${i1.id}`, `id:hb:${i1.id}`].every((n) => needlesIn(rawService).includes(n)),
+    j(needlesIn(rawService).slice(0, 6)));
+
+  /* ⛔ AND THE ONE CALLER THAT A VIEWER REACHES IS PINNED. `myStakesByMarket` is what a player's round
+     detail is built from; it takes those raw rows and builds a SIX-FIELD item. If that literal ever
+     grew the marker, the holder's own round panel would carry it — and no sweep of getRoundDetail would
+     find it until an Up & Down fixture existed to run one. The pin does not wait for the fixture. */
+  /* ⚠️ EOL-NORMALISED, and the first version of this pin was not — tracked source here is CRLF, so a
+     multi-line needle written with `\n` matched NOTHING and the pin went red for the wrong reason while
+     its own control passed vacuously (an unmatched needle makes `replace` a no-op, and "the plant
+     changed the file" was never checked). Both are fixed: the text is normalised, and the control below
+     REQUIRES the plant to have changed the source before it reads its verdict. */
+  const boardSrc = decomment(read("src/lib/server/updown-board.ts")).replace(/\r\n/g, "\n");
+  const ITEM = `    .map((p) => ({
+      id: p.id,
+      side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",
+      stake: p.stake,
+      payout: p.finalPayout,
+      status: p.status,
+      placedAt: p.placedAt,
+    }))`;
+  ok("11.247.c1c · the one viewer-facing caller of that raw read PROJECTS: `myStakesByMarket` builds a fixed six-field item from each row, and the marker is not one of the six",
+    boardSrc.includes(ITEM), boardSrc.includes(ITEM) ? "six fields, no marker" : boardSrc.includes("myStakesByMarket") ? "the projection literal has MOVED — re-read it" : "myStakesByMarket is gone");
+  const c1cPlant = boardSrc.replace(ITEM, ITEM.replace("      id: p.id,", "      id: p.id,\n      houseBotId: p.houseBotId,"));
+  ok("11.247.c1c.control · CONTROL · the plant really CHANGED the source, and the pin then REPORTS it — so c1c's verdict is a measurement of those six fields and not of a string that matches nothing",
+    boardSrc.includes(ITEM) && c1cPlant !== boardSrc && !c1cPlant.includes(ITEM),
+    `changed=${c1cPlant !== boardSrc}`);
+
+  /* ⛔ CONTROL (ii) IS STORE-SPECIFIC, AND SAYING SO IS THE POINT. On Postgres every Position row has a
+     `houseBotId` COLUMN, so an unprojected raw row is a leak by design whatever its value — a projection
+     that returned raw rows would be caught on a fixture with no house money in it at all. In memory the
+     marker is a SPREAD (`...(ctx.kind === "house" ? … : {})`), so an unmarked position has no such key
+     and there is nothing to find. Both halves are asserted, each on the store where it is true; neither
+     is reported as the other, and neither store is silently skipped. */
+  const rawPlayerHits = needlesIn(rawPlayer);
+  if (STORE === "postgres") {
+    ok("11.247.c2 · CONTROL (ii) · POSTGRES · a raw NON-HOUSE position row is reported too — the identifier pattern counts `houseBotId` WHATEVER its value, so an unprojected raw row is a leak by design and a fixture with no house money could not make this sweep vacuous",
+      rawPlayerHits.some((h) => h.includes("houseBotId")) && !rawPlayerHits.includes(`id:${bot.botId}`),
+      j(rawPlayerHits.slice(0, 4)));
+  } else {
+    ok("11.247.c2 · CONTROL (ii) · MEMORY · an unmarked position row carries NO houseBotId key at all (the marker is a spread, not a column), so there is nothing here for the identifier pattern to find — the Postgres child is where (ii) is measured, and it is measured there, not skipped",
+      !rawPlayer.includes("houseBotId") && !rawPlayerHits.includes(`id:${bot.botId}`),
+      `${rawPlayerHits.length} hit(s): ${j(rawPlayerHits.slice(0, 4))}`);
+  }
+  const boardish = j(await SVC.getMarket(m.id));
+  const board = j(await w.mdal.positionStore.leaderboard(50));
+  ok("11.247.c3 · CONTROL (iii) · the absence is not vacuous: the fixture's own market title is found in getMarket's output and the holder's own account is on the leaderboard — the readers really answered about this fixture",
+    boardish.includes(MARKET_TITLE) && board.includes(HOLDER),
+    j({ titleInMarket: boardish.includes(MARKET_TITLE), holderOnLeaderboard: board.includes(HOLDER), leaderboardRows: (await w.mdal.positionStore.leaderboard(50)).length }));
+  ok("11.247.c4 · D6 · …and the holder is there as an ORDINARY PLAYER: the leaderboard row is the account's, with no marker and no house key on it",
+    houseHits(board).length === 0 && !board.includes(bot.botId), j(houseHits(board).slice(0, 4)));
+});
+
 /* ═══ §11 (ruling 171 slice) · the public /api/health body's raw-text paths name nothing (both stores) ═══════════ */
 // Ruling 171 fixes the requirement: no key or VALUE of the public body names anything house. Two values were raw text
 // from elsewhere — the 500 branch's `String(err)` and the email rail's provider failure text (house admin mail rides the
