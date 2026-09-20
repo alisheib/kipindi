@@ -301,6 +301,42 @@ export function sslByHost(code: string): { byHost: boolean; forced: boolean } {
 }
 
 /**
+ * An index NAME typed into a source file. ⛔ The five index names live in the markers migration and
+ * nowhere else. A preflight that typed them would keep checking yesterday's list after the migration
+ * gained a sixth, and would report GO on a database one index short — which is not a hypothetical: the
+ * plan itself carried "the 4 indexes" for weeks, because somebody counted the four that name
+ * `"houseBotId"` and missed the sweep keyset built under the same ACCESS EXCLUSIVE lock.
+ */
+export function typedIndexNames(code: string): string[] {
+  return [...new Set([...code.matchAll(/["'`]([A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]*_idx)["'`]/g)].map((m) => m[1]))];
+}
+
+/** …and the other half of that claim: the names are READ off the migration file at run time. */
+export function derivesIndexNames(code: string): boolean {
+  return /readFileSync\s*\(/.test(code) && /migration\.sql/.test(code) && /matchAll\s*\(/.test(code);
+}
+
+/**
+ * How a file asks whether an index is USABLE. ⛔ A failed `CREATE INDEX CONCURRENTLY` leaves an INVALID
+ * index under the SAME name, so `pg_indexes.indexname` answers "present" for the one failure that
+ * matters and the migration's `IF NOT EXISTS` then keeps it forever.
+ */
+export function indexValidityRead(code: string): { indisvalid: boolean; byNameOnly: boolean } {
+  const indisvalid = /\bindisvalid\b/.test(code);
+  return { indisvalid, byNameOnly: (/\bpg_indexes\b/.test(code) || /\bindexname\b/.test(code)) && !indisvalid };
+}
+
+/**
+ * Names from an IMPORTED authority that a file re-typed as string literals instead. ⛔
+ * `schema-ready.ts` is what the engine's own gate and `/api/health` read; a preflight with its own copy
+ * can report GO on a database those two would reject, and `house-bot-migrations.test.mts` already keeps
+ * a second copy — a third is the one that drifts.
+ */
+export function typedTableLiterals(code: string, names: readonly string[]): string[] {
+  return [...new Set([...code.matchAll(/(["'`])((?:\\.|(?!\1)[^\\])*)\1/g)].filter((m) => names.includes(m[2])).map((m) => m[2]))];
+}
+
+/**
  * Anything that would write a compliance row. ⛔ D-OPS-2: `audit()` HMAC-chains its entry under a
  * database-wide advisory lock after reading the true chain head, so a hand-written `AuditLog` INSERT from a
  * direct-pg script BREAKS the one artefact whose purpose is to prove nothing was rewritten.
@@ -461,6 +497,18 @@ const PLANTED = {
   remarkInterpolated: "await c.query(`UPDATE ${table} SET \"houseBotId\" = p.\"houseBotId\"`);",
   /** A row POSITIONED by an update: permanently unmarkable afterwards, and invisible to the marker pin. */
   remarkSetsPositionId: 'UPDATE "Transaction" SET "positionId" = $1::text WHERE "id" = $2::text',
+  /** ⛔ THE PLAN'S OWN MISTAKE, AS CODE: the four indexes that name "houseBotId", the sweep keyset forgotten. */
+  preflightFourNames: 'const IDX = ["Position_houseBotId_open_idx", "Position_houseBotId_placedAt_marked_idx", "Position_marketId_marked_idx", "Transaction_createdAt_marked_idx"];',
+  /** The same list, read off the migration at run time. MUST NOT be reported. */
+  preflightDerivedNames: 'const sql = readFileSync(join(MIGRATIONS, markersDir, "migration.sql"), "utf8");\nconst names = [...sql.matchAll(/CREATE INDEX IF NOT EXISTS "([^"]+)"/gi)].map((m) => m[1]);',
+  /** `ops-preflight-notification-idx.mts`'s shape: present-by-NAME, which cannot see an INVALID index. */
+  preflightByName: 'const idx = await c.query(`SELECT indexname FROM pg_indexes WHERE tablename = $1`, ["Position"]);',
+  /** The same question asked of the catalogue that knows the answer. MUST NOT be reported. */
+  preflightIndisvalid: 'const idx = await c.query(`SELECT c.relname AS name, i.indisvalid AS valid FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid WHERE c.relname = ANY($1::text[])`, [names]);',
+  /** The eight table names re-typed — the third copy, and the one that drifts. */
+  preflightTypedTables: 'const HOUSE = ["HouseBot", "HouseBotControl", "HouseBotRuntime", "HouseBotAlertOnce", "HouseBotEvent", "HouseBotIntent", "HouseBotTarget", "HouseBotPress"];',
+  /** The same eight reached through the module the engine's own gate reads. MUST NOT be reported. */
+  preflightImportedTables: 'import { HOUSE_SCHEMA_TABLES } from "../src/lib/server/house-bot/schema-ready.ts";\nconst missing = HOUSE_SCHEMA_TABLES.filter((t) => !present.includes(t));',
 };
 /* @ops-planted:end */
 
@@ -551,6 +599,25 @@ export function redCases(): RedCase[] {
       remarkPin(PLANTED.remarkInterpolated, pin).interpolatedTable === true, "interpolated table reported");
     add("ops.remark.10 · ⭐ CONTROL, AND IT IS A FALSE POSITIVE THIS DETECTOR REALLY PRODUCED · the pinned statement's own `WHERE t.\"positionId\" = p.\"id\"` is a JOIN KEY, not a write, and is NOT reported as a SET of positionId",
       remarkPin(pin, pin).setsPositionId === false && /WHERE t\."positionId" = p\."id"/.test(pin), "the join key is not a write");
+  }
+
+  {
+    // ⛔ THE A23 PREFLIGHT'S THREE MUTATIONS. Each is a shape a real reviewer could produce — two of
+    // them are shapes that ALREADY EXIST in this repo (the plan's four-index count; the by-name index
+    // check in `ops-preflight-notification-idx.mts`), which is why they are the ones planted.
+    const HOUSE_TABLE_NAMES = ["HouseBot", "HouseBotControl", "HouseBotRuntime", "HouseBotAlertOnce", "HouseBotEvent", "HouseBotIntent", "HouseBotTarget", "HouseBotPress"];
+    add("pre.6 · a preflight that TYPES four index names is reported — the plan's own miscount, as code",
+      typedIndexNames(PLANTED.preflightFourNames).length === 4 && !derivesIndexNames(PLANTED.preflightFourNames), typedIndexNames(PLANTED.preflightFourNames));
+    add("pre.6 · CONTROL · the same five read OFF the migration file types none, and reads as derived",
+      typedIndexNames(PLANTED.preflightDerivedNames).length === 0 && derivesIndexNames(PLANTED.preflightDerivedNames) === true, "derived, nothing typed");
+    add("pre.5 · a preflight that asks pg_indexes for a NAME is reported — it cannot see an INVALID index, which is the one failure that matters",
+      indexValidityRead(PLANTED.preflightByName).byNameOnly === true, j(indexValidityRead(PLANTED.preflightByName)));
+    add("pre.5 · CONTROL · the same question asked through pg_index.indisvalid is NOT reported",
+      indexValidityRead(PLANTED.preflightIndisvalid).indisvalid === true && indexValidityRead(PLANTED.preflightIndisvalid).byNameOnly === false, j(indexValidityRead(PLANTED.preflightIndisvalid)));
+    add("pre.7 · a preflight that re-types the eight house tables is reported — the third copy of a list that already has two",
+      typedTableLiterals(PLANTED.preflightTypedTables, HOUSE_TABLE_NAMES).length === 8, typedTableLiterals(PLANTED.preflightTypedTables, HOUSE_TABLE_NAMES));
+    add("pre.7 · CONTROL · the same eight reached through schema-ready.ts's export type none of them",
+      typedTableLiterals(PLANTED.preflightImportedTables, HOUSE_TABLE_NAMES).length === 0 && /HOUSE_SCHEMA_TABLES/.test(PLANTED.preflightImportedTables), "imported");
   }
 
   {
@@ -1293,6 +1360,183 @@ if (STORE === "postgres") {
         && runOps(REMARK_SCRIPT, ["--apply", "--since", "0"]).code === 2, "both refusals exit 2");
     } finally {
       await cx.end().catch(() => {});
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// §6 · ops:preflight-house-bot-migrations (A23 / ENG-08) — the read-only GO/NO-GO REL-0 names.
+//
+// ⛔ IT IS PHYSICALLY BEFORE §5 THOUGH IT IS NUMBERED AFTER IT, and that is not tidiness: §5 removes
+// every account and walks the control row to a state nothing can undo, so nothing may follow it. The
+// numbering follows the build order (this is Commit 8's first step); the PLACEMENT follows the only
+// constraint the fixtures allow.
+//
+// ⭐ THE GO PATH IS ASSERTED FIRST AMONG THE VERDICTS. Every NO-GO case below would pass on a script
+// that can only ever say no, and a preflight that always refuses is not a safe preflight — it is one
+// an officer learns to ignore. So `pre.2` proves GO is reachable on a real migrated database, and each
+// NO-GO is then a measured DIFFERENCE from that same database, one fault at a time, with the fault
+// REVERSED afterwards where it can be (the invalid index is made valid again and the GO returns).
+//
+// ⛔ THIS SECTION CREATES AND DROPS ONE DATABASE OF ITS OWN, named after this process. It needs a
+// database BEFORE `migrate deploy` — which the suite's own database, migrated before the child starts,
+// can never be — and it must never touch another lane's.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const PRE_SCRIPT = "scripts/ops-preflight-house-bot-migrations.mts";
+const HOUSE_TABLE_NAMES = ["HouseBot", "HouseBotControl", "HouseBotRuntime", "HouseBotAlertOnce", "HouseBotEvent", "HouseBotIntent", "HouseBotTarget", "HouseBotPress"] as const;
+
+if (STORE === "memory") {
+  section("§6s · ops:preflight-house-bot-migrations — the SOURCE pins: nothing typed that can be derived");
+  await guard("pre.src", () => {
+    const body = bodyOf(PRE_SCRIPT);
+    const pkg = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
+    const pop = opsPopulation(pkg.scripts, scriptFiles());
+
+    ok("pre.pop · POSITIVE CONTROL · the preflight is INSIDE the derived ops population and has a package key — every SOURCE pin below is over a file the §0 gate also scans, not a file nobody looks at",
+      pop.files.includes(PRE_SCRIPT) && pkg.scripts["ops:preflight-house-bot-migrations"] === `tsx ${PRE_SCRIPT}`,
+      j({ inPopulation: pop.files.includes(PRE_SCRIPT), key: pkg.scripts["ops:preflight-house-bot-migrations"] ?? null }));
+
+    ok("pre.6 · SOURCE · the five index names are READ from the markers migration, never typed — the plan carried 'the 4 indexes' for weeks, and a preflight that typed them would report GO on a database one index short",
+      typedIndexNames(body).length === 0 && derivesIndexNames(body) === true, j({ typed: typedIndexNames(body), derived: derivesIndexNames(body) }));
+
+    ok("pre.5 · SOURCE · index health is read through pg_index.indisvalid, never pg_indexes.indexname — a failed CONCURRENTLY build leaves an INVALID index under the SAME name and IF NOT EXISTS keeps it",
+      indexValidityRead(body).indisvalid === true && indexValidityRead(body).byNameOnly === false, j(indexValidityRead(body)));
+
+    ok("pre.7 · SOURCE · the eight tables and seven marker columns are IMPORTED from schema-ready.ts — the module the engine's own gate and /api/health read — and no house table name is typed anywhere in the file",
+      typedTableLiterals(body, HOUSE_TABLE_NAMES).length === 0 && /HOUSE_SCHEMA_TABLES/.test(body) && /HOUSE_SCHEMA_COLUMNS/.test(body),
+      j({ typed: typedTableLiterals(body, HOUSE_TABLE_NAMES) }));
+
+    ok("pre.tz · SOURCE · the timezone list is IMPORTED from the module that ENFORCES it (UTC_ZONES), and the line is a VERDICT: the failing branch pushes a problem, it does not print and move on",
+      /UTC_ZONES/.test(body) && /zoneOk/.test(body) && /!zoneOk/.test(body) && /problems\.push/.test(body),
+      j({ utcZones: /UTC_ZONES/.test(body), verdict: /!zoneOk/.test(body) }));
+
+    ok("pre.8 · SOURCE · the connection is ai-cycles' isLocal split, so it can be rehearsed on a scratch cluster — no hardcoded proxy host, and ssl is decided BY HOST rather than forced",
+      hardcodedHostSites(body).length === 0 && sslByHost(body).byHost === true,
+      j({ hosts: hardcodedHostSites(body), ssl: sslByHost(body) }));
+
+    ok("pre.ro · SOURCE · it writes NOTHING and starts nothing: no INSERT/UPDATE/DELETE, no advisory lock, no audit row, no startHouseBotEngine — the one command that is safe to run at any moment, mid-incident included",
+      markerUpdateSites(body).length === 0 && !/\b(?:INSERT\s+INTO|DELETE\s+FROM)\b/i.test(body) && !/\bUPDATE\s+"/i.test(body)
+      && advisoryLockSites(body).length === 0 && auditWriteSites(body).length === 0 && !/startHouseBotEngine\s*\(/.test(body)
+      && switchOnSites(body).length === 0,
+      j({ marker: markerUpdateSites(body), lock: advisoryLockSites(body), audit: auditWriteSites(body), engine: /startHouseBotEngine\s*\(/.test(body) }));
+
+    ok("pre.ro.p · POSITIVE CONTROL · …and it DOES read: the file really issues queries and really opens the migration on disk, so the five absences above are a file that measures, not a file that does nothing",
+      /c\.query\s*\(/.test(body) && /readFileSync\s*\(/.test(body) && /to_regclass/.test(body), "queries + a file read + catalogue probes");
+  });
+}
+
+if (STORE === "postgres") {
+  section("§6 · ops:preflight-house-bot-migrations — DRIVEN: both verdicts, one fault at a time");
+  await guard("pre", async () => {
+    const pgLib: Any = (await import("pg")).default;
+    const RAW = process.env.DATABASE_URL ?? "";
+    const BASE = RAW.replace(/\/[^/?]*(\?.*)?$/, "");
+    // ⛔ ITS OWN DATABASE, NAMED AFTER THIS PROCESS. A parallel lane is using this cluster: nothing here
+    // drops a database it did not create, and nothing resets the cluster.
+    const DB = `hb_ops_pre_${process.pid}`;
+    const url = `${BASE}/${DB}?connect_timeout=30`;
+    const withAdmin = async (fn: (a: Any) => Promise<void>): Promise<void> => {
+      const a = new pgLib.Client({ connectionString: `${BASE}/postgres` });
+      await a.connect();
+      try { await fn(a); } finally { await a.end().catch(() => {}); }
+    };
+    const onDb = async (fn: (c: Any) => Promise<void>): Promise<void> => {
+      const c2 = new pgLib.Client({ connectionString: url });
+      await c2.connect();
+      try { await fn(c2); } finally { await c2.end().catch(() => {}); }
+    };
+    const run = () => runOps(PRE_SCRIPT, [], { DATABASE_URL: url });
+
+    await withAdmin(async (a) => {
+      await a.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`);
+      await a.query(`CREATE DATABASE "${DB}"`);
+      // ⛔ SET EXPLICITLY, both here and in the Dar es Salaam case below. A scratch cluster takes its
+      // zone from Windows, so "the default" would prove nothing about either verdict.
+      await a.query(`ALTER DATABASE "${DB}" SET timezone TO 'UTC'`);
+    });
+
+    try {
+      // ── pre.1 · before migrate deploy ──────────────────────────────────────────────────────
+      const before = run();
+      ok("pre.1 · on a database BEFORE migrate deploy it says NO-GO and NAMES what is missing — all 8 tables, all 7 marker columns, and the absent migration history — and exits 1",
+        before.code === 1 && /NO-GO/.test(before.out) && /missing house tables:/.test(before.out) && /missing marker columns:/.test(before.out)
+        && /never been migrated/.test(before.out) && /0\/8 present/.test(before.out),
+        `exit ${before.code}`);
+
+      const mig = spawnSync("npx", ["prisma", "migrate", "deploy"], {
+        cwd: REPO_ROOT, env: { ...process.env, DATABASE_URL: url }, encoding: "utf8",
+        shell: process.platform === "win32", timeout: 10 * 60_000,
+      });
+      ok("pre.migrate · prisma migrate deploy applies every migration to that database", mig.status === 0, (mig.stderr ?? "").split("\n").slice(-2).join(" "));
+
+      // ── pre.2 · ⭐ THE GO PATH IS REACHABLE ────────────────────────────────────────────────
+      const after = run();
+      ok("pre.2 · ⭐ AFTER migrate deploy on the SAME database it says GO and exits 0 — without this every NO-GO below would pass on a script that can only ever say no",
+        after.code === 0 && /✅ GO/.test(after.out) && /8\/8 present/.test(after.out) && /7\/7 present/.test(after.out),
+        `exit ${after.code}`);
+
+      // The five names, taken from the script's OWN derivation rather than typed here a second time.
+      const named = /indexes named by that file … (\d+): ([^\n]+)/.exec(after.out);
+      const idxNames = named ? named[2].split(",").map((s) => s.trim()).filter(Boolean) : [];
+      ok("pre.6r · the derivation really produced FIVE names at run time, read off the markers migration — pre.6 pins that they are not typed; this pins that the reading works",
+        Number(named?.[1] ?? 0) === 5 && idxNames.length === 5, j(idxNames));
+      if (idxNames.length !== 5) return;
+      const victim = idxNames[0];
+
+      // ── control · an EXTRA index changes nothing ───────────────────────────────────────────
+      await onDb(async (c2) => { await c2.query(`CREATE INDEX IF NOT EXISTS "ops_lane_extra_idx" ON "Position" ("id")`); });
+      const extra = run();
+      ok("pre.extra · CONTROL · an index on \"Position\" that is NOT one of the five does not change the verdict — the check is scoped to the migration's own five, not to 'any index'",
+        extra.code === 0 && /✅ GO/.test(extra.out) && !/ops_lane_extra_idx/.test(extra.out), `exit ${extra.code}`);
+
+      // ── pre.5 · present, but INVALID ───────────────────────────────────────────────────────
+      await onDb(async (c2) => { await c2.query(`UPDATE pg_index SET indisvalid = false WHERE indexrelid = '"${victim}"'::regclass`); });
+      const invalid = run();
+      ok(`pre.5 · an index that EXISTS but is INVALID is a NO-GO that names it — the case a by-name check cannot see, and the one a failed CONCURRENTLY build really leaves behind (${victim})`,
+        invalid.code === 1 && /NO-GO/.test(invalid.out) && new RegExp(`INVALID.*${victim}|${victim}.*INVALID`, "s").test(invalid.out)
+        && /DROP INDEX CONCURRENTLY/.test(invalid.out), `exit ${invalid.code}`);
+      await onDb(async (c2) => { await c2.query(`UPDATE pg_index SET indisvalid = true WHERE indexrelid = '"${victim}"'::regclass`); });
+      const revalid = run();
+      ok("pre.5b · CONTROL · making that same index valid again brings the GO back — so pre.5's NO-GO is attributable to indisvalid and to nothing else that happened on the way",
+        revalid.code === 0 && /✅ GO/.test(revalid.out), `exit ${revalid.code}`);
+
+      // ── pre.3 · the timezone VERDICT ───────────────────────────────────────────────────────
+      await withAdmin(async (a) => { await a.query(`ALTER DATABASE "${DB}" SET timezone TO 'Africa/Dar_es_Salaam'`); });
+      const eat = run();
+      ok("pre.3 · on a database whose timezone is Africa/Dar_es_Salaam it is a NO-GO — both migrations would apply CLEANLY and the engine would then refuse to start on every replica, in silence. A line that only PRINTED the zone would have said GO here",
+        eat.code === 1 && /NOT UTC/.test(eat.out) && /Africa\/Dar_es_Salaam/.test(eat.out) && /engine would then refuse to start/.test(eat.out), `exit ${eat.code}`);
+      await withAdmin(async (a) => { await a.query(`ALTER DATABASE "${DB}" SET timezone TO 'UTC'`); });
+
+      // ── pre.4 · one of the five dropped ────────────────────────────────────────────────────
+      await onDb(async (c2) => { await c2.query(`DROP INDEX "${victim}"`); });
+      const dropped = run();
+      ok(`pre.4 · with one of the five indexes DROPPED it is a NO-GO naming that index (${victim}) — and the timezone is UTC again, so this verdict is the index and nothing else`,
+        dropped.code === 1 && new RegExp(victim).test(dropped.out) && /indexes are absent/.test(dropped.out) && !/NOT UTC/.test(dropped.out), `exit ${dropped.code}`);
+
+      // ── pre.9 · the counts are LIVE, measured against this suite's own database ────────────
+      // ⛔ THE COUNTER IS PROVED BY A DIFFERENCE, not by a zero. The empty preflight database printed
+      // 0 rows; the suite's own database has been staked in by §1-§4, and the SAME code path must
+      // print that number — taken here independently, in the same breath.
+      let posN = -1, txnN = -1, worldZone = "";
+      const world = new pgLib.Client({ connectionString: RAW });
+      await world.connect();
+      try {
+        posN = Number((await world.query(`SELECT count(*)::bigint AS n FROM "Position"`)).rows[0].n);
+        txnN = Number((await world.query(`SELECT count(*)::bigint AS n FROM "Transaction"`)).rows[0].n);
+        worldZone = (await world.query(`SELECT current_setting('TimeZone') AS "zone"`)).rows[0].zone as string;
+      } finally { await world.end().catch(() => {}); }
+      const onWorld = runOps(PRE_SCRIPT, [], { DATABASE_URL: RAW });
+      const printedPos = /"Position"[^\n]*?(\d+) rows/.exec(onWorld.out);
+      const printedTxn = /"Transaction"[^\n]*?(\d+) rows/.exec(onWorld.out);
+      ok(`pre.9 · the Position and Transaction counts it prints EQUAL a count this suite took independently, on a database that has been staked in (${posN} positions, ${txnN} ledger rows) — and they are not zero, so the counter is proved by a difference from the empty database above`,
+        posN > 0 && txnN > 0 && Number(printedPos?.[1] ?? -1) === posN && Number(printedTxn?.[1] ?? -1) === txnN,
+        j({ printed: [printedPos?.[1], printedTxn?.[1]], measured: [posN, txnN] }));
+      ok(`pre.9z · POSITIVE CONTROL · on that same UNTOUCHED database the timezone verdict agrees with the zone it really has (${worldZone}) — the verdict is not a constant, and pre.3's NO-GO was not luck`,
+        (["UTC", "Etc/UTC"].includes(worldZone)) ? !/NOT UTC/.test(onWorld.out) : /NOT UTC/.test(onWorld.out),
+        j({ zone: worldZone, saidNotUtc: /NOT UTC/.test(onWorld.out) }));
+    } finally {
+      await withAdmin(async (a) => { await a.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`); });
     }
   });
 }

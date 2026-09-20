@@ -770,6 +770,7 @@
     "ops:house-bots-status": "tsx scripts/ops-house-bots-status.mts",
     "ops:house-bots-remark": "tsx scripts/ops-house-bots-remark.mts",
     "ops:house-bots-sunset": "tsx scripts/ops-house-bots-sunset.mts",
+    "ops:preflight-house-bot-migrations": "tsx scripts/ops-preflight-house-bot-migrations.mts",
     "red:house-bot-chatbot": "tsx scripts/house-bot-chatbot-red.mts",
     "test:reset-identifier": "tsx scripts/reset-identifier.test.mts",
     "red:reset-identifier": "node scripts/reset-identifier-red.mjs",

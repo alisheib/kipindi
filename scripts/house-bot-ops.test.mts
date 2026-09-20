@@ -53,7 +53,17 @@
  *     touch and the planner's own sweep then moves — so "untouched" is a measured difference.
  *     ⛔ §5 RUNS LAST AND NOTHING MAY FOLLOW IT: it empties the roster and walks the control row to a
  *     state nothing can undo.
+ *   · memory 66, postgres 80 — step 8 (COMMIT 8's first): §6, `ops:preflight-house-bot-migrations` (A23).
+ *     Eight more in the memory child (six SOURCE pins — nothing typed that can be derived, the timezone
+ *     list imported from the module that ENFORCES it, the connection rehearsable, the file read-only —
+ *     plus two POSITIVE controls: it is inside the derived ops population, and it really does read);
+ *     eleven more in the Postgres child, which gives §6 A DATABASE OF ITS OWN — the only way to measure
+ *     a preflight BEFORE `migrate deploy` — and then breaks that database one fault at a time: GO first
+ *     so every NO-GO is a measured difference, an INVALID index made valid again so its NO-GO is
+ *     attributable, the zone walked to Africa/Dar_es_Salaam and back, and the row counts checked against
+ *     a count the suite took itself on a database that has been staked in.
+ *     ⛔ §6 IS PHYSICALLY BEFORE §5 THOUGH NUMBERED AFTER IT — nothing may follow the sunset.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 58, postgres: 69 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 66, postgres: 80 }, dbPrefix: "hb_ops" });
