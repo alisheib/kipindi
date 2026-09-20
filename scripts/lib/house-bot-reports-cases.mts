@@ -14,10 +14,11 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync, readdirSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "typescript";
 import { decomment } from "./decomment.mts";
+import { srcFiles, scriptFiles } from "./tracked-files.mts";
 import { ROLL_CALL_SITES, ROLL_CALL_OWED, expectDriftReport, expectDriftControl, type DeclaredMutation } from "./house-bot-expect-drift.mts";
 /* ⛔ The `reports-mem` declarations live in the console anchors file (ruling 434's is the first), and this suite
  * audits its own key there — 505's whole rule is that a suite key with no roll-call is audited by nobody. */
@@ -45,47 +46,12 @@ async function guard(label: string, fn: () => Promise<void> | void): Promise<voi
   try { await fn(); } catch (e) { ok(`${label} · threw`, false, String((e as Error)?.stack ?? e).split("\n").slice(0, 3).join(" | ")); }
 }
 
-/**
- * Every source file under `src/`, as a path relative to the repo root (forward slashes).
- *
- * ⛔ `.js`/`.mjs`/`.cjs` ARE IN THE WALK (C5-7's review, low). It matched `/\.(tsx?)$/`, so
- * `src/lib/needle-haptics.js` and `src/lib/needle-physics.js` were outside EVERY pin that calls this — and the
- * population every one of them prints ("1,081 src files") was the `.ts`/`.tsx` population wearing the name of the
- * `src` population. A file that JavaScript can run is a file that can carry a house word or write a money row; the
- * extension is not a reason to stop looking. `parse()` reads plain JS by the file's extension already.
- */
-function srcFiles(): string[] {
-  const out: string[] = [];
-  const walk = (d: string) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) walk(p); else if (/\.(tsx?|[cm]?js)$/.test(e.name)) out.push(relative(ROOT, p).replace(/\\/g, "/"));
-    }
-  };
-  walk(join(ROOT, "src"));
-  return out;
-}
-
-/**
- * Every tracked `.mjs`/`.cjs`/`.mts`/`.js` script under `scripts/`, one level of the tree, as repo-relative paths.
- *
- * ⛔ WHY THIS EXISTS (C5-7's review, medium). Ruling 232's population is `src/**`, and its own claim is that a money
- * writer "cannot escape by living somewhere else" — but the ONE writer in this repository that files a positioned
- * `Transaction` row around the DAL lives in `scripts/`, and the scope was stated honestly and then never measured.
- * `0.232.5` reads this population the same way `0.232.1` reads `src/`.
- */
-function scriptFiles(): string[] {
-  const out: string[] = [];
-  const walk = (d: string) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) { if (e.name !== "node_modules") walk(p); }
-      else if (/\.(m?ts|[cm]?js)$/.test(e.name)) out.push(relative(ROOT, p).replace(/\\/g, "/"));
-    }
-  };
-  walk(join(ROOT, "scripts"));
-  return out;
-}
+/* ⛔ `srcFiles()` AND `scriptFiles()` MOVED TO `scripts/lib/tracked-files.mts` (C7, the ops lane) AND ARE
+ * IMPORTED AT THE HEAD OF THIS FILE. They were written here and they still read exactly the same trees; what
+ * changed is that a SECOND guard now needs the same populations, and this module cannot be imported — it runs
+ * every case in it and ends in `process.exit`. The alternative was a second walker, which is the defect this
+ * file already records at 0.232.3: a control that built its own walker left the pin "passing forever over an
+ * empty population WITH ITS CONTROL STILL GREEN". One walker per population, one file, both callers. */
 
 /** A syntax tree of `code` (TS, TSX or plain JS by the file's extension). Parsed, never type-checked. */
 function parse(file: string, code: string): ts.SourceFile {
