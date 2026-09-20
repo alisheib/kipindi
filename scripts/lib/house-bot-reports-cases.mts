@@ -2133,7 +2133,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * argument. The pin's job is unchanged and undiminished: a call with the wrong number of arguments is still red,
  * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
  * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -2431,7 +2431,7 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      0.512b checks rather than takes on trust. ⛔ Their READERS are `houseFeedForConsole` and
      `houseHistoryForConsole`, each with its own `CONSOLE_GATES` entry above at arity THREE — the viewer, the
      calling file's own route as a string literal, and the REQUEST's untouched query string. */
-  "ConsoleCancelCopy", "ConsoleDeskEventRow", "ConsoleDeskFeedRow", "ConsoleFeedView", "ConsoleHistoryView",
+  "ConsoleCancelCopy", "ConsoleCancelInput", "ConsoleCancelResult", "ConsoleDeskEventRow", "ConsoleDeskFeedRow", "ConsoleFeedView", "ConsoleHistoryView",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**

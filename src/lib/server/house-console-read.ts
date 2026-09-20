@@ -70,6 +70,7 @@ import { LABEL_COPY, LABEL_MAX_CHARS, LABEL_MIN_CHARS, TEXT_MAX_CHARS, validateL
 import { readBotAndHolder } from "./house-bot/control";
 import { houseEngineBeats, houseEngineVerdict } from "./house-bot/engine-health";
 import { pauseHouseBot, removeHouseBot } from "./house-bot/roster-actions";
+import { cancelQueuedStake } from "./house-bot/press-cancel";
 import { playerHandle } from "./house-bot/alerts";
 import { loadParseContext, loadRulesContext } from "./house-bot/rules-context";
 
@@ -3642,6 +3643,94 @@ export async function houseHistoryForConsole(
     queryRefusal: panel.queryRefusal,
     history,
     historyTotal,
+  };
+}
+
+
+/* ═══ C7 STEP 5 (the LANDING half) · THE CANCEL DOOR (rulings 340, 350, 382, 415, 512, 522, 523) ═════════════
+ *
+ * ⛔ **THE FIRST WRITE THIS SECTION EVER MAKES TO THE PRESS TABLE**, and it is behind the same named door every
+ * console read goes through: a Next server action is a POST to whatever URL the browser is on, carrying an id in a
+ * header, so no middleware rule, no layout and no page gate can see it. The action's own gate is the only
+ * protection there is, and it decides on the viewer's STORED row (522) rather than on a session cookie's
+ * photograph of it.
+ *
+ * ⛔ **THE EXPORT NAME AND THE GUARD LABEL ARE NEUTRAL; THE AUDIT KEY IS NOT RENAMED** (ruling 382, and the trap it
+ * inverts). Membership in `HOUSE_AUDIT` is what keeps this row out of a player's own audit read, so a key minted to
+ * sound neutral would silently leave that exclusion. The key is `press-audit.ts`'s own, written at the service.
+ */
+
+/** What the cancel control posts. ⛔ `id` is the QUEUED stake; `submitId` is the browser's own idempotency key. */
+export type ConsoleCancelInput = { id: string; submitId: string; reason: string };
+
+/**
+ * What it gets back. ⛔ A union the caller must handle, never a throw: a thrown server action clears the client's
+ * pending state and shows the officer nothing, which on a control that stops money is the worst failure there is.
+ */
+export type ConsoleCancelResult =
+  | { ok: true; changed: boolean; note: string | null; warn: boolean }
+  | { ok: false; error: string; field?: "reason" };
+
+/**
+ * ⛔ ONE SENTENCE PER REFUSAL CODE, IN THE CONSOLE'S OWN NEUTRAL WORDS (453) — never the service's code and never a
+ * raw enum. A control that says only "it did not work" is a control an officer cannot act on (432(j)).
+ */
+const CONSOLE_CANCEL_REFUSAL: Readonly<Record<string, string>> = {
+  refused: "You do not have access to this.",
+  NOT_FOUND: "That stake is no longer on record. Reload the page.",
+  NOT_PENDING: "It had already left the queue, so nothing was stopped. Reload the page to see where it went.",
+  SCHEMA: "The desk is not set up on this database, so nothing could be stopped.",
+  UNREADABLE: "That stake could not be read, so nothing was stopped. Try again.",
+  WRITE_FAILED: "Nothing was stopped. Try again.",
+  BAD_SUBMIT_ID: "Nothing was stopped. Reload the page and try again.",
+  reasonShort: `Say why, in at least ${CONSOLE_REASON_MIN} characters.`,
+  reasonLong: `That is longer than ${CONSOLE_REASON_MAX} characters.`,
+};
+
+/** What the officer is told when the cancel landed but its decision record did not (the repair writes it later). */
+const CONSOLE_CANCEL_NOTE = {
+  done: "The stake was stopped.",
+  notRecorded: "The stake was stopped, but the decision record has not been written yet. It will be.",
+};
+
+/**
+ * Stop one queued stake, as the signed-in officer.
+ *
+ * ⛔ ARITY THREE, like every other write door on this section: the viewer, the calling file's own console route as a
+ * STRING LITERAL, and what the control posted. ⛔ The audience is resolved FIRST and nothing is read before the
+ * verdict, so a refused caller cannot use this as an oracle for whether a record id exists.
+ * ⛔ THE REASON IS VALIDATED HERE WITH THE SAME BOUNDS THE CONTROL ARMS ON (`CONSOLE_REASON_MIN`/`MAX`, the pair the
+ * dialog's own copy carries) — a ceremony verified only in a browser is one a crafted POST walks straight through.
+ */
+export async function houseCancelIntentForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  input: ConsoleCancelInput,
+): Promise<ConsoleCancelResult> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {
+    return { ok: false, error: CONSOLE_CANCEL_REFUSAL.refused };
+  }
+  const id = typeof input.id === "string" ? input.id : "";
+  if (id.length === 0) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.NOT_FOUND };
+  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+  if (reason.length < CONSOLE_REASON_MIN) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonShort, field: "reason" };
+  if (reason.length > CONSOLE_REASON_MAX) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonLong, field: "reason" };
+
+  const done = await cancelQueuedStake({
+    actorId: viewerUserId,
+    intentId: id,
+    submitId: typeof input.submitId === "string" ? input.submitId : "",
+    reason,
+  });
+  if (!done.ok) return { ok: false, error: CONSOLE_CANCEL_REFUSAL[done.code] ?? CONSOLE_CANCEL_REFUSAL.WRITE_FAILED };
+  /* ⛔ A REPEAT OF ONE PRESS IS NOT A SECOND CANCEL, and it is not a failure either: the first press already did
+   * this, so the officer is told the truth about the stake rather than about their second click. */
+  if (!done.changed) return { ok: true, changed: false, note: CONSOLE_CANCEL_NOTE.done, warn: false };
+  return {
+    ok: true,
+    changed: true,
+    note: done.recorded ? CONSOLE_CANCEL_NOTE.done : CONSOLE_CANCEL_NOTE.notRecorded,
+    warn: !done.recorded,
   };
 }
 
