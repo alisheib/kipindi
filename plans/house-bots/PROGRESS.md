@@ -383,6 +383,9 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
 - **Dialogs and states:** modals (C3, C7); switch and Start states (C10); live strip (C11); re-auth / STALE_BUILD / drafts (C12); consent UX (C8, C9).
 - **Wiring:** nav/RBAC; console audit pins (R7); FAILURE-INVENTORY §6.
 - **Ops scripts:** `ops:house-bots-off` (A9); `--drift` / `ops:house-bots-remark` (S3); feature state + `ops:house-bots-sunset` (F2).
+  - ⛔ **THESE FOUR WERE SCHEDULED IN NO STEP OF `C7-SPEC.md` (measured 2026-09-20: `grep -cE 'ops:house-bots|ops:preflight-house' plans/house-bots/C7-SPEC.md` = 0).** A builder working that spec step by step closed Commit 7 without them and nothing turned red — the shape rulings 473 and 506 had to rescue for twelve homeless assertions. They are now scheduled as **`C7-SPEC.md` §3 steps 8–13**, with their §4 suite rows. **RESUME THE OPS LANE AT STEP 10** (`ops:house-bots-off`).
+  - **✅ Step 8 (2026-09-20, branch `ops-lane`):** the lane's suite `test:house-bot-ops` (both stores) + `red:house-bot-ops` (in-process, `UNDECLARED_CEILING` untouched), and the `scripts/` marker gate ARMED BEFORE the scripts it guards — 18 planted controls, 18 SEEN RED. The walker is lifted to `scripts/lib/tracked-files.mts` and imported by both callers. Floors MEASURED: memory 16, postgres 1.
+  - **✅ Step 9 (2026-09-20):** `HouseBotControlStore.markSunset()` and `HouseBookStore.openExposureByMarket()`, interface + both twins. ⛔ BLOCKER 1: `switchOff({ cause: "SUNSET" })` is conditional on `"enabled" = true` and matches NOTHING on the shipped OFF desk, so a sunset through it would strip the desk and leave no terminal marker. `test:dal-parity` §6 generated all four `6.twin` assertions with no edit to that file. Floors MEASURED: memory 28, postgres 13.
 - **Suites:** `test:house-bot-console`.
 - **RED and visual:** `red:house-bot-console`; `qa:house-bots-visual`.
 - **N1/N2 console:**
