@@ -118,8 +118,8 @@
  * a caller cannot add to the shared look). The +9 are the four repairs' own planted controls. ⛔ NONE of them was
  * loosened to go green: four declared mutations — `432-way-out`, `306-way-out-element`, `312a-linked-outside` and
  * `359-door-inside` — put each defect back on disk and every one was SEEN RED on the assertion it names.
- * ⭐ RAISED AGAIN AT C7 STEP 5's ACCOUNT HALF, to what THIS pass printed on both stores: **memory 651,
- * Postgres 422**. The account page grew its activity and history panels, and with them 78 new assertions and
+ * ⭐ RAISED AGAIN AT C7 STEP 5's ACCOUNT HALF, to what THIS pass printed on both stores: **memory 659,
+ * Postgres 430**. The account page grew its activity and history panels, and with them 78 new assertions and
  * their controls: the detail rail's closed list both ways, the TOTAL event-word map and the measurement of WHY it
  * has to be total (the lexicon is structurally blind to `HOLDER_AGAINST_BOT`), both pagers against COUNTING
  * readers, the facets moving rows and total together, every crafted query axis refused BY NAME, the two empty
@@ -131,6 +131,12 @@
  * and thirty keys serialise to about 600. Every comparison this step wrote now reads `all`, and the extra
  * assertion is the CONTROL that keeps the finding — it requires the whole-set comparison to report a rename
  * 600 characters in and requires `j` NOT to.
+ * 🔴 AND THE +8 AFTER THAT ARE THE RENDER PAYING FOR ITSELF. The panels were driven on a SERVED page over a
+ * scratch Postgres, and the markup carried `href="…&kind=counter"` and `data-chip="kind:counter"` five times —
+ * a word 453 forbids, in the address bar, with EVERY SUITE GREEN (4.453 scans source literals and the token was
+ * computed; 3.453 scanned the labels and not the keys; the bundle scan reads chunks and this is server markup).
+ * The same reading found a `When` column that read one minute on twenty rows under a "Newest first." claim, and
+ * a singular heading above a plural sentence on one card. All three are fixed and all three now have a case.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -141,6 +147,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 651, postgres: 422 },
+  minPass: { memory: 659, postgres: 430 },
   dbPrefix: "hb_console",
 });

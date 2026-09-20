@@ -2085,6 +2085,23 @@ const CONSOLE_SKIP_SENTENCE = {
 const CONSOLE_FEED_PRESETS = ["today", "24h", "7d", "all"] as const;
 const CONSOLE_FEED_PRESET_DEFAULT = "all";
 
+/**
+ * ⛔ **THE URL TOKEN IS THE CONSOLE'S OWN WORD, SLUGGED — NEVER THE ENUM, LOWERCASED** (ruling 453).
+ *
+ * 🔴 READ OFF A SERVED PAGE, NOT REASONED ABOUT. The first build of this rail derived each option's query value
+ * with `member.toLowerCase()`, and `/admin/desk/<id>?tab=activity` came back carrying
+ * `href="…&kind=counter"` and `data-chip="kind:counter"` FIVE times — a word 453's lexicon forbids, in served
+ * markup and in the address bar, where it lands in every screenshot of the screen. NOTHING reported it: 4.453
+ * scans source LITERALS and the token was computed at runtime; 3.453 scanned the painted LABELS and not the keys;
+ * the bundle scan reads chunks and this is server markup. Every suite was green.
+ *
+ * ⛔ So the rule is inverted and made self-enforcing: a token may only ever be the option's OWN painted word,
+ * slugged — which means a token can never carry a word its label does not, and the ONE neutrality scan over the
+ * labels now covers the keys and the hrefs by construction. The parse reads the same table, so the control an
+ * officer clicks and the read the server takes are still one function.
+ */
+const consoleSlug = (word: string): string => word.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
 /** One option of one filter group — a finished label, a finished href and whether it is the one in force. */
 export type ConsoleFilterOption = { key: string; label: string; href: string; on: boolean };
 /**
@@ -2188,10 +2205,15 @@ function oneParam(raw: string | string[] | undefined): { value: string | null; r
  */
 const CONSOLE_ANCHOR_SHAPE = /^hb[ie]_[A-Za-z0-9_]{1,48}$/;
 
-/** A closed-list member matched case-insensitively against the address's lowercase spelling. */
-function fromClosedList<T extends string>(list: readonly T[], value: string | null): T | null {
+/**
+ * The closed-list member one URL token addresses, or `null`. ⛔ MATCHED ON THE TOKEN, never on the enum spelled in
+ * lower case: the enum carries the feature's own vocabulary and an address is the one place this section cannot
+ * take a word back (see `consoleSlug`).
+ */
+function fromClosedList(axis: ConsoleFeedAxis, value: string | null): string | null {
   if (value == null) return null;
-  return list.find((m) => m.toLowerCase() === value.toLowerCase()) ?? null;
+  const v = value.toLowerCase();
+  return CONSOLE_FEED_AXES[axis].members.find((m) => consoleAxisToken(axis, m) === v) ?? null;
 }
 
 /**
@@ -2212,13 +2234,13 @@ function parseConsoleDetailQuery(query: ConsoleDetailQuery | undefined, nowMs: n
     return { n: consolePageNumber(n), asked: true };
   };
 
-  const closed = <T extends string>(raw: string | string[] | undefined, list: readonly T[], axis: string): T | null => {
+  const closed = <T extends string>(raw: string | string[] | undefined, axis: ConsoleFeedAxis, said: string): T | null => {
     const one = oneParam(raw);
-    if (one.repeated) { say(axis); return null; }
+    if (one.repeated) { say(said); return null; }
     if (one.value == null) return null;
-    const hit = fromClosedList(list, one.value);
-    if (hit == null) say(axis);
-    return hit;
+    const hit = fromClosedList(axis, one.value);
+    if (hit == null) say(said);
+    return hit as T | null;
   };
 
   const anchor = (raw: string | string[] | undefined, prefix: string): string | null => {
@@ -2275,14 +2297,17 @@ function parseConsoleDetailQuery(query: ConsoleDetailQuery | undefined, nowMs: n
     to: custom ? toOne.value : null,
     fromIso,
     toIso,
-    kind: closed(q.kind, INTENT_KINDS, "type"),
-    product: closed(q.product, INTENT_PRODUCT_LINES, "product"),
-    outcome: closed(q.outcome, INTENT_STATUSES, "outcome"),
+    kind: closed<IntentKind>(q.kind, "kind", "type"),
+    product: closed<IntentProductLine>(q.product, "product", "product"),
+    outcome: closed<IntentStatus>(q.outcome, "outcome", "outcome"),
     intentId: anchor(q.intent, "hbi_"),
     eventId: anchor(q.event, "hbe_"),
     refusals,
   };
 }
+
+/** The refusal Callout's own heading — number-agnostic, because the sentence beneath it is not (read off a tile). */
+export const CONSOLE_REFUSAL_TITLE = "This address was not used in full";
 
 /** What a refused axis is called on screen, and the one sentence that says an address was not taken at its word. */
 function consoleRefusalSentence(refusals: readonly string[]): string | null {
@@ -2310,9 +2335,9 @@ function consoleFeedParams(p: ConsoleDetailParsed): Record<string, string | unde
     range: p.preset === CONSOLE_FEED_PRESET_DEFAULT ? undefined : p.preset,
     from: p.from ?? undefined,
     to: p.to ?? undefined,
-    kind: p.kind ? p.kind.toLowerCase() : undefined,
-    product: p.product ? p.product.toLowerCase() : undefined,
-    outcome: p.outcome ? p.outcome.toLowerCase() : undefined,
+    kind: p.kind ? consoleAxisToken("kind", p.kind) : undefined,
+    product: p.product ? consoleAxisToken("product", p.product) : undefined,
+    outcome: p.outcome ? consoleAxisToken("outcome", p.outcome) : undefined,
   };
 }
 
@@ -2327,6 +2352,27 @@ function consoleFeedLink(botId: string, params: Record<string, string | undefine
 }
 
 /**
+ * ⭐ THE RAIL'S THREE AXES, IN ONE TABLE — the parse below and the render above both read it, so the control an
+ * officer clicks and the read the server takes cannot be two different spellings of the same filter.
+ * ⛔ A page about ONE account has no Bot axis: a control that can only ever select the account you are looking at
+ * is the dead control 432(a) refuses. The landing rail's own axes are that page's, when it is built.
+ */
+export const CONSOLE_FEED_AXES = {
+  kind: { label: "Type", all: "Any type", members: INTENT_KINDS as readonly string[], word: CONSOLE_INTENT_KIND_WORD as Readonly<Record<string, string>> },
+  product: { label: "Product", all: "Any product", members: INTENT_PRODUCT_LINES as readonly string[], word: CONSOLE_PRODUCT_WORD as Readonly<Record<string, string>> },
+  outcome: {
+    label: "Outcome", all: "Any outcome", members: INTENT_STATUSES as readonly string[],
+    word: Object.fromEntries(INTENT_STATUSES.map((st) => [st, CONSOLE_INTENT_STATUS[st].word])) as Readonly<Record<string, string>>,
+  },
+} as const;
+export type ConsoleFeedAxis = keyof typeof CONSOLE_FEED_AXES;
+
+/** The URL token one member of one axis is addressed by — its own painted word, slugged, and nothing else. */
+function consoleAxisToken(axis: ConsoleFeedAxis, member: string): string {
+  return consoleSlug(CONSOLE_FEED_AXES[axis].word[member] ?? member);
+}
+
+/**
  * The activity rail, built where every other painted string of this section is built. ⛔ The rail file receives
  * FINISHED labels and FINISHED hrefs: it types no route, no enum and no closed list, so nothing about the feature
  * can reach it by name — and every string below is inside 4.453's and 3.453's scans, which a label typed at a call
@@ -2334,27 +2380,23 @@ function consoleFeedLink(botId: string, params: Record<string, string | undefine
  */
 function consoleFeedGroups(botId: string, p: ConsoleDetailParsed): ConsoleFilterGroup[] {
   const params = consoleFeedParams(p);
-  const group = <T extends string>(
-    param: string, label: string, all: string, list: readonly T[], word: Readonly<Record<string, string>>, current: T | null,
-  ): ConsoleFilterGroup => ({
-    param,
-    label,
-    options: [
-      { key: "", label: all, href: consoleFeedLink(botId, params, { [param]: undefined }), on: current == null },
-      ...list.map((m) => ({
-        key: m.toLowerCase(),
-        label: word[m] ?? m,
-        href: consoleFeedLink(botId, params, { [param]: m.toLowerCase() }),
-        on: current === m,
-      })),
-    ],
+  const live: Readonly<Record<ConsoleFeedAxis, string | null>> = { kind: p.kind, product: p.product, outcome: p.outcome };
+  return (Object.keys(CONSOLE_FEED_AXES) as ConsoleFeedAxis[]).map((axis) => {
+    const a = CONSOLE_FEED_AXES[axis];
+    return {
+      param: axis,
+      label: a.label,
+      options: [
+        { key: "", label: a.all, href: consoleFeedLink(botId, params, { [axis]: undefined }), on: live[axis] == null },
+        ...a.members.map((m) => ({
+          key: consoleAxisToken(axis, m),
+          label: a.word[m] ?? m,
+          href: consoleFeedLink(botId, params, { [axis]: consoleAxisToken(axis, m) }),
+          on: live[axis] === m,
+        })),
+      ],
+    };
   });
-  return [
-    group("kind", "Type", "Any type", INTENT_KINDS, CONSOLE_INTENT_KIND_WORD, p.kind),
-    group("product", "Product", "Any product", INTENT_PRODUCT_LINES, CONSOLE_PRODUCT_WORD, p.product),
-    group("outcome", "Outcome", "Any outcome", INTENT_STATUSES,
-      Object.fromEntries(INTENT_STATUSES.map((s) => [s, CONSOLE_INTENT_STATUS[s].word])), p.outcome),
-  ];
 }
 
 /** The activity panel's empty states — one for a list with nothing in it, one for a filter that matched nothing. */
@@ -2457,10 +2499,13 @@ function consoleLastPage(total: number | null, want: number, perPage: number): n
 /** One intent, painted. ⛔ Finished strings and booleans only — see the section header for what may not cross. */
 function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null): ConsoleFeedRow {
   const at = Date.parse(i.createdAt);
+  /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
+     instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
+     not be used to check it. The targets grid keeps minutes: a target is a rare, deliberate act. A stake is not. */
   const status = CONSOLE_INTENT_STATUS[i.status];
   const code = i.reasonCode;
   return {
-    when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM")}` : "—",
+    when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")}` : "—",
     whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM YYYY")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
     stake: formatTzs(i.stakeTzs),
     statusWord: status.word,
@@ -2485,7 +2530,7 @@ function consoleEventRow(e: StoredHouseBotEvent, anchorId: string | null): Conso
   const to = word(e.toStatus);
   const txn = e.payload != null && typeof e.payload.txnId === "string" ? e.payload.txnId : null;
   return {
-    when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM")}` : "—",
+    when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")}` : "—",
     whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM YYYY")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
     eventWord: CONSOLE_EVENT_WORD[e.kind],
     change: to == null ? null : from == null ? to : `${from} → ${to}`,

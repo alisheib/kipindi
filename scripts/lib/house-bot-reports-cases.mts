@@ -2424,7 +2424,8 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      it awaits nothing, names no store and decides no audience, which is what 0.512b checks rather than assumes.
      ⛔ The two panels' READER is `houseDetailForConsole`, which has its `CONSOLE_GATES` entry above — the arity
      pin MOVED with the door's shape at this step (a query object in place of a bare page number) and stayed at 4. */
-  "CONSOLE_EVENT_WORD", "ConsoleDetailQuery", "ConsoleEventRow", "ConsoleFeedRow", "ConsoleFilterGroup", "ConsoleFilterOption",
+  "CONSOLE_EVENT_WORD", "CONSOLE_FEED_AXES", "CONSOLE_REFUSAL_TITLE", "ConsoleDetailQuery", "ConsoleEventRow", "ConsoleFeedAxis", "ConsoleFeedRow",
+  "ConsoleFilterGroup", "ConsoleFilterOption",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**

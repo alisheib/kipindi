@@ -3287,7 +3287,9 @@ try {
       return { total: v.feedTotal, rows: v.feed.length, want, ok: v.feedTotal === want && v.feed.length === Math.min(want, 20) && v.queryRefusal === null };
     };
     const byKind = await agree({ kind: "manual" }, 10);
-    const byProduct = await agree({ product: "updown" }, 9);
+    /* ⚠️ `up-down`, NOT `updown`: a URL token is the option's own painted word slugged, never the enum lowercased
+       — see the leak recorded at `consoleSlug`. The fixture asks for it the way an officer's browser would. */
+    const byProduct = await agree({ product: "up-down" }, 9);
     const byOutcome = await agree({ outcome: "failed" }, 8);
     const byBoth = await agree({ kind: "manual", outcome: "failed" }, 2);
     ok("1.345 · the listing reader and the COUNTING reader are called with the same facets, so the rows and the total move together over each one — type, product, outcome, and two at once",
@@ -3374,6 +3376,36 @@ try {
       groups.every((g) => g.options.every((o: Any) => o.href.includes("tab=activity") && !/[?&]page=/.test(o.href)))
         && groups[0].options.some((o: Any) => o.href.includes("outcome=failed")),
       j(groups[0].options.map((o: Any) => o.href).slice(0, 3)));
+    /* 🔴 EVERY OPTION'S KEY AND EVERY LINK IT BUILDS, NOT ONLY ITS LABEL — AND THIS GUARD EXISTS BECAUSE THE
+       FIRST BUILD OF THIS RAIL LEAKED. Read off a SERVED page on a scratch database, not reasoned about: with the
+       token derived as `member.toLowerCase()`, `/admin/desk/<id>?tab=activity` came back carrying
+       `href="…&kind=counter"` and `data-chip="kind:counter"` five times — a word 453 forbids, in served markup and
+       in the address bar, where it lands in every screenshot of the screen. ⛔ AND EVERY SUITE WAS GREEN: 4.453
+       scans source LITERALS and the token is computed at runtime; 3.453 scanned the painted LABELS and not the
+       keys; `verify:house-bot-bundle` reads chunks and this is server markup. The rule is now inverted — a token
+       may only be the option's OWN painted word, slugged — and this is the assertion that keeps it.
+       ⚠️ Only the QUERY half of each href is scanned: the PATH necessarily carries the record id the viewer
+       themselves asked for, which ruling 548 settled is not a disclosure and is not this rule's subject. */
+    const railQuery = (href: string) => decodeURIComponent(href.split("?")[1] ?? "");
+    ok("1.453 · every option KEY and every link the rail builds is neutral too — a token is the option's own painted word slugged, never the enum lowercased",
+      groups.every((g) => g.options.every((o: Any) =>
+        !NEUTRAL.test(o.key) && houseHits(o.key).length === 0
+        && !NEUTRAL.test(railQuery(o.href)) && houseHits(railQuery(o.href)).length === 0)),
+      j(groups.flatMap((g) => g.options.map((o: Any) => o.key)).filter((k: string) => NEUTRAL.test(k))));
+    ok("1.453 · CONTROL · the token the first build shipped IS a hit and the token it ships now is not — so the zero above is a measurement and not a scan that stopped matching",
+      NEUTRAL.test("counter") && NEUTRAL.test("kind=counter") && NEUTRAL.test("tab=activity&kind=counter")
+        && !NEUTRAL.test("kind=responding") && !NEUTRAL.test("tab=activity&kind=responding"), "");
+    ok("1.453 · …and each axis's tokens are DISTINCT, so two members can never slug to one address and silently filter for each other",
+      groups.every((g) => new Set(g.options.map((o: Any) => o.key)).size === g.options.length),
+      j(groups.map((g) => ({ param: g.param, keys: g.options.map((o: Any) => o.key) }))));
+    /* ⛔ AND THE TOKEN THE RAIL PUBLISHES IS THE TOKEN THE DOOR READS — one table, read from both ends, so a
+       control an officer clicks can never address a filter the server does not recognise. */
+    ok("1.453 · the rail's token and the door's parse are ONE table — every option the rail publishes round-trips through the door and narrows the list it says it will",
+      (await Promise.all(groups.flatMap((g) => g.options.filter((o: Any) => o.key !== "").map(async (o: Any) => {
+        const v = await feedView({ [g.param]: o.key });
+        return v.queryRefusal === null && v.feedFiltered === true;
+      })))).every(Boolean),
+      j(groups.flatMap((g) => g.options.map((o: Any) => `${g.param}=${o.key}`)).slice(0, 6)));
     ok("1.410 · 453 · not one option label, group label or empty-state sentence of either panel names the feature",
       groups.flatMap((g) => [g.label, ...g.options.map((o: Any) => o.label)])
         .concat([railed.feedEmpty.title, railed.feedEmpty.body, railed.feedOrderNote, railed.historyEmpty.title, railed.historyEmpty.body])
@@ -3504,6 +3536,18 @@ try {
       j([...new Set(whoAll)].slice(0, 4)));
     ok("1.420 · CONTROL · the same scan rejects a display name, so the shape above is a measurement",
       !/^usr_[A-Za-z0-9_]+$/.test("Juma Mwakalinga") && /^usr_[A-Za-z0-9_]+$/.test(OFFICER), "");
+    /* 🔴 BOTH PANELS' `When` CELL STATES SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM`, twenty
+       rows of a busy account all read "20 Sep 15:10" — so the ONE column that states the order could not be used to
+       check it, and "Newest first." was a claim the screen could not support. The targets grid keeps minutes on
+       purpose: a target is a rare, deliberate act; a stake is not. */
+    const SECONDS = /^\d{1,2} [A-Z][a-z]{2} \d{2}:\d{2}:\d{2}$/;
+    ok("1.373 · both panels' `When` cell states SECONDS, and its `title` carries the absolute EAT instant — a time column under a 'newest first' order that cannot tell two rows apart is a claim the screen does not support",
+      p1.feed.every((r: Any) => SECONDS.test(r.when) && r.whenTitle.endsWith(" EAT"))
+        && h1.history.every((r: Any) => SECONDS.test(r.when) && r.whenTitle.endsWith(" EAT")),
+      j({ feed: p1.feed[0]?.when, history: h1.history[0]?.when }));
+    ok("1.373 · CONTROL · the minute-only form the targets grid keeps is NOT accepted by that scan, and the shipped form is",
+      !SECONDS.test("20 Sep 15:10") && SECONDS.test("20 Sep 15:10:07"), "");
+
     const hOver = await histView({ hpage: "9" });
     ok("1.317 · a history page past the end is served as the LAST page — the same idiom, never a second one",
       hOver.historyPage === 2 && hOver.history.length === histTotal - 20 && all(hWho(hOver)) === all(hWho(h2)),
@@ -3613,6 +3657,17 @@ try {
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
       all(histHeaders) === all(["When", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
+    /* 🔴 THE REFUSAL'S HEADING IS NUMBER-AGNOSTIC, AND THAT TOO WAS READ OFF A TILE: a singular title
+       ("Part of this address was not used") sat above a plural sentence ("Parts of this address were …"), one
+       above the other, on the same card. The heading comes from the SERVER like every other sentence here, so the
+       two cannot be reworded apart. */
+    ok("1.302 · 432(n) · the refusal card's heading is number-agnostic and comes from the reader, so it can never disagree with the sentence beneath it",
+      !/\bParts?\b/.test(GATEM.CONSOLE_REFUSAL_TITLE as string)
+        && /title=\{CONSOLE_REFUSAL_TITLE\}/.test(detail)
+        && !NEUTRAL.test(GATEM.CONSOLE_REFUSAL_TITLE as string),
+      j(GATEM.CONSOLE_REFUSAL_TITLE));
+    ok("1.302 · CONTROL · the heading the first build shipped IS reported by that scan",
+      /\bParts?\b/.test("Part of this address was not used"), "");
     /* ⛔ AND EACH PANEL'S EMPTY STATE IS THE KIT'S, SO A FAILED READ CANNOT LOOK LIKE ONE. */
     ok("1.355 · each panel paints the kit's EMPTY state only on a `length === 0` branch and the kit's FAILURE state only on a `=== null` branch — the two can never be reached by the same condition",
       /feedRows === null \? \(/.test(detail) && /feedRows\.length === 0 \? \(/.test(detail)

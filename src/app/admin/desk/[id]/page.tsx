@@ -42,7 +42,7 @@ import { FormColumn } from "@/components/ui/form-column";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseDetailForConsole, type ConsoleDetailQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
+import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, type ConsoleDetailQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
 import { ActivityFilters } from "./activity-filters";
 import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
@@ -335,7 +335,7 @@ async function AdminDeskAccountContent({
           {/* 387/432(j) · an address that was not taken at its word SAYS SO, naming each axis it dropped —
               silently narrowing to something nobody asked for is the defect this sentence exists against. */}
           {view.queryRefusal && (
-            <Callout tone="warning" title="Part of this address was not used">{view.queryRefusal}</Callout>
+            <Callout tone="warning" title={CONSOLE_REFUSAL_TITLE}>{view.queryRefusal}</Callout>
           )}
           <AdminCard padding="p-0">
             {/* ⛔ 355 · A FAILED READ IS NEVER AN EMPTY TABLE. `null` means nobody could tell; an empty array means
@@ -522,7 +522,7 @@ async function AdminDeskAccountContent({
                               )}
                             </td>
                             <td className="p-3 text-text-secondary">{r.change ?? "—"}</td>
-                            <td className="p-3 font-mono text-body-sm text-text-subtle">{r.who}</td>
+                            <td className="p-3 font-mono text-body-sm text-text-subtle break-all">{r.who}</td>
                           </tr>
                         ))
                       )}

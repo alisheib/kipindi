@@ -2361,20 +2361,20 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "302-refusal-silent · a crafted filter axis is thrown away WITHOUT being named, so the panel narrows to something nobody asked for and says nothing",
     file: GATE,
-    from: `    if (hit == null) say(axis);`,
-    to: `    if (hit == null) { void axis; }`,
+    from: `    if (hit == null) say(said);`,
+    to: `    if (hit == null) { void said; }`,
     expect: "1.302 · 432(j) · …and every refused axis is NAMED",
     suite: "console-mem",
   },
   {
     name: "302-smuggle · the door stops checking a filter axis against its closed list and passes the typed value straight into the read — the bypassed-client defect ruling 383 measured the whole shape of",
     file: GATE,
-    from: `    const hit = fromClosedList(list, one.value);
-    if (hit == null) say(axis);
-    return hit;`,
-    to: `    const hit = fromClosedList(list, one.value);
-    if (hit == null) say(axis);
-    return (hit ?? one.value) as T;`,
+    from: `    const hit = fromClosedList(axis, one.value);
+    if (hit == null) say(said);
+    return hit as T | null;`,
+    to: `    const hit = fromClosedList(axis, one.value);
+    if (hit == null) say(said);
+    return (hit ?? one.value) as T | null;`,
     expect: "1.302 · a bypassed client smuggles NOTHING past the door",
     suite: "console-mem",
   },
@@ -2440,5 +2440,37 @@ import { formatEat } from "@/lib/utils";`,
   ] as const;`,
     expect: "7.2e · the debt is keyed per SHAPE",
     suite: "comms-mem",
+  },
+
+  /* ══ THE THREE THE SERVED PAGE FOUND, WHICH NO SUITE DID ═══════════════════════════════════════════════════
+   * Each of these shipped GREEN and was read off a real render of the account page on a scratch database. They
+   * are declared here so the next session cannot lose what the render cost to find. */
+  {
+    name: "453-enum-token · the rail's URL token goes back to the enum lowercased, so `?kind=counter` reaches the address bar and `data-chip=\"kind:counter\"` reaches served markup — MEASURED, five times, with every suite green",
+    file: GATE,
+    from: `  return consoleSlug(CONSOLE_FEED_AXES[axis].word[member] ?? member);`,
+    to: `  return member.toLowerCase();`,
+    expect: "1.453 · every option KEY and every link the rail builds is neutral too",
+    suite: "console-mem",
+  },
+  {
+    name: "373-minute-only · the activity row's When cell drops its seconds, so twenty rows of a busy account all read one instant under a column that claims to be newest first",
+    file: GATE,
+    from: `    when: Number.isFinite(at) ? \`\${formatEat(at, "D MMM")} \${formatEat(at, "HH:MM:SS")}\` : "—",
+    whenTitle: Number.isFinite(at) ? \`\${formatEat(at, "D MMM YYYY")} \${formatEat(at, "HH:MM:SS")} EAT\` : "—",
+    stake: formatTzs(i.stakeTzs),`,
+    to: `    when: Number.isFinite(at) ? \`\${formatEat(at, "D MMM")} \${formatEat(at, "HH:MM")}\` : "—",
+    whenTitle: Number.isFinite(at) ? \`\${formatEat(at, "D MMM YYYY")} \${formatEat(at, "HH:MM:SS")} EAT\` : "—",
+    stake: formatTzs(i.stakeTzs),`,
+    expect: "1.373 · both panels' `When` cell states SECONDS",
+    suite: "console-mem",
+  },
+  {
+    name: "302-heading-plural · the refusal card's heading goes back to a SINGULAR title, which sat above a plural sentence on the same card",
+    file: GATE,
+    from: `export const CONSOLE_REFUSAL_TITLE = "This address was not used in full";`,
+    to: `export const CONSOLE_REFUSAL_TITLE = "Part of this address was not used";`,
+    expect: "1.302 · 432(n) · the refusal card's heading is number-agnostic",
+    suite: "console-mem",
   },
 ];
