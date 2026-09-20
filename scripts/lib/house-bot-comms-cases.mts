@@ -10,7 +10,7 @@
  *   §6 the dedupe window · §7 links · §8 SMS, never · §9 the channel policy.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./decomment.mts";
@@ -396,6 +396,104 @@ await guard("9", () => {
       const r = alertRow({ code, at, money: (n: number) => `TZS ${n}`, label: "Bot A", handle: "Player #A3F2K8", botId: "hb_x", detail: {} });
       return !!r.titleEn && !!r.titleSw && !!r.titleZh && !!r.bodyEn && !!r.bodySw && !!r.bodyZh && r.href.startsWith("/") && /[一-鿿]/.test(r.titleZh + r.bodyZh);
     }), `${(ALERT_CODES as string[]).length} codes`);
+  /* ── 9.2b–d · ⛔ THE POPULATION 9.2 CANNOT SEE ──────────────────────────────────────────────────────────────
+   * `ALERT_CODES` is `Object.keys(ROWS)` — the codes that HAVE copy. So 9.2 asks "does every code with a row have a
+   * row in three languages?", and that is true on every build ever shipped, INCLUDING one where a code is raised
+   * with no row at all: such a code can never enter 9.2's population. A true measurement of the wrong population.
+   * ⛔ IT HAS COST TWICE. POLLER_FAILING reached officers as the bare token until one commit ago, found by a HAND
+   * sweep — and that hand sweep missed HOUR_SUMMARY_ADMINS, which was still arriving as `House bots:
+   * HOUR_SUMMARY_ADMINS` over the unknown-code fallback, naming one arbitrary bot for a fleet-wide hourly fact,
+   * when this case was written. A sweep somebody runs once is not a gate; this is the gate.
+   * ⭐ THE RIGHT POPULATION IS WHAT THE SERVER RAISES: every `alertOnce` / `alerts.once` / `alerts.security` site
+   * under `src/lib/server`, with the code literal beside it. Comments are stripped first — a code named only in a
+   * comment is not a raise (8.4's lesson: slice on CODE, never on prose). */
+  {
+    const RAISE_SRC = "(?:alertOnce\\s*\\(|alerts\\.once\\s*\\(|alerts\\.security\\s*\\(|\\.security\\s*\\(\\s*\\{)";
+    const CODE_RE = /code:\s*"([A-Z][A-Z0-9_]+)"/;
+    const walk = (dir: string, out: string[] = []): string[] => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p, out);
+        else if (/\.tsx?$/.test(e.name)) out.push(p);
+      }
+      return out;
+    };
+    /** Every code literal sitting beside a raise in `s`, plus the raises that carry no literal at all. */
+    const scan = (s: string): { codes: string[]; opaque: number } => {
+      const re = new RegExp(RAISE_SRC, "g");
+      const codes: string[] = [];
+      let opaque = 0;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(s)) !== null) {
+        const c = CODE_RE.exec(s.slice(m.index, m.index + 600));
+        if (c) codes.push(c[1]); else opaque++;
+      }
+      return { codes, opaque };
+    };
+    const raised = new Map<string, string[]>();
+    let opaque = 0;
+    const files = walk(join(ROOT, "src/lib/server"));
+    for (const f of files) {
+      const r = scan(decomment(readFileSync(f, "utf8")));
+      opaque += r.opaque;
+      const rel = f.slice(ROOT.length + 1).replace(/\\/g, "/");
+      for (const c of r.codes) { if (!raised.has(c)) raised.set(c, []); raised.get(c)!.push(rel); }
+    }
+    const codes = [...raised.keys()].sort();
+
+    /* ⛔ AND ONE MORE POPULATION CORRECTION — WHICH THIS CASE ITSELF GOT WRONG ON ITS FIRST DRAFT, so it is written
+     * down rather than quietly fixed. NOT every raised code reaches `alertRow`: `announceOnce` in `emitters.ts`
+     * INTERCEPTS some and renders them through a dedicated notification with its own three languages, returning
+     * before the generic path. HOUR_SUMMARY_ADMINS is one — `notifyAdminsHouseBotHourSummary` carries the hour
+     * WINDOW that a generic row could not, and gets the link's EAT parsing right besides.
+     * ⛔ THE FIRST DRAFT OF 9.2b "FOUND" IT SPEECHLESS AND A COPY ROW WAS WRITTEN FOR IT — a row nothing would ever
+     * have read, added on the strength of a scan that had not looked at the emitter. Reverted. A sweep that reports
+     * a defect in correct code is not a smaller mistake than one that misses a real defect; it is how dead code gets
+     * added on purpose.
+     * ⭐ So the population that MUST have a row is RAISED MINUS INTERCEPTED, and the intercepted set is READ FROM
+     * the emitter, never typed here, so the two cannot drift apart. */
+    const emitterSrc = decomment(readFileSync(join(ROOT, "src/lib/server/house-bot/emitters.ts"), "utf8"));
+    const intercepted = [...emitterSrc.matchAll(/message\.code === "([A-Z][A-Z0-9_]+)"/g)].map((m) => m[1]);
+    const mustHaveRow = codes.filter((c) => !intercepted.includes(c));
+    const speechless = mustHaveRow.filter((c) => !(ALERT_CODES as string[]).includes(c));
+    ok(`9.2b · ⛔ THE RIGHT POPULATION · every raised code that REACHES alertRow has a copy row — ${codes.length} raise-site codes over ${files.length} server files, less ${intercepted.length} the emitter renders itself (${intercepted.join(", ") || "none"}), leaving ${mustHaveRow.length} against ${(ALERT_CODES as string[]).length} rows`,
+      codes.length >= 20 && mustHaveRow.length >= 20 && speechless.length === 0,
+      speechless.length ? `SPEECHLESS: ${speechless.map((c) => `${c} ← ${raised.get(c)!.join(", ")}`).join(" · ")}` : `${mustHaveRow.length} codes, every one with copy`);
+
+    /* ⭐ AND THE OTHER DIRECTION — the one that keeps dead copy out. A code the emitter renders ITSELF must NOT also
+     * carry a row here: that row is unreachable by construction, and an unreachable row reads to the next person as
+     * the live copy. This is the assertion that would have stopped the first draft's row from surviving. */
+    const deadRows = intercepted.filter((c) => (ALERT_CODES as string[]).includes(c));
+    ok(`9.2b2 · ⭐ …and no intercepted code ALSO carries a row nothing can reach — ${intercepted.length} intercepted, ${deadRows.length} dead`,
+      intercepted.length >= 1 && deadRows.length === 0, deadRows.join(" · ") || "no dead rows");
+
+    /* ⛔ THE SWEEP DECLARES ITS OWN BLIND SPOT, AND PINS IT — WITHOUT AN EXEMPTION. A site whose code is a VARIABLE
+     * leaves no literal for the scan to read. Four match today, and they are NOT four gaps; three of them are the
+     * alert machinery itself rather than any call site. Enumerated, because a count with no names rots into a number
+     * nobody can re-derive:
+     *   1. `house-bot/engine.ts:232` — the ONE genuine opaque raise. `alertBootRefused` forwards `{ code, detail }`
+     *      with its parameter typed `code: "DB_TIMEZONE"`; DB_TIMEZONE has a row (checked by hand, and 9.2 covers it).
+     *   2. `house-bot/outcomes.ts:101` — the `alertOnce` DECLARATION. Its own signature, not a raise.
+     *   3. `house-bot/outcomes.ts:107` — `alerts.once(claim.key, message)`, the generic forwarder every raise passes
+     *      THROUGH. The literal it carries was already counted at the real call site.
+     *   4. `house-bot/outcomes.ts:212` — `alerts.security(message)`, the same forwarder for the security channel.
+     * ⭐ THEY ARE PINNED RATHER THAN SKIPPED ON PURPOSE. Excluding `outcomes.ts` by name would be an exemption that
+     * silently swallows a REAL opaque raise added to that file later; counting them keeps the population whole and
+     * still turns red on a fifth.
+     * ⚠️ A ratchet that gets raised is not a ratchet — if this number grows, give the new site a code LITERAL, or
+     * check its row by hand and name it above in the same commit. */
+    const OPAQUE_RAISE_SITES = 4;
+    ok(`9.2c · ⭐ …and the sweep says what it CANNOT see: ${opaque} raise site(s) pass a non-literal code, each checked by hand`,
+      opaque === OPAQUE_RAISE_SITES, `${opaque} vs ${OPAQUE_RAISE_SITES}`);
+
+    /* ⭐ PLANTED CONTROL · the extractor is not inert. A raise carrying a code this build has no row for is found by
+     * the SAME scanner and reported speechless — so 9.2b's green means "nothing is missing", not "nothing was read". */
+    const plant = scan(`await alertOnce(ALERT_KEY.clockSkew(), alerts, { code: "A_CODE_WITH_NO_ROW", detail: {} });`);
+    ok("9.2d · ⭐ PLANTED CONTROL · the sweep really can fail — a planted raise whose code has no row is found by the same extractor, and would be reported speechless",
+      plant.codes.length === 1 && plant.codes[0] === "A_CODE_WITH_NO_ROW" && !(ALERT_CODES as string[]).includes("A_CODE_WITH_NO_ROW"),
+      j(plant));
+  }
+
   const unknown = alertRow({ code: "A_CODE_FROM_A_NEWER_BUILD", at, money: (n: number) => `TZS ${n}`, botId: "hb_x" });
   ok("9.3 · ⭐ an unmapped code still reads as a sentence and names itself, in every language",
     /A_CODE_FROM_A_NEWER_BUILD/.test(unknown.titleEn) && /A_CODE_FROM_A_NEWER_BUILD/.test(unknown.titleZh) && unknown.href.startsWith("/") && unknown.severity === "warning", j(unknown.titleEn));

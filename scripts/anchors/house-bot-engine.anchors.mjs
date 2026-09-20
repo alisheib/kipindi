@@ -461,6 +461,18 @@ export const MUTATIONS = [
    * THROTTLE rather than by the predicate, and both controls passed on it. Each control now hands the claim back —
    * by the key the bell itself reported — before it measures. */
   {
+    /* ⛔ THE GAP 9.2 COULD NOT SEE. Renaming the row takes POLLER_FAILING out of `Object.keys(ROWS)` — which is
+     * 9.2's ENTIRE population — while `worker.ts` goes on raising it and `announceOnce` goes on sending it down the
+     * generic `alertRow` path. That is the exact shape in which POLLER_FAILING really did reach officers as a bare
+     * token until one commit ago, and 9.2 stays GREEN on it: only a sweep over the RAISE SITES can fail here. */
+    name: "alerts-copy-speechless · a RAISED code that reaches alertRow loses its row; 9.2 cannot see it",
+    file: "src/lib/house-bot/alert-copy.ts",
+    from: "  POLLER_FAILING: (c) => ({",
+    to: "  POLLER_FAILING_RENAMED: (c) => ({",
+    expect: "9.2b · ⛔ THE RIGHT POPULATION",
+    suite: "comms-mem",
+  },
+  {
     name: "alerts-skew-silent · the clock-skew stop goes back to telling nobody (the tree before C5 alerts)",
     file: WORKER,
     from: "    const alerted = SKEW_GATE_REASONS.has(gate.reason) ? await alertSkewGate(ctx, alerts, gate.reason) : false;",
