@@ -73,6 +73,31 @@ console.log("\n[report-note-truth] §2 no note may contradict it");
     missingRefunds.map(([f, l]) => f + ": " + l.slice(0, 110)).join(" | "));
 }
 
+console.log("\n[report-note-truth] §4 no note asserts a control that a toggle can switch off");
+{
+  /**
+   * ⛔ L57's second item. The match-integrity pack told the regulator its voids came from "the two-officer
+   * resolution flow". `scripts/two-admin-policy.test.mts` pins the owner decision of 2026-07-24 end to end:
+   * single-admin resolution is the PERMANENT DEFAULT in all money modes and two-officer authorisation is an
+   * OPTIONAL TOGGLE with NO real-money hard-lock. Naming a dual-control a regulator would weigh, while it may be
+   * switched off, is the most expensive kind of sentence on a regulator page.
+   * ⚠️ The rule is NOT "never say two-officer" — the toggle exists and a note may describe it. It is: a note may
+   * not assert it as THE path by which something happened, because the path varies per adjudication. Saying so
+   * conditionally, or naming where the per-case answer is recorded, passes.
+   */
+  const ASSERTS_AS_THE_PATH = /\bby the two[- ]officer\b|\bthrough the two[- ]officer\b/i;
+  const offenders = [];
+  for (const line of catalogue.split(/\r?\n/)) {
+    if (/^\s*\/\//.test(line)) continue;           // the correction's own explanation quotes the phrase
+    if (ASSERTS_AS_THE_PATH.test(line)) offenders.push(line.trim().slice(0, 120));
+  }
+  ok("§4 no report note names the two-officer flow as the path a void took", offenders.length === 0, offenders.join(" | "));
+  ok("§4 CONTROL · the sentence that shipped is caught",
+    ASSERTS_AS_THE_PATH.test("markets voided by the two-officer resolution flow and the resulting stake refunds"));
+  ok("§4 CONTROL · a conditional mention is NOT caught, so §4 forbids the CLAIM and not the words",
+    !ASSERTS_AS_THE_PATH.test("single-officer or two-officer, per the policy in force at the time"));
+}
+
 console.log("\n[report-note-truth] §3 CONTROL · the detector catches the sentence that shipped");
 {
   const EXCLUDES = /(?:voids?\s*\/?\s*refunds?|refunds?)[^.]{0,40}\bexclud/i;

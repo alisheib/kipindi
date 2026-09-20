@@ -1087,7 +1087,16 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
       },
     ],
     notes: [
-      "This report aggregates platform-side integrity activity: markets voided by the two-officer resolution flow and the resulting stake refunds.",
+      // 🔴 L57 (C5-D20-REPLAN ruling 268), corrected 2026-09-20. This note told the regulator the voids came from
+      // "the two-officer resolution flow", naming a control that is NOT in force by default. The owner decision of
+      // 2026-07-24, pinned end-to-end by `scripts/two-admin-policy.test.mts`, is the opposite: single-admin
+      // resolution is the PERMANENT DEFAULT in all money modes, a position-holding admin may resolve, and
+      // two-officer authorisation is an OPTIONAL TOGGLE with NO real-money hard-lock. Claiming a dual-control a
+      // regulator would weigh, while it may be switched off, is the most expensive sentence on this page.
+      // ⭐ The replacement does not swing to the other error either — it does not assert single-admin, because the
+      // toggle may be ON. It states what is true in both states and points at the record that answers it per case:
+      // the suite's own §D notes "the adjudication records which authorization path sealed it".
+      "This report aggregates platform-side integrity activity: markets voided through the resolution flow and the resulting stake refunds. The authorisation path that sealed each adjudication — single-officer or two-officer, per the policy in force at the time — is recorded on that adjudication in the market resolution audit trail.",
       "The Sportradar Integrity Services feed is a stub adapter — external alerts are not yet ingested. When live, per-alert case files will be appended here.",
       "Player identifiers are masked; full case detail is in the market resolution audit trail.",
     ],
