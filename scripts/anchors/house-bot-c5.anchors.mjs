@@ -206,10 +206,24 @@ export const MUTATIONS = [
     suite: "reports-mem",
   },
   {
-    name: "c5-s4:S4-M73 · test-strength-01, seen red",
+    name: "c5-s4:S4-M73 · a decision service's refusal branch reads the requester (test-strength-01, seen red) · HALF (a): the call",
     file: OBJECTIONS_SERVICE,
     from: "  // Separation of duties — an officer cannot rule on their own objection.",
     to: "  if (await choseStake(o.marketId, officerId)) return { ok: false, error: \"You chose a stake on this market.\", code: \"CONFLICT\" };\n  // Separation of duties — an officer cannot rule on their own objection.",
+    expect: "0.191.1 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read, its binding, the bulk map, an audit payload value or the map write — never in a condition, a predicate, a helper's return, a result or another call",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ HALF OF A TWO-SITE MUTATION REDDENS NOTHING, AND THIS ONE WAS MEASURED DOING IT. The register writes S4-M73
+     * as "(a) … AND (b) …": the call, and the helper the call needs. Declared as half (a) alone it was driven on
+     * 2026-09-21 and printed NO FAIL LINE AT ALL — `choseStake` is simply undefined, names no requester token, and
+     * the scan has nothing to report. `combineInto` is what the drives apply a paired edit with, so the two halves
+     * go in together or neither does. */
+    name: "c5-s4:S4-M73b · HALF (b): the helper half (a) calls — the requester read itself",
+    file: OBJECTIONS_SERVICE,
+    from: "export async function rejectObjection(",
+    to: "async function choseStake(marketId: string, officerId: string): Promise<boolean> {\n  const v = await houseStakeForAudit(marketId);\n  return (v?.staffChosen.requestedBy ?? []).includes(officerId);\n}\n\nexport async function rejectObjection(",
+    combineInto: "c5-s4:S4-M73 · a decision service's refusal branch reads the requester (test-strength-01, seen red) · HALF (a): the call",
     expect: "0.191.1 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read, its binding, the bulk map, an audit payload value or the map write — never in a condition, a predicate, a helper's return, a result or another call",
     suite: "reports-mem",
   },
