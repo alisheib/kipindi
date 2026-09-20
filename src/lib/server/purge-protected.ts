@@ -110,16 +110,30 @@ export const HOUSE_FAMILY_FLOOR = [
 /** The shape both readers reduce to, so ONE rule can be applied to a generated client and to text. */
 export type ModelShape = {
   name: string;
-  /** Every field's name, and its declared type (a scalar name, or another model's name). */
-  fields: ReadonlyArray<{ name: string; type: string }>;
+  /**
+   * Every field's name and declared type (a scalar, or another model's name), plus the two
+   * properties clause ③ turns on: whether it is a LIST, and whether this model OWNS the relation
+   * (it carries the foreign key — `@relation(fields: […])` in the schema, `relationFromFields` in
+   * the DMMF).
+   */
+  fields: ReadonlyArray<{ name: string; type: string; isList?: boolean; ownsRelation?: boolean }>;
 };
 
 /**
  * THE RULE. Pure, total, and the only place the three clauses are written down.
  *
+ * 🔴 CLAUSE ③ FOLLOWS ONLY A SINGULAR RELATION THE MODEL OWNS, AND THAT WAS LEARNED BY WATCHING
+ * IT FAIL. The first version followed any field whose type was in the family, and the DMMF adds
+ * the BACK-relation of every relation: `User` carries `houseBots HouseBot[]`, so `User` joined the
+ * family, and then every model with a `user User` field joined — `Comment` included. The guard
+ * would have refused the purge's OWN `comment.deleteMany`, which is to say it would have refused
+ * the purge. ⭐ §9's positive control is what caught it; the thirteen "this table is refused"
+ * assertions above it all passed HARDER while the feature was broken. A back-relation is the
+ * schema saying *"something else points at me"*, which is the opposite of belonging to it.
+ *
  * ⚠️ THE FIXED POINT IS BOUNDED BY THE MODEL COUNT, not by a magic number: each pass can only add
  * models, so at most `models.length` passes can change anything. A `while (changed)` with no bound
- * would hang on a malformed input; a hard-coded `for (i < 3)` would silently stop derivating at
+ * would hang on a malformed input; a hard-coded `for (i < 3)` would silently stop deriving at
  * depth 4. The bound is the population itself.
  */
 export function deriveHouseFamily(models: ReadonlyArray<ModelShape>): string[] {
@@ -132,7 +146,10 @@ export function deriveHouseFamily(models: ReadonlyArray<ModelShape>): string[] {
     let grew = false;
     for (const m of models) {
       if (family.has(m.name)) continue;
-      if (m.fields.some((f) => family.has(f.type))) { family.add(m.name); grew = true; }
+      if (m.fields.some((f) => f.ownsRelation === true && f.isList !== true && family.has(f.type))) {
+        family.add(m.name);
+        grew = true;
+      }
     }
     if (!grew) break;
   }
@@ -160,9 +177,19 @@ export function parsePrismaModels(schema: string): ModelShape[] {
     }
     if (line === "}") { models.push(current); current = null; continue; }
     if (line.startsWith("@@")) continue;
-    // `label String`, `bot HouseBot @relation(...)`, `note String?`, `pools Json[]`.
-    const field = /^([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
-    if (field) (current.fields as { name: string; type: string }[]).push({ name: field[1], type: field[2] });
+    // `label String`, `bot HouseBot @relation(fields: [botId], …)`, `note String?`, `pools Json[]`.
+    const field = /^([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)(\[\])?/.exec(line);
+    if (field) {
+      (current.fields as { name: string; type: string; isList: boolean; ownsRelation: boolean }[]).push({
+        name: field[1],
+        type: field[2],
+        isList: field[3] === "[]",
+        // ⛔ `@relation(` ALONE IS NOT OWNERSHIP. The back-relation side may carry a NAMED
+        // `@relation("x")` with no `fields:`, and following it is exactly the sweep that clause ③
+        // was fixed for. The foreign key is what makes a model belong to what it points at.
+        ownsRelation: /@relation\(\s*[^)]*\bfields\s*:/.test(line),
+      });
+    }
   }
   return models;
 }
@@ -177,11 +204,21 @@ let dmmfFamily: string[] | null = null;
 export function dmmfHouseFamily(): string[] {
   if (dmmfFamily) return dmmfFamily;
   try {
-    const models = (Prisma as unknown as {
-      dmmf?: { datamodel?: { models?: ReadonlyArray<{ name: string; fields?: ReadonlyArray<{ name: string; type: string }> }> } };
+    type DmmfField = { name: string; type: string; isList?: boolean; relationFromFields?: readonly string[] };
+    const models: ReadonlyArray<{ name: string; fields?: ReadonlyArray<DmmfField> }> | undefined = (Prisma as unknown as {
+      dmmf?: { datamodel?: { models?: ReadonlyArray<{ name: string; fields?: ReadonlyArray<DmmfField> }> } };
     }).dmmf?.datamodel?.models;
-    dmmfFamily = Array.isArray(models)
-      ? deriveHouseFamily(models.map((m) => ({ name: m.name, fields: m.fields ?? [] })))
+    dmmfFamily = models
+      ? deriveHouseFamily(models.map((m) => ({
+          name: m.name,
+          fields: (m.fields ?? []).map((f) => ({
+            name: f.name,
+            type: f.type,
+            isList: f.isList === true,
+            // The owning side is the only one the DMMF gives a non-empty `relationFromFields`.
+            ownsRelation: Array.isArray(f.relationFromFields) && f.relationFromFields.length > 0,
+          })),
+        })))
       : [];
   } catch {
     dmmfFamily = [];

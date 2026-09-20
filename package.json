@@ -328,6 +328,7 @@
     "test:chain-purge": "tsx scripts/chain-purge.test.mts",
     "test:dial-stake": "tsx scripts/dial-stake.test.mts",
     "qa:chain-purge-verify": "tsx scripts/chain-purge-drive.mts",
+    "qa:purge-protected": "tsx scripts/db-scratch.mts --run npx tsx scripts/purge-protected-drive.mts",
     "shots:scan-fixes": "node scripts/scan-fix-shots.mjs",
     "shots:purge-ceremony": "node scripts/purge-ceremony-shots.mjs",
     "qa:resolver-queue": "node scripts/resolver-queue-drive.mjs",
