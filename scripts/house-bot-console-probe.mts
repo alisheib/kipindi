@@ -430,9 +430,16 @@ try {
   /* ⛔ AND THE DESK'S OWN TABS ARE ENUMERATED, BY NAME. Ruling 315: the probe discovers tabs by matching
    * `tab === "…"` in the page FILE, so any other shape leaves panels silently unrequested — and a COMMENT that
    * quotes the idiom invents an instance no panel answers. The count is printed and read, not assumed. */
-  ok("2.routes.tabs · 315 · the desk's bare route and every tab its page names are requested, and nothing else",
+  /* ⭐ C7 STEP 5 (the account half) · THE TWO NEW PANELS ARE NAMED, not left to a floor. 392(e) says a floor is
+     raised in the SCRIPT to what a pass measured; a floor alone would have risen with the account page's five tabs
+     and still never have required the two most leak-prone surfaces of the section to be REQUESTED. The names are
+     derived from the disk walk — route + fixture label + query — so naming them costs no fixture and no guess. */
+  const hasTab = (tab: string) => consoleInstances.some((r) => r.name.endsWith(`?tab=${tab}`));
+  ok("2.routes.tabs · 315 · the desk's bare route and every tab its pages name are requested, and nothing else — the account page's activity and history panels by name",
     consoleInstances.length >= 3 && consoleInstances.some((r) => r.name === CONSOLE_PREFIX)
-      && consoleInstances.some((r) => r.name === `${CONSOLE_PREFIX}?tab=limits`),
+      && consoleInstances.some((r) => r.name === `${CONSOLE_PREFIX}?tab=limits`)
+      && hasTab("activity") && hasTab("history")
+      && consoleInstances.some((r) => r.name.startsWith(`${CONSOLE_PREFIX}/[id]`) && r.name.endsWith("?tab=activity")),
     consoleInstances.map((r) => r.name).join(", "));
   const apiRoutes: string[] = [];
   const walkApi = (dir: string, rel: string) => {

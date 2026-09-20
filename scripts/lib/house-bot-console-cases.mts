@@ -6570,11 +6570,18 @@ export default function Ruling513Control() {
     const rungs = ladder(tree);
     const BUILT_THROUGH = rungs.built;
     /* ⛔ THE HOLES THIS TREE IS RECORDED AS HAVING, AND IT IS A DEBT THAT CAN ONLY SHRINK — never a permission.
-     * `5:activity` is C7 step 5, which C7 step 7 found unbuilt and which DEFERRED row 62 records in full: the
-     * feed and history panels, the rail's other two keys, the dense filter rail, `AdminPagination` and the
-     * assertions 1.312 (four keys), 1.317, 1.344, 1.345, 1.369 and 1.410. The moment those land, `gaps` is empty,
-     * this entry no longer matches a real hole, and the case goes RED until it is deleted — which is the whole
-     * point: a skip is tracked, not remembered. An UNRECORDED hole fails immediately. */
+     * ⭐ AND IT SHRANK ON 2026-09-20, SO THE RECORD IS REWRITTEN RATHER THAN LEFT STANDING. `5:activity` no longer
+     * means "C7 step 5 is unbuilt": the ACCOUNT PAGE's half IS built — `CONSOLE_DETAIL_TABS` carries `activity` and
+     * `history`, both panels page against COUNTING readers, the dense rail is declared in `ADMIN_SURFACES`, and
+     * 1.312, 1.302, 1.317, 1.344, 1.345, 1.355, 1.369, 1.373, 1.384, 1.405, 1.410, 1.411, 1.420 and 1.453 are all
+     * written above with planted controls. What this rung still records is the LANDING half, which is what the
+     * ladder reads: `CONSOLE_TABS` has neither key, the desk-wide feed and event-log reads behind them do not
+     * exist, and the cancel write path has never created a press. DEFERRED rows 62 and 71 carry it in full.
+     * ⛔ A record left describing work that is done is a WRONG AUTHORITY, and this programme has paid for that
+     * class more than once — so the entry is re-aimed in the same commit as the build, never merely kept.
+     * The moment the landing pair lands, `gaps` is empty, this entry no longer matches a real hole, and the case
+     * goes RED until it is deleted — which is the whole point: a skip is tracked, not remembered. An UNRECORDED
+     * hole fails immediately. */
     const RECORDED_GAPS: readonly string[] = ["5:activity"];
     type Owed = { id: string; step: number; owner: string; what: string };
     const D19: Owed[] = [
@@ -6632,9 +6639,13 @@ export default function Ruling513Control() {
     ok("1.398 · LADDER · every rung below the highest one this tree carries is either PRESENT or a hole this repository has recorded — an unrecorded hole is named here, and a recorded one that has since been built is named so the record is deleted with the build",
       rungs.gaps.every((g) => RECORDED_GAPS.includes(g)) && RECORDED_GAPS.every((g) => rungs.gaps.includes(g)),
       j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, recorded: RECORDED_GAPS, tree }));
-    ok("1.398 · LADDER · ⛔ AND THE HOLE IS REAL AND PRINTED, not inferred: this tree carries the closing step's artefact while `CONSOLE_TABS` has no `activity` key — C7 step 5 is unbuilt (DEFERRED row 62)",
-      rungs.gaps.length === 1 && rungs.gaps[0] === "5:activity" && BUILT_THROUGH === 7 && tree.activity === false,
-      j({ gaps: rungs.gaps, tabs: CR.CONSOLE_TABS }));
+    ok("1.398 · LADDER · ⛔ AND THE HOLE IS REAL AND PRINTED, not inferred: this tree carries the closing step's artefact while `CONSOLE_TABS` has no `activity` key — C7 step 5's LANDING half is unbuilt (DEFERRED rows 62 and 71), while its ACCOUNT half is on disk beside it",
+      rungs.gaps.length === 1 && rungs.gaps[0] === "5:activity" && BUILT_THROUGH === 7 && tree.activity === false
+        /* ⛔ AND THE TWO HALVES ARE READ SEPARATELY, so this rung can never again be read as "step 5 is unbuilt":
+           the account page's panels EXIST and the landing page's do NOT, and both facts are printed. */
+        && CR.consoleDetailTabExists("activity") && CR.consoleDetailTabExists("history")
+        && !CR.consoleTabExists("history"),
+      j({ gaps: rungs.gaps, landing: [...CR.CONSOLE_TABS], detail: [...CR.CONSOLE_DETAIL_TABS] }));
     /* ⛔ AND THE DERIVATION IS SHOWN TO HAVE READ THE SPEC: an empty slice makes `every` trivially true, which is
      * the population trap the roll-call itself was written against. */
     /* ⛔ AND THE LADDER REALLY MOVES WITH THE TREE. A ratchet read off disk is worth nothing if the reading is a
