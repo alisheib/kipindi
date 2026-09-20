@@ -384,7 +384,7 @@ async function AdminDeskAccountContent({
                              served markup, and a bounded record id is the one thing D19 says this section may
                              never put in a response. */
                           <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
-                            <td className="p-3 text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>{r.when}</td>
                             <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
                             <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                             <td className="p-3 text-text">{r.typeWord}</td>
@@ -467,7 +467,7 @@ async function AdminDeskAccountContent({
                             {t.endCaption && <div className="text-body-sm text-text-subtle">{t.endCaption}</div>}
                           </td>
                           <td className="p-3"><Chip size="sm" variant={t.statusChip}>{t.statusWord}</Chip></td>
-                          <td className="p-3 text-text-secondary" title={t.whenTitle}>{t.when}</td>
+                          <td className="p-3 tabular text-text-secondary" title={t.whenTitle}>{t.when}</td>
                         </tr>
                       ))
                     )}
@@ -528,7 +528,7 @@ async function AdminDeskAccountContent({
                       ) : (
                         historyRows.map((r, i) => (
                           <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
-                            <td className="p-3 text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>{r.when}</td>
                             <td className="p-3 text-text">
                               {r.eventWord}
                               {r.moneyHref && (

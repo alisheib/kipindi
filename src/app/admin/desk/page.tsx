@@ -669,7 +669,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                               {r.accountHandle && <div className="font-mono text-body-sm text-text-subtle">{r.accountHandle}</div>}
                             </td>
                             <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
-                            <td className="p-3 text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>{r.when}</td>
                             <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                             <td className="p-3 text-text">{r.typeWord}</td>
                             <td className="p-3 text-text-secondary">{r.productWord}</td>
@@ -818,7 +818,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
                                 : <span className="text-text-tertiary">{r.accountName}</span>}
                             </td>
-                            <td className="p-3 text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>{r.when}</td>
                             <td className="p-3 text-text">
                               {r.eventWord}
                               {r.moneyHref && (
