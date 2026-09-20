@@ -1574,6 +1574,33 @@ section("§11 · constants");
         preview: { prefix: "preview:usr_1:hb_1:mkt_1", unit: "minute" },
       },
     ) && ALERT_KEY.poison("hbi_1") === "poison:hbi_1");
+
+  /**
+   * ⛔ **C5-SPEC RULING 258 / C4 RULING 149 · THE HOURLY SUMMARY HAS EXACTLY ONE AUDIENCE, AND THE TYPE MUST SAY SO.**
+   *
+   * `ALERT_KEY.summary`'s parameter read `"admins" | "holder"` for five commits after owner ruling D19c DELETED the
+   * holder's hourly summary — the type went on describing a recipient this platform must never have, and
+   * `docs/HOUSE-BOTS.md` cited ruling 258 as the authority for NOT carrying out ruling 258. C5-8 narrowed it.
+   *
+   * ⚠️ A TYPE IS NOT OBSERVABLE AT RUN TIME, so this is a SOURCE pin, and it is a source pin with a control: the
+   * union is rebuilt and planted into the read text, and the matcher must report the planted file and clear the real
+   * one. Without `c27` a regex that matched nothing would pass on an empty file, which is the vacuous-green shape
+   * this suite exists to refuse. The comments are stripped first — this very docblock names the union it forbids.
+   */
+  {
+    const constantsSrc = decomment(readFileSync(join(ROOT, "src/lib/house-bot/constants.ts"), "utf8"));
+    const summaryLine = (text: string) => text.split("\n").find((l) => /^\s*summary:\s*\(/.test(l)) ?? "";
+    const real = summaryLine(constantsSrc);
+    const HOLDER_AUDIENCE = ["\"", "holder", "\""].join("");
+    const planted = summaryLine(constantsSrc.replace(
+      /(summary:\s*\(audience:\s*"admins")/, `$1 | ${HOLDER_AUDIENCE}`));
+    ok("11.27 · the hourly summary's audience is `\"admins\"` and no union — D19c deleted the holder's summary, so a key builder that still ACCEPTS a holder audience is an invitation to mint a notice the holder may never receive",
+      real.length > 0 && real.includes("audience: \"admins\"") && !real.includes(HOLDER_AUDIENCE),
+      real.trim() || "no `summary:` declaration found in constants.ts");
+    ok("11.27c · CONTROL · the widened union this ruling removed is planted back and REPORTED, and the real line is read and clear — so 11.27 measures that declaration and is not a regex matching nothing",
+      planted.includes(HOLDER_AUDIENCE) && real.length > 0 && !real.includes(HOLDER_AUDIENCE),
+      `planted: ${planted.trim() || "PLANT FAILED"}`);
+  }
 }
 
 /* ═══ §12 · A3 — every pair of holder causes, cleared in both orders, keeps a way out ═══════ */
@@ -1785,7 +1812,7 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-rules: ${pa
  * The floor below is the count `npm run test:house-bot-rules` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
  * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
  */
-const MIN_ASSERTIONS = 521;
+const MIN_ASSERTIONS = 523; // ↑ 521 → 523 in C5-8 (2026-09-21): §11.27 + its control. A floor RISES with the assertions it counts; it is never re-measured downward to absorb a red.
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-rules ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);
