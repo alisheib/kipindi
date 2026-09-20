@@ -109,10 +109,10 @@ export const MUTATIONS = [
     suite: "reports-mem",
   },
   {
-    name: "c5-5b:M4 · a refusal branch in a decision service reads a requester) and 0.191.0 [memory] (a struck reader's name reappears in one of the 21 decision files).",
+    name: "c5-5b:M4 · a refusal branch in a decision service reads a requester, and a struck reader's name reappears in one of the 21 decision files",
     file: OBJECTIONS_SERVICE,
     from: "  notifyObjectionDecided(o.userId, { upheld: false, marketId: o.marketId, note: reviewNote }).catch(() => {});",
-    to: "  const snap = await houseStakeForAudit(o.marketId);",
+    to: "  const snap = await houseStakeForAudit(o.marketId);\n  if (snap?.staffChosen.requestedBy.includes(officerId)) return { ok: false as const, error: \"You chose a stake on this market.\", code: \"CONFLICT\" as const };\n  notifyObjectionDecided(o.userId, { upheld: false, marketId: o.marketId, note: reviewNote }).catch(() => {});",
     expect: "0.191.1 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read, its binding, the bulk map, an audit payload value or the map write — never in a condition, a predicate, a helper's return, a result or another call",
     suite: "reports-mem",
   },
