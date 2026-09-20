@@ -400,21 +400,69 @@ try {
       delayMinSec: 10, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "EVERY", createdById: OFFICER,
       snapshot: { titleEn: "drive target", category: "macro", cutoff: w.iso(3_600_000), rawYes: 0, rawNo: 0 },
     });
+    /**
+     * ⭐ THE ARMING WINDOW, AND IT IS WHY THIS CASE READ "NOTHING AFTER 90s" UNTIL NOW.
+     * `HouseBotTargetStore.insert` writes `effectiveFrom = now() + TARGET_ARMING_SEC` inside the INSERT
+     * statement, on the database's own clock, and `decide.ts` requires `effectiveFrom <= placedAt`: a
+     * target never reacts to money that was already on the table when it was armed. The first form of
+     * this case placed the trigger stake immediately after inserting the target, so the stake was inside
+     * the window and the sweep correctly decided nothing — the product working, read as a broken test.
+     * ⛔ The fixture waits; the rule is not weakened.
+     */
+    const armedAtMs = Date.parse(target.effectiveFrom);
+    ok(`drive.3arm · the target is inserted DISARMED — effectiveFrom is TARGET_ARMING_SEC (${C.TARGET_ARMING_SEC} s, imported) past its own createdAt, written from the database clock inside the INSERT`,
+      armedAtMs - Date.parse(target.createdAt) >= (C.TARGET_ARMING_SEC - 1) * 1000 && armedAtMs > Date.now(),
+      j({ createdAt: target.createdAt, effectiveFrom: target.effectiveFrom, msAhead: armedAtMs - Date.now() }));
+
+    // ⭐ CONTROL · a stake placed INSIDE the arming window. It must never draw a TARGETED reaction, or
+    // "it reacted" below would prove nothing about the window the product spends twelve seconds holding.
+    const earlyPlayer = await w.user({ balance: 1_000_000 });
+    const early = await w.svc.buyPosition(earlyPlayer, { marketId: m.market.id, side: "NO", stake: 7_000, idempotencyKey: crypto.randomUUID() });
+    ok("drive.3w · the control stake inside the arming window was placed by a real player", early.ok === true, j(early.ok ? { positionId: early.data.positionId } : early));
+
+    while (Date.now() <= armedAtMs + 1_000) await sleep(500);
+    const duringWindow = ((await w.dal.houseBotIntentStore.listLiveOnMarket(m.market.id)) as Any[])
+      .filter((r) => r.targetId === target.id);
+    ok("drive.3w · ⭐ CONTROL · …and by the time the target ARMS, no targeted intent exists for it — the sweep ran throughout (drive.ticks) and correctly reacted to nothing, so the reaction below is attributable to the window having passed",
+      duringWindow.length === 0, j({ targetedIntents: duringWindow.length, sawLive: (await w.dal.houseBotIntentStore.listLiveOnMarket(m.market.id) as Any[]).length }));
+
     const player = await w.user({ balance: 1_000_000 });
     const trigger = await w.svc.buyPosition(player, { marketId: m.market.id, side: "NO", stake: 7_000, idempotencyKey: crypto.randomUUID() });
-    ok("drive.3a · the trigger stake was placed by a real player through the real service", trigger.ok === true, j(trigger.ok ? { positionId: trigger.data.positionId } : trigger));
+    ok("drive.3a · the trigger stake was placed by a real player through the real service, AFTER the target armed", trigger.ok === true, j(trigger.ok ? { positionId: trigger.data.positionId } : trigger));
+    // ⛔ READ EVERY INTENT FOR THIS TARGET, NOT THE LIVE ONES. `listLiveOnMarket` answers PENDING and
+    // CLAIMED only, so a decision that was SKIPPED — or one fired between two polls — reads exactly like
+    // a sweep that never ran, and "nothing after 90 s" sends the next session to the wrong half of the
+    // engine. A SKIPPED row with its reason code is a different fact and must be printed as one.
     const intent = await until("the sweep to plan a COUNTER", 90_000, async () => {
-      const rows = await w.dal.houseBotIntentStore.listLiveOnMarket(m.market.id);
-      const hit = (rows as Any[]).find((r) => r.targetId === target.id);
-      return hit ?? null;
+      const rows = (await w.prisma().$queryRawUnsafe(
+        `SELECT "id", "kind", "status", "reasonCode", "targetId", "triggerPositionId", "dueAt", "decision", "positionId" FROM "HouseBotIntent" WHERE "targetId" = $1`,
+        target.id,
+      )) as Any[];
+      return rows[0] ?? null;
     });
     // ⛔ WHEN IT DOES NOT HAPPEN, SAY WHY IT DID NOT. A target that was ENDED by the planner's own
     // endTargets pass is a different fact from a sweep that never ran, and an instrument that cannot
     // tell them apart sends the next session looking in the wrong place.
     const targetNow = await w.dal.targetStore.get(target.id).catch(() => null);
     const events = (await w.dal.houseBotEventStore.listForBot?.(bot.botId).catch(() => [])) ?? [];
-    ok("drive.3b · ⭐ THE SWEEP DECIDED: a COUNTER intent for this target exists, and NOTHING in this script created it",
-      !!intent && intent.kind === "COUNTER" && intent.targetId === target.id,
+    /**
+     * ⛔ WHEN IT DOES NOT HAPPEN, SAY WHY — and the first form of this case could not. A target the
+     * sweep EVALUATED and refused does not leave a row with `targetId` set: `decide.ts` falls through
+     * to the untargeted candidate and carries the refusal in `decision.targetSkipped`. So an
+     * instrument that looked only for targeted rows reported "nothing after 90 s" for a decision the
+     * engine had already made and explained.
+     */
+    const allOnMarket = (await w.prisma().$queryRawUnsafe(
+      `SELECT "id", "kind", "status", "reasonCode", "targetId", "triggerPositionId", "decision" FROM "HouseBotIntent" WHERE "marketId" = $1 ORDER BY "id"`,
+      m.market.id,
+    )) as Any[];
+    console.log(`   every intent the engine wrote on this market (${allOnMarket.length}):`);
+    for (const r of allOnMarket) {
+      console.log(`     ${r.kind} ${r.status}${r.reasonCode ? ` · ${r.reasonCode}` : ""} · target ${r.targetId ?? "—"} · trigger ${r.triggerPositionId ?? "—"} · ${j(r.decision).slice(0, 300)}`);
+    }
+    ok("drive.3b · ⭐ THE SWEEP DECIDED: a COUNTER intent for this target exists, it answers the stake placed AFTER the target armed and not the one placed inside the window, and NOTHING in this script created it",
+      !!intent && intent.kind === "COUNTER" && intent.targetId === target.id
+      && intent.triggerPositionId === (trigger.ok ? trigger.data.positionId : null),
       j({ id: intent?.id, kind: intent?.kind, dueAt: intent?.dueAt, target: { status: targetNow?.status, endCause: targetNow?.endCause, effectiveFrom: targetNow?.effectiveFrom }, events: (events as Any[]).map((e) => `${e.kind}:${j(e.payload)}`).slice(0, 6) }));
     if (intent) {
       const dueMs = Date.parse(intent.dueAt);
