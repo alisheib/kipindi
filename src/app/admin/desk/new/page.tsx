@@ -48,7 +48,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { Sensitive } from "@/components/ui/sensitive";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseCheckForConsole, houseConsoleAudience, CONSOLE_WIZARD_COPY, type ConsoleCheckRow } from "@/lib/server/house-console-read";
-import { CONSOLE_ROUTE, CONSOLE_WIZARD_STEPS, consoleWizardStep } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, CONSOLE_WIZARD_STEPS, WAY_OUT_LINK, consoleWizardStep } from "@/lib/house-bot/console-routes";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTIONS AND HANDS THEM DOWN (ruling 422): a client component under
  * `src/app/admin` that imports an actions module joins `test:admin-act-gate`'s population and must consult the act
  * gate — and on an Owner-only route `mayAct` IS `mayView`, so that consultation would be a branch that can never be
@@ -61,14 +61,9 @@ export const metadata = { title: "Admin · Desk" };
 /** ⛔ Every answer on this page is a live check against live limits (rulings 302, 356, 380). */
 export const dynamic = "force-dynamic";
 
-/**
- * ⛔ THE LINK TREATMENT FOR AN IN-BODY WAY OUT, WRITTEN ONCE (C7 step 6 review, visual-6). Every one of these had
- * hover-only affordance — no underline, no brand ink, nothing at rest — which on a phone is no affordance at all:
- * at 360 the missing-account card read as three left-aligned sentences of which one, invisibly, was the way back.
- * The Callout's own way-out link two blocks below was already underlined, so the page contradicted itself.
- */
-const WAY_OUT_LINK =
-  "inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-brand-300 underline underline-offset-2 hover:text-brand-200";
+/* ⛔ `WAY_OUT_LINK` MOVED TO `console-routes.ts` AT THE C7 STEP 7 REVIEW (visual-2). It was declared here at step
+   6 and the account page, built two steps earlier, never got it — so one section shipped two link treatments for
+   one control. One definition, three pages. */
 
 type DeskNewProps = {
   searchParams: Promise<{ u?: string | string[]; step?: string | string[] }>;

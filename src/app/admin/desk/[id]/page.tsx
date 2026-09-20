@@ -41,8 +41,8 @@ import { FormColumn } from "@/components/ui/form-column";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseDetailForConsole } from "@/lib/server/house-console-read";
-import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
+import { houseDetailForConsole, type ConsoleRuleRow } from "@/lib/server/house-console-read";
+import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, WAY_OUT_LINK, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422): a client component under
  * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
@@ -57,6 +57,45 @@ export const metadata = { title: "Admin · Desk" };
 export const dynamic = "force-dynamic";
 
 const TAB_LABEL: Record<(typeof CONSOLE_DETAIL_TABS)[number], string> = { overview: "Overview", rules: "Rules", targets: "Targets" };
+
+/**
+ * THE SAVED-RULES CARD, WRITTEN ONCE FOR BOTH STATES (C7 step 7 review, visual-8).
+ *
+ * It was two copies of one `<dl>` that differed in exactly one line, with nothing saying why — so the drift was
+ * invisible and the next edit would have landed on one of them. One component, one difference, and the
+ * difference is named:
+ *
+ * ⛔ A REMOVED ACCOUNT GETS NO CAPTIONS, DELIBERATELY (ruling 432(n), and this is the record of the decision).
+ * A caption reads "Not set — this account cannot place a bet.", which is a LIVE consequence of an unset limit.
+ * On a removed account the Callout two cards up already says "Nothing can be staked from this account and none
+ * of its limits applies any more" — so printing the consequence beside each row would be the page saying two
+ * things at once about the same account. The rows stay, because 358 keeps them as a RECORD of what it was
+ * configured to do; only the live reading of them goes.
+ */
+function SavedRulesCard({ rows, reason, captions }: { rows: ConsoleRuleRow[] | null; reason: string; captions: boolean }) {
+  return (
+    <AdminCard title="Saved rules">
+      {rows === null ? (
+        <AdminLoadError what="the saved rules" />
+      ) : (
+        <FormColumn measure="form">
+          <p className="text-body-sm text-text-tertiary mb-4">{reason}</p>
+          <dl className="space-y-3">
+            {rows.map((r) => (
+              <div key={`${r.section}-${r.name}`} className="flex items-baseline justify-between gap-4 flex-wrap">
+                <dt className="text-body-sm text-text-secondary min-w-0">{r.name}</dt>
+                <dd className="text-body-sm text-text text-right min-w-0">
+                  {r.value}
+                  {captions && r.caption && <span className="block text-body-sm text-warning-fg">{r.caption}</span>}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </FormColumn>
+      )}
+    </AdminCard>
+  );
+}
 
 type DeskAccountProps = {
   params: Promise<{ id: string }>;
@@ -112,11 +151,9 @@ async function AdminDeskAccountContent({
           this string; the loader beside this file carries no title at all for the same reason. */}
       <AdminPageHead
         title={view.label}
+        titleIsOperatorText
         actions={
-          <Link
-            href={CONSOLE_ROUTE as Route}
-            className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"
-          >
+          <Link href={CONSOLE_ROUTE as Route} className={WAY_OUT_LINK}>
             Back to the desk
           </Link>
         }
@@ -129,7 +166,14 @@ async function AdminDeskAccountContent({
         <AdminCard padding="p-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex items-start gap-3 min-w-0">
-              <Chip size="sm" variant={view.statusChip}>{view.statusWord}</Chip>
+              {/* ⛔ `shrink-0`, AND IT IS THE ROSTER'S OWN LESSON APPLIED TO THE PAGE THAT PAINTS THE SAME CHIP
+                  (C7 step 7 review, visual-1). In a flex row a `size="sm"` chip is a shrinkable item and the
+                  kit leaves its `whiteSpace` normal, so at 360 "Auto-paused" broke at its hyphen into a two-line
+                  pill — "AUTO-" over "PAUSED" — beside the one-line ACTIVE and PAUSED pills of the other states.
+                  A status word on two lines is not a status word. The roster fixed the same break with a column
+                  floor; here the chip is what must not shrink. The kit pins `flexShrink` itself for `size="xs"`
+                  only, and says why at `chip.tsx`. */}
+              <Chip size="sm" variant={view.statusChip} className="shrink-0">{view.statusWord}</Chip>
               <div className="min-w-0">
                 <div className="font-mono text-body-sm text-text-subtle">{view.handle}</div>
                 {/* ⛔ THE WAY OUT IS A FINISHED SERVER STRING, IN THE CONSOLE'S OWN NEUTRAL WORDS (rulings 311,
@@ -152,10 +196,7 @@ async function AdminDeskAccountContent({
               {view.settlementBlocked && <Chip size="sm" variant="danger">Settlement blocked</Chip>}
               {/* 456 · the door to a holder's money is the PLATFORM's own transactions screen, where an admin may
                   legitimately read a player's money — never a money tab of this section, which D20 struck. */}
-              <Link
-                href={view.holderHref as Route}
-                className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"
-              >
+              <Link href={view.holderHref as Route} className={WAY_OUT_LINK}>
                 Holder&apos;s transactions
               </Link>
             </div>
@@ -210,23 +251,7 @@ async function AdminDeskAccountContent({
         {/* 358 · THE ONE THING A REMOVED ACCOUNT STILL HOLDS: what it was configured to do. Kept as a record, never
             editable, and named as such rather than left to a reader to infer from a disabled control. */}
         {view.removed && (
-          <AdminCard title="Saved rules">
-            {rulesRows === null ? (
-              <AdminLoadError what="the saved rules" />
-            ) : (
-              <FormColumn measure="form">
-                <p className="text-body-sm text-text-tertiary mb-4">{view.rulesReason}</p>
-                <dl className="space-y-3">
-                  {rulesRows.map((r) => (
-                    <div key={`${r.section}-${r.name}`} className="flex items-baseline justify-between gap-4 flex-wrap">
-                      <dt className="text-body-sm text-text-secondary min-w-0">{r.name}</dt>
-                      <dd className="text-body-sm text-text text-right min-w-0">{r.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </FormColumn>
-            )}
-          </AdminCard>
+          <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions={false} />
         )}
 
         {/* ⚠️ THE `(<>` … `</>)}` FORM IS LOAD-BEARING, NOT A HABIT (ruling 433(e)). `test:tab-anchors` decides which
@@ -300,26 +325,7 @@ async function AdminDeskAccountContent({
           {/* 508 · the saved rules, as VALUES. ⛔ There is no per-account rules SAVE in this repository, so no typed
               control is drawn and the reason sits beside the card (432(a), 432(j)) — a field that silently discards
               what an officer types is worse than one that says it cannot be edited. */}
-          <AdminCard title="Saved rules">
-            {rulesRows === null ? (
-              <AdminLoadError what="the saved rules" />
-            ) : (
-              <FormColumn measure="form">
-                <p className="text-body-sm text-text-tertiary mb-4">{view.rulesReason}</p>
-                <dl className="space-y-3">
-                  {rulesRows.map((r) => (
-                    <div key={`${r.section}-${r.name}`} className="flex items-baseline justify-between gap-4 flex-wrap">
-                      <dt className="text-body-sm text-text-secondary min-w-0">{r.name}</dt>
-                      <dd className="text-body-sm text-text text-right min-w-0">
-                        {r.value}
-                        {r.caption && <span className="block text-body-sm text-warning-fg">{r.caption}</span>}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </FormColumn>
-            )}
-          </AdminCard>
+          <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions />
           </>)}
         </>)}
 

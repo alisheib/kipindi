@@ -352,7 +352,14 @@ try {
           reach.content === '""' && reach.height + px(reach.top) + px(reach.bottom) >= facts.tap,
           JSON.stringify(reach));
       }
-      ok(`§5.6 ${route} @${width} · no house-vocabulary word anywhere in the rendered body`, houseHits(facts.body).length === 0, houseHits(facts.body).slice(0, 6).join(","));
+      /* ⛔ 474's OPERATOR EXEMPTION APPLIES TO THE SHARED SCAN TOO (C7 step 7 review, d19-hunt-03). It was wired
+         into the 453 scan below and not into this one, so an account whose OWNER-CHOSEN label happened to carry a
+         shared word would have failed the whole-body scan on a value ruling 474 says must never fail it — the same
+         defect §5.6's own hook was added to end, one assertion higher up. Exactly the marked nodes are removed,
+         and nothing else; the control below still proves the scan reaches the page. */
+      const bodySubject = facts.operatorText.reduce((acc, t) => acc.split(t).join(" "), facts.body);
+      ok(`§5.6 ${route} @${width} · no house-vocabulary word anywhere in the rendered body (the operator's own marked text exempted, 474)`,
+        houseHits(bodySubject).length === 0, houseHits(bodySubject).slice(0, 6).join(","));
       {
         // ⛔ RULING 453, over the console's OWN region and its attributes — the words `bot`, `house` and
         // `counter-stake` on top of the shared list, composed in the vocabulary module and never here (ruling 175).

@@ -32,6 +32,19 @@ export const CONSOLE_ROUTE = "/admin/desk";
 export const CONSOLE_NEW_ROUTE = `${CONSOLE_ROUTE}/new`;
 
 /**
+ * ⛔ THE LINK TREATMENT FOR A WAY OUT, WRITTEN ONCE FOR THE WHOLE SECTION (C7 step 6 review visual-6; moved here
+ * and applied to the account page at the C7 step 7 review, visual-2).
+ *
+ * Every one of these had hover-only affordance — no underline, no brand ink, nothing at rest — which on a phone is
+ * no affordance at all: at 360 a card's way back read as one more left-aligned sentence. The wizard was repaired
+ * first and the constant stayed in that one file, so the account page built two steps EARLIER kept the old
+ * treatment and the section shipped two looks for one control. It lives beside the routes because these are the
+ * three pages' one shared module, and a second copy is how the first divergence happened.
+ */
+export const WAY_OUT_LINK =
+  "inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-brand-300 underline underline-offset-2 hover:text-brand-200";
+
+/**
  * The landing page's tab keys, in rail order, holding ONLY the keys whose panel exists (ruling 312).
  * `limits` joined it with its panel at C7 step 3; `activity` and `history` join it with theirs at step 5.
  */

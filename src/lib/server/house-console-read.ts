@@ -811,8 +811,15 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
       dayBooks
         ? moneyTile("Stake today", stakeUsed, control.gCapDailyStakeTzs, FIELD_META.gCapDailyStakeTzs.label)
         : unavailableTile("Stake today"),
+      /* ⛔ THE CEILING CARRIES ITS SCOPE, BECAUSE THE FIGURE ABOVE IT IS THE PROJECTED ONE (432(o); C7 step 7
+       * review, visual-3). `lossUsed` folds `projectedLossTzs`, the table 150px below heads the same figure
+       * "LOSS TODAY (PROJECTED)", and the Limits tab splits the same ceiling into "(projected)" and "(settled)"
+       * rows — so an unqualified "of daily loss limit" was one figure under three names, two of them on one
+       * screen. The distinction decides which control acts: the seam refuses a new stake on PROJECTED loss and an
+       * account is auto-paused only on SETTLED loss. ⛔ The tile's LABEL stays short — `AdminKpi` truncates it —
+       * so the scope goes in the delta, which the kit already wraps. */
       dayBooks
-        ? moneyTile("Loss today", lossUsed, control.gCapDailyLossTzs, FIELD_META.gCapDailyLossTzs.label)
+        ? moneyTile("Loss today", lossUsed, control.gCapDailyLossTzs, `${FIELD_META.gCapDailyLossTzs.label} (projected)`)
         : unavailableTile("Loss today"),
       exposure
         ? moneyTile("Open exposure", exposureUsed, control.gCapOpenExposureTzs, FIELD_META.gCapOpenExposureTzs.label)
@@ -1046,7 +1053,7 @@ const CONSOLE_LIMIT_LABEL: Readonly<Record<string, string>> = {
   capStaffChosenDailyTzs: "Targeted and manual daily cap",
   gCounterPerPlayerPerDay: "Stakes against one player per day",
   gCounterPerPlayerTzsPerDay: "TZS against one player per day",
-  gStaffChosenMaxCounterpartyShare: "One player’s share limit",
+  gStaffChosenMaxCounterpartyShare: "One player's share limit",
 };
 /** The same, for `FIELD_META`'s section names. ⛔ The KEY is READ from the field table, never typed: the word it
  *  replaces is itself a needle, so typing it here would put it in a string literal of the module 4.453 scans. */
@@ -1568,6 +1575,10 @@ export type ConsoleSwitchDialog = {
   body: string;
   confirmLabel: string;
   cancelLabel: string;
+  /** ⛔ IT SAYS "(required)", AND SIX ADMIN DIALOGS NEXT DOOR ALREADY DO (C7 step 7 review, visual-5). The reason
+   *  gates the primary button on `CONSOLE_REASON_MIN`, and until this was marked an officer who typed the confirm
+   *  word and no reason met a dead button with nothing on screen to explain it. The counter counts DOWN from the
+   *  maximum, so it says nothing about the floor. */
   reasonLabel: string;
   reasonHint: string;
   /** ⛔ WHAT THE LIVE COUNT COUNTS. Read off the first 360 tile: it painted a bare "300", and a figure with no
@@ -1611,7 +1622,7 @@ function switchDialogFor(on: boolean | null, offCause: string | null, unsetRequi
       title: "Switch the desk off",
       body: "Nothing more will be staked and every queued stake is cancelled. A stake already in its final step may still complete.",
       confirmLabel: "Switch off",
-      reasonLabel: "Why are you switching it off?",
+      reasonLabel: "Why are you switching it off? (required)",
       reasonHint: "Kept with the change, and read by whoever switches it on again.",
       word: null,
       wordLabel: null,
@@ -1634,7 +1645,7 @@ function switchDialogFor(on: boolean | null, offCause: string | null, unsetRequi
     title: "Switch the desk on",
     body: "Every account that is running will start staking. Each stake is still held to the limits on this page, and to the account's own.",
     confirmLabel: "Switch on",
-    reasonLabel: "Why are you switching it on?",
+    reasonLabel: "Why are you switching it on? (required)",
     reasonHint: "Kept with the change, and shown on this strip until it is switched off.",
     word: CONSOLE_SWITCH_ON_WORD,
     wordLabel: `Type ${CONSOLE_SWITCH_ON_WORD} to confirm`,
@@ -2073,7 +2084,7 @@ function actDialogsFor(status: string): ConsoleAccountActDialog[] {
     title: "Remove this account from the desk",
     body: "This cannot be undone. Every queued stake is cancelled and every target ends. The account itself is untouched and stays the holder's own.",
     confirmLabel: "Remove", doneTitle: "Removed", failTitle: "It was not removed",
-    reasonLabel: "Why are you removing it?",
+    reasonLabel: "Why are you removing it? (required)",
     reasonHint: "Kept with the record of the removal.",
     word: CONSOLE_REMOVE_WORD,
     wordLabel: `Type ${CONSOLE_REMOVE_WORD} to confirm`,
@@ -2290,7 +2301,7 @@ export async function houseDetailForConsole(
       if (parsedRemoved.ok) removedRules = capRows(bot, parsedRemoved.rules);
     } catch { removedRules = null; }
     const removedAtMs = bot.removedAt ? Date.parse(bot.removedAt) : NaN;
-    const at = Number.isFinite(removedAtMs) ? `${formatEat(removedAtMs, "D MMM")} ${formatEat(removedAtMs, "HH:MM")} EAT` : "an unrecorded time";
+    const at = Number.isFinite(removedAtMs) ? `${formatEat(removedAtMs, "D MMM YYYY")} ${formatEat(removedAtMs, "HH:MM")} EAT` : "an unrecorded time";
     return {
       ...base,
       removedNote: `Removed on ${at}. Nothing can be staked from this account and none of its limits applies any more.`,

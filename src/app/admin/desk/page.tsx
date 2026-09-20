@@ -44,7 +44,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseRosterForConsole, houseUsageForConsole, houseConsoleAudience, type ConsoleDeskShell, type ConsoleUsageCell, type ConsoleUsageRow } from "@/lib/server/house-console-read";
-import { CONSOLE_TABS, LIMITS_TAB_READY, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
+import { CONSOLE_TABS, LIMITS_TAB_READY, WAY_OUT_LINK, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
 import { DeskLive } from "./desk-live";
 import { DeskLimitsForm } from "./limits-form";
 import { DeskSwitch } from "./switch-ceremony";
@@ -257,7 +257,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                 legitimate. */}
             <span className="text-body-sm text-text-secondary max-w-[38ch]">
               {rosterFull && LIMITS_TAB_READY
-                ? <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] hover:text-brand-300 hover:underline">{view.rosterFullReason}</Link>
+                ? <Link href={view.limitsHref as Route} className={WAY_OUT_LINK}>{view.rosterFullReason}</Link>
                 : rosterFull ? view.rosterFullPlain : view.actionReason}
               {/* ⭐ C7 STEP 3 TURNED THIS ON. `LIMITS_TAB_READY` is now true, so the whole sentence is the LINK and
                   its trailing arrow means what it says. ⛔ THE INERT BRANCH STAYS: the flag is derived from
