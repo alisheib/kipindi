@@ -209,10 +209,9 @@ The bot uses no session, so revocation does not affect it. The fingerprint chang
 - **Fix:** - A separate auth commit, needing the owner's approval (it is not a bet-path change): add revokeUserSessions at the three writers, plus re-mint via createSession (session.ts:92-124) for the settings path.
 - Add a revoked-reason variant on the login page.
 - Record the change in docs/FLOWS.md.
-- **Test:** New `test:password-change-revokes-sessions`:
-- Sessions A and B; change in A → B's getSession returns null with the revoked flag, A stays valid.
-- Reset link → both null.
-- Engine: a bot bet after revocation plus re-verify succeeds.
+- **Test:** ⛔ **RECONCILED 2026-09-20 — WITHDRAWN, NOT OWED. NO TEST IS TO BE WRITTEN FOR THIS ROW.** ~~New `test:password-change-revokes-sessions`: Sessions A and B; change in A → B's getSession returns null with the revoked flag, A stays valid. Reset link → both null. Engine: a bot bet after revocation plus re-verify succeeds.~~
+- **RULING: A1** (`04-amendments.md:101`, RECORD ONLY, owner ruling 2026-09-13, owner default W5) — *"Signing out other devices on a password change is not built"*, Merged: HB-ACC-07. `package.json` declares no `test:password-change-revokes-sessions` and never will: writing that suite would BUILD AND ASSERT a feature the owner decided against. The surviving content of this row is the recorded risk line (`docs/HOUSE-BOTS.md:813`, `docs/COMPLIANCE-DECISIONS.md:391`, cross-referenced at `:355`): *"A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13)."* House consent is unaffected either way — consent is the FINGERPRINT, never a session.
+- ⚠️ **FINDING F-1, and it is now repaired.** A1's own stated proof was *"Test: `test:docs` greps the risk line"*. Measured 2026-09-20: `scripts/docs-links.mjs` (130 lines, the whole of `test:docs`) checks relative links, `scripts/<file>` paths and npm keys, and **greps no sentence anywhere** — so A1's recorded proof did not exist and the risk line was pinned by NOTHING. It is pinned now by `test:house-bot-reports` `12.risk-7.hb` and `12.risk-7.cd`, one per document, each with its own planted control. ⛔ That pin is the TAIL of a withdrawn row and does **not** make this a tested row: it is RECONCILED (accounted for), never counted as one of the rows that gained a test.
 
 ### HB-ACC-08 [gap] The holder bets manually on a market the bot is in, on the opposite side of the house stake. Example: house DOWN 8,000 countering a player, then holder UP 20,000. He is using 50pick's float as the counterparty to his own bet.
 - **Trigger:** buyPositionAction → buyPosition. An account may hold both sides of a market.
@@ -233,10 +232,9 @@ A same-side manual bet is not flagged.
 - **Fix:** - Extend the post-commit hook (a) with a holder-conflict check.
 - The owner picks alert-and-pause (default) or refusal. Record the choice in COMPLIANCE-DECISIONS and HOUSE-BOTS.md.
 - Add HOLDER_CONFLICT to pause-reasons and feed-copy.
-- **Test:** Engine or seam suite:
-- House DOWN then holder UP → one pause and one alert (AlertOnce). Under the refusal option → refused with the reason and wallet untouched.
-- Same side → nothing.
-- ⛔ **Superseded by D19 (Ali, 2026-09-16):** no refusal carries house wording (D19c), so the stricter option's copy is struck; the owner ruled alert only (A21). Coverage gate: partly struck by D19.
+- **Test:** ⛔ **RECONCILED 2026-09-20 — the pause-or-refuse half is WITHDRAWN, and the rest was ALREADY ASSERTED under another index.** ~~Engine or seam suite: House DOWN then holder UP → one pause and one alert (AlertOnce). Under the refusal option → refused with the reason and wallet untouched.~~ The old `Test:` line named NO suite at all ("Engine or seam suite:"), which is why nothing owned it.
+- **RULING: A21** (`04-amendments.md:587`; `:92` — *"HB-ACC-08, pause or refuse options: the owner ruled alert only (A21)"*, Merged: HB-ACC-08, HB-LC-28, HB-ACC-09). A21's own words: **never refuse the bet and never pause the bot.** Measured 2026-09-20: `HOLDER_CONFLICT` appears NOWHERE under `src/` or `scripts/` — only in this row, asking for it. The refusal copy is struck by D19c on this row.
+- ✅ **NAMED: `test:house-bot-engine` §18** — `18.30` fixture, `18.31` ONE alert keyed `holder-against:<bot>:<market>` carrying aggregates only and no user id in the payload, `18.32` ONE `HOLDER_AGAINST_BOT` event, `18.33` (I3) the holder's OWN stake is never a trigger, `18.34` the same side gives nothing, `18.35` a second pass writes nothing more, `18.36` it runs whatever the switch says, `18.78` the LIVE hook on Up & Down. Code: `trigger.ts:303-321`.
 
 ### HB-ACC-09 [gap] Players the holder referred bet while his bot is ACTIVE. The bot counters people the holder recruited and can coordinate with.
 - **Trigger:** bindRecruit stamps recruitedBy with the referrer's id. The recruit's bet passes the trigger filter.
@@ -334,7 +332,9 @@ Failed attempts send nothing, ~~until the reserve state is reached. Then one not
 - **Plan:** I9; §6
 - **Evidence:** C:\kipindi-main\src\lib\server\erasure.ts:393-395 (the only phoneE164 writer outside registration)
 - **Fix:** Source pin in `test:house-bot-holder-lifecycle`: an allowlist of writers for passwordHash, phoneE164, role, status and wallet freeze, each required to call the hook.
-- **Test:** That pin, plus a red fixture file that writes phoneE164 without the hook, which must fail.
+- **Test:** ⛔ **RECONCILED 2026-09-20 — MIS-ROUTED, NOT UNTESTED.** The old line described a test without naming one (*"That pin, plus a red fixture file…"*), so the coverage gate could resolve it through no door. The pin it describes IS the shipped one.
+- **RULING: A2** (`04-amendments.md`, which merges HB-ACC-15). ✅ **NAMED: `test:house-bot-holder-lifecycle` §1 and §4** — `WRITTEN_FIELDS` includes `phoneE164` (`house-bot-holder-lifecycle.test.mts:53`); `1.1` fails on any unhooked writer of it; `1.2` holds the writer population shrink-only at `WRITER_CEILING` 33; `1.3` proves the hook wired at ≥18 real sites; `1.4` requires every exemption to carry a reason; §4 plants both halves — `4.1` an unhooked writer IS reported, `4.2` a hooked one passes, `4.5` an irrelevant field is not a writer — and the suite carries its own floor `MIN_ASSERTIONS` 16.
+- ⚠️ **HONEST RESIDUE, and it must NOT be sold as coverage:** §4's planted writer is a `status` write. A plant on `phoneE164` SPECIFICALLY would prove that entry of `WRITTEN_FIELDS` is live rather than merely present in an array literal. That is a CONTROL GAP, not a missing test, and it does not move any ceiling.
 
 ### HB-ACC-16 [gap] FUTURE: a code change rewrites passwordHash without the holder acting: rehash-on-login, a scrypt parameter upgrade, or setting a password after OTP sign-in.
 - **Trigger:** A new passwordHash writer. Today's writers are auth-service.ts:641, password-reset.ts:242, :271, :326 and erasure.ts:397.
@@ -493,9 +493,10 @@ On restore:
 - ~~A holder variant of the `loss_limit_daily` copy when the window contains house-marked BET_PLACED rows.~~
 - ~~A meter label on the limits page.~~
 - Start refusal copy states the rolling free time.
-- **Test:** - The bot loses 50k → the holder's bet is refused ~~with house wording~~.
-- Raising the limit → Start enabled.
-- `test:rg-limit-race` unchanged.
+- **Test:** ⛔ **RECONCILED 2026-09-20 — the wording half is WITHDRAWN, the rest was ALREADY ASSERTED, and the "ghost owner" was a NAMING SLIP.** ~~The bot loses 50k → the holder's bet is refused with house wording.~~
+- **THE GHOST THAT WAS NOT ONE:** this row named **`test:rg-limit-race`**, which `package.json` does not declare — but the suite EXISTS under a different key: **`test:rg-race`** runs `scripts/rg-limit-race.test.mts` (`package.json:57`). The row had quoted the FILE STEM, not the npm key. Corrected in place: ~~`test:rg-limit-race`~~ → `test:rg-race`, unchanged.
+- ✅ **NAMED: `test:house-bot-money`** `12.0` (the limit is in force NOW), `12.1` (a HOUSE stake over the holder's OWN daily loss limit is REFUSED with `loss_limit_daily`), `12.1b` (the refusal moved no money), `12.2` POSITIVE CONTROL (a stake that FITS still lands); **`test:house-bot-engine`** 19.A row 8 (`LOSS_LIMIT_SET` → `AUTO_PAUSED(OWNER_LOSS_LIMIT)` + botStopped + ONE `AUTO_PAUSED` event, driven through the hook AND through the sweep with no hook at all); **`test:house-bot-designation`** `3.16`/`3.16b` (Start blocked, and refused with the cause); **`test:house-bot-rules`** (`canStart` false while the cause stands).
+- **RULING:** D19c for the copy half; `package.json` for the key.
 - ⛔ **Superseded by D19 (Ali, 2026-09-16):** no refusal carries house wording (D19c): the holder's refused bet shows the existing `loss_limit_daily` sentence and the limits page gains no note; house stakes still count toward his loss limit, and the pause and admin alert stand. Coverage gate: partly struck by D19.
 
 ### HB-ACC-23 [partial] The holder is promoted to staff, either by the owner on /admin/staff or by the one-shot bootstrap promotion (his phone is in ADMIN_BOOTSTRAP_PHONES).
@@ -566,9 +567,9 @@ The reset dialog on the player page shows the house-bot warning.
 - **Evidence:** C:\kipindi-main\src\lib\server\password-reset.ts:314-326 (reads, verifies and writes with no lock)
 - **Fix:** - The re-verify write is conditional: `UPDATE "HouseBot" SET "passwordFingerprint"=$fp WHERE id=$1 AND $fp = fingerprint(current hash re-read in the same wallet:<botUser> lock)`.
 - AlertOnce key `bot:<id>:PASSWORD_CHANGED:<EAT day>`.
-- **Test:** Interleaving test:
-- verify(P2) and change(P3) race → Start refused.
-- 3 changes → 1 transition, 3 events, 1 bell.
+- **Test:** ⛔ **RECONCILED 2026-09-20 — the "1 bell" half is WITHDRAWN, and it asserts the SILENCING the sealed flow exists to prevent.** ~~3 changes → 1 transition, 3 events, 1 bell.~~ That line assumes an AlertOnce key of `bot:<id>:PASSWORD_CHANGED:<EAT day>`.
+- **RULING: X4** (`02-sealed-flows.md:39`), which rejects THAT KEY BY NAME: *"The alert-once key `bot:<id>:<code>:<EAT day>` would silence a second password change on the same day. → Key password alerts as `pw:<botId>:<newFingerprint>`."* §2.2 row 93 records *"A1 again (new key per X4)"*, and `04-amendments.md:63` routes this row to seal-flows X4 plus the §2.6 step 7 mismatch check. Shipped at `constants.ts:657`, keyed on the FINGERPRINT and used at `holder-hook.ts:146` — so **three changes are three fingerprints and therefore THREE bells**, which is the opposite of what this row asked for. Writing the row as drafted would have built the silencing X4 forbids.
+- ✅ **NAMED: `test:house-bot-engine`** `19.C1`/`19.C1b`, `19.C2` (the `pw:<botId>:<fingerprint>` claim), `19.C3` (X4: changed again → alerts again), `19.C4`, `19.C5` (ONE transition: two hooks and a sweep racing give ONE A1 and ONE `AUTO_PAUSED`, never an A2), `19.C9`–`19.C9c`; and "no bet ever fires on stale consent" at **`test:house-bot-designation`** `6.4`, with its planted control `6.2b`.
 
 ### HB-ACC-27 [partial] The holder changes his password between the wizard's Consent step and the owner pressing Designate.
 - **Trigger:** designateHouseBotAction runs after a successful consent check.
@@ -634,7 +635,8 @@ The reset dialog on the player page shows the house-bot warning.
 - **Evidence:** - C:\kipindi-main\src\lib\server\auth-service.ts:942-955: lock refusal.
 - C:\kipindi-main\src\lib\server\auth-service.ts:967-988: lock set.
 - **Fix:** Hook at auth-service.ts:974 when shouldLock, with AlertOnce.
-- **Test:** 5 bad logins → the bot still fires, one admin bell, verify refused with retryAfterSec.
+- **Test:** ⛔ **RECONCILED 2026-09-20 — MIS-ROUTED, NOT UNTESTED.** The old line named no suite, so the coverage gate resolved it through no door; the behaviour it describes is asserted in full.
+- **RULING: A2** (`04-amendments.md`, which merges HB-ACC-31). ✅ **NAMED: `test:house-bot-engine`** `19.D1` — A2 row 16, driven TWICE through the hook: a lockout never stops a bot, ONE SECURITY bell for the EAT day carrying when the lockout ends, no status change and no event, with the `until` compared against the fixture's own instant rather than merely asserted present. **`test:house-bot-designation`** `1.10` (`BLOCKED{SIGN_IN_LOCKED}`, uncounted), `3.13` (in designate and in re-verify), `3.13b` (in START it is a WARNING and not a block — the bot continues, which is this row's whole point), `1.8` (`RATE_LIMITED` carries `retryAfterSec` and the holder's own count is untouched). Code: `holder-hook.ts:315-317`, `eligibility.ts:136`/`:401`, `designation.ts:158`.
 
 ### HB-ACC-32 [partial] The holder tries to object to a result where his only position is a house stake.
 - **Trigger:** objectionEligibility counts any position held by that user.
@@ -957,7 +959,9 @@ If he also holds his own stake, he may object.
 - **Evidence:** C:/kipindi-main/src/lib/server/market-service.ts:3178-3191 (TOO_EARLY / OBJECTION_OPEN refusals); C:/kipindi-main/src/lib/server/market-scheduler.ts:56,266-270 (5-min back-off); C:/kipindi-main/src/lib/server/objections-service.ts:298-379 (officer hold, no window limit)
 - **Fix:** ~~§8: exposure breakdown on the overview and limits tab (console-side query, not engine).~~ feed-copy for CAP_EXPOSURE includes the held amount.
 - **Test:** ~~test:house-bot-console — fixture with RESOLVED unsettled market shows the split; qa:house-bots-visual bars at 360.~~
-- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the three-bucket exposure split on the overview and limits tab (R2's overview split, C5-SPEC ruling 254, PROGRESS L39) is struck; the CAP_EXPOSURE held amount is re-decided in Commit 7's rulings, and the engine still never reads objection state (I2). Coverage gate: partly struck by D20; the CAP_EXPOSURE half waits on Commit 7's ruling.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the three-bucket exposure split on the overview and limits tab (R2's overview split, C5-SPEC ruling 254, PROGRESS L39) is struck; the CAP_EXPOSURE held amount is re-decided in Commit 7's rulings, and the engine still never reads objection state (I2). Coverage gate: partly struck by D20.
+- ⛔ **RECONCILED 2026-09-20 — "waits on Commit 7's ruling" WAS STALE; the ruling has landed and it refuses the thing this row asks for.** **RULING: C7-SPEC 370** (`C7-SPEC.md:787`, *"The kill switch shows no held amount — ruling 254's CAP_EXPOSURE figure is decided NOT KEPT"*): 254 proposed putting the amount still at risk into `CAP_EXPOSURE`'s sentence, and 370 decides it NOT KEPT, with the cost recorded — a figure behind a refusal must be STORED on the intent or its audit (the per-decision money record D20 struck) or re-derived at render time, which the display-only law forbids. Shipped: `feed-copy.ts:61` carries no amount. ✅ **NAMED: `test:house-bot-console` `1.370`** — not one `EngineCode` sentence and not one switch-off sentence carries a formatted amount or an amount placeholder, with the capture proved complete against the block's own key count and a CONTROL that a TEMPLATE-form amount IS reported.
+- The other three halves are withdrawn outright: the three-bucket exposure split (D20, C5-SPEC ruling 254; `04-amendments.md:69` goes further — *"R2 is struck, so no amendment covers these ids"*), the console reading objection counts, and the label half. ⛔ **Writing the held-amount test would assert a requirement TWO rulings have refused.** The surviving I2 half is a statement about code the engine does not contain: `grep 'objection' src/lib/server/house-bot/*.ts` finds only audit ACTION NAMES in `decision-audits.ts` and `oversight.ts`, both classified audit readers and neither on the decision path (nearest live pin `test:house-bot-info-edge` `3.2`).
 
 ### HB-LC-21 [partial] Up & Down round without targets (no open price) or voided by source failure, no-move or operator
 - **Trigger:** A round has openPrice null (targets null) until the healer backfills; or the close reading fails past the abandon deadline → VOID source-failed; or the close stays inside the band → no-move; or an operator voids.

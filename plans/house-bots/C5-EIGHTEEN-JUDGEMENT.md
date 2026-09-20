@@ -352,7 +352,7 @@ obeys R4 — D20 struck the walker that would have — and the guard's label mus
 
 ## What this judgement does to assertion 3.4
 
-⛔ **Nothing, yet — and that is deliberate.** This phase writes no test, so the ceiling stays at 18. What it changes
+⛔ **This section is the JUDGEMENT phase's forecast, kept as written so it can be checked against what actually happened — the measured outcome is the section AFTER it.** The judgement phase wrote no test, so at the time of writing the ceiling stayed at 18. What it changes
 is what the next phase is allowed to do:
 
 | verdict | ids | effect when the next phase acts |
@@ -366,3 +366,77 @@ that 18 tests are owed.** Six of the eighteen (HB-ACC-08, -15, -22, -26, -31, HB
 written **against a withdrawn or inverted requirement** if the eighteen had been worked as one backlog, and two of
 those (HB-ACC-26's per-day bell, HB-LC-20's held amount) would have asserted the exact defect their own sealed-flow
 ruling exists to prevent.
+
+---
+
+## The outcome — measured 2026-09-20, after the work was done
+
+> **Everything below was RE-DERIVED by running the gate, not carried forward from the table above.**
+> `scripts/scenario-coverage.test.mts` lives on **`ops-lane`**, not on this branch. It was run from this
+> worktree against THIS tree (a read-only measurement: the file was placed untracked, run, and removed).
+
+### What the gate now reads over this tree
+
+```
+NAMED 26 · STRUCK 9 · OWNED 243 · DEFERRED 0 · UNRESOLVED 3 = 281
+⭐ COVERAGE 269 / 281 = 95.7%   (NAMED + OWNED)
+3.4 · rows with NO TEST AT ALL: 3 — ENG-19, CA-18, CA-31
+```
+
+⚠️ **`3.3` reads RED from this branch and that is an artefact of the split, not a defect.** ENG-19, CA-18 and
+CA-31 are named with their reason in **`ops-lane`'s** `DEFERRED-TESTS.md` row 104, which this branch's copy of
+that file does not carry (the two copies have diverged by 182 lines). Merged, those three resolve through the
+DEFERRED door: `UNRESOLVED 0`, `DEFERRED 3`, and `3.4` reads **3** either way. ⛔ This lane deliberately did
+**not** add a section to its own `DEFERRED-TESTS.md`: `ops-lane` already holds §1l, §1m and row ids 99–105, and
+a second §1l with ids 94–96 would have collided on both — duplicate ids across the register is the exact decay
+`test:deferred-register` §1 exists to catch.
+
+### The two counts, kept apart
+
+| | rows | what changed |
+|---|---|---|
+| **TESTED** — a real test, planted control, positive control, seen red | **8** | ENG-42, HB-ACC-14, HB-ACC-16, HB-LC-11, CRA-12, FS-05, CRA-19, CRA-32 |
+| **RECONCILED** — accounted for, **not** tested | **7** | HB-ACC-07, HB-ACC-08, HB-ACC-15, HB-ACC-22, HB-ACC-26, HB-ACC-31, HB-LC-20 |
+| **NOT MEASURED** — reason named, still owed | **3** | ENG-19, CA-18, CA-31 |
+
+⛔ **CRA-12 and FS-05 are two rows closed by ONE test, counted ONCE as one test and two rows.** The eight rows
+gained seven distinct tests; the ceiling moves on rows, which is what 3.4 counts.
+
+### The edit assertion 3.4 needs, and it is NOT this lane's to make
+
+`scripts/scenario-coverage.test.mts` is `ops-lane`'s file. The edit it needs:
+
+```diff
+-const NO_TEST_CEILING = 18;
++const NO_TEST_CEILING = 10;
+```
+
+⛔ **10, not 3, and the difference is the whole point of keeping the counts apart.** 18 − 8 = 10: the ceiling
+moves ONLY for a row that gained a real test. The seven reconciled rows left the no-test population through the
+OWNED door — legitimately, because each one's assertion ids were read in the tree first and are quoted on the
+row — but a reconcile is prose, and prose must never buy ceiling headroom. That is the exact failure the ops
+lane caught itself committing within an hour of writing this gate.
+
+⭐ **The measured value is 3, so a ceiling of 10 is loose by 7.** Tightening it to 3 is a second, deliberate act
+and belongs to whoever verifies the seven reconciles — assertion `4.2` of `test:red-anchors` states the reason
+in its own words: *"a ceiling above the real count stops being a ratchet."* Recorded here so the slack is
+visible rather than discovered later as drift.
+
+### The findings this phase turned up that were not in the judgement
+
+1. **F-1 is repaired.** A1's claimed proof (*"`test:docs` greps the risk line"*) did not exist. The risk line is
+   now pinned per document at `test:house-bot-reports` `12.risk-7.hb` / `12.risk-7.cd`.
+2. **HB-ACC-16's row is wrong in two places, and the test asserts the product instead.** (i) No shipped writer
+   can refresh `HouseBot.passwordFingerprint` while the bot is ACTIVE — `setVerified` is PAUSED-only — so the
+   row's "in the same transaction" contract has no implementation to assert. (ii) A rehash's pause reports
+   method **UNKNOWN**, never REHASH, because `CREDENTIAL_CHANGED_VIA` deliberately excludes it. The first draft
+   of `19.J1` asserted the ROW and went red; `19.J1b`/`19.J1c` now pin the shipped distinction both ways.
+3. **`test:house-bot-reports` was RED on this branch before this phase**, and had been pushed that way: `0.505`
+   reported `dal-mem`, `dal-pg` and `rules` declared in this lane's own anchors files and audited by no
+   roll-call. `rules` now has one (`house-bot-rules` `7.505`); the two DAL keys cannot have one in that form and
+   are recorded as OWED naming the site that can carry them.
+4. **HB-LC-11's Up & Down half was already proved** at `test:house-bot-reports` `9.235.2` and is NAMED rather
+   than written twice. `test:updown-digest` was read first: 0 hits for house bots.
+5. **Still not asserted, and written on the row rather than implied:** the per-ROUND Up & Down emitters
+   (`notifyUpDownWin` / `Loss` / `Refund` / `OneSidedRefund`) for a holder; and `test:house-bot-holder-lifecycle`
+   §4 plants a `status` writer, not a `phoneE164` one (a control gap on HB-ACC-15, which moves no ceiling).
