@@ -541,6 +541,284 @@ export const BROADER_LISTS: ReadonlyArray<readonly [file: string, extensions: nu
   ["scripts/house-bot-seam.test.mts", 2],
 ];
 
+/* ═══ §0 · ruling 232 · every positioned transaction write copies the marker FROM THE RIGHT OBJECT ═══ */
+
+/**
+ * ⛔ RULING 232 · THE STATIC PIN ON MARKER INTEGRITY. The house marker on a `Transaction` row is what the caps, the
+ * exports and the bet idempotency all read, and it is copied BY HAND at every site that writes a positioned
+ * transaction. A site that forgets it writes a house stake's money row as a player's; a site that copies it from the
+ * WRONG object writes a row against another position's bot — and both are silent, because the column is nullable and
+ * every suite that reads a marker reads the one its own fixture just wrote.
+ *
+ * WHAT IS MEASURED, and the population is printed by the assertion itself so a shrinking one is visible without
+ * reading this file:
+ *   · every `.txn.create(` call in tracked `src/**` — WIDER than R3's `src/lib/server`, at no cost, so a route that
+ *     writes a money row cannot escape by living somewhere else;
+ *   · each call's first argument taken from the SYNTAX TREE (never balanced braces over text and never a substring:
+ *     `positionId` and `houseBotId` are read as PROPERTIES of that literal, so a mention in a neighbouring
+ *     expression is not one), over source read through `scripts/lib/decomment.mts`;
+ *   · plus `.transaction.create(`, `.transaction.createMany(` and a raw `INSERT INTO "Transaction"` anywhere in
+ *     tracked `src/**` outside `prisma-dal.ts` — a writer that bypasses the DAL bypasses everything the DAL does
+ *     for a marker.
+ *
+ * THE RULES:
+ *   · a literal with `positionId: null` is EXEMPT (it is not a positioned write);
+ *   · every other literal carries the marker as `...(<x>.houseBotId ? { houseBotId: <x>.houseBotId } : {})` or
+ *     `houseBotId: <x>.houseBotId ?? null`, and `<x>` must be the SAME identifier whose `.id` is the literal's
+ *     `positionId` — `positionId: p.id` ⇒ `p.houseBotId`. A marker copied from another position in scope is the
+ *     defect this rule exists for, and a presence-only check cannot see it;
+ *   · at the stake write only, `...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {})` is accepted, and ONLY
+ *     where the literal's `positionId` is the id of a position object marked from the SAME `ctx` in an enclosing
+ *     function — which is CHECKED here, in that function's own tree, never assumed from the file or the line.
+ *
+ * ⛔ EVERY SHAPE IS MATCHED STRUCTURALLY, NOT BY A REGEX OVER SOURCE TEXT, and that is deliberate twice over: a
+ * reformatting (a line break inside the ternary, a different spacing) must not blind the pin, and ruling 175 forbids
+ * this file declaring house-word patterns of its own. A `?:` whose false branch is `{}` and whose true branch is
+ * `{ houseBotId: … }` is read as a tree, so the pin sees the MEANING.
+ *
+ * ⚠️ THE SEVEN SPREADS ARE QUOTED BY THE MONEY ANCHORS (`house-bot-money.anchors.mjs` SEAM:txnMarker,
+ * SEAM:markerOrphan): those lines are never reformatted, and 0.232.2 reports a site that moves.
+ */
+if (STORE === "memory") {
+  section("§0 · ruling 232 · every positioned transaction write copies the marker from the right object");
+  await guard("0.232", () => {
+    type Marker = { kind: "spread" | "prop" | "ctx"; source: string };
+    type Pid = { kind: "null" | "objId" | "ident" | "other"; text: string };
+    type Site = { file: string; line: number; pid: Pid | null; marker: Marker | null; literal: boolean };
+    const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
+    const nameOf = (p: ts.ObjectLiteralElementLike): string | null =>
+      p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) ? p.name.text : null;
+    /** `{ … } as StoredTxn`, `({ … })`, `{ … } satisfies X` — the literal is still the literal. */
+    const unwrap = (e: ts.Expression): ts.Expression => {
+      let x = e;
+      while (ts.isAsExpression(x) || ts.isParenthesizedExpression(x) || ts.isSatisfiesExpression(x) || ts.isTypeAssertionExpression(x)) x = x.expression;
+      return x;
+    };
+
+    /** `.txn.create(` calls, however the store is reached (`db.txn.create`, `w.dal.txn.create`). */
+    const isTxnCreate = (n: ts.Node): n is ts.CallExpression =>
+      ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "create"
+      && ts.isPropertyAccessExpression(n.expression.expression) && n.expression.expression.name.text === "txn";
+
+    /** `<ident>.<prop>` as a pair, or null. */
+    const access = (e: ts.Expression, prop: string): string | null =>
+      ts.isPropertyAccessExpression(e) && e.name.text === prop && ts.isIdentifier(e.expression) ? e.expression.text : null;
+
+    /** The marker this literal carries, in one of the three accepted SHAPES, with the identifier it reads. */
+    const markerOf = (lit: ts.ObjectLiteralExpression): Marker | null => {
+      for (const p of lit.properties) {
+        if (ts.isSpreadAssignment(p)) {
+          const e = unwrap(p.expression);
+          if (!ts.isConditionalExpression(e)) continue;
+          const f = unwrap(e.whenFalse), t = unwrap(e.whenTrue);
+          if (!ts.isObjectLiteralExpression(f) || f.properties.length !== 0) continue;
+          if (!ts.isObjectLiteralExpression(t) || t.properties.length !== 1) continue;
+          const only = t.properties[0];
+          if (!ts.isPropertyAssignment(only) || nameOf(only) !== "houseBotId") continue;
+          const val = unwrap(only.initializer);
+          const cond = unwrap(e.condition);
+          // ...(<x>.houseBotId ? { houseBotId: <x>.houseBotId } : {})
+          const condSrc = access(cond, "houseBotId"), valSrc = access(val, "houseBotId");
+          if (condSrc && valSrc && condSrc === valSrc) return { kind: "spread", source: condSrc };
+          // ...(<ctx>.kind === "house" ? { houseBotId: <ctx>.botId } : {})  — the stake form
+          if (ts.isBinaryExpression(cond) && cond.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
+            const kindSrc = access(unwrap(cond.left), "kind");
+            const right = unwrap(cond.right);
+            const botSrc = access(val, "botId");
+            if (kindSrc && botSrc && kindSrc === botSrc && ts.isStringLiteral(right) && right.text === "house") {
+              return { kind: "ctx", source: kindSrc };
+            }
+          }
+          continue;
+        }
+        if (ts.isPropertyAssignment(p) && nameOf(p) === "houseBotId") {
+          const v = unwrap(p.initializer);
+          // houseBotId: <x>.houseBotId ?? null
+          if (ts.isBinaryExpression(v) && v.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+            && unwrap(v.right).kind === ts.SyntaxKind.NullKeyword) {
+            const src = access(unwrap(v.left), "houseBotId");
+            if (src) return { kind: "prop", source: src };
+          }
+          return { kind: "prop", source: `⟨${oneLine(p.initializer.getText())}⟩` };
+        }
+      }
+      return null;
+    };
+
+    const pidOf = (lit: ts.ObjectLiteralExpression): Pid | null => {
+      const p = lit.properties.find((x) => ts.isPropertyAssignment(x) && nameOf(x) === "positionId") as ts.PropertyAssignment | undefined;
+      if (!p) return null;
+      const v = unwrap(p.initializer);
+      const text = oneLine(p.initializer.getText());
+      if (v.kind === ts.SyntaxKind.NullKeyword) return { kind: "null", text };
+      const obj = access(v, "id");
+      if (obj) return { kind: "objId", text: obj };
+      if (ts.isIdentifier(v)) return { kind: "ident", text: v.text };
+      return { kind: "other", text };
+    };
+
+    /**
+     * ⛔ THE STAKE WRITE'S EXEMPTION IS EARNED PER SITE. `ctx.botId` is the right marker only beside the position
+     * THAT ctx marked, so every enclosing function is walked outwards — the write sits inside a `withLock` callback
+     * while the position literal is built in the function around it — looking for an object literal whose `id` is
+     * this write's `positionId` and which carries the same `ctx` spread. No such position, no exemption.
+     */
+    const stakeFormIsEarned = (call: ts.Node, pid: string, ctxName: string): boolean => {
+      const marks = (fn: ts.Node): boolean => {
+        let found = false;
+        const go = (n: ts.Node) => {
+          if (ts.isObjectLiteralExpression(n)) {
+            const id = n.properties.find((p) => ts.isPropertyAssignment(p) && nameOf(p) === "id") as ts.PropertyAssignment | undefined;
+            const mk = markerOf(n);
+            if (id && ts.isIdentifier(unwrap(id.initializer)) && oneLine(id.initializer.getText()) === pid && mk?.kind === "ctx" && mk.source === ctxName) found = true;
+          }
+          ts.forEachChild(n, go);
+        };
+        go(fn);
+        return found;
+      };
+      for (let n: ts.Node | undefined = call.parent; n; n = n.parent) {
+        if (ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) || ts.isArrowFunction(n) || ts.isMethodDeclaration(n)) {
+          if (marks(n)) return true;
+        }
+      }
+      return false;
+    };
+
+    /** Every `.txn.create(` site in one file, with what its literal carries, and the call node for the ctx check. */
+    const txnSites = (file: string, code: string): Array<Site & { call: ts.CallExpression | null }> => {
+      const sf = parse(file, code);
+      const out: Array<Site & { call: ts.CallExpression | null }> = [];
+      walkTree(sf, (n) => {
+        if (!isTxnCreate(n)) return;
+        const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+        const arg = n.arguments[0] ? unwrap(n.arguments[0]) : undefined;
+        if (!arg || !ts.isObjectLiteralExpression(arg)) { out.push({ file, line, pid: null, marker: null, literal: false, call: n }); return; }
+        out.push({ file, line, pid: pidOf(arg), marker: markerOf(arg), literal: true, call: n });
+      });
+      return out;
+    };
+
+    /** The verdict on one site: `null` when it is clean, otherwise the sentence that says what is wrong. */
+    const verdict = (s: Site & { call: ts.CallExpression | null }): string | null => {
+      if (!s.literal) return "the first argument is not an object literal — this pin cannot read it";
+      if (!s.pid) return "no positionId property at all: a money row is positioned or it is not, and a missing key is neither";
+      if (s.pid.kind === "null") return null;
+      if (!s.marker) return `positionId ${s.pid.text}${s.pid.kind === "objId" ? ".id" : ""} with NO marker — a house stake's money row would be written as a player's`;
+      if (s.marker.kind === "ctx") {
+        if (s.pid.kind !== "ident" || !s.call) return `the stake form is used with positionId ${s.pid.text}, which is not the plain identifier a marked position's id is bound to`;
+        return stakeFormIsEarned(s.call, s.pid.text, s.marker.source) ? null
+          : `the stake form (${s.marker.source}.kind === house) is used where no position with id ${s.pid.text} is marked from the same ${s.marker.source} in any enclosing function`;
+      }
+      if (s.pid.kind !== "objId") return `positionId ${s.pid.text} is neither null nor <x>.id, so the marker's source cannot be checked against it`;
+      return s.marker.source === s.pid.text ? null
+        : `positionId ${s.pid.text}.id but the marker reads ${s.marker.source} — the marker is copied from the WRONG object`;
+    };
+
+    const all: Array<Site & { call: ts.CallExpression | null }> = [];
+    const bypass: string[] = [];
+    const DAL = "src/lib/server/prisma-dal.ts";
+    const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
+    for (const { rel, code } of files) {
+      all.push(...txnSites(rel, code));
+      if (rel === DAL) continue;
+      const sf = parse(rel, code);
+      walkTree(sf, (n) => {
+        if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression)) return;
+        const fn = n.expression.name.text;
+        if (fn !== "create" && fn !== "createMany") return;
+        if (!ts.isPropertyAccessExpression(n.expression.expression) || n.expression.expression.name.text !== "transaction") return;
+        bypass.push(`${rel}:${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1} .transaction.${fn}(`);
+      });
+      if (/INSERT\s+INTO\s+"Transaction"/i.test(code)) bypass.push(`${rel} raw INSERT INTO "Transaction"`);
+    }
+    const exempt = all.filter((s) => s.pid?.kind === "null");
+    const positioned = all.filter((s) => s.pid?.kind !== "null");
+    ok("0.232.0 · the population is real: every .txn.create( in tracked src/ is read from the tree — wider than src/lib/server, so a route that writes a money row cannot escape by living somewhere else",
+      all.length >= 18 && files.length > 500 && positioned.length === 7 && exempt.length === 11,
+      `${all.length} txn.create sites in ${new Set(all.map((s) => s.file)).size} files, over ${files.length} src files · ${positioned.length} positioned · ${exempt.length} exempt (positionId: null)`);
+
+    const offenders = positioned.map((s) => ({ at: `${s.file}:${s.line}`, why: verdict(s) })).filter((o) => o.why !== null);
+    ok("0.232.1 · ⛔ RULING 232 · every positioned transaction write copies the marker FROM THE OBJECT WHOSE id IS ITS positionId — presence is not enough, because a marker copied from another position in scope is silent",
+      offenders.length === 0, j(offenders));
+    const marked = positioned.filter((s) => s.marker !== null).map((s) => `${s.file.split("/").pop()}:${s.line}`);
+    ok("0.232.2 · …and the seven marked sites are exactly the seven the money anchors quote (SEAM:txnMarker, SEAM:markerOrphan) — a site that moves is reported here before a mutation drive reports it as a rotted anchor",
+      j(marked) === j(["market-service.ts:1524", "market-service.ts:2792", "market-service.ts:3167", "market-service.ts:3577", "market-service.ts:3709", "market-service.ts:3850", "market-service.ts:4433"]), j(marked));
+    ok("0.232.3 · ⛔ nothing in tracked src/ writes a Transaction row around the DAL — no .transaction.create(, no .transaction.createMany(, no raw INSERT INTO Transaction outside prisma-dal.ts",
+      bypass.length === 0, j(bypass));
+
+    /* ── THE CONTROLS. Each plants a REAL defect in a REAL file's source and requires it to be reported ──────── */
+    const MS = "src/lib/server/market-service.ts";
+    const ms = files.find((f) => f.rel === MS)!.code;
+    const scan = (code: string) => txnSites(MS, code).filter((s) => s.pid?.kind !== "null")
+      .map((s) => ({ at: `${MS}:${s.line}`, why: verdict(s) })).filter((o) => o.why !== null);
+    const SPREAD_2792 = `      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),`;
+    ok("0.232.c0 · CONTROL · the real file is clean before anything is planted, so every control below measures its plant and not the file",
+      scan(ms).length === 0 && ms.includes(SPREAD_2792), j(scan(ms)));
+
+    const dropped = scan(ms.replace(SPREAD_2792, ""));
+    ok("0.232.c1 · CONTROL · a positioned write whose marker is DELETED is reported, and exactly one site goes red — the plant really changed the file",
+      dropped.length === 1 && dropped[0].at === `${MS}:2792` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
+    /* ⭐ THE ACCEPT SIDE, AND IT IS ABOUT A SITE THAT DOES NOT EXIST YET. Putting the deleted spread back would only
+       rebuild `ms` and prove nothing, so the control appends a BRAND NEW positioned writer to the same real file: the
+       pin must pass it because its marker is right, and refuse the identical writer with the marker removed. Without
+       this pair, 0.232.1 could be a pin that has simply memorised seven lines and would pass the eighth writer
+       somebody adds tomorrow. */
+    const NEW_WRITER = (marker: string) => `
+async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | null }) {
+  await db.txn.create({ id: "txn_c2", walletId: "w", userId: "u", type: "BET_REFUND", status: "CONFIRMED", positionId: q.id,${marker} });
+}
+`;
+    const addedClean = txnSites(MS, ms + NEW_WRITER(" ...(q.houseBotId ? { houseBotId: q.houseBotId } : {}),"));
+    const addedDirty = scan(ms + NEW_WRITER(""));
+    ok("0.232.c2 · CONTROL · a BRAND NEW positioned writer appended to the same real file passes when its marker reads its own position and is reported when it carries none — so 0.232.1 is a rule, not a memorised list of seven lines",
+      addedClean.length === all.filter((x) => x.file === MS).length + 1 && scan(ms + NEW_WRITER(" ...(q.houseBotId ? { houseBotId: q.houseBotId } : {}),")).length === 0
+      && addedDirty.length === 1 && /NO marker/.test(addedDirty[0].why ?? ""),
+      j({ sitesAfterAppend: addedClean.length, dirty: addedDirty }));
+
+    /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
+    const wrongSource = scan(ms.replace(SPREAD_2792, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
+    ok("0.232.c3 · CONTROL · a marker copied from the WRONG object — present, well-formed, reading another position in scope — is reported, which is the defect a presence-only scan passes",
+      wrongSource.length === 1 && wrongSource[0].at === `${MS}:2792` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
+    const wrongProp = scan(ms.replace(SPREAD_2792, `      houseBotId: position.houseBotId ?? null,`));
+    const rightProp = scan(ms.replace(SPREAD_2792, `      houseBotId: p.houseBotId ?? null,`));
+    ok("0.232.c3b · CONTROL · the same defect in the OTHER accepted spelling (houseBotId: <x>.houseBotId ?? null) is reported, and the RIGHT identifier in that spelling is accepted — both directions, so the pin is not just refusing the spelling",
+      wrongProp.length === 1 && wrongProp[0].at === `${MS}:2792` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
+    const reformatted = scan(ms.replace(SPREAD_2792, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
+    ok("0.232.c3c · CONTROL · the accept side of the shape: the SAME marker reformatted over three lines is still read — a pin that a line break blinds is one reformat away from passing an unmarked write",
+      reformatted.length === 0, j(reformatted));
+
+    /* ⛔ THE STAKE FORM, MOVED OFF ITS POSITION. */
+    const movedStakeForm = scan(ms.replace(SPREAD_2792, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
+    ok("0.232.c4 · CONTROL · the stake form used where no position with that positionId is marked from the same ctx is reported — the exemption is earned per site, never granted by file or by line number",
+      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:2792` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
+    /* ⚠️ THE PLANT CARRIES NO NEWLINE, and that is not a detail: tracked source is CRLF in this checkout, so a
+       `\n` anchor matches nothing and the plant silently plants NOTHING — a control that then reports the file is
+       clean, which is exactly the silent pass this checkpoint exists to refuse (it happened here, once, and this
+       comment is the record). `id: positionId,` occurs exactly once (`positionId: positionId,` carries a capital I),
+       and the assertion below requires the plant to have CHANGED the source before it reads its verdict. */
+    const c4bPlant = ms.replace("id: positionId,", "id: positionIdOfAnotherBet,");
+    const stakeUnmarked = scan(c4bPlant);
+    ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
+      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1524` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
+
+    const plantedDirect = (() => {
+      const code = ms.replace(`          await db.txn.create({`, `          await prisma.transaction.create({ data: {} });\n          await db.txn.create({`);
+      const sf = parse(MS, code);
+      const hits: string[] = [];
+      walkTree(sf, (n) => {
+        if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression)) return;
+        if (n.expression.name.text !== "create" && n.expression.name.text !== "createMany") return;
+        if (!ts.isPropertyAccessExpression(n.expression.expression) || n.expression.expression.name.text !== "transaction") return;
+        hits.push(oneLine(n.getText()).slice(0, 60));
+      });
+      return hits;
+    })();
+    ok("0.232.c5 · CONTROL · a planted prisma.transaction.create outside the DAL is reported — and the DAL's own real one is NOT, because that is the writer every marked site goes through",
+      plantedDirect.length === 1 && read(DAL).includes(".transaction.create("), j(plantedDirect));
+  });
+}
+
 /* ═══ §0 · L52 · the rate-limit ACTION NAMES, which /admin/system paints verbatim ═════════════════════ */
 
 /**

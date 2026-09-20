@@ -56,6 +56,8 @@ const VOCAB = "scripts/lib/house-bot-vocabulary.mjs";
 const REPORTS = "scripts/lib/house-bot-reports-cases.mts";
 const CASES = "scripts/lib/house-bot-console-cases.mts";
 const COMMS = "scripts/lib/house-bot-comms-cases.mts";
+/* ⭐ C5-7 · ruling 232 · the one file that holds every positioned transaction write. */
+const MARKET = "src/lib/server/market-service.ts";
 /* ⭐ ADDED AT THE C7 STEP 7 REVIEW. The erasure door is the one house refusal a COMPLIANCE officer can make the
    platform print; the shared scanner is what 1.371's population is read through; the visual gate is where 474's
    exemption is applied; the shell is where the account page's own head stamps that exemption. */
@@ -2150,6 +2152,33 @@ import { formatEat } from "@/lib/utils";`,
     from: `  const rl = await rateCheckAsync(\`\${officerId}:\${userId}\`, "desk.verify");`,
     to: `  const rl = await rateCheckAsync(\`\${officerId}:\${userId}\`, "desk.verify.v2");`,
     expect: "0.L52.3 · ⛔ every call site names a rule the table DECLARES",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ RULING 232 · THE DEFECT A PRESENCE CHECK PASSES. The marker is still there, still well-formed, and reads
+       the WALLET instead of the position whose id the row carries — so an orphan refund on a player's position
+       would be filed against whatever the wallet happened to carry, and every suite that reads a marker reads the
+       one its own fixture wrote. Only 0.232.1 pairs the marker's source with the row's `positionId`. */
+    name: "232-marker-wrong-object · a positioned refund copies the marker from the wallet, not from the position whose id the row carries",
+    file: MARKET,
+    from: `      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
+      amlReason: null,
+      createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,`,
+    to: `      ...(w.houseBotId ? { houseBotId: w.houseBotId } : {}),
+      amlReason: null,
+      createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,`,
+    expect: "0.232.1 · ⛔ RULING 232 · every positioned transaction write copies the marker FROM THE OBJECT WHOSE id IS ITS positionId",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ A WRITER THAT BYPASSES THE DAL bypasses everything the DAL does for a marker — and it is the shape nobody
+       looks for, because the row it writes is a perfectly ordinary Transaction. */
+    name: "232-dal-bypass · a service writes a Transaction row straight through Prisma, around the DAL and around every marker rule",
+    file: MARKET,
+    from: `    if (realRefund > 0) await db.txn.create({`,
+    to: `    if (realRefund > 0) await prisma().transaction.create({ data: { id: "x" } });
+    if (realRefund > 0) await db.txn.create({`,
+    expect: "0.232.3 · ⛔ nothing in tracked src/ writes a Transaction row around the DAL",
     suite: "reports-mem",
   },
 ];
