@@ -621,6 +621,82 @@ section("§8 · no house wording on outcome notices, in any language");
   ok("8.13 · CONTROL · the mixed holder's and the player's verdict bodies are the same sentence apart from the title",
     !!vMixed && !!vPlayer && vMixed.bodyEn.slice(vMixed.bodyEn.indexOf(" · ")) === vPlayer.bodyEn.slice(vPlayer.bodyEn.indexOf(" · ")),
     `${vMixed?.bodyEn} | ${vPlayer?.bodyEn}`);
+
+  /* ── HB-LC-11 · the lifecycle emitters §8 never reached (D19 regression form) ─────────────────────
+   * ⛔ WHAT WAS ALREADY HERE: WIN (8.1–8.3, body byte for byte AND the link), LOSS (8.4),
+   * SELECTION_CLOSED (8.5–8.8) and VERDICT (8.9–8.13). The row's own emitter list is longer, and the
+   * rest of it was asserted by nothing: **market cancelled**, the **one-sided refund** notice and the
+   * **orphan refund** notice. `5.6` and `10.1` assert the house MARKER on the refund TRANSACTION —
+   * a different claim from the notice TEXT, and a mutation that labelled the copy would leave both green.
+   *
+   * ⛔ THE UP & DOWN HALF IS NOT WRITTEN AGAIN HERE. It is already proved, and naming it beats
+   * duplicating it: `test:house-bot-reports` `9.235.2` asserts the holder's ROUND_RESULT digest bell is
+   * FIELD FOR FIELD the player's — same kind, same link, same three titles and three bodies, no label and
+   * no house word — with `9.235.0` proving the two accounts really differ in the house dimension and
+   * `9.235.5` covering the letter. `test:updown-digest` was read first and says nothing about house bots
+   * at all (0 hits), so the pin is 9.235's, not its.
+   *
+   * ⛔ THE COMPARISON STRIPS EACH ROW'S OWN POSITION ID AND NOTHING ELSE. Both bodies embed the reader's
+   * own position reference, so a raw equality could only ever fail; both stakes are deliberately the SAME
+   * figure so the money words are comparable. A label anywhere else in the sentence still fails.
+   */
+  {
+    /* ⚠️ A FIXTURE OF TIME, NOT A WIDENED CAP — the same move §12 and the caps suite make, and this block
+     * earned it the same way: adding two more house stakes to §8 pushed the run past `gMaxBetsPerMinute`,
+     * which is a CHECK-bounded 20, and §10's place came back `house_cap_reached {GLOBAL_BETS_PER_MINUTE}`.
+     * That is the product being correct about a suite, not a defect, and the per-minute cap has its own
+     * cases in `test:house-bot-caps` (§0.2/§0.3). Ageing the window raises nothing. */
+    await w.ageHouseMinute();
+    const STAKE = 3_000;
+    /** The row's own reference is the only thing allowed to differ; everything else must match. */
+    const strip = (n: Any, posId: string) => ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh", "href"]
+      .map((f) => `${f}=${String(n?.[f] ?? "").split(posId).join("<ref>")}`).join("\n");
+
+    // (a) MARKET CANCELLED — an officer pulls the market with both a house stake and a player's on it.
+    const mc = await w.poll({ graceMin: 0 });
+    const hc = await w.bot();
+    const rc = await w.place(hc, await w.intent(hc, mc.id, { kind: "OPENER", side: "YES", stakeTzs: STAKE }));
+    const pc = await w.user({ balance: 100_000 });
+    const pcPos = await w.svc.buyPosition(pc, { marketId: mc.id, side: "YES", stake: STAKE, idempotencyKey: crypto.randomUUID() });
+    const voided = await w.svc.emergencyVoidMarket({ marketId: mc.id, officerId: OFFICER, reason: "HB-LC-11 fixture" });
+    await sleep(500);
+    const hcRow = (await rows(hc.userId, "DEPOSIT")).find((n: Any) => n.bodyEn.includes(rc.data.positionId));
+    const pcRow = (await rows(pc, "DEPOSIT")).find((n: Any) => n.bodyEn.includes(pcPos.data.positionId));
+    ok("8.14 · HB-LC-11 fixture · the cancelled market really refunded both, and BOTH notices EXIST — the rows are asserted PRESENT before anything is asserted absent from them",
+      voided.ok === true && !!hcRow && !!pcRow, j({ voided: show(voided), holder: !!hcRow, player: !!pcRow }));
+    ok("8.15 · HB-LC-11 · the holder's MARKET CANCELLED notice carries no house word in any of the three languages, link included",
+      !!hcRow && leaks(hcRow).length === 0, j(leaks(hcRow)));
+    ok("8.16 · HB-LC-11 POSITIVE CONTROL · …and it is the NON-HOLDER's notice on the SAME market, field for field — same three titles, same three bodies, same link, once each row's own position reference is taken out",
+      !!hcRow && !!pcRow && strip(hcRow, rc.data.positionId) === strip(pcRow, pcPos.data.positionId),
+      `${strip(hcRow, rc.data.positionId)}\n       ---\n       ${strip(pcRow, pcPos.data.positionId)}`);
+
+    // (b) ONE-SIDED REFUND — every stake on one side, so nobody could win.
+    const mo = await w.poll({ graceMin: 0 });
+    const ho = await w.bot();
+    const ro2 = await w.place(ho, await w.intent(ho, mo.id, { kind: "OPENER", side: "YES", stakeTzs: STAKE }));
+    const po = await w.user({ balance: 100_000 });
+    const poPos = await w.svc.buyPosition(po, { marketId: mo.id, side: "YES", stake: STAKE, idempotencyKey: crypto.randomUUID() });
+    await w.svc.resolveMarket({ marketId: mo.id, outcome: "YES", officerId: OFFICER });
+    await w.svc.settleMarket(mo.id, { force: true });
+    await sleep(500);
+    const hoRow = (await rows(ho.userId, "WIN")).find((n: Any) => n.bodyEn.includes(ro2.data.positionId));
+    const poRow = (await rows(po, "WIN")).find((n: Any) => n.bodyEn.includes(poPos.data.positionId));
+    ok("8.17 · HB-LC-11 fixture · with every stake on ONE side both readers got the full-refund notice — asserted PRESENT first, because an absence proved over a missing row proves nothing",
+      !!hoRow && !!poRow && hoRow.titleEn.startsWith("Full refund") && poRow.titleEn.startsWith("Full refund"),
+      j({ holder: hoRow?.titleEn, player: poRow?.titleEn }));
+    ok("8.18 · HB-LC-11 · the holder's ONE-SIDED REFUND notice carries no house word in any language, link included",
+      !!hoRow && leaks(hoRow).length === 0, j(leaks(hoRow)));
+    ok("8.19 · HB-LC-11 POSITIVE CONTROL · …and it is the NON-HOLDER's notice on the SAME market, field for field",
+      !!hoRow && !!poRow && strip(hoRow, ro2.data.positionId) === strip(poRow, poPos.data.positionId),
+      `${strip(hoRow, ro2.data.positionId)}\n       ---\n       ${strip(poRow, poPos.data.positionId)}`);
+
+    // (c) THE CONTROL THAT MAKES (a) AND (b) MEASUREMENTS: the comparator can tell the two apart.
+    ok("8.20 · HB-LC-11 CONTROL · the field-for-field comparator REPORTS a difference when there is one — a liquidity label planted into a copy of the holder's cancelled notice is not equal to the player's, so 8.16 and 8.19 are findings and not a predicate that always agrees",
+      !!hcRow && !!pcRow
+        && strip({ ...hcRow, bodySw: `${hcRow.bodySw} (ukwasi wa nyumba)` }, rc.data.positionId) !== strip(pcRow, pcPos.data.positionId)
+        && strip({ ...hcRow, href: "/house/positions" }, rc.data.positionId) !== strip(pcRow, pcPos.data.positionId),
+      "the planted label and the planted href must each break the equality");
+  }
 }
 
 // ═══ §10 · orphan repair refunds a house stake with the marker (MC-3) — memory only ═══════════════
