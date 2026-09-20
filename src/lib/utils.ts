@@ -259,7 +259,11 @@ export function adminCount(n: number, singular: string, plural?: string): string
  *  ALL player-visible times, AI sentinel prompts, and resolution displays
  *  use this timezone. Change it in admin → changes everywhere instantly.
  *  Admin/audit trails always store UTC; this only affects display. */
-import { getPlatformTimezone } from "@/lib/server/platform-config";
+/* ⛔ L17 (ruling 526) — this import USED to be `@/lib/server/platform-config`, and that module reaches
+   `./config-store` → `./prisma`. This file has 216 importers, many of them `"use client"`, so the graph ran from
+   a client component to the Prisma client and only tree-shaking kept the model names out of the public bundle.
+   The function is pure (a global, an env var, a constant) and never needed the server at all. */
+import { getPlatformTimezone } from "@/lib/platform-timezone";
 /** Reads the current admin-configured timezone. Dynamic — reflects admin changes. */
 export function PLATFORM_TZ_GET(): string { return getPlatformTimezone(); }
 function tz(): string { return getPlatformTimezone(); }
