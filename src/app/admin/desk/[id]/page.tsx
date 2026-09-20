@@ -93,7 +93,15 @@ function SavedRulesCard({ rows, reason, captions }: { rows: ConsoleRuleRow[] | n
                     ⛔ A COUNT IS NOT MONEY (409): it gets the mono/tabular face without `.amount`'s `nowrap` and
                     without its money meaning. A word ("Polls", "Off", "Not set") stays body text — putting a state
                     on the money axis is the mislabelled-amount defect 266 struck. */}
-                <dd className="text-body-sm text-text text-right min-w-0">
+                {/* ⛔ `ml-auto` KEEPS THE VALUE IN ITS COLUMN WHEN THE LABEL PUSHES IT ONTO A SECOND LINE, AND THAT
+                    WAS READ OFF A 360 TILE. The row is `justify-between` + `flex-wrap`, which places the value at
+                    the END of a shared line and at the START of its own — so on "Targeted and manual daily cap",
+                    the one label too long to share a line at 360, **TZS 900,000,000 dropped below its label and
+                    set flush LEFT**, one money figure out of the column the other seventeen rows keep. A figure
+                    that leaves the money axis reads as a different kind of row (§A5/§A6), and `.amount`'s `nowrap`
+                    cannot help: it is the whole value that wraps, not the digits. `ml-auto` is the end of the line
+                    in BOTH cases, so nothing about the unwrapped rows changes. */}
+                <dd className="text-body-sm text-text text-right min-w-0 ml-auto">
                   {r.face === "word" ? r.value : <span className={r.face === "money" ? "amount tabular-nums" : "font-mono tabular-nums"}>{r.value}</span>}
                   {captions && r.caption && <span className="block text-body-sm text-warning-fg">{r.caption}</span>}
                 </dd>
