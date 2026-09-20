@@ -306,7 +306,15 @@ export function DeskLimitsForm({
         body="These limits have been changed but not saved. Leaving now discards the change."
       />
 
-      <div className="flex items-center gap-2 pt-1">
+      {/* ⛔ IT STACKS AT PHONE WIDTH, AND THAT WAS READ OFF A 360 TILE (the ops lane's visual pass, 2026-09-20).
+          The row was `flex items-center` with no wrap, so at 360 the sentence beside the button was squeezed into
+          **138px and set in three lines** of tracked mono next to a 128px button — measured, both still inside the
+          card, so nothing clipped and no gate could see it; it simply read as a crushed footer on the form that
+          governs every stake the desk places. From 640 up the same sentence sets on ONE line in 318px, which is
+          the layout this row was designed for and which is kept exactly.
+          ⛔ `items-start` on the stacked axis, not `items-center`: a centred one-line sentence under a
+          left-aligned button is the second look for one control this section has already been pulled up for. */}
+      <div className="flex flex-col items-start sm:flex-row sm:items-center gap-2 pt-1">
         <Button type="submit" size="md" variant="primary" loading={pending}>
           Save · Hifadhi
         </Button>
