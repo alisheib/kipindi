@@ -38,7 +38,13 @@
  *     REFUSED there rather than reported clean); fourteen more in the Postgres child, where the five
  *     release figures are compared against numbers the suite measured itself on a populated database —
  *     a reader printing 0 everywhere would satisfy a "clean world" assertion while counting nothing.
+ *   · memory 48, postgres 52 — step 5: §4, `ops:house-bots-remark`, the ONLY ops script that writes to
+ *     a money table. Seven more in the memory child (the ONE statement pinned byte-for-byte and the
+ *     five shapes it must refuse, plus the gate now admitting exactly two files and naming both);
+ *     twelve more in the Postgres child, which DRIVES it: dry, refused while the switch is ON, refused
+ *     over its ceiling, applied, applied again, and then drift leg (a) re-read — with two marked
+ *     positions held by DIFFERENT bots, so "it wrote a bot id" cannot pass for "it wrote the RIGHT one".
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 41, postgres: 40 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 48, postgres: 52 }, dbPrefix: "hb_ops" });

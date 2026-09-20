@@ -134,7 +134,23 @@ export type MarkerUpdate = { line: number; target: string; set: string };
  * remark script will carry — is read on its SET half and reported.
  */
 export function markerUpdateSites(code: string): MarkerUpdate[] {
-  const out: MarkerUpdate[] = [];
+  return updateSetClauses(code)
+    .filter((u) => /houseBotId/.test(u.set))
+    .map((u) => ({ line: u.line, target: u.target, set: u.set.slice(0, 90) }));
+}
+
+/**
+ * ⛔ ONE PARSER FOR "WHAT DOES THIS UPDATE ASSIGN", NOT THREE. Every `UPDATE <target> … SET <clause>`,
+ * with the clause ending at the first WHERE, RETURNING, FROM, `;` or template backtick.
+ *
+ * ⚠️ THE CLAUSE BOUNDARY IS THE WHOLE POINT, and a detector that skipped it produced a REAL false
+ * positive on the day this was written: a `"positionId" = ` check that read 240 characters past SET
+ * reported the remark script's own `WHERE t."positionId" = p."id"` — the join key — as a SET of
+ * positionId. Three copies of this loop had already been written; a fourth would have been the second
+ * walker this lane's own corrections call the defect.
+ */
+export function updateSetClauses(code: string): Array<{ line: number; target: string; set: string }> {
+  const out: Array<{ line: number; target: string; set: string }> = [];
   for (const m of code.matchAll(/\bUPDATE\b/gi)) {
     const at = m.index ?? 0;
     const head = code.slice(at, at + 600);
@@ -143,11 +159,10 @@ export function markerUpdateSites(code: string): MarkerUpdate[] {
     const rest = head.slice(set.index + 3);
     const stop = /\bWHERE\b|\bRETURNING\b|\bFROM\b|;|`/i.exec(rest);
     const clause = stop ? rest.slice(0, stop.index) : rest;
-    if (!/houseBotId/.test(clause)) continue;
     out.push({
       line: code.slice(0, at).split("\n").length,
       target: head.slice(0, set.index).replace(/\s+/g, " ").trim().slice(0, 60),
-      set: clause.replace(/\s+/g, " ").trim().slice(0, 90),
+      set: clause.replace(/\s+/g, " ").trim(),
     });
   }
   return out;
@@ -188,20 +203,11 @@ function argumentsOf(code: string, open: number): string {
   return code.slice(open + 1, Math.min(code.length, open + 4000));
 }
 
-/** Every `UPDATE … SET` clause that sets an `enabled` column true. */
+/** Every `UPDATE … SET` clause that sets an `enabled` column true — over the one parser above. */
 export function enabledTrueUpdates(code: string): string[] {
-  const out: string[] = [];
-  for (const m of code.matchAll(/\bUPDATE\b/gi)) {
-    const at = m.index ?? 0;
-    const head = code.slice(at, at + 600);
-    const set = /\bSET\b/i.exec(head);
-    if (!set || set.index > 120) continue;
-    const rest = head.slice(set.index + 3);
-    const stop = /\bWHERE\b|\bRETURNING\b|\bFROM\b|;|`/i.exec(rest);
-    const clause = stop ? rest.slice(0, stop.index) : rest;
-    if (/"?\benabled\b"?\s*=\s*(?:true|TRUE|'t')/.test(clause)) out.push(clause.replace(/\s+/g, " ").trim().slice(0, 80));
-  }
-  return out;
+  return updateSetClauses(code)
+    .filter((u) => /"?\benabled\b"?\s*=\s*(?:true|TRUE|'t')/.test(u.set))
+    .map((u) => u.set.slice(0, 80));
 }
 
 /** Tokens that mean "this file knows about the master switch's row". */
@@ -317,6 +323,28 @@ export function withoutStringLiterals(code: string): string {
   return code.replace(/(["'`])((?:\\.|(?!\1)[^\\])*)\1/g, (whole, q: string, body: string) => `${q}${body.replace(/[^\n]/g, " ")}${q}`);
 }
 
+/**
+ * The remark script's ONE statement, read against the string this suite pins. ⛔ The pin is the whole
+ * admission: the file is allowed a raw marker write only because every clause of that write is fixed
+ * here, so a widening — the NULL predicate deleted, the value taken from a parameter, the target
+ * swapped to "Position" — stops matching and reddens on its own assertion rather than on a count.
+ */
+export function remarkPin(code: string, pinned: string): {
+  exact: boolean; updates: MarkerUpdate[]; positionTarget: boolean; setsPositionId: boolean; interpolatedTable: boolean;
+} {
+  const updates = markerUpdateSites(code);
+  return {
+    exact: code.includes(pinned),
+    updates,
+    positionTarget: updates.some((u) => /"Position"/.test(u.target)),
+    // ⛔ THE SET CLAUSE, NOT "SOMEWHERE AFTER THE WORD SET". The first draft read 240 characters past
+    // SET and reported the pinned statement's own `WHERE t."positionId" = p."id"` — the JOIN KEY — as a
+    // write. A guard that cries wolf on the one file it was written for gets switched off.
+    setsPositionId: updateSetClauses(code).some((u) => /"positionId"\s*=/.test(u.set)),
+    interpolatedTable: /\bUPDATE\s+\$\{/.test(code) || /\bUPDATE\s+"?\s*\$\{/.test(code),
+  };
+}
+
 export type PopulationAudit = { scanned: number; offenders: string[]; detail: Array<{ file: string; sites: unknown[] }>; refused: string | null };
 
 /**
@@ -353,9 +381,14 @@ export const MARKER_UPDATE_EXEMPT: ReadonlyArray<{ file: string; why: string }> 
     file: "scripts/house-bot-migrations-old-build.mts",
     why: "c.4c's CONTROL plants one marker so the 'every old-build row left the markers NULL' count is known not to be blind. It is wrapped in BEGIN … ROLLBACK and asserted to be, by ops.pop.2.",
   },
-  // ⭐ THE SECOND ENTRY ARRIVES WITH THE REMARK SCRIPT (plan step 5, scripts/ops-house-bots-remark.mts):
-  // the single sanctioned NULL-filling exception. It is not listed yet because it does not exist yet,
-  // and an allowlist entry written before its file is an exemption for a file nobody has read.
+  {
+    file: "scripts/ops-house-bots-remark.mts",
+    why: "S3's single sanctioned exception: the NULL-filling repair of drift leg (a), which the data layer physically CANNOT do "
+      + "(both twins discard houseBotId from a txn.update patch, so a remark through the DAL would run, report success and change "
+      + "nothing). It is admitted on two conditions, both asserted rather than trusted: ops.remark.10 pins its ONE statement "
+      + "byte-for-byte — \"Transaction\" the only target, the value taken from the JOIN, p.houseBotId IS NOT NULL and t.houseBotId "
+      + "IS NULL — and everything appended to that pinned core is joined with AND, so a later edit can only NARROW it.",
+  },
 ];
 
 /** The only files under `scripts/` allowed to name `houseBotId` in an ORM update call, and why. */
@@ -415,6 +448,19 @@ const PLANTED = {
   /** ⭐ THE REAL FALSE POSITIVE THIS DETECTOR ALREADY PRODUCED: the OFF script's own screen sentence, which
    * says the word audit() in order to EXPLAIN why it writes none. MUST NOT be reported. */
   auditSentence: 'console.log("NO compliance audit row is written (D-OPS-2): audit() HMAC-chains under a lock.");',
+  /**
+   * ⛔ THE REMARK SCRIPT'S ONE STATEMENT, PINNED BYTE FOR BYTE. It lives HERE, inside the stripped region,
+   * for a reason worth stating: a pin is a copy of the very shape this file hunts, and left in live code it
+   * would make the gate report ITSELF as the second marker writer. The mutations below are derived from it
+   * by `.replace`, so a change to the pin cannot leave a mutation testing yesterday's statement.
+   */
+  remarkPinned: 'UPDATE "Transaction" t SET "houseBotId" = p."houseBotId" FROM "Position" p WHERE t."positionId" = p."id" AND p."houseBotId" IS NOT NULL AND t."houseBotId" IS NULL',
+  /** The corruption this whole step exists to prevent: the marker written onto the POSITION, from a parameter. */
+  remarkOntoPosition: 'UPDATE "Position" p SET "houseBotId" = $1::text WHERE p."id" = $2::text',
+  /** A table name built at run time — the shape no pin can hold, so the pin must refuse it outright. */
+  remarkInterpolated: "await c.query(`UPDATE ${table} SET \"houseBotId\" = p.\"houseBotId\"`);",
+  /** A row POSITIONED by an update: permanently unmarkable afterwards, and invisible to the marker pin. */
+  remarkSetsPositionId: 'UPDATE "Transaction" SET "positionId" = $1::text WHERE "id" = $2::text',
 };
 /* @ops-planted:end */
 
@@ -483,6 +529,29 @@ export function redCases(): RedCase[] {
   add("ops.d-ops-2 · CONTROL · a file that writes only its event row is NOT reported", auditWriteSites(PLANTED.noLock).length === 0, auditWriteSites(PLANTED.noLock));
   add("ops.d-ops-2 · ⭐ CONTROL, AND IT IS A FALSE POSITIVE THIS DETECTOR REALLY PRODUCED · a printed SENTENCE that names audit() to explain why none is written is NOT reported",
     auditWriteSites(PLANTED.auditSentence).length === 0, auditWriteSites(PLANTED.auditSentence));
+
+  {
+    // ⛔ THE THREE MUTATIONS OF THE ONE DANGEROUS STATEMENT. Each is DERIVED from the pin, so none can
+    // end up testing yesterday's statement, and each is a shape a real edit could produce.
+    const pin = PLANTED.remarkPinned;
+    const widened = pin.replace(` AND t."houseBotId" IS NULL`, "");
+    const parameterised = pin.replace(`SET "houseBotId" = p."houseBotId"`, `SET "houseBotId" = $1::text`);
+    const ontoPosition = PLANTED.remarkOntoPosition;
+    add("ops.remark.10 · CONTROL · the pinned statement matches itself and reads as an UPDATE of \"Transaction\"",
+      remarkPin(pin, pin).exact && remarkPin(pin, pin).updates.length === 1 && !remarkPin(pin, pin).positionTarget, j(remarkPin(pin, pin).updates));
+    add("ops.remark.10 · THE WIDENING MUTATION · `AND t.\"houseBotId\" IS NULL` deleted — it would RE-MARK rows that already carry a marker — no longer matches the pin",
+      remarkPin(widened, pin).exact === false && !/IS NULL/.test(widened.split("AND p.")[1] ?? ""), j({ exact: remarkPin(widened, pin).exact }));
+    add("ops.remark.10 · THE WRONG-OBJECT MUTATION · the value taken from a bound parameter instead of the JOIN — a marker copied from another position — no longer matches the pin",
+      remarkPin(parameterised, pin).exact === false && /\$1/.test(parameterised), j({ exact: remarkPin(parameterised, pin).exact }));
+    add("ops.remark.10 · THE CORRUPTION THIS STEP EXISTS TO PREVENT · the marker written onto the POSITION no longer matches the pin, and the marker checker reports a \"Position\" target",
+      remarkPin(ontoPosition, pin).exact === false && remarkPin(ontoPosition, pin).positionTarget === true, j(remarkPin(ontoPosition, pin).updates));
+    add("ops.remark.10 · CONTROL · a body that SETs \"positionId\" is reported — a row an update could POSITION becomes permanently unmarkable, invisible in the holder's feed and absent from the house book",
+      remarkPin(PLANTED.remarkSetsPositionId, pin).setsPositionId === true, "SET positionId reported");
+    add("ops.remark.10 · CONTROL · an INTERPOLATED table name is reported — the shape no byte-for-byte pin could ever hold",
+      remarkPin(PLANTED.remarkInterpolated, pin).interpolatedTable === true, "interpolated table reported");
+    add("ops.remark.10 · ⭐ CONTROL, AND IT IS A FALSE POSITIVE THIS DETECTOR REALLY PRODUCED · the pinned statement's own `WHERE t.\"positionId\" = p.\"id\"` is a JOIN KEY, not a write, and is NOT reported as a SET of positionId",
+      remarkPin(pin, pin).setsPositionId === false && /WHERE t\."positionId" = p\."id"/.test(pin), "the join key is not a write");
+  }
 
   {
     // ⭐ THE POSITIVE CONTROL THIS LANE LEARNED THE HARD WAY: prove the walker really OPENED files.
@@ -1077,6 +1146,151 @@ if (STORE === "postgres") {
       const unbounded = driftRun(["--since", "0"]);
       ok("ops.drift.refuse · an UNBOUNDED run is REFUSED (exit 2) with the reason — Transaction has no index on positionId and its only marker index is the wrong polarity — and it prints no drift total, so a refusal can never be read as a clean result",
         unbounded.code === 2 && /REFUSED/.test(unbounded.out) && !/drift total/.test(unbounded.out), `exit ${unbounded.code}`);
+    } finally {
+      await cx.end().catch(() => {});
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// §4 · ops:house-bots-remark (S3) — ⛔ THE ONLY OPS SCRIPT THAT WRITES TO A MONEY TABLE.
+//
+// Everything here exists to answer one question: can this script do harm? It must not be able to
+// write a non-NULL marker, touch a row whose marker is already set, widen to another table or
+// column, or write anything at all without --apply — and it must report exactly what it would do
+// before it does it. ⛔ DRIVEN AGAINST POSTGRES, not source-scanned: a statement that is correct in
+// the file and wrong against the schema is the failure a scan cannot see.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const REMARK_SCRIPT = "scripts/ops-house-bots-remark.mts";
+
+if (STORE === "memory") {
+  section("§4s · ops:house-bots-remark — the pinned statement, and the shapes it must refuse");
+  await guard("remark.src", () => {
+    const body = bodyOf(REMARK_SCRIPT);
+    const pin = remarkPin(body, PLANTED.remarkPinned);
+    ok("ops.remark.10 · ⛔ THE ONE STATEMENT, BYTE FOR BYTE: \"Transaction\" the only UPDATE target, the value taken from the JOINED Position, `p.\"houseBotId\" IS NOT NULL` so a marker is never overwritten with NULL, and `t.\"houseBotId\" IS NULL` so it can only ever NULL-FILL",
+      pin.exact && pin.updates.length === 1 && !pin.positionTarget && !pin.setsPositionId && !pin.interpolatedTable,
+      j({ exact: pin.exact, updates: pin.updates, positionTarget: pin.positionTarget, setsPositionId: pin.setsPositionId, interpolated: pin.interpolatedTable }));
+    ok("ops.remark.10b · …and nothing appended to it can WIDEN it: the only thing added to the pinned core is an AND-conjunction, and the file contains no disjunction at all — a widening would have to be written as an OR or by editing the pinned string, and both are reported",
+      /const tail = ` AND /.test(body) && !/\bOR\b/.test(body), `tail is a conjunction · OR present: ${/\bOR\b/.test(body)}`);
+    ok("ops.remark.10c · the file names \"Position\" only in a FROM and never as an UPDATE target, and contains no `SET \"positionId\"` anywhere",
+      !/UPDATE\s+"Position"/.test(body) && !/"Position"\s+\w*\s*SET\b/.test(body) && !pin.setsPositionId, "no Position write");
+    ok("ops.remark.5s · ⛔ THE RIGHT-OBJECT RULE IN SOURCE · no command-line value can reach the SET clause: `--bot` appears only in a WHERE conjunction, and the only assignment in the file is `p.\"houseBotId\"`",
+      /"houseBotId" = p\."houseBotId"/.test(body) && !/SET "houseBotId" = \$/.test(body) && /AND p\."houseBotId" = \$1::text/.test(body),
+      "the value is the join's; --bot filters only");
+    ok("ops.remark.g5s · the master-switch read is a READ: the file contains no write to \"enabled\" in either direction, and no way to turn house bets on",
+      switchOnSites(body).length === 0 && onFlagSites(body).length === 0 && !/"enabled"\s*=\s*(?:true|false)/.test(body),
+      j({ on: switchOnSites(body), flags: onFlagSites(body) }));
+
+    const red = redCases().filter((c) => c.label.startsWith("ops.remark.10"));
+    ok("ops.remark.10r · CONTROL · every mutation of that statement a real edit could make is caught by the pin — the NULL predicate deleted (re-marking), the value taken from a parameter (the wrong object), the target swapped to \"Position\" (the corruption), a SET of positionId, and an interpolated table name",
+      red.length >= 6 && red.every((c) => c.caught), j(red.map((c) => ({ l: c.label.slice(15, 60), caught: c.caught }))));
+
+    ok("ops.remark.8 · ⛔ the scripts/ marker gate now admits EXACTLY TWO files and names both — the old-build control that rolls back, and this NULL-filling repair — so a third marker writer, or a stale exemption, is reported on its own assertion",
+      MARKER_UPDATE_EXEMPT.length === 2 && MARKER_UPDATE_EXEMPT.some((e) => e.file === REMARK_SCRIPT)
+      && MARKER_UPDATE_EXEMPT.every((e) => e.why.length > 80), j(MARKER_UPDATE_EXEMPT.map((e) => e.file)));
+  });
+}
+
+if (STORE === "postgres") {
+  section("§4 · ops:house-bots-remark — DRIVEN: it cannot re-mark, cannot widen, and writes nothing without --apply");
+  await guard("remark", async () => {
+    const pgLib: Any = (await import("pg")).default;
+    const cx = new pgLib.Client({ connectionString: process.env.DATABASE_URL });
+    await cx.connect();
+    const rows = async (text: string, a: unknown[] = []): Promise<Any[]> => (await cx.query(text, a)).rows;
+    const one = async (text: string): Promise<Any> => (await rows(text))[0];
+    /** The whole ledger's marker and position columns — the only way to prove nothing ELSE moved. */
+    const ledger = async (): Promise<string> => JSON.stringify(await rows(`SELECT "id", "positionId", "houseBotId" FROM "Transaction" ORDER BY "id"`));
+    const nullOnMarked = async (): Promise<number> => Number((await one(
+      `SELECT count(*)::int AS "n" FROM "Transaction" t JOIN "Position" p ON t."positionId" = p."id" WHERE p."houseBotId" IS NOT NULL AND t."houseBotId" IS NULL`)).n);
+
+    try {
+      // ── the fixture: two marked positions held by DIFFERENT bots, each with a NULL-marker ledger row ──
+      const two = await rows(`SELECT DISTINCT ON ("houseBotId") "id", "userId", "houseBotId" FROM "Position" WHERE "houseBotId" IS NOT NULL ORDER BY "houseBotId", "placedAt" LIMIT 2`);
+      const txn = (id: string, positionId: string, userId: string, houseBotId: string | null): Any => ({
+        id, walletId: `wal_${userId}`, userId, type: "BET_REFUND", status: "CONFIRMED", amount: 777, fee: 0, taxWithheld: 0,
+        balanceAfter: null, currency: "TZS", provider: "INTERNAL", providerRef: null, msisdn: null, description: null,
+        positionId, amlReason: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        completedAt: null, idempotencyKey: null, houseBotId,
+      });
+      // ⛔ TWO BOTS, TWO ROWS. Without this pair "each row got A bot id" would pass on a fixture where
+      // there is only one bot id to get — which is how a marker copied from the wrong position stays silent.
+      await w.db.txn.create(txn("txn_remark_1", two[0].id, two[0].userId, null));
+      await w.db.txn.create(txn("txn_remark_2", two[1].id, two[1].userId, null));
+      // ⛔ PLANTED CONTROL · a marked position whose ledger row is ALREADY marked. It must not be touched:
+      // that is `t."houseBotId" IS NULL` doing the work, and it is what makes a second run a no-op.
+      await w.db.txn.create(txn("txn_remark_kept", two[0].id, two[0].userId, "hb_not_the_join_value"));
+
+      const before = await ledger();
+      const target = await nullOnMarked();
+      ok("ops.remark.0f · fixture · two marked positions held by DIFFERENT bots each carry a NULL-marker ledger row, a third row on one of them is ALREADY marked, and the whole ledger's marker and position columns are photographed",
+        two.length === 2 && two[0].houseBotId !== two[1].houseBotId && target >= 2, j({ bots: two.map((r: Any) => r.houseBotId), nullOnMarked: target }));
+
+      // ── 1 · the dry run writes nothing, and says exactly what it would do ──
+      const dry = runOps(REMARK_SCRIPT, ["--since", "30"]);
+      ok("ops.remark.1 · ⛔ THE DRY RUN WRITES 0 ROWS — every marker and every positionId in the ledger is byte-identical afterwards — and it REPORTS EXACTLY WHAT IT WOULD DO first: the count, each row's id, and the value it would copy from that row's own position",
+        dry.code === 0 && (await ledger()) === before && new RegExp(`${target} ledger row\\(s\\) would be NULL-filled`).test(dry.out)
+        && /txn_remark_1/.test(dry.out) && /NOTHING WRITTEN/.test(dry.out) && /→\s+hb_/.test(dry.out),
+        `exit ${dry.code} · ${dry.out.split("\n").filter((l) => /would be NULL-filled/.test(l)).join(" | ")}`);
+
+      // ── ops.remark.9 · refused while the switch is ON ──
+      await w.dal.houseBotControlStore.switchOn({ byId: OFFICER, reason: "ops §4 control" });
+      const whileOn = runOps(REMARK_SCRIPT, ["--apply", "--since", "30"]);
+      ok("ops.remark.9 · ⛔ --apply is REFUSED while the master switch is ON, with a sentence naming the switch, and writes 0 rows — this repairs a ledger the live seam is still writing to",
+        whileOn.code === 2 && /master switch is ON/.test(whileOn.out) && (await ledger()) === before,
+        `exit ${whileOn.code} · ${whileOn.out.split("\n").filter((l) => /REFUSED/.test(l)).join(" | ")}`);
+      await w.switchOff();
+
+      // ── the ceiling ──
+      const capped = runOps(REMARK_SCRIPT, ["--apply", "--since", "30", "--max", "1"]);
+      ok("ops.remark.max · a run whose population exceeds --max is REFUSED before any transaction opens, and writes 0 rows — the ceiling is a stated number, not a hope",
+        capped.code === 2 && /exceeds the --max ceiling/.test(capped.out) && (await ledger()) === before, `exit ${capped.code}`);
+
+      // ── 2 · --apply ──
+      const applied = runOps(REMARK_SCRIPT, ["--apply", "--since", "30"]);
+      const after = await rows(`SELECT t."id", t."houseBotId", t."positionId", p."houseBotId" AS "positionMarker" FROM "Transaction" t LEFT JOIN "Position" p ON p."id" = t."positionId" WHERE t."id" IN ('txn_remark_1','txn_remark_2','txn_remark_kept','txn_ctl_a') ORDER BY t."id"`);
+      const byId = new Map<string, Any>(after.map((r: Any) => [r.id, r]));
+      ok("ops.remark.2 · --apply fills EXACTLY the planted NULL markers of marked positions, and the RETURNING count equals the count taken inside the same transaction — the script says both numbers",
+        applied.code === 0 && new RegExp(`${target} ledger row\\(s\\) NULL-filled`).test(applied.out)
+        && byId.get("txn_remark_1").houseBotId === two[0].houseBotId && byId.get("txn_remark_2").houseBotId === two[1].houseBotId,
+        `exit ${applied.code} · ${applied.out.split("\n").filter((l) => /NULL-filled/.test(l)).join(" | ")}`);
+
+      ok("ops.remark.5 · ⛔ THE RIGHT-OBJECT RULE, DRIVEN · with two marked positions held by DIFFERENT bots, each ledger row received ITS OWN position's bot id and never the other's — the value came from the JOIN, which no flag can reach",
+        byId.get("txn_remark_1").houseBotId === byId.get("txn_remark_1").positionMarker
+        && byId.get("txn_remark_2").houseBotId === byId.get("txn_remark_2").positionMarker
+        && byId.get("txn_remark_1").houseBotId !== byId.get("txn_remark_2").houseBotId,
+        j(after.map((r: Any) => ({ id: r.id, wrote: r.houseBotId, position: r.positionMarker }))));
+
+      ok("ops.remark.3c · ⛔ CONTROL · the row whose marker was ALREADY set was NOT touched — it still carries the value it had, not the join's — which is `t.\"houseBotId\" IS NULL` doing the work rather than being written down",
+        byId.get("txn_remark_kept").houseBotId === "hb_not_the_join_value"
+        && byId.get("txn_remark_kept").positionMarker !== "hb_not_the_join_value", j(byId.get("txn_remark_kept")));
+
+      ok("ops.remark.4 · CONTROL · a ledger row of an UNMARKED position still carries NULL — `p.\"houseBotId\" IS NOT NULL` means an unmarked position can never write NULL over anything, and never drags its own rows in",
+        byId.get("txn_ctl_a").houseBotId === null && byId.get("txn_ctl_a").positionMarker === null, j(byId.get("txn_ctl_a")));
+
+      const idsBefore = JSON.parse(before) as Array<{ id: string; positionId: string | null }>;
+      const idsAfter = (await rows(`SELECT "id", "positionId" FROM "Transaction" ORDER BY "id"`)) as Array<{ id: string; positionId: string | null }>;
+      ok("ops.remark.6 · ⛔ NOT ONE positionId CHANGED — the whole column is compared row by row before and after, because a row an update could POSITION becomes permanently unmarkable and would vanish from the house book's returned money",
+        JSON.stringify(idsBefore.map((r) => [r.id, r.positionId])) === JSON.stringify(idsAfter.map((r) => [r.id, r.positionId])),
+        `${idsAfter.length} ledger rows compared`);
+
+      // ── 3 · a second run ──
+      const ledgerAfterApply = await ledger();
+      const again = runOps(REMARK_SCRIPT, ["--apply", "--since", "30"]);
+      ok("ops.remark.3 · a second --apply changes 0 rows and exits 0 — the NULL predicate is what makes this script re-runnable, and it says 'nothing to do' rather than pretending to work",
+        again.code === 0 && /Nothing to do/.test(again.out) && (await ledger()) === ledgerAfterApply, `exit ${again.code}`);
+
+      // ── 4 · and the two scripts are asserted TOGETHER, which is 04's own test ──
+      const drift = runOps(STATUS_SCRIPT, ["--drift", "--since", "30"]);
+      ok("ops.remark.7 · ⛔ drift leg (a) reports 0 IMMEDIATELY AFTERWARDS — the repair and the reader are asserted together, which is 04's own test, so neither can be right only about itself",
+        Number(figure(drift.out, /\(a\) unmarked ledger rows on MARKED positions … (\d+)/)) === 0 && (await nullOnMarked()) === 0,
+        `leg (a) = ${figure(drift.out, /\(a\) unmarked ledger rows on MARKED positions … (\d+)/)} · independent count ${await nullOnMarked()}`);
+
+      ok("ops.remark.env · an empty DATABASE_URL exits 2, and an unbounded --since 0 exits 2 with the index reason — a repair that cannot name its population does not run",
+        runOps(REMARK_SCRIPT, ["--apply"], { DATABASE_URL: "" }).code === 2
+        && runOps(REMARK_SCRIPT, ["--apply", "--since", "0"]).code === 2, "both refusals exit 2");
     } finally {
       await cx.end().catch(() => {});
     }
