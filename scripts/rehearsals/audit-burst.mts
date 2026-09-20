@@ -181,6 +181,7 @@ await admin.end();
 console.log(`\nscratch database: ${DB} (created by this run, dropped at the end)`);
 
 let cli: pg.Client | null = null;
+let prismaRef: Any = null;
 try {
   // ── migrate ────────────────────────────────────────────────────────────────────────────────────────────
   const mig = await new Promise<number>((done) => {
@@ -204,21 +205,27 @@ try {
   const { loadWorld, OFFICER }: Any = await import("../lib/house-bot-world.mts");
   const w: Any = await loadWorld();
   const { verifyChainFull, audit, auditFlush }: Any = await import("../../src/lib/server/audit.ts");
+  prismaRef = w.prisma();
 
   cli = new pg.Client({ connectionString: `${BASE}/${DB}` });
   await cli.connect();
 
   /** Read the whole chain, with `createdAt` rendered as the exact UTC ISO string the hash was taken over.
    *  ⚠️ `TIMESTAMP(3)` has no time zone, and node-postgres would parse it as LOCAL time — which would shift every
-   *  recomputed hash by the machine's UTC offset and report a healthy chain as forged. */
+   *  recomputed hash by the machine's UTC offset and report a healthy chain as forged.
+   *  🔴 AND THE ALIAS IS NOT `seq`. It was, on the first run of this rehearsal, and that is a trap worth leaving a
+   *  sign on: in PostgreSQL an `ORDER BY <name>` resolves against the OUTPUT COLUMN first, so `seq::text AS seq`
+   *  made `ORDER BY seq` sort LEXICOGRAPHICALLY — 1, 10, 11, 2, 20, 9. The baseline's "last" row was then seq 9 of
+   *  10, a seeding row leaked into the burst window, and the "tail" the controls deleted was not the tail. Eleven
+   *  assertions went red and every one of them was right to. */
   const readChain = async (): Promise<ChainRow[]> => {
     const { rows } = await cli!.query(
-      `SELECT seq::text AS seq, id, category::text AS category, action, "actorId", "targetType", "targetId",
+      `SELECT seq::text AS seq_text, id, category::text AS category, action, "actorId", "targetType", "targetId",
               payload, ip, "userAgent",
               to_char("createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
               "prevHash", "entryHash"
          FROM "AuditLog" ORDER BY seq ASC`);
-    return rows as ChainRow[];
+    return (rows as Any[]).map((r) => ({ ...r, seq: r.seq_text })) as ChainRow[];
   };
 
   // ── SEED (before the baseline, so the burst window holds bet rows and nothing else) ──────────────────────
@@ -244,8 +251,12 @@ try {
     `${bots.length} bots · ${markets.length} polls · ${((Date.now() - t0seed) / 1000).toFixed(1)} s`);
 
   const baseline = await readChain();
-  const baseSeq = baseline.length ? BigInt(baseline[baseline.length - 1].seq as string) : BigInt(0);
+  const baseSeq = baseline.reduce((m, r) => (BigInt(r.seq as string) > m ? BigInt(r.seq as string) : m), BigInt(0));
   console.log(`     baseline: ${baseline.length} audit rows, max seq ${baseSeq}`);
+  // ⛔ The burst window must hold bets and NOTHING ELSE, or every count in §2 is a count of the wrong population.
+  ok("0.window · the seeding is entirely on the far side of the baseline — no bet row in it, and its seq is contiguous",
+    baseline.every((r) => r.action !== "market.position.opened") && BigInt(baseline.length) === baseSeq,
+    `${baseline.length} rows, max seq ${baseSeq}, actions ${JSON.stringify([...new Set(baseline.map((r) => r.action))])}`);
 
   // ═══ §1 · THE BURST ═══════════════════════════════════════════════════════════════════════════════════════
   //
@@ -294,8 +305,12 @@ try {
   const errors = reports.filter((r) => r.error).map((r) => r.error);
   const retries = reports.reduce((n, r) => n + Object.entries(r.refusals ?? {}).reduce((m, [, v]) => m + Number(v), 0), 0);
 
-  console.log(`     population: ${placedAll.length} bets placed by ${reports.length} processes in ${(burstMs / 1000).toFixed(1)} s ` +
-    `(${(placedAll.length / (burstMs / 1000)).toFixed(1)} bets/s) · rolling-window retries ${retries}`);
+  // The rate that matters is over the window in which the workers were actually placing — not over `burstMs`,
+  // which includes five `loadWorld()` start-ups and the barrier wait before T0.
+  const spans = reports.filter((r) => r.startedAtMs && r.finishedAtMs).map((r) => [Number(r.startedAtMs), Number(r.finishedAtMs)] as const);
+  const spanMs = spans.length ? Math.max(...spans.map((s) => s[1])) - Math.min(...spans.map((s) => s[0])) : 0;
+  console.log(`     population: ${placedAll.length} bets placed by ${reports.length} processes · wall ${(burstMs / 1000).toFixed(1)} s ` +
+    `· placing window ${(spanMs / 1000).toFixed(1)} s (${(placedAll.length / Math.max(spanMs / 1000, 0.001)).toFixed(1)} bets/s) · rolling-window retries ${retries}`);
   for (const r of reports) {
     console.log(`       worker ${r.index} pid ${r.worker}: placed ${(r.placed ?? []).length}/${r.asked} · refusals ${JSON.stringify(r.refusals ?? {})} · age calls ${r.ageCalls}`);
   }
@@ -314,6 +329,14 @@ try {
       shortfall(doctored) === 1, `shortfall ${shortfall(doctored)} (expected 1)`);
   }
 
+  // ⛔ EVERY WORKER MUST HAVE DRAINED ITS AUDIT QUEUE BEFORE EXITING. The bet's audit row is written with an
+  // un-awaited `audit({…})` (market-service.ts:1699), so a worker that exits on the last bet's return takes that
+  // append with it — measured on this rehearsal's first run: 10 bets, 8 rows, one lost per process. If a worker
+  // ever reports without this flag, §2 and §3 below are counting a teardown artefact and must not be read as a
+  // statement about the product.
+  ok("1.3 · every worker drained its audit queue before exiting (the bet's audit row is not awaited by the seam)",
+    reports.every((r) => r.flushed === true), `${reports.filter((r: Any) => r.flushed).length}/${reports.length} flushed`);
+
   const burstAll = await readChain();
   const burst = burstAll.filter((r) => BigInt(r.seq as string) > baseSeq);
 
@@ -328,7 +351,6 @@ try {
   const interleaved = adjacency(burst);
   const distinctBots = new Set(burst.map(botOf)).size;
   // Maximum number of worker processes whose [start, finish] windows overlapped at one instant.
-  const spans = reports.filter((r) => r.startedAtMs && r.finishedAtMs).map((r) => [Number(r.startedAtMs), Number(r.finishedAtMs)] as const);
   const edges = spans.flatMap(([a, b]) => [a, b]);
   const maxConcurrent = edges.reduce((best, t) => Math.max(best, spans.filter(([a, b]) => a <= t && t <= b).length), 0);
   const FLOOR = Math.floor((BETS - 1) * 0.25);
@@ -447,7 +469,12 @@ try {
   //    nothing pointed at it, so there is no dangling link and still exactly one tail. This is the one loss the
   //    chain cannot see — and the reason §3 exists at all.
   {
-    const tail = burstAll[burstAll.length - 1];
+    // ⛔ THE VICTIM IS THE WALK'S TAIL, NOT THE LAST ROW BY seq. They are the same for every append THIS code makes
+    // (seq is assigned inside the same advisory lock that picks the predecessor), and 6.0 asserts that they are —
+    // but the control is about the LINK structure, so it takes its victim from the links.
+    const tail = walk0.tail!;
+    ok("6.0 · the chain's tail by LINK is also the last row by seq — the two orders agree on this chain",
+      tail.id === burstAll[burstAll.length - 1].id, `${tail.id} vs ${burstAll[burstAll.length - 1].id}`);
     const snap = await snapshot(tail.id);
     await cli.query(`DELETE FROM "AuditLog" WHERE id = $1`, [tail.id]);
     const after = await readChain();
@@ -470,7 +497,7 @@ try {
   // ── C-REMOVE · a row taken out of the MIDDLE. This one the chain does see: the row that followed it now points
   //    at an entryHash that no longer exists.
   {
-    const mid = burstAll[Math.floor(burstAll.length / 2)];
+    const mid = walk0.order[Math.floor(walk0.order.length / 2)];
     const snap = await snapshot(mid.id);
     await cli.query(`DELETE FROM "AuditLog" WHERE id = $1`, [mid.id]);
     const after = await readChain();
@@ -516,7 +543,7 @@ try {
 
   // ── C-FORK · a REFUSAL, so it gets a positive control of its own. Two rows may never share a predecessor.
   {
-    const victim = burstAll[burstAll.length - 2];
+    const victim = walk0.order[walk0.order.length - 2];
     let refused = "";
     try {
       await cli.query(
@@ -553,6 +580,9 @@ try {
   }
 } finally {
   if (cli) await cli.end().catch(() => {});
+  // Close Prisma's pool BEFORE the drop: `DROP DATABASE … WITH (FORCE)` terminates its backends, and the client
+  // prints a page of FATAL 57P01 lines that read like a failure and are not one.
+  if (prismaRef) await prismaRef.$disconnect().catch(() => {});
   const drop = new pg.Client({ connectionString: RAW });
   await drop.connect();
   await drop.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`).catch(() => {});

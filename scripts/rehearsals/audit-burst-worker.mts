@@ -72,6 +72,18 @@ try {
     if (!done) throw new Error(`worker ${job.index}: gave up on ${marketId} after 80 attempts`);
   }
   result.finishedAtMs = Date.now();
+
+  // 🔴 WITHOUT THIS THE WORKER KILLS ITS OWN LAST AUDIT ROW, AND THE FIRST RUN OF THIS REHEARSAL PROVED IT:
+  // 10 bets placed, 8 `market.position.opened` rows — exactly one missing per worker. `market-service.ts:1699`
+  // writes the bet's audit row with a BARE `audit({…})`, deliberately not awaited (a live update must not add
+  // latency to the bet's response), so the append is still queued when `placeHouseBet` returns. A process that
+  // exits at that moment takes the queued write with it.
+  // ⚠️ THIS IS A FIXTURE OF TEARDOWN, NOT A RELIEF OF ANY ASSERTION. `auditFlush()` waits for THIS process's own
+  // queue; it cannot create a row the database refused, so §3's bet-to-row comparison keeps all of its force —
+  // it is what caught this in the first place.
+  const { auditFlush }: Any = await import("../../src/lib/server/audit.ts");
+  await auditFlush();
+  result.flushed = true;
 } catch (e) {
   result.error = String((e as Error)?.stack ?? e).split("\n").slice(0, 4).join(" | ");
 }
