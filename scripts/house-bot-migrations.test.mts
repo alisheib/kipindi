@@ -898,8 +898,29 @@ await step("§d", async () => {
     ok("d.7 · the EAT run's session time zone really was Africa/Dar_es_Salaam", tzOf(tzRun) === "Africa/Dar_es_Salaam", tzOf(tzRun));
     const claimKeys = keys.filter((k) => k.startsWith("c13."));
     const moved = claimKeys.filter((k) => tzO[k] !== pgO.map[k]);
-    ok("d.8 · under an EAT session time zone the claim takes exactly the same rows", claimKeys.length === 3 && moved.length === 0,
-      moved.map((k) => `${k}: ${tzO[k]} vs ${pgO.map[k]}`).join(" | "));
+    /**
+     * ⚠️ THE COUNT IS PART OF THE CLAIM, AND IT HAD ROTTED — re-derived 2026-09-20 (C5-8, alerts lane).
+     *
+     * `moved.length === 0` alone is VACUOUS when nothing is compared, which is the only reason a population
+     * count sits in this assertion at all. It was pinned at **3** when §c13 held `a`, `b` and `c`. The reclaim
+     * cases `c13.d`–`c13.g` were added to `house-bot-dal-cases.mts` afterwards WITHOUT moving this pin, so the
+     * suite has been **660 passed / 1 failed** on this branch ever since — a red clean `origin/main` does not
+     * have (measured: `origin/main` carries 3 keys against a pin of 3 and is green).
+     *
+     * ⛔ Nobody saw it because the detail string described the OTHER half: with `moved` empty the red printed
+     * its label and nothing else, so the one line a reader gets said nothing about why. The count is now in the
+     * detail unconditionally.
+     *
+     * ⭐ The substantive claim is UNHARMED and is measured over all seven: under `Africa/Dar_es_Salaam` every
+     * one of the seven claim outcomes is byte-identical to the UTC run's (`moved.length === 0`), which is 04
+     * A4's rule that a `timestamptz` comparison must not depend on the session zone.
+     *
+     * ⛔ STILL AN EQUALITY, deliberately. `>=` would let a dropped case hide, which is the failure this pin
+     * exists to prevent; raising 3 → 7 makes it stricter, never looser. A future §c13 case moves this number
+     * in the SAME commit that adds it.
+     */
+    ok("d.8 · under an EAT session time zone the claim takes exactly the same rows", claimKeys.length === 7 && moved.length === 0,
+      `${claimKeys.length} claim cases (expected 7)${moved.length ? ` · ${moved.map((k) => `${k}: ${tzO[k]} vs ${pgO.map[k]}`).join(" | ")}` : " · none moved"}`);
   }
 
   // The User CHECK on Postgres, outside the parity comparison: the memory user store does not run it.
