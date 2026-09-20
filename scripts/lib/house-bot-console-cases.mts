@@ -1427,6 +1427,92 @@ section("§2 · the strip, the band, the roster and every failure");
       NEUTRAL.test(DESIG.VERIFY_COPY.removed) && NEUTRAL.test(DESIG.REVERIFY_COPY.running),
       j({ removed: DESIG.VERIFY_COPY.removed, running: DESIG.REVERIFY_COPY.running }));
 
+    /* ══ CA-19 · A DOUBLE TAP OF **ONE PRESS** COSTS THE HOLDER ONE ATTEMPT, NOT TWO (2026-09-20) ═════════════
+     * 🔴 WHAT IT COST. Re-verify spends the HOLDER'S sign-in attempts and the last two of three are kept for
+     * them, so an officer effectively has one. `verifyHouseBotPassword` has always been able to refuse the copy
+     * of a press — it claims `submit:<officer>:<id>` durably BEFORE the password is checked — the designate
+     * wizard has carried a nonce since C7 step 6, the cancel control makes `submitId` REQUIRED, and
+     * `CONSOLE_ACT_REFUSAL.DUPLICATE_SUBMIT` was already written for THIS row. Nothing sent this row an id.
+     * The only guard was `if (pending) return` in the dialog, and `useTransition` does not set `pending` until
+     * it has RE-RENDERED — so two taps inside one frame both walked past it and a mistyped password burned TWO
+     * of the holder's three attempts.
+     * ⛔ THE MEASUREMENT IS THE HOLDER'S COUNTER, NOT THE SENTENCE. A case that only read the refusal back would
+     * pass on a build that refused the copy AFTER charging for it. The sentence is read out of the shipped
+     * table rather than typed here, so the two cannot drift. */
+    {
+      const { hashPassword, randomId }: Any = await import("../../src/lib/server/crypto.ts");
+      const DUP = /\n {2}DUPLICATE_SUBMIT: "([^"]+)",/.exec(decomment(read(GATE)))?.[1] ?? "";
+      const attemptsOf = async (uid: string): Promise<number> => Number(((await w.db.user.findById(uid)) as Any)?.failedLoginCount ?? -1);
+      /** A desk account whose holder has a REAL salted password — without one, eligibility answers NO_PASSWORD and
+       *  `verifyHouseBotPassword` is never reached, so the counter this case measures could never move. */
+      const reverifiable = async (): Promise<{ botId: string; userId: string }> => {
+        const b = await w.bot();
+        const salt = randomId(16);
+        await w.setUserFields(b.userId, {
+          passwordHash: await hashPassword("ca19-holder-password", salt), passwordSalt: salt,
+          passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE",
+        });
+        await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+        return b;
+      };
+      const WRONG = "not-their-password";
+
+      const one = await reverifiable();
+      const beforeOne = await attemptsOf(one.userId);
+      const press = `ca19-${STORE}-one-press`;
+      const [tapA, tapB] = await Promise.all([
+        callAct(OFFICER, { id: one.botId, act: "REVERIFY", password: WRONG, submitId: press }),
+        callAct(OFFICER, { id: one.botId, act: "REVERIFY", password: WRONG, submitId: press }),
+      ]);
+      const afterOne = await attemptsOf(one.userId);
+      const dupes = [tapA, tapB].filter((r: Any) => r.error === DUP);
+      ok("1.CA19 · ⛔ a DOUBLE-TAPPED Confirm is ONE attempt against the holder's three — the copy is refused as already sent, and the holder's counter moves by 1",
+        DUP.length > 8 && afterOne - beforeOne === 1 && dupes.length === 1
+          && tapA.ok === false && tapB.ok === false,
+        j({ dup: DUP, before: beforeOne, after: afterOne, a: tapA.error, b: tapB.error }));
+
+      /* ⭐ POSITIVE CONTROL · THE REFUSAL MUST NOT HAVE EATEN THE FEATURE. Two DISTINCT presses are two real
+       * attempts and both must still reach the password check — a build that refused every second call, or one
+       * whose nonce outlived its own refusal, would pass the case above and BRICK the control. That exact
+       * defect shipped on the designate wizard (C7 step 6) and is what 1.412 exists for. */
+      const two = await reverifiable();
+      const beforeTwo = await attemptsOf(two.userId);
+      const [pressA, pressB] = await Promise.all([
+        callAct(OFFICER, { id: two.botId, act: "REVERIFY", password: WRONG, submitId: `ca19-${STORE}-press-a` }),
+        callAct(OFFICER, { id: two.botId, act: "REVERIFY", password: WRONG, submitId: `ca19-${STORE}-press-b` }),
+      ]);
+      const afterTwo = await attemptsOf(two.userId);
+      ok("1.CA19 · ⭐ POSITIVE CONTROL · two DISTINCT presses are still two attempts, and NEITHER is refused as a duplicate",
+        afterTwo - beforeTwo === 2 && ![pressA, pressB].some((r: Any) => r.error === DUP),
+        j({ before: beforeTwo, after: afterTwo, a: pressA.error, b: pressB.error }));
+
+      /* ⭐ POSITIVE CONTROL · AND THE FIELD IS OPTIONAL, which is what makes adding it safe. A caller that sends
+       * no id is refused nothing: it keeps exactly the behaviour this row had before. ⛔ The empty string must
+       * be read as ABSENT, not claimed — one caller sharing the empty key with the next would turn every second
+       * re-verify on the platform into a permanent DUPLICATE_SUBMIT. */
+      const none = await reverifiable();
+      const beforeNone = await attemptsOf(none.userId);
+      const bare1 = await callAct(OFFICER, { id: none.botId, act: "REVERIFY", password: WRONG });
+      const bare2 = await callAct(OFFICER, { id: none.botId, act: "REVERIFY", password: WRONG, submitId: "" });
+      const afterNone = await attemptsOf(none.userId);
+      ok("1.CA19 · ⭐ POSITIVE CONTROL · a caller that sends NO id — or an empty one — is refused nothing: both reach the password check, as this row behaved before",
+        afterNone - beforeNone === 2 && ![bare1, bare2].some((r: Any) => r.error === DUP),
+        j({ before: beforeNone, after: afterNone, a: bare1.error, b: bare2.error }));
+
+      /* ⛔ AND THE DIALOG MINTS AND SPENDS THE NONCE, which is the half no server case can see: a server that
+       * honours `submitId` while the browser sends the same one forever is a control that answers
+       * "already sent" to every press after the first. The twin of 1.412's source clause, on the act row. */
+      ok("1.CA19 · …and the DIALOG mints a fresh nonce per press and spends it on either answer — never one derived from what was typed",
+        (() => {
+          const c = decomment(read(`${SECTION}/[id]/account-actions.tsx`));
+          return /const newAttemptNonce = \(\): string =>/.test(c)
+            && /if \(attempt\.current === ""\) attempt\.current = newAttemptNonce\(\);/.test(c)
+            && /attempt\.current = "";/.test(c)
+            && /submitId\b/.test(c)
+            && !/submitId: `\$\{/.test(c);
+        })(), "");
+    }
+
     /* ── START: it is OFFERED on a stopped account even though its service may refuse it, and the refusal IS the
        workflow. ⛔ C10 · an account starts while the desk is OFF, and the officer is told so. ── */
     const freshStart = await w.bot({ caps: { freqMinGapSec: 20 } });

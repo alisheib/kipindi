@@ -2714,4 +2714,59 @@ import { formatEat } from "@/lib/utils";`,
     expect: "0.214.3 ·",
     suite: "reports-mem",
   },
+  /* ── CA-19 · the double-tapped Confirm (2026-09-20) ──────────────────────────────────────────────────────────
+   * ⛔ THE FIRST ONE IS THE TREE AS IT STOOD. `houseAccountActForConsole` dropped `submitId` on the floor, so a
+   * double tap reached `verifyHouseBotPassword` twice and cost the holder TWO of their three attempts. Putting
+   * that back is the honest control for this fix: the mutation IS the defect, not an invention. */
+  {
+    name: "CA19-console-drops-submitid · the act row stops forwarding the press id, so a double-tapped Confirm burns two of the holder's three attempts",
+    file: GATE,
+    from: `      const submitId = typeof input.submitId === "string" && input.submitId.length > 0 ? input.submitId : null;\n      done = await reverifyHouseBot({ officerId: viewerUserId, botId: id, password, submitId });`,
+    to: `      done = await reverifyHouseBot({ officerId: viewerUserId, botId: id, password });`,
+    expect: "1.CA19 · ⛔ a DOUBLE-TAPPED Confirm is ONE attempt against the holder's three",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ THE OVER-CORRECTION, which is the half a "did the guard fire?" check never covers: a fix that refuses
+     * the SECOND re-verify anyone ever makes passes the case above and BRICKS the control — the designate
+     * wizard's own C7 step 6 defect, one layer over.
+     * ⛔ MY FIRST DRAFT OF THIS MUTATION WAS A NO-OP AND THE CONTROL SLEPT THROUGH IT (710 PASS, 0 FAIL). It
+     * made the console claim the EMPTY string — but `verifyHouseBotPassword` guards with `if (input.submitId)`,
+     * a TRUTHINESS check, so an empty id was already absent and nothing changed. The console's `.length > 0` is
+     * belt-and-braces over a service guard that already holds. Re-aimed at a shape that really does claim on
+     * every press: one CONSTANT key, which is what "adding idempotency" looks like when it is done wrong. */
+    name: "CA19-constant-id · the act row sends ONE fixed press id for every call, so the second re-verify ever made is refused as a duplicate",
+    file: GATE,
+    from: `      const submitId = typeof input.submitId === "string" && input.submitId.length > 0 ? input.submitId : null;`,
+    to: `      const submitId = "reverify";`,
+    expect: "1.CA19 · ⭐ POSITIVE CONTROL · a caller that sends NO id — or an empty one — is refused nothing",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ THE SAME PROPERTY FROM THE SERVICE SIDE. `verifyHouseBotPassword` skips the claim when no id was sent;
+     * a guard that tested for `undefined` instead of truthiness would claim `submit:<officer>:null` on every
+     * caller that sends none — every act row, wizard and script on the platform sharing one key.
+     * ⚠️ ITS COLLATERAL IS NAMED, BECAUSE IT IS REAL AND NOT NOISE (driven 2026-09-20: 704 PASS, 4 FAIL). This
+     * mutation breaks the claim for EVERY caller, so besides its own label it also takes `1.359` (the wizard's
+     * own designation is refused as already sent) and, through that dead fixture, 3.453's two scans. The
+     * harness counts it CAUGHT because its named label is among the fails — but a reader comparing this entry's
+     * drive against a one-line expectation should know the other three are the mutation being honest about its
+     * blast radius, not the anchor having rotted. */
+    name: "CA19-absent-id-claimed · the service claims a key for callers that sent NO id, so they all share one and refuse each other",
+    file: DESIG,
+    from: `  if (input.submitId) {`,
+    to: `  if (input.submitId !== undefined) {`,
+    expect: "1.CA19 · ⭐ POSITIVE CONTROL · a caller that sends NO id — or an empty one — is refused nothing",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ AND THE CLIENT HALF: a nonce that is never spent turns the fix into the designate wizard's C7 step 6
+     * defect — every press after the first answering "already sent". No SERVER case can see this. */
+    name: "CA19-nonce-never-spent · the dialog keeps one nonce for the life of the page, so every press after the first is refused as a duplicate",
+    file: "src/app/admin/desk/[id]/account-actions.tsx",
+    from: `      attempt.current = "";\n      if (!result.ok) {`,
+    to: `      if (!result.ok) {`,
+    expect: "1.CA19 · …and the DIALOG mints a fresh nonce per press and spends it on either answer",
+    suite: "console-mem",
+  },
 ];
