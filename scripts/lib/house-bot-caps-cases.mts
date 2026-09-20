@@ -2,6 +2,29 @@
  * The case list behind `test:house-bot-caps`. Run by that suite in two child processes — one on Postgres,
  * one on the memory store — never on its own. Lock-timeout cases need real Postgres locks and run there
  * only; everything else runs on both.
+ *
+ * 🔴 THIS SUITE'S POSTGRES CHILD IS NOT SAFE ACROSS THE **EAT MIDNIGHT BOUNDARY** — MEASURED, TWICE, ONE
+ * RUN APART (C5-8, alerts lane, 2026-09-20/21).
+ *
+ * A run that STRADDLED 00:00 `Africa/Dar_es_Salaam` (UTC 21:00) printed the Postgres child at **92 passed /
+ * 4 failed**, under its own floor of 96, with exactly these four red and the memory child untouched at 89/0:
+ *   · `1.6 · today's stake + this > capDailyStakeTzs → DAILY_STAKE`      — actual `ok`
+ *   · `1.7 · projected loss + this > capDailyLossTzs → DAILY_LOSS_PROJECTED` — actual `ok`
+ *   · `3.3 · one TZS over → GLOBAL_DAILY_STAKE`                          — actual `ok`
+ *   · `3.4 · projected loss of every bot + this > gCapDailyLossTzs → GLOBAL_LOSS_PROJECTED` — actual `ok`
+ * The identical command two minutes later, clear of the boundary, printed **96 / 0 · ALL PASS**.
+ *
+ * ⭐ ALL FOUR ARE "TODAY" ROLLUPS AND NOTHING ELSE IS. They are the only cases that plant rows and then ask
+ * `houseDayBook` what TODAY holds, and `eatDayKey` (imported below) moves underneath them at EAT midnight: the
+ * rows land on one day key and the rollup reads the next, so the cap sees an empty day and correctly answers
+ * `ok`. ⛔ **The product is not wrong in that window — the FIXTURE is**, and a cap that would have refused
+ * reports as one that did not, which is the most expensive direction for this particular suite to be wrong in.
+ *
+ * ⛔ SO: a red here at UTC 20:5x–21:0x is a CLOCK, not a finding. Re-run clear of the boundary BEFORE
+ * recording it against anything — and a genuinely failing cap will still be red at 09:00.
+ * ⚠️ Not "fixed" by pinning the clock in these four cases: they are the only cases that exercise the real
+ * `eatDayKey` path end to end, and a fixture clock would retire that coverage to remove a once-a-day window.
+ * If it is ever fixed, it is fixed by making the fixture plant and read inside ONE day key, not by freezing it.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { loadWorld, OFFICER } from "./house-bot-world.mts";
