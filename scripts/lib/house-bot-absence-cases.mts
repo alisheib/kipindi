@@ -200,10 +200,18 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
   // ══ §8 · the struck Board draft, and the dormant recorder ══════════════════════════════════════════════
   section("§8 · the Gaming Board draft is STRUCK (owner ruling 2026-09-20), and the dormant recorder stays dormant");
   {
-    const DRAFT = "BOARD-DISCLOSURE-HOUSE-BOTS";
+    /**
+     * 🔴 THE NAME IS ASSEMBLED, NOT TYPED, AND THAT IS NOT A STYLE CHOICE. 8.2's claim is over every TRACKED file, and
+     * a guard that spells its own subject is a tenth citation of it — the first green run of this section reported four
+     * hits inside THIS module and would have forced either a folder exclusion (the defect this lane repaired: a house
+     * word sat live on an admin page because the lexicon guard scanned one folder and the string lived in another) or a
+     * marker comment in source, which is prose standing in for enforcement. Assembling it keeps the population whole:
+     * no file is excluded, and the count below is every real citation there is.
+     */
+    const DRAFT = ["BOARD", "DISCLOSURE", "HOUSE", "BOTS"].join("-");
     /** The marker every surviving citation must carry, so no future session rebuilds the file from a stale plan. */
     const MARKER = "STRUCK 2026-09-20";
-    ok("8.1 · ⛔ `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` does not exist and is not tracked — the owner ruled on 2026-09-20 that the Gaming Board needs nothing, and under D20 the statutory figures the Board receives are identical whichever account placed the stake",
+    ok(`8.1 · ⛔ \`docs/${DRAFT}.md\` does not exist and is not tracked — the owner ruled on 2026-09-20 that the Gaming Board needs nothing, and under D20 the statutory figures the Board receives are identical whichever account placed the stake`,
       !existsSync(join(ROOT, "docs", `${DRAFT}.md`)) && !tracked.some((p) => p.includes(DRAFT) && p.endsWith(".md") && p.split("/").pop() === `${DRAFT}.md`),
       j({ onDisk: existsSync(join(ROOT, "docs", `${DRAFT}.md`)), tracked: tracked.filter((p) => p.includes(DRAFT)) }));
     const citations: Array<{ file: string; line: number; text: string }> = [];
@@ -237,8 +245,8 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
      * mutation ("I removed the marker, and look, the marker is gone") proves the mutation, not the guard.
      */
     const stripOne = citations.map((c, i) => (i === 0 ? { ...c, text: c.text.split(MARKER).join("") } : c));
-    const plantedNew = citations.concat({ file: "plans/house-bots/NEXT-SESSION.md", line: 1, text: "Write `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` from §3.4 before the push." });
-    const plantedMarked = citations.concat({ file: "plans/house-bots/NEXT-SESSION.md", line: 1, text: `~~Write \`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md\`~~ ⛔ ${MARKER} (D21).` });
+    const plantedNew = citations.concat({ file: "plans/house-bots/NEXT-SESSION.md", line: 1, text: `Write \`docs/${DRAFT}.md\` from §3.4 before the push.` });
+    const plantedMarked = citations.concat({ file: "plans/house-bots/NEXT-SESSION.md", line: 1, text: `~~Write \`docs/${DRAFT}.md\`~~ ⛔ ${MARKER} (D21).` });
     ok("8.2.c1 · CONTROL · the SAME measure over a copy of the citation list with the note stripped from one real line reports exactly that line; a NEWLY planted citation with no note — the shape a future session actually produces, an instruction to write the file — is reported; and the same planted citation WITH the note is not",
       unmarkedIn(stripOne).length === 1 && unmarkedIn(stripOne)[0].file === citations[0].file
         && unmarkedIn(plantedNew).length === 1 && unmarkedIn(plantedMarked).length === 0,
