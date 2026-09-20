@@ -47,7 +47,7 @@ async function txnsInPeriod(w: Window) {
 }
 
 /**
- * GGR = Stakes − Payouts (the operator's commission from the pool). This is the
+ * GGR = Stakes − Payouts − Refunds (the operator's commission from the pool). This is the
  * normative definition shared with the reports console — delegates to
  * `report-money.moneyForWindow` so every admin surface shows ONE GGR figure.
  * (Previously this returned Stakes/turnover only, mislabelled "GGR"; reconciled.)

@@ -184,7 +184,15 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       },
     ],
     notes: [
-      "GGR = total stakes − total payouts (voids/refunds excluded from both sides).",
+      // 🔴 L57 (C5-D20-REPLAN ruling 268), corrected 2026-09-20. This note went to the GAMING BOARD saying
+      // "voids/refunds excluded from both sides". The code has never done that: `report-money.ts:155` is
+      // `const ggr = stakes - payouts - refunds`, and that file's own header (:19-21) states the reason —
+      // a refunded stake was still counted in Stakes, so without subtracting it GGR is overstated by the whole
+      // refunded amount AND SO IS THE TRA/GBT LEVY BASE COMPUTED FROM IT. Two other notes in this same file
+      // already say it correctly (:723 "Sales − Payouts − Refunds", :763 "…− refunded stakes"), so the pack was
+      // internally inconsistent as well as wrong. A regulator note is a statement about our own arithmetic; it is
+      // re-derived from the function that computes the figure, never written from memory of the definition.
+      "GGR = total stakes − total payouts − refunded stakes. A refunded stake is returned in full and earns the operator nothing, so it is removed from the base.",
       "NGR = GGR − bonus cost − agent commission − payment-processing fees (pre-tax operator bottom line).",
       "Agent commission is contracted income paid to vetted agents out of the operator fee AFTER TRA and GBT levies; it does not reduce the levy base.",
       "All amounts in Tanzanian Shillings (TZS). Rounded to the nearest shilling.",
