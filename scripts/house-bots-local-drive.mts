@@ -65,8 +65,8 @@ type Any = any;
 
 const argv = process.argv.slice(2);
 const ONLY = (() => { const i = argv.indexOf("--only"); return i === -1 ? null : (argv[i + 1] ?? null); })();
-/** The target case is opt-in: it is written, it runs, and it does not yet reach a COUNTER intent (see §drive.3). */
-const WANT_TARGET = argv.includes("--target") || ONLY === "target";
+/** The target case runs with everything else; `--only target` narrows to it (it is the slowest, at ~2 minutes). */
+const WANT_TARGET = ONLY === null || argv.includes("--target") || ONLY === "target";
 
 let pass = 0, fail = 0;
 const notMeasured: string[] = [];
@@ -243,7 +243,7 @@ try {
     exitRates: { polls: { freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }, updown: {} },
     pollMinLifetimeMin: 120, limits: null, bots: [],
   };
-  const botWithRules = async (): Promise<Any> => {
+  const botWithRules = async (opts: { counter?: boolean } = {}): Promise<Any> => {
     /* ⛔ DESIGNATED AND STARTED THROUGH THE SERVICES, for the same reason the switch is: `startHouseBot`
        writes the account's own `scopeFrom`, and a bot without one reacts to nothing, for ever, silently.
        `world.bot()` sets the status through the DAL, which is right for a suite that calls the seam
@@ -266,10 +266,18 @@ try {
     rules.scope.products.polls = true;
     rules.scope.categories = ["macro"];
     rules.modes.polls.fill = true;
-    // ⛔ A TARGETED COUNTER IS STILL A COUNTER: `modes.polls.counter` is what covers it, and the
-    // default is OFF for every mode on a new bot. The react roll is set to 100% so the case measures
-    // the TIMING it exists to measure and not a 60% coin toss — the probability itself is a unit case.
-    rules.modes.polls.counter = true;
+    /**
+     * ⛔ `modes.polls.counter` COVERS THE UNTARGETED COUNTER, AND A TARGETED ONE DOES NOT NEED IT — the
+     * drive measured the difference rather than assuming it. `decide.ts`'s target candidate is gated on
+     * `targeting.enabled` and scope, never on the mode; the mode is what puts a bot in `inBotScope` for
+     * the AUTOMATIC candidate. ⭐ AND LEAVING IT ON BREAKS THE TARGET CASE, which is how this was found:
+     * the untargeted counter for the first stake left the bot holding a live intent on that market, so
+     * the targeted decision that followed was refused `MARKET_HELD` — an intent WAS written, SKIPPED,
+     * naming the target. The product is right; a fixture whose bot answers a market twice cannot measure
+     * the second answer. The react roll is 100% so the case measures the TIMING it exists to measure and
+     * not a 60% coin toss — the probability itself is a unit case elsewhere.
+     */
+    rules.modes.polls.counter = opts.counter !== false;
     rules.counter.reactProbabilityPct = 100;
     // ⛔ THE TWO DOORS THE ENGINE CHECKS AT FIRE TIME, and the drive found them by being refused:
     // `coversAtFire` sends a MANUAL intent through `rules.enterNow.enabled` and a TARGETED one through
@@ -374,27 +382,31 @@ try {
 
   // ── drive.3 · a poll target with a 10 s delay: the SWEEP decides, the POLLER fires ───────────
   /**
-   * ⛔ NOT MEASURED, AND IT IS OPT-IN RATHER THAN QUIETLY FAILING. The target case below is WRITTEN and
-   * RUNS — pass `--target` — but it does not yet reach a COUNTER intent, and a case that fails on every
-   * run teaches a team to ignore a red line. What WAS measured, so the next session starts where this
-   * one stopped rather than at the beginning: the target row stays ACTIVE with `endCause: null` (so
-   * `endTargets` is not ending it), the sweep really runs every 5 s under this process's lease, the
-   * global scope instant and the account's own are BOTH written now (through the switch-on and start
-   * SERVICES, not the DAL — that fix is what turned drive.1 green), the trigger stake is placed AFTER
-   * both, the account's rules cover polls with `modes.polls.counter` on and a 100% react roll, the
-   * trigger stake is inside `counter.triggerStakeMin/MaxTzs`, and the cutoff is seven days out — and
-   * still no COUNTER intent appears within 90 s.
-   * NEXT: read `decide.ts:244-250` (the `inBotScope` filter and the targeted branch beside it) against
-   * the trigger pass's OWN row population in `trigger.ts` — which positions that pass considers is the
-   * half this drive has not yet measured. Recorded in `plans/house-bots/DEFERRED-TESTS.md`.
+   * ⭐ GREEN SINCE 2026-09-20, AND THE TWO THINGS THAT WERE WRONG WERE BOTH IN THE FIXTURE.
+   * This case reported "nothing after 90 s" from the day it was written. Neither cause was in the
+   * product, and neither was visible to any suite that calls `placeHouseBet` itself:
+   *
+   *   1 · THE ARMING WINDOW. `HouseBotTargetStore.insert` writes `effectiveFrom = now() +
+   *       TARGET_ARMING_SEC` inside the INSERT, on the database's own clock, and the target candidate
+   *       requires `effectiveFrom <= placedAt` — a target never answers money that was already on the
+   *       table when it was armed. The stake was being placed inside that window. The fixture waits now
+   *       (`drive.3arm`), and a stake placed INSIDE the window is kept as the control (`drive.3w`).
+   *   2 · THE BOT WAS ANSWERING THE MARKET TWICE. With `modes.polls.counter` on, the first stake drew
+   *       an UNTARGETED counter, which left a live intent on that market — so `marketHeld` refused the
+   *       TARGETED decision that followed with `MARKET_HELD`, and an intent really was written, SKIPPED,
+   *       naming the target. The product is right; the fixture's bot takes targets only.
+   *
+   * ⭐ AND THE INSTRUMENT ITSELF HID BOTH FOR AN AFTERNOON: a refused target leaves no row carrying
+   * `targetId` — `decide.ts` falls through to the untargeted candidate and carries the refusal in
+   * `decision.targetSkipped` — so a reader that looked only for targeted LIVE rows reported "nothing"
+   * for a decision the engine had already made and explained. Every intent on the market is printed now.
    */
-  if (!WANT_TARGET) {
-    notMeasured.push("drive.3 · a poll target's COUNTER through the sweep — written and runnable with `--target`; it does not yet reach a COUNTER intent. The comment above §drive.3 in this file records what WAS measured and what to read next.");
-  }
   if (WANT_TARGET) {
     section("drive.3 · a poll target, STAKE timing, 10 s delay — the sweep creates the intent, the poller fires it when it is due");
     const m = await pollWithLockedNo(5_000);
-    const bot = await botWithRules();
+    // ⛔ COUNTER OFF: the TARGETED path is what this case measures, and a bot that also answers the
+    // market automatically holds it against itself (see `botWithRules`).
+    const bot = await botWithRules({ counter: false });
     const target = await w.dal.targetStore.insert({
       id: w.dal.newHouseId("target"), houseBotId: bot.botId, marketId: m.market.id,
       delayMinSec: 10, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "EVERY", createdById: OFFICER,
