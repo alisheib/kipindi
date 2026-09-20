@@ -2662,4 +2662,56 @@ import { formatEat } from "@/lib/utils";`,
     expect: "1.474 · both exemptions are CLAMPED at their own render site",
     suite: "console-mem",
   },
+
+  /* ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+   * §1c ROW 27 (C5-8, 2026-09-20) — R8's ASSERTIONS GET A MUTATION DRIVE FOR THE FIRST TIME.
+   *
+   * ⛔ READ THIS BEFORE COUNTING THESE AGAINST THE ROW. Row 27 owes "the ten mutations listed in this
+   * checkpoint's report". Measured at this HEAD: that list is in NO tracked file — `grep -l` over
+   * `plans/house-bots/tools/*.json` matches nothing, and no anchors file names `report-pack`,
+   * `reports/catalogue` or `pack-actions`. The report that listed them lives in a session transcript, which on
+   * this programme is not a place a gate may live, so the ten AS LISTED are unrecoverable and this is not a
+   * transcription of them. What these four are is the sanctioned route taken instead — the same route §2e point
+   * 3 chose for the 92: CONVERSION into `scripts/anchors/`, which puts each one under `test:red-anchors` §3, the
+   * instrument that re-resolves every `from` against the tree every single day.
+   *
+   * ⚠️ THEY LIVE IN THE CONSOLE'S FILE FOR ONE REASON ONLY: it is the declaration list of the harness that runs
+   * `reports-mem`, where R8's assertions print. Nothing about them is console work.
+   * ⚠️ FOUR, NOT TEN, AND THE SHORTFALL IS NAMED: R8's remaining assertions are the §8.216 family, which the
+   * memory child SKIPS by its own design (`8.216.store` says so — with the ring emptied, the durable readers
+   * fall back to the ring, so the memory child would measure the fallback and not the table). Driving those
+   * needs a `reports-pg` suite key, which no red harness declares today. Row 27 stays OPEN with that remainder.
+   * ───────────────────────────────────────────────────────────────────────────────────────────────────────── */
+  {
+    name: "R8-215-ring · the ISO export goes back to the in-memory audit RING, which empties on every deploy — the exact swap R8 made, undone",
+    file: "src/lib/server/reports/catalogue.ts",
+    from: `  const { entries, total, truncated } = await getAuditPageDurable({ limit: ISO_EXPORT_LIMIT });`,
+    to: `  const { entries, total, truncated } = await getAuditPage({ limit: ISO_EXPORT_LIMIT });`,
+    expect: "0.215.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "R8-215-action-dropped · an rg.* action a real writer under src/ still writes falls out of RG_AUDIT_ACTIONS, so the regulator's document silently stops showing that activation",
+    file: "src/lib/server/reports/catalogue.ts",
+    from: `  "rg.self_exclusion.reopened",\n] as const;`,
+    to: `] as const;`,
+    expect: "0.215.3 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "R8-214-getpack-door · a maker-checker action reads its pack through getReportPack instead of the one refusing door, so a transition proceeds on a history that could not be read",
+    file: "src/app/admin/reports/pack-actions.ts",
+    from: `  const read = await readPackForTransition(period);\n  if (!read.ok) return read;\n  const pack = read.pack;\n  if (pack.state !== "draft") return { ok: false, error: \`Pack is already \${pack.state}. Prepare is only valid from Draft.\` };`,
+    to: `  const read = { ok: true, pack: await getReportPack(period) };\n  if (!read.ok) return read;\n  const pack = read.pack;\n  if (pack.state !== "draft") return { ok: false, error: \`Pack is already \${pack.state}. Prepare is only valid from Draft.\` };`,
+    expect: "0.214.2 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "R8-214-card-uncaught · ReportPackCard stops catching its own read, so one failed durable read takes the KPI strip, the daily P&L and the whole report library down with it",
+    file: "src/app/admin/reports/report-pack-card.tsx",
+    from: `    pack = await getReportPack(period);\n  } catch (e) {`,
+    to: `    pack = await getReportPack(period);\n  } finally {`,
+    expect: "0.214.3 ·",
+    suite: "reports-mem",
+  },
 ];
