@@ -47,6 +47,10 @@ const SUITES = {
      value-imported by the client search box, so a house-named key in the picker's own schema ships in a public
      chunk — and the only suite that measures that population is this one. */
   disclosure: { cmd: "npx tsx scripts/house-bot-disclosure.test.mts", env: {} },
+  /* ⭐ C7 step 7 · the comms cases, memory child only — §7's link resolver is a DISK walk and measures the same
+     thing on either store. Added with ruling 320's retirement of the `COMMIT_7` exemption: `7.2` now resolves the
+     console's own hrefs for real instead of skipping them, so it has a defect it can report for the first time. */
+  "comms-mem": { cmd: "npx tsx scripts/lib/house-bot-comms-cases.mts", env: MEM_ENV },
 };
 const SUMMARY = /^\s*(?:ALL PASS|FAILURES) — /;
 

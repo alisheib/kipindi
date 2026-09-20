@@ -45,6 +45,18 @@ const NEW_ACTIONS = "src/app/admin/desk/new/actions.ts";
 const NEW_PAGE = "src/app/admin/desk/new/page.tsx";
 const NEW_CLIENT = "src/app/admin/desk/new/designate-wizard.tsx";
 
+/* ⭐ C7 step 7 · the closing gates. The last four are GUARD files: the only way to show that an assertion whose
+ * subject IS a guard can fail is to mutate the guard, and `318-expect-drift` on this very file is the precedent. */
+const BOOK = "src/lib/server/house-bot/book.ts";
+const FEED = "src/lib/house-bot/feed-copy.ts";
+const KILL = "src/lib/server/house-bot/kill-switch.ts";
+const CONSTANTS = "src/lib/house-bot/constants.ts";
+const HEALTH = "src/app/api/health/route.ts";
+const VOCAB = "scripts/lib/house-bot-vocabulary.mjs";
+const REPORTS = "scripts/lib/house-bot-reports-cases.mts";
+const CASES = "scripts/lib/house-bot-console-cases.mts";
+const COMMS = "scripts/lib/house-bot-comms-cases.mts";
+
 export const MUTATIONS = [
   /* ── C7 step 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368/459, 382, 383, 385, 387, 388) ─────────────────────
    * Each puts back a shape the wizard could plausibly have shipped in: a door that reads before it decides, a
@@ -1784,5 +1796,156 @@ import { formatEat } from "@/lib/utils";`,
         /* 312 · the rail carries exactly the tabs whose panels exist.`,
     expect: "1.435 · 358 · every card of the account page is guarded",
     suite: "console-mem",
+  },
+  /* ── C7 step 7 · THE CLOSING GATES (rulings 320, 370, 371, 375, 390, 391, 395, 397, 398) ────────────────────────
+   * Each puts back the thing the closing step retired, or the shape the console could still have shipped: a results
+   * reader with no reader, an amount behind a refusal sentence, a money record with no transaction behind it, a
+   * thrown message one deploy flag from the person who POSTed the action id, a browser key that names the feature,
+   * an API route under the console's own segment, and the vocabulary word whose promotion would redden the desk's
+   * own button. ⛔ The last two are mutations of GUARD files, which is the only way an assertion whose subject IS a
+   * guard can be shown able to fail — the precedent is `318-expect-drift` on this very file. */
+  {
+    name: "371-book-reader · the results reader D20 struck is declared again in `book.ts`, with no caller and nothing to stop the next page using it",
+    file: BOOK,
+    from: `export async function houseOpenExposure(houseBotId: string | null, tx?: HouseTx): Promise<number> {`,
+    to: `export async function houseBotBook(input: { houseBotId: string | null }): Promise<{ netTzs: number }> {\n  return { netTzs: 0, ...input };\n}\n\nexport async function houseOpenExposure(houseBotId: string | null, tx?: HouseTx): Promise<number> {`,
+    expect: "1.371 · no house-bot module and no house-bot guard names",
+    suite: "console-mem",
+  },
+  {
+    name: "371-book-type · the `HouseBotBook` type comes back, re-acquiring `netTzs` and `feeWithheldTzs` for whoever reaches for it next",
+    file: BOOK,
+    from: `export function foldDayBook(raw: RawSums, houseBotId: string | null, dayKey: string): HouseDayBook {`,
+    to: `export type HouseBotBook = { bets: number; feeWithheldTzs: null };\n\nexport function foldDayBook(raw: RawSums, houseBotId: string | null, dayKey: string): HouseDayBook {`,
+    expect: "and `book.ts` itself declares neither of them",
+    suite: "console-mem",
+  },
+  {
+    name: "370-held-amount · ruling 254's held amount goes into the kill switch's own sentence, which is exactly the figure 370 decided NOT KEPT",
+    file: FEED,
+    from: `  DRAINED: "House bots are off. No bot will place a bet.",`,
+    to: `  DRAINED: "House bots are off. No bot will place a bet. TZS 50,000 is still held.",`,
+    expect: "1.370 · not one `EngineCode` sentence and not one switch-off sentence carries a formatted amount",
+    suite: "console-mem",
+  },
+  {
+    name: "370-outcome-money · `SwitchOffOutcome` grows a money field, so a later render has a held figure to reach for",
+    file: KILL,
+    from: `      cancelled: number;`,
+    to: `      cancelled: number;\n      heldTzs: number;`,
+    expect: "1.370 · `SwitchOffOutcome` carries no money field at all",
+    suite: "console-mem",
+  },
+  {
+    name: "375-writer · a console action writes the reimbursement record D3b has no transaction behind",
+    file: ACTIONS,
+    from: `export async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promise<ConsoleLimitsSaveResult> {`,
+    to: `const REIMBURSEMENT_ACTION = "house_bot.reimbursement_recorded";\n\nexport async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promise<ConsoleLimitsSaveResult> {`,
+    expect: "1.375 · `reimbursement_recorded` has no writer anywhere under `src/`",
+    suite: "console-mem",
+  },
+  {
+    name: "375-audit-key · a thirty-second house audit key is slipped into the map instead of being ruled",
+    file: CONSTANTS,
+    from: `  "house_bot.credential_changed": "SECURITY",`,
+    to: `  "house_bot.credential_changed": "SECURITY",\n  "house_bot.reimbursement_paid": "COMPLIANCE",`,
+    expect: "and `HOUSE_AUDIT`'s key set is PINNED at its post-un-build size",
+    suite: "console-mem",
+  },
+  {
+    name: "390-throw · a console action throws instead of returning a typed refusal, and `runAdminAction` echoes 140 characters of the message",
+    file: ACTIONS,
+    from: `export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<ConsoleSwitchResult> {`,
+    to: `export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<ConsoleSwitchResult> {\n  if (!input) throw new Error("house bot desk unreadable");`,
+    expect: "1.390 · not one `throw` in the console's server modules",
+    suite: "console-mem",
+  },
+  {
+    name: "390-sentence · a refusal sentence names the feature, on the one screen 453 exists to keep neutral",
+    file: GATE,
+    from: `  NOT_FOUND: "That account is not on the desk any more. Reload the desk.",`,
+    to: `  NOT_FOUND: "That house bot is not on the desk any more. Reload the desk.",`,
+    expect: "and every refusal SENTENCE the door can hand back is free of the shared vocabulary",
+    suite: "console-mem",
+  },
+  {
+    name: "391-storage · the console starts keeping a draft in the browser, which is where 04 C12's module was headed",
+    file: LIVE,
+    from: `  const [holds, setHolds] = useState(0);`,
+    to: `  const [holds, setHolds] = useState(0);\n  sessionStorage.setItem("desk:holds", String(holds));`,
+    expect: "1.391 · no draft module was smuggled into",
+    suite: "console-mem",
+  },
+  {
+    name: "391-key · the draft key takes the struck `hb:` prefix, which no absence guard on this branch can see",
+    file: LIVE,
+    from: `export function DeskLive({ live }: { live: boolean }) {`,
+    to: `const DRAFT_KEY = "hb:desk-draft";\n\nexport function DeskLive({ live }: { live: boolean }) {\n  void DRAFT_KEY;`,
+    expect: "1.391 · and the rule the first writer will meet is stated where it binds",
+    suite: "console-mem",
+  },
+  {
+    name: "395-api-reach · an API route names the console route, which is the first half of an export nobody ruled",
+    file: HEALTH,
+    from: `import { NextResponse } from "next/server";`,
+    to: `import { NextResponse } from "next/server";\nconst DESK = "/admin/desk";\nvoid DESK;`,
+    expect: "1.395 · and no file under `src/app/api/` names the console route",
+    suite: "console-mem",
+  },
+  {
+    name: "397-enter-now · \"enter now\" is promoted into the shared words, exactly as the draft scheduled — and the desk's own rules row goes with it",
+    file: VOCAB,
+    from: "export const HOUSE_WORD_SOURCE = String.raw`liquidity|ukwasi|",
+    to: "export const HOUSE_WORD_SOURCE = String.raw`enter now|liquidity|ukwasi|",
+    expect: "1.397 · `enter now` is NOT in the shared words",
+    suite: "console-mem",
+  },
+  {
+    name: "397-probe-out · the served probe leaves `VOCABULARY_CONSUMERS`, and the one absence instrument nothing else holds goes unheld again",
+    file: REPORTS,
+    from: `  "scripts/house-bot-console-probe.mts",\n] as const;`,
+    to: `] as const;`,
+    expect: "1.397 · the served probe is inside `VOCABULARY_CONSUMERS`",
+    suite: "console-mem",
+  },
+  {
+    name: "397-family-source · this suite re-declares a vocabulary family source of its own, which is the thing ruling 175 exists to refuse",
+    file: CASES,
+    from: `const NEUTRAL = consoleNeutralRegExp();`,
+    to: `const HOUSE_WORD_SOURCE = "liquidity|house bot";\nvoid HOUSE_WORD_SOURCE;\nconst NEUTRAL = consoleNeutralRegExp();`,
+    expect: "397(e) · this suite imports the shared vocabulary, re-declares none of its three family sources",
+    suite: "console-mem",
+  },
+  {
+    name: "397-deviation-unrecorded · the reason this suite is outside the closed list is deleted from the list's own source, leaving the deviation in a plan nobody greps",
+    file: REPORTS,
+    from: "`scripts/lib/house-bot-console-cases.mts` is deliberately NOT here",
+    to: "that file is elsewhere",
+    expect: "397(e) · and the reason this file is NOT in `VOCABULARY_CONSUMERS` is written in that list's own source",
+    suite: "console-mem",
+  },
+  {
+    name: "398-rung7 · the roll-call's ladder stops at step 6, so the four assertions step 7 owes stop being owed and their absence becomes invisible again",
+    file: CASES,
+    from: `      hasClosing ? 7 : hasWizard ? 6 : hasActivity ? 5 : hasDetail ? 4 : hasLimits ? 3 : 1;`,
+    to: `      hasWizard ? 6 : hasActivity ? 5 : hasDetail ? 4 : hasLimits ? 3 : (hasClosing ? 1 : 1);`,
+    expect: "1.398 · ROLL-CALL · every D19 assertion owed at or before the step this tree has built",
+    suite: "console-mem",
+  },
+  {
+    name: "320-href-unresolvable · a house alert's account href stops resolving, which is precisely what the retired `COMMIT_7` exemption used to hide",
+    file: ROUTES,
+    from: "  return `${CONSOLE_ROUTE}/${botId}`;",
+    to: "  return `${CONSOLE_ROUTE}-archive/${botId}`;",
+    expect: "7.2 · ⭐ 04:1077 · every link a house alert produces resolves to a page that exists today",
+    suite: "comms-mem",
+  },
+  {
+    name: "320-control-resolves · the resolver's own control is aimed at a path that DOES resolve, so the retired exemption's replacement stops measuring anything",
+    file: COMMS,
+    from: `      const parts = "/admin/desk/hb_0123456789abcdef01234567/nowhere-at-all".split("/").filter(Boolean);`,
+    to: `      const parts = "/admin/desk".split("/").filter(Boolean);`,
+    expect: "7.2b · CONTROL · the resolver still REFUSES a route nobody built",
+    suite: "comms-mem",
   },
 ];
