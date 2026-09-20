@@ -1762,6 +1762,22 @@ export type ConsoleRuleRow = {
   unset: boolean;
   /** 364's caption when the field is unset; `null` otherwise. */
   caption: string | null;
+  /**
+   * ⛔ WHICH FACE THE VALUE WEARS, DECIDED BY THE ROW AND NEVER BY THE PAGE (rulings 401, 409).
+   *
+   * 🔴 MEASURED 2026-09-20, by the render, with every suite green. The server hands this card an ALREADY-FORMATTED
+   * string, so nothing downstream can tell "TZS 900,000,000" from "1,440" — and the card painted both as plain
+   * body text. The limits panel one tab away paints the identical values through
+   * `row.money ? "amount tabular-nums" : "font-mono tabular-nums"` (`limits-form.tsx`), so ONE section was showing
+   * ONE kind of value two ways, which is the defect this section was pulled up on once already.
+   * ⛔ AND IT WAS INVISIBLE TO THE INSTRUMENTS. `.amount` is what `qa:house-bots-visual` §5.1 scans, so seven
+   * currency caps sat outside the money-clipping gate entirely, and `test:type-scale`'s money detector is blind to
+   * a pre-formatted string by construction. The flag is the only thing that can carry the fact.
+   * ⛔ `"money"` IS NEVER SET ON AN UNSET ROW: "Not set" is a state, not a figure, and `.amount`'s `nowrap` and
+   * money meaning belong to figures only — the same rule `limits-form.tsx` applies by showing the caption instead.
+   * A count is `"count"` (365/409: a count is not money); a word like "Polls" or "Off" is `"word"` and stays body text.
+   */
+  face: "money" | "count" | "word";
 };
 
 /** One target, painted. ⛔ No money: a target is a scope decision, not a stake (365). */
@@ -1917,11 +1933,14 @@ function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1): ConsoleRuleRow[] 
         value: limitValue(field, raw),
         unset: raw == null,
         caption: raw == null ? unsetCaptionFor(field, false) : null,
+        /* ⛔ THE FACE IS DERIVED FROM THE FIELD'S OWN UNIT, the same source `limitValue` formats from, so the two
+           can never disagree — and it is `"word"` while the row is unset, because "Not set" is a state. */
+        face: (raw == null ? "word" : FIELD_META[field].unit === "TZS" ? "money" : "count") as ConsoleRuleRow["face"],
       };
     }),
-    { section: "Scope", name: "Products", value: productWords(rules.scope.products.updown, rules.scope.products.polls), unset: false, caption: null },
-    { section: "Scope", name: "Targeted stakes", value: rules.targeting.enabled ? "On" : "Off", unset: false, caption: null },
-    { section: "Scope", name: "Enter now", value: rules.enterNow.enabled ? "On" : "Off", unset: false, caption: null },
+    { section: "Scope", name: "Products", value: productWords(rules.scope.products.updown, rules.scope.products.polls), unset: false, caption: null, face: "word" as const },
+    { section: "Scope", name: "Targeted stakes", value: rules.targeting.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
+    { section: "Scope", name: "Enter now", value: rules.enterNow.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
   ];
 }
 

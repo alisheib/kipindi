@@ -85,8 +85,16 @@ function SavedRulesCard({ rows, reason, captions }: { rows: ConsoleRuleRow[] | n
             {rows.map((r) => (
               <div key={`${r.section}-${r.name}`} className="flex items-baseline justify-between gap-4 flex-wrap">
                 <dt className="text-body-sm text-text-secondary min-w-0">{r.name}</dt>
+                {/* ⛔ THE FIGURE WEARS THE FACE THE ROW NAMES (rulings 401, 409), and the page never decides it.
+                    🔴 Measured by the render on 2026-09-20: this `<dd>` printed "TZS 900,000,000" as plain body
+                    text while the limits panel one tab away printed the identical value through
+                    `amount tabular-nums` — one section, one kind of value, two looks. `.amount` is also the class
+                    `qa:house-bots-visual` §5.1 scans, so every cap here sat outside the money-clipping gate.
+                    ⛔ A COUNT IS NOT MONEY (409): it gets the mono/tabular face without `.amount`'s `nowrap` and
+                    without its money meaning. A word ("Polls", "Off", "Not set") stays body text — putting a state
+                    on the money axis is the mislabelled-amount defect 266 struck. */}
                 <dd className="text-body-sm text-text text-right min-w-0">
-                  {r.value}
+                  {r.face === "word" ? r.value : <span className={r.face === "money" ? "amount tabular-nums" : "font-mono tabular-nums"}>{r.value}</span>}
                   {captions && r.caption && <span className="block text-body-sm text-warning-fg">{r.caption}</span>}
                 </dd>
               </div>

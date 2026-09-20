@@ -171,7 +171,21 @@ try {
          same precondition for. The landmark is therefore chosen PER ROUTE rather than widened for every route: the
          three-way OR ruling 540(b) struck admitted nodes the admin chrome paints on pages that are not this section
          at all, and this does not — each route names exactly one landmark that only its own render produces. */
-      const READY = route.split("?")[0].endsWith("/new") ? '[role="progressbar"]' : "[data-section-rail]";
+      /* ⭐ AND THE ACCOUNT PAGE NAMES ITS OWN LANDMARK, WHICH IS WHAT FINALLY LETS A **REMOVED** ACCOUNT THROUGH
+         THIS GATE (register row 69, carried unmeasured by three passes). Ruling 435(a) REMOVES the rail from a
+         removed account on purpose — a rail whose Overview tab paints 600px of nothing is 312's dead control — so
+         `[data-section-rail]` could never paint there and every one of the twenty checks reported NOT MEASURED at
+         all six widths. The read-only state of an account that HELD MONEY was the one state in this section no
+         instrument had ever looked at.
+         ⛔ THE LANDMARK IS STILL ONE NODE ONLY ITS OWN RENDER PRODUCES, which is replan ruling 540(b)'s whole
+         point: the account head's `h1[data-operator-text="label"]` is painted after the page's gated reader
+         returns (a failed read is `notFound()`, never this h1), and it is an `h1` — the landing page marks the
+         same operator value on a `div`, so this selector cannot be satisfied by the roster. The three-way OR 540(b)
+         struck admitted nodes the admin CHROME paints; this admits nothing outside this page. */
+      const path = route.split("?")[0];
+      const READY = path.endsWith("/new") ? '[role="progressbar"]'
+        : /^\/admin\/desk\/[^/]+$/.test(path) ? 'h1[data-operator-text="label"]'
+        : "[data-section-rail]";
       try {
         await p.waitForSelector(READY, { timeout: 30_000 });
       } catch {
@@ -292,6 +306,23 @@ try {
           });
         });
         const tableCount = document.querySelectorAll("table.admin-tbl").length;
+        /* ⛔ AN EMPTY-STATE ROW IS ONE `td[colspan]`, NOT A SUBJECT COLUMN AND TWO MONEY ANSWERS — AND IT CRASHED
+           THIS GATE. MEASURED 2026-09-20 on `/admin/desk/<id>?tab=targets`, whose table renders "No targets yet"
+           as a single spanning cell: §5.2 destructured `[subject, first, second]` off a ONE-element list, so
+           `inBox(first)` dereferenced `undefined`. At 360 the throw was hidden because `inBox(subject)` was
+           already false and `&&` short-circuited; at 640 it was true, the second call ran, and the whole run
+           DIED THERE — eleven of the twelve account routes were never visited, and the run reported exit 1 as
+           though it had measured them. A gate that stops at its own crash reports the routes it reached as the
+           population, which is the wrong-population defect wearing a stack trace.
+           ⛔ So the SHAPE is a fact, and §5.2 asks its money-column question only of a row that HAS money
+           columns. The empty row's own geometry is §5.5's question and is asked there. */
+        /* ⛔ RULING 435(a)'s STATE, READ OFF THE PAGE. A REMOVED account paints NO rail — deliberately — and with
+           it go the rail's `aria-label`, the switch's, every usage bar's and every bar's `aria-valuetext`. The
+           attribute FLOOR below is a per-population number, and "this account page has a rail" is the population
+           split, taken from the render rather than from a route the script would have to recognise by id. */
+        const railCount = document.querySelectorAll("[data-section-rail]").length;
+        const firstRow = document.querySelector("table.admin-tbl tbody tr");
+        const firstRowEmpty = !!firstRow && firstRow.children.length === 1 && firstRow.children[0].hasAttribute("colspan");
         const region = document.querySelector("table.admin-tbl")?.closest("[role='region']") ?? null;
         const scrollable = region ? region.scrollWidth > region.clientWidth + 1 : false;
         /* The console's own content region, for 453's stricter scan — the sidebar's "House" nav label is not ours. */
@@ -312,7 +343,7 @@ try {
            rather than inferred from position. */
         const operatorNodes = [...own.querySelectorAll("[data-operator-text]")];
         const operatorText = operatorNodes.map((el) => (el.textContent ?? "").trim()).filter(Boolean);
-        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
+        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, firstRowEmpty, railCount, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
       });
 
       ok(`§5.1 ${route} @${width} · no money figure is clipped by a box that cannot scroll, and none is broken across two lines`, facts.clipped.length === 0, facts.clipped.join(" | "));
@@ -331,9 +362,21 @@ try {
       const MONEYLESS = route.split("?")[0].endsWith("/new");
       ok(MONEYLESS
         ? `§5.1 ${route} @${width} · CONTROL · ⛔ 459 · this surface paints NO money at all — no amount span and no currency prefix in its own subtree`
-        : `§5.1 ${route} @${width} · CONTROL · the money scan reached at least one figure`,
-        MONEYLESS ? facts.moneyCount === 0 && !/TZS/.test(facts.ownText) : facts.moneyCount >= 1,
-        `${facts.moneyCount} money spans`);
+        /* ⛔ THE CONTROL ASKS THE RENDERED TEXT, NOT THE ROUTE LIST — AND THAT IS A STRENGTHENING, MEASURED
+           2026-09-20. It was the bare `moneyCount >= 1`, which asks "did the scan reach a figure" and therefore
+           says the same thing about two opposite surfaces: `?tab=targets`, whose table has no money COLUMN by
+           design, and `?tab=rules`, which paints SEVEN currency caps as plain text outside `.amount`. Both read
+           "0 money spans"; only the second is a defect, and the bare form could not tell them apart, so a real
+           finding arrived dressed as a population complaint the next pass would have exempted.
+           ⭐ What §5.1 needs to be true is that every currency figure a surface paints is INSIDE the atom its
+           scan reads — `.amount` is what carries `white-space: nowrap` and the money meaning, and a figure outside
+           it is both a visual inconsistency and invisible to the clipping check above. So: a surface whose own
+           text carries a currency prefix must have at least one figure in the atom, and a surface that paints no
+           currency at all asserts that instead. Strictly stronger where money exists, correct-population where it
+           does not. ⛔ `/new`'s inverted form (ruling 459) is untouched. */
+        : `§5.1 ${route} @${width} · CONTROL · every currency figure this surface paints is inside the money atom the scan reads — or it paints none and says so`,
+        MONEYLESS ? facts.moneyCount === 0 && !/TZS/.test(facts.ownText) : (/TZS/.test(facts.ownText) ? facts.moneyCount >= 1 : facts.moneyCount === 0),
+        `${facts.moneyCount} money spans; currency prefix in the surface's own text: ${/TZS/.test(facts.ownText)}`);
       ok(`§5.3 ${route} @${width} · no tile carries two amounts`, facts.tiles.every((t) => t.amounts <= 1), facts.tiles.filter((t) => t.amounts > 1).map((t) => t.text).join(" | "));
       ok(`§5.3 ${route} @${width} · no KPI delta carries a currency-prefixed figure`, facts.tiles.every((t) => !/TZS\s*[\d,]/.test(t.delta)), facts.tiles.map((t) => t.delta).filter((d) => /TZS\s*[\d,]/.test(d)).join(" | "));
       // ⛔ A CONTROL FOR THE CHECK ABOVE: an empty selector reads exactly like compliance.
@@ -389,7 +432,23 @@ try {
                measured without the consent and review steps in the list. All NINE wizard states at 1280 print
                9 · 11 · 11 · 13 · 13 · 13 · 6 · 5 · 5, so the floor is FIVE — the lowest a run printed, which is what
                a floor is. It only ever rises. */
-            && facts.attrs.length >= (MONEYLESS ? 5 : 6),
+            /* ⛔ AND NOW THERE ARE THREE POPULATIONS, BECAUSE A THIRD ONE WAS MEASURED (2026-09-20, the ops lane's
+               render of `/admin/desk/<id>`). The floor was "the landing page's 6, or the wizard's 5", and the
+               ACCOUNT page is neither: its own run printed 40 on the overview of a started account, 40 on an
+               auto-paused one, **5** on the overview of an account that has never run, 5 on every `?tab=rules`
+               and 7 on every `?tab=targets` — at all six widths, every time. A 6 held against that population
+               turned 24 assertions red on a page with nothing wrong with it, which is the wrong-population
+               defect: a true measurement of the wrong subject. The ACCOUNT floor is therefore FIVE — the lowest
+               a run printed — and the LANDING floor stays 6, unlowered, because that is what ITS run printed.
+               ⛔ AND A **REMOVED** ACCOUNT IS A FOURTH POPULATION, SPLIT BY THE RENDER AND NOT BY A ROUTE. Ruling
+               435(a) takes the rail off a removed account on purpose, and with it go the rail's `aria-label`, the
+               switch's, every usage bar's and every `aria-valuetext`: its run printed **2**, at all six widths, on
+               all three of its URLs. That page reached this gate for the first time on 2026-09-20 (row 69), so a
+               floor of 5 would have turned its very first measurement red for rendering exactly what 358 says it
+               must. The split is `railCount === 0`, read off the page, so it can never be satisfied by a
+               rail-bearing account page whose attributes went missing.
+               ⛔ It only ever rises, and no number here is chosen: each is what a run printed. */
+            && facts.attrs.length >= (route.split("?")[0] === "/admin/desk" ? 6 : facts.railCount === 0 && !MONEYLESS ? 2 : 5),
           `${facts.attrs.length} attributes · benign hits ${JSON.stringify(CONSOLE_BENIGN_SAMPLES.filter((s) => consoleNeutralRegExp().test(s)))}`);
         /* ⛔ AND THE EXEMPTION IS EXACTLY THE TWO VALUES 474 NAMES. An exemption nobody measures is a guard whose
            population is a lie: a house word planted into the page's NON-exempt text must still fire, and the
@@ -408,11 +467,22 @@ try {
             `${facts.operatorText.length} operator node(s): ${JSON.stringify(facts.operatorText.slice(0, 4))}`);
         }
       }
-      if (facts.firstCells.length) {
+      if (facts.firstRowEmpty) {
+        /* ⛔ THE EMPTY-STATE ROW IS A POSITIVE FACT, ASSERTED — NOT A SKIP AND NOT A CRASH (see `firstRowEmpty`).
+           §5.2 asks where a money CELL sits inside a scroll strip; a table whose only row is one spanning cell has
+           no money cell to ask about, and the cell it DOES have is measured by §5.5 below — which is the check
+           written for exactly this box. What is asserted here is that the row really is the single spanning cell
+           this branch believes it is, so "empty row" can never stand in for "the money columns were not read". */
+        ok(`§5.2 ${route} @${width} · the table's only row is the empty state's one spanning cell, so it has no money CELL to push out of the strip — §5.5 measures that box`,
+          facts.firstCells.length === 1, JSON.stringify(facts.firstCells));
+      } else if (facts.firstCells.length) {
         const [subject, first, second] = facts.firstCells;
         const inBox = (c) => c.left >= c.boxLeft - 1 && c.right <= c.boxRight + 1;
+        /* ⛔ `first != null` IS PART OF THE ASSERTION, NOT A CONVENIENCE. A data row with no second cell is a
+           DEFECT — it means the money answer this check exists to place is not rendered at all — and it must read
+           as a FAIL, never as the `TypeError` that killed the 2026-09-20 run at its second route. */
         ok(`§5.2 ${route} @${width} · the SUBJECT column and the FIRST money answer are inside the visible strip without scrolling`,
-          inBox(subject) && inBox(first), JSON.stringify(facts.firstCells.slice(0, 2)));
+          inBox(subject) && first != null && inBox(first), JSON.stringify(facts.firstCells.slice(0, 2)));
         if (width >= 640) {
           ok(`§5.2 ${route} @${width} · …and from 640 up the SECOND money answer is in the strip too`, second == null || inBox(second), JSON.stringify(second));
         } else {
@@ -427,8 +497,12 @@ try {
            make this gate exit 3 for ever the moment its route population grew past the roster — which is how a gate
            stops being read. What IS asserted instead is the fact itself, WITH the figures §5.1 measured on that same
            surface, so "no table" cannot stand in for "nothing rendered". */
+        /* ⛔ THE SAME CURRENCY-AWARE FORM AS §5.1's CONTROL, for the same measured reason: `?tab=rules` renders no
+           `.admin-tbl` AND paints its caps outside the atom, so the bare `moneyCount >= 1` fired here too and said
+           "no table" was the problem. The two assertions must agree or one of them teaches the wrong lesson. */
         ok(`§5.2 ${route} @${width} · this surface renders no `+"`.admin-tbl`"+`, so it has no money CELL to push out of a scroll strip — and §5.1 ${MONEYLESS ? "proved it paints no money at all" : "measured its figures where they are"}`,
-          MONEYLESS ? facts.moneyCount === 0 : facts.moneyCount >= 1, `${facts.moneyCount} money spans, ${facts.tableCount} tables`);
+          MONEYLESS ? facts.moneyCount === 0 : (/TZS/.test(facts.ownText) ? facts.moneyCount >= 1 : facts.moneyCount === 0),
+          `${facts.moneyCount} money spans, ${facts.tableCount} tables, currency prefix in text: ${/TZS/.test(facts.ownText)}`);
       } else {
         nm(`§5.2 ${route} @${width}`, `a money table rendered with NO row (${facts.tableCount} table(s)), so the money columns' position was not measured`);
       }
