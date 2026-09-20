@@ -1543,6 +1543,113 @@ if (STORE === "postgres") {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
+// §8 · db:seed-house-bots-local — Phase D's world, for a human to open.
+//
+// ⛔ THE STATUSES ARE READ BACK FROM THE DATABASE, never taken from what the seed believes it wrote.
+// The whole point of the seed is a world a human opens in a browser, and the browser reads rows.
+//
+// ⭐ AND THE AUTO_PAUSED ACCOUNT IS PROVED TO HAVE GOT THERE THE WAY THE PRODUCT GETS THERE: its
+// recorded consent fingerprint no longer matches its holder's password. A status poked into a column
+// would satisfy "one account is AUTO_PAUSED" and teach a human something false on the first screen.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const SEED_SCRIPT = "scripts/seed-house-bots-local.mts";
+
+if (STORE === "memory") {
+  section("§8s · db:seed-house-bots-local — the refusals, before any database is opened");
+  await guard("seed.src", () => {
+    const body = bodyOf(SEED_SCRIPT);
+    ok("seed.6 · SOURCE · it refuses any DATABASE_URL that is not loopback, and names production explicitly — designating a REAL player as a house bot is a money-and-consent act on a live account",
+      /loopback only/i.test(body) && /127\\\.0\\\.0\\\.1/.test(body) && /rlwy\\\.net\|railway\\\.app\|50pick\\\.tz\|railway\\\.internal/.test(body),
+      j({ loopback: /loopback only/i.test(body) }));
+    ok("seed.7 · SOURCE · ⛔ the seed cannot turn the master switch on — no switchOn, no `\"enabled\" = true`, no ON-shaped flag. The world it writes is a desk with a roster and no house money in it",
+      switchOnSites(body).length === 0 && onFlagSites(body).length === 0, j(switchOnSites(body)));
+    ok("seed.8 · SOURCE · POSITIVE CONTROL · …and it DOES reach the real services: designateHouseBot, startHouseBot and the holder hook — so the absences above are a choice, not a file that writes nothing",
+      /designateHouseBot\s*\(/.test(body) && /startHouseBot\s*\(/.test(body) && /onHolderAccountChanged\s*\(/.test(body), "all three services called");
+  });
+
+  await guard("seed.refuse", () => {
+    const bad = runOps(SEED_SCRIPT, [], { DATABASE_URL: "postgresql://postgres:x@10.0.0.5:5432/anything" });
+    ok("seed.6r · a non-loopback DATABASE_URL is REFUSED with exit 2 before anything is imported that would open a connection",
+      bad.code === 2 && /loopback only/i.test(bad.out), `exit ${bad.code}`);
+  });
+}
+
+if (STORE === "postgres") {
+  section("§8 · db:seed-house-bots-local — RUN against a database of its own, then read back");
+  await guard("seed", async () => {
+    const pgLib: Any = (await import("pg")).default;
+    const RAW = process.env.DATABASE_URL ?? "";
+    const BASE = RAW.replace(/\/[^/?]*(\?.*)?$/, "");
+    const DB = `hb_ops_seed_${process.pid}`;
+    const url = `${BASE}/${DB}?connect_timeout=30`;
+    const withAdmin = async (fn: (a: Any) => Promise<void>): Promise<void> => {
+      const a = new pgLib.Client({ connectionString: `${BASE}/postgres` });
+      await a.connect();
+      try { await fn(a); } finally { await a.end().catch(() => {}); }
+    };
+    await withAdmin(async (a) => {
+      await a.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`);
+      await a.query(`CREATE DATABASE "${DB}"`);
+    });
+    try {
+      // ⛔ BEFORE THE MIGRATION, the seed must refuse rather than write half a world: it asks the
+      // engine's OWN schema gate, so it can never disagree with what the desk will do on the same rows.
+      const early = runOps(SEED_SCRIPT, [], { DATABASE_URL: url });
+      ok("seed.0 · on an un-migrated database the seed REFUSES and names the command that fixes it — it asks the engine's own schema gate rather than a query of its own",
+        early.code === 2 && /schema is not ready/.test(early.out) && /migrate deploy/.test(early.out), `exit ${early.code}`);
+
+      const mig = spawnSync("npx", ["prisma", "migrate", "deploy"], {
+        cwd: REPO_ROOT, env: { ...process.env, DATABASE_URL: url }, encoding: "utf8",
+        shell: process.platform === "win32", timeout: 10 * 60_000,
+      });
+      ok("seed.migrate · prisma migrate deploy applies every migration to the seed's own database", mig.status === 0, (mig.stderr ?? "").split("\n").slice(-2).join(" "));
+      if (mig.status !== 0) return;
+
+      const run = runOps(SEED_SCRIPT, [], { DATABASE_URL: url });
+      ok("seed.run · the seed completes and prints the world a human then opens", run.code === 0 && /house bots · local world/.test(run.out), `exit ${run.code}`);
+
+      const c2 = new pgLib.Client({ connectionString: url });
+      await c2.connect();
+      try {
+        const bots = (await c2.query(`SELECT "id", "status", "pauseReason", "removedCause", "userId", "passwordFingerprint" FROM "HouseBot" ORDER BY "designatedAt"`)).rows as Any[];
+        const want: Array<[string, string | null]> = [["PAUSED", "NEW"], ["ACTIVE", null], ["AUTO_PAUSED", "PASSWORD_CHANGED"], ["REMOVED", null]];
+        ok("seed.1 · READ BACK from the database: one account in each of PAUSED(NEW), ACTIVE, AUTO_PAUSED(PASSWORD_CHANGED) and REMOVED — never taken from the script's own return values",
+          bots.length === 4 && want.every(([st, reason]) => bots.some((b) => b.status === st && (reason === null || b.pauseReason === reason))),
+          j(bots.map((b) => `${b.status}${b.pauseReason ? `(${b.pauseReason})` : ""}`)));
+
+        const paused = bots.find((b) => b.status === "AUTO_PAUSED");
+        const holder = paused ? (await c2.query(`SELECT "passwordHash" FROM "User" WHERE "id" = $1`, [paused.userId])).rows[0] : null;
+        const { passwordFingerprint }: Any = await import("../../src/lib/server/password-reset.ts");
+        ok("seed.2 · ⭐ …and the AUTO_PAUSED account got there the way the PRODUCT gets there: its recorded consent fingerprint no longer matches its holder's password. A status written into the column would pass 'one account is AUTO_PAUSED' and teach a human something false on the first screen",
+          !!paused && !!holder && passwordFingerprint(holder.passwordHash) !== paused.passwordFingerprint,
+          j({ status: paused?.status, reason: paused?.pauseReason, matches: !!holder && passwordFingerprint(holder.passwordHash) === paused?.passwordFingerprint }));
+
+        const removed = bots.find((b) => b.status === "REMOVED");
+        ok("seed.3 · the REMOVED account carries a removal cause", !!removed && !!removed.removedCause, j({ cause: removed?.removedCause }));
+
+        const ctl = (await c2.query(`SELECT "enabled", "offCause" FROM "HouseBotControl"`)).rows[0] as Any;
+        const marked = Number((await c2.query(`SELECT count(*)::int AS n FROM "Position" WHERE "houseBotId" IS NOT NULL`)).rows[0].n);
+        const players = Number((await c2.query(`SELECT count(*)::int AS n FROM "Position" WHERE "houseBotId" IS NULL`)).rows[0].n);
+        ok("seed.5 · the master switch is OFF and there are 0 MARKED rows — the seeded world is one nobody has staked house money in, which is what makes the first stake watchable",
+          ctl?.enabled === false && marked === 0, j({ enabled: ctl?.enabled, offCause: ctl?.offCause, marked }));
+        ok("seed.5p · ⭐ POSITIVE CONTROL · …on a board that is NOT empty: a real player holds a real stake, so '0 marked rows' is a measured difference and not an empty database",
+          players > 0, j({ playerPositions: players }));
+
+        const again = runOps(SEED_SCRIPT, [], { DATABASE_URL: url });
+        const after = Number((await c2.query(`SELECT count(*)::int AS n FROM "HouseBot"`)).rows[0].n);
+        ok("seed.again · a second run against the already-seeded database REFUSES and SAYS SO, and writes no second world — a silent second roster is the failure this refusal exists to prevent",
+          again.code === 2 && /already holds/.test(again.out) && after === 4, j({ exit: again.code, bots: after }));
+      } finally {
+        await c2.end().catch(() => {});
+      }
+    } finally {
+      await withAdmin(async (a) => { await a.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`); });
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
 // §7 · ops:house-bots-status — COMMIT 8's OWN DUTIES: the four figures beyond R5's five, and the
 // +10 minute recheck.
 //
