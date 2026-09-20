@@ -104,6 +104,7 @@ and fix the document in the same commit.
 ## RELEASE: follow PROGRESS "Release" REL-0…REL-6 exactly (amendment S2), only when all 8 commits are ✅
 
 Run release commands in **Git Bash**. S2 R0's "rebase" is superseded by merge.
+⛔ **SUPERSEDED 2026-09-21 by `plans/house-bots/RELEASE-LADDER.md` — read it before this table.** REL-2/REL-4 already happened out of order; REL-0 names `drive:house-bots-local`, a key that has NEVER existed on any branch (the real one is `qa:house-bots-local`); and the "Production access is read-only through `railway login`" grant above is contradicted by the standing law — ⛔ **no session touches production, not even a read.**
 
 | Step | What |
 |---|---|

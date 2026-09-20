@@ -664,6 +664,7 @@ least one house-bot test assertion name or comment, or be listed here with a rea
 ## Release (amendment S2 steps R0–R6, called REL-0…REL-6 here): only after all 8 commits are ✅
 
 Run every Release command in **Git Bash**. S2 R0's "Rebase on origin/main" is superseded: **merge** `origin/main` (the branch is shared across machines). Any "rebase" instruction anywhere in these documents is superseded the same way.
+⛔ **SUPERSEDED 2026-09-21 by `plans/house-bots/RELEASE-LADDER.md`** — REL-2 and REL-4 already happened out of order (Ali pushed `main` himself 2026-09-18), REL-0(c) is permanently unpassable as written, REL-1/REL-3 are moot, and REL-6 is delivered as `plans/house-bots/SWITCH-ON-SHEET.md`. Read that file before acting on any row below; the table is left standing unrewritten only so three lanes' concurrent edits still merge.
 | Step | What | Status |
 |---|---|---|
 | REL-0 | **(T-1 day)** P0 re-run · merge `origin/main` · `git diff origin/main...house-bots --stat -- prisma/migrations` shows exactly the 2 house folders · `test:all`, every `red:house-bot-*`, `drive:house-bots-local`, `qa:house-bots-visual` and the S4 rehearsals green on this SHA · coverage gate met · `ops:preflight-house-bot-migrations` GO · **checklist sent to Ali, and his "go" received, explicitly naming REL-2** | ⬜ |
