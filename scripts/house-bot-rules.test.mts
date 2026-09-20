@@ -44,6 +44,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
+import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./lib/house-bot-expect-drift.mts";
+import { MUTATIONS as CEREMONY_ANCHORS } from "./anchors/house-bot-ceremony.anchors.mjs";
 import { MARKET_CATEGORIES, type MarketCategory } from "../src/lib/markets/categories.ts";
 import { ALLOWED_DURATIONS } from "../src/lib/updown-durations.ts";
 import {
@@ -211,7 +213,9 @@ if (process.env.HOUSE_BOT_RULES_TZ_CHILD === "1") {
 /* ═══ Harness ═══════════════════════════════════════════════════════════════════════════════ */
 
 let pass = 0, fail = 0;
-const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
+/** Every label this run emitted, so the `rules` roll-call below measures the suite instead of asserting `true`. */
+const emitted: string[] = [];
+const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; emitted.push(l); console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 const section = (title: string) => console.log(`\n${title}`);
 
 /** Canonical JSON (sorted keys), so "exactly these fields" compares shape, not key order. */
@@ -1847,6 +1851,28 @@ section("§14 · F1 typecheck");
   ok("14.c1 · CONTROL · a planted good.ts error line is recognised", GOOD_DIAGNOSTIC.test("C:/tmp/x/good.ts(3,14): error TS2322: planted"));
 }
 
+/* ━━ THE `rules` ROLL-CALL, AND IT MUST BE LAST — it reads the labels THIS run printed ━━━━━━━━━━━━━━━━━━
+ * ⛔ RULING 505: a suite key declared in a house anchors file with no roll-call is audited by NOBODY. The
+ * `rules` key arrived with `scripts/anchors/house-bot-ceremony.anchors.mjs` on 2026-09-20 and
+ * `test:house-bot-reports` 0.505 reported it RED the same day — five declarations quoting labels of this
+ * suite, with nothing checking those quotes still match a label this suite can print. An `expect` that
+ * matches no label is classed WRONG-ASSERTION by the drive: red for the wrong reason, which inside a batch
+ * run reads exactly like success.
+ * ⛔ IT MUST RUN BEFORE THE FLOOR, because the floor exits the process. */
+{
+  const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
+  const LBL = "7.505 · every declared `rules` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
+  const LBLC = "7.505 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  const input = {
+    suiteKeys: ["rules"], declarations: CEREMONY_ANCHORS as DeclaredMutation[],
+    emitted, source: selfCode, ownLabels: [LBL, LBLC],
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= 5 && rc.stale.length === 0, JSON.stringify(rc));
+  const control = expectDriftControl(input, 40);
+  ok(LBLC, control.pass, control.extra);
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-rules: ${pass} passed, ${fail} failed`);
 /**
  * ⛔ RULING 519 · THE FLOOR, AND WHY THIS SUITE HAD NONE. Ruling 515 raised every `minPass` the two-store runner
@@ -1861,7 +1887,9 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-rules: ${pa
  * `isTypedWord` — a module with zero production callers — and became eleven assertions over the two
  * ceremony comparisons the console actually ships. 7 dead assertions out, 11 live ones in: the +4 IS
  * the measurement. A build where the new §7 silently stopped running would print 514 and be refused. */
-const MIN_ASSERTIONS = 525;
+/* ⭐ RAISED 525 → 527 on 2026-09-20: the two `rules` roll-call assertions ruling 505 requires (7.505 and its
+ * control). The +2 IS the measurement — this is the count the run printed, never an arithmetic guess. */
+const MIN_ASSERTIONS = 527;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-rules ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);
