@@ -2863,8 +2863,11 @@ try {
           snapshot: { titleEn: `Poll ${n}`, category: "sports", cutoff: "2026-12-31T00:00:00.000Z", rawYes: 0, rawNo: 0 },
         } as Any);
       }
-      const p1 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, 1);
-      const p2 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, 2);
+      /* ⛔ THE DOOR IS DRIVEN WITH THE ADDRESS ITSELF, NOT WITH A PRE-PARSED NUMBER (C7 step 5). Its fourth argument
+         became the REQUEST's own query string when the two panels landed — so these calls now exercise the
+         validation too, which a hand-parsed `2` walked straight past. The arity is unchanged at four. */
+      const p1 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, { tab: "targets", tpage: "1" });
+      const p2 = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, { tab: "targets", tpage: "2" });
       const ids = (x: Any): string[] => (x.targets ?? []).map((t: Any) => t.id);
       ok("1.grid22 · the Targets grid serves ONE page of 20 and says how many there are in all — the total is a COUNTING read, never the page's own length",
         p1.targets.length === 20 && p1.targetsTotal === 22 && p1.targetsPage === 1 && p1.targetsPerPage === 20
@@ -2882,8 +2885,8 @@ try {
         j({ p1: p1.targetsActive, p2: p2.targetsActive }));
       /* ⛔ A HAND-TYPED PAGE PAST THE END IS SERVED AS THE LAST PAGE, never as an empty grid under a pager
          pointing somewhere else — and a page number that is not a page at all reads as page 1. */
-      const over = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, 99);
-      const junk = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, Number("x"));
+      const over = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, { tab: "targets", tpage: "99" });
+      const junk = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", paged.botId, { tab: "targets", tpage: "x" });
       ok("1.grid22 · `?tpage=99` is served as the LAST page with its rows, and a page number that is not one reads as page 1",
         over.targetsPage === 2 && j(ids(over)) === j(ids(p2)) && junk.targetsPage === 1 && j(ids(junk)) === j(ids(p1)),
         j({ over: over.targetsPage, overRows: over.targets.length, junk: junk.targetsPage }));
@@ -3030,10 +3033,14 @@ try {
   {
     const detail = decomment(read(DETAIL_PAGE));
     const guards = (detail.match(/\{!view\.removed && \(/g) ?? []).length;
-    ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and both other panels",
+    /* ⭐ SIX BECAME EIGHT AT C7 STEP 5, AND THE RULE IS UNCHANGED: every card of this page is guarded by `removed`
+       from the INSIDE. The two new panels are two more guards — the activity panel and the history panel — and the
+       number is an EQUALITY, not a floor, so a panel that ships without its guard is still red. Re-derived from a
+       run of this suite on both stores, never carried over from the last one. */
+    ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and all four other panels",
       /* ⚠️ THE SOURCE IS DECOMMENTED, so a pin may not reach for a comment as its landmark — measured on the
          first run of this very assertion, which looked for the `312` note above the rail and found nothing. */
-      guards === 6 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
+      guards === 8 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
         && /\{view\.removed && \(\s*<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(detail),
       j({ guards }));
     /* ⛔ AND THE TAB TESTS ARE STILL PURE, which is what keeps `test:tab-anchors` and the served probe able to read
@@ -3058,7 +3065,9 @@ try {
          treatment is written once. The read behind it IS taken on a removed account — the rules are parsed to
          be shown as a record — so this one is reachable and correct; what 355 refuses is a failure treatment
          for a read a removed account never takes. */
-      (detail.match(/<AdminLoadError/g) ?? []).length === 3
+      (detail.match(/<AdminLoadError/g) ?? []).length === 5 /* ⭐ FIVE SINCE C7 STEP 5: the activity panel and the
+           history panel each own one, each INSIDE its own `!view.removed` guard — a removed account takes neither
+           list read, and a read that was never taken has not failed. Still an EQUALITY; re-derived from this run. */
         && detail.indexOf('{view.removed && (') < detail.indexOf('{tab === "overview"'),
       j({ loadErrors: (detail.match(/<AdminLoadError/g) ?? []).length }));
   }
@@ -4084,9 +4093,49 @@ export default function Ruling513Control() {
       walkFor("src");
       return hits;
     })();
-    ok("1.375 · `reimbursement_recorded` has no writer anywhere under `src/` — its only two occurrences are the declarations Commit 1 made, and no console file names it",
-      writers.length === 0 && !/reimbursement/i.test(sectionCode)
-        && auditKeys.includes("house_bot.reimbursement_recorded"), j({ writers }));
+    /* ⭐ C7 STEP 5 · THE SCAN GAINED A TERM AND ACCOUNTED FOR ITS ONE HIT; IT DID NOT LOSE ONE.
+     * The word-shaped walk above is deliberately broad, and the account page's history tab gave it its first
+     * legitimate hit: `CONSOLE_EVENT_WORD` is a TOTAL `Record<HouseBotEventKind, string>` — `tsc` refuses a kind
+     * without a word — so the console's own neutral sentence for the `REIMBURSEMENT_RECORDED` EVENT KIND lives in
+     * the gate module. An event word is not a writer, and a rule that convicts a word map for a writer's crime is
+     * a rule that gets exempted and then protects nothing.
+     * ⛔ SO THE HIT IS ACCOUNTED FOR BY NAME AND BY SHAPE, NEVER EXEMPTED BY FILE: the only file that may name the
+     * word is the gate module, the occurrence must be a VALUE of that map, and — the term that did not exist
+     * before — NOTHING under `src/` may write the AUDIT KEY, which is what "not built" actually means. A second
+     * file naming the word, or the same file calling anything with the key, is still red. */
+    const ACCOUNTED = "src/lib/server/house-console-read.ts";
+    const unaccounted = writers.filter((f) => f !== ACCOUNTED);
+    const gateWordMap = (() => {
+      const src = decomment(read(ACCOUNTED));
+      const at = src.indexOf("export const CONSOLE_EVENT_WORD");
+      return at < 0 ? "" : src.slice(at, src.indexOf("} as const satisfies", at));
+    })();
+    const keyWriters = (() => {
+      const hits: string[] = [];
+      const walkFor = (dir: string) => {
+        for (const e of readdirSync(join(ROOT, dir))) {
+          const rel = `${dir}/${e}`;
+          if (statSync(join(ROOT, rel)).isDirectory()) { if (e !== "node_modules") walkFor(rel); }
+          else if (/\.tsx?$/.test(e) && rel !== "src/lib/house-bot/constants.ts"
+            && /house_bot\.reimbursement_recorded/.test(decomment(read(rel)))) hits.push(rel);
+        }
+      };
+      walkFor("src");
+      return hits;
+    })();
+    ok("1.375 · `reimbursement_recorded` has no writer anywhere under `src/` — nothing names its AUDIT KEY, the one file that names the word is the gate module's TOTAL event-word map, and no other file under `src/` names it at all",
+      keyWriters.length === 0
+        && unaccounted.length === 0
+        && gateWordMap.includes("REIMBURSEMENT_RECORDED:")
+        && /reimbursement/i.test(gateWordMap)
+        && !/reimbursement/i.test(sectionCode)
+        && auditKeys.includes("house_bot.reimbursement_recorded"), j({ writers, unaccounted, keyWriters }));
+    ok("1.375 · CONTROL · both halves of the accounting really fire — the word planted in a SECOND file is reported, and the audit key planted in the gate module's own body is reported, while the shipped tree is not",
+      (() => {
+        const plantedWord = [...writers, "src/lib/server/store.ts"].filter((f) => f !== ACCOUNTED);
+        const plantedKey = /house_bot\.reimbursement_recorded/.test('await writeHouseAudit("house_bot.reimbursement_recorded", {});');
+        return plantedWord.length === 1 && plantedKey && unaccounted.length === 0 && keyWriters.length === 0;
+      })(), "");
     ok("1.375 · and `HOUSE_AUDIT`'s key set is PINNED at its post-un-build size, so a re-introduction is a ruling rather than one more line in a map",
       auditKeys.length === 31 && auditKeys.every((k) => k.startsWith("house_bot.")), j({ keys: auditKeys.length }));
     ok("1.375 · CONTROL · the writer scan really finds the word — planted into a real console file it is reported, and the real file does not carry it",

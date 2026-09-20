@@ -297,22 +297,44 @@ await guard("7", async () => {
      test-strength-04). `7.2` strips the query before resolving, so a link to a tab with NO PANEL scores as
      "resolves to a page that exists today" while ruling 302's fallback quietly repaints the roster — an officer
      following a bell lands on a screen that looks like it worked. MEASURED HERE, not assumed: the emitters
-     build `?tab=activity` and `?tab=history`, and `CONSOLE_TABS` holds neither, because C7 step 5 is not
-     built (DEFERRED row 62).
+     build `?tab=activity` and `?tab=history`, and one of those links is a LANDING link whose panel is not built.
      ⛔ `UNBUILT_TABS` IS A TRACKED DEBT, NOT A PERMISSION, AND IT CAN ONLY SHRINK. Each entry must name a tab
-     this tree really lacks: the moment step 5 lands, `consoleTabExists("activity")` is true, the entry is no
-     longer a gap, and this case goes RED until it is deleted — which is how a skip stops being remembered and
-     starts being tracked. A tab key that is NOT on this list and has no panel fails immediately. */
-  const UNBUILT_TABS = ["activity", "history"] as const;
+     this tree really lacks: the moment its panel lands the entry is no longer a gap, and this case goes RED
+     until it is deleted — which is how a skip stops being remembered and starts being tracked. A tab key that is
+     NOT on this list and has no panel fails immediately.
+
+     ⭐ AND IT IS KEYED PER SHAPE SINCE C7 STEP 5's ACCOUNT HALF, WHICH IS A SHRINK AND NOT A WIDENING.
+     ⛔ THE REASON IS MEASURED, NOT PREFERRED. The two shapes — the LANDING rail (`CONSOLE_TABS`) and the ACCOUNT
+     page's rail (`CONSOLE_DETAIL_TABS`) — are separate closed lists with separate panels, and `exists()` below has
+     always resolved each href against its own. The debt was keyed by BARE NAME, so one entry stood for both
+     shapes: the day the account page's `activity` panel landed, `staleDebt` reported the entry as stale while the
+     LANDING `?tab=activity` link was still dead and still needed it. Per shape, the two detail entries are DELETED
+     with their build and the two landing entries stay — four possible entries, two of them gone, which is the only
+     direction this list may move. Re-derived from a run of this suite: of the eleven `?tab=` hrefs the alerts
+     produce, TEN are detail links and exactly ONE is the hour summary's LANDING `?tab=activity`. */
+  const UNBUILT_TABS = [
+    { shape: "landing", tab: "activity" },
+    { shape: "landing", tab: "history" },
+  ] as const;
   const tabOf = (h: string) => new URLSearchParams(h.split("?")[1] ?? "").get("tab");
   const detailHref = (h: string) => /^\/admin\/desk\/hb_\w+(\?|$)/.test(h);
-  const tabbed = consoleHrefs.map((h) => ({ h, tab: tabOf(h) })).filter((x) => x.tab !== null) as { h: string; tab: string }[];
-  const exists = (x: { h: string; tab: string }) => (detailHref(x.h) ? CR.consoleDetailTabExists(x.tab) : CR.consoleTabExists(x.tab));
+  const shapeOf = (h: string) => (detailHref(h) ? "detail" : "landing");
+  const tabbed = consoleHrefs.map((h) => ({ h, tab: tabOf(h), shape: shapeOf(h) })).filter((x) => x.tab !== null) as { h: string; tab: string; shape: string }[];
+  const exists = (x: { shape: string; tab: string }) => (x.shape === "detail" ? CR.consoleDetailTabExists(x.tab) : CR.consoleTabExists(x.tab));
   const deadTabs = tabbed.filter((x) => !exists(x));
-  const staleDebt = UNBUILT_TABS.filter((t) => CR.consoleTabExists(t) || CR.consoleDetailTabExists(t));
-  ok("7.2c · every `?tab=` a house alert produces names a panel that is BUILT, or a tab this tree is RECORDED as not having yet — and a recorded one that now exists is reported so the record is deleted with the build",
-    deadTabs.every((x) => (UNBUILT_TABS as readonly string[]).includes(x.tab)) && staleDebt.length === 0,
-    j({ tabbed: tabbed.length, dead: deadTabs.map((x) => x.h), unbuilt: UNBUILT_TABS, staleDebt }));
+  const recorded = (x: { shape: string; tab: string }) => UNBUILT_TABS.some((d) => d.shape === x.shape && d.tab === x.tab);
+  const staleDebt = UNBUILT_TABS.filter((d) => exists(d));
+  ok("7.2c · every `?tab=` a house alert produces names a panel that is BUILT for its own SHAPE, or a tab this tree is RECORDED as not having yet in that shape — and a recorded one that now exists is reported so the record is deleted with the build",
+    deadTabs.every(recorded) && staleDebt.length === 0,
+    j({ tabbed: tabbed.length, dead: deadTabs.map((x) => `${x.shape}:${x.tab}`), unbuilt: UNBUILT_TABS, staleDebt }));
+  /* ⛔ AND THE PER-SHAPE KEYING IS ITSELF MEASURED, so it cannot quietly become a bare-name list again: the
+     account page's `activity` and `history` panels EXIST, the landing page's do NOT, and the debt list names
+     exactly the two that do not. A list that stopped distinguishing them would read one of these four as false. */
+  ok("7.2e · the debt is keyed per SHAPE and the four keys read true/false independently — the account page's two panels exist, the landing page's two do not, and only the missing pair is recorded",
+    CR.consoleDetailTabExists("activity") && CR.consoleDetailTabExists("history")
+      && !CR.consoleTabExists("activity") && !CR.consoleTabExists("history")
+      && UNBUILT_TABS.every((d) => d.shape === "landing") && UNBUILT_TABS.length === 2,
+    j({ detail: [...CR.CONSOLE_DETAIL_TABS], landing: [...CR.CONSOLE_TABS] }));
   ok("7.2d · ⛔ AND THE DEBT IS REAL, PRINTED, NOT INFERRED: the alerts DO link to a tab with no panel today, so 7.2c's tolerance is measuring something",
     deadTabs.length >= 1 && tabbed.length >= 1
       && !CR.consoleTabExists("activity") && !CR.consoleTabExists("history")

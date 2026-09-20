@@ -227,6 +227,12 @@ const ADMIN_SURFACES = [
   "src/app/admin/transactions/page.tsx",            // window only
   "src/app/admin/traffic/page.tsx",                 // window only — first-party visit counts (2026-09-15)
   "src/app/admin/updown/page.tsx",                  // window only
+  /* ⭐ C7 step 5 · the desk account page's activity rail — three chip axes plus the window, all SERVER-BUILT.
+     ⚠️ DECLARING IT IS THE POINT, NOT A FORMALITY: §0.4 walks `src/` and FAILS on any `data-filter-rail` this
+     gate does not know about, and declaring the file subjects it to §6.1-§6.8 — so its window filter and every
+     one of its chips must take the dense rank, from that control's own module, or a 243-assertion suite goes red
+     for a rail that looks right on screen. It is the FIRST declared rail whose hrefs are built on the server. */
+  "src/app/admin/desk/[id]/activity-filters.tsx",   // /admin/desk/[id]?tab=activity — type + product + outcome + window
 ];
 
 /**

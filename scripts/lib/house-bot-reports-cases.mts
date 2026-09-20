@@ -2417,6 +2417,14 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      `field === "label"` cannot tell the console's early check from the service's late one: both answer that field,
      so only the SENTENCE distinguishes them. None of the four awaits, reaches a store or decides an audience. */
   "CONSOLE_PICKER_BUSY", "CONSOLE_WIZARD_COPY", "CONSOLE_DESIGNATE_LABEL_LENGTH", "CONSOLE_DESIGNATE_LABEL_TAKEN",
+  /* ⭐ C7 step 5 (the account half) · the two panels' painted SHAPES, the query shape the door validates, and ONE
+     constant: `CONSOLE_EVENT_WORD`, a TOTAL `Record<HouseBotEventKind, string>`. It is exported so the suite can
+     compare its key set with `EVENT_KINDS` member for member rather than regexing the source for a fallback — the
+     strongest form of "no raw enum reaches the screen", and the one a source scan cannot give. It is pure copy:
+     it awaits nothing, names no store and decides no audience, which is what 0.512b checks rather than assumes.
+     ⛔ The two panels' READER is `houseDetailForConsole`, which has its `CONSOLE_GATES` entry above — the arity
+     pin MOVED with the door's shape at this step (a query object in place of a bare page number) and stayed at 4. */
+  "CONSOLE_EVENT_WORD", "ConsoleDetailQuery", "ConsoleEventRow", "ConsoleFeedRow", "ConsoleFilterGroup", "ConsoleFilterOption",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
