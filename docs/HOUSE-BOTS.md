@@ -770,7 +770,7 @@ ready.* So the sequence is fixed — a session states readiness, Ali decides —
 
 | Step | What it is | How it is proved |
 |---|---|---|
-| **R0** (T-1 day) | Merge `origin/main`. Everything green on ONE SHA. Checklist to Ali. | `npm run test:all`, every `red:house-bot-*`, `npm run qa:house-bots-local`, `npm run qa:house-bots-visual`, the S4 rehearsals, the coverage gate, `npm run ops:release-migration-parity` GO and `npm run ops:preflight-house-bot-migrations` GO |
+| **R0** (T-1 day) | Merge `origin/main`. Everything green on ONE SHA. Checklist to Ali. | `npm run test:all`, every `red:house-bot-*`, `npm run qa:house-bots-local`, `npm run qa:house-bots-visual`, the S4 rehearsals, the coverage gate (`npm run test:scenario-coverage` — read its printed bracket, do not tick it), `npm run ops:release-migration-parity` GO and `npm run ops:preflight-house-bot-migrations` GO |
 | **R1** | A quiet hour is CHOSEN — not computed. | The preflight prints the bets in the last 15 minutes as evidence; ⛔ never during the nightly trial balance, and never a window under 10 minutes |
 | **R2** | The migrations, if any are still pending. ⚠️ **Struck for THIS release** — see below. | `npx prisma migrate status` against the production URL, then `migrate deploy`, then each row's checksum |
 | **R3** | While the OLD container still serves: the schema read is true, the switch is `false`, `/api/health` is ok, the Position count is still rising. | `npm run ops:house-bots-status` and one `/api/health` read |
@@ -974,7 +974,7 @@ blocked. Every figure names the population it counts. ⛔ A figure with no popul
 | 5 | The reports suite, and the house cases in `test:erasure` and `test:dsar-secrets` | — | Land in commit 5 |
 | 6 | The disclosure suite, which also pins risks 13–20 and the do-not-restore lines in §13 | — | Lands in commit 6 |
 | 7 | The console suite, its RED harness and the visual pass | — | Land in commit 7 |
-| 8 | The local end-to-end drive, the S4 rehearsals and the scenario coverage gate | — | Land in commit 8 |
+| 8 | The local end-to-end drive, the S4 rehearsals and the scenario coverage gate | `npm run qa:house-bots-local` 21/0 · `npm run test:scenario-coverage` 18/0 — all 281 register ids measured 2026-09-20: 24 proven by name, 230 carried by an owning suite that exists, 9 struck by D19/D20, 7 deferred, **11 unresolved and named** | Drive ✅ · coverage gate ✅ · S4 rehearsals land in commit 8 |
 | Production | Nothing is deployed. | — | NOT MEASURED |
 
 | 4 | `red:house-bot-engine`: 29 declared mutations over the engine, the DAL, the trigger call site and the COUNTER migration — each must turn ITS OWN assertion red, and every file is restored byte for byte | The build machine (a temporary worktree with a `node_modules` junction) | 2026-09-16 · OMEGA-COMPILE01: **22 caught, 0 missed, 0 not measured, 0 files left dirty**, then 5 more (L1–L4 and the pins) and L6's 2, each caught on its own line |
