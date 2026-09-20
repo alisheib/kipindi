@@ -767,6 +767,7 @@
     "test:house-bot-ops": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-ops.test.mts",
     "red:house-bot-ops": "tsx scripts/lib/house-bot-ops-cases.mts --prove-red",
     "ops:house-bots-off": "tsx scripts/ops-house-bots-off.mts",
+    "ops:house-bots-status": "tsx scripts/ops-house-bots-status.mts",
     "test:reset-identifier": "tsx scripts/reset-identifier.test.mts",
     "red:reset-identifier": "node scripts/reset-identifier-red.mjs",
     "qa:reset-identifier": "node scripts/reset-identifier-shots.mjs",

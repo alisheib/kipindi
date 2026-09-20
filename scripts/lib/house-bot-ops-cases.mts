@@ -72,7 +72,10 @@ const section = (t: string): void => console.log(`\n[${PROVE_RED ? "red" : STORE
 const j = (v: unknown): string => JSON.stringify(v) ?? String(v);
 const read = (rel: string): string => readFileSync(join(REPO_ROOT, rel), "utf8");
 async function guard(label: string, fn: () => Promise<void> | void): Promise<void> {
-  try { await fn(); } catch (e) { ok(`${label} · threw`, false, String((e as Error)?.stack ?? e).split("\n").slice(0, 3).join(" | ")); }
+  // ⚠️ TWELVE STACK LINES, NOT THREE. A Prisma raw-query failure puts its CHECK-constraint name and the
+  // failing row past line three, so a three-line blob said only "Invalid $queryRawUnsafe() invocation" and
+  // cost a whole debug cycle to turn back into a fact. A failure message is only printed when something failed.
+  try { await fn(); } catch (e) { ok(`${label} · threw`, false, String((e as Error)?.stack ?? e).split("\n").slice(0, 12).join(" | ")); }
 }
 
 const SELF = "scripts/lib/house-bot-ops-cases.mts";
@@ -897,6 +900,183 @@ if (STORE === "postgres") {
         dead.code !== 0 && dead.out.includes(SWITCH_OFF_COPY.WRITE_FAILED) && /STILL RUNNING/.test(dead.out)
         && /Maintenance mode/.test(dead.out) && JSON.stringify(afterDead) === JSON.stringify(afterAgain),
         `exit ${dead.code} · ${dead.out.split("\n").filter((l) => /STILL RUNNING/.test(l)).join(" | ")}`);
+    } finally {
+      await cx.end().catch(() => {});
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// §3 · ops:house-bots-status (S3) — the five release figures, and the three drift legs the
+// re-release law turns on.
+//
+// ⛔ THE FIGURES ARE ASSERTED AGAINST NUMBERS THIS SUITE MEASURED ITSELF, never against a literal
+// "0". By the time this section runs the world holds bots, marked positions and marked ledger rows,
+// and that is BETTER than a clean database: a reader that printed 0 on a populated database would
+// pass an "expect 0" assertion and fail the only question worth asking — does it count?
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const STATUS_SCRIPT = "scripts/ops-house-bots-status.mts";
+/** ⛔ PINNED BYTE FOR BYTE, and the duplication IS the pin: if the script ever prints a NUMBER here
+ * instead, this string stops matching. A `wagering: 0` would be a true measurement of a population
+ * that does not exist — BonusGrant carries no positionId on this schema. */
+const WAGERING_SENTENCE = "wagering: NOT MEASURABLE — wagering is a counter on BonusGrant, which carries no positionId on this schema";
+
+const figure = (out: string, re: RegExp): string | null => { const m = re.exec(out); return m ? m[1] : null; };
+
+if (STORE === "memory") {
+  section("§3s · ops:house-bots-status — the SOURCE pins, and the unit run with no database at all");
+  await guard("status.src", () => {
+    const body = bodyOf(STATUS_SCRIPT);
+    ok("ops.status.src · ⛔ the engine figures come from DURABLE rows: the file calls neither houseBotEngineHealth (this process's own state — an ops process would call a healthy engine dead) nor houseEngineHealthFor (which gates on a viewer an ops script does not have), and imports no loadWorld (whose first statement disables the market scheduler)",
+      !/houseBotEngineHealth/.test(body) && !/houseEngineHealthFor/.test(body) && !/loadWorld/.test(body),
+      j({ health: /houseBotEngineHealth/.test(body), healthFor: /houseEngineHealthFor/.test(body), world: /loadWorld/.test(body) }));
+    ok("ops.status.srcp · POSITIVE CONTROL · …and it DOES read the durable rows and fold them — listInstances() and houseEngineBeats() — so the three absences above are a choice of source, not a file that reads nothing",
+      /listInstances\s*\(/.test(body) && /houseEngineBeats\s*\(/.test(body) && /houseEngineVerdict\s*\(/.test(body), "listInstances + houseEngineBeats + houseEngineVerdict all called");
+    ok("ops.status.src2 · the thresholds are IMPORTED, not typed: no 90000 / 90_000 / 30000 literal anywhere in the file",
+      !/\b90[_]?000\b/.test(body) && !/\b30[_]?000\b/.test(body) && /BOOT_GRACE_MS/.test(body) && /ENGINE_STALE_MS/.test(body),
+      j({ literals: body.match(/\b\d{2}[_]?000\b/g) ?? [] }));
+    ok("ops.status.src3 · it writes NOTHING: no INSERT, no UPDATE, no DELETE anywhere in the file — the one command safe to run mid-incident",
+      markerUpdateSites(body).length === 0 && !/\b(?:INSERT\s+INTO|DELETE\s+FROM)\b/i.test(body) && !/\bUPDATE\s+"/i.test(body)
+      && switchOnSites(body).length === 0, j({ marker: markerUpdateSites(body), on: switchOnSites(body) }));
+  });
+
+  await guard("status.mem", () => {
+    // ⛔ ENG-21's "unit on memory store": the same file, no database at all, running to completion.
+    const run = runOps(STATUS_SCRIPT, [], { DATABASE_URL: "", USE_PRISMA_DAL: "false" });
+    ok("ops.status.mem · the SAME file runs to completion on the memory store with no DATABASE_URL, exits 0, and SAYS which store answered — so a memory green can never be read as a Postgres green",
+      run.code === 0 && /store\s+memory/.test(run.out) && /master switch/.test(run.out) && /planner beat/.test(run.out),
+      `exit ${run.code} · ${run.out.split("\n").find((l) => /store /.test(l))?.trim() ?? ""}`);
+    ok("ops.status.mem2 · …and on that store it REFUSES --drift rather than reporting a clean zero: every leg is a join between two tables, and 'nothing measured' must never read as 'nothing found'",
+      (() => { const d = runOps(STATUS_SCRIPT, ["--drift"], { DATABASE_URL: "", USE_PRISMA_DAL: "false" }); return d.code === 2 && /REFUSED on the memory store/.test(d.out) && !/drift total/.test(d.out); })(),
+      "exit 2, no drift total printed");
+  });
+}
+
+if (STORE === "postgres") {
+  section("§3 · ops:house-bots-status — DRIVEN against the scratch database, figures and drift legs");
+  await guard("status", async () => {
+    const C: Any = await import("../../src/lib/house-bot/constants.ts");
+    const pgLib: Any = (await import("pg")).default;
+    const cx = new pgLib.Client({ connectionString: process.env.DATABASE_URL });
+    await cx.connect();
+    const count = async (text: string): Promise<number> => Number((await cx.query(text)).rows[0].n);
+
+    try {
+      // ⛔ PLANTED CONTROL · an engine boot row and a planner beat, written through the PRODUCT'S OWN
+      // writers (`boot()` is what engine.ts calls on a successful boot, `beat()` what the planner calls).
+      // Without them figures 4 and 5 would print "never" and their assertions would pass on absence.
+      await w.dal.houseBotRuntimeStore.boot(C.RUNTIME_KEY.engine("ops_case"), { engineEnabled: true });
+      await w.dal.houseBotRuntimeStore.beat(C.RUNTIME_KEY.plannerBeat);
+
+      const measured = {
+        bots: await w.dal.houseBotStore.countLive(),
+        markedPositions: await count(`SELECT count(*)::int AS "n" FROM "Position" WHERE "houseBotId" IS NOT NULL`),
+        markedTxns: await count(`SELECT count(*)::int AS "n" FROM "Transaction" WHERE "houseBotId" IS NOT NULL`),
+        enabled: (await w.dal.houseBotControlStore.get()).enabled,
+      };
+      const run1 = runOps(STATUS_SCRIPT, []);
+      ok("ops.status.1 · the five release figures, each equal to a number this suite measured INDEPENDENTLY and each printed with the population it counts — the switch, the roster, the marked rows, the engine's boot instant and the planner beat age",
+        run1.code === 0
+        && figure(run1.out, /^1\s+master switch\s+(\S+)/m) === (measured.enabled ? "ON" : "OFF")
+        && Number(figure(run1.out, /^2\s+bots\s+(\d+)/m)) === measured.bots
+        && Number(figure(run1.out, /^3\s+marked rows\s+Position (\d+)/m)) === measured.markedPositions
+        && Number(figure(run1.out, /^3\s+marked rows\s+Position \d+ · Transaction (\d+)/m)) === measured.markedTxns
+        && /^4\s+engine\s+an engine booted here at \d{4}-/m.test(run1.out)
+        && /^5\s+planner beat\s+\d+ s ago/m.test(run1.out),
+        `exit ${run1.code} · measured ${j(measured)} · printed ${j({ switch: figure(run1.out, /^1\s+master switch\s+(\S+)/m), bots: figure(run1.out, /^2\s+bots\s+(\d+)/m), pos: figure(run1.out, /Position (\d+)/), txn: figure(run1.out, /Transaction (\d+)/) })}`);
+
+      ok("ops.status.1p · POSITIVE CONTROL · those figures are NOT ZERO on this database — a reader that printed 0 everywhere would have satisfied a 'clean world' assertion while counting nothing",
+        measured.bots > 0 && measured.markedPositions > 0 && measured.markedTxns > 0, j(measured));
+
+      ok("ops.status.4 · the switch is OFF and the beat age is STILL printed — houseEngineVerdict returns null for any state but ON, which is the shipped state, so a script that leaned on the verdict would print nothing at all about liveness",
+        measured.enabled === false && /^5\s+planner beat\s+\d+ s ago/m.test(run1.out) && /no verdict/.test(run1.out),
+        run1.out.split("\n").filter((l) => /verdict|planner beat/.test(l)).map((l) => l.trim()).join(" | "));
+
+      // ── ops.status.3 · the roster figure is countLive, not an ACTIVE-only count ──
+      const paused = await w.bot();
+      await w.dal.houseBotStore.setStatus(paused.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+      const run2 = runOps(STATUS_SCRIPT, []);
+      ok("ops.status.3 · a PAUSED bot RAISES the roster figure by one and the label says non-REMOVED — the population is every designation that has not been removed, which is a different number from the engine's ACTIVE-only count on the same line",
+        Number(figure(run2.out, /^2\s+bots\s+(\d+)/m)) === measured.bots + 1 && /population: non-REMOVED/.test(run2.out)
+        && (await w.dal.houseBotStore.get(paused.botId)).status === "PAUSED",
+        `${measured.bots} → ${figure(run2.out, /^2\s+bots\s+(\d+)/m)}`);
+
+      // ── ops.status.2 · the marked-row figure is UNBOUNDED in time ──
+      await cx.query(`UPDATE "Position" SET "placedAt" = "placedAt" - interval '48 hours' WHERE "houseBotId" IS NOT NULL`);
+      const run3 = runOps(STATUS_SCRIPT, []);
+      ok("ops.status.2 · ⛔ every marked position pushed 48 HOURS into the past is STILL counted — the figure is all-time, not the seam's 24-hour rolling window, which would have printed 0 on a database holding older marked rows",
+        Number(figure(run3.out, /^3\s+marked rows\s+Position (\d+)/m)) === measured.markedPositions && /ALL TIME/.test(run3.out),
+        `${measured.markedPositions} marked positions, all now 48 h old, still counted`);
+
+      // ── the drift legs ──
+      const driftRun = (args: string[]) => runOps(STATUS_SCRIPT, ["--drift", ...args]);
+      const base = driftRun(["--since", "30"]);
+      const baseTotal = Number(figure(base.out, /drift total\s+(\d+)/) ?? "-1");
+      ok("ops.drift.0 · the baseline is MEASURED and printed before anything is planted — every later leg is a delta over this number, never over an assumed zero",
+        baseTotal >= 0 && /bound\s+30 day\(s\)/.test(base.out), `drift total ${baseTotal} · exit ${base.code}`);
+
+      const marked = (await cx.query(`SELECT "id", "marketId", "houseBotId" FROM "Position" WHERE "houseBotId" IS NOT NULL ORDER BY "placedAt" DESC LIMIT 1`)).rows[0];
+      const unmarked = (await cx.query(`SELECT "id", "marketId" FROM "Position" WHERE "houseBotId" IS NULL ORDER BY "placedAt" DESC LIMIT 1`)).rows[0];
+      const holder = (await cx.query(`SELECT "userId" FROM "Position" WHERE "id" = $1`, [marked.id])).rows[0].userId;
+      const player = (await cx.query(`SELECT "userId" FROM "Position" WHERE "id" = $1`, [unmarked.id])).rows[0].userId;
+      const txn = (id: string, positionId: string, userId: string, type: string, houseBotId: string | null): Any => ({
+        id, walletId: `wal_${userId}`, userId, type, status: "CONFIRMED", amount: 1_234, fee: 0, taxWithheld: 0, balanceAfter: null,
+        currency: "TZS", provider: "INTERNAL", providerRef: null, msisdn: null, description: null, positionId, amlReason: null,
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), completedAt: null, idempotencyKey: null, houseBotId,
+      });
+      // ⛔ EVERY PLANT GOES THROUGH `db.txn.create` — the product's own writer, the one old pre-merge code
+      // used. A row written by hand in SQL would prove the query matches SQL I wrote, not a row the
+      // platform can produce. The UNMARKED ones are exactly what a rollback window leaves behind.
+      await w.db.txn.create(txn("txn_drift_a", marked.id, holder, "BET_PAYOUT", null));      // leg (a)
+      await w.db.txn.create(txn("txn_drift_b", marked.id, holder, "CASHOUT", marked.houseBotId)); // leg (b) only
+      await w.db.txn.create(txn("txn_drift_c", marked.id, holder, "AGENT_COMMISSION", marked.houseBotId)); // leg (c) only
+      // ⛔ PLANTED CONTROLS · the same three shapes on an UNMARKED position. None may be reported.
+      await w.db.txn.create(txn("txn_ctl_a", unmarked.id, player, "BET_PAYOUT", null));
+      await w.db.txn.create(txn("txn_ctl_b", unmarked.id, player, "CASHOUT", null));
+      await w.db.txn.create(txn("txn_ctl_c", unmarked.id, player, "AGENT_COMMISSION", null));
+      await w.db.referralReward.create({
+        id: "rrw_drift_c2", referrerUserId: player, recruitUserId: holder, type: "COMMISSION", label: "Commission",
+        amountTzs: 500, grossAmountTzs: 500, taxWithheldTzs: 0, status: "PAID", recipientUserId: player, note: null,
+        programme: "AGENT", rateApplied: 5, marketId: marked.marketId,
+        sourceRef: `referral:commission:${marked.marketId}:${marked.id}`, reversedAt: null, reversedReason: null,
+        createdAt: new Date().toISOString(),
+      });
+
+      const after = driftRun(["--since", "30"]);
+      const legA = Number(figure(after.out, /\(a\) unmarked ledger rows on MARKED positions … (\d+)/) ?? "-1");
+      const legB = Number(figure(after.out, /\(b\) CASHOUT rows on MARKED positions … (\d+)/) ?? "-1");
+      const legC = Number(figure(after.out, /\(c\) AGENT_COMMISSION on MARKED positions … (\d+) ledger row/) ?? "-1");
+      const legC2 = Number(figure(after.out, /(\d+) referral reward row/) ?? "-1");
+
+      ok("ops.drift.a · leg (a) reports EXACTLY the planted unmarked ledger row of a marked position, by id — and the CONTROL rows on an unmarked position are not among them, which is what proves the join is on MARKED positions rather than on any position at all",
+        legA === 1 && /txn_drift_a/.test(after.out) && !/txn_ctl_a/.test(after.out), `leg (a) = ${legA}`);
+      ok("ops.drift.b · leg (b) reports the CASHOUT on the marked position and NOT the identical CASHOUT on an unmarked one",
+        legB === 1 && /txn_drift_b/.test(after.out) && !/txn_ctl_b/.test(after.out), `leg (b) = ${legB}`);
+      ok("ops.drift.c · leg (c) reports BOTH halves it can measure — the AGENT_COMMISSION ledger row and the ReferralReward whose deterministic sourceRef rebuilds to this marked position — and neither control on the unmarked position",
+        legC === 1 && legC2 === 1 && /txn_drift_c/.test(after.out) && /rrw_drift_c2/.test(after.out) && !/txn_ctl_c/.test(after.out),
+        `ledger ${legC} · rewards ${legC2}`);
+      ok("ops.drift.cw · ⛔ AND THE HALF IT CANNOT MEASURE SAYS SO, BYTE FOR BYTE — wagering is a counter on BonusGrant, which carries no positionId on this schema, so a `wagering: 0` here would be a true measurement of a population that does not exist",
+        after.out.includes(WAGERING_SENTENCE) && !/wagering:\s*\d/.test(after.out), "the pinned sentence is present and no number follows `wagering:`");
+      ok("ops.drift.exit · a drift run that FINDS something exits non-zero, and the baseline run that found nothing exited 0 — the re-release law is a gate, not a report",
+        after.code === 1 && base.code === (baseTotal === 0 ? 0 : 1) && Number(figure(after.out, /drift total\s+(\d+)/)) === baseTotal + 4,
+        `base ${baseTotal} exit ${base.code} · after exit ${after.code} total ${figure(after.out, /drift total\s+(\d+)/)}`);
+
+      // ── the bound, and the refusal ──
+      // ⛔ PLANTED CONTROL · the drifted row is on a position placed 48 h ago (every marked position was
+      // pushed back above). A ONE-DAY window must NOT see it; a thirty-day window must. Without this pair
+      // the `--since` bound could be decoration.
+      const narrow = driftRun(["--since", "1"]);
+      ok("ops.drift.bound · CONTROL · the same database read through a ONE-DAY window reports none of those rows, and the thirty-day window reports all four — so the bound is doing work, and the window it used is printed either way",
+        Number(figure(narrow.out, /\(a\) unmarked ledger rows on MARKED positions … (\d+)/)) === 0
+        && /bound\s+1 day\(s\)/.test(narrow.out) && /bound\s+30 day\(s\)/.test(after.out) && legA === 1,
+        `1-day leg (a) = ${figure(narrow.out, /\(a\) unmarked ledger rows on MARKED positions … (\d+)/)} · 30-day leg (a) = ${legA}`);
+      ok("ops.drift.plan · leg (a) prints the EXPLAIN plan of the statement it actually ran — a bounded query that silently fell back to a sequential scan is a different command from the one the header argues for, and only the plan can tell you which ran",
+        /plan:/.test(after.out) && /(Scan|Loop|Join)/.test(after.out.split("plan:")[1] ?? ""),
+        (after.out.split("plan:")[1] ?? "").split("\n").slice(1, 3).map((l) => l.trim()).join(" | "));
+      const unbounded = driftRun(["--since", "0"]);
+      ok("ops.drift.refuse · an UNBOUNDED run is REFUSED (exit 2) with the reason — Transaction has no index on positionId and its only marker index is the wrong polarity — and it prints no drift total, so a refusal can never be read as a clean result",
+        unbounded.code === 2 && /REFUSED/.test(unbounded.out) && !/drift total/.test(unbounded.out), `exit ${unbounded.code}`);
     } finally {
       await cx.end().catch(() => {});
     }

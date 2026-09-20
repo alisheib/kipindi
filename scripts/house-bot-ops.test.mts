@@ -33,7 +33,12 @@
  *     absent audit write, and the positive control that the file really is INSIDE the derived ops
  *     population); thirteen in the Postgres child, which RUNS the script five times — dry, applied,
  *     applied again, with no DATABASE_URL, and against a closed port.
+ *   · memory 41, postgres 40 — step 4: §3, `ops:house-bots-status` and its three drift legs. Six more
+ *     in the memory child (four SOURCE pins, plus the file RUN with no database at all and its --drift
+ *     REFUSED there rather than reported clean); fourteen more in the Postgres child, where the five
+ *     release figures are compared against numbers the suite measured itself on a populated database —
+ *     a reader printing 0 everywhere would satisfy a "clean world" assertion while counting nothing.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 35, postgres: 26 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 41, postgres: 40 }, dbPrefix: "hb_ops" });
