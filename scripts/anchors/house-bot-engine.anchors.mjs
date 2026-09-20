@@ -28,6 +28,8 @@ const DAL = "src/lib/server/house-bot-dal.ts";
 const WORKER = "src/lib/server/house-bot/worker.ts";
 /* ⭐ C7 step 4b · the one server-side staleness predicate the console renders (rulings 352, 353, 354). */
 const HEALTH = "src/lib/server/house-bot/engine-health.ts";
+/* ⭐ C5 alerts · the boot refusal that had no voice until the clock-skew build (01 register:1210). */
+const ENGINE = "src/lib/server/house-bot/engine.ts";
 
 export const MUTATIONS = [
   /* ── C7 step 4b · THE STALENESS VERDICT (rulings 352, 353, 354; replan 435(e)) ───────────────────────────────
@@ -447,5 +449,69 @@ export const MUTATIONS = [
     to: "${str(c.detail?.side, \"\")}",
     expect: "9.5 · ⭐ ruling 166 · the A21 alert says the SIDE WORD of each language",
     suite: "comms-mem",
+  },
+
+  /* ── C5 ALERTS · THE TWO SILENT STOPS (01 register:1210, :1218) ────────────────────────────────────────────────
+   * Both bells were wired one commit before these anchors and asserted in none — so the first thing to declare is
+   * the tree as it actually stood: the engine doing the right thing and telling nobody. The second of each pair is
+   * the opposite failure and the reason the positive controls exist — a build that rings on EVERY refused gate, or
+   * on EVERY boot, is not "safer", it is an officer woken at every deploy until they stop reading the bell.
+   * ⛔ BOTH OVER-ALERTING MUTATIONS WERE **MISSED** ON THE FIRST DRIVE, and that is why they are declared. The
+   * controls ran after their own EAT day's AlertOnce claim was already spent, so the wrong build was silenced by the
+   * THROTTLE rather than by the predicate, and both controls passed on it. Each control now hands the claim back —
+   * by the key the bell itself reported — before it measures. */
+  {
+    name: "alerts-skew-silent · the clock-skew stop goes back to telling nobody (the tree before C5 alerts)",
+    file: WORKER,
+    from: "    const alerted = SKEW_GATE_REASONS.has(gate.reason) ? await alertSkewGate(ctx, alerts, gate.reason) : false;",
+    to: "    const alerted = false;",
+    expect: "16.515a · ⛔ register:1218",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "alerts-skew-every-gate · every refused gate rings, so a deploy and a full slot table wake an officer",
+    file: WORKER,
+    from: "    const alerted = SKEW_GATE_REASONS.has(gate.reason) ? await alertSkewGate(ctx, alerts, gate.reason) : false;",
+    to: "    const alerted = await alertSkewGate(ctx, alerts, gate.reason);",
+    expect: "16.515c · ⭐ POSITIVE CONTROL",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "alerts-skew-unthrottled · the key is built by hand per call, so AlertOnce never holds and the bell rings every tick",
+    file: WORKER,
+    from: "    return await alertOnce(ALERT_KEY.clockSkew(), alerts, {",
+    to: "    return await alertOnce(ALERT_KEY.clockSkew().prefix + \":\" + String(Math.random()), alerts, {",
+    expect: "16.515b · …and a clock 6 s out on the NEXT pass",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "alerts-skew-bell-costs-the-pass · the send is no longer swallowed, so a dead channel turns a REPORTED stop into an unreported one",
+    file: WORKER,
+    from: "    console.error(\"[house-bot] the clock-skew stop could not be announced:\", errMessage(e));\n    return false;",
+    to: "    throw e;",
+    expect: "16.515d · ⛔ the bell never costs the pass",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "alerts-tz-silent · the boot refusal goes back to a console.error on a container that then sits idle",
+    file: ENGINE,
+    from: "    await alertBootRefused(ticks, \"DB_TIMEZONE\", { zone: zone ?? null, expected: [...UTC_ZONES] });",
+    to: "    void ticks;",
+    expect: "11.15b · ⛔ register:1210",
+    suite: "engine-mem",
+    sections: "11",
+  },
+  {
+    name: "alerts-tz-rings-on-every-boot · the bell moves above the zone check, so a healthy UTC database rings too",
+    file: ENGINE,
+    from: "  const zone = await (deps.timeZone ?? defaultTimeZone)().catch(() => null);",
+    to: "  const zone = await (deps.timeZone ?? defaultTimeZone)().catch(() => null);\n  await alertBootRefused(ticks, \"DB_TIMEZONE\", { zone: zone ?? null, expected: [...UTC_ZONES] });",
+    expect: "11.15e · ⭐ POSITIVE CONTROL",
+    suite: "engine-mem",
+    sections: "11",
   },
 ];

@@ -625,7 +625,12 @@ await guard("11", async () => {
      * way to prove it passed WITHOUT arming this process's timers (11.17 below owns the one real start in §11) is to
      * let it reach the very next statement and fail there: the boot row. BOOT_FAILED is therefore proof that the
      * zone was ACCEPTED, and no bell rang for a database that was never misconfigured. Without this control a build
-     * that alerted on every boot, UTC or not, would pass 11.15b–d HARDER than the right one. */
+     * that alerted on every boot, UTC or not, would pass 11.15b–d HARDER than the right one.
+     * ⛔ AND THE BELL IS RE-ARMED FIRST. 11.15b spent this EAT day's claim; left spent, a build that rang on EVERY
+     * boot would be silenced here by the THROTTLE rather than by the zone check, and this control would pass on the
+     * broken build. The claim is handed back by the key the bell itself reported, so a wrong ring is visible.
+     * (Found by driving the `alerts-tz-rings-on-every-boot` mutation: this control was MISSED until this line.) */
+    await HDAL.houseBotAlertOnceStore.release(String(b1.calls[0]?.key)).catch(() => {});
     fresh();
     const b4 = bell();
     const realBoot = HDAL.houseBotRuntimeStore.boot;
@@ -2252,6 +2257,14 @@ await guard("16", async () => {
       over?.claimed === 0 && over?.gate === "SKEW" && over?.alerted === false && bells().length === 1,
       j({ pass: over, bells: bells().length }));
 
+    /* ⛔ THE BELL IS RE-ARMED BEFORE THE POSITIVE CONTROL, AND THE MUTATION DRIVE IS WHY.
+     * 16.515a spends this EAT day's AlertOnce claim. Left spent, the control below could not tell a build that
+     * rings ONLY on a bad clock from one that rings on EVERY refused gate — the second one would be silenced by
+     * the throttle, not by the predicate, and the control would pass on the broken build. So the claim is handed
+     * back by the very key the bell reported, and the control then runs against an ARMED bell, where a ring is
+     * visible. (Found by driving the `alerts-skew-every-gate` mutation: the control was MISSED until this line.) */
+    await S.houseBotAlertOnceStore.release(String(bells()[0]?.key)).catch(() => {});
+
     /* ⭐ POSITIVE CONTROLS — the gate reasons that must still be ALLOWED to be silent. NOT_STARTED and STOPPING are
      * a container booting or shutting down and FULL is back-pressure: the engine WORKING. A bell on any of them
      * would wake an officer at every deploy, and an alert nobody can act on is an alert nobody reads.
@@ -2272,9 +2285,7 @@ await guard("16", async () => {
 
     /* ⛔ THE BELL NEVER COSTS THE PASS, AND A CHANNEL DOWN FOR ONE TICK MUST NOT BUY THE WHOLE DAY'S SILENCE.
      * The claim is given back when the send throws (C3 review LI-8), so the next occurrence still tells someone.
-     * The day's claim is spent by 16.515a, so it is handed back here by its own key — the one the bell reported —
-     * to re-arm the condition rather than to simulate it. */
-    await S.houseBotAlertOnceStore.release(String(bells()[0]?.key)).catch(() => {});
+     * The bell is still armed here: 16.515c proved it did not ring on any of those three gates. */
     const downRec = recorder();
     const downAlerts: Any = { ...downRec.alerts, once: async () => { throw new Error("alert channel down"); } };
     const down = await passSafe({ state: { ...st, skewMs: null }, instanceId }, downAlerts);
