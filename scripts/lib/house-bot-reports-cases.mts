@@ -515,13 +515,25 @@ export function broaderLists(file: string, raw: string): { extendsShared: number
   };
 }
 
-/** The five absence consumers of ruling 175 that exist at this commit (the service-layer sweep lands in §11 of this file). */
+/**
+ * The absence consumers of ruling 175. ⭐ SIX SINCE C7 STEP 7: the SERVED probe joined the closed list (C7-SPEC
+ * ruling 397(a)). It imports `houseHits` and declares no pattern of its own, and until step 7 it sat OUTSIDE the
+ * single-source pin — an absence instrument that nothing held to the one vocabulary, which is the shape this pin
+ * exists to refuse. ⛔ `scripts/lib/house-bot-console-cases.mts` is deliberately NOT here, and the reason is
+ * measured rather than assumed: it is a SOURCE-LAW suite over house modules, so it must name house identifiers as
+ * CODE (`/houseBotControlStore\.get\(\)/`, `/houseDayBooks\(/` and some forty more) to prove the console's one
+ * door reads what it says it reads — and `ownVocabulary` reports every one of those as a re-declared vocabulary
+ * pattern. Joining it would need a per-file allowlist of dozens of entries, and `0.175.allow` exists precisely so
+ * such a list can only SHRINK. What 397(e) actually asks of that suite is asserted inside it, as `1.397`: it
+ * imports the shared module and declares no house WORD LIST of its own.
+ */
 export const VOCABULARY_CONSUMERS = [
   "scripts/house-bot-disclosure.test.mts",
   "scripts/verify-house-bot-bundle.mjs",
   "scripts/house-bot-holder-view-shots.mts",
   "scripts/dsar-export-secrets.test.mts",
   "scripts/lib/house-bot-reports-cases.mts",
+  "scripts/house-bot-console-probe.mts",
 ] as const;
 /** The deliberately broader lists that import the shared words and extend them, with the EXACT number of extension sites. */
 export const BROADER_LISTS: ReadonlyArray<readonly [file: string, extensions: number]> = [

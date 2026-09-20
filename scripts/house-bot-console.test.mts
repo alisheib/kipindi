@@ -90,6 +90,14 @@
  * the set is 22), tab-count-from-page (20 on page 1, 2 on page 2), offset ignored (page 2 == page 1, union 20),
  * no clamp (`?tpage=99` answered 99), the helper returning its argument, and one of the four `next=` sites built
  * from the raw href (layout 3 built / 2 via the helper).
+ * ⭐ RAISED AGAIN at C7 STEP 7 — THE CLOSING GATES — to what `npm run test:house-bot-console` PRINTED on that
+ * run: **memory 539, Postgres 344**. The Postgres half is unchanged to the case, and that is expected rather than
+ * a miss: every assertion this step added is a SOURCE pin and the source pins run in the memory child only.
+ * What landed: `1.371` (the results reader and the last of the fee derivation gone from house-bot CODE, over a
+ * population derived from the path so the AGENT module's own `netTzs` is not mistaken for this feature's),
+ * `1.370` (no amount in any engine or switch-off sentence, no money field on `SwitchOffOutcome`), `1.375`
+ * (`reimbursement_recorded` has no writer and `HOUSE_AUDIT` is pinned at 31 keys), and the four D19 assertions
+ * step 7 owed — `1.390`, `1.391`, `1.395` and `1.397` — which is why `1.398`'s ladder now reads SEVEN.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -100,6 +108,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 515, postgres: 344 },
+  minPass: { memory: 539, postgres: 344 },
   dbPrefix: "hb_console",
 });

@@ -247,19 +247,17 @@ await guard("7", async () => {
   const all = [...(await houseRows(ADMIN_A)), ...(await houseRows(ADMIN_B)), ...(await houseRows((await w.dal.houseBotStore.listNonRemoved())[0]?.userId ?? ADMIN_A))];
   const hrefs = [...new Set(all.map((r) => r.href).filter(Boolean))] as string[];
   ok("7.1 · every href is absolute", hrefs.every((h) => h.startsWith("/")), hrefs.filter((h) => !h.startsWith("/")).join(" · ") || "-");
-  /** A route that commit 7 builds. Named here so "it does not resolve yet" can never be mistaken for "it is broken". */
-  /* C7-SPEC rulings 319, 320 · the segment and this constant move TOGETHER. Measured: 7.2 resolves every notifier
-     href a house alert actually produces against `src/app`, skipping only paths under this list — so a `COMMIT_7` of
-     `["/admin/desk"]` beside hrefs still reading `/admin/house-bots/<id>` fails 7.2 on day one, and a list holding
-     BOTH prefixes fails 7.3. Re-pointing all 29 literals and swapping this one string in the same commit keeps the
-     list at one entry and both cases green, while `/admin/desk/[id]` and `/admin/desk/new` are still unbuilt — which
-     is exactly what the exemption is for. ⛔ When all three pages exist, this constant and case 7.3 are DELETED
-     together, and 7.2 resolves the desk's hrefs for real instead of skipping them (C7 step 7). */
-  const COMMIT_7 = ["/admin/desk"];
+  /* ⭐ THE EXEMPTION IS RETIRED, AND THIS IS THE RECORD OF IT (C7-SPEC ruling 320, C7 step 7).
+     `const COMMIT_7 = ["/admin/desk"]` and case `7.3` lived here together from C7 step 1 so that 7.2 could SKIP the
+     console's own hrefs while `/admin/desk`, `/admin/desk/new` and `/admin/desk/[id]` were still being built one
+     step at a time. All three pages exist now, so the skip is retired and every console href is RESOLVED for real
+     against `src/app` like any other — which is the whole point of 7.2 and the thing the exemption was suppressing.
+     `7.3` went with it: it existed only to stop the exemption list growing past one entry, so with no list there is
+     nothing for it to measure, and a case whose subject is gone is a case that can no longer fail.
+     ⛔ NOTHING REPLACES THE SKIP. If a console href stops resolving, 7.2 must say so. */
   const missing: string[] = [];
   for (const h of hrefs) {
     const path = h.split("?")[0].split("#")[0];
-    if (COMMIT_7.some((p) => path === p || path.startsWith(`${p}/`))) continue;
     // Resolve /a/b/c against src/app, allowing one dynamic segment at each level.
     const parts = path.split("/").filter(Boolean);
     let dir = join(ROOT, "src", "app");
@@ -272,9 +270,20 @@ await guard("7", async () => {
     }
     if (!found || !existsSync(join(dir, "page.tsx"))) missing.push(h);
   }
-  ok("7.2 · ⭐ 04:1077 · every link either resolves to a page that exists today, or is one of commit 7's console routes",
+  ok("7.2 · ⭐ 04:1077 · every link a house alert produces resolves to a page that exists today — the console's three routes included, with no exemption left",
     missing.length === 0, missing.join(" · ") || "-");
-  ok("7.3 · the console routes commit 7 owes are exactly what is named, not a growing list", COMMIT_7.length === 1);
+  ok("7.2b · CONTROL · the resolver still REFUSES a route nobody built, so the zero above is a measurement and not an empty walk",
+    (() => {
+      const parts = "/admin/desk/hb_0123456789abcdef01234567/nowhere-at-all".split("/").filter(Boolean);
+      let dir = join(ROOT, "src", "app");
+      for (const part of parts) {
+        if (existsSync(join(dir, part))) { dir = join(dir, part); continue; }
+        const dyn = ["[id]", "[positionId]", "[marketId]", "[slug]"].find((d) => existsSync(join(dir, d)));
+        if (dyn) { dir = join(dir, dyn); continue; }
+        return true;
+      }
+      return !existsSync(join(dir, "page.tsx"));
+    })(), "");
 });
 
 /* ═══ §8 · SMS, never (04:1061, F6 04:1725, N1 04:3739) ═════════════════════════════════════════ */
