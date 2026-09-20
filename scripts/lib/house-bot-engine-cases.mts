@@ -3912,6 +3912,8 @@ await guard("19", async () => {
   const safe = async (fn: () => Promise<Any>): Promise<Any> => { try { return await fn(); } catch (e) { return { threw: msg(e) }; } };
   const iso = () => new Date().toISOString();
   const newHash = () => `hash_holder_${crypto.randomUUID()}`;
+  /** The hash `world.bot()` seeds every holder with — 19.J0 proves the fixture starts from ITS fingerprint. */
+  const { HOLDER_HASH: HOLDER_HASH_19 }: Any = await import("./house-bot-world.mts");
   const botRow = (id: string) => S.houseBotStore.get(id) as Promise<Any>;
   const eventsOf = async (botId: string, kinds?: string[]) =>
     ((await S.houseBotEventStore.listByBot(botId, { limit: 500, ...(kinds ? { kinds } : {}) })).rows as Any[]);
@@ -4576,6 +4578,103 @@ await guard("19", async () => {
     await sweep(rec2);
     ok("19.I2 · …and the sweep that follows finds the set current: no second bell, no second event",
       rec2.of(b.userId).length === 0, j(rec2.fns(b.userId)));
+    await retire(b.botId);
+  }
+
+  /* ── 19.J · HB-ACC-16 · a REHASH, and the fingerprint that decides whether it stops the bot ── */
+  /**
+   * ⛔ THE ROW IS "FUTURE" BUT THE MECHANISM IS PRESENT-DAY AND LIVE. HB-ACC-16: a code change rewrites
+   * `passwordHash` with no holder acting — rehash-on-login, a scrypt parameter upgrade, a password set
+   * after an OTP sign-in. Expected: EITHER the writer declares `passwordSetVia=REHASH` and refreshes
+   * `HouseBot.passwordFingerprint` in the same act, OR the build fails.
+   *
+   * WHAT WAS ALREADY ASSERTED: the "or the build fails" half, by `test:house-bot-holder-lifecycle` §1
+   * (`1.1`–`1.4`, `WRITER_CEILING` 33, with plants at `4.1`/`4.2`/`4.5`) — every `db.user.update` naming
+   * `passwordHash` must carry the hook.
+   *
+   * WHAT NOTHING DROVE, until this section: the ESCAPE HATCH. `PASSWORD_SET_VIA` includes `REHASH`
+   * (`constants.ts:168`), `designation.ts:93` words it ("a security update"), and `holderCauses` raises
+   * `PASSWORD_CHANGED` ONLY on `s.fingerprintNow !== s.bot.passwordFingerprint` (`consent.ts:97`). The only
+   * `REHASH` anywhere under `scripts/` was `test:house-bot-migrations` `d.11`, which proves the DATABASE
+   * check constraint accepts the STRING — not that the engine does anything with it.
+   *
+   * ⚠️ AND A FINDING, SAID PLAINLY RATHER THAN PAPERED OVER: **there is no shipped writer that can refresh
+   * `HouseBot.passwordFingerprint` while the bot is ACTIVE.** `setVerified` is the only one and it is
+   * PAUSED-only by construction (`PAUSED_ONLY`, `house-bot-dal.ts:2174`). So the row's "in the SAME
+   * transaction" contract has no implementation to assert today, and this section does not pretend to
+   * assert it. What it drives is the PREDICATE that contract depends on, through the real hook and the real
+   * sweep: with the fingerprint refreshed, the same REHASH state raises no cause and the bot runs.
+   */
+  {
+    const PR19: Any = await import("../../src/lib/server/password-reset.ts");
+    const PRZ19: Any = await import("../../src/lib/house-bot/pause-reasons.ts");
+    const DSG19: Any = await import("../../src/lib/server/house-bot/designation.ts");
+    const b = await w.bot();
+    const before = await botRow(b.botId);
+    ok("19.J0 · fixture · the bot is ACTIVE and its stored fingerprint matches the holder's current hash, so the run below starts from a bot that is really running",
+      before.status === "ACTIVE" && before.passwordFingerprint === PR19.passwordFingerprint(HOLDER_HASH_19),
+      j({ status: before.status, fp: before.passwordFingerprint }));
+
+    /* (a) PLANTED CONTROL — the DEFECT the row exists to prevent: a rehash that does NOT refresh the
+     *     fingerprint. Driven through the REAL hook, not by calling holderCauses and reading its answer. */
+    const h1 = newHash();
+    const recA = recorder();
+    await w.setUserFields(b.userId, { passwordHash: h1, passwordSetVia: "REHASH", passwordSetAt: iso() });
+    await hook(b.userId, "PASSWORD_SELF_CHANGE", recA);
+    let bot = await botRow(b.botId);
+    const pausedEvents = await eventsOf(b.botId, ["AUTO_PAUSED"]);
+    const userAfterRehash = await w.db.user.findById(b.userId);
+    ok("19.J1 · HB-ACC-16 PLANTED · a REHASH rewrite that does NOT refresh the fingerprint STOPS the bot: AUTO_PAUSED(PASSWORD_CHANGED), one A1 bell, one AUTO_PAUSED event — the half the row exists to prevent, and nothing drove it before",
+      bot.status === "AUTO_PAUSED" && bot.pauseReason === "PASSWORD_CHANGED"
+        && causeCodes(bot) === "PASSWORD_CHANGED" && j(recA.fns(b.userId)) === j(["passwordPaused"]) && pausedEvents.length === 1,
+      j({ status: bot.status, reason: bot.pauseReason, method: bot.pauseDetail?.method, fns: recA.fns(b.userId), events: pausedEvents.length }));
+    /* ⛔ MEASURED, NOT ASSUMED — and the first draft of this line asserted the opposite and went red, which is
+     * why it is written out. The pause's `method` is **UNKNOWN**, never "REHASH": `CREDENTIAL_CHANGED_VIA` is
+     * `PASSWORD_CHANGE_METHODS` (SELF_CHANGE, RESET_LINK, OFFICER_TEMP) plus UNKNOWN, and REHASH is deliberately
+     * NOT one of them — a rehash is not a credential change. `consent.ts:98` therefore maps it through
+     * `isPasswordChangeMethod(via) ? via : "UNKNOWN"`. The distinction is pinned in BOTH directions below so a
+     * later change cannot quietly start reporting a rehash as a holder's own password change. */
+    ok("19.J1b · HB-ACC-16 · the USER really carries passwordSetVia REHASH, and the pause reports method UNKNOWN — because REHASH is deliberately absent from CREDENTIAL_CHANGED_VIA (a rehash is not a credential change), so consent.ts maps it through isPasswordChangeMethod to UNKNOWN",
+      userAfterRehash?.passwordSetVia === "REHASH" && bot.pauseDetail?.method === "UNKNOWN"
+        && !PRZ19.PASSWORD_CHANGE_METHODS.includes("REHASH") && PRZ19.CREDENTIAL_CHANGED_VIA.includes("UNKNOWN"),
+      j({ setVia: userAfterRehash?.passwordSetVia, method: bot.pauseDetail?.method, methods: PRZ19.PASSWORD_CHANGE_METHODS }));
+    ok("19.J1c · HB-ACC-16 CONTROL · REHASH is still a worded, reachable state elsewhere — wrongPasswordCopy tells the officer the password was changed 'via a security update' — so 19.J1b's UNKNOWN is a deliberate distinction and not a dropped case",
+      DSG19.wrongPasswordCopy({ passwordSetAt: new Date().toISOString(), passwordSetVia: "REHASH" }, 2).includes("a security update"),
+      DSG19.wrongPasswordCopy({ passwordSetAt: new Date().toISOString(), passwordSetVia: "REHASH" }, 2));
+
+    /* (b) THE ESCAPE HATCH — the fingerprint is refreshed to the hash the holder actually has now, and the
+     *     bot runs again. ⚠️ The refresh happens through the only shipped writer (`setVerified`, paused
+     *     bots), so this is the PREDICATE driven, not an atomic same-transaction write: the row's writer
+     *     does not exist to be called. Both doors are then driven — the hook AND a sweep with no hook. */
+    const fp1 = PR19.passwordFingerprint(h1);
+    await S.houseBotStore.setVerified(b.botId, { fingerprint: fp1, verifiedById: WORLD_OFFICER, verifiedAt: iso() });
+    /* ⛔ `pauseDetail: null` MIRRORS THE REAL START (designation.ts:508). Omitting it KEEPS the stored detail
+     * — `SetStatusInput.pauseDetail` says so in its own words — and the first draft of this fixture left a
+     * stale PASSWORD_CHANGED cause set on a running bot and read it as a product finding. It was the
+     * fixture taking a shortcut the product does not take. */
+    await S.houseBotStore.setStatus(b.botId, { from: ["AUTO_PAUSED"], to: "ACTIVE", pauseReason: null, pauseDetail: null, pausedFromStatus: null });
+    const recB = recorder();
+    await hook(b.userId, "PASSWORD_SELF_CHANGE", recB);
+    await sweep(recB);
+    bot = await botRow(b.botId);
+    ok("19.J2 · HB-ACC-16 · ⭐ THE ESCAPE HATCH IS REAL: with `passwordSetVia` still REHASH and the bot's fingerprint refreshed to the hash the holder now has, BOTH the hook and a hookless sweep raise NO cause — the bot stays ACTIVE, rings nobody and writes no second AUTO_PAUSED event",
+      bot.status === "ACTIVE" && bot.pauseReason === null && causeCodes(bot) === ""
+        && recB.of(b.userId).length === 0 && (await eventsOf(b.botId, ["AUTO_PAUSED"])).length === 1,
+      j({ status: bot.status, reason: bot.pauseReason, causes: causeCodes(bot), fns: recB.fns(b.userId) }));
+    ok("19.J2b · …and the refresh really moved the stored fingerprint to the new hash's — so 19.J2's silence is the fingerprint MATCHING and not the hook having stopped looking",
+      bot.passwordFingerprint === fp1 && fp1 !== before.passwordFingerprint && bot.credentialChangedVia === null,
+      j({ fp: bot.passwordFingerprint, expected: fp1, wasFp: before.passwordFingerprint }));
+
+    /* (c) POSITIVE CONTROL — on the SAME fixture, an ordinary SELF_CHANGE must STILL pause. The new branch
+     *     may not weaken 19.A row 1, which is the rule that protects every holder who really changed it. */
+    const recC = recorder();
+    await w.setUserFields(b.userId, { passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: iso() });
+    await hook(b.userId, "PASSWORD_SELF_CHANGE", recC);
+    bot = await botRow(b.botId);
+    ok("19.J3 · HB-ACC-16 POSITIVE CONTROL · an ordinary SELF_CHANGE on the SAME fixture STILL stops the bot — AUTO_PAUSED(PASSWORD_CHANGED) method SELF_CHANGE, one A1 — so the REHASH branch has not weakened 19.A row 1",
+      bot.status === "AUTO_PAUSED" && bot.pauseReason === "PASSWORD_CHANGED" && bot.pauseDetail?.method === "SELF_CHANGE"
+        && j(recC.fns(b.userId)) === j(["passwordPaused"]),
+      j({ status: bot.status, method: bot.pauseDetail?.method, fns: recC.fns(b.userId) }));
     await retire(b.botId);
   }
 
