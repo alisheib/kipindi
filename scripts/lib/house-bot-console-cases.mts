@@ -98,6 +98,15 @@ const sectionUnscannable = sectionAllFiles.filter((f) => !isScannable(f));
 const lexiconFiles = [...sectionFiles, GATE];
 /** The detail route's page — step 4's. Its EXISTENCE is what decides whether a row may carry a way-out link (432(h)). */
 const DETAIL_PAGE = `${SECTION}/[id]/page.tsx`;
+/**
+ * ⭐ C7 STEP 7's REVIEW FIX · THE SECTION'S ONE WAY OUT, AND IT IS A COMPONENT.
+ * The review declared it as a shared CLASS STRING in `console-routes.ts`; `test:house-bot-rules` 0.console-routes.ts
+ * refused that for a measured reason — Tailwind scans EVERY file, so a class-shaped string in a routes module becomes
+ * CSS and an invalid one once 500'd every route on this platform. The review's reasoning (one shared thing, not three
+ * hand-typed looks) was right and only its home was wrong, so the thing moved here. ⛔ NAMED, because 1.432 measures
+ * ONE declaration site and a count cannot notice which file declared it.
+ */
+const WAY_OUT_FILE = `${SECTION}/way-out-link.tsx`;
 /** ⭐ C7 step 6 · the designate wizard: its page, its loader, its own actions file and its one client module. */
 const NEW_PAGE = `${SECTION}/new/page.tsx`;
 const NEW_LOADING = `${SECTION}/new/loading.tsx`;
@@ -4284,16 +4293,55 @@ export default function Ruling513Control() {
    * the bar's "Set it below →" takes the prop, the head's roster-full sentence takes the TAB, and the strip's
    * "Set N global limits first →" takes the FRAGMENT, because it names a field the reader must land on. */
   {
-    const linkExprs = [...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].map((m) => m[1].trim());
     /* ⭐ A FOURTH SITE AT C7 STEP 4 — the roster row's way out, which is the ONLY link on this page whose href is
        a per-row value. It is pinned in position like the other three: an `OR` widens, and the four are different
        answers to different questions. */
     /* ⭐ A FIFTH SITE AT C7 STEP 6 — the head's own primary action, which became a LINK with the page it opens
        (432(h)). It is pinned in position like the other four: an `OR` widens, and the five are different answers to
        different questions. */
-    const WANT = ["unsetHref as Route", "view.limitsHref as Route", "view.designateHref as Route", "view.limitsFirstUnsetHref as Route", "r.href as Route"];
+    /* ⛔ AND THE SCAN LEARNED THE SECOND LINK-PAINTING ELEMENT AT C7 STEP 7's REVIEW FIX — WIDER, NEVER LOOSER.
+       It read `<Link href={…}` alone, so the moment the head's roster-full sentence became the shared
+       `<WayOutLink>` the population lost a member and the list read FOUR on a page that renders five links. ⛔ THE
+       REPAIR IS NOT TO EXPECT FOUR. Lowering the count would have un-pinned a live link and left this assertion
+       passing — the precise shape of a weakened guard. The scan now walks EVERY element whose name ends in `Link`
+       and pins the ELEMENT beside its href, so each entry says strictly MORE than it did: a `<Link>` quietly
+       becoming a `<WayOutLink>`, or the reverse, is now a reported difference where it used to be invisible.
+       ⛔ AND THE POPULATION IS CLOSED TWO WAYS: the element names found on the page are pinned as an exact set, so
+       a THIRD link component cannot slip in unpinned; and every opening link tag must carry a braced `href=`, so a
+       link written with a string-literal href cannot fall outside the list either. */
+    const LINK_EL = /<((?:[A-Z][A-Za-z]*)?Link)\b/g;
+    const LINK_HREF = /<((?:[A-Z][A-Za-z]*)?Link) href=\{([^}]*)\}/g;
+    const elementsOf = (code: string) => [...new Set([...code.matchAll(LINK_EL)].map((m) => m[1]))].sort();
+    const exprsOf = (code: string) => [...code.matchAll(LINK_HREF)].map((m) => `${m[1]} ${m[2].trim()}`);
+    const linkExprs = exprsOf(pageCode);
+    const openings = [...pageCode.matchAll(LINK_EL)].length;
+    const ELEMENTS = ["Link", "WayOutLink"];
+    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.href as Route"];
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
-      j(linkExprs) === j(WANT), j({ found: linkExprs, want: WANT }));
+      j(linkExprs) === j(WANT) && j(elementsOf(pageCode)) === j(ELEMENTS) && linkExprs.length === openings,
+      j({ found: linkExprs, want: WANT, elements: elementsOf(pageCode), openings }));
+    /* ⛔ CONTROL · THE PIN MEASURES THE ELEMENT AS WELL AS THE HREF. The same href painted by a bare `<Link>`
+       instead of the shared component is a DIFFERENT entry — which is the one difference the old scan could not
+       see, and the reason it silently dropped a live link from its own population. */
+    ok("1.306 · CONTROL · the positional pin really is measured on the ELEMENT — the head's way-out href written back as a bare `<Link>` in memory changes the list, and the real tree matches",
+      (() => {
+        const back = pageCode.replace("<WayOutLink href={view.limitsHref}>", "<Link href={view.limitsHref as Route}>");
+        return j(exprsOf(pageCode)) === j(WANT) && back !== pageCode && j(exprsOf(back)) !== j(WANT);
+      })(), "");
+    /* ⛔ CONTROL · AND A THIRD LINK-PAINTING ELEMENT CANNOT SLIP PAST THE POPULATION — the exact way this assertion
+       came to measure four links on a page that renders five. */
+    ok("1.306 · CONTROL · a third link-painting element planted in a copy of the page is REPORTED, so the two-element population above is a measurement and not a scan that stopped matching",
+      (() => {
+        const planted = `${pageCode}\n<QuietLink href={view.limitsHref}>x</QuietLink>\n`;
+        return j(elementsOf(pageCode)) === j(ELEMENTS) && j(elementsOf(planted)) === j(["Link", "QuietLink", "WayOutLink"]);
+      })(), "");
+    /* ⛔ CONTROL · AND A LINK WHOSE HREF IS A STRING LITERAL FALLS OUT OF THE HREF SCAN WHILE STILL OPENING A TAG,
+       which is what the opening-count clause exists to catch. */
+    ok("1.306 · CONTROL · a link written with a string-literal href is counted as an opening and NOT as a pinned href, so the count clause really closes that door",
+      (() => {
+        const planted = `${pageCode}\n<Link href="/admin/desk?tab=limits">x</Link>\n`;
+        return exprsOf(planted).length === linkExprs.length && [...planted.matchAll(LINK_EL)].length === openings + 1;
+      })(), "");
     /* ⛔ AND THE FRAGMENT HREF IS SPENT TWICE, both times on the field the strip promises: once as the strip's own
      * link and once as the prop every unset usage bar links through. A count is what notices one of them being
      * swapped for the bare tab href even if a future site reorders the list above. */
@@ -4328,14 +4376,36 @@ export default function Ruling513Control() {
    * head passed the linked string straight through. */
   /* ⛔ `rosterFull` READS the field as a predicate, which is not PAINTING it, so that one line is named and removed
    * before the rest of the file is scanned for a paint. Everything else that reaches the DOM must be the plain form. */
-  const outsideLink = pageCode
-    .replace(new RegExp("<Link[^]*?</Link>", "g"), () => "")
+  /* ⛔ AND THE STRIPPER LEARNED THE SHARED COMPONENT AT C7 STEP 7's REVIEW FIX. It removed `<Link>…</Link>` blocks
+   * only, so when the guarded sentence became a `<WayOutLink>` the paint survived the strip and this assertion
+   * reported the sentence as painted OUTSIDE a link — a false red about a page that had not changed its behaviour.
+   * ⛔ THE REPAIR IS NOT TO STOP LOOKING. The stripper takes any element whose name ends in `Link` and closes on
+   * that SAME name (a back-reference, so an opener cannot be closed by a different element), and the assertion adds
+   * the paint COUNT: the field may appear exactly twice in the page — once as the predicate named and removed
+   * below, once as the single guarded paint. That is the claim it always made, now measured rather than inferred
+   * from a strip that could quietly stop matching. */
+  const LINK_BLOCK = /<((?:[A-Z][A-Za-z]*)?Link)\b[^]*?<\/\1>/g;
+  const LINKED_PAINT = /<((?:[A-Z][A-Za-z]*)?Link)\b[^>]*>\{view\.rosterFullReason\}<\/\1>/;
+  const stripLinks = (code: string) => code
+    .replace(LINK_BLOCK, () => "")
     .replace("const rosterFull = view.rosterFullReason !== null;", () => "");
+  const outsideLink = stripLinks(pageCode);
+  const reasonPaints = (pageCode.match(/view\.rosterFullReason/g) ?? []).length;
   ok("1.312a · 432(i) · the head paints the LINKED roster-full sentence only inside the one guarded `<Link>`, and the PLAIN one everywhere else",
-    /<Link[^>]*>\{view\.rosterFullReason\}<\/Link>/.test(pageCode)
+    LINKED_PAINT.test(pageCode)
+      && reasonPaints === 2
       && pageCode.includes("view.rosterFullPlain")
       && !outsideLink.includes("view.rosterFullReason"),
-    j({ paintedOutsideTheLink: outsideLink.includes("view.rosterFullReason") }));
+    j({ paintedOutsideTheLink: outsideLink.includes("view.rosterFullReason"), reasonPaints }));
+  /* ⛔ CONTROL · THE STRIP REALLY REPORTS. A second paint of the LINKED sentence outside every link — the defect
+   * this assertion exists for, and the shape the head shipped before 1.312a was written — is named in memory, and
+   * the real tree is not. */
+  ok("1.312a · CONTROL · a second paint of the LINKED sentence outside every link is REPORTED in memory, so the zero above is a measurement and not a stripper that stopped matching",
+    (() => {
+      const leaked = `${pageCode}\n<p className="text-body-sm">{view.rosterFullReason}</p>\n`;
+      return !outsideLink.includes("view.rosterFullReason") && stripLinks(leaked).includes("view.rosterFullReason")
+        && (leaked.match(/view\.rosterFullReason/g) ?? []).length === reasonPaints + 1;
+    })(), "");
 
   /* ⛔ 432(n) IN THE HALF NOBODY CHECKED: THE CALLOUT BODIES. "NO STATE SAYS THE SAME FACT TWICE" was applied to the
    * empty states and not to the three auto-off Callouts, every one of which ended "Nothing will be staked." — the
@@ -4489,13 +4559,48 @@ export default function Ruling513Control() {
        the screen where the figure legitimately lives — the officer lost the way forward at the exact moment they
        needed it. The STATE is what a failed read withholds; the fact and the door are not reads. */
     {
-      const fundedAt = wizardCode.indexOf("{view.funded !== null && (");
-      const guardClose = wizardCode.indexOf(")}", fundedAt);
-      const bonusAt = wizardCode.indexOf("view.bonusCaption");
-      const doorAt = wizardCode.indexOf("href={view.holderHref as Route}");
+      /* ⛔ THE DOOR IS A `<WayOutLink>` SINCE C7 STEP 7's REVIEW FIX, and this probe had to learn the new shape.
+       * It looked for `href={view.holderHref as Route}` — the raw `<Link>` attribute — so the door simply stopped
+       * being FOUND (`doorAt: -1`) and the assertion went red about an ORDER that had not changed.
+       * ⛔ THE REPAIR IS NOT TO DELETE `doorAt`. The claim is unchanged — the bonus FACT and the DOOR are painted
+       * after the funded guard closes, so a failed wallet read cannot take either with it — and the probe is
+       * stricter in two ways: it requires the door to be a rendered LINK ELEMENT rather than any mention of the
+       * href, and it requires EXACTLY ONE door on the page, so a second copy inside the guard cannot hide behind a
+       * first one outside it. */
+      const DOOR = /<WayOutLink href=\{view\.holderHref\}>/g;
+      const probe = (code: string) => {
+        const fundedAt = code.indexOf("{view.funded !== null && (");
+        const guardClose = code.indexOf(")}", fundedAt);
+        const bonusAt = code.indexOf("view.bonusCaption");
+        const doors = [...code.matchAll(DOOR)].map((m) => m.index ?? -1);
+        return { fundedAt, guardClose, bonusAt, doors, doorAt: doors[0] ?? -1 };
+      };
+      const outsideTheGuard = (p: ReturnType<typeof probe>) =>
+        p.fundedAt > 0 && p.guardClose > p.fundedAt && p.bonusAt > p.guardClose && p.doors.length === 1 && p.doorAt > p.guardClose;
+      const real = probe(wizardCode);
       ok("1.359 · 456 · the page paints the bonus fact and the way to the holder's own money screen OUTSIDE the funded guard, so an unreadable wallet cannot remove them",
-        fundedAt > 0 && guardClose > fundedAt && bonusAt > guardClose && doorAt > guardClose,
-        j({ fundedAt, guardClose, bonusAt, doorAt }));
+        outsideTheGuard(real),
+        j({ fundedAt: real.fundedAt, guardClose: real.guardClose, bonusAt: real.bonusAt, doorAt: real.doorAt, doors: real.doors.length }));
+      /* ⛔ CONTROL · THE PROBE REALLY REPORTS THE DEFECT IT IS FOR. The door dragged back INSIDE the funded guard —
+       * the exact shape conformance-355 found, where an unreadable wallet removed 456's link with the state — is
+       * named in memory, and the real tree is not. */
+      ok("1.359 · 456 · CONTROL · the same door dragged back INSIDE the funded guard in memory is REPORTED, so the order above is a measurement and not a probe that stopped matching",
+        (() => {
+          const dragged = wizardCode
+            .replace(/\s*<WayOutLink href=\{view\.holderHref\}>[^]*?<\/WayOutLink>/, "")
+            .replace("{view.funded !== null && (", "{view.funded !== null && (<WayOutLink href={view.holderHref}>Open</WayOutLink>");
+          const moved = probe(dragged);
+          return dragged !== wizardCode && outsideTheGuard(real) && !outsideTheGuard(moved)
+            && moved.doors.length === 1 && moved.doorAt < moved.guardClose;
+        })(), "");
+      /* ⛔ CONTROL · AND A SECOND DOOR CANNOT HIDE BEHIND THE FIRST — the count clause is what makes "outside the
+       * guard" a statement about every door on the page rather than about whichever one comes first. */
+      ok("1.359 · 456 · CONTROL · a SECOND door planted inside the funded guard in memory is REPORTED even with the real one still outside it",
+        (() => {
+          const twinned = wizardCode.replace("{view.funded !== null && (", "{view.funded !== null && (<WayOutLink href={view.holderHref}>Open</WayOutLink>");
+          const two = probe(twinned);
+          return two.doors.length === 2 && !outsideTheGuard(two);
+        })(), "");
     }
     /* ⛔ AND THE WIZARD READS NOTHING OF ITS OWN (340): no house module, no DAL, no eligibility, no designation. */
     ok("1.359 · 340 · no file under the wizard imports `eligibility.ts`, `designation.ts`, the DAL or `sensitive-reveal` — the check card is served by the gated reader alone",
@@ -5481,20 +5586,71 @@ export default function Ruling513Control() {
      * string in its own file, so the account page — built two steps earlier — kept hover-only affordance: no
      * underline and no brand ink at rest, which on a phone is no affordance at all. One section, two looks for one
      * control, and the two sat one click apart. */
-    ok("1.432 · the way-out link is declared ONCE, in the three pages' one shared module, and every page under the section uses it by name — no file re-types the class string",
+    /** A file that DECLARES the section's way out — as the component it is now, or as the class string it was. */
+    const DECLARES_WAY_OUT = /export function WayOutLink\b|\bWAY_OUT_LINK\s*=/;
+    /** A call site trying to ADD to the shared look — the prop the component deliberately does not take. */
+    const EXTENDS_WAY_OUT = /<WayOutLink[^>]*\bclassName/;
+    /** The component's props, pinned CLOSED: a `className` or a rest spread here would reopen the three-looks door. */
+    const CLOSED_PROPS = /export function WayOutLink\(\{ href, children \}: \{ href: string; children: React\.ReactNode \}\)/;
+    /** A file re-typing the shared look: TODAY's treatment verbatim, or the hover-only one the review replaced. */
+    const RETYPES_TREATMENT = (code: string, treatment: string) =>
+      (treatment.length > 40 && code.includes(treatment)) || /hover:text-brand-300 hover:underline/.test(code);
+    /* ⛔ AND THE SHARED THING IS A COMPONENT, NOT THE CLASS STRING THE REVIEW FIRST WROTE (C7 step 7's review fix).
+     * The review declared `WAY_OUT_LINK` in `console-routes.ts`; `test:house-bot-rules` 0.console-routes.ts refused
+     * it, for a measured reason and not tidiness — Tailwind scans EVERY file, so a class-shaped string in a routes
+     * module becomes CSS and an invalid one once 500'd every route on this platform. The review's reasoning was
+     * right and only its home was wrong.
+     * ⛔ THE THREE CLAIMS ARE UNCHANGED: ONE declaration site, at least TWO users BY NAME, ZERO files re-typing the
+     * treatment. Each is simply asked about the shape that now carries the look.
+     * ⭐ AND THE THIRD IS NOW STRUCTURALLY IMPOSSIBLE AS WELL AS MEASURED: a component with no `className` prop
+     * cannot have classes added to it at a call site, which is how one shared look becomes three again. ⛔ THE SCAN
+     * STAYS ANYWAY. "Impossible" is a reading of TODAY's signature, so the signature is pinned here beside it and
+     * the call sites are swept for a `className` they have no prop for — widening the component then costs a red
+     * rather than a screenshot. A proof deleted the day its defect becomes hard to write is how it comes back.
+     * ⛔ THE TREATMENT IS READ OFF THE DECLARING FILE, NEVER TYPED HERE. A needle written twice rots, and an empty
+     * capture would make `includes()` report every file clean — so its length is asserted before it is used. */
+    ok("1.432 · the way-out link is declared ONCE, in the three pages' one shared module, and every page under the section uses it by name — no file re-types the treatment, and no caller can add to it",
       (() => {
-        const routes = decomment(read("src/lib/house-bot/console-routes.ts"));
-        const users = sectionFiles.filter((f) => /className=\{WAY_OUT_LINK\}/.test(decomment(read(f))));
-        const retyped = sectionFiles.filter((f) => /hover:text-brand-300 hover:underline/.test(decomment(read(f))));
-        return /export const WAY_OUT_LINK =/.test(routes) && users.length >= 2 && retyped.length === 0
-          && sectionFiles.filter((f) => /const WAY_OUT_LINK =/.test(decomment(read(f)))).length === 0;
+        const routes = decomment(read(ROUTES_MODULE));
+        const wayOutSrc = decomment(read(WAY_OUT_FILE));
+        const treatment = /className="([^"]*)"/.exec(wayOutSrc)?.[1] ?? "";
+        const declarers = sectionFiles.filter((f) => DECLARES_WAY_OUT.test(decomment(read(f))));
+        const users = sectionFiles.filter((f) => f !== WAY_OUT_FILE && /<WayOutLink[\s>]/.test(decomment(read(f))));
+        const retyped = sectionFiles.filter((f) => f !== WAY_OUT_FILE && RETYPES_TREATMENT(decomment(read(f)), treatment));
+        const extended = sectionFiles.filter((f) => EXTENDS_WAY_OUT.test(decomment(read(f))));
+        return treatment.length > 40 && declarers.length === 1 && declarers[0] === WAY_OUT_FILE
+          && users.length >= 2 && retyped.length === 0 && extended.length === 0
+          && CLOSED_PROPS.test(wayOutSrc) && !/WAY_OUT_LINK/.test(routes);
       })(),
-      j({ users: sectionFiles.filter((f) => /className=\{WAY_OUT_LINK\}/.test(decomment(read(f)))) }));
+      j({
+        declarers: sectionFiles.filter((f) => DECLARES_WAY_OUT.test(decomment(read(f)))),
+        users: sectionFiles.filter((f) => f !== WAY_OUT_FILE && /<WayOutLink[\s>]/.test(decomment(read(f)))),
+      }));
     ok("1.432 · CONTROL · the re-typed-treatment scan really fires — the old hover-only class string is reported when it is put back into a real section file in memory",
       (() => {
         const real = decomment(read(DETAIL_PAGE));
         const old = 'className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"';
         return !/hover:text-brand-300 hover:underline/.test(real) && /hover:text-brand-300 hover:underline/.test(`${real}\n${old}\n`);
+      })(), "");
+    ok("1.432 · CONTROL · …and it fires on TODAY's treatment too — the component's own class string pasted into a real section file in memory is reported, and the real tree is not",
+      (() => {
+        const treatment = /className="([^"]*)"/.exec(decomment(read(WAY_OUT_FILE)))?.[1] ?? "";
+        const real = decomment(read(DETAIL_PAGE));
+        return treatment.length > 40 && !RETYPES_TREATMENT(real, treatment)
+          && RETYPES_TREATMENT(`${real}\nclassName="${treatment}"\n`, treatment);
+      })(), "");
+    ok("1.432 · CONTROL · a SECOND declaration planted in a real section file in memory is reported, so the ONE-declaration count is a measurement and not a scan that stopped matching",
+      (() => {
+        const real = decomment(read(DETAIL_PAGE));
+        const planted = `${real}\nexport function WayOutLink({ href, children }: { href: string; children: React.ReactNode }) { return null; }\n`;
+        return !DECLARES_WAY_OUT.test(real) && DECLARES_WAY_OUT.test(planted)
+          && DECLARES_WAY_OUT.test(decomment(read(WAY_OUT_FILE)));
+      })(), "");
+    ok("1.432 · CONTROL · and a caller that tries to ADD to the treatment is reported — the `className` the component has no prop for, planted on a real call site in memory",
+      (() => {
+        const real = decomment(read(DETAIL_PAGE));
+        const widened = real.replace("<WayOutLink href={CONSOLE_ROUTE}>", '<WayOutLink href={CONSOLE_ROUTE} className="text-heading-sm">');
+        return !EXTENDS_WAY_OUT.test(real) && widened !== real && EXTENDS_WAY_OUT.test(widened);
       })(), "");
 
     /* ⛔ 432 · THE STATUS CHIP CANNOT SHRINK (review visual-1). Read off `acct-autopaused-360.png`: "Auto-paused"
