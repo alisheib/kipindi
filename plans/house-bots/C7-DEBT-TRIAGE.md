@@ -341,3 +341,117 @@ aimed wrong in each case, and the harness cannot tell you which — that is the 
 `scripts/.red-house-bot-console.lock` was released. The two crashing mutations were re-driven on their own
 (`--only 346-countlive,347-second-read`) and reproduced identically — `0 caught, 2 missed, 0 files left dirty` —
 so the crash is the mutation's own, not a collision with the other two lanes.
+
+### Drive 2 · `npm run red:house-bot-money` — the 56 money + 7 seam declarations, whole
+
+Baselines green (`seam`, `caps-mem`, `money-mem`, `designation-mem`, `reports-mem`, `money-pg`, `caps-pg` — the two
+Postgres suites really did boot `db-scratch` and run), then all 63 injected, run and reverted. Verbatim:
+
+```
+house-bot-money RED: 63 caught, 0 missed, 0 not measured, 0 files left dirty
+```
+
+⭐ **A clean sweep: 63 of 63 reddened the assertion they name.** Not one WRONG-ASSERTION, not one MISSED, not one
+STALE, and the Postgres half was measured rather than skipped. Exit 0.
+
+### Drive 3 · `npm run red:house-bot-engine` — 39 of 46, and the harness REFUSED the other 7
+
+⛔ **THE FULL DRIVE CANNOT RUN, AND THE BLOCKER IS THE HARNESS'S OWN BOOKKEEPING — NOT A PRODUCT RED.**
+`npm run red:house-bot-engine` refused before injecting a single mutation:
+
+```
+baseline green · engine-mem#20
+baseline green · engine-mem#16
+baseline green · engine-mem#17
+baseline green · engine-mem#13
+REFUSING TO RUN — "engine-pg#13" is RED before any mutation:
+FAIL 0.mem · the memory run exits 0 with assertions and no failure — exit 0 · 153 passed (at least 751) · 0 failed
+FAIL 0.pg · the Postgres run exits 0 with assertions and no failure — exit 0 · 134 passed (at least 730) · 0 failed
+```
+
+⭐ **Read the two FAIL lines: `exit 0`, assertions present, `0 failed`. Nothing failed.** These are the two-store
+runner's POPULATION FLOOR lines, and a run filtered to one section cannot meet a floor set for the whole suite —
+which the harness's own header says is benign and excuses through `benignFloor`. It no longer can. **Diagnosed and
+proven at source:**
+
+* `red-house-bot-engine.mjs:45` — `const FLOOR = /… — exit (\d+) · (\d+) passed · (\d+) failed/`
+* the line the suite actually prints — `… — exit 0 · 153 passed (at least 751) · 0 failed`
+
+The detail string gained an **`(at least N)`** clause after `FLOOR` was written, and the regex was never moved with
+it, so `FLOOR.exec(line)` is `null` and `benignFloor` can never return true. Verified by running the regex against
+both shapes: it matches the older `… 153 passed · 0 failed` and does **not** match the line printed today.
+⛔ **Consequence: every `-pg` declaration in `house-bot-engine.anchors.mjs` is unreachable** — the drive dies on the
+first one and no mutation is ever injected. ⛔ **NOT FIXED HERE.** Widening `benignFloor` widens an exemption, and
+this phase may not weaken a guard, lower a floor or widen an exemption. It is written up so the owner of that
+harness decides.
+
+What IS measurable was driven — `npm run red:house-bot-engine -- --memory-only`:
+
+```
+house-bot-engine RED: 39 caught, 0 missed, 7 not measured, 0 files left dirty
+```
+
+**39 of 39 memory declarations reddened the assertion they name.** The **7 NOT MEASURED** are
+`N1-7pg`, `N2-E6pg`, `N1-8`, `L3`, `L6`, `L6` (`engine-pg`) and `MON-06` (`caps-pg`) — ⛔ **NOT MEASURED with the
+reason named, never counted as passes.**
+
+## THE BATCH, TOTALLED — the numbers this phase was commissioned to produce
+
+| | Count |
+|---|---|
+| **Declared, live, in the batch's four anchors files** | **390** (console 281 · money 56 · seam 7 · engine 46) |
+| Driven | **383** |
+| ✅ **Drove red ON THE ASSERTION THEY NAME** | **373** |
+| ⛔ **WRONG-ASSERTION** — red, but not on the named assertion | **6** (all console) |
+| ⛔ **MISSED** — defect injected, suite stayed GREEN | **4** (all console) |
+| ⛔ **Failed to resolve at all (STALE)** | **0** |
+| ⏸️ NOT MEASURED — the harness refuses (`engine-pg`/`caps-pg`) | **7** |
+| **Files left dirty by any drive** | **0** |
+
+Verbatim closing lines, all three drives:
+
+```
+house-bot-console RED: 271 caught, 10 missed, 0 files left dirty
+house-bot-money   RED: 63 caught, 0 missed, 0 not measured, 0 files left dirty
+house-bot-engine  RED: 39 caught, 0 missed, 7 not measured, 0 files left dirty   (--memory-only)
+```
+
+⛔ **And one declaration in the register no longer exists in the tree at all**: `320-tab-debt-stale`, which row 71
+names as one of its 22, is gone from `house-bot-console.anchors.mjs` — only its NAME survives, inside the comment at
+`:2345`. Its `from` was `export const CONSOLE_TABS = ["roster", "limits"] as const;`, retired when C7 step 5 built
+the tabs. Row 71 is rewritten to say so; it is not counted as driven and it is not counted as a pass.
+
+## The tree, the locks and the shared cluster
+
+* `git status --porcelain` was **EMPTY before and after every drive** — checked four times, printed each time.
+  ⭐ It was deliberately checked DURING the console drive too, and showed ` M src/lib/server/house-console-read.ts`:
+  the mutation window is real, which is why nothing in this phase was ever staged with `git add -A`. Every commit
+  staged its files **by name**.
+* `scripts/.red-house-bot-console.lock`, `.red-house-bot-money.lock` and `.red-house-bot-engine.lock` are all
+  released; none is left on disk.
+* One drive at a time, each wrapped in `~/heavy-node-lock.sh`. Lane 1 held the lock 22:25–23:07 UTC with its own red
+  run and this lane waited it out; the handoff is in `/c/Users/Ali/.heavy-node-lock/owner`.
+* **The shared scratch cluster on :5433** (lane 1's `.pgscratch`; this worktree has none and REUSES it) held
+  **19** databases before this phase and holds **18** now. ⚠️ The one missing is **`opsvis_c7s5`** — the ops lane's
+  own visual-sweep database, gone during the window, with nothing new created in its place. This lane ran
+  `db-scratch --run` for `house-bot-money.test.mts` and `house-bot-caps.test.mts` only, neither of which contains a
+  `DROP DATABASE`; the scripts in this repo that drop a database by name are the shot, probe and migration
+  harnesses, and this lane ran none of them. ⛔ Reported rather than explained away: the count moved and this phase
+  cannot prove what moved it.
+
+## An incidental finding that is NOT this programme's — a corrupt object in the SHARED store
+
+`git rev-list --count HEAD` **fails on `alerts-lane`**:
+
+```
+error: inflate: data stream error (invalid distance too far back)
+fatal: packed object 9802802836ee8c5f78dd8cb31953d55a18257948
+       (stored in C:/kipindi-main/.git/objects/pack/pack-07e92b68a9ac05a3993fcd802d7852c5b4ad7be2.pack) is corrupt
+```
+
+`git cat-file -t` resolves it as a **commit**; `git cat-file -p` cannot inflate it. It is on this branch's history
+and it sits in **`C:/kipindi-main/.git`**, the object store *every* worktree shares — including the checkout the
+release plan pushes `main` from at REL-4. `git log`, `git commit` and `git push` all still work (this phase made
+three commits and pushed each), because they do not need that object's contents. ⛔ **Nothing was attempted to
+repair it**: a `gc`, `repack` or `fetch --prune` on a shared store while two other lanes hold live worktrees is the
+exact class of action this programme has an incident about. It is named here for the owner.
