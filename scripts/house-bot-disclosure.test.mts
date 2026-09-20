@@ -312,10 +312,10 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure:
  * executing printed "ALL PASS — 0 passed, 0 failed" and exited 0.
  * The floor below is the count `npm run test:house-bot-disclosure` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
  * only ever RISES, and only to a number a run printed (raised 29 to 31 at C7 step 6's fix pass, when ruling 387's Proof finally got its two halves) — never to an arithmetic guess.
- * ⭐ RAISED 31 → 64 by Commit 6 step (a), 2026-09-20, when §6 (the D19d chatbot guard) landed: 33 new cases, and the
+ * ⭐ RAISED 31 → 66 by Commit 6 step (a), 2026-09-20, when §6 (the D19d chatbot guard) landed: 35 new cases, and the
  * number below is the one a green run PRINTED, not 31 plus a count of the `ok(` calls someone typed.
  */
-const MIN_ASSERTIONS = 64;
+const MIN_ASSERTIONS = 66;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

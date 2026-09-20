@@ -50,7 +50,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
 import { transformSync } from "esbuild";
-import { houseHits, HOUSE_ID_SOURCE } from "./house-bot-vocabulary.mjs";
+import type * as VocabularyModule from "./house-bot-vocabulary.mjs";
 /**
  * ⭐ THE LEXICON IS IMPORTED THROUGH `ROOT` — A TYPE HERE, A VALUE AT RUN TIME — AND THAT IS WHAT PUTS THE
  * CONTROLS THEMSELVES INSIDE THE MUTATION PROOF. A static value import would bind this section to the
@@ -146,6 +146,10 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
     d19dRow,
     d19dQuotedPhrases,
   } = await underRoot<typeof AssuranceModule>("scripts/lib/house-bot-assurances.mjs");
+  /** Ruling 175's one home for house words, identifiers and bounded ids — read under `ROOT` for the same
+   *  reason the assurance lexicon is: 6.c12's control is only provable if the sabotage pass can reach it. */
+  const { houseHits, HOUSE_ID_SOURCE, HOUSE_WORD_SAMPLES, HOUSE_BENIGN_SAMPLES } =
+    await underRoot<typeof VocabularyModule>("scripts/lib/house-bot-vocabulary.mjs");
 
   // ── the artefact, assembled ──────────────────────────────────────────────────────────────────────
   const chatSrc = read(CHAT_TS);
@@ -220,6 +224,28 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
   ok("6.2d · ⛔ nor in faq8a — the fairness answer D19d names — in EVERY locale of Object.keys(dict), so a fourth locale demands copy rather than passing unchecked", faqHits.length === 0, `${locales.map((l) => `${l}:${(faq8a[l] ?? "").length}c`).join(" ")} · ${show(faqHits)}`);
   const chromeHits = locales.flatMap((l) => assuranceHits(chrome[l] ?? "").map((h) => ({ ...h, label: `${l}:${h.label}` })));
   ok("6.2e · ⛔ nor in the chat chrome the widget renders around those answers, in every locale", chromeHits.length === 0, `${locales.map((l) => `${l}:${(chrome[l] ?? "").length}c`).join(" ")} · ${show(chromeHits)}`);
+
+  /**
+   * ── §6.2f · 🔴 THE HOLE THIS SECTION FOUND IN ITS OWN SCOPE, AND CLOSED ────────────────────────────
+   * D19d is about LIES; D19 is about the feature being nameable at all. 6.2–6.2e hold the first and say
+   * nothing about the second — and MEASURED 2026-09-20, NOTHING ELSE HELD IT EITHER. §1 of this suite walks
+   * the client import graph and `src/app/_actions/chat.ts` is a `"use server"` module, which the walker
+   * deliberately does not follow; `verify:house-bot-bundle` reads server-RENDERED player pages, and a system
+   * prompt is never rendered into HTML. So the fixed text of the one surface a player can INTERROGATE was
+   * scanned by nothing for the house lexicon. The scan is the shared module's (ruling 175: one home), over
+   * the same nine channels, and it reported 0 hits over 25,271 characters the day it was added.
+   */
+  const houseChannels: [string, string][] = [
+    ["prompt", prompt], ["fallbacks", chatOther], ["stub", stubText],
+    ...locales.map((l) => [`faq8a:${l}`, faq8a[l] ?? ""] as [string, string]),
+    ...locales.map((l) => [`chrome:${l}`, chrome[l] ?? ""] as [string, string]),
+  ];
+  const houseWordHits = houseChannels.flatMap(([n, t]) => houseHits(t).map((w) => `${n}:${w}`));
+  ok(
+    "6.2f · ⛔ D19 · nor any HOUSE VOCABULARY — the shared lexicon (ruling 175) over the same nine channels. Nothing the chatbot can put in front of a player names a house bot, a liquidity stake, a house stake or a staff-chosen market, in any locale — and until this case existed, NO guard read this text at all: §1 does not follow a \"use server\" module and the bundle verifier reads rendered pages, which a system prompt never becomes",
+    houseWordHits.length === 0,
+    `${houseChannels.length} channels · ${houseChannels.reduce((n, [, t]) => n + t.length, 0)} chars scanned · ${houseWordHits.slice(0, 6).join(" · ") || "no hits"}`,
+  );
 
   // ── §6.3 · D19d's ninth, open-ended item ─────────────────────────────────────────────────────────
   const acct = [prompt, chatOther, stubText, ...locales.map((l) => faq8a[l] ?? ""), ...locales.map((l) => chrome[l] ?? "")]
@@ -419,6 +445,16 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
       "6.c4 · CONTROL · the same assurance planted into a COMMENT of the real file is NOT reported, while planted into the real PROMPT TEXT it IS — documentation standing in for enforcement is the defect this lane just repaired, and esbuild demonstrably keeps block comments inside a function body",
       commentHits.length === 0 && stringHits.length > 0,
       `comment: ${commentHits.length} hit(s) · prompt text: ${stringHits.length} hit(s)`,
+    );
+  }
+  {
+    // 6.c12 · the house-vocabulary sweep can fail, and it lets an innocent word through.
+    const missed = HOUSE_WORD_SAMPLES.filter((w) => !houseHits(`${prompt}\n- ${w} are ordinary players here.`).includes(w));
+    const swept = HOUSE_BENIGN_SAMPLES.filter((w) => houseHits(`${prompt}\n- ${w}`).length > 0);
+    ok(
+      "6.c12 · PLANTED CONTROL + ⭐ POSITIVE CONTROL · every sample of the shared word family, written into a COPY of the real system prompt, is reported by 6.2f's own measure — and the benign look-alikes (HOUSE_FEE, /admin/house, a raw hb_ prefix, a 28-hex tail) are NOT, because a guard never shown to let an innocent word through is one the next session switches off",
+      missed.length === 0 && swept.length === 0,
+      `${HOUSE_WORD_SAMPLES.length} planted · missed: [${missed.join(" | ") || "none"}] · ${HOUSE_BENIGN_SAMPLES.length} benign · swept in: [${swept.join(" | ") || "none"}]`,
     );
   }
   {

@@ -39,6 +39,7 @@
  * register tidied by a later session. Not one is invented to make a regex twitch.
  */
 import { D19D_PLANTS } from "../lib/house-bot-assurances.mjs";
+import { HOUSE_WORD_SAMPLES } from "../lib/house-bot-vocabulary.mjs";
 
 const CHAT = "src/app/_actions/chat.ts";
 const STUB = "src/lib/chat/send-message.ts";
@@ -109,6 +110,25 @@ export const MUTATIONS = [
     why: "D19d's ninth, open-ended item — a pre-written answer that settles what an account IS. The id family comes from the shared vocabulary module, so this also proves the single-source import is live",
     from: '          : "I\'m tuned for 50pick — deposits, the dial, payouts, KYC, market rules. For that question you\'ll have better luck somewhere else. Anything I can help with on the platform itself?",',
     to: '          : "' + P["A2 · confirming or denying an account's nature"] + '",',
+  },
+
+  {
+    name: "the-prompt-names-the-feature",
+    file: CHAT,
+    expect: "nor any HOUSE VOCABULARY",
+    why: "⭐ THE PLANT THAT IS NOT A LIE — which is why no D19d assurance pattern would ever see it. Someone explains the market to the model in one helpful sentence, and the word they reach for is the one the shared lexicon exists to keep out of everything a player can read. D19d is about lying; D19 is about the feature being NAMEABLE, and this is the second one",
+    from: "WHAT YOU KNOW",
+    to: "WHAT YOU KNOW\n- Some markets are seeded with " + HOUSE_WORD_SAMPLES[0] + " so there is always a price on both sides.",
+    stillGreen: ["no D19d assurance in the LIVE SYSTEM PROMPT"],
+    alsoRed: ["byte-identical to origin/main"],
+  },
+  {
+    name: "the-vocabulary-loses-a-word",
+    file: "scripts/lib/house-bot-vocabulary.mjs",
+    expect: "every sample of the shared word family, written into a COPY of the real system prompt, is reported",
+    why: "ruling 175's shared lexicon is the single home for house words, so a member trimmed out of it silently narrows EVERY absence proof on the platform at once. The Kiswahili spelling is the one to plant against: it is the default language here, and the alternative least likely to be re-read",
+    from: "|dau la nyumba|",
+    to: "|",
   },
 
   // ── what the model is handed ─────────────────────────────────────────────────────────────────────
