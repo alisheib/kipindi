@@ -18,6 +18,13 @@
  * ⛔ AN ANCHOR THAT RESOLVES IS NOT AN ASSERTION THAT WENT RED. A mutation that reddens *something* is reported
  * WRONG-ASSERTION, not CAUGHT, and that is a failure: a defect caught by a neighbouring assertion is evidence about
  * the neighbour, never about the assertion the register named.
+ * ⭐ AND THAT BRANCH WAS PROVED TO FIRE, BY MUTATION, 2026-09-21 — reading the code is not evidence that it reports.
+ * `c5-5b:M1`'s `expect` was temporarily aimed at a REAL label of the same suite that this mutation cannot redden
+ * (`0.505 · ⛔ RULING 505 · …`). The run printed `WRONG-ASSERTION … red, but NOT on "0.505 · …"`, named the line that
+ * DID go red (`0.191.0`), summarised `0 caught, 1 wrong-assertion`, and exited non-zero; the file was then restored
+ * and `git status --porcelain` was EMPTY. ⭐ A FIRST control tried an `expect` matching no label at all and never
+ * reached this branch: `0.505b` reported it stale, the suite was RED at baseline, and the run REFUSED TO START —
+ * which is the defence in depth working, and the reason the baseline gate below is not merely hygiene.
  *
  * ⛔ THIS HARNESS MUTATES THE REPOSITORY. Two concurrent red runs once left a live payout gate DISABLED while the
  * harness reported clean, so this follows `red-house-bot-console.mjs` exactly: a lock file against a concurrent run,

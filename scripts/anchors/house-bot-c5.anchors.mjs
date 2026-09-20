@@ -13,11 +13,20 @@
  *   1. `test:red-anchors` §3 insists the `from` still resolves EXACTLY ONCE against the tree, every run.
  *   2. `test:house-bot-reports` 0.505 walks `scripts/anchors/house*.anchors.mjs` from disk and insists every `suite`
  *      key found here either HAS an expect-drift roll-call or is recorded as owed with its reason.
- * ⛔ IT DOES NOT BUY THE RED. Nothing in this repository runs these mutations yet — no `red:*` script names
- * `house-bot-c5`, which is why adding this file leaves §4's undeclared count (and therefore `UNDECLARED_CEILING`)
- * exactly where it was; that was measured before and after, not assumed. Each entry carries the `to` the register
- * wrote and the assertion label it must redden, so a drive can be pointed at it; until one is, "declared" means
- * "anchored and audited", never "proved red".
+ * ⛔ DECLARING STILL DOES NOT BUY THE RED — BUT SOMETHING NOW APPLIES THE `to`. Neither of the two instruments above
+ * ever applies a replacement: both answer about the `from` and the `expect`, so a truncated `to`, or one whose second
+ * site was never converted, passes them while proving nothing. `red:house-bot-c5` (`scripts/red-house-bot-c5.mjs`,
+ * added 2026-09-21) is the third thing, and the only one in the repository that WRITES a declaration's `to` into the
+ * real file, runs the suite it names, and reads that run's own FAIL lines. ⛔ A mutation that reddens *something else*
+ * is reported WRONG-ASSERTION and fails the run — a defect caught by a neighbouring assertion is evidence about the
+ * neighbour, never about the assertion this register named.
+ * ⚠️ AND THE ANCHOR AUDIT'S COUNT WAS RE-DERIVED ACROSS THAT COMMIT RATHER THAN ASSUMED: `test:red-anchors` §4 reads
+ * **66 undeclared at `78bc46ea` (the parent) AND 66 at `6688aed0` (the harness)**, because a harness "declares" when a
+ * declaration file's name appears in its command and `house-bot-c5.anchors.mjs` is exactly that. ⛔ So this file and
+ * its runner did NOT move the ratchet. §4 is nonetheless RED at 66 against `UNDECLARED_CEILING = 65`, and the break is
+ * INHERITED FROM `origin/main`, not made here (DEFERRED-TESTS §1 row 4 records it on both sides, byte-identical):
+ * `red:mobile-visual-plan` was added after `18b03e5f` as a file-writing `.mjs` with no anchors file of its own.
+ * ⛔ It is not this file's to fix and the ceiling is not this file's to raise.
  *
  * ⚠️ HOW `expect` WAS CHOSEN, AND WHY IT IS NOT DECORATION. A register entry names its assertion by id ("0.187.1",
  * "4.259.3"). An id alone is not evidence: 29 owed entries name ONLY assertions that no longer exist in the suite they
