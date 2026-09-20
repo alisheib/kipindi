@@ -2618,7 +2618,16 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - `tsc` 0;
      - `test:all` in this tree and in a clean `origin/main` worktree, compared red by red (every red identical on clean main or
        fixed here; never called "inherited" without running it on main, the lesson of C4 ruling 166); if `origin/main` moved,
-       it is merged first (the Commit 4 pattern), with the KYC re-diff (197);
+       it is merged first (the Commit 4 pattern), ~~with the KYC re-diff (197)~~ — ⛔ **MOOT, recorded 2026-09-20 (C5-8
+       phase 3) rather than left for the next session to hunt: ruling 197 was STRUCK by D20** (`C5-D20-REPLAN.md` §2
+       row 197, "KYC 'of which house stakes' line and `kycMoneyFacts.house*` · **STRIKE** · built (steps 4–5) →
+       un-build"), and C5-5b un-built it. There is no KYC house line to re-diff, so this clause is satisfied by the
+       strike and not by a run. **The merge itself was done and verified:** `origin/main` `418f1b59` is an ancestor of
+       this branch and `git rev-list --left-right --count origin/main...HEAD` reads `0 61`;
+     - **and the red-by-red itself RAN, 2026-09-20 (C5-8 phase 3): branch 369/384, baseline `C:/kipindi-old-build` at
+       `418f1b5973a8af7c70ea7fc85851dfeba7f548a8` 369/384, identical failing sets in both directions, fourteen of
+       fifteen red lines byte-identical and the fifteenth a one-component population difference. Full record:
+       `DEFERRED-TESTS.md` §3 row 4;**
      - `verify:house-bot-bundle` on a FRESH `next build` (L15; a build older than `src/` is NOT MEASURED);
      - `qa:house-bot-holder-view` extended (248; L20);
      - ~~`qa:house-bot-bells` and `qa:cert-c1` renders read (222, 195);~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert (222) and the emergency-void house row (195) are struck, so neither render is owed; the other gates stand as checkpoint C5-8, which adds `qa:house-bot-console-probe` (`C5-D20-REPLAN.md` §3).
