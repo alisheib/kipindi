@@ -1104,6 +1104,40 @@ Nothing outside this module types the segment after that pass. ⛔ The inventory
 
 **Proof.** `test:house-bot-console` 1.409: every money `ProgressBar` under the section passes BOTH `caption` and `captionText` (362), built from the SAME `value`/`max` expressions, with the cap's name as the caption's first text node and each figure in its own `.amount` span, and `captionText` matching 361's regex with no markup in it; no money bar is passed WITHOUT a caption (which would land it in the kit's tracked `text-micro` line); no call passes `tone="claret"`; the step bar passes no caption. Plus `qa:house-bots-visual` at 360 reading the limits tab for overflow. ⛔ `test:type-scale` §2 is NOT cited — it needs a literal `formatTzs*` call inside the element and cannot see a caption prop or the kit's own `toLocaleString`.
 
+**⭐ AMENDED 2026-09-20 (C7 step 5, the LANDING half — a dated amendment, built and measured).**
+1. **THE TOLERANCE LIST IS DELETED WITH THE BUILD, NOT LEFT STANDING.** The amendment above re-keyed `UNBUILT_TABS`
+   per shape and kept the two landing entries. Both panels exist now, so the list is GONE and comms `7.2c` asserts
+   **zero dead tabs with no tolerance at all** — strictly stronger than what it replaced: a dead `?tab=` in either
+   shape now fails with nowhere to be written down. `7.2d`'s subject (the two keys' ABSENCE) no longer exists, so
+   the case is deleted rather than loosened and its id carries a planted-href control instead. ⛔ A recorded gap
+   that no longer exists is a permission, and a permission is what that case refuses.
+2. **THE RAIL'S BADGE IS A MEMBER OF `readDeskCore`'s SETTLED SET, NEVER A CALLER'S EXTRA SLOT.** The rail renders
+   above the panels on EVERY tab (406), so all four landing readers must be able to paint it; as a positional
+   extra each reader would have carried it in a different slot, which is how two readers come to count two
+   populations under one number. It may not come from a second gated reader (the one-reader-per-render spy) nor
+   be counted from rows (344), and `null` is a FAILED count and never a zero — `CountBadge` paints nothing at
+   zero, so a count can never stand in for a read's health, and the panel below paints `AdminLoadError` instead.
+3. **ONE RAIL FILE, RENDERED BY BOTH PAGES.** `activity-filters.tsx` moves from `[id]/` to the section root. Two
+   copies of one control is the defect this section was pulled up on, and a second rail would also be a second
+   `data-filter-rail` under one section.
+4. **🔴 THE DESK OWNS BOTH OF ITS EMPTY SENTENCES, INCLUDING THE FILTERED ONE (416).** The first build kept the
+   SHELL's filtered sentence on the reasoning that "nothing matches this filter" is the same fact on either page.
+   Its BODY is not: it reads *"No stake on **this account** matches"*, and the landing page has no account to
+   name. Read off a served page. ⛔ Each subject owns its own PAIR; neither borrows the other's, and the guard
+   reads both BODIES in both directions — a guard that checks one side of a swap cannot see the swap.
+5. **🔴 `.row-link` MAY NOT WRAP OPERATOR TEXT (474).** The class is the platform's row-EXIT style and carries
+   `text-transform: uppercase`; wrapping the Owner's typed label in it REWROTE that label for every reader. The
+   roster painted `Evening desk - widest label yetX`, these two panels `EVENING DESK - WIDEST LABEL YETX` — one
+   label, two looks, 40px apart on one screen. Invisible to every scan here: it lives in a computed style. The
+   geometry stays at the call site; the two rewriting declarations go. Recorded at DESIGN_AUTHORITY 6e.
+6. **THE HOUR SUMMARY'S BELL CARRIES AN EAT WALL CLOCK, NOT AN ISO INSTANT AND NOT A CLOCK TIME.** `parseEatLocal`
+   refuses `14:00` (no date) AND refuses `2026-09-20T13:00:00.000Z` (its pattern is anchored at `HH:MM`), and a
+   refused `from` is answered SILENTLY with the last 24 hours still labelled "custom" — so both wrong forms land
+   the officer on a different window under the name of the right one. `formatEatLocal` is the parser's own
+   inverse, exported from the module that owns the parse. ⛔ The assertion is the ROUND TRIP, never a spelling,
+   and BOTH wrong forms are declared mutations: a scan that only forbade the clock form passed while the link
+   carried an ISO instant.
+
 **⭐ AMENDED 2026-09-20 (C7 step 5, the ACCOUNT half — a dated amendment, built and measured).**
 1. **THE ACCOUNT PAGE'S HALF LANDS FIRST, AND THE ORDER IS FORCED, NOT PREFERRED.** An earlier analysis concluded the
    landing and account panels could not be split across two commits. MEASURED FALSE: comms case 7.2d asserts

@@ -1814,6 +1814,25 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    filter control while the kit's own reference sat one import away, and the divergence reached
    four control heights and two radii before anyone measured it.
 
+6e. 🔴 **`.row-link` WRAPS A FIXED WORD, NEVER SOMEBODY'S TYPED TEXT** (added 2026-09-20, off a render).
+   The class exists for a row's way OUT — "open →", "manage →" — and it deliberately carries
+   `text-transform: uppercase` and `letter-spacing: .10em` along with the `--tap-min` floor. Ten admin
+   pages use it and every one of them wraps a word the product chose.
+   ⛔ **IT MAY NOT WRAP OPERATOR DATA, BECAUSE A CSS TRANSFORM IS A REWRITE.** The house console's two
+   landing panels put the Owner's own account label inside it; measured with `getComputedStyle` on a
+   served page, the roster painted `Evening desk - widest label yetX` while the two panels 40px below
+   painted `EVENING DESK - WIDEST LABEL YETX`. One label, two looks, on one screen — and operator text
+   that the product had silently rewritten for every reader and into every screenshot.
+   ⚠️ **NO SCAN IN THIS REPOSITORY COULD SEE IT.** The difference is a computed style; the source reads
+   as one class name. It took a photograph and `getComputedStyle`.
+   **The rule:** an element carrying `data-operator-text` does not carry `.row-link`. If it needs the
+   link's geometry, it takes the geometry at the call site — `inline-flex items-center
+   min-h-[var(--tap-min)]`, the repo's own idiom — and leaves the two rewriting declarations behind.
+   ⛔ The shared rule is NOT edited: its ten other call sites are right to be uppercase.
+   Guarded by `test:house-bot-console` 1.474, which DERIVES the rule from `globals.css` (whatever
+   `.row-link` is declared to do) rather than typing it, with a control requiring the class to still be
+   in use for its own purpose so the rule cannot empty itself into a vacuous pass.
+
 6d. ⭐ **`DateTimeRangeFilter` TAKES `replace`, AND IT DEFAULTS TO PUSH** (added 2026-09-20).
    `FilterPill` has taken `replace` since S-07 — *"a filter is not a navigation"* — and the window
    rail could not, so a rail built from BOTH controls had one half that stacked history and one half

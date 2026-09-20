@@ -84,7 +84,37 @@ ecison" · "bots ar enoma player please".
    - ⭐ **RELEASE GATE RUN AND PASSED (2026-09-18, thirteenth session close, ruling 529). The only step left before `main` is the owner's own push.** `test:all` compared red by red against the baseline worktree moved to the merged main sha (ruling 467): branch 359/375, baseline 348/362, eleven failures identical on both sides. **Three failed here and passed on clean main, and all three are FIXED at `8d3406dd`** (ruling 528 — a layout shape rule that was narrower than the property it guards, an unpaged grid with no declared reason, and one new inverted spacing token located by diffing both trees token by token). The branch now has **no failing suite that clean `origin/main` does not also have**, and passes one — `test:kyc-restart-docs` — that main fails. A fresh `next build`; `verify:house-bot-bundle` **ALL PASS with its planted control FIRING** over 167 files under `.next/static`, 9 prerendered documents and 35 files under `public/`; `qa:house-bot-console-probe` **1,544 requests, 1,158 non-staff, `leaks: 0`**. ⚠️ ONE control left blind — 4.3 on `/admin/kyc/[id]<holder>`, register row 29 — NOT a leak, and the same durable read with the same viewers is measured on both stores by `test:house-bot-reports` 4.260.5.
    - ✅ **`main` IS PUSHED. `origin/main` = `origin/house-bots` = `2b63f604` (2026-09-18, ruling 471's first merge, by Ali's explicit instruction).** A clean fast-forward of 253 commits from `60142ace`, carrying the two purely additive house migrations. **What shipped:** `/admin/desk` in the sidebar under Money · Pesa, Owner-only, rendering real data, with the master switch OFF and no account designated — a page to look at, and no behaviour to any player. ⚠️ Operational note, NOT MEASURED without production access: five of those indexes build on `Position` and two on `Transaction` without `CONCURRENTLY`, so the deploy holds a brief write lock on both tables.
    - ⛔ **AND A RECORDED RECIPE THAT IS WRONG — CORRECTED HERE BEFORE IT TRAPS ANOTHER SESSION.** The plan said the release push should be made from a fresh worktree "because `core.hooksPath` is worktree-scoped, so a new worktree inherits no pre-push guard". **That is false, and it was MEASURED false today.** `git config --show-origin --get core.hooksPath` across all four checkouts: `kipindi-house-bots`, `kipindi-old-build` AND a worktree created fresh minutes earlier (`kipindi-rel4`) each resolve it from their OWN `.git/worktrees/<name>/config.worktree`, all pointing at `F:/kipindi-house-bots-hooks` — so a new linked worktree arrives WITH the guard, not without it. The only checkout that has none is **`F:/kipindi-main`**, the main repository directory itself, exactly as the 2026-09-13 setup row recorded. So the sanctioned release route is: push from `F:/kipindi-main`, which is a pure ref update — it does not edit, stage, check out or build there, and so does not break the standing prohibition on that checkout. ⛔ Three refusals were hit on the way and NONE was worked around: the worktree creation and then the push were both refused by the permission classifier (the second as an auto-mode bypass, correctly — answering a blocked action by hunting for another route to it is evasion whatever the reason). No `--no-verify`, no config change, no hook disabled. The push landed only once Ali left auto mode and approved it himself, which is the right shape for the first merge of a money feature to a live platform.
-   - ⭐ **C7 STEP 5 — THE ACCOUNT PAGE'S HALF IS BUILT (2026-09-20, twenty-first session). THE LANDING PAGE'S IS NOT.**
+   - ⭐ **C7 STEP 5 IS COMPLETE — THE LANDING PAGE'S HALF LANDED 2026-09-20 (twenty-second session).**
+     `CONSOLE_TABS` → `roster · activity · limits · history`, ruling 312's own rail order. Behind the two new keys:
+     the desk-wide feed (every account's stakes in one list) and the desk-wide change log (which carries the
+     CONTROL ROW's own events — the switch, a limits save, the withdrawal — that a per-account narrowing correctly
+     drops). Both panels ship COMPLETE: `AdminPagination` against COUNTING readers, a baseHref carrying the tab and
+     every live filter, a filter change dropping the page, a page past the end served as the LAST page; ONE rail
+     file rendered by BOTH pages (it moved out of `[id]/` to the section root — two copies of one control is the
+     defect this section was pulled up on); both badges out of the ONE `readDeskCore` set, where a FAILED count is
+     `null` and never a zero; and the cancel-intent write path, the first press anything under `src/` has ever
+     created. The comms debt list `UNBUILT_TABS` is DELETED with the build — 7.2c now asserts ZERO dead tabs with
+     no tolerance at all, which is strictly stronger than what it replaced.
+     **The hour-summary bell finally lands on the hour it is about:** `parseEatLocal` refuses `14:00` AND refuses
+     a full ISO instant, and a refused `from` is answered SILENTLY with the last 24 hours still labelled "custom",
+     so the emitter now carries an EAT wall-clock pair built by `formatEatLocal`, the parser's own inverse,
+     exported from the module that owns the parse.
+     🔴 **AND THE RENDER FOUND TWO DEFECTS EVERY SUITE HAD PASSED, ONE OF THEM INVISIBLE TO SOURCE.** The desk-wide
+     panel was painting the ACCOUNT page's filtered-empty sentence — "No stake on **this account** matches" on the
+     one page that has no account to name — and the guard written to hold that compared the two TITLES and then
+     read the UNFILTERED body, so the one string that was wrong was the one string nothing looked at. And the
+     Owner's own typed label was wrapped in `.row-link`, the platform's row-EXIT class, whose
+     `text-transform: uppercase` REWROTE it: the roster painted `Evening desk - widest label yetX` while these two
+     painted `EVENING DESK - WIDEST LABEL YETX`, one label in two looks 40px apart on one screen. That one lives in
+     a COMPUTED STYLE and no scan in this repository could have seen it.
+     **Numbers, re-derived from the runs that printed them:** `test:house-bot-console` **706 / 471** both stores
+     (floors raised to exactly that), `test:house-bot-comms` **48 / 46**, `test:red-anchors` **2506 / 4** (the four
+     inherited: `rg-doors` ×2 and 4.1/4.2 at 66 against a ceiling of 65 this lane did NOT raise),
+     `red:house-bot-console` **22 caught / 0 missed / 0 files left dirty** over this phase's declarations,
+     `test:dal-parity` 1376 / 0, `test:house-bot-rules` 521 / 0, `test:house-bot-reports` 200 / 61,
+     `test:house-bot-disclosure` 31 / 0, `test:admin-action-gate` 14 / 0, admin-section-gate's three W25 ratchets
+     green, `tsc` 0.
+   - ⭐ **C7 STEP 5 — THE ACCOUNT PAGE'S HALF (2026-09-20, twenty-first session).**
      ⛔ **AND THE LINE BELOW THAT SAYS "C7 step 5 ✅ (`ebbb2577`)" IS FALSE AND IS CORRECTED HERE.** `ebbb2577` built
      the TARGETS pager on the account page (C7 step 4c), not step 5; DEFERRED row 62 found step 5 unbuilt at step 7
      and says so in as many words. A wrong AUTHORITY propagates further than a wrong copy, so it is struck rather
