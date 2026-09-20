@@ -66,6 +66,7 @@
     "red:house-bot-engine": "node scripts/red-house-bot-engine.mjs",
     "red:house-bot-money": "node scripts/red-house-bot-money.mjs",
     "red:house-bot-console": "node scripts/red-house-bot-console.mjs",
+    "red:house-bot-c5": "node scripts/red-house-bot-c5.mjs",
     "test:agent-policy": "tsx scripts/agent-policy.test.mts",
     "test:programme-isolation": "tsx scripts/programme-isolation.test.mts",
     "test:attribution-provenance": "tsx scripts/attribution-provenance.test.mts",

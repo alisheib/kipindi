@@ -4292,15 +4292,25 @@ if (STORE === "memory") {
   const selfCode = decomment(read("scripts/lib/house-bot-reports-cases.mts"));
   const LBL = "0.505b · every declared `reports-mem` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
   const LBLC = "0.505b · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
-  /* ⛔ BOTH ANCHORS FILES, NOT JUST THE CONSOLE'S (C5-8, 2026-09-20). Until today this roll-call read
-     `CONSOLE_ANCHORS` alone, which was complete only because the console's file was the only one declaring a
-     `reports-mem` mutation. §1j row 84's five marker mutations are declared in `house-bot-money.anchors.mjs` and
-     also name `reports-mem` — and had they been added without this line, they would have been a suite key
-     "declared in a house anchors file with no roll-call", which is the exact thing ruling 505 exists to refuse.
-     The roll-call now reads the union, so the guard covers the population it claims to cover. */
+  /* ⛔ EVERY ANCHORS FILE, WALKED FROM DISK — NOT A TYPED UNION (C5-8's register conversion, 2026-09-21).
+     On 2026-09-20 this line became `[...CONSOLE_ANCHORS, ...MONEY_ANCHORS]` because the money file had started
+     declaring `reports-mem` too. That fix was right and its SHAPE was wrong: a hand-maintained list of the files a
+     roll-call reads is the same population defect ruling 505 exists to refuse, one level up — and 0.505 above cannot
+     see it, because it asks only whether a KEY has a roll-call, never whether that roll-call READS the file the key
+     was found in. It was measured the same day: converting Commit 5's mutation registers put 67 `reports-mem`
+     declarations into `scripts/anchors/house-bot-c5.anchors.mjs`, 0.505 stayed green because `reports-mem` is a
+     listed key, and every one of those 67 `expect`s would have been audited by nobody.
+     ⭐ So the files are READ FROM DISK, with the same walk 0.505 uses. The population can only grow, a new house
+     anchors file joins it the day it lands, and no edit here is ever needed again to keep it complete. */
+  const anchorDirB = join(ROOT, "scripts/anchors");
+  const declB: DeclaredMutation[] = [];
+  for (const f of readdirSync(anchorDirB).filter((x) => x.startsWith("house") && x.endsWith(".anchors.mjs")).sort()) {
+    const mod: Any = await import(pathToFileURL(join(anchorDirB, f)).href);
+    declB.push(...((mod.MUTATIONS ?? []) as DeclaredMutation[]));
+  }
   const input = {
     suiteKeys: ["reports-mem"],
-    declarations: [...CONSOLE_ANCHORS, ...MONEY_ANCHORS] as DeclaredMutation[],
+    declarations: declB,
     emitted, source: selfCode, ownLabels: [LBL, LBLC],
   };
   const rc = expectDriftReport(input);

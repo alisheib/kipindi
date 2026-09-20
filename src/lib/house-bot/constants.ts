@@ -686,7 +686,14 @@ export const ALERT_KEY = {
    * Hourly summaries, built from PLACED intents (04 C13). The suffix names the hour SUMMARISED — the one just ended
    * (C4-SPEC ruling 80) — not the hour the summary was sent in.
    */
-  summary: (audience: "admins" | "holder", botId: string | "all") => suffixed(`summary:${audience}:${botId}`, "previousHour"),
+  /**
+   * ⛔ THE AUDIENCE IS `"admins"` AND NOTHING ELSE (C4 ruling 149, owner ruling D19c; narrowed in C5-8, 2026-09-21).
+   * It read `"admins" | "holder"` for five commits after the holder's hourly summary was DELETED, so the type went on
+   * describing a recipient the platform must never have. A widened union on a key builder is not harmless: it is an
+   * invitation, and the next caller to accept it would mint a summary key whose audience segment is the holder — a
+   * house-bot notice addressed to the holder, the exact thing D19c forbids. `test:house-bot-rules` §11.27 pins this.
+   */
+  summary: (audience: "admins", botId: string | "all") => suffixed(`summary:${audience}:${botId}`, "previousHour"),
   productDenied: (value: string) => suffixed(`product-denied:${value}`, "day"),
   rulesFuture: (botId: string | "global", version: number) => `rules-future:${botId}:${version}`,
   /** Live stake bounds moved (04 F5): the bot can no longer bet, or a stake is clamped. */

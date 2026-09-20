@@ -559,11 +559,15 @@ export type VoidResult =
  *     Start never revive them (N2 §4 step 10, TGT-40);
  *   · an ACTIVE bot → AUTO_PAUSED(cause), `pausedFromStatus` ACTIVE, its live intents cancelled; a paused bot
  *     keeps its status and gets HOLDER_CAUSE_ADDED.
- * A throw anywhere rolls every one of those back (targets stay ACTIVE). After the lock: the COMPLIANCE row,
- * and for HOLDER_WITHDREW the holder's confirmation. ⛔ Responsible-gambling causes send the holder nothing
- * (C8); IDENTITY_REFUSED and HOLDER_ERASURE_REQUEST notices land with commit 4's emitters (C3-SPEC ruling 12).
+ * A throw anywhere rolls every one of those back (targets stay ACTIVE). After the lock: the COMPLIANCE row.
+ * ⛔ **AND NOTHING ELSE REACHES THE HOLDER — corrected in C5-8 (2026-09-21, ruling 258).** This paragraph used to
+ * add "and for HOLDER_WITHDREW the holder's confirmation": owner ruling D19c admits no house-bot notice or email to
+ * a holder for ANY cause, and this module sends none (it imports no emitter). Responsible-gambling causes send the
+ * holder nothing (C8); IDENTITY_REFUSED and HOLDER_ERASURE_REQUEST are ADMIN notices from commit 4's emitters
+ * (C3-SPEC ruling 12), never the holder's.
  *
- * Callers: `withdrawHouseConsent` (commit 7's holder action), and commit 4's holder hook, L2 sweep and mapper.
+ * Callers: the withdrawal helper below (an OFFICER action, Commit 7 — never the holder's own button, D19c), and
+ * commit 4's holder hook, L2 sweep and mapper.
  */
 export async function voidHouseConsent(input: { userId: string; cause: ConsentVoidCause; actorId: string | null }): Promise<VoidResult> {
   const { userId, cause } = input;
@@ -621,7 +625,20 @@ export async function voidHouseConsent(input: { userId: string; cause: ConsentVo
   return { voided: true, botId: written.botId, from: written.from, to: written.to, targetsEnded: written.targetsEnded, intentsCancelled: written.intentsCancelled };
 }
 
-/** The holder's own "Stop liquidity stakes" (04 A3 F10) — the service `withdrawHouseConsentAction` calls. */
+/**
+ * WITHDRAWAL OF CONSENT (04 A3, cause HOLDER_WITHDREW).
+ *
+ * ⛔ **NOT a holder-facing action, and the docstring that said so was corrected in C5-8 (2026-09-21, ruling 258).**
+ * It read "the holder's own Stop liquidity stakes — the service `…Action` calls", naming a server action that has
+ * never existed on this branch. Owner ruling D19c struck the holder-facing surface whole: a holder is told nothing
+ * about house bots, so they cannot be given a button that stops them. Any caller is an OFFICER acting on a holder's
+ * request, and that surface belongs to Commit 7.
+ *
+ * ⚠️ It has NO caller under `src/` today, and that is enforced rather than remembered: the reports suite's §0.170.2
+ * requires nothing under `src/` to name it outside this definition, with planted callers as its controls, and
+ * `HOLDER_ACTOR_DEBT` carries it as a Commit 7 debt that may only LEAVE that list — because when a caller does
+ * arrive it must write the officer as actor, not the holder (ruling 170).
+ */
 export function withdrawHouseConsent(holderUserId: string): Promise<VoidResult> {
   return voidHouseConsent({ userId: holderUserId, cause: "HOLDER_WITHDREW", actorId: holderUserId });
 }
