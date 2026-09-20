@@ -933,9 +933,18 @@ if (STORE === "memory") {
     }
     const covered = positioned.filter((s) => s.marker !== null && [...anchorLines].some((L) => L >= s.line && L <= s.endLine));
     const uncovered = positioned.filter((s) => s.marker !== null && !covered.includes(s)).map((s) => `${s.file.split("/").pop()}:${s.line}`);
-    ok("0.232.2b · the money anchors are READ, and the population of marker sites they declare a mutation for is printed: a marker site with no declared mutation is never demonstrated red by test:red-anchors, and this assertion is the only thing that says which and how many",
-      anchorLines.size > 0 && covered.length === 2 && uncovered.length === 5
-      && j(uncovered) === j(["market-service.ts:3167", "market-service.ts:3577", "market-service.ts:3709", "market-service.ts:3850", "market-service.ts:4433"]),
+    /* ⭐ RAISED 2 → 7 BY C5-8 (2026-09-20), §1j row 84, and this is the only direction this assertion may move.
+       Until today the five sites this printed as "uncovered (deferred by name)" — the cash-out (`:3167`), the
+       one-sided refund (`:3577`), the void refund (`:3709`), the winner payout (`:3850`) and the emergency void
+       (`:4433`) — had NO declared mutation in any file under `scripts/`, so `test:red-anchors` never demonstrated
+       that deleting their marker reddens anything. All five are now declared in
+       `scripts/anchors/house-bot-money.anchors.mjs` and run by `red:house-bot-money` under `reports-mem`.
+       ⛔ The deferral list is GONE rather than shortened, and the equality is EXACT on both numbers: a site that
+       loses its declaration takes this red, which is the whole point of counting instead of asserting a sentence.
+       ⛔ This is a TIGHTENING. Never re-loosen it to absorb a red — a declaration that stops resolving is a
+       finding for `test:red-anchors` §3 to report, not a number for this line to accommodate. */
+    ok("0.232.2b · the money anchors are READ, and EVERY marker site they declare a mutation for is printed: a marker site with no declared mutation is never demonstrated red by test:red-anchors, and this assertion is the only thing that says which and how many",
+      anchorLines.size > 0 && covered.length === marked.length && uncovered.length === 0,
       `${covered.length} of ${marked.length} marker sites carry a declared money-anchor mutation · uncovered (deferred by name): ${j(uncovered)}`);
 
     ok("0.232.3 · ⛔ nothing in tracked src/ writes a Transaction row around the DAL — no .transaction.create(, .createMany( or .upsert(, no raw INSERT INTO \"Transaction\" (schema-qualified or not), and no INSERT into an INTERPOLATED table outside the one declared builder",
@@ -4281,8 +4290,15 @@ if (STORE === "memory") {
   const selfCode = decomment(read("scripts/lib/house-bot-reports-cases.mts"));
   const LBL = "0.505b · every declared `reports-mem` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
   const LBLC = "0.505b · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  /* ⛔ BOTH ANCHORS FILES, NOT JUST THE CONSOLE'S (C5-8, 2026-09-20). Until today this roll-call read
+     `CONSOLE_ANCHORS` alone, which was complete only because the console's file was the only one declaring a
+     `reports-mem` mutation. §1j row 84's five marker mutations are declared in `house-bot-money.anchors.mjs` and
+     also name `reports-mem` — and had they been added without this line, they would have been a suite key
+     "declared in a house anchors file with no roll-call", which is the exact thing ruling 505 exists to refuse.
+     The roll-call now reads the union, so the guard covers the population it claims to cover. */
   const input = {
-    suiteKeys: ["reports-mem"], declarations: CONSOLE_ANCHORS as DeclaredMutation[],
+    suiteKeys: ["reports-mem"],
+    declarations: [...CONSOLE_ANCHORS, ...MONEY_ANCHORS] as DeclaredMutation[],
     emitted, source: selfCode, ownLabels: [LBL, LBLC],
   };
   const rc = expectDriftReport(input);

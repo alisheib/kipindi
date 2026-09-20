@@ -24,7 +24,14 @@ export default function AdminDeskNewLoading() {
     <>
       {/* The head's action is a text link, not a button, so its ghost is a text-height chip rather than a 44px one:
           a ghost the wrong height is a layout jump, which is the rule `/admin/house`'s own loader states. */}
-      <AdminPageHead title="Designate an account" actions={<SkChip className="h-[20px] w-28" />} />
+      {/* ⛔ `w-[112px]`, NOT `w-28`, and the literal is the point (C5-8, test:spacing-scale 1/2). `28` is not in this
+          product's spacing override, so it resolves to Tailwind STOCK 7rem = 112px while the OVERRIDDEN `12` paints
+          128px — a key that reads bigger and paints smaller. This file was the branch's ONE new inverted usage
+          (measured: 476 against a ceiling of 475, and the only changed file under `src/` whose inverted-key count
+          differs from `origin/main` is this one, 0 → 1). The remedy is PER-PREFIX, as that ratchet's own note
+          states: width/height take an explicit literal, padding/margin/gap take the override key. 112px → 112px,
+          so nothing renders differently. ⛔ The ceiling was NOT raised. */}
+      <AdminPageHead title="Designate an account" actions={<SkChip className="h-[20px] w-[112px]" />} />
       <AdminBody>
         {/* ⛔ THE GHOST SITS AT THE PAGE'S OWN MEASURE, AND THE FIRST RENDER IS WHY (ruling 417). Without the
             column the card ghost laid out at 998px against the page's 640 — a card-for-card mismatch of 358px and a
