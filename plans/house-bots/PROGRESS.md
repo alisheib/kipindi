@@ -185,6 +185,24 @@ ecison" · "bots ar enoma player please".
      identically on each side. **No guard was weakened to get here, and that is checkable:** `red-anchors.test.mts`, `read-tiers.test.mts`
      and `decomment.test.mjs` have a ZERO diff against `origin/main`; `UNDECLARED_CEILING` 65 and `GOVERNED_CEILING` 0 on both; the only
      floor this branch moves is `house-bot-console.test.mts`'s `minPass`, **upward**, from main's `{448, 297}` to `{706, 471}`.
+   - ⭐ **THE RED-BY-RED WAS RUN AGAIN AT THE COMMIT'S FINAL TREE — 2026-09-21, C5-8 phase 4 — BOTH SIDES, AND IT IS CLEAN.**
+     **Branch `11564e9c` 369/384 green, 1213.5 s · baseline `C:/kipindi-old-build` detached at `418f1b5973a8af7c70ea7fc85851dfeba7f548a8` 369/384
+     green, 1230.8 s.** The two runs were SERIALISED (`db-scratch.mts` pins port 5433 with no override and REUSES a listening cluster, so an overlap
+     would silently run the baseline's Postgres children against the branch's cluster). **THE FAILING SETS ARE IDENTICAL — fifteen and fifteen, and
+     `comm` reports EMPTY in both directions:** recategorise, red-anchors, responsive, motion, revoked-deadend, admin-section-gate, needle-rest,
+     decomment, updown-digest, updown-source-class, settlement-expectation, orphans, popup-fit, eyebrow-roles, failure-reasons. **The red LINES were
+     compared, not just the suite names, and fourteen of the fifteen are byte-identical:** `red-anchors` prints exactly **two** `anchor missing`
+     lines on each side and they are the same two (`rg-doors.anchors.mjs`'s session-limit pair against `responsible-gambling.ts`) plus 4.1/4.2 at
+     **66 vs a ceiling of 65 on BOTH**; `decomment` 2.1 at **22 with a ceiling of 20 on BOTH**, same two new files named; `failure-reasons` 10.1/10.2
+     at **1 vs 0 on both**; `recategorise` FAIL 5 identical. **The single difference is a POPULATION and not a result, and it is the same one phase 3
+     found:** `popup-fit` reads **69 popup components here against 68 there**, with `POPUPS_EXPECTED = 57` unchanged on both sides — the ceiling was
+     not raised. ⭐ **Why the baseline side is a real control and not an assumption:** `origin/main` was re-fetched and is STILL `418f1b59`
+     (`git rev-list --left-right --count origin/main...HEAD` → `0 66`), the baseline worktree's HEAD equals `git rev-parse origin/main` byte for byte,
+     and both worktrees were `git status --porcelain` EMPTY before and after their runs. ⚠️ **Five suites are NOT MEASURED on BOTH sides and are named
+     rather than folded into "inherited":** `test:responsive`, `test:motion`, `test:revoked-deadend`, `test:admin-section-gate` (its Playwright half —
+     the static half is green on both) and `test:needle-rest`; the last three die on `ERR_CONNECTION_REFUSED` at `localhost:3009/auth/demo`
+     identically on each side. ⚠️ Between this run and phase 3's, `git diff --name-only` over `src/`, `package.json` and `prisma/` is **EMPTY** — this
+     checkpoint's whole output is plan files plus one test FIXTURE — so the comparison measures the same subject twice and agrees with itself.
    - ⭐ **THE MUTATION BATCH RAN FOR THE WHOLE COMMIT — 2026-09-20, C5-8 phase 4 — AND IT FOUND TEN DECLARATIONS THAT DO NOT PROVE WHAT THEY CLAIM.**
      `npm run red:all -- --filter house-bot --timeout 5400`, sequential, each harness taking a GREEN baseline per suite before any mutation:
      **`red:house-bot-engine` PASS 845.6 s** (39 declarations; the harness exits non-zero on any missed mutation or any file left dirty, so exit 0 IS
