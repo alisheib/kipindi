@@ -23,7 +23,7 @@
  * now lived only in process memory and died with the container. The planner writes the same columns on its own row
  * for its own facts (X1's duty names, `planner.ts`).
  */
-import { ALERT_KEY, POLLER_FAILURE_ALERT_AFTER, RUNTIME_KEY } from "@/lib/house-bot/constants";
+import { ALERT_KEY, MAX_TOLERATED_SKEW_MS, POLLER_FAILURE_ALERT_AFTER, RUNTIME_KEY } from "@/lib/house-bot/constants";
 import { houseBotIntentStore, houseBotRuntimeStore } from "../house-bot-dal";
 import { claimGate, type EngineTicks, type TickContext } from "./engine";
 import { fireClaimedIntent, type FireResult } from "./fire";
@@ -34,7 +34,7 @@ import { alertOnce, type EngineAlerts } from "./outcomes";
 export type PollerClaimFailure = { code: string; streak: number; alerted: boolean };
 
 export type PollerPass =
-  | { claimed: 0; gate: string }
+  | { claimed: 0; gate: string; alerted: boolean }
   | { claimed: 0; failure: PollerClaimFailure }
   | { claimed: number; beat: boolean; results: Array<FireResult | { kind: "threw"; error: string }> };
 
@@ -80,9 +80,48 @@ async function recordClaimFailure(ctx: TickContext, alerts: EngineAlerts, e: unk
   return { code, streak, alerted };
 }
 
+/**
+ * ⛔ **THE SILENT STOP** (01 register:1218; `ALERT_KEY.clockSkew`). The two gate reasons that mean *this container's
+ * clock cannot be trusted*. Every other reason is ordinary back-pressure — STOPPING, ADMISSION, FULL and NOT_STARTED
+ * are the engine working — and none of them is an alert.
+ */
+const SKEW_GATE_REASONS: ReadonlySet<string> = new Set(["SKEW", "SKEW_UNKNOWN"]);
+
+/**
+ * ⛔ **THE ENGINE DOES THE RIGHT THING AND TELLS NOBODY — until this build.** `claimGate` refuses to claim while the
+ * measured database-clock offset is unknown or past `MAX_TOLERATED_SKEW_MS`, and that refusal is correct: claiming on
+ * a clock five seconds out would fire intents before they are due. But the refusal was **only a return value**.
+ * `ALERT_KEY.clockSkew()` sat in the key table from commit 4 with **zero callers anywhere in the tree**, and the
+ * register's fix has always read "it skips claims **and sends AlertOnce `engine:clock_skew:<EAT day>`**".
+ *
+ * So on a live money platform the bots stopped staking and the only evidence was an absence: no outcome, no audit,
+ * no bell — every instrument reading "quiet", which is indistinguishable from a quiet hour. That is the same defect
+ * A24 exists for, and the same shape as `recordClaimFailure` above; it is answered the same way.
+ *
+ * ⛔ ONE BELL PER EAT DAY, NOT ONE PER TICK. The poller runs on `POLLER_INTERVAL_MS`, so a skewed clock reaches this
+ * line thousands of times a day and every container reaches it; the key's `day` unit is what makes that one bell.
+ * ⛔ AND THE BELL NEVER COSTS THE PASS. The gate has already refused; losing the reason to a failed send would
+ * replace a reported stop with an unreported one, which is the defect itself.
+ */
+async function alertSkewGate(ctx: TickContext, alerts: EngineAlerts, reason: string): Promise<boolean> {
+  try {
+    return await alertOnce(ALERT_KEY.clockSkew(), alerts, {
+      code: "CLOCK_SKEW",
+      detail: { reason, skewMs: ctx.state.skewMs, toleratedMs: MAX_TOLERATED_SKEW_MS, instanceId: ctx.instanceId },
+    });
+  } catch (e) {
+    console.error("[house-bot] the clock-skew stop could not be announced:", errMessage(e));
+    return false;
+  }
+}
+
 export async function pollerPass(ctx: TickContext, alerts: EngineAlerts): Promise<PollerPass> {
   const gate = claimGate(ctx.state);
-  if (!gate.ok) return { claimed: 0, gate: gate.reason };
+  if (!gate.ok) {
+    /* ⛔ A24 · a clock this container cannot trust stops the claims — and now says so (register:1218). */
+    const alerted = SKEW_GATE_REASONS.has(gate.reason) ? await alertSkewGate(ctx, alerts, gate.reason) : false;
+    return { claimed: 0, gate: gate.reason, alerted };
+  }
   let rows;
   try {
     rows = await houseBotIntentStore.claimBatch({ me: ctx.instanceId, freeSlots: gate.freeSlots, skewGuardMs: gate.skewGuardMs });
