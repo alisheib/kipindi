@@ -5349,12 +5349,37 @@ export default function Ruling513Control() {
      put the second answer at 357→600 on a 360 viewport, and left the account column at 93px. Ruling 373's named
      fallback (the cap in the column HEADER) is unbuildable — the cap is PER ACCOUNT. So the pair WRAPS: each amount
      stays indivisible through the kit's own `.amount` nowrap, and the subject column gets a floor of its own. */
-  ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column",
-    /<table className="admin-tbl">/.test(pageCode), "");
+  /* 🔴 THIS LINE WAS A PRESENCE CHECK AND THE LANDING HALF SILENTLY BROKE IT. With ONE table on the page,
+     `/<table className="admin-tbl">/` answered about THE table; with FOUR panels there are three, and a width
+     added to the money-bearing one passes on the strength of the other two still being bare. Measured here, not
+     reasoned: the declared mutation `373-minw` could not even be INJECTED any more (its anchor matched 3×) — the
+     red harness reported the rot, and the repair is to ask about EVERY table rather than about ANY table.
+     ⛔ DERIVED, NEVER TYPED: the openers are read off the page and each must be the bare one, so a fifth panel's
+     table is inside this rule on the day it is written. */
+  const tableOpeners = [...pageCode.matchAll(/<table className="[^"]*"/g)].map((m: Any) => m[0]);
+  ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column — and EVERY table on this page is the bare kit opener, derived from the page rather than asked of one of them",
+    tableOpeners.length >= 3 && tableOpeners.every((t: string) => t === '<table className="admin-tbl"'),
+    j({ openers: [...new Set(tableOpeners)], count: tableOpeners.length }));
+  ok("1.373 · CONTROL · the sweep really would report ONE widened table among bare ones, which is what the presence check it replaced could not do",
+    (() => {
+      const widened = [...tableOpeners, '<table className="admin-tbl min-w-[720px]"'];
+      return widened.some((t: string) => t !== '<table className="admin-tbl"')
+        && /<table className="admin-tbl">/.test(pageCode);
+    })(), "");
   /* ⛔ NO MONEY COLUMN CARRIES A FLOOR — only the SUBJECT and the STATUS column do, and each for a measured reason:
    * without the subject floor the account column absorbed the whole shortfall and laid out at 93px at 360; without
    * the status floor the AUTO-PAUSED chip rendered as a TWO-LINE pill beside single-line ones at every width up to
    * 1280, and it cannot be fixed on the Chip (an inline `whiteSpace: "normal"` beats any class). Ruling 432(b), (o). */
+  /* 🔴 AND THE SUBJECT FLOOR WAS THE SAME PRESENCE CHECK, BROKEN THE SAME WAY. Three panels paint an
+     `Account` subject column now, so a floor deleted from ONE of them passed on the strength of the other two.
+     Every panel that paints that header is read out of its OWN slice and must carry the floor — derived from the
+     closed tab list, so a panel written tomorrow is inside the rule without anyone remembering to add it. */
+  const subjectCols = CR.CONSOLE_TABS
+    .map((k: string) => [k, /<th scope="col" className="([^"]*)">Account<\/th>/.exec(panelOf(k))?.[1] ?? null] as [string, string | null])
+    .filter(([, c]) => c !== null) as [string, string][];
+  ok("1.373 · EVERY panel that paints the subject column carries the SAME floor, read out of that panel's own slice — a floor deleted from one table can no longer pass on another table still having one",
+    subjectCols.length >= 3 && subjectCols.every(([, c]) => /min-w-\[150px\]/.test(c)),
+    j(subjectCols));
   ok("1.373 · …and only the SUBJECT and STATUS columns carry a floor — never a money column, which would pin its figure off-screen",
     /<th scope="col" className="text-left p-3 min-w-\[150px\]">Account<\/th>/.test(pageCode)
       && /<th scope="col" className="text-left p-3 min-w-\[128px\]">Status<\/th>/.test(pageCode)

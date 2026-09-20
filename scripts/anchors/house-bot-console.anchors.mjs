@@ -671,10 +671,13 @@ export const MUTATIONS = [
     file: GATE,
     /* ⚠️ RE-ANCHORED at C7 step 4: the set grew a sixth member when "Last bet" brought ruling 351's rate
        reader with it. RE-ANCHORED AGAIN at step 4b: a SEVENTH, the engine's durable beats, which ruling 435(e)
-       puts inside this same door rather than behind a second one. THE DEFECT IS UNCHANGED — one failed read
-       blanks the whole page instead of its own cell. */
-    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.all([`,
+       puts inside this same door rather than behind a second one. RE-ANCHORED AGAIN at C7 step 5's landing
+       half: an EIGHTH, the rail's queued-stake badge, which is a SHELL fact and so belongs to this set rather
+       than to a caller's slot. 🔴 EACH TIME IT WAS THE RED HARNESS THAT REPORTED THE ROT, never a reading — an
+       anchor that stops resolving is a mutation that silently stops being driven. THE DEFECT IS UNCHANGED — one
+       failed read blanks the whole page instead of its own cell. */
+    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.allSettled([`,
+    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.all([`,
     expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
     suite: "console-mem",
   },
@@ -776,16 +779,25 @@ export const MUTATIONS = [
   {
     name: "373-minw · the money TABLE takes a min-width again, which stretches every column and pushes the answer out of view at 360",
     file: PAGE,
-    from: `                <table className="admin-tbl">`,
-    to: `                <table className="admin-tbl min-w-[720px]">`,
+    /* ⚠️ RE-ANCHORED at C7 step 5's landing half: the page carries THREE of these openers now, the anchor
+       matched 3× and the harness refused to inject — which is how the presence check this fires is known to have
+       been broken by the same change. The label above it is what makes the money-bearing one unique. */
+    from: `                <ScrollX label="Desk activity">
+                  <table className="admin-tbl">`,
+    to: `                <ScrollX label="Desk activity">
+                  <table className="admin-tbl min-w-[720px]">`,
     expect: "1.373 · the money-bearing TABLE carries no `min-w-*` of its own",
     suite: "console-mem",
   },
   {
     name: "373-subject · the subject column loses its floor, so it absorbs the whole shortfall at 360 again",
     file: PAGE,
-    from: `                      <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>`,
-    to: `                      <th scope="col" className="text-left p-3">Account</th>`,
+    /* ⚠️ RE-ANCHORED at C7 step 5's landing half, same rot and same finding: three panels paint this header, so
+       the anchor matched 3×. The `Stake` header on the next line is the money-bearing panel's own. */
+    from: `                        <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
+    to: `                        <th scope="col" className="text-left p-3">Account</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
     expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
     suite: "console-mem",
   },
@@ -2577,8 +2589,8 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "382-cancel-audit-key · the cancel's audit key is renamed to the neutral-sounding ADMIN one, which silently leaves HOUSE_AUDIT and puts a house row in a player's own audit read",
     file: PRESS_CANCEL,
-    from: `        purpose: "STAFF_CANCEL",`,
-    to: `        purpose: "ENTER_NOW",`,
+    from: `      purpose: "STAFF_CANCEL",`,
+    to: `      purpose: "ENTER_NOW",`,
     expect: "1.382 · the cancel's audit action is a `HOUSE_AUDIT` key",
     suite: "console-mem",
   },
