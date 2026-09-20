@@ -3470,6 +3470,20 @@ const CONSOLE_DESK_FEED_EMPTY: ConsoleEmpty = {
   title: "Nothing staked yet",
   body: "Every stake the desk tries appears here, newest first, with what happened to it.",
 };
+/**
+ * 🔴 AND THE FILTERED ONE IS THE DESK'S TOO, WHICH THE FIRST BUILD GOT WRONG AND EVERY SUITE PASSED.
+ * The reader used to keep the SHELL's filtered sentence here, on the reasoning that "nothing matches this filter"
+ * is the same fact on either page. It is not: that sentence's BODY reads "No stake on **this account** matches",
+ * and on the page that lists every account there is no such account. Read off the served page at
+ * `?tab=activity&kind=manual&outcome=cancelled&product=up-down` — the account page's sentence, painted on the
+ * desk. ⛔ 416's whole point is that two different subjects say different things, and the assertion that was
+ * meant to hold this compared only the TITLES and then checked the UNFILTERED body for the word "desk", so the
+ * one string that was wrong is the one string it never read.
+ */
+const CONSOLE_DESK_FEED_EMPTY_FILTERED: ConsoleEmpty = {
+  title: "Nothing matches this filter",
+  body: "No stake anywhere on the desk matches what the rail above is set to. Widen the window or clear a chip.",
+};
 const CONSOLE_DESK_HISTORY_EMPTY: ConsoleEmpty = {
   title: "No changes yet",
   body: "Every change to the desk and to the accounts on it is kept here, newest first — who made it and when.",
@@ -3570,9 +3584,10 @@ export async function houseFeedForConsole(
     feedPresets: panel.feedPresets,
     feedPresetDefault: panel.feedPresetDefault,
     feedParams: panel.feedParams,
-    /* ⛔ THE DESK'S OWN WORDS FOR AN EMPTY LIST, and the FILTERED state keeps the shell's own sentence — "nothing
-     * matches this filter" is the same fact on either page, and "nothing yet" is not. */
-    feedEmpty: panel.feedFiltered ? panel.feedEmpty : CONSOLE_DESK_FEED_EMPTY,
+    /* ⛔ THE DESK'S OWN WORDS FOR BOTH EMPTY STATES, AND THAT IS A CORRECTION A RENDER HAD TO MAKE. The filtered
+     * branch used to hand back the SHELL's sentence, whose body names "this account" — on the one page that has
+     * no account to name. Each subject has its own pair (416); neither borrows the other's. */
+    feedEmpty: panel.feedFiltered ? CONSOLE_DESK_FEED_EMPTY_FILTERED : CONSOLE_DESK_FEED_EMPTY,
     feedFiltered: panel.feedFiltered,
     feedClearHref: panel.feedClearHref,
     feedOrderNote: panel.feedOrderNote,

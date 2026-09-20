@@ -641,12 +641,28 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                              never put in a response it does not have to. */
                           <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
                             <td className="p-3">
+                              {/* 🔴 AND IT IS NOT `.row-link`, WHICH IS THE POINT AND WAS FOUND ON A PHOTOGRAPH.
+                                  `.row-link` is the platform's row-EXIT style and it carries
+                                  `text-transform: uppercase` + `letter-spacing: .10em`; every one of its other call
+                                  sites wraps a FIXED WORD — "open →", "manage →". These two cells wrapped the
+                                  Owner's own typed label, and were the only two places in this repository where
+                                  that class held operator data. MEASURED off the served page with computed styles:
+                                  the roster painted `Evening desk - widest label yetX` with `text-transform: none`
+                                  while these two painted `EVENING DESK - WIDEST LABEL YETX` — the SAME label, two
+                                  looks, 40px apart on one screen, which is the exact defect this section was pulled
+                                  up on. ⛔ And 474 says operator data is bounded, never REWRITTEN: a CSS transform
+                                  rewrites it for every reader and into every screenshot.
+                                  ⛔ THE SHARED RULE IS NOT EDITED — it governs ten other pages and their fixed
+                                  words are right to be uppercase. The geometry that mattered is kept at the call
+                                  site (`inline-flex` + the `--tap-min` floor, the repo's own idiom), and only the
+                                  two declarations that rewrite the text are absent. */
+                              }
                               {/* ⛔ RULING 474 · an account's label is OPERATOR DATA and the DOM says so — 453's
                                   lexicon binds this section's COPY and may not silently rewrite what the Owner
                                   typed. The two console words ("Removed from the desk", "Could not be read") are
                                   the console's own and carry no hook, because they are not the Owner's text. */}
                               {r.accountIsOperatorText
-                                ? <Link href={r.accountHref as Route} className="row-link text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
                                 : <span className="text-text-tertiary">{r.accountName}</span>}
                               {/* The holder, as a HANDLE and nothing else (04 R6) — never a name, a phone or an
                                   email, because a row outlives the holder's erasure. */}
@@ -799,7 +815,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                   a limits save, the withdrawal — belongs to no account and opens no page, so it is
                                   the console's own word in plain text and not a link to nowhere (432(a)). */}
                               {r.accountIsOperatorText
-                                ? <Link href={r.accountHref as Route} className="row-link text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
                                 : <span className="text-text-tertiary">{r.accountName}</span>}
                             </td>
                             <td className="p-3 text-text-secondary" title={r.whenTitle}>{r.when}</td>

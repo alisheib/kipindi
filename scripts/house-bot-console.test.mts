@@ -152,6 +152,16 @@
  * assertions while the Postgres child printed ALL PASS, which is exactly the shape `0.throw` exists to refuse and
  * exactly why a per-store floor is a PAIR. Indentation is not scope; the declaration now sits above the `try`.
 
+ * 🔴 RAISED AGAIN BY THE LANDING RENDER, WHICH FOUND TWO DEFECTS EVERY SUITE HERE HAD PASSED —
+ * **memory 706, Postgres 471**. (1) The desk-wide panel handed back the SHELL's filtered empty state, whose
+ * body reads "No stake on **this account** matches" — on the one page that has no account to name; the
+ * assertion meant to hold that compared only the two TITLES and then checked the UNFILTERED body for the word
+ * "desk", so the one string that was wrong is the one string nothing read. (2) The Owner's own typed label was
+ * wrapped in `.row-link`, the platform's row-EXIT class, whose `text-transform: uppercase` REWROTE it: the
+ * roster painted `Evening desk - widest label yetX` and these two panels painted `EVENING DESK - WIDEST LABEL
+ * YETX`, one label in two looks 40px apart on one screen. That one was invisible to every scan in this
+ * repository — it lives in a COMPUTED STYLE, and only a photograph and `getComputedStyle` could see it.
+
  * ⚠️ `red:house-bot-console` carries the mutations for every assertion here; it is run once at the commit close.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
@@ -159,6 +169,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 702, postgres: 470 },
+  minPass: { memory: 706, postgres: 471 },
   dbPrefix: "hb_console",
 });

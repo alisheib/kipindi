@@ -3788,12 +3788,30 @@ try {
         (await deskFeed()).feedTotal === deskTotal && (await deskFeed()).pendingIntents === queued, "");
       /* ⛔ AND A FILTER THAT MATCHED NOTHING READS DIFFERENTLY FROM A LIST WITH NOTHING IN IT (416). */
       const noMatch = await deskFeed({ kind: "manual", outcome: "cancelled", product: "up-down" });
-      ok("1.355 · 416 · an empty desk list and a filter that matched nothing say DIFFERENT things, and the unfiltered sentence is the DESK's own and not one account's",
+      /* 🔴 THE `body` IS READ NOW, AND IT IS READ BECAUSE THE RENDER FOUND WHAT THIS LINE COULD NOT. The first
+         version compared the two TITLES and then checked the UNFILTERED body for the word "desk" — so the FILTERED
+         body, the one string the reader borrowed from the account page, was the one string nothing looked at. It
+         said "No stake on **this account** matches" on the page that lists every account, and was read off a
+         served page at `?tab=activity&kind=manual&outcome=cancelled&product=up-down` with every suite green.
+         ⛔ BOTH SUBJECTS ARE NOW HELD APART IN BOTH DIRECTIONS: each of the desk's two sentences names the DESK and
+         never an account, and each of the account page's names the ACCOUNT and never the desk. A guard that
+         checks one side of a swap cannot see the swap. */
+      const deskPlain = await deskFeed();
+      const acctNoMatch = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "activity", kind: "manual", outcome: "cancelled", product: "up-down" });
+      const acctPlain = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", panels.botId, { tab: "activity" });
+      const namesDesk = (e: Any) => /\bthe desk\b/.test(e.body) && !/this account/.test(e.body);
+      const namesAccount = (e: Any) => /this account/.test(e.body) && !/\bthe desk\b/.test(e.body);
+      ok("1.355 · 416 · an empty desk list and a filter that matched nothing say DIFFERENT things, and BOTH of the desk's sentences name the DESK — body included, which is where the account page's sentence was found painted on the landing page",
         noMatch.feedTotal === 0 && noMatch.feed.length === 0 && noMatch.feedFiltered === true
-          && noMatch.feedEmpty.title !== (await deskFeed()).feedEmpty.title
-          && (await deskFeed()).feedEmpty.body.includes("the desk")
+          && noMatch.feedEmpty.title !== deskPlain.feedEmpty.title
+          && namesDesk(deskPlain.feedEmpty) && namesDesk(noMatch.feedEmpty)
           && typeof noMatch.feedClearHref === "string" && noMatch.feedClearHref.includes("tab=activity"),
-        j({ filtered: noMatch.feedEmpty, unfiltered: (await deskFeed()).feedEmpty }));
+        j({ filtered: noMatch.feedEmpty.body, unfiltered: deskPlain.feedEmpty.body }));
+      ok("1.355 · 416 · CONTROL · the ACCOUNT page's own pair names the ACCOUNT in both states and never the desk, so the line above is a swap that would be reported in either direction and not a word that happens to appear",
+        acctNoMatch.feedFiltered === true && namesAccount(acctNoMatch.feedEmpty) && namesAccount(acctPlain.feedEmpty)
+          && acctNoMatch.feedEmpty.body !== noMatch.feedEmpty.body
+          && acctPlain.feedEmpty.body !== deskPlain.feedEmpty.body,
+        j({ acctFiltered: acctNoMatch.feedEmpty.body, acctPlain: acctPlain.feedEmpty.body }));
 
       /* ── 317 · THE DESK HISTORY KEEPS THE CONTROL ROW'S OWN EVENTS, WHICH A PER-ACCOUNT READ CORRECTLY DROPS ── */
       await w.dal.houseBotEventStore.append({
@@ -5377,6 +5395,33 @@ export default function Ruling513Control() {
   const subjectCols = CR.CONSOLE_TABS
     .map((k: string) => [k, /<th scope="col" className="([^"]*)">Account<\/th>/.exec(panelOf(k))?.[1] ?? null] as [string, string | null])
     .filter(([, c]) => c !== null) as [string, string][];
+  /* 🔴 474 · OPERATOR TEXT IS BOUNDED, NEVER REWRITTEN — AND A CSS TRANSFORM IS A REWRITE. Found on a
+     PHOTOGRAPH, not in any source scan: `.row-link` carries `text-transform: uppercase` and
+     `letter-spacing: .10em`, and the landing panels wrapped the Owner's own typed label in it. Computed styles
+     off the served page: the roster painted `Evening desk - widest label yetX` with `text-transform: none`,
+     these two painted `EVENING DESK - WIDEST LABEL YETX` — one label, two looks, 40px apart on one screen.
+     ⛔ THE RULE IS DERIVED FROM THE STYLESHEET, NOT TYPED HERE: whatever `.row-link` is declared to do, no
+     element carrying `data-operator-text` may carry that class. So if the shared rule is ever changed, this
+     stays a statement about the class the section's fixed words use, and the reason is re-read from disk. */
+  {
+    const css = read("src/app/globals.css");
+    const rule = /\.row-link\.row-link\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    const operatorSites = [...pageCode.matchAll(/className="([^"]*)"[^>]*data-operator-text/g)].map((m: Any) => m[1]);
+    const detailSites = [...decomment(read(DETAIL_PAGE)).matchAll(/className="([^"]*)"[^>]*data-operator-text/g)].map((m: Any) => m[1]);
+    ok("1.474 · not one element that carries the Owner's OWN TEXT wears the row-exit class, whose declared job includes rewriting the case — the platform's fixed words keep it, operator data never does",
+      /text-transform:\s*uppercase/.test(rule)
+        && operatorSites.length >= 3 && [...operatorSites, ...detailSites].every((c: string) => !/\brow-link\b/.test(c)),
+      j({ rule: rule.replace(/\s+/g, " ").trim().slice(0, 90), sites: operatorSites.length + detailSites.length }));
+    ok("1.474 · CONTROL · the class really IS still used on this page for its own purpose — a FIXED word, the roster's way out — so the line above is a rule about what it may WRAP and not a ban that emptied itself",
+      /className="row-link[^"]*"[^>]*>open →</.test(pageCode)
+        && (pageCode.match(/\brow-link\b/g) ?? []).length >= 1
+        && !/row-link[^"]*"[^>]*data-operator-text/.test(pageCode),
+      j({ rowLinkUses: (pageCode.match(/\brow-link\b/g) ?? []).length }));
+    /* ⛔ AND THE SUBJECT CELL KEEPS THE TAP FLOOR THE CLASS WAS GIVING IT, read from the token rather than typed. */
+    ok("1.474 · …and dropping the class did not drop the tap floor with it: each operator-text link carries the `--tap-min` floor at its own site, the repo's own idiom for exactly that",
+      operatorSites.filter((c: string) => /\bhover:underline\b/.test(c)).every((c: string) => /min-h-\[var\(--tap-min\)\]/.test(c)),
+      j(operatorSites));
+  }
   ok("1.373 · EVERY panel that paints the subject column carries the SAME floor, read out of that panel's own slice — a floor deleted from one table can no longer pass on another table still having one",
     subjectCols.length >= 3 && subjectCols.every(([, c]) => /min-w-\[150px\]/.test(c)),
     j(subjectCols));

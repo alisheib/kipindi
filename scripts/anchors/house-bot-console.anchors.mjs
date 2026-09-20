@@ -2629,6 +2629,31 @@ import { formatEat } from "@/lib/utils";`,
     expect: "1.369 · the hour summary's bell lands on the HOUR IT IS ABOUT",
     suite: "console-mem",
   },
+  /* ══ THE TWO THE LANDING RENDER FOUND, WHICH NO SUITE DID ══════════════════════════════════
+   * Both shipped GREEN and were read off a real render of the LANDING page on a scratch database — the first
+   * out of the served markup, the second only out of COMPUTED STYLES, which no scan of source could reach. */
+  {
+    name: "416-desk-borrows-account-sentence · the desk-wide panel hands back the shell's filtered empty state, whose body names \"this account\" on the one page that has no account to name",
+    file: GATE,
+    from: `    feedEmpty: panel.feedFiltered ? CONSOLE_DESK_FEED_EMPTY_FILTERED : CONSOLE_DESK_FEED_EMPTY,`,
+    to: `    feedEmpty: panel.feedFiltered ? panel.feedEmpty : CONSOLE_DESK_FEED_EMPTY,`,
+    expect: "1.355 · 416 · an empty desk list and a filter that matched nothing say DIFFERENT things",
+    suite: "console-mem",
+  },
+  {
+    name: "474-row-link-on-operator-text · the Owner's own typed label goes back inside the row-EXIT class, whose `text-transform: uppercase` rewrites it for every reader and every screenshot",
+    file: PAGE,
+    from: `                              {r.accountIsOperatorText
+                                ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                : <span className="text-text-tertiary">{r.accountName}</span>}
+                              {/* The holder, as a HANDLE and nothing else (04 R6)`,
+    to: `                              {r.accountIsOperatorText
+                                ? <Link href={r.accountHref as Route} className="row-link text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                : <span className="text-text-tertiary">{r.accountName}</span>}
+                              {/* The holder, as a HANDLE and nothing else (04 R6)`,
+    expect: "1.474 · not one element that carries the Owner's OWN TEXT wears the row-exit class",
+    suite: "console-mem",
+  },
   {
     name: "474-landing-label-unclamped · the desk feed's account cell paints the Owner's label unbounded, on the one page that lists every account at once",
     file: GATE,
