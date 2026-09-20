@@ -23,8 +23,12 @@
  * number: a section that stops running fails the floor even while every case that ran passed.
  *
  * ⭐ THE FLOORS ARE MEASURED BY RUNNING IT, NEVER BY ARITHMETIC, and they may only rise.
- *   · memory 16, postgres 1 — this commit: §0's marker gate and master-switch law, plus the store case.
+ *   · memory 16, postgres 1 — step 1: §0's marker gate and master-switch law, plus the store case.
+ *   · memory 28, postgres 13 — step 2: §1's two DAL members, markSunset and openExposureByMarket, on
+ *     BOTH twins. The gap between the two floors is §0 exactly: 15 source pins that run in the memory
+ *     child only, which is why this floor is a PAIR — a section that stops running fails the floor even
+ *     while every case that ran passed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 16, postgres: 1 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 28, postgres: 13 }, dbPrefix: "hb_ops" });

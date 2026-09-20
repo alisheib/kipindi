@@ -1303,6 +1303,13 @@ function toHouseBotPress(r: any): StoredHouseBotPress {
 // and the memory twin mirrors the predicate. A `tx` joins the caller's lock transaction; without
 // one the statement autocommits.
 
+/**
+ * The TERMINAL off cause (F2). Spelled once, typed as `OffCause`, and used by both `markSunset` twins and by
+ * their predicates — so if the string ever left `OFF_CAUSES` (or the CHECK that mirrors it), this file stops
+ * compiling instead of writing a cause the database refuses at run time.
+ */
+const SUNSET_CAUSE: OffCause = "SUNSET";
+
 export interface HouseBotControlStore {
   /** Fresh read of the `global` row. A missing row throws `HouseSchemaNotReady`. */
   get(tx?: HouseTx): Promise<StoredHouseBotControl>;
@@ -1312,6 +1319,26 @@ export interface HouseBotControlStore {
    * no second SWITCH_OFF event (two workers faulting at once produce one).
    */
   switchOff(input: { cause: OffCause; byId: string | null; reason: string | null }): Promise<StoredHouseBotControl | null>;
+  /**
+   * F2 SUNSET: OFF with the TERMINAL cause, written in autocommit under no lock.
+   *
+   * ⛔ NOT `switchOff({ cause: "SUNSET" })`, AND THAT IS THE WHOLE REASON THIS MEMBER EXISTS. `switchOff` is
+   * conditional on `"enabled" = true`, and that predicate is load-bearing: it is what makes two workers faulting
+   * at once write ONE event and one alert, and `kill-switch.ts` depends on the null to return ALREADY_OFF. On
+   * today's SHIPPED state the control row is `enabled BOOLEAN NOT NULL DEFAULT false` and was inserted with its
+   * defaults, so the desk is OFF with `offCause` NULL — and `switchOff` there matches NOTHING. A sunset run
+   * through it would remove every bot and end every target while leaving no terminal marker, `switch-on.ts`'s
+   * WITHDRAWN refusal would never fire, and any admin could switch a stripped desk back on.
+   *
+   * Conditional on `"offCause" IS DISTINCT FROM 'SUNSET'` instead, so it lands from EITHER starting state (ON,
+   * or OFF for any other cause) and a second run changes nothing and returns null. ⛔ The memory twin mirrors
+   * that predicate exactly — `IS DISTINCT FROM` is true for a NULL `offCause`, which is precisely the shipped
+   * state it has to move.
+   *
+   * ⛔ IRREVERSIBLE BY DESIGN. There is no member that clears `offCause = 'SUNSET'`: the state this writes is
+   * the one state `switchOnHouseBots` refuses (`switch-on.ts`, code WITHDRAWN). Nothing here turns anything on.
+   */
+  markSunset(input: { byId: string | null; reason: string | null }): Promise<StoredHouseBotControl | null>;
   /**
    * ON, conditional on OFF; clears `offCause`. Null means it was already on. ⛔ The same transaction writes
    * `global.scopeFrom = now()` (04 A11, C4-SPEC ruling 92): a switch-on that left scope NULL would put every stake out
@@ -1645,6 +1672,20 @@ export interface HouseBookStore {
   dayRows(input: { fromIso: string; toIso: string; houseBotId: string | null }, tx?: HouseTx): Promise<HouseBookRawRow[]>;
   /** Open stake per bot right now. */
   openExposure(houseBotId: string | null, tx?: HouseTx): Promise<Array<{ houseBotId: string; openStakeTzs: number }>>;
+  /**
+   * Open house stake per MARKET right now, with how many distinct bots hold it — ordered by `marketId`.
+   *
+   * ⛔ A DIFFERENT POPULATION FROM `openExposure`, NOT A RELABELLING OF IT. That one groups by BOT and
+   * `HouseMarketUsage` covers ONE market, so F2's audit payload key `openExposureByMarket` (already allowlisted
+   * in `HOUSE_AUDIT_PAYLOAD_KEYS`) and FS-06's "TZS X across N markets" alert have no number behind them today.
+   * The two answers differ whenever one bot stakes two markets or two bots stake one, which is why the suite
+   * asserts they DIFFER on the same fixture: otherwise this could be the old member wearing a new name.
+   *
+   * ⛔ ONE STATEMENT FOR THE WHOLE BOOK, never a per-market loop — the seam's shape rule, and the reason
+   * `Position_marketId_marked_idx` exists. `bots` is `count(DISTINCT "houseBotId")`, so a market one bot staked
+   * three times reads 1.
+   */
+  openExposureByMarket(tx?: HouseTx): Promise<Array<{ marketId: string; openStakeTzs: number; bots: number }>>;
 }
 
 /** One bot's PLACED rows in a window (hourly summaries, C4-SPEC ruling 80). Staff-chosen = MANUAL or targeted. */
@@ -2059,6 +2100,16 @@ const memoryHouseBotControl: HouseBotControlStore = {
     if (!cur.enabled) return null;
     return memUpdate("HouseBotControl", cur, {
       enabled: false, offCause: input.cause, switchedAt: nowIso(), switchedById: input.byId, switchedReason: input.reason,
+    });
+  },
+  async markSunset(input) {
+    memSeed();
+    const cur = memControl.get(HOUSE_CONTROL_ID)!;
+    // The Postgres predicate, mirrored: `"offCause" IS DISTINCT FROM 'SUNSET'` — true for NULL, which is the
+    // shipped state this has to move, and false only once the terminal marker is already there.
+    if (cur.offCause === SUNSET_CAUSE) return null;
+    return memUpdate("HouseBotControl", cur, {
+      enabled: false, offCause: SUNSET_CAUSE, switchedAt: nowIso(), switchedById: input.byId, switchedReason: input.reason,
     });
   },
   async switchOn(input) {
@@ -2923,6 +2974,18 @@ const memoryHouseBook: HouseBookStore = {
     }
     return [...acc.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([id, openStakeTzs]) => ({ houseBotId: id, openStakeTzs }));
   },
+  async openExposureByMarket() {
+    const acc = new Map<string, { openStakeTzs: number; bots: Set<string> }>();
+    for (const p of await positionStore.values()) {
+      if (p.houseBotId == null || p.status !== "OPEN") continue;
+      const row = acc.get(p.marketId) ?? { openStakeTzs: 0, bots: new Set<string>() };
+      row.openStakeTzs += p.stake;
+      row.bots.add(p.houseBotId);
+      acc.set(p.marketId, row);
+    }
+    return [...acc.entries()].sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([marketId, r]) => ({ marketId, openStakeTzs: r.openStakeTzs, bots: r.bots.size }));
+  },
 };
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -3258,6 +3321,21 @@ const prismaHouseBotControl: HouseBotControlStore = {
       `"switchedById" = ${p.col("HouseBotControl", "switchedById", input.byId)}`,
       `"switchedReason" = ${p.col("HouseBotControl", "switchedReason", input.reason)}`,
     ], `"id" = ${p.raw(HOUSE_CONTROL_ID, "text")} AND "enabled" = true`);
+    const rows = await sql(null, text, p.values);
+    return rows[0] ? toHouseBotControl(rows[0]) : null;
+  },
+  async markSunset(input) {
+    const p = new Params();
+    // ⛔ ONE placeholder for the cause, used by the SET and by the predicate, so the value written and the value
+    // tested can never drift apart in a later edit.
+    const sunset = p.col("HouseBotControl", "offCause", SUNSET_CAUSE);
+    const text = updateSql("HouseBotControl", [
+      `"enabled" = false`,
+      `"offCause" = ${sunset}`,
+      `"switchedAt" = now()`,
+      `"switchedById" = ${p.col("HouseBotControl", "switchedById", input.byId)}`,
+      `"switchedReason" = ${p.col("HouseBotControl", "switchedReason", input.reason)}`,
+    ], `"id" = ${p.raw(HOUSE_CONTROL_ID, "text")} AND "offCause" IS DISTINCT FROM ${sunset}`);
     const rows = await sql(null, text, p.values);
     return rows[0] ? toHouseBotControl(rows[0]) : null;
   },
@@ -4180,6 +4258,13 @@ const prismaHouseBook: HouseBookStore = {
       + ` WHERE "houseBotId" IS NOT NULL AND "status"::text = 'OPEN' AND ($1::text IS NULL OR "houseBotId" = $1::text)`
       + ` GROUP BY "houseBotId" ORDER BY "houseBotId"`, [houseBotId]);
     return rows.map((r) => ({ houseBotId: String(r.houseBotId), openStakeTzs: Number(r.open) }));
+  },
+  async openExposureByMarket(tx) {
+    const rows = await sql(tx, `SELECT "marketId" AS "marketId", coalesce(sum("stake"), 0)::text AS "open",`
+      + ` count(DISTINCT "houseBotId")::int AS "bots" FROM "Position"`
+      + ` WHERE "houseBotId" IS NOT NULL AND "status"::text = 'OPEN'`
+      + ` GROUP BY "marketId" ORDER BY "marketId"`, []);
+    return rows.map((r) => ({ marketId: String(r.marketId), openStakeTzs: Number(r.open), bots: Number(r.bots) }));
   },
 };
 

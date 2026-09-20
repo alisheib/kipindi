@@ -488,6 +488,145 @@ if (STORE === "memory") {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
+// §1 · THE TWO DAL MEMBERS THE OPS SCRIPTS NEED, on BOTH twins. Landed early and small, because
+// this file is the hottest one in the repository this week and a small hunk merges.
+//
+// §1a runs FIRST and leaves the switch ON with marked stakes standing; §1b then walks the control
+// row to its terminal state, which nothing can undo. That order is not cosmetic — a sunset desk
+// cannot place the bets §1a needs.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const { loadWorld, OFFICER }: Any = await import("./house-bot-world.mts");
+const w: Any = await loadWorld();
+ok(`ops.dal.0 · fixture · the world loaded on ${STORE}`, w.onPostgres === (STORE === "postgres"), `onPostgres=${w.onPostgres}`);
+await w.user({ id: OFFICER, role: "ADMIN" });
+await w.limits();
+await w.switchOn();
+
+/** A poll carrying a locked player NO stake, so a house YES stake has something to fill against. */
+async function pollWithLockedNo(noStake = 20_000): Promise<Any> {
+  const market = await w.poll({ graceMin: 0 });
+  const player = await w.user({ balance: 1_000_000 });
+  const r = await w.svc.buyPosition(player, { marketId: market.id, side: "NO", stake: noStake, idempotencyKey: crypto.randomUUID() });
+  if (!r.ok) throw new Error(`fixture bet refused: ${j(r)}`);
+  await w.backdate(r.data.positionId, 10_000);
+  return { market, player, noPositionId: r.data.positionId };
+}
+/**
+ * One house YES stake through the real seam.
+ *
+ * ⚠️ THE SECOND STAKE ON A MARKET MUST BE A MANUAL, and that is the product's rule rather than a
+ * convenience: `hbi_fill_opener_anchor_uq` is UNIQUE on (kind, anchorKey) for FILL and OPENER unless the
+ * row is CANCELLED, and a FILL's anchor IS the market — one automatic fill per market, for ever. A MANUAL
+ * anchors on the officer plus a fresh submit id, which is how a desk adds to a position it already holds.
+ * Live intents are cancelled first because nothing here runs the engine's fire pass that finishes them.
+ */
+const stake = async (b: Any, marketId: string, stakeTzs: number, kind: "FILL" | "MANUAL" = "FILL"): Promise<Any> => {
+  await w.dal.houseBotIntentStore.cancelLive({ houseBotId: b.botId }, "CASE_DONE");
+  const extra = kind === "MANUAL" ? { entryCondition: "THIN" } : {};
+  const r = await w.place(b, await w.intent(b, marketId, { kind, side: "YES", stakeTzs, ...extra }));
+  if (!r.ok) throw new Error(`house ${kind} stake refused on ${marketId}: ${j(r)}`);
+  return r;
+};
+
+section("§1a · openExposureByMarket — open house money per MARKET, one statement, both twins");
+await guard("dal.5", async () => {
+  const m1 = await pollWithLockedNo();
+  const m2 = await pollWithLockedNo();
+  const settled = await pollWithLockedNo();
+  const botA = await w.bot();
+  const botB = await w.bot();
+
+  // ⛔ A MEASURED DEVIATION FROM THE PLAN'S FIXTURE, AND THE MEASUREMENT IS THE POINT. It asked for one
+  // market staked by TWO different bots, so `bots` could be asserted as 2. THAT STATE IS UNREACHABLE
+  // THROUGH THE PRODUCT: I3 is one bot per market, and `seam.ts` refuses any second bot with
+  // conflict OTHER_BOT while the first holds an OPEN marked position (asserted below, ops.dal.5c0).
+  // Planting it by hand would have manufactured a row the platform cannot write — the fixture rule this
+  // world states in its own header — so the DISTINCT count is proved the reachable way instead: TWO
+  // positions from ONE bot on m1. `count(*)` would read 2 there; `count(DISTINCT "houseBotId")` reads 1,
+  // and that is the whole difference between the two implementations.
+  await stake(botA, m1.market.id, 5_000);
+  await stake(botA, m1.market.id, 3_000, "MANUAL");
+  await stake(botA, m2.market.id, 7_000);
+  // ⛔ PLANTED CONTROL · a marked position that is no longer OPEN. It is settled through the real
+  // service, never by poking a status, so the row is one the product could produce.
+  const gone = await stake(botB, settled.market.id, 9_000);
+  await w.svc.resolveMarket({ marketId: settled.market.id, outcome: "YES", officerId: OFFICER });
+  await w.svc.settleMarket(settled.market.id, { force: true });
+  const settledPos = await w.mdal.positionStore.get(gone.data.positionId);
+
+  const rows = await w.dal.houseBookStore.openExposureByMarket();
+  const byId = new Map<string, Any>(rows.map((r: Any) => [r.marketId, r]));
+  const r1 = byId.get(m1.market.id), r2 = byId.get(m2.market.id);
+
+  ok("ops.dal.5 · per-market totals over two markets, identically on both twins — and m1 carries TWO positions from ONE bot, so `bots` reading 1 is `count(DISTINCT)` and not `count(*)`",
+    r1?.openStakeTzs === 8_000 && r1?.bots === 1 && r2?.openStakeTzs === 7_000 && r2?.bots === 1 && rows.length === 2,
+    j({ m1: r1, m2: r2, rows: rows.length }));
+
+  // ⚠️ A MANUAL, for the same anchor reason as above: a second FILL on m1 would collide on the unique
+  // index before the seam ever ran its conflict check, and the refusal under test would never happen.
+  await w.dal.houseBotIntentStore.cancelLive({ houseBotId: botB.botId }, "CASE_DONE");
+  const intruder = await w.place(botB, await w.intent(botB, m1.market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+  ok("ops.dal.5c0 · CONTROL · a SECOND bot on m1 is refused with conflict OTHER_BOT — so `bots` above is 1 because I3 holds, not because the fixture only had one bot, and a 2 on this column would be DRIFT for an ops reader to report",
+    intruder.ok === false && intruder.reason === "house_market_conflict" && intruder.detail?.conflict === "OTHER_BOT"
+    && botA.botId !== botB.botId, j({ ok: intruder.ok, reason: intruder.reason, conflict: intruder.detail?.conflict }));
+  ok("ops.dal.5c1 · CONTROL · the fixture's SETTLED marked position is absent — the status='OPEN' predicate is doing work, and the position really did leave OPEN",
+    settledPos.status !== "OPEN" && settledPos.houseBotId === botB.botId && !byId.has(settled.market.id),
+    `settled position ${settledPos.status}, marked ${settledPos.houseBotId} · market present in result: ${byId.has(settled.market.id)}`);
+  ok("ops.dal.5c2 · CONTROL · the UNMARKED player stakes on the SAME markets change no total — 40,000 TZS of player money sits on m1 and m2 and none of it is counted",
+    r1?.openStakeTzs === 8_000 && r2?.openStakeTzs === 7_000
+    && (await w.mdal.positionStore.get(m1.noPositionId)).status === "OPEN"
+    && (await w.mdal.positionStore.get(m1.noPositionId)).houseBotId == null,
+    j({ m1Total: r1?.openStakeTzs, m2Total: r2?.openStakeTzs }));
+
+  const perBot = await w.dal.houseBookStore.openExposure(null);
+  ok("ops.dal.5c3 · CONTROL · the per-MARKET answer DIFFERS from the per-BOT answer on this very fixture — ONE bot's 15,000 across two markets is one row there and two rows here, for the same total — otherwise the new member could be the old one relabelled",
+    perBot.length === 1 && perBot[0].openStakeTzs === 15_000 && rows.length === 2
+    && perBot.reduce((s: number, r: Any) => s + r.openStakeTzs, 0) === rows.reduce((s: number, r: Any) => s + r.openStakeTzs, 0),
+    `per bot ${j(perBot)} · per market ${j(rows.map((r: Any) => ({ stake: r.openStakeTzs, bots: r.bots })))}`);
+});
+
+section("§1b · markSunset — the terminal off, and it is the one state the ON path refuses");
+await guard("dal.1", async () => {
+  // The desk is ON from the fixture. Take it to OFF(MANUAL) — the state a console OFF leaves behind.
+  await w.switchOff();
+  const before = await w.dal.houseBotControlStore.get();
+  ok("ops.dal.1f · fixture · the desk is OFF with cause MANUAL, which is where an officer's console OFF leaves it",
+    before.enabled === false && before.offCause === "MANUAL", j({ enabled: before.enabled, offCause: before.offCause }));
+
+  const row = await w.dal.houseBotControlStore.markSunset({ byId: OFFICER, reason: "programme withdrawn" });
+  const after = await w.dal.houseBotControlStore.get();
+  ok("ops.dal.1 · ⛔ BLOCKER 1's CASE, AND IT IS FIRST · markSunset on an ALREADY-OFF desk writes offCause='SUNSET' and returns the row — switchOff() would have matched NOTHING here and written no marker at all",
+    row !== null && row.offCause === "SUNSET" && after.offCause === "SUNSET" && after.enabled === false
+    && after.switchedById === OFFICER && after.switchedReason === "programme withdrawn",
+    j({ returned: row === null ? null : { enabled: row.enabled, offCause: row.offCause }, stored: { enabled: after.enabled, offCause: after.offCause, by: after.switchedById } }));
+
+  const sw: Any = await import("../../src/lib/server/house-bot/switch-on.ts");
+  const refused = await sw.switchOnHouseBots({ actorId: OFFICER, reason: null });
+  ok("ops.dal.4 · the terminal marker is proved by the REFUSAL it produces, not by the column: switchOnHouseBots answers { ok:false, code:'WITHDRAWN' }",
+    refused.ok === false && refused.code === "WITHDRAWN", j(refused));
+
+  const again = await w.dal.houseBotControlStore.markSunset({ byId: OFFICER, reason: "second run" });
+  const unchanged = await w.dal.houseBotControlStore.get();
+  ok("ops.dal.3 · a second markSunset returns null and writes NOTHING — the conditional predicate, mirrored in both twins, and the reason a sunset script can be re-run",
+    again === null && unchanged.switchedAt === after.switchedAt && unchanged.switchedReason === "programme withdrawn",
+    j({ returned: again, switchedAtMoved: unchanged.switchedAt !== after.switchedAt, reason: unchanged.switchedReason }));
+
+  // ⛔ PLANTED CONTROL · the null above must be a REFUSAL, not an inert call. The same member, on a desk
+  // put back ON, must move the row — so `null` is known to mean "the predicate matched nothing".
+  const on = await w.dal.houseBotControlStore.switchOn({ byId: OFFICER, reason: "control" });
+  const live = await w.dal.houseBotControlStore.get();
+  const fromOn = await w.dal.houseBotControlStore.markSunset({ byId: OFFICER, reason: "from ON" });
+  const end = await w.dal.houseBotControlStore.get();
+  ok("ops.dal.2 · markSunset from an ON desk writes enabled=false AND offCause='SUNSET' in ONE statement",
+    on !== null && live.enabled === true && live.offCause === null
+    && fromOn !== null && end.enabled === false && end.offCause === "SUNSET" && end.switchedReason === "from ON",
+    j({ wasOn: live.enabled, offCauseCleared: live.offCause, now: { enabled: end.enabled, offCause: end.offCause } }));
+  ok("ops.dal.3c · CONTROL · …so ops.dal.3's null was a refusal and not an inert member: the SAME call moved the row the moment the predicate matched",
+    again === null && fromOn !== null && end.switchedReason === "from ON", j({ refused: again, applied: fromOn !== null }));
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
 // §store · the child runs on the store it names — so a memory-only green can never be read as a
 // Postgres green.
 // ═══════════════════════════════════════════════════════════════════════════════════════════
