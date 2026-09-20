@@ -321,12 +321,27 @@ ok("3.2 · ⛔ EVERY UNRESOLVED ID IS PRINTED BY NAME WITH ITS REASON. An id the
   UNRES.every((id) => (verdicts.get(id)!.why ?? "").length > 0),
   UNRES.length === 0 ? "none" : `${UNRES.length} unresolved: ${UNRES.join(" ")}`);
 
-/* ⛔ A CEILING, NOT A FLOOR: the count this run produced. It may only fall — an id becomes covered, or it is
- * written into DEFERRED-TESTS.md with a reason. A new register row with no owner pushes it up and fails. */
-const UNRESOLVED_CEILING = 11;
-ok(`3.3 · the unresolved count is held at a CEILING of ${UNRESOLVED_CEILING}, which only ever falls — a register row added without an owner, or an owner deleted, turns this red on the day it lands instead of moving the published number quietly`,
+/* ⛔ TWO CEILINGS, AND THE SECOND EXISTS BECAUSE THE FIRST WAS GAMED — BY ME, IN THE SAME SESSION.
+ *
+ * The first run of this gate reported 11 UNRESOLVED. Writing those 11 into `DEFERRED-TESTS.md` with a
+ * reason — which is exactly what PROGRESS.md's rule asks for — moved all 11 through the DEFERRED door and
+ * the summary line went to "UNRESOLVED 0". Nothing had been tested. The count of rows with no test at all
+ * was unchanged; only the label moved, and the gate passed HARDER while the product was identical. That is
+ * this lane's own named failure mode, reproduced by its own author inside one hour.
+ *
+ * So UNRESOLVED is held at 0 — no id may be unaccounted for — and the quantity that actually matters,
+ * NO TEST AT ALL (deferred by name + unresolved), carries its own ceiling that only ever falls. Listing a
+ * row cannot lower it; only writing the test can.
+ */
+const UNRESOLVED_CEILING = 0;
+const NO_TEST_CEILING = 18;
+const noTest = [...DEFER, ...UNRES];
+ok(`3.3 · the unresolved count is held at ${UNRESOLVED_CEILING} — every id must be accounted for by some door, so a register row added without an owner turns this red on the day it lands instead of moving the published number quietly`,
   UNRES.length <= UNRESOLVED_CEILING,
   `${UNRES.length} unresolved · ceiling ${UNRESOLVED_CEILING}`);
+ok(`3.4 · ⛔ AND THE RATCHET IS ON THE QUANTITY THAT CANNOT BE MOVED BY WRITING PROSE: ${noTest.length} rows have NO TEST AT ALL (deferred by name, or unresolved). Ceiling ${NO_TEST_CEILING}, which only ever falls — listing a row in DEFERRED-TESTS.md satisfies 3.3 but NOT this, because only a test lowers this one`,
+  noTest.length <= NO_TEST_CEILING,
+  `${noTest.length} with no test · ceiling ${NO_TEST_CEILING} · ${noTest.join(" ")}`);
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════
    §4 · THE NUMBER
@@ -421,7 +436,11 @@ console.log(`  ⛔ SO THE HONEST FIGURE IS A BRACKET, NOT A POINT.`);
 console.log(`     LOWER  ${NAMED.length}/${denom} = ${pctOf(NAMED.length)}  proven by name — the requirement exactly as PROGRESS.md words it`);
 console.log(`     UPPER  ${covered}/${denom} = ${pctOf(covered)}  named, or carried by an owning suite that exists and runs`);
 console.log(`     the upper bound spot-checks at ${corroborated.length}/${quoting} = ${((corroborated.length / Math.max(quoting, 1)) * 100).toFixed(1)}% on the ${quoting} rows where it can be checked at all`);
-console.log(`     UNRESOLVED ${UNRES.length} — named above, resolved by no door`);
+console.log("");
+console.log(`  ⛔ AND THE GAP, WHICH NO AMOUNT OF WRITING CAN CLOSE: ${noTest.length} rows have NO TEST AT ALL.`);
+console.log(`     ${DEFER.length} are listed by name with a reason in DEFERRED-TESTS.md, ${UNRES.length} resolve through no door at all.`);
+console.log(`     ${noTest.join(" ") || "—"}`);
+console.log(`     A further ${STRUCK.length} need none: D19/D20 withdrew the requirement and the register's own row says so.`);
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════
    §5 · THE CONTROLS — a guard that has never been shown to reject anything is not a guard
