@@ -111,7 +111,7 @@ const refuse = (code: VerifyRefusalCode, message: string, extra: Partial<Extract
  *   2. a `submitId` is claimed once (AlertOnce `submit:<officer>:<id>`) — a double tap is refused;
  *   3. re-verify: a removed bot refuses, a running bot with valid consent is a no-op;
  *   4. the password-context rows and a responsible-gambling lock refuse, uncounted, before any check;
- *   5. the `housebot.verify` bucket (`<officer>:<holder>`) — the holder's counter is untouched;
+ *   5. the `desk.verify` bucket (`<officer>:<holder>`) — the holder's counter is untouched;
  *   6. inside `login:<userId>` on the FRESH row: an expired lock is cleared as sign-in clears it; at the
  *      reserve the password is not checked; wrong → count + 1, never `lockedUntil`; right → count 0.
  */
@@ -160,7 +160,7 @@ export async function verifyHouseBotPassword(input: {
   }
 
   // Step 5 — the console's own bucket.
-  const rl = await rateCheckAsync(`${officerId}:${userId}`, "housebot.verify");
+  const rl = await rateCheckAsync(`${officerId}:${userId}`, "desk.verify");
   if (!rl.allowed) {
     await houseAudit("house_bot.verify_rate_limited", officerId, target, auditPayload);
     return refuse("RATE_LIMITED", VERIFY_COPY.rateLimited(rl.retryAfterSec), { retryAfterSec: rl.retryAfterSec, attemptsBeforeLock: attemptsBeforeLock(user.failedLoginCount ?? 0) });

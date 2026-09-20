@@ -95,9 +95,17 @@ export const RATE_RULES: Record<string, RateRule> = {
   "bet.place":     { capacity: 30, refillPerMin: 10 },
   "bet.cashout":   { capacity: 10, refillPerMin: 2 },   // 10 burst, ~30s between after burst
   "ai.batch":      { capacity: 5,  refillPerMin: 0.25 }, // 5 batch-generations burst, ~4/hr — caps AI-spend abuse
-  // House bots (02 §2.6 step 5, PLAN §6): an owner checking an account holder's password, keyed
-  // `<officer>:<holder>`. A refusal here never touches the holder's own sign-in counter.
-  "housebot.verify": { capacity: 3, refillPerMin: 0.2 },
+  // The desk's account check (C7-SPEC ruling 387; replan ruling L52): an owner confirming an account
+  // holder's own password before a desk act, keyed `<officer>:<holder>`. A refusal here never touches
+  // the holder's own sign-in counter.
+  // ⛔ THE KEY IS NEUTRAL ON PURPOSE, and it was not always — until L52 it spelled the feature out
+  // (the exact old key is in this commit's diff and in L52's record; it is not re-typed here, because
+  // a word in a comment is still a word in this file):
+  // `rateLimitSnapshot()` paints every live bucket BY ACTION NAME on /admin/system (`page.tsx:159`) to
+  // any staff holding the ops VIEW grant — a wider audience than this feature has — so the key is a
+  // rendered string, and owner ruling D19 leaves it no room to name the feature. The convention is the
+  // one `desk.picker` set; the pin is `test:house-bot-reports` 0.L52.
+  "desk.verify":   { capacity: 3, refillPerMin: 0.2 },
   // The owner's account lookup on the designation wizard (C7-SPEC ruling 387(e)): keyed on the CALLER, never on the
   // query, so a wide search costs the same as a narrow one and no bucket can be exhausted on somebody else's behalf.
   // Type-ahead, so the burst is generous and the steady rate is what stops a scripted directory walk.

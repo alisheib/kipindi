@@ -2125,4 +2125,31 @@ import { formatEat } from "@/lib/utils";`,
     expect: "7.505 · every declared `comms-mem` mutation",
     suite: "comms-mem",
   },
+  {
+    /* ⛔ L52 · THE RULE TABLE IS A RENDERED STRING. `rateLimitSnapshot()` returns each live bucket's ACTION half and
+       `/admin/system` paints it verbatim to every staff account with the ops VIEW grant. Until this checkpoint the
+       desk's account check named the feature there, and C7 step 6 gave it a real caller — so the word was reachable
+       on an admin table outside this feature's audience. The mutation puts a vocabulary word back in the same place.
+       (The exact historical spelling is planted INSIDE the suite by 0.L52.c4, rebuilt from the shared sample; it is
+       not re-typed here, because a word in an anchors file is still a word in the tree.) */
+    name: "L52-rule-word · a rate-limit action name carries a vocabulary word again, and /admin/system paints it to the ops VIEW audience",
+    file: "src/lib/server/rate-limit.ts",
+    from: `  "desk.verify":   { capacity: 3, refillPerMin: 0.2 },`,
+    to: `  "liquidity.verify":   { capacity: 3, refillPerMin: 0.2 },`,
+    expect: "0.L52.1 · ⛔ D19 · L52 · NO rate-limit action name carries the shared vocabulary",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ THE FAIL-OPEN THE RENAME RISKS, AND `tsc` CANNOT SEE IT. `RATE_RULES` is typed `Record<string, RateRule>`,
+       so `keyof typeof RATE_RULES` is `string`; `rateCheck` returns `{ allowed: true }` on an action nobody
+       declares. A rename that missed this caller would switch the desk's password-check limiter OFF in silence,
+       every suite staying green — `test:house-bot-designation` 1.8 would still pass, because an unlimited bucket
+       never refuses. 0.L52.3 is the only assertion that reads the call site against the table. */
+    name: "L52-stale-caller · the desk's account check names a rule the table does not declare, so its limiter fails open and nothing else says so",
+    file: DESIG,
+    from: `  const rl = await rateCheckAsync(\`\${officerId}:\${userId}\`, "desk.verify");`,
+    to: `  const rl = await rateCheckAsync(\`\${officerId}:\${userId}\`, "desk.verify.v2");`,
+    expect: "0.L52.3 · ⛔ every call site names a rule the table DECLARES",
+    suite: "reports-mem",
+  },
 ];

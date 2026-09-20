@@ -23,7 +23,7 @@ import { ROLL_CALL_SITES, ROLL_CALL_OWED, expectDriftReport, expectDriftControl,
  * audits its own key there — 505's whole rule is that a suite key with no roll-call is audited by nobody. */
 import { MUTATIONS as CONSOLE_ANCHORS } from "../anchors/house-bot-console.anchors.mjs";
 import { createHash } from "node:crypto";
-import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES } from "./house-bot-vocabulary.mjs";
+import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES, HOUSE_BENIGN_SAMPLES } from "./house-bot-vocabulary.mjs";
 
 type Any = any;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -540,6 +540,140 @@ export const BROADER_LISTS: ReadonlyArray<readonly [file: string, extensions: nu
   ["scripts/lib/house-bot-money-cases.mts", 2],
   ["scripts/house-bot-seam.test.mts", 2],
 ];
+
+/* ═══ §0 · L52 · the rate-limit ACTION NAMES, which /admin/system paints verbatim ═════════════════════ */
+
+/**
+ * ⛔ L52 · A RATE-LIMIT ACTION NAME IS A RENDERED STRING, AND ONE OF THEM NAMED THE FEATURE.
+ * `rateLimitSnapshot()` (`rate-limit.ts`) splits each live bucket on `:` and returns the ACTION half;
+ * `/admin/system` paints that half verbatim in its "Rate limiter · live buckets" table (`page.tsx:159`, `:637`),
+ * which any staff account holding the ops VIEW grant can open — a wider audience than this feature has. The desk's
+ * account check spelled the feature out in its action name until this ruling, and C7 step 6 gave it a real caller
+ * through the designate wizard, so the word became reachable on an admin table outside the feature's audience: an
+ * owner ruling D19 defect, live on this branch, not a latent one.
+ *
+ * ⚠️ WHY NOTHING CAUGHT IT, AND THE LESSON IS ABOUT SCOPE. Ruling 453's console lexicon scans
+ * `src/app/admin/desk/**`. This string lives in `src/lib/server/` and is painted by a page in another admin section,
+ * so the guard that owns the words never looked at the file that carried one. A GUARD'S SCOPE IS PART OF ITS CLAIM:
+ * "the console names nothing" was true and still left a house word on an admin table. The pin below is therefore
+ * scoped to the RULE TABLE itself, wherever in the tree it sits, and to every call site that names a rule.
+ *
+ * ⚠️ THIS SCAN MUST SEE STRING LITERALS, and that is the point, not an oversight: its subject IS a literal — the
+ * property names of the `RATE_RULES` initialiser, and the second argument of every `rateCheck` / `rateCheckAsync`
+ * call — each taken from the SYNTAX TREE, never by substring over text. Every file is read through `decomment`
+ * first, so prose about a key can neither supply one nor hide one.
+ *
+ * ⛔ AND THE TABLE FAILS OPEN, which is why the call sites are read and not only the table. `RATE_RULES` is typed
+ * `Record<string, RateRule>`, so `keyof typeof RATE_RULES` is `string`: `tsc` cannot see a caller naming a rule
+ * nobody declares, and `rateCheck` returns `{ allowed: true }` on an unknown action. A rename that missed a caller
+ * would switch a live limiter OFF in silence and every suite would stay green.
+ */
+if (STORE === "memory") {
+  section("§0 · L52 · no rate-limit action name carries the vocabulary, and every call site names a declared rule");
+  await guard("0.L52", () => {
+    const RL = "src/lib/server/rate-limit.ts";
+
+    /** The property names of the `RATE_RULES` object literal, read from the syntax tree of decommented source. */
+    const rateRuleKeys = (code: string): string[] => {
+      const out: string[] = [];
+      walkTree(parse(RL, code), (n) => {
+        if (!ts.isVariableDeclaration(n) || n.name.getText() !== "RATE_RULES" || !n.initializer) return;
+        if (!ts.isObjectLiteralExpression(n.initializer)) return;
+        for (const p of n.initializer.properties) {
+          if (!ts.isPropertyAssignment(p)) continue;
+          const k = literalText(p.name) ?? (ts.isIdentifier(p.name) ? p.name.text : null);
+          if (k != null) out.push(k);
+        }
+      });
+      return out;
+    };
+    /** Every `rateCheck` / `rateCheckAsync` call in one file, with the action argument as a LITERAL or `null`. */
+    const callSites = (file: string, code: string): Array<{ file: string; action: string | null; text: string }> => {
+      const out: Array<{ file: string; action: string | null; text: string }> = [];
+      walkTree(parse(file, code), (n) => {
+        if (!ts.isCallExpression(n)) return;
+        const fn = ts.isIdentifier(n.expression) ? n.expression.text
+          : ts.isPropertyAccessExpression(n.expression) ? n.expression.name.text : "";
+        if (fn !== "rateCheck" && fn !== "rateCheckAsync") return;
+        out.push({ file, action: literalText(n.arguments[1]), text: n.getText().slice(0, 90).replace(/\s+/g, " ") });
+      });
+      return out;
+    };
+
+    const rlCode = decomment(read(RL));
+    const keys = rateRuleKeys(rlCode);
+    ok("0.L52.0 · the population is real: the rule table is read from the syntax tree, and it holds the desk's two rules among every other live bucket name",
+      keys.length >= 20 && keys.includes("desk.verify") && keys.includes("desk.picker"),
+      `${keys.length} rules · ${keys.join(" ")}`);
+
+    const dirty = keys.filter((k) => houseHits(k).length > 0);
+    ok("0.L52.1 · ⛔ D19 · L52 · NO rate-limit action name carries the shared vocabulary — every one of them is painted verbatim on /admin/system to the whole ops VIEW audience",
+      dirty.length === 0, `${keys.length} rules read · offenders: ${j(dirty.map((k) => [k, houseHits(k)]))}`);
+
+    /* The controls. Each sample is planted ON ITS OWN, so a family the scan is blind to cannot hide behind a family
+     * it can see, and each plant must be READ BACK from the tree before its report counts — a control that only
+     * proves the regex works, and not that the extractor reached the key, is the shape that fooled this platform. */
+    const plant = (k: string) => rlCode.replace(`"desk.verify"`, `"${k}": { capacity: 1, refillPerMin: 1 },\n  "desk.verify"`);
+    const samples = [
+      ...HOUSE_WORD_SAMPLES.map((w) => `${w}.verify`),
+      ...HOUSE_IDENTIFIER_SAMPLES.map((i) => `${i}.check`),
+      ...HOUSE_ID_SAMPLES.map((i) => `bucket.${i}`),
+    ];
+    const missed = samples.filter((s) => {
+      const planted = rateRuleKeys(plant(s));
+      return !planted.includes(s) || planted.filter((x) => houseHits(x).length > 0).join("|") !== s;
+    });
+    ok("0.L52.c1 · CONTROL · every sample of all three families — words, identifiers and bounded ids — planted one at a time as a rule key, is READ BACK from the tree and REPORTED as the only offender",
+      missed.length === 0 && samples.length >= 30, `${samples.length} planted one by one · missed: ${j(missed)}`);
+
+    const benign = HOUSE_BENIGN_SAMPLES.map((b) => `${b}.charge`);
+    const cried = benign.filter((s) => {
+      const planted = rateRuleKeys(plant(s));
+      return !planted.includes(s) || planted.filter((x) => houseHits(x).length > 0).length > 0;
+    });
+    ok("0.L52.c2 · CONTROL · the accept side — HOUSE_FEE, /admin/house, a short id and an over-long one planted as rule keys are each read back and NOT reported (a pin that cries wolf is switched off by the next session)",
+      cried.length === 0, `${benign.length} benign plants · falsely reported: ${j(cried)}`);
+
+    /* ── the call sites, because the table fails open ──────────────────────────────────────────────── */
+    const sites: Array<{ file: string; action: string | null; text: string }> = [];
+    for (const rel of srcFiles()) {
+      const code = decomment(read(rel));
+      if (!code.includes("rateCheck")) continue;
+      // The module's own internals forward their `action` PARAMETER to `rateCheck` (the Redis fallbacks); every
+      // caller of the module is read below instead, exactly as 0.170 reads a writer primitive's call sites.
+      if (rel === RL) continue;
+      sites.push(...callSites(rel, code));
+    }
+    const files = new Set(sites.map((s) => s.file));
+    ok("0.L52.2 · the population is real: every rateCheck / rateCheckAsync call site in src/ is read from the tree, the desk's own among them",
+      sites.length >= 20 && files.has("src/lib/server/house-bot/designation.ts") && files.has("src/lib/server/house-console-read.ts"),
+      `${sites.length} call sites in ${files.size} files (rate-limit.ts's own forwarding calls excluded by name)`);
+    const unknown = sites.filter((s) => s.action == null || !keys.includes(s.action));
+    ok("0.L52.3 · ⛔ every call site names a rule the table DECLARES — RATE_RULES is Record<string, RateRule>, so tsc cannot see a stale key and rateCheck returns allowed:true on one: a rename that missed a caller switches a live limiter off in silence",
+      unknown.length === 0, j(unknown));
+
+    /* ⭐ THE DEFECT ITSELF, and it is the only control that proves this pin would have caught L52 rather than
+     * something L52-shaped. The key this ruling removed is REBUILT from the shared sample by dropping its separator
+     * (never re-typed here, so the word enters this file from the one module that owns it), planted, and required
+     * to be reported. HOUSE_WORD_SAMPLES[3] is `house bot`; the separator-less spelling is what the table carried. */
+    const historical = `${HOUSE_WORD_SAMPLES[3].replace(/ /g, "")}.verify`;
+    const hist = rateRuleKeys(plant(historical));
+    ok("0.L52.c4 · CONTROL · THE NEEDLE IS THE REAL DEFECT: the exact rule key this ruling removed, rebuilt from the shared sample by dropping its separator, is read back from the tree and reported — so 0.L52.1 is a sweep that would have gone red on the live branch, not one that has only ever seen clean code",
+      hist.includes(historical) && hist.filter((x) => houseHits(x).length > 0).join("|") === historical,
+      `planted ${historical} · reported ${j(hist.filter((x) => houseHits(x).length > 0))}`);
+
+    const DESIG = "src/lib/server/house-bot/designation.ts";
+    const desig = decomment(read(DESIG));
+    const clean = callSites(DESIG, desig);
+    const stale = callSites(DESIG, desig.replace(`"desk.verify"`, `"desk.verify.gone"`));
+    const dynamic = callSites(DESIG, desig.replace(`, "desk.verify")`, `, RULE)`));
+    ok("0.L52.c3 · CONTROL · at the real call site a stale key and a non-literal action are each reported, and the untouched file is clean — so 0.L52.3's zero is a measurement of this file and not of an empty list",
+      clean.length === 1 && clean[0].action === "desk.verify"
+      && stale.length === 1 && !keys.includes(stale[0].action ?? "")
+      && dynamic.length === 1 && dynamic[0].action === null,
+      j({ clean: clean.map((c) => c.action), stale: stale.map((c) => c.action), dynamic: dynamic.map((c) => c.action) }));
+  });
+}
 
 if (STORE === "memory") {
   section("§0 · ruling 175 · one absence vocabulary: every consumer imports it, none declares its own, broader lists extend it");
