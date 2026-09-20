@@ -40,6 +40,8 @@ const DETAIL = "src/app/admin/desk/[id]/page.tsx";
 const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
 /* ⭐ C7 step 4b · the officer's two roster acts, which had no service under src/ at all before this step. */
 const ROSTER = "src/lib/server/house-bot/roster-actions.ts";
+/* ⭐ C7 step 5 (the account half) · the activity panel's own filter rail. */
+const RAIL = "src/app/admin/desk/[id]/activity-filters.tsx";
 /* ⭐ C7 step 6 · the designate wizard's own actions file and its one client module. */
 const NEW_ACTIONS = "src/app/admin/desk/new/actions.ts";
 const NEW_PAGE = "src/app/admin/desk/new/page.tsx";
@@ -2288,5 +2290,155 @@ import { formatEat } from "@/lib/utils";`,
       side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",`,
     expect: "11.247.c1c · the one viewer-facing caller of that raw read PROJECTS",
     suite: "reports-mem",
+  },
+
+  /* ══ C7 STEP 5 (THE ACCOUNT HALF) · THE ACTIVITY AND HISTORY PANELS ═══════════════════════════════════════════
+   * ⛔ ONE DECLARATION PER GUARD FAMILY THE STEP ADDED, and each one puts back the defect its own assertion was
+   * written against — never a defect that merely goes red somewhere. The three declarations the plan expected to
+   * BREAK at this step (`312-rail`, `320-tab-debt-stale`, `432i-dead-link`) did NOT break, and the reason is the
+   * ordering: all three are anchored on the LANDING rail's closed list, which this step deliberately left alone.
+   * ══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+  {
+    name: "312-detail-rail · a key joins the ACCOUNT page's closed list with no panel behind it — ruling 312's dead control, one route over from where it was first measured",
+    file: ROUTES,
+    from: `export const CONSOLE_DETAIL_TABS = ["overview", "activity", "rules", "targets", "history"] as const;`,
+    to: `export const CONSOLE_DETAIL_TABS = ["overview", "activity", "rules", "targets", "history", "money"] as const;`,
+    expect: "1.312 · a panel for every key AND a key for every panel",
+    suite: "console-mem",
+  },
+  {
+    name: "317-word-hole · one kind loses its console word, so the TOTAL map stops being total and a raw enum is one render away",
+    file: GATE,
+    from: `  SUNSET: "The desk was withdrawn",`,
+    to: `  SUNSET_DISABLED: "The desk was withdrawn",`,
+    expect: "1.317 · the console's event word map is TOTAL over `EVENT_KINDS`",
+    suite: "console-mem",
+  },
+  {
+    name: "317-word-names-it · the word for the kind the LEXICON IS BLIND TO names the feature — the exact leak the map exists to make impossible",
+    file: GATE,
+    from: `  HOLDER_AGAINST_BOT: "The holder staked against this account",`,
+    to: `  HOLDER_AGAINST_BOT: "The holder staked against this bot",`,
+    expect: "1.317 · 453 · not one of its words carries a house-vocabulary word",
+    suite: "console-mem",
+  },
+  {
+    name: "317-raw-enum-fallback · the history's Event cell grows a `?? kind` escape, which paints the raw enum for any kind the map has lost",
+    file: GATE,
+    from: `    eventWord: CONSOLE_EVENT_WORD[e.kind],`,
+    to: `    eventWord: (CONSOLE_EVENT_WORD as Record<string, string>)[e.kind] ?? e.kind,`,
+    expect: "1.317 · 453 · no raw-enum fallback survives",
+    suite: "console-mem",
+  },
+  {
+    name: "345-facet-drift · the COUNTING reader drops the rail's facets, so the total counts a population the table cannot show — 344/345's own defect, and the one that is invisible until the last page",
+    file: GATE,
+    from: `    wantFeed ? houseBotIntentStore.countFeed(feedFilter) : Promise.resolve(null),`,
+    to: `    wantFeed ? houseBotIntentStore.countFeed({ houseBotId: bot.id }) : Promise.resolve(null),`,
+    expect: "1.345 · the listing reader and the COUNTING reader are called with the same facets",
+    suite: "console-mem",
+  },
+  {
+    name: "411-past-the-end · a page past the end stops being served as the LAST page, so a hand-typed `?page=99` renders a card with no rows under a pager pointing somewhere else",
+    file: GATE,
+    from: `  if (total == null) return want;
+  return Math.min(want, Math.max(1, Math.ceil(total / perPage)));`,
+    to: `  if (total == null) return want;
+  return Math.max(1, want - 0);`,
+    expect: "1.411 · `?page=99` is served as the LAST page",
+    suite: "console-mem",
+  },
+  {
+    name: "355-failed-reads-empty · a FAILED activity read answers an empty list, so the kit's failure treatment is never reached and a read that nobody could take looks like an account that has done nothing",
+    file: GATE,
+    from: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    to: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? []
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    expect: "1.355 · a failed activity read is `feed === null`",
+    suite: "console-mem",
+  },
+  {
+    name: "302-refusal-silent · a crafted filter axis is thrown away WITHOUT being named, so the panel narrows to something nobody asked for and says nothing",
+    file: GATE,
+    from: `    if (hit == null) say(axis);`,
+    to: `    if (hit == null) { void axis; }`,
+    expect: "1.302 · 432(j) · …and every refused axis is NAMED",
+    suite: "console-mem",
+  },
+  {
+    name: "302-smuggle · the door stops checking a filter axis against its closed list and passes the typed value straight into the read — the bypassed-client defect ruling 383 measured the whole shape of",
+    file: GATE,
+    from: `    const hit = fromClosedList(list, one.value);
+    if (hit == null) say(axis);
+    return hit;`,
+    to: `    const hit = fromClosedList(list, one.value);
+    if (hit == null) say(axis);
+    return (hit ?? one.value) as T;`,
+    expect: "1.302 · a bypassed client smuggles NOTHING past the door",
+    suite: "console-mem",
+  },
+  {
+    name: "302-anchor-ignored · a bell's `&intent=` stops resolving its row's page, so an officer who followed an alert lands on page 1 and the row the alert is about is nowhere on the screen",
+    file: GATE,
+    from: `  const wantFeedPage = wantFeed && q.intentId && !q.pageAsked
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;`,
+    to: `  const wantFeedPage = q.page;`,
+    expect: "1.302 · a bell's `&intent=` resolves the row's page SERVER-SIDE",
+    suite: "console-mem",
+  },
+  {
+    name: "369-balance-in-the-link · the money row's DOOR carries the holder's own wallet balance in its query string — ruling 266's bare balance, smuggled through an href instead of a cell",
+    file: GATE,
+    from: "    moneyHref: txn ? `/admin/transactions?q=${encodeURIComponent(txn)}` : null,",
+    to: "    moneyHref: txn ? `/admin/transactions?q=${encodeURIComponent(txn)}&b=${String(e.payload?.balanceTzs ?? \"\")}` : null,",
+    expect: "1.369 · 266 · no history row carries an amount or the holder's wallet balance",
+    suite: "console-mem",
+  },
+  {
+    name: "453-why-painted · the feed row paints the engine's own composed sentence, which opens with a word 453 forbids and embeds formatted money and a pool total — and NO source guard can see it, because it is composed in a module outside the section",
+    file: GATE,
+    from: `    stake: formatTzs(i.stakeTzs),`,
+    to: `    stake: i.why ?? formatTzs(i.stakeTzs),`,
+    expect: "1.453 · D20 · no feed row carries the engine's composed sentence",
+    suite: "console-mem",
+  },
+  {
+    name: "410-rail-rank · the window filter drops the dense rank, so one rail is 44px beside 32px chips — the same control at two sizes on one screen",
+    file: RAIL,
+    from: `      <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />`,
+    to: `      <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />`,
+    expect: "1.410 · every rank-taking control on the rail takes the DENSE rank",
+    suite: "console-mem",
+  },
+  {
+    name: "384-prop-name · a server call site passes a house-shaped PROP NAME across the client boundary, where minification keeps it and the bundle scan's identifier family does not know it",
+    file: DETAIL,
+    from: `          <ActivityFilters groups={view.feedFilters} presets={view.feedPresets} presetDefault={view.feedPresetDefault} />`,
+    to: `          <ActivityFilters botGroups={view.feedFilters} presets={view.feedPresets} presetDefault={view.feedPresetDefault} />`,
+    expect: "1.384 · 401 · no house-shaped PROP NAME crosses the client boundary",
+    suite: "console-mem",
+  },
+  {
+    name: "411-total-from-rows · the activity pager takes its total from the RENDERED rows, so it reads 20 for ever and the control never reaches the last page",
+    file: DETAIL,
+    from: `                  total={view.feedTotal}`,
+    to: `                  total={feedRows.length}`,
+    expect: "1.411 · every `total` is a COUNTING field of the view and never a rendered array's length",
+    suite: "console-mem",
+  },
+  {
+    name: "7.2e-debt-flattened · the alert-link debt goes back to BARE NAMES, so one entry stands for both rails and the record cannot tell a built panel from an unbuilt one",
+    file: COMMS,
+    from: `  const UNBUILT_TABS = [
+    { shape: "landing", tab: "activity" },
+    { shape: "landing", tab: "history" },
+  ] as const;`,
+    to: `  const UNBUILT_TABS = [
+    { shape: "landing", tab: "activity" },
+    { shape: "detail", tab: "history" },
+  ] as const;`,
+    expect: "7.2e · the debt is keyed per SHAPE",
+    suite: "comms-mem",
   },
 ];
