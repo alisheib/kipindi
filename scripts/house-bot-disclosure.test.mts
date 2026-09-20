@@ -40,6 +40,12 @@ const section = (t: string) => console.log(`\n${t}`);
  * every absence proof imports; `test:house-bot-reports` §0 refuses a consumer that declares its own pattern.
  */
 import { houseHits, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES, HOUSE_BENIGN_SAMPLES } from "./lib/house-bot-vocabulary.mjs";
+/**
+ * §6 · the D19d chatbot guard, kept in its own cases module the way every other house family is. The
+ * assurance lexicon it runs is a SIBLING of the vocabulary module, not a fourth family inside it — see
+ * `scripts/lib/house-bot-assurances.mjs`'s header for why, and 6.c11 for the pin that says so.
+ */
+import { runChatbotCases } from "./lib/house-bot-chatbot-cases.mts";
 
 type Reader = { exists(p: string): boolean; read(p: string): string };
 const disk: Reader = { exists: (p) => existsSync(p) && statSync(p).isFile(), read: (p) => readFileSync(p, "utf8") };
@@ -294,6 +300,9 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
   ok("4.c5b · CONTROL · a planted `house` field, its column and a house default in an ACCOUNT_PICKER_SEARCH copy are each reported by the SAME measure", plantedPickerHouse.length === 3, plantedPickerHouse.join(", "));
 }
 
+// ── §6 · the D19d chatbot guard ──────────────────────────────────────────────────────────────────────
+await runChatbotCases(ok, section, ROOT);
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure: ${pass} passed, ${fail} failed`);
 /**
  * ⛔ RULING 519 · THE FLOOR, AND WHY THIS SUITE HAD NONE. Ruling 515 raised every `minPass` the two-store runner
@@ -303,8 +312,10 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure:
  * executing printed "ALL PASS — 0 passed, 0 failed" and exited 0.
  * The floor below is the count `npm run test:house-bot-disclosure` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
  * only ever RISES, and only to a number a run printed (raised 29 to 31 at C7 step 6's fix pass, when ruling 387's Proof finally got its two halves) — never to an arithmetic guess.
+ * ⭐ RAISED 31 → 64 by Commit 6 step (a), 2026-09-20, when §6 (the D19d chatbot guard) landed: 33 new cases, and the
+ * number below is the one a green run PRINTED, not 31 plus a count of the `ok(` calls someone typed.
  */
-const MIN_ASSERTIONS = 31;
+const MIN_ASSERTIONS = 64;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);
