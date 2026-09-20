@@ -42,11 +42,37 @@ const SUITES = {
   "money-mem": { cmd: "npx tsx scripts/lib/house-bot-money-cases.mts", env: MEM_ENV },
   seam: { cmd: "npx tsx scripts/house-bot-seam.test.mts", env: {} },
 };
-const FLOOR = /^\s*FAIL 0\.(?:mem|pg) · the (?:memory|Postgres) run exits 0 with assertions and no failure — exit (\d+) · (\d+) passed · (\d+) failed/;
+/**
+ * 🔴 THIS HARNESS COULD NOT RUN AT ALL FOR THREE DAYS, AND NOTHING SAID SO (found and repaired by C5-8
+ * phase 3, 2026-09-20). A SECTION-NARROWED child legitimately prints fewer assertions than the WHOLE
+ * suite's `minPass`, so `0.mem` / `0.pg` go red on the floor while every case that ran passed; `abfe07d5`
+ * (2026-09-16) added `benignFloor` to excuse exactly that, matching the floor line by its detail.
+ * The next day `fbaad0dd` changed `lib/house-bot-two-stores.mts:44,80` to print
+ * `… — exit 0 · 153 passed (at least 732) · 0 failed`, and the ` (at least N)` clause made this regex match
+ * NOTHING. From that commit on, every sectioned baseline read RED and the harness exited before injecting a
+ * single defect — `REFUSING TO RUN — "engine-pg#13" is RED before any mutation` — so all 39 declared engine
+ * mutations were undemonstrable and `red:all` reported only a failing harness.
+ * ⛔ THE REPAIR DOES NOT WIDEN THE EXCUSE: it still applies ONLY to a run this harness deliberately narrowed
+ * (`d.sections`), and still requires exit 0, at least one assertion, and zero failures. The ` (at least N)`
+ * clause is OPTIONAL so both formats parse.
+ * ⭐ AND THE ROT CANNOT RECUR SILENTLY. A floor line under a sectioned run that this regex cannot parse is now
+ * reported as a FORMAT MOVE, by name, instead of being read as a product defect — the failure mode above,
+ * turned into a message that says what actually happened.
+ */
+const FLOOR = /^\s*FAIL 0\.(?:mem|pg) · the (?:memory|Postgres) run exits 0 with assertions and no failure — exit (\d+) · (\d+) passed(?: \(at least \d+\))? · (\d+) failed/;
+const FLOOR_LINE = /^\s*FAIL 0\.(?:mem|pg) · the (?:memory|Postgres) run exits 0 with assertions and no failure/;
 const SUMMARY = /^\s*(?:ALL PASS|FAILURES) — /;
 const benignFloor = (d, line) => {
-  const m = d.sections ? FLOOR.exec(line) : null;
-  return !!m && m[1] === "0" && Number(m[2]) > 0 && m[3] === "0";
+  if (!d.sections) return false;
+  const m = FLOOR.exec(line);
+  if (!m) {
+    if (FLOOR_LINE.test(line)) {
+      console.error(`\n!! THE FLOOR LINE'S FORMAT HAS MOVED — this harness can no longer read it, so it cannot tell a narrowed run from a real floor failure:\n   ${line.trim()}\n   Update FLOOR in ${import.meta.url.split("/").pop()} in the same commit as the format change.`);
+      process.exit(2);
+    }
+    return false;
+  }
+  return m[1] === "0" && Number(m[2]) > 0 && m[3] === "0";
 };
 
 const sha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
