@@ -32,6 +32,7 @@ import { Field } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { useDeferredToast } from "@/components/ui/toast";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { DESK_HOLD_EVENT, DESK_RELEASE_EVENT } from "./desk-live";
 
 /**
@@ -152,6 +153,25 @@ export function StopQueued({
       >
         {copy.label}
       </Button>
+
+      {/*
+        ⛔ K/7d · THE EXIT GUARD, AND IT IS A REAL DEFECT THIS BRANCH SHIPPED — found by the C5-8 red-by-red as one
+        of only TWO reds present here and absent from clean `origin/main`. The dialog was already scrim-proof once
+        anything is typed (`closeOnScrim` below), but the scrim is not the only way out: a back gesture, the
+        sidebar, or a bell link navigates the route away and the typed reason is gone without a word. On this
+        console that reason is not a note — it is the operator's written account of stopping a stake, and the
+        server refuses the action without it.
+
+        ⛔ GUARDED, NOT EXEMPTED. `test:unsaved-changes` offers both; adding an EXEMPT entry would have turned the
+        suite green by widening an exemption, which is the move this programme refuses by name.
+
+        ⛔ AND IT WRITES NO SENTENCE (ruling 388). This file owns exactly one string and that is deliberate — a
+        sentence typed into a client component ships to every visitor in a public chunk with both D19 instruments
+        reporting clean. So the guard is rendered on its DEFAULTS: the copy lives in the shared kit component,
+        already ships in every admin chunk, and names nothing about this feature. `dirty` tracks the same
+        condition the scrim already refuses on, so the two doors agree rather than disagreeing.
+      */}
+      <UnsavedChangesGuard dirty={open && reason.length > 0} />
 
       <Modal
         open={open}
