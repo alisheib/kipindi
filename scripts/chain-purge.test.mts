@@ -356,10 +356,14 @@ console.log("Chain purge\n");
     guardProtectedModels, isProtectedModel, MUTATING_METHODS, RAW_METHODS, PurgeProtectedTableError,
   } = await import("../src/lib/server/purge-protected.ts");
 
-  /** A client-shaped fake: every delegate records its calls, so "it was allowed" is measurable. */
+  /**
+   * A client-shaped fake: every delegate records its calls, so "it was allowed" is measurable, and
+   * returns a SENTINEL object whose identity the guard must not disturb — see the `$transaction`
+   * assertion at the end of this section for why that is load-bearing.
+   */
   const calls: string[] = [];
   const delegate = (name: string) => new Proxy({}, {
-    get: (_t, m: string) => (...a: unknown[]) => { calls.push(`${name}.${m}`); return { ok: true, args: a }; },
+    get: (_t, m: string) => (...a: unknown[]) => { calls.push(`${name}.${m}`); return { __sentinel: true, args: a }; },
   });
   const rawClient = {
     // protected
@@ -386,6 +390,19 @@ console.log("Chain purge\n");
     try { fn(); return false; } catch (e) { return e instanceof PurgeProtectedTableError; }
   };
 
+  /**
+   * ⛔ THE VERBS ARE NAMED HERE, NOT READ OUT OF THE CONSTANT THEY POLICE — and that sentence is
+   * the whole finding of `red:chain-purge` case 15. The first draft of this section iterated
+   * `MUTATING_METHODS` itself, so deleting `deleteMany` from that array made the suite stop
+   * TESTING `deleteMany`: the mutation that opened the single most dangerous verb on all fourteen
+   * tables left every "every mutating method is refused" line printing PASS. An assertion that
+   * derives its own expectation from its subject cannot fail. This floor may only GROW.
+   */
+  const REQUIRED_MUTATORS = ["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"];
+  const missingVerbs = REQUIRED_MUTATORS.filter((m) => !MUTATING_METHODS.includes(m));
+  ok("9: ⛔ the guard's own list still contains every verb this suite requires",
+     missingVerbs.length === 0, missingVerbs.length ? `dropped: ${missingVerbs.join(", ")}` : REQUIRED_MUTATORS.join(", "));
+
   /* ⭐ EVERY PROTECTED MODEL, EVERY MUTATING METHOD, ONE ASSERTION EACH — so a failure says WHICH
      table and WHICH verb got through, exactly as §5 names its classes individually. */
   const PROTECTED = [
@@ -394,11 +411,11 @@ console.log("Chain purge\n");
     "houseBotEvent", "houseBotIntent", "houseBotTarget", "houseBotPress",
   ];
   for (const model of PROTECTED) {
-    const missed = MUTATING_METHODS.filter(
+    const missed = REQUIRED_MUTATORS.filter(
       (m) => !threw(() => ((guarded as Record<string, Record<string, (a: unknown) => unknown>>)[model][m])({})),
     );
     ok(`9: 🔴 the purge CANNOT write ${model} — every mutating method is refused`,
-       missed.length === 0, missed.length ? `got through: ${missed.join(", ")}` : `${MUTATING_METHODS.length} methods refused`);
+       missed.length === 0, missed.length ? `got through: ${missed.join(", ")}` : `${REQUIRED_MUTATORS.length} verbs refused`);
   }
   ok("9: …and the refusal is typed and names the model and the verb",
      (() => { try { (guarded as never as { houseBotIntent: { deleteMany: (a: unknown) => unknown } }).houseBotIntent.deleteMany({}); return false; }
@@ -409,26 +426,44 @@ console.log("Chain purge\n");
      and the live-intent precondition counts intents. A guard that refused reads would have made
      the cost panel unbuildable and been quietly deleted. */
   calls.length = 0;
-  const readBack = (guarded as never as { ledgerEntry: { count: (a: unknown) => unknown } }).ledgerEntry.count({});
+  /* ⚠️ CAUGHT, NOT LET FLY. A guard that refused reads would THROW here, and an uncaught throw
+     kills the process with no `FAIL` line at all — which `red:chain-purge` case 19 reported as
+     "red, but not on the assertion it claims". A crash is not an assertion failure; a harness that
+     cannot name which check broke is back to guessing. */
+  let readBack: unknown = null;
+  let readError = "";
+  try { readBack = (guarded as never as { ledgerEntry: { count: (a: unknown) => unknown } }).ledgerEntry.count({}); }
+  catch (e) { readError = String((e as Error)?.message ?? e); }
   ok("9: ⭐ …but READS pass through untouched — the cost panel counts what it may not delete",
-     calls.includes("ledgerEntry.count") && !!readBack);
+     readError === "" && calls.includes("ledgerEntry.count") && !!readBack, readError.split("—")[0]);
 
   /* ⭐ THE POSITIVE CONTROL, and it is the one that would have broken the product silently. The
      purge's own five writes MUST still work: a guard that refused `predictionMarket.updateMany`
      would kill the redaction, and every "it never deletes X" assertion in §5 would still pass. */
   calls.length = 0;
-  (guarded as never as { comment: { deleteMany: (a: unknown) => unknown } }).comment.deleteMany({});
-  (guarded as never as { watchlist: { deleteMany: (a: unknown) => unknown } }).watchlist.deleteMany({});
-  (guarded as never as { marketSnapshot: { deleteMany: (a: unknown) => unknown } }).marketSnapshot.deleteMany({});
-  (guarded as never as { upDownRound: { deleteMany: (a: unknown) => unknown } }).upDownRound.deleteMany({});
-  (guarded as never as { predictionMarket: { updateMany: (a: unknown) => unknown } }).predictionMarket.updateMany({});
+  let ownWritesError = "";
+  try {
+    (guarded as never as { comment: { deleteMany: (a: unknown) => unknown } }).comment.deleteMany({});
+    (guarded as never as { watchlist: { deleteMany: (a: unknown) => unknown } }).watchlist.deleteMany({});
+    (guarded as never as { marketSnapshot: { deleteMany: (a: unknown) => unknown } }).marketSnapshot.deleteMany({});
+    (guarded as never as { upDownRound: { deleteMany: (a: unknown) => unknown } }).upDownRound.deleteMany({});
+    (guarded as never as { predictionMarket: { updateMany: (a: unknown) => unknown } }).predictionMarket.updateMany({});
+  } catch (e) { ownWritesError = String((e as Error)?.message ?? e); }
   ok("9: ⭐ CONTROL — the purge's OWN five writes are untouched, redaction included",
-     calls.length === 5 && calls.includes("predictionMarket.updateMany") && calls.includes("upDownRound.deleteMany"),
-     calls.join(", "));
+     ownWritesError === "" && calls.length === 5
+     && calls.includes("predictionMarket.updateMany") && calls.includes("upDownRound.deleteMany"),
+     ownWritesError ? ownWritesError.split("—")[0] : calls.join(", "));
 
   /* ⛔ RAW SQL NAMES TABLES AS STRINGS and walks straight past a per-model proxy. The purge calls
-     none of these, so refusing the whole class closes the only bypass the proxy cannot police. */
-  for (const m of RAW_METHODS) {
+     none of these, so refusing the whole class closes the only bypass the proxy cannot police.
+     ⚠️ NAMED HERE, NOT READ OUT OF `RAW_METHODS` — the same defect as the verb list above, and
+     `red:chain-purge` case 16 proved it: deleting `$queryRawUnsafe` from the constant made this
+     loop stop testing `$queryRawUnsafe`, and the suite stayed GREEN with raw SQL wide open. */
+  const REQUIRED_RAW = ["$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe"];
+  const missingRaw = REQUIRED_RAW.filter((m) => !RAW_METHODS.includes(m));
+  ok("9: ⛔ the guard's own raw list still contains every method this suite requires",
+     missingRaw.length === 0, missingRaw.join(", "));
+  for (const m of REQUIRED_RAW) {
     ok(`9: ⛔ ${m}() is refused outright — a SQL string is invisible to a per-model guard`,
        threw(() => ((guarded as unknown as Record<string, () => unknown>)[m])()));
   }
@@ -443,13 +478,26 @@ console.log("Chain purge\n");
   });
   ok("9: ⛔ the client handed to $transaction(fn) is guarded too", txGuarded);
 
-  /* ⚠️ AND THE ARRAY FORM IS PASSED THROUGH UNCHANGED. `$transaction([...])` inspects the promises
-     it is given; a guard that wrapped a delegate's RESULT would break every batch in the purge
-     while every assertion above stayed green. The identity is what makes that measurable. */
-  const p = (guarded as never as { comment: { deleteMany: (a: unknown) => unknown } }).comment.deleteMany({});
-  const passed = (guarded as never as { $transaction: (a: unknown[]) => unknown[] }).$transaction([p]);
+  /**
+   * ⚠️ A DELEGATE'S RETURN VALUE IS THE DELEGATE'S OWN, UNWRAPPED. `$transaction([...])` INSPECTS
+   * the promises it is handed, and the purge's only write path is exactly that array — so a guard
+   * that wrapped a result in an `async` shim (what anyone adds to log or time a call) would kill
+   * the ceremony while every refusal above still passed.
+   *
+   * ⛔ IT IS ASSERTED ON A PROTECTED MODEL'S READ, AND THAT CORRECTION IS THE POINT.
+   * `red:chain-purge` case 18 planted the shim and this suite stayed GREEN, because the first
+   * draft asserted the identity on `comment` — an UNPROTECTED model, which the outer proxy hands
+   * back untouched, so the wrapping it was hunting could never have been in the path it measured.
+   * `pool-residual.cjs`'s inner join once more: the instrument excluded the thing it was for.
+   * ⭐ The REAL `PrismaPromise` behaviour is measured against Postgres by `npm run
+   * qa:purge-protected` §1, which commits an actual `$transaction([…])` through the guard.
+   */
+  const readValue = (guarded as never as { housePoolLedger: { count: (a: unknown) => unknown } }).housePoolLedger.count({});
   ok("9: ⚠️ …and a delegate's own return value is NOT wrapped, so $transaction([…]) still works",
-     Array.isArray(passed) && passed[0] === p);
+     typeof readValue === "object" && readValue !== null
+     && (readValue as { __sentinel?: boolean }).__sentinel === true
+     && !(readValue instanceof Promise),
+     readValue instanceof Promise ? "the guard wrapped it in a promise" : String(readValue));
 
   ok("9: the guard is WIRED — pc() never hands out a raw client",
      /return guardProtectedModels\(c\)/.test(decomment(readFileSync(join(ROOT, "src/lib/server/chain-purge.ts"), "utf8"))),

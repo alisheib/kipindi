@@ -1,22 +1,34 @@
 /**
- * RED PROOF for the MONEY COMPACTION GRAMMAR (`npm run test:chain-purge`).
+ * RED PROOF for THE CHAIN PURGE (`npm run test:chain-purge`).
+ *
+ * ⚠️ THIS HEADER USED TO DESCRIBE THE MONEY COMPACTION GRAMMAR — the landing hero's "TZS 1000K"
+ * and a width contract in `globals.css`. Not one word of it was about this harness: it arrived
+ * by copy-paste and survived every read of the file. A docblock that describes a DIFFERENT
+ * subject is worse than none, because it tells a reader they have understood something. Corrected
+ * 2026-09-20, in the same pass that added cases 11–23.
  *
  * ⛔ "THE FILE CHANGED" IS NOT A RED. Every mutation must make the suite EXIT NON-ZERO *and*
  * report the NAMED failing check. Every mutation is reverted and the file verified byte-for-byte
  * afterwards. A mutation whose anchor is missing is reported as PROVING NOTHING — never skipped
  * quietly, because a stale anchor is an ABSENT test that fails in the direction of looking fine.
  *
- * ⭐ THE THREE SEAM MUTATIONS MOVE A PROMOTION POINT BACK TO ITS BAND EDGE, which is exactly
- * what the shipped code did implicitly — so each one restores the real defect rather than an
- * invented one. 999,500 printed "TZS 1000K" on the landing hero for as long as this function
- * has existed.
+ * ⭐ WHAT THE 23 CASES ARE. Every one restores a defect this platform has actually had, or the
+ * exact reversal of a decision taken because it had one. Cases 1–10 are the tombstone design:
+ * deleting the market instead of stamping it (production, 2026-08-28), blanking the pools along
+ * with the titles, the two-officer gate silently becoming one, export-after-destroy, the unscoped
+ * `deleteMany({})`, and the verification that asked the stamped rows whether they were stamped.
  *
- * ⭐ THE FOURTH IS THE ONE MOST WORTH HAVING, and it is not about the function's output at all.
- * It restores the false WIDTH CONTRACT — "TZS 999.9M", a string this grammar cannot emit —
- * which globals.css sized the landing hero's type ladder against. Because `.kp-proof__num`
- * forbids `white-space: nowrap`, a figure wider than the assumed maximum does not clip: it
- * WRAPS the money onto two lines. A doc that lies about a width is a layout defect with a
- * delay fuse, and no assertion about the output can see it.
+ * ⭐ CASES 11–23 ARE THE NEVER LIST, which until 2026-09-20 was a COMMENT. `chain-purge.ts` named
+ * fourteen tables under NEVER and `grep -c "HouseBot"` on that file returned 1. They include the
+ * two shapes that matter most and that no hand-written list can catch — a NINTH HOUSE TABLE added
+ * to the schema and forgotten, and a ONE-LINE EXEMPTION that drops the whole house family out of
+ * the guard — plus the wrapper that breaks `$transaction([…])` while every refusal still passes.
+ *
+ * 🔴 AND FOUR OF THEM FOUND DEFECTS IN THE ASSERTIONS THEMSELVES on their first run: two loops
+ * that read their expectations out of the very constants they policed (so deleting a verb from
+ * the guard deleted the test for it), an identity check asserted on an UNPROTECTED model where
+ * the wrapping it hunted could never appear, and two crashes reported as "red, but not on the
+ * named check". A control that has not been SEEN RED is not evidence.
  *
  * Run: npm run red:chain-purge
  */
