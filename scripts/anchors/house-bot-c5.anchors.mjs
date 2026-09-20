@@ -51,6 +51,31 @@
  * one `props`). Each names in its own text what it was for and what the new from-text is. ⛔ Where the site could NOT be
  * identified — `S5-M74` and `S5-M76`'s audience gate now matches five times — nothing was invented; they stay owed.
  *
+ * ── ELEVEN OF THEM WERE ACTUALLY DRIVEN, 2026-09-21, AND THE DRIVE IS WHY TWO OF THEM ARE RIGHT ──────────────────
+ * ⛔ AN ANCHOR THAT RESOLVES IS NOT AN ASSERTION THAT WENT RED, so a sample was applied for real: the mutation
+ * written into the file, `npx tsx scripts/lib/house-bot-reports-cases.mts` run on the memory child, the FAIL lines
+ * read, `git checkout --` and `git diff --quiet` after every single one (the tree was verified clean at the close of
+ * each batch). Eleven entries across eight assertion families:
+ *
+ *   5b-M1   -> 0.187.1  (+0.191.0, 0.187.c1)   S4-M73+M73b -> 0.191.1  (+0.191.0)   S5-M48  -> 0.198.1  (+2)
+ *   5b-M4   -> 0.191.1  (+0.191.0)             S5-M70      -> 4.259.2  (+4.260.2)   S5-M105 -> 4.260.1  (+the 4.260 family)
+ *   5b-M5   -> 0.191.2  ALONE                  S5-M111     -> 0.260.1  ALONE        S5-M128 -> 0.260.c1 (+0.260.c2)
+ *   5b-M7   -> 0.198.2  (+2)                   S5-M132     -> 0.260.c2 (+0.260.1)
+ *
+ * Eleven of eleven reddened the assertion they name. Where a second assertion went red with it, the register had
+ * already predicted the pair (`S5-M70` names 4.259.2 AND 4.260.2; `5b-M4` names 0.191.1 AND 0.191.0) or the second is
+ * a CONTROL whose plant list is derived from the real files on disk, which the register also records.
+ *
+ * 🔴 AND THE TWO THE DRIVE CAUGHT, both of which had RESOLVED perfectly and proved nothing:
+ *   · `5b-M4` had a replacement a THIRD of its real length. The register writes it as three parts joined by its own
+ *     line-break marker and the extractor took only the first, so the declaration DELETED the notify call instead of
+ *     inserting a guard above it. It went red on 0.191.0 alone — WRONG-ASSERTION. Whole, it reddens both.
+ *   · `S4-M73` is written "(a) the call AND (b) the helper" and only (a) had been converted. A call to an undefined
+ *     `choseStake` names no requester token, so it printed NO FAIL LINE AT ALL — MISSED. Its second site is now
+ *     declared beside it with `combineInto`; together they redden 0.191.1.
+ * ⭐ Both were invisible to `test:red-anchors` §3 and to the 0.505b roll-call, because both instruments answer about
+ * the `from` and the `expect` and neither applies the `to`. ⛔ That is the size of the gap row 96 names.
+ *
  * ⛔ A RED ANCHOR QUOTES SOURCE. Editing one of these lines must be paired with re-anchoring here — that is the whole
  * point of declaring, and `test:red-anchors` §3 will say so the same day.
  */
