@@ -4302,8 +4302,13 @@ await guard("store", async () => {
  * to bring its own guard. Saying so in the label is the point — `0.L52.4` (the only other assertion that opens
  * `docs/HOUSE-BOTS.md`) states its own scope for exactly this reason: a guard's scope is part of its claim.
  *
- * ⛔ FS-05's own `Test:` line names `test:house-bot-reward-exclusion`, struck by D20 and absent from
- * package.json. Its D6 half — the bot stays on the public board as an ordinary player — is ALREADY asserted at
+ * ⛔ FS-05's own `Test:` line names test:house-bot-reward-exclusion — struck by D20 and absent from
+ * package.json. ⚠️ THE MISSING BACKTICKS AROUND THAT NAME ARE DELIBERATE AND MUST STAY OFF. `test:guards-exist`
+ * §1 treats a BACKTICKED `prefix:name` as a CITATION — "someone told a reader this guard exists" — and this
+ * sentence says the exact opposite. Backticking it made the guard print `1 new phantom` and go 9/0 → 8/1,
+ * measured 2026-09-20; its own docblock records that a bare colon-word is deliberately not a citation, and §4's
+ * control asserts that distinction. ⛔ Never repair this by adding the name to `INHERITED_PHANTOMS`: that list
+ * may only shrink, and an exemption for a name written today is not an inheritance. Its D6 half — the bot stays on the public board as an ordinary player — is ALREADY asserted at
  * §11 `11.247.c4`, with `11.247.c3` proving that sweep non-vacuous. So CRA-12 and FS-05 close together here.
  *
  * ⛔ AND THE TAIL OF HB-ACC-07 (amendment A1). A1 records "Signing out other devices on a password change is

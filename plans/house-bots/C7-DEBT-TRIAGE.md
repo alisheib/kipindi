@@ -176,6 +176,42 @@ none), so this lane cannot settle it by reading. ⚠️ **It is the exact failur
 carried rather than judged — and it resolves by reading row 61's tiles, not by a re-run.** Until someone does,
 row 53 must NOT be cleared on row 61's word alone, and rows 69 and 72 must not be trusted to have checked it.
 
+## The inherited reds, re-derived from this lane's own runs
+
+⛔ **A recorded number rots, and one of them had.** Re-derived here rather than quoted:
+
+| Red | What the register records | What this lane MEASURED, 2026-09-20 |
+|---|---|---|
+| `test:decomment` 2.1 | "21 against a ceiling of 20" — rows 56, 59, 67 and 74 all say 21 | ⛔ **22 against a ceiling of 20.** The suite prints 21 passed / 1 failed, which is the number those rows quote — but the *assertion's* measured population is **22**, one higher than every row here claims. |
+| `test:guards-exist` | "PROGRESS records 9/0 at `37cf48c3`" (row 25) | ⛔ **8 passed / 1 failed on the first run of this phase** — see below. Green again at 9/0 after the fix in this same commit. |
+
+**The 22 private-stripper carriers, named** (replicated with the guard's own `decomment()`, `BLOCK_RE` and
+`LINE_RE`, over the same 1,171 script files; ⛔ `scripts/decomment.test.mts` itself was NOT edited to get this):
+`admin-act-gate`, `admin-soft-gate`, `contrast-audit`, `dead-css`, `dead-schema`, `design-frozen`,
+`failure-reasons`, `grid-paging`, `keyframe-registry`, `kyc-stage`, `kyc-status-honesty`, `label-lexicon`,
+`m1-even-light`, `market-result-announce`, `orphan-scripts`, `reduce-motion`, `report-note-truth`,
+`stacking-contract`, `tap-target`, `ui-consistency`, `updown-push`, `updown-result-announce`.
+
+⭐ **Not one of those 22 files is touched by this branch** (`git diff --name-only origin/main HEAD -- scripts/`).
+But the branch DOES edit `scripts/lib/decomment.mts` — the shared scanner the carrier test runs *through* — so the
+most likely account of 21 → 22 is the scanner seeing one more carrier, not a new private stripper arriving.
+⛔ That is a hypothesis, not a measurement: the previous 21-file list was never written down, so it cannot be
+differenced. **The ceiling stays at 20 and is not raised.** The next session that re-derives this should write the
+list out, as this one has, so the next delta is a diff rather than an argument.
+
+## The red this phase created, and fixed
+
+`test:guards-exist` was **8 passed / 1 failed** on its first run here — "1 new phantom:
+test:house-bot-reward-exclusion" — and the phantom is **this lane's own**, added at `66f305f4` in a
+`house-bot-reports-cases.mts` docblock whose whole point is that the guard *does not exist*. The guard's §1 counts a
+**backticked** `prefix:name` as a citation ("someone told a reader this guard exists") and deliberately does not
+count a bare one. So the sentence said the opposite of what its typography claimed. ⛔ Fixed by removing the
+backticks, with the reason written beside it so it is not tidied back in — **not** by adding the name to
+`INHERITED_PHANTOMS`, which may only shrink and is for citations that pre-date 2026-09-09. Green at **9 / 0** after.
+
+⭐ This is the register's own lesson arriving from the other direction: a row that had been carried since
+`37cf48c3` on a recorded 9/0 was red when someone finally ran it, for a reason invented after the number.
+
 ## What this lane will run next, and what it will not
 
 **Will run** (9 rows, no served page, no production, no build): the twelve distinct suite keys behind rows
