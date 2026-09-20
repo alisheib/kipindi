@@ -79,9 +79,11 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
+    /* ⭐ RE-ANCHORED AT C7 STEP 7 to the SAME defect: the presence check moved off the governed accessor so the
+     * READ-TIERS ratchet stops reporting the desk, and the term must still be drawn only when there is a number. */
     name: "359-phone-term · the Phone term is drawn unconditionally, so an account with no number gets a labelled row that says nothing",
     file: NEW_PAGE,
-    from: `                  {view.phoneE164 !== null && (`,
+    from: `                  {view.hasPhone && (`,
     to: `                  {true && (`,
     expect: "1.359 · the Phone term is drawn only when there is a value",
     suite: "console-mem",
@@ -220,8 +222,8 @@ export const MUTATIONS = [
   {
     name: "420-name · the console resolves a display name, putting a real person's name on the screenshot surface",
     file: GATE,
-    from: `    phoneE164: user?.phoneE164 ?? null,`,
-    to: `    phoneE164: user?.phoneE164 ?? null,
+    from: `    phoneE164: phone,`,
+    to: `    phoneE164: phone,
     displayName: user?.displayName ?? null,`,
     expect: "1.420 · the ON sentence names the actor by id and the module resolves NO name for one",
     suite: "console-mem",

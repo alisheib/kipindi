@@ -91,13 +91,20 @@
  * no clamp (`?tpage=99` answered 99), the helper returning its argument, and one of the four `next=` sites built
  * from the raw href (layout 3 built / 2 via the helper).
  * ⭐ RAISED AGAIN at C7 STEP 7 — THE CLOSING GATES — to what `npm run test:house-bot-console` PRINTED on that
- * run: **memory 539, Postgres 344**. The Postgres half is unchanged to the case, and that is expected rather than
+ * run: **memory 540, Postgres 344** (539 before the READ-TIERS finding below added its control). The Postgres half is unchanged to the case, and that is expected rather than
  * a miss: every assertion this step added is a SOURCE pin and the source pins run in the memory child only.
  * What landed: `1.371` (the results reader and the last of the fee derivation gone from house-bot CODE, over a
  * population derived from the path so the AGENT module's own `netTzs` is not mistaken for this feature's),
  * `1.370` (no amount in any engine or switch-off sentence, no money field on `SwitchOffOutcome`), `1.375`
  * (`reimbursement_recorded` has no writer and `HOUSE_AUDIT` is pinned at 31 keys), and the four D19 assertions
  * step 7 owed — `1.390`, `1.391`, `1.395` and `1.397` — which is why `1.398`'s ladder now reads SEVEN.
+ * ⭐ AND ONE FINDING THE STEP'S OWN SUITE RUN PRODUCED, fixed here rather than carried: `test:read-tiers` 7.1 is an
+ * INHERITED red, but its failing LINE had grown a second file on this branch — the wizard's `{view.phoneE164 !==
+ * null && (` presence check. The ratchet strips `<Sensitive …/>` and reports every other braced expression naming
+ * a governed accessor, so a check that renders nothing read exactly like a page printing a player's number in the
+ * clear. The branch now takes a server-computed `hasPhone`; 7.1 names `/admin/agents/page.tsx` alone again, as it
+ * does on `origin/main`. `1.359` is re-aimed at the same defect with the ratchet's own detector reproduced as its
+ * control, and `1.420`'s phone-line pin widens from THREE named lines to FOUR.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -108,6 +115,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 539, postgres: 344 },
+  minPass: { memory: 540, postgres: 344 },
   dbPrefix: "hb_console",
 });

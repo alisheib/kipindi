@@ -2742,6 +2742,15 @@ export type ConsoleCheckView = {
    * READ-TIERS in a `.tsx`, which `sensitive.tsx` forbids in as many words.
    */
   phoneE164: string | null;
+  /**
+   * ⛔ WHETHER THERE IS A NUMBER AT ALL — AND IT IS A SEPARATE FIELD ON PURPOSE (C7 step 7, `test:read-tiers` 7.1).
+   * The page draws the Phone term only when a value exists, and it used to decide that with `view.phoneE164 !== null`
+   * in the JSX. The READ-TIERS ratchet strips `<Sensitive …/>` and then reports EVERY other braced expression naming
+   * a governed accessor — so the presence CHECK, which renders nothing, read to it exactly like a page printing the
+   * number in the clear, and the desk joined `/admin/agents` on a line whose ceiling is 0. The value now crosses the
+   * boundary only inside `Sensitive`; the branch takes this boolean.
+   */
+  hasPhone: boolean;
   /** 456 · the platform surface where an admin may legitimately read this player's money. */
   holderHref: string;
   /** ⛔ A STATE, NEVER A BALANCE (459). `null` when the wallet could not be read — a blocking row then says so. */
@@ -2875,12 +2884,14 @@ export async function houseCheckForConsole(
     : { word: "Not funded", chip: TONE_CHIP.slate, sentence: "This wallet is empty, so nothing can be staked from it until the holder puts money in." };
 
   const open = positions;
+  const phone = user?.phoneE164 ?? null;
   const priorCount = prior === null ? 0 : prior.filter((b) => b.status === "REMOVED").length;
 
   return {
     userId: id,
     handle: playerHandle(id),
-    phoneE164: user?.phoneE164 ?? null,
+    phoneE164: phone,
+    hasPhone: phone !== null,
     holderHref: `/admin/transactions?q=${encodeURIComponent(id)}`,
     funded,
     bonusCaption: "Bonus money is never staked from the desk, whatever the wallet holds.",

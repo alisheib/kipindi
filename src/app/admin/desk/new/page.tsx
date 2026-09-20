@@ -207,7 +207,7 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
                       ⛔ AND THE TERM IS NOT DRAWN WITH NOTHING UNDER IT. `Sensitive` renders NOTHING when the value
                       is absent or the viewer's read cell says `none`, so an unconditional `<dt>` is a labelled row
                       that says nothing — read off the first render of the missing-account state. */}
-                  {view.phoneE164 !== null && (
+                  {view.hasPhone && (
                     <div>
                       <dt className="font-mono text-micro eyebrow uppercase text-text-tertiary">Phone</dt>
                       <dd className="text-body-sm text-text">

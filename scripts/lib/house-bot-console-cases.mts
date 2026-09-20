@@ -4373,10 +4373,25 @@ export default function Ruling513Control() {
       )(wizardCode.slice(wizardCode.indexOf("async function AdminDeskNewContent"))
         .replace(/^async function AdminDeskNewContent\([^)]*\)[^{]*/, "")),
       j(wizardCode.replace(/\s+/g, " ").slice(wizardCode.replace(/\s+/g, " ").indexOf("async function AdminDeskNewContent")).slice(0, 260)));
-    ok("1.359 · the Phone term is drawn only when there is a value for the platform's own gate to decide about",
-      /\{view\.phoneE164 !== null && \(/.test(wizardCode)
+    /* ⛔ RE-AIMED AT C7 STEP 7, AT THE SAME DEFECT AND ONE MEASURE WIDER (`test:read-tiers` 7.1). The term is still
+       drawn only when there is a value — what changed is WHERE the presence is decided. It was `view.phoneE164 !==
+       null` in the JSX, and the READ-TIERS ratchet strips `<Sensitive …/>` and then reports every other braced
+       expression naming a governed accessor, so a check that renders nothing read to it exactly like a page printing
+       the number in the clear: the desk joined `/admin/agents` on a line whose ceiling is 0, measured on this branch
+       and NOT on `origin/main`. The value now crosses into the page only inside `Sensitive`; the branch takes a
+       server-computed boolean. Both halves are asserted, because dropping either is how this comes back. */
+    ok("1.359 · the Phone term is drawn only when there is a value for the platform's own gate to decide about — and the branch takes a boolean, so the governed accessor appears NOWHERE outside `Sensitive`",
+      /\{view\.hasPhone && \(/.test(wizardCode)
         && (wizardCode.match(/<Sensitive /g) ?? []).length === 1
-        && !/SensitiveReveal/.test(wizardCode), "");
+        && !/SensitiveReveal/.test(wizardCode)
+        && !/phoneE164/.test(wizardCode.replace(/<Sensitive[\s\S]*?\/>/g, "")),
+      j({ outsideSensitive: (wizardCode.replace(/<Sensitive[\s\S]*?\/>/g, "").match(/phoneE164/g) ?? []).length }));
+    ok("1.359 · CONTROL · the ratchet's own detector is reproduced here and shown to FIRE on the shape this page used to have — so the zero above is a measurement and not a scan that stopped matching",
+      (() => {
+        const seen = (code: string) => (code.replace(/<Sensitive[\s\S]*?\/>/g, "").match(/\{[^{}]*\.\bphoneE164\b[^{}]*\}/g) ?? []).length;
+        return seen(wizardCode) === 0
+          && seen(wizardCode.replace("{view.hasPhone && (", "{view.phoneE164 !== null && (")) === 1;
+      })(), "");
     /* ⛔ 456 · 355 · AND A FAILED READ DOES NOT TAKE THE DOOR WITH IT (C7 step 6 review, conformance-355). The
        whole block hung on `funded !== null`, so an unreadable wallet removed 459's bonus fact AND 456's link to
        the screen where the figure legitimately lives — the officer lost the way forward at the exact moment they
@@ -4815,9 +4830,10 @@ export default function Ruling513Control() {
     ok("1.420 · the ON sentence names the actor by id and the module resolves NO name for one — no display name anywhere, the phone only as `Sensitive`'s server-only field, and the computed handle only inside the search matcher",
       gateCode.includes("control?.switchedById")
         && !/displayName/.test(gateCode)
-        && phoneLines.length === 3
+        && phoneLines.length === 4
         && phoneLines.some((l) => l.includes("phoneE164: string | null;"))
-        && phoneLines.some((l) => l.includes("phoneE164: user?.phoneE164 ?? null,"))
+        && phoneLines.some((l) => l.includes("const phone = user?.phoneE164 ?? null;"))
+        && phoneLines.some((l) => l.includes("phoneE164: phone,"))
         /* ⭐ THE THIRD IS THE PICKER'S ORDERING RANK, AND IT IS THE SAME EXEMPTION `displayLabel` HOLDS: a
            COMPARISON inside the search matcher, never a value assigned to anything a page paints. It exists
            because the slice was taking whichever ten the store happened to return. */
