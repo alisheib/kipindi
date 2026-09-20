@@ -2186,7 +2186,7 @@ function oneParam(raw: string | string[] | undefined): { value: string | null; r
  * delivered bell, so they are real ids in practice and arbitrary text in principle. They are never interpolated
  * into markup and never used as a filter; this refuses the rest before they are compared at all.
  */
-const CONSOLE_ANCHOR_SHAPE = /^hb[ie]_[A-Za-z0-9]{1,48}$/;
+const CONSOLE_ANCHOR_SHAPE = /^hb[ie]_[A-Za-z0-9_]{1,48}$/;
 
 /** A closed-list member matched case-insensitively against the address's lowercase spelling. */
 function fromClosedList<T extends string>(list: readonly T[], value: string | null): T | null {
@@ -2295,7 +2295,15 @@ function consoleRefusalSentence(refusals: readonly string[]): string | null {
     : `Parts of this address were not understood and were ignored: ${list}. The rest of the filter is in force.`;
 }
 
-/** Every live parameter of the activity panel, as the pager's `baseHref` and the rail's own links need them. */
+/**
+ * Every live FILTER of the activity panel, as the pager's `baseHref` and the rail's own links need them.
+ *
+ * ⛔ THE BELL'S ANCHOR IS NOT ONE OF THEM, DELIBERATELY. `&intent=` is a LANDING INSTRUCTION — "show me the page
+ * this row is on" — and it belongs to the address the bell produced, not to every link the officer clicks
+ * afterwards. Carrying it forward would re-resolve a page under a filter the anchor was never ranked in, and it
+ * would echo a bounded record id into every pager link and every chip on the rail, which is the one thing this
+ * section may never put in a response it does not have to.
+ */
 function consoleFeedParams(p: ConsoleDetailParsed): Record<string, string | undefined> {
   return {
     tab: "activity",
@@ -2305,7 +2313,6 @@ function consoleFeedParams(p: ConsoleDetailParsed): Record<string, string | unde
     kind: p.kind ? p.kind.toLowerCase() : undefined,
     product: p.product ? p.product.toLowerCase() : undefined,
     outcome: p.outcome ? p.outcome.toLowerCase() : undefined,
-    intent: p.intentId ?? undefined,
   };
 }
 
@@ -2393,7 +2400,9 @@ function consolePanelShell(botId: string, p: ConsoleDetailParsed): Pick<ConsoleD
     feedOrderNote: CONSOLE_ORDER_NOTE,
     historyPage: p.hpage,
     historyPerPage: CONSOLE_HISTORY_PER_PAGE,
-    historyParams: { tab: "history", event: p.eventId ?? undefined },
+    /* The history panel has no rail, so its only live parameter is the tab — and, for the reason above, the
+       bell's `&event=` anchor is not carried into the pager's own links either. */
+    historyParams: { tab: "history" },
     historyEmpty: CONSOLE_HISTORY_EMPTY,
     historyOrderNote: CONSOLE_ORDER_NOTE,
     queryRefusal: consoleRefusalSentence(p.refusals),
@@ -3055,9 +3064,18 @@ export async function houseDetailForConsole(
    * ⛔ The total comes from the COUNTING reader and never from the rows (344); the page past the end is served as
    * the LAST page, which is what the Targets grid twelve lines up already does; and a FAILED read is `null`, which
    * the page paints as the kit's failure treatment and never as an empty table (355). */
+  /* ⛔ THE ANCHOR'S RANK IS INCLUSIVE, SO A TIE INFLATES IT — AND THE STEP BACK IS WHAT MAKES IT EXACT.
+   * `countFeed({ fromIso: row.createdAt })` counts rows at or newer than the anchor, so rows sharing the anchor's
+   * millisecond are counted with it and the rank can only be too LARGE, never too small — which pushes the computed
+   * page LATER, never earlier. The rows are already in hand, so the correction costs no read of its own: if the
+   * anchor is not among them, the page is stepped back ONCE, before the single re-read below. That is exact for any
+   * tie block smaller than a page, which is every physically possible one — the per-minute cap is at most twenty
+   * stakes across the whole desk, so twenty stakes by ONE account inside one millisecond cannot happen. */
   const feedTotal = wantFeed && feedCountR.status === "fulfilled" ? feedCountR.value : null;
-  const feedShown = consoleLastPage(feedTotal, wantFeedPage, CONSOLE_FEED_PER_PAGE);
   let feedPageRows = wantFeed && feedR.status === "fulfilled" ? feedR.value : null;
+  let feedShown = consoleLastPage(feedTotal, wantFeedPage, CONSOLE_FEED_PER_PAGE);
+  if (wantFeed && q.intentId != null && !q.pageAsked && feedShown === wantFeedPage && feedShown > 1
+    && feedPageRows != null && !feedPageRows.rows.some((i) => i.id === q.intentId)) feedShown -= 1;
   if (wantFeed && feedPageRows != null && feedShown !== wantFeedPage) {
     try {
       feedPageRows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (feedShown - 1) * CONSOLE_FEED_PER_PAGE });
@@ -3067,8 +3085,10 @@ export async function houseDetailForConsole(
     : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));
 
   const historyTotal = wantHistory && historyCountR.status === "fulfilled" ? historyCountR.value : null;
-  const historyShown = consoleLastPage(historyTotal, wantHistoryPage, CONSOLE_HISTORY_PER_PAGE);
   let historyPageRows = wantHistory && historyR.status === "fulfilled" ? historyR.value : null;
+  let historyShown = consoleLastPage(historyTotal, wantHistoryPage, CONSOLE_HISTORY_PER_PAGE);
+  if (wantHistory && q.eventId != null && !q.hpageAsked && historyShown === wantHistoryPage && historyShown > 1
+    && historyPageRows != null && !historyPageRows.some((e) => e.id === q.eventId)) historyShown -= 1;
   if (wantHistory && historyPageRows != null && historyShown !== wantHistoryPage) {
     try {
       historyPageRows = await houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (historyShown - 1) * CONSOLE_HISTORY_PER_PAGE });
