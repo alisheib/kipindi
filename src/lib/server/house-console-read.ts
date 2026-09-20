@@ -39,7 +39,7 @@ import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
 import type { StoredUser } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
-import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleDetailTab, consoleNewHref, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 /* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
@@ -307,6 +307,14 @@ export type ConsoleDeskShell = {
   dayKey: string;
   /** The band (303, 304, 404). Empty when there is no control row to measure against (421). */
   tiles: ConsoleKpiTile[];
+  /**
+   * ⭐ C7 STEP 5 · THE ACTIVITY TAB'S BADGE — how many stakes are QUEUED across the whole desk, on every tab.
+   * ⛔ `null` IS A FAILED COUNT AND IS NOT ZERO. `CountBadge` renders nothing at zero, so a count may never stand
+   * in for a read's health: a failed count paints NO badge and the activity panel paints `AdminLoadError` for that
+   * subject instead (355). ⛔ It does not move as the officer filters — ruling 312 scopes it to the desk, not to
+   * the rail, so a bell's own narrowed address cannot change the number beside the tab it is pointing at.
+   */
+  pendingIntents: number | null;
 };
 
 export type ConsoleRosterView = ConsoleDeskShell & {
@@ -692,6 +700,14 @@ function engineNotice(input: {
   }
 }
 
+/**
+ * ⛔ THE POPULATION THE ACTIVITY BADGE COUNTS, AND IT IS RULING 312's OWN WORD — "pending", one member of
+ * `INTENT_STATUSES`. Never `LIVE_INTENT_STATUSES` (PENDING + CLAIMED): a CLAIMED stake has already been taken up by
+ * the engine and there is nothing left for an officer to cancel about it, so a badge counting it would offer a
+ * number no control on the page can act on. Written ONCE, read by the badge and by the cancel control's own rule.
+ */
+const CONSOLE_PENDING_STATUSES = ["PENDING"] as const satisfies readonly IntentStatus[];
+
 type DeskCore = {
   dayKey: string;
   schemaMissing: boolean;
@@ -702,21 +718,39 @@ type DeskCore = {
   exposure: Map<string, number> | null;
   /** ⭐ 435(e) · the engine's DURABLE beat rows, settled on their own. `null` means the READ FAILED (354(c)/355). */
   instances: StoredHouseBotRuntime[] | null;
+  /**
+   * ⭐ C7 STEP 5 (the LANDING half) · HOW MANY STAKES ARE QUEUED ACROSS THE WHOLE DESK — the activity tab's badge.
+   * ⛔ IT IS A MEMBER OF THE CORE SET AND NOT A CALLER'S EXTRA, AND THE REASON IS MEASURED, NOT PREFERRED. The rail
+   * renders ABOVE the panels on EVERY tab (406), so every one of the four landing readers has to be able to paint
+   * this badge; as a positional extra each reader would have carried it in a different slot, which is precisely how
+   * two readers come to count two different populations under one number. It is a SHELL fact, and the shell is what
+   * this function exists to build.
+   * ⛔ IT MAY NOT COME FROM A SECOND GATED READER (the one-reader-per-render spy) AND MAY NOT BE COUNTED FROM ROWS
+   * (ruling 344): the rows are one clamped page, the badge is the population.
+   * ⛔ `["PENDING"]` ALONE, ruling 312's own word, never `LIVE_INTENT_STATUSES` (PENDING + CLAIMED): a CLAIMED stake
+   * is already in flight and there is nothing an officer can still cancel about it.
+   * ⛔ `null` means the COUNT READ FAILED, which is not zero — `CountBadge` renders nothing at zero, so a count can
+   * never stand in for a read's health and the panel paints `AdminLoadError` for that subject instead.
+   */
+  pendingIntents: number | null;
 };
 
 /**
  * ⛔ TWO EXTRAS, EACH SETTLED ON ITS OWN, AND THAT IS RULING 355 RATHER THAN A CONVENIENCE. The roster needs both
  * the Products words (`loadParseContext`) and the rate read "Last bet" comes from (`botRateUsage`, ruling 351); the
- * limits panel needs one read of its own. Wrapping two reads in a single `Promise.all` inside the settled set would
- * make ONE failure blank BOTH figures, which is the attribution 355 exists to keep — a failed Products read must
- * not take the Last bet column with it. So the set is SIX members, each attributed to its own cell.
+ * limits panel needs one read of its own, and each landing panel needs its own page and its own total. Wrapping two
+ * reads in a single `Promise.all` inside the settled set would make ONE failure blank BOTH figures, which is the
+ * attribution 355 exists to keep — a failed Products read must not take the Last bet column with it.
+ * ⛔ SEVEN MEMBERS, AND THE COUNT IS STATED HERE BECAUSE IT WAS ONCE WRONG IN THIS VERY DOCBLOCK: the array below is
+ * the control row, the roster, the day books, the open exposure, the engine's beats, the QUEUED-stake count the
+ * rail's badge paints, and the caller's two extras.
  */
 async function readDeskCore<A, B>(
   extraA: (dayKey: string) => Promise<A>,
   extraB?: (dayKey: string) => Promise<B>,
 ): Promise<{ core: DeskCore; extra: A | null; extraB: B | null }> {
   const dayKey = eatDayKey(Date.now());
-  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.allSettled([
+  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.allSettled([
     houseBotControlStore.get(),
     houseBotStore.listNonRemoved(),
     houseDayBooks(dayKey),
@@ -727,6 +761,10 @@ async function readDeskCore<A, B>(
      * 433(d)'s named refusal. ⛔ Settled on its OWN, never wrapped with another read: one failed read must not
      * take another figure with it (355, 435(d)). */
     houseBotRuntimeStore.listInstances(),
+    /* ⭐ C7 step 5 · THE RAIL'S BADGE, COUNTED ACROSS EVERY ACCOUNT AND UNFILTERED BY THE RAIL (ruling 312). It is a
+     * COUNTING reader over the same shared predicate the feed pages over, never `listFeed(...).length` (344), and it
+     * is settled on its OWN so a failed count cannot blank a figure beside it (355). */
+    houseBotIntentStore.countFeed({ statuses: CONSOLE_PENDING_STATUSES }),
     extraA(dayKey),
     extraB ? extraB(dayKey) : Promise.resolve(null),
   ]);
@@ -749,6 +787,8 @@ async function readDeskCore<A, B>(
        * engine has never booted on this database; `null` means nobody could tell, and the two paint different
        * Callouts. Collapsing them is the class 421 had to be corrected for one card over. */
       instances: instancesR.status === "fulfilled" ? instancesR.value : null,
+      /* ⛔ `null` IS A FAILED COUNT, NOT A ZERO (355, and the badge's own rule above). */
+      pendingIntents: pendingR.status === "fulfilled" ? pendingR.value : null,
     },
     extra: extraR.status === "fulfilled" ? extraR.value : null,
     extraB: extraBR.status === "fulfilled" ? (extraBR.value as B | null) : null,
@@ -925,6 +965,9 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
     live,
     dayKey: core.dayKey,
     tiles,
+    /* ⛔ ONE NUMBER, ONE READ, ON EVERY TAB — the badge cannot disagree with itself between two panels, and it is
+     * `null` rather than 0 when the count could not be taken (355). */
+    pendingIntents: core.pendingIntents,
   };
 }
 
@@ -2147,14 +2190,20 @@ export type ConsoleEventRow = {
 };
 
 /**
- * What the account page hands its own door: the REQUEST's query string, untouched.
+ * What EITHER console page hands its own door: the REQUEST's query string, untouched.
  *
  * ⛔ **THE DOOR VALIDATES, NOT THE PAGE, AND NOT THE RAIL** (rulings 259, 383, 387). A console page is served 200 to
  * any signed-in account and a crafted address is free, so every value below is read here, checked against a CLOSED
  * list here, and refused here. The rail's own hrefs are built from the SAME parse, so the control an officer clicks
  * and the read the server takes cannot disagree — there is one function, not two.
+ *
+ * ⭐ ONE SHAPE FOR BOTH PAGES, AND IT WAS CALLED `ConsoleDetailQuery` UNTIL THE LANDING PANELS LANDED. The landing
+ * page's address carries the same axes — the same window, the same three chips, the same two bell anchors and the
+ * same two page numbers — so a second type would have been a second parse wearing a different name, which is the
+ * one thing 383 and 387 are written against. `tpage` is the Targets grid's own page number and is simply absent
+ * from a landing address; an absent parameter is page 1 in either shape.
  */
-export type ConsoleDetailQuery = {
+export type ConsoleQuery = {
   tab?: string | string[];
   tpage?: string | string[];
   page?: string | string[];
@@ -2170,8 +2219,9 @@ export type ConsoleDetailQuery = {
 };
 
 /** The parsed, validated query. `refusals` names every axis that was thrown away, by its own screen word. */
-type ConsoleDetailParsed = {
-  tab: ConsoleDetailTab;
+type ConsoleParsed = {
+  /** The panel this address selects, resolved against the CALLER's own closed list (see `tabOf`). */
+  tab: string;
   tpage: number;
   page: number;
   pageAsked: boolean;
@@ -2220,7 +2270,17 @@ function fromClosedList(axis: ConsoleFeedAxis, value: string | null): string | n
  * THE ONE PARSE. Every axis of the account page's address, validated against a closed list or a shape, with every
  * refusal NAMED so the page can say what it ignored rather than silently narrowing to something nobody asked for.
  */
-function parseConsoleDetailQuery(query: ConsoleDetailQuery | undefined, nowMs: number): ConsoleDetailParsed {
+function parseConsoleQuery(
+  query: ConsoleQuery | undefined,
+  nowMs: number,
+  /**
+   * ⛔ THE ONE DIFFERENCE BETWEEN THE TWO SHAPES, PASSED IN RATHER THAN BRANCHED ON. The landing rail and the
+   * account page's rail are separate CLOSED LISTS with separate panels (`consoleTab` / `consoleDetailTab`), and a
+   * parse that decided between them itself would be the second spelling of the filter this function exists to
+   * prevent. Everything below this line is identical for both, which is why there is one parse and not two.
+   */
+  tabOf: (raw: string | string[] | undefined) => string,
+): ConsoleParsed {
   const q = query ?? {};
   const refusals: string[] = [];
   const say = (axis: string) => { if (!refusals.includes(axis)) refusals.push(axis); };
@@ -2286,7 +2346,7 @@ function parseConsoleDetailQuery(query: ConsoleDetailQuery | undefined, nowMs: n
   }
 
   return {
-    tab: consoleDetailTab(q.tab),
+    tab: tabOf(q.tab),
     tpage: targets.n,
     page: feedPage.n,
     pageAsked: feedPage.asked,
@@ -2329,7 +2389,7 @@ function consoleRefusalSentence(refusals: readonly string[]): string | null {
  * would echo a bounded record id into every pager link and every chip on the rail, which is the one thing this
  * section may never put in a response it does not have to.
  */
-function consoleFeedParams(p: ConsoleDetailParsed): Record<string, string | undefined> {
+function consoleFeedParams(p: ConsoleParsed): Record<string, string | undefined> {
   return {
     tab: "activity",
     range: p.preset === CONSOLE_FEED_PRESET_DEFAULT ? undefined : p.preset,
@@ -2341,14 +2401,19 @@ function consoleFeedParams(p: ConsoleDetailParsed): Record<string, string | unde
   };
 }
 
-/** One rail link: this account's page, the live parameters, one axis changed — and `page` dropped (ruling 411). */
-function consoleFeedLink(botId: string, params: Record<string, string | undefined>, patch: Record<string, string | undefined>): string {
+/**
+ * One rail link: the panel's own page, the live parameters, one axis changed — and `page` dropped (ruling 411).
+ * ⛔ `base` IS A FINISHED ROUTE THE CALLER GOT FROM `console-routes.ts` (`CONSOLE_ROUTE` for the desk, `consoleBotHref`
+ * for one account) and is never composed here: ruling 319 puts the segment in one module, and a rail that built its
+ * own path would be the second spelling of the route this section was pulled up on.
+ */
+function consoleFeedLink(base: string, params: Record<string, string | undefined>, patch: Record<string, string | undefined>): string {
   const merged: Record<string, string | undefined> = { ...params, ...patch };
   const qs = Object.entries(merged)
     .filter(([, v]) => v != null && v !== "")
     .map(([k, v]) => `${k}=${encodeURIComponent(v as string)}`)
     .join("&");
-  return qs ? `${consoleBotHref(botId)}?${qs}` : consoleBotHref(botId);
+  return qs ? `${base}?${qs}` : base;
 }
 
 /**
@@ -2378,7 +2443,7 @@ function consoleAxisToken(axis: ConsoleFeedAxis, member: string): string {
  * can reach it by name — and every string below is inside 4.453's and 3.453's scans, which a label typed at a call
  * site one directory away would not be.
  */
-function consoleFeedGroups(botId: string, p: ConsoleDetailParsed): ConsoleFilterGroup[] {
+function consoleFeedGroups(base: string, p: ConsoleParsed): ConsoleFilterGroup[] {
   const params = consoleFeedParams(p);
   const live: Readonly<Record<ConsoleFeedAxis, string | null>> = { kind: p.kind, product: p.product, outcome: p.outcome };
   return (Object.keys(CONSOLE_FEED_AXES) as ConsoleFeedAxis[]).map((axis) => {
@@ -2387,11 +2452,11 @@ function consoleFeedGroups(botId: string, p: ConsoleDetailParsed): ConsoleFilter
       param: axis,
       label: a.label,
       options: [
-        { key: "", label: a.all, href: consoleFeedLink(botId, params, { [axis]: undefined }), on: live[axis] == null },
+        { key: "", label: a.all, href: consoleFeedLink(base, params, { [axis]: undefined }), on: live[axis] == null },
         ...a.members.map((m) => ({
           key: consoleAxisToken(axis, m),
           label: a.word[m] ?? m,
-          href: consoleFeedLink(botId, params, { [axis]: consoleAxisToken(axis, m) }),
+          href: consoleFeedLink(base, params, { [axis]: consoleAxisToken(axis, m) }),
           on: live[axis] === m,
         })),
       ],
@@ -2424,7 +2489,7 @@ const CONSOLE_ORDER_NOTE = "Newest first.";
  * its rows are `null` — but the SHAPE is the same, because a view model whose keys appear and disappear is how a page
  * comes to read `undefined.length` on the one state nobody rendered.
  */
-function consolePanelShell(botId: string, p: ConsoleDetailParsed): Pick<ConsoleDetailView,
+function consolePanelShell(base: string, p: ConsoleParsed): Pick<ConsoleDetailView,
   "feedPage" | "feedPerPage" | "feedFilters" | "feedPresets" | "feedPresetDefault" | "feedParams" | "feedEmpty"
   | "feedFiltered" | "feedClearHref" | "feedOrderNote" | "historyPage" | "historyPerPage" | "historyParams"
   | "historyEmpty" | "historyOrderNote" | "queryRefusal"> {
@@ -2432,13 +2497,13 @@ function consolePanelShell(botId: string, p: ConsoleDetailParsed): Pick<ConsoleD
   return {
     feedPage: p.page,
     feedPerPage: CONSOLE_FEED_PER_PAGE,
-    feedFilters: consoleFeedGroups(botId, p),
+    feedFilters: consoleFeedGroups(base, p),
     feedPresets: CONSOLE_FEED_PRESETS,
     feedPresetDefault: CONSOLE_FEED_PRESET_DEFAULT,
     feedParams: consoleFeedParams(p),
     feedEmpty: filtered ? CONSOLE_FEED_EMPTY_FILTERED : CONSOLE_FEED_EMPTY,
     feedFiltered: filtered,
-    feedClearHref: consoleFeedLink(botId, { tab: "activity" }, {}),
+    feedClearHref: consoleFeedLink(base, { tab: "activity" }, {}),
     feedOrderNote: CONSOLE_ORDER_NOTE,
     historyPage: p.hpage,
     historyPerPage: CONSOLE_HISTORY_PER_PAGE,
@@ -2464,7 +2529,11 @@ function consolePanelShell(botId: string, p: ConsoleDetailParsed): Pick<ConsoleD
 async function consoleFeedAnchorPage(anchorId: string, filter: IntentFeedCount, fallback: number): Promise<number> {
   try {
     const row = await houseBotIntentStore.get(anchorId);
-    if (!row || row.houseBotId !== filter.houseBotId) return fallback;
+    if (!row) return fallback;
+    /* ⛔ THE ACCOUNT FACET IS CHECKED ONLY WHEN THERE IS ONE. On the DESK-WIDE feed `houseBotId` is absent — that is
+     * the whole population — and comparing a real id with `undefined` would have refused every anchor the landing
+     * page was ever sent, silently, on the one link a bell produces. */
+    if (filter.houseBotId !== undefined && row.houseBotId !== filter.houseBotId) return fallback;
     if (filter.fromIso !== undefined && Date.parse(row.createdAt) < Date.parse(filter.fromIso)) return fallback;
     if (filter.toIso !== undefined && Date.parse(row.createdAt) >= Date.parse(filter.toIso)) return fallback;
     const rank = await houseBotIntentStore.countFeed({ ...filter, fromIso: row.createdAt });
@@ -2474,12 +2543,18 @@ async function consoleFeedAnchorPage(anchorId: string, filter: IntentFeedCount, 
   }
 }
 
-/** The history panel's half of the same rule, over the event log's own shared predicate. */
-async function consoleHistoryAnchorPage(anchorId: string, botId: string, fallback: number): Promise<number> {
+/**
+ * The history panel's half of the same rule, over the event log's own shared predicate.
+ * ⛔ `botId` IS `null` ON THE DESK-WIDE LOG, and that is not "any account": it is the population that also holds the
+ * CONTROL ROW's own events (`houseBotId: null` — the switch, the limits save, the withdrawal), which a per-account
+ * narrowing correctly drops and the desk's own history must not.
+ */
+async function consoleHistoryAnchorPage(anchorId: string, botId: string | null, fallback: number): Promise<number> {
   try {
     const row = await houseBotEventStore.get(anchorId);
-    if (!row || row.houseBotId !== botId) return fallback;
-    const rank = await houseBotEventStore.countAll({ houseBotId: botId, fromIso: row.createdAt });
+    if (!row) return fallback;
+    if (botId !== null && row.houseBotId !== botId) return fallback;
+    const rank = await houseBotEventStore.countAll({ ...(botId !== null ? { houseBotId: botId } : {}), fromIso: row.createdAt });
     return rank > 0 ? Math.max(1, Math.ceil(rank / CONSOLE_HISTORY_PER_PAGE)) : fallback;
   } catch {
     return fallback;
@@ -2940,18 +3015,18 @@ export async function houseDetailForConsole(
   id: string,
   /**
    * ⛔ THE REQUEST'S OWN QUERY STRING, UNTOUCHED, AND THE DOOR VALIDATES IT (rulings 259, 383, 387). It arrives as
-   * the page received it — every value a string, an array or absent — and `parseConsoleDetailQuery` checks each axis
+   * the page received it — every value a string, an array or absent — and `parseConsoleQuery` checks each axis against its own list
    * against a CLOSED list or a shape before anything is read with it. The rail's own links are built from the SAME
    * parse, so the control an officer clicks and the read the server takes cannot disagree: one function, not two.
    * ⚠️ It replaced a bare `targetsPage: number` at C7 step 5 and the gate's ARITY IS UNCHANGED AT FOUR — the pin
    * moves with a door's shape, it is never dropped.
    */
-  query?: ConsoleDetailQuery,
+  query?: ConsoleQuery,
 ): Promise<ConsoleDetailAnswer | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
   const nowMs = Date.now();
-  const q = parseConsoleDetailQuery(query, nowMs);
+  const q = parseConsoleQuery(query, nowMs, consoleDetailTab);
 
   /* ⛔ `get(id)`, NEVER `listNonRemoved` (358): the second excludes a REMOVED account in both twins, so a page built
    * on it would 404 on a row that exists and PLAN §8's read-only state would be unreachable. */
@@ -3020,7 +3095,7 @@ export async function houseDetailForConsole(
       targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
       /* 358 · a removed account takes neither list read, so both slices are `null` — the state the page reads as
        * "there was never a read to fail", which is the distinction 355 and 421 exist to keep. */
-      ...consolePanelShell(bot.id, q),
+      ...consolePanelShell(consoleBotHref(bot.id), q),
       feed: null,
       feedTotal: null,
       history: null,
@@ -3261,7 +3336,7 @@ export async function houseDetailForConsole(
     targetsTotal,
     targetsPage: shownPage,
     targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
-    ...consolePanelShell(bot.id, q),
+    ...consolePanelShell(consoleBotHref(bot.id), q),
     /* ⛔ THE PAGE THE ROWS REALLY CAME FROM, never the one the address asked for — the pager and the table cannot
      * disagree about which page is on screen. */
     feedPage: feedShown,
@@ -3273,6 +3348,302 @@ export async function houseDetailForConsole(
   };
 }
 
+
+
+/* ═══ C7 STEP 5 (the LANDING half) · THE DESK-WIDE ACTIVITY AND HISTORY PANELS ════════════════════════════════
+ *
+ * ⛔ **TWO MORE GATED DOORS, EACH QUERY-SHAPED, EACH WITH ITS `CONSOLE_GATES` ENTRY** (rulings 259, 340, 512).
+ * The account page's two panels answer about ONE record; these answer about the DESK — every account's stakes in
+ * one list, and every account's changes together with the CONTROL ROW's own (the switch, the limits save, the
+ * withdrawal), which a per-account narrowing correctly drops and the desk's own history must not lose.
+ *
+ * ⛔ **ONE READER PER RENDER PASS, STILL** (rulings 346, 406, 433(d)). Each returns the SAME `ConsoleDeskShell` the
+ * roster and limits readers return, built from ONE `readDeskCore` call — so the strip, the band and the rail's
+ * badge are identical on all four tabs and cannot be two reads of one question inside one render.
+ *
+ * ⛔ **THE PANELS ARE THE ACCOUNT PAGE'S PANELS, WIDENED — NOT A SECOND PAIR** (§0a). The same parse, the same
+ * rail builder, the same page-size constants, the same "a page past the end is the LAST page" idiom and the same
+ * anchor rule. What is added is the column that only a desk-wide list needs: WHOSE stake it was.
+ */
+
+/** ⛔ The three honest answers to "which account is this row about", each a different fact (355, 358). */
+const CONSOLE_ACCOUNT_UNREADABLE = "Could not be read";
+const CONSOLE_ACCOUNT_GONE = "Removed from the desk";
+/** An event of the CONTROL ROW itself — the switch, a limits save, the withdrawal. It belongs to no account. */
+const CONSOLE_ACCOUNT_DESK = "The desk";
+
+/** One row of the desk-wide activity panel: the account page's row, plus whose stake it was. */
+export type ConsoleDeskFeedRow = ConsoleFeedRow & {
+  /**
+   * ⛔ RULING 474 · THE ACCOUNT'S OWN LABEL IS OPERATOR DATA, verbatim but bounded — or one of the two console
+   * words above when the roster read failed or the account has since been removed. Three states, three sentences,
+   * never one standing in for another.
+   */
+  accountName: string;
+  /** True when `accountName` is the operator's own text, so the DOM can say so (474's own hook). */
+  accountIsOperatorText: boolean;
+  /** The holder, as a HANDLE and nothing else (04 R6) — `null` when the account could not be named. */
+  accountHandle: string | null;
+  /** That account's own page. ⛔ Built by `console-routes.ts`, never spelled at a call site (319). */
+  accountHref: string;
+  /**
+   * ⛔ THE ID THE CANCEL CONTROL POSTS, AND `null` ON EVERY ROW THAT CANNOT BE STOPPED. Only a QUEUED stake can
+   * be: a CLAIMED one is already in flight and `cancelPending` refuses it, so offering the control there would be
+   * the dead control 432(a) forbids. It is POSTED and never PAINTED — no row renders it.
+   */
+  cancelId: string | null;
+};
+
+/** One row of the desk-wide history: the account page's row, plus whose account it is — or the desk's own. */
+export type ConsoleDeskEventRow = ConsoleEventRow & {
+  accountName: string;
+  accountIsOperatorText: boolean;
+  /** `null` for the control row's own events, which belong to no account and open no page. */
+  accountHref: string | null;
+};
+
+/**
+ * ⭐ THE CANCEL CONTROL'S FINISHED COPY (rulings 388, 415, 453) — ONE object for the whole panel and not one per
+ * row, because twenty identical dialogs in one payload is twenty chances for them to stop being identical.
+ * ⛔ Every word crosses the boundary as a finished string: ruling 385 measured that most of this console's
+ * sentences carry NO vocabulary word at all, so one typed into a client file would ship to every visitor with the
+ * disclosure walk and the bundle scan both reporting clean.
+ */
+export type ConsoleCancelCopy = {
+  label: string;
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  reasonLabel: string;
+  reasonHint: string;
+  reasonCountLabel: string;
+  reasonMin: number;
+  reasonMax: number;
+  doneTitle: string;
+  failTitle: string;
+};
+
+const CONSOLE_CANCEL_COPY: ConsoleCancelCopy = {
+  label: "Stop it",
+  title: "Stop this queued stake",
+  body: "This stake has not been placed yet. Stopping it means it never will be, and the record keeps who stopped it and why.",
+  confirmLabel: "Stop the stake",
+  cancelLabel: "Cancel",
+  /* ⛔ 388 · A REQUIRED FIELD SAYS SO. The primary button is armed on `CONSOLE_REASON_MIN` and the counter counts
+     DOWN, so a field that did not say it was required met an officer with a dead button and nothing explaining it. */
+  reasonLabel: "Why are you stopping it? (required)",
+  reasonHint: "This is kept on the record. Do not type anyone's name, number or address.",
+  reasonCountLabel: "characters left",
+  reasonMin: CONSOLE_REASON_MIN,
+  reasonMax: CONSOLE_REASON_MAX,
+  doneTitle: "The stake was stopped",
+  failTitle: "Nothing was stopped",
+};
+
+/** The desk-wide activity panel. ⛔ Same shell, same rail, same pager, one more column. */
+export type ConsoleFeedView = ConsoleDeskShell
+  & Pick<ConsoleDetailView, "feedPage" | "feedPerPage" | "feedFilters" | "feedPresets" | "feedPresetDefault"
+    | "feedParams" | "feedEmpty" | "feedFiltered" | "feedClearHref" | "feedOrderNote" | "queryRefusal">
+  & {
+    /** ⛔ `null` is a read that FAILED (355) — `AdminLoadError`, never an empty table. */
+    feed: ConsoleDeskFeedRow[] | null;
+    /** ⛔ FROM `countFeed`, NEVER `feed.length` (344): `pageLimit` clamps every list reader at 500 rows. */
+    feedTotal: number | null;
+    /** `null` when this render offers no cancel at all, so the page draws no control rather than a dead one. */
+    cancelCopy: ConsoleCancelCopy | null;
+  };
+
+/** The desk-wide history panel. */
+export type ConsoleHistoryView = ConsoleDeskShell
+  & Pick<ConsoleDetailView, "historyPage" | "historyPerPage" | "historyParams" | "historyEmpty" | "historyOrderNote" | "queryRefusal">
+  & {
+    history: ConsoleDeskEventRow[] | null;
+    historyTotal: number | null;
+  };
+
+/** The desk's own empty states. ⛔ DIFFERENT WORDS from the account page's: "this account" and "the desk" are
+ *  different subjects, and an officer who reads the second sentence on the wrong panel learns the wrong fact (416). */
+const CONSOLE_DESK_FEED_EMPTY: ConsoleEmpty = {
+  title: "Nothing staked yet",
+  body: "Every stake the desk tries appears here, newest first, with what happened to it.",
+};
+const CONSOLE_DESK_HISTORY_EMPTY: ConsoleEmpty = {
+  title: "No changes yet",
+  body: "Every change to the desk and to the accounts on it is kept here, newest first — who made it and when.",
+};
+
+/**
+ * Which account a row is about, from the roster the shell already read — never a second read and never a read per
+ * row (ruling 351's own refusal of the per-bot loop).
+ * ⛔ THE THREE STATES ARE KEPT APART: the roster read FAILED (nobody can tell), the account is not on the roster
+ * (it was removed, which is a fact about the row), or it is there and the label is the operator's own text.
+ */
+function consoleAccountCell(
+  roster: ReadonlyMap<string, StoredHouseBot> | null,
+  houseBotId: string | null,
+): { accountName: string; accountIsOperatorText: boolean; accountHandle: string | null } {
+  if (houseBotId === null) return { accountName: CONSOLE_ACCOUNT_DESK, accountIsOperatorText: false, accountHandle: null };
+  if (roster === null) return { accountName: CONSOLE_ACCOUNT_UNREADABLE, accountIsOperatorText: false, accountHandle: null };
+  const found = roster.get(houseBotId);
+  if (!found) return { accountName: CONSOLE_ACCOUNT_GONE, accountIsOperatorText: false, accountHandle: null };
+  return {
+    accountName: clampOperatorText(found.label, operatorBound("label")),
+    accountIsOperatorText: true,
+    accountHandle: playerHandle(found.userId),
+  };
+}
+
+/** The roster the shell already holds, keyed — built once per render, never per row. */
+function consoleRosterMap(roster: StoredHouseBot[] | null): ReadonlyMap<string, StoredHouseBot> | null {
+  return roster === null ? null : new Map(roster.map((b) => [b.id, b] as [string, StoredHouseBot]));
+}
+
+/**
+ * ⭐ THE DESK-WIDE ACTIVITY PANEL'S GATED READER (rulings 312, 317, 340, 344, 345, 355, 410, 411).
+ *
+ * ⛔ THE AUDIENCE IS RESOLVED FIRST AND NOTHING IS READ BEFORE THE VERDICT, so a refused viewer's payload carries
+ * no label, no handle, no amount and no sentence.
+ * ⛔ ONE FILTER OBJECT FEEDS THE PAGE AND THE TOTAL (ruling 345). The moment the two are written separately the
+ * pager counts a population the table cannot show, and nothing on the screen says which of them is wrong.
+ * ⛔ THE ORDER IS THE DAL'S OWN `("createdAt","id") DESC`, in BOTH the listing reader and the counting reader — a
+ * numbered pager over an unstable order shows one row twice and hides another.
+ */
+export async function houseFeedForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  query?: ConsoleQuery,
+): Promise<ConsoleFeedView | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const q = parseConsoleQuery(query, Date.now(), consoleTab);
+  /* ⛔ NO ACCOUNT FACET AT ALL — the desk IS the population. An empty-string or "any" sentinel would be a fourth
+   * spelling of "no filter" that the shared predicate would then have to know about. */
+  const feedFilter: IntentFeedCount = {
+    ...(q.product ? { productLine: q.product as IntentProductLine } : {}),
+    ...(q.kind ? { kinds: [q.kind as IntentKind] } : {}),
+    ...(q.outcome ? { statuses: [q.outcome as IntentStatus] } : {}),
+    ...(q.fromIso ? { fromIso: q.fromIso } : {}),
+    ...(q.toIso ? { toIso: q.toIso } : {}),
+  };
+  /* A bell was followed and no page was typed: resolve the anchor's own page before the set is issued. */
+  const wantPage = q.intentId && !q.pageAsked
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;
+
+  const { core, extra: pageRead, extraB: totalRead } = await readDeskCore(
+    () => houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantPage - 1) * CONSOLE_FEED_PER_PAGE }),
+    () => houseBotIntentStore.countFeed(feedFilter),
+  );
+  const shell = deskShell(core);
+
+  const feedTotal = totalRead;
+  let rows = pageRead;
+  let shown = consoleLastPage(feedTotal, wantPage, CONSOLE_FEED_PER_PAGE);
+  /* ⛔ THE ANCHOR'S RANK IS INCLUSIVE, SO A TIE INFLATES IT — the step back is what makes it exact, and it costs no
+   * read: the rows are already in hand (the whole argument is written at the account page's own reader). */
+  if (q.intentId != null && !q.pageAsked && shown === wantPage && shown > 1
+    && rows != null && !rows.rows.some((i) => i.id === q.intentId)) shown -= 1;
+  if (rows != null && shown !== wantPage) {
+    try {
+      rows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (shown - 1) * CONSOLE_FEED_PER_PAGE });
+    } catch { rows = null; }
+  }
+
+  const byId = consoleRosterMap(core.roster);
+  const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({
+    ...consoleFeedRow(i, q.intentId),
+    ...consoleAccountCell(byId, i.houseBotId),
+    accountHref: consoleBotHref(i.houseBotId),
+    /* ⛔ ONE POPULATION FOR THE BADGE AND FOR THE CONTROL (the `CONSOLE_PENDING_STATUSES` table): a row the badge
+     * counts is a row an officer can stop, and a row it does not count offers no control at all. */
+    cancelId: (CONSOLE_PENDING_STATUSES as readonly string[]).includes(i.status) ? i.id : null,
+  }));
+
+  const panel = consolePanelShell(CONSOLE_ROUTE, q);
+  return {
+    ...shell,
+    feedPage: shown,
+    feedPerPage: panel.feedPerPage,
+    feedFilters: panel.feedFilters,
+    feedPresets: panel.feedPresets,
+    feedPresetDefault: panel.feedPresetDefault,
+    feedParams: panel.feedParams,
+    /* ⛔ THE DESK'S OWN WORDS FOR AN EMPTY LIST, and the FILTERED state keeps the shell's own sentence — "nothing
+     * matches this filter" is the same fact on either page, and "nothing yet" is not. */
+    feedEmpty: panel.feedFiltered ? panel.feedEmpty : CONSOLE_DESK_FEED_EMPTY,
+    feedFiltered: panel.feedFiltered,
+    feedClearHref: panel.feedClearHref,
+    feedOrderNote: panel.feedOrderNote,
+    queryRefusal: panel.queryRefusal,
+    feed,
+    feedTotal,
+    /* ⛔ NO CONTROL WHERE THERE IS NOTHING TO STOP (432(a)). A failed read offers none either: `feed` is `null` and
+     * the panel paints the kit's failure treatment instead of a table with buttons in it. */
+    cancelCopy: feed != null && feed.some((r) => r.cancelId !== null) ? CONSOLE_CANCEL_COPY : null,
+  };
+}
+
+/**
+ * ⭐ THE DESK-WIDE HISTORY PANEL'S GATED READER (rulings 317, 340, 344, 355, 411, 420).
+ *
+ * ⛔ IT CARRIES THE CONTROL ROW'S OWN EVENTS, and that is the difference from the account page's history: the
+ * switch, a limits save and the withdrawal are the DESK's changes and belong to no account, so the desk-wide read
+ * takes no account facet at all.
+ * ⛔ NO AMOUNT AND NO BALANCE FROM ANY PAYLOAD (266, 369(c), 456) — the row carries a door to the platform's own
+ * transactions screen instead, exactly as the account page's does.
+ */
+export async function houseHistoryForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  query?: ConsoleQuery,
+): Promise<ConsoleHistoryView | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const q = parseConsoleQuery(query, Date.now(), consoleTab);
+  const wantPage = q.eventId && !q.hpageAsked
+    ? await consoleHistoryAnchorPage(q.eventId, null, q.hpage) : q.hpage;
+
+  const { core, extra: pageRead, extraB: totalRead } = await readDeskCore(
+    () => houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantPage - 1) * CONSOLE_HISTORY_PER_PAGE }),
+    () => houseBotEventStore.countAll({}),
+  );
+  const shell = deskShell(core);
+
+  const historyTotal = totalRead;
+  let rows = pageRead;
+  let shown = consoleLastPage(historyTotal, wantPage, CONSOLE_HISTORY_PER_PAGE);
+  if (q.eventId != null && !q.hpageAsked && shown === wantPage && shown > 1
+    && rows != null && !rows.some((e) => e.id === q.eventId)) shown -= 1;
+  if (rows != null && shown !== wantPage) {
+    try {
+      rows = await houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (shown - 1) * CONSOLE_HISTORY_PER_PAGE });
+    } catch { rows = null; }
+  }
+
+  const byId = consoleRosterMap(core.roster);
+  const history: ConsoleDeskEventRow[] | null = rows == null ? null : rows.map((e) => {
+    const cell = consoleAccountCell(byId, e.houseBotId);
+    return {
+      ...consoleEventRow(e, q.eventId),
+      accountName: cell.accountName,
+      accountIsOperatorText: cell.accountIsOperatorText,
+      accountHref: e.houseBotId === null ? null : consoleBotHref(e.houseBotId),
+    };
+  });
+
+  const panel = consolePanelShell(CONSOLE_ROUTE, q);
+  return {
+    ...shell,
+    historyPage: shown,
+    historyPerPage: panel.historyPerPage,
+    historyParams: panel.historyParams,
+    historyEmpty: CONSOLE_DESK_HISTORY_EMPTY,
+    historyOrderNote: panel.historyOrderNote,
+    queryRefusal: panel.queryRefusal,
+    history,
+    historyTotal,
+  };
+}
 
 /* ═══ C7 STEP 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368 as amended by 459, 382, 383, 387, 412) ════════
  *

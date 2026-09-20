@@ -42,7 +42,7 @@ import { FormColumn } from "@/components/ui/form-column";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { currentSession } from "@/lib/server/auth-service";
-import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, type ConsoleDetailQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
+import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
 import { ActivityFilters } from "./activity-filters";
 import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
@@ -110,7 +110,7 @@ type DeskAccountProps = {
    * shape inside `houseDetailForConsole` — which also builds the rail's own links from that same parse, so the
    * control an officer clicks and the read the server takes cannot disagree.
    */
-  searchParams: Promise<ConsoleDetailQuery>;
+  searchParams: Promise<ConsoleQuery>;
 };
 
 /**

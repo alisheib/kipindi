@@ -381,7 +381,12 @@ section("§2 · the strip, the band, the roster and every failure");
                and the ACCOUNT PAGE's own label — which is the head of that page and therefore the string most
                likely to sit in a screenshot of it. */
             && /label: clampOperatorText\(bot\.label, operatorBound\("label"\)\),/.test(gateSrc)
-            && (gateSrc.match(/clampOperatorText\(/g) ?? []).length === 4
+            /* ⭐ A FIFTH SITE AT C7 STEP 5's LANDING HALF: the desk-wide feed and history each name the account a
+               row is about, and that name is the operator's own text on a page that lists every account at once
+               — so it is bounded by the SAME named bound, read from the same list, at the one site both panels
+               get it from. */
+            && /accountName: clampOperatorText\(found\.label, operatorBound\("label"\)\),/.test(gateSrc)
+            && (gateSrc.match(/clampOperatorText\(/g) ?? []).length === 5
             && !/maxCodePoints: \d+/.test(gateSrc.slice(gateSrc.indexOf("function clampOperatorText"))),
           j({ sites: (gateSrc.match(/clampOperatorText\(/g) ?? []).length }));
       }
@@ -3305,7 +3310,13 @@ try {
     ok("1.345 · SOURCE · there is ONE filter object: the count takes it whole and the page read spreads it with only the paging words added",
       /const feedFilter: IntentFeedCount = \{/.test(gateNow)
         && /houseBotIntentStore\.countFeed\(feedFilter\)/.test(gateNow)
-        && (gateNow.match(/listFeed\(\{ \.\.\.feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset:/g) ?? []).length === 2,
+        /* ⭐ FOUR SITES SINCE THE LANDING HALF: each panel reads its page ONCE and re-reads it ONCE when the
+           address asked for a page past the end, and every one of the four spreads the SAME filter object with
+           only the paging words added. ⛔ The count is an EQUALITY: a fifth read built from a hand-copied facet
+           list is exactly the drift this case exists for. */
+        && (gateNow.match(/listFeed\(\{ \.\.\.feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset:/g) ?? []).length === 4
+        /* ⛔ AND THE DESK-WIDE COUNT TAKES THE SAME OBJECT WHOLE, exactly as the account page's does. */
+        && (gateNow.match(/countFeed\(feedFilter\)/g) ?? []).length === 2,
       j({ countCalls: (gateNow.match(/countFeed\(/g) ?? []).length }));
 
     /* ── 1.355 · A FAILED READ IS NEVER AN EMPTY STATE, AND EACH FAILURE IS ATTRIBUTED TO ITS OWN FIGURE ──── */
@@ -5722,7 +5733,11 @@ export default function Ruling513Control() {
      holder-to-be; neither takes `switchedById`, `actorId` or `viewerUserId`, and that is what is pinned. */
   {
     const handleArgs = [...gateCode.matchAll(/playerHandle\(([^)]*)\)/g)].map((m) => m[1].trim());
-    const HOLDER_ARGS = ["bot.userId", "bot.userId", "u.id", "id"];
+  /* ⭐ FIVE SITES AT C7 STEP 5's LANDING HALF — the desk-wide feed and history name WHOSE account each row is
+     about, and the third argument below is that account's own `userId`, read from the roster the shell already
+     holds. It is the HOLDER again, never `e.actorId`: the history's Who column carries the ACTOR, by id and never
+     behind a player's mask, and the two are three lines apart in the same row. */
+    const HOLDER_ARGS = ["bot.userId", "bot.userId", "found.userId", "u.id", "id"];
     ok("1.420 · `playerHandle` is used for the HOLDER only, never for a staff actor — every call takes an account's own id, pinned by position",
       j(handleArgs) === j(HOLDER_ARGS), j({ found: handleArgs, want: HOLDER_ARGS }));
   }
@@ -6404,7 +6419,7 @@ export default function Ruling513Control() {
       (() => {
         const gateSrc = decomment(read(GATE));
         const labels = [...gateSrc.matchAll(/reasonLabel: "([^"]+)"/g)].map((m) => m[1]);
-        return labels.length === 3 && labels.every((t) => t.endsWith("(required)"))
+        return labels.length === 4 && labels.every((t) => t.endsWith("(required)"))
           && /export const CONSOLE_REASON_MIN = 5;/.test(gateSrc)
           && /reason\.length < CONSOLE_REASON_MIN/.test(gateSrc);
       })(),

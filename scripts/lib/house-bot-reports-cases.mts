@@ -2133,7 +2133,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * argument. The pin's job is unchanged and undiminished: a call with the wrong number of arguments is still red,
  * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
  * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -2424,8 +2424,14 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      it awaits nothing, names no store and decides no audience, which is what 0.512b checks rather than assumes.
      ⛔ The two panels' READER is `houseDetailForConsole`, which has its `CONSOLE_GATES` entry above — the arity
      pin MOVED with the door's shape at this step (a query object in place of a bare page number) and stayed at 4. */
-  "CONSOLE_EVENT_WORD", "CONSOLE_FEED_AXES", "CONSOLE_REFUSAL_TITLE", "ConsoleDetailQuery", "ConsoleEventRow", "ConsoleFeedAxis", "ConsoleFeedRow",
+  "CONSOLE_EVENT_WORD", "CONSOLE_FEED_AXES", "CONSOLE_REFUSAL_TITLE", "ConsoleQuery", "ConsoleEventRow", "ConsoleFeedAxis", "ConsoleFeedRow",
   "ConsoleFilterGroup", "ConsoleFilterOption",
+  /* ⭐ C7 step 5 (the LANDING half) · the two desk-wide panels' painted SHAPES and the cancel control's finished
+     copy. Every one of them is a TYPE: it awaits nothing, names no store and decides no audience, which is what
+     0.512b checks rather than takes on trust. ⛔ Their READERS are `houseFeedForConsole` and
+     `houseHistoryForConsole`, each with its own `CONSOLE_GATES` entry above at arity THREE — the viewer, the
+     calling file's own route as a string literal, and the REQUEST's untouched query string. */
+  "ConsoleCancelCopy", "ConsoleDeskEventRow", "ConsoleDeskFeedRow", "ConsoleFeedView", "ConsoleHistoryView",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
