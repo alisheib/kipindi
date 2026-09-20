@@ -210,7 +210,12 @@ export async function sunsetHouseBots(input: { actorId: string | null; reason: s
     const entry = (await audit({
       category: HOUSE_AUDIT["house_bot.sunset"],
       action: "house_bot.sunset",
-      actorId: input.actorId ?? "system",
+      /* 🔴 WAS `input.actorId ?? "system"`, AND THAT WAS A FABRICATED ACTOR. `audit()` takes `string | null` and its
+       * own comment says "null for system events", so the `??` bought nothing and invented an id no user has —
+       * while ruling 170's closed actor list (officer, forwarded officer, engine, nobody) does not contain it.
+       * `test:house-bot-reports` 0.170.1 reported it by name the first time this lane ran that suite. An audit row
+       * whose actor is a word rather than an account is the shape that makes a chain unreadable later. */
+      actorId: input.actorId,
       targetType: "HouseBotControl",
       targetId: HOUSE_CONTROL_ID,
       payload,
