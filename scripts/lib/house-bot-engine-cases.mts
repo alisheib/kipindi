@@ -575,6 +575,85 @@ await guard("11", async () => {
   const zone = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, timeZone: async () => "Africa/Dar_es_Salaam" });
   ok("11.15 · A4: a database TimeZone that is not UTC → not started", zone.started === false && zone.refused === "DB_TIMEZONE");
   ok("11.16 · …and no boot row was written by a refused start", (await HDAL.houseBotRuntimeStore.get(`engine:${INSTANCE_ID}`)) === null);
+
+  /* ── 11.15b–f · ⛔ THE BOOT REFUSAL THAT TOLD NOBODY (01 register:1210; `ALERT_KEY.dbTimezone`) ────────────────
+   * 11.15 has pinned the REFUSAL since commit 4, and the refusal is right: a database whose TimeZone is not UTC makes
+   * every EAT day key wrong, so the engine declines to start rather than count a day it cannot trust. What no case
+   * asked until this build is whether anyone is TOLD. `ALERT_KEY.dbTimezone()` sat in the key table from commit 4
+   * with ZERO callers anywhere in the tree, and the only trace of the refusal was a `console.error` on a container
+   * that then sat idle — an engine that is correct, and silent, and from every instrument indistinguishable from an
+   * engine nobody switched on.
+   * ⛔ THE CONDITION IS DRIVEN, NEVER THE FUNCTION. Every case below boots a real engine through a real
+   * `deps.timeZone` and reads what arrived on the channel. A case that called the alert helper and watched it return
+   * would stay green on a build where the boot path never reaches it — which is exactly the build this was written
+   * against, and is the easiest alert assertion in the world to fake. */
+  {
+    const bell = () => {
+      const calls: Any[] = [];
+      const alerts: Any = {
+        once: async (key: string, m: Any) => { calls.push({ key, code: m.code, detail: m.detail }); },
+        placed: async () => {}, security: async () => {}, botStopped: async () => {},
+      };
+      return { calls, alerts };
+    };
+    const fresh = () => { globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined; };
+    const withBell = (b: Any) => ({ ...ticks, hookAlerts: b.alerts });
+    const tzDeps = (zone: string | null) => ({ env: () => undefined, schemaReady: ready, timeZone: async () => zone });
+
+    fresh();
+    const b1 = bell();
+    const first = await EN2.startHouseBotEngine(withBell(b1), tzDeps("Africa/Dar_es_Salaam"));
+    ok("11.15b · ⛔ register:1210 · a non-UTC database still refuses the boot — AND NOW RINGS: exactly one engine:db_timezone bell, code DB_TIMEZONE, carrying the zone that was actually read",
+      first.started === false && first.refused === "DB_TIMEZONE" && b1.calls.length === 1
+        && b1.calls[0].code === "DB_TIMEZONE" && String(b1.calls[0].key).startsWith("engine:db_timezone")
+        && b1.calls[0].detail?.zone === "Africa/Dar_es_Salaam",
+      j(b1.calls));
+
+    fresh();
+    const b2 = bell();
+    const second = await EN2.startHouseBotEngine(withBell(b2), tzDeps("Africa/Dar_es_Salaam"));
+    ok("11.15c · …and the same misconfiguration on the NEXT container boot in the same EAT day still refuses and tells nobody a second time — the throttle is the AlertOnce claim, not a process flag, so a fleet restarting together against one bad database rings once",
+      second.refused === "DB_TIMEZONE" && b2.calls.length === 0, j({ refused: second.refused, calls: b2.calls }));
+
+    fresh();
+    const b3 = bell();
+    const unreadable = await EN2.startHouseBotEngine(withBell(b3), tzDeps(null));
+    ok("11.15d · …and a TimeZone that cannot be read AT ALL is the same refusal, inside the same day's one bell",
+      unreadable.refused === "DB_TIMEZONE" && b3.calls.length === 0, j({ refused: unreadable.refused, calls: b3.calls }));
+
+    /* ⭐ POSITIVE CONTROL — the case that must still be ALLOWED. A UTC database has to pass this gate, and the only
+     * way to prove it passed WITHOUT arming this process's timers (11.17 below owns the one real start in §11) is to
+     * let it reach the very next statement and fail there: the boot row. BOOT_FAILED is therefore proof that the
+     * zone was ACCEPTED, and no bell rang for a database that was never misconfigured. Without this control a build
+     * that alerted on every boot, UTC or not, would pass 11.15b–d HARDER than the right one. */
+    fresh();
+    const b4 = bell();
+    const realBoot = HDAL.houseBotRuntimeStore.boot;
+    let utc: Any;
+    try {
+      HDAL.houseBotRuntimeStore.boot = async () => { throw new Error("boot row refused by the positive control"); };
+      utc = await EN2.startHouseBotEngine(withBell(b4), tzDeps("Etc/UTC"));
+    } finally {
+      HDAL.houseBotRuntimeStore.boot = realBoot;
+    }
+    ok("11.15e · ⭐ POSITIVE CONTROL · a UTC database is ALLOWED past the clock gate — it reaches the boot row (BOOT_FAILED, never DB_TIMEZONE) and rings NO timezone bell",
+      utc?.refused === "BOOT_FAILED" && b4.calls.length === 0, j({ refused: utc?.refused, calls: b4.calls }));
+
+    /* ⛔ THE BELL MAY NEVER COST THE VERDICT. The refusal is already decided when the alert runs; a channel that
+     * throws must still leave the engine refused and the caller told WHICH refusal it was. An alert that swallowed
+     * the verdict would be this defect again, louder: a stop that reports nothing. */
+    fresh();
+    const throwing: Any = {
+      ...ticks,
+      hookAlerts: { once: async () => { throw new Error("alert channel down"); }, placed: async () => {}, security: async () => {}, botStopped: async () => {} },
+    };
+    let stillRefused: Any;
+    try { stillRefused = await EN2.startHouseBotEngine(throwing, tzDeps("Africa/Nairobi")); }
+    catch (e) { stillRefused = { threw: String((e as Error)?.message ?? e) }; }
+    ok("11.15f · ⛔ the bell never costs the verdict · an alert channel that THROWS still leaves the engine refused DB_TIMEZONE, and startHouseBotEngine itself does not throw",
+      stillRefused?.refused === "DB_TIMEZONE" && stillRefused?.threw === undefined, j(stillRefused));
+  }
+
   globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
   const on = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, timeZone: async () => "Etc/UTC", dbClockMs: async () => Date.now() + 1_000 });
   const firstTimer = EN2.engineState().timers.first;
@@ -1632,7 +1711,9 @@ await guard("16", async () => {
     const calls: Any[] = [];
     const alerts = {
       placed: async (i: Any) => { calls.push({ fn: "placed", id: i.id, inFlight: EN2.engineState().inFlight.has(i.id) }); if (o.placedThrows) throw new Error("alert channel down"); },
-      once: async (key: string, m: Any) => { calls.push({ fn: "once", key, code: m.code }); },
+      /* ⛔ `detail` IS CAPTURED, and 16.515f is why: a D19 case that asks "does this bell name a holder?" over calls
+       * that never carried a detail is an absence measured over NOTHING, and passes on every build. */
+      once: async (key: string, m: Any) => { calls.push({ fn: "once", key, code: m.code, detail: m.detail }); },
       security: async (m: Any) => { calls.push({ fn: "security", code: m.code }); },
       botStopped: async (bot: Any, change: Any) => { calls.push({ fn: "botStopped", botId: bot.id, ...change }); },
     };
@@ -2139,6 +2220,96 @@ await guard("16", async () => {
       j({ good: good && { claimed: good.claimed, beat: good.beat, threw: good.threw }, row: recovered && { streak: recovered.pollerErrorStreak, beatAt: recovered.beatAt, skewMs: recovered.skewMs, code: recovered.pollerErrorCode } }));
     ok("16.514g · CONTROL · the claim really was restored — the pass above claimed and fired a real row, so the reset is a measurement and not an unreached patch",
       good?.results?.length === 1, j({ results: good?.results?.length }));
+  }
+
+  /* ── 16.515 · ⛔ THE SILENT STOP — the clock-skew bell (01 register:1218; `ALERT_KEY.clockSkew`) ────────────────
+   * MEASURED before this build: `ALERT_KEY.clockSkew` had exactly ONE occurrence in the whole tree — its own line in
+   * the key table — and §11.3/§11.4 pinned only the REFUSAL. That refusal has always been right: `claimGate` will
+   * not claim while this container's measured offset from the database clock is unknown or past
+   * MAX_TOLERATED_SKEW_MS, because claiming on a clock five seconds out fires intents before they are due.
+   * ⛔ THE DEFECT IS THE SILENCE, NOT THE STOP. On a live money platform the bots then stop staking and the only
+   * evidence is an ABSENCE: no outcome, no audit, no bell — every instrument reading "quiet", which is exactly what
+   * an hour with nothing due looks like. A stop nobody is told about is its own failure, and it is the same one A24
+   * exists for, so it is answered in the same place and the same shape as A24's limb above.
+   * ⛔ THE CONDITION IS DRIVEN, NEVER THE FUNCTION. Every case below runs a real `pollerPass` over a real gate and
+   * reads what arrived on the channel. A case that called the alert helper and watched it return would stay green on
+   * a build where `pollerPass` never reaches it — which is precisely the build this section was written against. */
+  {
+    const instanceId = `hb-test-skew-${process.pid}`;
+    const st = { ...EN2.engineState(), started: true, stopping: false, skewMs: 0, inFlight: new Map() };
+    const rec = recorder();
+    const bells = () => rec.calls.filter((c: Any) => c.fn === "once" && String(c.key).startsWith("engine:clock_skew"));
+
+    const before = bells().length;
+    const unknown = await passSafe({ state: { ...st, skewMs: null }, instanceId }, rec.alerts);
+    ok("16.515a · ⛔ register:1218 · a clock that has NOT been measured stops the claims (SKEW_UNKNOWN) — and now RINGS: exactly one engine:clock_skew bell, code CLOCK_SKEW, the key's first writer anywhere in this tree",
+      before === 0 && unknown?.claimed === 0 && unknown?.gate === "SKEW_UNKNOWN" && unknown?.alerted === true
+        && bells().length === 1 && bells()[0]?.code === "CLOCK_SKEW",
+      j({ before, pass: unknown, bells: bells().map((c: Any) => ({ key: c.key, code: c.code })) }));
+
+    const over = await passSafe({ state: { ...st, skewMs: 6_000 }, instanceId }, rec.alerts);
+    ok("16.515b · …and a clock 6 s out on the NEXT pass of the same EAT day stops the claims too and tells nobody a second time — the throttle is the AlertOnce claim, which is what makes a poller reaching this line every few seconds, on every container at once, ring ONCE",
+      over?.claimed === 0 && over?.gate === "SKEW" && over?.alerted === false && bells().length === 1,
+      j({ pass: over, bells: bells().length }));
+
+    /* ⭐ POSITIVE CONTROLS — the gate reasons that must still be ALLOWED to be silent. NOT_STARTED and STOPPING are
+     * a container booting or shutting down and FULL is back-pressure: the engine WORKING. A bell on any of them
+     * would wake an officer at every deploy, and an alert nobody can act on is an alert nobody reads.
+     * ⭐ THE FIRST ONE IS THE SHARP ONE: its skew is genuinely UNKNOWN (skewMs null) and it still must not ring,
+     * because `claimGate` answers NOT_STARTED first. A build that rang on "the gate refused" rather than on "the
+     * clock cannot be trusted" passes 16.515a–b and fails only here. */
+    const quiet = recorder();
+    const quietBells = () => quiet.calls.filter((c: Any) => c.fn === "once" && String(c.key).startsWith("engine:clock_skew"));
+    const notStarted = await passSafe({ state: { ...st, started: false, skewMs: null }, instanceId }, quiet.alerts);
+    const stopping = await passSafe({ state: { ...st, stopping: true, skewMs: null }, instanceId }, quiet.alerts);
+    const busy = new Map([["hbi_s1", { startedAt: 0, inline: false }], ["hbi_s2", { startedAt: 0, inline: true }]]);
+    const full = await passSafe({ state: { ...st, skewMs: 0, inFlight: busy }, instanceId }, quiet.alerts);
+    ok("16.515c · ⭐ POSITIVE CONTROL · an UNMEASURED clock behind a NOT_STARTED or STOPPING gate, and a FULL slot table on a good clock, are the engine working — each refuses claims and NOT ONE of them rings",
+      notStarted?.gate === "NOT_STARTED" && stopping?.gate === "STOPPING" && full?.gate === "FULL"
+        && notStarted?.alerted === false && stopping?.alerted === false && full?.alerted === false
+        && quietBells().length === 0,
+      j({ gates: [notStarted?.gate, stopping?.gate, full?.gate], bells: quietBells().length }));
+
+    /* ⛔ THE BELL NEVER COSTS THE PASS, AND A CHANNEL DOWN FOR ONE TICK MUST NOT BUY THE WHOLE DAY'S SILENCE.
+     * The claim is given back when the send throws (C3 review LI-8), so the next occurrence still tells someone.
+     * The day's claim is spent by 16.515a, so it is handed back here by its own key — the one the bell reported —
+     * to re-arm the condition rather than to simulate it. */
+    await S.houseBotAlertOnceStore.release(String(bells()[0]?.key)).catch(() => {});
+    const downRec = recorder();
+    const downAlerts: Any = { ...downRec.alerts, once: async () => { throw new Error("alert channel down"); } };
+    const down = await passSafe({ state: { ...st, skewMs: null }, instanceId }, downAlerts);
+    ok("16.515d · ⛔ the bell never costs the pass · a channel that THROWS still returns the gate reason and alerted:false, and pollerPass itself does not throw",
+      down?.claimed === 0 && down?.gate === "SKEW_UNKNOWN" && down?.alerted === false && down?.threw === undefined, j(down));
+
+    const after = recorder();
+    const afterBells = () => after.calls.filter((c: Any) => c.fn === "once" && String(c.key).startsWith("engine:clock_skew"));
+    const retry = await passSafe({ state: { ...st, skewMs: -6_000 }, instanceId }, after.alerts);
+    ok("16.515e · ⭐ LI-8 · the FAILED bell gave its claim back, so the very next skewed pass does tell someone — and a clock 6 s out the OTHER way is the same untrustworthy clock",
+      retry?.gate === "SKEW" && retry?.alerted === true && afterBells().length === 1 && afterBells()[0]?.code === "CLOCK_SKEW",
+      j({ retry, bells: afterBells().length }));
+
+    /* ⛔ AND THE ABSENCE IS MEASURED OVER SOMETHING. The first half of this case pins that each bell really carries
+     * its diagnostic detail; only then does the second half mean anything. Asked over calls that carried no detail
+     * at all — which is what the shared recorder handed back until this build — "does it name a holder?" is a sweep
+     * over an empty population, and an empty sweep passes. */
+    const d19 = [...bells(), ...afterBells()];
+    ok("16.515f · ⛔ D19 · every skew bell carries its diagnostic detail — reason, the measured offset and the tolerance — and NAMES NO BOT AND NO HOLDER: a server clock is a fact about the PROCESS, true of every bot at once, and a handle hung on it would put a person's name against a fault that has nothing to do with them",
+      d19.length === 2 && d19.every((c: Any) => {
+        const d = (c.detail ?? {}) as Record<string, unknown>;
+        const carries = typeof d.reason === "string" && d.toleratedMs === K.MAX_TOLERATED_SKEW_MS && "skewMs" in d;
+        const names = d.botId !== undefined || d.holderUserId !== undefined || d.handle !== undefined || d.label !== undefined;
+        return carries && !names;
+      }), j(d19.map((c: Any) => c.detail)));
+
+    /* ⭐ POSITIVE CONTROL · the bell must not have bought its silence by breaking the poller. A clock inside
+     * tolerance on the same instance still claims a real due row and fires it. */
+    const bSkew = await botWith();
+    const pSkew = await lockedPoll();
+    await S.houseBotIntentStore.insert(pendingRow(bSkew, pSkew.m.id));
+    const healthy = await passSafe({ state: { ...st, skewMs: 0 }, instanceId }, recorder().alerts);
+    ok("16.515g · ⭐ POSITIVE CONTROL · a clock INSIDE tolerance on the same instance still CLAIMS and FIRES a real due row — the gate that now rings did not stop admitting the passes it always admitted",
+      healthy?.claimed === 1 && healthy?.beat === true && healthy?.results?.length === 1,
+      j({ claimed: healthy?.claimed, beat: healthy?.beat, results: healthy?.results?.length }));
   }
   {
     const b = await botWith();
