@@ -391,9 +391,20 @@ export function DeskDesignateForm({
           <ul className="space-y-2 text-body-sm text-text-secondary max-w-[60ch] list-disc pl-5">
             {copy.consentBullets.map((line) => <li key={line}>{line}</li>)}
           </ul>
-          <p className="text-body-sm text-text-subtle">
-            Account <span className="font-mono text-text">{handle}</span>
-          </p>
+          {/* ⛔ ONE LABEL, ONE LOOK — AND IT TOOK A TILE TO SEE IT (ops-lane visual pass, 2026-09-20, read at all
+              six mandatory widths). This step painted `Account <handle>` as one line of sentence-case prose while
+              the step BEFORE it (`page.tsx`'s check panel, the same eyebrow pair) and the step AFTER it (the review
+              `<dl>` below, line-for-line identical markup) both paint the IDENTICAL label and value as the kit's
+              term/definition pair. Three consecutive steps of one wizard, one label, two looks — the exact defect
+              this section was pulled up on once already, and no suite could see it: §5.6 reads the words, §5.4 the
+              tap targets, and neither reads which RUNG a label is set on. The value's own treatment is unchanged
+              (`font-mono`, body-sm); only the label joins the two steps around it. */}
+          <dl>
+            <div>
+              <dt className="font-mono text-micro eyebrow uppercase text-text-tertiary">Account</dt>
+              <dd className="font-mono text-body-sm text-text">{handle}</dd>
+            </div>
+          </dl>
 
           <Field label={copy.labelLabel} hint={copy.labelHint} dataField="label" error={field === "label" ? error ?? undefined : undefined}>
             <Input

@@ -318,8 +318,20 @@ export function DeskLimitsForm({
         <Button type="submit" size="md" variant="primary" loading={pending}>
           Save · Hifadhi
         </Button>
-        {/* Reading copy, not an eyebrow: it tells the officer what the save will do. */}
-        <p className="font-mono text-body-sm text-text-subtle">Every limit is saved together, or none is</p>
+        {/* Reading copy, not an eyebrow: it tells the officer what the save will do.
+            ⛔ AND IT WAS SET IN MONO WHILE SAYING SO — READ OFF THE 360 AND 1280 TILES (ops-lane visual pass,
+            2026-09-20). The comment above is the author's own intent and the class list contradicted it: this is
+            the only prose on the Global-limits card set in tracked `font-mono`, beside a dozen captions the kit
+            renders as `text-body-sm text-text-subtle` ("Saved 200. Every account together, this EAT day.", "Saved
+            5.", "Up to 300 characters. Kept with the record.") — `Input`'s own `hint` rung, verbatim, at
+            `src/components/ui/input.tsx`. One card, two looks for one kind of sentence, on the form that governs
+            every stake the desk places. The rung is now the kit's, which is what the comment always claimed.
+            ⚠️ THE SENTENCE ITSELF IS UNTOUCHED, AND DELIBERATELY. It is the only caption on this card with no
+            terminal full stop, but the exact string is pinned by `scripts/lib/house-bot-console-cases.mts`'s
+            `CLIENT_OWNED_COPY` under `allowed.size === 6`, so a period here is a copy edit plus a shared-suite
+            edit — and ruling 388 already records this sentence as OWED a move to the server, which is where the
+            stop belongs. Recorded in DEFERRED-TESTS.md §1n rather than half-taken here. */}
+        <p className="text-body-sm text-text-subtle">Every limit is saved together, or none is</p>
       </div>
     </form>
   );

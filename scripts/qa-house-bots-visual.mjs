@@ -343,7 +343,13 @@ try {
            rather than inferred from position. */
         const operatorNodes = [...own.querySelectorAll("[data-operator-text]")];
         const operatorText = operatorNodes.map((el) => (el.textContent ?? "").trim()).filter(Boolean);
-        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, firstRowEmpty, railCount, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
+        /* ⛔ THE ADDRESS BAR IS A SURFACE, AND THIS GATE HAD NEVER READ IT (ops-lane visual pass, 2026-09-20).
+           §5.6 reads the rendered body and the aria-label/title/placeholder/alt attributes; it stopped at the
+           window. An officer's URL is on screen on every one of these pages, it is what a screenshot carries, and
+           it is what a `Referer` hands the next request — so a vocabulary word that reached a path segment or a
+           query key would have passed 1,398 checks. Collected here and asserted at §5.6 below. */
+        const url = `${location.pathname}${location.search}`;
+        return { url, clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, firstRowEmpty, railCount, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
       });
 
       ok(`§5.1 ${route} @${width} · no money figure is clipped by a box that cannot scroll, and none is broken across two lines`, facts.clipped.length === 0, facts.clipped.join(" | "));
@@ -465,6 +471,29 @@ try {
                  matched nothing cannot read as one that worked */
               && (facts.operatorText.length === 0 || subject.length < untouched.length),
             `${facts.operatorText.length} operator node(s): ${JSON.stringify(facts.operatorText.slice(0, 4))}`);
+        }
+        /* ⛔ RULING 453 REACHES THE ADDRESS BAR TOO, AND UNTIL NOW THIS GATE STOPPED AT THE WINDOW (ops-lane visual
+           pass, 2026-09-20). Every assertion above reads the DOM: the rendered body, the console's own region, its
+           aria-label/title/placeholder/alt. None read `location`. But the URL is ON SCREEN on every one of these
+           pages, it is the half of the shot a screenshot carries even when the page is clean, and it is what a
+           `Referer` header hands the next request — so a vocabulary word that reached a path segment, a tab key or
+           a query name would have passed all 1,398 checks of this file and been read by a person first.
+           ⛔ WHAT THIS DOES NOT CLAIM. The record-id prefix `hb_` IS in the path of every account route here, and
+           ruling 175's own control classifies a raw `hb_` prefix as BENIGN — `house-bot-disclosure.test.mts` 2.v.b
+           names it alongside `HOUSE_FEE` and `/admin/house`. So this check is not a finding about today's URLs; it
+           is the population those URLs were never in. It passes today by measurement, not by assumption. */
+        {
+          const urlHits = [...facts.url.matchAll(consoleNeutralRegExp("gi"))].map((m) => m[0]);
+          ok(`§5.6 ${route} @${width} · ⛔ RULING 453 · the ADDRESS BAR names no feature either — the path and query an officer can read, screenshot and send as a Referer`,
+            urlHits.length === 0, `${facts.url} · ${urlHits.slice(0, 6).join(",")}`);
+          /* ⛔ BOTH DIRECTIONS, on the subject that was actually collected. A URL check is worth nothing until it
+             has been shown to FIRE on a bad URL, to LET the real one through, and to have read a real location
+             rather than an empty string a failed evaluate would also produce. */
+          ok(`§5.6 ${route} @${width} · CONTROL · the URL scan fires on a planted route, lets this one through, and really read a location`,
+            [...`${facts.url}/house-bots/bot-1`.matchAll(consoleNeutralRegExp("gi"))].length > 0
+              && facts.url.startsWith("/admin/desk")
+              && facts.url.length >= "/admin/desk".length,
+            JSON.stringify(facts.url));
         }
       }
       if (facts.firstRowEmpty) {
