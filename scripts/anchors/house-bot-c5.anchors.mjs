@@ -297,7 +297,7 @@ export const MUTATIONS = [
     file: HOUSE_BOT_REPORTS_CASES,
     from: "    } else if ((ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) && (REQUESTER_TOKENS as readonly string[]).includes(n.text) && !inTypePosition(n)) {",
     to: "    } else if (false) {",
-    expect: "0.191.c4 · CONTROL · each lock shape a condition check alone missed is reported: a `function` helper answering \\",
+    expect: "0.191.c4 · CONTROL · each lock shape a condition check alone missed is reported: a `function` helper answering \"did this officer choose?\", the same as an arrow and as an object method, a `filter` predicate dropping the chooser's markets, houseStakes handed to another call, and houseStake in emergencyVoidMarket's ok:true result",
     suite: "reports-mem",
   },
   {
@@ -594,7 +594,7 @@ export const MUTATIONS = [
     file: HOUSE_BOT_REPORTS_CASES,
     from: "      if (!gated) say(`${reader}(…) is not handed straight to houseAuditForConsole: ${snippet(sf, call)}`, call);",
     to: "      if (!gated) void 0;",
-    expect: "0.260.c1 · CONTROL · the player page's measured leak restored (both readers ungated), a reader filtered before the gate, a literal viewer, a viewer that is not the session read from currentSession(), another domain's route, the overview's broader \\",
+    expect: "0.260.c1 · CONTROL · the player page's measured leak restored (both readers ungated), a reader filtered before the gate, a literal viewer, a viewer that is not the session read from currentSession(), another domain's route, the overview's broader \"/admin\" prefix and another page of the same domain are each reported; so are, in console pages no list names, the audience asked for a literal viewer, the stake read for a session that is not currentSession()'s, the labels read for another domain's route, a session reassigned after it was read and the gate handed on as a value; the KYC page's read through await, .catch and the gate, and a const bound once to the session's id, are not",
     suite: "reports-mem",
   },
   {
@@ -602,7 +602,7 @@ export const MUTATIONS = [
     file: HOUSE_BOT_REPORTS_CASES,
     from: " && (fileRoute === r || fileRoute.startsWith(`${r}/`))",
     to: "",
-    expect: "0.260.c1 · CONTROL · the player page's measured leak restored (both readers ungated), a reader filtered before the gate, a literal viewer, a viewer that is not the session read from currentSession(), another domain's route, the overview's broader \\",
+    expect: "0.260.c1 · CONTROL · the player page's measured leak restored (both readers ungated), a reader filtered before the gate, a literal viewer, a viewer that is not the session read from currentSession(), another domain's route, the overview's broader \"/admin\" prefix and another page of the same domain are each reported; so are, in console pages no list names, the audience asked for a literal viewer, the stake read for a session that is not currentSession()'s, the labels read for another domain's route, a session reassigned after it was read and the gate handed on as a value; the KYC page's read through await, .catch and the gate, and a const bound once to the session's id, are not",
     suite: "reports-mem",
   },
   {
@@ -610,7 +610,7 @@ export const MUTATIONS = [
     file: HOUSE_BOT_REPORTS_CASES,
     from: "\n          && roles.domainForPath(r) === roles.domainForPath(fileRoute) && roles.isOwnerOnlyPath(r) === roles.isOwnerOnlyPath(fileRoute);",
     to: ";",
-    expect: "0.260.c1 · CONTROL · the player page's measured leak restored (both readers ungated), a reader filtered before the gate, a literal viewer, a viewer that is not the session read from currentSession(), another domain's route, the overview's broader \\",
+    expect: "0.260.c1 · CONTROL · the player page's measured leak restored (both readers ungated), a reader filtered before the gate, a literal viewer, a viewer that is not the session read from currentSession(), another domain's route, the overview's broader \"/admin\" prefix and another page of the same domain are each reported; so are, in console pages no list names, the audience asked for a literal viewer, the stake read for a session that is not currentSession()'s, the labels read for another domain's route, a session reassigned after it was read and the gate handed on as a value; the KYC page's read through await, .catch and the gate, and a const bound once to the session's id, are not",
     suite: "reports-mem",
   },
   {
