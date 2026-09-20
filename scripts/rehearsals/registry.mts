@@ -12,6 +12,15 @@
  * only say `built` when it names a script that runs. The runner (`run.mts`) prints this table, runs the built rows,
  * and exits 3 (NOT MEASURED) — never 0 — while any drill is still owed.
  *
+ * ⚠️ THIS FILE NAMES `CRA-28` AND `CRA-29`, AND THAT HAS A MEASURED SIDE EFFECT — recorded here so nobody has to
+ * rediscover it. `house-bot-reports-cases.mts` §0.250 scans every file under `src/` and `scripts/` for the ids
+ * ruling 250 names and treats a hit as "declared in the tree". Measured on 2026-09-21 by reproducing that exact
+ * arithmetic with and without this folder: 2,261 → 2,266 files, ids found in the tree 7 → 8, and **`CRA-28` moves
+ * from the "deferred by name" door to the "found in the tree" door.** The gate's verdict is UNCHANGED —
+ * `undeclared` is empty either way, `deferredOnly` stays non-empty and its first element is still `HB-ACC-14`, so
+ * control `0.250.c1` still has a real sample. ⛔ But a scanner finding `CRA-28` here does NOT mean CRA-28 is
+ * covered: the row below says in as many words that nothing drives it. A string is not an assertion.
+ *
  * ⛔ A STATUS IS A MEASUREMENT, NOT A HOPE. Each non-`built` row carries the evidence for its status, re-checked
  * when this file was written; `covered` rows name the file AND the assertion that covers them, so the claim can be
  * refuted by opening it. Two rows were downgraded when exactly that was done — see `two-admin-on`.
@@ -66,11 +75,13 @@ export const REHEARSALS: readonly Rehearsal[] = [
     status: "not-built",
     needs: "postgres",
     why:
-      "Its two instruments are not on this branch. `ops:house-bots-status --drift` and `ops:house-bots-remark` were " +
-      "built on `ops-lane` and reach `rel-lane` only at REL-M; the drill also needs the PRE-MERGE SHA booted against " +
-      "the same database, which is a second worktree, not a script. What CAN be driven without them — that the " +
-      "immutability pin refuses a `houseBotId` UPDATE while the remark path stays open — is a `not-built` row until " +
-      "it is written, and this register will not call it anything else. See the procedure in §S3 of 04-amendments.",
+      "NOT MEASURED, with two structural reasons. (1) Its instruments are on another branch: `ops:house-bots-status` " +
+      "and `ops:house-bots-remark` are keys on `origin/ops-lane` only — read read-only for the procedure, not merged, " +
+      "because lane 2 is renumbering the register inside that branch right now. (2) Step 2 is not a script: 'boot the " +
+      "pre-merge SHA' needs a second worktree with its own node_modules and a Prisma client without `houseBotId`. " +
+      "⭐ The one slice that IS buildable here — the immutability pin (`txn.update` discards `houseBotId`), WITH the " +
+      "positive control that the same update still writes its other fields — is owed, not done, so this row says " +
+      "`not-built` and nothing softer. THE PROCEDURE: `plans/house-bots/RELEASE-LADDER.md` §10, ten numbered steps.",
     scenarios: ["S3"],
   },
   {

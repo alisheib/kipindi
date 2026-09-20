@@ -142,11 +142,34 @@ be diagnosed by the one lane that can have the tree to itself, before REL-M. ⚠
     from that SHA") is meaningless 88 commits in. **Struck.** What it protected — that the release SHA is the
     SHA that was tested — is now carried by condition 1 (`test:all` on the merged tree) and condition 2 (the
     parity gate, which reads the refs themselves).
-  - **"the S4 rehearsals."** Measured: "rehearsal" appears in no file under `scripts/` and in no package key —
-    there is no runnable home for them. Drill 1 (migrations under load) is moot by events. Drill 3 maps to the
-    two-process assertions in the caps and engine cases; drill 5 maps to the reports cases. **Drills 2
-    (rollback) and 4 (audit burst) appear in no script at all** and are the honest remainder: they are
-    **NOT BUILT**, named here so the gap cannot be waved through as "green".
+  - ~~**"the S4 rehearsals."** Measured: "rehearsal" appears in no file under `scripts/` and in no package key —
+    there is no runnable home for them.~~ ⭐ **UN-STRUCK, 2026-09-21: THE REHEARSALS NOW HAVE A HOME, AND THE
+    ROW POINTS AT IT.** `npm run rehearse:list` prints the register; `npm run rehearse:all` runs it. The five
+    drills and their measured statuses live in `scripts/rehearsals/registry.mts`, which the runner prints on
+    every run, so the population is never invisible. **The condition is now: `npm run rehearse:all` reports its
+    verdict, and every `not-built` row it names is read, not skipped past.** ⛔ It cannot exit 0 while a drill is
+    owed — that is deliberate, and it is what the struck clause could not do.
+    - **Drill 1 (migrations under load) — MOOT by events.** No house DDL is left to apply (§REL-1, §REL-2).
+    - **Drill 2 (rollback) — NOT BUILT.** Its instruments (`ops:house-bots-status --drift`,
+      `ops:house-bots-remark`) are on `ops-lane` and arrive at REL-M; it also needs the pre-merge SHA booted
+      against the same database. Owed. **See §10 for the procedure that slots in after REL-M.**
+    - **Drill 3 (two processes) — COVERED, and the claim was opened and checked**, not inherited:
+      `house-bot-caps-cases.mts` §8 and `house-bot-engine-cases.mts` each spawn
+      `scripts/lib/house-bot-two-process-child.mts` as a real OS process.
+    - **Drill 4 (audit burst, CRA-29) — BUILT AND GREEN** at `scripts/rehearsals/audit-burst.mts`, run by
+      `npm run rehearse:audit-burst`. Measured on this branch against a scratch Postgres 18.3: 200 house bets,
+      5 OS processes, 40 each, 0 unretryable refusals; densest 5 s window 125 bets (25/s); 197 of 199 adjacent
+      chain pairs written by DIFFERENT processes; exactly 200 audit rows in the burst window, all
+      `market.position.opened`, each carrying `houseBotId` + `intentId` as fields matching its Position;
+      `verifyChainFull` valid with 400/400 verified and 0 unverifiable; independently 1 genesis, 0 dangling,
+      1 tail, and a GENESIS walk that reaches 400/400. **36 passed, 0 failed.**
+    - ⛔ **Drill 5 (two-admin ON, CRA-28) — NOT BUILT. This row previously said it "maps to the reports
+      cases", and that was wrong.** Measured: `CRA-28` appears in `house-bot-reports-cases.mts` exactly once,
+      inside the ruling-250 coverage ROLL-CALL list at §0 — a list of ids, not an assertion — and
+      `scripts/two-admin-policy.test.mts` contains no `houseBot`, `house_bot` or `houseBotId` at all. Nothing
+      anywhere resolves a HOUSE-HELD market with `requireTwoOfficer` true. Owed.
+    - **So the honest remainder is drills 2 and 5**, not 2 and 4, and `rehearse:all` will keep saying so on its
+      own until they are built.
 
 ---
 
@@ -354,6 +377,21 @@ cite *that* index, so grepping `scripts/` for a register id searches the wrong i
 ~267-row hole that does not exist. It names the four rows that read backwards against the shipped product and
 holds them as a **ceiling**, so a fifth cannot arrive unnoticed.
 
+**3.6 · A SIXTH, BUILT ON THIS LANE ON 2026-09-21: `rehearse` — the S4 rehearsals' runnable home.**
+⭐ **This is the one instrument in this list that is NOT on `ops-lane`** — it is on `rel-lane`, and it exists
+because the REL-0 clause that named "the S4 rehearsals" was struck for pointing at nothing.
+- `npm run rehearse:list` — the register of all five drills, with each one's measured status. Runs nothing.
+- `npm run rehearse:audit-burst` — drill 4 (CRA-29), against a scratch Postgres the run creates and drops.
+- `npm run rehearse:all` — every built drill, then the whole register.
+- ⛔ **Exit 3 is NOT MEASURED and it is not a pass.** `--all` cannot exit 0 while any drill is `not-built`, so
+  the rung stays honest without anyone having to remember a struck clause in a document.
+- ⛔ **The register is code, not prose** (`scripts/rehearsals/registry.mts`), and the runner prints it on
+  every run — so the POPULATION is on the record of each run, not only the rows that happened to execute.
+- ⚠️ The four keys above are the only `rehearse*` keys, and they exist **on `rel-lane` only** — measured with
+  `node -e` against `package.json`, because `npm run -s <a name that does not exist>` exits 1 with an empty
+  log in about a second and reads exactly like a failing suite. (That trap is already sitting inside this
+  ladder's own §REL-0 condition 4 as the phantom `drive:house-bots-local`.)
+
 ---
 
 ## 4 · THE HOUSE GATES IN NO PIPELINE — named individually, because they share no prefix
@@ -519,6 +557,51 @@ still union-merge.
   that range from here is a direct conflict.
 - **`plans/house-bots/DEFERRED-TESTS.md`.** Two lanes are writing it now; highest id in use measured today is
   **96**. Nothing here needed a row, and a row added into a live conflict site for no gain is a cost.
+
+## 10 · S4 DRILL 2 · THE ROLLBACK REHEARSAL — NOT MEASURED here, and the procedure that slots in after REL-M
+
+**Status on `rel-lane`, 2026-09-21: NOT MEASURED. Not "passed", not "waived".** Two of its four steps cannot
+be taken from this lane, and both reasons are structural rather than a matter of effort:
+
+1. ⛔ **Its instruments are on another branch.** `ops:house-bots-status` and `ops:house-bots-remark` exist as
+   keys on `origin/ops-lane` only (measured in `git show origin/ops-lane:package.json`). They were read
+   read-only for this section; they were **not merged**, because lane 2 is renumbering the register inside
+   that branch at this moment and a merge would pull a half-finished id space into the release tree.
+2. ⛔ **Step 2 is not a script.** "Boot the pre-merge SHA" means a second worktree checked out before the
+   house commits, with its own `node_modules` and a Prisma client that has no `houseBotId` — and installing
+   dependencies is outside what any lane may do here. Simulating old code by hand-writing an unmarked
+   `Transaction` row would rehearse the DRIFT DETECTION, not the ROLLBACK, and calling that "drill 2" would
+   be the kind of true-measurement-of-the-wrong-population this ladder exists to refuse.
+
+⭐ **What IS buildable on this lane today, and is the natural first piece of the next phase:** step 4's last
+clause — *"the immutability pin still fails on any other `houseBotId` update"*. Both DAL twins physically
+discard `houseBotId` (and `positionId`) in `txn.update`, so it needs neither ops script nor a second SHA.
+⛔ **It is a REFUSAL, so it must be built with a POSITIVE CONTROL in the same case:** the same `txn.update`
+call must still WRITE its other fields. Without that control, a guard that swept in too much would refuse the
+whole update, the refusal assertion would pass harder, and the ledger would silently stop being updatable.
+
+### The procedure, once ops-lane has merged
+
+Run it against a **scratch Postgres**, never production. Every step names what it must print.
+
+| # | Command / act | What must be true |
+|---|---|---|
+| 0 | `npm run rehearse:list` | Drill 2 is still `not-built`. Flip it to `built` only when steps 1–6 run. |
+| 1 | Boot a scratch database, seed the house world, leave **3 open marked positions** | 3 `Position` rows with `houseBotId` not null and no settlement |
+| 2 | Boot the **pre-merge SHA** against that same database; settle the market; cash one position out | Old code has no `houseBotId` in its client, so its payout/refund/cash-out `Transaction` rows are written **unmarked** |
+| 3 | Return to the house SHA | — |
+| 4 | `npm run ops:house-bots-status -- --drift --since 30` | Leg (a) lists **exactly** the rows step 2 wrote; leg (b) lists the CASHOUT on a marked position; leg (c) lists the commission rows. ⚠️ **Leg (a) is time-bounded and an unbounded run is REFUSED** — `Transaction` has no index on `positionId`. ⚠️ **Leg (c) prints the WAGERING half as unmeasurable, not as 0** — wagering is a counter on `BonusGrant`, which carries no `positionId`. A `0` there would be a true measurement of the wrong population. |
+| 5 | `npm run ops:house-bots-remark` (no flag) | A **dry run**: it prints every row it would touch and writes nothing |
+| 6 | `npm run ops:house-bots-remark -- --apply` | ⛔ **Refused while the master switch is ON** (guard G5) — so the switch must be OFF and open marked positions 0 first. It re-marks **`Transaction` rows only, never `Position` rows**, taking the value from the JOIN and never from a flag; it reconciles the counted plan against the `RETURNING` count inside one transaction and re-runs drift leg (a) inside that same transaction, requiring **0** before it commits |
+| 7 | `npm run ops:house-bots-remark -- --apply` again | **0 rows changed** — the WHERE is `t."houseBotId" IS NULL`, so it is NULL-filling and a second run is a no-op |
+| 8 | Re-read the house book against the ledger | The realised figure equals the ledger |
+| 9 | The immutability pin | `txn.update` with a `houseBotId` still changes **nothing** — **and its positive control: the same update's other fields ARE written** |
+| 10 | Legs (b) and (c) | ⛔ **Nothing is clawed back automatically.** They go into a COMPLIANCE-DECISIONS note with amounts, per §S3 |
+
+⛔ **Do not record this drill as run until step 4 and step 6 have each printed their own population.** "Drift
+reported 0" over a window that excluded the rows is the exact failure this drill exists to catch.
+
+---
 
 **After REL-M, one session should reconcile:** this file with ops-lane's §11 and REL-0 row; the status cells
 for REL-2/REL-3/REL-4, which still read ⬜ on **all three branches** against events that already happened, so
