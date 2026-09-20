@@ -322,9 +322,15 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
     const j = supportCode.indexOf("const SUPPORT_CONFIG_SHAPE", i + 1);
     return i < 0 || j < 0 ? "" : supportCode.slice(i, j);
   })();
-  const emailSource = /(\/\^[^\n]*?\/)\.test\(email\)/.exec(vSlice)?.[1] ?? "";
+  /**
+   * ⛔ ANY REGEX LITERAL TESTED AGAINST `email`, NOT ONE ANCHORED WITH `/^`. The mutation pass caught the
+   * narrower spelling: `the-email-validator-is-widened` replaces the pattern with `/.+/`, which an extractor
+   * looking for `/^` fails to find — so 6.9 went red on a NULL pattern (a blind scanner) instead of on the
+   * widened one it was meant to measure. A guard that goes red for the wrong reason teaches nobody anything.
+   */
+  const emailSource = /(\/(?:[^/\n\\]|\\.)+\/[a-z]*)\.test\(email\)/.exec(vSlice)?.[1] ?? "";
   let emailRe: RegExp | null = null;
-  try { emailRe = emailSource ? new RegExp(emailSource.slice(1, -1)) : null; } catch { emailRe = null; }
+  try { emailRe = emailSource ? new RegExp(emailSource.replace(/^\/|\/[a-z]*$/g, "")) : null; } catch { emailRe = null; }
   const support = await underRoot<{
     SUPPORT_DEFAULTS: { email: string; phone: string; phoneTel: string };
     toDialTarget: (s: string) => string;
@@ -360,21 +366,32 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
 
   // ── §6 CONTROLS ──────────────────────────────────────────────────────────────────────────────────
   section("§6c · CONTROLS — every refusal planted into a COPY of the real text, and every real line that must stay allowed");
-  for (const locale of ["en", "sw", "zh"] as const) {
+  /**
+   * 🔴 THE POPULATION IS THE RULING'S PHRASES × THE DICTIONARY'S LOCALES — NOT THE PATTERN TABLE — AND THE
+   * MUTATION PASS IS WHAT FORCED THAT. The first draft looped over `D19D_PATTERNS.filter(locale)`, which is
+   * the very table under test: `red:house-bot-chatbot`'s `the-lexicon-loses-a-locale-pattern` deleted the
+   * Chinese entry for "never bets against you" and THIS CASE STAYED GREEN — there was simply one fewer
+   * thing to check, and only 6.0b's coverage floor noticed. A control whose population is derived from the
+   * thing it is controlling shrinks silently to nothing. Driven from the ruling, a missing pattern is a
+   * NAMED miss in this case's own output.
+   */
+  for (const locale of locales) {
     // ⛔ The host is the REAL text of that locale, not an empty string: a pattern is planted where it would
     // actually be written, so a matcher that only works on a bare sentence is reported.
     const host = locale === "en" ? prompt : (faq8a[locale] ?? "");
     const missed: string[] = [];
-    for (const p of D19D_PATTERNS.filter((x) => x.locale === locale)) {
-      const key = `${p.locale}/${p.phrase}`;
+    for (const phrase of D19D_PHRASES) {
+      const key = `${locale}/${phrase}`;
+      const pats = D19D_PATTERNS.filter((x) => x.locale === locale && x.phrase === phrase);
+      if (pats.length !== 1) { missed.push(`${key} (${pats.length} PATTERNS DECLARED)`); continue; }
       const plant = (D19D_PLANTS as Record<string, string>)[key];
       if (!plant) { missed.push(`${key} (NO PLANT DECLARED)`); continue; }
       if (!assuranceHits(`${host}\n${plant}`).some((h) => h.label === key)) missed.push(key);
     }
     ok(
-      `6.c1.${locale} · PLANTED CONTROL · each of the eight D19d assurances, written in ${locale} into a COPY of the real ${locale === "en" ? "system prompt" : "faq8a answer"}, is reported — a pattern that matches nothing is NAMED here, never hidden in an aggregate`,
+      `6.c1.${locale} · PLANTED CONTROL · each of the ruling's ${D19D_PHRASES.length} assurances, written in ${locale} into a COPY of the real ${locale === "en" ? "system prompt" : "faq8a answer"}, is reported — the population is the RULING's phrase list, so a pattern DELETED from the table is a named miss here rather than one fewer loop iteration`,
       missed.length === 0,
-      `${D19D_PATTERNS.filter((x) => x.locale === locale).length} planted · missed: [${missed.join(" | ") || "none"}]`,
+      `${D19D_PHRASES.length} phrases × locale ${locale} · missed: [${missed.join(" | ") || "none"}]`,
     );
   }
   {
