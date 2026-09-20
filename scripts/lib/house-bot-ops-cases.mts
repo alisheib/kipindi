@@ -50,10 +50,15 @@
  * harness that rewrites the repo while a second lane is editing it is the standing incident.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { spawnSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { decomment } from "./decomment.mts";
 import { REPO_ROOT, scriptFiles } from "./tracked-files.mts";
+// ⛔ PURE MODULES ONLY AT THE TOP OF THIS FILE — `--prove-red` runs it with no database and no store chosen.
+// `feed-copy.ts` imports `./constants` and nothing else; the operator sentences are READ from it here for the
+// same reason the scripts import them: a suite that re-typed the sentence it checks would pass forever.
+import { SWITCH_OFF_COPY } from "../../src/lib/house-bot/feed-copy.ts";
 
 type Any = any;
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
@@ -244,6 +249,71 @@ export function rollbackGuarded(code: string, site: MarkerUpdate): { begin: bool
   };
 }
 
+/**
+ * Every string literal in `code` that CARRIES one of `values` — an operator sentence re-typed instead of
+ * imported. ⛔ NOT A STYLE COMPLAINT. `feed-copy.ts` is the one home for what an operator is told; a
+ * re-typed copy goes stale in silence the day the original is edited, and an incident then has two
+ * products' words in it. The comparison is `includes`, so a sentence wrapped in a longer literal is caught.
+ */
+export function copyLiteralLeaks(code: string, values: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const m of code.matchAll(/(["'`])((?:\\.|(?!\1)[^\\])*)\1/g)) {
+    const text = m[2].replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\'/g, "'");
+    if (values.some((v) => text.includes(v))) out.push(text.slice(0, 90));
+  }
+  return out;
+}
+
+/**
+ * Anything that would make a script WAIT for a lock. ⛔ A9's whole purpose is that the terminal OFF takes
+ * NONE: H4 re-reads the control row inside each bet's own lock, so a committed OFF already binds every bet
+ * not yet holding `house:control`, while taking the lock first would let one hung bet hold the switch open
+ * for the transaction timeout — the stall the script exists to remove.
+ */
+export function advisoryLockSites(code: string): string[] {
+  return [...new Set([...code.matchAll(/\bpg_advisory_(?:xact_)?lock\w*|\bdrainLock\b|\bwithLock\b|\bHOUSE_CONTROL_LOCK\b/g)].map((m) => m[0]))];
+}
+
+/**
+ * A provider hostname typed into the source. ⛔ `ops-preflight-notification-idx.mts` pins one proxy host and
+ * forces SSL, which makes it refuse a plain local Postgres — so it can never be rehearsed anywhere but
+ * production, and it goes wrong in silence the day the proxy moves.
+ */
+export function hardcodedHostSites(code: string): string[] {
+  return [...new Set([...code.matchAll(/[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:rlwy\.net|railway\.app)(?::\d+)?/gi)].map((m) => m[0]))];
+}
+
+/** The connection's SSL decision: by HOST (rehearsable), or forced (production-only). */
+export function sslByHost(code: string): { byHost: boolean; forced: boolean } {
+  return {
+    byHost: /ssl\s*:\s*isLocal\s*\?/.test(code) && /\bisLocal\b\s*=/.test(code),
+    forced: /ssl\s*:\s*\{\s*rejectUnauthorized/.test(code),
+  };
+}
+
+/**
+ * Anything that would write a compliance row. ⛔ D-OPS-2: `audit()` HMAC-chains its entry under a
+ * database-wide advisory lock after reading the true chain head, so a hand-written `AuditLog` INSERT from a
+ * direct-pg script BREAKS the one artefact whose purpose is to prove nothing was rewritten.
+ */
+export function auditWriteSites(code: string): string[] {
+  const out: string[] = [];
+  // ⛔ TWO SHAPES, TWO SCOPES, AND THE SCOPE IS PART OF THE CLAIM. Raw SQL always LIVES in a string, so the
+  // INSERT is hunted over the whole body. A CALL never does — and the first draft of this detector reported
+  // the OFF script's own screen sentence, which says the word `audit()` to explain why it writes none. A
+  // detector that reddens the file for EXPLAINING the rule gets switched off, which is worse than not having
+  // it. So the call shape is hunted over the body with every string literal blanked out.
+  for (const m of code.matchAll(/INSERT\s+INTO\s+"?AuditLog"?/gi)) out.push(m[0].replace(/\s+/g, " "));
+  const code_ = withoutStringLiterals(code);
+  for (const m of code_.matchAll(/\baudit\s*\(/g)) out.push(`${m[0]} at line ${code_.slice(0, m.index ?? 0).split("\n").length}`);
+  return out;
+}
+
+/** The same source with every string literal's CONTENTS blanked, newlines kept so line numbers still hold. */
+export function withoutStringLiterals(code: string): string {
+  return code.replace(/(["'`])((?:\\.|(?!\1)[^\\])*)\1/g, (whole, q: string, body: string) => `${q}${body.replace(/[^\n]/g, " ")}${q}`);
+}
+
 export type PopulationAudit = { scanned: number; offenders: string[]; detail: Array<{ file: string; sites: unknown[] }>; refused: string | null };
 
 /**
@@ -323,6 +393,25 @@ const PLANTED = {
   offOnly: 'const APPLY = process.argv.includes("--apply"); // houseBots\nawait c.query(`UPDATE "HouseBotControl" SET "enabled" = false WHERE "id" = \'global\' AND "enabled" = true`);',
   /** A NON-house ops script with a legitimate --enabled flag. MUST NOT be reported by the flag rule. */
   benignFlag: 'const only = process.argv.includes("--enabled");',
+  /** The OFF script with an operator sentence RE-TYPED instead of imported — the shape that goes stale in silence. */
+  offCopyTyped: 'console.log("House bots are off. No bot will place a bet.");',
+  /** The same sentence, imported. MUST NOT be reported. */
+  offCopyImported: "console.log(SWITCH_OFF_COPY.DRAINED);",
+  /** The OFF script reaching for the lock A9 exists to avoid. */
+  advisoryLock: "await c.query(`SELECT pg_advisory_lock(hashtext('house:control'))`);",
+  /** The same write with no lock at all. MUST NOT be reported. */
+  noLock: "await c.query(OFF_UPDATE_SQL, [CAUSE, OFFICER, REASON, HOUSE_CONTROL_ID]);",
+  /** `ops-preflight-notification-idx.mts`'s hardcoded proxy rewrite — unrehearsable anywhere but production. */
+  proxyRewrite: 'const url = (process.env.DATABASE_URL || "").replace(/@postgres\\.railway\\.internal(:\\d+)?/, "@turntable.proxy.rlwy.net:40357");\nconst c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });',
+  /** `ops-preflight-ai-cycles.mts`'s split, with no host typed in. MUST NOT be reported. */
+  hostFree: 'const isLocal = /127[.]0[.]0[.]1/.test(url);\nconst c = new Client({ connectionString: url, ssl: isLocal ? undefined : { rejectUnauthorized: false } });',
+  /** The chain broken by hand — D-OPS-2's exact failure. */
+  auditInsert: 'await c.query(`INSERT INTO "AuditLog" ("id", "category", "action") VALUES ($1, $2, $3)`, [id, cat, act]);',
+  /** The same failure through the service — a call, not SQL. */
+  auditCall: 'const entry = await audit({ category: HOUSE_AUDIT["house_bot.switch_off"], action: "house_bot.switch_off", actorId });',
+  /** ⭐ THE REAL FALSE POSITIVE THIS DETECTOR ALREADY PRODUCED: the OFF script's own screen sentence, which
+   * says the word audit() in order to EXPLAIN why it writes none. MUST NOT be reported. */
+  auditSentence: 'console.log("NO compliance audit row is written (D-OPS-2): audit() HMAC-chains under a lock.");',
 };
 /* @ops-planted:end */
 
@@ -375,6 +464,22 @@ export function redCases(): RedCase[] {
   add("ops.pop.3 · CONTROL · the sanctioned OFF direction is NOT reported", switchOnSites(PLANTED.offOnly).length === 0, switchOnSites(PLANTED.offOnly));
   add("ops.pop.3f · a planted `--on` flag on a house ops script is reported", onFlagSites(PLANTED.onFlag).length >= 1 && HOUSE_TOKENS.test(PLANTED.onFlag), onFlagSites(PLANTED.onFlag));
   add("ops.pop.3f · CONTROL · a non-house ops script's `--enabled` is outside the scope", !HOUSE_TOKENS.test(PLANTED.benignFlag), onFlagSites(PLANTED.benignFlag));
+
+  const COPY = Object.values(SWITCH_OFF_COPY);
+  add("ops.off.6 · a RE-TYPED operator sentence is reported — the copy that goes stale in silence", copyLiteralLeaks(PLANTED.offCopyTyped, COPY).length === 1, copyLiteralLeaks(PLANTED.offCopyTyped, COPY));
+  add("ops.off.6 · CONTROL · the SAME sentence reached through the imported table is NOT reported", copyLiteralLeaks(PLANTED.offCopyImported, COPY).length === 0, copyLiteralLeaks(PLANTED.offCopyImported, COPY));
+  add("ops.off.8 · a planted advisory lock is reported — the 30 s stall A9 exists to remove", advisoryLockSites(PLANTED.advisoryLock).length === 1, advisoryLockSites(PLANTED.advisoryLock));
+  add("ops.off.8 · CONTROL · the same write with no lock is NOT reported", advisoryLockSites(PLANTED.noLock).length === 0, advisoryLockSites(PLANTED.noLock));
+  add("ops.off.7 · the notification-idx hardcoded proxy rewrite is reported", hardcodedHostSites(PLANTED.proxyRewrite).length >= 1, hardcodedHostSites(PLANTED.proxyRewrite));
+  add("ops.off.7 · CONTROL · the ai-cycles isLocal split with no host typed in is NOT reported, and reads as by-host rather than forced",
+    hardcodedHostSites(PLANTED.hostFree).length === 0 && sslByHost(PLANTED.hostFree).byHost && !sslByHost(PLANTED.hostFree).forced, j(sslByHost(PLANTED.hostFree)));
+  add("ops.off.7 · CONTROL · the notification-idx body's UNCONDITIONAL ssl reads as FORCED and not by-host — so 'decides by host' above is a measured difference, not a word",
+    sslByHost(PLANTED.proxyRewrite).byHost === false && sslByHost(PLANTED.proxyRewrite).forced === true, j(sslByHost(PLANTED.proxyRewrite)));
+  add("ops.d-ops-2 · a hand-written AuditLog INSERT is reported — the chain broken by hand", auditWriteSites(PLANTED.auditInsert).length >= 1, auditWriteSites(PLANTED.auditInsert));
+  add("ops.d-ops-2 · …and so is the same thing through the service: a bare audit() CALL", auditWriteSites(PLANTED.auditCall).length === 1, auditWriteSites(PLANTED.auditCall));
+  add("ops.d-ops-2 · CONTROL · a file that writes only its event row is NOT reported", auditWriteSites(PLANTED.noLock).length === 0, auditWriteSites(PLANTED.noLock));
+  add("ops.d-ops-2 · ⭐ CONTROL, AND IT IS A FALSE POSITIVE THIS DETECTOR REALLY PRODUCED · a printed SENTENCE that names audit() to explain why none is written is NOT reported",
+    auditWriteSites(PLANTED.auditSentence).length === 0, auditWriteSites(PLANTED.auditSentence));
 
   {
     // ⭐ THE POSITIVE CONTROL THIS LANE LEARNED THE HARD WAY: prove the walker really OPENED files.
@@ -625,6 +730,178 @@ await guard("dal.1", async () => {
   ok("ops.dal.3c · CONTROL · …so ops.dal.3's null was a refusal and not an inert member: the SAME call moved the row the moment the predicate matched",
     again === null && fromOn !== null && end.switchedReason === "from ON", j({ refused: again, applied: fromOn !== null }));
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// §2 · ops:house-bots-off (A9) — the terminal fallback for a console that cannot be used AT ALL.
+//
+// ⛔ THE DRIVEN HALF RUNS THE REAL SCRIPT AS A CHILD PROCESS against the scratch database. A source
+// scan alone would prove the statements are WRITTEN; only running it proves they are ACCEPTED — by
+// `HouseBotControl_offCause_check` and `HouseBotEvent_kind_check`, which a suite cannot see.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const OFF_SCRIPT = "scripts/ops-house-bots-off.mts";
+const SWITCH_OFF_SENTENCES = Object.values(SWITCH_OFF_COPY);
+
+/** Run an ops script exactly as an officer would, and return what the terminal saw. */
+function runOps(file: string, args: string[], env: Record<string, string> = {}): { code: number; out: string } {
+  const r = spawnSync("npx", ["tsx", file, ...args], {
+    cwd: REPO_ROOT, encoding: "utf8", shell: process.platform === "win32",
+    env: { ...process.env, ...env }, timeout: 180_000, maxBuffer: 32 * 1024 * 1024,
+  });
+  return { code: r.status ?? 1, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+}
+
+if (STORE === "memory") {
+  section("§2s · ops:house-bots-off — the SOURCE pins, over the file the ops population now contains");
+  await guard("off.src", () => {
+    const body = bodyOf(OFF_SCRIPT);
+    const pkg = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
+    const { files: ops } = opsPopulation(pkg.scripts, scriptFiles());
+    const house = ops.filter((f) => HOUSE_TOKENS.test(bodyOf(f)) || /house-bot/.test(f));
+
+    ok("ops.off.0s · ⭐ POSITIVE CONTROL, AND IT CLOSES THE EMPTINESS TRAP · the OFF script is IN the derived ops population AND in its house subset — so ops.pop.3 and ops.pop.3f are now measuring a real file rather than resting on their planted controls alone",
+      ops.includes(OFF_SCRIPT) && house.includes(OFF_SCRIPT) && pkg.scripts["ops:house-bots-off"] === `tsx ${OFF_SCRIPT}`,
+      `${house.length} house ops file(s) of ${ops.length}: ${j(house)}`);
+
+    ok("ops.off.5 · ⛔ THE OWNER'S LAW · the OFF script offers no way ON — no switchOnHouseBots, no DAL switchOn, no raw `\"enabled\" = true`, no ORM patch on the control row, and no ON-shaped flag",
+      switchOnSites(body).length === 0 && onFlagSites(body).length === 0, j({ on: switchOnSites(body), flags: onFlagSites(body) }));
+
+    ok("ops.off.6 · every operator sentence is IMPORTED from feed-copy.ts — no literal in the code (comments stripped) carries a SWITCH_OFF_COPY sentence, and the table really is reached",
+      copyLiteralLeaks(body, SWITCH_OFF_SENTENCES).length === 0 && /SWITCH_OFF_COPY\./.test(body) && /feed-copy/.test(body),
+      j({ leaks: copyLiteralLeaks(body, SWITCH_OFF_SENTENCES), sentences: SWITCH_OFF_SENTENCES.length }));
+
+    const ssl = sslByHost(body);
+    ok("ops.off.7 · the connection decides SSL BY HOST — the ai-cycles shape, rehearsable against a local cluster — and no provider hostname is typed into the file",
+      ssl.byHost && !ssl.forced && hardcodedHostSites(body).length === 0, j({ ...ssl, hosts: hardcodedHostSites(body) }));
+
+    ok("ops.off.8 · ⛔ NO advisory lock anywhere in the file: A9 exists because taking one lets a hung bet hold the switch open for the whole transaction timeout",
+      advisoryLockSites(body).length === 0, j(advisoryLockSites(body)));
+
+    ok("ops.d-ops-2 · ⛔ NO compliance row is written from this script, by decision: audit() HMAC-chains under a database-wide lock, so a hand-written AuditLog INSERT would break the chain — the SWITCH_OFF event row IS the record",
+      auditWriteSites(body).length === 0, j(auditWriteSites(body)));
+
+    const red = redCases().filter((c) => c.label.startsWith("ops.off.6") || c.label.startsWith("ops.off.7") || c.label.startsWith("ops.off.8") || c.label.startsWith("ops.d-ops-2"));
+    ok("ops.off.src.c · CONTROL · each of those four detectors REPORTS the shape a real edit could introduce — a re-typed sentence, a hardcoded proxy rewrite, an advisory lock, a hand-written AuditLog INSERT — and does NOT report the sanctioned form of the same code",
+      red.length >= 8 && red.every((c) => c.caught), j(red.map((c) => ({ l: c.label.slice(0, 40), caught: c.caught }))));
+  });
+}
+
+if (STORE === "postgres") {
+  section("§2 · ops:house-bots-off — DRIVEN against the scratch database, as an officer would run it");
+  await guard("off", async () => {
+    const pgLib: Any = (await import("pg")).default;
+    const cx = new pgLib.Client({ connectionString: process.env.DATABASE_URL });
+    await cx.connect();
+    const one = async (text: string): Promise<Any> => (await cx.query(text)).rows[0];
+    const census = async () => ({
+      control: await one(`SELECT "enabled", "offCause", "switchedAt"::text AS "switchedAt", "switchedReason" FROM "HouseBotControl" WHERE "id" = 'global'`),
+      switchOffEvents: Number((await one(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'SWITCH_OFF'`)).n),
+      allEvents: Number((await one(`SELECT count(*)::int AS "n" FROM "HouseBotEvent"`)).n),
+      live: Number((await one(`SELECT count(*)::int AS "n" FROM "HouseBotIntent" WHERE "status" = ANY(ARRAY['PENDING','CLAIMED']::text[])`)).n),
+      audits: Number((await one(`SELECT count(*)::int AS "n" FROM "AuditLog"`)).n),
+    });
+
+    try {
+      // ── the fixture: a desk that is ON, one live intent standing, and one SWITCH_OFF event already there ──
+      await w.dal.houseBotControlStore.switchOn({ byId: OFFICER, reason: "ops §2 fixture" });
+      const bot = await w.bot();
+      const m = await pollWithLockedNo();
+      // ⛔ PLANTED CONTROL · a LIVE intent, claimed and never placed. D-OPS-1 says this script leaves it
+      // standing; without one planted, "it did not cancel anything" would be true of an empty table.
+      const liveIntent = await w.intent(bot, m.market.id, { kind: "FILL", side: "YES", stakeTzs: 2_000 });
+      // ⛔ PLANTED CONTROL · a SWITCH_OFF event that already exists, so "exactly one" below is a DELTA.
+      await w.dal.houseBotEventStore.append({
+        houseBotId: null, userId: null, marketId: null, kind: "SWITCH_OFF", fromStatus: "ON", toStatus: "OFF",
+        reason: "planted before the script ran", actorId: OFFICER, payload: { cause: "MANUAL" },
+      });
+
+      const before = await census();
+      ok("ops.off.0f · fixture · the desk is ON, one live intent stands, and a SWITCH_OFF event is already on file — so every count below is a measured DIFFERENCE",
+        before.control.enabled === true && before.live >= 1 && before.switchOffEvents >= 1,
+        j({ enabled: before.control.enabled, live: before.live, switchOffEvents: before.switchOffEvents }));
+
+      // ── 1 · the dry run ──
+      const dry = runOps(OFF_SCRIPT, []);
+      const afterDry = await census();
+      ok("ops.off.1 · ⛔ THE DRY RUN WRITES NOTHING — control row, events and intents are identical before and after, against a desk that WAS on and could have moved",
+        dry.code === 0 && JSON.stringify(afterDry) === JSON.stringify(before) && before.control.enabled === true,
+        `exit ${dry.code} · ${j({ before: before.control, after: afterDry.control, events: [before.allEvents, afterDry.allEvents] })}`);
+      ok("ops.off.1p · …and it PRINTS the two statements it would run and says nothing was written",
+        /UPDATE "HouseBotControl" SET "enabled" = false/.test(dry.out) && /INSERT INTO "HouseBotEvent"/.test(dry.out) && /NOTHING WRITTEN/.test(dry.out),
+        dry.out.split("\n").filter((l) => /NOTHING WRITTEN/.test(l)).join(" | ") || dry.out.slice(-200));
+
+      // ── 2 · --apply on an ON desk ──
+      // ⚠️ ONE-WORD REASONS ON PURPOSE. `spawnSync` with `shell: true` on Windows CONCATENATES arguments
+      // instead of escaping them (Node's own DEP0190), so a multi-word reason arrives as its first word and
+      // the assertion below would have been asserting a truncation. The script's 300-character cap is pinned
+      // by the DDL's own CHECK, not here.
+      const REASON_1 = "A9-console-unusable";
+      const applied = runOps(OFF_SCRIPT, ["--apply", "--reason", REASON_1], { OPS_OFFICER_ID: OFFICER });
+      const afterApply = await census();
+      ok("ops.off.2 · --apply on an ON desk switches it off with cause MANUAL and appends EXACTLY ONE new SWITCH_OFF event — measured as a delta over the planted one",
+        applied.code === 0 && afterApply.control.enabled === false && afterApply.control.offCause === "MANUAL"
+        && afterApply.switchOffEvents === before.switchOffEvents + 1 && afterApply.allEvents === before.allEvents + 1
+        && afterApply.control.switchedReason === REASON_1 && afterApply.control.switchedAt !== before.control.switchedAt,
+        `exit ${applied.code} · ${j({ control: afterApply.control, switchOffEvents: [before.switchOffEvents, afterApply.switchOffEvents] })}`);
+
+      ok("ops.off.9 · the cause and the kind are ACCEPTED BY THE REAL SCHEMA — HouseBotControl_offCause_check and HouseBotEvent_kind_check let this write land, which no source scan could tell you",
+        afterApply.control.offCause === "MANUAL" && afterApply.allEvents === before.allEvents + 1, j(afterApply.control));
+
+      // ⛔ PLANTED CONTROL · …and the same CHECK REFUSES a cause outside the closed list, inside BEGIN … ROLLBACK,
+      // so ops.off.9 is a measured difference and not a constraint nobody ever armed.
+      let refused = "";
+      await cx.query("BEGIN");
+      try {
+        await cx.query(`UPDATE "HouseBotControl" SET "offCause" = 'NOT_A_CAUSE' WHERE "id" = 'global'`);
+      } catch (e) { refused = String((e as Error).message).slice(0, 120); }
+      await cx.query("ROLLBACK");
+      const stillManual = (await census()).control.offCause;
+      ok("ops.off.9c · CONTROL · the same column REFUSES a cause outside OFF_CAUSES (rolled back, nothing kept) — so the accepted write above proves the constraint, not its absence",
+        /offCause_check/.test(refused) && stillManual === "MANUAL", `${j(refused)} · offCause still ${stillManual}`);
+
+      // ── D-OPS-1 · it did not cancel, and it said so ──
+      const intentNow = await w.dal.houseBotIntentStore.get(liveIntent.id);
+      ok("ops.d-ops-1 · ⛔ THE DECISION, DRIVEN · the OFF wrote its two rows and left every live intent STANDING — the planted intent is still CLAIMED, the live count did not move, and no lock was taken",
+        afterApply.live === before.live && intentNow !== null && ["PENDING", "CLAIMED"].includes(intentNow.status),
+        j({ liveBefore: before.live, liveAfter: afterApply.live, plantedIntent: intentNow?.status ?? null }));
+      ok("ops.d-ops-1p · …and it is NOT SILENT ABOUT IT: the terminal carries the count it did not cancel and the exact statement that cancels them",
+        /DOES NOT CANCEL THEM/.test(applied.out) && /UPDATE "HouseBotIntent" SET "status" = 'CANCELLED'/.test(applied.out)
+        && new RegExp(`${before.live} live intent\\(s\\) left standing`).test(applied.out),
+        applied.out.split("\n").filter((l) => /live intent/.test(l)).slice(0, 3).join(" | "));
+
+      // ── D-OPS-2 · no compliance row, and the screen says why ──
+      ok("ops.d-ops-2d · ⛔ THE DECISION, DRIVEN · not one AuditLog row was written by a direct-pg script — the chain is untouched — and the terminal names the SWITCH_OFF event as the record instead",
+        afterApply.audits === before.audits && /NO compliance audit row is written/.test(applied.out),
+        j({ auditsBefore: before.audits, auditsAfter: afterApply.audits }));
+
+      // ── 3 and 4 · the second run ──
+      const again = runOps(OFF_SCRIPT, ["--apply", "--reason", "A9-second-officer-second-time"], { OPS_OFFICER_ID: OFFICER });
+      const afterAgain = await census();
+      ok("ops.off.3 · a second --apply on an already-OFF desk writes 0 rows, prints ALREADY_OFF verbatim and exits 0 — not 1: being already off is not a failure",
+        again.code === 0 && again.out.includes(SWITCH_OFF_COPY.ALREADY_OFF), `exit ${again.code} · ${again.out.split("\n").filter((l) => l.includes("already off")).join(" | ")}`);
+      ok("ops.off.4 · …and it appends NO second event and does not move the switch instant — the conditional predicate is what makes the script re-runnable",
+        afterAgain.switchOffEvents === afterApply.switchOffEvents && afterAgain.allEvents === afterApply.allEvents
+        && afterAgain.control.switchedAt === afterApply.control.switchedAt && afterAgain.control.switchedReason === afterApply.control.switchedReason,
+        j({ events: [afterApply.switchOffEvents, afterAgain.switchOffEvents], switchedAt: afterAgain.control.switchedAt }));
+
+      // ── the two refusals ──
+      const noUrl = runOps(OFF_SCRIPT, ["--apply"], { DATABASE_URL: "" });
+      ok("ops.off.env · an empty DATABASE_URL exits 2 and writes nothing — it never guesses an environment",
+        noUrl.code === 2 && /DATABASE_URL is empty/.test(noUrl.out), `exit ${noUrl.code}`);
+
+      // ⛔ PLANTED CONTROL · a database that cannot be reached at all. The one outcome that leaves house bets
+      // running must SAY they are running, and must not exit 0.
+      const dead = runOps(OFF_SCRIPT, ["--apply"], { DATABASE_URL: "postgresql://postgres:scratch@127.0.0.1:1/postgres" });
+      const afterDead = await census();
+      ok("ops.off.wf · CONTROL · against a closed port the script prints WRITE_FAILED verbatim, says house bets are STILL RUNNING, names Maintenance mode, and exits NON-ZERO — never an optimistic off",
+        dead.code !== 0 && dead.out.includes(SWITCH_OFF_COPY.WRITE_FAILED) && /STILL RUNNING/.test(dead.out)
+        && /Maintenance mode/.test(dead.out) && JSON.stringify(afterDead) === JSON.stringify(afterAgain),
+        `exit ${dead.code} · ${dead.out.split("\n").filter((l) => /STILL RUNNING/.test(l)).join(" | ")}`);
+    } finally {
+      await cx.end().catch(() => {});
+    }
+  });
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 // §store · the child runs on the store it names — so a memory-only green can never be read as a

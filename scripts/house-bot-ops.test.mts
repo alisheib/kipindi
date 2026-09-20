@@ -28,7 +28,12 @@
  *     BOTH twins. The gap between the two floors is §0 exactly: 15 source pins that run in the memory
  *     child only, which is why this floor is a PAIR — a section that stops running fails the floor even
  *     while every case that ran passed.
+ *   · memory 35, postgres 26 — step 3: §2, `ops:house-bots-off` (A9). Seven SOURCE pins in the memory
+ *     child (the owner's law, the imported copy, the by-host connection, the absent advisory lock, the
+ *     absent audit write, and the positive control that the file really is INSIDE the derived ops
+ *     population); thirteen in the Postgres child, which RUNS the script five times — dry, applied,
+ *     applied again, with no DATABASE_URL, and against a closed port.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 28, postgres: 13 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 35, postgres: 26 }, dbPrefix: "hb_ops" });
