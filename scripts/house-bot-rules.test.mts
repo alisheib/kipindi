@@ -85,13 +85,10 @@ import {
   SWEEP_LOOKBACK_MS,
   SWEEP_MIN_AGE_MS,
   TARGET_ARMING_SEC,
-  TYPED_WORD,
-  TYPED_WORD_COPY,
   capEngineCode,
   houseIntentKey,
   isAllowedHouseAuditPayload,
   isCapCode,
-  isTypedWord,
   manualAnchorKey,
 } from "../src/lib/house-bot/constants.ts";
 import {
@@ -954,26 +951,101 @@ section("§6 · C2 labels, notes and reasons");
     ASTRAL_LETTER.repeat(32).length === 64 && countChars(ASTRAL_LETTER.repeat(32)) === 32);
 }
 
-/* ═══ §7 · C3 — typed confirmation words ═══════════════════════════════════════════════════ */
-section("§7 · C3 typed words");
+/* ═══ §7 · C3 — the typed ceremony words THE PRODUCT ACTUALLY SHIPS ═════════════════════════ */
+/**
+ * ⛔ RE-AIMED 2026-09-20, AND THE OLD §7 IS WHY THIS COMMENT IS LONG.
+ *
+ * What stood here was a five-row truth table over `isTypedWord` / `normaliseTypedWord` /
+ * `TYPED_WORD` in `constants.ts`. It was GREEN on every run and it measured a module with ZERO
+ * production callers — the shipped ceremony words are `CONSOLE_SWITCH_ON_WORD` ("SWITCH ON") and
+ * `CONSOLE_REMOVE_WORD` ("REMOVE"), neither of which that table ever names, and both of which
+ * compare with a plain `.trim()` rather than a normaliser. ⛔ That is worse than no test: a green
+ * row reads as coverage. The helpers are now deleted (see the retirement note in `constants.ts`)
+ * and this section measures the comparison that RUNS.
+ *
+ * ⛔ AND IT STAYS IN THIS SUITE, which is the point of re-aiming rather than moving. The shipped
+ * ceremony already has BEHAVIOURAL cases — `test:house-bot-console` 1.454 and 1.415 · 454 drive
+ * the real switch action with `typed: "switch on"` and the real `deskActArmed` with
+ * `typed: "remove"`. But `test:house-bot-console` is in NO runner: it is run by hand. This suite
+ * is in `predeploy`. Moving the assertions to the richer suite would have taken the ceremony out
+ * of the gate that actually stops a deploy, so what lands here is the half a pure suite can hold
+ * — the SHAPE of both comparisons, at source — and it is a strict gain over a table about a
+ * module the product did not contain.
+ *
+ * ⛔ SOURCE, BECAUSE THIS SUITE IS PURE. `house-console-read.ts` is a server module with a
+ * database behind it; §0's own module law forbids importing it here. Comments are stripped first
+ * on every file read — both ceremonies carry a comment that NAMES the rule it enforces, and an
+ * assertion matching its own explanatory prose would go green on a repaired-away gate.
+ */
+section("§7 · C3 the shipped ceremony words");
 {
-  type Word = (typeof TYPED_WORD)[keyof typeof TYPED_WORD];
-  const TABLE: [string, Word, boolean][] = [
-    ["bots on", TYPED_WORD.BOTS_ON, true],
-    [" BOTS  ON ", TYPED_WORD.BOTS_ON, true],
-    ["remove", TYPED_WORD.REMOVE, true],
-    ["BOTSON", TYPED_WORD.BOTS_ON, false],
-    ["BOT ON", TYPED_WORD.BOTS_ON, false],
-  ];
-  for (const [raw, word, arms] of TABLE) {
-    ok(`7.${JSON.stringify(raw)} ${arms ? "arms" : "does not arm"} ${word}`, isTypedWord(raw, word) === arms);
-  }
-  ok("7.copy · the server refusals and the field name",
-    TYPED_WORD_COPY.refused["BOTS ON"] === "Type BOTS ON exactly to switch house bots on." &&
-      TYPED_WORD_COPY.refused.REMOVE === "Type REMOVE exactly." && TYPED_WORD_COPY.field === "confirmWord");
-  // ⛔ CONTROL — the kit modal's trim().toUpperCase() never armed an inner double space.
-  ok("7.c1 · CONTROL · trim().toUpperCase() leaves \" BOTS  ON \" unarmed; the shared normaliser arms it",
-    " BOTS  ON ".trim().toUpperCase() !== "BOTS ON" && isTypedWord(" BOTS  ON ", TYPED_WORD.BOTS_ON));
+  const CONSOLE_SRC = decomment(readFileSync(join(ROOT, "src/lib/server/house-console-read.ts"), "utf8"));
+  const DESK_SRC = decomment(readFileSync(join(ROOT, "src/app/admin/desk/[id]/account-actions.tsx"), "utf8"));
+  /* ⛔ The population is the tracked tree, enumerated by git — never a file list typed here, which is
+   * the staleness §0's own header records paying for. Its own call: §0's `srcFiles` is block-scoped. */
+  const srcFiles = spawnSync("git", ["ls-files", "src"], { cwd: ROOT, encoding: "utf8" })
+    .stdout.split(/\r?\n/).filter((f) => /\.(tsx?|mts|mjs|js)$/.test(f));
+
+  // ── the two words themselves ────────────────────────────────────────────────────────────
+  ok('7.word.switch · the master switch\'s ceremony word is the literal "SWITCH ON"',
+    /export const CONSOLE_SWITCH_ON_WORD = "SWITCH ON";/.test(CONSOLE_SRC));
+  ok('7.word.remove · the removal\'s ceremony word is the literal "REMOVE"',
+    /export const CONSOLE_REMOVE_WORD = "REMOVE";/.test(CONSOLE_SRC));
+
+  /* ⛔ BOTH SERVER RE-CHECKS ARE A PLAIN TRIM AND NOTHING ELSE. The ceremony exists so the act
+   * cannot be reached by habit; a `.toUpperCase()` added to either line would let "switch on" and
+   * "remove" through, and NOTHING else in the tree would notice — the dialog would still paint
+   * the same prompt and every other case would stay green. */
+  const SERVER_CHECK = (word: string) =>
+    new RegExp(String.raw`if \(\(typeof input\.typed === "string" \? input\.typed\.trim\(\) : ""\) !== ${word}\) \{`);
+  ok("7.server.switch · the SERVER re-checks the switch word with a plain trim against its own constant",
+    SERVER_CHECK("CONSOLE_SWITCH_ON_WORD").test(CONSOLE_SRC));
+  ok("7.server.remove · …and the removal the same way, so a crafted POST meets the same ceremony the dialog does",
+    SERVER_CHECK("CONSOLE_REMOVE_WORD").test(CONSOLE_SRC));
+  ok("7.client · the dialog arms on that SAME plain trim, never a case-fold",
+    /if \(copy\.word !== null && v\.typed\.trim\(\) !== copy\.word\) return false;/.test(DESK_SRC));
+
+  /* ⛔ AND THE REFUSAL THE OFFICER READS PROMISES CAPITALS. It is built from the constant rather
+   * than typed twice, so the sentence and the comparison cannot drift apart — and it is the
+   * sentence that makes case-folding a LIE rather than merely a widening. */
+  ok("7.copy · the switch refusal names the word and promises capitals, built from the constant",
+    /wordWrong: `Type \$\{CONSOLE_SWITCH_ON_WORD\} exactly, in capitals, to confirm\.`/.test(CONSOLE_SRC));
+
+  /* ⛔ NO NORMALISER TOUCHES A TYPED WORD ANYWHERE ON EITHER CEREMONY PATH. The two checks above
+   * pin the comparison; this pins that no LINE BEFORE them quietly folds `input.typed` first —
+   * `const t = input.typed.toUpperCase()` above the check would leave both regexes matching. */
+  const FOLDS = [/input\.typed[^\n;]*\.toUpperCase\(\)/, /input\.typed[^\n;]*\.toLowerCase\(\)/,
+    /input\.typed[^\n;]*\.normalize\(/, /input\.typed[^\n;]*\.replace\(\/\\s/, /v\.typed[^\n;]*\.toUpperCase\(\)/];
+  const folded = FOLDS.filter((re) => re.test(CONSOLE_SRC) || re.test(DESK_SRC));
+  ok(`7.nofold · ⛔ neither ceremony case-folds or re-spaces what was typed (${FOLDS.length} foldings swept on 2 files)`,
+    folded.length === 0, folded.map(String).join(" · "));
+  ok("7.nofold.c1 · CONTROL · the sweep CAN see a folding — it finds one planted into a copy of the real line",
+    FOLDS.some((re) => re.test('    if ((typeof input.typed === "string" ? input.typed.trim().toUpperCase() : "") !== CONSOLE_REMOVE_WORD) {')));
+  /* ⭐ POSITIVE CONTROL · a refusal needs one, or a sweep that flagged EVERYTHING would look like
+   * a working guard from the outside. What must still be ALLOWED is the shipped line itself — a
+   * plain `.trim()` — and the reason field's trim beside it, which is a different value entirely. */
+  ok("7.nofold.c2 · ⭐ POSITIVE CONTROL · a plain trim is still ALLOWED — the sweep flags neither shipped line",
+    !FOLDS.some((re) => re.test('    if ((typeof input.typed === "string" ? input.typed.trim() : "") !== CONSOLE_REMOVE_WORD) {'))
+      && !FOLDS.some((re) => re.test('  const reason = typeof input.reason === "string" ? input.reason.trim() : "";')));
+
+  /* ── the retirement, INVERTED rather than deleted (the shape `test:failure-reasons` 8c uses) ──
+   * ⛔ Three names left `constants.ts` on 2026-09-20. Deleting their assertions would have left
+   * the retirement unmeasured, and the specific way a half-retirement ships is silent: the module
+   * comes back with one caller and every case above stays green, because none of them names it. */
+  const DEAD = ["normaliseTypedWord", "isTypedWord", "TYPED_WORD"];
+  const deadHits = DEAD.map((n) => ({
+    name: n,
+    files: srcFiles.filter((f) => new RegExp(String.raw`\b${n}\b`).test(decomment(readFileSync(join(ROOT, f), "utf8")))),
+  })).filter((h) => h.files.length > 0);
+  ok(`7.retired · ⛔ no file under src/ names the retired normaliser (${DEAD.length} names swept over ${srcFiles.length} files)`,
+    srcFiles.length > 500 && deadHits.length === 0,
+    deadHits.map((h) => `${h.name}: ${h.files.join(", ")}`).join(" · "));
+  /* ⭐ CONTROL · the sweep above would pass over an empty population or a broken reader. Prove it
+   * still SEES a name that is genuinely present in the same folder, and that it reads the same
+   * files: `CONSOLE_REMOVE_WORD` is live, in the very file §7 pins. */
+  const liveHits = srcFiles.filter((f) => /\bCONSOLE_REMOVE_WORD\b/.test(decomment(readFileSync(join(ROOT, f), "utf8"))));
+  ok("7.retired.c1 · CONTROL · the same sweep finds a name that IS live, so the zero above is a measurement",
+    liveHits.includes("src/lib/server/house-console-read.ts") && liveHits.length >= 1, liveHits.join(", "));
 }
 
 /* ═══ §8 · C15 — schedule windows in fixed EAT ══════════════════════════════════════════════ */
@@ -1785,7 +1857,11 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-rules: ${pa
  * The floor below is the count `npm run test:house-bot-rules` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
  * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
  */
-const MIN_ASSERTIONS = 521;
+/* ⭐ RAISED 521 → 525 on 2026-09-20, to what this run PRINTED. §7 stopped being a truth table over
+ * `isTypedWord` — a module with zero production callers — and became eleven assertions over the two
+ * ceremony comparisons the console actually ships. 7 dead assertions out, 11 live ones in: the +4 IS
+ * the measurement. A build where the new §7 silently stopped running would print 514 and be refused. */
+const MIN_ASSERTIONS = 525;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-rules ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);
