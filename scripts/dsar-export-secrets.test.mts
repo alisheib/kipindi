@@ -203,7 +203,7 @@ ok("⛔ D19 · …and that row carries NEITHER house key, at any depth",
   JSON.stringify(Object.keys(holderBet?.payload ?? {})));
 for (const [door, file] of [["player export", holderExport], ["officer bundle", holderBundle]] as Array<[string, unknown]>) {
   const json = JSON.stringify(file);
-  ok(`⛔ D19 · the holder's ${door} carries no marker, no intent id and no vocabulary word at any depth`,
+  ok(`⛔ D19 · HB-ACC-12 / CRA-04 · D20 · the holder's ${door} carries no marker, no intent id and no vocabulary word at any depth (the record half is struck; the absence half is the whole of it)`,
     !json.includes(HOUSE_MARKER) && !json.includes(HOUSE_INTENT) && !json.includes("houseBotId") && houseHits(json).length === 0,
     houseHits(json).slice(0, 5).join(", "));
 }
@@ -343,14 +343,14 @@ for (const door of ["exportUserData", "buildDsarBundle"] as const) {
   const n = await open(TWIN);
   const tPaths = keyPaths(t).sort().join("\n");
   const nPaths = keyPaths(n).sort().join("\n");
-  ok(`⛔ D19 · ruling 239 · the trigger player's ${door} has the SAME key set at every depth as the twin's — no trigger section, no extra field, nothing empty added`,
+  ok(`⛔ D19 · ruling 239 · CRA-10 · D20 · the trigger player's ${door} has the SAME key set at every depth as the twin's — no trigger section, no extra field, nothing empty added`,
     tPaths === nPaths && tPaths.length > 0,
     `only on trigger: ${tPaths.split("\n").filter((p) => !nPaths.includes(p)).slice(0, 5).join(", ")} | only on twin: ${nPaths.split("\n").filter((p) => !tPaths.includes(p)).slice(0, 5).join(", ")}`);
   const tShape = JSON.stringify(normalise(t));
   const nShape = JSON.stringify(normalise(n));
-  ok(`⛔ D19 · ruling 239 · …and the whole ${door} document is IDENTICAL once ids, times and contact details are normalised — a box and a countered position change nothing a player can download`,
+  ok(`⛔ D19 · ruling 239 · CRA-10 · …and the whole ${door} document is IDENTICAL once ids, times and contact details are normalised — a box and a countered position change nothing a player can download`,
     tShape === nShape, tShape === nShape ? "" : `trigger ${tShape.length}B vs twin ${nShape.length}B`);
-  ok(`⛔ D19 · the trigger player's ${door} names nothing house at any depth (the belt beside the equality's braces)`,
+  ok(`⛔ D19 · CRA-10 · the trigger player's ${door} names nothing house at any depth (the belt beside the equality's braces)`,
     houseHits(JSON.stringify(t)).length === 0 && !JSON.stringify(t).includes(HOUSE_MARKER) && !JSON.stringify(t).includes("hbi_dsar"),
     houseHits(JSON.stringify(t)).slice(0, 5).join(", "));
 }

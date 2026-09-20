@@ -412,7 +412,14 @@ section("§6 · sanctioned changes");
     ok("6.n4 · a holder with a liquidity stake AND their own stake is eligible", eMixed.eligible === true, JSON.stringify(eMixed));
   }
 
-  // (c) and (m): the player action refuses reserved keys and never chips a liquidity stake.
+  /* (c) and (m): the player action refuses reserved keys and never chips a liquidity stake.
+   * ⭐ C5-SPEC ruling 249 · W23, and ruling 250's naming rule: the three (m) cases below are Commit 5's
+   * REGRESSION for scenario HB-ACC-13 and carry that id in their labels, so the coverage gate reads them
+   * by name rather than by the file they happen to live in. Sanctioned change (m) stays as built, on the
+   * default recorded in W23 ("kept"): a holder whose only open position on a market is house-marked gets
+   * no side chip on their comment, while a player with the same position gets one. It is an observable
+   * difference that carries no words, and it is Ali's to release — W23 belongs in PROGRESS, which this
+   * checkpoint does not own, and is reported to the orchestrator instead. */
   {
     const actions = decomment(read("src/app/markets/actions.ts"));
     const buy = fnBody(actions, "export async function buyPositionAction(");
@@ -425,9 +432,9 @@ section("§6 · sanctioned changes");
     const houseOnlySide = commentSideFor([{ marketId: mk, status: "OPEN", side: "YES", houseBotId: "hb1" }], mk);
     const mixedSide = commentSideFor([{ marketId: mk, status: "OPEN", side: "NO", houseBotId: null }, { marketId: mk, status: "OPEN", side: "YES", houseBotId: "hb1" }], mk);
     const playerSide = commentSideFor([{ marketId: mk, status: "OPEN", side: "NO" }, { marketId: "m2", status: "OPEN", side: "YES" }], mk);
-    ok("6.m1 · a liquidity stake never gives its holder a side chip", houseOnlySide === null, String(houseOnlySide));
-    ok("6.m2 · a mixed holder's chip is their OWN side, not the house stake's", mixedSide === "NO", String(mixedSide));
-    ok("6.m3 · CONTROL · a player's own open stake on this market gives the chip (other markets ignored)", playerSide === "NO", String(playerSide));
+    ok("6.m1 · HB-ACC-13 · W23 kept · a liquidity stake never gives its holder a side chip", houseOnlySide === null, String(houseOnlySide));
+    ok("6.m2 · HB-ACC-13 · a mixed holder's chip is their OWN side, not the house stake's", mixedSide === "NO", String(mixedSide));
+    ok("6.m3 · HB-ACC-13 · CONTROL · a player's own open stake on this market gives the chip (other markets ignored)", playerSide === "NO", String(playerSide));
   }
 
   // (h) D19c, C4 rulings 143–144: the house selection-closed notice, its title label and its own push tag are GONE —

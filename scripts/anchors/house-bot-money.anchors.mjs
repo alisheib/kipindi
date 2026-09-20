@@ -290,7 +290,7 @@ export const MUTATIONS = [
     file: "src/lib/comment-side.ts",
     from: `p.status === "OPEN" && p.houseBotId == null);`,
     to: `p.status === "OPEN");`,
-    expect: "6.m1 · a liquidity stake never gives its holder a side chip",
+    expect: "6.m1 · HB-ACC-13 · W23 kept · a liquidity stake never gives its holder a side chip",
     suite: "seam",
   },
   {

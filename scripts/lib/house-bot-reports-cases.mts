@@ -3190,7 +3190,7 @@ await guard("11.247", async () => {
   ok("11.247.1 · the population is real, and it is printed: every reader ran for every viewer, and every captured bus frame was swept — a reader that starts throwing leaves the sweep smaller and is NAMED here, never swallowed",
     swept.length >= VIEWERS.length * 9 && threw.length === 0 && frames.length >= 1,
     `${swept.length} sweeps · ${VIEWERS.length} viewers × ${readers(undefined).length} readers + ${frames.length} bus frames · threw: ${j(threw)}`);
-  ok("11.247.2 · ⛔ D19 · ruling 247 · NOT ONE of them carries the fixture's bot, intent or event id, the hb: bet key, or a word, identifier or bounded id of the shared vocabulary — for a signed-out visitor, another player, the holder or the trigger player",
+  ok("11.247.2 · ⛔ D19 · ruling 247 · HB-LC-39 / CRA-27 · every viewer · NOT ONE of them carries the fixture's bot, intent or event id, the hb: bet key, or a word, identifier or bounded id of the shared vocabulary — for a signed-out visitor, another player, the holder or the trigger player",
     leaks.length === 0, j(leaks.slice(0, 8)));
 
   /* ── the controls, and they are the assertion ────────────────────────────────────────────────── */
@@ -3258,7 +3258,7 @@ await guard("11.247", async () => {
   ok("11.247.c3 · CONTROL (iii) · the absence is not vacuous: the fixture's own market title is found in getMarket's output and the holder's own account is on the leaderboard — the readers really answered about this fixture",
     boardish.includes(MARKET_TITLE) && board.includes(HOLDER),
     j({ titleInMarket: boardish.includes(MARKET_TITLE), holderOnLeaderboard: board.includes(HOLDER), leaderboardRows: (await w.mdal.positionStore.leaderboard(50)).length }));
-  ok("11.247.c4 · D6 · …and the holder is there as an ORDINARY PLAYER: the leaderboard row is the account's, with no marker and no house key on it",
+  ok("11.247.c4 · D6 · HB-LC-39 · …and the holder is there as an ORDINARY PLAYER: the leaderboard row is the account's, with no marker and no house key on it",
     houseHits(board).length === 0 && !board.includes(bot.botId), j(houseHits(board).slice(0, 4)));
 });
 
