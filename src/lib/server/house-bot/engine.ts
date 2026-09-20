@@ -17,6 +17,7 @@
  * ⛔ CLAIMS WAIT FOR A HEALTHY PROCESS (A24): none while stopping, none while the measured skew is unknown or over
  * 5 s, none while admission has a queue or half its in-flight slots taken, and never more than 2 fires at once.
  */
+import { houseBotsLive } from "@/lib/feature-state";
 import { INSTANCE_ID, acquireLeadership, leadershipSnapshot, releaseLeadership } from "../leader";
 import type { EngineAlerts } from "./outcomes";
 import { admissionSnapshot, type AdmissionSnapshot } from "../admission";
@@ -41,7 +42,12 @@ import { houseBotSchemaReady } from "./schema-ready";
 export const SKEW_MEASURE_INTERVAL_MS = 60_000;
 export const UTC_ZONES = ["UTC", "Etc/UTC"] as const;
 
-export type EngineRefusal = "ENV_DISABLED" | "SCHEMA_NOT_READY" | "DB_TIMEZONE" | "BOOT_FAILED";
+/**
+ * ⛔ `FEATURE_WITHDRAWN` IS FIRST AMONG THESE, and its order is the decision: the PRODUCT state outranks
+ * this instance's configuration, its schema and its clock (04 F2). A sunset must stop the timers on every
+ * replica at once, whatever any one container's env happens to say.
+ */
+export type EngineRefusal = "FEATURE_WITHDRAWN" | "ENV_DISABLED" | "SCHEMA_NOT_READY" | "DB_TIMEZONE" | "BOOT_FAILED";
 
 export type EngineState = {
   started: boolean;
@@ -208,6 +214,15 @@ export async function measureSkew(state: EngineState = engineState(), dbClockMs:
 export async function startHouseBotEngine(ticks: EngineTicks, deps: EngineDeps = {}): Promise<{ started: boolean; refused: EngineRefusal | null }> {
   const state = engineState();
   if (state.started) return { started: true, refused: null };
+  /* ⛔ F2 · THE PRODUCT STATE IS CHECKED BEFORE ANYTHING ELSE. A withdrawn feature arms no timer on any
+     replica, however that replica is configured — and it is a SECOND, independent mechanism from the
+     control row's `offCause = 'SUNSET'`: one survives a database edited by hand, the other survives a
+     redeploy of an older image. Neither is allowed to be the only one that holds. */
+  if (!houseBotsLive()) {
+    state.refused = "FEATURE_WITHDRAWN";
+    console.warn("[house-bot] the feature is WITHDRAWN — the engine is not started and no timer is armed (04 F2)");
+    return { started: false, refused: state.refused };
+  }
   if (!houseBotEngineEnabled((deps.env ?? (() => process.env[HOUSE_BOT_ENGINE_ENV]))())) {
     state.refused = "ENV_DISABLED";
     console.warn(`[house-bot] ${HOUSE_BOT_ENGINE_ENV}=false — the engine is not started on this instance`);

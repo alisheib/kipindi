@@ -35,6 +35,7 @@
  * console renders a WARNING rather than a failure. 543 is fixed in the audit CONTRACT before Commit 8, not here.
  */
 import { audit } from "../audit";
+import { houseBotsLive } from "@/lib/feature-state";
 import { HOUSE_AUDIT, HOUSE_CONTROL_ID, isAllowedHouseAuditPayload } from "@/lib/house-bot/constants";
 import { REQUIRED_FOR_MASTER_ON } from "@/lib/house-bot/rules";
 import { houseBotControlStore, houseBotEventStore, houseBotStore, HouseSchemaNotReady, type StoredHouseBotControl } from "../house-bot-dal";
@@ -58,6 +59,11 @@ const errMessage = (e: unknown) => String((e as Error)?.message ?? e).replace(/\
  * verdict here, on a different rule, is the two-gates-that-disagree shape rulings 309 and 433(d) refuse by name.
  */
 export async function switchOnHouseBots(input: { actorId: string; reason: string | null }): Promise<SwitchOnResult> {
+  /* ⛔ F2 · THE CODE-LEVEL HALF OF WITHDRAWN, AND IT IS CHECKED BEFORE THE ROW IS EVEN READ. The control
+     row's `offCause = 'SUNSET'` below is the DATABASE half; this one survives a database somebody edited by
+     hand, exactly as that one survives a redeploy of an older image. Both answer WITHDRAWN, so the console
+     cannot tell them apart and nobody has to maintain two sentences. */
+  if (!houseBotsLive()) return { ok: false, code: "WITHDRAWN" };
   let control: StoredHouseBotControl;
   try {
     control = await houseBotControlStore.get();

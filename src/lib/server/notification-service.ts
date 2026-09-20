@@ -2443,7 +2443,15 @@ export async function notifyAdminsHouseBotPaused(opts: {
 
 /** House bots switched ON or OFF (02 §3.1, A9 step 4, ruling 111). Bell and email, never capped. */
 export async function notifyAdminsHouseBotSwitch(opts: {
-  state: "ON" | "OFF"; cause?: string; byName?: string | null; activeBots?: number; cancelled?: number; drain?: "drained" | "busy" | "skipped"; defect?: string | null; at: string;
+  state: "ON" | "OFF"; cause?: string; byName?: string | null; activeBots?: number; cancelled?: number; drain?: "drained" | "busy" | "skipped"; defect?: string | null;
+  /**
+   * ⭐ F2 / FS-06 · open house money at the moment of a SUNSET, and the ONE alert a sunset sends carries it.
+   * ⛔ It says the money is NOT voided, because it is not: open house positions settle normally — a
+   * pari-mutuel pool cannot void one position — and an owner reading "retired" with no figure beside it
+   * would reasonably believe the desk left nothing on the table.
+   */
+  openExposure?: { tzs: number; markets: number } | null;
+  at: string;
 }): Promise<number> {
   const { houseBotAlertRecipients } = await import("./house-bot/alerts");
   const recipients = await houseBotAlertRecipients();
@@ -2453,15 +2461,20 @@ export async function notifyAdminsHouseBotSwitch(opts: {
   const drained = opts.drain === "busy"
     ? "Switched off. A bet already in its final step may still complete."
     : "House bots are off. No bot will place a bet.";
+  const exposure = opts.openExposure && opts.openExposure.markets > 0 ? opts.openExposure : null;
+  const marketsEn = exposure ? `${exposure.markets} ${exposure.markets === 1 ? "market" : "markets"}` : "";
+  const openEn = exposure ? ` ${formatTzs(exposure.tzs)} of house money stays open across ${marketsEn} and settles normally — nothing is voided.` : "";
+  const openSw = exposure ? ` ${formatTzs(exposure.tzs)} za pesa za nyumba zinabaki wazi katika masoko ${exposure.markets} na zitatatuliwa kama kawaida — hakuna linalofutwa.` : "";
+  const openZh = exposure ? ` 仍有 ${formatTzs(exposure.tzs)} 平台资金在 ${exposure.markets} 个市场上未结算，将照常结算——不会作废任何一笔。` : "";
   const bodyEn = on
     ? `${opts.activeBots ?? 0} bots are active. Each one still obeys its own rules and the global limits.`
-    : `${drained} Cause: ${cause}.${(opts.cancelled ?? 0) > 0 ? ` ${opts.cancelled} queued stakes were cancelled.` : ""}${opts.defect ? ` The engine stopped itself: ${opts.defect}.` : ""}`;
+    : `${drained} Cause: ${cause}.${(opts.cancelled ?? 0) > 0 ? ` ${opts.cancelled} queued stakes were cancelled.` : ""}${opts.defect ? ` The engine stopped itself: ${opts.defect}.` : ""}${openEn}`;
   const bodySw = on
     ? `Boti ${opts.activeBots ?? 0} ziko hai. Kila moja bado inafuata kanuni zake na vikomo vya jumla.`
-    : `${opts.drain === "busy" ? "Imezimwa. Dau lililo hatua yake ya mwisho linaweza bado kukamilika." : "Boti za nyumba zimezimwa. Hakuna boti itakayoweka dau."} Sababu: ${cause}.${(opts.cancelled ?? 0) > 0 ? ` Dau ${opts.cancelled} za foleni zilifutwa.` : ""}`;
+    : `${opts.drain === "busy" ? "Imezimwa. Dau lililo hatua yake ya mwisho linaweza bado kukamilika." : "Boti za nyumba zimezimwa. Hakuna boti itakayoweka dau."} Sababu: ${cause}.${(opts.cancelled ?? 0) > 0 ? ` Dau ${opts.cancelled} za foleni zilifutwa.` : ""}${openSw}`;
   const bodyZh = on
     ? `当前有 ${opts.activeBots ?? 0} 个机器人处于活动状态。每个机器人仍遵守其自身规则与全局限额。`
-    : `${opts.drain === "busy" ? "已关闭。已进入最后步骤的投注仍可能完成。" : "平台机器人已关闭。任何机器人都不会下注。"} 原因：${cause}。${(opts.cancelled ?? 0) > 0 ? ` 已取消 ${opts.cancelled} 笔排队投注。` : ""}`;
+    : `${opts.drain === "busy" ? "已关闭。已进入最后步骤的投注仍可能完成。" : "平台机器人已关闭。任何机器人都不会下注。"} 原因：${cause}。${(opts.cancelled ?? 0) > 0 ? ` 已取消 ${opts.cancelled} 笔排队投注。` : ""}${openZh}`;
   return fanOutHouseAdmin(recipients, {
     titleEn: on ? `House bots switched ON${by} · ${opts.at}` : `House bots switched OFF — ${cause} · ${opts.at}`,
     titleSw: on ? `Boti za nyumba zimewashwa${by} · ${opts.at}` : `Boti za nyumba zimezimwa — ${cause} · ${opts.at}`,
@@ -2477,6 +2490,7 @@ export async function notifyAdminsHouseBotSwitch(opts: {
         { label: "Cause", value: cause },
         ...(opts.byName ? [{ label: "By", value: opts.byName }] : []),
         ...(on ? [] : [{ label: "Stakes cancelled", value: String(opts.cancelled ?? 0) }]),
+        ...(exposure ? [{ label: "Open house money", value: `${formatTzs(exposure.tzs)} across ${marketsEn} — settles normally` }] : []),
       ],
       cta: { href: CONSOLE_ROUTE, label: "Open the desk" },
     },

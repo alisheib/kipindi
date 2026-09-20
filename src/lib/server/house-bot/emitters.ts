@@ -237,3 +237,17 @@ export async function announceMoneyEvent(o: { botId: string; label: string; hold
 export async function announceSwitchedOn(o: { byName: string | null; activeBots: number }): Promise<void> {
   await safe("switch on", () => notifyAdminsHouseBotSwitch({ state: "ON", byName: o.byName, activeBots: o.activeBots, at: nowAt() }));
 }
+
+/**
+ * THE SUNSET — ⛔ ONE alert for the whole wind-down, never one per account (04 F2, FS-06).
+ *
+ * `removeHouseBot` announces per bot, which is right for an officer removing one account and wrong here:
+ * a desk of five would ring five times for a single decision, and the fifth bell would say nothing the
+ * first did not. The exposure rides along because a sunset does NOT void open money — it settles
+ * normally — and an owner reading "retired" with no figure would reasonably assume otherwise.
+ */
+export async function announceSunset(o: { cancelled: number; openExposure: { tzs: number; markets: number } }): Promise<void> {
+  await safe("sunset", () => notifyAdminsHouseBotSwitch({
+    state: "OFF", cause: "SUNSET", cancelled: o.cancelled, openExposure: o.openExposure, at: nowAt(),
+  }));
+}

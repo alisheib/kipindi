@@ -64,12 +64,15 @@ import type { Role } from "@/lib/server/roles";
  *
  * ⚠️ The CONCEPT still exists where it is genuinely implemented — the Proposals feature-state
  * machine (`proposals-config.ts`, `propose-promo.tsx`, `coming-soon-banner.tsx`) renders a real
- * gilt badge for it. This module governs three features, all WITHDRAWN today, and none is promised.
+ * gilt badge for it. This module governs FOUR features: three player-facing ones, all WITHDRAWN today
+ * and none promised, and `houseBots` — which is ACTIVE and is not a player surface at all (owner ruling
+ * D19: nothing about it reaches a player or the holder). Its WITHDRAWN state is a SUNSET, written by
+ * `ops:house-bots-sunset` in the database and by this constant in the code.
  */
 export type FeatureState = "ACTIVE" | "WITHDRAWN";
 
 /** The features this table governs. */
-export type FeatureName = "invite" | "bonus" | "install";
+export type FeatureName = "invite" | "bonus" | "install" | "houseBots";
 
 /**
  * ⛔ THE SWITCHES. Changing one word here changes the whole product surface.
@@ -84,11 +87,20 @@ export type FeatureName = "invite" | "bonus" | "install";
  * socials popup … the install, hide it for now, later we activate — it's disturbing users"*).
  * Nothing about it is deleted: the component, its copy, its eligibility rules and its guards all
  * stay, and the shell mounts it behind `installInviteIsLive()`. ACTIVE here brings it back.
+ *
+ * ⭐ `houseBots` — ACTIVE, and the ONE entry here that is not a player surface (04 F2). ⛔ WITHDRAWN
+ * here is a SUNSET, and it is the CODE half of a two-part terminal state: `ops:house-bots-sunset`
+ * writes `offCause = 'SUNSET'` on the control row, and this constant is committed and deployed after
+ * it. ⛔ THE TWO HALVES MUST NOT DISAGREE, and neither may be the only one anyone maintains: the DB
+ * marker survives a redeploy of old code, and this constant survives a database somebody edits by
+ * hand. Each ALONE refuses the switch, the roster and the engine; `test:withdrawn-features` §9d drives
+ * both and asserts they refuse identically.
  */
 const PRODUCT_STATE: Record<FeatureName, FeatureState> = {
   invite: "WITHDRAWN",
   bonus: "WITHDRAWN",
   install: "WITHDRAWN",
+  houseBots: "ACTIVE",
 };
 
 /**
@@ -184,4 +196,24 @@ export function bonusIsLiveFor(role?: Role | null | undefined): boolean {
  */
 export function installInviteIsLive(): boolean {
   return resolvedState("install") === "ACTIVE";
+}
+
+/**
+ * True while house bots are part of the product at all (04 F2).
+ *
+ * ⛔ NOT THE MASTER SWITCH, AND THE TWO ARE DIFFERENT QUESTIONS. The switch is an OPERATOR control —
+ * off today, on tomorrow, flipped from the console by the owner. This is the PRODUCT state: WITHDRAWN
+ * means the programme is over, and no console press, no database edit and no redeploy of old code
+ * brings it back without changing the constant above. A withdrawn feature cannot be switched on by
+ * editing a row, which is the entire point of keeping it up here.
+ *
+ * ⛔ AND IT GATES THE OFFER, NEVER THE REFUSAL (this module's standing rule). It decides whether the
+ * engine may start and whether an account may be designated, started or re-checked. It must NEVER be
+ * consulted to decide whether a house bet SETTLES, whether a marked position may be cashed out, or
+ * what the owner's book counts: withdrawing a programme must not strand money that is already on the
+ * table. Open house positions settle normally — a pari-mutuel pool cannot void one position.
+ * ⛔ Server-side only. It is never read by a client module and never reaches a player or a holder (D19).
+ */
+export function houseBotsLive(): boolean {
+  return resolvedState("houseBots") === "ACTIVE";
 }

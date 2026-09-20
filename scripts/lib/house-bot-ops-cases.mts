@@ -1298,6 +1298,258 @@ if (STORE === "postgres") {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
+// §5 · THE SUNSET (F2) — the wind-down that installs the terminal state.
+//
+// ⛔ IT RUNS LAST, AND NOTHING CAN FOLLOW IT: it removes every account and walks the control row to
+// a state nothing can undo. Every earlier section needs a desk that still works.
+//
+// ⭐ THE TWO CHILDREN SPLIT THE TWO AUDIT OUTCOMES, and each says which half it measured. The memory
+// child forces the compliance row to FAIL — the only way it can fail is `chainSecret()` throwing, which
+// is production without a distinct AUDIT_CHAIN_SECRET, so that is exactly what is arranged — and proves
+// the desk still moved and the result says `recorded: false`. The Postgres child runs it whole and
+// counts ONE audit row, ONE global event and ONE alert. Neither child could prove both.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const SUNSET_SCRIPT = "scripts/ops-house-bots-sunset.mts";
+
+if (STORE === "memory") {
+  section("§5s · ops:house-bots-sunset — the SOURCE pins and the refusals");
+  await guard("sunset.src", () => {
+    const script = bodyOf(SUNSET_SCRIPT);
+    const service = bodyOf("src/lib/server/house-bot/sunset.ts");
+    ok("ops.sunset.12 · ⛔ neither the script nor the service can turn anything ON — no switchOnHouseBots, no DAL switchOn, no raw `\"enabled\" = true`, no ORM patch, and no ON-shaped flag",
+      switchOnSites(script).length === 0 && onFlagSites(script).length === 0 && switchOnSites(service).length === 0,
+      j({ script: switchOnSites(script), service: switchOnSites(service) }));
+    ok("ops.sunset.12b · ⛔ it does NOT reuse removeHouseBot — which hardcodes cause MANUAL, ends targets as BOT_REMOVED, writes no per-target event and announces once PER ACCOUNT where FS-06 asks for ONE",
+      !/removeHouseBot/.test(script) && !/removeHouseBot/.test(service), "no removeHouseBot import in either file");
+    ok("ops.sunset.12c · ⛔ it uses markSunset, never switchOff — on today's already-OFF desk switchOff's `enabled = true` predicate matches NOTHING, so a sunset through it would strip the roster and leave no terminal marker at all",
+      /markSunset\s*\(/.test(service) && !/\.switchOff\s*\(/.test(service), "markSunset present, switchOff absent");
+    ok("ops.sunset.12d · ⛔ it touches NO press row and deletes NOTHING — a sunset keeps every marker, intent, event, press and target (A20)",
+      !/pressStore/.test(service) && !/\bdelete(?:Many)?\s*\(/.test(service) && !/DELETE\s+FROM/i.test(service), "no press writer, no delete");
+    ok("ops.sunset.12e · ⛔ it never voids, refunds or cashes out — open house positions settle normally, and a pari-mutuel pool cannot void one position",
+      !/\bvoid(?:Market|Position)|refund|cashOut|cash_out/i.test(service.replace(/voidHouseConsent/g, "")), "no money unwind in the service");
+  });
+
+  section("§5 · the sunset SERVICE on the memory twin — and the compliance row FORCED to fail");
+  await guard("sunset.mem", async () => {
+    const SUN: Any = await import("../../src/lib/server/house-bot/sunset.ts");
+    const sw: Any = await import("../../src/lib/server/house-bot/switch-on.ts");
+
+    // §1b walked this row to SUNSET to prove the DAL member; the SCRIPT's own case is the shipped state —
+    // OFF with no terminal cause — so the row is put back there first, through the DAL, deliberately.
+    await w.dal.houseBotControlStore.switchOn({ byId: OFFICER, reason: "§5 fixture" });
+    await w.switchOff();
+    const fixture = await w.dal.houseBotControlStore.get();
+    ok("ops.sunset.0m · fixture · the desk is OFF(MANUAL) with live accounts standing — the state a console OFF leaves behind, and the one a sunset actually meets",
+      fixture.enabled === false && fixture.offCause === "MANUAL" && (await w.dal.houseBotStore.listNonRemoved()).length > 0,
+      j({ offCause: fixture.offCause, liveBots: (await w.dal.houseBotStore.listNonRemoved()).length }));
+
+    const short = await SUN.sunsetHouseBots({ actorId: OFFICER, reason: "no" });
+    const long = await SUN.sunsetHouseBots({ actorId: OFFICER, reason: "x".repeat(301) });
+    const control = await w.dal.houseBotControlStore.get();
+    ok("ops.sunset.8 · ⛔ a reason shorter than 5 or longer than 300 characters is REFUSED and writes NOTHING — the officer's note is the record this act leaves behind, and both DDL CHECKs cap it at 300",
+      short.ok === false && short.code === "REASON" && long.ok === false && long.code === "REASON" && control.offCause !== "SUNSET",
+      j({ short: short.code, long: long.code, offCause: control.offCause }));
+
+    // ⛔ THE ONLY WAY audit() CAN FAIL is chainSecret() throwing — with a database it FAILS OPEN and keeps
+    // an in-memory entry rather than rejecting. So production without a distinct AUDIT_CHAIN_SECRET is the
+    // real shape of this failure, and it is what is arranged here, for exactly one call.
+    const prevEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+    const prevSecret = process.env.AUDIT_CHAIN_SECRET;
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    delete process.env.AUDIT_CHAIN_SECRET;
+    const done = await SUN.sunsetHouseBots({ actorId: OFFICER, reason: "board decision · memory twin" });
+    (process.env as Record<string, string | undefined>).NODE_ENV = prevEnv;
+    if (prevSecret !== undefined) process.env.AUDIT_CHAIN_SECRET = prevSecret;
+
+    const after = await w.dal.houseBotControlStore.get();
+    const live = await w.dal.houseBotStore.listNonRemoved();
+    ok("ops.sunset.a1 · ⛔ THE COMPLIANCE ROW FAILED AND THE DESK STILL MOVED, and the result says BOTH: `recorded: false` beside a control row at SUNSET and an empty roster — a sunset reported as failed because its audit row failed would be a lie in the other direction",
+      done.ok === true && done.changed === true && done.recorded === false && done.auditId === null
+      && after.offCause === "SUNSET" && after.enabled === false && live.length === 0,
+      j({ recorded: done.recorded, counts: done.counts, offCause: after.offCause, liveBots: live.length }));
+
+    const refused = await sw.switchOnHouseBots({ actorId: OFFICER, reason: null });
+    ok("ops.sunset.2 · the terminal marker is proved by the REFUSAL it produces: switchOnHouseBots answers { ok:false, code:'WITHDRAWN' }",
+      refused.ok === false && refused.code === "WITHDRAWN", j(refused));
+
+    const again = await SUN.sunsetHouseBots({ actorId: OFFICER, reason: "a second run, an hour later" });
+    ok("ops.sunset.7 · a second run changes NOTHING in every group and says so — `changed: false`, no event, no compliance row, no alert — which is what makes this script safe to re-run after a half-finished one",
+      again.ok === true && again.changed === false && again.eventId === null && again.auditId === null
+      && again.counts.botsRemoved === 0 && again.counts.intentsCancelled === 0, j({ changed: again.changed, counts: again.counts }));
+  });
+}
+
+if (STORE === "postgres") {
+  section("§5 · ops:house-bots-sunset — DRIVEN through the real script, and counted row by row");
+  await guard("sunset", async () => {
+    const pgLib: Any = (await import("pg")).default;
+    const cx = new pgLib.Client({ connectionString: process.env.DATABASE_URL });
+    await cx.connect();
+    const rows = async (text: string, a: unknown[] = []): Promise<Any[]> => (await cx.query(text, a)).rows;
+    const n = async (text: string): Promise<number> => Number((await rows(text))[0].n);
+    const sw: Any = await import("../../src/lib/server/house-bot/switch-on.ts");
+
+    try {
+      // ── the fixture, all of it planted through the product's own writers ──
+      const bot = await w.bot();
+      const market = await pollWithLockedNo();
+      // ⛔ PLANTED CONTROL · an account ALREADY REMOVED before the sunset. It must not be removed twice,
+      // must keep its own cause, and must receive no second REMOVED event.
+      const already = await w.bot();
+      await w.dal.houseBotStore.setStatus(already.botId, {
+        from: ["ACTIVE"], to: "REMOVED", pauseReason: null, pausedFromStatus: null,
+        removal: { byId: OFFICER, reason: "removed before the sunset", cause: "MANUAL" },
+      });
+      // A live target and a live intent for the sunset to act on.
+      const target = await w.dal.targetStore.insert({
+        id: `hbt_ops_${process.pid}`, houseBotId: bot.botId, marketId: market.market.id,
+        delayMinSec: 10, delayMaxSec: 20, timingFrom: "STAKE", reactTo: "FIRST", createdById: OFFICER,
+        snapshot: { titleEn: "Target poll", category: "macro", cutoff: w.iso(3_600_000), rawYes: 0, rawNo: 0 },
+      });
+      // ⛔ PLANTED CONTROL · a target ALREADY ENDED. It must not be re-ended and must receive no event.
+      const endedMarket = await pollWithLockedNo();
+      const vetoed = await w.dal.targetStore.insert({
+        id: `hbt_ops_v_${process.pid}`, houseBotId: bot.botId, marketId: endedMarket.market.id,
+        delayMinSec: 10, delayMaxSec: 20, timingFrom: "STAKE", reactTo: "FIRST", createdById: OFFICER,
+        snapshot: { titleEn: "Vetoed poll", category: "macro", cutoff: w.iso(3_600_000), rawYes: 0, rawNo: 0 },
+      });
+      await w.dal.targetStore.endActive(vetoed.id, "VETOED");
+      const liveIntent = await w.intent(bot, market.market.id, { kind: "FILL", side: "YES", stakeTzs: 1_500 });
+      // ⛔ PLANTED CONTROL · a QUEUED press over that intent (TGT-31): the sunset must not touch it, and it
+      // reaches DONE only through the planner's own sweep — which is run below, so "untouched" is not "unreachable".
+      const press = await w.dal.houseAtomic(null, async (t: Any) => {
+        const ins = await w.dal.pressStore.insertChecking({
+          id: `hbp_ops_${process.pid}`, actorId: OFFICER, submitId: crypto.randomUUID(), purpose: "ENTER_NOW",
+          houseBotId: bot.botId, marketId: market.market.id, targetId: null, intentId: liveIntent.id, reason: "ops §5 fixture",
+        }, t);
+        return w.dal.pressStore.queue(ins.row.id, liveIntent.id, t);
+      });
+
+      const before = {
+        control: (await w.dal.houseBotControlStore.get()).offCause,
+        liveBots: (await w.dal.houseBotStore.listNonRemoved()).length,
+        sunsetEvents: await n(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'SUNSET'`),
+        removedEvents: await n(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'REMOVED'`),
+        targetEndedEvents: await n(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'TARGET_ENDED'`),
+        audits: await n(`SELECT count(*)::int AS "n" FROM "AuditLog" WHERE "action" = 'house_bot.sunset'`),
+        notifications: await w.db.notification.countUnread(OFFICER),
+        openMarked: await n(`SELECT count(*)::int AS "n" FROM "Position" WHERE "houseBotId" IS NOT NULL AND "status"::text = 'OPEN'`),
+        markedRows: await n(`SELECT count(*)::int AS "n" FROM "Position" WHERE "houseBotId" IS NOT NULL`),
+        press: (await w.dal.pressStore.get(press.id)).state,
+      };
+      ok("ops.sunset.0f · fixture · a live account with an ACTIVE target and a live intent, a QUEUED press over that intent, an account already REMOVED(MANUAL) and a target already ENDED(VETOED) — every one written through the product's own writers",
+        before.liveBots >= 1 && before.press === "QUEUED" && before.control !== "SUNSET",
+        j({ liveBots: before.liveBots, press: before.press, offCause: before.control }));
+
+      // ── the dry run ──
+      const dry = runOps(SUNSET_SCRIPT, []);
+      const afterDry = await w.dal.houseBotControlStore.get();
+      ok("ops.sunset.dry · the dry run writes NOTHING and prints the exact census the compliance row will carry — bots by status, live intents, active targets, and the open house money per market with its total",
+        dry.code === 0 && afterDry.offCause === before.control && /NOTHING WRITTEN/.test(dry.out)
+        && /open house money/.test(dry.out) && /live intents/.test(dry.out) && /active targets/.test(dry.out)
+        && (await w.dal.houseBotStore.listNonRemoved()).length === before.liveBots,
+        dry.out.split("\n").filter((l) => /open house money|live intents/.test(l)).map((l) => l.trim()).join(" | "));
+      const noReason = runOps(SUNSET_SCRIPT, ["--apply"]);
+      ok("ops.sunset.8p · --apply with no --reason is refused (exit 2) and writes nothing",
+        noReason.code === 2 && (await w.dal.houseBotControlStore.get()).offCause === before.control, `exit ${noReason.code}`);
+
+      // ── the real thing ──
+      const REASON = "board-decision-2026-09-20";
+      const applied = runOps(SUNSET_SCRIPT, ["--apply", "--reason", REASON], { OPS_OFFICER_ID: OFFICER });
+      const after = {
+        control: await w.dal.houseBotControlStore.get(),
+        liveBots: (await w.dal.houseBotStore.listNonRemoved()).length,
+        sunsetEvents: await n(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'SUNSET'`),
+        removedEvents: await n(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'REMOVED'`),
+        targetEndedEvents: await n(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'TARGET_ENDED'`),
+        audits: await n(`SELECT count(*)::int AS "n" FROM "AuditLog" WHERE "action" = 'house_bot.sunset'`),
+        notifications: await w.db.notification.countUnread(OFFICER),
+        openMarked: await n(`SELECT count(*)::int AS "n" FROM "Position" WHERE "houseBotId" IS NOT NULL AND "status"::text = 'OPEN'`),
+        markedRows: await n(`SELECT count(*)::int AS "n" FROM "Position" WHERE "houseBotId" IS NOT NULL`),
+      };
+      const sunsetBot = await w.dal.houseBotStore.get(bot.botId);
+      const alreadyBot = await w.dal.houseBotStore.get(already.botId);
+      const endedTarget = await w.dal.targetStore.get(target.id);
+      const vetoedTarget = await w.dal.targetStore.get(vetoed.id);
+      const intentAfter = await w.dal.houseBotIntentStore.get(liveIntent.id);
+
+      ok("ops.sunset.1 · ⛔ BLOCKER 1's CASE · --apply on an ALREADY-OFF desk writes offCause='SUNSET' — switchOff() would have matched nothing here and left the roster stripped with no terminal marker",
+        applied.code === 0 && after.control.offCause === "SUNSET" && after.control.enabled === false && before.control !== "SUNSET",
+        `exit ${applied.code} · ${before.control} → ${after.control.offCause}`);
+      ok("ops.sunset.3 · every non-REMOVED account is REMOVED with cause SUNSET and its live intents cancelled",
+        after.liveBots === 0 && sunsetBot.status === "REMOVED" && sunsetBot.removedCause === "SUNSET"
+        && intentAfter.status === "CANCELLED", j({ liveBots: after.liveBots, cause: sunsetBot.removedCause, intent: intentAfter.status }));
+      ok("ops.sunset.4 · every ACTIVE target is ENDED with endCause SUNSET, and each one gets EXACTLY ONE TARGET_ENDED event — endAllForBot writes NO event in either twin, so a caller that trusted it would end every target in silence",
+        endedTarget.status === "ENDED" && endedTarget.endCause === "SUNSET"
+        && after.targetEndedEvents === before.targetEndedEvents + 1,
+        j({ target: endedTarget.endCause, events: [before.targetEndedEvents, after.targetEndedEvents] }));
+      ok("ops.sunset.4c · CONTROL · the target already ENDED(VETOED) was NOT re-ended and got NO event — which is what proves the +1 above is the ACTIVE one and not 'every target that exists'",
+        vetoedTarget.endCause === "VETOED" && after.targetEndedEvents === before.targetEndedEvents + 1, j({ vetoed: vetoedTarget.endCause }));
+      // ⛔ THE DELTA IS THE POPULATION, NOT A ONE: by this point the world holds several live accounts, so
+      // "exactly one REMOVED event" would have been an assumption about the fixture rather than about the act.
+      const alreadyEvents = await n(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'REMOVED' AND "houseBotId" = '${already.botId}'`);
+      ok("ops.sunset.3c · CONTROL · EXACTLY ONE REMOVED event per account that was still live — and the account already REMOVED(MANUAL) keeps its own cause and receives NONE, which is what proves the delta counts the act and not the table",
+        alreadyBot.removedCause === "MANUAL" && alreadyEvents === 0
+        && after.removedEvents === before.removedEvents + before.liveBots && before.liveBots > 1,
+        j({ already: alreadyBot.removedCause, eventsForAlready: alreadyEvents, removedEvents: [before.removedEvents, after.removedEvents], liveAtStart: before.liveBots }));
+      ok("ops.sunset.5 · EXACTLY ONE global SUNSET event with no houseBotId, EXACTLY ONE house_bot.sunset compliance row, and EXACTLY ONE admin alert for the whole wind-down — never one bell per account",
+        after.sunsetEvents === before.sunsetEvents + 1 && after.audits === before.audits + 1
+        && after.notifications === before.notifications + 1
+        && (await rows(`SELECT "houseBotId" FROM "HouseBotEvent" WHERE "kind" = 'SUNSET'`))[0].houseBotId === null,
+        j({ sunsetEvents: after.sunsetEvents, audits: after.audits, alerts: [before.notifications, after.notifications] }));
+
+      const auditRow = (await rows(`SELECT "payload"::text AS "payload" FROM "AuditLog" WHERE "action" = 'house_bot.sunset' ORDER BY "createdAt" DESC LIMIT 1`))[0];
+      const payload = JSON.parse(auditRow.payload) as Record<string, unknown>;
+      const C: Any = await import("../../src/lib/house-bot/constants.ts");
+      ok("ops.sunset.10 · the compliance payload carries the census keys — bots, cancelled, openExposureByMarket — plus the eventId every other house audit row links by, and it PASSES isAllowedHouseAuditPayload",
+        C.isAllowedHouseAuditPayload(payload)
+        && ["bots", "cancelled", "openExposureByMarket", "eventId"].every((k) => k in payload)
+        && Object.keys(payload).length === 4, j(Object.keys(payload)));
+      ok("ops.sunset.9 · ⛔ THE OFFICER'S FREE TEXT IS ON THE EVENT ROW AND ON THE ACCOUNT, AND IN NO AUDIT PAYLOAD — the chain cannot be rewritten, so a holder's name typed into a reason box would outlive that holder's own erasure; erasure CAN reach both of the places it does live",
+        !JSON.stringify(payload).includes(REASON) && !("reason" in payload)
+        && (await rows(`SELECT "reason" FROM "HouseBotEvent" WHERE "kind" = 'SUNSET' ORDER BY "createdAt" DESC LIMIT 1`))[0].reason === REASON
+        && sunsetBot.removedReason === REASON,
+        j({ inPayload: JSON.stringify(payload).includes(REASON), onEvent: true, onAccount: sunsetBot.removedReason }));
+
+      const pressAfter = await w.dal.pressStore.get(press.id);
+      ok("ops.sunset.6 · ⛔ NO press row is touched: the QUEUED press over the cancelled intent is still QUEUED",
+        pressAfter.state === "QUEUED", j({ state: pressAfter.state }));
+      const swept = await w.dal.pressStore.doneTerminalQueued();
+      const pressSwept = await w.dal.pressStore.get(press.id);
+      ok("ops.sunset.6p · POSITIVE CONTROL · …and the planner's own sweep DOES move it to DONE — so 'untouched' is a measured difference and not a row nothing could reach (TGT-31)",
+        swept.includes(press.id) && pressSwept.state === "DONE", j({ swept: swept.length, state: pressSwept.state }));
+
+      ok("ops.sunset.11 · ⛔ NOTHING IS VOIDED, REFUNDED OR CASHED OUT: the open marked positions are unchanged in count and still OPEN, and the all-time marked-row count did not move — open house money settles normally, because a pari-mutuel pool cannot void one position",
+        after.openMarked === before.openMarked && after.markedRows === before.markedRows && before.openMarked > 0,
+        j({ openMarked: [before.openMarked, after.openMarked], markedRows: [before.markedRows, after.markedRows] }));
+
+      const refusedOn = await sw.switchOnHouseBots({ actorId: OFFICER, reason: null });
+      ok("ops.sunset.2 · after the sunset switchOnHouseBots answers { ok:false, code:'WITHDRAWN' } — the terminal marker proved by the refusal it produces rather than by the column it wrote",
+        refusedOn.ok === false && refusedOn.code === "WITHDRAWN", j(refusedOn));
+
+      const second = runOps(SUNSET_SCRIPT, ["--apply", "--reason", "second-run-an-hour-later"], { OPS_OFFICER_ID: OFFICER });
+      const end = {
+        sunsetEvents: await n(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'SUNSET'`),
+        removedEvents: await n(`SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE "kind" = 'REMOVED'`),
+        audits: await n(`SELECT count(*)::int AS "n" FROM "AuditLog" WHERE "action" = 'house_bot.sunset'`),
+        notifications: await w.db.notification.countUnread(OFFICER),
+      };
+      ok("ops.sunset.7 · a second --apply changes 0 rows in all six groups — no second event, no second compliance row, no second alert — and exits 0, which is what makes a half-finished run safe to repeat",
+        second.code === 0 && /Already retired/.test(second.out)
+        && end.sunsetEvents === after.sunsetEvents && end.removedEvents === after.removedEvents
+        && end.audits === after.audits && end.notifications === after.notifications,
+        `exit ${second.code} · ${j(end)}`);
+      ok("ops.sunset.next · …and the script tells the officer the SECOND act and the third: commit houseBots:\"WITHDRAWN\" and deploy, then watch the open marked positions reach 0 on their own",
+        /feature-state/.test(applied.out) && /ops:house-bots-status/.test(applied.out) && /settle on their own/.test(applied.out),
+        applied.out.split("\n").filter((l) => /WITHDRAWN|settle on their own/.test(l)).slice(0, 3).map((l) => l.trim()).join(" | "));
+    } finally {
+      await cx.end().catch(() => {});
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
 // §store · the child runs on the store it names — so a memory-only green can never be read as a
 // Postgres green.
 // ═══════════════════════════════════════════════════════════════════════════════════════════

@@ -31,6 +31,7 @@ export const dynamic = "force-dynamic";
  * ⛔ Admin copy, written HERE in the server page and passed to no client component (owner ruling D19, C5-SPEC ruling 172).
  */
 const ENGINE_REFUSAL_WORDS: Record<EngineRefusal, string> = {
+  FEATURE_WITHDRAWN: "the feature is withdrawn from the product, so no engine timer runs on any instance.",
   ENV_DISABLED: "HOUSE_BOT_ENGINE is set to false on this instance, so no engine timer runs here.",
   SCHEMA_NOT_READY: "the house-bot schema is not ready, so the engine did not start and /api/health answers 503.",
   DB_TIMEZONE: "the database time zone is not UTC, so the engine refused to start.",

@@ -44,7 +44,16 @@
  *     twelve more in the Postgres child, which DRIVES it: dry, refused while the switch is ON, refused
  *     over its ceiling, applied, applied again, and then drift leg (a) re-read — with two marked
  *     positions held by DIFFERENT bots, so "it wrote a bot id" cannot pass for "it wrote the RIGHT one".
+ *   · memory 58, postgres 69 — steps 6 and 7: §5, the SUNSET. ⭐ THE TWO CHILDREN SPLIT THE TWO AUDIT
+ *     OUTCOMES and each says which half it measured: the memory child FORCES the compliance row to fail
+ *     (production without a distinct AUDIT_CHAIN_SECRET — the only way `audit()` can reject, since with a
+ *     database it fails OPEN) and proves the desk still moved with `recorded: false`; the Postgres child
+ *     runs the real script and counts ONE global event, ONE compliance row and ONE alert, with controls
+ *     for an account already REMOVED, a target already ENDED, and a QUEUED press that the sunset must not
+ *     touch and the planner's own sweep then moves — so "untouched" is a measured difference.
+ *     ⛔ §5 RUNS LAST AND NOTHING MAY FOLLOW IT: it empties the roster and walks the control row to a
+ *     state nothing can undo.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 48, postgres: 52 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 58, postgres: 69 }, dbPrefix: "hb_ops" });

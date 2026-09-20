@@ -762,10 +762,83 @@ rulebooks, Terms and the privacy notice byte-identical to `origin/main`.
 ⏳ Written in commit 8.
 
 ### Rollback levers
-⏳ Written in commit 8.
+
+Four levers, weakest blast radius first. Each row says what it stops, what it costs and what it leaves behind.
+⚠️ 01's own name for this section is "Rolling back past the house-bots merge"; it is the same procedure.
+
+| Lever | Stops | Deploy? | Speed | Leaves behind |
+|---|---|---|---|---|
+| Pause or Remove one account (console) | that account | no | < 1 s | its live intents cancelled |
+| Master **OFF** (console) | every house bet | no | < 1.5 s | every live intent cancelled, one SWITCH_OFF event, one compliance row, one alert |
+| `npm run ops:house-bots-off -- --apply` | every house bet | no (direct pg) | seconds | the control row and **one SWITCH_OFF event** — and **the live intents are NOT cancelled** (see below) |
+| Maintenance mode | every bet, players included | no, but it is a per-container latch | immediate on one replica | a player outage |
+| `HOUSE_BOT_ENGINE=false` | the timers and the bet hook | **redeploy** | minutes | nothing |
+| Revert the merge | all house code | **yes, a build** | build time | the migrations stay (expand-only) |
+
+**When to reach for the terminal OFF instead of the console.** Exactly two situations, and they are the two the
+console cannot serve: a deploy changed the Server Action ids under an open tab, so every press posts to an id that
+no longer exists; or the app's Prisma pool is exhausted and the console cannot reach the database at all. The
+script uses a direct `pg` client for that reason — the data layer runs every statement through the app's own pool,
+which is precisely what is gone in the second case.
+
+⛔ **It takes NO lock, and that is the point.** Every fire re-reads the control row inside its own lock, so an OFF
+that has committed already binds every bet not yet holding `house:control`. Taking the lock first would let one
+hung bet hold the switch open for the whole transaction timeout.
+
+⛔ **It does NOT cancel live intents, and it says so on screen.** The console's OFF cancels them; this one leaves
+them standing, prints how many it left and prints the exact statement that cancels them. Cancelling is a
+table-wide write, and a script written to hold nothing must not take one. Nothing can stake while the switch is
+off; the rows are queued stakes that will never fire, and they are cancelled either by that statement or by the
+console's own Switch off once the console works again.
+
+⛔ **It writes NO compliance audit row, deliberately (D-OPS-2).** `audit()` takes a database-wide advisory lock,
+reads the true chain head and HMAC-chains the entry; a hand-written `AuditLog` INSERT from a direct-pg script
+would BREAK the chain — the one artefact whose purpose is to prove nothing was rewritten. **The SWITCH_OFF event
+row is the record, and the officer files the compliance note by hand.** ⛔ Do not "fix" this by adding an INSERT.
+
+**After a rollback window — the re-release law.** Old code has no marker in its client, so its payout, refund and
+cash-out rows are written unmarked, it lets house positions be cashed out, and it accrues commission on them.
+Before any later house deploy:
+
+1. `npm run ops:house-bots-status -- --drift` must report **0** on all three legs. The run is time-bounded;
+   widen it with `-- --drift --since 90` and read the bound it prints.
+2. Leg (a) — unmarked ledger rows on marked positions — is fixed by `npm run ops:house-bots-remark -- --apply`:
+   dry by default, NULL-filling only, **TRANSACTIONS only**, refused while the master switch is ON, reconciled
+   inside one transaction and rolled back if the counts disagree. A second run changes 0 rows.
+3. Legs (b) and (c) — a cash-out or a commission on a marked position — go into a COMPLIANCE-DECISIONS note with
+   amounts. ⛔ Nothing is clawed back automatically.
+4. The remark script writes no compliance row either (**D-OPS-3**, and its header argues it): there is no
+   `house_bot.remark` audit action and no REMARK event kind, both closed lists pinned by SQL CHECKs. Its REPORT
+   is the record — file the note with that output attached.
 
 ### Sunset
-⏳ Written in commit 8.
+
+**What sunset is.** A wind-down that installs a TERMINAL state. ⛔ It is **not** a data retirement: every marker,
+intent, event, press and target is kept (A20), and every report keeps every row. ⛔ It does **not** unwind open
+money: open house positions **settle normally**, because a pari-mutuel pool cannot void one position, and nothing
+is ever voided automatically. ⛔ It tells no holder anything (D19).
+
+**It is two acts, and the order is the point.**
+
+1. `npm run ops:house-bots-sunset` — read the census it prints. Then
+   `npm run ops:house-bots-sunset -- --apply --reason "<why, 5–300 characters>"`.
+   Seconds, no deploy: the desk is terminal the moment it commits. It writes, in this order: the control row to
+   `offCause = SUNSET`; per account, every ACTIVE target ENDED(SUNSET) with one TARGET_ENDED event each and then
+   the account REMOVED(SUNSET), one transaction per holder; that account's live intents cancelled; one REMOVED
+   event per account plus **one** global SUNSET event; **one** `house_bot.sunset` compliance row carrying
+   `{ bots, cancelled, openExposureByMarket }`; and **one** admin alert for the whole wind-down.
+   ⛔ Your `--reason` is on the event row and on the account, never in the audit payload: the chain cannot be
+   rewritten, and an erasure can reach the first two.
+   ⚠️ If it prints `recorded: false`, **the desk IS retired** and only the compliance row failed — file it by hand.
+2. Set `houseBots: "WITHDRAWN"` in `src/lib/feature-state.ts`, commit and deploy. Act 1 is a database marker that
+   survives a redeploy of an older image; act 2 is a code constant that survives a database someone edits by hand.
+   ⛔ Neither may become the only one that holds: each alone refuses the master switch, the roster and the engine.
+3. Then run `npm run ops:house-bots-status` until the open marked positions reach **0**. They settle on their own.
+   ⛔ Never void, refund or cash one out to make that number fall faster.
+
+A second `--apply` changes nothing, writes no second event, no second compliance row and no second alert, and
+exits 0 — so a half-finished run is safe to repeat. Sunset is also structurally impossible to undo by switch:
+`switchOnHouseBots` refuses `offCause = SUNSET` outright, with code `WITHDRAWN`.
 
 ### First switch-on
 ⏳ Written in commit 8.

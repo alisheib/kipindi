@@ -769,6 +769,7 @@
     "ops:house-bots-off": "tsx scripts/ops-house-bots-off.mts",
     "ops:house-bots-status": "tsx scripts/ops-house-bots-status.mts",
     "ops:house-bots-remark": "tsx scripts/ops-house-bots-remark.mts",
+    "ops:house-bots-sunset": "tsx scripts/ops-house-bots-sunset.mts",
     "test:reset-identifier": "tsx scripts/reset-identifier.test.mts",
     "red:reset-identifier": "node scripts/reset-identifier-red.mjs",
     "qa:reset-identifier": "node scripts/reset-identifier-shots.mjs",

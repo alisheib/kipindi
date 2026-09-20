@@ -15,6 +15,7 @@
  * control write uses. Every write below happens inside `wallet:<botUser>`, where Pause, auto-pause, Remove and
  * the seam's H2 re-read the bot; audits and notices go out after the lock is released (04 A19).
  */
+import { houseBotsLive } from "@/lib/feature-state";
 import { db, type StoredUser } from "../store";
 import { hasOpenRequest } from "../privacy";
 import { withLock } from "../locks";
@@ -234,6 +235,15 @@ export const DESIGNATE_COPY = {
   rosterFull: (n: number, max: number) => `The roster is full (${n} of ${max}). Remove an account or raise the roster limit on Limits →`,
 } as const;
 
+/**
+ * ⛔ F2 · THE ONE SENTENCE FOR A WITHDRAWN PROGRAMME, AND IT IS NEUTRAL BY RULE (D19). It names no
+ * feature, no bot, no holder and no officer, so it is safe wherever a refusal is rendered. It rides on
+ * the EXISTING refusal codes of all three results — deliberately, so that adding this gate changes no
+ * caller's exhaustive handling and no console mapping: a new code would have been a second edit in a
+ * file another lane is working in today, for no gain the officer can see.
+ */
+export const FEATURE_WITHDRAWN_REFUSAL = "Withdrawn from the product — nothing can be added, started or re-checked here.";
+
 export type DesignateResult =
   | { ok: true; bot: StoredHouseBot }
   | { ok: false; code: "INVALID" | "INELIGIBLE" | "ALREADY_BOT" | "PASSWORD_CHANGED" | "ROSTER_FULL" | VerifyRefusalCode;
@@ -256,6 +266,11 @@ const NULL_CAPS = Object.fromEntries(CAP_FIELDS.map((k) => [k, null])) as HouseB
 export async function designateHouseBot(input: {
   officerId: string; userId: string; label: string; note?: string | null; password: string; submitId?: string | null;
 }): Promise<DesignateResult> {
+  /* ⛔ F2 · FIRST STATEMENT, BEFORE A PASSWORD ATTEMPT CAN BE SPENT. Until this gate existed the desk's
+     "nothing can be designated" Callout was DISPLAY ONLY: the service would happily designate a new
+     account onto a withdrawn desk, and the refusal has to hold for every caller, not only for the one
+     that hides the button. */
+  if (!houseBotsLive()) return { ok: false, code: "INELIGIBLE", message: FEATURE_WITHDRAWN_REFUSAL };
   const { officerId, userId } = input;
   const labelErr = validateLabel(input.label);
   if (labelErr) return { ok: false, code: "INVALID", message: labelErr.message, field: "label" };
@@ -385,6 +400,9 @@ export type ReverifyResult =
  * every Start check.
  */
 export async function reverifyHouseBot(input: { officerId: string; botId: string; password: string; submitId?: string | null }): Promise<ReverifyResult> {
+  /* ⛔ F2 · a re-check is the first step of putting an account back to work, so it is refused too — and
+     before the password, so a withdrawn programme cannot spend a holder's own lockout reserve. */
+  if (!houseBotsLive()) return { ok: false, code: "BLOCKED", message: FEATURE_WITHDRAWN_REFUSAL };
   const { officerId, botId } = input;
   const bot = await houseBotStore.get(botId);
   if (!bot) return { ok: false, code: "NOT_FOUND", message: "No bot with that ID." };
@@ -465,6 +483,10 @@ const cantStart = (m: string): string => (m.startsWith("Can't start") ? m : `Can
  * `rulesContext` is built by the caller from the live platform (commit 7's action).
  */
 export async function startHouseBot(input: { officerId: string; botId: string; rulesContext: RulesContext }): Promise<StartResult> {
+  /* ⛔ F2 · a withdrawn programme starts nothing, and this is checked before the roster is even read.
+     ⚠️ It does NOT stop an already-ACTIVE account being paused or removed: a sunset must be able to wind
+     down what is running, and gating the refusal path is how a withdrawal strands what it withdrew. */
+  if (!houseBotsLive()) return { ok: false, code: "INELIGIBLE", message: FEATURE_WITHDRAWN_REFUSAL };
   const { officerId, botId } = input;
   const bot = await houseBotStore.get(botId);
   if (!bot) return { ok: false, code: "NOT_FOUND", message: "No bot with that ID." };
