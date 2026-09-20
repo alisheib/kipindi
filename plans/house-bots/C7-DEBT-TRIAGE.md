@@ -259,3 +259,85 @@ sort rather than to drive. ⛔ They stay RUNNABLE, not NOT MEASURED — the dist
 
 **Will not touch** the 36 not-measurable entries beyond naming the blocker, the four broken rows beyond naming what
 settles each, or `scripts/red-anchors.test.mts`, whose `UNDECLARED_CEILING` stays at 65.
+
+## THE MUTATION BATCH — run whole, 2026-09-21 (C5-8, alerts lane, third phase)
+
+⭐ **This is the run the seven batch rows (18, 31, 39, 55, 58, 66, 71) were all waiting on.** Ruling 275 defers it
+from each step to the commit close, to be run ONCE for the whole commit. The previous phase correctly refused to run
+a fragment. This phase ran it whole, in one lane, one drive at a time, with `git status --porcelain` verified EMPTY
+before and after each drive.
+
+### The live declared population, re-derived — NOT read off a row
+
+⛔ **Every per-step count the seven rows carry is now WRONG, and none of them was trusted.** Row 18 speaks of 59 then
+68; row 31 of 100; row 39 of "the other ~105"; row 55 of 20; row 58 of 14 + 3; row 66 of 18; row 71 of 22 and of an
+anchors file that "went 205 to 225". Those numbers were true when each step closed. Re-derived here with
+`npm run test:red-anchors`, whose §3 imports every declaration file and resolves every `from` against the tree:
+
+| | Declared, live | What a row claims |
+|---|---|---|
+| **The whole fleet** | **1,151 declarations across 90 declaration files** | — |
+| `house-bot-console.anchors.mjs` | **281** | 225 (row 71), 205 (row 66), 68 (row 18) |
+| `house-bot-money.anchors.mjs` | **56** | — |
+| `house-bot-seam.anchors.mjs` | **7** (driven by `red:house-bot-money`) | — |
+| `house-bot-engine.anchors.mjs` | **46** | — |
+| **THE BATCH** | **390** | — |
+
+`npm run test:red-anchors` — **2576 passed, 4 failed**, the four inherited and NOT raised: `rg-doors` ×2
+(`the-session-limit-stops-having-an-opinion`, `the-session-limit-becomes-unbounded-again`, both "anchor missing")
+and `4.1` / `4.2` at **66 against a ceiling of 65**. ⛔ `UNDECLARED_CEILING` is untouched at 65.
+
+### Drive 1 · `npm run red:house-bot-console` — the 281 declarations, whole
+
+Six baselines green first (`console-mem`, `disclosure`, `rbac`, `admin-nav`, `reports-mem`, `comms-mem`), then every
+declaration injected, run and reverted. Verbatim closing line:
+
+```
+house-bot-console RED: 271 caught, 10 missed, 0 files left dirty
+```
+
+**271 of 281 drove red ON THE ASSERTION THEY NAME.** ⛔ **Ten did not, and an anchor that resolves is not an
+assertion that went red** — `test:red-anchors` §3 passes all 281 and `1.318`'s roll-call passes all 257
+`console-mem` ones, and neither of those saw a single one of these ten.
+
+**SIX reported WRONG-ASSERTION — red, but not on the assertion the declaration names:**
+
+| Declaration | Names | What actually went red |
+|---|---|---|
+| `346-countlive` | `1.346 · exactly ONE \`listNonRemoved\` and ZERO \`countLive\` per render` | **the child CRASHED** — no summary line at all, tail `Node.js v24.14.1` |
+| `347-second-read` | `1.347 · exactly ONE day read and ONE exposure read per render` | **the child CRASHED**, same shape |
+| `432h-rowlink` | `1.407 · 432(h) · the roster carries a way-out link EXACTLY when` | `1.306 · 432(i) · 541(b) · every \`<Link href=\` in the section is pinned BY POSITION` |
+| `432o-status-floor` | `1.373 · EVERY panel that paints the subject column carries the SAME floor` | `1.373 · …and only the SUBJECT and STATUS columns carry a floor` — the OTHER half of the same rule |
+| `432j-switch-reason` | `432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it` | `432(j) · CONTROL · the four states really are four different answers` — the control, not the rule |
+| `398-ladder-hole` | `1.398 · LADDER · every rung below the highest one this tree carries` | `1.398 · LADDER · ⛔ THE LADDER IS COMPLETE AND BOTH HALVES OF STEP 5 ARE READ SEPARATELY` — the label was REWORDED under the `expect` |
+
+⚠️ **`347-second-read` is one of the FOURTEEN that row 18 records as already run individually and CAUGHT** (at the
+2026-09-18 finish, on `1.347 · exactly ONE day read and ONE exposure read`). It does not do that any more. ⭐ That is
+the register's own lesson arriving again: a recorded CAUGHT rots exactly like a recorded count.
+
+**FOUR reported MISSED — the defect went in and the suite stayed GREEN. These are assertions that cannot fail:**
+
+| Declaration | The defect it puts back | The assertion that did not notice |
+|---|---|---|
+| `387-order` | deletes `hits.sort((a, b) => matchRank(a) - matchRank(b) \|\| a.id.localeCompare(b.id));` from the picker | `1.387 · …and the ten that survive the slice are the same ten a second run returns` |
+| `409-name` | `captionText: \`${name} · ${cell.text}\`` → `captionText: cell.text` — the cap's NAME leaves the caption | `1.409 · \`captionText\` is PLAIN` |
+| `537-guard` | `<UnsavedChangesGuard` → `<UnsavedChangesGuardOff` in `limits-form.tsx` | `1.412 · 537 · a typed control, a wired limits SAVE and an \`UnsavedChangesGuard\` exist TOGETHER or not at all` |
+| `416-products-case` | `"Couldn't read"` → `"couldn't read"` | `1.310 · 416 · a rule set the reader cannot parse renders ONE sentence-cased unknown` |
+
+⛔ **`537-guard` is diagnosed, and it is a measurement defect, not a flake.** `house-bot-console-cases.mts:6230`
+computes `const guarded = /<UnsavedChangesGuard\b/.test(sectionCode)`, and `sectionCode` (`:5068`) is *every* file
+under `src/app/admin/desk/` joined together. `designate-wizard.tsx:381` carries its own
+`<UnsavedChangesGuard dirty={dirty && !pending} />`. So the WIZARD's guard satisfies the flag on behalf of the
+LIMITS form: the limits form can lose its guard entirely and `1.412` stays green. The assertion measures the wrong
+population — the section, when its subject is one file in it. ⛔ **Not fixed here, because fixing it is a Commit-7
+code change and this phase was commissioned to drive the batch, not to edit the guards it reports on.**
+
+⚠️ `416-products-case` and `409-name` are the same class read from the other side: the `expect` names an assertion
+about a DIFFERENT property of the same value (that the caption is plain, that the unknown is one sentence) than the
+property the mutation changes (the name's presence, the leading capital). Either the mutation or the assertion is
+aimed wrong in each case, and the harness cannot tell you which — that is the judgement the row owes.
+
+⭐ **`0 files left dirty`, and `git status --porcelain` was verified EMPTY before and after.** The lock file
+`scripts/.red-house-bot-console.lock` was released. The two crashing mutations were re-driven on their own
+(`--only 346-countlive,347-second-read`) and reproduced identically — `0 caught, 2 missed, 0 files left dirty` —
+so the crash is the mutation's own, not a collision with the other two lanes.
