@@ -3792,6 +3792,38 @@ await guard("11.247", async () => {
     boardSrc.includes(ITEM) && c1cPlant !== boardSrc && !c1cPlant.includes(ITEM),
     `changed=${c1cPlant !== boardSrc}`);
 
+  /* ⛔ ROW 77 · THE OG HANDLER'S OWN READ LIST, DERIVED RATHER THAN ASSUMED (C5-8 phase 3, 2026-09-20).
+     Ruling 247 asks the builder to OPEN `/api/og/market/[id]` and add ITS data reads to this sweep.
+     `DEFERRED-TESTS.md` §1j row 77 recorded, correctly, that nobody ever had: the handler was not opened
+     and its read list was not derived, so `getMarket` being swept here was an assumption ABOUT the route
+     rather than a measurement OF it. Opened now. It makes exactly TWO data reads — `getMarket(id)`
+     (`route.tsx:47`), which this sweep already drives for all four viewers, and `resolveWinShareToken(…)`
+     (`:56`), which was in NO sweep, NO register and NO anchors file.
+     ⭐ AND IT IS EXACTLY THE SHAPE `c1c` EXISTS FOR: that reader reaches a RAW position row
+     (`positionStore.get`), whose Postgres column set carries `houseBotId`. What holds the absence is its
+     PROJECTION, so the projection is pinned — with a planted control, because a needle that matches
+     nothing passes vacuously, which is the defect c1c's own header records being caught once already. */
+  const ogSrc = decomment(read("src/app/api/og/market/[id]/route.tsx")).replace(/\r\n/g, "\n");
+  const ogReads = [...ogSrc.matchAll(/await\s+([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]).sort();
+  ok("11.247.c1e · 247 · the OG image route's data reads are exactly the two this sweep accounts for — `getMarket`, driven for all four viewers above, and `resolveWinShareToken`, pinned below — so a third reader arriving in that handler is reported here by name instead of riding out unswept",
+    ogReads.join(",") === "getMarket,resolveWinShareToken", j(ogReads));
+  const shareSrc = decomment(read("src/lib/server/share-token.ts")).replace(/\r\n/g, "\n");
+  const WIN_SHARE = `  return {
+    marketId: pos.marketId,
+    marketTitle: m.titleEn,
+    side: pos.side,
+    stake: pos.stake,
+    payout: pos.finalPayout,
+    net: pos.finalPayout - pos.stake,
+  };`;
+  ok("11.247.c1e · 247 · …and the second of the two PROJECTS: `resolveWinShareToken` reads the raw position row and answers a fixed six-field share — the marker is not one of the six, so nothing house can reach the OG image's text",
+    shareSrc.includes(WIN_SHARE) && shareSrc.includes("positionStore.get("),
+    shareSrc.includes(WIN_SHARE) ? "six fields, no marker" : shareSrc.includes("resolveWinShareToken") ? "the projection literal has MOVED — re-read it" : "resolveWinShareToken is gone");
+  const c1ePlant = shareSrc.replace(WIN_SHARE, WIN_SHARE.replace("    marketId: pos.marketId,", "    marketId: pos.marketId,\n    houseBotId: pos.houseBotId,"));
+  ok("11.247.c1e.control · CONTROL · the plant really CHANGED the source and the pin then REPORTS it — so c1e's verdict is a measurement of those six fields and not of a string that matches nothing",
+    shareSrc.includes(WIN_SHARE) && c1ePlant !== shareSrc && !c1ePlant.includes(WIN_SHARE),
+    `changed=${c1ePlant !== shareSrc}`);
+
   /* ⛔ CONTROL (ii) IS STORE-SPECIFIC, AND SAYING SO IS THE POINT. On Postgres every Position row has a
      `houseBotId` COLUMN, so an unprojected raw row is a leak by design whatever its value — a projection
      that returned raw rows would be caught on a fixture with no house money in it at all. In memory the
