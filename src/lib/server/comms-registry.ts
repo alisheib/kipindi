@@ -394,8 +394,15 @@ export const CHANNEL_POLICY: Record<NotificationKind, ChannelRule> = {
 
 /**
  * What a fan-out may use for one notice. `houseOnly` is 04 F6's rule: when every position behind a notice is
- * house-marked it never goes to a phone and never becomes a letter — the holder's hourly summary is the one account
- * of those stakes, and it is a bell.
+ * house-marked it never goes to a phone and never becomes a letter.
+ *
+ * ⛔ THE SENTENCE THAT USED TO FINISH THIS PARAGRAPH IS GONE (C5-SPEC ruling 149). It described an hourly
+ * holder summary as "the one account of those stakes" — a surface owner ruling D19 does not allow and this
+ * programme never built, so the docstring was promising a compensating notice that does not exist. What the
+ * rule actually does is stated above and nowhere else.
+ *
+ * ⭐ ITS ONE PRODUCTION CALLER is the Up & Down daily digest (`updown-digest.ts`, C5-SPEC ruling 235). Until
+ * that call this helper had none, so F6's rule was written down and never ran.
  */
 export function channelAllowed(kind: NotificationKind, opts: { houseOnly?: boolean } = {}): { sms: boolean; email: boolean } {
   if (opts.houseOnly === true) return { sms: false, email: false };

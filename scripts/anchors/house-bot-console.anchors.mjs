@@ -58,6 +58,8 @@ const CASES = "scripts/lib/house-bot-console-cases.mts";
 const COMMS = "scripts/lib/house-bot-comms-cases.mts";
 /* ⭐ C5-7 · ruling 232 · the one file that holds every positioned transaction write. */
 const MARKET = "src/lib/server/market-service.ts";
+/* ⭐ C5-7 · ruling 235 · the Up & Down digest, F6's one production caller. */
+const DIGEST = "src/lib/server/updown-digest.ts";
 /* ⭐ ADDED AT THE C7 STEP 7 REVIEW. The erasure door is the one house refusal a COMPLIANCE officer can make the
    platform print; the shared scanner is what 1.371's population is read through; the visual gate is where 474's
    exemption is applied; the shell is where the account page's own head stamps that exemption. */
@@ -2179,6 +2181,39 @@ import { formatEat } from "@/lib/utils";`,
     to: `    if (realRefund > 0) await prisma().transaction.create({ data: { id: "x" } });
     if (realRefund > 0) await db.txn.create({`,
     expect: "0.232.3 · ⛔ nothing in tracked src/ writes a Transaction row around the DAL",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ RULING 235's OWN MUTATION, named in the spec: the `houseOnly` argument dropped. The call still reads
+       correct, still goes through F6's helper, still gates the email — and now a holder whose Up & Down day was
+       entirely house-marked gets a LETTER about stakes they did not choose. */
+    name: "235-houseonly-dropped · the digest still calls F6's helper, without the one argument that makes it F6",
+    file: DIGEST,
+    from: `      if (!channelAllowed("ROUND_RESULT", { houseOnly: line.totals.ownRounds === 0 }).email) continue;`,
+    to: `      if (!channelAllowed("ROUND_RESULT", {}).email) continue;`,
+    expect: "9.235.1 · ⛔ 04 F6 · a day that was ALL house rounds: the holder gets the BELL and NO email",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ THE STATE THIS CHECKPOINT FOUND THE PLATFORM IN: F6's helper with no caller at all, so the rule existed
+       as a paragraph. 0.235.1 is the only assertion whose subject is whether the rule has a way to happen. */
+    name: "235-no-caller · the email gate is removed, so F6's helper goes back to having no production caller and its rule to being a paragraph",
+    file: DIGEST,
+    from: `      if (!channelAllowed("ROUND_RESULT", { houseOnly: line.totals.ownRounds === 0 }).email) continue;
+`,
+    to: ``,
+    expect: "0.235.1 · ⛔ RULING 235 · 04 F6's helper has EXACTLY ONE production caller",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ RULING 149: the docstring described an hourly holder summary as "the one account of those stakes". D19
+       does not allow that surface and this programme never built it, so the sentence taught the next session a
+       law the platform does not have. */
+    name: "149-docstring-promise · channelAllowed's docstring promises an hourly holder summary again",
+    file: "src/lib/server/comms-registry.ts",
+    from: ` * house-marked it never goes to a phone and never becomes a letter.`,
+    to: ` * house-marked it never goes to a phone and never becomes a letter — the holder's hourly summary is the one account of those stakes, and it is a bell.`,
+    expect: "0.235.3 · ⛔ RULING 149 · the helper's docstring no longer promises an hourly holder summary",
     suite: "reports-mem",
   },
 ];

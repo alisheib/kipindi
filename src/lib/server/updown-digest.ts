@@ -74,6 +74,7 @@
 import { db } from "./store";
 import { positionStore, type DailySettledTotals } from "./market-dal";
 import { notifyUpDownDigest } from "./notification-service";
+import { channelAllowed } from "./comms-registry";
 import { sendEmailToUser, updownDigestHtml } from "./email";
 import { audit } from "./audit";
 import { dict } from "@/lib/i18n-dict";
@@ -253,6 +254,27 @@ export async function runUpDownDailyDigest(opts: {
       });
       if (!row) continue; // notify() swallows and logs; don't email against a failed write
       sent++;
+
+      /*
+       * ⛔ 04 F6, THROUGH ITS OWN HELPER (C5-SPEC ruling 235). A notice whose positions are ALL
+       * house-marked never becomes an email. `ownRounds` counts this player's UNMARKED rounds in the
+       * same single aggregate the rest of the digest is read from (`market-dal.ts`, both twins), so a
+       * house-only day is `ownRounds === 0` and `channelAllowed` answers `{ sms: false, email: false }`.
+       *
+       * ⚠️ THE BELL IS WRITTEN EITHER WAY, and so is the idempotency marker it carries: the account
+       * holder still gets the digest in the bell, with the same all-round figures every player's carries
+       * and no label — what does not happen is a LETTER about stakes the holder did not choose. The
+       * audit payload gets no house count (owner ruling D19: nothing anywhere names the feature), and
+       * `sent` still counts the notice, because a notice is what was sent.
+       *
+       * ⚠️ ACCEPTED RESIDUAL, recorded so it is read as deliberate: a holder whose Up & Down day was
+       * ALL house rounds gets the bell and no email. The difference is observable and carries no words,
+       * and it repeats the precedent of C4 rulings 143–144.
+       *
+       * ⭐ THIS IS `channelAllowed`'s FIRST PRODUCTION CALLER. It was written for F6 and had none, which
+       * is why the rule it encodes had never once run.
+       */
+      if (!channelAllowed("ROUND_RESULT", { houseOnly: line.totals.ownRounds === 0 }).email) continue;
 
       const t = line.totals;
       await sendEmailToUser(line.userId, (email) => ({

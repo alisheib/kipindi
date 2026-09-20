@@ -541,6 +541,75 @@ export const BROADER_LISTS: ReadonlyArray<readonly [file: string, extensions: nu
   ["scripts/house-bot-seam.test.mts", 2],
 ];
 
+/* ═══ §0 · ruling 235 / 149 · F6's helper has a caller, and its docstring no longer promises a surface ═══ */
+
+/**
+ * ⛔ A RULE WITH NO CALLER HAS NEVER RUN. `channelAllowed` was written for 04 F6 and, until this checkpoint,
+ * nothing in `src/` called it — so the sentence "a notice whose positions are all house-marked never becomes a
+ * letter" was a statement about a function, not about the platform. 9.235 measures the BEHAVIOUR on both stores;
+ * this pin measures that the behaviour still has a way to happen, from the syntax tree, and that the caller count
+ * is a POPULATION rather than a hope.
+ *
+ * ⛔ AND THE DOCSTRING (ruling 149). It used to finish "— the holder's hourly summary is the one account of those
+ * stakes, and it is a bell", describing a compensating surface owner ruling D19 does not allow and this programme
+ * never built. A docstring that promises a surface is how the next session learns the wrong law, so the sentence
+ * is gone and a control plants it back to prove the pin can see it return.
+ */
+if (STORE === "memory") {
+  section("§0 · rulings 235 and 149 · F6's helper has exactly one production caller, and its docstring promises no surface");
+  await guard("0.235", () => {
+    const REG = "src/lib/server/comms-registry.ts";
+    const DIGEST = "src/lib/server/updown-digest.ts";
+    /** Every `channelAllowed(` CALL under src/, from the tree, excluding the module that defines it. */
+    const callersOf = (extra?: { file: string; code: string }) => {
+      const out: string[] = [];
+      const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
+      if (extra) {
+        const i = files.findIndex((f) => f.rel === extra.file);
+        if (i >= 0) files[i] = { rel: extra.file, code: extra.code }; else files.push({ rel: extra.file, code: extra.code });
+      }
+      for (const { rel, code } of files) {
+        if (rel === REG || !code.includes("channelAllowed")) continue;
+        const sf = parse(rel, code);
+        walkTree(sf, (n) => {
+          if (!ts.isCallExpression(n)) return;
+          const fn = ts.isIdentifier(n.expression) ? n.expression.text
+            : ts.isPropertyAccessExpression(n.expression) ? n.expression.name.text : "";
+          if (fn !== "channelAllowed") return;
+          out.push(`${rel}:${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1}`);
+        });
+      }
+      return out;
+    };
+    const callers = callersOf();
+    ok("0.235.1 · ⛔ RULING 235 · 04 F6's helper has EXACTLY ONE production caller and it is the Up & Down digest — before this checkpoint it had none, so the rule it encodes had never once run",
+      callers.length === 1 && callers[0].startsWith(`${DIGEST}:`), `${callers.length} caller(s): ${j(callers)}`);
+
+    const digestCode = decomment(read(DIGEST));
+    /* ⚠️ A PLAIN SUBSTRING, NOT A REGEX, and deliberately: ruling 175 forbids this file declaring a pattern that
+       names a house identifier, and `houseOnly` is one. The subject here is a fixed line of source, so an exact
+       string is both the stricter test and the one the vocabulary pin allows. */
+    const GATE_LINE = `!channelAllowed("ROUND_RESULT", { houseOnly: line.totals.ownRounds === 0 }).email`;
+    const gated = digestCode.includes(GATE_LINE) && digestCode.includes(`${GATE_LINE}) continue;`);
+    ok("0.235.2 · …and the call reads `ownRounds === 0` off the SAME single aggregate the digest's figures come from — not a second count, which would be a second place for the two stores to disagree",
+      gated && digestCode.includes("line.totals.ownRounds"), `gated=${gated}`);
+
+    const regRaw = read(REG);
+    const STRUCK = "the holder's hourly summary is the one account of those stakes";
+    ok("0.235.3 · ⛔ RULING 149 · the helper's docstring no longer promises an hourly holder summary — a surface D19 does not allow and this programme never built",
+      !regRaw.includes(STRUCK), regRaw.includes(STRUCK) ? "the struck sentence is back" : "absent");
+    ok("0.235.c1 · CONTROL · the pin SEES that sentence when it is planted back into the real file, so 0.235.3's verdict is a measurement and not a spelling that no longer matches anything",
+      regRaw.replace("never goes to a phone and never becomes a letter.", `never becomes a letter — ${STRUCK}.`).includes(STRUCK), "planted");
+
+    const planted = callersOf({ file: "src/app/planted/route.ts", code: `import { channelAllowed } from "@/lib/server/comms-registry";\nexport function GET() { return channelAllowed("WIN", { houseOnly: true }); }\n` });
+    ok("0.235.c2 · CONTROL · a SECOND caller planted in a file of its own is found — so 0.235.1's count is a population read from the tree and would report the day another surface starts making F6's decision for itself",
+      planted.length === 2 && planted.some((c) => c.startsWith("src/app/planted/route.ts:")), j(planted));
+    const blinded = callersOf({ file: DIGEST, code: digestCode.replace("channelAllowed(", "channelNotAllowed(") });
+    ok("0.235.c3 · CONTROL · …and with the digest's own call renamed away the count falls to ZERO, which is the state this ruling found the platform in",
+      blinded.length === 0, j(blinded));
+  });
+}
+
 /* ═══ §0 · ruling 232 · every positioned transaction write copies the marker FROM THE RIGHT OBJECT ═══ */
 
 /**
@@ -2821,6 +2890,154 @@ await guard("3", async () => {
   ok("3.3 · ⛔ D19 · …and the /profile/account feed's rows (payloads included) name nothing either",
     (feed.entries as Any[]).some((e) => e.action === "privacy.dsar.erasure_blocked") && houseHits(j(feed)).length === 0,
     j(houseHits(j(feed)).slice(0, 6)));
+});
+
+/* ═══ §9 · ruling 235 · the Up & Down digest: F6's email rule, on both stores ═══════════════════════ */
+
+/**
+ * ⛔ RULING 235 · WHAT A HOLDER IS TOLD ABOUT A DAY THAT WAS ALL HOUSE ROUNDS. 04 F6: a notice whose
+ * positions are ALL house-marked never becomes an email. The digest SPLIT is struck (D19c, C4 rulings
+ * 143–144) — the bell keeps `origin/main`'s all-round figures and carries no label — so what is built
+ * here is the email rule and nothing else, through `channelAllowed`, which had no production caller at
+ * all until this checkpoint. A rule with no caller has never once run.
+ *
+ * ⛔ THE WITHIN-SUBJECT CONTROL IS THE WHOLE POINT, and it is why this section costs two days instead
+ * of one. "No email arrived" is the easiest verdict in the world to fake: no address on the account, an
+ * unarmed outbox, a digest that never ran, a fixture whose rows fell outside the window — every one of
+ * those produces the same silence as the rule working. So the SAME holder, with the SAME address, the
+ * SAME outbox and the SAME digest call, is measured across two days that differ in ONE fact: day 1 is
+ * all house-marked, day 2 carries one round of the holder's own. Day 1 must be silent and day 2 must
+ * email. A break anywhere in the fixture kills day 2 and is seen.
+ *
+ * The accepted residual, recorded so it reads as deliberate: a holder whose day was all house rounds
+ * gets the bell and no letter. The difference is observable and carries no words (9.235.2 compares the
+ * bell to an ordinary player's, field by field), and it repeats C4 rulings 143–144.
+ */
+section("§9 · ruling 235 · a house-only Up & Down day sends the bell and no email; a mixed day emails all-round figures");
+await guard("9.235", async () => {
+  process.env.EMAIL_OUTBOX_CAPTURE = "1";
+  const { loadWorld, OFFICER }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const DIG: Any = await import("../../src/lib/server/updown-digest.ts");
+  const EMAIL: Any = await import("../../src/lib/server/email.ts");
+  const EAT: Any = await import("../../src/lib/eat-day.ts");
+  const CR: Any = await import("../../src/lib/server/comms-registry.ts");
+
+  /* The two days, and the instants a run of the sweep would see them from. `daysBack` is 1 — the only
+   * value the ticker ever passes — so "today" is the day after the one being digested, midday EAT so
+   * the CLOSE_GRACE_MS guard cannot skip the run. */
+  const DAY1 = "2026-08-02", DAY2 = "2026-08-03";
+  const start = (d: string) => EAT.eatDayStartMs(d);
+  const noonAfter = (d: string) => EAT.eatDayStartMs(EAT.eatDayKey(start(d) + 30 * 3_600_000)) + 12 * 3_600_000;
+  const at = (ms: number) => new Date(ms).toISOString();
+
+  const MARKET_TITLE = `Up and Down round ${process.pid}`;
+  const marketId = w.uid("mkt_ud");
+  const nowIso = w.iso();
+  await w.mdal.marketStore.set({
+    id: marketId, titleEn: MARKET_TITLE, titleSw: MARKET_TITLE, titleZh: null,
+    category: "macro", sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
+    proposedBy: OFFICER,
+    resolutionCriterionSw: null, resolutionCriterionZh: null,
+    resolutionAt: nowIso, selectionClosedAt: null, status: "RESOLVED",
+    yesPool: 0, noPool: 0, predictorCount: 0, feeSnapshot: null,
+    resolvedOutcome: "YES", resolutionStage1By: null, resolutionStage1At: null,
+    resolutionStage2By: null, resolutionStage2At: null, resolutionEvidence: null,
+    settledAt: nowIso, createdAt: nowIso, updatedAt: nowIso, productLine: "UPDOWN",
+  });
+
+  /** A settled Up & Down round, marked or not. The marker is create-only in both twins, so it is set here. */
+  let pseq = 0;
+  const round = async (o: { userId: string; status: "WIN" | "LOSS" | "VOID"; stake: number; payout: number; settledAt: string; houseBotId?: string | null }) => {
+    await w.mdal.positionStore.set({
+      id: w.uid("pos_dg"), userId: o.userId, marketId, side: "YES",
+      stake: o.stake, bonusStakeTzs: 0, potentialPayout: o.stake * 2,
+      status: o.status, finalPayout: o.payout,
+      placedAt: at(Date.parse(o.settledAt) - 300_000), settledAt: o.settledAt, idempotencyKey: `dg_${process.pid}_${++pseq}`,
+      houseBotId: o.houseBotId ?? null,
+    });
+  };
+
+  const b = await w.bot();
+  const HOLDER = b.userId;
+  const PLAYER = await w.user({ balance: 100_000 });
+  await w.setUserFields(HOLDER, { email: `holder.dg.${process.pid}@50pick.tz` });
+  await w.setUserFields(PLAYER, { email: `player.dg.${process.pid}@50pick.tz` });
+
+  /* DAY 1 · the holder's rounds are ALL house-marked; the player's are their own. The two accounts are
+   * given IDENTICAL outcomes so 9.235.2 can compare the two bells field by field. */
+  const d1 = start(DAY1) + 3_600_000;
+  await round({ userId: HOLDER, status: "WIN", stake: 5_000, payout: 8_700, settledAt: at(d1), houseBotId: b.botId });
+  await round({ userId: HOLDER, status: "LOSS", stake: 5_000, payout: 0, settledAt: at(d1 + 60_000), houseBotId: b.botId });
+  await round({ userId: PLAYER, status: "WIN", stake: 5_000, payout: 8_700, settledAt: at(d1) });
+  await round({ userId: PLAYER, status: "LOSS", stake: 5_000, payout: 0, settledAt: at(d1 + 60_000) });
+
+  /* DAY 2 · the same holder, one house round and ONE OF THEIR OWN. Everything else is unchanged. */
+  const d2 = start(DAY2) + 3_600_000;
+  await round({ userId: HOLDER, status: "WIN", stake: 5_000, payout: 8_700, settledAt: at(d2), houseBotId: b.botId });
+  await round({ userId: HOLDER, status: "LOSS", stake: 5_000, payout: 0, settledAt: at(d2 + 60_000) });
+
+  const totals1 = await w.mdal.positionStore.dailyTotalsByUser({ fromIso: at(start(DAY1)), toIso: at(start(DAY1) + 864e5), productLine: "UPDOWN" });
+  const h1 = totals1.find((t: Any) => t.userId === HOLDER);
+  const p1 = totals1.find((t: Any) => t.userId === PLAYER);
+  ok("9.235.0 · CONTROL · the discriminator is LIVE on this store: day 1 gives the holder 2 rounds and ZERO of their own, the player 2 and 2 — so the two accounts differ in exactly the fact the rule reads",
+    h1?.rounds === 2 && h1?.ownRounds === 0 && p1?.rounds === 2 && p1?.ownRounds === 2, j({ holder: h1, player: p1 }));
+
+  EMAIL.clearEmailOutbox();
+  const run1 = await DIG.runUpDownDailyDigest({ nowMs: noonAfter(DAY1), daysBack: 1 });
+  const mail1 = [...EMAIL.emailOutbox()];
+  const bells1 = (await w.db.notification.findByUser(HOLDER, 50)) as Any[];
+  const playerBells1 = (await w.db.notification.findByUser(PLAYER, 50)) as Any[];
+  const href1 = DIG.digestHref(DAY1);
+  const holderBell = bells1.find((n) => n.href === href1);
+  const playerBell = playerBells1.find((n) => n.href === href1);
+
+  ok("9.235.1 · ⛔ 04 F6 · a day that was ALL house rounds: the holder gets the BELL and NO email, while the player with the identical day gets both — same run, same outbox, same addresses",
+    run1.dayKey === DAY1 && !!holderBell && !!playerBell
+    && mail1.filter((m: Any) => m.to.startsWith("holder.dg.")).length === 0
+    && mail1.filter((m: Any) => m.to.startsWith("player.dg.")).length === 1,
+    j({ dayKey: run1.dayKey, sent: run1.sent, to: mail1.map((m: Any) => m.to) }));
+
+  const bellFields = (n: Any) => ({ kind: n.kind, href: n.href, titleEn: n.titleEn, titleSw: n.titleSw, titleZh: n.titleZh, bodyEn: n.bodyEn, bodySw: n.bodySw, bodyZh: n.bodyZh });
+  ok("9.235.2 · ⛔ D19c · …and the holder's bell is FIELD FOR FIELD the player's — same kind, same link, same three titles and three bodies, no label and no house word: the account is told about its day exactly as a player is",
+    !!holderBell && !!playerBell && j(bellFields(holderBell)) === j(bellFields(playerBell)) && houseHits(j(bellFields(holderBell))).length === 0,
+    j({ holder: bellFields(holderBell ?? {}), player: bellFields(playerBell ?? {}) }));
+
+  ok("9.235.3 · CONTROL · the absence is not vacuous: the ONE email this run did send carries the player's all-round figures, and the fixture's own market exists on the board the totals were read from",
+    mail1.length === 1 && /Up & Down/.test(mail1[0].subject) && mail1[0].tag === "updown-digest"
+    && houseHits(`${mail1[0].subject} ${mail1[0].html}`).length === 0,
+    j({ subject: mail1[0]?.subject, tag: mail1[0]?.tag, hits: houseHits(`${mail1[0]?.subject ?? ""} ${mail1[0]?.html ?? ""}`).slice(0, 4) }));
+
+  /* ── DAY 2 · the same holder, one round of their own. THIS is what makes day 1 a measurement. ─────── */
+  EMAIL.clearEmailOutbox();
+  const run2 = await DIG.runUpDownDailyDigest({ nowMs: noonAfter(DAY2), daysBack: 1 });
+  const mail2 = [...EMAIL.emailOutbox()];
+  const bells2 = (await w.db.notification.findByUser(HOLDER, 50)) as Any[];
+  const holderBell2 = bells2.find((n) => n.href === DIG.digestHref(DAY2));
+  const totals2 = await w.mdal.positionStore.dailyTotalsByUser({ fromIso: at(start(DAY2)), toIso: at(start(DAY2) + 864e5), productLine: "UPDOWN" });
+  const h2 = totals2.find((t: Any) => t.userId === HOLDER);
+  ok("9.235.4 · ⛔ THE WITHIN-SUBJECT CONTROL · the SAME holder, SAME address, SAME outbox, SAME digest call, one day later with ONE round of their own: the email ARRIVES. Day 1's silence is therefore the rule and not a broken fixture",
+    run2.dayKey === DAY2 && h2?.rounds === 2 && h2?.ownRounds === 1 && !!holderBell2
+    && mail2.filter((m: Any) => m.to.startsWith("holder.dg.")).length === 1,
+    j({ dayKey: run2.dayKey, totals: h2, to: mail2.map((m: Any) => m.to) }));
+
+  ok("9.235.5 · …and that email carries the ALL-ROUND figures (both rounds, the house one included) with no house word and no split — the bell and the letter say the same thing a player's would",
+    mail2.length === 1 && /2 rounds|Rounds/.test(mail2[0].html) && houseHits(`${mail2[0].subject} ${mail2[0].html}`).length === 0,
+    j({ subject: mail2[0]?.subject, rounds: h2?.rounds, hits: houseHits(`${mail2[0]?.subject ?? ""} ${mail2[0]?.html ?? ""}`).slice(0, 4) }));
+
+  const AUD: Any = await import("../../src/lib/server/audit.ts");
+  await AUD.auditFlush?.();
+  const digestRows = AUD.getAuditPage({ category: "SYSTEM", limit: 500 }).filter((e: Any) => e.action === "updown.digest_sent");
+  ok("9.235.6 · ⛔ D19 · the run's ONE audit row carries no house count and names nothing — `sent` counts notices, which is what was sent",
+    digestRows.length >= 1 && digestRows.every((e: Any) => houseHits(j(e)).length === 0 && !("houseOnly" in (e.payload ?? {})) && !("ownRounds" in (e.payload ?? {}))),
+    j(digestRows.map((e: Any) => e.payload)));
+
+  ok("9.235.7 · CONTROL · the helper itself answers both ways for ROUND_RESULT — houseOnly true closes the email and the phone, false leaves the channel policy alone — so 9.235.1 rests on a live decision, not on a constant",
+    CR.channelAllowed("ROUND_RESULT", { houseOnly: true }).email === false
+    && CR.channelAllowed("ROUND_RESULT", { houseOnly: true }).sms === false
+    && CR.channelAllowed("ROUND_RESULT", { houseOnly: false }).email === true
+    && CR.channelAllowed("ROUND_RESULT", {}).email === true,
+    j({ houseOnly: CR.channelAllowed("ROUND_RESULT", { houseOnly: true }), plain: CR.channelAllowed("ROUND_RESULT", {}) }));
 });
 
 /* ═══ §11 (ruling 171 slice) · the public /api/health body's raw-text paths name nothing (both stores) ═══════════ */
