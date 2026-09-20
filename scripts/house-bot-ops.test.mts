@@ -63,7 +63,14 @@
  *     attributable, the zone walked to Africa/Dar_es_Salaam and back, and the row counts checked against
  *     a count the suite took itself on a database that has been staked in.
  *     ⛔ §6 IS PHYSICALLY BEFORE §5 THOUGH NUMBERED AFTER IT — nothing may follow the sunset.
+ *   · memory 71, postgres 93 — step 9: §7, `ops:house-bots-status`'s COMMIT-8 duties — the four figures
+ *     beyond R5's five (open house positions, live intents, exposure PER MARKET, the settlement-blocked
+ *     condition) and the +10 minute recheck. Three more in the memory child (the live-intent statuses
+ *     IMPORTED, the DAL's own LIVE_SQL asserted to name exactly those two, the leg proved to be a READ,
+ *     plus the false positive that detector really produced); thirteen more in the Postgres child, which
+ *     DELETES a holder wallet and PUTS IT BACK — the condition reported and then CLEARED on the same
+ *     account — and proves the recheck's delta detector by placing a stake BETWEEN its two reads.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 66, postgres: 80 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 71, postgres: 93 }, dbPrefix: "hb_ops" });

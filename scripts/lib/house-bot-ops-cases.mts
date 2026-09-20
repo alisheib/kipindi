@@ -50,7 +50,7 @@
  * harness that rewrites the repo while a second lane is editing it is the standing incident.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { decomment } from "./decomment.mts";
@@ -59,6 +59,7 @@ import { REPO_ROOT, scriptFiles } from "./tracked-files.mts";
 // `feed-copy.ts` imports `./constants` and nothing else; the operator sentences are READ from it here for the
 // same reason the scripts import them: a suite that re-typed the sentence it checks would pass forever.
 import { SWITCH_OFF_COPY } from "../../src/lib/house-bot/feed-copy.ts";
+import { LIVE_INTENT_STATUSES } from "../../src/lib/house-bot/constants.ts";
 
 type Any = any;
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
@@ -1537,6 +1538,177 @@ if (STORE === "postgres") {
         j({ zone: worldZone, saidNotUtc: /NOT UTC/.test(onWorld.out) }));
     } finally {
       await withAdmin(async (a) => { await a.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`); });
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// §7 · ops:house-bots-status — COMMIT 8's OWN DUTIES: the four figures beyond R5's five, and the
+// +10 minute recheck.
+//
+// ⛔ EVERY FIGURE IS ASSERTED AGAINST A NUMBER THIS SUITE MEASURED ITSELF, on a database that has
+// been staked in. "0" is not evidence here: a reader that counted nothing would satisfy every
+// expect-zero assertion ever written about it.
+//
+// ⭐ AND EVERY REFUSAL HAS ITS POSITIVE CONTROL BESIDE IT. The wallet is deleted AND PUT BACK, so
+// "settlement-blocked: 1" and "settlement-blocked: 0" are both measured on the same account — a leg
+// that reported the condition but could never clear it would pass the first half alone.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+if (STORE === "memory") {
+  section("§7s · ops:house-bots-status — the Commit-8 SOURCE pins: the live-intent statuses are IMPORTED");
+  await guard("status.c8.src", () => {
+    const body = bodyOf(STATUS_SCRIPT);
+    const dalBody = read("src/lib/server/house-bot-dal.ts");
+    ok("ops.status.10 · SOURCE · the live-intent statuses are IMPORTED (LIVE_INTENT_STATUSES) and the SQL is BUILT from them — no typed `IN ('PENDING', 'CLAIMED')` anywhere in the file",
+      /LIVE_INTENT_STATUSES/.test(body) && /LIVE_IN/.test(body) && !/IN\s*\(\s*'PENDING'/.test(body),
+      j({ imported: /LIVE_INTENT_STATUSES/.test(body), typed: /IN\s*\(\s*'PENDING'/.test(body) }));
+    // ⛔ THE CROSS-CHECK IS THE POINT. Importing a constant proves nothing if the SEAM's own predicate
+    // was built from a different list: the DAL's LIVE_SQL is a hand-written string, so it is read here
+    // and asserted to name EXACTLY the statuses the constant carries. Two live-intent populations that
+    // disagree is how a rollback figure reads 0 while intents are still firing.
+    const liveSql = /const LIVE_SQL = `([^`]+)`/.exec(dalBody)?.[1] ?? "";
+    const named = [...liveSql.matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]);
+    ok("ops.status.10x · POSITIVE CONTROL · the DAL's own LIVE_SQL predicate names EXACTLY the statuses that constant carries — so the script's count and the seam's own live reads cannot drift apart",
+      liveSql.length > 0 && named.length === LIVE_INTENT_STATUSES.length && named.every((s) => (LIVE_INTENT_STATUSES as readonly string[]).includes(s)),
+      j({ liveSql, named, constant: LIVE_INTENT_STATUSES }));
+    // ⭐ SCANNED WITH THE STRING LITERALS BLANKED, AND THAT IS NOT A CONVENIENCE — the first draft of
+    // this detector hunted the bare word `AUTO_PAUSED` and reddened on figure 2's own printed
+    // population label ("PAUSED and AUTO_PAUSED included, REMOVED excluded"). A guard that reddens a
+    // file for NAMING the rule it obeys is the same false positive `auditWriteSites` already records,
+    // and it gets switched off. A pause is a CALL; a label is text.
+    const code = withoutStringLiterals(body);
+    ok("ops.status.13s · SOURCE · the settlement-blocked leg is a READ: it never stops a bot and never writes a pause — the planner's 7e pass does that, and an ops read run mid-incident must not move the desk under the officer looking at it",
+      !/stopBot\s*\(/.test(code) && !/setStatus\s*\(/.test(code) && !/AUTO_PAUSED/.test(code) && /findByUserId\s*\(/.test(code),
+      j({ stop: /stopBot\s*\(/.test(code), setStatus: /setStatus\s*\(/.test(code), pauseConst: /AUTO_PAUSED/.test(code), reads: /findByUserId\s*\(/.test(code) }));
+    ok("ops.status.13sc · ⭐ CONTROL, AND IT IS A FALSE POSITIVE THIS DETECTOR REALLY PRODUCED · the word AUTO_PAUSED in figure 2's printed POPULATION LABEL is text, not a pause — it is present in the file and absent from the code",
+      /AUTO_PAUSED/.test(body) && !/AUTO_PAUSED/.test(code), "present in the file, blanked in the code");
+    ok("ops.status.dr · SOURCE · drift is NAMED at every invocation: there is an else-branch that prints NOT MEASURED and the command that measures it, so a clean five-figure line can never be read as a clean drift verdict",
+      /NOT MEASURED in this run/.test(body) && /--drift/.test(body), "the un-measured branch exists");
+  });
+}
+
+if (STORE === "postgres") {
+  section("§7 · ops:house-bots-status — the Commit-8 figures, DRIVEN on a database that has been staked in");
+  await guard("status.c8", async () => {
+    const pgLib: Any = (await import("pg")).default;
+    const cx = new pgLib.Client({ connectionString: process.env.DATABASE_URL });
+    await cx.connect();
+    const n = async (sql: string, v: unknown[] = []): Promise<number> => Number((await cx.query(sql, v)).rows[0].n);
+    const figure6 = (out: string) => Number(/open house pos\s+(\d+)/.exec(out)?.[1] ?? -1);
+    const figure7 = (out: string) => Number(/live intents\s+(\d+)/.exec(out)?.[1] ?? -1);
+    const figure8 = (out: string) => /open exposure\s+TZS ([\d,]+) across (\d+) market/.exec(out);
+    const figure9 = (out: string) => Number(/settle-blocked\s+(\d+)/.exec(out)?.[1] ?? -1);
+    try {
+      // ── the fixture: open house money on a market of its own, through the real seam ──────────
+      await w.dal.houseBotControlStore.switchOn({ byId: OFFICER, reason: "ops §7 fixture" });
+      const m = await pollWithLockedNo();
+      const bot = await w.bot();
+      const staked = await stake(bot, m.market.id, 4_000);
+      const openNow = await n(`SELECT count(*)::int AS n FROM "Position" WHERE "houseBotId" IS NOT NULL AND "status"::text = 'OPEN'`);
+      const liveNow = await n(`SELECT count(*)::int AS n FROM "HouseBotIntent" WHERE "status" IN ('PENDING', 'CLAIMED')`);
+      const byMarket: Any[] = await w.dal.houseBookStore.openExposureByMarket();
+      const byBot: Any[] = await w.dal.houseBookStore.openExposure(null);
+      const marketTotal = byMarket.reduce((s: number, r: Any) => s + r.openStakeTzs, 0);
+      const botTotal = byBot.reduce((s: number, r: Any) => s + r.openStakeTzs, 0);
+
+      const one = runOps(STATUS_SCRIPT, []);
+      ok("ops.status.15 · ONE invocation carries all NINE figures — R5's five and the rollback runbook's four. An officer mid-rollback who must run two commands to answer 'is it safe yet' will run one of them",
+        one.code === 0 && [/1  master switch/, /2  bots/, /3  marked rows/, /4  engine/, /5  planner beat/, /6  open house pos/, /7  live intents/, /8  open exposure/, /9  settle-blocked/].every((re) => re.test(one.out)),
+        `exit ${one.code}`);
+
+      ok(`ops.status.11 · open house positions is the count this suite measured itself (${openNow}), across EVERY bot — not a per-bot figure and not a zero`,
+        openNow > 0 && figure6(one.out) === openNow, j({ printed: figure6(one.out), measured: openNow }));
+
+      ok(`ops.status.12 · exposure is printed PER MARKET with a TZS total and a market count, and the per-market rows sum to the ALL-BOT total from openExposure(null) — two groupings of the same money, both measured (${byMarket.length} markets, ${byBot.length} accounts)`,
+        byMarket.length >= 2 && marketTotal === botTotal && marketTotal > 0
+        && Number(figure8(one.out)?.[1].replace(/,/g, "")) === marketTotal && Number(figure8(one.out)?.[2]) === byMarket.length
+        && /the two groupings agree/.test(one.out),
+        j({ printed: figure8(one.out)?.slice(1), marketTotal, botTotal }));
+      ok("ops.status.12c · CONTROL · the per-market rows are keyed by MARKET ids and not by bot ids — otherwise the new reader could be the per-bot one relabelled",
+        byMarket.every((r: Any) => !byBot.some((b: Any) => b.houseBotId === r.marketId)) && byMarket.some((r: Any) => r.marketId === m.market.id),
+        j({ markets: byMarket.map((r: Any) => r.marketId).slice(0, 4), bots: byBot.map((b: Any) => b.houseBotId).slice(0, 4) }));
+
+      // ⛔ UNBOUNDED IN TIME. `houseSeam.globalUsage` is bounded to the last day; a figure shaped like it
+      // would read 0 on a database holding older house money, which is precisely the release figure.
+      await w.backdate(staked.data.positionId, 48 * 3_600_000);
+      const aged = runOps(STATUS_SCRIPT, []);
+      ok("ops.status.11b · …and it is UNBOUNDED: the same position backdated 48 hours is still counted, so the figure cannot be a 24-hour window wearing the release figure's name",
+        figure6(aged.out) === openNow, j({ before: openNow, after: figure6(aged.out) }));
+
+      // ── live intents: CLAIMED counted, CANCELLED not ────────────────────────────────────────
+      const m2 = await pollWithLockedNo();
+      await w.intent(bot, m2.market.id, { kind: "FILL", side: "YES", stakeTzs: 1_000 });
+      await w.dal.houseBotIntentStore.cancelLive({ houseBotId: bot.botId }, "CASE_DONE");
+      const cancelled = await n(`SELECT count(*)::int AS n FROM "HouseBotIntent" WHERE "status" = 'CANCELLED'`);
+      await w.intent(bot, m2.market.id, { kind: "FILL", side: "YES", stakeTzs: 1_000 });
+      await w.intent(bot, m2.market.id, { kind: "MANUAL", entryCondition: "THIN", requestedById: OFFICER, side: "YES", stakeTzs: 1_000 });
+      const liveAfter = await n(`SELECT count(*)::int AS n FROM "HouseBotIntent" WHERE "status" IN ('PENDING', 'CLAIMED')`);
+      const withIntents = runOps(STATUS_SCRIPT, []);
+      ok(`ops.status.10r · live intents counts the two live statuses and nothing else: two more CLAIMED rows move it by exactly 2 (${liveNow} → ${liveAfter}) while ${cancelled} CANCELLED row(s) move it by 0 — the typo'd status list this assertion exists to catch would fail on one half or the other`,
+        liveAfter === liveNow + 2 && cancelled > 0 && figure7(withIntents.out) === liveAfter,
+        j({ before: liveNow, after: liveAfter, printed: figure7(withIntents.out), cancelled }));
+
+      // ── settlement-blocked: the condition, and the control that it CLEARS ────────────────────
+      ok("ops.status.13a · CONTROL · with every holder wallet present the settlement-blocked figure is 0 — the condition is unreachable until it is planted, so this is what makes the next assertion a difference",
+        figure9(withIntents.out) === 0, j({ printed: figure9(withIntents.out) }));
+      const walletRow = (await cx.query(`SELECT "id" FROM "Wallet" WHERE "userId" = $1`, [bot.userId])).rows[0];
+      await cx.query(`DELETE FROM "Wallet" WHERE "userId" = $1`, [bot.userId]);
+      const blocked = runOps(STATUS_SCRIPT, []);
+      ok(`ops.status.13 · a bot holding OPEN house money whose holder WALLET is gone is REPORTED and NAMED (${bot.botId}), with the money it cannot settle — HB-LC-10's condition, which no reader had before`,
+        figure9(blocked.out) === 1 && blocked.out.includes(bot.botId) && /CANNOT be settled/.test(blocked.out)
+        && /changed nothing/.test(blocked.out), j({ printed: figure9(blocked.out) }));
+      const stillActive = await w.dal.houseBotStore.get(bot.botId);
+      ok("ops.status.13b · ⭐ POSITIVE CONTROL · …and the account was NOT touched: still the status it had, no pause written. The planner's 7e pass stops such a bot; a status read must not move the desk under the officer reading it",
+        stillActive?.status === "ACTIVE" && stillActive?.pauseReason === null, j({ status: stillActive?.status, pauseReason: stillActive?.pauseReason }));
+      await w.db.wallet.create({ id: String(walletRow?.id ?? `wal_restore_${bot.userId}`), userId: bot.userId, balance: 0, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: w.iso(), updatedAt: w.iso() });
+      const restored = runOps(STATUS_SCRIPT, []);
+      ok("ops.status.13c · ⭐ AND IT CLEARS · the wallet put back, the figure returns to 0 on the SAME account — a leg that could report the condition but never clear it would have passed the assertion above on its own",
+        figure9(restored.out) === 0, j({ printed: figure9(restored.out) }));
+
+      // ⛔ THE RULE IS ABOUT COUNTS, AND IT IS STATED THAT WAY RATHER THAN BROADENED UNTIL IT PASSES.
+      // Six of the nine figures print a NUMBER (bots, marked rows, open positions, live intents,
+      // exposure, settlement-blocked) and every one of them must name the population it counted or say
+      // NOT MEASURABLE. The other three are not counts — a switch state, an engine boot instant and a
+      // beat age — and each is asserted to carry its OWN qualifier instead, because "OFF" with no
+      // off-cause and a beat age with no staleness threshold are the same defect in a different shape.
+      const figures = restored.out.split("\n").filter((l) => /^\d  /.test(l));
+      const counted = figures.filter((l) => /^[23679]  /.test(l));
+      const stated = figures.filter((l) => /^[145]  /.test(l));
+      ok("ops.status.14 · every figure that prints a NUMBER names the population it counted, in words — a number without its population is how 'not applicable' gets read as 'fine' — and the three that are not counts carry their own qualifier instead",
+        figures.length === 9 && counted.length === 5 && counted.every((l) => /population:|NOT MEASURABLE/.test(l))
+        && /open exposure/.test(figures[7]) && /population: OPEN marked positions grouped by MARKET/.test(figures[7])
+        && stated.length === 3 && /off cause/.test(stated[0]) && /instance row/.test(stated[1]) && /stale past/.test(stated[2]),
+        j({ figures: figures.length, counted: counted.length, unlabelled: counted.filter((l) => !/population:|NOT MEASURABLE/.test(l)) }));
+
+      // ── the +10 minute recheck ──────────────────────────────────────────────────────────────
+      const quiet = runOps(STATUS_SCRIPT, ["--watch", "0.05"]);
+      ok("ops.status.w1 · --watch re-reads the four figures the rollback runbook watches and says what MOVED — with nothing writing, it reports 'nothing moved', which is a different statement from 'still 0'",
+        quiet.code === 0 && /recheck/.test(quiet.out) && /nothing moved/.test(quiet.out) && /unchanged/.test(quiet.out), `exit ${quiet.code}`);
+
+      // ⛔ THE DELTA DETECTOR IS PROVED BY MAKING SOMETHING MOVE. A recheck that always printed
+      // "nothing moved" would pass the assertion above forever, which is the whole failure this
+      // programme keeps paying for. The house stake below lands BETWEEN the two reads.
+      const watching = new Promise<{ code: number; out: string }>((res) => {
+        const ch = spawn("npx", ["tsx", STATUS_SCRIPT, "--watch", "0.4"], {
+          cwd: REPO_ROOT, env: { ...process.env }, shell: process.platform === "win32",
+        });
+        let out = "";
+        ch.stdout?.on("data", (d: Buffer) => { out += String(d); });
+        ch.stderr?.on("data", (d: Buffer) => { out += String(d); });
+        ch.on("exit", (code: number | null) => res({ code: code ?? 1, out }));
+      });
+      await new Promise((r) => setTimeout(r, 12_000));
+      const m3 = await pollWithLockedNo();
+      const bot3 = await w.bot();
+      await stake(bot3, m3.market.id, 2_000);
+      const moved = await watching;
+      ok("ops.status.w2 · ⭐ AND IT REPORTS MOVEMENT · a house stake placed BETWEEN the two reads is reported as a delta and named — 'open house pos … +1' with the MOVED sentence — so 'nothing moved' above is a measurement and not a constant",
+        /MOVED/.test(moved.out) && /open house pos\s+\d+ → \d+\s+· \+\d/.test(moved.out),
+        (moved.out.split("\n").filter((l) => /→/.test(l)).join(" | ") || `exit ${moved.code}`).slice(0, 300));
+    } finally {
+      await cx.end().catch(() => {});
+      await w.switchOff();
     }
   });
 }

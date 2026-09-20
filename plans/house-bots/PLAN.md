@@ -585,11 +585,11 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
   Run at 6 widths with overflow, clipping and control-height assertions, plus a `--sheet-missing` red control. **Each PNG opened and read.**
 - **Production after release:**
   - `dpl=` SHA equals the merge;
-  - `ops:house-bots-status` read-only (switch off, 0 bots, 0 marked rows, engine beats fresh);
+  - `npm run ops:house-bots-status` read-only — **FIVE figures, not four** (corrected 2026-09-20: this line omitted "engine enabled", while PROGRESS.md:463, 04-amendments.md's R5 row and 00-NEW-SESSION-PROMPT.md:115 all name five): switch OFF, 0 bots, 0 marked rows, an engine boot row with its instant, and a fresh planner beat. ⛔ "Engine enabled" can only ever mean "an engine booted against this database and said so" — a refused start writes no row, so the command prints the boot instant and never "the engine is not disabled";
   - owner renders the page, nav highlight correct, picker and check card with balance work **without designating**;
   - a non-owner role gets `AdminRestricted`;
   - ~~rules and terms in en/sw/zh show new text and versions;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the rules and terms keep exactly the words and versions they have on `main` (D19a);
-  - recheck 0 marked rows after 10 minutes.
+  - recheck 0 marked rows after 10 minutes — `npm run ops:house-bots-status -- --watch` (built 2026-09-20). It re-reads the four figures the rollback runbook watches and prints the DELTA: "still 0" and "0, unchanged over ten minutes" are different statements, and only the second is evidence.
 - **Handover:** the first live money run is Ali's (D1), monitored via the feed and alerts.
 
 ## 13. Accepted risks (written into COMPLIANCE entry and HOUSE-BOTS.md)
