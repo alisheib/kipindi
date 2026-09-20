@@ -36,6 +36,7 @@ const placed: Array<{ marketId: string; intentId: string; positionId: string; at
 const refusals: Record<string, number> = {};
 const result: Record<string, unknown> = { index: job.index, botId: job.botId, worker: process.pid };
 let ageCalls = 0;
+let rateWaitMs = 0;
 
 try {
   // The barrier: every worker starts on the DATABASE's clock, not its own, so the five bursts genuinely overlap
@@ -47,12 +48,23 @@ try {
   for (const marketId of job.marketIds) {
     const intent = await w.intent(bot, marketId, { kind: "OPENER", side: "YES", stakeTzs: job.stakeTzs });
     let done = false;
-    // ⚠️ THE PER-MINUTE CAP IS REAL AND THIS BURST SATURATES IT. `gMaxBetsPerMinute` is 20 by CHECK constraint, and
-    // 200 bets cannot be inside one minute. `ageHouseMinute()` is the world's declared FIXTURE OF TIME (see its
-    // header) — the same one `house-bot-caps-cases.mts` uses so a cap it is not testing cannot mask one it is. It
-    // relieves the clock; it never relieves a refusal. ONLY the two rolling-window caps are retried, every retry is
-    // counted and printed, and ANY other refusal ends this worker with that refusal named.
-    for (let attempt = 0; attempt < 80 && !done; attempt++) {
+    // ⚠️ TWO REAL PACERS STAND BETWEEN 200 BETS AND ONE MINUTE, AND THE DRILL HONOURS BOTH RATHER THAN STEPPING
+    // AROUND EITHER. Both were found by running it, not by reading it.
+    //
+    //  1. `gMaxBetsPerMinute` — 20 by CHECK constraint, so 200 bets cannot be inside one minute. Relieved by
+    //     `ageHouseMinute()`, the world's DECLARED FIXTURE OF TIME (see its header), the same one
+    //     `house-bot-caps-cases.mts` uses so a cap it is not testing cannot mask one it is. It moves the clock; it
+    //     never relieves a refusal.
+    //  2. `rateCheck(userId, "bet.place")` — capacity 30, refill 10/min, per account, per process
+    //     (`rate-limit.ts:95`). Measured: every worker placed exactly 25 and then took `RATE_LIMITED`, because the
+    //     five GLOBAL_BETS_PER_MINUTE attempts had spent tokens too — 25 + 5 = the 30-token bucket, to the token.
+    //     ⭐ RETRYING IT IS THE FAITHFUL BEHAVIOUR, NOT A RELIEF: `outcome-map.ts:52` maps a `rate_limited` answer
+    //     to `{ kind: "transient" }`, so the real engine requeues the intent with backoff and fires it again. A
+    //     rehearsal that gave up here would be modelling something the product does not do.
+    //
+    // ⛔ ONLY those three codes are retried. Every retry is counted and printed, and ANY other refusal ends this
+    // worker with that refusal named in full.
+    for (let attempt = 0; attempt < 120 && !done; attempt++) {
       const r = await w.place(bot, intent);
       if (r.ok) {
         placed.push({ marketId, intentId: intent.id, positionId: r.data.positionId, atMs: Date.now() });
@@ -61,6 +73,12 @@ try {
       }
       const cap = r.reason === "house_cap_reached" ? r.detail?.cap : `${r.code}/${r.reason}`;
       refusals[String(cap)] = (refusals[String(cap)] ?? 0) + 1;
+      if (r.code === "RATE_LIMITED") {
+        const waitMs = Math.min(Math.max(Number(r.retryAfterSec ?? 1), 1) * 1000, 10_000) + Math.floor(Math.random() * 250);
+        rateWaitMs += waitMs;
+        await nap(waitMs);
+        continue;
+      }
       if (cap !== "GLOBAL_BETS_PER_MINUTE" && cap !== "GLOBAL_BETS_PER_DAY") {
         throw new Error(`worker ${job.index}: unretryable refusal on ${marketId}: ${JSON.stringify({ code: r.code, reason: r.reason, detail: r.detail })}`);
       }
@@ -69,7 +87,7 @@ try {
       await w.ageHouseMinute();
       ageCalls++;
     }
-    if (!done) throw new Error(`worker ${job.index}: gave up on ${marketId} after 80 attempts`);
+    if (!done) throw new Error(`worker ${job.index}: gave up on ${marketId} after 120 attempts`);
   }
   result.finishedAtMs = Date.now();
 
@@ -91,6 +109,7 @@ try {
 result.placed = placed;
 result.refusals = refusals;
 result.ageCalls = ageCalls;
+result.rateWaitMs = rateWaitMs;
 result.asked = job.marketIds.length;
 console.log(`@@RESULT ${JSON.stringify(result)}`);
 process.exit(result.error ? 1 : 0);

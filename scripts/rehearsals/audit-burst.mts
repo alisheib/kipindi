@@ -312,8 +312,19 @@ try {
   console.log(`     population: ${placedAll.length} bets placed by ${reports.length} processes · wall ${(burstMs / 1000).toFixed(1)} s ` +
     `· placing window ${(spanMs / 1000).toFixed(1)} s (${(placedAll.length / Math.max(spanMs / 1000, 0.001)).toFixed(1)} bets/s) · rolling-window retries ${retries}`);
   for (const r of reports) {
-    console.log(`       worker ${r.index} pid ${r.worker}: placed ${(r.placed ?? []).length}/${r.asked} · refusals ${JSON.stringify(r.refusals ?? {})} · age calls ${r.ageCalls}`);
+    console.log(`       worker ${r.index} pid ${r.worker}: placed ${(r.placed ?? []).length}/${r.asked} · refusals ${JSON.stringify(r.refusals ?? {})} ` +
+      `· age calls ${r.ageCalls} · rate-limit wait ${((r.rateWaitMs ?? 0) / 1000).toFixed(1)} s`);
   }
+  // ⭐ THE DENSEST FIVE SECONDS. The platform paces a burst on purpose (`bet.place` refills 10/min per account),
+  // so the whole run is not uniformly dense — and a rate averaged over the pauses would understate the moment the
+  // chain was actually under pressure. This is that moment.
+  const times = placedAll.map((p) => p.atMs).sort((a, b) => a - b);
+  let densest = 0;
+  for (let i = 0, j = 0; i < times.length; i++) {
+    while (times[i] - times[j] > 5_000) j++;
+    densest = Math.max(densest, i - j + 1);
+  }
+  console.log(`     densest 5 s window: ${densest} bets (${(densest / 5).toFixed(1)} bets/s at the peak)`);
 
   /** The aggregator, as a function, so the planted control can run the SAME code over a doctored report set. */
   const shortfall = (rs: Any[]): number => rs.reduce((n, r) => n + (Number(r.asked ?? 0) - (r.placed ?? []).length), 0);
