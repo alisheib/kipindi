@@ -1,5 +1,26 @@
 # Is the house desk ready to be switched on? — a statement for the owner
 
+> # ⛔ SUPERSEDED 2026-09-21 — THIS IS NOT THE RECORD
+> **The readiness statement of record is [`READINESS-2026-09-21.md`](READINESS-2026-09-21.md).** Two papers were
+> written the same day, hours apart, and both claimed the same office; that is settled here so no future session has
+> to guess which one an owner was shown.
+>
+> **Why that one and not this one.** It is the LATER and the FULLER: 634 lines against this file's 478, and it
+> carries two things this file cannot — Ali's `LIVE_BASE` ruling in his own words, and the correction owed to him
+> about the popup ratchet (its §6a and §6b). This file was written at about 06:55 EAT; that one's §6 was added at
+> 07:44.
+>
+> ⛔ **THIS FILE IS NOT DELETED, AND DELETING IT WOULD BE WRONG.** It is the honest record of what was measured in
+> the alerts lane at tip `4d3583bf`, it names its own uncertainties, and its §4 ("the not-measured half is the
+> honest half") is the part a later paper cannot reconstruct. A superseded measurement is still a measurement.
+> Read it as history; act on the other one.
+>
+> ⚠️ **Both papers' verdicts agree — NOT YET — so nothing about the decision turns on which one is read.** What
+> turns on it is the LIST, and the record's list is the current one.
+>
+> *(Supersede line added 2026-09-21 on OMEGA-COMPILE01, in the integration pass that merged all five branches into
+> `ops-lane`. It closes the fourth of the four items `START-HERE-NEXT-MACHINE.md` §4 left open.)*
+
 > **Written 2026-09-21, about 06:55 EAT, in the alerts lane** (`C:/kipindi-alerts`, branch `alerts-lane`,
 > tip `4d3583bf`, working tree clean before and after every run below).
 >
