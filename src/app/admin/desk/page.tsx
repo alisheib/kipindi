@@ -488,7 +488,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
             432(n) refuses within one screen. The text is derived from the code it describes, not from a plan
             document: the roster from `listNonRemoved`, the eight from `REQUIRED_FOR_MASTER_ON`, and "blank
             refuses" from the rules parser's own treatment of a null limit. */}
-        <p className="px-4 lg:px-6 pt-3 text-caption text-text-tertiary max-w-[72ch]">{TAB_GUIDANCE[tab as (typeof CONSOLE_TABS)[number]]}</p>
+        <p className="px-4 lg:px-6 pt-3 text-body-sm text-text-tertiary max-w-[72ch]">{TAB_GUIDANCE[tab as (typeof CONSOLE_TABS)[number]]}</p>
 
         {/* ⚠️ THE `(<>` … `</>)}` FORM IS LOAD-BEARING, NOT A HABIT. `test:tab-anchors` decides WHICH TAB owns a
             rendered `id` by finding the nearest tab-group opener above it with no `</>)}` in between; a panel whose

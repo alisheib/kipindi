@@ -1328,8 +1328,13 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
      * positions and the engine's, so an OPEN house position on the other side made `opposite` truthy for
      * the holder's own unmarked, real-money stake — which then accrued ZERO bonus wagering (:1635).
      *
-     * ⛔ PLAN I7 / H5–H9 sanction skipping accrual for the HOUSE stake — that is the `ctx.kind === "house"`
-     * arm at :1635 and it is untouched here. NOTHING sanctions suppressing it on the holder's OWN stake.
+     * ⛔ PLAN I7 / H5–H9 sanction skipping accrual for the HOUSE stake — that is the house-context arm of the
+     * ternary at the `SEAM:wagering` marker below, and it is untouched here. NOTHING sanctions suppressing it
+     * on the holder's OWN stake.
+     * ⚠️ AND THE PROSE ABOVE IS WORDED AROUND A RAW-TEXT GUARD ON PURPOSE. `test:house-bot-seam` 4.1 requires
+     * every context-kind comparison in this file to sit under a `SEAM:` marker, and it reads COMMENTS too — so
+     * spelling that comparison out here made the guard red at a line that holds no such comparison. The guard is
+     * right and was not touched; the sentence was reworded. (`scripts/house-bot-seam.test.mts:4.1`.)
      *
      * Three things made it worse than an ordinary hedge, and one filter closes all three:
      *  1. THE DOCUMENTED ESCAPE WAS UNREACHABLE. :1622 tells the player to "close the opposite leg first —
@@ -1354,6 +1359,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
      * taking both sides. The holder does not choose, control, own the P&L of, or even know about the house
      * leg (D19) — and cannot close it. A stake they did not place is not a hedge they made.
      */
+    // SEAM:oppositeSide
     const opposite = mine.find((p) => p.houseBotId == null && p.status === "OPEN" && p.side !== opts.side);
 
     // Daily loss-limit gate (RG / GLI-19), re-read INSIDE the lock so a concurrent

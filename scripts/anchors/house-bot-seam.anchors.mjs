@@ -15,6 +15,13 @@
  * cap also fails" is implemented; the caps suite's §2 fixtures prove the behaviour.
  */
 export const SEAM_SITES = [
+  /* ⭐ `oppositeSide` ADDED 2026-09-21 WITH THE SITE IT NAMES. `buyPositionInner`'s `opposite` predicate now
+   * excludes house-marked rows, which makes it a house branch — and §4.1 requires every house branch in
+   * `market-service.ts` to sit under a marker, so the marker and this entry arrive together. The defect it
+   * closes is recorded at the site: an OPEN house position on the other side made `opposite` truthy for the
+   * HOLDER'S OWN real-money stake, so their bonus wagering accrued nothing while the documented escape
+   * (closing the opposite leg) is refused for a house leg. */
+  "oppositeSide",
   "H0", "H1", "session", "replay", "H2", "cash", "marker", "lockTimeout", "H3", "markPlaced", "revertNoFunds",
   "revertNoFundsBonus", "txnMarker", "H4", "wagering", "superseded", "audit", "receipts", "recruit",
   "reverseWageringOrphan", "markerOrphan", "cashOutValue", "cashOutReason", "cashOutPosition", "markerCashout", "markerOneSided",
