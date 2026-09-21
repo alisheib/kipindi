@@ -140,6 +140,15 @@
 
 const HOUSE_BOT_DISCLOSURE_TEST = "scripts/house-bot-disclosure.test.mts";
 const HOUSE_BOT_REPORTS_CASES = "scripts/lib/house-bot-reports-cases.mts";
+/**
+ * ⭐ THE PRINT MEASURE'S NEW HOME (Commit 6, 2026-09-20). `printedTexts` — the one instrument that decides what a
+ * file can put on a screen — MOVED out of `house-bot-reports-cases.mts` into this pure module so the disclosure
+ * suite could import it without running the reports cases. The body went with it unchanged, and the reports cases
+ * import it back (`house-bot-reports-cases.mts:23`), so 0.198.c2 and 0.198.c3 still measure through it.
+ * ⛔ TWO DECLARATIONS WERE LEFT POINTING AT THE OLD ADDRESS — `S5-M59` and `S5-M69` — and that is a MOVED subject,
+ * not a struck one, so they are RE-POINTED rather than recorded REMOVED (2026-09-21, ops lane).
+ */
+const PLAYER_SURFACE_TEXT = "scripts/lib/player-surface-text.mts";
 const ID_PAGE = "src/app/admin/agents/[id]/page.tsx";
 const APPROVALS_PAGE = "src/app/admin/approvals/page.tsx";
 const AUDIT_PAGE = "src/app/admin/audit/page.tsx";
@@ -431,7 +440,10 @@ export const MUTATIONS = [
   },
   {
     name: "c5-s5:S5-M59 · CONTROL · an un-built house reader called from the player's cancellation notice (a needle name), a house row planted in the…",
-    file: HOUSE_BOT_REPORTS_CASES,
+    /* ⚠️ RE-POINTED 2026-09-21 (ops lane): the print measure MOVED to `player-surface-text.mts` in Commit 6
+       and this `from` stopped resolving in the cases file. The subject is ALIVE and imported straight back, so the
+       anchor follows it rather than being recorded REMOVED. DRIVEN, not assumed. */
+    file: PLAYER_SURFACE_TEXT,
     from: "if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n) || ts.isJsxText(n)) out.push(n.text);",
     to: "if (ts.isNoSubstitutionTemplateLiteral(n)) out.push(n.text);",
     expect: "0.198.c2 · CONTROL · an un-built house reader called from the player's cancellation notice (a needle name), a house row planted in the refund letter (a house word), a one-word rewording (the bytes) and a stubbed notifier are each reported; an edit to the ADMIN twin beside it is not",
@@ -447,7 +459,9 @@ export const MUTATIONS = [
   },
   {
     name: "c5-s5:S5-M69 · CONTROL · a house line planted as JSX text in the public market page and as an attribute string in the resolution panel are each…",
-    file: HOUSE_BOT_REPORTS_CASES,
+    /* ⚠️ RE-POINTED 2026-09-21 (ops lane), the same move as S5-M59 above: `printedTexts` has lived in
+       `player-surface-text.mts` since Commit 6. DRIVEN, not assumed. */
+    file: PLAYER_SURFACE_TEXT,
     from: " || ts.isTemplateTail(n) || ts.isJsxText(n)) out.push(n.text);",
     to: " || ts.isTemplateTail(n)) out.push(n.text);",
     expect: "0.198.c3 · CONTROL · a house line planted as JSX text in the public market page and as an attribute string in the resolution panel are each found; house identifiers in code are not words",
