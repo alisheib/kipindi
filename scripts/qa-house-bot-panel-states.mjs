@@ -125,19 +125,28 @@ const PROBE = `() => {
      Account column — "usr_ops_visual_officer" came apart into SIX one-to-four-character line boxes at 640,
      while the account page's copy of the same cell broke cleanly in two. One value, two treatments, and at 360
      the shattered cell set the ROW height from inside the horizontal scroller. The ceiling is 1: an id is a
-     value, and a value that needs six lines has been rendered wrong rather than wrapped. */
-  const whoIdx = heads.findIndex((h) => h.t === "Who");
-  let whoMaxLines = 0, whoWs = null, whoRows = 0;
-  if (whoIdx >= 0) {
-    for (const tr of rows) {
-      if (tr.children.length !== heads.length) continue;
-      const td = tr.children[whoIdx]; if (!td) continue;
-      whoWs = whoWs === null ? getComputedStyle(td).whiteSpace : whoWs;
-      const rg = document.createRange(); rg.selectNodeContents(td);
-      whoMaxLines = Math.max(whoMaxLines, rg.getClientRects().length);
-      whoRows += 1;
+     value, and a value that needs six lines has been rendered wrong rather than wrapped.
+     The "Change" column is measured with it and for the same reason: it holds a bounded PAIR
+     ("Paused → Active"), and at 360 it came apart into three line boxes with the arrow alone on the
+     middle one — a relation broken across lines is not the relation. */
+  const lineBoxes = (name) => {
+    const idx = heads.findIndex((h) => h.t === name);
+    let max = 0, ws = null, n = 0;
+    if (idx >= 0) {
+      for (const tr of rows) {
+        if (tr.children.length !== heads.length) continue;
+        const td = tr.children[idx]; if (!td) continue;
+        ws = ws === null ? getComputedStyle(td).whiteSpace : ws;
+        const rg = document.createRange(); rg.selectNodeContents(td);
+        max = Math.max(max, rg.getClientRects().length);
+        n += 1;
+      }
     }
-  }
+    return { max, ws, n };
+  };
+  const who = lineBoxes("Who");
+  const change = lineBoxes("Change");
+  const whoMaxLines = who.max, whoWs = who.ws, whoRows = who.n;
   const money = [...document.querySelectorAll("main .amount, main [data-amount]")].length;
   const tzsText = (document.querySelector("main") || document.body).innerText.match(/TZS/g);
   /* ⛔ THE PAGER IS FOUND BY ITS OWN CONTROLS, NOT BY A 'nav[aria-label]' — the first draft of this probe
@@ -173,7 +182,7 @@ const PROBE = `() => {
     escaping: esc.slice(0, 8), railBox, chips, heads, firstCells, rowCount: rows.length,
     money, tzs: tzsText ? tzsText.length : 0, pagerBox, callout, empty, tabs,
     whenWrapped, whenWs, whenFvn, whenRows: whenIdx >= 0 ? rows.filter((tr) => tr.children.length === heads.length).length : 0,
-    whoMaxLines, whoWs, whoRows,
+    whoMaxLines, whoWs, whoRows, changeMaxLines: change.max, changeWs: change.ws, changeRows: change.n,
     aria: aria.slice(0, 40),
     h1: (document.querySelector("main h1") || {}).textContent || "",
     lang: document.documentElement.lang || "",
@@ -255,6 +264,8 @@ for (const r of report) {
   if (!r.whoRows) continue;
   ok(`§H1 ${r.id} @${r.width} · the actor id is ONE line, not a column of fragments`,
     r.whoMaxLines === 1, `worst cell took ${r.whoMaxLines} line boxes (white-space: ${r.whoWs})`);
+  ok(`§H2 ${r.id} @${r.width} · a status CHANGE stays on one line, arrow and both ends together`,
+    r.changeMaxLines <= 1, `worst cell took ${r.changeMaxLines} line boxes (white-space: ${r.changeWs})`);
 }
 ok("§H0 CONTROL · a Who column was actually reached, on both history panels",
   new Set(report.filter((r) => r.whoRows > 0).map((r) => r.id.slice(0, 1))).size >= 2,

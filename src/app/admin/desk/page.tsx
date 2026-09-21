@@ -827,7 +827,12 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 </Link>
                               )}
                             </td>
-                            <td className="p-3 text-text-secondary">{r.change ?? "\u2014"}</td>
+                            {/* \u26d4 A RELATION, NOT A SENTENCE \u2014 so it does not break across lines. This cell holds a
+                                bounded PAIR ("Paused \u2192 Active") and at 360 it came apart into three line boxes
+                                with the arrow alone on the middle one, which is not the relation any more. Same
+                                decision, same reason and the same safety as the two cells around it: the table is
+                                inside `ScrollX`. */}
+                            <td className="p-3 text-text-secondary whitespace-nowrap">{r.change ?? "\u2014"}</td>
                             {/* 🔴 `break-all` IS GONE, AND IT WAS READ OFF A TILE AT 640. Ruling 420 paints the
                                 actor as an ID on purpose — and `break-all` breaks INSIDE the word, so on THIS
                                 table (the only one of the two carrying an Account column, which takes a 150px

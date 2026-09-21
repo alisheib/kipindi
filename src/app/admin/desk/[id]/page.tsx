@@ -537,7 +537,9 @@ async function AdminDeskAccountContent({
                                 </Link>
                               )}
                             </td>
-                            <td className="p-3 text-text-secondary">{r.change ?? "—"}</td>
+                            {/* ⛔ The desk history's own decision, moved with it (§K5): a bounded PAIR does not
+                                break across lines — see the note at that copy. */}
+                            <td className="p-3 text-text-secondary whitespace-nowrap">{r.change ?? "—"}</td>
                             {/* ⛔ THE SAME CELL AS THE DESK-WIDE HISTORY, AND IT MOVES WITH IT (§K5: one shape for
                                 one thing). It broke in two here and into six lines there — the difference was
                                 only how much room was left, which is exactly why the class is not left to the
