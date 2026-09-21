@@ -71,7 +71,7 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 244, postgres: 80 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 245, postgres: 80 }, dbPrefix: "hb_reports" });
 // ⛔ MERGED A THIRD TIME 2026-09-21 (ops ← house-bots `fd2b6ed5`, the release-verdict merge), and the
 // collision is the same one twice over: lane 1 raised its own base 217 → 218 for `0.175` (its new
 // `test:house-bot-surfaces` joined `VOCABULARY_CONSUMERS`), while this lane's merged tree already stood at
@@ -81,8 +81,17 @@ await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/ho
 // lane's guard is weakened), and the number above is then whatever `npm run test:house-bot-reports`
 // PRINTED on the merged tree — never 244 + 1. If the line above still reads 244/80 with no printed-run
 // sentence after this one, the measurement did not happen and the floor is an understatement, not a lie.
-// ⏳ NOT YET MEASURED AT THE INSTANT THIS LINE WAS WRITTEN — the floor above is the carried 244/80 and the
-// run is the next thing this pass does. The sentence that replaces this one must quote the printed pair.
+// ⭐ **MEASURED ON THE MERGED TREE: 244/80 → 245 memory / 80 postgres, RAISED TO WHAT THE RUN PRINTED AND TO
+// NOTHING ELSE** (ops lane, 2026-09-21, the final merge). `npm run test:house-bot-reports` printed
+// `0.mem · exit 0 · 245 passed (at least 244) · 0 failed` and `0.pg · exit 0 · 80 passed (at least 80) · 0 failed`,
+// ALL PASS, and the pair above was then set to exactly those two numbers.
+// ⛔ THE FIRST RUN OF THIS SUITE ON THE MERGED TREE WAS RED, AND THAT IS WHY THE PLACEHOLDER ABOVE EXISTED:
+// `0.mem` printed `exit 1 · 243 passed (at least 244) · 2 failed` — `0.260.1` and its control `0.260.c3` both
+// reporting `src/lib/server/audit.ts: exports auditPending, which is neither an audit row reader nor a declared
+// non-reader`, an export `origin/rel-lane` `09398014` added for the shutdown drain. Classified in
+// `AUDIT_NON_READERS` (see the docblock there), and only THEN did a green run exist to read a floor off.
+// ⚠️ Postgres did NOT move again, and that is a measurement too: lane 1's extra case and the 260 repair are both
+// §0 source pins and §0 runs in the MEMORY child only — the same reason the previous two merges left 80 alone.
 // ⛔ MERGED AGAIN 2026-09-21 (ops ← house-bots), AND IT IS THE SAME COLLISION THIS HEADER ALREADY
 // DESCRIBES, a second time. Lane 1 raised the floor 203/64 → 217/64 for the C5-8 reports cases it wrote;
 // ops-lane had raised the same base to 230/80 for the alerts cases plus row 77's. The merged
