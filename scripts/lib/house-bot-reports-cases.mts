@@ -2517,6 +2517,11 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      page hands its form. None awaits, reaches `db.`, names a store member or decides an audience — the gated
      door itself is `houseRulesSaveForConsole`, which has its `CONSOLE_GATES` arity entry. */
   "ConsoleRulesForm", "ConsoleRulesSaveInput", "ConsoleRulesSaveResult",
+  /* ⭐ 2026-09-21 · the account's START-READINESS shape — what is still to fill before it can run, the owner's
+     report from the live demo. It is a pure view model built from `ConsoleRulesForm`'s own caps and switches:
+     it awaits nothing, reaches no `db.`, names no store member and decides no audience. The gated door that
+     carries it is `houseDetailForConsole`, which has its own `CONSOLE_GATES` arity entry. */
+  "ConsoleStartReadiness",
   "ConsoleRosterView", "ConsoleRuleRow", "ConsoleTargetRow", "ConsoleUsageCell",
   "ConsoleUsageHalf", "ConsoleUsageQuery", "ConsoleUsageRow", "HOUSE_CONSOLE_PREFIX", "OPERATOR_DATA_EXEMPT",
   "ACCOUNT_TARGETED_DAILY_TZS_FIELD", "TARGETED_DAILY_TZS_FIELD", "clampOperatorText", "consoleLimitLabel",

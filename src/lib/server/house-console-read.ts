@@ -39,7 +39,7 @@ import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
 import type { StoredUser } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
-import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleBotTabHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 /* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
@@ -2119,6 +2119,55 @@ export type ConsoleRulesForm = {
   copy: { barDetail: string; guardBody: string };
 };
 
+/**
+ * WHAT IS STILL MISSING BEFORE THIS ACCOUNT CAN RUN (2026-09-21) — the owner's own report from the live demo:
+ * *"we don't know what to fully fill before we can generate things, and tabs don't have marker to tell us
+ * something is missing in it."*
+ *
+ * ⛔ BOTH HALVES OF THAT ARE REAL AND BOTH ARE THIS TYPE'S JOB. The desk's rail has badged `limits` with
+ * `unsetRequired` since C7, so an officer can see from OUTSIDE the tab that the global half is unfinished. The
+ * ACCOUNT rail badged only `targets`, so `rules` — the one tab that decides whether Start works at all — showed
+ * nothing whatever while every cap inside it was empty. And nothing anywhere said HOW MANY, or WHICH.
+ *
+ * ⭐ EVERY FACT COMES OFF `ConsoleRulesForm`, THE OBJECT THE FORM ITSELF DRAWS — the caps' own `required` flag
+ * (membership of `REQUIRED_FOR_START`, never a typed 11) and the ten switches. Two sources for one fact is how
+ * a badge comes to disagree with the panel it points at, and this badge exists to agree.
+ *
+ * ⛔ IT ANSWERS "WHAT IS STILL EMPTY", NOT "WILL START SUCCEED", AND THE COPY SAYS SO. `rulesStartProblems` is
+ * the authority on the second question and it is deliberately NOT called here: it needs a full `RulesContext`
+ * (`loadRulesContext` is five reads plus a rate profile per chain), which is a real cost to add to every render
+ * of a page ruling 356 already holds to a tight read budget — for an aid, not a gate. So this covers the
+ * dominant case, an account whose required fields are empty, and the live-bound refusals it cannot see (a
+ * platform minimum that moved under a saved cap) are still named by the real Start refusal, which is the thing
+ * that actually decides.
+ * ⚠️ READINESS COMPUTED FROM A LIST IS A CLAIM; ONLY CALLING THE SERVICE PROVES IT. That is why the headline
+ * reads "still to fill" and never "ready to start", and why nothing here is wired to enable a control.
+ * ⛔ AND NOT ONE VALIDATOR SENTENCE IS PAINTED (453). Its messages are the service's and the bell's too; the
+ * labels here are the console's own, from the one label home, exactly as the limit conflicts are. ⚠️ 4.453's
+ * lexicon scan would NOT have caught the mistake — those messages carry no house word — so this rule has no
+ * automatic guard and is written down instead.
+ */
+export type ConsoleStartReadiness = {
+  /** Unfinished required things. `0` means a start is not refused for any of them. */
+  blockers: number;
+  /**
+   * Everything Start requires, so the page can say "3 of 13" rather than a bare count of what is wrong.
+   * ⛔ COUNTED OFF `ConsoleRulesForm.caps` plus the two scope facts, never off a typed 11.
+   */
+  total: number;
+  /**
+   * ⛔ What to fill, each in the console's own words. Empty when `blockers` is 0.
+   *
+   * ⚠️ `unset` SEPARATES THE TWO REASONS A REQUIRED THING CAN BLOCK A START, because they need different
+   * actions: a cap that was never set is FILLED, while one that was set and has since fallen outside a live
+   * bound (the platform minimum stake moved under it) is RECONSIDERED. Painting both as "still to set" would
+   * send an officer to an input that already holds a number and say nothing about why it is refused.
+   */
+  items: readonly { label: string; unset: boolean }[];
+  /** The tab that holds every one of them, so the panel's way out is the server's and not the page's. */
+  href: string;
+};
+
 export type ConsoleRuleRow = {
   section: string;
   name: string;
@@ -2197,6 +2246,8 @@ export type ConsoleDetailView = {
    * parse, which are the two states no form may overwrite.
    */
   rulesForm: ConsoleRulesForm | null;
+  /** ⛔ What still blocks a start, from the start service's OWN predicate. `null` when there is nothing to say. */
+  startReadiness: ConsoleStartReadiness | null;
   /** What the officer is told beside the card — what the form is for, or why there is none (432(j)). */
   rulesReason: string;
   /** 508 · this account's targets, newest first — ONE PAGE of them. ⛔ `null` means the read FAILED or was not taken (358). */
@@ -3446,6 +3497,7 @@ export async function houseDetailForConsole(
       lastBet: null,
       rules: removedRules,
       rulesForm: null,
+      startReadiness: null,
       rulesReason: "A removed account's rules are kept as a record and cannot be changed.",
       /* 358 · a REMOVED account has no act left, which is why this page renders no action row at all. */
       acts: [],
@@ -3704,6 +3756,41 @@ export async function houseDetailForConsole(
     },
   };
 
+  /**
+   * ⭐ WHAT IS STILL MISSING BEFORE THIS ACCOUNT CAN RUN — the owner's report from the live demo, 2026-09-21:
+   * "we don't know what to fully fill before we can generate things, and tabs don't have marker to tell us
+   * something is missing in it."
+   *
+   * The full reasoning — why it reads the form's own model rather than calling the start predicate, and why
+   * the copy claims "still to fill" and never "ready to start" — is on `ConsoleStartReadiness` itself.
+   */
+  const startReadiness: ConsoleStartReadiness | null = (() => {
+    if (rulesForm == null || removed) return null;
+    /* ⛔ EVERY FACT HERE COMES OFF `rulesForm`, THE OBJECT THE FORM ITSELF DRAWS. Two sources for one fact is
+       how a badge comes to disagree with the panel it points at, and this badge's whole job is to agree. */
+    const unsetCaps = rulesForm.caps.filter((c) => c.required && c.value === "");
+    const on = (key: string) => rulesForm.flags.some((f) => f.key === key && f.on);
+    const hasProduct = on(CONSOLE_FLAG_KEY.productUpdown) || on(CONSOLE_FLAG_KEY.productPolls);
+    /* N1 §5 / PLAN §18: an account has an entry mode when ANY automatic mode, Enter now or targeting is on —
+       the same union `hasAnyEntryMode` takes, read off the switches rather than restated as a rule. */
+    const hasMode = [
+      CONSOLE_FLAG_KEY.updownCounter, CONSOLE_FLAG_KEY.updownFill, CONSOLE_FLAG_KEY.updownOpener,
+      CONSOLE_FLAG_KEY.pollsCounter, CONSOLE_FLAG_KEY.pollsFill, CONSOLE_FLAG_KEY.pollsOpener,
+      CONSOLE_FLAG_KEY.enterNow, CONSOLE_FLAG_KEY.targeting,
+    ].some(on);
+    const items: { label: string; unset: boolean }[] = [
+      ...unsetCaps.map((c) => ({ label: c.label, unset: true })),
+      ...(hasProduct ? [] : [{ label: "A product", unset: true }]),
+      ...(hasMode ? [] : [{ label: "An entry mode", unset: true }]),
+    ];
+    return {
+      blockers: items.length,
+      total: rulesForm.caps.filter((c) => c.required).length + 2,
+      items,
+      href: consoleBotTabHref(bot.id, "rules"),
+    };
+  })();
+
   const targets: ConsoleTargetRow[] | null = targetRows == null ? null : targetRows.map((t: StoredHouseBotTarget) => {
     const at = Date.parse(t.endedAt ?? t.createdAt);
     return {
@@ -3729,6 +3816,7 @@ export async function houseDetailForConsole(
     lastBet: rate ? relativeEat(rate.lastPlacedAt, nowMs) : null,
     rules,
     rulesForm,
+    startReadiness,
     /* 432(j) · a control that is not drawn still says why, beside the card it would have been in. */
     /**
      * ⛔ THE SENTENCE THIS REPLACES SAID "Editing an account's rules is not ready on this build yet." — true

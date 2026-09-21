@@ -280,6 +280,47 @@ async function AdminDeskAccountContent({
             rail option with no panel is a dead control; on this route that is a property of the RECORD, not only of
             the build. A removed account has exactly one thing left to show — what it was configured to do — so the
             page shows it, with no rail to click through and no empty panel behind one. */}
+        {/* ⭐ WHAT IS STILL MISSING, ABOVE THE RAIL — the owner's report from the live demo, 2026-09-21:
+            "we don't know what to fully fill before we can generate things".
+            ⛔ IT SITS ABOVE THE RAIL BECAUSE IT IS A STATE, NOT A DETAIL (§K rule 7d). An officer must be able
+            to see that the account is unfinished from whichever tab they happen to be on — a panel inside
+            `rules` would only be visible to someone who had already found the thing it is telling them about.
+            ⛔ AND IT IS PLACED ABOVE THE KPI BAND DELIBERATELY. Measured at 360 today: this section's per-panel
+            guidance line ends at y=999 in an 800px viewport, so a sentence added to explain a tab is never read
+            on a phone without scrolling past the strip, the callouts and four tiles. The one thing an officer
+            opening an unfinished account needs is the first thing on the page.
+            ⚠️ It says "still to fill", never "ready" — see `ConsoleStartReadiness`: it reads what is EMPTY, and
+            only the start service decides what is acceptable. */}
+        {!view.removed && view.startReadiness !== null && view.startReadiness.blockers > 0 && (
+          <Callout
+            tone="warning"
+            size="md"
+            surface="panel"
+            role="status"
+            title={`${view.startReadiness.blockers} of ${view.startReadiness.total} still to fill before this account can start`}
+          >
+            {/* ⛔ NO WAY-OUT LINK, AND BOTH REASONS WERE MEASURED RATHER THAN ARGUED.
+                ① IT PUSHED THE NOTICE OFF A PHONE. With an "Open Rules" line the box ran y=578..850 in an
+                800px viewport at 360 — the fix for a sentence below the fold, itself below the fold. Without
+                it: 578..798. The whole point of placing this above the KPI band was that an officer opening an
+                unfinished account READS it without scrolling.
+                ② IT WAS THE SAME FACT TWICE (432(n)). The rail is the next thing on the page and its `rules`
+                tab now carries the very count this box states; a tab IS a destination, so the badge already
+                says both what is missing and where to go. A second way out 40px above it buys nothing.
+                ⚠️ AND `action` WOULD NOT HAVE WORKED ANYWAY — recorded because the next person will reach for
+                it: `Callout` renders `action` ONLY in its `layout="stack"` branch (callout.tsx:280). In the
+                default `row` layout the prop is accepted and SILENTLY DROPPED. The first form of this passed
+                `action` and the link never appeared — found by reading the render, not by the compiler, which
+                types it happily. `layout="stack"` is not the answer either: it centres the notice behind a
+                56px icon plate and caps the body at 42ch, a hero treatment for thirteen field names. */}
+            <ul className="flex flex-wrap gap-x-2 gap-y-1 max-w-[72ch]">
+              {view.startReadiness.items.map((it) => (
+                <li key={it.label} className="after:content-['·'] after:ml-2 last:after:content-['']">{it.label}</li>
+              ))}
+            </ul>
+          </Callout>
+        )}
+
         {/* 312 · the rail carries exactly the tabs whose panels exist. `activity` and `history` join it at C7 step 5
             with the readers behind them.
             ⛔ THE COMMENT IS BRACED. Wrapping this conditional in a fragment moved it INSIDE JSX, where a bare
@@ -295,7 +336,15 @@ async function AdminDeskAccountContent({
             value: k,
             labelEn: TAB_LABEL[k],
             href: consoleBotTabHref(view.id, k),
-            count: k === "targets" ? (view.targetsActive ?? undefined) : undefined,
+            /* ⛔ `rules` CARRIES WHAT IS STILL MISSING INSIDE IT (owner's report, 2026-09-21: "tabs don't have
+               marker to tell us something is missing in it"). The desk's rail has badged `limits` with its
+               unset count since C7; this rail badged only `targets`, so the one tab that decides whether Start
+               works at all showed nothing while every field inside it was empty.
+               ⚠️ `|| undefined` rather than `?? undefined`: at ZERO the badge must be ABSENT, not a "0" —
+               `CountBadge` renders nothing for 0, and a badge that says nothing is left is noise on a rail. */
+            count: k === "targets" ? (view.targetsActive ?? undefined)
+              : k === "rules" ? (view.startReadiness?.blockers || undefined)
+              : undefined,
           }))}
         />
         )}

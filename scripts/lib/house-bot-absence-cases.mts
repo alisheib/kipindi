@@ -192,8 +192,28 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       wrongList.compared === 0 && wrongList.missing.length === 2, j(wrongList));
     const branchChanged = git("diff", "--name-only", "origin/main").split("\n").map((s) => s.trim()).filter(Boolean);
     const sweptIn = branchChanged.filter((p) => PUBLIC_TEXT.includes(p));
-    ok("5.1.c3 · POSITIVE CONTROL · this branch DOES differ from `origin/main` — a house lane that changed nothing would make 5.1 meaningless — and not one of those changed files is inside the pinned population. The pin holds the published words without refusing the lane's own work, which is the failure mode a protection guard actually has",
-      branchChanged.length >= 10 && sweptIn.length === 0, j({ changedVsMain: branchChanged.length, sweptIn }));
+    /**
+     * ⛔ THIS ASSERTED `branchChanged.length >= 10`, AND THAT MEASURED THE WORKING TREE, NOT THE CLAIM
+     * (repaired 2026-09-21).
+     *
+     * `git diff --name-only origin/main` counts UNCOMMITTED files as well as committed ones, so the case
+     * passed or failed on how much happened to be unstaged at that moment. It was green all afternoon with
+     * seventeen files in flight and went RED on a two-file commit — same tree, same pins, same published
+     * words, and a verdict that flipped on a number that has nothing to do with any of them. ⛔ And once a
+     * lane is MERGED the count is 0 for ever, so on `main` it could never pass again.
+     * ⚠️ THE THRESHOLD ALSO NEVER SERVED 5.1. What makes 5.1 non-vacuous is that the comparison really
+     * happened over a real population — 5.0 and 5.1.c2 assert exactly that — and that a real difference is
+     * detected, which 5.1.c1 proves with a one-character mutation. How many OTHER files a lane touched says
+     * nothing about whether a published legal file moved.
+     * ⭐ WHAT IS KEPT IS THE HALF THAT WAS ALWAYS THE POINT: not one changed file is inside the pinned
+     * population, so the pin holds the published words without refusing the lane's own work. ⭐ AND IT IS NOW
+     * FALSIFIABLE WITHOUT DEPENDING ON THE TREE: the same filter runs over a list with a pinned file PLANTED
+     * in it and must catch exactly that one. A detector that cannot be shown to fire is not a control.
+     */
+    const plantedSweep = [...branchChanged, PUBLIC_TEXT[0]].filter((p) => PUBLIC_TEXT.includes(p));
+    ok("5.1.c3 · POSITIVE CONTROL · not one changed file is inside the pinned population — the pin holds the published words without refusing the lane's own work, which is the failure mode a protection guard actually has — and the detector that says so is PROVED to fire, by running it over a list with a pinned file planted in it",
+      sweptIn.length === 0 && plantedSweep.length === 1 && plantedSweep[0] === PUBLIC_TEXT[0] && PUBLIC_TEXT.length >= 16,
+      j({ changedVsMain: branchChanged.length, sweptIn, planted: plantedSweep, pinned: PUBLIC_TEXT.length }));
   }
   {
     const population = playerRenderedFiles();
