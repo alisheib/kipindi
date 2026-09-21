@@ -2079,7 +2079,20 @@ export const AUDIT_ROW_READERS = ["getAuditById", "getAuditByActionsDurable", "g
  * chain's checks over rows handed in, and the two types. 0.260.1 holds the module's exports to exactly the two lists, so a
  * new export under ANY name has to be classified before a console file may read it.
  */
-export const AUDIT_NON_READERS = ["AuditCategory", "AuditEntry", "audit", "auditFlush", "auditRingSize", "classifyChainLinks", "reconstructChainOrder", "verifyChain", "verifyChainFull"] as const;
+export const AUDIT_NON_READERS = ["AuditCategory", "AuditEntry", "audit", "auditFlush", "auditPending", "auditRingSize", "classifyChainLinks", "reconstructChainOrder", "verifyChain", "verifyChainFull"] as const;
+/*
+ * ⭐ `auditPending` ADDED 2026-09-21 BY THE ops ← rel-lane MERGE, AND IT IS THE GUARD WORKING, NOT A NUISANCE.
+ * The shutdown-drain lane (`origin/rel-lane` `09398014`) added one export to the audit module — a counter of the
+ * appends queued and not yet stamped, which `audit-drain.ts` reads to report how many rows a dying process saved
+ * and how many it abandoned. 0.260.1 turned RED on the merged tree at once, in the exact words this docblock
+ * promises: "exports auditPending, which is neither an audit row reader nor a declared non-reader". That is the
+ * whole point of holding the module to two exhaustive lists — a lane that has never heard of D19 cannot widen the
+ * audit module's surface without a house guard saying so.
+ * ⛔ IT IS CLASSIFIED HERE, NOT EXEMPTED: `auditPending()` returns `number` — `globalThis.__50PICK_AUDIT_PENDING ?? 0`
+ * — and touches no row, no `db.auditLog` call and no ring entry. Read from the merged source, not from its name.
+ * A row reader added under a plausible name would still have to go in the OTHER list and would still be held to the
+ * gate; nothing about this entry makes the next export easier to wave through.
+ */
 /**
  * Every file OUTSIDE the console that calls an audit row reader, and why its rows never reach a console page raw (a service
  * handing a page unfiltered rows would pass the console pin, which reads console files only). 0.260.1 compares this list
