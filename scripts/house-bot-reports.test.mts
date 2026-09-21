@@ -72,6 +72,19 @@
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 247, postgres: 80 }, dbPrefix: "hb_reports" });
+// ⛔ MERGED A FOURTH TIME 2026-09-21 (ops ← house-bots, the INTEGRATION merge on OMEGA-COMPILE01), and it is
+// the same collision this header already describes, a fourth time. This lane stood at a MEASURED 247/80; the
+// trunk raised its own base to 219/64 for `0.198.3b`. Neither pair describes the merged file: 247 predates the
+// trunk's `0.198.3b`, and 219 predates the alerts cases, row 77's, and the 260 repair.
+// ⛔ THE DELTAS WERE NOT ADDED. The merge carried the HIGHER of both on BOTH stores (247/80, so neither lane's
+// guard is weakened) and the pair above is then whatever `npm run test:house-bot-reports` PRINTED on the merged
+// tree — never 247 + 1. If the line above still reads 247/80 with no printed-run sentence after this one, the
+// measurement did not happen and the floor is an understatement, not a lie.
+// ⭐ THE TWO LANES FOUND THE SAME ROOT DEFECT INDEPENDENTLY, which is why both records below are kept: the
+// trunk's `0.198.3b` note (`house[ -]?stakes?` is blind to an underscore, so `HOUSE_STAKE_ONLY` walked through a
+// guard whose population already held that file) and the alerts lane's DEFERRED-TESTS row 79 (the bounded id
+// families open with a word boundary, and `_` is a word character, so `pos_house_...` never matches) are the SAME
+// class of blindness in two different families. Neither lane knew of the other.
 // ⭐ 245 → 247 ON MEMORY, 2026-09-21 (ops lane, closing the merge's own defect), IN THE SAME COMMIT AS THE TWO
 // ASSERTIONS THAT RAISED IT: `0.260.2` and `0.260.c4` hold the two audit exports that actually read `db.auditLog`
 // — `readUnverifiableBaseline` and `censusUnverifiable` — to the claim their new NON-READER classification makes.
@@ -122,6 +135,14 @@ await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/ho
 // nothing had added to. ⛔ And note what the guess would have produced here: 230 + 14 = 244 on memory,
 // the same number — a coincidence of this merge, NOT a licence to compute the next one. The run decided it.
 // ⛔ It is never lowered. A section that stops running fails this floor even while every case that ran passed.
+// ⭐ 218 → 219, C5-8 (2026-09-21), IN THE SAME COMMIT AS THE ASSERTION THAT RAISED IT: `0.198.3b`, which holds
+// the market page's one lawful string to `test:house-bot-surfaces` 4.words.4 instead of re-proving ruling 146 here.
+// The memory child PRINTED 219 on that run. Postgres is unchanged: §0 runs in the memory child only.
+// ⚠️ WHY AN ASSERTION HAD TO BE ADDED AT ALL — `0.198.3` had been GREEN OVER A FILE THAT IS NOT CLEAN. It reads the
+// market page and reported zero house words for weeks, because the shared words family was written `house[ -]?stakes?`
+// and an underscore is not in that class; `"HOUSE_STAKE_ONLY"` walked straight through the one guard whose population
+// already held that file. `§2J · THE JOIN` closed the class, this assertion went red on the string it had always been
+// blind to, and it now names it rather than asserting an absence that was never true.
 // ⭐ 217 → 218, C5-8 (2026-09-21), IN THE SAME COMMIT AS THE ASSERTION THAT RAISED IT: `test:house-bot-surfaces`
 // joined `VOCABULARY_CONSUMERS`, so `0.175` emits one more case. The memory child PRINTED 218 on that run; Postgres
 // is unchanged because the case is a §0 source pin and §0 runs in the memory child only.

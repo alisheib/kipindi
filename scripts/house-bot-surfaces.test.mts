@@ -67,6 +67,7 @@ import {
   houseHitsByFamily, houseHits, houseCamelHits,
   HOUSE_WORD_SAMPLES, HOUSE_CAMEL_SAMPLES, HOUSE_CAMEL_BENIGN_SAMPLES, HOUSE_BENIGN_SAMPLES,
   HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES,
+  HOUSE_WORD_SOURCE, HOUSE_JOIN, HOUSE_JOIN_CHARS, joinVariants, houseHalves,
 } from "./lib/house-bot-vocabulary.mjs";
 
 type Any = any;
@@ -282,6 +283,25 @@ const wordsPrinted = (rel: string, code: string): string[] =>
   [...new Set(printedTexts(rel, code).flatMap((t) => houseHitsByFamily(t).filter((h) => h.family === "words").map((h) => h.word)))];
 
 /**
+ * ⛔ A REGISTER ENTRY COVERS THE SUBSTRINGS OF ITSELF, AND THIS IS A CORRECTION THE JOIN FORCED (§2J, C5-8).
+ * Every register in this suite is a list of EXACT strings, and that was silently a claim about the PATTERN as well
+ * as about the code: one literal yielded exactly one hit. The join broke that — `"HOUSE_STAKE_ONLY"` is now matched
+ * by the words family as `HOUSE_STAKE` and by the identifier family as `HOUSE_STAKE_ONLY`, two hits from ONE
+ * unchanged literal — and four assertions went red over a string nobody had touched.
+ * ⛔ THE FIX IS NOT TO ADD THE SECOND SPELLING TO FOUR LISTS. That is the exact move this section exists to refuse:
+ * it would have to be made again the next time the pattern widens, in however many registers exist by then. A
+ * registered string authorises the CHARACTERS it registered, so a hit that is a substring of one is the same
+ * disclosure, not a new one — and it is `includes`, so it stays CASE- AND SEPARATOR-SENSITIVE: `house stake` is not
+ * a substring of `HOUSE_STAKE_ONLY` and is still reported at a file that registers it.
+ * ⚠️ IT CANNOT SWALLOW A NEW STRING: a different literal that merely contains a registered substring still yields
+ * its own longer hit, which is not a substring of anything registered and is reported. `1.reg.c1` asserts both.
+ */
+const coveredByRegister = (hit: string, allowed: readonly string[]): boolean => allowed.some((a) => a.includes(hit));
+/** A register's report for one file: the hits no registered string covers. */
+const uncovered = (rel: string, hits: string[], register: Readonly<Record<string, readonly string[]>>): string[] =>
+  hits.filter((w) => !coveredByRegister(w, register[rel] ?? [])).map((w) => `${rel}: ${w}`);
+
+/**
  * ⛔ THE ONE ADMIN SURFACE THAT MAY PAINT THE FEATURE'S NAME, BY EXACT WORD, WITH THE GATE THAT MAKES IT LAWFUL.
  * SHRINK-ONLY: `1.words.2` fails on an entry its file no longer prints, so an exemption can never outlive the copy
  * it was written for, and a word added to the page goes red rather than joining the list.
@@ -296,8 +316,7 @@ const SURFACE_WORD_REGISTER: Readonly<Record<string, readonly string[]>> = {
 };
 const surfaceWordProblems = (files: Array<{ rel: string; code: string }>): string[] =>
   files.flatMap(({ rel, code }) => {
-    const allowed = SURFACE_WORD_REGISTER[rel] ?? [];
-    return wordsPrinted(rel, code).filter((w) => !allowed.includes(w)).map((w) => `${rel}: ${w}`);
+    return uncovered(rel, wordsPrinted(rel, code), SURFACE_WORD_REGISTER);
   });
 
 const surfaceFiles = surfaces.map((rel) => ({ rel, code: read(rel) }));
@@ -308,7 +327,7 @@ ok("1.words.1 · ⛔ D19 · not one admin surface outside the console PAINTS a h
 const staleRegister = Object.entries(SURFACE_WORD_REGISTER).flatMap(([rel, words]) => {
   if (!surfaces.includes(rel)) return [`${rel}: no longer an admin surface`];
   const printed = wordsPrinted(rel, read(rel));
-  return words.filter((w) => !printed.includes(w)).map((w) => `${rel}: "${w}" is registered but no longer printed`);
+  return words.filter((w) => !printed.some((h) => w.includes(h))).map((w) => `${rel}: "${w}" is registered but no longer printed`);
 });
 ok("1.words.2 · the register may only SHRINK: every registered word is still printed by the file it was registered for, so an exemption cannot outlive the copy it was written for and cannot be pre-widened for a word not yet shipped",
   staleRegister.length === 0, j({ register: SURFACE_WORD_REGISTER, stale: staleRegister }));
@@ -505,6 +524,123 @@ ok("2.ids.c5 · CONTROL · BOTH SIDES OF THE SHAPE · every shape sample planted
   j({ missed: camelSweep.filter((x) => x.found === 0), benign: benignIds }));
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2J · THE JOIN · THE FAMILY THE `HOUSE_STAKE_ONLY` ESCAPE BELONGS TO
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * ⛔ WHY THIS SECTION EXISTS, AND IT IS A DEFECT CLASS RATHER THAN A MISSING SPELLING. §4 found
+ * `"HOUSE_STAKE_ONLY"` on the market page because it reads all three families; the guard that was ALREADY reading
+ * that file (`test:house-bot-reports` 0.198.3) could not, because its alternative was written `house[ -]?stakes?`
+ * and an underscore is not in that class. Adding an underscore there would fix ONE spelling and teach nothing —
+ * and the module's own header shows why: the two copies of this list that were centralised in the first place
+ * disagreed about exactly this (`house[_ -]?bots?` against `house[ -]?bots?`). Centralising the LIST did not
+ * centralise THE SEPARATOR, so the drift moved inside the one file: MEASURED at the head of this commit, SEVEN of
+ * the twelve alternatives spelled a separator of their own, and re-spelling each sample under every join left
+ * FOURTEEN of the fourteen compound samples unmatched by at least one join.
+ *
+ * ⭐ SO THE FAMILY IS DERIVED. `HOUSE_JOIN_CHARS` is every way this codebase welds two halves of a compound —
+ * prose space, kebab, snake, dotted key, namespaced key, route slash — plus the join that writes NO character
+ * (camelCase and bare concatenation), which is the `?` on `HOUSE_JOIN` under a case-insensitive match. The two
+ * assertions below know not one spelling between them:
+ *   · `2.join.1` re-spells every sample under every join and demands the WORDS FAMILY ALONE still match. A word
+ *     added next month is swept under every join the day it lands, with nothing to remember.
+ *   · `2.join.3` refuses any alternative that spells a separator ITSELF instead of using the shared join, so the
+ *     defect cannot be reintroduced by hand even by someone who has never read this section.
+ * ⚠️ `2.join.1` READS THE WORDS FAMILY ALONE on purpose. Folding the families together hides the bug: the
+ * identifier family's `HOUSE_(?!FEE\b)[A-Z_]+` does match `HOUSE_STAKE_ONLY`, which is why §4 saw it — so an
+ * assertion written against `houseHits` would have been green throughout and proved nothing about the word list
+ * that the one guard reading that file actually used.
+ */
+section("§2J · ⛔ THE JOIN · a compound the lexicon knows in one spelling must be known in every join spelling");
+
+/** The WORDS family alone — never `houseHits`, which folds in the identifier family that masked this defect. */
+const wordsOnly = () => new RegExp(HOUSE_WORD_SOURCE, "i");
+/** Top-level alternatives of a regex source, with character classes and groups kept whole. */
+function alternativesOf(source: string): string[] {
+  const out: string[] = [];
+  let depth = 0, cur = "";
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    if (c === "\\") { cur += c + source[++i]; continue; }
+    if (c === "[") { const close = source.indexOf("]", i); cur += source.slice(i, close + 1); i = close; continue; }
+    if (c === "(") depth++;
+    if (c === ")") depth--;
+    if (c === "|" && depth === 0) { out.push(cur); cur = ""; continue; }
+    cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+/**
+ * The alternatives that spell a separator THEMSELVES. The shared join is removed first, then regex syntax
+ * (`(?:`, `)`, `\b`, the quantifiers) — what is left is the alternative's own literal text, and a join character
+ * or a character class surviving in it is a hand-typed separator.
+ */
+const handTypedSeparators = (source: string): string[] =>
+  alternativesOf(source).filter((a) => {
+    const bare = a.split(HOUSE_JOIN).join("").replace(/\(\?[:=!]|\)|\\b|\\B|[?*+|]/g, "");
+    return HOUSE_JOIN_CHARS.some((ch) => bare.includes(ch)) || bare.includes("[");
+  });
+
+/** Every sample re-spelled under every join, and whether the words family still finds it. */
+const joinClosure = (source: string) => {
+  const re = () => new RegExp(source, "i");
+  const missed: string[] = [];
+  let compounds = 0, variants = 0;
+  for (const s of HOUSE_WORD_SAMPLES) {
+    const vs = joinVariants(s);
+    if (vs.length === 0) continue;
+    compounds++; variants += vs.length;
+    const bad = vs.filter((v) => !re().test(v));
+    if (bad.length) missed.push(`${s} → ${bad.join(" , ")}`);
+  }
+  return { missed, compounds, variants };
+};
+
+const closure = joinClosure(HOUSE_WORD_SOURCE);
+ok("2.join.1 · ⛔ THE CLOSURE · every compound word sample, re-spelled under EVERY join in the family — space, kebab, snake, dotted, namespaced, slashed, camelCased and bare-concatenated — is still found by the WORDS FAMILY ALONE. This is the assertion `\"HOUSE_STAKE_ONLY\"` escaped: a lexicon that knows a compound in one spelling and not another is blind by exactly one character, and it does not matter which character",
+  closure.missed.length === 0 && closure.compounds >= 14 && closure.variants >= 100,
+  j({ compounds: closure.compounds, variants: closure.variants, missed: closure.missed }));
+
+const benignJoined = HOUSE_BENIGN_SAMPLES.flatMap((b) => [b, ...joinVariants(b)]).filter((v) => wordsOnly().test(v));
+ok("2.join.2 · CONTROL · THE ACCEPT SIDE OF THE WIDENING · every benign look-alike, AND every join re-spelling of each one, is still NOT a word hit — `HOUSE_FEE`, `/admin/house`, \"House edge\", a raw `hb_` nonce and \"including household costs\" (whose `\\b` is the only thing keeping `including house` off `household`). A join family widened without this half is a guard that cries wolf and gets switched off",
+  benignJoined.length === 0, j({ planted: HOUSE_BENIGN_SAMPLES.flatMap((b) => [b, ...joinVariants(b)]).length, matched: benignJoined }));
+
+const handTyped = handTypedSeparators(HOUSE_WORD_SOURCE);
+ok("2.join.3 · ⛔ THE RULE THAT MAKES IT STICK · not one alternative of `HOUSE_WORD_SOURCE` spells a separator of its own — every compound writes its join as the shared `HOUSE_JOIN`. This is what a spelling list cannot do: whatever word is added next month, and whatever separator its author forgets, the forgetting is what goes red",
+  handTyped.length === 0, j({ alternatives: alternativesOf(HOUSE_WORD_SOURCE).length, handTyped }));
+
+/**
+ * ⛔ THE MUTATION, AND IT IS THE DEFECT ITSELF REBUILT. `house[ -]?stakes?` is the alternative as it stood at the
+ * head of this commit — the one `"HOUSE_STAKE_ONLY"` walked through. Planting it back must redden BOTH assertions:
+ * the closure, because `house_stake` stops matching; and the hand-typed rule, because the class is spelled inline.
+ */
+const NARROWED = HOUSE_WORD_SOURCE.replace(`house${HOUSE_JOIN}stakes?`, String.raw`house[ -]?stakes?`);
+const narrowedClosure = joinClosure(NARROWED);
+ok("2.join.c1 · CONTROL · THE ORIGINAL DEFECT, REPLANTED · restoring the exact alternative `house[ -]?stakes?` reddens the closure — `house_stake` and `HOUSE_STAKE` are reported unmatched — AND is reported as a hand-typed separator, while the market page's real string is a `HOUSE_STAKE` word hit under the shipped source and was NOT one under the narrowed one. Both halves of the finding, asserted rather than described",
+  NARROWED !== HOUSE_WORD_SOURCE
+    && narrowedClosure.missed.some((m) => m.startsWith("house stake") && m.includes("house_stake"))
+    && handTypedSeparators(NARROWED).some((a) => a.includes("[ -]"))
+    && wordsOnly().test("HOUSE_STAKE_ONLY") && !new RegExp(NARROWED, "i").test("HOUSE_STAKE_ONLY"),
+  j({ missed: narrowedClosure.missed, handTyped: handTypedSeparators(NARROWED) }));
+
+const joinCharProbe = HOUSE_JOIN_CHARS.map((ch) => {
+  const dropped = `[${HOUSE_JOIN_CHARS.filter((c) => c !== ch && c !== "-").join("")}${HOUSE_JOIN_CHARS.includes("-") && ch !== "-" ? "-" : ""}]?`;
+  return { ch, missed: joinClosure(HOUSE_WORD_SOURCE.split(HOUSE_JOIN).join(dropped)).missed.length };
+});
+ok("2.join.c2 · CONTROL · EVERY JOIN IS LOAD-BEARING · dropping each join character from the class one at a time reddens the closure every time, so the family is a measure and not a decoration: no character is in it because it looked plausible",
+  joinCharProbe.every((p) => p.missed > 0) && joinCharProbe.length >= 6,
+  j(joinCharProbe));
+
+const halvesProbe = [
+  { s: "HouseBot", want: 2 }, { s: "house_bot", want: 2 }, { s: "boti za nyumba", want: 3 },
+  { s: "liquidity", want: 1 }, { s: "流动性", want: 1 }, { s: "平台机器人", want: 1 },
+];
+ok("2.join.c3 · CONTROL · THE SPLIT IS LIVE, INCLUDING ON THE LOCALES A TANZANIAN PLAYER READS · a camel name, a snake name and a three-word Swahili phrase each split into their halves, while a single-word sample and both Chinese samples split into ONE and so generate no variants — a splitter that shredded 平台机器人 would silently empty this whole section",
+  halvesProbe.every((p) => houseHalves(p.s).length === p.want)
+    && joinVariants("liquidity").length === 0 && joinVariants("平台机器人").length === 0 && joinVariants("boti za nyumba").length >= 7,
+  j(halvesProbe.map((p) => ({ s: p.s, halves: houseHalves(p.s) }))));
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §3 · THE ONE-HOP PAINTERS · WHERE L52's STRING ACTUALLY LIVED
  * ════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 section("§3 · ⛔ L52 · the modules an admin surface imports directly, and the words they can paint through it");
@@ -533,6 +669,15 @@ const painters = [...new Set(surfaceFiles.flatMap(({ rel, code }) =>
  * files, or a NEW module that prints one and is imported by an admin page, goes red the day it lands.
  */
 const PAINTER_WORD_REGISTER: Readonly<Record<string, readonly string[]>> = {
+  /**
+   * ⛔ FOUND BY THE JOIN, NOT BY A READER (§2J, C5-8), AND IT IS THE SOURCE OF THE MARKET PAGE'S STRING. The word
+   * family could not see `"HOUSE_STAKE_ONLY"` before the join, so the module that MINTS ruling 146's reason sat in
+   * BOTH painter populations — admin and public — printing a house word neither §3 nor §6 could read. It is lawful
+   * for the reason ruling 146 gives, and `3.hop.4` turns that reason into an assertion rather than leaving it here
+   * as prose: the reason has exactly ONE call site in `src/`, and it is the one `4.words.4` already holds to a
+   * literal-only branch.
+   */
+  "src/lib/server/objections-service.ts": ["HOUSE_STAKE_ONLY"],
   "src/lib/server/email.ts": ["House bots", "house bot"],
   "src/lib/server/market-dal.ts": ["houseBot"],
   "src/lib/server/market-service.ts": ["House stake", "houseBot"],
@@ -545,8 +690,7 @@ const PAINTER_WORD_REGISTER: Readonly<Record<string, readonly string[]>> = {
 };
 const painterProblems = (files: Array<{ rel: string; code: string }>): string[] =>
   files.flatMap(({ rel, code }) => {
-    const allowed = PAINTER_WORD_REGISTER[rel] ?? [];
-    return wordsPrinted(rel, code).filter((w) => !allowed.includes(w)).map((w) => `${rel}: ${w}`);
+    return uncovered(rel, wordsPrinted(rel, code), PAINTER_WORD_REGISTER);
   });
 
 const RATE_LIMIT = "src/lib/server/rate-limit.ts";
@@ -564,7 +708,7 @@ const added3 = (planted: string[]) => planted.filter((x) => !livePainters.includ
 const stalePainters = Object.entries(PAINTER_WORD_REGISTER).flatMap(([rel, words]) => {
   if (!painters.includes(rel)) return [`${rel}: no longer a one-hop painter`];
   const printed = wordsPrinted(rel, read(rel));
-  return words.filter((w) => !printed.includes(w)).map((w) => `${rel}: "${w}" is registered but no longer printed`);
+  return words.filter((w) => !printed.some((h) => w.includes(h))).map((w) => `${rel}: "${w}" is registered but no longer printed`);
 });
 ok("3.hop.3 · the painter register may only SHRINK: every registered word is still printed by the module it was registered for",
   stalePainters.length === 0, j({ files: Object.keys(PAINTER_WORD_REGISTER).length, stale: stalePainters }));
@@ -666,8 +810,7 @@ const PUBLIC_TEXT_REGISTER: Readonly<Record<string, readonly string[]>> = {
 };
 const publicTextProblems = (files: Array<{ rel: string; code: string }>): string[] =>
   files.flatMap(({ rel, code }) => {
-    const allowed = PUBLIC_TEXT_REGISTER[rel] ?? [];
-    return textHits(rel, code).filter((w) => !allowed.includes(w)).map((w) => `${rel}: ${w}`);
+    return uncovered(rel, textHits(rel, code), PUBLIC_TEXT_REGISTER);
   });
 
 const HEALTH = "src/app/api/health/route.ts";
@@ -694,7 +837,7 @@ ok("4.words.1 · ⛔ D19 · not one PUBLIC file prints a house-shaped string —
 const stalePublic = Object.entries(PUBLIC_TEXT_REGISTER).flatMap(([rel, words]) => {
   if (!publics.includes(rel)) return [`${rel}: no longer in the public population`];
   const printed = textHits(rel, read(rel));
-  return words.filter((w) => !printed.includes(w)).map((w) => `${rel}: "${w}" is registered but no longer printed`);
+  return words.filter((w) => !printed.some((h) => w.includes(h))).map((w) => `${rel}: "${w}" is registered but no longer printed`);
 });
 ok("4.words.2 · the public register may only SHRINK: every registered string is still printed by the file it was registered for, so neither exemption can outlive the code it was written for",
   stalePublic.length === 0, j({ register: PUBLIC_TEXT_REGISTER, stale: stalePublic }));
@@ -800,9 +943,20 @@ function neutralityProblems(rel: string, code: string): string[] {
   return out;
 }
 const marketCode = read(MARKET_PAGE);
-ok("4.words.4 · ⛔ THE MARKET-PAGE EXEMPTION IS HELD TO ITS CLAIM (owner ruling D19c, ruling 146) · the only house-shaped string the public market page prints is the operand of an `===`, and the branch that comparison selects is built from LITERALS and names nothing — so `objectionEligibility`'s server-side reason is mapped to a neutral state and never handed to the panel, whether as a word or as a value",
-  neutralityProblems(MARKET_PAGE, marketCode).length === 0 && textHits(MARKET_PAGE, marketCode).length === 1,
-  j({ problems: neutralityProblems(MARKET_PAGE, marketCode), hits: textHits(MARKET_PAGE, marketCode) }));
+/**
+ * ⛔ AND IT COUNTS THE SOURCE LITERALS, NOT THE HITS (C5-8, §2J). This used to assert `textHits(...).length === 1`,
+ * which was a claim about the PATTERN as much as about the page: the join made one unchanged literal yield TWO hits
+ * (`HOUSE_STAKE` from the words family, `HOUSE_STAKE_ONLY` from the identifiers) and the assertion went red over a
+ * string nobody had touched. Counting the PRINTED NODES that carry a house shape says what was always meant — the
+ * market page has ONE house-shaped string and this is it — and it is strictly stronger, because it cannot be
+ * satisfied by a second literal that happens to match the same number of times.
+ */
+const marketHouseNodes = printedNodes(MARKET_PAGE, marketCode).filter((n) => houseShaped(n.text).length > 0);
+ok("4.words.4 · ⛔ THE MARKET-PAGE EXEMPTION IS HELD TO ITS CLAIM (owner ruling D19c, ruling 146) · the public market page prints EXACTLY ONE house-shaped string — one printed node in the whole file, and it is the reason `HOUSE_STAKE_ONLY` itself — that string is the operand of an `===`, and the branch that comparison selects is built from LITERALS and names nothing. So `objectionEligibility`'s server-side reason is mapped to a neutral state and never handed to the panel, whether as a word or as a value",
+  neutralityProblems(MARKET_PAGE, marketCode).length === 0
+    && marketHouseNodes.length === 1 && marketHouseNodes[0].text === "HOUSE_STAKE_ONLY"
+    && textHits(MARKET_PAGE, marketCode).every((w) => "HOUSE_STAKE_ONLY".includes(w)),
+  j({ problems: neutralityProblems(MARKET_PAGE, marketCode), nodes: marketHouseNodes.map((n) => n.text), hits: textHits(MARKET_PAGE, marketCode) }));
 
 /* ── 4.body.1 · what a PUBLIC route handler actually returns ─────────────────────────────────────────────────── */
 /**
@@ -1101,8 +1255,7 @@ const PUBLIC_PAINTER_REGISTER: Readonly<Record<string, readonly string[]>> = {
 };
 const publicPainterProblems = (files: Array<{ rel: string; code: string }>): string[] =>
   files.flatMap(({ rel, code }) => {
-    const allowed = PUBLIC_PAINTER_REGISTER[rel] ?? [];
-    return wordsPrinted(rel, code).filter((w) => !allowed.includes(w)).map((w) => `${rel}: ${w}`);
+    return uncovered(rel, wordsPrinted(rel, code), PUBLIC_PAINTER_REGISTER);
   });
 const publicPainterFiles = publicPainters.map((rel) => ({ rel, code: read(rel) }));
 const livePublicPainters = publicPainterProblems(publicPainterFiles);
@@ -1118,7 +1271,7 @@ ok("6.hop.2 · ⛔ L52 ON THE PLAYER'S SIDE · not one module a public route or 
 const stalePublicPainters = Object.entries(PUBLIC_PAINTER_REGISTER).flatMap(([rel, words]) => {
   if (!publicPainters.includes(rel) && !painters.includes(rel)) return [`${rel}: no longer a painter on either side`];
   const printed = wordsPrinted(rel, read(rel));
-  return words.filter((w) => !printed.includes(w)).map((w) => `${rel}: "${w}" is registered but no longer printed`);
+  return words.filter((w) => !printed.some((h) => w.includes(h))).map((w) => `${rel}: "${w}" is registered but no longer printed`);
 });
 const registerDelta = Object.keys(PUBLIC_PAINTER_REGISTER).filter((r) => !(r in PAINTER_WORD_REGISTER));
 ok("6.hop.3 · the painter register is ONE list and it may only SHRINK: every registered word is still printed by its module, and the public register is §3's plus exactly one module — the lifecycle ticker, which no admin surface imports directly",
@@ -1130,6 +1283,36 @@ const lifecyclePlaced = placedHits(PUBLIC_PAINTER_ONLY, lifecycleCode);
 ok("6.hop.4 · ⛔ THE ONE PUBLIC-ONLY PAINTER IS HELD TO ITS CLAIM · every house-shaped string the lifecycle ticker prints sits inside a `console.*` argument — the sweep it logs when it runs — and none of it sits in a value a caller could render. The `import()` of the feature's own holder hook is a specifier, not a painted word, and is excluded by construction",
   lifecyclePlaced.log.length >= 1 && lifecyclePlaced.loose.length === 0 && lifecyclePlaced.response.length === 0,
   j(lifecyclePlaced));
+
+/**
+ * ⛔ 6.hop.5 · THE ONE PAINTER THE JOIN ADDED, HELD TO RULING 146 AT ITS SOURCE RATHER THAN AT ITS SINK.
+ * `4.words.4` proves the MARKET PAGE maps the server's reason to a neutral literal. That is a claim about ONE
+ * READER, and it is a proof that the reason never reaches a player only if that reader is the ONLY one — a second
+ * call site added next month would sit outside every assertion this suite makes, in a module that the word family
+ * could not even read until §2J. So the callers are counted from the syntax tree rather than assumed.
+ */
+const OBJECTIONS = "src/lib/server/objections-service.ts";
+const eligibilityCallers = srcAll.filter((rel) => {
+  if (rel === OBJECTIONS) return false;
+  const sf = srcFile(rel, decomment(read(rel)));
+  let calls = false;
+  const walk = (n: ts.Node) => {
+    if (ts.isCallExpression(n) && n.expression.getText(sf) === "objectionEligibility") calls = true;
+    ts.forEachChild(n, walk);
+  };
+  walk(sf);
+  return calls;
+});
+ok("6.hop.5 · ⛔ RULING 146 HELD AT ITS SOURCE, NOT ONLY AT ITS SINK · the module that MINTS `HOUSE_STAKE_ONLY` is a one-hop painter on BOTH sides of the tree — §2J's join is what made it readable at all — and its reason has exactly ONE caller in all of `src/`: the market page, whose mapping `4.words.4` holds to a literal-only branch. A second reader would be a second place the server's own reason could escape, and this is the assertion that would see it",
+  eligibilityCallers.length === 1 && eligibilityCallers[0] === MARKET_PAGE
+    && painters.includes(OBJECTIONS) && publicPainters.includes(OBJECTIONS)
+    && wordsPrinted(OBJECTIONS, read(OBJECTIONS)).length >= 1,
+  j({ callers: eligibilityCallers, words: wordsPrinted(OBJECTIONS, read(OBJECTIONS)) }));
+
+const registerC1 = uncovered("x.ts", ["HOUSE_STAKE", "house stake", "HOUSE_STAKE_LEAKED"], { "x.ts": ["HOUSE_STAKE_ONLY"] });
+ok("1.reg.c1 · CONTROL · BOTH SIDES OF THE SUBSTRING ALLOWANCE · a register holding `HOUSE_STAKE_ONLY` covers the `HOUSE_STAKE` the join now also matches from that same literal, and covers NOTHING else: the differently-cased, differently-joined `house stake` is still reported, and so is a longer NEW string that merely contains the registered one. An allowance that could swallow a string nobody registered would be a widening, and this is the measurement that it cannot",
+  registerC1.length === 2 && registerC1.some((p) => p.endsWith("house stake")) && registerC1.some((p) => p.endsWith("HOUSE_STAKE_LEAKED")),
+  j(registerC1));
 
 const addedH = (planted: string[]) => planted.filter((p) => !livePublicPainters.includes(p));
 const withPublicPainter = (rel: string, code: string) => publicPainterFiles.map((f) => (f.rel === rel ? { rel, code } : f));
@@ -1192,7 +1375,7 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-surfaces: $
  * which is worse than a red. This is the count the first green run PRINTED; it only ever RISES, and only to a
  * number a run has printed.
  */
-const MIN_ASSERTIONS = 65;
+const MIN_ASSERTIONS = 73;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-surfaces ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed.`);
   process.exit(4);

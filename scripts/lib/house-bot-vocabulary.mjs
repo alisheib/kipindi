@@ -51,8 +51,77 @@
  * What changes is that no addition is scheduled, at C5-7 or anywhere else.
  */
 
-/** The words, in the three locales, matched in any case. `house[_ -]?bots?` also covers `HouseBot` and `house_bots`. */
-export const HOUSE_WORD_SOURCE = String.raw`liquidity|ukwasi|流动性|house[_ -]?bots?|boti (?:za|ya) nyumba|平台机器人|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\b`;
+/**
+ * ⛔ THE JOIN — THE SHAPE FAMILY THE `HOUSE_STAKE_ONLY` ESCAPE BELONGS TO (C5-8, 2026-09-21).
+ *
+ * ⛔ WHAT ACTUALLY WENT WRONG, STATED AS A CLASS RATHER THAN AS A SPELLING. `"HOUSE_STAKE_ONLY"` sits on
+ * `src/app/markets/[id]/page.tsx`, a file `test:house-bot-reports` 0.198.3 already reads — and that guard could not
+ * see it, because the alternative it reads with was written `house[ -]?stakes?` and an UNDERSCORE is not in that
+ * class. The lesson is NOT "add an underscore". Two alternatives of this same list already disagreed about which
+ * separators exist — `house[_ -]?bots?` knew about `_` and `house[ -]?stakes?` did not — and this module's own
+ * header records that exact drift between two COPIES of the list as the reason the list was centralised. Centralising
+ * the list did not centralise THE SEPARATOR, so the drift simply moved inside the one file.
+ *
+ * ⭐ SO THE FAMILY IS DERIVED, NOT LISTED. A compound is `<half><join><half>`, and the join is every way this
+ * codebase welds two halves together — one class, declared ONCE, used by every compound alternative:
+ *   · ` ` prose ("house stake")                     · `_` snake and SCREAMING_SNAKE (`HOUSE_STAKE_ONLY`, an enum
+ *   · `-` kebab — CSS classes, route segments, slugs      member, an env var, a DB column)
+ *   · `.` dotted — i18n keys, object paths, audit event names (`house_bot.designated`)
+ *   · `:` namespaced keys — this feature's own bet key is `hb:<intent id>` and the ledger's accounts are `HOUSE:TAX`
+ *   · `/` route paths (`/admin/house-bots`)
+ *   · AND THE JOIN THAT WRITES NO CHARACTER AT ALL: camelCase/PascalCase (`houseStake`) and bare concatenation
+ *     (`HOUSEBOT_ALERT_ONCE_RETENTION_DAYS`, which this branch really ships). That one is why `HOUSE_JOIN` ends in
+ *     `?` and why the words family is matched case-insensitively: the capital IS the separator, and an optional
+ *     empty join under `i` is exactly how you write "a separator that is a case change".
+ *
+ * ⛔ AND THE RULE THAT MAKES IT STICK IS NOT THIS LIST EITHER — it is `2.join.3`, which refuses any compound
+ * alternative that spells a separator ITSELF instead of using `HOUSE_JOIN`. A word added next month cannot
+ * reintroduce the defect by hand-typing `[ -]`, whatever that word is and whatever separator it forgets; and
+ * `2.join.1` re-spells every sample under every join and demands the words family still match. Neither assertion
+ * knows a single spelling.
+ *
+ * ⭐ SEEN RED, MEASURED AT THE HEAD OF THIS COMMIT rather than described: against `HOUSE_WORD_SOURCE` as it stood,
+ * `2.join.1` reported ALL FOURTEEN compound samples unmatched under at least one join (111 re-spellings swept), and
+ * `2.join.3` reported SEVEN of the twelve alternatives hand-typing a separator. After the join: 0 and 0.
+ * ⚠️ AND THE ACCEPT SIDE WAS MEASURED IN THE SAME RUN, because a widening nobody measured is how a guard gets
+ * switched off: over `src/`, `scripts/`, `prisma/` and `public/` (1,872 files) the join finds 61 hits the old source
+ * did not, and every one of them is inside the feature's OWN homes — `STAFF_CHOSEN` ×50 and `house.bot` in
+ * `src/lib/house-bot/**`, `src/lib/server/house-bot/**`, `house-bot-dal.ts` and `erasure.ts`'s existing message —
+ * except `HOUSE_STAKE` on `src/app/markets/[id]/page.tsx`, which is the finding this section exists for and which
+ * `test:house-bot-surfaces` 4.words.4 already holds to ruling 146. Not one benign sample matches, under any join.
+ */
+export const HOUSE_JOIN_CHARS = Object.freeze([" ", "_", ".", ":", "/", "-"]);
+/** The join as a character class. Built FROM `HOUSE_JOIN_CHARS` (`-` last, so it is a literal) — never typed twice. */
+export const HOUSE_JOIN_CLASS = `[${HOUSE_JOIN_CHARS.filter((c) => c !== "-").join("")}${HOUSE_JOIN_CHARS.includes("-") ? "-" : ""}]`;
+/** The join as every compound alternative must write it: optional, because the camel/concatenated join writes nothing. */
+export const HOUSE_JOIN = `${HOUSE_JOIN_CLASS}?`;
+
+/** The halves of a compound: split on every join character, then on every camel boundary. */
+export function houseHalves(sample) {
+  return String(sample ?? "")
+    .split(new RegExp(`${HOUSE_JOIN_CLASS}+`, "u"))
+    .flatMap((p) => p.split(/(?<=[\p{Ll}\p{N}])(?=\p{Lu})/u))
+    .filter(Boolean);
+}
+/**
+ * Every re-spelling of a compound under every join — the refuse side of the family, generated rather than listed.
+ * A sample with only one half (`liquidity`, `流动性`) is not a compound and yields nothing.
+ */
+export function joinVariants(sample) {
+  const halves = houseHalves(sample);
+  if (halves.length < 2) return [];
+  const out = new Set(HOUSE_JOIN_CHARS.map((c) => halves.join(c)));
+  out.add(halves.join(""));
+  out.add(halves.map((h, i) => (i === 0 ? h : h[0].toUpperCase() + h.slice(1))).join(""));
+  return [...out];
+}
+
+/**
+ * The words, in the three locales, matched in any case.
+ * ⛔ EVERY COMPOUND WRITES ITS SEPARATOR AS `${HOUSE_JOIN}` AND NEVER AS A CLASS OF ITS OWN (see THE JOIN above);
+ * `2.join.3` refuses one that does, so this is a rule rather than a convention.
+ */
+export const HOUSE_WORD_SOURCE = `liquidity|ukwasi|流动性|house${HOUSE_JOIN}bots?|boti${HOUSE_JOIN}(?:za|ya)${HOUSE_JOIN}nyumba|平台机器人|house${HOUSE_JOIN}stakes?|dau${HOUSE_JOIN}la${HOUSE_JOIN}nyumba|平台投注|staff${HOUSE_JOIN}chosen|chosen${HOUSE_JOIN}by${HOUSE_JOIN}(?:staff|you)|including${HOUSE_JOIN}house\\b`;
 
 /**
  * The feature's identifiers, matched EXACTLY (case-sensitive), so the platform's own `HOUSE_FEE` transaction type is not
