@@ -186,7 +186,7 @@ section("§2 · CONTROLS — planted chains are found; type-only imports and ser
     ok(`2.v · ruling 175 · CONTROL · every planted ${family} sample in a client file is found (${samples.length} planted)`, missed.length === 0, missed.join(", "));
   }
   const benignHits = HOUSE_BENIGN_SAMPLES.flatMap((_, i) => runFamily(`${V}/app/benign-${i}.tsx`).map((h) => h.word));
-  ok("2.v.b · ruling 175 · CONTROL · the benign look-alikes (HOUSE_FEE, /admin/house, raw hb_ prefixes, a 28-hex tail) are not hits", benignHits.length === 0, benignHits.join(", "));
+  ok("2.v.b · ruling 175 · CONTROL · the benign look-alikes (HOUSE_FEE, /admin/house, raw hb_ prefixes, a 28-hex tail, and \"including household costs\" — the word bound on `including house`) are not hits", benignHits.length === 0, benignHits.join(", "));
   const r3 = run([`${V}/app/clean.tsx`]);
   ok("2.c6 · CONTROL · type-only house fields, a comment and the platform's HOUSE_FEE are not hits", r3.hits.length === 0, r3.hits.map((h) => h.word).join(", "));
 }
