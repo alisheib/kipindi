@@ -2896,6 +2896,31 @@ function parseConsoleQuery(
 /** The refusal Callout's own heading — number-agnostic, because the sentence beneath it is not (read off a tile). */
 export const CONSOLE_REFUSAL_TITLE = "This address was not used in full";
 
+/**
+ * 🔴 WHAT AN OFFICER SEES WHEN THE ACCOUNT IN THE ADDRESS IS NOT THERE — measured on a served build,
+ * 2026-09-21, and it was NOTHING AT ALL.
+ *
+ * `/admin/desk/<an id that does not exist>` rendered the whole admin shell — nav, breadcrumbs reading
+ * "Admin / Desk / Account", the footer — with a COMPLETELY EMPTY main. No message, no way back, and a 200.
+ * The page does call `notFound()`; what was missing was a boundary near enough to catch it. This route
+ * streams (it is `force-dynamic` and has its own `loading.tsx`), so by the time the record is read the shell
+ * has already been flushed and the ROOT `not-found.tsx` can no longer replace the document — Next renders the
+ * boundary INTO the stream, and with no boundary under this segment there was nothing to render.
+ * ⚠️ THE STATUS STAYS 200 FOR THE SAME REASON, and that cannot be fixed from here: the response has been
+ * committed before the record is read. It is written down rather than implied, and it costs nothing that
+ * matters — the address bar is not what an officer reads, the panel is.
+ *
+ * ⛔ IT CREATES NO ORACLE, and that was checked against the page's own law rather than assumed. A viewer
+ * outside the audience never reaches `notFound()`: the gated reader answers `null` for them, whether or not
+ * the record exists, and the page returns before the record check. Only an ADMIN can see this panel.
+ * ⛔ NEUTRAL (453): an entry is an "account", the section is "the desk".
+ */
+export const CONSOLE_ACCOUNT_MISSING = {
+  title: "That account is not on the desk",
+  body: "The address names an account the desk does not have. It may have been removed, or the link may be wrong or out of date.",
+  wayOut: "Back to the desk",
+} as const;
+
 /** What a refused axis is called on screen, and the one sentence that says an address was not taken at its word. */
 function consoleRefusalSentence(refusals: readonly string[]): string | null {
   if (refusals.length === 0) return null;

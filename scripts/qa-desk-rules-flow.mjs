@@ -304,6 +304,28 @@ await page.screenshot({ path: `${SHOTS}/rules-390.png` });
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
 ok("8.7 the form does not scroll sideways on a phone", !overflow);
 
+/**
+ * ⛔ AN ADDRESS THAT NAMES NOTHING MUST SAY SO. 🔴 Measured on a served build before this was fixed: signed in
+ * as an owner, `/admin/desk/<an id that does not exist>` rendered the whole admin shell — nav, breadcrumbs
+ * reading "Admin / Desk / Account", footer — with a COMPLETELY EMPTY main. No heading, no sentence, no way
+ * back. The page did call `notFound()`; the route streams, so by then the shell was already flushed and the
+ * ROOT boundary could no longer replace it, and there was no boundary under this segment to render into.
+ * ⚠️ AND IT IS CHECKED IN A BROWSER, NOT WITH A FETCH. The panel arrives in the flight stream and is painted
+ * after hydration, so the initial HTML does not contain it — a curl-shaped check reads an empty main and calls
+ * a working page broken. That cost a debugging round on the day this was written.
+ */
+console.log("\n§8b · an address that names no account");
+await page.setViewportSize({ width: 1440, height: 1000 });
+for (const bad of ["not-an-id", "hb_000000000000000000000000"]) {
+  await soft(`visit ${bad}`, () => page.goto(`${BASE}/admin/desk/${bad}`, { waitUntil: "load" }));
+  await page.waitForTimeout(2600);
+  const said = await soft("read main", () => page.evaluate(() => (document.querySelector("main")?.innerText ?? "").replace(/\s+/g, " ").trim()), "");
+  const wayOut = await soft("way out", () => page.locator('main a[href="/admin/desk"]').count(), 0);
+  ok(`8b.${bad === "not-an-id" ? "1" : "2"} "${bad}" says the account is not there, and offers a way back`,
+    /not on the desk/.test(said ?? "") && (wayOut ?? 0) >= 1,
+    said ? said.slice(0, 90) : "*** MAIN IS EMPTY ***");
+}
+
 console.log("\n§9 · the page itself");
 const realErrors = consoleErrors.filter((e) => !e.startsWith("soft("));
 ok("9.1 no console or page errors anywhere in the flow", realErrors.length === 0, realErrors.slice(0, 3).join(" | "));
