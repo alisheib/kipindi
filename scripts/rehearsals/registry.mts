@@ -23,7 +23,11 @@
  * 2026-09-21: `0.250` reported **9 ids found in the tree and 33 deferred by name**, where the deferred row's own
  * re-derivation says 7 and 35 and claims every one of the 35 "is found in EXACTLY ONE file, and that file is
  * `house-bot-reports-cases.mts`". Two ids had moved out of a list that is supposed to be un-shrinkable, and
- * nothing said so. ⛔ **So this file no longer spells an id it does not drive.** The one it still spells —
+ * nothing said so. ✅ RE-DRIVEN AFTER THE FIX, same command, same day: **49 ids · 2,267 files · 7 named in the
+ * tree · 35 deferred by name · UNDECLARED []**, with control `0.250.c1`'s deferred sample back to a real one.
+ * The 7 are the original 7 (`CRA-04`, `CRA-10`, `CRA-27`, `HB-ACC-12`, `HB-ACC-13`, `HB-LC-39`, `TGT-38`) — none
+ * of them ours — and row 83's re-derivation is true again.
+ * ⛔ **So this file no longer spells an id it does not drive.** The one it still spells —
  * drill 4's — is driven to green by `audit-burst.mts` every time the drill runs, which is what "found in the
  * tree" is supposed to mean. Drill 5's id is deliberately NOT spelled here, exactly as the deferred row omits
  * its own ghost-control id for the same reason, and the row below points at where it IS declared.

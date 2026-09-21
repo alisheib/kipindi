@@ -425,7 +425,11 @@ because the REL-0 clause that named "the S4 rehearsals" was struck for pointing 
   un-shrinkable list and nothing said so. The first measurement of this side effect stopped at "the verdict is
   unchanged" — true, and not the whole question: **the verdict did not move, the door did.** Fixed by not
   writing the strings: the register now spells only drill 4's id, which `audit-burst.mts` drives to green
-  every run, and drill 5's row points at where its id IS declared instead of repeating it. ⭐ The general
+  every run, and drill 5's row points at where its id IS declared instead of repeating it. ✅ **Re-driven after
+  the fix, same command, same day: 49 ids · 2,267 files · 7 named in the tree · 35 deferred by name ·
+  UNDECLARED [].** The 7 are the original 7 and none of them is ours, control `0.250.c1`'s deferred sample is
+  a real one again, and row 83's re-derivation is true again. ⛔ Fixed on the side that broke it — no other
+  lane's file was touched. ⭐ The general
   lesson for anything added to `scripts/`: **a scanner that treats a mention as coverage is defeated by any
   new file that is merely well-documented**, and the fix is never a comment saying so — the scanner cannot
   read it.
