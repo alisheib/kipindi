@@ -224,6 +224,13 @@ export function installAuditShutdownDrain(opts: {
      * the exit is guaranteed by Next's own handler. */
     process.once(sig, () => { if (!state.signal) state.signal = sig; });
   }
+  /* ⭐ ONE LINE AT BOOT, AND IT IS OPERATIONAL EVIDENCE, NOT DECORATION. Paired with the drain's own
+   * line at shutdown it answers the question `docs/COMPLIANCE-DECISIONS.md` AR-2 leaves open:
+   * "armed" at boot and NO `[audit-drain]` line when the container goes means the termination signal
+   * never reached this process at all — which is the failure Railway's own note describes for a
+   * service started through `npm run start`, and which nothing else here can distinguish from a
+   * clean shutdown. */
+  console.log(`[audit-drain] armed — this process will wait up to ${state.budgetMs}ms for the audit queue on ${TERM_SIGNALS.join("/")}.`);
   return true;
 }
 

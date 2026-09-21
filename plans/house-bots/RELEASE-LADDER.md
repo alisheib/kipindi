@@ -865,6 +865,21 @@ platform that can tell the two apart once the container's log is gone. Payload:
 `{"signal":"SIGTERM","queuedAtExit":10,"budgetMs":5000,"exitCode":143}`, and §3.7 of the drive proves it is the
 chain HEAD.
 
+**13.6b · ⭐ AND IT IS PROVEN IN THE REAL SERVER, not only in the drills.** A drill that reproduces Next's
+shutdown shape is still a drill; a build being green is not a render. `next dev` was booted on this machine
+(Next 16.2.4, Turbopack, in-memory store) and printed, before the scheduler, the lifecycle ticker and the
+house-bot engine:
+
+```
+✓ Ready in 3.8s
+[audit-drain] armed — this process will wait up to 5000ms for the audit queue on SIGTERM/SIGINT.
+[scheduler] boot hydrate — armed 0 pending market timer(s)
+[lifecycle] ticker started — every 60s
+```
+
+⭐ That line is also **half of AR-2's experiment**: "armed" at boot and then NO `[audit-drain]` line when the
+container goes means the termination signal never reached the process at all.
+
 **13.7 · ⛔ `market-service.ts` IS UNCHANGED.** §12.5's refusal stands on its measurement. Nothing here puts an
 audit write on a player's critical path: the drain runs once, after the server has closed.
 

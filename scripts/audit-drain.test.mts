@@ -238,31 +238,39 @@ ok("4.3 · the exit CODE survives the deferral — a platform must still see 143
   ok1.code === 143 && ok1.child?.report?.exitCode === 143);
 ok("4.4 · a second install is refused — the wrapper is never stacked",
   /second install returned false/.test(ok1.err));
+/* ⛔ THE BOOT LINE IS EVIDENCE, AND IT IS HALF OF AR-2's EXPERIMENT. "armed" at boot with NO
+ * `[audit-drain]` line at shutdown means the signal never reached the process — the failure
+ * Railway's own note describes for a service started through `npm run start`. */
+ok("4.5 · the drain announces itself at boot, with its budget — so a container that armed and then went quiet is distinguishable from one that drained",
+  /\[audit-drain\] armed — this process will wait up to 5000ms for the audit queue on SIGTERM\/SIGINT\./.test(ok1.out + ok1.err),
+  (ok1.out + ok1.err).split("\n").filter((l) => l.includes("[audit-drain]")).join(" | "));
+ok("4.c2 · POSITIVE CONTROL — the un-drained control never printed it, so 4.5 is reading the install and not a string that is always there",
+  !/\[audit-drain\] armed/.test(ctl.out + ctl.err));
 
 // ── the budget, on a queue that never drains ─────────────────────────────────────────────────────
 const stuck = await drive("stuck", { N: String(N), BUDGET_MS: "300" });
 console.log(show(stuck));
-ok("4.5 · a queue that NEVER drains does not hang the deploy — the budget fires and the process still exits 143, well inside the budget plus slack",
+ok("4.6 · a queue that NEVER drains does not hang the deploy — the budget fires and the process still exits 143, well inside the budget plus slack",
   stuck.code === 143 && lived(stuck) < 300 + 1_000, `exit ${stuck.code}, child lived ${lived(stuck)}ms on a 300ms budget`);
-ok("4.6 · and it waited the whole budget before giving up",
+ok("4.7 · and it waited the whole budget before giving up",
   stuck.child?.report?.waitedMs >= 250, `waited ${stuck.child?.report?.waitedMs}ms of a 300ms budget`);
-ok("4.7 · the loss is LOUD and NAMED — the block appears on stderr with the abandoned count, because a dying process has no other channel",
+ok("4.8 · the loss is LOUD and NAMED — the block appears on stderr with the abandoned count, because a dying process has no other channel",
   /AUDIT DRAIN BUDGET EXCEEDED/.test(stuck.err) && new RegExp(`ABANDONED:\\s+${N} append`).test(stuck.err),
   stuck.err.split("\n").filter((l) => /ABANDONED|EXCEEDED/.test(l)).join(" | "));
-ok("4.8 · and the report says so in data, not only in prose",
+ok("4.9 · and the report says so in data, not only in prose",
   stuck.child?.report?.drained === false && stuck.child?.report?.abandoned === N);
 
 // ── the pass-through: an ordinary exit is untouched ──────────────────────────────────────────────
 const plain = await drive("plain-exit", { N: String(N), WORK_MS: String(WORK_MS), BUDGET_MS: "5000" });
 console.log(show(plain));
-ok("4.9 · PLANTED CONTROL — with the drain installed but NO signal, process.exit(7) is immediate and keeps its code: the wrapper must not change ordinary exit semantics",
+ok("4.10 · PLANTED CONTROL — with the drain installed but NO signal, process.exit(7) is immediate and keeps its code: the wrapper must not change ordinary exit semantics",
   plain.code === 7 && lived(plain) < QUEUE_MS && !/RETURNED/.test(plain.err),
   `exit ${plain.code}, child lived ${lived(plain)}ms (a deferred one would have taken >= ${QUEUE_MS}ms)`);
 
 // ── SIGINT keeps its own code ────────────────────────────────────────────────────────────────────
 const sigint = await drive("sigint", { N: String(N), WORK_MS: String(WORK_MS), BUDGET_MS: "5000" });
 console.log(show(sigint));
-ok("4.10 · SIGINT drains too, and exits 130 — the drain must not collapse every shutdown onto one code",
+ok("4.11 · SIGINT drains too, and exits 130 — the drain must not collapse every shutdown onto one code",
   sigint.code === 130 && sigint.child?.report?.drained === true && sigint.child?.report?.signal === "SIGINT",
   `exit ${sigint.code}, report ${JSON.stringify(sigint.child?.report)}`);
 

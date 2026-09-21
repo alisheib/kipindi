@@ -58,6 +58,11 @@ class that has no anchor. Driven at a 1 ms budget: the block's count matches the
 after every append queued before it landed: **its presence certifies the whole shutdown, its absence marks a lossy
 one.** It is the first thing on this platform that can tell the two apart after the container's log is gone.
 
+**Proven in the real server, not only in the drills.** `next dev` was booted on this machine (Next 16.2.4,
+Turbopack, in-memory store) and printed `[audit-drain] armed — this process will wait up to 5000ms for the
+audit queue on SIGTERM/SIGINT.` **before** the scheduler, the lifecycle ticker and the house-bot engine, and
+then served `/api/health` 200. A build being green is not a render, and a drill is not the server.
+
 **⚠️ What CHANGED in behaviour, recorded so nobody "restores" it:** `process.exit` is wrapped. Outside a shutdown
 it is byte-identical; inside one, the first exit is deferred by at most the budget. `test:audit-drain` carries a
 planted control for every part of that (a wrapper that defers *every* exit is FLAGGED).
@@ -85,8 +90,10 @@ requeue never runs: every deploy is effectively a SIGKILL.** ⛔ **This lane cou
 deliver SIGTERM to a process at all, and this session's Railway CLI account is not authorised for the project
 (`list_projects` → Unauthorized), so neither the live `drainingSeconds` nor the live start command could be read
 back. **The experiment, and it is cheap:** after the next deploy, read the retiring container's logs for a
-`[audit-drain]` line, or query the audit table for a `system.shutdown_drain` row dated at the rollover. A row
-means the signal arrived and the queue was saved; **no row means it did not.** **The two candidate remedies, in
+`[audit-drain]` line, or query the audit table for a `system.shutdown_drain` row dated at the rollover. ⭐ The
+drain prints `[audit-drain] armed …` at every boot precisely so the pair is readable: **armed at boot and then
+nothing at shutdown means the signal never arrived**; a row or a drain line means it did and the queue was
+saved. **The two candidate remedies, in
 order of preference:** ① set the Railway service's start command to run node directly (Railway's own advice), or
 ② make the npm script `exec` its final command so the shell is replaced. ⛔ **Neither was done tonight, and that
 is deliberate:** both change the command that starts production, neither can be driven on this platform, and
