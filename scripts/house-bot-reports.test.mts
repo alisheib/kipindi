@@ -72,6 +72,17 @@
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 244, postgres: 80 }, dbPrefix: "hb_reports" });
+// ⛔ MERGED A THIRD TIME 2026-09-21 (ops ← house-bots `fd2b6ed5`, the release-verdict merge), and the
+// collision is the same one twice over: lane 1 raised its own base 217 → 218 for `0.175` (its new
+// `test:house-bot-surfaces` joined `VOCABULARY_CONSUMERS`), while this lane's merged tree already stood at
+// a MEASURED 244/80. Neither pair describes the merged file: 244 predates lane 1's extra `0.175` case and
+// 218 predates the alerts cases and row 77's.
+// ⛔ THE DELTAS WERE NOT ADDED. The merge carried the HIGHER of both on BOTH stores (244/80, so neither
+// lane's guard is weakened), and the number above is then whatever `npm run test:house-bot-reports`
+// PRINTED on the merged tree — never 244 + 1. If the line above still reads 244/80 with no printed-run
+// sentence after this one, the measurement did not happen and the floor is an understatement, not a lie.
+// ⏳ NOT YET MEASURED AT THE INSTANT THIS LINE WAS WRITTEN — the floor above is the carried 244/80 and the
+// run is the next thing this pass does. The sentence that replaces this one must quote the printed pair.
 // ⛔ MERGED AGAIN 2026-09-21 (ops ← house-bots), AND IT IS THE SAME COLLISION THIS HEADER ALREADY
 // DESCRIBES, a second time. Lane 1 raised the floor 203/64 → 217/64 for the C5-8 reports cases it wrote;
 // ops-lane had raised the same base to 230/80 for the alerts cases plus row 77's. The merged
@@ -91,6 +102,11 @@ await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/ho
 // nothing had added to. ⛔ And note what the guess would have produced here: 230 + 14 = 244 on memory,
 // the same number — a coincidence of this merge, NOT a licence to compute the next one. The run decided it.
 // ⛔ It is never lowered. A section that stops running fails this floor even while every case that ran passed.
+// ⭐ 217 → 218, C5-8 (2026-09-21), IN THE SAME COMMIT AS THE ASSERTION THAT RAISED IT: `test:house-bot-surfaces`
+// joined `VOCABULARY_CONSUMERS`, so `0.175` emits one more case. The memory child PRINTED 218 on that run; Postgres
+// is unchanged because the case is a §0 source pin and §0 runs in the memory child only.
+// (Lane 1's own record, kept verbatim through the merge above — its 218/64 call line is gone because a file
+//  may carry only ONE floor, and the surviving call carries the higher pair on both stores.)
 // ⭐ 200 → 203 and 61 → 64, C5-8 phase 3 (2026-09-20), IN THE SAME COMMIT AS THE ASSERTIONS THAT RAISED IT:
 // §1j row 77's three `11.247.c1e` lines (the OG route's read list, the `resolveWinShareToken` projection, and the
 // plant that makes the second one a measurement) run on BOTH children. A minimum that rises with the assertions is
