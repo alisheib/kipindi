@@ -450,7 +450,7 @@ export const MUTATIONS = [
     file: HOUSE_BOT_REPORTS_CASES,
     from: " || ts.isTemplateTail(n) || ts.isJsxText(n)) out.push(n.text);",
     to: " || ts.isTemplateTail(n)) out.push(n.text);",
-    expect: "0.198.c3 · CONTROL · a house line planted as JSX text in the public market page and as an attribute string in the resolution panel are each found; house identifiers in code are not words",
+    expect: "0.198.c3 · CONTROL · a house line planted as JSX text in the public market page and as an attribute string in the resolution panel are each ADDED to this file's live reading",
     suite: "reports-mem",
   },
   {

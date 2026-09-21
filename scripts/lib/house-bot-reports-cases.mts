@@ -2955,16 +2955,61 @@ if (STORE === "memory") {
       planted.alias.length === 1 && planted.relative.length === 1 && planted.dynamic.length === 1 && planted.reexport.length === 1 && planted.benign.length === 0
         && fromDisk.positions.length === 1 && fromDisk.route.length === 1 && fromDisk.adminPage.length === 0,
       j({ planted, fromDisk }));
-    const surfaceWords = PLAYER_SURFACE_FILES.map((rel) => ({ rel, printed: printedTexts(rel, code5(rel)).length, words: words(printedTexts(rel, code5(rel))) }));
-    ok("0.198.3 · ⛔ neither player surface PRINTS a house word: every string literal, template part and JSX text of the resolution panel and the public market page is read, and none is a vocabulary word",
-      surfaceWords.every((s) => s.printed > 1_000 && s.words.length === 0), j(surfaceWords));
-    const wordPlants = {
-      jsxText: words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport function PlantedLine() { return <p>House stake: TZS 1,000</p>; }`)),
-      attribute: words(printedTexts(PLAYER_SURFACE_FILES[0], `${panel}\nexport const PlantedTitle = () => <span title="of which chosen by staff TZS 9,000" />;`)),
-      identifier: words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport const plantedRow = { houseBotId: null, houseStake: 0 };`)),
+    /**
+     * ⛔ THE ONE LAWFUL STRING, AND THIS ASSERTION IS THE GUARD THAT COULD NOT SEE IT (C5-8, `§2J · THE JOIN`).
+     * `0.198.3` reads the market page — it always did — and for weeks it reported ZERO house words on a file that
+     * prints `"HOUSE_STAKE_ONLY"`, because the words family was written `house[ -]?stakes?` and an UNDERSCORE is not
+     * in that class. `test:house-bot-surfaces` §4 found it only by reading all three families. Now that the shared
+     * join covers every separator, THIS assertion sees it too — and the answer is not to go back to asserting bare
+     * absence over a file that is not absent. The string is lawful under owner ruling D19c / ruling 146, it is
+     * registered here by exact name, and `0.198.3b` holds the exemption to the ONE assertion that proves the claim
+     * rather than re-proving it here: a second copy of a proof is how two guards come to disagree.
+     * ⛔ SHRINK-ONLY and SUBSTRING-COVERED, for the reason §2J gives: one literal yields a hit per family that can
+     * match it, so a register of exact strings is silently a claim about the PATTERN. `includes` keeps it case- and
+     * separator-sensitive, so `house stake` on this page would still be reported.
+     */
+    const PLAYER_SURFACE_TEXT_REGISTER: Readonly<Record<string, readonly string[]>> = {
+      "src/app/markets/[id]/page.tsx": ["HOUSE_STAKE_ONLY"],
     };
-    ok("0.198.c3 · CONTROL · a house line planted as JSX text in the public market page and as an attribute string in the resolution panel are each found; house identifiers in code are not words",
-      wordPlants.jsxText.length >= 1 && wordPlants.attribute.length >= 1 && wordPlants.identifier.length === 0, j(wordPlants));
+    const unregisteredWords = (rel: string, code: string): string[] =>
+      words(printedTexts(rel, code)).filter((w) => !(PLAYER_SURFACE_TEXT_REGISTER[rel] ?? []).some((a) => a.includes(w)));
+    const surfaceWords = PLAYER_SURFACE_FILES.map((rel) => ({
+      rel, printed: printedTexts(rel, code5(rel)).length,
+      words: words(printedTexts(rel, code5(rel))), unregistered: unregisteredWords(rel, code5(rel)),
+    }));
+    ok("0.198.3 · ⛔ neither player surface PRINTS a house word the register does not name: every string literal, template part and JSX text of the resolution panel and the public market page is read, and the only word either carries is ruling 146's server-side reason on the market page — the string this very assertion was blind to until the shared join covered the underscore",
+      surfaceWords.every((s) => s.printed > 1_000 && s.unregistered.length === 0)
+      && surfaceWords[1].words.length >= 1, j(surfaceWords));
+    const staleSurfaceRegister = Object.entries(PLAYER_SURFACE_TEXT_REGISTER).flatMap(([rel, ws]) => {
+      if (!PLAYER_SURFACE_FILES.includes(rel as Any)) return [`${rel}: no longer a named player surface`];
+      const printed = printedTexts(rel, code5(rel));
+      return ws.filter((w) => !printed.includes(w)).map((w) => `${rel}: "${w}" is registered but no longer printed`);
+    });
+    const SURFACES_SUITE = "scripts/house-bot-surfaces.test.mts";
+    const surfacesSrc = read(SURFACES_SUITE);
+    ok("0.198.3b · ⛔ THE EXEMPTION IS HELD TO THE ASSERTION THAT PROVES IT, NOT RE-PROVED HERE · the registered string is still printed by the page it was registered for (SHRINK-ONLY), and `test:house-bot-surfaces` carries the same file and the same string in its own public register and still declares `4.words.4`, which asserts that the string is an `===` OPERAND and that the branch it selects is LITERAL-ONLY. ⛔ This entry is lawful ONLY while that assertion exists; delete it there and this goes red here",
+      staleSurfaceRegister.length === 0
+      && surfacesSrc.includes("\"src/app/markets/[id]/page.tsx\": [\"HOUSE_STAKE_ONLY\"]")
+      && surfacesSrc.includes("4.words.4") && surfacesSrc.includes("2.join.1"),
+      j({ stale: staleSurfaceRegister, register: PLAYER_SURFACE_TEXT_REGISTER }));
+    /**
+     * ⛔ THE CONTROLS MEASURE WHAT THEIR PLANT ADDS, NOT WHAT THE TREE ALREADY HOLDS (C5-8). Until the join, the
+     * market page read as zero words, so `identifier.length === 0` was accidentally true: the control was reporting
+     * the FILE, not the plant. The moment the file's own lawful string became visible the control went red for a
+     * string it had not planted — the same defect `test:house-bot-surfaces` found in two of its own controls. The
+     * delta is what a control is entitled to claim.
+     */
+    const liveWords = { page: words(printedTexts(PLAYER_SURFACE_FILES[1], page)), panel: words(printedTexts(PLAYER_SURFACE_FILES[0], panel)) };
+    const addedBy = (base: string[], planted: string[]) => planted.filter((w) => !base.includes(w));
+    const wordPlants = {
+      jsxText: addedBy(liveWords.page, words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport function PlantedLine() { return <p>House stake: TZS 1,000</p>; }`))),
+      attribute: addedBy(liveWords.panel, words(printedTexts(PLAYER_SURFACE_FILES[0], `${panel}\nexport const PlantedTitle = () => <span title="of which chosen by staff TZS 9,000" />;`))),
+      identifier: addedBy(liveWords.page, words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport const plantedRow = { houseBotId: null, houseStake: 0 };`))),
+      underscore: addedBy(liveWords.panel, words(printedTexts(PLAYER_SURFACE_FILES[0], `${panel}\nexport const PlantedKey = () => <span title="HOUSE_STAKE_ONLY" />;`))),
+    };
+    ok("0.198.c3 · CONTROL · a house line planted as JSX text in the public market page and as an attribute string in the resolution panel are each ADDED to this file's live reading; house identifiers in code add nothing, because only printed text is read. ⭐ AND THE FOURTH PLANT IS THE ESCAPE ITSELF: the underscored `HOUSE_STAKE_ONLY` planted as an attribute on the OTHER player surface — the file that does not already carry it — is now reported, which it would NOT have been before the join, and that is this assertion's own blindness rebuilt",
+      wordPlants.jsxText.length >= 1 && wordPlants.attribute.length >= 1 && wordPlants.identifier.length === 0 && wordPlants.underscore.length >= 1,
+      j({ plants: wordPlants, live: liveWords }));
 
     const notifierProblems = PLAYER_NOTIFIERS.flatMap(([rel, name]) => playerNotifierProblems(rel, lf(code5(rel)), name, r2Exports, words));
     /** The ADMIN twin beside the player's notice: ruling 195's house clause was un-built (D20), so it carries no house name either. */

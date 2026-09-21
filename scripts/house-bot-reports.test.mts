@@ -71,7 +71,15 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 218, postgres: 64 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 219, postgres: 64 }, dbPrefix: "hb_reports" });
+// ⭐ 218 → 219, C5-8 (2026-09-21), IN THE SAME COMMIT AS THE ASSERTION THAT RAISED IT: `0.198.3b`, which holds
+// the market page's one lawful string to `test:house-bot-surfaces` 4.words.4 instead of re-proving ruling 146 here.
+// The memory child PRINTED 219 on that run. Postgres is unchanged: §0 runs in the memory child only.
+// ⚠️ WHY AN ASSERTION HAD TO BE ADDED AT ALL — `0.198.3` had been GREEN OVER A FILE THAT IS NOT CLEAN. It reads the
+// market page and reported zero house words for weeks, because the shared words family was written `house[ -]?stakes?`
+// and an underscore is not in that class; `"HOUSE_STAKE_ONLY"` walked straight through the one guard whose population
+// already held that file. `§2J · THE JOIN` closed the class, this assertion went red on the string it had always been
+// blind to, and it now names it rather than asserting an absence that was never true.
 // ⭐ 217 → 218, C5-8 (2026-09-21), IN THE SAME COMMIT AS THE ASSERTION THAT RAISED IT: `test:house-bot-surfaces`
 // joined `VOCABULARY_CONSUMERS`, so `0.175` emits one more case. The memory child PRINTED 218 on that run; Postgres
 // is unchanged because the case is a §0 source pin and §0 runs in the memory child only.
