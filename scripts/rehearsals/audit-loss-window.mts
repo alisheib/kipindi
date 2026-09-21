@@ -10,6 +10,16 @@
  * a row that is never written can never be added later. The hole is permanent and the HMAC chain
  * cannot see it.
  *
+ * ⭐ WHAT WAS DONE ABOUT IT (2026-09-21, later the same night). The remedy is `audit-gap-reconcile.mts`
+ * and `src/lib/server/audit-reconcile.ts`: the hole cannot be repaired — the log is append-only, so a late
+ * insert would chain at the CURRENT head and date the bet to the sweep — so it is DECLARED instead, one
+ * chained `audit.row_missing` row per committed bet with no compliance record, found against the durable
+ * `Position` anchor this file's §5 proved holds. `house-bot/worker.ts` also gained a BOUNDED audit flush at
+ * the end of the poller's pass, so the engine's tick pays where the bet must not. ⛔ `market-service.ts` is
+ * UNCHANGED: §3.2 below is the measurement that refused the obvious fix, and it is why. The guard is
+ * `npm run test:audit-gap`; the drive is `npm run rehearse:audit-gap`; the register is
+ * `plans/house-bots/RELEASE-LADDER.md` §12.
+ *
  * ⛔ THIS SCRIPT CHANGES NOTHING AND GATES NOTHING. It is deliberately NOT a row in
  * `registry.mts`: adding one would move `run.mts --all`'s verdict, and a measurement phase must not
  * move a release gate. It exists so every number in the finding can be RE-DERIVED instead of quoted.
@@ -223,10 +233,22 @@ ok("1.1 · the sweep ran over a real population, not zero", files.length > 500 &
   `${files.length} files, ${sites.length} sites`);
 ok("1.2 · the bet's statutory row (market-service.ts `market.position.opened`) is among the un-sequenced",
   unsequenced.some((s) => s.file.endsWith("lib/server/market-service.ts") && s.action === "market.position.opened"));
-ok("1.3 · nothing in src/ calls auditFlush() — no code path waits for the queue",
-  files.every((f) => !/\bauditFlush\s*\(/.test(stripCommentsKeepLines(readFileSync(f, "utf8"))
-    .replace(/export function auditFlush\s*\(/, "DECL("))),
-  "a call in src/ would mean some path does drain the queue");
+/* ⛔ WHEN THIS WAS FIRST MEASURED (2026-09-21, the run that produced the finding) the answer was ZERO:
+ * nothing in `src/` waited for the queue on any path. The remedy added exactly ONE drain, and this
+ * assertion was rewritten as a CENSUS rather than deleted — "zero" was the finding, and a finding that is
+ * no longer true must be replaced by the true one, never by a laxer version of itself. ⛔ It is strictly
+ * stronger than the original: it names every draining site and refuses any it does not expect, and 1.3b
+ * keeps the original floor over the paths that must never wait. */
+const flushSites = files
+  .filter((f) => /\bauditFlush\s*\(/.test(stripCommentsKeepLines(readFileSync(f, "utf8"))
+    .replace(/export function auditFlush\s*\(/, "DECL(")))
+  .map((f) => f.replace(/\\/g, "/").replace(ROOT.replace(/\\/g, "/") + "/", ""));
+console.log(`  auditFlush() CALLERS in src/: ${flushSites.length}${flushSites.length ? ` — ${flushSites.join(", ")}` : ""}`);
+ok("1.3 · exactly ONE path in src/ drains the queue — the house-bot poller's BOUNDED tick flush, which is the remedy (first measured here as ZERO)",
+  flushSites.length === 1 && flushSites[0] === "src/lib/server/house-bot/worker.ts",
+  `${flushSites.length} caller(s): ${flushSites.join(", ") || "(none)"}`);
+ok("1.3b · and NO request path waits for it — market-service.ts and the audit module itself still never flush, which is what the p99 measurement in §3.2 refused",
+  !flushSites.includes("src/lib/server/market-service.ts") && !flushSites.includes("src/lib/server/audit.ts"));
 ok("1.4 · the audit table is append-only in src/ — only create, never update or delete",
   files.every((f) => !/auditLog\.(update|delete|upsert|updateMany|deleteMany)\b/.test(readFileSync(f, "utf8"))));
 
