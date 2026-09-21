@@ -228,8 +228,15 @@ try {
   const foundTickets: number[] = [];
   for (const g of scan.gaps) for (let t = g.from; t <= g.to; t++) foundTickets.push(t);
   foundTickets.sort((a, b) => a - b);
+  // ⛔ THE EXPECTED SET MUST BE NON-EMPTY, AND THIS LINE IS HERE BECAUSE THE DRILL FAILED IT.
+  // Under a mutation that removed the ticket from the id entirely, `lostTickets` and `foundTickets`
+  // were BOTH empty and §3.1 passed — a vacuous pass over a detector that had been deleted. An
+  // equality between two empty sets proves nothing; the population has to be established first.
+  ok("3.0 · the drill has a real expected set to compare against — an equality over two empty sets is not a measurement",
+    lostTickets.length > 0 && lost.length === lostTickets.length,
+    `${lostTickets.length} lost ticket(s) parsed from ${lost.length} lost id(s)`);
   ok("3.1 · the detector finds EXACTLY the tickets that were lost — no more, no fewer",
-    foundTickets.length === lostTickets.length && foundTickets.every((t, i) => t === lostTickets[i]),
+    lostTickets.length > 0 && foundTickets.length === lostTickets.length && foundTickets.every((t, i) => t === lostTickets[i]),
     `found [${foundTickets.join(",")}] vs lost [${lostTickets.join(",")}]`);
   ok("3.2 · and it names the boot that lost them, so the finding is attributable to one container",
     scan.gaps.length > 0 && scan.gaps.every((g) => g.boot === bootId), `boots ${scan.gaps.map((g) => g.boot).join(",")} vs ${bootId}`);
@@ -272,8 +279,10 @@ try {
   const declaredRows = await cli.query(
     `SELECT "targetId", "payload" FROM "AuditLog" WHERE action='audit.rows_missing' ORDER BY "seq"`);
   console.log(`  declared ${dec.declared} range(s), ${dec.declaredAppends} append(s); ${declaredRows.rows.length} row(s) in the chain`);
+  // ⛔ `> 0` ON BOTH SIDES, for the same reason as §3.0: "0 declared of 0 found" is an identity, not
+  // a finding, and it is what a deleted detector produces.
   ok("4.1 · every range found is declared — one chained audit.rows_missing row per contiguous run of lost appends",
-    dec.declared === scanP.gaps.length && declaredRows.rows.length === dec.declared,
+    scanP.gaps.length > 0 && dec.declared === scanP.gaps.length && declaredRows.rows.length === dec.declared,
     `${dec.declared} declared / ${scanP.gaps.length} found / ${declaredRows.rows.length} rows`);
   const mine = declaredRows.rows.find((r: Any) => r.targetId.startsWith(`${bootId}#`));
   ok("4.2 · the declaration names the boot, the ticket range and the count, and says in its own text that the rows are NOT recoverable",
@@ -282,7 +291,8 @@ try {
     mine ? JSON.stringify(mine.payload).slice(0, 180) : "no declaration for the child's boot");
   const dec2 = await TIX.declareAuditTicketGaps({ windowRows: 0 });
   ok("4.3 · a second sweep declares NOTHING — a declared gap is no longer a gap, so the register is a count and not a pile of duplicates",
-    dec2.declared === 0 && dec2.gaps.length === 0, `${dec2.declared} re-declared`);
+    dec.declared > 0 && dec2.declared === 0 && dec2.gaps.length === 0,
+    `${dec.declared} declared first, ${dec2.declared} re-declared`);
   // PLANTED CONTROL — a NEW hole after a clean sweep must still be found, so §4.3 is dedup and not
   // a detector that has switched itself off.
   const plant2 = `b${Date.now().toString(36)}pl2`;
