@@ -2701,23 +2701,39 @@ if (STORE === "memory") {
       j(dropped) !== j(HOUSE_AUDIT_STRIP_KEYS) && dropped.length === 4 && j(keysOf(userSvc)) === j(HOUSE_AUDIT_STRIP_KEYS), j({ dropped }));
   });
 
-  /* ━━ 0.m5 · `main`'s OWN EMERGENCY-VOID CONFIRMATION — GUARDED ONLY BY A HOUSE CASE THAT WAS STRUCK ━━━━━━━━━
-   * ⚠️ NOT A HOUSE RULE. C5's register had a mutation for each of these because ruling 195 gave the confirmation a
-   * house clause; D20 struck the clause and the cases went with it, leaving `main`'s own behaviour — WHO is told a
-   * market was cancelled, and WHAT the letter states — with no assertion anywhere. Measured 2026-09-21: no file
-   * under `scripts/` names the role triple, and `emergency-void.test.mts` contains no occurrence of COMPLIANCE at
-   * all; it asserts only that the letter "includes the reason".
+  /* ━━ 0.m5 · `main`'s OWN OFFICER FAN-OUTS — GUARDED ONLY BY A HOUSE CASE THAT WAS STRUCK ━━━━━━━━━━━━━━━━━━━
+   * ⚠️ NOT A HOUSE RULE. C5's register had a mutation for each of these because ruling 195 gave the cancellation
+   * confirmation a house clause; D20 struck the clause and the cases went with it, leaving `main`'s own behaviour —
+   * WHO is told, and WHAT the letter states — with no assertion anywhere. Measured 2026-09-21: no file under
+   * `scripts/` names the role triple, and `emergency-void.test.mts` contains no occurrence of COMPLIANCE at all; it
+   * asserts only that the letter "includes the reason".
+   * 🔴 AND THE FIRST VERSION OF 0.m5.1 SAID SOMETHING FALSE, WHICH IS WORTH KEEPING ON THE RECORD. It read "the
+   * emergency-void confirmation … at BOTH of its sites". There are two `// audit M5` fan-outs in that file and they
+   * are DIFFERENT notifications: `alertOfficersMarketDue` (`:2253`, a market closed by time and awaiting the
+   * two-officer ceremony) and the emergency-void confirmation (`:4519`). The pin was right; its sentence named one
+   * of them twice. Caught by reading the two sites from `git show HEAD:` rather than trusting the label that had
+   * just been written — the assertion guards MORE than it claimed, and an authority that overstates its subject is
+   * how the next session learns the wrong thing from a passing test.
    */
   await guard("0.m5", () => {
     const M5_ROLES = '["ADMIN", "COMPLIANCE", "MODERATOR"]';
     const ms = lf(decomment(read("src/lib/server/market-service.ts")));
-    const rolesOf = (code: string) => [...code.matchAll(/db\.user\.listByRoles\(\s*(\[[^\]]*\])\s*\)/g)].map((m) => m[1].replace(/\s+/g, " "));
-    const sites = rolesOf(ms);
-    ok("0.m5.1 · ⛔ the emergency-void confirmation is addressed to ADMIN, COMPLIANCE and MODERATOR at BOTH of its sites in market-service.ts — drop a role and a whole officer class silently stops being told a market was cancelled, which no suite in this repository measured once ruling 195's house clause was struck",
+    /**
+     * ⭐ THE BINDING IS THE DISCRIMINATOR, AND THAT IS WHAT MAKES THIS A MEASURE RATHER THAN A HEADCOUNT. Both
+     * fan-outs read `const officers = await db.user.listByRoles(…)`. Counting every `listByRoles` call in the file
+     * would have made a NEW, unrelated role read somewhere else redden this pin — a guard that cries wolf is a guard
+     * the next session switches off, so 0.m5.c1 below proves one is let through.
+     */
+    const fanOutsOf = (code: string) => [...code.matchAll(/const officers = await db\.user\.listByRoles\(\s*(\[[^\]]*\])\s*\)/g)].map((m) => m[1].replace(/\s+/g, " "));
+    const sites = fanOutsOf(ms);
+    ok("0.m5.1 · ⛔ BOTH officer fan-outs in market-service.ts are addressed to ADMIN, COMPLIANCE and MODERATOR — alertOfficersMarketDue (a market closed by time, awaiting the two-officer ceremony) and the emergency-void confirmation; drop a role from either and a whole officer class silently stops being told, which nothing in this repository measured once ruling 195's house clause was struck and emergency-void.test.mts names COMPLIANCE nowhere at all",
       sites.length === 2 && sites.every((s) => s === M5_ROLES), j({ sites }));
-    const droppedRole = rolesOf(plant(ms, `    const officers = await db.user.listByRoles(${M5_ROLES});`, '    const officers = await db.user.listByRoles(["ADMIN", "MODERATOR"]);'));
-    ok("0.m5.c1 · CONTROL · the SAME measure over a copy with COMPLIANCE dropped from ONE of the two sites reports it, and over the real module reports two identical triples — a pin that reads only the first site would have passed this",
-      droppedRole.length === 2 && droppedRole.filter((s) => s === M5_ROLES).length === 1 && rolesOf(ms).every((s) => s === M5_ROLES), j({ droppedRole }));
+    const droppedRole = fanOutsOf(plant(ms, `    const officers = await db.user.listByRoles(${M5_ROLES});`, '    const officers = await db.user.listByRoles(["ADMIN", "MODERATOR"]);'));
+    const unrelated = fanOutsOf(`${ms}\nasync function plantedSweep() { const auditors = await db.user.listByRoles(["ADMIN"]); return auditors; }`);
+    ok("0.m5.c1 · CONTROL · COMPLIANCE dropped from ONE of the two fan-outs is reported — a pin reading only the first site would have passed this — the real module reports two identical triples, and ⭐ THE POSITIVE SIDE: a NEW db.user.listByRoles bound to another name is left alone, so this pin polices the fan-outs and not every role read in the file",
+      droppedRole.length === 2 && droppedRole.filter((s) => s === M5_ROLES).length === 1
+        && fanOutsOf(ms).every((s) => s === M5_ROLES) && unrelated.length === 2 && unrelated.every((s) => s === M5_ROLES),
+      j({ droppedRole, unrelated }));
 
     const EMAIL_FILE = "src/lib/server/email.ts";
     const M5_ROW_LABELS = ["Market", "Reason", "Players refunded", "Total refunded"];
@@ -2733,9 +2749,13 @@ if (STORE === "memory") {
     const PLAYERS_ROW = '      { label: "Players refunded", value: String(refundedCount) },';
     const conditional = rowsOf(letterOf(plant(emailCode, PLAYERS_ROW, '      { label: refundedTzs > 0 ? "Players refunded (incl. positions held)" : "Players refunded", value: String(refundedCount) },')));
     const fifth = rowsOf(letterOf(plant(emailCode, PLAYERS_ROW, `${PLAYERS_ROW}\n      { label: "Of which house stakes", value: formatTzs(refundedTzs) },`)));
-    ok("0.m5.c2 · CONTROL · both shapes are reported over the REAL letter — a label made conditional on a money figure (the row count holds at four while a label stops being a literal) and a fifth house row (the labels hold their spelling while the count moves) — so neither half of the measure is decoration",
-      j(conditional.labels) !== j(M5_ROW_LABELS) && conditional.rows === 4 && fifth.rows === 5 && fifth.labels.includes("Of which house stakes"),
-      j({ conditional, fifth }));
+    /** ⭐ THE POSITIVE SIDE: this pin freezes the ROWS, not the letter. One more line of prose must still be allowed. */
+    const CTA = '    ${ctaButton("/admin/markets", "Open markets")}';
+    const extraProse = rowsOf(letterOf(plant(emailCode, CTA, '    ${subtitle("The market is closed and nothing further is owed on it.")}\n' + CTA)));
+    ok("0.m5.c2 · CONTROL · both damaging shapes are reported over the REAL letter — a label made conditional on a money figure (the row count holds at four while a label stops being a literal) and a fifth house row (the labels hold their spelling while the count moves), so neither half of the measure is decoration — and ⭐ THE POSITIVE SIDE: one more line of PROSE in the same letter is NOT reported, because this pin freezes the four rows and not the letter",
+      j(conditional.labels) !== j(M5_ROW_LABELS) && conditional.rows === 4 && fifth.rows === 5 && fifth.labels.includes("Of which house stakes")
+        && j(extraProse.labels) === j(M5_ROW_LABELS) && extraProse.rows === M5_ROW_LABELS.length,
+      j({ conditional, fifth, extraProse }));
   });
 }
 

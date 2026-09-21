@@ -181,15 +181,29 @@ const AUD = await import("../src/lib/server/audit.ts");
 await AUD.audit({
   category: "BET", action: "market.position.opened", actorId: HOLDER,
   targetType: "Position", targetId: "pos_dsar_house",
-  // Exactly what the seam writes for a house stake: the holder's own bet row, plus the two house keys.
-  payload: { marketId: "mkt_dsar", side: "YES", stake: 5_000, houseBotId: HOUSE_MARKER, intentId: HOUSE_INTENT },
+  /*
+   * The holder's own bet row, plus the house keys the strip list names.
+   * ⭐ `houseStake` AND `houseStakes` ARE PLANTED HERE DELIBERATELY, AND THEY ARE NOT A CLAIM THAT `src/` WRITES
+   * THEM (C5-8, 2026-09-21). Owner ruling D20 struck them from every audit payload, and `test:house-bot-reports`
+   * 0.187.1 walks all of `src/` to keep it that way. They stay on `HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED` as
+   * DEFENCE IN DEPTH — `user-service.ts`'s own comment says the next house key added to a player-actionable audit
+   * joins that list in the same commit — and until this line the defence was unmeasured: the fixture planted only
+   * `houseBotId` and `intentId`, the assertion below named only those two, so BOTH stake keys could leave the list
+   * with every assertion in this suite green. `houseHits(json)` further down had nothing to find because nothing
+   * ever put them in a payload. The list itself is pinned by 0.170.5; this is the runtime door behind it.
+   */
+  payload: {
+    marketId: "mkt_dsar", side: "YES", stake: 5_000,
+    houseBotId: HOUSE_MARKER, intentId: HOUSE_INTENT, houseStake: { yes: 0, no: 5_000 }, houseStakes: { mkt_dsar: 5_000 },
+  },
 });
 await AUD.auditFlush?.();
 
 const durableHolder = (await AUD.getAuditForActorDurable(HOLDER, { limit: 100 })).entries as Array<Record<string, Any>>;
 const durableBet = durableHolder.find((e) => e.action === "market.position.opened");
-ok("6.CONTROL: the DURABLE row really carries both house keys, so their absence below is a measurement",
-  !!durableBet && durableBet.payload?.houseBotId === HOUSE_MARKER && durableBet.payload?.intentId === HOUSE_INTENT,
+ok("6.CONTROL: the DURABLE row really carries all four house keys the strip list names — houseBotId, intentId, houseStake and houseStakes — so their absence below is a measurement and not an empty payload",
+  !!durableBet && durableBet.payload?.houseBotId === HOUSE_MARKER && durableBet.payload?.intentId === HOUSE_INTENT
+  && !!durableBet.payload?.houseStake && !!durableBet.payload?.houseStakes,
   JSON.stringify(durableBet?.payload ?? null));
 
 const holderExport = await exportUserData(HOLDER);
@@ -198,8 +212,8 @@ const holderBet = (holderExport.auditEntries?.entries as Array<Record<string, An
 ok("⛔ D19 · the holder's own export KEEPS the bet row — the stake, the side and the market are their money record",
   !!holderBet && holderBet.payload?.stake === 5_000 && holderBet.payload?.marketId === "mkt_dsar" && holderBet.payload?.side === "YES",
   JSON.stringify(holderBet?.payload ?? null));
-ok("⛔ D19 · …and that row carries NEITHER house key, at any depth",
-  !!holderBet && !("houseBotId" in (holderBet.payload ?? {})) && !("intentId" in (holderBet.payload ?? {})),
+ok("⛔ D19 · …and that row carries NOT ONE of the four house keys the strip list names — houseBotId, intentId, houseStake, houseStakes — at any depth",
+  !!holderBet && ["houseBotId", "intentId", "houseStake", "houseStakes"].every((k) => !(k in (holderBet.payload ?? {}))),
   JSON.stringify(Object.keys(holderBet?.payload ?? {})));
 /**
  * ⛔ **THE TWO DOORS ARE NOT THE SAME INSTRUMENT HERE, AND SAYING SO IS THE POINT** (C5-7's review, medium-high).

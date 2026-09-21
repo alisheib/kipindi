@@ -94,13 +94,20 @@
  * one `props`). Each names in its own text what it was for and what the new from-text is. ⛔ Where the site could NOT be
  * identified — `S5-M74` and `S5-M76`'s audience gate now matches five times — nothing was invented; they stay owed.
  *
- * ── ALL 69 PRIMARIES ARE DRIVEN, AND THE ELEVEN BELOW ARE WHY TWO OF THEM ARE RIGHT ─────────────────────────────
- * ⭐ THE WHOLE SET, IN ONE RUN: `npm run red:house-bot-c5` at `fc92867a` reported 69 caught, 0 wrong-assertion,
- * 0 missed, 0 stale, 0 files left dirty, across all 24 distinct assertions this file declares. ⛔ DO NOT QUOTE THAT
+ * ── ALL 96 PRIMARIES ARE DRIVEN, AND THE ELEVEN BELOW ARE WHY TWO OF THEM ARE RIGHT ─────────────────────────────
+ * ⭐ THE WHOLE SET, IN ONE RUN: `npm run red:house-bot-c5` at `b4c05417` reported 96 caught, 0 wrong-assertion,
+ * 0 missed, 0 stale, 0 files left dirty, across all 34 distinct assertions this file declares (re-derived from
+ * `MUTATIONS` in the same pass: 97 entries, 96 primaries, `S4-M73b` applied with its own). ⛔ DO NOT QUOTE THAT
  * LINE — re-run the command; it is the only thing that can say it, and it moves whenever a declaration does.
- * ⚠️ The figure it replaced was a COMPOSITE (65 caught + 4 wrong-assertion, then 7 repaired entries re-driven,
- * summed to "69 of 69"). The sum was right; it was never a run. DEFERRED-TESTS §1 row 96 carries both, and the
- * three controls — WRONG-ASSERTION, MISSED and a true CAUGHT — that prove this harness still reports a failure.
+ * ⚠️ Two figures preceded it and BOTH are on the record rather than overwritten. The first was a COMPOSITE
+ * (65 caught + 4 wrong-assertion, then 7 repaired entries re-driven, summed to "69 of 69") — the sum was right; it
+ * was never a run. The second WAS one run, of 69 primaries at `fc92867a`, and it went stale the moment C5-8's
+ * disposition added 27 declarations. DEFERRED-TESTS §1 row 96 carries the first two, and the three controls —
+ * WRONG-ASSERTION, MISSED and a true CAUGHT — that prove this harness still reports a failure.
+ * ⭐ AND THE 0.505b ROLL-CALL WAS SEEN CATCHING A DRIFTED `expect` IN THIS VERY PASS, which is better evidence than
+ * any claim made for it: correcting 0.m5.1's label (it had said "the emergency-void confirmation … at BOTH of its
+ * sites", when the two `// audit M5` fan-outs are DIFFERENT notifications) left `S4-M61`'s `expect` matching no
+ * label, and the memory child reported it `stale` by name on the next run, before any drive.
  *
  * ── THE ELEVEN THE FIRST SAMPLE DRIVE APPLIED, 2026-09-21, KEPT BECAUSE OF WHAT THEY FOUND ───────────────────────
  * ⛔ AN ANCHOR THAT RESOLVES IS NOT AN ASSERTION THAT WENT RED, so a sample was applied for real: the mutation
@@ -964,7 +971,7 @@ export const MUTATIONS = [
     file: MARKET_SERVICE,
     from: "    const officers = await db.user.listByRoles([\"ADMIN\", \"COMPLIANCE\", \"MODERATOR\"]); // audit M5",
     to: "    const officers = await db.user.listByRoles([\"ADMIN\", \"MODERATOR\"]); // audit M5",
-    expect: "0.m5.1 · ⛔ the emergency-void confirmation is addressed to ADMIN, COMPLIANCE and MODERATOR at BOTH of its sites in market-service.ts",
+    expect: "0.m5.1 · ⛔ BOTH officer fan-outs in market-service.ts are addressed to ADMIN, COMPLIANCE and MODERATOR",
     suite: "reports-mem",
   },
   {
