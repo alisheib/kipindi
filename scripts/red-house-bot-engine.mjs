@@ -97,10 +97,34 @@ for (const f of files) {
 writeFileSync(LOCK, `${process.pid} ${new Date().toISOString()}\n`);
 const releaseLock = () => { try { unlinkSync(LOCK); } catch { /* already gone */ } };
 process.on("exit", releaseLock);
-for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { releaseLock(); process.exit(1); });
 
 const original = new Map(files.map((f) => [f, readFileSync(f, "utf8")]));
 const shaBefore = new Map(files.map((f) => [f, sha(f)]));
+
+/**
+ * ⛔ A KILLED DRIVE MUST NOT LEAVE A DEFECT ON DISK. The loop restores each file in a `finally`, but a signal cuts the
+ * process before that ever runs — so until 2026-09-21 a Ctrl-C mid-mutation left the injected defect in the worktree,
+ * `git diff` showing a plausible one-line change, ready for the next `git add -A` in any lane to ship it. That is
+ * `docs/FAILURE-INVENTORY.md` §3.8 exactly: two concurrent red drives once left the live payout gate DISABLED while
+ * the harness reported clean. The restore now happens in the same handler, BEFORE the lock is released, and a restore
+ * that itself fails prints the `git checkout --` that fixes it rather than dying quietly.
+ *
+ * ⚠️ NOT MEASURED ON WINDOWS, AND THAT IS NOT A DETAIL. Node runs these handlers on a real console Ctrl-C, but
+ * `process.kill(pid, "SIGTERM"/"SIGINT")` on Windows terminates unconditionally without running them — which is how
+ * the 2026-09-21 runaway drive had to be stopped. So this restores a drive the operator stops from its own terminal,
+ * and does NOT restore one killed from the process table. ⛔ After ANY killed drive, still check
+ * `git show HEAD:<file>` against the worktree — the harness's own refusal is the load-bearing check, not this.
+ */
+for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => {
+  const broken = [];
+  for (const [p, s] of original) {
+    try { write(p, s); } catch { broken.push(p); }
+  }
+  if (broken.length) console.error(`⛔ ${sig}: COULD NOT RESTORE ${broken.join(", ")} — A DEFECT IS STILL ON DISK.\n   Run: git checkout -- ${broken.join(" ")}`);
+  else console.error(`${sig}: every target restored from the in-memory original before exit (${original.size} file(s)).`);
+  releaseLock();
+  process.exit(1);
+});
 
 // ⭐ Every suite-and-sections a mutation names must be GREEN first — a red baseline would make every mutation look caught.
 const baselines = new Map();
