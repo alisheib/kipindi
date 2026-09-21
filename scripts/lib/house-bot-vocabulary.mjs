@@ -155,6 +155,15 @@ export const HOUSE_ID_SAMPLES = Object.freeze([
   "hb_0123456789abcdef01234567", "hbi_0123456789abcdef01234567", "hbe_0123456789abcdef01234567", "hbt_0123456789abcdef01234567",
   "hbp_0123456789abcdef01234567", "hbh_0123456789abcdef01234567", "hb:hbi_0123456789abcdef01234567",
 ]);
+/**
+ * ⛔ AND "including household costs" IS ON THIS LIST BECAUSE NOTHING ELSE HELD THE WORD BOUND (C5-8, 2026-09-21).
+ * `including house\b` is word-bounded so that "household" is not a hit, and until this sample landed that claim was
+ * made ONLY in this module's own docblock: dropping the `\b` left `2.v` green (the "including house" sample still
+ * matches), `2.v.b` green (no benign sample carried the stem), `0.175.subset.module` green and the console lexicon
+ * green. An authority claim with no assertion behind it is the class this campaign keeps finding, so the claim is
+ * now a sample, and `2.v.b` and `0.L52.c2` own it on both sides of the bound.
+ */
 export const HOUSE_BENIGN_SAMPLES = Object.freeze([
   "HOUSE_FEE", "/admin/house", "House edge", "hb_nonce", "Xhb_0123456789abcdef01234567", "hb_0123456789abcdef0123456789", "hbi_abc",
+  "including household costs",
 ]);

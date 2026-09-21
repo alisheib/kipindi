@@ -13,45 +13,103 @@
  *   1. `test:red-anchors` §3 insists the `from` still resolves EXACTLY ONCE against the tree, every run.
  *   2. `test:house-bot-reports` 0.505 walks `scripts/anchors/house*.anchors.mjs` from disk and insists every `suite`
  *      key found here either HAS an expect-drift roll-call or is recorded as owed with its reason.
- * ⛔ IT DOES NOT BUY THE RED. Nothing in this repository runs these mutations yet — no `red:*` script names
- * `house-bot-c5`, which is why adding this file leaves §4's undeclared count (and therefore `UNDECLARED_CEILING`)
- * exactly where it was; that was measured before and after, not assumed. Each entry carries the `to` the register
- * wrote and the assertion label it must redden, so a drive can be pointed at it; until one is, "declared" means
- * "anchored and audited", never "proved red".
+ * ⛔ DECLARING STILL DOES NOT BUY THE RED — BUT SOMETHING NOW APPLIES THE `to`. Neither of the two instruments above
+ * ever applies a replacement: both answer about the `from` and the `expect`, so a truncated `to`, or one whose second
+ * site was never converted, passes them while proving nothing. `red:house-bot-c5` (`scripts/red-house-bot-c5.mjs`,
+ * added 2026-09-21) is the third thing, and the only one in the repository that WRITES a declaration's `to` into the
+ * real file, runs the suite it names, and reads that run's own FAIL lines. ⛔ A mutation that reddens *something else*
+ * is reported WRONG-ASSERTION and fails the run — a defect caught by a neighbouring assertion is evidence about the
+ * neighbour, never about the assertion this register named.
+ * ⚠️ AND THE ANCHOR AUDIT'S COUNT WAS RE-DERIVED ACROSS THAT COMMIT RATHER THAN ASSUMED: `test:red-anchors` §4 reads
+ * **66 undeclared at `78bc46ea` (the parent) AND 66 at `6688aed0` (the harness)**, because a harness "declares" when a
+ * declaration file's name appears in its command and `house-bot-c5.anchors.mjs` is exactly that. ⛔ So this file and
+ * its runner did NOT move the ratchet. §4 is nonetheless RED at 66 against `UNDECLARED_CEILING = 65`, and the break is
+ * INHERITED FROM `origin/main`, not made here (DEFERRED-TESTS §1 row 4 records it on both sides, byte-identical):
+ * `red:mobile-visual-plan` was added after `18b03e5f` as a file-writing `.mjs` with no anchors file of its own.
+ * ⛔ It is not this file's to fix and the ceiling is not this file's to raise.
  *
  * ⚠️ HOW `expect` WAS CHOSEN, AND WHY IT IS NOT DECORATION. A register entry names its assertion by id ("0.187.1",
- * "4.259.3"). An id alone is not evidence: 29 owed entries name ONLY assertions that no longer exist in the suite they
- * name, and those were left owed rather than given a plausible-looking label. Every `expect` below was taken from the
- * label literal that assertion carries in its suite's source TODAY, cut before any `${}` interpolation so it matches the
- * line the run actually prints. An `expect` that matched no label would be classed WRONG-ASSERTION by any drive.
+ * "4.259.3"). An id alone is not evidence, so no entry was ever given a plausible-looking label: every `expect` below
+ * was taken from the label literal that assertion carries in its suite's source TODAY, cut before any `${}`
+ * interpolation so it matches the line the run actually prints. An `expect` that matched no label would be classed
+ * WRONG-ASSERTION by any drive.
+ * 🔴 AND THE SENTENCE THAT USED TO STAND HERE WAS A COMPOSITE — REFUTED 2026-09-21, IN THIS FILE, BY MEASUREMENT.
+ * It read "29 owed entries name ONLY assertions that no longer exist in the suite they name". That was derived from
+ * each entry's FIRST-named assertion family and never from the whole `red` field, and it is FALSE for eight of the
+ * 29 and misleading for five more: `S4-M11 M15 M16 M17 M18 M19 M32 M34` each name `0.191.1` AND `0.191.0`
+ * explicitly, and both labels exist today in `test:house-bot-reports` — the same suite those entries name
+ * (`scripts/lib/house-bot-reports-cases.mts:2547`, `:2551`); `S5-M53 M54 M55 M56 M65` each name
+ * `test:house-bot-disclosure 2.v` / `4.c6`, which exist at `:186` and `:269`, and the claim was only literally true
+ * because their `suite` FIELD says `test:house-bot-reports`. ⛔ A recorded figure that was never one measurement is
+ * the third such composite this programme has found in its own numbers; the split below is re-derived, not inherited.
  *
  * ── THE HONEST SPLIT, re-derived 2026-09-21 against this tree rather than quoted from the previous phase ────────────
  *   262  id-bearing entries across the four registers
  *    -9  already declared and reachable before this phase (`S7-M01..M09`, in `house-bot-console.anchors.mjs`)
- *   -76  MOOT · their subject was deleted, and they are NEVER to be re-anchored:
+ *   -77  MOOT · their subject was deleted, and they are NEVER to be re-anchored:
  *          49 whose whole FILE the D20 un-build deleted in `7c754515` — `src/lib/server/house-bot/exposure.ts` (13),
  *             `src/lib/house-bot/exposure-copy.ts` (28), `src/components/admin/exposure-line.tsx` (6),
  *             `src/app/admin/kyc/[id]/bets-placed.tsx` (2)
- *          27 whose SUBJECT was struck while its file survived — `exposureSlot`, `exposureReadOf`, `ExposureLine`,
+ *          28 whose SUBJECT was struck while its file survived — `exposureSlot`, `exposureReadOf`, `ExposureLine`,
  *             `HOUSE_OWNED_AUDIT_ACTIONS`, `isHouseAuditRow`, `houseStakeForAudit`, `houseStakeByMarket`,
  *             `houseBetCount`, `houseStakedTzs`, `botLabels`, `UNGATED_HOUSE_READERS` and their neighbours, none of
- *             which occurs anywhere under `src/`, `scripts/` or `prisma/` any more
- *  -102  STILL OWED, and said so rather than padded: 29 name only assertions that no longer exist; 16 name a suite
- *          with no roll-call key and no red harness (`test:dal-parity`, `test:house-bot-rules`,
- *          `test:house-bot-migrations`, `test:txn-search`, `test:dsar-secrets`); 57 rotted from-texts whose subject is
- *          alive but whose site could not be identified to a single line (2 of them now match 5x, which is ambiguous,
- *          not resolved)
+ *             which occurs anywhere under `src/` or `prisma/` any more.
+ *             ⚠️ AND `scripts/` IS NO LONGER TRUE OF ALL OF THEM, WHICH IS THIS FILE'S OWN DOING (C5-8, 2026-09-21):
+ *             `houseBetCount` and `houseStakedTzs` now occur in `scripts/lib/house-bot-reports-cases.mts` as the
+ *             NEEDLES of `0.197.2`, exactly as `houseStakeForAudit` and `houseStakeByMarket` already did as 0.191's.
+ *             A struck name kept as a needle is how an absence is proved; it is not the subject coming back.
+ *             ⭐ `S5-M46` JOINED THIS LIST 2026-09-21 and its count is why 76 became 77. It was filed among the 29
+ *             because its `from` still resolves, but its `to` names `exposureSlot` — a STRUCK subject — so the 29's
+ *             own rule put it here: ruling 196 is struck (`C5-SPEC.md:1247`, `:2918`; `C5-D20-REPLAN.md:31`) and
+ *             `exposureSlot` survives only as an exemption NAME in `EXPOSURE_SLOT_PROPS`.
+ *   -69  STILL OWED, and said so rather than padded:
+ *          57 rotted from-texts whose subject is alive but whose site could not be identified to a single line (2 of
+ *             them now match 5x, which is ambiguous, not resolved)
+ *           2 (`S4-M03`, `S4-M51`) that name a SITE a declaration already occupies but an assertion family
+ *             (`3.187.4/5/6`, `4.195.1/2/3`) that no longer exists — same site is not same assertion
+ *          10 that name a suite no harness can drive: nine under four suites with NO red harness and no roll-call key
+ *             (`test:dsar-secrets` 3, `test:house-bot-migrations` 3, `test:house-bot-rules` 2, `test:txn-search` 1),
+ *             plus `5b-M11`, whose suite HAS a harness that cannot reach it — `dal-parity.test.mts` reads
+ *             `prisma/schema.prisma` from ROOT at `:53` and `:274`, not through `KP_SRC`, so `red:dal-parity`'s
+ *             scratch copy never sees it and a declaration there would report NOT CAUGHT.
+ *             ⛔ `test:dal-parity` IS NOT ON THAT LIST ANY MORE: `red:dal-parity` exists and so does
+ *             `scripts/anchors/dal-parity.anchors.mjs`. Six of its seven are declared THERE — not here, because 0.505
+ *             walks `house*.anchors.mjs` and would have gone red on an unlisted key while `ROLL_CALL_OWED`'s pinned
+ *             length of 7 may only SHRINK. All ten remaining are named in `DEFERRED-TESTS.md` row 97 with the
+ *             measured reason, rather than left silent.
  *   ═══
- *    75  retired here — 69 declarations below, covering 72 entries (3 pairs are the same edit written into two
- *          registers) plus 3 more (`S4-M03`, `S4-M05`, `S4-M51`) whose site and assertion a `c5-5b` entry already
- *          occupies, so re-declaring them would be the same anchor twice
+ *   107  retired — 96 declarations below (97 entries; `S4-M73b` is applied with its primary) covering 99 register
+ *          entries (3 pairs are the same edit written into two registers), plus `S4-M05` superseded, plus `S4-M65` in
+ *          `officer-hold.anchors.mjs` and six in `dal-parity.anchors.mjs` — each declared where a harness already
+ *          drives it rather than where it would only be counted
+ *   ⛔ 9 + 77 + 69 + 107 = 262, and the columns move together or not at all.
+ * ⚠️ WHAT IN THAT SPLIT THIS PHASE MEASURED, AND WHAT IT CARRIES. Measured here, 2026-09-21: the 29 and the 16 (every
+ * `from` re-resolved against this tree, every `red` field read WHOLE rather than by its first family), and every
+ * declaration count, read from `MUTATIONS.length` in the three anchors files. Carried from row 93's 2026-09-20
+ * re-derivation and NOT re-measured here: the 57 rotted, the 9 already declared, and the 49 + 28 MOOT halves.
+ * ⛔ Which is why they are named as carried — a column nobody re-derived is not a column this file measured.
  *
  * ⛔ FIVE OF THESE ARE RE-ANCHORS, MARKED `RE-ANCHORED` IN THEIR NAME. Their register from-text had rotted; the code had
  * moved under them (a binding renamed `n` -> `call`, a cursor renamed `at` -> `top`, a page signature destructured into
  * one `props`). Each names in its own text what it was for and what the new from-text is. ⛔ Where the site could NOT be
  * identified — `S5-M74` and `S5-M76`'s audience gate now matches five times — nothing was invented; they stay owed.
  *
- * ── ELEVEN OF THEM WERE ACTUALLY DRIVEN, 2026-09-21, AND THE DRIVE IS WHY TWO OF THEM ARE RIGHT ──────────────────
+ * ── ALL 96 PRIMARIES ARE DRIVEN, AND THE ELEVEN BELOW ARE WHY TWO OF THEM ARE RIGHT ─────────────────────────────
+ * ⭐ THE WHOLE SET, IN ONE RUN: `npm run red:house-bot-c5` at `b4c05417` reported 96 caught, 0 wrong-assertion,
+ * 0 missed, 0 stale, 0 files left dirty, across all 34 distinct assertions this file declares (re-derived from
+ * `MUTATIONS` in the same pass: 97 entries, 96 primaries, `S4-M73b` applied with its own). ⛔ DO NOT QUOTE THAT
+ * LINE — re-run the command; it is the only thing that can say it, and it moves whenever a declaration does.
+ * ⚠️ Two figures preceded it and BOTH are on the record rather than overwritten. The first was a COMPOSITE
+ * (65 caught + 4 wrong-assertion, then 7 repaired entries re-driven, summed to "69 of 69") — the sum was right; it
+ * was never a run. The second WAS one run, of 69 primaries at `fc92867a`, and it went stale the moment C5-8's
+ * disposition added 27 declarations. DEFERRED-TESTS §1 row 96 carries the first two, and the three controls —
+ * WRONG-ASSERTION, MISSED and a true CAUGHT — that prove this harness still reports a failure.
+ * ⭐ AND THE 0.505b ROLL-CALL WAS SEEN CATCHING A DRIFTED `expect` IN THIS VERY PASS, which is better evidence than
+ * any claim made for it: correcting 0.m5.1's label (it had said "the emergency-void confirmation … at BOTH of its
+ * sites", when the two `// audit M5` fan-outs are DIFFERENT notifications) left `S4-M61`'s `expect` matching no
+ * label, and the memory child reported it `stale` by name on the next run, before any drive.
+ *
+ * ── THE ELEVEN THE FIRST SAMPLE DRIVE APPLIED, 2026-09-21, KEPT BECAUSE OF WHAT THEY FOUND ───────────────────────
  * ⛔ AN ANCHOR THAT RESOLVES IS NOT AN ASSERTION THAT WENT RED, so a sample was applied for real: the mutation
  * written into the file, `npx tsx scripts/lib/house-bot-reports-cases.mts` run on the memory child, the FAIL lines
  * read, `git checkout --` and `git diff --quiet` after every single one (the tree was verified clean at the close of
@@ -106,6 +164,12 @@ const MARKET_SERVICE = "src/lib/server/market-service.ts";
 const NOTIFICATION_SERVICE = "src/lib/server/notification-service.ts";
 const OBJECTIONS_SERVICE = "src/lib/server/objections-service.ts";
 const USER_SERVICE = "src/lib/server/user-service.ts";
+/* ── C5-8 · the files the 29 owed entries reach that no declaration here had named before ───────────────── */
+const UPDOWN_SERVICE = "src/lib/server/updown-service.ts";
+const HOUSE_BOT_VOCABULARY = "scripts/lib/house-bot-vocabulary.mjs";
+const KYC_RISK = "src/lib/server/kyc-risk.ts";
+const KYC_DECISION_RAIL = "src/app/admin/kyc/[id]/kyc-decision-rail.tsx";
+const KYC_ACTIONS = "src/app/admin/kyc/[id]/kyc-actions.ts";
 
 export const MUTATIONS = [
   /* ══ c5-5b ═══════════════════════════════════════════════════════════════════════════════════════════ */
@@ -675,6 +739,247 @@ export const MUTATIONS = [
     from: "  rel.startsWith(\"src/app/admin/\") || rel.startsWith(\"src/app/api/admin/\") || rel.startsWith(\"src/components/admin/\");",
     to: "  rel.startsWith(\"src/app/admin/\");",
     expect: "0.260.c2 · CONTROL · an aliased reader, a namespace reader, the audit module import()ed by an admin route handler, a shared console component that gates with a route it does not serve, the house store in a console page, a house module import()ed by a console action, a holder hook whose result an action returns, a fired-and-forgotten import of a module that is no officer hook with its read kept, a hook whose callback writes an outer binding, a re-export of the audit reader, of a house read module and of the gate, and the gate through a namespace are each reported; verifyChain, type-only imports and type-only re-exports of the audit and house modules, a reader named in a comment and a fire-and-forget hook (void import(…).then((m) => m.hook(…)).catch(() => {})) are not",
+    suite: "reports-mem",
+  },
+  /* ══ C5-8 · THE 29 OWED ENTRIES, DISPOSED OF ONE BY ONE ══════════════════════════════════════════════
+   *
+   * ⛔ EACH OF THESE 29 RESOLVES EXACTLY ONCE AND NAMES AN ASSERTION THAT NO LONGER EXISTS. That is not one
+   * condition, it is three, and they are not the same: (a) the BEHAVIOUR was struck and its assertion went with it
+   * — RETIRE; (b) the assertion was renamed or absorbed — RE-POINT and DRIVE to prove the pairing; (c) ⛔ THE
+   * BEHAVIOUR IS STILL SHIPPED AND THE ASSERTION SIMPLY VANISHED — an unguarded behaviour with a ready-made
+   * mutation, which is the most valuable thing in the set. Measured 2026-09-21 against this tree: 17 re-point,
+   * 1 retires, 11 were (c).
+   *
+   * ⭐ THE ELEVEN (c)s HAVE ASSERTIONS NOW, WRITTEN IN THE SAME COMMIT: 0.197.1/.2/.3 (the KYC case is house-blind
+   * and stays so under D20), 0.170.5 (the DSAR strip list), 0.m5.1/.2 (⚠️ `main`'s OWN emergency-void audience and
+   * the fixed row set of its letter, guarded only by a house case D20 struck) and 0.175.samples (the planted-control
+   * population, which every consumer measured by PRINTING its length). Each has a planted control beside it.
+   *
+   * ⛔ ONE ENTRY IS RETIRED AND IS NOT DECLARED BELOW. `S5-M46` prefills the emergency-void reason from
+   * `exposureSlot`. Its assertion 0.196.1 pinned ruling 196's prefill; `C5-SPEC.md:1247` (ruling 196) and `:2918`
+   * (ruling 262) both read "⛔ STRUCK by D20 — never build; un-built in C5-5b", and `C5-D20-REPLAN.md:31` is the
+   * row. `exposureSlot` occurs 0× under `src/` and survives only as an EXEMPTION NAME in `EXPOSURE_SLOT_PROPS`.
+   * ⚠️ CLASSIFICATION CORRECTION: its `to` names a struck subject, so it belongs in the 76 MOOT, not the 29.
+   *
+   * ⛔ AND ONE MORE IS DECLARED ELSEWHERE, ON PURPOSE. `S4-M65` (`mine.length > 0` → `>= 0`, which refuses EVERY
+   * officer hold) belongs to `test:settlement-gate` §14, which has no roll-call key — so it is declared in
+   * `scripts/anchors/officer-hold.anchors.mjs`, which 0.505 does not walk and `red:officer-hold` already drives,
+   * beside the INVERSE mutation that sits on the byte-identical `from` block.
+   */
+  {
+    name: "c5-s4:S4-M11 · RE-POINTED · a read before the seal, outside `if (r.ok)` — the register named 3.188.8, which is gone; 0.191.0 (which the entry ALSO named) counts the reader over all 21 decision files and reads 0",
+    file: RESOLVER_QUEUE_BULK_RESOLVE_ACTION,
+    from: "        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });",
+    to: "        houseStakes[id] = await houseStakeForAudit(id, \"market.resolve.bulk\"); const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });",
+    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M15 · RE-POINTED · stage 1 makes a house read — 3.188.3/3.189.3 are gone; the absence pin that replaced them counts the call",
+    file: MARKET_SERVICE,
+    from: "    return { ok: true, data: { stage: \"stage1\" } };",
+    to: "    await houseStakeForAudit(m.id, \"market.adjudicated\"); return { ok: true, data: { stage: \"stage1\" } };",
+    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M16 · RE-POINTED · a REFUSED adjudication makes a house read — the 3.188.* family is gone",
+    file: MARKET_SERVICE,
+    from: "  if (m.status === \"RESOLVED\" || m.status === \"VOIDED\") return { ok: false, error: \"Market already resolved.\", code: \"INVALID\" };",
+    to: "  await houseStakeForAudit(opts.marketId, \"market.adjudicated\"); if (m.status === \"RESOLVED\" || m.status === \"VOIDED\") return { ok: false, error: \"Market already resolved.\", code: \"INVALID\" };",
+    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M17 · RE-POINTED · a REFUSED emergency void makes a house read — 3.188.5/3.188.6 are gone",
+    file: MARKET_SERVICE,
+    from: "  const officer = await db.user.findById(opts.officerId);",
+    to: "  await houseStakeForAudit(opts.marketId, \"market.emergency_void\"); const officer = await db.user.findById(opts.officerId);",
+    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M18 · RE-POINTED · a REFUSED objection rejection makes a house read — 3.188.7/3.187.7 are gone",
+    file: OBJECTIONS_SERVICE,
+    from: "  if (!(await requireRulingOfficer(officerId, \"objection.reject\"))) {",
+    to: "  await houseStakeForAudit((await db.objection.findById(objectionId))?.marketId ?? \"none\", \"objection.rejected\"); if (!(await requireRulingOfficer(officerId, \"objection.reject\"))) {",
+    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M19 · RE-POINTED · a REFUSED objection uphold makes a house read — 3.188.7/3.187.8 are gone",
+    file: OBJECTIONS_SERVICE,
+    from: "  if (!(await requireRulingOfficer(officerId, \"objection.uphold\"))) {",
+    to: "  await houseStakeForAudit((await db.objection.findById(objectionId))?.marketId ?? \"none\", \"objection.upheld\"); if (!(await requireRulingOfficer(officerId, \"objection.uphold\"))) {",
+    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M32 · RE-POINTED · R9 on a market.resolve.stage1 payload — the 3.187.* family is gone; 0.187.1 (which the entry ALSO named) walks every audit write under src/",
+    file: MARKET_SERVICE,
+    from: "      payload: { outcome: opts.outcome, evidence },",
+    to: "      payload: { outcome: opts.outcome, evidence, houseStake: await houseStakeForAudit(m.id, \"market.resolve.stage1\") },",
+    expect: "0.187.1 · ⛔ OWNER RULING D20 · not one audit write in src/ carries houseStake or houseStakes — in its payload, outside it, or through a spread — and the reader is read over every audit call there is",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M34 · RE-POINTED · R9 on the operator's round void, through a dynamic import — 3.187.9/3.187.10 are gone; the spelling still carries the literal `houseStakeForAudit(` both scans split on",
+    file: UPDOWN_SERVICE,
+    from: "    payload: { reason, marketId: round.marketId },",
+    to: "    payload: { reason, marketId: round.marketId, houseStakes: { [round.marketId]: await (await import(\"./house-bot/exposure\")).houseStakeForAudit(round.marketId) } },",
+    expect: "0.187.1 · ⛔ OWNER RULING D20 · not one audit write in src/ carries houseStake or houseStakes — in its payload, outside it, or through a spread — and the reader is read over every audit call there is",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s5:S5-M51 · RE-POINTED · a decision service's player notice reads the house stake — 4.196.1 is gone (ruling 196 struck by D20)",
+    file: OBJECTIONS_SERVICE,
+    from: "notifyObjectionDecided(o.userId, { upheld: false, marketId: o.marketId, note: reviewNote })",
+    to: "notifyObjectionDecided(o.userId, { upheld: false, marketId: o.marketId, note: `${reviewNote}${(await houseStakeForAudit(o.marketId, \"objection.rejected\"))?.no ? \" · house stake NO\" : \"\"}` })",
+    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s5:S5-M52 · RE-POINTED · the same read inside a TERNARY CONDITION — 4.196.2 is gone; 0.191.1 names the condition shape by rule and 0.191.0 counts the call",
+    file: OBJECTIONS_SERVICE,
+    from: "note: `The market was voided and your stake was refunded in full. ${reason}` }",
+    to: "note: `The market was voided and your stake was refunded in full. ${reason}${(await houseStakeForAudit(marketId, \"market.emergency_void\"))?.no ? \" · house stake\" : \"\"}` }",
+    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s5:S5-M53 · RE-POINTED · the vocabulary loses `house[ -]?stakes?` — the 0.175.r2* family is gone; the entry's OWN text named test:house-bot-disclosure 2.v, which exists",
+    file: HOUSE_BOT_VOCABULARY,
+    from: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    to: "|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    expect: "2.v · ruling 175 · CONTROL · every planted ",
+    suite: "disclosure",
+  },
+  {
+    name: "c5-s5:S5-M54 · RE-POINTED · the vocabulary loses `dau la nyumba` — nothing else matches the Swahili house share",
+    file: HOUSE_BOT_VOCABULARY,
+    from: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    to: "|house[ -]?stakes?|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    expect: "2.v · ruling 175 · CONTROL · every planted ",
+    suite: "disclosure",
+  },
+  {
+    name: "c5-s5:S5-M55 · RE-POINTED · the vocabulary loses 平台投注 (平台机器人 is a different alternative and does not cover it)",
+    file: HOUSE_BOT_VOCABULARY,
+    from: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    to: "|house[ -]?stakes?|dau la nyumba|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    expect: "2.v · ruling 175 · CONTROL · every planted ",
+    suite: "disclosure",
+  },
+  {
+    name: "c5-s5:S5-M56 · RE-POINTED · the vocabulary loses `staff[- ]?chosen` — `chosen by (?:staff|you)` matches neither \"staff-chosen\" nor \"staff chosen\"",
+    file: HOUSE_BOT_VOCABULARY,
+    from: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    to: "|house[ -]?stakes?|dau la nyumba|平台投注|chosen by (?:staff|you)|including house\\b`;",
+    expect: "2.v · ruling 175 · CONTROL · every planted ",
+    suite: "disclosure",
+  },
+  {
+    name: "c5-s5:S5-M65 · RE-POINTED · the vocabulary loses `chosen by (?:staff|you)` — `staff[- ]?chosen` matches neither phrasing",
+    file: HOUSE_BOT_VOCABULARY,
+    from: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    to: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|including house\\b`;",
+    expect: "2.v · ruling 175 · CONTROL · every planted ",
+    suite: "disclosure",
+  },
+  {
+    name: "c5-s5:S5-M66 · 🔴 UNGUARDED UNTIL NOW · the word bound comes off `including house`, so \"household\" becomes a hit. 2.v stays green (the sample still matches), 0.175.subset.module stays green, the console lexicon stays green — the claim lived only in the module's docblock. HOUSE_BENIGN_SAMPLES now carries \"including household costs\" and 2.v.b owns it",
+    file: HOUSE_BOT_VOCABULARY,
+    from: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    to: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house`;",
+    expect: "2.v.b · ruling 175 · CONTROL · the benign look-alikes",
+    suite: "disclosure",
+  },
+  {
+    name: "c5-s5:S5-M67 · RE-POINTED · the vocabulary loses `including house\\b` — the held chip's own phrasing is orphaned. ⚠️ the console lexicon stays GREEN here (NEUTRAL carries bare `\\bhouse\\b`), so 2.v is the one that fires",
+    file: HOUSE_BOT_VOCABULARY,
+    from: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+    to: "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)`;",
+    expect: "2.v · ruling 175 · CONTROL · every planted ",
+    suite: "disclosure",
+  },
+  {
+    name: "c5-s5:S5-M68 · 🔴 UNGUARDED UNTIL NOW · the three samples every consumer's planted control uses are deleted, and EVERY consumer then passes vacuously over a shorter list — 2.v asserts `missed.length === 0` and merely prints the count, verify-house-bot-bundle has the identical shape, 0.175.subset.module filters a now-shorter list. No assertion anywhere pinned the population; 0.175.samples derives it from HOUSE_WORD_SOURCE",
+    file: HOUSE_BOT_VOCABULARY,
+    from: "  \"chosen by staff\", \"chosen by you\", \"including house\",",
+    to: "",
+    expect: "0.175.samples · ⛔ the planted-control population is DERIVED from the vocabulary, never maintained beside it: every top-level alternative of HOUSE_WORD_SOURCE is covered by at least one HOUSE_WORD_SAMPLES entry, and every sample is matched by an alternative",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M54 · 🔴 UNGUARDED UNTIL NOW · the KYC bet count stops being house-blind. 4.197.1/4.197.4 went out with ruling 197's strike; `betCount`, `kycRiskScore` and `kycMoneyFacts` occur 0× across scripts/ outside this file, and report-parity reads kyc-risk.ts only for db.txn.listAll()",
+    file: KYC_RISK,
+    from: "      out.betCount += 1;",
+    to: "      if (t.houseBotId == null) out.betCount += 1;",
+    expect: "0.197.1 · ⛔ OWNER RULING D20 · ruling 197 is STRUCK, so the KYC READ is house-blind: src/lib/server/kyc-risk.ts, decommented, carries no vocabulary word, no house identifier and neither struck kycMoneyFacts.house* field",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M55 · 🔴 UNGUARDED UNTIL NOW · a house-derived factor enters the KYC risk score and paints the word \"Liquidity\" on an officer's card. 4.197.3 is gone; 0.198.3's word scan is PLAYER surfaces only and ruling 453's lexicon is the console subtree only — /admin/kyc is neither",
+    file: KYC_RISK,
+    from: "  // 4 · Brand-new account.",
+    to: "  if (txns.some((t) => t.houseBotId != null)) factors.push({ label: \"Liquidity\", points: 5, detail: \"marked stakes\" }); // 4 · Brand-new account.",
+    expect: "0.197.1 · ⛔ OWNER RULING D20 · ruling 197 is STRUCK, so the KYC READ is house-blind: src/lib/server/kyc-risk.ts, decommented, carries no vocabulary word, no house identifier and neither struck kycMoneyFacts.house* field",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M56 · 🔴 UNGUARDED UNTIL NOW · a CLIENT module under /admin/kyc/[id] reads a KYC house figure. 0.197.1 (the step-5 one) is gone, and `houseBetCount` matches NO alternative of HOUSE_IDENTIFIER_SOURCE — the vocabulary alone could not have seen this",
+    file: KYC_DECISION_RAIL,
+    from: "export function KycDecisionRail({",
+    to: "export const railHouseBetCount = (f: { houseBetCount: number }) => f.houseBetCount;\nexport function KycDecisionRail({",
+    expect: "0.197.2 · ⛔ OWNER RULING D20 · not one module under src/app/admin/kyc/ — every file walked from disk, client component, \"use server\" action and page alike — names a house figure",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M76 · 🔴 UNGUARDED UNTIL NOW · a \"use server\" module under /admin/kyc/[id] exports a house figure reader",
+    file: KYC_ACTIONS,
+    from: "import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from \"@/lib/server/kyc-risk\";",
+    to: "import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from \"@/lib/server/kyc-risk\";\nexport async function houseFigures(f: { houseBetCount: number }) { return f.houseBetCount; }",
+    expect: "0.197.2 · ⛔ OWNER RULING D20 · not one module under src/app/admin/kyc/ — every file walked from disk, client component, \"use server\" action and page alike — names a house figure",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M57 · 🔴 UNGUARDED UNTIL NOW · RE-ANCHORED · the case page hands `moneyFacts` WHOLE to a client rail, serialising it into the flight payload. ⚠️ the register anchored `                <KycDecisionRail`, byte-identical to S4-M75's; the anchor is extended by the line below it so the two resolve separately rather than riding one combineInto",
+    file: ID_PAGE_2,
+    from: "                <KycDecisionRail\n                  userId={id}",
+    to: "                <KycDecisionRail\n                  moneyFacts={moneyFacts}\n                  userId={id}",
+    expect: "0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the six judgement props it takes today and nothing a money object could ride in on",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M75 · 🔴 UNGUARDED UNTIL NOW · RE-ANCHORED · the same facts SPREAD into the tag. ⚠️ re-anchored to the first two props for the reason above; 0.434's W25_OWED already reports this page, so the reported set is unchanged and that case stays green",
+    file: ID_PAGE_2,
+    from: "                  userId={id}\n                  autoChecks={autoChecks}",
+    to: "                  {...kycMoneyFacts(txns)}\n                  userId={id}\n                  autoChecks={autoChecks}",
+    expect: "0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the six judgement props it takes today and nothing a money object could ride in on",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M58 · 🔴 UNGUARDED UNTIL NOW · the two stake keys leave the DSAR strip list, leaving a door open in a subject's own export. 3.170.2 is gone. ⚠️ WHEN THIS WAS DECLARED, `dsar-export-secrets.test.mts` planted only houseBotId and intentId and asserted only those two, so its houseHits(json) had nothing to find and the whole suite stayed green on this defect — THAT IS NO LONGER TRUE and the sentence is corrected rather than left to be read again: the fixture plants all four keys and the assertion names all four (hand-driven 2026-09-21, 43/0 → 41/2). 0.170.5 pins the LIST; that suite is the runtime door behind it",
+    file: USER_SERVICE,
+    from: "const HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED = [\"houseBotId\", \"intentId\", \"houseStake\", \"houseStakes\", \"houseBots\", \"houseBotNotificationsRedacted\"] as const;",
+    to: "const HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED = [\"houseBotId\", \"intentId\", \"houseBots\", \"houseBotNotificationsRedacted\"] as const;",
+    expect: "0.170.5 · ⛔ RULING 170 · the DSAR export's house strip names EVERY house key an audit payload can carry — houseBotId, intentId, houseStake, houseStakes, houseBots, houseBotNotificationsRedacted",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M61 · 🔴 UNGUARDED UNTIL NOW · ⚠️ `main`'s OWN behaviour · the emergency-void confirmation stops reaching COMPLIANCE. 4.195.* went out with ruling 195's strike; no file under scripts/ names the role triple and emergency-void.test.mts contains no occurrence of COMPLIANCE at all",
+    file: MARKET_SERVICE,
+    from: "    const officers = await db.user.listByRoles([\"ADMIN\", \"COMPLIANCE\", \"MODERATOR\"]); // audit M5",
+    to: "    const officers = await db.user.listByRoles([\"ADMIN\", \"MODERATOR\"]); // audit M5",
+    expect: "0.m5.1 · ⛔ BOTH officer fan-outs in market-service.ts are addressed to ADMIN, COMPLIANCE and MODERATOR",
+    suite: "reports-mem",
+  },
+  {
+    name: "c5-s4:S4-M67 · 🔴 UNGUARDED UNTIL NOW · ⚠️ `main`'s OWN behaviour · REWRITTEN · the officer's letter gains a label conditional on a money figure. 4.195.6 is gone; PLAYER_NOTIFIERS cover marketCancelledRefundHtml, not the ADMIN letter. ⛔ the register's `to` named `houseRow`, which occurs 0× in email.ts — an undefined identifier is a crash, not a defect, so the condition is re-written onto `refundedTzs`, which the function really takes",
+    file: EMAIL,
+    from: "      { label: \"Players refunded\", value: String(refundedCount) },",
+    to: "      { label: refundedTzs > 0 ? \"Players refunded (incl. positions held)\" : \"Players refunded\", value: String(refundedCount) },",
+    expect: "0.m5.2 · ⛔ the officer's cancellation confirmation states the same four things whatever the house held: marketCancelledAdminHtml's rows are exactly Market, Reason, Players refunded, Total refunded, and every label is a PLAIN string literal",
     suite: "reports-mem",
   },
 ];

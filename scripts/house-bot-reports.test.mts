@@ -72,6 +72,15 @@
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 230, postgres: 80 }, dbPrefix: "hb_reports" });
+// ⛔ MERGED AGAIN 2026-09-21 (ops ← house-bots), AND IT IS THE SAME COLLISION THIS HEADER ALREADY
+// DESCRIBES, a second time. Lane 1 raised the floor 203/64 → 217/64 for the C5-8 reports cases it wrote;
+// ops-lane had raised the same base to 230/80 for the alerts cases plus row 77's. The merged
+// `house-bot-reports-cases.mts` carries BOTH sets, so NEITHER pair describes this tree, and 230/80 is
+// merely the higher of two understatements.
+// ⛔ THE DELTAS WERE NOT ADDED: 230 + 14 is an arithmetic guess and this file forbids one by name. The
+// merge carried 230/80 — the higher on BOTH stores, so neither lane's guard is weakened — and then the
+// number below was set to what `npm run test:house-bot-reports` PRINTED on the merged tree. If the line
+// below still reads 230/80 with no printed-run sentence after this one, the measurement did not happen.
 // ⭐ 200 → 203 and 61 → 64, C5-8 phase 3 (2026-09-20), IN THE SAME COMMIT AS THE ASSERTIONS THAT RAISED IT:
 // §1j row 77's three `11.247.c1e` lines (the OG route's read list, the `resolveWinShareToken` projection, and the
 // plant that makes the second one a measurement) run on BOTH children. A minimum that rises with the assertions is

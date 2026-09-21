@@ -28,7 +28,7 @@ import { MUTATIONS as CONSOLE_ANCHORS } from "../anchors/house-bot-console.ancho
 /* ⛔ 0.232.2b OPENS THE MONEY ANCHORS instead of asserting against seven strings typed here (C5-7's review). */
 import { MUTATIONS as MONEY_ANCHORS } from "../anchors/house-bot-money.anchors.mjs";
 import { createHash } from "node:crypto";
-import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES, HOUSE_BENIGN_SAMPLES } from "./house-bot-vocabulary.mjs";
+import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SOURCE, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES, HOUSE_BENIGN_SAMPLES } from "./house-bot-vocabulary.mjs";
 
 type Any = any;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -1394,6 +1394,49 @@ if (STORE === "memory") {
     }
     const everyShared = HOUSE_WORD_SAMPLES.filter((s) => !extendHouseWords(["house", "50pick"]).test(s));
     ok("0.175.subset.module · an extended list still finds every shared word sample (the shared words are a subset by construction)", everyShared.length === 0, j(everyShared));
+    /* ⛔ THE PLANTED-CONTROL POPULATION MEASURED ITS OWN SHRINKING INPUT, AND NOTHING SAID SO (C5-8, 2026-09-21).
+     * `HOUSE_WORD_SAMPLES` is the list every absence consumer plants: `2.v` in `test:house-bot-disclosure` asserts
+     * `missed.length === 0` and merely PRINTS `${samples.length}`; `verify-house-bot-bundle.mjs:98` has the identical
+     * shape and prints its own count at `:122`; `0.175.subset.module` directly above filters a list that may be
+     * shorter than it was yesterday. Delete three samples and EVERY one of them passes — vacuously, over a smaller
+     * population — because no assertion anywhere pinned the list against the vocabulary it is supposed to cover.
+     * ⭐ So the population is DERIVED rather than pinned to a number: every top-level alternative of
+     * `HOUSE_WORD_SOURCE` must be covered by at least one sample, and every sample must be matched by an
+     * alternative. A deleted sample is reported by the alternative it orphaned; a word added to the vocabulary with
+     * no sample is reported the day it lands; and neither direction can be satisfied by editing a count. */
+    const topAlternatives = (src: string): string[] => {
+      const out: string[] = [];
+      let depth = 0, cur = "";
+      for (let i = 0; i < src.length; i++) {
+        const c = src[i];
+        if (c === "\\") { cur += c + (src[i + 1] ?? ""); i++; continue; }
+        if (c === "(") depth++;
+        else if (c === ")") depth--;
+        else if (c === "|" && depth === 0) { out.push(cur); cur = ""; continue; }
+        cur += c;
+      }
+      out.push(cur);
+      return out.filter((a) => a.length > 0);
+    };
+    const coverage = (samples: readonly string[]) => {
+      const alts = topAlternatives(HOUSE_WORD_SOURCE);
+      return {
+        alts: alts.length,
+        uncovered: alts.filter((a) => !samples.some((s) => new RegExp(a, "i").test(s))),
+        orphans: samples.filter((s) => !alts.some((a) => new RegExp(a, "i").test(s))),
+      };
+    };
+    const cov = coverage(HOUSE_WORD_SAMPLES);
+    ok("0.175.samples · ⛔ the planted-control population is DERIVED from the vocabulary, never maintained beside it: every top-level alternative of HOUSE_WORD_SOURCE is covered by at least one HOUSE_WORD_SAMPLES entry, and every sample is matched by an alternative — a deleted sample makes every consumer's planted control pass over a smaller list, and no assertion measured that until this one",
+      cov.uncovered.length === 0 && cov.orphans.length === 0 && cov.alts >= 12 && HOUSE_WORD_SAMPLES.length >= cov.alts,
+      j({ alternatives: cov.alts, samples: HOUSE_WORD_SAMPLES.length, uncovered: cov.uncovered, orphans: cov.orphans }));
+    /* ⛔ AND THE CONTROL, over the same measure: the three samples C5's register deletes, and a sample that covers
+     * nothing. A coverage check that has never been shown to REPORT a gap is a coverage check that measures nothing. */
+    const without3 = HOUSE_WORD_SAMPLES.filter((s) => !["chosen by staff", "chosen by you", "including house"].includes(s));
+    const plantedOrphan = coverage([...HOUSE_WORD_SAMPLES, "a perfectly ordinary sentence"]);
+    ok("0.175.samples.c1 · CONTROL · the SAME measure over a copy of the list with C5-s5's three deletions reports the two alternatives they orphaned, a sample matching no alternative is reported, and the real list is reported clean",
+      coverage(without3).uncovered.length === 2 && plantedOrphan.orphans.length === 1 && coverage(HOUSE_WORD_SAMPLES).uncovered.length === 0,
+      j({ deleted3: coverage(without3).uncovered, plantedOrphan: plantedOrphan.orphans }));
     const stale = [
       ...Object.entries(VOCABULARY_PATTERN_ALLOWLIST).flatMap(([file, texts]) => texts.filter((t) => !ownVocabulary(file, read(file)).allowed.includes(t)).map((t) => `${file}: ${t}`)),
       ...Object.entries(BROADER_PATTERN_ALLOWLIST).flatMap(([file, texts]) => texts.filter((t) => !broaderLists(file, read(file)).allowed.includes(t)).map((t) => `${file}: ${t}`)),
@@ -2497,6 +2540,199 @@ export function consoleGateExportProblems(
     }
   });
   return { exports: names, problems };
+}
+
+/* ═══ §0 · C5-8 · THE BEHAVIOURS WHOSE GUARD LEFT WITH A STRUCK RULING, AND NOTHING SAID SO ═══════════════════
+ *
+ * ⛔ WHAT THESE PINS ARE, AND WHY THEY ARE NEW. C5-8 re-resolved the four mutation registers against this tree and
+ * found 29 entries whose `from` resolves EXACTLY ONCE — the site is still there, byte for byte — while naming
+ * assertions that exist nowhere in the suite they name. An assertion can disappear three ways and they are NOT the
+ * same thing: (a) the BEHAVIOUR was struck by a ruling and its assertion went with it, so the entry retires; (b) the
+ * assertion was renamed or absorbed, so the entry re-points; or ⛔ (c) THE BEHAVIOUR IS STILL SHIPPED AND THE
+ * ASSERTION SIMPLY VANISHED. Eleven were (c) — an unguarded behaviour with a ready-made mutation still pointing at
+ * it. Each pin below closes one of them, and each has a declaration in `scripts/anchors/house-bot-c5.anchors.mjs`
+ * that `red:house-bot-c5` WRITES INTO THE REAL FILE and drives, because an assertion nobody has seen go red is a
+ * claim, not a guard.
+ *
+ * ⛔ FIVE OF THE ELEVEN ARE ABSENCE RULES WHOSE WHOLE FORCE WAS IN AN ASSERTION THAT WENT OUT WITH A STRUCK RULING.
+ * Ruling 197 — the KYC card's "of which house stakes" line and the `kycMoneyFacts.house*` fields behind it — was
+ * STRUCK by owner ruling D20 (`C5-D20-REPLAN.md:33`) and un-built in C5-5b. The un-build deleted the CODE and the
+ * cases that watched it in the same pass, so from 2026-09-17 until this section landed, nothing in the repository
+ * measured that the KYC case STAYS house-blind. `0.197.1`–`0.197.3` are that measurement, and they are an absence
+ * proof in exactly the shape `0.187.1` and `0.191.0` already use for the same owner ruling.
+ *
+ * ⚠️ AND TWO OF THEM ARE NOT HOUSE BEHAVIOUR AT ALL — which is the whole reason they were invisible. `0.m5.1` and
+ * `0.m5.2` pin `main`'s own emergency-void confirmation: which officer classes it is addressed to, and the fixed row
+ * set of the letter it sends. A house case happened to cover both, and when that case was struck they lost their
+ * only guard. They are pinned HERE because this is the suite that already reads `market-service.ts` and `email.ts`
+ * as source — not because they are house rules, and the next session should not read them as any.
+ */
+if (STORE === "memory") {
+  section("§0 · C5-8 · rulings 197 and 170 under D20, and the two `main` behaviours a struck house case was silently guarding");
+
+  /** The KYC case, whose read (`kyc-risk.ts`) and whose surfaces (`src/app/admin/kyc/`) ruling 197 built on. */
+  const KYC_READ = "src/lib/server/kyc-risk.ts";
+  const KYC_CASE_PAGE = "src/app/admin/kyc/[id]/page.tsx";
+  const KYC_DIR = "src/app/admin/kyc/";
+  /**
+   * The two `kycMoneyFacts` fields ruling 197 built and owner ruling D20 struck. ⛔ NEEDLES, never code: neither
+   * matches ANY alternative of `HOUSE_IDENTIFIER_SOURCE` (`houseBetCount` is not `HouseBot\w*`), which is exactly why
+   * the vocabulary alone could not see the register's own mutations and why this list has to exist beside it.
+   */
+  const KYC_STRUCK_197 = ["houseBetCount", "houseStakedTzs"] as const;
+  const struck197In = (code: string) => KYC_STRUCK_197.filter((n) => new RegExp(`\\b${n}\\b`).test(code));
+  /** The six judgement props the client decision rail takes today — pinned BY VALUE, so a renamed prop is a decision. */
+  const KYC_RAIL_PROPS = ["userId", "autoChecks", "makerCheckerRequired", "hasRecommendation", "isRecommender", "recommenderName"];
+  /** Every attribute a `<tag …>` carries, in source order; a spread is reported as `...` (a money object's own door). */
+  const jsxAttrNames = (file: string, code: string, tag: string): string[][] => {
+    const out: string[][] = [];
+    walkTree(parse(file, code), (n) => {
+      if (!ts.isJsxOpeningLikeElement(n) || n.tagName.getText() !== tag) return;
+      out.push(n.attributes.properties.map((p) => (ts.isJsxSpreadAttribute(p) ? "..." : p.name.getText())));
+    });
+    return out;
+  };
+
+  await guard("0.197", () => {
+    const kycRead = decomment(read(KYC_READ));
+    const readHits = houseHitsByFamily(kycRead).map((h) => `${h.family}:${h.word}`);
+    ok("0.197.1 · ⛔ OWNER RULING D20 · ruling 197 is STRUCK, so the KYC READ is house-blind: src/lib/server/kyc-risk.ts, decommented, carries no vocabulary word, no house identifier and neither struck kycMoneyFacts.house* field — so neither the bet count an officer reads nor a single risk factor can be derived from a marked stake",
+      readHits.length === 0 && struck197In(kycRead).length === 0 && kycRead.length > 8_000,
+      j({ chars: kycRead.length, hits: readHits, struck: struck197In(kycRead) }));
+
+    const kycModules = srcFiles().filter((rel) => rel.startsWith(KYC_DIR));
+    const moduleProblems = kycModules
+      .map((rel) => ({ rel, code: decomment(read(rel)) }))
+      .map(({ rel, code }) => ({ rel, hits: houseHitsByFamily(code).map((h) => `${h.family}:${h.word}`), struck: struck197In(code) }))
+      .filter((x) => x.hits.length > 0 || x.struck.length > 0);
+    ok("0.197.2 · ⛔ OWNER RULING D20 · not one module under src/app/admin/kyc/ — every file walked from disk, client component, \"use server\" action and page alike — names a house figure: no vocabulary word, no house identifier, and neither of the two struck kycMoneyFacts.house* fields; the KYC surface is where ruling 197's line was painted and it is the one the un-build left unwatched",
+      moduleProblems.length === 0 && kycModules.length >= 10,
+      j({ population: kycModules.length, problems: moduleProblems }));
+
+    const pageCode = decomment(read(KYC_CASE_PAGE));
+    const railSites = jsxAttrNames(KYC_CASE_PAGE, pageCode, "KycDecisionRail");
+    ok("0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the six judgement props it takes today and nothing a money object could ride in on — no spread, and no seventh attribute; moneyFacts stays on the server, where canSeeMoney decides figure by figure what is painted, and a whole object handed to a \"use client\" rail is serialised into the flight payload regardless",
+      railSites.length === 1 && j(railSites[0]) === j(KYC_RAIL_PROPS),
+      j({ sites: railSites }));
+
+    /* ⛔ THE CONTROLS. Every one of the three above is an ABSENCE, and an absence pin that cannot be shown to REPORT
+     * is indistinguishable from a pin reading an empty population. Each plant is the register's own mutation. */
+    const plantedRead = {
+      count: houseHitsByFamily(plant(kycRead, "      out.betCount += 1;", "      if (t.houseBotId == null) out.betCount += 1;")).length,
+      factor: houseHitsByFamily(plant(kycRead, "  const factors: RiskFactor[] = [];", "  const factors: RiskFactor[] = [];\n  if (txns.some((t) => t.houseBotId != null)) factors.push({ label: \"Liquidity\", points: 5, detail: \"marked stakes\" });")).length,
+      struck: struck197In(`${kycRead}\nexport const houseBetCount = (f: KycMoneyFacts) => f.betCount;`).length,
+      benign: houseHitsByFamily(`${kycRead}\n// a household budget, the HOUSE_FEE type and /admin/house are none of this feature's business\nconst t = "HOUSE_FEE";`).length,
+    };
+    ok("0.197.c1 · CONTROL · over the REAL read: the register's own house-blind mutation (a houseBotId condition on the bet count) and its house-derived risk factor are each reported, a struck kycMoneyFacts.house* name planted as an export is reported, and the platform's HOUSE_FEE, /admin/house and the word \"household\" in a comment are not",
+      plantedRead.count >= 1 && plantedRead.factor >= 1 && plantedRead.struck === 1 && plantedRead.benign === 0, j(plantedRead));
+
+    const railCode = decomment(read("src/app/admin/kyc/[id]/kyc-decision-rail.tsx"));
+    const actionsCode = decomment(read("src/app/admin/kyc/[id]/kyc-actions.ts"));
+    const plantedModules = {
+      client: struck197In(`export const railHouseBetCount = (f: { houseBetCount: number }) => f.houseBetCount;\n${railCode}`).length,
+      server: struck197In(`${actionsCode}\nexport async function houseFigures(f: { houseBetCount: number }) { return f.houseBetCount; }`).length,
+      word: houseHitsByFamily(`${railCode}\nconst caption = "of which house stakes";`).length,
+      benign: struck197In(railCode).length + houseHitsByFamily(railCode).length,
+    };
+    ok("0.197.c2 · CONTROL · over the REAL modules: a client component reading a struck KYC house figure and a \"use server\" module exporting one are each reported, a house WORD planted as client copy is reported, and the untouched rail is not",
+      plantedModules.client === 1 && plantedModules.server === 1 && plantedModules.word >= 1 && plantedModules.benign === 0, j(plantedModules));
+
+    const plantedRail = {
+      prop: jsxAttrNames(KYC_CASE_PAGE, plant(pageCode, "<KycDecisionRail", "<KycDecisionRail moneyFacts={moneyFacts}"), "KycDecisionRail"),
+      spread: jsxAttrNames(KYC_CASE_PAGE, plant(pageCode, "<KycDecisionRail", "<KycDecisionRail {...kycMoneyFacts(txns)}"), "KycDecisionRail"),
+    };
+    ok("0.197.c3 · CONTROL · the rail pin reports the register's two shapes over the REAL page — the facts object handed as a named prop, and the facts SPREAD into the tag — and reports the six real props clean",
+      j(plantedRail.prop[0]) !== j(KYC_RAIL_PROPS) && plantedRail.spread[0]?.includes("...") === true && j(railSites[0]) === j(KYC_RAIL_PROPS),
+      j(plantedRail));
+  });
+
+  /* ━━ 0.170.5 · THE DSAR STRIP LIST, WHICH ONLY EVER HAD ONE GUARD AND IT WAS NOT AN ASSERTION ━━━━━━━━━━━━━━━
+   * `exportedAuditPage` (user-service.ts) strips the house keys out of every audit payload a SUBJECT exports for
+   * themselves. `test:dsar-secrets` drives the real door — and its fixture rows carry only `houseBotId` and
+   * `intentId`, and `dsar-export-secrets.test.mts:202` asserts only those two are gone. So `houseStake` and
+   * `houseStakes` could both leave the list with every assertion in that suite green: the fixture never puts them in
+   * a payload, so `houseHits(json)` has nothing to find. ⛔ The list is the control, so the list is what is pinned.
+   */
+  await guard("0.170.5", () => {
+    const HOUSE_AUDIT_STRIP_KEYS = ["houseBotId", "intentId", "houseStake", "houseStakes", "houseBots", "houseBotNotificationsRedacted"];
+    const STRIP_LIST_NAME = "HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED";
+    const userSvc = lf(decomment(read("src/lib/server/user-service.ts")));
+    /* ⚠️ READ BY INDEX, NOT BY A REGEX LITERAL, AND THAT IS RULING 175 RATHER THAN TASTE. A pattern naming
+     * `HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED` is a house-identifier pattern, and `0.175.house-bot-reports-cases.mts`
+     * reported this file for declaring one the first time it was written that way — correctly. The alternative was
+     * an entry in `VOCABULARY_PATTERN_ALLOWLIST`, which would have widened the one exemption `0.175.allow` exists
+     * to keep shrinking, to buy nothing this slice cannot do. */
+    const DECL = `const ${STRIP_LIST_NAME} = [`;
+    const keysOf = (code: string): string[] => {
+      const at = code.indexOf(DECL);
+      const end = at < 0 ? -1 : code.indexOf("]", at);
+      return end < 0 ? [] : code.slice(at + DECL.length, end).split(",").map((s) => s.trim()).filter((s) => s.startsWith("\"") && s.endsWith("\"")).map((s) => s.slice(1, -1));
+    };
+    const keys = keysOf(userSvc);
+    const uses = userSvc.split(STRIP_LIST_NAME).length - 1;
+    ok("0.170.5 · ⛔ RULING 170 · the DSAR export's house strip names EVERY house key an audit payload can carry — houseBotId, intentId, houseStake, houseStakes, houseBots, houseBotNotificationsRedacted — and that one list is what both the detector and the filter read, so a key quietly dropped from it walks straight into a subject's own export with test:dsar-secrets green (its fixture plants two of the six)",
+      j(keys) === j(HOUSE_AUDIT_STRIP_KEYS) && uses === 3, j({ keys, uses }));
+    const dropped = keysOf(userSvc.replace('"houseStake", "houseStakes", ', ""));
+    ok("0.170.c12 · CONTROL · the SAME measure over a copy with the two stake keys dropped reports the change, and over the real module reports none — the pin reads the declaration rather than the word appearing somewhere in the file",
+      j(dropped) !== j(HOUSE_AUDIT_STRIP_KEYS) && dropped.length === 4 && j(keysOf(userSvc)) === j(HOUSE_AUDIT_STRIP_KEYS), j({ dropped }));
+  });
+
+  /* ━━ 0.m5 · `main`'s OWN OFFICER FAN-OUTS — GUARDED ONLY BY A HOUSE CASE THAT WAS STRUCK ━━━━━━━━━━━━━━━━━━━
+   * ⚠️ NOT A HOUSE RULE. C5's register had a mutation for each of these because ruling 195 gave the cancellation
+   * confirmation a house clause; D20 struck the clause and the cases went with it, leaving `main`'s own behaviour —
+   * WHO is told, and WHAT the letter states — with no assertion anywhere. Measured 2026-09-21: no file under
+   * `scripts/` names the role triple, and `emergency-void.test.mts` contains no occurrence of COMPLIANCE at all; it
+   * asserts only that the letter "includes the reason".
+   * 🔴 AND THE FIRST VERSION OF 0.m5.1 SAID SOMETHING FALSE, WHICH IS WORTH KEEPING ON THE RECORD. It read "the
+   * emergency-void confirmation … at BOTH of its sites". There are two `// audit M5` fan-outs in that file and they
+   * are DIFFERENT notifications: `alertOfficersMarketDue` (`:2253`, a market closed by time and awaiting the
+   * two-officer ceremony) and the emergency-void confirmation (`:4519`). The pin was right; its sentence named one
+   * of them twice. Caught by reading the two sites from `git show HEAD:` rather than trusting the label that had
+   * just been written — the assertion guards MORE than it claimed, and an authority that overstates its subject is
+   * how the next session learns the wrong thing from a passing test.
+   */
+  await guard("0.m5", () => {
+    const M5_ROLES = '["ADMIN", "COMPLIANCE", "MODERATOR"]';
+    const ms = lf(decomment(read("src/lib/server/market-service.ts")));
+    /**
+     * ⭐ THE BINDING IS THE DISCRIMINATOR, AND THAT IS WHAT MAKES THIS A MEASURE RATHER THAN A HEADCOUNT. Both
+     * fan-outs read `const officers = await db.user.listByRoles(…)`. Counting every `listByRoles` call in the file
+     * would have made a NEW, unrelated role read somewhere else redden this pin — a guard that cries wolf is a guard
+     * the next session switches off, so 0.m5.c1 below proves one is let through.
+     */
+    const fanOutsOf = (code: string) => [...code.matchAll(/const officers = await db\.user\.listByRoles\(\s*(\[[^\]]*\])\s*\)/g)].map((m) => m[1].replace(/\s+/g, " "));
+    const sites = fanOutsOf(ms);
+    ok("0.m5.1 · ⛔ BOTH officer fan-outs in market-service.ts are addressed to ADMIN, COMPLIANCE and MODERATOR — alertOfficersMarketDue (a market closed by time, awaiting the two-officer ceremony) and the emergency-void confirmation; drop a role from either and a whole officer class silently stops being told, which nothing in this repository measured once ruling 195's house clause was struck and emergency-void.test.mts names COMPLIANCE nowhere at all",
+      sites.length === 2 && sites.every((s) => s === M5_ROLES), j({ sites }));
+    const droppedRole = fanOutsOf(plant(ms, `    const officers = await db.user.listByRoles(${M5_ROLES});`, '    const officers = await db.user.listByRoles(["ADMIN", "MODERATOR"]);'));
+    const unrelated = fanOutsOf(`${ms}\nasync function plantedSweep() { const auditors = await db.user.listByRoles(["ADMIN"]); return auditors; }`);
+    ok("0.m5.c1 · CONTROL · COMPLIANCE dropped from ONE of the two fan-outs is reported — a pin reading only the first site would have passed this — the real module reports two identical triples, and ⭐ THE POSITIVE SIDE: a NEW db.user.listByRoles bound to another name is left alone, so this pin polices the fan-outs and not every role read in the file",
+      droppedRole.length === 2 && droppedRole.filter((s) => s === M5_ROLES).length === 1
+        && fanOutsOf(ms).every((s) => s === M5_ROLES) && unrelated.length === 2 && unrelated.every((s) => s === M5_ROLES),
+      j({ droppedRole, unrelated }));
+
+    const EMAIL_FILE = "src/lib/server/email.ts";
+    const M5_ROW_LABELS = ["Market", "Reason", "Players refunded", "Total refunded"];
+    const emailCode = lf(decomment(read(EMAIL_FILE)));
+    const letterOf = (code: string) => functionDeclarationText(EMAIL_FILE, code, "marketCancelledAdminHtml");
+    const rowsOf = (letter: string) => ({
+      labels: [...letter.matchAll(/\{\s*label:\s*("(?:[^"\\]|\\.)*")\s*,/g)].map((m) => JSON.parse(m[1]) as string),
+      rows: (letter.match(/\{\s*label:/g) ?? []).length,
+    });
+    const real = rowsOf(letterOf(emailCode));
+    ok("0.m5.2 · ⛔ the officer's cancellation confirmation states the same four things whatever the house held: marketCancelledAdminHtml's rows are exactly Market, Reason, Players refunded, Total refunded, and every label is a PLAIN string literal — a conditional label or a fifth row is a fact about the book reaching an officer's letter through a door no notice pin watches (0.198.2's PLAYER_NOTIFIERS cover marketCancelledRefundHtml, not this one)",
+      j(real.labels) === j(M5_ROW_LABELS) && real.rows === M5_ROW_LABELS.length, j(real));
+    const PLAYERS_ROW = '      { label: "Players refunded", value: String(refundedCount) },';
+    const conditional = rowsOf(letterOf(plant(emailCode, PLAYERS_ROW, '      { label: refundedTzs > 0 ? "Players refunded (incl. positions held)" : "Players refunded", value: String(refundedCount) },')));
+    const fifth = rowsOf(letterOf(plant(emailCode, PLAYERS_ROW, `${PLAYERS_ROW}\n      { label: "Of which house stakes", value: formatTzs(refundedTzs) },`)));
+    /** ⭐ THE POSITIVE SIDE: this pin freezes the ROWS, not the letter. One more line of prose must still be allowed. */
+    const CTA = '    ${ctaButton("/admin/markets", "Open markets")}';
+    const extraProse = rowsOf(letterOf(plant(emailCode, CTA, '    ${subtitle("The market is closed and nothing further is owed on it.")}\n' + CTA)));
+    ok("0.m5.c2 · CONTROL · both damaging shapes are reported over the REAL letter — a label made conditional on a money figure (the row count holds at four while a label stops being a literal) and a fifth house row (the labels hold their spelling while the count moves), so neither half of the measure is decoration — and ⭐ THE POSITIVE SIDE: one more line of PROSE in the same letter is NOT reported, because this pin freezes the four rows and not the letter",
+      j(conditional.labels) !== j(M5_ROW_LABELS) && conditional.rows === 4 && fifth.rows === 5 && fifth.labels.includes("Of which house stakes")
+        && j(extraProse.labels) === j(M5_ROW_LABELS) && extraProse.rows === M5_ROW_LABELS.length,
+      j({ conditional, fifth, extraProse }));
+  });
 }
 
 if (STORE === "memory") {
