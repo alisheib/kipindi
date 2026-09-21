@@ -547,7 +547,13 @@ export function broaderLists(file: string, raw: string): { extendsShared: number
 }
 
 /**
- * The absence consumers of ruling 175. ⭐ SIX SINCE C7 STEP 7: the SERVED probe joined the closed list (C7-SPEC
+ * The absence consumers of ruling 175. ⭐ SEVEN SINCE C5-8: `test:house-bot-surfaces` joined it on the day it was
+ * written — the surface lexicon whose population is the ADMIN SURFACES and the modules they import, the complement
+ * no other house-word guard was reading (675 of 1,087 `src/` files at the time, 192 of them admin surfaces). It
+ * consumes the shared words AND the shape family `HOUSE_CAMEL_SOURCE`, which exists because S4-M56 showed
+ * `houseBetCount` matching no alternative of `HOUSE_IDENTIFIER_SOURCE` — see `KYC_STRUCK_197` below, the hand-typed
+ * needle list that had to exist beside the vocabulary precisely because of it.
+ * ⭐ SIX SINCE C7 STEP 7: the SERVED probe joined the closed list (C7-SPEC
  * ruling 397(a)). It imports `houseHits` and declares no pattern of its own, and until step 7 it sat OUTSIDE the
  * single-source pin — an absence instrument that nothing held to the one vocabulary, which is the shape this pin
  * exists to refuse. ⛔ `scripts/lib/house-bot-console-cases.mts` is deliberately NOT here, and the reason is
@@ -559,6 +565,7 @@ export function broaderLists(file: string, raw: string): { extendsShared: number
  * imports the shared module and declares no house WORD LIST of its own.
  */
 export const VOCABULARY_CONSUMERS = [
+  "scripts/house-bot-surfaces.test.mts",
   "scripts/house-bot-disclosure.test.mts",
   "scripts/verify-house-bot-bundle.mjs",
   "scripts/house-bot-holder-view-shots.mts",

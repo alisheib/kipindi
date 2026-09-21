@@ -167,3 +167,58 @@ export const HOUSE_BENIGN_SAMPLES = Object.freeze([
   "HOUSE_FEE", "/admin/house", "House edge", "hb_nonce", "Xhb_0123456789abcdef01234567", "hb_0123456789abcdef0123456789", "hbi_abc",
   "including household costs",
 ]);
+
+/**
+ * ⛔ THE SHAPE FAMILY — `house` FOLLOWED BY A CAPITAL (C5-8, 2026-09-21, from the S4-M56 finding).
+ *
+ * ⛔ WHY IT HAD TO EXIST. `HOUSE_IDENTIFIER_SOURCE` matches camelCase by an explicit list of FOUR names
+ * (`houseStake`, `houseOnly`, `houseBotId`, and `HouseBot\w*`, which needs a capital H). Measured on this branch:
+ * `src/` carries SEVENTY-ONE distinct `house<Capital>` identifiers and the identifier family matches exactly TWO of
+ * them. `houseBetCount` — the name the C5-s4 register plants on the KYC rail — is one of the sixty-nine it cannot
+ * see, and `house-bot-reports-cases.mts` says so in its own words at `KYC_STRUCK_197`: a HAND-TYPED needle list,
+ * scoped to `src/app/admin/kyc/`, that exists precisely because the vocabulary was blind to the shape. A hand list
+ * in one directory is not a guard for the shape; this is.
+ *
+ * ⛔ AND IT IS DELIBERATELY NOT A MEMBER OF `HOUSE_FAMILIES`. Every existing consumer reaches its verdict through
+ * `houseHits` / `houseHitsByFamily`, which fold every family together — so adding this one there would silently
+ * redden `/admin/house` (the platform's OWN owner book: `houseFee`, `housePosition`, `houseAccountBalances`), the
+ * ledger, the house-pool purge chain and the fourteen admin pages that legitimately call the console's one gated
+ * door. Widening a shared instrument to catch one shape, and then allowlisting the fallout in a dozen suites, is how
+ * a guard gets switched off. The shape is exported on its own and consumed by the one suite whose population is
+ * narrow enough to carry it (`test:house-bot-surfaces`), which decides the accept side from the door module's OWN
+ * exports rather than from a list.
+ *
+ * ⚠️ IT MATCHES A SHAPE, NOT A MEANING, so it needs BOTH controls and both are below: `HOUSE_CAMEL_SAMPLES` is the
+ * refuse side and `HOUSE_CAMEL_BENIGN_SAMPLES` the accept side. `\bhouse` is lower-case and word-bounded, so
+ * `HouseBot` (capital H — the identifier family's own), `house_bot` (a separator, not a capital), `household`
+ * (no capital) and `warehouseBin` (no word boundary before `house`) are none of them.
+ */
+export const HOUSE_CAMEL_SOURCE = String.raw`\bhouse[A-Z][A-Za-z0-9]*`;
+
+/** A fresh RegExp for the shape family (a shared global RegExp keeps `lastIndex` between callers). */
+export function houseCamelRegExp(flags = "g") {
+  return new RegExp(HOUSE_CAMEL_SOURCE, flags);
+}
+
+/** Every `house<Capital>` identifier in `text`, in source order. */
+export function houseCamelHits(text) {
+  return [...String(text ?? "").matchAll(houseCamelRegExp())].map((m) => m[0]);
+}
+
+/**
+ * The refuse side. ⭐ `houseBetCount` and `houseStakedTzs` are FIRST because they are the two names owner ruling D20
+ * struck and the C5-s4 register re-plants (S4-M56, S4-M76): the shape family exists to see them outside
+ * `src/app/admin/kyc/`, where the hand-typed needle list cannot look.
+ */
+export const HOUSE_CAMEL_SAMPLES = Object.freeze([
+  "houseBetCount", "houseStakedTzs", "houseBotId", "houseOnly", "houseStake", "houseExposure", "houseLiquidityTzs",
+]);
+
+/**
+ * ⛔ THE ACCEPT SIDE, AND IT IS THE HALF THAT KEEPS THE SHAPE USABLE. A shape pattern with no benign samples is one
+ * false positive away from being deleted by the next session. None of these may match.
+ */
+export const HOUSE_CAMEL_BENIGN_SAMPLES = Object.freeze([
+  "household", "households", "housebot", "HouseBot", "HouseBotStatus", "house_bot", "HOUSE_FEE", "warehouseBin",
+  "house", "houses", "housing", "inhouseTeam",
+]);

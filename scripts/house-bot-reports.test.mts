@@ -71,7 +71,10 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 217, postgres: 64 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 218, postgres: 64 }, dbPrefix: "hb_reports" });
+// ⭐ 217 → 218, C5-8 (2026-09-21), IN THE SAME COMMIT AS THE ASSERTION THAT RAISED IT: `test:house-bot-surfaces`
+// joined `VOCABULARY_CONSUMERS`, so `0.175` emits one more case. The memory child PRINTED 218 on that run; Postgres
+// is unchanged because the case is a §0 source pin and §0 runs in the memory child only.
 // ⭐ 200 → 203 and 61 → 64, C5-8 phase 3 (2026-09-20), IN THE SAME COMMIT AS THE ASSERTIONS THAT RAISED IT:
 // §1j row 77's three `11.247.c1e` lines (the OG route's read list, the `resolveWinShareToken` projection, and the
 // plant that makes the second one a measurement) run on BOTH children. A minimum that rises with the assertions is
