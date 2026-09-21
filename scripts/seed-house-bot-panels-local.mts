@@ -187,9 +187,15 @@ const EVENT_KINDS = [
 ];
 let e = 0;
 const evMade: { id: string; ageMs: number }[] = [];
-for (let pass = 0; pass < 2; pass += 1) {
+/* 🔴 THREE PASSES, AND THE THIRD IS THE ONE THAT MAKES A STATE REACHABLE AT ALL. With two, the ACTIVE
+   account held exactly 20 events — exactly one page — so `/admin/desk/<id>?tab=history&hpage=2` was served
+   as the LAST page, correctly and indistinguishably from a pager that does not work. The drive photographed
+   it under the name "page 2" and measured page 1; the product was right and the coverage claim was false,
+   which is the "not applicable" verdict this programme has already paid for. The third pass goes to the
+   ACTIVE account too, so that panel has a real second page to reach. */
+for (let pass = 0; pass < 3; pass += 1) {
   for (const kind of EVENT_KINDS) {
-    const bot = pass === 0 ? active : (others[e % Math.max(1, others.length)] ?? active);
+    const bot = pass === 1 ? (others[e % Math.max(1, others.length)] ?? active) : active;
     const ev = await dal.houseBotEventStore.append({
       houseBotId: bot.id, userId: null, marketId: null, kind,
       fromStatus: kind === "PAUSED" ? "ACTIVE" : kind === "STARTED" ? "PAUSED" : null,

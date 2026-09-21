@@ -281,6 +281,12 @@ for (const r of report) {
  * list with nothing in it. Both halves are asserted here, with a control, because the first version of this file
  * recorded `pagerBox` and asserted NOTHING about it — so a probe that had gone blind and a page that had lost its
  * pager read exactly the same in the log. */
+/* 🔴 AND PAGE 2 MUST REALLY BE PAGE 2. A state named "page 2" that is served the LAST page — which is what
+ * `?hpage=2` correctly does when the panel holds one page — photographs page 1 under another name, and the
+ * drive then CLAIMS a state it never reached. Measured 2026-09-21: the ACTIVE account held exactly 20 events,
+ * so `A-H2` was page 1 and nothing said so. The fixture now gives that panel a second page, and this pair of
+ * assertions is what keeps the claim honest: the first row of page 2 must DIFFER from the first row of page 1. */
+const PAGE2 = [["L-A2", "L-A1"], ["A-A2", "A-A1"], ["L-H2", "L-H1"], ["A-H2", "A-H1"]];
 const PAGED = new Set(["L-A1", "L-A2", "L-A3", "L-H1", "L-H2", "L-H3", "A-A1", "A-A2", "A-A3", "A-H1", "A-H2"]);
 const UNPAGED = new Set(["L-A4", "A-A4"]);
 for (const r of report) {
@@ -296,6 +302,17 @@ for (const r of report) {
   if (UNPAGED.has(r.id)) {
     ok(`§P4 ${r.id} @${r.width} · CONTROL · no pager is drawn over a filter that matched nothing`,
       !r.pagerBox, r.pagerBox ? JSON.stringify(r.pagerBox.text) : "");
+  }
+}
+
+for (const [two, one] of PAGE2) {
+  for (const width of WIDTHS) {
+    const b = report.find((r) => r.id === two && r.width === width);
+    const a = report.find((r) => r.id === one && r.width === width);
+    if (!a || !b) continue;
+    const key = (r) => JSON.stringify((r.firstCells || []).map((c) => c.t));
+    ok(`§P5 ${two} @${width} · page 2 is a DIFFERENT page, not page 1 under another name`,
+      key(a) !== key(b) && b.rowCount > 0, `page1 ${key(a).slice(0, 60)} · page2 ${key(b).slice(0, 60)}`);
   }
 }
 
