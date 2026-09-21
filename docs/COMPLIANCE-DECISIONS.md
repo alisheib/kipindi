@@ -6,6 +6,111 @@
 
 ---
 
+## 2026-09-21 (second) · A lost compliance row becomes VISIBLE, and `valid` stops surviving an edited one — AR-3 CLOSED
+
+**Status:** built and driven on branch `rel-lane`. ⛔ **Nothing here was deployed by a session**, and nothing here
+asks for a deploy. Re-derive every number below; none of it is inherited:
+
+```
+npm run test:audit-attest     # the guard  — 37 assertions, 13 controls, no database
+npm run rehearse:audit-hole   # the drive  — 32 assertions, real Postgres, real appender, hole built not raced
+npm run audit:ticket-sweep    # the backfill (dry run; --declare writes)
+npm run audit:baseline        # the census (dry run; --declare writes) — see "what an operator must do", below
+```
+
+**The two defects, driven before either was touched.** The entry below (first, 2026-09-21) made a *catchable*
+shutdown wait for the audit queue. It could not make an already-lost row visible, and it could not help at all
+with a loss that has no anchor.
+
+1. **The chain cannot see a hole.** `seq` is a BIGSERIAL handed out at INSERT, so an append that is allocated and
+   never written consumes none, breaks no `prevHash` link, and leaves the log perfectly contiguous. Driven on
+   rows lost through `audit()`'s own fail-open branch: **5 of 12 `player.record_viewed` appends gone**, and
+   `verifyChainFull()` returned `{"valid":true,"total":8,"verified":8,"linkBroken":false}` with **zero gaps in
+   `seq`**. ⛔ And `auditLog` has only `create` in all of `src/` — no update, no delete — so the hole is permanent.
+2. **`valid:true` over a TAMPERED row** — AR-3 from the entry below. Only a link break made `valid` false, so an
+   in-place EDIT left the platform telling an officer the log was sound.
+
+**The decision on (1): the number is allocated when the append is CALLED, not when it is written.** `audit()`
+takes a per-process ticket synchronously, before the append joins the FIFO queue, and stamps it into the row's
+own id — `aud_<boot>_<ticket>`. Landed rows therefore carry contiguous tickets by construction, and a ticket
+missing between two landed ones **is** a row that was allocated and never written. ⭐ **This is the anchor-free
+detector, and that is the whole reason it exists.** `audit-reconcile.ts` can only find a lost row that some other
+durable record implies (it reconciles the bet row against the committed `Position`). The access-logging class —
+`player.record_viewed`, `kyc_doc.viewed`, `agent_doc.viewed`, `privacy.dsar.exported`, `transactions.exported`,
+ISO 27001 A.12.4 — has no anchor anywhere, and AR-1 below recorded it as undetectable. A ticket gap does not need
+to know what the row would have said in order to know it is missing. It also detects a class nothing else did:
+the **fail-open**, where a Postgres blip leaves the entry in the in-memory ring and the durable row silently gone.
+
+**Why the id and not a column or the payload.** A column is the natural home and is not available to this lane: a
+migration needs `prisma generate`, which it may not run. `payload` is rendered verbatim in the ISO 27001 hand-off
+and in DSAR exports, so a reserved internal key there would put plumbing in front of a regulator. The `id` is
+already opaque, already exported, already the primary key, and already covered by the row's own HMAC — and
+nothing in `src/` or `scripts/` parses it (checked at `09398014`). Cost: one integer increment on the calling
+thread, no bytes, and **`market-service.ts` is unchanged** — nothing here puts an audit write on a player's path.
+
+**What it declares, and what it refuses to pretend.** One chained `audit.rows_missing` row per contiguous run of
+lost tickets, naming the boot, the range, the count and the window it was lost in — and stating in its own text
+that what the rows said is **not recoverable**, because for this class nothing can reconstruct it. Self-
+deduplicating on `targetId`, capped at 50 per sweep, awaited, swept on the lifecycle leader beside the bet
+reconciler over a bounded `seq` window. ⛔ **No grace period**, and that is a property of the mechanism, not an
+oversight: appends are awaited in order on one queue, so an interior gap is final the instant it is observed.
+
+**The decision on (2): a row that cannot be re-verified must be DECLARED, not assumed.** The two things that used
+to be one number are now separated. Rows that predate the current signing regime are a real, bounded, historical
+population that it would be a lie to call tampering — so an operator records them: `npm run audit:baseline`
+counts them, digests their exact stored content (a keyless SHA-256 fold, so an external auditor can reproduce it
+from the table alone), and appends the census to the chain itself. Inside that declaration, accounted for.
+Outside it, `valid` is **false**. Driven with the tamper planted and restored: **one row edited in place is now
+`{"valid":false,"unattested":1,"linkBroken":false}`**, and the verdict says EDIT, never removal. An edit *inside*
+the declared era is caught by the digest, which a count could never see. ⭐ And the declaration protects itself:
+widening it puts it above its own frontier, so a self-consistent forgery would need a payload whose digest field
+equals a hash computed over that same payload.
+
+**Three verdicts now reach a human, where there were two.** The ISO 27001 hand-off tile reads BROKEN (link),
+**UNVERIFIED** (edited), or Intact, and its disclosure note now BOUNDS the un-recomputable population instead of
+explaining away every failure — the old note was a loophole, because an edited row fails to recompute in exactly
+the same way a legacy row does. The admin *Verify audit chain* button stops printing "all entries pass HMAC
+verification" over entries that do not. `db-backup` records `chainUnattested` separately from a link break and
+warns on it; `db-verify-backup` asserts it only when the source manifest carries it, so older artifacts are not
+failed for a claim they never made.
+
+**⚠️ WHAT AN OPERATOR MUST DO, ONCE, AND WHAT THEY MUST NOT.** With no baseline declared, every row that cannot be
+recomputed is UNATTESTED and `valid` is false — a true statement, but it will turn the integrity tile red on the
+first run after a deploy. The remedy is `npm run audit:baseline` (census first, `--declare` second; it refuses a
+non-loopback database without `--yes-write-to-this-database`, and it re-verifies the chain afterwards rather than
+assuming). ⛔ **It must never be run to make a red check go green.** A baseline declared over rows that were
+EDITED launders the edit into the record, permanently, under an operator's name. The census prints what it is
+about to attest to for exactly that reason. ⚠️ **This lane could not measure production's count** — no access —
+so the size of that one-off declaration is unknown here.
+
+**Mutation-proven, both halves.** Verdict reverted to always-valid → the drill goes **26/5**, every refusal RED
+and every positive control still green. Ticket reverted to the old write-time random id → **27/4**, and the guard
+**34/3**. ⛔ Under that second mutation one assertion initially PASSED with both sides empty — an identity over
+nothing — and the drill now establishes its expected population before comparing. The drill's first run had
+already found a real defect in the new code: `--all` computed `seq > max(seq)` and scanned an EMPTY population
+while printing "every ticket landed".
+
+**Proven in the real server, not only in the drills.** `next dev` booted (Next 16.2.4, Turbopack, in-memory
+store); `/admin/system?tab=diagnostics`, `/admin/audit`, `/admin/compliance`, `/admin/reports`, `/admin` and
+`/markets` all rendered 200 with zero 500s, and the live ring's ids read `aud_bmuar529s07a46d_000000006` —
+ticketed, in the real server, by the real appender.
+
+### The residual, named and measured
+
+**AR-4 · A TAIL LOSS IS STILL INVISIBLE TO THE DETECTOR. ACCEPTED, and it cannot be otherwise.** A process that
+dies with its queue non-empty leaves no ticket ABOVE the hole to bound it, and nothing durable can record "N were
+issued" because that record would itself be an append in the queue that was lost. **Size:** the queue depth at
+death — AR-1's number, unchanged. **What does exist:** the absence of that boot's `system.shutdown_drain` row,
+and now a stronger positive statement than the platform has ever had — a boot whose certificate landed carrying
+ticket T, with tickets 1..T all present, wrote **every append it ever issued**. ⛔ **And rows written before this
+shipped are un-ticketed forever.** They are EXCLUDED from the detector's population rather than counted as
+gap-free, and every sweep prints the size of that exclusion.
+
+**AR-3 · CLOSED.** See above. The entry below is left exactly as it was written; ~~struck~~ where it is now
+wrong, never edited.
+
+---
+
 ## 2026-09-21 · The process WAITS for the compliance queue before it dies — and the three residual risks, each measured
 
 **Status:** built and driven on branch `rel-lane`. ⛔ **Nothing here was deployed by a session**, and nothing here
@@ -79,8 +184,12 @@ exactly 1 for a sequential producer and all of them for a burst; the deepest que
 durable `Position` anchor within five minutes. ⛔ `withdraw.confirmed`, `deposit.confirmed`, `market.settled` and
 `bet.payout` have anchors of their own and are **not** covered yet. ⛔ `player.record_viewed`, `kyc_doc.viewed`,
 `agent_doc.viewed`, `transactions.exported` and `privacy.dsar.exported` have **no anchor at all** — nothing else
-records that the viewing happened, so no reconciler can ever detect their loss. That is ISO 27001 A.12.4 access
-logging and it still needs a different remedy.
+records that the viewing happened, so no ~~reconciler can ever detect their loss~~ RECONCILER can detect their
+loss. That is ISO 27001 A.12.4 access logging and it still needs a different remedy. ⭐ **CORRECTED the same
+night — it got one.** See the 2026-09-21 (second) entry above: the ticket detector is ANCHOR-FREE, because it
+knows a row is missing without needing to know what it would have said. The loss of this class is now detected
+and declared for every cause except a tail loss (AR-4). ⛔ It is still not *reconstructed*, and never can be: the
+declaration records that N access-log appends are missing, never who looked at what.
 
 **AR-2 · 🔴 The signal may never arrive at all. UNVERIFIED — and it is the largest single unknown here.**
 Railway's own troubleshooting note *"NodeJS SIGTERM Handling"* (`docs.railway.com/deployments/troubleshooting/
@@ -103,14 +212,16 @@ is deliberate:** both change the command that starts production, neither can be 
 shipping an unverifiable change to a production start command is precisely how a platform is taken down. **It is
 Ali's call, informed by the experiment above.**
 
-**AR-3 · `valid:true` over a TAMPERED row. OPEN, not accepted — and measured tonight.** `verifyChainFull()` sets
-`valid:false` only on a **link break**. An in-place edit of a single row therefore returns
-`{"valid":true,"total":121,"verified":120,"unverifiable":1,"linkBroken":false}` — driven, with the tamper planted
-and restored, in `rehearse:audit-loss-window` §4 and `rehearse:audit-drain` §5. **Size:** one boolean on every
-surface that renders it; an officer or regulator reading `valid` alone is told a tampered log is sound, and the
-one field that *did* move (`unverifiable`) is not the field anyone reads first. ⛔ **Not fixed here.** It is a
-separate defect from the loss this entry closes, it touches the admin chain-verify surface and the ISO 27001
-export, and it is recorded so it is not mistaken for something this work covered.
+**AR-3 · `valid:true` over a TAMPERED row. ~~OPEN, not accepted~~ — CLOSED the same night; see the 2026-09-21
+(second) entry above.** `verifyChainFull()` sets `valid:false` only on a **link break**. An in-place edit of a
+single row therefore returns `{"valid":true,"total":121,"verified":120,"unverifiable":1,"linkBroken":false}` —
+driven, with the tamper planted and restored, in `rehearse:audit-loss-window` §4 and `rehearse:audit-drain` §5.
+**Size:** one boolean on every surface that renders it; an officer or regulator reading `valid` alone is told a
+tampered log is sound, and the one field that *did* move (`unverifiable`) is not the field anyone reads first.
+~~⛔ **Not fixed here.** It is a separate defect from the loss this entry closes, it touches the admin
+chain-verify surface and the ISO 27001 export, and it is recorded so it is not mistaken for something this work
+covered.~~ ⭐ It was fixed in the next commit on this branch, by a declared attestation baseline; the sentence is
+struck rather than deleted because it was true when it was written.
 
 ---
 

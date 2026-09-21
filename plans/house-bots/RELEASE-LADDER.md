@@ -887,9 +887,95 @@ audit write on a player's critical path: the drain runs once, after the server h
 **AR-1** the uncatchable exits (SIGKILL, OOM, `abort`, power loss) — ACCEPTED, size = queue depth at death, and ①
 is the backstop for the bet row only. **AR-2 🔴** Railway's own note says a service started via `npm run start`
 may never receive SIGTERM at all, and 50pick's start command is exactly that — **UNVERIFIED**, unmeasurable from
-this platform, with the experiment and two candidate remedies written down and the call left to Ali. **AR-3** a
+this platform, with the experiment and two candidate remedies written down and the call left to Ali. ~~**AR-3** a
 tampered row still leaves `valid:true` — OPEN, measured
-(`{"valid":true,"verified":120,"unverifiable":1,"linkBroken":false}`), and explicitly not covered by this work.
+(`{"valid":true,"verified":120,"unverifiable":1,"linkBroken":false}`), and explicitly not covered by this work.~~
+**AR-3 is CLOSED — see §14.4.** The sentence above is struck rather than edited, because it was true when it was
+written and the register has to show that it was.
+
+---
+
+## §14 · THE HOLE IS VISIBLE, AND `valid` STOPS LYING (rel-lane, 2026-09-21)
+
+*Driven: `npm run rehearse:audit-hole` (32 assertions, real Postgres, real appender) and
+`npm run test:audit-attest` (37 assertions, 13 controls, no database). Re-derive; nothing below is quoted from a
+report.*
+
+**14.1 · 🔴 THE CHAIN COULD NOT SEE A HOLE, and §13 did not change that.** §13 stopped a *catchable* shutdown
+losing rows. It could not make an already-lost row visible, and it could not help at all with a loss that has no
+anchor. Driven in §1–§2 of the drill, on rows deliberately lost through `audit()`'s own fail-open branch: **5 of
+12 `player.record_viewed` appends gone, and `verifyChainFull()` returned `{"valid":true,"total":8,
+"verified":8,"linkBroken":false}` with ZERO gaps in `seq`.** The loss is invisible to every ordering property the
+table has, because a lost append consumes no `seq` and breaks no link.
+
+**14.2 · ⭐ THE NUMBER IS NOW TAKEN WHEN THE APPEND IS CALLED, not when it is written.** `audit()` allocates a
+per-process ticket synchronously, before the append joins the FIFO queue, and stamps it into the row's own id —
+`aud_<boot>_<ticket>`. Landed rows therefore carry contiguous tickets by construction, and a ticket missing
+between two landed ones **is** a row that was allocated and never written. Driven: the detector named tickets
+5..9 and the boot that lost them, with a positive control (a boot whose every append landed is not flagged) and a
+planted control (a second boot missing 2..8 is found with the right range and count).
+
+**14.2b · ⛔ AND IT IS ANCHOR-FREE, WHICH IS THE ENTIRE POINT.** `audit-reconcile.ts` (§12) can only find a lost
+row that some OTHER durable record implies — it reconciles the bet row against the committed `Position`. The
+access-logging class (`player.record_viewed`, `kyc_doc.viewed`, `agent_doc.viewed`, `privacy.dsar.exported`,
+`transactions.exported` — ISO 27001 A.12.4) has no anchor anywhere, and AR-1 recorded it as undetectable. A
+ticket gap does not need to know what the row would have said in order to know that it is missing. ⭐ It also sees
+a class nothing else did: the **fail-open**, where a Postgres blip leaves the entry in the in-memory ring and the
+durable row silently gone.
+
+**14.2c · ⛔ WHAT IT STILL CANNOT SEE, and this is not softened.** A **tail** loss — a process that died with its
+queue non-empty — leaves no ticket above the hole, and nothing durable can record "N were issued" because that
+record would itself be in the queue that was lost. The only mark is the ABSENCE of §13.6's certificate. ⭐ The two
+together are a proof this platform did not have: a boot whose `system.shutdown_drain` row landed carrying ticket
+T, with tickets 1..T all present, wrote **every append it ever issued** — complete, not merely unbroken. Rows
+written before this shipped are un-ticketed forever and are EXCLUDED from the population rather than counted as
+gap-free; every sweep prints the size of that exclusion.
+
+**14.3 · The declaration, and the same three safeguards as §12.** One chained `audit.rows_missing` row per
+contiguous run, naming the boot, the range, the count and the window it was lost in — and saying in its own text
+that what the rows said is **not recoverable**. Self-deduplicating on `targetId` (`<boot>#<from>-<to>`), capped at
+50 per sweep, awaited, run on the lifecycle leader beside the bet reconciler, over a bounded `seq` window so the
+cost stays flat as the table grows. `npm run audit:ticket-sweep -- --all` is the backfill. ⛔ **No grace period,
+and that is a property of the mechanism**: appends are awaited in order on one queue, so an interior gap is final
+the instant it is observed — unlike §12, where a `Position` can legitimately precede its audit row.
+
+**14.4 · ⛔ AR-3 IS CLOSED: `valid` no longer survives an edited row.** It used to be false only on a link break.
+Driven with the tamper planted and restored: **one row edited in place is now `{"valid":false,"unattested":1,
+"linkBroken":false}`** — it was `{"valid":true,"unverifiable":1}` — and the verdict says EDIT, never removal. The
+mechanism is a **declared** legacy population: `npm run audit:baseline` counts the rows that recompute under no
+known key, digests their exact stored content, and appends the census to the chain. Inside it, accounted for;
+outside it, a tamper. ⭐ The declaration protects itself — widening it puts it above its own frontier, and because
+the digest is keyless (so an external auditor can reproduce it) a forged declaration would need a payload whose
+digest field equals a hash computed over that same payload. All four cases driven, each with its restore control.
+
+**14.4b · Three verdicts now reach a human, where there were two.** The ISO 27001 hand-off tile reads BROKEN
+(link), **UNVERIFIED** (edited), or Intact; its disclosure note now BOUNDS the un-recomputable population instead
+of explaining away every failure ("no unbounded exempt class"); the admin *Verify audit chain* button stops
+printing "all entries pass HMAC verification" over entries that do not; `db-backup` records `chainUnattested`
+separately from a link break and warns on it. ⚠️ `db-verify-backup` asserts the new count only when the source
+manifest carries it, so artifacts taken before today are not failed for a claim they never made.
+
+**14.5 · ⭐ MUTATION-PROVEN, BOTH HALVES, AND THE SECOND MUTATION FOUND A DEFECT IN THE DRILL.** Verdict reverted
+to always-valid → `rehearse:audit-hole` **26/5** (every refusal RED, every positive control still green). Ticket
+reverted to the old write-time random id → **27/4** and `test:audit-attest` **34/3**. ⛔ Under that second
+mutation §3.1 initially PASSED — the lost set and the found set were both empty, an identity over nothing. §3.0
+now establishes the expected set before §3.1 compares against it, and §4.1/§4.3 likewise refuse an identity over
+zero. The drill's own first run had already caught a real defect in the shipped code: `--all` computed
+`seq > max(seq)` and scanned an EMPTY population while printing "every ticket landed".
+
+**14.6 · ⚠️ WHAT AN OPERATOR MUST DO, ONCE, BEFORE THIS READS GREEN ON PRODUCTION.** With no baseline declared,
+every row that cannot be recomputed is UNATTESTED and `valid` is **false**. That is a true statement, not a cry
+of wolf — production's legacy rows genuinely cannot be attested — but it will turn the integrity tile red on the
+first run after deploy. The remedy is `npm run audit:baseline` (census first, `--declare` second, and it refuses a
+non-loopback database without `--yes-write-to-this-database`). ⛔ **It must not be run to make a red check go
+green**: a baseline declared over rows that were EDITED launders the edit into the record permanently, under an
+operator's name. The census prints what it is about to attest to for exactly that reason. ⚠️ **This lane could not
+measure production's count** (no access), so the size of that one-off declaration is unknown here.
+
+**14.7 · Proven in the real server, not only in the drills.** `next dev` booted (Next 16.2.4, Turbopack,
+in-memory store), `/admin/system?tab=diagnostics`, `/admin/audit`, `/admin/compliance`, `/admin/reports`,
+`/admin` and `/markets` all rendered **200** with zero 500s in the log, and the live ring's ids read
+`aud_bmuar529s07a46d_000000006` — ticketed, in the real server, by the real appender.
 
 ---
 
