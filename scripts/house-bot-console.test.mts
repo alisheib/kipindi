@@ -184,6 +184,12 @@ await runTwoStores({
    * so the whole chain would have gone green over them. Found by an adversarial review of this session's own
    * merge claim, which is the only reason it is not still trailing.
    */
-  minPass: { memory: 715, postgres: 480 },
+  /* ⭐ RAISED with the per-account rules editor's cases (1546c9c8) — to what the run PRINTED:
+   * `0.mem · exit 0 · 722 passed` and `0.pg · exit 0 · 484 passed`, ALL PASS on both stores.
+   * ⛔ THE FLOOR WAS TRAILING THE REAL COUNT BY SEVEN. That is not a harmless gap: a floor below the
+   * true count is exactly the headroom in which cases can stop running and the suite still reports
+   * green — the ratchet's whole job is to make a disappearance loud. Raised here rather than left for
+   * the next session to wonder about. */
+  minPass: { memory: 722, postgres: 484 },
   dbPrefix: "hb_console",
 });

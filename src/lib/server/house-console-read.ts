@@ -697,7 +697,23 @@ function engineNotice(input: {
        * sentence, where it drifts the day the constant moves — the two reasons are named instead, which is what
        * an officer can act on anyway.
        */
-      return { ...shared, tone: "danger", alert: true, meta: lastSeen(beats?.pollerBeatAtMs ?? null, input.nowMs),
+      /**
+       * ⛔ NO META, AND THAT WAS READ OFF THE TILE RATHER THAN REASONED (2026-09-21).
+       *
+       * This passed `lastSeen(beats.pollerBeatAtMs)` and the rendered Callout read
+       * **"LAST SEEN: NEVER"** directly under "it is refusing to act on anything due" — which tells an
+       * officer the server is DEAD when the whole point of this verdict is that it is ALIVE and
+       * deliberately holding back. Two correct facts that contradict each other in one box.
+       * ⛔ IT IS THE WRONG INSTRUMENT, NOT A MISSING VALUE. `pollerBeatAtMs` is written only after a
+       * pass that actually CLAIMED rows, so on the one condition this verdict reports — claims refused
+       * before they are attempted — it is STRUCTURALLY always empty. There is no state in which it
+       * could have said something useful here.
+       * ⚠️ AND THE PLANNER BEAT IS NOT THE FALLBACK. It is a different component's heartbeat; putting
+       * it behind the word "Last seen" would be a second wrong answer wearing the first one's label.
+       * The caption already carries what a reader can use ("2 servers answered."), and `STALE` and
+       * `POLLER_FAILING` keep their own metas, each read off the instrument that is theirs.
+       */
+      return { ...shared, tone: "danger", alert: true, meta: null,
         title: "A server is not placing stakes",
         body: beats?.claimsBlockedReason === "SKEW_UNKNOWN"
           ? "Its clock could not be checked against the platform's, so it is refusing to act on anything due rather than risk acting at the wrong moment. Nothing will be staked from that server until it reads."
