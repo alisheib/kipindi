@@ -5,7 +5,7 @@ Endpoints: `POST /api/sms/send` · `POST /api/account/balance` (Swagger: `bulk-a
 Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib/server/sms.ts`
 (facade), `src/app/api/webhooks/blackball/route.ts` (delivery receipts).
 
-## Status — 2026-09-17
+## Status — 2026-09-21
 
 | | |
 |---|---|
@@ -14,10 +14,10 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
-| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged — **5 of 6** drive sends used |
-| Delivery callback | 🔴 **still not received** — re-tested 2026-09-17 while the vendor was answering questions: **no request of any kind** from Blackball in the 8 minutes after a send, with Railway's HTTP log proven to be recording (§4.3) |
+| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 (2026-09-21 08:58 UTC) one send — **6 of 6** drive sends used, the budget is spent |
+| Delivery callback | 🔴 **still not received** — re-tested 2026-09-17 and again 2026-09-21 **after the vendor said they had whitelisted the URL**: no request from any address but our own in the 9 minutes after a send (§4.3, §4.4) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
-| Balance | TZS 226 |
+| Balance | TZS 220 |
 
 ---
 
@@ -228,6 +228,23 @@ Drive step 3 sent `sms_20c944fc48d687f677f532de` (to the test handset) and `sms_
 
 So the callback is not being attempted against our URL at all. The questions in §8 item 1 are the ones
 that decide it.
+
+### 4.4 Re-tested 2026-09-21, after "we whitelisted the URL" — still nothing
+
+Drive step 4 sent `sms_4a498529270c75bf43564b77` to the test handset at **08:58:17 UTC** (6 of 6 sends
+used; balance TZS 226 → 220). For the next **9 minutes** the edge log carried **no request to the callback
+path from any address except this machine**, and production recorded no receipt row. Whitelisting the URL
+changed nothing that is observable here.
+
+⛔ **THE TRAP, WALKED INTO AND CAUGHT — A PROBE OF YOUR OWN LOOKS EXACTLY LIKE THE VENDOR'S CALL.** A
+`webhook.blackball.rejected {"reason":"bad-secret"}` row landed 94 seconds after the send and read as
+"they are calling us at last, with the wrong token" — a complete, plausible story. It was **our own**
+`curl -X POST` reachability check: the edge log named `srcIp 178.135.120.103` with
+`clientUa Java/1.8.0_292`, this machine, one second after our own `GET`. The watcher had been told to
+stop at the first new row, so it stopped on ours and reported success.
+⭐ **The rule this earns:** when the instrument and the subject can produce the same row, the check must
+carry a DISCRIMINATOR — here `srcIp` — and the watch must exclude the operator's own address before it
+is allowed to conclude anything. ⛔ And never probe the endpoint while a callback watch is running.
 
 ---
 
