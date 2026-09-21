@@ -340,8 +340,12 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure:
  * number below is the one a green run PRINTED, not 31 plus a count of the `ok(` calls someone typed.
  * ⭐ RAISED 66 → 108 by Commit 6 steps (b) and (c), 2026-09-20, when §0-pipe, §5, §8 and §docs landed (the absence
  * suite) together with §3's own locale population. Again PRINTED, by the green run recorded in `HOUSE-BOTS.md` §12.
+ * ⭐ RAISED 108 → 109 by the ops-lane integration pass, 2026-09-21, when 8.4's stale sentence was corrected and
+ * 8.4a — the console label pinned at exactly one occurrence and PROVED a non-writer — was added beside it. The
+ * red that preceded this was 106/2: two cases FAILING, not missing, so the floor was never the thing to move.
+ * ⛔ The floor was NOT lowered to meet the red. 109 is again the number a green run PRINTED, on this commit.
  */
-const MIN_ASSERTIONS = 108;
+const MIN_ASSERTIONS = 109;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

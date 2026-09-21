@@ -264,8 +264,45 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       files.map((f) => ({ rel: f.rel, n: (decomment(f.code).match(REC()) ?? []).length })).filter((x) => x.n > 0);
     const recSites = recSitesIn(realFiles);
     const constants = "src/lib/house-bot/constants.ts";
-    ok("8.4 · ⛔ the dormant recorder is DECLARED and UNREACHABLE: `BOARD_DISCLOSURE_RECORDED` occurs in exactly one source file (the closed lists in `constants.ts`) and exactly twice — the event kind and its audit classification — with comments stripped first, so nothing writes such an event, nothing reads one and no action can emit one",
-      recSites.length === 1 && recSites[0].rel === constants && recSites[0].n === 2, j({ src: src.length, sites: recSites }));
+    /** The owner console's kind→sentence table (`CONSOLE_EVENT_WORD`), added for every kind at once by
+     *  C7 step 5 (`5deb1e81`). Pinned and proved a non-writer at 8.4a below. */
+    const CONSOLE_READ = "src/lib/server/house-console-read.ts";
+    /**
+     * ⛔ THE SENTENCE DRIFTED; THE SUBJECT DID NOT. Until C7 step 5 the name really did occur in ONE
+     * file, and this assertion said so. `5deb1e81` then added the console's label table and the
+     * recorder got a sentence with every other kind. The invariant D20 struck the draft to protect —
+     * that nothing can EMIT a board disclosure — never moved. So the SENTENCE is corrected and the
+     * MEASUREMENT kept: `constants.ts` is still pinned at exactly two, and the only other file that
+     * may contain the name at all is the console, which 8.4a pins at exactly one AND proves is a
+     * label rather than a writer. A THIRD file is still a failure, which is where a writer would land.
+     * ⛔ This is not "at most two files": both are named, both counts are exact.
+     */
+    const recElsewhere = recSites.filter((s) => s.rel !== constants && s.rel !== CONSOLE_READ);
+    ok("8.4 · ⛔ the dormant recorder is DECLARED and UNWRITTEN: with comments stripped first, `BOARD_DISCLOSURE_RECORDED` occurs exactly TWICE in `constants.ts` (the event kind and its audit classification) and in NO source file anywhere under `src/` except the console label pinned at 8.4a — so nothing writes such an event and no action can emit one",
+      recSites.find((s) => s.rel === constants)?.n === 2 && recElsewhere.length === 0,
+      j({ src: src.length, sites: recSites, elsewhere: recElsewhere }));
+    /**
+     * ⛔ 8.4a · THE LABEL C7 STEP 5 ADDED, PINNED SEPARATELY AND PROVED NOT TO BE A WRITER.
+     * `5deb1e81` gave every event kind a sentence in the owner console's `CONSOLE_EVENT_WORD`
+     * table, and the dormant recorder got one with the rest. ⭐ A LABEL IS NOT A WRITER — what
+     * D20 protects is that nothing can EMIT a board disclosure. So the occurrence is allowed only
+     * as a `KIND: "sentence"` map value, and ONLY while no write shape exists anywhere in that
+     * file. This is an extra assertion, not a relaxation: it pins a count of exactly one and adds
+     * a shape proof the old count alone never made.
+     */
+    const labelShapeIn = (code: string) => decomment(code).includes('BOARD_DISCLOSURE_RECORDED: "');
+    const noWriteShapeIn = (code: string) => {
+      const c = decomment(code);
+      return !c.includes('kind: "BOARD_DISCLOSURE_RECORDED"')
+        && !c.includes("kind: 'BOARD_DISCLOSURE_RECORDED'")
+        && !/createEvent[^;]{0,200}BOARD_DISCLOSURE_RECORDED/.test(c);
+    };
+    const consoleCode = realFiles.find((f) => f.rel === CONSOLE_READ)?.code ?? "";
+    ok("8.4a · ⛔ the ONE occurrence outside `constants.ts` is the owner console's `CONSOLE_EVENT_WORD` label and nothing else: exactly once in `house-console-read.ts`, of the shape `KIND: \"sentence\"`, with no `kind:` argument and no `createEvent` naming the recorder anywhere in that file. A label is not a writer",
+      consoleCode.length > 1_000
+        && (recSitesIn([{ rel: CONSOLE_READ, code: consoleCode }])[0]?.n ?? 0) === 1
+        && labelShapeIn(consoleCode) && noWriteShapeIn(consoleCode),
+      j({ label: labelShapeIn(consoleCode), noWrite: noWriteShapeIn(consoleCode) }));
     const migration = "prisma/migrations/20260916150000_house_bot_tables/migration.sql";
     const eventKinds = read(constants);
     ok("8.4b · POSITIVE CONTROL · …and it is STILL DECLARED where production needs it. The migration is APPLIED on production, so the Postgres enum holds the value; `constants.ts` mirrors it, and the table's CHECK is built from that list. A guard that demanded the NAME be absent would push the next session to delete a value the live database has, and the table's CHECK would stop matching the code",
@@ -281,8 +318,18 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const withConst = realFiles.map((f) => (f.rel === constants ? { ...f, code: `${f.code}\nexport const BOARD_DISCLOSURE_SECTIONS = ["1 · What 50pick does"] as const;\n` } : f));
     ok("8.4.c1 · CONTROL · an event WRITE planted into a copy of the real house seam is reported by 8.4's own measure as a SECOND file, a planted `BOARD_DISCLOSURE_SECTIONS` declaration is reported by 8.3's, and a COMMENT naming the recorder in the same place is reported by NEITHER — documentation standing in for enforcement is the defect this lane just repaired, and three guards here have been fooled by prose about code",
       seamCode.length > 1_000
-        && recSitesIn(withWrite).length === 2 && recSitesIn(withWrite).some((x) => x.rel === SEAM)
-        && recSitesIn(withComment).length === 1
+        && recSitesIn(withWrite).length === recSites.length + 1 && recSitesIn(withWrite).some((x) => x.rel === SEAM)
+        && recSitesIn(withComment).length === recSites.length
+        /* ⛔ …and the plant must actually turn 8.4 RED, not merely appear in a list: the seam is neither
+           named site, so 8.4's own `recElsewhere` measure reports it. A control that stops at "the count
+           changed" would survive 8.4 being rewritten into something that no longer fails. */
+        && recSitesIn(withWrite).filter((s) => s.rel !== constants && s.rel !== CONSOLE_READ).length === 1
+        && recSitesIn(withComment).filter((s) => s.rel !== constants && s.rel !== CONSOLE_READ).length === 0
+        /* ⛔ …and the console's label pin is falsifiable in BOTH directions: a write planted into a copy
+           of the console file breaks the no-write proof, and a copy with the label line gone breaks the
+           label proof. 8.4a asserts both on the real file. */
+        && !noWriteShapeIn(`${consoleCode}\nawait dal.createEvent({ kind: "BOARD_DISCLOSURE_RECORDED" });\n`)
+        && !labelShapeIn(consoleCode.split('BOARD_DISCLOSURE_RECORDED: "').join('SOMETHING_ELSE: "'))
         && sectionSitesIn(withConst).length === 1 && sectionSitesIn(withConst)[0] === constants,
       j({ write: recSitesIn(withWrite).map((x) => `${x.rel}×${x.n}`), comment: recSitesIn(withComment).map((x) => x.rel), sections: sectionSitesIn(withConst) }));
   }
