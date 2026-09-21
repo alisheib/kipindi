@@ -880,7 +880,8 @@
     "audit:ticket-sweep": "tsx scripts/audit-ticket-sweep.mts",
     "audit:baseline": "tsx scripts/audit-baseline.mts",
     "test:audit-attest": "tsx scripts/audit-attest.test.mts",
-    "rehearse:audit-hole": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-hole.mts"
+    "rehearse:audit-hole": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-hole.mts",
+    "qa:corner-radius": "node scripts/qa-corner-radius.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

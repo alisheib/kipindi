@@ -70,6 +70,25 @@ export const dynamic = "force-dynamic";
 
 const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster", activity: "Activity", limits: "Limits", history: "History" };
 
+/**
+ * WHAT EACH PANEL IS FOR, in one sentence an officer can act on.
+ *
+ * ⛔ EVERY LINE IS DERIVED FROM THE CODE IT DESCRIBES, never from a plan document, because a caption that
+ * describes a behaviour the product no longer has is worse than no caption: the roster's population is
+ * `houseBotStore.listNonRemoved()`; "all eight" is `REQUIRED_FOR_MASTER_ON.length`; "blank refuses" is how
+ * the rules parser treats a null limit; "a queued stake can be stopped" is the Activity panel's own control.
+ * ⛔ AND NONE OF THEM RESTATES A FIGURE THE PANEL RENDERS — the tab badges already carry the unset-limit and
+ * queued-stake counts, and a sentence repeating a number beside it is the contradiction 432(n) refuses.
+ * ⚠️ NEUTRAL WORDS ONLY (D19/453): these strings are rendered inside the console's own subtree, which
+ * `qa:house-bots-visual` scans for the feature's vocabulary — so they say "the desk" and "accounts".
+ */
+const TAB_GUIDANCE: Record<(typeof CONSOLE_TABS)[number], string> = {
+  roster: "The accounts the desk stakes from. Each row shows what that account has used today of its own limits, and Open leads to its rules, targets and history.",
+  activity: "Every stake the desk has decided on, newest first — placed, queued, refused or failed. A stake that is still queued can be stopped from here.",
+  limits: "The platform-wide ceilings every account is held to, on top of its own. All eight must be set before the master switch will turn on, and a blank limit refuses every stake rather than meaning no limit.",
+  history: "Every change anyone has made to the desk — accounts designated, started, paused or removed, limits and rules saved, and every time the switch moved.",
+};
+
 /** The limits card's heading, in ONE home: it is also what the form suppresses so the page does not say it
  *  twice (432(n)) — read off the first render of the form, where the card's title and the form's first group
  *  printed the same two words 34px apart, at 1280 and at 360. */
@@ -460,6 +479,16 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
              "how many changes" is a number nothing on the page can act on (432(a)). */
           tabs={CONSOLE_TABS.map((k) => ({ value: k, labelEn: TAB_LABEL[k], href: consoleTabHref(k), count: k === "limits" ? view.unsetRequired : k === "activity" ? view.pendingIntents ?? undefined : undefined }))}
         />
+
+        {/* ⭐ ONE LINE PER PANEL, SO AN OFFICER KNOWS WHAT THEY ARE LOOKING AT (owner ask, 2026-09-21).
+            Every panel on this page was a table or a form with no statement of what it is FOR, so an officer who
+            had not read the operator guide had to infer each one from its columns. ⛔ IT IS A SENTENCE, NOT A
+            SECOND CONTROL: it names what the panel holds and the one rule that decides it, and nothing here
+            duplicates a figure the panel already renders — a caption that restates a number is the defect
+            432(n) refuses within one screen. The text is derived from the code it describes, not from a plan
+            document: the roster from `listNonRemoved`, the eight from `REQUIRED_FOR_MASTER_ON`, and "blank
+            refuses" from the rules parser's own treatment of a null limit. */}
+        <p className="px-4 lg:px-6 pt-3 text-caption text-text-tertiary max-w-[72ch]">{TAB_GUIDANCE[tab as (typeof CONSOLE_TABS)[number]]}</p>
 
         {/* ⚠️ THE `(<>` … `</>)}` FORM IS LOAD-BEARING, NOT A HABIT. `test:tab-anchors` decides WHICH TAB owns a
             rendered `id` by finding the nearest tab-group opener above it with no `</>)}` in between; a panel whose

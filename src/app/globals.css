@@ -2978,6 +2978,25 @@ textarea::placeholder { color: var(--text-subtle); }
    mis-cited §M2 (above). Nothing was amended; the code was fixed. */
 .glass-panel.admin-kpi { border-radius: var(--r-md); }
 
+/* 🔴 THE CROPPED CORNER (2026-09-21) — reported by the owner on the desk, then MEASURED and RENDERED.
+   A flush card (`AdminCard padding="p-0"`, `.glass-panel` at `--r-lg` = 16px) wraps a `ScrollX` that
+   carried `rounded-md` = 8px. `ScrollX` CLIPS (it is `overflow-x-auto`, and CSS computes `overflow-y`
+   to `auto` with it), so the table's `<thead>` — flush Left, Right AND Top, radius 0, and PAINTING a
+   background — was clipped to 8px inside a 16px arc. The 8px of card corner outside that clip stayed
+   card-coloured, so the header met the border as a square step: the corner read as CROPPED.
+
+   Measured on a real `next start`, not reasoned: card radius 16 / child radius 0 / `parentClips: false`,
+   two corners per table (TL and TR) at BOTH 1280 and 360, and the fix takes it to zero at both.
+
+   ⛔ THE FIX IS THE RADIUS, NEVER `overflow-hidden` ON THE CARD. Eight admin pages — the desk among them
+   — position children absolutely inside a flush card, and clipping the card would cut them off; that is
+   the defect `scroll-x.tsx`'s own header records as DG-A-03, one file over. `ScrollX` already clips, so
+   only its ARC changes here and no new element starts clipping.
+
+   ⭐ ONE RULE, NOT THIRTY CALL SITES: this is the shared card/scroll pairing, so it is fixed where the
+   pairing is defined. `qa:corner-radius` is the instrument that holds it. */
+.glass-panel.p-0 .scrollx { border-radius: var(--r-lg); }
+
 /* v2 kit — traveling light-sweep for active progress fills (limits, KYC steps,
    objection window). Add `.prog-sweep` to a filled bar segment. */
 @keyframes progSweep { 0% { transform: translateX(-130%); } 100% { transform: translateX(360%); } }
