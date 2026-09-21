@@ -71,7 +71,17 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 247, postgres: 80 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 248, postgres: 80 }, dbPrefix: "hb_reports" });
+// ⭐ **MEASURED ON THE FULLY INTEGRATED TREE: 247/80 → 248 memory / 80 postgres, RAISED TO WHAT THE RUN PRINTED
+// AND TO NOTHING ELSE** (OMEGA-COMPILE01, 2026-09-21, after all five branches were merged into `ops-lane`).
+// `npm run test:house-bot-reports` printed ALL PASS with `0.pg · exit 0 · 80 passed (at least 80) · 0 failed`, and
+// the memory child run directly — `DATABASE_URL="" USE_PRISMA_DAL=false HB_MONEY_STORE=memory npx tsx
+// scripts/lib/house-bot-reports-cases.mts` — printed `@@SUMMARY {"pass":248,"fail":0,"store":"memory"}`.
+// ⛔ 247 + 1 = 248 is the SAME number the forbidden arithmetic would have produced, and that is a coincidence of
+// this merge, NOT the authority for it. The run decided it; the sum is noted only so the next session does not
+// mistake the agreement for a licence to compute the next floor.
+// ⚠️ POSTGRES DID NOT MOVE, AND THAT IS A MEASUREMENT: the trunk's one new case (`0.198.3b`) is a §0 SOURCE pin
+// and §0 runs in the memory child only — the fourth consecutive merge for which that is the reason.
 // ⛔ MERGED A FOURTH TIME 2026-09-21 (ops ← house-bots, the INTEGRATION merge on OMEGA-COMPILE01), and it is
 // the same collision this header already describes, a fourth time. This lane stood at a MEASURED 247/80; the
 // trunk raised its own base to 219/64 for `0.198.3b`. Neither pair describes the merged file: 247 predates the
