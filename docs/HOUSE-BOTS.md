@@ -642,7 +642,85 @@ Warnings: EMAIL_UNVERIFIED · IDENTITY_NOT_APPROVED · RECRUITED · OPEN_POSITIO
 
 ## 7. Console map
 
-⏳ Written in commit 7.
+### 7.1 The routes
+
+| Route | What it is |
+|---|---|
+| `/admin/desk` | The landing page. Tabs: `roster` · `activity` · `limits` · `history`. Owner-only. |
+| `/admin/desk/new` | The designate wizard: find the account → check what the platform already knows → consent and name it → confirm with the holder's password. |
+| `/admin/desk/[id]` | One account. Tabs: `overview` · `activity` · `rules` · `targets` · `history`. |
+
+⛔ Every tab key lives in `src/lib/house-bot/console-routes.ts` and the list holds **only keys whose panel is
+built** — a rail option with no panel is a dead control, and an unrecognised `?tab=` resolves to the default
+rather than 404-ing.
+
+### 7.2 Configuring an account, end to end
+
+This is the whole path from "put an account on the desk" to "Start will run it".
+
+1. **Designate** (`/admin/desk/new`). The holder's own password is checked once, in memory, by the one service
+   allowed to check it, and is never stored, logged or echoed. The roster cap (`maxDesignatedBots`) refuses a
+   sixth account with a sentence that names the remedy.
+2. **The wizard lands on `?tab=rules`**, not on the overview. A freshly designated account has all fourteen
+   limits NULL, no product and no entry mode — thirteen blockers, every one of them on that tab. ⛔ Landing on
+   the overview made the first screen after creating an account a summary of an account that does nothing.
+3. **Rules.** Ten switches (two products, three entry modes each, two by-hand permissions) and fourteen limits.
+   Every one of the twenty-four carries a **one-sentence explanation of what it does**, built on the server
+   (`CONSOLE_CAP_HELP`, `CONSOLE_FLAG_HELP` in `house-console-read.ts`) and total by construction —
+   `Record<CapField, string>` means a new cap column cannot ship without a sentence.
+4. **Two controls fill and empty the limits.** *Use starting values* writes `FIELD_META`'s recommendation into
+   every EMPTY limit (it never overwrites a chosen value); *Empty every limit* asks first, then clears them all.
+   ⛔ **Neither saves.** Both make the form dirty, so the pending bar stands there with Save and Discard in
+   reach and nothing either control does is one-way.
+5. **Save.** One CAS write against `rulesVersion`, all-or-nothing. A second officer on a second tab is REFUSED
+   and told — never merged, never clobbered.
+6. **Start** refuses while any of the eleven `REQUIRED_FOR_START` caps is unset, or there is no product, or no
+   entry mode. The rail badges `rules` with the count still outstanding.
+
+### 7.3 What the form guarantees about not losing work
+
+A form has more exits than a prompt can stand at, and they are covered in three layers:
+
+| Exit | Covered by |
+|---|---|
+| The tab closes / reloads | `UnsavedChangesGuard` → `beforeunload` |
+| An in-app link, including a tab switch | `UnsavedChangesGuard` → capture-phase click intercept |
+| The Back button, a crash, a sleeping laptop, an expired session, the power going | `useFormDraft` |
+
+⛔ **The draft OFFERS; it never restores by itself.** These are the ceilings that stop real money, and
+repainting half-typed numbers over what the server now says would be a change nobody chose, made by a reload.
+⛔ **A draft taken against a different `rulesVersion` is refused outright and deleted**, never offered: somebody
+else having changed the account is exactly when stale limits must not go back over theirs.
+⛔ **The storage key is hashed**, so no record id lands on the officer's disk (D19).
+
+### 7.4 What a refusal does
+
+Every field the validator rejects travels home, each by the form's own neutral key. The form marks **all** of
+them (`aria-invalid` and the kit's error treatment), the toast says **how many**, and `focusFirstInvalid` takes
+the officer to the earliest one in document order.
+⛔ Until 2026-09-21 the save answered `errors[0]`: four bad values cost four round trips, each saying
+"Couldn't save" about a different field, with nothing on screen saying how many were left and no box marked at
+all. That is what the owner's managers were reporting.
+
+### 7.5 Known gaps, stated rather than implied
+
+⛔ **Two of the ten switches have no control behind them on this build.** Of the five `PRESS_PURPOSES` only
+`STAFF_CANCEL` has a screen, and nothing under `src/` inserts a target row — so neither "Enter now" nor a
+target can be created by anyone. Both switches nevertheless satisfy the start check, so an account whose only
+entry mode is one of them **starts cleanly and then never places a bet**.
+⭐ The switches stay — the engine reads them, and they are real rules. What changed is that the form and the
+Targets tab now **say so**, in the server's own words, instead of implying a control exists. Building the
+by-hand press flow (N1 §4, N2 §6) is its own piece of work: it moves money, and it needs its caps, its
+oversight alerts and its audit rows before any of it is drawn.
+
+### 7.6 The gate
+
+`npm run qa:desk-rules-flow` drives the whole of §7.2–§7.4 against a real browser: the wizard, a real pointer
+on a real checkbox, Discard, fill, empty, a refusal with several bad fields, two consecutive saves, and a page
+thrown away mid-edit. 35 checks, and it removes the account it created so it can run again.
+
+⚠️ **It needs `localhost`, not `127.0.0.1`.** Next 16 blocks cross-origin dev resources, and a drive pointed at
+the dotted form loads a page that **never hydrates**: every control is inert and nothing throws.
 
 ---
 
