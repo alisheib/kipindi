@@ -1018,6 +1018,104 @@ blocked. Every figure names the population it counts. ⛔ A figure with no popul
 | 4 | `test:all` (`--skip responsive,motion`) against clean `origin/main` `b726cb7f` in `F:/kipindi-old-build` | The build machine | 2026-09-16 · OMEGA-COMPILE01 · **349/369 green** here vs **338/358** on clean `origin/main` `b726cb7f`: **19 of the 20 reds are identical in both trees** (recategorise · read-tiers · lock-tx-threading · type-scale · red-anchors · revoked-deadend · admin-section-gate · needle-rest · decomment · updown-digest · updown-source-class · settlement-expectation · orphans · grid-paging · chart-one-home · popup-fit · admin-act-gate · failure-reasons · updown-handover; three of them need port 3009, which another session holds). The 20th, `test:labels`, was red HERE and green on main — measured, not assumed — and it was this branch's: rulings 166 and 167 fixed it, and it is green now. On main only, `test:kyc-restart-docs` is NOT MEASURED in the baseline tree (it needs the 107 MB embedded-postgres binaries, which that checkout does not carry). ⚠️ **THE BASELINE IS PER MACHINE, and this row is OMEGA-COMPILE01's — read it as history, not as an instruction.** The `F:` drive does not exist on Ali-Blade15. **On ALI-BLADE15 the baseline is `C:/kipindi-old-build`, detached at `418f1b5973a8af7c70ea7fc85851dfeba7f548a8` = exactly `origin/main`** (moved there on 2026-09-20 under ruling 516(a) from `8416a37c`, which was a HOUSE-BOTS commit 20 behind and therefore not a control at all — a "clean main" baseline that is the branch's own ancestor excuses every red `main` has since fixed). Ruling 465's schema test was NEGATIVE across that move (`prisma/` and `package-lock.json` diffs both EMPTY), so no `prisma generate` and no install. **And the 107 MB note no longer applies there:** that checkout carries `node_modules/embedded-postgres`, `node_modules/@embedded-postgres` and a `.pgscratch` directory, and `node_modules` is a real directory, not a junction. ⛔ A baseline whose commit is not written down is not a control (ruling 467) — so the sha is written here and in `PROGRESS.md`, and a session on a third machine writes its own rather than inheriting either. |
 | 6 · step (a) · D19 + D19d | `test:house-bot-disclosure` §6 — the chatbot guard, 35 assertions over the four channels a player can be shown — and `red:house-bot-chatbot`, which runs that whole section against a **shadow tree** in a scratch directory: it writes nothing into the repository and §5 asserts `git status --porcelain` is byte-identical before and after | Every machine. No database, no build, no network, no API key | ✅ 2026-09-20 · OMEGA-COMPILE01: disclosure **66/0** (floor raised 31 → 66, to the number a run printed), `red:house-bot-chatbot` **93/0** — 30 declared mutations, each driving ITS OWN assertion red by name, plus the whole-harness positive control that the UNMUTATED shadow is green assertion for assertion. 5 of 35 cases have no mutation, against a ceiling of 5 asserted as an equality and named in `DEFERRED-TESTS.md` §1o row 203. `npx tsc --noEmit` 0 errors · `test:guards-exist` 9/0 · `test:docs` ✅ · `test:deferred-register` 14/0 · `test:chat-safety` ✅ · `test:red-anchors`: all 28 new anchors resolve exactly once, and the run carries the same 4 reds this branch already had (rg-doors ×2 and the 66-vs-65 ratchet, register row 4) — the new harness is NOT among the un-audited. ⛔ `src/app/_actions/chat.ts` was never edited, and nothing was exported from it: 6.6 pins it byte-identical to `origin/main`. |
 | 6 · steps (b) + (c) · D19 + D19a + D21 | **The absence suite and the docs of record.** `test:house-bot-disclosure` §0-pipe (the two gates that ran in no chain), §5.1 (the published legal text pinned to `origin/main`), §5.2 (the print measure over the WHOLE player-rendered population instead of two files), §8 (the struck Board draft, its 15 citations, and the dormant `BOARD_DISCLOSURE_RECORDED` value) and §docs (risk 21 verbatim in both registers, its premise measured live in the rulebooks, F6 §5 condition 1 still unsatisfied) | Every machine. No database, no build, no network | ✅ 2026-09-20 · OMEGA-COMPILE01 · on `a0a6bb67`+: disclosure **108/0** (floor raised 66 → 108, to the number a run PRINTED; §5.2 read **394 files / 585,817 printed characters**, §5.1 compared **16 files against `418f1b59`**, §8.2 held **15 citations across 9 files**). `npx tsc --noEmit` 0 errors · `test:docs` ✅ (542 links) · `test:guards-exist` **9/0** · `test:deferred-register` **14/0** (104 rows) · `test:erasure` **226/0** · `test:house-bot-reports` **memory 200/0 · PostgreSQL 61/0 · 3/0** · `test:house-bot-ops` **memory 58/0 · PostgreSQL 69/0 · 3/0** · `test:red-anchors` carries the same **4** reds this branch already had (`rg-doors` ×2 and the 66-vs-65 ratchet) — this build added no harness and moved the count by zero. 🔴 **Running `test:house-bot-reports` for the first time on this lane turned `0.170.1` RED by name** and found a fabricated audit actor (`sunset.ts` `input.actorId ?? "system"`) that this lane itself shipped in `8004de9b`; fixed, and the suite is green above. ⛔ **NOT MEASURED, and recorded as such in `DEFERRED-TESTS.md` §1l:** `npx next build && verify:house-bot-bundle` (row 205 — the wiring is not the run) and a declared-mutation harness for the four new sections (row 206 — every assertion carries an in-suite planted control AND a positive control, which is a different thing and is named as one). |
+
+### 12.1 C7 step 5's four panels, opened and read on a served build — 2026-09-21, Ali-Blade15
+
+The two activity panels and the two history panels (`/admin/desk?tab=activity|history` and `/admin/desk/<id>?tab=activity|history`),
+photographed and MEASURED in every state each can reach, on one fresh `next build` of the merged tree served at
+`127.0.0.1:3021` against a scratch database of this lane's own (`ops_panels_20260921`, seeded by
+`db:seed-house-bots-local` + `db:seed-house-bot-panels`: 82 stakes desk-wide, 62 on the ACTIVE account, 17 queued,
+43 changes, backdated across seven ages so `today` / `24h` / `7d` / `all` are four different lists).
+
+Two instruments, both committed, and the TILES ARE NOT (D19/W20 — `.qa-house-bots/` is gitignored, checked with
+`git check-ignore` before a single byte was written):
+
+- **`npm run qa:house-bot-panel-states`** — 18 URL-addressable states × 6 widths (360 · 640 · 768 · 1024 · 1280 ·
+  1920), two viewport tiles each (the render, then the table scrolled into view, because at 360 the KPI band, the
+  rail and a 330px filter rail put the table entirely below the fold and a tile whose subject is off-screen
+  measures nothing). Rows · page 2 · past-the-end · filtered to zero · every filter at once · a crafted address ·
+  both histories · an ACTIVE account · a REMOVED one.
+- **`npm run qa:house-bot-panel-faults`** (new this pass) — the three states no URL can reach: a READ THAT FAILED
+  (a view over the renamed table whose predicate raises, so the relation stays PRESENT and the page paints 355's
+  failure rather than 421's "not on this database"; removed in a `finally` and proved out by a SELECT that had to
+  fail and then work), the CANCEL CEREMONY (a `Modal` returns null until mounted, so it has to be opened), and the
+  control-column asymmetry COUNTED on both panels at once rather than left to the eye.
+
+**What the tiles showed, and it is the product being right:** a failed read paints "Couldn't load the desk's
+activity · A data read failed — this may not be empty. Refresh to retry." with NO table and NO pager, and the
+Activity tab's count badge DISAPPEARS with it (312: a badge is never how "unknown" is said) — 17 healthy, none when
+the read failed. The desk owns both of its empty sentences ("No stake **anywhere on the desk** matches…" against the
+account page's "No stake **on this account** matches…"). A crafted address is refused BY AXIS ("Parts of this
+address were not understood and were ignored: page, window and type"). `?page=999` serves the LAST page and the
+pager says so ("81-82 OF 82", page 5 outlined). Every `When` is one unwrapped line on the money column's own
+numeral axis at all six widths — the defect this lane fixed on 2026-09-20 has not come back. No amount appears on
+either history panel. The address bar carries no internal word: `?tab=activity&kind=responding&product=polls&outcome=placed&range=7d`,
+every token the slug of its own painted label.
+
+**Three defects were found on the served pages and fixed in this pass** — each one invisible to every static gate,
+and each one a control that behaved differently from its own twin:
+
+1. **A stop that landed and said nothing.** The stake really was cancelled (row → `CANCELLED`, note → "An officer
+   stopped it before it was placed", badge 17 → 16) and no toast was painted at any width. `useDeferredToast`
+   flushes its queue in an effect on the falling edge of `pending` — but the success path REFRESHES, the refresh
+   removes the control that queued the message (a stopped stake is no longer QUEUED, so its row draws no button),
+   and an effect on an unmounting component never runs. Every control whose SUCCESS removes it was mute;
+   `designate-wizard.tsx` loses "On the desk" the same way, by `router.push` one line later. `test:feedback-law`
+   can only see that `deferToast(` is called in statement position, which it was. **Fixed in the hook** — it now
+   flushes on unmount too — so the fix covers both call sites and every future one.
+2. **Two ways out of one dialog, disagreeing.** The stop ceremony is scrim-proof once anything is typed, and
+   Escape threw the same text away without a word — at all six widths. That text is the officer's written reason
+   and the server refuses the act without it. `Modal` gains `closeOnEsc` (default `true`, so no other caller
+   moved) and the ceremony passes it `closeOnScrim`'s own condition, character for character.
+3. **Both drivers were lying in one place each, and that is recorded rather than quietly corrected.** The states
+   driver reported `pagerBox: null` on all 108 renders — for a pager the tiles show plainly — because it scoped
+   its search to `main …`; it now searches the document, matches the disabled SPANS too, and carries §P1-§P4, which
+   assert the pager's presence, its reading, its 44px floor and its ABSENCE over a filter that matched nothing.
+   The faults driver failed its count-badge case 12 times on a correct page by asking for `[role='tablist']` when
+   the kit stamps `data-section-rail` on a `<nav>`, and failed its gutter case by measuring the full-viewport
+   `role="alertdialog"` container instead of the 420px panel inside it. A gate that fails on a right page is worse
+   than no gate.
+
+**Five findings are OPEN and are NOT this lane's to decide alone** (each measured, none fixed):
+
+- **One rail, two languages.** The window row paints `Leo · Saa 24 · Siku 7 · Muda wote · Maalum` while the three
+  axes under it paint `Any type · Responding · Filling · Opening · Manual`, `Any product · Polls · Up & Down`,
+  `Any outcome · Queued · …`. Mechanism: the three chip groups are SERVER-BUILT by `house-console-read.ts` (so
+  their copy is deliberately hard-English and inside 453's scans), while `DateTimeRangeFilter` is a `"use client"`
+  kit control that builds its own labels from `useT()` — and `DEFAULT_LOCALE` is `sw`, so this is what an admin
+  sees before ever touching the language menu. ⚠️ **Pre-existing and platform-wide**, not step 5's: every admin
+  surface using that control (including `/admin/house`) has the same split. The fix is a policy decision about
+  admin locale, not a lane call.
+- **A refused window falls back invisibly.** `?range=forever` is refused by the server, which then reads the
+  DEFAULT — and the same refusal leaves `Any type`, `Any product` and `Any outcome` visibly outlined while the
+  window row shows NO selected chip at all. Mechanism: `datetime-range-filter.tsx:101` takes `sp.get("range")` at
+  face value, so a value the server rejected selects nothing. The rail therefore stops stating the window in force
+  at exactly the moment a Callout has told the officer their window was ignored. It is the one axis on this rail
+  whose selected state is not the server's own parse.
+- **Ruling 410 still names a `Bot` axis the landing rail does not have.** Shipped: Type · Product · Outcome. The
+  account half's amendment explains why the ACCOUNT page has Type instead of Bot ("a page about ONE account has no
+  Bot axis"); the LANDING half has no such amendment, so the ruling of record and the shipped rail disagree — and
+  the missing axis is the one that would take an officer from an account to that account's stoppable stakes.
+- **The asymmetry itself, settled: INTENDED, and coherent as far as it goes.** Counted at all six widths — the
+  landing feed offers a stop on 12 of 12 QUEUED rows; the account page paints 11 QUEUED rows and 0 controls. It is
+  not an oversight: `houseDetailForConsole` projects no `cancelId` at all, and the account rail carries no count
+  badge either, which is the same decision applied twice (no control ⇒ no count a control acts on). The practical
+  path exists — `?tab=activity&outcome=queued` lists every stoppable stake desk-wide with the account named beside
+  it. What is missing is the DOOR: an officer standing on an account, looking at eleven queued stakes, is told
+  nothing about where the control lives. A single server-built link on that panel would close it.
+- **Every `?tab=` on a REMOVED account renders the same record, silently.** `?tab=activity` and `?tab=history` both
+  paint the removal Callout and the Saved-rules card, with no rail at all and no sentence saying the panels are
+  gone — while the same page refuses a bad `kind` or `range` BY NAME. A bell delivered before removal links to
+  `…?tab=activity`, and that is where it lands.
+
+Two more, reported as judgements rather than defects: **"In flight" wears `TONE_CHIP.broadcast`** — the PLAYER's
+red live-pill — in a column beside FAILED (rose) and CANCELLED (claret), which is the exact case
+`STATUS_TONE_EXCEPTIONS.LIVE` was written against ("to an OFFICER it is operational health … where red would read
+as an incident", `admin: "green"`); the tone dictionary is documented but no suite enforces it, which is how a word
+outside the dictionary (`In flight` is not in it) picked the player's half with every gate green. And the history
+panels carry **no filter rail** while the activity panels carry four axes, although the history reader already
+holds a `fromIso` facet.
+
 ---
 
 ## 13. Accepted risks

@@ -181,6 +181,13 @@ export function StopQueued({
         maxWidth={420}
         /* 415 · a must-decide gate while the request is in flight, and scrim-proof once anything is typed. */
         closeOnScrim={!pending && reason.length === 0}
+        /* 🔴 K/7d's OTHER HALF, AND IT WAS FOUND ON A SERVED BUILD (2026-09-21, the ops lane's panel drive).
+           The guard above this dialog catches a NAVIGATION away; `closeOnScrim` catches the scrim. Escape was
+           neither, so the one box had two one-gesture exits that disagreed: the scrim refused to throw away a
+           typed reason and the keystroke threw it away without a word. Measured at all six widths — the dialog
+           was gone and the text with it. ⛔ The condition is `closeOnScrim`'s, character for character, because
+           two doors out of one room that close on different conditions is the defect, not the wording. */
+        closeOnEsc={!pending && reason.length === 0}
         showClose={!pending}
         ariaBusy={pending}
         initialFocus={firstRef}

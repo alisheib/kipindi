@@ -424,6 +424,22 @@ export function useToast(): ToastContextValue {
  * Error toasts should still use `toast()` directly — the user needs to see
  * failures immediately regardless of transition state.
  *
+ * 🔴 **A QUEUED TOAST IS FLUSHED ON UNMOUNT TOO, AND THAT IS NOT TIDINESS — IT IS THE ONLY WAY
+ * SOME CALLERS EVER SPEAK.** Read off a served build, 2026-09-21: an officer stopped a queued
+ * stake on `/admin/desk?tab=activity`, the stake really was cancelled (the row turned
+ * `CANCELLED`, its note read "An officer stopped it before it was placed", the tab's count fell
+ * 17 → 16) and **NOT ONE WORD was said about it**. The reason is structural rather than local:
+ * the success path refreshes, and the refresh REMOVES the very control that queued the message —
+ * a stopped stake is no longer QUEUED, so its row draws no button and `StopQueued` unmounts in
+ * the same commit that ends the transition. An effect on an unmounting component never runs, so
+ * the queue went to the garbage collector. `designate-wizard.tsx` loses its "On the desk" toast
+ * the same way, by `router.push` one line later. ⛔ Every control whose SUCCESS removes it — the
+ * most common shape in this admin — was silently mute, and no static gate could see it: the
+ * `deferToast(` call is right there in statement position, which is all `test:feedback-law` can
+ * check. The cleanup below flushes whatever is still queued, so the message survives the
+ * component that asked for it. It cannot invent one: the queue is only ever filled by an
+ * explicit `deferToast` call on a path that already decided to speak.
+ *
  * ```tsx
  * const [pending, start] = useTransition();
  * const { deferToast, toast } = useDeferredToast(pending);
@@ -448,6 +464,17 @@ export function useDeferredToast(pending: boolean) {
     }
     wasPendingRef.current = pending;
   }, [pending, toast]);
+
+  /* ⛔ THE LAST WORD, ON THE WAY OUT. Mount-once cleanup (`[]`), so it runs when this component
+     really is leaving rather than on every `pending`/`toast` change — a dependency list here
+     would flush the queue on the same commit that filled it and beat the transition it was
+     queued behind. `toast` is read through a ref so the cleanup cannot close over a stale one. */
+  const toastRef = React.useRef(toast);
+  React.useEffect(() => { toastRef.current = toast; }, [toast]);
+  React.useEffect(() => () => {
+    for (const t of queueRef.current) toastRef.current(t);
+    queueRef.current = [];
+  }, []);
 
   const deferToast = React.useCallback((input: ToastInput) => {
     queueRef.current.push(input);

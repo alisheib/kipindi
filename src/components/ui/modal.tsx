@@ -144,6 +144,16 @@ export type ModalProps = {
   showClose?: boolean;
   /** Clicking the scrim closes (default true). Set false for must-decide gates. */
   closeOnScrim?: boolean;
+  /**
+   * 🔴 **Escape closes (default true) — the scrim's twin, and it was missing.** A dialog that
+   * refuses the scrim once something is typed and still throws the typing away on Escape offers
+   * the user two ways out of one box that behave differently, and the destructive one is the
+   * keystroke. Found on a served build 2026-09-21 on the stop-a-queued-stake ceremony, where the
+   * discarded text is the officer's written reason and the server refuses the act without it.
+   * ⛔ Defaults TRUE, so not one existing call site changes: a caller opts in by passing the same
+   * condition it already passes to `closeOnScrim`, and then the two doors agree.
+   */
+  closeOnEsc?: boolean;
   /** Element to focus on open; falls back to the first focusable in the panel. */
   initialFocus?: React.RefObject<HTMLElement | null>;
   /** Extra classes for the panel (spacing/tone overrides). */
@@ -171,6 +181,7 @@ export function Modal({
   maxWidth = 360,
   showClose = true,
   closeOnScrim = true,
+  closeOnEsc = true,
   initialFocus,
   panelClassName = "",
   zIndex = 100,
@@ -218,6 +229,11 @@ export function Modal({
   React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   const initialFocusRef = React.useRef(initialFocus);
   React.useEffect(() => { initialFocusRef.current = initialFocus; }, [initialFocus]);
+  /* Read through a ref for the reason the comment above `onCloseRef` gives: the key handler is
+     installed once per opening, and adding this to that effect's deps would re-install it on
+     every keystroke that changes the condition — which is exactly when it is load-bearing. */
+  const closeOnEscRef = React.useRef(closeOnEsc);
+  React.useEffect(() => { closeOnEscRef.current = closeOnEsc; }, [closeOnEsc]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -233,7 +249,10 @@ export function Modal({
       target?.focus();
     }, 30);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); onCloseRef.current(); return; }
+      /* ⛔ Escape obeys the same condition the scrim does when a caller sets one. It is still
+         swallowed either way: a refused Escape that bubbled would close the dialog's own parent
+         surface instead, which is a worse answer than nothing happening. */
+      if (e.key === "Escape") { e.preventDefault(); if (closeOnEscRef.current) onCloseRef.current(); return; }
       if (e.key !== "Tab") return;
       // Focus trap: keep Tab inside the dialog instead of leaking behind the scrim.
       const f = focusables();

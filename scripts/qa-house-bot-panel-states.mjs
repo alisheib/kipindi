@@ -124,9 +124,19 @@ const PROBE = `() => {
   const tzsText = (document.querySelector("main") || document.body).innerText.match(/TZS/g);
   /* ⛔ THE PAGER IS FOUND BY ITS OWN CONTROLS, NOT BY A 'nav[aria-label]' — the first draft of this probe
      matched the SECTION TABS ("Desk sections") on every state and reported a pager that was never the pager. */
-  const pageBtn = [...document.querySelectorAll("main button[aria-label], main a[aria-label]")]
+  /* 🔴 AND THE FIRST WORKING DRAFT FOUND NOTHING AT ALL, WHICH IS WORSE THAN FINDING THE WRONG THING. It
+     scoped the search to "main …" and reported pagerBox: null on ALL 108 renders — including states whose
+     TILE shows the pager plainly ("81-82 OF 82", then « ‹ 1 2 3 4 5 › »). A probe that answers ABSENT for
+     something photographed PRESENT is the false negative that makes a green drive worthless. Scope is the
+     document, the disabled controls are SPANS and so are matched too, and §P0 below fails if no render on
+     a multi-page state reached one — so this can never go quietly blind again. */
+  const pageBtn = [...document.querySelectorAll("a[aria-label], button[aria-label], span[aria-label]")]
     .filter((b) => /page|ukurasa/i.test(b.getAttribute("aria-label") || ""));
-  const pager = pageBtn.length ? pageBtn[0].closest("div,nav,section") : null;
+  /* The pager ROW, not the strip of controls inside it: the row is the one that also carries the reading
+     ("1-20 OF 82"), and the row's top is what "where the pager sits" means. Bounded walk — four levels, then
+     give up — so a markup change cannot silently promote this to <body>. */
+  let pager = pageBtn.length ? pageBtn[0].parentElement : null;
+  for (let up = 0; up < 4 && pager && !/\\d\\s+of\\s+\\d/i.test(pager.textContent || ""); up += 1) pager = pager.parentElement;
   const pagerBox = pager ? (() => { const r = pager.getBoundingClientRect();
     return { label: pager.getAttribute("aria-label") || "", h: Math.round(r.height), top: Math.round(r.top),
              text: (pager.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 90) }; })() : null;
@@ -228,6 +238,29 @@ ok("§W0 CONTROL · a When column was actually reached, on more than one state",
 for (const r of report) {
   ok(`§O1 ${r.id} @${r.width} · the document itself does not scroll sideways`, !r.docOverflow, r.docOverflow || "");
 }
+/* ── THE PAGER, WHICH THIS DRIVER PHOTOGRAPHED FOR A WHOLE RUN WITHOUT MEASURING ──────────────────────────
+ * Ruling 411 puts a pager under both panels wherever the row source is unbounded, and 432(a) forbids one over a
+ * list with nothing in it. Both halves are asserted here, with a control, because the first version of this file
+ * recorded `pagerBox` and asserted NOTHING about it — so a probe that had gone blind and a page that had lost its
+ * pager read exactly the same in the log. */
+const PAGED = new Set(["L-A1", "L-A2", "L-A3", "L-H1", "L-H2", "L-H3", "A-A1", "A-A2", "A-A3", "A-H1", "A-H2"]);
+const UNPAGED = new Set(["L-A4", "A-A4"]);
+for (const r of report) {
+  if (PAGED.has(r.id)) {
+    ok(`§P1 ${r.id} @${r.width} · the panel carries its pager`, !!r.pagerBox,
+      r.pagerBox ? "" : "no page control found in the document");
+    ok(`§P2 ${r.id} @${r.width} · and the pager states its own reading, not just arrows`,
+      !!r.pagerBox && /\d[\s\S]{0,4}of[\s\S]{0,4}\d/i.test(r.pagerBox.text || ""),
+      r.pagerBox ? JSON.stringify(r.pagerBox.text) : "");
+    ok(`§P3 ${r.id} @${r.width} · its controls clear the 44px tap floor`,
+      !!r.pagerBox && r.pagerBox.h >= 44, r.pagerBox ? `row height ${r.pagerBox.h}` : "");
+  }
+  if (UNPAGED.has(r.id)) {
+    ok(`§P4 ${r.id} @${r.width} · CONTROL · no pager is drawn over a filter that matched nothing`,
+      !r.pagerBox, r.pagerBox ? JSON.stringify(r.pagerBox.text) : "");
+  }
+}
+
 console.log(`\n${report.length} tiles under ${SHOTS} · measurements in ${join(SHOTS, "states.json")}`);
 console.log(`qa:house-bot-panel-states: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

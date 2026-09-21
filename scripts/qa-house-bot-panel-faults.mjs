@@ -91,7 +91,12 @@ const selectWorks = async () => {
 const PROBE = `() => {
   const main = document.querySelector("main") || document.body;
   const text = main.innerText;
-  const tabs = [...document.querySelectorAll("main [role='tablist'] a, main [role='tablist'] button")].map((a) => ({
+  /* ⛔ THE RAIL IS STAMPED \`data-section-rail\` BY THE KIT AND IS A <nav>, NOT A tablist — read off
+     tabs.tsx:572-579. The first draft of this probe asked for [role='tablist'], found nothing on any render,
+     and therefore reported the COUNT-BADGE assertion as failing twelve times while the product was right: the
+     tile shows "Activity 17" healthy and a bare "Activity" once the read fails, which is exactly 312. A gate
+     that fails on a correct page is worse than no gate, so the selector is the kit's own hook. */
+  const tabs = [...document.querySelectorAll("[data-section-rail] a, [data-section-rail] button")].map((a) => ({
     t: (a.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 40),
     current: a.getAttribute("aria-current") || a.getAttribute("aria-selected") || "",
   }));
@@ -176,7 +181,14 @@ try {
       const d = document.querySelector("[role='alertdialog']");
       if (!d) return null;
       const btns = [...d.querySelectorAll("button")].map((b) => ({ t: (b.textContent || "").trim(), disabled: b.disabled }));
-      const r = d.getBoundingClientRect();
+      /* ⛔ THE PANEL, NOT THE SCRIM. `role="alertdialog"` sits on the full-viewport container, so measuring
+         THAT reported left=0 right=<viewport> at every width and failed the gutter check on a dialog the tile
+         shows correctly inset with 16px a side at 360. The panel is the bounded box inside it. */
+      const panel = [...d.querySelectorAll("div")].find((n) => {
+        const b = n.getBoundingClientRect();
+        return b.width > 100 && b.width < window.innerWidth - 8 && b.height > 100;
+      }) || d;
+      const r = panel.getBoundingClientRect();
       return {
         heading: (d.querySelector("h1,h2,h3") || {}).textContent || "",
         body: (d.querySelector("p") || {}).textContent || "",
@@ -285,12 +297,23 @@ for (const width of WIDTHS) {
     !!c.armedState && c.armedState.btns.every((b) => b.disabled === false), JSON.stringify(c.armedState && c.armedState.btns));
   ok(`§C4 @${width} · the dialog fits the viewport with a gutter on both sides`,
     c.empty.left >= 8 && c.empty.right <= width - 8, `left=${c.empty.left} right=${c.empty.right} vw=${width}`);
-  ok(`§C5 @${width} · Escape does NOT throw away a typed reason`, c.stillOpenAfterEsc === true);
+  /* 🔴 THE SECOND DEFECT THIS DRIVER FOUND, AND THE ASSERTION IT LEFT BEHIND. The dialog refuses the SCRIM once
+     anything is typed, and until 2026-09-21 Escape threw the same text away without a word — two one-gesture
+     exits from one box, disagreeing, with the destructive one on the keyboard. The text is the officer's written
+     reason and the server refuses the act without it. `Modal` now takes `closeOnEsc` (default true, so no other
+     caller moved) and this ceremony passes it `closeOnScrim`'s own condition. */
+  ok(`§C5 @${width} · Escape does NOT throw away a typed reason — it obeys the same condition the scrim does`,
+    c.stillOpenAfterEsc === true);
 }
 const done = report.find((r) => r.id === "C-DONE");
 if (done) {
   ok("§C6 · the stop LANDS on a served page — the queued count falls by exactly one",
     done.after.queued === done.before.queued - 1, `before=${done.before.queued} after=${done.after.queued}`);
+  /* 🔴 THE THIRD DEFECT, AND THE ONE NO STATIC GATE COULD HAVE SEEN. The stop landed and the console said
+     NOTHING: the success path refreshes, the refresh removes the control that queued the message (a stopped
+     stake is no longer QUEUED, so its row draws no button), and an effect on an unmounting component never
+     runs — so `useDeferredToast`'s queue was collected. `test:feedback-law` can only see that `deferToast(` is
+     called in statement position, which it was. The hook now flushes on unmount as well. */
   ok("§C7 · and the officer is TOLD, in words, that it landed", (done.toast || []).join(" ").length > 0,
     JSON.stringify(done.toast));
 }
