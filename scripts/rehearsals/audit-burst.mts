@@ -254,9 +254,20 @@ try {
   const baseSeq = baseline.reduce((m, r) => (BigInt(r.seq as string) > m ? BigInt(r.seq as string) : m), BigInt(0));
   console.log(`     baseline: ${baseline.length} audit rows, max seq ${baseSeq}`);
   // ⛔ The burst window must hold bets and NOTHING ELSE, or every count in §2 is a count of the wrong population.
+  // 🔴 THIS ASSERTION EXISTS BECAUSE ITS ABSENCE HID A BUG. On the first run the chain was read with `ORDER BY seq`
+  // against a `seq::text` alias, so it sorted 1, 10, 11, 2, 20, 9 — the "baseline" ended at seq 9 of 10 and a
+  // seeding row sat inside the burst window. Nothing said so; §2 simply counted the wrong rows.
+  const windowClean = (rows: ChainRow[], maxSeq: bigint): boolean =>
+    rows.every((r) => r.action !== "market.position.opened") && BigInt(rows.length) === maxSeq;
   ok("0.window · the seeding is entirely on the far side of the baseline — no bet row in it, and its seq is contiguous",
-    baseline.every((r) => r.action !== "market.position.opened") && BigInt(baseline.length) === baseSeq,
+    windowClean(baseline, baseSeq),
     `${baseline.length} rows, max seq ${baseSeq}, actions ${JSON.stringify([...new Set(baseline.map((r) => r.action))])}`);
+  // PLANTED CONTROL — the exact shape the lexicographic sort produced: one bet row left inside the baseline.
+  {
+    const leaked = [...baseline, { ...baseline[0], action: "market.position.opened" } as ChainRow];
+    ok("0.window.control · PLANTED · one bet row leaking into the baseline makes the same check red",
+      !windowClean(leaked, baseSeq), `${leaked.length} rows with a bet row in them → ${windowClean(leaked, baseSeq) ? "still accepted" : "rejected"}`);
+  }
 
   // ═══ §1 · THE BURST ═══════════════════════════════════════════════════════════════════════════════════════
   //
@@ -345,8 +356,15 @@ try {
   // append with it — measured on this rehearsal's first run: 10 bets, 8 rows, one lost per process. If a worker
   // ever reports without this flag, §2 and §3 below are counting a teardown artefact and must not be read as a
   // statement about the product.
+  const allFlushed = (rs: Any[]): boolean => rs.every((r) => r.flushed === true);
   ok("1.3 · every worker drained its audit queue before exiting (the bet's audit row is not awaited by the seam)",
-    reports.every((r) => r.flushed === true), `${reports.filter((r: Any) => r.flushed).length}/${reports.length} flushed`);
+    allFlushed(reports), `${reports.filter((r: Any) => r.flushed).length}/${reports.length} flushed`);
+  // PLANTED CONTROL — the shape that actually occurred before the flush was added: a worker that exited early.
+  {
+    const doctored = reports.map((r, i) => (i === 2 ? { ...r, flushed: undefined } : r));
+    ok("1.3.control · PLANTED · one worker that exited without draining is caught by the same check",
+      !allFlushed(doctored), `${doctored.filter((r: Any) => r.flushed).length}/${doctored.length} flushed → ${allFlushed(doctored) ? "still accepted" : "rejected"}`);
+  }
 
   const burstAll = await readChain();
   const burst = burstAll.filter((r) => BigInt(r.seq as string) > baseSeq);
@@ -464,6 +482,16 @@ try {
   //
   // ⛔ Everything above is a measurement that PASSED. None of it proves the instruments can FAIL. These four do,
   // on this database, and each is followed by a POSITIVE CONTROL — the same reading, green again after the repair.
+  //
+  // ⭐ THE MAP FROM ASSERTION TO CONTROL, so nobody has to work out which control covers what:
+  //     0.window → 0.window.control · 1.1 → 1.1.control · 1.2 → 1.2.control · 1.3 → 1.3.control
+  //     2.1 → 2.1.control · 2.2 → 2.2.control · 6.0 → 6.0.control · 5.1/5.2 → 5.3 (positive) + 5.4/5.5 (planted)
+  //     3.1 → 6.2 (a TAIL row really deleted, and §3 names the lost bet) with 6.3 as its positive control
+  //     4.1 → 6.4 · 4.2/4.3 → 6.5, with 6.6 as their positive control
+  //     4.4/4.5 → 6.7/6.8, with 6.9 as their positive control
+  //     6.10 is a REFUSAL, so it carries two positive controls of its own: 6.11 and 6.12.
+  //   ⚠️ `0.migrate` and `0.seed` are preconditions of the fixture rather than claims about the product, and they
+  //   carry no control. They are named here so the omission is a decision and not an oversight.
   section("§6 · planted controls on the real chain (each mutation is restored, each restore re-read)");
 
   const cols = `id, category, action, "actorId", "targetType", "targetId", payload, ip, "userAgent", "createdAt", seq, "prevHash", "entryHash"`;
@@ -484,8 +512,20 @@ try {
     // (seq is assigned inside the same advisory lock that picks the predecessor), and 6.0 asserts that they are —
     // but the control is about the LINK structure, so it takes its victim from the links.
     const tail = walk0.tail!;
+    const ordersAgree = (rows: ChainRow[]): boolean => {
+      const w = walkFromGenesis(rows);
+      return w.tail != null && w.tail.id === rows[rows.length - 1].id;
+    };
     ok("6.0 · the chain's tail by LINK is also the last row by seq — the two orders agree on this chain",
-      tail.id === burstAll[burstAll.length - 1].id, `${tail.id} vs ${burstAll[burstAll.length - 1].id}`);
+      ordersAgree(burstAll), `${tail.id} vs ${burstAll[burstAll.length - 1].id}`);
+    // PLANTED CONTROL — exactly what the lexicographic read produced: a seq order that is not the link order.
+    {
+      // The same rows, the last two transposed: the LINK tail is unchanged, the seq-order tail is not.
+      const n = burstAll.length;
+      const shuffled = [...burstAll.slice(0, n - 2), burstAll[n - 1], burstAll[n - 2]];
+      ok("6.0.control · PLANTED · a seq order that disagrees with the link order is caught by the same check",
+        !ordersAgree(shuffled) && shuffled.length === n, `${shuffled.length} rows, last two transposed → ${ordersAgree(shuffled) ? "still accepted" : "rejected"}`);
+    }
     const snap = await snapshot(tail.id);
     await cli.query(`DELETE FROM "AuditLog" WHERE id = $1`, [tail.id]);
     const after = await readChain();
