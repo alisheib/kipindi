@@ -127,7 +127,7 @@ export const MUTATIONS = [
     file: "scripts/lib/house-bot-vocabulary.mjs",
     expect: "every sample of the shared word family, written into a COPY of the real system prompt, is reported",
     why: "ruling 175's shared lexicon is the single home for house words, so a member trimmed out of it silently narrows EVERY absence proof on the platform at once. The Kiswahili spelling is the one to plant against: it is the default language here, and the alternative least likely to be re-read",
-    from: "|dau la nyumba|",
+    from: "|dau${HOUSE_JOIN}la${HOUSE_JOIN}nyumba|",
     to: "|",
   },
 
