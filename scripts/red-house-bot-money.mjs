@@ -22,7 +22,7 @@ import { createHash } from "node:crypto";
 import { MUTATIONS as MONEY } from "./anchors/house-bot-money.anchors.mjs";
 import { MUTATIONS as SEAM } from "./anchors/house-bot-seam.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
-import { armRestoreGuard } from "./lib/red-restore-guard.mjs";
+import { armRestoreGuard, haltIfStopped, isConsoleStop, requestStop } from "./lib/red-restore-guard.mjs";
 
 const MEMORY_ONLY = process.argv.includes("--memory-only");
 // `--only (e),H5` runs just the named mutations (prefix match on the name) — for re-proving one fix without the fleet.
@@ -59,6 +59,7 @@ const run = (suite) => {
     const out = execSync(SUITES[suite], { stdio: "pipe", encoding: "utf8", maxBuffer: 256 * 1024 * 1024, env: envFor(suite), timeout: 45 * 60_000 });
     return { red: false, output: out };
   } catch (e) {
+    if (isConsoleStop(e)) requestStop(`the suite child exited with STATUS_CONTROL_C_EXIT — a console stop (Ctrl-C / Ctrl-Break) reached this drive`);
     return { red: true, output: `${e.stdout ?? ""}${e.stderr ?? ""}` };
   }
 };
@@ -96,6 +97,7 @@ armRestoreGuard({ original, write, releaseLock, label: "house-bot-money RED" });
 const needed = [...new Set(DEFECTS.map((d) => d.suite))].filter((s) => !(MEMORY_ONLY && s.endsWith("-pg")));
 for (const suite of needed) {
   const base = run(suite);
+  haltIfStopped("house-bot-money RED");
   if (base.red) {
     console.error(`REFUSING TO RUN — suite "${suite}" is RED before any mutation:\n${base.output.split("\n").filter((l) => l.startsWith("FAIL")).slice(0, 10).join("\n") || base.output.slice(-2000)}`);
     process.exit(1);
@@ -126,6 +128,8 @@ for (const d of DEFECTS) {
   } finally {
     write(d.file, src);
   }
+  // ⛔ The file is back; if the operator stopped us, stop HERE rather than injecting the next defect.
+  haltIfStopped("house-bot-money RED");
   const fails = result.output.split("\n").filter((l) => /^\s*FAIL/.test(l));
   const own = fails.find((l) => l.includes(d.expect));
   if (result.red && own) { caught++; console.log(`CAUGHT ${d.name}\n        ↳ ${own.trim()}`); }

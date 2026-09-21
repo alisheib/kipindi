@@ -23,7 +23,7 @@ import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { MUTATIONS as DEFECTS_ALL } from "./anchors/house-bot-console.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
-import { armRestoreGuard } from "./lib/red-restore-guard.mjs";
+import { armRestoreGuard, haltIfStopped, isConsoleStop, requestStop } from "./lib/red-restore-guard.mjs";
 
 const onlyArg = process.argv.find((a, i) => process.argv[i - 1] === "--only");
 const ONLY = onlyArg ? onlyArg.split(",").map((s) => s.trim()).filter(Boolean) : [];
@@ -69,6 +69,7 @@ const run = (d) => {
   try {
     output = execSync(s.cmd, { stdio: "pipe", encoding: "utf8", maxBuffer: 512 * 1024 * 1024, env: { ...process.env, ...s.env }, timeout: 45 * 60_000 });
   } catch (e) {
+    if (isConsoleStop(e)) requestStop(`the suite child exited with STATUS_CONTROL_C_EXIT — a console stop (Ctrl-C / Ctrl-Break) reached this drive`);
     output = `${e.stdout ?? ""}${e.stderr ?? ""}`;
   }
   const fails = output.split("\n").filter((l) => /^\s*FAIL/.test(l) && !SUMMARY.test(l));
@@ -109,6 +110,7 @@ armRestoreGuard({ original, write, releaseLock, label: "house-bot-console RED" }
 // ⭐ Every suite a mutation names must be GREEN first — a red baseline would make every mutation look caught.
 for (const key of [...new Set(DEFECTS.map((d) => d.suite))]) {
   const base = run({ suite: key });
+  haltIfStopped("house-bot-console RED");
   if (base.red) {
     console.error(`REFUSING TO RUN — "${key}" is RED before any mutation:\n${base.fails.slice(0, 10).join("\n") || base.output.split("\n").slice(-6).join("\n")}`);
     process.exit(1);
@@ -134,6 +136,8 @@ for (const d of DEFECTS) {
   } finally {
     write(d.file, src);
   }
+  // ⛔ The file is back; if the operator stopped us, stop HERE rather than injecting the next defect.
+  haltIfStopped("house-bot-console RED");
   const own = result.fails.find((l) => l.includes(d.expect));
   if (result.red && own) { caught++; console.log(`CAUGHT ${d.name}\n        ↳ ${own.trim().slice(0, 260)}`); }
   else if (result.red) { missed++; console.log(`WRONG-ASSERTION ${d.name} — red, but NOT on "${d.expect}"\n        ↳ ${(result.fails[0] ?? (result.crashed ? `crashed: ${result.output.split("\n").slice(-3).join(" | ")}` : "")).trim().slice(0, 400)}`); }

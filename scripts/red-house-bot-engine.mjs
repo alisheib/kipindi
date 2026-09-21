@@ -27,7 +27,7 @@ import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { MUTATIONS as DEFECTS_ALL } from "./anchors/house-bot-engine.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
-import { armRestoreGuard } from "./lib/red-restore-guard.mjs";
+import { armRestoreGuard, haltIfStopped, isConsoleStop, requestStop } from "./lib/red-restore-guard.mjs";
 import { benignFloor, floorShapeDrifted } from "./lib/red-two-store-floor.mjs";
 
 const MEMORY_ONLY = process.argv.includes("--memory-only");
@@ -64,6 +64,7 @@ const run = (d) => {
   try {
     output = execSync(s.cmd, { stdio: "pipe", encoding: "utf8", maxBuffer: 512 * 1024 * 1024, env, timeout: 45 * 60_000 });
   } catch (e) {
+    if (isConsoleStop(e)) requestStop(`the suite child exited with STATUS_CONTROL_C_EXIT — a console stop (Ctrl-C / Ctrl-Break) reached this drive`);
     output = `${e.stdout ?? ""}${e.stderr ?? ""}`;
   }
   const lines = output.split("\n");
@@ -120,6 +121,7 @@ for (const d of DEFECTS) {
 }
 for (const [key, d] of baselines) {
   const base = run(d);
+  haltIfStopped("house-bot-engine RED");
   if (base.red) {
     console.error(`REFUSING TO RUN — "${key}" is RED before any mutation:\n${base.fails.slice(0, 10).join("\n") || base.output.split("\n").slice(-6).join("\n")}`);
     process.exit(1);
