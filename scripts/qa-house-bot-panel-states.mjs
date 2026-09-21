@@ -157,7 +157,19 @@ const PROBE = `() => {
      something photographed PRESENT is the false negative that makes a green drive worthless. Scope is the
      document, the disabled controls are SPANS and so are matched too, and §P0 below fails if no render on
      a multi-page state reached one — so this can never go quietly blind again. */
-  const pageBtn = [...document.querySelectorAll("a[aria-label], button[aria-label], span[aria-label]")]
+  /* 🔴 AND THE SECOND DRAFT WAS STILL BLIND, WHICH IS WHY THE HOOK IS NOW THE KIT'S OWN. Scoping to the
+     document and matching a/button/span by aria-label STILL found nothing on all 66 paged renders, while the
+     very same probe's own aria list carried "First page" · "Previous page" · "Next page" · "Last page" from
+     a "main [aria-label]" query — so the labelled element is none of those three tags, and guessing a fourth
+     would be the same mistake a third time. pagination.tsx stamps data-pager-group on its three groups: that is
+     a hook the kit MAINTAINS, not one this probe inferred. The tag names are recorded beside it so the next
+     reader does not have to re-derive why the aria route failed. */
+  const pagerTags = [...document.querySelectorAll("[aria-label]")]
+    .filter((b) => /page|ukurasa/i.test(b.getAttribute("aria-label") || ""))
+    .map((b) => b.tagName + "[" + (b.getAttribute("aria-label") || "").slice(0, 14) + "]").slice(0, 6);
+  const pageBtn = [...document.querySelectorAll("[data-pager-group], a[aria-label], button[aria-label], span[aria-label]")]
+    .filter((b) => b.hasAttribute("data-pager-group") || /page|ukurasa/i.test(b.getAttribute("aria-label") || ""));
+  const pageBtnLegacy = [...document.querySelectorAll("a[aria-label], button[aria-label], span[aria-label]")]
     .filter((b) => /page|ukurasa/i.test(b.getAttribute("aria-label") || ""));
   /* The pager ROW, not the strip of controls inside it: the row is the one that also carries the reading
      ("1-20 OF 82"), and the row's top is what "where the pager sits" means. Bounded walk — four levels, then
@@ -181,6 +193,7 @@ const PROBE = `() => {
     docOverflow: de.scrollWidth > vw + 1 ? de.scrollWidth + ">" + vw : null,
     escaping: esc.slice(0, 8), railBox, chips, heads, firstCells, rowCount: rows.length,
     money, tzs: tzsText ? tzsText.length : 0, pagerBox, callout, empty, tabs,
+    pagerTags, pagerLegacyHits: pageBtnLegacy.length, pagerGroups: document.querySelectorAll("[data-pager-group]").length,
     whenWrapped, whenWs, whenFvn, whenRows: whenIdx >= 0 ? rows.filter((tr) => tr.children.length === heads.length).length : 0,
     whoMaxLines, whoWs, whoRows, changeMaxLines: change.max, changeWs: change.ws, changeRows: change.n,
     aria: aria.slice(0, 40),

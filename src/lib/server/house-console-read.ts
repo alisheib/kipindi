@@ -3764,7 +3764,13 @@ export async function houseCancelIntentForConsole(
   return {
     ok: true,
     changed: true,
-    note: done.recorded ? CONSOLE_CANCEL_NOTE.done : CONSOLE_CANCEL_NOTE.notRecorded,
+    /* 🔴 `null`, NOT `CONSOLE_CANCEL_NOTE.done` — READ OFF THE TOAST ITSELF, and only visible once the toast
+     * was visible at all. The control paints this as the DESCRIPTION under `doneTitle`, which is "The stake was
+     * stopped"; the note was "The stake was stopped." So the officer's one confirmation said the same sentence
+     * twice, differing by a full stop. A description that repeats its title is not a second fact, it is noise on
+     * the one surface that has to be read quickly. The `notRecorded` branch stays, because it says something the
+     * title does not, and so does the repeat branch above. `1.415`'s own assertion already allows `null` here. */
+    note: done.recorded ? null : CONSOLE_CANCEL_NOTE.notRecorded,
     warn: !done.recorded,
   };
 }
