@@ -20,6 +20,25 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // ⛔ THE AUDIT SHUTDOWN DRAIN GOES FIRST, before anything below can queue an append.
+    //
+    // `audit()` is fire-and-forget on a process-wide queue (467 of 489 call sites in src/ are
+    // un-awaited, deliberately — a live bet must not wait on an audit write), and a process that
+    // ENDS takes whatever is queued with it. Driven on a scratch cluster: 10 bare appends plus the
+    // SIGTERM chain production actually has landed 0 of 10, because Next's own handler finishes its
+    // cleanup ~30 ms in and calls `process.exit(143)` itself. The HMAC chain cannot see the hole — a
+    // lost append consumes no sequence number — and the table is append-only, so the row can never
+    // be added later. See `lib/server/audit-drain.ts` for why the SIGNAL only arms and the EXIT is
+    // what is held, and why draining on the exit (after Next has finished in-flight requests) is the
+    // only order that drains a complete queue.
+    //
+    // ⛔ NOT wrapped in try/catch, and it is not a risk to leave unwrapped: it registers two
+    // listeners and wraps one function, with no I/O, no import beyond `audit.ts` and nothing that
+    // can depend on the environment. A catch here would only be able to hide the one failure that
+    // matters — that the drain is not installed at all.
+    const { installAuditShutdownDrain } = await import("./lib/server/audit-drain");
+    installAuditShutdownDrain();
+
     // Boot-time validation (audit C7 + H7). NOT wrapped in try/catch: a
     // compliance-lock violation MUST stop the server from starting.
     const { runBootChecks } = await import("./lib/server/boot-checks");

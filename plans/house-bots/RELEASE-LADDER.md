@@ -701,6 +701,198 @@ owed and cannot exit 0 — which is the whole reason drill 2 has a status of its
 
 ---
 
+## 12 · THE COMPLIANCE ROW A DYING PROCESS LOSES — driven, remedied, and what it leaves the switch
+
+⚠️ Numbered **12**, not 11: the note at the foot of this file already points at *ops-lane's* §11, and two
+different §11s on two branches of the same document is the merge confusion that note exists to prevent.
+
+**The question: can 50pick lose a statutory audit row in production? The answer is YES,** and it was
+established by driving it, not by reading. Re-derive all of it — no number below is inherited:
+
+```
+npm run rehearse:audit-loss-window     # the defect and its size          (measurement, gates nothing)
+npm run rehearse:audit-gap             # the remedy, end to end           (26 assertions, 0 failed)
+npm run test:audit-gap                 # the guard                        (38 assertions, 15 controls)
+```
+
+**12.1 · What is true of the tree.** `market-service.ts:1699` writes the bet's `market.position.opened`
+row with a BARE, un-awaited `audit({…})` — deliberately; a live bet must not wait on an audit write. It is
+not alone: the population sweep in `rehearse:audit-loss-window` §1 counts every un-awaited `audit(` call
+site in `src/` and prints it by category, and `auditFlush()` is called from **production code zero times**.
+The append is queued on one process-wide promise chain; a process that ENDS takes the queue with it.
+⛔ Driven on a scratch database, 2026-09-21, `rehearse:audit-gap` §1: **24 bets committed, 8 compliance
+rows landed, 16 gone** — from a child process that really exited. The loss is the queue DEPTH at the
+instant of exit, so it is 1 for a sequential producer and all of them for a burst.
+
+**12.2 · Nothing drains it on the way out.** Read from the tree, not assumed: `lifecycle.ts` and
+`house-bot/engine.ts` both register `process.once("SIGTERM", …)` and neither awaits the audit queue, and
+Next registers its own handler **first** (`next/dist/server/lib/start-server.js`), which ends in
+`process.exit(143)`. Driven: the cleanup finished about 30 ms after the appends were queued, and every
+one of them was lost. ⭐ **A platform grace period buys nothing when the process kills itself first.**
+
+**12.3 · The chain cannot see the hole, and it is permanent.** A lost append consumes no `seq` and breaks
+no link: `verifyChainFull()` returns `valid:true, linkBroken:false` over a chain that is missing rows
+(`rehearse:audit-gap` §4 prints the reading each run). `auditLog` has only `create` in all of `src/` — no
+update, no delete, anywhere, re-measured by `test:audit-gap` §6 over every `.ts`/`.tsx` file under `src/`.
+**A row that was never written can never be added later.**
+
+**12.4 · ⛔ THE HOUSE-BOT CASE, which is why this rung cares.** The engine fires from timers inside the
+container. `pollerPass` → `fireClaimedIntent` → `placeHouseBet` → the Position commits under the market
+lock, and only then does line 1699 queue the append. A deploy landing in that gap leaves **a Position row
+with `houseBotId` set and no compliance record** — and D20 makes house bots ordinary players in every
+report, so that is a missing **PLAYER** bet row, not a missing house row. The idempotent replay does not
+repair it: the key lookup returns from inside `withLock` without setting `committed`, so a replayed bet
+writes no audit row at all. `market-service.ts:1709` is the only place `intentId` ever reaches an audit
+payload, so the intent↔bet linkage dies with the row.
+
+**12.5 · ⛔ AWAITING IT WAS REFUSED, ON THE MEASUREMENT.** `rehearse:audit-loss-window` §3.2 measures what
+the bet path would pay if line 1699 were awaited, at 5/20/50/100-way concurrency, on an **idle loopback
+cluster with no network and no other traffic** — and the append serialises on a DB-global advisory lock,
+so the wait grows with ALL audit traffic and not just bets, while production adds six network round trips
+to every append. **`market-service.ts` is unchanged by this work.**
+
+**12.6 · What ships instead, all three driven in `rehearse:audit-gap`:**
+
+| | | Where |
+|---|---|---|
+| ① | **The declaration.** A committed `Position` with no compliance row is found against the durable anchor and entered in the chain as `audit.row_missing` — player, market, stake, bot, and the bet's own time in the payload where it cannot be mistaken for the entry's. ⛔ It **cannot restore** the row and says so in its own payload: a late insert would chain at the current head and date the bet to the sweep. A permanent **invisible** hole becomes a permanent **declared** one. | `src/lib/server/audit-reconcile.ts` |
+| ② | **It runs.** A lifecycle chore, every 5 min, leader-leased, its own catch, off every money path. Appends only when something is wrong; a quiet sweep still prints its population hourly, because a silent sweep and a stopped one must not read alike. | `lifecycle.ts` |
+| ③ | **The engine's tick pays where the bet must not.** A BOUNDED `flushAuditWithin(AUDIT_FLUSH_BUDGET_MS)` at the end of `pollerPass`. Bounded because an unbounded wait on a wedged queue would stall claiming, which is the one failure A24 exists to surface. ⚠️ It **narrows** the window — a signal mid-fire still loses the row — which is why ① is the backstop and ③ is never called the fix. | `house-bot/worker.ts` |
+
+Three things stop the register becoming its own kind of lie, each with its control in `rehearse:audit-gap`:
+a **grace** (nothing still in flight is ever declared missing, §3), **self-deduplication** (a declared hole
+is no longer a hole, so the register is a count and not a growing pile of one finding, §5), and a **cap**
+(a pathological hour cannot flood the chain the bet path shares, §6).
+
+**12.7 · ⭐ A DEFECT THE DRILL ITSELF FOUND, and it would have been invisible on production.**
+`Position.placedAt` is `TIMESTAMP(3)` **without** time zone and the app writes UTC into it
+(`market-service.ts:1369`). Binding a JS `Date` into the window predicate made Postgres resolve the
+parameter in the **session's** timezone: on the +03:00 scratch cluster the window ran three hours past
+`now` and the ten-minute grace went **NEGATIVE** — bets whose append was still legitimately in flight were
+reported as missing compliance rows. Every bound instant is now anchored with
+`::timestamptz AT TIME ZONE 'UTC'`, pinned by `test:audit-gap` §1.2b and by a planted control in
+`rehearse:audit-gap` §3.c3 that runs the OLD comparison and shows it still swallows the in-flight bet.
+⛔ Production's Postgres is UTC today — which is exactly why this would not have been noticed until the
+day it wasn't.
+
+**12.8 · The instruments, and who runs which.**
+
+| Key | What it is | Pipeline? |
+|---|---|---|
+| `test:audit-gap` | The guard. Every assertion has a planted control; the **refusal** at §5 carries a positive control (an awaited `audit()` elsewhere must still be ALLOWED) and says in the file how to retire it honestly. | ✅ **Yes** — a `test:*` key, so `scripts/test-all.mjs` enumerates it and CI runs it. Contrast §4. |
+| `rehearse:audit-gap` | The drive, on a scratch database with the real migrations, the real appender, and a child process that really exits. Creates and drops one database named for its own pid; reports the cluster count at open and close. | ❌ needs a local cluster |
+| `audit:gap-sweep` | **The backfill** the rolling 24 h sweep cannot reach — any window, by hand, once. Dry run by default; `--declare` against a non-loopback database additionally demands `--yes-write-to-this-database`. | ❌ operator action |
+
+⛔ **`audit:gap-sweep` against production is ALI'S, ON THE DAY — no session runs it**, on the same law as
+§3.1 and §5. What it would establish, and nothing else in the platform can, is **how many statutory rows
+the platform has already lost**. Nobody has ever been able to count them.
+
+**12.9 · What this does NOT close, stated so it is not mistaken for more.**
+- The reconciler covers the **bet** row against the `Position` anchor. `withdraw.confirmed`,
+  `deposit.confirmed`, `market.settled` and `bet.payout` each have a durable anchor of their own and can
+  be added as further anchors; they are **not** covered, and nothing in the code pretends they are.
+- ⛔ The **irrecoverable** class has no anchor at all — `player.record_viewed`, `kyc_doc.viewed`,
+  `agent_doc.viewed`, `transactions.exported`, `privacy.dsar.exported`. Nothing else records that the
+  viewing happened, so **no reconciler can ever detect their loss**. That is ISO 27001 A.12.4 access
+  logging, and it needs a different remedy.
+- ~~A **shutdown drain** is the highest-coverage option and does not fit in-process as things stand: Next's
+  handler is registered first and exits in about 30 ms, and its `cleanupListeners` path is dev-only. It
+  would require `NEXT_MANUAL_SIG_HANDLE` and owning the shutdown.~~ ⛔ **STRUCK 2026-09-21, same night,
+  and struck rather than edited because it was WRONG in a way worth keeping visible: it reasoned about
+  the mechanism instead of driving it.** The drain does fit in-process, needs no `NEXT_MANUAL_SIG_HANDLE`
+  and does not own the shutdown. Next's handler being first is irrelevant — what matters is that it calls
+  `process.exit` itself, and an exit can be HELD. **Driven: 0 of 10 became 10 of 10.** See **§13**.
+
+**12.10 · For the switch.** ③ narrows the house-bot window to the fire itself, and ① makes whatever still
+falls through **declarable within five minutes** instead of invisible forever. Neither is a reason to turn
+anything on, and nothing here asks for that.
+
+---
+
+## 13 · THE DRAIN — the process now WAITS for the compliance queue before it dies
+
+**§12.9's last bullet said this could not be done in-process. That was reasoning, not measurement, and it was
+wrong.** It is done, it is driven by killing real processes, and it turns §12's headline number around. Re-derive
+all of it:
+
+```
+npm run test:audit-drain            # the guard   — 36 assertions, 10 controls, 0 failed, NO database
+npm run rehearse:audit-drain        # the drive   — 20 assertions, 4 controls, 0 failed, real Postgres
+npm run rehearse:audit-loss-window  # the BEFORE  — the un-drained shape, kept deliberately
+```
+
+**13.1 · The number.** Same ordering, same appends, same real `process.exit`:
+
+| | BEFORE (no drain) | AFTER (drain) |
+|---|---|---|
+| 10 queued `market.position.opened` rows | **0 of 10 landed** | **10 of 10 landed, in 23 ms** |
+| 50-append burst | not survivable | **50 of 50, in 95 ms** (1.9 ms per append, loopback) |
+| exit code a platform sees | 143 | **143** (and 130 for SIGINT, driven) |
+| held the exit for | **0 ms** | **25 ms** |
+
+**13.2 · ⛔ THE SIGNAL ONLY ARMS; THE EXIT IS HELD.** Next's handler is registered first and always will be
+(`start-server.js:390` runs before `getRequestHandlers`, and `instrumentation.ts` runs inside it) — so the answer
+is not to be earlier. It is that Next's handler calls `process.exit(143)` **itself**, and an exit can be deferred.
+`src/lib/server/audit-drain.ts` wraps `process.exit` at install time with a **pass-through that changes nothing
+until a termination signal has been seen**; after a signal the first exit is recorded, the queue is drained, and
+the real exit then runs with the caller's code. Next's call site is `process.exit(143); break;` at the end of an
+async IIFE with nothing after it, so a deferred return executes no further work.
+
+**13.3 · ⭐ AND DRAINING ON THE EXIT, NOT ON THE SIGNAL, IS THE CORRECT ORDER.** Next's cleanup awaits
+`server.close()` first, so in-flight requests finish — and queue their appends — **after** the signal. A drain
+started on the signal would drain an incomplete queue and the last requests' rows would still be lost. The exit
+call is the instant at which the queue is complete.
+
+**13.4 · The bound: 5,000 ms, argued not picked.** Next's self-hosting guide asks platforms for 10–30 s,
+Kubernetes defaults to 30 s, Docker to 10 s — the bound is set against the **tightest** of those and uses half of
+it. It is never tighter than the 2,000 ms per-tick flush already in `house-bot/worker.ts`. Measured cost: 23 ms
+for 10 appends, 95 ms for 50 — under a fiftieth of the budget. `AUDIT_DRAIN_BUDGET_MS` overrides it, **clamped to
+30 s**; an unparseable value is reported and ignored, never read as zero. ⚠️ The live Railway grace is
+`drainingSeconds: null` (RAILWAY-LIVE §2 — the authored `railway.json` is deprecated and silently ignored, trap
+13) and this lane's Railway account is not authorised to read it back, so the bound is deliberately chosen not to
+depend on it.
+
+**13.5 · Exceeding it is LOUD, and the loud block is a measurement.** A delimited `console.error` names the
+signal, the budget, the wait, the depth at exit and the number ABANDONED, says those rows can never be added and
+that `verifyChainFull()` will still call the chain valid, and points at `audit:gap-sweep` for the bet rows and at
+the access-log class that has no anchor. Driven at a 1 ms budget: **the block's count matches the rows actually
+missing from the table, its own certificate included.**
+
+**13.6 · ⭐ THE CERTIFICATE — the part an officer can use.** The drain queues one `system.shutdown_drain` row
+**behind** everything already waiting. The queue is FIFO, so it lands only after every append queued before it
+landed. **Its presence certifies the whole shutdown; its absence marks a lossy one** — the first thing on this
+platform that can tell the two apart once the container's log is gone. Payload:
+`{"signal":"SIGTERM","queuedAtExit":10,"budgetMs":5000,"exitCode":143}`, and §3.7 of the drive proves it is the
+chain HEAD.
+
+**13.6b · ⭐ AND IT IS PROVEN IN THE REAL SERVER, not only in the drills.** A drill that reproduces Next's
+shutdown shape is still a drill; a build being green is not a render. `next dev` was booted on this machine
+(Next 16.2.4, Turbopack, in-memory store) and printed, before the scheduler, the lifecycle ticker and the
+house-bot engine:
+
+```
+✓ Ready in 3.8s
+[audit-drain] armed — this process will wait up to 5000ms for the audit queue on SIGTERM/SIGINT.
+[scheduler] boot hydrate — armed 0 pending market timer(s)
+[lifecycle] ticker started — every 60s
+```
+
+⭐ That line is also **half of AR-2's experiment**: "armed" at boot and then NO `[audit-drain]` line when the
+container goes means the termination signal never reached the process at all.
+
+**13.7 · ⛔ `market-service.ts` IS UNCHANGED.** §12.5's refusal stands on its measurement. Nothing here puts an
+audit write on a player's critical path: the drain runs once, after the server has closed.
+
+**13.8 · ⛔ WHAT IT DOES NOT COVER — the three named risks, all in `docs/COMPLIANCE-DECISIONS.md` (2026-09-21).**
+**AR-1** the uncatchable exits (SIGKILL, OOM, `abort`, power loss) — ACCEPTED, size = queue depth at death, and ①
+is the backstop for the bet row only. **AR-2 🔴** Railway's own note says a service started via `npm run start`
+may never receive SIGTERM at all, and 50pick's start command is exactly that — **UNVERIFIED**, unmeasurable from
+this platform, with the experiment and two candidate remedies written down and the call left to Ali. **AR-3** a
+tampered row still leaves `valid:true` — OPEN, measured
+(`{"valid":true,"verified":120,"unverifiable":1,"linkBroken":false}`), and explicitly not covered by this work.
+
+---
+
 **After REL-M, one session should reconcile:** this file with ops-lane's §11 and REL-0 row; the status cells
 for REL-2/REL-3/REL-4, which still read ⬜ on **all three branches** against events that already happened, so
 the status column and the prose contradict each other; the phantom `drive:house-bots-local` wherever it

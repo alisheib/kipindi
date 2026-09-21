@@ -72,7 +72,17 @@ if (mode === "verify") {
 }
 
 if (mode === "recon") {
-  const killMs = Number(process.env.RECON_KILL_MS ?? 150);
+  /* ⛔ THE HOLE IS NOW MADE BY CONSTRUCTION, NOT BY A RACE — and that is a repair, not a relaxation.
+   * This drill used to commit N positions, fire N BARE appends and hard-exit after 150 ms, then let
+   * the parent measure whatever the race happened to produce. On a quiet machine all 40 landed, so
+   * §5.1 passed VACUOUSLY over a hole of zero; on a loaded one none landed, `landedIds.length` was 0
+   * and the POSITIVE CONTROL §5.c1 FAILED — observed on this machine, 2026-09-21, while four lanes
+   * were running. Both the LANDED set and the LOST set are now known before the child starts: the
+   * first half is AWAITED (so those rows certainly exist) and the second half is fired bare and the
+   * process ends on the same tick (so those certainly do not). The detector is then measured against
+   * a hole whose exact membership is known, which is strictly more than it was measured against. */
+  const killMs = Number(process.env.RECON_KILL_MS ?? 0);
+  const landFirst = Math.max(1, Math.floor(N / 2));
   const c = client();
   await c.connect();
   // A stand-in for Position: the real table needs a User and a PredictionMarket, and the anchor
@@ -86,11 +96,15 @@ if (mode === "recon") {
       [`pos_${TAG}_${i}`, `u_${TAG}_${i}`, i % 3 === 0 ? `bot_${TAG}` : null, 1000]);
   }
   await c.end();
-  // The money is committed. Only the compliance rows are queued.
-  for (let i = 0; i < N; i++) AUD.audit(betRow(i, i % 3 === 0));
-  console.log("RECON " + JSON.stringify({ positions: N, killMs }));
-  console.error(`[child ${TAG}] ${N} positions committed, ${N} bare appends queued; hard exit in ${killMs}ms`);
-  setTimeout(() => process.exit(0), killMs);
+  // The money is committed. The first half of the compliance rows is AWAITED — those certainly land.
+  for (let i = 0; i < landFirst; i++) await AUD.audit(betRow(i, i % 3 === 0));
+  // The rest are fired BARE, exactly as market-service.ts:1699 does, and the process ends before any
+  // of them can reach the database. Those certainly do not land.
+  for (let i = landFirst; i < N; i++) AUD.audit(betRow(i, i % 3 === 0));
+  console.log("RECON " + JSON.stringify({ positions: N, landFirst, expectedHole: N - landFirst, killMs }));
+  console.error(`[child ${TAG}] ${N} positions committed, ${landFirst} rows awaited, ${N - landFirst} bare appends queued; exiting now`);
+  if (killMs > 0) setTimeout(() => process.exit(0), killMs);
+  else process.exit(0);
 } else if (mode === "burst") {
   // one awaited append first, so the burst measures steady state and not hydrate + pool warm-up
   await AUD.audit({ category: "SYSTEM", action: "drill.warm", actorId: null, targetType: null, targetId: null, payload: { warm: TAG } });

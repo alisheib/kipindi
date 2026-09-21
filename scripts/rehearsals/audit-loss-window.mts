@@ -10,6 +10,25 @@
  * a row that is never written can never be added later. The hole is permanent and the HMAC chain
  * cannot see it.
  *
+ * ⭐ WHAT WAS DONE ABOUT IT, FIRST (2026-09-21, later the same night): THE SHUTDOWN DRAIN.
+ * `src/lib/server/audit-drain.ts` holds the process's own `process.exit` — the one Next's handler
+ * calls — until the audit queue is empty or a bounded 5,000 ms budget is spent, and says loudly what
+ * it abandoned if the budget runs out. Driven against a real Postgres with a real kill: the §2.2
+ * population below went from **0 of 10 landed to 10 of 10**. The guard is `npm run test:audit-drain`
+ * (33 assertions, 8 controls, no database); the drive is `npm run rehearse:audit-drain`. ⛔ §2 here
+ * is deliberately still the UN-DRAINED shape — it is the BEFORE number, and the remedy's size can
+ * only be stated against it.
+ *
+ * ⭐ AND WHAT WAS DONE FOR WHAT A DRAIN CANNOT CATCH (SIGKILL, OOM). The remedy is `audit-gap-reconcile.mts`
+ * and `src/lib/server/audit-reconcile.ts`: the hole cannot be repaired — the log is append-only, so a late
+ * insert would chain at the CURRENT head and date the bet to the sweep — so it is DECLARED instead, one
+ * chained `audit.row_missing` row per committed bet with no compliance record, found against the durable
+ * `Position` anchor this file's §5 proved holds. `house-bot/worker.ts` also gained a BOUNDED audit flush at
+ * the end of the poller's pass, so the engine's tick pays where the bet must not. ⛔ `market-service.ts` is
+ * UNCHANGED: §3.2 below is the measurement that refused the obvious fix, and it is why. The guard is
+ * `npm run test:audit-gap`; the drive is `npm run rehearse:audit-gap`; the register is
+ * `plans/house-bots/RELEASE-LADDER.md` §12.
+ *
  * ⛔ THIS SCRIPT CHANGES NOTHING AND GATES NOTHING. It is deliberately NOT a row in
  * `registry.mts`: adding one would move `run.mts --all`'s verdict, and a measurement phase must not
  * move a release gate. It exists so every number in the finding can be RE-DERIVED instead of quoted.
@@ -223,10 +242,31 @@ ok("1.1 · the sweep ran over a real population, not zero", files.length > 500 &
   `${files.length} files, ${sites.length} sites`);
 ok("1.2 · the bet's statutory row (market-service.ts `market.position.opened`) is among the un-sequenced",
   unsequenced.some((s) => s.file.endsWith("lib/server/market-service.ts") && s.action === "market.position.opened"));
-ok("1.3 · nothing in src/ calls auditFlush() — no code path waits for the queue",
-  files.every((f) => !/\bauditFlush\s*\(/.test(stripCommentsKeepLines(readFileSync(f, "utf8"))
-    .replace(/export function auditFlush\s*\(/, "DECL("))),
-  "a call in src/ would mean some path does drain the queue");
+/* ⛔ WHEN THIS WAS FIRST MEASURED (2026-09-21, the run that produced the finding) the answer was ZERO:
+ * nothing in `src/` waited for the queue on any path. The remedy added exactly ONE drain, and this
+ * assertion was rewritten as a CENSUS rather than deleted — "zero" was the finding, and a finding that is
+ * no longer true must be replaced by the true one, never by a laxer version of itself. ⛔ It is strictly
+ * stronger than the original: it names every draining site and refuses any it does not expect, and 1.3b
+ * keeps the original floor over the paths that must never wait. */
+const flushSites = files
+  .filter((f) => /\bauditFlush\s*\(/.test(stripCommentsKeepLines(readFileSync(f, "utf8"))
+    .replace(/export function auditFlush\s*\(/, "DECL(")))
+  .map((f) => f.replace(/\\/g, "/").replace(ROOT.replace(/\\/g, "/") + "/", ""));
+console.log(`  auditFlush() CALLERS in src/: ${flushSites.length}${flushSites.length ? ` — ${flushSites.join(", ")}` : ""}`);
+const EXPECTED_FLUSH_SITES = [
+  // The SHUTDOWN drain (2026-09-21, later): the process holds its own exit until the queue is empty
+  // or a bounded budget is spent. Driven, this turned 0 of 10 rows landed into 10 of 10 —
+  // `npm run rehearse:audit-drain`.
+  "src/lib/server/audit-drain.ts",
+  // The house-bot poller's BOUNDED per-tick flush: the engine's tick pays where the bet must not.
+  "src/lib/server/house-bot/worker.ts",
+].sort();
+ok("1.3 · exactly the two paths in src/ that are MEANT to drain the queue do — the shutdown drain and the house-bot poller's bounded tick flush (first measured here as ZERO), and no others",
+  flushSites.length === EXPECTED_FLUSH_SITES.length
+  && JSON.stringify([...flushSites].sort()) === JSON.stringify(EXPECTED_FLUSH_SITES),
+  `${flushSites.length} caller(s): ${flushSites.join(", ") || "(none)"}\n         expected: ${EXPECTED_FLUSH_SITES.join(", ")}`);
+ok("1.3b · and NO request path waits for it — market-service.ts and the audit module itself still never flush, which is what the p99 measurement in §3.2 refused",
+  !flushSites.includes("src/lib/server/market-service.ts") && !flushSites.includes("src/lib/server/audit.ts"));
 ok("1.4 · the audit table is append-only in src/ — only create, never update or delete",
   files.every((f) => !/auditLog\.(update|delete|upsert|updateMany|deleteMany)\b/.test(readFileSync(f, "utf8"))));
 
@@ -321,7 +361,13 @@ try {
   const sig = await child(["sigterm", String(N), "sigterm"]);
   const sigLanded = await landed("sigterm");
   console.log(`  ${sig.err.split("\n").filter((l) => l.startsWith("[child")).join("\n  ")}`);
-  ok("2.2 · the SIGTERM path production actually has — Next's cleanup then process.exit(143), with the app's own lifecycle and house-bot handlers registered — loses them too",
+  /* ⛔ THIS IS THE **BEFORE** NUMBER AND IT IS NO LONGER WHAT PRODUCTION DOES. The child here
+   * deliberately does NOT install `audit-drain.ts` — that is the shape this platform had until
+   * 2026-09-21, and it is kept, driven, because the remedy's size can only be stated against it.
+   * With the drain installed in exactly the place `instrumentation.ts` installs it, the same
+   * population landed 10 of 10: `npm run rehearse:audit-drain` §2 (before) and §3 (after). ⛔ Do not
+   * "update" this to pass by adding the drain to the child — that would delete the measurement. */
+  ok("2.2 · the SIGTERM path production had BEFORE the shutdown drain — Next's cleanup then process.exit(143), with the app's own lifecycle and house-bot handlers registered and NO drain — loses them all",
     controlOk && sigLanded === 0 && sig.code === 143, `landed ${sigLanded} of ${N}, exit ${sig.code}`);
 
   const seq = await child(["seq-exit-60", String(N), "seq"]);
@@ -371,7 +417,7 @@ try {
 
   // ── §5 · DETECTION ─────────────────────────────────────────────────────────────────────────────
   console.log("\n═══ §5 · THE HOLE IS DETECTABLE AFTER THE FACT ════════════════════════════════════════");
-  const rec = await child(["recon", "40", "recon"], { RECON_KILL_MS: "150" });
+  const rec = await child(["recon", "40", "recon"], { RECON_KILL_MS: "0" });
   const r = line(rec.out, "RECON ");
   if (r) {
     const gaps = (await cli.query(
@@ -384,6 +430,13 @@ try {
     console.log(`  detector found ${gaps.length} position(s) with no compliance row (HOUSE bets among them: ${gaps.filter((g) => g.houseBotId).length})`);
     ok("5.1 · the LEFT JOIN on the durable Position anchor finds exactly the hole",
       gaps.length === r.positions - landedRecon, `detector ${gaps.length} vs hole ${r.positions - landedRecon}`);
+    /* ⛔ AND THE HOLE IS THE ONE THAT WAS BUILT, not whatever a race produced. The child awaits its
+     * first `landFirst` rows and fires the rest bare on the last tick, so both sets are known before
+     * the measurement. Without this the drill passed VACUOUSLY over a hole of zero on a quiet
+     * machine and failed its own POSITIVE CONTROL on a loaded one (observed 2026-09-21). */
+    ok("5.1b · the population is the one the child built — exactly the awaited rows landed and exactly the bare ones did not, so §5.1 is never measured over a hole of zero",
+      landedRecon === r.landFirst && r.positions - landedRecon === r.expectedHole && r.expectedHole > 0,
+      `landed ${landedRecon} (expected ${r.landFirst}), hole ${r.positions - landedRecon} (expected ${r.expectedHole})`);
     const landedIds = (await cli.query(
       `SELECT "targetId" FROM "AuditLog" WHERE action='market.position.opened' AND "payload"->>'drill'='recon'`)).rows.map((x: Any) => x.targetId);
     console.log(`  POSITIVE CONTROL population: ${landedIds.length} positions whose row DID land`);

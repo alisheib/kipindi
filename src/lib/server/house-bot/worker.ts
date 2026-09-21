@@ -24,6 +24,7 @@
  * for its own facts (X1's duty names, `planner.ts`).
  */
 import { ALERT_KEY, MAX_TOLERATED_SKEW_MS, POLLER_FAILURE_ALERT_AFTER, RUNTIME_KEY } from "@/lib/house-bot/constants";
+import { auditFlush } from "../audit";
 import { houseBotIntentStore, houseBotRuntimeStore } from "../house-bot-dal";
 import { claimGate, type EngineTicks, type TickContext } from "./engine";
 import { fireClaimedIntent, type FireResult } from "./fire";
@@ -115,6 +116,26 @@ async function alertSkewGate(ctx: TickContext, alerts: EngineAlerts, reason: str
   }
 }
 
+/** How long a pass will wait for the audit queue before giving up and leaving it to the reconciler.
+ *  One poller interval: long enough for the measured drain (a 50-append burst took ~200 ms on
+ *  loopback), short enough that a wedged queue cannot stall claiming. */
+export const AUDIT_FLUSH_BUDGET_MS = 2_000;
+
+/** Wait for the audit queue to drain, but never longer than `budgetMs`. Resolves true when the queue
+ *  drained inside the budget, false when the budget ran out first. Never rejects — `auditFlush`
+ *  already swallows a failed append (it is the request path's fail-open), and a flush that threw
+ *  here would abort a pass that has already fired real money. */
+export async function flushAuditWithin(budgetMs: number): Promise<boolean> {
+  const drained = auditFlush().then(() => true, () => true);
+  const expired = new Promise<boolean>((resolve) => {
+    const t = setTimeout(() => resolve(false), budgetMs);
+    // Never hold the event loop open for the budget: a process that is otherwise done must still
+    // be able to exit, and this timer is a deadline, not work.
+    (t as unknown as { unref?: () => void }).unref?.();
+  });
+  return Promise.race([drained, expired]);
+}
+
 export async function pollerPass(ctx: TickContext, alerts: EngineAlerts): Promise<PollerPass> {
   const gate = claimGate(ctx.state);
   if (!gate.ok) {
@@ -150,8 +171,34 @@ export async function pollerPass(ctx: TickContext, alerts: EngineAlerts): Promis
       }
     }),
   );
+  /* ⛔ THE BOUNDED FLUSH — the engine's tick pays for its own compliance rows, and the bet never does.
+   *
+   * `placeHouseBet` reaches `market-service.ts:1699`, which writes the bet's statutory
+   * `market.position.opened` row with a BARE, un-awaited `audit({…})`. That is deliberate and it
+   * stays: driven on a scratch cluster, awaiting it would put p99 158 ms (and 283 ms at 100-way
+   * concurrency) on every bettor's critical path, on an IDLE loopback with no network — because the
+   * append serialises on a DB-global advisory lock, so the wait grows with ALL audit traffic, not
+   * just bets. A live bet must not wait on an audit write.
+   *
+   * But the fire does not run in a request. It runs on this timer, inside the container a deploy is
+   * about to end, and the queued append dies with the process: a Position row with `houseBotId` set
+   * and no compliance record — and D20 makes that a missing PLAYER row, not a missing house row.
+   * So the TICK waits where the BET must not. Cost lands on a 2 s poller that has already fired at
+   * most `MAX_FIRES_PER_PROCESS` stakes; the player pays nothing.
+   *
+   * ⛔ BOUNDED, because an unbounded flush would be a worse defect than the one it closes: the audit
+   * append retries five times against a 30 s transaction timeout, so a wedged database would hang
+   * this tick — and a poller that never returns stops claiming, which is the one failure A24 exists
+   * to make visible. When the budget expires the pass carries on and the lifecycle reconciler
+   * (`audit-reconcile.ts`) declares whatever was lost. Best-effort here, backstop there.
+   *
+   * ⚠️ THIS NARROWS THE WINDOW, IT DOES NOT CLOSE IT. A signal landing mid-fire still loses the row.
+   * What it buys is that BETWEEN ticks the queue is empty, so the overwhelming majority of the
+   * engine's life carries no unwritten compliance row at all. */
+  await flushAuditWithin(AUDIT_FLUSH_BUDGET_MS);
   return { claimed: rows.length, beat, results };
 }
+
 
 /** The engine's poller and SIGTERM release for `startHouseBotEngine`. The planner is build step 5. */
 export function workerTicks(alerts: EngineAlerts): Pick<EngineTicks, "pollerTick" | "requeueMine"> {
