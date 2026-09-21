@@ -24,8 +24,11 @@
  *      SLICED by the card edge, which is check 1;
  *   3. no tile carries two amounts, and no KPI delta carries a currency-prefixed figure (ruling 404) — read off the
  *      tile's LAST titled span, because `AdminKpi` gives its LABEL a `title` too and renders it first;
- *   4. every interactive control reaches the `--tap-min` token READ FROM THE PAGE (40px here, not 44 — 44 is
- *      `--h-control-md`), with `[role="switch"]` exempt because DG-A-02 gives it a 40px reach out of flow;
+ *   4. every interactive control REACHES the `--tap-min` token READ FROM THE PAGE (40px here, not 44 — 44 is
+ *      `--h-control-md`) — measured as the greater of the control's own box and the `<label>` that is its hit
+ *      area, because the kit's `Checkbox` is a `.sr-only` 1x1 input inside a label carrying `min-height:
+ *      var(--tap-min)` (DG-P-12). Reading the input's own box could only ever pass a checkbox by accident.
+ *      `[role="switch"]` stays exempt (DG-A-02's reach is out of flow and not on a label);
  *   5. every empty-state message box is inside the viewport;
  *   6. ⛔ no house-vocabulary word anywhere in the rendered body — the shared vocabulary, never a new regex — AND, in
  *      the console's OWN subtree, none of ruling 453's four extra words either, in text or in an attribute. The
@@ -291,9 +294,38 @@ try {
           const box = el.getBoundingClientRect();
           return { top: after.top, bottom: after.bottom, content: after.content, height: Math.round(box.height) };
         })();
+        /**
+         * ⛔ THE REACH IS MEASURED, NOT THE INPUT'S OWN BOX (2026-09-21) — and this is a fix, not an exemption.
+         *
+         * 🔴 MEASURED: the account rules form draws the kit's `Checkbox`, and this check reported ten controls
+         * at `input:1px`. The kit does that DELIBERATELY: `checkbox.tsx`'s real `<input>` is `.sr-only` — a 1×1
+         * clipped box, never `aria-hidden`, because hiding a focusable control from the a11y tree is a WCAG
+         * violation — and the HIT AREA is the `<label>` around it, which carries `minHeight: var(--tap-min)`
+         * for exactly this reason (DG-P-12, the consent row, where a ~20px row was found on the control a
+         * player uses to swear they are 18).
+         * ⛔ SO THE OLD READ WAS THE WRONG INSTRUMENT, not a finding: it could only ever pass a checkbox by
+         * accident and could never pass the kit's. `[role="switch"]` is already exempted two lines up on the
+         * same argument stated differently ("a 40px reach out of flow") — measuring the reach states it once,
+         * for every control, and needs no list of names.
+         * ⚠️ IT STAYS FALSIFIABLE, WHICH AN EXEMPTION WOULD NOT BE: a checkbox whose label does NOT reach the
+         * floor is still reported, and the diagnostic names WHICH box was measured so a label standing in for
+         * a sub-floor input cannot hide it. `labelReach` below proves this path was exercised.
+         */
+        const reachOf = (el) => {
+          const own = el.getBoundingClientRect().height;
+          /* The hit area a pointer actually gets: the control's own box, or the label that wraps it (or
+             points at it by `for`), whichever is larger. Nothing else is credited. */
+          const byFor = el.id ? document.querySelector(`label[for="${CSS.escape(el.id)}"]`) : null;
+          const wrap = el.closest("label") ?? byFor;
+          const label = wrap ? wrap.getBoundingClientRect().height : 0;
+          return { own, label, reach: Math.max(own, label), from: label > own ? "label" : "self" };
+        };
         const shortControls = controls
-          .filter((el) => el.getBoundingClientRect().height < tap - 0.5)
-          .map((el) => `${el.tagName.toLowerCase()}:${Math.round(el.getBoundingClientRect().height)}px:${(el.textContent ?? "").trim().slice(0, 24)}`);
+          .map((el) => ({ el, ...reachOf(el) }))
+          .filter((m) => m.reach < tap - 0.5)
+          .map((m) => `${m.el.tagName.toLowerCase()}:${Math.round(m.own)}px(reach ${Math.round(m.reach)}px via ${m.from}):${(m.el.textContent ?? "").trim().slice(0, 24)}`);
+        /* Counted so the new path can be shown to have run: how many controls owe their reach to a LABEL. */
+        const labelReach = controls.map((el) => reachOf(el)).filter((m) => m.from === "label" && m.reach >= tap - 0.5).length;
         /* ⛔ AGAINST THE SCROLL CONTAINER'S VISIBLE EDGE, NOT THE VIEWPORT'S. The first render's own defect was
            measured this way: the loss cell ended at x=358 on a 360 viewport — inside it — while the card that holds
            the table clips at x≈339, so the figure was sliced and a viewport test passed. */
@@ -349,7 +381,7 @@ try {
            it is what a `Referer` hands the next request — so a vocabulary word that reached a path segment or a
            query key would have passed 1,398 checks. Collected here and asserted at §5.6 below. */
         const url = `${location.pathname}${location.search}`;
-        return { url, clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, firstRowEmpty, railCount, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
+        return { url, clipped, moneyCount: money.length, tiles, shortControls, labelReach, controlCount: controls.length, tap, firstCells, firstRowEmpty, railCount, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
       });
 
       ok(`§5.1 ${route} @${width} · no money figure is clipped by a box that cannot scroll, and none is broken across two lines`, facts.clipped.length === 0, facts.clipped.join(" | "));
@@ -366,6 +398,21 @@ try {
          turns this red. ⛔ Every OTHER route keeps the original control unchanged: a surface that should carry
          money and carries none is still a failure, because an empty selector reads exactly like compliance. */
       const MONEYLESS = route.split("?")[0].endsWith("/new");
+      /**
+       * ⛔ A CURRENCY FIGURE IS THE WORD FOLLOWED BY DIGITS — A BARE UNIT IS NOT ONE (2026-09-21).
+       *
+       * 🔴 MEASURED: the account rules form paints `TZS` ELEVEN times as the unit affordance inside its money
+       * inputs (`Input prefix`), exactly as the desk's limits form does. On an account whose caps are all
+       * UNSET there is no figure to atomise — every hint carries 364's consequence sentence instead — so the
+       * bare `/TZS/` read said "this surface paints currency outside the atom" about a surface painting no
+       * currency figure at all, and both §5.1's control and §5.2 went red on a correct screen.
+       * ⛔ IT IS A TIGHTENING, NOT A RELAXATION: `TZS 50,000` rendered outside `.amount` still matches and
+       * still fires, which is the defect this control was strengthened for on 2026-09-20. What no longer
+       * matches is a unit LABEL beside an empty box, which was never a figure.
+       * ⚠️ `/new`'s inverted form (ruling 459) keeps the BARE word: that surface must paint no currency at
+       * all, affordance included, and weakening it there would answer a different ruling than the one it cites.
+       */
+      const paintsFigure = /TZS\s*[\d ,.]*\d/.test(facts.ownText);
       ok(MONEYLESS
         ? `§5.1 ${route} @${width} · CONTROL · ⛔ 459 · this surface paints NO money at all — no amount span and no currency prefix in its own subtree`
         /* ⛔ THE CONTROL ASKS THE RENDERED TEXT, NOT THE ROUTE LIST — AND THAT IS A STRENGTHENING, MEASURED
@@ -381,13 +428,19 @@ try {
            currency at all asserts that instead. Strictly stronger where money exists, correct-population where it
            does not. ⛔ `/new`'s inverted form (ruling 459) is untouched. */
         : `§5.1 ${route} @${width} · CONTROL · every currency figure this surface paints is inside the money atom the scan reads — or it paints none and says so`,
-        MONEYLESS ? facts.moneyCount === 0 && !/TZS/.test(facts.ownText) : (/TZS/.test(facts.ownText) ? facts.moneyCount >= 1 : facts.moneyCount === 0),
-        `${facts.moneyCount} money spans; currency prefix in the surface's own text: ${/TZS/.test(facts.ownText)}`);
+        MONEYLESS ? facts.moneyCount === 0 && !/TZS/.test(facts.ownText) : (paintsFigure ? facts.moneyCount >= 1 : facts.moneyCount === 0),
+        `${facts.moneyCount} money spans; currency FIGURE in the surface's own text: ${paintsFigure} (bare unit word: ${/TZS/.test(facts.ownText)})`);
       ok(`§5.3 ${route} @${width} · no tile carries two amounts`, facts.tiles.every((t) => t.amounts <= 1), facts.tiles.filter((t) => t.amounts > 1).map((t) => t.text).join(" | "));
       ok(`§5.3 ${route} @${width} · no KPI delta carries a currency-prefixed figure`, facts.tiles.every((t) => !/TZS\s*[\d,]/.test(t.delta)), facts.tiles.map((t) => t.delta).filter((d) => /TZS\s*[\d,]/.test(d)).join(" | "));
       // ⛔ A CONTROL FOR THE CHECK ABOVE: an empty selector reads exactly like compliance.
       ok(`§5.3 ${route} @${width} · CONTROL · at least one tile's delta was actually READ`, facts.tiles.length === 0 || facts.tiles.some((t) => t.delta.length > 0), JSON.stringify(facts.tiles.map((t) => t.delta)));
-      ok(`§5.4 ${route} @${width} · every interactive control reaches the --tap-min token (${facts.tap}px)`, facts.shortControls.length === 0, facts.shortControls.join(" | "));
+      ok(`§5.4 ${route} @${width} · every interactive control REACHES the --tap-min token (${facts.tap}px) — its own box or the label that is its hit area`, facts.shortControls.length === 0, facts.shortControls.join(" | "));
+      /* ⛔ CONTROL · THE LABEL PATH IS SHOWN TO HAVE RUN, not assumed. Without this, a page of ordinary
+         buttons would pass §5.4 while the reach measurement went untested, and the ten `.sr-only` checkbox
+         inputs this fix exists for would be indistinguishable from ten controls that never rendered. */
+      ok(`§5.4 ${route} @${width} · CONTROL · the control scan reached the page, and every sub-floor control box that passes does so through a LABEL that reaches the floor`,
+        facts.controlCount > 0 && (facts.labelReach > 0 || facts.shortControls.length === 0),
+        `${facts.controlCount} controls, tap ${facts.tap}px, ${facts.labelReach} reaching via label`);
       // ⛔ A CONTROL FOR THE FLOOR: a scan that reached nothing reports 0 short controls and reads as compliance.
       ok(`§5.4 ${route} @${width} · CONTROL · the control scan reached the page`, facts.controlCount >= 3 && facts.tap >= 40, `${facts.controlCount} controls, tap ${facts.tap}px`);
       /* ⛔ AN EXEMPTION IS NOT A PROMISE. Where a masked field really rendered, the reveal control's own `::after`
@@ -530,8 +583,8 @@ try {
            `.admin-tbl` AND paints its caps outside the atom, so the bare `moneyCount >= 1` fired here too and said
            "no table" was the problem. The two assertions must agree or one of them teaches the wrong lesson. */
         ok(`§5.2 ${route} @${width} · this surface renders no `+"`.admin-tbl`"+`, so it has no money CELL to push out of a scroll strip — and §5.1 ${MONEYLESS ? "proved it paints no money at all" : "measured its figures where they are"}`,
-          MONEYLESS ? facts.moneyCount === 0 : (/TZS/.test(facts.ownText) ? facts.moneyCount >= 1 : facts.moneyCount === 0),
-          `${facts.moneyCount} money spans, ${facts.tableCount} tables, currency prefix in text: ${/TZS/.test(facts.ownText)}`);
+          MONEYLESS ? facts.moneyCount === 0 : (paintsFigure ? facts.moneyCount >= 1 : facts.moneyCount === 0),
+          `${facts.moneyCount} money spans, ${facts.tableCount} tables, currency FIGURE in text: ${paintsFigure} (bare unit word: ${/TZS/.test(facts.ownText)})`);
       } else {
         nm(`§5.2 ${route} @${width}`, `a money table rendered with NO row (${facts.tableCount} table(s)), so the money columns' position was not measured`);
       }

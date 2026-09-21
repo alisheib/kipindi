@@ -1306,7 +1306,12 @@ import type { ConsoleTab } from "@/lib/house-bot/console-routes";`,
         dirty={armed}`,
     to: `      <PendingChangesBarOff
         dirty={armed}`,
-    expect: "1.412 · EXACTLY ONE guarded form on the tab",
+    /* ⛔ RE-POINTED 2026-09-21, NOT RETIRED. The case this mutation drove was rewritten when a SECOND form
+       landed on the section (the account's rules and limits): counting bars over the whole section forced the
+       new form to give up its own, for a hazard the kit's painter registry had already removed. The mutation
+       itself is unchanged and still lands on this form's bar — it now goes red on the per-file case, which
+       reads each form file on its own and so still fails with the bar struck from THIS one. */
+    expect: "1.412 · every form in the section renders its OWN",
     suite: "console-mem",
   },
   {

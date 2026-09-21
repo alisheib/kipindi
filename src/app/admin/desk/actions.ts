@@ -29,6 +29,9 @@ import {
   houseLimitsSaveForConsole,
   type ConsoleLimitsSaveInput,
   type ConsoleLimitsSaveResult,
+  houseRulesSaveForConsole,
+  type ConsoleRulesSaveInput,
+  type ConsoleRulesSaveResult,
   houseSwitchForConsole,
   type ConsoleSwitchInput,
   type ConsoleSwitchResult,
@@ -39,7 +42,7 @@ import {
   type ConsoleCancelInput,
   type ConsoleCancelResult,
 } from "@/lib/server/house-console-read";
-import { CONSOLE_ROUTE } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, consoleBotHref } from "@/lib/house-bot/console-routes";
 
 /**
  * Save every global limit at once, conditional on the version the form was rendered from.
@@ -60,6 +63,37 @@ export async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promi
     /* Only a save that LANDED invalidates the render; a refusal changed nothing and must not make the officer's
        own typing disappear under a fresh server payload. */
     if (result.ok) revalidatePath(CONSOLE_ROUTE);
+    return result;
+  } catch (err) {
+    return { ok: false, error: safeError(err, "Nothing was saved. Reload the page and try again.") };
+  }
+}
+
+/**
+ * Save ONE account's own rules and its fourteen limits, conditional on the version the form was rendered from.
+ *
+ * ⛔ THIS IS THE ACTION THAT DID NOT EXIST, AND ITS ABSENCE STOPPED THE WHOLE FEATURE (measured on production,
+ * 2026-09-21): every account was created blank, `Start` refused on the unset limits and the missing product and
+ * mode, and the console told the officer to open Rules and save — where nothing could be saved. The validator
+ * and the CAS write were both already built and green; this door is what joins them to a form.
+ *
+ * ⛔ THE GATE IS INSIDE THE DOOR (rulings 522, 523), like the three actions around it: this file resolves the
+ * session, hands a USER ID to the one named writer, reads no role, names no store and takes no decision.
+ *
+ * ⛔ BOTH RENDERS ARE INVALIDATED ON A SAVE THAT LANDED. The account page shows the new values, and the desk's
+ * roster shows whether the account is ready to start — one save moves both, and a stale roster beside a fresh
+ * account page is how an officer comes to believe Start will still refuse.
+ */
+export async function saveBotRulesAction(input: ConsoleRulesSaveInput): Promise<ConsoleRulesSaveResult> {
+  try {
+    const session = await currentSession();
+    const result = await houseRulesSaveForConsole(session?.userId ?? null, "/admin/desk", input);
+    /* Only a save that LANDED invalidates the render; a refusal changed nothing and must not make the
+       officer's own typing disappear under a fresh server payload. */
+    if (result.ok) {
+      revalidatePath(consoleBotHref(input.accountId));
+      revalidatePath(CONSOLE_ROUTE);
+    }
     return result;
   } catch (err) {
     return { ok: false, error: safeError(err, "Nothing was saved. Reload the page and try again.") };

@@ -2230,7 +2230,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * argument. The pin's job is unchanged and undiminished: a call with the wrong number of arguments is still red,
  * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
  * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -2512,6 +2512,11 @@ export const CONSOLE_GATE_STRUCK = ["houseBotLabelsForConsole", "houseStakeForCo
 export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell", "ConsoleDetailAnswer",
   "ConsoleDetailView", "ConsoleEmpty", "ConsoleKpiTile",
   "ConsoleLimitRow", "ConsoleLimitsSaveInput", "ConsoleLimitsSaveResult", "ConsoleLimitsView", "ConsoleRosterRow",
+  /* ⭐ 2026-09-21 · the account rules save's three TYPES. `ConsoleRulesSaveInput`/`Result` are the writer's own
+     shapes, beside the limits pair two entries up; `ConsoleRulesForm` is the row-and-copy model the account
+     page hands its form. None awaits, reaches `db.`, names a store member or decides an audience — the gated
+     door itself is `houseRulesSaveForConsole`, which has its `CONSOLE_GATES` arity entry. */
+  "ConsoleRulesForm", "ConsoleRulesSaveInput", "ConsoleRulesSaveResult",
   "ConsoleRosterView", "ConsoleRuleRow", "ConsoleTargetRow", "ConsoleUsageCell",
   "ConsoleUsageHalf", "ConsoleUsageQuery", "ConsoleUsageRow", "HOUSE_CONSOLE_PREFIX", "OPERATOR_DATA_EXEMPT",
   "ACCOUNT_TARGETED_DAILY_TZS_FIELD", "TARGETED_DAILY_TZS_FIELD", "clampOperatorText", "consoleLimitLabel",

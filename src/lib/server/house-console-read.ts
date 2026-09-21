@@ -46,10 +46,11 @@ import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { resolveRange } from "./date-range";
-import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, unitSuffix, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
+import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, isClearExempt, parseHouseBotRules, unitSuffix, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
 import { sortCauses, wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
 import { TARGET_END_CAPTION } from "@/lib/house-bot/feed-copy";
 import { saveHouseBotLimits } from "./house-bot/limits-save";
+import { saveHouseBotRules } from "./house-bot/rules-save";
 import { switchOnHouseBots } from "./house-bot/switch-on";
 import { switchOffHouseBots } from "./house-bot/kill-switch";
 import { houseEngineAlerts } from "./house-bot/emitters";
@@ -1646,6 +1647,162 @@ export async function houseLimitsSaveForConsole(
   };
 }
 
+/* ═══ THE ACCOUNT'S OWN RULES SAVE — the write this build never had (2026-09-21) ═══════════════════════════ */
+
+/**
+ * ⛔ WHAT THIS CLOSES, MEASURED ON PRODUCTION. Until today no account could be started at all: designation
+ * writes every account blank, `rulesStartProblems` refuses one per unset cap plus "no product" plus "no entry
+ * mode", and the console answered "Open Rules, review them, save, then start." beside a tab that said editing
+ * was not ready on this build. `houseBotStore.saveRules` and `validateHouseBotRules` had no caller anywhere.
+ * The validator was green at 521/0 and the CAS write existed in both twins; only the door was missing.
+ *
+ * ⛔ THE COLUMN NAMES DO NOT CROSS THIS LINE, IN EITHER DIRECTION (453), exactly as the global save has it: the
+ * browser posts neutral keys, an unknown key is REFUSED rather than ignored, and a refusal that names a field
+ * names it by the same neutral key.
+ */
+const CONSOLE_CAP_KEY: Readonly<Record<CapField, string>> = {
+  stakeMinTzs: "stake-min",
+  stakeMaxTzs: "stake-max",
+  capPerMarketTzs: "per-market",
+  capDailyStakeTzs: "daily-stake",
+  capDailyLossTzs: "daily-loss",
+  capOpenExposureTzs: "open-exposure",
+  balanceFloorTzs: "balance-floor",
+  freqMinGapSec: "min-gap",
+  freqMaxPerHour: "bets-per-hour",
+  freqMaxPerDay: "bets-per-day",
+  freqMaxPerMarket: "bets-per-market",
+  capStaffChosenPerDay: "targeted-bets-per-day",
+  capStaffChosenDailyTzs: "targeted-daily-tzs",
+  targetsMaxActive: "max-active-targets",
+};
+
+const CAP_FIELD_BY_KEY = new Map<string, CapField>(CAP_FIELDS.map((f) => [CONSOLE_CAP_KEY[f], f]));
+
+/**
+ * ⛔ THE TEN SWITCHES, AND THE TABLE IS THE CONTRACT. The form posts exactly these keys and no others; a
+ * missing one is a stale tab rather than "off", because reading absence as OFF would let a form that failed to
+ * render a control silently turn a mode off on save.
+ */
+const CONSOLE_FLAG_KEY = {
+  productUpdown: "product-updown",
+  productPolls: "product-polls",
+  updownCounter: "updown-react",
+  updownFill: "updown-fill",
+  updownOpener: "updown-opener",
+  pollsCounter: "polls-react",
+  pollsFill: "polls-fill",
+  pollsOpener: "polls-opener",
+  enterNow: "enter-now",
+  targeting: "targeted-stakes",
+} as const;
+
+const FLAG_KEYS: readonly string[] = Object.values(CONSOLE_FLAG_KEY);
+
+/** What the account's rules form posts. ⛔ Neutral keys only, and the WHOLE form or nothing. */
+export type ConsoleRulesSaveInput = {
+  /** ⛔ `accountId`, NOT the column's own name: this key is declared in a CLIENT file too, and 1.384/401 refuse
+     a house-shaped prop name anywhere across that boundary. The service is handed the column name here. */
+  accountId: string;
+  baseVersion: number;
+  values: Record<string, string>;
+  flags: Record<string, boolean>;
+};
+
+export type ConsoleRulesSaveResult =
+  /** ⛔ `recorded: false` means the rules DID change and the compliance row did not — the page says both. */
+  | { ok: true; rulesVersion: number; changed: number; rulesChanged: boolean; recorded: boolean; warnings: string[] }
+  | { ok: false; error: string; field?: string };
+
+/**
+ * ⛔ EVERY SENTENCE THIS SAVE CAN PAINT, IN ONE HOME, AND NEUTRAL (rulings 412, 453). None names the feature,
+ * and 4.453 scans this module's literals.
+ */
+const RULES_SAVE_COPY = {
+  refused: "You can't change this account.",
+  stale: "This form is out of date. Reload the page and make the change again — nothing was saved.",
+  SCHEMA: "The desk's tables are not present on this database, so nothing was saved.",
+  UNREADABLE: "The desk's own state could not be read, so nothing was saved.",
+  NOT_FOUND: "That account is not on the desk any more. Reload the desk.",
+  REMOVED: "This account was removed from the desk. Nothing on it can be changed.",
+  CONFLICT: "Someone else changed this account while this page was open. Nothing was saved — reload the page and make the change again.",
+  RULES_UNREADABLE: "This account's saved settings could not be read, so nothing was saved. Reload the page, and if it says this again, raise it before changing anything.",
+} as const;
+
+/**
+ * THE ACCOUNT RULES SAVE, GATED (ruling 537's shape). One NAMED writer with its `CONSOLE_GATES` arity entry,
+ * because a server action is a POST to whatever URL the browser happens to be on and no path rule can see it.
+ *
+ * ⛔ IT DECIDES BEFORE IT READS OR WRITES ANYTHING. A viewer outside the audience is refused without the
+ * account, the roster or the platform config ever being read.
+ */
+export async function houseRulesSaveForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  input: ConsoleRulesSaveInput,
+): Promise<ConsoleRulesSaveResult> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {
+    return { ok: false, error: RULES_SAVE_COPY.refused };
+  }
+  /* ⛔ THE WHOLE FORM OR NOTHING. A partial post would leave the missing caps to the validator's "unset"
+     branch and silently CLEAR limits the officer never touched. */
+  const values = {} as Record<CapField, unknown>;
+  for (const field of CAP_FIELDS) {
+    const raw = input.values[CONSOLE_CAP_KEY[field]];
+    if (typeof raw !== "string") return { ok: false, error: RULES_SAVE_COPY.stale };
+    values[field] = raw.trim();
+  }
+  for (const key of Object.keys(input.values)) {
+    if (!CAP_FIELD_BY_KEY.has(key)) return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
+  for (const key of FLAG_KEYS) {
+    if (typeof input.flags[key] !== "boolean") return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
+  for (const key of Object.keys(input.flags)) {
+    if (!FLAG_KEYS.includes(key)) return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
+
+  const saved = await saveHouseBotRules({
+    actorId: viewerUserId,
+    botId: input.accountId,
+    baseVersion: input.baseVersion,
+    caps: values,
+    flags: {
+      products: { updown: input.flags[CONSOLE_FLAG_KEY.productUpdown], polls: input.flags[CONSOLE_FLAG_KEY.productPolls] },
+      modes: {
+        updown: {
+          counter: input.flags[CONSOLE_FLAG_KEY.updownCounter],
+          fill: input.flags[CONSOLE_FLAG_KEY.updownFill],
+          opener: input.flags[CONSOLE_FLAG_KEY.updownOpener],
+        },
+        polls: {
+          counter: input.flags[CONSOLE_FLAG_KEY.pollsCounter],
+          fill: input.flags[CONSOLE_FLAG_KEY.pollsFill],
+          opener: input.flags[CONSOLE_FLAG_KEY.pollsOpener],
+        },
+      },
+      enterNow: input.flags[CONSOLE_FLAG_KEY.enterNow],
+      targeting: input.flags[CONSOLE_FLAG_KEY.targeting],
+    },
+  });
+  if (saved.ok) {
+    /* ⚠️ THE VALIDATOR'S WARNINGS ARE ADVICE, NOT REFUSALS, and they are the one thing that tells an officer
+       their account is configured to do nothing — "no automatic mode" is a saveable, legal, silent state. */
+    return {
+      ok: true, rulesVersion: saved.rulesVersion, changed: saved.changes.length,
+      rulesChanged: saved.rulesChanged, recorded: saved.recorded,
+      warnings: saved.warnings.map((w) => w.message),
+    };
+  }
+  if (saved.code !== "INVALID") return { ok: false, error: RULES_SAVE_COPY[saved.code] };
+  /* The validator's own sentence, unless the rule's shared copy names the feature (`CONSOLE_LIMIT_REFUSAL`). */
+  return {
+    ok: false,
+    error: (saved.rule !== null ? CONSOLE_LIMIT_REFUSAL[saved.rule] : undefined) ?? saved.message,
+    field: CONSOLE_CAP_KEY[saved.field as CapField],
+  };
+}
+
 /* ═══ THE MASTER-SWITCH CEREMONY (rulings 306, 388, 415, 420, 453, 474, 512, 522, 523; owner-delegated 454) ═════ */
 
 /**
@@ -1905,6 +2062,47 @@ export async function houseSwitchForConsole(
  * ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** One saved rule or cap, painted. ⛔ Values only: there is no per-account rules SAVE in this repository yet. */
+/**
+ * ONE ACCOUNT'S RULES AS A FORM (2026-09-21) — the shape the page draws inputs from.
+ *
+ * ⛔ IT CARRIES NO SENTENCE LONGER THAN A LABEL, and every label is the ONE label home's (`consoleLimitLabel`)
+ * or a neutral word for a switch. The form component owns no copy at all, for ruling 388's reason: a sentence
+ * typed into a client file ships to every visitor with the bundle scan reporting clean.
+ * ⛔ AND IT CARRIES `required`, WHICH IS THE WHOLE POINT OF THE FORM. Eleven of the fourteen caps are
+ * `REQUIRED_FOR_START`, and until 2026-09-21 an officer had no way to know which — the desk refused the start
+ * generically and named none of them.
+ */
+export type ConsoleRulesForm = {
+  /** The version the form was rendered from; the save is conditional on it (CAS). */
+  baseVersion: number;
+  caps: readonly {
+    key: string;
+    label: string;
+    /** The raw stored number as a string, or "" when unset — never a formatted figure. */
+    value: string;
+    /**
+     * ⛔ THE SAME FIGURE FORMATTED, FOR THE HINT — and it is a SECOND field on purpose. 🔴 Measured by the
+     * visual gate: the form painted the word "TZS" as loose text beside a raw number and carried NO money
+     * atom at all, so §5.1's control ("every currency figure is inside the atom the scan reads") and §5.2
+     * both went red. The input is seeded from `value`, which must stay unformatted; what an officer READS
+     * while typing over a ceiling is this one, inside `.amount`.
+     */
+    saved: string;
+    /** 364's consequence sentence when the cap is unset — the server's, chosen by the field's membership. */
+    caption: string | null;
+    unit: "TZS" | "count";
+    required: boolean;
+  }[];
+  flags: readonly { key: string; section: string; label: string; on: boolean }[];
+  /**
+   * ⛔ EVERY SENTENCE THE FORM PAINTS, FROM HERE (ruling 388, and `house-bot-console-cases.mts`'s
+   * `CLIENT_OWNED_COPY` enforces it: the console's client files hold a CLOSED set of six strings of 25
+   * characters or more, asserted by size). A sentence typed into the form component would ship to every
+   * visitor with the bundle scan reporting clean — and would break that assertion on the way in.
+   */
+  copy: { barDetail: string; guardBody: string };
+};
+
 export type ConsoleRuleRow = {
   section: string;
   name: string;
@@ -1978,7 +2176,12 @@ export type ConsoleDetailView = {
   lastBet: { text: string; title: string } | null;
   /** 508 · the saved rules, as VALUES. ⛔ `null` means the rules could not be parsed. */
   rules: ConsoleRuleRow[] | null;
-  /** Why the rules are not editable here, beside the card (432(j)). */
+  /**
+   * 508 · the same facts as `rules`, as INPUTS — `null` for a removed account and for rules that would not
+   * parse, which are the two states no form may overwrite.
+   */
+  rulesForm: ConsoleRulesForm | null;
+  /** What the officer is told beside the card — what the form is for, or why there is none (432(j)). */
   rulesReason: string;
   /** 508 · this account's targets, newest first — ONE PAGE of them. ⛔ `null` means the read FAILED or was not taken (358). */
   targets: ConsoleTargetRow[] | null;
@@ -3226,6 +3429,7 @@ export async function houseDetailForConsole(
       counts: null,
       lastBet: null,
       rules: removedRules,
+      rulesForm: null,
       rulesReason: "A removed account's rules are kept as a record and cannot be changed.",
       /* 358 · a REMOVED account has no act left, which is why this page renders no action row at all. */
       acts: [],
@@ -3443,6 +3647,46 @@ export async function houseDetailForConsole(
 
   const parsed = parseCtx ? parseHouseBotRules(bot.rules, parseCtx) : null;
   const rules: ConsoleRuleRow[] | null = parsed == null || !parsed.ok ? null : capRows(bot, parsed.rules);
+  /**
+   * ⭐ THE SAME FACTS AS `rules`, AS INPUTS RATHER THAN SENTENCES (2026-09-21) — and it is a SEPARATE shape on
+   * purpose. `ConsoleRuleRow` carries formatted display strings ("TZS 20,000", "Not set"), which is exactly
+   * what a text input must not be seeded with: an officer who saved such a form back would post a thousands
+   * separator into a money column. So the form gets the raw number as a plain string and the neutral key,
+   * and the card keeps its formatted row.
+   * ⛔ A REMOVED ACCOUNT GETS NO FORM (358): its rules are a record. `null` here is what the page draws no
+   * form for, and the same `null` covers rules that would not parse — a document this module could not read
+   * is not one a form may overwrite.
+   */
+  const rulesForm: ConsoleRulesForm | null = parsed == null || !parsed.ok ? null : {
+    baseVersion: bot.rulesVersion,
+    caps: CAP_FIELDS.map((field) => ({
+      key: CONSOLE_CAP_KEY[field],
+      label: consoleLimitLabel(field),
+      /* ⛔ RAW, NEVER FORMATTED, and empty for unset — "" is what the validator reads as UNSET, so the form's
+         empty box and the column's NULL are the same state travelling in both directions. */
+      value: bot[field] == null ? "" : String(bot[field]),
+      saved: limitValue(field, bot[field] as number | null),
+      caption: bot[field] == null ? unsetCaptionFor(field, false) : null,
+      unit: FIELD_META[field].unit === "TZS" ? ("TZS" as const) : ("count" as const),
+      required: (REQUIRED_FOR_START as readonly string[]).includes(field),
+    })),
+    flags: [
+      { key: CONSOLE_FLAG_KEY.productUpdown, section: "Products", label: "Up & Down", on: parsed.rules.scope.products.updown },
+      { key: CONSOLE_FLAG_KEY.productPolls, section: "Products", label: "Polls", on: parsed.rules.scope.products.polls },
+      { key: CONSOLE_FLAG_KEY.updownCounter, section: "Up & Down entry", label: "React to a player's stake", on: parsed.rules.modes.updown.counter },
+      { key: CONSOLE_FLAG_KEY.updownFill, section: "Up & Down entry", label: "Fill a thin side", on: parsed.rules.modes.updown.fill },
+      { key: CONSOLE_FLAG_KEY.updownOpener, section: "Up & Down entry", label: "Open a quiet market", on: parsed.rules.modes.updown.opener },
+      { key: CONSOLE_FLAG_KEY.pollsCounter, section: "Polls entry", label: "React to a player's stake", on: parsed.rules.modes.polls.counter },
+      { key: CONSOLE_FLAG_KEY.pollsFill, section: "Polls entry", label: "Fill a thin side", on: parsed.rules.modes.polls.fill },
+      { key: CONSOLE_FLAG_KEY.pollsOpener, section: "Polls entry", label: "Open a quiet market", on: parsed.rules.modes.polls.opener },
+      { key: CONSOLE_FLAG_KEY.enterNow, section: "By hand", label: "Enter now", on: parsed.rules.enterNow.enabled },
+      { key: CONSOLE_FLAG_KEY.targeting, section: "By hand", label: "Targeted stakes", on: parsed.rules.targeting.enabled },
+    ],
+    copy: {
+      barDetail: "These govern every stake this one account places.",
+      guardBody: "This account's settings have been changed but not saved. Leaving now discards the change.",
+    },
+  };
 
   const targets: ConsoleTargetRow[] | null = targetRows == null ? null : targetRows.map((t: StoredHouseBotTarget) => {
     const at = Date.parse(t.endedAt ?? t.createdAt);
@@ -3468,8 +3712,28 @@ export async function houseDetailForConsole(
     counts,
     lastBet: rate ? relativeEat(rate.lastPlacedAt, nowMs) : null,
     rules,
+    rulesForm,
     /* 432(j) · a control that is not drawn still says why, beside the card it would have been in. */
-    rulesReason: "Editing an account's rules is not ready on this build yet.",
+    /**
+     * ⛔ THE SENTENCE THIS REPLACES SAID "Editing an account's rules is not ready on this build yet." — true
+     * until 2026-09-21, and the reason an owner and a manager could not start a single account: the Start
+     * refusal sent them here to save, and there was nothing here to save with.
+     *
+     * 🔴 AND ITS FIRST REPLACEMENT SAID WHAT THE TAB GUIDANCE ALREADY SAYS — READ OFF THE TILES, at 1280 and
+     * at 360 (2026-09-21). It repeated "All eleven required limits must be set, and at least one product and
+     * one entry mode chosen, before Start will run this account" ninety pixels under the panel line that
+     * carries exactly that fact; on a 360 tile the two paragraphs filled the whole viewport and not one
+     * control was visible under them. 432(n) is the rule one state saying one fact twice exists for, and no
+     * suite could see it — both sentences were individually correct.
+     * ⭐ SO IT CARRIES THE FACT THE PANEL LINE DOES NOT: these limits are not the only ones. The seam holds
+     * every stake to the account's caps AND to the desk's own, which is what the Start dialog tells an
+     * officer and what nothing on this tab otherwise says.
+     * ⛔ AND IT IS NOT RENDERED FOR A DOCUMENT THAT WOULD NOT PARSE — that state gets its own sentence below,
+     * because "these limits apply" is a claim about a form that is not being drawn.
+     */
+    rulesReason: parsed !== null && parsed.ok
+      ? "Every stake this account places is held to these limits and to the desk's own."
+      : "These settings could not be read, so no form is shown. Reload the page, and if it says this again, raise it before changing anything.",
     /* ⭐ 415 · the action row, from the status the reader already holds — no second read decides what is offered. */
     acts: actDialogsFor(bot.status),
     statusNote: statusNoteFor(bot.status, bot.pauseReason, wayOut),

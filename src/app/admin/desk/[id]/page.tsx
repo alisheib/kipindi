@@ -50,7 +50,8 @@ import { UsageBar } from "../page";
  * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
  * act gate — and on an Owner-only route `mayAct` IS `mayView`, so that consultation would be a branch that can
  * never be false, which 1.422 refuses under this section by name. */
-import { runDeskAccountAction } from "../actions";
+import { runDeskAccountAction, saveBotRulesAction } from "../actions";
+import { DeskRulesForm } from "./rules-form";
 import { DeskAccountActions } from "./account-actions";
 
 /** ⛔ A static neutral title (ruling 402). The account's own label is a GATED value and never reaches the tab. */
@@ -461,10 +462,29 @@ async function AdminDeskAccountContent({
               invents a tab key no panel answers and the probe then requests a page that does not exist. Measured
               here, on the day it was written. */}
           {!view.removed && (<>
-          {/* 508 · the saved rules, as VALUES. ⛔ There is no per-account rules SAVE in this repository, so no typed
-              control is drawn and the reason sits beside the card (432(a), 432(j)) — a field that silently discards
-              what an officer types is worse than one that says it cannot be edited. */}
-          <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions />
+          {/* ⭐ 508 · THE SAVED RULES, NOW AS INPUTS (2026-09-21). This drew VALUES and a sentence saying editing
+              was not ready on this build — which was true, and was the reason no account on the live desk could
+              be started at all: `Start` refused on the unset limits and the missing product and mode, and its
+              refusal sent the officer to this tab to save, where there was nothing to save with.
+              ⛔ ONE CARD, NOT TWO. The form shows every value the card showed, so keeping the read-only card
+              beside it would be the page saying one fact twice (432(n)) — the record of a REMOVED account is the
+              branch that still needs the card, and it is drawn above by the `removed` guard.
+              ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422), like the account actions. */}
+          {/* ⛔ THE FALLBACK IS THE CARD, NOT A SECOND LOAD ERROR (1.435 · 355). `rulesForm` is null in exactly
+              the two states no form may overwrite — a read that could not be taken, and a stored document that
+              would not parse — and the card already tells those apart in its own words. Adding an
+              `AdminLoadError` here would put a SIXTH one on a page whose count 355 pins, and would tell an
+              officer to refresh over rules that refreshing cannot fix. */}
+          {view.rulesForm === null ? (
+            <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions />
+          ) : (
+            <AdminCard title="Saved rules">
+              <FormColumn measure="form">
+                <p className="text-body-sm text-text-tertiary mb-4">{view.rulesReason}</p>
+              </FormColumn>
+              <DeskRulesForm accountId={id} model={view.rulesForm} onSave={saveBotRulesAction} />
+            </AdminCard>
+          )}
           </>)}
         </>)}
 

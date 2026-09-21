@@ -2988,10 +2988,80 @@ try {
   /* ━━ 508 · THE RULES AND TARGETS PANELS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
   {
     const v = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId);
-    ok("1.508 · the rules panel lists every saved cap plus the three scope facts, as VALUES, with the reason it cannot be edited beside it",
+    const rulesRow = await w.dal.houseBotStore.get(acct.botId);
+    ok("1.508 · the rules panel lists every saved cap plus the three scope facts, as VALUES — the record the overview, a REMOVED account and the unparseable fallback all read",
       Array.isArray(v.rules) && v.rules.length === (R.CAP_FIELDS as readonly string[]).length + 3
-        && v.rules.some((r: Any) => r.name === GATEM.consoleLimitLabel("capDailyLossTzs") && r.value === formatTzs(50_000))
-        && /not ready on this build yet/.test(v.rulesReason), j({ rows: v.rules && v.rules.length }));
+        && v.rules.some((r: Any) => r.name === GATEM.consoleLimitLabel("capDailyLossTzs") && r.value === formatTzs(50_000)),
+      j({ rows: v.rules && v.rules.length }));
+    /**
+     * ⭐ THE PANEL IS A FORM NOW, AND THIS CASE USED TO PIN THE OPPOSITE (2026-09-21).
+     *
+     * It asserted `/not ready on this build yet/` against `rulesReason` — a true statement about the build, and
+     * the reason no account on the live desk could be STARTED at all: designation writes every account blank,
+     * `Start` refuses on the unset caps and the missing product and mode, and its refusal sent the officer to
+     * this tab to save, where there was nothing to save with. So the guard was faithfully protecting the defect.
+     * ⛔ IT IS NOT RELAXED IN THE MOVE — it now asserts MORE: the fourteen inputs, the ten switches, the version
+     * the save is conditional on, and the reason naming what Start needs. The old sentence is asserted ABSENT,
+     * so the read-only state cannot come back green.
+     */
+    ok("1.508 · …and the same facts arrive as INPUTS: one named field per cap, the ten switches, the version the save is conditional on, and a reason that says what Start needs",
+      v.rulesForm !== null
+        && v.rulesForm.caps.length === (R.CAP_FIELDS as readonly string[]).length
+        && v.rulesForm.flags.length === 10
+        /* ⛔ THE VERSION IS READ OFF THE ROW, NOT TYPED AS `1`. The save is CONDITIONAL on this number, so the
+           claim is that the form carries the account's CURRENT version — a literal would pass on a fixture
+           that happens to be unsaved and say nothing about the one property the CAS depends on. */
+        && v.rulesForm.baseVersion === rulesRow?.rulesVersion
+        /* ⛔ THE REASON BESIDE THE FORM MAY NOT REPEAT THE PANEL LINE ABOVE IT (432(n)), and that was READ OFF
+           THE TILES rather than reasoned about: the first draft printed the tab guidance's own "…before Start
+           will run…" sentence ninety pixels under it, and at 360 the pair filled the viewport with no control
+           visible. Both halves are asserted — the fact it DOES carry, and the repeat it must not. */
+        && /held to these limits and to the desk's own/.test(v.rulesReason)
+        && !/before Start will run/.test(v.rulesReason)
+        && !/not ready on this build yet/.test(v.rulesReason),
+      j({ caps: v.rulesForm && v.rulesForm.caps.length, flags: v.rulesForm && v.rulesForm.flags.length, reason: v.rulesReason }));
+    /* ⛔ ELEVEN OF THE FOURTEEN ARE `REQUIRED_FOR_START`, AND THE FORM SAYS WHICH — the one thing the generic
+       refusal never told an officer. Counted from `REQUIRED_FOR_START` itself, never from a number typed here. */
+    ok("1.508 · the form marks exactly the caps `REQUIRED_FOR_START` as required — the count read off that list, and one member and one non-member each asserted by name",
+      v.rulesForm.caps.filter((c: Any) => c.required).length === (R.REQUIRED_FOR_START as readonly string[]).length
+        && v.rulesForm.caps.find((c: Any) => c.label === GATEM.consoleLimitLabel("capDailyLossTzs"))?.required === true
+        && v.rulesForm.caps.find((c: Any) => c.label === GATEM.consoleLimitLabel("targetsMaxActive"))?.required === false,
+      j({
+        required: v.rulesForm.caps.filter((c: Any) => c.required).length,
+        want: (R.REQUIRED_FOR_START as readonly string[]).length,
+        member: v.rulesForm.caps.find((c: Any) => c.label === GATEM.consoleLimitLabel("capDailyLossTzs"))?.required,
+        nonMember: v.rulesForm.caps.find((c: Any) => c.label === GATEM.consoleLimitLabel("targetsMaxActive"))?.required,
+      }));
+    /**
+     * ⛔ CONTROL · A FORM VALUE IS THE RAW STORED NUMBER, NEVER THE CARD'S FORMATTED FIGURE. The card and the
+     * form carry the SAME fact and must not carry the same string: seeding a text input with "TZS 50,000" is a
+     * thousands separator posted back into a money column on the next save. This is the discriminator — if the
+     * form were ever wired to `capRows`' formatted output, only this line would notice.
+     */
+    ok("1.508 · CONTROL · the form's value is the raw number while the card's is the formatted figure, and an unset cap is the empty string in the form",
+      v.rulesForm.caps.find((c: Any) => c.label === GATEM.consoleLimitLabel("capDailyLossTzs"))?.value === "50000"
+        && v.rulesForm.caps.find((c: Any) => c.label === GATEM.consoleLimitLabel("capDailyLossTzs"))?.value !== formatTzs(50_000)
+        && v.rulesForm.caps.every((c: Any) => !/[, ]/.test(c.value)),
+      j({ form: v.rulesForm.caps.find((c: Any) => c.label === GATEM.consoleLimitLabel("capDailyLossTzs"))?.value, card: formatTzs(50_000) }));
+    /**
+     * ⭐ 453 OVER THE FORM'S OWN WORDS — the case that WOULD HAVE CAUGHT the first draft of this feature.
+     *
+     * 🔴 Measured 2026-09-21: the form shipped a switch labelled "Counter a player's stake" with the keys
+     * `updown-counter` and `polls-counter` beside it, and `counter` is on this section's forbidden list. The
+     * neighbouring case scanned `v.rules` only, so the FORM's labels, sections and neutral KEYS were outside
+     * every population — the words would have reached an officer's screen with the whole suite green.
+     */
+    ok("1.508 · 453 · not one label, section, key or sentence the FORM paints carries a house-vocabulary word",
+      [
+        ...v.rulesForm.caps.flatMap((c: Any) => [c.key, c.label]),
+        ...v.rulesForm.flags.flatMap((f: Any) => [f.key, f.section, f.label]),
+        v.rulesForm.copy.barDetail, v.rulesForm.copy.guardBody,
+      ].every((s: string) => !NEUTRAL.test(s)),
+      j([
+        ...v.rulesForm.caps.flatMap((c: Any) => [c.key, c.label]),
+        ...v.rulesForm.flags.flatMap((f: Any) => [f.key, f.section, f.label]),
+        v.rulesForm.copy.barDetail, v.rulesForm.copy.guardBody,
+      ].filter((s: string) => NEUTRAL.test(s))));
     ok("1.508 · 453 · not one rule name, section or value the panel paints carries a house-vocabulary word",
       v.rules.flatMap((r: Any) => [r.name, r.section, r.value]).every((s: string) => !NEUTRAL.test(s)),
       j(v.rules.flatMap((r: Any) => [r.name, r.section, r.value]).filter((s: string) => NEUTRAL.test(s))));
@@ -6312,8 +6382,52 @@ export default function Ruling513Control() {
     ok("1.412 · 537 · a typed control, a wired limits SAVE and the limits form's OWN `UnsavedChangesGuard` exist TOGETHER or not at all — each one is red without the other two",
       typed === saveWired && saveWired === guarded && typed === true,
       j({ typedControl: typed, saveWired, guarded, guardRead: LIMITS_FORM }));
-    ok("1.412 · EXACTLY ONE guarded form on the tab, with the singleton `PendingChangesBar` beside it — the bar is a singleton and two would elect one painter and hide the other",
-      forms === 1 && bars === 1 && guarded, j({ forms, bars }));
+    /**
+     * ⭐ EVERY FORM CARRIES ITS OWN BAR AND ITS OWN GUARD — READ PER FILE (rewritten 2026-09-21).
+     *
+     * This asserted `forms === 1 && bars === 1` over `sectionCode`, every file under the desk joined into one
+     * string, on the stated ground that "the bar is a singleton and two would elect one painter and hide the
+     * other".
+     * ⛔ THAT REASON HAD EXPIRED, and it was read at source before this line was touched. `unsaved-changes.tsx`
+     * runs a REGISTRY: every instance registers, the LOWEST id paints, and what it paints is the entry dirtied
+     * MOST RECENTLY — the form the officer just touched (`:173-174`, `:208`). Its own docblock names
+     * `/admin/ai-usage` and `/admin/bonuses` as the two-form pages it was built for. Two bars cannot land in
+     * the same pixels; the hazard the singleton work fixed is gone.
+     * ⛔ SO A GUARD COUNTING BARS WAS MANDATING A REGRESSION. The section's second form had to give up the one
+     * thing that STANDS ON SCREEN saying there is unsaved work — and it did, for one draft of the account
+     * rules form, on the form that sets what an account may stake.
+     * ⭐ THE REWRITE IS STRICTLY STRONGER AND PER FILE, because a guard's scope is part of its claim (the
+     * lesson two cases up, paid for by `designate-wizard.tsx`'s guard covering for the limits form's). Every
+     * file that renders a `<form>` must render its OWN bar and its OWN guard, one each, however many forms
+     * this section grows — where `forms === 1` could only ever be satisfied by having exactly one.
+     * ⚠️ AND A FILE WITH NO `<form>` OWES NO BAR: `designate-wizard.tsx` and `stop-queued.tsx` guard Modal
+     * flows with no form element, and demanding a bar of them would be a population error the other way.
+     */
+    const formFiles = sectionFiles.filter((f: string) => /<form\b/.test(decomment(read(f))));
+    const perForm = formFiles.map((f: string) => {
+      const c = decomment(read(f));
+      return {
+        file: f,
+        forms: (c.match(/<form\b/g) ?? []).length,
+        bars: (c.match(/<PendingChangesBar\b/g) ?? []).length,
+        guards: (c.match(/<UnsavedChangesGuard\b/g) ?? []).length,
+      };
+    });
+    ok("1.412 · every form in the section renders its OWN `PendingChangesBar` and its OWN `UnsavedChangesGuard`, one each — read per file, never over the section joined",
+      formFiles.length >= 2 && guarded
+        && perForm.every((p) => p.forms === 1 && p.bars === 1 && p.guards === 1),
+      j({ formFiles: perForm, sectionForms: forms, sectionBars: bars }));
+    /* ⛔ CONTROL · THE PER-FILE READ DISCRIMINATES, which is exactly what the section-wide count could not do:
+       with the bar removed from ONE form file the old test stayed green while any other file still had one. */
+    ok("1.412 · CONTROL · with the bar struck from one form file that file is reported, and the section-wide count it replaced would still have read `bars` as satisfied",
+      (() => {
+        const stripped = decomment(read(formFiles[0])).replace(/<PendingChangesBar\b/g, "<AbsentBar");
+        const strippedBars = (stripped.match(/<PendingChangesBar\b/g) ?? []).length;
+        const sectionStillHasABar = formFiles.length > 1
+          && (decomment(read(formFiles[1])).match(/<PendingChangesBar\b/g) ?? []).length === 1;
+        return strippedBars === 0 && (stripped.match(/<form\b/g) ?? []).length === 1 && sectionStillHasABar;
+      })(),
+      j({ probed: formFiles[0], other: formFiles[1] }));
     /* ⛔ THE FORM'S COLUMN IS THE FORM TIER, AND IT DID NOT MOVE WHEN THE INPUTS ARRIVED (412). */
     ok("1.412 · the limits column is `FormColumn measure=\"form\"` (640), every control is `size=\"md\"`, and nothing under the section uses the `sm` rungs",
       /<FormColumn measure="form">/.test(pageCode) && !/<(Input|Select|Textarea|Button)\b[^>]*size="sm"/.test(sectionCode)
@@ -7180,8 +7294,34 @@ export default function Ruling513Control() {
         return (code.match(/function SavedRulesCard\(/g) ?? []).length === 1
           && (code.match(/<SavedRulesCard /g) ?? []).length === 2
           && /<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(code)
-          && /<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions \/>/.test(code)
-          && (code.match(/<AdminCard title="Saved rules">/g) ?? []).length === 1;
+          && /<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions \/>/.test(code);
+      })(), "");
+    /**
+     * ⭐ THE SECOND "Saved rules" CARD IS THE FORM, AND THE TWO ARE ALTERNATIVES (2026-09-21).
+     *
+     * This chain ended `&& (code.match(/<AdminCard title="Saved rules">/g) ?? []).length === 1`, which pinned
+     * the rules tab to ONE card — correct while the tab could only ever show values, and now the thing that
+     * would refuse the form. What 432(n) actually forbids is one STATE painting two cards headed the same way,
+     * which a source count cannot see either direction of.
+     * ⛔ SO THE SHAPE IS ASSERTED INSTEAD: both cards hang off ONE conditional on `rulesForm`, the record in
+     * the arm where there is nothing to edit, the form in the other. Two cards in the source, never two on a
+     * screen — and `rulesForm` is null in exactly the two states no form may overwrite (a read that could not
+     * be taken, and a stored document that would not parse).
+     */
+    ok("1.435 · 432(n) · the record card and the rules FORM are the two arms of ONE conditional on `rulesForm`, so no single state paints two cards headed the same way",
+      (() => {
+        const code = decomment(read(DETAIL_PAGE));
+        return (code.match(/<AdminCard title="Saved rules">/g) ?? []).length === 2
+          && /view\.rulesForm === null \? \(\s*<SavedRulesCard /.test(code)
+          && /<DeskRulesForm accountId=\{id\} model=\{view\.rulesForm\} onSave=\{saveBotRulesAction\} \/>/.test(code);
+      })(), "");
+    /* ⛔ CONTROL · the conditional is what carries the claim — the same read over a page whose two cards are
+       siblings rather than arms reports FALSE, so this cannot pass on the card count alone. */
+    ok("1.435 · CONTROL · with the conditional flattened to two siblings the same read refuses it, so the case rests on the branch and not on the count of cards",
+      (() => {
+        const flattened = decomment(read(DETAIL_PAGE)).replace(/view\.rulesForm === null \? \(/g, "false ? (");
+        return (flattened.match(/<AdminCard title="Saved rules">/g) ?? []).length === 2
+          && !/view\.rulesForm === null \? \(\s*<SavedRulesCard /.test(flattened);
       })(), "");
 
     /* ── 1.395 · THE CONSOLE ADDS NO ADMIN API ROUTE, OVER THE WALKED INVENTORY ──────────────────────────────────
