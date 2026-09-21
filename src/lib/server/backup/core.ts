@@ -169,6 +169,14 @@ export type BackupManifest = {
     imbalancedGroups: number;
     chainValid: boolean;
     chainLinkBroken: boolean;
+    /** ⚠️ OPTIONAL BECAUSE ARTIFACTS TAKEN BEFORE 2026-09-21 DO NOT CARRY THEM, and a verifier that
+     *  demanded them would call every older backup broken. Entries whose own hash does not match
+     *  their contents and which no declared baseline accounts for — an in-place EDIT, which breaks
+     *  no link and so was invisible in `chainValid` until AR-3 was closed. */
+    chainUnattested?: number;
+    /** Entries covered by the declared legacy baseline. Not a fault; recorded so a restore can
+     *  prove the same population came back. */
+    chainBaselined?: number;
   };
   /** The audit chain's tail, so a restore can prove the chain came back whole. */
   audit: {

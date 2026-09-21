@@ -515,16 +515,29 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
       //    normalisation fix cannot recompute at all.
       await (async (): Promise<SummaryItem> => {
         const v = await verifyChainFull();
-        if (!v.valid) {
+        // 🔴 THREE VERDICTS, NOT TWO (AR-3, 2026-09-21). Until this changed, a row EDITED in place
+        // left `valid:true` and this tile read "Intact" on a document that goes to a regulator —
+        // the failure was counted in `unverifiable` and then described as a signing-regime
+        // footnote. The three are different findings and must not collapse onto one word:
+        //   · a LINK break  — an entry was inserted, removed or reordered;
+        //   · an UNATTESTED row — an entry's own hash no longer matches its contents, and no
+        //     declared baseline accounts for it. That is what an in-place EDIT looks like;
+        //   · rows inside a DECLARED baseline — accounted for, dated, digested, and genuinely not
+        //     a tamper signal.
+        if (v.linkBroken) {
           return { label: "Chain integrity", value: "BROKEN", tone: "bad",
             delta: `Chain link failed at ${v.firstBreakAt ?? "unknown"} (entry #${v.index ?? "?"} of ${v.total.toLocaleString()}) — an entry was inserted, removed or reordered.` };
         }
-        const unver = v.unverifiable ?? 0;
-        return unver === 0
+        if (!v.valid) {
+          return { label: "Chain integrity", value: "UNVERIFIED", tone: "bad",
+            delta: `${v.total.toLocaleString()} entries, every link joined — but ${(v.unattested ?? 0).toLocaleString()} entry hash(es) do not match their contents and no declared baseline accounts for them. ${v.firstBreakAt ?? ""}`.trim() };
+        }
+        const based = v.baselined ?? 0;
+        return based === 0
           ? { label: "Chain integrity", value: "Intact", tone: "good",
               delta: `HMAC-SHA-256 · ${v.total.toLocaleString()} entries, all links joined and all hashes recomputed` }
           : { label: "Chain integrity", value: "Intact", tone: "good",
-              delta: `${v.total.toLocaleString()} entries, every link joined. ${(v.verified ?? 0).toLocaleString()} hashes recomputed; ${unver.toLocaleString()} predate the current signing regime and cannot be re-verified (see note).` };
+              delta: `${v.total.toLocaleString()} entries, every link joined. ${(v.verified ?? 0).toLocaleString()} hashes recomputed; ${based.toLocaleString()} predate the current signing regime and are covered by the baseline declared ${v.baseline?.declaredAt?.slice(0, 10) ?? "—"} (entry ${v.baseline?.entryId ?? "—"}, see note).` };
       })(),
       // Rows are now oldest-first (chain order), so first/last are the other way round
       // from the ring-backed version. These describe THIS EXPORT's span — with a cap in
@@ -581,6 +594,16 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
         "chain links are intact and verified. Historical hashes are deliberately NOT " +
         "recomputed under the current key — doing so would rewrite the very record whose " +
         "purpose is to show nothing was rewritten.",
+      // ⛔ THE DISCLOSURE ABOVE WAS A LOOPHOLE UNTIL 2026-09-21. It explained away every entry that
+      // failed to recompute, and an entry EDITED in place fails to recompute in exactly the same
+      // way. Naming the boundary is what makes the explanation honest rather than an excuse.
+      "That population is not open-ended. It is fixed by a dated declaration recorded in " +
+        "this same log (action audit.unverifiable_baseline), which states how many entries " +
+        "are covered, up to which sequence number, and a SHA-256 digest of their exact stored " +
+        "contents. Any entry outside that declaration whose hash does not match its contents " +
+        "is reported as UNVERIFIED, not as a signing-key artefact — and an edit to an entry " +
+        "inside it moves the digest. Integrity is therefore asserted over every entry in the " +
+        "log, with no unbounded exempt class.",
       "Full payloads are available on /admin/audit; this report is the index for a regulator first-pass.",
     ],
     signatures: await regulatorSignatures(generatorId),

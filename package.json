@@ -876,7 +876,11 @@
     "rehearse:audit-loss-window": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-loss-window.mts",
     "rehearse:audit-gap": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-gap-reconcile.mts",
     "rehearse:audit-drain": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-drain.mts",
-    "audit:gap-sweep": "tsx scripts/audit-gap-sweep.mts"
+    "audit:gap-sweep": "tsx scripts/audit-gap-sweep.mts",
+    "audit:ticket-sweep": "tsx scripts/audit-ticket-sweep.mts",
+    "audit:baseline": "tsx scripts/audit-baseline.mts",
+    "test:audit-attest": "tsx scripts/audit-attest.test.mts",
+    "rehearse:audit-hole": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-hole.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

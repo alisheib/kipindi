@@ -458,6 +458,13 @@ async function main(): Promise<void> {
         `restored linkBroken=${chain.linkBroken ?? false} / source linkBroken=${src.chainLinkBroken}`);
       ok("audit chain validity matches", chain.valid === src.chainValid,
         `restored valid=${chain.valid} / source valid=${src.chainValid}`);
+      // ⚠️ ONLY WHEN THE SOURCE RECORDED IT. Artifacts taken before 2026-09-21 have no
+      // `chainUnattested`, and asserting over `undefined` would fail every older backup for a
+      // property its manifest never claimed — the same mistake the block above exists to prevent.
+      if (typeof src.chainUnattested === "number") {
+        ok("audit chain unattested-entry count matches", (chain.unattested ?? 0) === src.chainUnattested,
+          `restored unattested=${chain.unattested ?? 0} / source unattested=${src.chainUnattested}`);
+      }
     } else {
       // Pre-v2 artifact with no recorded source verdict: fall back to absolute checks and
       // say plainly that a failure here cannot be attributed.
@@ -465,8 +472,13 @@ async function main(): Promise<void> {
       ok("audit chain links intact", !chain.linkBroken, chain.linkBroken ? `first break at ${chain.firstBreakAt}` : `${chain.total} entries`);
       console.log("   note  this artifact predates sourceIntegrity — a failure above may belong to the SOURCE");
     }
-    if (chain.unverifiable) {
-      console.log(`   note  ${chain.unverifiable} entr(ies) predate the current signing key — links still verified`);
+    if (chain.baselined) {
+      console.log(`   note  ${chain.baselined} entr(ies) predate the current signing key and are covered by the declared baseline — links still verified`);
+    }
+    if (chain.unattested) {
+      // ⛔ NOT A NOTE. An entry whose hash does not match its contents, with nothing declaring it,
+      // is an in-place EDIT — and it used to be reported in the same sentence as the legacy rows.
+      console.log(`   ⚠️  ${chain.unattested} entr(ies) do NOT match their own hash and no baseline covers them — see audit.unverifiable_baseline`);
     }
 
     // The source's own health, stated separately from the backup's. This is what an
