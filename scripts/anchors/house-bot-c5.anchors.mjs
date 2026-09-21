@@ -60,7 +60,15 @@
  * one `props`). Each names in its own text what it was for and what the new from-text is. ⛔ Where the site could NOT be
  * identified — `S5-M74` and `S5-M76`'s audience gate now matches five times — nothing was invented; they stay owed.
  *
- * ── ELEVEN OF THEM WERE ACTUALLY DRIVEN, 2026-09-21, AND THE DRIVE IS WHY TWO OF THEM ARE RIGHT ──────────────────
+ * ── ALL 69 PRIMARIES ARE DRIVEN, AND THE ELEVEN BELOW ARE WHY TWO OF THEM ARE RIGHT ─────────────────────────────
+ * ⭐ THE WHOLE SET, IN ONE RUN: `npm run red:house-bot-c5` at `fc92867a` reported 69 caught, 0 wrong-assertion,
+ * 0 missed, 0 stale, 0 files left dirty, across all 24 distinct assertions this file declares. ⛔ DO NOT QUOTE THAT
+ * LINE — re-run the command; it is the only thing that can say it, and it moves whenever a declaration does.
+ * ⚠️ The figure it replaced was a COMPOSITE (65 caught + 4 wrong-assertion, then 7 repaired entries re-driven,
+ * summed to "69 of 69"). The sum was right; it was never a run. DEFERRED-TESTS §1 row 96 carries both, and the
+ * three controls — WRONG-ASSERTION, MISSED and a true CAUGHT — that prove this harness still reports a failure.
+ *
+ * ── THE ELEVEN THE FIRST SAMPLE DRIVE APPLIED, 2026-09-21, KEPT BECAUSE OF WHAT THEY FOUND ───────────────────────
  * ⛔ AN ANCHOR THAT RESOLVES IS NOT AN ASSERTION THAT WENT RED, so a sample was applied for real: the mutation
  * written into the file, `npx tsx scripts/lib/house-bot-reports-cases.mts` run on the memory child, the FAIL lines
  * read, `git checkout --` and `git diff --quiet` after every single one (the tree was verified clean at the close of
