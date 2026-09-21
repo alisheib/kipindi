@@ -295,6 +295,36 @@ before it writes anything, and `KP_SCRATCH_PORT` now gives a second checkout its
 KP_SCRATCH_PORT=5443 npm run verify:backup-schema
 ```
 
+### 🔴 A FAILED `db:scratch` REPORTED EXIT 0 — and 26 suites run through it
+
+Raised by a parallel session on 2026-09-21 as *"I cannot say whether the harness lied or my
+capture did"*, and settled by reproducing it: hold the port with a **non-postgres** listener and
+`db:scratch` prints `!! db:scratch failed:` and exits **0** — through npm *and* through tsx
+directly, so npm was never the culprit.
+
+`pg.stop()` on an instance that never started returns a promise that **never settles**, so the
+handler's own `process.exit(1)` was never reached, the event loop emptied, and **Node exited
+normally**. No throw, no unhandled rejection, no stack — the last line printed is the failure and
+the shell is handed a success.
+
+⛔ **What that costs is not this script.** 26 suites run through `db:scratch --run`, and
+`scripts/test-all.mjs` judges each one by its exit code. A cluster that cannot start means the
+wrapped command **never ran** — and it scored **green**. *A suite that did not execute, reporting
+PASS.* That is the same class as the three nights one layer up: a question whose answer was
+decided before it was asked.
+
+Fixed by setting `process.exitCode = 1` **before awaiting anything** — it survives both ways out,
+the explicit exit and a natural one if the stop hangs again — and by bounding the stop in a
+`Promise.race`, so a hang costs five seconds instead of the signal.
+
+⚠️ Guarded in `scripts/backup.test.mts`, with the ordering asserted on **comment-stripped**
+source. The prose explaining this bug contains the word `await`, and the first version of the
+assertion read the *comment* and failed a correct fix — a guard that parses your explanation is
+one you will eventually "fix" by rewording the explanation.
+
+**Proven:** exit `1` after the fix · `--run` exits `1` with the wrapped command confirmed never
+to have run · both assertions observed RED with the fix removed.
+
 ### What this says about the alarm
 
 The watchdog (`src/lib/server/backup/watchdog.ts`, 2026-09-04) worked exactly as designed and

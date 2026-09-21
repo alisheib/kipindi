@@ -498,6 +498,34 @@ ok("⛔ embedded-postgres is NOT a dependency of this repo",
   !("embedded-postgres" in allDeps) && !Object.keys(allDeps).some((d) => d.startsWith("@embedded-postgres/")),
   "107 MB of Postgres binaries in every production image, for a laptop-only drill");
 const scratch = readFileSync(new URL("./db-scratch.mts", import.meta.url), "utf8");
+
+// 🔴 A FAILED `db:scratch` REPORTED **EXIT 0** UNTIL 2026-09-21, AND 26 SUITES RUN THROUGH IT.
+//
+// `pg.stop()` on an instance that never started returns a promise that never settles, so the
+// handler's own `process.exit(1)` was never reached, the event loop emptied, and Node exited
+// NORMALLY. A cluster that could not start means the wrapped command never ran — and
+// `scripts/test-all.mjs` scored it green. A suite that did not execute, reporting PASS.
+// Reproduced by holding the port with a non-postgres listener: exit 0 through npm AND through
+// tsx, so npm was never the culprit. Raised by a parallel session; settled by running it.
+{
+  const handlerAt = scratch.indexOf("main().catch(");
+  ok("the failure handler was located", handlerAt !== -1);
+  // ⛔ COMMENT-STRIPPED FIRST. The prose above that handler explains this very bug and uses the
+  // word "await" while doing so, so an ordering test over the raw text reads the COMMENT and
+  // fails a correct fix — which is how this assertion first went red. A guard that parses your
+  // explanation is a guard you will eventually "fix" by rewording the explanation.
+  const handler = (handlerAt === -1 ? "" : scratch.slice(handlerAt))
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^[ \t]*\/\/.*$/gm, "");
+  const codeAt = handler.indexOf("process.exitCode = 1");
+  const awaitAt = handler.search(/\bawait\b/);
+  ok("🔴 a FAILED db:scratch sets a non-zero exit code", codeAt !== -1,
+    "without it, `pg.stop()` hanging lets Node exit 0 and a suite that never ran reads as green");
+  ok("⛔ …and sets it BEFORE it awaits anything", codeAt !== -1 && awaitAt !== -1 && codeAt < awaitAt,
+    "an exit code assigned after a hang is an exit code that is never assigned");
+  ok("the stop it waits on is BOUNDED, so a hang costs seconds not the signal",
+    /Promise\.race\(/.test(handler) && /setTimeout/.test(handler));
+}
 ok("db:scratch loads it lazily, through a computed specifier",
   /\["embedded", "postgres"\]\.join\("-"\)/.test(scratch),
   "a static import would make tsc require a package that is not installed");

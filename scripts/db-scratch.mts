@@ -336,6 +336,30 @@ main().catch(async (e: unknown) => {
         "   Then re-run with --reset.\n",
     );
   }
-  await pg.stop().catch(() => {});
+  // 🔴 SET THE CODE BEFORE AWAITING ANYTHING. THIS HANDLER USED TO REPORT **EXIT 0** ON EVERY
+  // FAILURE, AND `process.exit(1)` TWO LINES DOWN IS WHY IT LOOKED IMPOSSIBLE.
+  //
+  // `pg.stop()` on an instance that never started returns a promise that NEVER SETTLES. The
+  // await below therefore never returns, `process.exit(1)` is never reached, the event loop
+  // empties with nothing left to do, and **Node exits normally — code 0**. No throw, no
+  // unhandled rejection, no stack: the last thing printed is "!! db:scratch failed:" and the
+  // shell is handed a success.
+  //
+  // ⛔ WHAT THAT COSTS IS NOT THIS SCRIPT. 26 suites run THROUGH `db:scratch --run`, and
+  // `scripts/test-all.mjs` judges each one by its exit code. A cluster that could not start
+  // means the wrapped command NEVER RAN — and it was scored **green**. A suite that did not
+  // execute reporting PASS is the worst shape a guard can take: [[verified means EXECUTED]].
+  //
+  // Reproduced deliberately on 2026-09-21 by holding the port with a non-postgres listener:
+  // exit 0 both through npm and through tsx directly, so npm was never the culprit.
+  //
+  // `process.exitCode` is the fix rather than a bigger try/catch, because it survives BOTH
+  // ways out — the explicit exit below, and a natural exit if anything here hangs again. The
+  // race bounds the stop so a hang costs five seconds instead of the signal.
+  process.exitCode = 1;
+  await Promise.race([
+    pg.stop().catch(() => {}),
+    new Promise((r) => setTimeout(r, 5_000)),
+  ]);
   process.exit(1);
 });
