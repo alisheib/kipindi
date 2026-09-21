@@ -455,3 +455,182 @@ release plan pushes `main` from at REL-4. `git log`, `git commit` and `git push`
 three commits and pushed each), because they do not need that object's contents. ⛔ **Nothing was attempted to
 repair it**: a `gc`, `repack` or `fetch --prune` on a shared store while two other lanes hold live worktrees is the
 exact class of action this programme has an incident about. It is named here for the owner.
+
+## THE TEN JUDGEMENTS — what each of the batch's ten failures actually means (2026-09-21, alerts lane, PHASE 4)
+
+⭐ **This is the debt the run created and the phase that pays it.** Drive 1 printed
+`house-bot-console RED: 271 caught, 10 missed, 0 files left dirty` (exit 1). The harness can say only THAT a
+declaration failed to redden the assertion it names; it cannot say **which end is wrong**. Ruling 541's whole point
+is that an anchor which resolves is not an assertion that went red — and its corollary is that a WRONG-ASSERTION or a
+MISSED is a *finding*, not a statistic. Each of the ten is read at source below and given one of three verdicts:
+
+| Verdict | Means | Who is wrong |
+|---|---|---|
+| **MUTATION MIS-AIMED** | The injected defect never reaches the assertion, or is not the defect the declaration names. | the anchors file |
+| **EXPECT MIS-QUOTED** | The defect WAS caught, by a different label — often one line away in the same assertion family. | the anchors file |
+| **ASSERTION CANNOT FAIL** | The mutation is right, the defect is real, and the guard stays green. ⛔ A measurement defect. | the suite |
+
+⛔ **No guard was weakened, no ceiling raised and no declaration edited in this phase.** The judgements are the
+deliverable; the repairs are a build, and three of them change what a guard measures.
+
+### Ownership, re-derived — the register files OVERLAP, and two rows had it wrong
+
+⛔ **`c7-s3s2-mutations.json` is a COMPLETE SNAPSHOT, not a delta.** Its own header says so: *"Commit 7's COMPLETE
+declared-mutation register … It SUPERSEDES AND REPLACES `c7-s1b-mutations.json`, whose 68 entries are wholly
+contained here"* — and `c7-s1b-mutations.json` is **not on disk**, confirmed. So **row 18's population is a strict
+subset of row 31's**, and eight of the ten failures sit inside BOTH rows' register files. Row 31's phase-3 sentence
+"EIGHT of the ten failures are this row's own declarations" is true of *its register* and false of *what step 3
+built*: measured with `git log -S "<id> ·" -- scripts/anchors/house-bot-console.anchors.mjs`, taking the OLDEST
+commit that carries each name, only **one** of the eight entered at step 3.
+
+| Declaration | Introduced by | Step | Row that owes it |
+|---|---|---|---|
+| `346-countlive` | `a897e47a` | C7 step 1 | **18** |
+| `347-second-read` | `a897e47a` | C7 step 1 | **18** |
+| `432h-rowlink` | `ae09672b` | step 1's fixer | **18** |
+| `432o-status-floor` | `ae09672b` | step 1's fixer | **18** |
+| `432j-switch-reason` | `c812a03e` | step 1's review | **18** |
+| `416-products-case` | `c812a03e` | step 1's review | **18** |
+| `409-name` | `3b17b03e` | C7 step 3 | **31** |
+| `537-guard` | `657205b2` | C7 ruling 537 | **39** |
+| `387-order` | `39861653` | step 6's review | **58** |
+| `398-ladder-hole` | `9e37a231` | step 7's review | **71** |
+
+⚠️ The `git log -S` walk prints `fatal: packed object 9802802836ee… is corrupt` before each answer — the shared-store
+defect this file records under "a corrupt object in the SHARED store". The walk still reaches the introducing commit in every one of the ten, so the
+result stands; it is noted so the next reader does not mistake the noise for a failed measurement.
+
+⭐ **This CONFIRMS rows 55 and 66 independently** rather than carrying them on the previous phase's word: not one of
+the ten was introduced by step 6's own twenty (`4652a3f8`) or by step 7's eighteen (`9e37a231` is the *review*,
+`c7-step7-closing-gates-mutations.json` is step 7's own). Re-checked from the other direction too — every id in
+`c7-step7-closing-gates-mutations.json` (**18 of 18**) and in the step-6 register (**35 of 35**) is present in
+`house-bot-console.anchors.mjs` today, and of row 71's **22**, **21** are present and `320-tab-debt-stale` is gone.
+
+### The six WRONG-ASSERTION, judged
+
+**1. `346-countlive` — MUTATION MIS-AIMED. ⛔ It cannot compile.** The `to` inserts
+`await houseBotStore.countLive()` at `house-console-read.ts:881`. That line is inside
+`function deskShell(core: DeskCore): ConsoleDeskShell {` at **:811** — a **synchronous** function. MEASURED: between
+:811 and :881 there is no `async` token and no nested function boundary at all, so the `await` lands in a non-async
+body and the memory child dies at parse, printing no summary line. **`1.346` was never exercised**: it is neither
+shown able to fail nor shown unable to. **Re-aim:** inject the second count into the *async* `readDeskCore` at
+**:749**, which is where the reads at :756 / :758 live and where 1.346's spy counts them.
+
+**2. `347-second-read` — MUTATION MIS-AIMED, same defect, same function.** The `to` inserts
+`await houseBookStore.openExposure(null)` at **:852** — also inside `deskShell`. Same crash, same re-aim.
+⛔ **AND ITS RECORDED `CAUGHT` IS FALSE.** Row 18 lists `347-second-read` among FOURTEEN declarations "run
+INDIVIDUALLY … each CAUGHT on the assertion its own declaration names" on 2026-09-18. Today the mutation cannot
+compile. Either the read sat in an async scope then and C7 step 3's refactor into "a shared read set and a shared
+shell" (the s3s2 register's own words) moved it, or the individual run was misread. ⭐ **A recorded CAUGHT rots
+exactly like a recorded count** — the same lesson row 25 taught from the other direction, and it means the other
+thirteen of those fourteen are claims, not evidence, until re-driven.
+
+**3. `432h-rowlink` — MUTATION'S PREMISE IS GONE.** `1.407 · 432(h)` at `house-bot-console-cases.mts:5540` is
+`existsSync(DETAIL_PAGE) === /className="row-link/.test(pageCode)` — a biconditional over two booleans.
+`/admin/desk/[id]/page.tsx` **exists** since C7 step 4 and the roster **already carries** a `row-link`, so adding a
+second link leaves `true === true`. The defect the declaration is named for — *"the way-out link comes back while
+the page it opens does not exist"* — has been **unreachable since step 4**, exactly like register rows 16 and 42.
+⭐ What DID go red, `1.306 · 432(i) · 541(b) · every <Link href= in the section is pinned BY POSITION`, is the
+correct guard for "a new Link appeared in the roster" — the suite behaved well. **Re-aim:** DELETE the existing
+`row-link` (making it `true === false`). ⚠️ That also trips `1.474 · CONTROL` at **:5502**, which requires at least
+one `row-link` on the page, so the re-aim needs an `expect` naming both or a narrower edit.
+
+**4. `432o-status-floor` — EXPECT MIS-QUOTED. Nothing is broken.** The mutation deletes `min-w-[128px]` from the
+**Status** header. The quoted half, `1.373 · EVERY panel that paints the subject column carries the SAME floor`
+(**:5511**), tests `subjectCols.every(c => /min-w-\[150px\]/.test(c))` — the **subject** column, which the mutation
+never touches. The half one line down, `1.373 · …and only the SUBJECT and STATUS columns carry a floor` (**:5514**),
+pins the Status `<th>` literally and **did fail**. Same assertion number, wrong sentence in the `expect`.
+**Fix: re-quote the `expect`.** One sentence, no code change.
+
+**5. `432j-switch-reason` — MUTATION MIS-AIMED: it does not create the defect it is named for.** The declaration is
+*"both disabled controls say the same seven words again"*, and `432(j) · 432(n)` (**:913**) enforces that with
+`x.switchReason !== x.actionReason`. But the `to` sets `switchReason` to a **third** sentence — the retired build
+note *"Designating an account is not ready on this build yet."* — while `actionReason` in the withdrawn state is
+*"The desk has been withdrawn, so no account can be designated."* (`house-console-read.ts:949`). The two still
+differ, so :913 stays green, correctly. `432(j) · CONTROL` (**:920**) pins
+`sunsetFull.switchReason.toLowerCase().includes("switch")` and caught it. **Re-aim:** make `to` the *exact*
+`actionReason` string, which is what the declaration's own name describes.
+
+**6. `398-ladder-hole` — ASSERTION CANNOT FAIL. ⛔ AND THE PREVIOUSLY RECORDED REASON IS MEASURED FALSE.**
+Drive 1 recorded *"the printed label was REWORDED … so the expect can match nothing the run prints"*. **It is still
+printed verbatim**: `house-bot-console-cases.mts:7335` carries
+`1.398 · LADDER · every rung below the highest one this tree carries …` exactly as the `expect` quotes it. There are
+**two** `1.398 · LADDER` labels (**:7335** and **:7346**) and the drift check never saw a problem because there was
+none. What really happened: `RECORDED_GAPS` is now `[]` (**:7281**, emptied when C7 step 5 filled the last hole), so
+:7335's predicate is `rungs.gaps.every(g => [].includes(g)) && [].every(g => rungs.gaps.includes(g))` — and with the
+mutation forcing `gaps: []`, **both halves are vacuously true**. The assertion is blind to its own instrument being
+switched off. ⭐ The OTHER label (**:7346**) caught it, on the deliberate vector
+`ladder({ ...tree, activity: false }).gaps.length === 1` written for exactly this — the guard-of-the-guard worked.
+⚠️ The comment at **:7278** argues an empty `RECORDED_GAPS` "is not a weaker guard", and it is right in one
+direction (any real hole is reported) and wrong in the other (a `ladder()` that reports nothing passes).
+**Fix: point the `expect` at :7346, or give :7335 its own non-vacuity vector.**
+
+### The four MISSED, judged
+
+**7. `387-order` — ASSERTION CANNOT FAIL ON THE STORE THAT IS DRIVEN. ⛔ The FIXTURE is what disarms it.** The
+mutation deletes the picker's `hits.sort(...)`. `1.387 · …and the ten that survive the slice are the same ten a
+second run returns, in one total order, on either store` (**:4544**) asserts (a) two calls agree and (b) the ten are
+in sorted order. The fixture at **:4537** inserts twelve ids `usr_<tag>_0` … `usr_<tag>_11` **in ascending order**
+and the answer is capped at ten. REPLICATED outside the repo (`node`, no repo file touched):
+
+```
+WITH sort     ten = 0,1,10,11,2,3,4,5,6,7   half1=true half2=true  -> PASSES
+WITHOUT sort  ten = 0,1,2,3,4,5,6,7,8,9     half1=true half2=true  -> PASSES
+```
+
+Without the sort the memory store returns insertion order, and the ten that survive the slice are `_0`…`_9` —
+single digits, whose lexicographic order IS their insertion order. Both halves hold either way.
+⛔ The label says **"on either store"** but the declaration is `suite: "console-mem"` only, and memory is precisely
+the store where the sort is not load-bearing; on Postgres (`findMany`, no `orderBy`) it is. **Fix: seed the ids so
+the surviving ten are NOT in insertion order** (zero-pad and insert reversed), which costs nothing and strengthens
+the case, **or** add a `console-pg` declaration.
+
+**8. `409-name` — ASSERTION CANNOT FAIL.** `1.409 · captionText is PLAIN` (**:6087**) is
+`decomment(read(GATE)).includes("captionText: `${name} · ${cell.text}`")` — a substring scan over the **whole file**.
+The identical literal stands at **TWO** sites in `house-console-read.ts`: **:1364** (the one the mutation deletes)
+and **:3317** (`houseUsageForConsole`'s own shell). Deleting :1364 leaves the scan satisfied by :3317, so the caption
+can lose the cap's name entirely and 1.409 stays green. ⛔ A real measurement defect.
+**Fix: scan the one function, or count occurrences, not the file.**
+
+**9. `537-guard` — ASSERTION CANNOT FAIL. Re-verified at source, not quoted.**
+`house-bot-console-cases.mts:6230` computes `const guarded = /<UnsavedChangesGuard\b/.test(sectionCode)`, and
+**:5068** builds `sectionCode` as `sectionFiles.map(f => decomment(read(f))).join("\n")` — **every** file under
+`src/app/admin/desk/`. `designate-wizard.tsx:381` carries its own `<UnsavedChangesGuard />`, so the wizard satisfies
+the flag on the limits form's behalf and `1.412` stays green with the limits form's guard gone.
+**Fix: measure the file whose guard is the subject.**
+
+**10. `416-products-case` — MUTATION MIS-AIMED: it edits the wrong one of two identical literals.**
+`house-console-read.ts:1031-1033` is ONE ternary chain carrying `"Couldn't read"` **twice**:
+
+```
+products: parsed == null ? "Couldn't read"          <- :1031, what the mutation edits
+  : parsed.ok ? productWords(...)
+    : "Couldn't read",                              <- :1033, what the test reaches
+```
+
+The fixture plants `rules: { schemaVersion: 9_999 }`, which `parseHouseBotRules` answers as
+`{ ok: false, code: "RULES_FROM_FUTURE" }` — **not null** — so `1.310 · 416` (**:573**) reads the **:1033** branch,
+which the mutation leaves untouched. The assertion is sound. **Re-aim at :1033.**
+⭐ **And a second-order finding the mutation exposed by accident: the `parsed == null` branch at :1031 is measured by
+NOTHING.** If it silently became a lowercase fragment tomorrow, no assertion in this suite would go red — which is
+the very defect ruling 416 exists to prevent, surviving in the branch nobody planted for.
+
+### What the ten add up to
+
+| | Count | Which |
+|---|---|---|
+| **MUTATION MIS-AIMED** (the anchors file is wrong; the code and the guard are fine) | **5** | `346-countlive`, `347-second-read`, `432j-switch-reason`, `416-products-case`, and `432h-rowlink` (premise gone) |
+| **EXPECT MIS-QUOTED** (the guard caught it, one label away) | **1** | `432o-status-floor` |
+| **ASSERTION CANNOT FAIL** (⛔ a real measurement defect) | **4** | `398-ladder-hole`, `387-order`, `409-name`, `537-guard` |
+
+⭐ **THE CLASS, and it is worth more than the ten.** Three of the four measurement defects are the SAME shape: *an
+assertion stands a broad scan in for a narrow subject, and something else inside the scan satisfies it.*
+`409-name` scans a whole FILE for a literal that also lives elsewhere in it; `537-guard` scans a whole SECTION for a
+component another file in it carries; `398-ladder-hole` lets an EMPTY list stand for a population, so `every()` is
+true over nothing. `387-order` is the fourth shape — a fixture whose natural order already satisfies the ordering
+being asserted. ⛔ **Each is green for a reason that has nothing to do with its subject**, which is the precise thing
+`red:` drives exist to find, and none of the four would ever have been found by a suite run: all four are green.
+
+⛔ **NONE of the four is repaired here.** Repairing them changes what a guard measures — `409-name` and `537-guard`
+narrow a population, `387-order` re-seeds a fixture, `398-ladder-hole` needs a vector — and this phase was
+commissioned to judge. They are **findings against the suite**, owed to a build, and the rows say so.
