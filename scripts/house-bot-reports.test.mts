@@ -71,7 +71,18 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 245, postgres: 80 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 247, postgres: 80 }, dbPrefix: "hb_reports" });
+// ⭐ 245 → 247 ON MEMORY, 2026-09-21 (ops lane, closing the merge's own defect), IN THE SAME COMMIT AS THE TWO
+// ASSERTIONS THAT RAISED IT: `0.260.2` and `0.260.c4` hold the two audit exports that actually read `db.auditLog`
+// — `readUnverifiableBaseline` and `censusUnverifiable` — to the claim their new NON-READER classification makes.
+// ⛔ THE NUMBER IS WHAT A RUN PRINTED, NOT 245 + 2. The memory child was run directly
+// (`DATABASE_URL="" USE_PRISMA_DAL=false HB_MONEY_STORE=memory npx tsx scripts/lib/house-bot-reports-cases.mts`)
+// and printed `@@SUMMARY {"pass":247,"fail":0,"store":"memory"}`; the full `npm run test:house-bot-reports` then
+// printed the same 247 through `0.mem`. That the arithmetic agrees is a coincidence of this change and not the
+// authority for it — this file has recorded twice before that a computed floor is a guess with a witness.
+// ⚠️ POSTGRES IS UNCHANGED AT 80, AND THAT IS A MEASUREMENT TOO: both new cases are §0 SOURCE pins and §0 runs in
+// the memory child only, so nudging the Postgres half "to be safe" would have been an arithmetic guess on the
+// half nothing was added to. ⛔ Never lowered.
 // ⛔ MERGED A THIRD TIME 2026-09-21 (ops ← house-bots `fd2b6ed5`, the release-verdict merge), and the
 // collision is the same one twice over: lane 1 raised its own base 217 → 218 for `0.175` (its new
 // `test:house-bot-surfaces` joined `VOCABULARY_CONSUMERS`), while this lane's merged tree already stood at

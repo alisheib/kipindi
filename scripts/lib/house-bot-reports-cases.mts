@@ -2079,7 +2079,45 @@ export const AUDIT_ROW_READERS = ["getAuditById", "getAuditByActionsDurable", "g
  * chain's checks over rows handed in, and the two types. 0.260.1 holds the module's exports to exactly the two lists, so a
  * new export under ANY name has to be classified before a console file may read it.
  */
-export const AUDIT_NON_READERS = ["AuditCategory", "AuditEntry", "audit", "auditFlush", "auditPending", "auditRingSize", "classifyChainLinks", "reconstructChainOrder", "verifyChain", "verifyChainFull"] as const;
+export const AUDIT_NON_READERS = [
+  "AuditCategory", "AuditEntry", "UNVERIFIABLE_BASELINE_ACTION", "UnverifiableBaseline", "audit", "auditBootId",
+  "auditFlush", "auditPending", "auditRingSize", "auditTicketsIssued", "censusUnverifiable", "classifyChainLinks",
+  "readUnverifiableBaseline", "reconstructChainOrder", "verifyChain", "verifyChainFull",
+] as const;
+/*
+ * ⭐ SIX NAMES ADDED 2026-09-21 BY THE ops LANE, AND THEY ARE THE MERGE'S OWN DEFECT — `auditBootId`,
+ * `auditTicketsIssued`, `UNVERIFIABLE_BASELINE_ACTION`, `UnverifiableBaseline`, `readUnverifiableBaseline`,
+ * `censusUnverifiable`. The audit-attestation lane's commit `c52c5c44` arrived inside rel-lane's tip `5c38f3d3`
+ * in freeze merge 3/3; NEITHER BRANCH WAS RED ALONE, because the branch that wrote the exports carries no house
+ * guard and the branch that carries the guard had never seen the exports. That is what this list is for, and it
+ * is the second time in one night it has caught a lane that had never heard of D19 (`auditPending`, above).
+ *
+ * ⛔ EACH WAS JUDGED ON ITS OWN BODY, NOT ON THE SET, and the question asked of each was the ONE this list asks:
+ * does it return an audit ROW? Not "is it convenient to classify".
+ *   · `auditBootId()` → `string`. `globalThis.__50PICK_AUDIT_BOOT ??= "b<time36><hex>"`. No `db.auditLog` call,
+ *     no ring read. This process's identity, so a gap detector can say WHICH boot lost an append.
+ *   · `auditTicketsIssued()` → `number`, straight off `globalThis.__50PICK_AUDIT_TICKET`. No row.
+ *   · `UNVERIFIABLE_BASELINE_ACTION` → the constant string `"audit.unverifiable_baseline"`. A platform COMPLIANCE
+ *     action name, in the same class as every other action name this module writes. It returns nothing at all.
+ *   · `UnverifiableBaseline` → a TYPE, erased at compile time, in exactly the class `AuditEntry` and
+ *     `AuditCategory` were already classified in.
+ *   · `readUnverifiableBaseline()` → the only one that gave pause, and it is classified on its BODY: it does read
+ *     `db.auditLog`, but under `where: { action: UNVERIFIABLE_BASELINE_ACTION }` — ONE platform action, fixed in
+ *     source — and it returns `UnverifiableBaseline | null`, six scalars assembled field by field. The row's
+ *     `payload` is parsed and DROPPED; no `AuditEntry` leaves it. ⛔ And the decisive consistency argument: the
+ *     SAME value already leaves this module through `verifyChainFull()`'s `baseline` field, and `verifyChainFull`
+ *     has been a declared non-reader since this list existed. Classifying the reader as a ROW reader while its
+ *     own caller stayed a non-reader would have been incoherent, not strict.
+ *   · `censusUnverifiable()` → reads rows to fold their hashes and returns four scalars
+ *     (`frontierSeq`, `count`, `digest`, `scanned`). Same class as `verifyChainFull()`, which is what it shares
+ *     `walkHashes` with so the two can never disagree.
+ * ⭐ AND THE CORROBORATION, WHICH IS EVIDENCE AND NOT THE REASON: NOT ONE of the six has a call site anywhere under
+ * `src/` (measured over the tree, 2026-09-21). Every caller is a script — `scripts/audit-attest.test.mts`,
+ * `scripts/audit-baseline.mts`, `scripts/rehearsals/audit-hole*.mts`. No console file and no player file reaches
+ * any of them, so the gate question does not even arise today. It would arise tomorrow, which is why the two that
+ * touch `db.auditLog` are now PINNED rather than merely described — `auditNonReaderRowClaimProblems` below, and
+ * `0.260.2`. ⛔ A classification held by prose is the exemption this programme keeps finding; this one is measured.
+ */
 /*
  * ⭐ `auditPending` ADDED 2026-09-21 BY THE ops ← rel-lane MERGE, AND IT IS THE GUARD WORKING, NOT A NUISANCE.
  * The shutdown-drain lane (`origin/rel-lane` `09398014`) added one export to the audit module — a counter of the
@@ -2399,6 +2437,44 @@ export function auditExportProblems(file: string, code: string): string[] {
       problems.push(`${file}: an export the classification cannot read: ${n.getText().replace(/\s+/g, " ").slice(0, 80)}`);
     }
   });
+  return problems;
+}
+
+/**
+ * ⛔ THE TWO CLASSIFIED NON-READERS THAT ACTUALLY TOUCH `db.auditLog`, HELD TO THE CLAIM THEIR CLASSIFICATION MAKES.
+ *
+ * `AUDIT_NON_READERS` says of every name on it: it returns no row. For eight of the sixteen that is true by
+ * inspection and can never stop being true (a `string`, a `number`, a type, a constant). For
+ * `readUnverifiableBaseline` and `censusUnverifiable` it is true because of what their BODIES do — a `where`
+ * clause pinned to one platform action, and a return shape assembled field by field — and a body can be edited.
+ * ⛔ THAT IS EXACTLY THE SHAPE OF EVERY EXEMPTION THIS PROGRAMME HAS HAD TO UNDO: a claim written in prose beside a
+ * list, with nothing measuring it. Widening the `where` to `{}` would turn the reader into a general row reader
+ * with the classification still reading "non-reader" and every guard still green.
+ * ⚠️ `verifyChainFull` is NOT in this population and that is deliberate rather than an oversight: it is the older
+ * name, it returns a VERDICT whose `baseline` field is this very reader's output, and pinning its whole body from a
+ * house suite would be this suite claiming an area it does not own. What is pinned here is the claim the SIX new
+ * classifications rest on, and nothing wider.
+ */
+export const AUDIT_ROW_TOUCHING_NON_READERS = ["readUnverifiableBaseline", "censusUnverifiable"] as const;
+export function auditNonReaderRowClaimProblems(file: string, code: string): string[] {
+  const problems: string[] = [];
+  const ws = (s: string) => s.replace(/\s+/g, " ");
+  const reader = ws(functionDeclarationText(file, code, "readUnverifiableBaseline"));
+  const census = ws(functionDeclarationText(file, code, "censusUnverifiable"));
+  if (reader.length < 200) problems.push(`${file}: readUnverifiableBaseline was not found (or is a stub) — the classification is unproved`);
+  else {
+    if (!/where: \{ action: UNVERIFIABLE_BASELINE_ACTION \}/.test(reader))
+      problems.push(`${file}: readUnverifiableBaseline reads db.auditLog without pinning where.action to UNVERIFIABLE_BASELINE_ACTION — it can return any row, and AUDIT_NON_READERS says it returns none`);
+    if (!/\): Promise<UnverifiableBaseline \| null> \{/.test(reader))
+      problems.push(`${file}: readUnverifiableBaseline no longer returns Promise<UnverifiableBaseline | null> — the classification's "returns no row" is unproved`);
+  }
+  if (census.length < 100) problems.push(`${file}: censusUnverifiable was not found (or is a stub) — the classification is unproved`);
+  else if (!/\): Promise<\{ frontierSeq: number; count: number; digest: string; scanned: number; \}> \{/.test(census))
+    problems.push(`${file}: censusUnverifiable no longer returns four scalars — the classification's "returns no row" is unproved`);
+  for (const name of AUDIT_ROW_TOUCHING_NON_READERS) {
+    const body = ws(functionDeclarationText(file, code, name));
+    if (body.length > 0 && /\bAuditEntry\b/.test(body)) problems.push(`${file}: ${name} names AuditEntry — a declared non-reader must hand no row out`);
+  }
   return problems;
 }
 
@@ -3063,6 +3139,30 @@ if (STORE === "memory") {
         && r.consoleGateCalls.houseLimitsSaveForConsole >= 1
         && r.readerFiles.length >= 14 && MEASURED_LEAKS.every((f) => r.readerFiles.includes(f)) && j(r.outsideReaderFiles) === j(Object.keys(AUDIT_READERS_OUTSIDE_CONSOLE).sort()),
       j({ population: r.population, readerCalls: r.readerCalls, gateCalls: r.gateCalls, consoleGateCalls: r.consoleGateCalls, readerFiles: r.readerFiles, outsideReaderFiles: r.outsideReaderFiles, auditReaders, auditExports, problems: r.problems }));
+
+    /* ⛔ 0.260.2 · THE CLASSIFICATION OF THE SIX NEW EXPORTS IS HELD TO ITS OWN CLAIM, not left as prose beside a
+     * list. Two of the six read `db.auditLog` and are classified NON-READERS because of what their bodies do; this
+     * is the measurement of that. See `auditNonReaderRowClaimProblems`. */
+    const WHERE_PIN = "where: { action: UNVERIFIABLE_BASELINE_ACTION },";
+    const READER_SIG = "export async function readUnverifiableBaseline(): Promise<UnverifiableBaseline | null> {";
+    const nonReaderClaim = auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, auditCode);
+    ok("0.260.2 · ⛔ THE TWO CLASSIFIED NON-READERS THAT TOUCH db.auditLog ARE HELD TO THE CLAIM THEIR CLASSIFICATION MAKES — `readUnverifiableBaseline` reads under a `where` pinned to the ONE platform action and hands back six scalars, `censusUnverifiable` hands back four, and neither names AuditEntry; so \"it returns no row\" is a measurement and not a sentence in a comment beside the list",
+      nonReaderClaim.length === 0
+        && AUDIT_ROW_TOUCHING_NON_READERS.every((n) => (AUDIT_NON_READERS as readonly string[]).includes(n))
+        && auditCode.includes(WHERE_PIN) && auditCode.includes(READER_SIG),
+      j({ problems: nonReaderClaim, pinned: AUDIT_ROW_TOUCHING_NON_READERS }));
+    const widened = auditCode.replace(WHERE_PIN, "where: {},");
+    const rowShaped = auditCode.replace(READER_SIG, "export async function readUnverifiableBaseline(): Promise<AuditEntry | null> {");
+    /* ⚠️ A REGEX, NOT A MULTI-LINE STRING LITERAL: `src/` is CRLF on this machine and a plant written with `\n`
+     * would silently replace NOTHING, leaving a control that plants nothing and passes for the wrong reason. */
+    const censusStub = auditCode.replace(/\): Promise<\{\s*frontierSeq: number; count: number; digest: string; scanned: number;\s*\}> \{/, "): Promise<AuditEntry[]> {");
+    ok("0.260.c4 · CONTROL · the audit module passes this pin TODAY, and the SAME checker reports it the moment the reader's `where` is widened to every row, the moment its return type becomes an audit row, and the moment the census hands back rows — so 0.260.2's zero is a live measurement and the six classifications are not a blanket exemption",
+      widened !== auditCode && rowShaped !== auditCode && censusStub !== auditCode
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, widened).some((p) => p.includes("without pinning where.action"))
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowShaped).some((p) => p.includes("no longer returns Promise<UnverifiableBaseline | null>"))
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowShaped).some((p) => p.includes("readUnverifiableBaseline names AuditEntry"))
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, censusStub).some((p) => p.includes("censusUnverifiable no longer returns four scalars")),
+      j({ widened: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, widened), rowShaped: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowShaped), censusStub: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, censusStub) }));
 
     /* ⛔ 0.512 · RULING 512 · THE GATE TABLE IS HELD TO THE GATE MODULE'S OWN EXPORTS, BOTH WAYS. `CONSOLE_GATES` is
      * five names typed by hand and nothing compared it with the module it describes — while 0.260.1 directly above
