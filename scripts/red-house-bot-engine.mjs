@@ -15,7 +15,9 @@
  *
  * ⚠️ A run filtered to some sections cannot meet the two-store runner's population floor (`0.mem`/`0.pg · … exits 0
  * with assertions`). A floor line is not counted as red ONLY when a filter is on AND its own detail shows the child
- * ran clean (exit 0, at least one assertion, none failed); a child that crashed or failed stays red. The runner's
+ * ran clean and the FLOOR is the only limb that failed (exit 0, at least one assertion, none failed, passes BELOW the
+ * stated floor); a child that crashed or failed stays red. That one exemption lives in
+ * `scripts/lib/red-two-store-floor.mjs` and is proved both ways by `npm run test:red-engine-floor`. The runner's
  * closing `ALL PASS`/`FAILURES` line is derived from those lines and is never counted on its own (the first full run,
  * 2026-09-16, refused on it: Postgres §18 was 70 passed, 0 failed, under the 90 floor). A Postgres suite whose `0.pg` line never
  * printed did not reach Postgres, and is red.
@@ -25,6 +27,7 @@ import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { MUTATIONS as DEFECTS_ALL } from "./anchors/house-bot-engine.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
+import { benignFloor, floorShapeDrifted } from "./lib/red-two-store-floor.mjs";
 
 const MEMORY_ONLY = process.argv.includes("--memory-only");
 const onlyArg = process.argv.find((a, i) => process.argv[i - 1] === "--only");
@@ -42,12 +45,7 @@ const SUITES = {
   "money-mem": { cmd: "npx tsx scripts/lib/house-bot-money-cases.mts", env: MEM_ENV },
   seam: { cmd: "npx tsx scripts/house-bot-seam.test.mts", env: {} },
 };
-const FLOOR = /^\s*FAIL 0\.(?:mem|pg) · the (?:memory|Postgres) run exits 0 with assertions and no failure — exit (\d+) · (\d+) passed · (\d+) failed/;
 const SUMMARY = /^\s*(?:ALL PASS|FAILURES) — /;
-const benignFloor = (d, line) => {
-  const m = d.sections ? FLOOR.exec(line) : null;
-  return !!m && m[1] === "0" && Number(m[2]) > 0 && m[3] === "0";
-};
 
 const sha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
 const write = (p, s) => {
@@ -67,7 +65,15 @@ const run = (d) => {
   } catch (e) {
     output = `${e.stdout ?? ""}${e.stderr ?? ""}`;
   }
-  const fails = output.split("\n").filter((l) => /^\s*FAIL/.test(l) && !SUMMARY.test(l) && !benignFloor(d, l));
+  const lines = output.split("\n");
+  // ⛔ A floor line the pattern can no longer read stays RED — failing closed is right — but it is NAMED here, because
+  // the last time it drifted in silence the harness refused for five days and nobody could see why.
+  for (const l of lines) {
+    if (floorShapeDrifted(l)) {
+      console.error(`⛔ FLOOR PATTERN DRIFTED — this two-store floor line no longer parses, so it counts as a REAL failure:\n   ${l.trim()}\n   Re-aim FLOOR in scripts/lib/red-two-store-floor.mjs at what scripts/lib/house-bot-two-stores.mts prints, and run \`npm run test:red-engine-floor\`.`);
+    }
+  }
+  const fails = lines.filter((l) => /^\s*FAIL/.test(l) && !SUMMARY.test(l) && !benignFloor(Boolean(d.sections), l));
   // A child that died before its summary is red even with no FAIL line (a thrown section is a FAIL line; a crash is not).
   const crashed = !/@@SUMMARY|ALL PASS|FAILURES/.test(output);
   const pgMissing = d.suite.endsWith("-pg") && !/^\s*(?:PASS|FAIL) 0\.pg · /m.test(output);

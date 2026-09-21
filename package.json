@@ -198,6 +198,7 @@
     "qa:fit": "node scripts/design-gate/fit-sweep.mjs",
     "test:labels": "tsx scripts/label-lexicon.test.mts",
     "test:red-anchors": "tsx scripts/red-anchors.test.mts",
+    "test:red-engine-floor": "tsx scripts/red-engine-floor.test.mts",
     "red:labels": "node scripts/red-labels.mjs",
     "red:split-bar": "node scripts/red-split-bar.mjs",
     "test:trilingual": "tsx scripts/trilingual-titles.test.mts",
