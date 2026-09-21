@@ -54,7 +54,25 @@
  * REF'd — here the timer is the only thing keeping a finished event loop alive long enough to reach
  * the real exit with the right code. Opposite requirement, opposite implementation.
  */
-import { auditFlush, auditPending } from "./audit";
+import { audit, auditFlush, auditPending } from "./audit";
+
+/**
+ * THE MARKER THE DRAIN QUEUES BEHIND EVERYTHING ELSE — and it is the strongest evidence in this file.
+ *
+ * ⭐ THE QUEUE IS FIFO AND PROCESS-WIDE. This row is appended AFTER every append that was already
+ * waiting, so if this row is in the table then every append queued before it was written. One
+ * durable, HMAC-chained row therefore certifies a whole shutdown, and its ABSENCE marks a shutdown
+ * that lost rows — which is precisely the thing nothing on this platform could previously tell.
+ *
+ * ⛔ AND IT IS WHAT MAKES "DID THE DRAIN EVEN RUN?" ANSWERABLE. A drain only runs if the process is
+ * asked to stop in a way it can catch. Railway's own troubleshooting note says a service started
+ * through `npm run start` may never receive SIGTERM at all, because the package manager becomes the
+ * main process — and 50pick's start command is exactly that. That risk is recorded, with its
+ * experiment, in `docs/COMPLIANCE-DECISIONS.md`; THIS row is how the experiment is read: after a
+ * deploy, a `system.shutdown_drain` row for the container that went away means the signal arrived
+ * and the queue was saved. No row means it did not.
+ */
+export const SHUTDOWN_DRAIN_ACTION = "system.shutdown_drain";
 
 /**
  * HOW LONG THE PROCESS MAY WAIT FOR THE AUDIT QUEUE BEFORE IT DIES ANYWAY.
@@ -225,7 +243,21 @@ export function auditDrainReport(): AuditDrainReport | null {
 async function runDrain(s: DrainState): Promise<void> {
   const t0 = Date.now();
   const deadline = t0 + s.budgetMs;
+  // ⛔ READ THE DEPTH BEFORE THE MARKER IS QUEUED, or the marker counts itself and every shutdown
+  // reports one append more than was ever at risk.
   const queuedAtExit = s.pending();
+  /* ⛔ QUEUED, NOT AWAITED, AND DELIBERATELY LAST. See SHUTDOWN_DRAIN_ACTION: the queue is FIFO, so
+   * this row lands only after everything already waiting has landed — which is what makes its
+   * presence a certificate for the whole shutdown and its absence the mark of a lossy one. Awaiting
+   * it here would put it AHEAD of the rows it is supposed to vouch for. `audit()` never rejects. */
+  void audit({
+    category: "SYSTEM",
+    action: SHUTDOWN_DRAIN_ACTION,
+    actorId: null,
+    targetType: null,
+    targetId: null,
+    payload: { signal: s.signal, queuedAtExit, budgetMs: s.budgetMs, exitCode: s.exitCode ?? null },
+  });
 
   while (Date.now() < deadline) {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -263,7 +295,8 @@ async function runDrain(s: DrainState): Promise<void> {
   if (abandoned === 0) {
     console.log(
       `[audit-drain] ${s.signal ?? "exit"} — audit queue drained before exit: ` +
-        `${queuedAtExit} append(s) in ${waitedMs}ms (budget ${s.budgetMs}ms), exiting ${s.exitCode ?? 0}.`,
+        `${queuedAtExit} append(s) in ${waitedMs}ms (budget ${s.budgetMs}ms), exiting ${s.exitCode ?? 0}. ` +
+        `A ${SHUTDOWN_DRAIN_ACTION} row certifies it in the chain.`,
     );
   } else {
     /* ⛔ LOUD, DELIMITED, AND IT NAMES THE SIZE. A bound that is exceeded silently is worth nothing:
@@ -283,6 +316,8 @@ async function runDrain(s: DrainState): Promise<void> {
         "  bet rows:        recoverable as a DECLARATION — `npm run audit:gap-sweep` (audit-reconcile.ts).\n" +
         "  access rows:     player.record_viewed / kyc_doc.viewed / privacy.dsar.exported /\n" +
         "                   transactions.exported have NO durable anchor and are gone for good.\n" +
+        `  in the chain:    NO ${SHUTDOWN_DRAIN_ACTION} row for this container — its absence is the\n` +
+        "                   durable mark of a lossy shutdown, and the only one there will ever be.\n" +
         "──────────────────────────────────────────────────────────",
     );
   }

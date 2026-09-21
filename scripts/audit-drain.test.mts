@@ -153,6 +153,26 @@ ok("3.5 · the flush LOOPS on the depth — auditFlush() captures the tail at ca
 ok("3.6 · installation is idempotent — an HMR re-import or a second register() must not stack wrappers around process.exit",
   /if \(globalThis\.__50PICK_AUDIT_DRAIN\?\.installed\) return false;/.test(DRAIN_CODE));
 
+/** The certificate: one row queued BEHIND everything else. The queue is FIFO, so its presence in the
+ *  table means every append queued before it landed — the only durable answer to "did this container
+ *  drain?" once its log has rotated away. It must be read AFTER the depth (or it counts itself) and
+ *  queued, never awaited (or it would overtake the rows it vouches for). */
+function certificateQueuedLast(code: string): boolean {
+  const depth = code.indexOf("const queuedAtExit = s.pending();");
+  const mark = code.indexOf("action: SHUTDOWN_DRAIN_ACTION");
+  const loop = code.indexOf("while (Date.now() < deadline)");
+  return depth >= 0 && mark > depth && loop > mark
+    && /void audit\(\{/.test(code) && !/await audit\(\{/.test(code);
+}
+ok("3.7 · the drain leaves a DURABLE certificate — a system.shutdown_drain row queued after the depth is read and before the flush loop, so FIFO puts it behind every row it vouches for",
+  certificateQueuedLast(DRAIN_CODE));
+ok("3.c3 · PLANTED CONTROL — the certificate AWAITED (which would put it ahead of the rows it vouches for) is flagged",
+  !certificateQueuedLast(DRAIN_CODE.replace("void audit({", "await audit({")));
+ok("3.c4 · PLANTED CONTROL — the depth read AFTER the certificate is queued (so the shutdown counts its own marker) is flagged",
+  !certificateQueuedLast(DRAIN_CODE
+    .replace("const queuedAtExit = s.pending();", "")
+    .replace("while (Date.now() < deadline)", "const queuedAtExit = s.pending();\n  while (Date.now() < deadline)")));
+
 /* ═══ §4 · THE DRIVE — real processes, really killed ══════════════════════════════════════════ */
 section("§4 · the drive — real child processes, real exits");
 

@@ -171,6 +171,20 @@ try {
     /\[audit-drain\] SIGTERM — audit queue drained before exit: \d+ append\(s\) in \d+ms/.test(all(after)),
     all(after).split("\n").filter((l) => l.startsWith("[audit-drain]")).join(" | "));
   const drainMs = Number(/drained before exit: \d+ append\(s\) in (\d+)ms/.exec(all(after))?.[1] ?? NaN);
+
+  /* ⛔ THE CERTIFICATE. The queue is FIFO and process-wide, so the marker the drain queues LAST
+   * lands only after everything already waiting has landed. Its presence therefore certifies the
+   * whole shutdown — and nothing else on this platform can say whether a given container drained. */
+  const marker = (await cli.query<{ n: number; seq: string; payload: Any }>(
+    `SELECT count(*)::int n, max("seq")::text seq, (array_agg("payload" ORDER BY "seq" DESC))[1] payload
+       FROM "AuditLog" WHERE "action" = 'system.shutdown_drain'`)).rows[0];
+  const maxSeq = (await cli.query<{ seq: string }>(`SELECT max("seq")::text seq FROM "AuditLog"`)).rows[0].seq;
+  console.log(`  certificate: ${marker.n} system.shutdown_drain row(s); payload ${JSON.stringify(marker.payload)}`);
+  ok("3.6 · the drain leaves a DURABLE certificate in the chain — one system.shutdown_drain row naming the signal and the depth it saved",
+    marker.n === 1 && marker.payload?.signal === "SIGTERM" && Number(marker.payload?.queuedAtExit) === N,
+    JSON.stringify(marker.payload));
+  ok("3.7 · and it is the LAST row written, which is what makes it a certificate: the queue is FIFO, so every append queued before it is already in the table",
+    marker.seq === maxSeq, `marker at seq ${marker.seq}, chain head at ${maxSeq}`);
   console.log(`  ⭐ AFTER: ${afterLanded} of ${N} landed. The drain cost ${drainMs}ms of the ${5000}ms budget.`);
   ok("3.5 · the real cost is a small fraction of the budget — the number chosen is not being scraped",
     Number.isFinite(drainMs) && drainMs < 5_000 / 2, `${drainMs}ms against a 5000ms budget`);
@@ -193,6 +207,8 @@ try {
 
   /* ═══ §4 · THE BOUND, DRIVEN ═════════════════════════════════════════════════════════════════ */
   section("§4 · the BOUND — a budget too small to finish must give up, exit anyway, and be LOUD");
+  const certsBefore = Number((await cli.query<{ n: number }>(
+    `SELECT count(*)::int n FROM "AuditLog" WHERE "action" = 'system.shutdown_drain'`)).rows[0].n);
   const tight = await child(["budget", String(N), "tight"], { AUDIT_DRAIN_BUDGET_MS: "1" });
   const tightLanded = await landed("tight");
   console.log(show(tight));
@@ -204,9 +220,22 @@ try {
     /AUDIT DRAIN BUDGET EXCEEDED/.test(tight.err) && /ABANDONED:\s+\d+ append/.test(tight.err),
     tight.err.split("\n").filter((l) => /ABANDONED|EXCEEDED|waited/.test(l)).join(" | "));
   const abandoned = Number(/ABANDONED:\s+(\d+) append/.exec(tight.err)?.[1] ?? NaN);
-  ok("4.3 · the abandoned COUNT matches the rows that are actually missing from the table — the loud block is a measurement, not a slogan",
-    Number.isFinite(abandoned) && abandoned === N - tightLanded,
-    `block says ${abandoned}, table is missing ${N - tightLanded}`);
+  /* ⛔ THE +1 IS THE CERTIFICATE AND IT IS COUNTED HONESTLY. The drain queues its own
+   * `system.shutdown_drain` row before it starts waiting, so a shutdown that abandons the queue
+   * abandons that row too — and the block says 11, not 10, for ten lost bets. The first run of this
+   * assertion expected 10 and FAILED, which is how the number was checked rather than assumed. §4.4
+   * below proves the missing one is the certificate: no certificate row exists for this shutdown. */
+  ok("4.3 · the abandoned COUNT matches the rows actually missing from the table, its own certificate included — the loud block is a measurement, not a slogan",
+    Number.isFinite(abandoned) && abandoned === (N - tightLanded) + 1,
+    `block says ${abandoned}, table is missing ${N - tightLanded} bet row(s) + the certificate`);
+  /* ⛔ AND THE CERTIFICATE IS ABSENT. The marker is queued LAST, so a shutdown that could not drain
+   * cannot have written it. That absence is the durable mark of a lossy shutdown — the log line is
+   * gone with the container, this is not. */
+  const certsAfter = Number((await cli.query<{ n: number }>(
+    `SELECT count(*)::int n FROM "AuditLog" WHERE "action" = 'system.shutdown_drain'`)).rows[0].n);
+  ok("4.4 · PLANTED CONTROL — the lossy shutdown wrote NO certificate, so §3.6's row means something and its absence here marks the loss durably, after the container's log is gone",
+    certsAfter === certsBefore,
+    `${certsBefore} certificate(s) before the lossy shutdown, ${certsAfter} after — a lossy shutdown must add none`);
 
   /* ═══ §5 · THE CHAIN IS STILL SOUND ══════════════════════════════════════════════════════════ */
   section("§5 · the chain — draining must not fork or break it, and the verifier must still bite");
