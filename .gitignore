@@ -303,3 +303,6 @@ prelaunch-keep-users.json
 .prelaunch-quiesced.json
 # SMS live drive — counts chargeable sends against the ceiling (scripts/live/blackball-drive.mts).
 .blackball-drive-ledger.json
+
+# Cropped-corner evidence (scripts/qa-corner-radius.mjs). Regenerable; stays out of the tree (W20).
+.qa-corners/
