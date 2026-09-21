@@ -44,10 +44,41 @@
  * from the stripped one. Without it this suite would report itself as the second marker writer on the
  * day it was born — a scanner measuring itself, `0.250.c0`'s recorded failure.
  *
- * ⛔ NOTHING IN THIS FILE TOUCHES THE DISK. `red:house-bot-ops` is the in-process red class
- * (`red-anchors.test.mts` §4): the command carries `--prove-red` and the script contains no
- * file-writing call, so it declares no disk anchors and leaves the anchors ratchet alone. A red
- * harness that rewrites the repo while a second lane is editing it is the standing incident.
+ * ⛔ THE `--prove-red` PATH WRITES NOTHING, AND THAT IS STILL TRUE — but the sentence that used to
+ * stand here, "NOTHING IN THIS FILE TOUCHES THE DISK … so it … leaves the anchors ratchet alone",
+ * HAS BEEN FALSE SINCE `48c1c959` AND IS CORRECTED HERE (2026-09-21, re-derived from the object
+ * store rather than believed).
+ *
+ * WHAT IS TRUE. `PROVE_RED` runs `redCases()` — every plant is a string constant in memory — and
+ * `process.exit`s at §0's head, before any store is chosen. It opens nothing for writing.
+ *
+ * ⛔ WHAT IS NO LONGER TRUE: THIS FILE IS OUT OF THE IN-PROCESS CLASS, AND IT IS THE 67th ENTRY IN
+ * `red-anchors.test.mts` §4's RATCHET. `48c1c959` added §6's release-migration-parity section,
+ * which builds a temporary git index and cleans it up with `rmSync` (line ~1873). §4's
+ * `isInProcess` reads the WHOLE source of the script a `red:*` command names — one file, two entry
+ * points — and its `WRITES` regex is deliberately conservative ("comments included"). So the
+ * `rmSync` that serves `test:house-bot-ops` reclassifies `red:house-bot-ops`.
+ *
+ * ⭐ THAT IS THE RATCHET WORKING, NOT A BUG IN IT. §4 says in terms: "A flag-mode harness that
+ * starts writing files falls straight back into the count." The class is strict precisely so it
+ * cannot become a loophole, and the `rmSync` is real — it removes `join(tmpdir(), …)`, outside the
+ * repo, but the predicate does not and must not try to tell tmp paths from tracked ones.
+ *
+ * ⛔ SO DO NOT "FIX" THIS BY WIDENING `isInProcess`, AND DO NOT DECLARE ANCHORS THAT DO NOT EXIST.
+ * This harness has NO disk anchors: there is no `from` string it injects, so a
+ * `scripts/anchors/house-bot-ops.anchors.mjs` would either invent mutations or declare bare path
+ * presence — a check that cannot fail, which §4's own header calls the disease. It would also land
+ * under ruling 505: a `house*.anchors.mjs` suite key needs a roll-call in `ROLL_CALL_SITES`, or an
+ * entry in `ROLL_CALL_OWED` whose length pin "may only SHRINK", and a SUITELESS declaration would
+ * be filed under `(none)` — a key whose roll-calls (`house-book` 16.505, `house-page` 16.505) each
+ * statically import their OWN anchors file and would never read this one. That is the 505 hole
+ * dressed as compliance.
+ *
+ * ⭐ THE ONE HONEST CLOSURE is structural and is NOT a number: give the red entry point a source of
+ * its own, so the disk-touching `test:` path stops classifying the in-memory `red:` path. Until
+ * someone does that, this harness is counted, and the count is told the truth rather than met.
+ *
+ * A red harness that rewrites the repo while a second lane is editing it is the standing incident.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { execFileSync, spawn, spawnSync } from "node:child_process";

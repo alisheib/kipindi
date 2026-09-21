@@ -236,6 +236,48 @@ console.log("\n§4 · the ratchet — harnesses still outside the anchor audit")
    * The five that closed the gap: `route-census`, `lipa-qr`, `webhook-money`, `payment-control`
    * (this session) and `levy-allocation` (the money-gate session, concurrently).
    */
+  /**
+   * ⛔ 2026-09-21 · ops-lane · 67 vs 65, AND THE TWO EXCESSES ARE NAMED RATHER THAN ABSORBED.
+   * The ceiling below is UNCHANGED and must stay so; this note exists because the previous red was
+   * a bare number and the next session would otherwise re-derive it from scratch or, worse, bump it.
+   *
+   * ⭐ FIRST, THE FINDING THAT REFRAMES IT: **`origin/main` IS ITSELF RED HERE.** Re-derived by
+   * replaying this §4 against main's blobs out of the object store (169 `red:*`, 88 declaration
+   * files, the same 9 in-process): main's real count is **66 against its own ceiling of 65**, so
+   * 4.1 and 4.2 both FAIL on `main` today. `red:mobile-visual-plan` is one of those 66 and is
+   * declared nowhere — `git ls-tree origin/main scripts/anchors/` has no file for it.
+   *
+   * SO THE 67 DECOMPOSES EXACTLY, and this lane's share of it is ONE:
+   *   66  inherited from `origin/main`, already over that ceiling before ops-lane branched
+   *   +1  `red:house-bot-ops` — THIS lane's own, added at `ca893232`
+   * (the three `red:*` this lane adds are `house-bot-c5`, `house-bot-chatbot` — both declared —
+   * and `house-bot-ops`, which is not.)
+   *
+   * ⛔ WHY NEITHER WAS DECLARED, rather than declared to make the number meet:
+   *
+   * · `red:house-bot-ops` HAS NO DISK ANCHORS TO DECLARE. Its `--prove-red` path plants string
+   *   constants in memory and exits before any store is chosen; it injects no `from` string into
+   *   any file. It is counted only because `isInProcess` reads the whole source of the script the
+   *   command names — one file serving two entry points — and `48c1c959` added an `rmSync` there
+   *   for `test:house-bot-ops`'s temporary git index. ⭐ THAT IS THIS RATCHET WORKING AS WRITTEN
+   *   ("a flag-mode harness that starts writing files falls straight back into the count"), so the
+   *   fix is neither a wider `isInProcess` nor an invented anchors file: it is to give the red
+   *   entry point a source of its own. See that file's header for the full derivation.
+   *
+   * · `red:mobile-visual-plan` IS NOT DECLARABLE IN THIS FORMAT AND IS NOT THIS PROGRAMME'S CODE.
+   *   It does not match fixed strings: it locates its target at runtime — the FIRST `| U<n>` row of
+   *   a living markdown board, "so plants work whatever the plan looks like today" — and its plants
+   *   are functions over that row and over `git rev-parse HEAD`. There is no `from` to audit.
+   *   ⛔ A `kind: "path"` presence declaration for the two docs WOULD pass §3 while auditing none of
+   *   what can actually rot — a check that cannot fail, which this file's own header calls the
+   *   disease. ⚠️ And this is NOT the `red-route-census` excuse §4 records as two-thirds false:
+   *   that harness had literal anchors in a markdown table and `resolveAnchor` did not care about
+   *   the extension. This one has no literals at all. The distinction is derived, not assumed.
+   *
+   * 🎯 SO THE RED STANDS, WITH AN OWNER ON EACH HALF. Declaring either would have bought equality by
+   * blinding a checker, and closing `main`'s inherited half from an integration branch would hide a
+   * defect that is live on `main` right now.
+   */
   const UNDECLARED_CEILING = 65;
   const declaredNames = new Set(declFiles.map((f) => f.replace(/\.anchors\.mjs$/, "")));
   /**
