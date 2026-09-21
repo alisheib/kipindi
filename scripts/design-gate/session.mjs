@@ -59,7 +59,25 @@ async function stillValid(browser, state, who) {
   }
 }
 
-export async function loginShared(browser, who = "admin") {
+/**
+ * ⭐ THE PERSONA IS AN ENV OVERRIDE, AND THAT IS WHAT MAKES THIS TOOLKIT RUNNABLE AT ALL (2026-09-21).
+ *
+ * ⛔ EVERY INSTRUMENT HERE WAS PINNED TO PRODUCTION. The `admin` persona is Ali's own console login, and it
+ * carries no inline secret — `harness.mjs` resolves it through `qaEnv("QA_ADMIN_PASSWORD")`, which reads
+ * `.env.qa.local`. That file is gitignored and ABSENT from this worktree, so an instrument pinned to `admin`
+ * cannot sign in to a local server at all; the only host where it works is the live platform. And 50pick keeps
+ * ONE live session per account, so running the design gate there REVOKES Ali's session mid-use. That is the
+ * whole reason the Desk has never been measured: the measurement cost the owner his console.
+ * ⭐ `local:ADMIN` carries its password INLINE (`scripts/local-staff.mjs:30`, the `seed-admin-local.mts` owner
+ * fixture) and refuses any non-localhost database, so it needs no env file and can never reach production.
+ * ⚠️ THE DEFAULT IS UNCHANGED. Omitting `PERSONA` still resolves `admin`, so every existing production
+ * invocation behaves exactly as before — this only ADDS a local path that did not exist.
+ *
+ *   LIVE_BASE=http://127.0.0.1:3000 PERSONA=local:ADMIN npm run qa:dg-shell
+ */
+export const DESIGN_PERSONA = process.env.PERSONA || "admin";
+
+export async function loginShared(browser, who = DESIGN_PERSONA) {
   mkdirSync(DIR, { recursive: true });
   const f = file(who);
   if (!process.env.FORCE_LOGIN && existsSync(f)) {

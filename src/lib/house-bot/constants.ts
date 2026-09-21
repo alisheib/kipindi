@@ -553,6 +553,24 @@ export const FIRST_TICK_DELAY_MS = 20_000;
 export const ENGINE_STALE_MS = 30_000;
 export const BOOT_GRACE_MS = 90_000;
 export const POLLER_FAILURE_ALERT_AFTER = 10;
+
+/**
+ * ⭐ THE MARKER THAT MAKES A BLOCKED CLAIM VISIBLE (register:1218, 2026-09-21).
+ *
+ * ⛔ THE DESK COULD BE PERFECTLY SILENT WHILE NOTHING WAS STAKED. `claimGate` refuses every claim when this
+ * container's skew is unknown or over `MAX_TOLERATED_SKEW_MS`, and `pollerPass` then returned early writing
+ * NOTHING — no beat and no error row. The planner kept beating regardless, so `houseEngineVerdict` saw a fresh
+ * planner beat (not STALE), no poller error (not POLLER_FAILING), no failed duties and active accounts (not
+ * IDLE) and returned `null` — and the Desk renders no Callout at all for a `null` verdict. Switch ON, green
+ * chip, populated tiles, and every stake refused.
+ * ⛔ A STALE POLLER BEAT CANNOT CARRY THIS. `pollerPass` writes its beat only when it actually CLAIMED rows
+ * (`if (rows.length === 0) return …`), so a quiet healthy desk and a blocked one have the same stale beat.
+ * Using it would cry wolf on every idle hour, which is how a real alarm gets ignored.
+ * ⭐ SO THE FACT IS WRITTEN POSITIVELY, as a CODE rather than an instant. A code needs no clock — which matters
+ * enormously here, because the one condition it reports is *the clock cannot be trusted*, and a timestamp
+ * written by a skewed container is exactly the thing that cannot be compared.
+ */
+export const CLAIMS_BLOCKED_CODE = "CLAIMS_BLOCKED";
 export const ERROR_STREAK_OFF_AT = 3;
 export const TRANSIENT_ALERT_AFTER_MS = 120_000;
 export const ALERT_REPAIR_AFTER_MS = 30_000;

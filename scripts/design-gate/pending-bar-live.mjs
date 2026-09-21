@@ -29,6 +29,10 @@
 import { chromium } from "playwright";
 import { login, BASE } from "../live/harness.mjs";
 
+/** The sign-in persona. ⛔ `admin` is Ali's PRODUCTION login and needs `.env.qa.local`; `PERSONA=local:ADMIN`
+ *  is the loopback fixture. The whole reason is in `session.mjs` beside `DESIGN_PERSONA`. Default unchanged. */
+const PERSONA = process.env.PERSONA || "admin";
+
 const ROUTE = process.env.ROUTE || "/admin/config";
 const FIELD = process.env.FIELD || "commissionRate";
 /** ⭐ A SECOND FIELD IN A DIFFERENT FORM ON THE SAME PAGE — assertion ⑥ needs two independently
@@ -44,7 +48,7 @@ for (const { w, h } of WIDTHS) {
   const page = await ctx.newPage();
   page.setDefaultNavigationTimeout(120_000);
   page.setDefaultTimeout(60_000);
-  await login(page, "admin");
+  await login(page, PERSONA);
   await page.goto(BASE + ROUTE, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(3000);
 

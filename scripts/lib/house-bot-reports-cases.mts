@@ -882,14 +882,25 @@ if (STORE === "memory") {
     ok("0.232.1 · ⛔ RULING 232 · every positioned transaction write copies the marker FROM THE OBJECT WHOSE id IS ITS positionId — presence is not enough, because a marker copied from another position in scope is silent",
       offenders.length === 0, j(offenders));
     const marked = positioned.filter((s) => s.marker !== null).map((s) => `${s.file.split("/").pop()}:${s.line}`);
+    /**
+     * ⭐ THE SEVEN MOVED BY EXACTLY +41 (2026-09-21), and the numbers were re-pinned only after the MOVE was
+     * proved to be a move. `market-service.ts` gained 41 lines above the first site when the bonus-accrual
+     * money fix landed (`f41e632c`), so every site below it shifted by the same amount:
+     *   1524→1565 · 2792→2833 · 3167→3208 · 3577→3618 · 3709→3750 · 3850→3891 · 4433→4474
+     * ⛔ A UNIFORM DELTA IS EVIDENCE, NOT PROOF, and this pin exists precisely because a site can also be
+     * DELETED or REWRITTEN while the count stays seven. So it was checked at the source: the file still holds
+     * exactly seven marker spreads (1586, 2843, 3219, 3628, 3760, 3903, 4484 — each inside the `db.txn.create`
+     * call whose opening line is the site), each site line is still a txn write, and the text-anchored controls
+     * below still plant on their own site and still go red. The numbers changed; nothing else did.
+     */
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1524", "market-service.ts:2792", "market-service.ts:3167", "market-service.ts:3577", "market-service.ts:3709", "market-service.ts:3850", "market-service.ts:4433"]), j(marked));
+      j(marked) === j(["market-service.ts:1565", "market-service.ts:2833", "market-service.ts:3208", "market-service.ts:3618", "market-service.ts:3750", "market-service.ts:3891", "market-service.ts:4474"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
      * read "the seven the money anchors quote" and then compared against seven literal strings typed in this file:
      * it never touched an anchors file, and the money anchors declare a mutation for only TWO of the seven marker
-     * sites (`SEAM:txnMarker` → 1524, `SEAM:markerOrphan` → 2792). Five real marker sites — the cash-out, the
+     * sites (`SEAM:txnMarker` → 1565, `SEAM:markerOrphan` → 2833). Five real marker sites — the cash-out, the
      * one-sided refund, the void refund, the winner payout and the emergency void — have no declared mutation in
      * any file under `scripts/`, so `test:red-anchors` never demonstrates that deleting their marker reddens
      * anything. That is not fixed by a better sentence: it is MEASURED here and printed, so the number cannot
@@ -909,9 +920,9 @@ if (STORE === "memory") {
     const covered = positioned.filter((s) => s.marker !== null && [...anchorLines].some((L) => L >= s.line && L <= s.endLine));
     const uncovered = positioned.filter((s) => s.marker !== null && !covered.includes(s)).map((s) => `${s.file.split("/").pop()}:${s.line}`);
     /* ⭐ RAISED 2 → 7 BY C5-8 (2026-09-20), §1j row 84, and this is the only direction this assertion may move.
-       Until today the five sites this printed as "uncovered (deferred by name)" — the cash-out (`:3167`), the
-       one-sided refund (`:3577`), the void refund (`:3709`), the winner payout (`:3850`) and the emergency void
-       (`:4433`) — had NO declared mutation in any file under `scripts/`, so `test:red-anchors` never demonstrated
+       Until today the five sites this printed as "uncovered (deferred by name)" — the cash-out (`:3208`), the
+       one-sided refund (`:3618`), the void refund (`:3750`), the winner payout (`:3891`) and the emergency void
+       (`:4474`) — had NO declared mutation in any file under `scripts/`, so `test:red-anchors` never demonstrated
        that deleting their marker reddens anything. All five are now declared in
        `scripts/anchors/house-bot-money.anchors.mjs` and run by `red:house-bot-money` under `reports-mem`.
        ⛔ The deferral list is GONE rather than shortened, and the equality is EXACT on both numbers: a site that
@@ -933,13 +944,13 @@ if (STORE === "memory") {
     const ms = files.find((f) => f.rel === MS)!.code;
     const scan = (code: string) => txnSites(MS, code).filter((s) => s.pid?.kind !== "null")
       .map((s) => ({ at: `${MS}:${s.line}`, why: verdict(s) })).filter((o) => o.why !== null);
-    const SPREAD_2792 = `      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),`;
+    const SPREAD_2833 = `      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),`;
     ok("0.232.c0 · CONTROL · the real file is clean before anything is planted, so every control below measures its plant and not the file",
-      scan(ms).length === 0 && ms.includes(SPREAD_2792), j(scan(ms)));
+      scan(ms).length === 0 && ms.includes(SPREAD_2833), j(scan(ms)));
 
-    const dropped = scan(ms.replace(SPREAD_2792, ""));
+    const dropped = scan(ms.replace(SPREAD_2833, ""));
     ok("0.232.c1 · CONTROL · a positioned write whose marker is DELETED is reported, and exactly one site goes red — the plant really changed the file",
-      dropped.length === 1 && dropped[0].at === `${MS}:2792` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
+      dropped.length === 1 && dropped[0].at === `${MS}:2833` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
     /* ⭐ THE ACCEPT SIDE, AND IT IS ABOUT A SITE THAT DOES NOT EXIST YET. Putting the deleted spread back would only
        rebuild `ms` and prove nothing, so the control appends a BRAND NEW positioned writer to the same real file: the
        pin must pass it because its marker is right, and refuse the identical writer with the marker removed. Without
@@ -958,21 +969,21 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
       j({ sitesAfterAppend: addedClean.length, dirty: addedDirty }));
 
     /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
-    const wrongSource = scan(ms.replace(SPREAD_2792, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
+    const wrongSource = scan(ms.replace(SPREAD_2833, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
     ok("0.232.c3 · CONTROL · a marker copied from the WRONG object — present, well-formed, reading another position in scope — is reported, which is the defect a presence-only scan passes",
-      wrongSource.length === 1 && wrongSource[0].at === `${MS}:2792` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
-    const wrongProp = scan(ms.replace(SPREAD_2792, `      houseBotId: position.houseBotId ?? null,`));
-    const rightProp = scan(ms.replace(SPREAD_2792, `      houseBotId: p.houseBotId ?? null,`));
+      wrongSource.length === 1 && wrongSource[0].at === `${MS}:2833` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
+    const wrongProp = scan(ms.replace(SPREAD_2833, `      houseBotId: position.houseBotId ?? null,`));
+    const rightProp = scan(ms.replace(SPREAD_2833, `      houseBotId: p.houseBotId ?? null,`));
     ok("0.232.c3b · CONTROL · the same defect in the OTHER accepted spelling (houseBotId: <x>.houseBotId ?? null) is reported, and the RIGHT identifier in that spelling is accepted — both directions, so the pin is not just refusing the spelling",
-      wrongProp.length === 1 && wrongProp[0].at === `${MS}:2792` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
-    const reformatted = scan(ms.replace(SPREAD_2792, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
+      wrongProp.length === 1 && wrongProp[0].at === `${MS}:2833` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
+    const reformatted = scan(ms.replace(SPREAD_2833, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
     ok("0.232.c3c · CONTROL · the accept side of the shape: the SAME marker reformatted over three lines is still read — a pin that a line break blinds is one reformat away from passing an unmarked write",
       reformatted.length === 0, j(reformatted));
 
     /* ⛔ THE STAKE FORM, MOVED OFF ITS POSITION. */
-    const movedStakeForm = scan(ms.replace(SPREAD_2792, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
+    const movedStakeForm = scan(ms.replace(SPREAD_2833, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
     ok("0.232.c4 · CONTROL · the stake form used where no position with that positionId is marked from the same ctx is reported — the exemption is earned per site, never granted by file or by line number",
-      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:2792` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
+      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:2833` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
     /* ⚠️ THE PLANT CARRIES NO NEWLINE, and that is not a detail: tracked source is CRLF in this checkout, so a
        `\n` anchor matches nothing and the plant silently plants NOTHING — a control that then reports the file is
        clean, which is exactly the silent pass this checkpoint exists to refuse (it happened here, once, and this
@@ -981,7 +992,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     const c4bPlant = ms.replace("id: positionId,", "id: positionIdOfAnotherBet,");
     const stakeUnmarked = scan(c4bPlant);
     ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
-      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1524` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
+      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1565` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
 
     /* ⛔ THE BYPASS CONTROLS, AND THEY CALL `bypassIn` — THE CODE THAT SHIPS. The old 0.232.c5 re-implemented the
        walk inline, so the loop that actually produces `bypass` was UNPLANTED: one character (`rel === DAL` →

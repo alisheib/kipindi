@@ -33,6 +33,10 @@
 import { chromium } from "playwright";
 import { login, BASE } from "../live/harness.mjs";
 
+/** The sign-in persona. ⛔ `admin` is Ali's PRODUCTION login and needs `.env.qa.local`; `PERSONA=local:ADMIN`
+ *  is the loopback fixture. The whole reason is in `session.mjs` beside `DESIGN_PERSONA`. Default unchanged. */
+const PERSONA = process.env.PERSONA || "admin";
+
 const ROUTES = (process.env.ROUTES || "/admin/payments,/admin/reports,/admin/config,/admin/system")
   .split(",").map((s) => s.trim()).filter(Boolean);
 
@@ -172,7 +176,7 @@ for (const wd of WIDTHS) {
   page.setDefaultTimeout(60_000);
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e).slice(0, 120)));
-  await login(page, "admin");
+  await login(page, PERSONA);
 
   /**
    * ⛔ A TABBED PAGE PAINTS ONE TAB, AND THE FIRST SWEEP MEASURED ONLY THAT ONE. Putting section
