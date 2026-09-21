@@ -139,9 +139,17 @@ export async function findAuditTicketGaps(opts: {
   // ⚠️ `seq` is int8. The window bound is computed IN SQL from the head rather than round-tripped as
   // a JS number — `$queryRaw` binds a JS number as bigint and the arithmetic has to stay in the
   // database anyway (the raw-SQL bigint trap: int4 functions need an explicit `::int`).
-  const head = await db.$queryRaw<Array<{ from_seq: string }>>`
-    SELECT greatest(0, coalesce((SELECT max("seq") FROM "AuditLog"), 0) - ${windowRows}::bigint)::text AS from_seq`;
-  const fromSeq = Number(head[0]?.from_seq ?? 0);
+  //
+  // 🔴 `windowRows <= 0` MEANS THE WHOLE TABLE, AND IT IS BRANCHED ON EXPLICITLY. Letting it fall
+  // through the arithmetic computed `max(seq) - 0`, i.e. `seq > max(seq)` — which selects NOTHING.
+  // `--all` therefore scanned an EMPTY population and reported no gaps over a database that had
+  // five known-missing rows in it, while printing a confident "every ticket landed". Caught by
+  // `rehearse:audit-hole` §3.1 on its first run, which is exactly what a population count is for.
+  const fromSeq = windowRows <= 0
+    ? 0
+    : Number((await db.$queryRaw<Array<{ from_seq: string }>>`
+        SELECT greatest(0, coalesce((SELECT max("seq") FROM "AuditLog"), 0) - ${windowRows}::bigint)::text AS from_seq
+      `)[0]?.from_seq ?? 0);
 
   const [pop] = await db.$queryRaw<Array<{ rows: number; ticketed: number; boots: number }>>`
     SELECT count(*)::int AS rows,
