@@ -1105,7 +1105,9 @@ and every one a value or a control that behaved differently from its own twin:
 **exit 0** · `npm run build` **exit 0** · `test:house-bot-console` **memory + PostgreSQL + wrapper, 0 failed**
 (the Postgres half real — `prisma migrate deploy` applied every migration to a scratch database) ·
 `qa:house-bot-panel-states` **572 passed / 0 failed** over 108 renders · `qa:house-bot-panel-faults`
-**90 passed / 0 failed** · `test:docs` ✅ · and the eight gates that own the two kit files this pass touched:
+**90 passed / 0 failed**, its §C7 reading `["The stake was stopped"]` — ONE sentence where the same run
+before the copy fix read `["The stake was stoppedThe stake was stopped."]` · `test:docs` ✅ · and the eight
+gates that own the two kit files this pass touched:
 `test:confirm-gate` 9/0, `test:feedback-law` 143/0, `test:design-frozen` ✅, `test:ui-consistency` ✅ (no new
 drift beyond its baseline), `test:motion-ladder` 12/0, `test:admin-clip` 12/0, `test:tap-target` 29/0,
 `test:unsaved-changes` ✅. ⚠️ `test:popup-fit` is RED — and it is NOT this pass's: it fails on its own
