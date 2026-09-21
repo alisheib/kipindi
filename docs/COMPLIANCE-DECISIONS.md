@@ -70,7 +70,10 @@ planted control for every part of that (a wrapper that defers *every* exit is FL
 ### The three residual risks — each named, each measured
 
 **AR-1 · The uncatchable exits. ACCEPTED.** SIGKILL, an OOM kill, `process.abort()` and a power loss run no
-handler of any design, so the drain cannot help. **Size:** the queue depth at the instant of death — measured as
+handler of any design, so the drain cannot help. ⚠️ A fatal `uncaughtException` / `unhandledRejection` is in
+the same class **by choice**: Node's default fatal exit does not go through `process.exit`, so the wrapper
+never sees it, and registering a handler to catch it would SUPPRESS Node's crash semantics and leave the
+process running in a state it has already declared unsound — a worse trade than the rows it would save. **Size:** the queue depth at the instant of death — measured as
 exactly 1 for a sequential producer and all of them for a burst; the deepest queue any drill here has produced is
 50. **Mitigation:** for the BET row only, `audit-reconcile.ts` declares it as `audit.row_missing` against the
 durable `Position` anchor within five minutes. ⛔ `withdraw.confirmed`, `deposit.confirmed`, `market.settled` and

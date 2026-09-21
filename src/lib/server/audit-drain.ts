@@ -248,6 +248,25 @@ export function auditDrainReport(): AuditDrainReport | null {
  * zero or the budget is spent, so what is reported as drained really is empty.
  */
 async function runDrain(s: DrainState): Promise<void> {
+  /* ⛔ THE EXIT IS IN A `finally`, AND THIS IS THE MOST IMPORTANT LINE IN THE FILE.
+   * The wrapper above has already told Next's handler that the process is exiting, and it is not.
+   * If ANYTHING in the body below threw — a console write on a closed stream, a future edit, an
+   * injected flush — the real exit would never be reached and the deferral would become a HANG on
+   * every deploy: a worse failure than the lost rows this module exists to prevent. Structurally
+   * impossible, not merely unlikely: once this function is entered the process exits, whatever
+   * happens inside it. `test:audit-drain` drives it with a flush that throws on purpose. */
+  try {
+    await drainBody(s);
+  } catch (err) {
+    console.error("[audit-drain] the drain itself threw — exiting anyway:", (err as Error)?.message ?? err);
+  } finally {
+    s.finished = true;
+    process.exit = s.realExit as typeof process.exit;
+    if (s.exitRequested) s.realExit(s.exitCode);
+  }
+}
+
+async function drainBody(s: DrainState): Promise<void> {
   const t0 = Date.now();
   const deadline = t0 + s.budgetMs;
   // ⛔ READ THE DEPTH BEFORE THE MARKER IS QUEUED, or the marker counts itself and every shutdown
@@ -328,8 +347,4 @@ async function runDrain(s: DrainState): Promise<void> {
         "──────────────────────────────────────────────────────────",
     );
   }
-
-  s.finished = true;
-  process.exit = s.realExit as typeof process.exit;
-  if (s.exitRequested) s.realExit(s.exitCode);
 }

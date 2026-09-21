@@ -144,6 +144,11 @@ ok("3.3 · the deadline timer is REF'd — an unref'd one would let a finished e
   refdDeadline(DRAIN_CODE));
 ok("3.c2 · PLANTED CONTROL — an unref'd deadline is flagged",
   !refdDeadline(DRAIN_CODE.replace("timer = setTimeout(resolve", "timer = setTimeout(resolve); (timer as any).unref?.(); void (() => setTimeout(resolve")));
+ok("3.3b · the deferred exit is taken in a `finally` — the wrapper has already told Next the process is exiting, so a throw inside the drain must never be able to turn the deferral into a hang",
+  /\} finally \{\s*\n\s*s\.finished = true;[\s\S]{0,200}?if \(s\.exitRequested\) s\.realExit\(s\.exitCode\);/.test(DRAIN_CODE));
+ok("3.c2b · PLANTED CONTROL — the same exit moved out of the `finally` and onto the happy path is flagged",
+  !/\} finally \{\s*\n\s*s\.finished = true;[\s\S]{0,200}?if \(s\.exitRequested\) s\.realExit\(s\.exitCode\);/.test(
+    DRAIN_CODE.replace(/\} finally \{/, "}\n  if (true) {")));
 ok("3.4 · the only thing that ever ends the process is the exit captured BEFORE the wrapper was installed",
   /realExit: process\.exit\.bind\(process\)/.test(DRAIN_CODE)
   && (DRAIN_CODE.match(/s\.realExit\(|state\.realExit\(/g) ?? []).length >= 2
@@ -266,6 +271,23 @@ console.log(show(plain));
 ok("4.10 · PLANTED CONTROL — with the drain installed but NO signal, process.exit(7) is immediate and keeps its code: the wrapper must not change ordinary exit semantics",
   plain.code === 7 && lived(plain) < QUEUE_MS && !/RETURNED/.test(plain.err),
   `exit ${plain.code}, child lived ${lived(plain)}ms (a deferred one would have taken >= ${QUEUE_MS}ms)`);
+
+// ── the worst outcome this change could have: a HANG ─────────────────────────────────────────────
+// The wrapper has already told Next's handler the process is exiting, and it is not. If the drain
+// body throws, the real exit must still be taken — otherwise the deferral has become a hang on every
+// deploy, which is worse than the loss the module exists to prevent.
+const threw = await drive("throwing", { N: String(N), WORK_MS: String(WORK_MS), BUDGET_MS: "5000" });
+console.log(show(threw));
+/* ⭐ MUTATION-PROVEN, 2026-09-21. The `finally` was removed from `audit-drain.ts` and this suite went
+ * RED on 3.3b, 4.12 and 4.13 (39 passed, 3 failed). Observed failure mode on Node 24: the throw
+ * escaped as a fatal unhandled rejection and the process died with the WRONG exit code instead of
+ * 143 — and anywhere that rejection is merely warned about, it is the hang this guards against. */
+ok("4.12 · PLANTED CONTROL — a flush that THROWS still exits 143, promptly: the deferred exit is taken in a `finally`, so a throw inside the drain can never become a hang on deploy",
+  threw.code === 143 && lived(threw) < 2_000,
+  `exit ${threw.code}, child lived ${lived(threw)}ms`);
+ok("4.13 · and it says so rather than dying quietly",
+  /the drain itself threw — exiting anyway/.test(threw.out + threw.err),
+  (threw.out + threw.err).split("\n").filter((l) => l.includes("[audit-drain]")).join(" | "));
 
 // ── SIGINT keeps its own code ────────────────────────────────────────────────────────────────────
 const sigint = await drive("sigint", { N: String(N), WORK_MS: String(WORK_MS), BUDGET_MS: "5000" });

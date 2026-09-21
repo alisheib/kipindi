@@ -22,6 +22,8 @@
  *                  process must still exit 143 rather than hang
  *   plain-exit     drain installed, NO signal, `process.exit(7)` — must exit immediately with 7
  *   sigint         as `drained` but SIGINT / exit 130 — the code must survive the deferral
+ *   throwing       a flush that THROWS — the deferred exit must still happen, or the deferral has
+ *                  become a hang on every deploy, which is worse than the loss it prevents
  *
  * env: N (appends), WORK_MS (ms per append), BUDGET_MS (drain budget)
  */
@@ -55,8 +57,13 @@ if (mode !== "stuck") {
   }, WORK_MS);
 }
 const pendingFn = () => pending;
-const flushFn = () =>
-  pending === 0 ? Promise.resolve() : new Promise<void>((res) => { waiters.push(res); });
+const flushFn = () => {
+  // ⛔ A SYNCHRONOUS THROW, not a rejection. A rejected promise is already handled by the race; the
+  // dangerous shape is a flush that throws before it ever returns one, because that escapes the
+  // drain's own body and, without the `finally`, would leave the deferred exit un-taken forever.
+  if (mode === "throwing") throw new Error("the flush threw on purpose");
+  return pending === 0 ? Promise.resolve() : new Promise<void>((res) => { waiters.push(res); });
+};
 
 // ── Next's handler, registered FIRST, exactly as start-server.js:390 does ─────────────────────────
 // `next/dist/server/lib/start-server.js` registers this BEFORE `getRequestHandlers`, and
