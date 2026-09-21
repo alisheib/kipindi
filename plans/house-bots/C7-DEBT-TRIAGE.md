@@ -634,3 +634,115 @@ being asserted. ⛔ **Each is green for a reason that has nothing to do with its
 ⛔ **NONE of the four is repaired here.** Repairing them changes what a guard measures — `409-name` and `537-guard`
 narrow a population, `387-order` re-seeds a fixture, `398-ladder-hole` needs a vector — and this phase was
 commissioned to judge. They are **findings against the suite**, owed to a build, and the rows say so.
+
+---
+
+## THE TEN REPAIRED — 2026-09-21, C5-8 alerts lane, PHASE 5 (`c58179ad`)
+
+⭐ **ALL TEN NOW REDDEN THE ASSERTION THEY NAME.** Re-driven together from a clean tree on the commit that
+repairs them: `npm run red:house-bot-console -- --only 346-countlive,347-second-read,432h-rowlink,432o-status-floor,432j-switch-reason,398-ladder-hole,387-order,409-name,537-guard,416-products-case`, verbatim
+
+```
+baseline green · console-mem
+house-bot-console RED: 10 caught, 0 missed, 0 files left dirty
+```
+
+and the same ten printed `0 caught, 10 missed` on the identical command immediately before the repair — the
+reproduction, not a memory of one. The memory suite is **710 passed, 0 failed** with every repair in and no
+mutation injected, so nothing below buys a red drive with a green suite.
+
+⛔ **THE JUDGEMENT OF PHASE 4 WAS RE-MEASURED BEFORE ANY OF IT WAS ACTED ON, AND IT MOVED IN ONE PLACE.** Phase 4
+recorded `346-countlive`'s anchor with the delta `"designated of max"`; the live declaration carries
+`"designated and the maximum"`, because the tile's delta was reworded after that note was written. The judgement
+itself held everywhere — `deskShell` is still synchronous (now at :809, not :811), the two `Couldn't read`
+literals are still at :1031 and :1033, `captionText: ${name} · ${cell.text}` still stands at :1364 and :3317,
+and `designate-wizard.tsx:381` still carries its own guard.
+
+### The five whose MUTATION was wrong
+
+| Declaration | What was wrong with the mutation | What it is now | Re-drive |
+|---|---|---|---|
+| `346-countlive` | injected `await houseBotStore.countLive()` into the Accounts tile, which `deskShell` builds — a **synchronous** function. The memory child died at parse; 1.346 was never exercised. | the second count goes into the **async `readDeskCore`**, where the reads 1.346's spy counts actually live, chained off the one `listNonRemoved()` so that call stays single | CAUGHT on `1.346 · exactly ONE listNonRemoved and ZERO countLive per render`, spy `{list:1,live:1,day:1,exposure:1}` |
+| `347-second-read` | same defect, same function: rewrote `exposureUsed`, a statement inside `deskShell`. ⛔ And its **recorded CAUGHT of 2026-09-18 is therefore false** — a recorded CAUGHT rots exactly like a recorded count. | a second `openExposure(null)` inside `readDeskCore` | CAUGHT on `1.347 · exactly ONE day read and ONE exposure read per render`, spy `exposure:2` |
+| `432h-rowlink` | ADDED a second way-out link to break a **biconditional** whose two sides have both been true since step 4 built the `[id]` page, so it left `true === true`. | DELETES the roster's row-exit class instead — the half that is still reachable: the page exists and the link goes | CAUGHT on `1.407 · 432(h) · …EXACTLY when /admin/desk/[id]/page.tsx exists`, `{detailPage:true,rowLink:false}` |
+| `432j-switch-reason` | set `switchReason` to a **third** string (the retired build note), so `switchReason !== actionReason` stayed correctly true and `432(j) · CONTROL` caught the third string instead. | aimed at the **head action's** sentence, setting `actionReason` to the switch's exact words. Chosen over the other direction on purpose: it leaves `432(j) · CONTROL`'s "the switch's own sentence still says *switch*" GREEN, so the drive reddens the rule it names without taking that rule's control down with it. | CAUGHT on `432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it`, and CONTROL stayed green |
+| `416-products-case` | edited the **first** of two identical `Couldn't read` literals in one ternary while the fixture's `schemaVersion: 9_999` reaches the **second**. | anchored on the `!parsed.ok` branch, two lines of context so the anchor stays unique | CAUGHT on `1.310 · 416 · …ONE sentence-cased unknown`, row 0 printing `couldn't read` |
+
+### The one whose EXPECT was wrong
+
+`432o-status-floor` — nothing was broken. `1.373` prints **two** labels; the declaration quoted the **SUBJECT**
+half, which reads the `Account` header out of each panel's own slice and which this mutation never touches, while
+the half one line below pins the roster's `Status` header literally and counts the roster's two floors. The
+`expect` is re-quoted at the half that caught it. One sentence, no code change.
+**Re-drive:** CAUGHT on `1.373 · …and only the SUBJECT and STATUS columns carry a floor`.
+
+### The four whose ASSERTION was wrong — and what each was failing to guard
+
+⛔ These are the valuable four: each was **green for a reason that has nothing to do with its subject**, and none
+would ever have been found by a suite run, because all four are green.
+
+**1. `398-ladder-hole` — it was failing to guard THE LADDER ITSELF.**
+`RECORDED_GAPS` is `[]` since C7 step 5 filled the last hole, so `gaps.every(g => [].includes(g)) && [].every(…)`
+reduces to *"`gaps` is empty"*. A `ladder()` that has stopped computing gaps altogether returns `[]` — which
+satisfies both halves **vacuously**. The case was blind to its own instrument being switched off, which is the
+one failure a ratchet read off disk must not have. ⛔ **And the reason this file recorded on drive 1 was measured
+FALSE**: it said the printed label had been reworded so the `expect` could match nothing. The label prints
+verbatim and always did. The defect is vacuity, not drift.
+**Repair:** the case now carries its own non-vacuity vector — the same tree with the LANDING half of step 5
+removed must report `["5:activity"]` and nothing else. The mutation forces that probe to `[]` too, so the named
+assertion goes red. **Re-drive:** CAUGHT on `1.398 · LADDER · every rung below the highest one this tree carries`.
+
+**2. `387-order` — it was failing to guard THE SORT, because the FIXTURE already satisfied the ordering.**
+The picker's answer is capped at ten and the fixture seeded ids `usr_<tag>_0` … `usr_<tag>_11` **in ascending
+order**. Without the sort the memory store hands back insertion order, so the ten survivors are `_0` … `_9` —
+single digits, whose lexicographic order **is** their insertion order. Both halves of the case (two runs agree;
+the ten are in sorted order) held with `hits.sort(...)` deleted outright.
+⚠️ **And the label says "on either store" while the declaration is `console-mem` only** — memory is precisely the
+store where the sort is not load-bearing; on Postgres (`findMany`, no `orderBy`) it is. That gap is NOT closed
+here and is registered below.
+**Repair:** the ids are zero-padded to two digits and seeded **backwards**, so insertion order is the exact
+reverse of sorted order and the sort is load-bearing on the memory twin too. The padding also keeps the
+"matches exactly ONE" control honest: unpadded, `_1` is a prefix of `_10` and `_11`.
+**Re-drive:** CAUGHT on `1.387 · …and the ten that survive the slice are the same ten a second run returns`, the
+evidence printing `_11, _10, _09, …` — insertion order, unsorted.
+
+**3. `409-name` — it was failing to guard THE CAP'S NAME AT THE SITE THAT PAINTS IT.**
+The case was `decomment(read(GATE)).includes("captionText: ${name} · ${cell.text}")` — a substring scan over the
+**whole gate module** for a literal that stands at **two** sites: `usageRow` at :1364, which the mutation deletes,
+and `houseUsageForConsole`'s own shell at :3317. Deleting either left the scan satisfied by the other, so a card
+of bars could name its caps to nobody and the case stayed green.
+**Repair:** the rule is stated over the **derived population** — every `captionText:` the module writes, the
+interface's own `captionText: string;` excluded because it is a type and not a site. Every site must name the cap
+first, and the two that build one from a cell must carry 361's grammar exactly. The `>= 2` is a **floor**, so a
+site DELETED is red as well, and there is no count to keep up to date.
+**Re-drive:** CAUGHT on the named label, evidence printing the population with `cell.text` standing bare in it.
+
+**4. `537-guard` — it was failing to guard THE LIMITS FORM, because ANOTHER FILE'S GUARD satisfied it.**
+`guarded` was `/<UnsavedChangesGuard/.test(sectionCode)`, and `sectionCode` is **every file under
+`src/app/admin/desk/` joined into one string**. `new/designate-wizard.tsx:381` carries a guard of its own, so the
+limits form could lose its guard entirely — an in-app link discarding what an officer typed, in silence — and the
+whole 1.412 chain stayed green.
+⛔ **A GUARD'S SCOPE IS PART OF ITS CLAIM.** The chain is a statement about the LIMITS form: its typed controls,
+its wired save, the guard in front of **it**.
+**Repair:** the guard is read out of `src/app/admin/desk/limits-form.tsx`, and the label now says so. ⚠️ Narrower,
+not weaker — a guard anywhere under the section satisfied the old test and only the one in front of this form
+satisfies this one, while `test:unsaved-changes` still holds every other admin form to the same rule from the
+population side.
+**Re-drive:** CAUGHT on `1.412 · 537 · a typed control, a wired limits SAVE and the limits form's OWN
+UnsavedChangesGuard exist TOGETHER or not at all`, evidence `{typedControl:true,saveWired:true,guarded:false}`.
+
+### What the repair of the ten left standing
+
+| Open | Why it is not closed here |
+|---|---|
+| ⛔ **`387-order` has no `console-pg` twin.** Its own label claims "on either store" and the declaration drives memory only. | Adding a `console-pg` declaration makes every drive of this file create and drop a scratch database, and three other lanes share that cluster today. Registered, not run. |
+| ⛔ **The `parsed == null` branch of the Products cell is measured by NOTHING.** `416-products-case` exposed it by accident: no fixture in this suite plants a FAILED rules read, so :1031 could become a lowercase fragment tomorrow and no assertion would move — the very defect ruling 416 exists to prevent, surviving in the branch nobody planted for. | It needs a new fixture and a new declaration, which is a build. Registered. |
+| ⚠️ **Thirteen of the fourteen "run INDIVIDUALLY and CAUGHT on 2026-09-18" in register row 18 are still claims.** `347-second-read` was the fourteenth and is now proven to have been uncompilable; the other thirteen were not re-driven at this phase. | They are inside the full 281, which is where they get re-driven. |
+
+⭐ **THE CLASS STANDS, AND THE REPAIRS CONFIRM IT.** Three of the four measurement defects were the same shape —
+*an assertion stands a broad scan in for a narrow subject, and something else inside the scan satisfies it* — and
+all three were repaired the same way: **state the rule over the population the claim is about.** `409-name` over
+every `captionText:` the gate writes rather than the first the file yields; `537-guard` over the form that owes
+the guard rather than the section; `398-ladder-hole` over a population shown to be non-empty rather than an
+`every()` that is true over nothing. The fourth, `387-order`, is the fixture shape, and its repair is the same
+idea from the other end: **make the fixture disagree with the rule unless the code enforces it.**
