@@ -71,7 +71,7 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 227, postgres: 77 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 230, postgres: 80 }, dbPrefix: "hb_reports" });
 // ⭐ 200 → 203 and 61 → 64, C5-8 phase 3 (2026-09-20), IN THE SAME COMMIT AS THE ASSERTIONS THAT RAISED IT:
 // §1j row 77's three `11.247.c1e` lines (the OG route's read list, the `resolveWinShareToken` projection, and the
 // plant that makes the second one a measurement) run on BOTH children. A minimum that rises with the assertions is
@@ -81,11 +81,15 @@ await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/ho
 // own reports cases — and the merged `house-bot-reports-cases.mts` carries BOTH sets. So neither side's pair
 // describes this tree, and the alerts pair is merely the higher of two understatements, not the answer.
 // ⛔ THE MERGE DID NOT ADD THE DELTAS TOGETHER: 227 + 3 / 77 + 3 is an arithmetic guess, and this file's own
-// header allows a floor to rise only to a number a run PRINTED. So the pair ABOVE is the alerts side's —
-// the HIGHER of the two on BOTH stores, which weakens neither lane's guard — and it is deliberately NOT
-// presented as this tree's measurement.
-// ⚠️ **THE TRUE FLOOR OF THE MERGED TREE IS NOT MEASURED, and that is written here rather than rounded off.**
-// `test:house-bot-reports` needs the scratch Postgres, and at the merge the heavy-node lock was held by
-// another lane (this laptop runs one heavy Node job at a time — failing RAM). The run is OWED, and the
-// register carries it. ⛔ Whoever runs it RAISES this pair to what the run prints; it is never lowered, and a
-// green run against a floor that is known to be too low is not a clearance of this note.
+// header allows a floor to rise only to a number a run PRINTED. The merge therefore carried the alerts pair
+// (227/77) — the HIGHER of the two on BOTH stores, weakening neither lane's guard — and said plainly that it
+// was not this tree's measurement.
+// ⭐ **AND NOW IT IS MEASURED — 227/77 → 230/80, RAISED TO WHAT THE RUN PRINTED AND TO NOTHING ELSE**
+// (ops lane, 2026-09-21, the proof pass over the merged tree). `npm run test:house-bot-reports` was run under
+// `~/heavy-node-lock.sh` on the merged branch and printed `0.mem · exit 0 · 230 passed · 0 failed` and
+// `0.pg · exit 0 · 80 passed · 0 failed`, ALL PASS. ⛔ It was run TWICE, and the second run printed the same
+// two numbers — a floor taken from one reading of a suite that boots two stores and a scratch database is a
+// guess with a witness. ⚠️ Note what the arithmetic would have produced: 230/80, the guess this file forbade,
+// happens to be the same pair. That is a coincidence of this merge and NOT a licence to compute the next one:
+// the deltas were separate only because the two lanes' assertions were, and the run is what decided it.
+// ⛔ It is never lowered. A section that stops running fails this floor even while every case that ran passed.
