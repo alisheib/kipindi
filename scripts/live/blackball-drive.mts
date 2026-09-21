@@ -65,8 +65,12 @@ import {
 /** ⛔ ONE destination, hard-coded — Ali, 2026-09-16. A drive that can be pointed anywhere is a
  *  drive that can bill a stranger. */
 const TO = "+255772619619";
-/** Across the WHOLE drive, enforced through the ledger. */
-const TOTAL_SEND_CEILING = 6;
+/** Across the WHOLE drive, enforced through the ledger.
+ *  ⭐ 6 → 7 on 2026-09-21: Ali, *"do any test needed to validate, you have full access"* and then
+ *  *"they said the URLs we sent them are whitelisted so now just validate if whitelist worked"*.
+ *  The seventh send exists to answer exactly that one question — a callback cannot be provoked
+ *  without a message. ⛔ Raise this only on an owner instruction, and record the instruction here. */
+const TOTAL_SEND_CEILING = 7;
 /** A balance under this is a stop: the float belongs to login codes. */
 const STOP_BELOW_TZS = 100;
 /** How long to let a charge land before re-reading the balance. */

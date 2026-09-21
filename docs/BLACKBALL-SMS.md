@@ -14,10 +14,10 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
-| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 (2026-09-21 08:58 UTC) one send — **6 of 6** drive sends used, the budget is spent |
-| Delivery callback | 🔴 **still not received** — re-tested 2026-09-17 and again 2026-09-21 **after the vendor said they had whitelisted the URL**: no request from any address but our own in the 9 minutes after a send (§4.3, §4.4) |
+| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 twice (2026-09-21 08:58 and 13:58 UTC) — **7 of 7** sends used; the ceiling was raised 6 → 7 on Ali's instruction to validate the vendor's whitelisting claim |
+| Delivery callback | 🔴 **still not received** — re-tested 2026-09-17, and twice on 2026-09-21 **after the vendor said our URLs were whitelisted**: no request from any address but our own, 9 and 10 minutes after a send (§4.3, §4.4) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
-| Balance | TZS 220 |
+| Balance | TZS 214 |
 
 ---
 
@@ -245,6 +245,19 @@ stop at the first new row, so it stopped on ours and reported success.
 ⭐ **The rule this earns:** when the instrument and the subject can produce the same row, the check must
 carry a DISCRIMINATOR — here `srcIp` — and the watch must exclude the operator's own address before it
 is allowed to conclude anything. ⛔ And never probe the endpoint while a callback watch is running.
+
+**Re-run clean the same afternoon, on the vendor's second claim** (*"the URLs you sent us are
+whitelisted"*): `sms_a4ef3c7a941cc4c5af0aadd5` at **13:58:24 UTC**, then a 10-minute watch that made no
+request of its own and discarded this machine's address. **No audit row, no request from any other
+address.** Between the two sends, three hours apart, not one retry arrived either — although the vendor
+states the callback retries 5 times.
+
+⚠️ **Two facts about the instruments, so an empty result is never over-read.** Railway keeps HTTP logs
+only for the CURRENT deployment (this one had restarted 15 minutes earlier, so its log was empty of
+history and proves nothing about earlier hours); the DB audit rows are the durable evidence and they
+cover 48 hours. And a callback that reached us with a wrong token would still WRITE a row
+(`webhook.blackball.rejected`) — so "nothing at all" means the request is not being made, not that it is
+being refused.
 
 ---
 
