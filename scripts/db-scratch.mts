@@ -52,7 +52,7 @@ import { join, resolve } from "node:path";
 // 5433 is talking to THEIR database, with THEIR schema, while looking perfectly healthy.
 // That happened on 2026-09-21 and is why `backup-schema-gate.mts` checks `data_directory`
 // before it writes. Give the second checkout its own port instead:
-//     KP_SCRATCH_PORT=5443 npm run test:backup-schema
+//     KP_SCRATCH_PORT=5443 npm run verify:backup-schema
 const PORT = Number(process.env.KP_SCRATCH_PORT ?? 5433);
 if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
   console.error(`!! KP_SCRATCH_PORT must be an integer 1024-65535 (got ${process.env.KP_SCRATCH_PORT}).`);
@@ -198,15 +198,53 @@ async function main(): Promise<void> {
   let alreadyUp = false;
   if (!has("reset")) {
     const probe = new pgLib.Client({ connectionString: URL, connectionTimeoutMillis: 1500 });
+    let foreign = "";
     try {
       await probe.connect();
-      await probe.query("select 1");
-      alreadyUp = true;
-      console.log(`Reusing the cluster already listening on 127.0.0.1:${PORT}.`);
+      // 🔴 "IT ANSWERED" IS NOT "IT IS OURS", AND THE DIFFERENCE IS DESTRUCTIVE.
+      //
+      // The catch below used to carry the comment "nothing there, or not ours" while nothing
+      // in this block distinguished the two: connecting was the whole test. But EVERY worktree
+      // of this repo runs this same file with the same hardcoded postgres/scratch credentials,
+      // and (until KP_SCRATCH_PORT) the same port — so a sibling checkout's cluster accepts the
+      // connection, `alreadyUp` goes true, and VERIFY_DATABASE_URL is handed to the `--run`
+      // wrappers pointing at SOMEBODY ELSE'S DATABASE. That is not hypothetical: it happened on
+      // 2026-09-21, when F:\kipindi-main's work silently ran against F:\kipindi-house-bots.
+      //
+      // ⛔ The worst of it is not the wrong reading — it is that these wrappers WRITE.
+      // `test:house-bot-migrations` issues `DROP DATABASE ... WITH (FORCE)` on names both
+      // checkouts compute identically, so a run here terminates the other session's
+      // connections and destroys its in-flight test database. `db:verify-backup` restores a
+      // full production artifact — every wallet, phone, NIDA and KYC string — into whichever
+      // `.pgscratch` answered, a directory this checkout's `--reset` cannot clean.
+      //
+      // So identity is asked of the cluster itself, and a stranger is refused rather than
+      // adopted. `backup-schema-gate.mts` keeps its own copy of this assertion as a control;
+      // this is the one that protects every other consumer.
+      const dir = (await probe.query<{ setting: string }>(
+        `select setting from pg_settings where name = 'data_directory'`,
+      )).rows[0]?.setting ?? "";
+      const norm = (p: string): string => resolve(p).replace(/\\/g, "/").toLowerCase();
+      if (norm(dir) !== norm(DATA_DIR)) foreign = dir || "(unreported)";
+      else {
+        alreadyUp = true;
+        console.log(`Reusing this checkout's cluster on 127.0.0.1:${PORT}.`);
+      }
     } catch {
-      /* nothing there, or not ours — start our own below */
+      /* nothing usable answered — start our own below */
     } finally {
       await probe.end().catch(() => {});
+    }
+    if (foreign) {
+      console.error(
+        `\n!! 127.0.0.1:${PORT} is serving a DIFFERENT checkout's scratch cluster.\n` +
+          `     its data directory : ${foreign}\n` +
+          `     this checkout's    : ${DATA_DIR}\n\n` +
+          `   Refusing to reuse it: these suites CREATE and DROP databases, and db:verify-backup\n` +
+          `   restores real production data into whatever answers. Give this checkout its own port:\n` +
+          `     KP_SCRATCH_PORT=5443 npm run <your script>\n`,
+      );
+      process.exit(2);
     }
   }
 

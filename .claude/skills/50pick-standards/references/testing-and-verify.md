@@ -65,9 +65,11 @@ After every `git push origin main`:
 `railway status` / `railway logs -s 50pick` for the real app (CLI = alisheib07).
 
 ## Migrations
-- Additive where possible; **hand-author** `prisma/migrations/<ts>_<name>/migration.sql` with
-  idempotent, fail-open SQL (`IF NOT EXISTS`, defensive `DO $$` blocks that warn-not-fail on
-  pre-existing data). A migration that fails = the deploy fails = prod down.
-- Test on the **local disposable PG** via `npx prisma migrate deploy` first; prod gets it via
-  the normal deploy (`start = prisma migrate deploy && … && next start`), **never by hand**.
-- Avoid `prisma migrate dev` — it's interactive and its shadow-DB diff trips on drift.
+⛔ **The protocol has ONE home: `.claude/skills/50pick-audit/SKILL.md` §4. It is not restated
+here.** It has **five** steps, and **step 4 is `npm run verify:backup-schema`**.
+
+This section used to summarise the protocol in three bullets, and the summary had already
+drifted: it carried no backup step, so a session that read this file instead of §4 would land a
+migration having never run the dump against it — which is exactly what took the nightly down for
+three nights on 2026-09-19. A rule with two homes drifts at the copy nobody updates. A pointer
+cannot.

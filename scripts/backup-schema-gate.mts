@@ -1,5 +1,5 @@
 /**
- * `npm run test:backup-schema` — THE DUMP MUST SURVIVE THIS BRANCH'S MIGRATIONS.
+ * `npm run verify:backup-schema` — THE DUMP MUST SURVIVE THIS BRANCH'S MIGRATIONS.
  *
  * 🔴 WHY THIS EXISTS. On 2026-09-19 the nightly backup began failing and failed for three
  * consecutive nights (runs 57–59). The cause was not the backup toolchain changing — it had
@@ -32,14 +32,15 @@
  * and requires the dump to abort naming it. A gate that has never been seen red is a rumour.
  *
  * Usage (the wrapper boots the cluster and sets VERIFY_DATABASE_URL):
- *   npm run test:backup-schema
+ *   npm run verify:backup-schema
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { readdirSync, rmSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { join, resolve } from "node:path";
 import pgLib from "pg";
-import { isLocalHost } from "../src/lib/server/backup/core.ts";
+import { isLocalHost, sqlObjectNames } from "../src/lib/server/backup/core.ts";
 
 const { Client } = pgLib;
 const REPO = resolve(process.cwd());
@@ -57,16 +58,19 @@ function die(msg: string): never {
   process.exit(2);
 }
 
-/** Run `db:backup` exactly as CI runs it, and hand back what it said. */
-function runDump(url: string): { code: number; out: string } {
-  const r = spawnSync(process.execPath, ["--import", "tsx", join(REPO, "scripts", "db-backup.mts")], {
+/** Run one of the recovery scripts exactly as CI runs it, and hand back what it said. */
+function runNode(args: string[], env: Record<string, string>): { code: number; out: string } {
+  const r = spawnSync(process.execPath, ["--import", "tsx", ...args], {
     cwd: REPO,
     encoding: "utf8",
-    env: { ...process.env, DATABASE_URL: url },
+    env: { ...process.env, ...env },
     maxBuffer: 64 * 1024 * 1024,
   });
   return { code: r.status ?? -1, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 }
+
+const runDump = (url: string): { code: number; out: string } =>
+  runNode([join(REPO, "scripts", "db-backup.mts")], { DATABASE_URL: url });
 
 /** Artifacts this gate wrote. It dumps a disposable cluster; it must not leave copies around. */
 function sweepArtifacts(since: number): number {
@@ -85,7 +89,7 @@ async function main(): Promise<void> {
   if (!url) {
     die("VERIFY_DATABASE_URL is not set.\n" +
         "   Run it through the wrapper, which boots the throwaway cluster:\n" +
-        "     npm run test:backup-schema");
+        "     npm run verify:backup-schema");
   }
   // 🔴 This gate CREATES AND DROPS a table and takes a full dump. It must never be able to
   // do either to anything but a local disposable cluster, whatever is in the environment.
@@ -180,10 +184,39 @@ async function main(): Promise<void> {
   }
   ok("…and it wrote an artifact", /::backup-result::/.test(green.out));
 
-  console.log("\n── 3 · RED CONTROL — the gate can still fail ────────────────────\n");
+  console.log("\n── 3 · …and the artifact REPLAYS ────────────────────────────────\n");
 
-  // One of `db:backup`'s real refusals, triggered for real. A restored database whose
-  // sequences were never advanced collides on its first write, which is why it refuses.
+  // 🔴 WRITING A DUMP IS NOT SURVIVING A MIGRATION. The nightly does dump -> ship -> RESTORE,
+  // and the restore is where a schema change actually kills it: an ordering the replay cannot
+  // satisfy, a constraint emitted twice, an index whose operator class needs an extension the
+  // dump did not carry. A gate that stops at "db:backup exited 0" would have passed every one
+  // of those and left the nightly to find out at 04:15. `db:verify-backup` restores the file
+  // into its OWN throwaway database inside this same disposable cluster and re-runs the
+  // platform's money and audit-chain checks on the result.
+  //
+  // ⛔ WITHOUT `--record`. This is a schema rehearsal on fixture data, not evidence about
+  // production — only the nightly may touch the compliance card.
+  const artifact = green.out.match(/::backup-result::(\{.*\})/)?.[1];
+  let file = "";
+  try { file = artifact ? JSON.parse(artifact).file : ""; } catch { file = ""; }
+  ok("the green run named the artifact it wrote", !!file, file || "no ::backup-result:: line");
+
+  if (file) {
+    const v = runNode([join(REPO, "scripts", "db-verify-backup.mts"), "--file", file], {
+      DATABASE_URL: url,          // the "source" the restored copy is compared against
+      VERIFY_DATABASE_URL: url,   // the cluster it creates its throwaway database in
+    });
+    ok("🔴 db:verify-backup RESTORES the artifact and every invariant holds", v.code === 0,
+      v.code === 0
+        ? "the file replays on this schema"
+        : `exit ${v.code} — ${(v.out.match(/^!! [\s\S]*?(?:\n\n|$)/m)?.[0] ?? "").trim().split("\n").slice(0, 6).join(" ") || "see output below"}`);
+    if (v.code !== 0) console.log("\n──── db:verify-backup said ────\n" + v.out.split("\n").slice(-40).join("\n"));
+  }
+
+  console.log("\n── 4 · RED CONTROLS — the gate can still fail ───────────────────\n");
+
+  // CONTROL A — one of `db:backup`'s real refusals, triggered for real. A restored database
+  // whose sequences were never advanced collides on its first write, which is why it refuses.
   await c.query(`CREATE TABLE IF NOT EXISTS "${RED_TABLE}" ("id" SERIAL PRIMARY KEY)`);
   let red: { code: number; out: string };
   try {
@@ -195,6 +228,46 @@ async function main(): Promise<void> {
     `exit ${red.code}`);
   ok("…and the refusal NAMES the column, so nobody has to guess",
     red.out.includes(`${RED_TABLE}.id`));
+
+  // CONTROL B — AIMED AT THE MECHANISM THAT ACTUALLY BROKE, which control A is blind to.
+  //
+  // ⛔ THE THREE NIGHTS WERE NOT A SEQUENCE PROBLEM. They were the unique-index check, and a
+  // control that only ever plants a serial column certifies a different refusal than the one
+  // this gate exists for — the reassurance would be real and the coverage imaginary.
+  //
+  // ⚠️ AND IT MUST NOT BE A CODE MUTATION. Deleting a row from the `idxRows` query "proved"
+  // the old guard worked, when all it proved was that the written text and the membership set
+  // moved together: one edit changed both sides of the comparison. So this mutates the ONE
+  // thing the guard actually reads — the BYTES OF THE FILE — and asks the product's own
+  // matcher, imported rather than reimplemented, whether it notices.
+  if (file) {
+    const text = gunzipSync(readFileSync(file)).toString("utf8");
+    const live = (await c.query<{ name: string }>(
+      `select cl.relname as name from pg_index x
+         join pg_class cl on cl.oid = x.indexrelid
+         join pg_namespace n on n.oid = cl.relnamespace
+        where n.nspname = 'public' and x.indisunique`,
+    )).rows.map((r) => r.name);
+
+    const intact = sqlObjectNames(text);
+    const missedByIntact = live.filter((n) => !intact.has(n));
+    ok("the real artifact creates every unique index the database holds", missedByIntact.length === 0,
+      missedByIntact.length ? `not created by the file: ${missedByIntact.join(", ")}` : `${live.length} checked`);
+
+    // Pick a victim Postgres renders BARE — the exact shape that went undetected for months.
+    const victim = live.find((n) => n === n.toLowerCase() && text.includes(n)) ?? live.find((n) => text.includes(n));
+    if (!victim) {
+      ok("a victim unique index was found in the artifact", false, "cannot run control B");
+    } else {
+      const holed = text.split("\n").filter((l) => !(l.includes(victim) && /CREATE\s+(UNIQUE\s+)?INDEX|CONSTRAINT/i.test(l))).join("\n");
+      const after = sqlObjectNames(holed);
+      ok(`🔴 an artifact missing "${victim}" is DETECTED as missing it`,
+        !after.has(victim) && live.filter((n) => !after.has(n)).includes(victim),
+        victim === victim.toLowerCase() ? "victim is a BARE lowercase name — the 2026-09-19 shape" : "victim is a quoted name");
+      ok("…and removing one index does not make the check lose the others",
+        live.filter((n) => !after.has(n)).length === 1);
+    }
+  }
 
   const planted = (await c.query<{ n: string }>(
     `select count(*)::text n from information_schema.tables where table_schema = 'public' and table_name = $1`,

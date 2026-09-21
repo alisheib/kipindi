@@ -583,15 +583,27 @@ ok("the compliance card renders them as their own warning",
   ok("⛔ the constraint dedup matches by NAME, not by substring",
     backupCode.includes("alreadyCreatedNames.has(r.name)"),
     "a lowercase constraint the DDL already creates would otherwise be added twice — the replay aborts");
-  ok("⛔ the lost-unique guard matches by NAME, not by substring",
-    backupCode.includes("reproducedNames.has(n)"));
+  ok("⛔ the lost-unique guard is asked of the ASSEMBLED FILE, by name",
+    backupCode.includes("sqlObjectNames(sql)") && backupCode.includes("createdByTheFile.has(n)"),
+    "the bytes a restore will actually see are the only thing that can answer it");
+  ok("⛔ the pg_trgm gate reads the assembled file, not the stripped DDL",
+    backupCode.includes("/gin_trgm_ops/i.test(sql)"),
+    "`ddl` has every CREATE INDEX statement stripped, so testing it could never fire");
   ok("🔴 neither caller greps rendered SQL for a quoted identifier any more",
     !/\b(?:reproduced|alreadyCreated)\.includes\(/.test(backupCode),
     "asserted on comment-stripped source, so the prose above may quote the old form safely");
-  ok("the reproduced set is built from the ROWS each section is rendered from",
-    backupCode.includes("...idxRows.map((r) => r.name)") &&
-    backupCode.includes("...missingCons.map((r) => r.name)"),
-    "indexSql IS idxRows and constraintSql IS missingCons — comparing to anything else can drift");
+  // ⛔ INVERTED, NOT DELETED — this assertion used to require the OPPOSITE.
+  //
+  // For a few hours on 2026-09-21 it asserted that the membership set was built from
+  // `idxRows` + `missingCons`, and it passed, while guarding a comparison that COULD NOT
+  // FAIL FOR ANY INPUT: every unique index either backs a p/u/x constraint (so it is in
+  // `conRows`, hence in `missingCons` or in the DDL) or backs none (so it is in `idxRows`).
+  // Population and membership came from the same two catalog queries, so `lostUnique` was
+  // empty by construction. That is worse than the crying-wolf guard it replaced — a false
+  // refusal at least gets reported. Keeping the assertion inverted keeps the reasoning.
+  ok("🔴 the lost-unique set is NOT built from the catalog rows — that comparison cannot fail",
+    !/reproducedNames/.test(backupCode) && !/\.\.\.idxRows\.map/.test(backupCode),
+    "population and membership must not be derived from the same queries");
 }
 
 console.log(`\n${"─".repeat(64)}\n  BACKUP TOOLCHAIN: ${pass} passed, ${fail} failed\n${"─".repeat(64)}`);

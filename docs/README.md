@@ -116,7 +116,7 @@ to teal and resurrects the killed light theme.
 
 | Doc | | |
 |---|---|---|
-| [`BACKUP-RUNBOOK.md`](BACKUP-RUNBOOK.md) | 🟢 LAW | The commands, the drill, **the eight defects a green suite missed**, **THE THREE NIGHTS** (a guard that cried wolf over a correct artifact and cost 80 h of recovery window — run `test:backup-schema` before any migration), and the `\| tee` bug that made the nightly report success while shipping nothing. Read before touching backups. |
+| [`BACKUP-RUNBOOK.md`](BACKUP-RUNBOOK.md) | 🟢 LAW | The commands, the drill, **the eight defects a green suite missed**, **THE THREE NIGHTS** (a guard that cried wolf over a correct artifact and cost 80 h of recovery window — run `verify:backup-schema` before any migration), and the `\| tee` bug that made the nightly report success while shipping nothing. Read before touching backups. |
 | [`LIVE-HOSTING-STATUS.md`](LIVE-HOSTING-STATUS.md) | 🔵 LIVE | Living snapshot of go-live hosting. Cloudflare zone, DNS, R2. |
 | [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md) | ⚪ RECORD | How 50pick.tz *was* taken live (2026-07-17). |
 | [`LAUNCH-GO-NO-GO.md`](LAUNCH-GO-NO-GO.md) | 🔵 LIVE | The env/infra walk-down before real money. |

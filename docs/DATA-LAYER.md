@@ -104,7 +104,16 @@ model MyEntity {
 }
 ```
 
-Run: `npx prisma migrate dev --name add_my_entity`
+⛔ **Do NOT run `prisma migrate dev`.** It is interactive (fails headless) and its shadow-DB
+diff trips on this database's pre-existing drift. Migrations follow ONE protocol —
+[`.claude/skills/50pick-audit/SKILL.md`](../.claude/skills/50pick-audit/SKILL.md) §4, five steps —
+and it is not restated here. Read it before you write the SQL.
+
+🔴 **Step 4 is `npm run verify:backup-schema`, and it is not optional.** `db:backup` builds its
+schema DDL from the **live database**, so a migration is the one kind of change that can break
+disaster recovery without touching a line of the backup toolchain. On 2026-09-19 one did: the
+nightly failed three consecutive nights and the platform ran 80 hours with no verified backup.
+See `docs/BACKUP-RUNBOOK.md` → "THE THREE NIGHTS".
 
 ### 2. Types
 

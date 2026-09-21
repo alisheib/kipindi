@@ -416,24 +416,25 @@ async function main(): Promise<void> {
        join pg_namespace n on n.oid = cl.relnamespace
       where n.nspname = 'public' and x.indisunique`,
   );
-  // ⭐ The set is built from the ROWS each section is rendered FROM, never by grepping the
-  // rendered SQL: `indexSql` is exactly `idxRows`, `constraintSql` is exactly `missingCons`,
-  // and the table DDL contributes its own names through `sqlObjectNames`. Nothing here
-  // depends on how Postgres decided to quote anything, which is the whole point.
-  const reproducedNames = new Set<string>([
-    ...alreadyCreatedNames,
-    ...idxRows.map((r) => r.name),
-    ...missingCons.map((r) => r.name),
-  ]);
-  const lostUnique = uniqueLive.map((u) => u.name).filter((n) => !reproducedNames.has(n));
-  if (lostUnique.length) {
-    fail(
-      `${lostUnique.length} unique index(es) exist in the database but appear nowhere in this dump:\n` +
-        lostUnique.map((n) => `     - ${n}`).join("\n") +
-        `\n\n   A database restored from it would accept duplicates the source refuses —\n` +
-        `   including, potentially, the same gateway payment credited twice.`,
-    );
-  }
+  // 🔴 THE CHECK ITSELF LIVES AT THE SANITY GATE, AGAINST THE ASSEMBLED FILE — NOT HERE.
+  //
+  // It cannot be answered from these rows. Every unique index is, by construction, either
+  // in `idxRows` (it backs no p/u/x constraint) or in `conRows` (it does), so a membership
+  // set built out of `idxRows`/`missingCons`/`alreadyCreatedNames` contains EVERY name in
+  // `uniqueLive` for every possible input — the comparison could not fail, and a guard that
+  // cannot fail is not a guard. That is what this file looked like for a few hours on
+  // 2026-09-21 while the quoting defect below was being fixed: the repair traded a guard
+  // that cried wolf for one that could never bark. Both are the same mistake — asking a
+  // question whose answer is already decided.
+  //
+  // ⚠️ AND A MUTATION TEST DID NOT CATCH IT. Deleting a row from the `idxRows` query made
+  // the dump refuse, because that one edit removed the index from the written text AND from
+  // the membership set together. It proved the two were linked, not that the guard detects
+  // anything — [aim a mutation at the mechanism, not next to it].
+  //
+  // The real question is about BYTES: does the file we are about to write contain a
+  // statement creating every uniqueness guarantee the source holds? So it is asked of `sql`,
+  // after assembly, at section 6.
 
   // The diff and pg_constraint must agree about how many FKs exist. If the diff emitted
   // some and we captured none, the replay would restore a database with NO referential
@@ -684,6 +685,27 @@ async function main(): Promise<void> {
   ].join("\n");
 
   // ── 6. Sanity gate. A backup missing the money is not a backup ──────────────
+
+  // 🔴 EVERY UNIQUENESS GUARANTEE THE SOURCE HOLDS MUST BE CREATED BY THE BYTES WE ARE
+  // ABOUT TO WRITE. Asked of the assembled file, because the file is the only thing a
+  // restore will ever see — never of the catalog rows the sections were rendered from,
+  // which is a question whose answer is fixed in advance (see the note beside `uniqueLive`).
+  //
+  // `sqlObjectNames` is what makes it safe to ask this of text at all: `pg_get_indexdef`
+  // quotes an identifier only when it must, so the substring search this replaced missed
+  // every all-lowercase index and refused three consecutive nightlies over a dump that
+  // contained them. Names are compared with names; the text only decides membership.
+  const createdByTheFile = sqlObjectNames(sql);
+  const lostUnique = uniqueLive.map((u) => u.name).filter((n) => !createdByTheFile.has(n));
+  if (lostUnique.length) {
+    fail(
+      `${lostUnique.length} unique index(es) exist in the database but appear nowhere in this dump:\n` +
+        lostUnique.map((n) => `     - ${n}`).join("\n") +
+        `\n\n   A database restored from it would accept duplicates the source refuses —\n` +
+        `   including, potentially, the same gateway payment credited twice.`,
+    );
+  }
+
   const problems: string[] = [];
   if (!/CREATE TABLE .*"Wallet"/is.test(ddl)) problems.push("Wallet missing from the DDL");
   if (!/CREATE TABLE .*"LedgerEntry"/is.test(ddl)) problems.push("LedgerEntry missing from the DDL");
@@ -691,7 +713,11 @@ async function main(): Promise<void> {
   // The drill that found the pg_trgm gap, kept as a permanent gate: an index that
   // names a non-default operator class needs the extension that defines it, and a
   // dump missing it restores into a dead database.
-  if (/gin_trgm_ops/i.test(ddl) && !extRows.some((e) => e.name === "pg_trgm")) {
+  // ⛔ ASKED OF `sql`, NOT `ddl`. `ddl` is the diff output with every CREATE INDEX statement
+  // STRIPPED out in section 2c — and `gin_trgm_ops` only ever appears inside an index
+  // definition. So this tested a string that had been deleted 340 lines earlier: on the one
+  // drill finding it exists to make permanent, it could not fire. Found 2026-09-21.
+  if (/gin_trgm_ops/i.test(sql) && !extRows.some((e) => e.name === "pg_trgm")) {
     problems.push("DDL uses gin_trgm_ops but pg_trgm is not in the dumped extensions");
   }
   if (manifest.money.ledgerUnbalancedGroups > 0) {

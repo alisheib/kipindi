@@ -256,7 +256,7 @@ Selcom card `redirect_url`/`cancel_url` and the email-confirmation link. The cod
 stranding a card deposit on a railway.app host.
 
 Migrations: additive where possible, tested on the local PG first, prod gets them via the
-deploy — never by hand. ⛔ **And never without `npm run test:backup-schema`** — the full
+deploy — never by hand. ⛔ **And never without `npm run verify:backup-schema`** — the full
 protocol is `.claude/skills/50pick-audit/SKILL.md` §4, which is its one home.
 
 ### ⛔ 8a. A migration is not done until the BACKUP has been run against it
@@ -265,7 +265,7 @@ migration is the one kind of change that can break disaster recovery without tou
 single line of the backup toolchain. Nothing else in this repo runs the dump against a
 schema before it ships — `test:backup` reads source text, `predeploy` never dumps anything,
 and the nightly is the first thing to try it, at 00:15 UTC, on a runner, reporting by email.
-**`npm run test:backup-schema` is the gate**: throwaway cluster → every migration → the real
+**`npm run verify:backup-schema` is the gate**: throwaway cluster → every migration → the real
 `db:backup` → a red control that proves it can still fail.
 
 🔴 **THE THREE NIGHTS (2026-09-19 → 21).** The house-bot migration introduced this schema's

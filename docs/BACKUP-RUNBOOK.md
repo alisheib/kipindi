@@ -204,10 +204,37 @@ shipped this database's first **all-lowercase fixed index names** (`hbp_*`, `hbi
 `hbt_*`); Postgres renders those **bare**; the search missed all seven at once.
 
 ⭐ **The guard had been green for months over a test that only ever worked by accident.**
-It was matching *rendered syntax*, not *meaning*. Both call sites now build a Set of the
-names the dump actually creates, **from the rows each section is rendered from**
-(`indexSql` **is** `idxRows`, `constraintSql` **is** `missingCons`) — see `sqlObjectNames`
-in `src/lib/server/backup/core.ts`, which carries the full account.
+It was matching *rendered syntax*, not *meaning*. The comparison is now made by NAME, using
+`sqlObjectNames` in `src/lib/server/backup/core.ts` (which matches an identifier quoted **or**
+bare), and it is asked of the **assembled file** — the bytes a restore will actually see.
+
+🔴 **THE FIRST REPAIR WAS WRONG, AND IT WAS WORSE THAN THE BUG. Read this before touching it.**
+For a few hours on 2026-09-21 the fix built its membership set out of the *catalog rows* each
+section is rendered from (`idxRows`, `missingCons`, the DDL's own names). It read cleanly and it
+was **vacuous**: every unique index either backs a `p`/`u`/`x` constraint — so it is in `conRows`,
+hence in `missingCons` or already in the DDL — or it backs none, so it is in `idxRows`. Population
+and membership came from the **same two queries**, so `lostUnique` was empty *for every possible
+input*. The guard could not fail.
+
+⚠️ **And a mutation test certified it.** Deleting a row from the `idxRows` query made the dump
+refuse — but that single edit removed the index from the written text *and* from the membership
+set together. It proved the two were linked, not that the guard detects anything. **Aim a mutation
+at the mechanism, not next to it**; mutate the thing the guard READS (the file), not a source both
+sides share. An audit of the repair caught this; the tests that had pinned the vacuous design were
+**inverted, not deleted**, so the reasoning survives in `scripts/backup.test.mts`.
+
+⛔ Crying wolf and never barking are the same mistake — asking a question whose answer is already
+decided. The second one is worse, because nothing reports it.
+
+⚠️ **The same substring test guarded the constraint dedup**, where the failure is the
+opposite and worse: a lowercase constraint the table DDL already creates would have been
+**added twice**, and *the replay aborts*. Nobody had hit it because nothing was lowercase.
+Fixing one call site and not the other would have left the class alive.
+
+⚠️ **A third guard in the same sanity gate could not fire either**, found by the same audit:
+`if (/gin_trgm_ops/i.test(ddl) …)` tested `ddl`, which has **every `CREATE INDEX` statement
+stripped** in section 2c — and `gin_trgm_ops` appears only inside an index definition. The one
+drill finding it existed to make permanent was unprotected. It reads `sql` now.
 
 ⚠️ **The same substring test guarded the constraint dedup**, where the failure is the
 opposite and worse: a lowercase constraint the table DDL already creates would have been
@@ -225,19 +252,36 @@ recovery — and the migration protocol
 touched the recovery path at no point. `test:backup` could not catch it either: it reads the
 scripts as **text** and asserts on their source, which is why it was 117/0 throughout.
 
-**The gate that closes it — `npm run test:backup-schema`** (`scripts/backup-schema-gate.mts`),
+**The gate that closes it — `npm run verify:backup-schema`** (`scripts/backup-schema-gate.mts`),
 now **step 4 of the migration protocol**:
 
 | It does | Because |
 |---|---|
 | Boots a throwaway cluster and applies **every** migration in `prisma/migrations` | the schema a migration *creates* is the thing under test |
 | Runs the **real** `db:backup` as a subprocess | a re-implementation of its checks would be a second definition of the truth and would drift — the same fault as the guard it is catching |
+| Then runs the **real** `db:verify-backup`, which **restores** the artifact into its own throwaway database in the same cluster | ⛔ **writing a dump is not surviving a migration.** The nightly is dump → ship → RESTORE, and the restore is where a schema change actually kills it: an ordering the replay cannot satisfy, a constraint emitted twice, an operator class whose extension was not carried. A gate stopping at "exit 0" passes all three. Without `--record` — a fixture rehearsal is not evidence about production |
 | Asserts the cluster's `data_directory` is **this checkout's** `.pgscratch`, *before writing* | see below |
 | Compares applied migrations **name-by-name** with `prisma/migrations/` | a scratch cluster is long-lived and `db:scratch` does **not** migrate it; a gate that passes against last week's schema proves nothing |
-| Plants a serial column outside `SERIAL_COLUMNS` and requires the dump to **abort naming it** | standards §5b — a gate never seen red is a rumour |
+| **Control A** — plants a serial column outside `SERIAL_COLUMNS`, requires the dump to **abort naming it** | standards §5b — a gate never seen red is a rumour |
+| **Control B** — takes the real artifact, deletes the statement creating one unique index (preferring a **bare lowercase** name), and requires the product's own matcher to report exactly that one missing | ⛔ **control A certifies the wrong refusal.** The three nights were the unique-index check, not sequences; a control aimed at a different mechanism buys reassurance that is real and coverage that is imaginary. B mutates the one thing the guard reads — the bytes — so it cannot pass by moving both sides of the comparison together |
 
-**Proven both ways, 2026-09-21:** 8/0 green on the fixed code, and **6/2 RED when the fix is
-reverted**, naming the seven indexes. It would have caught this before the push.
+⛔ **It is `verify:`, not `test:`, and that is deliberate — do not rename it back.**
+`scripts/test-all.mjs` auto-discovers **every** `test:*` key in `package.json`, and this gate
+needs `embedded-postgres` (deliberately *not* a dependency — 107 MB into every Railway build)
+plus a free port. Named `test:*` it joins `test:all` and goes red on any clean machine for
+reasons that have nothing to do with the change under test — shipping a new guard that cries
+wolf, in the repair for a guard that cried wolf. It follows the existing
+`verify:house-bot-migrations-old-build` precedent: heavy, runs **at a gate**, outside `test:all`.
+
+**What is proven, and by what, 2026-09-21 — each one executed, not reasoned:**
+- The gate is **13/0** on the fixed code, and goes **RED when the quoted-substring defect is
+  reintroduced**, naming the same seven indexes the nightly named. So it would have caught the
+  three nights before the push.
+- ⚠️ **The gate does NOT catch the vacuous repair**, and saying otherwise would be the same sin
+  twice. Control B exercises the *matcher* on real bytes; it cannot see whether `db:backup`
+  still *asks* it. A vacuous guard passes every section of this gate. What pins that is the
+  inverted assertion in `scripts/backup.test.mts` — observed red against the vacuous code and
+  green after. **Two instruments, two different failures; neither covers the other.**
 
 ⚠️ **`db:scratch` pins port 5433 and so does every other worktree of this repo**, while its
 orphan-killer only matches clusters under its **own** path. A sibling checkout's cluster
@@ -248,7 +292,7 @@ That happened while this was being diagnosed. Two defences: the gate checks `dat
 before it writes anything, and `KP_SCRATCH_PORT` now gives a second checkout its own port:
 
 ```
-KP_SCRATCH_PORT=5443 npm run test:backup-schema
+KP_SCRATCH_PORT=5443 npm run verify:backup-schema
 ```
 
 ### What this says about the alarm
@@ -271,7 +315,7 @@ one does, and spends the alarm's credibility as well.
 | Command | Does | Safe? |
 |---|---|---|
 | `npm run db:backup` | Dumps schema + extensions + data + indexes + constraints + foreign keys + sequence resets into one replayable, sealed file | ✅ read-only, one snapshot |
-| `npm run test:backup-schema` | ⛔ **Step 4 of the migration protocol.** Throwaway cluster → **every** migration → the **real** `db:backup` → a red control. The only thing that runs the dump against a schema **before** it ships; see "THE THREE NIGHTS" | ✅ local only, cleans up after itself |
+| `npm run verify:backup-schema` | ⛔ **Step 4 of the migration protocol.** Throwaway cluster → **every** migration → the **real** `db:backup` → a red control. The only thing that runs the dump against a schema **before** it ships; see "THE THREE NIGHTS" | ✅ local only, cleans up after itself |
 | `npm run db:scratch` | Boots a throwaway PostgreSQL 18.3 on `127.0.0.1:5433` for the verifier to restore into. ⚠️ `KP_SCRATCH_PORT=5443` when a parallel worktree already holds the port | ✅ local only |
 | `npm run db:verify-backup -- --file <f>` | Restores into a **throwaway** database and re-checks everything. **Refuses production, no override.** The only thing allowed to record backup health | ✅ never touches the source |
 | `npm run db:restore -- --file <f>` | Puts a backup **back**. 🔴 **The only script here that destroys data on purpose** | ⛔ four gates, see below |
@@ -631,10 +675,14 @@ container instead, which must be kept on production's major version.
   **generate a fresh 32-byte key at the moment you add the repository secrets, and put it in
   a password manager in the same sitting.** Do not write it to a file intending to move it
   later; that is precisely what did not happen.
-- **Only the backup toolchain is typechecked.** `tsconfig.backup.json` covers five files;
-  the other ~60 `scripts/*.mts` suites use loose fixture types and are still transpiled
+- **Only the backup toolchain is typechecked.** `tsconfig.backup.json` covers the recovery
+  path; the other `scripts/*.mts` suites use loose fixture types and are still transpiled
   without checking.
 
-Guarded by `npm run test:backup` — 110 checks, plus a typecheck of the five files that
-make up the recovery path. Every negative assertion in it has been broken on purpose and
-observed to go red.
+Guarded by `npm run test:backup`, plus a typecheck of the files that make up the recovery
+path. Every negative assertion in it has been broken on purpose and observed to go red.
+
+<!-- ⛔ The counts that used to stand here ("110 checks", "five files") were both wrong by
+     2026-09-21 — measured 130 and six. This file rules two paragraphs above that a number
+     restated beside the thing it counts will disagree with itself; it was breaking its own
+     ruling about itself. `npm run test:backup` prints the real count on every run. -->
