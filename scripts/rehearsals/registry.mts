@@ -33,8 +33,17 @@ export type RehearsalStatus =
   | "covered"
   /** The condition it rehearsed no longer exists. `why` says what ended it. */
   | "moot"
-  /** Nothing drives it anywhere. `why` says what it is waiting on. This is the only status that owes work. */
-  | "not-built";
+  /** Nothing drives it anywhere. `why` says what it is waiting on. */
+  | "not-built"
+  /**
+   * ⛔ PART of it is driven by a script in this folder and the REST CANNOT BE DRIVEN HERE AT ALL. `script` is set
+   * and `run.mts --all` runs it; the script exits 3, never 0. `why` names the slices that ARE driven and the ones
+   * that are not, and where the procedure for the remainder lives. **A `partial` row OWES WORK exactly like
+   * `not-built`** — `owed()` counts it, so `--all` can never exit 0 while one exists. The status exists because
+   * both honest alternatives were worse: `not-built` hides work that now runs every day, and `built` would let a
+   * release row read "drill 2 passed" over a drill whose rollback was never performed.
+   */
+  | "partial";
 
 export type Rehearsal = {
   /** The id the runner and any checklist row use. */
@@ -72,16 +81,29 @@ export const REHEARSALS: readonly Rehearsal[] = [
     id: "rollback",
     drill: 2,
     title: "The rollback drill — pre-merge SHA, drift, remark, and the book against the ledger",
-    status: "not-built",
+    status: "partial",
     needs: "postgres",
+    script: "scripts/rehearsals/rollback.mts",
     why:
-      "NOT MEASURED, with two structural reasons. (1) Its instruments are on another branch: `ops:house-bots-status` " +
-      "and `ops:house-bots-remark` are keys on `origin/ops-lane` only — read read-only for the procedure, not merged, " +
-      "because lane 2 is renumbering the register inside that branch right now. (2) Step 2 is not a script: 'boot the " +
-      "pre-merge SHA' needs a second worktree with its own node_modules and a Prisma client without `houseBotId`. " +
-      "⭐ The one slice that IS buildable here — the immutability pin (`txn.update` discards `houseBotId`), WITH the " +
-      "positive control that the same update still writes its other fields — is owed, not done, so this row says " +
-      "`not-built` and nothing softer. THE PROCEDURE: `plans/house-bots/RELEASE-LADDER.md` §10, ten numbered steps.",
+      "DRIVEN HERE, against a scratch Postgres the run creates and drops. (§1) The immutability pin, BEHAVIOURALLY: " +
+      "`db.txn.update` cannot re-mark, un-mark or POSITION a ledger row, read back from the COLUMN and not from the " +
+      "mapper, each refusal carrying the positive control §S3 step 4 actually asks for — the same update still WRITES " +
+      "its other fields. `test:house-bot-reports` 0.232.4 pins the two store twins' SPELLING; nothing anywhere drove " +
+      "the behaviour, and nothing held that positive control. (§2) The drift-free baseline: legs (a), (b) and (c) at 0 " +
+      "over a database filled by real settlement, VOID, emergency void, a player cash-out and a real agent commission, " +
+      "each leg printing its population and each carrying a planted control that writes the exact shape the pre-merge " +
+      "SHA writes. (§3) Wagering, which no drift query can ever see. " +
+      "🔴 IT MEASURED ONE THING NOBODY HAD: drift leg (c1) joins `Transaction.positionId`, and every AGENT_COMMISSION " +
+      "row on this platform is written by `creditInternal` with `positionId: null` — so that leg cannot fire at all, " +
+      "and its 0 is a 0 over an empty population. Leg (c2) is the only half of (c) that can find commission. " +
+      "NOT MEASURED, for two structural reasons. (1) Step 2 is not a script: 'boot the pre-merge SHA' needs a second " +
+      "worktree with its own node_modules and a Prisma client without `houseBotId`, and hand-writing the unmarked rows " +
+      "instead would rehearse §2 again rather than a rollback. (2) Steps 4–7 need `ops:house-bots-status --drift` and " +
+      "`ops:house-bots-remark`, keys on `origin/ops-lane` only — read read-only for the procedure, not merged, because " +
+      "lane 2 is renumbering the register inside that branch. ⭐ The drill's §0 ARMS ITSELF: it holds the four drift " +
+      "predicates as constants and compares them against `scripts/ops-house-bots-status.mts` the moment REL-M lands " +
+      "that file, so the two copies of the query cannot drift apart in silence. " +
+      "THE PROCEDURE for the remainder: `plans/house-bots/RELEASE-LADDER.md` §10, ten numbered steps.",
     scenarios: ["S3"],
   },
   {
@@ -127,5 +149,8 @@ export const REHEARSALS: readonly Rehearsal[] = [
 
 export const byId = (id: string): Rehearsal | undefined => REHEARSALS.find((r) => r.id === id);
 
-/** The rows that still owe work. `run.mts --all` can never exit 0 while this is non-empty. */
-export const owed = (): Rehearsal[] => REHEARSALS.filter((r) => r.status === "not-built");
+/**
+ * The rows that still owe work. `run.mts --all` can never exit 0 while this is non-empty.
+ * ⛔ `partial` IS OWED. A drill that has a script running every day is still not a drill that was performed.
+ */
+export const owed = (): Rehearsal[] => REHEARSALS.filter((r) => r.status === "not-built" || r.status === "partial");

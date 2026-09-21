@@ -297,6 +297,7 @@
     "rehearse:list": "tsx scripts/rehearsals/run.mts --list",
     "rehearse:all": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/run.mts --all",
     "rehearse:audit-burst": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/run.mts audit-burst",
+    "rehearse:rollback": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/run.mts rollback",
     "verify:house-bot-bundle": "node scripts/verify-house-bot-bundle.mjs",
     "verify:house-bot-migrations-old-build": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-migrations-old-build.mts",
     "test:kyc-copy-truth": "tsx scripts/kyc-copy-truth.test.mts",
