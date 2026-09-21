@@ -37,9 +37,20 @@
  *     — "no new withdrawal enters AML_REVIEW"), so the trigger cannot occur; and `eligibility.ts:293` makes
  *     ANY non-ACTIVE wallet a `WALLET_NOT_ACTIVE` blocking row, which is the opposite of "No pause". This
  *     one is recorded in NO plan document — it was found in the code while this gate was being built.
- *   · **HB-ACC-07** names `test:password-change-revokes-sessions` as its owner. That suite does not exist
+ *   · **HB-ACC-07** names test:password-change-revokes-sessions as its owner. That suite does not exist
  *     and will not: A1 records the owner's ruling that the platform-wide sign-out is NOT BUILT in this
  *     build. The row asks for a test of a withdrawn feature.
+ *
+ * ⛔ **THE TWO WITHDRAWN OWNERS ARE WRITTEN BARE, WITHOUT BACKTICKS, ON PURPOSE — DO NOT "TIDY" THEM.**
+ * `test:guards-exist` reads a backticked `test:`-name as a CITATION, and its whole point is that a
+ * citation tells a reader the guard exists ("a comment naming a guard is worse than silence"). These two
+ * names — test:password-change-revokes-sessions here and test:house-bot-reward-exclusion at `liveNames`
+ * below — are named for the OPPOSITE reason: to record that they do not exist and must never be written.
+ * Backticking them makes this file assert the existence of suites that `01-scenario-register.md:212` and
+ * `:2418` say `package.json` "declares no such key and never will", and turns `test:guards-exist` red on
+ * two names nobody may fix by creating the script — §2.2's own `proof()` below REQUIRES their absence, so
+ * writing either suite would turn THIS gate red while building a feature the owner ruled against (A1, D20).
+ * ⭐ The typography is the claim. Bare is the accurate way to name a suite that is deliberately absent.
  * §2 reports these by name and holds the count as a CEILING, so a fifth can never arrive unnoticed.
  *
  * ⛔ **CONTROLS, BECAUSE THIS LANE HAS TWICE HAD A GUARD PASS HARDER WHILE BROKEN.** §5 plants a covered id's
@@ -157,7 +168,9 @@ function testLineOf(id: string): { raw: string; names: string[] } {
 }
 
 /* A name inside ~~strikethrough~~ is a CLOSED reference, not a live claim — FS-05's
- * `test:house-bot-reward-exclusion` is struck through in place and must not be read as a missing owner. */
+ * test:house-bot-reward-exclusion is struck through in place and must not be read as a missing owner.
+ * (Bare, not backticked, for the reason given in the header: `01-scenario-register.md:2418` records it
+ * "struck by D20 and `package.json` declares no such key — a closed reference, never a live owner".) */
 function liveNames(id: string): string[] {
   const { raw, names } = testLineOf(id);
   const struckSpans = [...raw.matchAll(/~~[\s\S]*?~~/g)].map((m) => m[0]).join("\n");
@@ -215,7 +228,7 @@ const BACKWARDS: Array<{ id: string; asks: string; ships: string; authority: str
   },
   {
     id: "HB-ACC-07",
-    asks: "`test:password-change-revokes-sessions`, a suite for a platform-wide sign-out",
+    asks: "test:password-change-revokes-sessions (bare by the header's rule), a suite for a platform-wide sign-out",
     ships: "A1 — the sign-out is NOT BUILT in this build (owner ruling), so the suite does not and will not exist",
     authority: "04-amendments.md A1",
     proof: () => /Signing out other devices on a password change is not built/.test(read(AMEND))
