@@ -805,3 +805,190 @@ staged its files BY NAME and never touched a target file.
 a `finally` inside its loop, but its `SIGINT`/`SIGTERM` handler calls `releaseLock()` and exits **without
 restoring** — so a killed drive leaves the defect on disk. Both sibling harnesses share the idiom. The fix is to
 restore from the `original` map in the same handler; it is a change to a guard and is owed to a build.
+
+## THE ENGINE HARNESS UNBLOCKED — 2026-09-21, C5-8 alerts lane, PHASE 6
+
+⛔ **DRIVE 3 ABOVE RECORDS SEVEN DECLARATIONS AS NOT MEASURED BECAUSE THE HARNESS REFUSED TO RUN.** It no longer
+refuses, and the seven are measured. What follows is the repair, the proof it is a repair and not a widening, and
+the numbers the run printed.
+
+### What had drifted, and why it was not `benignFloor`'s fault
+
+`red-house-bot-engine.mjs` excuses exactly ONE kind of FAIL line — the two-store runner's POPULATION FLOOR, and only
+under a sections filter, because a run of one section cannot meet a floor set for the whole suite. The pattern that
+recognised that line read:
+
+```
+… — exit (\d+) · (\d+) passed · (\d+) failed
+```
+
+`house-bot-two-stores.mts:44` prints:
+
+```
+… — exit 0 · 153 passed (at least 751) · 0 failed
+```
+
+The `(at least N)` clause arrived after the pattern was written and nothing connected the two. `FLOOR.exec(line)` was
+therefore `null` for every line, `benignFloor` could never return true, and the harness called its own benign baseline
+RED and refused before injecting anything. ⭐ **The failure was FAIL-CLOSED, which is the right direction and is
+exactly why it survived five days**: nothing was wrongly excused, the instrument simply stopped being able to run,
+and an instrument that cannot run is not a guard.
+
+### The repair, and why it is not a widening
+
+⛔ **The exemption was NOT widened.** The pattern was re-aimed at what the suite prints today — the same move as
+re-anchoring a rotted mutation — and in the same commit the predicate was made **NARROWER**. The runner's assertion
+has three limbs (`exit === 0 && pass >= floor && fail === 0`); a floor line is now excused only when the FLOOR is the
+**only** limb that failed:
+
+| Condition | Before | Now |
+|---|---|---|
+| a sections filter is on | required | required |
+| `exit 0` | required | required |
+| `0 failed` | required | required |
+| at least one assertion passed | required | required |
+| **passes BELOW the stated floor** | **not checked — the floor was not in the pattern at all** | **required** |
+
+The last row is new and is a tightening: a line claiming as many passes as its own floor cannot be a floor failure,
+and is no longer excused by anything. The pattern and the predicate now live in one place,
+`scripts/lib/red-two-store-floor.mjs`, so there is no second copy to rot.
+
+### ⭐ PROVED BOTH WAYS — and neither half is a re-reading of my own work
+
+**POSITIVE, end to end.** `npm run red:house-bot-engine -- --only N1-7pg,N2-E6pg,MON-06,N1-8,L3,L6` printed **six
+green baselines**, five of them `-pg` suites under a sections filter whose floor lines cannot be met:
+
+```
+baseline green · engine-pg#13
+baseline green · engine-pg#18
+baseline green · caps-pg
+baseline green · engine-pg#17
+baseline green · engine-mem#11
+baseline green · engine-pg#11
+```
+
+⛔ `engine-pg#13` is the exact key the harness refused on before. A green baseline there is only reachable if the
+floor lines were excused, so the positive half is the harness's own behaviour, not an opinion about it.
+
+⭐ **And the excused line itself was captured, not inferred.** `HB_ENGINE_SECTIONS=13 npm run test:house-bot-engine`
+printed the two genuine population-floor lines of a filtered run:
+
+```
+FAIL 0.mem · the memory run exits 0 with assertions and no failure — exit 0 · 153 passed (at least 751) · 0 failed
+PASS 0.pg.migrate · prisma migrate deploy applies every migration to the scratch database
+FAIL 0.pg · the Postgres run exits 0 with assertions and no failure — exit 0 · 134 passed (at least 730) · 0 failed
+```
+
+Both patterns were then run against **those exact captured strings**:
+
+| | `0.mem` line | `0.pg` line |
+|---|---|---|
+| pre-repair pattern matches | **false** | **false** |
+| repaired pattern matches | true | true |
+| `benignFloor(filtered = true)` | **true** | **true** |
+| `benignFloor(filtered = false)` | false | false |
+
+The first row is the whole diagnosis, measured on a live artifact: the old pattern could not read the line the suite
+prints, so nothing was ever excused. The last row is the exemption staying shut for an unfiltered run.
+
+**NEGATIVE, end to end — a REAL failure planted and seen to refuse.** A deliberately failing assertion was inserted
+inside `guard("13", …)` of `house-bot-engine-cases.mts` and the same filtered command run. It refused, naming the
+planted failure in BOTH children:
+
+```
+REFUSING TO RUN — "engine-pg#13" is RED before any mutation:
+FAIL [memory] 13.PLANT · PLANTED · a REAL assertion failing inside a filtered section, to prove the harness still refuses — …
+FAIL 0.mem · the memory run exits 0 with assertions and no failure — exit 1 · 153 passed (at least 751) · 1 failed
+FAIL [postgres] 13.PLANT · PLANTED · a REAL assertion failing inside a filtered section, to prove the harness still refuses — …
+FAIL 0.pg · the Postgres run exits 0 with assertions and no failure — exit 1 · 134 passed (at least 730) · 1 failed
+```
+
+⭐ **Read the two floor lines in that refusal: `exit 1 … 1 failed`.** With a real failure under them they are NOT
+excused either — the same pattern that lets a benign floor line through holds a failing child red. The plant was then
+reverted and the file verified byte-identical to HEAD.
+
+**AND A PERMANENT GUARD, so this cannot drift in silence again.** `npm run test:red-engine-floor`
+(`scripts/red-engine-floor.test.mts`, 28 assertions, in `test:all` structurally because `test-all.mjs` enumerates
+every `test:*` key) does not retype the printed line: §1 **rebuilds it from `house-bot-two-stores.mts`'s own source**
+— its label, its detail template and the way `ok()` joins them, each asserted present so a parse that found nothing
+fails instead of passing vacuously. Then §2 excuses a genuine filtered floor line and §3 refuses thirteen others,
+including a real assertion failure, an unfiltered run, `exit 1`, `3 failed`, `0 passed`, a line claiming MORE passes
+than its floor, the `0.pg.migrate` line beside it, and the pre-repair shape itself. §1.5 keeps the pre-repair pattern
+as a CONTROL and asserts it does **not** match today's line — so the test would have caught the original drift.
+
+⚠️ **Both patterns were also run against REAL captured lines rather than typed ones** (the two floor lines above, out
+of the planted run's own output): pre-repair matches **neither**, repaired matches **both**, and `benignFloor` excuses
+**neither**, because those children really failed.
+
+### The seven, measured
+
+```
+CAUGHT N1-7pg · a transient requeue does not hand the claim's attempt back (Postgres SQL)
+CAUGHT N2-E6pg · the targeted insert ignores the FOR SHARE target read (Postgres)
+CAUGHT MON-06 · LOCK_MARGIN_MS = 0 across two skewed processes
+CAUGHT N1-8 · the press audit repair skips its lease
+CAUGHT L3 · the trigger sweep runs hourly instead of every SWEEP_INTERVAL_MS
+CAUGHT L3 · the sweep runs without holding the planner's lease
+CAUGHT L6 · the COUNTER insert drops its ON CONFLICT clause
+CAUGHT L6 · the COUNTER anchor's unique index is not created
+
+house-bot-engine RED: 8 caught, 0 missed, 0 not measured, 0 files left dirty
+```
+
+**Eight, not seven**, because `--only L3` also selects the memory twin of L3, which was driven again rather than
+excluded. ⭐ **All seven Postgres halves ran on a real scratch Postgres — none was skipped, and `0 not measured` is
+the harness's own word for it.** Three carry evidence worth quoting:
+
+* `MON-06` → `8.1 · ⭐ never both` failed with `{"status":"CASHED_OUT","housePositions":1}` — the house counted money
+  the player then cashed out, across two processes with clocks 10 s apart. That is the money defect the margin exists
+  to prevent, and until today nothing had ever shown the case able to catch it.
+* `L3 (Postgres)` → `11.31` failed with `{"other":{"planner":0,"sweep":2}}` — a second instance sweeping the same
+  window while another holds the planner's lease.
+* `L6 (a)` → `18.L6c` failed with `{"aFailed":0,"bFailed":2,"inserted":2}` — without `ON CONFLICT DO NOTHING` the
+  loser's insert throws instead of being absorbed.
+
+⛔ **Drive 3's line above is now history, not status.** The engine batch stands at **46 of 46 declared, 8 driven in
+this phase and 39 memory declarations driven in phase 3** — ⚠️ **and those 39 are a RECORDED result from an earlier
+run, not evidence from this one.** A single whole run of all 46 is still owed and is the only thing that would make
+one closing line true of the whole file.
+
+### The harness hardening that was registered and is now built
+
+The incident note above registered it: the mutation loop restores in a `finally`, but the `SIGINT`/`SIGTERM` handler
+released the lock and exited **without restoring**, so a stopped drive left the defect on disk. `red-house-bot-engine.mjs`
+now restores from the same in-memory `original` map inside the handler, before releasing the lock, and prints the
+`git checkout --` to run if a restore itself fails. ⚠️ **NOT MEASURED, with the reason named: signal delivery on
+Windows.** Node runs these handlers on a real console Ctrl-C but not on a `process.kill` from the process table —
+which is precisely how the runaway drive had to be stopped — so this helps an operator who stops their own drive and
+does nothing for one killed from outside. The load-bearing check is unchanged and is the harness's own
+`git show HEAD:<file>` refusal. ⛔ The two sibling harnesses (`red-house-bot-console.mjs`, `red-house-bot-money.mjs`)
+still carry the old idiom and are NOT fixed here — this lane may not edit what lane 1 is driving.
+
+### The tree, the locks and the shared cluster
+
+* `git status --porcelain` was **empty before and after** the drive, and was deliberately sampled DURING it: it
+  showed ` M src/lib/server/house-bot-dal.ts`, then ` M src/lib/house-bot/constants.ts` (`LOCK_MARGIN_MS = 0` live on
+  disk), then ` M src/lib/server/house-bot/engine.ts`, then ` M prisma/migrations/…/migration.sql` with the
+  exactly-once index deleted. ⭐ The mutation window is real. Every commit in this phase staged its files **by name**;
+  nothing under `src/` or `prisma/` was staged at all.
+* `0 files left dirty` from the harness's own byte-for-byte check, and no `scripts/.red-*.lock` left on disk.
+* One drive at a time under `~/heavy-node-lock.sh`. This lane waited out `house-bots-c5-controlB` before starting and
+  handed the lock back to `ops-lane-panels-toast` after.
+* **The shared scratch cluster on :5433** held **17** databases at this phase's open and **17** at its close, the
+  same seventeen names. One byte size moved — `ops_panels_20260921`, 14,046,911 → 14,022,335 — which is the ops lane
+  writing to its own database while this phase ran, not this lane touching it. ⚠️ The count read **18** twice
+  mid-phase: `hb_caps_<pid>` and `hb_engine_<pid>`, this lane's own, created and dropped by `runTwoStores` — so a
+  count that moves DURING a run is the normal lifecycle, not a loss.
+  ⛔ **17 is two fewer than the 19 recorded at the previous phase's close, and this phase cannot explain the
+  difference.** `opsvis_c7s5` was already gone then; `hb_p06` and the rest are unchanged. Re-derived from the other
+  side again: every `DROP DATABASE` this lane can reach names `<prefix>_<process.pid>`, and this lane's prefixes are
+  `hb_engine` and `hb_caps` only — so no script run here could have removed another lane's database. Reported, not
+  explained away.
+
+### One red this phase did NOT cause and did NOT touch
+
+`npm run test:red-anchors` is RED on this tree: `4.1`/`4.2` report **66 harnesses that do not declare their anchors
+against a ceiling of 65**, and two `rg-doors` anchors no longer resolve in `src/lib/server/responsible-gambling.ts`.
+⛔ **Not this phase's**, and measured rather than assumed: `red:*` script count is **170 in HEAD and 170 in the
+working tree**, so nothing added here moved that count — this phase added one `test:*` key and no `red:*` key.
+`scripts/red-anchors.test.mts` is owned by another lane right now and was not edited.
