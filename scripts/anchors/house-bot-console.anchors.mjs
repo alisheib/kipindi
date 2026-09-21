@@ -643,18 +643,31 @@ export const MUTATIONS = [
 
   /* ── Rulings 346, 347, 355, 356, 361, 421 · the reads and their failures. ─────────────────────────────────────── */
   {
-    name: "346-countlive · the Accounts tile takes a second count, which can disagree with the table beside it",
+    /* ⛔ RE-AIMED 2026-09-21 (C5-8, the alerts lane, after the batch drove all 281). The old `to` put
+     * `await houseBotStore.countLive()` inside the Accounts tile — which `deskShell` builds, and `deskShell` is a
+     * SYNCHRONOUS function. The memory child died at PARSE and printed no summary line at all, so the drive reported
+     * WRONG-ASSERTION and `1.346` was never exercised: neither shown able to fail nor shown unable to.
+     * ⭐ A MUTATION THAT CANNOT COMPILE IS A SYNTAX ERROR WEARING A CAUGHT DEFECT'S CLOTHES. The second count now
+     * goes where the render's reads actually live — the async `readDeskCore` — which is the exact population 1.346's
+     * spy counts. ⛔ It leaves the ONE `listNonRemoved()` call intact, so the `ZERO countLive` half is what goes red
+     * and 1.347's `432(q)` source pin (which counts that call in the same slice) stays green. */
+    name: "346-countlive · the render takes a second count of the roster, which can disagree with the table beside it",
     file: GATE,
-    from: `        ? { label: "Accounts", value: \`\${formatNumber(roster.length)} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated and the maximum" }`,
-    to: `        ? { label: "Accounts", value: \`\${formatNumber(await houseBotStore.countLive())} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated and the maximum" }`,
+    from: `    houseBotStore.listNonRemoved(),`,
+    to: `    houseBotStore.listNonRemoved().then(async (r) => { await houseBotStore.countLive(); return r; }),`,
     expect: "1.346 · exactly ONE `listNonRemoved` and ZERO `countLive` per render",
     suite: "console-mem",
   },
   {
-    name: "347-second-read · the band's exposure comes from a second query rather than from the rows it renders",
+    /* ⛔ RE-AIMED 2026-09-21, THE SAME DEFECT AND THE SAME CAUSE AS `346-countlive` ABOVE. The old `to` rewrote
+     * `exposureUsed`, which is a statement inside the SYNCHRONOUS `deskShell`, so the injected `await` could not
+     * parse and the child crashed instead of failing 1.347. ⚠️ AND ITS RECORDED `CAUGHT` OF 2026-09-18 IS FALSE:
+     * this mutation cannot compile today, so a recorded CAUGHT rots exactly like a recorded count. The second
+     * exposure read now sits in the async reader, where 1.347's spy counts it. */
+    name: "347-second-read · the render takes a second exposure read, so the band and the rows it renders can disagree",
     file: GATE,
-    from: `  const exposureUsed = [...(exposure?.values() ?? [])].reduce((n, v) => n + v, 0);`,
-    to: `  const exposureUsed = (await houseBookStore.openExposure(null)).reduce((n, r) => n + r.openStakeTzs, 0);`,
+    from: `    houseBookStore.openExposure(null),`,
+    to: `    houseBookStore.openExposure(null).then(async (r) => { await houseBookStore.openExposure(null); return r; }),`,
     expect: "1.347 · exactly ONE day read and ONE exposure read per render",
     suite: "console-mem",
   },
@@ -962,11 +975,20 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
-    name: "432h-rowlink · the way-out link comes back while the page it opens does not exist",
+    /* ⛔ RE-AIMED 2026-09-21 (C5-8, the alerts lane). THE OLD MUTATION'S PREMISE WAS GONE. It ADDED a second
+     * way-out link to prove the "link while the page is unbuilt" half of 432(h) — but `1.407` is a BICONDITIONAL,
+     * `existsSync(DETAIL_PAGE) === /className="row-link/.test(pageCode)`, and since C7 step 4 built the `[id]` page
+     * BOTH sides are true, so a second link left `true === true` and 1.407 could not move. (What did go red was
+     * `1.306 · 432(i) · 541(b)`, the by-position Link pin — the correct guard for "a new Link appeared", so the
+     * suite behaved well and only the declaration was wrong.)
+     * ⭐ THE HALF THAT IS STILL REACHABLE IS THE OTHER ONE: the page exists and the link goes. That is a live
+     * regression today — an officer's only route into an account would be to type its URL — and it is what this
+     * mutation now plants. ⚠️ `1.474 · CONTROL` pins the same class for its own reason and goes red beside it;
+     * the declaration names 1.407, which is the assertion whose subject this is. */
+    name: "432h-rowlink · the roster loses its way-out link while the page it opens exists, so an account is reachable only by typing a URL",
     file: PAGE,
-    from: `                          <td className="p-3 text-text-secondary">{r.products}</td>`,
-    to: `                          <td className="p-3 text-text-secondary">{r.products}</td>
-                          <td className="p-3 text-right"><Link href={"/admin" as Route} className="row-link">open</Link></td>`,
+    from: `<Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>`,
+    to: `<Link href={r.href as Route} className="whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>`,
     expect: "1.407 · 432(h) · the roster carries a way-out link EXACTLY when",
     suite: "console-mem",
   },
@@ -1533,11 +1555,16 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
+    /* ⛔ EXPECT RE-QUOTED 2026-09-21 (C5-8, the alerts lane). NOTHING WAS BROKEN HERE — the declaration named the
+     * wrong HALF of its own rule. `1.373` prints two labels: the SUBJECT half, which reads `Account` out of each
+     * panel's own slice and which this mutation never touches, and the half one line below it, which pins the
+     * roster's Status `<th>` literally and counts the roster's two floors. The second one caught the defect on the
+     * batch drive; the `expect` quoted the first, so the drive reported WRONG-ASSERTION on a guard that worked. */
     name: "432o-status-floor · the status column loses its floor, so the AUTO-PAUSED chip is a two-line pill again",
     file: PAGE,
     from: `                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>`,
     to: `                      <th scope="col" className="text-left p-3">Status</th>`,
-    expect: "1.373 · EVERY panel that paints the subject column carries the SAME floor",
+    expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
     suite: "console-mem",
   },
   {
@@ -1608,14 +1635,19 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
-    /* ⛔ 432(j) + 432(n) · the master switch's reason goes back to the head action's WORD FOR WORD. */
-    name: "432j-switch-reason · both disabled controls say the same seven words again",
+    /* ⛔ 432(j) + 432(n) · the two disabled controls on the strip say the same words, about 105px apart.
+     * ⛔ RE-AIMED 2026-09-21 (C5-8, the alerts lane). The old `to` set `switchReason` to a THIRD sentence — the
+     * retired build note "Designating an account is not ready on this build yet." — while the withdrawn state's
+     * `actionReason` reads "The desk has been withdrawn, so no account can be designated." The two still DIFFERED,
+     * so the rule this declaration names (`switchReason !== actionReason`) stayed correctly green and
+     * `432(j) · CONTROL` caught the third string instead: the mutation never created the defect it is named for.
+     * ⭐ IT IS AIMED AT THE HEAD ACTION'S SENTENCE RATHER THAN THE SWITCH'S, and deliberately. Making the two equal
+     * from this side leaves `432(j) · CONTROL`'s "the switch's own sentence still says `switch`" GREEN, so the drive
+     * reddens exactly the rule it names instead of taking that rule's own control down with it. */
+    name: "432j-switch-reason · the head action's sentence goes back to the master switch's, so both disabled controls say the same words",
     file: GATE,
-    /* ⭐ RE-ANCHORED at C7 step 4b to the SAME defect on the line that now carries it. The sentence moved when the
-       switch became operable — it is no longer a build note, it is the one state where a disabled switch owes its
-       own words — and the mutation still does exactly what it always did: make it the head action's sentence. */
-    from: `      : "The desk has been withdrawn. It cannot be switched on again.",`,
-    to: `      : "Designating an account is not ready on this build yet.",`,
+    from: `    actionReason: withdrawn ? "The desk has been withdrawn, so no account can be designated." : null,`,
+    to: `    actionReason: withdrawn ? "The desk has been withdrawn. It cannot be switched on again." : null,`,
     expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
     suite: "console-mem",
   },
@@ -1670,11 +1702,22 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
-    /* ⛔ 416 · the unparsed Products cell goes back to a lowercase sentence fragment beside an em dash. */
+    /* ⛔ 416 · the unparsed Products cell goes back to a lowercase sentence fragment beside an em dash.
+     * ⛔ RE-AIMED 2026-09-21 (C5-8, the alerts lane). The Products cell is ONE ternary chain carrying the literal
+     * "Couldn't read" TWICE — once for `parsed == null` (the read itself failed) and once for `!parsed.ok` (the
+     * reader could not parse what it got). The old `from` matched the FIRST, while the case's fixture plants
+     * `rules: { schemaVersion: 9_999 }`, which `parseHouseBotRules` answers as `{ ok: false, code:
+     * "RULES_FROM_FUTURE" }` — NOT null — so the render reads the SECOND. The assertion was sound; the mutation was
+     * aimed at a branch the fixture never reaches, and the drive reported MISSED on a guard that works.
+     * ⚠️ AND THE ACCIDENT LEFT A REAL FINDING BEHIND: the `parsed == null` branch is measured by NOTHING in this
+     * suite — no fixture plants a FAILED rules read — so it could become a lowercase fragment tomorrow and no
+     * assertion would move. Registered as a suite finding rather than repaired here. */
     name: "416-products-case · an unreadable rule set renders a lowercase fragment mid-table again",
     file: GATE,
-    from: `      products: parsed == null ? "Couldn't read"`,
-    to: `      products: parsed == null ? "couldn't read"`,
+    from: `        : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
+          : "Couldn't read",`,
+    to: `        : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
+          : "couldn't read",`,
     expect: "1.310 · 416 · a rule set the reader cannot parse renders ONE sentence-cased unknown",
     suite: "console-mem",
   },

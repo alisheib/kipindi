@@ -4535,7 +4535,17 @@ try {
     let oneAnswer: Any = null;
     const bulkTag = `c7s6bulk${process.pid}`;
     const bulk: string[] = [];
-    for (let i = 0; i < 12; i++) bulk.push(await w.user({ id: `usr_${bulkTag}_${i}`, role: "PLAYER" }));
+    /* ⛔ THE IDS ARE ZERO-PADDED AND SEEDED BACKWARDS, AND THAT IS THIS CASE'S INSTRUMENT RATHER THAN a detail of
+     * the fixture (C5-8, 2026-09-21, the batch's `387-order` MISS). They were `_0` … `_11` inserted ASCENDING and
+     * the answer is capped at ten — so the ten that survived the slice were `_0` … `_9`, single digits whose
+     * LEXICOGRAPHIC order IS their insertion order. Deleting the picker's `hits.sort(...)` outright therefore left
+     * BOTH halves below true and the drive reported MISSED: the ordering rule was being satisfied by the shape of
+     * the fixture and not by the sort it is about. Padded to two digits and inserted in reverse, the store's
+     * insertion order is the exact REVERSE of the sorted order, so the sort is load-bearing on the memory twin as
+     * well as on Postgres, where `findMany` has no `orderBy` at all.
+     * ⚠️ THE PADDING ALSO KEEPS THE CONTROL BELOW HONEST: unpadded, `_1` is a PREFIX of `_10` and `_11`, and the
+     * "a query that matches ONE" control searches by whole id. Two digits, no id a prefix of another. */
+    for (let i = 11; i >= 0; i--) bulk.push(await w.user({ id: `usr_${bulkTag}_${String(i).padStart(2, "0")}`, role: "PLAYER" }));
     const wide = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
     const again = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
     ok("1.387 · 412 · the answer is capped at ten options and the count says so — the number MATCHED, not the number shown, and what to do about it",
@@ -6084,9 +6094,22 @@ export default function Ruling513Control() {
     ok("1.409 · the caption's FIRST text node is the cap's name and each figure sits in its OWN `.amount` span — `label` is `aria-label` and paints nothing",
       /caption=\{\s*<>\s*\{row\.name\}/.test(pageCode)
         && /<span className="amount tabular-nums">\{h\.figure\}<\/span>/.test(pageCode), "");
-    ok("1.409 · `captionText` is PLAIN — no markup, no `<span`, and it carries 361's grammar after the cap's name",
-      decomment(read(GATE)).includes("captionText: `${name} · ${cell.text}`")
-        && !/captionText=\{[^}]*</.test(pageCode), "");
+    /* ⛔ THE POPULATION IS EVERY `captionText` THE GATE BUILDS, NOT THE FIRST ONE A FILE SCAN FINDS (C5-8,
+     * 2026-09-21, the batch's `409-name` MISS). This read `.includes("captionText: `${name} · ${cell.text}`")`
+     * over the WHOLE gate module — and that literal stands at TWO sites, the roster's `usageRow` and the account
+     * page's own usage shell — so either could lose the cap's NAME entirely while the other went on satisfying the
+     * scan. The declared mutation deleted one of them and this line stayed GREEN.
+     * ⭐ A BROAD SCAN STANDING IN FOR A NARROW SUBJECT is the shape three of the four measurement defects this
+     * batch found all share. The rule is now stated over the DERIVED population — every `captionText:` the module
+     * writes, the interface's own `captionText: string;` excluded because it is a type and not a site — and the
+     * `>= 2` is a FLOOR, so a site DELETED is red too and there is no count to keep up to date. */
+    const captionAssigns = [...decomment(read(GATE)).matchAll(/captionText: ([^,;\n]+)/g)]
+      .map((m: Any) => String(m[1]).trim()).filter((s: string) => s !== "string");
+    const cellCaptions = captionAssigns.filter((s: string) => s.includes("cell.text"));
+    ok("1.409 · `captionText` is PLAIN — no markup, no `<span`, and EVERY site the gate builds one at names the cap FIRST, with 361's grammar after it",
+      cellCaptions.length >= 2 && cellCaptions.every((s: string) => s === "`${name} · ${cell.text}`")
+        && captionAssigns.every((s: string) => s === "name" || s.startsWith("`${name} · "))
+        && !/captionText=\{[^}]*</.test(pageCode), j({ captionAssigns }));
     /* ⛔ 1.544 · THE BAR'S AT/OVER CLAUSE IS THE ONLY THING THAT SEPARATES 100% FROM 185%, AND IT IS MEASURED
      * RATHER THAN ARGUED. `ProgressBar` clamps at `Math.min(100, …)`, so `limits-at-1280.png` and
      * `limits-over-1280.png` — taken on a served build with usage at 7,430,000 against caps of 7,430,000 and
@@ -6227,12 +6250,23 @@ export default function Ruling513Control() {
       return hits.length > 0;
     })();
     const typed = /<Input\b|<Textarea\b|<Select\b|<input\b|<textarea\b|<select\b/.test(sectionCode);
-    const guarded = /<UnsavedChangesGuard\b/.test(sectionCode);
+    /* ⛔ THE GUARD IS MEASURED ON THE FORM THAT OWES IT, NEVER ON THE SECTION (C5-8, 2026-09-21, the batch's
+     * `537-guard` MISS). `guarded` read `/<UnsavedChangesGuard\b/` over `sectionCode` — EVERY file under the desk,
+     * joined into one string — and `new/designate-wizard.tsx` carries a guard of its own, so the limits form could
+     * lose its guard entirely and this whole chain stayed GREEN with the defect injected. The declared mutation
+     * renamed the form's guard and nothing moved.
+     * ⭐ A GUARD'S SCOPE IS PART OF ITS CLAIM. The chain below is a statement about the LIMITS form — its typed
+     * controls, its wired save, the guard in front of it — so the guard is read out of that form's own file.
+     * ⚠️ NARROWER, NOT WEAKER: a guard anywhere under the section satisfied the old test; only the one in front of
+     * this form satisfies this one, and `test:unsaved-changes` still holds every other admin form to the same rule
+     * from the population side. */
+    const LIMITS_FORM = `${SECTION}/limits-form.tsx`;
+    const guarded = /<UnsavedChangesGuard\b/.test(decomment(read(LIMITS_FORM)));
     const bars = (sectionCode.match(/<PendingChangesBar\b/g) ?? []).length;
     const forms = (sectionCode.match(/<form\b/g) ?? []).length;
-    ok("1.412 · 537 · a typed control, a wired limits SAVE and an `UnsavedChangesGuard` exist TOGETHER or not at all — each one is red without the other two",
+    ok("1.412 · 537 · a typed control, a wired limits SAVE and the limits form's OWN `UnsavedChangesGuard` exist TOGETHER or not at all — each one is red without the other two",
       typed === saveWired && saveWired === guarded && typed === true,
-      j({ typedControl: typed, saveWired, guarded }));
+      j({ typedControl: typed, saveWired, guarded, guardRead: LIMITS_FORM }));
     ok("1.412 · EXACTLY ONE guarded form on the tab, with the singleton `PendingChangesBar` beside it — the bar is a singleton and two would elect one painter and hide the other",
       forms === 1 && bars === 1 && guarded, j({ forms, bars }));
     /* ⛔ THE FORM'S COLUMN IS THE FORM TIER, AND IT DID NOT MOVE WHEN THE INPUTS ARRIVED (412). */
@@ -7332,9 +7366,18 @@ export default function Ruling513Control() {
         && area5.length >= 19 && area5.every((id) => D19.some((d) => d.id === id))
         && j(extras) === j(["1.332", "1.342", "1.343"]),
       j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, dueHere: dueHere.length, area5: area5.length, notInRollCall: area5.filter((id) => !D19.some((d) => d.id === id)), missing: missing.map((d) => `${d.id} (${d.what})`), later: later.map((d) => `${d.id}@step${d.step}:${d.owner}`) }));
-    ok("1.398 · LADDER · every rung below the highest one this tree carries is either PRESENT or a hole this repository has recorded — an unrecorded hole is named here, and a recorded one that has since been built is named so the record is deleted with the build",
-      rungs.gaps.every((g) => RECORDED_GAPS.includes(g)) && RECORDED_GAPS.every((g) => rungs.gaps.includes(g)),
-      j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, recorded: RECORDED_GAPS, tree }));
+    /* ⛔ AND THE INSTRUMENT IS SHOWN ABLE TO REPORT A HOLE, INSIDE THIS CASE'S OWN PREDICATE (C5-8, 2026-09-21,
+     * the batch's `398-ladder-hole`). `RECORDED_GAPS` is empty, so the two halves reduce to "`gaps` is empty" —
+     * and a `ladder()` that has stopped computing gaps at all returns `[]`, which satisfies them BOTH VACUOUSLY.
+     * The declared mutation does exactly that, and this line stayed GREEN: the case was blind to its own
+     * instrument being switched off, which is the single failure a ratchet read off disk must not have.
+     * ⚠️ THE FIX IS THE VACUITY, NOT THE LABEL — the label is printed verbatim and always was; the first drive's
+     * recorded reason ("the label had been reworded") was re-measured and is false. The vector is this same tree
+     * with the LANDING half of step 5 removed: the ladder must report that one hole and nothing else. */
+    ok("1.398 · LADDER · every rung below the highest one this tree carries is either PRESENT or a hole this repository has recorded — an unrecorded hole is named here, a recorded one that has since been built is named so the record is deleted with the build, and the LADDER ITSELF is shown able to report a hole, so an empty `gaps` is a measurement rather than an instrument switched off",
+      rungs.gaps.every((g) => RECORDED_GAPS.includes(g)) && RECORDED_GAPS.every((g) => rungs.gaps.includes(g))
+        && j(ladder({ ...tree, activity: false }).gaps) === j(["5:activity"]),
+      j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, recorded: RECORDED_GAPS, probe: ladder({ ...tree, activity: false }).gaps, tree }));
     /* ⛔ THE POSITIVE HOLE CASE IS DELETED, NOT WEAKENED (C7 step 5, the landing half). It asserted
      * `rungs.gaps.length === 1 && rungs.gaps[0] === "5:activity" && tree.activity === false` — that this tree
      * REALLY had the hole the list recorded. Its subject is gone: there is no hole. Lowering it to `>= 0` would
