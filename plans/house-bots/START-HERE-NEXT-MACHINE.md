@@ -1,5 +1,21 @@
 # START HERE — the prompt for the next machine (written 2026-09-21, Ali-Blade15)
 
+> # ⛔ THE NEXT MACHINE HAS RUN. READ `INTEGRATION-2026-09-21.md` BEFORE ACTING ON §4 OR §5 BELOW.
+> This file was written on Ali-Blade15 *for* the next machine. That machine (OMEGA-COMPILE01) picked it up
+> the same day and worked through it, so several figures here are now closed or were undercounts:
+>
+> | this file says | what was measured on the next machine |
+> |---|---|
+> | §2 "`ops-lane` — every lane merged into it" | it was NOT: **ten commits** across four lanes had landed after it absorbed them. All five branches are merged now. |
+> | §4.1 six audit exports · §4.2 `houseBots` in the feature table | both CLOSED (platform vocabulary; renamed to the neutral `desk`, the L52 remedy) |
+> | §4.3 "**two** dead anchors" | an undercount by seven — there were **NINE**, all rotted by `§2J · THE JOIN`. Re-pointed AND driven: 7 caught / 0 wrong-assertion / 0 missed, plus the chatbot and console ones. |
+> | §4.4 two readiness papers | CLOSED — `RELEASE-READINESS-2026-09-21.md` now carries a dated supersede block naming `READINESS-2026-09-21.md` as the record. Neither is deleted. |
+> | §5 "the rows needing PRODUCTION — permanently not measurable" | re-triaged row by row: of 76 owed rows, exactly **ONE** genuinely needs production. |
+> | §7 "🔴 ALI-BLADE15 HAS FAILING RAM" | correct for THAT machine. OMEGA-COMPILE01 has 31.8 GB, 12 cores, `gc.auto` default, and the pre-push guard already wired. Its blockers do not transfer. |
+>
+> ⛔ **Everything else in this file still stands**, especially §6 (the verification standard) and §8 (what only
+> Ali decides) — §6 is what caught every defect on the next machine too, including three in its own instruments.
+>
 > Paste the block in §0 as your first message on the new machine. Everything else in this file is the detail
 > behind it. ⛔ **RE-DERIVE EVERY NUMBER.** Every figure here was measured on 2026-09-20/21 and is ageing.
 
