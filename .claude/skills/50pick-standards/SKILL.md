@@ -256,7 +256,28 @@ Selcom card `redirect_url`/`cancel_url` and the email-confirmation link. The cod
 stranding a card deposit on a railway.app host.
 
 Migrations: additive where possible, tested on the local PG first, prod gets them via the
-deploy — never by hand.
+deploy — never by hand. ⛔ **And never without `npm run test:backup-schema`** — the full
+protocol is `.claude/skills/50pick-audit/SKILL.md` §4, which is its one home.
+
+### ⛔ 8a. A migration is not done until the BACKUP has been run against it
+`db:backup` builds its schema DDL from the **live database**, not from the repo, so a
+migration is the one kind of change that can break disaster recovery without touching a
+single line of the backup toolchain. Nothing else in this repo runs the dump against a
+schema before it ships — `test:backup` reads source text, `predeploy` never dumps anything,
+and the nightly is the first thing to try it, at 00:15 UTC, on a runner, reporting by email.
+**`npm run test:backup-schema` is the gate**: throwaway cluster → every migration → the real
+`db:backup` → a red control that proves it can still fail.
+
+🔴 **THE THREE NIGHTS (2026-09-19 → 21).** The house-bot migration introduced this schema's
+first all-lowercase index names (`hbp_*`, `hbi_*`, `hbe_*`, `hbt_*`). Postgres renders those
+identifiers **unquoted**, a guard inside `db:backup` was searching its own rendered SQL for
+the **quoted** form, and seven unique indexes that were present in the dump were reported as
+lost. The dump refused itself for three consecutive nights; the platform ran **80 hours with
+no verified backup**. ⛔ **The artifact was correct and the guard was wrong** — and the
+guard had been green for months only because every identifier it had ever met happened to be
+mixed-case. A check that matches rendered syntax instead of meaning is green until the first
+input whose rendering it failed to predict, and that day it does not merely miss: it cries
+wolf, and a wolf nobody believes is the next real one. Record: `docs/BACKUP-RUNBOOK.md`.
 
 ## 8b. Working alongside a PARALLEL session (added 2026-07-30, rewritten 2026-08-03)
 

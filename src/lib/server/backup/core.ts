@@ -427,6 +427,51 @@ export function ident(name: string): string {
   return `"${name.replace(/"/g, '""')}"`;
 }
 
+/**
+ * Every index and constraint NAME a chunk of SQL creates — quoted or bare.
+ *
+ * 🔴 WHY THIS EXISTS, AND WHY IT IS NOT `sql.includes('"' + name + '"')`. That substring
+ * test is what the dump used to ask, and on 2026-09-19 it took the nightly backup down for
+ * three consecutive nights while the artifact it was refusing was CORRECT.
+ *
+ * `pg_get_indexdef` quotes an identifier **only when it has to**. Every index this schema
+ * carried until 2026-09-18 was Prisma-generated with a mixed-case name
+ * (`HouseBot_userId_live_key`, `Transaction_provider_providerRef_key`), which Postgres
+ * always renders quoted — so searching the rendered SQL for the QUOTED name found it, and
+ * the guard was green for months over a test that only ever worked by accident. The
+ * house-bot migration introduced this schema's first **all-lowercase** fixed index names
+ * (`hbp_*`, `hbi_*`, `hbe_*`, `hbt_*`); Postgres renders those BARE, the quoted search
+ * missed all seven, and `db:backup` refused a dump that already contained them.
+ *
+ * ⛔ The lesson is NOT "also match the bare form". It is **compare names with names**: a
+ * guard that greps rendered SQL is matching syntax, not meaning, and the first identifier
+ * whose rendering it failed to predict makes it lie. Both callers now build a Set of what
+ * the dump actually creates, out of the rows it creates them FROM.
+ *
+ * ⚠️ And a guard that cries wolf is not a safe failure. It cost three nights of recovery
+ * window on a licensed real-money platform, and the next true refusal is the one nobody
+ * believes.
+ */
+export function sqlObjectNames(sql: string): Set<string> {
+  // Postgres renders a bare lowercase identifier unquoted and quotes everything else, so a
+  // name must be matched in both forms — and `""` inside a quoted name is one literal `"`.
+  const NAME = String.raw`(?:"((?:[^"]|"")+)"|([A-Za-z_\u0080-￿][A-Za-z0-9_$\u0080-￿]*))`;
+  const patterns = [
+    String.raw`CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?${NAME}`,
+    String.raw`CONSTRAINT\s+${NAME}`,
+  ];
+  const names = new Set<string>();
+  for (const p of patterns) {
+    const re = new RegExp(p, "gi");
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(sql)) !== null) {
+      const raw = m[1] !== undefined ? m[1].replace(/""/g, '"') : m[2];
+      if (raw) names.add(raw);
+    }
+  }
+  return names;
+}
+
 export function maskUrl(url: string): string {
   return url.replace(/:\/\/[^@]*@/, "://***:***@");
 }
