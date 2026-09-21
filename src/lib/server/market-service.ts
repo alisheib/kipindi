@@ -1319,7 +1319,42 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
     // matters more now, not less: it is what stops a simultaneous UP+DOWN pair from each
     // seeing "no opposite side" and both accruing turnover.
     const mine = await positionStore.listForUserAndMarket(userId, opts.marketId, lockTx);
-    const opposite = mine.find((p) => p.status === "OPEN" && p.side !== opts.side);
+    /**
+     * ⛔ A HOUSE POSITION IS NOT THE HOLDER'S HEDGE, AND COUNTING IT AS ONE TOOK THE HOLDER'S OWN MONEY.
+     *
+     * This read is UNFILTERED and returns house-marked rows — the house module proves it, because
+     * `house-bot/fire.ts:182` and `house-bot/trigger.ts:330` call this very function and then filter
+     * `p.houseBotId == null`. This line did not, and a designated account holds BOTH its holder's own
+     * positions and the engine's, so an OPEN house position on the other side made `opposite` truthy for
+     * the holder's own unmarked, real-money stake — which then accrued ZERO bonus wagering (:1635).
+     *
+     * ⛔ PLAN I7 / H5–H9 sanction skipping accrual for the HOUSE stake — that is the `ctx.kind === "house"`
+     * arm at :1635 and it is untouched here. NOTHING sanctions suppressing it on the holder's OWN stake.
+     *
+     * Three things made it worse than an ordinary hedge, and one filter closes all three:
+     *  1. THE DOCUMENTED ESCAPE WAS UNREACHABLE. :1622 tells the player to "close the opposite leg first —
+     *     free inside 5 minutes". A house leg cannot be closed: `sellable` clears on `!housePosition`
+     *     (:2939) and `cashOutPosition` refuses outright (:3004). The rule's own exit was shut exactly and
+     *     only where the house caused the problem.
+     *  2. IT WAS STICKY AND TWO-SIDED. Per :1617, an open opposite suppresses a top-up on the side the
+     *     player started on too — so while the engine's position stayed open, EVERY further bet by the
+     *     holder on that market, either side, earned nothing.
+     *  3. THE REVERSAL WAS ASYMMETRIC, so earned progress was NET DESTROYED. The holder's own row is
+     *     unmarked, so a one-sided refund or void reverses it at :4076 (`if (r.houseBotId == null)`) —
+     *     decrementing `wageredTzs` for turnover that never accrued, and `reverseWageringCore` floors per
+     *     GRANT at 0, not per stake, so progress earned on OTHER markets was wiped. The comment at :4074
+     *     states the intended invariant ("a house stake recorded no turnover, so its refund removes none
+     *     from the holder's personal bonus requirement"); it was true of the house row and false of the
+     *     holder's, which is the half nobody had read.
+     *
+     * ⛔ THIS IS MONEY, not bookkeeping: on fulfilment `recordWageringCore` moves `remainingTzs` into the
+     * REAL wallet (`bonus-service.ts:403`), so withholding accrual and then reversing it is the difference
+     * between a bonus converting to withdrawable cash and not.
+     * ⭐ AND THE ANTI-HEDGE RULE IS NOT WEAKENED. It exists to stop a PLAYER converting a grant risk-free by
+     * taking both sides. The holder does not choose, control, own the P&L of, or even know about the house
+     * leg (D19) — and cannot close it. A stake they did not place is not a hedge they made.
+     */
+    const opposite = mine.find((p) => p.houseBotId == null && p.status === "OPEN" && p.side !== opts.side);
 
     // Daily loss-limit gate (RG / GLI-19), re-read INSIDE the lock so a concurrent
     // bet that already committed its stake is counted (audit C4). Before any debit,
