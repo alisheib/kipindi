@@ -345,7 +345,19 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure:
  * red that preceded this was 106/2: two cases FAILING, not missing, so the floor was never the thing to move.
  * ⛔ The floor was NOT lowered to meet the red. 109 is again the number a green run PRINTED, on this commit.
  */
-const MIN_ASSERTIONS = 109;
+/**
+ * ⭐ 109 → 114, 2026-09-21, IN THE COMMIT THAT MADE THE RUN PRINT 114 — and it was left behind for two
+ * commits before that, which is the part worth recording. `247e5913` added `5.2.c6` (110) and `e1a4aa90`
+ * replaced a shape exemption with the file-keyed `PLAYER_TEXT_REGISTER` and added `5.2.c3b`, `5.2.c6b`,
+ * `5.2.c6c` and `5.2.c6d` (114). The floor stayed at 109 through both.
+ * ⛔ AND THE FIVE UNPROTECTED ASSERTIONS WERE EXACTLY THE WRONG FIVE: `5.2.c3b` (SHRINK-ONLY — the
+ * registered string must still be printed by its own file) plus `5.2.c6`/`c6b`/`c6c`/`c6d`, which ARE the
+ * narrowness proof of that exemption. All five could have stopped running while this suite printed ALL PASS
+ * and exited 0, and it is a predeploy gate — so the whole 143-gate chain would have gone green over an
+ * exemption with nothing left watching it. A floor that trails the assertions it protects is not a ratchet.
+ * ⛔ 114 is what a green run PRINTED on this tree, not 109 + 5.
+ */
+const MIN_ASSERTIONS = 114;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);
