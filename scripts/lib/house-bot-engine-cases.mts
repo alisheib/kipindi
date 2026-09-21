@@ -4781,6 +4781,28 @@ await guard("20", async () => {
   /* ── the two 355 distinctions the band already pays for, one card over ── */
   ok("20.16 · 355 · a roster read that FAILED is not zero: the 'nothing is running' row is not claimed when the count is unknown",
     verdict(live, { activeAccounts: null }) === null && verdict(live, { activeAccounts: 0 }) === "IDLE" && verdict(live, { activeAccounts: 2 }) === null, "");
+  /* ══ CLAIMS_BLOCKED · register:1218 · the state that used to render as NOTHING ═══════════════════════════════
+   * ⛔ THE DEFECT THESE PIN. `claimGate` refuses every claim while this container's skew is unknown or too large,
+   * and `pollerPass` then returned early writing NOTHING. The planner kept beating, so the verdict saw a fresh
+   * planner beat (not STALE), no poller error (not POLLER_FAILING), no failed duties and active accounts (not
+   * IDLE) — and answered `null`, which the Desk renders as no Callout at all. Switch ON, green chip, full tiles,
+   * and every stake refused. 20.19 is the control that makes these mean something: the SAME rows without the
+   * marker must still answer `null`, or the case would pass on the row's mere presence. */
+  ok("20.18 · ⭐ 1218 · a live planner and a poller row MARKED claims-blocked → CLAIMS_BLOCKED — the verdict that used to be `null` while nothing could be staked",
+    verdict([...live, row(POLLER, { pollerErrorCode: `${K.CLAIMS_BLOCKED_CODE}:SKEW` })]) === "CLAIMS_BLOCKED", "");
+  ok("20.19 · ⛔ CONTROL · the SAME rows with the marker REMOVED answer `null` again — so 20.18 turns on the marker and not on the poller row existing",
+    verdict([...live, row(POLLER, {})]) === null, "");
+  ok("20.20 · 1218 · the marker OUTRANKS a stale claim failure — a claim never ATTEMPTED is not a claim that THREW, and an instance blocked today may still carry last week's `pollerErrorAt`",
+    verdict([...live, row(POLLER, { beatAt: iso20(60_000), pollerErrorAt: iso20(3_000), pollerErrorCode: `${K.CLAIMS_BLOCKED_CODE}:SKEW_UNKNOWN` })]) === "CLAIMS_BLOCKED", "");
+  ok("20.21 · ⛔ CONTROL · a REAL claim failure message is never mistaken for the marker — `recordClaimFailure` writes the thrown message into the very same column, so only the prefix separates them",
+    verdict([...live, row(POLLER, { beatAt: iso20(60_000), pollerErrorAt: iso20(3_000), pollerErrorCode: "connection terminated unexpectedly" })]) === "POLLER_FAILING", "");
+  ok("20.22 · the fold hands back the REASON, and the two gate reasons stay distinguishable — the Callout says a different sentence for a clock that could not be READ than for one that DISAGREES",
+    (() => {
+      const a = beatsOf([...live, row(POLLER, { pollerErrorCode: `${K.CLAIMS_BLOCKED_CODE}:SKEW_UNKNOWN` })]);
+      const b = beatsOf([...live, row(POLLER, { pollerErrorCode: `${K.CLAIMS_BLOCKED_CODE}:SKEW` })]);
+      const c = beatsOf([...live, row(POLLER, { pollerErrorCode: "some thrown message" })]);
+      return a?.claimsBlockedReason === "SKEW_UNKNOWN" && b?.claimsBlockedReason === "SKEW" && c?.claimsBlockedReason === null;
+    })(), "");
   ok("20.17 · CONTROL · every verdict this predicate can answer was reached by a case in THIS run",
     (() => {
       const reached = new Set([
@@ -4790,8 +4812,9 @@ await guard("20", async () => {
         verdict([...live, row(POLLER, { beatAt: iso20(60_000), pollerErrorAt: iso20(3_000) })]),
         verdict([row(ENGINE, { bootAt: iso20(600_000) }), row(PLANNER, { beatAt: iso20(5_000), pollerErrorCode: "hourly" })]),
         verdict(live, { activeAccounts: 0 }),
+        verdict([...live, row(POLLER, { pollerErrorCode: `${K.CLAIMS_BLOCKED_CODE}:SKEW` })]),
       ].filter((v) => v !== null));
-      return j([...reached].sort()) === j(["BOOTING", "DUTY_FAILED", "IDLE", "POLLER_FAILING", "STALE", "UNREADABLE"]);
+      return j([...reached].sort()) === j(["BOOTING", "CLAIMS_BLOCKED", "DUTY_FAILED", "IDLE", "POLLER_FAILING", "STALE", "UNREADABLE"]);
     })(), "");
 });
 

@@ -37,6 +37,7 @@ import {
   type CrossRuleId,
   type HouseBotCaps,
   type HouseBotLimits,
+  type HouseLimitConflict,
   type LimitField,
   type LimitsContext,
   type RulesBot,
@@ -59,7 +60,17 @@ export type LimitChange = { field: string; before: number | null; after: number 
  */
 export type LimitsSaveResult =
   /** ⛔ `recorded` is FALSE when the write LANDED and its compliance row did not — see the audit block below. */
-  | { ok: true; limitsVersion: number; changes: LimitChange[]; recorded: boolean }
+  /**
+   * ⭐ `conflicts` ARE CARRIED OUT, AND UNTIL TODAY THEY WERE DROPPED ON THE FLOOR (2026-09-21).
+   *
+   * ⛔ `validateHouseBotLimits` has always returned them and NOTHING in `src/` ever read one. So an owner could
+   * lower the per-market limit under an account's own maximum stake, be told "1 limit changed.", and every
+   * stake from that account would be refused from that moment — with the sentence explaining it composed
+   * server-side and thrown away. ⚠️ They are NOT errors and must never refuse the save: the validator classes
+   * them `kind: "CONFLICT"`, and lowering a ceiling is always the safe direction on a money form. The owner's
+   * ruling (2026-09-21) is SAVE, THEN WARN.
+   */
+  | { ok: true; limitsVersion: number; changes: LimitChange[]; recorded: boolean; conflicts: HouseLimitConflict[] }
   | { ok: false; code: "SCHEMA" | "UNREADABLE" | "CONFLICT" }
   | { ok: false; code: "INVALID"; field: LimitField; rule: CrossRuleId | null; message: string };
 
@@ -167,5 +178,5 @@ export async function saveHouseBotLimits(input: {
     console.error("[house-bot] the limits_saved compliance row could not be written (the limits DID change):",
       err instanceof Error ? err.message : String(err));
   }
-  return { ok: true, limitsVersion: cas.row.limitsVersion, changes, recorded };
+  return { ok: true, limitsVersion: cas.row.limitsVersion, changes, recorded, conflicts: checked.conflicts };
 }

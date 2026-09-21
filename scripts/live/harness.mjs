@@ -260,12 +260,43 @@ export async function login(page, who) {
   // a hidden input of the same name — fill the hidden one and it times out, which reads as
   // a broken login page on a page that is fine. Ask for whichever visible node is present.
   const field = (await page.locator("#phone").count()) ? "#phone" : "#identifier";
-  await page.fill(field, p.phone);                       // the VISIBLE node, 9 digits
+  const mirror = field.slice(1);                         // "phone" | "identifier"
+
+  /**
+   * ⭐ FILL UNTIL THE MIRROR AGREES, RATHER THAN FILL ONCE AND HOPE (2026-09-21).
+   *
+   * ⛔ THIS WAS A SINGLE `fill()` FOLLOWED BY THE ASSERTION BELOW, and on a `next dev` host it
+   * threw every time. `networkidle` says the NETWORK is quiet; it says nothing about React having
+   * attached. A production build hydrates fast enough that the race is invisible, so the whole
+   * design-gate toolkit worked against production and could not sign in to a local dev server at
+   * all — which is the other half of why these instruments were never run locally.
+   * ⚠️ THE ASSERTION IS NOT WEAKENED, and that is the point: the same error, with the same words,
+   * still throws when the mirror never syncs. What changed is that a SLOW host now gets the time
+   * it needs instead of being reported as a broken login page. `waitForFunction` returns the
+   * moment the mirror agrees, so a fast host pays nothing.
+   * ⚠️ RE-FILLED each round: hydration can REPLACE the node's value with the React default, so
+   * waiting without re-filling would poll a field that hydration has just emptied.
+   */
+  const FILL_ROUNDS = 8;
+  let synced = "";
+  for (let round = 0; round < FILL_ROUNDS; round++) {
+    await page.fill(field, p.phone);                     // the VISIBLE node, 9 digits
+    synced = await page
+      .waitForFunction(
+        ([sel, want]) => {
+          const el = document.querySelector(`input[name="${sel}"]`);
+          return el && el.value === want ? el.value : null;
+        },
+        [mirror, p.phone],
+        { timeout: 1500 },
+      )
+      .then((h) => h.jsonValue())
+      .catch(() => "");
+    if (synced === p.phone) break;
+  }
 
   // Prove the mirror synced before submitting — otherwise the failure surfaces much later
   // as an unexplained "wrong password" and costs a diagnosis every time.
-  const mirror = field.slice(1);                         // "phone" | "identifier"
-  const synced = await page.locator(`input[name="${mirror}"]`).inputValue().catch(() => "");
   if (synced !== p.phone) {
     throw new Error(
       `PhoneInput did not sync: visible ${field}="${p.phone}" but hidden ` +

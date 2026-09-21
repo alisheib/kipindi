@@ -44,6 +44,7 @@
 import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { Field, Input } from "@/components/ui/input";
 import { useDeferredToast } from "@/components/ui/toast";
 import { PendingChangesBar, UnsavedChangesGuard, useFormDirty } from "@/components/ui/unsaved-changes";
@@ -215,13 +216,25 @@ export function DeskLimitsForm({
    * file (384). A refusal carries the sentence AND, when there is one to fix, the field's neutral key.
    */
   onSave: (input: { baseVersion: number; values: Record<string, string> }) => Promise<
-    { ok: true; limitsVersion: number; changed: number; recorded: boolean } | { ok: false; error: string; field?: string }
+    { ok: true; limitsVersion: number; changed: number; recorded: boolean; warnings: string[] } | { ok: false; error: string; field?: string }
   >;
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  /**
+   * ⭐ WHAT THE LAST SAVE BROKE, IN THE SERVER'S OWN FINISHED SENTENCES (ruling 388, owner's call 2026-09-21).
+   *
+   * ⛔ THE SAVE SUCCEEDS AND THEN WARNS — it never refuses. Lowering a ceiling is the safe direction on a money
+   * form and may be the very thing an officer is doing in a hurry; the validator itself classes these
+   * `kind: "CONFLICT"`, which never refuses. What was wrong was that the sentence explaining the consequence
+   * was composed server-side and DROPPED, so the officer read "1 limit changed." while an account quietly
+   * stopped being able to stake at all.
+   * ⚠️ IT CLEARS ON THE NEXT SAVE, including a failed one: a warning about the state before an edit is worse
+   * than none, because it reads as a warning about the state after it.
+   */
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   /* This form is UNCONTROLLED — fourteen `defaultValue` inputs — so React state never sees an edit. `useFormDirty`
      snapshots the form and compares, so a value typed back to what it was stops being dirty rather than warning
@@ -265,6 +278,7 @@ export function DeskLimitsForm({
         result = { ok: false, error: "The change did not reach the server. Nothing was saved — try again." };
       }
       if (!result.ok) {
+        setWarnings([]);
         setErrors(result.field ? { [result.field]: result.error } : {});
         toast({ title: "Couldn't save", description: result.error, variant: "danger" });
         if (!result.field) return;
@@ -276,6 +290,7 @@ export function DeskLimitsForm({
         return;
       }
       setErrors({});
+      setWarnings(result.warnings ?? []);
       markSaved();
       router.refresh();
       /* ⛔ A SAVE THAT LANDED WITHOUT ITS COMPLIANCE ROW SAYS SO. The change is real either way — telling the
@@ -293,6 +308,28 @@ export function DeskLimitsForm({
   return (
     <form ref={formRef} {...formProps} onSubmit={onSubmit} className="space-y-4">
       <DeskLimitFields rows={rows} anchorId={id} errors={errors} omitSection={omitSection} />
+
+      {/* ⛔ THE CONSEQUENCE OF A SAVE THAT LANDED, WHICH USED TO BE COMPOSED AND THROWN AWAY (owner's call,
+          2026-09-21). It sits BELOW the fields and ABOVE the bar so it reads in the order it happened: here is
+          what you changed, here is what that broke, here is Save.
+          ⛔ EVERY SENTENCE IS THE SERVER'S (ruling 388) — this file owns no copy longer than the heading, and
+          the heading is deliberately short for the same reason.
+          ⛔ AND IT IS THE KIT'S `Callout`, NOT A BOX OF ITS OWN. The first form of this hand-rolled
+          `border-warning-border bg-warning-bg px-4 py-3` — which is `callout.tsx`'s own recipe, re-typed. That
+          file exists BECAUSE this notice had already been hand-rolled in four places and drifted; a fifth copy
+          on the desk's money form is the same defect with a newer date. §B9/§B10: new design MERGES IN.
+          ⚠️ `warning`, never the betting ramp (§B2a): a limit that now excludes an account is an app state, not
+          a losing bet. And `role="status"`, not `alert`: the save SUCCEEDED, so this is news to read rather
+          than an error to interrupt for. */}
+      {warnings.length > 0 && (
+        <Callout tone="warning" size="md" surface="panel" role="status" title="Saved — check these">
+          <ul className="space-y-1">
+            {warnings.map((w) => (
+              <li key={w} className="max-w-[72ch]">{w}</li>
+            ))}
+          </ul>
+        </Callout>
+      )}
 
       <PendingChangesBar
         dirty={armed}

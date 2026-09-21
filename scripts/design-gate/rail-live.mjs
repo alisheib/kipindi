@@ -31,6 +31,10 @@
 import { chromium } from "playwright";
 import { login, BASE } from "../live/harness.mjs";
 
+/** The sign-in persona. ⛔ `admin` is Ali's PRODUCTION login and needs `.env.qa.local`; `PERSONA=local:ADMIN`
+ *  is the loopback fixture. The whole reason is in `session.mjs` beside `DESIGN_PERSONA`. Default unchanged. */
+const PERSONA = process.env.PERSONA || "admin";
+
 const ROUTE = process.env.ROUTE;
 const W = Number(process.env.W || 1440);
 if (!ROUTE) { console.error("ROUTE is required, e.g. ROUTE=/admin/system"); process.exit(2); }
@@ -45,7 +49,7 @@ page.setDefaultTimeout(60_000);
 
 let bad = 0;
 try {
-  await login(page, "admin");
+  await login(page, PERSONA);
   await page.goto(BASE + ROUTE, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(3000);
 

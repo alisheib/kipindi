@@ -62,6 +62,15 @@ export type EngineState = {
   /** `database clock − container clock`, ms; null until measured. */
   skewMs: number | null;
   skewMeasuredAt: number | null;
+  /**
+   * ⭐ THE GATE REASON THIS PROCESS HAS ALREADY WRITTEN DOWN, so the durable record is written on the TRANSITION
+   * and not on every 2 s tick (register:1218, 2026-09-21). `null` means "nothing recorded", which is also the
+   * state a fresh process starts in — so a container that restarts while blocked re-records on its next tick,
+   * and one that restarts after recovering clears on its first open gate.
+   * ⛔ IT IS A CACHE OF WHAT IS ON THE ROW, NEVER THE FACT ITSELF. The verdict reads the ROW; this only decides
+   * whether a write is needed, so losing it costs one redundant upsert and never a missed alarm.
+   */
+  claimsBlocked: string | null;
   pollerBusy: boolean;
   plannerBusy: boolean;
   sweepBusy: boolean;
@@ -128,7 +137,7 @@ declare global {
 
 function freshState(): EngineState {
   return {
-    started: false, stopping: false, refused: null, bootAt: null, inFlight: new Map(), skewMs: null, skewMeasuredAt: null,
+    started: false, stopping: false, refused: null, bootAt: null, inFlight: new Map(), skewMs: null, skewMeasuredAt: null, claimsBlocked: null,
     pollerBusy: false, plannerBusy: false, sweepBusy: false, lastPollerTickAt: null, lastPlannerTickAt: null, lastSweepTickAt: null,
     hook: { inFlight: 0, dropped: 0, cache: null, alerts: null },
     planner: { oversightAtMs: null, hourlyKey: null, scan: {} },

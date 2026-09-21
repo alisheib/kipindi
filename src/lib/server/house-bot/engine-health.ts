@@ -31,7 +31,7 @@
  * describes the process RENDERING the page, which is not necessarily the process running the engine — a healthy engine
  * on another replica would render as dead. Those figures may be shown only labelled as THIS server's.
  */
-import { BOOT_GRACE_MS, ENGINE_STALE_MS, RUNTIME_KEY } from "@/lib/house-bot/constants";
+import { BOOT_GRACE_MS, CLAIMS_BLOCKED_CODE, ENGINE_STALE_MS, RUNTIME_KEY } from "@/lib/house-bot/constants";
 import type { StoredHouseBotRuntime } from "../house-bot-dal";
 import { db } from "../store";
 import { inHouseAlertAudience } from "./alerts";
@@ -97,6 +97,13 @@ export type HouseEngineBeats = {
   pollerErrorStreak: number;
   /** A24's durable database-clock offset, from the instance that measured it last. */
   skewMs: number | null;
+  /**
+   * ⭐ THE GATE REASON OF ANY INSTANCE WHOSE CLAIMS ARE CURRENTLY BLOCKED, or `null` when none is
+   * (`CLAIMS_BLOCKED_CODE`, register:1218). ⛔ ANY, not all: one skewed container out of three stakes
+   * nothing, and the officer needs to know that before the shift is over — which is why the sentence
+   * it produces says "a server" rather than "the desk".
+   */
+  claimsBlockedReason: string | null;
 };
 
 const ms = (iso: string | null): number | null => {
@@ -131,6 +138,14 @@ export function houseEngineBeats(rows: readonly StoredHouseBotRuntime[]): HouseE
     pollerErrorAtMs: pollers.reduce<number | null>((acc, r) => newest(acc, ms(r.pollerErrorAt)), null),
     pollerErrorStreak: pollers.reduce((acc, r) => Math.max(acc, r.pollerErrorStreak), 0),
     skewMs: pollers.reduce<number | null>((acc, r) => (r.skewMs == null ? acc : acc == null ? r.skewMs : r.skewMs), null),
+    /* ⛔ THE PREFIX, NOT THE WHOLE STRING — the code is `CLAIMS_BLOCKED:<gate reason>` and the reason is what
+       the sentence needs. A real claim failure writes the thrown MESSAGE into this same column, so the prefix
+       is what separates "the claim threw" from "the claim was never attempted". */
+    claimsBlockedReason: pollers.reduce<string | null>((acc, r) => {
+      if (acc !== null) return acc;
+      const code = r.pollerErrorCode ?? "";
+      return code.startsWith(`${CLAIMS_BLOCKED_CODE}:`) ? code.slice(CLAIMS_BLOCKED_CODE.length + 1) : null;
+    }, null),
   };
 }
 
@@ -157,7 +172,7 @@ export function houseEngineBeats(rows: readonly StoredHouseBotRuntime[]): HouseE
  * INDISTINGUISHABLE from one that never booted, and it is already reported — as `STALE`, which is the true
  * statement. A branch nothing can reach is the dead control ruling 432(a) refuses, one layer down.
  */
-export type HouseEngineVerdict = "UNREADABLE" | "BOOTING" | "STALE" | "POLLER_FAILING" | "DUTY_FAILED" | "IDLE";
+export type HouseEngineVerdict = "UNREADABLE" | "BOOTING" | "STALE" | "CLAIMS_BLOCKED" | "POLLER_FAILING" | "DUTY_FAILED" | "IDLE";
 
 export function houseEngineVerdict(input: {
   /** The master switch, from the control row the caller has ALREADY read (ruling 435(e)). */
@@ -169,6 +184,18 @@ export function houseEngineVerdict(input: {
   nowMs: number;
 }): HouseEngineVerdict | null {
   const { on, beats, activeAccounts, nowMs } = input;
+  /**
+   * ⚠️ `UNREADABLE` STAYS BEHIND THE SWITCH, AND THAT WAS RE-EXAMINED RATHER THAN INHERITED (2026-09-21).
+   *
+   * The C7 audit proposed hoisting `beats === null` above this line, on the argument that an unreadable read is a
+   * fact about the READER and not about the desk. ⛔ IT WAS DROPPED AFTER READING `test:house-bot-engine` 20.5,
+   * which pins `verdict(null, { on: false }) === null` deliberately: while the switch is OFF **nothing can be
+   * staked whatever the engine is doing**, so an unreadable engine costs no money and the strip's own "The desk
+   * is off. Nothing will be staked." is the true and sufficient sentence (432(n) — one state saying one fact
+   * twice is the defect that rule exists for). An officer who then turns the switch ON sees `UNREADABLE` on the
+   * very next render, so the window is one page load wide and carries no stake.
+   * ⭐ Recorded here because the next reader will have the same idea, and the reason not to is not obvious.
+   */
   if (on !== true) return null;
   if (beats === null) return "UNREADABLE";
   const booting = beats.bootAtMs !== null && nowMs - beats.bootAtMs <= BOOT_GRACE_MS;
@@ -176,6 +203,19 @@ export function houseEngineVerdict(input: {
   /* 353 · the boot grace has passed (or nothing ever booted) AND the planner beat is missing or older than the
    * threshold. `PLANNER_INTERVAL_MS` 15 s against `ENGINE_STALE_MS` 30 s leaves exactly one missed tick of headroom. */
   if (beats.plannerBeatAtMs === null || nowMs - beats.plannerBeatAtMs > ENGINE_STALE_MS) return "STALE";
+  /**
+   * ⭐ CLAIMS BLOCKED — THE STATE THAT USED TO RENDER AS NOTHING AT ALL (register:1218, 2026-09-21).
+   *
+   * ⛔ IT SITS ABOVE `POLLER_FAILING` BECAUSE IT IS THE MORE CURRENT AND MORE SPECIFIC FACT. A claim that was
+   * never ATTEMPTED is not a claim that THREW, and an instance blocked today may still carry the
+   * `pollerErrorAt` of a genuine failure last week — which would otherwise paint "a server cannot take work"
+   * over a clock problem and send the officer looking for the wrong thing.
+   * ⛔ AND IT SITS BELOW `STALE`: an engine that is not running at all is the larger fact, and a stopped engine
+   * cannot have a current gate state worth reporting.
+   * ⚠️ IT READS THE ROW, NEVER A TIMESTAMP. The condition it reports is *the clock cannot be trusted*, so any
+   * verdict that compared instants written by that container would be reasoning with the broken instrument.
+   */
+  if (beats.claimsBlockedReason !== null) return "CLAIMS_BLOCKED";
   if (beats.pollerErrorAtMs !== null && (beats.pollerBeatAtMs === null || beats.pollerErrorAtMs > beats.pollerBeatAtMs)) {
     return "POLLER_FAILING";
   }

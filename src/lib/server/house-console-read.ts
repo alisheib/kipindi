@@ -684,6 +684,23 @@ function engineNotice(input: {
       return { ...shared, tone: "danger", alert: true, meta: lastSeen(beats?.plannerBeatAtMs ?? null, input.nowMs),
         title: "The engine is not running",
         body: "No account will place a bet while this stands, and nothing already queued will be acted on. The desk is on, so this is not a state it can be left in." };
+    case "CLAIMS_BLOCKED":
+      /**
+       * ⭐ THE STATE THAT USED TO PAINT NOTHING AT ALL (register:1218, 2026-09-21). A server whose clock cannot
+       * be trusted refuses every stake, and until this case existed the verdict was `null` and this Callout did
+       * not render — switch on, green chip, full tiles, nothing staked.
+       * ⛔ "A SERVER", NOT "THE DESK", and the distinction is the honest one: the block is per container, so on a
+       * multi-replica deployment the others may still be placing stakes. Overstating it would send an officer to
+       * switch off a desk that is half working; understating it would let a silent half continue.
+       * ⛔ NO THRESHOLD IN THE WORDS. Writing "more than five seconds" would put `MAX_TOLERATED_SKEW_MS` in a
+       * sentence, where it drifts the day the constant moves — the two reasons are named instead, which is what
+       * an officer can act on anyway.
+       */
+      return { ...shared, tone: "danger", alert: true, meta: lastSeen(beats?.pollerBeatAtMs ?? null, input.nowMs),
+        title: "A server is not placing stakes",
+        body: beats?.claimsBlockedReason === "SKEW_UNKNOWN"
+          ? "Its clock could not be checked against the platform's, so it is refusing to act on anything due rather than risk acting at the wrong moment. Nothing will be staked from that server until it reads."
+          : "Its clock does not agree with the platform's, so it is refusing to act on anything due rather than risk acting at the wrong moment. Nothing will be staked from that server until it agrees." };
     case "POLLER_FAILING":
       /* ⛔ A24, AND THE STREAK IS A COUNT (266): the figure beside it is never money. */
       return { ...shared, tone: "danger", alert: true, meta: at(beats?.pollerErrorAtMs ?? null),
@@ -1540,7 +1557,18 @@ export type ConsoleLimitsSaveInput = { baseVersion: number; values: Record<strin
  */
 export type ConsoleLimitsSaveResult =
   /** ⛔ `recorded: false` means the limits DID change and the compliance row did not — the page says both. */
-  | { ok: true; limitsVersion: number; changed: number; recorded: boolean }
+  | { ok: true; limitsVersion: number; changed: number; recorded: boolean;
+      /**
+       * ⭐ WHAT THE SAVE BROKE, IN THE CONSOLE'S OWN NEUTRAL WORDS — finished sentences, ready to paint.
+       *
+       * ⛔ THE VALIDATOR'S OWN MESSAGES MAY NOT BE USED HERE. All three conflict rules spell the feature out
+       * ("…is below bot “{label}” max stake…"), which is the exact substitution `CONSOLE_LIMIT_REFUSAL` exists
+       * for one screen up. These are built from the conflict's STRUCTURED fields instead of substituted as
+       * whole strings, so a new conflict rule cannot arrive carrying a word 453 forbids.
+       * ⚠️ EMPTY IS THE NORMAL CASE. A save with nothing to warn about hands back `[]`, never `null` — the form
+       * paints a list, and a failed read is not a state this field can be in (the save already succeeded).
+       */
+      warnings: string[] }
   | { ok: false; error: string; field?: string };
 
 /**
@@ -1591,7 +1619,24 @@ export async function houseLimitsSaveForConsole(
   }
 
   const saved = await saveHouseBotLimits({ actorId: viewerUserId, baseVersion: input.baseVersion, values });
-  if (saved.ok) return { ok: true, limitsVersion: saved.limitsVersion, changed: saved.changes.length, recorded: saved.recorded };
+  if (saved.ok) {
+    /**
+     * ⛔ ONE SHAPE FOR ALL THREE RULES, BUILT FROM THE FIELDS — never the rule's own sentence (see `warnings`).
+     * The account's label is already on this page in the roster, so naming it here leaks nothing new; what it
+     * adds is the one thing the officer cannot otherwise work out — WHICH account just stopped being able to
+     * stake, and against which of its own settings.
+     */
+    const warnings = saved.conflicts.map((c) => {
+      /* ⚠️ THE CEILING COMES FROM THE VALUES JUST SUBMITTED, which is both simplest and correct in BOTH cases:
+         a limit this save CHANGED is the number the officer typed, and one it left alone was seeded into the
+         form from the stored row, so the two agree. `saved.changes` would carry only the first kind. */
+      const typed = Number(values[c.field]);
+      const ceiling = limitValue(c.field, Number.isFinite(typed) ? typed : null);
+      const theirs = limitValue(c.field, c.value);
+      return `${consoleLimitLabel(c.field)} ${ceiling} is below “${c.label}”'s own setting of ${theirs}. Stakes from that account will be refused until one of the two is changed.`;
+    });
+    return { ok: true, limitsVersion: saved.limitsVersion, changed: saved.changes.length, recorded: saved.recorded, warnings };
+  }
   if (saved.code !== "INVALID") return { ok: false, error: SAVE_COPY[saved.code] };
   return {
     ok: false,

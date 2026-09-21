@@ -26,8 +26,13 @@
  * one commit earlier and asserted in none: 11.15b–f drive a real boot through a real `deps.timeZone`, 16.515a–g a
  * real `pollerPass` over a real gate. **memory 744, Postgres 723** — what the run PRINTED, and exactly +12 in EACH
  * child, which is the twelve new labels reaching BOTH stores rather than only the memory one.
+ * ⭐ RAISED AGAIN with §20's CLAIMS_BLOCKED cases (register:1218, 2026-09-21) — the verdict that used to answer
+ * `null` while every stake was being refused, plus the two CONTROLS that make it mean something: 20.19 removes
+ * the marker and demands `null` back, and 20.21 proves a real thrown claim message is not read as the marker.
+ * **memory 756, Postgres 735** — what the run PRINTED, and exactly +5 in EACH child, which is the five new
+ * labels reaching BOTH stores rather than only the memory one.
  * ⛔ A floor only ever rises, and only to a count a run printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 751, postgres: 730 }, dbPrefix: "hb_engine" });
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 756, postgres: 735 }, dbPrefix: "hb_engine" });

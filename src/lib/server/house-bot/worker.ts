@@ -23,7 +23,7 @@
  * now lived only in process memory and died with the container. The planner writes the same columns on its own row
  * for its own facts (X1's duty names, `planner.ts`).
  */
-import { ALERT_KEY, MAX_TOLERATED_SKEW_MS, POLLER_FAILURE_ALERT_AFTER, RUNTIME_KEY } from "@/lib/house-bot/constants";
+import { ALERT_KEY, CLAIMS_BLOCKED_CODE, MAX_TOLERATED_SKEW_MS, POLLER_FAILURE_ALERT_AFTER, RUNTIME_KEY } from "@/lib/house-bot/constants";
 import { auditFlush } from "../audit";
 import { houseBotIntentStore, houseBotRuntimeStore } from "../house-bot-dal";
 import { claimGate, type EngineTicks, type TickContext } from "./engine";
@@ -136,13 +136,68 @@ export async function flushAuditWithin(budgetMs: number): Promise<boolean> {
   return Promise.race([drained, expired]);
 }
 
+/**
+ * ⛔ WRITE THE BLOCK DOWN WHERE THE DESK CAN READ IT — the bell alone was never enough (register:1218).
+ *
+ * `alertSkewGate` rings ONE bell per EAT day, which is right for a bell and useless as a state: an officer who
+ * opens the Desk an hour later sees a page that says nothing is wrong. The whole reason for this pair is in
+ * `CLAIMS_BLOCKED_CODE`'s own note in `constants.ts`.
+ *
+ * ⚠️ WRITTEN ON THE TRANSITION, NOT ON EVERY TICK. The poller runs every 2 s on every instance; an upsert per
+ * tick would be thousands of pointless writes a day for a fact that does not change. `state.claimsBlocked` is
+ * the cache that makes it a transition, and losing it (a restart) costs one redundant write, never an alarm.
+ * ⚠️ THE ROW IS PER INSTANCE (`pollerBeat(instanceId)`), so three healthy containers and one skewed one leave
+ * exactly one marked row — which is the truth, and why the Desk's sentence says "a server", not "the desk".
+ * ⛔ NEITHER OF THESE MAY COST THE PASS. The gate has already refused; losing the record to a write error would
+ * replace a reported stop with an unreported one, which is the defect itself.
+ */
+async function recordClaimsBlocked(ctx: TickContext, reason: string): Promise<void> {
+  if (ctx.state.claimsBlocked === reason) return;
+  try {
+    await houseBotRuntimeStore.upsert(RUNTIME_KEY.pollerBeat(ctx.instanceId), {
+      pollerErrorCode: `${CLAIMS_BLOCKED_CODE}:${reason}`,
+      skewMs: ctx.state.skewMs,
+    });
+    ctx.state.claimsBlocked = reason;
+  } catch (e) {
+    console.error("[house-bot] poller: claims are blocked and the block could not be recorded:", errMessage(e));
+  }
+}
+
+/**
+ * ⛔ AND CLEAR IT THE MOMENT THE GATE OPENS — this is the half that stops a false alarm outliving its cause.
+ *
+ * ⚠️ IT CLEARS ONLY THIS MARKER. The success beat deliberately does NOT clear `pollerErrorCode`, because the
+ * Callout tells a recovered poller from one that never failed by which instant is fresher — that rule is kept
+ * whole for real claim failures. A `CLAIMS_BLOCKED:*` code is not a claim failure; it is a CURRENT state, and a
+ * current state that survives its own end is a lie. ⛔ It must also not wait for the success BEAT, which only
+ * fires when rows were actually claimed — on a quiet desk that beat may never come, and the marker would stand
+ * for ever over an engine that recovered minutes ago.
+ */
+async function clearClaimsBlocked(ctx: TickContext): Promise<void> {
+  if (ctx.state.claimsBlocked === null) return;
+  try {
+    await houseBotRuntimeStore.upsert(RUNTIME_KEY.pollerBeat(ctx.instanceId), { pollerErrorCode: null });
+    ctx.state.claimsBlocked = null;
+  } catch (e) {
+    console.error("[house-bot] poller: the claim block lifted and the record could not be cleared:", errMessage(e));
+  }
+}
+
 export async function pollerPass(ctx: TickContext, alerts: EngineAlerts): Promise<PollerPass> {
   const gate = claimGate(ctx.state);
   if (!gate.ok) {
     /* ⛔ A24 · a clock this container cannot trust stops the claims — and now says so (register:1218). */
-    const alerted = SKEW_GATE_REASONS.has(gate.reason) ? await alertSkewGate(ctx, alerts, gate.reason) : false;
-    return { claimed: 0, gate: gate.reason, alerted };
+    if (SKEW_GATE_REASONS.has(gate.reason)) {
+      const alerted = await alertSkewGate(ctx, alerts, gate.reason);
+      await recordClaimsBlocked(ctx, gate.reason);
+      return { claimed: 0, gate: gate.reason, alerted };
+    }
+    /* ⚠️ ORDINARY BACK-PRESSURE — STOPPING, ADMISSION, FULL, NOT_STARTED — is the engine WORKING, and neither
+       rings nor records. A marker raised on a full queue would fire on the desk's busiest minute. */
+    return { claimed: 0, gate: gate.reason, alerted: false };
   }
+  await clearClaimsBlocked(ctx);
   let rows;
   try {
     rows = await houseBotIntentStore.claimBatch({ me: ctx.instanceId, freeSlots: gate.freeSlots, skewGuardMs: gate.skewGuardMs });
