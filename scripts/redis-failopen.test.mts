@@ -21,7 +21,7 @@
  *
  * In-memory store (no DATABASE_URL), so the whole thing runs without a database.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { getRedis, getRedisSubscriber, withRedis, redisHealth, __resetRedisForTests } from "../src/lib/server/redis.ts";
 import { rateCheck, rateCheckAsync, RATE_RULES } from "../src/lib/server/rate-limit.ts";
 import { emit, subscribe, eventBus } from "../src/lib/server/event-bus.ts";
@@ -689,6 +689,121 @@ async function makeMarket(title: string): Promise<string> {
     h.subscriberError !== null && /subscriber-side blip/.test(h.subscriberError));
   ok("M: subscriber noise does not masquerade as a command failure",
     h.lastError === null || !/subscriber-side blip/.test(h.lastError), `lastError=${h.lastError}`);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// N · ENG-42 · THE HOUSE-BOT ENGINE IMPORTS NO REDIS CLIENT AND NO EVENT BUS.
+//
+// ⛔ WHY THIS SECTION EXISTS, AND WHAT WAS WRONG BEFORE IT. Register row ENG-42
+// is marked [covered] and its `Test:` line names "scripts/redis-failopen.test.mts
+// extension: src/lib/server/house-bot/** imports no redis client." Measured
+// 2026-09-20: that extension was NEVER WRITTEN — `house-bot` appeared 0 times in
+// this file's 700 lines. Sections A-M prove the PLATFORM's fail-open contract and
+// say nothing whatever about the engine. A row marked [covered] whose owner never
+// grew the case it names is the worst shape in the register, because it reads as
+// finished from every direction.
+//
+// ⛔ THE POPULATION IS PRINTED, BECAUSE AN ABSENCE OVER AN EMPTY FILE LIST PASSES
+// ON EVERY BUILD. This lane has already shipped one sweep that measured nothing
+// and passed (the §11.247 recorder that never captured its field). So N.1 derives
+// the module list from the filesystem, prints the count, and requires both the
+// count and a set of named modules that must be in it — a sweep that finds no
+// files fails here before it can report "no redis imports found".
+//
+// ⚠️ SCOPE, NAMED — a guard's scope is part of its claim. This bans the DIRECT
+// import only. The row's own Expected permits the transitive path in so many
+// words ("the console's notification:new refresh may not reach another container,
+// and RefreshPoller covers it"), and that path is REAL in the tree today:
+// emitters.ts → notification-service.ts → event-bus.ts → redis.ts. N.6 asserts
+// that edge exists and is ALLOWED, so this section can never be read as a claim
+// that the engine is disconnected from the platform's fan-out.
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const HB_DIRS = ["src/lib/server/house-bot", "src/lib/house-bot"];
+  const MUST_CONTAIN = [
+    "src/lib/server/house-bot/engine.ts",
+    "src/lib/server/house-bot/trigger.ts",
+    "src/lib/server/house-bot/fire.ts",
+    "src/lib/server/house-bot/emitters.ts",
+    "src/lib/server/house-bot/holder-hook.ts",
+    "src/lib/house-bot/consent.ts",
+  ];
+  /** A floor against an empty or silently filtered population, not a target. */
+  const MODULE_FLOOR = 40;
+
+  const modules: string[] = HB_DIRS.flatMap((d) =>
+    readdirSync(d).filter((f) => f.endsWith(".ts")).sort().map((f) => `${d}/${f}`),
+  );
+
+  /** Every module specifier this file DIRECTLY imports, requires or re-exports. */
+  function directSpecifiers(src: string): Array<{ spec: string; line: number }> {
+    const out: Array<{ spec: string; line: number }> = [];
+    src.split(/\r?\n/).forEach((raw, i) => {
+      const line = raw.trim();
+      if (line.startsWith("//") || line.startsWith("*")) return;   // a comment is not an import
+      for (const m of line.matchAll(/\b(?:from|import|require)\s*\(?\s*["']([^"']+)["']/g)) {
+        out.push({ spec: m[1], line: i + 1 });
+      }
+    });
+    return out;
+  }
+
+  /** The clients this row forbids the engine to reach for itself. */
+  const isRedisOrBus = (spec: string): boolean =>
+    spec === "ioredis" || /(^|\/)redis$/.test(spec) || /(^|\/)event-bus$/.test(spec);
+
+  const offenders = (file: string, src: string) =>
+    directSpecifiers(src).filter((s) => isRedisOrBus(s.spec)).map((s) => `${file}:${s.line} ${s.spec}`);
+
+  console.log(`\n  N · ENG-42 population: ${modules.length} house-bot modules scanned across ${HB_DIRS.join(" + ")}`);
+
+  ok(`N.1 ENG-42 · ⛔ THE POPULATION IS REAL AND PRINTED — ${modules.length} house-bot modules (floor ${MODULE_FLOOR}), and the named core modules are all inside it, so the absence N.2 measures cannot be an absence of files`,
+    modules.length >= MODULE_FLOOR && MUST_CONTAIN.every((m) => modules.includes(m)),
+    `${modules.length} modules · missing=${JSON.stringify(MUST_CONTAIN.filter((m) => !modules.includes(m)))}`);
+
+  const found = modules.flatMap((m) => offenders(m, readFileSync(m, "utf8")));
+  ok(`N.2 ENG-42 · the house-bot engine imports NO redis client and NO event bus DIRECTLY, across all ${modules.length} modules — so a Redis outage cannot reach the engine through a socket the engine itself opened`,
+    found.length === 0, found.join(" · "));
+
+  // ── the planted controls · a shape the REAL tree could contain ──────────────
+  // Both are taken from real import lines in this repository (event-bus.ts:31 and
+  // rate-limit.ts:36 import exactly this way), pasted into a COPY of a real
+  // engine module's text. A detector that cannot see these cannot see a real one.
+  const engineSrc = readFileSync("src/lib/server/house-bot/engine.ts", "utf8");
+  const plantEsm = engineSrc.replace(/^import /m, 'import { getRedis, withRedis } from "../redis";\nimport ');
+  const plantCjs = `${engineSrc}\nconst { withRedis } = require("@/lib/server/redis");\n`;
+  const plantBus = engineSrc.replace(/^import /m, 'import { emit } from "../event-bus";\nimport ');
+  const plantPkg = engineSrc.replace(/^import /m, 'import Redis from "ioredis";\nimport ');
+
+  ok("N.3 ENG-42 PLANTED · an ESM redis import of the exact shape event-bus.ts:31 uses, planted into a copy of engine.ts, is REPORTED",
+    offenders("planted/engine.ts", plantEsm).length === 1, JSON.stringify(offenders("planted/engine.ts", plantEsm)));
+  ok("N.3b ENG-42 PLANTED · a require() of the redis client, planted the same way, is REPORTED — the sweep does not only understand `import`",
+    offenders("planted/engine.ts", plantCjs).length === 1, JSON.stringify(offenders("planted/engine.ts", plantCjs)));
+  ok("N.3c ENG-42 PLANTED · a direct event-bus import is REPORTED — the row bans the engine reaching the fan-out for itself, not only the socket underneath it",
+    offenders("planted/engine.ts", plantBus).length === 1, JSON.stringify(offenders("planted/engine.ts", plantBus)));
+  ok("N.3d ENG-42 PLANTED · a bare `ioredis` package import is REPORTED, so bypassing the wrapper does not bypass the guard",
+    offenders("planted/engine.ts", plantPkg).length === 1, JSON.stringify(offenders("planted/engine.ts", plantPkg)));
+
+  // ── the positive controls · what must still be ALLOWED ─────────────────────
+  ok("N.4 ENG-42 POSITIVE · engine.ts's own UNMODIFIED text is reported clean — the same text N.3 plants into, so N.3's catch is the plant and not the file",
+    offenders("src/lib/server/house-bot/engine.ts", engineSrc).length === 0,
+    JSON.stringify(offenders("src/lib/server/house-bot/engine.ts", engineSrc)));
+
+  const busSrc = readFileSync("src/lib/server/event-bus.ts", "utf8");
+  const busHits = offenders("src/lib/server/event-bus.ts", busSrc);
+  ok("N.5 ENG-42 POSITIVE · src/lib/server/event-bus.ts LEGITIMATELY uses Redis and the detector finds that real import — so N.2's zero is an absence this detector was capable of breaking on shipped code, not a regex that matches nothing",
+    busHits.length >= 1, JSON.stringify(busHits));
+  ok("N.5b ENG-42 POSITIVE · ...and event-bus.ts is still ALLOWED: it is outside the swept population, because this is a scope rule on the engine and NOT a platform-wide ban on Redis",
+    !modules.includes("src/lib/server/event-bus.ts") && !found.some((f) => f.startsWith("src/lib/server/event-bus.ts")),
+    `inPopulation=${modules.includes("src/lib/server/event-bus.ts")}`);
+
+  // ── the transitive path is permitted, and it is real ───────────────────────
+  const emittersSrc = readFileSync("src/lib/server/house-bot/emitters.ts", "utf8");
+  const reachesBus = directSpecifiers(emittersSrc).some((s) => /notification-service$/.test(s.spec));
+  const notifSrc = readFileSync("src/lib/server/notification-service.ts", "utf8");
+  const notifImportsBus = directSpecifiers(notifSrc).some((s) => /(^|\/)event-bus$/.test(s.spec));
+  ok("N.6 ENG-42 SCOPE · the TRANSITIVE path emitters.ts → notification-service.ts → event-bus.ts → redis.ts EXISTS and is ALLOWED — the row's Expected permits exactly this, so N.2 must never be read as 'the engine reaches no fan-out at all'",
+    reachesBus && notifImportsBus, `emitters→notification-service=${reachesBus} · notification-service→event-bus=${notifImportsBus}`);
 }
 
 // Drop the sockets so the process can exit — ioredis keeps the event loop alive.

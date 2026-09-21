@@ -52,6 +52,7 @@ export const ROLL_CALL_SITES: Readonly<Record<string, string>> = {
   "reports-mem": "scripts/lib/house-bot-reports-cases.mts · 0.505b (ruling 434's declarations, memory child)",
   "comms-mem": "scripts/lib/house-bot-comms-cases.mts · 7.505 (reads BOTH anchors files that declare a comms entry, memory child)",
   seam: "scripts/house-bot-seam.test.mts · 8.505 (reads BOTH anchors files that declare a seam entry)",
+  rules: "scripts/house-bot-rules.test.mts · 7.505 (the ceremony anchors, written 2026-09-20 — the key arrived that day and 0.505 reported it audited by nobody the same day)",
   "(none)": "scripts/house-book.test.mts · 16.505 and scripts/house-page.test.mts · 16.505, by SECTION TOKEN",
 };
 
@@ -77,6 +78,14 @@ export const ROLL_CALL_OWED: Readonly<Record<string, string>> = {
   "caps-pg": "scripts/house-bot-caps.test.mts, the Postgres child of the same cases file",
   "designation-mem": "scripts/lib/house-bot-designation-cases.mts",
   "info-edge-mem": "scripts/lib/house-bot-info-edge-cases.mts",
+  /* ⛔ NOT A ROLL-CALL THAT WAS SKIPPED — A ROLL-CALL THAT CANNOT EXIST IN THIS FORM. `scripts/lib/house-bot-dal-cases.mts`
+   * prints no PASS/FAIL labels at all: the child writes c13's OUTCOMES to a file and the parent
+   * (`test:house-bot-migrations` §d) requires both stores to equal `EXPECTED` and to equal each other. So these
+   * declarations' `expect` values are c13 OUTCOME KEYS, which their own anchors file says in its header, and a
+   * substring match against emitted labels would have nothing to match. The anchor-rot guard they were declared for —
+   * `test:red-anchors` §3, every `from` resolving exactly once — is unaffected and still covers them. */
+  "dal-mem": "2 declarations · scripts/lib/house-bot-dal-cases.mts c13. OWED IN `test:house-bot-migrations` §d, which prints `d · <outcome key>` and so CAN match these `expect` values; not written on 2026-09-20 because that suite creates the FIXED-NAME databases hb_mig_dal / hb_mig_dal_tz on a scratch cluster shared with two other lanes, and this lane may create and drop only its own uniquely-named databases",
+  "dal-pg": "1 declaration · the Postgres twin of the same c13 case list — same site, same reason",
   rbac: "2 declarations · scripts/rbac.test.mts — a PLATFORM suite, outside the house campaign's files",
   "admin-nav": "1 declaration · scripts/admin-nav.test.mts — a PLATFORM suite, outside the house campaign's files",
   disclosure: "1 declaration · scripts/house-bot-disclosure.test.mts — a single-run suite with no cases file and no `expect`-drift roll-call of its own; the declaration it carries is ruling 387's search-grammar half, whose subject (`src/lib/search/fields.ts`) no other house suite can reach",

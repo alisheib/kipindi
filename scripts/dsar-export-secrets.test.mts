@@ -31,7 +31,7 @@
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
 import { db } from "../src/lib/server/store.ts";
-import { exportUserData } from "../src/lib/server/user-service.ts";
+import { exportUserData, getOwnActivity } from "../src/lib/server/user-service.ts";
 import { buildDsarBundle, dsarUserView, dsarTxnView, DSAR_TXN_KEYS } from "../src/lib/server/privacy.ts";
 // Owner ruling D19 · the absence vocabulary is the one module every absence proof imports (C5-SPEC ruling 175) — never
 // `scripts/house-bot-disclosure.test.mts`, which runs top-level code.
@@ -228,6 +228,48 @@ for (const [door, file] of [["player export", holderExport], ["officer bundle", 
     !json.includes(HOUSE_MARKER) && !json.includes(HOUSE_INTENT) && !json.includes("houseBotId") && houseHits(json).length === 0,
     houseHits(json).slice(0, 5).join(", "));
 }
+
+
+/**
+ * ⛔ HB-ACC-14 · THE THIRD DOOR — the holder's OWN ACTIVITY FEED, which is the door the register row
+ * names by name and the one nothing opened.
+ *
+ * WHAT THE ROW SAYS: the holder opens `/profile/account` and sees bets he did not place, recorded as his
+ * own actions. D19 settles it — the house-bet rows STAY in his history (removing them would leave a hole
+ * exactly where that account's money moved) and the two house keys are stripped (C4 ruling 154, C5-SPEC
+ * ruling 170).
+ *
+ * ⛔ WHAT WAS ACTUALLY MEASURED BEFORE THIS, AND WHY IT WAS NOT ENOUGH. The stripper is real and shared:
+ * `getOwnActivity` returns `withoutHouseAuditKeys(...)` (`user-service.ts:223`), the SAME function
+ * `exportUserData` uses at `:108`. Section 6 above asserts the strip through `exportUserData` ONLY.
+ * Measured 2026-09-20 across the whole suite corpus: `getOwnActivity` is called ONCE, at
+ * `scripts/lib/house-bot-reports-cases.mts:3295`, for the OFFICER and about DSAR rows (§3.3) — not the
+ * holder, not a house bet row — and it is not in §11.247's reader list either. So a change to
+ * `getOwnActivity` alone reddened NOTHING. Two doors sharing one helper is not two doors tested; it is
+ * one door tested and one assumed, and the assumption is exactly what a future refactor breaks.
+ *
+ * ⚠️ NOT MEASURED, and it keeps its existing home rather than being quietly folded in here: the SERVED
+ * half of ruling 248 — the `/profile/account` RSC payload as rendered — stays at `DEFERRED-TESTS.md`
+ * row 79. No fresh build was spent, and port 3021 is held by the visual sweep. This is the SERVICE layer.
+ *
+ * The plant is already here: `6.CONTROL` above proves the durable row really carries both keys, so the
+ * absence below is a measurement. The POSITIVE control is that the row is PRESENT and still carries the
+ * holder's own money facts — an absence proved over a feed with no bet row in it would be the
+ * empty-population failure this programme has shipped before.
+ */
+const holderFeed = await getOwnActivity(HOLDER, 200);
+const feedRows = (holderFeed?.entries as Array<Record<string, Any>>) ?? [];
+const feedBet = feedRows.find((e) => e.action === "market.position.opened");
+ok("6.HB-ACC-14.POSITIVE: the holder's /profile/account activity feed KEEPS the house-bet row and its own money facts — the stake, the side and the market — so the absence below is measured over a row that is really there",
+  feedRows.length > 0 && !!feedBet && feedBet.payload?.stake === 5_000 && feedBet.payload?.marketId === "mkt_dsar" && feedBet.payload?.side === "YES",
+  `${feedRows.length} feed row(s) · ${JSON.stringify(feedBet?.payload ?? null)}`);
+ok("6.HB-ACC-14: ⛔ D19 · …and that feed row carries NEITHER house key at any depth — the THIRD door on this fixture, because getOwnActivity and exportUserData only SHARE a stripper and a shared helper is not two doors tested",
+  !!feedBet && !("houseBotId" in (feedBet.payload ?? {})) && !("intentId" in (feedBet.payload ?? {})),
+  JSON.stringify(Object.keys(feedBet?.payload ?? {})));
+ok("6.HB-ACC-14.deep: ⛔ D19 · the WHOLE feed document names no marker, no intent id and no vocabulary word at any depth",
+  !JSON.stringify(holderFeed).includes(HOUSE_MARKER) && !JSON.stringify(holderFeed).includes(HOUSE_INTENT)
+  && !JSON.stringify(holderFeed).includes("houseBotId") && houseHits(JSON.stringify(holderFeed)).length === 0,
+  houseHits(JSON.stringify(holderFeed)).slice(0, 5).join(", "));
 
 // ── 7 · THE TRIGGER PLAYER'S TWO DOORS (C5-SPEC ruling 239, the absence half) ─────────────────────
 section("7 · a trigger player's doors equal an identical account with no box and no counters");

@@ -113,33 +113,31 @@ export function isRuntimeKey(key: string): boolean {
 // Typed confirmation words (04 C3)
 // ---------------------------------------------------------------------------
 
-export const TYPED_WORD = { BOTS_ON: "BOTS ON", REMOVE: "REMOVE" } as const;
-export type TypedWord = (typeof TYPED_WORD)[keyof typeof TYPED_WORD];
-
 /**
- * The one normaliser for typed words, shared by the modal's arming and the server's re-check.
- * The kit modal arms on `trim().toUpperCase()`, so an inner double space never armed — "bots on",
- * " BOTS  ON " and "remove" arm here; "BOTSON" and "BOT ON" never do.
+ * ⛔ RETIRED 2026-09-20, AND THE RETIREMENT IS ASSERTED RATHER THAN ASSUMED — see
+ * `test:house-bot-rules` §7, which is the same checks in the opposite direction.
+ *
+ * WHAT USED TO BE HERE: `TYPED_WORD` (`BOTS_ON` / `REMOVE`), `normaliseTypedWord`,
+ * `isTypedWord` and `TYPED_WORD_COPY` — an NFKC + whitespace-collapse + upper-case
+ * normaliser for ceremony words, written for C3 and never wired to anything. Measured
+ * before deletion: ZERO callers under `src/`; the only hits in the tree were their own
+ * definitions and a truth table in `test:house-bot-rules` §7 that was GREEN while
+ * measuring a module the product did not contain.
+ *
+ * ⛔ WHY DELETED RATHER THAN ADOPTED — the direction matters, because adopting them was
+ * the other half of the choice and it would have WEAKENED two gates:
+ *   · The shipped ceremonies are `CONSOLE_SWITCH_ON_WORD` ("SWITCH ON") and
+ *     `CONSOLE_REMOVE_WORD` ("REMOVE") in `house-console-read.ts`, and both compare with a
+ *     plain `.trim()` — deliberately, so the word cannot be armed by habit. Routing them
+ *     through `normaliseTypedWord` would have made "switch on", "remove" and " SWITCH  ON "
+ *     all arm, on an irreversible removal and on the master switch of a live money feature.
+ *   · The refusal an officer reads PROMISES capitals — "Type SWITCH ON exactly, in
+ *     capitals, to confirm." — so adopting the normaliser would have made a shipped
+ *     sentence false.
+ *   · `TYPED_WORD.BOTS_ON` was "BOTS ON", a word this product has never used, and
+ *     `TYPED_WORD_COPY.refused` spelled out "…to switch house bots on." — a D19 sentence
+ *     one prop away from a screen, kept alive by nothing but a test.
  */
-export function normaliseTypedWord(s: string): string {
-  return s.normalize("NFKC").trim().replace(/\s+/g, " ").toUpperCase();
-}
-
-export function isTypedWord(s: string, word: TypedWord): boolean {
-  return normaliseTypedWord(s) === word;
-}
-
-const TYPED_WORD_REFUSED: Record<TypedWord, string> = {
-  "BOTS ON": "Type BOTS ON exactly to switch house bots on.",
-  REMOVE: "Type REMOVE exactly.",
-};
-
-/** The arming prompt, the server's refusal (inline on the field below), and that field's name for both forms. */
-export const TYPED_WORD_COPY = {
-  arm: (word: TypedWord) => `Type ${word} to continue`,
-  refused: TYPED_WORD_REFUSED,
-  field: "confirmWord",
-} as const;
 
 // ---------------------------------------------------------------------------
 // Closed lists — each mirrors a migration CHECK exactly

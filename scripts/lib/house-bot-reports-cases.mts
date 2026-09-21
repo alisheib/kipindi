@@ -1492,7 +1492,13 @@ if (STORE === "memory") {
     const audited = declared.filter((k) => Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     const owed = declared.filter((k) => !Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     ok("0.505 · ⛔ RULING 505 · every suite key declared in ANY scripts/anchors/house*.anchors.mjs — the files walked from disk, never typed — either HAS an expect-drift roll-call or is recorded as owed with its reason, and neither table names a key no anchors file declares",
-      problems.length === 0 && anchorFiles.length >= 6 && audited + owed >= 354 && Object.keys(ROLL_CALL_OWED).length === 7,
+      /* ⛔ 7 → 9 on 2026-09-20, and GROWING THIS NUMBER IS A DEBT BEING RECORDED, NEVER A PERMISSION. `dal-mem`
+       * and `dal-pg` arrived with this lane's own claim anchors and 0.505 reported them audited by nobody the same
+       * day — the guard working. They are owed in `test:house-bot-migrations` §d (its labels are `d · <outcome
+       * key>`, a superstring of their `expect` values), not written here because that suite creates fixed-name
+       * hb_mig_* databases on a cluster shared with two other lanes. `rules` went the OTHER way in the same
+       * commit — it gained a real roll-call (house-bot-rules 7.505) and is in SITES, not here. */
+      problems.length === 0 && anchorFiles.length >= 6 && audited + owed >= 354 && Object.keys(ROLL_CALL_OWED).length === 9,
       j({ anchorFiles, keys: Object.fromEntries([...keys].sort()), audited, owed, total: audited + owed, owedKeys: Object.keys(ROLL_CALL_OWED).sort(), problems }));
     /* ⛔ AND THE CONTROL, over the same detector: a key that no table names, and a table entry no file declares. */
     const detect = (ks: Map<string, number>, sites: Record<string, string>, owedList: Record<string, string>): string[] => {
@@ -4281,6 +4287,296 @@ section("store · the child runs on the store it names");
 await guard("store", async () => {
   const P: Any = await import("../../src/lib/server/prisma.ts");
   ok(`store.1 · the ${STORE} child ${STORE === "postgres" ? "has" : "has no"} database`, P.hasDatabase() === (STORE === "postgres"), `hasDatabase=${P.hasDatabase()}`);
+});
+
+/* ═══ §12 · CRA-12 and FS-05 · R4's whole surviving requirement is a SENTENCE, and nothing read it ═══════════ */
+
+/**
+ * ⛔ WHAT D20 LEFT STANDING, AND WHY THIS IS A DOCS GUARD AND NOT A CODE GUARD.
+ *
+ * `04-amendments.md` R4 strikes the `excludeHouse` option, `NON_HOUSE_POSITION_SQL`, the reward walker, the
+ * source pin AND both of R4's own `Test:` lines, in place. What survives, verbatim, is "A COMPLIANCE and
+ * HOUSE-BOTS.md rule: no prize, cashback, tournament or rank reward may be computed on marked positions."
+ * That sentence is the ENTIRE live content of register rows CRA-12 and FS-05 — two rows, one requirement.
+ *
+ * ⛔ THIS ASSERTION PROVES THE RULE IS **RECORDED**. IT DOES NOT PROVE ANY CODE OBEYS IT, and it must never be
+ * read that way: D20 struck the walker that would have made obedience checkable. A future reward feature has
+ * to bring its own guard. Saying so in the label is the point — `0.L52.4` (the only other assertion that opens
+ * `docs/HOUSE-BOTS.md`) states its own scope for exactly this reason: a guard's scope is part of its claim.
+ *
+ * ⛔ FS-05's own `Test:` line names test:house-bot-reward-exclusion — struck by D20 and absent from
+ * package.json. ⚠️ THE MISSING BACKTICKS AROUND THAT NAME ARE DELIBERATE AND MUST STAY OFF. `test:guards-exist`
+ * §1 treats a BACKTICKED `prefix:name` as a CITATION — "someone told a reader this guard exists" — and this
+ * sentence says the exact opposite. Backticking it made the guard print `1 new phantom` and go 9/0 → 8/1,
+ * measured 2026-09-20; its own docblock records that a bare colon-word is deliberately not a citation, and §4's
+ * control asserts that distinction. ⛔ Never repair this by adding the name to `INHERITED_PHANTOMS`: that list
+ * may only shrink, and an exemption for a name written today is not an inheritance. Its D6 half — the bot stays on the public board as an ordinary player — is ALREADY asserted at
+ * §11 `11.247.c4`, with `11.247.c3` proving that sweep non-vacuous. So CRA-12 and FS-05 close together here.
+ *
+ * ⛔ AND THE TAIL OF HB-ACC-07 (amendment A1). A1 records "Signing out other devices on a password change is
+ * not built" and ends "Test: `test:docs` greps the risk line." Measured 2026-09-20: `scripts/docs-links.mjs`
+ * — the whole of `test:docs`, 130 lines — checks relative links, `scripts/<file>` paths and npm keys, and
+ * greps no sentence anywhere. A1's recorded proof did not exist, so the risk line was pinned by NOTHING. It is
+ * pinned here. ⚠️ HB-ACC-07 is still a RECONCILED row, not a tested one: the withdrawn sessions test is not
+ * owed and must never be written. This pins the sentence A1 left standing, which is a smaller, true claim.
+ *
+ * ⛔ EVERY DOCUMENT IS CHECKED SEPARATELY. One assertion over both would pass while either was empty — the
+ * lesson `test:dsar-secrets` §6 recorded in its own words. The two R4 sentences are NOT the same string
+ * (HOUSE-BOTS.md carries D6's display clause, COMPLIANCE-DECISIONS.md does not), which is itself why a single
+ * shared needle would have had to be loosened until it proved less than either document says.
+ */
+if (STORE === "memory") {
+  section("§12 · CRA-12 / FS-05 · R4's surviving rule, and A1's risk line, are RECORDED in both authority documents");
+  await guard("12", () => {
+    /** Each row is one document's OWN wording. `id` is the rule; `file` is the document; `needle` is exact. */
+    const RULES: Array<{ id: string; row: string; file: string; needle: string }> = [
+      { id: "R4", row: "CRA-12/FS-05", file: "docs/HOUSE-BOTS.md",
+        needle: "No prize, cashback, tournament or rank reward may be computed on house-marked positions" },
+      { id: "R4", row: "CRA-12/FS-05", file: "docs/COMPLIANCE-DECISIONS.md",
+        needle: "No prize, cashback, tournament or rank reward on house stakes (R4)" },
+      { id: "risk-7", row: "HB-ACC-07 tail (A1)", file: "docs/HOUSE-BOTS.md",
+        needle: "A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13)" },
+      { id: "risk-7", row: "HB-ACC-07 tail (A1)", file: "docs/COMPLIANCE-DECISIONS.md",
+        needle: "A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13)" },
+    ];
+    const DOCS = [...new Set(RULES.map((r) => r.file))];
+
+    /** The reader, used identically for the live documents and for the planted copies. */
+    const missingIn = (text: string, needle: string): boolean => !text.includes(needle);
+
+    const texts = new Map(DOCS.map((f) => [f, read(f)]));
+    console.log(`  §12 population: ${RULES.length} recorded rules across ${DOCS.length} documents — ` +
+      DOCS.map((f) => `${f} ${texts.get(f)!.length} bytes`).join(" · "));
+
+    ok("12.0 · POPULATION · both authority documents are non-empty and carry their own title, so a rule 'found' below is found in a real document and not in an empty string",
+      DOCS.length === 2 && DOCS.every((f) => (texts.get(f) ?? "").length > 5_000),
+      j(DOCS.map((f) => `${f}:${texts.get(f)!.length}`)));
+
+    /* ⛔ ONE ASSERTION PER DOCUMENT PER RULE — four, not one. */
+    for (const r of RULES) {
+      ok(`12.${r.id}.${r.file.includes("HOUSE-BOTS") ? "hb" : "cd"} · ${r.row} · ⛔ RECORDED, NOT OBEYED: ${r.file} still carries ${r.id}'s rule in its own words — this proves the RULE IS WRITTEN DOWN and proves nothing whatever about any code path, because D20 struck the walker that would have made obedience checkable`,
+        !missingIn(texts.get(r.file)!, r.needle), `${r.file} · needle ${j(r.needle.slice(0, 60))}`);
+    }
+
+    /* ── PLANTED · the sentence deleted from a COPY of each document must be REPORTED, per document ── */
+    for (const r of RULES) {
+      const key = `${r.id}.${r.file.includes("HOUSE-BOTS") ? "hb" : "cd"}`;
+      const gutted = texts.get(r.file)!.split(r.needle).join("");
+      ok(`12.PLANT.${key} · PLANTED · ${r.id} deleted from a copy of ${r.file} IS reported — checked per document, because one assertion over both would pass while either was empty`,
+        gutted !== texts.get(r.file) && missingIn(gutted, r.needle),
+        `bytes ${texts.get(r.file)!.length} → ${gutted.length}`);
+    }
+
+    /* ── POSITIVE · the untouched documents report nothing ── */
+    ok("12.POS · POSITIVE CONTROL · the two documents as they stand on disk report NO missing rule, so the plants above are the plants and not the files",
+      RULES.every((r) => !missingIn(texts.get(r.file)!, r.needle)),
+      j(RULES.filter((r) => missingIn(texts.get(r.file)!, r.needle)).map((r) => `${r.file}:${r.id}`)));
+
+    /* ── the reader itself must be able to say 'missing' ── */
+    ok("12.CONTROL · the reader is capable of reporting a miss at all — a sentence that is in neither document is reported for both, so 12.R4/12.risk-7 are findings and not a predicate that always returns true",
+      DOCS.every((f) => missingIn(texts.get(f)!, "no reward may be computed on a marked position, said exactly this way and nowhere")));
+  });
+}
+
+/* ═══ §13 · CRA-19 · the FIU suspicious-activity report includes a designated holder, UNCHANGED (both stores) ═══ */
+
+/**
+ * ⛔ THE DEFECT THIS EXISTS TO CATCH: a later session "helpfully" excluding a designated house account from a
+ * STATUTORY report. `buildFiuSar` (src/lib/server/reports/catalogue.ts:225) was named by NO file under
+ * `scripts/` — `grep -rn buildFiuSar scripts/` returned 0 — and `test:report-formats` mentions "FIU" only to
+ * forbid a false format claim on a button. Nothing would have reported it.
+ *
+ * CRA-19's standing requirement after D20: "The rows are included unchanged (statutory)", and the Context
+ * column is struck (C5-SPEC ruling 228). Its F7 half — a holder money event gives the admin bell — ships as
+ * `OWNER_MONEY` (money-hook.ts:43) and IS asserted at `test:house-bot-comms` 6.2, so only the SAR half is owed.
+ *
+ * THE TWIN SHAPE: a designated holder and an ordinary player make the SAME deposit, and the report must give
+ * them the same row shape and the same trigger. A report that quietly dropped the holder fails on the holder
+ * row; a report that returned everything fails on the POSITIVE control, which requires a deposit BELOW the
+ * threshold to be ABSENT — without it, "the row is there" would pass over a builder with no filter at all.
+ *
+ * ⚠️ THE PERIOD IS DERIVED, NEVER TYPED. `currentPackPeriod()` is the PREVIOUS EAT month (a pack is filed for
+ * a closed month), so a fixture dated "now" falls outside the report and the whole section would measure an
+ * empty population and pass. The deposits are dated at the MIDPOINT of the period's own bounds.
+ */
+section("§13 · ruling 228 / CRA-19 · the FIU SAR carries a designated holder's large deposit unchanged, with no Context column and no house word");
+await guard("13", async () => {
+  const { loadWorld, OFFICER }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const { buildFiuSar }: Any = await import("../../src/lib/server/reports/catalogue.ts");
+  const { AML_REVIEW_THRESHOLD_TZS }: Any = await import("../../src/lib/server/payments.ts");
+  const RP: Any = await import("../../src/lib/server/report-pack.ts");
+
+  /* ⚠️ The officer may already exist — §3 creates it, and on Postgres a second create is a unique violation
+   * (this section threw exactly that on its first Postgres run). `buildFiuSar` uses `generatorId` only for the
+   * reference and the meta block, so the row is created only when it is genuinely absent. */
+  if (!(await w.db.user.findById(OFFICER))) await w.user({ id: OFFICER, role: "ADMIN" });
+  const PERIOD: string = RP.currentPackPeriod();
+  const B = RP.packPeriodBounds(PERIOD);
+  const AT = new Date(B.start + Math.floor((B.end - B.start) / 2)).toISOString();
+
+  const LARGE = AML_REVIEW_THRESHOLD_TZS + 200_000;   // 1.2M at the shipped 1M line
+  const SMALL = AML_REVIEW_THRESHOLD_TZS - 1;         // one shilling under it
+
+  const holder = await w.bot();                       // a DESIGNATED, ACTIVE house bot
+  const twin = await w.user({ balance: 5_000_000 });  // the identical ordinary player
+
+  const deposit = async (userId: string, amount: number, tag: string) => {
+    const id = `txn_sar_${w.uid(tag)}`;
+    await w.db.txn.create({
+      id, walletId: `wal_${userId}`, userId, type: "DEPOSIT", status: "CONFIRMED",
+      amount, fee: 0, taxWithheld: 0, balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: null,
+      msisdn: null, description: null, positionId: null, amlReason: null,
+      createdAt: AT, updatedAt: AT, completedAt: AT, idempotencyKey: null, houseBotId: null,
+    } as never);
+    return id;
+  };
+  const holderTxn = await deposit(holder.userId, LARGE, "holder");
+  const twinTxn = await deposit(twin, LARGE, "twin");
+  const smallTxn = await deposit(holder.userId, SMALL, "small");
+
+  const rep: Any = await buildFiuSar(OFFICER, PERIOD);
+  const sec: Any = rep.sections[0];
+  const rows: Any[] = sec.rows ?? [];
+  const rowFor = (txnId: string) => rows.find((r) => r.txnId === txnId) ?? null;
+  const hRow = rowFor(holderTxn);
+  const tRow = rowFor(twinTxn);
+  console.log(`  §13 population: ${rows.length} flagged rows in ${PERIOD} (threshold ${AML_REVIEW_THRESHOLD_TZS}), fixture deposits at ${AT}`);
+
+  ok("13.0 · CRA-19 · POPULATION · the report for the derived pack period is non-empty and contains the fixture's own two deposits — an emptiness here would make every absence below meaningless",
+    rows.length >= 2 && !!hRow && !!tRow, j({ rows: rows.length, period: PERIOD, holder: !!hRow, twin: !!tRow }));
+
+  ok("13.1 · CRA-19 · ⛔ STATUTORY, UNCHANGED · the DESIGNATED HOLDER's 1.2M deposit is PRESENT in the FIU suspicious-activity report — the defect this guards is a later session excluding a house account from a statutory return",
+    !!hRow && hRow.playerId === holder.userId && hRow.amount === LARGE, j(hRow));
+
+  ok("13.2 · CRA-19 · TWIN · the holder's row and an identical ordinary player's row have the SAME shape and the SAME trigger — the same keys, the same triggerKind, the same status, the same amount — so the report treats a house account as any account",
+    !!hRow && !!tRow && j(Object.keys(hRow).sort()) === j(Object.keys(tRow).sort())
+      && hRow.triggerKind === tRow.triggerKind && hRow.reviewStatus === tRow.reviewStatus && hRow.amount === tRow.amount,
+    j({ holder: hRow, twin: tRow }));
+
+  ok("13.3 · CRA-19 · POSITIVE CONTROL · a deposit ONE SHILLING BELOW the threshold is ABSENT — without this, '13.1 the row is there' would pass over a builder that returned every transaction it saw",
+    rowFor(smallTxn) === null && !rows.some((r) => r.amount === SMALL), j({ smallTxn, amounts: rows.map((r) => r.amount) }));
+
+  /* D20 struck the Context column (ruling 228): every section's headers, not just the first. */
+  const headers: string[] = (rep.sections ?? []).flatMap((s: Any) => (s.columns ?? []).map((c: Any) => String(c.header)));
+  ok("13.4 · ruling 228 · NO Context column anywhere in the report — D20 struck it, and the headers are read from every section rather than only the first",
+    headers.length >= 5 && !headers.some((h) => /context/i.test(h)), j(headers));
+
+  ok("13.5 · ⛔ D19 · the whole rendered report — title, subtitle, summary, notes, columns and every row — names nothing about house bots, and carries neither the bot id nor the holder's own house key",
+    houseHits(j(rep)).length === 0 && !j(rep).includes(holder.botId), j(houseHits(j(rep)).slice(0, 6)));
+
+  ok("13.CONTROL · the house-word reader is live on this run — the fixture's own bot id IS found when it is actually present, so 13.5's zero is a measurement and not a silent reader",
+    houseHits(j({ ...rep, planted: "house bot" })).length > 0);
+});
+
+/* ═══ §14 · CRA-32 · the finance figures that must INCLUDE house rows (both stores) ═══════════════════════════ */
+
+/**
+ * ⛔ AN INCLUSION CLAIM IS THE DANGEROUS KIND. D20 left these untouched and decided that /admin/finance counts
+ * a house account in active players and in the Top-10 exactly like any player's, and gains no house tile
+ * (C5-SPEC rulings 224–225). GGR, NGR and wallet liability INCLUDE house rows, and "Held for unverified"
+ * includes an unapproved holder's winnings. The plausible future defect is not a leak — it is a filter added
+ * for tidiness that quietly UNDERSTATES a regulator-facing liability. Measured 2026-09-20: no house-bot suite
+ * imported `src/lib/server/analytics.ts` at all, and PROGRESS L34 records the reading as correct with nothing
+ * asserting it.
+ *
+ * ⛔ EVERY FIGURE IS A BEFORE/AFTER DELTA EQUAL TO THE FIXTURE'S OWN AMOUNT, never a bare "greater than zero".
+ * A "> 0" would pass over every other fixture this file has already built, which is the empty-population
+ * failure wearing a number.
+ *
+ * ⛔ THE PLANT IS THE REAL DEFECT, RUN THROUGH THE REAL ARITHMETIC. `tallyWalletLiability` is the shipped
+ * function; the plant calls THAT SAME FUNCTION over the same snapshot with the designated holders' wallets
+ * filtered out — one filter, no second implementation — and requires the shortfall to be exactly the house
+ * amount and the shipped figure NOT to equal it.
+ *
+ * ⚠️ SCOPE, NAMED: activePlayers, the Top-10, walletLiabilityByStatus and the unverified-liability basis. GGR
+ * and NGR move only on settled bet money and are NOT asserted here; they stay with the money suites.
+ */
+section("§14 · rulings 224–225 / CRA-32 · active players, the Top-10, wallet liability and 'held for unverified' all INCLUDE a designated holder");
+await guard("14", async () => {
+  const { loadWorld }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const AN: Any = await import("../../src/lib/server/analytics.ts");
+  const { tallyWalletLiability }: Any = await import("../../src/lib/wallet-liability.ts");
+
+  const HOUSE_TZS = 3_100_000;   // distinctive, so a delta can only be this fixture's
+  const TWIN_TZS = 3_100_000;
+  const STAKE_TZS = 900_000_000; // large enough that the Top-10 place is not a coincidence
+
+  const base = {
+    active: await AN.activePlayers("today"),
+    liability: (await AN.walletLiabilityByStatus()).activeTzs,
+    unverified: await AN.unverifiedLiability(),
+  };
+  ok("14.0 · BASELINE · the three figures are readable before the fixture exists, and the unverified read is its OK arm — a failed read is its own arm and would make every delta below meaningless",
+    typeof base.active === "number" && typeof base.liability === "number" && base.unverified.ok === true,
+    j({ active: base.active, liability: base.liability, unverified: base.unverified }));
+
+  /* A designated holder, funded — never KYC-approved, so its money is genuinely "held for unverified". */
+  const holder = await w.bot({ balance: HOUSE_TZS });
+  const afterHouse = {
+    liability: (await AN.walletLiabilityByStatus()).activeTzs,
+    unverified: await AN.unverifiedLiability(),
+  };
+
+  ok(`14.1 · CRA-32 · WALLET LIABILITY INCLUDES THE HOUSE WALLET — the figure rises by EXACTLY the holder's ${HOUSE_TZS} and not by "more than zero"`,
+    afterHouse.liability - base.liability === HOUSE_TZS,
+    j({ before: base.liability, after: afterHouse.liability, delta: afterHouse.liability - base.liability, expected: HOUSE_TZS }));
+
+  ok(`14.2 · CRA-32 · "HELD FOR UNVERIFIED" INCLUDES AN UNAPPROVED HOLDER'S MONEY — the basis rises by exactly ${HOUSE_TZS}, and the account count by exactly one`,
+    afterHouse.unverified.ok === true && afterHouse.unverified.tzs - base.unverified.tzs === HOUSE_TZS
+      && afterHouse.unverified.accounts - base.unverified.accounts === 1,
+    j({ before: { tzs: base.unverified.tzs, n: base.unverified.accounts }, after: { tzs: afterHouse.unverified.tzs, n: afterHouse.unverified.accounts } }));
+
+  /* ── PLANTED · the tidy-up filter, through the SHIPPED arithmetic ── */
+  const bots: Any[] = await w.dal.houseBotStore.listNonRemoved();
+  const holderIds = new Set(bots.map((b: Any) => b.userId));
+  const wallets: Any[] = await w.db.wallet.listAll();
+  const shipped = tallyWalletLiability(wallets).activeTzs;
+  const planted = tallyWalletLiability(wallets.filter((x: Any) => !holderIds.has(x.userId))).activeTzs;
+  ok(`14.PLANT · PLANTED · a houseBotId-IS-NULL filter over the SAME snapshot and the SAME shipped tally is REPORTED as a shortfall: it loses at least this fixture's ${HOUSE_TZS}, and the shipped figure is NOT that number`,
+    holderIds.size >= 1 && wallets.length > holderIds.size && shipped - planted >= HOUSE_TZS && shipped !== planted,
+    j({ shipped, planted, shortfall: shipped - planted, holders: holderIds.size, wallets: wallets.length }));
+
+  /* ── POSITIVE · an ordinary player moves the same figure by the same amount ── */
+  const twin = await w.user({ balance: TWIN_TZS });
+  const afterTwin = (await AN.walletLiabilityByStatus()).activeTzs;
+  ok(`14.POS · POSITIVE CONTROL · an ORDINARY player funded with the same ${TWIN_TZS} moves the same figure by the same amount — house and non-house are one population, which is what "included unchanged" means`,
+    afterTwin - afterHouse.liability === TWIN_TZS,
+    j({ before: afterHouse.liability, after: afterTwin, delta: afterTwin - afterHouse.liability }));
+
+  /* ── active players · a today-dated transaction, house and non-house alike ── */
+  const now = new Date().toISOString();
+  const txnNow = async (userId: string, type: string, amount: number, tag: string) => {
+    await w.db.txn.create({
+      id: `txn_fin_${w.uid(tag)}`, walletId: `wal_${userId}`, userId, type, status: "CONFIRMED",
+      amount, fee: 0, taxWithheld: 0, balanceAfter: null, currency: "TZS", provider: "INTERNAL", providerRef: null,
+      msisdn: null, description: null, positionId: null, amlReason: null,
+      createdAt: now, updatedAt: now, completedAt: now, idempotencyKey: null, houseBotId: null,
+    } as never);
+  };
+  const quiet = await w.user({ balance: 1_000 });        // funded, but NO transaction today
+  const activeAfterQuiet = await AN.activePlayers("today");
+  await txnNow(holder.userId, "DEPOSIT", 50_000, "h");
+  const activeAfterHolder = await AN.activePlayers("today");
+  await txnNow(twin, "DEPOSIT", 50_000, "t");
+  const activeAfterTwin = await AN.activePlayers("today");
+
+  ok("14.3 · CRA-32 · ACTIVE PLAYERS COUNTS THE DESIGNATED HOLDER LIKE ANY PLAYER — a today transaction on the holder moves the count by exactly one",
+    activeAfterHolder - activeAfterQuiet === 1, j({ before: activeAfterQuiet, after: activeAfterHolder }));
+  ok("14.3b · POSITIVE CONTROL · an ordinary player's today transaction moves it by exactly one too, and a funded account with NO transaction today moves it by zero — so 14.3's +1 is the transaction and not 'any account added'",
+    activeAfterTwin - activeAfterHolder === 1 && activeAfterQuiet === base.active,
+    j({ baseline: base.active, afterQuietAccount: activeAfterQuiet, afterHolderTxn: activeAfterHolder, afterTwinTxn: activeAfterTwin, quiet }));
+
+  /* ── the Top-10, like any player's ── */
+  await txnNow(holder.userId, "BET_PLACED", STAKE_TZS, "hs");
+  const top: Any[] = await AN.topNgrContributors(10);
+  ok("14.4 · rulings 224–225 · THE TOP-10 CONTRIBUTORS LIST CARRIES THE DESIGNATED HOLDER like any player's — same row shape, its own stake, and no marker of any kind on the row",
+    top.some((r: Any) => r.userId === holder.userId && r.lifetimeStakes >= STAKE_TZS)
+      && houseHits(j(top)).length === 0 && !j(top).includes(holder.botId),
+    j({ len: top.length, holderRow: top.find((r: Any) => r.userId === holder.userId), hits: houseHits(j(top)).slice(0, 4) }));
+  ok("14.4b · POSITIVE CONTROL · the Top-10 is a real ranking and not 'everyone': a funded account that never staked is ABSENT from it",
+    !top.some((r: Any) => r.userId === quiet), j(top.map((r: Any) => r.userId)));
 });
 
 /* ━━ THE `reports-mem` ROLL-CALL, AND IT MUST BE LAST — it reads the labels THIS run printed ━━━━━━━━━━━━━━

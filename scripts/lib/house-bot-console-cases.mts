@@ -1427,6 +1427,92 @@ section("§2 · the strip, the band, the roster and every failure");
       NEUTRAL.test(DESIG.VERIFY_COPY.removed) && NEUTRAL.test(DESIG.REVERIFY_COPY.running),
       j({ removed: DESIG.VERIFY_COPY.removed, running: DESIG.REVERIFY_COPY.running }));
 
+    /* ══ CA-19 · A DOUBLE TAP OF **ONE PRESS** COSTS THE HOLDER ONE ATTEMPT, NOT TWO (2026-09-20) ═════════════
+     * 🔴 WHAT IT COST. Re-verify spends the HOLDER'S sign-in attempts and the last two of three are kept for
+     * them, so an officer effectively has one. `verifyHouseBotPassword` has always been able to refuse the copy
+     * of a press — it claims `submit:<officer>:<id>` durably BEFORE the password is checked — the designate
+     * wizard has carried a nonce since C7 step 6, the cancel control makes `submitId` REQUIRED, and
+     * `CONSOLE_ACT_REFUSAL.DUPLICATE_SUBMIT` was already written for THIS row. Nothing sent this row an id.
+     * The only guard was `if (pending) return` in the dialog, and `useTransition` does not set `pending` until
+     * it has RE-RENDERED — so two taps inside one frame both walked past it and a mistyped password burned TWO
+     * of the holder's three attempts.
+     * ⛔ THE MEASUREMENT IS THE HOLDER'S COUNTER, NOT THE SENTENCE. A case that only read the refusal back would
+     * pass on a build that refused the copy AFTER charging for it. The sentence is read out of the shipped
+     * table rather than typed here, so the two cannot drift. */
+    {
+      const { hashPassword, randomId }: Any = await import("../../src/lib/server/crypto.ts");
+      const DUP = /\n {2}DUPLICATE_SUBMIT: "([^"]+)",/.exec(decomment(read(GATE)))?.[1] ?? "";
+      const attemptsOf = async (uid: string): Promise<number> => Number(((await w.db.user.findById(uid)) as Any)?.failedLoginCount ?? -1);
+      /** A desk account whose holder has a REAL salted password — without one, eligibility answers NO_PASSWORD and
+       *  `verifyHouseBotPassword` is never reached, so the counter this case measures could never move. */
+      const reverifiable = async (): Promise<{ botId: string; userId: string }> => {
+        const b = await w.bot();
+        const salt = randomId(16);
+        await w.setUserFields(b.userId, {
+          passwordHash: await hashPassword("ca19-holder-password", salt), passwordSalt: salt,
+          passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE",
+        });
+        await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+        return b;
+      };
+      const WRONG = "not-their-password";
+
+      const one = await reverifiable();
+      const beforeOne = await attemptsOf(one.userId);
+      const press = `ca19-${STORE}-one-press`;
+      const [tapA, tapB] = await Promise.all([
+        callAct(OFFICER, { id: one.botId, act: "REVERIFY", password: WRONG, submitId: press }),
+        callAct(OFFICER, { id: one.botId, act: "REVERIFY", password: WRONG, submitId: press }),
+      ]);
+      const afterOne = await attemptsOf(one.userId);
+      const dupes = [tapA, tapB].filter((r: Any) => r.error === DUP);
+      ok("1.CA19 · ⛔ a DOUBLE-TAPPED Confirm is ONE attempt against the holder's three — the copy is refused as already sent, and the holder's counter moves by 1",
+        DUP.length > 8 && afterOne - beforeOne === 1 && dupes.length === 1
+          && tapA.ok === false && tapB.ok === false,
+        j({ dup: DUP, before: beforeOne, after: afterOne, a: tapA.error, b: tapB.error }));
+
+      /* ⭐ POSITIVE CONTROL · THE REFUSAL MUST NOT HAVE EATEN THE FEATURE. Two DISTINCT presses are two real
+       * attempts and both must still reach the password check — a build that refused every second call, or one
+       * whose nonce outlived its own refusal, would pass the case above and BRICK the control. That exact
+       * defect shipped on the designate wizard (C7 step 6) and is what 1.412 exists for. */
+      const two = await reverifiable();
+      const beforeTwo = await attemptsOf(two.userId);
+      const [pressA, pressB] = await Promise.all([
+        callAct(OFFICER, { id: two.botId, act: "REVERIFY", password: WRONG, submitId: `ca19-${STORE}-press-a` }),
+        callAct(OFFICER, { id: two.botId, act: "REVERIFY", password: WRONG, submitId: `ca19-${STORE}-press-b` }),
+      ]);
+      const afterTwo = await attemptsOf(two.userId);
+      ok("1.CA19 · ⭐ POSITIVE CONTROL · two DISTINCT presses are still two attempts, and NEITHER is refused as a duplicate",
+        afterTwo - beforeTwo === 2 && ![pressA, pressB].some((r: Any) => r.error === DUP),
+        j({ before: beforeTwo, after: afterTwo, a: pressA.error, b: pressB.error }));
+
+      /* ⭐ POSITIVE CONTROL · AND THE FIELD IS OPTIONAL, which is what makes adding it safe. A caller that sends
+       * no id is refused nothing: it keeps exactly the behaviour this row had before. ⛔ The empty string must
+       * be read as ABSENT, not claimed — one caller sharing the empty key with the next would turn every second
+       * re-verify on the platform into a permanent DUPLICATE_SUBMIT. */
+      const none = await reverifiable();
+      const beforeNone = await attemptsOf(none.userId);
+      const bare1 = await callAct(OFFICER, { id: none.botId, act: "REVERIFY", password: WRONG });
+      const bare2 = await callAct(OFFICER, { id: none.botId, act: "REVERIFY", password: WRONG, submitId: "" });
+      const afterNone = await attemptsOf(none.userId);
+      ok("1.CA19 · ⭐ POSITIVE CONTROL · a caller that sends NO id — or an empty one — is refused nothing: both reach the password check, as this row behaved before",
+        afterNone - beforeNone === 2 && ![bare1, bare2].some((r: Any) => r.error === DUP),
+        j({ before: beforeNone, after: afterNone, a: bare1.error, b: bare2.error }));
+
+      /* ⛔ AND THE DIALOG MINTS AND SPENDS THE NONCE, which is the half no server case can see: a server that
+       * honours `submitId` while the browser sends the same one forever is a control that answers
+       * "already sent" to every press after the first. The twin of 1.412's source clause, on the act row. */
+      ok("1.CA19 · …and the DIALOG mints a fresh nonce per press and spends it on either answer — never one derived from what was typed",
+        (() => {
+          const c = decomment(read(`${SECTION}/[id]/account-actions.tsx`));
+          return /const newAttemptNonce = \(\): string =>/.test(c)
+            && /if \(attempt\.current === ""\) attempt\.current = newAttemptNonce\(\);/.test(c)
+            && /attempt\.current = "";/.test(c)
+            && /submitId\b/.test(c)
+            && !/submitId: `\$\{/.test(c);
+        })(), "");
+    }
+
     /* ── START: it is OFFERED on a stopped account even though its service may refuse it, and the refusal IS the
        workflow. ⛔ C10 · an account starts while the desk is OFF, and the officer is told so. ── */
     const freshStart = await w.bot({ caps: { freqMinGapSec: 20 } });
@@ -4449,17 +4535,25 @@ try {
     let oneAnswer: Any = null;
     const bulkTag = `c7s6bulk${process.pid}`;
     const bulk: string[] = [];
-    /* ⛔ SEEDED 11 → 0, DESCENDING, AND THE DIRECTION IS LOAD-BEARING (C5-8 phase 4, 2026-09-20).
-     * The declared mutation `387-order` deletes the `hits.sort(…)` line in `house-console-read.ts`, and the
-     * batch reported this case **MISSED** under it — the guard could not see its own defect. Why: seeded
-     * 0 → 11 ASCENDING, the memory store answers in insertion order, the first ten are `_0 … _9`, and those
-     * ten are ALREADY in lexicographic order — so the total-order half below compared a list against a
-     * sorted copy of itself and passed whether the sort existed or not. Seeded descending, insertion order
-     * and id order disagree, and deleting the sort turns this case red. ⛔ Do not "tidy" this back into an
-     * ascending loop: the assertion becomes unfalsifiable again and nothing will say so.
-     * ⚠️ `bulk[0]` is therefore `usr_<tag>_11`; the single-match control below searches that whole id, which
-     * matches exactly one account either way. */
-    for (let i = 11; i >= 0; i--) bulk.push(await w.user({ id: `usr_${bulkTag}_${i}`, role: "PLAYER" }));
+    /* ⛔ THE IDS ARE ZERO-PADDED AND SEEDED BACKWARDS, AND THAT IS THIS CASE'S INSTRUMENT RATHER THAN a detail of
+     * the fixture (C5-8, 2026-09-21, the batch's `387-order` MISS). They were `_0` … `_11` inserted ASCENDING and
+     * the answer is capped at ten — so the ten that survived the slice were `_0` … `_9`, single digits whose
+     * LEXICOGRAPHIC order IS their insertion order. Deleting the picker's `hits.sort(...)` outright therefore left
+     * BOTH halves below true and the drive reported MISSED: the ordering rule was being satisfied by the shape of
+     * the fixture and not by the sort it is about. Padded to two digits and inserted in reverse, the store's
+     * insertion order is the exact REVERSE of the sorted order, so the sort is load-bearing on the memory twin as
+     * well as on Postgres, where `findMany` has no `orderBy` at all.
+     * ⚠️ THE PADDING ALSO KEEPS THE CONTROL BELOW HONEST: unpadded, `_1` is a PREFIX of `_10` and `_11`, and the
+     * "a query that matches ONE" control searches by whole id. Two digits, no id a prefix of another. */
+    /* ⛔ AND DO NOT "TIDY" THIS BACK INTO AN ASCENDING LOOP — the ops lane's half of the very same finding,
+     * merged here 2026-09-21. BOTH lanes hit the `387-order` MISS independently and both reached for a
+     * descending seed; only this one ALSO pads. That difference is the whole reason this side was kept:
+     * descending alone already fixes the ordering half, so a later reader who strips the padding as noise
+     * would leave a case that still passes while the control below — which searches a WHOLE id — silently
+     * stops matching exactly one account, because unpadded `_1` is a prefix of `_10` and `_11`. The
+     * assertion becomes unfalsifiable again and nothing will say so. Two lanes have now paid for this
+     * lesson; it is written once, here, where the loop is. */
+    for (let i = 11; i >= 0; i--) bulk.push(await w.user({ id: `usr_${bulkTag}_${String(i).padStart(2, "0")}`, role: "PLAYER" }));
     const wide = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
     const again = await GATEM.houseAccountsForConsole(OFFICER, "/admin/desk", bulkTag);
     ok("1.387 · 412 · the answer is capped at ten options and the count says so — the number MATCHED, not the number shown, and what to do about it",
@@ -6008,9 +6102,22 @@ export default function Ruling513Control() {
     ok("1.409 · the caption's FIRST text node is the cap's name and each figure sits in its OWN `.amount` span — `label` is `aria-label` and paints nothing",
       /caption=\{\s*<>\s*\{row\.name\}/.test(pageCode)
         && /<span className="amount tabular-nums">\{h\.figure\}<\/span>/.test(pageCode), "");
-    ok("1.409 · `captionText` is PLAIN — no markup, no `<span`, and it carries 361's grammar after the cap's name",
-      decomment(read(GATE)).includes("captionText: `${name} · ${cell.text}`")
-        && !/captionText=\{[^}]*</.test(pageCode), "");
+    /* ⛔ THE POPULATION IS EVERY `captionText` THE GATE BUILDS, NOT THE FIRST ONE A FILE SCAN FINDS (C5-8,
+     * 2026-09-21, the batch's `409-name` MISS). This read `.includes("captionText: `${name} · ${cell.text}`")`
+     * over the WHOLE gate module — and that literal stands at TWO sites, the roster's `usageRow` and the account
+     * page's own usage shell — so either could lose the cap's NAME entirely while the other went on satisfying the
+     * scan. The declared mutation deleted one of them and this line stayed GREEN.
+     * ⭐ A BROAD SCAN STANDING IN FOR A NARROW SUBJECT is the shape three of the four measurement defects this
+     * batch found all share. The rule is now stated over the DERIVED population — every `captionText:` the module
+     * writes, the interface's own `captionText: string;` excluded because it is a type and not a site — and the
+     * `>= 2` is a FLOOR, so a site DELETED is red too and there is no count to keep up to date. */
+    const captionAssigns = [...decomment(read(GATE)).matchAll(/captionText: ([^,;\n]+)/g)]
+      .map((m: Any) => String(m[1]).trim()).filter((s: string) => s !== "string");
+    const cellCaptions = captionAssigns.filter((s: string) => s.includes("cell.text"));
+    ok("1.409 · `captionText` is PLAIN — no markup, no `<span`, and EVERY site the gate builds one at names the cap FIRST, with 361's grammar after it",
+      cellCaptions.length >= 2 && cellCaptions.every((s: string) => s === "`${name} · ${cell.text}`")
+        && captionAssigns.every((s: string) => s === "name" || s.startsWith("`${name} · "))
+        && !/captionText=\{[^}]*</.test(pageCode), j({ captionAssigns }));
     /* ⛔ 1.544 · THE BAR'S AT/OVER CLAUSE IS THE ONLY THING THAT SEPARATES 100% FROM 185%, AND IT IS MEASURED
      * RATHER THAN ARGUED. `ProgressBar` clamps at `Math.min(100, …)`, so `limits-at-1280.png` and
      * `limits-over-1280.png` — taken on a served build with usage at 7,430,000 against caps of 7,430,000 and
@@ -6151,12 +6258,23 @@ export default function Ruling513Control() {
       return hits.length > 0;
     })();
     const typed = /<Input\b|<Textarea\b|<Select\b|<input\b|<textarea\b|<select\b/.test(sectionCode);
-    const guarded = /<UnsavedChangesGuard\b/.test(sectionCode);
+    /* ⛔ THE GUARD IS MEASURED ON THE FORM THAT OWES IT, NEVER ON THE SECTION (C5-8, 2026-09-21, the batch's
+     * `537-guard` MISS). `guarded` read `/<UnsavedChangesGuard\b/` over `sectionCode` — EVERY file under the desk,
+     * joined into one string — and `new/designate-wizard.tsx` carries a guard of its own, so the limits form could
+     * lose its guard entirely and this whole chain stayed GREEN with the defect injected. The declared mutation
+     * renamed the form's guard and nothing moved.
+     * ⭐ A GUARD'S SCOPE IS PART OF ITS CLAIM. The chain below is a statement about the LIMITS form — its typed
+     * controls, its wired save, the guard in front of it — so the guard is read out of that form's own file.
+     * ⚠️ NARROWER, NOT WEAKER: a guard anywhere under the section satisfied the old test; only the one in front of
+     * this form satisfies this one, and `test:unsaved-changes` still holds every other admin form to the same rule
+     * from the population side. */
+    const LIMITS_FORM = `${SECTION}/limits-form.tsx`;
+    const guarded = /<UnsavedChangesGuard\b/.test(decomment(read(LIMITS_FORM)));
     const bars = (sectionCode.match(/<PendingChangesBar\b/g) ?? []).length;
     const forms = (sectionCode.match(/<form\b/g) ?? []).length;
-    ok("1.412 · 537 · a typed control, a wired limits SAVE and an `UnsavedChangesGuard` exist TOGETHER or not at all — each one is red without the other two",
+    ok("1.412 · 537 · a typed control, a wired limits SAVE and the limits form's OWN `UnsavedChangesGuard` exist TOGETHER or not at all — each one is red without the other two",
       typed === saveWired && saveWired === guarded && typed === true,
-      j({ typedControl: typed, saveWired, guarded }));
+      j({ typedControl: typed, saveWired, guarded, guardRead: LIMITS_FORM }));
     ok("1.412 · EXACTLY ONE guarded form on the tab, with the singleton `PendingChangesBar` beside it — the bar is a singleton and two would elect one painter and hide the other",
       forms === 1 && bars === 1 && guarded, j({ forms, bars }));
     /* ⛔ THE FORM'S COLUMN IS THE FORM TIER, AND IT DID NOT MOVE WHEN THE INPUTS ARRIVED (412). */
@@ -7256,9 +7374,18 @@ export default function Ruling513Control() {
         && area5.length >= 19 && area5.every((id) => D19.some((d) => d.id === id))
         && j(extras) === j(["1.332", "1.342", "1.343"]),
       j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, dueHere: dueHere.length, area5: area5.length, notInRollCall: area5.filter((id) => !D19.some((d) => d.id === id)), missing: missing.map((d) => `${d.id} (${d.what})`), later: later.map((d) => `${d.id}@step${d.step}:${d.owner}`) }));
-    ok("1.398 · LADDER · every rung below the highest one this tree carries is either PRESENT or a hole this repository has recorded — an unrecorded hole is named here, and a recorded one that has since been built is named so the record is deleted with the build",
-      rungs.gaps.every((g) => RECORDED_GAPS.includes(g)) && RECORDED_GAPS.every((g) => rungs.gaps.includes(g)),
-      j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, recorded: RECORDED_GAPS, tree }));
+    /* ⛔ AND THE INSTRUMENT IS SHOWN ABLE TO REPORT A HOLE, INSIDE THIS CASE'S OWN PREDICATE (C5-8, 2026-09-21,
+     * the batch's `398-ladder-hole`). `RECORDED_GAPS` is empty, so the two halves reduce to "`gaps` is empty" —
+     * and a `ladder()` that has stopped computing gaps at all returns `[]`, which satisfies them BOTH VACUOUSLY.
+     * The declared mutation does exactly that, and this line stayed GREEN: the case was blind to its own
+     * instrument being switched off, which is the single failure a ratchet read off disk must not have.
+     * ⚠️ THE FIX IS THE VACUITY, NOT THE LABEL — the label is printed verbatim and always was; the first drive's
+     * recorded reason ("the label had been reworded") was re-measured and is false. The vector is this same tree
+     * with the LANDING half of step 5 removed: the ladder must report that one hole and nothing else. */
+    ok("1.398 · LADDER · every rung below the highest one this tree carries is either PRESENT or a hole this repository has recorded — an unrecorded hole is named here, a recorded one that has since been built is named so the record is deleted with the build, and the LADDER ITSELF is shown able to report a hole, so an empty `gaps` is a measurement rather than an instrument switched off",
+      rungs.gaps.every((g) => RECORDED_GAPS.includes(g)) && RECORDED_GAPS.every((g) => rungs.gaps.includes(g))
+        && j(ladder({ ...tree, activity: false }).gaps) === j(["5:activity"]),
+      j({ builtThrough: BUILT_THROUGH, gaps: rungs.gaps, recorded: RECORDED_GAPS, probe: ladder({ ...tree, activity: false }).gaps, tree }));
     /* ⛔ THE POSITIVE HOLE CASE IS DELETED, NOT WEAKENED (C7 step 5, the landing half). It asserted
      * `rungs.gaps.length === 1 && rungs.gaps[0] === "5:activity" && tree.activity === false` — that this tree
      * REALLY had the hole the list recorded. Its subject is gone: there is no hole. Lowering it to `>= 0` would

@@ -169,6 +169,10 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 706, postgres: 471 },
+  /* ⭐ RAISED 706 → 710 / 471 → 475 at CA-19 — the double-tapped Confirm, its two positive controls and the
+   * dialog's own nonce pin — to what `npm run test:house-bot-console` PRINTED on this run, BOTH children
+   * measured. The +4 in EACH child is the measurement, not bookkeeping: all four assertions reach both
+   * stores, and a build where they reached only the memory twin would have shown +4 and +0. */
+  minPass: { memory: 710, postgres: 475 },
   dbPrefix: "hb_console",
 });

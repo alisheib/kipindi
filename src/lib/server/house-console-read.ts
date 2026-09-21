@@ -2730,6 +2730,22 @@ export type ConsoleAccountActInput = {
   reason?: string;
   password?: string;
   typed?: string;
+  /**
+   * ⛔ THE BROWSER'S OWN IDEMPOTENCY KEY FOR ONE PRESS (CA-19, 2026-09-20). Re-verify spends the HOLDER'S
+   * sign-in attempts, of which the last two are kept for them, and a double-tapped Confirm with a mistyped
+   * password used to cost TWO of the three.
+   *
+   * ⭐ THE SERVICE ALREADY HAD THE ANSWER AND THIS ROW NEVER ASKED FOR IT. `verifyHouseBotPassword` claims
+   * `submit:<officer>:<id>` once, durably, BEFORE the password is checked, and answers DUPLICATE_SUBMIT to the
+   * copy — the same property the designate wizard has carried since C7 step 6 and the cancel control makes
+   * REQUIRED. `CONSOLE_ACT_REFUSAL.DUPLICATE_SUBMIT` was even written for this row. What was missing was this
+   * field and the one argument below it: the only guard was `if (pending) return` in the dialog, and React's
+   * `useTransition` does not set `pending` until it has re-rendered, so two taps inside one frame both pass it.
+   *
+   * ⚠️ OPTIONAL, not required: it is an idempotency key, not an authorisation. A caller that omits one is
+   * refused nothing — it simply keeps the behaviour this row had before, which is what makes adding it safe.
+   */
+  submitId?: string;
 };
 
 export type ConsoleAccountActResult =
@@ -2956,7 +2972,12 @@ export async function houseAccountActForConsole(
     const password = typeof input.password === "string" ? input.password : "";
     let done;
     try {
-      done = await reverifyHouseBot({ officerId: viewerUserId, botId: id, password });
+      /* ⛔ CA-19 · THE SUBMIT ID GOES WITH IT, so a double tap is ONE attempt against the holder's three.
+         Read defensively, like every other field of this row: a client that sends nothing sends null, and
+         `verifyHouseBotPassword` then skips the claim entirely rather than claiming the empty string —
+         which one caller sharing a key with the next would turn into a permanent DUPLICATE_SUBMIT. */
+      const submitId = typeof input.submitId === "string" && input.submitId.length > 0 ? input.submitId : null;
+      done = await reverifyHouseBot({ officerId: viewerUserId, botId: id, password, submitId });
     } catch {
       return { ok: false, error: CONSOLE_ACT_REFUSAL.WRITE_FAILED, field: "password" };
     }

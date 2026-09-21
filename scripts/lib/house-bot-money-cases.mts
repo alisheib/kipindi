@@ -621,6 +621,82 @@ section("§8 · no house wording on outcome notices, in any language");
   ok("8.13 · CONTROL · the mixed holder's and the player's verdict bodies are the same sentence apart from the title",
     !!vMixed && !!vPlayer && vMixed.bodyEn.slice(vMixed.bodyEn.indexOf(" · ")) === vPlayer.bodyEn.slice(vPlayer.bodyEn.indexOf(" · ")),
     `${vMixed?.bodyEn} | ${vPlayer?.bodyEn}`);
+
+  /* ── HB-LC-11 · the lifecycle emitters §8 never reached (D19 regression form) ─────────────────────
+   * ⛔ WHAT WAS ALREADY HERE: WIN (8.1–8.3, body byte for byte AND the link), LOSS (8.4),
+   * SELECTION_CLOSED (8.5–8.8) and VERDICT (8.9–8.13). The row's own emitter list is longer, and the
+   * rest of it was asserted by nothing: **market cancelled**, the **one-sided refund** notice and the
+   * **orphan refund** notice. `5.6` and `10.1` assert the house MARKER on the refund TRANSACTION —
+   * a different claim from the notice TEXT, and a mutation that labelled the copy would leave both green.
+   *
+   * ⛔ THE UP & DOWN HALF IS NOT WRITTEN AGAIN HERE. It is already proved, and naming it beats
+   * duplicating it: `test:house-bot-reports` `9.235.2` asserts the holder's ROUND_RESULT digest bell is
+   * FIELD FOR FIELD the player's — same kind, same link, same three titles and three bodies, no label and
+   * no house word — with `9.235.0` proving the two accounts really differ in the house dimension and
+   * `9.235.5` covering the letter. `test:updown-digest` was read first and says nothing about house bots
+   * at all (0 hits), so the pin is 9.235's, not its.
+   *
+   * ⛔ THE COMPARISON STRIPS EACH ROW'S OWN POSITION ID AND NOTHING ELSE. Both bodies embed the reader's
+   * own position reference, so a raw equality could only ever fail; both stakes are deliberately the SAME
+   * figure so the money words are comparable. A label anywhere else in the sentence still fails.
+   */
+  {
+    /* ⚠️ A FIXTURE OF TIME, NOT A WIDENED CAP — the same move §12 and the caps suite make, and this block
+     * earned it the same way: adding two more house stakes to §8 pushed the run past `gMaxBetsPerMinute`,
+     * which is a CHECK-bounded 20, and §10's place came back `house_cap_reached {GLOBAL_BETS_PER_MINUTE}`.
+     * That is the product being correct about a suite, not a defect, and the per-minute cap has its own
+     * cases in `test:house-bot-caps` (§0.2/§0.3). Ageing the window raises nothing. */
+    await w.ageHouseMinute();
+    const STAKE = 3_000;
+    /** The row's own reference is the only thing allowed to differ; everything else must match. */
+    const strip = (n: Any, posId: string) => ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh", "href"]
+      .map((f) => `${f}=${String(n?.[f] ?? "").split(posId).join("<ref>")}`).join("\n");
+
+    // (a) MARKET CANCELLED — an officer pulls the market with both a house stake and a player's on it.
+    const mc = await w.poll({ graceMin: 0 });
+    const hc = await w.bot();
+    const rc = await w.place(hc, await w.intent(hc, mc.id, { kind: "OPENER", side: "YES", stakeTzs: STAKE }));
+    const pc = await w.user({ balance: 100_000 });
+    const pcPos = await w.svc.buyPosition(pc, { marketId: mc.id, side: "YES", stake: STAKE, idempotencyKey: crypto.randomUUID() });
+    const voided = await w.svc.emergencyVoidMarket({ marketId: mc.id, officerId: OFFICER, reason: "HB-LC-11 fixture" });
+    await sleep(500);
+    const hcRow = (await rows(hc.userId, "DEPOSIT")).find((n: Any) => n.bodyEn.includes(rc.data.positionId));
+    const pcRow = (await rows(pc, "DEPOSIT")).find((n: Any) => n.bodyEn.includes(pcPos.data.positionId));
+    ok("8.14 · HB-LC-11 fixture · the cancelled market really refunded both, and BOTH notices EXIST — the rows are asserted PRESENT before anything is asserted absent from them",
+      voided.ok === true && !!hcRow && !!pcRow, j({ voided: show(voided), holder: !!hcRow, player: !!pcRow }));
+    ok("8.15 · HB-LC-11 · the holder's MARKET CANCELLED notice carries no house word in any of the three languages, link included",
+      !!hcRow && leaks(hcRow).length === 0, j(leaks(hcRow)));
+    ok("8.16 · HB-LC-11 POSITIVE CONTROL · …and it is the NON-HOLDER's notice on the SAME market, field for field — same three titles, same three bodies, same link, once each row's own position reference is taken out",
+      !!hcRow && !!pcRow && strip(hcRow, rc.data.positionId) === strip(pcRow, pcPos.data.positionId),
+      `${strip(hcRow, rc.data.positionId)}\n       ---\n       ${strip(pcRow, pcPos.data.positionId)}`);
+
+    // (b) ONE-SIDED REFUND — every stake on one side, so nobody could win.
+    const mo = await w.poll({ graceMin: 0 });
+    const ho = await w.bot();
+    const ro2 = await w.place(ho, await w.intent(ho, mo.id, { kind: "OPENER", side: "YES", stakeTzs: STAKE }));
+    const po = await w.user({ balance: 100_000 });
+    const poPos = await w.svc.buyPosition(po, { marketId: mo.id, side: "YES", stake: STAKE, idempotencyKey: crypto.randomUUID() });
+    await w.svc.resolveMarket({ marketId: mo.id, outcome: "YES", officerId: OFFICER });
+    await w.svc.settleMarket(mo.id, { force: true });
+    await sleep(500);
+    const hoRow = (await rows(ho.userId, "WIN")).find((n: Any) => n.bodyEn.includes(ro2.data.positionId));
+    const poRow = (await rows(po, "WIN")).find((n: Any) => n.bodyEn.includes(poPos.data.positionId));
+    ok("8.17 · HB-LC-11 fixture · with every stake on ONE side both readers got the full-refund notice — asserted PRESENT first, because an absence proved over a missing row proves nothing",
+      !!hoRow && !!poRow && hoRow.titleEn.startsWith("Full refund") && poRow.titleEn.startsWith("Full refund"),
+      j({ holder: hoRow?.titleEn, player: poRow?.titleEn }));
+    ok("8.18 · HB-LC-11 · the holder's ONE-SIDED REFUND notice carries no house word in any language, link included",
+      !!hoRow && leaks(hoRow).length === 0, j(leaks(hoRow)));
+    ok("8.19 · HB-LC-11 POSITIVE CONTROL · …and it is the NON-HOLDER's notice on the SAME market, field for field",
+      !!hoRow && !!poRow && strip(hoRow, ro2.data.positionId) === strip(poRow, poPos.data.positionId),
+      `${strip(hoRow, ro2.data.positionId)}\n       ---\n       ${strip(poRow, poPos.data.positionId)}`);
+
+    // (c) THE CONTROL THAT MAKES (a) AND (b) MEASUREMENTS: the comparator can tell the two apart.
+    ok("8.20 · HB-LC-11 CONTROL · the field-for-field comparator REPORTS a difference when there is one — a liquidity label planted into a copy of the holder's cancelled notice is not equal to the player's, so 8.16 and 8.19 are findings and not a predicate that always agrees",
+      !!hcRow && !!pcRow
+        && strip({ ...hcRow, bodySw: `${hcRow.bodySw} (ukwasi wa nyumba)` }, rc.data.positionId) !== strip(pcRow, pcPos.data.positionId)
+        && strip({ ...hcRow, href: "/house/positions" }, rc.data.positionId) !== strip(pcRow, pcPos.data.positionId),
+      "the planted label and the planted href must each break the equality");
+  }
 }
 
 // ═══ §10 · orphan repair refunds a house stake with the marker (MC-3) — memory only ═══════════════
@@ -1029,6 +1105,102 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
       balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: `hb173_dal_${userId}`, msisdn: null, description: "deposit",
       positionId: null, amlReason: null, createdAt: at, updatedAt: at, completedAt: at,
     } as Any);
+  }
+}
+
+/* ═══ §12 · TWO PROPERTIES THAT ONLY A HOUSE FIXTURE COULD EVER SHOW BREAKING ════════════════════════════════
+ * ⛔ BOTH WERE OMISSION-ONLY BEFORE THIS SECTION (2026-09-20). Each is a "this must NOT happen" rule with real
+ * enforcement in `buyPosition` and NO fixture anywhere that could have shown it happening — and an absence with
+ * no fixture is not a proof, it is a place nobody looked. `test:failure-reasons` 8c pins the loss-limit REASON
+ * at SOURCE and 8c.loss-limit pins that `checkLossLimit` has exactly one player-refusing caller; neither of them
+ * drives a HOUSE stake through it, and the whole point of the house seam is that it is a second way to spend a
+ * player's money. §12 drives both, on the holder's own wallet, with the positive control beside each refusal.
+ * ⭐ THE ORDER IN `buyPosition` IS WHY THESE BIND AT ALL, and it is worth stating: the wallet-status gate
+ * (:1285) and the RG daily-loss gate (:1327) both run BEFORE `houseH2` (:1338). A house stake is a bet first.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§12 · the holder's own RG loss limit, and settlement into a CLOSED wallet");
+{
+  const RG: Any = await import("../../src/lib/server/responsible-gambling.ts");
+
+  /* ── 12.1 · THE HOLDER'S OWN DAILY LOSS LIMIT BINDS A HOUSE STAKE TOO ──────────────────────────────────
+   * The account is the holder's, so the limit they set for themselves is theirs to keep — an owner cannot
+   * spend past it by running a bot on their account. `checkLossLimit` refuses when
+   * `lossSoFar + stake > dailyLossLimit`, before a shilling moves. */
+  {
+    /* ⛔ BOTH MARKETS ARE OTHERWISE STAKEABLE — a locked NO stake each, so a FILL's entry condition is MET.
+     * The first draft used bare polls and 12.2 came back `house_condition_gone`, which would have left 12.1
+     * passing for a reason that has nothing to do with a loss limit. (It passes either way, because the RG
+     * gate runs before H3's condition check — but an assertion whose subject could be any of two refusals is
+     * not measuring the one it names.) */
+    await w.ageHouseMinute();
+    const over = (await pollWithLockedNo(10_000)).market;
+    const under = (await pollWithLockedNo(10_000)).market;
+    const b = await w.bot();
+    const before = (await w.bal(b.userId)).balance;
+    const set = await RG.setLimits(b.userId, { dailyLossLimit: 3_000 });
+    const limitNow = (await RG.getRgSettings(b.userId)).dailyLossLimit;
+    ok("12.0 · fixture · the holder's OWN daily loss limit is set and in force NOW (a tightening never waits)",
+      set.ok !== false && limitNow === 3_000, `${show(set)} · limit ${limitNow}`);
+
+    const tooBig = await w.place(b, await w.intent(b, over.id, { kind: "FILL", side: "YES", stakeTzs: 5_000 }));
+    ok("12.1 · ⛔ a HOUSE stake over the holder's OWN daily loss limit is REFUSED, and says why — the bot cannot spend past a limit the holder set for themselves",
+      tooBig.ok === false && tooBig.reason === "loss_limit_daily", show(tooBig));
+    ok("12.1b · …and the refusal moved NOTHING: the holder's balance is exactly what it was",
+      (await w.bal(b.userId)).balance === before, `${before} → ${(await w.bal(b.userId)).balance}`);
+
+    /* ⭐ POSITIVE CONTROL · a refusal needs one, or a seam that refused EVERY house stake would pass 12.1
+     * while the feature was dead. What must still be ALLOWED is a stake that FITS inside the same limit,
+     * on the same holder, with the same limit in force. */
+    const fits = await w.place(b, await w.intent(b, under.id, { kind: "FILL", side: "YES", stakeTzs: 1_000 }));
+    ok("12.2 · ⭐ POSITIVE CONTROL · a house stake that FITS the same limit still LANDS — the gate is a limit, not a wall",
+      fits.ok === true && (await w.bal(b.userId)).balance === before - 1_000, show(fits));
+  }
+
+  /* ── 12.3 · A CLOSED WALLET IS NEVER STAKED FROM — AND WHAT IS ALREADY OPEN IS STILL PAID ──────────────
+   * ⛔ THE TWO HALVES PULL IN OPPOSITE DIRECTIONS, which is why they belong in one fixture. Closing a wallet
+   * must stop new money going OUT of it; it must NOT strand money already committed. Settlement credits
+   * through `db.wallet.adjust` with no status check, deliberately — `settleMarket`'s own "REFUSE, NEVER
+   * SKIP" rule — and a future guard added there "for safety" would silently keep a holder's winnings. */
+  {
+    /* ⚠️ A FIXTURE OF TIME, not a widened cap. §12 runs after eleven sections of house stakes and the platform's
+     * own `gMaxBetsPerMinute` is a CHECK-bounded 20 — the first draft of 12.3 came back
+     * `house_cap_reached {"cap":"GLOBAL_BETS_PER_MINUTE"}`, which is the product being correct about a suite,
+     * not a defect. The per-minute cap has its own cases in `test:house-bot-caps`; this ages the window the
+     * same way §16 and the caps suite do rather than raising anything. */
+    await w.ageHouseMinute();
+    const { market } = await pollWithLockedNo(10_000);
+    const later = (await pollWithLockedNo(10_000)).market;
+    const b = await w.bot();
+    const placed = await w.place(b, await w.intent(b, market.id, { kind: "FILL", side: "YES", stakeTzs: 5_000 }));
+    ok("12.3 · fixture · the house stake lands while the wallet is ACTIVE", placed.ok === true, show(placed));
+
+    const wal = await w.bal(b.userId);
+    await w.db.wallet.update(wal.id, { status: "CLOSED" });
+    ok("12.3b · fixture · the holder's wallet really is CLOSED before the next two assertions read anything",
+      ((await w.bal(b.userId)) as Any).status === "CLOSED", `${((await w.bal(b.userId)) as Any).status}`);
+
+    const afterClose = await w.place(b, await w.intent(b, later.id, { kind: "FILL", side: "YES", stakeTzs: 1_000 }));
+    ok("12.4 · ⛔ no NEW house stake leaves a wallet that is not ACTIVE, and the refusal says which of the two it is",
+      afterClose.ok === false && afterClose.reason === "wallet_frozen", show(afterClose));
+
+    /* ⛔ AND THE OPEN ONE IS STILL PAID, INTO THAT SAME CLOSED WALLET. This is the half that would fail
+     * SILENTLY: a settlement that skipped the credit would leave the position OPEN while `settledAt` was
+     * stamped, and every settlement readout filters on `settledAt` being null — so nothing could ever find
+     * it again. The balance delta is the measurement; the position status alone would not catch a credit
+     * that landed somewhere else. */
+    const balBefore = (await w.bal(b.userId)).balance;
+    const res = await w.svc.resolveMarket({ marketId: market.id, outcome: "YES", officerId: OFFICER });
+    const st = await w.svc.settleMarket(market.id, { force: true });
+    const pos = await w.mdal.positionStore.get(placed.data.positionId);
+    const payout = (await w.txnsFor(pos.id)).find((t: Any) => t.type === "BET_PAYOUT");
+    const balAfter = (await w.bal(b.userId)).balance;
+    ok("12.5 · ⛔ a house stake already OPEN when the wallet CLOSED still settles INTO it — the position is WIN, the payout carries the marker, and the holder's balance rises by exactly that payout",
+      res.ok === true && st.ok === true && pos.status === "WIN"
+        && payout !== undefined && payout.houseBotId === b.botId
+        && balAfter - balBefore === payout.amount && payout.amount > 0,
+      `${show(res)} · ${show(st)} · ${pos.status} · payout ${payout?.amount} · ${balBefore} → ${balAfter}`);
+    ok("12.5b · …and the wallet was STILL closed when it was paid, so 12.5 is not a pass over an ACTIVE wallet",
+      ((await w.bal(b.userId)) as Any).status === "CLOSED", `${((await w.bal(b.userId)) as Any).status}`);
   }
 }
 

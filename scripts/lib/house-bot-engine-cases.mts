@@ -575,6 +575,97 @@ await guard("11", async () => {
   const zone = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, timeZone: async () => "Africa/Dar_es_Salaam" });
   ok("11.15 · A4: a database TimeZone that is not UTC → not started", zone.started === false && zone.refused === "DB_TIMEZONE");
   ok("11.16 · …and no boot row was written by a refused start", (await HDAL.houseBotRuntimeStore.get(`engine:${INSTANCE_ID}`)) === null);
+
+  /* ── 11.15b–f · ⛔ THE BOOT REFUSAL THAT TOLD NOBODY (01 register:1210; `ALERT_KEY.dbTimezone`) ────────────────
+   * 11.15 has pinned the REFUSAL since commit 4, and the refusal is right: a database whose TimeZone is not UTC makes
+   * every EAT day key wrong, so the engine declines to start rather than count a day it cannot trust. What no case
+   * asked until this build is whether anyone is TOLD. `ALERT_KEY.dbTimezone()` sat in the key table from commit 4
+   * with ZERO callers anywhere in the tree, and the only trace of the refusal was a `console.error` on a container
+   * that then sat idle — an engine that is correct, and silent, and from every instrument indistinguishable from an
+   * engine nobody switched on.
+   * ⛔ THE CONDITION IS DRIVEN, NEVER THE FUNCTION. Every case below boots a real engine through a real
+   * `deps.timeZone` and reads what arrived on the channel. A case that called the alert helper and watched it return
+   * would stay green on a build where the boot path never reaches it — which is exactly the build this was written
+   * against, and is the easiest alert assertion in the world to fake. */
+  {
+    const bell = () => {
+      const calls: Any[] = [];
+      const alerts: Any = {
+        once: async (key: string, m: Any) => { calls.push({ key, code: m.code, detail: m.detail }); },
+        placed: async () => {}, security: async () => {}, botStopped: async () => {},
+      };
+      return { calls, alerts };
+    };
+    const fresh = () => { globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined; };
+    const withBell = (b: Any) => ({ ...ticks, hookAlerts: b.alerts });
+    const tzDeps = (zone: string | null) => ({ env: () => undefined, schemaReady: ready, timeZone: async () => zone });
+
+    fresh();
+    const b1 = bell();
+    const first = await EN2.startHouseBotEngine(withBell(b1), tzDeps("Africa/Dar_es_Salaam"));
+    ok("11.15b · ⛔ register:1210 · a non-UTC database still refuses the boot — AND NOW RINGS: exactly one engine:db_timezone bell, code DB_TIMEZONE, carrying the zone that was actually read",
+      first.started === false && first.refused === "DB_TIMEZONE" && b1.calls.length === 1
+        && b1.calls[0].code === "DB_TIMEZONE" && String(b1.calls[0].key).startsWith("engine:db_timezone")
+        && b1.calls[0].detail?.zone === "Africa/Dar_es_Salaam",
+      j(b1.calls));
+
+    fresh();
+    const b2 = bell();
+    const second = await EN2.startHouseBotEngine(withBell(b2), tzDeps("Africa/Dar_es_Salaam"));
+    ok("11.15c · …and the same misconfiguration on the NEXT container boot in the same EAT day still refuses and tells nobody a second time — the throttle is the AlertOnce claim, not a process flag, so a fleet restarting together against one bad database rings once",
+      second.refused === "DB_TIMEZONE" && b2.calls.length === 0, j({ refused: second.refused, calls: b2.calls }));
+
+    fresh();
+    const b3 = bell();
+    const unreadable = await EN2.startHouseBotEngine(withBell(b3), tzDeps(null));
+    ok("11.15d · …and a TimeZone that cannot be read AT ALL is the same refusal, inside the same day's one bell",
+      unreadable.refused === "DB_TIMEZONE" && b3.calls.length === 0, j({ refused: unreadable.refused, calls: b3.calls }));
+
+    /* ⭐ POSITIVE CONTROL — the case that must still be ALLOWED. A UTC database has to pass this gate, and the only
+     * way to prove it passed WITHOUT arming this process's timers (11.17 below owns the one real start in §11) is to
+     * let it reach the very next statement and fail there: the boot row. BOOT_FAILED is therefore proof that the
+     * zone was ACCEPTED, and no bell rang for a database that was never misconfigured. Without this control a build
+     * that alerted on every boot, UTC or not, would pass 11.15b–d HARDER than the right one.
+     * ⛔ AND THE BELL IS RE-ARMED FIRST. 11.15b spent this EAT day's claim; left spent, a build that rang on EVERY
+     * boot would be silenced here by the THROTTLE rather than by the zone check, and this control would pass on the
+     * broken build, so a wrong ring must be made visible first.
+     * ⛔ AND IT IS RE-ARMED DETERMINISTICALLY, not off the bell that rang: on the very build this control exists to
+     * catch, an earlier boot may already have spent the claim, leaving no bell to read the key from.
+     * `claimWithEatSuffix` returns the real key whether or not it won it.
+     * (Found by driving the `alerts-tz-rings-on-every-boot` mutation: this control was MISSED until this line.) */
+    {
+      const dbtz = K.ALERT_KEY.dbTimezone();
+      const { key } = await HDAL.houseBotAlertOnceStore.claimWithEatSuffix(dbtz.prefix, dbtz.unit);
+      await HDAL.houseBotAlertOnceStore.release(key).catch(() => {});
+    }
+    fresh();
+    const b4 = bell();
+    const realBoot = HDAL.houseBotRuntimeStore.boot;
+    let utc: Any;
+    try {
+      HDAL.houseBotRuntimeStore.boot = async () => { throw new Error("boot row refused by the positive control"); };
+      utc = await EN2.startHouseBotEngine(withBell(b4), tzDeps("Etc/UTC"));
+    } finally {
+      HDAL.houseBotRuntimeStore.boot = realBoot;
+    }
+    ok("11.15e · ⭐ POSITIVE CONTROL · a UTC database is ALLOWED past the clock gate — it reaches the boot row (BOOT_FAILED, never DB_TIMEZONE) and rings NO timezone bell",
+      utc?.refused === "BOOT_FAILED" && b4.calls.length === 0, j({ refused: utc?.refused, calls: b4.calls }));
+
+    /* ⛔ THE BELL MAY NEVER COST THE VERDICT. The refusal is already decided when the alert runs; a channel that
+     * throws must still leave the engine refused and the caller told WHICH refusal it was. An alert that swallowed
+     * the verdict would be this defect again, louder: a stop that reports nothing. */
+    fresh();
+    const throwing: Any = {
+      ...ticks,
+      hookAlerts: { once: async () => { throw new Error("alert channel down"); }, placed: async () => {}, security: async () => {}, botStopped: async () => {} },
+    };
+    let stillRefused: Any;
+    try { stillRefused = await EN2.startHouseBotEngine(throwing, tzDeps("Africa/Nairobi")); }
+    catch (e) { stillRefused = { threw: String((e as Error)?.message ?? e) }; }
+    ok("11.15f · ⛔ the bell never costs the verdict · an alert channel that THROWS still leaves the engine refused DB_TIMEZONE, and startHouseBotEngine itself does not throw",
+      stillRefused?.refused === "DB_TIMEZONE" && stillRefused?.threw === undefined, j(stillRefused));
+  }
+
   globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
   const on = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, timeZone: async () => "Etc/UTC", dbClockMs: async () => Date.now() + 1_000 });
   const firstTimer = EN2.engineState().timers.first;
@@ -1632,7 +1723,9 @@ await guard("16", async () => {
     const calls: Any[] = [];
     const alerts = {
       placed: async (i: Any) => { calls.push({ fn: "placed", id: i.id, inFlight: EN2.engineState().inFlight.has(i.id) }); if (o.placedThrows) throw new Error("alert channel down"); },
-      once: async (key: string, m: Any) => { calls.push({ fn: "once", key, code: m.code }); },
+      /* ⛔ `detail` IS CAPTURED, and 16.515f is why: a D19 case that asks "does this bell name a holder?" over calls
+       * that never carried a detail is an absence measured over NOTHING, and passes on every build. */
+      once: async (key: string, m: Any) => { calls.push({ fn: "once", key, code: m.code, detail: m.detail }); },
       security: async (m: Any) => { calls.push({ fn: "security", code: m.code }); },
       botStopped: async (bot: Any, change: Any) => { calls.push({ fn: "botStopped", botId: bot.id, ...change }); },
     };
@@ -2139,6 +2232,116 @@ await guard("16", async () => {
       j({ good: good && { claimed: good.claimed, beat: good.beat, threw: good.threw }, row: recovered && { streak: recovered.pollerErrorStreak, beatAt: recovered.beatAt, skewMs: recovered.skewMs, code: recovered.pollerErrorCode } }));
     ok("16.514g · CONTROL · the claim really was restored — the pass above claimed and fired a real row, so the reset is a measurement and not an unreached patch",
       good?.results?.length === 1, j({ results: good?.results?.length }));
+  }
+
+  /* ── 16.515 · ⛔ THE SILENT STOP — the clock-skew bell (01 register:1218; `ALERT_KEY.clockSkew`) ────────────────
+   * MEASURED before this build: `ALERT_KEY.clockSkew` had exactly ONE occurrence in the whole tree — its own line in
+   * the key table — and §11.3/§11.4 pinned only the REFUSAL. That refusal has always been right: `claimGate` will
+   * not claim while this container's measured offset from the database clock is unknown or past
+   * MAX_TOLERATED_SKEW_MS, because claiming on a clock five seconds out fires intents before they are due.
+   * ⛔ THE DEFECT IS THE SILENCE, NOT THE STOP. On a live money platform the bots then stop staking and the only
+   * evidence is an ABSENCE: no outcome, no audit, no bell — every instrument reading "quiet", which is exactly what
+   * an hour with nothing due looks like. A stop nobody is told about is its own failure, and it is the same one A24
+   * exists for, so it is answered in the same place and the same shape as A24's limb above.
+   * ⛔ THE CONDITION IS DRIVEN, NEVER THE FUNCTION. Every case below runs a real `pollerPass` over a real gate and
+   * reads what arrived on the channel. A case that called the alert helper and watched it return would stay green on
+   * a build where `pollerPass` never reaches it — which is precisely the build this section was written against. */
+  {
+    const instanceId = `hb-test-skew-${process.pid}`;
+    const st = { ...EN2.engineState(), started: true, stopping: false, skewMs: 0, inFlight: new Map() };
+    const rec = recorder();
+    const bells = () => rec.calls.filter((c: Any) => c.fn === "once" && String(c.key).startsWith("engine:clock_skew"));
+
+    /* ⛔ RE-ARM DETERMINISTICALLY, NEVER OFF THE BELL THAT RANG. Reading the key back from an observed bell works
+     * only on a build where the bell rang — and the build these cases exist to catch is one where an EARLIER pass
+     * already spent this EAT day's claim, so there is no bell to read, `String(undefined)` is released instead, and
+     * the re-arming silently becomes a no-op that leaves the control masked exactly as before.
+     * `claimWithEatSuffix` returns the real key whether or not it won it, so this learns it in EVERY build.
+     * (Found by driving `alerts-skew-every-gate`: it was WRONG-ASSERTION until this helper existed.) */
+    const rearm = async (k: Any): Promise<string> => {
+      const { key } = await S.houseBotAlertOnceStore.claimWithEatSuffix(k.prefix, k.unit);
+      await S.houseBotAlertOnceStore.release(key).catch(() => {});
+      return key;
+    };
+
+    // Each case below measures its OWN condition, not whatever the sections above happened to leave behind.
+    await rearm(K.ALERT_KEY.clockSkew());
+    const before = bells().length;
+    const unknown = await passSafe({ state: { ...st, skewMs: null }, instanceId }, rec.alerts);
+    ok("16.515a · ⛔ register:1218 · a clock that has NOT been measured stops the claims (SKEW_UNKNOWN) — and now RINGS: exactly one engine:clock_skew bell, code CLOCK_SKEW, the key's first writer anywhere in this tree",
+      before === 0 && unknown?.claimed === 0 && unknown?.gate === "SKEW_UNKNOWN" && unknown?.alerted === true
+        && bells().length === 1 && bells()[0]?.code === "CLOCK_SKEW",
+      j({ before, pass: unknown, bells: bells().map((c: Any) => ({ key: c.key, code: c.code })) }));
+
+    const over = await passSafe({ state: { ...st, skewMs: 6_000 }, instanceId }, rec.alerts);
+    ok("16.515b · …and a clock 6 s out on the NEXT pass of the same EAT day stops the claims too and tells nobody a second time — the throttle is the AlertOnce claim, which is what makes a poller reaching this line every few seconds, on every container at once, ring ONCE",
+      over?.claimed === 0 && over?.gate === "SKEW" && over?.alerted === false && bells().length === 1,
+      j({ pass: over, bells: bells().length }));
+
+    /* ⛔ THE BELL IS RE-ARMED BEFORE THE POSITIVE CONTROL, AND THE MUTATION DRIVE IS WHY.
+     * 16.515a spends this EAT day's AlertOnce claim. Left spent, the control below could not tell a build that
+     * rings ONLY on a bad clock from one that rings on EVERY refused gate — the second one would be silenced by
+     * the throttle, not by the predicate, and the control would pass on the broken build. So the claim is handed
+     * back, and the control then runs against an ARMED bell, where a wrong ring is visible.
+     * (Found by driving the `alerts-skew-every-gate` mutation: the control was MISSED until this line.) */
+    await rearm(K.ALERT_KEY.clockSkew());
+
+    /* ⭐ POSITIVE CONTROLS — the gate reasons that must still be ALLOWED to be silent. NOT_STARTED and STOPPING are
+     * a container booting or shutting down and FULL is back-pressure: the engine WORKING. A bell on any of them
+     * would wake an officer at every deploy, and an alert nobody can act on is an alert nobody reads.
+     * ⭐ THE FIRST ONE IS THE SHARP ONE: its skew is genuinely UNKNOWN (skewMs null) and it still must not ring,
+     * because `claimGate` answers NOT_STARTED first. A build that rang on "the gate refused" rather than on "the
+     * clock cannot be trusted" passes 16.515a–b and fails only here. */
+    const quiet = recorder();
+    const quietBells = () => quiet.calls.filter((c: Any) => c.fn === "once" && String(c.key).startsWith("engine:clock_skew"));
+    const notStarted = await passSafe({ state: { ...st, started: false, skewMs: null }, instanceId }, quiet.alerts);
+    const stopping = await passSafe({ state: { ...st, stopping: true, skewMs: null }, instanceId }, quiet.alerts);
+    const busy = new Map([["hbi_s1", { startedAt: 0, inline: false }], ["hbi_s2", { startedAt: 0, inline: true }]]);
+    const full = await passSafe({ state: { ...st, skewMs: 0, inFlight: busy }, instanceId }, quiet.alerts);
+    ok("16.515c · ⭐ POSITIVE CONTROL · an UNMEASURED clock behind a NOT_STARTED or STOPPING gate, and a FULL slot table on a good clock, are the engine working — each refuses claims and NOT ONE of them rings",
+      notStarted?.gate === "NOT_STARTED" && stopping?.gate === "STOPPING" && full?.gate === "FULL"
+        && notStarted?.alerted === false && stopping?.alerted === false && full?.alerted === false
+        && quietBells().length === 0,
+      j({ gates: [notStarted?.gate, stopping?.gate, full?.gate], bells: quietBells().length }));
+
+    /* ⛔ THE BELL NEVER COSTS THE PASS, AND A CHANNEL DOWN FOR ONE TICK MUST NOT BUY THE WHOLE DAY'S SILENCE.
+     * The claim is given back when the send throws (C3 review LI-8), so the next occurrence still tells someone.
+     * The bell is still armed here: 16.515c proved it did not ring on any of those three gates. */
+    const downRec = recorder();
+    const downAlerts: Any = { ...downRec.alerts, once: async () => { throw new Error("alert channel down"); } };
+    const down = await passSafe({ state: { ...st, skewMs: null }, instanceId }, downAlerts);
+    ok("16.515d · ⛔ the bell never costs the pass · a channel that THROWS still returns the gate reason and alerted:false, and pollerPass itself does not throw",
+      down?.claimed === 0 && down?.gate === "SKEW_UNKNOWN" && down?.alerted === false && down?.threw === undefined, j(down));
+
+    const after = recorder();
+    const afterBells = () => after.calls.filter((c: Any) => c.fn === "once" && String(c.key).startsWith("engine:clock_skew"));
+    const retry = await passSafe({ state: { ...st, skewMs: -6_000 }, instanceId }, after.alerts);
+    ok("16.515e · ⭐ LI-8 · the FAILED bell gave its claim back, so the very next skewed pass does tell someone — and a clock 6 s out the OTHER way is the same untrustworthy clock",
+      retry?.gate === "SKEW" && retry?.alerted === true && afterBells().length === 1 && afterBells()[0]?.code === "CLOCK_SKEW",
+      j({ retry, bells: afterBells().length }));
+
+    /* ⛔ AND THE ABSENCE IS MEASURED OVER SOMETHING. The first half of this case pins that each bell really carries
+     * its diagnostic detail; only then does the second half mean anything. Asked over calls that carried no detail
+     * at all — which is what the shared recorder handed back until this build — "does it name a holder?" is a sweep
+     * over an empty population, and an empty sweep passes. */
+    const d19 = [...bells(), ...afterBells()];
+    ok("16.515f · ⛔ D19 · every skew bell carries its diagnostic detail — reason, the measured offset and the tolerance — and NAMES NO BOT AND NO HOLDER: a server clock is a fact about the PROCESS, true of every bot at once, and a handle hung on it would put a person's name against a fault that has nothing to do with them",
+      d19.length === 2 && d19.every((c: Any) => {
+        const d = (c.detail ?? {}) as Record<string, unknown>;
+        const carries = typeof d.reason === "string" && d.toleratedMs === K.MAX_TOLERATED_SKEW_MS && "skewMs" in d;
+        const names = d.botId !== undefined || d.holderUserId !== undefined || d.handle !== undefined || d.label !== undefined;
+        return carries && !names;
+      }), j(d19.map((c: Any) => c.detail)));
+
+    /* ⭐ POSITIVE CONTROL · the bell must not have bought its silence by breaking the poller. A clock inside
+     * tolerance on the same instance still claims a real due row and fires it. */
+    const bSkew = await botWith();
+    const pSkew = await lockedPoll();
+    await S.houseBotIntentStore.insert(pendingRow(bSkew, pSkew.m.id));
+    const healthy = await passSafe({ state: { ...st, skewMs: 0 }, instanceId }, recorder().alerts);
+    ok("16.515g · ⭐ POSITIVE CONTROL · a clock INSIDE tolerance on the same instance still CLAIMS and FIRES a real due row — the gate that now rings did not stop admitting the passes it always admitted",
+      healthy?.claimed === 1 && healthy?.beat === true && healthy?.results?.length === 1,
+      j({ claimed: healthy?.claimed, beat: healthy?.beat, results: healthy?.results?.length }));
   }
   {
     const b = await botWith();
@@ -3709,6 +3912,8 @@ await guard("19", async () => {
   const safe = async (fn: () => Promise<Any>): Promise<Any> => { try { return await fn(); } catch (e) { return { threw: msg(e) }; } };
   const iso = () => new Date().toISOString();
   const newHash = () => `hash_holder_${crypto.randomUUID()}`;
+  /** The hash `world.bot()` seeds every holder with — 19.J0 proves the fixture starts from ITS fingerprint. */
+  const { HOLDER_HASH: HOLDER_HASH_19 }: Any = await import("./house-bot-world.mts");
   const botRow = (id: string) => S.houseBotStore.get(id) as Promise<Any>;
   const eventsOf = async (botId: string, kinds?: string[]) =>
     ((await S.houseBotEventStore.listByBot(botId, { limit: 500, ...(kinds ? { kinds } : {}) })).rows as Any[]);
@@ -4373,6 +4578,103 @@ await guard("19", async () => {
     await sweep(rec2);
     ok("19.I2 · …and the sweep that follows finds the set current: no second bell, no second event",
       rec2.of(b.userId).length === 0, j(rec2.fns(b.userId)));
+    await retire(b.botId);
+  }
+
+  /* ── 19.J · HB-ACC-16 · a REHASH, and the fingerprint that decides whether it stops the bot ── */
+  /**
+   * ⛔ THE ROW IS "FUTURE" BUT THE MECHANISM IS PRESENT-DAY AND LIVE. HB-ACC-16: a code change rewrites
+   * `passwordHash` with no holder acting — rehash-on-login, a scrypt parameter upgrade, a password set
+   * after an OTP sign-in. Expected: EITHER the writer declares `passwordSetVia=REHASH` and refreshes
+   * `HouseBot.passwordFingerprint` in the same act, OR the build fails.
+   *
+   * WHAT WAS ALREADY ASSERTED: the "or the build fails" half, by `test:house-bot-holder-lifecycle` §1
+   * (`1.1`–`1.4`, `WRITER_CEILING` 33, with plants at `4.1`/`4.2`/`4.5`) — every `db.user.update` naming
+   * `passwordHash` must carry the hook.
+   *
+   * WHAT NOTHING DROVE, until this section: the ESCAPE HATCH. `PASSWORD_SET_VIA` includes `REHASH`
+   * (`constants.ts:168`), `designation.ts:93` words it ("a security update"), and `holderCauses` raises
+   * `PASSWORD_CHANGED` ONLY on `s.fingerprintNow !== s.bot.passwordFingerprint` (`consent.ts:97`). The only
+   * `REHASH` anywhere under `scripts/` was `test:house-bot-migrations` `d.11`, which proves the DATABASE
+   * check constraint accepts the STRING — not that the engine does anything with it.
+   *
+   * ⚠️ AND A FINDING, SAID PLAINLY RATHER THAN PAPERED OVER: **there is no shipped writer that can refresh
+   * `HouseBot.passwordFingerprint` while the bot is ACTIVE.** `setVerified` is the only one and it is
+   * PAUSED-only by construction (`PAUSED_ONLY`, `house-bot-dal.ts:2174`). So the row's "in the SAME
+   * transaction" contract has no implementation to assert today, and this section does not pretend to
+   * assert it. What it drives is the PREDICATE that contract depends on, through the real hook and the real
+   * sweep: with the fingerprint refreshed, the same REHASH state raises no cause and the bot runs.
+   */
+  {
+    const PR19: Any = await import("../../src/lib/server/password-reset.ts");
+    const PRZ19: Any = await import("../../src/lib/house-bot/pause-reasons.ts");
+    const DSG19: Any = await import("../../src/lib/server/house-bot/designation.ts");
+    const b = await w.bot();
+    const before = await botRow(b.botId);
+    ok("19.J0 · fixture · the bot is ACTIVE and its stored fingerprint matches the holder's current hash, so the run below starts from a bot that is really running",
+      before.status === "ACTIVE" && before.passwordFingerprint === PR19.passwordFingerprint(HOLDER_HASH_19),
+      j({ status: before.status, fp: before.passwordFingerprint }));
+
+    /* (a) PLANTED CONTROL — the DEFECT the row exists to prevent: a rehash that does NOT refresh the
+     *     fingerprint. Driven through the REAL hook, not by calling holderCauses and reading its answer. */
+    const h1 = newHash();
+    const recA = recorder();
+    await w.setUserFields(b.userId, { passwordHash: h1, passwordSetVia: "REHASH", passwordSetAt: iso() });
+    await hook(b.userId, "PASSWORD_SELF_CHANGE", recA);
+    let bot = await botRow(b.botId);
+    const pausedEvents = await eventsOf(b.botId, ["AUTO_PAUSED"]);
+    const userAfterRehash = await w.db.user.findById(b.userId);
+    ok("19.J1 · HB-ACC-16 PLANTED · a REHASH rewrite that does NOT refresh the fingerprint STOPS the bot: AUTO_PAUSED(PASSWORD_CHANGED), one A1 bell, one AUTO_PAUSED event — the half the row exists to prevent, and nothing drove it before",
+      bot.status === "AUTO_PAUSED" && bot.pauseReason === "PASSWORD_CHANGED"
+        && causeCodes(bot) === "PASSWORD_CHANGED" && j(recA.fns(b.userId)) === j(["passwordPaused"]) && pausedEvents.length === 1,
+      j({ status: bot.status, reason: bot.pauseReason, method: bot.pauseDetail?.method, fns: recA.fns(b.userId), events: pausedEvents.length }));
+    /* ⛔ MEASURED, NOT ASSUMED — and the first draft of this line asserted the opposite and went red, which is
+     * why it is written out. The pause's `method` is **UNKNOWN**, never "REHASH": `CREDENTIAL_CHANGED_VIA` is
+     * `PASSWORD_CHANGE_METHODS` (SELF_CHANGE, RESET_LINK, OFFICER_TEMP) plus UNKNOWN, and REHASH is deliberately
+     * NOT one of them — a rehash is not a credential change. `consent.ts:98` therefore maps it through
+     * `isPasswordChangeMethod(via) ? via : "UNKNOWN"`. The distinction is pinned in BOTH directions below so a
+     * later change cannot quietly start reporting a rehash as a holder's own password change. */
+    ok("19.J1b · HB-ACC-16 · the USER really carries passwordSetVia REHASH, and the pause reports method UNKNOWN — because REHASH is deliberately absent from CREDENTIAL_CHANGED_VIA (a rehash is not a credential change), so consent.ts maps it through isPasswordChangeMethod to UNKNOWN",
+      userAfterRehash?.passwordSetVia === "REHASH" && bot.pauseDetail?.method === "UNKNOWN"
+        && !PRZ19.PASSWORD_CHANGE_METHODS.includes("REHASH") && PRZ19.CREDENTIAL_CHANGED_VIA.includes("UNKNOWN"),
+      j({ setVia: userAfterRehash?.passwordSetVia, method: bot.pauseDetail?.method, methods: PRZ19.PASSWORD_CHANGE_METHODS }));
+    ok("19.J1c · HB-ACC-16 CONTROL · REHASH is still a worded, reachable state elsewhere — wrongPasswordCopy tells the officer the password was changed 'via a security update' — so 19.J1b's UNKNOWN is a deliberate distinction and not a dropped case",
+      DSG19.wrongPasswordCopy({ passwordSetAt: new Date().toISOString(), passwordSetVia: "REHASH" }, 2).includes("a security update"),
+      DSG19.wrongPasswordCopy({ passwordSetAt: new Date().toISOString(), passwordSetVia: "REHASH" }, 2));
+
+    /* (b) THE ESCAPE HATCH — the fingerprint is refreshed to the hash the holder actually has now, and the
+     *     bot runs again. ⚠️ The refresh happens through the only shipped writer (`setVerified`, paused
+     *     bots), so this is the PREDICATE driven, not an atomic same-transaction write: the row's writer
+     *     does not exist to be called. Both doors are then driven — the hook AND a sweep with no hook. */
+    const fp1 = PR19.passwordFingerprint(h1);
+    await S.houseBotStore.setVerified(b.botId, { fingerprint: fp1, verifiedById: WORLD_OFFICER, verifiedAt: iso() });
+    /* ⛔ `pauseDetail: null` MIRRORS THE REAL START (designation.ts:508). Omitting it KEEPS the stored detail
+     * — `SetStatusInput.pauseDetail` says so in its own words — and the first draft of this fixture left a
+     * stale PASSWORD_CHANGED cause set on a running bot and read it as a product finding. It was the
+     * fixture taking a shortcut the product does not take. */
+    await S.houseBotStore.setStatus(b.botId, { from: ["AUTO_PAUSED"], to: "ACTIVE", pauseReason: null, pauseDetail: null, pausedFromStatus: null });
+    const recB = recorder();
+    await hook(b.userId, "PASSWORD_SELF_CHANGE", recB);
+    await sweep(recB);
+    bot = await botRow(b.botId);
+    ok("19.J2 · HB-ACC-16 · ⭐ THE ESCAPE HATCH IS REAL: with `passwordSetVia` still REHASH and the bot's fingerprint refreshed to the hash the holder now has, BOTH the hook and a hookless sweep raise NO cause — the bot stays ACTIVE, rings nobody and writes no second AUTO_PAUSED event",
+      bot.status === "ACTIVE" && bot.pauseReason === null && causeCodes(bot) === ""
+        && recB.of(b.userId).length === 0 && (await eventsOf(b.botId, ["AUTO_PAUSED"])).length === 1,
+      j({ status: bot.status, reason: bot.pauseReason, causes: causeCodes(bot), fns: recB.fns(b.userId) }));
+    ok("19.J2b · …and the refresh really moved the stored fingerprint to the new hash's — so 19.J2's silence is the fingerprint MATCHING and not the hook having stopped looking",
+      bot.passwordFingerprint === fp1 && fp1 !== before.passwordFingerprint && bot.credentialChangedVia === null,
+      j({ fp: bot.passwordFingerprint, expected: fp1, wasFp: before.passwordFingerprint }));
+
+    /* (c) POSITIVE CONTROL — on the SAME fixture, an ordinary SELF_CHANGE must STILL pause. The new branch
+     *     may not weaken 19.A row 1, which is the rule that protects every holder who really changed it. */
+    const recC = recorder();
+    await w.setUserFields(b.userId, { passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: iso() });
+    await hook(b.userId, "PASSWORD_SELF_CHANGE", recC);
+    bot = await botRow(b.botId);
+    ok("19.J3 · HB-ACC-16 POSITIVE CONTROL · an ordinary SELF_CHANGE on the SAME fixture STILL stops the bot — AUTO_PAUSED(PASSWORD_CHANGED) method SELF_CHANGE, one A1 — so the REHASH branch has not weakened 19.A row 1",
+      bot.status === "AUTO_PAUSED" && bot.pauseReason === "PASSWORD_CHANGED" && bot.pauseDetail?.method === "SELF_CHANGE"
+        && j(recC.fns(b.userId)) === j(["passwordPaused"]),
+      j({ status: bot.status, method: bot.pauseDetail?.method, fns: recC.fns(b.userId) }));
     await retire(b.botId);
   }
 
