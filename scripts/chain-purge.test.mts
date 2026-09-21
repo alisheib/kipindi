@@ -338,5 +338,342 @@ console.log("Chain purge\n");
      /marketsRedacted,/.test(done) && /marketsRedacted\s*=\s*stamped/.test(verify));
 }
 
+// ── 9 · THE NEVER LIST, AS A GUARD RATHER THAN A PARAGRAPH ──────────────────
+/**
+ * 🔴 WHAT WAS THERE, AND WHY §5 ABOVE WAS NOT ENOUGH. `chain-purge.ts`'s docblock named fourteen
+ * tables under NEVER, eight of them the house tables (04 A20). `grep -c "HouseBot"` on that file
+ * returned **1** — the comment itself. §5 is the only thing that ever bit, and it is a source scan
+ * over a HAND-WRITTEN array of six names; the eight house tables were in the prose, in the
+ * register, and in nothing that could fail.
+ *
+ * ⛔ AND ADDING EIGHT STRINGS TO §5 WOULD HAVE BEEN THE WEAKER FIX — it closes today's gap and
+ * hands tomorrow's to the ninth house table. So the population is DERIVED and the refusal is a
+ * PROXY, and this section DRIVES it: every assertion here calls the real guard and reads what it
+ * did, rather than reading the source and inferring.
+ */
+{
+  const {
+    guardProtectedModels, isProtectedModel, MUTATING_METHODS, RAW_METHODS, PurgeProtectedTableError,
+  } = await import("../src/lib/server/purge-protected.ts");
+
+  /**
+   * A client-shaped fake: every delegate records its calls, so "it was allowed" is measurable, and
+   * returns a SENTINEL object whose identity the guard must not disturb — see the `$transaction`
+   * assertion at the end of this section for why that is load-bearing.
+   */
+  const calls: string[] = [];
+  const delegate = (name: string) => new Proxy({}, {
+    get: (_t, m: string) => (...a: unknown[]) => { calls.push(`${name}.${m}`); return { __sentinel: true, args: a }; },
+  });
+  const rawClient = {
+    // protected
+    position: delegate("position"), transaction: delegate("transaction"),
+    ledgerEntry: delegate("ledgerEntry"), housePoolLedger: delegate("housePoolLedger"),
+    auditLog: delegate("auditLog"), upDownObservation: delegate("upDownObservation"),
+    houseBot: delegate("houseBot"), houseBotControl: delegate("houseBotControl"),
+    houseBotRuntime: delegate("houseBotRuntime"), houseBotAlertOnce: delegate("houseBotAlertOnce"),
+    houseBotEvent: delegate("houseBotEvent"), houseBotIntent: delegate("houseBotIntent"),
+    houseBotTarget: delegate("houseBotTarget"), houseBotPress: delegate("houseBotPress"),
+    // the purge's own targets
+    comment: delegate("comment"), watchlist: delegate("watchlist"),
+    marketSnapshot: delegate("marketSnapshot"), upDownRound: delegate("upDownRound"),
+    predictionMarket: delegate("predictionMarket"), objection: delegate("objection"),
+    $executeRaw: () => { calls.push("$executeRaw"); return 1; },
+    $executeRawUnsafe: () => { calls.push("$executeRawUnsafe"); return 1; },
+    $queryRaw: () => { calls.push("$queryRaw"); return []; },
+    $queryRawUnsafe: () => { calls.push("$queryRawUnsafe"); return []; },
+    $runCommandRaw: () => { calls.push("$runCommandRaw"); return {}; },
+    $transaction: (arg: unknown) => (typeof arg === "function" ? (arg as (tx: unknown) => unknown)(rawClient) : arg),
+  };
+  const guarded = guardProtectedModels(rawClient);
+  const threw = (fn: () => unknown): boolean => {
+    try { fn(); return false; } catch (e) { return e instanceof PurgeProtectedTableError; }
+  };
+
+  /**
+   * ⛔ THE VERBS ARE NAMED HERE, NOT READ OUT OF THE CONSTANT THEY POLICE — and that sentence is
+   * the whole finding of `red:chain-purge` case 15. The first draft of this section iterated
+   * `MUTATING_METHODS` itself, so deleting `deleteMany` from that array made the suite stop
+   * TESTING `deleteMany`: the mutation that opened the single most dangerous verb on all fourteen
+   * tables left every "every mutating method is refused" line printing PASS. An assertion that
+   * derives its own expectation from its subject cannot fail. This floor may only GROW.
+   */
+  const REQUIRED_MUTATORS = ["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"];
+  const missingVerbs = REQUIRED_MUTATORS.filter((m) => !MUTATING_METHODS.includes(m));
+  ok("9: ⛔ the guard's own list still contains every verb this suite requires",
+     missingVerbs.length === 0, missingVerbs.length ? `dropped: ${missingVerbs.join(", ")}` : REQUIRED_MUTATORS.join(", "));
+
+  /* ⭐ EVERY PROTECTED MODEL, EVERY MUTATING METHOD, ONE ASSERTION EACH — so a failure says WHICH
+     table and WHICH verb got through, exactly as §5 names its classes individually. */
+  const PROTECTED = [
+    "position", "transaction", "ledgerEntry", "housePoolLedger", "auditLog", "upDownObservation",
+    "houseBot", "houseBotControl", "houseBotRuntime", "houseBotAlertOnce",
+    "houseBotEvent", "houseBotIntent", "houseBotTarget", "houseBotPress",
+  ];
+  for (const model of PROTECTED) {
+    const missed = REQUIRED_MUTATORS.filter(
+      (m) => !threw(() => ((guarded as Record<string, Record<string, (a: unknown) => unknown>>)[model][m])({})),
+    );
+    ok(`9: 🔴 the purge CANNOT write ${model} — every mutating method is refused`,
+       missed.length === 0, missed.length ? `got through: ${missed.join(", ")}` : `${REQUIRED_MUTATORS.length} verbs refused`);
+  }
+  ok("9: …and the refusal is typed and names the model and the verb",
+     (() => { try { (guarded as never as { houseBotIntent: { deleteMany: (a: unknown) => unknown } }).houseBotIntent.deleteMany({}); return false; }
+              catch (e) { return e instanceof PurgeProtectedTableError && /HouseBotIntent\.deleteMany/.test(String((e as Error).message)); } })());
+
+  /* ⭐ READS ARE ALLOWED, AND THAT IS A DECISION. A purge is entitled to COUNT the statutory
+     record it must not touch — the cost panel does exactly that with positions and ledger rows,
+     and the live-intent precondition counts intents. A guard that refused reads would have made
+     the cost panel unbuildable and been quietly deleted. */
+  calls.length = 0;
+  /* ⚠️ CAUGHT, NOT LET FLY. A guard that refused reads would THROW here, and an uncaught throw
+     kills the process with no `FAIL` line at all — which `red:chain-purge` case 19 reported as
+     "red, but not on the assertion it claims". A crash is not an assertion failure; a harness that
+     cannot name which check broke is back to guessing. */
+  let readBack: unknown = null;
+  let readError = "";
+  try { readBack = (guarded as never as { ledgerEntry: { count: (a: unknown) => unknown } }).ledgerEntry.count({}); }
+  catch (e) { readError = String((e as Error)?.message ?? e); }
+  ok("9: ⭐ …but READS pass through untouched — the cost panel counts what it may not delete",
+     readError === "" && calls.includes("ledgerEntry.count") && !!readBack, readError.split("—")[0]);
+
+  /* ⭐ THE POSITIVE CONTROL, and it is the one that would have broken the product silently. The
+     purge's own five writes MUST still work: a guard that refused `predictionMarket.updateMany`
+     would kill the redaction, and every "it never deletes X" assertion in §5 would still pass. */
+  calls.length = 0;
+  let ownWritesError = "";
+  try {
+    (guarded as never as { comment: { deleteMany: (a: unknown) => unknown } }).comment.deleteMany({});
+    (guarded as never as { watchlist: { deleteMany: (a: unknown) => unknown } }).watchlist.deleteMany({});
+    (guarded as never as { marketSnapshot: { deleteMany: (a: unknown) => unknown } }).marketSnapshot.deleteMany({});
+    (guarded as never as { upDownRound: { deleteMany: (a: unknown) => unknown } }).upDownRound.deleteMany({});
+    (guarded as never as { predictionMarket: { updateMany: (a: unknown) => unknown } }).predictionMarket.updateMany({});
+  } catch (e) { ownWritesError = String((e as Error)?.message ?? e); }
+  ok("9: ⭐ CONTROL — the purge's OWN five writes are untouched, redaction included",
+     ownWritesError === "" && calls.length === 5
+     && calls.includes("predictionMarket.updateMany") && calls.includes("upDownRound.deleteMany"),
+     ownWritesError ? ownWritesError.split("—")[0] : calls.join(", "));
+
+  /* ⛔ RAW SQL NAMES TABLES AS STRINGS and walks straight past a per-model proxy. The purge calls
+     none of these, so refusing the whole class closes the only bypass the proxy cannot police.
+     ⚠️ NAMED HERE, NOT READ OUT OF `RAW_METHODS` — the same defect as the verb list above, and
+     `red:chain-purge` case 16 proved it: deleting `$queryRawUnsafe` from the constant made this
+     loop stop testing `$queryRawUnsafe`, and the suite stayed GREEN with raw SQL wide open. */
+  const REQUIRED_RAW = ["$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe"];
+  const missingRaw = REQUIRED_RAW.filter((m) => !RAW_METHODS.includes(m));
+  ok("9: ⛔ the guard's own raw list still contains every method this suite requires",
+     missingRaw.length === 0, missingRaw.join(", "));
+  for (const m of REQUIRED_RAW) {
+    ok(`9: ⛔ ${m}() is refused outright — a SQL string is invisible to a per-model guard`,
+       threw(() => ((guarded as unknown as Record<string, () => unknown>)[m])()));
+  }
+
+  /* ⛔ THE INTERACTIVE TRANSACTION IS WRAPPED TOO. One refactor from `$transaction([...])` to
+     `$transaction(async (tx) => …)` would otherwise hand back an UNGUARDED client, and nothing
+     above could see it: every assertion in this section would still pass. */
+  let txGuarded = false;
+  (guarded as never as { $transaction: (fn: (tx: unknown) => unknown) => unknown }).$transaction((tx) => {
+    txGuarded = threw(() => (tx as { houseBotEvent: { deleteMany: (a: unknown) => unknown } }).houseBotEvent.deleteMany({}));
+    return null;
+  });
+  ok("9: ⛔ the client handed to $transaction(fn) is guarded too", txGuarded);
+
+  /**
+   * ⚠️ A DELEGATE'S RETURN VALUE IS THE DELEGATE'S OWN, UNWRAPPED. `$transaction([...])` INSPECTS
+   * the promises it is handed, and the purge's only write path is exactly that array — so a guard
+   * that wrapped a result in an `async` shim (what anyone adds to log or time a call) would kill
+   * the ceremony while every refusal above still passed.
+   *
+   * ⛔ IT IS ASSERTED ON A PROTECTED MODEL'S READ, AND THAT CORRECTION IS THE POINT.
+   * `red:chain-purge` case 18 planted the shim and this suite stayed GREEN, because the first
+   * draft asserted the identity on `comment` — an UNPROTECTED model, which the outer proxy hands
+   * back untouched, so the wrapping it was hunting could never have been in the path it measured.
+   * `pool-residual.cjs`'s inner join once more: the instrument excluded the thing it was for.
+   * ⭐ The REAL `PrismaPromise` behaviour is measured against Postgres by `npm run
+   * qa:purge-protected` §1, which commits an actual `$transaction([…])` through the guard.
+   */
+  const readValue = (guarded as never as { housePoolLedger: { count: (a: unknown) => unknown } }).housePoolLedger.count({});
+  ok("9: ⚠️ …and a delegate's own return value is NOT wrapped, so $transaction([…]) still works",
+     typeof readValue === "object" && readValue !== null
+     && (readValue as { __sentinel?: boolean }).__sentinel === true
+     && !(readValue instanceof Promise),
+     readValue instanceof Promise ? "the guard wrapped it in a promise" : String(readValue));
+
+  ok("9: the guard is WIRED — pc() never hands out a raw client",
+     /return guardProtectedModels\(c\)/.test(decomment(readFileSync(join(ROOT, "src/lib/server/chain-purge.ts"), "utf8"))),
+     "a guard that exists and is not called is the defect this section was written for");
+
+  ok("9: ⭐ CONTROL — the predicate says NO to the tables the purge must be able to touch",
+     !isProtectedModel("predictionMarket") && !isProtectedModel("comment") && !isProtectedModel("watchlist")
+     && !isProtectedModel("marketSnapshot") && !isProtectedModel("upDownRound") && !isProtectedModel("objection"),
+     "a predicate that protected everything would pass every assertion above and break the purge");
+}
+
+// ── 10 · THE POPULATION IS DERIVED FROM THE SCHEMA, NOT TYPED OUT ────────────
+/**
+ * ⛔ THE FAILURE THIS SECTION EXISTS FOR IS THE NINTH HOUSE TABLE. A list that must be
+ * hand-extended protects exactly the tables somebody remembered; the one added next month escapes
+ * it silently, and every suite stays green because the suite is reading the same list.
+ *
+ * ⭐ SO THE RULE IS READ TWICE, AND THIS IS THE READING THAT BITES FIRST. The runtime guard derives
+ * from the GENERATED client's DMMF, which only knows what `prisma generate` last produced. This
+ * one parses `prisma/schema.prisma` — the file a developer actually edits — so it fails in the
+ * window between adding a table and regenerating, which is the whole window that matters.
+ */
+{
+  const { deriveHouseFamily, parsePrismaModels, isProtectedModel, HOUSE_FAMILY_FLOOR, STATUTORY_MODELS } =
+    await import("../src/lib/server/purge-protected.ts");
+
+  const models = parsePrismaModels(readFileSync(join(ROOT, "prisma/schema.prisma"), "utf8"));
+  ok("10: the schema was parsed", models.length > 50, `${models.length} models`);
+  const derived = deriveHouseFamily(models);
+
+  const escaped = derived.filter((m) => !isProtectedModel(m));
+  ok("10: 🔴 EVERY house table the SCHEMA declares is protected — a new one cannot escape",
+     escaped.length === 0,
+     escaped.length ? `not protected: ${escaped.join(", ")}` : `${derived.length} derived: ${derived.join(", ")}`);
+
+  const missingFromSchema = (HOUSE_FAMILY_FLOOR as readonly string[]).filter((m) => !derived.includes(m));
+  ok("10: ⭐ …and the pinned FLOOR is a subset of what the schema derives, so it cannot go stale",
+     missingFromSchema.length === 0, missingFromSchema.join(", "));
+
+  /* ⭐ THE RULE ITSELF, DRIVEN ON A FIXTURE — because "every derived model is protected" would be
+     TAUTOLOGICAL if the rule were only the name prefix. What makes it a real question is clause ②:
+     the soft key `houseBotId`, which is the idiom this schema actually uses. A house table named
+     anything at all is caught by it; an unrelated table is not. */
+  const fixture = [
+    { name: "BotLiquidityLedger", fields: [{ name: "houseBotId", type: "String" }] },
+    { name: "PressAuditTrail", fields: [{ name: "press", type: "HouseBotPress", ownsRelation: true }] },
+    { name: "HouseBotPress", fields: [{ name: "id", type: "String" }] },
+    { name: "Comment", fields: [{ name: "marketId", type: "String" }, { name: "user", type: "User", ownsRelation: true }] },
+    { name: "User", fields: [{ name: "houseBots", type: "HouseBot", isList: true }] },
+    { name: "HouseBot", fields: [{ name: "user", type: "User", ownsRelation: true }] },
+  ];
+  const f = deriveHouseFamily(fixture);
+  ok("10: ⭐ the rule catches a house table that is NOT named HouseBot*, by its soft key",
+     f.includes("BotLiquidityLedger"), f.join(", "));
+  ok("10: …and one that only hangs off the family by a relation it OWNS, at any depth",
+     f.includes("PressAuditTrail"), f.join(", "));
+  /* 🔴 THE DEFECT THIS CONTROL CAUGHT, KEPT AS A CASE. The first rule followed any field whose
+     type was in the family — and the DMMF adds the BACK-relation of every relation, so `User`
+     carries `houseBots HouseBot[]`, joined the family, and dragged in every model with a `user`
+     field. `Comment` became protected and the guard refused the purge's own chaff deletion. A
+     back-relation is the schema saying "something else points at me", not the reverse. */
+  ok("10: 🔴 CONTROL — a BACK-relation does not drag its owner into the family",
+     !f.includes("User"), f.join(", "));
+  ok("10: ⭐ CONTROL — and it does NOT sweep in an ordinary table",
+     !f.includes("Comment"), f.join(", "));
+  ok("10: ⭐ CONTROL — `BotLiquidityLedger` is not protected TODAY, so §10's first assertion is live",
+     !isProtectedModel("BotLiquidityLedger"),
+     "if the predicate said yes to a name that is not in the schema, the escape check could not fail");
+
+  /* The six statutory singletons are named one at a time on purpose: no property of the schema
+     picks out exactly these six, so a derivation over them would be a coincidence wearing a rule. */
+  for (const m of STATUTORY_MODELS) {
+    ok(`10: 🔴 the statutory singleton ${m} is protected`, isProtectedModel(m));
+  }
+}
+
+// ── 11 · THE LIVE-INTENT PRECONDITION — 04 A16, driven ──────────────────────
+/**
+ * AUTHORITY, found before it was built: `04-amendments.md` A16's lifecycle table, "Chain purge"
+ * row — *"purge refused while PENDING/CLAIMED intents exist"* — and `01-scenario-register.md`
+ * CRA-15, which writes the officer's sentence out in full. ⚠️ CRA-15 was PARTLY struck by D20 on
+ * 2026-09-17 (the cost-panel rows and the pack field are gone, because no record splits house
+ * money out), and its own supersession note keeps this: *"the live-intent precondition and the
+ * NEVER list are untouched by D20."*
+ *
+ * ⛔ WHY IT IS A REFUSAL AND NOT A RACE. PENDING or CLAIMED means a worker is seconds from placing
+ * a real house bet on one of these markets. Purge through it and the money lands AFTER the
+ * evidence pack was sealed — so the pack stops being the pre-purge truth, and the verification
+ * phase's whole population (§8) is computed from a document that is already wrong.
+ */
+{
+  const { houseBotIntentStore, __resetHouseBotMemoryStores } = await import("../src/lib/server/house-bot-dal.ts");
+
+  const intent = (id: string, marketId: string, status: "PENDING" | "CLAIMED" | "CANCELLED") => ({
+    id, houseBotId: "hb_1", botUserId: "usr_bot_1", kind: "COUNTER", anchorKey: `pos_${id}`,
+    marketId, productLine: "UPDOWN", triggerPositionId: `pos_${id}`, triggerUserId: "usr_p",
+    targetId: null, requestedById: null, entryCondition: null, side: "YES", stakeTzs: 1000,
+    dueAt: iso(1), deadlineAt: iso(9), staleAt: iso(9), status, reasonCode: null, why: null,
+    decision: {}, attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null,
+    claimedUntil: null, positionId: null, finishedAt: status === "CANCELLED" ? iso(2) : null, alertedAt: null,
+  });
+
+  for (const status of ["PENDING", "CLAIMED"] as const) {
+    __resetHouseBotMemoryStores();
+    await seed(3, "ARCHIVED");
+    await houseBotIntentStore.insert(intent(`hbi_${status}`, "mkt_p_1", status) as never);
+    const r = await checkPreconditions("chn_p");
+    ok(`11: 🔴 a chain with a ${status} house intent on one of its markets is REFUSED`,
+       !r.ok && /house intents are still live/.test(r.error), r.ok ? "(allowed)" : r.error);
+    ok(`11: …and the refusal names the COUNT and the remedy, like every other one here`,
+       !r.ok && /^1 house intents/.test(r.error) && /cancel them or let them expire first/.test(r.error),
+       r.ok ? "" : r.error);
+  }
+
+  /* ⭐ THE POSITIVE CONTROL. Without it, a precondition that refused EVERY chain would pass both
+     assertions above harder — the shape `red:chain-purge`'s `the-precondition-refuses-everything`
+     case already exists for on the ARCHIVED arm. CRA-15 names this case itself: "after the intent
+     expires the purge proceeds". */
+  __resetHouseBotMemoryStores();
+  await seed(3, "ARCHIVED");
+  await houseBotIntentStore.insert(intent("hbi_done", "mkt_p_1", "CANCELLED") as never);
+  const done = await checkPreconditions("chn_p");
+  ok("11: ⭐ CONTROL — once the intent is terminal the SAME chain is allowed", done.ok,
+     done.ok ? "" : done.error);
+
+  /* ⚠️ SCOPED TO THIS CHAIN'S MARKETS. A live intent anywhere else on the platform must not block
+     an unrelated purge — the `purgedBy`-scoping mistake of §8 in a different costume. */
+  __resetHouseBotMemoryStores();
+  await seed(3, "ARCHIVED");
+  await houseBotIntentStore.insert(intent("hbi_else", "mkt_somewhere_else", "PENDING") as never);
+  const elsewhere = await checkPreconditions("chn_p");
+  ok("11: ⚠️ …and a live intent on a market this chain does NOT own is not this chain's problem",
+     elsewhere.ok, elsewhere.ok ? "" : elsewhere.error);
+
+  /* ⚠️ THE PRISMA BRANCH CANNOT RUN HERE — no DATABASE_URL, so `hasDatabase()` is false and the
+     memory walk is what executes. It is asserted as source, and DRIVEN for real against a scratch
+     cluster by `npm run qa:purge-protected`, which is where the indexed `count` and the guard's
+     behaviour on a genuine PrismaClient are measured. */
+  const svc = decomment(readFileSync(join(ROOT, "src/lib/server/chain-purge.ts"), "utf8"));
+  const counter = svc.slice(svc.indexOf("async function countLiveHouseIntents"));
+  ok("11: the database branch counts every market at once, not one query per market",
+     /houseBotIntent\.count\(/.test(counter) && /marketId: \{ in: \[\.\.\.marketIds\] \}/.test(counter),
+     "a year of 5-minute rounds is 105,120 markets");
+  ok("11: ⛔ …and 'live' is ONE constant, not two lists that can drift",
+     /status: \{ in: \[\.\.\.LIVE_INTENT_STATUSES\] \}/.test(counter) && !/"PENDING"/.test(counter));
+  __resetHouseBotMemoryStores();
+}
+
+// ── 12 · THE DOCBLOCK IS A CHECKED ARTEFACT, NOT PROSE ──────────────────────
+/**
+ * 🔴 THE WHOLE DEFECT IN ONE SENTENCE: the NEVER line said fourteen tables and the code enforced
+ * six of them, for as long as the file existed. The line is now held equal to `neverList()`, so
+ * the two cannot drift apart again — a name added to the docblock without the guard, or removed
+ * from the docblock while the guard still holds it, is a failing assertion either way.
+ */
+{
+  const src = readFileSync(join(ROOT, "src/lib/server/chain-purge.ts"), "utf8");
+  const { neverList } = await import("../src/lib/server/purge-protected.ts");
+
+  const line = /^\s*\*\s*NEVER\s*·\s*(.+)$/m.exec(src)?.[1] ?? "";
+  ok("12: the NEVER line was located in the docblock", line.length > 20, line.slice(0, 40));
+  const documented = line.split(",").map((s) => s.trim()).filter(Boolean).sort();
+  const enforced = neverList();
+  ok("12: 🔴 every table the docblock says is NEVER purged is actually protected",
+     documented.every((m) => enforced.includes(m)),
+     `prose only: ${documented.filter((m) => !enforced.includes(m)).join(", ")}`);
+  ok("12: ⭐ …and every table the guard protects is named in the docblock",
+     enforced.every((m) => documented.includes(m)),
+     `guarded but undocumented: ${enforced.filter((m) => !documented.includes(m)).join(", ")}`);
+  ok("12: ⭐ CONTROL — and there are really 14 of them, so neither side is empty",
+     documented.length === 14 && enforced.length === 14, `${documented.length} documented / ${enforced.length} enforced`);
+  ok("12: the docblock states WHAT ENFORCES the list, not only what it is",
+     /guardProtectedModels/.test(src) && /purge-protected\.ts/.test(src));
+  ok("12: …and states that retention still deletes HouseBotAlertOnce, so the two facts do not read as a bug",
+     /retention\.purge\.daily` deletes it every/.test(src) && /A20/.test(src));
+}
+
 console.log(`\nchain-purge: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

@@ -339,15 +339,28 @@ export function AdminPageHead({
   title,
   sw,
   actions,
+  titleIsOperatorText,
 }: {
   title: string;
   sw?: string;
   actions?: React.ReactNode;
+  /**
+   * ⛔ THE TITLE IS A VALUE AN OPERATOR TYPED, NOT COPY THIS REPO WROTE (ruling 474; C7 step 7 review d19-hunt-03).
+   * A served gate that scans rendered text for a forbidden word must exempt exactly those nodes and nothing else,
+   * and the hook has to be written at the render site so the exemption is VISIBLE in the DOM rather than inferred
+   * from position. The roster cell already carried it; the page whose `<h1>` is the SAME value had nowhere to put
+   * one, so an operator-chosen label was scanned as if this repo had written it. Additive: every other caller is
+   * unchanged.
+   */
+  titleIsOperatorText?: boolean;
 }) {
   return (
     <header className="px-4 lg:px-6 py-5 border-b border-dashed border-border-subtle flex items-end justify-between gap-4 flex-wrap">
       <div className="min-w-0">
-        <h1 className="font-display font-bold text-title-lg text-text leading-none">{title}</h1>
+        <h1
+          className="font-display font-bold text-title-lg text-text leading-none"
+          {...(titleIsOperatorText ? { "data-operator-text": "label" } : {})}
+        >{title}</h1>
         {sw && (
           <p className="text-caption text-text-tertiary italic mt-1.5">
             {sw}

@@ -22,8 +22,12 @@
  * four cases, the idle-engine false alarm PLAN.md:450's OR would have printed, A24's poller failure and X1's
  * key-scoped duty names — to what the run PRINTED: **memory 732, Postgres 711**. Seen RED first against the
  * absent predicate: 16 failed in each child.
+ * ⭐ RAISED AGAIN with the C5 alerts build — the two SILENT STOPS (01 register:1210, :1218), whose bells were wired
+ * one commit earlier and asserted in none: 11.15b–f drive a real boot through a real `deps.timeZone`, 16.515a–g a
+ * real `pollerPass` over a real gate. **memory 744, Postgres 723** — what the run PRINTED, and exactly +12 in EACH
+ * child, which is the twelve new labels reaching BOTH stores rather than only the memory one.
  * ⛔ A floor only ever rises, and only to a count a run printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 732, postgres: 711 }, dbPrefix: "hb_engine" });
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 751, postgres: 730 }, dbPrefix: "hb_engine" });

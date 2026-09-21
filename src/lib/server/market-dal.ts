@@ -397,6 +397,20 @@ export interface PositionStore {
    */
   listForUser(userId: string, limit?: number, productLine?: ProductLineFilter): Promise<StoredPosition[]>;
   /**
+   * How many markets this account is OPEN in on its OWN book — `houseBotId is null`, so a position the desk
+   * placed from the account is not one the holder is in.
+   *
+   * 🔴 WHY A MEMBER OF ITS OWN, AND NOT `listForUser(...).filter(...).length` (C7 step 6 review; the standing
+   * "never build a total from a paged reader" trap). `listForUser` is a PAGE — newest-first over EVERY status,
+   * `take: limit` — so a holder with a hundred settled positions newer than their open ones counted **0 open**
+   * on the wizard's check card while the eligibility warning beside it said they hold some. A count is a count:
+   * the database answers it, no page can truncate it, and the two halves of one screen cannot disagree.
+   *
+   * ⛔ Do NOT widen this into a general `countByStatus`. The one caller is the designation check card, and an
+   * open-ended status count is how a whole-table scan comes back wearing a narrower name.
+   */
+  countOwnOpenForUser(userId: string): Promise<number>;
+  /**
    * The public leaderboard, aggregated in the database.
    *
    * 🔴 WHY THIS EXISTS. `/leaderboard` loaded EVERY user with no `where` or `take`, then
@@ -691,6 +705,11 @@ const memoryPositions: PositionStore = {
       .filter((p) => !pl || (markets.get(p.marketId)?.productLine ?? "MARKET") === pl)
       .sort((a, b) => b.placedAt.localeCompare(a.placedAt))
       .slice(0, limit);
+  },
+  // ⛔ NO `slice`, NO `limit` — this answers a POPULATION and a page cannot.
+  async countOwnOpenForUser(userId) {
+    return Array.from(positions.values())
+      .filter((p) => p.userId === userId && p.status === "OPEN" && p.houseBotId == null).length;
   },
   async listForMarket(marketId) {
     return Array.from(positions.values()).filter((p) => p.marketId === marketId);
@@ -1230,6 +1249,10 @@ const prismaPositions: PositionStore = {
       take: limit,
     });
     return rows.map(toStoredPosition);
+  },
+  // ⛔ ONE `count` — the database answers the population, so no page length can stand in for it.
+  async countOwnOpenForUser(userId) {
+    return pc().position.count({ where: { userId, status: "OPEN", houseBotId: null } });
   },
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async leaderboard(limit, opts) {

@@ -70,6 +70,8 @@ export type DeskLimitRow = {
   unset: boolean;
   caption: string | null;
   firstUnset: boolean;
+  /** Plain digits, or "" where the field has no recommendation. Fills the input; never saves. */
+  recommended: string;
 };
 
 /**
@@ -195,6 +197,7 @@ export function DeskLimitsForm({
   baseVersion,
   id,
   omitSection,
+  recommendCopy,
   onSave,
 }: {
   rows: DeskLimitRow[];
@@ -204,6 +207,8 @@ export function DeskLimitsForm({
   id: string;
   /** The card's own title, so the first group does not repeat it (see `DeskLimitFields`). */
   omitSection?: string;
+  /** The recommend control's words, from the server (ruling 388 — copy does not live in a client file). */
+  recommendCopy: { label: string; filledTitle: string; filledBody: string };
   /**
    * The server action, handed down by the page. ⛔ Typed structurally, so the gated writer's own result type is
    * checked against this where the two meet — at the page — without a house module specifier ever entering this
@@ -306,12 +311,78 @@ export function DeskLimitsForm({
         body="These limits have been changed but not saved. Leaving now discards the change."
       />
 
-      <div className="flex items-center gap-2 pt-1">
+      {/* ⛔ IT STACKS AT PHONE WIDTH, AND THAT WAS READ OFF A 360 TILE (the ops lane's visual pass, 2026-09-20).
+          The row was `flex items-center` with no wrap, so at 360 the sentence beside the button was squeezed into
+          **138px and set in three lines** of tracked mono next to a 128px button — measured, both still inside the
+          card, so nothing clipped and no gate could see it; it simply read as a crushed footer on the form that
+          governs every stake the desk places. From 640 up the same sentence sets on ONE line in 318px, which is
+          the layout this row was designed for and which is kept exactly.
+          ⛔ `items-start` on the stacked axis, not `items-center`: a centred one-line sentence under a
+          left-aligned button is the second look for one control this section has already been pulled up for. */}
+      <div className="flex flex-col items-start sm:flex-row sm:items-center gap-2 pt-1">
         <Button type="submit" size="md" variant="primary" loading={pending}>
           Save · Hifadhi
         </Button>
-        {/* Reading copy, not an eyebrow: it tells the officer what the save will do. */}
-        <p className="font-mono text-body-sm text-text-subtle">Every limit is saved together, or none is</p>
+        {/**
+         * ⭐ "USE RECOMMENDED VALUES" — THE CONTROL THE PLAN WROTE AND NOBODY WIRED (2026-09-21).
+         *
+         * `recommendedLimits()` has existed since the plan, its docblock says "Use recommended values fills
+         * these into the form and saves nothing", the switch-on sheet describes it and the operator guide
+         * documents it — and NOTHING in `src/app/admin/desk` ever called it. So the control was described in
+         * three places and on the screen in none, and an officer had to type all eight required limits by hand
+         * before the master switch could be offered at all.
+         *
+         * ⛔ IT FILLS ONLY EMPTY FIELDS, and that is the difference between a convenience and a hazard. These
+         * are the ceilings that stop money; silently overwriting a number an officer chose deliberately — a
+         * lower daily loss cap than the recommendation, say — is a destructive act dressed as a shortcut. A
+         * field that already holds a value is left exactly as it is, which also makes the control safe to press
+         * twice.
+         * ⛔ IT DOES NOT SAVE, which is the documented behaviour in all three places above and is kept: it fills
+         * the inputs and arms the Save button, and the officer still presses Save. Filling and committing are
+         * different decisions on a money form.
+         * ⛔ THE FORM IS UNCONTROLLED (fourteen `defaultValue` inputs), so the value is written to the DOM node
+         * and an `input` event is dispatched — without it `useFormDirty`'s snapshot never sees the change and
+         * Save stays disarmed over a form that is visibly full.
+         */}
+        <Button
+          type="button"
+          size="md"
+          variant="secondary"
+          disabled={pending || !rows.some((r) => r.recommended !== "" && r.input === "")}
+          onClick={() => {
+            const form = formRef.current;
+            if (!form) return;
+            let filled = 0;
+            for (const row of rows) {
+              if (row.recommended === "") continue;
+              const el = form.elements.namedItem(row.key);
+              if (!(el instanceof HTMLInputElement)) continue;
+              if (el.value.trim() !== "") continue; // never overwrite a deliberate choice
+              el.value = row.recommended;
+              el.dispatchEvent(new Event("input", { bubbles: true }));
+              filled++;
+            }
+            if (filled > 0) {
+              toast({ title: recommendCopy.filledTitle, description: recommendCopy.filledBody });
+            }
+          }}
+        >
+          {recommendCopy.label}
+        </Button>
+        {/* Reading copy, not an eyebrow: it tells the officer what the save will do.
+            ⛔ AND IT WAS SET IN MONO WHILE SAYING SO — READ OFF THE 360 AND 1280 TILES (ops-lane visual pass,
+            2026-09-20). The comment above is the author's own intent and the class list contradicted it: this is
+            the only prose on the Global-limits card set in tracked `font-mono`, beside a dozen captions the kit
+            renders as `text-body-sm text-text-subtle` ("Saved 200. Every account together, this EAT day.", "Saved
+            5.", "Up to 300 characters. Kept with the record.") — `Input`'s own `hint` rung, verbatim, at
+            `src/components/ui/input.tsx`. One card, two looks for one kind of sentence, on the form that governs
+            every stake the desk places. The rung is now the kit's, which is what the comment always claimed.
+            ⚠️ THE SENTENCE ITSELF IS UNTOUCHED, AND DELIBERATELY. It is the only caption on this card with no
+            terminal full stop, but the exact string is pinned by `scripts/lib/house-bot-console-cases.mts`'s
+            `CLIENT_OWNED_COPY` under `allowed.size === 6`, so a period here is a copy edit plus a shared-suite
+            edit — and ruling 388 already records this sentence as OWED a move to the server, which is where the
+            stop belongs. Recorded in DEFERRED-TESTS.md §1n rather than half-taken here. */}
+        <p className="text-body-sm text-text-subtle">Every limit is saved together, or none is</p>
       </div>
     </form>
   );

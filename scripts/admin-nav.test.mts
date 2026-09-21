@@ -149,12 +149,13 @@ const ok = (label: string, cond: boolean, extra = "") => {
     "/admin/staff/[id]": "staff member detail — from the /admin/staff list",
     // Functional sub-routes, reached by a control rather than a menu.
     "/admin/markets/new": "the 'New market' button on /admin/markets",
-    /* ⭐ C7-SPEC ruling 326's FIRST row, landing in the commit that adds its page (C7 step 4). The second —
-     * `/admin/desk/new` — is still absent and still deliberate: §7's own staleness half is
+    /* ⭐ C7-SPEC ruling 326's TWO rows, each landing in the commit that adds its own page — the account page at C7
+     * step 4, the designation wizard at C7 step 6. Neither could land earlier: §7's staleness half is
      * `Object.keys(REACHED_WITHOUT_NAV).filter((p) => !pages.includes(p))`, so a row for a page the crawler cannot
      * find is reported STALE and this suite goes red. The allowlist must not outlive the pages it excuses, and it
-     * must not PRECEDE them either. The wizard's row lands at C7 step 6 with its page. */
+     * must not PRECEDE them either. */
     "/admin/desk/[id]": "one account's page — from the way-out link on every row of the roster table on /admin/desk, and from the bell and letter targets that name an account",
+    "/admin/desk/new": "the designation wizard — the 'Designate an account' primary action in the head of /admin/desk, which is a real link exactly when this page exists (ruling 432(h))",
     "/admin/totp-verify": "the 2FA step-up interstitial — redirected to by requireAdminTotp, never navigated to",
   };
 

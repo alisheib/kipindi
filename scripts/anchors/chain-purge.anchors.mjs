@@ -37,6 +37,9 @@
 const SERVICE = "src/lib/server/chain-purge.ts";
 const ACTIONS = "src/app/admin/retention/purge-actions.ts";
 const STORE = "src/app/admin/retention/purge-stage1-store.ts";
+/** 2026-09-20: the NEVER list stopped being a comment. Cases 11–22 are its controls. */
+const GUARD = "src/lib/server/purge-protected.ts";
+const SCHEMA = "prisma/schema.prisma";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -132,5 +135,131 @@ export const MUTATIONS = [
     from: `        marketsRedacted,`,
     to: `        marketsRedacted: job.total,`,
     expect: "8: ⛔ the completion audit row does NOT report the round count as the market count",
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────────────────
+  // 2026-09-20 · THE NEVER LIST. Until this date it was a COMMENT: `chain-purge.ts` named
+  // fourteen tables under NEVER and `grep -c "HouseBot"` on that file returned 1. The eight
+  // house tables (04 A20) were enforced by nothing at all. Cases 11–22 are the controls for
+  // what replaced it, and every one of them plants a shape this code could really take —
+  // an exemption someone adds, a list someone tidies, a wrapper someone adds for logging,
+  // a table someone forgets — never a straw man.
+  // ─────────────────────────────────────────────────────────────────────────────────────────
+  {
+    name: "a-house-exemption-is-added-to-the-predicate",
+    why: "⭐ THE SHAPE 'REMOVE A HOUSE TABLE FROM THE ENFORCEMENT' ACTUALLY TAKES. Nobody deletes eight names from three places; somebody adds ONE early return because a house write is 'needed' somewhere, and every HouseBot* table leaves the NEVER list in a single line. This is the original defect restored — the docblock still says fourteen, the guard now holds six — and the 2026-09-20 audit found exactly that state shipped inside a commit marked COMPLETE",
+    file: GUARD,
+    suite: "chain-purge",
+    from: `export function isProtectedModel(name: string): boolean {`,
+    to: `export function isProtectedModel(name: string): boolean {\n  if (name.toLowerCase().startsWith("housebot")) return false;`,
+    expect: "9: 🔴 the purge CANNOT write houseBotIntent — every mutating method is refused",
+  },
+  {
+    name: "a-ninth-house-table-is-added-and-forgotten",
+    why: "⭐ THE FAILURE A HAND-WRITTEN LIST CANNOT SEE, and the whole reason the population is derived. A new house table is added to the schema, it does not happen to be called HouseBot-something, and nobody remembers `chain-purge.ts` exists. The runtime guard cannot see it either until `prisma generate` runs — which is exactly the window this case lives in, because the assertion it breaks reads `prisma/schema.prisma` itself rather than the generated client. ⚠️ The planted table hangs off the family by `houseBotId`, with no Prisma relation, because that is the idiom this schema really uses",
+    file: SCHEMA,
+    suite: "chain-purge",
+    from: `model HouseBotPress {`,
+    to: `model BotLiquidityLedger {\n  id         String @id\n  houseBotId String\n  amountTzs  BigInt\n}\n\nmodel HouseBotPress {`,
+    expect: "10: 🔴 EVERY house table the SCHEMA declares is protected — a new one cannot escape",
+  },
+  {
+    name: "a-house-table-is-renamed-out-of-the-family",
+    why: "The other direction of the same hole: a house table is renamed and silently stops matching the rule, while the pinned floor goes on naming a model the schema no longer has. ⭐ It is the case that stops the FLOOR from becoming a stale answer standing in for a live one — a pin nobody checks is the `recorded_numbers_rot` shape, and this is what checks it",
+    file: SCHEMA,
+    suite: "chain-purge",
+    from: `model HouseBotPress {`,
+    to: `model PressLog {`,
+    expect: "10: ⭐ …and the pinned FLOOR is a subset of what the schema derives, so it cannot go stale",
+  },
+  {
+    name: "the-back-relation-sweep-returns",
+    why: "🔴 THE REAL DEFECT OF 2026-09-20, RESTORED VERBATIM, and it was caught by a positive control rather than by any of the thirteen refusal assertions. The rule followed any field whose type was in the family; the DMMF adds the BACK-relation of every relation, so `User` carries `houseBots HouseBot[]`, joined the family, and dragged in every model with a `user` field — `Comment` among them. The guard then refused the purge's OWN `comment.deleteMany`: the feature was completely broken while every 'this table is refused' assertion passed HARDER than before",
+    file: GUARD,
+    suite: "chain-purge",
+    from: `      if (m.fields.some((f) => f.ownsRelation === true && f.isList !== true && family.has(f.type))) {`,
+    to: `      if (m.fields.some((f) => family.has(f.type))) {`,
+    expect: "10: 🔴 CONTROL — a BACK-relation does not drag its owner into the family",
+  },
+  {
+    name: "deleteMany-falls-out-of-the-mutating-list",
+    why: "⭐ THE TIDY-UP. `delete` and `deleteMany` read as the same thing to someone shortening a list, and only one of them is how a purge destroys a table. Every protected model stays 'protected' — against eight verbs out of nine — and the one that matters is open. No source scan for 'does it call deleteMany' can see this, because the call site does not exist yet: the point of the guard is the call site somebody writes next year",
+    file: GUARD,
+    suite: "chain-purge",
+    from: `  "upsert", "delete", "deleteMany",`,
+    to: `  "upsert", "delete",`,
+    expect: "9: 🔴 the purge CANNOT write auditLog — every mutating method is refused",
+  },
+  {
+    name: "raw-sql-is-allowed-back-in",
+    why: "⛔ THE ONLY BYPASS A PER-MODEL PROXY STRUCTURALLY CANNOT POLICE. `$queryRawUnsafe('DELETE FROM \"HouseBotIntent\"')` is an ordinary thing for a future edit to reach for — this repo's own house DAL is written almost entirely in raw SQL, so it is the idiom a reader would copy — and a proxy that intercepts model accessors never sees a table named inside a string",
+    file: GUARD,
+    suite: "chain-purge",
+    from: `  "$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe", "$runCommandRaw",`,
+    to: `  "$executeRaw", "$executeRawUnsafe", "$queryRaw", "$runCommandRaw",`,
+    expect: "9: ⛔ $queryRawUnsafe() is refused outright — a SQL string is invisible to a per-model guard",
+  },
+  {
+    name: "the-interactive-transaction-hands-back-a-raw-client",
+    why: "⭐ THE WRAPPER THAT LOOKS REDUNDANT. `$transaction(fn)` hands the callback a fresh client, and re-wrapping it reads like belt-and-braces until you notice that ONE refactor from the array form to `async (tx) => …` moves every write in this file onto an unguarded client. Nothing else in the suite could see it: the refusals are all asserted on the outer client, which stays guarded",
+    file: GUARD,
+    suite: "chain-purge",
+    from: `            return (original as (...a: unknown[]) => unknown).call(obj, (tx: unknown) => fn(guardProtectedModels(tx)), ...rest);`,
+    to: `            return (original as (...a: unknown[]) => unknown).call(obj, (tx: unknown) => fn(tx), ...rest);`,
+    expect: "9: ⛔ the client handed to $transaction(fn) is guarded too",
+  },
+  {
+    name: "the-delegate-result-is-wrapped",
+    why: "🔴 THE MUTATION THAT BREAKS THE PRODUCT WHILE EVERY REFUSAL STILL PASSES. Wrapping a delegate method in an `async` shim is what anyone adds to log or time a call. But `$transaction([...])` INSPECTS the promises it is handed, and the purge's only write path is exactly that array — so the whole ceremony stops working, and the thirteen 'this table is refused' assertions are untouched because they never reach a transaction. The identity check is the only thing standing between this edit and a dead purge",
+    file: GUARD,
+    suite: "chain-purge",
+    from: `          return typeof m === "function" ? (m as (...a: unknown[]) => unknown).bind(deleg) : m;`,
+    to: `          return typeof m === "function" ? async (...a: unknown[]) => (m as (...a: unknown[]) => unknown).apply(deleg, a) : m;`,
+    expect: "9: ⚠️ …and a delegate's own return value is NOT wrapped, so $transaction([…]) still works",
+  },
+  {
+    name: "the-guard-refuses-reads-as-well",
+    why: "⭐ THE OVER-BROAD GUARD, which is the failure mode a REFUSAL-ONLY suite is blind to. Drop the method filter and every protected model is sealed completely — the cost panel can no longer count positions or ledger rows, and the new live-intent precondition can no longer count intents, so the purge refuses every chain for the wrong reason. `red:chain-purge` already keeps `the-precondition-refuses-everything` for this shape one layer up; this is the same disease inside the guard",
+    file: GUARD,
+    suite: "chain-purge",
+    from: `          if (typeof method === "string" && MUTATING_METHODS.includes(method)) {`,
+    to: `          if (typeof method === "string") {`,
+    expect: "9: ⭐ …but READS pass through untouched — the cost panel counts what it may not delete",
+  },
+  {
+    name: "the-guard-is-never-called",
+    why: "⛔ THE `guards-exist` DISEASE, one level down: the guard is written, reviewed, tested and NOT WIRED. `pc()` is the only way to obtain a client in this module, which is what makes wiring a single point — and a single point is a single line somebody can delete while every assertion about the guard's behaviour goes on passing, because they call the guard directly",
+    file: SERVICE,
+    suite: "chain-purge",
+    from: `  return guardProtectedModels(c);`,
+    to: `  return c;`,
+    expect: "9: the guard is WIRED — pc() never hands out a raw client",
+  },
+  {
+    name: "the-live-intent-check-reads-the-wrong-markets",
+    why: "⭐ THE WRONG POPULATION, WHICH IS THIS FEATURE'S OWN RECURRING DEFECT. §8 of the suite exists because the verification asked the wrong set; this asks the live-intent count the wrong set. It is not a disabled check — it runs, it counts, it reports a number, and the number is about one market out of the chain's hundreds. ⚠️ The fixture seeds its intent on the SECOND market deliberately, so a check that only looks at the first reports a clean chain",
+    file: SERVICE,
+    suite: "chain-purge",
+    from: `  const liveIntents = await countLiveHouseIntents(rounds.map((r) => r.marketId));`,
+    to: `  const liveIntents = await countLiveHouseIntents(rounds.slice(0, 1).map((r) => r.marketId));`,
+    expect: "11: 🔴 a chain with a PENDING house intent on one of its markets is REFUSED",
+  },
+  {
+    name: "the-live-intent-precondition-refuses-every-chain",
+    why: "⭐ POSITIVE CONTROL for the new refusal, the same shape `the-precondition-refuses-everything` keeps for the ARCHIVED arm. Both 'is it refused?' assertions pass HARDER, no chain is ever purged, and the compliance control Ali asked for simply does not work. CRA-15 names this case itself: 'after the intent expires the purge proceeds'",
+    file: SERVICE,
+    suite: "chain-purge",
+    from: `  if (liveIntents > 0) {`,
+    to: `  if (liveIntents >= 0) {`,
+    expect: "11: ⭐ CONTROL — once the intent is terminal the SAME chain is allowed",
+  },
+  {
+    name: "the-docblock-drifts-from-the-guard-again",
+    why: "🔴 THE ORIGINAL DEFECT IN MINIATURE, and the reason the NEVER line is parsed rather than read. One name leaves the comment — a tidy-up, a merge, a reflow — and the file's most-read sentence quietly stops describing what the code holds. That is precisely how fourteen tables came to be documented and six enforced, for as long as the file existed",
+    file: SERVICE,
+    suite: "chain-purge",
+    from: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, Position, Transaction, UpDownObservation`,
+    to: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, Position, Transaction, UpDownObservation`,
+    expect: "12: ⭐ …and every table the guard protects is named in the docblock",
   },
 ];

@@ -693,7 +693,34 @@ section("§6 · C8 — same password after a self-exclusion still needs a fresh 
   const s4 = await start(botId);
   ok("6.8b · …re-verify, then Start succeeds", rv2.ok === true && s4.ok === true && (await bot(botId)).status === "ACTIVE", `${j(rv2)} | ${j(s4)}`);
 
-  // The backstop: a self-exclusion began after the last verification, and no detector wrote the void.
+  /**
+   * The backstop: a self-exclusion began after the last verification, and no detector wrote the void.
+   *
+   * 🔴 **6.9 BELOW IS A RECURRING POSTGRES-ONLY NON-DETERMINISM, AND IT IS NOT A DIAGNOSED FLAKE.** Seen on
+   * 2026-09-19 (C7 step 7 review, register row 74: "green on the second run; the first printed a Postgres-only
+   * 6.9 self-exclusion flake") and again on 2026-09-21 (C5-8, alerts lane) — two different days, same case,
+   * same store, green on the immediate re-run both times. Measured the second time: the Postgres child printed
+   * **160 passed / 1 failed** against a floor of 161, with 6.9's actual answer
+   * `{"ok":false,"code":"CONSENT","row":{"code":"CONSENT_VOID","short":"Permission ended"}}` where the
+   * assertion wants `RG_SINCE_VERIFIED`. The memory child was **169 / 0** both times.
+   *
+   * ⚠️ IT REFUSED EITHER WAY — the disagreement is about WHICH guard answered, not about whether the Start was
+   * let through, so no run has ever shown this case permitting something it should refuse.
+   *
+   * ⭐ THE PRIME SUSPECT, STATED AS A HYPOTHESIS AND NOT AS A FINDING: the entire separation between
+   * `verifiedAt` and the self-exclusion's start is the **`await sleep(5)`** above. On the memory store both
+   * stamps come from one JS clock and 5 ms is always enough; on Postgres they are written through separate
+   * round-trips against the server's clock, and on this machine a per-connection backend fork under load has
+   * already been measured taking longer than Prisma's own 5 s default (see `house-bot-two-stores.mts`). If the
+   * two stamps land in the same millisecond — or out of order — the self-exclusion is not "after `verifiedAt`",
+   * `RG_SINCE_VERIFIED` correctly does not fire, and the consent path answers instead. That would explain
+   * Postgres-only, intermittent, and always a refusal.
+   *
+   * ⛔ NOT ACTED ON HERE, deliberately: widening the sleep would make the red go away without anyone having
+   * READ the two timestamps, and a case that is green because it waits longer is not the same case. Whoever
+   * takes this next should print `verifiedAt` and the self-exclusion's `startedAt` from the Postgres row on a
+   * failing run — that is one `console.log`, and it either confirms the ordering or kills the hypothesis.
+   */
   const bb = await runningBot();
   await w.dal.houseBotStore.setStatus(bb.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
   await sleep(5);
@@ -788,7 +815,13 @@ section("§8 · erasure refuses a live bot, then pseudonymises it");
   const f1 = await tryFulfil();
   const f2 = await tryFulfil();
   const alerts = ((await w.db.notification.findByUser(OFFICER, 500)) as Any[]).filter(blocked).length - alertsBefore;
-  ok("8.1 · a live bot → the erasure refuses with the R6 copy naming the bot", f1.ok === false && f1.error === `This account is still house bot ${d.bot.id}. The owner must remove it at /admin/desk/${d.bot.id} before it can be erased.`, j(f1));
+  /* ⛔ THE R6 COPY NO LONGER NAMES THE BOT, AND THAT IS THE POINT (⛔ D19; C7 step 7 review d19-hunt-01): this string
+     reaches a COMPLIANCE officer on `/admin/privacy`, who is outside this feature's audience and forbidden the
+     owner-only console. The id and the console href stay on the ADMIN-only alert, which 8.1c below still counts. */
+  ok("8.1 · a live bot → the erasure refuses, and the officer's sentence names neither the bot nor the console",
+    f1.ok === false
+      && f1.error === "This account is still in use by an owner-managed account and cannot be erased yet. An owner has been told; the request stays open and can be run again once it is released."
+      && !String(f1.error).includes(d.bot.id) && !String(f1.error).includes("/admin/"), j(f1));
   ok("8.1b · the request stays PENDING, and nothing was erased (label, phone kept)",
     listDsarRequests().find((r: Any) => r.id === req.id)?.status === "PENDING" && (await bot(d.bot.id)).label === "Rehema Desk" && !String((await user(h)).phoneE164).startsWith("erased:"));
   ok("8.1c · exactly one owner alert across two refused attempts", f2.ok === false && alerts === 1, `alerts=${alerts}`);

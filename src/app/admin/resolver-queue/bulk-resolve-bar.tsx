@@ -209,15 +209,25 @@ export function BulkResolveBar({
           </p>
         </div>
 
+        {/* ⛔ L58 (ruling 463) — `shrink-0` ON BOTH TRAILING GROUPS, and the reason is the failure it fixes.
+            The row is `flex flex-wrap` with a `flex-1` text block in the middle. A flex item's default is
+            `min-width: auto` with `flex-shrink: 1`, so at 360 the chip and button groups were COMPRESSED rather
+            than wrapped: each group kept its place on the line and squeezed, and a squeezed group wraps its
+            labels one word per line. "Resolve selected" became four stacked words beside a button 44px wide.
+            ⭐ The parent already wraps. What it needed was for these two groups to be indivisible, so the row
+            breaks BETWEEN groups instead of THROUGH their words — which is what `shrink-0` says.
+            ⚠️ This was `main`'s own layout all along; the house-bots un-build only made it visible
+            (PROGRESS L58: "a platform fix in its own commit, not inside a checkpoint whose gate requires
+            byte-identity"). */}
         {chosen.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {willSeal.length > 0 && <Chip size="sm" variant="success">{willSeal.length} will seal</Chip>}
             {willSkip.length > 0 && <Chip size="sm" variant="warning">{willSkip.length} will skip</Chip>}
             {overridden.length > 0 && <Chip size="sm" variant="danger">{overridden.length} overridden</Chip>}
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {/* ⛔ THE KIT BUTTON, not a `<button className="btn …">`. The class string works and
               is exactly how a second button vocabulary starts: `test:ui-consistency` calls
               it `raw-button-btn-class` and its baseline may only shrink. */}

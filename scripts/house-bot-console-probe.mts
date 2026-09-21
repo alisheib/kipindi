@@ -363,7 +363,36 @@ try {
   const staffPhone = `+255${LOCAL_STAFF.COMPLIANCE}`;
   const staffUser = await w.db.user.findByPhone(staffPhone);
   ok("0.staff · 393 · the non-owner staff persona exists and is NOT an ADMIN", !!staffUser && staffUser.role === "COMPLIANCE", `${staffPhone} → ${staffUser?.role ?? "missing"}`);
-  const viewers: Array<[string, string]> = [["player", player], ["holder", holder], ["trigger", triggers[0]], ["staff", staffUser!.id], ["admin", A]];
+
+  /**
+   * ⭐ §1 ROW 8 (C5-8, 2026-09-20) — THE STAFF AUDIENCE IS THREE ROLES ON THE WIRE, NOT ONE.
+   *
+   * Ruling 259's audience is measured at unit level on both stores, but on the SERVED layer only COMPLIANCE had
+   * ever been driven. SUPPORT and MODERATOR carry DIFFERENT default view grants, and `houseConsoleAudience`
+   * decides on the grant for every prefix that is not the console's own — so a console route that leaked to a
+   * SUPPORT session would have been invisible to this probe, which is the only instrument that reads the real
+   * response body, the RSC payload and the SSE stream.
+   *
+   * ⛔ REAL SESSIONS, NEVER SYNTHESISED ONES. Both personas are rows `seed-staff-local.mts` writes, minted
+   * through the same `mint()` as every other viewer — ruling 393 exists to refuse a hand-made cookie standing in
+   * for a staff session. Their role is ASSERTED before they are used, so a seed that silently stopped writing one
+   * would fail here rather than quietly shrink the audience to two.
+   * ⛔ MODERATOR is the one that matters most on an Owner-only path: it holds no `ops` grant at all, so it is the
+   * viewer for which the second belt (`OWNER_ONLY_PREFIXES`) is the only thing standing.
+   */
+  const extraStaff: Array<[string, "SUPPORT" | "MODERATOR"]> = [["support", "SUPPORT"], ["moderator", "MODERATOR"]];
+  const extraStaffViewers: Array<[string, string]> = [];
+  for (const [key, role] of extraStaff) {
+    const phone = `+255${LOCAL_STAFF[role]}`;
+    const u = await w.db.user.findByPhone(phone);
+    ok(`0.staff.${key} · 259 · the ${role} persona exists, is that role, and is NOT an ADMIN`,
+      !!u && u.role === role, `${phone} → ${u?.role ?? "missing"}`);
+    if (u) extraStaffViewers.push([key, u.id]);
+  }
+  ok("0.staff.audience · 259 · the served audience really carries all three non-owner staff roles — a probe that lost one would report a clean matrix having never exercised it",
+    extraStaffViewers.length === 2, `staff viewers: compliance + ${extraStaffViewers.map(([k]) => k).join(" + ") || "(none)"}`);
+
+  const viewers: Array<[string, string]> = [["player", player], ["holder", holder], ["trigger", triggers[0]], ["staff", staffUser!.id], ...extraStaffViewers, ["admin", A]];
   const cookies: Record<string, string> = {};
   for (const [k, id] of viewers) cookies[k] = await mint(id);
 
@@ -430,9 +459,16 @@ try {
   /* ⛔ AND THE DESK'S OWN TABS ARE ENUMERATED, BY NAME. Ruling 315: the probe discovers tabs by matching
    * `tab === "…"` in the page FILE, so any other shape leaves panels silently unrequested — and a COMMENT that
    * quotes the idiom invents an instance no panel answers. The count is printed and read, not assumed. */
-  ok("2.routes.tabs · 315 · the desk's bare route and every tab its page names are requested, and nothing else",
+  /* ⭐ C7 STEP 5 (the account half) · THE TWO NEW PANELS ARE NAMED, not left to a floor. 392(e) says a floor is
+     raised in the SCRIPT to what a pass measured; a floor alone would have risen with the account page's five tabs
+     and still never have required the two most leak-prone surfaces of the section to be REQUESTED. The names are
+     derived from the disk walk — route + fixture label + query — so naming them costs no fixture and no guess. */
+  const hasTab = (tab: string) => consoleInstances.some((r) => r.name.endsWith(`?tab=${tab}`));
+  ok("2.routes.tabs · 315 · the desk's bare route and every tab its pages name are requested, and nothing else — the account page's activity and history panels by name",
     consoleInstances.length >= 3 && consoleInstances.some((r) => r.name === CONSOLE_PREFIX)
-      && consoleInstances.some((r) => r.name === `${CONSOLE_PREFIX}?tab=limits`),
+      && consoleInstances.some((r) => r.name === `${CONSOLE_PREFIX}?tab=limits`)
+      && hasTab("activity") && hasTab("history")
+      && consoleInstances.some((r) => r.name.startsWith(`${CONSOLE_PREFIX}/[id]`) && r.name.endsWith("?tab=activity")),
     consoleInstances.map((r) => r.name).join(", "));
   const apiRoutes: string[] = [];
   const walkApi = (dir: string, rel: string) => {
@@ -678,7 +714,12 @@ try {
   const onConsole = (route: string) => route === CONSOLE_PREFIX || route.startsWith(`${CONSOLE_PREFIX}?`) || route.startsWith(`${CONSOLE_PREFIX}/`);
   const nonStaff = rows.filter((r) => r.viewer !== "admin");
   const leaks = nonStaff.filter((r) => (r.hits?.length ?? 0) > 0 && (PLAYER_STANDARD.has(r.viewer) || onConsole(r.route)));
-  const staffElsewhere = rows.filter((r) => r.viewer === "staff" && (r.hits?.length ?? 0) > 0 && !onConsole(r.route));
+  /* ⛔ ALL THREE NON-OWNER STAFF VIEWERS, NOT ONLY COMPLIANCE (C5-8, §1 row 8). `support` and `moderator` join
+     the audience in this pass; `4.1` already judges them ON the console because they are outside
+     `PLAYER_STANDARD`, and this off-console recording must widen with them or the two new roles would be the one
+     part of the audience whose off-console house hits nobody printed. Widening a measurement, never narrowing. */
+  const STAFF_VIEWERS = new Set(["staff", "support", "moderator"]);
+  const staffElsewhere = rows.filter((r) => STAFF_VIEWERS.has(r.viewer) && (r.hits?.length ?? 0) > 0 && !onConsole(r.route));
   const errored = rows.filter((r) => r.error);
   ok("4.0 · every request was answered (no transport error)", errored.length === 0, errored.slice(0, 5).map((r) => `${r.viewer} ${r.route} ${r.mode}: ${r.error}`).join(" · "));
   /* ⛔ THE TWO POPULATIONS ARE PRINTED SEPARATELY, BECAUSE THEY ARE HELD TO DIFFERENT STANDARDS. The label read

@@ -23,7 +23,8 @@
  * now lived only in process memory and died with the container. The planner writes the same columns on its own row
  * for its own facts (X1's duty names, `planner.ts`).
  */
-import { ALERT_KEY, POLLER_FAILURE_ALERT_AFTER, RUNTIME_KEY } from "@/lib/house-bot/constants";
+import { ALERT_KEY, MAX_TOLERATED_SKEW_MS, POLLER_FAILURE_ALERT_AFTER, RUNTIME_KEY } from "@/lib/house-bot/constants";
+import { auditFlush } from "../audit";
 import { houseBotIntentStore, houseBotRuntimeStore } from "../house-bot-dal";
 import { claimGate, type EngineTicks, type TickContext } from "./engine";
 import { fireClaimedIntent, type FireResult } from "./fire";
@@ -34,7 +35,7 @@ import { alertOnce, type EngineAlerts } from "./outcomes";
 export type PollerClaimFailure = { code: string; streak: number; alerted: boolean };
 
 export type PollerPass =
-  | { claimed: 0; gate: string }
+  | { claimed: 0; gate: string; alerted: boolean }
   | { claimed: 0; failure: PollerClaimFailure }
   | { claimed: number; beat: boolean; results: Array<FireResult | { kind: "threw"; error: string }> };
 
@@ -80,9 +81,68 @@ async function recordClaimFailure(ctx: TickContext, alerts: EngineAlerts, e: unk
   return { code, streak, alerted };
 }
 
+/**
+ * ⛔ **THE SILENT STOP** (01 register:1218; `ALERT_KEY.clockSkew`). The two gate reasons that mean *this container's
+ * clock cannot be trusted*. Every other reason is ordinary back-pressure — STOPPING, ADMISSION, FULL and NOT_STARTED
+ * are the engine working — and none of them is an alert.
+ */
+const SKEW_GATE_REASONS: ReadonlySet<string> = new Set(["SKEW", "SKEW_UNKNOWN"]);
+
+/**
+ * ⛔ **THE ENGINE DOES THE RIGHT THING AND TELLS NOBODY — until this build.** `claimGate` refuses to claim while the
+ * measured database-clock offset is unknown or past `MAX_TOLERATED_SKEW_MS`, and that refusal is correct: claiming on
+ * a clock five seconds out would fire intents before they are due. But the refusal was **only a return value**.
+ * `ALERT_KEY.clockSkew()` sat in the key table from commit 4 with **zero callers anywhere in the tree**, and the
+ * register's fix has always read "it skips claims **and sends AlertOnce `engine:clock_skew:<EAT day>`**".
+ *
+ * So on a live money platform the bots stopped staking and the only evidence was an absence: no outcome, no audit,
+ * no bell — every instrument reading "quiet", which is indistinguishable from a quiet hour. That is the same defect
+ * A24 exists for, and the same shape as `recordClaimFailure` above; it is answered the same way.
+ *
+ * ⛔ ONE BELL PER EAT DAY, NOT ONE PER TICK. The poller runs on `POLLER_INTERVAL_MS`, so a skewed clock reaches this
+ * line thousands of times a day and every container reaches it; the key's `day` unit is what makes that one bell.
+ * ⛔ AND THE BELL NEVER COSTS THE PASS. The gate has already refused; losing the reason to a failed send would
+ * replace a reported stop with an unreported one, which is the defect itself.
+ */
+async function alertSkewGate(ctx: TickContext, alerts: EngineAlerts, reason: string): Promise<boolean> {
+  try {
+    return await alertOnce(ALERT_KEY.clockSkew(), alerts, {
+      code: "CLOCK_SKEW",
+      detail: { reason, skewMs: ctx.state.skewMs, toleratedMs: MAX_TOLERATED_SKEW_MS, instanceId: ctx.instanceId },
+    });
+  } catch (e) {
+    console.error("[house-bot] the clock-skew stop could not be announced:", errMessage(e));
+    return false;
+  }
+}
+
+/** How long a pass will wait for the audit queue before giving up and leaving it to the reconciler.
+ *  One poller interval: long enough for the measured drain (a 50-append burst took ~200 ms on
+ *  loopback), short enough that a wedged queue cannot stall claiming. */
+export const AUDIT_FLUSH_BUDGET_MS = 2_000;
+
+/** Wait for the audit queue to drain, but never longer than `budgetMs`. Resolves true when the queue
+ *  drained inside the budget, false when the budget ran out first. Never rejects — `auditFlush`
+ *  already swallows a failed append (it is the request path's fail-open), and a flush that threw
+ *  here would abort a pass that has already fired real money. */
+export async function flushAuditWithin(budgetMs: number): Promise<boolean> {
+  const drained = auditFlush().then(() => true, () => true);
+  const expired = new Promise<boolean>((resolve) => {
+    const t = setTimeout(() => resolve(false), budgetMs);
+    // Never hold the event loop open for the budget: a process that is otherwise done must still
+    // be able to exit, and this timer is a deadline, not work.
+    (t as unknown as { unref?: () => void }).unref?.();
+  });
+  return Promise.race([drained, expired]);
+}
+
 export async function pollerPass(ctx: TickContext, alerts: EngineAlerts): Promise<PollerPass> {
   const gate = claimGate(ctx.state);
-  if (!gate.ok) return { claimed: 0, gate: gate.reason };
+  if (!gate.ok) {
+    /* ⛔ A24 · a clock this container cannot trust stops the claims — and now says so (register:1218). */
+    const alerted = SKEW_GATE_REASONS.has(gate.reason) ? await alertSkewGate(ctx, alerts, gate.reason) : false;
+    return { claimed: 0, gate: gate.reason, alerted };
+  }
   let rows;
   try {
     rows = await houseBotIntentStore.claimBatch({ me: ctx.instanceId, freeSlots: gate.freeSlots, skewGuardMs: gate.skewGuardMs });
@@ -111,8 +171,34 @@ export async function pollerPass(ctx: TickContext, alerts: EngineAlerts): Promis
       }
     }),
   );
+  /* ⛔ THE BOUNDED FLUSH — the engine's tick pays for its own compliance rows, and the bet never does.
+   *
+   * `placeHouseBet` reaches `market-service.ts:1699`, which writes the bet's statutory
+   * `market.position.opened` row with a BARE, un-awaited `audit({…})`. That is deliberate and it
+   * stays: driven on a scratch cluster, awaiting it would put p99 158 ms (and 283 ms at 100-way
+   * concurrency) on every bettor's critical path, on an IDLE loopback with no network — because the
+   * append serialises on a DB-global advisory lock, so the wait grows with ALL audit traffic, not
+   * just bets. A live bet must not wait on an audit write.
+   *
+   * But the fire does not run in a request. It runs on this timer, inside the container a deploy is
+   * about to end, and the queued append dies with the process: a Position row with `houseBotId` set
+   * and no compliance record — and D20 makes that a missing PLAYER row, not a missing house row.
+   * So the TICK waits where the BET must not. Cost lands on a 2 s poller that has already fired at
+   * most `MAX_FIRES_PER_PROCESS` stakes; the player pays nothing.
+   *
+   * ⛔ BOUNDED, because an unbounded flush would be a worse defect than the one it closes: the audit
+   * append retries five times against a 30 s transaction timeout, so a wedged database would hang
+   * this tick — and a poller that never returns stops claiming, which is the one failure A24 exists
+   * to make visible. When the budget expires the pass carries on and the lifecycle reconciler
+   * (`audit-reconcile.ts`) declares whatever was lost. Best-effort here, backstop there.
+   *
+   * ⚠️ THIS NARROWS THE WINDOW, IT DOES NOT CLOSE IT. A signal landing mid-fire still loses the row.
+   * What it buys is that BETWEEN ticks the queue is empty, so the overwhelming majority of the
+   * engine's life carries no unwritten compliance row at all. */
+  await flushAuditWithin(AUDIT_FLUSH_BUDGET_MS);
   return { claimed: rows.length, beat, results };
 }
+
 
 /** The engine's poller and SIGTERM release for `startHouseBotEngine`. The planner is build step 5. */
 export function workerTicks(alerts: EngineAlerts): Pick<EngineTicks, "pollerTick" | "requeueMine"> {

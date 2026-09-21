@@ -210,7 +210,7 @@ PR "Scope per commit → Commit 5" (PR:378-390):
 - R2: the reader separates open from settled after settlement and after a void (04:2006).
 - R3: positions at 23:59:59.999 and 00:00:00.000 EAT fall into different cohorts; the `db.txn.create` source pin fails on a planted RED file; 50 late-night house bets raise no LATE_NIGHT flag; the GBT pack equals its no-marker twin on every existing row; `holdPct` identical to the twin; FIU context column in/out of the designation window; match-integrity columns, section and note.
 - R4/F9: the walker fails on a planted offending file; `excludeHouse:true` drops marked rows in both stores and the default output is unchanged.
-- R8: the source pin with a positive control; the pack state survives 12,000 BET rows (Postgres half or `drive:house-bots-local`).
+- R8: the source pin with a positive control; the pack state survives 12,000 BET rows (Postgres half or `qa:house-bots-local`).
 - Leak sweep with a planted needle (P:520, CRA-27); leaderboard still includes the bot; two-admin ON resolves a house-held market exactly like its twin.
 - ~~Props assertion for the holder chip surfaces (HB-ACC-14 01:295).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no chip; HB-ACC-14 counts as the `/profile/account` served-page absence (C5-SPEC rulings 248, 250).
 - KYC card: the line for a holder; a non-holder's snapshot identical.

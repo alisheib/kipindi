@@ -204,6 +204,11 @@ function buildExpected(): Record<string, string> {
     "c13.a claimBatch takes exactly the two fresh rows": "hbi_c13a,hbi_c13b",
     "c13.b a claimed row carries the worker and one attempt": "CLAIMED:w_c13:1",
     "c13.c no free slot claims nothing": "0",
+    // c13.d–g · the abandoned-CLAIMED reclaim arm, with its two positive controls in the same call
+    "c13.d an ABANDONED claim is reclaimed; a live lease and a spent one are not": "hbi_c13e",
+    "c13.e the reclaimed row carries the NEW worker and the attempt it cost": "CLAIMED:w_c13_rescue:2",
+    "c13.f CONTROL · the live lease still belongs to its own worker, on its own attempt": "CLAIMED:w_c13_live:1",
+    "c13.g CONTROL · the abandoned row at the attempt ceiling is left where it lies": "CLAIMED:w_c13_burnt:3",
     // c14 · transient requeue and deferral
     "c14.a a transient requeue gives the attempt back": "0:1:0:1:PENDING:null",
     "c14.b no time left before staleAt: the requeue refuses": "claimed:null",
@@ -788,6 +793,41 @@ async function runCases(): Promise<void> {
       return `${r?.status}:${r?.claimedBy}:${r?.attempts}`;
     });
     await rec("c13.c no free slot claims nothing", async () => (await intents.claimBatch({ me: "w_c13b", freeSlots: 0, skewGuardMs: 2_000 })).length);
+
+    /* ── c13.d–c13.g · ⭐ THE ABANDONED-CLAIMED RECLAIM ARM (the second disjunct of `claimBatch`'s WHERE) ─────────
+     * ⛔ FOUND UNASSERTED, 2026-09-20. `claimBatch` takes a row that is PENDING **or** one that is already CLAIMED
+     * whose lease has run out — `OR ("status" = 'CLAIMED' AND "claimedUntil" < now())` in the Postgres twin, the
+     * same disjunct in the memory twin. That arm is how a worker killed mid-pass (SIGKILL, a container eviction, a
+     * Railway redeploy) has its work picked up instead of stranded until `staleAt`. NO fixture above touches it:
+     * every row c13.a–c13.c inserts is PENDING, so the whole disjunct could be deleted and each of them would stay
+     * green. A limb with no assertion is a limb nothing would notice stopping.
+     *
+     * ⛔ AND THE RECLAIM IS THE DANGEROUS HALF OF THE SAME PREDICATE, so its POSITIVE CONTROLS ride in the SAME
+     * call rather than a later one: `hbi_c13f` is a LIVE lease (claimedUntil 60 s out) that must NOT be stolen —
+     * a widened arm would double-fire one intent under two workers — and `hbi_c13g` is an abandoned lease whose
+     * attempts are already spent, which the attempt ceiling must still refuse even though its lease has lapsed.
+     * The answer NAMES what it took, so a build that reclaims nothing and a build that reclaims everything are
+     * two DIFFERENT strings, and the `hbi_c13` filter PRINTS the population rather than sampling it: a's and b's
+     * live leases (CLAIM_TTL_SEC = 180) appearing here would fail the case, never silently pass it. */
+    await intents.insert(fill("hbi_c13e", "mkt_c13e", { dueAt: due, status: "CLAIMED", claimedBy: "w_c13_dead", claimedUntil: fromNow(-5_000), attempts: 1 }));
+    await intents.insert(fill("hbi_c13f", "mkt_c13f", { dueAt: due, status: "CLAIMED", claimedBy: "w_c13_live", claimedUntil: fromNow(60_000), attempts: 1 }));
+    await intents.insert(fill("hbi_c13g", "mkt_c13g", { dueAt: due, status: "CLAIMED", claimedBy: "w_c13_burnt", claimedUntil: fromNow(-5_000), attempts: 3 }));
+    await rec("c13.d an ABANDONED claim is reclaimed; a live lease and a spent one are not", async () => {
+      const rows: Any[] = await intents.claimBatch({ me: "w_c13_rescue", freeSlots: 5, skewGuardMs: 2_000 });
+      return rows.map((r) => r.id).filter((id: string) => id.startsWith("hbi_c13")).sort().join(",") || "none";
+    });
+    await rec("c13.e the reclaimed row carries the NEW worker and the attempt it cost", async () => {
+      const r = await intents.get("hbi_c13e");
+      return `${r?.status}:${r?.claimedBy}:${r?.attempts}`;
+    });
+    await rec("c13.f CONTROL · the live lease still belongs to its own worker, on its own attempt", async () => {
+      const r = await intents.get("hbi_c13f");
+      return `${r?.status}:${r?.claimedBy}:${r?.attempts}`;
+    });
+    await rec("c13.g CONTROL · the abandoned row at the attempt ceiling is left where it lies", async () => {
+      const r = await intents.get("hbi_c13g");
+      return `${r?.status}:${r?.claimedBy}:${r?.attempts}`;
+    });
   });
 
   // ── c14 · transient requeue and rate-cap deferral ────────────────────────────────────────

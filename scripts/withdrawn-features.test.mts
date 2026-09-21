@@ -511,6 +511,139 @@ function ok(label: string, cond: boolean, extra?: string) {
   }
 }
 
+// ── §9 · desk — THE FOURTH FEATURE, AND THE ONLY ONE THAT IS ACTIVE ───
+//
+// ⛔ THE KEY IS `desk` AND THE OVERRIDE IS `FEATURE_DESK` — RENAMED FROM `houseBots` / `FEATURE_HOUSEBOTS`
+// on 2026-09-21 and NOT to be "corrected" back. `FeatureName`'s members are STRING LITERALS and
+// `feature-state.ts` is imported directly by `/admin/bonuses` and seven player routes, so it sits in both of
+// `test:house-bot-surfaces`' one-hop painter populations (3.hop.2, 6.hop.2) — the populations that exist
+// because L52's house word lived in `rate-limit.ts` and was painted on `/admin/system` by a page in another
+// section. The remedy taken there was a RENAME to the neutral `desk.picker`, not an exemption entry, and this
+// is that remedy applied again. ⚠️ `houseBotsLive` keeps its honest name: a function name is not a string a
+// file can print, and these guards read what a file can PRINT.
+//
+// ⛔ WITHDRAWN HERE MEANS A SUNSET (04 F2), and it is the CODE half of a two-part terminal state:
+// `ops:house-bots-sunset --apply` writes `offCause = 'SUNSET'` on the control row, then the constant
+// is committed and deployed. THE TWO HALVES MUST NOT DISAGREE and neither may be the only one anyone
+// maintains: the row survives a redeploy of an older image, the constant survives a database someone
+// edits by hand. §9d drives each ALONE and then both together.
+//
+// ⛔ LAW 1 APPLIES HERE TOO, AND HARDER: gating a REFUSAL with this flag would strand money. Open house
+// positions settle normally — a pari-mutuel pool cannot void one position — so nothing about
+// settlement, cash-out or the owner's book may ever consult `houseBotsLive()`. §9e measures that as a
+// POPULATION rather than asserting it as an intention.
+{
+  const { houseBotsLive } = await import("../src/lib/feature-state.ts");
+  const EN = await import("../src/lib/server/house-bot/engine.ts");
+  const { switchOnHouseBots } = await import("../src/lib/server/house-bot/switch-on.ts");
+  const DES = await import("../src/lib/server/house-bot/designation.ts");
+  const { houseBotControlStore } = await import("../src/lib/server/house-bot-dal.ts");
+
+  const withdrawn = () => { process.env.FEATURE_DESK = "WITHDRAWN"; };
+  const active = () => { delete process.env.FEATURE_DESK; };
+  const OFFICER = "usr_wf_house_officer";
+  // ⚠️ `timeZone` and `schemaReady` are INJECTED, which is this suite's unit contract and not a dodge:
+  // the engine's own suite owns the real probes (11.15, 11.21). What is measured here is the FEATURE
+  // gate, and injecting the other two is what makes "zero timers" attributable to it alone.
+  const ticks = { pollerTick: async () => {}, plannerTick: async () => {}, sweepTick: async () => {},
+    hookAlerts: {} as Parameters<typeof EN.startHouseBotEngine>[0]["hookAlerts"] };
+  const deps = { env: () => undefined, schemaReady: async () => ({ ready: true }), timeZone: async () => "UTC" };
+  const noTimers = () => Object.values(EN.engineState().timers).every((t) => t === null);
+
+  // §9a · the state itself
+  active();
+  ok("§9a the desk feature is ACTIVE as shipped — it is the one feature in this table that is live", houseBotsLive());
+  withdrawn();
+  ok("§9a FEATURE_DESK=WITHDRAWN is read", !houseBotsLive());
+  process.env.FEATURE_DESK = "SOMETHING";
+  ok("§9a ⭐ a value the module does not understand falls back to the SHIPPED constant — a typo can neither withdraw a live feature nor revive a withdrawn one",
+    houseBotsLive(), "FEATURE_DESK=SOMETHING must read as the shipped ACTIVE");
+
+  // §9b · the engine arms NOTHING while the feature is withdrawn — and really arms timers when it is not
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  withdrawn();
+  const refused = await EN.startHouseBotEngine(ticks, deps);
+  ok("§9b ⛔ WITHDRAWN: the engine does not start and arms ZERO timers",
+    refused.started === false && refused.refused === "FEATURE_WITHDRAWN" && noTimers(), JSON.stringify(refused));
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  active();
+  const started = await EN.startHouseBotEngine(ticks, deps);
+  const armed = EN.engineState().timers.first !== null;
+  ok("§9b ⭐ CONTROL · with the feature ACTIVE the SAME call starts the engine and arms its first pass — so 'zero timers' above is a measured DIFFERENCE and not an engine that was dead anyway",
+    started.started === true && started.refused === null && armed, JSON.stringify({ started, armed }));
+  await EN.stopHouseBotEngine({}, "withdrawn-features §9b");
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+
+  // §9c · the four service gates, each proved by a MEASURED DIFFERENCE against the same call
+  const badBot = "hb_wf_not_a_bot";
+  const rulesContext = { nowMs: Date.now() } as unknown as Parameters<typeof DES.startHouseBot>[0]["rulesContext"];
+  active();
+  const onActive = await switchOnHouseBots({ actorId: OFFICER, reason: null });
+  const designateActive = await DES.designateHouseBot({ officerId: OFFICER, userId: "usr_wf_nobody", label: "x", password: "p" });
+  const startActive = await DES.startHouseBot({ officerId: OFFICER, botId: badBot, rulesContext });
+  const reverifyActive = await DES.reverifyHouseBot({ officerId: OFFICER, botId: badBot, password: "p" });
+  withdrawn();
+  const onOff = await switchOnHouseBots({ actorId: OFFICER, reason: null });
+  const designateOff = await DES.designateHouseBot({ officerId: OFFICER, userId: "usr_wf_nobody", label: "x", password: "p" });
+  const startOff = await DES.startHouseBot({ officerId: OFFICER, botId: badBot, rulesContext });
+  const reverifyOff = await DES.reverifyHouseBot({ officerId: OFFICER, botId: badBot, password: "p" });
+
+  ok("§9c ⛔ WITHDRAWN: the master switch cannot be turned on", onOff.ok === false && onOff.code === "WITHDRAWN", JSON.stringify(onOff));
+  ok("§9c ⛔ WITHDRAWN: nothing can be designated — and the gate is the FIRST statement, before a password attempt can be spent on a holder's own lockout reserve",
+    designateOff.ok === false && designateOff.code === "INELIGIBLE" && designateOff.message === DES.FEATURE_WITHDRAWN_REFUSAL, JSON.stringify(designateOff));
+  ok("§9c ⛔ WITHDRAWN: no account can be started", startOff.ok === false && startOff.code === "INELIGIBLE" && startOff.message === DES.FEATURE_WITHDRAWN_REFUSAL, JSON.stringify(startOff));
+  ok("§9c ⛔ WITHDRAWN: no account can be re-checked", reverifyOff.ok === false && reverifyOff.code === "BLOCKED" && reverifyOff.message === DES.FEATURE_WITHDRAWN_REFUSAL, JSON.stringify(reverifyOff));
+  ok("§9c ⭐ CONTROL · the SAME four calls with the feature ACTIVE are refused for their OWN reasons and never with the withdrawn sentence — so each refusal above is attributable to the gate rather than to a bad fixture",
+    (onActive.ok === false ? onActive.code !== "WITHDRAWN" : true)
+    && designateActive.ok === false && designateActive.code !== "INELIGIBLE"
+    && startActive.ok === false && startActive.code === "NOT_FOUND"
+    && reverifyActive.ok === false && reverifyActive.code === "NOT_FOUND",
+    JSON.stringify({ onActive, designateActive: designateActive.ok ? "ok" : designateActive.code, startActive: startActive.ok ? "ok" : startActive.code, reverifyActive: reverifyActive.ok ? "ok" : reverifyActive.code }));
+
+  // §9d · the two mechanisms, each ALONE and then together
+  active();
+  const beforeSunset = await switchOnHouseBots({ actorId: OFFICER, reason: null });
+  await houseBotControlStore.markSunset({ byId: OFFICER, reason: "withdrawn-features §9d" });
+  const dbOnly = await switchOnHouseBots({ actorId: OFFICER, reason: null });
+  withdrawn();
+  const both = await switchOnHouseBots({ actorId: OFFICER, reason: null });
+  ok("§9d ⛔ THE DATABASE HALF ALONE refuses: offCause='SUNSET' on the control row, with the feature ACTIVE in code",
+    dbOnly.ok === false && dbOnly.code === "WITHDRAWN" && (beforeSunset.ok === true || beforeSunset.code !== "WITHDRAWN"),
+    JSON.stringify({ beforeSunset, dbOnly }));
+  ok("§9d ⛔ THE CODE HALF ALONE refuses too (§9c), and BOTH TOGETHER refuse IDENTICALLY — same code, no second sentence, so neither half can quietly become the only one that holds",
+    both.ok === false && both.code === "WITHDRAWN" && onOff.ok === false && both.code === onOff.code, JSON.stringify(both));
+  active();
+
+  // §9e · LAW 1 — the gate is on the OFFER and nowhere near a refusal, measured as a POPULATION
+  {
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      let entries: string[] = [];
+      try { entries = readdirSync(dir); } catch { return; }
+      for (const e of entries) {
+        const p = join(dir, e).replace(/\\/g, "/");
+        if (statSync(p).isDirectory()) walk(p);
+        else if (p.endsWith(".ts") || p.endsWith(".tsx")) files.push(p);
+      }
+    };
+    walk("src");
+    const readers = files.filter((f) => /\bhouseBotsLive\s*\(/.test(decomment(readFileSync(f, "utf8"))));
+    const EXPECTED = [
+      "src/lib/feature-state.ts",
+      "src/lib/server/house-bot/designation.ts",
+      "src/lib/server/house-bot/engine.ts",
+      "src/lib/server/house-bot/switch-on.ts",
+    ];
+    ok("§9e population is real (the whole of src/ is walked)", files.length > 400, `scanned=${files.length}`);
+    ok("§9e ⛔ EXACTLY four files consult the product state, and they are the three OFFER gates plus the module itself — compared as a SET in both directions, so a new reader and a stale expectation are each reported",
+      readers.length === EXPECTED.length && EXPECTED.every((f) => readers.includes(f)), `readers: ${readers.join(", ")}`);
+    ok("§9e ⛔ LAW 1 · no money path consults it: settlement, cash-out, the seam and the owner's book are NOT in that set — withdrawing a programme must never strand money already on the table",
+      !readers.some((f) => /market-service|house-ledger|book|settle|cash/i.test(f)), readers.join(", "));
+    ok("§9f ⛔ D19 · the refusal sentence is NEUTRAL: it names no feature, no bot, no desk, no holder and no officer",
+      !/house|bot|desk|holder|officer/i.test(DES.FEATURE_WITHDRAWN_REFUSAL), DES.FEATURE_WITHDRAWN_REFUSAL);
+  }
+}
+
 console.log(`\n${pass} passed · ${fail} failed`);
 if (pass === 0) { console.log("⛔ 0 passed — a zero-assertion run is a SKIPPED run, never a green one."); process.exit(1); }
 process.exit(fail === 0 ? 0 : 1);

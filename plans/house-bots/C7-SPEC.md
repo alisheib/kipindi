@@ -1104,6 +1104,68 @@ Nothing outside this module types the segment after that pass. ⛔ The inventory
 
 **Proof.** `test:house-bot-console` 1.409: every money `ProgressBar` under the section passes BOTH `caption` and `captionText` (362), built from the SAME `value`/`max` expressions, with the cap's name as the caption's first text node and each figure in its own `.amount` span, and `captionText` matching 361's regex with no markup in it; no money bar is passed WITHOUT a caption (which would land it in the kit's tracked `text-micro` line); no call passes `tone="claret"`; the step bar passes no caption. Plus `qa:house-bots-visual` at 360 reading the limits tab for overflow. ⛔ `test:type-scale` §2 is NOT cited — it needs a literal `formatTzs*` call inside the element and cannot see a caption prop or the kit's own `toLocaleString`.
 
+**⭐ AMENDED 2026-09-20 (C7 step 5, the LANDING half — a dated amendment, built and measured).**
+1. **THE TOLERANCE LIST IS DELETED WITH THE BUILD, NOT LEFT STANDING.** The amendment above re-keyed `UNBUILT_TABS`
+   per shape and kept the two landing entries. Both panels exist now, so the list is GONE and comms `7.2c` asserts
+   **zero dead tabs with no tolerance at all** — strictly stronger than what it replaced: a dead `?tab=` in either
+   shape now fails with nowhere to be written down. `7.2d`'s subject (the two keys' ABSENCE) no longer exists, so
+   the case is deleted rather than loosened and its id carries a planted-href control instead. ⛔ A recorded gap
+   that no longer exists is a permission, and a permission is what that case refuses.
+2. **THE RAIL'S BADGE IS A MEMBER OF `readDeskCore`'s SETTLED SET, NEVER A CALLER'S EXTRA SLOT.** The rail renders
+   above the panels on EVERY tab (406), so all four landing readers must be able to paint it; as a positional
+   extra each reader would have carried it in a different slot, which is how two readers come to count two
+   populations under one number. It may not come from a second gated reader (the one-reader-per-render spy) nor
+   be counted from rows (344), and `null` is a FAILED count and never a zero — `CountBadge` paints nothing at
+   zero, so a count can never stand in for a read's health, and the panel below paints `AdminLoadError` instead.
+3. **ONE RAIL FILE, RENDERED BY BOTH PAGES.** `activity-filters.tsx` moves from `[id]/` to the section root. Two
+   copies of one control is the defect this section was pulled up on, and a second rail would also be a second
+   `data-filter-rail` under one section.
+4. **🔴 THE DESK OWNS BOTH OF ITS EMPTY SENTENCES, INCLUDING THE FILTERED ONE (416).** The first build kept the
+   SHELL's filtered sentence on the reasoning that "nothing matches this filter" is the same fact on either page.
+   Its BODY is not: it reads *"No stake on **this account** matches"*, and the landing page has no account to
+   name. Read off a served page. ⛔ Each subject owns its own PAIR; neither borrows the other's, and the guard
+   reads both BODIES in both directions — a guard that checks one side of a swap cannot see the swap.
+5. **🔴 `.row-link` MAY NOT WRAP OPERATOR TEXT (474).** The class is the platform's row-EXIT style and carries
+   `text-transform: uppercase`; wrapping the Owner's typed label in it REWROTE that label for every reader. The
+   roster painted `Evening desk - widest label yetX`, these two panels `EVENING DESK - WIDEST LABEL YETX` — one
+   label, two looks, 40px apart on one screen. Invisible to every scan here: it lives in a computed style. The
+   geometry stays at the call site; the two rewriting declarations go. Recorded at DESIGN_AUTHORITY 6e.
+6. **THE HOUR SUMMARY'S BELL CARRIES AN EAT WALL CLOCK, NOT AN ISO INSTANT AND NOT A CLOCK TIME.** `parseEatLocal`
+   refuses `14:00` (no date) AND refuses `2026-09-20T13:00:00.000Z` (its pattern is anchored at `HH:MM`), and a
+   refused `from` is answered SILENTLY with the last 24 hours still labelled "custom" — so both wrong forms land
+   the officer on a different window under the name of the right one. `formatEatLocal` is the parser's own
+   inverse, exported from the module that owns the parse. ⛔ The assertion is the ROUND TRIP, never a spelling,
+   and BOTH wrong forms are declared mutations: a scan that only forbade the clock form passed while the link
+   carried an ISO instant.
+
+**⭐ AMENDED 2026-09-20 (C7 step 5, the ACCOUNT half — a dated amendment, built and measured).**
+1. **THE ACCOUNT PAGE'S HALF LANDS FIRST, AND THE ORDER IS FORCED, NOT PREFERRED.** An earlier analysis concluded the
+   landing and account panels could not be split across two commits. MEASURED FALSE: comms case 7.2d asserts
+   `!consoleTabExists("activity") && !consoleTabExists("history")` AND `deadTabs.length >= 1`, and a run of
+   `test:house-bot-comms` prints ELEVEN `?tab=` alert hrefs — TEN detail links and exactly ONE landing link (the hour
+   summary's). Building the LANDING pair first reds 7.2d on arrival; building the ACCOUNT pair leaves that one link
+   dead and 7.2d measuring it. `UNBUILT_TABS` beside that case is re-keyed PER SHAPE, which DELETED the two detail
+   entries and kept the two landing ones — a shrink, which is the only direction that list may move.
+2. **`?page=N` PAST THE END IS SERVED AS THE LAST PAGE, not as an empty-page state.** The Proof clause above asked for
+   "the empty-page state rather than repeating page 1"; `src/lib/server/house-console-read.ts` already does the
+   opposite for the Targets grid (C7 step 4c), §0a forbids two paging idioms on one page, and an empty page under a
+   pager drawn from a real total is 432(a)'s dead control. The shipped idiom wins.
+3. **THE ACCOUNT PAGE'S HISTORY ROW IS When · Event · Change · Who — there is no Reason column.** An officer's reason
+   is unbounded operator text on a screenshot-facing surface, and every fact the row states is taken from TYPED
+   fields instead (`fromStatus`/`toStatus` through the ONE status map, the actor as an id, ruling 420). The reason
+   stays where it belongs, in the compliance audit. ⛔ An `OWNER_MONEY` row carries a DOOR to the platform's own
+   transactions screen and no amount at all (266, 369(c), 456) — `money-hook.ts` writes `amountTzs` AND the holder's
+   own `balanceTzs` onto every one of those events.
+4. **`listAll`/`countAll` GAIN TWO FACETS, both in the ONE shared predicate per twin:** `houseBotId`, because the
+   account page's history is the desk history narrowed to one record and needs the same `total`; and `fromIso`,
+   because a delivered bell's `&event=` can only be honoured under a NUMBERED pager by counting the rows at or newer
+   than the anchor. No schema field and no migration. `test:dal-parity` **16.eventsBot** and **16.eventsAnchor**.
+5. **THE EVENT WORD MAP IS TOTAL AND `WORD[kind] ?? kind` IS FORBIDDEN OUTRIGHT.** MEASURED: 453's lexicon opens with
+   `\bbots?\b`, an underscore is a word character, so `HOLDER_AGAINST_BOT` produces ZERO hits in every scan this
+   programme has. A raw-enum fallback would paint the feature's own name with nothing reporting it. So
+   `CONSOLE_EVENT_WORD` is `satisfies Record<HouseBotEventKind, string>` and `CONSOLE_SKIP_SENTENCE` is
+   `satisfies Record<EngineCode, string>` — `tsc` refuses either without its word.
+
 #### 410. Filters are `FilterPill rank="dense"` + `DateTimeRangeFilter rank="dense"` in ONE `data-filter-rail`, URL-backed with `replace`, and the file is REGISTERED
 
 **Decision.** The activity feed's filters are dense `FilterPill` groups for Bot, Product and Outcome, each introduced by `FilterGroupKey`, plus `DateTimeRangeFilter rank="dense" presetIds={["today","24h","7d"]}`, all inside one `<div data-filter-rail className="flex flex-wrap items-center gap-2">`. `QueryStrip` is NOT used (no caller under `src/app/admin`). Changing a filter navigates with `replace`, drops `page`, and mounts no second search state. The 32 px density comes from `rank="dense"` and nothing else — no `h-[32px]`, no inline style, no per-surface variant. **The filter file is added to `ADMIN_SURFACES` in `scripts/filter-language.test.mts` in the same commit**, or the new rail is invisible to the gate that owns it. Only the SELECTED pill carries an outline.
@@ -1112,6 +1174,23 @@ Nothing outside this module types the segment after that pass. ⛔ The inventory
 
 **Proof.** `test:filter-language` §6 over the new `ADMIN_SURFACES` entry, with `red:filter-language` as its control; `test:tap-target` §2.
 
+**⭐ AMENDED 2026-09-20 (C7 step 5, the ACCOUNT half — built and measured).**
+1. **THE RAIL IS A SERVER COMPONENT AND EVERY LINK IN IT IS SERVER-BUILT** (`src/app/admin/desk/[id]/activity-filters.tsx`,
+   declared in `ADMIN_SURFACES`). It types no route, no closed list and no label: every option's words and href are
+   built where the rest of this section's copy is built, so the control an officer clicks and the read the server
+   takes come from ONE parse. `/admin/house` already ships this idiom. ⛔ It is NOT a `"use client"` file, and that
+   is the point — a client file in this section would publish ITS OWN PROP NAMES into a public chunk.
+2. **THE ACCOUNT PAGE'S THREE AXES ARE Type · Product · Outcome**, not Bot · Product · Outcome: a page about ONE
+   account has no Bot axis, and a control that can only ever select the account you are looking at is 432(a)'s dead
+   control. `outcome` is spelled as the DELIVERED ALERTS already spell it (`&outcome=failed`, lowercase).
+3. **THE WINDOW GAINS `all` AS ITS FOURTH PRESET AND ITS DEFAULT**, because `alert-copy.ts` and two placement notices
+   already ship `&range=all`, and one account's own activity is a short list — a rail that opened narrowed would hide
+   the row an officer followed a bell to reach. `resolveRange` already carries `all`; nothing was added to it.
+4. **`DateTimeRangeFilter` GAINS ONE KIT PROP, `replace`, DEFAULTING TO PUSH** (with its design-system record), so not
+   one of the seven existing admin call sites changes behaviour. §K5 forbids forking the kit; the note in that file
+   refusing `replace` was refusing a silent rewrite of every caller, and it still stands for every caller that does
+   not ask.
+
 #### 411. Pagination is the kit pager at 20, carrying every live filter, and its ghost is drawn only where the list is unbounded
 
 **Decision.** The activity feed and the history tab page with `AdminPagination page total perPage={PER_PAGE} baseHref={buildBaseHref("/admin/desk", {tab, …filters})}`, using `parsePage`; `PER_PAGE` is taken from the primitive (20), never re-typed; every filter in force is carried in `baseHref` so paging never silently clears one, and changing a filter resets `page`. The loader draws a pager ghost ONLY where the row source is unbounded (the feed and the history). The roster gets none — not because it holds 5 rows, but because `maxDesignatedBots`' CEILING is 20, and 20 rows at 20 per page is a single page, so the pager returns null and a forced ghost would over-draw 77 px.
@@ -1119,6 +1198,26 @@ Nothing outside this module types the segment after that pass. ⛔ The inventory
 **Files.** `src/components/ui/pagination.tsx:13`, `:122`, `:148`, `:175` · `src/components/admin/admin-skeletons.tsx:240`, `:346` · `src/app/admin/agents/page.tsx:431` · `src/lib/house-bot/rules.ts:778`.
 
 **Proof.** `qa:house-bots-visual` — paging the feed with every filter set keeps the filters in the URL and the row count at 20; plus 417's loader/page parity (a pager ghost exists iff the page renders a pager).
+
+**⭐ AMENDED 2026-09-20 (C7 step 5, the ACCOUNT half — built and measured).**
+1. **`parsePage` IS NOT USED UNDER THIS SECTION, AND `PER_PAGE` IS NOT IMPORTED FROM THE PRIMITIVE.**
+   `@/components/ui/pagination` is a CLIENT-reachable module and the gate module is server-only, which is the reason
+   already written beside `CONSOLE_TARGETS_PER_PAGE` at C7 step 4c. So the page number is sanitised by the
+   server-only parse and the page size is stated beside that constant; the render takes BOTH from the view, so the
+   page and its control can never disagree. `PER_PAGE` is still never re-typed as a magic 20 at a call site.
+2. **THE ANCHOR IS NOT A FILTER AND IS NOT CARRIED FORWARD.** `&intent=`/`&event=` is a LANDING INSTRUCTION belonging
+   to the address a bell produced. Carrying it into every pager link and every chip would re-resolve a page under a
+   filter the anchor was never ranked in, and would echo a bounded record id into markup that has no need of it.
+   The anchor's own page is resolved by counting the rows at or newer than it INSIDE the same filter; a tie can only
+   inflate that rank, so the reader steps back ONE page on the rows it already holds before its single re-read,
+   which is exact for every tie block smaller than a page.
+3. **THE ACCOUNT PAGE'S PAGE PARAMETERS ARE `page` (activity), `hpage` (history) AND `tpage` (targets).** The activity
+   panel takes the platform's own `page` deliberately: `DateTimeRangeFilter` deletes exactly that word on any window
+   change, which is half of this ruling's "a filter change resets `page`" — and the window rail renders on the
+   activity tab alone, so the other two grids are untouched by it.
+4. **NO SUSPENSE BOUNDARY IS ADDED TO THE ACCOUNT PAGE.** Its ONE gated reader resolves before any panel renders, so a
+   boundary around a panel could never suspend; `[id]/loading.tsx` already ghosts the DEFAULT tab and is unchanged.
+   Ruling 417's parity is measured against that default, which is all a route fallback can know.
 
 #### 412. Forms: one `FormColumn measure="form"`, every control `size="md"`, one guarded form per tab, and a refusal that lands on the right field on the right tab
 
@@ -1280,6 +1379,24 @@ Each step ends with `npx tsc --noEmit` at 0, the suites §4 assigns it, and a re
 
 **Step 7 — the closing gates.** `COMMIT_7` and case 7.3 retired together now that all three pages exist (the hrefs themselves were re-pointed at step 1 — 320, corrected); `houseBotBook`/`HouseBotBook` removed and `book.ts:121`'s false "The console's money card" claim corrected, if C5-5b has not already (371, measured still standing); `"enter now"` promoted only after its remaining two measurements (397); the full suite list of §4; `red:house-bot-console`'s mutations each red against their own assertion; the §5 capture set opened and READ; `DEFERRED-TESTS.md` and PROGRESS updated with every NOT MEASURED line in the same pass.
 
+**Steps 8–13 — THE OPS LANE (added 2026-09-20, and the reason it is added here is the defect itself).** ⛔ Commit 7 owes FOUR ops scripts — `ops:house-bots-off` (A9), `ops:house-bots-status` with `--drift` (S3), `ops:house-bots-remark` (S3) and `ops:house-bots-sunset` (F2) — and they are assigned by `PROGRESS.md:385` while appearing in this file **zero** times. Anyone building Commit 7 step by step from §3 above closes the commit without them and **nothing turns red**: the same "built nowhere and scheduled in no step" shape rulings 473 and 506 had to rescue for twelve homeless assertions. They are scheduled here so the next reader cannot repeat the omission. They land in a SEPARATE worktree from steps 1–7 (`house-bot-dal.ts` is the one real collision; the DAL step below is deliberately small and early for that reason).
+
+- **Step 8 — the lane's suite and the `scripts/` marker gate. ✅ BUILT 2026-09-20.** `scripts/house-bot-ops.test.mts` + `scripts/lib/house-bot-ops-cases.mts`, with `test:house-bot-ops` and `red:house-bot-ops` (the IN-PROCESS red class: the command carries `--prove-red` and the script contains no file-writing call, so `red-anchors.test.mts`'s `UNDECLARED_CEILING` is untouched and no disk anchor exists to rot while two lanes edit one repo). ⛔ **Armed BEFORE the scripts it guards**, while the correct answer is still "exactly ONE file under `scripts/` carries a raw `houseBotId` UPDATE, and it is a control that rolls back": a gate written afterwards can only describe what was built. The walker is IMPORTED from the new `scripts/lib/tracked-files.mts` (lifted out of `house-bot-reports-cases.mts`, which cannot be imported — it runs its own cases and exits), never redefined.
+- **Step 9 — the two DAL members. ✅ BUILT 2026-09-20.** `HouseBotControlStore.markSunset()` and `HouseBookStore.openExposureByMarket()`, interface and BOTH twins. ⛔ `markSunset` is NOT `switchOff({ cause: "SUNSET" })`: `switchOff` is conditional on `"enabled" = true` and the SHIPPED desk is OFF with `offCause` NULL, so a sunset through it would strip the desk and leave no terminal marker. `test:dal-parity` §6's loop GENERATES both `6.twin` pairs with no edit to that file, which is what keeps this lane out of a file step 5 above edits.
+- **Step 10 — `ops:house-bots-off` (A9). ✅ BUILT 2026-09-20.** `scripts/ops-house-bots-off.mts`, key `ops:house-bots-off`. Direct `pg.Client` (the DAL runs every statement through the app's own Prisma pool, which is exactly what ENG-18 says is gone), dry by default, SSL decided by host with NO provider hostname typed in, exit 2 on an empty `DATABASE_URL`. TWO WRITES: the conditional control update and one `SWITCH_OFF` event.
+  - ⛔ **NO advisory lock**, ever: every fire re-reads the control row inside its own lock, so a committed OFF already binds every bet not yet holding `house:control`, while taking the lock first is the 30 s stall A9 exists to remove.
+  - ⛔ **D-OPS-1 · it does NOT cancel live intents, and it SAYS SO.** A table-wide cancel re-introduces the exposure a lock-free script was written against. It prints the count it left standing, writes that count into the event payload as `liveIntentsLeft`, and prints the exact statement that cancels them.
+  - ⛔ **D-OPS-2 · it writes NO compliance row.** `audit()` HMAC-chains under a database-wide advisory lock; a hand-written `AuditLog` INSERT would break the one artefact that exists to prove nothing was rewritten. The `SWITCH_OFF` event row is the record and the runbook says so by name.
+- **Step 11 — `ops:house-bots-status` with `--drift` (S3). ✅ BUILT 2026-09-20.** `scripts/ops-house-bots-status.mts`, key `ops:house-bots-status`. THE FILE LANDS IN COMMIT 7 whatever `PROGRESS.md` credits: `--drift` reporting 0 is a precondition of every later house deploy. Built on the DAL, never `loadWorld` (that fixture sets `MARKET_SCHEDULER=false` on import); the engine figures come from `listInstances()` folded by `houseEngineBeats()`, never `houseBotEngineHealth()` (this process's own state) and never `houseEngineHealthFor()` (it gates on a viewer an ops script must not manufacture). "Engine enabled" is never claimed — a refused start writes no row — so it prints "an engine booted here at <instant>". The marked-row figure is UNBOUNDED, and the roster figure is `countLive` with its population in words.
+  - ⛔ Leg (a) is time-bounded and REFUSES to run unbounded: `Transaction` has no index on `positionId` and its one marker index is the wrong polarity. It prints the bound it used and the EXPLAIN plan of the statement that actually ran.
+  - ⛔ Leg (c) is SPLIT: `AGENT_COMMISSION` is counted two ways (the ledger row, and the `ReferralReward` found by REBUILDING the commission writer's deterministic `sourceRef` from the marked position), while wagering prints `NOT MEASURABLE` with its reason — `BonusGrant` carries zero occurrences of `positionId`, measured.
+- **Step 12 — `ops:house-bots-remark` (S3), THE ONLY WRITER. ✅ BUILT 2026-09-20.** `scripts/ops-house-bots-remark.mts`, key `ops:house-bots-remark`. ⛔ TRANSACTIONS only (`C5-SPEC.md:870` says it in as many words; the sentence that reads "sets NULL → position.houseBotId" is the trap). Raw SQL is MANDATORY: both twins discard `houseBotId` from a `txn.update` patch, so a remark through the DAL would run, report success and change nothing. Five guards, each driven against Postgres: `t."houseBotId" IS NULL` (NULL-filling only, and what makes a second run a no-op) paired with `p."houseBotId" IS NOT NULL`; the value from the JOIN and never a parameter (`--bot` may FILTER); `"Transaction"` the only target; count/write/re-check reconciled inside ONE transaction with a ROLLBACK on any disagreement; and `--apply` REFUSED while the master switch is ON. It is the second — and last — entry in `MARKER_UPDATE_EXEMPT`, and the pin that admits it is byte-for-byte.
+  - ⛔ **D-OPS-3 · it writes no compliance row either**, and the reason is not the chain but the closed lists: there is no `house_bot.remark` audit action and no REMARK event kind, both CHECK-constrained in SQL and owned by Commit 1. Its REPORT is the record — it prints every row it will touch before it touches it, and the runbook has the officer file the note with that output attached.
+- **Step 13 — `ops:house-bots-sunset` (F2) and the `houseBots` feature state. ✅ BUILT 2026-09-20.** `src/lib/server/house-bot/sunset.ts` (the decisions, drivable on BOTH twins) with a thin `scripts/ops-house-bots-sunset.mts` over it, key `ops:house-bots-sunset`; plus `FeatureName` gaining `houseBots`, `houseBotsLive()`, and four gates that did not exist — the engine (a new `FEATURE_WITHDRAWN` refusal, checked FIRST), `switchOnHouseBots`, `designateHouseBot` and `reverifyHouseBot`/`startHouseBot`.
+  - ⛔ SUNSET is a wind-down that installs a TERMINAL state: all data is KEPT, open house positions settle normally, nothing is voided, and no holder is told. It uses `markSunset`, never `switchOff` (whose `enabled = true` predicate matches nothing on the shipped OFF desk), and never reuses `removeHouseBot` (MANUAL, BOT_REMOVED, no per-target event, one bell per account).
+  - ⛔ THE TWO MECHANISMS MUST NOT DISAGREE: the DB marker survives a redeploy of an older image, the code constant survives a database edited by hand, and `test:withdrawn-features` §9d drives each ALONE and asserts they refuse identically.
+  - Its runbook is lifted into `docs/HOUSE-BOTS.md` §11 in the same commit — an irreversible ops script must not exist for even one commit with no documented procedure — together with the Rollback levers section, which records D-OPS-2 and D-OPS-3 by name.
+
 ---
 
 ## §4 The suites, and what each step adds
@@ -1293,6 +1410,12 @@ Each step ends with `npx tsc --noEmit` at 0, the suites §4 assigns it, and a re
 | 5 | + `test:dal-parity`, `test:house-bot-comms` | parity `6.twin` for `countFeed`, `listAll`, `countAll`, `botRateUsage`; `16.d20` still green with ONLY `"countFeed"` gone from its `NEVER` array; the NEW `16.feedShared`, `16.eventsShared` and `16.botRateUsage` (one statement, DB clock, no row projection); 1.312 (the four keys and their order, now that all four panels exist), 1.317 (page 2 of 41), 1.344 (620 rows), 1.345 (six facets), 1.351 (equality with the gate reader), 1.369 (no `?tab=money`, every alert href resolves), 1.410 |
 | 6 | + `test:read-tiers`, `qa:pending-bar`, `qa:chaos` | 1.359 (the wizard's gated read), 1.387 (identical empty+refusal), 1.382 (export and guard-label names, the audit row), 1.383 (guard first, one refusal shape) |
 | 7 | + `red:house-bot-console`, `qa:dg-shell`, `qa:dg-measure`, `qa:admin-load`, `qa:house-bots-visual`, `test:house-bot-reports`, `test:i18n`, `test:motion-ladder`, `test:dead-css`, `test:feedback-law`, `test:gold-is-money`, `test:filter-language`, `test:section-rail` | 0.260.1 with every new gate export in `CONSOLE_GATES`; 0.175 for the probe and the new suite as vocabulary consumers; 1.365, 1.370, 1.371, 1.375, 1.390, 1.391, 1.395, 1.398 (the control roll-call and the population floor); one declared mutation per new assertion |
+| 8 ✅ | `tsc`, `test:house-bot-ops` (NEW, both stores), `red:house-bot-ops` (NEW, in-process), `test:guards-exist`, `test:house-bot-reports` (the lifted walker) | ops.pop.0 (the population printed, with its emptiness refusal and a positive control that the walker OPENED files), ops.pop.1 + ops.pop.1b (the raw and ORM marker shapes, offender set compared to its allowlist in BOTH directions), ops.pop.1e (no stale exemption), ops.pop.2 (+ .2c) (the old-build exemption ASSERTED: BEGIN … ROLLBACK, no COMMIT between), ops.pop.3 / .3p / .3pp / .3f / .3c (the owner's switch law over 70 derived ops scripts, four ON shapes, the sanctioned OFF direction NOT reported), ops.pop.self (the scanner does not measure itself), ops.suite.0 (the backend named). 18 planted controls, 18 SEEN RED. Floors MEASURED: memory 16, postgres 1 |
+| 9 ✅ | + `test:dal-parity`, `test:house-bot-rules` | `6.twin` × 4, GENERATED by §6's loop for `markSunset` and `openExposureByMarket` with NO edit to `dal-parity.test.mts`; ops.dal.1 (the BLOCKER 1 case, and it is FIRST), ops.dal.2, ops.dal.3 (+ .3c, the null is a REFUSAL not an inert member), ops.dal.4 (the terminal marker proved by the WITHDRAWN refusal it produces), ops.dal.5 (+ .5c0 OTHER_BOT, .5c1 SETTLED, .5c2 UNMARKED, .5c3 per-market ≠ per-bot). Floors MEASURED: memory 28, postgres 13 |
+| 10 ✅ | + `test:house-bot-ops` (§2 DRIVES the real script five times against scratch Postgres) | ops.off.0s (⭐ the script is IN the derived ops population and in its house subset — the emptiness trap closed), ops.off.1 + .1p (the dry run writes 0 rows against a desk that COULD have moved, and prints both statements), ops.off.2 (one control row, EXACTLY ONE new SWITCH_OFF event as a delta over a planted one), ops.off.3/.4 (already-off prints `ALREADY_OFF` verbatim and exits 0; no second event, no moved instant), ops.off.5–8 (SOURCE: no ON shape, no re-typed sentence, ssl by HOST with no hostname typed in, no advisory lock), ops.off.9 + .9c (the cause and kind ACCEPTED by the real CHECKs, with a rolled-back control proving the same column REFUSES a cause outside `OFF_CAUSES`), ops.d-ops-1 + .1p (the live intents are still live AND the terminal says so, with the exact cancel statement), ops.d-ops-2 + .2d (no `AuditLog` row, and the screen names the event row as the record), ops.off.env / .wf (empty URL exits 2; a closed port prints `WRITE_FAILED`, says house bets are STILL RUNNING, and exits non-zero). Floors MEASURED: memory 35, postgres 26 |
+| 11 ✅ | + `test:house-bot-ops` (§3, and the same file RUN with no database at all) | ops.status.1 (the five release figures, each equal to a number the suite measured itself) + .1p (a POSITIVE control that none of them is 0 — a reader printing 0 everywhere would pass a "clean world" assertion while counting nothing), ops.status.2 (a marked position backdated 48 h is still counted: the figure is all-time, not the seam's 24-hour window), ops.status.3 (a PAUSED bot raises the roster figure; the label says non-REMOVED), ops.status.4 (the beat age is printed with the switch OFF, where the verdict is null), ops.status.src/.srcp/.src2/.src3 (no `houseBotEngineHealth`, no `houseEngineHealthFor`, no `loadWorld`, no typed threshold — and a positive control that it DOES read the durable rows), ops.status.mem/.mem2 (runs to completion on the memory store and REFUSES `--drift` there rather than reporting clean), ops.drift.0/a/b/c/cw (a measured baseline, each leg reporting exactly its planted row with an unmarked-position control against it, and the wagering sentence pinned byte-for-byte), ops.drift.bound/.plan/.refuse (a 1-day window sees none of them, the EXPLAIN plan is printed, an unbounded run exits 2), ops.drift.exit (a drift that finds something exits non-zero — the re-release law is a gate). Floors MEASURED: memory 41, postgres 40 |
+| 12 ✅ | + `test:house-bot-ops` (§4 DRIVES the writer), `test:dal-parity` | ops.remark.10 (⛔ the ONE statement byte-for-byte) + .10b/.10c/.5s/.g5s (only an AND-conjunction may be appended and the file holds no disjunction; no `"Position"` target, no `SET "positionId"`; no flag can reach the SET; the switch column is READ, never written) + .10r (six mutations, each caught: the NULL predicate deleted, the value parameterised, the target swapped to `"Position"`, a `SET "positionId"`, an interpolated table name, and ⭐ the false positive the detector really produced — the pinned statement's own join key), ops.remark.1 (dry writes 0 and reports exactly what it would do), .9 (REFUSED while the switch is ON), .max (refused over its ceiling), .2 (fills exactly the planted rows), .5 (⛔ with two marked positions held by DIFFERENT bots, each row gets ITS OWN position's marker), .3c (a row already marked is untouched), .4 (an unmarked position's rows stay NULL), .6 (not one `positionId` changed, whole column compared), .3 (a second run changes 0), .7 (drift leg (a) re-read as 0 — the repair and the reader asserted together), .8 (the gate now admits EXACTLY TWO files and names both). Floors MEASURED: memory 48, postgres 52 |
+| 13 ✅ | + `test:house-bot-ops` (§5, LAST — it empties the roster), `test:withdrawn-features` (§9, NEW), `test:house-bot-engine`, `test:house-bot-designation`, `test:house-bot-comms`, `test:docs`, `test:guards-exist` | ops.sunset.1 (⛔ BLOCKER 1's case: `--apply` on an ALREADY-OFF desk writes `offCause = SUNSET`), .2 (the marker proved by the `WITHDRAWN` refusal it produces), .3 + .3c (every live account REMOVED(SUNSET) with one event each; one already REMOVED(MANUAL) keeps its cause and gets none), .4 + .4c (every ACTIVE target ENDED(SUNSET) with EXACTLY ONE TARGET_ENDED event — `endAllForBot` writes none — and one already ENDED(VETOED) is not re-ended), .5 (ONE global SUNSET event with no `houseBotId`, ONE compliance row, ONE alert), .6 + .6p (no press row touched, and the planner's own sweep DOES move it — so "untouched" is a measured difference), .7 (a second `--apply` changes 0 in all six groups and exits 0), .8/.8p (a reason outside 5–300, or missing, is refused and writes nothing), .9 (⛔ the officer's free text is on the event row and the account and in NO audit payload), .10 (the payload passes `isAllowedHouseAuditPayload`), .11 (⛔ nothing voided, refunded or cashed out — the open marked positions are unchanged in count AND status), .12a–e (SOURCE: no ON shape, no `removeHouseBot`, `markSunset` not `switchOff`, no press writer, no delete, no money unwind), ops.sunset.a1 (⭐ the compliance row FORCED to fail — production without a distinct `AUDIT_CHAIN_SECRET`, the only way `audit()` can reject — and the desk still moved, `recorded: false`), wf.house §9a–§9f (the state, the engine arming ZERO timers against a control that really arms them, the four service gates each proved by a measured difference, the two mechanisms alone and together, and ⛔ LAW 1 as a POPULATION: exactly four files consult `houseBotsLive()` and no money path is among them). Floors MEASURED: memory 58, postgres 69 |
 
 ---
 

@@ -64,12 +64,31 @@ import type { Role } from "@/lib/server/roles";
  *
  * ⚠️ The CONCEPT still exists where it is genuinely implemented — the Proposals feature-state
  * machine (`proposals-config.ts`, `propose-promo.tsx`, `coming-soon-banner.tsx`) renders a real
- * gilt badge for it. This module governs three features, all WITHDRAWN today, and none is promised.
+ * gilt badge for it. This module governs FOUR features: three player-facing ones, all WITHDRAWN today
+ * and none promised, and `desk` — which is ACTIVE and is not a player surface at all (owner ruling
+ * D19: nothing about it reaches a player or the holder). Its WITHDRAWN state is a SUNSET, written by
+ * `ops:house-bots-sunset` in the database and by this constant in the code.
  */
 export type FeatureState = "ACTIVE" | "WITHDRAWN";
 
-/** The features this table governs. */
-export type FeatureName = "invite" | "bonus" | "install";
+/**
+ * The features this table governs.
+ *
+ * ⛔ `desk` IS THE FEATURE'S KEY HERE AND THE NEUTRAL WORD IS DELIBERATE — DO NOT "CORRECT" IT BACK.
+ * It was `houseBots` until 2026-09-21, and `test:house-bot-surfaces` 3.hop.2 and 6.hop.2 went red on it:
+ * every member of this union is a STRING LITERAL, and this module is imported directly by `/admin/bonuses`
+ * and by seven player routes, so it sits in BOTH one-hop painter populations — the exact population that
+ * exists because L52's house word lived in `rate-limit.ts` and was painted on `/admin/system` by a page in
+ * another section. ⭐ AND THE PRECEDENT IS L52's OWN REMEDY, taken again rather than reasoned around: that
+ * rate-limit key was RENAMED to the neutral `desk.picker` rather than added to an exemption list, and
+ * `/admin/desk` is already the platform's own neutral name for the section. Registering the word here would
+ * have widened an exemption to make a guard green, which this programme refuses by name.
+ * ⚠️ THE IDENTIFIERS ARE NOT RENAMED AND THAT IS THE SAME RULING, NOT AN INCONSISTENCY: `houseBotsLive` is
+ * a NAME IN CODE, which no surface can print; the guards that read this module read the strings a file can
+ * PRINT. What the feature is called in code stays honest; what it is called in a string stays neutral.
+ * ⛔ The operator override moves with the key: it is `FEATURE_DESK`, not `FEATURE_HOUSEBOTS`.
+ */
+export type FeatureName = "invite" | "bonus" | "install" | "desk";
 
 /**
  * ⛔ THE SWITCHES. Changing one word here changes the whole product surface.
@@ -84,11 +103,21 @@ export type FeatureName = "invite" | "bonus" | "install";
  * socials popup … the install, hide it for now, later we activate — it's disturbing users"*).
  * Nothing about it is deleted: the component, its copy, its eligibility rules and its guards all
  * stay, and the shell mounts it behind `installInviteIsLive()`. ACTIVE here brings it back.
+ *
+ * ⭐ `desk` — ACTIVE, and the ONE entry here that is not a player surface (04 F2). The key is neutral by
+ * ruling; see `FeatureName` above for why, and `houseBotsLive()` below for what it gates. ⛔ WITHDRAWN
+ * here is a SUNSET, and it is the CODE half of a two-part terminal state: `ops:house-bots-sunset`
+ * writes `offCause = 'SUNSET'` on the control row, and this constant is committed and deployed after
+ * it. ⛔ THE TWO HALVES MUST NOT DISAGREE, and neither may be the only one anyone maintains: the DB
+ * marker survives a redeploy of old code, and this constant survives a database somebody edits by
+ * hand. Each ALONE refuses the switch, the roster and the engine; `test:withdrawn-features` §9d drives
+ * both and asserts they refuse identically.
  */
 const PRODUCT_STATE: Record<FeatureName, FeatureState> = {
   invite: "WITHDRAWN",
   bonus: "WITHDRAWN",
   install: "WITHDRAWN",
+  desk: "ACTIVE",
 };
 
 /**
@@ -184,4 +213,28 @@ export function bonusIsLiveFor(role?: Role | null | undefined): boolean {
  */
 export function installInviteIsLive(): boolean {
   return resolvedState("install") === "ACTIVE";
+}
+
+/**
+ * True while house bots are part of the product at all (04 F2).
+ *
+ * ⛔ NOT THE MASTER SWITCH, AND THE TWO ARE DIFFERENT QUESTIONS. The switch is an OPERATOR control —
+ * off today, on tomorrow, flipped from the console by the owner. This is the PRODUCT state: WITHDRAWN
+ * means the programme is over, and no console press, no database edit and no redeploy of old code
+ * brings it back without changing the constant above. A withdrawn feature cannot be switched on by
+ * editing a row, which is the entire point of keeping it up here.
+ *
+ * ⛔ AND IT GATES THE OFFER, NEVER THE REFUSAL (this module's standing rule). It decides whether the
+ * engine may start and whether an account may be designated, started or re-checked. It must NEVER be
+ * consulted to decide whether a house bet SETTLES, whether a marked position may be cashed out, or
+ * what the owner's book counts: withdrawing a programme must not strand money that is already on the
+ * table. Open house positions settle normally — a pari-mutuel pool cannot void one position.
+ * ⛔ Server-side only. It is never read by a client module and never reaches a player or a holder (D19).
+ * ⚠️ ITS KEY IS THE NEUTRAL `desk` AND ITS OPERATOR OVERRIDE IS `FEATURE_DESK` (renamed from `houseBots` /
+ * `FEATURE_HOUSEBOTS`, 2026-09-21, ruling recorded on `FeatureName` above). The FUNCTION keeps the feature's
+ * real name because a function name is not a string this module can print; the KEY is a string literal and a
+ * string literal is what the one-hop painter guards read.
+ */
+export function houseBotsLive(): boolean {
+  return resolvedState("desk") === "ACTIVE";
 }

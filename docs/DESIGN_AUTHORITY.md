@@ -1814,6 +1814,40 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    filter control while the kit's own reference sat one import away, and the divergence reached
    four control heights and two radii before anyone measured it.
 
+6e. 🔴 **`.row-link` WRAPS A FIXED WORD, NEVER SOMEBODY'S TYPED TEXT** (added 2026-09-20, off a render).
+   The class exists for a row's way OUT — "open →", "manage →" — and it deliberately carries
+   `text-transform: uppercase` and `letter-spacing: .10em` along with the `--tap-min` floor. Ten admin
+   pages use it and every one of them wraps a word the product chose.
+   ⛔ **IT MAY NOT WRAP OPERATOR DATA, BECAUSE A CSS TRANSFORM IS A REWRITE.** The house console's two
+   landing panels put the Owner's own account label inside it; measured with `getComputedStyle` on a
+   served page, the roster painted `Evening desk - widest label yetX` while the two panels 40px below
+   painted `EVENING DESK - WIDEST LABEL YETX`. One label, two looks, on one screen — and operator text
+   that the product had silently rewritten for every reader and into every screenshot.
+   ⚠️ **NO SCAN IN THIS REPOSITORY COULD SEE IT.** The difference is a computed style; the source reads
+   as one class name. It took a photograph and `getComputedStyle`.
+   **The rule:** an element carrying `data-operator-text` does not carry `.row-link`. If it needs the
+   link's geometry, it takes the geometry at the call site — `inline-flex items-center
+   min-h-[var(--tap-min)]`, the repo's own idiom — and leaves the two rewriting declarations behind.
+   ⛔ The shared rule is NOT edited: its ten other call sites are right to be uppercase.
+   Guarded by `test:house-bot-console` 1.474, which DERIVES the rule from `globals.css` (whatever
+   `.row-link` is declared to do) rather than typing it, with a control requiring the class to still be
+   in use for its own purpose so the rule cannot empty itself into a vacuous pass.
+
+6d. ⭐ **`DateTimeRangeFilter` TAKES `replace`, AND IT DEFAULTS TO PUSH** (added 2026-09-20).
+   `FilterPill` has taken `replace` since S-07 — *"a filter is not a navigation"* — and the window
+   rail could not, so a rail built from BOTH controls had one half that stacked history and one half
+   that did not. The prop is `replace?: boolean` on
+   `src/components/ui/datetime-range-filter.tsx`; it is obeyed by BOTH doors the control navigates
+   through (`pushParams`, which the Custom panel's Apply and Clear call, and `hrefForPreset`, which
+   the preset `<Link>`s use) so the two can never disagree.
+   ⛔ **THE DEFAULT IS `false`, WHICH IS PUSH, AND THAT IS THE WHOLE DESIGN OF THE ADDITION.** The note
+   in that file that refused `replace` was refusing a *silent rewrite of seven admin routes' history
+   behaviour*, and that refusal still stands for every caller that does not ask. §K5 forbids forking
+   the kit, so a rail that owns its URL asks for the prop rather than wrapping the control.
+   First caller: `src/app/admin/desk/activity-filters.tsx` (rendered by both console pages).
+   Guarded by `npm run test:filter-language` §6.6 (which counts `<DateTimeRangeFilter>` as a
+   rank-taking control) and, for the caller, `test:house-bot-console` 1.410.
+
 6c. ⛔ **AND THE PILLS SIT IN ONE BAR, WHICH IS THE SAME BAR ON EVERY PAGE THAT LISTS ANYTHING**
    (added 2026-09-09, PLAYER QUERY campaign task 6.7). Rule 6 settled the *control*; it never
    said what the control sits in, and for five stages that gap was filled per-surface. The bar is

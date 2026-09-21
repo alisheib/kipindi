@@ -224,8 +224,17 @@ export function DeskSwitch({
 
           {error !== null && <p className="text-body-sm text-danger-fg" role="alert">{error}</p>}
 
-          {/* 415 · the footer stacks in reverse on a phone, so the confirm sits under the thumb and Cancel above
-              it — never the other way round on the control that starts money. */}
+          {/* 415 · the footer stacks in reverse on a phone: DOM order is Cancel then confirm, so `flex-col-reverse`
+              paints the CONFIRM FIRST and Cancel beneath it, and `sm:flex-row sm:justify-end` restores Cancel-left /
+              confirm-right from 640 up.
+              ⛔ THIS COMMENT SAID THE OPPOSITE OF WHAT IT SHIPS, AND THE WRONG AUTHORITY TRAVELLED FURTHER THAN THE
+              WRONG LINE WOULD HAVE (ops-lane visual pass, 2026-09-20). It read "the confirm sits under the thumb and
+              Cancel above it"; the 360 tile of this very ceremony shows `Switch on` ABOVE `Cancel`, as does every
+              other dialog in the section. Nothing rendered was wrong — the kit's own `ConfirmDialog` footer
+              (`src/components/ui/modal.tsx`, `flex flex-col gap-2` with confirm first, Cancel second) paints the
+              same order at every width, so all five of this section's footers already agree with the platform. What
+              was wrong was the sentence, and a pass had already copied it into a report as a thing it had SEEN. The
+              order is now described as it paints, with the kit named as the thing it must keep agreeing with. */}
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
             <Button type="button" size="md" variant="ghost" onClick={close} disabled={pending}>{copy.cancelLabel}</Button>
             <Button type="button" size="md" variant="primary" onClick={submit} disabled={!armed} loading={pending}>

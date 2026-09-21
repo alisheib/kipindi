@@ -39,9 +39,23 @@ export async function verifyChainAction() {
       actorId: session.userId,
       targetType: null,
       targetId: null,
+      // ⛔ THE RECORD OF A VERIFICATION CARRIES WHAT IT ACTUALLY FOUND (AR-3, 2026-09-21). It used to
+      // store `{valid:true, total}` and nothing else on the happy path — so a chain carrying rows
+      // that could not be re-verified left behind a row saying only "valid", and the next officer
+      // reading the history of verifications could not tell a fully-attested pass from a partial one.
       payload: result.valid
-        ? { valid: true, total: result.total }
-        : { valid: false, firstBreakAt: result.firstBreakAt, index: result.index, total: result.total },
+        ? {
+            valid: true, total: result.total,
+            verified: result.verified ?? null,
+            baselined: result.baselined ?? 0,
+            baselineEntryId: result.baseline?.entryId ?? null,
+          }
+        : {
+            valid: false, firstBreakAt: result.firstBreakAt, index: result.index, total: result.total,
+            linkBroken: result.linkBroken ?? false,
+            unattested: result.unattested ?? 0,
+            baselineMismatch: result.baselineMismatch ?? false,
+          },
     });
     return result;
   } catch (err) {

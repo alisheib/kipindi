@@ -459,7 +459,7 @@ AdminBody
 8. PNGs go to `.qa-design-gate/house-bots/<view>-<w>.png` (gitignored), and **each one is opened with Read and looked at**.
 
 **Phase D: real-route client pass** (modals, picker, guard, overlay).
-1. Local Postgres on `127.0.0.1:5433` behind the loopback guard, with `prisma migrate deploy` and `seed:house-bots-local`.
+1. Local Postgres on `127.0.0.1:5433` behind the loopback guard, with `prisma migrate deploy` and `db:seed-house-bots-local`.
 2. An owner ADMIN with a password, following `seed-visual-admin.mts` (its header: `next start` + real DB + `/auth/admin` login), plus bots in PAUSED(NEW), ACTIVE, AUTO_PAUSED(PASSWORD_CHANGED) and REMOVED.
 3. Start with `DISABLE_ADMIN_TOTP=true npm run start` (`responsive-audit.mjs:712-721`).
 4. Drive at 360, 768 and 1280, never submitting:

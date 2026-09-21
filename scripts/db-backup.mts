@@ -564,8 +564,15 @@ async function main(): Promise<void> {
     // `linkBroken` is optional on the result type (absent when there is nothing to
     // check). Absent means "no break was found", which is what `false` records.
     chainLinkBroken: chain.linkBroken ?? false,
+    // ⛔ RECORDED SEPARATELY FROM THE LINK (AR-3, 2026-09-21). An entry EDITED in place does not
+    // break a link — it breaks its OWN hash — and until this was split out, `chainValid` was true
+    // over such a chain and the manifest recorded a sound database. The two failures need different
+    // words on the artifact a recovery is judged by: a link break means an entry was inserted,
+    // removed or reordered; an unattested entry means one was rewritten.
+    chainUnattested: chain.unattested ?? 0,
+    chainBaselined: chain.baselined ?? 0,
   };
-  if (!sourceIntegrity.trialBalanceOk || sourceIntegrity.chainLinkBroken) {
+  if (!sourceIntegrity.trialBalanceOk || sourceIntegrity.chainLinkBroken || sourceIntegrity.chainUnattested > 0) {
     console.warn(
       `\n   ⚠️  SOURCE INTEGRITY WARNING — this is a problem with the DATABASE, not with\n` +
         `      this backup, which captured it faithfully:\n` +
@@ -574,6 +581,11 @@ async function main(): Promise<void> {
           : `        - trial balance FAILS: ${sourceIntegrity.driftingWallets} drifting wallet(s), ` +
             `${sourceIntegrity.totalAbsDrift} TZS total drift\n`) +
         (sourceIntegrity.chainLinkBroken ? `        - the audit chain has a BROKEN LINK\n` : "") +
+        (sourceIntegrity.chainUnattested > 0
+          ? `        - ${sourceIntegrity.chainUnattested} audit entr(y/ies) do NOT match their own hash and are not\n` +
+            `          covered by a declared baseline — an entry was EDITED IN PLACE, or the legacy\n` +
+            `          population has never been declared (\`npm run audit:baseline\`)\n`
+          : "") +
         `      Investigate on production. db:verify-backup will report the same and will NOT\n` +
         `      blame the artifact for it.\n`,
     );

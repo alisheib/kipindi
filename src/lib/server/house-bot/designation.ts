@@ -15,6 +15,7 @@
  * control write uses. Every write below happens inside `wallet:<botUser>`, where Pause, auto-pause, Remove and
  * the seam's H2 re-read the bot; audits and notices go out after the lock is released (04 A19).
  */
+import { houseBotsLive } from "@/lib/feature-state";
 import { db, type StoredUser } from "../store";
 import { hasOpenRequest } from "../privacy";
 import { withLock } from "../locks";
@@ -111,7 +112,7 @@ const refuse = (code: VerifyRefusalCode, message: string, extra: Partial<Extract
  *   2. a `submitId` is claimed once (AlertOnce `submit:<officer>:<id>`) — a double tap is refused;
  *   3. re-verify: a removed bot refuses, a running bot with valid consent is a no-op;
  *   4. the password-context rows and a responsible-gambling lock refuse, uncounted, before any check;
- *   5. the `housebot.verify` bucket (`<officer>:<holder>`) — the holder's counter is untouched;
+ *   5. the `desk.verify` bucket (`<officer>:<holder>`) — the holder's counter is untouched;
  *   6. inside `login:<userId>` on the FRESH row: an expired lock is cleared as sign-in clears it; at the
  *      reserve the password is not checked; wrong → count + 1, never `lockedUntil`; right → count 0.
  */
@@ -160,7 +161,7 @@ export async function verifyHouseBotPassword(input: {
   }
 
   // Step 5 — the console's own bucket.
-  const rl = await rateCheckAsync(`${officerId}:${userId}`, "housebot.verify");
+  const rl = await rateCheckAsync(`${officerId}:${userId}`, "desk.verify");
   if (!rl.allowed) {
     await houseAudit("house_bot.verify_rate_limited", officerId, target, auditPayload);
     return refuse("RATE_LIMITED", VERIFY_COPY.rateLimited(rl.retryAfterSec), { retryAfterSec: rl.retryAfterSec, attemptsBeforeLock: attemptsBeforeLock(user.failedLoginCount ?? 0) });
@@ -234,6 +235,15 @@ export const DESIGNATE_COPY = {
   rosterFull: (n: number, max: number) => `The roster is full (${n} of ${max}). Remove an account or raise the roster limit on Limits →`,
 } as const;
 
+/**
+ * ⛔ F2 · THE ONE SENTENCE FOR A WITHDRAWN PROGRAMME, AND IT IS NEUTRAL BY RULE (D19). It names no
+ * feature, no bot, no holder and no officer, so it is safe wherever a refusal is rendered. It rides on
+ * the EXISTING refusal codes of all three results — deliberately, so that adding this gate changes no
+ * caller's exhaustive handling and no console mapping: a new code would have been a second edit in a
+ * file another lane is working in today, for no gain the officer can see.
+ */
+export const FEATURE_WITHDRAWN_REFUSAL = "Withdrawn from the product — nothing can be added, started or re-checked here.";
+
 export type DesignateResult =
   | { ok: true; bot: StoredHouseBot }
   | { ok: false; code: "INVALID" | "INELIGIBLE" | "ALREADY_BOT" | "PASSWORD_CHANGED" | "ROSTER_FULL" | VerifyRefusalCode;
@@ -256,6 +266,11 @@ const NULL_CAPS = Object.fromEntries(CAP_FIELDS.map((k) => [k, null])) as HouseB
 export async function designateHouseBot(input: {
   officerId: string; userId: string; label: string; note?: string | null; password: string; submitId?: string | null;
 }): Promise<DesignateResult> {
+  /* ⛔ F2 · FIRST STATEMENT, BEFORE A PASSWORD ATTEMPT CAN BE SPENT. Until this gate existed the desk's
+     "nothing can be designated" Callout was DISPLAY ONLY: the service would happily designate a new
+     account onto a withdrawn desk, and the refusal has to hold for every caller, not only for the one
+     that hides the button. */
+  if (!houseBotsLive()) return { ok: false, code: "INELIGIBLE", message: FEATURE_WITHDRAWN_REFUSAL };
   const { officerId, userId } = input;
   const labelErr = validateLabel(input.label);
   if (labelErr) return { ok: false, code: "INVALID", message: labelErr.message, field: "label" };
@@ -385,6 +400,9 @@ export type ReverifyResult =
  * every Start check.
  */
 export async function reverifyHouseBot(input: { officerId: string; botId: string; password: string; submitId?: string | null }): Promise<ReverifyResult> {
+  /* ⛔ F2 · a re-check is the first step of putting an account back to work, so it is refused too — and
+     before the password, so a withdrawn programme cannot spend a holder's own lockout reserve. */
+  if (!houseBotsLive()) return { ok: false, code: "BLOCKED", message: FEATURE_WITHDRAWN_REFUSAL };
   const { officerId, botId } = input;
   const bot = await houseBotStore.get(botId);
   if (!bot) return { ok: false, code: "NOT_FOUND", message: "No bot with that ID." };
@@ -465,6 +483,10 @@ const cantStart = (m: string): string => (m.startsWith("Can't start") ? m : `Can
  * `rulesContext` is built by the caller from the live platform (commit 7's action).
  */
 export async function startHouseBot(input: { officerId: string; botId: string; rulesContext: RulesContext }): Promise<StartResult> {
+  /* ⛔ F2 · a withdrawn programme starts nothing, and this is checked before the roster is even read.
+     ⚠️ It does NOT stop an already-ACTIVE account being paused or removed: a sunset must be able to wind
+     down what is running, and gating the refusal path is how a withdrawal strands what it withdrew. */
+  if (!houseBotsLive()) return { ok: false, code: "INELIGIBLE", message: FEATURE_WITHDRAWN_REFUSAL };
   const { officerId, botId } = input;
   const bot = await houseBotStore.get(botId);
   if (!bot) return { ok: false, code: "NOT_FOUND", message: "No bot with that ID." };
@@ -537,11 +559,15 @@ export type VoidResult =
  *     Start never revive them (N2 §4 step 10, TGT-40);
  *   · an ACTIVE bot → AUTO_PAUSED(cause), `pausedFromStatus` ACTIVE, its live intents cancelled; a paused bot
  *     keeps its status and gets HOLDER_CAUSE_ADDED.
- * A throw anywhere rolls every one of those back (targets stay ACTIVE). After the lock: the COMPLIANCE row,
- * and for HOLDER_WITHDREW the holder's confirmation. ⛔ Responsible-gambling causes send the holder nothing
- * (C8); IDENTITY_REFUSED and HOLDER_ERASURE_REQUEST notices land with commit 4's emitters (C3-SPEC ruling 12).
+ * A throw anywhere rolls every one of those back (targets stay ACTIVE). After the lock: the COMPLIANCE row.
+ * ⛔ **AND NOTHING ELSE REACHES THE HOLDER — corrected in C5-8 (2026-09-21, ruling 258).** This paragraph used to
+ * add "and for HOLDER_WITHDREW the holder's confirmation": owner ruling D19c admits no house-bot notice or email to
+ * a holder for ANY cause, and this module sends none (it imports no emitter). Responsible-gambling causes send the
+ * holder nothing (C8); IDENTITY_REFUSED and HOLDER_ERASURE_REQUEST are ADMIN notices from commit 4's emitters
+ * (C3-SPEC ruling 12), never the holder's.
  *
- * Callers: `withdrawHouseConsent` (commit 7's holder action), and commit 4's holder hook, L2 sweep and mapper.
+ * Callers: the withdrawal helper below (an OFFICER action, Commit 7 — never the holder's own button, D19c), and
+ * commit 4's holder hook, L2 sweep and mapper.
  */
 export async function voidHouseConsent(input: { userId: string; cause: ConsentVoidCause; actorId: string | null }): Promise<VoidResult> {
   const { userId, cause } = input;
@@ -599,7 +625,20 @@ export async function voidHouseConsent(input: { userId: string; cause: ConsentVo
   return { voided: true, botId: written.botId, from: written.from, to: written.to, targetsEnded: written.targetsEnded, intentsCancelled: written.intentsCancelled };
 }
 
-/** The holder's own "Stop liquidity stakes" (04 A3 F10) — the service `withdrawHouseConsentAction` calls. */
+/**
+ * WITHDRAWAL OF CONSENT (04 A3, cause HOLDER_WITHDREW).
+ *
+ * ⛔ **NOT a holder-facing action, and the docstring that said so was corrected in C5-8 (2026-09-21, ruling 258).**
+ * It read "the holder's own Stop liquidity stakes — the service `…Action` calls", naming a server action that has
+ * never existed on this branch. Owner ruling D19c struck the holder-facing surface whole: a holder is told nothing
+ * about house bots, so they cannot be given a button that stops them. Any caller is an OFFICER acting on a holder's
+ * request, and that surface belongs to Commit 7.
+ *
+ * ⚠️ It has NO caller under `src/` today, and that is enforced rather than remembered: the reports suite's §0.170.2
+ * requires nothing under `src/` to name it outside this definition, with planted callers as its controls, and
+ * `HOLDER_ACTOR_DEBT` carries it as a Commit 7 debt that may only LEAVE that list — because when a caller does
+ * arrive it must write the officer as actor, not the holder (ruling 170).
+ */
 export function withdrawHouseConsent(holderUserId: string): Promise<VoidResult> {
   return voidHouseConsent({ userId: holderUserId, cause: "HOLDER_WITHDREW", actorId: holderUserId });
 }

@@ -206,6 +206,13 @@ const rulesTab = (c: AlertContext): string => (c.botId ? consoleBotTabHref(c.bot
    settled it for good — the door to a holder's money is `/admin/transactions`, a platform surface. So this sends the
    reader to the account's own page, never to a tab that will not exist. */
 const moneyTab = (c: AlertContext): string => (c.botId ? consoleBotHref(c.botId) : CONSOLE_ROUTE);
+/* ⛔ THE ENGINE-HEALTH ALERTS DO NOT POINT AT THE CONSOLE. A clock, a database time zone and a failing poller are
+   facts about the PROCESS, not about any one bot, and the console has no surface that shows them: the skew, the boot
+   refusal and the beats are rendered on `/admin/system` → Diagnostics (`admin/system/page.tsx`, the "Clock skew" KPI).
+   Sending an officer to the roster for an engine that is not claiming would send them to a page that looks normal.
+   ⚠️ Not from `console-routes.ts` on purpose — that module owns `/admin/desk` only; this is a platform surface, the
+   same exception `moneyTab` names above for `/admin/transactions`. */
+const diagnostics = (): string => "/admin/system";
 
 type Row = (c: AlertContext) => Omit<AlertRow, "href" | "severity"> & { href?: string; severity?: AlertSeverity };
 
@@ -222,6 +229,54 @@ const ROWS = {
     bodySw: "Dau zinajaribiwa upya, hazijapotea. Kama hali haitaisha, zima boti za nyumba na ukague hifadhidata.",
     bodyZh: "投注正在重试，并未丢失。若情况持续，请关闭平台机器人并检查数据库。",
     severity: "warning" as const,
+  }),
+  /* ── Engine health (A4, A24). ⛔ NO HOLDER AND NO BOT IS NAMED: these three say the ENGINE is not placing stakes,
+     which is true of every bot at once, and a `{holder}` in a row about a server clock would be a person's handle
+     attached to a fact that has nothing to do with them. ⭐ Each one answers the officer's real question — "is money
+     moving, and what do I do?" — because the failure they report is a SILENT one: the engine does the right thing
+     and stops, and every other instrument then reads "quiet". ── */
+  CLOCK_SKEW: (c) => {
+    const unknown = str(c.detail?.reason) === "SKEW_UNKNOWN";
+    const tol = Math.round(num(c.detail?.toleratedMs, 5_000) / 1_000);
+    const off = `${num(c.detail?.skewMs)} ms`;
+    return {
+      titleEn: `House bots have stopped staking — this server's clock cannot be trusted · ${c.at}`,
+      titleSw: `Boti za nyumba zimeacha kuweka dau — saa ya seva hii haiaminiki · ${c.at}`,
+      titleZh: `平台机器人已停止投注——本服务器时钟不可信 · ${c.at}`,
+      bodyEn: unknown
+        ? `The gap between the database clock and this server's clock could not be measured, so the engine is claiming nothing rather than place bets at the wrong moment. No stake was lost and none was placed wrongly. Staking resumes by itself the moment a measurement succeeds.`
+        : `The database clock and this server's clock are ${off} apart, past the ${tol} s the engine tolerates, so it is claiming nothing rather than place bets at the wrong moment. No stake was lost and none was placed wrongly. Put the server's time right and staking resumes by itself.`,
+      bodySw: unknown
+        ? `Tofauti kati ya saa ya hifadhidata na saa ya seva hii haikuweza kupimwa, kwa hiyo injini haichukui dau lolote badala ya kuweka dau kwa wakati usio sahihi. Hakuna dau lililopotea wala lililowekwa vibaya. Uwekaji dau utaendelea wenyewe pindi kipimo kitakapofanikiwa.`
+        : `Saa ya hifadhidata na saa ya seva hii zinatofautiana kwa ${off}, zaidi ya sekunde ${tol} injini inazovumilia, kwa hiyo haichukui dau lolote badala ya kuweka dau kwa wakati usio sahihi. Hakuna dau lililopotea wala lililowekwa vibaya. Rekebisha saa ya seva na uwekaji dau utaendelea wenyewe.`,
+      bodyZh: unknown
+        ? `无法测出数据库时钟与本服务器时钟的偏差，因此引擎不再领取任何投注，以免在错误的时间下注。没有任何投注丢失，也没有任何投注被错误下达。一旦测量成功，投注将自动恢复。`
+        : `数据库时钟与本服务器时钟相差 ${off}，超出引擎可容忍的 ${tol} 秒，因此引擎不再领取任何投注，以免在错误的时间下注。没有任何投注丢失，也没有任何投注被错误下达。请校正服务器时间，投注将自动恢复。`,
+      href: diagnostics(),
+      severity: "danger" as const,
+    };
+  },
+  DB_TIMEZONE: (c) => ({
+    titleEn: `House bots did not start — the database time zone is not UTC · ${c.at}`,
+    titleSw: `Boti za nyumba hazikuanza — saa za eneo za hifadhidata si UTC · ${c.at}`,
+    titleZh: `平台机器人未启动——数据库时区不是 UTC · ${c.at}`,
+    bodyEn: `The database reports its time zone as ${str(c.detail?.zone, "unreadable")}, and every daily cap and daily key the engine writes is counted on the East African day computed from it. Rather than count a day wrongly, the engine refused to start on this server: no house stake will be placed until the database time zone is UTC.`,
+    bodySw: `Hifadhidata inaripoti saa zake za eneo kuwa ${str(c.detail?.zone, "haisomeki")}, na kila kikomo cha kila siku na kila ufunguo wa kila siku injini inaoandika huhesabiwa kwa siku ya Afrika Mashariki inayotokana nayo. Badala ya kuhesabu siku vibaya, injini ilikataa kuanza kwenye seva hii: hakuna dau la nyumba litakalowekwa hadi saa za eneo za hifadhidata ziwe UTC.`,
+    bodyZh: `数据库报告其时区为 ${str(c.detail?.zone, "无法读取")}，而引擎写入的每一项每日上限与每日键值，都按由该时区推算的东非日期计算。为避免错误地划分日期，引擎拒绝在本服务器上启动：在数据库时区改为 UTC 之前，不会下达任何平台投注。`,
+    href: diagnostics(),
+    severity: "danger" as const,
+  }),
+  /* ⭐ A24's poller-failure limb landed at C7 step 4b with no copy row of its own, so an hour of a failing poller
+     reached an officer as the bare word "POLLER_FAILING" over the generic fallback sentence. */
+  POLLER_FAILING: (c) => ({
+    titleEn: `House bots have stopped staking — the engine cannot claim work · ${c.at}`,
+    titleSw: `Boti za nyumba zimeacha kuweka dau — injini haiwezi kuchukua kazi · ${c.at}`,
+    titleZh: `平台机器人已停止投注——引擎无法领取任务 · ${c.at}`,
+    bodyEn: `The statement that picks up due bets has failed ${num(c.detail?.streak)} times in a row, so nothing is being placed. Nothing is lost — the bets wait — but they will keep waiting until this clears. Last error: ${str(c.detail?.error, "not recorded")}.`,
+    bodySw: `Sentensi inayochukua dau yaliyofika muda wake imeshindwa mara ${num(c.detail?.streak)} mfululizo, kwa hiyo hakuna linalowekwa. Hakuna kilichopotea — dau yanasubiri — lakini yataendelea kusubiri hadi hili litakapoisha. Hitilafu ya mwisho: ${str(c.detail?.error, "haijarekodiwa")}.`,
+    bodyZh: `领取到期投注的语句已连续失败 ${num(c.detail?.streak)} 次，因此没有任何投注被下达。没有任何损失——这些投注仍在等待——但在此问题解决前会一直等待。最后一次错误：${str(c.detail?.error, "未记录")}。`,
+    href: diagnostics(),
+    severity: "danger" as const,
   }),
   HOLDER_CONTENTION: (c) => ({
     titleEn: `House bot ${botName(c)}: the holder is using the account · ${c.at}`,

@@ -14,16 +14,21 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync, readdirSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "typescript";
 import { decomment } from "./decomment.mts";
+import { srcFiles, scriptFiles } from "./tracked-files.mts";
+/** ⭐ The print measure 0.198.3 and `test:house-bot-disclosure` §5.2 now SHARE — see that module's header for why. */
+import { printedTexts } from "./player-surface-text.mts";
 import { ROLL_CALL_SITES, ROLL_CALL_OWED, expectDriftReport, expectDriftControl, type DeclaredMutation } from "./house-bot-expect-drift.mts";
 /* ⛔ The `reports-mem` declarations live in the console anchors file (ruling 434's is the first), and this suite
  * audits its own key there — 505's whole rule is that a suite key with no roll-call is audited by nobody. */
 import { MUTATIONS as CONSOLE_ANCHORS } from "../anchors/house-bot-console.anchors.mjs";
+/* ⛔ 0.232.2b OPENS THE MONEY ANCHORS instead of asserting against seven strings typed here (C5-7's review). */
+import { MUTATIONS as MONEY_ANCHORS } from "../anchors/house-bot-money.anchors.mjs";
 import { createHash } from "node:crypto";
-import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES } from "./house-bot-vocabulary.mjs";
+import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SOURCE, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES, HOUSE_BENIGN_SAMPLES } from "./house-bot-vocabulary.mjs";
 
 type Any = any;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -43,18 +48,12 @@ async function guard(label: string, fn: () => Promise<void> | void): Promise<voi
   try { await fn(); } catch (e) { ok(`${label} · threw`, false, String((e as Error)?.stack ?? e).split("\n").slice(0, 3).join(" | ")); }
 }
 
-/** Every `.ts`/`.tsx` file under `src/`, as a path relative to the repo root (forward slashes). */
-function srcFiles(): string[] {
-  const out: string[] = [];
-  const walk = (d: string) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) walk(p); else if (/\.(tsx?)$/.test(e.name)) out.push(relative(ROOT, p).replace(/\\/g, "/"));
-    }
-  };
-  walk(join(ROOT, "src"));
-  return out;
-}
+/* ⛔ `srcFiles()` AND `scriptFiles()` MOVED TO `scripts/lib/tracked-files.mts` (C7, the ops lane) AND ARE
+ * IMPORTED AT THE HEAD OF THIS FILE. They were written here and they still read exactly the same trees; what
+ * changed is that a SECOND guard now needs the same populations, and this module cannot be imported — it runs
+ * every case in it and ends in `process.exit`. The alternative was a second walker, which is the defect this
+ * file already records at 0.232.3: a control that built its own walker left the pin "passing forever over an
+ * empty population WITH ITS CONTROL STILL GREEN". One walker per population, one file, both callers. */
 
 /** A syntax tree of `code` (TS, TSX or plain JS by the file's extension). Parsed, never type-checked. */
 function parse(file: string, code: string): ts.SourceFile {
@@ -515,13 +514,32 @@ export function broaderLists(file: string, raw: string): { extendsShared: number
   };
 }
 
-/** The five absence consumers of ruling 175 that exist at this commit (the service-layer sweep lands in §11 of this file). */
+/**
+ * The absence consumers of ruling 175. ⭐ SEVEN SINCE C5-8: `test:house-bot-surfaces` joined it on the day it was
+ * written — the surface lexicon whose population is the ADMIN SURFACES and the modules they import, the complement
+ * no other house-word guard was reading (675 of 1,087 `src/` files at the time, 192 of them admin surfaces). It
+ * consumes the shared words AND the shape family `HOUSE_CAMEL_SOURCE`, which exists because S4-M56 showed
+ * `houseBetCount` matching no alternative of `HOUSE_IDENTIFIER_SOURCE` — see `KYC_STRUCK_197` below, the hand-typed
+ * needle list that had to exist beside the vocabulary precisely because of it.
+ * ⭐ SIX SINCE C7 STEP 7: the SERVED probe joined the closed list (C7-SPEC
+ * ruling 397(a)). It imports `houseHits` and declares no pattern of its own, and until step 7 it sat OUTSIDE the
+ * single-source pin — an absence instrument that nothing held to the one vocabulary, which is the shape this pin
+ * exists to refuse. ⛔ `scripts/lib/house-bot-console-cases.mts` is deliberately NOT here, and the reason is
+ * measured rather than assumed: it is a SOURCE-LAW suite over house modules, so it must name house identifiers as
+ * CODE (`/houseBotControlStore\.get\(\)/`, `/houseDayBooks\(/` and some forty more) to prove the console's one
+ * door reads what it says it reads — and `ownVocabulary` reports every one of those as a re-declared vocabulary
+ * pattern. Joining it would need a per-file allowlist of dozens of entries, and `0.175.allow` exists precisely so
+ * such a list can only SHRINK. What 397(e) actually asks of that suite is asserted inside it, as `1.397`: it
+ * imports the shared module and declares no house WORD LIST of its own.
+ */
 export const VOCABULARY_CONSUMERS = [
+  "scripts/house-bot-surfaces.test.mts",
   "scripts/house-bot-disclosure.test.mts",
   "scripts/verify-house-bot-bundle.mjs",
   "scripts/house-bot-holder-view-shots.mts",
   "scripts/dsar-export-secrets.test.mts",
   "scripts/lib/house-bot-reports-cases.mts",
+  "scripts/house-bot-console-probe.mts",
 ] as const;
 /** The deliberately broader lists that import the shared words and extend them, with the EXACT number of extension sites. */
 export const BROADER_LISTS: ReadonlyArray<readonly [file: string, extensions: number]> = [
@@ -529,7 +547,848 @@ export const BROADER_LISTS: ReadonlyArray<readonly [file: string, extensions: nu
   ["scripts/house-bot-seam.test.mts", 2],
 ];
 
+/* ═══ §0 · ruling 235 / 149 · F6's helper has a caller, and its docstring no longer promises a surface ═══ */
+
+/**
+ * ⛔ A RULE WITH NO CALLER HAS NEVER RUN. `channelAllowed` was written for 04 F6 and, until this checkpoint,
+ * nothing in `src/` called it — so the sentence "a notice whose positions are all house-marked never becomes a
+ * letter" was a statement about a function, not about the platform. 9.235 measures the BEHAVIOUR on both stores;
+ * this pin measures that the behaviour still has a way to happen, from the syntax tree, and that the caller count
+ * is a POPULATION rather than a hope.
+ *
+ * ⛔ AND THE DOCSTRING (ruling 149). It used to finish "— the holder's hourly summary is the one account of those
+ * stakes, and it is a bell", describing a compensating surface owner ruling D19 does not allow and this programme
+ * never built. A docstring that promises a surface is how the next session learns the wrong law, so the sentence
+ * is gone and a control plants it back to prove the pin can see it return.
+ */
 if (STORE === "memory") {
+  section("§0 · rulings 235 and 149 · F6's helper has exactly one production caller, and its docstring promises no surface");
+  await guard("0.235", () => {
+    const REG = "src/lib/server/comms-registry.ts";
+    const DIGEST = "src/lib/server/updown-digest.ts";
+    /**
+     * Every `channelAllowed(` CALL under src/, from the tree, excluding the module that defines it.
+     *
+     * ⛔ **AN ALIASED IMPORT BINDS A DIFFERENT NAME** (C5-7's review, low). The matcher took
+     * `n.expression.text === "channelAllowed"` only, so `import { channelAllowed as allowed }` followed by
+     * `allowed("WIN", { houseOnly: true })` was not a caller: the population read 1 and the claim that exactly one
+     * surface makes F6's decision was false while a second one made it. The import clause of each file is read
+     * first and the LOCAL name it binds is what the walker looks for — which is also what a reader of that file
+     * sees. 0.235.c2b plants the aliased form and requires it counted.
+     */
+    const localNamesFor = (sf: ts.SourceFile): Set<string> => {
+      const names = new Set<string>(["channelAllowed"]);
+      walkTree(sf, (n) => {
+        if (!ts.isImportSpecifier(n)) return;
+        if ((n.propertyName ?? n.name).text === "channelAllowed") names.add(n.name.text);
+      });
+      return names;
+    };
+    const callersOf = (extra?: { file: string; code: string }) => {
+      const out: string[] = [];
+      const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
+      if (extra) {
+        const i = files.findIndex((f) => f.rel === extra.file);
+        if (i >= 0) files[i] = { rel: extra.file, code: extra.code }; else files.push({ rel: extra.file, code: extra.code });
+      }
+      for (const { rel, code } of files) {
+        if (rel === REG || !code.includes("channelAllowed")) continue;
+        const sf = parse(rel, code);
+        const names = localNamesFor(sf);
+        walkTree(sf, (n) => {
+          if (!ts.isCallExpression(n)) return;
+          const fn = ts.isIdentifier(n.expression) ? n.expression.text
+            : ts.isPropertyAccessExpression(n.expression) ? n.expression.name.text : "";
+          if (!names.has(fn)) return;
+          out.push(`${rel}:${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1}`);
+        });
+      }
+      return out;
+    };
+    const callers = callersOf();
+    ok("0.235.1 · ⛔ RULING 235 · 04 F6's helper has EXACTLY ONE production caller and it is the Up & Down digest — before this checkpoint it had none, so the rule it encodes had never once run",
+      callers.length === 1 && callers[0].startsWith(`${DIGEST}:`), `${callers.length} caller(s): ${j(callers)}`);
+
+    const digestCode = decomment(read(DIGEST));
+    /* ⚠️ A PLAIN SUBSTRING, NOT A REGEX, and deliberately: ruling 175 forbids this file declaring a pattern that
+       names a house identifier, and `houseOnly` is one. The subject here is a fixed line of source, so an exact
+       string is both the stricter test and the one the vocabulary pin allows. */
+    const GATE_LINE = `!channelAllowed("ROUND_RESULT", { houseOnly: line.totals.ownRounds === 0 }).email`;
+    const gated = digestCode.includes(GATE_LINE) && digestCode.includes(`${GATE_LINE}) continue;`);
+    ok("0.235.2 · …and the call reads `ownRounds === 0` off the SAME single aggregate the digest's figures come from — not a second count, which would be a second place for the two stores to disagree",
+      gated && digestCode.includes("line.totals.ownRounds"), `gated=${gated}`);
+
+    const regRaw = read(REG);
+    const STRUCK = "the holder's hourly summary is the one account of those stakes";
+    ok("0.235.3 · ⛔ RULING 149 · the helper's docstring no longer promises an hourly holder summary — a surface D19 does not allow and this programme never built",
+      !regRaw.includes(STRUCK), regRaw.includes(STRUCK) ? "the struck sentence is back" : "absent");
+    ok("0.235.c1 · CONTROL · the pin SEES that sentence when it is planted back into the real file, so 0.235.3's verdict is a measurement and not a spelling that no longer matches anything",
+      regRaw.replace("never goes to a phone and never becomes a letter.", `never becomes a letter — ${STRUCK}.`).includes(STRUCK), "planted");
+
+    const planted = callersOf({ file: "src/app/planted/route.ts", code: `import { channelAllowed } from "@/lib/server/comms-registry";\nexport function GET() { return channelAllowed("WIN", { houseOnly: true }); }\n` });
+    ok("0.235.c2 · CONTROL · a SECOND caller planted in a file of its own is found — so 0.235.1's count is a population read from the tree and would report the day another surface starts making F6's decision for itself",
+      planted.length === 2 && planted.some((c) => c.startsWith("src/app/planted/route.ts:")), j(planted));
+    const aliased = callersOf({ file: "src/app/planted/aliased.ts", code: `import { channelAllowed as allowed } from "@/lib/server/comms-registry";\nexport function GET() { return allowed("WIN", { houseOnly: true }); }\n` });
+    ok("0.235.c2b · CONTROL · a second caller reached through an ALIASED import is found too — the matcher reads each file's import clause for the local name `channelAllowed` is bound to, so a rename at the import cannot hide a surface that makes F6's decision",
+      aliased.length === 2 && aliased.some((c) => c.startsWith("src/app/planted/aliased.ts:")), j(aliased));
+    const blinded = callersOf({ file: DIGEST, code: digestCode.replace("channelAllowed(", "channelNotAllowed(") });
+    ok("0.235.c3 · CONTROL · …and with the digest's own call renamed away the count falls to ZERO, which is the state this ruling found the platform in",
+      blinded.length === 0, j(blinded));
+  });
+}
+
+/* ═══ §0 · ruling 232 · every positioned transaction write copies the marker FROM THE RIGHT OBJECT ═══ */
+
+/**
+ * ⛔ RULING 232 · THE STATIC PIN ON MARKER INTEGRITY. The house marker on a `Transaction` row is what the caps, the
+ * exports and the bet idempotency all read, and it is copied BY HAND at every site that writes a positioned
+ * transaction. A site that forgets it writes a house stake's money row as a player's; a site that copies it from the
+ * WRONG object writes a row against another position's bot — and both are silent, because the column is nullable and
+ * every suite that reads a marker reads the one its own fixture just wrote.
+ *
+ * WHAT IS MEASURED, and the population is printed by the assertion itself so a shrinking one is visible without
+ * reading this file:
+ *   · every `.txn.create(` call in tracked `src/**` — WIDER than R3's `src/lib/server`, at no cost, so a route that
+ *     writes a money row cannot escape by living somewhere else;
+ *   · each call's first argument taken from the SYNTAX TREE (never balanced braces over text and never a substring:
+ *     `positionId` and `houseBotId` are read as PROPERTIES of that literal, so a mention in a neighbouring
+ *     expression is not one), over source read through `scripts/lib/decomment.mts`;
+ *   · plus `.transaction.create(`, `.transaction.createMany(` and a raw `INSERT INTO "Transaction"` anywhere in
+ *     tracked `src/**` outside `prisma-dal.ts` — a writer that bypasses the DAL bypasses everything the DAL does
+ *     for a marker.
+ *
+ * THE RULES:
+ *   · a literal with `positionId: null` is EXEMPT (it is not a positioned write);
+ *   · every other literal carries the marker as `...(<x>.houseBotId ? { houseBotId: <x>.houseBotId } : {})` or
+ *     `houseBotId: <x>.houseBotId ?? null`, and `<x>` must be the SAME identifier whose `.id` is the literal's
+ *     `positionId` — `positionId: p.id` ⇒ `p.houseBotId`. A marker copied from another position in scope is the
+ *     defect this rule exists for, and a presence-only check cannot see it;
+ *   · at the stake write only, `...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {})` is accepted, and ONLY
+ *     where the literal's `positionId` is the id of a position object marked from the SAME `ctx` in an enclosing
+ *     function — which is CHECKED here, in that function's own tree, never assumed from the file or the line.
+ *
+ * ⛔ EVERY SHAPE IS MATCHED STRUCTURALLY, NOT BY A REGEX OVER SOURCE TEXT, and that is deliberate twice over: a
+ * reformatting (a line break inside the ternary, a different spacing) must not blind the pin, and ruling 175 forbids
+ * this file declaring house-word patterns of its own. A `?:` whose false branch is `{}` and whose true branch is
+ * `{ houseBotId: … }` is read as a tree, so the pin sees the MEANING.
+ *
+ * ⚠️ THE SEVEN SPREADS ARE QUOTED BY THE MONEY ANCHORS (`house-bot-money.anchors.mjs` SEAM:txnMarker,
+ * SEAM:markerOrphan): those lines are never reformatted, and 0.232.2 reports a site that moves.
+ */
+if (STORE === "memory") {
+  section("§0 · ruling 232 · every positioned transaction write copies the marker from the right object");
+  await guard("0.232", () => {
+    type Marker = { kind: "spread" | "prop" | "ctx"; source: string };
+    type Pid = { kind: "null" | "objId" | "ident" | "other"; text: string };
+    type Site = { file: string; line: number; endLine: number; pid: Pid | null; marker: Marker | null; literal: boolean };
+    const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
+    const nameOf = (p: ts.ObjectLiteralElementLike): string | null =>
+      p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) ? p.name.text : null;
+    /** `{ … } as StoredTxn`, `({ … })`, `{ … } satisfies X` — the literal is still the literal. */
+    const unwrap = (e: ts.Expression): ts.Expression => {
+      let x = e;
+      while (ts.isAsExpression(x) || ts.isParenthesizedExpression(x) || ts.isSatisfiesExpression(x) || ts.isTypeAssertionExpression(x)) x = x.expression;
+      return x;
+    };
+
+    /**
+     * A WRITE-CREATE call on the `txn` store, however the store is reached (`db.txn.create`, `w.dal.txn.create`).
+     *
+     * ⛔ IT IS NOT ONLY `create` (C5-7's review, low). The rule's claim is that a money writer cannot escape by
+     * living somewhere else, but the shape of the escape is the MEMBER NAME, not the directory: `.txn.createMany(`
+     * or `.txn.upsert(` produced NO site at all, so such a write was in neither `positioned` (0.232.1's rule) nor
+     * `bypass` (0.232.3's scan), and every assertion here stayed green over a money writer filing house stakes as
+     * players'. The DAL has no such member today (`prisma-dal.ts` declares create/findBy…/update/listBy…), which
+     * is why this is a forward-looking hole and not a live defect — and why the member list is read here rather
+     * than assumed: a member added tomorrow lands inside the rule instead of outside it. `update` is deliberately
+     * NOT here: it cannot position a row any more (see 0.232.4), and adding it would put 28 call sites with no
+     * object literal into a population pinned at 18.
+     */
+    const TXN_WRITE_MEMBERS = ["create", "createMany", "upsert"] as const;
+    const isTxnCreate = (n: ts.Node): n is ts.CallExpression =>
+      ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)
+      && (TXN_WRITE_MEMBERS as readonly string[]).includes(n.expression.name.text)
+      && ts.isPropertyAccessExpression(n.expression.expression) && n.expression.expression.name.text === "txn";
+
+    /** `<ident>.<prop>` as a pair, or null. */
+    const access = (e: ts.Expression, prop: string): string | null =>
+      ts.isPropertyAccessExpression(e) && e.name.text === prop && ts.isIdentifier(e.expression) ? e.expression.text : null;
+
+    /** The marker this literal carries, in one of the three accepted SHAPES, with the identifier it reads. */
+    const markerOf = (lit: ts.ObjectLiteralExpression): Marker | null => {
+      for (const p of lit.properties) {
+        if (ts.isSpreadAssignment(p)) {
+          const e = unwrap(p.expression);
+          if (!ts.isConditionalExpression(e)) continue;
+          const f = unwrap(e.whenFalse), t = unwrap(e.whenTrue);
+          if (!ts.isObjectLiteralExpression(f) || f.properties.length !== 0) continue;
+          if (!ts.isObjectLiteralExpression(t) || t.properties.length !== 1) continue;
+          const only = t.properties[0];
+          if (!ts.isPropertyAssignment(only) || nameOf(only) !== "houseBotId") continue;
+          const val = unwrap(only.initializer);
+          const cond = unwrap(e.condition);
+          // ...(<x>.houseBotId ? { houseBotId: <x>.houseBotId } : {})
+          const condSrc = access(cond, "houseBotId"), valSrc = access(val, "houseBotId");
+          if (condSrc && valSrc && condSrc === valSrc) return { kind: "spread", source: condSrc };
+          // ...(<ctx>.kind === "house" ? { houseBotId: <ctx>.botId } : {})  — the stake form
+          if (ts.isBinaryExpression(cond) && cond.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
+            const kindSrc = access(unwrap(cond.left), "kind");
+            const right = unwrap(cond.right);
+            const botSrc = access(val, "botId");
+            if (kindSrc && botSrc && kindSrc === botSrc && ts.isStringLiteral(right) && right.text === "house") {
+              return { kind: "ctx", source: kindSrc };
+            }
+          }
+          continue;
+        }
+        if (ts.isPropertyAssignment(p) && nameOf(p) === "houseBotId") {
+          const v = unwrap(p.initializer);
+          // houseBotId: <x>.houseBotId ?? null
+          if (ts.isBinaryExpression(v) && v.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+            && unwrap(v.right).kind === ts.SyntaxKind.NullKeyword) {
+            const src = access(unwrap(v.left), "houseBotId");
+            if (src) return { kind: "prop", source: src };
+          }
+          return { kind: "prop", source: `⟨${oneLine(p.initializer.getText())}⟩` };
+        }
+      }
+      return null;
+    };
+
+    const pidOf = (lit: ts.ObjectLiteralExpression): Pid | null => {
+      const p = lit.properties.find((x) => ts.isPropertyAssignment(x) && nameOf(x) === "positionId") as ts.PropertyAssignment | undefined;
+      if (!p) return null;
+      const v = unwrap(p.initializer);
+      const text = oneLine(p.initializer.getText());
+      if (v.kind === ts.SyntaxKind.NullKeyword) return { kind: "null", text };
+      const obj = access(v, "id");
+      if (obj) return { kind: "objId", text: obj };
+      if (ts.isIdentifier(v)) return { kind: "ident", text: v.text };
+      return { kind: "other", text };
+    };
+
+    /**
+     * ⛔ THE STAKE WRITE'S EXEMPTION IS EARNED PER SITE. `ctx.botId` is the right marker only beside the position
+     * THAT ctx marked, so every enclosing function is walked outwards — the write sits inside a `withLock` callback
+     * while the position literal is built in the function around it — looking for an object literal whose `id` is
+     * this write's `positionId` and which carries the same `ctx` spread. No such position, no exemption.
+     */
+    const stakeFormIsEarned = (call: ts.Node, pid: string, ctxName: string): boolean => {
+      const marks = (fn: ts.Node): boolean => {
+        let found = false;
+        const go = (n: ts.Node) => {
+          if (ts.isObjectLiteralExpression(n)) {
+            const id = n.properties.find((p) => ts.isPropertyAssignment(p) && nameOf(p) === "id") as ts.PropertyAssignment | undefined;
+            const mk = markerOf(n);
+            if (id && ts.isIdentifier(unwrap(id.initializer)) && oneLine(id.initializer.getText()) === pid && mk?.kind === "ctx" && mk.source === ctxName) found = true;
+          }
+          ts.forEachChild(n, go);
+        };
+        go(fn);
+        return found;
+      };
+      for (let n: ts.Node | undefined = call.parent; n; n = n.parent) {
+        if (ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) || ts.isArrowFunction(n) || ts.isMethodDeclaration(n)) {
+          if (marks(n)) return true;
+        }
+      }
+      return false;
+    };
+
+    /** Every `.txn.create(` site in one file, with what its literal carries, and the call node for the ctx check. */
+    const txnSites = (file: string, code: string): Array<Site & { call: ts.CallExpression | null }> => {
+      const sf = parse(file, code);
+      const out: Array<Site & { call: ts.CallExpression | null }> = [];
+      walkTree(sf, (n) => {
+        if (!isTxnCreate(n)) return;
+        const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+        const arg = n.arguments[0] ? unwrap(n.arguments[0]) : undefined;
+        const endLine = sf.getLineAndCharacterOfPosition(n.getEnd()).line + 1;
+        if (!arg || !ts.isObjectLiteralExpression(arg)) { out.push({ file, line, endLine, pid: null, marker: null, literal: false, call: n }); return; }
+        out.push({ file, line, endLine, pid: pidOf(arg), marker: markerOf(arg), literal: true, call: n });
+      });
+      return out;
+    };
+
+    /** The verdict on one site: `null` when it is clean, otherwise the sentence that says what is wrong. */
+    const verdict = (s: Site & { call: ts.CallExpression | null }): string | null => {
+      if (!s.literal) return "the first argument is not an object literal — this pin cannot read it";
+      if (!s.pid) return "no positionId property at all: a money row is positioned or it is not, and a missing key is neither";
+      if (s.pid.kind === "null") return null;
+      if (!s.marker) return `positionId ${s.pid.text}${s.pid.kind === "objId" ? ".id" : ""} with NO marker — a house stake's money row would be written as a player's`;
+      if (s.marker.kind === "ctx") {
+        if (s.pid.kind !== "ident" || !s.call) return `the stake form is used with positionId ${s.pid.text}, which is not the plain identifier a marked position's id is bound to`;
+        return stakeFormIsEarned(s.call, s.pid.text, s.marker.source) ? null
+          : `the stake form (${s.marker.source}.kind === house) is used where no position with id ${s.pid.text} is marked from the same ${s.marker.source} in any enclosing function`;
+      }
+      if (s.pid.kind !== "objId") return `positionId ${s.pid.text} is neither null nor <x>.id, so the marker's source cannot be checked against it`;
+      return s.marker.source === s.pid.text ? null
+        : `positionId ${s.pid.text}.id but the marker reads ${s.marker.source} — the marker is copied from the WRONG object`;
+    };
+
+    /**
+     * ⛔ **THE BYPASS SCAN IS ONE FUNCTION, AND THE CONTROLS CALL IT** (C5-7's review, medium). 0.232.3 was the one
+     * assertion of the four whose control did not run the shipped code: `0.232.c5` built its own `walkTree` with
+     * its own inline predicate, so changing `if (rel === DAL) continue` to `!==`, or deleting the `bypass.push`,
+     * left 0.232.3 passing forever over an empty population WITH ITS CONTROL STILL GREEN. It is extracted here so
+     * every control plants into a real file and reads the answer of the code that ships.
+     *
+     * ⛔ AND THE RAW-SQL HALF MATCHES THE SPELLINGS THIS CODEBASE ACTUALLY PRODUCES. It was
+     * `/INSERT\s+INTO\s+"Transaction"/i` — which cannot match a schema-qualified `INSERT INTO public."Transaction"`,
+     * and cannot match `INSERT INTO "${table}"`, the builder shape `house-bot-dal.ts:1026` already uses. Two of
+     * 0.232.3's three stated subjects had no control at all and the regex had never been shown to fire once. An
+     * INTERPOLATED table name is not something a static scan can read, so it is REPORTED unless the file is on a
+     * named, justified list that may only shrink — "not applicable" is not an answer this checkpoint accepts.
+     */
+    const DAL = "src/lib/server/prisma-dal.ts";
+    const HOUSE_DAL = "src/lib/server/house-bot-dal.ts";
+    const MS_REL = "src/lib/server/market-service.ts";
+    const RAW_TXN_INSERT = /INSERT\s+INTO\s+(?:[A-Za-z_][\w$]*\s*\.\s*)?"Transaction"/i;
+    const RAW_DYNAMIC_INSERT = /INSERT\s+INTO\s+"\$\{/;
+    /** ⛔ The ONE file allowed to build an INSERT with an interpolated table, and 0.232.3b holds it to the reason. */
+    const DYNAMIC_INSERT_ALLOWED: readonly string[] = [HOUSE_DAL];
+    const bypassIn = (rel: string, code: string): string[] => {
+      const out: string[] = [];
+      if (rel === DAL) return out;
+      const sf = parse(rel, code);
+      walkTree(sf, (n) => {
+        if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression)) return;
+        const fn = n.expression.name.text;
+        if (!(TXN_WRITE_MEMBERS as readonly string[]).includes(fn)) return;
+        if (!ts.isPropertyAccessExpression(n.expression.expression) || n.expression.expression.name.text !== "transaction") return;
+        out.push(`${rel}:${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1} .transaction.${fn}(`);
+      });
+      if (RAW_TXN_INSERT.test(code)) out.push(`${rel} raw INSERT INTO Transaction`);
+      if (RAW_DYNAMIC_INSERT.test(code) && !DYNAMIC_INSERT_ALLOWED.includes(rel)) {
+        out.push(`${rel} raw INSERT INTO an INTERPOLATED table — this pin cannot read which one`);
+      }
+      return out;
+    };
+
+    const all: Array<Site & { call: ts.CallExpression | null }> = [];
+    const bypass: string[] = [];
+    const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
+    for (const { rel, code } of files) {
+      all.push(...txnSites(rel, code));
+      bypass.push(...bypassIn(rel, code));
+    }
+    const exempt = all.filter((s) => s.pid?.kind === "null");
+    const positioned = all.filter((s) => s.pid?.kind !== "null");
+    ok("0.232.0 · the population is real: every .txn.create( in tracked src/ is read from the tree — wider than src/lib/server, so a route that writes a money row cannot escape by living somewhere else",
+      all.length >= 18 && files.length > 500 && positioned.length === 7 && exempt.length === 11,
+      `${all.length} txn.create sites in ${new Set(all.map((s) => s.file)).size} files, over ${files.length} src files · ${positioned.length} positioned · ${exempt.length} exempt (positionId: null)`);
+
+    const offenders = positioned.map((s) => ({ at: `${s.file}:${s.line}`, why: verdict(s) })).filter((o) => o.why !== null);
+    ok("0.232.1 · ⛔ RULING 232 · every positioned transaction write copies the marker FROM THE OBJECT WHOSE id IS ITS positionId — presence is not enough, because a marker copied from another position in scope is silent",
+      offenders.length === 0, j(offenders));
+    const marked = positioned.filter((s) => s.marker !== null).map((s) => `${s.file.split("/").pop()}:${s.line}`);
+    ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
+      j(marked) === j(["market-service.ts:1524", "market-service.ts:2792", "market-service.ts:3167", "market-service.ts:3577", "market-service.ts:3709", "market-service.ts:3850", "market-service.ts:4433"]), j(marked));
+
+    /**
+     * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
+     * read "the seven the money anchors quote" and then compared against seven literal strings typed in this file:
+     * it never touched an anchors file, and the money anchors declare a mutation for only TWO of the seven marker
+     * sites (`SEAM:txnMarker` → 1524, `SEAM:markerOrphan` → 2792). Five real marker sites — the cash-out, the
+     * one-sided refund, the void refund, the winner payout and the emergency void — have no declared mutation in
+     * any file under `scripts/`, so `test:red-anchors` never demonstrates that deleting their marker reddens
+     * anything. That is not fixed by a better sentence: it is MEASURED here and printed, so the number cannot
+     * quietly shrink, and the uncovered sites are named in `plans/house-bots/DEFERRED-TESTS.md`.
+     */
+    const anchorLines = new Set<number>();
+    const msRaw = read(MS_REL).replace(/\r\n/g, "\n");
+    for (const a of MONEY_ANCHORS as Array<{ file: string; from: string; to: string }>) {
+      if (a.file !== MS_REL) continue;
+      if (!a.from.includes("houseBotId")) continue;
+      const at = msRaw.indexOf(a.from.replace(/\r\n/g, "\n"));
+      if (at < 0) continue;
+      const startLine = msRaw.slice(0, at).split("\n").length;
+      const endLine = startLine + a.from.split("\n").length - 1;
+      for (let L = startLine; L <= endLine; L++) anchorLines.add(L);
+    }
+    const covered = positioned.filter((s) => s.marker !== null && [...anchorLines].some((L) => L >= s.line && L <= s.endLine));
+    const uncovered = positioned.filter((s) => s.marker !== null && !covered.includes(s)).map((s) => `${s.file.split("/").pop()}:${s.line}`);
+    /* ⭐ RAISED 2 → 7 BY C5-8 (2026-09-20), §1j row 84, and this is the only direction this assertion may move.
+       Until today the five sites this printed as "uncovered (deferred by name)" — the cash-out (`:3167`), the
+       one-sided refund (`:3577`), the void refund (`:3709`), the winner payout (`:3850`) and the emergency void
+       (`:4433`) — had NO declared mutation in any file under `scripts/`, so `test:red-anchors` never demonstrated
+       that deleting their marker reddens anything. All five are now declared in
+       `scripts/anchors/house-bot-money.anchors.mjs` and run by `red:house-bot-money` under `reports-mem`.
+       ⛔ The deferral list is GONE rather than shortened, and the equality is EXACT on both numbers: a site that
+       loses its declaration takes this red, which is the whole point of counting instead of asserting a sentence.
+       ⛔ This is a TIGHTENING. Never re-loosen it to absorb a red — a declaration that stops resolving is a
+       finding for `test:red-anchors` §3 to report, not a number for this line to accommodate. */
+    ok("0.232.2b · the money anchors are READ, and EVERY marker site they declare a mutation for is printed: a marker site with no declared mutation is never demonstrated red by test:red-anchors, and this assertion is the only thing that says which and how many",
+      anchorLines.size > 0 && covered.length === marked.length && uncovered.length === 0,
+      `${covered.length} of ${marked.length} marker sites carry a declared money-anchor mutation · uncovered (deferred by name): ${j(uncovered)}`);
+
+    ok("0.232.3 · ⛔ nothing in tracked src/ writes a Transaction row around the DAL — no .transaction.create(, .createMany( or .upsert(, no raw INSERT INTO \"Transaction\" (schema-qualified or not), and no INSERT into an INTERPOLATED table outside the one declared builder",
+      bypass.length === 0, `${files.length} src files scanned · ${j(bypass)}`);
+    ok("0.232.3b · …and the ONE file allowed to build an INSERT with an interpolated table still cannot aim it at Transaction: `insertSql` takes a `HouseTable`, not a string, so the type system decides which tables that builder can reach",
+      DYNAMIC_INSERT_ALLOWED.length === 1 && read(HOUSE_DAL).includes("function insertSql(table: HouseTable,"),
+      `allowed: ${j(DYNAMIC_INSERT_ALLOWED)}`);
+
+    /* ── THE CONTROLS. Each plants a REAL defect in a REAL file's source and requires it to be reported ──────── */
+    const MS = "src/lib/server/market-service.ts";
+    const ms = files.find((f) => f.rel === MS)!.code;
+    const scan = (code: string) => txnSites(MS, code).filter((s) => s.pid?.kind !== "null")
+      .map((s) => ({ at: `${MS}:${s.line}`, why: verdict(s) })).filter((o) => o.why !== null);
+    const SPREAD_2792 = `      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),`;
+    ok("0.232.c0 · CONTROL · the real file is clean before anything is planted, so every control below measures its plant and not the file",
+      scan(ms).length === 0 && ms.includes(SPREAD_2792), j(scan(ms)));
+
+    const dropped = scan(ms.replace(SPREAD_2792, ""));
+    ok("0.232.c1 · CONTROL · a positioned write whose marker is DELETED is reported, and exactly one site goes red — the plant really changed the file",
+      dropped.length === 1 && dropped[0].at === `${MS}:2792` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
+    /* ⭐ THE ACCEPT SIDE, AND IT IS ABOUT A SITE THAT DOES NOT EXIST YET. Putting the deleted spread back would only
+       rebuild `ms` and prove nothing, so the control appends a BRAND NEW positioned writer to the same real file: the
+       pin must pass it because its marker is right, and refuse the identical writer with the marker removed. Without
+       this pair, 0.232.1 could be a pin that has simply memorised seven lines and would pass the eighth writer
+       somebody adds tomorrow. */
+    const NEW_WRITER = (marker: string) => `
+async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | null }) {
+  await db.txn.create({ id: "txn_c2", walletId: "w", userId: "u", type: "BET_REFUND", status: "CONFIRMED", positionId: q.id,${marker} });
+}
+`;
+    const addedClean = txnSites(MS, ms + NEW_WRITER(" ...(q.houseBotId ? { houseBotId: q.houseBotId } : {}),"));
+    const addedDirty = scan(ms + NEW_WRITER(""));
+    ok("0.232.c2 · CONTROL · a BRAND NEW positioned writer appended to the same real file passes when its marker reads its own position and is reported when it carries none — so 0.232.1 is a rule, not a memorised list of seven lines",
+      addedClean.length === all.filter((x) => x.file === MS).length + 1 && scan(ms + NEW_WRITER(" ...(q.houseBotId ? { houseBotId: q.houseBotId } : {}),")).length === 0
+      && addedDirty.length === 1 && /NO marker/.test(addedDirty[0].why ?? ""),
+      j({ sitesAfterAppend: addedClean.length, dirty: addedDirty }));
+
+    /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
+    const wrongSource = scan(ms.replace(SPREAD_2792, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
+    ok("0.232.c3 · CONTROL · a marker copied from the WRONG object — present, well-formed, reading another position in scope — is reported, which is the defect a presence-only scan passes",
+      wrongSource.length === 1 && wrongSource[0].at === `${MS}:2792` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
+    const wrongProp = scan(ms.replace(SPREAD_2792, `      houseBotId: position.houseBotId ?? null,`));
+    const rightProp = scan(ms.replace(SPREAD_2792, `      houseBotId: p.houseBotId ?? null,`));
+    ok("0.232.c3b · CONTROL · the same defect in the OTHER accepted spelling (houseBotId: <x>.houseBotId ?? null) is reported, and the RIGHT identifier in that spelling is accepted — both directions, so the pin is not just refusing the spelling",
+      wrongProp.length === 1 && wrongProp[0].at === `${MS}:2792` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
+    const reformatted = scan(ms.replace(SPREAD_2792, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
+    ok("0.232.c3c · CONTROL · the accept side of the shape: the SAME marker reformatted over three lines is still read — a pin that a line break blinds is one reformat away from passing an unmarked write",
+      reformatted.length === 0, j(reformatted));
+
+    /* ⛔ THE STAKE FORM, MOVED OFF ITS POSITION. */
+    const movedStakeForm = scan(ms.replace(SPREAD_2792, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
+    ok("0.232.c4 · CONTROL · the stake form used where no position with that positionId is marked from the same ctx is reported — the exemption is earned per site, never granted by file or by line number",
+      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:2792` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
+    /* ⚠️ THE PLANT CARRIES NO NEWLINE, and that is not a detail: tracked source is CRLF in this checkout, so a
+       `\n` anchor matches nothing and the plant silently plants NOTHING — a control that then reports the file is
+       clean, which is exactly the silent pass this checkpoint exists to refuse (it happened here, once, and this
+       comment is the record). `id: positionId,` occurs exactly once (`positionId: positionId,` carries a capital I),
+       and the assertion below requires the plant to have CHANGED the source before it reads its verdict. */
+    const c4bPlant = ms.replace("id: positionId,", "id: positionIdOfAnotherBet,");
+    const stakeUnmarked = scan(c4bPlant);
+    ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
+      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1524` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
+
+    /* ⛔ THE BYPASS CONTROLS, AND THEY CALL `bypassIn` — THE CODE THAT SHIPS. The old 0.232.c5 re-implemented the
+       walk inline, so the loop that actually produces `bypass` was UNPLANTED: one character (`rel === DAL` →
+       `rel !== DAL`) would have left 0.232.3 passing forever over an empty population with its control still green.
+       Every one of 0.232.3's stated subjects is planted here, into a real file, and read back through `bypassIn`. */
+    const ANCHOR_CREATE = `          await db.txn.create({`;
+    const plantBypass = (line: string) => bypassIn(MS, ms.replace(ANCHOR_CREATE, `          ${line}\n${ANCHOR_CREATE}`));
+    const c5create = plantBypass(`await prisma.transaction.create({ data: {} });`);
+    const c5many = plantBypass(`await prisma.transaction.createMany({ data: [] });`);
+    const c5upsert = plantBypass(`await prisma.transaction.upsert({ where: { id: "x" }, create: {}, update: {} });`);
+    ok("0.232.c5 · CONTROL · a planted prisma.transaction.create / .createMany / .upsert outside the DAL is each reported BY THE SHIPPED SCAN — the control calls `bypassIn`, so deleting its push or inverting its DAL exclusion goes red here instead of passing silently",
+      ms.includes(ANCHOR_CREATE) && [c5create, c5many, c5upsert].every((r) => r.length === 1),
+      j({ create: c5create, createMany: c5many, upsert: c5upsert }));
+
+    /* ⛔ THE RAW-SQL LIMB, WHICH HAD NEVER BEEN SHOWN TO FIRE — in all three spellings this codebase can produce. */
+    const c5sqlPlain = bypassIn(MS, `${ms}\nasync function __c5raw(tx: unknown) { await sql(tx, \`INSERT INTO "Transaction" ("id") VALUES ($1)\`); }\n`);
+    const c5sqlSchema = bypassIn(MS, `${ms}\nasync function __c5raw(tx: unknown) { await sql(tx, \`INSERT INTO public."Transaction" ("id") VALUES ($1)\`); }\n`);
+    const c5sqlDyn = bypassIn(MS, `${ms}\nasync function __c5raw(tx: unknown, table: string) { await sql(tx, \`INSERT INTO "\${table}" ("id") VALUES ($1)\`); }\n`);
+    ok("0.232.c5b · CONTROL · the RAW-SQL limb reports all three spellings: INSERT INTO \"Transaction\", the schema-qualified public.\"Transaction\", and the INTERPOLATED table the tree's own builder already uses — the shape the old regex could not match, in the file that would carry it",
+      c5sqlPlain.length === 1 && c5sqlSchema.length === 1 && c5sqlDyn.length === 1,
+      j({ plain: c5sqlPlain, schema: c5sqlSchema, dynamic: c5sqlDyn }));
+
+    /* ⛔ THE ACCEPT SIDE: the DAL's own real writer is NOT reported, and the exclusion is DEMONSTRATED rather than
+       described — the same planted line, in the excluded file, must come back empty. */
+    const dalCode = decomment(read(DAL));
+    const c5dalReal = bypassIn(DAL, dalCode);
+    const c5dalPlanted = bypassIn(DAL, `${dalCode}\nasync function __c5dal() { await prisma.transaction.create({ data: {} }); }\n`);
+    const c5houseDal = bypassIn(HOUSE_DAL, decomment(read(HOUSE_DAL)));
+    ok("0.232.c5c · CONTROL · the accept side, demonstrated not described: prisma-dal.ts's own real .transaction.create( is NOT reported, a freshly planted one in that SAME file is not either (the exclusion is by file, and it is real), and house-bot-dal.ts's declared interpolated builder is not reported while every other file's would be",
+      read(DAL).includes(".transaction.create(") && c5dalReal.length === 0 && c5dalPlanted.length === 0 && c5houseDal.length === 0,
+      j({ dalReal: c5dalReal.length, dalPlanted: c5dalPlanted.length, houseDal: c5houseDal }));
+
+    /**
+     * ⛔ **0.232.4 · `positionId` IS CREATE-ONLY IN BOTH STORE TWINS** (C5-7's review, low). Both twins already drop
+     * `houseBotId` from an update patch so a ledger row can never be re-marked or un-marked — and neither dropped
+     * `positionId`, while this whole pin reads `.txn.create(` sites only. So `db.txn.update(id, { positionId })`
+     * turned an unpositioned, unmarked row into a positioned one that can NEVER be marked (the marker is create-only
+     * and the row already exists): it stays in the holder's own `excludeHouseBets` wallet feed and drops out of the
+     * house book's `returned`, with nothing anywhere to report it. Measured when this landed: 28 `db.txn.update(`
+     * call sites in `src/`, none naming either key. Both twins now drop both keys, and both spellings are pinned.
+     */
+    const storeTwin = decomment(read("src/lib/server/store.ts"));
+    const prismaTwin = decomment(read(DAL));
+    const MEMORY_DROP = `const { houseBotId: _marker, positionId: _positioned, ...rest } = patch;`;
+    const PRISMA_DROP = `if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "positionId") continue;`;
+    ok("0.232.4 · ⛔ both txn store twins drop houseBotId AND positionId from an update patch — a ledger row cannot be re-marked, un-marked, or POSITIONED after the fact, which is the one way a positioned row could exist that ruling 232's create-site scan can never see",
+      storeTwin.includes(MEMORY_DROP) && prismaTwin.includes(PRISMA_DROP),
+      j({ memory: storeTwin.includes(MEMORY_DROP), prisma: prismaTwin.includes(PRISMA_DROP) }));
+    ok("0.232.4.control · CONTROL · the pin REPORTS each twin the moment its own spelling stops dropping the key — so the two greens above are measurements of those two lines and not of strings that match nothing",
+      !storeTwin.replace(MEMORY_DROP, `const { houseBotId: _marker, ...rest } = patch;`).includes(MEMORY_DROP)
+      && !prismaTwin.replace(PRISMA_DROP, `if (k === "createdAt" || k === "updatedAt" || k === "houseBotId") continue;`).includes(PRISMA_DROP),
+      "both plants change their file");
+
+    /**
+     * ⛔ **0.232.5 · THE ONE REAL DAL BYPASS IN THIS REPOSITORY LIVES IN `scripts/`** (C5-7's review, medium).
+     * 0.232.3's scope (`src/**`) was stated honestly and then never measured against the place the escape actually
+     * happened: `scripts/delete-seed-markets.mjs` refunds every OPEN position on a seeded market with a bare
+     * `prisma.transaction.create` — no DAL, and (until this checkpoint) no marker copied from the position and a
+     * column name renamed away on 2026-07-02. Every positioned `prisma.transaction.create` in tracked `scripts/`
+     * is read from the tree and held to ruling 232's own rule: the marker comes from the object whose `id` is the
+     * write's `positionId`. `positionId: null` is exempt here as it is in `src/`.
+     */
+    const scriptPop = scriptFiles();
+    const scriptOffenders: Array<{ at: string; why: string | null }> = [];
+    let scriptPositioned = 0;
+    for (const rel of scriptPop) {
+      const code = decomment(read(rel));
+      if (!code.includes("transaction.create")) continue;
+      const sf = parse(rel, code);
+      walkTree(sf, (n) => {
+        if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression) || n.expression.name.text !== "create") return;
+        if (!ts.isPropertyAccessExpression(n.expression.expression) || n.expression.expression.name.text !== "transaction") return;
+        const outer = n.arguments[0] ? unwrap(n.arguments[0]) : undefined;
+        if (!outer || !ts.isObjectLiteralExpression(outer)) return;
+        const dataProp = outer.properties.find((x) => ts.isPropertyAssignment(x) && nameOf(x) === "data") as ts.PropertyAssignment | undefined;
+        const lit = dataProp ? unwrap(dataProp.initializer) : outer;
+        if (!ts.isObjectLiteralExpression(lit)) return;
+        const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+        const site: Site & { call: ts.CallExpression | null } = { file: rel, line, endLine: sf.getLineAndCharacterOfPosition(n.getEnd()).line + 1, pid: pidOf(lit), marker: markerOf(lit), literal: true, call: n };
+        if (site.pid?.kind === "null" || site.pid == null) return;
+        scriptPositioned++;
+        const why = verdict(site);
+        if (why !== null) scriptOffenders.push({ at: `${rel}:${line}`, why });
+      });
+    }
+    ok("0.232.5 · ⛔ every positioned prisma.transaction.create in tracked scripts/ copies the marker from the object whose id is its positionId — the one DAL bypass this repository actually contains lives here, outside src/, and its scope was stated and never measured until now",
+      scriptPositioned >= 1 && scriptOffenders.length === 0,
+      `${scriptPop.length} script files · ${scriptPositioned} positioned write(s) · ${j(scriptOffenders)}`);
+    const seedRel = "scripts/delete-seed-markets.mjs";
+    const seedCode = decomment(read(seedRel));
+    /* ⚠️ NO NEWLINE IN THE ANCHOR, and that is not a detail: `scripts/delete-seed-markets.mjs` is CRLF, so a plant
+       written with `\n` matches NOTHING and plants NOTHING — the silent pass this checkpoint exists to refuse (it
+       happened here once, and the assertion below now requires the plant to have CHANGED the source). */
+    const SEED_MARKER = `...(pos.houseBotId ? { houseBotId: pos.houseBotId } : {}),`;
+    const seedPlant = seedCode.replace(SEED_MARKER, "");
+    const seedSites = (code: string) => {
+      const sf = parse(seedRel, code);
+      const out: Array<string | null> = [];
+      walkTree(sf, (n) => {
+        if (!ts.isCallExpression(n) || !ts.isPropertyAccessExpression(n.expression) || n.expression.name.text !== "create") return;
+        if (!ts.isPropertyAccessExpression(n.expression.expression) || n.expression.expression.name.text !== "transaction") return;
+        const outer = unwrap(n.arguments[0]!);
+        if (!ts.isObjectLiteralExpression(outer)) return;
+        const dataProp = outer.properties.find((x) => ts.isPropertyAssignment(x) && nameOf(x) === "data") as ts.PropertyAssignment | undefined;
+        const lit = unwrap(dataProp!.initializer);
+        if (!ts.isObjectLiteralExpression(lit)) return;
+        out.push(verdict({ file: seedRel, line: 0, endLine: 0, pid: pidOf(lit), marker: markerOf(lit), literal: true, call: n }));
+      });
+      return out;
+    };
+    ok("0.232.5.control · CONTROL · the real seed-cleanup refund is clean, and the SAME writer with its marker deleted is REPORTED as an unmarked positioned write — so 0.232.5's zero is a measurement of that file and not of an empty population",
+      seedCode.includes(`positionId: pos.id,`) && seedCode.includes(SEED_MARKER) && seedSites(seedCode).every((w) => w === null)
+      && seedPlant !== seedCode && seedSites(seedPlant).some((w) => /NO marker/.test(w ?? "")),
+      j({ clean: seedSites(seedCode), planted: seedSites(seedPlant) }));
+  });
+}
+
+/* ═══ §0 · L52 · the rate-limit ACTION NAMES, which /admin/system paints verbatim ═════════════════════ */
+
+/**
+ * ⛔ L52 · A RATE-LIMIT ACTION NAME IS A RENDERED STRING, AND ONE OF THEM NAMED THE FEATURE.
+ * `rateLimitSnapshot()` (`rate-limit.ts`) splits each live bucket on `:` and returns the ACTION half;
+ * `/admin/system` paints that half verbatim in its "Rate limiter · live buckets" table (`page.tsx:159`, `:637`),
+ * which any staff account holding the ops VIEW grant can open — a wider audience than this feature has. The desk's
+ * account check spelled the feature out in its action name until this ruling, and C7 step 6 gave it a real caller
+ * through the designate wizard, so the word became reachable on an admin table outside the feature's audience: an
+ * owner ruling D19 defect, live on this branch, not a latent one.
+ *
+ * ⚠️ WHY NOTHING CAUGHT IT, AND THE LESSON IS ABOUT SCOPE. Ruling 453's console lexicon scans
+ * `src/app/admin/desk/**`. This string lives in `src/lib/server/` and is painted by a page in another admin section,
+ * so the guard that owns the words never looked at the file that carried one. A GUARD'S SCOPE IS PART OF ITS CLAIM:
+ * "the console names nothing" was true and still left a house word on an admin table. The pin below is therefore
+ * scoped to the RULE TABLE itself, wherever in the tree it sits, and to every call site that names a rule.
+ *
+ * ⚠️ THIS SCAN MUST SEE STRING LITERALS, and that is the point, not an oversight: its subject IS a literal — the
+ * property names of the `RATE_RULES` initialiser, and the second argument of every `rateCheck` / `rateCheckAsync`
+ * call — each taken from the SYNTAX TREE, never by substring over text. Every file is read through `decomment`
+ * first, so prose about a key can neither supply one nor hide one.
+ *
+ * ⛔ AND THE TABLE FAILS OPEN, which is why the call sites are read and not only the table. `RATE_RULES` is typed
+ * `Record<string, RateRule>`, so `keyof typeof RATE_RULES` is `string`: `tsc` cannot see a caller naming a rule
+ * nobody declares, and `rateCheck` returns `{ allowed: true }` on an unknown action. A rename that missed a caller
+ * would switch a live limiter OFF in silence and every suite would stay green.
+ */
+if (STORE === "memory") {
+  section("§0 · L52 · no rate-limit action name carries the vocabulary, and every call site names a declared rule");
+  await guard("0.L52", () => {
+    const RL = "src/lib/server/rate-limit.ts";
+
+    /** The property names of the `RATE_RULES` object literal, read from the syntax tree of decommented source. */
+    const rateRuleKeys = (code: string): string[] => {
+      const out: string[] = [];
+      walkTree(parse(RL, code), (n) => {
+        if (!ts.isVariableDeclaration(n) || n.name.getText() !== "RATE_RULES" || !n.initializer) return;
+        if (!ts.isObjectLiteralExpression(n.initializer)) return;
+        for (const p of n.initializer.properties) {
+          if (!ts.isPropertyAssignment(p)) continue;
+          const k = literalText(p.name) ?? (ts.isIdentifier(p.name) ? p.name.text : null);
+          if (k != null) out.push(k);
+        }
+      });
+      return out;
+    };
+    /**
+     * Every `rateCheck` / `rateCheckAsync` call in one file, with the action argument as a LITERAL or `null` — and
+     * the KEY argument's own source text.
+     *
+     * ⛔ **THE KEY IS PAINTED TOO, AND THIS PIN READ ONLY THE ACTION** (C5-7's review, medium). The docblock above
+     * argues "A GUARD'S SCOPE IS PART OF ITS CLAIM" and then scoped itself one COLUMN short:
+     * `/admin/system` paints `b.action` at `page.tsx:640` **and `b.key.slice(0, 30)` at `:641`**, from the same
+     * snapshot, to the same ops VIEW audience. Nothing here ever read the FIRST argument of any call, so the
+     * rendered key half was unmeasured by this sweep and by anything else — `rateCheckAsync(botId, "desk.picker")`
+     * would have painted an `hb_…` id verbatim on an admin table with every assertion in this section green.
+     * Measured when this landed: 27 live call sites, none keying on a house identifier, so this was a coverage
+     * hole rather than a live defect — which is exactly when a guard is cheap to add and worth having.
+     *
+     * ⚠️ WHAT THE KEY SWEEP CAN AND CANNOT DECIDE, said plainly. It reads the argument's SOURCE TEXT, so it sees a
+     * literal, a template's static parts, and the identifier names a key is built from. A bare `botId` is NOT a
+     * vocabulary hit — the shared list deliberately excludes bare `bot` (`house-bot-vocabulary.mjs`), because
+     * `/admin/house` and the word "bot" live on `main` — so this catches `houseBotId`, `house_…`, `HouseBot…`, a
+     * bounded house id and every house WORD, and does not catch a house value reached through a neutral name. The
+     * value half is unreachable from a static read and is NOT MEASURED, by name, in DEFERRED-TESTS.
+     */
+    const callSites = (file: string, code: string): Array<{ file: string; action: string | null; key: string; text: string }> => {
+      const out: Array<{ file: string; action: string | null; key: string; text: string }> = [];
+      walkTree(parse(file, code), (n) => {
+        if (!ts.isCallExpression(n)) return;
+        const fn = ts.isIdentifier(n.expression) ? n.expression.text
+          : ts.isPropertyAccessExpression(n.expression) ? n.expression.name.text : "";
+        if (fn !== "rateCheck" && fn !== "rateCheckAsync") return;
+        out.push({
+          file, action: literalText(n.arguments[1]),
+          key: n.arguments[0] ? n.arguments[0].getText().replace(/\s+/g, " ") : "",
+          text: n.getText().slice(0, 90).replace(/\s+/g, " "),
+        });
+      });
+      return out;
+    };
+
+    const rlCode = decomment(read(RL));
+    const keys = rateRuleKeys(rlCode);
+    ok("0.L52.0 · the population is real: the rule table is read from the syntax tree, and it holds the desk's two rules among every other live bucket name",
+      keys.length >= 20 && keys.includes("desk.verify") && keys.includes("desk.picker"),
+      `${keys.length} rules · ${keys.join(" ")}`);
+
+    const dirty = keys.filter((k) => houseHits(k).length > 0);
+    ok("0.L52.1 · ⛔ D19 · L52 · NO rate-limit action name carries the shared vocabulary — every one of them is painted verbatim on /admin/system to the whole ops VIEW audience",
+      dirty.length === 0, `${keys.length} rules read · offenders: ${j(dirty.map((k) => [k, houseHits(k)]))}`);
+
+    /* The controls. Each sample is planted ON ITS OWN, so a family the scan is blind to cannot hide behind a family
+     * it can see, and each plant must be READ BACK from the tree before its report counts — a control that only
+     * proves the regex works, and not that the extractor reached the key, is the shape that fooled this platform. */
+    const plant = (k: string) => rlCode.replace(`"desk.verify"`, `"${k}": { capacity: 1, refillPerMin: 1 },\n  "desk.verify"`);
+    const samples = [
+      ...HOUSE_WORD_SAMPLES.map((w) => `${w}.verify`),
+      ...HOUSE_IDENTIFIER_SAMPLES.map((i) => `${i}.check`),
+      ...HOUSE_ID_SAMPLES.map((i) => `bucket.${i}`),
+    ];
+    const missed = samples.filter((s) => {
+      const planted = rateRuleKeys(plant(s));
+      return !planted.includes(s) || planted.filter((x) => houseHits(x).length > 0).join("|") !== s;
+    });
+    ok("0.L52.c1 · CONTROL · every sample of all three families — words, identifiers and bounded ids — planted one at a time as a rule key, is READ BACK from the tree and REPORTED as the only offender",
+      missed.length === 0 && samples.length >= 30, `${samples.length} planted one by one · missed: ${j(missed)}`);
+
+    const benign = HOUSE_BENIGN_SAMPLES.map((b) => `${b}.charge`);
+    const cried = benign.filter((s) => {
+      const planted = rateRuleKeys(plant(s));
+      return !planted.includes(s) || planted.filter((x) => houseHits(x).length > 0).length > 0;
+    });
+    ok("0.L52.c2 · CONTROL · the accept side — HOUSE_FEE, /admin/house, a short id and an over-long one planted as rule keys are each read back and NOT reported (a pin that cries wolf is switched off by the next session)",
+      cried.length === 0, `${benign.length} benign plants · falsely reported: ${j(cried)}`);
+
+    /* ── the call sites, because the table fails open ──────────────────────────────────────────────── */
+    const sites: Array<{ file: string; action: string | null; text: string }> = [];
+    for (const rel of srcFiles()) {
+      const code = decomment(read(rel));
+      if (!code.includes("rateCheck")) continue;
+      // The module's own internals forward their `action` PARAMETER to `rateCheck` (the Redis fallbacks); every
+      // caller of the module is read below instead, exactly as 0.170 reads a writer primitive's call sites.
+      if (rel === RL) continue;
+      sites.push(...callSites(rel, code));
+    }
+    const files = new Set(sites.map((s) => s.file));
+    ok("0.L52.2 · the population is real: every rateCheck / rateCheckAsync call site in src/ is read from the tree, the desk's own among them",
+      sites.length >= 20 && files.has("src/lib/server/house-bot/designation.ts") && files.has("src/lib/server/house-console-read.ts"),
+      `${sites.length} call sites in ${files.size} files (rate-limit.ts's own forwarding calls excluded by name)`);
+    const unknown = sites.filter((s) => s.action == null || !keys.includes(s.action));
+    ok("0.L52.3 · ⛔ every call site names a rule the table DECLARES — RATE_RULES is Record<string, RateRule>, so tsc cannot see a stale key and rateCheck returns allowed:true on one: a rename that missed a caller switches a live limiter off in silence",
+      unknown.length === 0, j(unknown));
+
+    /* ── the KEY column, because /admin/system paints that too ─────────────────────────────────────── */
+    const keyDirty = sites.filter((s) => houseHits(s.key).length > 0);
+    ok("0.L52.3b · ⛔ D19 · L52 · NO rateCheck KEY argument names the shared vocabulary either — /admin/system paints `b.key.slice(0, 30)` in the column beside the action, from the same snapshot, to the same ops VIEW audience, so a bucket keyed on a house identifier would be painted verbatim to staff this feature has no audience with",
+      keyDirty.length === 0,
+      `${sites.length} keys read from the tree · offenders: ${j(keyDirty.map((s) => [s.file, s.key, houseHits(s.key)]))}`);
+    const keyPlant = (expr: string) => callSites("src/app/planted/keys.ts", `export async function f() { return rateCheckAsync(${expr}, "desk.picker"); }\n`);
+    const keySamples = [
+      ...HOUSE_IDENTIFIER_SAMPLES.map((i) => i),
+      ...HOUSE_ID_SAMPLES.map((i) => `\`${i}\``),
+      ...HOUSE_WORD_SAMPLES.map((w) => `\`${w}:\${userId}\``),
+    ];
+    const keyMissed = keySamples.filter((expr) => {
+      const planted = keyPlant(expr);
+      return planted.length !== 1 || houseHits(planted[0].key).length === 0;
+    });
+    const keyBenign = ["viewerUserId", "`${officerId}:${userId}`", "ip", "phone", "session.userId"];
+    const keyCried = keyBenign.filter((expr) => {
+      const planted = keyPlant(expr);
+      return planted.length !== 1 || houseHits(planted[0].key).length > 0;
+    });
+    ok("0.L52.c5 · CONTROL · every sample of all three families planted as a KEY — a bare identifier, a bounded id in a template, and a word joined to a real id — is read back from the tree and REPORTED, and the five keys the tree actually uses today (the viewer, the `${officer}:${holder}` pair, an IP, a phone, a session id) are each read back and NOT reported",
+      keyMissed.length === 0 && keyCried.length === 0 && keySamples.length >= 30,
+      `${keySamples.length} house plants · missed ${j(keyMissed)} · ${keyBenign.length} benign plants · falsely reported ${j(keyCried)}`);
+
+    /**
+     * ⛔ **THE AUTHORITY DOC IS IN THE POPULATION, BECAUSE THE RENAME LEFT IT BEHIND** (C5-7's review, medium).
+     * This section's own population is `srcFiles()`, which walks `src/` — so when L52 renamed the desk's rule key,
+     * `docs/HOUSE-BOTS.md` went on naming the OLD one in two places and no guard on this branch could report it.
+     * That doc is the feature's LAW, not history like the `plans/` files: a later session reads it, adds a caller
+     * against the key it names, and 0.L52.3 reports the stale key only AFTER the fact. The mention shape is the
+     * one this repository uses everywhere — `` `<key>` bucket `` — and every rule-shaped key written that way in
+     * that doc must be one `RATE_RULES` declares.
+     *
+     * ⚠️ SCOPE, NAMED: this doc only. Other docs name rate buckets of other features with their own histories and
+     * their own tables; widening the sweep to all of `docs/` would make this pin about them. A guard's scope is
+     * part of its claim — which is the lesson this whole section was written for.
+     */
+    const AUTHORITY_DOC = "docs/HOUSE-BOTS.md";
+    const docBuckets = (text: string): string[] =>
+      [...text.matchAll(/`([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)+)`\s+(?:rate\s+)?bucket/g)].map((mm) => mm[1]);
+    const docText = read(AUTHORITY_DOC);
+    const docNamed = docBuckets(docText);
+    const docStale = docNamed.filter((k) => !keys.includes(k));
+    ok("0.L52.4 · ⛔ every rate-limit bucket the feature's AUTHORITY doc names is one RATE_RULES declares — a rename that leaves the law naming a bucket that no longer exists teaches the next session the wrong key, and this section's src/-only population could never see it",
+      docNamed.length > 0 && docStale.length === 0,
+      `${AUTHORITY_DOC}: ${docNamed.length} bucket mention(s) ${j(docNamed)} · stale: ${j(docStale)}`);
+    const docPlant = docBuckets(`${docText}\n\nthe \`desk.verify.gone\` bucket {capacity 3}\n`);
+    ok("0.L52.c6 · CONTROL · the doc sweep READS the mention shape and REPORTS a key the table does not declare — so 0.L52.4's zero is a measurement of that document and not of a pattern that matches nothing in it",
+      docPlant.length === docNamed.length + 1 && docPlant.filter((k) => !keys.includes(k)).join("|") === "desk.verify.gone",
+      `${docNamed.length} → ${docPlant.length} mentions`);
+
+    /* ⭐ THE DEFECT ITSELF, and it is the only control that proves this pin would have caught L52 rather than
+     * something L52-shaped. The key this ruling removed is REBUILT from the shared sample by dropping its separator
+     * (never re-typed here, so the word enters this file from the one module that owns it), planted, and required
+     * to be reported. HOUSE_WORD_SAMPLES[3] is `house bot`; the separator-less spelling is what the table carried. */
+    const historical = `${HOUSE_WORD_SAMPLES[3].replace(/ /g, "")}.verify`;
+    const hist = rateRuleKeys(plant(historical));
+    ok("0.L52.c4 · CONTROL · THE NEEDLE IS THE REAL DEFECT: the exact rule key this ruling removed, rebuilt from the shared sample by dropping its separator, is read back from the tree and reported — so 0.L52.1 is a sweep that would have gone red on the live branch, not one that has only ever seen clean code",
+      hist.includes(historical) && hist.filter((x) => houseHits(x).length > 0).join("|") === historical,
+      `planted ${historical} · reported ${j(hist.filter((x) => houseHits(x).length > 0))}`);
+
+    const DESIG = "src/lib/server/house-bot/designation.ts";
+    const desig = decomment(read(DESIG));
+    const clean = callSites(DESIG, desig);
+    const stale = callSites(DESIG, desig.replace(`"desk.verify"`, `"desk.verify.gone"`));
+    const dynamic = callSites(DESIG, desig.replace(`, "desk.verify")`, `, RULE)`));
+    ok("0.L52.c3 · CONTROL · at the real call site a stale key and a non-literal action are each reported, and the untouched file is clean — so 0.L52.3's zero is a measurement of this file and not of an empty list",
+      clean.length === 1 && clean[0].action === "desk.verify"
+      && stale.length === 1 && !keys.includes(stale[0].action ?? "")
+      && dynamic.length === 1 && dynamic[0].action === null,
+      j({ clean: clean.map((c) => c.action), stale: stale.map((c) => c.action), dynamic: dynamic.map((c) => c.action) }));
+  });
+}
+
+if (STORE === "memory") {
+  /**
+   * ⛔ **§0 · RULING 250 · THE REL-0 COVERAGE ROLL-CALL, BUILT — BECAUSE C5-7 OWNED IT AND ANSWERED FOR FOUR IDS.**
+   *
+   * Ruling 250 (`C5-SPEC.md:2557-2596`) says a struck or reshaped scenario id counts as covered ONLY through an
+   * assertion that names it, and its Proof line is "the REL-0 coverage gate reads each id against an assertion
+   * label". C5-7 named FOUR — HB-LC-39/CRA-27, HB-ACC-12/CRA-04, CRA-10 and HB-ACC-13 — and `PROGRESS.md`'s
+   * Scenario coverage gate still read "Ids covered by tests ⬜ not measured yet". Measured here on 2026-09-20:
+   * of the ids ruling 250 itself lists, SEVEN are named somewhere under `src/` or `scripts/`, SEVEN are struck
+   * whole by owner ruling D20 and closed in the register, and the rest are NOT.
+   *
+   * ⛔ THE POINT IS NOT THE NUMBER, IT IS THAT THE NUMBER CANNOT BE SILENT AGAIN. Rule 4 of this checkpoint's law:
+   * "not applicable" is the most dangerous silent verdict. So an id is covered, or struck by D20 in the register,
+   * or NAMED with a reason in `plans/house-bots/DEFERRED-TESTS.md` — and this assertion is what makes the third
+   * option a written one instead of an omission. A gate not in the pipeline is not a gate; this one runs every day.
+   */
+  section("§0 · ruling 250 · the REL-0 scenario coverage roll-call for the ids this ruling names");
+  await guard("0.250", () => {
+    /* @roll-call-lists:start — ⛔ THE SEARCH MUST NOT FIND THIS FILE'S OWN LIST. The population includes this file
+       (it carries four of the ids in real assertion labels), so without stripping the declaration region the gate
+       reported all 49 ids "covered" on its first run — a scanner measuring itself, which is exactly the shape this
+       checkpoint exists to refuse. `bodyOf` removes everything between these two markers when it reads SELF, and
+       `0.250.c0` proves the strip really happens and really matters. */
+    /** Ruling 250's own lists, transcribed from `C5-SPEC.md:2557-2596`. Data, so a list that shrinks is visible. */
+    const NAMED_FORMS = ["HB-ACC-12", "CRA-04", "HB-ACC-13", "HB-ACC-14", "HB-ACC-32", "HB-ACC-40", "HB-LC-11",
+      "HB-LC-39", "CRA-27", "CRA-10", "CRA-17", "FS-25", "FS-30"];
+    const UNCHANGED = ["CRA-01", "CRA-02", "CRA-03", "CRA-07", "CRA-11", "CRA-12", "CRA-14", "CRA-16", "CRA-18",
+      "CRA-21", "CRA-22", "CRA-28", "CRA-30", "CRA-31", "CRA-32", "CRA-33", "CRA-34", "CRA-35", "CRA-36",
+      "HB-LC-17", "HB-LC-20", "HB-LC-26", "HB-LC-27", "HB-LC-34", "FS-05", "FS-22", "FS-26",
+      "TGT-28", "TGT-36", "TGT-38", "TGT-39", "CRA-08", "CRA-19", "CRA-20", "FS-29", "HB-LC-24"];
+    /** The seven D20 struck WHOLE, each closed by its own "Coverage gate: struck by D20" line in the register. */
+    const STRUCK_WHOLE = ["CRA-02", "CRA-11", "CRA-18", "CRA-33", "CRA-36", "HB-LC-17", "TGT-39"];
+    /* @roll-call-lists:end */
+    const ALL = [...new Set([...NAMED_FORMS, ...UNCHANGED])];
+
+    const REGISTER = "plans/house-bots/01-scenario-register.md";
+    const DEFERRED = "plans/house-bots/DEFERRED-TESTS.md";
+    const SELF = "scripts/lib/house-bot-reports-cases.mts";
+    const LIST_START = "@roll-call-lists" + ":start", LIST_END = "@roll-call-lists" + ":end";
+    const bodyOf = (rel: string): string => {
+      const code = read(rel);
+      if (rel !== SELF) return code;
+      const a = code.indexOf(LIST_START), b = code.indexOf(LIST_END);
+      return a >= 0 && b > a ? `${code.slice(0, a)}${code.slice(b)}` : code;
+    };
+    const population = [...srcFiles(), ...scriptFiles()];
+    const found = new Set<string>();
+    for (const rel of population) {
+      const code = bodyOf(rel);
+      for (const id of ALL) if (!found.has(id) && code.includes(id)) found.add(id);
+    }
+    const registerText = read(REGISTER);
+    const deferredText = read(DEFERRED);
+    const struckLines = (registerText.match(/Coverage gate: struck by D20/g) ?? []).length;
+    const covers = (id: string) => found.has(id) || STRUCK_WHOLE.includes(id) || deferredText.includes(id);
+    const undeclared = ALL.filter((id) => !covers(id));
+    const deferredOnly = ALL.filter((id) => !found.has(id) && !STRUCK_WHOLE.includes(id));
+
+    ok("0.250.0 · the population is real and it is printed: every id ruling 250 names, read against every tracked file under src/ and scripts/, with the register's D20 closures counted separately from the tree's hits",
+      ALL.length >= 45 && population.length > 1500 && struckLines === STRUCK_WHOLE.length && registerText.length > 0,
+      `${ALL.length} ids · ${population.length} files searched · ${found.size} named in the tree · ${struckLines} "struck by D20" closures in the register (expected ${STRUCK_WHOLE.length})`);
+    ok("0.250.1 · ⛔ RULING 250 · every id it names is COVERED by an assertion label or comment in the tree, STRUCK whole by D20 and closed in the register, or listed BY NAME with a reason in DEFERRED-TESTS.md — an id that is none of the three is reported here, so 'not measured yet' can never again be the whole record",
+      undeclared.length === 0,
+      `covered in tree: ${j([...found].sort())} · struck by D20: ${STRUCK_WHOLE.length} · deferred by name: ${deferredOnly.length} · UNDECLARED: ${j(undeclared)}`);
+
+    /* ⛔ THE CONTROLS. The gate's whole risk is that it reports clean because it searched nothing — or itself. */
+    const selfSample = deferredOnly[0] ?? null;
+    ok("0.250.c0 · CONTROL · the roll-call does not read its OWN declaration: the list region is stripped from this file before the search, and an id this file carries ONLY inside that list is still counted as NOT found — without the strip the gate reported all 49 ids covered on its first run, a scanner measuring itself",
+      selfSample !== null && read(SELF).includes(selfSample) && !bodyOf(SELF).includes(selfSample) && bodyOf(SELF).length < read(SELF).length,
+      `sample ${selfSample} · ${read(SELF).length - bodyOf(SELF).length} characters of declaration stripped`);
+    const ghost = "CRA-99";
+    const coversGhost = found.has(ghost) || STRUCK_WHOLE.includes(ghost) || deferredText.includes(ghost);
+    const realDeferred = deferredOnly[0] ?? null;
+    ok("0.250.c1 · CONTROL · an id that is in NO file, in no D20 closure and in no deferred row is REPORTED — and a real deferred id is NOT, so the third door is a door and not a hole",
+      !coversGhost && realDeferred !== null && deferredText.includes(realDeferred) && !found.has(realDeferred),
+      `ghost ${ghost} covered=${coversGhost} · sample deferred id ${realDeferred}`);
+    const seen = ALL.filter((id) => found.has(id));
+    ok("0.250.c2 · CONTROL · the tree search really finds ids: the four C5-7 named into assertion labels are among the hits, and an id typed nowhere is not — so `found` is a measurement of the tree and not an empty set",
+      ["HB-LC-39", "CRA-27", "HB-ACC-12", "CRA-04", "CRA-10", "HB-ACC-13"].every((id) => seen.includes(id)) && !found.has(ghost),
+      `${seen.length} of ${ALL.length} ids found in the tree`);
+  });
+
   section("§0 · ruling 175 · one absence vocabulary: every consumer imports it, none declares its own, broader lists extend it");
   await guard("0.175", () => {
     for (const file of VOCABULARY_CONSUMERS) {
@@ -542,6 +1401,49 @@ if (STORE === "memory") {
     }
     const everyShared = HOUSE_WORD_SAMPLES.filter((s) => !extendHouseWords(["house", "50pick"]).test(s));
     ok("0.175.subset.module · an extended list still finds every shared word sample (the shared words are a subset by construction)", everyShared.length === 0, j(everyShared));
+    /* ⛔ THE PLANTED-CONTROL POPULATION MEASURED ITS OWN SHRINKING INPUT, AND NOTHING SAID SO (C5-8, 2026-09-21).
+     * `HOUSE_WORD_SAMPLES` is the list every absence consumer plants: `2.v` in `test:house-bot-disclosure` asserts
+     * `missed.length === 0` and merely PRINTS `${samples.length}`; `verify-house-bot-bundle.mjs:98` has the identical
+     * shape and prints its own count at `:122`; `0.175.subset.module` directly above filters a list that may be
+     * shorter than it was yesterday. Delete three samples and EVERY one of them passes — vacuously, over a smaller
+     * population — because no assertion anywhere pinned the list against the vocabulary it is supposed to cover.
+     * ⭐ So the population is DERIVED rather than pinned to a number: every top-level alternative of
+     * `HOUSE_WORD_SOURCE` must be covered by at least one sample, and every sample must be matched by an
+     * alternative. A deleted sample is reported by the alternative it orphaned; a word added to the vocabulary with
+     * no sample is reported the day it lands; and neither direction can be satisfied by editing a count. */
+    const topAlternatives = (src: string): string[] => {
+      const out: string[] = [];
+      let depth = 0, cur = "";
+      for (let i = 0; i < src.length; i++) {
+        const c = src[i];
+        if (c === "\\") { cur += c + (src[i + 1] ?? ""); i++; continue; }
+        if (c === "(") depth++;
+        else if (c === ")") depth--;
+        else if (c === "|" && depth === 0) { out.push(cur); cur = ""; continue; }
+        cur += c;
+      }
+      out.push(cur);
+      return out.filter((a) => a.length > 0);
+    };
+    const coverage = (samples: readonly string[]) => {
+      const alts = topAlternatives(HOUSE_WORD_SOURCE);
+      return {
+        alts: alts.length,
+        uncovered: alts.filter((a) => !samples.some((s) => new RegExp(a, "i").test(s))),
+        orphans: samples.filter((s) => !alts.some((a) => new RegExp(a, "i").test(s))),
+      };
+    };
+    const cov = coverage(HOUSE_WORD_SAMPLES);
+    ok("0.175.samples · ⛔ the planted-control population is DERIVED from the vocabulary, never maintained beside it: every top-level alternative of HOUSE_WORD_SOURCE is covered by at least one HOUSE_WORD_SAMPLES entry, and every sample is matched by an alternative — a deleted sample makes every consumer's planted control pass over a smaller list, and no assertion measured that until this one",
+      cov.uncovered.length === 0 && cov.orphans.length === 0 && cov.alts >= 12 && HOUSE_WORD_SAMPLES.length >= cov.alts,
+      j({ alternatives: cov.alts, samples: HOUSE_WORD_SAMPLES.length, uncovered: cov.uncovered, orphans: cov.orphans }));
+    /* ⛔ AND THE CONTROL, over the same measure: the three samples C5's register deletes, and a sample that covers
+     * nothing. A coverage check that has never been shown to REPORT a gap is a coverage check that measures nothing. */
+    const without3 = HOUSE_WORD_SAMPLES.filter((s) => !["chosen by staff", "chosen by you", "including house"].includes(s));
+    const plantedOrphan = coverage([...HOUSE_WORD_SAMPLES, "a perfectly ordinary sentence"]);
+    ok("0.175.samples.c1 · CONTROL · the SAME measure over a copy of the list with C5-s5's three deletions reports the two alternatives they orphaned, a sample matching no alternative is reported, and the real list is reported clean",
+      coverage(without3).uncovered.length === 2 && plantedOrphan.orphans.length === 1 && coverage(HOUSE_WORD_SAMPLES).uncovered.length === 0,
+      j({ deleted3: coverage(without3).uncovered, plantedOrphan: plantedOrphan.orphans }));
     const stale = [
       ...Object.entries(VOCABULARY_PATTERN_ALLOWLIST).flatMap(([file, texts]) => texts.filter((t) => !ownVocabulary(file, read(file)).allowed.includes(t)).map((t) => `${file}: ${t}`)),
       ...Object.entries(BROADER_PATTERN_ALLOWLIST).flatMap(([file, texts]) => texts.filter((t) => !broaderLists(file, read(file)).allowed.includes(t)).map((t) => `${file}: ${t}`)),
@@ -640,8 +1542,14 @@ if (STORE === "memory") {
     const audited = declared.filter((k) => Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     const owed = declared.filter((k) => !Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     ok("0.505 · ⛔ RULING 505 · every suite key declared in ANY scripts/anchors/house*.anchors.mjs — the files walked from disk, never typed — either HAS an expect-drift roll-call or is recorded as owed with its reason, and neither table names a key no anchors file declares",
-      problems.length === 0 && anchorFiles.length >= 6 && audited + owed >= 185 && Object.keys(ROLL_CALL_OWED).length === 7,
-      j({ anchorFiles, keys: Object.fromEntries([...keys].sort()), audited, owed, problems }));
+      /* ⛔ 7 → 9 on 2026-09-20, and GROWING THIS NUMBER IS A DEBT BEING RECORDED, NEVER A PERMISSION. `dal-mem`
+       * and `dal-pg` arrived with this lane's own claim anchors and 0.505 reported them audited by nobody the same
+       * day — the guard working. They are owed in `test:house-bot-migrations` §d (its labels are `d · <outcome
+       * key>`, a superstring of their `expect` values), not written here because that suite creates fixed-name
+       * hb_mig_* databases on a cluster shared with two other lanes. `rules` went the OTHER way in the same
+       * commit — it gained a real roll-call (house-bot-rules 7.505) and is in SITES, not here. */
+      problems.length === 0 && anchorFiles.length >= 6 && audited + owed >= 354 && Object.keys(ROLL_CALL_OWED).length === 9,
+      j({ anchorFiles, keys: Object.fromEntries([...keys].sort()), audited, owed, total: audited + owed, owedKeys: Object.keys(ROLL_CALL_OWED).sort(), problems }));
     /* ⛔ AND THE CONTROL, over the same detector: a key that no table names, and a table entry no file declares. */
     const detect = (ks: Map<string, number>, sites: Record<string, string>, owedList: Record<string, string>): string[] => {
       const out: string[] = [];
@@ -1110,14 +2018,16 @@ export function exportedNames(file: string, code: string): string[] {
   });
   return [...out].sort();
 }
-/** Every string a declaration or a file can print: string literals, the text parts of template literals and JSX text. */
-function printedTexts(file: string, text: string): string {
-  const out: string[] = [];
-  walkTree(parse(file, text), (n) => {
-    if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n) || ts.isJsxText(n)) out.push(n.text);
-  });
-  return out.join(" ");
-}
+/**
+ * ⭐ MOVED TO `scripts/lib/player-surface-text.mts` BY COMMIT 6 (2026-09-20), body unchanged, and imported back here so
+ * there is exactly ONE print measure on the platform. `0.198.3` runs it over exactly TWO files (`PLAYER_SURFACE_FILES`)
+ * while `0.198.1`'s IMPORT measure runs over the whole 400-plus player population — so a house sentence written as JSX
+ * text into the rulebooks, the FAQ, the home page or the leaderboard was held by nothing static.
+ * `test:house-bot-disclosure` §5.2 closes that gap over the full population. It could not import it from HERE: this
+ * module RUNS its cases on import (the two-store child loads it), so a pure suite has to take the measure from a pure
+ * module. A second COPY of the measure was the other option, and ruling 175's header records what copies of an absence
+ * measure do: the three that each wrote their own word pattern drifted until two guards disagreed about one file.
+ */
 /**
  * One player notifier's problems: a missing declaration, a named R2 export, a house WORD in anything it can print (the
  * vocabulary's words family over its strings and template text — its code keeps the standing option of C4 ruling 145,
@@ -1169,7 +2079,58 @@ export const AUDIT_ROW_READERS = ["getAuditById", "getAuditByActionsDurable", "g
  * chain's checks over rows handed in, and the two types. 0.260.1 holds the module's exports to exactly the two lists, so a
  * new export under ANY name has to be classified before a console file may read it.
  */
-export const AUDIT_NON_READERS = ["AuditCategory", "AuditEntry", "audit", "auditFlush", "auditRingSize", "classifyChainLinks", "reconstructChainOrder", "verifyChain", "verifyChainFull"] as const;
+export const AUDIT_NON_READERS = [
+  "AuditCategory", "AuditEntry", "UNVERIFIABLE_BASELINE_ACTION", "UnverifiableBaseline", "audit", "auditBootId",
+  "auditFlush", "auditPending", "auditRingSize", "auditTicketsIssued", "censusUnverifiable", "classifyChainLinks",
+  "readUnverifiableBaseline", "reconstructChainOrder", "verifyChain", "verifyChainFull",
+] as const;
+/*
+ * ⭐ SIX NAMES ADDED 2026-09-21 BY THE ops LANE, AND THEY ARE THE MERGE'S OWN DEFECT — `auditBootId`,
+ * `auditTicketsIssued`, `UNVERIFIABLE_BASELINE_ACTION`, `UnverifiableBaseline`, `readUnverifiableBaseline`,
+ * `censusUnverifiable`. The audit-attestation lane's commit `c52c5c44` arrived inside rel-lane's tip `5c38f3d3`
+ * in freeze merge 3/3; NEITHER BRANCH WAS RED ALONE, because the branch that wrote the exports carries no house
+ * guard and the branch that carries the guard had never seen the exports. That is what this list is for, and it
+ * is the second time in one night it has caught a lane that had never heard of D19 (`auditPending`, above).
+ *
+ * ⛔ EACH WAS JUDGED ON ITS OWN BODY, NOT ON THE SET, and the question asked of each was the ONE this list asks:
+ * does it return an audit ROW? Not "is it convenient to classify".
+ *   · `auditBootId()` → `string`. `globalThis.__50PICK_AUDIT_BOOT ??= "b<time36><hex>"`. No `db.auditLog` call,
+ *     no ring read. This process's identity, so a gap detector can say WHICH boot lost an append.
+ *   · `auditTicketsIssued()` → `number`, straight off `globalThis.__50PICK_AUDIT_TICKET`. No row.
+ *   · `UNVERIFIABLE_BASELINE_ACTION` → the constant string `"audit.unverifiable_baseline"`. A platform COMPLIANCE
+ *     action name, in the same class as every other action name this module writes. It returns nothing at all.
+ *   · `UnverifiableBaseline` → a TYPE, erased at compile time, in exactly the class `AuditEntry` and
+ *     `AuditCategory` were already classified in.
+ *   · `readUnverifiableBaseline()` → the only one that gave pause, and it is classified on its BODY: it does read
+ *     `db.auditLog`, but under `where: { action: UNVERIFIABLE_BASELINE_ACTION }` — ONE platform action, fixed in
+ *     source — and it returns `UnverifiableBaseline | null`, six scalars assembled field by field. The row's
+ *     `payload` is parsed and DROPPED; no `AuditEntry` leaves it. ⛔ And the decisive consistency argument: the
+ *     SAME value already leaves this module through `verifyChainFull()`'s `baseline` field, and `verifyChainFull`
+ *     has been a declared non-reader since this list existed. Classifying the reader as a ROW reader while its
+ *     own caller stayed a non-reader would have been incoherent, not strict.
+ *   · `censusUnverifiable()` → reads rows to fold their hashes and returns four scalars
+ *     (`frontierSeq`, `count`, `digest`, `scanned`). Same class as `verifyChainFull()`, which is what it shares
+ *     `walkHashes` with so the two can never disagree.
+ * ⭐ AND THE CORROBORATION, WHICH IS EVIDENCE AND NOT THE REASON: NOT ONE of the six has a call site anywhere under
+ * `src/` (measured over the tree, 2026-09-21). Every caller is a script — `scripts/audit-attest.test.mts`,
+ * `scripts/audit-baseline.mts`, `scripts/rehearsals/audit-hole*.mts`. No console file and no player file reaches
+ * any of them, so the gate question does not even arise today. It would arise tomorrow, which is why the two that
+ * touch `db.auditLog` are now PINNED rather than merely described — `auditNonReaderRowClaimProblems` below, and
+ * `0.260.2`. ⛔ A classification held by prose is the exemption this programme keeps finding; this one is measured.
+ */
+/*
+ * ⭐ `auditPending` ADDED 2026-09-21 BY THE ops ← rel-lane MERGE, AND IT IS THE GUARD WORKING, NOT A NUISANCE.
+ * The shutdown-drain lane (`origin/rel-lane` `09398014`) added one export to the audit module — a counter of the
+ * appends queued and not yet stamped, which `audit-drain.ts` reads to report how many rows a dying process saved
+ * and how many it abandoned. 0.260.1 turned RED on the merged tree at once, in the exact words this docblock
+ * promises: "exports auditPending, which is neither an audit row reader nor a declared non-reader". That is the
+ * whole point of holding the module to two exhaustive lists — a lane that has never heard of D19 cannot widen the
+ * audit module's surface without a house guard saying so.
+ * ⛔ IT IS CLASSIFIED HERE, NOT EXEMPTED: `auditPending()` returns `number` — `globalThis.__50PICK_AUDIT_PENDING ?? 0`
+ * — and touches no row, no `db.auditLog` call and no ring entry. Read from the merged source, not from its name.
+ * A row reader added under a plausible name would still have to go in the OTHER list and would still be held to the
+ * gate; nothing about this entry makes the next export easier to wave through.
+ */
 /**
  * Every file OUTSIDE the console that calls an audit row reader, and why its rows never reach a console page raw (a service
  * handing a page unfiltered rows would pass the console pin, which reads console files only). 0.260.1 compares this list
@@ -1258,7 +2219,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * argument. The pin's job is unchanged and undiminished: a call with the wrong number of arguments is still red,
  * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
  * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseSwitchForConsole: 3, houseAccountActForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -1479,6 +2440,44 @@ export function auditExportProblems(file: string, code: string): string[] {
   return problems;
 }
 
+/**
+ * ⛔ THE TWO CLASSIFIED NON-READERS THAT ACTUALLY TOUCH `db.auditLog`, HELD TO THE CLAIM THEIR CLASSIFICATION MAKES.
+ *
+ * `AUDIT_NON_READERS` says of every name on it: it returns no row. For eight of the sixteen that is true by
+ * inspection and can never stop being true (a `string`, a `number`, a type, a constant). For
+ * `readUnverifiableBaseline` and `censusUnverifiable` it is true because of what their BODIES do — a `where`
+ * clause pinned to one platform action, and a return shape assembled field by field — and a body can be edited.
+ * ⛔ THAT IS EXACTLY THE SHAPE OF EVERY EXEMPTION THIS PROGRAMME HAS HAD TO UNDO: a claim written in prose beside a
+ * list, with nothing measuring it. Widening the `where` to `{}` would turn the reader into a general row reader
+ * with the classification still reading "non-reader" and every guard still green.
+ * ⚠️ `verifyChainFull` is NOT in this population and that is deliberate rather than an oversight: it is the older
+ * name, it returns a VERDICT whose `baseline` field is this very reader's output, and pinning its whole body from a
+ * house suite would be this suite claiming an area it does not own. What is pinned here is the claim the SIX new
+ * classifications rest on, and nothing wider.
+ */
+export const AUDIT_ROW_TOUCHING_NON_READERS = ["readUnverifiableBaseline", "censusUnverifiable"] as const;
+export function auditNonReaderRowClaimProblems(file: string, code: string): string[] {
+  const problems: string[] = [];
+  const ws = (s: string) => s.replace(/\s+/g, " ");
+  const reader = ws(functionDeclarationText(file, code, "readUnverifiableBaseline"));
+  const census = ws(functionDeclarationText(file, code, "censusUnverifiable"));
+  if (reader.length < 200) problems.push(`${file}: readUnverifiableBaseline was not found (or is a stub) — the classification is unproved`);
+  else {
+    if (!/where: \{ action: UNVERIFIABLE_BASELINE_ACTION \}/.test(reader))
+      problems.push(`${file}: readUnverifiableBaseline reads db.auditLog without pinning where.action to UNVERIFIABLE_BASELINE_ACTION — it can return any row, and AUDIT_NON_READERS says it returns none`);
+    if (!/\): Promise<UnverifiableBaseline \| null> \{/.test(reader))
+      problems.push(`${file}: readUnverifiableBaseline no longer returns Promise<UnverifiableBaseline | null> — the classification's "returns no row" is unproved`);
+  }
+  if (census.length < 100) problems.push(`${file}: censusUnverifiable was not found (or is a stub) — the classification is unproved`);
+  else if (!/\): Promise<\{ frontierSeq: number; count: number; digest: string; scanned: number; \}> \{/.test(census))
+    problems.push(`${file}: censusUnverifiable no longer returns four scalars — the classification's "returns no row" is unproved`);
+  for (const name of AUDIT_ROW_TOUCHING_NON_READERS) {
+    const body = ws(functionDeclarationText(file, code, name));
+    if (body.length > 0 && /\bAuditEntry\b/.test(body)) problems.push(`${file}: ${name} names AuditEntry — a declared non-reader must hand no row out`);
+  }
+  return problems;
+}
+
 /* ─── ruling 512 · the gate table is held to the gate module's own exports, in BOTH directions ─────────────────── */
 
 /** The module `CONSOLE_GATES` is a table OF. Its exports are what 0.512 compares the table against. */
@@ -1527,6 +2526,36 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
   /* ⭐ C7 step 4b · the account action row (ruling 415): the word that arms a removal, what the row posts and
      what it gets back, and one act's finished copy. The gated WRITER is , above. */
   "CONSOLE_REMOVE_WORD", "ConsoleAccountActDialog", "ConsoleAccountActInput", "ConsoleAccountActKind", "ConsoleAccountActResult",
+  /* ⭐ C7 step 6 · the designate wizard's own CONSTANT, its painted shapes and the one pure function that turns an
+     eligibility CODE into the console's own sentence. `consoleCheckSentence` is a table lookup with a fallback: it
+     awaits nothing, names no store and decides no audience, which is what 0.512b checks rather than takes on trust.
+     The three gated doors — the lookup, the check and the write — each have their `CONSOLE_GATES` entry above. */
+  "CONSOLE_PICKER_EMPTY", "ConsoleCheckRow", "ConsoleCheckView", "ConsoleDesignateInput", "ConsoleDesignateResult",
+  "ConsoleFunded", "ConsolePickerAnswer", "ConsolePickerRow", "consoleCheckSentence",
+  /* ⭐ C7 step 6's FIX PASS · four more CONSTANTS, each of them pure copy, and each named here because the review
+     found the thing it exists for. `CONSOLE_PICKER_BUSY` is the sentence a rate-limited lookup answers, which is
+     NOT the refusal's (387(c)'s parity is between a refused caller and a search that found nothing, and an owner
+     already inside the audience is neither). `CONSOLE_WIZARD_COPY` is every sentence longer than a label that the
+     wizard paints — ruling 388's Proof moved them off the `"use client"` file, where they were shipping verbatim
+     in a public chunk. And the two label sentences are exported BY NAME because a case that pins only
+     `field === "label"` cannot tell the console's early check from the service's late one: both answer that field,
+     so only the SENTENCE distinguishes them. None of the four awaits, reaches a store or decides an audience. */
+  "CONSOLE_PICKER_BUSY", "CONSOLE_WIZARD_COPY", "CONSOLE_DESIGNATE_LABEL_LENGTH", "CONSOLE_DESIGNATE_LABEL_TAKEN",
+  /* ⭐ C7 step 5 (the account half) · the two panels' painted SHAPES, the query shape the door validates, and ONE
+     constant: `CONSOLE_EVENT_WORD`, a TOTAL `Record<HouseBotEventKind, string>`. It is exported so the suite can
+     compare its key set with `EVENT_KINDS` member for member rather than regexing the source for a fallback — the
+     strongest form of "no raw enum reaches the screen", and the one a source scan cannot give. It is pure copy:
+     it awaits nothing, names no store and decides no audience, which is what 0.512b checks rather than assumes.
+     ⛔ The two panels' READER is `houseDetailForConsole`, which has its `CONSOLE_GATES` entry above — the arity
+     pin MOVED with the door's shape at this step (a query object in place of a bare page number) and stayed at 4. */
+  "CONSOLE_EVENT_WORD", "CONSOLE_FEED_AXES", "CONSOLE_REFUSAL_TITLE", "ConsoleQuery", "ConsoleEventRow", "ConsoleFeedAxis", "ConsoleFeedRow",
+  "ConsoleFilterGroup", "ConsoleFilterOption",
+  /* ⭐ C7 step 5 (the LANDING half) · the two desk-wide panels' painted SHAPES and the cancel control's finished
+     copy. Every one of them is a TYPE: it awaits nothing, names no store and decides no audience, which is what
+     0.512b checks rather than takes on trust. ⛔ Their READERS are `houseFeedForConsole` and
+     `houseHistoryForConsole`, each with its own `CONSOLE_GATES` entry above at arity THREE — the viewer, the
+     calling file's own route as a string literal, and the REQUEST's untouched query string. */
+  "ConsoleCancelCopy", "ConsoleCancelInput", "ConsoleCancelResult", "ConsoleDeskEventRow", "ConsoleDeskFeedRow", "ConsoleFeedView", "ConsoleHistoryView",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
@@ -1607,6 +2636,199 @@ export function consoleGateExportProblems(
     }
   });
   return { exports: names, problems };
+}
+
+/* ═══ §0 · C5-8 · THE BEHAVIOURS WHOSE GUARD LEFT WITH A STRUCK RULING, AND NOTHING SAID SO ═══════════════════
+ *
+ * ⛔ WHAT THESE PINS ARE, AND WHY THEY ARE NEW. C5-8 re-resolved the four mutation registers against this tree and
+ * found 29 entries whose `from` resolves EXACTLY ONCE — the site is still there, byte for byte — while naming
+ * assertions that exist nowhere in the suite they name. An assertion can disappear three ways and they are NOT the
+ * same thing: (a) the BEHAVIOUR was struck by a ruling and its assertion went with it, so the entry retires; (b) the
+ * assertion was renamed or absorbed, so the entry re-points; or ⛔ (c) THE BEHAVIOUR IS STILL SHIPPED AND THE
+ * ASSERTION SIMPLY VANISHED. Eleven were (c) — an unguarded behaviour with a ready-made mutation still pointing at
+ * it. Each pin below closes one of them, and each has a declaration in `scripts/anchors/house-bot-c5.anchors.mjs`
+ * that `red:house-bot-c5` WRITES INTO THE REAL FILE and drives, because an assertion nobody has seen go red is a
+ * claim, not a guard.
+ *
+ * ⛔ FIVE OF THE ELEVEN ARE ABSENCE RULES WHOSE WHOLE FORCE WAS IN AN ASSERTION THAT WENT OUT WITH A STRUCK RULING.
+ * Ruling 197 — the KYC card's "of which house stakes" line and the `kycMoneyFacts.house*` fields behind it — was
+ * STRUCK by owner ruling D20 (`C5-D20-REPLAN.md:33`) and un-built in C5-5b. The un-build deleted the CODE and the
+ * cases that watched it in the same pass, so from 2026-09-17 until this section landed, nothing in the repository
+ * measured that the KYC case STAYS house-blind. `0.197.1`–`0.197.3` are that measurement, and they are an absence
+ * proof in exactly the shape `0.187.1` and `0.191.0` already use for the same owner ruling.
+ *
+ * ⚠️ AND TWO OF THEM ARE NOT HOUSE BEHAVIOUR AT ALL — which is the whole reason they were invisible. `0.m5.1` and
+ * `0.m5.2` pin `main`'s own emergency-void confirmation: which officer classes it is addressed to, and the fixed row
+ * set of the letter it sends. A house case happened to cover both, and when that case was struck they lost their
+ * only guard. They are pinned HERE because this is the suite that already reads `market-service.ts` and `email.ts`
+ * as source — not because they are house rules, and the next session should not read them as any.
+ */
+if (STORE === "memory") {
+  section("§0 · C5-8 · rulings 197 and 170 under D20, and the two `main` behaviours a struck house case was silently guarding");
+
+  /** The KYC case, whose read (`kyc-risk.ts`) and whose surfaces (`src/app/admin/kyc/`) ruling 197 built on. */
+  const KYC_READ = "src/lib/server/kyc-risk.ts";
+  const KYC_CASE_PAGE = "src/app/admin/kyc/[id]/page.tsx";
+  const KYC_DIR = "src/app/admin/kyc/";
+  /**
+   * The two `kycMoneyFacts` fields ruling 197 built and owner ruling D20 struck. ⛔ NEEDLES, never code: neither
+   * matches ANY alternative of `HOUSE_IDENTIFIER_SOURCE` (`houseBetCount` is not `HouseBot\w*`), which is exactly why
+   * the vocabulary alone could not see the register's own mutations and why this list has to exist beside it.
+   */
+  const KYC_STRUCK_197 = ["houseBetCount", "houseStakedTzs"] as const;
+  const struck197In = (code: string) => KYC_STRUCK_197.filter((n) => new RegExp(`\\b${n}\\b`).test(code));
+  /** The six judgement props the client decision rail takes today — pinned BY VALUE, so a renamed prop is a decision. */
+  const KYC_RAIL_PROPS = ["userId", "autoChecks", "makerCheckerRequired", "hasRecommendation", "isRecommender", "recommenderName"];
+  /** Every attribute a `<tag …>` carries, in source order; a spread is reported as `...` (a money object's own door). */
+  const jsxAttrNames = (file: string, code: string, tag: string): string[][] => {
+    const out: string[][] = [];
+    walkTree(parse(file, code), (n) => {
+      if (!ts.isJsxOpeningLikeElement(n) || n.tagName.getText() !== tag) return;
+      out.push(n.attributes.properties.map((p) => (ts.isJsxSpreadAttribute(p) ? "..." : p.name.getText())));
+    });
+    return out;
+  };
+
+  await guard("0.197", () => {
+    const kycRead = decomment(read(KYC_READ));
+    const readHits = houseHitsByFamily(kycRead).map((h) => `${h.family}:${h.word}`);
+    ok("0.197.1 · ⛔ OWNER RULING D20 · ruling 197 is STRUCK, so the KYC READ is house-blind: src/lib/server/kyc-risk.ts, decommented, carries no vocabulary word, no house identifier and neither struck kycMoneyFacts.house* field — so neither the bet count an officer reads nor a single risk factor can be derived from a marked stake",
+      readHits.length === 0 && struck197In(kycRead).length === 0 && kycRead.length > 8_000,
+      j({ chars: kycRead.length, hits: readHits, struck: struck197In(kycRead) }));
+
+    const kycModules = srcFiles().filter((rel) => rel.startsWith(KYC_DIR));
+    const moduleProblems = kycModules
+      .map((rel) => ({ rel, code: decomment(read(rel)) }))
+      .map(({ rel, code }) => ({ rel, hits: houseHitsByFamily(code).map((h) => `${h.family}:${h.word}`), struck: struck197In(code) }))
+      .filter((x) => x.hits.length > 0 || x.struck.length > 0);
+    ok("0.197.2 · ⛔ OWNER RULING D20 · not one module under src/app/admin/kyc/ — every file walked from disk, client component, \"use server\" action and page alike — names a house figure: no vocabulary word, no house identifier, and neither of the two struck kycMoneyFacts.house* fields; the KYC surface is where ruling 197's line was painted and it is the one the un-build left unwatched",
+      moduleProblems.length === 0 && kycModules.length >= 10,
+      j({ population: kycModules.length, problems: moduleProblems }));
+
+    const pageCode = decomment(read(KYC_CASE_PAGE));
+    const railSites = jsxAttrNames(KYC_CASE_PAGE, pageCode, "KycDecisionRail");
+    ok("0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the six judgement props it takes today and nothing a money object could ride in on — no spread, and no seventh attribute; moneyFacts stays on the server, where canSeeMoney decides figure by figure what is painted, and a whole object handed to a \"use client\" rail is serialised into the flight payload regardless",
+      railSites.length === 1 && j(railSites[0]) === j(KYC_RAIL_PROPS),
+      j({ sites: railSites }));
+
+    /* ⛔ THE CONTROLS. Every one of the three above is an ABSENCE, and an absence pin that cannot be shown to REPORT
+     * is indistinguishable from a pin reading an empty population. Each plant is the register's own mutation. */
+    const plantedRead = {
+      count: houseHitsByFamily(plant(kycRead, "      out.betCount += 1;", "      if (t.houseBotId == null) out.betCount += 1;")).length,
+      factor: houseHitsByFamily(plant(kycRead, "  const factors: RiskFactor[] = [];", "  const factors: RiskFactor[] = [];\n  if (txns.some((t) => t.houseBotId != null)) factors.push({ label: \"Liquidity\", points: 5, detail: \"marked stakes\" });")).length,
+      struck: struck197In(`${kycRead}\nexport const houseBetCount = (f: KycMoneyFacts) => f.betCount;`).length,
+      benign: houseHitsByFamily(`${kycRead}\n// a household budget, the HOUSE_FEE type and /admin/house are none of this feature's business\nconst t = "HOUSE_FEE";`).length,
+    };
+    ok("0.197.c1 · CONTROL · over the REAL read: the register's own house-blind mutation (a houseBotId condition on the bet count) and its house-derived risk factor are each reported, a struck kycMoneyFacts.house* name planted as an export is reported, and the platform's HOUSE_FEE, /admin/house and the word \"household\" in a comment are not",
+      plantedRead.count >= 1 && plantedRead.factor >= 1 && plantedRead.struck === 1 && plantedRead.benign === 0, j(plantedRead));
+
+    const railCode = decomment(read("src/app/admin/kyc/[id]/kyc-decision-rail.tsx"));
+    const actionsCode = decomment(read("src/app/admin/kyc/[id]/kyc-actions.ts"));
+    const plantedModules = {
+      client: struck197In(`export const railHouseBetCount = (f: { houseBetCount: number }) => f.houseBetCount;\n${railCode}`).length,
+      server: struck197In(`${actionsCode}\nexport async function houseFigures(f: { houseBetCount: number }) { return f.houseBetCount; }`).length,
+      word: houseHitsByFamily(`${railCode}\nconst caption = "of which house stakes";`).length,
+      benign: struck197In(railCode).length + houseHitsByFamily(railCode).length,
+    };
+    ok("0.197.c2 · CONTROL · over the REAL modules: a client component reading a struck KYC house figure and a \"use server\" module exporting one are each reported, a house WORD planted as client copy is reported, and the untouched rail is not",
+      plantedModules.client === 1 && plantedModules.server === 1 && plantedModules.word >= 1 && plantedModules.benign === 0, j(plantedModules));
+
+    const plantedRail = {
+      prop: jsxAttrNames(KYC_CASE_PAGE, plant(pageCode, "<KycDecisionRail", "<KycDecisionRail moneyFacts={moneyFacts}"), "KycDecisionRail"),
+      spread: jsxAttrNames(KYC_CASE_PAGE, plant(pageCode, "<KycDecisionRail", "<KycDecisionRail {...kycMoneyFacts(txns)}"), "KycDecisionRail"),
+    };
+    ok("0.197.c3 · CONTROL · the rail pin reports the register's two shapes over the REAL page — the facts object handed as a named prop, and the facts SPREAD into the tag — and reports the six real props clean",
+      j(plantedRail.prop[0]) !== j(KYC_RAIL_PROPS) && plantedRail.spread[0]?.includes("...") === true && j(railSites[0]) === j(KYC_RAIL_PROPS),
+      j(plantedRail));
+  });
+
+  /* ━━ 0.170.5 · THE DSAR STRIP LIST, WHICH ONLY EVER HAD ONE GUARD AND IT WAS NOT AN ASSERTION ━━━━━━━━━━━━━━━
+   * `exportedAuditPage` (user-service.ts) strips the house keys out of every audit payload a SUBJECT exports for
+   * themselves. `test:dsar-secrets` drives the real door — and its fixture rows carry only `houseBotId` and
+   * `intentId`, and `dsar-export-secrets.test.mts:202` asserts only those two are gone. So `houseStake` and
+   * `houseStakes` could both leave the list with every assertion in that suite green: the fixture never puts them in
+   * a payload, so `houseHits(json)` has nothing to find. ⛔ The list is the control, so the list is what is pinned.
+   */
+  await guard("0.170.5", () => {
+    const HOUSE_AUDIT_STRIP_KEYS = ["houseBotId", "intentId", "houseStake", "houseStakes", "houseBots", "houseBotNotificationsRedacted"];
+    const STRIP_LIST_NAME = "HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED";
+    const userSvc = lf(decomment(read("src/lib/server/user-service.ts")));
+    /* ⚠️ READ BY INDEX, NOT BY A REGEX LITERAL, AND THAT IS RULING 175 RATHER THAN TASTE. A pattern naming
+     * `HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED` is a house-identifier pattern, and `0.175.house-bot-reports-cases.mts`
+     * reported this file for declaring one the first time it was written that way — correctly. The alternative was
+     * an entry in `VOCABULARY_PATTERN_ALLOWLIST`, which would have widened the one exemption `0.175.allow` exists
+     * to keep shrinking, to buy nothing this slice cannot do. */
+    const DECL = `const ${STRIP_LIST_NAME} = [`;
+    const keysOf = (code: string): string[] => {
+      const at = code.indexOf(DECL);
+      const end = at < 0 ? -1 : code.indexOf("]", at);
+      return end < 0 ? [] : code.slice(at + DECL.length, end).split(",").map((s) => s.trim()).filter((s) => s.startsWith("\"") && s.endsWith("\"")).map((s) => s.slice(1, -1));
+    };
+    const keys = keysOf(userSvc);
+    const uses = userSvc.split(STRIP_LIST_NAME).length - 1;
+    ok("0.170.5 · ⛔ RULING 170 · the DSAR export's house strip names EVERY house key an audit payload can carry — houseBotId, intentId, houseStake, houseStakes, houseBots, houseBotNotificationsRedacted — and that one list is what both the detector and the filter read, so a key quietly dropped from it walks straight into a subject's own export with test:dsar-secrets green (its fixture plants two of the six)",
+      j(keys) === j(HOUSE_AUDIT_STRIP_KEYS) && uses === 3, j({ keys, uses }));
+    const dropped = keysOf(userSvc.replace('"houseStake", "houseStakes", ', ""));
+    ok("0.170.c12 · CONTROL · the SAME measure over a copy with the two stake keys dropped reports the change, and over the real module reports none — the pin reads the declaration rather than the word appearing somewhere in the file",
+      j(dropped) !== j(HOUSE_AUDIT_STRIP_KEYS) && dropped.length === 4 && j(keysOf(userSvc)) === j(HOUSE_AUDIT_STRIP_KEYS), j({ dropped }));
+  });
+
+  /* ━━ 0.m5 · `main`'s OWN OFFICER FAN-OUTS — GUARDED ONLY BY A HOUSE CASE THAT WAS STRUCK ━━━━━━━━━━━━━━━━━━━
+   * ⚠️ NOT A HOUSE RULE. C5's register had a mutation for each of these because ruling 195 gave the cancellation
+   * confirmation a house clause; D20 struck the clause and the cases went with it, leaving `main`'s own behaviour —
+   * WHO is told, and WHAT the letter states — with no assertion anywhere. Measured 2026-09-21: no file under
+   * `scripts/` names the role triple, and `emergency-void.test.mts` contains no occurrence of COMPLIANCE at all; it
+   * asserts only that the letter "includes the reason".
+   * 🔴 AND THE FIRST VERSION OF 0.m5.1 SAID SOMETHING FALSE, WHICH IS WORTH KEEPING ON THE RECORD. It read "the
+   * emergency-void confirmation … at BOTH of its sites". There are two `// audit M5` fan-outs in that file and they
+   * are DIFFERENT notifications: `alertOfficersMarketDue` (`:2253`, a market closed by time and awaiting the
+   * two-officer ceremony) and the emergency-void confirmation (`:4519`). The pin was right; its sentence named one
+   * of them twice. Caught by reading the two sites from `git show HEAD:` rather than trusting the label that had
+   * just been written — the assertion guards MORE than it claimed, and an authority that overstates its subject is
+   * how the next session learns the wrong thing from a passing test.
+   */
+  await guard("0.m5", () => {
+    const M5_ROLES = '["ADMIN", "COMPLIANCE", "MODERATOR"]';
+    const ms = lf(decomment(read("src/lib/server/market-service.ts")));
+    /**
+     * ⭐ THE BINDING IS THE DISCRIMINATOR, AND THAT IS WHAT MAKES THIS A MEASURE RATHER THAN A HEADCOUNT. Both
+     * fan-outs read `const officers = await db.user.listByRoles(…)`. Counting every `listByRoles` call in the file
+     * would have made a NEW, unrelated role read somewhere else redden this pin — a guard that cries wolf is a guard
+     * the next session switches off, so 0.m5.c1 below proves one is let through.
+     */
+    const fanOutsOf = (code: string) => [...code.matchAll(/const officers = await db\.user\.listByRoles\(\s*(\[[^\]]*\])\s*\)/g)].map((m) => m[1].replace(/\s+/g, " "));
+    const sites = fanOutsOf(ms);
+    ok("0.m5.1 · ⛔ BOTH officer fan-outs in market-service.ts are addressed to ADMIN, COMPLIANCE and MODERATOR — alertOfficersMarketDue (a market closed by time, awaiting the two-officer ceremony) and the emergency-void confirmation; drop a role from either and a whole officer class silently stops being told, which nothing in this repository measured once ruling 195's house clause was struck and emergency-void.test.mts names COMPLIANCE nowhere at all",
+      sites.length === 2 && sites.every((s) => s === M5_ROLES), j({ sites }));
+    const droppedRole = fanOutsOf(plant(ms, `    const officers = await db.user.listByRoles(${M5_ROLES});`, '    const officers = await db.user.listByRoles(["ADMIN", "MODERATOR"]);'));
+    const unrelated = fanOutsOf(`${ms}\nasync function plantedSweep() { const auditors = await db.user.listByRoles(["ADMIN"]); return auditors; }`);
+    ok("0.m5.c1 · CONTROL · COMPLIANCE dropped from ONE of the two fan-outs is reported — a pin reading only the first site would have passed this — the real module reports two identical triples, and ⭐ THE POSITIVE SIDE: a NEW db.user.listByRoles bound to another name is left alone, so this pin polices the fan-outs and not every role read in the file",
+      droppedRole.length === 2 && droppedRole.filter((s) => s === M5_ROLES).length === 1
+        && fanOutsOf(ms).every((s) => s === M5_ROLES) && unrelated.length === 2 && unrelated.every((s) => s === M5_ROLES),
+      j({ droppedRole, unrelated }));
+
+    const EMAIL_FILE = "src/lib/server/email.ts";
+    const M5_ROW_LABELS = ["Market", "Reason", "Players refunded", "Total refunded"];
+    const emailCode = lf(decomment(read(EMAIL_FILE)));
+    const letterOf = (code: string) => functionDeclarationText(EMAIL_FILE, code, "marketCancelledAdminHtml");
+    const rowsOf = (letter: string) => ({
+      labels: [...letter.matchAll(/\{\s*label:\s*("(?:[^"\\]|\\.)*")\s*,/g)].map((m) => JSON.parse(m[1]) as string),
+      rows: (letter.match(/\{\s*label:/g) ?? []).length,
+    });
+    const real = rowsOf(letterOf(emailCode));
+    ok("0.m5.2 · ⛔ the officer's cancellation confirmation states the same four things whatever the house held: marketCancelledAdminHtml's rows are exactly Market, Reason, Players refunded, Total refunded, and every label is a PLAIN string literal — a conditional label or a fifth row is a fact about the book reaching an officer's letter through a door no notice pin watches (0.198.2's PLAYER_NOTIFIERS cover marketCancelledRefundHtml, not this one)",
+      j(real.labels) === j(M5_ROW_LABELS) && real.rows === M5_ROW_LABELS.length, j(real));
+    const PLAYERS_ROW = '      { label: "Players refunded", value: String(refundedCount) },';
+    const conditional = rowsOf(letterOf(plant(emailCode, PLAYERS_ROW, '      { label: refundedTzs > 0 ? "Players refunded (incl. positions held)" : "Players refunded", value: String(refundedCount) },')));
+    const fifth = rowsOf(letterOf(plant(emailCode, PLAYERS_ROW, `${PLAYERS_ROW}\n      { label: "Of which house stakes", value: formatTzs(refundedTzs) },`)));
+    /** ⭐ THE POSITIVE SIDE: this pin freezes the ROWS, not the letter. One more line of prose must still be allowed. */
+    const CTA = '    ${ctaButton("/admin/markets", "Open markets")}';
+    const extraProse = rowsOf(letterOf(plant(emailCode, CTA, '    ${subtitle("The market is closed and nothing further is owed on it.")}\n' + CTA)));
+    ok("0.m5.c2 · CONTROL · both damaging shapes are reported over the REAL letter — a label made conditional on a money figure (the row count holds at four while a label stops being a literal) and a fifth house row (the labels hold their spelling while the count moves), so neither half of the measure is decoration — and ⭐ THE POSITIVE SIDE: one more line of PROSE in the same letter is NOT reported, because this pin freezes the four rows and not the letter",
+      j(conditional.labels) !== j(M5_ROW_LABELS) && conditional.rows === 4 && fifth.rows === 5 && fifth.labels.includes("Of which house stakes")
+        && j(extraProse.labels) === j(M5_ROW_LABELS) && extraProse.rows === M5_ROW_LABELS.length,
+      j({ conditional, fifth, extraProse }));
+  });
 }
 
 if (STORE === "memory") {
@@ -1798,16 +3020,61 @@ if (STORE === "memory") {
       planted.alias.length === 1 && planted.relative.length === 1 && planted.dynamic.length === 1 && planted.reexport.length === 1 && planted.benign.length === 0
         && fromDisk.positions.length === 1 && fromDisk.route.length === 1 && fromDisk.adminPage.length === 0,
       j({ planted, fromDisk }));
-    const surfaceWords = PLAYER_SURFACE_FILES.map((rel) => ({ rel, printed: printedTexts(rel, code5(rel)).length, words: words(printedTexts(rel, code5(rel))) }));
-    ok("0.198.3 · ⛔ neither player surface PRINTS a house word: every string literal, template part and JSX text of the resolution panel and the public market page is read, and none is a vocabulary word",
-      surfaceWords.every((s) => s.printed > 1_000 && s.words.length === 0), j(surfaceWords));
-    const wordPlants = {
-      jsxText: words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport function PlantedLine() { return <p>House stake: TZS 1,000</p>; }`)),
-      attribute: words(printedTexts(PLAYER_SURFACE_FILES[0], `${panel}\nexport const PlantedTitle = () => <span title="of which chosen by staff TZS 9,000" />;`)),
-      identifier: words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport const plantedRow = { houseBotId: null, houseStake: 0 };`)),
+    /**
+     * ⛔ THE ONE LAWFUL STRING, AND THIS ASSERTION IS THE GUARD THAT COULD NOT SEE IT (C5-8, `§2J · THE JOIN`).
+     * `0.198.3` reads the market page — it always did — and for weeks it reported ZERO house words on a file that
+     * prints `"HOUSE_STAKE_ONLY"`, because the words family was written `house[ -]?stakes?` and an UNDERSCORE is not
+     * in that class. `test:house-bot-surfaces` §4 found it only by reading all three families. Now that the shared
+     * join covers every separator, THIS assertion sees it too — and the answer is not to go back to asserting bare
+     * absence over a file that is not absent. The string is lawful under owner ruling D19c / ruling 146, it is
+     * registered here by exact name, and `0.198.3b` holds the exemption to the ONE assertion that proves the claim
+     * rather than re-proving it here: a second copy of a proof is how two guards come to disagree.
+     * ⛔ SHRINK-ONLY and SUBSTRING-COVERED, for the reason §2J gives: one literal yields a hit per family that can
+     * match it, so a register of exact strings is silently a claim about the PATTERN. `includes` keeps it case- and
+     * separator-sensitive, so `house stake` on this page would still be reported.
+     */
+    const PLAYER_SURFACE_TEXT_REGISTER: Readonly<Record<string, readonly string[]>> = {
+      "src/app/markets/[id]/page.tsx": ["HOUSE_STAKE_ONLY"],
     };
-    ok("0.198.c3 · CONTROL · a house line planted as JSX text in the public market page and as an attribute string in the resolution panel are each found; house identifiers in code are not words",
-      wordPlants.jsxText.length >= 1 && wordPlants.attribute.length >= 1 && wordPlants.identifier.length === 0, j(wordPlants));
+    const unregisteredWords = (rel: string, code: string): string[] =>
+      words(printedTexts(rel, code)).filter((w) => !(PLAYER_SURFACE_TEXT_REGISTER[rel] ?? []).some((a) => a.includes(w)));
+    const surfaceWords = PLAYER_SURFACE_FILES.map((rel) => ({
+      rel, printed: printedTexts(rel, code5(rel)).length,
+      words: words(printedTexts(rel, code5(rel))), unregistered: unregisteredWords(rel, code5(rel)),
+    }));
+    ok("0.198.3 · ⛔ neither player surface PRINTS a house word the register does not name: every string literal, template part and JSX text of the resolution panel and the public market page is read, and the only word either carries is ruling 146's server-side reason on the market page — the string this very assertion was blind to until the shared join covered the underscore",
+      surfaceWords.every((s) => s.printed > 1_000 && s.unregistered.length === 0)
+      && surfaceWords[1].words.length >= 1, j(surfaceWords));
+    const staleSurfaceRegister = Object.entries(PLAYER_SURFACE_TEXT_REGISTER).flatMap(([rel, ws]) => {
+      if (!PLAYER_SURFACE_FILES.includes(rel as Any)) return [`${rel}: no longer a named player surface`];
+      const printed = printedTexts(rel, code5(rel));
+      return ws.filter((w) => !printed.includes(w)).map((w) => `${rel}: "${w}" is registered but no longer printed`);
+    });
+    const SURFACES_SUITE = "scripts/house-bot-surfaces.test.mts";
+    const surfacesSrc = read(SURFACES_SUITE);
+    ok("0.198.3b · ⛔ THE EXEMPTION IS HELD TO THE ASSERTION THAT PROVES IT, NOT RE-PROVED HERE · the registered string is still printed by the page it was registered for (SHRINK-ONLY), and `test:house-bot-surfaces` carries the same file and the same string in its own public register and still declares `4.words.4`, which asserts that the string is an `===` OPERAND and that the branch it selects is LITERAL-ONLY. ⛔ This entry is lawful ONLY while that assertion exists; delete it there and this goes red here",
+      staleSurfaceRegister.length === 0
+      && surfacesSrc.includes("\"src/app/markets/[id]/page.tsx\": [\"HOUSE_STAKE_ONLY\"]")
+      && surfacesSrc.includes("4.words.4") && surfacesSrc.includes("2.join.1"),
+      j({ stale: staleSurfaceRegister, register: PLAYER_SURFACE_TEXT_REGISTER }));
+    /**
+     * ⛔ THE CONTROLS MEASURE WHAT THEIR PLANT ADDS, NOT WHAT THE TREE ALREADY HOLDS (C5-8). Until the join, the
+     * market page read as zero words, so `identifier.length === 0` was accidentally true: the control was reporting
+     * the FILE, not the plant. The moment the file's own lawful string became visible the control went red for a
+     * string it had not planted — the same defect `test:house-bot-surfaces` found in two of its own controls. The
+     * delta is what a control is entitled to claim.
+     */
+    const liveWords = { page: words(printedTexts(PLAYER_SURFACE_FILES[1], page)), panel: words(printedTexts(PLAYER_SURFACE_FILES[0], panel)) };
+    const addedBy = (base: string[], planted: string[]) => planted.filter((w) => !base.includes(w));
+    const wordPlants = {
+      jsxText: addedBy(liveWords.page, words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport function PlantedLine() { return <p>House stake: TZS 1,000</p>; }`))),
+      attribute: addedBy(liveWords.panel, words(printedTexts(PLAYER_SURFACE_FILES[0], `${panel}\nexport const PlantedTitle = () => <span title="of which chosen by staff TZS 9,000" />;`))),
+      identifier: addedBy(liveWords.page, words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport const plantedRow = { houseBotId: null, houseStake: 0 };`))),
+      underscore: addedBy(liveWords.panel, words(printedTexts(PLAYER_SURFACE_FILES[0], `${panel}\nexport const PlantedKey = () => <span title="HOUSE_STAKE_ONLY" />;`))),
+    };
+    ok("0.198.c3 · CONTROL · a house line planted as JSX text in the public market page and as an attribute string in the resolution panel are each ADDED to this file's live reading; house identifiers in code add nothing, because only printed text is read. ⭐ AND THE FOURTH PLANT IS THE ESCAPE ITSELF: the underscored `HOUSE_STAKE_ONLY` planted as an attribute on the OTHER player surface — the file that does not already carry it — is now reported, which it would NOT have been before the join, and that is this assertion's own blindness rebuilt",
+      wordPlants.jsxText.length >= 1 && wordPlants.attribute.length >= 1 && wordPlants.identifier.length === 0 && wordPlants.underscore.length >= 1,
+      j({ plants: wordPlants, live: liveWords }));
 
     const notifierProblems = PLAYER_NOTIFIERS.flatMap(([rel, name]) => playerNotifierProblems(rel, lf(code5(rel)), name, r2Exports, words));
     /** The ADMIN twin beside the player's notice: ruling 195's house clause was un-built (D20), so it carries no house name either. */
@@ -1917,6 +3184,30 @@ if (STORE === "memory") {
         && r.consoleGateCalls.houseLimitsSaveForConsole >= 1
         && r.readerFiles.length >= 14 && MEASURED_LEAKS.every((f) => r.readerFiles.includes(f)) && j(r.outsideReaderFiles) === j(Object.keys(AUDIT_READERS_OUTSIDE_CONSOLE).sort()),
       j({ population: r.population, readerCalls: r.readerCalls, gateCalls: r.gateCalls, consoleGateCalls: r.consoleGateCalls, readerFiles: r.readerFiles, outsideReaderFiles: r.outsideReaderFiles, auditReaders, auditExports, problems: r.problems }));
+
+    /* ⛔ 0.260.2 · THE CLASSIFICATION OF THE SIX NEW EXPORTS IS HELD TO ITS OWN CLAIM, not left as prose beside a
+     * list. Two of the six read `db.auditLog` and are classified NON-READERS because of what their bodies do; this
+     * is the measurement of that. See `auditNonReaderRowClaimProblems`. */
+    const WHERE_PIN = "where: { action: UNVERIFIABLE_BASELINE_ACTION },";
+    const READER_SIG = "export async function readUnverifiableBaseline(): Promise<UnverifiableBaseline | null> {";
+    const nonReaderClaim = auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, auditCode);
+    ok("0.260.2 · ⛔ THE TWO CLASSIFIED NON-READERS THAT TOUCH db.auditLog ARE HELD TO THE CLAIM THEIR CLASSIFICATION MAKES — `readUnverifiableBaseline` reads under a `where` pinned to the ONE platform action and hands back six scalars, `censusUnverifiable` hands back four, and neither names AuditEntry; so \"it returns no row\" is a measurement and not a sentence in a comment beside the list",
+      nonReaderClaim.length === 0
+        && AUDIT_ROW_TOUCHING_NON_READERS.every((n) => (AUDIT_NON_READERS as readonly string[]).includes(n))
+        && auditCode.includes(WHERE_PIN) && auditCode.includes(READER_SIG),
+      j({ problems: nonReaderClaim, pinned: AUDIT_ROW_TOUCHING_NON_READERS }));
+    const widened = auditCode.replace(WHERE_PIN, "where: {},");
+    const rowShaped = auditCode.replace(READER_SIG, "export async function readUnverifiableBaseline(): Promise<AuditEntry | null> {");
+    /* ⚠️ A REGEX, NOT A MULTI-LINE STRING LITERAL: `src/` is CRLF on this machine and a plant written with `\n`
+     * would silently replace NOTHING, leaving a control that plants nothing and passes for the wrong reason. */
+    const censusStub = auditCode.replace(/\): Promise<\{\s*frontierSeq: number; count: number; digest: string; scanned: number;\s*\}> \{/, "): Promise<AuditEntry[]> {");
+    ok("0.260.c4 · CONTROL · the audit module passes this pin TODAY, and the SAME checker reports it the moment the reader's `where` is widened to every row, the moment its return type becomes an audit row, and the moment the census hands back rows — so 0.260.2's zero is a live measurement and the six classifications are not a blanket exemption",
+      widened !== auditCode && rowShaped !== auditCode && censusStub !== auditCode
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, widened).some((p) => p.includes("without pinning where.action"))
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowShaped).some((p) => p.includes("no longer returns Promise<UnverifiableBaseline | null>"))
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowShaped).some((p) => p.includes("readUnverifiableBaseline names AuditEntry"))
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, censusStub).some((p) => p.includes("censusUnverifiable no longer returns four scalars")),
+      j({ widened: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, widened), rowShaped: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowShaped), censusStub: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, censusStub) }));
 
     /* ⛔ 0.512 · RULING 512 · THE GATE TABLE IS HELD TO THE GATE MODULE'S OWN EXPORTS, BOTH WAYS. `CONSOLE_GATES` is
      * five names typed by hand and nothing compared it with the module it describes — while 0.260.1 directly above
@@ -2384,6 +3675,653 @@ await guard("3", async () => {
     j(houseHits(j(feed)).slice(0, 6)));
 });
 
+/* ═══ §9 · ruling 235 · the Up & Down digest: F6's email rule, on both stores ═══════════════════════ */
+
+/**
+ * ⛔ RULING 235 · WHAT A HOLDER IS TOLD ABOUT A DAY THAT WAS ALL HOUSE ROUNDS. 04 F6: a notice whose
+ * positions are ALL house-marked never becomes an email. The digest SPLIT is struck (D19c, C4 rulings
+ * 143–144) — the bell keeps `origin/main`'s all-round figures and carries no label — so what is built
+ * here is the email rule and nothing else, through `channelAllowed`, which had no production caller at
+ * all until this checkpoint. A rule with no caller has never once run.
+ *
+ * ⛔ THE WITHIN-SUBJECT CONTROL IS THE WHOLE POINT, and it is why this section costs two days instead
+ * of one. "No email arrived" is the easiest verdict in the world to fake: no address on the account, an
+ * unarmed outbox, a digest that never ran, a fixture whose rows fell outside the window — every one of
+ * those produces the same silence as the rule working. So the SAME holder, with the SAME address, the
+ * SAME outbox and the SAME digest call, is measured across two days that differ in ONE fact: day 1 is
+ * all house-marked, day 2 carries one round of the holder's own. Day 1 must be silent and day 2 must
+ * email. A break anywhere in the fixture kills day 2 and is seen.
+ *
+ * The accepted residual, recorded so it reads as deliberate: a holder whose day was all house rounds
+ * gets the bell and no letter. The difference is observable and carries no words (9.235.2 compares the
+ * bell to an ordinary player's, field by field), and it repeats C4 rulings 143–144.
+ */
+section("§9 · ruling 235 · a house-only Up & Down day sends the bell and no email; a mixed day emails all-round figures");
+await guard("9.235", async () => {
+  process.env.EMAIL_OUTBOX_CAPTURE = "1";
+  const { loadWorld, OFFICER }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const DIG: Any = await import("../../src/lib/server/updown-digest.ts");
+  const EMAIL: Any = await import("../../src/lib/server/email.ts");
+  const EAT: Any = await import("../../src/lib/eat-day.ts");
+  const CR: Any = await import("../../src/lib/server/comms-registry.ts");
+
+  /* The two days, and the instants a run of the sweep would see them from. `daysBack` is 1 — the only
+   * value the ticker ever passes — so "today" is the day after the one being digested, midday EAT so
+   * the CLOSE_GRACE_MS guard cannot skip the run. */
+  const DAY1 = "2026-08-02", DAY2 = "2026-08-03";
+  const start = (d: string) => EAT.eatDayStartMs(d);
+  const noonAfter = (d: string) => EAT.eatDayStartMs(EAT.eatDayKey(start(d) + 30 * 3_600_000)) + 12 * 3_600_000;
+  const at = (ms: number) => new Date(ms).toISOString();
+
+  const MARKET_TITLE = `Up and Down round ${process.pid}`;
+  const marketId = w.uid("mkt_ud");
+  const nowIso = w.iso();
+  await w.mdal.marketStore.set({
+    id: marketId, titleEn: MARKET_TITLE, titleSw: MARKET_TITLE, titleZh: null,
+    category: "macro", sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
+    proposedBy: OFFICER,
+    resolutionCriterionSw: null, resolutionCriterionZh: null,
+    resolutionAt: nowIso, selectionClosedAt: null, status: "RESOLVED",
+    yesPool: 0, noPool: 0, predictorCount: 0, feeSnapshot: null,
+    resolvedOutcome: "YES", resolutionStage1By: null, resolutionStage1At: null,
+    resolutionStage2By: null, resolutionStage2At: null, resolutionEvidence: null,
+    settledAt: nowIso, createdAt: nowIso, updatedAt: nowIso, productLine: "UPDOWN",
+  });
+
+  /** A settled Up & Down round, marked or not. The marker is create-only in both twins, so it is set here. */
+  let pseq = 0;
+  const round = async (o: { userId: string; status: "WIN" | "LOSS" | "VOID"; stake: number; payout: number; settledAt: string; houseBotId?: string | null }) => {
+    await w.mdal.positionStore.set({
+      id: w.uid("pos_dg"), userId: o.userId, marketId, side: "YES",
+      stake: o.stake, bonusStakeTzs: 0, potentialPayout: o.stake * 2,
+      status: o.status, finalPayout: o.payout,
+      placedAt: at(Date.parse(o.settledAt) - 300_000), settledAt: o.settledAt, idempotencyKey: `dg_${process.pid}_${++pseq}`,
+      houseBotId: o.houseBotId ?? null,
+    });
+  };
+
+  const b = await w.bot();
+  const HOLDER = b.userId;
+  const PLAYER = await w.user({ balance: 100_000 });
+  await w.setUserFields(HOLDER, { email: `holder.dg.${process.pid}@50pick.tz` });
+  await w.setUserFields(PLAYER, { email: `player.dg.${process.pid}@50pick.tz` });
+
+  /* DAY 1 · the holder's rounds are ALL house-marked; the player's are their own. The two accounts are
+   * given IDENTICAL outcomes so 9.235.2 can compare the two bells field by field. */
+  const d1 = start(DAY1) + 3_600_000;
+  await round({ userId: HOLDER, status: "WIN", stake: 5_000, payout: 8_700, settledAt: at(d1), houseBotId: b.botId });
+  await round({ userId: HOLDER, status: "LOSS", stake: 5_000, payout: 0, settledAt: at(d1 + 60_000), houseBotId: b.botId });
+  await round({ userId: PLAYER, status: "WIN", stake: 5_000, payout: 8_700, settledAt: at(d1) });
+  await round({ userId: PLAYER, status: "LOSS", stake: 5_000, payout: 0, settledAt: at(d1 + 60_000) });
+
+  /* DAY 2 · the same holder, one house round and ONE OF THEIR OWN. Everything else is unchanged. */
+  const d2 = start(DAY2) + 3_600_000;
+  await round({ userId: HOLDER, status: "WIN", stake: 5_000, payout: 8_700, settledAt: at(d2), houseBotId: b.botId });
+  await round({ userId: HOLDER, status: "LOSS", stake: 5_000, payout: 0, settledAt: at(d2 + 60_000) });
+
+  const totals1 = await w.mdal.positionStore.dailyTotalsByUser({ fromIso: at(start(DAY1)), toIso: at(start(DAY1) + 864e5), productLine: "UPDOWN" });
+  const h1 = totals1.find((t: Any) => t.userId === HOLDER);
+  const p1 = totals1.find((t: Any) => t.userId === PLAYER);
+  ok("9.235.0 · CONTROL · the discriminator is LIVE on this store: day 1 gives the holder 2 rounds and ZERO of their own, the player 2 and 2 — so the two accounts differ in exactly the fact the rule reads",
+    h1?.rounds === 2 && h1?.ownRounds === 0 && p1?.rounds === 2 && p1?.ownRounds === 2, j({ holder: h1, player: p1 }));
+
+  EMAIL.clearEmailOutbox();
+  const run1 = await DIG.runUpDownDailyDigest({ nowMs: noonAfter(DAY1), daysBack: 1 });
+  const mail1 = [...EMAIL.emailOutbox()];
+  const bells1 = (await w.db.notification.findByUser(HOLDER, 50)) as Any[];
+  const playerBells1 = (await w.db.notification.findByUser(PLAYER, 50)) as Any[];
+  const href1 = DIG.digestHref(DAY1);
+  const holderBell = bells1.find((n) => n.href === href1);
+  const playerBell = playerBells1.find((n) => n.href === href1);
+
+  ok("9.235.1 · ⛔ 04 F6 · a day that was ALL house rounds: the holder gets the BELL and NO email, while the player with the identical day gets both — same run, same outbox, same addresses",
+    run1.dayKey === DAY1 && !!holderBell && !!playerBell
+    && mail1.filter((m: Any) => m.to.startsWith("holder.dg.")).length === 0
+    && mail1.filter((m: Any) => m.to.startsWith("player.dg.")).length === 1,
+    j({ dayKey: run1.dayKey, sent: run1.sent, to: mail1.map((m: Any) => m.to) }));
+
+  const bellFields = (n: Any) => ({ kind: n.kind, href: n.href, titleEn: n.titleEn, titleSw: n.titleSw, titleZh: n.titleZh, bodyEn: n.bodyEn, bodySw: n.bodySw, bodyZh: n.bodyZh });
+  ok("9.235.2 · ⛔ D19c · …and the holder's bell is FIELD FOR FIELD the player's — same kind, same link, same three titles and three bodies, no label and no house word: the account is told about its day exactly as a player is",
+    !!holderBell && !!playerBell && j(bellFields(holderBell)) === j(bellFields(playerBell)) && houseHits(j(bellFields(holderBell))).length === 0,
+    j({ holder: bellFields(holderBell ?? {}), player: bellFields(playerBell ?? {}) }));
+
+  ok("9.235.3 · CONTROL · the absence is not vacuous: the ONE email this run did send carries the player's all-round figures, and the fixture's own market exists on the board the totals were read from",
+    mail1.length === 1 && /Up & Down/.test(mail1[0].subject) && mail1[0].tag === "updown-digest"
+    && houseHits(`${mail1[0].subject} ${mail1[0].html}`).length === 0,
+    j({ subject: mail1[0]?.subject, tag: mail1[0]?.tag, hits: houseHits(`${mail1[0]?.subject ?? ""} ${mail1[0]?.html ?? ""}`).slice(0, 4) }));
+
+  /* ── DAY 2 · the same holder, one round of their own. THIS is what makes day 1 a measurement. ─────── */
+  EMAIL.clearEmailOutbox();
+  const run2 = await DIG.runUpDownDailyDigest({ nowMs: noonAfter(DAY2), daysBack: 1 });
+  const mail2 = [...EMAIL.emailOutbox()];
+  const bells2 = (await w.db.notification.findByUser(HOLDER, 50)) as Any[];
+  const holderBell2 = bells2.find((n) => n.href === DIG.digestHref(DAY2));
+  const totals2 = await w.mdal.positionStore.dailyTotalsByUser({ fromIso: at(start(DAY2)), toIso: at(start(DAY2) + 864e5), productLine: "UPDOWN" });
+  const h2 = totals2.find((t: Any) => t.userId === HOLDER);
+  ok("9.235.4 · ⛔ THE WITHIN-SUBJECT CONTROL · the SAME holder, SAME address, SAME outbox, SAME digest call, one day later with ONE round of their own: the email ARRIVES. Day 1's silence is therefore the rule and not a broken fixture",
+    run2.dayKey === DAY2 && h2?.rounds === 2 && h2?.ownRounds === 1 && !!holderBell2
+    && mail2.filter((m: Any) => m.to.startsWith("holder.dg.")).length === 1,
+    j({ dayKey: run2.dayKey, totals: h2, to: mail2.map((m: Any) => m.to) }));
+
+  ok("9.235.5 · …and that email carries the ALL-ROUND figures (both rounds, the house one included) with no house word and no split — the bell and the letter say the same thing a player's would",
+    mail2.length === 1 && /2 rounds|Rounds/.test(mail2[0].html) && houseHits(`${mail2[0].subject} ${mail2[0].html}`).length === 0,
+    j({ subject: mail2[0]?.subject, rounds: h2?.rounds, hits: houseHits(`${mail2[0]?.subject ?? ""} ${mail2[0]?.html ?? ""}`).slice(0, 4) }));
+
+  const AUD: Any = await import("../../src/lib/server/audit.ts");
+  await AUD.auditFlush?.();
+  const digestRows = AUD.getAuditPage({ category: "SYSTEM", limit: 500 }).filter((e: Any) => e.action === "updown.digest_sent");
+  ok("9.235.6 · ⛔ D19 · the run's ONE audit row carries no house count and names nothing — `sent` counts notices, which is what was sent",
+    digestRows.length >= 1 && digestRows.every((e: Any) => houseHits(j(e)).length === 0 && !("houseOnly" in (e.payload ?? {})) && !("ownRounds" in (e.payload ?? {}))),
+    j(digestRows.map((e: Any) => e.payload)));
+
+  ok("9.235.7 · CONTROL · the helper itself answers both ways for ROUND_RESULT — houseOnly true closes the email and the phone, false leaves the channel policy alone — so 9.235.1 rests on a live decision, not on a constant",
+    CR.channelAllowed("ROUND_RESULT", { houseOnly: true }).email === false
+    && CR.channelAllowed("ROUND_RESULT", { houseOnly: true }).sms === false
+    && CR.channelAllowed("ROUND_RESULT", { houseOnly: false }).email === true
+    && CR.channelAllowed("ROUND_RESULT", {}).email === true,
+    j({ houseOnly: CR.channelAllowed("ROUND_RESULT", { houseOnly: true }), plain: CR.channelAllowed("ROUND_RESULT", {}) }));
+});
+
+/* ═══ §11 · ruling 247 · THE SERVICE-LAYER ABSENCE SWEEP, for every viewer, on both stores ═══════════ */
+
+/**
+ * ⛔ RULING 247. Every reader a player's screen is built from is called AS EACH VIEWER — signed out,
+ * another player, the holder, a trigger player — and its whole serialised output is searched for the
+ * fixture's own house ids and for the shared vocabulary. This is the layer between the database (where
+ * the marker legitimately lives) and the served page (248): a projection that leaks a raw row leaks it
+ * here first, and a page-level check would only find it after a designer happened to render the field.
+ *
+ * ⛔ THE THREE THINGS THAT MAKE IT EVIDENCE RATHER THAN A CLEAN VERDICT (the C5-7 law):
+ *   (i)   A PLANTED RAW READ IS FOUND. `positionStore.get(<the house position>)` is swept as if it were
+ *         one of the readers, and the sweep MUST report it. A sweep that cannot see the marker on a row
+ *         that carries it is measuring nothing, and this is the only control that says which.
+ *   (ii)  A RAW NON-HOUSE POSITION ROW IS FOUND TOO, because the identifier pattern counts `houseBotId`
+ *         WHATEVER ITS VALUE — so an unprojected raw row is a leak by design, even when no house stake
+ *         exists. This is the control that would have caught a projection returning raw rows on a
+ *         fixture that happened to have no house money in it.
+ *   (iii) THE FIXTURE'S OWN MARKET TITLE AND THE HOLDER'S DISPLAY NAME ARE FOUND in getBoard-class
+ *         output and in the leaderboard. Without this, every zero below is consistent with readers that
+ *         returned nothing at all.
+ *
+ * ⛔ AND THE POPULATION IS PRINTED — how many readers ran, per viewer, and how many bus frames were
+ * captured. A reader that starts throwing (and is swallowed) leaves the sweep smaller and quieter, and
+ * that is the shape this checkpoint exists to refuse. A reader that could not be exercised at all is
+ * NOT MEASURED, by name, in `plans/house-bots/DEFERRED-TESTS.md` — never silently dropped.
+ */
+section("§11 · ruling 247 · the service-layer absence sweep: every reader, every viewer, the fixture's own ids as needles");
+await guard("11.247", async () => {
+  const { loadWorld, OFFICER }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const SVC: Any = w.svc;
+  const BUS: Any = await import("../../src/lib/server/event-bus.ts");
+  const COMMENTS: Any = await import("../../src/lib/server/comments-store.ts");
+  const TICKER: Any = await import("../../src/lib/server/ticker-feed.ts");
+  const FAIRNESS: Any = await import("../../src/app/api/fairness/recent/route.ts");
+  const HEALTH: Any = await import("../../src/app/api/health/route.ts");
+  const HB: Any = await import("../../src/lib/server/house-bot-dal.ts");
+  const HIST: Any = await import("../../src/lib/server/market-history.ts");
+  const WATCH: Any = await import("../../src/lib/server/watchlist-service.ts");
+  const LEADER: Any = await import("../../src/lib/server/leader.ts");
+  const HBC: Any = await import("../../src/lib/house-bot/constants.ts");
+
+  /**
+   * ⛔ **THE SWEEP'S OWN SERIALISER, BECAUSE `JSON.stringify` CANNOT SEE INSIDE A `Map`.** C5-7's review, high.
+   * `JSON.stringify(new Map([["a", ["b"]]]))` is the two characters `{}` — a `Map` has no enumerable own properties
+   * and no `toJSON`. THREE of this sweep's readers answer with one (`traderSeedsByMarket`, `getCardCharts`,
+   * `countCommentsByMarkets`), so each of them contributed ZERO BYTES to the needle search for every viewer, and the
+   * checkpoint's own declared mutation `247-seeds-raw` / S7-M08 — which makes `traderSeedsByMarket` answer with raw
+   * position rows, marker and `hb:` bet key and all — could not have reddened 11.247.2. An absence proof whose
+   * instrument reads two characters is the exact shape rule 1 of this checkpoint's law refuses, and it is why
+   * 11.247.c5 below plants that mutation's own answer shape and requires it REPORTED before any verdict is read.
+   * `Set` and `bigint` are handled for the same reason: a container the serialiser does not know is a hole.
+   */
+  const sweepJson = (v: unknown): string =>
+    JSON.stringify(v, (_k, val) => {
+      if (val instanceof Map) return { "@Map": [...(val as Map<unknown, unknown>).entries()] };
+      if (val instanceof Set) return { "@Set": [...(val as Set<unknown>).values()] };
+      if (typeof val === "bigint") return String(val);
+      return val;
+    }) ?? String(v);
+
+  /* ── the bus, captured from before the fixture moves anything ────────────────────────────────── */
+  const KNOWN_BUS = ["market:odds", "wallet:balance", "notification:new", "market:resolve"] as const;
+  const frames: Array<{ type: string; data: unknown }> = [];
+  const stop = KNOWN_BUS.map((t) => BUS.subscribe(t, (data: unknown) => { frames.push({ type: t, data }); }));
+
+  /* ── the fixture ─────────────────────────────────────────────────────────────────────────────── */
+  await w.limits();
+  await w.switchOn();
+  const bot = await w.bot();
+  const HOLDER = bot.userId;
+  await w.setUserFields(HOLDER, { displayName: "Holder Of Record" });
+  const PLAYER = await w.user({ balance: 500_000 });
+  await w.setUserFields(PLAYER, { displayName: "Ordinary Player" });
+  const TRIGGER = await w.user({ balance: 500_000 });
+  await w.setUserFields(TRIGGER, { displayName: "Trigger Player" });
+
+  const MARKET_TITLE = `Sweep poll ${process.pid}`;
+  const m = await w.poll();
+  await w.mdal.marketStore.set({ ...(await w.mdal.marketStore.get(m.id)), titleEn: MARKET_TITLE });
+
+  // A player's own stake, a trigger player's stake, and the house's answer to it.
+  /* ⚠️ BOTH PLAYER STAKES ARE BACKDATED, and the fixture does not work without it: the seam only
+     counts a stake as LOCKED once it is older than `LOCK_MARGIN_MS` (skew + claim guard), so a house
+     FILL against a pool placed a millisecond ago is refused `house_condition_gone`. A fixture of time,
+     exactly as `qa:house-bot-console-probe` uses it — never a relaxed condition. */
+  const pBet = await SVC.buyPosition(PLAYER, { marketId: m.id, side: "YES", stake: 20_000 });
+  const trig = await SVC.buyPosition(TRIGGER, { marketId: m.id, side: "YES", stake: 20_000 });
+  for (const r of [pBet, trig]) if ((r as Any)?.ok) await w.backdate((r as Any).data.positionId, 120_000);
+  /* ⚠️ `buyPosition` answers `{ positionId }`, and a COUNTER intent's anchorKey IS that id (the
+     HouseBotIntent_counter_anchor_check). Reading the wrong field here does not fail quietly — the
+     check constraint refuses the row — which is the database doing this checkpoint's job for it. */
+  const trigPositionId = (trig as Any)?.data?.positionId ?? null;
+  const i1 = await w.intent(bot, m.id, { side: "NO", stakeTzs: 10_000 });
+  const placed = await w.place(bot, i1);
+
+  // The trigger player's COUNTER intent and their penalty box — the two house rows ABOUT a player.
+  if (typeof trigPositionId !== "string") throw new Error("the trigger player's position id did not come back; the counter fixture would be a lie");
+  const i2 = await w.intent(bot, m.id, { kind: "COUNTER", side: "NO", stakeTzs: 5_000, triggerPositionId: trigPositionId, triggerUserId: TRIGGER });
+  const countered = await w.place(bot, i2);
+  const boxed = await HB.houseBotEventStore.append({
+    houseBotId: bot.botId, userId: TRIGGER, marketId: m.id, kind: "PENALTY_BOXED",
+    fromStatus: null, toStatus: null, reason: null, actorId: null,
+    payload: { day: "2026-08-02", cause: "CASHED_OUT_COUNTERED" },
+  });
+
+  // A holder comment, on the market their account holds a stake in.
+  const comment = await COMMENTS.addComment(HOLDER, m.id, "A comment from the account of record.", "NONE");
+
+  // An emergency void of a SECOND house-held market — its bus frames and notices exist while the sweep runs.
+  const m2 = await w.poll();
+  const vBet = await SVC.buyPosition(PLAYER, { marketId: m2.id, side: "NO", stake: 30_000 });
+  if ((vBet as Any)?.ok) await w.backdate((vBet as Any).data.positionId, 120_000);
+  await w.ageHouseMinute();
+  const i3 = await w.intent(bot, m2.id, { side: "YES", stakeTzs: 4_000 });
+  const placed2 = await w.place(bot, i3);
+  const voided = await SVC.emergencyVoidMarket({ marketId: m2.id, officerId: OFFICER, reason: "sweep fixture void" });
+
+  /* ⛔ A THIRD HOUSE-HELD MARKET, RESOLVED — BECAUSE ONE OF THE FOUR BUS TYPES HAD NO EMITTER ON ANY PATH THIS
+     FIXTURE DROVE (C5-7's review, high). Ruling 247 requires "every frame of the four KNOWN_EVENTS types captured
+     from the bus". Measured on the first run of the per-type breakdown below: market:odds 6, wallet:balance 8,
+     notification:new 7, **market:resolve 0** — `market:resolve` is emitted at exactly two sites
+     (`resolveDueMarket` and `resolveMarket`) and the fixture called neither, so adding `houseBotId` to that
+     payload type would have left this sweep green and its printed total unchanged. A resolve is driven here, on a
+     market the house holds a stake in, so the type is swept with house money in the room. */
+  const m3 = await w.poll();
+  const rBet = await SVC.buyPosition(PLAYER, { marketId: m3.id, side: "YES", stake: 15_000 });
+  if ((rBet as Any)?.ok) await w.backdate((rBet as Any).data.positionId, 120_000);
+  await w.ageHouseMinute();
+  const i4 = await w.intent(bot, m3.id, { side: "NO", stakeTzs: 3_000 });
+  const placed3 = await w.place(bot, i4);
+  const resolved = await SVC.resolveMarket({ marketId: m3.id, outcome: "YES", officerId: OFFICER, evidence: "sweep fixture resolve" });
+
+  /* ⛔ A TARGET ROW AND A PRESS ROW, BECAUSE RULING 247 NAMES FIVE NEEDLE CLASSES AND THE FIXTURE SUPPLIED THREE
+     (C5-7's review, medium). Its Needles line reads "the fixture's own bot, intent, event, target and press ids" —
+     and no `targetStore` or `pressStore` write appeared anywhere in this guard, so a target id or a press id
+     reaching a reader's output was not detectable here AT ALL: `IDS` could not hold what the fixture never made.
+     Both are bounded house ids (`hbt_`/`hbp_`), so they are needles in their own right and in the vocabulary's
+     `ids` family. */
+  const tgt = await HB.targetStore.insert({
+    id: HB.newHouseId("target"), houseBotId: bot.botId, marketId: m.id, delayMinSec: 5, delayMaxSec: 10,
+    timingFrom: "STAKE", reactTo: "FIRST", createdById: OFFICER,
+    snapshot: { titleEn: MARKET_TITLE, category: "macro", cutoff: w.iso(3_600_000), rawYes: 0, rawNo: 0 },
+  });
+  const press = await HB.pressStore.insertChecking({
+    id: HB.newHouseId("press"), actorId: OFFICER, submitId: crypto.randomUUID(), purpose: "ENTER_NOW",
+    houseBotId: bot.botId, marketId: m.id, targetId: tgt.id, intentId: i1.id, reason: "sweep fixture press",
+  });
+
+  /* ⛔ AND THE BOT'S OWN LABEL IS A NEEDLE. `label` is the one ARBITRARY, OWNER-CHOSEN house string in the system —
+     it matches no vocabulary pattern by construction, and it is the needle `test:erasure` uses. Read back from the
+     row rather than re-typed, so a fixture that stopped labelling its bot cannot quietly stop testing for one. */
+  const botRow = await HB.houseBotStore.get(bot.botId);
+
+  /* ⛔ THE PLANNER LEASE IS TAKEN BEFORE `/api/health` IS SWEPT — ruling 247 requires exactly this, and it was not
+     built (C5-7's review, high). `/api/health`'s ONLY house-bearing path is the `leadership` map, filtered to
+     `PUBLIC_LEASE_TASKS` at `src/app/api/health/route.ts:34`. With no lease taken in this process that map CANNOT
+     contain the planner key whatever the filter does, so four of the sweep's rows reported an absence produced by
+     the fixture. `HOUSE_PLANNER_TASK` is `house-bot`, a shared-vocabulary word, so the unfiltered snapshot is a
+     REAL needle in a REAL artefact — and 11.247.c6 below requires the sweep to find it there before 11.247.2's
+     zero on `/api/health` is read as anything. The lease is NOT released: §11.171 reads the same route after this. */
+  const leaseTaken = await LEADER.acquireLeadership(HBC.HOUSE_PLANNER_TASK);
+
+  const housePositions = (await w.positionsOf(m.id)).filter((p: Any) => p.houseBotId != null);
+  const playerPositions = (await w.positionsOf(m.id)).filter((p: Any) => p.houseBotId == null);
+  for (const s of stop) s();
+
+  ok("11.247.0 · the fixture is real: a house stake on a poll, a countered trigger player with a penalty box, a holder comment, an emergency void of a second house-held market, a RESOLVE of a third, and a target and a press row about the bot — with the bus captured throughout",
+    placed?.ok === true && countered?.ok === true && placed2?.ok === true && placed3?.ok === true && resolved?.ok === true
+    && housePositions.length >= 2 && playerPositions.length >= 2
+    && !!boxed?.id && comment?.ok === true && voided?.ok === true && !!tgt?.id && (press as Any)?.ok !== false && frames.length > 0,
+    j({ housePositions: housePositions.length, playerPositions: playerPositions.length, placed: placed?.ok, countered: countered?.ok, voidMarketStake: placed2?.ok, resolveMarketStake: placed3?.ok, resolved: resolved?.ok, boxed: !!boxed?.id, comment: comment?.ok, voided: voided?.ok, target: !!tgt?.id, press: (press as Any)?.ok ?? !!(press as Any)?.id, frames: frames.length, refusals: [placed, countered, placed2, placed3, resolved].filter((r: Any) => r?.ok !== true) }));
+
+  /* ── the needles ─────────────────────────────────────────────────────────────────────────────── */
+  /* ⛔ FIVE CLASSES, NOT THREE (ruling 247's Needles line, restored by C5-7's review): the bot, intent, event,
+     TARGET and PRESS ids, the `hb:` bet keys — and the bot's own `label`/`labelKey`, which match no vocabulary
+     pattern and are the only owner-chosen house strings the system holds. */
+  const IDS = [
+    bot.botId, bot.userId === HOLDER ? null : bot.userId, i1.id, i2.id, i3.id, i4.id, boxed.id, tgt.id,
+    (press as Any)?.row?.id ?? (press as Any)?.id ?? null,
+    `hb:${i1.id}`, `hb:${i2.id}`, `hb:${i4.id}`, botRow?.label ?? null, botRow?.labelKey ?? null,
+  ].filter(Boolean) as string[];
+  const needlesIn = (text: string) => [
+    ...IDS.filter((n) => text.includes(n)).map((n) => `id:${n}`),
+    ...houseHitsByFamily(text).map((h) => `${h.family}:${h.word}`),
+  ];
+
+  /**
+   * ── the readers ───────────────────────────────────────────────────────────────────────────────
+   *
+   * ⛔ **THE PER-VIEWER DIMENSION IS APPLIED ONLY WHERE IT EXISTS** (C5-7's review, medium-low). The first version
+   * ran nine readers for each of four viewers and printed "36 sweeps · 4 viewers × 9 readers". EIGHT of the nine
+   * took no viewer argument and no session was established, so thirty-two of those thirty-six rows were byte-for-byte
+   * repeats: the printed population was four times the number of independent measurements, and rule 3 of this
+   * checkpoint's law is that the population must be visible WITHOUT re-reading the source. So the readers are split
+   * by what they actually take. A viewer-blind reader runs ONCE and says so; a reader a signed-in player's own
+   * screen is built from runs once per viewer, which is the dimension ruling 247 was aimed at.
+   *
+   * ⛔ AND THE READER SET GREW to the rest of what `/markets` and `/markets/[id]` are actually built from:
+   * `listMarkets`, `getSimilarMarkets`, `getCardCharts`, `countCommentsByMarkets` and `listWatchedMarketIds`. Three
+   * of those answer with a `Map` and were unreadable to the old serialiser; see `sweepJson`.
+   *
+   * ⛔ `listPositionsForUser` IS THE ONE READER DELIBERATELY OUTSIDE THE VERDICT, and the reason is the reason
+   * `listPositionsForMarket` is: it answers with RAW, UNPROJECTED position rows, and its viewer-facing caller
+   * (`src/app/markets/[id]/page.tsx:181`) is a SERVER component that reads fields one at a time and hands a client
+   * component scalars. Sweeping it as a leak would report the raw row the page never serialises — the "leak" would
+   * be the fixture's. It was in neither the population nor `DEFERRED-TESTS.md` before, which is rule 4's silent
+   * drop; it is now proved REPORTED by 11.247.c1b (so the sweep is not blind to it) and its caller is pinned by
+   * 11.247.c1d. What still cannot be swept HERE — the SERVED layer, and Up & Down's `getBoard`/`getRoundDetail`,
+   * which need a fixture this suite does not have — is NOT MEASURED by name in
+   * `plans/house-bots/DEFERRED-TESTS.md` §1j.
+   */
+  const anchor = await w.mdal.marketStore.get(m.id);
+  const PUBLIC_READERS: Array<[string, () => Promise<unknown>]> = [
+    ["getMarket", () => SVC.getMarket(m.id)],
+    ["getMarket(voided)", () => SVC.getMarket(m2.id)],
+    ["listMarkets", () => SVC.listMarkets()],
+    ["getSimilarMarkets", () => SVC.getSimilarMarkets(anchor, 6)],
+    ["getCardCharts", () => HIST.getCardCharts([m.id, m2.id])],
+    ["countCommentsByMarkets", () => COMMENTS.countCommentsByMarkets([m.id, m2.id])],
+    ["leaderboard", () => w.mdal.positionStore.leaderboard(50)],
+    ["leaderboardPlayerCounts", () => w.mdal.positionStore.leaderboardPlayerCounts()],
+    ["traderSeedsByMarket", () => SVC.traderSeedsByMarket([m.id, m2.id], 3)],
+    ["getTickerFeed", () => TICKER.getTickerFeed("en", 50)],
+    ["listComments(signed out)", () => COMMENTS.listComments(m.id, null, { limit: 100 })],
+    ["/api/fairness/recent", () => FAIRNESS.GET().then((r: Any) => r.text())],
+    ["/api/health", () => HEALTH.GET().then((r: Any) => r.text())],
+  ];
+  /** Readers that TAKE the viewer — the only ones for which "for each viewer" is a real dimension. */
+  const viewerReaders = (viewer: string): Array<[string, () => Promise<unknown>]> => [
+    ["listComments", () => COMMENTS.listComments(m.id, viewer, { limit: 100 })],
+    ["listWatchedMarketIds", () => WATCH.listWatchedMarketIds(viewer)],
+  ];
+  const SIGNED_IN: Array<[string, string]> = [["another player", PLAYER], ["the holder", HOLDER], ["a trigger player", TRIGGER]];
+
+  const swept: string[] = [];
+  const leaks: string[] = [];
+  const threw: string[] = [];
+  const sweep = async (label: string, call: () => Promise<unknown>) => {
+    let text: string;
+    try { text = sweepJson(await call()); } catch (e) { threw.push(`${label}: ${String((e as Error)?.message ?? e).slice(0, 80)}`); return; }
+    swept.push(label);
+    const hits = needlesIn(text);
+    if (hits.length > 0) leaks.push(`${label} → ${hits.slice(0, 4).join(", ")}`);
+  };
+  for (const [name, call] of PUBLIC_READERS) await sweep(`public/${name}`, call);
+  for (const [label, viewer] of SIGNED_IN) for (const [name, call] of viewerReaders(viewer)) await sweep(`${label}/${name}`, call);
+  // Every captured bus frame, which is what /api/events forwards to a signed-in client.
+  for (const f of frames) {
+    swept.push(`bus/${f.type}`);
+    const hits = needlesIn(sweepJson(f));
+    if (hits.length > 0) leaks.push(`bus/${f.type} → ${hits.slice(0, 4).join(", ")}`);
+  }
+
+  /* ⛔ THE BUS POPULATION IS PRINTED BY TYPE, NOT AS A TOTAL (C5-7's review, high). `frames.length >= 1` over an
+     evidence string reading "21 bus frames" is the same verdict whether the fixture exercised four of the four
+     KNOWN_EVENTS types or one — so a payload type that grew a house field on a path this fixture never drives
+     would leave the sweep green and the count unchanged. The breakdown is asserted, per type, and a type with no
+     frame is NAMED. */
+  const byType = Object.fromEntries(KNOWN_BUS.map((t) => [t, frames.filter((f) => f.type === t).length]));
+  const silentTypes = KNOWN_BUS.filter((t) => byType[t] === 0);
+  const expectedReads = PUBLIC_READERS.length + SIGNED_IN.length * viewerReaders(PLAYER).length;
+  ok("11.247.1 · the population is real, it is printed, and it is a count of INDEPENDENT measurements: each viewer-blind reader once, each viewer-facing reader once per signed-in viewer, and every captured bus frame BY TYPE — a reader that starts throwing leaves the sweep smaller and is NAMED here, never swallowed",
+    swept.length >= expectedReads && threw.length === 0 && silentTypes.length === 0,
+    `${swept.length - frames.length} reads (${PUBLIC_READERS.length} viewer-blind × 1 + ${SIGNED_IN.length} signed-in viewers × ${viewerReaders(PLAYER).length} viewer-facing) + ${frames.length} bus frames ${j(byType)} · silent types: ${j(silentTypes)} · threw: ${j(threw)}`);
+  ok("11.247.2 · ⛔ D19 · ruling 247 · HB-LC-39 / CRA-27 · every viewer · NOT ONE of them carries the fixture's bot, intent, event, target or press id, the hb: bet key, the bot's own label, or a word, identifier or bounded id of the shared vocabulary — for a signed-out visitor, another player, the holder or the trigger player",
+    leaks.length === 0, j(leaks.slice(0, 8)));
+
+  /* ── the controls, and they are the assertion ────────────────────────────────────────────────── */
+  const rawHouse = j(await w.mdal.positionStore.get(housePositions[0].id));
+  const rawPlayer = j(await w.mdal.positionStore.get(playerPositions[0].id));
+  ok("11.247.c1 · CONTROL (i) · a RAW read of the house position, swept exactly as a reader would be, IS reported — with the marker's value and the identifier both found. A sweep that cannot see this is measuring nothing",
+    needlesIn(rawHouse).some((h) => h.startsWith("id:")) && needlesIn(rawHouse).some((h) => h.includes("houseBotId")),
+    j(needlesIn(rawHouse).slice(0, 4)));
+  /* ⭐ THE BEST CONTROL IS A REAL READER, NOT A SYNTHETIC ONE. `listPositionsForMarket` is a SERVICE
+     function that returns position rows UNPROJECTED, marker and bet key and all. It is deliberately NOT
+     in the viewer sweep above — ruling 247 names the readers a player's screen is built from, and this
+     is not one of them: its four callers are `/admin/markets/[id]` and `/admin/resolver/[id]` (which
+     render cells, server-side), `objections-service` (the caller's own positions, server-side) and
+     `updown-board.myStakesByMarket` (the viewer's own positions, projected to six fields before anything
+     sees them; pinned by 11.247.c1c). What it IS, is proof that this sweep can see a raw row when one
+     is handed to it, on the same fixture, through the same needles as every reader above. */
+  /* ⛔ AND IT IS TWO FUNCTIONS, NOT ONE (C5-7's review, medium-low). `listPositionsForUser` is the SAME shape with
+     the SAME exemption — raw rows, a server-side caller that reads fields one at a time — and it was named in
+     neither the sweep nor the deferred register, which is a silent drop rather than a decision. Both are required
+     to be REPORTED here, so the pair of exemptions above is a measurement and not an assumption. */
+  const rawService = j(await SVC.listPositionsForMarket(m.id));
+  const rawUser = sweepJson(await SVC.listPositionsForUser(HOLDER, 100));
+  ok("11.247.c1b · CONTROL (i, again, with REAL readers) · BOTH unprojected service reads — `listPositionsForMarket` and the holder's own `listPositionsForUser` — ARE reported, with the bot id, the intent ids and the hb: bet key. A synthetic plant proves the needles; these prove them against two functions the product actually has, and they are the two the verdict deliberately excludes",
+    [`id:${bot.botId}`, `id:${i1.id}`, `id:hb:${i1.id}`].every((n) => needlesIn(rawService).includes(n))
+    && [`id:${bot.botId}`, `id:${i1.id}`].every((n) => needlesIn(rawUser).includes(n)),
+    j({ forMarket: needlesIn(rawService).slice(0, 4), forUser: needlesIn(rawUser).slice(0, 4) }));
+
+  /* ⛔ AND `listPositionsForUser`'s VIEWER-FACING CALLER IS PINNED, exactly as `myStakesByMarket` is by c1c. The
+     page is a SERVER component, so the raw row is safe only while it stays there: the row is safe if no JSX
+     attribute on that page is handed the position binding WHOLE (`prop={p}` or `{...p}`), because a whole row
+     crossing into a client component's props is a row in the RSC payload. The plant below hands `SellButton` the
+     spread and requires the pin to report it, so the zero is a measurement of the page and not of a walk that
+     reached nothing. */
+  const posPage = "src/app/markets/[id]/page.tsx";
+  const wholeRowProps = (code: string): string[] => {
+    const sf = parse(posPage, code);
+    const out: string[] = [];
+    walkTree(sf, (n) => {
+      if (ts.isJsxSpreadAttribute(n) && ts.isIdentifier(n.expression) && n.expression.text === "p") {
+        out.push(`spread {...p} at ${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1}`);
+      }
+      if (ts.isJsxAttribute(n) && n.initializer && ts.isJsxExpression(n.initializer)
+        && n.initializer.expression && ts.isIdentifier(n.initializer.expression) && n.initializer.expression.text === "p") {
+        out.push(`${n.name.getText()}={p} at ${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1}`);
+      }
+    });
+    return out;
+  };
+  const posCode = decomment(read(posPage));
+  const posPlant = posCode.replace("<SellButton", "<SellButton {...p}");
+  ok("11.247.c1d · the viewer-facing caller of `listPositionsForUser` keeps the raw row on the SERVER: no JSX attribute on /markets/[id] is handed the position binding whole — no `prop={p}`, no `{...p}` — so the marker cannot ride an RSC payload out of a page that only ever reads fields",
+    wholeRowProps(posCode).length === 0 && posCode.includes("listPositionsForUser"), j(wholeRowProps(posCode)));
+  ok("11.247.c1d.control · CONTROL · the plant really CHANGED the page and the pin REPORTS the spread — so c1d's zero is a measurement of this page and not of a walk that matched nothing",
+    posPlant !== posCode && wholeRowProps(posPlant).length === 1, `changed=${posPlant !== posCode} · ${j(wholeRowProps(posPlant))}`);
+
+  /* ⛔ AND THE ONE CALLER THAT A VIEWER REACHES IS PINNED. `myStakesByMarket` is what a player's round
+     detail is built from; it takes those raw rows and builds a SIX-FIELD item. If that literal ever
+     grew the marker, the holder's own round panel would carry it — and no sweep of getRoundDetail would
+     find it until an Up & Down fixture existed to run one. The pin does not wait for the fixture. */
+  /* ⚠️ EOL-NORMALISED, and the first version of this pin was not — tracked source here is CRLF, so a
+     multi-line needle written with `\n` matched NOTHING and the pin went red for the wrong reason while
+     its own control passed vacuously (an unmatched needle makes `replace` a no-op, and "the plant
+     changed the file" was never checked). Both are fixed: the text is normalised, and the control below
+     REQUIRES the plant to have changed the source before it reads its verdict. */
+  const boardSrc = decomment(read("src/lib/server/updown-board.ts")).replace(/\r\n/g, "\n");
+  const ITEM = `    .map((p) => ({
+      id: p.id,
+      side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",
+      stake: p.stake,
+      payout: p.finalPayout,
+      status: p.status,
+      placedAt: p.placedAt,
+    }))`;
+  ok("11.247.c1c · the one viewer-facing caller of that raw read PROJECTS: `myStakesByMarket` builds a fixed six-field item from each row, and the marker is not one of the six",
+    boardSrc.includes(ITEM), boardSrc.includes(ITEM) ? "six fields, no marker" : boardSrc.includes("myStakesByMarket") ? "the projection literal has MOVED — re-read it" : "myStakesByMarket is gone");
+  const c1cPlant = boardSrc.replace(ITEM, ITEM.replace("      id: p.id,", "      id: p.id,\n      houseBotId: p.houseBotId,"));
+  ok("11.247.c1c.control · CONTROL · the plant really CHANGED the source, and the pin then REPORTS it — so c1c's verdict is a measurement of those six fields and not of a string that matches nothing",
+    boardSrc.includes(ITEM) && c1cPlant !== boardSrc && !c1cPlant.includes(ITEM),
+    `changed=${c1cPlant !== boardSrc}`);
+
+  /* ⛔ ROW 77 · THE OG HANDLER'S OWN READ LIST, DERIVED RATHER THAN ASSUMED (C5-8 phase 3, 2026-09-20).
+     Ruling 247 asks the builder to OPEN `/api/og/market/[id]` and add ITS data reads to this sweep.
+     `DEFERRED-TESTS.md` §1j row 77 recorded, correctly, that nobody ever had: the handler was not opened
+     and its read list was not derived, so `getMarket` being swept here was an assumption ABOUT the route
+     rather than a measurement OF it. Opened now. It makes exactly TWO data reads — `getMarket(id)`
+     (`route.tsx:47`), which this sweep already drives for all four viewers, and `resolveWinShareToken(…)`
+     (`:56`), which was in NO sweep, NO register and NO anchors file.
+     ⭐ AND IT IS EXACTLY THE SHAPE `c1c` EXISTS FOR: that reader reaches a RAW position row
+     (`positionStore.get`), whose Postgres column set carries `houseBotId`. What holds the absence is its
+     PROJECTION, so the projection is pinned — with a planted control, because a needle that matches
+     nothing passes vacuously, which is the defect c1c's own header records being caught once already. */
+  const ogSrc = decomment(read("src/app/api/og/market/[id]/route.tsx")).replace(/\r\n/g, "\n");
+  const ogReads = [...ogSrc.matchAll(/await\s+([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]).sort();
+  ok("11.247.c1e · 247 · the OG image route's data reads are exactly the two this sweep accounts for — `getMarket`, driven for all four viewers above, and `resolveWinShareToken`, pinned below — so a third reader arriving in that handler is reported here by name instead of riding out unswept",
+    ogReads.join(",") === "getMarket,resolveWinShareToken", j(ogReads));
+  const shareSrc = decomment(read("src/lib/server/share-token.ts")).replace(/\r\n/g, "\n");
+  const WIN_SHARE = `  return {
+    marketId: pos.marketId,
+    marketTitle: m.titleEn,
+    side: pos.side,
+    stake: pos.stake,
+    payout: pos.finalPayout,
+    net: pos.finalPayout - pos.stake,
+  };`;
+  ok("11.247.c1e · 247 · …and the second of the two PROJECTS: `resolveWinShareToken` reads the raw position row and answers a fixed six-field share — the marker is not one of the six, so nothing house can reach the OG image's text",
+    shareSrc.includes(WIN_SHARE) && shareSrc.includes("positionStore.get("),
+    shareSrc.includes(WIN_SHARE) ? "six fields, no marker" : shareSrc.includes("resolveWinShareToken") ? "the projection literal has MOVED — re-read it" : "resolveWinShareToken is gone");
+  const c1ePlant = shareSrc.replace(WIN_SHARE, WIN_SHARE.replace("    marketId: pos.marketId,", "    marketId: pos.marketId,\n    houseBotId: pos.houseBotId,"));
+  ok("11.247.c1e.control · CONTROL · the plant really CHANGED the source and the pin then REPORTS it — so c1e's verdict is a measurement of those six fields and not of a string that matches nothing",
+    shareSrc.includes(WIN_SHARE) && c1ePlant !== shareSrc && !c1ePlant.includes(WIN_SHARE),
+    `changed=${c1ePlant !== shareSrc}`);
+
+  /* ⛔ CONTROL (ii) IS STORE-SPECIFIC, AND SAYING SO IS THE POINT. On Postgres every Position row has a
+     `houseBotId` COLUMN, so an unprojected raw row is a leak by design whatever its value — a projection
+     that returned raw rows would be caught on a fixture with no house money in it at all. In memory the
+     marker is a SPREAD (`...(ctx.kind === "house" ? … : {})`), so an unmarked position has no such key
+     and there is nothing to find. Both halves are asserted, each on the store where it is true; neither
+     is reported as the other, and neither store is silently skipped. */
+  const rawPlayerHits = needlesIn(rawPlayer);
+  if (STORE === "postgres") {
+    ok("11.247.c2 · CONTROL (ii) · POSTGRES · a raw NON-HOUSE position row is reported too — the identifier pattern counts `houseBotId` WHATEVER its value, so an unprojected raw row is a leak by design and a fixture with no house money could not make this sweep vacuous",
+      rawPlayerHits.some((h) => h.includes("houseBotId")) && !rawPlayerHits.includes(`id:${bot.botId}`),
+      j(rawPlayerHits.slice(0, 4)));
+  } else {
+    ok("11.247.c2 · CONTROL (ii) · MEMORY · an unmarked position row carries NO houseBotId key at all (the marker is a spread, not a column), so there is nothing here for the identifier pattern to find — the Postgres child is where (ii) is measured, and it is measured there, not skipped",
+      !rawPlayer.includes("houseBotId") && !rawPlayerHits.includes(`id:${bot.botId}`),
+      `${rawPlayerHits.length} hit(s): ${j(rawPlayerHits.slice(0, 4))}`);
+  }
+  const boardish = j(await SVC.getMarket(m.id));
+  const board = j(await w.mdal.positionStore.leaderboard(50));
+  ok("11.247.c3 · CONTROL (iii) · the absence is not vacuous: the fixture's own market title is found in getMarket's output and the holder's own account is on the leaderboard — the readers really answered about this fixture",
+    boardish.includes(MARKET_TITLE) && board.includes(HOLDER),
+    j({ titleInMarket: boardish.includes(MARKET_TITLE), holderOnLeaderboard: board.includes(HOLDER), leaderboardRows: (await w.mdal.positionStore.leaderboard(50)).length }));
+  ok("11.247.c4 · D6 · HB-LC-39 · …and the holder is there as an ORDINARY PLAYER: the leaderboard row is the account's, with no marker and no house key on it",
+    houseHits(board).length === 0 && !board.includes(bot.botId), j(houseHits(board).slice(0, 4)));
+
+  /* ⛔ CONTROL (iv) · THE SERIALISER, AND IT IS THIS CHECKPOINT'S OWN DECLARED MUTATION RUN AS A CONTROL.
+     `traderSeedsByMarket` answers with a `Map`, and the sweep used to serialise every answer with `JSON.stringify`,
+     which renders a `Map` as the two characters `{}`. Three of the readers above answer with one. Both halves are
+     asserted: the plain serialiser is BLIND to a known id inside the real reader's real answer, this one is not —
+     and a `Map` carrying a RAW POSITION ROW, which is exactly what mutation `247-seeds-raw` / S7-M08 makes
+     `traderSeedsByMarket` return, is REPORTED with the bot id and the `hb:` bet key on it. */
+  const seedsMap = await SVC.traderSeedsByMarket([m.id, m2.id], 3);
+  const seedsRaw = new Map([[m.id, [await w.mdal.positionStore.get(housePositions[0].id)]]]);
+  const rawHits = needlesIn(sweepJson(seedsRaw));
+  ok("11.247.c5 · CONTROL (iv) · THE SWEEP CAN SEE INSIDE A Map: JSON.stringify renders the real trader-seed answer as `{}` and finds nothing, this sweep's serialiser finds the seeded player's own id in it — and the SAME reader answering with raw position rows (the checkpoint's own declared mutation 247-seeds-raw) is REPORTED, bot id and hb: bet key and all",
+    seedsMap instanceof Map && seedsMap.size > 0
+    && j(seedsMap) === "{}" && !j(seedsMap).includes(PLAYER) && sweepJson(seedsMap).includes(PLAYER)
+    && rawHits.includes(`id:${bot.botId}`) && rawHits.some((h) => h.startsWith("id:hb:")),
+    `plain=${j(seedsMap)} · deep hit=${sweepJson(seedsMap).includes(PLAYER)} · raw-row hits ${j(rawHits.slice(0, 4))}`);
+
+  /* ⛔ CONTROL (v) · THE LEASE IS REALLY HELD, AND THE UNFILTERED SNAPSHOT REALLY CARRIES THE HOUSE WORD.
+     Ruling 247 names both halves in terms. Without the lease, `/api/health`'s `leadership` map cannot hold the
+     planner key whatever `PUBLIC_LEASE_TASKS` does, and the four `/api/health` rows above report an absence the
+     FIXTURE produced. With it, deleting that filter and returning `leadershipSnapshot()` whole goes red HERE. */
+  const rawLeases = sweepJson(LEADER.leadershipSnapshot());
+  ok("11.247.c6 · CONTROL (v) · the planner lease IS held while /api/health is swept, and the UNFILTERED leadershipSnapshot() names it — `house-bot` is a shared-vocabulary word, so the route's own filter is the only thing between that lease name and every visitor, and this sweep can see it when it is not applied",
+    leaseTaken === true && Object.keys(LEADER.leadershipSnapshot()).includes(HBC.HOUSE_PLANNER_TASK)
+    && needlesIn(rawLeases).length > 0 && houseHits(HBC.HOUSE_PLANNER_TASK).length > 0,
+    `leaseTaken=${leaseTaken} · tasks ${j(Object.keys(LEADER.leadershipSnapshot()))} · hits ${j(needlesIn(rawLeases).slice(0, 3))}`);
+
+  /* ⛔ CONTROL (vi) · THE TWO NEW NEEDLE CLASSES AND THE LABEL BITE. A needle that matches nothing is an absence
+     assertion with no instrument, so each is planted into a reader-SHAPED answer and required to be reported —
+     including `label`, which matches no vocabulary pattern and is found only because it is in `IDS`. */
+  const pressId = (press as Any)?.row?.id ?? (press as Any)?.id ?? null;
+  const plantedNeedles = needlesIn(sweepJson({ rows: [{ note: botRow.label, key: botRow.labelKey, t: tgt.id, p: pressId }] }));
+  ok("11.247.c7 · CONTROL (vi) · the target id, the press id and the bot's OWN LABEL are each REPORTED when planted into a reader-shaped answer — the label matches no vocabulary pattern, so without it in IDS the one arbitrary owner-chosen house string in the system would be invisible to this sweep",
+    typeof pressId === "string" && [`id:${tgt.id}`, `id:${pressId}`, `id:${botRow.label}`, `id:${botRow.labelKey}`].every((n) => plantedNeedles.includes(n)),
+    `pressId=${pressId} · label=${botRow?.label} · reported ${j(plantedNeedles.slice(0, 6))}`);
+});
+
+/**
+ * ⛔ **§11b · C5-7's REVIEW, MAJOR · THE ENGINE CARD'S AUDIENCE FAILS CLOSED, AND `{readable:false}` IS INSIDE IT.**
+ *
+ * `houseEngineHealthFor` had ONE `try` around both halves — the viewer lookup and the engine/schema read — and its
+ * `catch` returned `{ readable: false }`, a TRUTHY view. `/admin/system` renders `{houseEngine && <HouseEngineCard/>}`
+ * and that card's failure branch is headed "House bot engine" / "Injini ya boti za nyumba" — two shared-vocabulary
+ * hits. So a failure of the VIEWER LOOKUP produced the feature's name, in two languages, for a viewer whose audience
+ * had never been established: any staff account holding the `ops` VIEW grant, on a page deliberately built to keep
+ * rendering through a database wobble (its other reads each carry their own `catch`), with a SECOND, unmemoised
+ * `db.user.findById` to time out on an exhausted pool. Owner ruling D19 does not allow that viewer to know the
+ * feature exists. C7-SPEC ruling 354(a) specifies `null` here — the answer `houseConsoleAudience` gives — and
+ * 354(c)'s `{readable:false}` is for a failed HEALTH read INSIDE the audience.
+ *
+ * ⛔ AND L52's OWN LESSON IS WHY NO GUARD SAW IT: `test:house-bot-reports` 0.L52 is scoped to rule-table keys and
+ * their call sites, and ruling 453's console lexicon scans `src/app/admin/desk/**`. This string is painted by a page
+ * in ANOTHER admin section, from a module in `src/lib/server/`. A guard's scope is part of its claim.
+ */
+section("§11b · ruling 354(a) · the engine card's audience fails CLOSED on the viewer lookup — no card, no placeholder");
+await guard("0.354a", async () => {
+  const EH: Any = await import("../../src/lib/server/house-bot/engine-health.ts");
+  const { db }: Any = await import("../../src/lib/server/store.ts");
+  const mk = async (id: string, role: string) => {
+    const now = new Date().toISOString();
+    await db.user.create({
+      id, phoneE164: `+2557${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`, email: null,
+      passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+      role, status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
+      acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false, twoFactorEnabled: false,
+      avatarDataUrl: null, recruitedBy: null, createdAt: now, updatedAt: now, lastLoginAt: null, closedAt: null,
+    } as never);
+    return id;
+  };
+  const admin = await mk(`usr_354a_admin_${process.pid}`, "ADMIN");
+  const staff = await mk(`usr_354a_staff_${process.pid}`, "SUPPORT");
+
+  ok("0.354a.0 · the fixture is real: an ADMIN is IN the house-alert audience and gets a readable view, so the nulls below are refusals and not a function that answers null to everybody",
+    ((await EH.houseEngineHealthFor(admin)) as Any)?.readable === true, j(await EH.houseEngineHealthFor(admin)));
+  ok("0.354a.1 · ⛔ D19 · a signed-in NON-ADMIN staff account gets `null` — no card, no placeholder",
+    (await EH.houseEngineHealthFor(staff)) === null, j(await EH.houseEngineHealthFor(staff)));
+
+  /* ⛔ THE DEFECT ITSELF: the viewer lookup THROWS, so the audience is unknown. */
+  const realFind = db.user.findById;
+  let whenLookupFails: unknown;
+  try {
+    db.user.findById = async () => { throw new Error("pool timeout during the second, unmemoised read"); };
+    whenLookupFails = await EH.houseEngineHealthFor(staff);
+  } finally { db.user.findById = realFind; }
+  ok("0.354a.2 · ⛔ D19 · ruling 354(a) · when the VIEWER LOOKUP itself fails the answer is `null`, not `{readable:false}` — a view object is truthy, the page renders the card on it, and the card's failure branch names this feature in two languages to a viewer whose audience was never established",
+    whenLookupFails === null, j(whenLookupFails));
+  ok("0.354a.3 · CONTROL · the stub really was live — the real lookup is back and an ADMIN reads again, so 0.354a.2 measured a failing lookup and not a function that had stopped being called",
+    ((await EH.houseEngineHealthFor(admin)) as Any)?.readable === true, "restored");
+
+  /* ⛔ AND THE CARD REALLY DOES NAME THE FEATURE. Read out of the page, never typed here (ruling 175): the words
+     come from the file under test, so this control cannot drift from what the branch actually paints. */
+  const sysPage = read("src/app/admin/system/page.tsx");
+  const at = sysPage.indexOf("if (!view.readable)");
+  const card = /<AdminCard title="([^"]+)" sw="([^"]+)"/.exec(at >= 0 ? sysPage.slice(at, at + 400) : "");
+  ok("0.354a.c1 · CONTROL · the branch that `{readable:false}` renders REALLY names the feature: the card heading and its Swahili subtitle, read out of the page itself, are both shared-vocabulary hits — so answering `null` outside the audience is a D19 requirement and not a tidiness",
+    at >= 0 && !!card && houseHits(card[1]).length > 0 && houseHits(card[2]).length > 0,
+    j({ title: card?.[1], sw: card?.[2], hits: card ? [...houseHits(card[1]), ...houseHits(card[2])] : [] }));
+});
+
 /* ═══ §11 (ruling 171 slice) · the public /api/health body's raw-text paths name nothing (both stores) ═══════════ */
 // Ruling 171 fixes the requirement: no key or VALUE of the public body names anything house. Two values were raw text
 // from elsewhere — the 500 branch's `String(err)` and the email rail's provider failure text (house admin mail rides the
@@ -2752,6 +4690,296 @@ await guard("store", async () => {
   ok(`store.1 · the ${STORE} child ${STORE === "postgres" ? "has" : "has no"} database`, P.hasDatabase() === (STORE === "postgres"), `hasDatabase=${P.hasDatabase()}`);
 });
 
+/* ═══ §12 · CRA-12 and FS-05 · R4's whole surviving requirement is a SENTENCE, and nothing read it ═══════════ */
+
+/**
+ * ⛔ WHAT D20 LEFT STANDING, AND WHY THIS IS A DOCS GUARD AND NOT A CODE GUARD.
+ *
+ * `04-amendments.md` R4 strikes the `excludeHouse` option, `NON_HOUSE_POSITION_SQL`, the reward walker, the
+ * source pin AND both of R4's own `Test:` lines, in place. What survives, verbatim, is "A COMPLIANCE and
+ * HOUSE-BOTS.md rule: no prize, cashback, tournament or rank reward may be computed on marked positions."
+ * That sentence is the ENTIRE live content of register rows CRA-12 and FS-05 — two rows, one requirement.
+ *
+ * ⛔ THIS ASSERTION PROVES THE RULE IS **RECORDED**. IT DOES NOT PROVE ANY CODE OBEYS IT, and it must never be
+ * read that way: D20 struck the walker that would have made obedience checkable. A future reward feature has
+ * to bring its own guard. Saying so in the label is the point — `0.L52.4` (the only other assertion that opens
+ * `docs/HOUSE-BOTS.md`) states its own scope for exactly this reason: a guard's scope is part of its claim.
+ *
+ * ⛔ FS-05's own `Test:` line names test:house-bot-reward-exclusion — struck by D20 and absent from
+ * package.json. ⚠️ THE MISSING BACKTICKS AROUND THAT NAME ARE DELIBERATE AND MUST STAY OFF. `test:guards-exist`
+ * §1 treats a BACKTICKED `prefix:name` as a CITATION — "someone told a reader this guard exists" — and this
+ * sentence says the exact opposite. Backticking it made the guard print `1 new phantom` and go 9/0 → 8/1,
+ * measured 2026-09-20; its own docblock records that a bare colon-word is deliberately not a citation, and §4's
+ * control asserts that distinction. ⛔ Never repair this by adding the name to `INHERITED_PHANTOMS`: that list
+ * may only shrink, and an exemption for a name written today is not an inheritance. Its D6 half — the bot stays on the public board as an ordinary player — is ALREADY asserted at
+ * §11 `11.247.c4`, with `11.247.c3` proving that sweep non-vacuous. So CRA-12 and FS-05 close together here.
+ *
+ * ⛔ AND THE TAIL OF HB-ACC-07 (amendment A1). A1 records "Signing out other devices on a password change is
+ * not built" and ends "Test: `test:docs` greps the risk line." Measured 2026-09-20: `scripts/docs-links.mjs`
+ * — the whole of `test:docs`, 130 lines — checks relative links, `scripts/<file>` paths and npm keys, and
+ * greps no sentence anywhere. A1's recorded proof did not exist, so the risk line was pinned by NOTHING. It is
+ * pinned here. ⚠️ HB-ACC-07 is still a RECONCILED row, not a tested one: the withdrawn sessions test is not
+ * owed and must never be written. This pins the sentence A1 left standing, which is a smaller, true claim.
+ *
+ * ⛔ EVERY DOCUMENT IS CHECKED SEPARATELY. One assertion over both would pass while either was empty — the
+ * lesson `test:dsar-secrets` §6 recorded in its own words. The two R4 sentences are NOT the same string
+ * (HOUSE-BOTS.md carries D6's display clause, COMPLIANCE-DECISIONS.md does not), which is itself why a single
+ * shared needle would have had to be loosened until it proved less than either document says.
+ */
+if (STORE === "memory") {
+  section("§12 · CRA-12 / FS-05 · R4's surviving rule, and A1's risk line, are RECORDED in both authority documents");
+  await guard("12", () => {
+    /** Each row is one document's OWN wording. `id` is the rule; `file` is the document; `needle` is exact. */
+    const RULES: Array<{ id: string; row: string; file: string; needle: string }> = [
+      { id: "R4", row: "CRA-12/FS-05", file: "docs/HOUSE-BOTS.md",
+        needle: "No prize, cashback, tournament or rank reward may be computed on house-marked positions" },
+      { id: "R4", row: "CRA-12/FS-05", file: "docs/COMPLIANCE-DECISIONS.md",
+        needle: "No prize, cashback, tournament or rank reward on house stakes (R4)" },
+      { id: "risk-7", row: "HB-ACC-07 tail (A1)", file: "docs/HOUSE-BOTS.md",
+        needle: "A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13)" },
+      { id: "risk-7", row: "HB-ACC-07 tail (A1)", file: "docs/COMPLIANCE-DECISIONS.md",
+        needle: "A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13)" },
+    ];
+    const DOCS = [...new Set(RULES.map((r) => r.file))];
+
+    /** The reader, used identically for the live documents and for the planted copies. */
+    const missingIn = (text: string, needle: string): boolean => !text.includes(needle);
+
+    const texts = new Map(DOCS.map((f) => [f, read(f)]));
+    console.log(`  §12 population: ${RULES.length} recorded rules across ${DOCS.length} documents — ` +
+      DOCS.map((f) => `${f} ${texts.get(f)!.length} bytes`).join(" · "));
+
+    ok("12.0 · POPULATION · both authority documents are non-empty and carry their own title, so a rule 'found' below is found in a real document and not in an empty string",
+      DOCS.length === 2 && DOCS.every((f) => (texts.get(f) ?? "").length > 5_000),
+      j(DOCS.map((f) => `${f}:${texts.get(f)!.length}`)));
+
+    /* ⛔ ONE ASSERTION PER DOCUMENT PER RULE — four, not one. */
+    for (const r of RULES) {
+      ok(`12.${r.id}.${r.file.includes("HOUSE-BOTS") ? "hb" : "cd"} · ${r.row} · ⛔ RECORDED, NOT OBEYED: ${r.file} still carries ${r.id}'s rule in its own words — this proves the RULE IS WRITTEN DOWN and proves nothing whatever about any code path, because D20 struck the walker that would have made obedience checkable`,
+        !missingIn(texts.get(r.file)!, r.needle), `${r.file} · needle ${j(r.needle.slice(0, 60))}`);
+    }
+
+    /* ── PLANTED · the sentence deleted from a COPY of each document must be REPORTED, per document ── */
+    for (const r of RULES) {
+      const key = `${r.id}.${r.file.includes("HOUSE-BOTS") ? "hb" : "cd"}`;
+      const gutted = texts.get(r.file)!.split(r.needle).join("");
+      ok(`12.PLANT.${key} · PLANTED · ${r.id} deleted from a copy of ${r.file} IS reported — checked per document, because one assertion over both would pass while either was empty`,
+        gutted !== texts.get(r.file) && missingIn(gutted, r.needle),
+        `bytes ${texts.get(r.file)!.length} → ${gutted.length}`);
+    }
+
+    /* ── POSITIVE · the untouched documents report nothing ── */
+    ok("12.POS · POSITIVE CONTROL · the two documents as they stand on disk report NO missing rule, so the plants above are the plants and not the files",
+      RULES.every((r) => !missingIn(texts.get(r.file)!, r.needle)),
+      j(RULES.filter((r) => missingIn(texts.get(r.file)!, r.needle)).map((r) => `${r.file}:${r.id}`)));
+
+    /* ── the reader itself must be able to say 'missing' ── */
+    ok("12.CONTROL · the reader is capable of reporting a miss at all — a sentence that is in neither document is reported for both, so 12.R4/12.risk-7 are findings and not a predicate that always returns true",
+      DOCS.every((f) => missingIn(texts.get(f)!, "no reward may be computed on a marked position, said exactly this way and nowhere")));
+  });
+}
+
+/* ═══ §13 · CRA-19 · the FIU suspicious-activity report includes a designated holder, UNCHANGED (both stores) ═══ */
+
+/**
+ * ⛔ THE DEFECT THIS EXISTS TO CATCH: a later session "helpfully" excluding a designated house account from a
+ * STATUTORY report. `buildFiuSar` (src/lib/server/reports/catalogue.ts:225) was named by NO file under
+ * `scripts/` — `grep -rn buildFiuSar scripts/` returned 0 — and `test:report-formats` mentions "FIU" only to
+ * forbid a false format claim on a button. Nothing would have reported it.
+ *
+ * CRA-19's standing requirement after D20: "The rows are included unchanged (statutory)", and the Context
+ * column is struck (C5-SPEC ruling 228). Its F7 half — a holder money event gives the admin bell — ships as
+ * `OWNER_MONEY` (money-hook.ts:43) and IS asserted at `test:house-bot-comms` 6.2, so only the SAR half is owed.
+ *
+ * THE TWIN SHAPE: a designated holder and an ordinary player make the SAME deposit, and the report must give
+ * them the same row shape and the same trigger. A report that quietly dropped the holder fails on the holder
+ * row; a report that returned everything fails on the POSITIVE control, which requires a deposit BELOW the
+ * threshold to be ABSENT — without it, "the row is there" would pass over a builder with no filter at all.
+ *
+ * ⚠️ THE PERIOD IS DERIVED, NEVER TYPED. `currentPackPeriod()` is the PREVIOUS EAT month (a pack is filed for
+ * a closed month), so a fixture dated "now" falls outside the report and the whole section would measure an
+ * empty population and pass. The deposits are dated at the MIDPOINT of the period's own bounds.
+ */
+section("§13 · ruling 228 / CRA-19 · the FIU SAR carries a designated holder's large deposit unchanged, with no Context column and no house word");
+await guard("13", async () => {
+  const { loadWorld, OFFICER }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const { buildFiuSar }: Any = await import("../../src/lib/server/reports/catalogue.ts");
+  const { AML_REVIEW_THRESHOLD_TZS }: Any = await import("../../src/lib/server/payments.ts");
+  const RP: Any = await import("../../src/lib/server/report-pack.ts");
+
+  /* ⚠️ The officer may already exist — §3 creates it, and on Postgres a second create is a unique violation
+   * (this section threw exactly that on its first Postgres run). `buildFiuSar` uses `generatorId` only for the
+   * reference and the meta block, so the row is created only when it is genuinely absent. */
+  if (!(await w.db.user.findById(OFFICER))) await w.user({ id: OFFICER, role: "ADMIN" });
+  const PERIOD: string = RP.currentPackPeriod();
+  const B = RP.packPeriodBounds(PERIOD);
+  const AT = new Date(B.start + Math.floor((B.end - B.start) / 2)).toISOString();
+
+  const LARGE = AML_REVIEW_THRESHOLD_TZS + 200_000;   // 1.2M at the shipped 1M line
+  const SMALL = AML_REVIEW_THRESHOLD_TZS - 1;         // one shilling under it
+
+  const holder = await w.bot();                       // a DESIGNATED, ACTIVE house bot
+  const twin = await w.user({ balance: 5_000_000 });  // the identical ordinary player
+
+  const deposit = async (userId: string, amount: number, tag: string) => {
+    const id = `txn_sar_${w.uid(tag)}`;
+    await w.db.txn.create({
+      id, walletId: `wal_${userId}`, userId, type: "DEPOSIT", status: "CONFIRMED",
+      amount, fee: 0, taxWithheld: 0, balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: null,
+      msisdn: null, description: null, positionId: null, amlReason: null,
+      createdAt: AT, updatedAt: AT, completedAt: AT, idempotencyKey: null, houseBotId: null,
+    } as never);
+    return id;
+  };
+  const holderTxn = await deposit(holder.userId, LARGE, "holder");
+  const twinTxn = await deposit(twin, LARGE, "twin");
+  const smallTxn = await deposit(holder.userId, SMALL, "small");
+
+  const rep: Any = await buildFiuSar(OFFICER, PERIOD);
+  const sec: Any = rep.sections[0];
+  const rows: Any[] = sec.rows ?? [];
+  const rowFor = (txnId: string) => rows.find((r) => r.txnId === txnId) ?? null;
+  const hRow = rowFor(holderTxn);
+  const tRow = rowFor(twinTxn);
+  console.log(`  §13 population: ${rows.length} flagged rows in ${PERIOD} (threshold ${AML_REVIEW_THRESHOLD_TZS}), fixture deposits at ${AT}`);
+
+  ok("13.0 · CRA-19 · POPULATION · the report for the derived pack period is non-empty and contains the fixture's own two deposits — an emptiness here would make every absence below meaningless",
+    rows.length >= 2 && !!hRow && !!tRow, j({ rows: rows.length, period: PERIOD, holder: !!hRow, twin: !!tRow }));
+
+  ok("13.1 · CRA-19 · ⛔ STATUTORY, UNCHANGED · the DESIGNATED HOLDER's 1.2M deposit is PRESENT in the FIU suspicious-activity report — the defect this guards is a later session excluding a house account from a statutory return",
+    !!hRow && hRow.playerId === holder.userId && hRow.amount === LARGE, j(hRow));
+
+  ok("13.2 · CRA-19 · TWIN · the holder's row and an identical ordinary player's row have the SAME shape and the SAME trigger — the same keys, the same triggerKind, the same status, the same amount — so the report treats a house account as any account",
+    !!hRow && !!tRow && j(Object.keys(hRow).sort()) === j(Object.keys(tRow).sort())
+      && hRow.triggerKind === tRow.triggerKind && hRow.reviewStatus === tRow.reviewStatus && hRow.amount === tRow.amount,
+    j({ holder: hRow, twin: tRow }));
+
+  ok("13.3 · CRA-19 · POSITIVE CONTROL · a deposit ONE SHILLING BELOW the threshold is ABSENT — without this, '13.1 the row is there' would pass over a builder that returned every transaction it saw",
+    rowFor(smallTxn) === null && !rows.some((r) => r.amount === SMALL), j({ smallTxn, amounts: rows.map((r) => r.amount) }));
+
+  /* D20 struck the Context column (ruling 228): every section's headers, not just the first. */
+  const headers: string[] = (rep.sections ?? []).flatMap((s: Any) => (s.columns ?? []).map((c: Any) => String(c.header)));
+  ok("13.4 · ruling 228 · NO Context column anywhere in the report — D20 struck it, and the headers are read from every section rather than only the first",
+    headers.length >= 5 && !headers.some((h) => /context/i.test(h)), j(headers));
+
+  ok("13.5 · ⛔ D19 · the whole rendered report — title, subtitle, summary, notes, columns and every row — names nothing about house bots, and carries neither the bot id nor the holder's own house key",
+    houseHits(j(rep)).length === 0 && !j(rep).includes(holder.botId), j(houseHits(j(rep)).slice(0, 6)));
+
+  ok("13.CONTROL · the house-word reader is live on this run — the fixture's own bot id IS found when it is actually present, so 13.5's zero is a measurement and not a silent reader",
+    houseHits(j({ ...rep, planted: "house bot" })).length > 0);
+});
+
+/* ═══ §14 · CRA-32 · the finance figures that must INCLUDE house rows (both stores) ═══════════════════════════ */
+
+/**
+ * ⛔ AN INCLUSION CLAIM IS THE DANGEROUS KIND. D20 left these untouched and decided that /admin/finance counts
+ * a house account in active players and in the Top-10 exactly like any player's, and gains no house tile
+ * (C5-SPEC rulings 224–225). GGR, NGR and wallet liability INCLUDE house rows, and "Held for unverified"
+ * includes an unapproved holder's winnings. The plausible future defect is not a leak — it is a filter added
+ * for tidiness that quietly UNDERSTATES a regulator-facing liability. Measured 2026-09-20: no house-bot suite
+ * imported `src/lib/server/analytics.ts` at all, and PROGRESS L34 records the reading as correct with nothing
+ * asserting it.
+ *
+ * ⛔ EVERY FIGURE IS A BEFORE/AFTER DELTA EQUAL TO THE FIXTURE'S OWN AMOUNT, never a bare "greater than zero".
+ * A "> 0" would pass over every other fixture this file has already built, which is the empty-population
+ * failure wearing a number.
+ *
+ * ⛔ THE PLANT IS THE REAL DEFECT, RUN THROUGH THE REAL ARITHMETIC. `tallyWalletLiability` is the shipped
+ * function; the plant calls THAT SAME FUNCTION over the same snapshot with the designated holders' wallets
+ * filtered out — one filter, no second implementation — and requires the shortfall to be exactly the house
+ * amount and the shipped figure NOT to equal it.
+ *
+ * ⚠️ SCOPE, NAMED: activePlayers, the Top-10, walletLiabilityByStatus and the unverified-liability basis. GGR
+ * and NGR move only on settled bet money and are NOT asserted here; they stay with the money suites.
+ */
+section("§14 · rulings 224–225 / CRA-32 · active players, the Top-10, wallet liability and 'held for unverified' all INCLUDE a designated holder");
+await guard("14", async () => {
+  const { loadWorld }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const AN: Any = await import("../../src/lib/server/analytics.ts");
+  const { tallyWalletLiability }: Any = await import("../../src/lib/wallet-liability.ts");
+
+  const HOUSE_TZS = 3_100_000;   // distinctive, so a delta can only be this fixture's
+  const TWIN_TZS = 3_100_000;
+  const STAKE_TZS = 900_000_000; // large enough that the Top-10 place is not a coincidence
+
+  const base = {
+    active: await AN.activePlayers("today"),
+    liability: (await AN.walletLiabilityByStatus()).activeTzs,
+    unverified: await AN.unverifiedLiability(),
+  };
+  ok("14.0 · BASELINE · the three figures are readable before the fixture exists, and the unverified read is its OK arm — a failed read is its own arm and would make every delta below meaningless",
+    typeof base.active === "number" && typeof base.liability === "number" && base.unverified.ok === true,
+    j({ active: base.active, liability: base.liability, unverified: base.unverified }));
+
+  /* A designated holder, funded — never KYC-approved, so its money is genuinely "held for unverified". */
+  const holder = await w.bot({ balance: HOUSE_TZS });
+  const afterHouse = {
+    liability: (await AN.walletLiabilityByStatus()).activeTzs,
+    unverified: await AN.unverifiedLiability(),
+  };
+
+  ok(`14.1 · CRA-32 · WALLET LIABILITY INCLUDES THE HOUSE WALLET — the figure rises by EXACTLY the holder's ${HOUSE_TZS} and not by "more than zero"`,
+    afterHouse.liability - base.liability === HOUSE_TZS,
+    j({ before: base.liability, after: afterHouse.liability, delta: afterHouse.liability - base.liability, expected: HOUSE_TZS }));
+
+  ok(`14.2 · CRA-32 · "HELD FOR UNVERIFIED" INCLUDES AN UNAPPROVED HOLDER'S MONEY — the basis rises by exactly ${HOUSE_TZS}, and the account count by exactly one`,
+    afterHouse.unverified.ok === true && afterHouse.unverified.tzs - base.unverified.tzs === HOUSE_TZS
+      && afterHouse.unverified.accounts - base.unverified.accounts === 1,
+    j({ before: { tzs: base.unverified.tzs, n: base.unverified.accounts }, after: { tzs: afterHouse.unverified.tzs, n: afterHouse.unverified.accounts } }));
+
+  /* ── PLANTED · the tidy-up filter, through the SHIPPED arithmetic ── */
+  const bots: Any[] = await w.dal.houseBotStore.listNonRemoved();
+  const holderIds = new Set(bots.map((b: Any) => b.userId));
+  const wallets: Any[] = await w.db.wallet.listAll();
+  const shipped = tallyWalletLiability(wallets).activeTzs;
+  const planted = tallyWalletLiability(wallets.filter((x: Any) => !holderIds.has(x.userId))).activeTzs;
+  ok(`14.PLANT · PLANTED · a houseBotId-IS-NULL filter over the SAME snapshot and the SAME shipped tally is REPORTED as a shortfall: it loses at least this fixture's ${HOUSE_TZS}, and the shipped figure is NOT that number`,
+    holderIds.size >= 1 && wallets.length > holderIds.size && shipped - planted >= HOUSE_TZS && shipped !== planted,
+    j({ shipped, planted, shortfall: shipped - planted, holders: holderIds.size, wallets: wallets.length }));
+
+  /* ── POSITIVE · an ordinary player moves the same figure by the same amount ── */
+  const twin = await w.user({ balance: TWIN_TZS });
+  const afterTwin = (await AN.walletLiabilityByStatus()).activeTzs;
+  ok(`14.POS · POSITIVE CONTROL · an ORDINARY player funded with the same ${TWIN_TZS} moves the same figure by the same amount — house and non-house are one population, which is what "included unchanged" means`,
+    afterTwin - afterHouse.liability === TWIN_TZS,
+    j({ before: afterHouse.liability, after: afterTwin, delta: afterTwin - afterHouse.liability }));
+
+  /* ── active players · a today-dated transaction, house and non-house alike ── */
+  const now = new Date().toISOString();
+  const txnNow = async (userId: string, type: string, amount: number, tag: string) => {
+    await w.db.txn.create({
+      id: `txn_fin_${w.uid(tag)}`, walletId: `wal_${userId}`, userId, type, status: "CONFIRMED",
+      amount, fee: 0, taxWithheld: 0, balanceAfter: null, currency: "TZS", provider: "INTERNAL", providerRef: null,
+      msisdn: null, description: null, positionId: null, amlReason: null,
+      createdAt: now, updatedAt: now, completedAt: now, idempotencyKey: null, houseBotId: null,
+    } as never);
+  };
+  const quiet = await w.user({ balance: 1_000 });        // funded, but NO transaction today
+  const activeAfterQuiet = await AN.activePlayers("today");
+  await txnNow(holder.userId, "DEPOSIT", 50_000, "h");
+  const activeAfterHolder = await AN.activePlayers("today");
+  await txnNow(twin, "DEPOSIT", 50_000, "t");
+  const activeAfterTwin = await AN.activePlayers("today");
+
+  ok("14.3 · CRA-32 · ACTIVE PLAYERS COUNTS THE DESIGNATED HOLDER LIKE ANY PLAYER — a today transaction on the holder moves the count by exactly one",
+    activeAfterHolder - activeAfterQuiet === 1, j({ before: activeAfterQuiet, after: activeAfterHolder }));
+  ok("14.3b · POSITIVE CONTROL · an ordinary player's today transaction moves it by exactly one too, and a funded account with NO transaction today moves it by zero — so 14.3's +1 is the transaction and not 'any account added'",
+    activeAfterTwin - activeAfterHolder === 1 && activeAfterQuiet === base.active,
+    j({ baseline: base.active, afterQuietAccount: activeAfterQuiet, afterHolderTxn: activeAfterHolder, afterTwinTxn: activeAfterTwin, quiet }));
+
+  /* ── the Top-10, like any player's ── */
+  await txnNow(holder.userId, "BET_PLACED", STAKE_TZS, "hs");
+  const top: Any[] = await AN.topNgrContributors(10);
+  ok("14.4 · rulings 224–225 · THE TOP-10 CONTRIBUTORS LIST CARRIES THE DESIGNATED HOLDER like any player's — same row shape, its own stake, and no marker of any kind on the row",
+    top.some((r: Any) => r.userId === holder.userId && r.lifetimeStakes >= STAKE_TZS)
+      && houseHits(j(top)).length === 0 && !j(top).includes(holder.botId),
+    j({ len: top.length, holderRow: top.find((r: Any) => r.userId === holder.userId), hits: houseHits(j(top)).slice(0, 4) }));
+  ok("14.4b · POSITIVE CONTROL · the Top-10 is a real ranking and not 'everyone': a funded account that never staked is ABSENT from it",
+    !top.some((r: Any) => r.userId === quiet), j(top.map((r: Any) => r.userId)));
+});
+
 /* ━━ THE `reports-mem` ROLL-CALL, AND IT MUST BE LAST — it reads the labels THIS run printed ━━━━━━━━━━━━━━
  * Ruling 505: a suite key declared in a house anchors file with no roll-call is audited by nobody, and an `expect`
  * that matches no label this suite can print is classed WRONG-ASSERTION by the drive — red for the wrong reason.
@@ -2761,8 +4989,25 @@ if (STORE === "memory") {
   const selfCode = decomment(read("scripts/lib/house-bot-reports-cases.mts"));
   const LBL = "0.505b · every declared `reports-mem` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
   const LBLC = "0.505b · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  /* ⛔ EVERY ANCHORS FILE, WALKED FROM DISK — NOT A TYPED UNION (C5-8's register conversion, 2026-09-21).
+     On 2026-09-20 this line became `[...CONSOLE_ANCHORS, ...MONEY_ANCHORS]` because the money file had started
+     declaring `reports-mem` too. That fix was right and its SHAPE was wrong: a hand-maintained list of the files a
+     roll-call reads is the same population defect ruling 505 exists to refuse, one level up — and 0.505 above cannot
+     see it, because it asks only whether a KEY has a roll-call, never whether that roll-call READS the file the key
+     was found in. It was measured the same day: converting Commit 5's mutation registers put 67 `reports-mem`
+     declarations into `scripts/anchors/house-bot-c5.anchors.mjs`, 0.505 stayed green because `reports-mem` is a
+     listed key, and every one of those 67 `expect`s would have been audited by nobody.
+     ⭐ So the files are READ FROM DISK, with the same walk 0.505 uses. The population can only grow, a new house
+     anchors file joins it the day it lands, and no edit here is ever needed again to keep it complete. */
+  const anchorDirB = join(ROOT, "scripts/anchors");
+  const declB: DeclaredMutation[] = [];
+  for (const f of readdirSync(anchorDirB).filter((x) => x.startsWith("house") && x.endsWith(".anchors.mjs")).sort()) {
+    const mod: Any = await import(pathToFileURL(join(anchorDirB, f)).href);
+    declB.push(...((mod.MUTATIONS ?? []) as DeclaredMutation[]));
+  }
   const input = {
-    suiteKeys: ["reports-mem"], declarations: CONSOLE_ANCHORS as DeclaredMutation[],
+    suiteKeys: ["reports-mem"],
+    declarations: declB,
     emitted, source: selfCode, ownLabels: [LBL, LBLC],
   };
   const rc = expectDriftReport(input);

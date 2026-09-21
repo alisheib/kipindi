@@ -17,12 +17,14 @@
  * ⛔ CLAIMS WAIT FOR A HEALTHY PROCESS (A24): none while stopping, none while the measured skew is unknown or over
  * 5 s, none while admission has a queue or half its in-flight slots taken, and never more than 2 fires at once.
  */
+import { houseBotsLive } from "@/lib/feature-state";
 import { INSTANCE_ID, acquireLeadership, leadershipSnapshot, releaseLeadership } from "../leader";
 import type { EngineAlerts } from "./outcomes";
 import { admissionSnapshot, type AdmissionSnapshot } from "../admission";
 import { houseBotRuntimeStore } from "../house-bot-dal";
 import { hasDatabase, prisma } from "../prisma";
 import {
+  ALERT_KEY,
   CLAIM_SKEW_GUARD_MS,
   FIRST_TICK_DELAY_MS,
   HOUSE_BOT_ENGINE_ENV,
@@ -37,11 +39,17 @@ import {
   SWEEP_INTERVAL_MS,
 } from "@/lib/house-bot/constants";
 import { houseBotSchemaReady } from "./schema-ready";
+import { alertOnce } from "./outcomes";
 
 export const SKEW_MEASURE_INTERVAL_MS = 60_000;
 export const UTC_ZONES = ["UTC", "Etc/UTC"] as const;
 
-export type EngineRefusal = "ENV_DISABLED" | "SCHEMA_NOT_READY" | "DB_TIMEZONE" | "BOOT_FAILED";
+/**
+ * ⛔ `FEATURE_WITHDRAWN` IS FIRST AMONG THESE, and its order is the decision: the PRODUCT state outranks
+ * this instance's configuration, its schema and its clock (04 F2). A sunset must stop the timers on every
+ * replica at once, whatever any one container's env happens to say.
+ */
+export type EngineRefusal = "FEATURE_WITHDRAWN" | "ENV_DISABLED" | "SCHEMA_NOT_READY" | "DB_TIMEZONE" | "BOOT_FAILED";
 
 export type EngineState = {
   started: boolean;
@@ -203,11 +211,52 @@ export async function measureSkew(state: EngineState = engineState(), dbClockMs:
 }
 
 /**
+ * ⛔ **A REFUSAL THAT TELLS NOBODY IS THE FAILURE, NOT THE REFUSAL** (01 register:1210; `ALERT_KEY.dbTimezone`).
+ *
+ * The A4 timezone check below is correct and has been since commit 4: a database whose `TimeZone` is not UTC makes
+ * every EAT day key wrong, so the engine declines to start rather than write keys it cannot trust. What it did NOT
+ * do — until this build — is say so to anyone. `ALERT_KEY.dbTimezone()` had existed in the key table since commit 4
+ * with **zero callers anywhere in the tree**, and the only trace of the refusal was a `console.error` on a container
+ * that then sat idle. The register's fix has always read "it does not start **and sends AlertOnce
+ * `engine:db_timezone`**"; only the first half was built.
+ *
+ * ⛔ THE ALERT NEVER RESCUES THE BOOT, AND NEVER BLOCKS IT. The refusal is already decided when this runs: a claim
+ * that cannot be written, or a channel a test did not inject, must still leave the engine refused and the caller
+ * told which refusal it was. So every failure here is swallowed to a log, exactly as `emitters.ts` swallows a send.
+ * ⛔ AND IT IS THROTTLED ON THE **EAT DAY**, not per process. Every container in the fleet boots against the same
+ * misconfigured database and would otherwise raise one bell each, every restart, for as long as the misconfiguration
+ * lasts — the key's `day` unit makes that one bell.
+ *
+ * Returns true only when THIS call won the claim and sent the alert.
+ */
+async function alertBootRefused(ticks: EngineTicks, code: "DB_TIMEZONE", detail: Record<string, unknown>): Promise<boolean> {
+  // ⚠️ Typed as required on `EngineTicks`, but the engine's own case list boots with partial ticks; a missing
+  // channel is a test that is not watching, never a reason to throw inside a refusal path.
+  const alerts = ticks.hookAlerts as EngineAlerts | undefined;
+  if (!alerts) return false;
+  try {
+    return await alertOnce(ALERT_KEY.dbTimezone(), alerts, { code, detail });
+  } catch (e) {
+    console.error(`[house-bot] the ${code} refusal could not be announced:`, (e as Error)?.message ?? e);
+    return false;
+  }
+}
+
+/**
  * Start the engine. Idempotent: a second call returns the first call's result and starts nothing.
  */
 export async function startHouseBotEngine(ticks: EngineTicks, deps: EngineDeps = {}): Promise<{ started: boolean; refused: EngineRefusal | null }> {
   const state = engineState();
   if (state.started) return { started: true, refused: null };
+  /* ⛔ F2 · THE PRODUCT STATE IS CHECKED BEFORE ANYTHING ELSE. A withdrawn feature arms no timer on any
+     replica, however that replica is configured — and it is a SECOND, independent mechanism from the
+     control row's `offCause = 'SUNSET'`: one survives a database edited by hand, the other survives a
+     redeploy of an older image. Neither is allowed to be the only one that holds. */
+  if (!houseBotsLive()) {
+    state.refused = "FEATURE_WITHDRAWN";
+    console.warn("[house-bot] the feature is WITHDRAWN — the engine is not started and no timer is armed (04 F2)");
+    return { started: false, refused: state.refused };
+  }
   if (!houseBotEngineEnabled((deps.env ?? (() => process.env[HOUSE_BOT_ENGINE_ENV]))())) {
     state.refused = "ENV_DISABLED";
     console.warn(`[house-bot] ${HOUSE_BOT_ENGINE_ENV}=false — the engine is not started on this instance`);
@@ -223,6 +272,7 @@ export async function startHouseBotEngine(ticks: EngineTicks, deps: EngineDeps =
   if (!zone || !(UTC_ZONES as readonly string[]).includes(zone)) {
     state.refused = "DB_TIMEZONE";
     console.error(`[house-bot] database TimeZone is ${zone ?? "unreadable"}, not UTC — the engine is not started (04 A4)`);
+    await alertBootRefused(ticks, "DB_TIMEZONE", { zone: zone ?? null, expected: [...UTC_ZONES] });
     return { started: false, refused: state.refused };
   }
   try {

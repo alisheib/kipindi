@@ -37,10 +37,16 @@ import { db } from "./store";
 import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath } from "./roles";
 import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
+import type { StoredUser } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
-import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, DEFAULT_TAB, consoleBotHref, type ConsoleTab } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
-import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
+/* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
+ * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
+import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
+/* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
+import { resolveRange } from "./date-range";
+import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, unitSuffix, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
 import { sortCauses, wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
 import { TARGET_END_CAPTION } from "@/lib/house-bot/feed-copy";
 import { saveHouseBotLimits } from "./house-bot/limits-save";
@@ -48,13 +54,23 @@ import { switchOnHouseBots } from "./house-bot/switch-on";
 import { switchOffHouseBots } from "./house-bot/kill-switch";
 import { houseEngineAlerts } from "./house-bot/emitters";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
-import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotRuntime, type StoredHouseBotTarget } from "./house-bot-dal";
+import { houseBotControlStore, houseBotEventStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type IntentFeedCount, type IntentProductLine, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotEvent, type StoredHouseBotIntent, type StoredHouseBotRuntime, type StoredHouseBotTarget } from "./house-bot-dal";
 import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
 import { HOUSE_BOT_STATUS_DISPLAY } from "./house-bot/status-display";
-import { DESIGNATE_COPY, reverifyHouseBot, startHouseBot } from "./house-bot/designation";
+import { DESIGNATE_COPY, designateHouseBot, reverifyHouseBot, startHouseBot } from "./house-bot/designation";
+/* ⭐ C7 step 6 · the wizard's own reads and its one grammar. `eligibility.ts` is named HERE and nowhere near a
+ * page: a console file may import no module under `src/lib/server/house-bot/` (ruling 340), which is exactly why
+ * the check card is served by a gated reader rather than by the page. */
+import { houseBotEligibility } from "./house-bot/eligibility";
+import { positionStore } from "./market-dal";
+import { rateCheckAsync } from "./rate-limit";
+import { displayLabel } from "@/lib/display-label";
+import { parseQuery, matchesQuery, fieldNames, ACCOUNT_PICKER_SEARCH } from "@/lib/search";
+import { LABEL_COPY, LABEL_MAX_CHARS, LABEL_MIN_CHARS, TEXT_MAX_CHARS, validateLabel, validateNote } from "@/lib/house-bot/rules";
 import { readBotAndHolder } from "./house-bot/control";
 import { houseEngineBeats, houseEngineVerdict } from "./house-bot/engine-health";
 import { pauseHouseBot, removeHouseBot } from "./house-bot/roster-actions";
+import { cancelQueuedStake } from "./house-bot/press-cancel";
 import { playerHandle } from "./house-bot/alerts";
 import { loadParseContext, loadRulesContext } from "./house-bot/rules-context";
 
@@ -240,10 +256,25 @@ export type ConsoleDeskShell = {
   /** The SAME sentence without its linked tail, for the states where the limits panel does not exist and the page
    *  paints plain text — an arrow on inert text promises a navigation that resolves back to this page (432(i)). */
   rosterFullPlain: string | null;
-  /** Why the head action is disabled when the roster is NOT full — a disabled control with no reason reads as broken.
-   *  ⛔ It names ITS OWN control: this sentence and `switchReason` are painted on the same screen, and 432(n) forbids
-   *  one state saying the same fact twice. */
-  actionReason: string;
+  /**
+   * Why the head action is NOT a live link — and `null` when it is, because there is nothing to explain about a
+   * control that works (432(j) read the other way round).
+   * ⛔ IT IS NULL WHEN THE ROSTER IS FULL TOO, AND THAT IS 432(n) RATHER THAN A HOLE: the roster-full sentence sits
+   * in the same flex row, three characters from the button, and IS the reason. Exactly one sentence beside a
+   * disabled control, never both and never neither.
+   * ⛔ It names ITS OWN control: this sentence and `switchReason` are painted on the same screen, and 432(n)
+   * forbids one state saying the same fact twice.
+   */
+  actionReason: string | null;
+  /**
+   * ⭐ C7 STEP 6 · THE WIZARD THE HEAD ACTION OPENS, AND IT ARRIVED WITH THE PAGE IT OPENS (432(h)).
+   * Until `/admin/desk/new/page.tsx` existed the head action was rendered DISABLED whatever the roster held,
+   * because a primary action answering the app-root 404 is the dead control 432(a) refuses.
+   * `test:house-bot-console` ties the link and the file together in both directions.
+   */
+  designateHref: string;
+  /** True when the head action is a real link — exactly when `actionReason` and `rosterFullReason` are both null. */
+  designateLive: boolean;
   /**
    * Why the master switch cannot be operated, beside it (432(j)) — and `null` in exactly two cases: when the switch
    * IS operable (`switchDialog` is then the ceremony it opens), and when the sentence beside it already says why.
@@ -277,6 +308,14 @@ export type ConsoleDeskShell = {
   dayKey: string;
   /** The band (303, 304, 404). Empty when there is no control row to measure against (421). */
   tiles: ConsoleKpiTile[];
+  /**
+   * ⭐ C7 STEP 5 · THE ACTIVITY TAB'S BADGE — how many stakes are QUEUED across the whole desk, on every tab.
+   * ⛔ `null` IS A FAILED COUNT AND IS NOT ZERO. `CountBadge` renders nothing at zero, so a count may never stand
+   * in for a read's health: a failed count paints NO badge and the activity panel paints `AdminLoadError` for that
+   * subject instead (355). ⛔ It does not move as the officer filters — ruling 312 scopes it to the desk, not to
+   * the rail, so a bell's own narrowed address cannot change the number beside the tab it is pointing at.
+   */
+  pendingIntents: number | null;
 };
 
 export type ConsoleRosterView = ConsoleDeskShell & {
@@ -662,6 +701,14 @@ function engineNotice(input: {
   }
 }
 
+/**
+ * ⛔ THE POPULATION THE ACTIVITY BADGE COUNTS, AND IT IS RULING 312's OWN WORD — "pending", one member of
+ * `INTENT_STATUSES`. Never `LIVE_INTENT_STATUSES` (PENDING + CLAIMED): a CLAIMED stake has already been taken up by
+ * the engine and there is nothing left for an officer to cancel about it, so a badge counting it would offer a
+ * number no control on the page can act on. Written ONCE, read by the badge and by the cancel control's own rule.
+ */
+const CONSOLE_PENDING_STATUSES = ["PENDING"] as const satisfies readonly IntentStatus[];
+
 type DeskCore = {
   dayKey: string;
   schemaMissing: boolean;
@@ -672,21 +719,39 @@ type DeskCore = {
   exposure: Map<string, number> | null;
   /** ⭐ 435(e) · the engine's DURABLE beat rows, settled on their own. `null` means the READ FAILED (354(c)/355). */
   instances: StoredHouseBotRuntime[] | null;
+  /**
+   * ⭐ C7 STEP 5 (the LANDING half) · HOW MANY STAKES ARE QUEUED ACROSS THE WHOLE DESK — the activity tab's badge.
+   * ⛔ IT IS A MEMBER OF THE CORE SET AND NOT A CALLER'S EXTRA, AND THE REASON IS MEASURED, NOT PREFERRED. The rail
+   * renders ABOVE the panels on EVERY tab (406), so every one of the four landing readers has to be able to paint
+   * this badge; as a positional extra each reader would have carried it in a different slot, which is precisely how
+   * two readers come to count two different populations under one number. It is a SHELL fact, and the shell is what
+   * this function exists to build.
+   * ⛔ IT MAY NOT COME FROM A SECOND GATED READER (the one-reader-per-render spy) AND MAY NOT BE COUNTED FROM ROWS
+   * (ruling 344): the rows are one clamped page, the badge is the population.
+   * ⛔ `["PENDING"]` ALONE, ruling 312's own word, never `LIVE_INTENT_STATUSES` (PENDING + CLAIMED): a CLAIMED stake
+   * is already in flight and there is nothing an officer can still cancel about it.
+   * ⛔ `null` means the COUNT READ FAILED, which is not zero — `CountBadge` renders nothing at zero, so a count can
+   * never stand in for a read's health and the panel paints `AdminLoadError` for that subject instead.
+   */
+  pendingIntents: number | null;
 };
 
 /**
  * ⛔ TWO EXTRAS, EACH SETTLED ON ITS OWN, AND THAT IS RULING 355 RATHER THAN A CONVENIENCE. The roster needs both
  * the Products words (`loadParseContext`) and the rate read "Last bet" comes from (`botRateUsage`, ruling 351); the
- * limits panel needs one read of its own. Wrapping two reads in a single `Promise.all` inside the settled set would
- * make ONE failure blank BOTH figures, which is the attribution 355 exists to keep — a failed Products read must
- * not take the Last bet column with it. So the set is SIX members, each attributed to its own cell.
+ * limits panel needs one read of its own, and each landing panel needs its own page and its own total. Wrapping two
+ * reads in a single `Promise.all` inside the settled set would make ONE failure blank BOTH figures, which is the
+ * attribution 355 exists to keep — a failed Products read must not take the Last bet column with it.
+ * ⛔ SEVEN MEMBERS, AND THE COUNT IS STATED HERE BECAUSE IT WAS ONCE WRONG IN THIS VERY DOCBLOCK: the array below is
+ * the control row, the roster, the day books, the open exposure, the engine's beats, the QUEUED-stake count the
+ * rail's badge paints, and the caller's two extras.
  */
 async function readDeskCore<A, B>(
   extraA: (dayKey: string) => Promise<A>,
   extraB?: (dayKey: string) => Promise<B>,
 ): Promise<{ core: DeskCore; extra: A | null; extraB: B | null }> {
   const dayKey = eatDayKey(Date.now());
-  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.allSettled([
+  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.allSettled([
     houseBotControlStore.get(),
     houseBotStore.listNonRemoved(),
     houseDayBooks(dayKey),
@@ -697,6 +762,10 @@ async function readDeskCore<A, B>(
      * 433(d)'s named refusal. ⛔ Settled on its OWN, never wrapped with another read: one failed read must not
      * take another figure with it (355, 435(d)). */
     houseBotRuntimeStore.listInstances(),
+    /* ⭐ C7 step 5 · THE RAIL'S BADGE, COUNTED ACROSS EVERY ACCOUNT AND UNFILTERED BY THE RAIL (ruling 312). It is a
+     * COUNTING reader over the same shared predicate the feed pages over, never `listFeed(...).length` (344), and it
+     * is settled on its OWN so a failed count cannot blank a figure beside it (355). */
+    houseBotIntentStore.countFeed({ statuses: CONSOLE_PENDING_STATUSES }),
     extraA(dayKey),
     extraB ? extraB(dayKey) : Promise.resolve(null),
   ]);
@@ -719,6 +788,8 @@ async function readDeskCore<A, B>(
        * engine has never booted on this database; `null` means nobody could tell, and the two paint different
        * Callouts. Collapsing them is the class 421 had to be corrected for one card over. */
       instances: instancesR.status === "fulfilled" ? instancesR.value : null,
+      /* ⛔ `null` IS A FAILED COUNT, NOT A ZERO (355, and the badge's own rule above). */
+      pendingIntents: pendingR.status === "fulfilled" ? pendingR.value : null,
     },
     extra: extraR.status === "fulfilled" ? extraR.value : null,
     extraB: extraBR.status === "fulfilled" ? (extraBR.value as B | null) : null,
@@ -786,8 +857,15 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
       dayBooks
         ? moneyTile("Stake today", stakeUsed, control.gCapDailyStakeTzs, FIELD_META.gCapDailyStakeTzs.label)
         : unavailableTile("Stake today"),
+      /* ⛔ THE CEILING CARRIES ITS SCOPE, BECAUSE THE FIGURE ABOVE IT IS THE PROJECTED ONE (432(o); C7 step 7
+       * review, visual-3). `lossUsed` folds `projectedLossTzs`, the table 150px below heads the same figure
+       * "LOSS TODAY (PROJECTED)", and the Limits tab splits the same ceiling into "(projected)" and "(settled)"
+       * rows — so an unqualified "of daily loss limit" was one figure under three names, two of them on one
+       * screen. The distinction decides which control acts: the seam refuses a new stake on PROJECTED loss and an
+       * account is auto-paused only on SETTLED loss. ⛔ The tile's LABEL stays short — `AdminKpi` truncates it —
+       * so the scope goes in the delta, which the kit already wraps. */
       dayBooks
-        ? moneyTile("Loss today", lossUsed, control.gCapDailyLossTzs, FIELD_META.gCapDailyLossTzs.label)
+        ? moneyTile("Loss today", lossUsed, control.gCapDailyLossTzs, `${FIELD_META.gCapDailyLossTzs.label} (projected)`)
         : unavailableTile("Loss today"),
       exposure
         ? moneyTile("Open exposure", exposureUsed, control.gCapOpenExposureTzs, FIELD_META.gCapOpenExposureTzs.label)
@@ -809,6 +887,9 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
    * read must not silently forbid a legitimate designation.
    * ⛔ AND A WITHDRAWN DESK IS OFFERED NO REMEDY (ruling 432(m)): the SUNSET Callout says "nothing can be designated",
    * so a sentence beside it saying "raise the roster limit" would contradict it on the same screen. */
+  /* ⛔ A WITHDRAWN DESK, DERIVED ONCE (432(m)). It governs the roster-full remedy AND, from C7 step 6, whether the
+   * head action is a link at all — two answers to one fact, so the fact is read in one place. */
+  const withdrawn = control != null && control.enabled === false && control.offCause === "SUNSET";
   const rosterFullReason = control && roster && roster.length >= control.maxDesignatedBots && control.offCause !== "SUNSET"
     ? DESIGNATE_COPY.rosterFull(roster.length, control.maxDesignatedBots)
     : null;
@@ -856,13 +937,18 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
     limitsFirstUnsetHref: CONSOLE_LIMITS_FIRST_UNSET_HREF,
     rosterFullReason,
     rosterFullPlain,
-    /* 432(j) · a disabled control with no reason on screen reads as a broken page, and in four of the captured states
-     * the roster-full sentence is null — so every state carries one.
-     * ⛔ AND EACH ONE NAMES ITS OWN CONTROL (ruling 432(n)). Both said "Not ready on this build yet.", and the page
-     * paints them on ONE screen — beside the disabled "Designate an account" in the head and beside the disabled
-     * Toggle in the strip, about 105px apart at 1280 and two blocks apart at 360. Two identical right-aligned
-     * sentences read as a rendering fault rather than as two reasons, and neither said which control it was about. */
-    actionReason: "Designating an account is not ready on this build yet.",
+    /* ⭐ C7 STEP 6 TURNED THE HEAD ACTION ON, so its reason is no longer a build note — and the assertion that
+     * demanded a sentence in every state is re-aimed rather than deleted (432(j) with 432(n) beside it):
+     *   · the desk is WITHDRAWN → this sentence, because the SUNSET Callout above already says nothing can be
+     *     designated and 432(m) refuses a "raise the roster limit" remedy that would contradict it;
+     *   · the roster is FULL → `null`, because `rosterFullReason` sits in the same flex row and IS the reason;
+     *   · otherwise → `null`, because the action is a live link to the wizard and a working control explains
+     *     nothing.
+     * ⛔ Never the switch's own words: the two sit about 105px apart at 1280 and read as a rendering fault when
+     * they match, which is the defect the previous pair of identical sentences actually produced. */
+    actionReason: withdrawn ? "The desk has been withdrawn, so no account can be designated." : null,
+    designateHref: CONSOLE_NEW_ROUTE,
+    designateLive: !withdrawn && rosterFullReason === null,
     /* ⭐ C7 step 4b · THE SWITCH IS OPERABLE NOW, so its reason is no longer a build note. It is the reason the
      * switch cannot be operated in the one state where a sentence is owed and nothing else on the strip supplies
      * one — a WITHDRAWN desk. ⛔ THE OTHER THREE ARE `null` FOR STATED REASONS, not by omission:
@@ -880,6 +966,9 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
     live,
     dayKey: core.dayKey,
     tiles,
+    /* ⛔ ONE NUMBER, ONE READ, ON EVERY TAB — the badge cannot disagree with itself between two panels, and it is
+     * `null` rather than 0 when the count could not be taken (355). */
+    pendingIntents: core.pendingIntents,
   };
 }
 
@@ -1013,7 +1102,7 @@ const CONSOLE_LIMIT_LABEL: Readonly<Record<string, string>> = {
   capStaffChosenDailyTzs: "Targeted and manual daily cap",
   gCounterPerPlayerPerDay: "Stakes against one player per day",
   gCounterPerPlayerTzsPerDay: "TZS against one player per day",
-  gStaffChosenMaxCounterpartyShare: "One player’s share limit",
+  gStaffChosenMaxCounterpartyShare: "One player's share limit",
 };
 /** The same, for `FIELD_META`'s section names. ⛔ The KEY is READ from the field table, never typed: the word it
  *  replaces is itself a needle, so typing it here would put it in a string literal of the module 4.453 scans. */
@@ -1224,6 +1313,24 @@ export type ConsoleLimitRow = {
   caption: string | null;
   /** True for the FIRST unset member of `REQUIRED_FOR_MASTER_ON` — the row that carries `#limits-first-unset`. */
   firstUnset: boolean;
+  /**
+   * ⭐ THE RECOMMENDED VALUE, AS PLAIN DIGITS, OR "" WHERE THERE IS NONE (2026-09-21).
+   *
+   * ⛔ `recommendedLimits()` HAS EXISTED SINCE THE PLAN AND NOTHING EVER CALLED IT. Its own docblock reads
+   * "Use recommended values fills these into the form and saves nothing", the switch-on sheet describes that
+   * control, and the operator guide documents it — but no component in `src/app/admin/desk` referenced it, so
+   * the control was never on the screen and an officer had to type all eight required limits by hand before
+   * the master switch could be offered at all. A function written, documented in three places, and wired to
+   * nothing.
+   * ⛔ PLAIN DIGITS, NEVER THE FORMATTED FIGURE — the same rule `input` carries three lines up: the kit's
+   * strict numeric input strips every non-digit on the first keystroke, so a field filled with "TZS 500,000"
+   * would read back as 500000 only by luck.
+   * ⚠️ Read from `FIELD_META` directly rather than through `recommendedLimits()`, and that is a measured
+   * choice: every global limit's recommendation is a STATIC number (verified — none resolves `LIVE_MIN`), so
+   * pulling them here needs no stake-bounds context, and a row whose recommendation is null (`gTargetsMaxActive`)
+   * yields "" and is simply not filled.
+   */
+  recommended: string;
 };
 
 export type ConsoleLimitsView = ConsoleDeskShell & {
@@ -1240,13 +1347,39 @@ export type ConsoleLimitsView = ConsoleDeskShell & {
    * counter tells a signed-in player nothing about the feature.
    */
   limitsVersion: number | null;
+  /**
+   * ⛔ THE RECOMMEND CONTROL'S OWN WORDS, ON THE SERVER WHERE COPY LIVES (ruling 388).
+   *
+   * `test:house-bot-console` 1.388 holds every string of 25+ characters in a console CLIENT file to a closed
+   * list of six the client is allowed to own; everything else belongs here. The first form of this control put
+   * its toast sentence in `limits-form.tsx` and 1.388 caught it immediately — correctly, and it is the reason
+   * these three strings are fields rather than literals beside the button.
+   * ⚠️ FINISHED SENTENCES, NOT A TEMPLATE. No count is interpolated, so nothing has to cross the boundary as a
+   * function and the client never assembles copy from parts — which is how a half-translated sentence gets
+   * built on a surface ruling 453 requires to stay neutral.
+   */
+  recommendCopy: { label: string; filledTitle: string; filledBody: string };
 };
 
-/** Formats one stored limit for its own unit. ⛔ Money goes through `formatTzs`, the console's only money formatter (361). */
+/**
+ * Formats one stored limit for its own unit. ⛔ Money goes through `formatTzs`, the console's only money formatter (361).
+ *
+ * ⛔ A TIME FIELD CARRIES ITS WORD, AND IT DID NOT USED TO. This read `: formatNumber(raw)` for every unit that was
+ * neither `TZS` nor `%`, so `freqMinGapSec` — unit `"s"`, labelled "Shortest gap between its bets" — rendered on the
+ * saved-rules card as a bare `30`, while `rules.ts`'s own refusal for that same field said "at least 30 seconds".
+ * The surface an officer reads while SETTING the value was the one with no unit on it.
+ * ⭐ THE WORD COMES FROM `unitSuffix`, WHICH THE REFUSAL NOW USES TOO, so the two cannot drift apart — the same
+ * one-source discipline the pagers already follow by sharing ONE predicate with their counting readers.
+ * ⚠️ `count` still renders bare ON PURPOSE: the label carries the noun ("Bets per day"), and "200 count" is worse
+ * than "200". `unitSuffix` returns "" for it, so that is a decision this function makes by deferring, not by
+ * falling through — which is the difference that let the defect exist.
+ */
 function limitValue(field: FieldId, raw: number | null): string {
   if (raw == null) return "Not set";
   const unit = FIELD_META[field].unit;
-  return unit === "TZS" ? formatTzs(raw) : unit === "%" ? `${formatNumber(raw)}%` : formatNumber(raw);
+  if (unit === "TZS") return formatTzs(raw);
+  if (unit === "%") return `${formatNumber(raw)}%`;
+  return `${formatNumber(raw)}${unitSuffix(unit, raw)}`;
 }
 
 /**
@@ -1369,6 +1502,10 @@ export async function houseUsageForConsole(
       unset,
       caption: unset ? unsetCaptionFor(field, control.enabled) : null,
       firstUnset,
+      /* ⛔ PLAIN DIGITS, for the reason `input` above gives. A null recommendation yields "" and fills nothing. */
+      recommended: FIELD_META[field].recommended == null || typeof FIELD_META[field].recommended === "string"
+        ? ""
+        : String(FIELD_META[field].recommended),
     };
   });
 
@@ -1381,6 +1518,14 @@ export async function houseUsageForConsole(
      * clobber. Ruling 433's `formReason` is GONE with the read-only panel it explained: 432(a) refuses a control
      * with nothing behind it, and there is something behind this one now. */
     limitsVersion: control ? control.limitsVersion : null,
+    /* ⛔ NEUTRAL, AND IT SAYS WHAT THE CONTROL DOES NOT DO. "Nothing is saved yet" is the whole point: filling
+     * and committing are different decisions on the form that sets the ceilings which stop money, and the
+     * switch-on sheet has always documented this control as one that fills and does not save. */
+    recommendCopy: {
+      label: "Use recommended values",
+      filledTitle: "Recommended values filled",
+      filledBody: "Nothing is saved yet — check the numbers, then press Save.",
+    },
   };
 }
 
@@ -1535,6 +1680,10 @@ export type ConsoleSwitchDialog = {
   body: string;
   confirmLabel: string;
   cancelLabel: string;
+  /** ⛔ IT SAYS "(required)", AND SIX ADMIN DIALOGS NEXT DOOR ALREADY DO (C7 step 7 review, visual-5). The reason
+   *  gates the primary button on `CONSOLE_REASON_MIN`, and until this was marked an officer who typed the confirm
+   *  word and no reason met a dead button with nothing on screen to explain it. The counter counts DOWN from the
+   *  maximum, so it says nothing about the floor. */
   reasonLabel: string;
   reasonHint: string;
   /** ⛔ WHAT THE LIVE COUNT COUNTS. Read off the first 360 tile: it painted a bare "300", and a figure with no
@@ -1578,7 +1727,7 @@ function switchDialogFor(on: boolean | null, offCause: string | null, unsetRequi
       title: "Switch the desk off",
       body: "Nothing more will be staked and every queued stake is cancelled. A stake already in its final step may still complete.",
       confirmLabel: "Switch off",
-      reasonLabel: "Why are you switching it off?",
+      reasonLabel: "Why are you switching it off? (required)",
       reasonHint: "Kept with the change, and read by whoever switches it on again.",
       word: null,
       wordLabel: null,
@@ -1601,7 +1750,7 @@ function switchDialogFor(on: boolean | null, offCause: string | null, unsetRequi
     title: "Switch the desk on",
     body: "Every account that is running will start staking. Each stake is still held to the limits on this page, and to the account's own.",
     confirmLabel: "Switch on",
-    reasonLabel: "Why are you switching it on?",
+    reasonLabel: "Why are you switching it on? (required)",
     reasonHint: "Kept with the change, and shown on this strip until it is switched off.",
     word: CONSOLE_SWITCH_ON_WORD,
     wordLabel: `Type ${CONSOLE_SWITCH_ON_WORD} to confirm`,
@@ -1718,6 +1867,22 @@ export type ConsoleRuleRow = {
   unset: boolean;
   /** 364's caption when the field is unset; `null` otherwise. */
   caption: string | null;
+  /**
+   * ⛔ WHICH FACE THE VALUE WEARS, DECIDED BY THE ROW AND NEVER BY THE PAGE (rulings 401, 409).
+   *
+   * 🔴 MEASURED 2026-09-20, by the render, with every suite green. The server hands this card an ALREADY-FORMATTED
+   * string, so nothing downstream can tell "TZS 900,000,000" from "1,440" — and the card painted both as plain
+   * body text. The limits panel one tab away paints the identical values through
+   * `row.money ? "amount tabular-nums" : "font-mono tabular-nums"` (`limits-form.tsx`), so ONE section was showing
+   * ONE kind of value two ways, which is the defect this section was pulled up on once already.
+   * ⛔ AND IT WAS INVISIBLE TO THE INSTRUMENTS. `.amount` is what `qa:house-bots-visual` §5.1 scans, so seven
+   * currency caps sat outside the money-clipping gate entirely, and `test:type-scale`'s money detector is blind to
+   * a pre-formatted string by construction. The flag is the only thing that can carry the fact.
+   * ⛔ `"money"` IS NEVER SET ON AN UNSET ROW: "Not set" is a state, not a figure, and `.amount`'s `nowrap` and
+   * money meaning belong to figures only — the same rule `limits-form.tsx` applies by showing the caption instead.
+   * A count is `"count"` (365/409: a count is not money); a word like "Polls" or "Off" is `"word"` and stays body text.
+   */
+  face: "money" | "count" | "word";
 };
 
 /** One target, painted. ⛔ No money: a target is a scope decision, not a stake (365). */
@@ -1786,6 +1951,41 @@ export type ConsoleDetailView = {
   targetsPage: number;
   /** The page size the pager must be drawn with, so the page and the control can never disagree. */
   targetsPerPage: number;
+  /* ── C7 step 5 · THE ACTIVITY PANEL ──────────────────────────────────────────────────────────────────────────
+   * ⛔ THREE ANSWERS, AND THEY ARE NOT INTERCHANGEABLE (rulings 355, 421, and the correction already recorded at
+   * `houseUsageForConsole`): `[]` is a list with nothing in it, `null` is a read that FAILED and paints the kit's
+   * failure treatment, and a REMOVED account takes neither read at all (358) so it is `null` for the same reason
+   * its usage is. The page tells the two apart by `removed`, which it already holds. */
+  feed: ConsoleFeedRow[] | null;
+  /** ⛔ FROM `countFeed`, NEVER `feed.length` (ruling 344): `pageLimit` clamps every list reader at 500 rows. */
+  feedTotal: number | null;
+  feedPage: number;
+  feedPerPage: number;
+  /** The rail, finished — labels, hrefs and which chip is in force (ruling 410). */
+  feedFilters: ConsoleFilterGroup[];
+  /** The window presets the rail offers and the one a bare visit is on — the page types neither. */
+  feedPresets: readonly string[];
+  feedPresetDefault: string;
+  /** Every live parameter of this panel, for the pager's own `baseHref` (411: the page number is the only one it owns). */
+  feedParams: Record<string, string | undefined>;
+  /** Which empty state belongs to THIS read — an unfiltered list with nothing in it reads differently from a filter that matched nothing. */
+  feedEmpty: ConsoleEmpty;
+  /** True when the rail is narrowing anything at all, so the panel can offer one way back (432(a)). */
+  feedFiltered: boolean;
+  /** Where "clear the filter" goes. */
+  feedClearHref: string;
+  /** The declared order, said once, where a reader of the table can see it. */
+  feedOrderNote: string;
+  /* ── C7 step 5 · THE HISTORY PANEL ───────────────────────────────────────────────────────────────────────── */
+  history: ConsoleEventRow[] | null;
+  historyTotal: number | null;
+  historyPage: number;
+  historyPerPage: number;
+  historyParams: Record<string, string | undefined>;
+  historyEmpty: ConsoleEmpty;
+  historyOrderNote: string;
+  /** ⛔ ONE sentence naming every axis of the address that was thrown away, or `null` (rulings 387, 432(j)). */
+  queryRefusal: string | null;
   /** ⭐ 415 · the acts this account's CURRENT state allows, each with every word its dialog paints (388). */
   acts: ConsoleAccountActDialog[];
   /** ⛔ 432(j) · what the chip means when NO live cause is beside it — never painted with . */
@@ -1809,6 +2009,685 @@ const CONSOLE_TARGETS_PER_PAGE = 20;
 /** `?tpage=` as a whole page number. Anything else — absent, 0, -3, 1.5, NaN — is page 1. */
 function consolePageNumber(raw: number | undefined): number {
   return Number.isSafeInteger(raw) && (raw as number) >= 1 ? (raw as number) : 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * C7 STEP 5 (the account half) · THE ACTIVITY PANEL AND THE HISTORY PANEL
+ *
+ * ⛔ **THE TWO PANELS RIDE THE ACCOUNT PAGE'S ONE GATED READER** (rulings 340, 346, 433(d)). `houseDetailForConsole`
+ * already resolves the audience, reads the record and settles every other figure this route paints; a second door for
+ * the feed would put two audience verdicts and two control reads in ONE render, which is the named refusal 433(d)
+ * carries and the spy `test:house-bot-console` 1.306 measures. So the query arrives at the SAME door and the slices
+ * come back inside the SAME view model.
+ *
+ * ⛔ **THE PAGE SIZE AND THE PAGE NUMBER ARE SERVER-ONLY** (the reason already written at `CONSOLE_TARGETS_PER_PAGE`):
+ * `@/components/ui/pagination` is a CLIENT-reachable module, so the numbers are stated here and the render takes them
+ * from the view — the page and its control can never disagree.
+ *
+ * ⛔ **THE ORDER IS DECLARED, AND IT IS THE SAME ORDER IN BOTH READERS OF EACH PAIR.** Both twins list intents and
+ * events `("createdAt", "id") DESC` (`memPage`/`sqlPage`, `memoryHouseBotEvents.listAll`/`prismaHouseBotEvents.listAll`)
+ * and both counting readers measure the SAME predicate. A numbered pager over an unstable order shows one row twice
+ * and hides another, which is a defect nothing on the screen reveals.
+ *
+ * ⛔ **WHAT THE PROJECTION MAY NOT CARRY** (rulings 360, 361, 453; owner ruling D20). `intent.why` is composed in
+ * `server/house-bot/decide.ts` and opens with a word 453 forbids, embeds formatted amounts and, on one branch, a POOL
+ * TOTAL — an aggregate of other people's money, which is no role of ruling 360. `intent.decision` is an untyped blob.
+ * `intent.triggerUserId` is another player's raw id; the rule is `playerHandle`. None of the three is projected, and
+ * no source guard could see them if they were: 4.453 collects LITERALS of this section, and a sentence composed in a
+ * module outside it is in neither population.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * The two panels' page sizes. Written HERE and not imported, for the reason `CONSOLE_TARGETS_PER_PAGE` states one
+ * screen up: `@/components/ui/pagination` is client-reachable and this module is server-only.
+ */
+const CONSOLE_FEED_PER_PAGE = 20;
+const CONSOLE_HISTORY_PER_PAGE = 20;
+
+/**
+ * ⛔ **THE EVENT WORD MAP IS TOTAL, AND `WORD[kind] ?? kind` IS FORBIDDEN OUTRIGHT** (rulings 317, 453).
+ *
+ * MEASURED, not assumed. `EVENT_KINDS` holds `HOLDER_AGAINST_BOT`, and 453's lexicon opens with a `\bbots?\b`
+ * word-boundary pattern — an UNDERSCORE IS A WORD CHARACTER, so there is no boundary before `BOT` and the lexicon
+ * cannot see that kind at all. `STAFF_EVENT_WORD` in `feed-copy.ts` is `Partial` and covers 8 of the 30, and one of
+ * its eight is itself a word of the shared vocabulary. So a raw-enum fallback would paint the feature's own name on
+ * an officer's screen and NOTHING would report it — not 4.453, not 3.453, not the bundle scan.
+ * ⛔ Therefore: a TOTAL `Record<HouseBotEventKind, string>`, so `tsc` itself refuses a kind added without a word, and
+ * an assertion that no value of it matches the console's own lexicon.
+ */
+export const CONSOLE_EVENT_WORD = {
+  DESIGNATED: "Added to the desk",
+  VERIFIED: "Holder's permission confirmed",
+  STARTED: "Started",
+  PAUSED: "Paused by an officer",
+  AUTO_PAUSED: "Stopped by a limit",
+  RULES_SAVED: "Rules saved",
+  REMOVED: "Removed from the desk",
+  SWITCH_ON: "The desk was switched on",
+  SWITCH_OFF: "The desk was switched off",
+  LIMITS_SAVED: "Desk limits saved",
+  OWNER_MONEY: "The holder's money moved",
+  CREDENTIAL_CHANGED: "Sign-in details changed",
+  HOLDER_CAUSE_ADDED: "The holder's own account raised a block",
+  CONSENT_VOIDED: "The holder's permission ended",
+  HOLDER_AGAINST_BOT: "The holder staked against this account",
+  HOLDER_EMAIL_CHANGED: "The holder's email changed",
+  HOLDER_2FA_ON: "The holder turned two-step sign-in on",
+  HOLDER_2FA_OFF: "The holder turned two-step sign-in off",
+  PENALTY_BOXED: "A player was put in the penalty box",
+  REIMBURSEMENT_RECORDED: "A reimbursement was recorded",
+  BOARD_DISCLOSURE_RECORDED: "A Board disclosure was recorded",
+  SUNSET: "The desk was withdrawn",
+  ENTER_NOW_PREVIEWED: "A manual stake was previewed",
+  ENTER_NOW_REQUESTED: "A manual stake was requested",
+  OPENER_SIDE_DRAWN: "The opening side was drawn",
+  TARGET_ADDED: "A target was added",
+  TARGET_UPDATED: "A target was changed",
+  TARGET_REMOVED: "A target was stopped",
+  TARGET_ENDED: "A target ended",
+  STAFF_INTENT_CANCELLED: "A queued stake was cancelled",
+} as const satisfies Record<HouseBotEventKind, string>;
+
+/** One intent kind, in the console's own words. ⛔ TOTAL, for exactly the reason the event map states. */
+const CONSOLE_INTENT_KIND_WORD = {
+  COUNTER: "Responding",
+  FILL: "Filling",
+  OPENER: "Opening",
+  MANUAL: "Manual",
+} as const satisfies Record<IntentKind, string>;
+
+/** One intent status, its word and its chip. ⛔ TOTAL, and the chip comes from the ONE tone table (ruling 311). */
+const CONSOLE_INTENT_STATUS = {
+  PENDING: { word: "Queued", chip: TONE_CHIP.royal },
+  CLAIMED: { word: "In flight", chip: TONE_CHIP.broadcast },
+  PLACED: { word: "Placed", chip: TONE_CHIP.green },
+  SKIPPED: { word: "Skipped", chip: TONE_CHIP.slate },
+  EXPIRED: { word: "Expired", chip: TONE_CHIP.slate },
+  FAILED: { word: "Failed", chip: TONE_CHIP.rose },
+  CANCELLED: { word: "Cancelled", chip: TONE_CHIP.claret },
+} as const satisfies Record<IntentStatus, { word: string; chip: StatusChipVariant }>;
+
+/** One product line, in the platform's own screen words — the same two `/admin/house` already paints. */
+const CONSOLE_PRODUCT_WORD = {
+  MARKET: "Polls",
+  UPDOWN: "Up & Down",
+} as const satisfies Record<IntentProductLine, string>;
+
+/**
+ * ⛔ **THE CONSOLE'S OWN SENTENCE FOR EVERY ENGINE OUTCOME** (rulings 370(c), 453), TOTAL over `EngineCode`.
+ *
+ * `feed-copy.ts`'s own table names the feature in plain English in more than twenty of its rows — measured:
+ * `MASTER_OFF`, `PRODUCT_NOT_SUPPORTED`, the six `CAP_GLOBAL_*` rows, every `{bot}` placeholder, and the two
+ * staff-chosen rows whose sentences are themselves words of the shared vocabulary. Ruling 370(c) forbids a CLIENT
+ * importing that module; nothing forbade the SERVER painting it into the officer's DOM, which 453 does forbid. So
+ * this is an OVERRIDE, the same decision 432(f) took for `PAUSE_REASON_WAY_OUT` and 432(b) for `FIELD_META`, and for
+ * the same reason: the engine's own words are the engine's, and the console's copy has one home.
+ * ⛔ TOTAL, so a code added to the engine without a console sentence is a compile error rather than a blank cell.
+ */
+const CONSOLE_SKIP_SENTENCE = {
+  OUTSIDE_SCHEDULE: "Outside this account's schedule",
+  POOL_BAND: "The pool was outside this account's band",
+  NOT_REACTING: "This account did not react this time",
+  TRIGGER_STAKE_RANGE: "The player's stake was outside this account's range",
+  NO_REACT_ZONE: "The stake came too close to betting close",
+  EXIT_WINDOW_TOO_LATE: "The player's exit window closes too late to react in time",
+  UD_CLOSENESS: "The price had already moved too far from the round's open",
+  UD_NO_PRICE: "The round has no open price or targets",
+  PENALTY_BOX: "That player is in today's penalty box",
+  MARKET_HELD: "Another account, or a queued stake, already held this market",
+  NO_ELIGIBLE_BOT: "No account could take it",
+  STAKE_BELOW_MIN: "What was left after the limits was below the minimum",
+  MAINTENANCE: "50pick was in maintenance",
+  CUTOFF: "Too close to betting close",
+  MARKET_NOT_LIVE: "The market was no longer open",
+  MARKET_GONE: "The market no longer exists",
+  MASTER_OFF: "The desk was switched off",
+  BOT_NOT_ACTIVE: "This account was not running",
+  TRIGGER_EXITED: "The player cashed out first",
+  CONDITION_GONE: "The market's money changed first, so its side no longer held",
+  BUSY_TIMEOUT: "50pick stayed busy until it was too late",
+  UNMAPPED: "Refused for a reason the engine does not recognise",
+  INTERNAL: "An internal error stopped it",
+  STAKE_BOUNDS_CHANGED: "The platform's own stake limits changed",
+  POISON: "It failed three times",
+  NO_CUTOFF: "The poll has no betting close",
+  UD_NO_ROUND: "The Up & Down market has no round",
+  PRODUCT_NOT_SUPPORTED: "The desk does not stake on this product",
+  UD_STALE_PRICE: "No fresh price was available",
+  MARKET_REOPENED: "The market was reopened",
+  CHAIN_NOT_RUNNING: "The Up & Down chain was not running",
+  HOLDER_RECRUIT: "The player was recruited by an account holder",
+  STALE: "50pick was busy until the time limit passed",
+  CANCELLED_BY_ADMIN: "An officer stopped it before it was placed",
+  INFO_BLACKOUT: "An AI result check is recorded on this market, or it was reopened after one",
+  TARGET_REMOVED: "The target was stopped",
+  TARGET_ENDED: "The target ended",
+  COUNTERPARTY_CONCENTRATION: "One player held too much of the locked money",
+  CAP_OPPOSITE_SIDE: "This account already held the other side of this market",
+  OUT_OF_SCOPE: "This account's rules no longer cover this market",
+  CAP_STAKE_MIN: "Below this account's smallest allowed stake",
+  CAP_STAKE_MAX: "Above this account's largest allowed stake",
+  CAP_PER_MARKET: "This account's per-market TZS limit was reached",
+  CAP_BALANCE_FLOOR: "The holder's balance was below the floor",
+  CAP_DAILY_STAKE: "This account's daily stake limit was reached",
+  CAP_DAILY_LOSS_PROJECTED: "This account's daily loss limit could have been passed",
+  CAP_EXPOSURE: "This account's open exposure limit was reached",
+  CAP_STAFF_CHOSEN_PER_DAY: "This account had used today's manual stakes",
+  CAP_STAFF_CHOSEN_DAILY_STAKE: "This account's manual TZS limit for today was reached",
+  CAP_TARGET_ONCE: "The target reacts to the first stake only, and one reaction is already placed",
+  CAP_MIN_GAP: "This account's minimum gap between bets applied",
+  CAP_PER_HOUR: "This account's hourly bet limit was reached",
+  CAP_PER_DAY: "This account's daily bet limit was reached",
+  CAP_PER_MARKET_COUNT: "This account's bets-per-market limit was reached",
+  CAP_GLOBAL_PER_MARKET: "The desk's per-market TZS limit was reached",
+  CAP_GLOBAL_DAILY_STAKE: "The desk's daily stake limit was reached",
+  CAP_GLOBAL_LOSS_PROJECTED: "The desk's daily loss limit could have been passed",
+  CAP_GLOBAL_EXPOSURE: "The desk's open exposure limit was reached",
+  CAP_GLOBAL_BETS_PER_MINUTE: "The desk's bets-per-minute limit applied",
+  CAP_GLOBAL_BETS_PER_DAY: "The desk's daily bet limit was reached",
+  CAP_COUNTERPARTY_COUNT: "That player had been met as often as allowed today",
+  CAP_COUNTERPARTY_TZS: "The TZS set against that player today reached its limit",
+  CAP_GLOBAL_STAFF_CHOSEN_PER_DAY: "The desk had used today's manual stakes",
+  CAP_GLOBAL_STAFF_CHOSEN_DAILY_STAKE: "The desk's manual TZS limit for today was reached",
+} as const satisfies Record<EngineCode, string>;
+
+/**
+ * The window the activity rail offers, and the one a bare visit is on.
+ * ⭐ `all` IS THE DEFAULT AND IT IS THE FOURTH WINDOW ON PURPOSE. Delivered bells already link with `&range=all`
+ * (`alert-copy.ts`'s feed href and the two placement notices), and one account's own activity is a short list — a
+ * rail that opened narrowed would hide the row the officer followed a bell to reach, which is 432(a) pointing the
+ * other way. The three narrowing presets are the platform's own ids, so "today" means one thing everywhere.
+ */
+const CONSOLE_FEED_PRESETS = ["today", "24h", "7d", "all"] as const;
+const CONSOLE_FEED_PRESET_DEFAULT = "all";
+
+/**
+ * ⛔ **THE URL TOKEN IS THE CONSOLE'S OWN WORD, SLUGGED — NEVER THE ENUM, LOWERCASED** (ruling 453).
+ *
+ * 🔴 READ OFF A SERVED PAGE, NOT REASONED ABOUT. The first build of this rail derived each option's query value
+ * with `member.toLowerCase()`, and `/admin/desk/<id>?tab=activity` came back carrying
+ * `href="…&kind=counter"` and `data-chip="kind:counter"` FIVE times — a word 453's lexicon forbids, in served
+ * markup and in the address bar, where it lands in every screenshot of the screen. NOTHING reported it: 4.453
+ * scans source LITERALS and the token was computed at runtime; 3.453 scanned the painted LABELS and not the keys;
+ * the bundle scan reads chunks and this is server markup. Every suite was green.
+ *
+ * ⛔ So the rule is inverted and made self-enforcing: a token may only ever be the option's OWN painted word,
+ * slugged — which means a token can never carry a word its label does not, and the ONE neutrality scan over the
+ * labels now covers the keys and the hrefs by construction. The parse reads the same table, so the control an
+ * officer clicks and the read the server takes are still one function.
+ */
+const consoleSlug = (word: string): string => word.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+/** One option of one filter group — a finished label, a finished href and whether it is the one in force. */
+export type ConsoleFilterOption = { key: string; label: string; href: string; on: boolean };
+/**
+ * One axis of the activity rail. `param` is the REAL query-parameter name, because `FilterPill`'s `testId`
+ * contract is "axis:value using the REAL query-param name and value" and a driver rebuilds a URL from it.
+ */
+export type ConsoleFilterGroup = { param: string; label: string; options: ConsoleFilterOption[] };
+
+/** One row of the activity panel. ⛔ No intent id, no `why`, no `decision`, no trigger player's id. */
+export type ConsoleFeedRow = {
+  when: string;
+  whenTitle: string;
+  /** ⛔ ONE intent's own stake, formatted, never a sum (rulings 266, 360 role C, 373). */
+  stake: string;
+  statusWord: string;
+  statusChip: StatusChipVariant;
+  typeWord: string;
+  productWord: string;
+  /** The console's own sentence for the engine's outcome code, or `null` for a row that simply landed. */
+  note: string | null;
+  /** True for the ONE row a delivered bell's `&intent=` names. ⛔ A flag, never the id — an id in an attribute is served markup. */
+  anchored: boolean;
+};
+
+/** One row of the history panel. ⛔ No amount from any payload, and no free-text reason (see the reader). */
+export type ConsoleEventRow = {
+  when: string;
+  whenTitle: string;
+  /** `CONSOLE_EVENT_WORD[kind]`, always — never the raw enum and never a `?? kind` fallback. */
+  eventWord: string;
+  /** The status change this event recorded, in the ONE status map's words, or `null` when it changed no status. */
+  change: string | null;
+  /** The actor's own id, or the console's word for the engine — ruling 420: an actor is an id, never a name. */
+  who: string;
+  /**
+   * ⛔ 266/369(c) · AN `OWNER_MONEY` ROW CARRIES A DOOR, NEVER A FIGURE. `money-hook.ts` writes `amountTzs` and
+   * `balanceTzs` — the holder's own wallet balance — onto every one of those events. Ruling 266 allows money only
+   * as usage against a configured limit and 456 settled that the door to a holder's money is the platform's own
+   * transactions screen. So the row links there by transaction id and paints no amount at all.
+   */
+  moneyHref: string | null;
+  anchored: boolean;
+};
+
+/**
+ * What EITHER console page hands its own door: the REQUEST's query string, untouched.
+ *
+ * ⛔ **THE DOOR VALIDATES, NOT THE PAGE, AND NOT THE RAIL** (rulings 259, 383, 387). A console page is served 200 to
+ * any signed-in account and a crafted address is free, so every value below is read here, checked against a CLOSED
+ * list here, and refused here. The rail's own hrefs are built from the SAME parse, so the control an officer clicks
+ * and the read the server takes cannot disagree — there is one function, not two.
+ *
+ * ⭐ ONE SHAPE FOR BOTH PAGES, AND IT WAS CALLED `ConsoleDetailQuery` UNTIL THE LANDING PANELS LANDED. The landing
+ * page's address carries the same axes — the same window, the same three chips, the same two bell anchors and the
+ * same two page numbers — so a second type would have been a second parse wearing a different name, which is the
+ * one thing 383 and 387 are written against. `tpage` is the Targets grid's own page number and is simply absent
+ * from a landing address; an absent parameter is page 1 in either shape.
+ */
+export type ConsoleQuery = {
+  tab?: string | string[];
+  tpage?: string | string[];
+  page?: string | string[];
+  hpage?: string | string[];
+  range?: string | string[];
+  from?: string | string[];
+  to?: string | string[];
+  kind?: string | string[];
+  product?: string | string[];
+  outcome?: string | string[];
+  intent?: string | string[];
+  event?: string | string[];
+};
+
+/** The parsed, validated query. `refusals` names every axis that was thrown away, by its own screen word. */
+type ConsoleParsed = {
+  /** The panel this address selects, resolved against the CALLER's own closed list (see `tabOf`). */
+  tab: string;
+  tpage: number;
+  page: number;
+  pageAsked: boolean;
+  hpage: number;
+  hpageAsked: boolean;
+  preset: string;
+  from: string | null;
+  to: string | null;
+  fromIso: string | undefined;
+  toIso: string | undefined;
+  kind: IntentKind | null;
+  product: IntentProductLine | null;
+  outcome: IntentStatus | null;
+  intentId: string | null;
+  eventId: string | null;
+  refusals: string[];
+};
+
+/** One value of a repeated or array-shaped parameter is no value at all — a repeated parameter is a refusal. */
+function oneParam(raw: string | string[] | undefined): { value: string | null; repeated: boolean } {
+  if (raw === undefined) return { value: null, repeated: false };
+  if (Array.isArray(raw)) return { value: null, repeated: raw.length > 0 };
+  const v = raw.trim();
+  return { value: v.length === 0 ? null : v, repeated: false };
+}
+
+/**
+ * ⛔ A BOUNDED ID, CHECKED BY SHAPE BEFORE IT IS USED FOR ANYTHING. The two anchor parameters arrive from a
+ * delivered bell, so they are real ids in practice and arbitrary text in principle. They are never interpolated
+ * into markup and never used as a filter; this refuses the rest before they are compared at all.
+ */
+const CONSOLE_ANCHOR_SHAPE = /^hb[ie]_[A-Za-z0-9_]{1,48}$/;
+
+/**
+ * The closed-list member one URL token addresses, or `null`. ⛔ MATCHED ON THE TOKEN, never on the enum spelled in
+ * lower case: the enum carries the feature's own vocabulary and an address is the one place this section cannot
+ * take a word back (see `consoleSlug`).
+ */
+function fromClosedList(axis: ConsoleFeedAxis, value: string | null): string | null {
+  if (value == null) return null;
+  const v = value.toLowerCase();
+  return CONSOLE_FEED_AXES[axis].members.find((m) => consoleAxisToken(axis, m) === v) ?? null;
+}
+
+/**
+ * THE ONE PARSE. Every axis of the account page's address, validated against a closed list or a shape, with every
+ * refusal NAMED so the page can say what it ignored rather than silently narrowing to something nobody asked for.
+ */
+function parseConsoleQuery(
+  query: ConsoleQuery | undefined,
+  nowMs: number,
+  /**
+   * ⛔ THE ONE DIFFERENCE BETWEEN THE TWO SHAPES, PASSED IN RATHER THAN BRANCHED ON. The landing rail and the
+   * account page's rail are separate CLOSED LISTS with separate panels (`consoleTab` / `consoleDetailTab`), and a
+   * parse that decided between them itself would be the second spelling of the filter this function exists to
+   * prevent. Everything below this line is identical for both, which is why there is one parse and not two.
+   */
+  tabOf: (raw: string | string[] | undefined) => string,
+): ConsoleParsed {
+  const q = query ?? {};
+  const refusals: string[] = [];
+  const say = (axis: string) => { if (!refusals.includes(axis)) refusals.push(axis); };
+
+  const pageOf = (raw: string | string[] | undefined, axis: string): { n: number; asked: boolean } => {
+    const one = oneParam(raw);
+    if (one.repeated) { say(axis); return { n: 1, asked: false }; }
+    if (one.value == null) return { n: 1, asked: false };
+    const n = Number(one.value);
+    if (!Number.isSafeInteger(n) || n < 1) { say(axis); return { n: 1, asked: false }; }
+    return { n: consolePageNumber(n), asked: true };
+  };
+
+  const closed = <T extends string>(raw: string | string[] | undefined, axis: ConsoleFeedAxis, said: string): T | null => {
+    const one = oneParam(raw);
+    if (one.repeated) { say(said); return null; }
+    if (one.value == null) return null;
+    const hit = fromClosedList(axis, one.value);
+    if (hit == null) say(said);
+    return hit as T | null;
+  };
+
+  const anchor = (raw: string | string[] | undefined, prefix: string): string | null => {
+    const one = oneParam(raw);
+    if (one.repeated) { say("link"); return null; }
+    if (one.value == null) return null;
+    if (!CONSOLE_ANCHOR_SHAPE.test(one.value) || !one.value.startsWith(prefix)) { say("link"); return null; }
+    return one.value;
+  };
+
+  const targets = pageOf(q.tpage, "page");
+  const feedPage = pageOf(q.page, "page");
+  const history = pageOf(q.hpage, "page");
+
+  /* ⛔ THE WINDOW IS THE PLATFORM'S OWN RESOLVER, so "today" means one span on every screen (`lib/query/windows.ts`'s
+   * own header states the rule). `all` is the console's fourth window and is the ABSENCE of a bound rather than a
+   * bound at the epoch: a count with no window is a count, and a `createdAt >= 1970` predicate is a slower way to
+   * say the same thing. A preset nobody offers is refused, not silently honoured. */
+  const rangeOne = oneParam(q.range);
+  if (rangeOne.repeated) say("window");
+  const fromOne = oneParam(q.from);
+  const toOne = oneParam(q.to);
+  if (fromOne.repeated || toOne.repeated) say("window");
+  const askedPreset = rangeOne.value;
+  const custom = askedPreset === "custom" || fromOne.value != null || toOne.value != null;
+  let preset = CONSOLE_FEED_PRESET_DEFAULT;
+  let fromIso: string | undefined;
+  let toIso: string | undefined;
+  if (custom) {
+    const win = resolveRange({ range: "custom", from: fromOne.value, to: toOne.value }, nowMs, CONSOLE_FEED_PRESET_DEFAULT);
+    preset = "custom";
+    fromIso = new Date(win.start).toISOString();
+    toIso = new Date(win.end).toISOString();
+  } else if (askedPreset != null && askedPreset !== CONSOLE_FEED_PRESET_DEFAULT) {
+    if (!(CONSOLE_FEED_PRESETS as readonly string[]).includes(askedPreset)) {
+      say("window");
+    } else {
+      const win = resolveRange({ range: askedPreset }, nowMs, CONSOLE_FEED_PRESET_DEFAULT);
+      preset = askedPreset;
+      fromIso = new Date(win.start).toISOString();
+      toIso = new Date(win.end).toISOString();
+    }
+  }
+
+  return {
+    tab: tabOf(q.tab),
+    tpage: targets.n,
+    page: feedPage.n,
+    pageAsked: feedPage.asked,
+    hpage: history.n,
+    hpageAsked: history.asked,
+    preset,
+    from: custom ? fromOne.value : null,
+    to: custom ? toOne.value : null,
+    fromIso,
+    toIso,
+    kind: closed<IntentKind>(q.kind, "kind", "type"),
+    product: closed<IntentProductLine>(q.product, "product", "product"),
+    outcome: closed<IntentStatus>(q.outcome, "outcome", "outcome"),
+    intentId: anchor(q.intent, "hbi_"),
+    eventId: anchor(q.event, "hbe_"),
+    refusals,
+  };
+}
+
+/** The refusal Callout's own heading — number-agnostic, because the sentence beneath it is not (read off a tile). */
+export const CONSOLE_REFUSAL_TITLE = "This address was not used in full";
+
+/** What a refused axis is called on screen, and the one sentence that says an address was not taken at its word. */
+function consoleRefusalSentence(refusals: readonly string[]): string | null {
+  if (refusals.length === 0) return null;
+  const list = refusals.length === 1
+    ? refusals[0]
+    : `${refusals.slice(0, -1).join(", ")} and ${refusals[refusals.length - 1]}`;
+  return refusals.length === 1
+    ? `One part of this address was not understood and was ignored: ${list}. The rest of the filter is in force.`
+    : `Parts of this address were not understood and were ignored: ${list}. The rest of the filter is in force.`;
+}
+
+/**
+ * Every live FILTER of the activity panel, as the pager's `baseHref` and the rail's own links need them.
+ *
+ * ⛔ THE BELL'S ANCHOR IS NOT ONE OF THEM, DELIBERATELY. `&intent=` is a LANDING INSTRUCTION — "show me the page
+ * this row is on" — and it belongs to the address the bell produced, not to every link the officer clicks
+ * afterwards. Carrying it forward would re-resolve a page under a filter the anchor was never ranked in, and it
+ * would echo a bounded record id into every pager link and every chip on the rail, which is the one thing this
+ * section may never put in a response it does not have to.
+ */
+function consoleFeedParams(p: ConsoleParsed): Record<string, string | undefined> {
+  return {
+    tab: "activity",
+    range: p.preset === CONSOLE_FEED_PRESET_DEFAULT ? undefined : p.preset,
+    from: p.from ?? undefined,
+    to: p.to ?? undefined,
+    kind: p.kind ? consoleAxisToken("kind", p.kind) : undefined,
+    product: p.product ? consoleAxisToken("product", p.product) : undefined,
+    outcome: p.outcome ? consoleAxisToken("outcome", p.outcome) : undefined,
+  };
+}
+
+/**
+ * One rail link: the panel's own page, the live parameters, one axis changed — and `page` dropped (ruling 411).
+ * ⛔ `base` IS A FINISHED ROUTE THE CALLER GOT FROM `console-routes.ts` (`CONSOLE_ROUTE` for the desk, `consoleBotHref`
+ * for one account) and is never composed here: ruling 319 puts the segment in one module, and a rail that built its
+ * own path would be the second spelling of the route this section was pulled up on.
+ */
+function consoleFeedLink(base: string, params: Record<string, string | undefined>, patch: Record<string, string | undefined>): string {
+  const merged: Record<string, string | undefined> = { ...params, ...patch };
+  const qs = Object.entries(merged)
+    .filter(([, v]) => v != null && v !== "")
+    .map(([k, v]) => `${k}=${encodeURIComponent(v as string)}`)
+    .join("&");
+  return qs ? `${base}?${qs}` : base;
+}
+
+/**
+ * ⭐ THE RAIL'S THREE AXES, IN ONE TABLE — the parse below and the render above both read it, so the control an
+ * officer clicks and the read the server takes cannot be two different spellings of the same filter.
+ * ⛔ A page about ONE account has no Bot axis: a control that can only ever select the account you are looking at
+ * is the dead control 432(a) refuses. The landing rail's own axes are that page's, when it is built.
+ */
+export const CONSOLE_FEED_AXES = {
+  kind: { label: "Type", all: "Any type", members: INTENT_KINDS as readonly string[], word: CONSOLE_INTENT_KIND_WORD as Readonly<Record<string, string>> },
+  product: { label: "Product", all: "Any product", members: INTENT_PRODUCT_LINES as readonly string[], word: CONSOLE_PRODUCT_WORD as Readonly<Record<string, string>> },
+  outcome: {
+    label: "Outcome", all: "Any outcome", members: INTENT_STATUSES as readonly string[],
+    word: Object.fromEntries(INTENT_STATUSES.map((st) => [st, CONSOLE_INTENT_STATUS[st].word])) as Readonly<Record<string, string>>,
+  },
+} as const;
+export type ConsoleFeedAxis = keyof typeof CONSOLE_FEED_AXES;
+
+/** The URL token one member of one axis is addressed by — its own painted word, slugged, and nothing else. */
+function consoleAxisToken(axis: ConsoleFeedAxis, member: string): string {
+  return consoleSlug(CONSOLE_FEED_AXES[axis].word[member] ?? member);
+}
+
+/**
+ * The activity rail, built where every other painted string of this section is built. ⛔ The rail file receives
+ * FINISHED labels and FINISHED hrefs: it types no route, no enum and no closed list, so nothing about the feature
+ * can reach it by name — and every string below is inside 4.453's and 3.453's scans, which a label typed at a call
+ * site one directory away would not be.
+ */
+function consoleFeedGroups(base: string, p: ConsoleParsed): ConsoleFilterGroup[] {
+  const params = consoleFeedParams(p);
+  const live: Readonly<Record<ConsoleFeedAxis, string | null>> = { kind: p.kind, product: p.product, outcome: p.outcome };
+  return (Object.keys(CONSOLE_FEED_AXES) as ConsoleFeedAxis[]).map((axis) => {
+    const a = CONSOLE_FEED_AXES[axis];
+    return {
+      param: axis,
+      label: a.label,
+      options: [
+        { key: "", label: a.all, href: consoleFeedLink(base, params, { [axis]: undefined }), on: live[axis] == null },
+        ...a.members.map((m) => ({
+          key: consoleAxisToken(axis, m),
+          label: a.word[m] ?? m,
+          href: consoleFeedLink(base, params, { [axis]: consoleAxisToken(axis, m) }),
+          on: live[axis] === m,
+        })),
+      ],
+    };
+  });
+}
+
+/** The activity panel's empty states — one for a list with nothing in it, one for a filter that matched nothing. */
+const CONSOLE_FEED_EMPTY: ConsoleEmpty = {
+  title: "Nothing staked yet",
+  body: "Every stake this account tries appears here, newest first, with what happened to it.",
+};
+const CONSOLE_FEED_EMPTY_FILTERED: ConsoleEmpty = {
+  title: "Nothing matches this filter",
+  body: "No stake on this account matches what the rail above is set to. Widen the window or clear a chip.",
+};
+const CONSOLE_HISTORY_EMPTY: ConsoleEmpty = {
+  title: "No changes yet",
+  body: "Every change to this account is kept here, newest first — who made it and when.",
+};
+
+/** The order BOTH panels are read in, said once where a reader of the table can see it (`("createdAt","id") DESC`). */
+const CONSOLE_ORDER_NOTE = "Newest first.";
+
+/**
+ * Everything the two panels paint that does NOT depend on their rows: the rail, the live parameters, the window the
+ * rail offers, the empty state this read has earned and the refusal sentence.
+ *
+ * ⛔ IT IS BUILT FOR EVERY STATE, INCLUDING A REMOVED ACCOUNT'S (358). A removed account takes neither list read, so
+ * its rows are `null` — but the SHAPE is the same, because a view model whose keys appear and disappear is how a page
+ * comes to read `undefined.length` on the one state nobody rendered.
+ */
+function consolePanelShell(base: string, p: ConsoleParsed): Pick<ConsoleDetailView,
+  "feedPage" | "feedPerPage" | "feedFilters" | "feedPresets" | "feedPresetDefault" | "feedParams" | "feedEmpty"
+  | "feedFiltered" | "feedClearHref" | "feedOrderNote" | "historyPage" | "historyPerPage" | "historyParams"
+  | "historyEmpty" | "historyOrderNote" | "queryRefusal"> {
+  const filtered = p.kind != null || p.product != null || p.outcome != null || p.preset !== CONSOLE_FEED_PRESET_DEFAULT;
+  return {
+    feedPage: p.page,
+    feedPerPage: CONSOLE_FEED_PER_PAGE,
+    feedFilters: consoleFeedGroups(base, p),
+    feedPresets: CONSOLE_FEED_PRESETS,
+    feedPresetDefault: CONSOLE_FEED_PRESET_DEFAULT,
+    feedParams: consoleFeedParams(p),
+    feedEmpty: filtered ? CONSOLE_FEED_EMPTY_FILTERED : CONSOLE_FEED_EMPTY,
+    feedFiltered: filtered,
+    feedClearHref: consoleFeedLink(base, { tab: "activity" }, {}),
+    feedOrderNote: CONSOLE_ORDER_NOTE,
+    historyPage: p.hpage,
+    historyPerPage: CONSOLE_HISTORY_PER_PAGE,
+    /* The history panel has no rail, so its only live parameter is the tab — and, for the reason above, the
+       bell's `&event=` anchor is not carried into the pager's own links either. */
+    historyParams: { tab: "history" },
+    historyEmpty: CONSOLE_HISTORY_EMPTY,
+    historyOrderNote: CONSOLE_ORDER_NOTE,
+    queryRefusal: consoleRefusalSentence(p.refusals),
+  };
+}
+
+/**
+ * ⛔ **A BELL MUST LAND ON THE PAGE ITS OWN ROW IS ON** (ruling 302's other half, and 432(a)'s). A delivered alert
+ * links to `&intent=<id>` or `&event=<id>`; under a NUMBERED pager, honouring that link means counting the rows at or
+ * newer than the anchor INSIDE the same filter and turning the rank into a page number. Anything less is an officer
+ * following a bell onto a screen that looks like it worked.
+ * ⛔ THE RANK IS COUNTED OVER THE SAME PREDICATE THE ROWS ARE PAGED OVER — the anchor's own `createdAt` replaces only
+ * the window's lower bound, every other facet is kept. A rank measured over a different population is a page number
+ * with no basis. An anchor outside the filter has no page in it and the panel stays where the officer asked to be.
+ * ⚠️ It runs ONLY when a bell was followed and no page was typed, so an ordinary render takes neither read.
+ */
+async function consoleFeedAnchorPage(anchorId: string, filter: IntentFeedCount, fallback: number): Promise<number> {
+  try {
+    const row = await houseBotIntentStore.get(anchorId);
+    if (!row) return fallback;
+    /* ⛔ THE ACCOUNT FACET IS CHECKED ONLY WHEN THERE IS ONE. On the DESK-WIDE feed `houseBotId` is absent — that is
+     * the whole population — and comparing a real id with `undefined` would have refused every anchor the landing
+     * page was ever sent, silently, on the one link a bell produces. */
+    if (filter.houseBotId !== undefined && row.houseBotId !== filter.houseBotId) return fallback;
+    if (filter.fromIso !== undefined && Date.parse(row.createdAt) < Date.parse(filter.fromIso)) return fallback;
+    if (filter.toIso !== undefined && Date.parse(row.createdAt) >= Date.parse(filter.toIso)) return fallback;
+    const rank = await houseBotIntentStore.countFeed({ ...filter, fromIso: row.createdAt });
+    return rank > 0 ? Math.max(1, Math.ceil(rank / CONSOLE_FEED_PER_PAGE)) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * The history panel's half of the same rule, over the event log's own shared predicate.
+ * ⛔ `botId` IS `null` ON THE DESK-WIDE LOG, and that is not "any account": it is the population that also holds the
+ * CONTROL ROW's own events (`houseBotId: null` — the switch, the limits save, the withdrawal), which a per-account
+ * narrowing correctly drops and the desk's own history must not.
+ */
+async function consoleHistoryAnchorPage(anchorId: string, botId: string | null, fallback: number): Promise<number> {
+  try {
+    const row = await houseBotEventStore.get(anchorId);
+    if (!row) return fallback;
+    if (botId !== null && row.houseBotId !== botId) return fallback;
+    const rank = await houseBotEventStore.countAll({ ...(botId !== null ? { houseBotId: botId } : {}), fromIso: row.createdAt });
+    return rank > 0 ? Math.max(1, Math.ceil(rank / CONSOLE_HISTORY_PER_PAGE)) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * ⛔ A PAGE PAST THE END IS SERVED AS THE LAST PAGE — the idiom this section already ships for the Targets grid, and
+ * the one §0a allows it to have. A numbered pager drawn from a real total beside a card with no rows is 432(a)'s dead
+ * control; an "empty page 3" is a state nobody can act on.
+ */
+function consoleLastPage(total: number | null, want: number, perPage: number): number {
+  if (total == null) return want;
+  return Math.min(want, Math.max(1, Math.ceil(total / perPage)));
+}
+
+/** One intent, painted. ⛔ Finished strings and booleans only — see the section header for what may not cross. */
+function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null): ConsoleFeedRow {
+  const at = Date.parse(i.createdAt);
+  /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
+     instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
+     not be used to check it. The targets grid keeps minutes: a target is a rare, deliberate act. A stake is not. */
+  const status = CONSOLE_INTENT_STATUS[i.status];
+  const code = i.reasonCode;
+  return {
+    when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")}` : "—",
+    whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM YYYY")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
+    stake: formatTzs(i.stakeTzs),
+    statusWord: status.word,
+    statusChip: status.chip,
+    typeWord: CONSOLE_INTENT_KIND_WORD[i.kind],
+    productWord: CONSOLE_PRODUCT_WORD[i.productLine],
+    /* ⛔ THE CONSOLE'S OWN SENTENCE OR NOTHING — never `intent.why`, and never the engine's own table. An outcome
+     * code this build does not know paints no sentence rather than a raw enum (453). */
+    note: code != null && Object.prototype.hasOwnProperty.call(CONSOLE_SKIP_SENTENCE, code)
+      ? (CONSOLE_SKIP_SENTENCE as Record<string, string>)[code]
+      : null,
+    anchored: anchorId != null && i.id === anchorId,
+  };
+}
+
+/** One event, painted. ⛔ No payload amount and no wallet balance reaches this row — a door does (266, 369(c), 456). */
+function consoleEventRow(e: StoredHouseBotEvent, anchorId: string | null): ConsoleEventRow {
+  const at = Date.parse(e.createdAt);
+  const word = (s: string | null): string | null => (s != null && s in HOUSE_BOT_STATUS_DISPLAY
+    ? HOUSE_BOT_STATUS_DISPLAY[s as keyof typeof HOUSE_BOT_STATUS_DISPLAY].word : null);
+  const from = word(e.fromStatus);
+  const to = word(e.toStatus);
+  const txn = e.payload != null && typeof e.payload.txnId === "string" ? e.payload.txnId : null;
+  return {
+    when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")}` : "—",
+    whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM YYYY")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
+    eventWord: CONSOLE_EVENT_WORD[e.kind],
+    change: to == null ? null : from == null ? to : `${from} → ${to}`,
+    /* ⛔ 420 · AN ACTOR IS AN ID, NEVER A NAME. The same rule the ON sentence already follows one card up; a name
+     * would put a staff member's identity on a screen a record id is already masked out of. */
+    who: e.actorId ?? "System",
+    moneyHref: txn ? `/admin/transactions?q=${encodeURIComponent(txn)}` : null,
+    anchored: anchorId != null && e.id === anchorId,
+  };
 }
 
 /**
@@ -1873,11 +2752,14 @@ function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1): ConsoleRuleRow[] 
         value: limitValue(field, raw),
         unset: raw == null,
         caption: raw == null ? unsetCaptionFor(field, false) : null,
+        /* ⛔ THE FACE IS DERIVED FROM THE FIELD'S OWN UNIT, the same source `limitValue` formats from, so the two
+           can never disagree — and it is `"word"` while the row is unset, because "Not set" is a state. */
+        face: (raw == null ? "word" : FIELD_META[field].unit === "TZS" ? "money" : "count") as ConsoleRuleRow["face"],
       };
     }),
-    { section: "Scope", name: "Products", value: productWords(rules.scope.products.updown, rules.scope.products.polls), unset: false, caption: null },
-    { section: "Scope", name: "Targeted stakes", value: rules.targeting.enabled ? "On" : "Off", unset: false, caption: null },
-    { section: "Scope", name: "Enter now", value: rules.enterNow.enabled ? "On" : "Off", unset: false, caption: null },
+    { section: "Scope", name: "Products", value: productWords(rules.scope.products.updown, rules.scope.products.polls), unset: false, caption: null, face: "word" as const },
+    { section: "Scope", name: "Targeted stakes", value: rules.targeting.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
+    { section: "Scope", name: "Enter now", value: rules.enterNow.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
   ];
 }
 
@@ -1904,6 +2786,22 @@ export type ConsoleAccountActInput = {
   reason?: string;
   password?: string;
   typed?: string;
+  /**
+   * ⛔ THE BROWSER'S OWN IDEMPOTENCY KEY FOR ONE PRESS (CA-19, 2026-09-20). Re-verify spends the HOLDER'S
+   * sign-in attempts, of which the last two are kept for them, and a double-tapped Confirm with a mistyped
+   * password used to cost TWO of the three.
+   *
+   * ⭐ THE SERVICE ALREADY HAD THE ANSWER AND THIS ROW NEVER ASKED FOR IT. `verifyHouseBotPassword` claims
+   * `submit:<officer>:<id>` once, durably, BEFORE the password is checked, and answers DUPLICATE_SUBMIT to the
+   * copy — the same property the designate wizard has carried since C7 step 6 and the cancel control makes
+   * REQUIRED. `CONSOLE_ACT_REFUSAL.DUPLICATE_SUBMIT` was even written for this row. What was missing was this
+   * field and the one argument below it: the only guard was `if (pending) return` in the dialog, and React's
+   * `useTransition` does not set `pending` until it has re-rendered, so two taps inside one frame both pass it.
+   *
+   * ⚠️ OPTIONAL, not required: it is an idempotency key, not an authorisation. A caller that omits one is
+   * refused nothing — it simply keeps the behaviour this row had before, which is what makes adding it safe.
+   */
+  submitId?: string;
 };
 
 export type ConsoleAccountActResult =
@@ -2040,7 +2938,7 @@ function actDialogsFor(status: string): ConsoleAccountActDialog[] {
     title: "Remove this account from the desk",
     body: "This cannot be undone. Every queued stake is cancelled and every target ends. The account itself is untouched and stays the holder's own.",
     confirmLabel: "Remove", doneTitle: "Removed", failTitle: "It was not removed",
-    reasonLabel: "Why are you removing it?",
+    reasonLabel: "Why are you removing it? (required)",
     reasonHint: "Kept with the record of the removal.",
     word: CONSOLE_REMOVE_WORD,
     wordLabel: `Type ${CONSOLE_REMOVE_WORD} to confirm`,
@@ -2130,7 +3028,12 @@ export async function houseAccountActForConsole(
     const password = typeof input.password === "string" ? input.password : "";
     let done;
     try {
-      done = await reverifyHouseBot({ officerId: viewerUserId, botId: id, password });
+      /* ⛔ CA-19 · THE SUBMIT ID GOES WITH IT, so a double tap is ONE attempt against the holder's three.
+         Read defensively, like every other field of this row: a client that sends nothing sends null, and
+         `verifyHouseBotPassword` then skips the claim entirely rather than claiming the empty string —
+         which one caller sharing a key with the next would turn into a permanent DUPLICATE_SUBMIT. */
+      const submitId = typeof input.submitId === "string" && input.submitId.length > 0 ? input.submitId : null;
+      done = await reverifyHouseBot({ officerId: viewerUserId, botId: id, password, submitId });
     } catch {
       return { ok: false, error: CONSOLE_ACT_REFUSAL.WRITE_FAILED, field: "password" };
     }
@@ -2207,10 +3110,20 @@ export async function houseDetailForConsole(
   viewerUserId: string | null | undefined,
   route: string,
   id: string,
-  /** The Targets tab's 1-indexed page, straight off `?tpage=`. Anything that is not a whole page reads as 1. */
-  targetsPage?: number,
+  /**
+   * ⛔ THE REQUEST'S OWN QUERY STRING, UNTOUCHED, AND THE DOOR VALIDATES IT (rulings 259, 383, 387). It arrives as
+   * the page received it — every value a string, an array or absent — and `parseConsoleQuery` checks each axis against its own list
+   * against a CLOSED list or a shape before anything is read with it. The rail's own links are built from the SAME
+   * parse, so the control an officer clicks and the read the server takes cannot disagree: one function, not two.
+   * ⚠️ It replaced a bare `targetsPage: number` at C7 step 5 and the gate's ARITY IS UNCHANGED AT FOUR — the pin
+   * moves with a door's shape, it is never dropped.
+   */
+  query?: ConsoleQuery,
 ): Promise<ConsoleDetailAnswer | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const nowMs = Date.now();
+  const q = parseConsoleQuery(query, nowMs, consoleDetailTab);
 
   /* ⛔ `get(id)`, NEVER `listNonRemoved` (358): the second excludes a REMOVED account in both twins, so a page built
    * on it would 404 on a row that exists and PLAN §8's read-only state would be unreachable. */
@@ -2225,7 +3138,6 @@ export async function houseDetailForConsole(
   }
   if (!bot) return { found: false };
 
-  const nowMs = Date.now();
   const dayKey = eatDayKey(nowMs);
   const label = clampOperatorText(bot.label, operatorBound("label"));
   const display = HOUSE_BOT_STATUS_DISPLAY[bot.status];
@@ -2257,7 +3169,7 @@ export async function houseDetailForConsole(
       if (parsedRemoved.ok) removedRules = capRows(bot, parsedRemoved.rules);
     } catch { removedRules = null; }
     const removedAtMs = bot.removedAt ? Date.parse(bot.removedAt) : NaN;
-    const at = Number.isFinite(removedAtMs) ? `${formatEat(removedAtMs, "D MMM")} ${formatEat(removedAtMs, "HH:MM")} EAT` : "an unrecorded time";
+    const at = Number.isFinite(removedAtMs) ? `${formatEat(removedAtMs, "D MMM YYYY")} ${formatEat(removedAtMs, "HH:MM")} EAT` : "an unrecorded time";
     return {
       ...base,
       removedNote: `Removed on ${at}. Nothing can be staked from this account and none of its limits applies any more.`,
@@ -2278,6 +3190,13 @@ export async function houseDetailForConsole(
       targetsTotal: null,
       targetsPage: 1,
       targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
+      /* 358 · a removed account takes neither list read, so both slices are `null` — the state the page reads as
+       * "there was never a read to fail", which is the distinction 355 and 421 exist to keep. */
+      ...consolePanelShell(consoleBotHref(bot.id), q),
+      feed: null,
+      feedTotal: null,
+      history: null,
+      historyTotal: null,
     };
   }
 
@@ -2293,8 +3212,29 @@ export async function houseDetailForConsole(
    * · `countActive({ botId })` is the TAB COUNT. It was read off the page's own rows before, which made the
    *   badge "active targets among the newest 20" — a figure with no basis the moment a 21st target exists, and
    *   one that would have changed as an officer paged. */
-  const wantPage = consolePageNumber(targetsPage);
-  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR] = await Promise.allSettled([
+  const wantPage = q.tpage;
+  /* ⭐ C7 STEP 5 · THE TWO PANELS' READS JOIN THE SAME SETTLED SET, AND ONLY THE TAB IN VIEW TAKES ITS OWN.
+   * ⛔ Each is settled on its OWN, never wrapped with another read (355, 435(d)): a failed row read must not blank
+   * the total beside it, because `null` rows and a real total say different things and paint different treatments.
+   * ⛔ ONE FILTER OBJECT feeds both the page and the count (ruling 345): the moment the two are written separately
+   * the badge above a table counts a population the table cannot show, and nothing on the screen says which is wrong. */
+  const wantFeed = q.tab === "activity";
+  const wantHistory = q.tab === "history";
+  const feedFilter: IntentFeedCount = {
+    houseBotId: bot.id,
+    ...(q.product ? { productLine: q.product } : {}),
+    ...(q.kind ? { kinds: [q.kind] } : {}),
+    ...(q.outcome ? { statuses: [q.outcome] } : {}),
+    ...(q.fromIso ? { fromIso: q.fromIso } : {}),
+    ...(q.toIso ? { toIso: q.toIso } : {}),
+  };
+  /* A bell was followed and no page was typed: resolve the anchor's own page before the set is issued. */
+  const wantFeedPage = wantFeed && q.intentId && !q.pageAsked
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;
+  const wantHistoryPage = wantHistory && q.eventId && !q.hpageAsked
+    ? await consoleHistoryAnchorPage(q.eventId, bot.id, q.hpage) : q.hpage;
+  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR,
+    feedR, feedCountR, historyR, historyCountR] = await Promise.allSettled([
     readBotAndHolder(bot.id, { nowMs }),
     houseDayBook(dayKey, bot.id),
     houseOpenExposure(bot.id),
@@ -2304,6 +3244,14 @@ export async function houseDetailForConsole(
     houseBotTargetStore.countForBot(bot.id, "all"),
     houseBotTargetStore.countActive({ botId: bot.id }),
     loadParseContext(),
+    wantFeed
+      ? houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantFeedPage - 1) * CONSOLE_FEED_PER_PAGE })
+      : Promise.resolve(null),
+    wantFeed ? houseBotIntentStore.countFeed(feedFilter) : Promise.resolve(null),
+    wantHistory
+      ? houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantHistoryPage - 1) * CONSOLE_HISTORY_PER_PAGE })
+      : Promise.resolve(null),
+    wantHistory ? houseBotEventStore.countAll({ houseBotId: bot.id }) : Promise.resolve(null),
   ]);
 
   const holder = holderR.status === "fulfilled" && holderR.value.found ? holderR.value : null;
@@ -2328,6 +3276,43 @@ export async function houseDetailForConsole(
   }
   const targetRows = targetPage == null ? null : targetPage.rows;
   const parseCtx = parseR.status === "fulfilled" ? parseR.value : null;
+
+  /* ⭐ C7 STEP 5 · THE TWO PANELS, IN THE SHIPPED IDIOM AND NOT A SECOND ONE (§0a).
+   * ⛔ The total comes from the COUNTING reader and never from the rows (344); the page past the end is served as
+   * the LAST page, which is what the Targets grid twelve lines up already does; and a FAILED read is `null`, which
+   * the page paints as the kit's failure treatment and never as an empty table (355). */
+  /* ⛔ THE ANCHOR'S RANK IS INCLUSIVE, SO A TIE INFLATES IT — AND THE STEP BACK IS WHAT MAKES IT EXACT.
+   * `countFeed({ fromIso: row.createdAt })` counts rows at or newer than the anchor, so rows sharing the anchor's
+   * millisecond are counted with it and the rank can only be too LARGE, never too small — which pushes the computed
+   * page LATER, never earlier. The rows are already in hand, so the correction costs no read of its own: if the
+   * anchor is not among them, the page is stepped back ONCE, before the single re-read below. That is exact for any
+   * tie block smaller than a page, which is every physically possible one — the per-minute cap is at most twenty
+   * stakes across the whole desk, so twenty stakes by ONE account inside one millisecond cannot happen. */
+  const feedTotal = wantFeed && feedCountR.status === "fulfilled" ? feedCountR.value : null;
+  let feedPageRows = wantFeed && feedR.status === "fulfilled" ? feedR.value : null;
+  let feedShown = consoleLastPage(feedTotal, wantFeedPage, CONSOLE_FEED_PER_PAGE);
+  if (wantFeed && q.intentId != null && !q.pageAsked && feedShown === wantFeedPage && feedShown > 1
+    && feedPageRows != null && !feedPageRows.rows.some((i) => i.id === q.intentId)) feedShown -= 1;
+  if (wantFeed && feedPageRows != null && feedShown !== wantFeedPage) {
+    try {
+      feedPageRows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (feedShown - 1) * CONSOLE_FEED_PER_PAGE });
+    } catch { feedPageRows = null; }
+  }
+  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));
+
+  const historyTotal = wantHistory && historyCountR.status === "fulfilled" ? historyCountR.value : null;
+  let historyPageRows = wantHistory && historyR.status === "fulfilled" ? historyR.value : null;
+  let historyShown = consoleLastPage(historyTotal, wantHistoryPage, CONSOLE_HISTORY_PER_PAGE);
+  if (wantHistory && q.eventId != null && !q.hpageAsked && historyShown === wantHistoryPage && historyShown > 1
+    && historyPageRows != null && !historyPageRows.some((e) => e.id === q.eventId)) historyShown -= 1;
+  if (wantHistory && historyPageRows != null && historyShown !== wantHistoryPage) {
+    try {
+      historyPageRows = await houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (historyShown - 1) * CONSOLE_HISTORY_PER_PAGE });
+    } catch { historyPageRows = null; }
+  }
+  const history: ConsoleEventRow[] | null = historyPageRows == null ? null
+    : historyPageRows.map((e) => consoleEventRow(e, q.eventId));
 
   /* ⛔ 311/413/432(f) · the way out of the FIRST live cause, in the console's own neutral words, finished on the
    * server. Rendering it client-side would put a pause reason — and the account's label — into a client chunk. */
@@ -2448,5 +3433,968 @@ export async function houseDetailForConsole(
     targetsTotal,
     targetsPage: shownPage,
     targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
+    ...consolePanelShell(consoleBotHref(bot.id), q),
+    /* ⛔ THE PAGE THE ROWS REALLY CAME FROM, never the one the address asked for — the pager and the table cannot
+     * disagree about which page is on screen. */
+    feedPage: feedShown,
+    historyPage: historyShown,
+    feed,
+    feedTotal,
+    history,
+    historyTotal,
+  };
+}
+
+
+
+/* ═══ C7 STEP 5 (the LANDING half) · THE DESK-WIDE ACTIVITY AND HISTORY PANELS ════════════════════════════════
+ *
+ * ⛔ **TWO MORE GATED DOORS, EACH QUERY-SHAPED, EACH WITH ITS `CONSOLE_GATES` ENTRY** (rulings 259, 340, 512).
+ * The account page's two panels answer about ONE record; these answer about the DESK — every account's stakes in
+ * one list, and every account's changes together with the CONTROL ROW's own (the switch, the limits save, the
+ * withdrawal), which a per-account narrowing correctly drops and the desk's own history must not lose.
+ *
+ * ⛔ **ONE READER PER RENDER PASS, STILL** (rulings 346, 406, 433(d)). Each returns the SAME `ConsoleDeskShell` the
+ * roster and limits readers return, built from ONE `readDeskCore` call — so the strip, the band and the rail's
+ * badge are identical on all four tabs and cannot be two reads of one question inside one render.
+ *
+ * ⛔ **THE PANELS ARE THE ACCOUNT PAGE'S PANELS, WIDENED — NOT A SECOND PAIR** (§0a). The same parse, the same
+ * rail builder, the same page-size constants, the same "a page past the end is the LAST page" idiom and the same
+ * anchor rule. What is added is the column that only a desk-wide list needs: WHOSE stake it was.
+ */
+
+/** ⛔ The three honest answers to "which account is this row about", each a different fact (355, 358). */
+const CONSOLE_ACCOUNT_UNREADABLE = "Could not be read";
+const CONSOLE_ACCOUNT_GONE = "Removed from the desk";
+/** An event of the CONTROL ROW itself — the switch, a limits save, the withdrawal. It belongs to no account. */
+const CONSOLE_ACCOUNT_DESK = "The desk";
+
+/** One row of the desk-wide activity panel: the account page's row, plus whose stake it was. */
+export type ConsoleDeskFeedRow = ConsoleFeedRow & {
+  /**
+   * ⛔ RULING 474 · THE ACCOUNT'S OWN LABEL IS OPERATOR DATA, verbatim but bounded — or one of the two console
+   * words above when the roster read failed or the account has since been removed. Three states, three sentences,
+   * never one standing in for another.
+   */
+  accountName: string;
+  /** True when `accountName` is the operator's own text, so the DOM can say so (474's own hook). */
+  accountIsOperatorText: boolean;
+  /** The holder, as a HANDLE and nothing else (04 R6) — `null` when the account could not be named. */
+  accountHandle: string | null;
+  /** That account's own page. ⛔ Built by `console-routes.ts`, never spelled at a call site (319). */
+  accountHref: string;
+  /**
+   * ⛔ THE ID THE CANCEL CONTROL POSTS, AND `null` ON EVERY ROW THAT CANNOT BE STOPPED. Only a QUEUED stake can
+   * be: a CLAIMED one is already in flight and `cancelPending` refuses it, so offering the control there would be
+   * the dead control 432(a) forbids. It is POSTED and never PAINTED — no row renders it.
+   */
+  cancelId: string | null;
+};
+
+/** One row of the desk-wide history: the account page's row, plus whose account it is — or the desk's own. */
+export type ConsoleDeskEventRow = ConsoleEventRow & {
+  accountName: string;
+  /** True only when `accountName` is the operator's own text — which is also exactly when `accountHref` opens a page. */
+  accountIsOperatorText: boolean;
+  /** `null` for the control row's own events, which belong to no account and open no page (432(a)). */
+  accountHref: string | null;
+};
+
+/**
+ * ⭐ THE CANCEL CONTROL'S FINISHED COPY (rulings 388, 415, 453) — ONE object for the whole panel and not one per
+ * row, because twenty identical dialogs in one payload is twenty chances for them to stop being identical.
+ * ⛔ Every word crosses the boundary as a finished string: ruling 385 measured that most of this console's
+ * sentences carry NO vocabulary word at all, so one typed into a client file would ship to every visitor with the
+ * disclosure walk and the bundle scan both reporting clean.
+ */
+export type ConsoleCancelCopy = {
+  label: string;
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  reasonLabel: string;
+  reasonHint: string;
+  reasonCountLabel: string;
+  reasonMin: number;
+  reasonMax: number;
+  doneTitle: string;
+  failTitle: string;
+};
+
+const CONSOLE_CANCEL_COPY: ConsoleCancelCopy = {
+  label: "Stop it",
+  title: "Stop this queued stake",
+  body: "This stake has not been placed yet. Stopping it means it never will be, and the record keeps who stopped it and why.",
+  confirmLabel: "Stop the stake",
+  cancelLabel: "Cancel",
+  /* ⛔ 388 · A REQUIRED FIELD SAYS SO. The primary button is armed on `CONSOLE_REASON_MIN` and the counter counts
+     DOWN, so a field that did not say it was required met an officer with a dead button and nothing explaining it. */
+  reasonLabel: "Why are you stopping it? (required)",
+  reasonHint: "This is kept on the record. Do not type anyone's name, number or address.",
+  reasonCountLabel: "characters left",
+  reasonMin: CONSOLE_REASON_MIN,
+  reasonMax: CONSOLE_REASON_MAX,
+  doneTitle: "The stake was stopped",
+  failTitle: "Nothing was stopped",
+};
+
+/** The desk-wide activity panel. ⛔ Same shell, same rail, same pager, one more column. */
+export type ConsoleFeedView = ConsoleDeskShell
+  & Pick<ConsoleDetailView, "feedPage" | "feedPerPage" | "feedFilters" | "feedPresets" | "feedPresetDefault"
+    | "feedParams" | "feedEmpty" | "feedFiltered" | "feedClearHref" | "feedOrderNote" | "queryRefusal">
+  & {
+    /** ⛔ `null` is a read that FAILED (355) — `AdminLoadError`, never an empty table. */
+    feed: ConsoleDeskFeedRow[] | null;
+    /** ⛔ FROM `countFeed`, NEVER `feed.length` (344): `pageLimit` clamps every list reader at 500 rows. */
+    feedTotal: number | null;
+    /** `null` when this render offers no cancel at all, so the page draws no control rather than a dead one. */
+    cancelCopy: ConsoleCancelCopy | null;
+  };
+
+/** The desk-wide history panel. */
+export type ConsoleHistoryView = ConsoleDeskShell
+  & Pick<ConsoleDetailView, "historyPage" | "historyPerPage" | "historyParams" | "historyEmpty" | "historyOrderNote" | "queryRefusal">
+  & {
+    history: ConsoleDeskEventRow[] | null;
+    historyTotal: number | null;
+  };
+
+/** The desk's own empty states. ⛔ DIFFERENT WORDS from the account page's: "this account" and "the desk" are
+ *  different subjects, and an officer who reads the second sentence on the wrong panel learns the wrong fact (416). */
+const CONSOLE_DESK_FEED_EMPTY: ConsoleEmpty = {
+  title: "Nothing staked yet",
+  body: "Every stake the desk tries appears here, newest first, with what happened to it.",
+};
+/**
+ * 🔴 AND THE FILTERED ONE IS THE DESK'S TOO, WHICH THE FIRST BUILD GOT WRONG AND EVERY SUITE PASSED.
+ * The reader used to keep the SHELL's filtered sentence here, on the reasoning that "nothing matches this filter"
+ * is the same fact on either page. It is not: that sentence's BODY reads "No stake on **this account** matches",
+ * and on the page that lists every account there is no such account. Read off the served page at
+ * `?tab=activity&kind=manual&outcome=cancelled&product=up-down` — the account page's sentence, painted on the
+ * desk. ⛔ 416's whole point is that two different subjects say different things, and the assertion that was
+ * meant to hold this compared only the TITLES and then checked the UNFILTERED body for the word "desk", so the
+ * one string that was wrong is the one string it never read.
+ */
+const CONSOLE_DESK_FEED_EMPTY_FILTERED: ConsoleEmpty = {
+  title: "Nothing matches this filter",
+  body: "No stake anywhere on the desk matches what the rail above is set to. Widen the window or clear a chip.",
+};
+const CONSOLE_DESK_HISTORY_EMPTY: ConsoleEmpty = {
+  title: "No changes yet",
+  body: "Every change to the desk and to the accounts on it is kept here, newest first — who made it and when.",
+};
+
+/**
+ * Which account a row is about, from the roster the shell already read — never a second read and never a read per
+ * row (ruling 351's own refusal of the per-bot loop).
+ * ⛔ THE THREE STATES ARE KEPT APART: the roster read FAILED (nobody can tell), the account is not on the roster
+ * (it was removed, which is a fact about the row), or it is there and the label is the operator's own text.
+ */
+function consoleAccountCell(
+  roster: ReadonlyMap<string, StoredHouseBot> | null,
+  houseBotId: string | null,
+): { accountName: string; accountIsOperatorText: boolean; accountHandle: string | null } {
+  if (houseBotId === null) return { accountName: CONSOLE_ACCOUNT_DESK, accountIsOperatorText: false, accountHandle: null };
+  if (roster === null) return { accountName: CONSOLE_ACCOUNT_UNREADABLE, accountIsOperatorText: false, accountHandle: null };
+  const found = roster.get(houseBotId);
+  if (!found) return { accountName: CONSOLE_ACCOUNT_GONE, accountIsOperatorText: false, accountHandle: null };
+  return {
+    accountName: clampOperatorText(found.label, operatorBound("label")),
+    accountIsOperatorText: true,
+    accountHandle: playerHandle(found.userId),
+  };
+}
+
+/** The roster the shell already holds, keyed — built once per render, never per row. */
+function consoleRosterMap(roster: StoredHouseBot[] | null): ReadonlyMap<string, StoredHouseBot> | null {
+  return roster === null ? null : new Map(roster.map((b) => [b.id, b] as [string, StoredHouseBot]));
+}
+
+/**
+ * ⭐ THE DESK-WIDE ACTIVITY PANEL'S GATED READER (rulings 312, 317, 340, 344, 345, 355, 410, 411).
+ *
+ * ⛔ THE AUDIENCE IS RESOLVED FIRST AND NOTHING IS READ BEFORE THE VERDICT, so a refused viewer's payload carries
+ * no label, no handle, no amount and no sentence.
+ * ⛔ ONE FILTER OBJECT FEEDS THE PAGE AND THE TOTAL (ruling 345). The moment the two are written separately the
+ * pager counts a population the table cannot show, and nothing on the screen says which of them is wrong.
+ * ⛔ THE ORDER IS THE DAL'S OWN `("createdAt","id") DESC`, in BOTH the listing reader and the counting reader — a
+ * numbered pager over an unstable order shows one row twice and hides another.
+ */
+export async function houseFeedForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  query?: ConsoleQuery,
+): Promise<ConsoleFeedView | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const q = parseConsoleQuery(query, Date.now(), consoleTab);
+  /* ⛔ NO ACCOUNT FACET AT ALL — the desk IS the population. An empty-string or "any" sentinel would be a fourth
+   * spelling of "no filter" that the shared predicate would then have to know about. */
+  const feedFilter: IntentFeedCount = {
+    ...(q.product ? { productLine: q.product as IntentProductLine } : {}),
+    ...(q.kind ? { kinds: [q.kind as IntentKind] } : {}),
+    ...(q.outcome ? { statuses: [q.outcome as IntentStatus] } : {}),
+    ...(q.fromIso ? { fromIso: q.fromIso } : {}),
+    ...(q.toIso ? { toIso: q.toIso } : {}),
+  };
+  /* A bell was followed and no page was typed: resolve the anchor's own page before the set is issued. */
+  const wantPage = q.intentId && !q.pageAsked
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;
+
+  const { core, extra: pageRead, extraB: totalRead } = await readDeskCore(
+    () => houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantPage - 1) * CONSOLE_FEED_PER_PAGE }),
+    () => houseBotIntentStore.countFeed(feedFilter),
+  );
+  const shell = deskShell(core);
+
+  const feedTotal = totalRead;
+  let rows = pageRead;
+  let shown = consoleLastPage(feedTotal, wantPage, CONSOLE_FEED_PER_PAGE);
+  /* ⛔ THE ANCHOR'S RANK IS INCLUSIVE, SO A TIE INFLATES IT — the step back is what makes it exact, and it costs no
+   * read: the rows are already in hand (the whole argument is written at the account page's own reader). */
+  if (q.intentId != null && !q.pageAsked && shown === wantPage && shown > 1
+    && rows != null && !rows.rows.some((i) => i.id === q.intentId)) shown -= 1;
+  if (rows != null && shown !== wantPage) {
+    try {
+      rows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (shown - 1) * CONSOLE_FEED_PER_PAGE });
+    } catch { rows = null; }
+  }
+
+  const byId = consoleRosterMap(core.roster);
+  const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({
+    ...consoleFeedRow(i, q.intentId),
+    ...consoleAccountCell(byId, i.houseBotId),
+    accountHref: consoleBotHref(i.houseBotId),
+    /* ⛔ ONE POPULATION FOR THE BADGE AND FOR THE CONTROL (the `CONSOLE_PENDING_STATUSES` table): a row the badge
+     * counts is a row an officer can stop, and a row it does not count offers no control at all. */
+    cancelId: (CONSOLE_PENDING_STATUSES as readonly string[]).includes(i.status) ? i.id : null,
+  }));
+
+  const panel = consolePanelShell(CONSOLE_ROUTE, q);
+  return {
+    ...shell,
+    feedPage: shown,
+    feedPerPage: panel.feedPerPage,
+    feedFilters: panel.feedFilters,
+    feedPresets: panel.feedPresets,
+    feedPresetDefault: panel.feedPresetDefault,
+    feedParams: panel.feedParams,
+    /* ⛔ THE DESK'S OWN WORDS FOR BOTH EMPTY STATES, AND THAT IS A CORRECTION A RENDER HAD TO MAKE. The filtered
+     * branch used to hand back the SHELL's sentence, whose body names "this account" — on the one page that has
+     * no account to name. Each subject has its own pair (416); neither borrows the other's. */
+    feedEmpty: panel.feedFiltered ? CONSOLE_DESK_FEED_EMPTY_FILTERED : CONSOLE_DESK_FEED_EMPTY,
+    feedFiltered: panel.feedFiltered,
+    feedClearHref: panel.feedClearHref,
+    feedOrderNote: panel.feedOrderNote,
+    queryRefusal: panel.queryRefusal,
+    feed,
+    feedTotal,
+    /* ⛔ NO CONTROL WHERE THERE IS NOTHING TO STOP (432(a)). A failed read offers none either: `feed` is `null` and
+     * the panel paints the kit's failure treatment instead of a table with buttons in it. */
+    cancelCopy: feed != null && feed.some((r) => r.cancelId !== null) ? CONSOLE_CANCEL_COPY : null,
+  };
+}
+
+/**
+ * ⭐ THE DESK-WIDE HISTORY PANEL'S GATED READER (rulings 317, 340, 344, 355, 411, 420).
+ *
+ * ⛔ IT CARRIES THE CONTROL ROW'S OWN EVENTS, and that is the difference from the account page's history: the
+ * switch, a limits save and the withdrawal are the DESK's changes and belong to no account, so the desk-wide read
+ * takes no account facet at all.
+ * ⛔ NO AMOUNT AND NO BALANCE FROM ANY PAYLOAD (266, 369(c), 456) — the row carries a door to the platform's own
+ * transactions screen instead, exactly as the account page's does.
+ */
+export async function houseHistoryForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  query?: ConsoleQuery,
+): Promise<ConsoleHistoryView | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const q = parseConsoleQuery(query, Date.now(), consoleTab);
+  const wantPage = q.eventId && !q.hpageAsked
+    ? await consoleHistoryAnchorPage(q.eventId, null, q.hpage) : q.hpage;
+
+  const { core, extra: pageRead, extraB: totalRead } = await readDeskCore(
+    () => houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantPage - 1) * CONSOLE_HISTORY_PER_PAGE }),
+    () => houseBotEventStore.countAll({}),
+  );
+  const shell = deskShell(core);
+
+  const historyTotal = totalRead;
+  let rows = pageRead;
+  let shown = consoleLastPage(historyTotal, wantPage, CONSOLE_HISTORY_PER_PAGE);
+  if (q.eventId != null && !q.hpageAsked && shown === wantPage && shown > 1
+    && rows != null && !rows.some((e) => e.id === q.eventId)) shown -= 1;
+  if (rows != null && shown !== wantPage) {
+    try {
+      rows = await houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (shown - 1) * CONSOLE_HISTORY_PER_PAGE });
+    } catch { rows = null; }
+  }
+
+  const byId = consoleRosterMap(core.roster);
+  const history: ConsoleDeskEventRow[] | null = rows == null ? null : rows.map((e) => {
+    const cell = consoleAccountCell(byId, e.houseBotId);
+    return {
+      ...consoleEventRow(e, q.eventId),
+      accountName: cell.accountName,
+      accountIsOperatorText: cell.accountIsOperatorText,
+      accountHref: e.houseBotId === null ? null : consoleBotHref(e.houseBotId),
+    };
+  });
+
+  const panel = consolePanelShell(CONSOLE_ROUTE, q);
+  return {
+    ...shell,
+    historyPage: shown,
+    historyPerPage: panel.historyPerPage,
+    historyParams: panel.historyParams,
+    historyEmpty: CONSOLE_DESK_HISTORY_EMPTY,
+    historyOrderNote: panel.historyOrderNote,
+    queryRefusal: panel.queryRefusal,
+    history,
+    historyTotal,
+  };
+}
+
+
+/* ═══ C7 STEP 5 (the LANDING half) · THE CANCEL DOOR (rulings 340, 350, 382, 415, 512, 522, 523) ═════════════
+ *
+ * ⛔ **THE FIRST WRITE THIS SECTION EVER MAKES TO THE PRESS TABLE**, and it is behind the same named door every
+ * console read goes through: a Next server action is a POST to whatever URL the browser is on, carrying an id in a
+ * header, so no middleware rule, no layout and no page gate can see it. The action's own gate is the only
+ * protection there is, and it decides on the viewer's STORED row (522) rather than on a session cookie's
+ * photograph of it.
+ *
+ * ⛔ **THE EXPORT NAME AND THE GUARD LABEL ARE NEUTRAL; THE AUDIT KEY IS NOT RENAMED** (ruling 382, and the trap it
+ * inverts). Membership in `HOUSE_AUDIT` is what keeps this row out of a player's own audit read, so a key minted to
+ * sound neutral would silently leave that exclusion. The key is `press-audit.ts`'s own, written at the service.
+ */
+
+/** What the cancel control posts. ⛔ `id` is the QUEUED stake; `submitId` is the browser's own idempotency key. */
+export type ConsoleCancelInput = { id: string; submitId: string; reason: string };
+
+/**
+ * What it gets back. ⛔ A union the caller must handle, never a throw: a thrown server action clears the client's
+ * pending state and shows the officer nothing, which on a control that stops money is the worst failure there is.
+ */
+export type ConsoleCancelResult =
+  | { ok: true; changed: boolean; note: string | null; warn: boolean }
+  | { ok: false; error: string; field?: "reason" };
+
+/**
+ * ⛔ ONE SENTENCE PER REFUSAL CODE, IN THE CONSOLE'S OWN NEUTRAL WORDS (453) — never the service's code and never a
+ * raw enum. A control that says only "it did not work" is a control an officer cannot act on (432(j)).
+ */
+const CONSOLE_CANCEL_REFUSAL: Readonly<Record<string, string>> = {
+  refused: "You do not have access to this.",
+  NOT_FOUND: "That stake is no longer on record. Reload the page.",
+  NOT_PENDING: "It had already left the queue, so nothing was stopped. Reload the page to see where it went.",
+  SCHEMA: "The desk is not set up on this database, so nothing could be stopped.",
+  UNREADABLE: "That stake could not be read, so nothing was stopped. Try again.",
+  WRITE_FAILED: "Nothing was stopped. Try again.",
+  BAD_SUBMIT_ID: "Nothing was stopped. Reload the page and try again.",
+  reasonShort: `Say why, in at least ${CONSOLE_REASON_MIN} characters.`,
+  reasonLong: `That is longer than ${CONSOLE_REASON_MAX} characters.`,
+};
+
+/** What the officer is told when the cancel landed but its decision record did not (the repair writes it later). */
+const CONSOLE_CANCEL_NOTE = {
+  done: "The stake was stopped.",
+  notRecorded: "The stake was stopped, but the decision record has not been written yet. It will be.",
+};
+
+/**
+ * Stop one queued stake, as the signed-in officer.
+ *
+ * ⛔ ARITY THREE, like every other write door on this section: the viewer, the calling file's own console route as a
+ * STRING LITERAL, and what the control posted. ⛔ The audience is resolved FIRST and nothing is read before the
+ * verdict, so a refused caller cannot use this as an oracle for whether a record id exists.
+ * ⛔ THE REASON IS VALIDATED HERE WITH THE SAME BOUNDS THE CONTROL ARMS ON (`CONSOLE_REASON_MIN`/`MAX`, the pair the
+ * dialog's own copy carries) — a ceremony verified only in a browser is one a crafted POST walks straight through.
+ */
+export async function houseCancelIntentForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  input: ConsoleCancelInput,
+): Promise<ConsoleCancelResult> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {
+    return { ok: false, error: CONSOLE_CANCEL_REFUSAL.refused };
+  }
+  const id = typeof input.id === "string" ? input.id : "";
+  if (id.length === 0) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.NOT_FOUND };
+  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+  if (reason.length < CONSOLE_REASON_MIN) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonShort, field: "reason" };
+  if (reason.length > CONSOLE_REASON_MAX) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonLong, field: "reason" };
+
+  const done = await cancelQueuedStake({
+    actorId: viewerUserId,
+    intentId: id,
+    submitId: typeof input.submitId === "string" ? input.submitId : "",
+    reason,
+  });
+  if (!done.ok) return { ok: false, error: CONSOLE_CANCEL_REFUSAL[done.code] ?? CONSOLE_CANCEL_REFUSAL.WRITE_FAILED };
+  /* ⛔ A REPEAT OF ONE PRESS IS NOT A SECOND CANCEL, and it is not a failure either: the first press already did
+   * this, so the officer is told the truth about the stake rather than about their second click. */
+  if (!done.changed) return { ok: true, changed: false, note: CONSOLE_CANCEL_NOTE.done, warn: false };
+  return {
+    ok: true,
+    changed: true,
+    /* 🔴 `null`, NOT `CONSOLE_CANCEL_NOTE.done` — READ OFF THE TOAST ITSELF, and only visible once the toast
+     * was visible at all. The control paints this as the DESCRIPTION under `doneTitle`, which is "The stake was
+     * stopped"; the note was "The stake was stopped." So the officer's one confirmation said the same sentence
+     * twice, differing by a full stop. A description that repeats its title is not a second fact, it is noise on
+     * the one surface that has to be read quickly. The `notRecorded` branch stays, because it says something the
+     * title does not, and so does the repeat branch above. `1.415`'s own assertion already allows `null` here. */
+    note: done.recorded ? null : CONSOLE_CANCEL_NOTE.notRecorded,
+    warn: !done.recorded,
+  };
+}
+
+/* ═══ C7 STEP 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368 as amended by 459, 382, 383, 387, 412) ════════
+ *
+ * ⛔ THREE MORE DOORS, EACH QUERY-SHAPED AND EACH WITH ITS `CONSOLE_GATES` ENTRY (rulings 340, 512). The wizard is
+ * three surfaces — a lookup, a check and a write — and every one of them is a POST an ordinary player can make:
+ * ruling 383 measured 200 of the 221 server-action ids in this build's manifest inside publicly downloadable chunks,
+ * so the action's own gate is the only protection there is. Each resolves the viewer's STORED row FIRST and reads
+ * nothing before the verdict.
+ *
+ * ⛔ THE COPY IS THE CONSOLE'S OWN (owner-delegated ruling 453). `eligibility.ts` writes twenty-five blocking rows
+ * and seven warnings in the ENGINE'S vocabulary — measured, they say "Only a player account can provide liquidity.",
+ * "This account is already a house bot.", "Liquidity stakes can't continue — resolve the request or remove the bot."
+ * D19 exempts those: they are the engine's and the admin bell's internal words and no screenshot-facing surface
+ * renders them. This one would. So the check card paints a sentence per CODE from the table below, the population is
+ * derived from the service's own two unions rather than typed here, and nothing the wizard renders comes from a
+ * shared table. The same decision 432(f) took for `PAUSE_REASON_WAY_OUT` and 432(b) for `FIELD_META`, for the same
+ * reason, and never a rewrite of the engine's own words.
+ */
+
+/** At most ten options (412). ⛔ A bound on the ANSWER, not on the query — the officer types more, not less. */
+const CONSOLE_PICKER_MAX = 10;
+/** Before a lookup runs at all: two characters. A one-character search is a directory walk with extra steps. */
+const CONSOLE_PICKER_MIN_QUERY = 2;
+
+/**
+ * ⛔ THE ONE ANSWER A SEARCH THAT FINDS NOTHING GIVES, AND IT IS THE SAME ANSWER A REFUSED CALLER GETS (387(c)).
+ * Never a count, never "no match", never a masked row: nothing may distinguish "you are not the owner" from
+ * "nothing found", because the action id is readable off the public bundle and any signed-in account can POST it.
+ */
+export const CONSOLE_PICKER_EMPTY = "Nothing to show.";
+
+/**
+ * ⛔ A BUSY BUCKET IS NOT AN EMPTY RESULT, AND SAYING IT WAS IS A LIE TO THE OWNER (C7 step 6 review, d19-hunt-03).
+ * The rate branch answered the byte-identical `refused` shape, so an officer who had already passed the audience gate
+ * was told "Nothing to show." about accounts that exist — on the one screen where "it is not there" is read as "that
+ * account does not exist". 387(c)'s parity is between a REFUSED CALLER and a search that found nothing; a caller
+ * already inside the audience is neither, and this branch is only reachable AFTER the verdict has passed, so it
+ * reveals nothing a refused caller can ask for.
+ */
+export const CONSOLE_PICKER_BUSY = "Too many searches at once. Wait a moment and try again.";
+
+/** One option in the picker's listbox. ⛔ No phone and no email: the PHONE is the check card's, through `Sensitive`. */
+export type ConsolePickerRow = {
+  userId: string;
+  /**
+   * `playerHandle(userId)` — "Player #TAIL". ⛔ THE ONLY WAY AN OPTION NAMES A PERSON, and it is the same rule
+   * ruling 346 sets for the roster: never a display name, never a phone, never an email. The officer searched BY
+   * one of those, so the option only has to say which account matched; the identity they can act on is the check
+   * card's, where the phone goes through the platform's own server gate (359).
+   */
+  handle: string;
+  /** Where choosing this option goes — built in the route module, never spelled at a call site (319). */
+  href: string;
+  /** Why this option cannot be chosen, or `null`. Rendered beneath it, with `aria-disabled` (412). */
+  reason: string | null;
+};
+
+/**
+ * What the picker answers. ⛔ `note` and `count` are BOTH empty for a refused caller and for a search that found
+ * nothing, so the two are byte-identical (387(c)).
+ */
+export type ConsolePickerAnswer = { rows: ConsolePickerRow[]; note: string | null; count: string };
+
+/** Why an option cannot be chosen — decided on the account row and the ONE roster read, never per-row eligibility. */
+const PICKER_REASON = {
+  onDesk: "Already on the desk",
+  staff: "A staff account",
+  agent: "An agent account",
+  closed: "The account is closed",
+  inactive: "The account is not active",
+  noPassword: "No password set",
+  self: "Your own account",
+} as const;
+
+/**
+ * THE ACCOUNT LOOKUP, GATED (rulings 259, 340, 383, 387). Arity THREE: the signed-in viewer, the calling file's own
+ * console route as a STRING LITERAL, and the query the officer typed.
+ *
+ * ⛔ THE RATE LIMIT IS ON THE CALLER, NOT THE QUERY (387(e)). A bucket keyed on what was typed can be sidestepped
+ * by typing something else, which is the whole of a directory walk.
+ * ⛔ NO PER-ROW ELIGIBILITY, AND NO WALLET READ AT ALL (356). An option's reason is decided on the account row and
+ * on the ONE roster read; running the full check ten times would pull ten players' live balances, responsible-gambling
+ * settings and data-rights queues into a lookup, and ruling 368 argues its whole case from exactly that harm.
+ */
+export async function houseAccountsForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  query: string,
+): Promise<ConsolePickerAnswer> {
+  const refused: ConsolePickerAnswer = { rows: [], note: CONSOLE_PICKER_EMPTY, count: "" };
+
+  /* ⛔ THE FLOOR IS DECIDED BEFORE THE AUDIENCE IS, AND IT IS THE ONLY THING THAT MAY BE (C7 step 6 review,
+     d19-hunt-08). A short query reads nothing, decides nothing and its answer is a constant — so answering it
+     first is what makes the two shapes below indistinguishable. Below the audience check it was the ONE branch
+     where the refusal and the ordinary answer differed (`note: null` against "Nothing to show."), so a signed-in
+     player could learn from a one-character POST that they were outside the audience.
+     ⛔ A SHORT QUERY READS NOTHING AND SAYS NOTHING. The officer has not asked a question yet, so there is no
+     answer to give and no empty state to paint — the field's own hint is what is on screen. */
+  const q = typeof query === "string" ? query.trim() : "";
+  if (q.length < CONSOLE_PICKER_MIN_QUERY) return { rows: [], note: null, count: "" };
+
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return refused;
+
+  /* ⛔ AND THE BUSY ANSWER IS ITS OWN, because this line is only reachable once the verdict has passed. */
+  const gate = await rateCheckAsync(viewerUserId, "desk.picker");
+  if (!gate.allowed) return { rows: [], note: CONSOLE_PICKER_BUSY, count: "" };
+
+  let users: StoredUser[] = [];
+  let live: StoredHouseBot[] = [];
+  try {
+    const [usersR, liveR] = await Promise.allSettled([
+      (async () => db.user.list())(),
+      (async () => houseBotStore.listNonRemoved())(),
+    ]);
+    if (usersR.status !== "fulfilled") return refused;
+    users = usersR.value;
+    live = liveR.status === "fulfilled" ? liveR.value : [];
+  } catch {
+    return refused;
+  }
+
+  const onDesk = new Set(live.map((b) => b.userId));
+  const parsed = parseQuery(q, { fields: fieldNames(ACCOUNT_PICKER_SEARCH) });
+  /* ⚠️ `displayLabel` is COMPUTED and not a column (the grammar says so in its own docblock), so it is supplied
+     on the record handed to the matcher — the same shape `/admin/players` uses. */
+  const hits = users.filter((u) => matchesQuery(
+    parsed,
+    { ...u, displayLabel: displayLabel(u) } as unknown as Record<string, string | null | undefined>,
+    ACCOUNT_PICKER_SEARCH,
+  ));
+
+  /* ⛔ THE TEN THAT SURVIVE THE SLICE ARE THE SAME TEN A SECOND RUN RETURNS (C7 step 6 review, d19-hunt-04).
+     `db.user.list()` is `findMany` with no `orderBy` on Postgres and insertion order in memory, so the slice was
+     taking whichever ten the store happened to hand back — a different ten between the two twins, and possibly a
+     different ten on two runs of the same query. An exact id match, then an exact phone match, then the id: total,
+     stable, and it puts the row the officer pasted at the top where they are looking for it. */
+  const qLower = q.toLowerCase();
+  const matchRank = (u: StoredUser): number =>
+    u.id.toLowerCase() === qLower ? 0 : (u.phoneE164 ?? "").toLowerCase() === qLower ? 1 : 2;
+  hits.sort((a, b) => matchRank(a) - matchRank(b) || a.id.localeCompare(b.id));
+
+  const rows: ConsolePickerRow[] = hits.slice(0, CONSOLE_PICKER_MAX).map((u) => ({
+    userId: u.id,
+    handle: playerHandle(u.id),
+    href: consoleNewHref({ userId: u.id }),
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),
+  }));
+
+  if (rows.length === 0) return refused;
+  const blocked = rows.filter((r) => r.reason !== null).length;
+  /* ⛔ THE COUNT SAYS WHAT IS TRUE, NOT WHAT IS ON SCREEN (C7 step 6 review, d19-hunt-04). "10 accounts" when
+     forty matched is a false sentence on the one screen where an account the officer cannot see reads as an
+     account that does not exist — so a truncated answer says so and says what to do about it. */
+  const shown = hits.length > CONSOLE_PICKER_MAX
+    ? `${formatNumber(rows.length)} of ${formatNumber(hits.length)} accounts${SEP}narrow the search`
+    : `${formatNumber(rows.length)} ${rows.length === 1 ? "account" : "accounts"}`;
+  return {
+    rows,
+    note: null,
+    /* 412 · the polite live count, and it says how many of what is on screen cannot be chosen — the one fact a
+       reader cannot get by counting the rows. */
+    count: blocked === 0 ? shown : `${shown}${SEP}${formatNumber(blocked)} cannot be chosen`,
+  };
+}
+
+/** One option's refusal, from the account row and the roster read alone. `null` when nothing on either stops it. */
+function pickerReason(u: StoredUser, onDesk: boolean, isSelf: boolean): string | null {
+  if (onDesk) return PICKER_REASON.onDesk;
+  if (isSelf) return PICKER_REASON.self;
+  if (u.role === "AGENT") return PICKER_REASON.agent;
+  if (u.role !== "PLAYER") return PICKER_REASON.staff;
+  if (u.status === "CLOSED" || u.closedAt != null) return PICKER_REASON.closed;
+  if (u.status !== "ACTIVE" && u.status !== "COOLED_OFF") return PICKER_REASON.inactive;
+  if (!u.passwordHash || !u.passwordSalt) return PICKER_REASON.noPassword;
+  return null;
+}
+
+/**
+ * ⛔ THE CONSOLE'S OWN SENTENCE FOR EVERY ELIGIBILITY ROW (ruling 453, and the same shape `CONSOLE_ACT_REFUSAL`
+ * already has one card over).
+ *
+ * MEASURED against `scripts/lib/house-bot-vocabulary.mjs`: of the twenty-five blocking rows and seven warnings
+ * `eligibility.ts` writes, ELEVEN name the feature in the sentence an officer reads — on *liquidity*
+ * (`AGENT_ACCOUNT`, `STAFF_ACCOUNT`, `ERASURE_REQUEST`), on the bare word *bot* (`ALREADY_LIVE_BOT`,
+ * `ACCOUNT_CLOSED`, `WALLET_MISSING`, `IDENTITY_REFUSED`, `PASSWORD_CHANGED`), on *house stakes*
+ * (`ACCOUNT_CLOSED`, `OWNER_LOSS_LIMIT`, `RECRUITED`) and on *house bot* itself.
+ * ⛔ SO THE TABLE COVERS EVERY CODE, NOT ONLY THE DIRTY ONES. A per-row "override it if it is dirty" rule cannot
+ * be checked from source — the shared sentences are built at run time out of dates, counts and names — so the
+ * console answers from its own closed table for all thirty-two, and `test:house-bot-console` derives the population
+ * from `ELIGIBILITY_BLOCKING_CODES` and `ELIGIBILITY_WARNING_CODES` themselves. A code added to either union later
+ * cannot reach an owner's screen as the shared sentence or as a bare identifier.
+ * ⚠️ WHAT IS LOST BY IT IS NAMED: the DATES and FIGURES the shared rows interpolate do not come through. The
+ * console says what is stopping the designation and carries the row's own `href` to the thing that has to change;
+ * the holder's own screens carry the detail, which is where a player's dates and money legitimately are (456).
+ */
+const CONSOLE_ELIGIBILITY_COPY: Readonly<Record<string, string>> = {
+  ACCOUNT_MISSING: "No account with that ID.",
+  STAFF_ACCOUNT: "This is a staff account. Only a player's own account can be used here.",
+  AGENT_ACCOUNT: "This is an agent account. Only a player's own account can be used here.",
+  ACCOUNT_CLOSED: "This account is closed and cannot be reopened, so it cannot be used here.",
+  NOT_ACTIVE: "This account is not active.",
+  NO_PASSWORD: "This account has no password, so the holder cannot give their permission.",
+  RG_LOCKED: "The holder is self-excluded or on a break. Their permission cannot be asked for until it ends.",
+  RG_UNREADABLE: "Couldn't read their responsible-gambling settings. Refresh to try again.",
+  WALLET_MISSING: "This account has no wallet.",
+  WALLET_NOT_ACTIVE: "Their wallet is not active, so nothing could be staked from it.",
+  BALANCE_UNREADABLE: "Their wallet could not be read. Refresh to try again.",
+  ALREADY_LIVE_BOT: "This account is already on the desk.",
+  OWN_ACCOUNT: "You can't use your own account.",
+  ROSTER_FULL: "The desk is at its maximum. Remove an account or raise the roster limit first.",
+  ERASURE_REQUEST: "They have asked for their data to be erased. Resolve that request first.",
+  ERASURE_UNREADABLE: "Couldn't read the data-rights queue. Refresh to try again.",
+  SIGN_IN_LOCKED: "Their sign-in is locked after wrong passwords. Ask them to sign in once, then try again.",
+  PASSWORD_SET_BY_SUPPORT: "Their password was last set through support. Ask them to change it themselves in Account settings first.",
+  PASSWORD_HISTORY_UNREADABLE: "Couldn't read how their password was last set. Refresh to try again.",
+  IDENTITY_REFUSED: "Their identity check was finally refused. An officer must reopen it first.",
+  PASSWORD_CHANGED: "Their password changed. Ask them for the new one.",
+  CONSENT_VOID: "Their permission has ended. It has to be given again.",
+  RG_SINCE_VERIFIED: "A self-exclusion or break has run since their permission was last confirmed.",
+  DAILY_LOSS_STOP: "The day's loss limit has already been reached.",
+  OWNER_LOSS_LIMIT: "Their own daily loss limit has been reached.",
+  EMAIL_UNVERIFIED: "Their email is not confirmed, so they cannot top up until they confirm it.",
+  IDENTITY_NOT_APPROVED: "Their identity has never been approved, so they cannot withdraw until it is.",
+  RECRUITED: "An agent recruited them. No commission is paid on anything staked from the desk.",
+  OPEN_POSITIONS: "They hold open positions of their own. Those markets are skipped.",
+  PUBLIC_NAME: "The leaderboard shows the first word of their display name — suggest a nickname.",
+  NAME_RISK: "Their public display name could give away what this account is used for — ask them to change it.",
+  SIGN_IN_LOCKED_WARNING: "Their sign-in is locked after wrong passwords. Confirming their permission waits for the lock.",
+};
+
+/** One row of the check card, in the console's own words. ⛔ The service's sentence never crosses this line. */
+export type ConsoleCheckRow = { code: string; text: string; href: string | null };
+
+/**
+ * The console's sentence for one eligibility code. ⛔ A code with no entry answers a neutral fallback, never the
+ * service's own words and never a bare identifier.
+ */
+export function consoleCheckSentence(code: string): string {
+  return CONSOLE_ELIGIBILITY_COPY[code] ?? "Something on the holder's own account is stopping this.";
+}
+
+/** The account's funded STATE — never an amount (ruling 459, amending 368). */
+export type ConsoleFunded = { word: string; chip: StatusChipVariant; sentence: string };
+
+/**
+ * THE WIZARD'S WHOLE ACCOUNT-BOUND VIEW MODEL — the check card, the consent copy and the review summary, painted
+ * on the server from ONE read set (rulings 340, 355, 356, 359).
+ */
+export type ConsoleCheckView = {
+  userId: string;
+  handle: string;
+  /**
+   * ⛔ SERVER-ONLY (ruling 359). The page hands this to the platform's own SERVER `Sensitive` component, which
+   * resolves the viewer's stored role, calls `readCell`, and computes the mask itself — the raw value never
+   * becomes a client prop. A console file that built a masked value and rendered `SensitiveReveal` would answer
+   * READ-TIERS in a `.tsx`, which `sensitive.tsx` forbids in as many words.
+   */
+  phoneE164: string | null;
+  /**
+   * ⛔ WHETHER THERE IS A NUMBER AT ALL — AND IT IS A SEPARATE FIELD ON PURPOSE (C7 step 7, `test:read-tiers` 7.1).
+   * The page draws the Phone term only when a value exists, and it used to decide that with `view.phoneE164 !== null`
+   * in the JSX. The READ-TIERS ratchet strips `<Sensitive …/>` and then reports EVERY other braced expression naming
+   * a governed accessor — so the presence CHECK, which renders nothing, read to it exactly like a page printing the
+   * number in the clear, and the desk joined `/admin/agents` on a line whose ceiling is 0. The value now crosses the
+   * boundary only inside `Sensitive`; the branch takes this boolean.
+   */
+  hasPhone: boolean;
+  /** 456 · the platform surface where an admin may legitimately read this player's money. */
+  holderHref: string;
+  /** ⛔ A STATE, NEVER A BALANCE (459). `null` when the wallet could not be read — a blocking row then says so. */
+  funded: ConsoleFunded | null;
+  /** Why the wallet's own bonus money is not part of that state. A FACT, and it reads nothing. */
+  bonusCaption: string;
+  /** How many markets they are in on their own account, or an em dash when the read failed. */
+  openPositions: string;
+  /** Whether this account has been on the desk before, in words. `null` when it never has. */
+  priorNote: string | null;
+  blocking: ConsoleCheckRow[];
+  warnings: ConsoleCheckRow[];
+  eligible: boolean;
+  /**
+   * ⭐ THERE IS NO ACCOUNT BEHIND THIS `?u=` AT ALL — read off the first render (355, 416). The card painted
+   * HANDLE "Player #_00000" from the typed id, an EMPTY "Phone" term with nothing under it, and "Open positions 0"
+   * for an account that does not exist: a fabricated zero beside a labelled row that says nothing. A missing record
+   * is a STATE, and the page paints the state instead of the facts.
+   */
+  accountMissing: boolean;
+  /** Why Continue is not live — `null` when it is (432(j) read the other way round). */
+  continueReason: string | null;
+  /** The wizard's own four hrefs, built in the route module (319) — never composed at a call site. */
+  findHref: string;
+  checkHref: string;
+  consentHref: string;
+  reviewHref: string;
+  /** The bounds the review step's two fields are held to, so the client types no number of its own. */
+  labelMin: number;
+  labelMax: number;
+  noteMax: number;
+};
+
+/**
+ * ⛔ EVERY SENTENCE THE WIZARD PAINTS THAT IS LONGER THAN A LABEL, BUILT HERE (ruling 388, whose Proof is
+ * "no console client file contains a string literal of 25+ characters that is not a prop name, class name, aria
+ * string or event name").
+ *
+ * 🔴 WHAT WAS SHIPPING, AND WHY NO GUARD SAW IT. The consent step typed its four sentences into a `"use client"`
+ * file, so they went verbatim into a publicly downloadable chunk — "Stakes are placed from this account, out of
+ * the money in its own wallet…", "Nothing is staked until an officer starts this account and the desk's master
+ * switch is on." Ruling 385 measured exactly this: MOST of the sentences this console can emit carry no
+ * vocabulary word at all, so `test:house-bot-disclosure` 1.1 and `verify:house-bot-bundle` both report clean
+ * while a paragraph describing the feature sits in a public asset. The words are neutral (453); publishing them
+ * is the harm, and the only place a guard can see it is the boundary they cross.
+ *
+ * ⛔ THE BOUNDS ARE INTERPOLATED HERE TOO, so the client types no number of its own and cannot disagree with
+ * `validateLabel`. ⚠️ The apostrophe is the real one: JSX entities are the page's problem, not the copy's.
+ */
+export const CONSOLE_WIZARD_COPY = {
+  searchLabel: "Search for an account",
+  searchHint: "A handle, a phone number, or an account ID.",
+  searchIntro: "Search by handle, phone number or account ID. Only a player's own account can be used here, and only with their permission.",
+  listLabel: "Accounts",
+  consentTitle: "What the holder agrees to",
+  consentBullets: [
+    "Stakes are placed from this account, out of the money in its own wallet, within the limits set for it and for the desk.",
+    "Their permission is confirmed with their own password, checked once and never kept. It creates no sign-in and no session.",
+    "They can end it at any time from their own account, and it ends by itself if they take a break, self-exclude, close the account or ask for their data to be erased.",
+    "Nothing is staked until an officer starts this account and the desk's master switch is on.",
+  ],
+  labelLabel: "A name for this account on the desk",
+  labelHint: `${LABEL_MIN_CHARS} to ${LABEL_MAX_CHARS} characters. It is shown to officers only.`,
+  noteLabel: "Why (optional)",
+  noteHint: `Up to ${TEXT_MAX_CHARS} characters. Kept with the record.`,
+  reviewTitle: "Confirm with the holder",
+  passwordLabel: "The holder's password",
+  passwordHint: "Ask them for it. It is checked once and never kept, and the last two attempts are always held for them so this can never lock them out.",
+  refusedTitle: "It was not designated",
+  wayOut: "Open it",
+} as const;
+
+/**
+ * THE WIZARD'S GATED READER (rulings 340, 356, 359, 512). Arity THREE: the signed-in viewer, the calling file's own
+ * console route as a STRING LITERAL, and the account being checked.
+ *
+ * ⛔ EXACTLY ONE WALLET READ, AND IT IS THE ONE `houseBotEligibility` ALREADY TAKES (356). The funded STATE is
+ * built from the balance that check returns; nothing here reads the wallet a second time, and nothing paints the
+ * figure (459).
+ * ⛔ A REFUSED VIEWER GETS `null` AND NOTHING ELSE — no handle, no sentence, no id (259, 399).
+ */
+export async function houseCheckForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  userId: string,
+): Promise<ConsoleCheckView | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const id = typeof userId === "string" ? userId : "";
+  if (id.length === 0) return null;
+
+  /* ⛔ ONE SETTLED SET (355): a failed prior-designation read or a failed position read must not blank the card
+     that says whether this account can be used at all.
+     ⚠️ EACH MEMORY-STORE READ IS WRAPPED IN AN ASYNC THUNK, because the memory twin returns PLAIN VALUES and a
+     synchronous throw inside the array literal would escape `allSettled` altogether. */
+  const [elR, userR, priorR, positionsR] = await Promise.allSettled([
+    houseBotEligibility(id, { context: "designate", actorId: viewerUserId }),
+    (async () => db.user.findById(id))(),
+    (async () => houseBotStore.listByUserId(id))(),
+    /* ⛔ A COUNTING READER, NEVER A PAGE (ruling 344; C7 step 6 review, conformance-344). This was
+       `listForUser(id, 100).filter(OPEN).length` — the hundred NEWEST positions of every status, filtered in
+       JS — so an account with a hundred settled positions newer than its open ones rendered "Open positions 0"
+       on the card that decides whether it may be designated, beside a warning saying it holds some. */
+    (async () => positionStore.countOwnOpenForUser(id))(),
+  ]);
+
+  /* ⛔ A FAILED ELIGIBILITY READ IS NOT AN ELIGIBLE ACCOUNT (355). The card refuses with its own blocking row
+     rather than painting a card an officer could press Continue on. */
+  const el = elR.status === "fulfilled" ? elR.value : null;
+  const user = userR.status === "fulfilled" ? userR.value : null;
+  const prior = priorR.status === "fulfilled" ? priorR.value : null;
+  const positions = positionsR.status === "fulfilled" ? positionsR.value : null;
+
+  const row = (r: { code: string; href?: string }): ConsoleCheckRow =>
+    ({ code: r.code, text: consoleCheckSentence(r.code), href: r.href ?? null });
+
+  const blocking: ConsoleCheckRow[] = el === null
+    ? [{ code: "UNREADABLE", text: "This account could not be checked. Refresh to try again.", href: null }]
+    : el.blocking.map(row);
+  const warnings: ConsoleCheckRow[] = el === null ? [] : el.warnings.map(row);
+  const eligible = el !== null && el.eligible;
+
+  /* ⛔ 459 · A FUNDED STATE, NEVER A BARE BALANCE. Ruling 266 holds with no exception anywhere on this console:
+     the figure is a real person's wallet position — the one number on these screens belonging to somebody other
+     than the platform, and the one most likely to sit in a screenshot — and the decision this card supports,
+     "can this account fund anything at all", is answered by a state and not by a magnitude. The officer who wants
+     the figure is one link away on the holder's own money screen (456). "Funded" is a word this product already
+     ships (`KYC_STAGE.fundedNothingYet`), so nothing is invented here either. */
+  const balance = el?.balanceTzs ?? null;
+  const funded: ConsoleFunded | null = balance === null ? null : balance > 0
+    ? { word: "Funded", chip: TONE_CHIP.green, sentence: "There is money in this wallet, so a stake can be funded from it." }
+    : { word: "Not funded", chip: TONE_CHIP.slate, sentence: "This wallet is empty, so nothing can be staked from it until the holder puts money in." };
+
+  const open = positions;
+  const phone = user?.phoneE164 ?? null;
+  const priorCount = prior === null ? 0 : prior.filter((b) => b.status === "REMOVED").length;
+
+  return {
+    userId: id,
+    handle: playerHandle(id),
+    phoneE164: phone,
+    hasPhone: phone !== null,
+    holderHref: `/admin/transactions?q=${encodeURIComponent(id)}`,
+    funded,
+    bonusCaption: "Bonus money is never staked from the desk, whatever the wallet holds.",
+    openPositions: open === null ? EM_DASH : formatNumber(open),
+    priorNote: priorCount === 0
+      ? null
+      : priorCount === 1
+        ? "This account was on the desk once before and was removed."
+        : `This account was on the desk ${formatNumber(priorCount)} times before and was removed each time.`,
+    blocking,
+    warnings,
+    eligible,
+    accountMissing: blocking.some((r) => r.code === "ACCOUNT_MISSING"),
+    /* 432(j) · a control that is not live says why, and it says a fact the rows above do not already carry: HOW
+       MANY of them are stopping it. 432(n) forbids one state saying the same thing twice. */
+    continueReason: eligible ? null : blocking.length === 1
+      ? "1 check is stopping this account."
+      : `${formatNumber(blocking.length)} checks are stopping this account.`,
+    findHref: CONSOLE_NEW_ROUTE,
+    checkHref: consoleNewHref({ userId: id }),
+    consentHref: consoleNewHref({ userId: id, step: "consent" }),
+    reviewHref: consoleNewHref({ userId: id, step: "review" }),
+    labelMin: LABEL_MIN_CHARS,
+    labelMax: LABEL_MAX_CHARS,
+    noteMax: TEXT_MAX_CHARS,
+  };
+}
+
+/** What the wizard's last step posts. ⛔ `password` is the HOLDER's and never becomes a session (owner ruling D5). */
+export type ConsoleDesignateInput = {
+  userId: string;
+  label: string;
+  note?: string;
+  password: string;
+  submitId?: string;
+};
+
+export type ConsoleDesignateResult =
+  | { ok: true; href: string; note: string }
+  /** `field` is the form's own control, never a column (D19); `href` is where the refusal says to go. */
+  | { ok: false; error: string; field?: "label" | "note" | "password"; href?: string };
+
+/**
+ * ⛔ THE TWO LABEL SENTENCES, EXPORTED BY NAME (C7 step 6 review, test-strength-383-label-late). The EARLY check —
+ * the console's own `validateLabel`, before a password attempt is spent — answers the LENGTH sentence; the LATE
+ * path, `designateHouseBot`'s own refusal, answers `labelTaken`. A case that pins only `field === "label"` cannot
+ * tell the two apart, because both paths produce it, so the assertion that the shape is refused BEFORE the service
+ * is reached has to name the sentence only the early check can say.
+ */
+export const CONSOLE_DESIGNATE_LABEL_LENGTH = `Give it a name of ${LABEL_MIN_CHARS} to ${LABEL_MAX_CHARS} characters.`;
+export const CONSOLE_DESIGNATE_LABEL_TAKEN = "That name is already in use on the desk. Choose another.";
+
+/** The wizard's own sentences — the console's, never a service's (453). */
+const DESIGNATE_FORM_COPY = {
+  labelLength: CONSOLE_DESIGNATE_LABEL_LENGTH,
+  labelCharset: "Letters, numbers, spaces and - _ . # ' only.",
+  labelTaken: CONSOLE_DESIGNATE_LABEL_TAKEN,
+  noteLong: `At most ${TEXT_MAX_CHARS} characters — shorten it.`,
+  ineligible: "Something on the holder's own account is stopping this. Read the checks and clear them first.",
+  alreadyOnDesk: "This account is already on the desk.",
+  done: "It is on the desk, stopped, with no limits of its own set yet.",
+} as const;
+
+/**
+ * THE DESIGNATION, GATED (rulings 259, 340, 382, 383, 512, 522, 523).
+ *
+ * ⛔ THE VERDICT IS THE FIRST STATEMENT, ON THE STORED ROW, AND IT IS IN THE ACTION'S OWN PATH. A Next server
+ * action is a POST to whatever URL the browser happens to be on, so no middleware rule, no layout and no
+ * `AdminSectionGate` can see it, and a session cookie is a photograph of a role taken at sign-in.
+ * ⛔ ONE SHARED REFUSAL FOR EVERYONE OUTSIDE THE AUDIENCE (383), the same sentence every other console action
+ * answers with — no field, no href, no id, no count and no existence signal, and nothing is read or written on
+ * that path.
+ * ⛔ THE HOLDER'S PASSWORD PASSES STRAIGHT THROUGH to the one service that may check it. It is never logged,
+ * never echoed and never put in an audit payload.
+ */
+export async function houseDesignateForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  input: ConsoleDesignateInput,
+): Promise<ConsoleDesignateResult> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {
+    return { ok: false, error: CONSOLE_ACT_REFUSAL.refused };
+  }
+  const userId = typeof input.userId === "string" ? input.userId : "";
+  if (userId.length === 0) return { ok: false, error: CONSOLE_ACT_REFUSAL.NOT_FOUND };
+
+  /* ⛔ THE SHAPE IS REFUSED BEFORE A PASSWORD ATTEMPT IS SPENT. `verifyHouseBotPassword` counts against the
+     holder's own reserve, so a mistyped NAME must never cost one — which is also the order the service itself
+     takes, restated here so the console's own sentence is what an officer reads. */
+  const label = typeof input.label === "string" ? input.label : "";
+  const labelErr = validateLabel(label);
+  if (labelErr) {
+    return {
+      ok: false,
+      field: "label",
+      error: labelErr.message === LABEL_COPY.charset ? DESIGNATE_FORM_COPY.labelCharset : DESIGNATE_FORM_COPY.labelLength,
+    };
+  }
+  const note = typeof input.note === "string" ? input.note : "";
+  if (note.length > 0 && validateNote(note)) return { ok: false, field: "note", error: DESIGNATE_FORM_COPY.noteLong };
+
+  let done;
+  try {
+    done = await designateHouseBot({
+      officerId: viewerUserId,
+      userId,
+      label,
+      note: note.length > 0 ? note : null,
+      password: typeof input.password === "string" ? input.password : "",
+      submitId: typeof input.submitId === "string" ? input.submitId : null,
+    });
+  } catch {
+    return { ok: false, error: CONSOLE_ACT_REFUSAL.WRITE_FAILED };
+  }
+
+  if (done.ok) return { ok: true, href: consoleBotHref(done.bot.id), note: DESIGNATE_FORM_COPY.done };
+
+  /* ⛔ EVERY REFUSAL AN OFFICER READS IS THE CONSOLE'S OWN, KEYED BY CODE (453). `designateHouseBot` answers with
+     `eligibility.ts`'s and `rules.ts`'s sentences, and measured, those carry the feature's words — "Another bot is
+     already called …", "This account is already a house bot.", and fourteen more. The ONE exception is passed
+     through deliberately: `ROSTER_FULL` is already `DESIGNATE_COPY.rosterFull`, which ruling 314 forbids re-typing
+     anywhere and pins byte-identical to the head action's own sentence. */
+  if (done.code === "INVALID") {
+    return {
+      ok: false,
+      field: done.field === "note" ? "note" : "label",
+      error: done.field === "note" ? DESIGNATE_FORM_COPY.noteLong : DESIGNATE_FORM_COPY.labelTaken,
+    };
+  }
+  if (done.code === "ROSTER_FULL") return { ok: false, error: done.message, href: done.href };
+  if (done.code === "ALREADY_BOT") return { ok: false, error: DESIGNATE_FORM_COPY.alreadyOnDesk, href: done.href };
+  if (done.code === "PASSWORD_CHANGED") return { ok: false, field: "password", error: DESIGNATE_COPY.passwordChanged };
+  if (done.code === "INELIGIBLE") return { ok: false, error: DESIGNATE_FORM_COPY.ineligible };
+  return {
+    ok: false,
+    field: "password",
+    error: actRefusal(done.code, { attemptsBeforeLock: done.attemptsBeforeLock, retryAfterSec: done.retryAfterSec }),
   };
 }

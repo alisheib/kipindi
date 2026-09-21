@@ -28,6 +28,7 @@
  * @see src/lib/server/house-console-read.ts · src/lib/house-bot/console-routes.ts · plans/house-bots/C7-SPEC.md
  */
 import type { Route } from "next";
+import { WayOutLink } from "../way-out-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
@@ -41,7 +42,8 @@ import { FormColumn } from "@/components/ui/form-column";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseDetailForConsole } from "@/lib/server/house-console-read";
+import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
+import { ActivityFilters } from "../activity-filters";
 import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422): a client component under
@@ -56,11 +58,93 @@ export const metadata = { title: "Admin · Desk" };
 /** ⛔ Every figure is live money against a live limit (rulings 302, 356, 380). */
 export const dynamic = "force-dynamic";
 
-const TAB_LABEL: Record<(typeof CONSOLE_DETAIL_TABS)[number], string> = { overview: "Overview", rules: "Rules", targets: "Targets" };
+/** ⛔ ONE PER KEY OF THE CLOSED LIST, each the key in English sentence case (the rule 1.405 derives for the landing rail). */
+const TAB_LABEL: Record<(typeof CONSOLE_DETAIL_TABS)[number], string> = {
+  overview: "Overview", activity: "Activity", rules: "Rules", targets: "Targets", history: "History",
+};
+
+/**
+ * WHAT EACH PANEL IS FOR, in one sentence — the same shape the desk's own tabs carry, because an officer
+ * moving between the two should not meet two different conventions in one section.
+ *
+ * ⛔ EVERY LINE IS DERIVED FROM THE CODE IT DESCRIBES: the eleven caps from `REQUIRED_FOR_START`, "a product
+ * and a mode" from `rulesStartProblems`'s two refusals, and the feed/history populations from the counting
+ * readers the pagers share with their lists. ⛔ None restates a figure the panel renders — the Targets tab
+ * already carries its own active count as a badge.
+ * ⚠️ NEUTRAL WORDS ONLY (D19/453): rendered inside the console subtree that `qa:house-bots-visual` scans.
+ */
+const TAB_GUIDANCE: Record<(typeof CONSOLE_DETAIL_TABS)[number], string> = {
+  overview: "This account's state, who designated it and when, and what it has used today of each of its own limits.",
+  activity: "Every stake this one account has decided on, newest first — placed, queued, refused or failed.",
+  rules: "What this account may do: which products and entry modes, the markets it is allowed to touch, how it sizes and times a stake, and its own eleven limits. All eleven must be set, and a product and an entry mode chosen, before Start will run it.",
+  targets: "Stakes an officer has planned on a chosen poll, rather than left to the engine. Each one can be stopped before it fires.",
+  history: "Every change made to this account — designated, verified, started, paused, removed, and each time its rules or limits were saved.",
+};
+
+/**
+ * THE SAVED-RULES CARD, WRITTEN ONCE FOR BOTH STATES (C7 step 7 review, visual-8).
+ *
+ * It was two copies of one `<dl>` that differed in exactly one line, with nothing saying why — so the drift was
+ * invisible and the next edit would have landed on one of them. One component, one difference, and the
+ * difference is named:
+ *
+ * ⛔ A REMOVED ACCOUNT GETS NO CAPTIONS, DELIBERATELY (ruling 432(n), and this is the record of the decision).
+ * A caption reads "Not set — this account cannot place a bet.", which is a LIVE consequence of an unset limit.
+ * On a removed account the Callout two cards up already says "Nothing can be staked from this account and none
+ * of its limits applies any more" — so printing the consequence beside each row would be the page saying two
+ * things at once about the same account. The rows stay, because 358 keeps them as a RECORD of what it was
+ * configured to do; only the live reading of them goes.
+ */
+function SavedRulesCard({ rows, reason, captions }: { rows: ConsoleRuleRow[] | null; reason: string; captions: boolean }) {
+  return (
+    <AdminCard title="Saved rules">
+      {rows === null ? (
+        <AdminLoadError what="the saved rules" />
+      ) : (
+        <FormColumn measure="form">
+          <p className="text-body-sm text-text-tertiary mb-4">{reason}</p>
+          <dl className="space-y-3">
+            {rows.map((r) => (
+              <div key={`${r.section}-${r.name}`} className="flex items-baseline justify-between gap-4 flex-wrap">
+                <dt className="text-body-sm text-text-secondary min-w-0">{r.name}</dt>
+                {/* ⛔ THE FIGURE WEARS THE FACE THE ROW NAMES (rulings 401, 409), and the page never decides it.
+                    🔴 Measured by the render on 2026-09-20: this `<dd>` printed "TZS 900,000,000" as plain body
+                    text while the limits panel one tab away printed the identical value through
+                    `amount tabular-nums` — one section, one kind of value, two looks. `.amount` is also the class
+                    `qa:house-bots-visual` §5.1 scans, so every cap here sat outside the money-clipping gate.
+                    ⛔ A COUNT IS NOT MONEY (409): it gets the mono/tabular face without `.amount`'s `nowrap` and
+                    without its money meaning. A word ("Polls", "Off", "Not set") stays body text — putting a state
+                    on the money axis is the mislabelled-amount defect 266 struck. */}
+                {/* ⛔ `ml-auto` KEEPS THE VALUE IN ITS COLUMN WHEN THE LABEL PUSHES IT ONTO A SECOND LINE, AND THAT
+                    WAS READ OFF A 360 TILE. The row is `justify-between` + `flex-wrap`, which places the value at
+                    the END of a shared line and at the START of its own — so on "Targeted and manual daily cap",
+                    the one label too long to share a line at 360, **TZS 900,000,000 dropped below its label and
+                    set flush LEFT**, one money figure out of the column the other seventeen rows keep. A figure
+                    that leaves the money axis reads as a different kind of row (§A5/§A6), and `.amount`'s `nowrap`
+                    cannot help: it is the whole value that wraps, not the digits. `ml-auto` is the end of the line
+                    in BOTH cases, so nothing about the unwrapped rows changes. */}
+                <dd className="text-body-sm text-text text-right min-w-0 ml-auto">
+                  {r.face === "word" ? r.value : <span className={r.face === "money" ? "amount tabular-nums" : "font-mono tabular-nums"}>{r.value}</span>}
+                  {captions && r.caption && <span className="block text-body-sm text-warning-fg">{r.caption}</span>}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </FormColumn>
+      )}
+    </AdminCard>
+  );
+}
 
 type DeskAccountProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string | string[]; tpage?: string | string[] }>;
+  /**
+   * ⛔ THE WHOLE QUERY STRING GOES TO THE DOOR, UNREAD BY THIS FILE (rulings 259, 383, 387). This page is served 200
+   * to any signed-in account and a crafted address is free, so every value is checked against a closed list or a
+   * shape inside `houseDetailForConsole` — which also builds the rail's own links from that same parse, so the
+   * control an officer clicks and the read the server takes cannot disagree.
+   */
+  searchParams: Promise<ConsoleQuery>;
 };
 
 /**
@@ -88,15 +172,15 @@ async function AdminDeskAccountContent({
   searchParams,
 }: DeskAccountProps) {
   /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE THE RECORD IS READ AND BEFORE `notFound()` CAN BE REACHED (399).
-     ⚠️ `searchParams` is read ABOVE the gate only because the Targets pager's page number is an argument to it.
-     It is the REQUEST's own query string and no record is touched to obtain it, so the verdict still precedes
-     every read of the record and `notFound()` still cannot be reached before the refusal. */
+     ⚠️ `searchParams` is read ABOVE the gate only because the page's three pagers, its rail and its two bell
+     anchors are all arguments to it. It is the REQUEST's own query string and no record is touched to obtain it,
+     so the verdict still precedes every read of the record and `notFound()` still cannot be reached before the
+     refusal — and this file VALIDATES none of it: the door does, once, for the read and for the rail alike. */
   const session = await currentSession();
   const { id } = await params;
   const sp = await searchParams;
   const tab = consoleDetailTab(sp.tab);
-  const tpageRaw = Array.isArray(sp.tpage) ? sp.tpage[0] : sp.tpage;
-  const answer = await houseDetailForConsole(session?.userId ?? null, "/admin/desk", id, Number(tpageRaw ?? 1));
+  const answer = await houseDetailForConsole(session?.userId ?? null, "/admin/desk", id, sp);
   if (!answer) return null;
   if (!answer.found) notFound();
   const view = answer;
@@ -104,6 +188,8 @@ async function AdminDeskAccountContent({
   const targetRows = view.targets;
   const usageRows = view.usage;
   const countRows = view.counts;
+  const feedRows = view.feed;
+  const historyRows = view.history;
 
   return (
     <>
@@ -112,13 +198,11 @@ async function AdminDeskAccountContent({
           this string; the loader beside this file carries no title at all for the same reason. */}
       <AdminPageHead
         title={view.label}
+        titleIsOperatorText
         actions={
-          <Link
-            href={CONSOLE_ROUTE as Route}
-            className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"
-          >
+          <WayOutLink href={CONSOLE_ROUTE}>
             Back to the desk
-          </Link>
+          </WayOutLink>
         }
       />
 
@@ -129,7 +213,14 @@ async function AdminDeskAccountContent({
         <AdminCard padding="p-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex items-start gap-3 min-w-0">
-              <Chip size="sm" variant={view.statusChip}>{view.statusWord}</Chip>
+              {/* ⛔ `shrink-0`, AND IT IS THE ROSTER'S OWN LESSON APPLIED TO THE PAGE THAT PAINTS THE SAME CHIP
+                  (C7 step 7 review, visual-1). In a flex row a `size="sm"` chip is a shrinkable item and the
+                  kit leaves its `whiteSpace` normal, so at 360 "Auto-paused" broke at its hyphen into a two-line
+                  pill — "AUTO-" over "PAUSED" — beside the one-line ACTIVE and PAUSED pills of the other states.
+                  A status word on two lines is not a status word. The roster fixed the same break with a column
+                  floor; here the chip is what must not shrink. The kit pins `flexShrink` itself for `size="xs"`
+                  only, and says why at `chip.tsx`. */}
+              <Chip size="sm" variant={view.statusChip} className="shrink-0">{view.statusWord}</Chip>
               <div className="min-w-0">
                 <div className="font-mono text-body-sm text-text-subtle">{view.handle}</div>
                 {/* ⛔ THE WAY OUT IS A FINISHED SERVER STRING, IN THE CONSOLE'S OWN NEUTRAL WORDS (rulings 311,
@@ -152,12 +243,9 @@ async function AdminDeskAccountContent({
               {view.settlementBlocked && <Chip size="sm" variant="danger">Settlement blocked</Chip>}
               {/* 456 · the door to a holder's money is the PLATFORM's own transactions screen, where an admin may
                   legitimately read a player's money — never a money tab of this section, which D20 struck. */}
-              <Link
-                href={view.holderHref as Route}
-                className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline"
-              >
+              <WayOutLink href={view.holderHref}>
                 Holder&apos;s transactions
-              </Link>
+              </WayOutLink>
             </div>
           </div>
 
@@ -191,9 +279,13 @@ async function AdminDeskAccountContent({
             rail option with no panel is a dead control; on this route that is a property of the RECORD, not only of
             the build. A removed account has exactly one thing left to show — what it was configured to do — so the
             page shows it, with no rail to click through and no empty panel behind one. */}
+        {/* 312 · the rail carries exactly the tabs whose panels exist. `activity` and `history` join it at C7 step 5
+            with the readers behind them.
+            ⛔ THE COMMENT IS BRACED. Wrapping this conditional in a fragment moved it INSIDE JSX, where a bare
+            block comment is not a comment at all but TEXT — it would have printed the words of a code comment
+            onto the account page. Caught by reading the edit, not by the compiler, which accepts it happily.
+            ⚠️ And the first attempt at THIS sentence quoted the delimiters, which closed the comment early. */}
         {!view.removed && (
-        /* 312 · the rail carries exactly the tabs whose panels exist. `activity` and `history` join it at C7 step 5
-           with the readers behind them. */
         <Tabs
           variant="line"
           ariaLabel="Account sections"
@@ -206,27 +298,22 @@ async function AdminDeskAccountContent({
           }))}
         />
         )}
+        {/* ⭐ The desk's own convention, applied to the account page so one section reads one way.
+            ⛔ IT CARRIES ITS OWN `removed` GUARD rather than riding inside the rail's. Two siblings inside one
+            guard need a fragment, and a fragment between `&& (` and `<Tabs` breaks `1.435`'s pin on the rail —
+            a pin whose claim (the rail is guarded) is correct and should not be loosened to fit a wrapper.
+            A new guarded panel is a new guard, which is exactly what `1.435`'s own note records happening when
+            SIX BECAME EIGHT at C7 step 5. Eight becomes nine here, in the same commit as the panel.
+            ⛔ `text-body-sm`, NOT `text-caption`: `test:type-scale` §3 holds reading copy to a 12.5px floor
+            and 11px is a LABEL, not prose — guidance an officer is meant to READ belongs above that floor. */}
+        {!view.removed && (
+        <p className="px-4 lg:px-6 pt-3 text-body-sm text-text-tertiary max-w-[72ch]">{TAB_GUIDANCE[tab as (typeof CONSOLE_DETAIL_TABS)[number]]}</p>
+        )}
 
         {/* 358 · THE ONE THING A REMOVED ACCOUNT STILL HOLDS: what it was configured to do. Kept as a record, never
             editable, and named as such rather than left to a reader to infer from a disabled control. */}
         {view.removed && (
-          <AdminCard title="Saved rules">
-            {rulesRows === null ? (
-              <AdminLoadError what="the saved rules" />
-            ) : (
-              <FormColumn measure="form">
-                <p className="text-body-sm text-text-tertiary mb-4">{view.rulesReason}</p>
-                <dl className="space-y-3">
-                  {rulesRows.map((r) => (
-                    <div key={`${r.section}-${r.name}`} className="flex items-baseline justify-between gap-4 flex-wrap">
-                      <dt className="text-body-sm text-text-secondary min-w-0">{r.name}</dt>
-                      <dd className="text-body-sm text-text text-right min-w-0">{r.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </FormColumn>
-            )}
-          </AdminCard>
+          <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions={false} />
         )}
 
         {/* ⚠️ THE `(<>` … `</>)}` FORM IS LOAD-BEARING, NOT A HABIT (ruling 433(e)). `test:tab-anchors` decides which
@@ -285,6 +372,83 @@ async function AdminDeskAccountContent({
           )}
         </>)}
 
+        {tab === "activity" && (<>
+          {/* ⭐ C7 STEP 5 · WHAT THIS ACCOUNT HAS TRIED TO STAKE, NEWEST FIRST, WITH WHAT HAPPENED TO EACH.
+              ⛔ THE RAIL IS A DUMB RENDERER AND EVERY LINK IN IT IS SERVER-BUILT (319, 453): it types no route,
+              no closed list and no label, so the control an officer clicks is built from the SAME parse the read
+              is taken with. ⛔ ONE `data-filter-rail` under this section and it is NOT on the `<Tabs>`.
+              ⛔ THE MONEY IS ONE INTENT'S OWN STAKE, SECOND COLUMN, NEVER A SUM (266, 360 role C, 373) — and no
+              row carries `why`, `decision` or a trigger player's id, for the reasons the reader states by name. */}
+          {!view.removed && (<>
+          <ActivityFilters groups={view.feedFilters} presets={view.feedPresets} presetDefault={view.feedPresetDefault} />
+          {/* 387/432(j) · an address that was not taken at its word SAYS SO, naming each axis it dropped —
+              silently narrowing to something nobody asked for is the defect this sentence exists against. */}
+          {view.queryRefusal && (
+            <Callout tone="warning" title={CONSOLE_REFUSAL_TITLE}>{view.queryRefusal}</Callout>
+          )}
+          <AdminCard padding="p-0">
+            {/* ⛔ 355 · A FAILED READ IS NEVER AN EMPTY TABLE. `null` means nobody could tell; an empty array means
+                there is nothing there, and the two paint different treatments and say different things. */}
+            {feedRows === null ? (
+              <div className="p-4"><AdminLoadError what="this account's activity" /></div>
+            ) : (
+              <>
+                <div className="px-4 pt-4">
+                  <p className="text-body-sm text-text-tertiary">{view.feedOrderNote}</p>
+                </div>
+                <ScrollX label="Account activity">
+                  <table className="admin-tbl">
+                    <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+                      <tr>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
+                        <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
+                        <th scope="col" className="text-left p-3">Type</th>
+                        <th scope="col" className="text-left p-3">Product</th>
+                        <th scope="col" className="text-left p-3 !whitespace-normal">Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {feedRows.length === 0 ? (
+                        <AdminTableEmpty colSpan={6} title={view.feedEmpty.title} body={view.feedEmpty.body} />
+                      ) : (
+                        feedRows.map((r, i) => (
+                          /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
+                             served markup, and a bounded record id is the one thing D19 says this section may
+                             never put in a response. */
+                          <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
+                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
+                            <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
+                            <td className="p-3 text-text">{r.typeWord}</td>
+                            <td className="p-3 text-text-secondary">{r.productWord}</td>
+                            <td className="p-3 text-text-secondary">{r.note ?? "—"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollX>
+              </>
+            )}
+            {/* ⛔ THE TOTAL IS THE COUNTING READER'S, NEVER `feedRows.length` (344): the house DAL clamps every
+                list reader at 500 rows, so a total taken from the page would stop the pager short of the last
+                page. `page` and not a panel-local name, because the window filter resets exactly that word. */}
+            {feedRows !== null && view.feedTotal !== null && (
+              <div className="p-4 pt-0">
+                <AdminPagination
+                  total={view.feedTotal}
+                  page={view.feedPage}
+                  perPage={view.feedPerPage}
+                  param="page"
+                  baseHref={buildBaseHref(`${CONSOLE_ROUTE}/${view.id}`, view.feedParams, "page")}
+                />
+              </div>
+            )}
+          </AdminCard>
+          </>)}
+        </>)}
+
         {tab === "rules" && (<>
           {/* ⛔ EVERY PANEL IS GUARDED BY `removed` FROM THE INSIDE, NEVER BY A SECOND TERM IN THE TAB TEST
               (ruling 433(e)): `test:tab-anchors` decides which tab owns a rendered id by the nearest panel opener
@@ -300,26 +464,7 @@ async function AdminDeskAccountContent({
           {/* 508 · the saved rules, as VALUES. ⛔ There is no per-account rules SAVE in this repository, so no typed
               control is drawn and the reason sits beside the card (432(a), 432(j)) — a field that silently discards
               what an officer types is worse than one that says it cannot be edited. */}
-          <AdminCard title="Saved rules">
-            {rulesRows === null ? (
-              <AdminLoadError what="the saved rules" />
-            ) : (
-              <FormColumn measure="form">
-                <p className="text-body-sm text-text-tertiary mb-4">{view.rulesReason}</p>
-                <dl className="space-y-3">
-                  {rulesRows.map((r) => (
-                    <div key={`${r.section}-${r.name}`} className="flex items-baseline justify-between gap-4 flex-wrap">
-                      <dt className="text-body-sm text-text-secondary min-w-0">{r.name}</dt>
-                      <dd className="text-body-sm text-text text-right min-w-0">
-                        {r.value}
-                        {r.caption && <span className="block text-body-sm text-warning-fg">{r.caption}</span>}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </FormColumn>
-            )}
-          </AdminCard>
+          <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions />
           </>)}
         </>)}
 
@@ -355,7 +500,7 @@ async function AdminDeskAccountContent({
                             {t.endCaption && <div className="text-body-sm text-text-subtle">{t.endCaption}</div>}
                           </td>
                           <td className="p-3"><Chip size="sm" variant={t.statusChip}>{t.statusWord}</Chip></td>
-                          <td className="p-3 text-text-secondary" title={t.whenTitle}>{t.when}</td>
+                          <td className="p-3 tabular text-text-secondary" title={t.whenTitle}>{t.when}</td>
                         </tr>
                       ))
                     )}
@@ -377,6 +522,78 @@ async function AdminDeskAccountContent({
                   perPage={view.targetsPerPage}
                   param="tpage"
                   baseHref={buildBaseHref(`${CONSOLE_ROUTE}/${view.id}`, { tab: "targets" }, "tpage")}
+                />
+              </div>
+            )}
+          </AdminCard>
+          </>)}
+        </>)}
+
+        {tab === "history" && (<>
+          {/* ⭐ C7 STEP 5 · EVERY CHANGE TO THIS ACCOUNT, NEWEST FIRST — the durable record of who did what.
+              ⛔ NO AMOUNT AND NO BALANCE (266, 369(c), 456). `money-hook.ts` writes `amountTzs` and `balanceTzs` —
+              the HOLDER'S OWN WALLET BALANCE — onto every OWNER_MONEY event; this panel carries neither, and a
+              money row links instead to the platform's own transactions screen, where an admin may legitimately
+              read a player's money. ⛔ The Event cell is the console's own TOTAL word map, never a raw enum: the
+              lexicon cannot see `HOLDER_AGAINST_BOT` at all, because an underscore is a word character. */}
+          {!view.removed && (<>
+          <AdminCard padding="p-0">
+            {historyRows === null ? (
+              <div className="p-4"><AdminLoadError what="this account's history" /></div>
+            ) : (
+              <>
+                <div className="px-4 pt-4">
+                  <p className="text-body-sm text-text-tertiary">{view.historyOrderNote}</p>
+                </div>
+                <ScrollX label="Account history">
+                  <table className="admin-tbl">
+                    <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+                      <tr>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-left p-3 !whitespace-normal">Event</th>
+                        <th scope="col" className="text-left p-3">Change</th>
+                        <th scope="col" className="text-left p-3 !whitespace-normal">Who</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyRows.length === 0 ? (
+                        <AdminTableEmpty colSpan={4} title={view.historyEmpty.title} body={view.historyEmpty.body} />
+                      ) : (
+                        historyRows.map((r, i) => (
+                          <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
+                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 text-text">
+                              {r.eventWord}
+                              {r.moneyHref && (
+                                <Link href={r.moneyHref as Route} className="block text-body-sm underline text-text-secondary">
+                                  Find it on the transactions screen
+                                </Link>
+                              )}
+                            </td>
+                            {/* ⛔ The desk history's own decision, moved with it (§K5): a bounded PAIR does not
+                                break across lines — see the note at that copy. */}
+                            <td className="p-3 text-text-secondary whitespace-nowrap">{r.change ?? "—"}</td>
+                            {/* ⛔ THE SAME CELL AS THE DESK-WIDE HISTORY, AND IT MOVES WITH IT (§K5: one shape for
+                                one thing). It broke in two here and into six lines there — the difference was
+                                only how much room was left, which is exactly why the class is not left to the
+                                width to decide. See the note at the desk history's own copy. */}
+                            <td className="p-3 font-mono text-body-sm text-text-subtle whitespace-nowrap">{r.who}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollX>
+              </>
+            )}
+            {historyRows !== null && view.historyTotal !== null && (
+              <div className="p-4 pt-0">
+                <AdminPagination
+                  total={view.historyTotal}
+                  page={view.historyPage}
+                  perPage={view.historyPerPage}
+                  param="hpage"
+                  baseHref={buildBaseHref(`${CONSOLE_ROUTE}/${view.id}`, view.historyParams, "hpage")}
                 />
               </div>
             )}

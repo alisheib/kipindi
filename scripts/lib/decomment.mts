@@ -148,6 +148,176 @@ export function decomment(s: string): string {
 }
 
 /**
+ * Does a regex literal open at `i` (where `s[i]` is a `/`)? Decided by the previous significant
+ * character, which is how every JS tokeniser does it: after a value, `/` is division; after an
+ * operator, a comma, an opening bracket or nothing, it can only be a regex. A wrong YES costs a
+ * verbatim copy — loud; a wrong NO is how a quote inside a character class mispairs — silent.
+ */
+function regexStartsHere(s: string, i: number): boolean {
+  if (s[i + 1] === "/" || s[i + 1] === "*") return false;   // a comment, handled above
+  let k = i - 1;
+  while (k >= 0 && (s[k] === " " || s[k] === "\t" || s[k] === "\n" || s[k] === "\r")) k--;
+  if (k < 0) return true;
+  const p = s[k];
+  if ("(,=:[!&|?{};+-*%~^<>".includes(p)) return true;
+  // `return /…/`, `typeof /…/`, `case /…/` — a word that is a keyword, never an identifier or `)`.
+  let w = k;
+  while (w >= 0 && /[A-Za-z]/.test(s[w])) w--;
+  return /^(return|typeof|case|in|of|do|else|yield|await|delete|void|instanceof)$/.test(s.slice(w + 1, k + 1));
+}
+
+/** Index of the closing `/` of a regex literal opened at `i`, or -1. A newline ends the search. */
+function endOfRegex(s: string, i: number): number {
+  let inClass = false;
+  for (let j = i + 1; j < s.length; j++) {
+    const c = s[j];
+    if (c === "\\") { j++; continue; }
+    if (c === "\n") return -1;
+    if (c === "[") inClass = true;
+    else if (c === "]") inClass = false;
+    else if (c === "/" && !inClass) return j;
+  }
+  return -1;
+}
+
+/** Every non-newline character of `t`, replaced by a space: line numbers and byte offsets survive. */
+const blankRun = (t: string): string => t.replace(/[^\r\n]/g, " ");
+
+/**
+ * Blank the BODY of every string and template literal, leaving the delimiters — and every other
+ * character, which is CODE — exactly where they were.        (added 2026-09-20, C7 step 7 review)
+ *
+ * WHY IT LIVES HERE AND NOT AT ITS CALL SITE. `test:house-bot-console` 1.371 is the standing scan for
+ * seven names owner ruling D20 struck from the tree, and it must look for them as CODE: the same names
+ * survive as DATA inside the guard's own closed list, so a raw scan would report the guard that keeps
+ * them out. It did that with three ordered `.replace()` passes, and that was the `E-189` shape one
+ * function up. MEASURED on 2026-09-20 over its own 119-file population: the passes deleted 71% of
+ * `house-bot-console-cases.mts`, 81% of `house-bot-dal.ts`, and more than 40% of 25 files — and a
+ * planted struck name was INVISIBLE at 50%, 70% and 90% of the guard's own file while being found in
+ * the small file its control planted into. A pair of regexes cannot know it is standing inside a
+ * literal. A scanner can, and this module already is one.
+ *
+ * IT ERRS TOWARD KEEPING, exactly as `decomment` does and for the same reason: text wrongly KEPT is a
+ * false positive, which is loud and gets fixed; text wrongly REMOVED is a false negative, which is
+ * silent and is the whole failure this function exists to prevent. So an unmatched `"` or `'` keeps
+ * the rest of its line verbatim, an unterminated template keeps the rest of the file, and a comment is
+ * copied through untouched — which also means a quote inside a comment can never open a literal here.
+ *
+ * AN INTERPOLATION IS CODE AND IS KEPT. A struck name called inside one is a call, not a sentence, and
+ * a call is the one thing this scan exists to find. The interpolation's extent is found by brace
+ * depth, the same instrument `endOfTemplate` uses and for the same reason — depth cannot be fooled by
+ * a regex literal — so a brace inside a string inside an interpolation can make it keep too much. Too
+ * much is the loud direction.
+ *
+ * EVERY NEWLINE SURVIVES, including those inside a blanked multi-line template, so the line numbers of
+ * surviving code do not move and a guard may report them.
+ *
+ * A REGEX LITERAL IS KEPT VERBATIM BY DEFAULT, because a wrongly-detected one would then be deleted
+ * silently, and that is the direction this function refuses. `{ regex: true }` blanks its body too,
+ * for the one caller that needs it: a guard scanning for a name it must not find has its OWN detector
+ * spelling that name, and a detector is data about the name, not a use of it — the same reason string
+ * literals are blanked at all.
+ *
+ * @param s source text — pass `decomment(s)` when comments must go too
+ * @param opts `regex: true` also blanks regex-literal bodies (see above)
+ * @returns the same text, every literal body replaced by spaces, the same length to the character
+ */
+/*  ⛔ WRITTEN DELIBERATELY UNLIKE `decomment`'s OWN BRANCHES, AND THAT IS NOT STYLE — it is the same rule
+    `decommentCss` carries three functions down. `red:decomment` declares four of `decomment`'s lines as ANCHORS
+    (`stripper-loses-string-literal-awareness`, `…-template-…`, `unterminated-block-swallows-to-EOF-again`,
+    `stripper-loses-the-url-carve-out`). The first draft of this function copied them verbatim, every one of those
+    anchors then matched TWICE, and `test:red-anchors` refused to inject — correctly: an anchor resolving to two
+    places can plant its defect in the wrong one. Same behaviour, different text, anchors unique again. */
+export function blankLiterals(s: string, opts: { regex?: boolean } = {}): string {
+  let out = "";
+  let i = 0;
+  const n = s.length;
+  /** The rest of the line from `at`, and where it ends — a comment or an unmatched quote is kept verbatim. */
+  const restOfLine = (at: number): [string, number] => {
+    const nl = s.indexOf("\n", at);
+    const upTo = nl === -1 ? n : nl;
+    return [s.slice(at, upTo), upTo];
+  };
+
+  while (i < n) {
+    const c = s[i];
+    const after = s[i + 1];
+
+    if (c === "/" && after === "/" && s[i - 1] !== ":") {
+      const [text, upTo] = restOfLine(i);
+      out += text; i = upTo; continue;
+    }
+    if (c === "/" && after === "*") {
+      const shut = s.indexOf("*/", i + 2);
+      if (shut === -1) { out += s.slice(i); break; }
+      out += s.slice(i, shut + 2); i = shut + 2; continue;
+    }
+
+    if (c === "'" || c === '"') {
+      const close = endOfQuoted(s, i, c);
+      if (close !== -1) { out += c + blankRun(s.slice(i + 1, close)) + c; i = close + 1; continue; }
+      const [text, upTo] = restOfLine(i);
+      out += text; i = upTo; continue;
+    }
+
+    // A REGEX LITERAL IS COPIED THROUGH AND NEVER LOOKED INSIDE, and this is the branch `decomment`
+    // does not have. MEASURED on the guard this function was written for: its own retired stripper,
+    // `code.replace(/`(?:\\[\s\S]|[^`\\])*`/g, …)`, holds THREE backticks in a character class, and
+    // without this branch the third opened a template that ran 18 lines to the next backtick — so
+    // the assertion's own label was blanked and the seven struck names inside it read as CODE. A
+    // literal wrongly taken for a regex is kept verbatim, which is the loud direction; one missed is
+    // how quotes and backticks mispair, which is the silent one.
+    if (c === "/" && regexStartsHere(s, i)) {
+      const close = endOfRegex(s, i);
+      if (close !== -1) { out += opts.regex ? "/" + blankRun(s.slice(i + 1, close)) + "/" : s.slice(i, close + 1); i = close + 1; continue; }
+    }
+
+    if (c === "`") {
+      const shut = endOfTemplate(s, i);
+      if (shut !== -1) { out += "`" + blankTemplateBody(s, i + 1, shut) + "`"; i = shut + 1; continue; }
+      // A LONE BACKTICK IS AN ORDINARY CHARACTER, and this line is the whole of the lesson.
+      // Taking the rest of the FILE instead — the first version did — met the unpaired backtick in a
+      // regex class like `["'`]` and then copied 1,600 later lines through unblanked, so every literal
+      // after it read as code: MEASURED, seven false hits in the one guard this function was written
+      // for. Falling through matches `decomment`'s own backtick branch, and costs at most one
+      // character of over-keeping.
+    }
+
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+/** One template's body: literal runs blanked, every `${…}` span kept verbatim because it is CODE. */
+function blankTemplateBody(s: string, from: number, to: number): string {
+  let out = "";
+  let lit = from;
+  let j = from;
+  while (j < to) {
+    const c = s[j];
+    if (c === "\\") { j += 2; continue; }
+    if (c === "$" && s[j + 1] === "{") {
+      out += blankRun(s.slice(lit, j));
+      let depth = 1;
+      let k = j + 2;
+      while (k < to && depth > 0) {
+        const e = s[k];
+        if (e === "\\") { k += 2; continue; }
+        if (e === "{") depth++;
+        else if (e === "}") depth--;
+        else if (e === "`") { const t = endOfTemplate(s, k); if (t !== -1 && t < to) k = t; }
+        k++;
+      }
+      out += s.slice(j, k);
+      j = k; lit = k; continue;
+    }
+    j++;
+  }
+  return out + blankRun(s.slice(lit, to));
+}
+
+/**
  * Strip comments from a STYLESHEET.                              (added 2026-08-31, DG-A-12)
  *
  * ⭐ WHY IT LIVES HERE RATHER THAN AT THE ONE CALL SITE. `type-scale.test.mts` §7 parsed RAW

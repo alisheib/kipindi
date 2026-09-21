@@ -40,8 +40,359 @@ const DETAIL = "src/app/admin/desk/[id]/page.tsx";
 const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
 /* ⭐ C7 step 4b · the officer's two roster acts, which had no service under src/ at all before this step. */
 const ROSTER = "src/lib/server/house-bot/roster-actions.ts";
+/* ⭐ C7 step 5 (the account half) · the activity panel's own filter rail. */
+const RAIL = "src/app/admin/desk/activity-filters.tsx";
+/** C7 step 5's landing half: the first press anything under `src/` creates, and the bell that links to its panel. */
+const PRESS_CANCEL = "src/lib/server/house-bot/press-cancel.ts";
+const NOTIF = "src/lib/server/notification-service.ts";
+/* ⭐ C7 step 6 · the designate wizard's own actions file and its one client module. */
+const NEW_ACTIONS = "src/app/admin/desk/new/actions.ts";
+const NEW_PAGE = "src/app/admin/desk/new/page.tsx";
+const NEW_CLIENT = "src/app/admin/desk/new/designate-wizard.tsx";
+
+/* ⭐ C7 step 7 · the closing gates. The last four are GUARD files: the only way to show that an assertion whose
+ * subject IS a guard can fail is to mutate the guard, and `318-expect-drift` on this very file is the precedent. */
+const BOOK = "src/lib/server/house-bot/book.ts";
+const FEED = "src/lib/house-bot/feed-copy.ts";
+const KILL = "src/lib/server/house-bot/kill-switch.ts";
+const CONSTANTS = "src/lib/house-bot/constants.ts";
+const HEALTH = "src/app/api/health/route.ts";
+const VOCAB = "scripts/lib/house-bot-vocabulary.mjs";
+const REPORTS = "scripts/lib/house-bot-reports-cases.mts";
+const CASES = "scripts/lib/house-bot-console-cases.mts";
+const COMMS = "scripts/lib/house-bot-comms-cases.mts";
+/* ⭐ C5-7 · ruling 232 · the one file that holds every positioned transaction write. */
+const MARKET = "src/lib/server/market-service.ts";
+/* ⭐ C5-7 · ruling 235 · the Up & Down digest, F6's one production caller. */
+const DIGEST = "src/lib/server/updown-digest.ts";
+/* ⭐ ADDED AT THE C7 STEP 7 REVIEW. The erasure door is the one house refusal a COMPLIANCE officer can make the
+   platform print; the shared scanner is what 1.371's population is read through; the visual gate is where 474's
+   exemption is applied; the shell is where the account page's own head stamps that exemption. */
+const ERASURE = "src/lib/server/erasure.ts";
+const DECOMMENT = "scripts/lib/decomment.mts";
+const VISUAL = "scripts/qa-house-bots-visual.mjs";
+const SHELL = "src/components/admin/admin-shell.tsx";
+const CLOCK = "src/lib/house-bot/clock.ts";
 
 export const MUTATIONS = [
+  /* ── C7 step 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368/459, 382, 383, 385, 387, 388) ─────────────────────
+   * Each puts back a shape the wizard could plausibly have shipped in: a door that reads before it decides, a
+   * refusal that tells a player whether an account exists, a real person's balance on the one screen most likely to
+   * end up in a screenshot, or a service's own sentence passed through onto a surface 453 exists to keep neutral. */
+  {
+    name: "359-missing-card · an account that does not exist gets a card of facts about nothing — a built handle, an empty term and a fabricated zero",
+    file: NEW_PAGE,
+    from: `          {view !== null && step === "check" && !view.accountMissing && (`,
+    to: `          {view !== null && step === "check" && (`,
+    expect: "1.359 · 355 · 416 · the wizard's fact grid, its funded state and its footer are all guarded by `accountMissing`",
+    suite: "console-mem",
+  },
+  {
+    name: "359-missing-flag · the reader stops reporting a missing account, so the page can never tell the two states apart",
+    file: GATE,
+    from: `    accountMissing: blocking.some((r) => r.code === "ACCOUNT_MISSING"),`,
+    to: `    accountMissing: false,`,
+    expect: "1.359 · 355 · a `?u=` with no account behind it answers `accountMissing`",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ RE-ANCHORED AT C7 STEP 7 to the SAME defect: the presence check moved off the governed accessor so the
+     * READ-TIERS ratchet stops reporting the desk, and the term must still be drawn only when there is a number. */
+    name: "359-phone-term · the Phone term is drawn unconditionally, so an account with no number gets a labelled row that says nothing",
+    file: NEW_PAGE,
+    from: `                  {view.hasPhone && (`,
+    to: `                  {true && (`,
+    expect: "1.359 · the Phone term is drawn only when there is a value",
+    suite: "console-mem",
+  },
+  {
+    name: "359-gate-late · the check card is built BEFORE the audience verdict, so a refused viewer's payload carries the account",
+    file: GATE,
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const id = typeof userId === "string" ? userId : "";
+  if (id.length === 0) return null;`,
+    to: `  const id = typeof userId === "string" ? userId : "";
+  if (id.length === 0) return null;`,
+    expect: "1.359 · a viewer OUTSIDE the audience receives `null` and nothing else",
+    suite: "console-mem",
+  },
+  {
+    name: "459-balance · the check card paints the holder's balance, which is the one exception ruling 459 withdrew",
+    file: GATE,
+    from: `    ? { word: "Funded", chip: TONE_CHIP.green, sentence: "There is money in this wallet, so a stake can be funded from it." }`,
+    to: `    ? { word: "Funded", chip: TONE_CHIP.green, sentence: \`Live balance \${formatTzs(balance)}.\` }`,
+    expect: "1.359 · 459 · the card paints a funded STATE in both polarities and NO amount",
+    suite: "console-mem",
+  },
+  {
+    name: "453-elig-passthrough · the check card renders the SERVICE's own eligibility sentences, which name the feature",
+    file: GATE,
+    from: `    ({ code: r.code, text: consoleCheckSentence(r.code), href: r.href ?? null });`,
+    to: `    ({ code: r.code, text: (r as { message?: string }).message ?? consoleCheckSentence(r.code), href: r.href ?? null });`,
+    expect: "1.359 · 453 · every blocking and warning sentence the card paints is the CONSOLE's own",
+    suite: "console-mem",
+  },
+  {
+    name: "453-elig-gap · one eligibility code loses its console sentence and falls back to the generic line",
+    file: GATE,
+    from: `  AGENT_ACCOUNT: "This is an agent account. Only a player's own account can be used here.",\n`,
+    to: ``,
+    expect: "1.359 · 453 · the console has a sentence of its own for EVERY code in the service's two unions",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ RE-ANCHORED AT C7 STEP 6's FIX, SAME DEFECT: the settled set's fourth read is now a COUNT, not a page
+       (ruling 344), so the line the second wallet read is planted beside changed with it. */
+    name: "356-wizard-wallet · the check card reads the candidate's wallet a SECOND time, for a figure it never paints",
+    file: GATE,
+    from: `    (async () => positionStore.countOwnOpenForUser(id))(),`,
+    to: `    (async () => positionStore.countOwnOpenForUser(id))(),
+    (async () => db.wallet.findByUserId(id))(),`,
+    expect: "1.356 · the wizard's check card performs EXACTLY ONE wallet read",
+    suite: "console-mem",
+  },
+  {
+    name: "387-oracle · the picker's refusal carries a count, so a player can tell a match from a miss",
+    file: GATE,
+    from: `  const refused: ConsolePickerAnswer = { rows: [], note: CONSOLE_PICKER_EMPTY, count: "" };`,
+    to: `  const refused: ConsolePickerAnswer = { rows: [], note: CONSOLE_PICKER_EMPTY, count: "0 accounts" };`,
+    expect: "1.387 · for a caller OUTSIDE the audience a matching query, a non-matching query and an unknown id answer IDENTICALLY",
+    suite: "console-mem",
+  },
+  {
+    name: "387-phone · a picker option carries the account's phone, which never passed through the platform's own gate",
+    file: GATE,
+    from: `    handle: playerHandle(u.id),
+    href: consoleNewHref({ userId: u.id }),`,
+    to: `    handle: \`\${playerHandle(u.id)} \${u.phoneE164}\`,
+    href: consoleNewHref({ userId: u.id }),`,
+    expect: "1.387 · the owner's search finds the account by its id and paints the handle alone",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ THE `expect` IS RE-AIMED, NOT THE MUTATION (C7 step 6 review, test-strength-387-blind). It named the
+       assertion whose fixture is a SUPPORT account, refused two branches later by the role test and never through
+       `onDesk` at all — so the line it named stayed green and the harness reported WRONG-ASSERTION. The line this
+       defect really reddens is the roster one. */
+    name: "387-blind · every picker option is offered as choosable, including one already on the desk",
+    file: GATE,
+    from: `  if (onDesk) return PICKER_REASON.onDesk;`,
+    to: `  if (false) return PICKER_REASON.onDesk;`,
+    expect: "1.387 · an account already on the desk comes back as an option that cannot be chosen",
+    suite: "console-mem",
+  },
+  {
+    name: "387-floor · a one-character query walks the whole account directory",
+    file: GATE,
+    from: `  if (q.length < CONSOLE_PICKER_MIN_QUERY) return { rows: [], note: null, count: "" };`,
+    to: `  if (q.length < 0) return { rows: [], note: null, count: "" };`,
+    expect: "1.387 · a query under the floor answers with no rows, no count and no sentence",
+    suite: "console-mem",
+  },
+  {
+    name: "383-refusal-field · the designation's refusal to a non-owner names a field, which is a shape only a real form gets",
+    file: GATE,
+    from: `    return { ok: false, error: CONSOLE_ACT_REFUSAL.refused };
+  }
+  const userId = typeof input.userId === "string" ? input.userId : "";`,
+    to: `    return { ok: false, error: CONSOLE_ACT_REFUSAL.refused, field: "password" };
+  }
+  const userId = typeof input.userId === "string" ? input.userId : "";`,
+    expect: "1.383 · a caller outside the audience receives ONE fixed refusal",
+    suite: "console-mem",
+  },
+  {
+    name: "383-label-late · the label's shape is checked AFTER the password, so a typo spends the holder's own attempt",
+    file: GATE,
+    from: `  const labelErr = validateLabel(label);`,
+    to: `  const labelErr = null as ReturnType<typeof validateLabel>;`,
+    expect: "1.383 · a mistyped name is refused on its own field",
+    suite: "console-mem",
+  },
+  {
+    name: "382-export · a console action takes the export name ruling 382 forbids, which ships verbatim in a public chunk",
+    file: NEW_ACTIONS,
+    from: `export async function designateDeskAccountAction(`,
+    to: `export async function designateHouseBotAction(`,
+    expect: "1.382 · every exported symbol of every console `\"use server\"` file",
+    suite: "console-mem",
+  },
+  {
+    name: "385-copy · a sentence the server owns is typed into the client file instead of arriving as a prop",
+    file: NEW_CLIENT,
+    from: `const TRANSPORT_FAILURE = "That did not reach the server. Nothing changed — try again.";`,
+    to: `const TRANSPORT_FAILURE = "There is money in this wallet, so a stake can be funded from it.";`,
+    expect: "1.385 · not one sentence the gate module can emit is ALSO typed into a console client file",
+    suite: "console-mem",
+  },
+  {
+    name: "388-prop · a client prop is named for the feature, and a prop name survives minification into a public chunk",
+    file: NEW_CLIENT,
+    from: `  checkHref,
+  labelMin,`,
+    to: `  houseBotLabel,
+  checkHref,
+  labelMin,`,
+    expect: "1.388 · not one prop name, type field or string literal of any console client file carries a vocabulary word",
+    suite: "console-mem",
+  },
+  {
+    name: "420-name · the console resolves a display name, putting a real person's name on the screenshot surface",
+    file: GATE,
+    from: `    phoneE164: phone,`,
+    to: `    phoneE164: phone,
+    displayName: user?.displayName ?? null,`,
+    expect: "1.420 · the ON sentence names the actor by id and the module resolves NO name for one",
+    suite: "console-mem",
+  },
+  {
+    name: "342-viewer · the subject's row is read through the VIEWER's id, which is how an N+1 on the wrong row ships",
+    file: GATE,
+    from: `    (async () => db.user.findById(id))(),`,
+    to: `    (async () => db.user.findById(viewerUserId))(),`,
+    expect: "1.342 · the viewer lookup is wrapped in React `cache()` inside the gate module",
+    suite: "console-mem",
+  },
+  {
+    name: "432h-wizard · the head action stops opening the wizard, so the deliverable's first control is inert again",
+    file: PAGE,
+    from: `              ? <Link href={view.designateHref as Route} className="btn btn-primary btn-md inline-flex items-center">Designate an account</Link>`,
+    to: `              ? <Button size="md" variant="primary" disabled>Designate an account</Button>`,
+    expect: "1.407 · 432(h) · …and the same rule for the wizard",
+    suite: "console-mem",
+  },
+  /* ── C7 step 6 · WHAT THE FIX PASS ADDED (rulings 259/324/380, 344, 355, 387, 388, 412) ───────────────────────
+   * Each is a shape the wizard ACTUALLY shipped in and a review measured: a page that gated only when a `?u=` was
+   * present, a population built from a page, a failed read painted as a state, a picker whose count lied about its
+   * own bound, a feature paragraph typed into a public chunk, and an idempotency key derived from what the officer
+   * typed — which bricked the control after one wrong password. */
+  {
+    name: "380-page-gate · the wizard's page decides its audience only when a `?u=` is present, so a bare /admin/desk/new streams to any signed-in account",
+    file: NEW_PAGE,
+    from: `  if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/desk"))) return null;
+  const sp = await searchParams;`,
+    to: `  const sp = await searchParams;`,
+    expect: "1.380 · 324 · the wizard's page decides its OWN audience first",
+    suite: "console-mem",
+  },
+  {
+    name: "344-paged-count · `Open positions` is built from a PAGE again, so an account whose settled rows are newer reads zero open",
+    file: GATE,
+    from: `    (async () => positionStore.countOwnOpenForUser(id))(),`,
+    to: `    (async () => (await positionStore.listForUser(id, 3)).filter((x) => x.status === "OPEN" && x.houseBotId == null).length)(),`,
+    expect: "1.344 · the check card's open-position figure comes from a COUNTING reader",
+    suite: "console-mem",
+  },
+  {
+    name: "355-unreadable-row · a failed eligibility read stops saying so, so an unreadable account paints as a card with nothing wrong with it",
+    file: GATE,
+    from: `  const blocking: ConsoleCheckRow[] = el === null
+    ? [{ code: "UNREADABLE", text: "This account could not be checked. Refresh to try again.", href: null }]
+    : el.blocking.map(row);`,
+    to: `  const blocking: ConsoleCheckRow[] = el === null ? [] : el.blocking.map(row);`,
+    expect: "1.359 · 355 · a failed eligibility read is a BLOCKING ROW, not an eligible account",
+    suite: "console-mem",
+  },
+  {
+    name: "355-open-zero · a failed position count renders a fabricated zero instead of the em dash",
+    file: GATE,
+    from: `    openPositions: open === null ? EM_DASH : formatNumber(open),`,
+    to: `    openPositions: formatNumber(open ?? 0),`,
+    expect: "1.359 · 355 · a failed position count renders an EM DASH, never a fabricated zero",
+    suite: "console-mem",
+  },
+  {
+    name: "355-door-hidden · the bonus fact and the way to the holder's own money screen go back inside the funded guard, so a failed wallet read takes the door with it",
+    file: NEW_PAGE,
+    from: `                <div className="mt-4 pt-4 border-t border-border-subtle">
+                  {view.funded !== null && (`,
+    to: `                <div className="mt-4 pt-4 border-t border-border-subtle">
+                  {view.funded !== null && view.bonusCaption.length > 0 && (`,
+    expect: "1.359 · 456 · the page paints the bonus fact and the way to the holder's own money screen OUTSIDE the funded guard",
+    suite: "console-mem",
+  },
+  {
+    name: "387-busy-lies · a rate-limited lookup answers the refusal, telling an owner inside the audience that accounts which exist do not",
+    file: GATE,
+    from: `  if (!gate.allowed) return { rows: [], note: CONSOLE_PICKER_BUSY, count: "" };`,
+    to: `  if (!gate.allowed) return refused;`,
+    expect: "1.387(e) · a rate-limited lookup answers its OWN sentence",
+    suite: "console-mem",
+  },
+  {
+    name: "387-rate-rule · the picker's rate rule is deleted, and `rateCheckAsync` fails OPEN on a key it does not know",
+    file: "src/lib/server/rate-limit.ts",
+    from: `  "desk.picker":   { capacity: 30, refillPerMin: 15 },`,
+    to: ``,
+    expect: "1.387(e) · the picker's rate rule EXISTS, is keyed on the CALLER",
+    suite: "console-mem",
+  },
+  {
+    name: "387-cap · the ten-option bound becomes a hundred, so a listbox with no scroll box of its own runs off the page",
+    file: GATE,
+    from: `  const rows: ConsolePickerRow[] = hits.slice(0, CONSOLE_PICKER_MAX).map((u) => ({`,
+    to: `  const rows: ConsolePickerRow[] = hits.slice(0, 100).map((u) => ({`,
+    expect: "1.387 · 412 · the answer is capped at ten options and the count says so",
+    suite: "console-mem",
+  },
+  {
+    name: "387-count-lie · the live count reports the rows SHOWN, so a query matching forty says `10 accounts`",
+    file: GATE,
+    from: `  const shown = hits.length > CONSOLE_PICKER_MAX
+    ? \`\${formatNumber(rows.length)} of \${formatNumber(hits.length)} accounts\${SEP}narrow the search\`
+    : \`\${formatNumber(rows.length)} \${rows.length === 1 ? "account" : "accounts"}\`;`,
+    to: `  const shown = \`\${formatNumber(rows.length)} \${rows.length === 1 ? "account" : "accounts"}\`;`,
+    expect: "1.387 · 412 · the answer is capped at ten options and the count says so",
+    suite: "console-mem",
+  },
+  {
+    name: "387-order · the slice takes whichever ten the store happened to return, so the two twins can answer different tens",
+    file: GATE,
+    from: `  hits.sort((a, b) => matchRank(a) - matchRank(b) || a.id.localeCompare(b.id));`,
+    to: ``,
+    expect: "1.387 · …and the ten that survive the slice are the same ten a second run returns",
+    suite: "console-mem",
+  },
+  {
+    name: "412-nonce · the submit claim goes back to the account and the typed name, so one wrong password bricks the control for 30 days",
+    file: NEW_CLIENT,
+    from: `        result = await designate({ userId, label, note, password, submitId: attempt.current });`,
+    to: `        result = await designate({ userId, label, note, password, submitId: \`\${userId}:\${label}\` });`,
+    expect: "1.412 · …so the wizard mints a NEW nonce for every armed attempt",
+    suite: "console-mem",
+  },
+  {
+    name: "388-25char · a sentence about the feature is typed into the client file, where no vocabulary guard can see it",
+    file: NEW_CLIENT,
+    from: `/** What the designation posts and what it gets back — declared structurally, for ruling 384's reason above. */`,
+    to: `const LEAK = "Stakes are placed from this account, out of the money in its own wallet, within the limits set for it and for the desk.";
+/** What the designation posts and what it gets back — declared structurally, for ruling 384's reason above. */`,
+    expect: "1.388 · every string of 25+ characters in every console client file is either a class list or one of the six",
+    suite: "console-mem",
+  },
+  {
+    name: "382-guard-extractor · the guard-label extractor stops matching, and an empty population reads as compliance",
+    file: "scripts/lib/house-bot-console-cases.mts",
+    from: `      const GUARD_RE = /require(?:Owner|Staff|HouseOwner)\\(\\s*"([^"]+)"/g;`,
+    to: `      const GUARD_RE = /requireNothingAtAll\\(\\s*"([^"]+)"/g;`,
+    expect: "1.382 · CONTROL · the guard-label extractor is proved LIVE on a synthetic source",
+    suite: "console-mem",
+  },
+  {
+    name: "387-grammar · a house-named column is added to the picker's own search grammar, which the client search box value-imports",
+    file: "src/lib/search/fields.ts",
+    from: `    handle: { columns: ["displayLabel"], kind: "text" },
+    id: { columns: ["id"], kind: "exact" },
+  },
+  // What a bare token searches — what an officer actually holds: a pasted handle, a phone number, or an id.`,
+    to: `    handle: { columns: ["displayLabel"], kind: "text" },
+    id: { columns: ["id"], kind: "exact" },
+    house: { columns: ["houseBotId"], kind: "exact" },
+  },
+  // What a bare token searches — what an officer actually holds: a pasted handle, a phone number, or an id.`,
+    expect: "4.1 · R1's house filter is never a TXN_SEARCH field, column or default, and the designation picker's own grammar carries none either",
+    suite: "disclosure",
+  },
   /* ── C7 step 4b · THE ACCOUNT'S ACTION ROW (ruling 415; replan 549) ──────────────────────────────────────────
    * Each puts back a shape the console could plausibly have shipped in: an act offered in a state its service
    * cannot perform, a ceremony the server does not check, an officer's stop recorded as the engine's, or a
@@ -292,18 +643,31 @@ export const MUTATIONS = [
 
   /* ── Rulings 346, 347, 355, 356, 361, 421 · the reads and their failures. ─────────────────────────────────────── */
   {
-    name: "346-countlive · the Accounts tile takes a second count, which can disagree with the table beside it",
+    /* ⛔ RE-AIMED 2026-09-21 (C5-8, the alerts lane, after the batch drove all 281). The old `to` put
+     * `await houseBotStore.countLive()` inside the Accounts tile — which `deskShell` builds, and `deskShell` is a
+     * SYNCHRONOUS function. The memory child died at PARSE and printed no summary line at all, so the drive reported
+     * WRONG-ASSERTION and `1.346` was never exercised: neither shown able to fail nor shown unable to.
+     * ⭐ A MUTATION THAT CANNOT COMPILE IS A SYNTAX ERROR WEARING A CAUGHT DEFECT'S CLOTHES. The second count now
+     * goes where the render's reads actually live — the async `readDeskCore` — which is the exact population 1.346's
+     * spy counts. ⛔ It leaves the ONE `listNonRemoved()` call intact, so the `ZERO countLive` half is what goes red
+     * and 1.347's `432(q)` source pin (which counts that call in the same slice) stays green. */
+    name: "346-countlive · the render takes a second count of the roster, which can disagree with the table beside it",
     file: GATE,
-    from: `        ? { label: "Accounts", value: \`\${formatNumber(roster.length)} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated and the maximum" }`,
-    to: `        ? { label: "Accounts", value: \`\${formatNumber(await houseBotStore.countLive())} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated and the maximum" }`,
+    from: `    houseBotStore.listNonRemoved(),`,
+    to: `    houseBotStore.listNonRemoved().then(async (r) => { await houseBotStore.countLive(); return r; }),`,
     expect: "1.346 · exactly ONE `listNonRemoved` and ZERO `countLive` per render",
     suite: "console-mem",
   },
   {
-    name: "347-second-read · the band's exposure comes from a second query rather than from the rows it renders",
+    /* ⛔ RE-AIMED 2026-09-21, THE SAME DEFECT AND THE SAME CAUSE AS `346-countlive` ABOVE. The old `to` rewrote
+     * `exposureUsed`, which is a statement inside the SYNCHRONOUS `deskShell`, so the injected `await` could not
+     * parse and the child crashed instead of failing 1.347. ⚠️ AND ITS RECORDED `CAUGHT` OF 2026-09-18 IS FALSE:
+     * this mutation cannot compile today, so a recorded CAUGHT rots exactly like a recorded count. The second
+     * exposure read now sits in the async reader, where 1.347's spy counts it. */
+    name: "347-second-read · the render takes a second exposure read, so the band and the rows it renders can disagree",
     file: GATE,
-    from: `  const exposureUsed = [...(exposure?.values() ?? [])].reduce((n, v) => n + v, 0);`,
-    to: `  const exposureUsed = (await houseBookStore.openExposure(null)).reduce((n, r) => n + r.openStakeTzs, 0);`,
+    from: `    houseBookStore.openExposure(null),`,
+    to: `    houseBookStore.openExposure(null).then(async (r) => { await houseBookStore.openExposure(null); return r; }),`,
     expect: "1.347 · exactly ONE day read and ONE exposure read per render",
     suite: "console-mem",
   },
@@ -320,10 +684,13 @@ export const MUTATIONS = [
     file: GATE,
     /* ⚠️ RE-ANCHORED at C7 step 4: the set grew a sixth member when "Last bet" brought ruling 351's rate
        reader with it. RE-ANCHORED AGAIN at step 4b: a SEVENTH, the engine's durable beats, which ruling 435(e)
-       puts inside this same door rather than behind a second one. THE DEFECT IS UNCHANGED — one failed read
-       blanks the whole page instead of its own cell. */
-    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, extraR, extraBR] = await Promise.all([`,
+       puts inside this same door rather than behind a second one. RE-ANCHORED AGAIN at C7 step 5's landing
+       half: an EIGHTH, the rail's queued-stake badge, which is a SHELL fact and so belongs to this set rather
+       than to a caller's slot. 🔴 EACH TIME IT WAS THE RED HARNESS THAT REPORTED THE ROT, never a reading — an
+       anchor that stops resolving is a mutation that silently stops being driven. THE DEFECT IS UNCHANGED — one
+       failed read blanks the whole page instead of its own cell. */
+    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.allSettled([`,
+    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.all([`,
     expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
     suite: "console-mem",
   },
@@ -362,11 +729,16 @@ export const MUTATIONS = [
 
   /* ── Rulings 302, 312, 313, 319, 403, 407, 417 · the section's own law. ───────────────────────────────────────── */
   {
+    /* ⚠️ RE-POINTED 2026-09-20 (C7 step 5's landing half). Its `from` was the TWO-key literal and its `to`
+       added `activity` — both of which stopped existing when the landing panels landed, so `test:red-anchors` §3
+       ("every DECLARED anchor resolves exactly once") would have gone red on the text rather than on the rule.
+       ⛔ IT IS RE-AIMED, NOT DELETED: the defect is unchanged — a key on the rail with no panel behind it — and
+       the new `to` is a FIFTH key nothing renders. */
     name: "312-rail · a tab key is added to the closed list with no panel behind it",
     file: ROUTES,
-    from: `export const CONSOLE_TABS = ["roster", "limits"] as const;`,
-    to: `export const CONSOLE_TABS = ["roster", "limits", "activity"] as const;`,
-    expect: "1.312a · the rail's options come from the closed list",
+    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history", "money"] as const;`,
+    expect: "1.312 · the rail's options come from the closed list",
     suite: "console-mem",
   },
   {
@@ -420,17 +792,26 @@ export const MUTATIONS = [
   {
     name: "373-minw · the money TABLE takes a min-width again, which stretches every column and pushes the answer out of view at 360",
     file: PAGE,
-    from: `                <table className="admin-tbl">`,
-    to: `                <table className="admin-tbl min-w-[720px]">`,
+    /* ⚠️ RE-ANCHORED at C7 step 5's landing half: the page carries THREE of these openers now, the anchor
+       matched 3× and the harness refused to inject — which is how the presence check this fires is known to have
+       been broken by the same change. The label above it is what makes the money-bearing one unique. */
+    from: `                <ScrollX label="Desk activity">
+                  <table className="admin-tbl">`,
+    to: `                <ScrollX label="Desk activity">
+                  <table className="admin-tbl min-w-[720px]">`,
     expect: "1.373 · the money-bearing TABLE carries no `min-w-*` of its own",
     suite: "console-mem",
   },
   {
     name: "373-subject · the subject column loses its floor, so it absorbs the whole shortfall at 360 again",
     file: PAGE,
-    from: `                      <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>`,
-    to: `                      <th scope="col" className="text-left p-3">Account</th>`,
-    expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
+    /* ⚠️ RE-ANCHORED at C7 step 5's landing half, same rot and same finding: three panels paint this header, so
+       the anchor matched 3×. The `Stake` header on the next line is the money-bearing panel's own. */
+    from: `                        <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
+    to: `                        <th scope="col" className="text-left p-3">Account</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
+    expect: "1.373 · EVERY panel that paints the subject column carries the SAME floor",
     suite: "console-mem",
   },
   {
@@ -539,11 +920,15 @@ export const MUTATIONS = [
      * printed this defect as caught by an assertion about the roster-full remedy, and ruling 432(j)'s own clause
      * ("a disabled control carries a reason on screen in EVERY state") was guarded only through that case's
      * `actionReason.length > 8` half. It now names the dedicated case added at this finish. */
-    name: "432j-action-reason · the disabled head action loses the reason it carries when the roster is not full",
+    /* ⭐ RE-ANCHORED TO THE SAME DEFECT AT C7 STEP 6, because the LINE moved when the head action became a real
+     * link (432(h)): the reason is now `null` in every state but a WITHDRAWN desk, which is the one state where a
+     * disabled head action has nothing else beside it. Removing that branch leaves a disabled control with no
+     * sentence at all — the identical defect, at the identical site, reported by the case this step added for it. */
+    name: "432j-action-reason · the disabled head action loses the one reason it still carries, on a WITHDRAWN desk",
     file: GATE,
-    from: `    actionReason: "Designating an account is not ready on this build yet.",`,
-    to: `    actionReason: "",`,
-    expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
+    from: `    actionReason: withdrawn ? "The desk has been withdrawn, so no account can be designated." : null,`,
+    to: `    actionReason: null,`,
+    expect: "432(j) · 432(n) · ⭐ THE HEAD ACTION OBEYS THE SAME RULE NOW THAT IT WORKS",
     suite: "console-mem",
   },
   {
@@ -590,11 +975,20 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
-    name: "432h-rowlink · the way-out link comes back while the page it opens does not exist",
+    /* ⛔ RE-AIMED 2026-09-21 (C5-8, the alerts lane). THE OLD MUTATION'S PREMISE WAS GONE. It ADDED a second
+     * way-out link to prove the "link while the page is unbuilt" half of 432(h) — but `1.407` is a BICONDITIONAL,
+     * `existsSync(DETAIL_PAGE) === /className="row-link/.test(pageCode)`, and since C7 step 4 built the `[id]` page
+     * BOTH sides are true, so a second link left `true === true` and 1.407 could not move. (What did go red was
+     * `1.306 · 432(i) · 541(b)`, the by-position Link pin — the correct guard for "a new Link appeared", so the
+     * suite behaved well and only the declaration was wrong.)
+     * ⭐ THE HALF THAT IS STILL REACHABLE IS THE OTHER ONE: the page exists and the link goes. That is a live
+     * regression today — an officer's only route into an account would be to type its URL — and it is what this
+     * mutation now plants. ⚠️ `1.474 · CONTROL` pins the same class for its own reason and goes red beside it;
+     * the declaration names 1.407, which is the assertion whose subject this is. */
+    name: "432h-rowlink · the roster loses its way-out link while the page it opens exists, so an account is reachable only by typing a URL",
     file: PAGE,
-    from: `                          <td className="p-3 text-text-secondary">{r.products}</td>`,
-    to: `                          <td className="p-3 text-text-secondary">{r.products}</td>
-                          <td className="p-3 text-right"><Link href={"/admin" as Route} className="row-link">open</Link></td>`,
+    from: `<Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>`,
+    to: `<Link href={r.href as Route} className="whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>`,
     expect: "1.407 · 432(h) · the roster carries a way-out link EXACTLY when",
     suite: "console-mem",
   },
@@ -602,7 +996,11 @@ export const MUTATIONS = [
     name: "432i-dead-link · the link flag stops being DERIVED from the closed list, so a rail option and its link can drift apart",
     file: ROUTES,
     from: `export const LIMITS_TAB_READY: boolean = consoleTabExists("limits");`,
-    to: `export const LIMITS_TAB_READY: boolean = consoleTabExists("activity");`,
+    /* ⚠️ RE-POINTED 2026-09-20. `to` flipped the flag to `consoleTabExists("activity")` — which was FALSE while
+       the landing panels were unbuilt and is TRUE now, so the mutation would have left the flag true, produced no
+       failure at all, and been reported NOT-RED (a missed mutation, which exits 1). It is aimed at a key that
+       exists nowhere, which is the state the old `to` was standing in for. */
+    to: `export const LIMITS_TAB_READY: boolean = consoleTabExists("money");`,
     expect: "1.312a · 432(i) · both limits pointers are still GUARDED by the flag",
     suite: "console-mem",
   },
@@ -750,9 +1148,9 @@ export const MUTATIONS = [
   {
     name: "405-badge · the rail's count is derived a SECOND time, so the badge can disagree with the sentence above it",
     file: PAGE,
-    from: `count: k === "limits" ? view.unsetRequired : undefined`,
-    to: `count: k === "limits" ? view.tiles.filter((t) => t.value === "Not set").length : undefined`,
-    expect: "1.405 · the limits badge is `TabItem.count`",
+    from: `count: k === "limits" ? view.unsetRequired : k === "activity" ? view.pendingIntents ?? undefined : undefined`,
+    to: `count: k === "limits" ? view.tiles.filter((t) => t.value === "Not set").length : k === "activity" ? view.pendingIntents ?? undefined : undefined`,
+    expect: "1.405 · both badges are `TabItem.count`",
     suite: "console-mem",
   },
   {
@@ -1157,6 +1555,11 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
+    /* ⛔ EXPECT RE-QUOTED 2026-09-21 (C5-8, the alerts lane). NOTHING WAS BROKEN HERE — the declaration named the
+     * wrong HALF of its own rule. `1.373` prints two labels: the SUBJECT half, which reads `Account` out of each
+     * panel's own slice and which this mutation never touches, and the half one line below it, which pins the
+     * roster's Status `<th>` literally and counts the roster's two floors. The second one caught the defect on the
+     * batch drive; the `expect` quoted the first, so the drive reported WRONG-ASSERTION on a guard that worked. */
     name: "432o-status-floor · the status column loses its floor, so the AUTO-PAUSED chip is a two-line pill again",
     file: PAGE,
     from: `                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>`,
@@ -1232,14 +1635,19 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
-    /* ⛔ 432(j) + 432(n) · the master switch's reason goes back to the head action's WORD FOR WORD. */
-    name: "432j-switch-reason · both disabled controls say the same seven words again",
+    /* ⛔ 432(j) + 432(n) · the two disabled controls on the strip say the same words, about 105px apart.
+     * ⛔ RE-AIMED 2026-09-21 (C5-8, the alerts lane). The old `to` set `switchReason` to a THIRD sentence — the
+     * retired build note "Designating an account is not ready on this build yet." — while the withdrawn state's
+     * `actionReason` reads "The desk has been withdrawn, so no account can be designated." The two still DIFFERED,
+     * so the rule this declaration names (`switchReason !== actionReason`) stayed correctly green and
+     * `432(j) · CONTROL` caught the third string instead: the mutation never created the defect it is named for.
+     * ⭐ IT IS AIMED AT THE HEAD ACTION'S SENTENCE RATHER THAN THE SWITCH'S, and deliberately. Making the two equal
+     * from this side leaves `432(j) · CONTROL`'s "the switch's own sentence still says `switch`" GREEN, so the drive
+     * reddens exactly the rule it names instead of taking that rule's own control down with it. */
+    name: "432j-switch-reason · the head action's sentence goes back to the master switch's, so both disabled controls say the same words",
     file: GATE,
-    /* ⭐ RE-ANCHORED at C7 step 4b to the SAME defect on the line that now carries it. The sentence moved when the
-       switch became operable — it is no longer a build note, it is the one state where a disabled switch owes its
-       own words — and the mutation still does exactly what it always did: make it the head action's sentence. */
-    from: `      : "The desk has been withdrawn. It cannot be switched on again.",`,
-    to: `      : "Designating an account is not ready on this build yet.",`,
+    from: `    actionReason: withdrawn ? "The desk has been withdrawn, so no account can be designated." : null,`,
+    to: `    actionReason: withdrawn ? "The desk has been withdrawn. It cannot be switched on again." : null,`,
     expect: "432(j) · 432(n) · a DISABLED master switch carries exactly one reason beside it",
     suite: "console-mem",
   },
@@ -1294,11 +1702,22 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
-    /* ⛔ 416 · the unparsed Products cell goes back to a lowercase sentence fragment beside an em dash. */
+    /* ⛔ 416 · the unparsed Products cell goes back to a lowercase sentence fragment beside an em dash.
+     * ⛔ RE-AIMED 2026-09-21 (C5-8, the alerts lane). The Products cell is ONE ternary chain carrying the literal
+     * "Couldn't read" TWICE — once for `parsed == null` (the read itself failed) and once for `!parsed.ok` (the
+     * reader could not parse what it got). The old `from` matched the FIRST, while the case's fixture plants
+     * `rules: { schemaVersion: 9_999 }`, which `parseHouseBotRules` answers as `{ ok: false, code:
+     * "RULES_FROM_FUTURE" }` — NOT null — so the render reads the SECOND. The assertion was sound; the mutation was
+     * aimed at a branch the fixture never reaches, and the drive reported MISSED on a guard that works.
+     * ⚠️ AND THE ACCIDENT LEFT A REAL FINDING BEHIND: the `parsed == null` branch is measured by NOTHING in this
+     * suite — no fixture plants a FAILED rules read — so it could become a lowercase fragment tomorrow and no
+     * assertion would move. Registered as a suite finding rather than repaired here. */
     name: "416-products-case · an unreadable rule set renders a lowercase fragment mid-table again",
     file: GATE,
-    from: `      products: parsed == null ? "Couldn't read"`,
-    to: `      products: parsed == null ? "couldn't read"`,
+    from: `        : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
+          : "Couldn't read",`,
+    to: `        : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
+          : "couldn't read",`,
     expect: "1.310 · 416 · a rule set the reader cannot parse renders ONE sentence-cased unknown",
     suite: "console-mem",
   },
@@ -1454,11 +1873,957 @@ import { formatEat } from "@/lib/utils";`,
     /* Read off `acct-removed-1280.png`: the Overview tab rendered 600px of NOTHING and the Targets tab would have painted the kit's failure treatment for a read ruling 358 says is never taken. */
     name: "435a-removed-cards · a REMOVED account gets its rail back, and an empty panel behind it",
     file: DETAIL,
+    /**
+     * ⛔ THE CONTEXT LINE IS `<Tabs`, AND IT HAD TO CHANGE — THE MUTATION WAS AIMED AT NOTHING (2026-09-21).
+     *
+     * This anchored on the ruling-312 comment sitting INSIDE the conditional, on the line after `&& (`. That
+     * comment has since been BRACED and lifted ABOVE the guard — it had to be, because wrapping the conditional
+     * in a fragment would have moved a bare block comment inside JSX, where it is not a comment at all but TEXT
+     * that prints the words of a code comment onto the account page. So the `from` string stopped matching, the
+     * injector reported "anchor missing — cannot inject", and `1.435` was being credited with catching a
+     * mutation that was never applied to anything.
+     * ⭐ THE MUTATION IS UNCHANGED — the rail's own `{!view.removed && (` still flips to `{true && (`, so a
+     * REMOVED account still gets its rail back and 1.435 must still catch it. Only the line used to IDENTIFY
+     * that one guard moved, and `<Tabs` is what makes it unique: five bare `{!view.removed && (` lines exist in
+     * this file and exactly one is followed by the rail.
+     */
     from: `        {!view.removed && (
-        /* 312 · the rail carries exactly the tabs whose panels exist.`,
+        <Tabs`,
     to: `        {true && (
-        /* 312 · the rail carries exactly the tabs whose panels exist.`,
+        <Tabs`,
     expect: "1.435 · 358 · every card of the account page is guarded",
+    suite: "console-mem",
+  },
+  /* ── C7 step 7 · THE CLOSING GATES (rulings 320, 370, 371, 375, 390, 391, 395, 397, 398) ────────────────────────
+   * Each puts back the thing the closing step retired, or the shape the console could still have shipped: a results
+   * reader with no reader, an amount behind a refusal sentence, a money record with no transaction behind it, a
+   * thrown message one deploy flag from the person who POSTed the action id, a browser key that names the feature,
+   * an API route under the console's own segment, and the vocabulary word whose promotion would redden the desk's
+   * own button. ⛔ The last two are mutations of GUARD files, which is the only way an assertion whose subject IS a
+   * guard can be shown able to fail — the precedent is `318-expect-drift` on this very file. */
+  {
+    name: "371-book-reader · the results reader D20 struck is declared again in `book.ts`, with no caller and nothing to stop the next page using it",
+    file: BOOK,
+    from: `export async function houseOpenExposure(houseBotId: string | null, tx?: HouseTx): Promise<number> {`,
+    to: `export async function houseBotBook(input: { houseBotId: string | null }): Promise<{ netTzs: number }> {\n  return { netTzs: 0, ...input };\n}\n\nexport async function houseOpenExposure(houseBotId: string | null, tx?: HouseTx): Promise<number> {`,
+    expect: "1.371 · no house-bot module and no house-bot guard names",
+    suite: "console-mem",
+  },
+  {
+    name: "371-book-type · the `HouseBotBook` type comes back, re-acquiring `netTzs` and `feeWithheldTzs` for whoever reaches for it next",
+    file: BOOK,
+    from: `export function foldDayBook(raw: RawSums, houseBotId: string | null, dayKey: string): HouseDayBook {`,
+    to: `export type HouseBotBook = { bets: number; feeWithheldTzs: null };\n\nexport function foldDayBook(raw: RawSums, houseBotId: string | null, dayKey: string): HouseDayBook {`,
+    expect: "and `book.ts` itself declares neither of them",
+    suite: "console-mem",
+  },
+  {
+    name: "370-held-amount · ruling 254's held amount goes into the kill switch's own sentence, which is exactly the figure 370 decided NOT KEPT",
+    file: FEED,
+    from: `  DRAINED: "House bots are off. No bot will place a bet.",`,
+    to: `  DRAINED: "House bots are off. No bot will place a bet. TZS 50,000 is still held.",`,
+    expect: "1.370 · not one `EngineCode` sentence and not one switch-off sentence carries a formatted amount",
+    suite: "console-mem",
+  },
+  {
+    name: "370-outcome-money · `SwitchOffOutcome` grows a money field, so a later render has a held figure to reach for",
+    file: KILL,
+    from: `      cancelled: number;`,
+    to: `      cancelled: number;\n      heldTzs: number;`,
+    expect: "1.370 · `SwitchOffOutcome` carries no money field at all",
+    suite: "console-mem",
+  },
+  {
+    name: "375-writer · a console action writes the reimbursement record D3b has no transaction behind",
+    file: ACTIONS,
+    from: `export async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promise<ConsoleLimitsSaveResult> {`,
+    to: `const REIMBURSEMENT_ACTION = "house_bot.reimbursement_recorded";\n\nexport async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promise<ConsoleLimitsSaveResult> {`,
+    expect: "1.375 · `reimbursement_recorded` has no writer anywhere under `src/`",
+    suite: "console-mem",
+  },
+  {
+    name: "375-audit-key · a thirty-second house audit key is slipped into the map instead of being ruled",
+    file: CONSTANTS,
+    from: `  "house_bot.credential_changed": "SECURITY",`,
+    to: `  "house_bot.credential_changed": "SECURITY",\n  "house_bot.reimbursement_paid": "COMPLIANCE",`,
+    expect: "and `HOUSE_AUDIT`'s key set is PINNED at its post-un-build size",
+    suite: "console-mem",
+  },
+  {
+    name: "390-throw · a console action throws instead of returning a typed refusal, and `runAdminAction` echoes 140 characters of the message",
+    file: ACTIONS,
+    from: `export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<ConsoleSwitchResult> {`,
+    to: `export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<ConsoleSwitchResult> {\n  if (!input) throw new Error("house bot desk unreadable");`,
+    expect: "1.390 · not one `throw` in the console's server modules",
+    suite: "console-mem",
+  },
+  {
+    name: "390-sentence · a refusal sentence names the feature, on the one screen 453 exists to keep neutral",
+    file: GATE,
+    from: `  NOT_FOUND: "That account is not on the desk any more. Reload the desk.",`,
+    to: `  NOT_FOUND: "That house bot is not on the desk any more. Reload the desk.",`,
+    expect: "and every refusal SENTENCE the door can hand back is free of the shared vocabulary",
+    suite: "console-mem",
+  },
+  {
+    name: "391-storage · the console starts keeping a draft in the browser, which is where 04 C12's module was headed",
+    file: LIVE,
+    from: `  const [holds, setHolds] = useState(0);`,
+    to: `  const [holds, setHolds] = useState(0);\n  sessionStorage.setItem("desk:holds", String(holds));`,
+    expect: "1.391 · no draft module was smuggled into",
+    suite: "console-mem",
+  },
+  {
+    name: "391-key · the draft key takes the struck `hb:` prefix, which no absence guard on this branch can see",
+    file: LIVE,
+    from: `export function DeskLive({ live }: { live: boolean }) {`,
+    to: `const DRAFT_KEY = "hb:desk-draft";\n\nexport function DeskLive({ live }: { live: boolean }) {\n  void DRAFT_KEY;`,
+    expect: "1.391 · and the rule the first writer will meet is stated where it binds",
+    suite: "console-mem",
+  },
+  {
+    name: "395-api-reach · an API route names the console route, which is the first half of an export nobody ruled",
+    file: HEALTH,
+    from: `import { NextResponse } from "next/server";`,
+    to: `import { NextResponse } from "next/server";\nconst DESK = "/admin/desk";\nvoid DESK;`,
+    expect: "1.395 · and no file under `src/app/api/` names the console route",
+    suite: "console-mem",
+  },
+  {
+    name: "397-enter-now · \"enter now\" is promoted into the shared words, exactly as the draft scheduled — and the desk's own rules row goes with it",
+    file: VOCAB,
+    from: "export const HOUSE_WORD_SOURCE = `liquidity|ukwasi|",
+    to: "export const HOUSE_WORD_SOURCE = `enter now|liquidity|ukwasi|",
+    expect: "1.397 · `enter now` is NOT in the shared words",
+    suite: "console-mem",
+  },
+  {
+    name: "397-probe-out · the served probe leaves `VOCABULARY_CONSUMERS`, and the one absence instrument nothing else holds goes unheld again",
+    file: REPORTS,
+    from: `  "scripts/house-bot-console-probe.mts",\n] as const;`,
+    to: `] as const;`,
+    expect: "1.397 · the served probe is inside `VOCABULARY_CONSUMERS`",
+    suite: "console-mem",
+  },
+  {
+    name: "397-family-source · this suite re-declares a vocabulary family source of its own, which is the thing ruling 175 exists to refuse",
+    file: CASES,
+    from: `const NEUTRAL = consoleNeutralRegExp();`,
+    to: `const HOUSE_WORD_SOURCE = "liquidity|house bot";\nvoid HOUSE_WORD_SOURCE;\nconst NEUTRAL = consoleNeutralRegExp();`,
+    expect: "397(e) · this suite imports the shared vocabulary, re-declares none of its three family sources",
+    suite: "console-mem",
+  },
+  {
+    name: "397-deviation-unrecorded · the reason this suite is outside the closed list is deleted from the list's own source, leaving the deviation in a plan nobody greps",
+    file: REPORTS,
+    from: "`scripts/lib/house-bot-console-cases.mts` is deliberately NOT here",
+    to: "that file is elsewhere",
+    expect: "397(e) · this file is EITHER inside `VOCABULARY_CONSUMERS` or the reason it is not is written in that list's own source",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ RE-ANCHORED AT THE C7 STEP 7 REVIEW to the same defect. The short-circuit chain this quoted was replaced
+       by a rungs TABLE read from the bottom (review d19-hunt-02 / test-strength-02), so the defect is now written
+       as the table losing its top rung: `built` falls to 6 and the four assertions step 7 owes stop being owed. */
+    name: "398-rung7 · the roll-call's ladder stops at step 6, so the four assertions step 7 owes stop being owed and their absence becomes invisible again",
+    file: CASES,
+    from: `      [[3, "limits"], [4, "detail"], [5, "activity"], [6, "wizard"], [7, "closing"]];`,
+    to: `      [[3, "limits"], [4, "detail"], [5, "activity"], [6, "wizard"]];`,
+    expect: "1.398 · ROLL-CALL · every D19 assertion owed at or before the step this tree has built",
+    suite: "console-mem",
+  },
+  {
+    name: "320-href-unresolvable · a house alert's account href stops resolving, which is precisely what the retired `COMMIT_7` exemption used to hide",
+    file: ROUTES,
+    from: "  return `${CONSOLE_ROUTE}/${botId}`;",
+    to: "  return `${CONSOLE_ROUTE}-archive/${botId}`;",
+    expect: "7.2 · ⭐ 04:1077 · every link a house alert produces resolves to a page that exists today",
+    suite: "comms-mem",
+  },
+  {
+    name: "320-control-resolves · the resolver's own control is aimed at a path that DOES resolve, so the retired exemption's replacement stops measuring anything",
+    file: COMMS,
+    from: `      const parts = "/admin/desk/hb_0123456789abcdef01234567/nowhere-at-all".split("/").filter(Boolean);`,
+    to: `      const parts = "/admin/desk".split("/").filter(Boolean);`,
+    expect: "7.2b · CONTROL · the resolver still REFUSES a route nobody built",
+    suite: "comms-mem",
+  },
+  /* ══ C7 STEP 7 REVIEW · THE DECLARATIONS THE FIXES OWE ═══════════════════════════════════════════════════════
+     Each names the assertion the review added or repaired, and each plants the defect the review MEASURED rather
+     than a convenient one. Four mutate GUARD files on purpose: an assertion whose SUBJECT is a guard can only be
+     shown able to fail by mutating that guard (`318-expect-drift` is the precedent on this register). */
+  {
+    name: "371-big-file · the struck results reader comes back in the BIGGEST file of the population, where the retired three-regex stripper was blind",
+    file: DAL,
+    from: `export const TARGET_TIMING_FIELDS = ["delayMinSec", "delayMaxSec", "timingFrom", "reactTo"] as const;`,
+    to: `export type HouseBotBookRow = { netTzs: number };\n\nexport const TARGET_TIMING_FIELDS = ["delayMinSec", "delayMaxSec", "timingFrom", "reactTo"] as const;`,
+    expect: "1.371 · no house-bot module and no house-bot guard names",
+    suite: "console-mem",
+  },
+  {
+    name: "371-desync · the shared literal blanker starts LOSING characters, which is the silent failure the per-file length invariant exists to catch",
+    file: DECOMMENT,
+    from: `      if (close !== -1) { out += c + blankRun(s.slice(i + 1, close)) + c; i = close + 1; continue; }`,
+    to: `      if (close !== -1) { out += c + c; i = close + 1; continue; }`,
+    expect: "1.371 · no house-bot module and no house-bot guard names",
+    suite: "console-mem",
+  },
+  {
+    name: "390-erasure-names · the DSAR refusal a COMPLIANCE officer reads names the feature, the record id and the owner-only route again",
+    file: ERASURE,
+    from: `      error: "This account is still in use by an owner-managed account and cannot be erased yet. An owner has been told; the request stays open and can be run again once it is released.",`,
+    to: `      error: "This account is still house bot hb_0123456789abcdef01234567. The owner must remove it at /admin/desk before it can be erased.",`,
+    expect: "1.390 · and the ERASURE door's own refusal",
+    suite: "console-mem",
+  },
+  {
+    name: "390-catch · a console action loses the catch that turns a throw from behind the door into a typed refusal",
+    file: ACTIONS,
+    from: `    return { ok: false, error: safeError(err, "Nothing was saved. Reload the page and try again.") };`,
+    to: `    return { ok: false, error: String(err) };`,
+    expect: "1.390 · and every exported console action turns a throw from BEHIND the door into a typed refusal",
+    suite: "console-mem",
+  },
+  {
+    name: "370-template-amount · an engine sentence is rewritten as a TEMPLATE carrying an interpolated amount — the exact form the old double-quote-only capture dropped",
+    file: FEED,
+    from: `  NO_REACT_ZONE: "the stake came too close to betting close",`,
+    to: "  NO_REACT_ZONE: `the stake came too close to betting close, TZS 50,000 still held`,",
+    expect: "1.370 · not one `EngineCode` sentence and not one switch-off sentence carries a formatted amount",
+    suite: "console-mem",
+  },
+  {
+    name: "395-file-floor · the API file walk's extension filter stops matching, so it scans nothing and reports a clean zero",
+    file: CASES,
+    from: `          else if (/\\.tsx?$/.test(e)) {\n            scanned.push(rel);`,
+    to: `          else if (/\\.never$/.test(e)) {\n            scanned.push(rel);`,
+    expect: "1.395 · and no file under `src/app/api/` names the console route",
+    suite: "console-mem",
+  },
+  {
+    name: "398-ladder-hole · the ladder stops computing its gaps, so a tree carrying the closing step's artefact with step 5 missing reads as complete",
+    file: CASES,
+    from: `      return { built, gaps: RUNGS.filter(([n, k]) => n <= built && !t[k]).map(([n, k]) => \`\${n}:\${k}\`) };`,
+    to: `      return { built, gaps: [] as string[] };`,
+    expect: "1.398 · LADDER · every rung below the highest one this tree carries",
+    suite: "console-mem",
+  },
+  {
+    name: "474-head-hook · the account page's own head stops marking the operator's label, so the served gate scans an Owner-chosen value as if this repo had written it",
+    file: DETAIL,
+    from: `        titleIsOperatorText`,
+    to: `        sw={undefined}`,
+    expect: "1.474 · EVERY site under the section that paints the account's own LABEL carries the 474 hook",
+    suite: "console-mem",
+  },
+  {
+    name: "474-shell-stamp · AdminPageHead stops stamping the hook it was given, so the prop is accepted and the attribute never reaches the DOM",
+    file: SHELL,
+    from: `          {...(titleIsOperatorText ? { "data-operator-text": "label" } : {})}`,
+    to: `          {...({})}`,
+    expect: "1.474 · EVERY site under the section that paints the account's own LABEL carries the 474 hook",
+    suite: "console-mem",
+  },
+  {
+    name: "474-shared-scan · the served gate goes back to running the SHARED vocabulary over the raw body, with no operator exemption",
+    file: VISUAL,
+    from: `        houseHits(bodySubject).length === 0, houseHits(bodySubject).slice(0, 6).join(","));`,
+    to: `        houseHits(facts.body).length === 0, houseHits(facts.body).slice(0, 6).join(","));`,
+    expect: "1.474 · and the served gate removes the operator's marked text from the SHARED vocabulary scan",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ RE-POINTED AT C7 STEP 7's REVIEW FIX, AND THE DEFECT IT PLANTS IS THE SAME ONE. The shared thing became a
+       COMPONENT (`../way-out-link`) rather than the class string the review first put in `console-routes.ts`, which
+       `test:house-bot-rules` 0.console-routes.ts refused — Tailwind scans every file, so a class-shaped string in a
+       routes module becomes CSS and an invalid one once 500'd every route here. The old `from` line no longer
+       exists, so this anchor stopped resolving and the harness was measuring NOTHING. It now takes the account
+       page's real way out off the shared component and re-types the hover-only treatment by hand, which is exactly
+       the defect the name describes and exactly what 1.432's re-typed-treatment sweep is for. */
+    name: "432-way-out · the account page re-types the hover-only link treatment the wizard's repair replaced, so one section ships two looks for one control",
+    file: DETAIL,
+    from: `          <WayOutLink href={CONSOLE_ROUTE}>`,
+    to: `          <Link href={CONSOLE_ROUTE as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline">`,
+    expect: "1.432 · the way-out link is declared ONCE",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ THE OTHER THREE ASSERTIONS THE SHARED-COMPONENT CHANGE BROKE GET DECLARED MUTATIONS OF THEIR OWN, in the
+       same pass that repaired them. Each one was re-aimed at a NEW shape, and a re-aimed assertion nobody has seen
+       go red is an assertion that has stopped measuring — which is precisely the state all four were left in.
+       ⭐ THIS ONE IS THE 432(i)/541(b) POSITIONAL PIN, and the defect is the one the pin was widened for: the head's
+       way out written back as a bare `<Link>` with the SAME href. The old scan could not see that difference at all
+       — it knew one element name — so this is the mutation that proves the pin now measures the ELEMENT beside the
+       href rather than simply expecting one fewer link. */
+    name: "306-way-out-element · the head's shared way out is re-typed as a bare <Link> with the same href, so the section paints one control two ways and the positional pin must say so",
+    file: PAGE,
+    from: `                ? <WayOutLink href={view.limitsHref}>{view.rosterFullReason}</WayOutLink>`,
+    to: `                ? <Link href={view.limitsHref as Route} className="underline">{view.rosterFullReason}</Link>`,
+    expect: "1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ 1.312a's OWN DEFECT: the LINKED roster-full sentence — the one that ends in an arrow — painted a second
+       time OUTSIDE every link, where the arrow is a promise of navigation nothing honours. The paint is ADDED
+       rather than swapped for the plain form, so the mutation lands on this assertion and not on the neighbour
+       that holds the inert form still BUILT. */
+    name: "312a-linked-outside · the head paints the LINKED roster-full sentence a second time outside every link, so an arrow sits on inert text",
+    file: PAGE,
+    from: `            <span className="text-body-sm text-text-secondary max-w-[38ch]">`,
+    to: `            <span className="text-body-sm text-text-secondary max-w-[38ch]">\n              {view.rosterFullReason}`,
+    expect: "1.312a · 432(i) · the head paints the LINKED roster-full sentence only inside the one guarded `<Link>`",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ 1.359/456's OWN DEFECT, and it is conformance-355's verbatim: the way to the holder's own money screen
+       painted INSIDE the `funded !== null` guard, so an unreadable wallet takes the door with the state — the
+       officer loses the way forward at the exact moment they need it. */
+    name: "359-door-inside · the way to the holder's own money screen is painted inside the funded guard, so a failed wallet read removes the door with the state",
+    file: NEW_PAGE,
+    from: `                  {view.funded !== null && (`,
+    to: `                  {view.funded !== null && (\n                    <WayOutLink href={view.holderHref}>Open the holder&apos;s own money screen</WayOutLink>`,
+    expect: "1.359 · 456 · the page paints the bonus fact and the way to the holder's own money screen OUTSIDE the funded guard",
+    suite: "console-mem",
+  },
+  {
+    name: "432-chip-shrink · the account strip's status chip becomes shrinkable again, which is what broke the longest status word across two lines at 360",
+    file: DETAIL,
+    from: `              <Chip size="sm" variant={view.statusChip} className="shrink-0">{view.statusWord}</Chip>`,
+    to: `              <Chip size="sm" variant={view.statusChip}>{view.statusWord}</Chip>`,
+    expect: "1.432 · the account strip's status chip is pinned against the flex shrink",
+    suite: "console-mem",
+  },
+  {
+    name: "432-loss-scope · the LOSS TODAY tile drops the scope from its ceiling, so the band and the column beside it name one figure two ways",
+    file: GATE,
+    from: "        ? moneyTile(\"Loss today\", lossUsed, control.gCapDailyLossTzs, `${FIELD_META.gCapDailyLossTzs.label} (projected)`)",
+    to: `        ? moneyTile("Loss today", lossUsed, control.gCapDailyLossTzs, FIELD_META.gCapDailyLossTzs.label)`,
+    expect: "1.432 · the LOSS TODAY tile names its ceiling with the SCOPE",
+    suite: "console-mem",
+  },
+  {
+    name: "432-apostrophe · one console label takes a curly apostrophe again, so one row of the limits list renders a different glyph from its neighbours",
+    file: GATE,
+    from: `  gStaffChosenMaxCounterpartyShare: "One player's share limit",`,
+    to: "  gStaffChosenMaxCounterpartyShare: \"One player\u2019s share limit\",",
+    expect: "1.432 · not one curly apostrophe anywhere the console writes its own copy",
+    suite: "console-mem",
+  },
+  {
+    name: "388-required · a reason field stops saying it is required, leaving a disarmed primary button with nothing on screen to explain it",
+    file: GATE,
+    from: `    reasonLabel: "Why are you switching it on? (required)",`,
+    to: `    reasonLabel: "Why are you switching it on?",`,
+    expect: "1.388 · every reason field the console asks for is MARKED required",
+    suite: "console-mem",
+  },
+  {
+    name: "435-year · the removal record's date loses its year, so a removal from a previous year reads as this year on the one card meant to outlive the account",
+    file: GATE,
+    from: "`${formatEat(removedAtMs, \"D MMM YYYY\")} ${formatEat(removedAtMs, \"HH:MM\")} EAT`",
+    to: "`${formatEat(removedAtMs, \"D MMM\")} ${formatEat(removedAtMs, \"HH:MM\")} EAT`",
+    expect: "1.435 · the removal record's date carries the YEAR",
+    suite: "console-mem",
+  },
+  {
+    name: "435-saved-rules · the removed account's saved-rules card starts painting the live captions again, so the page states a consequence its own removal Callout has just denied",
+    file: DETAIL,
+    from: `          <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions={false} />`,
+    to: `          <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions />`,
+    expect: "1.435 · the saved-rules card is declared ONCE and used by both states",
+    suite: "console-mem",
+  },
+  {
+    name: "320-population · the comms walk's console filter reports nothing, so the retired exemption's replacement resolves an EMPTY set and reads as compliance",
+    file: COMMS,
+    from: `  const consoleHrefs = hrefs.filter((h) => h.split("?")[0] === CR.CONSOLE_ROUTE || h.split("?")[0].startsWith(\`\${CR.CONSOLE_ROUTE}/\`));`,
+    to: `  const consoleHrefs = hrefs.filter(() => false);`,
+    expect: "7.2a · the walk really had links to resolve",
+    suite: "comms-mem",
+  },
+  {
+    /* ⚠️ REPLACED TWICE ON 2026-09-20 (C7 step 5's landing half), and the second repair is the one worth reading.
+       Its subject was a RECORDED DEBT left standing after its panel was built, and there is no debt list any more:
+       7.2c asserts ZERO dead tabs with no tolerance at all. The first replacement pointed at the RIGHT defect — a
+       panel deleted while its key stays on the rail — and filed it under the WRONG SUITE and the WRONG LABEL.
+       🔴 MEASURED, not reasoned: the comms suite reads `console-routes.ts` and nothing else of the section, so a
+       deleted PANEL is invisible to it and this mutation would have been reported WRONG-ASSERTION — which is the
+       exact class ruling 505's roll-call exists to end, caught by that roll-call on its first run. And the label it
+       named scans `tab === "…"` occurrences, which `false && tab === "history"` still satisfies. It is filed under
+       `console-mem` against the assertion that slices each panel OUT of the page's source, where an unreachable
+       group reads as an empty slice. The comms half of the same rule gets its own entry below, aimed at the thing
+       the comms suite CAN see: the KEY going missing while an alert still links to it. */
+    name: "320-tab-panel-gone · a panel is deleted while its key stays on the rail, so every alert linking to it lands on a screen that quietly repaints the roster",
+    file: PAGE,
+    from: `        {tab === "history" && (<>`,
+    to: `        {false && tab === "history" && (<>`,
+    expect: "1.312 · CONTROL · each of the four panels is found and non-empty in the page's own source",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ THE COMMS HALF OF RULING 312, AND IT IS WHAT 7.2c MEASURES NOW THAT THE TOLERANCE LIST IS GONE: a tab key
+       leaves the closed list while the alerts still link to it, so every bell carrying that `?tab=` lands on a
+       screen that quietly repaints the roster (302's fallback) with nothing saying the panel was not shown. The
+       hour summary's own link is the one this fires on. */
+    name: "320-tab-key-gone · the landing rail loses a key while a delivered alert still links to it, so the bell lands on a screen that silently repaints the roster",
+    file: ROUTES,
+    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "limits", "history"] as const;`,
+    expect: "7.2c · every `?tab=` a house alert produces names a panel that is BUILT for its own SHAPE",
+    suite: "comms-mem",
+  },
+  {
+    name: "318-comms-drift · a comms-mem declaration expect rots into a label no run prints, which is the WRONG-ASSERTION class the roll-call exists to end",
+    file: ANCHORS,
+    from: "    to: `      const parts = \"/admin/desk\".split(\"/\").filter(Boolean);`,\n    expect: \"7.2b · CONTROL · the resolver still REFUSES a route nobody built\",",
+    to: "    to: `      const parts = \"/admin/desk\".split(\"/\").filter(Boolean);`,\n    expect: \"7.2z · CONTROL · a label no run of this suite prints\",",
+    expect: "7.505 · every declared `comms-mem` mutation",
+    suite: "comms-mem",
+  },
+  {
+    /* ⛔ L52 · THE RULE TABLE IS A RENDERED STRING. `rateLimitSnapshot()` returns each live bucket's ACTION half and
+       `/admin/system` paints it verbatim to every staff account with the ops VIEW grant. Until this checkpoint the
+       desk's account check named the feature there, and C7 step 6 gave it a real caller — so the word was reachable
+       on an admin table outside this feature's audience. The mutation puts a vocabulary word back in the same place.
+       (The exact historical spelling is planted INSIDE the suite by 0.L52.c4, rebuilt from the shared sample; it is
+       not re-typed here, because a word in an anchors file is still a word in the tree.) */
+    name: "L52-rule-word · a rate-limit action name carries a vocabulary word again, and /admin/system paints it to the ops VIEW audience",
+    file: "src/lib/server/rate-limit.ts",
+    from: `  "desk.verify":   { capacity: 3, refillPerMin: 0.2 },`,
+    to: `  "liquidity.verify":   { capacity: 3, refillPerMin: 0.2 },`,
+    expect: "0.L52.1 · ⛔ D19 · L52 · NO rate-limit action name carries the shared vocabulary",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ THE FAIL-OPEN THE RENAME RISKS, AND `tsc` CANNOT SEE IT. `RATE_RULES` is typed `Record<string, RateRule>`,
+       so `keyof typeof RATE_RULES` is `string`; `rateCheck` returns `{ allowed: true }` on an action nobody
+       declares. A rename that missed this caller would switch the desk's password-check limiter OFF in silence,
+       every suite staying green — `test:house-bot-designation` 1.8 would still pass, because an unlimited bucket
+       never refuses. 0.L52.3 is the only assertion that reads the call site against the table. */
+    name: "L52-stale-caller · the desk's account check names a rule the table does not declare, so its limiter fails open and nothing else says so",
+    file: DESIG,
+    from: `  const rl = await rateCheckAsync(\`\${officerId}:\${userId}\`, "desk.verify");`,
+    to: `  const rl = await rateCheckAsync(\`\${officerId}:\${userId}\`, "desk.verify.v2");`,
+    expect: "0.L52.3 · ⛔ every call site names a rule the table DECLARES",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ RULING 232 · THE DEFECT A PRESENCE CHECK PASSES. The marker is still there, still well-formed, and reads
+       the WALLET instead of the position whose id the row carries — so an orphan refund on a player's position
+       would be filed against whatever the wallet happened to carry, and every suite that reads a marker reads the
+       one its own fixture wrote. Only 0.232.1 pairs the marker's source with the row's `positionId`. */
+    name: "232-marker-wrong-object · a positioned refund copies the marker from the wallet, not from the position whose id the row carries",
+    file: MARKET,
+    from: `      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
+      amlReason: null,
+      createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,`,
+    to: `      ...(w.houseBotId ? { houseBotId: w.houseBotId } : {}),
+      amlReason: null,
+      createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,`,
+    expect: "0.232.1 · ⛔ RULING 232 · every positioned transaction write copies the marker FROM THE OBJECT WHOSE id IS ITS positionId",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ A WRITER THAT BYPASSES THE DAL bypasses everything the DAL does for a marker — and it is the shape nobody
+       looks for, because the row it writes is a perfectly ordinary Transaction. */
+    name: "232-dal-bypass · a service writes a Transaction row straight through Prisma, around the DAL and around every marker rule",
+    file: MARKET,
+    from: `    if (realRefund > 0) await db.txn.create({`,
+    to: `    if (realRefund > 0) await prisma().transaction.create({ data: { id: "x" } });
+    if (realRefund > 0) await db.txn.create({`,
+    expect: "0.232.3 · ⛔ nothing in tracked src/ writes a Transaction row around the DAL",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ RULING 235's OWN MUTATION, named in the spec: the `houseOnly` argument dropped. The call still reads
+       correct, still goes through F6's helper, still gates the email — and now a holder whose Up & Down day was
+       entirely house-marked gets a LETTER about stakes they did not choose. */
+    name: "235-houseonly-dropped · the digest still calls F6's helper, without the one argument that makes it F6",
+    file: DIGEST,
+    from: `      if (!channelAllowed("ROUND_RESULT", { houseOnly: line.totals.ownRounds === 0 }).email) continue;`,
+    to: `      if (!channelAllowed("ROUND_RESULT", {}).email) continue;`,
+    expect: "9.235.1 · ⛔ 04 F6 · a day that was ALL house rounds: the holder gets the BELL and NO email",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ THE STATE THIS CHECKPOINT FOUND THE PLATFORM IN: F6's helper with no caller at all, so the rule existed
+       as a paragraph. 0.235.1 is the only assertion whose subject is whether the rule has a way to happen. */
+    name: "235-no-caller · the email gate is removed, so F6's helper goes back to having no production caller and its rule to being a paragraph",
+    file: DIGEST,
+    from: `      if (!channelAllowed("ROUND_RESULT", { houseOnly: line.totals.ownRounds === 0 }).email) continue;
+`,
+    to: ``,
+    expect: "0.235.1 · ⛔ RULING 235 · 04 F6's helper has EXACTLY ONE production caller",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ RULING 149: the docstring described an hourly holder summary as "the one account of those stakes". D19
+       does not allow that surface and this programme never built it, so the sentence taught the next session a
+       law the platform does not have. */
+    name: "149-docstring-promise · channelAllowed's docstring promises an hourly holder summary again",
+    file: "src/lib/server/comms-registry.ts",
+    from: ` * house-marked it never goes to a phone and never becomes a letter.`,
+    to: ` * house-marked it never goes to a phone and never becomes a letter — the holder's hourly summary is the one account of those stakes, and it is a bell.`,
+    expect: "0.235.3 · ⛔ RULING 149 · the helper's docstring no longer promises an hourly holder summary",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ RULING 247's OWN DEFECT SHAPE: a reader that hands back the ROW instead of the projection. The
+       trader-seed reader is the best place to plant it because nothing about the change looks wrong —
+       it still answers "who is on this market", it is still one aggregate, and the extra field is
+       invisible until somebody serialises the answer to a signed-out visitor. */
+    name: "247-seeds-raw · the trader-seed reader answers with position ROWS, so the marker and the hb: bet key reach every viewer of a market",
+    file: MARKET,
+    from: `    if (arr.length < n && !arr.includes(p.userId)) arr.push(p.userId);`,
+    to: `    if (arr.length < n && !arr.includes(p.userId)) arr.push(p as unknown as string);`,
+    expect: "11.247.2 · ⛔ D19 · ruling 247 · HB-LC-39 / CRA-27 · every viewer · NOT ONE of them carries the fixture's bot, intent, event, target or press id",
+    suite: "reports-mem",
+  },
+  {
+    /* ⛔ THE ONE VIEWER-FACING CALLER OF THE RAW POSITION READ. `myStakesByMarket` is what a player's
+       round panel is built from; growing its item by one field puts the marker in the holder's own
+       round detail. 11.247.c1c is the only assertion whose subject is that six-field literal, and it
+       exists because no Up & Down fixture runs in this suite — a sweep that cannot reach a reader is
+       not a reason to leave the reader unguarded. */
+    name: "247-round-item-marker · the viewer's own round item grows the marker, so a holder's round panel carries it",
+    file: "src/lib/server/updown-board.ts",
+    from: `      id: p.id,
+      side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",`,
+    to: `      id: p.id,
+      houseBotId: p.houseBotId,
+      side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",`,
+    expect: "11.247.c1c · the one viewer-facing caller of that raw read PROJECTS",
+    suite: "reports-mem",
+  },
+
+  /* ══ C7 STEP 5 (THE ACCOUNT HALF) · THE ACTIVITY AND HISTORY PANELS ═══════════════════════════════════════════
+   * ⛔ ONE DECLARATION PER GUARD FAMILY THE STEP ADDED, and each one puts back the defect its own assertion was
+   * written against — never a defect that merely goes red somewhere. The three declarations the plan expected to
+   * BREAK at this step (`312-rail`, `320-tab-debt-stale`, `432i-dead-link`) did NOT break, and the reason is the
+   * ordering: all three are anchored on the LANDING rail's closed list, which this step deliberately left alone.
+   * ══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+  {
+    name: "312-detail-rail · a key joins the ACCOUNT page's closed list with no panel behind it — ruling 312's dead control, one route over from where it was first measured",
+    file: ROUTES,
+    from: `export const CONSOLE_DETAIL_TABS = ["overview", "activity", "rules", "targets", "history"] as const;`,
+    to: `export const CONSOLE_DETAIL_TABS = ["overview", "activity", "rules", "targets", "history", "money"] as const;`,
+    expect: "1.312 · a panel for every key AND a key for every panel",
+    suite: "console-mem",
+  },
+  {
+    name: "317-word-hole · one kind loses its console word, so the TOTAL map stops being total and a raw enum is one render away",
+    file: GATE,
+    from: `  SUNSET: "The desk was withdrawn",`,
+    to: `  SUNSET_DISABLED: "The desk was withdrawn",`,
+    expect: "1.317 · the console's event word map is TOTAL over `EVENT_KINDS`",
+    suite: "console-mem",
+  },
+  {
+    name: "317-word-names-it · the word for the kind the LEXICON IS BLIND TO names the feature — the exact leak the map exists to make impossible",
+    file: GATE,
+    from: `  HOLDER_AGAINST_BOT: "The holder staked against this account",`,
+    to: `  HOLDER_AGAINST_BOT: "The holder staked against this bot",`,
+    expect: "1.317 · 453 · not one of its words carries a house-vocabulary word",
+    suite: "console-mem",
+  },
+  {
+    name: "317-raw-enum-fallback · the history's Event cell grows a `?? kind` escape, which paints the raw enum for any kind the map has lost",
+    file: GATE,
+    from: `    eventWord: CONSOLE_EVENT_WORD[e.kind],`,
+    to: `    eventWord: (CONSOLE_EVENT_WORD as Record<string, string>)[e.kind] ?? e.kind,`,
+    expect: "1.317 · 453 · no raw-enum fallback survives",
+    suite: "console-mem",
+  },
+  {
+    name: "345-facet-drift · the COUNTING reader drops the rail's facets, so the total counts a population the table cannot show — 344/345's own defect, and the one that is invisible until the last page",
+    file: GATE,
+    from: `    wantFeed ? houseBotIntentStore.countFeed(feedFilter) : Promise.resolve(null),`,
+    to: `    wantFeed ? houseBotIntentStore.countFeed({ houseBotId: bot.id }) : Promise.resolve(null),`,
+    expect: "1.345 · the listing reader and the COUNTING reader are called with the same facets",
+    suite: "console-mem",
+  },
+  {
+    name: "411-past-the-end · a page past the end stops being served as the LAST page, so a hand-typed `?page=99` renders a card with no rows under a pager pointing somewhere else",
+    file: GATE,
+    from: `  if (total == null) return want;
+  return Math.min(want, Math.max(1, Math.ceil(total / perPage)));`,
+    to: `  if (total == null) return want;
+  return Math.max(1, want - 0);`,
+    expect: "1.411 · `?page=99` is served as the LAST page",
+    suite: "console-mem",
+  },
+  {
+    name: "355-failed-reads-empty · a FAILED activity read answers an empty list, so the kit's failure treatment is never reached and a read that nobody could take looks like an account that has done nothing",
+    file: GATE,
+    from: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    to: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? []
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    expect: "1.355 · a failed activity read is `feed === null`",
+    suite: "console-mem",
+  },
+  {
+    name: "302-refusal-silent · a crafted filter axis is thrown away WITHOUT being named, so the panel narrows to something nobody asked for and says nothing",
+    file: GATE,
+    from: `    if (hit == null) say(said);`,
+    to: `    if (hit == null) { void said; }`,
+    expect: "1.302 · 432(j) · …and every refused axis is NAMED",
+    suite: "console-mem",
+  },
+  {
+    name: "302-smuggle · the door stops checking a filter axis against its closed list and passes the typed value straight into the read — the bypassed-client defect ruling 383 measured the whole shape of",
+    file: GATE,
+    from: `    const hit = fromClosedList(axis, one.value);
+    if (hit == null) say(said);
+    return hit as T | null;`,
+    to: `    const hit = fromClosedList(axis, one.value);
+    if (hit == null) say(said);
+    return (hit ?? one.value) as T | null;`,
+    expect: "1.302 · a bypassed client smuggles NOTHING past the door",
+    suite: "console-mem",
+  },
+  {
+    name: "302-anchor-ignored · a bell's `&intent=` stops resolving its row's page, so an officer who followed an alert lands on page 1 and the row the alert is about is nowhere on the screen",
+    file: GATE,
+    from: `  const wantFeedPage = wantFeed && q.intentId && !q.pageAsked
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;`,
+    to: `  const wantFeedPage = q.page;`,
+    expect: "1.302 · a bell's `&intent=` resolves the row's page SERVER-SIDE",
+    suite: "console-mem",
+  },
+  {
+    name: "369-balance-in-the-link · the money row's DOOR carries the holder's own wallet balance in its query string — ruling 266's bare balance, smuggled through an href instead of a cell",
+    file: GATE,
+    from: "    moneyHref: txn ? `/admin/transactions?q=${encodeURIComponent(txn)}` : null,",
+    to: "    moneyHref: txn ? `/admin/transactions?q=${encodeURIComponent(txn)}&b=${String(e.payload?.balanceTzs ?? \"\")}` : null,",
+    expect: "1.369 · 266 · no history row carries an amount or the holder's wallet balance",
+    suite: "console-mem",
+  },
+  {
+    name: "453-why-painted · the feed row paints the engine's own composed sentence, which opens with a word 453 forbids and embeds formatted money and a pool total — and NO source guard can see it, because it is composed in a module outside the section",
+    file: GATE,
+    from: `    stake: formatTzs(i.stakeTzs),`,
+    to: `    stake: i.why ?? formatTzs(i.stakeTzs),`,
+    expect: "1.453 · D20 · no feed row carries the engine's composed sentence",
+    suite: "console-mem",
+  },
+  {
+    name: "410-rail-rank · the window filter drops the dense rank, so one rail is 44px beside 32px chips — the same control at two sizes on one screen",
+    file: RAIL,
+    from: `      <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />`,
+    to: `      <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />`,
+    expect: "1.410 · every rank-taking control on the rail takes the DENSE rank",
+    suite: "console-mem",
+  },
+  {
+    name: "384-prop-name · a server call site passes a house-shaped PROP NAME across the client boundary, where minification keeps it and the bundle scan's identifier family does not know it",
+    file: DETAIL,
+    from: `          <ActivityFilters groups={view.feedFilters} presets={view.feedPresets} presetDefault={view.feedPresetDefault} />`,
+    to: `          <ActivityFilters botGroups={view.feedFilters} presets={view.feedPresets} presetDefault={view.feedPresetDefault} />`,
+    expect: "1.384 · 401 · no house-shaped PROP NAME crosses the client boundary",
+    suite: "console-mem",
+  },
+  {
+    name: "411-total-from-rows · the activity pager takes its total from the RENDERED rows, so it reads 20 for ever and the control never reaches the last page",
+    file: DETAIL,
+    from: `                  total={view.feedTotal}`,
+    to: `                  total={feedRows.length}`,
+    expect: "1.411 · every `total` is a COUNTING field of the view and never a rendered array's length",
+    suite: "console-mem",
+  },
+  {
+    /* ⚠️ RE-POINTED 2026-09-20. It mutated `UNBUILT_TABS`, the tolerance list — which is DELETED with the build
+       that paid it, so the text no longer exists. ⛔ Its question survives and is asked of what replaced the list:
+       the two rails are separate closed lists, and a resolver that stopped telling them apart would let a link to
+       one pass on the strength of the other. */
+    name: "7.2e-shape-flattened · the alert-link resolver stops telling the two rails apart, so a landing link passes on the strength of the account page's closed list",
+    file: COMMS,
+    from: `  const exists = (x: { shape: string; tab: string }) => (x.shape === "detail" ? CR.consoleDetailTabExists(x.tab) : CR.consoleTabExists(x.tab));`,
+    to: `  const exists = (x: { shape: string; tab: string }) => CR.consoleDetailTabExists(x.tab) || CR.consoleTabExists(x.tab);`,
+    expect: "7.2d · CONTROL · a planted alert href naming a tab NOBODY built",
+    suite: "comms-mem",
+  },
+
+  /* ══ THE THREE THE SERVED PAGE FOUND, WHICH NO SUITE DID ═══════════════════════════════════════════════════
+   * Each of these shipped GREEN and was read off a real render of the account page on a scratch database. They
+   * are declared here so the next session cannot lose what the render cost to find. */
+  {
+    name: "453-enum-token · the rail's URL token goes back to the enum lowercased, so `?kind=counter` reaches the address bar and `data-chip=\"kind:counter\"` reaches served markup — MEASURED, five times, with every suite green",
+    file: GATE,
+    from: `  return consoleSlug(CONSOLE_FEED_AXES[axis].word[member] ?? member);`,
+    to: `  return member.toLowerCase();`,
+    expect: "1.453 · every option KEY and every link the rail builds is neutral too",
+    suite: "console-mem",
+  },
+  {
+    name: "373-minute-only · the activity row's When cell drops its seconds, so twenty rows of a busy account all read one instant under a column that claims to be newest first",
+    file: GATE,
+    from: `    when: Number.isFinite(at) ? \`\${formatEat(at, "D MMM")} \${formatEat(at, "HH:MM:SS")}\` : "—",
+    whenTitle: Number.isFinite(at) ? \`\${formatEat(at, "D MMM YYYY")} \${formatEat(at, "HH:MM:SS")} EAT\` : "—",
+    stake: formatTzs(i.stakeTzs),`,
+    to: `    when: Number.isFinite(at) ? \`\${formatEat(at, "D MMM")} \${formatEat(at, "HH:MM")}\` : "—",
+    whenTitle: Number.isFinite(at) ? \`\${formatEat(at, "D MMM YYYY")} \${formatEat(at, "HH:MM:SS")} EAT\` : "—",
+    stake: formatTzs(i.stakeTzs),`,
+    expect: "1.373 · both panels' `When` cell states SECONDS",
+    suite: "console-mem",
+  },
+  {
+    name: "302-heading-plural · the refusal card's heading goes back to a SINGULAR title, which sat above a plural sentence on the same card",
+    file: GATE,
+    from: `export const CONSOLE_REFUSAL_TITLE = "This address was not used in full";`,
+    to: `export const CONSOLE_REFUSAL_TITLE = "Part of this address was not used";`,
+    expect: "1.302 · 432(n) · the refusal card's heading is number-agnostic",
+    suite: "console-mem",
+  },
+
+  /* ══ C7 STEP 5 · THE LANDING HALF ═════════════════════════════════════════════════
+   * An anchor that RESOLVES is not an assertion that went red (ruling 275). One declaration per new assertion,
+   * each with the label a green run printed — copied out of the run's own output, never written by hand. */
+  {
+    name: "312-rail-order · the four keys are kept but the rail order is scrambled, so an officer reads the desk's own sequence in the wrong order",
+    file: ROUTES,
+    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "limits", "activity", "history"] as const;`,
+    expect: "1.312 · the rail's options come from the closed list",
+    suite: "console-mem",
+  },
+  {
+    name: "312-badge-zero · a FAILED queued-stake count is painted as a zero, so a read that could not be taken reads as \"nothing queued\" and the badge stands in for the read's health",
+    file: PAGE,
+    from: `k === "activity" ? view.pendingIntents ?? undefined : undefined`,
+    to: `k === "activity" ? view.pendingIntents ?? 0 : undefined`,
+    expect: "1.405 · both badges are `TabItem.count`",
+    suite: "console-mem",
+  },
+  {
+    name: "344-landing-total-from-rows · the desk feed's pager takes its total from the rendered page, so it stops at 500 rows for ever and hides every page past it",
+    file: PAGE,
+    from: `                  total={feedView.feedTotal}`,
+    to: `                  total={feedRows.length}`,
+    expect: "1.411 · both landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and neither is a rendered array's length",
+    suite: "console-mem",
+  },
+  {
+    name: "345-landing-facet-drift · the desk feed's COUNT is taken over a different population from its rows, so the pager counts stakes the table cannot show",
+    file: GATE,
+    from: `    () => houseBotIntentStore.countFeed(feedFilter),`,
+    to: `    () => houseBotIntentStore.countFeed({}),`,
+    expect: "1.345 · the desk-wide feed's rows and total move together",
+    suite: "console-mem",
+  },
+  {
+    name: "317-landing-history-narrowed · the desk history narrows to one account, which silently drops the CONTROL ROW's own events — the switch, the limits save, the withdrawal",
+    file: GATE,
+    from: `    () => houseBotEventStore.countAll({}),`,
+    to: `    () => houseBotEventStore.countAll({ houseBotId: "hb_none" }),`,
+    expect: "1.317 · the desk history carries the CONTROL ROW's own events",
+    suite: "console-mem",
+  },
+  {
+    name: "355-landing-badge-blanks-panel · a failed desk-feed read is answered with an empty list, so a read nobody could take renders as \"nothing staked yet\"",
+    file: GATE,
+    from: `  const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({`,
+    to: `  const feed: ConsoleDeskFeedRow[] | null = rows == null ? [] : rows.rows.map((i) => ({`,
+    expect: "1.355 · a FAILED desk read paints the kit's failure treatment",
+    suite: "console-mem",
+  },
+  {
+    name: "415-cancel-on-any-row · the stop control is offered over a stake the engine has already claimed, which the service can only ever refuse",
+    file: GATE,
+    from: `    cancelId: (CONSOLE_PENDING_STATUSES as readonly string[]).includes(i.status) ? i.id : null,`,
+    to: `    cancelId: i.id,`,
+    expect: "1.415 · the stop control is offered on exactly the rows the badge counts",
+    suite: "console-mem",
+  },
+  {
+    name: "415-cancel-reason-unchecked · the cancel door stops checking the reason, so a bypassed client posts an empty decision record onto a live money control",
+    file: GATE,
+    from: `  if (reason.length < CONSOLE_REASON_MIN) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonShort, field: "reason" };`,
+    to: `  if (false) return { ok: false, error: CONSOLE_CANCEL_REFUSAL.reasonShort, field: "reason" };`,
+    expect: "1.415 · the cancel door validates the reason with the SAME bounds the control arms on",
+    suite: "console-mem",
+  },
+  {
+    name: "382-cancel-audit-key · the cancel's audit key is renamed to the neutral-sounding ADMIN one, which silently leaves HOUSE_AUDIT and puts a house row in a player's own audit read",
+    file: PRESS_CANCEL,
+    from: `      purpose: "STAFF_CANCEL",`,
+    to: `      purpose: "ENTER_NOW",`,
+    expect: "1.382 · the cancel's audit action is a `HOUSE_AUDIT` key",
+    suite: "console-mem",
+  },
+  {
+    name: "410-landing-rail-absent · the desk activity panel drops its rail, so the window and the three chips the bells link to have nothing to select",
+    file: PAGE,
+    from: `          <ActivityFilters groups={feedView.feedFilters} presets={feedView.feedPresets} presetDefault={feedView.feedPresetDefault} />`,
+    to: ``,
+    expect: "1.410 · the landing activity panel renders the SAME rail file",
+    suite: "console-mem",
+  },
+  {
+    name: "411-landing-basehref-bare · the desk feed's pager builds its baseHref without the live filters, so page 2 of a filtered list is page 2 of the unfiltered one",
+    file: PAGE,
+    from: `                  baseHref={buildBaseHref(CONSOLE_ROUTE, feedView.feedParams, "page")}`,
+    to: `                  baseHref={buildBaseHref(CONSOLE_ROUTE, { tab: "activity" }, "page")}`,
+    expect: "1.411 · each landing pager's `baseHref` carries its own panel's live parameters",
+    suite: "console-mem",
+  },
+  /* ⛔ THE BELL'S WINDOW HAS TWO WRONG FORMS AND THEY ARE DECLARED SEPARATELY, because the control beside the
+   * assertion says in so many words that a guard which cannot tell them apart is measuring a spelling rather than
+   * the bell. One mutation per way the defect can be written is the rule this programme keeps paying to relearn. */
+  {
+    name: "369-bell-clock-href · the hour summary's link goes back to the HH:MM clock form, which the console's window parser cannot read — so the bell lands on a \"custom\" label over the last 24 hours",
+    file: NOTIF,
+    from: `&from=\${encodeURIComponent(opts.fromEat)}&to=\${encodeURIComponent(opts.toEat)}\`,`,
+    to: `&from=\${encodeURIComponent(opts.fromHH)}&to=\${encodeURIComponent(opts.toHH)}\`,`,
+    expect: "1.369 · the hour summary's bell lands on the HOUR IT IS ABOUT",
+    suite: "console-mem",
+  },
+  {
+    name: "369-bell-iso-href · the hour summary's link carries the alert's own ISO instant, which the parser refuses just as completely — the form a field once called `fromIso` invited",
+    file: NOTIF,
+    from: `&from=\${encodeURIComponent(opts.fromEat)}&to=\${encodeURIComponent(opts.toEat)}\`,`,
+    to: `&from=\${encodeURIComponent(opts.fromIso)}&to=\${encodeURIComponent(opts.toIso)}\`,`,
+    expect: "1.369 · the hour summary's bell lands on the HOUR IT IS ABOUT",
+    suite: "console-mem",
+  },
+  /* ══ THE TWO THE LANDING RENDER FOUND, WHICH NO SUITE DID ══════════════════════════════════
+   * Both shipped GREEN and were read off a real render of the LANDING page on a scratch database — the first
+   * out of the served markup, the second only out of COMPUTED STYLES, which no scan of source could reach. */
+  {
+    name: "416-desk-borrows-account-sentence · the desk-wide panel hands back the shell's filtered empty state, whose body names \"this account\" on the one page that has no account to name",
+    file: GATE,
+    from: `    feedEmpty: panel.feedFiltered ? CONSOLE_DESK_FEED_EMPTY_FILTERED : CONSOLE_DESK_FEED_EMPTY,`,
+    to: `    feedEmpty: panel.feedFiltered ? panel.feedEmpty : CONSOLE_DESK_FEED_EMPTY,`,
+    expect: "1.355 · 416 · an empty desk list and a filter that matched nothing say DIFFERENT things",
+    suite: "console-mem",
+  },
+  {
+    name: "474-row-link-on-operator-text · the Owner's own typed label goes back inside the row-EXIT class, whose `text-transform: uppercase` rewrites it for every reader and every screenshot",
+    file: PAGE,
+    from: `                              {r.accountIsOperatorText
+                                ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                : <span className="text-text-tertiary">{r.accountName}</span>}
+                              {/* The holder, as a HANDLE and nothing else (04 R6)`,
+    to: `                              {r.accountIsOperatorText
+                                ? <Link href={r.accountHref as Route} className="row-link text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                : <span className="text-text-tertiary">{r.accountName}</span>}
+                              {/* The holder, as a HANDLE and nothing else (04 R6)`,
+    expect: "1.474 · not one element that carries the Owner's OWN TEXT wears the row-exit class",
+    suite: "console-mem",
+  },
+  {
+    name: "474-landing-label-unclamped · the desk feed's account cell paints the Owner's label unbounded, on the one page that lists every account at once",
+    file: GATE,
+    from: `    accountName: clampOperatorText(found.label, operatorBound("label")),`,
+    to: `    accountName: found.label,`,
+    expect: "1.474 · both exemptions are CLAMPED at their own render site",
+    suite: "console-mem",
+  },
+
+  /* ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+   * §1c ROW 27 (C5-8, 2026-09-20) — R8's ASSERTIONS GET A MUTATION DRIVE FOR THE FIRST TIME.
+   *
+   * ⛔ READ THIS BEFORE COUNTING THESE AGAINST THE ROW. Row 27 owes "the ten mutations listed in this
+   * checkpoint's report". Measured at this HEAD: that list is in NO tracked file — `grep -l` over
+   * `plans/house-bots/tools/*.json` matches nothing, and no anchors file names `report-pack`,
+   * `reports/catalogue` or `pack-actions`. The report that listed them lives in a session transcript, which on
+   * this programme is not a place a gate may live, so the ten AS LISTED are unrecoverable and this is not a
+   * transcription of them. What these four are is the sanctioned route taken instead — the same route §2e point
+   * 3 chose for the 92: CONVERSION into `scripts/anchors/`, which puts each one under `test:red-anchors` §3, the
+   * instrument that re-resolves every `from` against the tree every single day.
+   *
+   * ⚠️ THEY LIVE IN THE CONSOLE'S FILE FOR ONE REASON ONLY: it is the declaration list of the harness that runs
+   * `reports-mem`, where R8's assertions print. Nothing about them is console work.
+   * ⚠️ FOUR, NOT TEN, AND THE SHORTFALL IS NAMED: R8's remaining assertions are the §8.216 family, which the
+   * memory child SKIPS by its own design (`8.216.store` says so — with the ring emptied, the durable readers
+   * fall back to the ring, so the memory child would measure the fallback and not the table). Driving those
+   * needs a `reports-pg` suite key, which no red harness declares today. Row 27 stays OPEN with that remainder.
+   * ───────────────────────────────────────────────────────────────────────────────────────────────────────── */
+  {
+    name: "R8-215-ring · the ISO export goes back to the in-memory audit RING, which empties on every deploy — the exact swap R8 made, undone",
+    file: "src/lib/server/reports/catalogue.ts",
+    from: `  const { entries, total, truncated } = await getAuditPageDurable({ limit: ISO_EXPORT_LIMIT });`,
+    to: `  const { entries, total, truncated } = await getAuditPage({ limit: ISO_EXPORT_LIMIT });`,
+    expect: "0.215.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "R8-215-action-dropped · an rg.* action a real writer under src/ still writes falls out of RG_AUDIT_ACTIONS, so the regulator's document silently stops showing that activation",
+    file: "src/lib/server/reports/catalogue.ts",
+    from: `  "rg.self_exclusion.reopened",\n] as const;`,
+    to: `] as const;`,
+    expect: "0.215.3 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "R8-214-getpack-door · a maker-checker action reads its pack through getReportPack instead of the one refusing door, so a transition proceeds on a history that could not be read",
+    file: "src/app/admin/reports/pack-actions.ts",
+    from: `  const read = await readPackForTransition(period);\n  if (!read.ok) return read;\n  const pack = read.pack;\n  if (pack.state !== "draft") return { ok: false, error: \`Pack is already \${pack.state}. Prepare is only valid from Draft.\` };`,
+    to: `  const read = { ok: true, pack: await getReportPack(period) };\n  if (!read.ok) return read;\n  const pack = read.pack;\n  if (pack.state !== "draft") return { ok: false, error: \`Pack is already \${pack.state}. Prepare is only valid from Draft.\` };`,
+    expect: "0.214.2 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "R8-214-card-uncaught · ReportPackCard stops catching its own read, so one failed durable read takes the KPI strip, the daily P&L and the whole report library down with it",
+    file: "src/app/admin/reports/report-pack-card.tsx",
+    from: `    pack = await getReportPack(period);\n  } catch (e) {`,
+    to: `    pack = await getReportPack(period);\n  } finally {`,
+    expect: "0.214.3 ·",
+    suite: "reports-mem",
+  },
+  /* ── CA-19 · the double-tapped Confirm (2026-09-20) ──────────────────────────────────────────────────────────
+   * ⛔ THE FIRST ONE IS THE TREE AS IT STOOD. `houseAccountActForConsole` dropped `submitId` on the floor, so a
+   * double tap reached `verifyHouseBotPassword` twice and cost the holder TWO of their three attempts. Putting
+   * that back is the honest control for this fix: the mutation IS the defect, not an invention. */
+  {
+    name: "CA19-console-drops-submitid · the act row stops forwarding the press id, so a double-tapped Confirm burns two of the holder's three attempts",
+    file: GATE,
+    from: `      const submitId = typeof input.submitId === "string" && input.submitId.length > 0 ? input.submitId : null;\n      done = await reverifyHouseBot({ officerId: viewerUserId, botId: id, password, submitId });`,
+    to: `      done = await reverifyHouseBot({ officerId: viewerUserId, botId: id, password });`,
+    expect: "1.CA19 · ⛔ a DOUBLE-TAPPED Confirm is ONE attempt against the holder's three",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ THE OVER-CORRECTION, which is the half a "did the guard fire?" check never covers: a fix that refuses
+     * the SECOND re-verify anyone ever makes passes the case above and BRICKS the control — the designate
+     * wizard's own C7 step 6 defect, one layer over.
+     * ⛔ MY FIRST DRAFT OF THIS MUTATION WAS A NO-OP AND THE CONTROL SLEPT THROUGH IT (710 PASS, 0 FAIL). It
+     * made the console claim the EMPTY string — but `verifyHouseBotPassword` guards with `if (input.submitId)`,
+     * a TRUTHINESS check, so an empty id was already absent and nothing changed. The console's `.length > 0` is
+     * belt-and-braces over a service guard that already holds. Re-aimed at a shape that really does claim on
+     * every press: one CONSTANT key, which is what "adding idempotency" looks like when it is done wrong. */
+    name: "CA19-constant-id · the act row sends ONE fixed press id for every call, so the second re-verify ever made is refused as a duplicate",
+    file: GATE,
+    from: `      const submitId = typeof input.submitId === "string" && input.submitId.length > 0 ? input.submitId : null;`,
+    to: `      const submitId = "reverify";`,
+    expect: "1.CA19 · ⭐ POSITIVE CONTROL · a caller that sends NO id — or an empty one — is refused nothing",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ THE SAME PROPERTY FROM THE SERVICE SIDE. `verifyHouseBotPassword` skips the claim when no id was sent;
+     * a guard that tested for `undefined` instead of truthiness would claim `submit:<officer>:null` on every
+     * caller that sends none — every act row, wizard and script on the platform sharing one key.
+     * ⚠️ ITS COLLATERAL IS NAMED, BECAUSE IT IS REAL AND NOT NOISE (driven 2026-09-20: 704 PASS, 4 FAIL). This
+     * mutation breaks the claim for EVERY caller, so besides its own label it also takes `1.359` (the wizard's
+     * own designation is refused as already sent) and, through that dead fixture, 3.453's two scans. The
+     * harness counts it CAUGHT because its named label is among the fails — but a reader comparing this entry's
+     * drive against a one-line expectation should know the other three are the mutation being honest about its
+     * blast radius, not the anchor having rotted. */
+    name: "CA19-absent-id-claimed · the service claims a key for callers that sent NO id, so they all share one and refuse each other",
+    file: DESIG,
+    from: `  if (input.submitId) {`,
+    to: `  if (input.submitId !== undefined) {`,
+    expect: "1.CA19 · ⭐ POSITIVE CONTROL · a caller that sends NO id — or an empty one — is refused nothing",
+    suite: "console-mem",
+  },
+  {
+    /* ⭐ AND THE CLIENT HALF: a nonce that is never spent turns the fix into the designate wizard's C7 step 6
+     * defect — every press after the first answering "already sent". No SERVER case can see this. */
+    name: "CA19-nonce-never-spent · the dialog keeps one nonce for the life of the page, so every press after the first is refused as a duplicate",
+    file: "src/app/admin/desk/[id]/account-actions.tsx",
+    from: `      attempt.current = "";\n      if (!result.ok) {`,
+    to: `      if (!result.ok) {`,
+    expect: "1.CA19 · …and the DIALOG mints a fresh nonce per press and spends it on either answer",
     suite: "console-mem",
   },
 ];

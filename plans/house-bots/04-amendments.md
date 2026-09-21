@@ -627,7 +627,7 @@ Engine modules may not import `StoredMarket`.
 *§2 migrations:*
 - Every statement uses `IF NOT EXISTS` with fixed names.
 - `ops:preflight-house-bot-migrations` (read-only) prints `now()`, the timezone, Position and Transaction row counts and sizes, and existing indexes, then GO or NO-GO.
-- Above 500k positions or 1M transactions, build the 4 marker indexes `CONCURRENTLY` by hand first, so the migration is a no-op.
+- Above 500k positions or 1M transactions, build the **FIVE** indexes `CONCURRENTLY` by hand first, so the migration is a no-op. ⛔ **Corrected 2026-09-20 by reading the migration rather than this line:** `20260916150100_house_bot_markers/migration.sql` says "five indexes" in its own header and its hand-apply block names five — four on `"houseBotId"` plus `Position_placedAt_id_idx`, the sweep keyset, which is built under the SAME `ACCESS EXCLUSIVE` lock and is exactly as capable of stalling the migration. A preflight that checked four would report GO on a database one index short. Read the five names FROM that file; never type them.
 - Merge only when `_prisma_migrations` shows both migrations finished and not rolled back. Never run `migrate resolve --applied` without checking the objects exist.
 
 *§4.2:*
@@ -1357,7 +1357,7 @@ I read the code in `C:\kipindi-main` at HEAD `ac411357`, without editing anythin
 
 **Test**
 - Source pin (positive control): no `getAuditPage` import in `report-pack.ts`, `server/house-bot/**`, or the ~~house and~~ RG builders in `catalogue.ts`. ⛔ **Superseded by D20 (Ali, 2026-09-17):** there are no house report builders (C5-SPEC rulings 199–208); the pin stands for the pack, `catalogue.ts` and the house-bot modules (ruling 215).
-- `drive:house-bots-local` (Postgres): pack prepared and approved, then 12,000 BET rows, then a fresh module → `getReportPack().state === "approved"`. The in-memory store can't prove this, because the durable reader falls back to the ring (`audit.ts:633-637`).
+- `qa:house-bots-local` (Postgres): pack prepared and approved, then 12,000 BET rows, then a fresh module → `getReportPack().state === "approved"`. The in-memory store can't prove this, because the durable reader falls back to the ring (`audit.ts:633-637`).
 
 ### R9 · MINOR · Record what resolvers and identity officers saw
 ⛔ **Superseded by D20 (Ali, 2026-09-17):** this whole section is struck. No decision audit (`market.adjudicated`, `market.emergency_void`, `objection.rejected`/`upheld`, `market.resolve.bulk`/`bulk_override`) carries `houseStake` or `houseStakes`, and the KYC card has no house line and `kycMoneyFacts` no house fields (C5-SPEC rulings 187–191 and 197, built in Commit 5 steps 4–5 and un-built in checkpoint C5-5b). Nothing in it stands.
@@ -1579,9 +1579,11 @@ Everything was checked against `C:\kipindi-main`. HEAD is `ac411357`, the KYC co
 
 ## S2 · MAJOR · §11 Release: exact checklist (commit 8; replaces the §11 "Release" paragraph and the §17 RELEASE block)
 
+⛔ **SUPERSEDED 2026-09-21 by `plans/house-bots/RELEASE-LADDER.md`.** Measured there: S2's only declared proof does not exist (`test:docs` is a link checker; "R0–R6" appears nowhere in `scripts/` or `src/`), it names a §17 that does not exist in `docs/HOUSE-BOTS.md` (14 sections; that block is in `PLAN.md`), its R1–R6 "GO when" column lets the ladder authorise itself from R1 onward, and the owner-only switch row is absent from this table entirely.
+
 | Step | Action | GO when |
 |---|---|---|
-| R0 (T-1 day) | S1 P0 re-run. Rebase on `origin/main`. `git diff origin/main...house-bots --stat -- prisma/migrations` shows exactly the 2 house folders. `test:all`, every `red:house-bot-*`, `drive:house-bots-local`, `qa:house-bots-visual` and the S4 rehearsals pass on this SHA. `ops:preflight-house-bot-migrations` says GO. Send Ali the checklist. | Ali's one-word "go" |
+| R0 (T-1 day) | S1 P0 re-run. **Merge** `origin/main` (any "rebase" here is superseded). ⛔ **Condition (c) rewritten 2026-09-20 — `ops:release-migration-parity` says GO** (byte parity of every shared migration folder; forward difference 0; reverse difference 0). The old wording — *"the diff shows exactly the 2 house folders"* — is permanently unreachable since Ali pushed the branch on 2026-09-18: both folders are in the merge base, so the diff is **0** by construction. ⛔ Not deleted and not waved through: the parity gate still reports the original failure by name if the house DDL is ever NOT on the target ref, and then demands R2 back. `test:all`, every `red:house-bot-*`, `qa:house-bots-local`, `qa:house-bots-visual` and the S4 rehearsals pass on this SHA. `ops:preflight-house-bot-migrations` says GO. Send Ali the checklist, and tell him R2 is struck for this release and why. | Ali's one-word "go" |
 | R1 | Pick a quiet hour: preflight prints the bets in the last 15 min. Not during the nightly trial balance. | ≥10-min window |
 | R2 | From this machine: `MSYS_NO_PATHCONV=1 DATABASE_URL=… npx prisma migrate deploy`. **On any failure:** preflight `--post` confirms no house object exists, then `prisma migrate resolve --rolled-back <name>`, then retry once later. **Never leave a failed row:** P3009 blocks every boot, and boot runs `migrate deploy`. | both rows finished |
 | R3 (old container still serving) | `houseBotSchemaReady()` query is true. `HouseBotControl.enabled=false`. `/api/health` `ok:true`. The Position count keeps rising (read-only check). | all true |
@@ -3667,7 +3669,7 @@ Body order:
 - **Chatbot:**
   - ~~The P1 bullet after `_actions/chat.ts:147` (re-derive) is unchanged.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no P1 chatbot bullet; the chatbot discloses nothing (D19d).
   - The forbidden-phrase list in `test:house-bot-disclosure` gains "fully automated", "only automated", "no person decides" and "no one at 50pick chooses".
-- **Board disclosure draft** (`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md`): new section "Stakes chosen by staff". It covers:
+- ~~**Board disclosure draft** (`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md`): new section "Stakes chosen by staff".~~ ⛔ **STRUCK 2026-09-20 (owner ruling D21):** no Board draft is written, so no section of it is either. Kept below only as the record of what the struck section would have covered:
   - Enter now (polls only);
   - targets (polls only, 5–600 s, the absolute hold);
   - the formula side and amount;

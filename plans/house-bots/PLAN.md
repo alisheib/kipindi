@@ -524,7 +524,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 - New `docs/HOUSE-BOTS.md` (authority: invariants→guards, model, engine, caps, eligibility and auto-pause matrix, console map, reporting table, alert matrix, disclosure surfaces, runbook, verification, risks). It names no script or npm key before that commit adds it.
 - `docs/RULES.md` §2.x; `docs/FLOWS.md` §9 (plus the two stale §3 rows); `docs/FAILURE-INVENTORY.md` §6.
 - Supersede banners on F6, UPDOWN-FINAL-DESIGN and feature-backlog.
-- `docs/README.md` index; `CLAUDE.md` pointer; `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` (DRAFT FOR ALI); `docs/LIVE-QA-CAMPAIGN.md` §6b handoff; memory update.
+- `docs/README.md` index; `CLAUDE.md` pointer; ~~`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` (DRAFT FOR ALI)~~ ⛔ **STRUCK 2026-09-20 (owner ruling D21): not written, not owed**; `docs/LIVE-QA-CAMPAIGN.md` §6b handoff; memory update.
 
 ## 11. Build order
 **Setup and working rules**
@@ -542,7 +542,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 | 5 | ~~Reporting (§9) + resolver exposure display +~~ ~~holder chip / SellButton~~ · `test:house-bot-reports` ⛔ **Superseded by D20 (Ali, 2026-09-17):** the §9 reporting splits and the resolver exposure display are struck; Commit 5 is re-planned in `C5-D20-REPLAN.md` §3 (C5-5b un-build, C5-6 R8 + R6, C5-7 absence sweep and served layer, C5-8 closing gates), and the holder chip and SellButton fall under D19c. ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder chip and no SellButton `houseStake` state are built; a house stake looks exactly like the holder's own bet (D19c). |
 | 6 | ~~Public text (§10)~~ · `test:house-bot-disclosure` ⛔ **Superseded by D19 (Ali, 2026-09-16):** no public text; Commit 6 is the non-disclosure commit (the private Board draft, the chatbot guard D19d, docs, the absence suite). |
 | 7 | Console: `actions.ts`, routes, UserPicker + DAL search, nav/RBAC, FAILURE-INVENTORY · `test:house-bot-console` · `red:house-bot-console` · `qa:house-bots-visual` |
-| 8 | `seed:house-bots-local`, `drive:house-bots-local`, `ops:house-bots-status` · docs finalised · end-to-end drive · verification record |
+| 8 | `db:seed-house-bots-local`, `qa:house-bots-local`, `ops:house-bots-status` · docs finalised · end-to-end drive · verification record |
 
 **Release:** migrations applied to production from this machine first. **One merge to `main`** at a quiet hour: one deploy, which is a brief outage while `overlapSeconds` is null. The switch stays OFF and Ali turns it on.
 
@@ -565,7 +565,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 **Other checks**
 - **RED harnesses:** `red:house-bot-money` / `-engine` / `-console`. Each mutation must fail **its own** assertion, with an unmutated control.
 - **Existing gates touched:** `failure-reasons`, i18n, dal-parity, `cert-c1`/`c3`, admin-nav, rbac, admin-act-gate, orphan-actions, orphans, feedback-law, confirm-gate, unsaved-changes, ui-consistency, gold-is-money, house-page, docs, late-bet, rg-limit-race, bet-retry, money-invariants.
-- **Local Postgres, end to end** (`seed:` + `drive:house-bots-local`, loopback-only guard):
+- **Local Postgres, end to end** (`npm run db:seed-house-bots-local` + `npm run qa:house-bots-local`, loopback-only guard — the last `seed:` spelling, corrected 2026-09-20: there is no `seed:` namespace in `package.json` and never was):
   - designate (balance shown), rules, switch ON, real player bet → COUNTER PLACED with markers;
   - FILL and OPENER;
   - OFF mid-delay → CANCELLED;
@@ -585,11 +585,11 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
   Run at 6 widths with overflow, clipping and control-height assertions, plus a `--sheet-missing` red control. **Each PNG opened and read.**
 - **Production after release:**
   - `dpl=` SHA equals the merge;
-  - `ops:house-bots-status` read-only (switch off, 0 bots, 0 marked rows, engine beats fresh);
+  - `npm run ops:house-bots-status` read-only — **FIVE figures, not four** (corrected 2026-09-20: this line omitted "engine enabled", while PROGRESS.md:463, 04-amendments.md's R5 row and 00-NEW-SESSION-PROMPT.md:115 all name five): switch OFF, 0 bots, 0 marked rows, an engine boot row with its instant, and a fresh planner beat. ⛔ "Engine enabled" can only ever mean "an engine booted against this database and said so" — a refused start writes no row, so the command prints the boot instant and never "the engine is not disabled";
   - owner renders the page, nav highlight correct, picker and check card with balance work **without designating**;
   - a non-owner role gets `AdminRestricted`;
   - ~~rules and terms in en/sw/zh show new text and versions;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the rules and terms keep exactly the words and versions they have on `main` (D19a);
-  - recheck 0 marked rows after 10 minutes.
+  - recheck 0 marked rows after 10 minutes — `npm run ops:house-bots-status -- --watch` (built 2026-09-20). It re-reads the four figures the rollback runbook watches and prints the DELTA: "still 0" and "0, unchanged over ten minutes" are different statements, and only the second is evidence.
 - **Handover:** the first live money run is Ali's (D1), monitored via the feed and alerts.
 
 ## 13. Accepted risks (written into COMPLIANCE entry and HOUSE-BOTS.md)

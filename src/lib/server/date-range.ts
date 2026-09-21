@@ -72,6 +72,29 @@ export function parseEatLocal(s: string | null | undefined): { ms: number; hasTi
   return { ms: utc - EAT_OFFSET_MS, hasTime: hh != null };
 }
 
+/**
+ * The inverse of `parseEatLocal`, and it lives HERE for exactly that reason: an instant written for a `?from=` /
+ * `?to=` address must come out in the one shape the parser above accepts, and a producer in another module drifts
+ * from it silently.
+ *
+ * ⛔ AN ISO INSTANT IS NOT THIS SHAPE, AND THAT IS NOT A DETAIL — IT IS A MEASURED DEFECT. `parseEatLocal`'s
+ * pattern is anchored (`…(\d{2}):(\d{2}))?$`), so `2026-09-20T13:00:00.000Z` does NOT match: it returns null, and
+ * `resolveRange`'s custom branch then falls back to `now - DAY_MS → now`. A link built from `toISOString()` therefore
+ * lands on a window labelled **custom** that is silently the LAST 24 HOURS — measured, not argued: an hour window
+ * handed over as a full ISO pair came back spanning 24 hours, with no refusal said anywhere, because nothing in the
+ * custom branch reports a `from` it could not read.
+ *
+ * ⛔ AND THE ZONE IS EAT, NOT UTC. `parseEatLocal` reads its argument as an EAT wall clock, so handing it a
+ * `…Z` instant — even one shaped `YYYY-MM-DDTHH:MM` — would shift the window by the 3-hour offset and land the
+ * reader on the wrong hour under the right label. This formatter adds the offset for the same reason the parser
+ * subtracts it, so `parseEatLocal(formatEatLocal(ms)).ms === ms` for any minute-aligned instant.
+ */
+export function formatEatLocal(ms: number): string {
+  const d = new Date(ms + EAT_OFFSET_MS);
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}T${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
+}
+
 function fmtEat(ms: number): string {
   // "26 Jul 14:30" in EAT — for the active-window label only.
   const d = new Date(ms + EAT_OFFSET_MS);

@@ -154,7 +154,25 @@ ok("2.1 · ⭐ every script that writes an account fact is a suite, or carries t
   undeclared.length === 0, undeclared.map((s) => s.file).join(" · ") || "-");
 // ⚠️ 23 → 24 on 2026-09-16 (build commit 4, step 9): `house-bot-bell-shots.mts`, the render pass, promotes its own
 // scratch account to ADMIN so the recipient resolver admits it. It carries the declaration, like every other script here.
-const SCRIPT_CEILING = 24;
+/**
+ * ⚠️ 24 → 25 on 2026-09-21 (the integration pass), and the new member was READ before it was admitted, which is the
+ * only thing that makes moving this number legitimate rather than a way of making a red go away.
+ *
+ * The member is `scripts/lib/house-bot-ops-cases.mts`, the ops lane's Commit-8 suite. It entered this population on
+ * the `SQL_FIELD` half, at its line 1745:
+ *     SELECT "passwordHash" FROM "User" WHERE "id" = $1
+ * — which is a READ. It fetches the holder's stored hash to assert that an auto-paused account's recorded
+ * fingerprint NO LONGER matches it, i.e. it is checking that the password really changed. It writes no account fact
+ * through that statement.
+ * ⭐ THE PREDICATE IS RIGHT TO CATCH IT ANYWAY: `SQL_FIELD` cannot tell a SELECT from an UPDATE without parsing, and
+ * parsing is exactly what a guard like this exists to avoid. A conservative catch that a human then reads is the
+ * design; the failure mode this file refuses is a new member sliding in with nobody looking.
+ * ⛔ AND IT IS DECLARED, by the same rule as every other suite here — `/-cases\.mts$/` — so `2.1` passed throughout
+ * and only the shrink-only count moved. The lane that added the file should have moved this number in the same
+ * commit, the way 23 → 24 was; it did not, and the count carried the debt until `test:all` was compared red-by-red
+ * against clean `origin/main`.
+ */
+const SCRIPT_CEILING = 25;
 ok(`2.2 · the script population is shrink-only (${scriptWriters.length} found, ceiling ${SCRIPT_CEILING})`, scriptWriters.length <= SCRIPT_CEILING,
   scriptWriters.map((s) => s.file).slice(0, 6).join(" · "));
 

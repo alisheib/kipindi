@@ -74,7 +74,6 @@ import { revokeUserSessions } from "./session-registry";
 import type { KycExtraRequest } from "./store";
 import { pseudonymiseAgentApplications, purgeAgentDocumentsForUser } from "./agent-application-service";
 import { houseBotAlertOnceStore, houseBotStore } from "./house-bot-dal";
-import { consoleBotHref } from "@/lib/house-bot/console-routes";
 import { withLock } from "./locks";
 import { ALERT_KEY } from "@/lib/house-bot/constants";
 
@@ -208,10 +207,19 @@ export async function anonymizeClosedAccount(
       console.error("[erasure] house-bot owner alert failed:", (err as Error)?.message ?? err);
       if (claimed) await houseBotAlertOnceStore.release(key).catch(() => {});
     }
+    /* ⛔ THE OFFICER-FACING SENTENCE NAMES NOTHING (⛔ D19; rulings 301, 393, 453, 548, 551(a); C7 step 7 review
+       d19-hunt-01). It used to read "This account is still house bot hb_… The owner must remove it at
+       /admin/desk/hb_…", and `privacy.ts` hands this string straight to `/admin/privacy` — a COMPLIANCE-domain
+       route. So a COMPLIANCE officer, who is outside this feature's audience on both belts and whom
+       `OWNER_ONLY_PREFIXES` forbids to open `/admin/desk` at all, was shown the feature's name, the bounded id and
+       the console path in one sentence, from a control they are entitled to use. The three identifying facts stay
+       on the channel that already has the right audience: `notifyAdminsHouseBotErasureBlocked`, ADMIN-only.
+       ⛔ The REASON CODE is unchanged — `house_bot_live` is server-only and `HOUSE_REASON_EXPORTED_AS` already
+       maps it to `not_erasable` for the releasable door — so nothing that reads the outcome changes. */
     return {
       ok: false,
       reason: "house_bot_live",
-      error: `This account is still house bot ${liveBot.id}. The owner must remove it at ${consoleBotHref(liveBot.id)} before it can be erased.`,
+      error: "This account is still in use by an owner-managed account and cannot be erased yet. An owner has been told; the request stays open and can be run again once it is released.",
     };
   }
 

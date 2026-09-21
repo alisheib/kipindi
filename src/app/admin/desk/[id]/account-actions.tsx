@@ -81,6 +81,31 @@ export function deskActArmed(copy: Pick<DeskActCopy, "form" | "reasonLabel" | "r
 
 const EMPTY = { reason: "", password: "", typed: "" };
 
+/**
+ * A fresh idempotency nonce for ONE press of Confirm (CA-19, 2026-09-20).
+ *
+ * 🔴 WHAT IT COSTS WITHOUT ONE. Re-verify spends the HOLDER'S sign-in attempts, and the last two of the
+ * three are kept for them — so an officer has effectively one. The only guard against a double tap was
+ * `if (pending) return` in `submit` below, and `pending` comes from `useTransition`: React does not set it
+ * until it has RE-RENDERED. Two taps inside one frame — a habit on a laggy admin screen, and the exact
+ * moment an officer is reading a password aloud and unsure whether the first press registered — therefore
+ * both passed that line, and a mistyped password burned TWO of the holder's three attempts.
+ * The service has always been able to refuse the copy: `verifyHouseBotPassword` claims `submit:<officer>:<id>`
+ * durably BEFORE the password is checked. Nothing was sending it an id.
+ *
+ * ⛔ SPENT ON EVERY ANSWER, which is the half the designate wizard learned the hard way (C7 step 6): a nonce
+ * derived from what the officer TYPED is identical on every retry, so the first wrong password burns the key
+ * for good and every later attempt answers DUPLICATE_SUBMIT for an answer that can never come. The claim
+ * exists to stop a double tap of ONE press, which is a property of the press and not of what was typed into
+ * it — so a refusal clears it and the next press is a new one.
+ * ⚠️ `randomUUID` needs a secure context; the fallback is not a security value, it is an idempotency key.
+ */
+const newAttemptNonce = (): string => {
+  const c = typeof globalThis.crypto === "object" ? globalThis.crypto : null;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+};
+
 export function DeskAccountActions({
   acts,
   id,
@@ -88,7 +113,7 @@ export function DeskAccountActions({
 }: {
   acts: DeskActCopy[];
   id: string;
-  act: (input: { id: string; act: DeskActCopy["act"]; reason?: string; password?: string; typed?: string }) => Promise<
+  act: (input: { id: string; act: DeskActCopy["act"]; reason?: string; password?: string; typed?: string; submitId?: string }) => Promise<
     { ok: true; changed: boolean; note: string | null; warn: boolean } | { ok: false; error: string; field?: string; href?: string }
   >;
 }) {
@@ -100,6 +125,9 @@ export function DeskAccountActions({
   const { deferToast, toast } = useDeferredToast(pending);
   const firstRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
   const headingId = useId();
+  /* CA-19 · the nonce for the press in flight. A ref, not state: it must be readable by the SECOND tap of a
+     double tap, and that tap happens before any re-render a `useState` could have given it. */
+  const attempt = useRef<string>("");
 
   useEffect(() => {
     if (open === null) return undefined;
@@ -125,13 +153,21 @@ export function DeskAccountActions({
     if (open === null || !armed || pending) return;
     const copy = open;
     setError(null);
+    /* ⛔ CLAIMED SYNCHRONOUSLY, BEFORE `start` (CA-19). The second tap of a double tap reaches this line with
+       `pending` still false, finds the SAME nonce, and the service refuses it as the copy of a press already
+       sent — so the holder is charged ONE attempt, not two. */
+    if (attempt.current === "") attempt.current = newAttemptNonce();
+    const submitId = attempt.current;
     start(async () => {
       let result: Awaited<ReturnType<typeof act>>;
       try {
-        result = await act({ id, act: copy.act, reason: v.reason, password: v.password, typed: v.typed });
+        result = await act({ id, act: copy.act, reason: v.reason, password: v.password, typed: v.typed, submitId });
       } catch {
         result = { ok: false, error: transportFailure };
       }
+      /* ⛔ AND THE NONCE IS SPENT ON EITHER ANSWER: this press has been answered, so the next one is a NEW
+         press. A nonce that outlived its refusal would brick the control (designate wizard, C7 step 6). */
+      attempt.current = "";
       if (!result.ok) {
         /* ⛔ THE REFUSAL STAYS IN THE DIALOG — closing it would throw away what the officer typed and leave them to
            write it again to find out whether the second attempt is refused too. The PASSWORD still goes. */

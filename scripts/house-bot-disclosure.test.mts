@@ -40,6 +40,18 @@ const section = (t: string) => console.log(`\n${t}`);
  * every absence proof imports; `test:house-bot-reports` §0 refuses a consumer that declares its own pattern.
  */
 import { houseHits, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES, HOUSE_BENIGN_SAMPLES } from "./lib/house-bot-vocabulary.mjs";
+/**
+ * §6 · the D19d chatbot guard, kept in its own cases module the way every other house family is. The
+ * assurance lexicon it runs is a SIBLING of the vocabulary module, not a fourth family inside it — see
+ * `scripts/lib/house-bot-assurances.mjs`'s header for why, and 6.c11 for the pin that says so.
+ */
+import { runChatbotCases } from "./lib/house-bot-chatbot-cases.mts";
+/**
+ * §0-pipe, §5, §8 and §docs · THE ABSENCE SUITE (Commit 6, 2026-09-20). Its own header carries the inventory of what
+ * every other guard on the platform already covers and builds only the space between them — including the two gates
+ * that ran in no pipeline at all, and the print measure that read two files while its twin read four hundred.
+ */
+import { runAbsenceCases } from "./lib/house-bot-absence-cases.mts";
 
 type Reader = { exists(p: string): boolean; read(p: string): string };
 const disk: Reader = { exists: (p) => existsSync(p) && statSync(p).isFile(), read: (p) => readFileSync(p, "utf8") };
@@ -186,7 +198,7 @@ section("§2 · CONTROLS — planted chains are found; type-only imports and ser
     ok(`2.v · ruling 175 · CONTROL · every planted ${family} sample in a client file is found (${samples.length} planted)`, missed.length === 0, missed.join(", "));
   }
   const benignHits = HOUSE_BENIGN_SAMPLES.flatMap((_, i) => runFamily(`${V}/app/benign-${i}.tsx`).map((h) => h.word));
-  ok("2.v.b · ruling 175 · CONTROL · the benign look-alikes (HOUSE_FEE, /admin/house, raw hb_ prefixes, a 28-hex tail) are not hits", benignHits.length === 0, benignHits.join(", "));
+  ok("2.v.b · ruling 175 · CONTROL · the benign look-alikes (HOUSE_FEE, /admin/house, raw hb_ prefixes, a 28-hex tail, and \"including household costs\" — the word bound on `including house`) are not hits", benignHits.length === 0, benignHits.join(", "));
   const r3 = run([`${V}/app/clean.tsx`]);
   ok("2.c6 · CONTROL · type-only house fields, a comment and the platform's HOUSE_FEE are not hits", r3.hits.length === 0, r3.hits.map((h) => h.word).join(", "));
 }
@@ -195,9 +207,24 @@ section("§2 · CONTROLS — planted chains are found; type-only imports and ser
 section("§3 · the player copy the un-build replaced says something true and names nothing");
 {
   const { dict } = await import("../src/lib/i18n-dict.ts") as { dict: Record<string, { market: Record<string, string> }> };
-  const lines = (["en", "sw", "zh"] as const).map((l) => dict[l]?.market?.objNotEligible);
-  ok("3.1 · ruling 146 · objNotEligible exists in all three languages and names nothing",
+  /**
+   * ⭐ 7.4 (Commit 6, 2026-09-20) · THE LOCALES COME FROM THE DICTIONARY, NOT FROM A LIST TYPED HERE. This read
+   * `["en", "sw", "zh"]`, so the day a fourth language ships, the neutral copy it replaced would be demanded in three
+   * languages and the fourth would go unasserted with the suite green — the same shape as an English-only pattern run
+   * "in all three locales", which §6 exists because of. The population is printed so a dictionary that yields one key
+   * fails the floor instead of passing a loop of one.
+   */
+  const locales = Object.keys(dict);
+  const lines = locales.map((l) => dict[l]?.market?.objNotEligible);
+  ok(`3.0 · POPULATION · the locale list is \`Object.keys(dict)\` and yields ${locales.length} languages (${locales.join(", ")}), at least 3`,
+    locales.length >= 3, JSON.stringify(locales));
+  ok("3.1 · ruling 146 · objNotEligible exists in every locale the dictionary declares and names nothing",
     lines.every((s) => typeof s === "string" && s.length > 10) && lines.every((s) => houseHits(s!).length === 0 && !/50pick/i.test(s!)), JSON.stringify(lines));
+  ok("3.1c · CONTROL · the locale walk can fail: a fourth locale planted into a COPY of the dictionary's key set is demanded, and a house sentence planted into a copy of one locale's value is reported",
+    Object.keys({ ...dict, xx: {} }).length === locales.length + 1
+      && Object.keys({ ...dict, xx: { market: {} } }).map((l) => ({ ...dict, xx: { market: {} } } as Record<string, { market: Record<string, string> }>)[l]?.market?.objNotEligible).some((s) => typeof s !== "string")
+      && houseHits("Hili si soko la dau la nyumba.").length > 0,
+    JSON.stringify({ planted: "xx", houseSentenceReported: houseHits("Hili si soko la dau la nyumba.") }));
   const panel = readFileSync(join(SRC, "components", "markets", "resolution-panel.tsx"), "utf8");
   ok("3.2 · the resolution panel renders the neutral state with the neutral key", /state === "NOT_ELIGIBLE"[\s\S]{0,200}t\.market\.objNotEligible/.test(panel));
   ok("3.2b · ruling 158 · the payout-held box drops its objection invitation in exactly the NOT_ELIGIBLE state",
@@ -218,12 +245,23 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
   const MUST_BE_READ = ["src/lib/status-tone.ts", "src/lib/search/fields.ts", "src/components/ui/search-box.tsx", "src/app/admin/system/system-client.tsx"];
   const unread = MUST_BE_READ.filter((p) => !reachedRel.has(p));
   ok("4.0 · the law's named client surfaces are inside §1's population (status-tone, the search grammar, the search box, the system client)", unread.length === 0, unread.join(", "));
-  const { TXN_SEARCH } = await import("../src/lib/search/fields.ts") as { TXN_SEARCH: { fields: Record<string, { columns: string[] }>; default: string[] } };
   type TxnGrammar = { fields: Record<string, { columns: string[] }>; default?: string[] };
+  /* ⭐ C7 step 6 · THE PICKER'S GRAMMAR JOINS THE MEASURE (ruling 387's Proof, which NAMED this extension and was
+   * never built). `fields.ts` is value-imported by the client search box — §4.0 above asserts it is inside the
+   * client population — so every field name, column and default in it ships in a publicly downloadable chunk. 4.1
+   * measured `TXN_SEARCH` alone, so a `house`-named key added to the designation picker's own schema later would
+   * have shipped with every suite green. */
+  const { TXN_SEARCH, ACCOUNT_PICKER_SEARCH, USER_SEARCH } = await import("../src/lib/search/fields.ts") as { TXN_SEARCH: Required<TxnGrammar>; ACCOUNT_PICKER_SEARCH: Required<TxnGrammar>; USER_SEARCH: Required<TxnGrammar> };
   /** 4.1's ONE measure, used by 4.1 and its control alike: every field name, column and default that says house. */
   const houseKeysOf = (s: TxnGrammar) => [...Object.keys(s.fields), ...Object.values(s.fields).flatMap((x) => x.columns), ...(s.default ?? [])].filter((k) => /house/i.test(k));
   const txnHouse = houseKeysOf(TXN_SEARCH);
-  ok("4.1 · R1's house filter is never a TXN_SEARCH field, column or default (the client search box imports it)", Object.keys(TXN_SEARCH.fields).length >= 5 && txnHouse.length === 0, txnHouse.join(", "));
+  const pickerHouse = houseKeysOf(ACCOUNT_PICKER_SEARCH);
+  ok("4.1 · R1's house filter is never a TXN_SEARCH field, column or default, and the designation picker's own grammar carries none either (the client search box imports both)", Object.keys(TXN_SEARCH.fields).length >= 5 && txnHouse.length === 0 && Object.keys(ACCOUNT_PICKER_SEARCH.fields).length >= 4 && pickerHouse.length === 0, [...txnHouse, ...pickerHouse].join(", "));
+  /* ⛔ AND `USER_SEARCH` IS UNCHANGED BY THE PICKER (ruling 387's Proof, second half — also never built). The
+   * picker needed a grammar of its own; the temptation was to widen the one /admin/players already ships, which
+   * would have changed what a bare token matches on a surface nobody asked to change. Pinned BY VALUE, because the
+   * report cited `test:search-adoption` for this and that suite measures search-box adoption, not byte identity. */
+  ok("4.1b · USER_SEARCH's fields and default are byte-identical to the ones origin/main ships — the picker took a grammar of its own rather than widening the platform's", JSON.stringify(USER_SEARCH.fields) === JSON.stringify({ name: { columns: ["displayName"], kind: "text" }, phone: { columns: ["phoneE164"], kind: "text" }, id: { columns: ["id"], kind: "exact" }, status: { columns: ["status"], kind: "exact" }, role: { columns: ["role"], kind: "exact" }, handle: { columns: ["displayLabel"], kind: "text" } }) && JSON.stringify(USER_SEARCH.default) === JSON.stringify(["id", "phoneE164", "displayName", "displayLabel"]), JSON.stringify({ fields: USER_SEARCH.fields, default: USER_SEARCH.default }));
   const reportsReached = [...reachedRel].filter((p) => p.startsWith("src/lib/server/reports/"));
   ok("4.2 · no report builder module (src/lib/server/reports/) is reachable from a client component", reportsReached.length === 0, reportsReached.join(", "));
 
@@ -276,7 +314,18 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
   const plantedTxn: TxnGrammar = { fields: { ...TXN_SEARCH.fields, house: { columns: ["houseBotId"] } }, default: [...TXN_SEARCH.default, "houseBotId"] };
   const plantedHouse = houseKeysOf(plantedTxn);
   ok("4.c5 · CONTROL · a planted `house` field, its column and a house default in a TXN_SEARCH copy are each reported by 4.1's own measure", plantedHouse.length === 3, plantedHouse.join(", "));
+  // ⛔ AND THE SAME MEASURE OVER THE PICKER'S OWN GRAMMAR — 4.1 now asserts two populations, and a control that
+  // exercised only one would leave the second's zero unproved, which is the population trap in miniature.
+  const plantedPicker: TxnGrammar = { fields: { ...ACCOUNT_PICKER_SEARCH.fields, house: { columns: ["houseStake"] } }, default: [...ACCOUNT_PICKER_SEARCH.default, "houseBotId"] };
+  const plantedPickerHouse = houseKeysOf(plantedPicker);
+  ok("4.c5b · CONTROL · a planted `house` field, its column and a house default in an ACCOUNT_PICKER_SEARCH copy are each reported by the SAME measure", plantedPickerHouse.length === 3, plantedPickerHouse.join(", "));
 }
+
+// ── §6 · the D19d chatbot guard ──────────────────────────────────────────────────────────────────────
+await runChatbotCases(ok, section, ROOT);
+
+// ── §0-pipe, §5, §8, §docs · the absence suite ───────────────────────────────────────────────────────
+await runAbsenceCases(ok, section, ROOT);
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure: ${pass} passed, ${fail} failed`);
 /**
@@ -286,9 +335,29 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure:
  * with `process.exit(fail === 0 ? 0 : 1)` and nothing else, a run in which EVERY case silently stopped
  * executing printed "ALL PASS — 0 passed, 0 failed" and exited 0.
  * The floor below is the count `npm run test:house-bot-disclosure` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
- * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
+ * only ever RISES, and only to a number a run printed (raised 29 to 31 at C7 step 6's fix pass, when ruling 387's Proof finally got its two halves) — never to an arithmetic guess.
+ * ⭐ RAISED 31 → 66 by Commit 6 step (a), 2026-09-20, when §6 (the D19d chatbot guard) landed: 35 new cases, and the
+ * number below is the one a green run PRINTED, not 31 plus a count of the `ok(` calls someone typed.
+ * ⭐ RAISED 66 → 108 by Commit 6 steps (b) and (c), 2026-09-20, when §0-pipe, §5, §8 and §docs landed (the absence
+ * suite) together with §3's own locale population. Again PRINTED, by the green run recorded in `HOUSE-BOTS.md` §12.
+ * ⭐ RAISED 108 → 109 by the ops-lane integration pass, 2026-09-21, when 8.4's stale sentence was corrected and
+ * 8.4a — the console label pinned at exactly one occurrence and PROVED a non-writer — was added beside it. The
+ * red that preceded this was 106/2: two cases FAILING, not missing, so the floor was never the thing to move.
+ * ⛔ The floor was NOT lowered to meet the red. 109 is again the number a green run PRINTED, on this commit.
  */
-const MIN_ASSERTIONS = 29;
+/**
+ * ⭐ 109 → 114, 2026-09-21, IN THE COMMIT THAT MADE THE RUN PRINT 114 — and it was left behind for two
+ * commits before that, which is the part worth recording. `247e5913` added `5.2.c6` (110) and `e1a4aa90`
+ * replaced a shape exemption with the file-keyed `PLAYER_TEXT_REGISTER` and added `5.2.c3b`, `5.2.c6b`,
+ * `5.2.c6c` and `5.2.c6d` (114). The floor stayed at 109 through both.
+ * ⛔ AND THE FIVE UNPROTECTED ASSERTIONS WERE EXACTLY THE WRONG FIVE: `5.2.c3b` (SHRINK-ONLY — the
+ * registered string must still be printed by its own file) plus `5.2.c6`/`c6b`/`c6c`/`c6d`, which ARE the
+ * narrowness proof of that exemption. All five could have stopped running while this suite printed ALL PASS
+ * and exited 0, and it is a predeploy gate — so the whole 143-gate chain would have gone green over an
+ * exemption with nothing left watching it. A floor that trails the assertions it protects is not a ratchet.
+ * ⛔ 114 is what a green run PRINTED on this tree, not 109 + 5.
+ */
+const MIN_ASSERTIONS = 114;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

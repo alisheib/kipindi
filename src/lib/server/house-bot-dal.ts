@@ -352,8 +352,22 @@ export type IntentFeedFilter = {
   fromIso?: string;
   toIso?: string;
   cursor?: KeysetCursor | null;
+  /**
+   * ⭐ C7 STEP 5 (ruling 345). `AdminPagination` draws a NUMBERED `?page=N` link for every page in its window, so
+   * the feed's page N must be reachable without walking N−1 cursors. `offset` is what makes that link resolve.
+   * ⛔ It does not replace the cursor: both twins still order by `("createdAt","id") DESC` and a cursor read is
+   * still what the engine's own walkers use. A caller passes one or the other.
+   */
+  offset?: number;
   limit: number;
 };
+
+/**
+ * What `countFeed` takes: the feed's population WITHOUT any of the three paging words (ruling 345).
+ * ⛔ Stated as an `Omit` of the filter itself, deliberately — a hand-copied twin of the facet list is how a badge
+ * ends up counting a different population from the rows beside it, which is the whole defect 344 and 345 exist for.
+ */
+export type IntentFeedCount = Omit<IntentFeedFilter, "cursor" | "limit" | "offset">;
 
 export type PressRegisterFilter = {
   fromIso: string;
@@ -1289,6 +1303,13 @@ function toHouseBotPress(r: any): StoredHouseBotPress {
 // and the memory twin mirrors the predicate. A `tx` joins the caller's lock transaction; without
 // one the statement autocommits.
 
+/**
+ * The TERMINAL off cause (F2). Spelled once, typed as `OffCause`, and used by both `markSunset` twins and by
+ * their predicates — so if the string ever left `OFF_CAUSES` (or the CHECK that mirrors it), this file stops
+ * compiling instead of writing a cause the database refuses at run time.
+ */
+const SUNSET_CAUSE: OffCause = "SUNSET";
+
 export interface HouseBotControlStore {
   /** Fresh read of the `global` row. A missing row throws `HouseSchemaNotReady`. */
   get(tx?: HouseTx): Promise<StoredHouseBotControl>;
@@ -1298,6 +1319,26 @@ export interface HouseBotControlStore {
    * no second SWITCH_OFF event (two workers faulting at once produce one).
    */
   switchOff(input: { cause: OffCause; byId: string | null; reason: string | null }): Promise<StoredHouseBotControl | null>;
+  /**
+   * F2 SUNSET: OFF with the TERMINAL cause, written in autocommit under no lock.
+   *
+   * ⛔ NOT `switchOff({ cause: "SUNSET" })`, AND THAT IS THE WHOLE REASON THIS MEMBER EXISTS. `switchOff` is
+   * conditional on `"enabled" = true`, and that predicate is load-bearing: it is what makes two workers faulting
+   * at once write ONE event and one alert, and `kill-switch.ts` depends on the null to return ALREADY_OFF. On
+   * today's SHIPPED state the control row is `enabled BOOLEAN NOT NULL DEFAULT false` and was inserted with its
+   * defaults, so the desk is OFF with `offCause` NULL — and `switchOff` there matches NOTHING. A sunset run
+   * through it would remove every bot and end every target while leaving no terminal marker, `switch-on.ts`'s
+   * WITHDRAWN refusal would never fire, and any admin could switch a stripped desk back on.
+   *
+   * Conditional on `"offCause" IS DISTINCT FROM 'SUNSET'` instead, so it lands from EITHER starting state (ON,
+   * or OFF for any other cause) and a second run changes nothing and returns null. ⛔ The memory twin mirrors
+   * that predicate exactly — `IS DISTINCT FROM` is true for a NULL `offCause`, which is precisely the shipped
+   * state it has to move.
+   *
+   * ⛔ IRREVERSIBLE BY DESIGN. There is no member that clears `offCause = 'SUNSET'`: the state this writes is
+   * the one state `switchOnHouseBots` refuses (`switch-on.ts`, code WITHDRAWN). Nothing here turns anything on.
+   */
+  markSunset(input: { byId: string | null; reason: string | null }): Promise<StoredHouseBotControl | null>;
   /**
    * ON, conditional on OFF; clears `offCause`. Null means it was already on. ⛔ The same transaction writes
    * `global.scopeFrom = now()` (04 A11, C4-SPEC ruling 92): a switch-on that left scope NULL would put every stake out
@@ -1424,6 +1465,37 @@ export interface HouseBotEventStore {
    */
   drawOpenerSide(input: { marketId: string; houseBotId: string | null; side: IntentSide; actorId: string | null; drawnFor: OpenerDrawnFor }): Promise<{ side: IntentSide; eventId: string; drawn: boolean }>;
   findOpenerDraw(marketId: string, tx?: HouseTx): Promise<StoredHouseBotEvent | null>;
+  /**
+   * ⭐ THE CONSOLE'S HISTORY TAB (C7 step 5, ruling 317). EVERY bot's events and the control row's together,
+   * newest first, `offset`-paged for a numbered pager.
+   * ⛔ IT IS NOT `listByBot` WITH A WIDER SCOPE AND IT IS NOT A CAPPED `listByKinds`. `listByBot` is keyset-paged,
+   * and `Pagination` requires a `total` that a keyset reader structurally cannot give (ruling 317); a cap presented
+   * as a page is a list that silently ends, and these events are the only durable record of who switched what.
+   *
+   * ⭐ `houseBotId` IS THE ACCOUNT PAGE'S OWN FACET (C7 step 5, the account half), AND IT IS A FACET OF THE SHARED
+   * PREDICATE RATHER THAN A SECOND READER. The account page's history is the same list narrowed to one record and
+   * it needs the same `total` for the same numbered pager, so narrowing `listByBot` would have meant a keyset
+   * reader with no total — the exact shape ruling 317 refuses one paragraph above. ⛔ It narrows `countAll` by the
+   * SAME word through the SAME predicate function (`memEventMatches` / `eventWhere`), which is what keeps the
+   * badge, the total and the rows measuring one population (`test:dal-parity` 16.eventsShared, 16.eventsBot).
+   * ⚠️ The control row's own events (`houseBotId: null` — SWITCH_ON, SWITCH_OFF, LIMITS_SAVED, SUNSET) fall OUT of
+   * a narrowed read, and that is correct: they are the desk's events, not the account's.
+   *
+   * ⭐ `fromIso` IS THE ANCHOR'S FACET, AND IT EXISTS SO A BELL LANDS ON THE RIGHT PAGE. A delivered alert links to
+   * `?tab=history&event=<id>`; under a NUMBERED pager that link can only be honoured by counting the rows at or
+   * newer than that event and turning the rank into a page number. ⛔ That is a COUNT of the same population, which
+   * is why the facet is a word of the shared predicate and not a second ordering: a rank measured over a different
+   * condition from the rows is the 317 defect wearing a different hat. `>=`, matching `feedWhere`'s own `fromIso`
+   * so the two panels resolve an anchor by one rule.
+   */
+  listAll(opts: { limit: number; offset?: number; kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
+  /**
+   * That list's population, from ONE named predicate shared with `listAll` in each twin — `memEventMatches` in
+   * memory, `eventWhere` on Postgres (ruling 317, pinned by `test:dal-parity` 16.eventsShared).
+   * ⛔ A counting reader, never `listAll(...).length`: `pageLimit` clamps the page to 500 and the count must not be
+   * clamped with it (ruling 344).
+   */
+  countAll(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }, tx?: HouseTx): Promise<number>;
 }
 
 export interface HouseBotIntentStore {
@@ -1521,8 +1593,18 @@ export interface HouseBotIntentStore {
    * `test:dal-parity` holds.
    */
   staffChosenPlacedToday(input: { houseBotId: string | null; dayKey?: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
-  /** The activity feed, newest first, keyset-paged (C7). */
+  /** The activity feed, newest first, keyset-paged, and `offset`-paged for a numbered pager (C7, ruling 345). */
   listFeed(filter: IntentFeedFilter, tx?: HouseTx): Promise<Page<StoredHouseBotIntent>>;
+  /**
+   * ⭐ THE ACTIVITY FEED'S POPULATION (C7 step 5, ruling 345). The count badge on the `activity` tab and the
+   * `total` its `AdminPagination` requires both come from here.
+   * ⛔ IT SHARES ONE NAMED PREDICATE WITH `listFeed` IN EACH TWIN — `memFeedMatches` in memory, `feedWhere` on
+   * Postgres (ruling 177's shape, pinned by `test:dal-parity` 16.feedShared). A count whose condition is written a
+   * second time is a badge that can disagree with the rows underneath it on the same screen.
+   * ⛔ AND IT IS A COUNTING READER, NEVER A PAGED ONE (ruling 344): `pageLimit` clamps every page to 500, so a
+   * total assembled from `listFeed` rows is a confident wrong number that links a pager at pages nothing serves.
+   */
+  countFeed(filter: IntentFeedCount, tx?: HouseTx): Promise<number>;
 }
 
 export interface HouseBotTargetStore {
@@ -1606,6 +1688,20 @@ export interface HouseBookStore {
   dayRows(input: { fromIso: string; toIso: string; houseBotId: string | null }, tx?: HouseTx): Promise<HouseBookRawRow[]>;
   /** Open stake per bot right now. */
   openExposure(houseBotId: string | null, tx?: HouseTx): Promise<Array<{ houseBotId: string; openStakeTzs: number }>>;
+  /**
+   * Open house stake per MARKET right now, with how many distinct bots hold it — ordered by `marketId`.
+   *
+   * ⛔ A DIFFERENT POPULATION FROM `openExposure`, NOT A RELABELLING OF IT. That one groups by BOT and
+   * `HouseMarketUsage` covers ONE market, so F2's audit payload key `openExposureByMarket` (already allowlisted
+   * in `HOUSE_AUDIT_PAYLOAD_KEYS`) and FS-06's "TZS X across N markets" alert have no number behind them today.
+   * The two answers differ whenever one bot stakes two markets or two bots stake one, which is why the suite
+   * asserts they DIFFER on the same fixture: otherwise this could be the old member wearing a new name.
+   *
+   * ⛔ ONE STATEMENT FOR THE WHOLE BOOK, never a per-market loop — the seam's shape rule, and the reason
+   * `Position_marketId_marked_idx` exists. `bots` is `count(DISTINCT "houseBotId")`, so a market one bot staked
+   * three times reads 1.
+   */
+  openExposureByMarket(tx?: HouseTx): Promise<Array<{ marketId: string; openStakeTzs: number; bots: number }>>;
 }
 
 /** One bot's PLACED rows in a window (hourly summaries, C4-SPEC ruling 80). Staff-chosen = MANUAL or targeted. */
@@ -2022,6 +2118,16 @@ const memoryHouseBotControl: HouseBotControlStore = {
       enabled: false, offCause: input.cause, switchedAt: nowIso(), switchedById: input.byId, switchedReason: input.reason,
     });
   },
+  async markSunset(input) {
+    memSeed();
+    const cur = memControl.get(HOUSE_CONTROL_ID)!;
+    // The Postgres predicate, mirrored: `"offCause" IS DISTINCT FROM 'SUNSET'` — true for NULL, which is the
+    // shipped state this has to move, and false only once the terminal marker is already there.
+    if (cur.offCause === SUNSET_CAUSE) return null;
+    return memUpdate("HouseBotControl", cur, {
+      enabled: false, offCause: SUNSET_CAUSE, switchedAt: nowIso(), switchedById: input.byId, switchedReason: input.reason,
+    });
+  },
   async switchOn(input) {
     memSeed();
     // One synchronous body: the control write and the scope start land together (ruling 92).
@@ -2288,6 +2394,20 @@ const memoryHouseBotAlertOnce: HouseBotAlertOnceStore = {
   },
 };
 
+/**
+ * ⭐ THE HISTORY TAB'S ONE PREDICATE, MEMORY SIDE (C7 step 5, ruling 317; ruling 177's shape).
+ * `listAll` and `countAll` both derive their population from here and nowhere else. ⛔ Writing the condition a
+ * second time inside the count is exactly what `test:dal-parity` 16.eventsShared reports: a pager whose total was
+ * measured over a different population than its rows links at pages that render nothing.
+ */
+function memEventMatches(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }): (e: StoredHouseBotEvent) => boolean {
+  const kinds: readonly string[] | undefined = opts.kinds;
+  return (e) =>
+    (!kinds || kinds.includes(e.kind))
+    && (opts.houseBotId === undefined || e.houseBotId === opts.houseBotId)
+    && (opts.fromIso === undefined || ms(e.createdAt) >= ms(opts.fromIso));
+}
+
 const memoryHouseBotEvents: HouseBotEventStore = {
   async append(e) {
     return memWrite("HouseBotEvent", { ...e, id: newHouseId("event"), auditId: null, createdAt: nowIso() }, "insert");
@@ -2306,6 +2426,16 @@ const memoryHouseBotEvents: HouseBotEventStore = {
     const kinds: readonly string[] | undefined = opts.kinds;
     return memPage([...memEvents.values()].filter((e) => e.houseBotId === houseBotId && (!kinds || kinds.includes(e.kind))),
       opts.cursor, opts.limit);
+  },
+  async listAll(opts) {
+    return [...memEvents.values()]
+      .filter(memEventMatches(opts))
+      .sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+      .slice(wholeArg("offset", opts.offset ?? 0), wholeArg("offset", opts.offset ?? 0) + pageLimit(opts.limit))
+      .map(clone);
+  },
+  async countAll(opts) {
+    return [...memEvents.values()].filter(memEventMatches(opts)).length;
   },
   async listByKinds(kinds, opts) {
     const want: readonly string[] = kinds;
@@ -2376,6 +2506,26 @@ function anchorConflictSql(kind: IntentKind): string {
 
 /** A planner scan row's market is out of every house scope when its title marks a demo (`isDemoMarket`'s prefix). */
 const DEMO_PREFIX = "Demo · ";
+
+/**
+ * ⭐ THE ACTIVITY FEED'S ONE PREDICATE, MEMORY SIDE (C7 step 5, ruling 345; ruling 177's shape).
+ * `listFeed` and `countFeed` both derive their population from here. ⛔ The six facets live in ONE place because
+ * the count badge and the rows it sits above are read separately: a condition written twice is a badge that says
+ * 41 over a table that can only ever show 38, and nothing on the screen reveals which one is wrong.
+ * `test:dal-parity` 16.feedShared pins that both members name this function.
+ */
+function memFeedMatches(filter: IntentFeedCount): (i: StoredHouseBotIntent) => boolean {
+  const kinds: readonly string[] | undefined = filter.kinds;
+  const statuses: readonly string[] | undefined = filter.statuses;
+  return (i) =>
+    (filter.houseBotId === undefined || i.houseBotId === filter.houseBotId)
+    && (filter.productLine === undefined || i.productLine === filter.productLine)
+    && (!kinds || kinds.includes(i.kind))
+    && (!statuses || statuses.includes(i.status))
+    && (filter.targetId === undefined || i.targetId === filter.targetId)
+    && (filter.fromIso === undefined || ms(i.createdAt) >= ms(filter.fromIso))
+    && (filter.toIso === undefined || ms(i.createdAt) < ms(filter.toIso));
+}
 
 const memoryHouseBotIntents: HouseBotIntentStore = {
   async insert(row) {
@@ -2598,16 +2748,10 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
     });
   },
   async listFeed(filter) {
-    const kinds: readonly string[] | undefined = filter.kinds;
-    const statuses: readonly string[] | undefined = filter.statuses;
-    return memPage([...memIntents.values()].filter((i) =>
-      (filter.houseBotId === undefined || i.houseBotId === filter.houseBotId)
-      && (filter.productLine === undefined || i.productLine === filter.productLine)
-      && (!kinds || kinds.includes(i.kind))
-      && (!statuses || statuses.includes(i.status))
-      && (filter.targetId === undefined || i.targetId === filter.targetId)
-      && (filter.fromIso === undefined || ms(i.createdAt) >= ms(filter.fromIso))
-      && (filter.toIso === undefined || ms(i.createdAt) < ms(filter.toIso))), filter.cursor, filter.limit);
+    return memPage([...memIntents.values()].filter(memFeedMatches(filter)), filter.cursor, filter.limit, filter.offset ?? 0);
+  },
+  async countFeed(filter) {
+    return [...memIntents.values()].filter(memFeedMatches(filter)).length;
   },
 };
 
@@ -2848,6 +2992,18 @@ const memoryHouseBook: HouseBookStore = {
       acc.set(p.houseBotId, (acc.get(p.houseBotId) ?? 0) + p.stake);
     }
     return [...acc.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([id, openStakeTzs]) => ({ houseBotId: id, openStakeTzs }));
+  },
+  async openExposureByMarket() {
+    const acc = new Map<string, { openStakeTzs: number; bots: Set<string> }>();
+    for (const p of await positionStore.values()) {
+      if (p.houseBotId == null || p.status !== "OPEN") continue;
+      const row = acc.get(p.marketId) ?? { openStakeTzs: 0, bots: new Set<string>() };
+      row.openStakeTzs += p.stake;
+      row.bots.add(p.houseBotId);
+      acc.set(p.marketId, row);
+    }
+    return [...acc.entries()].sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([marketId, r]) => ({ marketId, openStakeTzs: r.openStakeTzs, bots: r.bots.size }));
   },
 };
 
@@ -3187,6 +3343,21 @@ const prismaHouseBotControl: HouseBotControlStore = {
     const rows = await sql(null, text, p.values);
     return rows[0] ? toHouseBotControl(rows[0]) : null;
   },
+  async markSunset(input) {
+    const p = new Params();
+    // ⛔ ONE placeholder for the cause, used by the SET and by the predicate, so the value written and the value
+    // tested can never drift apart in a later edit.
+    const sunset = p.col("HouseBotControl", "offCause", SUNSET_CAUSE);
+    const text = updateSql("HouseBotControl", [
+      `"enabled" = false`,
+      `"offCause" = ${sunset}`,
+      `"switchedAt" = now()`,
+      `"switchedById" = ${p.col("HouseBotControl", "switchedById", input.byId)}`,
+      `"switchedReason" = ${p.col("HouseBotControl", "switchedReason", input.reason)}`,
+    ], `"id" = ${p.raw(HOUSE_CONTROL_ID, "text")} AND "offCause" IS DISTINCT FROM ${sunset}`);
+    const rows = await sql(null, text, p.values);
+    return rows[0] ? toHouseBotControl(rows[0]) : null;
+  },
   async switchOn(input, tx) {
     const p = new Params();
     const text = updateSql("HouseBotControl", [
@@ -3462,6 +3633,20 @@ const prismaHouseBotAlertOnce: HouseBotAlertOnceStore = {
   },
 };
 
+/**
+ * ⭐ THE HISTORY TAB'S ONE PREDICATE, POSTGRES SIDE (C7 step 5, ruling 317; ruling 177's shape).
+ * `listAll` and `countAll` both build their `WHERE` from here, into the SAME `Params` the caller passes.
+ * ⛔ The pager's `total` and the rows it pages are the one place a second-written condition is invisible: the
+ * numbers agree on page 1 and disagree only at the end of the list. `test:dal-parity` 16.eventsShared pins it.
+ */
+function eventWhere(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }, p: Params): string[] {
+  const where: string[] = [];
+  if (opts.kinds) where.push(`"kind" = ANY(${p.raw([...opts.kinds], "text[]")})`);
+  if (opts.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(opts.houseBotId, "text")}`);
+  if (opts.fromIso !== undefined) where.push(`"createdAt" >= ${p.col("HouseBotEvent", "createdAt", opts.fromIso)}`);
+  return where;
+}
+
 const prismaHouseBotEvents: HouseBotEventStore = {
   async append(e, tx) {
     const p = new Params();
@@ -3483,6 +3668,20 @@ const prismaHouseBotEvents: HouseBotEventStore = {
     const where = [`"houseBotId" = ${p.raw(houseBotId, "text")}`];
     if (opts.kinds) where.push(`"kind" = ANY(${p.raw([...opts.kinds], "text[]")})`);
     return sqlPage(tx, "HouseBotEvent", where, p, opts.cursor, opts.limit, toHouseBotEvent);
+  },
+  async listAll(opts, tx) {
+    const p = new Params();
+    const where = eventWhere(opts, p);
+    const text = `SELECT * FROM "HouseBotEvent" WHERE ${where.length ? where.join(" AND ") : "true"}`
+      + ` ORDER BY "createdAt" DESC, "id" DESC LIMIT ${p.raw(pageLimit(opts.limit), "int")}`
+      + ` OFFSET ${p.raw(wholeArg("offset", opts.offset ?? 0), "int")}`;
+    return (await sql(tx, text, p.values)).map(toHouseBotEvent);
+  },
+  async countAll(opts, tx) {
+    const p = new Params();
+    const where = eventWhere(opts, p);
+    const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE ${where.length ? where.join(" AND ") : "true"}`, p.values);
+    return Number(rows[0]?.n ?? 0);
   },
   async listByKinds(kinds, opts, tx) {
     const p = new Params();
@@ -3539,6 +3738,26 @@ async function staffChosenSums(tx: HouseTx | undefined, houseBotId: string | nul
   const rows = await sql(tx, `SELECT count(*)::int AS "n", coalesce(sum("stakeTzs"), 0)::text AS "tzs"`
     + ` FROM "HouseBotIntent" WHERE ${where.join(" AND ")}`, p.values);
   return { count: Number(rows[0]?.n ?? 0), stakeTzs: Number(rows[0]?.tzs ?? 0) };
+}
+
+/**
+ * ⭐ THE ACTIVITY FEED'S ONE PREDICATE, POSTGRES SIDE (C7 step 5, ruling 345; ruling 177's shape).
+ * `listFeed` and `countFeed` both build their `WHERE` from here, binding into the SAME `Params` the caller
+ * passes — so the count and the page are measured over one condition with one set of bound values.
+ * ⛔ Each facet is a plain predicate, never `$n IS NULL OR …`, for the reason `staffChosenSums` above states:
+ * a three-valued disjunction hides the index from the planner. `test:dal-parity` 16.feedShared pins both members
+ * onto this function.
+ */
+function feedWhere(filter: IntentFeedCount, p: Params): string[] {
+  const where: string[] = [];
+  if (filter.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(filter.houseBotId, "text")}`);
+  if (filter.productLine !== undefined) where.push(`"productLine" = ${p.raw(filter.productLine, "text")}`);
+  if (filter.kinds) where.push(`"kind" = ANY(${p.raw([...filter.kinds], "text[]")})`);
+  if (filter.statuses) where.push(`"status" = ANY(${p.raw([...filter.statuses], "text[]")})`);
+  if (filter.targetId !== undefined) where.push(`"targetId" = ${p.raw(filter.targetId, "text")}`);
+  if (filter.fromIso !== undefined) where.push(`"createdAt" >= ${p.col("HouseBotIntent", "createdAt", filter.fromIso)}`);
+  if (filter.toIso !== undefined) where.push(`"createdAt" < ${p.col("HouseBotIntent", "createdAt", filter.toIso)}`);
+  return where;
 }
 
 const prismaHouseBotIntents: HouseBotIntentStore = {
@@ -3804,15 +4023,13 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
   },
   async listFeed(filter, tx) {
     const p = new Params();
-    const where: string[] = [];
-    if (filter.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(filter.houseBotId, "text")}`);
-    if (filter.productLine !== undefined) where.push(`"productLine" = ${p.raw(filter.productLine, "text")}`);
-    if (filter.kinds) where.push(`"kind" = ANY(${p.raw([...filter.kinds], "text[]")})`);
-    if (filter.statuses) where.push(`"status" = ANY(${p.raw([...filter.statuses], "text[]")})`);
-    if (filter.targetId !== undefined) where.push(`"targetId" = ${p.raw(filter.targetId, "text")}`);
-    if (filter.fromIso !== undefined) where.push(`"createdAt" >= ${p.col("HouseBotIntent", "createdAt", filter.fromIso)}`);
-    if (filter.toIso !== undefined) where.push(`"createdAt" < ${p.col("HouseBotIntent", "createdAt", filter.toIso)}`);
-    return sqlPage(tx, "HouseBotIntent", where, p, filter.cursor, filter.limit, toHouseBotIntent);
+    return sqlPage(tx, "HouseBotIntent", feedWhere(filter, p), p, filter.cursor, filter.limit, toHouseBotIntent, filter.offset ?? 0);
+  },
+  async countFeed(filter, tx) {
+    const p = new Params();
+    const where = feedWhere(filter, p);
+    const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotIntent" WHERE ${where.length ? where.join(" AND ") : "true"}`, p.values);
+    return Number(rows[0]?.n ?? 0);
   },
 };
 
@@ -4062,6 +4279,13 @@ const prismaHouseBook: HouseBookStore = {
       + ` WHERE "houseBotId" IS NOT NULL AND "status"::text = 'OPEN' AND ($1::text IS NULL OR "houseBotId" = $1::text)`
       + ` GROUP BY "houseBotId" ORDER BY "houseBotId"`, [houseBotId]);
     return rows.map((r) => ({ houseBotId: String(r.houseBotId), openStakeTzs: Number(r.open) }));
+  },
+  async openExposureByMarket(tx) {
+    const rows = await sql(tx, `SELECT "marketId" AS "marketId", coalesce(sum("stake"), 0)::text AS "open",`
+      + ` count(DISTINCT "houseBotId")::int AS "bots" FROM "Position"`
+      + ` WHERE "houseBotId" IS NOT NULL AND "status"::text = 'OPEN'`
+      + ` GROUP BY "marketId" ORDER BY "marketId"`, []);
+    return rows.map((r) => ({ marketId: String(r.marketId), openStakeTzs: Number(r.open), bots: Number(r.bots) }));
   },
 };
 

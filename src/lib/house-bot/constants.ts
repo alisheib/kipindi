@@ -113,33 +113,31 @@ export function isRuntimeKey(key: string): boolean {
 // Typed confirmation words (04 C3)
 // ---------------------------------------------------------------------------
 
-export const TYPED_WORD = { BOTS_ON: "BOTS ON", REMOVE: "REMOVE" } as const;
-export type TypedWord = (typeof TYPED_WORD)[keyof typeof TYPED_WORD];
-
 /**
- * The one normaliser for typed words, shared by the modal's arming and the server's re-check.
- * The kit modal arms on `trim().toUpperCase()`, so an inner double space never armed — "bots on",
- * " BOTS  ON " and "remove" arm here; "BOTSON" and "BOT ON" never do.
+ * ⛔ RETIRED 2026-09-20, AND THE RETIREMENT IS ASSERTED RATHER THAN ASSUMED — see
+ * `test:house-bot-rules` §7, which is the same checks in the opposite direction.
+ *
+ * WHAT USED TO BE HERE: `TYPED_WORD` (`BOTS_ON` / `REMOVE`), `normaliseTypedWord`,
+ * `isTypedWord` and `TYPED_WORD_COPY` — an NFKC + whitespace-collapse + upper-case
+ * normaliser for ceremony words, written for C3 and never wired to anything. Measured
+ * before deletion: ZERO callers under `src/`; the only hits in the tree were their own
+ * definitions and a truth table in `test:house-bot-rules` §7 that was GREEN while
+ * measuring a module the product did not contain.
+ *
+ * ⛔ WHY DELETED RATHER THAN ADOPTED — the direction matters, because adopting them was
+ * the other half of the choice and it would have WEAKENED two gates:
+ *   · The shipped ceremonies are `CONSOLE_SWITCH_ON_WORD` ("SWITCH ON") and
+ *     `CONSOLE_REMOVE_WORD` ("REMOVE") in `house-console-read.ts`, and both compare with a
+ *     plain `.trim()` — deliberately, so the word cannot be armed by habit. Routing them
+ *     through `normaliseTypedWord` would have made "switch on", "remove" and " SWITCH  ON "
+ *     all arm, on an irreversible removal and on the master switch of a live money feature.
+ *   · The refusal an officer reads PROMISES capitals — "Type SWITCH ON exactly, in
+ *     capitals, to confirm." — so adopting the normaliser would have made a shipped
+ *     sentence false.
+ *   · `TYPED_WORD.BOTS_ON` was "BOTS ON", a word this product has never used, and
+ *     `TYPED_WORD_COPY.refused` spelled out "…to switch house bots on." — a D19 sentence
+ *     one prop away from a screen, kept alive by nothing but a test.
  */
-export function normaliseTypedWord(s: string): string {
-  return s.normalize("NFKC").trim().replace(/\s+/g, " ").toUpperCase();
-}
-
-export function isTypedWord(s: string, word: TypedWord): boolean {
-  return normaliseTypedWord(s) === word;
-}
-
-const TYPED_WORD_REFUSED: Record<TypedWord, string> = {
-  "BOTS ON": "Type BOTS ON exactly to switch house bots on.",
-  REMOVE: "Type REMOVE exactly.",
-};
-
-/** The arming prompt, the server's refusal (inline on the field below), and that field's name for both forms. */
-export const TYPED_WORD_COPY = {
-  arm: (word: TypedWord) => `Type ${word} to continue`,
-  refused: TYPED_WORD_REFUSED,
-  field: "confirmWord",
-} as const;
 
 // ---------------------------------------------------------------------------
 // Closed lists — each mirrors a migration CHECK exactly
@@ -686,7 +684,14 @@ export const ALERT_KEY = {
    * Hourly summaries, built from PLACED intents (04 C13). The suffix names the hour SUMMARISED — the one just ended
    * (C4-SPEC ruling 80) — not the hour the summary was sent in.
    */
-  summary: (audience: "admins" | "holder", botId: string | "all") => suffixed(`summary:${audience}:${botId}`, "previousHour"),
+  /**
+   * ⛔ THE AUDIENCE IS `"admins"` AND NOTHING ELSE (C4 ruling 149, owner ruling D19c; narrowed in C5-8, 2026-09-21).
+   * It read `"admins" | "holder"` for five commits after the holder's hourly summary was DELETED, so the type went on
+   * describing a recipient the platform must never have. A widened union on a key builder is not harmless: it is an
+   * invitation, and the next caller to accept it would mint a summary key whose audience segment is the holder — a
+   * house-bot notice addressed to the holder, the exact thing D19c forbids. `test:house-bot-rules` §11.27 pins this.
+   */
+  summary: (audience: "admins", botId: string | "all") => suffixed(`summary:${audience}:${botId}`, "previousHour"),
   productDenied: (value: string) => suffixed(`product-denied:${value}`, "day"),
   rulesFuture: (botId: string | "global", version: number) => `rules-future:${botId}:${version}`,
   /** Live stake bounds moved (04 F5): the bot can no longer bet, or a stake is clamped. */
@@ -782,7 +787,15 @@ export const HOUSE_AUDIT_PAYLOAD_KEYS = [
   "changes",
   "counts",
   "eventId",
-  "reason",
+  /* ⛔ "reason" WAS HERE AND IS GONE (C5-6's review, 2026-09-20). This list is what R7 permits in a house audit
+     payload, and it permitted the one key that carried an officer's free text — `press-audit.ts` put
+     `reason: press.reason` into all four of its payloads. The audit log cannot be rewritten (no update, no delete
+     anywhere in src/; every row HMAC-chained), so a holder's name typed into that box outlived the holder's own
+     erasure. This guard tests KEY NAMES and never inspects a value, so permitting the key was permitting the text.
+     ⭐ Removing it is what makes the regression impossible rather than merely fixed: a future payload that adds
+     `reason` back now fails `isAllowedHouseAuditPayload` and the press goes unaudited-and-counted instead of
+     silently recording something erasure cannot reach. The reason still lives on the press row and the event,
+     both rewritten to `[erased]` by `pseudonymiseForUser`. */
   "marketId",
   "intentId",
   "targetId",
@@ -820,7 +833,17 @@ export const HOUSE_AUDIT_FORBIDDEN_KEYS = [
 ] as const;
 
 /** The hint under every reason field that lands in the audit log (R7). */
-export const HOUSE_REASON_HINT = "Kept permanently in the audit log — don't write the holder's name or number.";
+/**
+ * ⚠️ THE SENTENCE WAS TRUE AND IS NOT ANY MORE, so it is reworded rather than left to be wired by a later form
+ * author (C5-6's review, 2026-09-20). The reason no longer reaches the audit log at all — `press-audit.ts` stopped
+ * putting it there because the log cannot be rewritten and erasure could not follow it. It IS still kept on the
+ * press row and the event, which is where a compliance reader finds it and where `pseudonymiseForUser` can rewrite
+ * it to `[erased]`. So the warning stands, for a smaller and truthful reason: an erasure can reach this text, but a
+ * screenshot of it cannot, and a holder's name has no business in an operator's note either way.
+ * ⛔ This constant has NO READER anywhere in src/ or scripts/ — measured. It is wired by the Commit 7 form that
+ * takes the reason, and it must say something true on the day that happens.
+ */
+export const HOUSE_REASON_HINT = "Kept on the record until the account is erased — don't write the holder's name or number.";
 
 /** `changes[].before/after` are numbers or null, except these, which carry their enum strings. */
 const ENUM_CHANGE_FIELDS: readonly string[] = ["timingFrom", "reactTo"];

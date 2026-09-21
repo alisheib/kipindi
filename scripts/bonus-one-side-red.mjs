@@ -48,14 +48,35 @@ if (suiteFails()) {
 }
 console.log("  ✓ CONTROL  the unmutated tree is GREEN — a red below is caused by the mutation\n");
 
-const OPPOSITE = `    const opposite = mine.find((p) => p.status === "OPEN" && p.side !== opts.side);`;
+/**
+ * ⛔ RE-POINTED 2026-09-21, AND ONE OF THESE ANCHORS HAD BEEN DEAD BEFORE ANYONE TOUCHED IT.
+ *
+ * Measured against `src/lib/server/market-service.ts`, not assumed:
+ *   · `wagering-credits-both-sides` resolved 0 times. Its `from` still quoted the pre-house line
+ *     `const wr = opposite ? …`, but the house work added a second suppressor — `opposite || ctx.kind ===
+ *     "house"` — so THE EXPLOIT MUTATION, the one this whole harness exists for, could not fire. Nothing
+ *     caught it: `red:bonus-one-side` is one of the harnesses `red-anchors.test.mts` §4 counts as UNDECLARED,
+ *     so §3 never audits its anchors, and a harness whose anchor cannot inject still exits 0 on the rest.
+ *   · `OPPOSITE` was re-pointed because the predicate now excludes house rows — see the block at
+ *     `market-service.ts:1321`. A house position is not the holder's hedge, and counting it as one
+ *     suppressed the HOLDER'S OWN bonus accrual on their own real-money stake.
+ * ⭐ EVERY `to` BELOW KEEPS `p.houseBotId == null`, so each mutation still varies exactly ONE axis — its own.
+ * A `to` that also dropped the house filter would redden for two reasons at once and prove neither.
+ */
+const OPPOSITE = `    const opposite = mine.find((p) => p.houseBotId == null && p.status === "OPEN" && p.side !== opts.side);`;
 
 const MUTATIONS = [
   {
     name: "wagering-credits-both-sides",
-    why: "⭐ THE EXPLOIT, verbatim as it stood at 8c06517f — every stake accrues, so a 25,000/25,000 hedge on ONE market clears a 10,000 grant's 5x requirement for 3,250 of fee",
-    from: "      const wr = opposite ? { fulfilled: [], creditedToRealTzs: 0 } : await recordWageringLocked(userId, opts.stake, lockTx);",
+    why: "⭐ THE EXPLOIT, verbatim as it stood at 8c06517f — every stake accrues, so a 25,000/25,000 hedge on ONE market clears a 10,000 grant's 5x requirement for 3,250 of fee. ⛔ RE-POINTED: the `from` quoted the pre-house line and had been resolving ZERO times",
+    from: "      const wr = opposite || ctx.kind === \"house\" ? { fulfilled: [], creditedToRealTzs: 0 } : await recordWageringLocked(userId, opts.stake, lockTx);",
     to: "      const wr = await recordWageringLocked(userId, opts.stake, lockTx);",
+  },
+  {
+    name: "house-position-counts-as-the-holders-hedge",
+    why: "⛔ THE DEFECT FIXED 2026-09-21, planted back: drop `p.houseBotId == null` and an OPEN house position on the other side makes `opposite` truthy for the holder's own unmarked real-money stake, so their bonus wagering accrues ZERO — while the documented escape (close the opposite leg) is refused for a house leg, and a later void still REVERSES the turnover that never accrued",
+    from: OPPOSITE,
+    to: `    const opposite = mine.find((p) => p.status === "OPEN" && p.side !== opts.side);`,
   },
   {
     name: "cashout-keeps-the-turnover",
@@ -71,26 +92,26 @@ const MUTATIONS = [
     // verbatim leaves the anchor on disk, and the harness's own "did the mutation land?"
     // check then reports a HARNESS ERROR — correctly. The mutation must replace the line,
     // not append to it.
-    to: `    const opposite = mine.find((p) => (p.status === "OPEN" && p.side !== opts.side));\n`
+    to: `    const opposite = mine.find((p) => (p.houseBotId == null && p.status === "OPEN" && p.side !== opts.side));\n`
       + `    if (opposite) return { ok: false as const, error: "one side per round.", code: "INVALID" as const };`,
   },
   {
     name: "wagering-suppressed-by-ANY-prior-position",
     why: "⚠️ THE OVER-CORRECTION — turnover stops the moment a player holds anything on the market, so an honest player topping up ONE side can never clear a bonus they earned",
     from: OPPOSITE,
-    to: `    const opposite = mine.find((p) => p.status === "OPEN");`,
+    to: `    const opposite = mine.find((p) => p.houseBotId == null && p.status === "OPEN");`,
   },
   {
     name: "opposite-predicate-ignores-position-status",
     why: "⚠️ a CLOSED opposite leg keeps suppressing turnover forever, so cancelling the hedge (the documented escape hatch) never restores credit — the rule becomes a trap",
     from: OPPOSITE,
-    to: `    const opposite = mine.find((p) => p.side !== opts.side);`,
+    to: `    const opposite = mine.find((p) => p.houseBotId == null && p.side !== opts.side);`,
   },
   {
     name: "opposite-predicate-inverted",
     why: "⚠️ the sides swap, so the FIRST side of a market accrues nothing and only the hedge does — the exact inverse of the rule, and green on any check that only counts 'some turnover was suppressed'",
     from: OPPOSITE,
-    to: `    const opposite = mine.find((p) => p.status === "OPEN" && p.side === opts.side);`,
+    to: `    const opposite = mine.find((p) => p.houseBotId == null && p.status === "OPEN" && p.side === opts.side);`,
   },
 ];
 

@@ -35,6 +35,9 @@ import {
   houseAccountActForConsole,
   type ConsoleAccountActInput,
   type ConsoleAccountActResult,
+  houseCancelIntentForConsole,
+  type ConsoleCancelInput,
+  type ConsoleCancelResult,
 } from "@/lib/server/house-console-read";
 import { CONSOLE_ROUTE } from "@/lib/house-bot/console-routes";
 
@@ -47,8 +50,12 @@ import { CONSOLE_ROUTE } from "@/lib/house-bot/console-routes";
  * that says plainly that nothing may have applied.
  */
 export async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promise<ConsoleLimitsSaveResult> {
-  const session = await currentSession();
+  /* ⛔ THE SESSION READ IS INSIDE THE TRY (C7 step 6 review d19-hunt-10, applied to the other three at C7 step 7
+     review d19-hunt-05). It sat above it, so the one failure the catch exists to turn into a shape — a read that
+     throws — was the one failure that could still throw the action. The gated door treats an absent viewer as
+     refused, so nothing else changes. */
   try {
+    const session = await currentSession();
     const result = await houseLimitsSaveForConsole(session?.userId ?? null, "/admin/desk", input);
     /* Only a save that LANDED invalidates the render; a refusal changed nothing and must not make the officer's
        own typing disappear under a fresh server payload. */
@@ -73,14 +80,25 @@ export async function saveDeskLimitsAction(input: ConsoleLimitsSaveInput): Promi
  * not wipe the reason the officer has just typed out from under them.
  */
 export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<ConsoleSwitchResult> {
-  const session = await currentSession();
+  /* ⛔ THE SESSION READ IS INSIDE THE TRY (C7 step 6 review d19-hunt-10, applied to the other three at C7 step 7
+     review d19-hunt-05). It sat above it, so the one failure the catch exists to turn into a shape — a read that
+     throws — was the one failure that could still throw the action. The gated door treats an absent viewer as
+     refused, so nothing else changes. */
+  /* ⛔ ONLY WHAT CAN FAIL BEFORE THE ACT IS INSIDE THE TRY THAT SAYS NOTHING CHANGED (the shape
+     `designateDeskAccountAction` already carries, extended here at the C7 step 7 review). `revalidatePath` sat
+     inside it, so a throw from the REVALIDATION — after the ceremony had already landed — reported the exact
+     opposite of the truth on the one control that starts money. */
+  let result: ConsoleSwitchResult;
   try {
-    const result = await houseSwitchForConsole(session?.userId ?? null, "/admin/desk", input);
-    if (result.ok && result.changed) revalidatePath(CONSOLE_ROUTE);
-    return result;
+    const session = await currentSession();
+    result = await houseSwitchForConsole(session?.userId ?? null, "/admin/desk", input);
   } catch (err) {
     return { ok: false, error: safeError(err, "Nothing changed. Reload the page and try again.") };
   }
+  if (result.ok && result.changed) {
+    try { revalidatePath(CONSOLE_ROUTE); } catch { /* the switch landed; a stale strip is the smaller harm */ }
+  }
+  return result;
 }
 
 /**
@@ -94,15 +112,61 @@ export async function setDeskSwitchAction(input: ConsoleSwitchInput): Promise<Co
  * saying two things at once — the class 432(n) refuses within one screen, here across two.
  */
 export async function runDeskAccountAction(input: ConsoleAccountActInput): Promise<ConsoleAccountActResult> {
-  const session = await currentSession();
+  /* ⛔ THE SESSION READ IS INSIDE THE TRY (C7 step 6 review d19-hunt-10, applied to the other three at C7 step 7
+     review d19-hunt-05). It sat above it, so the one failure the catch exists to turn into a shape — a read that
+     throws — was the one failure that could still throw the action. The gated door treats an absent viewer as
+     refused, so nothing else changes. */
+  /* ⛔ AND THE REVALIDATION IS OUTSIDE THAT TRY, for the same reason as the ceremony above: Pause and Remove have
+     already landed by then, and "Nothing changed" would be the opposite of the truth. */
+  let result: ConsoleAccountActResult;
   try {
-    const result = await houseAccountActForConsole(session?.userId ?? null, "/admin/desk", input);
-    if (result.ok && result.changed) {
-      revalidatePath(CONSOLE_ROUTE);
-      revalidatePath(`${CONSOLE_ROUTE}/${input.id}`);
-    }
-    return result;
+    const session = await currentSession();
+    result = await houseAccountActForConsole(session?.userId ?? null, "/admin/desk", input);
   } catch (err) {
     return { ok: false, error: safeError(err, "Nothing changed. Reload the page and try again.") };
   }
+  if (result.ok && result.changed) {
+    try {
+      revalidatePath(CONSOLE_ROUTE);
+      revalidatePath(`${CONSOLE_ROUTE}/${input.id}`);
+    } catch { /* the act landed; a stale roster is the smaller harm */ }
+  }
+  return result;
+}
+
+/**
+ * ⭐ STOP ONE QUEUED STAKE — the desk's first write to the press table (C7-SPEC ruling 415; 04 N1 §2 press flow).
+ *
+ * ⛔ A FOURTH EXPORT, NOT A FOURTH `act` ON `runDeskAccountAction`. That door's `ConsoleAccountActInput` union is
+ * START / PAUSE / REVERIFY / REMOVE and every one of them addresses an ACCOUNT; this addresses one intent and
+ * carries a press's own idempotency key, which that union has no room for. Folding it in would have meant one
+ * door with two subjects and a shape that is half-ignored on every call.
+ *
+ * ⛔ THE GATE IS INSIDE THE DOOR (rulings 522, 523), and it is the FIRST thing the door does — this file resolves
+ * the session, hands a USER ID to the one named writer and takes no decision of its own: it reads no role, names
+ * no store and names no column.
+ *
+ * ⛔ THE EXPORT NAME AND ITS GUARD LABEL CARRY NO HOUSE WORD (ruling 382), while the AUDIT key the service writes
+ * is deliberately not renamed: membership in `HOUSE_AUDIT` is what keeps the row out of a player's own audit read.
+ *
+ * ⛔ A REFUSAL IS NOT A REVALIDATION, and the revalidation is OUTSIDE the try that says nothing changed — the
+ * stake has already been stopped by then, and "Nothing was stopped" would be the opposite of the truth.
+ */
+export async function cancelDeskIntentAction(input: ConsoleCancelInput): Promise<ConsoleCancelResult> {
+  /* ⛔ THE SESSION READ IS INSIDE THE TRY (C7 step 6 review d19-hunt-10): it sat above it on the other three, so
+     the one failure the catch exists to turn into a shape — a read that throws — was the one that could still
+     throw the action. The gated door treats an absent viewer as refused, so nothing else changes. */
+  let result: ConsoleCancelResult;
+  try {
+    const session = await currentSession();
+    result = await houseCancelIntentForConsole(session?.userId ?? null, "/admin/desk", input);
+  } catch (err) {
+    return { ok: false, error: safeError(err, "Nothing was stopped. Reload the page and try again.") };
+  }
+  if (result.ok && result.changed) {
+    /* The desk's own page: the rail's queued-stake badge, the activity table and the band all come back from the
+       same next read, so none of them can disagree with the row the officer has just stopped. */
+    try { revalidatePath(CONSOLE_ROUTE); } catch { /* the cancel landed; a stale table is the smaller harm */ }
+  }
+  return result;
 }

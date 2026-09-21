@@ -25,12 +25,12 @@
 | Agent application — the decision record | **7 years** | Decision | POCA Cap 423 §16 (a vetted business partner is a CDD subject) | **Never deleted.** Referee names/contacts and officer free text are pseudonymised immediately on erasure (§2b) | `AgentApplication` |
 | Agent application — the APPLICANT's own documents (CV, letters, fee receipt) | **7 years** if approved (CDD) · **90 days** if refused/lapsed | Decision | POCA Cap 423 §16 (approved) · PDPA 2022 §15 (refused — no relationship to justify longer) | ✅ **Code** — `retention.purge.daily` destroys the bytes on the clock (`AGENT_APPROVED_DOC_HOLD_YEARS` / `AGENT_REJECTED_DOC_HOLD_DAYS`); erasure destroys them under the same 7-year gate as KYC images. Rows stay as tombstones (`purgedAt`) | `AgentApplicationDocument`, R2 `50pick-kyc` (prefix `kyc/agentapp/`) |
 | 🔴 Referee national-ID scans — **third-party data** | **90 days** | Decision (⛔ never `User.closedAt` — a referee has no account) | PDPA 2022 §15 — the referee is not our customer; lawful basis is the applicant's attestation of consent, recorded at submission | ✅ **Code** — `retention.purge.daily` (`AGENT_REFEREE_DOC_HOLD_DAYS`); destroyed **immediately** on rejection. ⭐ A referee has no login to invoke erasure: the DSAR route is the DPO contact on `/legal/privacy`, and an officer may destroy a named application's referee scans on request | `AgentApplicationDocument` (`thirdParty = true`) |
-| House-bot designation and consent record | **7 years** | Removal | POCA Cap 423 §16 (the record behind marked positions) | **Never deleted.** Label, note and free-text reasons are pseudonymised on erasure (§2b) ⏳ lands in build commit 3 | `HouseBot`, `HouseBotEvent` |
+| House-bot designation and consent record | **7 years** | Removal | POCA Cap 423 §16 (the record behind marked positions) | **Never deleted.** Label, note and free-text reasons are pseudonymised on erasure (§2b) ✅ **built** — `houseBotStore.pseudonymiseForUser`, both stores | `HouseBot`, `HouseBotEvent` |
 | House-bot decisions (each stake, each trigger not countered, penalty-box entries) | **7 years** | Decision | POCA Cap 423 §16; GBT evidence | **Never deleted**; id handles only, never names | `HouseBotIntent`, `HouseBotEvent` |
 | House-bot targets (decision record) | **7 years** | Decision | POCA Cap 423 §16 (decision record) | **Never deleted** | `HouseBotTarget` |
-| House-bot presses (officer decision record) | **7 years** | Press | POCA Cap 423 §16; GBT evidence | **Never deleted**; officer data, never in the holder's export; reason pseudonymised on erasure (§2b) ⏳ lands in build commit 3 | `HouseBotPress` |
-| House-bot alert throttles | **30 days** | Creation | Operational only | 📋 Policy — ⏳ lands in build commit 4 as `retention.purge.daily` (`HOUSEBOT_ALERT_ONCE_RETENTION_DAYS`) | `HouseBotAlertOnce` |
-| House-bot runtime counters | ⛔ **N/A** — fixed rows overwritten in place; per-instance engine rows (`engine:*`, `beat:poller:*`) deleted after 24 h | — | — | ⏳ lands in build commit 4 (planner `pruneInstanceRows`) | `HouseBotRuntime` |
+| House-bot presses (officer decision record) | **7 years** | Press | POCA Cap 423 §16; GBT evidence | **Never deleted**; officer data, **never in any releasable export** (neither the player's "Export my data" nor the officer's DSAR bundle — D19, C5-SPEC rulings 168–170); reason pseudonymised on erasure (§2b) ✅ **built** — `HouseBotPress."reason" → [erased]` in both stores | `HouseBotPress` |
+| House-bot alert throttles | **30 days** | Creation | Operational only | ✅ **Code** — `retention.purge.daily` purges them in batches (`HOUSEBOT_ALERT_ONCE_RETENTION_DAYS`, imported and called at `retention.ts`) | `HouseBotAlertOnce` |
+| House-bot runtime counters | ⛔ **N/A** — fixed rows overwritten in place; per-instance engine rows (`engine:*`, `beat:poller:*`) deleted after 24 h | — | — | ✅ **Code** — the planner's hourly duties call `houseBotRuntimeStore.pruneInstanceRows()` | `HouseBotRuntime` |
 | In-app notifications | **180 days** | Creation | Operational only | ✅ **Code** — `retention.purge.daily` | `Notification` |
 | OTP code hashes | **30 days** | Issue | Operational only | ✅ **Code** — `retention.purge.daily` | `Otp` |
 | First-party visit counts (daily totals per page and per source) | **400 days** | The EAT day counted | Not personal data — no identifier, IP, user-agent or cookie is stored (Privacy §2 "Visit counts"); the period bounds size | ✅ **Code** (2026-09-15) — `retention.purge.daily` (`SITE_VISIT_RETENTION_DAYS`, `src/lib/server/site-visits.ts`) | `SiteVisitPage`, `SiteVisitSource` |
@@ -97,9 +97,9 @@ months and break on the day somebody "tightened" it.
 
 | | When | What |
 |---|---|---|
-| ① Immediate | on fulfilment | **`User`** — email, verified-at, password hash + salt, display name, dob, region, avatar, last-login → NULL; `phoneE164` → `erased:<userId>` tombstone; `marketingOptIn` → false. **`KycSubmission`, every submission and not just the newest** — number → its keyed HMAC, full name → `Erased <fp12>`, dob → NULL, officer request descriptions → `[erased]`. **`Comment`** — author mask overwritten, body redacted, row soft-deleted. **`Notification`** — the account's own deleted, *and the frozen mask redacted out of other people's rows*. **Gone** — `Otp`, `PushSubscription`, `Watchlist`, `TotpSecret`, `TotpBackupCode`, `ActiveSession`. **`HouseBot`** — label → `Erased <botId tail>` with `labelKey` recomputed from it; note, `removedReason`, `HouseBotEvent.reason` and `HouseBotPress.reason` → `[erased]`; the quoted label is redacted in admin HOUSE_BOT notifications. ⏳ lands in build commit 3 |
+| ① Immediate | on fulfilment | **`User`** — email, verified-at, password hash + salt, display name, dob, region, avatar, last-login → NULL; `phoneE164` → `erased:<userId>` tombstone; `marketingOptIn` → false. **`KycSubmission`, every submission and not just the newest** — number → its keyed HMAC, full name → `Erased <fp12>`, dob → NULL, officer request descriptions → `[erased]`. **`Comment`** — author mask overwritten, body redacted, row soft-deleted. **`Notification`** — the account's own deleted, *and the frozen mask redacted out of other people's rows*. **Gone** — `Otp`, `PushSubscription`, `Watchlist`, `TotpSecret`, `TotpBackupCode`, `ActiveSession`. **`HouseBot`** — label → `Erased <botId tail>` with `labelKey` recomputed from it; note, `removedReason`, `HouseBotEvent.reason` and `HouseBotPress.reason` → `[erased]`; the quoted label is redacted in admin HOUSE_BOT notifications. ✅ **built** (`erasure.ts`, both stores) |
 | ② Held 7 years from closure | `KYC_DOCUMENT_HOLD_YEARS` | Identity **images** and officer-requested extra documents — the R2 objects *and* the rows — plus the source-of-funds declaration. |
-| ⛔ Never | — | `Wallet`, `Transaction`, `LedgerEntry`, `Position`, `AuditLog`; `HouseBotIntent`, `HouseBotTarget` and the `houseBotId` markers (⏳ lands in build commit 3). The module names what it writes and cannot reach these; `test:erasure` §11.12 asserts it mentions none of them. |
+| ⛔ Never | — | `Wallet`, `Transaction`, `LedgerEntry`, `Position`, `AuditLog`; `HouseBotIntent`, `HouseBotTarget` and the `houseBotId` markers (✅ built). The module names what it writes and cannot reach these; `test:erasure` §11.12 asserts it mentions none of them. |
 
 ### ⚠️ One departure from the letter of answer 3, flagged rather than decided quietly
 
@@ -343,7 +343,7 @@ the exception: archiving can be undone, this cannot.
 | `UpDownRound` | **DELETED** | the price story. No money meaning — the money lives on the market. |
 | `Comment`, `Watchlist`, `MarketSnapshot` | **DELETED** | player-facing chaff, no statutory role |
 | `PredictionMarket` | **REDACTED, never deleted** | titles + criterion blanked to a named sentinel; `purgedAt` / `purgedBy` / `purgeReason` stamped. Pools, `feeSnapshot`, `resolvedOutcome` and `settledAt` are **kept** |
-| `Position`, `Transaction`, `LedgerEntry`, `HousePoolLedger`, `AuditLog`, `UpDownObservation`, `HouseBot`, `HouseBotControl`, `HouseBotRuntime`, `HouseBotAlertOnce`, `HouseBotEvent`, `HouseBotIntent`, `HouseBotTarget`, `HouseBotPress` | **NEVER TOUCHED** | the statutory record, and the shared price readings |
+| `Position`, `Transaction`, `LedgerEntry`, `HousePoolLedger`, `AuditLog`, `UpDownObservation`, `HouseBot`, `HouseBotControl`, `HouseBotRuntime`, `HouseBotAlertOnce`, `HouseBotEvent`, `HouseBotIntent`, `HouseBotTarget`, `HouseBotPress` | **NEVER TOUCHED — and since 2026-09-20 that is ENFORCED, not merely written down (§7.7)** | the statutory record, the house record, and the shared price readings |
 
 ### 7.2 Why redact rather than delete — proven on production, 2026-08-28
 
@@ -423,11 +423,18 @@ documented E-18/E-23 failure, which `voidUpDownRound` had to be corrected for wi
 ### 7.6 Verification
 
 ```
-npm run test:chain-purge         # 64 assertions, driven against the real in-memory stores
-npm run red:chain-purge          # 10 mutations, each the real defect or the reversal of a decision
-npm run qa:chain-purge-verify    # 24 assertions, DRIVEN AGAINST A REAL DATABASE — see below
+npm run test:chain-purge         # driven against the real in-memory stores
+npm run red:chain-purge          # every mutation is a real defect or the reversal of a decision
+npm run qa:chain-purge-verify    # DRIVEN AGAINST A REAL DATABASE — see below
+npm run qa:purge-protected       # the NEVER list against a real PrismaClient — see §7.7
 npm run ops:pool-orphans         # read-only: does every POOL:* account name a market that exists?
 ```
+
+⚠️ **The counts are not written here any more.** They were — "64 assertions", "10 mutations" —
+and a number in a document is a number nobody re-derives. Run the commands; each one prints its
+own total. Measured 2026-09-20 for the record, and stale the next time anyone adds a case:
+`test:chain-purge` **119/0**, `red:chain-purge` **23/23 caught**, `qa:chain-purge-verify`
+**24/0**, `qa:purge-protected` **14/0**.
 
 ⛔ **`test:chain-purge` RUNS WITH NO `DATABASE_URL`, AND THAT IS WHERE THE 2026-08-28 DEFECT
 LIVED.** `hasDatabase()` is false there, so the market redaction, the chaff deletion and the
@@ -445,3 +452,113 @@ because it deletes rows and drives a destructive ceremony to completion:
 ```
 DATABASE_URL="postgresql://postgres:<pw>@127.0.0.1:5433/purge_drive" npm run qa:chain-purge-verify
 ```
+
+### 7.7 The NEVER list is enforced — and the purge refuses while house intents are live
+
+**Added 2026-09-20.**
+
+#### 🔴 What was there: a list that was a paragraph
+
+`chain-purge.ts` opened with the NEVER row of §7.1 above, naming fourteen tables, eight of them
+the house tables (`04-amendments.md` A20: *"The house tables go on the chain-purge NEVER list"*).
+`grep -c "HouseBot" src/lib/server/chain-purge.ts` returned **1** — the comment itself was the
+only occurrence in the file. The only thing that ever bit was `chain-purge.test.mts` §5, a source
+scan over a **hand-written array of six model names**. The eight house tables were in the
+docblock, in this document, in the register, and **in nothing that could fail**.
+
+This is `retention.ts`'s own F-01 shape, one floor up: a published statement about what we do,
+that nothing made true. It shipped inside a commit marked COMPLETE.
+
+#### ⭐ What enforces it now
+
+`src/lib/server/purge-protected.ts`. **`pc()` no longer hands out a raw Prisma client** — the raw
+one never escapes that function — and the guarded one **refuses every mutating call on a
+protected model** (`create`, `createMany`, `update`, `updateMany`, `upsert`, `delete`,
+`deleteMany`), **allows every read**, **refuses raw execution outright** (`$executeRaw*`,
+`$queryRaw*`, `$runCommandRaw` — a SQL string names tables as text and walks past a per-model
+proxy), and **re-wraps the interactive client** handed to `$transaction(fn)`. The module can no
+longer express the forbidden write.
+
+⛔ **Reads are deliberately allowed.** A purge is entitled to COUNT the statutory record it may
+not touch: the cost panel of §7.1 counts positions and ledger rows, and the new precondition
+below counts intents. A guard that sealed these tables completely would have broken the cost
+panel and been quietly removed.
+
+#### ⭐ The population is derived, not listed — one rule, two readers
+
+A list that must be hand-extended protects exactly the tables somebody remembered. So a model is
+in the house family when **any** of these holds, iterated to a fixed point:
+
+1. its name begins with `HouseBot`;
+2. it declares the soft foreign key **`houseBotId`** — the idiom this schema actually uses:
+   `HouseBotEvent`, `HouseBotIntent`, `HouseBotTarget` and `HouseBotPress` all carry it as a bare
+   `String` with no Prisma relation, and so do `Position` and `Transaction`, which carry the house
+   marker on every money row;
+3. it declares a **singular relation it OWNS** (it carries the foreign key) into the family.
+
+Two instruments read that one rule: the generated client's **DMMF at runtime**, and
+**`prisma/schema.prisma` itself** in `test:chain-purge` §10 — the reading that bites *before*
+`prisma generate` has run, which is the whole window a new table would otherwise slip through.
+Only the six statutory singletons are named one at a time, because no property of the schema
+picks out exactly those six and a derivation over them would be a coincidence wearing a rule.
+
+⚠️ **Clause 3 says OWNS for a measured reason.** The first version followed any field whose type
+was in the family — and the DMMF adds the **back-relation** of every relation, so `User` carries
+`houseBots HouseBot[]`, joined the family, and dragged in every model with a `user` field,
+`Comment` among them. The guard then refused the purge's own `comment.deleteMany`: the feature
+was completely broken while all thirteen *"this table is refused"* assertions passed **harder**
+than before. Only the positive control saw it.
+
+#### ⭐ And the NEVER row of §7.1 is now a checked artefact
+
+`test:chain-purge` §12 parses the `NEVER ·` line out of `chain-purge.ts`'s docblock and holds it
+**equal** to the guard's own `neverList()`, in both directions. Prose and enforcement cannot drift
+apart again, which is exactly how fourteen came to be documented and six enforced.
+
+#### The fourth refusal: live house intents
+
+A purge now **refuses while any `HouseBotIntent` on the chain's markets is `PENDING` or
+`CLAIMED`**, with the register's own sentence:
+
+> *N house intents are still live — cancel them or let them expire first.*
+
+**Authority:** `04-amendments.md` A16's lifecycle table, "Chain purge" row (*"purge refused while
+PENDING/CLAIMED intents exist"*), and `01-scenario-register.md` CRA-15, which writes the sentence
+out. ⚠️ CRA-15 was **partly struck by D20** on 2026-09-17 — the purge cost panel and the evidence
+pack name no house positions or intents, because no record splits house money out — and its own
+supersession note keeps this: *"the live-intent precondition and the NEVER list are untouched by
+D20."* So the precondition is built and the cost rows are not.
+
+⛔ **Why a refusal and not a race.** PENDING or CLAIMED means a worker is seconds from placing a
+real house bet on one of these markets. Purge through it and the money lands **after** the
+evidence pack was sealed — so the pack stops being the pre-purge truth, and the verification
+phase's whole population (§7.4 step 5) is computed from a document that is already wrong.
+
+⚠️ It is the **last** of the four refusals. The other three are structural — a chain is `ARCHIVED`
+or it is not — and this one usually clears itself within a minute; an officer should be told the
+permanent obstacles before the transient one.
+
+#### ⚠️ This is the PURGE's NEVER list, not a global ban
+
+`HouseBotAlertOnce` is on the list **and** `retention.purge.daily` deletes it every night in
+batches of 5,000. Both are correct: 04 A20 keeps bots, events and intents for 7 years and gives
+the alert **throttle** rows 30 days (§1 of this document). No chain purge may destroy them;
+retention's own published, audited schedule is a different authority, and the guard is applied to
+`chain-purge.ts`'s client alone. A reader who meets the two facts without this paragraph
+concludes one of them is a bug.
+
+#### Proving it
+
+`npm run qa:purge-protected` boots its own scratch cluster (loopback only; it CREATEs and DROPs
+its own database) and drives the guard against a **real** `PrismaClient`, because the thing most
+likely to break is invisible to a fake one: **`$transaction([...])` inspects the promises it is
+handed**, and the purge's only write path is exactly that array. A delegate proxy that wrapped a
+result would kill the ceremony while every refusal still passed. The drive commits a real batch
+through the guard, refuses real house writes, reads real rows back, and runs the precondition's
+Postgres branch — the indexed `count` the in-memory suite's per-market walk stands in for.
+
+`red:chain-purge` carries thirteen controls for all of this, including the two that no
+hand-written list can catch: **a ninth house table added to the schema and forgotten** (one that
+does *not* match the name prefix, hanging off the family by `houseBotId`), and **a one-line
+exemption** that drops the whole house family out of the predicate — which is how a table really
+leaves an enforcement, rather than by anyone deleting eight names from three places.

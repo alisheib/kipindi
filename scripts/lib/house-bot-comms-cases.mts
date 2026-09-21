@@ -1,6 +1,8 @@
 /**
- * The case list behind `test:house-bot-comms`. Run by that suite in two child processes — one on Postgres, one on
- * the memory store — never on its own.
+ * The case list behind `test:house-bot-comms`. Run by that suite in two child processes — one on Postgres, one
+ * on the memory store — and, since C7 step 7, DIRECTLY by `red:house-bot-console`'s `comms-mem` child, which is
+ * why every source pin here must be store-independent. ⛔ The old line said "never on its own"; the red harness
+ * made that false and nothing corrected it (C7 step 7 review, conformance-comms-docblock-stale).
  *
  * Sections:
  *   §1 recipients and channels · §2 the holder is told NOTHING (D19c) · §3 the caps and what the summary accounts for ·
@@ -8,18 +10,24 @@
  *   §6 the dedupe window · §7 links · §8 SMS, never · §9 the channel policy.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./decomment.mts";
+import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./house-bot-expect-drift.mts";
+import { MUTATIONS as CONSOLE_MUTATIONS } from "../anchors/house-bot-console.anchors.mjs";
+import { MUTATIONS as ENGINE_MUTATIONS } from "../anchors/house-bot-engine.anchors.mjs";
 import { loadWorld, OFFICER } from "./house-bot-world.mts";
 
 type Any = any;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 let pass = 0, fail = 0;
+/** Every label this run printed, so the ruling-505 roll-call at the foot of this file measures instead of asserting `true`. */
+const emitted: string[] = [];
 const ok = (l: string, c: boolean, x = "") => {
   c ? pass++ : fail++;
+  emitted.push(l);
   console.log(`${c ? "PASS" : "FAIL"} [${STORE}] ${l}${x ? ` — ${x}` : ""}`);
 };
 const section = (t: string) => console.log(`\n[${STORE}] ${t}`);
@@ -36,6 +44,8 @@ const REG: Any = await import("../../src/lib/server/comms-registry.ts");
 const K: Any = await import("../../src/lib/house-bot/constants.ts");
 const { alertRow, ALERT_CODES }: Any = await import("../../src/lib/house-bot/alert-copy.ts");
 const RG: Any = await import("../../src/lib/server/responsible-gambling.ts");
+/** The console's own route grammar — §7 resolves the console's hrefs against it, tab and all. */
+const CR: Any = await import("../../src/lib/house-bot/console-routes.ts");
 
 ok(`0.store · the child runs on ${STORE}`, w.onPostgres === (STORE === "postgres"));
 
@@ -247,19 +257,28 @@ await guard("7", async () => {
   const all = [...(await houseRows(ADMIN_A)), ...(await houseRows(ADMIN_B)), ...(await houseRows((await w.dal.houseBotStore.listNonRemoved())[0]?.userId ?? ADMIN_A))];
   const hrefs = [...new Set(all.map((r) => r.href).filter(Boolean))] as string[];
   ok("7.1 · every href is absolute", hrefs.every((h) => h.startsWith("/")), hrefs.filter((h) => !h.startsWith("/")).join(" · ") || "-");
-  /** A route that commit 7 builds. Named here so "it does not resolve yet" can never be mistaken for "it is broken". */
-  /* C7-SPEC rulings 319, 320 · the segment and this constant move TOGETHER. Measured: 7.2 resolves every notifier
-     href a house alert actually produces against `src/app`, skipping only paths under this list — so a `COMMIT_7` of
-     `["/admin/desk"]` beside hrefs still reading `/admin/house-bots/<id>` fails 7.2 on day one, and a list holding
-     BOTH prefixes fails 7.3. Re-pointing all 29 literals and swapping this one string in the same commit keeps the
-     list at one entry and both cases green, while `/admin/desk/[id]` and `/admin/desk/new` are still unbuilt — which
-     is exactly what the exemption is for. ⛔ When all three pages exist, this constant and case 7.3 are DELETED
-     together, and 7.2 resolves the desk's hrefs for real instead of skipping them (C7 step 7). */
-  const COMMIT_7 = ["/admin/desk"];
+  /* ⛔ THE WALK MUST HAVE HAD SOMETHING TO RESOLVE, AND THE CONSOLE'S OWN ROUTES MUST BE IN IT (C7 step 7 review,
+     conformance-320-href-population / test-strength-03). Retiring the `COMMIT_7` exemption left `7.2` with no
+     population floor at all: `hrefs` is whatever §1–§6 happened to emit, and `every`/`length === 0` are both
+     true of an empty array — so a run that produced no console href would have reported the exemption's
+     retirement as a clean measurement. `7.2b` controls the RESOLVER, which is a different question. */
+  const consoleHrefs = hrefs.filter((h) => h.split("?")[0] === CR.CONSOLE_ROUTE || h.split("?")[0].startsWith(`${CR.CONSOLE_ROUTE}/`));
+  ok("7.2a · the walk really had links to resolve, and the console's own routes are IN the set — the retired exemption's zero is a measurement and not an empty walk",
+    hrefs.length >= 8 && consoleHrefs.length >= 3
+      && consoleHrefs.some((h) => h.split("?")[0] === CR.CONSOLE_ROUTE)
+      && consoleHrefs.some((h) => /^\/admin\/desk\/hb_\w+$/.test(h.split("?")[0])),
+    j({ hrefs: hrefs.length, console: consoleHrefs.length, sample: consoleHrefs.slice(0, 4) }));
+  /* ⭐ THE EXEMPTION IS RETIRED, AND THIS IS THE RECORD OF IT (C7-SPEC ruling 320, C7 step 7).
+     `const COMMIT_7 = ["/admin/desk"]` and case `7.3` lived here together from C7 step 1 so that 7.2 could SKIP the
+     console's own hrefs while `/admin/desk`, `/admin/desk/new` and `/admin/desk/[id]` were still being built one
+     step at a time. All three pages exist now, so the skip is retired and every console href is RESOLVED for real
+     against `src/app` like any other — which is the whole point of 7.2 and the thing the exemption was suppressing.
+     `7.3` went with it: it existed only to stop the exemption list growing past one entry, so with no list there is
+     nothing for it to measure, and a case whose subject is gone is a case that can no longer fail.
+     ⛔ NOTHING REPLACES THE SKIP. If a console href stops resolving, 7.2 must say so. */
   const missing: string[] = [];
   for (const h of hrefs) {
     const path = h.split("?")[0].split("#")[0];
-    if (COMMIT_7.some((p) => path === p || path.startsWith(`${p}/`))) continue;
     // Resolve /a/b/c against src/app, allowing one dynamic segment at each level.
     const parts = path.split("/").filter(Boolean);
     let dir = join(ROOT, "src", "app");
@@ -272,9 +291,76 @@ await guard("7", async () => {
     }
     if (!found || !existsSync(join(dir, "page.tsx"))) missing.push(h);
   }
-  ok("7.2 · ⭐ 04:1077 · every link either resolves to a page that exists today, or is one of commit 7's console routes",
+  ok("7.2 · ⭐ 04:1077 · every link a house alert produces resolves to a page that exists today — the console's three routes included, with no exemption left",
     missing.length === 0, missing.join(" · ") || "-");
-  ok("7.3 · the console routes commit 7 owes are exactly what is named, not a growing list", COMMIT_7.length === 1);
+  /* ⛔ THE PATH IS HALF THE LINK; THE `?tab=` IS THE OTHER HALF (C7 step 7 review, conformance-320 /
+     test-strength-04). `7.2` strips the query before resolving, so a link to a tab with NO PANEL scores as
+     "resolves to a page that exists today" while ruling 302's fallback quietly repaints the roster — an officer
+     following a bell lands on a screen that looks like it worked.
+
+     ⭐ AND THE TOLERANCE IS GONE, WHICH IS A SHRINK AND THE ONLY DIRECTION THIS CASE MAY MOVE. `UNBUILT_TABS` was
+     a TRACKED DEBT of two entries — the LANDING `activity` and `history` keys — held while C7 step 5's account
+     half shipped first. Both panels are built now, so the debt list is DELETED with the build rather than left
+     standing: a recorded gap that no longer exists is a permission, and a permission is what this case refuses.
+     ⛔ THE ASSERTION IS NOW ZERO DEAD TABS WITH NO LIST AT ALL, which is strictly stronger than what stood here:
+     any `?tab=` an alert produces, in either shape, whose panel is not on disk fails immediately and has nowhere
+     to be recorded. `exists()` still resolves each href against ITS OWN closed list — the landing rail
+     (`CONSOLE_TABS`) and the account page's (`CONSOLE_DETAIL_TABS`) are separate lists with separate panels, and
+     collapsing them would let a link to one pass on the strength of the other. */
+  const tabOf = (h: string) => new URLSearchParams(h.split("?")[1] ?? "").get("tab");
+  const detailHref = (h: string) => /^\/admin\/desk\/hb_\w+(\?|$)/.test(h);
+  const shapeOf = (h: string) => (detailHref(h) ? "detail" : "landing");
+  const tabbed = consoleHrefs.map((h) => ({ h, tab: tabOf(h), shape: shapeOf(h) })).filter((x) => x.tab !== null) as { h: string; tab: string; shape: string }[];
+  const exists = (x: { shape: string; tab: string }) => (x.shape === "detail" ? CR.consoleDetailTabExists(x.tab) : CR.consoleTabExists(x.tab));
+  const deadTabs = tabbed.filter((x) => !exists(x));
+  ok("7.2c · every `?tab=` a house alert produces names a panel that is BUILT for its own SHAPE — no tolerance list, no recorded gap, and a dead tab in either shape fails here with nowhere to be written down",
+    deadTabs.length === 0,
+    j({ tabbed: tabbed.length, dead: deadTabs.map((x) => `${x.shape}:${x.tab}` ) }));
+  /* ⛔ AND THE WALK IS NOT EMPTY, which is the population trap a zero always carries: an alert set that produced
+     no `?tab=` at all would satisfy the line above while measuring nothing. Both shapes are PRINTED, and both
+     closed lists are shown to hold the two keys the debt list used to stand for. */
+  ok("7.2e · the zero above is a MEASUREMENT: the alerts really do produce `?tab=` links in BOTH shapes, and both closed lists carry `activity` and `history` with their panels",
+    tabbed.length >= 2
+      && tabbed.some((x) => x.shape === "landing") && tabbed.some((x) => x.shape === "detail")
+      && CR.consoleDetailTabExists("activity") && CR.consoleDetailTabExists("history")
+      && CR.consoleTabExists("activity") && CR.consoleTabExists("history"),
+    j({ landing: [...CR.CONSOLE_TABS], detail: [...CR.CONSOLE_DETAIL_TABS], shapes: tabbed.map((x) => `${x.shape}:${x.tab}`).slice(0, 6) }));
+  /* ⛔ AND THE RESOLVER REALLY REFUSES A TAB NOBODY BUILT — the control 7.2d used to be, re-aimed at the shape
+     that exists now. 7.2d asserted that `activity` and `history` were ABSENT from the landing list and that at
+     least one delivered link was dead; both of those subjects are gone with this build, so the case is DELETED
+     rather than loosened, and what replaces it is the same question asked of a planted link. */
+  /* 🔴 AND THE CROSS-SHAPE PROBES ARE THE HALF THAT MATTERS, MEASURED BY THE RED HARNESS RATHER THAN REASONED.
+     Written with only the four probes below the first line, this control PASSED with the declared defect
+     `7.2e-shape-flattened` injected — a resolver rewritten to `consoleDetailTabExists(t) || consoleTabExists(t)`,
+     which is exactly the collapse 7.2c's own docblock says would let a link to one rail pass on the strength of
+     the other. Every key it probed (`nowhere`, `activity`, `overview`) reads the SAME in both lists, so nothing
+     could tell the two apart. The two lists differ in exactly two members — `roster` is the landing rail's alone
+     and `overview` is the account page's alone — and each asked of the WRONG shape must be REFUSED. That pair is
+     the only question a flattened resolver cannot answer. ⛔ The members are derived from the closed lists
+     themselves, not typed here, so the probe follows the rails if either grows. */
+  const landingOnly = CR.CONSOLE_TABS.filter((t: string) => !(CR.CONSOLE_DETAIL_TABS as readonly string[]).includes(t));
+  const detailOnly = CR.CONSOLE_DETAIL_TABS.filter((t: string) => !(CR.CONSOLE_TABS as readonly string[]).includes(t));
+  ok("7.2d · CONTROL · a planted alert href naming a tab NOBODY built is reported in each shape, and a key that belongs to ONE rail is REFUSED when it is asked of the other — so the zero above is a scan, and the two rails are really being told apart",
+    !exists({ shape: "landing", tab: "nowhere" }) && !exists({ shape: "detail", tab: "nowhere" })
+      && exists({ shape: "landing", tab: "activity" }) && exists({ shape: "detail", tab: "overview" })
+      && landingOnly.length > 0 && detailOnly.length > 0
+      && landingOnly.every((t: string) => exists({ shape: "landing", tab: t }) && !exists({ shape: "detail", tab: t }))
+      && detailOnly.every((t: string) => exists({ shape: "detail", tab: t }) && !exists({ shape: "landing", tab: t }))
+      && shapeOf("/admin/desk?tab=activity") === "landing"
+      && shapeOf("/admin/desk/hb_0123456789abcdef01234567?tab=activity") === "detail",
+    j({ landingOnly, detailOnly }));
+  ok("7.2b · CONTROL · the resolver still REFUSES a route nobody built, so the zero above is a measurement and not an empty walk",
+    (() => {
+      const parts = "/admin/desk/hb_0123456789abcdef01234567/nowhere-at-all".split("/").filter(Boolean);
+      let dir = join(ROOT, "src", "app");
+      for (const part of parts) {
+        if (existsSync(join(dir, part))) { dir = join(dir, part); continue; }
+        const dyn = ["[id]", "[positionId]", "[marketId]", "[slug]"].find((d) => existsSync(join(dir, d)));
+        if (dyn) { dir = join(dir, dyn); continue; }
+        return true;
+      }
+      return !existsSync(join(dir, "page.tsx"));
+    })(), "");
 });
 
 /* ═══ §8 · SMS, never (04:1061, F6 04:1725, N1 04:3739) ═════════════════════════════════════════ */
@@ -310,6 +396,104 @@ await guard("9", () => {
       const r = alertRow({ code, at, money: (n: number) => `TZS ${n}`, label: "Bot A", handle: "Player #A3F2K8", botId: "hb_x", detail: {} });
       return !!r.titleEn && !!r.titleSw && !!r.titleZh && !!r.bodyEn && !!r.bodySw && !!r.bodyZh && r.href.startsWith("/") && /[一-鿿]/.test(r.titleZh + r.bodyZh);
     }), `${(ALERT_CODES as string[]).length} codes`);
+  /* ── 9.2b–d · ⛔ THE POPULATION 9.2 CANNOT SEE ──────────────────────────────────────────────────────────────
+   * `ALERT_CODES` is `Object.keys(ROWS)` — the codes that HAVE copy. So 9.2 asks "does every code with a row have a
+   * row in three languages?", and that is true on every build ever shipped, INCLUDING one where a code is raised
+   * with no row at all: such a code can never enter 9.2's population. A true measurement of the wrong population.
+   * ⛔ IT HAS COST TWICE. POLLER_FAILING reached officers as the bare token until one commit ago, found by a HAND
+   * sweep — and that hand sweep missed HOUR_SUMMARY_ADMINS, which was still arriving as `House bots:
+   * HOUR_SUMMARY_ADMINS` over the unknown-code fallback, naming one arbitrary bot for a fleet-wide hourly fact,
+   * when this case was written. A sweep somebody runs once is not a gate; this is the gate.
+   * ⭐ THE RIGHT POPULATION IS WHAT THE SERVER RAISES: every `alertOnce` / `alerts.once` / `alerts.security` site
+   * under `src/lib/server`, with the code literal beside it. Comments are stripped first — a code named only in a
+   * comment is not a raise (8.4's lesson: slice on CODE, never on prose). */
+  {
+    const RAISE_SRC = "(?:alertOnce\\s*\\(|alerts\\.once\\s*\\(|alerts\\.security\\s*\\(|\\.security\\s*\\(\\s*\\{)";
+    const CODE_RE = /code:\s*"([A-Z][A-Z0-9_]+)"/;
+    const walk = (dir: string, out: string[] = []): string[] => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p, out);
+        else if (/\.tsx?$/.test(e.name)) out.push(p);
+      }
+      return out;
+    };
+    /** Every code literal sitting beside a raise in `s`, plus the raises that carry no literal at all. */
+    const scan = (s: string): { codes: string[]; opaque: number } => {
+      const re = new RegExp(RAISE_SRC, "g");
+      const codes: string[] = [];
+      let opaque = 0;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(s)) !== null) {
+        const c = CODE_RE.exec(s.slice(m.index, m.index + 600));
+        if (c) codes.push(c[1]); else opaque++;
+      }
+      return { codes, opaque };
+    };
+    const raised = new Map<string, string[]>();
+    let opaque = 0;
+    const files = walk(join(ROOT, "src/lib/server"));
+    for (const f of files) {
+      const r = scan(decomment(readFileSync(f, "utf8")));
+      opaque += r.opaque;
+      const rel = f.slice(ROOT.length + 1).replace(/\\/g, "/");
+      for (const c of r.codes) { if (!raised.has(c)) raised.set(c, []); raised.get(c)!.push(rel); }
+    }
+    const codes = [...raised.keys()].sort();
+
+    /* ⛔ AND ONE MORE POPULATION CORRECTION — WHICH THIS CASE ITSELF GOT WRONG ON ITS FIRST DRAFT, so it is written
+     * down rather than quietly fixed. NOT every raised code reaches `alertRow`: `announceOnce` in `emitters.ts`
+     * INTERCEPTS some and renders them through a dedicated notification with its own three languages, returning
+     * before the generic path. HOUR_SUMMARY_ADMINS is one — `notifyAdminsHouseBotHourSummary` carries the hour
+     * WINDOW that a generic row could not, and gets the link's EAT parsing right besides.
+     * ⛔ THE FIRST DRAFT OF 9.2b "FOUND" IT SPEECHLESS AND A COPY ROW WAS WRITTEN FOR IT — a row nothing would ever
+     * have read, added on the strength of a scan that had not looked at the emitter. Reverted. A sweep that reports
+     * a defect in correct code is not a smaller mistake than one that misses a real defect; it is how dead code gets
+     * added on purpose.
+     * ⭐ So the population that MUST have a row is RAISED MINUS INTERCEPTED, and the intercepted set is READ FROM
+     * the emitter, never typed here, so the two cannot drift apart. */
+    const emitterSrc = decomment(readFileSync(join(ROOT, "src/lib/server/house-bot/emitters.ts"), "utf8"));
+    const intercepted = [...emitterSrc.matchAll(/message\.code === "([A-Z][A-Z0-9_]+)"/g)].map((m) => m[1]);
+    const mustHaveRow = codes.filter((c) => !intercepted.includes(c));
+    const speechless = mustHaveRow.filter((c) => !(ALERT_CODES as string[]).includes(c));
+    ok(`9.2b · ⛔ THE RIGHT POPULATION · every raised code that REACHES alertRow has a copy row — ${codes.length} raise-site codes over ${files.length} server files, less ${intercepted.length} the emitter renders itself (${intercepted.join(", ") || "none"}), leaving ${mustHaveRow.length} against ${(ALERT_CODES as string[]).length} rows`,
+      codes.length >= 20 && mustHaveRow.length >= 20 && speechless.length === 0,
+      speechless.length ? `SPEECHLESS: ${speechless.map((c) => `${c} ← ${raised.get(c)!.join(", ")}`).join(" · ")}` : `${mustHaveRow.length} codes, every one with copy`);
+
+    /* ⭐ AND THE OTHER DIRECTION — the one that keeps dead copy out. A code the emitter renders ITSELF must NOT also
+     * carry a row here: that row is unreachable by construction, and an unreachable row reads to the next person as
+     * the live copy. This is the assertion that would have stopped the first draft's row from surviving. */
+    const deadRows = intercepted.filter((c) => (ALERT_CODES as string[]).includes(c));
+    ok(`9.2b2 · ⭐ …and no intercepted code ALSO carries a row nothing can reach — ${intercepted.length} intercepted, ${deadRows.length} dead`,
+      intercepted.length >= 1 && deadRows.length === 0, deadRows.join(" · ") || "no dead rows");
+
+    /* ⛔ THE SWEEP DECLARES ITS OWN BLIND SPOT, AND PINS IT — WITHOUT AN EXEMPTION. A site whose code is a VARIABLE
+     * leaves no literal for the scan to read. Four match today, and they are NOT four gaps; three of them are the
+     * alert machinery itself rather than any call site. Enumerated, because a count with no names rots into a number
+     * nobody can re-derive:
+     *   1. `house-bot/engine.ts:232` — the ONE genuine opaque raise. `alertBootRefused` forwards `{ code, detail }`
+     *      with its parameter typed `code: "DB_TIMEZONE"`; DB_TIMEZONE has a row (checked by hand, and 9.2 covers it).
+     *   2. `house-bot/outcomes.ts:101` — the `alertOnce` DECLARATION. Its own signature, not a raise.
+     *   3. `house-bot/outcomes.ts:107` — `alerts.once(claim.key, message)`, the generic forwarder every raise passes
+     *      THROUGH. The literal it carries was already counted at the real call site.
+     *   4. `house-bot/outcomes.ts:212` — `alerts.security(message)`, the same forwarder for the security channel.
+     * ⭐ THEY ARE PINNED RATHER THAN SKIPPED ON PURPOSE. Excluding `outcomes.ts` by name would be an exemption that
+     * silently swallows a REAL opaque raise added to that file later; counting them keeps the population whole and
+     * still turns red on a fifth.
+     * ⚠️ A ratchet that gets raised is not a ratchet — if this number grows, give the new site a code LITERAL, or
+     * check its row by hand and name it above in the same commit. */
+    const OPAQUE_RAISE_SITES = 4;
+    ok(`9.2c · ⭐ …and the sweep says what it CANNOT see: ${opaque} raise site(s) pass a non-literal code, each checked by hand`,
+      opaque === OPAQUE_RAISE_SITES, `${opaque} vs ${OPAQUE_RAISE_SITES}`);
+
+    /* ⭐ PLANTED CONTROL · the extractor is not inert. A raise carrying a code this build has no row for is found by
+     * the SAME scanner and reported speechless — so 9.2b's green means "nothing is missing", not "nothing was read". */
+    const plant = scan(`await alertOnce(ALERT_KEY.clockSkew(), alerts, { code: "A_CODE_WITH_NO_ROW", detail: {} });`);
+    ok("9.2d · ⭐ PLANTED CONTROL · the sweep really can fail — a planted raise whose code has no row is found by the same extractor, and would be reported speechless",
+      plant.codes.length === 1 && plant.codes[0] === "A_CODE_WITH_NO_ROW" && !(ALERT_CODES as string[]).includes("A_CODE_WITH_NO_ROW"),
+      j(plant));
+  }
+
   const unknown = alertRow({ code: "A_CODE_FROM_A_NEWER_BUILD", at, money: (n: number) => `TZS ${n}`, botId: "hb_x" });
   ok("9.3 · ⭐ an unmapped code still reads as a sentence and names itself, in every language",
     /A_CODE_FROM_A_NEWER_BUILD/.test(unknown.titleEn) && /A_CODE_FROM_A_NEWER_BUILD/.test(unknown.titleZh) && unknown.href.startsWith("/") && unknown.severity === "warning", j(unknown.titleEn));
@@ -341,6 +525,31 @@ await guard("9", () => {
     /record only/.test(alertRow({ code: "STAFF_STAKE_VOIDED", at, money: (n: number) => `TZS ${n}`, detail: { action: "voided", titleEn: "A poll", side: "YES", stakeTzs: 1_000 } }).bodyEn)
       && /record only/.test(alertRow({ code: "STAFF_STAKE_SELF_DECIDED", at, money: (n: number) => `TZS ${n}`, detail: { action: "resolved", titleEn: "A poll" } }).bodyEn));
 });
+
+/* ⛔ RULING 505's ROLL-CALL OVER THIS SUITE'S DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS
+ * run printed. C7 step 7 added a `comms-mem` key to `red:house-bot-console` and two declarations under it, and
+ * gave neither any expect-drift coverage: `ROLL_CALL_OWED` recorded the key as owed, which is a record of a hole
+ * and not a guard, so the two `expect` strings could rot into WRONG-ASSERTION unseen — and 7.2's assertion TEXT
+ * was rewritten in the same step (C7 step 7 review, conformance-318-comms-expect-drift). `test:red-anchors` §3
+ * resolves the `from` text and never looks at `expect`, so its green says nothing about this.
+ * ⛔ BOTH anchors files that declare a `comms-mem` entry are read, for the reason the seam suite reads two: a
+ * declaration audited in neither file is exactly the hole 505 exists to close.
+ * ⛔ MEMORY ONLY. The Postgres child prints the same labels, and running it in both would double every count
+ * without measuring anything twice; `red:house-bot-console` drives the memory child. */
+if (STORE === "memory") {
+  const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
+  const LBL = "7.505 · every declared `comms-mem` mutation — from BOTH anchors files that declare one — names an assertion THIS run actually printed; an `expect` that matches no label can only ever report WRONG-ASSERTION";
+  const LBLC = "7.505 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  const input = {
+    suiteKeys: ["comms-mem"],
+    declarations: [...CONSOLE_MUTATIONS, ...ENGINE_MUTATIONS] as DeclaredMutation[],
+    emitted, source: selfCode, ownLabels: [LBL, LBLC],
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= 3 && rc.stale.length === 0, j(rc));
+  const control = expectDriftControl(input, 30);
+  ok(LBLC, control.pass, control.extra);
+}
 
 await w.dal.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

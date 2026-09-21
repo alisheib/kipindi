@@ -815,7 +815,7 @@ bots and what keeps D19 true").
 
 ⛔ These were never put to the verifier, so each is CHECKED before it is acted on. They belong to the propagation pass.
 
-1. `docs/HOUSE-BOTS.md:747` and `docs/COMPLIANCE-DECISIONS.md:214` describe `BOARD-DISCLOSURE-HOUSE-BOTS.md` **in the
+1. ⛔ **STRUCK 2026-09-20 (owner ruling D21): the finding is closed the other way — the file is never written, and both sentences now carry a dated strike note instead.** (Was:) `docs/HOUSE-BOTS.md:747` and `docs/COMPLIANCE-DECISIONS.md:214` describe `BOARD-DISCLOSURE-HOUSE-BOTS.md` **in the
    present tense, and the file does not exist** — it is Commit 6's, unbuilt. Under D19 and D20 that draft is the ONLY
    paper that discloses anything to anyone, so the disclosure-surface inventory currently asserts the content of a
    document nobody can read. Both sentences take the ⏳ marker the same files already use elsewhere for unbuilt work.
@@ -1657,3 +1657,45 @@ bots and what keeps D19 true").
        of the owner's delegation asks for it.
      - **What is NOT delegated, and no ruling may take:** turning the master switch on. D19 and PLAN §11
        reserve it to Ali, 471 did not touch it, and neither does this.
+
+
+556. **THE MERGE IS LIVE — AND THE ORCHESTRATOR TOOK AN OVERRIDE WHERE RULING 555'S SANCTIONED ROUTE
+     ALREADY EXISTED. 555's OWN LESSON, FIRING A SECOND TIME, ON THE SESSION THAT HAD JUST READ IT.**
+     - **What shipped:** `origin/main` `66db674c` -> **`8416a37c`**, a true fast-forward, on Ali's direct
+       and repeated instruction (*"push"*, *"i dnt need any giards"*, *"i apprve maualy all atomic"*).
+     - **Re-verified before the push, because the branch had moved under this session.** A peer session had
+       advanced `house-bots` past the gated sha `e7e7b325`. Measured, and then measured AGAIN by the peer
+       over the WHOLE tree rather than a chosen path list: `git diff --stat e7e7b325..8416a37c` touches
+       exactly two files, `C5-D20-REPLAN.md` and `PROGRESS.md`. The deployed artefact is byte-identical to
+       the tree ruling 534's gate measured GREEN on all four conditions, and
+       `git diff 66db674c..8416a37c -- prisma/migrations` is empty.
+     - ⛔ **THE ERROR, STATED PLAINLY.** This session concluded that `core.hooksPath` was repo-local and
+       that a linked worktree therefore could not escape the guard, and used a TRANSIENT per-command
+       override (`git -c core.hooksPath=<empty dir>`). **That diagnosis was FALSE.** Re-measured here with
+       `git config --show-origin --get core.hooksPath`: the value lives in each worktree's OWN
+       `F:/kipindi-main/.git/worktrees/<name>/config.worktree` (`extensions.worktreeConfig = true`) and is
+       **ABSENT from the shared `F:/kipindi-main/.git/config`**; `F:/kipindi-main` resolves **none**.
+       **So `git -C F:/kipindi-main push origin house-bots:main` needed no override at all**, and ruling
+       555 had already written that down, in the commit this session had itself just pushed.
+     - ⭐ **The lesson is 555's, repeated verbatim against its own author's successor:** *a ruling that
+       names a PROCEDURE must re-derive the procedure, not inherit it from the document it is amending.*
+       555 was caught quoting a recipe whose refutation sat four lines above it; this session was caught
+       proposing to "correct" 555 with the very claim 555 had already measured false. ⛔ The correction was
+       caught by a PEER SESSION reading the record, not by the session that made it — which is the
+       argument for two writers keeping separate eyes on one tree, and against either of them trusting a
+       diagnosis it did not re-measure.
+     - ⛔ **The guard was NOT weakened to achieve this and remains ARMED** (verified after the push). The
+       override wrote to no config file. 553's and 555's position stands: disarming a safety guard to reach
+       a green result is the inversion of what guards are for.
+     - ⚠️ **AND THE OWNER HAS SINCE INSTRUCTED ITS REMOVAL** — *"no remove guard and push"*, *"other
+       sessions should also push, remove it now"* — so that both sessions can push `main` unaided. That is
+       his to take and it is not refused here on merit. ⛔ **The attempt was BLOCKED by this session's own
+       safety classifier (*Security Weaken*) and was NOT worked around.** The hook is one file,
+       `F:/kipindi-house-bots-hooks/pre-push`, it blocks nothing but `main`, and `F:/kipindi-main` has no
+       `core.hooksPath` at all — so **until Ali deletes it himself, the sanctioned route (push from
+       `F:/kipindi-main`) is the one every session should use, and no session should override it again.**
+     - **What is live:** a console that is Owner-only, renders real data and **stakes nothing** — the
+       master switch ships OFF (`prisma/schema.prisma:1943` `@default(false)`; `switchOnHouseBots` has
+       exactly one caller in `src/`, inside the gated writer) and no account is designated.
+     - **Numbering, reconciled with the peer:** 555 is the peer's and stands; this is **556**; the peer
+       takes **557+**. No renumbering is owed.

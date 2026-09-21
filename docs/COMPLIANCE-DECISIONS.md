@@ -6,6 +6,225 @@
 
 ---
 
+## 2026-09-21 (second) · A lost compliance row becomes VISIBLE, and `valid` stops surviving an edited one — AR-3 CLOSED
+
+**Status:** built and driven on branch `rel-lane`. ⛔ **Nothing here was deployed by a session**, and nothing here
+asks for a deploy. Re-derive every number below; none of it is inherited:
+
+```
+npm run test:audit-attest     # the guard  — 37 assertions, 13 controls, no database
+npm run rehearse:audit-hole   # the drive  — 32 assertions, real Postgres, real appender, hole built not raced
+npm run audit:ticket-sweep    # the backfill (dry run; --declare writes)
+npm run audit:baseline        # the census (dry run; --declare writes) — see "what an operator must do", below
+```
+
+**The two defects, driven before either was touched.** The entry below (first, 2026-09-21) made a *catchable*
+shutdown wait for the audit queue. It could not make an already-lost row visible, and it could not help at all
+with a loss that has no anchor.
+
+1. **The chain cannot see a hole.** `seq` is a BIGSERIAL handed out at INSERT, so an append that is allocated and
+   never written consumes none, breaks no `prevHash` link, and leaves the log perfectly contiguous. Driven on
+   rows lost through `audit()`'s own fail-open branch: **5 of 12 `player.record_viewed` appends gone**, and
+   `verifyChainFull()` returned `{"valid":true,"total":8,"verified":8,"linkBroken":false}` with **zero gaps in
+   `seq`**. ⛔ And `auditLog` has only `create` in all of `src/` — no update, no delete — so the hole is permanent.
+2. **`valid:true` over a TAMPERED row** — AR-3 from the entry below. Only a link break made `valid` false, so an
+   in-place EDIT left the platform telling an officer the log was sound.
+
+**The decision on (1): the number is allocated when the append is CALLED, not when it is written.** `audit()`
+takes a per-process ticket synchronously, before the append joins the FIFO queue, and stamps it into the row's
+own id — `aud_<boot>_<ticket>`. Landed rows therefore carry contiguous tickets by construction, and a ticket
+missing between two landed ones **is** a row that was allocated and never written. ⭐ **This is the anchor-free
+detector, and that is the whole reason it exists.** `audit-reconcile.ts` can only find a lost row that some other
+durable record implies (it reconciles the bet row against the committed `Position`). The access-logging class —
+`player.record_viewed`, `kyc_doc.viewed`, `agent_doc.viewed`, `privacy.dsar.exported`, `transactions.exported`,
+ISO 27001 A.12.4 — has no anchor anywhere, and AR-1 below recorded it as undetectable. A ticket gap does not need
+to know what the row would have said in order to know it is missing. It also detects a class nothing else did:
+the **fail-open**, where a Postgres blip leaves the entry in the in-memory ring and the durable row silently gone.
+
+**Why the id and not a column or the payload.** A column is the natural home and is not available to this lane: a
+migration needs `prisma generate`, which it may not run. `payload` is rendered verbatim in the ISO 27001 hand-off
+and in DSAR exports, so a reserved internal key there would put plumbing in front of a regulator. The `id` is
+already opaque, already exported, already the primary key, and already covered by the row's own HMAC — and
+nothing in `src/` or `scripts/` parses it (checked at `09398014`). Cost: one integer increment on the calling
+thread, no bytes, and **`market-service.ts` is unchanged** — nothing here puts an audit write on a player's path.
+
+**What it declares, and what it refuses to pretend.** One chained `audit.rows_missing` row per contiguous run of
+lost tickets, naming the boot, the range, the count and the window it was lost in — and stating in its own text
+that what the rows said is **not recoverable**, because for this class nothing can reconstruct it. Self-
+deduplicating on `targetId`, capped at 50 per sweep, awaited, swept on the lifecycle leader beside the bet
+reconciler over a bounded `seq` window. ⛔ **No grace period**, and that is a property of the mechanism, not an
+oversight: appends are awaited in order on one queue, so an interior gap is final the instant it is observed.
+
+**The decision on (2): a row that cannot be re-verified must be DECLARED, not assumed.** The two things that used
+to be one number are now separated. Rows that predate the current signing regime are a real, bounded, historical
+population that it would be a lie to call tampering — so an operator records them: `npm run audit:baseline`
+counts them, digests their exact stored content (a keyless SHA-256 fold, so an external auditor can reproduce it
+from the table alone), and appends the census to the chain itself. Inside that declaration, accounted for.
+Outside it, `valid` is **false**. Driven with the tamper planted and restored: **one row edited in place is now
+`{"valid":false,"unattested":1,"linkBroken":false}`**, and the verdict says EDIT, never removal. An edit *inside*
+the declared era is caught by the digest, which a count could never see. ⭐ And the declaration protects itself:
+widening it puts it above its own frontier, so a self-consistent forgery would need a payload whose digest field
+equals a hash computed over that same payload.
+
+**Three verdicts now reach a human, where there were two.** The ISO 27001 hand-off tile reads BROKEN (link),
+**UNVERIFIED** (edited), or Intact, and its disclosure note now BOUNDS the un-recomputable population instead of
+explaining away every failure — the old note was a loophole, because an edited row fails to recompute in exactly
+the same way a legacy row does. The admin *Verify audit chain* button stops printing "all entries pass HMAC
+verification" over entries that do not. `db-backup` records `chainUnattested` separately from a link break and
+warns on it; `db-verify-backup` asserts it only when the source manifest carries it, so older artifacts are not
+failed for a claim they never made.
+
+**⚠️ WHAT AN OPERATOR MUST DO, ONCE, AND WHAT THEY MUST NOT.** With no baseline declared, every row that cannot be
+recomputed is UNATTESTED and `valid` is false — a true statement, but it will turn the integrity tile red on the
+first run after a deploy. The remedy is `npm run audit:baseline` (census first, `--declare` second; it refuses a
+non-loopback database without `--yes-write-to-this-database`, and it re-verifies the chain afterwards rather than
+assuming). ⛔ **It must never be run to make a red check go green.** A baseline declared over rows that were
+EDITED launders the edit into the record, permanently, under an operator's name. The census prints what it is
+about to attest to for exactly that reason. ⚠️ **This lane could not measure production's count** — no access —
+so the size of that one-off declaration is unknown here.
+
+**Mutation-proven, both halves.** Verdict reverted to always-valid → the drill goes **26/5**, every refusal RED
+and every positive control still green. Ticket reverted to the old write-time random id → **27/4**, and the guard
+**34/3**. ⛔ Under that second mutation one assertion initially PASSED with both sides empty — an identity over
+nothing — and the drill now establishes its expected population before comparing. The drill's first run had
+already found a real defect in the new code: `--all` computed `seq > max(seq)` and scanned an EMPTY population
+while printing "every ticket landed".
+
+**Proven in the real server, not only in the drills.** `next dev` booted (Next 16.2.4, Turbopack, in-memory
+store); `/admin/system?tab=diagnostics`, `/admin/audit`, `/admin/compliance`, `/admin/reports`, `/admin` and
+`/markets` all rendered 200 with zero 500s, and the live ring's ids read `aud_bmuar529s07a46d_000000006` —
+ticketed, in the real server, by the real appender.
+
+### The residual, named and measured
+
+**AR-4 · A TAIL LOSS IS STILL INVISIBLE TO THE DETECTOR. ACCEPTED, and it cannot be otherwise.** A process that
+dies with its queue non-empty leaves no ticket ABOVE the hole to bound it, and nothing durable can record "N were
+issued" because that record would itself be an append in the queue that was lost. **Size:** the queue depth at
+death — AR-1's number, unchanged. **What does exist:** the absence of that boot's `system.shutdown_drain` row,
+and now a stronger positive statement than the platform has ever had — a boot whose certificate landed carrying
+ticket T, with tickets 1..T all present, wrote **every append it ever issued**. ⛔ **And rows written before this
+shipped are un-ticketed forever.** They are EXCLUDED from the detector's population rather than counted as
+gap-free, and every sweep prints the size of that exclusion.
+
+**AR-3 · CLOSED.** See above. The entry below is left exactly as it was written; ~~struck~~ where it is now
+wrong, never edited.
+
+---
+
+## 2026-09-21 · The process WAITS for the compliance queue before it dies — and the three residual risks, each measured
+
+**Status:** built and driven on branch `rel-lane`. ⛔ **Nothing here was deployed by a session**, and nothing here
+asks for a deploy. Re-derive every number below; none of it is inherited:
+
+```
+npm run test:audit-drain            # the guard      — 36 assertions, 10 controls, no database, five real kills
+npm run rehearse:audit-drain        # the drive      — 20 assertions, 4 controls, real Postgres, real exits
+npm run rehearse:audit-loss-window  # the BEFORE     — the un-drained shape, kept deliberately
+```
+
+**The defect, driven before it was touched.** `audit()` is fire-and-forget on ONE process-wide queue — 467 of the
+489 `audit(` call sites in `src/` are un-awaited, deliberately, because a live bet must not wait on an audit write
+— and a process that ENDS takes whatever is queued with it. With production's own shutdown ordering (Next's
+handler registered first, then `lifecycle.ts:603` and `house-bot/engine.ts:305`, then the app's instrumentation),
+**ten queued `market.position.opened` appends landed 0 of 10.** `verifyChainFull()` calls such a chain
+`{valid:true, linkBroken:false}`, because a lost append consumes no `seq`; and `auditLog` has only `create` in all
+of `src/`, so the row can never be added later. The hole is invisible and permanent.
+
+**Why an earlier handler is not the fix.** `next/dist/server/lib/start-server.js:390` registers
+`process.on('SIGTERM', cleanup)` **before** it calls `getRequestHandlers`, and `instrumentation.ts`'s `register()`
+runs inside that call — so Next's handler is first no matter what the app does, and at `:375` it calls
+`process.exit(143)` itself, which no listener can catch. Measured: its cleanup finished about 30 ms in.
+
+**The decision: the SIGNAL only arms, and the EXIT is held.** `src/lib/server/audit-drain.ts` wraps `process.exit`
+at install time with a pass-through that changes nothing until a termination signal has been seen. After a signal
+the first exit call — Next's — is recorded and DEFERRED, the queue is drained, and the real exit then runs with
+the code the caller asked for. ⛔ Draining on the **exit** rather than on the signal is the correct order, not a
+convenience: Next's cleanup awaits `server.close()` first, so in-flight requests finish — and queue their appends
+— **after** the signal, and a signal-time drain would drain an incomplete queue.
+
+**Driven, with its controls.** BEFORE **0 of 10** rows landed; AFTER **10 of 10**, in **23 ms**. A 50-append burst
+— deeper than anything this platform has been observed to queue — drained **50 of 50 in 95 ms** (1.9 ms per append
+on loopback). The exit code a platform sees is unchanged (143 for SIGTERM, 130 for SIGINT, both driven). With the
+drain installed but **no** signal, `process.exit(7)` is still immediate and still exits 7.
+
+**The bound is 5,000 ms, and the number is argued.** Too short loses a row permanently; too long turns a deploy
+into a hang. Next's self-hosting guide asks platforms for 10–30 s, Kubernetes defaults to 30 s and Docker to 10 s,
+so the bound is set against the **tightest** of those and uses half of it. It is also never tighter than the
+2,000 ms per-tick flush already in `house-bot/worker.ts`. `AUDIT_DRAIN_BUDGET_MS` overrides it, clamped to 30 s so
+a typo cannot hang a deploy; an unparseable value is reported and ignored, never read as zero.
+
+**Exceeding the bound is LOUD.** A delimited `console.error` block names the signal, the budget, the wait, the
+depth at exit and the number ABANDONED, states that those rows can never be added and that `verifyChainFull()`
+will still call the chain valid, and points at `npm run audit:gap-sweep` for the bet rows and at the access-log
+class that has no anchor. Driven at a 1 ms budget: the block's count matches the table exactly.
+
+**And a durable certificate, which is the part an officer can use.** The drain queues one
+`system.shutdown_drain` row **behind** everything already waiting. The queue is FIFO, so that row can only land
+after every append queued before it landed: **its presence certifies the whole shutdown, its absence marks a lossy
+one.** It is the first thing on this platform that can tell the two apart after the container's log is gone.
+
+**Proven in the real server, not only in the drills.** `next dev` was booted on this machine (Next 16.2.4,
+Turbopack, in-memory store) and printed `[audit-drain] armed — this process will wait up to 5000ms for the
+audit queue on SIGTERM/SIGINT.` **before** the scheduler, the lifecycle ticker and the house-bot engine, and
+then served `/api/health` 200. A build being green is not a render, and a drill is not the server.
+
+**⚠️ What CHANGED in behaviour, recorded so nobody "restores" it:** `process.exit` is wrapped. Outside a shutdown
+it is byte-identical; inside one, the first exit is deferred by at most the budget. `test:audit-drain` carries a
+planted control for every part of that (a wrapper that defers *every* exit is FLAGGED).
+
+### The three residual risks — each named, each measured
+
+**AR-1 · The uncatchable exits. ACCEPTED.** SIGKILL, an OOM kill, `process.abort()` and a power loss run no
+handler of any design, so the drain cannot help. ⚠️ A fatal `uncaughtException` / `unhandledRejection` is in
+the same class **by choice**: Node's default fatal exit does not go through `process.exit`, so the wrapper
+never sees it, and registering a handler to catch it would SUPPRESS Node's crash semantics and leave the
+process running in a state it has already declared unsound — a worse trade than the rows it would save. **Size:** the queue depth at the instant of death — measured as
+exactly 1 for a sequential producer and all of them for a burst; the deepest queue any drill here has produced is
+50. **Mitigation:** for the BET row only, `audit-reconcile.ts` declares it as `audit.row_missing` against the
+durable `Position` anchor within five minutes. ⛔ `withdraw.confirmed`, `deposit.confirmed`, `market.settled` and
+`bet.payout` have anchors of their own and are **not** covered yet. ⛔ `player.record_viewed`, `kyc_doc.viewed`,
+`agent_doc.viewed`, `transactions.exported` and `privacy.dsar.exported` have **no anchor at all** — nothing else
+records that the viewing happened, so no ~~reconciler can ever detect their loss~~ RECONCILER can detect their
+loss. That is ISO 27001 A.12.4 access logging and it still needs a different remedy. ⭐ **CORRECTED the same
+night — it got one.** See the 2026-09-21 (second) entry above: the ticket detector is ANCHOR-FREE, because it
+knows a row is missing without needing to know what it would have said. The loss of this class is now detected
+and declared for every cause except a tail loss (AR-4). ⛔ It is still not *reconstructed*, and never can be: the
+declaration records that N access-log appends are missing, never who looked at what.
+
+**AR-2 · 🔴 The signal may never arrive at all. UNVERIFIED — and it is the largest single unknown here.**
+Railway's own troubleshooting note *"NodeJS SIGTERM Handling"* (`docs.railway.com/deployments/troubleshooting/
+nodejs-sigterm-handling`) states that when a service is started with **NPM, Yarn or PNPM the package manager
+becomes the main process, the signal is intercepted, the app's handler never runs, and the service is force
+quit**. 50pick's start command is `"start": "prisma migrate deploy && next start"`, run as `npm run start`, with a
+shell between npm and node as well. **If that note applies to this service, then not only does the drain never
+run — Next's own request draining never runs, `lifecycle.ts`'s lease hand-back never runs, and the house-bot
+requeue never runs: every deploy is effectively a SIGKILL.** ⛔ **This lane could not measure it.** Windows cannot
+deliver SIGTERM to a process at all, and this session's Railway CLI account is not authorised for the project
+(`list_projects` → Unauthorized), so neither the live `drainingSeconds` nor the live start command could be read
+back. **The experiment, and it is cheap:** after the next deploy, read the retiring container's logs for a
+`[audit-drain]` line, or query the audit table for a `system.shutdown_drain` row dated at the rollover. ⭐ The
+drain prints `[audit-drain] armed …` at every boot precisely so the pair is readable: **armed at boot and then
+nothing at shutdown means the signal never arrived**; a row or a drain line means it did and the queue was
+saved. **The two candidate remedies, in
+order of preference:** ① set the Railway service's start command to run node directly (Railway's own advice), or
+② make the npm script `exec` its final command so the shell is replaced. ⛔ **Neither was done tonight, and that
+is deliberate:** both change the command that starts production, neither can be driven on this platform, and
+shipping an unverifiable change to a production start command is precisely how a platform is taken down. **It is
+Ali's call, informed by the experiment above.**
+
+**AR-3 · `valid:true` over a TAMPERED row. ~~OPEN, not accepted~~ — CLOSED the same night; see the 2026-09-21
+(second) entry above.** `verifyChainFull()` sets `valid:false` only on a **link break**. An in-place edit of a
+single row therefore returns `{"valid":true,"total":121,"verified":120,"unverifiable":1,"linkBroken":false}` —
+driven, with the tamper planted and restored, in `rehearse:audit-loss-window` §4 and `rehearse:audit-drain` §5.
+**Size:** one boolean on every surface that renders it; an officer or regulator reading `valid` alone is told a
+tampered log is sound, and the one field that *did* move (`unverifiable`) is not the field anyone reads first.
+~~⛔ **Not fixed here.** It is a separate defect from the loss this entry closes, it touches the admin
+chain-verify surface and the ISO 27001 export, and it is recorded so it is not mistaken for something this work
+covered.~~ ⭐ It was fixed in the next commit on this branch, by a declared attestation baseline; the sentence is
+struck rather than deleted because it was true when it was written.
+
+---
+
 ## 2026-09-18 · D20's consequence for the ISO 27001 export — the regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the count
 
 **Status:** decided on branch `house-bots` (build ruling 501), to be built **before Commit 8**. ⚠️ **Prospective, not live:** the
@@ -288,7 +507,7 @@ Ali was shown the exact sentences the change would touch and the risk in leaving
 | # | Ruling |
 |---|---|
 | D19a | **No public text.** The two rulebooks, Terms, the privacy notice, the FAQ, the home copy and the chatbot keep the words they have today: no prohibited-conduct carve-out, no disclosure line, no Terms §4 paragraph, no privacy lawful-basis line, no META or `TERMS_VERSION` bump, no announcement. **This reverses D2/D7 and P1**, and it leaves the published rulebooks prohibiting bots and shared accounts while 50pick operates house accounts (accepted risk 21). Ali reports that the Gaming Board of Tanzania told him his answers are legally valid; no document is on file. |
-| D19b | ⛔ **Report half reversed by D20 (2026-09-17): no house-liquidity report or CSV is built; the private draft stays.** (Was:) The **private** Gaming Board draft (`BOARD-DISCLOSURE-HOUSE-BOTS.md`, DRAFT FOR ALI) and the admin-console house-liquidity report and CSV are still built. Ali decides if and when the draft is sent. |
+| D19b | ⛔ **STRUCK 2026-09-20 by D21: there is no Gaming Board draft at all.** `BOARD-DISCLOSURE-HOUSE-BOTS.md` was never written and is not to be written — see "Owner ruling D21" above. ⛔ **Report half already reversed by D20 (2026-09-17): no house-liquidity report or CSV is built.** (Was:) The **private** Gaming Board draft (`BOARD-DISCLOSURE-HOUSE-BOTS.md`, DRAFT FOR ALI) and the admin-console house-liquidity report and CSV are still built. Ali decides if and when the draft is sent. |
 | D19c | **The holder sees nothing.** Stakes 50pick places on a holder's account look exactly like the holder's own bets — no chip, no explanatory line, no liquidity label on outcome notices, no house wording in any refusal — and the holder receives **no** house-bot notices or emails at all. Every alert goes to admins only. Consent stays what D5 says it is ⚠️ **(corrected 2026-09-18, ruling 503: the OWNER types the HOLDER's account password, verified like a sign-in and never creating a session — `:158` and `:201` stand; the holder agrees privately and supplies it, and no field anywhere lets the holder type it. The consent is unchanged; only the sentence describing who types is.)** ~~the holder types their password.~~ |
 | D19d | The chatbot **discloses nothing and may never lie**: a guard keeps "never bets against you", "independent", "cannot influence", "all stakes are from real players", "fully automated", "only automated", "no person decides", "no one at 50pick chooses" and any naming or confirming of an account out of the system prompt and `faq8a`, in all three locales. |
 | D19e | W18 is moot (no rule text moves) and W19 is superseded (there is no privacy line). |
@@ -311,6 +530,21 @@ players" — "normal players everywhere" for reports, and "drop them all" for th
 
 The branch record is `plans/house-bots/PROGRESS.md` under "OWNER RULING D20" and `plans/house-bots/C5-D20-REPLAN.md`.
 Nothing of the struck work ever reached production.
+
+### Owner ruling D21 (Ali, 2026-09-20) — the Gaming Board needs nothing, and the private draft is struck
+
+⚠️ **THIS IS A VERBAL OWNER REPORT, NOT A REGULATOR DOCUMENT.** It is the same kind of record as D19a's sentence above,
+and it is written here so that a stranger reading it in a year cannot mistake it for a paper the Gaming Board of
+Tanzania issued. **Ali reports** that the Board does not need a disclosure about house bots and would not act on one;
+**no document is on file**, none was requested and none is expected.
+
+| # | Ruling |
+|---|---|
+| D21a | **No Board paper is owed or written.** `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` is **STRUCK 2026-09-20**. It never existed — measured every way on 2026-09-20 — and it is not to be created. Nine documents of record cited it as a live authority; each citation now carries a dated strike note pointing here, so no later session rebuilds it from a stale plan. `test:house-bot-disclosure` §8.1 and §8.2 hold both halves. |
+| D21b | **The reasoning is D20, which is already built.** House stakes count in GGR and in the levies **as player activity, with no house memo**, so the statutory figures the Board receives are identical whichever account placed the stake. There is nothing in those figures for a disclosure to correct. |
+| D21c | **It satisfies no condition and weakens no control.** F6 §5 condition 1 (written GBT approval) stays **waived by owner ruling D1, not satisfied** — its wording is unchanged and is pinned word for word by `test:house-bot-disclosure` d.5. A regulator not wanting a disclosure is not a licence to drop a guard: every control D19, D19d and D20 name stands exactly as built. |
+| D21d | **Accepted risk 21 is unaffected, and is the coherent route.** It is a matter between 50pick and its own **players**, through the rules 50pick itself published — not a Board matter. ⛔ It may **not** be "solved" by rewriting the rulebooks to carve house accounts out: any carve-out a player can read **discloses the feature** and breaches D19, which outranks. d.4 pins the three published sentences the risk rests on, so a carve-out turns the suite red. |
+| D21e | **The dormant enum value stays.** `BOARD_DISCLOSURE_RECORDED` is APPLIED on production inside `prisma/migrations/20260916150000_house_bot_tables/migration.sql`, so the Postgres enum keeps it and `constants.ts` keeps mirroring it. It is recorded as **deliberately dormant**, not removed: §8.4 pins that nothing can emit it, and §8.4b pins that it is still declared where the live database needs it. |
 
 ### Supersedes
 
@@ -358,7 +592,7 @@ The two house migrations are applied to production from the build machine with `
 
 | # | Question | Default being built |
 |---|---|---|
-| W2 | What a player — a *trigger* player or a holder — sees in their data export (R5) | ⛔ **Re-opened by owner ruling D19 (2026-09-16).** No releasable export — the player's "Export my data" or the officer's DSAR bundle — carries house wording, a house key or a house id; a holder's house stakes appear as their own bets. Excluded days and the countered count live only in the owner-only internal record (C5-SPEC rulings 168–170, 236, 239). **Waits on Ali and a lawyer** (the PDPA access right). |
+| W2 | What a player — a *trigger* player or a holder — sees in their data export (R5) | ⛔ **Re-opened by owner ruling D19 (2026-09-16).** No releasable export — the player's "Export my data" or the officer's DSAR bundle — carries house wording, a house key or a house id; a holder's house stakes appear as their own bets. ~~Excluded days and the countered count live only in the owner-only internal record (C5-SPEC rulings 168–170, 236, 239).~~ ⛔ **Corrected 2026-09-21 (owner ruling D20, C5-8): THERE IS NO INTERNAL RECORD, so this row may not send a reader to one.** D20 struck the owner-only internal record (rulings 236–239) and it was never built: measured on this tree, `liquidityDecisions`, `counteredPositionsCount` and `recordDisclosure` have **zero** occurrences under `src/` — every hit is a guard asserting their ABSENCE (`dsar-export-secrets.test.mts` plants them as controls; `dal-parity` and the console cases list them as NOT NEEDED). So **excluded days and the countered count are not disclosed anywhere** — not in a releasable export, and not in any internal store either. What stands is rulings 168–170: both releasable doors are house-free. **Waits on Ali and a lawyer** (the PDPA access right — whether the subject is owed a statement that a countered day existed at all). |
 | W3 | ⛔ **Moot by D19a (2026-09-16):** no text changes. (Was:) Terms §10's written in-app notice can't be kept today (P2) | waived on Ali's ruling; defect recorded |
 | W4 | Retention of skipped/expired intents (A20) | kept 7 years (proposal on file: 90 days) |
 | W5 | Platform-wide sign-out on password change (A1) | not in this build (separate hardening) |

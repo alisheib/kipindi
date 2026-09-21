@@ -17,9 +17,19 @@
  *   · `realisedLossTzs` = settled stake − money returned. STOPS fire only when realised loss
  *     reaches the cap — a bot is never paused for money it has not actually lost.
  * Realised loss may be negative: that is a profit, and it is reported as such, never clamped.
+ *
+ * ⛔ THIS MODULE HAS NO RESULTS READER, AND IT IS NOT COMING BACK (C7-SPEC ruling 371, C7 step 7).
+ * `houseBotBook` and the `HouseBotBook` type were deleted here with the last of ruling 183's fee derivation.
+ * They were written for a lifetime-and-today "Book" card on the console, and the docblock above them still
+ * claimed that card as their caller months after owner ruling D20 struck it — an authority that told the next
+ * reader a removed surface was live. Measured before the deletion: ZERO callers under `src/` and `scripts/`.
+ * What a console may read here is `houseDayBook`, `houseDayBooks` and `houseOpenExposure`, and it reads them
+ * through `house-console-read.ts`, never directly (ruling 340). `netTzs` and `feeWithheldTzs` are results, and
+ * ruling 266 confines console money to usage against a configured limit — so a reader returning them would
+ * invite the next page to "just use the book". `test:house-bot-console` 1.371 is the standing grep.
  */
 import { houseBookStore, type HouseBookRawRow, type HouseTx } from "@/lib/server/house-bot-dal";
-import { eatDayKey, eatDayWindow } from "@/lib/house-bot/clock";
+import { eatDayWindow } from "@/lib/house-bot/clock";
 
 export type HouseDayBook = {
   /** Null = every bot together. */
@@ -36,31 +46,7 @@ export type HouseDayBook = {
   projectedLossTzs: number;
 };
 
-export type HouseBotBook = {
-  bets: number;
-  stakedTzs: number;
-  returnedTzs: number;
-  /** returned − settled stake: positive is a profit. */
-  netTzs: number;
-  openExposureTzs: number;
-  /**
-   * ⛔ ALWAYS NULL — "not recorded per stake", never a confident 0.
-   *
-   * R3 expected the fee withheld from a house bot's winnings to be summed from its marked ledger
-   * rows. The code does not record it there: the settlement payout transaction writes `fee: 0`
-   * (market-service.ts, the payout create in settlement), and the commission ledger line names
-   * the market but no user and no transaction (ledger.ts, the settlement lines). A zero here
-   * would be a false statement about money, so the field is null until build commit 5 derives it
-   * from the poll's frozen fee snapshot and the position's share (PLAN §18).
-   */
-  feeWithheldTzs: null;
-};
-
 type RawSums = Pick<HouseBookRawRow, "bets" | "staked" | "openStake" | "settledStake" | "returned">;
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-/** The lifetime window starts at the epoch; its end is the day after `nowMs`. */
-const LIFETIME_FROM_ISO = "1970-01-01T00:00:00.000Z";
 
 /** Pure: one book from raw sums. Both stores' rows go through this one function. */
 export function foldDayBook(raw: RawSums, houseBotId: string | null, dayKey: string): HouseDayBook {
@@ -116,32 +102,4 @@ export async function houseDayBook(dayKey: string, houseBotId: string | null, tx
 export async function houseOpenExposure(houseBotId: string | null, tx?: HouseTx): Promise<number> {
   const rows = await houseBookStore.openExposure(houseBotId, tx);
   return rows.reduce((sum, r) => sum + r.openStakeTzs, 0);
-}
-
-/**
- * The console's money card: today's cohort or the whole lifetime, plus live open exposure.
- *
- * ⛔ NO CALLER TODAY, AND ITS PLANNED ONE IS STRUCK (owner ruling D20, 2026-09-17; C5-D20-REPLAN ruling 266). Commit 1 wrote
- * this for the console's lifetime-and-today "Book" card, which D20 removed along with "Today's net" and the fee withheld: a
- * Commit 7 console shows money only as usage against a configured limit, and that reads `houseDayBook` /
- * `houseOpenExposure`, not this. It is left standing, unused and with no case, for Commit 7's rulings to give it a caller
- * or delete it — recorded in PROGRESS by checkpoint C5-5b so it cannot be mistaken for live code (review test-strength-10).
- */
-export async function houseBotBook(input: { houseBotId: string | null; range: "today" | "lifetime"; nowMs: number }): Promise<HouseBotBook> {
-  const window = input.range === "today"
-    ? dayWindowIso(eatDayKey(input.nowMs))
-    : { fromIso: LIFETIME_FROM_ISO, toIso: new Date(input.nowMs + DAY_MS).toISOString() };
-  const [rows, openExposureTzs] = await Promise.all([
-    houseBookStore.dayRows({ ...window, houseBotId: input.houseBotId }),
-    houseOpenExposure(input.houseBotId),
-  ]);
-  const raw = sumRows(rows);
-  return {
-    bets: raw.bets,
-    stakedTzs: raw.staked,
-    returnedTzs: raw.returned,
-    netTzs: raw.returned - raw.settledStake,
-    openExposureTzs,
-    feeWithheldTzs: null,
-  };
 }

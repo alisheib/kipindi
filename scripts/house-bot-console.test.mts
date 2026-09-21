@@ -78,14 +78,90 @@
  * ⭐ RAISED AGAIN at C7 step 4c with ruling 550(b)'s PAGER on the account page's Targets grid (the total is a
  * COUNTING read beside the paged one, the tab count is the account's own ACTIVE total and not the page's, and a
  * `?tpage=` past the end is served as the last page) and ruling 551(a)'s refusal destination (a section that masks
- * its record ids does not hand one back in a `next=` target) — to what the run PRINTED: **memory 448,
- * Postgres 297**. Seen RED first on six separate mutations, two at a time: total-from-page-length (total 20 where
+ * its record ids does not hand one back in a `next=` target) — and again at C7 step 6, to what THAT run printed:
+ * **memory 485, Postgres 322** (the designate wizard's own §2f, its three D19 source pins and the two re-aimed
+ * assertions its live head action forced).
+ * ⭐ RAISED AGAIN at C7 step 6's FIX PASS, to what THAT run printed: **memory 515, Postgres 344** — the page's own
+ * audience verdict (259/324/380, which the wizard decided only when a `?u=` was present), the counting reader
+ * behind "Open positions" (344), the settled set's three failure branches (355), the picker's eight-role refusal
+ * parity, its rate rule and its busy sentence (387), the ten-option cap with a count that does not lie about it,
+ * ruling 388's OWN 25-character Proof, and the once-only `submitId` whose deterministic key bricked the control
+ * after one wrong password. A floor only ever rises, and only to a count a run printed. Seen RED first on six separate mutations, two at a time: total-from-page-length (total 20 where
  * the set is 22), tab-count-from-page (20 on page 1, 2 on page 2), offset ignored (page 2 == page 1, union 20),
  * no clamp (`?tpage=99` answered 99), the helper returning its argument, and one of the four `next=` sites built
  * from the raw href (layout 3 built / 2 via the helper).
+ * ⭐ RAISED AGAIN at C7 STEP 7 — THE CLOSING GATES — to what `npm run test:house-bot-console` PRINTED on that
+ * ⭐ RAISED AGAIN at the C7 STEP 7 REVIEW, to what that run printed: **memory 561, Postgres 344** — the review's
+ * repairs to 1.370, 1.371, 1.390, 1.391, 1.395, 1.397 and 1.398 and its eight surface pins are SOURCE pins and run
+ * in the memory child alone, which is why only that half moved.
+ * run: **memory 540, Postgres 344** (539 before the READ-TIERS finding below added its control). The Postgres half is unchanged to the case, and that is expected rather than
+ * a miss: every assertion this step added is a SOURCE pin and the source pins run in the memory child only.
+ * What landed: `1.371` (the results reader and the last of the fee derivation gone from house-bot CODE, over a
+ * population derived from the path so the AGENT module's own `netTzs` is not mistaken for this feature's),
+ * `1.370` (no amount in any engine or switch-off sentence, no money field on `SwitchOffOutcome`), `1.375`
+ * (`reimbursement_recorded` has no writer and `HOUSE_AUDIT` is pinned at 31 keys), and the four D19 assertions
+ * step 7 owed — `1.390`, `1.391`, `1.395` and `1.397` — which is why `1.398`'s ladder now reads SEVEN.
+ * ⭐ AND ONE FINDING THE STEP'S OWN SUITE RUN PRODUCED, fixed here rather than carried: `test:read-tiers` 7.1 is an
+ * INHERITED red, but its failing LINE had grown a second file on this branch — the wizard's `{view.phoneE164 !==
+ * null && (` presence check. The ratchet strips `<Sensitive …/>` and reports every other braced expression naming
+ * a governed accessor, so a check that renders nothing read exactly like a page printing a player's number in the
+ * clear. The branch now takes a server-computed `hasPhone`; 7.1 names `/admin/agents/page.tsx` alone again, as it
+ * does on `origin/main`. `1.359` is re-aimed at the same defect with the ratchet's own detector reproduced as its
+ * control, and `1.420`'s phone-line pin widens from THREE named lines to FOUR.
+ * ⭐ RAISED AGAIN AT THE C7 STEP 7 REVIEW's REGRESSION FIX, to what that run printed: **memory 570, Postgres 344**.
+ * The review replaced a shared CLASS STRING with a shared COMPONENT (`src/app/admin/desk/way-out-link.tsx`) and did
+ * not re-run this suite: four SOURCE assertions were left measuring a shape the section no longer has — 1.432's
+ * declaration sweep, 1.306's positional link pin, 1.312a's linked-sentence paint and 1.359/456's door outside the
+ * funded guard — and the `432-way-out` red anchor stopped resolving, so its harness was measuring nothing. Each was
+ * re-aimed at the NEW shape and each got STRICTER doing it (the element is pinned beside the href, the paint is
+ * counted, the door must be exactly one and must be a rendered link, and the component's props are pinned CLOSED so
+ * a caller cannot add to the shared look). The +9 are the four repairs' own planted controls. ⛔ NONE of them was
+ * loosened to go green: four declared mutations — `432-way-out`, `306-way-out-element`, `312a-linked-outside` and
+ * `359-door-inside` — put each defect back on disk and every one was SEEN RED on the assertion it names.
+ * ⭐ RAISED AGAIN AT C7 STEP 5's ACCOUNT HALF, to what THIS pass printed on both stores: **memory 659,
+ * Postgres 430**. The account page grew its activity and history panels, and with them 78 new assertions and
+ * their controls: the detail rail's closed list both ways, the TOTAL event-word map and the measurement of WHY it
+ * has to be total (the lexicon is structurally blind to `HOLDER_AGAINST_BOT`), both pagers against COUNTING
+ * readers, the facets moving rows and total together, every crafted query axis refused BY NAME, the two empty
+ * states told apart from a failed read, a bell's anchor landing on the page its own row is on, and the prop-name
+ * pin widened to the three spellings its old `[?:]` tail was blind to.
+ * 🔴 THE +1 OVER THE FIRST GREEN RUN IS THE RED HARNESS PAYING FOR ITSELF. The declared mutation
+ * `317-word-hole` renamed one kind of the TOTAL event-word map and the suite stayed GREEN: the totality
+ * comparison had been written with `j`, which is this file’s DISPLAY helper and slices at 260 characters,
+ * and thirty keys serialise to about 600. Every comparison this step wrote now reads `all`, and the extra
+ * assertion is the CONTROL that keeps the finding — it requires the whole-set comparison to report a rename
+ * 600 characters in and requires `j` NOT to.
+ * 🔴 AND THE +8 AFTER THAT ARE THE RENDER PAYING FOR ITSELF. The panels were driven on a SERVED page over a
+ * scratch Postgres, and the markup carried `href="…&kind=counter"` and `data-chip="kind:counter"` five times —
+ * a word 453 forbids, in the address bar, with EVERY SUITE GREEN (4.453 scans source literals and the token was
+ * computed; 3.453 scanned the labels and not the keys; the bundle scan reads chunks and this is server markup).
+ * The same reading found a `When` column that read one minute on twenty rows under a "Newest first." claim, and
+ * a singular heading above a plural sentence on one card. All three are fixed and all three now have a case.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
+ * ⭐ RAISED AGAIN AT C7 STEP 5's LANDING HALF, to what `npm run test:house-bot-console` PRINTED on this run:
+ * **memory 700, Postgres 470**. `CONSOLE_TABS` grew to its four keys in rail order and the desk-wide activity and
+ * history panels landed behind them, with the rail both pages now share, both pagers against COUNTING readers, the
+ * queued-stake badge read ONCE in the shell for all four tabs, and the hour summary's bell finally landing on the
+ * hour it is about.
+ * 🔴 AND THE MEMORY CHILD'S OWN +41 IS PARTLY A DEFECT THIS RUN FOUND IN THE HARNESS RATHER THAN IN THE
+ * BUILD. `pageRaw`, `pageCode` and `panelOf` were hoisted out of §4 so §2e3 could slice the same page — to column
+ * zero, which READS like the top level and is not: §1 and §2 sit inside one `try` that closes past §2e3, so the
+ * hoisted constants were locals of it and §4 threw `pageRaw is not defined`. The memory child ABORTED at 0
+ * assertions while the Postgres child printed ALL PASS, which is exactly the shape `0.throw` exists to refuse and
+ * exactly why a per-store floor is a PAIR. Indentation is not scope; the declaration now sits above the `try`.
+
+ * 🔴 RAISED AGAIN BY THE LANDING RENDER, WHICH FOUND TWO DEFECTS EVERY SUITE HERE HAD PASSED —
+ * **memory 706, Postgres 471**. (1) The desk-wide panel handed back the SHELL's filtered empty state, whose
+ * body reads "No stake on **this account** matches" — on the one page that has no account to name; the
+ * assertion meant to hold that compared only the two TITLES and then checked the UNFILTERED body for the word
+ * "desk", so the one string that was wrong is the one string nothing read. (2) The Owner's own typed label was
+ * wrapped in `.row-link`, the platform's row-EXIT class, whose `text-transform: uppercase` REWROTE it: the
+ * roster painted `Evening desk - widest label yetX` and these two panels painted `EVENING DESK - WIDEST LABEL
+ * YETX`, one label in two looks 40px apart on one screen. That one was invisible to every scan in this
+ * repository — it lives in a COMPUTED STYLE, and only a photograph and `getComputedStyle` could see it.
+
  * ⚠️ `red:house-bot-console` carries the mutations for every assertion here; it is run once at the commit close.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
@@ -93,6 +169,21 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 448, postgres: 297 },
+  /* ⭐ RAISED 706 → 710 / 471 → 475 at CA-19 — the double-tapped Confirm, its two positive controls and the
+   * dialog's own nonce pin — to what `npm run test:house-bot-console` PRINTED on this run, BOTH children
+   * measured. The +4 in EACH child is the measurement, not bookkeeping: all four assertions reach both
+   * stores, and a build where they reached only the memory twin would have shown +4 and +0. */
+  /**
+   * ⭐ 710 → 715 MEMORY / 475 → 480 POSTGRES, 2026-09-21, AND IT HAD BEEN TRAILING FOR THREE COMMITS.
+   * `1.420.unit` and its four controls (the time cap's unit word) are unconditional and run in BOTH children,
+   * so both halves moved — the Postgres side had never been re-measured for that change at all.
+   * ⛔ BOTH NUMBERS ARE WHAT A RUN PRINTED, not 710 + 5: `0.mem · exit 0 · 715 passed` and
+   * `0.pg · exit 0 · 480 passed`, ALL PASS on both stores.
+   * ⛔ WHY A TRAILING FLOOR IS NOT A COSMETIC DEBT: while it sat at 710, the five newest assertions could have
+   * stopped running and this suite would still have printed ALL PASS and exited 0 — and it is a predeploy gate,
+   * so the whole chain would have gone green over them. Found by an adversarial review of this session's own
+   * merge claim, which is the only reason it is not still trailing.
+   */
+  minPass: { memory: 715, postgres: 480 },
   dbPrefix: "hb_console",
 });

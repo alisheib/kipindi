@@ -290,7 +290,7 @@ export const MUTATIONS = [
     file: "src/lib/comment-side.ts",
     from: `p.status === "OPEN" && p.houseBotId == null);`,
     to: `p.status === "OPEN");`,
-    expect: "6.m1 · a liquidity stake never gives its holder a side chip",
+    expect: "6.m1 · HB-ACC-13 · W23 kept · a liquidity stake never gives its holder a side chip",
     suite: "seam",
   },
   {
@@ -414,5 +414,109 @@ export const MUTATIONS = [
     to: `  const botStaff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: botId });`,
     expect: "9.5 ·",
     suite: "caps-mem",
+  },
+
+  /* ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+   * §1j ROW 84 (C5-8, 2026-09-20) — THE FIVE MARKER SITES THAT HAD NO DECLARED MUTATION.
+   *
+   * `0.232.2b` printed `2 of 7` for as long as only `SEAM:txnMarker` and `SEAM:markerOrphan` were declared here.
+   * The other five money writes that carry the house marker — the cash-out, the one-sided refund, the void
+   * refund, the winner payout and the emergency void — each write a POSITIONED `Transaction` that copies
+   * `houseBotId` from the position whose id is its `positionId`, and deleting any one of those markers was
+   * demonstrated red by NOTHING. `0.232.1`'s rule is structural and store-independent, and `0.232.c1` already
+   * plants exactly this shape at `:2792` and requires one site to be reported — so the rule is known to work;
+   * what was missing was a declaration that drives it at the other five sites.
+   *
+   * ⛔ Each `from` was re-resolved against the tree before it was written, and each occurs EXACTLY ONCE — the
+   * `SEAM:` comment line is what makes it unique, because the spread line alone appears at six sites.
+   * ⛔ These run under `reports-mem` because `0.232` lives in the reports cases; that suite key is added to
+   * `red-house-bot-money.mjs`'s own map in the SAME commit. Adding declarations cannot move
+   * `UNDECLARED_CEILING` — its population is `red:*` npm KEYS, not declarations.
+   * ⭐ Landing these raises `0.232.2b` from `2 of 7` to `7 of 7`, which is the one direction that assertion was
+   * written to move: its whole purpose is that the number cannot quietly stay at two.
+   * ───────────────────────────────────────────────────────────────────────────────────────────────────────── */
+  {
+    name: "232-marker-cashout · the cash-out transaction stops carrying the house marker",
+    file: SVC,
+    from: `      // SEAM:markerCashout — unreachable for a house position after (e), kept so the rule has no exception.\n      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `      // SEAM:markerCashout — unreachable for a house position after (e), kept so the rule has no exception.\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-one-sided · the one-sided refund transaction stops carrying the house marker",
+    file: SVC,
+    from: `            // SEAM:markerOneSided\n            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `            // SEAM:markerOneSided\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-void · the void refund transaction stops carrying the house marker",
+    file: SVC,
+    from: `            // SEAM:markerVoid\n            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `            // SEAM:markerVoid\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-win · the winner payout transaction stops carrying the house marker",
+    file: SVC,
+    from: `            // SEAM:markerWin\n            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `            // SEAM:markerWin\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-emergency · the emergency-void transaction stops carrying the house marker",
+    file: SVC,
+    from: `            // SEAM:markerEmergency\n            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `            // SEAM:markerEmergency\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  /* ── §12 · the two omission-only pins (2026-09-20) ───────────────────────────────────────────────────────────
+   * Each of these puts back a state the platform could plausibly be in — the loss-limit gate stepping over a
+   * house stake, the wallet gate letting a closed wallet pay, and a "safety" check added to settlement — and
+   * each must be caught by the §12 assertion that names it, with the positive control beside it staying green. */
+  {
+    name: "12-loss-limit-skips-house · the RG daily-loss gate steps over a house stake, so a bot spends past a limit the holder set for themselves",
+    file: SVC,
+    from: `    const lossCheck = await checkLossLimit(userId, opts.stake, lockTx);`,
+    to: `    const lossCheck = ctx.kind === "house" ? { allowed: true, reason: null } : await checkLossLimit(userId, opts.stake, lockTx);`,
+    expect: "12.1 · ⛔ a HOUSE stake over the holder's OWN daily loss limit is REFUSED",
+    suite: "money-mem",
+  },
+  {
+    /* ⭐ THE POSITIVE CONTROL'S OWN MUTATION. A gate that refuses EVERY stake once a limit exists passes 12.1
+     * perfectly while the holder can no longer bet at all — the failure mode a refusal-only assertion cannot
+     * see, and the reason 12.2 exists. */
+    name: "12-loss-limit-is-a-wall · any limit at all refuses every stake, so 12.1 passes while the holder's own betting is dead",
+    file: "src/lib/server/responsible-gambling.ts",
+    from: `  if (lossSoFar + stakeTzs > r.dailyLossLimit) {`,
+    to: `  if (lossSoFar + stakeTzs > 0) {`,
+    expect: "12.2 · ⭐ POSITIVE CONTROL · a house stake that FITS the same limit still LANDS",
+    suite: "money-mem",
+  },
+  {
+    name: "12-closed-wallet-stakes · the bet path stops requiring an ACTIVE wallet, so a CLOSED one still funds new house stakes",
+    file: SVC,
+    from: `    if (!wallet || wallet.status !== "ACTIVE") {`,
+    to: `    if (!wallet) {`,
+    expect: "12.4 · ⛔ no NEW house stake leaves a wallet that is not ACTIVE",
+    suite: "money-mem",
+  },
+  {
+    /* ⛔ THE ONE §12.5 EXISTS FOR, AND IT IS A SILENT FAILURE BY CONSTRUCTION. Someone adds a wallet-status
+     * check to settlement "for safety". The market still settles, `settledAt` is still stamped, no error is
+     * raised anywhere — and the holder's position stays OPEN with their winnings never paid, invisible to
+     * every settlement readout because they all filter on `settledAt` being null. This is exactly the shape
+     * `settleMarket`'s own "REFUSE, NEVER SKIP" comment records having shipped once already. */
+    name: "12-settle-skips-closed · settlement quietly SKIPS a closed wallet, stamping settledAt over a position it never paid",
+    file: SVC,
+    from: `    const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);\n    for (const p of myPositions) {\n      const w = await db.wallet.findByUserId(p.userId);`,
+    to: `    const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);\n    for (const p of myPositions) {\n      const w = await db.wallet.findByUserId(p.userId);\n      if (w && w.status === "CLOSED") continue;`,
+    expect: "12.5 · ⛔ a house stake already OPEN when the wallet CLOSED still settles INTO it",
+    suite: "money-mem",
   },
 ];
