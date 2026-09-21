@@ -27,6 +27,7 @@ import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { MUTATIONS as DEFECTS_ALL } from "./anchors/house-bot-engine.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
+import { armRestoreGuard } from "./lib/red-restore-guard.mjs";
 import { benignFloor, floorShapeDrifted } from "./lib/red-two-store-floor.mjs";
 
 const MEMORY_ONLY = process.argv.includes("--memory-only");
@@ -102,29 +103,14 @@ const original = new Map(files.map((f) => [f, readFileSync(f, "utf8")]));
 const shaBefore = new Map(files.map((f) => [f, sha(f)]));
 
 /**
- * ⛔ A KILLED DRIVE MUST NOT LEAVE A DEFECT ON DISK. The loop restores each file in a `finally`, but a signal cuts the
- * process before that ever runs — so until 2026-09-21 a Ctrl-C mid-mutation left the injected defect in the worktree,
- * `git diff` showing a plausible one-line change, ready for the next `git add -A` in any lane to ship it. That is
- * `docs/FAILURE-INVENTORY.md` §3.8 exactly: two concurrent red drives once left the live payout gate DISABLED while
- * the harness reported clean. The restore now happens in the same handler, BEFORE the lock is released, and a restore
- * that itself fails prints the `git checkout --` that fixes it rather than dying quietly.
- *
- * ⚠️ NOT MEASURED ON WINDOWS, AND THAT IS NOT A DETAIL. Node runs these handlers on a real console Ctrl-C, but
- * `process.kill(pid, "SIGTERM"/"SIGINT")` on Windows terminates unconditionally without running them — which is how
- * the 2026-09-21 runaway drive had to be stopped. So this restores a drive the operator stops from its own terminal,
- * and does NOT restore one killed from the process table. ⛔ After ANY killed drive, still check
- * `git show HEAD:<file>` against the worktree — the harness's own refusal is the load-bearing check, not this.
+ * ⛔ A KILLED DRIVE MUST NOT LEAVE A DEFECT ON DISK. This harness shed the leaking idiom at 85dc41af — the signal
+ * handler released the lock and exited WITHOUT restoring, so a stopped drive left the injected defect in the worktree
+ * looking like a plausible one-line change for the next `git add -A` in any lane to ship. The restore now lives in
+ * ONE module all three house-bot red harnesses arm: read `scripts/lib/red-restore-guard.mjs` for what it covers, what
+ * it cannot (a Windows `taskkill` runs nothing at all), and why this harness's own refusal to start on a dirty target
+ * stays the load-bearing check.
  */
-for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => {
-  const broken = [];
-  for (const [p, s] of original) {
-    try { write(p, s); } catch { broken.push(p); }
-  }
-  if (broken.length) console.error(`⛔ ${sig}: COULD NOT RESTORE ${broken.join(", ")} — A DEFECT IS STILL ON DISK.\n   Run: git checkout -- ${broken.join(" ")}`);
-  else console.error(`${sig}: every target restored from the in-memory original before exit (${original.size} file(s)).`);
-  releaseLock();
-  process.exit(1);
-});
+armRestoreGuard({ original, write, releaseLock, label: "house-bot-engine RED" });
 
 // ⭐ Every suite-and-sections a mutation names must be GREEN first — a red baseline would make every mutation look caught.
 const baselines = new Map();

@@ -22,6 +22,7 @@ import { createHash } from "node:crypto";
 import { MUTATIONS as MONEY } from "./anchors/house-bot-money.anchors.mjs";
 import { MUTATIONS as SEAM } from "./anchors/house-bot-seam.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
+import { armRestoreGuard } from "./lib/red-restore-guard.mjs";
 
 const MEMORY_ONLY = process.argv.includes("--memory-only");
 // `--only (e),H5` runs just the named mutations (prefix match on the name) — for re-proving one fix without the fleet.
@@ -78,10 +79,18 @@ for (const f of files) {
 writeFileSync(LOCK, `${process.pid} ${new Date().toISOString()}\n`);
 const releaseLock = () => { try { unlinkSync(LOCK); } catch { /* already gone */ } };
 process.on("exit", releaseLock);
-for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { releaseLock(); process.exit(1); });
 
 const original = new Map(files.map((f) => [f, readFileSync(f, "utf8")]));
 const shaBefore = new Map(files.map((f) => [f, sha(f)]));
+
+/**
+ * ⛔ A KILLED DRIVE MUST NOT LEAVE A DEFECT ON DISK. Until 2026-09-21 the handler above released the lock and
+ * exited WITHOUT restoring, so a stopped drive left the injected defect in the worktree looking like a plausible
+ * one-line change for the next `git add -A` in any lane to ship. The restore is SHARED, not copied — read
+ * `scripts/lib/red-restore-guard.mjs` for what it covers, what it cannot (a Windows `taskkill` runs nothing at all),
+ * and why the harness's own refusal to start on a dirty target stays the load-bearing check.
+ */
+armRestoreGuard({ original, write, releaseLock, label: "house-bot-money RED" });
 
 // ⭐ Every suite a mutation names must be GREEN first — a red baseline would make every mutation look caught.
 const needed = [...new Set(DEFECTS.map((d) => d.suite))].filter((s) => !(MEMORY_ONLY && s.endsWith("-pg")));
