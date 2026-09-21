@@ -816,10 +816,20 @@ wrong.** It is done, it is driven by killing real processes, and it turns §12's
 all of it:
 
 ```
-npm run test:audit-drain            # the guard   — 36 assertions, 10 controls, 0 failed, NO database
+npm run test:audit-drain            # the guard   — 42 assertions, 13 controls, 0 failed, NO database
 npm run rehearse:audit-drain        # the drive   — 20 assertions, 4 controls, 0 failed, real Postgres
 npm run rehearse:audit-loss-window  # the BEFORE  — the un-drained shape, kept deliberately
 ```
+
+⚠️ **THE FIRST LINE READ `36 assertions, 10 controls` UNTIL THE ops ← rel-lane MERGE RE-RAN IT (2026-09-21).**
+It was already stale in its own branch: `09398014` — "the deferred exit moves into a `finally`" — added the
+assertions that cover the un-taken exit and did **not** come back to this block. On the merged tree the guard
+prints **`audit-drain: 42 passed, 0 failed, 42 assertion(s) emitted · controls among them: 13`**, and the number
+above is now that run's, not a carried one. ⛔ Nothing about the guard was changed to make this true — only the
+sentence describing it. ⭐ The lesson this file already teaches applies to this file: a recorded number rots the
+moment the thing it describes is edited, and a rotted number in a brand-new authority is read as fact by the next
+session. Re-derive it; never quote it. (`rehearse:*` counts above are **NOT** re-derived here — they boot Postgres
+and kill real child processes, and this pass did not spend that; they stay as lane 4 recorded them.)
 
 **13.1 · The number.** Same ordering, same appends, same real `process.exit`:
 
