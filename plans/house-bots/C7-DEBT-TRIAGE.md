@@ -979,11 +979,29 @@ still carry the old idiom and are NOT fixed here — this lane may not edit what
   writing to its own database while this phase ran, not this lane touching it. ⚠️ The count read **18** twice
   mid-phase: `hb_caps_<pid>` and `hb_engine_<pid>`, this lane's own, created and dropped by `runTwoStores` — so a
   count that moves DURING a run is the normal lifecycle, not a loss.
-  ⛔ **17 is two fewer than the 19 recorded at the previous phase's close, and this phase cannot explain the
-  difference.** `opsvis_c7s5` was already gone then; `hb_p06` and the rest are unchanged. Re-derived from the other
-  side again: every `DROP DATABASE` this lane can reach names `<prefix>_<process.pid>`, and this lane's prefixes are
-  `hb_engine` and `hb_caps` only — so no script run here could have removed another lane's database. Reported, not
-  explained away.
+  ⭐ **AND THE "DISAPPEARING DATABASES" ARE EXPLAINED — MEASURED, NOT ASSUMED.** The previous phase recorded
+  **19** and this phase reads **17**, which looked like two losses. It is not. The same query, run once with
+  `datistemplate` included and once without, answers **19 including templates and 17 excluding them**:
+  `template0` and `template1` are the whole of the difference. ⛔ **The earlier 19 counted the templates and this
+  phase's 17 did not** — the number moved, the cluster did not, and a count is only comparable to a count taken the
+  same way.
+
+  What about `opsvis_c7s5`, the one that really did go? Another lane's own snapshot left in the shared scratchpad,
+  `DBS-BEFORE-alerts.txt` (2026-09-20 23:47), lists **16 non-template databases**, already without `opsvis_c7s5`
+  and already with `ops_visual_20260920`. Those 16 plus `ops_panels_20260921`, created by the ops lane today, are
+  exactly this phase's 17. So the ops lane turned its own named database over — dropped one, created the next — which
+  is that lane managing its own scratch, not a database vanishing on its own. ⛔ **Nothing here supports the hardware
+  hypothesis for this symptom**, and no database this lane could reach was lost: every `DROP DATABASE` this lane
+  runs names `<prefix>_<process.pid>` with the prefixes `hb_engine` and `hb_caps`.
+
+* ⚠️ **AND A HAZARD FOUND WHILE DOING IT: THE AGENT SCRATCHPAD IS SHARED, AND A GENERIC FILENAME IN IT GETS
+  OVERWRITTEN UNDER YOU.** The counting script this phase wrote at `…/scratchpad/dbcount.mjs` was **replaced by
+  another agent mid-phase** — different connection password, different query, different output format, mtime 04:04,
+  after this phase's last successful run of its own version. The directory also holds files from 2026-09-19 and
+  2026-09-20 written before this session existed. ⛔ **A scratchpad path is not private, and a run whose helper was
+  swapped can report someone else's numbers without any error.** The count above was therefore re-derived with a
+  uniquely-named script (`alerts-lane-floor-dbcount-20260921.mjs`). ⭐ Name scratch files after the lane and the
+  day, never `dbcount`, `out`, `tmp`.
 
 ### One red this phase did NOT cause and did NOT touch
 
