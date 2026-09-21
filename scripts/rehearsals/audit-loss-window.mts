@@ -417,7 +417,7 @@ try {
 
   // ── §5 · DETECTION ─────────────────────────────────────────────────────────────────────────────
   console.log("\n═══ §5 · THE HOLE IS DETECTABLE AFTER THE FACT ════════════════════════════════════════");
-  const rec = await child(["recon", "40", "recon"], { RECON_KILL_MS: "150" });
+  const rec = await child(["recon", "40", "recon"], { RECON_KILL_MS: "0" });
   const r = line(rec.out, "RECON ");
   if (r) {
     const gaps = (await cli.query(
@@ -430,6 +430,13 @@ try {
     console.log(`  detector found ${gaps.length} position(s) with no compliance row (HOUSE bets among them: ${gaps.filter((g) => g.houseBotId).length})`);
     ok("5.1 · the LEFT JOIN on the durable Position anchor finds exactly the hole",
       gaps.length === r.positions - landedRecon, `detector ${gaps.length} vs hole ${r.positions - landedRecon}`);
+    /* ⛔ AND THE HOLE IS THE ONE THAT WAS BUILT, not whatever a race produced. The child awaits its
+     * first `landFirst` rows and fires the rest bare on the last tick, so both sets are known before
+     * the measurement. Without this the drill passed VACUOUSLY over a hole of zero on a quiet
+     * machine and failed its own POSITIVE CONTROL on a loaded one (observed 2026-09-21). */
+    ok("5.1b · the population is the one the child built — exactly the awaited rows landed and exactly the bare ones did not, so §5.1 is never measured over a hole of zero",
+      landedRecon === r.landFirst && r.positions - landedRecon === r.expectedHole && r.expectedHole > 0,
+      `landed ${landedRecon} (expected ${r.landFirst}), hole ${r.positions - landedRecon} (expected ${r.expectedHole})`);
     const landedIds = (await cli.query(
       `SELECT "targetId" FROM "AuditLog" WHERE action='market.position.opened' AND "payload"->>'drill'='recon'`)).rows.map((x: Any) => x.targetId);
     console.log(`  POSITIVE CONTROL population: ${landedIds.length} positions whose row DID land`);
