@@ -256,6 +256,59 @@ programme has ever had that access.
 session has built, turns it on.
 
 ---
+
+## 6. What you decided after this statement was written, and one correction I owe you
+
+### 6a. 2026-09-21 — the address the browser tests point at. **You ruled: allowed, this computer only.**
+
+A session asked whether it may set the address those tests aim at, rather than route around the rule
+quietly. You ruled that it may — **and only ever at this computer itself**: `127.0.0.1` or `localhost`,
+with the port named out loud.
+
+**Why it was ever forbidden, because the reason matters.** Those tests used to point at **the live site
+by default**. Fourteen of them share one setting, and a session that ran any of them without saying
+otherwise drove a real browser at the live money platform, signed in as **you**, with your own console
+password — and because the site allows one session per account, that signed you out of your own live
+session. The ban was right for the file it was written against.
+
+**What changed.** That default was fixed on 2026-09-19 and now points at this computer. So naming this
+computer out loud is **safer** than the old do-nothing run, not riskier — which is the whole reason the
+rule could be narrowed rather than kept or dropped.
+
+**What it still forbids, unsoftened.** Never a website address. Never a public address. Never
+`50pick.tz`. Never a run with nothing set and a hope. And the value is checked before it is used,
+because a typo that points off this computer is the exact accident being guarded against.
+
+⚠️ **What it does not do, stated plainly so nobody reads it as progress.** It unblocks the *setting*,
+not the *checks*. Seven checks were written around it (15, 24, 32, 40, 51, 61 and 63 in the skipped-run
+register). Every one still needs the site actually running on a port this lane does not have, and every
+one is **still owed and still unrun**. A corrected reason is not a run.
+
+### 6b. 2026-09-21 — a correction I owe you about the popup check
+
+I told you the popup check was failing because of **one** new file of ours. **Both halves of that were
+wrong**, and I found it by re-deriving the number instead of repeating it.
+
+- **It was failing by twelve, not one.** The check itself said so in its own output; the three files it
+  printed alongside were simply the last three in alphabetical order, not the new ones — so the number
+  was read as a single file.
+- **And eleven of the twelve are not ours.** They are already on the live branch, where the identical
+  check is failing the same way today. They arrived with the agent programme, the identity-at-withdrawal
+  work and the social panel. **Exactly one** — the stop-a-queued-stake dialog — is this branch's own.
+
+**What I then did, rather than move the number.** That check works by holding the popups it finds
+against a count of popups a human has actually read. Raising the count would have been the dishonest
+close. So I opened all twelve and read them against the same standard the other 57 were read against:
+**none of them cuts off any text**, none hides a sentence behind a clip, and the one that carries a long
+unbreakable link already breaks it correctly. Our own dialog passes: every sentence in it can grow as
+long as it needs and the dialog grows with it, which is your rule word for word.
+
+Only then did I record them as read, **by name** — so the next time this fails, it says *which* file is
+new instead of leaving somebody to guess. ⚠️ Still owed: none of the twelve has been photographed on a
+real screen at phone width in Swahili. That half of the proof needs the site running, which this lane
+cannot do.
+
+---
 ---
 
 # Appendix — evidence
