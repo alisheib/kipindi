@@ -150,9 +150,32 @@ be diagnosed by the one lane that can have the tree to itself, before REL-M. ⚠
     verdict, and every `not-built` row it names is read, not skipped past.** ⛔ It cannot exit 0 while a drill is
     owed — that is deliberate, and it is what the struck clause could not do.
     - **Drill 1 (migrations under load) — MOOT by events.** No house DDL is left to apply (§REL-1, §REL-2).
-    - **Drill 2 (rollback) — NOT BUILT.** Its instruments (`ops:house-bots-status --drift`,
-      `ops:house-bots-remark`) are on `ops-lane` and arrive at REL-M; it also needs the pre-merge SHA booted
-      against the same database. Owed. **See §10 for the procedure that slots in after REL-M.**
+    - **Drill 2 (rollback) — PARTIAL, AND STILL OWED.** `scripts/rehearsals/rollback.mts`, run by
+      `npm run rehearse:rollback`. It drives every slice of the drill that exists on this branch and **exits 3,
+      never 0** — the registry's `partial` status is counted by `owed()`, so `rehearse:all` cannot go green on
+      it, and the runner FAILS a partial drill that ever exits 0. Measured on this branch against a scratch
+      Postgres 18.3: **43 passed, 0 failed**, over 4 marked positions, 7 transactions joined to them and 6
+      player positions; drift total 0; 1 CASHOUT row present in the database and 0 of them on a marked
+      position; `wageredTzs` 0→0 on the house stake and 0→5,000 on the SAME holder's own bet.
+      - **§1 · the immutability pin, driven.** `test:house-bot-reports` 0.232.4 pins the two store twins'
+        SPELLING; nothing anywhere drove `db.txn.update(id, { houseBotId })` against a database and read the
+        COLUMN back, and nothing held the positive control §S3 step 4 asks for — that the same update still
+        WRITES its other fields. Both now exist, in both directions, plus `positionId`.
+      - **§2 · the drift-free baseline.** Legs (a), (b) and (c) at 0 over a database filled by real
+        settlement, VOID, emergency void, a player cash-out and a real agent commission. ⛔ This is NOT the
+        rollback: it is the precondition that makes step 4's population READABLE, because if the current SHA
+        left leg-(a) rows of its own, nothing after a rollback could tell an old-code row from a new one.
+      - 🔴 **AND IT MEASURED SOMETHING NOBODY HAD: drift leg (c1) CANNOT FIRE ON THIS SCHEMA.** It joins
+        `Transaction."positionId" = Position."id"` for `type = 'AGENT_COMMISSION'`, and every such row is
+        written by `creditInternal` (`wallet-service.ts`) with `positionId: null` — there is no other writer
+        of that type. Measured over a real, paid commission: 1 AGENT_COMMISSION row in the database, 0 with a
+        positionId. A planted row WITH one is found, so the query is sound and it is the schema that starves
+        it. **Leg (c2)'s `sourceRef` rebuild is the only half of (c) that can find commission at all.**
+      - **NOT MEASURED, and why:** step 2 (boot the pre-merge SHA) needs a second worktree with its own
+        `node_modules`; steps 4–7 need `ops:house-bots-status --drift` and `ops:house-bots-remark`, which are
+        keys on `origin/ops-lane` only. **See §10 for the procedure that slots in after REL-M.** ⭐ The
+        drill's §0 ARMS ITSELF: it holds the four drift predicates as constants and compares them, character
+        for character, against `scripts/ops-house-bots-status.mts` the moment REL-M lands that file.
     - **Drill 3 (two processes) — COVERED, and the claim was opened and checked**, not inherited:
       `house-bot-caps-cases.mts` §8 and `house-bot-engine-cases.mts` each spawn
       `scripts/lib/house-bot-two-process-child.mts` as a real OS process.
@@ -168,8 +191,11 @@ be diagnosed by the one lane that can have the tree to itself, before REL-M. ⚠
       inside the ruling-250 coverage ROLL-CALL list at §0 — a list of ids, not an assertion — and
       `scripts/two-admin-policy.test.mts` contains no `houseBot`, `house_bot` or `houseBotId` at all. Nothing
       anywhere resolves a HOUSE-HELD market with `requireTwoOfficer` true. Owed.
-    - **So the honest remainder is drills 2 and 5**, not 2 and 4, and `rehearse:all` will keep saying so on its
-      own until they are built.
+    - **So the honest remainder is still drills 2 and 5**, not 2 and 4 — drill 2 now has a script that runs
+      every day and is nonetheless NOT discharged, which is exactly what `partial` is for. Measured on
+      2026-09-21 with `npm run rehearse:all`: drill 2 NOT MEASURED (43 passed, 0 failed), drill 4 PASS (39
+      passed, 0 failed), drill 5 OWED, **runner exit 3**. `rehearse:all` will keep saying so on its own until
+      both are built.
 
 ---
 
@@ -382,12 +408,30 @@ holds them as a **ceiling**, so a fifth cannot arrive unnoticed.
 because the REL-0 clause that named "the S4 rehearsals" was struck for pointing at nothing.
 - `npm run rehearse:list` — the register of all five drills, with each one's measured status. Runs nothing.
 - `npm run rehearse:audit-burst` — drill 4 (CRA-29), against a scratch Postgres the run creates and drops.
-- `npm run rehearse:all` — every built drill, then the whole register.
-- ⛔ **Exit 3 is NOT MEASURED and it is not a pass.** `--all` cannot exit 0 while any drill is `not-built`, so
-  the rung stays honest without anyone having to remember a struck clause in a document.
+- `npm run rehearse:rollback` — drill 2 (S3), the slices of the rollback that exist on this branch. ⛔ It
+  exits 3 by contract even when every assertion is green, because three of its steps cannot be taken here.
+- `npm run rehearse:all` — every built and partial drill, then the whole register.
+- ⛔ **Exit 3 is NOT MEASURED and it is not a pass.** `--all` cannot exit 0 while any drill is `not-built` **or
+  `partial`**, so the rung stays honest without anyone having to remember a struck clause in a document. And a
+  `partial` drill that ever exits 0 is reported by the runner as a FAILURE, not laundered into a green row.
 - ⛔ **The register is code, not prose** (`scripts/rehearsals/registry.mts`), and the runner prints it on
   every run — so the POPULATION is on the record of each run, not only the rows that happened to execute.
-- ⚠️ The four keys above are the only `rehearse*` keys, and they exist **on `rel-lane` only** — measured with
+- 🔴 **AND IT WEAKENED AN EXISTING GATE ON ITS FIRST DAY — MEASURED, AND FIXED, 2026-09-21.** `§0.250` of
+  `house-bot-reports-cases.mts` gives each of ruling 250's 49 ids three doors: found in the tree, struck whole
+  by D20, or **named with a reason in `DEFERRED-TESTS.md` row 83** — the strict door, whose own text says "the
+  list can no longer shrink in silence". The register's prose spelled two ids that NOTHING drives, and a bare
+  mention is all `§0.250` looks for. Driven: the gate reported **9 found / 33 deferred** where row 83's own
+  re-derivation says 7 / 35 and claims all 35 appear in exactly one file. Two ids had walked out of the
+  un-shrinkable list and nothing said so. The first measurement of this side effect stopped at "the verdict is
+  unchanged" — true, and not the whole question: **the verdict did not move, the door did.** Fixed by not
+  writing the strings: the register now spells only drill 4's id, which `audit-burst.mts` drives to green
+  every run, and drill 5's row points at where its id IS declared instead of repeating it. ⭐ The general
+  lesson for anything added to `scripts/`: **a scanner that treats a mention as coverage is defeated by any
+  new file that is merely well-documented**, and the fix is never a comment saying so — the scanner cannot
+  read it.
+- ⚠️ The five keys above are the only `rehearse*` keys, and they exist **on `rel-lane` only** — re-measured on
+  2026-09-21 after `rehearse:rollback` was added: 5 on `rel-lane`, 0 on `origin/main`, 0 on
+  `origin/house-bots`, 0 on `origin/ops-lane`, 0 on `origin/alerts-lane` — measured with
   `node -e` against `package.json`, because `npm run -s <a name that does not exist>` exits 1 with an empty
   log in about a second and reads exactly like a failing suite. (That trap is already sitting inside this
   ladder's own §REL-0 condition 4 as the phantom `drive:house-bots-local`.)
@@ -558,10 +602,12 @@ still union-merge.
 - **`plans/house-bots/DEFERRED-TESTS.md`.** Two lanes are writing it now; highest id in use measured today is
   **96**. Nothing here needed a row, and a row added into a live conflict site for no gain is a cost.
 
-## 10 · S4 DRILL 2 · THE ROLLBACK REHEARSAL — NOT MEASURED here, and the procedure that slots in after REL-M
+## 10 · S4 DRILL 2 · THE ROLLBACK REHEARSAL — PARTIAL, and the procedure for the rest
 
-**Status on `rel-lane`, 2026-09-21: NOT MEASURED. Not "passed", not "waived".** Two of its four steps cannot
-be taken from this lane, and both reasons are structural rather than a matter of effort:
+**Status on `rel-lane`, 2026-09-21: PARTIAL — built, green on every slice it can drive, and STILL OWED.**
+`scripts/rehearsals/rollback.mts`, `npm run rehearse:rollback`. **43 passed, 0 failed, exit 3.** Not
+"passed", not "waived". Two of its four steps cannot be taken from this lane, and both reasons are structural
+rather than a matter of effort:
 
 1. ⛔ **Its instruments are on another branch.** `ops:house-bots-status` and `ops:house-bots-remark` exist as
    keys on `origin/ops-lane` only (measured in `git show origin/ops-lane:package.json`). They were read
@@ -573,12 +619,55 @@ be taken from this lane, and both reasons are structural rather than a matter of
    `Transaction` row would rehearse the DRIFT DETECTION, not the ROLLBACK, and calling that "drill 2" would
    be the kind of true-measurement-of-the-wrong-population this ladder exists to refuse.
 
-⭐ **What IS buildable on this lane today, and is the natural first piece of the next phase:** step 4's last
-clause — *"the immutability pin still fails on any other `houseBotId` update"*. Both DAL twins physically
-discard `houseBotId` (and `positionId`) in `txn.update`, so it needs neither ops script nor a second SHA.
-⛔ **It is a REFUSAL, so it must be built with a POSITIVE CONTROL in the same case:** the same `txn.update`
-call must still WRITE its other fields. Without that control, a guard that swept in too much would refuse the
-whole update, the refusal assertion would pass harder, and the ledger would silently stop being updatable.
+### What the drill DOES drive, on this lane, today
+
+All of it against a scratch Postgres 18.3 the run creates and drops (`hb_reh_rollback_<pid>`), through the
+real services and the real DAL. Every assertion carries a planted control; every refusal carries a positive
+control naming something that must still be ALLOWED.
+
+- **§0 · a divergence pin that ARMS ITSELF.** The four drift predicates the drill runs are transcribed from
+  ops-lane's `ops-house-bots-status.mts` (read read-only, `git show`) and held as named constants. While that
+  file is absent the pin prints NOT MEASURED and lists the four predicates; **the moment REL-M lands the file
+  in this tree, §0 starts comparing them character for character and the drill goes RED if the two copies of
+  the query have drifted apart.** A transcription nobody can check is a second authority; this is the thing
+  that stops it becoming one.
+- **§1 · the immutability pin, DRIVEN — step 9 of the procedure below.** `test:house-bot-reports` 0.232.4
+  already pins this, but it pins the SPELLING: it greps both store twins for the line that drops the key.
+  Nothing anywhere drove `db.txn.update(id, { houseBotId })` against a database and read the **column** back
+  (not the mapper), and nothing anywhere held the POSITIVE CONTROL §S3 step 4 actually asks for — that the
+  same update still WRITES its other fields. A drop that swept in the whole patch would have left 0.232.4
+  greener than ever while the ledger quietly stopped being updatable. Driven: re-mark refused, un-mark
+  refused, `positionId` refused, each with its own positive control in the SAME call; a planted control runs
+  the pre-fix `{ ...row, ...patch }` over the SAME patch objects and shows all three DO change; and an
+  ordinary unmarked row still takes an ordinary update in full.
+- **§2 · the drift-free baseline.** Legs (a), (b) and (c) run over a database this run filled with real money
+  movement — a settlement, a VOID, an emergency void, a player cash-out, a real agent commission — and all
+  report 0. ⛔ **This is not the rollback and does not pretend to be.** It is the precondition that makes step
+  4 READABLE: if the current SHA left leg-(a) rows of its own, then after a rollback nobody could tell an
+  old-code row from a new-code one and `remark` would be filling markers onto rows nobody understood. Each
+  leg prints its population (4 marked positions, 7 transactions joined to them, 6 player positions; 1 CASHOUT
+  row present and 0 on a marked position; 1 AGENT_COMMISSION row paid) and each carries a planted control
+  that writes the exact shape the pre-merge SHA writes and requires the leg to find it, once, by id.
+- **§3 · wagering, which no drift query can ever see.** `BonusGrant` carries neither `positionId` nor
+  `houseBotId` — measured from `information_schema`, 16 columns, not assumed — so that half of leg (c) is
+  unmeasurable in SQL for ever. The only defence left is that the current code never accrues it, so the drill
+  drives that instead: the holder placed a 5,000 HOUSE stake while holding an ACTIVE grant and `wageredTzs`
+  did not move; **the SAME holder's own 5,000 player bet on a different market moved it to 5,000** — so the
+  skip is keyed on the house marker and not on the account. (A different market on purpose: a bet on the
+  opposite side of one already held is a HEDGE, which `buyPositionInner` also skips, and a control that
+  tripped that rule would have proved nothing.)
+
+🔴 **AND THE DRILL FOUND A REAL PROPERTY OF LEG (c1) THAT NOTHING ELSE WOULD HAVE.** Leg (c1) joins
+`Transaction."positionId" = Position."id"` for `type = 'AGENT_COMMISSION'`. Measured over a commission the
+fixture actually paid, by reading **every** such row in the database: 1 row, 0 with a positionId. ⚠️ The
+measurement is of the ROWS; the explanation is a read of `src/` and is stated as one — the single
+`type: "AGENT_COMMISSION"` in the platform is `policy.txnType` (`affiliate-service.ts:447`), which reaches the
+ledger through `creditInternal` (`wallet-service.ts`), and that writer hardcodes `positionId: null`. So
+**leg (c1)'s 0 is a 0 over an empty population**, and leg (c2) — which
+rebuilds the deterministic `referral:commission:<marketId>:<positionId>` — is the only half of (c) that can
+find commission at all. ⚠️ The query itself is sound: a planted AGENT_COMMISSION row WITH a marked
+`positionId` IS found by it, exactly once. It is the schema that starves it. **Whoever reads a clean
+`--drift` after a rollback should read leg (c1) as "not measurable on this schema", not as "clean".**
 
 ### The procedure, once ops-lane has merged
 
@@ -586,16 +675,16 @@ Run it against a **scratch Postgres**, never production. Every step names what i
 
 | # | Command / act | What must be true |
 |---|---|---|
-| 0 | `npm run rehearse:list` | Drill 2 is still `not-built`. Flip it to `built` only when steps 1–6 run. |
-| 1 | Boot a scratch database, seed the house world, leave **3 open marked positions** | 3 `Position` rows with `houseBotId` not null and no settlement |
+| 0 | `npm run rehearse:rollback` | The slices that exist today run and pass, and it **exits 3**. Its §0 pin now finds `scripts/ops-house-bots-status.mts` in the tree: if the drift predicates have drifted apart, this step goes RED **before** anything below is trusted. Flip the registry row from `partial` to `built` only when steps 1–9 have run. |
+| 1 | Boot a scratch database, seed the house world, leave **3 open marked positions** | 3 `Position` rows with `houseBotId` not null and no settlement. ⚠️ `scripts/rehearsals/rollback.mts`'s own fixture already builds this shape through the real services — reuse it rather than writing a third one. |
 | 2 | Boot the **pre-merge SHA** against that same database; settle the market; cash one position out | Old code has no `houseBotId` in its client, so its payout/refund/cash-out `Transaction` rows are written **unmarked** |
 | 3 | Return to the house SHA | — |
-| 4 | `npm run ops:house-bots-status -- --drift --since 30` | Leg (a) lists **exactly** the rows step 2 wrote; leg (b) lists the CASHOUT on a marked position; leg (c) lists the commission rows. ⚠️ **Leg (a) is time-bounded and an unbounded run is REFUSED** — `Transaction` has no index on `positionId`. ⚠️ **Leg (c) prints the WAGERING half as unmeasurable, not as 0** — wagering is a counter on `BonusGrant`, which carries no `positionId`. A `0` there would be a true measurement of the wrong population. |
+| 4 | `npm run ops:house-bots-status -- --drift --since 30` | Leg (a) lists **exactly** the rows step 2 wrote; leg (b) lists the CASHOUT on a marked position; leg (c2) lists the commission REWARD rows. ⚠️ **Leg (a) is time-bounded and an unbounded run is REFUSED** — `Transaction` has no index on `positionId`. ⚠️ **Leg (c) prints the WAGERING half as unmeasurable, not as 0** — wagering is a counter on `BonusGrant`, which carries no `positionId`. A `0` there would be a true measurement of the wrong population. 🔴 **AND READ LEG (c1) THE SAME WAY.** Measured 2026-09-21 by the drill: every AGENT_COMMISSION transaction is written with `positionId: null`, so (c1) can never match — its 0 is a 0 over an empty population, not a clean result. (c2) is the half that fires. |
 | 5 | `npm run ops:house-bots-remark` (no flag) | A **dry run**: it prints every row it would touch and writes nothing |
 | 6 | `npm run ops:house-bots-remark -- --apply` | ⛔ **Refused while the master switch is ON** (guard G5) — so the switch must be OFF and open marked positions 0 first. It re-marks **`Transaction` rows only, never `Position` rows**, taking the value from the JOIN and never from a flag; it reconciles the counted plan against the `RETURNING` count inside one transaction and re-runs drift leg (a) inside that same transaction, requiring **0** before it commits |
 | 7 | `npm run ops:house-bots-remark -- --apply` again | **0 rows changed** — the WHERE is `t."houseBotId" IS NULL`, so it is NULL-filling and a second run is a no-op |
 | 8 | Re-read the house book against the ledger | The realised figure equals the ledger |
-| 9 | The immutability pin | `txn.update` with a `houseBotId` still changes **nothing** — **and its positive control: the same update's other fields ARE written** |
+| 9 | The immutability pin | ✅ **ALREADY DRIVEN — `npm run rehearse:rollback` §1, on this branch, today.** `txn.update` with a `houseBotId` changes nothing, in both directions, and `positionId` cannot be added either; each refusal read back from the COLUMN, each with its positive control in the SAME call, plus a planted control running the pre-fix spread over the same patch objects. Re-run it after step 6 as well: `remark` is the one sanctioned raw-SQL exception to markers-on-create-only, and this is what says the exception is still the ONLY way in. |
 | 10 | Legs (b) and (c) | ⛔ **Nothing is clawed back automatically.** They go into a COMPLIANCE-DECISIONS note with amounts, per §S3 |
 
 ⛔ **Do not record this drill as run until step 4 and step 6 have each printed their own population.** "Drift

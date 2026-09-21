@@ -12,14 +12,24 @@
  * only say `built` when it names a script that runs. The runner (`run.mts`) prints this table, runs the built rows,
  * and exits 3 (NOT MEASURED) — never 0 — while any drill is still owed.
  *
- * ⚠️ THIS FILE NAMES `CRA-28` AND `CRA-29`, AND THAT HAS A MEASURED SIDE EFFECT — recorded here so nobody has to
- * rediscover it. `house-bot-reports-cases.mts` §0.250 scans every file under `src/` and `scripts/` for the ids
- * ruling 250 names and treats a hit as "declared in the tree". Measured on 2026-09-21 by reproducing that exact
- * arithmetic with and without this folder: 2,261 → 2,266 files, ids found in the tree 7 → 8, and **`CRA-28` moves
- * from the "deferred by name" door to the "found in the tree" door.** The gate's verdict is UNCHANGED —
- * `undeclared` is empty either way, `deferredOnly` stays non-empty and its first element is still `HB-ACC-14`, so
- * control `0.250.c1` still has a real sample. ⛔ But a scanner finding `CRA-28` here does NOT mean CRA-28 is
- * covered: the row below says in as many words that nothing drives it. A string is not an assertion.
+ * 🔴 THIS FILE ONCE SPELLED TWO SCENARIO IDS THAT NOTHING DRIVES, AND THAT QUIETLY WEAKENED AN EXISTING GATE.
+ * Recorded here in full, because the mistake is subtle and the previous measurement of it stopped one step short.
+ * `house-bot-reports-cases.mts` §0.250 reads every tracked file under `src/` and `scripts/` for the 49 ids ruling
+ * 250 names, and an id has THREE doors: found in the tree, struck whole by D20, or **listed by name with a reason
+ * in `plans/house-bots/DEFERRED-TESTS.md`**. When this register was first written it spelled the two-admin-ON id
+ * and one deferred accounting id in its prose. The gate's VERDICT did not move (`undeclared` stayed empty), and
+ * that is as far as the first measurement went — but the DOOR moved, and the deferred door is the strict one: it
+ * demands a written reason in a row that says out loud "the list can no longer shrink in silence". Driven on
+ * 2026-09-21: `0.250` reported **9 ids found in the tree and 33 deferred by name**, where the deferred row's own
+ * re-derivation says 7 and 35 and claims every one of the 35 "is found in EXACTLY ONE file, and that file is
+ * `house-bot-reports-cases.mts`". Two ids had moved out of a list that is supposed to be un-shrinkable, and
+ * nothing said so. ⛔ **So this file no longer spells an id it does not drive.** The one it still spells —
+ * drill 4's — is driven to green by `audit-burst.mts` every time the drill runs, which is what "found in the
+ * tree" is supposed to mean. Drill 5's id is deliberately NOT spelled here, exactly as the deferred row omits
+ * its own ghost-control id for the same reason, and the row below points at where it IS declared.
+ * ⭐ THE LESSON, because it will recur: a scanner that treats a MENTION as coverage is defeated by any new file
+ * that is merely well-documented. A string is not an assertion, and the fix is not to explain that in a comment
+ * the scanner cannot read — it is to not write the string.
  *
  * ⛔ A STATUS IS A MEASUREMENT, NOT A HOPE. Each non-`built` row carries the evidence for its status, re-checked
  * when this file was written; `covered` rows name the file AND the assertion that covers them, so the claim can be
@@ -133,17 +143,21 @@ export const REHEARSALS: readonly Rehearsal[] = [
   {
     id: "two-admin-on",
     drill: 5,
-    title: "Two-admin authorization switched ON (CRA-28) — a house-held market needs stage 2 by a different officer",
+    title: "Two-admin authorization switched ON — a house-held market needs stage 2 by a different officer",
     status: "not-built",
     needs: "postgres",
     why:
       "⛔ DOWNGRADED FROM `covered` WHEN THE CLAIM WAS CHECKED (2026-09-21). The handover said this drill 'maps to " +
-      "`house-bot-reports-cases.mts`'. Measured: `CRA-28` appears in that file exactly once, inside the ruling-250 " +
-      "coverage ROLL-CALL list at §0 — a list of ids, not an assertion about two-officer resolution. And " +
+      "`house-bot-reports-cases.mts`'. Measured: the scenario id appears in that file exactly once, inside the " +
+      "ruling-250 coverage ROLL-CALL list at §0 — a list of ids, not an assertion about two-officer resolution. And " +
       "`scripts/two-admin-policy.test.mts` (`npm run test:two-admin`) contains no `houseBot`, `house_bot` or " +
       "`houseBotId` at all, so it drives the policy over ordinary markets only. Nothing anywhere resolves a " +
-      "HOUSE-HELD market with `requireTwoOfficer` true. The drill is owed.",
-    scenarios: ["CRA-28"],
+      "HOUSE-HELD market with `requireTwoOfficer` true. The drill is owed. " +
+      "⚠️ ITS SCENARIO ID IS DELIBERATELY NOT SPELLED IN THIS FILE, and the omission is the point: §0.250 treats a " +
+      "bare mention anywhere under `src/` or `scripts/` as 'declared in the tree', which would move the id out of " +
+      "the strict door (`plans/house-bots/DEFERRED-TESTS.md` row 83, the list that must not shrink in silence) into " +
+      "the loose one — and this row says in as many words that nothing drives it. Read the id off row 83, or off " +
+      "`01-scenario-register.md`'s two-admin entry; both declare it with a reason, which is what the gate wants.",
   },
 ] as const;
 

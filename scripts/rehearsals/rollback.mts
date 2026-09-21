@@ -42,11 +42,14 @@
  *       never accrues it — so this drill drives that, on one account, with the same grant, both ways.
  *
  * 🔴 AND ONE THING §2 MEASURED THAT NOBODY HAD: **drift leg (c1) CANNOT FIRE ON THIS SCHEMA.** It joins
- * `Transaction."positionId" = Position."id"` for `type = 'AGENT_COMMISSION'`, and every AGENT_COMMISSION row in
- * this platform is written by `creditInternal` (`wallet-service.ts`), which sets `positionId: null` — there is no
- * other writer of that type. §2.c1 drives a real commission and then reads every AGENT_COMMISSION row in the
- * database to show it. Leg (c1)'s 0 is therefore a 0 over an empty population; leg (c2), which rebuilds the
- * deterministic `sourceRef`, is the only half of (c) that can find commission at all.
+ * `Transaction."positionId" = Position."id"` for `type = 'AGENT_COMMISSION'`. §2.c1 drives a real commission all
+ * the way through `settleMarket` and then reads EVERY AGENT_COMMISSION row in the database: all of them carry
+ * `positionId` NULL. So leg (c1)'s 0 is a 0 over an empty population, and leg (c2) — which rebuilds the
+ * deterministic `sourceRef` — is the only half of (c) that can find commission at all.
+ * ⚠️ THE MEASUREMENT IS OF THE ROWS; the explanation is a read of `src/`, and it is stated as one: the single
+ * `type: "AGENT_COMMISSION"` in the platform is `policy.txnType` (`affiliate-service.ts:447`), which reaches the
+ * ledger through `creditInternal` (`wallet-service.ts`), and that writer hardcodes `positionId: null`. If a second
+ * writer is ever added, §2.c1.x is the assertion that will notice — it counts rows, not call sites.
  *
  * ⛔ IT NEVER TOUCHES ANYTHING BUT ITS OWN SCRATCH DATABASE. It refuses any host that is not loopback, creates
  * `hb_reh_rollback_<pid>`, and drops only that. The master switch is turned on against that database and nowhere
