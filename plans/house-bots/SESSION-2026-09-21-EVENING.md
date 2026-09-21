@@ -90,6 +90,11 @@ eligibility refuses outright. The suites were not weak about Start; **they had n
 all afternoon with seventeen files in flight and went **red on a clean two-file commit**: same tree, same
 pins, same published words. And `0` for ever once a lane merges. ⚠️ A threshold is not a control when
 what it measures is the state of the desk it is run from.
+⭐ **This is a distinct lesson from a guard that merely over-matches.** The others here were wrong about
+the world; this one was **green *because* the tree was dirty** — it passed all afternoon for the one
+reason that had nothing to do with the thing it was guarding, and the cleaner the commit, the more
+certainly it failed. When a guard's population can include uncommitted work, its verdict is a fact about
+the author, not the code.
 
 ---
 
