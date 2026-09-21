@@ -48,12 +48,27 @@ export function SystemActions({ kind }: { kind: "verify-chain" }) {
     setLoading(true);
     try {
       const r = await verifyChainAction();
+      /* 🔴 THREE OUTCOMES, NOT TWO (AR-3, 2026-09-21). This button used to print "Chain valid · all
+         entries pass HMAC verification" whenever `valid` was true — and `valid` was true over a
+         chain containing rows whose hashes did NOT match their contents, because only a link break
+         made it false. The sentence was a false statement of fact on the platform's own integrity
+         surface. An officer must be able to tell apart: a removed/inserted entry (LINK), an entry
+         edited in place (UNVERIFIED), and a clean chain that carries a declared legacy population. */
+      const linkBroken = "linkBroken" in r ? r.linkBroken : false;
       if (r.valid) {
-        setResult("Chain valid · all entries pass HMAC verification");
-        toast({ title: "Chain valid", description: "Every audit entry verifies", variant: "success" });
+        const based = ("baselined" in r ? r.baselined : 0) ?? 0;
+        const msg = based === 0
+          ? "Chain valid · every entry's hash matches its contents"
+          : `Chain valid · every link joined, ${based.toLocaleString()} legacy entr${based === 1 ? "y" : "ies"} covered by the declared baseline`;
+        setResult(msg);
+        toast({ title: "Chain valid", description: msg.replace("Chain valid · ", ""), variant: "success" });
+      } else if (linkBroken) {
+        setResult(`Chain BROKEN — an entry was inserted, removed or reordered. ${r.firstBreakAt ?? ""}`.trim());
+        toast({ title: "Chain broken", description: "An entry was inserted, removed or reordered.", variant: "danger" });
       } else {
-        setResult(`Chain broken at ${r.firstBreakAt} (index ${r.index})`);
-        toast({ title: "Chain broken", description: `First break: ${r.firstBreakAt}`, variant: "danger" });
+        const un = ("unattested" in r ? r.unattested : 0) ?? 0;
+        setResult(`Chain UNVERIFIED — ${un.toLocaleString()} entr${un === 1 ? "y does" : "ies do"} not match their contents. ${r.firstBreakAt ?? ""}`.trim());
+        toast({ title: "Chain unverified", description: `${un.toLocaleString()} entry hash(es) do not match their contents.`, variant: "danger" });
       }
     } finally {
       setLoading(false);

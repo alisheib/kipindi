@@ -416,6 +416,47 @@ async function maybeReconcileBetAudit(): Promise<void> {
   } else if (auditGapSweeps === 1 || auditGapSweeps % AUDIT_GAP_HEARTBEAT_EVERY === 0) {
     console.log(`[lifecycle] audit reconcile — ${r.scanned} position(s) scanned, every one has its compliance row.`);
   }
+
+  // ── The ANCHOR-FREE half of the same question (2026-09-21) ──────────────────────────────────
+  //
+  // ⛔ WHY A SECOND SWEEP AND NOT A BIGGER FIRST ONE. The reconciler above can only find a lost row
+  // that some OTHER durable record implies — it reconciles the bet's statutory row against the
+  // committed `Position`. The rows with no anchor anywhere (`player.record_viewed`,
+  // `kyc_doc.viewed`, `agent_doc.viewed`, `transactions.exported`, `privacy.dsar.exported` — ISO
+  // 27001 A.12.4 access logging) have nothing to reconcile against, and `COMPLIANCE-DECISIONS.md`
+  // AR-1 recorded them as undetectable. `audit-ticket.ts` detects them WITHOUT an anchor: the
+  // append's number is now taken when it is CALLED, so a ticket missing between two landed tickets
+  // is a row that was allocated and never written, whatever it would have said.
+  //
+  // ⛔ IT RUNS IN THE SAME CHORE, ON THE SAME LEASE, AT THE SAME CADENCE, and it reads a bounded
+  // `seq` window so its cost stays flat as the table grows. Failure here must not stop the bet
+  // reconciler above from having run — hence the same try/catch posture the ticker uses everywhere.
+  const t = await declareTicketGaps();
+  if (t && t.declared > 0) {
+    console.warn(
+      `[lifecycle] ⛔ AUDIT APPENDS LOST — declared ${t.declaredAppends} append(s) in ${t.declared} range(s) ` +
+        `that were allocated and never written (scanned ${t.scannedTicketed} ticketed row(s) of ${t.scannedRows} ` +
+        `across ${t.boots} boot(s)${t.capped ? ", CAPPED — more exist, next sweep continues" : ""}).`,
+    );
+  } else if (t && (auditGapSweeps === 1 || auditGapSweeps % AUDIT_GAP_HEARTBEAT_EVERY === 0)) {
+    // ⭐ THE POPULATION IS IN THE HEARTBEAT. "No gaps" over zero ticketed rows is vacuous, and the
+    // two read identically unless the number is printed — which is exactly how a dead check lives
+    // for months.
+    console.log(
+      `[lifecycle] audit tickets — ${t.scannedTicketed} ticketed row(s) of ${t.scannedRows} scanned across ` +
+        `${t.boots} boot(s), every issued ticket landed.`,
+    );
+  }
+}
+
+async function declareTicketGaps() {
+  try {
+    const { declareAuditTicketGaps } = await import("./audit-ticket");
+    return await declareAuditTicketGaps();
+  } catch (err) {
+    console.error("[lifecycle] audit ticket sweep failed:", (err as Error)?.message ?? err);
+    return null;
+  }
 }
 
 async function maybeWatchKycReviewSla(): Promise<void> {
