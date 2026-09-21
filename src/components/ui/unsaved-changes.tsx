@@ -20,11 +20,18 @@
  *   explicitly: "a tab switch is an EXIT. A page whose tabs unmount their panels must treat the
  *   switch as it treats an unload." A `?tab=` option is an `<a href>`, so it is exactly case ②
  *   and needs no separate handling. That is the payoff of DG-S-03 putting tab state in the URL.
- * ③ THE BROWSER BACK BUTTON → `popstate`. ⚠️ NOT COVERED, and it is named here rather than
- *   left for someone to discover: App Router gives no cancellable navigation event, and the
+ * ③ THE BROWSER BACK BUTTON → `popstate`. ⚠️ STILL NOT PROMPTED, and it is named here rather
+ *   than left for someone to discover: App Router gives no cancellable navigation event, and the
  *   `history.pushState` trick that fakes one corrupts the history stack in ways that are worse
  *   than the problem. ⛔ A guard that silently misses an exit is the shape this programme keeps
  *   paying for, so the miss is written down instead of implied.
+ *   ⭐ WHAT ANSWERS IT IS `useFormDraft` AT THE FOOT OF THIS FILE (2026-09-21), and it answers
+ *   more than Back. Exits ① and ② are doors this module can stand at; ③ is not, and neither is a
+ *   browser that crashes, a laptop that sleeps and never wakes, a session that expires, or the
+ *   power going — none of which any listener anywhere can intercept. A prompt is a question asked
+ *   at one door. A draft is the work still being there whichever door was used, including the
+ *   ones with no door at all. ⛔ It is opt-in per form, because it is the caller that knows
+ *   whether its values are safe to offer back (see the hook's own version rule).
  *
  * ⛔ AND THE PROMPT IS THE KIT MODAL, NOT `window.confirm`. §B10 — the system is complete and
  * frozen; a native confirm is a second dialog language, unstyleable, and it cannot carry the
@@ -465,4 +472,144 @@ export function UnsavedChangesGuard({
       tier="medium"
     />
   );
+}
+
+/**
+ * `useFormDraft` — THE EXIT NO PROMPT CAN CATCH (owner's request, 2026-09-21: *"it should be perfectly sealed
+ * from all directions, if someone suddenly quits, full behaviours seen and unseen scenarios"*).
+ *
+ * ⭐ WHY A DRAFT AND NOT A FOURTH LISTENER. `UnsavedChangesGuard` covers the tab closing and an in-app link, and
+ * its own header names the exit it does NOT cover — the browser's Back button, because the App Router gives no
+ * cancellable navigation event and the `pushState` trick that fakes one corrupts the history stack. But Back is
+ * only the third of a longer list, and the rest cannot be intercepted by anyone: the browser crashes, the laptop
+ * sleeps and never wakes, the session expires, the power goes. A prompt is a question asked at one door. A draft
+ * is the work still being there whichever door was used, including the ones with no door at all.
+ *
+ * ⛔ IT NEVER RESTORES BY ITSELF, AND THAT IS THE WHOLE SAFETY ARGUMENT. What this form holds are the ceilings
+ * that stop real money. Silently repainting an officer's half-typed numbers over what the server now says would
+ * be a change nobody chose, made by a page reload. The draft is OFFERED; a person restores it or drops it.
+ *
+ * ⛔ AND A DRAFT FROM A DIFFERENT VERSION IS REFUSED OUTRIGHT, never offered. `version` is the row version the
+ * form was rendered from: if it has moved, somebody else has changed this account since the draft was taken, and
+ * restoring would re-apply stale limits over a deliberate change with nothing on screen saying so. That is the
+ * one way a draft could cost money rather than save work, and it is closed by construction.
+ *
+ * ⛔ THE KEY CARRIES NO RECORD ID. `key` is hashed before it is stored, so nothing identifying is written to the
+ * officer's disk — this hook is used by a section whose record ids may not leave the server (D19), and a hook
+ * that required its callers to remember that would eventually meet one that forgot.
+ *
+ * ⚠️ EVERY READ AND WRITE IS WRAPPED. `localStorage` throws in a private window, with site data blocked, and in
+ * some embedded webviews — and a form that cannot save a draft must still work perfectly, so every failure here
+ * is silent and the form is never worse off than it was before this existed.
+ */
+type DraftEntry = { v: string; at: number; values: Record<string, string>; flags: Record<string, boolean> };
+
+/** A short, stable, non-identifying digest. ⛔ Not a security value — it exists so no id lands on disk. */
+function draftSlot(key: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return `kp:draft:${(h >>> 0).toString(36)}`;
+}
+
+function readDraft(slot: string): DraftEntry | null {
+  try {
+    const raw = window.localStorage.getItem(slot);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const e = parsed as Partial<DraftEntry>;
+    if (typeof e.v !== "string" || typeof e.at !== "number") return null;
+    if (typeof e.values !== "object" || e.values === null) return null;
+    if (typeof e.flags !== "object" || e.flags === null) return null;
+    return { v: e.v, at: e.at, values: e.values as Record<string, string>, flags: e.flags as Record<string, boolean> };
+  } catch { return null; }
+}
+
+export function useFormDraft({
+  formRef,
+  storageKey,
+  version,
+  dirty,
+}: {
+  formRef: React.RefObject<HTMLFormElement | null>;
+  storageKey: string;
+  version: string;
+  dirty: boolean;
+}): { found: DraftEntry | null; restore: () => void; drop: () => void } {
+  const slot = React.useMemo(() => draftSlot(storageKey), [storageKey]);
+  const [found, setFound] = React.useState<DraftEntry | null>(null);
+
+  /* ⛔ READ ONCE, AFTER MOUNT. `localStorage` does not exist while the server renders, and a draft read during
+     render would be a hydration mismatch on every page that has one. */
+  React.useEffect(() => {
+    const e = readDraft(slot);
+    /* A draft the account has moved past is DELETED, not shown: it can never be restored safely again. */
+    if (e && e.v !== version) { try { window.localStorage.removeItem(slot); } catch { /* nothing to do */ } return; }
+    if (e) setFound(e);
+  }, [slot, version]);
+
+  /* Write while dirty, remove the moment the form is clean — a saved or discarded form holds nothing to recover,
+     and a draft left behind after a save is what turns "restore" into "undo my own save". */
+  React.useEffect(() => {
+    const form = formRef.current;
+    if (!form) return undefined;
+    if (!dirty) {
+      try { window.localStorage.removeItem(slot); } catch { /* nothing to do */ }
+      return undefined;
+    }
+    const write = () => {
+      try {
+        const values: Record<string, string> = {};
+        const flags: Record<string, boolean> = {};
+        for (const el of form.elements) {
+          if (!(el instanceof HTMLInputElement) || !el.name) continue;
+          if (el.type === "checkbox") flags[el.name] = el.checked;
+          else if (el.type !== "password" && el.type !== "file") values[el.name] = el.value;
+        }
+        window.localStorage.setItem(slot, JSON.stringify({ v: version, at: Date.now(), values, flags } satisfies DraftEntry));
+      } catch { /* a draft that cannot be written must never break the form */ }
+    };
+    write();
+    /* ⚠️ Debounced: a keystroke a character is a write a character, and this runs on the same thread as typing. */
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const onEdit = () => { if (t) clearTimeout(t); t = setTimeout(write, 400); };
+    form.addEventListener("input", onEdit);
+    form.addEventListener("change", onEdit);
+    return () => {
+      if (t) clearTimeout(t);
+      form.removeEventListener("input", onEdit);
+      form.removeEventListener("change", onEdit);
+    };
+  }, [dirty, formRef, slot, version]);
+
+  const drop = React.useCallback(() => {
+    try { window.localStorage.removeItem(slot); } catch { /* nothing to do */ }
+    setFound(null);
+  }, [slot]);
+
+  /**
+   * ⛔ RESTORE MOVES THE REAL CONTROLS AND SAYS SO, rather than assigning values behind the form's back.
+   * Setting `.value` or `.checked` fires nothing at all, so the form would hold restored work while the pending
+   * bar said there was none — the exact class of defect this whole module exists for. One bubbling `input` per
+   * control is what the form and the kit's own checkbox are already listening for.
+   */
+  const restore = React.useCallback(() => {
+    const form = formRef.current;
+    const e = found;
+    if (!form || !e) return;
+    for (const el of form.elements) {
+      if (!(el instanceof HTMLInputElement) || !el.name) continue;
+      if (el.type === "checkbox") {
+        if (!(el.name in e.flags) || el.checked === e.flags[el.name]) continue;
+        el.checked = e.flags[el.name];
+      } else {
+        if (!(el.name in e.values) || el.value === e.values[el.name]) continue;
+        el.value = e.values[el.name];
+      }
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    setFound(null);
+  }, [formRef, found]);
+
+  return { found, restore, drop };
 }

@@ -78,7 +78,13 @@ const TAB_GUIDANCE: Record<(typeof CONSOLE_DETAIL_TABS)[number], string> = {
   overview: "This account's state, who designated it and when, and what it has used today of each of its own limits.",
   activity: "Every stake this one account has decided on, newest first — placed, queued, refused or failed.",
   rules: "What this account may do: which products and entry modes, the markets it is allowed to touch, how it sizes and times a stake, and its own eleven limits. All eleven must be set, and a product and an entry mode chosen, before Start will run it.",
-  targets: "Stakes an officer has planned on a chosen poll, rather than left to the engine. Each one can be stopped before it fires.",
+  /* 🔴 THE SECOND SENTENCE USED TO READ "Each one can be stopped before it fires." — a control this build does
+     not have, on a panel that renders no control at all, describing rows nothing in `src/` can create. Measured
+     2026-09-21: of the five declared press purposes only the cancel has a screen, and nothing under `src/`
+     inserts a target row, so this list is empty on every account and will stay empty. An officer reading the
+     old line looked for a Stop button, found none, and concluded the page was broken. ⛔ The panel says what is
+     true and what is missing, which is the whole of ruling 432(a) applied to a sentence rather than a button. */
+  targets: "Stakes an officer has planned on a chosen poll, rather than left to the engine. No screen on this build can plan one yet, so this list stays empty until that is built.",
   history: "Every change made to this account — designated, verified, started, paused, removed, and each time its rules or limits were saved.",
 };
 
@@ -559,7 +565,11 @@ async function AdminDeskAccountContent({
                       <AdminTableEmpty
                         colSpan={3}
                         title="No targets yet"
-                        body="A target points this account at one poll. Targets appear here, newest first."
+                        /* ⛔ AND THE EMPTY STATE SAYS WHY IT IS EMPTY. "Targets appear here, newest first" reads
+                           as "none have been made yet", which invites an officer to go and make one — and there
+                           is nowhere to do that. An empty state that implies a missing action the product does
+                           not have is the same dead end as a disabled control with no reason beside it. */
+                        body="A target points this account at one poll. No screen on this build can plan one yet, so none will appear here until that is built."
                       />
                     ) : (
                       targetRows.map((t) => (

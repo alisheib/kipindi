@@ -67,7 +67,20 @@ export type RulesSaveResult =
   | { ok: true; rulesVersion: number; changes: CapChange[]; rulesChanged: boolean; recorded: boolean; warnings: RulesWarning[] }
   /** ⛔ `RULES_UNREADABLE` is the stored document refusing to parse — a REFUSAL, never a silent rebuild. */
   | { ok: false; code: "SCHEMA" | "UNREADABLE" | "NOT_FOUND" | "REMOVED" | "CONFLICT" | "RULES_UNREADABLE" }
-  | { ok: false; code: "INVALID"; field: string; rule: CrossRuleId | null; message: string; warnings: RulesWarning[] };
+  /**
+   * ⛔ `errors` IS THE WHOLE LIST, AND `field`/`rule`/`message` ARE ITS FIRST ENTRY — measured on a running
+   * build, 2026-09-21 (owner's report: "sometimes after they change several checkboxes and save, it says
+   * Couldn't save").
+   *
+   * 🔴 THIS SAVE USED TO ANSWER `errors[0]` AND THROW THE REST AWAY. Four bad fields therefore cost four
+   * round trips: fix the stake band, save, "Couldn't save" again for the frequency, fix that, save, again —
+   * with nothing on screen ever saying how many problems were left. The validator had found all four on the
+   * FIRST call and the shape of this result was the only thing that lost them. A form that knows every
+   * problem and reveals one is a form that teaches an officer the save is unreliable.
+   * ⚠️ The first entry stays named separately because the field order is `FIELD_ORDER`, so entry 0 is the
+   * EARLIEST failing field on the page — which is the one to focus and the one the sentence should be about.
+   */
+  | { ok: false; code: "INVALID"; field: string; rule: CrossRuleId | null; message: string; errors: FieldError[]; warnings: RulesWarning[] };
 
 const capsOf = (bot: StoredHouseBot): HouseBotCaps =>
   Object.fromEntries(CAP_FIELDS.map((k) => [k, bot[k]])) as HouseBotCaps;
@@ -205,7 +218,13 @@ export async function saveHouseBotRules(input: {
   );
   if (!checked.ok) {
     const first: FieldError = checked.errors[0];
-    return { ok: false, code: "INVALID", field: first.field, rule: first.rule ?? null, message: first.message, warnings: checked.warnings };
+    /* ⛔ EVERY ERROR TRAVELS, NOT JUST THE FIRST (see `RulesSaveResult`). The validator already found them all;
+       dropping them here is what made one save into four. */
+    return {
+      ok: false, code: "INVALID",
+      field: first.field, rule: first.rule ?? null, message: first.message,
+      errors: checked.errors, warnings: checked.warnings,
+    };
   }
 
   /**

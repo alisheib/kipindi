@@ -1696,6 +1696,66 @@ const CONSOLE_CAP_KEY: Readonly<Record<CapField, string>> = {
 const CAP_FIELD_BY_KEY = new Map<string, CapField>(CAP_FIELDS.map((f) => [CONSOLE_CAP_KEY[f], f]));
 
 /**
+ * ⭐ WHAT EACH LIMIT ACTUALLY DOES, IN ONE SENTENCE — the owner's own request (2026-09-21): *"there should also
+ * be some explanation about what each field does in the system, so users clearly understand what they are
+ * changing"*.
+ *
+ * ⛔ THIS IS A THIRD THING, BESIDE THE UNSET CAPTION AND THE SAVED FIGURE, AND THE THREE SAY DIFFERENT THINGS.
+ * `unsetCaptionFor` says what is MISSING and what that costs; `saved` says what is STORED. Neither says what the
+ * number GOVERNS. An officer typing a ceiling that stops real money was left to infer it from an eleven-character
+ * field name, and on this form the names are deliberately neutral — so the name carries less, not more.
+ *
+ * ⛔ `Record<CapField, string>` MAKES THE POPULATION TOTAL. A cap column added later cannot ship without a
+ * sentence, which is the only way a help text stays complete; a partial help table teaches officers that the
+ * absence of help means the field is unimportant.
+ *
+ * ⛔ EVERY SENTENCE IS NEUTRAL (453) AND PLAIN. The reader is an owner or a manager, not an engineer: no field
+ * name is repeated back, no unit is restated (the box already carries it), and nothing names the feature.
+ */
+const CONSOLE_CAP_HELP: Readonly<Record<CapField, string>> = {
+  stakeMinTzs: "The smallest single bet this account may place. Anything the desk works out below this is not placed at all.",
+  stakeMaxTzs: "The largest single bet this account may place. A bigger one is cut down to this, never refused for being too big.",
+  capPerMarketTzs: "The most this account may have staked on any one market, counting every bet it has placed there.",
+  capDailyStakeTzs: "The most this account may stake in total across one day, restarting at midnight EAT.",
+  capDailyLossTzs: "How much this account may lose in a day before it stops itself. Today's open bets count as lost until they settle.",
+  capOpenExposureTzs: "The most this account may have riding on markets that have not settled yet, added up across all of them.",
+  balanceFloorTzs: "The balance the holder's wallet must stay above. The account stops placing bets rather than take it below this.",
+  freqMinGapSec: "The shortest time allowed between two bets from this account, measured from the last one it actually placed.",
+  freqMaxPerHour: "How many bets this account may place in any rolling 60 minutes.",
+  freqMaxPerDay: "How many bets this account may place in one day, restarting at midnight EAT.",
+  freqMaxPerMarket: "How many separate bets this account may place on the same market.",
+  capStaffChosenPerDay: "How many bets an officer may direct from this account in one day, on top of what it does by itself.",
+  capStaffChosenDailyTzs: "The most an officer may stake from this account in one day by directing it.",
+  targetsMaxActive: "How many markets this account may be pointed at by an officer at the same time.",
+};
+
+/**
+ * ⭐ THE SAME, FOR THE TEN SWITCHES. A switch has no unit and no figure, so its label is the only thing on the
+ * row — and "Fill a thin side" is not self-explanatory to the person deciding whether to turn it on.
+ *
+ * ⛔ THE LAST TWO SAY PLAINLY THAT NO CONTROL EXISTS FOR THEM YET, and that is the honest half of a finding this
+ * section already paid for once. Neither "Enter now" nor a target can be created from any screen on this build:
+ * of the five press purposes only the cancel has a control, and nothing in `src/` inserts a target row at all.
+ * Both switches nevertheless COUNT as an entry mode, so an account whose only mode is one of them satisfies the
+ * start check and can be started — and will then never place a bet, with nothing on any screen saying why. The
+ * switches are real rules the engine reads and are not removed; what changes is that the form stops implying a
+ * control exists behind them. ⚠️ `startReadiness` counts them too, deliberately: the two must agree, and a badge
+ * that disagreed with the panel it points at is a worse defect than the one it would paper over.
+ */
+const CONSOLE_FLAG_HELP: Readonly<Record<keyof typeof CONSOLE_FLAG_KEY, string>> = {
+  productUpdown: "Let this account take part in Up & Down rounds.",
+  productPolls: "Let this account take part in polls.",
+  updownCounter: "When a player backs one side of a round, this account may answer on the other side.",
+  updownFill: "When one side of a round is much thinner than the other, this account may even it up.",
+  updownOpener: "When a round has no bets at all, this account may place the first one so players have something to answer.",
+  pollsCounter: "When a player backs one side of a poll, this account may answer on the other side.",
+  pollsFill: "When one side of a poll is much thinner than the other, this account may even it up.",
+  pollsOpener: "When a poll has no bets at all, this account may place the first one so players have something to answer.",
+  enterNow: "Permit an officer to place one bet from this account by hand. No screen on this build can do that yet.",
+  targeting: "Permit an officer to point this account at a chosen poll. No screen on this build can do that yet.",
+};
+
+/**
  * ⛔ THE TEN SWITCHES, AND THE TABLE IS THE CONTRACT. The form posts exactly these keys and no others; a
  * missing one is a stale tab rather than "off", because reading absence as OFF would let a form that failed to
  * render a control silently turn a mode off on save.
@@ -1728,7 +1788,16 @@ export type ConsoleRulesSaveInput = {
 export type ConsoleRulesSaveResult =
   /** ⛔ `recorded: false` means the rules DID change and the compliance row did not — the page says both. */
   | { ok: true; rulesVersion: number; changed: number; rulesChanged: boolean; recorded: boolean; warnings: string[] }
-  | { ok: false; error: string; field?: string };
+  /**
+   * ⛔ `fields` IS EVERY FIELD THAT IS WRONG, BY THE FORM'S OWN NEUTRAL KEY, AND `field` IS THE FIRST OF THEM.
+   *
+   * 🔴 Until 2026-09-21 this carried ONE field and the form marked ONE box, so an officer with four bad values
+   * met "Couldn't save" four times with nothing saying how many were left. The validator found them all on the
+   * first call (see `RulesSaveResult`); only the shape lost them.
+   * ⚠️ A refusal that belongs to NO typed field — a cross-rule on the rules document rather than on a cap —
+   * carries an empty `fields` and is said in `error` alone. That is honest: there is no box to mark.
+   */
+  | { ok: false; error: string; field?: string; fields?: Readonly<Record<string, string>> };
 
 /**
  * ⛔ EVERY SENTENCE THIS SAVE CAN PAINT, IN ONE HOME, AND NEUTRAL (rulings 412, 453). None names the feature,
@@ -1811,11 +1880,28 @@ export async function houseRulesSaveForConsole(
     };
   }
   if (saved.code !== "INVALID") return { ok: false, error: RULES_SAVE_COPY[saved.code] };
-  /* The validator's own sentence, unless the rule's shared copy names the feature (`CONSOLE_LIMIT_REFUSAL`). */
+  /**
+   * ⛔ EVERY REFUSAL IS CARRIED HOME, EACH ON ITS OWN FIELD, and each one goes through the SAME substitution the
+   * single sentence always did: the validator's message unless the rule's shared copy names the feature
+   * (`CONSOLE_LIMIT_REFUSAL`), because those messages are also the engine's and the bell's and are not rewritten
+   * at the source.
+   * ⛔ ONLY A TYPED FIELD GETS A KEY. A cross-rule error on the rules DOCUMENT (a schedule, a mode's own leaf)
+   * has no box on this form, and inventing one would send the officer to a control that is not the problem —
+   * so it is dropped from `fields` and still said in `error`.
+   */
+  const sentenceFor = (rule: string | null | undefined, message: string): string =>
+    (rule != null ? CONSOLE_LIMIT_REFUSAL[rule] : undefined) ?? message;
+  const fields: Record<string, string> = {};
+  for (const e of saved.errors) {
+    const key = CONSOLE_CAP_KEY[e.field as CapField];
+    if (key === undefined || key in fields) continue; // unknown field, or the first sentence already stands
+    fields[key] = sentenceFor(e.rule ?? null, e.message);
+  }
   return {
     ok: false,
-    error: (saved.rule !== null ? CONSOLE_LIMIT_REFUSAL[saved.rule] : undefined) ?? saved.message,
+    error: sentenceFor(saved.rule, saved.message),
     field: CONSOLE_CAP_KEY[saved.field as CapField],
+    fields,
   };
 }
 
@@ -2104,19 +2190,72 @@ export type ConsoleRulesForm = {
      * while typing over a ceiling is this one, inside `.amount`.
      */
     saved: string;
-    /** 364's consequence sentence when the cap is unset — the server's, chosen by the field's membership. */
-    caption: string | null;
+    /**
+     * 364's consequence sentence for this cap — the server's, chosen by the field's own membership. ⛔ ALWAYS
+     * present: the FORM decides when it applies, from what is in the box right now (see the builder).
+     */
+    caption: string;
     unit: "TZS" | "count";
     required: boolean;
+    /**
+     * ⭐ WHAT THIS FIELD ACTUALLY DOES, IN ONE SENTENCE (owner's report, 2026-09-21: *"there should also be
+     * some explanation about what each field does in the system, so users clearly understand what they are
+     * changing"*).
+     *
+     * ⛔ IT IS NOT THE UNSET CAPTION AND NOT THE SAVED FIGURE. Those two say what is MISSING and what is
+     * STORED; neither says what the number governs, and an officer typing a ceiling that stops real money
+     * should not have to infer it from the field's name. Every cap has one — the population is total, proved
+     * by `Record<CapField, string>` at the table.
+     * ⛔ AND IT IS THE SERVER'S SENTENCE (388, 453): it names no feature word, and it is scanned where every
+     * other console sentence is.
+     */
+    help: string;
+    /**
+     * A sensible starting value as plain digits, or "" where the field has none. ⛔ It FILLS the box and never
+     * saves by itself — the officer still reads it and still presses Save, because a limit that stops money
+     * must have been chosen by a person and not defaulted in by a form.
+     */
+    recommended: string;
   }[];
-  flags: readonly { key: string; section: string; label: string; on: boolean }[];
+  flags: readonly { key: string; section: string; label: string; on: boolean; help: string }[];
   /**
    * ⛔ EVERY SENTENCE THE FORM PAINTS, FROM HERE (ruling 388, and `house-bot-console-cases.mts`'s
    * `CLIENT_OWNED_COPY` enforces it: the console's client files hold a CLOSED set of six strings of 25
    * characters or more, asserted by size). A sentence typed into the form component would ship to every
    * visitor with the bundle scan reporting clean — and would break that assertion on the way in.
    */
-  copy: { barDetail: string; guardBody: string };
+  copy: {
+    barDetail: string;
+    guardBody: string;
+    /** The control that empties every limit on this form, and the dialog that asks before it does. */
+    clearLabel: string;
+    clearTitle: string;
+    clearBody: string;
+    clearConfirm: string;
+    clearDone: string;
+    /** The control that fills every EMPTY limit with its starting value, and what it did. */
+    fillLabel: string;
+    fillDone: string;
+    fillNothing: string;
+    /** Said above the two switches no control on this build can act on yet (see `byHandNote`). */
+    byHandNote: string;
+    /** The head of a refusal that names more than one field. `{n}` is the count. */
+    manyProblems: string;
+    /** Said when a refusal belongs to no field on this form, so nothing can be marked. */
+    noFieldToMark: string;
+    /**
+     * ⭐ THE DRAFT OFFER — what an officer sees on coming back to a form they left with work in it, however
+     * they left (see `useFormDraft`). ⛔ It is an OFFER: nothing is restored until a person says so, because
+     * repainting half-typed ceilings over what the server now says is a change nobody chose.
+     */
+    draftTitle: string;
+    draftBody: string;
+    draftRestore: string;
+    draftDrop: string;
+    draftRestored: string;
+    /** Said under a cap whose box holds a value that has never been saved. */
+    notSavedYet: string;
+  };
 };
 
 /**
@@ -3725,6 +3864,23 @@ export async function houseDetailForConsole(
    * form for, and the same `null` covers rules that would not parse — a document this module could not read
    * is not one a form may overwrite.
    */
+  /**
+   * ⛔ THE STARTING VALUES (2026-09-21). `recommendedCaps` has existed since the plan and, like
+   * `recommendedLimits` before this pass, NOTHING RENDERED IT — so all eleven required caps had to be typed by
+   * hand on every new account before Start would do anything at all.
+   *
+   * ⚠️ READ OFF `FIELD_META` DIRECTLY RATHER THAN THROUGH `recommendedCaps`, and that is measured, not lazy:
+   * that helper takes a `RulesContext` only to resolve the word `LIVE_MIN`, and EVERY ONE of the fourteen cap
+   * recommendations is a static number (checked field by field). This is a RENDER path, and `loadParseContext`
+   * deliberately omits the live stake bounds because parse never reads them (04 F5) — so going through the
+   * helper here would have meant either a second platform read on every account page, or what the first draft
+   * actually produced: an empty table, a control that silently filled nothing, and a toast claiming every limit
+   * already had a value. ⛔ The same shape as the global panel's, for the same reason.
+   */
+  const recommendedFor = Object.fromEntries(CAP_FIELDS.map((f) => {
+    const r = FIELD_META[f].recommended;
+    return [f, r == null || typeof r === "string" ? "" : String(r)];
+  })) as Record<CapField, string>;
   const rulesForm: ConsoleRulesForm | null = parsed == null || !parsed.ok ? null : {
     baseVersion: bot.rulesVersion,
     caps: CAP_FIELDS.map((field) => ({
@@ -3734,25 +3890,65 @@ export async function houseDetailForConsole(
          empty box and the column's NULL are the same state travelling in both directions. */
       value: bot[field] == null ? "" : String(bot[field]),
       saved: limitValue(field, bot[field] as number | null),
-      caption: bot[field] == null ? unsetCaptionFor(field, false) : null,
+      /**
+       * 🔴 ALWAYS SENT, NOT ONLY WHEN THE STORED VALUE IS NULL — read off a rendered refusal, 2026-09-21.
+       *
+       * The form is UNCONTROLLED, so what an officer sees in a box is what they TYPED, while this caption was
+       * chosen from what is STORED. After a refused save the page therefore showed "Daily stake cap · 200000"
+       * with "Not set — this account cannot place a bet." printed directly underneath it. One field, two
+       * statements, flatly contradicting each other, on the surface whose whole job is to say which limits are
+       * missing — which is 432(n) inside a single field.
+       * ⭐ THE CAPTION IS ABOUT WHAT SAVING WOULD MEAN, so the FORM decides when to show it, from the box's
+       * live contents, and the server's job is only to have the right sentence ready. That also covers the
+       * mirror case the old shape could not express at all: a cap that IS stored and whose box the officer has
+       * just emptied, where saving clears a ceiling that stops money and nothing said so.
+       */
+      caption: unsetCaptionFor(field, false),
       unit: FIELD_META[field].unit === "TZS" ? ("TZS" as const) : ("count" as const),
       required: (REQUIRED_FOR_START as readonly string[]).includes(field),
+      /* ⛔ TOTAL BY CONSTRUCTION — see `CONSOLE_CAP_HELP`. */
+      help: CONSOLE_CAP_HELP[field],
+      /* ⛔ PLAIN DIGITS, NEVER A FORMATTED FIGURE: the kit's numeric input strips every non-digit on the first
+         keystroke, so a box filled with "TZS 20,000" would read back as 20000 only by luck. A cap with no
+         recommendation yields "" and is simply not filled. ⚠️ Through `recommendedCaps`, not `FIELD_META`
+         directly — unlike the GLOBAL limits, a per-account recommendation can resolve `LIVE_MIN`, which is a
+         word and not a number until the live stake bounds are applied to it. */
+      recommended: recommendedFor[field],
     })),
     flags: [
-      { key: CONSOLE_FLAG_KEY.productUpdown, section: "Products", label: "Up & Down", on: parsed.rules.scope.products.updown },
-      { key: CONSOLE_FLAG_KEY.productPolls, section: "Products", label: "Polls", on: parsed.rules.scope.products.polls },
-      { key: CONSOLE_FLAG_KEY.updownCounter, section: "Up & Down entry", label: "React to a player's stake", on: parsed.rules.modes.updown.counter },
-      { key: CONSOLE_FLAG_KEY.updownFill, section: "Up & Down entry", label: "Fill a thin side", on: parsed.rules.modes.updown.fill },
-      { key: CONSOLE_FLAG_KEY.updownOpener, section: "Up & Down entry", label: "Open a quiet market", on: parsed.rules.modes.updown.opener },
-      { key: CONSOLE_FLAG_KEY.pollsCounter, section: "Polls entry", label: "React to a player's stake", on: parsed.rules.modes.polls.counter },
-      { key: CONSOLE_FLAG_KEY.pollsFill, section: "Polls entry", label: "Fill a thin side", on: parsed.rules.modes.polls.fill },
-      { key: CONSOLE_FLAG_KEY.pollsOpener, section: "Polls entry", label: "Open a quiet market", on: parsed.rules.modes.polls.opener },
-      { key: CONSOLE_FLAG_KEY.enterNow, section: "By hand", label: "Enter now", on: parsed.rules.enterNow.enabled },
-      { key: CONSOLE_FLAG_KEY.targeting, section: "By hand", label: "Targeted stakes", on: parsed.rules.targeting.enabled },
+      { key: CONSOLE_FLAG_KEY.productUpdown, section: "Products", label: "Up & Down", on: parsed.rules.scope.products.updown, help: CONSOLE_FLAG_HELP.productUpdown },
+      { key: CONSOLE_FLAG_KEY.productPolls, section: "Products", label: "Polls", on: parsed.rules.scope.products.polls, help: CONSOLE_FLAG_HELP.productPolls },
+      { key: CONSOLE_FLAG_KEY.updownCounter, section: "Up & Down entry", label: "React to a player's stake", on: parsed.rules.modes.updown.counter, help: CONSOLE_FLAG_HELP.updownCounter },
+      { key: CONSOLE_FLAG_KEY.updownFill, section: "Up & Down entry", label: "Fill a thin side", on: parsed.rules.modes.updown.fill, help: CONSOLE_FLAG_HELP.updownFill },
+      { key: CONSOLE_FLAG_KEY.updownOpener, section: "Up & Down entry", label: "Open a quiet market", on: parsed.rules.modes.updown.opener, help: CONSOLE_FLAG_HELP.updownOpener },
+      { key: CONSOLE_FLAG_KEY.pollsCounter, section: "Polls entry", label: "React to a player's stake", on: parsed.rules.modes.polls.counter, help: CONSOLE_FLAG_HELP.pollsCounter },
+      { key: CONSOLE_FLAG_KEY.pollsFill, section: "Polls entry", label: "Fill a thin side", on: parsed.rules.modes.polls.fill, help: CONSOLE_FLAG_HELP.pollsFill },
+      { key: CONSOLE_FLAG_KEY.pollsOpener, section: "Polls entry", label: "Open a quiet market", on: parsed.rules.modes.polls.opener, help: CONSOLE_FLAG_HELP.pollsOpener },
+      { key: CONSOLE_FLAG_KEY.enterNow, section: "By hand", label: "Enter now", on: parsed.rules.enterNow.enabled, help: CONSOLE_FLAG_HELP.enterNow },
+      { key: CONSOLE_FLAG_KEY.targeting, section: "By hand", label: "Targeted stakes", on: parsed.rules.targeting.enabled, help: CONSOLE_FLAG_HELP.targeting },
     ],
     copy: {
       barDetail: "These govern every stake this one account places.",
       guardBody: "This account's settings have been changed but not saved. Leaving now discards the change.",
+      /* ⛔ THE WORD IS "EMPTY", NOT "RESET" — the control empties the boxes, it does not restore anything, and
+         a reader who expects a restore would press it to undo their typing and lose the saved values instead. */
+      clearLabel: "Empty every limit",
+      clearTitle: "Empty every limit?",
+      clearBody: "Every limit box on this form is cleared. Nothing is saved until you press Save, and an account with no limits set cannot place a bet.",
+      clearConfirm: "Empty them",
+      clearDone: "Every limit box is empty. Nothing is saved yet — press Save to store this, or Discard to put the saved values back.",
+      fillLabel: "Use starting values",
+      fillDone: "Starting values filled. Nothing is saved yet — check the numbers, then press Save.",
+      fillNothing: "Every limit already has a value, so nothing was filled.",
+      byHandNote: "These two permit an officer to act from this account by hand. No screen on this build can do that yet, so an account whose only entry is one of these will never place a bet.",
+      manyProblems: "{n} fields need fixing. Each one is marked below.",
+      noFieldToMark: "Nothing on this form can be marked for it — read the message, then check the settings above.",
+      draftTitle: "Unsaved changes from earlier",
+      draftBody: "This form was left with changes that were never saved. They are still exactly as they were left. Nothing has been applied — put them back to carry on, or discard them.",
+      draftRestore: "Put them back",
+      draftDrop: "Discard them",
+      draftRestored: "Your earlier changes are back in the form. Nothing is saved yet — check them, then press Save.",
+      notSavedYet: "Nothing saved for this yet.",
     },
   };
 
@@ -4787,7 +4983,18 @@ export async function houseDesignateForConsole(
     return { ok: false, error: CONSOLE_ACT_REFUSAL.WRITE_FAILED };
   }
 
-  if (done.ok) return { ok: true, href: consoleBotHref(done.bot.id), note: DESIGNATE_FORM_COPY.done };
+  /**
+   * ⭐ THE WIZARD LANDS ON THE WORK, NOT ON THE SUMMARY (2026-09-21, measured by driving the real wizard).
+   *
+   * 🔴 A FRESHLY DESIGNATED ACCOUNT HAS ALL FOURTEEN LIMITS UNSET, NO PRODUCT AND NO ENTRY MODE — thirteen
+   * blockers, every one of them on the Rules tab — and designation dropped the officer on the OVERVIEW, whose
+   * job is to say what an account is doing. So the first screen after creating an account was a summary of
+   * nothing, and the officer had to find the tab themselves. That is the same shape as the refusal this
+   * feature already paid for once: the console knowing exactly what is needed next and not taking anyone there.
+   * ⛔ IT IS THE TAB HELPER, NOT A TYPED QUERY STRING: `consoleBotTabHref` is the one home for these links, and
+   * a hand-written `?tab=rules` here would be the fourth spelling of a route this module exists to keep single.
+   */
+  if (done.ok) return { ok: true, href: consoleBotTabHref(done.bot.id, "rules"), note: DESIGNATE_FORM_COPY.done };
 
   /* ⛔ EVERY REFUSAL AN OFFICER READS IS THE CONSOLE'S OWN, KEYED BY CODE (453). `designateHouseBot` answers with
      `eligibility.ts`'s and `rules.ts`'s sentences, and measured, those carry the feature's words — "Another bot is

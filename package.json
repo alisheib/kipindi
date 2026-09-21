@@ -883,7 +883,8 @@
     "test:audit-attest": "tsx scripts/audit-attest.test.mts",
     "rehearse:audit-hole": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-hole.mts",
     "qa:corner-radius": "node scripts/qa-corner-radius.mjs",
-    "qa:desk-recommend": "tsx scripts/qa-desk-recommend.mts"
+    "qa:desk-recommend": "tsx scripts/qa-desk-recommend.mts",
+    "qa:desk-rules-flow": "node scripts/qa-desk-rules-flow.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

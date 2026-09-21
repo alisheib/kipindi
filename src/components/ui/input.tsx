@@ -157,6 +157,21 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
         type={effectiveType}
         inputMode={effectiveInputMode}
         {...(isNumeric ? { autoComplete: inputRest.autoComplete ?? "off" } : {})}
+        /**
+         * 🔴 AN ERRORED FIELD SAID NOTHING TO A SCREEN READER, AND THAT IS THE SAME DEFECT AS THE
+         * LOCKED BOX ABOVE IT (measured 2026-09-21 on `/admin/desk/[id]?tab=rules`: a refused save
+         * painted a red border on four fields and set `aria-invalid` on none of them).
+         *
+         * The error was carried entirely in COLOUR — a border and a wash — plus a sentence below
+         * the box that nothing associated with the box. So a sighted officer saw which field was
+         * wrong and a reader user was told they were all fine. That is exactly cause **H**'s shape:
+         * a control whose true state is visible only to people who can see it.
+         * ⚠️ `|| undefined` rather than `false`: `aria-invalid="false"` is a claim, and announcing
+         * "valid" on every untouched box on the page is noise, not information.
+         * ⛔ AFTER the spread, so a caller that sets its own `aria-invalid` cannot be silently
+         * overridden into disagreeing with its own `error` prop — the two are one fact.
+         */
+        aria-invalid={errored || undefined}
         onChange={handleChange}
         className={cn(
           "flex-1 min-w-0 bg-transparent px-3 outline-none placeholder:text-text-subtle",

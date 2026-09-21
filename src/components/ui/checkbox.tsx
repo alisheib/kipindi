@@ -67,11 +67,62 @@ export function Checkbox({
     if (inputRef.current) inputRef.current.indeterminate = dash;
   }, [dash]);
 
-  const toggle = () => {
-    const next = !on;
-    if (!isControlled) setInternal(next);
-    onChange?.(next);
-  };
+  /**
+   * 🔴 A FORM RESET HAS TO REACH THE VISIBLE BOX, AND FOR THIS CONTROL IT DID NOT
+   * (measured on `/admin/desk/[id]?tab=rules`, 2026-09-21).
+   *
+   * `form.reset()` restores every input's DOM `checked` from its `defaultChecked`
+   * attribute. It does NOT tell React, so the painted box — which is drawn from
+   * `internal`, not from the DOM — kept the officer's discarded toggle, and the next
+   * render wrote that toggle straight back onto the input. A Discard therefore LOOKED
+   * like it had done nothing, reported the form clean, and then posted the very changes
+   * it claimed to have thrown away.
+   *
+   * ⚠️ IT SYNCS IN A MICROTASK, NOT IN THE HANDLER. The `reset` event fires BEFORE the
+   * form is reset (it is cancellable), so a listener that reads `el.checked` inline reads
+   * the OLD value and pins exactly the state it was asked to clear. `form.reset()` is
+   * synchronous, so a microtask queued here runs once the reset has landed.
+   * ⛔ Uncontrolled only: a controlled box's truth is its parent's state, which a native
+   * reset neither knows about nor may silently overwrite.
+   */
+  React.useEffect(() => {
+    if (isControlled) return undefined;
+    const form = inputRef.current?.form;
+    if (!form) return undefined;
+    const sync = () => {
+      queueMicrotask(() => {
+        const el = inputRef.current;
+        if (el) setInternal(el.checked);
+      });
+    };
+    form.addEventListener("reset", sync);
+    return () => form.removeEventListener("reset", sync);
+  }, [isControlled]);
+
+  /**
+   * ⭐ IN UNCONTROLLED MODE THE DOM IS THE TRUTH, SO THE PAINT FOLLOWS IT — however it was moved.
+   *
+   * React's own `onChange` covers a person: for a checkbox React listens to `click`, so a tick or a space bar
+   * reaches the handler below. It does NOT cover a PROGRAMMATIC change — `el.checked = true` fires nothing, and
+   * a dispatched `input`/`change` is not the event React watches for this element type. So a restored draft, a
+   * "fill these in" control, or any future caller that sets the box in code would move the real input and leave
+   * the painted square showing the opposite. A box that disagrees with what it will submit is the worst thing
+   * this control can be.
+   * ⚠️ Idempotent: when the move DID come from a person this sets the same value React just set, which is a
+   * no-op re-render React drops. ⛔ Uncontrolled only — a controlled box's truth is its parent's state.
+   */
+  React.useEffect(() => {
+    if (isControlled) return undefined;
+    const el = inputRef.current;
+    if (!el) return undefined;
+    const follow = () => setInternal(el.checked);
+    el.addEventListener("input", follow);
+    el.addEventListener("change", follow);
+    return () => {
+      el.removeEventListener("input", follow);
+      el.removeEventListener("change", follow);
+    };
+  }, [isControlled]);
 
   return (
     <label
@@ -95,26 +146,54 @@ export function Checkbox({
         fontSize: 13.5,
         color: "var(--text)",
       }}
-      onClick={(e) => {
-        // Prevent double-toggle from label+input interaction
-        if ((e.target as HTMLElement).tagName === "INPUT") return;
-        e.preventDefault();
-        toggle();
-      }}
+      /**
+       * 🔴 THERE IS NO `onClick` HERE ANY MORE, AND ITS REMOVAL IS THE FIX FOR A BUG THAT
+       * REACHED THE OWNER (reported 2026-09-21: "changing checkboxes does not trigger the
+       * pending-change toolbar").
+       *
+       * This label used to answer the click ITSELF — `preventDefault()` and then a React
+       * state update. `preventDefault()` on a label cancels its activation behaviour, which
+       * is the only thing that forwards the click to the control it wraps, so the real
+       * `<input>` was never clicked: no native `click`, no `input`, no `change`, and
+       * therefore NOTHING for a form-level listener to hear. `useFormDirty` listens on the
+       * `<form>` for exactly those two events, so ticking a box with a MOUSE never armed
+       * `PendingChangesBar` or `UnsavedChangesGuard` — while the SPACE BAR, which lands on
+       * the real input and fires its events, worked perfectly. A control that is only
+       * broken for the pointer is a control that tests green and fails every officer.
+       *
+       * ⭐ THE NATIVE PATH IS THE WHOLE ANSWER. The input is a child of this label, so the
+       * browser forwards the click, toggles the box, and fires the events React and the
+       * form are both already listening for. Exactly one toggle happens: the old comment's
+       * "double-toggle" only occurs when a handler toggles in ADDITION to the native
+       * activation, which is what this file used to do.
+       */
     >
       {/* Visually-hidden but ACCESSIBLE native input — it is the real control
           (screen readers announce it as a labelled checkbox; keyboard focuses
           it). `peer` drives the visible box's focus ring. Never aria-hidden:
           hiding a focusable control from the a11y tree is a WCAG violation. */}
+      {/* ⛔ CONTROLLED WHEN THE CALLER OWNS THE VALUE, UNCONTROLLED WHEN IT DOES NOT — and
+          the difference is load-bearing, not tidiness. `checked` on an uncontrolled box
+          leaves `defaultChecked` unset on the DOM node, so `form.reset()` resets it to
+          FALSE rather than to the value the server rendered: a Discard on a form of ten
+          switches would have silently cleared all ten. React also warns about a box that
+          is both. The spread keeps exactly one of the two on the element. */}
       <input
         ref={inputRef}
         type="checkbox"
         name={name}
         value={value}
         required={required}
-        checked={on}
+        {...(isControlled ? { checked: controlledChecked } : { defaultChecked: defaultChecked ?? false })}
         aria-label={ariaLabel}
-        onChange={() => toggle()}
+        /* The native toggle has already happened by the time this runs, so the new state is
+           READ off the element rather than derived from the old one — a derived `!on` is
+           what makes a box disagree with itself the moment anything else moves it. */
+        onChange={(e) => {
+          const next = e.currentTarget.checked;
+          if (!isControlled) setInternal(next);
+          onChange?.(next);
+        }}
         className="sr-only peer"
       />
       <span
