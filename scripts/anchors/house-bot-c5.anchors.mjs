@@ -29,31 +29,65 @@
  * ⛔ It is not this file's to fix and the ceiling is not this file's to raise.
  *
  * ⚠️ HOW `expect` WAS CHOSEN, AND WHY IT IS NOT DECORATION. A register entry names its assertion by id ("0.187.1",
- * "4.259.3"). An id alone is not evidence: 29 owed entries name ONLY assertions that no longer exist in the suite they
- * name, and those were left owed rather than given a plausible-looking label. Every `expect` below was taken from the
- * label literal that assertion carries in its suite's source TODAY, cut before any `${}` interpolation so it matches the
- * line the run actually prints. An `expect` that matched no label would be classed WRONG-ASSERTION by any drive.
+ * "4.259.3"). An id alone is not evidence, so no entry was ever given a plausible-looking label: every `expect` below
+ * was taken from the label literal that assertion carries in its suite's source TODAY, cut before any `${}`
+ * interpolation so it matches the line the run actually prints. An `expect` that matched no label would be classed
+ * WRONG-ASSERTION by any drive.
+ * 🔴 AND THE SENTENCE THAT USED TO STAND HERE WAS A COMPOSITE — REFUTED 2026-09-21, IN THIS FILE, BY MEASUREMENT.
+ * It read "29 owed entries name ONLY assertions that no longer exist in the suite they name". That was derived from
+ * each entry's FIRST-named assertion family and never from the whole `red` field, and it is FALSE for eight of the
+ * 29 and misleading for five more: `S4-M11 M15 M16 M17 M18 M19 M32 M34` each name `0.191.1` AND `0.191.0`
+ * explicitly, and both labels exist today in `test:house-bot-reports` — the same suite those entries name
+ * (`scripts/lib/house-bot-reports-cases.mts:2547`, `:2551`); `S5-M53 M54 M55 M56 M65` each name
+ * `test:house-bot-disclosure 2.v` / `4.c6`, which exist at `:186` and `:269`, and the claim was only literally true
+ * because their `suite` FIELD says `test:house-bot-reports`. ⛔ A recorded figure that was never one measurement is
+ * the third such composite this programme has found in its own numbers; the split below is re-derived, not inherited.
  *
  * ── THE HONEST SPLIT, re-derived 2026-09-21 against this tree rather than quoted from the previous phase ────────────
  *   262  id-bearing entries across the four registers
  *    -9  already declared and reachable before this phase (`S7-M01..M09`, in `house-bot-console.anchors.mjs`)
- *   -76  MOOT · their subject was deleted, and they are NEVER to be re-anchored:
+ *   -77  MOOT · their subject was deleted, and they are NEVER to be re-anchored:
  *          49 whose whole FILE the D20 un-build deleted in `7c754515` — `src/lib/server/house-bot/exposure.ts` (13),
  *             `src/lib/house-bot/exposure-copy.ts` (28), `src/components/admin/exposure-line.tsx` (6),
  *             `src/app/admin/kyc/[id]/bets-placed.tsx` (2)
- *          27 whose SUBJECT was struck while its file survived — `exposureSlot`, `exposureReadOf`, `ExposureLine`,
+ *          28 whose SUBJECT was struck while its file survived — `exposureSlot`, `exposureReadOf`, `ExposureLine`,
  *             `HOUSE_OWNED_AUDIT_ACTIONS`, `isHouseAuditRow`, `houseStakeForAudit`, `houseStakeByMarket`,
  *             `houseBetCount`, `houseStakedTzs`, `botLabels`, `UNGATED_HOUSE_READERS` and their neighbours, none of
- *             which occurs anywhere under `src/`, `scripts/` or `prisma/` any more
- *  -102  STILL OWED, and said so rather than padded: 29 name only assertions that no longer exist; 16 name a suite
- *          with no roll-call key and no red harness (`test:dal-parity`, `test:house-bot-rules`,
- *          `test:house-bot-migrations`, `test:txn-search`, `test:dsar-secrets`); 57 rotted from-texts whose subject is
- *          alive but whose site could not be identified to a single line (2 of them now match 5x, which is ambiguous,
- *          not resolved)
+ *             which occurs anywhere under `src/` or `prisma/` any more.
+ *             ⚠️ AND `scripts/` IS NO LONGER TRUE OF ALL OF THEM, WHICH IS THIS FILE'S OWN DOING (C5-8, 2026-09-21):
+ *             `houseBetCount` and `houseStakedTzs` now occur in `scripts/lib/house-bot-reports-cases.mts` as the
+ *             NEEDLES of `0.197.2`, exactly as `houseStakeForAudit` and `houseStakeByMarket` already did as 0.191's.
+ *             A struck name kept as a needle is how an absence is proved; it is not the subject coming back.
+ *             ⭐ `S5-M46` JOINED THIS LIST 2026-09-21 and its count is why 76 became 77. It was filed among the 29
+ *             because its `from` still resolves, but its `to` names `exposureSlot` — a STRUCK subject — so the 29's
+ *             own rule put it here: ruling 196 is struck (`C5-SPEC.md:1247`, `:2918`; `C5-D20-REPLAN.md:31`) and
+ *             `exposureSlot` survives only as an exemption NAME in `EXPOSURE_SLOT_PROPS`.
+ *   -69  STILL OWED, and said so rather than padded:
+ *          57 rotted from-texts whose subject is alive but whose site could not be identified to a single line (2 of
+ *             them now match 5x, which is ambiguous, not resolved)
+ *           2 (`S4-M03`, `S4-M51`) that name a SITE a declaration already occupies but an assertion family
+ *             (`3.187.4/5/6`, `4.195.1/2/3`) that no longer exists — same site is not same assertion
+ *          10 that name a suite no harness can drive: nine under four suites with NO red harness and no roll-call key
+ *             (`test:dsar-secrets` 3, `test:house-bot-migrations` 3, `test:house-bot-rules` 2, `test:txn-search` 1),
+ *             plus `5b-M11`, whose suite HAS a harness that cannot reach it — `dal-parity.test.mts` reads
+ *             `prisma/schema.prisma` from ROOT at `:53` and `:274`, not through `KP_SRC`, so `red:dal-parity`'s
+ *             scratch copy never sees it and a declaration there would report NOT CAUGHT.
+ *             ⛔ `test:dal-parity` IS NOT ON THAT LIST ANY MORE: `red:dal-parity` exists and so does
+ *             `scripts/anchors/dal-parity.anchors.mjs`. Six of its seven are declared THERE — not here, because 0.505
+ *             walks `house*.anchors.mjs` and would have gone red on an unlisted key while `ROLL_CALL_OWED`'s pinned
+ *             length of 7 may only SHRINK. All ten remaining are named in `DEFERRED-TESTS.md` row 97 with the
+ *             measured reason, rather than left silent.
  *   ═══
- *    75  retired here — 69 declarations below, covering 72 entries (3 pairs are the same edit written into two
- *          registers) plus 3 more (`S4-M03`, `S4-M05`, `S4-M51`) whose site and assertion a `c5-5b` entry already
- *          occupies, so re-declaring them would be the same anchor twice
+ *   107  retired — 96 declarations below (97 entries; `S4-M73b` is applied with its primary) covering 99 register
+ *          entries (3 pairs are the same edit written into two registers), plus `S4-M05` superseded, plus `S4-M65` in
+ *          `officer-hold.anchors.mjs` and six in `dal-parity.anchors.mjs` — each declared where a harness already
+ *          drives it rather than where it would only be counted
+ *   ⛔ 9 + 77 + 69 + 107 = 262, and the columns move together or not at all.
+ * ⚠️ WHAT IN THAT SPLIT THIS PHASE MEASURED, AND WHAT IT CARRIES. Measured here, 2026-09-21: the 29 and the 16 (every
+ * `from` re-resolved against this tree, every `red` field read WHOLE rather than by its first family), and every
+ * declaration count, read from `MUTATIONS.length` in the three anchors files. Carried from row 93's 2026-09-20
+ * re-derivation and NOT re-measured here: the 57 rotted, the 9 already declared, and the 49 + 28 MOOT halves.
+ * ⛔ Which is why they are named as carried — a column nobody re-derived is not a column this file measured.
  *
  * ⛔ FIVE OF THESE ARE RE-ANCHORS, MARKED `RE-ANCHORED` IN THEIR NAME. Their register from-text had rotted; the code had
  * moved under them (a binding renamed `n` -> `call`, a cursor renamed `at` -> `top`, a page signature destructured into
