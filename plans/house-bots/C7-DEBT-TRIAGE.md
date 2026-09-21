@@ -1,7 +1,9 @@
 # Commit 7's open debt — the triage, before any of it is run
 
 > **What this is.** `DEFERRED-TESTS.md`'s gate line names **§1b, §1e, §1f, §1g, §1h and §1i** as the sections that
-> must be empty before **Commit 7 closes (C7 step 7)**. They hold **59 rows**. This file reads every one of them and
+> must be empty before **Commit 7 closes (C7 step 7)**. They hold **59 rows**. ⛔ **BOTH NUMBERS ARE NOW WRONG —
+> see §"THE COMMIT 7 VERDICT" at the end of this file: the gate line names SEVEN sections (§1k too) and they hold
+> 63 rows.** This file reads every one of them and
 > says which of four things it is, **before a single command is run**, so the reasoning is on the record separately
 > from the results. Written by the alerts lane, 2026-09-20, branch `alerts-lane`, worktree `C:/kipindi-alerts`.
 >
@@ -1013,3 +1015,228 @@ against a ceiling of 65**, and two `rg-doors` anchors no longer resolve in `src/
 ⛔ **Not this phase's**, and measured rather than assumed: `red:*` script count is **170 in HEAD and 170 in the
 working tree**, so nothing added here moved that count — this phase added one `test:*` key and no `red:*` key.
 `scripts/red-anchors.test.mts` is owned by another lane right now and was not edited.
+
+## THE WHOLE BATCH ON THE REPAIRED TREE — 2026-09-21, C5-8 alerts lane, PHASE 7
+
+⛔ **PHASE 5 REPAIRED TEN DECLARATIONS AND DROVE ONLY THOSE TEN PLUS A 42-DECLARATION SLICE.** Four of the ten
+repairs changed WHAT AN ASSERTION MEASURES, and that is exactly when a neighbour breaks quietly. The whole
+population had not been driven since the repairs landed. This phase drives it: all of it, once, in one lane, with
+`git status --porcelain` verified EMPTY before and after.
+
+### The population, re-derived BEFORE the run — never read off a row
+
+`npm run test:red-anchors` §3 imports every declaration file and resolves every `from` against the working tree:
+
+| | Live, this tree |
+|---|---|
+| `house-bot-console.anchors.mjs` | **281** — console-mem 257 · reports-mem 14 · comms-mem 6 · rbac 2 · disclosure 1 · admin-nav 1 |
+| The batch's other three | money **56** · seam **7** · engine **46** |
+| **THE BATCH** | **390** |
+| The whole fleet | **1,151** declarations across **90** declaration files, **169** `red:*` harnesses |
+
+⚠️ **The brief expected the population to have grown because lanes 1 and 2 have been adding declarations. MEASURED:
+it has not.** 281 / 390 / 1,151 / 90 / 169 are identical to phase 3's re-derivation, and `test:red-anchors` prints
+the same **2576 passed, 4 failed** — the same four inherited reds (`rg-doors` ×2, and `4.1`/`4.2` at **66**
+undeclared harnesses against a ceiling of **65**). ⛔ `UNDECLARED_CEILING` untouched; `scripts/red-anchors.test.mts`
+not edited. Independently: the `red:*` key count is **169 in HEAD and 169 in the working tree**, so nothing this
+lane did moved it.
+
+### Drive · `npm run red:house-bot-console` — all 281, whole, under `~/heavy-node-lock.sh`
+
+Six baselines green first, then every declaration injected, run and reverted. Verbatim closing line:
+
+```
+baseline green · console-mem
+baseline green · disclosure
+baseline green · rbac
+baseline green · admin-nav
+baseline green · reports-mem
+baseline green · comms-mem
+house-bot-console RED: 280 caught, 1 missed, 0 files left dirty
+```
+
+| | Previous whole run (phase 3) | This run (repaired tree) |
+|---|---|---|
+| Declared and driven | 281 | 281 |
+| ✅ Red ON THE ASSERTION THEY NAME | **271** | **280** |
+| ⛔ WRONG-ASSERTION | 6 | **1** — and it is an ENVIRONMENT red, refuted below |
+| ⛔ MISSED (defect in, suite GREEN) | 4 | **0** |
+| Files left dirty | 0 | **0** |
+
+⭐ **ALL TEN REPAIRS HOLD, AND NO NEIGHBOUR WAS DISARMED.** The ten — `346-countlive`, `347-second-read`,
+`432h-rowlink`, `432o-status-floor`, `432j-switch-reason`, `398-ladder-hole`, `387-order`, `409-name`,
+`537-guard`, `416-products-case` — are each CAUGHT on the assertion they name. And because all 281 were driven,
+so is every declaration whose `expect` names one of the NINE assertions the repairs touched — `1.346` (1),
+`1.347` (4), `1.373` (7), `1.387` (9), `1.398` (2), `1.407` (4), `1.409` (5), `1.412` (5), `432(j)` (5). Not one
+of them bought its own red by taking a neighbour down.
+
+⭐ **AND THE FOUR REPAIRED ASSERTIONS ARE NARROWER OR STRONGER, RE-READ AT SOURCE RATHER THAN TAKEN ON TRUST**
+(`git show c58179ad -- scripts/lib/house-bot-console-cases.mts`): `1.398` GAINED a conjunct (its own non-vacuity
+probe); `1.409` replaced one `.includes` with a derived population plus a `>= 2` FLOOR and an `every()`; `1.387`
+re-seeded its fixture so the sort is load-bearing; `1.412` reads `guarded` out of `limits-form.tsx` — the file
+that owes the guard — instead of every file under the desk joined. ⛔ No floor lowered, no exemption widened, no
+proof deleted.
+
+### 🔴 THE ONE FAILURE WAS THIS LANE'S OWN MACHINE LOAD, AND IT IS REFUTED RATHER THAN EXPLAINED AWAY
+
+`434-refused-ungated` (suite `reports-mem`) reported **WRONG-ASSERTION** in the whole run: the memory child
+produced no summary line, so the harness classed it as crashed.
+
+⛔ **RE-DRIVEN ALONE, under the lock, with nothing else running on the machine:**
+
+```
+baseline green · reports-mem
+CAUGHT 434-refused-ungated
+        ↳ FAIL [memory] 0.434 · ⛔ D19/259 · every admin page that imports from an audit reader whose ROWS are
+          handed on decides its audience on the STORED role BEFORE it reads
+house-bot-console RED: 1 caught, 0 missed, 0 files left dirty
+```
+
+**So the effective result is 281 of 281 reddening the assertion they name.** ⛔ **The cause is named and it is
+mine:** while the batch was running I ran `npm run test:deferred-register` and `npm run test:docs` in the same
+worktree. `reference_ali_blade15_ram_crashes` forbids exactly that, and `PROGRESS.md` L24 already records a
+Postgres case losing its connection under machine load. ⭐ **The crash SHAPE is what distinguishes it, and it was
+read rather than assumed:** phase 3's two genuine parse-error crashes (`346-countlive`, `347-second-read`) ended
+with a Node error dump whose tail is `Node.js v24.14.1`. This one ended mid-stdout at the section header
+`§0 · ruling 170 · …` with **no error dump at all** — the child was killed, it did not throw. A thrown section
+prints its own FAIL line (`house-bot-reports-cases.mts:45`); this printed none.
+
+⚠️ **The lesson is the one the register keeps teaching from the other side: an environment red read as a product
+red wastes a session, and one hidden as green is worse.** It is recorded here as an environment red WITH its
+refutation, never as a caught defect and never as a quiet re-run.
+
+### The THIRTEEN are settled — they are evidence now, not claims
+
+Row 18 records FOURTEEN declarations as "run INDIVIDUALLY … each CAUGHT" on 2026-09-18. One of them,
+`347-second-read`, could not compile, so the recorded CAUGHT was false and the other thirteen were claims. All
+thirteen were re-driven inside this run and **all thirteen are CAUGHT**: `355-all`, `321-nav`, `432l-day-fold`,
+`432l-exposure-fold`, `308-manual`, `308-stale`, `432m-sunset`, `432j-action-reason`, `0-throw-schema-rows`,
+`432i-arrow-strip`, `404-round`, `432p-wrong-side`, `318-expect-drift`.
+
+### The five rows, judged against WHAT THE BATCH PROVED for THEIR declarations
+
+Every register's population was re-extracted from its own file and matched against the live anchors file and this
+run's output — never against the count the row predicts.
+
+| Row | Its population, re-derived | Result | Verdict |
+|---|---|---|---|
+| **18** | the WHOLE console batch — **281** | **280 CAUGHT + 1 environment red re-driven CAUGHT** | ✅ **CLEARS** |
+| **31** | `c7-s3s2-mutations.json`: 125 entries less 3 prose = **122 declaration lines**, two ids twice (`409-count-as-money`, `412-typed`) = **120 unique**, 120 present | **120 of 120 CAUGHT** | ✅ **CLEARS** |
+| **39** | console: the whole file · money: `red:house-bot-money`'s **63** (56 money + 7 seam) | console **281 of 281**; money NOT re-driven here | ✅ **CLEARS**, with the money half's basis named below |
+| **58** | `c7-C7 step 6 · the designate wizard-mutations.json`: **35** entries, all 35 present | **35 of 35 CAUGHT**, `387-order` included | ✅ **CLEARS** |
+| **71** | `c7-C7 step 7 · the closing gates-mutations.json`: **22** entries, **21 present, 1 absent** | **21 of 21 CAUGHT** | ✅ **CLEARS**, with the 22nd REWRITTEN, not counted |
+
+⛔ **ROW 18'S KNOWN FALSEHOOD IS SETTLED.** The thirteen are re-driven and CAUGHT (above), so the row's list stops
+being a claim. The false entry, `347-second-read`, is CAUGHT today on `1.347` because phase 5 re-aimed it into the
+async `readDeskCore`; the 2026-09-18 record of it remains FALSE and is not retro-fitted.
+
+⛔ **ROW 71'S KNOWN FALSEHOOD IS SETTLED, AND RE-MEASURED INDEPENDENTLY.** `320-tab-debt-stale` is **not a
+declaration in this tree**: its id survives only inside a comment in `house-bot-console.anchors.mjs` — ⚠️ at
+**:2388** today, not the `:2345` the row records, which is one more rotted line number. Its `from` was
+`export const CONSOLE_TABS = ["roster", "limits"] as const;` and `console-routes.ts:63` now reads
+`["roster", "activity", "limits", "history"]`, retired when C7 step 5 built the tabs. It is **not counted as
+driven and not counted as a pass** — the half is rewritten to say the declaration was retired with the build.
+
+⚠️ **ROW 39'S MONEY HALF WAS NOT RE-DRIVEN IN THIS PHASE, AND THAT IS STATED RATHER THAN ROUNDED OFF.** It was
+driven whole on this branch at `5f86c8cc` (`red:house-bot-money`, exit 0, 0 missed, 0 dirty). Rather than quote
+that number as the conclusion, the question asked here is whether its SUBJECT has moved:
+`git log 5f86c8cc..HEAD --` over the **11 files the money and seam anchors target** and over
+`red-house-bot-money.mjs`, both anchors files, the money/caps/seam suites, `house-bot-world.mts` and
+`house-bot-two-stores.mts` returns **nothing**. Not one byte the money harness reads or mutates has changed
+since it swept clean. ⛔ **If any of those files is touched, this row owes a re-drive.**
+
+### Also proved by this same run, though not commissioned
+
+Rows **55** (the step-6 twenty) and **66** (`c7-step7-closing-gates-mutations.json`'s **18**) were cleared at
+phase 3 and are re-confirmed here: **18 of 18** of row 66's register CAUGHT, and every id of both registers is
+inside the 281. Row **5** (Commit 5's own batch row) has its console quarter driven whole here too.
+
+## THE COMMIT 7 VERDICT — 2026-09-21, alerts lane
+
+⛔ **FIRST, THE ROW COUNT IS WRONG EVERYWHERE IT IS WRITTEN, INCLUDING AT THE TOP OF THIS FILE.** The gate line
+names **SEVEN** sections, not six — `§1b, §1e, §1f, §1g, §1h, §1i and §1k` — and re-derived by parsing the
+register's own tables they hold **63 rows**, not 59:
+
+| Section | Rows | Ids |
+|---|---|---|
+| §1b | 13 | 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25 |
+| §1e | 6 | 30, 31, 32, 33, 35, 36 |
+| §1f | 14 | 37–50 |
+| §1g | 6 | 51–56 |
+| §1h | 5 | 57–61 |
+| §1i | **16** | 62, 92, 63–75, **94** |
+| §1k | 3 | 89, 90, 91 |
+| **TOTAL** | **63** | |
+
+The triage's "59" was true of the SIX sections it was commissioned for when it was written; §1i has since gained
+row 94 (this lane's own inherited-reds finding) and §1k's three were never in its scope at all.
+
+### Where the 63 stand
+
+| | Count | Rows |
+|---|---|---|
+| ✅ **CLEAR** — run DONE and PASSED, counts recorded | **15** | 12, 18, 25, 31, 38, 39, 45, 49, 54, 55, 58, 60, 66, 70, 71 |
+| ⏸️ **NOT MEASURED, reason named** | **38** | 13, 15, 16, 17, 19–24, 30, 32, 33, 36, 37, 41–44, 46–48, 51, 52, 56, 57, 59, 61, 63–65, 67–69, 72, 73, 75, 89 |
+| ⚠️ **HALF PAID** — one half run, one half not measurable | **1** | 74 |
+| ⛔ **CANNOT CLEAR AS WRITTEN — needs a RULING, not a run** | **4** | 35, 40, 50, 53 |
+| 📄 **FINDINGS — nothing to run; they are records** | **3** | 90, 91, 94 |
+| 🔨 **BUILD-STATE rows whose text is stale against this tree** | **2** | 62, 92 |
+
+⭐ **THE BATCH WAS THE LAST RUNNABLE THING.** The triage classified 16 rows **(a) RUNNABLE HERE**; every one is now
+discharged — nine by the suite runs of phase 2, seven by the batch (55 and 66 at phase 3, 18/31/39/58/71 here).
+⛔ **There is no remaining row in these seven sections that a command in this repository can clear.**
+
+### Why the 38 are NOT MEASURED, re-derived rather than inherited
+
+⛔ **The blocker is ONE thing: this lane has no served production build, and cannot make one here.** Measured:
+`C:/kipindi-alerts/.next` **does not exist**, so nothing can be served from this worktree without a `next build`,
+which is a heavy-node job that may not run beside another lane's on this machine.
+
+⚠️ **AND TWO REASONS THE ROWS CARRY ARE STALE — named rather than repeated:**
+1. **"The production-defaulting harness" (rows 51, 61, 63, 64) is FALSE today.** `scripts/live/harness.mjs:51`
+   reads `export const BASE = process.env.LIVE_BASE ?? "http://localhost:3001";`. Those rows are blocked on a
+   LOCAL port nobody has served — a materially smaller debt than "it would point at 50pick.tz".
+2. **"Hard-codes localhost:3000" (rows 30, 65) is imprecise.** `responsive-audit.mjs:36` and
+   `motion-adoption-verify.mjs:24` both read `process.env.BASE` and only DEFAULT to `:3000`. The blocker is the
+   absent server, not the literal.
+3. ⚠️ **"Port 3021 is held" was measured FREE at 01:32 UTC** — no listener on 3000, 3001, 3009 or 3021. It is
+   still lane 2's allocation and this lane did not take it; the honest blocker is the missing build, not the port.
+
+### ⛔ MAY COMMIT 7 CLOSE? NOT YET — and this is exactly what is left
+
+1. **FOUR RULINGS, from Ali, not from a run.** Row **35** is a Commit-8 debt sitting in a Commit-7 gating section
+   (its own last sentence is "Owed before Commit 8") and row **36**'s PII half is in the same position by
+   ruling 524 — so as written the gate cannot be satisfied at all, which is precisely what ruling 502 scoped it to
+   prevent. Row **40**'s command cannot drive the route it names. Row **50** is MEASURED and is not a skipped run.
+   Row **53** is discharged by row 61 and cited as open by rows 69 and 72, and the artefacts that would settle it
+   are in another lane's gitignored `.qa-house-bots/` — this worktree has none.
+2. **ONE SERVED BUILD AND A PORT** would move the 38, the served half of 74, and the served halves of 68, 69 and
+   72. That is one `next build` plus a `next start` on a port this lane owns, with a seeded scratch database —
+   and, per row 91, never beside a red drive.
+3. **A RE-READ of rows 62 and 92.** Both are build-state rows whose text is stale on this tree: measured here,
+   `console-routes.ts:63` carries all four `CONSOLE_TABS`, `CONSOLE_DETAIL_TABS` carries `activity` and `history`,
+   `UNBUILT_TABS` is **gone from `console-routes.ts`** — yet row 92 still says "the comms debt list `UNBUILT_TABS`
+   still records `landing:activity` and `landing:history`". ⛔ Its three structural subjects (the reader slots,
+   the bell's `&from=13%3A00`, `pressStore.` callers) were NOT measured here and are not claimed.
+
+⭐ **"Not yet" is the answer, and it is a short list: four rulings, one served build, one re-read.** No row in the
+seven gating sections is now waiting on a command this repository can run.
+
+### The tree, the locks and the shared cluster
+
+* `git status --porcelain` **EMPTY before and after** both drives, and deliberately sampled DURING the whole run:
+  it showed ` M src/lib/server/house-console-read.ts`, then ` M src/components/ui/progress-bar.tsx`. The mutation
+  window is real; the harness's own byte check reported **0 files left dirty** both times, and no
+  `scripts/.red-*.lock` was left behind.
+* Both drives ran under `~/heavy-node-lock.sh` — the whole batch as `alerts-lane-console-batch`, the re-drive as
+  `alerts-434-redrive`, which waited out `rel-lane-reports2` and `ops-lane-integration` before starting.
+* ⭐ **THE SCRATCH CLUSTER DID NOT MOVE: 17 databases at open, 17 mid-run, 17 at close, the same seventeen names.**
+  This lane created none and dropped none — re-derived from the declarations rather than assumed: **not one of the
+  281 names the `console-pg` suite**, so the whole batch is a memory/static drive that never touches Postgres. The
+  cluster on 5433 belongs to `C:/kipindi-house-bots` and was only ever read from, with one `SELECT` over
+  `pg_database`.
+* ⚠️ **A HARDENING STILL OWED, and this phase is the reason to name it again.** `red-house-bot-console.mjs:95`
+  still releases its lock on `SIGINT`/`SIGTERM` and exits **without restoring**, the idiom
+  `red-house-bot-engine.mjs` shed at `85dc41af`. `red-house-bot-money.mjs:81` carries it too. A killed drive
+  leaves the injected defect on disk. ⛔ Not built here: this phase was commissioned to drive the batch, and a
+  guard change owed to a build is not something to slip into a measurement phase.
