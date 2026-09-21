@@ -229,3 +229,47 @@ not from a plan document, and the rendered PDF was read back (7 pages, no missin
 *"its only us the management and admins"*. ⛔ That is a decision about a document he owns and distributes; it
 weakens no control. **D19 itself is untouched**: it lives in the code, in its guards and in
 `COMPLIANCE-DECISIONS.md`, and none of that moved.
+
+---
+
+## 6. THE GO-LIVE GATE — measured on the frozen tree, 2026-09-21
+
+### The red-by-red, both trees, against a baseline repaired for this purpose
+
+| | clean `main` `418f1b59` | integrated `ops-lane` |
+|---|---|---|
+| green | 359 / 384 | **374 / 391** |
+| reds | **25** | **17** |
+
+⭐ **Red on ops-lane and green on main: ONE, and it is closed.**
+`test:house-bot-holder-lifecycle` 2.2 — a shrink-only population at 25 against a ceiling of 24. Not this
+session's, and not a new defect: the 25th member is `scripts/lib/house-bot-ops-cases.mts`, which `main` does
+not carry at all. A lane added it without moving the ceiling in the same commit, the way 23 → 24 was moved on
+2026-09-16, and nothing noticed until the branch was compared assertion by assertion against clean main.
+⛔ **The member was READ before it was admitted.** It enters on the `SQL_FIELD` half at its line 1745 —
+`SELECT "passwordHash" FROM "User"` — which is a READ: it fetches the stored hash to assert that an
+auto-paused account's recorded fingerprint no longer matches it. The predicate cannot tell a SELECT from an
+UPDATE without parsing, and parsing is what a guard like this exists to avoid; a conservative catch that a
+human then reads IS the design. Isolated by ELIMINATION (removing this session's own new script left the
+count at 25) and by diffing the full population against `origin/main`. Now 16 passed / 0 failed.
+
+⭐ **The branch FIXES nine of main's reds**, including seven house-bot suites plus `test:house-bot-money`,
+`test:house-bot-console` and `test:popup-fit`. The 16 that remain are red on BOTH and are genuinely
+inherited.
+
+### The other gates, at HEAD
+- `qa:house-bot-console-probe` — **ALL PASS, 34/0, `leaks: 0`** over 3,164 requests (2,712 non-staff), WITH
+  this session's new rendered guidance text on the pages. ⚠️ It refused the first attempt on its own
+  freshness rule (the build predated the source), which is the check working; rebuilt and re-run.
+- `qa:corner-radius` — 3/0 over 8 route/width pairs, including the planted control (clean 0 · pre-fix radius
+  planted 2 · removed 0).
+- `test:house-bot-disclosure` 114/0 · `test:house-bot-console` 715 memory / 480 postgres · `test:type-scale`
+  ALL PASS · `test:house-bot-seam` 98/0 · `npx tsc --noEmit` clean · `npm run build` exit 0.
+
+### What a push to `main` actually does
+- ⭐ **ZERO MIGRATIONS.** 81 on both sides, identical set, and `prisma/schema.prisma` is byte-identical. The
+  deploy is CODE-ONLY — measured, not assumed, because the start command applies migrations.
+- A fast-forward: `origin/main` is an ancestor of `ops-lane`. 302 commits, 61 files under `src/`.
+- `main` gained one docs-only commit (`dd00510c`) mid-session; merged, so nothing is reverted.
+- ⛔ The master switch is OFF and this push does not change it. `HouseBotControl.enabled` is
+  `BOOLEAN NOT NULL DEFAULT false` and only the owner's own Desk ceremony moves it.
