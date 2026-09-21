@@ -773,3 +773,35 @@ rather than left running unsupervised. Register rows 18 and 31 keep that debt.
 `opsvis_c7s5` was **already absent at this phase's open**, so nothing in this phase removed it. Re-checked from
 the other side as well: every `DROP DATABASE` in this tree names only its own scratch database, and those names
 are `<prefix>_<process.pid>` — so no script here can drop a database another lane created.
+
+### 🔴 AN INCIDENT THIS PHASE CAUSED, AND THE THREE THINGS THAT HID IT
+
+The full 281 drive was queued in the background behind `heavy-node-lock.sh` while another lane held the lock. It
+was then told to stop, and **it did not stop**: it acquired the lock later, ran unsupervised against this
+worktree, and was only found because a follow-up drive printed `REFUSING TO RUN — src/lib/server/house-console-read.ts differs from git HEAD`.
+Two different injected defects were caught in that file minutes apart — first a check-row `text` falling back to
+an attacker-supplied `message`, then `387-phone`'s handle leaking `phoneE164` — so it was live and cycling.
+Killed at the process tree, every target restored with `git checkout --`, and the tree re-verified **byte-identical
+to HEAD** with `710 passed, 0 failed`. ⛔ **Nothing was committed while it ran**, because every commit in this phase
+staged its files BY NAME and never touched a target file.
+
+⚠️ **THREE THINGS EACH LOOKED LIKE SAFETY AND WERE NOT:**
+
+1. ⛔ **`git status` READS CLEAN BETWEEN MUTATIONS.** The harness restores each file before injecting the next, so
+   a clean `status` samples the gaps. **A clean tree is not evidence that no red drive is running** — it is
+   evidence about one instant. The load-bearing check is the one the harness itself makes: does the file differ
+   from `git show HEAD:<file>`, asked twice.
+2. ⛔ **`pkill -f` DID NOT SEE IT.** Git Bash's `pkill`/`ps` matched nothing for a Windows `node.exe` whose
+   command line is `scripts/red-house-bot-console.mjs`, and `ps -W`'s first column is not the pid that
+   `process.pid` reports — so "I killed it" and "it is gone from `ps`" were both false. What found it:
+   `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'red-house-bot-console' }`.
+3. ⛔ **DELETING `scripts/.red-house-bot-console.lock` BY HAND DISARMED THE ONE GUARD AGAINST A SECOND DRIVE.**
+   The lock was removed as "stale" while its owner was alive, which is exactly how two concurrent red drives once
+   left a live payout gate DISABLED while the harness reported clean. ⭐ **A lock file with no process behind it
+   and a lock file whose process you cannot see look identical.** Prove the process is gone before removing a
+   lock, and prove it with the OS process table rather than with `ps`.
+
+⚠️ **AND A HARDENING THE HARNESS IS OWED, REGISTERED NOT BUILT.** `red-house-bot-console.mjs` restores the file in
+a `finally` inside its loop, but its `SIGINT`/`SIGTERM` handler calls `releaseLock()` and exits **without
+restoring** — so a killed drive leaves the defect on disk. Both sibling harnesses share the idiom. The fix is to
+restore from the `original` map in the same handler; it is a change to a guard and is owed to a build.
