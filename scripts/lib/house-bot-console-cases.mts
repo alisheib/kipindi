@@ -6327,10 +6327,29 @@ export default function Ruling513Control() {
         && !decomment(read(GATE)).includes("formReason") && !pageCode.includes("formReason"),
       "");
     /* ⛔ NO FORM WITHOUT A BASE VERSION, AND THE ANCHOR'S LITERAL STAYS IN THE PAGE. */
+    /**
+     * ⛔ THE ELEMENT, THEN EACH PROP ON IT — not one literal sequence of the whole call.
+     *
+     * This read as a single regex spelling the five props in order, so it was really TWO claims at once: the
+     * five props exist, AND nothing else is ever passed. Only the first is this assertion's subject, and the
+     * second made it red the moment a sixth prop was added (`recommendCopy`, 2026-09-21 — the copy for the
+     * "Use recommended values" control, which ruling 388 requires to come from the server rather than live in
+     * the client file).
+     * ⭐ NARROWER, NOT WEAKER, in the way that matters: the props are matched inside THE ONE `<DeskLimitsForm>`
+     * element rather than anywhere in the page, so a `baseVersion={limitsVersion}` sitting on some other
+     * element can no longer satisfy it — which the old whole-page regex could not tell apart. Prop ORDER is
+     * the only thing no longer pinned, and no claim here was ever about order.
+     */
+    const limitsFormCall = /<DeskLimitsForm\b[^>]*\/>/.exec(pageCode)?.[0] ?? "";
     ok("1.412 · 537 · the page renders the form ONLY with a base version, hands it the anchor id as a literal, and passes the action down itself",
       /limitRows === null \|\| limitsVersion === null/.test(pageCode)
-        && /<DeskLimitsForm rows=\{limitRows\} baseVersion=\{limitsVersion\} id="limits-first-unset" omitSection=\{LIMITS_CARD_TITLE\} onSave=\{saveDeskLimitsAction\} \/>/.test(pageCode)
-        && pageCode.includes('id="limits-first-unset"'), "");
+        && limitsFormCall !== ""
+        && limitsFormCall.includes("rows={limitRows}")
+        && limitsFormCall.includes("baseVersion={limitsVersion}")
+        && limitsFormCall.includes('id="limits-first-unset"')
+        && limitsFormCall.includes("omitSection={LIMITS_CARD_TITLE}")
+        && limitsFormCall.includes("onSave={saveDeskLimitsAction}")
+        && pageCode.includes('id="limits-first-unset"'), limitsFormCall.slice(0, 220));
     /* ⛔ EVERY FIELD IS ADDRESSABLE, AND THE ADDRESS IS THE SERVER'S NEUTRAL KEY — DG-S-05/06's whole point is that
      * a refusal without an address can take nobody anywhere. */
     const formCode = decomment(read(FORM));

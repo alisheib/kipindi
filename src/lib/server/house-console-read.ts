@@ -1313,6 +1313,24 @@ export type ConsoleLimitRow = {
   caption: string | null;
   /** True for the FIRST unset member of `REQUIRED_FOR_MASTER_ON` — the row that carries `#limits-first-unset`. */
   firstUnset: boolean;
+  /**
+   * ⭐ THE RECOMMENDED VALUE, AS PLAIN DIGITS, OR "" WHERE THERE IS NONE (2026-09-21).
+   *
+   * ⛔ `recommendedLimits()` HAS EXISTED SINCE THE PLAN AND NOTHING EVER CALLED IT. Its own docblock reads
+   * "Use recommended values fills these into the form and saves nothing", the switch-on sheet describes that
+   * control, and the operator guide documents it — but no component in `src/app/admin/desk` referenced it, so
+   * the control was never on the screen and an officer had to type all eight required limits by hand before
+   * the master switch could be offered at all. A function written, documented in three places, and wired to
+   * nothing.
+   * ⛔ PLAIN DIGITS, NEVER THE FORMATTED FIGURE — the same rule `input` carries three lines up: the kit's
+   * strict numeric input strips every non-digit on the first keystroke, so a field filled with "TZS 500,000"
+   * would read back as 500000 only by luck.
+   * ⚠️ Read from `FIELD_META` directly rather than through `recommendedLimits()`, and that is a measured
+   * choice: every global limit's recommendation is a STATIC number (verified — none resolves `LIVE_MIN`), so
+   * pulling them here needs no stake-bounds context, and a row whose recommendation is null (`gTargetsMaxActive`)
+   * yields "" and is simply not filled.
+   */
+  recommended: string;
 };
 
 export type ConsoleLimitsView = ConsoleDeskShell & {
@@ -1329,6 +1347,18 @@ export type ConsoleLimitsView = ConsoleDeskShell & {
    * counter tells a signed-in player nothing about the feature.
    */
   limitsVersion: number | null;
+  /**
+   * ⛔ THE RECOMMEND CONTROL'S OWN WORDS, ON THE SERVER WHERE COPY LIVES (ruling 388).
+   *
+   * `test:house-bot-console` 1.388 holds every string of 25+ characters in a console CLIENT file to a closed
+   * list of six the client is allowed to own; everything else belongs here. The first form of this control put
+   * its toast sentence in `limits-form.tsx` and 1.388 caught it immediately — correctly, and it is the reason
+   * these three strings are fields rather than literals beside the button.
+   * ⚠️ FINISHED SENTENCES, NOT A TEMPLATE. No count is interpolated, so nothing has to cross the boundary as a
+   * function and the client never assembles copy from parts — which is how a half-translated sentence gets
+   * built on a surface ruling 453 requires to stay neutral.
+   */
+  recommendCopy: { label: string; filledTitle: string; filledBody: string };
 };
 
 /**
@@ -1472,6 +1502,10 @@ export async function houseUsageForConsole(
       unset,
       caption: unset ? unsetCaptionFor(field, control.enabled) : null,
       firstUnset,
+      /* ⛔ PLAIN DIGITS, for the reason `input` above gives. A null recommendation yields "" and fills nothing. */
+      recommended: FIELD_META[field].recommended == null || typeof FIELD_META[field].recommended === "string"
+        ? ""
+        : String(FIELD_META[field].recommended),
     };
   });
 
@@ -1484,6 +1518,14 @@ export async function houseUsageForConsole(
      * clobber. Ruling 433's `formReason` is GONE with the read-only panel it explained: 432(a) refuses a control
      * with nothing behind it, and there is something behind this one now. */
     limitsVersion: control ? control.limitsVersion : null,
+    /* ⛔ NEUTRAL, AND IT SAYS WHAT THE CONTROL DOES NOT DO. "Nothing is saved yet" is the whole point: filling
+     * and committing are different decisions on the form that sets the ceilings which stop money, and the
+     * switch-on sheet has always documented this control as one that fills and does not save. */
+    recommendCopy: {
+      label: "Use recommended values",
+      filledTitle: "Recommended values filled",
+      filledBody: "Nothing is saved yet — check the numbers, then press Save.",
+    },
   };
 }
 

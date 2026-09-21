@@ -273,3 +273,71 @@ inherited.
 - `main` gained one docs-only commit (`dd00510c`) mid-session; merged, so nothing is reverted.
 - ⛔ The master switch is OFF and this push does not change it. `HouseBotControl.enabled` is
   `BOOLEAN NOT NULL DEFAULT false` and only the owner's own Desk ceremony moves it.
+
+---
+
+## 7 · "Use recommended values" — the control that was documented three times and rendered nowhere
+
+`recommendedLimits()` has existed since the plan. Its own docblock reads *"Use recommended values fills these
+into the form and saves nothing"*, the switch-on sheet describes the control, and the operator guide documents
+it. ⛔ **Nothing in `src/app/admin/desk` ever called it.** So an officer facing a fresh desk had to type all
+eight required global limits by hand before the master switch could be offered at all — a function written,
+documented in three places, and wired to nothing.
+
+### Why this could not be closed with a unit case
+The limits form is UNCONTROLLED — fourteen `defaultValue` inputs — so the button writes `el.value` on the node
+and dispatches `input`. ⛔ **Whether React hears that dispatch is not a fact about this repo.** React's
+`onChange` for an input runs through the ChangeEventPlugin, which keeps a VALUE TRACKER on the node and
+SUPPRESSES its own event when the tracker already holds the new value — which a direct `el.value =` assignment
+makes true. The textbook form of this control therefore fires nothing: Save stays disarmed over a visibly full
+form, and every assertion written in a test file still passes. `useFormDirty` listens on `onInput`, which is a
+plain pass-through with no tracker check — but *"which plugin handles it"* is a claim that has to be EXECUTED.
+
+⭐ So the proof is **the unsaved-changes bar appearing**, observed in a real browser from outside the app.
+
+### `qa:desk-recommend` — 20 passed / 0 failed
+`KP_BASE=http://127.0.0.1:3021 npm run qa:desk-recommend`, against `next start` on a seeded scratch database.
+
+| | what it establishes |
+|---|---|
+| 1.m | every neutral input key this script names resolves on the page — a rename fails loudly instead of skipping |
+| 1 · 1.c | the eight start EMPTY **and** the rest of the form is full, so the emptiness is a state and not a failed render |
+| 2 · 2.b · 2.c | the control is on the page, is enabled while something is empty, and nothing is dirty yet |
+| 3 | one click fills all eight with the recommendation, as PLAIN DIGITS |
+| 4 | ⛔ it changes NO field that already held a value — checked across the WHOLE form, not a chosen few |
+| 4.b | a limit with no recommendation is left EMPTY, never filled from a fallback |
+| 5 | ⛔ the click SAVES NOTHING — all eight still null, `limitsVersion` unmoved |
+| 6 | ⭐ React heard the DOM write: the bar is up and Save is armed |
+| 7 · 7.b | a save that breaks a cross-field rule is REFUSED, names the conflict, and writes nothing |
+| 9 → 9.f | the GO-LIVE path: fresh desk → one click → one Save → eight limits in, strip moved on, control disabled |
+
+### ⭐ What running it found that reasoning had not
+Under the seed's TARGETED AND MANUAL DAILY limit of 900,000,000, filling the recommendations makes the save
+**refuse**: the recommended daily stake is 500,000 and targeted-and-manual may not exceed it. The sentence the
+officer sees is *"The targeted and manual daily limit can't be above the daily stake limit."*
+
+⛔ **Neither the control nor the guard is wrong, and the fix was NOT to reconcile it in code.** Filling never
+saves, so nothing unsafe happened, and the officer is told exactly which two limits disagree. A fill that
+quietly LOWERED the targeted limit to fit would have been the defect — it would drop a ceiling that stops
+money, which is what assertion 4 exists to forbid. So the refusal is asserted as correct behaviour, and the
+state a fresh desk actually meets is driven separately as §9.
+
+### The eight defaults the button writes
+| limit | value | | limit | value |
+|---|---|---|---|---|
+| Daily stake | TZS 500,000 | | Bets per minute | 6 |
+| Daily loss | TZS 100,000 | | Bets per day | 1,000 |
+| Open exposure | TZS 300,000 | | One player, bets/day | 3 |
+| Per market | TZS 30,000 | | One player, TZS/day | 30,000 |
+
+⚠️ **These are a starting point the officer confirms, not a policy.** The button fills; the officer reads the
+numbers and presses Save. Every one is editable at `/admin/desk?tab=limits` afterwards, and the panel's own
+guidance says so.
+
+### One guard was widened, and only to admit a new prop
+`test:house-bot-console` 1.412 pinned the page's `<DeskLimitsForm …/>` call as ONE literal regex spelling five
+props in order, so it asserted two things at once: that the five props exist, and that nothing else is ever
+passed. Only the first is its subject. It now matches the props INSIDE that one element instead of anywhere in
+the page — ⭐ **narrower in the way that matters** (a `baseVersion={limitsVersion}` on some other element can
+no longer satisfy it, which the whole-page regex could not tell apart), and prop ORDER is the only thing no
+longer pinned. No claim here was ever about order.

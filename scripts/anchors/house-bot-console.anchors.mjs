@@ -1873,10 +1873,24 @@ import { formatEat } from "@/lib/utils";`,
     /* Read off `acct-removed-1280.png`: the Overview tab rendered 600px of NOTHING and the Targets tab would have painted the kit's failure treatment for a read ruling 358 says is never taken. */
     name: "435a-removed-cards · a REMOVED account gets its rail back, and an empty panel behind it",
     file: DETAIL,
+    /**
+     * ⛔ THE CONTEXT LINE IS `<Tabs`, AND IT HAD TO CHANGE — THE MUTATION WAS AIMED AT NOTHING (2026-09-21).
+     *
+     * This anchored on the ruling-312 comment sitting INSIDE the conditional, on the line after `&& (`. That
+     * comment has since been BRACED and lifted ABOVE the guard — it had to be, because wrapping the conditional
+     * in a fragment would have moved a bare block comment inside JSX, where it is not a comment at all but TEXT
+     * that prints the words of a code comment onto the account page. So the `from` string stopped matching, the
+     * injector reported "anchor missing — cannot inject", and `1.435` was being credited with catching a
+     * mutation that was never applied to anything.
+     * ⭐ THE MUTATION IS UNCHANGED — the rail's own `{!view.removed && (` still flips to `{true && (`, so a
+     * REMOVED account still gets its rail back and 1.435 must still catch it. Only the line used to IDENTIFY
+     * that one guard moved, and `<Tabs` is what makes it unique: five bare `{!view.removed && (` lines exist in
+     * this file and exactly one is followed by the rail.
+     */
     from: `        {!view.removed && (
-        /* 312 · the rail carries exactly the tabs whose panels exist.`,
+        <Tabs`,
     to: `        {true && (
-        /* 312 · the rail carries exactly the tabs whose panels exist.`,
+        <Tabs`,
     expect: "1.435 · 358 · every card of the account page is guarded",
     suite: "console-mem",
   },

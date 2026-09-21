@@ -85,7 +85,11 @@ const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Rost
 const TAB_GUIDANCE: Record<(typeof CONSOLE_TABS)[number], string> = {
   roster: "The accounts the desk stakes from. Each row shows what that account has used today of its own limits, and Open leads to its rules, targets and history.",
   activity: "Every stake the desk has decided on, newest first — placed, queued, refused or failed. A stake that is still queued can be stopped from here.",
-  limits: "The platform-wide ceilings every account is held to, on top of its own. All eight must be set before the master switch will turn on, and a blank limit refuses every stake rather than meaning no limit.",
+  /* ⛔ IT SAYS WHERE THE NUMBERS COME FROM AND THAT THEY STAY EDITABLE, because an officer who believes a
+     filled form is a committed one presses nothing, and an officer who believes a saved ceiling is permanent
+     works around it instead of changing it. Both are how a limit stops matching the policy it was set for.
+     ⭐ "and saves nothing" is the whole promise of the fill control, proved by `qa:desk-recommend` 5. */
+  limits: "The platform-wide ceilings every account is held to, on top of its own. All eight must be set before the master switch will turn on, and a blank limit refuses every stake rather than meaning no limit. Use recommended values fills only the empty ones with a suggested starting set and saves nothing — check the numbers, then press Save. Every limit can be changed here afterwards, at any time.",
   history: "Every change anyone has made to the desk — accounts designated, started, paused or removed, limits and rules saved, and every time the switch moved.",
 };
 
@@ -261,6 +265,9 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
   const limitRows = limitsView?.limits ?? null;
   /* The CAS token the form carries back. `null` on the roster tab and in both states with no row to save. */
   const limitsVersion = limitsView?.limitsVersion ?? null;
+  /* ⛔ Derived beside the rows it belongs to, and null-safe the same way: the form renders only when
+     `limitRows` and `limitsVersion` are both non-null, so this is never read on a failed limits read. */
+  const recommendCopy = limitsView?.recommendCopy ?? null;
   /* ⭐ C7 STEP 5's LANDING HALF — hoisted for the same reason every other slice above is: a tab group's condition
      carries NOTHING but the tab test, because `test:tab-anchors` and the served probe both read this file as TEXT.
      ⛔ `null` is a read that FAILED and `[]` is a list with nothing in it — two different treatments (355). */
@@ -795,7 +802,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                     component sits ABOVE every tab group and reads as "above the rail". Both were measured on this
                     file. So the page NAMES the anchor and the form PLACES it, on the first unset required limit —
                     which is what the strip's "Set N global limits first →" promises the officer will find. */}
-                <DeskLimitsForm rows={limitRows} baseVersion={limitsVersion} id="limits-first-unset" omitSection={LIMITS_CARD_TITLE} onSave={saveDeskLimitsAction} />
+                <DeskLimitsForm rows={limitRows} baseVersion={limitsVersion} id="limits-first-unset" omitSection={LIMITS_CARD_TITLE} recommendCopy={recommendCopy ?? { label: "", filledTitle: "", filledBody: "" }} onSave={saveDeskLimitsAction} />
               </FormColumn>
             )}
           </AdminCard>

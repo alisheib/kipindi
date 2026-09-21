@@ -70,6 +70,8 @@ export type DeskLimitRow = {
   unset: boolean;
   caption: string | null;
   firstUnset: boolean;
+  /** Plain digits, or "" where the field has no recommendation. Fills the input; never saves. */
+  recommended: string;
 };
 
 /**
@@ -195,6 +197,7 @@ export function DeskLimitsForm({
   baseVersion,
   id,
   omitSection,
+  recommendCopy,
   onSave,
 }: {
   rows: DeskLimitRow[];
@@ -204,6 +207,8 @@ export function DeskLimitsForm({
   id: string;
   /** The card's own title, so the first group does not repeat it (see `DeskLimitFields`). */
   omitSection?: string;
+  /** The recommend control's words, from the server (ruling 388 — copy does not live in a client file). */
+  recommendCopy: { label: string; filledTitle: string; filledBody: string };
   /**
    * The server action, handed down by the page. ⛔ Typed structurally, so the gated writer's own result type is
    * checked against this where the two meet — at the page — without a house module specifier ever entering this
@@ -317,6 +322,52 @@ export function DeskLimitsForm({
       <div className="flex flex-col items-start sm:flex-row sm:items-center gap-2 pt-1">
         <Button type="submit" size="md" variant="primary" loading={pending}>
           Save · Hifadhi
+        </Button>
+        {/**
+         * ⭐ "USE RECOMMENDED VALUES" — THE CONTROL THE PLAN WROTE AND NOBODY WIRED (2026-09-21).
+         *
+         * `recommendedLimits()` has existed since the plan, its docblock says "Use recommended values fills
+         * these into the form and saves nothing", the switch-on sheet describes it and the operator guide
+         * documents it — and NOTHING in `src/app/admin/desk` ever called it. So the control was described in
+         * three places and on the screen in none, and an officer had to type all eight required limits by hand
+         * before the master switch could be offered at all.
+         *
+         * ⛔ IT FILLS ONLY EMPTY FIELDS, and that is the difference between a convenience and a hazard. These
+         * are the ceilings that stop money; silently overwriting a number an officer chose deliberately — a
+         * lower daily loss cap than the recommendation, say — is a destructive act dressed as a shortcut. A
+         * field that already holds a value is left exactly as it is, which also makes the control safe to press
+         * twice.
+         * ⛔ IT DOES NOT SAVE, which is the documented behaviour in all three places above and is kept: it fills
+         * the inputs and arms the Save button, and the officer still presses Save. Filling and committing are
+         * different decisions on a money form.
+         * ⛔ THE FORM IS UNCONTROLLED (fourteen `defaultValue` inputs), so the value is written to the DOM node
+         * and an `input` event is dispatched — without it `useFormDirty`'s snapshot never sees the change and
+         * Save stays disarmed over a form that is visibly full.
+         */}
+        <Button
+          type="button"
+          size="md"
+          variant="secondary"
+          disabled={pending || !rows.some((r) => r.recommended !== "" && r.input === "")}
+          onClick={() => {
+            const form = formRef.current;
+            if (!form) return;
+            let filled = 0;
+            for (const row of rows) {
+              if (row.recommended === "") continue;
+              const el = form.elements.namedItem(row.key);
+              if (!(el instanceof HTMLInputElement)) continue;
+              if (el.value.trim() !== "") continue; // never overwrite a deliberate choice
+              el.value = row.recommended;
+              el.dispatchEvent(new Event("input", { bubbles: true }));
+              filled++;
+            }
+            if (filled > 0) {
+              toast({ title: recommendCopy.filledTitle, description: recommendCopy.filledBody });
+            }
+          }}
+        >
+          {recommendCopy.label}
         </Button>
         {/* Reading copy, not an eyebrow: it tells the officer what the save will do.
             ⛔ AND IT WAS SET IN MONO WHILE SAYING SO — READ OFF THE 360 AND 1280 TILES (ops-lane visual pass,
