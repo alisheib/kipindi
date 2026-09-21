@@ -959,7 +959,7 @@ export const MUTATIONS = [
     suite: "reports-mem",
   },
   {
-    name: "c5-s4:S4-M58 · 🔴 UNGUARDED UNTIL NOW · the two stake keys leave the DSAR strip list, leaving a door open in a subject's own export. 3.170.2 is gone; dsar-export-secrets.test.mts:185 plants only houseBotId and intentId and :202 asserts only those two, so its houseHits(json) at :228 has nothing to find",
+    name: "c5-s4:S4-M58 · 🔴 UNGUARDED UNTIL NOW · the two stake keys leave the DSAR strip list, leaving a door open in a subject's own export. 3.170.2 is gone. ⚠️ WHEN THIS WAS DECLARED, `dsar-export-secrets.test.mts` planted only houseBotId and intentId and asserted only those two, so its houseHits(json) had nothing to find and the whole suite stayed green on this defect — THAT IS NO LONGER TRUE and the sentence is corrected rather than left to be read again: the fixture plants all four keys and the assertion names all four (hand-driven 2026-09-21, 43/0 → 41/2). 0.170.5 pins the LIST; that suite is the runtime door behind it",
     file: USER_SERVICE,
     from: "const HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED = [\"houseBotId\", \"intentId\", \"houseStake\", \"houseStakes\", \"houseBots\", \"houseBotNotificationsRedacted\"] as const;",
     to: "const HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED = [\"houseBotId\", \"intentId\", \"houseBots\", \"houseBotNotificationsRedacted\"] as const;",
