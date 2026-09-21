@@ -201,13 +201,17 @@ try {
   await w.limits();
   await w.switchOn();
 
-  /** A poll with a locked NO stake from a fresh player, so a house YES stake has a counterparty. */
-  const pollWithLockedNo = async (noStake: number, graceMin = 0): Promise<{ market: Any; player: string; noPos: Any }> => {
+  /**
+   * A poll with a LOCKED NO stake from a fresh player, so a house YES stake has a counterparty the seam will
+   * attribute to. `backdateMs` must exceed the poll's own exit window, or the position is still sellable and the
+   * house FILL condition reports `house_condition_gone` instead of placing.
+   */
+  const pollWithLockedNo = async (noStake: number, graceMin = 0, backdateMs = 10_000): Promise<{ market: Any; player: string; noPos: Any }> => {
     const market = await w.poll({ graceMin });
     const player = await w.user({ balance: 1_000_000 });
     const r = await w.svc.buyPosition(player, { marketId: market.id, side: "NO", stake: noStake, idempotencyKey: crypto.randomUUID() });
     if (!r.ok) throw new Error(`fixture bet refused: ${show(r)}`);
-    await w.backdate(r.data.positionId, 10_000);
+    await w.backdate(r.data.positionId, backdateMs);
     return { market, player, noPos: await w.mdal.positionStore.get(r.data.positionId) };
   };
 
@@ -231,7 +235,7 @@ try {
     bound2.bound === true, JSON.stringify(bound2));
 
   // §3's grant is credited BEFORE the house stake, so the turnover measurement starts from a live requirement.
-  const grant = await BONUS.creditBonus(holder1, { amountTzs: 10_000, source: "MANUAL", sourceRef: `reh_rollback_${process.pid}`, wagerMultiplier: 3, note: "rehearsal" });
+  const grant = await BONUS.creditBonus(holder1, { amountTzs: 10_000, source: "ADMIN", sourceRef: `reh_rollback_${process.pid}`, wagerMultiplier: 3, note: "rehearsal" });
   ok("f.3 · fixture · the holder carries a REAL, ACTIVE bonus grant with an open turnover requirement",
     grant.ok === true && grant.grant?.status === "ACTIVE" && grant.grant?.wagerRequiredTzs > 0,
     grant.ok ? `grant ${grant.grant.id} · required ${grant.grant.wagerRequiredTzs} · wagered ${grant.grant.wageredTzs}` : JSON.stringify(grant));
@@ -264,19 +268,30 @@ try {
   const ev = await w.svc.emergencyVoidMarket({ marketId: m3.market.id, officerId: OFFICER, reason: "rehearsal 2 fixture" });
   ok("f.8 · fixture · a house stake is refunded by an EMERGENCY VOID", r3.ok === true && ev.ok === true, `${show(r3)} · ${show(ev)}`);
 
-  // M4 · the cash-out market, with a live exit window. A house stake AND a player stake sit on it.
-  const m4 = await pollWithLockedNo(10_000, 60);
+  /**
+   * M4 · the cash-out market. ⛔ IT CARRIES TWO PLAYER POSITIONS ON PURPOSE, and the reason is leg (b) itself.
+   * The house FILL condition needs LOCKED liquidity — a counterparty whose own exit window has already passed —
+   * while the cash-out positive control needs a player whose window is still OPEN. One position cannot be both,
+   * because the window is a property of the poll's rates and the row's age, so: player A is backdated 70 minutes
+   * past the 60-minute window (locked, and the house stake's counterparty), player B is fresh (sellable, and the
+   * control). A drill that skipped this and simply asserted "leg (b) is 0" would be sweeping a database with no
+   * cash-out in it at all.
+   */
+  const m4 = await pollWithLockedNo(10_000, 60, 70 * 60_000);
+  const seller = await w.user({ balance: 1_000_000 });
+  const sellerBet = await w.svc.buyPosition(seller, { marketId: m4.market.id, side: "NO", stake: 5_000, idempotencyKey: crypto.randomUUID() });
   const b4 = await w.bot();
   const r4 = await w.place(b4, await w.intent(b4, m4.market.id, { kind: "FILL", side: "YES", stakeTzs: 3_000 }));
-  ok("f.9 · fixture · a house stake sits OPEN on a market whose exit window is still open", r4.ok === true, show(r4));
+  ok("f.9 · fixture · a house stake sits OPEN on a market whose exit window is still open, beside a player position that is still sellable",
+    r4.ok === true && sellerBet.ok === true, `${show(r4)} · seller ${show(sellerBet)}`);
 
   const markedPositions = await n1(`SELECT count(*)::int AS n FROM "Position" WHERE "houseBotId" IS NOT NULL`);
   const positionedTxns = await n1(`SELECT count(*)::int AS n FROM "Position" p JOIN "Transaction" t ON t."positionId" = p."id" WHERE p."houseBotId" IS NOT NULL`);
   const playerPositions = await n1(`SELECT count(*)::int AS n FROM "Position" WHERE "houseBotId" IS NULL`);
   pop(`${markedPositions} MARKED positions · ${positionedTxns} transactions joined to them · ${playerPositions} unmarked (player) positions`);
-  ok("f.10 · fixture · the population the legs will sweep is REAL and non-empty — a sweep over zero passes",
-    markedPositions >= 4 && positionedTxns >= 6 && playerPositions >= 4,
-    `marked ${markedPositions} · positioned txns ${positionedTxns} · player ${playerPositions}`);
+  ok("f.10 · fixture · the population the legs will sweep is REAL and non-empty — a sweep over zero passes, and so does a sweep whose fixture quietly stopped placing",
+    markedPositions >= 4 && positionedTxns >= 7 && playerPositions >= 6,
+    `marked ${markedPositions} (want ≥4) · positioned txns ${positionedTxns} (want ≥7) · player ${playerPositions} (want ≥6)`);
 
   // ══ §1 · THE IMMUTABILITY PIN, DRIVEN (procedure step 9) ══════════════════════════════════════════════════
   section("§1 · the immutability pin, DRIVEN — `txn.update` cannot re-mark, un-mark or POSITION a ledger row");
@@ -294,7 +309,7 @@ try {
     const looseId = `txn_reh_loose_${process.pid}`;
     await w.db.txn.create({
       id: looseId, walletId: wal.id, userId: holder1, type: "DEPOSIT", status: "CONFIRMED", amount: 1_000, fee: 0, taxWithheld: 0,
-      balanceAfter: null, currency: "TZS", provider: "TEST_SEED", providerRef: `reh_loose_${process.pid}`, msisdn: null,
+      balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: `reh_loose_${process.pid}`, msisdn: null,
       description: "rehearsal probe row", positionId: null, amlReason: null, createdAt: at, updatedAt: at, completedAt: at,
     } as Any);
 
@@ -377,7 +392,7 @@ try {
 
     // ── leg (b) · CASHOUT on a marked position ───────────────────────────────────────────────────────────
     // ⛔ A 0 here is worth nothing unless a CASHOUT row EXISTS to be missed. So the drill cashes a player out.
-    const playerCash = await w.svc.cashOutPosition(m4.player, m4.noPos.id);
+    const playerCash = await w.svc.cashOutPosition(seller, sellerBet.data.positionId);
     ok("2.b.p · POSITIVE CONTROL · an ORDINARY player's cash-out on the same market is still ALLOWED and succeeds — the refusal below is the marker's, not a shut door",
       playerCash.ok === true, show(playerCash));
     const houseCash = await w.svc.cashOutPosition(b4.userId, r4.data.positionId);
