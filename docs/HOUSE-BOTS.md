@@ -1052,8 +1052,8 @@ numeral axis at all six widths — the defect this lane fixed on 2026-09-20 has 
 either history panel. The address bar carries no internal word: `?tab=activity&kind=responding&product=polls&outcome=placed&range=7d`,
 every token the slug of its own painted label.
 
-**Three defects were found on the served pages and fixed in this pass** — each one invisible to every static gate,
-and each one a control that behaved differently from its own twin:
+**Six defects were found on the served pages and fixed in this pass** — every one invisible to every static gate,
+and every one a value or a control that behaved differently from its own twin:
 
 1. **A stop that landed and said nothing.** The stake really was cancelled (row → `CANCELLED`, note → "An officer
    stopped it before it was placed", badge 17 → 16) and no toast was painted at any width. `useDeferredToast`
@@ -1067,14 +1067,56 @@ and each one a control that behaved differently from its own twin:
    Escape threw the same text away without a word — at all six widths. That text is the officer's written reason
    and the server refuses the act without it. `Modal` gains `closeOnEsc` (default `true`, so no other caller
    moved) and the ceremony passes it `closeOnScrim`'s own condition, character for character.
-3. **Both drivers were lying in one place each, and that is recorded rather than quietly corrected.** The states
-   driver reported `pagerBox: null` on all 108 renders — for a pager the tiles show plainly — because it scoped
-   its search to `main …`; it now searches the document, matches the disabled SPANS too, and carries §P1-§P4, which
-   assert the pager's presence, its reading, its 44px floor and its ABSENCE over a filter that matched nothing.
-   The faults driver failed its count-badge case 12 times on a correct page by asking for `[role='tablist']` when
-   the kit stamps `data-section-rail` on a `<nav>`, and failed its gutter case by measuring the full-viewport
-   `role="alertdialog"` container instead of the 420px panel inside it. A gate that fails on a right page is worse
-   than no gate.
+3. **The actor id came apart into SIX lines on one history panel and two on the other.** Ruling 420 paints the
+   actor as an ID, and `break-all` breaks inside the word: on the desk-wide history — the only one of the two
+   carrying an Account column, which takes a 150px floor — the Who column was squeezed to about 55px and
+   `usr_ops_visual_officer` shattered into `usr_` `ops_` `visu` `al_o` `ffic` `er` at 640. The account page's copy
+   of the same cell, one column lighter, broke cleanly in two. At 360 the shattered cell set the ROW height, so
+   the desk history showed four rows per screen of mostly empty space — driven by a column that was off-screen
+   inside the scroller. Both cells are `whitespace-nowrap` now, which is not this lane's preference but the
+   repository's own rule: `ui-consistency.test.mts`'s `unwrappable-identifier` note says *"In a scrolling admin
+   table a nowrap id is correct (the table scrolls, the cell does not clip)"*.
+4. **A status change broke with its arrow alone on the middle line.** One cell to the left of that one: "Paused →
+   Active" over three line boxes at 360, two at 1024. A relation split across lines is not the relation. Same
+   treatment, same reason.
+5. **The toast said the same sentence twice — and that could only be seen once the toast existed.** With the
+   flush-on-unmount fix the confirmation finally painted, and it read "The stake was stopped" over "The stake was
+   stopped.". The description is the door's `note`, which returned `CONSOLE_CANCEL_NOTE.done` on the happy path;
+   it returns `null` there now. The `notRecorded` branch and the repeat branch are untouched — each says
+   something its title does not.
+6. **Both drivers were lying, and that is recorded rather than quietly corrected.** The states driver reported
+   `pagerBox: null` on all 108 renders — for a pager the tiles show plainly — first because it scoped to `main …`
+   and then, after that was widened to the document, because `a|button|span[aria-label]` matched NOTHING while a
+   bare `[aria-label]` query returned the same four controls with tag names SPAN, SPAN, A, A. That contradiction
+   is not explained away: `pagerTags`, `pagerLegacyHits` (0) and `pagerGroups` (3) are recorded in every render's
+   measurements, and the gate now hangs off `data-pager-group`, a hook `pagination.tsx` stamps and maintains.
+   §P1-§P5 assert the pager's presence, its reading, its 44px floor, its ABSENCE over a filter that matched
+   nothing, and that page 2 is a different page. The faults driver failed its count-badge case 12 times on a
+   CORRECT page by asking for `[role='tablist']` where the kit stamps `data-section-rail` on a `<nav>`, and
+   failed its gutter case by measuring the full-viewport `role="alertdialog"` container instead of the 420px
+   panel inside it. A gate that fails on a right page is worse than no gate.
+7. **And one state was never reached at all, under the name of one that was.** `?tab=history&hpage=2` on the
+   ACTIVE account returned byte-identical rows to page 1 — correctly, because that account held exactly 20 events
+   and a page past the end is served as the last page. The PRODUCT was right; the drive's coverage claim was
+   false. The fixture gains a third event pass so that panel has a real second page, and §P5 now fails the day a
+   fixture shrinks back under one page instead of quietly photographing page 1 twice.
+
+**Re-derived on the final tree, from runs on it rather than quoted from an earlier one:** `npx tsc --noEmit`
+**exit 0** · `npm run build` **exit 0** · `test:house-bot-console` **memory + PostgreSQL + wrapper, 0 failed**
+(the Postgres half real — `prisma migrate deploy` applied every migration to a scratch database) ·
+`qa:house-bot-panel-states` **572 passed / 0 failed** over 108 renders · `qa:house-bot-panel-faults`
+**90 passed / 0 failed** · `test:docs` ✅ · and the eight gates that own the two kit files this pass touched:
+`test:confirm-gate` 9/0, `test:feedback-law` 143/0, `test:design-frozen` ✅, `test:ui-consistency` ✅ (no new
+drift beyond its baseline), `test:motion-ladder` 12/0, `test:admin-clip` 12/0, `test:tap-target` 29/0,
+`test:unsaved-changes` ✅. ⚠️ `test:popup-fit` is RED — and it is NOT this pass's: it fails on its own
+population ratchet (69 popup components found, 57 reviewed), no component was added here, and §12's commit-4
+row already records `popup-fit` among the reds that **fail identically on clean `origin/main`**.
+
+Measured on the four panels rather than asserted about them: **54 Stake cells across every state and width, 0
+outside the money atom and 0 off the tabular axis** — the "seven amounts painted outside the atom" shape this
+lane found on another card does not recur here; every rail chip exactly **32px** (410's documented dense
+exception); **72 of 108** renders carry a pager and the 36 that do not are the filtered-to-zero, the
+under-one-page and the REMOVED states; **0** renders scroll the document sideways; **0** When cells wrapped.
 
 **Five findings are OPEN and are NOT this lane's to decide alone** (each measured, none fixed):
 
@@ -1107,6 +1149,12 @@ and each one a control that behaved differently from its own twin:
   paint the removal Callout and the Saved-rules card, with no rail at all and no sentence saying the panels are
   gone — while the same page refuses a bad `kind` or `range` BY NAME. A bell delivered before removal links to
   `…?tab=activity`, and that is where it lands.
+
+⚠️ **AND ONE HAZARD OF THE METHOD, WRITTEN DOWN BECAUSE IT ALMOST TURNED A RUN GREEN AND WRONG.** A `next start`
+from an earlier phase survived its own trap — `kill` took the `npx` wrapper and left the real server holding
+3021 — so the next drive would have bound nothing, been answered 200 by the STALE process, and reported the
+unfixed behaviour as the fixed one. The drivers are now started as `node ./node_modules/next/dist/bin/next`
+directly, and the runner REFUSES to measure at all if anything is already listening on that port.
 
 Two more, reported as judgements rather than defects: **"In flight" wears `TONE_CHIP.broadcast`** — the PLAYER's
 red live-pill — in a column beside FAILED (rose) and CANCELLED (claret), which is the exact case
