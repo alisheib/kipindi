@@ -24,6 +24,7 @@
  * §2 · POSITIVE — a genuine population-floor line from a filtered run is excused.
  * §3 · NEGATIVE — every other line, including a REAL assertion failure, is NOT excused.
  * §4 · the harness still routes through this one predicate, and holds no second copy of it.
+ * §5 · ALL THREE house-bot red harnesses arm the ONE restore guard, and can still be told to stop.
  */
 import { readFileSync } from "node:fs";
 import { benignFloor, floorShapeDrifted, FLOOR } from "./lib/red-two-store-floor.mjs";
@@ -126,6 +127,54 @@ ok("4.2 · ⛔ …and defines no FLOOR pattern of its own — a second copy is h
    !/const\s+FLOOR\s*=/.test(harnessSrc) && !/const\s+benignFloor\s*=/.test(harnessSrc));
 ok("4.3 · the exemption is still gated on a filter being on, at the call site",
    /benignFloor\(Boolean\(d\.sections\), l\)/.test(harnessSrc));
+
+// ── §5 · EVERY RED HARNESS THAT MUTATES THIS REPOSITORY ARMS THE ONE RESTORE GUARD ───────────────────
+/**
+ * ⛔ THE FAILURE THIS SECTION EXISTS TO PREVENT. These three harnesses write a REAL defect into a REAL source file.
+ * Until 2026-09-21 two of them released their lock on a signal and exited WITHOUT restoring, so a stopped drive left
+ * the defect on disk for the next `git add -A` in any lane to ship — the payout-gate incident with one fewer step.
+ *
+ * ⛔ AND THE SIGNAL HANDLER WAS NEVER THE THING THAT SAVED IT. MEASURED 2026-09-21: Node cannot run a JS signal
+ * callback while the main thread is blocked in `execSync`, and a red drive never returns to the event loop between
+ * one child and the next, so the handler never ran at all. A real Ctrl-C mid-drive killed ONE suite child and the
+ * harness went on to inject TEN more defects. What makes a stop real is `isConsoleStop` reading the child's own
+ * STATUS_CONTROL_C_EXIT, and `haltIfStopped` between one mutation's restore and the next injection.
+ *
+ * ⭐ So this section pins the SHAPE, not a number: each harness imports the shared guard, arms it, reports a console
+ * stop from its child, halts on it, and holds NO private copy of either idiom. A second copy is how the first rots.
+ */
+const RED_HARNESSES = ["scripts/red-house-bot-engine.mjs", "scripts/red-house-bot-console.mjs", "scripts/red-house-bot-money.mjs"];
+for (const h of RED_HARNESSES) {
+  const src = read(h);
+  const name = h.replace("scripts/red-house-bot-", "").replace(".mjs", "");
+  ok(`5.1 · ${name} imports the one restore guard`,
+     /import \{[^}]*armRestoreGuard[^}]*\} from "\.\/lib\/red-restore-guard\.mjs";/.test(src));
+  ok(`5.2 · ${name} ARMS it, from the same in-memory original and lock the run uses`,
+     /armRestoreGuard\(\{ original, write, releaseLock, label: "[^"]+" \}\);/.test(src));
+  /**
+   * ⛔ NAME-BASED, NOT CALL-BASED, AND THAT IS THE WHOLE POINT. Written first as `process.on("SIG…"` this
+   * assertion MISSED its own subject when mutation-tested: the idiom that actually leaked was
+   * `for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, …)`, where the signal never appears as a literal
+   * argument. A guard that cannot see the shape it exists to forbid is decoration. So: a signal NAME may not
+   * appear in a harness at all — handling them belongs to the one module.
+   */
+  ok(`5.3 · ⛔ ${name} names no signal and keeps no private restore — a second copy is how the first one rotted`,
+     !/SIGINT|SIGTERM|SIGBREAK|SIGHUP/.test(src) && !/COULD NOT RESTORE/.test(src),
+     "restore and signal handling belong to scripts/lib/red-restore-guard.mjs alone");
+  ok(`5.4 · ${name} reports a console stop from the child that carries it`,
+     /if \(isConsoleStop\(e\)\) requestStop\(/.test(src),
+     "a blocked main thread cannot be told any other way");
+  ok(`5.5 · ⛔ ${name} HALTS after the restore and before the next injection`,
+     /\} finally \{\n    write\(d\.file, src\);\n  \}\n(?:\s*\/\/[^\n]*\n)?\s*haltIfStopped\(/.test(src),
+     "otherwise a stopped drive plants the next defect anyway");
+}
+const guardSrc = read("scripts/lib/red-restore-guard.mjs");
+ok("5.6 · the guard restores BEFORE the lock is dropped, by prepending its exit pass",
+   /process\.prependListener\("exit"/.test(guardSrc),
+   "a plain process.on would run after the harness's own releaseLock");
+ok("5.7 · the console-stop status is the measured number, not console text",
+   /export const CONSOLE_STOP_STATUS = 3221225786;/.test(guardSrc),
+   "text would turn on the machine's language; 0xC000013A does not");
 
 console.log(`\nred-engine-floor: ${pass} passed, ${fails.length} failed\n`);
 for (const f of fails) console.log(`  · ${f}`);

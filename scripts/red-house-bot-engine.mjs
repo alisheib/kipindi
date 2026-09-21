@@ -152,6 +152,8 @@ for (const d of DEFECTS) {
   } finally {
     write(d.file, src);
   }
+  // ⛔ The file is back; if the operator stopped us, stop HERE rather than injecting the next defect.
+  haltIfStopped("house-bot-engine RED");
   const own = result.fails.find((l) => l.includes(d.expect));
   if (result.red && own) { caught++; console.log(`CAUGHT ${d.name}\n        ↳ ${own.trim().slice(0, 260)}`); }
   else if (result.red) { missed++; console.log(`WRONG-ASSERTION ${d.name} — red, but NOT on "${d.expect}"\n        ↳ ${(result.fails[0] ?? (result.crashed ? `crashed: ${result.output.split("\n").slice(-3).join(" | ")}` : "")).trim().slice(0, 400)}`); }
