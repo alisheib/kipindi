@@ -679,7 +679,7 @@ Run it against a **scratch Postgres**, never production. Every step names what i
 
 | # | Command / act | What must be true |
 |---|---|---|
-| 0 | `npm run rehearse:rollback` | The slices that exist today run and pass, and it **exits 3**. Its §0 pin now finds `scripts/ops-house-bots-status.mts` in the tree: if the drift predicates have drifted apart, this step goes RED **before** anything below is trusted. Flip the registry row from `partial` to `built` only when steps 1–9 have run. |
+| 0 | `npm run rehearse:rollback` | The slices that exist today run and pass, and it **exits 3**. Its §0 pin now finds `scripts/ops-house-bots-status.mts` in the tree: if the drift predicates have drifted apart, this step goes RED **before** anything below is trusted. Flip `scripts/rehearsals/registry.mts`'s drill-2 row from `partial` to `built` only when steps 1–10 have run — and move its §4 "NOT MEASURED" list into the drill at the same time, or the drill will keep exiting 3 and will be right to. |
 | 1 | Boot a scratch database, seed the house world, leave **3 open marked positions** | 3 `Position` rows with `houseBotId` not null and no settlement. ⚠️ `scripts/rehearsals/rollback.mts`'s own fixture already builds this shape through the real services — reuse it rather than writing a third one. |
 | 2 | Boot the **pre-merge SHA** against that same database; settle the market; cash one position out | Old code has no `houseBotId` in its client, so its payout/refund/cash-out `Transaction` rows are written **unmarked** |
 | 3 | Return to the house SHA | — |
@@ -692,7 +692,12 @@ Run it against a **scratch Postgres**, never production. Every step names what i
 | 10 | Legs (b) and (c) | ⛔ **Nothing is clawed back automatically.** They go into a COMPLIANCE-DECISIONS note with amounts, per §S3 |
 
 ⛔ **Do not record this drill as run until step 4 and step 6 have each printed their own population.** "Drift
-reported 0" over a window that excluded the rows is the exact failure this drill exists to catch.
+reported 0" over a window that excluded the rows is the exact failure this drill exists to catch — and on this
+schema leg (c1) prints a 0 over an empty population every single time, so it is never the evidence.
+
+⛔ **And do not record it by editing a document.** The only record that matters is the registry row, because
+that is the one `npm run rehearse:all` reads and reports. While it says `partial`, the runner counts it as
+owed and cannot exit 0 — which is the whole reason drill 2 has a status of its own rather than a sentence.
 
 ---
 
