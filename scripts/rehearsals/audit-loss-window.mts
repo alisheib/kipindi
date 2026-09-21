@@ -10,7 +10,16 @@
  * a row that is never written can never be added later. The hole is permanent and the HMAC chain
  * cannot see it.
  *
- * ⭐ WHAT WAS DONE ABOUT IT (2026-09-21, later the same night). The remedy is `audit-gap-reconcile.mts`
+ * ⭐ WHAT WAS DONE ABOUT IT, FIRST (2026-09-21, later the same night): THE SHUTDOWN DRAIN.
+ * `src/lib/server/audit-drain.ts` holds the process's own `process.exit` — the one Next's handler
+ * calls — until the audit queue is empty or a bounded 5,000 ms budget is spent, and says loudly what
+ * it abandoned if the budget runs out. Driven against a real Postgres with a real kill: the §2.2
+ * population below went from **0 of 10 landed to 10 of 10**. The guard is `npm run test:audit-drain`
+ * (33 assertions, 8 controls, no database); the drive is `npm run rehearse:audit-drain`. ⛔ §2 here
+ * is deliberately still the UN-DRAINED shape — it is the BEFORE number, and the remedy's size can
+ * only be stated against it.
+ *
+ * ⭐ AND WHAT WAS DONE FOR WHAT A DRAIN CANNOT CATCH (SIGKILL, OOM). The remedy is `audit-gap-reconcile.mts`
  * and `src/lib/server/audit-reconcile.ts`: the hole cannot be repaired — the log is append-only, so a late
  * insert would chain at the CURRENT head and date the bet to the sweep — so it is DECLARED instead, one
  * chained `audit.row_missing` row per committed bet with no compliance record, found against the durable
@@ -244,9 +253,18 @@ const flushSites = files
     .replace(/export function auditFlush\s*\(/, "DECL(")))
   .map((f) => f.replace(/\\/g, "/").replace(ROOT.replace(/\\/g, "/") + "/", ""));
 console.log(`  auditFlush() CALLERS in src/: ${flushSites.length}${flushSites.length ? ` — ${flushSites.join(", ")}` : ""}`);
-ok("1.3 · exactly ONE path in src/ drains the queue — the house-bot poller's BOUNDED tick flush, which is the remedy (first measured here as ZERO)",
-  flushSites.length === 1 && flushSites[0] === "src/lib/server/house-bot/worker.ts",
-  `${flushSites.length} caller(s): ${flushSites.join(", ") || "(none)"}`);
+const EXPECTED_FLUSH_SITES = [
+  // The SHUTDOWN drain (2026-09-21, later): the process holds its own exit until the queue is empty
+  // or a bounded budget is spent. Driven, this turned 0 of 10 rows landed into 10 of 10 —
+  // `npm run rehearse:audit-drain`.
+  "src/lib/server/audit-drain.ts",
+  // The house-bot poller's BOUNDED per-tick flush: the engine's tick pays where the bet must not.
+  "src/lib/server/house-bot/worker.ts",
+].sort();
+ok("1.3 · exactly the two paths in src/ that are MEANT to drain the queue do — the shutdown drain and the house-bot poller's bounded tick flush (first measured here as ZERO), and no others",
+  flushSites.length === EXPECTED_FLUSH_SITES.length
+  && JSON.stringify([...flushSites].sort()) === JSON.stringify(EXPECTED_FLUSH_SITES),
+  `${flushSites.length} caller(s): ${flushSites.join(", ") || "(none)"}\n         expected: ${EXPECTED_FLUSH_SITES.join(", ")}`);
 ok("1.3b · and NO request path waits for it — market-service.ts and the audit module itself still never flush, which is what the p99 measurement in §3.2 refused",
   !flushSites.includes("src/lib/server/market-service.ts") && !flushSites.includes("src/lib/server/audit.ts"));
 ok("1.4 · the audit table is append-only in src/ — only create, never update or delete",
@@ -343,7 +361,13 @@ try {
   const sig = await child(["sigterm", String(N), "sigterm"]);
   const sigLanded = await landed("sigterm");
   console.log(`  ${sig.err.split("\n").filter((l) => l.startsWith("[child")).join("\n  ")}`);
-  ok("2.2 · the SIGTERM path production actually has — Next's cleanup then process.exit(143), with the app's own lifecycle and house-bot handlers registered — loses them too",
+  /* ⛔ THIS IS THE **BEFORE** NUMBER AND IT IS NO LONGER WHAT PRODUCTION DOES. The child here
+   * deliberately does NOT install `audit-drain.ts` — that is the shape this platform had until
+   * 2026-09-21, and it is kept, driven, because the remedy's size can only be stated against it.
+   * With the drain installed in exactly the place `instrumentation.ts` installs it, the same
+   * population landed 10 of 10: `npm run rehearse:audit-drain` §2 (before) and §3 (after). ⛔ Do not
+   * "update" this to pass by adding the drain to the child — that would delete the measurement. */
+  ok("2.2 · the SIGTERM path production had BEFORE the shutdown drain — Next's cleanup then process.exit(143), with the app's own lifecycle and house-bot handlers registered and NO drain — loses them all",
     controlOk && sigLanded === 0 && sig.code === 143, `landed ${sigLanded} of ${N}, exit ${sig.code}`);
 
   const seq = await child(["seq-exit-60", String(N), "seq"]);

@@ -81,8 +81,33 @@ declare global {
   var __50PICK_AUDIT_QUEUE: Promise<unknown> | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_AUDIT_HYDRATED: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_AUDIT_PENDING: number | undefined;
 }
 const ring: AuditEntry[] = globalThis.__50PICK_AUDIT_RING ?? (globalThis.__50PICK_AUDIT_RING = []);
+
+/**
+ * HOW MANY APPENDS ARE QUEUED AND NOT YET WRITTEN, right now.
+ *
+ * ⛔ WHY A COUNTER AND NOT `auditFlush()`. `auditFlush()` resolves when the queue tail resolves; it
+ * can say "the queue is empty now", never "N rows are about to be lost". The shutdown drain
+ * (`audit-drain.ts`) has to report the SIZE of what it saved and the size of what it abandoned, and a
+ * process that is dying has no other channel than its own log — so the number has to exist before the
+ * process ends, not be reconstructed afterwards. `rehearse:audit-loss-window` measured that the loss
+ * is exactly "the queue depth at the instant of exit"; this is that depth, readable.
+ *
+ * ⛔ IT IS INCREMENTED SYNCHRONOUSLY INSIDE `audit()`, before the promise chain is extended. A
+ * counter bumped inside the `.then` would read zero for everything still waiting its turn — i.e. for
+ * precisely the rows a shutdown loses.
+ */
+function bumpPending(delta: number): void {
+  globalThis.__50PICK_AUDIT_PENDING = Math.max(0, (globalThis.__50PICK_AUDIT_PENDING ?? 0) + delta);
+}
+
+/** Appends queued and not yet stamped. 0 means nothing would be lost by ending the process now. */
+export function auditPending(): number {
+  return globalThis.__50PICK_AUDIT_PENDING ?? 0;
+}
 
 function chainSecret(): string {
   // In production the audit chain MUST have its own dedicated secret. Falling back
@@ -426,6 +451,10 @@ function appendInMemory(
 export function audit(
   entry: Omit<AuditEntry, "id" | "createdAt" | "prevHash" | "entryHash">,
 ): Promise<AuditEntry> {
+  // ⛔ COUNTED HERE, SYNCHRONOUSLY, BEFORE THE CHAIN IS EXTENDED. See bumpPending: the rows a dying
+  // process loses are the ones still WAITING their turn, and a counter bumped inside the `.then`
+  // below would not have counted a single one of them.
+  bumpPending(1);
   const run = (globalThis.__50PICK_AUDIT_QUEUE ?? Promise.resolve())
     .catch(() => {}) // isolate from any prior task's failure
     .then(async () => {
@@ -457,6 +486,11 @@ export function audit(
       }
       return stamped;
     });
+  // ⛔ DECREMENTED WHETHER IT LANDED OR THREW, and registered BEFORE the queue is re-pointed below,
+  // so this microtask runs ahead of the next append's body. `audit()` is documented never to reject,
+  // but a counter that leaks on a rejection would make every later shutdown report a permanent
+  // phantom backlog — and a drain that always says "rows were lost" is a drain nobody reads.
+  run.then(() => bumpPending(-1), () => bumpPending(-1));
   // Keep the queue resolved-only so the next write always proceeds.
   globalThis.__50PICK_AUDIT_QUEUE = run.catch(() => {});
   return run;

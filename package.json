@@ -20,6 +20,7 @@
     "test:numeric": "tsx scripts/numeric-input.test.mts",
     "test:audit": "tsx scripts/audit-chain.test.mts",
     "test:audit-gap": "tsx scripts/audit-gap.test.mts",
+    "test:audit-drain": "tsx scripts/audit-drain.test.mts",
     "test:wallet": "tsx scripts/wallet-atomic.test.mts",
     "test:loss-limit": "tsx scripts/loss-limit.test.mts",
     "test:late-bet": "tsx scripts/late-bet.test.mts",
@@ -856,6 +857,7 @@
     "diag:updown-chart-crash": "node scripts/live/updown-chart-crash-matrix.mjs",
     "rehearse:audit-loss-window": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-loss-window.mts",
     "rehearse:audit-gap": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-gap-reconcile.mts",
+    "rehearse:audit-drain": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-drain.mts",
     "audit:gap-sweep": "tsx scripts/audit-gap-sweep.mts"
   },
   "dependencies": {
