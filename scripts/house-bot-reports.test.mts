@@ -71,7 +71,7 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 230, postgres: 80 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 244, postgres: 80 }, dbPrefix: "hb_reports" });
 // ⛔ MERGED AGAIN 2026-09-21 (ops ← house-bots), AND IT IS THE SAME COLLISION THIS HEADER ALREADY
 // DESCRIBES, a second time. Lane 1 raised the floor 203/64 → 217/64 for the C5-8 reports cases it wrote;
 // ops-lane had raised the same base to 230/80 for the alerts cases plus row 77's. The merged
@@ -81,6 +81,16 @@ await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/ho
 // merge carried 230/80 — the higher on BOTH stores, so neither lane's guard is weakened — and then the
 // number below was set to what `npm run test:house-bot-reports` PRINTED on the merged tree. If the line
 // below still reads 230/80 with no printed-run sentence after this one, the measurement did not happen.
+// ⭐ **AND IT WAS MEASURED — 230/80 → 244/80, RAISED TO WHAT THE RUN PRINTED AND TO NOTHING ELSE** (ops
+// lane, 2026-09-21, the release verdict pass over the merged tree). `npm run test:house-bot-reports` ran
+// under `~/heavy-node-lock.sh` and printed `0.mem · exit 0 · 244 passed · 0 failed` and `0.pg · exit 0 ·
+// 80 passed · 0 failed`, ALL PASS. ⛔ Run TWICE, and the second run printed the same two numbers.
+// ⚠️ The POSTGRES half did NOT move, and that is a measurement too, not an oversight: lane 1's fourteen
+// new C5-8 reports cases run on the MEMORY child only, so 80 is still exactly what the Postgres child
+// prints. A floor nudged up on both stores "to be safe" would have been an arithmetic guess on the half
+// nothing had added to. ⛔ And note what the guess would have produced here: 230 + 14 = 244 on memory,
+// the same number — a coincidence of this merge, NOT a licence to compute the next one. The run decided it.
+// ⛔ It is never lowered. A section that stops running fails this floor even while every case that ran passed.
 // ⭐ 200 → 203 and 61 → 64, C5-8 phase 3 (2026-09-20), IN THE SAME COMMIT AS THE ASSERTIONS THAT RAISED IT:
 // §1j row 77's three `11.247.c1e` lines (the OG route's read list, the `resolveWinShareToken` projection, and the
 // plant that makes the second one a measurement) run on BOTH children. A minimum that rises with the assertions is
