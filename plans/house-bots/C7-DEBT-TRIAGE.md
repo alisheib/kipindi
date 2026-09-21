@@ -978,7 +978,10 @@ still carry the old idiom and are NOT fixed here — this lane may not edit what
   same seventeen names. One byte size moved — `ops_panels_20260921`, 14,046,911 → 14,022,335 — which is the ops lane
   writing to its own database while this phase ran, not this lane touching it. ⚠️ The count read **18** twice
   mid-phase: `hb_caps_<pid>` and `hb_engine_<pid>`, this lane's own, created and dropped by `runTwoStores` — so a
-  count that moves DURING a run is the normal lifecycle, not a loss.
+  count that moves DURING a run is the normal lifecycle, not a loss. ⭐ **Proved once more on the way out**: the
+  very last reading of the phase was **18**, because `hb_reh_audit_22464` — the release lane's own
+  `<prefix>_<process.pid>` rehearsal database — was live while that lane held the heavy-node lock. The stable
+  seventeen were unchanged underneath it.
   ⭐ **AND THE "DISAPPEARING DATABASES" ARE EXPLAINED — MEASURED, NOT ASSUMED.** The previous phase recorded
   **19** and this phase reads **17**, which looked like two losses. It is not. The same query, run once with
   `datistemplate` included and once without, answers **19 including templates and 17 excluding them**:
