@@ -267,6 +267,7 @@
     "db:scratch": "tsx scripts/db-scratch.mts",
     "db:backup-upload": "tsx scripts/backup-upload.mts",
     "test:backup": "tsc -p tsconfig.backup.json && tsx scripts/backup.test.mts",
+    "test:backup-schema": "tsx scripts/db-scratch.mts --run node --import tsx scripts/backup-schema-gate.mts",
     "test:txn-search": "tsx scripts/txn-search.test.mts",
     "test:float-guard": "tsx scripts/test-float-guard.test.mts",
     "test:card-deposit": "tsx scripts/card-deposit.test.mts",

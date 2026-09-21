@@ -69,6 +69,7 @@ import {
   orderAllTables,
   sealBackup,
   sequenceResetSql,
+  sqlObjectNames,
   tableOrder,
   type BackupManifest,
 } from "../src/lib/server/backup/core.ts";
@@ -388,8 +389,14 @@ async function main(): Promise<void> {
   );
   // Deduped against BOTH sources of table DDL — `_prisma_migrations_pkey` is created by
   // PRISMA_MIGRATIONS_DDL, not by the diff, and re-adding it would abort the replay.
+  //
+  // ⛔ MATCHED BY NAME, NOT BY SUBSTRING. This used to ask
+  // `alreadyCreated.includes(`"${r.name}"`)`, which only ever worked because every
+  // identifier in this schema happened to be mixed-case and so was always rendered
+  // quoted. `sqlObjectNames` carries the three nights of nightly backup that cost.
   const alreadyCreated = `${ddl}\n${PRISMA_MIGRATIONS_DDL}`;
-  const missingCons = conRows.filter((r) => !alreadyCreated.includes(`"${r.name}"`));
+  const alreadyCreatedNames = sqlObjectNames(alreadyCreated);
+  const missingCons = conRows.filter((r) => !alreadyCreatedNames.has(r.name));
   const constraintSql = missingCons.length
     ? missingCons.map((r) => `ALTER TABLE ${r.tbl} ADD CONSTRAINT ${ident(r.name)} ${r.def};`).join("\n")
     : "-- (the table DDL already creates every constraint)";
@@ -409,8 +416,16 @@ async function main(): Promise<void> {
        join pg_namespace n on n.oid = cl.relnamespace
       where n.nspname = 'public' and x.indisunique`,
   );
-  const reproduced = `${alreadyCreated}\n${indexSql}\n${constraintSql}`;
-  const lostUnique = uniqueLive.map((u) => u.name).filter((n) => !reproduced.includes(`"${n}"`));
+  // ⭐ The set is built from the ROWS each section is rendered FROM, never by grepping the
+  // rendered SQL: `indexSql` is exactly `idxRows`, `constraintSql` is exactly `missingCons`,
+  // and the table DDL contributes its own names through `sqlObjectNames`. Nothing here
+  // depends on how Postgres decided to quote anything, which is the whole point.
+  const reproducedNames = new Set<string>([
+    ...alreadyCreatedNames,
+    ...idxRows.map((r) => r.name),
+    ...missingCons.map((r) => r.name),
+  ]);
+  const lostUnique = uniqueLive.map((u) => u.name).filter((n) => !reproducedNames.has(n));
   if (lostUnique.length) {
     fail(
       `${lostUnique.length} unique index(es) exist in the database but appear nowhere in this dump:\n` +

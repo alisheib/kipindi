@@ -39,6 +39,7 @@ import {
   isSealed,
   orderAllTables,
   sealBackup,
+  sqlObjectNames,
   openBackup,
 } from "../src/lib/server/backup/core.ts";
 import { backupHealth, BACKUP_STALE_AFTER_MS, type BackupRun } from "../src/lib/server/backup/state.ts";
@@ -531,6 +532,67 @@ ok("the compliance card renders them as their own warning",
   // switched off, because `sourceWarnings` still appeared inside the dead branch.
   compliance.includes("backup.run.sourceWarnings?.length") && compliance.includes("Source database"),
   "an officer has to be able to tell a bad backup from a bad database");
+
+/* ── IDENTIFIER QUOTING — the three nights of 2026-09-19 ─────────────────────
+ *
+ * 🔴 `db:backup` refused for three consecutive nights (runs 57–59, 2026-09-19 → 21) over
+ * seven unique indexes that were PRESENT in the dump it was refusing. Both of its
+ * "did we reproduce this object?" tests asked `renderedSql.includes('"' + name + '"')`,
+ * and `pg_get_indexdef` quotes an identifier only when it has to. Every index in this
+ * schema until then was Prisma-generated and mixed-case, so it always rendered quoted and
+ * the test always found it. The house-bot migration shipped the first all-lowercase fixed
+ * names (`hbp_*`, `hbi_*`, `hbe_*`, `hbt_*`), Postgres rendered those bare, and a guard
+ * that had never once been exercised on a bare identifier took recovery down.
+ *
+ * ⚠️ These assertions are on the CODE as well as the helper, because the helper being
+ * correct is worth nothing if a caller goes back to grepping SQL.
+ */
+{
+  const q = (s: string): string[] => [...sqlObjectNames(s)].sort();
+
+  ok("🔴 a BARE lowercase index name is found — the exact 2026-09-19 regression",
+    sqlObjectNames(`CREATE UNIQUE INDEX hbp_actor_submit_uq ON public."HouseBotPress" USING btree ("actorId", "submitId")`)
+      .has("hbp_actor_submit_uq"),
+    "Postgres renders a lowercase identifier unquoted; the old test searched for it quoted");
+  ok("a QUOTED mixed-case index name is found",
+    sqlObjectNames(`CREATE UNIQUE INDEX "HouseBot_userId_live_key" ON public."HouseBot" USING btree ("userId")`)
+      .has("HouseBot_userId_live_key"));
+  ok("a partial (filtered) unique index is found — 6 of the 7 lost ones were partial",
+    sqlObjectNames(`CREATE UNIQUE INDEX hbt_active_market_uq ON public."HouseBotTarget" USING btree ("marketId") WHERE (status = 'ACTIVE'::text)`)
+      .has("hbt_active_market_uq"));
+  ok("IF NOT EXISTS and CONCURRENTLY do not hide the name",
+    sqlObjectNames(`CREATE INDEX CONCURRENTLY IF NOT EXISTS hbi_status_stale_idx ON "HouseBotIntent" ("status")`)
+      .has("hbi_status_stale_idx"));
+  ok("an inline CONSTRAINT name is found, quoted or bare",
+    sqlObjectNames(`CONSTRAINT "_prisma_migrations_pkey" PRIMARY KEY ("id")`).has("_prisma_migrations_pkey") &&
+    sqlObjectNames(`CONSTRAINT hbp_state_chk CHECK ("state" <> '')`).has("hbp_state_chk"));
+  ok("a doubled quote inside a quoted name is unescaped to one",
+    sqlObjectNames(`CREATE INDEX "odd""name" ON t (c)`).has('odd"name'));
+  ok("🔴 it can FAIL — a name that is not created is not reported as created",
+    !sqlObjectNames(`CREATE UNIQUE INDEX hbp_actor_submit_uq ON t (c)`).has("hbt_active_market_uq"),
+    "a matcher that says yes to everything would have hidden the defect instead of causing it");
+  ok("several statements in one chunk all contribute",
+    q(`CREATE INDEX a_idx ON t (c);\nCREATE UNIQUE INDEX "B_key" ON t (c);\nCONSTRAINT c_pkey PRIMARY KEY (id)`)
+      .join(",") === "B_key,a_idx,c_pkey");
+
+  // ── and now the CALLERS, because a correct helper nobody uses is not a fix ──
+  const stripComments = (s: string): string =>
+    s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+  const backupCode = stripComments(backup);
+
+  ok("⛔ the constraint dedup matches by NAME, not by substring",
+    backupCode.includes("alreadyCreatedNames.has(r.name)"),
+    "a lowercase constraint the DDL already creates would otherwise be added twice — the replay aborts");
+  ok("⛔ the lost-unique guard matches by NAME, not by substring",
+    backupCode.includes("reproducedNames.has(n)"));
+  ok("🔴 neither caller greps rendered SQL for a quoted identifier any more",
+    !/\b(?:reproduced|alreadyCreated)\.includes\(/.test(backupCode),
+    "asserted on comment-stripped source, so the prose above may quote the old form safely");
+  ok("the reproduced set is built from the ROWS each section is rendered from",
+    backupCode.includes("...idxRows.map((r) => r.name)") &&
+    backupCode.includes("...missingCons.map((r) => r.name)"),
+    "indexSql IS idxRows and constraintSql IS missingCons — comparing to anything else can drift");
+}
 
 console.log(`\n${"─".repeat(64)}\n  BACKUP TOOLCHAIN: ${pass} passed, ${fail} failed\n${"─".repeat(64)}`);
 process.exit(fail === 0 ? 0 : 1);

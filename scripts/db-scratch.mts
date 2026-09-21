@@ -43,7 +43,21 @@ import { execFileSync, spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const PORT = 5433; // deliberately not 5432 — never collide with a real local server
+// Deliberately not 5432 — never collide with a real local server.
+//
+// ⚠️ OVERRIDABLE BECAUSE EVERY WORKTREE OF THIS REPO PINS THE SAME PORT, AND THE ORPHAN
+// KILLER BELOW ONLY MATCHES CLUSTERS UNDER ITS OWN PATH. When a parallel session has a
+// cluster up in a sibling checkout (`F:\kipindi-house-bots`), a `--reset` here dies with
+// "the cluster failed to start and gave no reason" — and anything that then connects to
+// 5433 is talking to THEIR database, with THEIR schema, while looking perfectly healthy.
+// That happened on 2026-09-21 and is why `backup-schema-gate.mts` checks `data_directory`
+// before it writes. Give the second checkout its own port instead:
+//     KP_SCRATCH_PORT=5443 npm run test:backup-schema
+const PORT = Number(process.env.KP_SCRATCH_PORT ?? 5433);
+if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
+  console.error(`!! KP_SCRATCH_PORT must be an integer 1024-65535 (got ${process.env.KP_SCRATCH_PORT}).`);
+  process.exit(2);
+}
 const USER = "postgres";
 const PASSWORD = "scratch";
 const DATA_DIR = resolve(process.cwd(), ".pgscratch");

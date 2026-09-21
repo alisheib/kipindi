@@ -30,6 +30,7 @@
     "scripts/db-restore.mts",
     "scripts/db-scratch.mts",
     "scripts/backup.test.mts",
+    "scripts/backup-schema-gate.mts",
     "src/lib/server/backup/**/*.ts"
   ],
   "exclude": ["node_modules", ".next"]

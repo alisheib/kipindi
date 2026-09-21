@@ -178,12 +178,101 @@ the copy, record the wall-clock time here, delete the sibling. Until that number
 
 ---
 
-## The four commands
+## 🔴 THE THREE NIGHTS — 2026-09-19 → 21, and the artifact was never the problem
+
+**The nightly failed on runs 57, 58 and 59 and the platform ran 80 hours with no verified
+backup.** The last good artifact was `2026-09-18T04:45:35Z`; the staleness window is 36 h.
+The watchdog did its job — it emailed the officers every day — and that is the only reason
+anyone knew.
+
+⛔ **THE DUMP WAS REFUSING A CORRECT ARTIFACT.** Every failure was step *Take the backup*,
+exit code **2**, which is `fail()` — a deliberate refusal, not a crash, not a network blip:
+
+```
+!! 7 unique index(es) exist in the database but appear nowhere in this dump:
+     - hbe_opener_draw_uq · hbi_counter_anchor_uq · hbi_fill_opener_anchor_uq
+     - hbi_manual_anchor_uq · hbi_manual_live_market_uq · hbt_active_market_uq
+     - hbp_actor_submit_uq
+```
+
+All seven **were** in the dump. Both of `db:backup`'s "did we reproduce this object?" tests
+asked `renderedSql.includes('"' + name + '"')`, and **`pg_get_indexdef` quotes an identifier
+only when it has to**. Every index this schema had ever carried came from Prisma with a
+mixed-case name (`HouseBot_userId_live_key`), which Postgres always renders quoted — so the
+quoted search always found it. The house-bot migration (`20260916150000_house_bot_tables`)
+shipped this database's first **all-lowercase fixed index names** (`hbp_*`, `hbi_*`, `hbe_*`,
+`hbt_*`); Postgres renders those **bare**; the search missed all seven at once.
+
+⭐ **The guard had been green for months over a test that only ever worked by accident.**
+It was matching *rendered syntax*, not *meaning*. Both call sites now build a Set of the
+names the dump actually creates, **from the rows each section is rendered from**
+(`indexSql` **is** `idxRows`, `constraintSql` **is** `missingCons`) — see `sqlObjectNames`
+in `src/lib/server/backup/core.ts`, which carries the full account.
+
+⚠️ **The same substring test guarded the constraint dedup**, where the failure is the
+opposite and worse: a lowercase constraint the table DDL already creates would have been
+**added twice**, and *the replay aborts*. Nobody had hit it because nothing was lowercase.
+Fixing one call site and not the other would have left the class alive.
+
+### ⛔ The structural defect is NOT that bug
+
+A subtle guard bug is ordinary. What is not ordinary is that **nothing ran `db:backup`
+against the new schema until 00:15 UTC the next morning, on a runner, reporting by email.**
+`db:backup` derives its schema DDL from the **LIVE DATABASE** (`prisma migrate diff
+--from-empty --to-url`), so a migration is exactly the kind of change that can break
+recovery — and the migration protocol
+(`.claude/skills/50pick-audit/SKILL.md` §4: author → apply to local PG → commit → deploy)
+touched the recovery path at no point. `test:backup` could not catch it either: it reads the
+scripts as **text** and asserts on their source, which is why it was 117/0 throughout.
+
+**The gate that closes it — `npm run test:backup-schema`** (`scripts/backup-schema-gate.mts`),
+now **step 4 of the migration protocol**:
+
+| It does | Because |
+|---|---|
+| Boots a throwaway cluster and applies **every** migration in `prisma/migrations` | the schema a migration *creates* is the thing under test |
+| Runs the **real** `db:backup` as a subprocess | a re-implementation of its checks would be a second definition of the truth and would drift — the same fault as the guard it is catching |
+| Asserts the cluster's `data_directory` is **this checkout's** `.pgscratch`, *before writing* | see below |
+| Compares applied migrations **name-by-name** with `prisma/migrations/` | a scratch cluster is long-lived and `db:scratch` does **not** migrate it; a gate that passes against last week's schema proves nothing |
+| Plants a serial column outside `SERIAL_COLUMNS` and requires the dump to **abort naming it** | standards §5b — a gate never seen red is a rumour |
+
+**Proven both ways, 2026-09-21:** 8/0 green on the fixed code, and **6/2 RED when the fix is
+reverted**, naming the seven indexes. It would have caught this before the push.
+
+⚠️ **`db:scratch` pins port 5433 and so does every other worktree of this repo**, while its
+orphan-killer only matches clusters under its **own** path. A sibling checkout's cluster
+(`F:\kipindi-house-bots`, a parallel session) therefore answers on 5433 while `--reset` here
+dies with *"the cluster failed to start and gave no reason"* — and everything downstream
+talks to **somebody else's database with somebody else's schema, looking perfectly healthy**.
+That happened while this was being diagnosed. Two defences: the gate checks `data_directory`
+before it writes anything, and `KP_SCRATCH_PORT` now gives a second checkout its own port:
+
+```
+KP_SCRATCH_PORT=5443 npm run test:backup-schema
+```
+
+### What this says about the alarm
+
+The watchdog (`src/lib/server/backup/watchdog.ts`, 2026-09-04) worked exactly as designed and
+is the reason this was found at all. But **80 hours of a licensed real-money platform's
+recovery window is a long time to spend on a guard that was wrong**, and three identical
+emails is how an alarm stops being read. ⛔ **A guard that cries wolf is not a safe failure.**
+Refusing is only safe when the refusal is true; a false refusal costs exactly what a missed
+one does, and spends the alarm's credibility as well.
+
+---
+
+## The commands
+
+<!-- This heading used to say "The four commands" and the table already carried a fifth on a
+     "Plus" line. A count restated beside the thing it counts is a count that will disagree
+     with itself (CLAUDE.md makes the same point about the doc index), so it states none. -->
 
 | Command | Does | Safe? |
 |---|---|---|
 | `npm run db:backup` | Dumps schema + extensions + data + indexes + constraints + foreign keys + sequence resets into one replayable, sealed file | ✅ read-only, one snapshot |
-| `npm run db:scratch` | Boots a throwaway PostgreSQL 18.3 on `127.0.0.1:5433` for the verifier to restore into | ✅ local only |
+| `npm run test:backup-schema` | ⛔ **Step 4 of the migration protocol.** Throwaway cluster → **every** migration → the **real** `db:backup` → a red control. The only thing that runs the dump against a schema **before** it ships; see "THE THREE NIGHTS" | ✅ local only, cleans up after itself |
+| `npm run db:scratch` | Boots a throwaway PostgreSQL 18.3 on `127.0.0.1:5433` for the verifier to restore into. ⚠️ `KP_SCRATCH_PORT=5443` when a parallel worktree already holds the port | ✅ local only |
 | `npm run db:verify-backup -- --file <f>` | Restores into a **throwaway** database and re-checks everything. **Refuses production, no override.** The only thing allowed to record backup health | ✅ never touches the source |
 | `npm run db:restore -- --file <f>` | Puts a backup **back**. 🔴 **The only script here that destroys data on purpose** | ⛔ four gates, see below |
 
