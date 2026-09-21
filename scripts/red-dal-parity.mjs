@@ -25,10 +25,16 @@ import { MUTATIONS } from "./anchors/dal-parity.anchors.mjs";
 const GATE = "scripts/dal-parity.test.mts";
 // ⛔ EVERY FILE THE GATE READS THROUGH KP_SRC. A file missing here makes every mutation run crash
 // on a missing file and report WRONG REASON — the house cases (build commit 1) read the four below.
+// ⭐ C5-8 (2026-09-21) · `src/lib/server/txn-filters.ts` and `src/lib/server/audit.ts` JOINED THE LIST, and
+// they are a measurement rather than a precaution: the gate reads both through `SRC` (`:1028` for the filters,
+// `:732` for the audit module), so on a scratch tree neither existed and every section that reads them threw.
+// A mutation is then red for a missing file and the harness prints WRONG REASON — which is the class this
+// whole directory exists to refuse, one level down. Found by declaring C5-5b M14 and driving it.
 const FILES = [
   "src/lib/server/store.ts", "src/lib/server/prisma-dal.ts", "scripts/lib/decomment.mts",
   "src/lib/server/house-bot-dal.ts", "src/lib/server/house-bot/book.ts",
   "src/lib/server/market-dal.ts", "src/lib/server/market-service.ts",
+  "src/lib/server/txn-filters.ts", "src/lib/server/audit.ts",
 ];
 
 const runGate = (srcDir) => {

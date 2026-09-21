@@ -150,6 +150,26 @@ export const MUTATIONS = [
     to: `    // defect: repeats allowed`,
   },
   {
+    /* ⭐ C5-8 · THE INVERSE OF THE ONE ABOVE, AND IT ARRIVED FROM SOMEWHERE ELSE ENTIRELY. This is
+       `c5-s4:S4-M65`, one of the 29 Commit-5 register entries whose `from` still resolves exactly once
+       while naming an assertion (`3.188.7`, `3.187.9`, `3.187.10`) that D20's un-build took with it. The
+       SITE is this file's one-hold-per-officer rule, so the entry belongs here rather than in
+       `house-bot-c5.anchors.mjs`: `test:settlement-gate` has no expect-drift roll-call key, and
+       `test:house-bot-reports` 0.505 walks only `scripts/anchors/house*.anchors.mjs`, so a declaration
+       carrying `suite: "test:settlement-gate"` there would be audited by nobody and would redden 0.505 on
+       an unlisted key.
+       ⛔ ONE CHARACTER, THE OPPOSITE DAMAGE. The entry above DELETES the refusal (repeats allowed);
+       this one widens it to `>= 0`, so the officer hold refuses EVERYBODY — `mine.length` is 0 on the
+       first hold — and §14's positive control is what notices. `settlement-gate.test.mts:779` and `:821`
+       both fail; the `14: a repeat by the SAME officer is refused` case stays GREEN, because a refusal
+       is still a refusal. A guard with only the deletion mutation could not tell the two apart. */
+    name: "c5-s4:S4-M65 · the one-per-officer rule widens to `>= 0` — the hold now refuses EVERY officer, including the first",
+    file: SVC,
+    expect: "14: an officer with no stake CAN hold the payout",
+    from: `    if (mine.length > 0) {`,
+    to: `    if (mine.length >= 0) {`,
+  },
+  {
     name: "the officer is timed out by the player's window — exactly when the timer is lagging",
     file: SVC,
     expect: "14: an officer CAN still hold after the window closes",
