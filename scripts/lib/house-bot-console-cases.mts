@@ -1544,6 +1544,39 @@ section("§2 · the strip, the band, the roster and every failure");
       started.ok === true && started.changed === true && (await statusOf(freshStart.botId)) === "ACTIVE"
         && started.warn === true && typeof started.note === "string" && /switch/i.test(started.note) && !NEUTRAL.test(started.note),
       j({ ok: started.ok, error: started.error, changed: started.changed, note: started.note, warn: started.warn, status: await statusOf(freshStart.botId) }));
+    /* ⛔ 420 · A TIME CAP CARRIES ITS UNIT ON THE CARD, AND IT DID NOT UNTIL 2026-09-21.
+     * `limitValue` formatted `TZS` and `%` and FELL THROUGH to a bare number for every other unit, so
+     * `freqMinGapSec` — unit `"s"` — painted "20" on the saved-rules card while `rulesStartProblems` refused the
+     * same field with "at least 20 seconds". One value, two spellings, and the surface an officer reads while
+     * SETTING it was the one with no unit on it. Nothing covered this: `1.409` asserts only
+     * `l.money === (unit === "TZS")`, a money-vs-not check that passes identically whether the cell reads "20",
+     * "20s" or "20 minutes" — it could not fail on this defect.
+     * ⛔ THE PREDICATE IS SHARED WITH ITS OWN CONTROL, so the control plants a shape the real code REALLY produced
+     * (the bare number) and is measured by the same rule that passes the fixed one. */
+    {
+      const carriesTimeUnit = (v: unknown): boolean => /\d\s(?:second|minute)s?$/.test(String(v));
+      const card: Any = await detail(freshStart.botId);
+      const caps = R.CAP_FIELDS as readonly string[];
+      const gapRow: Any = card.rules?.[caps.indexOf("freqMinGapSec")] ?? null;
+      const countField = caps.find((f) => R.FIELD_META[f].unit === "count") ?? "";
+      const countRow: Any = card.rules?.[caps.indexOf(countField)] ?? null;
+      ok("1.420.unit · the saved-rules card renders a TIME cap with its own unit word — `freqMinGapSec` is stored as 20 and reads \"20 seconds\", never a bare \"20\"",
+        !!gapRow && gapRow.value === "20 seconds" && carriesTimeUnit(gapRow.value),
+        j({ row: gapRow }));
+      ok("1.420.unit.c1 · CONTROL · the SAME predicate REPORTS a planted unit-less render — \"20\", which is exactly what this code produced before the fix — so the assertion above is a measurement and not a filter",
+        carriesTimeUnit("20") === false && carriesTimeUnit("20 seconds") === true,
+        j({ planted: "20", plantedCarries: carriesTimeUnit("20"), fixed: "20 seconds" }));
+      ok("1.420.unit.c2 · POSITIVE CONTROL · a COUNT cap in the SAME card is still BARE and must stay so — the label already carries the noun, and \"200 count\" would be worse than \"200\". An assertion that demanded a word on every row would have refused this one",
+        !!countRow && /^[0-9][0-9,]*$/.test(String(countRow.value)) && !carriesTimeUnit(countRow.value),
+        j({ field: countField, row: countRow }));
+      ok("1.420.unit.c3 · the refusal sentence for that same field spells the unit from the SAME source (`unitSuffix`), so the card and the refusal cannot drift to two spellings of one value",
+        R.unitSuffix("s", 20) === " seconds" && String(gapRow?.value ?? "").endsWith(R.unitSuffix("s", 20)),
+        j({ suffix: R.unitSuffix("s", 20), value: gapRow?.value }));
+      ok("1.420.unit.c4 · CONTROL · and it is SINGULAR at one — the refusal built \"1 seconds\" with an unconditional plural, and a floor of 1 is reachable",
+        R.unitSuffix("s", 1) === " second" && R.unitSuffix("min", 1) === " minute"
+          && R.unitSuffix("s", 30) === " seconds" && R.unitSuffix("count", 1) === "" && R.unitSuffix("TZS", 1) === "",
+        j({ s1: R.unitSuffix("s", 1), min1: R.unitSuffix("min", 1), s30: R.unitSuffix("s", 30), count: R.unitSuffix("count", 1) }));
+    }
     const startRemoved = await callAct(OFFICER, { id: goneAcct.botId, act: "START" });
     ok("1.415 · 453 · a Start the service refuses answers in the CONSOLE's own words, never the service's",
       startRemoved.ok === false && typeof startRemoved.error === "string" && !NEUTRAL.test(startRemoved.error), j(startRemoved));

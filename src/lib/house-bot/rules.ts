@@ -443,6 +443,28 @@ export function hasAnyEntryMode(r: HouseBotRulesV1): boolean {
 export type FieldUnit = "TZS" | "s" | "min" | "%" | "pts" | "count" | "bool" | "enum" | "list";
 export type FieldGroup = "rules" | "caps" | "limits";
 
+/**
+ * THE UNIT WORD FOR A TIME FIELD, FROM ONE SOURCE — so a number and the word beside it cannot disagree.
+ *
+ * ⛔ WHY THIS EXISTS. `limitValue` in `house-console-read.ts` formatted `TZS` and `%` and fell through to a BARE
+ * NUMBER for everything else, so `freqMinGapSec` (unit `"s"`, label "Shortest gap between its bets") rendered on the
+ * saved-rules card as `30` — thirty of what — while the refusal sentence for the SAME field said "at least 30
+ * seconds". One value, two spellings, and the one an officer reads while SETTING the field was the one with no unit.
+ * ⛔ THE CLASS, NOT THE INSTANCE: any field whose `FIELD_META.unit` is neither `TZS` nor `%` fell through, so the
+ * next time-valued cap added to `CAP_FIELDS` or `LIMIT_FIELDS` would have been born with the same defect silently.
+ * ⭐ AND THE PLURAL IS PART OF THE CLAIM: the refusal built its sentence with an unconditional " seconds", so a
+ * one-second floor read "1 seconds" to an operator. Both callers now come through here, so both are right at n = 1.
+ * ⚠️ A unit with no word — `count`, `bool`, `enum`, `list`, `pts` — returns "" deliberately: "3 count" is worse than
+ * "3", and the label already carries the noun ("Bets per day"). `TZS` and `%` are NOT here: money has exactly one
+ * formatter (`formatTzs`, ruling 361) and `%` is a suffix, not a word, and routing either through this would put a
+ * second money spelling in the codebase, which is the defect this helper exists to prevent.
+ */
+export function unitSuffix(unit: FieldUnit, n: number): string {
+  if (unit === "s") return Math.abs(n) === 1 ? " second" : " seconds";
+  if (unit === "min") return Math.abs(n) === 1 ? " minute" : " minutes";
+  return "";
+}
+
 /** A lower bound: a number, the live minimum stake, or the min-gap floor from the `bet.place` refill. */
 export type FieldMin = number | "LIVE_MIN" | "FLOOR";
 
@@ -2511,7 +2533,10 @@ export function rulesStartProblems(
     refusals.push({
       field: "freqMinGapSec",
       code: "BELOW_MIN",
-      message: `Can't start: the min gap must now be at least ${formatWhole(floor)} seconds; Min gap is ${formatWhole(caps.freqMinGapSec)} seconds.`,
+      /* ⭐ THE WORD COMES FROM `unitSuffix`, THE SAME SOURCE THE CONSOLE'S `limitValue` NOW READS, so the sentence an
+         officer is refused with and the value they see on the card cannot spell one unit two ways. It also fixes
+         "1 seconds": this was an unconditional " seconds" and the floor can be 1. */
+      message: `Can't start: the min gap must now be at least ${formatWhole(floor)}${unitSuffix("s", floor)}; Min gap is ${formatWhole(caps.freqMinGapSec)}${unitSuffix("s", caps.freqMinGapSec)}.`,
     });
   }
   if (r.enterNow.enabled) {

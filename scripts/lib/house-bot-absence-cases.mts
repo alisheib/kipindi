@@ -53,44 +53,61 @@ const j = (v: unknown) => JSON.stringify(v);
 const lf = (s: string) => s.replace(/\r\n/g, "\n");
 
 /**
- * A hit that sits inside a SCREAMING_SNAKE_CASE token is code, not a character a player reads.
+ * ⛔ THE REGISTER — ONE FILE, ONE EXACT STRING. NOT A SHAPE.
  *
- * ⛔ THIS EXCLUSION WAS ALREADY THIS MEASURE'S CLAIM AND WAS NEVER ENFORCED — it was ACCIDENTAL, and the
- * accident ended on 2026-09-21. The docblock below has always said "Identifiers are NOT here", naming
- * `"HOUSE_STAKE_ONLY"` on the market page, and `5.2.c3` has always asserted it as a POSITIVE control. But the
- * only thing implementing it was the words family being written `house[ -]?stakes?`, which could not match
- * across an `_`. When `§2J · THE JOIN` closed that blindness — correctly, and because `HOUSE_STAKE_ONLY` had
- * walked past a guard for weeks — `5.2` began reporting the identifier and `5.2.c3` began FAILING, the two
- * halves of one suite contradicting each other. ⭐ THE POSITIVE CONTROL IS THE HALF THAT WAS RIGHT.
+ * ⚠️ **A SHAPE EXEMPTION STOOD HERE FOR ONE COMMIT (247e5913) AND WAS WRONG. It is recorded, not quietly
+ * removed, because the reasoning that produced it is the reasoning most likely to produce it again.**
+ * That version filtered out any hit sitting inside a SCREAMING_SNAKE token, justified by `HOUSE_STAKE_ONLY`
+ * at `src/app/markets/[id]/page.tsx:226` being a COMPARISON OPERAND rather than printed text.
+ * ⛔ THE JUSTIFICATION NAMED A PROPERTY THIS INSTRUMENT CANNOT OBSERVE. `printedTexts` walks the AST and then
+ * destroys it — it pushes every `isStringLiteral` and `isJsxText` node and returns `out.join(" ")`. By the time
+ * any filter here runs there is no parent node and no operator: only characters. So a filter keyed on token
+ * SPELLING exempts the operand and a RENDERED string identically, and the exemption was not one string in one
+ * file but a SHAPE across all ~394 player-rendered files — `HOUSE_BOT`, `HOUSE_STAKES`, `STAFF_CHOSEN`,
+ * `DAU_LA_NYUMBA`, a printed `LIQUIDITY`. That re-opened, by shape and across the whole population, exactly the
+ * blindness `§2J · THE JOIN` had just closed.
+ * ⛔ AND ITS CONTROL COULD NOT ARBITRATE: `5.2.c6` varied case, separator and spacing — never POSITION, the one
+ * axis the justification rested on. A narrowness control blind to the axis of the claim proves nothing.
  *
- * WHY THE IDENTIFIER IS NOT A LEAK, measured three independent ways rather than reasoned once:
- *   · `src/app/markets/[id]/page.tsx:226` is `elig.why === "HOUSE_STAKE_ONLY" ? { state: "NOT_ELIGIBLE" }` —
- *     a COMPARISON OPERAND. The server maps the house-named reason to a neutral one before anything renders.
- *   · `objections-service.ts:114` states the design (D19c, ruling 146): "`HOUSE_STAKE_ONLY` never leaves the
- *     server — the page shows `NOT_ELIGIBLE`".
- *   · `verify:house-bot-bundle` over a REAL production build (171 static files, 9 prerendered documents, 35
- *     under `public/`, its own control firing on 32 planted samples) finds no house vocabulary shipped.
+ * ⭐ THE REMEDY IS THE ONE THIS REPO ALREADY USES TWICE — `house-bot-reports-cases.mts`'s
+ * `PLAYER_SURFACE_TEXT_REGISTER` and `house-bot-surfaces.test.mts`'s `coveredByRegister`: a register keyed by
+ * FILE and EXACT STRING, held SHRINK-ONLY, so an exemption covers what was ruled on and nothing else. A third
+ * spelling of one idea is how two guards come to disagree, so this is the same shape as those two.
  *
- * ⛔ AND IT IS NARROW, WHICH IS WHAT KEEPS IT FROM BEING AN EXEMPTION THAT SWALLOWS THE CLAIM. Only an
- * ALL-CAPS `_`-joined token is excluded — a shape no player sentence renders. Every readable form is still
- * reported: `house stake`, `House stakes`, and `house_stakes` (lower-case, so not this shape) each remain a
- * hit, and so does a bounded id like `pos_house_ae493df558086e93cc54fd5b`, which is the very token DEFERRED
- * row 79 caught being printed to the holder. `5.2.c6` plants all of them and is the proof; without it this
- * would be an exemption asserted only by the sentence that introduces it.
+ * WHY THIS ONE STRING IS RULED BENIGN (D19c, ruling 146): `objections-service.ts:116` returns
+ * `why: "HOUSE_STAKE_ONLY"` and `:114` records that it "never leaves the server — the page shows
+ * `NOT_ELIGIBLE`"; `page.tsx:226` is `elig.why === "HOUSE_STAKE_ONLY" ? { state: "NOT_ELIGIBLE" }`, an operand
+ * whose selected branch is a literal. `house-bot-surfaces.test.mts` `4.words.4` is the assertion that PROVES
+ * that claim, and `0.198.3b` holds this register to it rather than re-proving it here.
+ * ⛔ NOT RENAMED, and that was weighed: `0.198.3` requires the market page to still yield >= 1 word so the
+ * register's own subject stays visible to the measure, and `0.198.3b` requires the string to still be printed.
+ * A rename would redden both — the two assertions that exist to keep this exemption honest.
  */
-const inScreamingToken = (s: string, index: number, word: string): boolean => {
-  let a = index, b = index + word.length;
-  while (a > 0 && /[A-Za-z0-9_]/.test(s[a - 1]!)) a--;
-  while (b < s.length && /[A-Za-z0-9_]/.test(s[b]!)) b++;
-  return /^[A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(s.slice(a, b));
+const PLAYER_TEXT_REGISTER: Readonly<Record<string, readonly string[]>> = {
+  "src/app/markets/[id]/page.tsx": ["HOUSE_STAKE_ONLY"],
 };
-/** The words a player READS, and the bounded ids no player text can ever legitimately carry. Identifiers are NOT here:
- *  an internal state name in a comparison (`"HOUSE_STAKE_ONLY"` on the market page) is code, and what the client BUNDLE
- *  ships is §1/§4's claim with its own instrument. This is 0.198.3's family filter, widened by `ids` only. */
+
+/** The words a player READS, and the bounded ids no player text can ever legitimately carry. This is 0.198.3's
+ *  family filter, widened by `ids` only. ⛔ NO shape filter: see `PLAYER_TEXT_REGISTER` above for why. */
 const readableHits = (s: string) => houseHitsByFamily(s)
   .filter((h) => h.family === "words" || h.family === "ids")
-  .filter((h) => !inScreamingToken(s, Number(h.index), String(h.word)))
   .map((h) => `${h.family}:${h.word}`);
+
+/**
+ * The hits of ONE file, minus only what the register names FOR THAT FILE.
+ * ⛔ `rel` is part of the key. The same token in any other file is still reported — which is the whole
+ * difference between this and the shape exemption it replaces, and `5.2.c6` now plants exactly that.
+ * ⛔ SUBSTRING-COVERED, for the reason §2J gives and for the reason `house-bot-reports-cases.mts` gives: one
+ * literal yields a hit per family that can match it, so a register of exact strings is silently a claim about
+ * the PATTERN. `includes` keeps it case- and separator-sensitive, so `house stake` on this page is still reported.
+ */
+const readableHitsFor = (rel: string, s: string): string[] => {
+  const allowed = PLAYER_TEXT_REGISTER[rel] ?? [];
+  return readableHits(s).filter((h) => {
+    const word = h.slice(h.indexOf(":") + 1);
+    return !allowed.some((a) => a.includes(word));
+  });
+};
 
 export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): Promise<void> {
   const git = (...args: string[]) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 28 });
@@ -186,7 +203,8 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     for (const rel of population) {
       const t = textOf(rel);
       chars += t.length;
-      const h = readableHits(t);
+      /* ⛔ PER FILE, so the register covers the ruled string in the ruled file and nothing else anywhere. */
+      const h = readableHitsFor(rel, t);
       if (h.length) printing.push(`${rel} :: ${[...new Set(h)].join(", ")}`);
     }
     const NAMED = ["src/app/legal/rules/_content-up-down.tsx", "src/app/legal/rules/_content-yes-no.tsx", "src/app/legal/terms/page.tsx", "src/app/legal/privacy/page.tsx", "src/app/page.tsx", "src/app/leaderboard/page.tsx", "src/components/markets/resolution-panel.tsx", "src/app/markets/[id]/page.tsx"];
@@ -219,9 +237,19 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       readableHits(plantId).some((h) => h.startsWith("ids:")), j(readableHits(plantId)));
     const benign = textOf("src/app/page.tsx", home + `\nexport const B = () => <p>{${j(HOUSE_BENIGN_SAMPLES.join(" · "))}}</p>;\n`);
     const marketPage = textOf("src/app/markets/[id]/page.tsx");
-    ok("5.2.c3 · POSITIVE CONTROL · the benign look-alikes are NOT reported — `HOUSE_FEE`, the `/admin/house` owner book `main` already ships, a raw `hb_` prefix and a 28-hex tail — and neither is the market page's own `HOUSE_STAKE_ONLY`, an internal state name in a comparison. A sweep that refused those would refuse the platform's own vocabulary and be turned off within a week",
-      readableHits(benign).length === 0 && readableHits(marketPage).length === 0,
-      j({ benign: readableHits(benign), marketPage: readableHits(marketPage), benignSamples: HOUSE_BENIGN_SAMPLES.length }));
+    ok("5.2.c3 · POSITIVE CONTROL · the benign look-alikes are NOT reported — `HOUSE_FEE`, the `/admin/house` owner book `main` already ships, a raw `hb_` prefix and a 28-hex tail — and neither is the market page's own `HOUSE_STAKE_ONLY`, which the register names for THAT FILE. A sweep that refused those would refuse the platform's own vocabulary and be turned off within a week",
+      readableHits(benign).length === 0 && readableHitsFor("src/app/markets/[id]/page.tsx", marketPage).length === 0,
+      j({ benign: readableHits(benign), marketPage: readableHitsFor("src/app/markets/[id]/page.tsx", marketPage), raw: readableHits(marketPage), benignSamples: HOUSE_BENIGN_SAMPLES.length }));
+    /* ⛔ THE REGISTER IS HELD TO ITS OWN SUBJECT. An exemption that outlives the string it was ruled for is a
+     * hole with a paragraph over it, and it is the shape `0.198.3b` already refuses one suite over. */
+    const staleRegister = Object.entries(PLAYER_TEXT_REGISTER).flatMap(([rel, ws]) => {
+      if (!population.includes(rel)) return [`${rel}: no longer a player-rendered file`];
+      const printed = textOf(rel);
+      return ws.filter((w) => !printed.includes(w)).map((w) => `${rel}: "${w}" is registered but no longer printed`);
+    });
+    ok("5.2.c3b · ⛔ SHRINK-ONLY · every string the register names is STILL printed by the file it was named for, and that file is still in the population — an exemption whose subject has gone is a hole nobody is watching",
+      staleRegister.length === 0 && Object.keys(PLAYER_TEXT_REGISTER).length >= 1,
+      j({ stale: staleRegister, register: PLAYER_TEXT_REGISTER }));
     const specOnly = textOf("src/app/page.tsx", 'import { x } from "@/lib/house-bot/exposure-copy";\n' + home);
     const specAndText = textOf("src/app/page.tsx", 'import { x } from "@/lib/house-bot/exposure-copy";\n' + home + "\nexport const P = () => <p>house bots</p>;\n");
     ok("5.2.c4 · POSITIVE CONTROL · the module-specifier exclusion is EXACTLY that: a planted `from \"@/lib/house-bot/exposure-copy\"` alone is not a print hit (an import path is not a character a player reads, and what a player surface may IMPORT is 0.198.1's separate claim over this same population), while the same words in a JSX line in the same copy ARE",
@@ -231,21 +259,38 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     ok("5.2.c5 · CONTROL · a population that resolves to zero files is distinguishable from a clean one: the floor in 5.2.0 is what separates them, and it is asserted BEFORE 5.2 runs",
       emptyPop.length === 0 && population.length >= 350, j({ emptyPopulation: emptyPop.length, realPopulation: population.length }));
     /**
-     * ⛔ THE IDENTIFIER EXCLUSION POLICES WHAT IT EXEMPTS, or it is just a hole with a paragraph over it.
-     * The exempted shape and four readable shapes go into the SAME copy of the same real file, so the only
-     * difference between them is the thing being claimed. An exemption whose narrowness is asserted by prose
-     * and not by a plant is the disease this file's own header names.
+     * ⛔ THE REGISTER POLICES WHAT IT EXEMPTS, ON THE AXIS THAT MATTERS — **THE FILE**.
+     *
+     * ⚠️ THIS CONTROL REPLACES ONE THAT COULD NOT ARBITRATE. The version at 247e5913 varied case, separator and
+     * spacing (`house stake` / `House stakes` / `house_stakes`) and never varied WHERE the token sat — while the
+     * exemption it was proving was justified entirely by position. A narrowness control blind to the axis of its
+     * own claim proves nothing, and it passed while the exemption was swallowing a whole shape class.
+     * ⛔ SO THE PLANT THAT DECIDES IT IS `c6b`: the SAME token, in a file the register does NOT name. Under the
+     * shape exemption that plant was invisible. Under a file-keyed register it is REPORTED, and the difference
+     * between the two designs is exactly one assertion wide.
      */
-    const idOnly = textOf("src/app/page.tsx", home
+    const registeredFile = "src/app/markets/[id]/page.tsx";
+    const marketRaw = textOf(registeredFile);
+    ok("5.2.c6 · POSITIVE CONTROL · the register covers the ruled string IN THE RULED FILE: the market page's own `HOUSE_STAKE_ONLY` is not reported, and the raw sweep of that same file DOES see it — so the register is doing the work, not a blind spot in the vocabulary",
+      readableHitsFor(registeredFile, marketRaw).length === 0 && readableHits(marketRaw).length >= 1,
+      j({ afterRegister: readableHitsFor(registeredFile, marketRaw), rawHits: readableHits(marketRaw) }));
+    const elsewhere = textOf("src/app/page.tsx", home
       + '\nexport const Q = () => { const s = "HOUSE_STAKE_ONLY"; return <p>{s === "HOUSE_STAKE_ONLY" ? "Haifai" : ""}</p>; };\n');
-    const idAndText = textOf("src/app/page.tsx", home
-      + '\nexport const Q = () => { const s = "HOUSE_STAKE_ONLY"; return <p>{s === "HOUSE_STAKE_ONLY" ? "Haifai" : ""}</p>; };\n'
+    ok("5.2.c6b · ⛔ CONTROL · THE SAME TOKEN IN AN UNREGISTERED FILE IS REPORTED — planted into a copy of the home page, `HOUSE_STAKE_ONLY` is a hit, because the register is keyed by FILE and not by SHAPE. ⚠️ The shape exemption this replaces returned ZERO here, across all ~394 player-rendered files, which is the defect this line exists to make impossible to reintroduce silently",
+      readableHitsFor("src/app/page.tsx", elsewhere).length >= 1,
+      j({ hits: readableHitsFor("src/app/page.tsx", elsewhere) }));
+    const printedForm = textOf("src/app/page.tsx", home
+      + '\nexport const W = () => <li aria-label="HOUSE_BOT">HOUSE_STAKES may be placed by the platform.</li>;\n');
+    ok("5.2.c6c · ⛔ CONTROL · a SCREAMING_SNAKE house token in a genuinely PRINTED position — JSX text and an `aria-label` a screen reader speaks — is reported. This is the axis `printedTexts` cannot distinguish from an operand (it joins every string literal and JSX text and discards the AST), which is precisely why the exemption must be keyed by file rather than by the shape of the token",
+      readableHitsFor("src/app/page.tsx", printedForm).length >= 1,
+      j({ hits: readableHitsFor("src/app/page.tsx", printedForm) }));
+    const spelled = textOf("src/app/page.tsx", home
       + "\nexport const R = () => <p>house stake</p>;\n"
       + "\nexport const S = () => <p>House stakes</p>;\n"
       + "\nexport const T = () => <p>house_stakes</p>;\n");
-    ok("5.2.c6 · POSITIVE CONTROL + CONTROL · the SCREAMING_SNAKE exclusion is EXACTLY that, planted both ways into ONE copy of one real file: `HOUSE_STAKE_ONLY` written twice as a comparison operand is NOT a print hit, while in the SAME copy `house stake`, `House stakes` and the lower-case `house_stakes` are EACH still reported. An exclusion that swallowed the spaced or lower-case forms would have retired this whole measure, and only a plant can tell the two apart",
-      readableHits(idOnly).length === 0 && readableHits(idAndText).length >= 3,
-      j({ identifierOnly: readableHits(idOnly), withReadableForms: readableHits(idAndText) }));
+    ok("5.2.c6d · CONTROL · every readable spelling is still reported in an unregistered file — `house stake`, `House stakes` and the lower-case `house_stakes` — so closing the shape hole did not cost the case-and-separator coverage `§2J · THE JOIN` bought",
+      readableHitsFor("src/app/page.tsx", spelled).length >= 3,
+      j({ hits: readableHitsFor("src/app/page.tsx", spelled) }));
     /**
      * ⚠️ REPORTED, NOT ASSERTED — and it is DEFERRED row 79's finding, reproduced here by a SECOND instrument
      * that did not know about it. This control was first written to also require `pos_house_ae493df558086e93cc54fd5b`

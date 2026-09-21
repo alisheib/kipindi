@@ -46,7 +46,7 @@ import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { resolveRange } from "./date-range";
-import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
+import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, unitSuffix, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
 import { sortCauses, wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
 import { TARGET_END_CAPTION } from "@/lib/house-bot/feed-copy";
 import { saveHouseBotLimits } from "./house-bot/limits-save";
@@ -1331,11 +1331,25 @@ export type ConsoleLimitsView = ConsoleDeskShell & {
   limitsVersion: number | null;
 };
 
-/** Formats one stored limit for its own unit. ⛔ Money goes through `formatTzs`, the console's only money formatter (361). */
+/**
+ * Formats one stored limit for its own unit. ⛔ Money goes through `formatTzs`, the console's only money formatter (361).
+ *
+ * ⛔ A TIME FIELD CARRIES ITS WORD, AND IT DID NOT USED TO. This read `: formatNumber(raw)` for every unit that was
+ * neither `TZS` nor `%`, so `freqMinGapSec` — unit `"s"`, labelled "Shortest gap between its bets" — rendered on the
+ * saved-rules card as a bare `30`, while `rules.ts`'s own refusal for that same field said "at least 30 seconds".
+ * The surface an officer reads while SETTING the value was the one with no unit on it.
+ * ⭐ THE WORD COMES FROM `unitSuffix`, WHICH THE REFUSAL NOW USES TOO, so the two cannot drift apart — the same
+ * one-source discipline the pagers already follow by sharing ONE predicate with their counting readers.
+ * ⚠️ `count` still renders bare ON PURPOSE: the label carries the noun ("Bets per day"), and "200 count" is worse
+ * than "200". `unitSuffix` returns "" for it, so that is a decision this function makes by deferring, not by
+ * falling through — which is the difference that let the defect exist.
+ */
 function limitValue(field: FieldId, raw: number | null): string {
   if (raw == null) return "Not set";
   const unit = FIELD_META[field].unit;
-  return unit === "TZS" ? formatTzs(raw) : unit === "%" ? `${formatNumber(raw)}%` : formatNumber(raw);
+  if (unit === "TZS") return formatTzs(raw);
+  if (unit === "%") return `${formatNumber(raw)}%`;
+  return `${formatNumber(raw)}${unitSuffix(unit, raw)}`;
 }
 
 /**
