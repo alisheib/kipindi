@@ -1579,6 +1579,8 @@ Everything was checked against `C:\kipindi-main`. HEAD is `ac411357`, the KYC co
 
 ## S2 · MAJOR · §11 Release: exact checklist (commit 8; replaces the §11 "Release" paragraph and the §17 RELEASE block)
 
+⛔ **SUPERSEDED 2026-09-21 by `plans/house-bots/RELEASE-LADDER.md`.** Measured there: S2's only declared proof does not exist (`test:docs` is a link checker; "R0–R6" appears nowhere in `scripts/` or `src/`), it names a §17 that does not exist in `docs/HOUSE-BOTS.md` (14 sections; that block is in `PLAN.md`), its R1–R6 "GO when" column lets the ladder authorise itself from R1 onward, and the owner-only switch row is absent from this table entirely.
+
 | Step | Action | GO when |
 |---|---|---|
 | R0 (T-1 day) | S1 P0 re-run. **Merge** `origin/main` (any "rebase" here is superseded). ⛔ **Condition (c) rewritten 2026-09-20 — `ops:release-migration-parity` says GO** (byte parity of every shared migration folder; forward difference 0; reverse difference 0). The old wording — *"the diff shows exactly the 2 house folders"* — is permanently unreachable since Ali pushed the branch on 2026-09-18: both folders are in the merge base, so the diff is **0** by construction. ⛔ Not deleted and not waved through: the parity gate still reports the original failure by name if the house DDL is ever NOT on the target ref, and then demands R2 back. `test:all`, every `red:house-bot-*`, `qa:house-bots-local`, `qa:house-bots-visual` and the S4 rehearsals pass on this SHA. `ops:preflight-house-bot-migrations` says GO. Send Ali the checklist, and tell him R2 is struck for this release and why. | Ali's one-word "go" |
