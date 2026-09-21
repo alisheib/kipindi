@@ -1,5 +1,15 @@
 # START HERE — the prompt for the next machine (written 2026-09-21, Ali-Blade15)
 
+> # ⛔ SUPERSEDED IN PART, 21 September 2026 (evening) — READ `SESSION-2026-09-21-EVENING.md` FIRST.
+> Three sessions worked this tree that evening and `main` closed at `54a13a34`. The single line this
+> file could most mislead you on: **until that evening NO ACCOUNT COULD BE STARTED AT ALL** — there was
+> no per-account rules save anywhere in the repository, so every plan here that assumes an officer can
+> configure and start an account was describing screens that did not exist. That is now built.
+> The evening file also carries six defects no suite could have found, the traps in this shared tree
+> (a failed test cluster that reported exit 0; worktrees adopting each other's database), and what is
+> still open. Nothing here is deleted; check it against that file before acting on any figure.
+
+
 > # ⛔ THE NEXT MACHINE HAS RUN. READ `INTEGRATION-2026-09-21.md` BEFORE ACTING ON §4 OR §5 BELOW.
 > This file was written on Ali-Blade15 *for* the next machine. That machine (OMEGA-COMPILE01) picked it up
 > the same day and worked through it, so several figures here are now closed or were undercounts:
