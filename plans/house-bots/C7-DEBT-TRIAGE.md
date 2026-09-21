@@ -746,3 +746,30 @@ every `captionText:` the gate writes rather than the first the file yields; `537
 the guard rather than the section; `398-ladder-hole` over a population shown to be non-empty rather than an
 `every()` that is true over nothing. The fourth, `387-order`, is the fixture shape, and its repair is the same
 idea from the other end: **make the fixture disagree with the rule unless the code enforces it.**
+
+### The regression check the repairs owed
+
+⛔ **FOUR OF THE TEN REPAIRS CHANGE WHAT A GUARD MEASURES**, so the neighbouring declarations had to be shown
+still able to fail — otherwise a repair could have bought its own red by disarming the case next to it. Every
+declaration in this file whose id begins `387`, `398`, `409`, `412` or `537`, plus the ten themselves — **42 in
+all** — was driven together on the repaired tree:
+
+```
+baseline green · console-mem
+baseline green · disclosure
+house-bot-console RED: 42 caught, 0 missed, 0 files left dirty
+```
+
+That covers both blocks a repair reached inside: the picker's `1.387 · 412` fixture (`387-cap`, `387-count-lie`
+and the CONTROL all still red on their own labels with the ids re-seeded) and the `1.412 / 537` chain
+(`412-typed`, `537-bar` and fifteen more still red with `guarded` narrowed to the limits form).
+
+⚠️ **THE WHOLE 281 IS STILL OWED AND WAS NOT RUN HERE.** It was queued behind `heavy-node-lock.sh`, which another
+lane held for the length of this phase, and a detached red drive that outlives its session can leave the working
+tree with a live defect injected — the exact hazard the lock and the restore check exist for — so it was stopped
+rather than left running unsupervised. Register rows 18 and 31 keep that debt.
+
+⭐ **THE SCRATCH CLUSTER DID NOT MOVE.** 19 databases at open, 19 mid-phase, 19 at close, byte sizes unchanged.
+`opsvis_c7s5` was **already absent at this phase's open**, so nothing in this phase removed it. Re-checked from
+the other side as well: every `DROP DATABASE` in this tree names only its own scratch database, and those names
+are `<prefix>_<process.pid>` — so no script here can drop a database another lane created.
