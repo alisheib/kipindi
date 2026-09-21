@@ -35,7 +35,7 @@
  *    authoritative, cross-instance verification is `verifyChainFull()` (walks
  *    the DB). Admin's on-demand "verify chain" uses the full DB walk.
  */
-import { createHmac } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { hasDatabase, prisma } from "./prisma";
 // From ./lock-key, NOT ./locks: audit is reachable from the client module graph
@@ -83,6 +83,10 @@ declare global {
   var __50PICK_AUDIT_HYDRATED: boolean | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_AUDIT_PENDING: number | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_AUDIT_BOOT: string | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_AUDIT_TICKET: number | undefined;
 }
 const ring: AuditEntry[] = globalThis.__50PICK_AUDIT_RING ?? (globalThis.__50PICK_AUDIT_RING = []);
 
@@ -213,10 +217,13 @@ function hashEntry(entry: Omit<AuditEntry, "entryHash">): string {
   return hashEntryWith(entry, chainSecret());
 }
 
-/** The hash function, with the signing key made explicit so verification can try a
- *  retired key without any chance of that key being used to WRITE. */
-function hashEntryWith(entry: Omit<AuditEntry, "entryHash">, secret: string): string {
-  const stable = JSON.stringify({
+/**
+ * The exact bytes an entry is signed over. Extracted so the SIGNATURE and the `rowFingerprint`
+ * below cannot drift apart — a baseline digest taken over a different serialisation than the one
+ * the chain signs would attest to something the chain does not.
+ */
+function stableString(entry: Omit<AuditEntry, "entryHash">): string {
+  return JSON.stringify({
     id:         entry.id,
     category:   entry.category,
     action:     entry.action,
@@ -229,7 +236,30 @@ function hashEntryWith(entry: Omit<AuditEntry, "entryHash">, secret: string): st
     createdAt:  entry.createdAt,
     prevHash:   entry.prevHash,
   });
-  return createHmac("sha256", secret).update(stable).digest("hex");
+}
+
+/** The hash function, with the signing key made explicit so verification can try a
+ *  retired key without any chance of that key being used to WRITE. */
+function hashEntryWith(entry: Omit<AuditEntry, "entryHash">, secret: string): string {
+  return createHmac("sha256", secret).update(stableString(entry)).digest("hex");
+}
+
+/**
+ * A KEYLESS digest of a row exactly as it is stored — content AND stored signature.
+ *
+ * ⭐ WHAT IT IS FOR, and it is the whole of the baseline mechanism below. Rows that recompute under
+ * no known key cannot be attested by the chain, so the only honest thing an operator can do is
+ * DECLARE them: "these N rows, with this digest, predate the current signing regime; I accept them
+ * as they stand". That declaration is worth nothing unless a later edit to one of those rows changes
+ * the digest — so the digest must cover the row's CONTENT, not merely its identity. It folds in
+ * `entryHash` too, so altering the stored signature alone is caught as well.
+ *
+ * ⛔ NOT AN HMAC, DELIBERATELY. A key would only prove who computed the digest, and the digest is
+ * published inside the chain itself, where the chain's own HMAC already proves that. A plain
+ * SHA-256 keeps it reproducible by an external auditor holding nothing but the table.
+ */
+function rowFingerprint(entry: Omit<AuditEntry, "entryHash">, entryHash: string): string {
+  return createHash("sha256").update(stableString(entry)).update("|").update(entryHash).digest("hex");
 }
 
 // ---------------------------------------------------------------------------
@@ -322,8 +352,83 @@ async function hydrate(): Promise<void> {
   }
 }
 
-function mkId(): string {
-  return `aud_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+// ---------------------------------------------------------------------------
+// THE TICKET — the number is allocated when the append is CALLED, not when it is written
+// ---------------------------------------------------------------------------
+//
+// 🔴 THE DEFECT THIS EXISTS FOR, and it is the one the chain cannot see. `seq` is a BIGSERIAL handed
+// out by Postgres at INSERT. An append that is queued and never written consumes no `seq`, leaves no
+// dangling `prevHash`, and therefore leaves the log PERFECTLY CONTIGUOUS — `verifyChainFull()`
+// returned `{valid:true, verified:663, linkBroken:false}` over a chain with 40 known-lost appends
+// (`rehearse:audit-loss-window`). A regulator walking the chain sees no hole because, in the chain's
+// own terms, there is none.
+//
+// ⭐ SO THE NUMBER IS TAKEN EARLIER THAN THE WRITE. `audit()` allocates a per-process ticket
+// SYNCHRONOUSLY, before the append joins the queue, and stamps it into the row's own `id`:
+//
+//        aud_<boot>_<ticket>            e.g.  aud_bmrq93f08a1c2e3_000000042
+//
+// The queue is strictly FIFO and each append is awaited inside it, so landed rows carry CONTIGUOUS
+// tickets by construction. A ticket missing BELOW the highest landed ticket for a boot is therefore
+// a row that was allocated and never written — a hole, named, countable, and as permanent as the
+// loss itself. `audit-ticket.ts` is the detector; this is the number it reads.
+//
+// ⛔ WHAT IT CANNOT SEE, stated so it is not mistaken for more. A loss at the TAIL — the process died
+// with the queue non-empty — leaves no ticket above it to prove the hole, and nothing durable can
+// record "N were issued" except a row, which is itself in the queue. The only mark of a tail loss is
+// the ABSENCE of the drain's `system.shutdown_drain` row (audit-drain.ts). ⭐ The two combine into a
+// proof this platform did not have: that marker is queued behind everything else, so if it landed
+// carrying ticket T and tickets 1..T are all present for that boot, then every append that process
+// ever issued is in the table. Complete, not merely unbroken.
+//
+// ⛔ WHY IN THE `id` AND NOT IN `payload` OR A NEW COLUMN. A column is the natural home and it is not
+// available: a migration needs `prisma generate`, which this lane may not run, and a nullable column
+// would in any case be invisible to every artefact already exported. `payload` is rendered verbatim
+// in the ISO 27001 hand-off and in DSAR exports, so a reserved internal key there would put plumbing
+// in front of a regulator. The `id` is already opaque, already exported, already the primary key,
+// already covered by the row's own HMAC — and nothing in `src/` or `scripts/` parses it (checked at
+// `09398014`). It costs one integer increment on the calling thread and no bytes.
+//
+// ⚠️ OLDER ROWS ARE NOT TICKETED and never can be. Every id written before this shipped has the shape
+// `aud_<time36>_<rand6>`; the detector matches only the ticketed shape and reports the population it
+// actually scanned, so the un-ticketed era is EXCLUDED rather than silently counted as gap-free.
+// ⛔ That exclusion is the whole of "we cannot see holes older than this change".
+const TICKET_DIGITS = 9;
+
+/** This process's audit-boot identity. Stable for the life of the process (on globalThis, so an HMR
+ *  re-import or a serverless module reload cannot mint a second identity mid-life). */
+export function auditBootId(): string {
+  return (globalThis.__50PICK_AUDIT_BOOT ??= `b${Date.now().toString(36)}${randomBytes(3).toString("hex")}`);
+}
+
+/** How many appends this process has ISSUED. The next ticket is this + 1. ⚠️ Issued, not landed —
+ *  the difference between the two is the loss this module exists to make countable. */
+export function auditTicketsIssued(): number {
+  return globalThis.__50PICK_AUDIT_TICKET ?? 0;
+}
+
+/**
+ * Take the next ticket and build the row id from it.
+ *
+ * ⛔ CALLED EXACTLY ONCE PER `audit()` CALL, never once per write ATTEMPT. `appendPersisted` retries
+ * on a P2002, and a fresh ticket per attempt would BURN the abandoned one — manufacturing a phantom
+ * gap in a chain that lost nothing. Reusing the id across attempts is also idempotent: the losing
+ * attempt's transaction rolled back, so nothing of it survives to collide with.
+ */
+function allocateAuditId(): string {
+  let n = (globalThis.__50PICK_AUDIT_TICKET ?? 0) + 1;
+  // A ticket that outgrew its padding would stop matching the detector's shape, and the rows would
+  // quietly leave the ticketed population — a silent loss of the very thing this provides. Roll the
+  // boot identity instead: the counter restarts, the old boot's run is closed and complete, and the
+  // id stays well-formed. At this platform's ~11.5k rows/day one process would need ~238 years to
+  // reach it; the branch exists so the failure mode is "a new boot id", never "un-ticketed".
+  if (n > 10 ** TICKET_DIGITS - 1) {
+    globalThis.__50PICK_AUDIT_BOOT = undefined;
+    auditBootId();
+    n = 1;
+  }
+  globalThis.__50PICK_AUDIT_TICKET = n;
+  return `aud_${auditBootId()}_${String(n).padStart(TICKET_DIGITS, "0")}`;
 }
 
 /**
@@ -371,6 +476,7 @@ async function selectHead(tx: Prisma.TransactionClient): Promise<string> {
  */
 async function appendPersisted(
   entry: Omit<AuditEntry, "id" | "createdAt" | "prevHash" | "entryHash">,
+  id: string,
 ): Promise<AuditEntry> {
   const db = prisma()!;
   const lockId = hashKey64(AUDIT_CHAIN_LOCK_KEY);
@@ -384,7 +490,10 @@ async function appendPersisted(
           const prevHash = await selectHead(tx);
           const partial: Omit<AuditEntry, "entryHash"> = {
             ...entry,
-            id: mkId(),
+            // ⛔ The CALLER's ticketed id, reused across every retry of this loop. See
+            // allocateAuditId: minting a fresh one per attempt would burn the abandoned ticket and
+            // manufacture a phantom gap in a chain that lost nothing.
+            id,
             createdAt: new Date().toISOString(),
             prevHash,
           };
@@ -425,11 +534,15 @@ async function appendPersisted(
  *  and the chain roots at GENESIS each process. */
 function appendInMemory(
   entry: Omit<AuditEntry, "id" | "createdAt" | "prevHash" | "entryHash">,
+  id: string,
 ): AuditEntry {
   const prev = ring[ring.length - 1];
   const partial: Omit<AuditEntry, "entryHash"> = {
     ...entry,
-    id: mkId(),
+    // ⚠️ The SAME ticketed id the durable path would have used, and on the fail-open branch in
+    // `audit()` that is load-bearing: the ticket is consumed either way, so a persist failure shows
+    // up in the table as a MISSING ticket — which is exactly what it is, and was otherwise invisible.
+    id,
     createdAt: new Date().toISOString(),
     prevHash: prev?.entryHash ?? GENESIS,
   };
@@ -455,6 +568,10 @@ export function audit(
   // process loses are the ones still WAITING their turn, and a counter bumped inside the `.then`
   // below would not have counted a single one of them.
   bumpPending(1);
+  /* ⛔ THE TICKET IS TAKEN HERE, SYNCHRONOUSLY, BEFORE THE APPEND JOINS THE QUEUE — the whole point
+   * of allocateAuditId. Taken inside the `.then` below it would be allocated at WRITE time, which is
+   * what `seq` already does and is exactly why a lost append leaves no trace today. */
+  const id = allocateAuditId();
   const run = (globalThis.__50PICK_AUDIT_QUEUE ?? Promise.resolve())
     .catch(() => {}) // isolate from any prior task's failure
     .then(async () => {
@@ -468,16 +585,16 @@ export function audit(
       if (hasDatabase()) {
         try {
           // DB-authoritative + durably persisted before this resolves.
-          stamped = await appendPersisted(entry);
+          stamped = await appendPersisted(entry, id);
         } catch (err) {
           // Fail open: a DB outage must never break the request path. Keep a
           // best-effort in-memory entry (not durable) and log loudly — the same
           // posture as the rest of the platform (enforce at runtime, never crash).
           console.error("[audit] persist failed (entry kept in ring only):", (err as Error)?.message ?? err);
-          stamped = appendInMemory(entry);
+          stamped = appendInMemory(entry, id);
         }
       } else {
-        stamped = appendInMemory(entry);
+        stamped = appendInMemory(entry, id);
       }
       ring.push(stamped);
       if (ring.length > MAX_IN_MEM) ring.shift();
@@ -928,15 +1045,208 @@ export function classifyChainLinks(counts: {
   return { linkBroken: false };
 }
 
+/**
+ * THE ATTESTATION BASELINE — the recorded, dated set of rows the chain admits it cannot re-verify.
+ *
+ * 🔴 THE DEFECT IT CLOSES (`docs/COMPLIANCE-DECISIONS.md` AR-3, 2026-09-21). Until this shipped,
+ * `verifyChainFull()` set `valid:false` ONLY on a link break. An in-place edit of a single row
+ * returned `{"valid":true,"verified":120,"unverifiable":1,"linkBroken":false}` — driven, with the
+ * tamper planted and restored — so an officer or a regulator reading `valid` alone was told a
+ * TAMPERED log was sound. The one field that did move, `unverifiable`, is not the field anyone reads
+ * first, and it was indistinguishable from the platform's genuine legacy rows (see
+ * verificationSecrets and normalizePayload for why those exist).
+ *
+ * ⛔ THE TWO THINGS THAT USED TO BE ONE NUMBER, and separating them is the whole fix:
+ *   · rows that predate the current signing regime — a real, bounded, historical population that can
+ *     never be made to recompute, and that it would be a LIE to report as tampering;
+ *   · rows that do not recompute and are NOT in that population — which is what tampering looks
+ *     like, and which must make `valid` false.
+ * Nothing in a row itself distinguishes them. What distinguishes them is a DECLARATION: an operator
+ * runs `npm run audit:baseline`, which counts the unverifiable rows, digests their exact stored
+ * content, and appends that census to the chain itself. Rows at or below the declared frontier are
+ * ATTESTED-AS-LEGACY; anything unverifiable above it is UNATTESTED and fails the check.
+ *
+ * ⭐ AND THE DECLARATION PROTECTS ITSELF. It is an ordinary chained row, appended AFTER the frontier
+ * it names — so editing it to widen the era makes that row unverifiable ABOVE its own frontier,
+ * which is exactly the condition that sets `valid:false`. There is no self-consistent forgery of it
+ * without the chain secret.
+ *
+ * ⛔ AND IT CATCHES AN EDIT TO A ROW THAT WAS ALREADY UNVERIFIABLE, which a count alone never could:
+ * the digest covers every baselined row's stored bytes AND its stored `entryHash` (rowFingerprint),
+ * folded in `seq` order. Tampering below the frontier moves the digest; tampering a row that used to
+ * verify moves the count as well.
+ *
+ * ⚠️ WITH NO BASELINE DECLARED, every unverifiable row is UNATTESTED and `valid` is false. That is
+ * not a cry of wolf — it is the true statement that the log holds rows whose integrity nothing can
+ * vouch for — and the remedy is one command. ⛔ A database with no unverifiable rows is unaffected
+ * either way, which is why this does not turn a healthy environment red.
+ */
+export const UNVERIFIABLE_BASELINE_ACTION = "audit.unverifiable_baseline";
+
+export type UnverifiableBaseline = {
+  /** The audit row that declares it. */
+  entryId: string;
+  /** Rows with `seq` at or below this are inside the declared legacy era. */
+  frontierSeq: number;
+  /** How many rows at or below the frontier were unverifiable when it was declared. */
+  count: number;
+  /** SHA-256 fold of `rowFingerprint` over those rows, in `seq` order. */
+  digest: string;
+  declaredAt: string;
+  declaredBy: string | null;
+};
+
+/** The fold's identity element — the digest of an EMPTY baselined set. Named, so "nothing was
+ *  unverifiable" is a stated value and not an empty string that could also mean "unset". */
+const EMPTY_BASELINE_DIGEST = createHash("sha256").update("50pick-audit-baseline-v1").digest("hex");
+
+/** The newest declared baseline, or null. ⚠️ NEWEST WINS, and every older one stays in the chain
+ *  forever — a re-baseline is a visible, dated act, never an erasure of the one before it. */
+export async function readUnverifiableBaseline(): Promise<UnverifiableBaseline | null> {
+  const db = prisma();
+  if (!db) return null;
+  const rows = await db.auditLog.findMany({
+    where: { action: UNVERIFIABLE_BASELINE_ACTION },
+    orderBy: { seq: "desc" },
+    take: 1,
+    select: { id: true, payload: true, createdAt: true, actorId: true },
+  });
+  const r = rows[0];
+  if (!r) return null;
+  const p = (r.payload ?? {}) as Record<string, unknown>;
+  const frontierSeq = Number(p.frontierSeq);
+  const count = Number(p.count);
+  const digest = typeof p.digest === "string" ? p.digest : "";
+  // ⛔ A MALFORMED DECLARATION IS TREATED AS NO DECLARATION. It must never be able to widen the
+  // attested era by being unreadable — "I could not parse the excuse" has to fail CLOSED.
+  if (!Number.isFinite(frontierSeq) || !Number.isFinite(count) || count < 0 || !digest) return null;
+  return {
+    entryId: r.id, frontierSeq, count, digest,
+    declaredAt: r.createdAt.toISOString(),
+    declaredBy: r.actorId ?? null,
+  };
+}
+
+/**
+ * One pass over the persisted rows: recompute every hash, and fold the ones that recompute under no
+ * key into the baseline digest when they sit at or below `frontierSeq`.
+ *
+ * ⛔ SHARED by `censusUnverifiable()` (which DECLARES a baseline) and `verifyChainFull()` (which
+ * CHECKS one), so the two can never disagree about what the digest covers. A census computed by a
+ * second implementation would attest to whatever that implementation happened to do.
+ *
+ * Each row's hash covers its OWN stored `prevHash`, so recomputing it needs no knowledge of any
+ * neighbour — which is why this may page in any order it likes. It pages by `seq`, which is
+ * `@unique`, so unlike `createdAt` it is a stable key; keyset pagination (`seq > last`) rather than
+ * `skip`, so the cost does not climb with offset. That `seq` order is also the digest's fold order.
+ */
+async function walkHashes(
+  db: NonNullable<ReturnType<typeof prisma>>,
+  frontierSeq: bigint,
+): Promise<{
+  total: number; verified: number; baselined: number; unattested: number;
+  baselineDigest: string; firstUnattested: string | null;
+}> {
+  const BATCH = 1000;
+  // `seq` is a BIGSERIAL starting at 1, so a cursor of 0 selects the whole table on the first pass.
+  // Kept as a plain bigint rather than `bigint | null` so the query args do not depend on a value
+  // inferred from the query's own result (TS7022).
+  let lastSeq = BigInt(0);
+  let total = 0, verified = 0, baselined = 0, unattested = 0;
+  let firstUnattested: string | null = null;
+  const fold = createHash("sha256").update("50pick-audit-baseline-v1");
+  let foldedAny = false;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const rows = await db.auditLog.findMany({
+      where: { seq: { gt: lastSeq } },
+      orderBy: { seq: "asc" },
+      take: BATCH,
+      select: {
+        id: true, category: true, action: true, actorId: true, targetType: true,
+        targetId: true, payload: true, ip: true, userAgent: true, createdAt: true,
+        prevHash: true, entryHash: true, seq: true,
+      },
+    });
+    if (rows.length === 0) break;
+    for (const r of rows) {
+      lastSeq = r.seq;
+      const partial = {
+        id:         r.id,
+        category:   r.category as AuditCategory,
+        action:     r.action,
+        actorId:    r.actorId,
+        targetType: r.targetType,
+        targetId:   r.targetId,
+        payload:    (r.payload as Record<string, unknown> | null) ?? undefined,
+        ip:         r.ip,
+        userAgent:  r.userAgent,
+        createdAt:  r.createdAt.toISOString(),
+        prevHash:   r.prevHash,
+      };
+      total++;
+      // A HASH mismatch is NOT automatically tampering. Try every key this entry could legitimately
+      // have been signed with (see verificationSecrets): the platform ran on the SESSION_SECRET
+      // fallback before AUDIT_CHAIN_SECRET existed, so historical rows are signed with a retired key.
+      if (hashEntry(partial) === r.entryHash || matchesAnySecret(partial, r.entryHash) >= 0) {
+        verified++;
+        continue;
+      }
+      // ⛔ THE FORK THAT IS THE WHOLE OF AR-3. Inside the declared legacy era this row is a KNOWN,
+      // accounted-for, digested member of a dated census. Outside it, it is a row that will not
+      // recompute and that nobody has ever accounted for — which is what an in-place edit looks
+      // like, and which must never be reported as a sound log.
+      if (r.seq <= frontierSeq) {
+        baselined++;
+        foldedAny = true;
+        fold.update(rowFingerprint(partial, r.entryHash));
+      } else {
+        unattested++;
+        if (!firstUnattested) firstUnattested = r.id;
+      }
+    }
+    if (rows.length < BATCH) break;
+  }
+  return {
+    total, verified, baselined, unattested,
+    baselineDigest: foldedAny ? fold.digest("hex") : EMPTY_BASELINE_DIGEST,
+    firstUnattested,
+  };
+}
+
+/**
+ * The census a baseline declaration is made of: how many rows cannot be re-verified at or below the
+ * current chain head, and the digest of their exact stored content. ⚠️ Read-only — it writes nothing
+ * and declares nothing; `scripts/audit-baseline.mts` is what appends the declaration.
+ */
+export async function censusUnverifiable(opts: { upToSeq?: bigint } = {}): Promise<{
+  frontierSeq: number; count: number; digest: string; scanned: number;
+}> {
+  const db = prisma();
+  if (!db) return { frontierSeq: 0, count: 0, digest: EMPTY_BASELINE_DIGEST, scanned: 0 };
+  const top = await db.auditLog.findMany({ orderBy: { seq: "desc" }, take: 1, select: { seq: true } });
+  const frontier = opts.upToSeq ?? top[0]?.seq ?? BigInt(0);
+  const walk = await walkHashes(db, frontier);
+  return { frontierSeq: Number(frontier), count: walk.baselined, digest: walk.baselineDigest, scanned: walk.total };
+}
+
 export async function verifyChainFull(): Promise<{
   valid: boolean; firstBreakAt?: string; index?: number; total: number;
   /** Rows that recompute under one of the keys they could have been signed with. */
   verified?: number;
-  /** Rows that recompute under NO known key — predate the current hashing regime.
-   *  Not a tamper signal on their own; the chain links are checked separately. */
+  /** Rows that recompute under NO known key. ⚠️ KEPT AS THE SUM of `baselined` + `unattested`, so
+   *  every reader that already looks at it keeps meaning what it meant; the two halves are new. */
   unverifiable?: number;
-  /** True only when the chain LINKS broke — a row inserted, removed or reordered.
-   *  This is the real tamper signal and the only thing that makes `valid` false. */
+  /** Unverifiable rows INSIDE the declared legacy era — accounted for, digested, dated. */
+  baselined?: number;
+  /** ⛔ Unverifiable rows OUTSIDE it. Any of these makes `valid` false: nothing accounts for them. */
+  unattested?: number;
+  /** True when the baselined set no longer matches the census declared over it — a row at or below
+   *  the frontier was edited. Also makes `valid` false. */
+  baselineMismatch?: boolean;
+  /** The declaration in force, or null when none has ever been made. */
+  baseline?: UnverifiableBaseline | null;
+  /** True only when the chain LINKS broke — a row inserted, removed or reordered. */
   linkBroken?: boolean;
 }> {
   const db = prisma();
@@ -1021,78 +1331,66 @@ export async function verifyChainFull(): Promise<{
     };
   }
 
-  // ── The per-row HASH recompute — order-independent by construction ───────────────────
+  // ── The per-row HASH recompute, and the ATTESTATION verdict ──────────────────────────
   //
-  // Each row's hash covers its OWN stored `prevHash`, so recomputing it needs no knowledge
-  // of any neighbour. That is why this loop can page in any order it likes — and it pages by
-  // `seq`, which is `@unique`, so unlike `createdAt` it is a stable key. Keyset pagination
-  // (`seq > last`) rather than `skip`, so the cost does not climb with offset.
-  const BATCH = 1000;
-  // `seq` is a BIGSERIAL starting at 1, so a cursor of 0 selects the whole table on the
-  // first pass. Kept as a plain bigint rather than `bigint | null` so the query args do not
-  // depend on a value inferred from the query's own result (TS7022).
-  let lastSeq = BigInt(0);
-  let total = 0;
-  let verified = 0;
-  let unverifiable = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const rows = await db.auditLog.findMany({
-      where: { seq: { gt: lastSeq } },
-      orderBy: { seq: "asc" },
-      take: BATCH,
-      select: {
-        id: true, category: true, action: true, actorId: true, targetType: true,
-        targetId: true, payload: true, ip: true, userAgent: true, createdAt: true,
-        prevHash: true, entryHash: true, seq: true,
-      },
-    });
-    if (rows.length === 0) break;
-    for (const r of rows) {
-      lastSeq = r.seq;
-      const recomputed = hashEntry({
-        id:         r.id,
-        category:   r.category as AuditCategory,
-        action:     r.action,
-        actorId:    r.actorId,
-        targetType: r.targetType,
-        targetId:   r.targetId,
-        payload:    (r.payload as Record<string, unknown> | null) ?? undefined,
-        ip:         r.ip,
-        userAgent:  r.userAgent,
-        createdAt:  r.createdAt.toISOString(),
-        prevHash:   r.prevHash,
-      });
-      // A HASH mismatch is NOT automatically tampering. Try every key this entry
-      // could legitimately have been signed with (see verificationSecrets): the
-      // platform ran on the SESSION_SECRET fallback before AUDIT_CHAIN_SECRET
-      // existed, so historical rows are signed with a retired key.
-      //
-      // Rows that match no key are counted as UNVERIFIABLE, not as a break. They
-      // predate the current hashing regime — most were written before the payload
-      // normalisation fix (undefined keys were dropped by the hash and persisted as
-      // null, so they can never recompute). Reporting them as a chain break says
-      // "someone tampered with the log", which is false and far worse than saying
-      // "these cannot be re-verified". The chain LINKS are still checked above, and
-      // those are what actually prove nothing was inserted or removed.
-      if (recomputed !== r.entryHash && matchesAnySecret({
-        id: r.id, category: r.category as AuditCategory, action: r.action, actorId: r.actorId,
-        targetType: r.targetType, targetId: r.targetId,
-        payload: (r.payload as Record<string, unknown> | null) ?? undefined,
-        ip: r.ip, userAgent: r.userAgent, createdAt: r.createdAt.toISOString(), prevHash: r.prevHash,
-      }, r.entryHash) < 0) {
-        unverifiable++;
-      } else {
-        verified++;
-      }
-      total++;
-    }
-    if (rows.length < BATCH) break;
+  // 🔴 WHAT CHANGED HERE AND WHY (AR-3, 2026-09-21). This used to count every row that would not
+  // recompute as `unverifiable` and then return `valid: true` regardless — so a single edited row
+  // returned `{"valid":true,"verified":120,"unverifiable":1,"linkBroken":false}`, measured with the
+  // tamper planted and restored. An officer reading `valid` alone was told a tampered log was sound.
+  //
+  // ⚠️ The rows that genuinely predate the signing regime are STILL not called tampering, and that
+  // restraint is the whole reason the old code was written this way: reporting them as a break says
+  // "someone tampered with the log", which is false and worse than saying "these cannot be
+  // re-verified". What changed is that "cannot be re-verified" now has to be DECLARED — counted,
+  // digested and chained (see UNVERIFIABLE_BASELINE_ACTION) — instead of being assumed.
+  const baseline = await readUnverifiableBaseline();
+  const frontier = baseline ? BigInt(baseline.frontierSeq) : BigInt(0);
+  const walk = await walkHashes(db, frontier);
+  const { total, verified, baselined, unattested } = walk;
+  const unverifiable = baselined + unattested;
+
+  // ⚠️ A baseline that no longer describes what is beneath it is itself a finding. The COUNT moves
+  // when a row that used to verify stops verifying; the DIGEST moves when a row that was already
+  // unverifiable is edited — which a count alone can never see.
+  const baselineMismatch = !!baseline
+    && (baselined !== baseline.count || walk.baselineDigest !== baseline.digest);
+
+  const base = { total, verified, unverifiable, baselined, unattested, baseline, linkBroken: false as const };
+
+  if (unattested > 0) {
+    return {
+      ...base,
+      valid: false,
+      baselineMismatch,
+      // ⚠️ `firstBreakAt` is what every existing caller renders, so it carries a SENTENCE here
+      // rather than a link-break reason: the two failures are not the same failure, and a reader
+      // must not be told rows were REMOVED when rows were EDITED.
+      firstBreakAt:
+        `${unattested} row(s) recompute under no known signing key and are not covered by a declared `
+        + `baseline — first at ${walk.firstUnattested ?? "unknown"}. `
+        + (baseline
+          ? `The baseline in force (${baseline.entryId}, declared ${baseline.declaredAt}) covers seq <= ${baseline.frontierSeq}.`
+          : "No baseline has ever been declared — run `npm run audit:baseline` to record the legacy era, "
+            + "after which anything left here is an in-place EDIT."),
+      index: total,
+    };
   }
-  // `valid` reflects the CHAIN, not the key history: the links join up. Rows that could not
-  // be recomputed are reported separately so the caller can state both facts honestly
-  // instead of collapsing them into a single alarming boolean.
-  return { valid: true, total, verified, unverifiable, linkBroken: false };
+  if (baselineMismatch && baseline) {
+    return {
+      ...base,
+      valid: false,
+      baselineMismatch,
+      firstBreakAt:
+        "the declared unverifiable baseline no longer matches the rows beneath it — declared "
+        + `${baseline.count} row(s) with digest ${baseline.digest.slice(0, 16)}..., found ${baselined} `
+        + `with ${walk.baselineDigest.slice(0, 16)}.... A row at or below seq ${baseline.frontierSeq} was EDITED.`,
+      index: total,
+    };
+  }
+  // The links join up, and every row either recomputes or sits inside a dated, digested, chained
+  // declaration. ⚠️ `unverifiable` is still reported and still means what it meant — it is now the
+  // sum of a number that is accounted for and a number that is zero.
+  return { ...base, valid: true, baselineMismatch: false };
 }
 
 /** All entries for a specific user — used by the user's self-service activity feed. */
