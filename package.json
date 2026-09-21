@@ -19,6 +19,7 @@
     "test:time": "tsx scripts/time-mask.test.mts",
     "test:numeric": "tsx scripts/numeric-input.test.mts",
     "test:audit": "tsx scripts/audit-chain.test.mts",
+    "test:audit-gap": "tsx scripts/audit-gap.test.mts",
     "test:wallet": "tsx scripts/wallet-atomic.test.mts",
     "test:loss-limit": "tsx scripts/loss-limit.test.mts",
     "test:late-bet": "tsx scripts/late-bet.test.mts",
@@ -853,7 +854,9 @@
     "diag:updown-404-drive": "node scripts/live/updown-404-drive.mjs",
     "diag:updown-404-local": "node scripts/live/updown-404-local.mjs",
     "diag:updown-chart-crash": "node scripts/live/updown-chart-crash-matrix.mjs",
-    "rehearse:audit-loss-window": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-loss-window.mts"
+    "rehearse:audit-loss-window": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-loss-window.mts",
+    "rehearse:audit-gap": "tsx scripts/db-scratch.mts --run npx tsx scripts/rehearsals/audit-gap-reconcile.mts",
+    "audit:gap-sweep": "tsx scripts/audit-gap-sweep.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

@@ -373,6 +373,51 @@ async function maybeRunHolderSweep(): Promise<void> {
   }
 }
 
+// ── The compliance-row reconciler (2026-09-21) ──────────────────────────────
+//
+// ⛔ WHAT IT IS FOR. `market-service.ts:1699` writes the bet's statutory audit row with a bare,
+// un-awaited `audit({…})` — deliberately, because a live bet must not wait on an audit write — and
+// the append is queued on one process-wide chain. A process that ENDS takes the queue with it:
+// driven on a scratch cluster, a SIGTERM lost 10 of 10 queued appends and Next's own handler calls
+// `process.exit(143)` about 30 ms in, so no grace period drains it. The HMAC chain cannot see the
+// hole (a lost append consumes no `seq`), and the table has no update and no delete anywhere in
+// `src/`, so the row can never be added later. See `audit-reconcile.ts` for the measurement.
+//
+// ⭐ THIS CHORE CANNOT REPAIR ANYTHING. It DECLARES: one chained `audit.row_missing` row naming each
+// committed bet that has no compliance row. A permanent invisible hole becomes a declared one.
+//
+// ⛔ ELAPSED-TIME CADENCE AND A BOOT GRACE, like every other chore here, and leader-leased so exactly
+// one container declares. It reads an indexed window and appends only when something is wrong, so a
+// healthy platform pays one anti-join per sweep and writes nothing at all.
+const AUDIT_GAP_SWEEP_EVERY_MS = 5 * 60 * 1000;
+const AUDIT_GAP_SWEEP_BOOT_GRACE_MS = 2 * 60 * 1000;
+/** One heartbeat an hour when there is nothing to report — a silent sweep and a sweep that stopped
+ *  running look identical in a log, and this one exists precisely to be trusted when it is quiet. */
+const AUDIT_GAP_HEARTBEAT_EVERY = 12;
+let lastAuditGapSweepAt = 0;
+let auditGapSweeps = 0;
+
+async function maybeReconcileBetAudit(): Promise<void> {
+  const now = Date.now();
+  if (now - tickerStartedAt < AUDIT_GAP_SWEEP_BOOT_GRACE_MS) return;
+  if (now - lastAuditGapSweepAt < AUDIT_GAP_SWEEP_EVERY_MS) return;
+  lastAuditGapSweepAt = now;
+  const { declareBetAuditGaps } = await import("./audit-reconcile");
+  const r = await declareBetAuditGaps({ nowMs: now });
+  auditGapSweeps += 1;
+  if (r.declared > 0) {
+    // COMPLIANCE-loud on purpose: this is the log line that says the platform is missing statutory
+    // records. The declarations themselves are in the audit chain; this makes them findable.
+    console.warn(
+      `[lifecycle] ⛔ COMPLIANCE ROWS MISSING — declared ${r.declared} bet(s) with no ` +
+        `market.position.opened row (scanned ${r.scanned} position(s) in ${r.windowFrom}..${r.windowUntil}` +
+        `${r.capped ? `, CAPPED at ${r.declared} — more exist, next sweep continues` : ""}).`,
+    );
+  } else if (auditGapSweeps === 1 || auditGapSweeps % AUDIT_GAP_HEARTBEAT_EVERY === 0) {
+    console.log(`[lifecycle] audit reconcile — ${r.scanned} position(s) scanned, every one has its compliance row.`);
+  }
+}
+
 async function maybeWatchKycReviewSla(): Promise<void> {
   const now = Date.now();
   if (now - tickerStartedAt < KYC_SLA_WATCH_BOOT_GRACE_MS) return;
@@ -502,6 +547,10 @@ export async function runLifecyclePass(): Promise<void> {
     // After retention, same contract: a watchdog that fails must never take the
     // lifecycle down — it exists to talk about failures, not to cause one.
     await maybeRunBackupWatchdog().catch((e) => console.error("[lifecycle] backup watchdog:", e));
+    // The compliance-row reconciler (see above), with its own catch on the per-chore contract: the
+    // sweep that reports missing statutory records must never be the thing that stops the ticker,
+    // and nothing that moves money waits behind it.
+    await maybeReconcileBetAudit().catch((e) => console.error("[lifecycle] audit reconcile:", e));
     // The identity review target (2026-09-13) — LAST, with its own catch. See the block above
     // `runLifecyclePass`: it sends mail, and nothing that moves or books money waits behind it.
     await maybeWatchKycReviewSla().catch((e) => console.error("[lifecycle] identity review target:", e));
