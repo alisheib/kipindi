@@ -795,14 +795,86 @@ the platform has already lost**. Nobody has ever been able to count them.
   `agent_doc.viewed`, `transactions.exported`, `privacy.dsar.exported`. Nothing else records that the
   viewing happened, so **no reconciler can ever detect their loss**. That is ISO 27001 A.12.4 access
   logging, and it needs a different remedy.
-- A **shutdown drain** is the highest-coverage option and does not fit in-process as things stand: Next's
+- ~~A **shutdown drain** is the highest-coverage option and does not fit in-process as things stand: Next's
   handler is registered first and exits in about 30 ms, and its `cleanupListeners` path is dev-only. It
-  would require `NEXT_MANUAL_SIG_HANDLE` and owning the shutdown. Judge it on its own; it is not a
-  one-line change, and ① does not wait on it.
+  would require `NEXT_MANUAL_SIG_HANDLE` and owning the shutdown.~~ ⛔ **STRUCK 2026-09-21, same night,
+  and struck rather than edited because it was WRONG in a way worth keeping visible: it reasoned about
+  the mechanism instead of driving it.** The drain does fit in-process, needs no `NEXT_MANUAL_SIG_HANDLE`
+  and does not own the shutdown. Next's handler being first is irrelevant — what matters is that it calls
+  `process.exit` itself, and an exit can be HELD. **Driven: 0 of 10 became 10 of 10.** See **§13**.
 
 **12.10 · For the switch.** ③ narrows the house-bot window to the fire itself, and ① makes whatever still
 falls through **declarable within five minutes** instead of invisible forever. Neither is a reason to turn
 anything on, and nothing here asks for that.
+
+---
+
+## 13 · THE DRAIN — the process now WAITS for the compliance queue before it dies
+
+**§12.9's last bullet said this could not be done in-process. That was reasoning, not measurement, and it was
+wrong.** It is done, it is driven by killing real processes, and it turns §12's headline number around. Re-derive
+all of it:
+
+```
+npm run test:audit-drain            # the guard   — 36 assertions, 10 controls, 0 failed, NO database
+npm run rehearse:audit-drain        # the drive   — 20 assertions, 4 controls, 0 failed, real Postgres
+npm run rehearse:audit-loss-window  # the BEFORE  — the un-drained shape, kept deliberately
+```
+
+**13.1 · The number.** Same ordering, same appends, same real `process.exit`:
+
+| | BEFORE (no drain) | AFTER (drain) |
+|---|---|---|
+| 10 queued `market.position.opened` rows | **0 of 10 landed** | **10 of 10 landed, in 23 ms** |
+| 50-append burst | not survivable | **50 of 50, in 95 ms** (1.9 ms per append, loopback) |
+| exit code a platform sees | 143 | **143** (and 130 for SIGINT, driven) |
+| held the exit for | **0 ms** | **25 ms** |
+
+**13.2 · ⛔ THE SIGNAL ONLY ARMS; THE EXIT IS HELD.** Next's handler is registered first and always will be
+(`start-server.js:390` runs before `getRequestHandlers`, and `instrumentation.ts` runs inside it) — so the answer
+is not to be earlier. It is that Next's handler calls `process.exit(143)` **itself**, and an exit can be deferred.
+`src/lib/server/audit-drain.ts` wraps `process.exit` at install time with a **pass-through that changes nothing
+until a termination signal has been seen**; after a signal the first exit is recorded, the queue is drained, and
+the real exit then runs with the caller's code. Next's call site is `process.exit(143); break;` at the end of an
+async IIFE with nothing after it, so a deferred return executes no further work.
+
+**13.3 · ⭐ AND DRAINING ON THE EXIT, NOT ON THE SIGNAL, IS THE CORRECT ORDER.** Next's cleanup awaits
+`server.close()` first, so in-flight requests finish — and queue their appends — **after** the signal. A drain
+started on the signal would drain an incomplete queue and the last requests' rows would still be lost. The exit
+call is the instant at which the queue is complete.
+
+**13.4 · The bound: 5,000 ms, argued not picked.** Next's self-hosting guide asks platforms for 10–30 s,
+Kubernetes defaults to 30 s, Docker to 10 s — the bound is set against the **tightest** of those and uses half of
+it. It is never tighter than the 2,000 ms per-tick flush already in `house-bot/worker.ts`. Measured cost: 23 ms
+for 10 appends, 95 ms for 50 — under a fiftieth of the budget. `AUDIT_DRAIN_BUDGET_MS` overrides it, **clamped to
+30 s**; an unparseable value is reported and ignored, never read as zero. ⚠️ The live Railway grace is
+`drainingSeconds: null` (RAILWAY-LIVE §2 — the authored `railway.json` is deprecated and silently ignored, trap
+13) and this lane's Railway account is not authorised to read it back, so the bound is deliberately chosen not to
+depend on it.
+
+**13.5 · Exceeding it is LOUD, and the loud block is a measurement.** A delimited `console.error` names the
+signal, the budget, the wait, the depth at exit and the number ABANDONED, says those rows can never be added and
+that `verifyChainFull()` will still call the chain valid, and points at `audit:gap-sweep` for the bet rows and at
+the access-log class that has no anchor. Driven at a 1 ms budget: **the block's count matches the rows actually
+missing from the table, its own certificate included.**
+
+**13.6 · ⭐ THE CERTIFICATE — the part an officer can use.** The drain queues one `system.shutdown_drain` row
+**behind** everything already waiting. The queue is FIFO, so it lands only after every append queued before it
+landed. **Its presence certifies the whole shutdown; its absence marks a lossy one** — the first thing on this
+platform that can tell the two apart once the container's log is gone. Payload:
+`{"signal":"SIGTERM","queuedAtExit":10,"budgetMs":5000,"exitCode":143}`, and §3.7 of the drive proves it is the
+chain HEAD.
+
+**13.7 · ⛔ `market-service.ts` IS UNCHANGED.** §12.5's refusal stands on its measurement. Nothing here puts an
+audit write on a player's critical path: the drain runs once, after the server has closed.
+
+**13.8 · ⛔ WHAT IT DOES NOT COVER — the three named risks, all in `docs/COMPLIANCE-DECISIONS.md` (2026-09-21).**
+**AR-1** the uncatchable exits (SIGKILL, OOM, `abort`, power loss) — ACCEPTED, size = queue depth at death, and ①
+is the backstop for the bet row only. **AR-2 🔴** Railway's own note says a service started via `npm run start`
+may never receive SIGTERM at all, and 50pick's start command is exactly that — **UNVERIFIED**, unmeasurable from
+this platform, with the experiment and two candidate remedies written down and the call left to Ali. **AR-3** a
+tampered row still leaves `valid:true` — OPEN, measured
+(`{"valid":true,"verified":120,"unverifiable":1,"linkBroken":false}`), and explicitly not covered by this work.
 
 ---
 

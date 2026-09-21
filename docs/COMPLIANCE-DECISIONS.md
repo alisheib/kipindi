@@ -6,6 +6,104 @@
 
 ---
 
+## 2026-09-21 · The process WAITS for the compliance queue before it dies — and the three residual risks, each measured
+
+**Status:** built and driven on branch `rel-lane`. ⛔ **Nothing here was deployed by a session**, and nothing here
+asks for a deploy. Re-derive every number below; none of it is inherited:
+
+```
+npm run test:audit-drain            # the guard      — 36 assertions, 10 controls, no database, five real kills
+npm run rehearse:audit-drain        # the drive      — 20 assertions, 4 controls, real Postgres, real exits
+npm run rehearse:audit-loss-window  # the BEFORE     — the un-drained shape, kept deliberately
+```
+
+**The defect, driven before it was touched.** `audit()` is fire-and-forget on ONE process-wide queue — 467 of the
+489 `audit(` call sites in `src/` are un-awaited, deliberately, because a live bet must not wait on an audit write
+— and a process that ENDS takes whatever is queued with it. With production's own shutdown ordering (Next's
+handler registered first, then `lifecycle.ts:603` and `house-bot/engine.ts:305`, then the app's instrumentation),
+**ten queued `market.position.opened` appends landed 0 of 10.** `verifyChainFull()` calls such a chain
+`{valid:true, linkBroken:false}`, because a lost append consumes no `seq`; and `auditLog` has only `create` in all
+of `src/`, so the row can never be added later. The hole is invisible and permanent.
+
+**Why an earlier handler is not the fix.** `next/dist/server/lib/start-server.js:390` registers
+`process.on('SIGTERM', cleanup)` **before** it calls `getRequestHandlers`, and `instrumentation.ts`'s `register()`
+runs inside that call — so Next's handler is first no matter what the app does, and at `:375` it calls
+`process.exit(143)` itself, which no listener can catch. Measured: its cleanup finished about 30 ms in.
+
+**The decision: the SIGNAL only arms, and the EXIT is held.** `src/lib/server/audit-drain.ts` wraps `process.exit`
+at install time with a pass-through that changes nothing until a termination signal has been seen. After a signal
+the first exit call — Next's — is recorded and DEFERRED, the queue is drained, and the real exit then runs with
+the code the caller asked for. ⛔ Draining on the **exit** rather than on the signal is the correct order, not a
+convenience: Next's cleanup awaits `server.close()` first, so in-flight requests finish — and queue their appends
+— **after** the signal, and a signal-time drain would drain an incomplete queue.
+
+**Driven, with its controls.** BEFORE **0 of 10** rows landed; AFTER **10 of 10**, in **23 ms**. A 50-append burst
+— deeper than anything this platform has been observed to queue — drained **50 of 50 in 95 ms** (1.9 ms per append
+on loopback). The exit code a platform sees is unchanged (143 for SIGTERM, 130 for SIGINT, both driven). With the
+drain installed but **no** signal, `process.exit(7)` is still immediate and still exits 7.
+
+**The bound is 5,000 ms, and the number is argued.** Too short loses a row permanently; too long turns a deploy
+into a hang. Next's self-hosting guide asks platforms for 10–30 s, Kubernetes defaults to 30 s and Docker to 10 s,
+so the bound is set against the **tightest** of those and uses half of it. It is also never tighter than the
+2,000 ms per-tick flush already in `house-bot/worker.ts`. `AUDIT_DRAIN_BUDGET_MS` overrides it, clamped to 30 s so
+a typo cannot hang a deploy; an unparseable value is reported and ignored, never read as zero.
+
+**Exceeding the bound is LOUD.** A delimited `console.error` block names the signal, the budget, the wait, the
+depth at exit and the number ABANDONED, states that those rows can never be added and that `verifyChainFull()`
+will still call the chain valid, and points at `npm run audit:gap-sweep` for the bet rows and at the access-log
+class that has no anchor. Driven at a 1 ms budget: the block's count matches the table exactly.
+
+**And a durable certificate, which is the part an officer can use.** The drain queues one
+`system.shutdown_drain` row **behind** everything already waiting. The queue is FIFO, so that row can only land
+after every append queued before it landed: **its presence certifies the whole shutdown, its absence marks a lossy
+one.** It is the first thing on this platform that can tell the two apart after the container's log is gone.
+
+**⚠️ What CHANGED in behaviour, recorded so nobody "restores" it:** `process.exit` is wrapped. Outside a shutdown
+it is byte-identical; inside one, the first exit is deferred by at most the budget. `test:audit-drain` carries a
+planted control for every part of that (a wrapper that defers *every* exit is FLAGGED).
+
+### The three residual risks — each named, each measured
+
+**AR-1 · The uncatchable exits. ACCEPTED.** SIGKILL, an OOM kill, `process.abort()` and a power loss run no
+handler of any design, so the drain cannot help. **Size:** the queue depth at the instant of death — measured as
+exactly 1 for a sequential producer and all of them for a burst; the deepest queue any drill here has produced is
+50. **Mitigation:** for the BET row only, `audit-reconcile.ts` declares it as `audit.row_missing` against the
+durable `Position` anchor within five minutes. ⛔ `withdraw.confirmed`, `deposit.confirmed`, `market.settled` and
+`bet.payout` have anchors of their own and are **not** covered yet. ⛔ `player.record_viewed`, `kyc_doc.viewed`,
+`agent_doc.viewed`, `transactions.exported` and `privacy.dsar.exported` have **no anchor at all** — nothing else
+records that the viewing happened, so no reconciler can ever detect their loss. That is ISO 27001 A.12.4 access
+logging and it still needs a different remedy.
+
+**AR-2 · 🔴 The signal may never arrive at all. UNVERIFIED — and it is the largest single unknown here.**
+Railway's own troubleshooting note *"NodeJS SIGTERM Handling"* (`docs.railway.com/deployments/troubleshooting/
+nodejs-sigterm-handling`) states that when a service is started with **NPM, Yarn or PNPM the package manager
+becomes the main process, the signal is intercepted, the app's handler never runs, and the service is force
+quit**. 50pick's start command is `"start": "prisma migrate deploy && next start"`, run as `npm run start`, with a
+shell between npm and node as well. **If that note applies to this service, then not only does the drain never
+run — Next's own request draining never runs, `lifecycle.ts`'s lease hand-back never runs, and the house-bot
+requeue never runs: every deploy is effectively a SIGKILL.** ⛔ **This lane could not measure it.** Windows cannot
+deliver SIGTERM to a process at all, and this session's Railway CLI account is not authorised for the project
+(`list_projects` → Unauthorized), so neither the live `drainingSeconds` nor the live start command could be read
+back. **The experiment, and it is cheap:** after the next deploy, read the retiring container's logs for a
+`[audit-drain]` line, or query the audit table for a `system.shutdown_drain` row dated at the rollover. A row
+means the signal arrived and the queue was saved; **no row means it did not.** **The two candidate remedies, in
+order of preference:** ① set the Railway service's start command to run node directly (Railway's own advice), or
+② make the npm script `exec` its final command so the shell is replaced. ⛔ **Neither was done tonight, and that
+is deliberate:** both change the command that starts production, neither can be driven on this platform, and
+shipping an unverifiable change to a production start command is precisely how a platform is taken down. **It is
+Ali's call, informed by the experiment above.**
+
+**AR-3 · `valid:true` over a TAMPERED row. OPEN, not accepted — and measured tonight.** `verifyChainFull()` sets
+`valid:false` only on a **link break**. An in-place edit of a single row therefore returns
+`{"valid":true,"total":121,"verified":120,"unverifiable":1,"linkBroken":false}` — driven, with the tamper planted
+and restored, in `rehearse:audit-loss-window` §4 and `rehearse:audit-drain` §5. **Size:** one boolean on every
+surface that renders it; an officer or regulator reading `valid` alone is told a tampered log is sound, and the
+one field that *did* move (`unverifiable`) is not the field anyone reads first. ⛔ **Not fixed here.** It is a
+separate defect from the loss this entry closes, it touches the admin chain-verify surface and the ISO 27001
+export, and it is recorded so it is not mistaken for something this work covered.
+
+---
+
 ## 2026-09-18 · D20's consequence for the ISO 27001 export — the regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the count
 
 **Status:** decided on branch `house-bots` (build ruling 501), to be built **before Commit 8**. ⚠️ **Prospective, not live:** the
