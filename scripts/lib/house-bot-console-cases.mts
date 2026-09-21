@@ -3189,11 +3189,15 @@ try {
     /* ⭐ SIX BECAME EIGHT AT C7 STEP 5, AND THE RULE IS UNCHANGED: every card of this page is guarded by `removed`
        from the INSIDE. The two new panels are two more guards — the activity panel and the history panel — and the
        number is an EQUALITY, not a floor, so a panel that ships without its guard is still red. Re-derived from a
-       run of this suite on both stores, never carried over from the last one. */
+       run of this suite on both stores, never carried over from the last one.
+       ⭐ EIGHT BECAME NINE 2026-09-21, the same way: the per-tab guidance line is a ninth guarded panel, added in
+       the commit that adds the panel. ⛔ IT WAS NOT FOLDED INTO THE RAIL'S GUARD, and that is the point — two
+       siblings under one guard need a fragment, a fragment between `&& (` and the rail breaks the pin below, and
+       loosening a pin whose claim is correct to accommodate a wrapper is how a guard stops meaning what it says. */
     ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and all four other panels",
       /* ⚠️ THE SOURCE IS DECOMMENTED, so a pin may not reach for a comment as its landmark — measured on the
          first run of this very assertion, which looked for the `312` note above the rail and found nothing. */
-      guards === 8 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
+      guards === 9 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
         && /\{view\.removed && \(\s*<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(detail),
       j({ guards }));
     /* ⛔ AND THE TAB TESTS ARE STILL PURE, which is what keeps `test:tab-anchors` and the served probe able to read

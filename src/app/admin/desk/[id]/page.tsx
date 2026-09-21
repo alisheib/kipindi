@@ -64,6 +64,24 @@ const TAB_LABEL: Record<(typeof CONSOLE_DETAIL_TABS)[number], string> = {
 };
 
 /**
+ * WHAT EACH PANEL IS FOR, in one sentence — the same shape the desk's own tabs carry, because an officer
+ * moving between the two should not meet two different conventions in one section.
+ *
+ * ⛔ EVERY LINE IS DERIVED FROM THE CODE IT DESCRIBES: the eleven caps from `REQUIRED_FOR_START`, "a product
+ * and a mode" from `rulesStartProblems`'s two refusals, and the feed/history populations from the counting
+ * readers the pagers share with their lists. ⛔ None restates a figure the panel renders — the Targets tab
+ * already carries its own active count as a badge.
+ * ⚠️ NEUTRAL WORDS ONLY (D19/453): rendered inside the console subtree that `qa:house-bots-visual` scans.
+ */
+const TAB_GUIDANCE: Record<(typeof CONSOLE_DETAIL_TABS)[number], string> = {
+  overview: "This account's state, who designated it and when, and what it has used today of each of its own limits.",
+  activity: "Every stake this one account has decided on, newest first — placed, queued, refused or failed.",
+  rules: "What this account may do: which products and entry modes, the markets it is allowed to touch, how it sizes and times a stake, and its own eleven limits. All eleven must be set, and a product and an entry mode chosen, before Start will run it.",
+  targets: "Stakes an officer has planned on a chosen poll, rather than left to the engine. Each one can be stopped before it fires.",
+  history: "Every change made to this account — designated, verified, started, paused, removed, and each time its rules or limits were saved.",
+};
+
+/**
  * THE SAVED-RULES CARD, WRITTEN ONCE FOR BOTH STATES (C7 step 7 review, visual-8).
  *
  * It was two copies of one `<dl>` that differed in exactly one line, with nothing saying why — so the drift was
@@ -261,9 +279,13 @@ async function AdminDeskAccountContent({
             rail option with no panel is a dead control; on this route that is a property of the RECORD, not only of
             the build. A removed account has exactly one thing left to show — what it was configured to do — so the
             page shows it, with no rail to click through and no empty panel behind one. */}
+        {/* 312 · the rail carries exactly the tabs whose panels exist. `activity` and `history` join it at C7 step 5
+            with the readers behind them.
+            ⛔ THE COMMENT IS BRACED. Wrapping this conditional in a fragment moved it INSIDE JSX, where a bare
+            block comment is not a comment at all but TEXT — it would have printed the words of a code comment
+            onto the account page. Caught by reading the edit, not by the compiler, which accepts it happily.
+            ⚠️ And the first attempt at THIS sentence quoted the delimiters, which closed the comment early. */}
         {!view.removed && (
-        /* 312 · the rail carries exactly the tabs whose panels exist. `activity` and `history` join it at C7 step 5
-           with the readers behind them. */
         <Tabs
           variant="line"
           ariaLabel="Account sections"
@@ -275,6 +297,17 @@ async function AdminDeskAccountContent({
             count: k === "targets" ? (view.targetsActive ?? undefined) : undefined,
           }))}
         />
+        )}
+        {/* ⭐ The desk's own convention, applied to the account page so one section reads one way.
+            ⛔ IT CARRIES ITS OWN `removed` GUARD rather than riding inside the rail's. Two siblings inside one
+            guard need a fragment, and a fragment between `&& (` and `<Tabs` breaks `1.435`'s pin on the rail —
+            a pin whose claim (the rail is guarded) is correct and should not be loosened to fit a wrapper.
+            A new guarded panel is a new guard, which is exactly what `1.435`'s own note records happening when
+            SIX BECAME EIGHT at C7 step 5. Eight becomes nine here, in the same commit as the panel.
+            ⛔ `text-body-sm`, NOT `text-caption`: `test:type-scale` §3 holds reading copy to a 12.5px floor
+            and 11px is a LABEL, not prose — guidance an officer is meant to READ belongs above that floor. */}
+        {!view.removed && (
+        <p className="px-4 lg:px-6 pt-3 text-body-sm text-text-tertiary max-w-[72ch]">{TAB_GUIDANCE[tab as (typeof CONSOLE_DETAIL_TABS)[number]]}</p>
         )}
 
         {/* 358 · THE ONE THING A REMOVED ACCOUNT STILL HOLDS: what it was configured to do. Kept as a record, never

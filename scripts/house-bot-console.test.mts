@@ -173,6 +173,17 @@ await runTwoStores({
    * dialog's own nonce pin — to what `npm run test:house-bot-console` PRINTED on this run, BOTH children
    * measured. The +4 in EACH child is the measurement, not bookkeeping: all four assertions reach both
    * stores, and a build where they reached only the memory twin would have shown +4 and +0. */
-  minPass: { memory: 710, postgres: 475 },
+  /**
+   * ⭐ 710 → 715 MEMORY / 475 → 480 POSTGRES, 2026-09-21, AND IT HAD BEEN TRAILING FOR THREE COMMITS.
+   * `1.420.unit` and its four controls (the time cap's unit word) are unconditional and run in BOTH children,
+   * so both halves moved — the Postgres side had never been re-measured for that change at all.
+   * ⛔ BOTH NUMBERS ARE WHAT A RUN PRINTED, not 710 + 5: `0.mem · exit 0 · 715 passed` and
+   * `0.pg · exit 0 · 480 passed`, ALL PASS on both stores.
+   * ⛔ WHY A TRAILING FLOOR IS NOT A COSMETIC DEBT: while it sat at 710, the five newest assertions could have
+   * stopped running and this suite would still have printed ALL PASS and exited 0 — and it is a predeploy gate,
+   * so the whole chain would have gone green over them. Found by an adversarial review of this session's own
+   * merge claim, which is the only reason it is not still trailing.
+   */
+  minPass: { memory: 715, postgres: 480 },
   dbPrefix: "hb_console",
 });
