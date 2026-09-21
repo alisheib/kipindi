@@ -538,7 +538,11 @@ async function AdminDeskAccountContent({
                               )}
                             </td>
                             <td className="p-3 text-text-secondary">{r.change ?? "—"}</td>
-                            <td className="p-3 font-mono text-body-sm text-text-subtle break-all">{r.who}</td>
+                            {/* ⛔ THE SAME CELL AS THE DESK-WIDE HISTORY, AND IT MOVES WITH IT (§K5: one shape for
+                                one thing). It broke in two here and into six lines there — the difference was
+                                only how much room was left, which is exactly why the class is not left to the
+                                width to decide. See the note at the desk history's own copy. */}
+                            <td className="p-3 font-mono text-body-sm text-text-subtle whitespace-nowrap">{r.who}</td>
                           </tr>
                         ))
                       )}

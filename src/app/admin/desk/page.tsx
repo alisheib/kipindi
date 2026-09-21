@@ -828,7 +828,20 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                               )}
                             </td>
                             <td className="p-3 text-text-secondary">{r.change ?? "\u2014"}</td>
-                            <td className="p-3 font-mono text-body-sm text-text-subtle break-all">{r.who}</td>
+                            {/* 🔴 `break-all` IS GONE, AND IT WAS READ OFF A TILE AT 640. Ruling 420 paints the
+                                actor as an ID on purpose — and `break-all` breaks INSIDE the word, so on THIS
+                                table (the only one of the two carrying an Account column, which takes a 150px
+                                floor) the Who column was squeezed to about 55px and `usr_ops_visual_officer`
+                                shattered into SIX one-to-four-character lines: `usr_` `ops_` `visu` `al_o`
+                                `ffic` `er`. The account page's copy of the same cell, one column lighter, broke
+                                cleanly in two — one value, two treatments, which is the defect this section has
+                                been pulled up on twice. At 360 it was worse than ugly: the shattered cell set
+                                the ROW height, so the desk history showed four rows per screen of mostly empty
+                                space, driven by a column that was off-screen inside the scroller.
+                                ⛔ The floor and the single line are safe because this table is already inside
+                                `ScrollX` — the id scrolls, exactly as the money and timestamp columns do, and
+                                `.admin-tbl td.tabular`'s nowrap is the same decision for the same reason. */}
+                            <td className="p-3 font-mono text-body-sm text-text-subtle whitespace-nowrap">{r.who}</td>
                           </tr>
                         ))
                       )}
