@@ -511,7 +511,16 @@ function ok(label: string, cond: boolean, extra?: string) {
   }
 }
 
-// ── §9 · houseBots — THE FOURTH FEATURE, AND THE ONLY ONE THAT IS ACTIVE ───
+// ── §9 · desk — THE FOURTH FEATURE, AND THE ONLY ONE THAT IS ACTIVE ───
+//
+// ⛔ THE KEY IS `desk` AND THE OVERRIDE IS `FEATURE_DESK` — RENAMED FROM `houseBots` / `FEATURE_HOUSEBOTS`
+// on 2026-09-21 and NOT to be "corrected" back. `FeatureName`'s members are STRING LITERALS and
+// `feature-state.ts` is imported directly by `/admin/bonuses` and seven player routes, so it sits in both of
+// `test:house-bot-surfaces`' one-hop painter populations (3.hop.2, 6.hop.2) — the populations that exist
+// because L52's house word lived in `rate-limit.ts` and was painted on `/admin/system` by a page in another
+// section. The remedy taken there was a RENAME to the neutral `desk.picker`, not an exemption entry, and this
+// is that remedy applied again. ⚠️ `houseBotsLive` keeps its honest name: a function name is not a string a
+// file can print, and these guards read what a file can PRINT.
 //
 // ⛔ WITHDRAWN HERE MEANS A SUNSET (04 F2), and it is the CODE half of a two-part terminal state:
 // `ops:house-bots-sunset --apply` writes `offCause = 'SUNSET'` on the control row, then the constant
@@ -530,8 +539,8 @@ function ok(label: string, cond: boolean, extra?: string) {
   const DES = await import("../src/lib/server/house-bot/designation.ts");
   const { houseBotControlStore } = await import("../src/lib/server/house-bot-dal.ts");
 
-  const withdrawn = () => { process.env.FEATURE_HOUSEBOTS = "WITHDRAWN"; };
-  const active = () => { delete process.env.FEATURE_HOUSEBOTS; };
+  const withdrawn = () => { process.env.FEATURE_DESK = "WITHDRAWN"; };
+  const active = () => { delete process.env.FEATURE_DESK; };
   const OFFICER = "usr_wf_house_officer";
   // ⚠️ `timeZone` and `schemaReady` are INJECTED, which is this suite's unit contract and not a dodge:
   // the engine's own suite owns the real probes (11.15, 11.21). What is measured here is the FEATURE
@@ -543,12 +552,12 @@ function ok(label: string, cond: boolean, extra?: string) {
 
   // §9a · the state itself
   active();
-  ok("§9a houseBots is ACTIVE as shipped — it is the one feature in this table that is live", houseBotsLive());
+  ok("§9a the desk feature is ACTIVE as shipped — it is the one feature in this table that is live", houseBotsLive());
   withdrawn();
-  ok("§9a FEATURE_HOUSEBOTS=WITHDRAWN is read", !houseBotsLive());
-  process.env.FEATURE_HOUSEBOTS = "SOMETHING";
+  ok("§9a FEATURE_DESK=WITHDRAWN is read", !houseBotsLive());
+  process.env.FEATURE_DESK = "SOMETHING";
   ok("§9a ⭐ a value the module does not understand falls back to the SHIPPED constant — a typo can neither withdraw a live feature nor revive a withdrawn one",
-    houseBotsLive(), "FEATURE_HOUSEBOTS=SOMETHING must read as the shipped ACTIVE");
+    houseBotsLive(), "FEATURE_DESK=SOMETHING must read as the shipped ACTIVE");
 
   // §9b · the engine arms NOTHING while the feature is withdrawn — and really arms timers when it is not
   globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;

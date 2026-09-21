@@ -14,7 +14,9 @@
  *
  * ── IT IS THE FIRST OF TWO ACTS, AND THE ORDER IS THE POINT ────────────────────────────────────
  *   1. this, through `ops:house-bots-sunset --apply`: seconds, no deploy, the bleeding stops at once;
- *   2. then `houseBots: "WITHDRAWN"` in `feature-state.ts`, committed and deployed.
+ *   2. then `desk: "WITHDRAWN"` in `feature-state.ts`, committed and deployed. ⚠️ The key there is the
+ *      NEUTRAL word by ruling (2026-09-21): it was `houseBots` until `test:house-bot-surfaces` 3.hop.2/6.hop.2
+ *      found it as a printed string in a module seven player routes import. See `FeatureName` for why.
  * Act 1 is a DATABASE marker that survives a redeploy of an older image; act 2 is a CODE constant that
  * survives a database someone edits by hand. ⛔ Neither may become the only one anyone maintains —
  * `test:withdrawn-features` §9d drives each alone and asserts they refuse identically.
