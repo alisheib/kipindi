@@ -169,7 +169,10 @@ export const expect = {
   },
 
   /**
-   * M-FLEET · the fleet's book, every desk together (`houseDayBook(day, null)`), for the EAT day of placement.
+   * M-FLEET · the fleet's P&L: the FOUR desks' own rows of `houseDayBooks(day)` summed, each on its own EAT day of
+   *   placement — never `houseDayBook(day, null)`, which also carries every OTHER lane's stake of that day (M.17n
+   *   asserts that reader as the sum of every row it returns; M.18 asserts `houseOpenExposure(null)` against the
+   *   other desks' OPEN rows read by hand).
    *   bets 4 · staked 32,000 + 25,000 + 7,000 + j = 64,000 + j · returned 84,200 + 159,850 + 0 + j = 244,050 + j
    *   realisedLoss = (64,000 + j) − (244,050 + j) = −180,050 ⭐ a LITERAL: the jittered stake cancels.
    *   fees booked over the four markets: 7,800 + 20,150 + 910 + 0 = 28,860 = COMMISSION 24,530 + TRA 2,886 + GBT 1,444
@@ -181,10 +184,15 @@ export const expect = {
 const PLAN = ["M-A1-WIN", "M-B2-WIN", "M-B1-LOSS", "M-A2-VOID"] as const;
 
 export async function run(env: Any, prior: Any): Promise<Any> {
-  const { ok, section, until, j, w, S, fleet, EXPECT, FLEET, OFFICER, passes, seen, laneWanted } = env;
+  const { ok, section, until, j, w, S, fleet, EXPECT, FLEET, OFFICER, passes, calls, laneWanted } = env;
   if (!laneWanted("M")) return null;
 
   section("lane M · MONEY — trial balance, settlement and the fleet's P&L over what lanes A and B placed");
+  /* ⛔ Alerts are counted from THIS lane's start. `seen()` counts every lane's, and under the full lane set lane G's
+     G5 pauses a desk ON PURPOSE (one botStopped · RULES_INVALID) — measured: M.19 red for that alone in a full run
+     with everything else in it green. A stop or a switch-off DURING lane M is still a red here. */
+  const callsStart: number = calls.length;
+  const inWindow = (fn: string): number => calls.slice(callsStart).filter((c: Any) => c.fn === fn).length;
 
   /* ═══ THE TWO SUBJECTS (see the header) — loaded to be MEASURED, never consulted for an expectation ═══════ */
   const LEDGER: Any = await import("../../src/lib/server/ledger.ts");
@@ -291,6 +299,7 @@ export async function run(env: Any, prior: Any): Promise<Any> {
       !!led0 && !!d.m && led0.pool === d.m.yesPool + d.m.noPool && led0.pool === gross && led0.commission === 0 && led0.tra === 0 && led0.gbt === 0 && led0.holderReturnRows === 0,
       j({ ledger: led0, yes: d.m?.yesPool, no: d.m?.noPool, gross }));
 
+    /* Each desk keeps ITS OWN EAT day of placement: four placements minutes apart can straddle 21:00 UTC. */
     d.dayKey = pos?.placedAt ? eatDay(Date.parse(pos.placedAt)) : null;
     const b0 = d.dayKey && bot ? await BOOK.houseDayBook(d.dayKey, bot.botId) : null;
     const x0 = bot ? await BOOK.houseOpenExposure(bot.botId) : null;
@@ -397,29 +406,54 @@ export async function run(env: Any, prior: Any): Promise<Any> {
     }
   }
 
-  /* ═══ THE FLEET'S P&L — book.ts over the EAT day of placement ═══════════════════════════════════════════ */
-  const dayKeys = new Set(desks.map((d) => d.dayKey).filter(Boolean));
-  const dayKey: string | null = dayKeys.size === 1 ? [...dayKeys][0] : null;
+  /* ═══ THE FLEET'S P&L — book.ts over the EAT day(s) of placement ════════════════════════════════════════
+     ⛔ NOT PINNED TO A LANE SET, AND NOT TO ONE DAY. `houseDayBook(day, null)` and `houseOpenExposure(null)` sum
+     EVERY marked position of the day / every OPEN marked position, whichever lane placed it (book.ts:96-104;
+     dal:4256-4283). Under any lane set that places and never settles — C1 fires 40,000 in lane C, D/E/F/G all
+     place — those readers carry the other lanes' money too (measured with --only A,B,C,M: bets 5, openStake
+     40,000, exposure 40,000 — a fixture red, not a product one). So the fleet LITERAL is asserted over THESE FOUR
+     desks' rows of `houseDayBooks(day)`, on each desk's own EAT day (four placements minutes apart can straddle
+     21:00 UTC), the null reader is asserted as the sum of every row it returns for that day (M.17n), and the
+     fleet's open exposure is asserted against the OTHER desks' OPEN rows read by hand (M.18). */
   for (const d of desks) {
     const { expKey, exp, bot } = d;
     const B: Any = exp.book;
     const want = { bets: B.bets, staked: B.staked ?? d.stake, open: B.open, settled: B.settled ?? d.stake, returned: B.returned ?? d.stake, realisedLoss: B.realisedLoss, projected: B.projected };
-    const b1 = dayKey && bot ? await BOOK.houseDayBook(dayKey, bot.botId) : null;
-    okP(expKey, `M.16 · ${exp.key} · houseDayBook(day, desk) = { bets 1 · staked ${want.staked ?? "j"} · open 0 · settled ${want.settled ?? "j"} · returned ${want.returned ?? "j"} · realisedLoss ${want.realisedLoss} · projected ${want.projected} } — settledStake − returned, NEGATIVE is profit, never clamped`,
+    const b1 = d.dayKey && bot ? await BOOK.houseDayBook(d.dayKey, bot.botId) : null;
+    okP(expKey, `M.16 · ${exp.key} · houseDayBook(its own EAT day of placement, desk) = { bets 1 · staked ${want.staked ?? "j"} · open 0 · settled ${want.settled ?? "j"} · returned ${want.returned ?? "j"} · realisedLoss ${want.realisedLoss} · projected ${want.projected} } — settledStake − returned, NEGATIVE is profit, never clamped`,
       !!b1 && typeof want.staked === "number" && b1.bets === want.bets && b1.stakedTzs === want.staked && b1.openStakeTzs === want.open && b1.settledStakeTzs === want.settled
         && b1.returnedTzs === want.returned && b1.realisedLossTzs === want.realisedLoss && b1.projectedLossTzs === want.projected,
-      j({ dayKey, book: b1, want }));
+      j({ dayKey: d.dayKey, book: b1, want }));
   }
   {
     const F: Any = EXPECT["M-FLEET"];
     const jStake: number = desks.find((d) => d.expKey === "M-A2-VOID")?.stake ?? NaN;
-    const bf = dayKey ? await BOOK.houseDayBook(dayKey, null) : null;
-    const books: Map<string, Any> | null = dayKey ? await BOOK.houseDayBooks(dayKey) : null;
-    ok(`M.17 · the FLEET's book (houseBotId null, one EAT day) — bets ${F.bets} · realisedLoss ${F.realisedLoss}, a LITERAL because A2's jittered stake j cancels: (${F.stakedLessJ} + j) − (${F.returnedLessJ} + j) · open 0 · and houseDayBooks() holds exactly the ${PLAN.length} desks`,
-      allPremises && !!bf && Number.isFinite(jStake) && bf.bets === F.bets && bf.realisedLossTzs === F.realisedLoss && bf.stakedTzs === F.stakedLessJ + jStake
-        && bf.returnedTzs === F.returnedLessJ + jStake && bf.openStakeTzs === 0 && bf.settledStakeTzs === F.stakedLessJ + jStake && bf.projectedLossTzs === F.realisedLoss
-        && books?.size === desks.length && desks.every((d) => d.bot && books?.has(d.bot.botId)),
-      j({ dayKey, book: bf, j: jStake, books: books ? books.size : null }));
+    const days = [...new Set(desks.map((d) => d.dayKey).filter(Boolean))] as string[];
+    const booksByDay = new Map<string, Map<string, Any>>();
+    for (const day of days) booksByDay.set(day, await BOOK.houseDayBooks(day));
+    /* The four desks' own rows, each off the day it placed on — a per-desk figure summed, never a per-day one. */
+    const mine: Any[] = desks.map((d) => (d.dayKey && d.bot ? booksByDay.get(d.dayKey)?.get(d.bot.botId) ?? null : null));
+    const sumOf = (list: Any[], k: string): number => list.reduce((s: number, b: Any) => s + (typeof b?.[k] === "number" ? b[k] : NaN), 0);
+    const fleetOk = mine.length === PLAN.length && mine.every(Boolean) && sumOf(mine, "bets") === F.bets && sumOf(mine, "realisedLossTzs") === F.realisedLoss
+      && sumOf(mine, "stakedTzs") === F.stakedLessJ + jStake && sumOf(mine, "returnedTzs") === F.returnedLessJ + jStake && sumOf(mine, "openStakeTzs") === 0
+      && sumOf(mine, "settledStakeTzs") === F.stakedLessJ + jStake && sumOf(mine, "projectedLossTzs") === F.realisedLoss;
+    ok(`M.17 · the FLEET's P&L over the four desks' rows of houseDayBooks(day) — bets ${F.bets} · realisedLoss ${F.realisedLoss}, a LITERAL because A2's jittered stake j cancels: (${F.stakedLessJ} + j) − (${F.returnedLessJ} + j) · open 0 · settled = staked · projected = realised — summed over the DESKS, so another lane's OPEN stake on the same day cannot move it`,
+      allPremises && Number.isFinite(jStake) && fleetOk,
+      j({ days, j: jStake, books: mine.map((b) => (b ? { bets: b.bets, staked: b.stakedTzs, open: b.openStakeTzs, settled: b.settledStakeTzs, returned: b.returnedTzs, realised: b.realisedLossTzs } : null)) }));
+    /* The null reader — "every bot together" — against the sum of every per-desk row of the same day, field by
+       field: the aggregation identity that makes it a fleet figure, on whatever lane set is running. */
+    const nullOk: Any[] = [];
+    for (const day of days) {
+      const all = [...(booksByDay.get(day)?.values() ?? [])];
+      const bf = await BOOK.houseDayBook(day, null);
+      const same = !!bf && bf.bets === sumOf(all, "bets") && bf.stakedTzs === sumOf(all, "stakedTzs") && bf.openStakeTzs === sumOf(all, "openStakeTzs")
+        && bf.settledStakeTzs === sumOf(all, "settledStakeTzs") && bf.returnedTzs === sumOf(all, "returnedTzs")
+        && bf.realisedLossTzs === sumOf(all, "realisedLossTzs") && bf.projectedLossTzs === sumOf(all, "projectedLossTzs");
+      nullOk.push({ day, rows: all.length, mDesks: desks.filter((d) => d.dayKey === day).length, same, bets: bf?.bets, open: bf?.openStakeTzs, realised: bf?.realisedLossTzs });
+    }
+    ok(`M.17n · houseDayBook(day, null) equals the SUM of every per-desk row houseDayBooks(day) returns for that day, field by field, on each day a fleet placement fell on (${days.length}) — and those rows hold all four M desks (⚠️ an aggregation identity: the sign mutation at book.ts:53 flips both sides alike and is caught by M.16/M.17, not here)`,
+      allPremises && days.length >= 1 && mine.every(Boolean) && nullOk.every((n) => n.same && n.rows >= n.mDesks),
+      j({ days: nullOk }));
 
     const fees = desks.map((d) => d.led1).filter(Boolean);
     const sum = (k: string) => fees.reduce((s, l) => s + l[k], 0);
@@ -429,23 +463,40 @@ export async function run(env: Any, prior: Any): Promise<Any> {
 
     const x1 = await BOOK.houseOpenExposure(null);
     const xs = await Promise.all(desks.map((d) => (d.bot ? BOOK.houseOpenExposure(d.bot.botId) : Promise.resolve(null))));
-    ok("M.18 · houseOpenExposure is 0 for the fleet and for each desk after settlement — it was the full stake before (M.4): the discriminator that settlement actually ran",
-      allPremises && x1 === 0 && xs.length === PLAN.length && xs.every((x) => x === 0), j({ fleet: x1, desks: xs }));
+    /* The OPEN marked money of every OTHER desk, read off the Position rows by hand — not through the reader under test. */
+    const mIds: string[] = desks.map((d) => d.bot?.botId).filter(Boolean);
+    const notMine = mIds.map((_, i) => `$${i + 1}`).join(", ");
+    const otherRows: Any[] = mIds.length > 0 ? await pc.$queryRawUnsafe(
+      `SELECT coalesce(sum("stake"), 0)::text AS "open", count(*)::int AS "n" FROM "Position" WHERE "houseBotId" IS NOT NULL AND "status"::text = 'OPEN' AND "houseBotId" NOT IN (${notMine})`, ...mIds) : [];
+    const others = { n: Number(otherRows[0]?.n ?? NaN), open: Number(otherRows[0]?.open ?? NaN) };
+    ok(`M.18 · houseOpenExposure is 0 for EACH of the four desks after settlement — it was the full stake before (M.4): the discriminator that settlement actually ran — and for the fleet (null) it equals EXACTLY the OPEN marked stake of every OTHER desk, read off the Position rows by hand (${others.n} position(s), ${others.open}): 0 in an A,B,M run, another lane's open money in a full one`,
+      allPremises && xs.length === PLAN.length && xs.every((x) => x === 0) && Number.isFinite(others.open) && x1 === others.open, j({ fleet: x1, desks: xs, others }));
   }
 
   /* ═══ THE STOPS READ THE SAME BOOK — a settled LOSS must not pause a desk whose cap is 900,000,000 ═══════ */
   {
-    const n0 = passes.planner.length;
     const t0 = Date.now();
-    /* Budget 40 s against a 15 s planner interval — the wait is printed so the margin is a measurement, not a hope. */
-    const passedAt = await until("a planner pass after the settlements", 40_000, async () => (passes.planner.length > n0 ? passes.planner.length : null));
+    /* A pass whose passNow (DB clock) is AFTER the last settledAt — one that read the SETTLED book, not one that
+       was mid-flight while the markets settled. Budget 40 s against a 15 s planner interval — the wait is printed
+       so the margin is a measurement, not a hope. */
+    const lastSettledMs = Math.max(...desks.map((d) => (d.m1?.settledAt ? Date.parse(d.m1.settledAt) : NaN)));
+    const pass: Any = Number.isFinite(lastSettledMs)
+      ? await until("a planner pass that STARTED after the last settlement", 40_000, async () =>
+          passes.planner.find((p: Any) => Date.parse(p?.passNowIso) > lastSettledMs) ?? null)
+      : null;
     const waitedMs = Date.now() - t0;
-    console.log(`   … M.19 · planner pass after the settlements: ${passedAt != null ? `seen after ${waitedMs} ms` : "none"} (budget 40,000 ms · interval 15,000 ms)`);
+    console.log(`   … M.19 · planner pass after the settlements: ${pass ? `seen after ${waitedMs} ms (passNow ${pass.passNowIso})` : "none"} (budget 40,000 ms · interval 15,000 ms)`);
     const bots = await Promise.all(desks.map((d) => (d.bot ? S.houseBotStore.get(d.bot.botId) : Promise.resolve(null))));
     const ctl = await S.houseBotControlStore.get();
-    ok("M.19 · a planner pass ran lossStops over the settled book (a realised LOSS of 7,000 against caps of 900,000,000): every desk still ACTIVE, no botStopped, no switchedOff, the master switch still on",
-      allPremises && passedAt != null && bots.length === PLAN.length && bots.every((b) => b?.status === "ACTIVE") && seen("botStopped") === 0 && seen("switchedOff") === 0 && ctl?.enabled === true,
-      j({ plannerPasses: passes.planner.length, waitedMs, statuses: bots.map((b) => b?.status), stopped: seen("botStopped"), off: seen("switchedOff"), enabled: ctl?.enabled }));
+    /* ⛔ THE DUTY'S OWN VERDICT, not only its absence of effect: PlannerPass carries duties.lossStops ("ok" | "skipped" |
+       "failed: …") and counts.lossStoppedBots / counts.globalLossStop (planner.ts:84-90, 177-181). A lossStops that
+       threw, or was deleted, leaves every desk ACTIVE too — the happy path of "nothing stopped" lives in the absence
+       branch unless the duty is read. */
+    ok("M.19 · a planner pass that STARTED after the last settlement ran duty lossStops \"ok\" over the settled book and counted lossStoppedBots 0 / globalLossStop 0 (a realised LOSS of 7,000 against caps of 900,000,000): every M desk still ACTIVE, no botStopped and no switchedOff in THIS lane's window (an earlier lane's pause is that lane's finding), the master switch still on",
+      allPremises && !!pass && pass.duties?.lossStops === "ok" && pass.counts?.lossStoppedBots === 0 && pass.counts?.globalLossStop === 0
+        && bots.length === PLAN.length && bots.every((b) => b?.status === "ACTIVE") && inWindow("botStopped") === 0 && inWindow("switchedOff") === 0 && ctl?.enabled === true,
+      j({ plannerPasses: passes.planner.length, waitedMs, pass: pass ? { at: pass.passNowIso, lossStops: pass.duties?.lossStops, lossStoppedBots: pass.counts?.lossStoppedBots, globalLossStop: pass.counts?.globalLossStop } : null,
+        lastSettledAt: Number.isFinite(lastSettledMs) ? new Date(lastSettledMs).toISOString() : null, statuses: bots.map((b) => b?.status), stoppedInWindow: inWindow("botStopped"), offInWindow: inWindow("switchedOff"), enabled: ctl?.enabled }));
   }
 
   /* ═══ WHAT SETTLEMENT REPORTED — the in-process return and the tamper-evident chain, against the rows ════
@@ -473,8 +524,9 @@ export async function run(env: Any, prior: Any): Promise<Any> {
        * `{ winnersPaid: 0, positionsSettled: 0 }` while M.10–M.14 show 84,200 paid and 3 settled — and the same
        * zeros are stamped into the `market.settled` audit payload and rendered to the officer by the admin
        * settlement action ("0 positions settled · TZS 0 paid to winners"). Money-neutral; reporting only. The
-       * only suite that asserts `winnersPaid` (`two-admin-policy.test.mts`) runs on the in-memory store, which has
-       * no transaction isolation, so it could never see this. It goes green when the totals are taken from the
+       * two suites that assert `winnersPaid` (`two-admin-policy.test.mts`; `concurrency.test.mts` case C, the
+       * natural home for a Postgres re-run of this) both run on the in-memory store, which has no transaction
+       * isolation, so neither could ever see this. It goes green when the totals are taken from the
        * in-scope, already-mutated `allMarketPositions` (or a read threaded through `lockTx`) — a product change
        * this lane does not make.
        */
