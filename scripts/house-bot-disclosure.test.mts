@@ -90,7 +90,29 @@ function valueImports(js: string): string[] {
   for (const m of js.matchAll(/\bimport\(\s*["']([^"']+)["']\s*\)/g)) specs.add(m[1]);
   return [...specs];
 }
-const isDirective = (code: string, d: "use client" | "use server") => new RegExp(`^\\s*(?:\\/\\/[^\\n]*\\n|\\/\\*[\\s\\S]*?\\*\\/\\s*)*["']${d}["']`).test(code);
+/**
+ * Is the file's FIRST statement the quoted directive? Leading whitespace, `//` lines and block comments skipped.
+ *
+ * 🔴 A LINEAR SCAN, NOT A REGEX (2026-09-22). This was
+ *   `new RegExp(`^\\s*(?:\\/\\/[^\\n]*\\n|\\/\\*[\\s\\S]*?\\*\\/\\s*)*["']${d}["']`).test(code)`
+ * — a `(…\s*)*` group whose alternatives each end in `\s*`, behind a leading `^\s*`: the whitespace between two
+ * comment blocks can be split among the repetitions in exponentially many ways, and on a file that does NOT carry
+ * the directive the engine tries every one before answering false. `house-console-read.ts` opens with a long run of
+ * block comments, and the day its header crossed the threshold this suite sat on §1 for fourteen minutes on three
+ * checkouts and was killed each time — so the section's "green" for that day rests on `verify:house-bot-bundle`
+ * instead. A guard that cannot finish reports nothing. The scan below is O(n) by construction, and 1.re holds it there.
+ */
+const isDirective = (code: string, d: "use client" | "use server"): boolean => {
+  let i = 0;
+  const n = code.length;
+  for (;;) {
+    while (i < n && (code[i] === " " || code[i] === "\t" || code[i] === "\r" || code[i] === "\n")) i++;
+    if (code.startsWith("//", i)) { const e = code.indexOf("\n", i); if (e < 0) return false; i = e + 1; continue; }
+    if (code.startsWith("/*", i)) { const e = code.indexOf("*/", i + 2); if (e < 0) return false; i = e + 2; continue; }
+    break;
+  }
+  return code.startsWith(`"${d}"`, i) || code.startsWith(`'${d}'`, i);
+};
 
 export function walkClientGraph(entries: string[], r: Reader, srcRoot: string): { reached: Map<string, string>; parent: Map<string, string>; hits: Array<{ file: string; word: string; via: string }> } {
   const reached = new Map<string, string>(); // file → the entry that reached it
@@ -117,6 +139,22 @@ export function walkClientGraph(entries: string[], r: Reader, srcRoot: string): 
 
 // ── §1 · the real graph ──────────────────────────────────────────────────────────────────────────────
 section("§1 · every module a client component reaches carries no house-bot vocabulary");
+{
+  /* ⛔ THE CONTROL FOR THE SCAN ABOVE, AND IT IS A CLOCK. 400 leading block comments and 50 line comments before
+     a directive, before code, and a directive inside a comment. Under the regex this replaced, the second input
+     alone runs longer than anyone waits (measured: the suite killed at 849 s on the real tree), so putting the
+     regex back makes this case red BY TIMEOUT rather than by verdict — which is still red, and is how the
+     mutation was proved. */
+  const header = "/* a */\n".repeat(400) + "// b\n".repeat(50);
+  const t0 = Date.now();
+  const first = isDirective(`${header}"use client";\nexport const x = 1;`, "use client");
+  const afterCode = isDirective(`${header}export const x = 1;\n"use client";`, "use client");
+  const inComment = isDirective('/* "use client" */\nexport const x = 1;', "use client");
+  const single = isDirective("\n\n'use server'\nexport async function f() {}", "use server");
+  const ms = Date.now() - t0;
+  ok("1.re · the directive detector is LINEAR: 450 leading comments decide in under 100 ms, and a directive after code or inside a comment is not one",
+    first && !afterCode && !inComment && single && ms < 100, `first=${first} afterCode=${afterCode} inComment=${inComment} single=${single} ${ms}ms`);
+}
 const all: string[] = [];
 const walkDir = (d: string) => {
   for (const e of readdirSync(d, { withFileTypes: true })) {
