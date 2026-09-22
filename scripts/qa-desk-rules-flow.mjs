@@ -159,8 +159,10 @@ if (!ACCOUNT) { console.log("\nno account — cannot continue"); await browser.c
 const RULES = `${BASE}/admin/desk/${ACCOUNT}?tab=rules`;
 
 /* ⭐ A FRESH ACCOUNT IS INERT, AND THE ROSTER SAYS SO ON ITS ROW (2026-09-22): no product, no mode — the row carries
-   the first reason in the warning tone with the Rules tab as the way out, beside a status chip that keeps saying what
-   the lifecycle is. Read before the account is configured, so the line is measured in the state it exists for. */
+   the first reason in the warning tone with the Rules tab as the way out, in the ACCOUNT cell under the handle (the
+   first column, on screen at 360 without a sideways scroll — review finding 2026-09-22), while the status chip three
+   columns on keeps saying what the lifecycle is. Read before the account is configured, so the line is measured in
+   the state it exists for. */
 console.log("\n§1b · the roster's own refusal on a fresh account");
 await page.goto(`${BASE}/admin/desk`, { waitUntil: "load" });
 await page.waitForTimeout(2200);
@@ -422,7 +424,9 @@ const savedNoMode = (await toasts()).join(" ~~ ");
 ok("7b.1 a product with a category but no mode SAVES (it is a Start-time refusal, not a save-time one)", /Saved/.test(savedNoMode) && !/Couldn't save/.test(savedNoMode), savedNoMode.slice(0, 160));
 const whyCard = () => page.evaluate(() => {
   const main = document.querySelector("main");
-  const titled = /Why this account is not betting/.test(main?.innerText ?? "");
+  /* The headline follows the lifecycle (review finding 2026-09-22): this account is PAUSED (fresh from designation),
+     so with items it is headed "Why this account can't start"; with none, the topic heading "Rules and limits". */
+  const titled = /Why this account can't start|Rules and limits/.test(main?.innerText ?? "");
   const items = [...document.querySelectorAll("main [data-why-item]")].map((li) => li.innerText.replace(/\s+/g, " ").trim());
   const empty = document.querySelector("main [data-why-empty]")?.innerText?.trim() ?? null;
   const link = [...document.querySelectorAll("main a")].find((a) => /Open Rules/.test(a.innerText));
@@ -468,7 +472,7 @@ for (let i = 0; i < 30; i++) {
   await page.waitForTimeout(500);
 }
 ok("7b.8 putting the mode back and saving empties the panel to its one sentence, on the page, without a reload",
-  whyAfter && whyAfter.items.length === 0 && /Nothing in the rules stops this account from betting/.test(whyAfter.empty ?? ""), JSON.stringify(whyAfter));
+  whyAfter && whyAfter.items.length === 0 && /Nothing in the rules or limits stops this account from betting/.test(whyAfter.empty ?? ""), JSON.stringify(whyAfter));
 
 // ── §8 · the exit nobody can stand at ────────────────────────────────────────────────────────────────────────
 console.log("\n§8 · work survives a sudden quit");

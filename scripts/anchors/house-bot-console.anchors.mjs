@@ -2868,8 +2868,8 @@ import { formatEat } from "@/lib/utils";`,
     /* (d) the why-panel is fed a hard-coded empty list — it says nothing stops the account, whatever the rules say. */
     name: "scope-why-panel-empty · the why-panel's item list is a constant empty array",
     file: GATE,
-    from: `    items: [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n    ],`,
-    to: `    items: [],`,
+    from: `    const items = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),\n    ];`,
+    to: `    const items: { key: string; label: string; message: string }[] = [];`,
     expect: "2g.why · ⛔ the why-panel lists every reason the engine's predicate raises",
     suite: "console-mem",
   },
@@ -2879,7 +2879,115 @@ import { formatEat } from "@/lib/utils";`,
     file: GATE,
     from: `  const scopeField = field in CONSOLE_RULES_FIELD_KEY && !Object.prototype.hasOwnProperty.call(CONSOLE_CAP_KEY, field);`,
     to: `  const scopeField = false;`,
-    expect: "2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the category remedy",
+    expect: "2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the CHAIN remedy",
+    suite: "console-mem",
+  },
+  /* ⭐ THE REVIEW OF THAT COMMIT (2026-09-22) · eleven more, one per finding it confirmed or the fix pass took on.
+   * The by-hand axis first: `BY_HAND_NO_SCREEN` was proven at the pure function only, and the three sites that hand the
+   * build's screen table to the predicate — the roster, the account page, the Start service — were invisible to this
+   * suite; a wrong table at any of them left the roster with no line, the panel saying nothing stops the account and
+   * Start starting it to do nothing. Each is put back below, one site at a time. */
+  {
+    name: "scope-byhand-roster-screens · the roster tells the predicate every by-hand screen exists, so an Enter-now-only account carries no line",
+    file: GATE,
+    from: `    const reasons = parsed !== null && parsed.ok && parseCtx ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: BY_HAND_SCREENS }) : null;`,
+    to: `    const reasons = parsed !== null && parsed.ok && parseCtx ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: { enterNow: true, targeting: true } }) : null;`,
+    expect: "2g.byhand · ⛔ the roster hands the predicate THIS build's screens",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-byhand-detail-screens · the account page tells the predicate every by-hand screen exists, so the why-panel and the badge say nothing",
+    file: GATE,
+    from: `    ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: BY_HAND_SCREENS })\n    : null;`,
+    to: `    ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: { enterNow: true, targeting: true } })\n    : null;`,
+    expect: "2g.byhand · ⛔ the why-panel hands the predicate the same screens",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-byhand-start-screens · the Start service overrides the build's screen table with all-true, so an Enter-now-only account starts to do nothing",
+    file: DESIG,
+    from: `  const problems = rulesStartProblems(parsed.rules, caps, input.rulesContext, { botId, label: bot.label });`,
+    to: `  const problems = rulesStartProblems(parsed.rules, caps, input.rulesContext, { botId, label: bot.label, byHandScreens: { enterNow: true, targeting: true } });`,
+    expect: "2g.byhand · ⛔ Start hands the predicate the same screens",
+    suite: "console-mem",
+  },
+  {
+    /* The why-panel is built without the live-bound list again — "nothing stops this account" on the page whose Start refuses it. */
+    name: "scope-why-panel-no-live-bound · the why-panel drops the saved limits a live bound now breaks",
+    file: GATE,
+    from: `      ...(liveBound ?? []).map(liveBoundItem),\n`,
+    to: `      /* dropped */\n`,
+    expect: "2g.live · ⛔ a saved limit a live bound now breaks is ON the panel",
+    suite: "console-mem",
+  },
+  {
+    /* The chains row of the key map goes, so the production shape's FIRST Start refusal falls back to the generic sentence. */
+    name: "scope-start-chains-key · the console's field-key map loses `scope.chains`, so a Start refused on the chain list is painted generic",
+    file: GATE,
+    from: `  "scope.chains": CONSOLE_LIST_KEY.chains,\n  "scope.categories": CONSOLE_LIST_KEY.categories,`,
+    to: `  "scope.categories": CONSOLE_LIST_KEY.categories,`,
+    expect: "2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the CHAIN remedy",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-product-no-mode-switch-label · PRODUCT_NO_MODE is labelled by one switch of three again",
+    file: GATE,
+    from: `  if (r.code === "PRODUCT_NO_MODE" && r.product !== undefined) return CONSOLE_FLAG_SECTION[r.product];\n`,
+    to: `  /* dropped */\n`,
+    expect: "2g.label · a ticked product with a chain but none of its own modes on is labelled `Up & Down entry`",
+    suite: "console-mem",
+  },
+  {
+    /* A stranger is silently FILTERED instead of refused — the chain-stranger save then lands and writes. This is the
+     * write the "wrote nothing" assertion could not see while it read the row AFTER the control save. */
+    name: "scope-save-strangers-filtered · a member the platform does not offer is dropped from the list and the save proceeds",
+    file: GATE,
+    from: `  if (categories.some((c) => !liveCategories.includes(c)) || chains.some((k) => !liveChains.has(k))) {\n    return { ok: false, error: RULES_SAVE_COPY.stale };\n  }`,
+    to: `  categories.splice(0, categories.length, ...categories.filter((c) => liveCategories.includes(c)));\n  chains.splice(0, chains.length, ...chains.filter((k) => liveChains.has(k)));`,
+    expect: "2g.save · …and the refused saves wrote nothing",
+    suite: "console-mem",
+  },
+  {
+    /* The row's refusal leaves the page altogether. */
+    name: "scope-roster-line-off-page · the roster page stops painting the account cell's refusal link",
+    file: PAGE,
+    from: `                            {r.inert !== null && (\n                              <Link href={r.inert.href as Route} className="inline-flex items-center min-h-[var(--tap-min)] max-w-[34ch] text-body-sm text-warning-fg hover:underline">\n                                {r.inert.text}\n                              </Link>\n                            )}\n`,
+    to: ``,
+    expect: "2g.page · the roster paints the refusal off `r.inert` as a LINK to its href, at the tap floor, in the warning tone, INSIDE THE ACCOUNT CELL",
+    suite: "console-mem",
+  },
+  {
+    /* The page types the lifecycle sentence itself again — "before this account can start" beside a green ACTIVE chip. */
+    name: "scope-callout-title-on-page · the account page types the Callout's headline instead of painting the server's",
+    file: DETAIL,
+    from: `            title={view.startReadiness.title}`,
+    to: "            title={`${view.startReadiness.blockers} things to fix before this account can start`}",
+    expect: "2g.page · the Callout's headline is the server's",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-callout-title-ignores-lifecycle · the server's Callout headline says `before this account can start` whatever the lifecycle",
+    file: GATE,
+    from: `    const title = bot.status === "ACTIVE" ? READINESS_COPY.calloutActive(items.length) : READINESS_COPY.calloutStart(items.length);`,
+    to: `    const title = READINESS_COPY.calloutStart(items.length);`,
+    expect: "2g.why · the readiness badge counts the SAME reasons",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-why-title-constant · the why-panel is headed `Why this account is not betting` over an empty list and over a paused account alike",
+    file: GATE,
+    from: `      title: items.length === 0 ? READINESS_COPY.panelClear : bot.status === "ACTIVE" ? READINESS_COPY.panelNotBetting : READINESS_COPY.panelCantStart,`,
+    to: `      title: READINESS_COPY.panelNotBetting,`,
+    expect: "2g.title · on a PAUSED account with reasons the why-panel is headed",
+    suite: "console-mem",
+  },
+  {
+    /* The roster spells the empty list one way and the record rows another again. */
+    name: "scope-none-chosen-two-spellings · the one spelling home for an empty list is lowercased, so the roster and the record rows disagree",
+    file: GATE,
+    from: `const NONE_CHOSEN = "None chosen";`,
+    to: `const NONE_CHOSEN = "none chosen";`,
+    expect: "2g.words · ⛔ THE FINDING · the roster's scope line names what each ticked product can REACH",
     suite: "console-mem",
   },
 ];

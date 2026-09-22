@@ -471,7 +471,7 @@ Lowering `maxDesignatedBots` below the number of designated bots is allowed and 
     - `PRODUCT_NO_MODE` — "Polls is on but no entry mode is on for polls." / "Up & Down is on but no entry mode is on for Up & Down.";
     - `MODE_WITHOUT_PRODUCT` — "{mode} is on for {product}, but {Product} is off.", one per orphan mode;
     - `BY_HAND_NO_SCREEN` — "Enter now is the only entry mode on for polls, and no screen on this build can press it." (and the Targeted-stakes and both forms). Enter now or targets alone count as an entry mode **only once a screen exists that can press them** (`BY_HAND_SCREENS` in `console-routes.ts`, tied by existence to the page at each route);
-  - a saved value that a live bound now breaks: "Can't start: the platform minimum stake is now TZS {m}; Stake min is TZS {x}." The same check covers a stake min above the live maximum and a min gap below the live floor, and, while Enter now is on, both Enter now stakes and the staff-chosen daily cap.
+  - a saved value that a live bound now breaks: "Can't start: the platform minimum stake is now TZS {m}; Stake min is TZS {x}." The same check covers a stake min above the live maximum and a min gap below the live floor, and, while Enter now is on, both Enter now stakes and the staff-chosen daily cap. ⭐ **One home (review finding 2026-09-22):** these four checks are `rulesLiveBoundProblems`, which Start pushes as its BELOW_MIN/ABOVE_MAX refusals (now with the Rules href, which they never carried) and the account page's why-panel reads too — until then the panel printed "Nothing in the rules stops this account from betting." on the page whose Start dialog refused the account on a moved platform minimum. The panel composes its own sentence from the entry's `value` and `bound`, under the limit's own label ("Stake min · Saved as TZS 500; the platform minimum is now TZS 1,000."), because Start's own names one field in the engine's vocabulary. `revalidateLive` (planner.ts) auto-pauses a RUNNING account on the same stake minimum and gap floor, so the panel's item is honest in every lifecycle state.
 - **Production follow-up (owner-side, no code):** an ACTIVE account whose stored rules are the production shape keeps running unchanged (the engine's semantics are identical — it matched nothing before and matches nothing now) and is refused at its next Start until a chain or category is chosen or the product is turned off. A Pause → Start cycle surfaces the refusal safely; the roster now names the reason on the row without it.
 - **Start warnings:** "{label} has no automatic mode: it bets only when you press Enter now." (or "… when you press Enter now or a target reacts.", or "… when a target reacts."), and "Every enabled mode is currently impossible." when every enabled counter is "never" and nothing else is on.
 
@@ -695,18 +695,30 @@ This is the whole path from "put an account on the desk" to "Start will run it".
    `R-PRODUCT-LIST` marks the group (`aria-invalid` on the fieldset and every box), the sentence names the remedy
    ("Choose at least one poll category, or turn Polls off."), and focus lands in the group. A mode on for a
    product that is off is refused on that switch (`R-MODE-PRODUCT`).
-6. **Start** refuses while any of the eleven `REQUIRED_FOR_START` caps is unset, or for any reason the rules
-   cannot reach a market (§5.4's list). The rail badges `rules` with the count still outstanding — the unset caps
-   plus one per reason — and the Callout above the rail says "N things to fix before this account can start".
-7. **"Why this account is not betting"** — one server-built panel (`whyNotBetting`, from `rulesInertReasons`
-   over the same parse context the roster reads, with `BY_HAND_SCREENS`), painted on the Overview (linked to the
-   Rules tab) and above the rules form (unlinked): every reason with the label of the control that fixes it, then
-   the required caps still unset with their consequence; when the list is empty it says "Nothing in the rules
-   stops this account from betting." It says nothing about the master switch or the pause — the strip does.
+6. **Start** refuses while any of the eleven `REQUIRED_FOR_START` caps is unset, for any reason the rules
+   cannot reach a market (§5.4's list), or for a saved limit a live bound now breaks. The rail badges `rules`
+   with the count still outstanding — the unset caps, one per reason, one per broken bound — and the Callout
+   above the rail carries the SERVER's headline, chosen by the lifecycle (review finding 2026-09-22): "N things
+   to fix before this account can start" on a paused account, "N things stop this account from betting" on a
+   running one. Until then the page typed "before this account can start" beside a green ACTIVE chip on the
+   production-shaped account, which had been started for days.
+7. **The why-panel** — one server-built panel (`whyNotBetting`, from `rulesInertReasons` over the same parse
+   context the roster reads, with `BY_HAND_SCREENS`, plus the unset required caps and `rulesLiveBoundProblems`
+   over the platform's live stake bounds), painted on the Overview (linked to the Rules tab) and above the rules
+   form (unlinked): every reason with the label of the control that fixes it (`PRODUCT_NO_MODE` by its product's
+   entry section, since any of the three switches fixes it), then the required caps still unset with their
+   consequence, then each broken bound with both figures. Its heading follows the lifecycle too: "Why this
+   account is not betting" on a running account, "Why this account can't start" on a paused one, and — with
+   nothing to list — the topic heading "Rules and limits" over "Nothing in the rules or limits stops this
+   account from betting." (a heading that asserted "is not betting" over that sentence, on an account that was
+   betting, was the review's finding). It says nothing about the master switch or the pause — the strip does.
    **The roster** paints the same facts on every row: the scope column reads one line per ticked product with
-   what it can REACH as labels ("Polls · Sports, Macro", "Up & Down · BTC/USD 5-min"), never the summary words
-   the switches spell, and an account whose rules stop it carries "Can't bet — {first reason} (N more)" in the
-   warning tone, linked to its Rules tab, beside a status chip that keeps saying what the lifecycle is.
+   what it can REACH as labels ("Polls · Sports, Macro", "Up & Down · BTC/USD 5-min"; "None chosen" — the record
+   rows' spelling — for a product that reaches nothing), never the summary words the switches spell, and an
+   account whose rules stop it carries "Can't bet — {first reason} (N more)" in the warning tone, linked to its
+   Rules tab, **in the Account cell under the handle** — the first column, on screen at 360 without a sideways
+   scroll; the status chip three columns on keeps saying what the lifecycle is. (It sat in the Products cell,
+   the seventh column of the scroller, and an earlier revision of this paragraph called that "beside the chip".)
 
 ### 7.3 What the form guarantees about not losing work
 

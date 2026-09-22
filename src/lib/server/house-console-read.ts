@@ -46,7 +46,7 @@ import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { resolveRange } from "./date-range";
-import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, SCOPE_PRODUCTS, isClearExempt, parseHouseBotRules, rulesInertReasons, rulesReach, unitSuffix, type CapField, type FieldId, type HouseBotRulesV1, type InertReason, type LimitField, type ParseContext } from "@/lib/house-bot/rules";
+import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, SCOPE_PRODUCTS, isClearExempt, parseHouseBotRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LimitField, type LiveBoundProblem, type ParseContext } from "@/lib/house-bot/rules";
 /* ⭐ THE SCOPE PICKER'S TWO LISTS (prod finding 2026-09-22): the platform's own category list and its own label
  * helper, so the form and the roster paint the words a player sees and never a raw key. `dict.en` because the
  * console is an English surface; the helper takes the dictionary rather than a locale. */
@@ -70,7 +70,8 @@ import { DESIGNATE_COPY, designateHouseBot, reverifyHouseBot, startHouseBot } fr
  * the check card is served by a gated reader rather than by the page. */
 import { houseBotEligibility } from "./house-bot/eligibility";
 import { positionStore } from "./market-dal";
-import { rateCheckAsync } from "./rate-limit";
+import { RATE_RULES, rateCheckAsync } from "./rate-limit";
+import { getGlobalConfig } from "./market-config";
 import { displayLabel } from "@/lib/display-label";
 import { parseQuery, matchesQuery, fieldNames, ACCOUNT_PICKER_SEARCH } from "@/lib/search";
 import { LABEL_COPY, LABEL_MAX_CHARS, LABEL_MIN_CHARS, TEXT_MAX_CHARS, validateLabel, validateNote } from "@/lib/house-bot/rules";
@@ -571,15 +572,17 @@ const categoryWord = (c: string): string => categoryLabel(dict.en, c as MarketCa
 /** A chain as the parse context labels it (`BTC/USD 5-min`), keyed by the durable `<assetId>:<minutes>` key. */
 const chainWord = (ctx: Pick<ParseContext, "chains">, key: string): string =>
   ctx.chains.find((c) => c.key === key)?.label ?? "a chain this platform no longer offers";
+/** ⛔ ONE SPELLING for a list that holds nothing — the record rows and the roster's scope lines both read it. */
+const NONE_CHOSEN = "None chosen";
 /** A stored list as words: its members' labels, or the state when it holds none. */
-const listWords = (labels: readonly string[]): string => (labels.length > 0 ? labels.join(", ") : "None chosen");
+const listWords = (labels: readonly string[]): string => (labels.length > 0 ? labels.join(", ") : NONE_CHOSEN);
 
 /**
  * ⛔ THE OPERATIVE SCOPE, ONE LINE PER TICKED PRODUCT (prod finding 2026-09-22). "Up & Down · Polls" was true of
  * the switches and false of the account: both lists were empty, so the engine's predicate ended in `[].includes`
  * and refused every market. The line now names what each ticked product can REACH — computed by `rulesReach`,
- * which asks the engine's own predicate member by member — so a product that reaches nothing says "none chosen"
- * on the same row that says the account is active.
+ * which asks the engine's own predicate member by member — so a product that reaches nothing says "None chosen"
+ * on the same row that says the account is active (the record rows' own spelling, `NONE_CHOSEN`, not a second one).
  */
 function scopeLines(rules: HouseBotRulesV1, ctx: Pick<ParseContext, "chains" | "categories">): string[] {
   const reach = rulesReach(rules, ctx);
@@ -594,7 +597,7 @@ function scopeLines(rules: HouseBotRulesV1, ctx: Pick<ParseContext, "chains" | "
     /* The middot stays with the product word; the ONE break allowed before the members is after it — read off
        the second re-shot tile, where binding the first member to the word made the widest line box wider than
        the column and pushed the table past its scroller at 1280. */
-    out.push(`${oneLine(PRODUCT_WORDS[product])} · ${members.length > 0 ? members.map(oneLine).join(", ") : oneLine("none chosen")}`);
+    out.push(`${oneLine(PRODUCT_WORDS[product])} · ${members.length > 0 ? members.map(oneLine).join(", ") : oneLine(NONE_CHOSEN)}`);
   }
   return out.length > 0 ? out : ["None"];
 }
@@ -1918,6 +1921,8 @@ function consoleRulesFieldLabel(field: string): string {
   if (field === "scope.products.polls") return PRODUCT_WORDS.polls;
   if (field === "enterNow.enabled") return "Enter now";
   if (field === "targeting.enabled") return "Targeted stakes";
+  /* The two Enter now stakes a live bound can break (`rulesLiveBoundProblems`): `FIELD_META`'s own labels, neutral. */
+  if (field === "enterNow.thinStakeTzs" || field === "enterNow.openerStakeTzs") return FIELD_META[field].label;
   for (const p of SCOPE_PRODUCTS) {
     for (const m of ENTRY_MODES) {
       if (field === `modes.${p}.${m}`) return `${CONSOLE_FLAG_SECTION[p]}${SEP}${ENTRY_MODE_WORDS[m]}`;
@@ -1930,13 +1935,51 @@ function consoleRulesFieldLabel(field: string): string {
 /**
  * The label a reason is painted under. The two GLOBAL reasons sit on the first control of their group (that is
  * the field the form marks), but "Up & Down — Choose at least one product." would read as an instruction about
- * that one switch: they are labelled by the group instead. Every other reason is labelled by its field.
+ * that one switch: they are labelled by the group instead. ⛔ `PRODUCT_NO_MODE` is the same shape one level down
+ * (review finding 2026-09-22): its field is the product's FIRST mode switch, so labelling it by field read
+ * "Up & Down entry · React to a player's stake" over a sentence that says no mode at all is on — pointing at one
+ * switch of three when any of them fixes it. It is labelled by its product's entry section. Every other reason is
+ * labelled by its field.
  */
 function inertReasonLabel(r: InertReason): string {
   if (r.code === "NO_PRODUCT") return CONSOLE_FLAG_SECTION.products;
   if (r.code === "NO_MODE") return "Entry modes";
+  if (r.code === "PRODUCT_NO_MODE" && r.product !== undefined) return CONSOLE_FLAG_SECTION[r.product];
   return consoleRulesFieldLabel(r.field);
 }
+
+/**
+ * ⭐ A SAVED LIMIT A LIVE BOUND NOW BREAKS, IN THE CONSOLE'S OWN WORDS (review finding 2026-09-22). Start's
+ * sentence for the same problem names the field in the engine's vocabulary ("the staff-chosen daily cap" is a
+ * 453 needle), so the panel composes its own from the one label home and the field's own unit — the value and the
+ * bound come off `rulesLiveBoundProblems`, the list Start itself refuses from.
+ */
+function liveBoundSentence(p: LiveBoundProblem): string {
+  /* The item is painted UNDER the field's label, so the sentence does not name the field again (432(n), read off
+     the 1280 tile: "Stake min / Stake min is TZS 500, below…"). */
+  const side = p.code === "BELOW_MIN" ? "minimum" : "maximum";
+  return `Saved as ${limitValue(p.field, p.value)}; the platform ${side} is now ${limitValue(p.field, p.bound)}.`;
+}
+
+/**
+ * ⛔ THE THREE HEADLINES, BY LIFECYCLE (review finding 2026-09-22). "N things to fix before this account can
+ * start" was painted over a green ACTIVE chip on the production-shaped account — an account started days
+ * earlier — and "Why this account is not betting" was painted over "Nothing in the rules stops this account
+ * from betting." on an account that was betting. Every item is a Start refusal by construction (`rulesStartProblems`'
+ * own rules-and-limits list), so on a paused account the headline is Start's; on a running one every item is a
+ * reason the engine matches nothing or the planner's F5 pass will pause it; with no item the headline is a topic.
+ */
+const READINESS_COPY = {
+  panelClear: "Rules and limits",
+  panelNotBetting: "Why this account is not betting",
+  panelCantStart: "Why this account can't start",
+  clear: "Nothing in the rules or limits stops this account from betting.",
+  /* ⛔ A FAILED READ IS NOT A CLEAN BILL (355): with the platform's stake bounds unreadable, the limits were not
+     checked against them, and the sentence says exactly that much. */
+  clearUnchecked: "Nothing in the rules stops this account from betting. The platform's stake bounds couldn't be read, so the limits were not checked against them.",
+  calloutStart: (n: number): string => (n === 1 ? "1 thing to fix before this account can start" : `${formatNumber(n)} things to fix before this account can start`),
+  calloutActive: (n: number): string => (n === 1 ? "1 thing stops this account from betting" : `${formatNumber(n)} things stop this account from betting`),
+} as const;
 
 /** What the account's rules form posts. ⛔ Neutral keys only, and the WHOLE form or nothing. */
 export type ConsoleRulesSaveInput = {
@@ -2498,15 +2541,17 @@ export type ConsoleRulesForm = {
  * (membership of `REQUIRED_FOR_START`, never a typed 11) and the ten switches. Two sources for one fact is how
  * a badge comes to disagree with the panel it points at, and this badge exists to agree.
  *
- * ⛔ IT ANSWERS "WHAT IS STILL EMPTY", NOT "WILL START SUCCEED", AND THE COPY SAYS SO. `rulesStartProblems` is
- * the authority on the second question and it is deliberately NOT called here: it needs a full `RulesContext`
- * (`loadRulesContext` is five reads plus a rate profile per chain), which is a real cost to add to every render
- * of a page ruling 356 already holds to a tight read budget — for an aid, not a gate. So this covers the
- * dominant case, an account whose required fields are empty, and the live-bound refusals it cannot see (a
- * platform minimum that moved under a saved cap) are still named by the real Start refusal, which is the thing
- * that actually decides.
- * ⚠️ READINESS COMPUTED FROM A LIST IS A CLAIM; ONLY CALLING THE SERVICE PROVES IT. That is why the headline
- * reads "still to fill" and never "ready to start", and why nothing here is wired to enable a control.
+ * ⛔ IT ANSWERS "WHAT THE RULES AND LIMITS REFUSE", NOT "WILL START SUCCEED", AND THE COPY SAYS SO. The full
+ * `rulesStartProblems` is deliberately NOT called here: it needs a whole `RulesContext` (`loadRulesContext` is
+ * five reads plus a rate profile per chain), a real cost on a page ruling 356 holds to a tight read budget. Its
+ * three rules-and-limits sources are read instead, each from the same home Start reads: the required caps still
+ * unset (off the form model), every `rulesInertReasons` cause, and — since the review of 2026-09-22 — every
+ * `rulesLiveBoundProblems` entry, which needs only the platform's stake bounds (`getGlobalConfig`, the process
+ * cache) and the bet-place refill (a constant). Until then the panel could print "Nothing in the rules stops this
+ * account from betting." on the page whose Start dialog refused the account on a moved platform minimum.
+ * ⚠️ READINESS COMPUTED FROM A LIST IS A CLAIM; ONLY CALLING THE SERVICE PROVES IT. The service adds the refusals
+ * that need reads (eligibility, consent, today's loss), so nothing here is wired to enable a control, and the
+ * headline never reads "ready to start".
  * ⛔ AND NOT ONE VALIDATOR SENTENCE IS PAINTED (453). Its messages are the service's and the bell's too; the
  * labels here are the console's own, from the one label home, exactly as the limit conflicts are. ⚠️ 4.453's
  * lexicon scan would NOT have caught the mistake — those messages carry no house word — so this rule has no
@@ -2515,6 +2560,12 @@ export type ConsoleRulesForm = {
 export type ConsoleStartReadiness = {
   /** Unfinished things. `0` means the rules refuse a start for none of them. */
   blockers: number;
+  /**
+   * ⛔ THE CALLOUT'S HEADLINE, CHOSEN HERE BY THE LIFECYCLE (review finding 2026-09-22): "N things to fix before
+   * this account can start" on a paused account, "N things stop this account from betting" on a running one — the
+   * page had said "before this account can start" beside a green ACTIVE chip on the production-shaped account.
+   */
+  title: string;
   /**
    * ⛔ What to fix, each in the console's own words. Empty when `blockers` is 0.
    *
@@ -2617,11 +2668,14 @@ export type ConsoleDetailView = {
   /**
    * ⭐ "WHY THIS ACCOUNT IS NOT BETTING" (prod finding 2026-09-22) — one server-built model, painted on the overview
    * AND above the rules form by ONE component. Every `rulesInertReasons` cause with the console's own label for
-   * the field that fixes it, then the required caps still unset with their consequence; `empty` is what the
-   * panel says when the list is empty. It is `null` for a removed account and for rules that would not parse.
+   * the field that fixes it, then the required caps still unset with their consequence, then every saved limit a
+   * live bound now breaks (`rulesLiveBoundProblems`, the list Start refuses from — review finding 2026-09-22);
+   * `empty` is what the panel says when the list is empty. It is `null` for a removed account and for rules that
+   * would not parse.
    * ⛔ IT SAYS NOTHING ABOUT THE MASTER SWITCH OR THE PAUSE: the strip above the rail already does (432(n)).
    */
   whyNotBetting: {
+    /** `READINESS_COPY`'s: the lifecycle's headline while there are items, a topic heading when there are none. */
     title: string;
     items: readonly { key: string; label: string; message: string }[];
     empty: string;
@@ -3997,7 +4051,7 @@ export async function houseDetailForConsole(
     ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;
   const wantHistoryPage = wantHistory && q.eventId && !q.hpageAsked
     ? await consoleHistoryAnchorPage(q.eventId, bot.id, q.hpage) : q.hpage;
-  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR,
+  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR, boundsR,
     feedR, feedCountR, historyR, historyCountR] = await Promise.allSettled([
     readBotAndHolder(bot.id, { nowMs }),
     houseDayBook(dayKey, bot.id),
@@ -4008,6 +4062,9 @@ export async function houseDetailForConsole(
     houseBotTargetStore.countForBot(bot.id, "all"),
     houseBotTargetStore.countActive({ botId: bot.id }),
     loadParseContext(),
+    /* ⭐ THE PLATFORM'S LIVE STAKE BOUNDS — ONE PLATFORM READ, THE PROCESS CACHE (review finding 2026-09-22): what
+     * `rulesLiveBoundProblems` needs and all it needs, so the why-panel refuses what Start refuses. */
+    getGlobalConfig(),
     wantFeed
       ? houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantFeedPage - 1) * CONSOLE_FEED_PER_PAGE })
       : Promise.resolve(null),
@@ -4167,6 +4224,15 @@ export async function houseDetailForConsole(
   const reasons: InertReason[] | null = parsed !== null && parsed.ok && parseCtx
     ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: BY_HAND_SCREENS })
     : null;
+  /* ⭐ AND THE SAVED LIMITS AGAINST THE LIVE BOUNDS, FROM THE LIST START REFUSES FROM (review finding 2026-09-22).
+   * `null` is "the bounds could not be read", which is not "no problem" (355). */
+  const liveBound: LiveBoundProblem[] | null = parsed !== null && parsed.ok && boundsR.status === "fulfilled"
+    ? rulesLiveBoundProblems(
+      parsed.rules,
+      Object.fromEntries(CAP_FIELDS.map((k) => [k, bot[k]])) as HouseBotCaps,
+      { stakeBounds: { minTzs: boundsR.value.minStake, maxTzs: boundsR.value.maxStake }, betPlaceRefillPerMin: RATE_RULES["bet.place"].refillPerMin },
+    )
+    : null;
   /**
    * ⭐ THE SAME FACTS AS `rules`, AS INPUTS RATHER THAN SENTENCES (2026-09-21) — and it is a SEPARATE shape on
    * purpose. `ConsoleRuleRow` carries formatted display strings ("TZS 20,000", "Not set"), which is exactly
@@ -4299,30 +4365,42 @@ export async function houseDetailForConsole(
      disagree with the panel it points at — and the old pair "A product" / "An entry mode" was exactly that: a
      restatement of two flags, silent on an account whose product reached nothing (prod finding 2026-09-22). */
   const unsetCaps = rulesForm == null ? [] : rulesForm.caps.filter((c) => c.required && c.value === "");
+  /* ⭐ THE THIRD KIND — a saved limit a live bound now breaks — COUNTS IN BOTH the badge and the panel (review finding
+     2026-09-22), and its label is the same label home's; `null` bounds count nothing and the panel says so. */
+  const liveBoundItem = (p: LiveBoundProblem) => ({ key: CONSOLE_RULES_FIELD_KEY[p.field] ?? p.field, label: consoleRulesFieldLabel(p.field), message: liveBoundSentence(p) });
   const startReadiness: ConsoleStartReadiness | null = (() => {
     if (rulesForm == null || reasons == null || removed) return null;
     const items: { label: string; unset: boolean }[] = [
       ...unsetCaps.map((c) => ({ label: c.label, unset: true })),
       ...reasons.map((r) => ({ label: inertReasonLabel(r), unset: false })),
+      ...(liveBound ?? []).map((p) => ({ label: consoleRulesFieldLabel(p.field), unset: false })),
     ];
-    return { blockers: items.length, items, href: consoleBotTabHref(bot.id, "rules") };
+    const title = bot.status === "ACTIVE" ? READINESS_COPY.calloutActive(items.length) : READINESS_COPY.calloutStart(items.length);
+    return { blockers: items.length, title, items, href: consoleBotTabHref(bot.id, "rules") };
   })();
 
   /**
    * ⭐ "WHY THIS ACCOUNT IS NOT BETTING" (prod finding 2026-09-22) — the same reasons, as sentences with the label
    * of the control that fixes each, for the overview and for the head of the rules form. ⛔ The empty sentence is
-   * about the RULES only: the strip already says whether the desk is off or the account paused (432(n)).
+   * about the RULES AND LIMITS only: the strip already says whether the desk is off or the account paused (432(n)).
+   * ⛔ THE HEADLINE FOLLOWS THE LIFECYCLE (`READINESS_COPY`): every item is a Start refusal, so a paused account is
+   * told why it can't start, a running one why it is not betting, and a clean list gets a topic, not a claim.
    */
-  const whyNotBetting: ConsoleDetailView["whyNotBetting"] = rulesForm == null || reasons == null || removed ? null : {
-    title: "Why this account is not betting",
-    items: [
+  const whyNotBetting: ConsoleDetailView["whyNotBetting"] = (() => {
+    if (rulesForm == null || reasons == null || removed) return null;
+    const items = [
       ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),
       ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),
-    ],
-    empty: "Nothing in the rules stops this account from betting.",
-    href: consoleBotTabHref(bot.id, "rules"),
-    hrefLabel: "Open Rules",
-  };
+      ...(liveBound ?? []).map(liveBoundItem),
+    ];
+    return {
+      title: items.length === 0 ? READINESS_COPY.panelClear : bot.status === "ACTIVE" ? READINESS_COPY.panelNotBetting : READINESS_COPY.panelCantStart,
+      items,
+      empty: liveBound === null ? READINESS_COPY.clearUnchecked : READINESS_COPY.clear,
+      href: consoleBotTabHref(bot.id, "rules"),
+      hrefLabel: "Open Rules",
+    };
+  })();
 
   const targets: ConsoleTargetRow[] | null = targetRows == null ? null : targetRows.map((t: StoredHouseBotTarget) => {
     const at = Date.parse(t.endedAt ?? t.createdAt);

@@ -4913,13 +4913,13 @@ try {
   /* ━━ THE ROSTER: THE OPERATIVE SCOPE AND THE ROW'S OWN REFUSAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
   {
     const row = await rosterRow(prod.botId);
-    ok("2g.inert · ⛔ THE FINDING · an ACTIVE account whose rules reach nothing carries its refusal on the roster — the first reason's own sentence, a count of the rest, and the Rules tab as the way out — beside a status chip that still says Active",
+    ok("2g.inert · ⛔ THE FINDING · an ACTIVE account whose rules reach nothing carries its refusal on the roster — the first reason's own sentence, a count of the rest, and the Rules tab as the way out — on the same row as a status chip that still says Active",
       row.statusWord === SD.HOUSE_BOT_STATUS_DISPLAY.ACTIVE.word && row.inert !== null
         && /^Can't bet — /.test(row.inert.text) && row.inert.text.includes(R.INERT_COPY.noList.updown) && /\(1 more\)$/.test(row.inert.text)
         && row.inert.href === RULES_HREF(prod.botId),
       j({ status: row.statusWord, inert: row.inert }));
-    ok("2g.words · ⛔ THE FINDING · the roster's scope line names what each ticked product can REACH — one line per product, each saying it reaches none — never the summary words the switches spell",
-      j(row.products) === j([scopeLine("Up & Down", ["none chosen"]), scopeLine("Polls", ["none chosen"])]),
+    ok("2g.words · ⛔ THE FINDING · the roster's scope line names what each ticked product can REACH — one line per product, each saying it reaches none, in the record rows' own spelling — never the summary words the switches spell",
+      j(row.products) === j([scopeLine("Up & Down", ["None chosen"]), scopeLine("Polls", ["None chosen"])]),
       j(row.products));
 
     /* ⭐ THE CONTROL: choose one category and the chain, and the same row stops refusing and names the members as
@@ -4949,7 +4949,7 @@ try {
     const half = await rosterRow(prod.botId);
     ok("2g.inert · a ticked product that reaches nothing is refused even while the other product is live — the row names the Polls remedy and the Up & Down line names its chain",
       half.inert !== null && half.inert.text.includes(R.INERT_COPY.noList.polls) && !/more\)$/.test(half.inert.text)
-        && half.products[0] === scopeLine("Up & Down", [CHAIN_LABEL]) && half.products[1] === scopeLine("Polls", ["none chosen"]),
+        && half.products[0] === scopeLine("Up & Down", [CHAIN_LABEL]) && half.products[1] === scopeLine("Polls", ["None chosen"]),
       j({ products: half.products, inert: half.inert }));
   }
 
@@ -4961,12 +4961,13 @@ try {
       why !== null && why.items.length === 1
         && why.items[0].key === LIST_KEYS.categories && why.items[0].label === R.FIELD_META["scope.categories"].label
         && why.items[0].message === R.INERT_COPY.noList.polls
-        && why.href === RULES_HREF(prod.botId) && why.hrefLabel === "Open Rules" && /not betting/i.test(why.title),
+        && why.href === RULES_HREF(prod.botId) && why.hrefLabel === "Open Rules" && why.title === "Why this account is not betting",
       j(why));
-    ok("2g.why · the readiness badge counts the SAME reasons — one blocker, named by the same label — so the rail, the panel above it and the why-panel cannot disagree",
+    ok("2g.why · the readiness badge counts the SAME reasons — one blocker, named by the same label — so the rail, the panel above it and the why-panel cannot disagree; and on this ACTIVE account the Callout's headline says the account is not betting, never that it cannot start",
       v.startReadiness !== null && v.startReadiness.blockers === 1 && v.startReadiness.items.length === 1
         && v.startReadiness.items[0].label === R.FIELD_META["scope.categories"].label && v.startReadiness.items[0].unset === false
-        && v.startReadiness.blockers === why.items.length,
+        && v.startReadiness.blockers === why.items.length
+        && v.startReadiness.title === "1 thing stops this account from betting",
       j(v.startReadiness));
     STATES.push(["detail-inert", v]);
 
@@ -4978,9 +4979,10 @@ try {
       r.modes.polls = { counter: true, fill: true, opener: true };
     }));
     const clear = await detail(prod.botId);
-    ok("2g.why · CONTROL · with both lists reaching a member the panel's list is EMPTY and it says so in the one sentence, the badge reads zero, and the roster's two lines name two categories and the chain",
+    ok("2g.why · CONTROL · with both lists reaching a member the panel's list is EMPTY and it says so in the one sentence — about the rules AND the limits — under a topic heading that claims nothing, the badge reads zero, and the roster's two lines name two categories and the chain",
       clear.whyNotBetting !== null && clear.whyNotBetting.items.length === 0
-        && clear.whyNotBetting.empty === "Nothing in the rules stops this account from betting."
+        && clear.whyNotBetting.empty === "Nothing in the rules or limits stops this account from betting."
+        && clear.whyNotBetting.title === "Rules and limits"
         && clear.startReadiness !== null && clear.startReadiness.blockers === 0
         && (await rosterRow(prod.botId)).products[1] === scopeLine("Polls", ["Sports", "Macro"]),
       j({ why: clear.whyNotBetting, readiness: clear.startReadiness, products: (await rosterRow(prod.botId)).products }));
@@ -5042,11 +5044,17 @@ try {
     ]);
     ok("2g.save · a category the platform does not have, a chain key it does not offer, a missing group, a group that is not a list and no lists at all are each the stale-form sentence — never a silent drop and never a field sentence about a box that looks right",
       strangers.every((r: Any) => r.ok === false && r.error === stale && r.field === undefined), j(strangers.map((r: Any) => r.error)));
-    ok("2g.save · CONTROL · the same save with the SAME switches and a real category lands, so the five refusals above are about the lists and not about the switches",
-      (await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports"], chains: [] } })).ok === true, "");
+    /* ⛔ READ BEFORE THE CONTROL WRITES (review finding 2026-09-22): this read used to follow a landed save of exactly
+       the value it then asserted, so a stranger branch that WROTE before answering "stale" was overwritten and
+       invisible. The row is read while the five refusals are the last thing that touched it. */
     const afterStrangers: Any = await w.dal.houseBotStore.get(acct.botId);
-    ok("2g.save · …and the refused saves wrote nothing: the stored list is the one the last landed save chose",
-      j(afterStrangers.rules?.scope?.categories) === j(["sports"]), j(afterStrangers.rules?.scope));
+    ok("2g.save · …and the refused saves wrote nothing: read before anything else lands, the stored list is still the one the last landed save chose",
+      j(afterStrangers.rules?.scope?.categories) === j(["sports", "macro"]) && j(afterStrangers.rules?.scope?.chains) === j([])
+        && afterStrangers.rulesVersion === stored.rulesVersion,
+      j({ scope: afterStrangers.rules?.scope, version: [afterStrangers.rulesVersion, stored.rulesVersion] }));
+    ok("2g.save · CONTROL · the same save with the SAME switches and a real category lands, so the five refusals above are about the lists and not about the switches",
+      (await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports"], chains: [] } })).ok === true
+        && j((await w.dal.houseBotStore.get(acct.botId)).rules?.scope?.categories) === j(["sports"]), "");
   }
 
   /* ━━ THE START REFUSAL NAMES THE REMEDY, WITH THE RULES HREF ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -5058,18 +5066,41 @@ try {
     const pollsOnly = await w.bot({ caps: { freqMinGapSec: 20 } });
     await w.setUserFields(pollsOnly.userId, { passwordSalt: "case-salt-for-2g" });
     await w.dal.houseBotStore.setStatus(pollsOnly.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    /* ⛔ THE PRODUCTION SHAPE ITSELF (review finding 2026-09-22): both products ticked, every automatic mode on, BOTH
+       lists empty. The case used to drive a polls-only fixture under this label, so the pass-through was exercised
+       through `scope.categories` alone and a chains-side break of it stayed green. Start's FIRST refusal on the real
+       shape is the Up & Down one (page order puts `scope.chains` first), so the chain row of the key map is what this
+       assertion measures. */
     await writeRules(pollsOnly.botId, ruleDoc((r) => {
-      r.scope.products = { updown: false, polls: true };
+      r.scope.products = { updown: true, polls: true };
+      r.modes.updown = { counter: true, fill: true, opener: true };
       r.modes.polls = { counter: true, fill: true, opener: true };
     }));
     const refused = await act({ id: pollsOnly.botId, act: "START" });
-    ok("2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the category remedy and the Rules href, labelled for the dialog to draw",
-      refused.ok === false && refused.error.includes(R.INERT_COPY.noList.polls) && /Open Rules/.test(refused.error)
+    ok("2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the CHAIN remedy — its first refusal, in page order — and the Rules href, labelled for the dialog to draw",
+      refused.ok === false && refused.error.includes(R.INERT_COPY.noList.updown) && !refused.error.includes(R.INERT_COPY.noList.polls) && /Open Rules/.test(refused.error)
         && refused.href === RULES_HREF(pollsOnly.botId) && refused.hrefLabel === "Open Rules"
         && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "PAUSED",
       j(refused));
     ok("2g.start · 453 · the refusal carries no house-vocabulary word — the passed-through sentence is `INERT_COPY`'s, held neutral by the rules suite's own scan",
       !NEUTRAL.test(refused.error) && !NEUTRAL.test(refused.hrefLabel ?? ""), j(refused.error));
+    /* ⛔ AND ON THIS PAUSED ACCOUNT THE PANEL'S HEADLINE IS START'S: the account can't start, and the Callout counts two. */
+    {
+      const pausedView = await detail(pollsOnly.botId);
+      ok("2g.title · on a PAUSED account with reasons the why-panel is headed `Why this account can't start` and the Callout reads `2 things to fix before this account can start` — never `is not betting`, which the pause already explains",
+        pausedView.whyNotBetting?.title === "Why this account can't start" && pausedView.whyNotBetting?.items.length === 2
+          && pausedView.startReadiness?.title === "2 things to fix before this account can start" && pausedView.startReadiness?.blockers === 2,
+        j({ why: pausedView.whyNotBetting?.title, callout: pausedView.startReadiness?.title }));
+      STATES.push(["detail-paused-inert", pausedView]);
+    }
+    /* THE POLLS-ONLY SHAPE, still measured: the category sentence passes through on its own. */
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: false, polls: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const refusedPolls = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · a polls-only account with no category is refused with the category sentence and the same href",
+      refusedPolls.ok === false && refusedPolls.error.includes(R.INERT_COPY.noList.polls) && refusedPolls.href === RULES_HREF(pollsOnly.botId), j(refusedPolls));
     /* ⛔ THE PASS-THROUGH IS SCOPED TO THE FIELDS THE FORM DRAWS A SWITCH OR LIST FOR: an unset CAP keeps the console's
        generic sentence, because the validator's cap sentence is the engine's vocabulary. */
     await writeRules(pollsOnly.botId, ruleDoc((r) => {
@@ -5088,15 +5119,142 @@ try {
       started.ok === true && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE", j(started));
   }
 
+  /* ━━ THE BY-HAND-ONLY ACCOUNT, ON EVERY SURFACE (review finding 2026-09-22) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * `BY_HAND_NO_SCREEN` was proven at the pure function only: no console or service case had an account whose only
+   * entry was Enter now, so the three sites that hand `BY_HAND_SCREENS` to the predicate — the roster, the account
+   * page, the Start service — were invisible to this suite, and a wrong screen table at any of them left the roster
+   * with no line, the panel saying nothing stops the account, and Start starting it to do nothing. */
+  {
+    const act = async (input: Any): Promise<Any> => {
+      try { return await GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input); }
+      catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
+    };
+    const byHand = await w.bot({ caps: { freqMinGapSec: 20 } });
+    await w.setUserFields(byHand.userId, { passwordSalt: "case-salt-for-2g-byhand" });
+    const enterNowOnly = (r: Any) => {
+      r.scope.products = { updown: false, polls: true };
+      r.scope.categories = ["sports"];
+      r.modes.updown = { counter: false, fill: false, opener: false };
+      r.modes.polls = { counter: false, fill: false, opener: false };
+      r.enterNow = { enabled: true, thinStakeTzs: 10_000, openerStakeTzs: 2_000 };
+    };
+    await writeRules(byHand.botId, ruleDoc(enterNowOnly));
+    const row = await rosterRow(byHand.botId);
+    ok("2g.byhand · ⛔ the roster hands the predicate THIS build's screens: an ACTIVE polls account with a category and Enter now as its only entry carries `Can't bet — Enter now is the only entry mode on for polls, and no screen on this build can press it.` — one reason, no count — while its scope line names Sports",
+      row.statusWord === SD.HOUSE_BOT_STATUS_DISPLAY.ACTIVE.word && row.inert !== null
+        && row.inert.text === `Can't bet — ${R.INERT_COPY.byHandNoScreen.enterNow}` && row.inert.href === RULES_HREF(byHand.botId)
+        && j(row.products) === j([scopeLine("Polls", ["Sports"])]),
+      j({ status: row.statusWord, inert: row.inert, products: row.products }));
+    const v = await detail(byHand.botId);
+    ok("2g.byhand · ⛔ the why-panel hands the predicate the same screens: ONE item, on the Enter now switch's own key, labelled `Enter now`, carrying the by-hand sentence — and the badge counts it",
+      v.whyNotBetting !== null && v.whyNotBetting.items.length === 1
+        && v.whyNotBetting.items[0].key === "enter-now" && v.whyNotBetting.items[0].label === "Enter now"
+        && v.whyNotBetting.items[0].message === R.INERT_COPY.byHandNoScreen.enterNow
+        && v.startReadiness?.blockers === 1 && v.startReadiness?.items[0].label === "Enter now" && v.startReadiness?.items[0].unset === false,
+      j({ why: v.whyNotBetting, readiness: v.startReadiness }));
+    STATES.push(["roster-byhand", await GATEM.houseRosterForConsole(OFFICER, "/admin/desk")], ["detail-byhand", v]);
+    await w.dal.houseBotStore.setStatus(byHand.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    const refused = await act({ id: byHand.botId, act: "START" });
+    ok("2g.byhand · ⛔ Start hands the predicate the same screens — its default — and refuses the account with the by-hand sentence passed through, the Rules href and the label, leaving it PAUSED",
+      refused.ok === false && refused.error.includes(R.INERT_COPY.byHandNoScreen.enterNow) && /Open Rules/.test(refused.error)
+        && refused.href === RULES_HREF(byHand.botId) && refused.hrefLabel === "Open Rules"
+        && (await w.dal.houseBotStore.get(byHand.botId)).status === "PAUSED",
+      j(refused));
+    /* CONTROL: one automatic polls mode beside the switch, and all three surfaces stand down at once. */
+    await writeRules(byHand.botId, ruleDoc((r) => { enterNowOnly(r); r.modes.polls.counter = true; }));
+    const rowOn = await rosterRow(byHand.botId);
+    const vOn = await detail(byHand.botId);
+    const startedOn = await act({ id: byHand.botId, act: "START" });
+    ok("2g.byhand · CONTROL · with an automatic polls mode on beside Enter now the row carries no line, the panel is empty and Start lands — so the three refusals above were the by-hand switch and nothing else",
+      rowOn.inert === null && vOn.whyNotBetting?.items.length === 0 && vOn.startReadiness?.blockers === 0
+        && startedOn.ok === true && (await w.dal.houseBotStore.get(byHand.botId)).status === "ACTIVE",
+      j({ inert: rowOn.inert, why: vOn.whyNotBetting?.items, started: startedOn }));
+  }
+
+  /* ━━ A SAVED LIMIT A LIVE BOUND NOW BREAKS — THE PANEL REFUSES WHAT START REFUSES (review finding 2026-09-22) ━━
+   * The panel was built from the inert reasons and the unset caps only, so it printed "Nothing in the rules stops this
+   * account from betting." on the page whose Start dialog refused the account on a Stake min under the platform's
+   * minimum. The panel now reads `rulesLiveBoundProblems`, the list Start refuses from. */
+  {
+    const act = async (input: Any): Promise<Any> => {
+      try { return await GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input); }
+      catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
+    };
+    const { getGlobalConfig }: Any = await import("../../src/lib/server/market-config.ts");
+    const cfg = await getGlobalConfig();
+    const under = Math.max(1, cfg.minStake - 500);
+    const low = await w.bot({ caps: { freqMinGapSec: 20 } });
+    await w.setUserFields(low.userId, { passwordSalt: "case-salt-for-2g-live" });
+    await w.dal.houseBotStore.setStatus(low.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    await writeRules(low.botId, ruleDoc((r) => {
+      r.scope.products = { updown: false, polls: true };
+      r.scope.categories = ["sports"];
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    await w.setCaps(low.botId, { stakeMinTzs: under });
+    const v = await detail(low.botId);
+    const refused = await act({ id: low.botId, act: "START" });
+    /* The sentence sits UNDER the label, so it does not name the field again (432(n)); both figures, the console's units. */
+    const want = `Saved as TZS ${under.toLocaleString("en-US")}; the platform minimum is now TZS ${cfg.minStake.toLocaleString("en-US")}.`;
+    ok("2g.live · ⛔ a saved limit a live bound now breaks is ON the panel — Stake min under the platform minimum, on the cap's own key, labelled from the one label home, in the console's own sentence with both figures — and the badge counts it, headed `Why this account can't start` on this paused account",
+      v.whyNotBetting !== null && v.whyNotBetting.items.length === 1
+        && v.whyNotBetting.items[0].key === "stake-min" && v.whyNotBetting.items[0].label === GATEM.consoleLimitLabel("stakeMinTzs")
+        && v.whyNotBetting.items[0].message === want
+        && v.whyNotBetting.title === "Why this account can't start"
+        && v.startReadiness?.blockers === 1 && v.startReadiness?.items[0].label === GATEM.consoleLimitLabel("stakeMinTzs") && v.startReadiness?.items[0].unset === false,
+      j({ why: v.whyNotBetting, readiness: v.startReadiness, want }));
+    ok("2g.live · ⛔ …and Start refuses the same account on the same page — the panel and the dialog can no longer disagree — with the Rules href and the account still PAUSED",
+      refused.ok === false && refused.href === RULES_HREF(low.botId) && (await w.dal.houseBotStore.get(low.botId)).status === "PAUSED",
+      j(refused));
+    ok("2g.live · 453 · the composed sentence carries no house-vocabulary word (Start's own names the field in the engine's vocabulary, which is why the console composes its own)",
+      !NEUTRAL.test(v.whyNotBetting.items[0].message) && !NEUTRAL.test(v.whyNotBetting.title), j(v.whyNotBetting.items[0].message));
+    STATES.push(["detail-live-bound", v]);
+    /* CONTROL: the limit brought back inside the bound, and the panel empties while Start lands. */
+    await w.setCaps(low.botId, { stakeMinTzs: cfg.minStake });
+    const vOk = await detail(low.botId);
+    const started = await act({ id: low.botId, act: "START" });
+    ok("2g.live · CONTROL · with Stake min at the platform minimum the panel is empty under its topic heading, the badge reads zero and Start lands — so the refusal above was the live bound and nothing else",
+      vOk.whyNotBetting?.items.length === 0 && vOk.whyNotBetting?.title === "Rules and limits" && vOk.startReadiness?.blockers === 0
+        && started.ok === true && (await w.dal.houseBotStore.get(low.botId)).status === "ACTIVE",
+      j({ why: vOk.whyNotBetting, started }));
+  }
+
+  /* ━━ PRODUCT_NO_MODE IS LABELLED BY ITS PRODUCT'S ENTRY SECTION, NOT ONE SWITCH (review finding 2026-09-22) ━━ */
+  {
+    const noMode = await w.bot({ caps: { freqMinGapSec: 20 } });
+    await writeRules(noMode.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.scope.chains = [CHAIN_KEY];
+      r.scope.categories = ["sports"];
+      r.modes.updown = { counter: false, fill: false, opener: false };
+      r.modes.polls = { counter: true, fill: false, opener: false };
+    }));
+    const v = await detail(noMode.botId);
+    ok("2g.label · a ticked product with a chain but none of its own modes on is labelled `Up & Down entry` — the section any of the three switches sits in — over its sentence, on the first switch's key, in the panel and in the Callout alike; never one switch's name over a sentence that says no mode at all is on",
+      v.whyNotBetting?.items.length === 1 && v.whyNotBetting.items[0].label === "Up & Down entry" && v.whyNotBetting.items[0].key === "updown-react"
+        && v.whyNotBetting.items[0].message === R.INERT_COPY.productNoMode.updown
+        && v.startReadiness?.items[0].label === "Up & Down entry"
+        && !/React to a player's stake/.test(v.whyNotBetting.items[0].label),
+      j({ why: v.whyNotBetting, readiness: v.startReadiness }));
+    STATES.push(["detail-product-no-mode", v]);
+  }
+
   /* ━━ THE PAGES AND THE FORM, AT SOURCE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
   {
     const page = decomment(read(PAGE));
     const detailPage = decomment(read(DETAIL_PAGE));
     const form = decomment(read(`${SECTION}/[id]/rules-form.tsx`));
     const acts = decomment(read(`${SECTION}/[id]/account-actions.tsx`));
-    ok("2g.page · the roster paints one line per product off `r.products` and the refusal off `r.inert` as a LINK to its href, at the tap floor, in the warning tone",
-      /\{r\.products\.map\(\(line\) => <div key=\{line\}>\{line\}<\/div>\)\}/.test(page)
-        && /\{r\.inert !== null && \(\s*<Link href=\{r\.inert\.href as Route\} className="inline-flex items-center min-h-\[var\(--tap-min\)\] text-body-sm text-warning-fg hover:underline">\s*\{r\.inert\.text\}/.test(page),
+    /* ⛔ THE REFUSAL IS IN THE ACCOUNT CELL — the FIRST column, on screen at 360 without a sideways scroll (review
+       finding 2026-09-22) — under the handle, and the Products cell paints the scope lines and nothing else. */
+    ok("2g.page · the roster paints the refusal off `r.inert` as a LINK to its href, at the tap floor, in the warning tone, INSIDE THE ACCOUNT CELL under the handle — and one line per product off `r.products` in the Products cell, with no link there",
+      /* `decomment` leaves a stripped JSX comment as `{ }`, so each gap between the cell's three children may hold one. */
+      /data-operator-text="label">\{r\.label\}<\/div>[\s{}]*<div className="font-mono text-body-sm text-text-subtle">\{r\.handle\}<\/div>[\s{}]*\{r\.inert !== null && \(\s*<Link href=\{r\.inert\.href as Route\} className="inline-flex items-center min-h-\[var\(--tap-min\)\] max-w-\[34ch\] text-body-sm text-warning-fg hover:underline">\s*\{r\.inert\.text\}\s*<\/Link>\s*\)\}\s*<\/td>/.test(page)
+        && /<td className="p-3 text-text-secondary">\s*\{r\.products\.map\(\(line\) => <div key=\{line\}>\{line\}<\/div>\)\}\s*<\/td>/.test(page)
+        && (page.match(/r\.inert/g) ?? []).length === 3,
+      j({ inertRefs: (page.match(/r\.inert/g) ?? []).length }));
+    ok("2g.page · the Callout's headline is the server's (`view.startReadiness.title`) — the page types no lifecycle sentence of its own",
+      /title=\{view\.startReadiness\.title\}/.test(detailPage) && !/before this account can start/.test(detailPage) && !/stops? this account from betting/.test(detailPage),
       "");
     ok("2g.page · the account page draws the why-panel through ONE component, linked on the overview and unlinked above the rules form, and paints the empty sentence on its own branch",
       (detailPage.match(/<WhyNotBettingCard model=\{view\.whyNotBetting\} linked \/>/g) ?? []).length === 1

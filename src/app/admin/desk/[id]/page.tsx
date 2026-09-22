@@ -345,10 +345,11 @@ async function AdminDeskAccountContent({
             role="status"
             /* ⛔ NO DENOMINATOR (2026-09-22). "3 of 13" counted caps plus two flags; the list is now the caps still
                unset plus every scope reason the engine's own predicate raises, which has no fixed total to be "of".
-               A count that cannot be honest is not painted; the count that can be is. */
-            title={view.startReadiness.blockers === 1
-              ? "1 thing to fix before this account can start"
-              : `${view.startReadiness.blockers} things to fix before this account can start`}
+               A count that cannot be honest is not painted; the count that can be is.
+               ⛔ AND THE HEADLINE IS THE SERVER'S (review finding 2026-09-22): "before this account can start" was
+               typed here and painted beside a green ACTIVE chip on the production-shaped account. The lifecycle
+               decides the sentence, and the lifecycle is the server's to read. */
+            title={view.startReadiness.title}
           >
             {/* ⛔ NO WAY-OUT LINK, AND BOTH REASONS WERE MEASURED RATHER THAN ARGUED.
                 ① IT PUSHED THE NOTICE OFF A PHONE. With an "Open Rules" line the box ran y=578..850 in an

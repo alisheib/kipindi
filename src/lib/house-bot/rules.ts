@@ -1528,8 +1528,12 @@ export const CROSS_FIELD_RULES = [
   /* ⛔ THE TWO SCOPE ROWS (prod finding 2026-09-22). An ACTIVE account on a switched-ON desk had matched nothing,
    * ever: both products ticked, both scope lists EMPTY, and the engine's predicate ends in `[].includes(x)`. No
    * screen wrote the lists and nothing refused the shape. Both rows are evaluated through `scopeShapeReasons` —
-   * the SAME function Start's `rulesInertReasons` is built on — so the save refuses exactly the shapes Start
-   * refuses, and both ask `rulesCoverTarget`, the engine's own predicate, over the platform's lists. */
+   * the SAME function Start's `rulesInertReasons` is built on — so a shape the save refuses is a shape Start
+   * refuses, through one predicate (`rulesCoverTarget`) over the platform's lists.
+   * ⚠️ NOT THE CONVERSE. No product, no entry mode, a ticked product with a reachable member and none of its own
+   * modes on (`PRODUCT_NO_MODE`), and a polls entry that is by hand only (`BY_HAND_NO_SCREEN`) all SAVE with
+   * "Saved" and are refused at Start alone — the roster line and the why-panel name them the moment they are
+   * stored. Those four have always been Start-time refusals; only the two shapes below are refused at save. */
   {
     id: "R-PRODUCT-LIST",
     scopes: ["RULES"],
@@ -2782,6 +2786,75 @@ export const NO_AUTOMATIC_MODE_LINE = (label: string, on: { enterNow: boolean; t
   return null;
 };
 
+/** A saved value that a live platform bound now breaks — Start refuses it, and the planner's F5 pass pauses a running account on it. */
+export type LiveBoundProblem = {
+  field: FieldId;
+  code: "BELOW_MIN" | "ABOVE_MAX";
+  /** The saved value and the bound it breaks, in the field's own unit — for a surface that composes its own sentence. */
+  value: number;
+  bound: number;
+  /** Start's own sentence. */
+  message: string;
+};
+
+/**
+ * ⛔ THE LIVE-BOUND REFUSALS, IN ONE HOME (review finding 2026-09-22). These four checks lived inside
+ * `rulesStartProblems` alone, so the console's why-panel — built from `rulesInertReasons` and the unset caps —
+ * printed "Nothing in the rules stops this account from betting." on the very page whose Start dialog refused the
+ * account with "the platform minimum stake is now TZS 2,000; Stake min is TZS 1,000.". Start still pushes exactly
+ * these (field, code, sentence); the panel reads the same list and composes its own neutral sentence from
+ * `value` and `bound`, so the two surfaces cannot disagree about whether a saved limit breaks a live bound.
+ * ⚠️ Not a hidden inert account: `revalidateLive` (planner.ts) AUTO-PAUSES a running account on the same stake
+ * minimum and gap floor, so a problem here is "can't start" on a paused account and "will be paused" on a live one.
+ */
+export function rulesLiveBoundProblems(
+  r: Pick<HouseBotRulesV1, "enterNow">,
+  caps: Pick<HouseBotCaps, "stakeMinTzs" | "freqMinGapSec" | "capStaffChosenDailyTzs">,
+  ctx: Pick<RulesContext, "stakeBounds" | "betPlaceRefillPerMin">,
+): LiveBoundProblem[] {
+  const out: LiveBoundProblem[] = [];
+  const liveMin = ctx.stakeBounds.minTzs;
+  const liveMax = ctx.stakeBounds.maxTzs;
+  const minNow = `Can't start: the platform minimum stake is now TZS ${tzs(liveMin)}`;
+  if (caps.stakeMinTzs !== null && caps.stakeMinTzs < liveMin) {
+    out.push({ field: "stakeMinTzs", code: "BELOW_MIN", value: caps.stakeMinTzs, bound: liveMin, message: `${minNow}; Stake min is TZS ${tzs(caps.stakeMinTzs)}.` });
+  } else if (caps.stakeMinTzs !== null && caps.stakeMinTzs > liveMax) {
+    out.push({
+      field: "stakeMinTzs",
+      code: "ABOVE_MAX",
+      value: caps.stakeMinTzs,
+      bound: liveMax,
+      message: `Can't start: the platform maximum stake is now TZS ${tzs(liveMax)}; Stake min is TZS ${tzs(caps.stakeMinTzs)}.`,
+    });
+  }
+  const floor = minGapFloorSec(ctx.betPlaceRefillPerMin);
+  if (caps.freqMinGapSec !== null && caps.freqMinGapSec < floor) {
+    out.push({
+      field: "freqMinGapSec",
+      code: "BELOW_MIN",
+      value: caps.freqMinGapSec,
+      bound: floor,
+      /* ⭐ THE WORD COMES FROM `unitSuffix`, THE SAME SOURCE THE CONSOLE'S `limitValue` NOW READS, so the sentence an
+         officer is refused with and the value they see on the card cannot spell one unit two ways. It also fixes
+         "1 seconds": this was an unconditional " seconds" and the floor can be 1. */
+      message: `Can't start: the min gap must now be at least ${formatWhole(floor)}${unitSuffix("s", floor)}; Min gap is ${formatWhole(caps.freqMinGapSec)}${unitSuffix("s", caps.freqMinGapSec)}.`,
+    });
+  }
+  if (r.enterNow.enabled) {
+    const belowLive: [FieldId, number | null, string][] = [
+      ["enterNow.thinStakeTzs", r.enterNow.thinStakeTzs, "the Enter now thin stake"],
+      ["enterNow.openerStakeTzs", r.enterNow.openerStakeTzs, "the Enter now opener stake"],
+      ["capStaffChosenDailyTzs", caps.capStaffChosenDailyTzs, "the staff-chosen daily cap"],
+    ];
+    for (const [field, value, name] of belowLive) {
+      if (value !== null && value < liveMin) {
+        out.push({ field, code: "BELOW_MIN", value, bound: liveMin, message: `${minNow}; ${name} is TZS ${tzs(value)}.` });
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * What the saved rules and caps alone refuse at Start, in 02 §3.3's order, plus the warnings the
  * dialog shows. The service adds the refusals that need reads (removed, eligibility, fingerprint,
@@ -2816,41 +2889,12 @@ export function rulesStartProblems(
     refusals.push({ field: reason.field, code: "INVALID", message: reason.message, href: rulesHref });
   }
 
-  // A saved value that a live bound now breaks (04 C14, F5; N1 §5 extends it to Enter now).
-  const liveMin = ctx.stakeBounds.minTzs;
-  const liveMax = ctx.stakeBounds.maxTzs;
-  const minNow = `Can't start: the platform minimum stake is now TZS ${tzs(liveMin)}`;
-  if (caps.stakeMinTzs !== null && caps.stakeMinTzs < liveMin) {
-    refusals.push({ field: "stakeMinTzs", code: "BELOW_MIN", message: `${minNow}; Stake min is TZS ${tzs(caps.stakeMinTzs)}.` });
-  } else if (caps.stakeMinTzs !== null && caps.stakeMinTzs > liveMax) {
-    refusals.push({
-      field: "stakeMinTzs",
-      code: "ABOVE_MAX",
-      message: `Can't start: the platform maximum stake is now TZS ${tzs(liveMax)}; Stake min is TZS ${tzs(caps.stakeMinTzs)}.`,
-    });
-  }
-  const floor = minGapFloorSec(ctx.betPlaceRefillPerMin);
-  if (caps.freqMinGapSec !== null && caps.freqMinGapSec < floor) {
-    refusals.push({
-      field: "freqMinGapSec",
-      code: "BELOW_MIN",
-      /* ⭐ THE WORD COMES FROM `unitSuffix`, THE SAME SOURCE THE CONSOLE'S `limitValue` NOW READS, so the sentence an
-         officer is refused with and the value they see on the card cannot spell one unit two ways. It also fixes
-         "1 seconds": this was an unconditional " seconds" and the floor can be 1. */
-      message: `Can't start: the min gap must now be at least ${formatWhole(floor)}${unitSuffix("s", floor)}; Min gap is ${formatWhole(caps.freqMinGapSec)}${unitSuffix("s", caps.freqMinGapSec)}.`,
-    });
-  }
-  if (r.enterNow.enabled) {
-    const belowLive: [FieldId, number | null, string][] = [
-      ["enterNow.thinStakeTzs", r.enterNow.thinStakeTzs, "the Enter now thin stake"],
-      ["enterNow.openerStakeTzs", r.enterNow.openerStakeTzs, "the Enter now opener stake"],
-      ["capStaffChosenDailyTzs", caps.capStaffChosenDailyTzs, "the staff-chosen daily cap"],
-    ];
-    for (const [field, value, name] of belowLive) {
-      if (value !== null && value < liveMin) {
-        refusals.push({ field, code: "BELOW_MIN", message: `${minNow}; ${name} is TZS ${tzs(value)}.` });
-      }
-    }
+  // A saved value that a live bound now breaks (04 C14, F5; N1 §5 extends it to Enter now) — from the ONE home
+  // the console's why-panel reads too (`rulesLiveBoundProblems`), so the panel cannot say "nothing" where this refuses.
+  /* ⛔ WITH THE RULES HREF, LIKE EVERY OTHER REFUSAL HERE: these three pushes alone carried none, so a Start refused on
+     a moved platform minimum reached the console's dialog with no way out — measured by the console suite's 2g.live. */
+  for (const problem of rulesLiveBoundProblems(r, caps, ctx)) {
+    refusals.push({ field: problem.field, code: problem.code, message: problem.message, href: rulesHref });
   }
 
   const warnings: string[] = [];

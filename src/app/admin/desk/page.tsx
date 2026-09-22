@@ -589,6 +589,18 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 because a row outlives the holder's erasure. 13px mono in a subdued tone is
                                 /admin/agents' own shape for the same thing, and it clears §T4's 12.5px floor. */}
                             <div className="font-mono text-body-sm text-text-subtle">{r.handle}</div>
+                            {/* ⛔ THE ROW'S OWN REFUSAL, IN THE FIRST COLUMN (review finding 2026-09-22). It sat in the
+                                Products cell, the seventh column of the scroller, so at 360 an officer saw "Desk
+                                000102" and a loss figure and had to drag the table ~900px to learn the account
+                                could not bet — and the docs called that "beside the status chip". Under the
+                                handle it is on screen at every width, in the warning tone, with the Rules tab as
+                                the way out. `max-w` so a long sentence wraps here instead of widening the column;
+                                `inline-flex` at the tap floor like every other link. */}
+                            {r.inert !== null && (
+                              <Link href={r.inert.href as Route} className="inline-flex items-center min-h-[var(--tap-min)] max-w-[34ch] text-body-sm text-warning-fg hover:underline">
+                                {r.inert.text}
+                              </Link>
+                            )}
                           </td>
                           {/* Money SECOND and THIRD — the ANSWER columns. Each amount is one object (`.amount` is
                               `white-space: nowrap` in the kit), and the CELL may break between the used figure and its
@@ -601,21 +613,15 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                           {/* ⛔ AN ACCOUNT THAT HAS NEVER STAKED READS "—", never a fabricated date and never a zero
                               (§C2). The absolute EAT instant is in `title`, where the kit puts every exact time. */}
                           <td className="p-3 text-text-secondary" title={r.lastBet?.title}>{r.lastBet?.text ?? "—"}</td>
-                          {/* ⛔ THE OPERATIVE SCOPE, ONE LINE PER TICKED PRODUCT, AS LABELS — AND THE REFUSAL UNDER IT
-                              (prod finding 2026-09-22). This cell printed "Up & Down · Polls" for an ACTIVE
-                              account whose two lists were empty: true of the switches, false of the account,
-                              which had matched nothing since the day it was started. The lines now name what each
-                              product can REACH, and an account whose rules stop it carries its own line in the
-                              warning tone with the Rules tab as the way out — never a green chip and nothing else.
+                          {/* ⛔ THE OPERATIVE SCOPE, ONE LINE PER TICKED PRODUCT, AS LABELS (prod finding 2026-09-22).
+                              This cell printed "Up & Down · Polls" for an ACTIVE account whose two lists were
+                              empty: true of the switches, false of the account, which had matched nothing since the
+                              day it was started. The lines now name what each product can REACH; the account's own
+                              refusal is in the FIRST column, where it is on screen without a sideways scroll.
                               ⛔ NO FLOOR AND NO NOWRAP ON THIS CELL (1.373): it is a words column, so it wraps inside
-                              the scroller; the link is `inline-flex` at the tap floor like every other. */}
+                              the scroller. */}
                           <td className="p-3 text-text-secondary">
                             {r.products.map((line) => <div key={line}>{line}</div>)}
-                            {r.inert !== null && (
-                              <Link href={r.inert.href as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
-                                {r.inert.text}
-                              </Link>
-                            )}
                           </td>
                           <td className="p-3 text-right">
                             <Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>

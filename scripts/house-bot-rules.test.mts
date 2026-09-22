@@ -155,6 +155,7 @@ import {
   ruleCopy,
   rulesCoverTarget,
   rulesInertReasons,
+  rulesLiveBoundProblems,
   rulesReach,
   rulesStartProblems,
   targetDueAfterStakeSec,
@@ -1612,6 +1613,32 @@ section("§10 · timing and Start");
         f.message === "Can't start: the platform minimum stake is now TZS 2,000; the Enter now opener stake is TZS 1,000."), canon(raised.refusals));
     const quiet = rulesStartProblems(rulesOf((x) => { x.scope.products.polls = true; x.modes.polls.counter = true; x.enterNow.openerStakeTzs = 1_000; }, min2000), liveCaps, min2000);
     ok("10.S · …and says nothing about that stake while Enter now is off", !quiet.refusals.some((f) => f.field === "enterNow.openerStakeTzs"), canon(quiet.refusals));
+    /* ⛔ THE LIVE-BOUND REFUSALS HAVE ONE HOME (review finding 2026-09-22): the why-panel printed "nothing stops this
+     * account" on the page whose Start refused a moved platform minimum, because these checks lived inside Start
+     * alone. Start's BELOW_MIN/ABOVE_MAX refusals are now exactly `rulesLiveBoundProblems`' entries, and each entry
+     * carries the VALUE and the BOUND a surface composes its own sentence from. */
+    {
+      const doc = rulesOf((x) => { enterNowOn(x); x.enterNow.openerStakeTzs = 1_000; }, min2000);
+      const caps = capsOf({ stakeMinTzs: 1_000, freqMinGapSec: 1 }, min2000);
+      const problems = rulesLiveBoundProblems(doc, caps, min2000);
+      const start = rulesStartProblems(doc, caps, min2000);
+      const floor = minGapFloorSec(min2000.betPlaceRefillPerMin);
+      ok("10.S.live · ⛔ Start's live-bound refusals are exactly rulesLiveBoundProblems' entries — same fields, codes and sentences, in the same order — and nothing else in Start carries those codes",
+        same(start.refusals.filter((f) => f.code === "BELOW_MIN" || f.code === "ABOVE_MAX"), problems.map((p) => ({ field: p.field, code: p.code, message: p.message })))
+          && problems.length === 3 && floor > 1,
+        canon({ problems, start: start.refusals }));
+      ok("10.S.live · each entry names the saved value and the live bound it breaks: Stake min 1,000 under a 2,000 minimum, Min gap 1 under the refill floor, the Enter now opener stake 1,000 under the minimum",
+        same(problems.map((p) => [p.field, p.code, p.value, p.bound]), [
+          ["stakeMinTzs", "BELOW_MIN", 1_000, 2_000],
+          ["freqMinGapSec", "BELOW_MIN", 1, floor],
+          ["enterNow.openerStakeTzs", "BELOW_MIN", 1_000, 2_000],
+        ]), canon(problems));
+      const above = rulesLiveBoundProblems(doc, capsOf({ stakeMinTzs: LIVE_MAX + 1 }, min2000), min2000);
+      ok("10.S.live · a Stake min above the platform maximum is ABOVE_MAX with the maximum as its bound, and a document inside every bound yields NOTHING",
+        same(above.filter((p) => p.field === "stakeMinTzs").map((p) => [p.code, p.value, p.bound]), [["ABOVE_MAX", LIVE_MAX + 1, LIVE_MAX]])
+          && rulesLiveBoundProblems(rulesOf((x) => enterNowOn(x), min2000), capsOf({ stakeMinTzs: 2_000 }, min2000), min2000).length === 0,
+        canon(above));
+    }
     const unset = Object.fromEntries(Object.keys(capsOf()).map((k) => [k, null])) as HouseBotCaps;
     const bare = rulesStartProblems(rulesOf((x) => { x.scope.products.polls = true; x.modes.polls.counter = true; }), unset, CTX);
     ok("10.S · with every cap unset, Start names exactly the 11 required caps — never a staff-chosen cap or the target maximum",
@@ -1797,6 +1824,20 @@ section("§10 · timing and Start");
       ok("10.engine.c1 · CONTROL · the body this pin replaced — a direct .includes over the document's own list — is what the list-read sweep reports, and the delegate is not",
         LIST_READ.test("(r.scope.chains as string[]).includes(view.round.chainKey)") && LIST_READ.test("(targetBot.rules.scope.categories as string[]).includes(view.category)")
           && !LIST_READ.test("rulesCoverTarget(r, { product: \"UPDOWN\", chainKey: view.round.chainKey }, mode)"));
+      /* ⛔ AND THE PLANNER'S TARGET SWEEP (review finding 2026-09-22): `endTargets` restated "polls on and the category
+       * listed" by hand — the one direct list read left outside rules.ts, and the one this pin could not see while it
+       * read decide.ts alone. The whole engine directory is swept now, file by file, and every file that names a scope
+       * list is reported. */
+      const engineDir = join(ROOT, "src/lib/server/house-bot");
+      const engineFiles = readdirSync(engineDir).filter((f) => f.endsWith(".ts"));
+      const listReaders = engineFiles.filter((f) => LIST_READ.test(decomment(readFileSync(join(engineDir, f), "utf8"))));
+      const plannerSrc = decomment(readFileSync(join(engineDir, "planner.ts"), "utf8"));
+      ok("10.engine · no file under src/lib/server/house-bot/ reads either scope list itself — planner.ts included, which now asks rulesCoverTarget (value-imported, one call) to end a target the scope no longer covers",
+        engineFiles.length >= 10 && listReaders.length === 0
+          && /import \{[^}]*\brulesCoverTarget\b[^}]*\} from "@\/lib\/house-bot\/rules"/.test(plannerSrc)
+          && (plannerSrc.match(/\brulesCoverTarget\(/g) ?? []).length === 1
+          && /if \(!rulesCoverTarget\(r, \{ product: "MARKET", category: view!\.category \}, null\)\) cause = "OUT_OF_SCOPE";/.test(plannerSrc),
+        `files ${engineFiles.length} · list readers ${canon(listReaders)}`);
     }
 
     // ── ⭐ THE CLASS GUARD · every combination of the twelve switches, Start against the engine's predicate ──
@@ -1837,11 +1878,32 @@ section("§10 · timing and Start");
           if (allowed) { if (screens === NO_SCREENS) allowedNone++; else allowedAll++; }
           if (bits === 0b0000_0010_0011 && screens === NO_SCREENS) prodShapeVerdict = allowed; // both products, counter on each, both lists empty
           if (allowed !== expectAllowed) wrong.push(`bits ${bits.toString(2).padStart(12, "0")} screens ${screens.enterNow}: Start ${allowed ? "allows" : canon(got.refusals.map((f) => f.message))}, the predicate says ${expectAllowed}`);
-          const reasons = rulesInertReasons(doc, SCOPE_CTX, { byHandScreens: screens }).map((r) => r.message);
-          if (!same(got.refusals.map((f) => f.message), reasons)) wrong.push(`bits ${bits}: Start's refusals are not exactly the inert reasons`);
+          const inert = rulesInertReasons(doc, SCOPE_CTX, { byHandScreens: screens });
+          /* The WIRING clause: Start pushes every inert reason, in order. It compares Start with the function Start is
+           * built on, so on its own it is f(x) = f(x) (review finding 2026-09-22); the independent clause is below. */
+          if (!same(got.refusals.map((f) => f.message), inert.map((r) => r.message))) wrong.push(`bits ${bits}: Start's refusals are not exactly the inert reasons`);
+          /* ⭐ THE SECOND ORACLE: the reason SET, derived from the twelve switches by hand — never from rulesInertReasons
+           * or rulesReach — as a multiset of codes. NO_PRODUCT when nothing is ticked; NO_MODE when nothing at all is on;
+           * per ticked product, PRODUCT_NO_LIST when its list is empty and, while something is on somewhere, PRODUCT_NO_MODE
+           * when none of its own modes is (polls: BY_HAND_NO_SCREEN instead when a by-hand switch stands in and no screen
+           * can press it, nothing when one can); MODE_WITHOUT_PRODUCT once per mode on for a product that is off. */
+          const wantCodes: string[] = [];
+          const modesOn = (p: ScopeProduct) => ENTRY_MODES.filter((m) => doc.modes[p][m]).length;
+          const anyEntry = modesOn("updown") + modesOn("polls") > 0 || doc.enterNow.enabled || doc.targeting.enabled;
+          if (!someProduct) wantCodes.push("NO_PRODUCT");
+          if (!anyEntry) wantCodes.push("NO_MODE");
+          for (const p of SCOPE_PRODUCTS) {
+            if (!doc.scope.products[p]) { for (let k = 0; k < modesOn(p); k++) wantCodes.push("MODE_WITHOUT_PRODUCT"); continue; }
+            if ((p === "updown" ? doc.scope.chains : doc.scope.categories).length === 0) wantCodes.push("PRODUCT_NO_LIST");
+            if (anyEntry && modesOn(p) === 0) {
+              if (p === "polls" && (doc.enterNow.enabled || doc.targeting.enabled)) { if (!usable) wantCodes.push("BY_HAND_NO_SCREEN"); }
+              else wantCodes.push("PRODUCT_NO_MODE");
+            }
+          }
+          if (!same(inert.map((r) => r.code).sort(), wantCodes.sort())) wrong.push(`bits ${bits} screens ${screens.enterNow}: inert codes ${canon(inert.map((r) => r.code).sort())}, the hand-derived set says ${canon(wantCodes)}`);
         }
       }
-      ok("10.class · ⭐ over all 4096 documents × 2 screen settings, Start allows EXACTLY the documents whose every ticked product reaches a member of the context through rulesCoverTarget (polls also by a by-hand switch a screen can press), with no mode on for a product that is off — and its refusals are exactly the inert reasons; the oracle calls the engine's predicate directly, never rulesReach",
+      ok("10.class · ⭐ over all 4096 documents × 2 screen settings, Start allows EXACTLY the documents whose every ticked product reaches a member of the context through rulesCoverTarget (polls also by a by-hand switch a screen can press), with no mode on for a product that is off — its refusals are exactly the inert reasons, and the inert reasons' CODES are exactly the set derived by hand from the switches; the oracles call the engine's predicate directly or read the switches, never rulesReach",
         n === 8192 && wrong.length === 0, wrong.slice(0, 3).join(" | ") || `${n} verdicts`);
       ok("10.class.population · both verdicts occur in numbers, the screens change some verdicts, and the production shape is one of the refused",
         allowedNone >= 100 && allowedNone <= 4096 - 100 && allowedAll > allowedNone && prodShapeVerdict === false, `allowed ${allowedNone} of 4096 without screens, ${allowedAll} with · production shape allowed: ${prodShapeVerdict}`);

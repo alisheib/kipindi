@@ -197,6 +197,6 @@ await runTwoStores({
    * `KP_SCRATCH_PORT=5453 npm run test:house-bot-console` PRINTED on the held cluster: `0.mem · exit 0 · 751
    * passed` and `0.pg · exit 0 · 513 passed`, ALL PASS on both stores. The +29 in EACH child is the measurement:
    * every §2g case reaches both stores, and the chain fixture is created through the platform's own service on each. */
-  minPass: { memory: 751, postgres: 513 },
+  minPass: { memory: 763, postgres: 525 },
   dbPrefix: "hb_console",
 });
