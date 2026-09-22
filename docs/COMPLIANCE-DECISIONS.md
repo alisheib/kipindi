@@ -14,8 +14,9 @@ cookie (kp-density), like the language cookie … OK to add one line?"* — **"Y
 The Mobile Visual Plan (docs/MOBILE-VISUAL-PLAN.md §4 decision 1, unit U2) gives phones a **Card spacing: Compact /
 Comfortable** switch in the rail's More menu. The choice is kept in a first-party cookie, `kp-density`, for one year —
 the same shape as the language cookie — because the root layout must read it on the server to paint the right spacing
-with no flash and no script (`src/lib/card-spacing.ts`). It holds one word (`comfortable`; no cookie means Compact),
-identifies no one and is never sent anywhere else.
+with no flash and no script (`src/lib/card-spacing.ts`). It holds one word, `comfortable`, and only while that is the
+choice: **choosing Compact deletes it**, so a player on the default keeps no cookie at all. It identifies no one and is
+never sent anywhere else.
 
 - §7 in en/sw/zh now lists it beside the language cookie: *"your card spacing choice on phones"* · *"chaguo lako la
   nafasi ya kadi kwenye simu"* · *"您在手机上选择的卡片间距"*. Nothing else in the notice changed.

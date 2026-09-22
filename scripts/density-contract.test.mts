@@ -14,13 +14,14 @@
  *
  * WHAT IT CHECKS
  *   §1  every CSS rule that mentions data-density is a correctly fenced Compact rule (the population, printed);
- *   §2  SCOPE: every phone-only rule that touches the board's density scope (market cards and the Up & Down card —
- *       one `.mcardp` shell — the grid, the discovery bar) is fenced, or carries a `density: general` comment saying
- *       why it must apply in both settings. Without this, a Compact rule that FORGOT its selector gate would look like
- *       an ordinary phone rule and §1 would never see it;
- *   §3  no density gating outside globals.css (no Tailwind `data-[density…]` variant, no second reader), §0d;
- *   §4  the wiring: the layout stamps ONLY "comfortable", the cookie is kp-density, the rail row is a 44px
- *       `menuitemcheckbox` hidden ≥ 640 with a decorative toggle, and only the rail's menu carries it;
+ *   §2  EVERY phone-only rule (any max-width < 640) is either a fenced Compact rule or declares
+ *       `/* density: general — <why> *\/` (inside the rule, or as the first node of its @media block). Without this, a
+ *       Compact rule that FORGOT its selector gate would look like an ordinary phone rule and §1 would never see it;
+ *   §3  no density gating outside globals.css (no Tailwind `data-[density…]` variant, no second reader), §0d — and no
+ *       phone-only Tailwind variant (`max-sm:` …) on the four board files, which would go round the fence;
+ *   §4  the wiring: the layout stamps ONLY "comfortable", the cookie is kp-density and Compact deletes it, the
+ *       attribute is re-synced from the cookie after every commit, the rail row is a 44px `menuitemcheckbox` hidden
+ *       ≥ 640 with a decorative toggle read through useSyncExternalStore, and only the rail's menu carries it;
  *   §5  planted fixtures — each defect shape above, run through the same functions, must be reported.
  *
  * ⚠️ AT U2 THE §1 POPULATION IS EMPTY — U2 adds the switch, not a single Compact rule (U3 and U4 do). An empty
@@ -36,8 +37,9 @@ const ROOT = process.cwd();
 const PROVE_RED = process.argv.includes("--prove-red");
 const GATE = 'html:not([data-density="comfortable"])';
 const PHONE = "(max-width:639.98px)";
-/** The density scope of plan §4 [Compact]: market cards + the Up & Down card (one .mcardp shell), the grid, the bar. */
-const SCOPE = /\.mcardp\b|\.mcardp-|\.market-grid\b|\.kp-discovery-bar\b|\[data-filter-rail\]/;
+/** Board files whose phone styling must go through globals.css behind the gate (plan §4 [Compact] scope). */
+const BOARD_FILES = ["src/components/markets/market-card.tsx", "src/components/updown/updown-card.tsx",
+  "src/components/ui/query-bar.tsx", "src/components/markets/discovery-bar.tsx"];
 const EXEMPT = /density:\s*general\b/i;
 
 let pass = 0;
@@ -62,29 +64,48 @@ function mediaChain(r: Rule): string[] {
   return out;
 }
 const phoneOnly = (chain: string[]) => chain.some((m) => { const w = m.match(/max-width:(\d+(?:\.\d+)?)px/); return !!w && Number(w[1]) < 640; });
-const fencedByPhone = (chain: string[]) => chain.some((m) => m.includes(PHONE)) && !chain.some((m) => /min-width:(\d+)/.test(m) && Number(m.match(/min-width:(\d+)/)![1]) >= 640);
+/** The fence is the phone query EXACTLY, or an AND of it with more conditions — never an OR list or a `not` query,
+ *  either of which matches wider screens too — and no enclosing ≥ 640 query. */
+const fencedByPhone = (chain: string[]) =>
+  chain.some((m) => m.includes(PHONE) && !m.includes(",") && !/(^|\))not\b|^onlynot|^not/.test(m)) &&
+  !chain.some((m) => /min-width:(\d+)/.test(m) && Number(m.match(/min-width:(\d+)/)![1]) >= 640);
 const gated = (sel: string) => sel.split(",").every((part) => part.trim().startsWith(GATE));
-const exempt = (r: Rule) => r.nodes?.some((n) => n.type === "comment" && EXEMPT.test(n.text)) ?? false;
+/** "density: general — <why>" as a comment inside the rule, or as the FIRST node of its enclosing @media block. */
+function exempt(r: Rule): boolean {
+  if (r.nodes?.some((n) => n.type === "comment" && EXEMPT.test(n.text))) return true;
+  for (let p = r.parent; p && p.type !== "root"; p = p.parent) {
+    if (p.type === "atrule" && (p as postcss.AtRule).name === "media") {
+      const firstNode = (p as postcss.AtRule).nodes?.[0];
+      if (firstNode?.type === "comment" && EXEMPT.test(firstNode.text)) return true;
+    }
+  }
+  return false;
+}
 
-/** §1 + §2 over one stylesheet's text. Returns the defects and the size of each population. */
-function cssDefects(css: string, file: string): { defects: string[]; density: number; scoped: number } {
+/**
+ * §1 + §2 over one stylesheet's text. Returns the defects and the size of each population.
+ * ⭐ §2 IS EVERY PHONE-ONLY RULE, not a list of board selectors (review of U2, 2026-09-22): an allow-list of "the
+ * board's classes" missed the filter sheet, the bar's rows and phone-rung tokens on :root — exactly where U3/U4 write.
+ * So a phone-only rule is either a fenced Compact rule or it SAYS it is general, and a forgotten gate cannot hide.
+ */
+function cssDefects(css: string, file: string): { defects: string[]; density: number; general: number } {
   const defects: string[] = [];
-  let density = 0, scoped = 0;
+  let density = 0, general = 0;
   postcss.parse(css, { from: file }).walkRules((r) => {
     const at = `${file}:${r.source?.start?.line ?? "?"}`;
     const chain = mediaChain(r);
     if (/data-density/.test(r.selector)) {
       density++;
       if (!gated(r.selector)) defects.push(`${at} every selector part must start ${GATE}: "${r.selector.replace(/\s+/g, " ").slice(0, 90)}"`);
-      if (!fencedByPhone(chain)) defects.push(`${at} a Compact rule outside @media ${PHONE}: "${r.selector.replace(/\s+/g, " ").slice(0, 60)}"`);
+      if (!fencedByPhone(chain)) defects.push(`${at} a Compact rule outside a plain @media ${PHONE}: "${r.selector.replace(/\s+/g, " ").slice(0, 60)}"`);
       return;
     }
-    if (phoneOnly(chain) && SCOPE.test(r.selector)) {
-      scoped++;
-      if (!exempt(r)) defects.push(`${at} a phone rule on the board's density scope with no gate and no "density: general" reason: "${r.selector.replace(/\s+/g, " ").slice(0, 70)}"`);
+    if (phoneOnly(chain)) {
+      general++;
+      if (!exempt(r)) defects.push(`${at} a phone-only rule with no Compact gate and no "density: general" reason: "${r.selector.replace(/\s+/g, " ").slice(0, 70)}"`);
     }
   });
-  return { defects, density, scoped };
+  return { defects, density, general };
 }
 
 /** §3 — density is decided in globals.css only; code may stamp and read the attribute in exactly two files. */
@@ -95,6 +116,9 @@ function codeDefects(files: Array<{ rel: string; src: string }>): string[] {
     const c = decomment(f.src);
     if (/data-\[density|\[data-density|html:not\(\[data-density/.test(c)) d.push(`${f.rel}: a density variant in code — Compact rules live in globals.css only (§0d)`);
     else if (/data-density/.test(c) && !READERS.has(f.rel)) d.push(`${f.rel}: reads or stamps data-density — only ${[...READERS].join(" and ")} may`);
+    // §3b — a phone-only Tailwind variant on a board file would change the board below 640 in BOTH settings, going round
+    // the CSS fence entirely. Zero today (2026-09-22); a General phone fix on the board goes in globals.css with its reason.
+    if (BOARD_FILES.includes(f.rel) && /(?<![\w-])max-(?:sm|xs|md|\[[^\]]*\]):/.test(c)) d.push(`${f.rel}: a phone-only Tailwind variant (max-sm:/max-xs:/max-[…]:) on a board file — use globals.css behind the gate`);
   }
   return d;
 }
@@ -102,13 +126,13 @@ function codeDefects(files: Array<{ rel: string; src: string }>): string[] {
 /* ── §1 · §2 over every stylesheet ─────────────────────────────────────────────────────────── */
 console.log("\n§1 · §2 · the Compact fence over every stylesheet");
 const cssFiles = walk(join(ROOT, "src"), /\.css$/).map((p) => ({ rel: relative(ROOT, p).replace(/\\/g, "/"), src: readFileSync(p, "utf8") }));
-let density = 0, scoped = 0;
+let density = 0, general = 0;
 const cssFound: string[] = [];
 for (const f of cssFiles) {
   const r = cssDefects(f.src, f.rel);
-  density += r.density; scoped += r.scoped; cssFound.push(...r.defects);
+  density += r.density; general += r.general; cssFound.push(...r.defects);
 }
-ok(`${cssFiles.length} stylesheets parsed · ${density} Compact rule(s) · ${scoped} phone rule(s) on the density scope — all fenced`,
+ok(`${cssFiles.length} stylesheets parsed · ${density} Compact rule(s) fenced · ${general} other phone-only rule(s), each saying why it is general`,
   cssFound.length === 0, cssFound.slice(0, 6).join(" · "));
 if (density === 0) console.log("    ⚠️ population 0: no Compact rule exists yet (U3/U4 add them) — §5 and --prove-red prove the check can fail");
 
@@ -132,12 +156,27 @@ ok("§4a the cookie is kp-density, and only the literal \"comfortable\" selects 
 ok("§4b the layout reads the cookie on the server and stamps ONLY comfortable (no attribute = Compact)",
   /cardSpacingFromCookie\(jar\.get\(CARD_SPACING_COOKIE\)\?\.value\) === "comfortable" \? "comfortable" : undefined/.test(layout)
   && /<html [^>]*data-density=\{density\}/.test(layout));
-ok("§4c the client setter writes the cookie with the attribute, removing it for Compact",
-  /document\.cookie = `\$\{CARD_SPACING_COOKIE\}=\$\{v\}; path=\/; max-age=\$\{60 \* 60 \* 24 \* 365\}; samesite=lax`/.test(lib)
+ok("§4c the client setter keeps the cookie for Comfortable only — Compact DELETES it, so no cookie really is Compact",
+  /document\.cookie = `\$\{CARD_SPACING_COOKIE\}=comfortable; path=\/; max-age=\$\{60 \* 60 \* 24 \* 365\}; samesite=lax`/.test(lib)
+  && /document\.cookie = `\$\{CARD_SPACING_COOKIE\}=; path=\/; max-age=0; samesite=lax`/.test(lib)
   && /setAttribute\("data-density", "comfortable"\)/.test(lib) && /removeAttribute\("data-density"\)/.test(lib));
-const row = nav.match(/role="menuitemcheckbox"[\s\S]{0,1600}?<\/button>/)?.[0] ?? "";
+ok("§4c′ after every commit the attribute is re-read from the cookie (a refresh in flight cannot write an old choice back)",
+  /syncCardSpacingFromCookie/.test(lib) && /useLayoutEffect\(\(\) => \{\s*syncCardSpacingFromCookie\(\);\s*\}, \[initialDensity\]\)/.test(read("src/components/theme-provider.tsx"))
+  && /<ThemeProvider[^>]*initialDensity=\{density\}/.test(layout));
+const railRow = (src: string) => src.match(/role="menuitemcheckbox"[\s\S]{0,1600}?<\/button>/)?.[0] ?? "";
+const rowDefects = (row: string) => [
+  !row && "no menuitemcheckbox row",
+  !/aria-checked=\{compact\}/.test(row) && "aria-checked is not the Compact state",
+  !/className="[^"]*(?<![\w:-])min-h-\[44px\](?![\w-])[^"]*"/.test(row) && "the row is not min-h-[44px]",
+  !/className="[^"]*(?<![\w:-])sm:hidden(?![\w-])[^"]*"/.test(row) && "the row is not sm:hidden (phones only)",
+  !/<Toggle on=\{compact\} decorative \/>/.test(row) && "the toggle is not the decorative picture",
+].filter(Boolean) as string[];
 ok("§4d the rail row is one 44px menuitemcheckbox, hidden ≥ 640, with its state and a decorative toggle",
-  !!row && /aria-checked=\{compact\}/.test(row) && /min-h-\[44px\]/.test(row) && /\bsm:hidden\b/.test(row) && /<Toggle on=\{compact\} decorative \/>/.test(row));
+  rowDefects(railRow(nav)).length === 0, rowDefects(railRow(nav)).join(" · "));
+ok("§4d′ control · the same row with `max-sm:hidden` (hidden on phones instead) is reported",
+  rowDefects(railRow(nav.replace(/(?<![\w:-])sm:hidden/, "max-sm:hidden"))).length > 0);
+ok("§4g the store reads the attribute through useSyncExternalStore, never a render-time DOM read plus a forced re-render",
+  /useSyncExternalStore\(/.test(nav) && !/rerender/.test(nav));
 ok("§4e only the rail's menu carries it: bottom-nav passes cardSpacing, the top bar does not",
   /<NavMore[\s\S]{0,200}?variant="rail"[\s\S]{0,120}?cardSpacing/.test(rail) && /<NavMore\b/.test(bar) && !/cardSpacing/.test(bar));
 const deco = toggle.match(/if \(decorative\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
@@ -151,6 +190,12 @@ const FIX: Array<[string, string, boolean]> = [
   ["a fenced Compact rule", `${P} { ${GATE} .mcardp { padding-top: 10px; } }`, false],
   ["a fenced comma list", `${P} { ${GATE} .mcardp, ${GATE} .market-grid { gap: 10px; } }`, false],
   ["an exempt general phone rule", `${P} { .mcardp-share::after { /* density: general — D28 reach, both settings */ top: -14px; } }`, false],
+  ["a phone block that declares itself general once, first", `@media (max-width: 560.98px) { /* density: general — home hero */ .kp-hero__cta { width: 100%; } .kp-proof { gap: 8px; } }`, false],
+  ["an OR media list that contains the phone query", `@media (max-width: 639.98px), (min-width: 1024px) { ${GATE} .mcardp { gap: 6px; } }`, true],
+  ["a `not` media query built on the phone query", `@media not all and (max-width: 639.98px) { ${GATE} .mcardp { gap: 6px; } }`, true],
+  ["an ungated phone rule on the filter sheet (outside any board allow-list)", `${P} { .kp-fsheet-trigger-label { display: none; } }`, true],
+  ["an ungated phone token on :root", `${P} { :root { --rh-section: 32px; } }`, true],
+  ["a general comment that is NOT first in its block", `${P} { .kp-auth-cta { padding: 0; } /* density: general — too late */ .mcardp { gap: 6px; } }`, true],
   ["a gate with no phone query", `${GATE} .mcardp { padding-top: 10px; }`, true],
   ["a phone query under a ≥ 640 query", `@media (min-width: 768px) { ${P} { ${GATE} .mcardp { gap: 6px; } } }`, true],
   ["a comma list with one ungated part", `${P} { ${GATE} .mcardp, .market-grid { gap: 10px; } }`, true],
@@ -170,6 +215,15 @@ const tsxFix: Array<[string, string, boolean]> = [
 ];
 for (const [name, src, bad] of tsxFix) {
   const d = codeDefects([{ rel: "src/fixture.tsx", src }]);
+  ok(`§5 ${name} → ${bad ? "reported" : "accepted"}`, bad ? d.length > 0 : d.length === 0, d.join(" · "));
+}
+const boardFix: Array<[string, string, boolean]> = [
+  ["a max-sm: utility on the market card", 'export const C = () => <article className="mcardp max-sm:gap-1.5" />;', true],
+  ["an arbitrary max-[…]: variant on the card", 'export const C = () => <article className="mcardp max-[639px]:pt-2" />;', true],
+  ["an ordinary sm: (≥ 640) utility on the card", 'export const C = () => <article className="mcardp sm:gap-3" />;', false],
+];
+for (const [name, src, bad] of boardFix) {
+  const d = codeDefects([{ rel: "src/components/markets/market-card.tsx", src }]);
   ok(`§5 ${name} → ${bad ? "reported" : "accepted"}`, bad ? d.length > 0 : d.length === 0, d.join(" · "));
 }
 

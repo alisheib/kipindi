@@ -25,6 +25,13 @@ export function cardSpacingFromCookie(raw: string | undefined | null): CardSpaci
   return raw === "comfortable" ? "comfortable" : "compact";
 }
 
+/** Subscribe to changes of the attribute — for `useSyncExternalStore`, so a reader always shows the committed value. */
+export function subscribeCardSpacing(onChange: () => void) {
+  const mo = new MutationObserver(onChange);
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-density"] });
+  return () => mo.disconnect();
+}
+
 /** What the `<html>` element carries right now (client only; the server answers from the cookie). */
 export function currentCardSpacing(): CardSpacing {
   if (typeof document === "undefined") return "compact";
@@ -32,13 +39,46 @@ export function currentCardSpacing(): CardSpacing {
 }
 
 /**
- * Save a choice and apply it at once: the cookie (same shape as the language cookie, `i18n.tsx` writeCookie — one
- * year, path /, samesite=lax) so the NEXT server render agrees, and the attribute so THIS page reflows now. No
- * `router.refresh()`: the attribute is the whole effect, and the root layout never re-renders on soft navigation.
+ * Save a choice and apply it at once: the cookie so the NEXT server render agrees, and the attribute so THIS page
+ * reflows now (no `router.refresh()` — the attribute is the whole effect).
+ *
+ * ⭐ COMPACT DELETES THE COOKIE rather than writing `compact`, so "no cookie means Compact" is literally true and the
+ * browser keeps nothing at all for the default — which is what Privacy §7 and COMPLIANCE-DECISIONS "Privacy v2026-09-22"
+ * say. Comfortable is the one value ever stored (same shape as the language cookie: one year, path /, samesite=lax).
  */
 export function applyCardSpacing(v: CardSpacing) {
   if (typeof document === "undefined") return;
-  document.cookie = `${CARD_SPACING_COOKIE}=${v}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
-  if (v === "comfortable") document.documentElement.setAttribute("data-density", "comfortable");
+  if (v === "comfortable") {
+    document.cookie = `${CARD_SPACING_COOKIE}=comfortable; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+    document.documentElement.setAttribute("data-density", "comfortable");
+  } else {
+    document.cookie = `${CARD_SPACING_COOKIE}=; path=/; max-age=0; samesite=lax`;
+    document.documentElement.removeAttribute("data-density");
+  }
+}
+
+/** The choice the browser holds right now (client only). */
+function cookieCardSpacing(): CardSpacing {
+  const m = document.cookie.match(new RegExp(`(?:^|; )${CARD_SPACING_COOKIE}=([^;]*)`));
+  return cardSpacingFromCookie(m?.[1]);
+}
+
+/**
+ * Make `<html>` agree with the cookie again. Called after every commit that brings a new server value
+ * (`theme-provider.tsx`, keyed on the layout's `initialDensity`).
+ *
+ * ⛔ WHY IT EXISTS (review of U2, 2026-09-22). The attribute is a React prop on `<html>`, and `applyCardSpacing` also
+ * changes it behind React's back. React rewrites a host prop only when the NEW server value differs from the last one
+ * it committed — and the board pages call `router.refresh()` on a timer (/markets every 30s, /updown 20s, /live 15s).
+ * So a refresh that left while the cookie said Comfortable, and lands after the player switched back to Compact, would
+ * write the OLD choice onto the page. The cookie is always right, so the fix is to re-read it the moment such a commit
+ * lands — in a layout effect, i.e. before the browser paints, so the stale value is never seen.
+ */
+export function syncCardSpacingFromCookie() {
+  if (typeof document === "undefined") return;
+  const want = cookieCardSpacing();
+  const has = document.documentElement.getAttribute("data-density") === "comfortable" ? "comfortable" : "compact";
+  if (want === has) return;
+  if (want === "comfortable") document.documentElement.setAttribute("data-density", "comfortable");
   else document.documentElement.removeAttribute("data-density");
 }

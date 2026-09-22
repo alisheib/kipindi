@@ -61,9 +61,13 @@ const list = (k, d) => env(k, d).split(",").map((s) => s.trim()).filter(Boolean)
  */
 function structural(r) {
   const g = r.geometry ?? {};
+  // ⛔ NOT the Up & Down card. The first production baseline (2026-09-22) measured the SAME card 468 → 660px minutes apart,
+  // on the noise-floor pair that must agree: its height follows the live round's state (open / locked / settled), which
+  // changes on a 5-minute clock and carries no state attribute to key it on. It is still measured and reported
+  // (geometry.updownCards, the summary) — it just cannot be a zero-diff number until U35 gives the card a state to key on.
   return {
     "cards.livePriced.med": g.cards?.livePriced?.med, "cards.livePriced.max": g.cards?.livePriced?.max,
-    "cards.closed.med": g.cards?.closed?.med, "updownCards.max": g.updownCards ? Math.max(...g.updownCards) : undefined,
+    "cards.closed.med": g.cards?.closed?.med,
     "gridGap": g.gridGap, "authPills.h": g.authPills?.[0]?.h, "bubble.w": g.bubble?.w,
     "closingRows.med": g.closingRows?.med, "countdown.tiles": g.countdown?.tiles, "authFieldW": g.authFieldW,
     "footerLinks.min": g.footerLinks?.min, "hero.ctaH": g.hero?.ctaH?.[0], "hero.ledePx": g.hero?.ledePx,

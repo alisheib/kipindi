@@ -197,7 +197,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <GoogleTag />
         {/* First-party visit counter — every visitor, no cookie, no identifier; see site-visit-beacon.tsx. */}
         <SiteVisitBeacon />
-        <ThemeProvider initialLocale={lang}>
+        <ThemeProvider initialLocale={lang} initialDensity={density}>
           <ScrollRestore />
           <AppShell>{children}</AppShell>
           {/* Lazy-loaded overlay components — ChatRoot + FirstVisitPrimer

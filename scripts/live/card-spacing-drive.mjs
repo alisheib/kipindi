@@ -14,6 +14,8 @@
  *   C  a reload SERVES the attribute in the markup (no flash: it is there before any script) and the menu still reads Comfortable;
  *   D  the keyboard: focus the row, Space flips it back to Compact — attribute removed, cookie compact;
  *   E  the served markup after that reload carries no attribute again.
+ *   F  the refresh race: a board refresh held in flight while the player switches back cannot restore the old choice;
+ *   G  a 360×400 screen: the menu scrolls inside itself and the switch is fully reachable.
  * Then the fences: at 768 the rail menu has no row (phones only), and the ≥ 1024 top-bar menu never has one.
  * Screens of the open menu (both states) go to .qa-shots/mobile-visual/U2/<phase>/ for a human to read.
  *
@@ -147,12 +149,60 @@ for (const locale of ["sw", "en", "zh"]) {
   await page.waitForTimeout(300);
   const d1 = await page.evaluate(() => document.documentElement.getAttribute("data-density"));
   const c2 = await densityCookie(ctx);
-  R.check(`D.${tag} Space on the focused row → Compact: attribute removed, cookie compact`,
-    d1 === null && c2?.value === "compact" && (await row(page).getAttribute("aria-checked")) === "true", `${d1} · ${c2?.value}`);
+  R.check(`D.${tag} Space on the focused row → Compact: attribute removed, cookie DELETED (no cookie is Compact)`,
+    d1 === null && !c2 && (await row(page).getAttribute("aria-checked")) === "true", `${d1} · ${JSON.stringify(c2 ?? null)}`);
 
   // E · and the server agrees again
   resp = await page.reload({ waitUntil: "load" });
   R.check(`E.${tag} the served <html> carries no data-density again`, !/data-density=/.test(await served(resp)));
+  await ctx.close();
+}
+
+// F · THE REFRESH RACE (review of U2, 2026-09-22). A board refresh that LEAVES while the choice is Comfortable and
+// LANDS after the player switched back to Compact used to write the old choice onto <html>. Reproduced exactly: the
+// page's own refresh (RefreshPoller on "50pick:refresh") is held for 3s at the network, the player taps during the
+// hold, then it lands. The count of held requests is asserted too — without one, this check would prove nothing.
+{
+  const ctx = await phone("sw");
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/markets`, { waitUntil: "load", timeout: 60000 });
+  await settle(page);
+  await openMenu(page);
+  await row(page).tap();                                            // → Comfortable (cookie + attribute)
+  await page.waitForTimeout(300);
+  let held = 0;
+  await page.route("**/*", async (route) => {
+    const h = route.request().headers();
+    if (h["rsc"] === "1" || /[?&]_rsc=/.test(route.request().url())) { held++; await new Promise((r) => setTimeout(r, 3000)); }
+    await route.continue();
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("50pick:refresh")));
+  await page.waitForTimeout(500);                                   // the refresh is in flight, carrying "comfortable"
+  await row(page).tap();                                            // → Compact while it is held
+  await page.waitForTimeout(5000);                                  // it lands
+  const f = await page.evaluate(() => ({
+    attr: document.documentElement.getAttribute("data-density"),
+    checked: document.querySelector("nav.kp-rail [role='menuitemcheckbox']")?.getAttribute("aria-checked") ?? null,
+  }));
+  const fc = await densityCookie(ctx);
+  R.check(`F · a refresh held in flight actually happened (${held} held)`, held > 0);
+  R.check("F · …and when it lands after the switch back, the page stays Compact: no attribute, no cookie, row checked",
+    held > 0 && f.attr === null && !fc && (f.checked === null || f.checked === "true"), `${JSON.stringify(f)} · cookie ${JSON.stringify(fc ?? null)}`);
+  await page.unroute("**/*");
+  await ctx.close();
+}
+
+// G · A SHORT SCREEN (review of U2): the taller menu scrolls inside itself, so the switch is still fully reachable.
+{
+  const ctx = await phone("sw", 360, 400);
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/markets`, { waitUntil: "load", timeout: 60000 });
+  await settle(page);
+  await openMenu(page);
+  await row(page).scrollIntoViewIfNeeded();
+  const g = await row(page).evaluate((el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: innerHeight }; });
+  R.check(`G · 360×400: the switch is fully on screen (${g.top}–${g.bottom} of ${g.vh})`, g.top >= 0 && g.bottom <= g.vh);
+  await page.screenshot({ path: join(OUT, "menu-sw-360x400.png") });
   await ctx.close();
 }
 
