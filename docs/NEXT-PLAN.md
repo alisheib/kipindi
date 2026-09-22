@@ -29,8 +29,8 @@ Ali, 2026-09-15: *"later any session please start with the mobile visual plan an
 | | |
 |---|---|
 | **Why** | Players on phones call the site "chunky". Measured live at 360: a 347px market card, 237px of pinned chrome on `/markets` (≈ 1.6 cards visible), an 11-screen home |
-| **Shape** | 30 units: **[Compact]** market-board density behind a "Card spacing" switch; **[General]** phone fit for everyone (header, home, chat bubble, popups, questions, toasts, celebrations, notices, notifications, page shells, footer); and the hidden phone conditions (short screens/landscape, keyboard, safe areas, large text, skeletons, empty/error states, touch, low-end motion, browser floor, real devices). Defects D1–D27. Scored 10/10 through seven lenses in the plan's §13 |
-| **Next** | Session S1 → U1 (baseline instrument + QA player) and U2 (density setting + switch). Two units per session |
+| **Shape** | 40 units: **[Compact]** market-board density behind a "Card spacing" switch; **[General]** phone fit for everyone (header, home, chat bubble, popups, questions, toasts, celebrations, notices, notifications, page shells, footer); the hidden phone conditions (short screens/landscape, keyboard, safe areas, large text, skeletons, empty/error states, touch, low-end motion, browser floor, real devices); and the element-inspection units U31–U40. Defects D1–D53. Scored 10/10 through seven lenses in the plan's §13 |
+| **Next** | Session S1 → U1 (baseline instrument + QA player) and U2 (density setting + switch). Two units per session. ⚠️ **S1 is IN FLIGHT since 2026-09-22 on branch `mobile-visual` (all of it pushed to GitHub)** — resume from the plan's §0 HALF-DONE checklist, never start S1 again |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit** |
 
 ## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟠 **PLANNED 2026-09-16 · RUNS WHEN ALI SAYS SO, ON ANY PC** · 0/52 units ✅ · 0/25 defects ✅
