@@ -52,7 +52,8 @@
  *   · G1/G6's "nothing placed" is what an account that was never in scope looks like too. So the SKIPPED row
  *     that carries the PENDING id is the witness, and every absence is AND-ed with it.
  *   · G2's "position equals the new cap" is what a bot that simply decided 20,000 looks like. So the PENDING
- *     stake captured BEFORE the save (88,000) and `decision.firedStakeTzs` — written ONLY by `clampStake` —
+ *     stake captured BEFORE the save (88,000) and `decision.firedStakeTzs` — written only by `clampStake` (the
+ *     Postgres one at dal:3933 on this drive; its in-memory twin at dal:2659) —
  *     are asserted, and `decision.askedStakeTzs` must still say 88,000 (the decision was not re-run).
  *   · G3 passes for free if the decided stake was not pinned by the OLD cap. So the old cap (50,000) is BELOW
  *     the asked amount (96,000): a fire that re-sized UPWARD would place the cut (125,000) or the asked amount
@@ -213,9 +214,10 @@ const EAT_OFFSET_MS = 3 * 3_600_000;
  * 1931). Fixture arithmetic, not oracle arithmetic: it places G4's window and checks the premise that the
  * fire instant was really outside it. The expected value stays the literal string OUTSIDE_SCHEDULE.
  */
-const eatOf = (ms: number): { day: string; minute: number } => {
+const eatOf = (ms: number): { day: string; nextDay: string; minute: number } => {
   const d = new Date(ms + EAT_OFFSET_MS);
-  return { day: WEEKDAYS[(d.getUTCDay() + 6) % 7], minute: d.getUTCHours() * 60 + d.getUTCMinutes() };
+  const i = (d.getUTCDay() + 6) % 7;
+  return { day: WEEKDAYS[i], nextDay: WEEKDAYS[(i + 1) % 7], minute: d.getUTCHours() * 60 + d.getUTCMinutes() };
 };
 
 /** ⛔ Copied from the lanes file (its `helpers` is module-private) — the SAME definitions, on purpose. */
@@ -310,7 +312,7 @@ export async function run(env: Any, prior: Any): Promise<Any> {
     stakeOracle(decided, exp.decide, `${key} · …sized EXACTLY ${exp.decide} by the rules AS THEY STOOD at the decision`);
     ok(`${key} · …and the amount it recorded asking for is exactly ${exp.asked}`,
       decided?.decision?.askedStakeTzs === exp.asked, j({ asked: decided?.decision?.askedStakeTzs, expected: exp.asked }));
-    ok(`${key} · MID-FLIGHT · ${what} landed through the DAL CAS while the row was STILL PENDING, its dueAt still ahead of the database clock at the save`,
+    ok(`${key} · MID-FLIGHT · ${what} landed through the DAL CAS while the row was STILL PENDING (re-read AFTER the save — the read that proves it landed in flight), its dueAt still ahead of the database clock read immediately BEFORE the save (the printed margin omits the save's own latency)`,
       change?.ok === true && change?.rowAfter?.status === "PENDING" && decided != null && Date.parse(decided.dueAt) > change.atMs,
       j({ saved: change?.ok, rowAfterSave: change?.rowAfter?.status, dueAt: decided?.dueAt, savedAt: stamp(change?.atMs), marginMs: decided && change ? Date.parse(decided.dueAt) - change.atMs : null }));
     ok(`${key} · …and rulesVersion is exactly base + 1 — the save is on the row fire re-reads, not in a tab`,
@@ -382,11 +384,13 @@ export async function run(env: Any, prior: Any): Promise<Any> {
     },
     "G4-SCHEDULE": async (d) => {
       d.change = await changeNow(d, (bot, atMs) => {
-        /* Placed on the DATABASE clock's now — what fire.ts:155 tests against — ≥ 11 h away in either direction:
-           00:00–01:00 EAT when now is past noon, 23:00–24:00 EAT before it; on today's EAT weekday only. */
-        const { day, minute } = eatOf(atMs);
-        const win = minute >= 720 ? { startMin: 0, endMin: 60 } : { startMin: 1380, endMin: 1440 };
-        g4Schedule = { days: [day], allDay: false, windows: [win] };
+        /* Placed on the DATABASE clock's now — what fire.ts:155 tests against. The window is the ANTIPODAL hour
+           (now + 12 h floored to the hour, mod 24 h: ≥ 11 h away either way), listed on BOTH today's and
+           tomorrow's EAT weekday — so a fire landing after EAT midnight (≤ 5 min after a 23:5x save) is still on
+           a LISTED day, and "outside" is always the window's minutes, never an unlisted day. */
+        const { day, nextDay, minute } = eatOf(atMs);
+        const startMin = ((Math.floor(minute / 60) + 12) % 24) * 60;
+        g4Schedule = { days: [day, nextDay], allDay: false, windows: [{ startMin, endMin: startMin + 60 }] };
         const doc = structuredClone(bot.rules);
         doc.schedule = g4Schedule;
         return { rules: doc };
@@ -430,11 +434,11 @@ export async function run(env: Any, prior: Any): Promise<Any> {
     ok("G1-MODE-OFF · the STORED document now has modes.polls.counter === false — read back off the row, not assumed",
       d.change?.ok === true && d.change?.botAfter?.rules?.modes?.polls?.counter === false && d.change?.docBefore?.modes?.polls?.counter === true,
       j({ before: d.change?.docBefore?.modes?.polls?.counter, after: d.change?.botAfter?.rules?.modes?.polls?.counter }));
-    ok("G1-MODE-OFF · fire re-read the saved scope: the SAME row went PENDING → SKIPPED · OUT_OF_SCOPE (fire.ts:147 coversAtFire → rulesCover reads modes.polls.counter)",
-      d.fired?.id === d.decided?.id && d.fired?.status === "SKIPPED" && d.fired?.reasonCode === "OUT_OF_SCOPE",
+    ok(`G1-MODE-OFF · fire re-read the saved scope: the SAME row went PENDING → SKIPPED · ${d.exp.fireCode} (fire.ts:147 coversAtFire → rulesCover reads modes.polls.counter)`,
+      d.fired?.id === d.decided?.id && d.fired?.status === "SKIPPED" && d.fired?.reasonCode === d.exp.fireCode,
       j({ status: d.fired?.status, code: d.fired?.reasonCode, sameRow: d.fired?.id === d.decided?.id }));
     await stillActive(d, "SKIPPED");
-    await refusedMoney(d, "SKIPPED", "OUT_OF_SCOPE");
+    await refusedMoney(d, "SKIPPED", d.exp.fireCode);
   }
 
   // ── G2 · stakeMax lowered → clamped down, written back ────────────────────────────────────────
@@ -446,7 +450,7 @@ export async function run(env: Any, prior: Any): Promise<Any> {
       d.change?.ok === true && d.change?.botAfter?.stakeMaxTzs === exp.newStakeMax && d.change?.rowAfter?.status === "PENDING",
       j({ before: d.change?.before?.stakeMaxTzs, after: d.change?.botAfter?.stakeMaxTzs, row: d.change?.rowAfter?.status }));
     const staked = await placedMoney(d, exp.fire, "the recomputed cap, not the 88,000 it decided");
-    ok(`G2-MAX-DOWN · MON-02 · the row was CLAMPED DOWN: stakeTzs ${exp.decide} at PENDING → ${exp.fire} at PLACED, and decision.firedStakeTzs === ${exp.fire} — written ONLY by clampStake (house-bot-dal.ts:3933)`,
+    ok(`G2-MAX-DOWN · MON-02 · the row was CLAMPED DOWN: stakeTzs ${exp.decide} at PENDING → ${exp.fire} at PLACED, and decision.firedStakeTzs === ${exp.fire} — written only by clampStake (the Postgres one, house-bot-dal.ts:3933, which this drive runs on; its in-memory twin at :2659)`,
       d.decided?.stakeTzs === exp.decide && d.fired?.status === "PLACED" && d.fired?.stakeTzs === exp.fire && d.fired?.decision?.firedStakeTzs === exp.fire && staked === exp.fire,
       j({ pending: d.decided?.stakeTzs, placedRow: d.fired?.stakeTzs, firedStakeTzs: d.fired?.decision?.firedStakeTzs, staked }));
     ok(`G2-MAX-DOWN · …while decision.askedStakeTzs still says ${exp.asked} — the decision was NOT re-run at fire, the stake was cut`,
@@ -486,27 +490,28 @@ export async function run(env: Any, prior: Any): Promise<Any> {
          came back for `{startMin, endMin}`), and a string compare read a correct product as a failed save on run 1. */
       const s = d.change?.botAfter?.rules?.schedule;
       const w0 = s?.windows?.[0];
-      const same = g4Schedule != null && s != null && Array.isArray(s.days) && s.days.length === 1 && s.days[0] === g4Schedule.days[0]
+      const same = g4Schedule != null && s != null && Array.isArray(s.days) && s.days.length === 2 && s.days[0] === g4Schedule.days[0] && s.days[1] === g4Schedule.days[1]
         && s.allDay === false && Array.isArray(s.windows) && s.windows.length === 1
         && w0?.startMin === g4Schedule.windows[0].startMin && w0?.endMin === g4Schedule.windows[0].endMin;
       ok(`G4-SCHEDULE · the STORED schedule now reads ${j(g4Schedule)} EAT (read back field by field), replacing all-day every day — a shape no officer form posts, so through the DAL`,
         d.change?.ok === true && same && d.change?.docBefore?.schedule?.allDay === true,
         j({ before: d.change?.docBefore?.schedule, after: s }));
     }
-    ok("G4-SCHEDULE · fire re-tested the schedule on the DATABASE clock: the SAME row went PENDING (reasonCode null — decide.ts did NOT write this code) → SKIPPED · OUTSIDE_SCHEDULE (fire.ts:162)",
-      d.decided?.reasonCode == null && d.fired?.id === d.decided?.id && d.fired?.status === "SKIPPED" && d.fired?.reasonCode === "OUTSIDE_SCHEDULE",
+    ok(`G4-SCHEDULE · fire re-tested the schedule on the DATABASE clock: the SAME row went PENDING (reasonCode null — decide.ts did NOT write this code) → SKIPPED · ${d.exp.fireCode} (fire.ts:162)`,
+      d.decided?.reasonCode == null && d.fired?.id === d.decided?.id && d.fired?.status === "SKIPPED" && d.fired?.reasonCode === d.exp.fireCode,
       j({ atDecision: d.decided?.reasonCode, status: d.fired?.status, code: d.fired?.reasonCode }));
     {
       const finishedMs = d.fired?.finishedAt ? Date.parse(d.fired.finishedAt) : NaN;
       const at = Number.isFinite(finishedMs) ? eatOf(finishedMs) : null;
       const win = g4Schedule?.windows?.[0];
-      const inside = at != null && win != null && g4Schedule.days.includes(at.day) && at.minute >= win.startMin && at.minute < win.endMin;
-      ok("G4-SCHEDULE · PREMISE · the instant it was finished (DB clock) really lies OUTSIDE the window written, on the EAT weekday and minute computed by hand, and within 5 minutes of the save — so \"outside\" is the window, not a day that passed",
-        at != null && d.change != null && !inside && finishedMs - d.change.atMs < 300_000 && finishedMs > d.change.atMs,
-        j({ finishedAt: stamp(finishedMs), eat: at, window: g4Schedule, sinceSaveMs: d.change ? finishedMs - d.change.atMs : null }));
+      const dayListed = at != null && g4Schedule != null && g4Schedule.days.includes(at.day);
+      const minuteInside = at != null && win != null && at.minute >= win.startMin && at.minute < win.endMin;
+      ok("G4-SCHEDULE · PREMISE · the instant it was finished (DB clock) is on a LISTED EAT weekday (today or tomorrow — a midnight rollover cannot be the refuser) and its minute-of-day, computed by hand, lies OUTSIDE the window written, within 5 minutes of the save — so \"outside\" is the window's minutes, not a day that passed",
+        at != null && d.change != null && dayListed && !minuteInside && finishedMs - d.change.atMs < 300_000 && finishedMs > d.change.atMs,
+        j({ finishedAt: stamp(finishedMs), eat: at, dayListed, minuteInside, window: g4Schedule, sinceSaveMs: d.change ? finishedMs - d.change.atMs : null }));
     }
     await stillActive(d, "SKIPPED");
-    await refusedMoney(d, "SKIPPED", "OUTSIDE_SCHEDULE");
+    await refusedMoney(d, "SKIPPED", d.exp.fireCode);
   }
 
   // ── G5 · rules made unparseable ───────────────────────────────────────────────────────────────
@@ -555,11 +560,11 @@ export async function run(env: Any, prior: Any): Promise<Any> {
       d.change?.ok === true && Array.isArray(d.change?.botAfter?.rules?.scope?.categories) && d.change?.botAfter?.rules?.scope?.categories?.length === 0
         && RULES.parseHouseBotRules(d.change?.botAfter?.rules, CTX)?.ok === true,
       j({ after: d.change?.botAfter?.rules?.scope?.categories }));
-    ok("G6-SCOPE-EMPTY · fire re-read the saved scope: the SAME row went PENDING → SKIPPED · OUT_OF_SCOPE (rulesCover with an empty category list, decide.ts:179)",
-      d.fired?.id === d.decided?.id && d.fired?.status === "SKIPPED" && d.fired?.reasonCode === "OUT_OF_SCOPE",
+    ok(`G6-SCOPE-EMPTY · fire re-read the saved scope: the SAME row went PENDING → SKIPPED · ${d.exp.fireCode} (rulesCover with an empty category list, decide.ts:179)`,
+      d.fired?.id === d.decided?.id && d.fired?.status === "SKIPPED" && d.fired?.reasonCode === d.exp.fireCode,
       j({ status: d.fired?.status, code: d.fired?.reasonCode, sameRow: d.fired?.id === d.decided?.id }));
     await stillActive(d, "SKIPPED");
-    await refusedMoney(d, "SKIPPED", "OUT_OF_SCOPE");
+    await refusedMoney(d, "SKIPPED", d.exp.fireCode);
   }
 
   /* ═══ PHASE 2 · two desks that placed nothing, re-armed: the bounds refusal and the FUTURE build ═══ */
