@@ -476,6 +476,10 @@ export const dict = {
       currentSection: "current section",
       // 2026-09-14 · the phone bottom-rail tab label only.
       updown: "Up & Down",
+      // 2026-09-22 · Mobile Visual Plan U2: the "Card spacing" row in the phone rail's More menu. Spacing only —
+      // the hint says so, because a player who fears the tighter board hides things will otherwise switch it off.
+      cardSpacing: "Card spacing", densityCompact: "Compact", densityComfortable: "Comfortable",
+      cardSpacingHint: "Phones only. Changes how tightly market cards sit. Nothing is hidden.",
     },
     auth: {
       signInTitle: "Sign in", signUpTitle: "Create account",
@@ -3102,6 +3106,9 @@ export const dict = {
       currentSection: "sehemu ya sasa",
       // 2026-09-14 · the phone rail's SHORT tab name only ("Juu na Chini" cannot fit a fifth of a 360 screen); the product name everywhere else stays "Juu na Chini".
       updown: "Juu/Chini",
+      // 2026-09-22 · U2. "Nafasi finyu / pana" — narrow / wide spacing; the values agree with "nafasi" (N-class).
+      cardSpacing: "Nafasi ya kadi", densityCompact: "Finyu", densityComfortable: "Pana",
+      cardSpacingHint: "Kwa simu pekee. Hubadilisha jinsi kadi za masoko zinavyokaribiana. Hakuna kinachofichwa.",
     },
     auth: {
       signInTitle: "Ingia", signUpTitle: "Fungua akaunti",
@@ -5243,6 +5250,9 @@ export const dict = {
       wallet: "钱包", leaderboard: "排行", primary: "主要",
       currentSection: "当前板块",
       updown: "涨跌",
+      // 2026-09-22 · U2.
+      cardSpacing: "卡片间距", densityCompact: "紧凑", densityComfortable: "宽松",
+      cardSpacingHint: "仅适用于手机。只改变市场卡片之间的疏密，不隐藏任何内容。",
     },
     auth: {
       signInTitle: "登录", signUpTitle: "创建账户",

@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
+import { Toggle } from "@/components/ui/toggle";
 import { useT } from "@/lib/i18n";
+import { applyCardSpacing, currentCardSpacing } from "@/lib/card-spacing";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /**
@@ -25,15 +27,21 @@ export function NavMore({
   label,
   variant = "bar",
   active,
+  cardSpacing,
 }: {
   items: readonly { href: string; label: string; proposalsBadge?: ProposalsState }[];
   label: string;
   variant?: "bar" | "rail";
   /** Rail only: `More` reads as current when the page behind it is one of its own. */
   active?: boolean;
+  /** Rail only: the phone's "Card spacing" switch as the menu's first row (Mobile Visual Plan U2). Off by default,
+   *  so the top-bar menu never grows it. */
+  cardSpacing?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [, rerender] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const hintId = useId();
   const pathname = usePathname();
   const { t } = useT();
 
@@ -93,6 +101,37 @@ export function NavMore({
                render off-screen entirely. `right-2` keeps it inside the viewport at 360. */
             className="absolute bottom-[calc(100%+8px)] right-2 z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated p-1 shadow-overlay"
           >
+            {/* ⭐ CARD SPACING (Mobile Visual Plan U2, Ali's decision 1 of 2026-09-15) — phones only, so `sm:hidden`
+                (the rail itself shows up to 1023px). It is the FIRST row on purpose: the menu opens upward, and its
+                LAST row sits under the chat bubble (D30, owned by U33), where a switch would be tapped through.
+                ⛔ One control, one name: the ROW is the `menuitemcheckbox` (a bare role="switch" is not allowed in a
+                menu), so the toggle inside is only its picture (`decorative`), never a second button.
+                The state is read from `<html data-density>` while the menu is open — the menu never renders open on
+                the server, so this cannot mismatch hydration — and `applyCardSpacing` writes cookie + attribute. */}
+            {cardSpacing && (() => {
+              const compact = currentCardSpacing() === "compact";
+              return (
+                <>
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={compact}
+                    aria-label={`${t.nav.cardSpacing}: ${t.nav.densityCompact}`}
+                    aria-describedby={hintId}
+                    onClick={() => { applyCardSpacing(compact ? "comfortable" : "compact"); rerender((n) => n + 1); }}
+                    className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-bg-overlay sm:hidden"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-body-sm font-semibold text-text">{t.nav.cardSpacing}</span>
+                      <span className="block text-label text-text-subtle">{compact ? t.nav.densityCompact : t.nav.densityComfortable}</span>
+                      <span id={hintId} className="mt-1 block text-label text-text-muted">{t.nav.cardSpacingHint}</span>
+                    </span>
+                    <Toggle on={compact} decorative />
+                  </button>
+                  <div role="separator" className="mx-2 my-1 h-px bg-border sm:hidden" />
+                </>
+              );
+            })()}
             {items.map((it) => {
               const a = pathname.startsWith(it.href);
               return (

@@ -39,11 +39,11 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-09-15.3";
+const PRIVACY_VERSION = "2026-09-22";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "df7dadf729d7";
-/** Every cookie name the code writes, as of v2026-09-14.2. A new one must be described in §7 first. */
-const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_revoked", "kp_session"];
+const PRIVACY_EN_SHA = "e9dc3ffcbba4";
+/** Every cookie name the code writes, as of v2026-09-22. A new one must be described in §7 first. */
+const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
 // withdrawn (`google-tag.tsx` expireCookie) — a deletion is a write, so the census must see it; it is never spelled to dodge it.
 
@@ -248,6 +248,8 @@ ok("§4b the session cap and the sign-out note's lifetime were read from the cod
 const COOKIE_WORDS: Record<string, Record<Loc, string[]>> = {
   kp_session: { en: ["sign-in session", `${ttlDays} days`], sw: ["kipindi chako cha kuingia", `siku ${ttlDays}`], zh: ["登录会话", `${ttlDays} 天`] },
   "kp-locale": { en: ["your language"], sw: ["lugha yako"], zh: ["您的语言"] },
+  // v2026-09-22 (Mobile Visual Plan U2, approved by Ali 2026-09-22): the phone card-spacing choice, `src/lib/card-spacing.ts`.
+  "kp-density": { en: ["card spacing"], sw: ["nafasi ya kadi"], zh: ["卡片间距"] },
   kp_revoked: { en: [`${revokedSecs} seconds`, "signed out"], sw: [`sekunde ${revokedSecs}`, "ulitolewa kwenye akaunti"], zh: [`${revokedSecs} 秒`, "退出登录"] },
   "kp-kyc-notice": { en: ["identity notice"], sw: ["taarifa ya utambulisho"], zh: ["身份提示"] },
   kp_admin_totp: { en: ["staff accounts only", "two-factor"], sw: ["wafanyakazi pekee", "hatua mbili"], zh: ["仅限员工账户", "双重验证"] },
@@ -397,7 +399,7 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-15.3 ·', 'sw: "Toleo 2026-09-15.2 ·');
+const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-22 ·', 'sw: "Toleo 2026-09-15.3 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,

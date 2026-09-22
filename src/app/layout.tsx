@@ -168,11 +168,15 @@ export const viewport: Viewport = {
 
 import { cookies } from "next/headers";
 import { localeOrDefault } from "@/lib/i18n-dict";
+import { CARD_SPACING_COOKIE, cardSpacingFromCookie } from "@/lib/card-spacing";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();
   // A visitor with no language chosen gets Swahili, the platform default (`localeOrDefault`).
   const lang = localeOrDefault(jar.get("kp-locale")?.value);
+  // Card spacing (Mobile Visual Plan U2): only "comfortable" is stamped; no attribute IS Compact, the phone default.
+  // Read here, on the server, so the first paint is already right — see `src/lib/card-spacing.ts`.
+  const density = cardSpacingFromCookie(jar.get(CARD_SPACING_COOKIE)?.value) === "comfortable" ? "comfortable" : undefined;
   // Chatbot on/off (AI toolkit). Default ON if the read fails — a config hiccup must
   // never silently hide a working help widget.
   const chatbotEnabled = await isChatbotEnabled().catch(() => true);
@@ -181,7 +185,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // places, so both are set. See that comment for WHY this product blocks machine translation
   // at all, and `dom-translation-guard.ts` for what protects us when a translator ignores both.
   return (
-    <html lang={lang} translate="no" suppressHydrationWarning className={`notranslate ${sora.variable} ${inter.variable} ${jbm.variable}`}>
+    <html lang={lang} translate="no" data-density={density} suppressHydrationWarning className={`notranslate ${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
         {/* ⛔ FIRST IN THE BODY, DELIBERATELY. Makes `removeChild`/`insertBefore` tolerant of a
             page translator that has re-parented React's nodes — the crash that took the Up & Down
