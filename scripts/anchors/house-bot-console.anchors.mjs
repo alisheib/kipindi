@@ -1965,8 +1965,17 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "390-sentence · a refusal sentence names the feature, on the one screen 453 exists to keep neutral",
     file: GATE,
-    from: `  NOT_FOUND: "That account is not on the desk any more. Reload the desk.",`,
-    to: `  NOT_FOUND: "That house bot is not on the desk any more. Reload the desk.",`,
+    /**
+     * ⛔ THE ANCHOR CARRIES ITS NEIGHBOUR BECAUSE THE SENTENCE ALONE STOPPED BEING UNIQUE (2026-09-23).
+     * `red:house-bot-console` reported this defect STALE — "anchor matches 2× — ambiguous, refusing to inject" —
+     * and a refused injection is a mutation that measures NOTHING while the run still says 1 caught for every
+     * other one. The console work gave `CONSOLE_ACT_REFUSAL` the same `NOT_FOUND` sentence as `RULES_SAVE_COPY`
+     * (and an `ACCOUNT_MISSING` beside it with the same words again), which is correct product copy — one fact,
+     * one spelling — and fatal to a one-line text anchor. The CONFLICT line below names *this account*, so the
+     * pair belongs to the rules save and to nothing else; it is checked by the runner's own once-only rule.
+     */
+    from: `  NOT_FOUND: "That account is not on the desk any more. Reload the desk.",\n  REMOVED: "This account was removed from the desk. Nothing on it can be changed.",\n  CONFLICT: "Someone else changed this account while this page was open. Nothing was saved — reload the page and make the change again.",`,
+    to: `  NOT_FOUND: "That house bot is not on the desk any more. Reload the desk.",\n  REMOVED: "This account was removed from the desk. Nothing on it can be changed.",\n  CONFLICT: "Someone else changed this account while this page was open. Nothing was saved — reload the page and make the change again.",`,
     expect: "and every refusal SENTENCE the door can hand back is free of the shared vocabulary",
     suite: "console-mem",
   },
@@ -2084,8 +2093,15 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "390-catch · a console action loses the catch that turns a throw from behind the door into a typed refusal",
     file: ACTIONS,
-    from: `    return { ok: false, error: safeError(err, "Nothing was saved. Reload the page and try again.") };`,
-    to: `    return { ok: false, error: String(err) };`,
+    /**
+     * ⛔ SAME STALENESS, SAME CAUSE (2026-09-23): `saveBotRulesAction` landed beside `saveBotLimitsAction` with
+     * the identical catch, so this one-line anchor matched twice and the runner refused to inject — the defect
+     * was measuring nothing. The LIMITS action's one-line `revalidatePath` above it is what tells the two apart
+     * (the rules action revalidates two routes in a block), so the anchor plants on that action and the
+     * assertion it expects covers every exported action in the file either way.
+     */
+    from: `    if (result.ok) revalidatePath(CONSOLE_ROUTE);\n    return result;\n  } catch (err) {\n    return { ok: false, error: safeError(err, "Nothing was saved. Reload the page and try again.") };`,
+    to: `    if (result.ok) revalidatePath(CONSOLE_ROUTE);\n    return result;\n  } catch (err) {\n    return { ok: false, error: String(err) };`,
     expect: "1.390 · and every exported console action turns a throw from BEHIND the door into a typed refusal",
     suite: "console-mem",
   },
