@@ -63,8 +63,10 @@
     [x] U1 docs + push to main; its §1 row ✅
     [x] U2 code (card-spacing.ts, layout, nav-more row, decorative Toggle, i18n ×3, Privacy v2026-09-22 approved by Ali,
         test:density-contract + red), and the six fixes of its adversarial review (see the branch's commit log)
-    [ ] U2 gates twice (typecheck, build, predeploy list, test:all vs clean main), local drive + screenshots (menu open, SW/EN/ZH,
-        both settings, reload keeps the choice, zero diff), push to main, production re-measure, §1 row ✅
+    [x] U2 gates (typecheck 0, build, the predeploy guards it touches, test:all vs clean main), local drive + screenshots (qa:card-spacing
+        50/0 signed out, 51/0 signed in, SW/EN/ZH, reload keeps the choice, the refresh race RED-proven, 360×400), pushed to main
+    [ ] U2 production re-measure (qa:card-spacing on www, signed out and as mobile01; qa:mobile-visual COMPARE= against the U1
+        baseline in both densities = the zero diff), then its §1 row ✅ and NEXT → S2
   Parallel-session rules in force on ALI-BLADE15 (house-bots desk session): own worktree, ports 5463/3041, heavy Node via
   `bash ~/heavy-node-lock.sh run mobile <cmd>`, never `git add -A`, merge origin/main (never rebase) before pushing <sha>:main.
 ⚠️ U31 carries a real backlog: 379 of the 718 findings are still UNVERIFIED
@@ -331,8 +333,29 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
 
 ## §2 — Session log (newest first)
 
-- **S1 · 2026-09-22 — U1 shipped (U2 in flight on branch `mobile-visual`).** Ali: *"proceed with mobile visualisation … keep
-  the progress tracker"*, then *"push live after each section, so another device can continue where it stopped"*.
+- **S1 · 2026-09-22 — U1 and U2 shipped.** Ali: *"proceed with mobile visualisation … keep the progress tracker"*, then
+  *"push live after each section, so another device can continue where it stopped"*, then *"keep going all night until done and live"*.
+  - **U2, the Card spacing setting (E-422).** A phone's rail More menu opens with a **Card spacing** row (Compact ↔ Comfortable),
+    a 44px `menuitemcheckbox` hidden from 640px up; the choice is the cookie `kp-density`, read by the root layout on the server,
+    so `<html data-density="comfortable">` is in the served markup and nothing flashes. No Compact rule exists yet (U3/U4 add them),
+    so nothing looks different — which the zero diff against the U1 baseline proves. **Ali approved the new Privacy clause the
+    same day** (v2026-09-22, en/sw/zh, COMPLIANCE-DECISIONS). What differs from the §9 text is written under U2 "As built".
+  - **An adversarial review (three lenses, a refuting skeptic per finding) confirmed six defects before anything shipped, and all
+    six are fixed:** a refresh that landed after a switch-back restored the old choice; Compact stored a `compact` cookie the
+    compliance entry said did not exist; the taller menu could not scroll; the guard's scope was a list of board classes U3/U4
+    would not all use; it accepted `,`/`not` media lists; and its `sm:hidden` check matched `max-sm:hidden`. Three claims were refuted.
+  - **The race fix is RED-proven, after its first proof proved nothing.** The first step F held the refresh REQUEST, so the server
+    rendered with the new cookie, no stale value existed, and F passed with the fix switched off — caught because the RED run was
+    done at all. A probe then showed React DOES rewrite `<html>` attributes on refresh (and `lang` with them); holding the
+    ANSWER instead reproduces the defect (attribute `comfortable`, cookie gone) and F fails without the fix, passes with it.
+  - **`test:all` (389 suites + typecheck) on U1 + U2: 23 reds, none of them U2's.** 19 give identical exit codes and failure lines on
+    a clean main checkout (`recategorise`, `red-anchors`, `decomment`, `orphans`, `kyc-restart-docs`, `updown-digest`,
+    `updown-source-class`, `eyebrow-roles`, `failure-reasons`, and the `house-bot-*` suites, which need the house-bots scratch
+    database). The three that need a server were run against one: `admin-section-gate` 21/0 and `needle-rest` 20/0 pass;
+    `revoked-deadend` has 6 failures that are all ENGLISH copy asserted with no language cookie — broken for everyone since
+    Swahili became the default (`8822b648`), not by U2; its own fix follows as a separate commit.
+  - Tracker harness: `red:mobile-visual-plan` needed two repairs the moment U1 turned ✅ (it planted into U1's row, and it could
+    not resolve commits from a git worktree) and a third on a CRLF checkout (one plant applied nowhere); 19/19 again.
   - **The instrument** `npm run qa:mobile-visual` (`scripts/live/mobile-visual-drive.mjs`): the §11 matrix — 320×640, 360×640,
     360×780, 412×915, 780×360, 768×1024, 1280×800 × SW/EN/ZH × card spacing × signed out / as the QA player. Every page's language,
     user agent (`HeadlessChrome`, re-read in the page), session and path are read back before a number is kept; pinned chrome is
@@ -791,6 +814,22 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - New `test:density-contract`: every Compact rule sits inside `@media (max-width:639.98px)` and `html:not([data-density="comfortable"])`.
   RED control: one ungated rule.
 - Accept: the choice survives reload with no flash, in EN/SW/ZH, signed out and in.
+- **As built (S1, 2026-09-22)** — where the build departs from the lines above, and why:
+  - **Compact DELETES the cookie** (it never stores `compact`), so "no cookie means Compact" is literally true — which is what
+    Privacy §7 v2026-09-22 (a new cookie is a legal act; Ali approved the clause) and COMPLIANCE-DECISIONS say.
+  - **A refresh race, found by review and RED-proven.** The board pages `router.refresh()` on a timer, and React rewrites `<html>`
+    attributes on refresh. A refresh whose answer landed after the player switched back wrote the OLD choice onto the page
+    (measured: attribute `comfortable`, cookie gone). `theme-provider.tsx` now re-syncs the attribute from the cookie in a layout
+    effect keyed on the server value; the row reads the attribute through `useSyncExternalStore`. `qa:card-spacing` step F holds
+    the refresh's ANSWER for 3s and fails with the re-sync switched off.
+  - The row is the menu's **first** item (the chat bubble sits over the last one — D30), its toggle is `Toggle decorative` (an
+    `aria-hidden` span: no button inside a button), the panel caps at `70dvh` and scrolls (a 360×400 phone still reaches it;
+    `--rail-h` replaces the number in U21), and the hint is one line — the planned sentence ran to six lines in Swahili.
+  - Swahili: "Nafasi ya kadi · Ndogo / Kubwa" (small / large spacing), not "finyu", which reads as cramped — still owed to the
+    native reader (§0 item 3), with the ZH "卡片间距 · 紧凑 / 宽松".
+  - `test:density-contract` (in `predeploy`) guards more than the plan asked: every phone-only rule is either a fenced Compact
+    rule or says `density: general — <why>` (the six existing phone blocks now do), OR/`not` media lists are rejected, and the
+    four board files may carry no `max-sm:` Tailwind variant — so a forgotten gate cannot hide as an ordinary phone rule.
 
 ### Phase B — Phone density and fit
 
