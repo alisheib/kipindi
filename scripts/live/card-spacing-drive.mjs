@@ -12,7 +12,7 @@
  *   B  a TAP flips it: aria-checked="false", the Comfortable word, <html data-density="comfortable">, cookie kp-density=comfortable
  *      (one year, path /), and the menu stays open;
  *   C  a reload SERVES the attribute in the markup (no flash: it is there before any script) and the menu still reads Comfortable;
- *   D  the keyboard: focus the row, Space flips it back to Compact — attribute removed, cookie compact;
+ *   D  the keyboard: focus the row, Space flips it back to Compact — attribute removed, cookie DELETED;
  *   E  the served markup after that reload carries no attribute again.
  *   F  the refresh race: a board refresh held in flight while the player switches back cannot restore the old choice;
  *   G  a 360×400 screen: the menu scrolls inside itself and the switch is fully reachable.
@@ -40,6 +40,10 @@ const WORDS = {
   zh: { label: "卡片间距", compact: "紧凑", comfortable: "宽松" },
 };
 const host = new URL(BASE).hostname;
+// ONLY=F (or any of A F G X) runs just those sections: A = the A-E walk per language, F = the refresh race, G = a short
+// screen, X = the width and top-bar fences. Used to prove step F RED against a tree with the re-sync switched off.
+const ONLY = (process.env.ONLY ?? "").toUpperCase();
+const want = (k) => !ONLY || ONLY.includes(k);
 const R = recorder(`qa:card-spacing — ${BASE} · who=${WHO}`);
 const b = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
 
@@ -82,7 +86,7 @@ async function settle(page) {
   await page.waitForTimeout(1500);
 }
 
-for (const locale of ["sw", "en", "zh"]) {
+for (const locale of want("A") ? ["sw", "en", "zh"] : []) {
   const W = WORDS[locale];
   const ctx = await phone(locale);
   const page = await ctx.newPage();
@@ -162,7 +166,7 @@ for (const locale of ["sw", "en", "zh"]) {
 // LANDS after the player switched back to Compact used to write the old choice onto <html>. Reproduced exactly: the
 // page's own refresh (RefreshPoller on "50pick:refresh") is held for 3s at the network, the player taps during the
 // hold, then it lands. The count of held requests is asserted too — without one, this check would prove nothing.
-{
+if (want("F")) {
   const ctx = await phone("sw");
   const page = await ctx.newPage();
   await page.goto(`${BASE}/markets`, { waitUntil: "load", timeout: 60000 });
@@ -171,10 +175,20 @@ for (const locale of ["sw", "en", "zh"]) {
   await row(page).tap();                                            // → Comfortable (cookie + attribute)
   await page.waitForTimeout(300);
   let held = 0;
+  // ⛔ THE ANSWER IS HELD, NOT THE QUESTION. The first version of this step delayed the REQUEST, so the server rendered
+  // with the cookie as it was AFTER the second tap — no stale value ever existed, and the step passed with the fix
+  // switched off (caught by its RED run, 2026-09-22). The real race is a slow RESPONSE: the server renders now, with
+  // the cookie of now, and the answer lands late. Prefetches (`next-router-prefetch`) are left alone, so `held`
+  // counts only true refreshes.
   await page.route("**/*", async (route) => {
     const h = route.request().headers();
-    if (h["rsc"] === "1" || /[?&]_rsc=/.test(route.request().url())) { held++; await new Promise((r) => setTimeout(r, 3000)); }
-    await route.continue();
+    if ((h["rsc"] === "1" || /[?&]_rsc=/.test(route.request().url())) && !h["next-router-prefetch"]) {
+      held++;
+      const resp = await route.fetch();
+      await new Promise((r) => setTimeout(r, 3000));
+      return route.fulfill({ response: resp });
+    }
+    return route.continue();
   });
   await page.evaluate(() => window.dispatchEvent(new Event("50pick:refresh")));
   await page.waitForTimeout(500);                                   // the refresh is in flight, carrying "comfortable"
@@ -193,7 +207,7 @@ for (const locale of ["sw", "en", "zh"]) {
 }
 
 // G · A SHORT SCREEN (review of U2): the taller menu scrolls inside itself, so the switch is still fully reachable.
-{
+if (want("G")) {
   const ctx = await phone("sw", 360, 400);
   const page = await ctx.newPage();
   await page.goto(`${BASE}/markets`, { waitUntil: "load", timeout: 60000 });
@@ -207,7 +221,7 @@ for (const locale of ["sw", "en", "zh"]) {
 }
 
 // The fences: phones only, rail only.
-{
+if (want("X")) {
   const ctx = await phone("sw", 768, 1024);
   const page = await ctx.newPage();
   await page.goto(`${BASE}/markets`, { waitUntil: "load", timeout: 60000 });
@@ -221,7 +235,7 @@ for (const locale of ["sw", "en", "zh"]) {
   R.check("768 · the rail's More menu shows NO card-spacing row (phones only, sm:hidden)", !shown);
   await ctx.close();
 }
-{
+if (want("X")) {
   const ctx = await b.newContext({ viewport: { width: 1100, height: 800 }, userAgent: UA.replace("Mobile ", ""), ...(state ? { storageState: state } : {}) });
   await ctx.addCookies([{ name: "kp-locale", value: "sw", domain: host, path: "/" }]);
   const page = await ctx.newPage();
