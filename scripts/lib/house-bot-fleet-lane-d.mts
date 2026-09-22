@@ -6,8 +6,10 @@
  * tautology. `run` receives everything it touches through `env`.
  *
  * ONE desk, FOUR markets, because a FILL is planned ONCE PER MARKET for the life of the database
- * (`plannableMarkets` has a `NOT EXISTS` dedupe on (kind, anchorKey) that survives every terminal status but an
- * admin's CANCELLED), so every sub-case needs a market of its own:
+ * (`plannableMarkets` has a `NOT EXISTS` dedupe on (kind, anchorKey): the market stays blocked while any intent of
+ * that kind exists that is not CANCELLED, or is CANCELLED with reasonCode CANCELLED_BY_ADMIN — an admin's
+ * CANCELLED still blocks; only a CANCELLED by something other than an officer frees it, dal:1896 and the SQL at
+ * ~4475), so every sub-case needs a market of its own:
  *
  *   D1-FILL     · the pure arithmetic: locked NO 50,000, raw YES 0 → wanted 33,333, staked 33,000.
  *   D1-COLUMNS  · raw ≠ locked on BOTH sides (ineligible money), so each wrong column gives a different
@@ -49,6 +51,25 @@
  * write is sized identically. The ONE-TERM variants are NOT equivalent, and D1-FINDER separates them: a wrong
  * finder that picks the other side sizes it to ≤ 0 and writes nothing, so a fixture the real finder plans is
  * the discriminator — row versus NO row. (`wantedTzs` and the fired stake still exclude the sizing columns.)
+ * (3) The THIN side's own column — `pools[thin].raw` in the subtrahend (decide.ts:502), `pools[intent.side].raw`
+ * in the fire cut (fire.ts:226) and the finder's `total` on `nonHouse` (decide.ts:488) — is NOT told apart from
+ * `nonHouse` or `lockedA15` by any fixture here: there is never house money on a market before its fill and every
+ * seed is aged past its exit close (graceMin 0 → exitAt = placedAt ≤ clock.t at once, so even the late YES is
+ * `lockedA15` immediately), hence raw = nonHouse = lockedA15 on the thin side at the plan (8,000 / 30,000) and at
+ * the fire (44,500). Those three mutants leave every assertion green; only `locked`/`unlocked`/`excluded` there
+ * are excluded (46,666 / 33,000, as the derivations print). Telling them apart needs house money or an un-aged
+ * seed on the thin side before the plan, which the OWNER_POSITION / OTHER_BOT holds make another lane's fixture.
+ *
+ * ⚠️ ASSERTED BUT NOT MUTATION-WITNESSED (reasoned reds, recorded so nobody credits them as measured): the
+ * `locked[opp] > 0` guard (decide.ts:489), `dueMs = max(cutoff − lead − jitter, passNow)` (:495; without the
+ * max the dueAt equals no pass's passNowIso), the deadline/stale arithmetic (:497/:506) and the scan-window
+ * bounds (planner.ts:531-538). Seven mutations WERE run and caught: finder column, subtrahend, opp column,
+ * fire-cut column, scope refusal (the build stage), then the `100 − p` denominator (decide.ts:502 → `100`:
+ * 19 red — wantedTzs 20,000 at D1-FILL and D1-COLUMNS, and the finder plans NOTHING because
+ * 24,000 − 30,000 < 0) and the MON-02 write-back (fire.ts:236 dropped: 7 red — ⛔ NOT "the row at 38,000
+ * beside a 25,000 position", which was the reasoned prediction: fire places the ROW's figure (fire.ts:257),
+ * so the un-clamped 38,000 reached the seam and H3 refused it — SKIPPED · CONDITION_GONE, no position, the
+ * wallet unmoved. The write-back is what makes the cut bet placeable at all).
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
@@ -338,12 +359,12 @@ export async function run(env: Any, prior: Any): Promise<Any> {
   /* While the run is this young the deadline (cutoff − 5 min) is still ahead of the pass, so the scope check is the only refuser. */
   const youngRunAtA = Number.isFinite(passNowA) && passNowA - scopeFromMs < 20 * 60_000;
   const fillInstantBeforeScope = cutoffN - LEAD_MS < scopeFromMs;
-  ok("D1-SCOPE · a market whose fill instant (cutoff − lead) precedes switch-on got NO FILL row — WITNESSED: the pass that planned D1-FILL had this market inside its scan window (it sorts first by cutoff), ran fillOpener ok, and wrote nothing for it; the run was young enough that neither the window nor the deadline was the refuser",
+  ok("D1-SCOPE · a market whose fill instant (cutoff − lead) precedes switch-on got NO FILL row — WITNESSED beside a positive: the pass that planned D1-FILL ran fillOpener ok and wrote nothing for this market, whose cutoff sorts first; that it lay inside THAT pass's scan window is the lane's own window arithmetic (SCAN_AHEAD/SCAN_SLACK — PlannerPass records no ids; the bounds are pinned by D1-COLUMNS's timing cases) and the end-of-lane case covers every later pass; the run was young enough that neither the window nor the deadline was the refuser",
     rowN == null && !!passA && filledIn(passA) && inWindowAtA && youngRunAtA && fillInstantBeforeScope,
     j({ row: rowN ? `${rowN.status}/${rowN.reasonCode}` : "none", pass: passA?.passNowIso ?? "— none —", inWindow: inWindowAtA, youngRun: youngRunAtA,
       fillInstant: stamp(cutoffN - LEAD_MS), scopeFrom: stamp(scopeFromMs) }));
   const houseN = marketN ? await housePositionsOn(marketN.id) : [];
-  ok("D1-SCOPE · …and nothing was placed on it — its refusal witnessed by that same pass, so the empty market is evidence",
+  ok("D1-SCOPE · …and nothing was placed on it at this read — its refusal witnessed by that same pass, so the empty market is evidence (a row planned here would fire up to 20 s later, after this read: the lane's END re-reads this market)",
     !!passA && filledIn(passA) && marketN != null && houseN.length === 0, j({ placed: houseN.length, witnessed: !!passA && filledIn(passA) }));
 
   /* ═══ D1-COLUMNS · raw ≠ locked on both sides, then the fire-time cut ═══════════════════════════════ */
@@ -500,9 +521,13 @@ export async function run(env: Any, prior: Any): Promise<Any> {
   ok(`D1-SCOPE · after the whole lane (${laterPasses.length} fillOpener passes since it was created) there is STILL no row on the scope market — every pass looked and refused`,
     marketN != null && rowN2 == null && laterPasses.length >= 3, j({ passes: laterPasses.length, row: rowN2 ? `${rowN2.status}/${rowN2.reasonCode}` : "none" }));
   const placedAlerts = calls.filter((c: Any) => c.fn === "placed" && c.botId === bot.botId).length;
-  ok("D · the notification chain saw EXACTLY three placements for this account — one per filled market, none for the scope market",
-    placedAlerts === 3 && houseA.length === 1 && houseB.length === 1 && houseF.length === 1 && houseN.length === 0,
-    j({ placedAlerts, a: houseA.length, b: houseB.length, f: houseF.length, n: houseN.length }));
+  /* ⛔ RE-READ at the end, never the `houseN` of D1-SCOPE time: a row planned on the scope market fires up to 20 s
+     later (the fleet's min gap), after that early read — under the scope-check mutant the early read was still 0
+     and only the alert count caught the placement. */
+  const houseNEnd = marketN ? await housePositionsOn(marketN.id) : [];
+  ok("D · the notification chain saw EXACTLY three placements for this account — one per filled market, none for the scope market, whose positions are RE-READ here after the whole lane",
+    placedAlerts === 3 && houseA.length === 1 && houseB.length === 1 && houseF.length === 1 && marketN != null && houseNEnd.length === 0,
+    j({ placedAlerts, a: houseA.length, b: houseB.length, f: houseF.length, n: houseNEnd.length }));
 
   return out;
 }
