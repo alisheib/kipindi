@@ -46,6 +46,7 @@ import { houseHits, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPL
  * `scripts/lib/house-bot-assurances.mjs`'s header for why, and 6.c11 for the pin that says so.
  */
 import { runChatbotCases } from "./lib/house-bot-chatbot-cases.mts";
+import { isDirective as isDirectiveLinear } from "./lib/is-directive.mts";
 /**
  * §0-pipe, §5, §8 and §docs · THE ABSENCE SUITE (Commit 6, 2026-09-20). Its own header carries the inventory of what
  * every other guard on the platform already covers and builds only the space between them — including the two gates
@@ -102,17 +103,10 @@ function valueImports(js: string): string[] {
  * checkouts and was killed each time — so the section's "green" for that day rests on `verify:house-bot-bundle`
  * instead. A guard that cannot finish reports nothing. The scan below is O(n) by construction, and 1.re holds it there.
  */
-const isDirective = (code: string, d: "use client" | "use server"): boolean => {
-  let i = 0;
-  const n = code.length;
-  for (;;) {
-    while (i < n && (code[i] === " " || code[i] === "\t" || code[i] === "\r" || code[i] === "\n")) i++;
-    if (code.startsWith("//", i)) { const e = code.indexOf("\n", i); if (e < 0) return false; i = e + 1; continue; }
-    if (code.startsWith("/*", i)) { const e = code.indexOf("*/", i + 2); if (e < 0) return false; i = e + 2; continue; }
-    break;
-  }
-  return code.startsWith(`"${d}"`, i) || code.startsWith(`'${d}'`, i);
-};
+/* ⛔ ONE HOME SINCE 2026-09-23. This suite's copy was fixed on 2026-09-22 and `house-bot-surfaces.test.mts`
+   kept the regex — and hung on it a day later, for fourteen minutes' worth of the same reason. A fix written
+   down once and applied once is a fix that has not been made. `1.re` below still holds THIS suite to it. */
+const isDirective = (code: string, d: "use client" | "use server"): boolean => isDirectiveLinear(code, d);
 
 export function walkClientGraph(entries: string[], r: Reader, srcRoot: string): { reached: Map<string, string>; parent: Map<string, string>; hits: Array<{ file: string; word: string; via: string }> } {
   const reached = new Map<string, string>(); // file → the entry that reached it
