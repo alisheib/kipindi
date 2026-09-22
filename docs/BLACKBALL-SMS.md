@@ -15,7 +15,7 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
 | Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 four times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55 and 08:28 UTC) — **9 of 9** sends used; the ceiling went 6 → 7 → 8 on Ali's instructions to validate the vendor's successive claims. ⭐ Ali confirms the handset RECEIVES every one of them |
-| Delivery callback | 🔴 **still not received** — re-tested 2026-09-17, twice on 2026-09-21 **after the vendor said our URLs were whitelisted**, and again 2026-09-22 **after they said they had changed the callback**: still not one POST (§4.3–§4.5) |
+| Delivery callback | 🟠 **channel PROVEN 2026-09-22, the callback itself still never fires** (§4.6) — their manual POST reached us and was recorded; the same request with the right token answers `{"status":"Ok"}`. What has never happened is the gateway sending one BY ITSELF. Previously: 🔴 **not received** — re-tested 2026-09-17, twice on 2026-09-21 **after the vendor said our URLs were whitelisted**, and again 2026-09-22 **after they said they had changed the callback**: still not one POST (§4.3–§4.5) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
 | Balance | TZS 196 |
 
@@ -293,6 +293,33 @@ that belongs to login codes, and a send only tests OUR side of a fault we have a
 The next test is worth its money only after the vendor reports something new and specific — a log line
 from their attempt, or a receipt they have posted to the URL by hand. That manual POST is the cheap,
 decisive discriminator: it separates "cannot reach us" from "never fires", and it costs nothing.
+
+### 4.6 🟢 2026-09-22 — the channel is PROVEN, and the fault is now one narrow thing
+
+Asked to stop guessing and run the decisive free test, the vendor did:
+
+| Their test | Result | What it proves |
+|---|---|---|
+| `curl GET` the callback URL, 10:09:40 UTC | `HTTP/2 200 {"status":"Ok"}`, `x-railway-request-id` present, `cf-ray … -NBO` | their server reaches the app through Cloudflare's Nairobi edge; ⛔ nothing of ours blocks them |
+| `curl POST` with a token, 12:29:44 UTC | `HTTP/2 401 {"ok":false,"error":"unauthorized"}` | the POST **reached us**, and we recorded it: `webhook.blackball.rejected` at 12:29:44.034Z. Their token string is wrong — nothing else is |
+| our own POST, same URL, one minute later | `200 {"status":"Ok"}` via `?token=` **and** via `x-blackball-token` | the secret in Railway is correct and both auth paths work |
+
+⭐ **So three of the four unknowns are closed**: the network, the URL, and our authentication. ⛔ **The
+fourth is untouched: the gateway has never once fired a receipt by itself.** Ten test messages, every one
+delivered to the handset, not one automatic callback.
+
+⛔ **THE ACCEPTANCE TEST, so "working" cannot be declared from a curl.** A receipt counts only when it
+arrives with NOBODY TYPING ANYTHING: a real send, then within minutes a row carrying **our** `sms_…`
+reference and a status token, settling that `SmsMessage`. A hand-run POST proves the channel; it says
+nothing about the trigger. ⚠️ It also still has to answer the reference question (§3): their example
+carried a 23-character id of their own, which would match no message we ever sent.
+
+⚠️ **AND AN INSTRUMENT LIMIT FOUND WHILE CHECKING THEIR CURL.** `railway logs --http` is a TAIL, not a
+history: measured today, 5,000 lines covered **fifteen minutes** (12:01 → 12:16), and `--json` returned
+zero rows while the plain form returned thousands. ⛔ So the edge log can only be trusted LIVE, during a
+watch — never to prove that something did not arrive two hours ago. The durable instrument is the audit
+chain: every POST that reaches the app writes a row, `webhook.blackball.rejected` included, which is
+exactly how their 12:29:44 attempt was caught.
 
 ⚠️ **ONE INSTRUMENT IS STILL MISSING, AND IT IS THE LAST PLACE A BLOCK COULD HIDE.** Railway's HTTP log
 sits BEHIND Cloudflare, so a request Cloudflare refuses never appears in it — identical, from here, to a
