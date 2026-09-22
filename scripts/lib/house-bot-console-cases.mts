@@ -1387,13 +1387,13 @@ section("§2 · the strip, the band, the roster and every failure");
       j({ live: [vLive.statusNote, vLive.wayOut], removed: vGone.statusNote, paused: vPaused.statusNote }));
 
     /* ── PAUSE, the act itself ── */
-    const pausedOut = await callAct(OFFICER, { id: live.botId, act: "PAUSE" });
+    const pausedOut = await callAct(OFFICER, { id: live.botId, act: "PAUSE", reason: "the officer said why" });
     const pausedRow: Any = await w.dal.houseBotStore.get(live.botId);
     ok("1.415 · ⭐ PAUSE STOPS A RUNNING ACCOUNT: PAUSED with the MANUAL reason, written by the officer — never the engine's AUTO_PAUSED, which carries a cause, no actor and a SYSTEM audit",
       pausedOut.ok === true && pausedOut.changed === true
         && pausedRow?.status === "PAUSED" && pausedRow?.pauseReason === "MANUAL",
       j({ ok: pausedOut.ok, changed: pausedOut.changed, status: pausedRow?.status, reason: pausedRow?.pauseReason }));
-    const pausedTwice = await callAct(OFFICER, { id: live.botId, act: "PAUSE" });
+    const pausedTwice = await callAct(OFFICER, { id: live.botId, act: "PAUSE", reason: "the officer said why" });
     ok("1.415 · a second Pause changes NOTHING and says so — the write is conditional, so two officers produce one act, one event and one alert",
       pausedTwice.ok === true && pausedTwice.changed === false && typeof pausedTwice.note === "string",
       j(pausedTwice));
@@ -1628,7 +1628,12 @@ section("§2 · the strip, the band, the roster and every failure");
       (() => {
         try {
           const full = { reason: "closing this account", password: "pw", typed: GATEM.CONSOLE_REMOVE_WORD };
-          return deskActArmed(pauseCopy, { reason: "", password: "", typed: "" }) === true
+          /* ⭐ PAUSE ASKS WHY SINCE 2026-09-23 (register A5), so an EMPTY reason no longer arms it — and the
+             case keeps both directions: filled arms, empty does not, and the password it never asks for is
+             still not a reason to refuse. */
+          return deskActArmed(pauseCopy, { reason: "the officer said why", password: "", typed: "" }) === true
+            && deskActArmed(pauseCopy, { reason: "", password: "", typed: "" }) === false
+            && deskActArmed(pauseCopy, { reason: "the officer said why", password: "", typed: "" }) === true
             && deskActArmed(removeCopy, full) === true
             && deskActArmed(removeCopy, { ...full, typed: "remove" }) === false
             && deskActArmed(removeCopy, { ...full, reason: "no" }) === false
@@ -8068,7 +8073,11 @@ export default function Ruling513Control() {
       (() => {
         const gateSrc = decomment(read(GATE));
         const labels = [...gateSrc.matchAll(/reasonLabel: "([^"]+)"/g)].map((m) => m[1]);
-        return labels.length === 4 && labels.every((t) => t.endsWith("(required)"))
+        /* ⭐ FIVE SINCE 2026-09-23: Pause joined the ceremonies that ask why (register A5). It was measured
+           on a served build asking NOTHING — no dialog, no field — while the service had stored a pause reason
+           since it was written. The COUNT rises with the population; the rule that every asked reason is marked
+           required, and held to the shared floor, is unchanged. */
+        return labels.length === 5 && labels.every((t) => t.endsWith("(required)"))
           && /export const CONSOLE_REASON_MIN = 5;/.test(gateSrc)
           && /reason\.length < CONSOLE_REASON_MIN/.test(gateSrc);
       })(),

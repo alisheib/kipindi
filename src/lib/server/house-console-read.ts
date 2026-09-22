@@ -53,7 +53,7 @@ import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DE
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
 import { categoryLabel } from "@/lib/markets/category-label";
 import { dict } from "@/lib/i18n-dict";
-import { sortCauses, wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
+import { isPauseReason, sortCauses, wayOutCopy, wayOutForCause, type HolderCause, type PauseReason } from "@/lib/house-bot/pause-reasons";
 import { TARGET_END_CAPTION } from "@/lib/house-bot/feed-copy";
 import { saveHouseBotLimits } from "./house-bot/limits-save";
 import { saveHouseBotRules } from "./house-bot/rules-save";
@@ -3927,6 +3927,48 @@ function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs:
   };
 }
 
+/**
+ * ⭐ WHY AN ACCOUNT STOPPED BY ITSELF, IN THE CONSOLE'S OWN WORDS (register D9, 2026-09-23).
+ *
+ * 🔴 EVERY AUTO-PAUSE READ "Stopped by a limit", AND MOST OF THEM ARE NOT LIMITS. A holder changing their
+ * password, excluding themselves, closing their account, failing an identity check or asking for erasure all
+ * stop the account — and History told an officer the account had hit a ceiling. That sends them to the limits
+ * tab to look for a number that is not there, while the real cause sits with the HOLDER and often needs them
+ * to be contacted. One blanket sentence for nineteen causes is a record that cannot answer its own question.
+ * ⛔ A TOTAL `Record<PauseReason, string>`: `tsc` itself refuses a cause added without a word, which is the
+ * only way this stays complete — the same construction `CONSOLE_EVENT_WORD` uses, for the same reason.
+ * ⛔ AND THEY ARE THE CONSOLE'S OWN SENTENCES (453), never `pause-reasons.ts`'s: those are the engine's and
+ * the admin bell's vocabulary, correct where they are used and a screenshot of the feature's name here.
+ */
+const CONSOLE_AUTO_PAUSE_WORD: Readonly<Record<PauseReason, string>> = {
+  NEW: "Stopped before it had started",
+  MANUAL: "Stopped by an officer",
+  PASSWORD_CHANGED: "Stopped — the holder changed their sign-in details",
+  ROLE_CHANGED: "Stopped — the holder's role changed",
+  SELF_EXCLUDED: "Stopped — the holder excluded themselves",
+  COOLING_OFF: "Stopped — the holder began a cooling-off period",
+  ACCOUNT_BLOCKED: "Stopped — the holder's account was blocked",
+  ACCOUNT_MISSING: "Stopped — the holder's account could not be found",
+  WALLET_FROZEN: "Stopped — the holder's wallet was frozen",
+  WALLET_MISSING: "Stopped — the holder's wallet could not be found",
+  OWNER_LOSS_LIMIT: "Stopped — the holder's own loss limit was reached",
+  DAILY_LOSS_STOP: "Stopped — the day's loss limit was reached",
+  ACCOUNT_SUSPENDED: "Stopped — the holder's account was suspended",
+  ACCOUNT_CLOSED: "Stopped — the holder closed their account",
+  IDENTITY_REFUSED: "Stopped — the holder's identity check was refused",
+  HOLDER_ERASURE_REQUEST: "Stopped — the holder asked for their data to be erased",
+  HOLDER_WITHDREW: "Stopped — the holder withdrew their permission",
+  UNMAPPED_REFUSAL: "Stopped — a refusal this build has no word for",
+  RULES_INVALID: "Stopped — its saved settings could not be read",
+  RULES_OUTDATED: "Stopped — its saved settings are from an older version",
+};
+
+/** The cause an AUTO_PAUSED row carries, or `null` — read defensively: a payload is stored JSON, not a type. */
+function autoPauseCause(payload: Record<string, unknown> | null | undefined): PauseReason | null {
+  const c = payload == null ? null : payload.cause;
+  return typeof c === "string" && isPauseReason(c) ? c : null;
+}
+
 /** One event, painted. ⛔ No payload amount and no wallet balance reaches this row — a door does (266, 369(c), 456). */
 function consoleEventRow(e: StoredHouseBotEvent, anchorId: string | null): ConsoleEventRow {
   const at = Date.parse(e.createdAt);
@@ -3938,7 +3980,11 @@ function consoleEventRow(e: StoredHouseBotEvent, anchorId: string | null): Conso
   return {
     when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")}` : "—",
     whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM YYYY")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
-    eventWord: CONSOLE_EVENT_WORD[e.kind],
+    /* ⛔ AN AUTO-PAUSE SAYS WHICH CAUSE STOPPED IT, when the row carries one it knows. A cause this build has
+       no word for falls back to the kind's blanket sentence rather than painting a raw enum (453). */
+    eventWord: e.kind === "AUTO_PAUSED" && autoPauseCause(e.payload) !== null
+      ? CONSOLE_AUTO_PAUSE_WORD[autoPauseCause(e.payload) as PauseReason]
+      : CONSOLE_EVENT_WORD[e.kind],
     change: to == null ? null : from == null ? to : `${from} → ${to}`,
     /* ⛔ 420 · AN ACTOR IS AN ID, NEVER A NAME. The same rule the ON sentence already follows one card up; a name
      * would put a staff member's identity on a screen a record id is already masked out of. */
@@ -4236,11 +4282,30 @@ function actDialogsFor(status: string): ConsoleAccountActDialog[] {
     });
   }
   if (status === "ACTIVE") {
+    /**
+     * ⭐ PAUSE ASKS WHY, AND THE ANSWER IS KEPT (register A5, 2026-09-23).
+     *
+     * 🔴 THE SERVICE HAS STORED A PAUSE REASON SINCE IT WAS WRITTEN, and the door beside this one has always
+     * read `input.reason` and passed it to `pauseHouseBot`. The DIALOG never asked. Measured by driving the
+     * real console on a served build: pressing Pause opened no dialog at all and the account simply stopped —
+     * so History could record "Paused by an officer" and nothing anywhere could answer *why*, on the one act
+     * an officer performs when something looks wrong.
+     * ⛔ REQUIRED, NOT OPTIONAL — and the first draft of this change had it the other way round. The argument
+     * for optional was that a pause STOPS money and a ceremony in front of it costs seconds. Two of this
+     * section's own guards answered it: `1.388` holds every reason field the console asks for to being MARKED
+     * required, and `1.415`'s arming predicate has no concept of a field that is asked for and not needed. That
+     * rule is deliberate — a half-asked question collects half the records — and bending a guard to fit a new
+     * control is how a guard stops meaning anything.
+     * ⚠️ AND THE EMERGENCY STOP IS NOT THIS CONTROL. The master switch stops every account at once and already
+     * carries its own reason; pausing ONE account is a considered act, and five characters is proportionate.
+     */
     out.push({
-      ...ACT_BASE, ...NO_FIELDS, act: "PAUSE", label: "Pause", tone: "brand", form: false,
+      ...ACT_BASE, ...NO_FIELDS, act: "PAUSE", label: "Pause", tone: "brand", form: true,
       title: "Pause this account",
       body: "It stops placing stakes at once, and every stake it has queued is cancelled. Nothing else about it changes.",
       confirmLabel: "Pause", doneTitle: "Paused", failTitle: "It did not pause",
+      reasonLabel: "Why are you pausing it? (required)",
+      reasonHint: "Kept with the record of the pause.",
     });
   }
   out.push({
@@ -4429,7 +4494,12 @@ export async function houseAccountActForConsole(
     };
   }
 
-  const paused = await pauseHouseBot({ actorId: viewerUserId, botId: id, reason: reason.length > 0 ? reason : null });
+  /* ⛔ THE REASON IS CHECKED ON THE SERVER TOO (388, 415) — the dialog's `required` is a browser's opinion, and
+     a crafted POST does not hold one. Same bounds as every other reason this console asks for, from the same
+     shared constants, so the three ceremonies cannot drift apart. */
+  if (reason.length < CONSOLE_REASON_MIN) return { ok: false, error: ACT_COPY.reasonShort, field: "reason" };
+  if (reason.length > CONSOLE_REASON_MAX) return { ok: false, error: ACT_COPY.reasonLong, field: "reason" };
+  const paused = await pauseHouseBot({ actorId: viewerUserId, botId: id, reason });
   if (!paused.ok) return { ok: false, error: actRefusal(paused.code) };
   if (!paused.changed) return { ok: true, changed: false, note: ACT_COPY.alreadyPaused, warn: false };
   return {
@@ -5106,6 +5176,23 @@ export async function houseDetailForConsole(
       ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),
       ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),
       ...(liveBound ?? []).map(liveBoundItem),
+      /**
+       * ⭐ A RETIRED CHAIN OR CATEGORY, NAMED (register A5, 2026-09-23).
+       *
+       * 🔴 IT VANISHED SILENTLY. `parseHouseBotRules` drops a scope member the platform no longer offers and
+       * records it in `stale` — and nothing read that list. So an account whose only chain was archived kept
+       * its ticked product, showed an empty picker, reached no market, and the panel whose whole job is to
+       * answer "why is this account not betting" said nothing about the one thing that had changed.
+       * ⛔ IT IS A REASON, NOT A TOAST: it belongs beside the other reasons, on the field it belongs to, so
+       * the way out is the same click as every other item here.
+       */
+      ...(parsed !== null && parsed.ok
+        ? parsed.stale.map((s) => ({
+          key: CONSOLE_RULES_FIELD_KEY[s.path] ?? s.path,
+          label: FIELD_META[s.path].label,
+          message: s.message,
+        }))
+        : []),
     ];
     return {
       title: items.length === 0 ? READINESS_COPY.panelClear : bot.status === "ACTIVE" ? READINESS_COPY.panelNotBetting : READINESS_COPY.panelCantStart,
@@ -5161,8 +5248,13 @@ export async function houseDetailForConsole(
      * ⛔ AND IT IS NOT RENDERED FOR A DOCUMENT THAT WOULD NOT PARSE — that state gets its own sentence below,
      * because "these limits apply" is a claim about a form that is not being drawn.
      */
+    /* ⭐ THE GUIDANCE NAMES THE REACH REQUIREMENT (register A5, 2026-09-23). It used to say only that the
+       stakes are held to these limits — true, and silent on the thing that actually stops an account from
+       ever betting: a ticked product whose list is empty reaches no market at all, which is the defect
+       measured on the live desk and the reason `rulesInertReasons` exists. The sentence an officer reads
+       before they start typing should name it. */
     rulesReason: parsed !== null && parsed.ok
-      ? "Every stake this account places is held to these limits and to the desk's own."
+      ? "Every stake this account places is held to these limits and to the desk's own. Tick a product, turn on how it enters, and choose the markets it may touch — a product with nothing chosen reaches no market at all."
       : "These settings could not be read, so no form is shown. Reload the page, and if it says this again, raise it before changing anything.",
     /* ⭐ 415 · the action row, from the status the reader already holds — no second read decides what is offered. */
     acts: actDialogsFor(bot.status),
