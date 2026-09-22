@@ -1,6 +1,6 @@
 # MOBILE VISUAL PLAN — 50pick on a phone
 
-> **STATUS: 🟠 PLAN v3 — approved by Ali 2026-09-15; seven-lens review (§13), a full element inspection (§3a) and a professional critics panel (§3b) folded in 2026-09-16. Not started: 0 of 40 units.**
+> **STATUS: 🟠 PLAN v3 — approved by Ali 2026-09-15; seven-lens review (§13), a full element inspection (§3a) and a professional critics panel (§3b) folded in 2026-09-16. In progress since 2026-09-22 — the tally is §1 (U1 shipped: the baseline instrument).**
 > This file is a RECORD and a WORK ORDER, **not** design law.
 > The law is [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md); token values live only in `src/app/globals.css`. This file mints no
 > law. Where it quotes a number, the number is a measurement with a date or a target with its arithmetic, never a definition.
@@ -30,14 +30,17 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ NEXT: Session S1 → U1 (baseline instrument + signed-in QA player) and U2 (density setting + switch, no visual change).
-  ⚠️ S1 IS IN FLIGHT on branch `mobile-visual` — resume it from the HALF-DONE checklist below; do not start it again.
-  Read §5 (hard rules) and §9 U1–U2 before touching code.
+▶ NEXT: finish Session S1 → U2 (density setting + switch, no visual change). Then S2 → U3 + U4.
+  ⚠️ U2 IS IN FLIGHT on branch `mobile-visual` — resume it from the HALF-DONE checklist below; do not start it again.
+  Read §5 (hard rules) and §9 U2 before touching code.
 
-✔ LAST SESSION (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
+✔ LAST SESSION (S1, 2026-09-22, still open): U1 ✅ — the baseline instrument `qa:mobile-visual`, the production QA player
+  "QA Mobile 01", the §11 "Before" column re-derived from 315 production pages, and the compared numbers committed as the
+  baseline every later unit diffs against (§2). U2's code is written and reviewed on branch `mobile-visual`.
+✔ BEFORE IT (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
   experience 5–6.5/10 in Swahili (the Seal's baseline); 12 new defects D42–D53; owner items 6–9; the panel and
   its capture stored in the repo so the Seal can repeat them exactly. No product code changed.
-✔ BEFORE IT (S0c, same day): plan v3 — the 718-finding element inspection (§3a, record in
+✔ AND (S0c, 2026-09-16): plan v3 — the 718-finding element inspection (§3a, record in
   MOBILE-VISUAL-FINDINGS-2026-09.md), units U31–U40, defects D28–D41, §0a the session prompt, §1a closure,
   and the tracker guard test:mobile-visual-plan (379 checks, RED 19/19) — which then caught six ownership
   errors in this very plan. One product fix shipped in the safe-fix lane: D7 (a25c127b, live).
@@ -55,11 +58,11 @@
         qa.mobile01@50pick.test (Ali's choice; it does not deliver), PLAYER, wallet 0, never funded.
         ⚠️ Its password lives ONLY in the gitignored `.env.qa.local` of C:\kipindi-mobile on ALI-BLADE15. Another PC: copy that
         line; if it is lost, ⛔ never re-mint 01 — run signed-out + local (/auth/demo), or mint "QA Mobile 02" (+255712000111).
-    [ ] U1 production baseline → the compact baseline file committed + the §11 "Before" column re-derived from it
-    [ ] U1 RED control: `RED=1 COMPARE=<baseline>` must exit 1 on the card heights; the noise-floor pair must agree
-    [ ] U1 docs + push to main, then its §1 row ✅
+    [x] U1 production baseline → committed as scripts/live/baselines/mobile-visual-U1-{guest,mobile01}.json; §11 "Before" re-derived
+    [x] U1 RED control: `RED=1 COMPARE=<baseline>` exits 1 on the card heights (320 → 373); the clean control exits 0
+    [x] U1 docs + push to main; its §1 row ✅
     [x] U2 code (card-spacing.ts, layout, nav-more row, decorative Toggle, i18n ×3, Privacy v2026-09-22 approved by Ali,
-        test:density-contract 21/21 + red 2/2)
+        test:density-contract + red), and the six fixes of its adversarial review (see the branch's commit log)
     [ ] U2 gates twice (typecheck, build, predeploy list, test:all vs clean main), local drive + screenshots (menu open, SW/EN/ZH,
         both settings, reload keeps the choice, zero diff), push to main, production re-measure, §1 row ✅
   Parallel-session rules in force on ALI-BLADE15 (house-bots desk session): own worktree, ports 5463/3041, heavy Node via
@@ -101,10 +104,16 @@
 
 ⚠ TRAPS ALREADY MET (2026-09-15 capture):
   · `networkidle` never fires on www (live stream). Use `load` + a 2.5s wait.
-  · The first-visit primer covers every guest page. Set localStorage `50pick-primer-seen=1`; the primer is
-    only photographed on purpose (`?primer=1`).
-  · QA player accounts `alpha`/`echo` were rejected on production (likely the 2026-09-11 reset). U1 mints a labelled
-    QA player; one login per account (a second login revokes the first; 5 failures lock it for 30 min).
+  · The first-visit primer covers every guest page — for a real visitor. A HeadlessChrome agent never gets it (nor the
+    consent card), so a drive that "declines" them proves nothing; qa:mobile-visual seeds both keys anyway
+    (`50pick-primer-seen`, `50pick-analytics-consent`) and the primer is only photographed on purpose (`?primer=1`).
+  · The 2026-09-11 reset DELETED `alpha`/`echo`, every staff persona and the whole QA fleet — copying an old
+    `.env.qa.local` cannot bring them back. The QA player is "QA Mobile 01" (`WHO=mobile01`, minted by U1). One login per
+    account (a second login revokes the first; 5 failures lock it for 30 min): never run two drives as it at once.
+  · (U1) `data-dpl-id` is in the SERVED markup only — hydration removes it from the live DOM, so read it with curl or
+    from the response body, never `document.documentElement` (qa:mobile-visual prints the served commit per run).
+  · (U1) The Up & Down card's height follows the live round's state (468 → 660px on one card, minutes apart): never
+    compare it before/after without keying it on the state.
   · Screenshot pixels are 2× CSS pixels at DPR 2. One "130px gap" was really 41px.
   · ⛔ Every driver's user agent MUST contain "HeadlessChrome". The visit beacon and /api/pv drop only
     HeadlessChrome/Playwright, so a plain Android UA is counted as a real visit. It happened on 2026-09-15:
@@ -193,7 +202,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 
 | Unit | Kind | Status | Session | Commit | Before → After (measured) | Guard RED-proven | Live ✅ (date) · notes |
 |---|---|---|---|---|---|---|---|
-| U1 Baseline instrument + QA player | — | ⬜ | S1 | | | | |
+| U1 Baseline instrument + QA player | — | ✅ | S1 | `ba8f18e3` | no instrument, no production player → `qa:mobile-visual` over 315 production pages, §11 "Before" re-derived, baseline committed; "QA Mobile 01" minted | yes (RED=1 exits 1 on card heights; clean exits 0) | 2026-09-22 · production, served `feca192c` |
 | U2 Density setting + switch | Compact | ⬜ | S1 | | | | |
 | U3 Market card + Up & Down card + skeleton token | Compact | ⬜ | S2 | | | | |
 | U4 Discovery bar | Compact | ⬜ | S2 | | | | |
@@ -322,6 +331,38 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
 
 ## §2 — Session log (newest first)
 
+- **S1 · 2026-09-22 — U1 shipped (U2 in flight on branch `mobile-visual`).** Ali: *"proceed with mobile visualisation … keep
+  the progress tracker"*, then *"push live after each section, so another device can continue where it stopped"*.
+  - **The instrument** `npm run qa:mobile-visual` (`scripts/live/mobile-visual-drive.mjs`): the §11 matrix — 320×640, 360×640,
+    360×780, 412×915, 780×360, 768×1024, 1280×800 × SW/EN/ZH × card spacing × signed out / as the QA player. Every page's language,
+    user agent (`HeadlessChrome`, re-read in the page), session and path are read back before a number is kept; pinned chrome is
+    measured SCROLLED (a sticky bar only costs space once stuck); floating overlays are reported with what they cover; every tap
+    figure is a hit extent measured with `elementFromPoint` (the card's ::after reach included), with the chat bubble lifted so a
+    control's own reach is not confused with D3; frames are viewport tiles. `COMPARE=` diffs the structural numbers against a
+    baseline; `RED=1` injects `.mcardp{padding:40px}`.
+  - **The baseline**, production (served `feca192c`): 219 signed-out pages and 96 as the QA player, 318 checks, every premise held.
+    It re-derived the §11 "Before" column — most of the plan's numbers stand to the pixel (237px pinned, 1.63 cards visible,
+    SW 11.09 home screens, 26×37 share reach, 262px fields, 147px help rows); four were screenshot estimates and are corrected
+    (the countdown is 248–266 not ≈ 220, the /live featured card 268–371 not ≈ 460, the Closing-soonest row 121–164 by language,
+    the live card 320 at the median, 354 only with the sparkline band). **D10 is still live**: at 320 in English the Up & Down
+    strike "Higher or lower than $86,238.01" is clipped by 25px.
+  - **The instrument caught itself.** Its noise floor — the same page with both density cookies, which must agree before U2 —
+    disagreed on exactly one number: the Up & Down card measured 468 and then 660px minutes apart, because its height follows the
+    live round's state. It is now reported, never diffed (the committed baseline leaves it out); U35 can give the card a state to key on.
+  - **Proven both ways on production:** `RED=1 COMPARE=` exits 1 naming the card heights (320 → 373, 354 → 407); the same pages
+    with nothing injected exit 0. The compared numbers are committed as the baseline every later unit diffs against:
+    `scripts/live/baselines/mobile-visual-U1-guest.json` and `…-mobile01.json` (the frames stay in the gitignored .qa-shots/).
+  - **Minted on production, and why.** The 2026-09-11 reset deleted every QA persona and the whole fleet, so no player existed that a
+    production drive could sign in as. `npm run ops:mint-qa-mobile` registered **"QA Mobile 01"** through the real sign-up form on
+    2026-09-22 at 20:37 UTC: `usr_ffb3c5cdd44a35cfca12125a`, +255712000110 (outside the fleet block, checked against both
+    bootstrap phone lists first), `qa.mobile01@50pick.test` (Ali's choice — it does not deliver), PLAYER, ACTIVE, wallet 0, three
+    audit rows written by the product, confirmed by a read-only query. Its password is in the gitignored `.env.qa.local` of the
+    checkout that minted it; it is never re-minted (§0). Retire it at the Seal by closing the account (§1a).
+  - Also: `measureClipping` in the shared harness takes an optional sample size (default unchanged); the stored critics capture is
+    wired as `qa:mobile-visual-capture`, which clears the `test:orphans` red it caused. No product code changed in U1.
+  - ⚠️ Found and not this unit's: `test:red-anchors` (67 undeclared harnesses vs a ceiling of 65) and `test:decomment` (22 private
+    strippers vs 20) are red on main already; S1 adds to neither.
+
 - **S0d · 2026-09-16.** Ali: *"we want everyone to love it, especially professional visual critics."* A professional critics panel read 44
   live phone frames in Swahili through six lenses, each claim re-checked on its own frame by an adversarial verifier, with a completeness
   critic after them (§3b). Scores: art direction 6 · typography 6 · colour 6 · layout 6.5 · information design 5 · Swahili reader 6 ·
@@ -401,7 +442,7 @@ targets are sound (card title 15px, YES/NO 40px). **The problem is density:**
 | Home hero | stats stacked (≈ 370px), 20px lede, 56px CTAs, 64px section gaps |
 | Up & Down card | 550px and 468px (the tallest card on the platform) |
 | Header Sign in / Sign up | 48px pills in a 56px bar |
-| Chat bubble | 52px, fixed, covers card Details links on every page |
+| Chat bubble | **52**, 80 above the bottom edge; on /markets at rest and scrolled it covers card titles, "Details", "How it works" and a NO button (listed per page by U1) |
 | Text mix | on most pages 42–86% of characters are 12px mono labels while headings are 28–32px, so the jump makes big things feel bigger |
 
 **Conditions a portrait screenshot never shows** (S0b, 2026-09-15; live unless marked *code*):
@@ -1469,41 +1510,43 @@ Every cell runs in EN/SW/ZH and in Comfortable and Compact; signed out and signe
 agent always contains `HeadlessChrome` (§0).
 The things no emulator can do are U30 on real phones.
 
+**Re-derived by U1 on 2026-09-22** from production (served commit `feca192c`): 219 signed-out pages — 7 cells × SW/EN/ZH — and 96 as the QA player, every page's language, user agent and session read back before a number was kept. The compared numbers are committed as the baseline every later unit diffs against: `scripts/live/baselines/mobile-visual-U1-guest.json` and `…-mobile01.json` (`npm run qa:mobile-visual` with `COMPARE=`).
+
 **Programme acceptance at 360×780** ([Compact] rows in Compact, [General] rows in both densities). "Before" values marked ≈ come from the
 2026-09-15 screenshots, and targets come from arithmetic. **U1 re-derives every "before"**; a target that proves unreachable or too easy is changed here
 with its reason in §2, never silently.
 
 | Measure | Before | Target |
 |---|---|---|
-| Market card, live priced | 347–354px | ≤ 305px; every state ≥ 45px shorter |
-| Cards visible while scrolling `/markets` | ≈ 1.6 | ≈ 1.9 (a true 2.0 needs a card ≤ 280px, more than spacing can give) |
-| Pinned chrome `/markets` | 237px | ≤ 201px |
-| Home length | 10.8 screens (SW 11.1) | ≤ 7.5 (SW ≤ 7.8) |
-| Closing-soonest row | ≈ 150px | ≤ 110px |
-| Header auth pills | 48px | 40px, both visible at 320 |
+| Market card, live priced | **320–354** (median 320 in SW/EN/ZH; the 354s carry the sparkline band, D49) — U1. Quoted before as 347–354 | ≤ 305px; every state ≥ 45px shorter |
+| Cards visible while scrolling `/markets` | **1.63** at 360×780 (1.21 at 360×640 and 320×640, 2.03 at 412×915) — U1 | ≈ 1.9 (a true 2.0 needs a card ≤ 280px, more than spacing can give) |
+| Pinned chrome `/markets` | **237** = header 56 + discovery bar 116 + rail 65, in every phone cell and language — U1 | ≤ 201px |
+| Home length | **EN 10.78 · SW 11.09 · ZH 10.11** screens (320×640: EN 13.37 · SW 14.15) — U1 | ≤ 7.5 (SW ≤ 7.8) |
+| Closing-soonest row | **SW 164 · EN 143 · ZH 121** (median) — U1. Quoted before as ≈ 150 | ≤ 110px |
+| Header auth pills | **48** (both pills, every phone cell) — U1 | 40px, both visible at 320 |
 | Chat bubble | 52px, covers Details | 44px, never covers while scrolling |
-| Countdown panel (≥ 1 day), all widths | ≈ 220px, 8 tiles | ≤ 160px, 4 tiles |
-| Up & Down card, live round | 550px | ≤ 430px |
-| `/live` featured card | ≈ 460px | ≤ 360px |
-| `/help` contact rows | ≈ 146px | ≤ 84px |
-| Auth form field width (7 pages) | ≈ 261px | ≥ 277px |
-| Footer navigation links | ≈ 19px rows | ≥ 40px |
+| Countdown panel (≥ 1 day), all widths | **SW 266 · EN/ZH 248**, 8 tiles — U1. Quoted before as ≈ 220 | ≤ 160px, 4 tiles |
+| Up & Down card, live round | **447–660**, and the same card moves with the round's state within minutes (U1's noise floor), so it is measured, never diffed | ≤ 430px |
+| `/live` featured card | **SW/EN 371 · ZH 268** (the carousel box, 360×780) — U1. Quoted before as ≈ 460 from a screenshot | ≤ 360px |
+| `/help` contact rows | **147** each (three rows) — U1 | ≤ 84px |
+| Auth form field width (7 pages) | **262** at 360 (login, register, forgot password), **222** at 320 — U1 | ≥ 277px |
+| Footer navigation links | **19** median, **15** smallest — U1 | ≥ 40px |
 | Confirmation questions | centred cards | bottom sheets, primary visible at 360×640, safe area respected |
 | Overlays (census) | not measured | all "fits"; ≤ 1 blocking overlay at a time; toasts ≤ 2 |
 | Defects D1–D41 (register §8) | 41 open | 0 |
 | Inspection backlog (findings record) | 379 unverified | 0 left unverified (U31) |
-| Card share control | 25–26 × 36–37px | ≥ 40 × 40px on every card |
+| Card share control | **26 × 37** reach around a 13×13 glyph (measured by hit extent, not the box) — U1 | ≥ 40 × 40px on every card |
 | Cards stating a price with no bets | every resolved/void empty card | 0 in any state |
 | Money that wraps or ellipsises (320/360 × 3 locales, 7-figure fixtures) | multiple per surface | 0 |
 | Off-ladder type sizes on player surfaces | 8+ literals counted | 0 new; ratchet may only shrink |
-| Control glyph sizes | 9 in board chrome alone | the 16/18/20/24 set |
+| Control glyph sizes | U1 counts **4** distinct icon boxes in the header, discovery bar and rail at 360 (5 at 768+); the 9 was a different count of board chrome | the 16/18/20/24 set |
 | Tap floor / overflow / clipped money | holds | still holds in EN/SW/ZH |
 | Comfortable and ≥ 640 | — | zero diff against the U1 baseline |
-| Landscape 780×360 pinned chrome on `/markets` | 237px (66%) | ≤ 150px |
+| Landscape 780×360 pinned chrome on `/markets` | **237 of 360** (66%), 0.37 cards visible — U1 | ≤ 150px |
 | Overlays at 740×360 | a sheet's top can be unreachable (D20) | title, close and primary always reachable |
 | Keyboard proxy: focused field visible, rail and bubble hidden | not handled | 100% of form fields |
 | Large text (zoom 1.3): controls with clipped text | not measured | 0 |
-| Money or time clipped at 320 | "$75,9…" (D10) | 0 |
+| Money or time clipped at 320 | **EN "Higher or lower than $86,238.01" clipped by 25px** at 320 (5px at 360); SW and ZH wrap instead — U1 | 0 |
 | CLS per route (360, CPU 4×, slow 4G) | not measured | ≤ 0.05 |
 | Scripted scroll, median frame (CPU 4×, reduced tier) | not measured | ≤ 20ms; no long task > 200ms |
 | YES tap → dial (INP) | not measured | ≤ 200ms |

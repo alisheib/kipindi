@@ -22,8 +22,14 @@ const board = readFileSync(boardPath, "utf8");
 
 const realSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim().slice(0, 8);
 
-/** The first unit row on the board, so plants work whatever the plan looks like today. */
-const unitRow = plan.split(/\r?\n/).find((l) => /^\|\s*U\d+\b/.test(l));
+/**
+ * The unit row the plants work on: an UNFINISHED (⬜) one, preferably the first the NEXT line names — so every plant still
+ * applies once units start turning ✅. (It used to be simply the first row; the moment U1 shipped, "mark it ✅" planted
+ * nothing and the harness failed on its own premise, not on the guard — found on 2026-09-22 when U1 turned ✅.)
+ */
+const unitRows = plan.split(/\r?\n/).filter((l) => /^\|\s*U\d+\b/.test(l) && /\|\s*⬜\s*\|/.test(l));
+const nextIds = (plan.match(/^\s*▶ NEXT:.*$/m)?.[0].match(/\bU\d+\b/g)) ?? [];
+const unitRow = unitRows.find((l) => nextIds.includes((l.match(/^\|\s*(U\d+)/) || [])[1])) ?? unitRows[0];
 if (!unitRow) { console.error("RED HARNESS BROKEN: no unit row found in the plan"); process.exit(2); }
 const unitId = (unitRow.match(/^\|\s*(U\d+)/) || [])[1];
 const cols = unitRow.split("|").length - 2;
@@ -116,8 +122,12 @@ const dir = mkdtempSync(join(tmpdir(), "mvp-red-"));
 mkdirSync(join(dir, "docs"), { recursive: true });
 mkdirSync(join(dir, "scripts"), { recursive: true });
 cpSync(join(repo, "scripts", "mobile-visual-plan.test.mts"), join(dir, "scripts", "mobile-visual-plan.test.mts"));
-// the guard runs `git cat-file` in its own repo root; give the copy a .git by pointing at the real one
-writeFileSync(join(dir, ".git"), `gitdir: ${join(repo, ".git").split("\\").join("/")}\n`);
+// the guard runs `git cat-file` in its own repo root; give the copy a .git by pointing at the real one.
+// ⚠️ The COMMON git dir, not `<repo>/.git`: in a `git worktree` checkout that path is itself a pointer file, git does not
+// follow a gitdir that points at another gitfile, and every commit then "did not exist" — so the untouched control run
+// failed and the harness called itself invalid from any worktree (found 2026-09-22 in C:\kipindi-mobile-u1).
+const gitCommon = execFileSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: repo, encoding: "utf8" }).trim();
+writeFileSync(join(dir, ".git"), `gitdir: ${gitCommon.split("\\").join("/")}\n`);
 
 const runGuard = (planText, boardText) => {
   writeFileSync(join(dir, "docs", "MOBILE-VISUAL-PLAN.md"), planText);
