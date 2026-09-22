@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
+import { Toggle } from "@/components/ui/toggle";
 import { useT } from "@/lib/i18n";
+import { applyCardSpacing, currentCardSpacing, subscribeCardSpacing } from "@/lib/card-spacing";
 import type { ProposalsState } from "@/lib/server/proposals-config";
+
+/** The server never renders the menu open, so its snapshot is simply the default. */
+const densityServerSnapshot = () => "compact" as const;
 
 /**
  * NavMore — the overflow menu, in two places.
@@ -25,15 +30,21 @@ export function NavMore({
   label,
   variant = "bar",
   active,
+  cardSpacing,
 }: {
   items: readonly { href: string; label: string; proposalsBadge?: ProposalsState }[];
   label: string;
   variant?: "bar" | "rail";
   /** Rail only: `More` reads as current when the page behind it is one of its own. */
   active?: boolean;
+  /** Rail only: the phone's "Card spacing" switch as the menu's first row (Mobile Visual Plan U2). Off by default,
+   *  so the top-bar menu never grows it. */
+  cardSpacing?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const spacing = useSyncExternalStore(subscribeCardSpacing, currentCardSpacing, densityServerSnapshot);
   const ref = useRef<HTMLDivElement>(null);
+  const hintId = useId();
   const pathname = usePathname();
   const { t } = useT();
 
@@ -91,8 +102,44 @@ export function NavMore({
             role="menu"
             /* Opens UPWARD — the rail is pinned to the bottom edge, so a downward panel would
                render off-screen entirely. `right-2` keeps it inside the viewport at 360. */
-            className="absolute bottom-[calc(100%+8px)] right-2 z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated p-1 shadow-overlay"
+            /* ⚠️ The panel can grow taller than a short screen (the card-spacing row is its tallest item), so it
+               stops at 70% of the dynamic viewport and scrolls inside — the row stays reachable on a 360×400
+               phone (review of U2). 70dvh is a stopgap until U21 derives it from `--rail-h`. */
+            className="absolute bottom-[calc(100%+8px)] right-2 z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated p-1 shadow-overlay max-h-[70dvh] overflow-y-auto overscroll-contain"
           >
+            {/* ⭐ CARD SPACING (Mobile Visual Plan U2, Ali's decision 1 of 2026-09-15) — phones only, so `sm:hidden`
+                (the rail itself shows up to 1023px). It is the FIRST row on purpose: the menu opens upward, and its
+                LAST row sits under the chat bubble (D30, owned by U33), where a switch would be tapped through.
+                ⛔ One control, one name: the ROW is the `menuitemcheckbox` (a bare role="switch" is not allowed in a
+                menu), so the toggle inside is only its picture (`decorative`), never a second button.
+                The state is `<html data-density>` through useSyncExternalStore, so it is always the COMMITTED value —
+                even when a refresh re-syncs it from the cookie (theme-provider.tsx) — and `applyCardSpacing` writes
+                cookie + attribute. Layout: label and value beside the switch, the one-line hint under both. */}
+            {cardSpacing && (() => {
+              const compact = spacing === "compact";
+              return (
+                <>
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={compact}
+                    aria-label={`${t.nav.cardSpacing}: ${t.nav.densityCompact}`}
+                    aria-describedby={hintId}
+                    onClick={() => applyCardSpacing(compact ? "comfortable" : "compact")}
+                    className="grid min-h-[44px] w-full grid-cols-[1fr_auto] items-center gap-x-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-bg-overlay sm:hidden"
+                  >
+                    {/* Reading copy stays on or above the 12.5px floor (`test:type-scale` §3): 14 · 13 · 13. */}
+                    <span className="min-w-0">
+                      <span className="block text-body font-semibold text-text">{t.nav.cardSpacing}</span>
+                      <span className="block text-body-sm text-text-subtle">{compact ? t.nav.densityCompact : t.nav.densityComfortable}</span>
+                    </span>
+                    <Toggle on={compact} decorative />
+                    <span id={hintId} className="col-span-2 mt-1 block text-body-sm text-text-muted">{t.nav.cardSpacingHint}</span>
+                  </button>
+                  <div role="separator" className="mx-2 my-1 h-px bg-border sm:hidden" />
+                </>
+              );
+            })()}
             {items.map((it) => {
               const a = pathname.startsWith(it.href);
               return (

@@ -476,6 +476,12 @@ export const dict = {
       currentSection: "current section",
       // 2026-09-14 · the phone bottom-rail tab label only.
       updown: "Up & Down",
+      // 2026-09-22 · Mobile Visual Plan U2: the "Card spacing" row in the phone rail's More menu. Spacing only —
+      // the hint says so, because a player who fears the tighter board hides things will otherwise switch it off.
+      cardSpacing: "Card spacing", densityCompact: "Compact", densityComfortable: "Comfortable",
+      // Short on purpose: in a 190px menu the longer sentence ran to six lines in Swahili (U2 visual pass). The label
+      // already says WHAT changes; the hint only has to say where, and that nothing disappears.
+      cardSpacingHint: "Phones only. Nothing is hidden.",
     },
     auth: {
       signInTitle: "Sign in", signUpTitle: "Create account",
@@ -3102,6 +3108,10 @@ export const dict = {
       currentSection: "sehemu ya sasa",
       // 2026-09-14 · the phone rail's SHORT tab name only ("Juu na Chini" cannot fit a fifth of a 360 screen); the product name everywhere else stays "Juu na Chini".
       updown: "Juu/Chini",
+      // 2026-09-22 · U2. "Nafasi ndogo / kubwa" — small / large spacing; the values agree with "nafasi" (N-class).
+      // Not "finyu": it reads as cramped, i.e. it would describe the default as a complaint. Native reader: plan §0 item 3.
+      cardSpacing: "Nafasi ya kadi", densityCompact: "Ndogo", densityComfortable: "Kubwa",
+      cardSpacingHint: "Kwa simu tu. Hakuna kinachofichwa.",
     },
     auth: {
       signInTitle: "Ingia", signUpTitle: "Fungua akaunti",
@@ -5243,6 +5253,9 @@ export const dict = {
       wallet: "钱包", leaderboard: "排行", primary: "主要",
       currentSection: "当前板块",
       updown: "涨跌",
+      // 2026-09-22 · U2.
+      cardSpacing: "卡片间距", densityCompact: "紧凑", densityComfortable: "宽松",
+      cardSpacingHint: "仅限手机，不会隐藏任何内容。",
     },
     auth: {
       signInTitle: "登录", signUpTitle: "创建账户",

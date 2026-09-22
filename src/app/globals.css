@@ -2880,6 +2880,7 @@ textarea::placeholder { color: var(--text-subtle); }
    the Round pill sheared 8px) to prove the padding never applied. Equal
    specificity: order IS the mechanism. Hit-area pseudo untouched. */
 @media (max-width: 400px) {
+  /* density: general — the chart's range chips, not the market board; both card-spacing settings. */
   /* ⚠️ THE GROUP SCROLLS RATHER THAN SHRINKING ITS TARGETS. Seven 44px chips plus gaps do not
      fit 360 alongside the axis key, and the previous answer was to shrink the chips — which is
      how they ended up 30px wide. ⛔ A scroller is the idiom this product already uses for a rail
@@ -3405,6 +3406,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    pair was already being judged against; inventing a 360 or 400 rung here would add a tier to a
    system that documents exactly five. */
 @media (max-width: 639.98px) {
+  /* density: general — the header's auth pills (E-276), not the board; both card-spacing settings. */
   .kp-auth-cta { padding-left: 14px; padding-right: 14px; }
 }
 
@@ -3703,6 +3705,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    Cost 3 × 44 min-height + 2 × (12 + 1px) = ~182px against ~116px, so ~+66px of hero — repaid
    about 4× over by the phone rhythm step-down (−288px on this page at 360; see --rh-* §Spacing). */
 @media (max-width: 560.98px) {
+  /* density: general — the home hero's proof figures, not the board; both card-spacing settings. */
   .kp-proof { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
   .kp-proof__fig { padding-left: 0; border-left: 0; }
   .kp-proof__fig + .kp-proof__fig { border-top: 1px solid var(--border); padding-top: var(--sp-3); }
@@ -3797,6 +3800,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    full width and the pool and price share the line below it — same DOM, same three fields, and
    the longest label in the longest language stops competing with the sentence it belongs to. */
 @media (max-width: 560.98px) {
+  /* density: general — the home Closing-soonest rows (U6 owns them), not the board; both settings. */
   .kp-qrow {
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
@@ -3826,6 +3830,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    breaks a line BEFORE it shrinks, so two side-by-side buttons would land one-per-line anyway,
    at half width and ragged. */
 @media (max-width: 560.98px) {
+  /* density: general — the home hero's calls to action, not the board; both card-spacing settings. */
   .kp-hero__cta { width: 100%; justify-content: center; }
 }
 
@@ -4309,7 +4314,7 @@ textarea::-webkit-resizer {
    2026-09-04 (E-262/E-263) — the earlier claim here that the hero already took
    this remedy was wrong: it had only the HTML half until session 80. Named for
    the surface it was first measured on; one class, one rule. */
-@media (max-width: 639px) { .ud-svg-label { display: none; } }
+@media (max-width: 639px) { /* density: general — the Up & Down chart's SVG label, not the card spacing. */ .ud-svg-label { display: none; } }
 @keyframes ud-point { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .ud-point { animation: none; } }
 
