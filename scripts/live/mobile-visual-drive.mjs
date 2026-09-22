@@ -53,6 +53,35 @@ const REPO = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const env = (k, d) => (process.env[k] ?? "").trim() || d;
 const list = (k, d) => env(k, d).split(",").map((s) => s.trim()).filter(Boolean);
 
+/**
+ * The numbers a COMPARE diffs. ⭐ They are also what gets COMMITTED as a unit's baseline
+ * (`scripts/live/baselines/mobile-visual-*.json`, via COMPACT_FROM): the frames and the full JSON stay in the gitignored
+ * .qa-shots/, but a "before" that only exists on one laptop cannot be compared against from another — and production's
+ * "before" can never be re-captured once the unit ships.
+ */
+function structural(r) {
+  const g = r.geometry ?? {};
+  return {
+    "cards.livePriced.med": g.cards?.livePriced?.med, "cards.livePriced.max": g.cards?.livePriced?.max,
+    "cards.closed.med": g.cards?.closed?.med, "updownCards.max": g.updownCards ? Math.max(...g.updownCards) : undefined,
+    "gridGap": g.gridGap, "authPills.h": g.authPills?.[0]?.h, "bubble.w": g.bubble?.w,
+    "closingRows.med": g.closingRows?.med, "countdown.tiles": g.countdown?.tiles, "authFieldW": g.authFieldW,
+    "footerLinks.min": g.footerLinks?.min, "hero.ctaH": g.hero?.ctaH?.[0], "hero.ledePx": g.hero?.ledePx,
+    "pinnedPx.scrolled": r.scrolled?.pinnedPx, "share.w": r.share?.w, "share.h": r.share?.h,
+  };
+}
+const compactRows = (rows) => rows.filter((r) => r.geometry)
+  .map((r) => ({ cell: r.cell, locale: r.locale, density: r.density, who: r.who, route: r.route, s: structural(r) }));
+
+// COMPACT_FROM=<index.json> [COMPACT_OUT=<file>] — write the committed baseline from a finished run, then stop.
+if (process.env.COMPACT_FROM) {
+  const full = JSON.parse(readFileSync(process.env.COMPACT_FROM, "utf8"));
+  const out = process.env.COMPACT_OUT || join(dirname(process.env.COMPACT_FROM), "structural.json");
+  writeFileSync(out, JSON.stringify({ meta: full.meta, summary: full.summary, rows: compactRows(full.rows) }, null, 1) + "\n");
+  console.log(`compact baseline: ${compactRows(full.rows).length} pages → ${out}`);
+  process.exit(0);
+}
+
 /* ── The §11 test matrix ─────────────────────────────────────────────────────────────────────── */
 const UA_PHONE =
   "Mozilla/5.0 (Linux; Android 13; SM-A145F) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Mobile Safari/537.36";
@@ -535,26 +564,15 @@ const pairs = rows.filter((r) => r.density === "comfortable" && r.geometry)
   .map((c) => [pick(c.cell, c.locale, c.route, "compact"), c]).filter(([a]) => a);
 
 /* ── Structural comparison (COMPARE / RED) ───────────────────────────────────────────────────── */
-function structural(r) {
-  const g = r.geometry ?? {};
-  return {
-    "cards.livePriced.med": g.cards?.livePriced?.med, "cards.livePriced.max": g.cards?.livePriced?.max,
-    "cards.closed.med": g.cards?.closed?.med, "updownCards.max": g.updownCards ? Math.max(...g.updownCards) : undefined,
-    "gridGap": g.gridGap, "authPills.h": g.authPills?.[0]?.h, "bubble.w": g.bubble?.w,
-    "closingRows.med": g.closingRows?.med, "countdown.tiles": g.countdown?.tiles, "authFieldW": g.authFieldW,
-    "footerLinks.min": g.footerLinks?.min, "hero.ctaH": g.hero?.ctaH?.[0], "hero.ledePx": g.hero?.ledePx,
-    "pinnedPx.scrolled": r.scrolled?.pinnedPx, "share.w": r.share?.w, "share.h": r.share?.h,
-  };
-}
 const diffs = [];
-function compareTo(baseRows, a, b, label) {
-  const sa = structural(a), sb = structural(b);
-  for (const k of Object.keys(sa)) {
-    if (sa[k] === undefined || sb[k] === undefined || sa[k] === null || sb[k] === null) continue;
-    if (Math.abs(sa[k] - sb[k]) > TOL) diffs.push(`${label} ${k}: ${sb[k]} → ${sa[k]}`);
+/** `now` and `was` are structural() maps. */
+function compareTo(now, was, label) {
+  for (const k of Object.keys(now)) {
+    if (now[k] === undefined || was[k] === undefined || now[k] === null || was[k] === null) continue;
+    if (Math.abs(now[k] - was[k]) > TOL) diffs.push(`${label} ${k}: ${was[k]} → ${now[k]}`);
   }
 }
-for (const [a, c] of pairs) compareTo(null, c, a, `noise-floor ${c.cell} ${c.locale} ${c.route} compact→comfortable`);
+for (const [a, c] of pairs) compareTo(structural(c), structural(a), `noise-floor ${c.cell} ${c.locale} ${c.route} compact→comfortable`);
 const noiseDiffs = diffs.length;
 if (pairs.length) R.check(`the two density cookies agree on ${pairs.length} paired pages (before U2 the cookie is inert — the instrument's noise floor)`,
   noiseDiffs === 0, diffs.slice(0, 6).join(" · "));
@@ -562,15 +580,17 @@ if (pairs.length) R.check(`the two density cookies agree on ${pairs.length} pair
 if (COMPARE) {
   const basePath = existsSync(COMPARE) && COMPARE.endsWith(".json") ? COMPARE : join(COMPARE, "index.json");
   const base = JSON.parse(readFileSync(basePath, "utf8"));
+  // Either a full run (rows carry geometry) or a committed compact baseline (rows carry `s`).
+  const baseRows = base.rows.map((x) => (x.s ? x : x.geometry ? { ...x, s: structural(x) } : null)).filter(Boolean);
   let matched = 0;
   const before = diffs.length;
   for (const r of rows.filter((r) => r.geometry)) {
     // A baseline recorded before U2 has no comfortable cells: the cookie was inert, so compact stands for both.
-    const bRow = base.rows.find((x) => x.cell === r.cell && x.locale === r.locale && x.route === r.route && x.who === r.who && x.density === r.density && x.geometry)
-      ?? base.rows.find((x) => x.cell === r.cell && x.locale === r.locale && x.route === r.route && x.who === r.who && x.geometry);
+    const same = (x) => x.cell === r.cell && x.locale === r.locale && x.route === r.route && x.who === r.who;
+    const bRow = baseRows.find((x) => same(x) && x.density === r.density) ?? baseRows.find(same);
     if (!bRow) continue;
     matched++;
-    compareTo(null, r, bRow, `${r.cell} ${r.locale} ${r.density} ${r.route}`);
+    compareTo(structural(r), bRow.s, `${r.cell} ${r.locale} ${r.density} ${r.route}`);
   }
   R.check(`compared ${matched} pages against ${basePath}`, matched > 0);
   R.check(`structural geometry matches the baseline within ${TOL}px`, diffs.length === before, diffs.slice(before, before + 12).join(" · "));
@@ -580,6 +600,7 @@ const index = { meta: { base: BASE, who: WHO, unit: UNIT, phase: PHASE, red: RED
   routes: ROUTES, market, servedDpl, at: new Date().toISOString() }, summary, rows };
 writeFileSync(join(OUT, "index.json"), JSON.stringify(index, null, 1));
 writeFileSync(join(OUT, "summary.json"), JSON.stringify(summary, null, 1));
+writeFileSync(join(OUT, "structural.json"), JSON.stringify({ meta: index.meta, summary, rows: compactRows(rows) }, null, 1) + "\n");
 
 console.log(`\n  served commit (data-dpl-id): ${servedDpl ?? "—"} · market ${market ?? "—"} · ${rows.length} pages · out ${OUT}`);
 for (const s of summary) {

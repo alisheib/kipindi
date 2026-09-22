@@ -122,9 +122,10 @@ export function NavMore({
                     className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-bg-overlay sm:hidden"
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-body-sm font-semibold text-text">{t.nav.cardSpacing}</span>
-                      <span className="block text-label text-text-subtle">{compact ? t.nav.densityCompact : t.nav.densityComfortable}</span>
-                      <span id={hintId} className="mt-1 block text-label text-text-muted">{t.nav.cardSpacingHint}</span>
+                      {/* Reading copy stays on or above the 12.5px floor (`test:type-scale` §3): 14 · 13 · 13. */}
+                      <span className="block text-body font-semibold text-text">{t.nav.cardSpacing}</span>
+                      <span className="block text-body-sm text-text-subtle">{compact ? t.nav.densityCompact : t.nav.densityComfortable}</span>
+                      <span id={hintId} className="mt-1 block text-body-sm text-text-muted">{t.nav.cardSpacingHint}</span>
                     </span>
                     <Toggle on={compact} decorative />
                   </button>
