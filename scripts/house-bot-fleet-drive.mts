@@ -126,6 +126,10 @@ try {
    * proves this instrument CANNOT PASS BY SILENCE, which is the failure this programme has already paid for
    * twice: a suite that is green because nothing ran looks exactly like a suite that is green because
    * everything worked. Run it before trusting any source mutation below it.
+   * ⭐ AND THE VERDICT IS NOW MACHINE-CHECKED, by `fleet.silent` after the lanes. It was a sentence here
+   * and nothing else until its first real run, which found TWO lane cases that passed with the engine off
+   * — an absence asserted as evidence, and `undefined === undefined` read as agreement. A contract that
+   * only a reader enforces is a contract that drifts.
    */
   const SILENT = process.env.KP_FLEET_SILENT === "1";
   process.env.HOUSE_BOT_ENGINE = SILENT ? "false" : "true";
@@ -189,7 +193,21 @@ try {
 
   // ── the fleet ──────────────────────────────────────────────────────────────────────────────────────
   section("seeding the fleet");
-  await w.limits();
+  /**
+   * ⛔ THE ROSTER CEILING IS A PRODUCT LIMIT, AND THE FLEET IS THE FIRST THING HERE TO OUTGROW IT.
+   * `maxDesignatedBots` defaults to 5 — which is exactly the five desks of lanes A and B, so nothing
+   * noticed until lane C, whose first run was refused `ROSTER_FULL` by `designation.ts` before it had
+   * designated anything. It is raised HERE, through the real limits service, in this process's own
+   * database, to the product's own maximum. The column's CHECK stops at 20, so a roster that outgrows
+   * that is refused in a sentence rather than as an opaque CAS failure fifty lines later.
+   */
+  const MAX_DESIGNATED = 20;
+  const wantedBots = ROSTER.filter((s) => laneWanted(s.lane)).length;
+  if (wantedBots > MAX_DESIGNATED) {
+    console.error(`REFUSED — the selected lanes ask for ${wantedBots} accounts and \`maxDesignatedBots\` cannot exceed ${MAX_DESIGNATED}. Split the run with --only.`);
+    process.exit(2);
+  }
+  await w.limits({ maxDesignatedBots: MAX_DESIGNATED });
 
   /**
    * ⛔ DESIGNATED AND STARTED THROUGH THE SERVICES, never the DAL. `startHouseBot` writes the account's own
@@ -285,11 +303,33 @@ try {
   exitCode = fail === 0 ? 0 : 1;
 
   // ═══ LANES ═════════════════════════════════════════════════════════════════════════════════════════
-  const { runCounterLanes }: Any = await import("./lib/house-bot-fleet-lanes.mts");
-  const laneOut = await runCounterLanes({
-    ok, section, until, j, w, S, fleet, stake, EXPECT, COUNTER_CUTOFF_MIN, laneWanted, passes, calls, seen, sleep,
-  });
-  void laneOut;
+  /* ⛔ The snapshot that lets the meta-mutation JUDGE ITSELF — see `fleet.silent` below. */
+  const beforeLanes = { count, fail };
+  const { runCounterLanes, runPoolTrapLane }: Any = await import("./lib/house-bot-fleet-lanes.mts");
+  const laneEnv = { ok, section, until, j, w, S, fleet, stake, EXPECT, COUNTER_CUTOFF_MIN, laneWanted, passes, calls, seen, sleep };
+  const laneOut = await runCounterLanes(laneEnv);
+  const poolOut = await runPoolTrapLane(laneEnv);
+  void laneOut; void poolOut;
+
+  /**
+   * ⭐ THE META-MUTATION NOW ENFORCES ITS OWN VERDICT, instead of leaving it to whoever reads the log.
+   *
+   * "Every lane must go red under `KP_FLEET_SILENT=1`" was, until this ran, a sentence in a header — a
+   * contract checked by eye, and eyes drift. The first run proved why that is not enough: TWO lane cases
+   * passed with the engine switched off. `A3-NEVER · placed nothing at all` asserted an ABSENCE, which a
+   * dead engine supplies for free; `A2-JITTER · equals what the engine DECIDED` compared `undefined` with
+   * `undefined` and called it a match. Both are fixed where they live, and this case is the ratchet that
+   * stops the next one being written: under SILENT, the number of lane assertions that passed must be 0.
+   *
+   * ⛔ It also refuses a lane set that measured NOTHING (`laneCases > 0`) — otherwise `--only <nothing>`
+   * would satisfy "none passed" the empty way, which is the same silence one level up.
+   */
+  if (SILENT) {
+    const laneCases = count - beforeLanes.count;
+    const lanePassed = laneCases - (fail - beforeLanes.fail);
+    ok(`fleet.silent · META-MUTATION · all ${laneCases} lane assertions went red with the engine off — NONE passed by silence`,
+      laneCases > 0 && lanePassed === 0, j({ laneCases, lanePassed }));
+  }
 
   exitCode = fail === 0 ? 0 : 1;
 } catch (e) {

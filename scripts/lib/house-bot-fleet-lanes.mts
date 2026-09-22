@@ -27,8 +27,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
 
-export async function runCounterLanes(env: Any): Promise<Any> {
-  const { ok, section, until, j, w, S, fleet, stake, EXPECT, COUNTER_CUTOFF_MIN, laneWanted } = env;
+/**
+ * ⛔ ONE DEFINITION OF EACH, shared by every lane. Two lanes with their own copy of the placeholder guard
+ * is two chances to drop it, and the one that drops it is the one that reads a ruling-120 placeholder as
+ * an intended stake.
+ */
+function helpers(env: Any): Any {
+  const { ok, j, w, S } = env;
 
   /** ⛔ The guard that keeps the ruling-120 placeholder out of every arithmetic comparison. */
   const stakeOracle = (row: Any, expected: number, what: string): void => {
@@ -47,6 +52,13 @@ export async function runCounterLanes(env: Any): Promise<Any> {
   };
   const housePositionsOn = async (marketId: string): Promise<Any[]> =>
     (await w.positionsOf(marketId)).filter((p: Any) => p.houseBotId != null);
+
+  return { stakeOracle, rowsOf, housePositionsOn };
+}
+
+export async function runCounterLanes(env: Any): Promise<Any> {
+  const { ok, section, until, j, w, S, fleet, stake, EXPECT, COUNTER_CUTOFF_MIN, laneWanted } = env;
+  const { stakeOracle, rowsOf, housePositionsOn } = helpers(env);
 
   const out: Any = { placed: [], refused: [] };
 
@@ -138,7 +150,14 @@ export async function runCounterLanes(env: Any): Promise<Any> {
     for (const d of desks) {
       const { key, bot, exp, market, before, fired } = d;
       if (exp.decide === null) {
-        ok(`${key} · …and it placed nothing at all`, (await housePositionsOn(market.id)).length === 0);
+        /* ⛔ AN ABSENCE IS ONLY EVIDENCE IF SOMETHING RAN, and this case learned that the hard way: under
+           `KP_FLEET_SILENT=1` it PASSED — nothing was placed, because nothing decided. A 0% desk and a
+           dead engine leave the same empty market, so the refusal must be WITNESSED before its silence
+           counts for anything. The witness is the desk's own visible SKIPPED row. */
+        const witnessed = d.decided?.status === "SKIPPED" && d.decided?.reasonCode === "NOT_REACTING";
+        const placedN = (await housePositionsOn(market.id)).length;
+        ok(`${key} · …and it placed nothing at all — its refusal WITNESSED, so the empty market is evidence`,
+          witnessed && placedN === 0, j({ witnessed, placed: placedN }));
         out.refused.push({ key, code: d.decided?.reasonCode });
         continue;
       }
@@ -155,8 +174,12 @@ export async function runCounterLanes(env: Any): Promise<Any> {
           staked >= exp.lo && staked <= exp.hi, j({ staked }));
         /* ⭐ The jitter is drawn ONCE, at the decision. A second draw at fire would be a different number
            and would also mean the officer's recorded decision did not describe the bet that was placed. */
+        /* ⛔ `undefined === undefined` IS NOT AGREEMENT. Under `KP_FLEET_SILENT=1` nothing was placed and
+           nothing was decided, both sides read `undefined`, and this case reported the two absences as a
+           match. Two numbers must EXIST before it means anything to say they are equal. */
         ok(`${key} · …and it equals what the engine DECIDED — the draw is not repeated at fire`,
-          staked === d.decided?.stakeTzs, j({ staked, decided: d.decided?.stakeTzs }));
+          typeof staked === "number" && typeof d.decided?.stakeTzs === "number" && staked === d.decided.stakeTzs,
+          j({ staked, decided: d.decided?.stakeTzs }));
       } else {
         ok(`${key} · …of exactly ${exp.fire} — the number the rules decided is the number that was staked`,
           staked === exp.fire, j({ got: staked, expected: exp.fire }));
@@ -177,4 +200,153 @@ export async function runCounterLanes(env: Any): Promise<Any> {
   }
 
   return out;
+}
+
+/**
+ * LANE C · THE POOL TRAP — the highest-value case in the drive, and the only one that can fail in BOTH
+ * directions at once.
+ *
+ * Two sites size a house COUNTER against the players' money, and they read DIFFERENT columns on purpose:
+ *   · `decide.ts:380`  cut = pools[trigger.side].nonHouse − pools[botSide].raw
+ *   · `fire.ts:225`    against = pools[opp].lockedA15        (untargeted COUNTER only)
+ * `nonHouse` is every non-house shilling on that side, locked or not. `lockedA15` is the one column with
+ * neither the account filter nor the 7 s margin, and it counts a stake only once its exit window has shut.
+ * They are different questions asked at different moments: at DECIDE nothing is committed yet and the bot
+ * is sizing an intention; at FIRE the money must really be there and unable to walk away.
+ *
+ * ⭐ A case that merely placed a bet would pass with the two columns SWAPPED. This one cannot, because the
+ * market is arranged so each column gives a different answer at each moment, and all four answers differ:
+ *
+ *   t+0    seeded NO 60,000, aged 70 s   → already locked
+ *   t+0    trigger NO 100,000            → locks at t+60
+ *   t+~6   late YES 120,000              → raw at once, and it is the bot's OWN side
+ *   t+30   late NO 40,000                → would lock at t+90, i.e. never before the bet
+ *
+ *   DECIDE (≈t+5)  nonHouse NO 160,000 − raw YES 0        = 160,000 → asked 80,000 survives → 80,000
+ *                  ⛔ lockedA15 there would be 60,000 (the trigger has not locked yet)      → 60,000
+ *   FIRE   (≈t+60) lockedA15 NO 160,000 − raw YES 120,000 =  40,000 → 80,000 cut to         → 40,000
+ *                  ⛔ nonHouse there would be 200,000 − 120,000 = 80,000, uncut
+ *
+ * So: 80,000 then 40,000. Swap either site and one of those two numbers moves. Both wrong fields are
+ * excluded, in both directions, by one desk on one market.
+ *
+ * ⛔ AND THE CASE PROVES ITS OWN PREMISE. Every number above depends on WHEN each stake landed relative to
+ * the bet, which is a race the harness does not control — so the timings are not assumed, they are read
+ * back off the durable rows and asserted. A late stake that arrived after the bet, or a "late" NO whose
+ * window had quietly shut in time to be counted, would leave this lane green while measuring nothing.
+ */
+export async function runPoolTrapLane(env: Any): Promise<Any> {
+  const { ok, section, until, j, w, S, fleet, stake, EXPECT, COUNTER_CUTOFF_MIN, laneWanted, sleep } = env;
+  if (!laneWanted("C")) return null;
+  const bot = fleet["C1-POOLS"];
+  if (!bot) return null;
+  const exp: Any = EXPECT["C1-POOLS"];
+  const { stakeOracle, rowsOf } = helpers(env);
+
+  section("lane C · THE POOL TRAP — nonHouse at DECIDE, lockedA15 at FIRE, both wrong fields excluded");
+
+  /* ⛔ `graceMin: 1` is the whole clock of this lane: a stake locks exactly 60 s after it is placed, which
+     is what lets one market hold locked and unlocked money at the same instant. */
+  const GRACE_MS = 60_000;
+  const market = await w.poll({
+    graceMin: 1, category: bot.category, closeInMs: COUNTER_CUTOFF_MIN * 60_000, title: "Fleet C1-POOLS",
+  });
+
+  /* Aged past its exit close, so it is locked at BOTH moments and is the part of the pool the two columns
+     agree on. 60,000 also sits outside the desk's band [90,000–110,000], so it cannot itself be a trigger. */
+  await stake(market.id, "NO", exp.seed, GRACE_MS + 10_000);
+
+  /* ⚠️ Read BEFORE the trigger — reading it after the intent appears is a race the poller can win. */
+  const before = (await w.bal(bot.userId)).balance as number;
+  const t0 = Date.now();
+  const trig = await stake(market.id, "NO", exp.trigger, 0);
+
+  // ── the DECIDE stage · nonHouse, before a shilling of the late money exists ──────────────────────
+  const decided = await until("C1-POOLS · a decision on the trigger", 60_000, async () => {
+    const rows = await rowsOf(bot.botId);
+    const hit = rows.find((r: Any) => r.triggerPositionId === trig.positionId);
+    return hit ? await S.houseBotIntentStore.get(hit.id) : null;
+  });
+
+  ok("C1-POOLS · the engine decided: a PENDING COUNTER on the side opposite the trigger",
+    decided?.kind === "COUNTER" && decided?.side === exp.side && decided?.status === "PENDING",
+    j({ kind: decided?.kind, side: decided?.side, status: decided?.status, code: decided?.reasonCode }));
+  stakeOracle(decided, exp.decide,
+    `C1-POOLS · …sized on nonHouse (160,000): EXACTLY ${exp.decide} — lockedA15 there would have given 60,000`);
+  ok(`C1-POOLS · …and the amount it recorded asking for is exactly ${exp.asked}`,
+    decided?.decision?.askedStakeTzs === exp.asked, j({ asked: decided?.decision?.askedStakeTzs, expected: exp.asked }));
+
+  /* ⛔ ORDERED BY DEPENDENCY, NOT BY CLOCK. The decision must be durable before the late money lands, or the
+     decide-stage cut would have included it and the first half of this lane would measure nothing. */
+  if (decided?.status !== "PENDING") {
+    ok("C1-POOLS · the late money goes on only once the decision is durable — it is not, so the lane stops here rather than reporting a number it did not measure",
+      false, j({ status: decided?.status, code: decided?.reasonCode }));
+    return { lane: "C", measured: false };
+  }
+
+  // ── the late money · raw YES at once, and a NO that can never lock in time ───────────────────────
+  const lateYes = await stake(market.id, "YES", exp.lateYes, 0);
+  /* The NO is held back so its window cannot shut before the bet: 30 s leaves it locking at t+90 against a
+     bet due at t+60 — and the PREMISE assertions below read the real instants rather than trust this sleep. */
+  const wait = t0 + 30_000 - Date.now();
+  if (wait > 0) await sleep(wait);
+  const lateNo = await stake(market.id, "NO", exp.lateNo, 0);
+
+  // ── the FIRE stage · lockedA15, with the late YES now on the bot's own side ──────────────────────
+  const fired = await until("C1-POOLS · the poller firing it", 150_000, async () => {
+    const r = await S.houseBotIntentStore.get(decided.id);
+    return r && r.status !== "PENDING" && r.status !== "CLAIMED" ? r : null;
+  });
+  ok("C1-POOLS · the poller fired it to PLACED, with a position id",
+    fired?.status === "PLACED" && !!fired?.positionId, j({ status: fired?.status, code: fired?.reasonCode }));
+
+  const all = await w.positionsOf(market.id);
+  const house = all.filter((p: Any) => p.houseBotId === bot.botId);
+  ok("C1-POOLS · exactly ONE marked position on this market, on the decided side",
+    house.length === 1 && house[0]?.side === exp.side, j({ n: house.length, side: house[0]?.side }));
+
+  const staked = house[0]?.stake;
+  ok(`C1-POOLS · …cut at fire on lockedA15 to EXACTLY ${exp.fire} — nonHouse there would have left it at 80,000, uncut`,
+    staked === exp.fire, j({ got: staked, expected: exp.fire }));
+
+  /* ⭐ MON-02 · a smaller stake is written BACK to the claimed row, so the officer's record is the bet that
+     was placed and not the one that was intended a minute earlier. */
+  ok(`C1-POOLS · …and the intent row was CLAMPED to what was staked, not left at the ${exp.decide} it decided`,
+    fired?.stakeTzs === exp.fire, j({ row: fired?.stakeTzs, staked }));
+
+  /* ⭐ THE CONTROL THAT MAKES THE LANE DISCRIMINATING. If the two sites ever read the same column these two
+     numbers collapse into one, so their DIFFERENCE is the property under test — not either number alone. */
+  ok("C1-POOLS · the decide-stage and fire-stage sizes are DIFFERENT numbers (80,000 → 40,000) — one column at both sites collapses them",
+    decided?.decision?.askedStakeTzs === exp.decide && staked === exp.fire && exp.decide !== exp.fire,
+    j({ decided: decided?.decision?.askedStakeTzs, fired: staked }));
+
+  // ── the premise, read back off the rows rather than assumed ──────────────────────────────────────
+  const at = (id: string): number => {
+    const p = all.find((x: Any) => x.id === id);
+    return p?.placedAt ? Date.parse(p.placedAt) : NaN;
+  };
+  const betAt = at(house[0]?.id);
+  const yesAt = at(lateYes.positionId);
+  const noAt = at(lateNo.positionId);
+  const trigAt = at(trig.positionId);
+
+  ok("C1-POOLS · PREMISE · the late YES really was on the book before the bet — otherwise the fire-stage cut never saw it",
+    Number.isFinite(yesAt) && Number.isFinite(betAt) && yesAt < betAt,
+    j({ yes: new Date(yesAt).toISOString(), bet: new Date(betAt).toISOString() }));
+  ok("C1-POOLS · PREMISE · the trigger HAD locked by the time the bet was placed — it is 100,000 of the 160,000 lockedA15 was sized on",
+    Number.isFinite(trigAt) && Number.isFinite(betAt) && trigAt + GRACE_MS <= betAt,
+    j({ locks: new Date(trigAt + GRACE_MS).toISOString(), bet: new Date(betAt).toISOString() }));
+  ok("C1-POOLS · PREMISE · the late NO had NOT locked by then — had its window shut in time, lockedA15 would have been 200,000 and this lane would have measured nothing",
+    Number.isFinite(noAt) && Number.isFinite(betAt) && noAt + GRACE_MS > betAt,
+    j({ locks: new Date(noAt + GRACE_MS).toISOString(), bet: new Date(betAt).toISOString() }));
+
+  // ── the accuracy chain, joined ───────────────────────────────────────────────────────────────────
+  const after = (await w.bal(bot.userId)).balance as number;
+  ok("C1-POOLS · …and the holder's wallet fell by exactly that, to the shilling",
+    before - after === staked, j({ before, after, delta: before - after, staked }));
+  const txns = await w.txnsFor(house[0]?.id);
+  ok("C1-POOLS · …and every money row it wrote carries the marker",
+    txns.length > 0 && txns.every((t: Any) => t.houseBotId === bot.botId), j({ n: txns.length }));
+
+  return { lane: "C", measured: true, decided: decided?.stakeTzs, fired: staked, market: market.id, botId: bot.botId, holder: bot.userId };
 }
