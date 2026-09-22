@@ -39,14 +39,17 @@
  * failed to render a control silently turns a mode off on save; the server refuses a missing key rather than
  * guessing, and the two are halves of one decision.
  */
-import { Fragment, useRef, useState, useTransition } from "react";
+import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, Input } from "@/components/ui/input";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { FormColumn } from "@/components/ui/form-column";
 import { ConfirmModal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
+import { TimeSelect } from "@/components/ui/time-select";
 import { useDeferredToast } from "@/components/ui/toast";
 import { PendingChangesBar, UnsavedChangesGuard, useFormDirty, useFormDraft } from "@/components/ui/unsaved-changes";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
@@ -77,6 +80,32 @@ export type RulesFormModel = {
     product: string; productOn: boolean; onceOn: string; none: string;
     entries: readonly { key: string; value: string; label: string; on: boolean }[];
   }[];
+  /**
+   * ⭐ THE 29 NUMERIC RULE LEAVES (2026-09-23 · register A1). Grouped by `section` in the order the server
+   * sends them; `min`/`max` are the LIVE bounds and "" when the platform read behind them failed.
+   */
+  rules: readonly {
+    key: string; section: string; label: string; value: string; saved: string;
+    unit: "TZS" | "percent" | "seconds" | "minutes" | "count";
+    min: string; max: string; range: string; defaultValue: string; recommended: string;
+    nullable: boolean; help: string; hint: string; usedBy: string; idle: boolean;
+    options: readonly { value: string; label: string }[] | null;
+  }[];
+  /** The counter amount's kind, and which box each choice reveals. */
+  amountKind: {
+    key: string; label: string; help: string; value: "PCT" | "FIXED";
+    options: readonly { value: "PCT" | "FIXED"; label: string; showsKey: string }[];
+  };
+  /** The schedule: seven days, an all-day switch, and four HH:MM rows in EAT posted exactly as typed. */
+  schedule: {
+    daysKey: string; allDayKey: string; windowsKey: string; section: string;
+    daysLabel: string; daysHelp: string; allDayLabel: string; allDayHelp: string;
+    windowsLabel: string; windowsHelp: string; windowsIgnored: string; startLabel: string; endLabel: string;
+    allDay: boolean;
+    days: readonly { key: string; value: string; label: string; on: boolean }[];
+    windows: readonly { startKey: string; endKey: string; start: string; end: string }[];
+    saved: readonly string[];
+  };
   copy: {
     barDetail: string; guardBody: string; listsSection: string;
     clearLabel: string; clearTitle: string; clearBody: string; clearConfirm: string; clearDone: string;
@@ -84,8 +113,34 @@ export type RulesFormModel = {
     byHandNote: string; manyProblems: string; noFieldToMark: string;
     draftTitle: string; draftBody: string; draftRestore: string; draftDrop: string; draftRestored: string;
     notSavedYet: string;
+    boundsUnreadable: string; rulesSection: string; rulesNote: string; idleNote: string;
+    startingRulesDone: string;
   };
 };
+
+/**
+ * ⛔ A KIT CONTROL'S VALUE, MADE POSTABLE AND MADE TO RAISE AN EVENT (2026-09-23).
+ *
+ * `Select` and `TimeSelect` are React controls: they answer `onChange` and hold their value in state. Two
+ * things this form needs are therefore not automatic, and BOTH have bitten this section before.
+ *   · ⛔ IT MUST BE IN `form.elements` UNDER ITS OWN KEY, because the submit refuses a control that is not
+ *     there rather than reading its absence as a value — the rule the ten switches and the two pickers
+ *     already obey. A hidden input is what makes a React control satisfy it.
+ *   · 🔴 IT MUST RAISE `input`, or the pending bar never appears. Assigning a hidden input's `value` fires
+ *     NOTHING, and the form's dirty tracker listens for `input`/`change` — which is exactly the defect
+ *     (`checkbox.tsx`'s `preventDefault`) that this whole flow was rebuilt to fix, one layer down.
+ * ⚠️ NOT ON THE FIRST PAINT: the mount would mark a form dirty that nobody has touched, and an officer who
+ * opened a tab and left would be warned they were losing work they never did.
+ */
+function PostedValue({ name, value }: { name: string; value: string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    ref.current?.dispatchEvent(new Event("input", { bubbles: true }));
+  }, [value]);
+  return <input ref={ref} type="hidden" name={name} value={value} readOnly />;
+}
 
 type SaveAnswer =
   | { ok: true; rulesVersion: number; changed: number; rulesChanged: boolean; recorded: boolean; warnings: string[] }
@@ -105,6 +160,9 @@ export function DeskRulesForm({
     values: Record<string, string>;
     flags: Record<string, boolean>;
     lists: { categories: string[]; chains: string[] };
+    numbers: Record<string, string>;
+    amountKind: string;
+    schedule: { days: string[]; allDay: boolean; windows: { start: string; end: string }[] };
   }) => Promise<SaveAnswer>;
 }) {
   const [pending, start] = useTransition();
@@ -150,6 +208,20 @@ export function DeskRulesForm({
     if (last && last.name === flag.section) last.rows.push(flag);
     else sections.push({ name: flag.section, rows: [flag] });
   }
+  /* ⭐ THE SAME DERIVATION FOR THE NUMBERS (2026-09-23): the server sends them in `FIELD_ORDER` with their
+     own section word, and the grouping is a fold over that — never a list of section names typed here, which
+     would be a second ordering able to disagree with the one the refusals are sorted by. */
+  const ruleSections: Array<{ name: string; rows: RulesFormModel["rules"][number][] }> = [];
+  for (const row of model.rules) {
+    const last = ruleSections[ruleSections.length - 1];
+    if (last && last.name === row.section) last.rows.push(row);
+    else ruleSections.push({ name: row.section, rows: [row] });
+  }
+  /* The section the amount's two boxes live in — the chooser is drawn at its head, beside what it switches. */
+  const amountSection = model.rules.find((r) => r.key === model.amountKind.options[0].showsKey)?.section;
+  /* ⛔ HIDDEN, NEVER UNMOUNTED (see the render): the unchosen amount box must stay in `form.elements`. */
+  const hiddenAmountBox = (key: string): boolean =>
+    model.amountKind.options.some((o) => o.showsKey === key && o.value !== amountKind);
 
   /**
    * ⛔ SET A VALUE THE WAY A PERSON WOULD, OR THE FORM NEVER HEARS IT.
@@ -167,7 +239,7 @@ export function DeskRulesForm({
    * the hint below). ⚠️ Seeded from the server's values so the first paint is right before any event fires.
    */
   const [boxEmpty, setBoxEmpty] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(model.caps.map((c) => [c.key, c.value === ""])));
+    Object.fromEntries([...model.caps, ...model.rules].map((c) => [c.key, c.value === ""])));
 
   /**
    * ⭐ WHICH PRODUCT SWITCHES ARE ON RIGHT NOW — so a picker can say "applies once Polls is on" about the BOX in
@@ -177,6 +249,22 @@ export function DeskRulesForm({
    */
   const [productOn, setProductOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(model.lists.map((l) => [l.product, l.productOn])));
+
+  /**
+   * ⭐ THE THREE FACTS THE KIT CONTROLS HOLD (2026-09-23). Seeded from the server so the first paint is the
+   * saved state, and posted through `PostedValue` so the submit reads them the same way it reads every other
+   * control. ⛔ A Discard puts all three back — `form.reset()` cannot restore React state, and a schedule that
+   * survived a Discard would be the form lying about what Save would store.
+   */
+  const [amountKind, setAmountKind] = useState<"PCT" | "FIXED">(model.amountKind.value);
+  const [allDay, setAllDay] = useState(model.schedule.allDay);
+  const [times, setTimes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(model.schedule.windows.flatMap((w) => [[w.startKey, w.start], [w.endKey, w.end]])));
+  const setTime = (key: string, v: string) => setTimes((cur) => (cur[key] === v ? cur : { ...cur, [key]: v }));
+  /** The one numeric leaf drawn as a chooser (`shaping.roundToTzs`), held the same way. */
+  const [choices, setChoices] = useState<Record<string, string>>(() =>
+    Object.fromEntries(model.rules.filter((r) => r.options !== null).map((r) => [r.key, r.value])));
+  const setChoice = (key: string, v: string) => setChoices((cur) => (cur[key] === v ? cur : { ...cur, [key]: v }));
 
   /* ⚠️ Returns the SAME object when nothing moved, so an ordinary keystroke inside a box that was already
      filled does not re-render fourteen fields. */
@@ -188,7 +276,14 @@ export function DeskRulesForm({
       const node = form.elements.namedItem(cap.key);
       next[cap.key] = !(node instanceof HTMLInputElement) || node.value.trim() === "";
     }
-    setBoxEmpty((cur) => (model.caps.some((c) => cur[c.key] !== next[c.key]) ? next : cur));
+    /* ⭐ THE NUMERIC RULES KEEP THE SAME LIVE-EMPTINESS FACT AS THE CAPS (2026-09-23), so a row can say
+       "nothing saved for this yet" about the BOX in front of the officer rather than about the stored row —
+       the contradiction 432(n) was raised on, one field wider. */
+    for (const rule of model.rules) {
+      const node = form.elements.namedItem(rule.key);
+      next[rule.key] = !(node instanceof HTMLInputElement) || node.value.trim() === "";
+    }
+    setBoxEmpty((cur) => ([...model.caps, ...model.rules].some((c) => cur[c.key] !== next[c.key]) ? next : cur));
     const on: Record<string, boolean> = {};
     for (const list of model.lists) {
       const node = form.elements.namedItem(list.product);
@@ -209,17 +304,21 @@ export function DeskRulesForm({
     const form = formRef.current;
     if (!form) return;
     let filled = 0;
-    for (const cap of model.caps) {
-      if (cap.recommended === "") continue;
-      const node = form.elements.namedItem(cap.key);
+    /* ⛔ THE RULES ARE FILLED TOO (2026-09-23), AND ONLY WHERE THEY ARE EMPTY — a starting value that
+       overwrote a number an officer had chosen would be the control destroying the work it exists to save.
+       ⚠️ A rule whose recommendation could not be resolved (the live stake bounds did not read) carries ""
+       and is skipped, so the control never types a WORD into a money box. */
+    for (const row of [...model.caps, ...model.rules]) {
+      if (row.recommended === "") continue;
+      const node = form.elements.namedItem(row.key);
       if (!(node instanceof HTMLInputElement) || node.value.trim() !== "") continue;
-      if (setBox(node, cap.recommended)) filled++;
+      if (setBox(node, row.recommended)) filled++;
     }
     setErrors({});
     setWarnings([]);
     toast({
       title: model.copy.fillLabel,
-      description: filled > 0 ? model.copy.fillDone : model.copy.fillNothing,
+      description: filled > 0 ? model.copy.startingRulesDone : model.copy.fillNothing,
       variant: filled > 0 ? "success" : "factual",
     });
   };
@@ -283,6 +382,45 @@ export function DeskRulesForm({
       }
       lists[list.field] = chosen;
     }
+    /**
+     * ⭐ THE 29 NUMBERS, THE KIND AND THE SCHEDULE — ON THE SAME RULE (2026-09-23 · register A1).
+     *
+     * ⛔ A CONTROL THAT IS NOT THERE IS A REFUSAL, NEVER A VALUE, and the failure direction is why it matters
+     * more here than anywhere else on this form: the numbers being absent is the state the desk has been in
+     * since it was built, and reading absence as "" would post an empty band on every save — which the
+     * validator reads as UNSET and, for a non-nullable leaf, refuses. The officer would meet 29 refusals for
+     * a rendering fault. So a missing box is the stale-form sentence, said once.
+     */
+    const numbers: Record<string, string> = {};
+    for (const rule of model.rules) {
+      const node = el.elements.namedItem(rule.key);
+      if (!(node instanceof HTMLInputElement)) { missing.push(rule.key); continue; }
+      numbers[rule.key] = node.value.trim();
+    }
+    const kindNode = el.elements.namedItem(model.amountKind.key);
+    if (!(kindNode instanceof HTMLInputElement)) missing.push(model.amountKind.key);
+    /* ⛔ THE DAYS ARE READ OFF THEIR OWN BOXES AND THE GROUP'S MARKER SAYS THE GROUP RENDERED — the picker
+       idiom this form already uses for the two scope lists, for the same reason: a day group that failed to
+       render would otherwise post "no days", which is an account that never bets again. */
+    const dayMarker = el.elements.namedItem(model.schedule.daysKey);
+    if (!(dayMarker instanceof HTMLInputElement) || dayMarker.type !== "hidden") missing.push(model.schedule.daysKey);
+    const days: string[] = [];
+    for (const node of Array.from(el.elements)) {
+      if (node instanceof HTMLInputElement && node.type === "checkbox"
+        && node.name.startsWith(`${model.schedule.daysKey}.`) && node.checked) days.push(node.value);
+    }
+    const allDayNode = el.elements.namedItem(model.schedule.allDayKey);
+    if (!(allDayNode instanceof HTMLInputElement)) missing.push(model.schedule.allDayKey);
+    /* ⛔ EVERY ROW THE FORM DREW TRAVELS, INCLUDING THE EMPTY ONES. The server drops a row whose two boxes
+       are both empty and refuses one with a single side typed — that decision is the clock's, not this
+       file's, and posting only the filled rows would take it away from the server silently. */
+    const windows: { start: string; end: string }[] = [];
+    for (const w of model.schedule.windows) {
+      const s = el.elements.namedItem(w.startKey);
+      const e = el.elements.namedItem(w.endKey);
+      if (!(s instanceof HTMLInputElement) || !(e instanceof HTMLInputElement)) { missing.push(w.startKey); continue; }
+      windows.push({ start: s.value.trim(), end: e.value.trim() });
+    }
     if (missing.length > 0) {
       /* The server's own stale-form sentence is the right one here: the page no longer matches what it posts. */
       toast({ title: "Couldn't save", description: model.copy.noFieldToMark, variant: "danger" });
@@ -294,7 +432,12 @@ export function DeskRulesForm({
          failure — and a throw out of `startTransition` clears the pending state and shows nothing at all. */
       let result: SaveAnswer;
       try {
-        result = await onSave({ accountId, baseVersion: model.baseVersion, values, flags, lists });
+        result = await onSave({
+          accountId, baseVersion: model.baseVersion, values, flags, lists,
+          numbers,
+          amountKind: kindNode instanceof HTMLInputElement ? kindNode.value : "",
+          schedule: { days, allDay: allDayNode instanceof HTMLInputElement && allDayNode.checked, windows },
+        });
       } catch {
         result = { ok: false, error: "Not saved — try again." };
       }
@@ -368,7 +511,16 @@ export function DeskRulesForm({
   const onFormChange = () => { formProps.onChange(); syncEmptiness(); };
   /* ⚠️ A RESET FIRES BEFORE THE FORM IS RESET (the event is cancellable), so the live facts are re-read in a
      microtask, once the reset has landed — the kit's Checkbox syncs its own paint the same way. */
-  const onFormReset = () => { queueMicrotask(syncEmptiness); };
+  /* ⛔ AND THE THREE REACT-HELD CONTROLS GO BACK TOO: `form.reset()` restores `defaultValue`/`defaultChecked`
+     and knows nothing about state, so a Discard that left the schedule as typed would leave the form showing
+     one thing and Save storing it — a Discard that discards nothing. */
+  const onFormReset = () => {
+    setAmountKind(model.amountKind.value);
+    setAllDay(model.schedule.allDay);
+    setTimes(Object.fromEntries(model.schedule.windows.flatMap((w) => [[w.startKey, w.start], [w.endKey, w.end]])));
+    setChoices(Object.fromEntries(model.rules.filter((r) => r.options !== null).map((r) => [r.key, r.value])));
+    queueMicrotask(syncEmptiness);
+  };
 
   return (
     <form
@@ -464,6 +616,223 @@ export function DeskRulesForm({
             )}
             </Fragment>
           ))}
+
+          {/**
+            * ⭐ HOW IT DECIDES — THE 33 LEAVES THAT HAD NO CONTROL (2026-09-23 · register A1, the blocker).
+            *
+            * ⛔ EVERY ROW COMES OFF THE SERVER'S `rules` ARRAY, in its order and grouped by its own section:
+            * the form holds no list of fields, no bound, no default and no sentence of its own, so a leaf
+            * added to the document appears here without this file being touched.
+            * ⛔ THE TWO AMOUNT BOXES ARE BOTH RENDERED AND ONE IS HIDDEN, never unmounted: the submit refuses
+            * a control that is not in `form.elements`, and unmounting the unchosen box would turn a legal
+            * choice into "this form no longer matches what it posts".
+            */}
+          <div className="space-y-5" data-rules="numbers">
+            <div className="space-y-1">
+              <p className="text-body-sm font-semibold text-text">{model.copy.rulesSection}</p>
+              <p className="text-body-sm text-text-tertiary max-w-[72ch]">{model.copy.rulesNote}</p>
+            </div>
+            {/* ⛔ A BOUND THAT COULD NOT BE READ IS SAID, NOT GUESSED (355): the boxes still save, and the
+                server still checks them against the live platform — what is missing is the range on screen. */}
+            {model.rules.some((r) => r.range === "") && (
+              <Callout tone="warning" size="sm" surface="panel" role="note">{model.copy.boundsUnreadable}</Callout>
+            )}
+            {ruleSections.map((section) => (
+              <div key={section.name} className="space-y-3">
+                <p className="text-body-sm font-medium text-text">{section.name}</p>
+                {section.name === amountSection && (
+                  <div className="space-y-1" data-field={model.amountKind.key}>
+                    <FieldLegend className="block mb-1.5">{model.amountKind.label}</FieldLegend>
+                    <Select
+                      size="md"
+                      defaultValue={model.amountKind.value}
+                      ariaLabel={model.amountKind.label}
+                      options={model.amountKind.options.map((o) => ({ value: o.value, label: o.label }))}
+                      onChange={(v) => setAmountKind(v === "FIXED" ? "FIXED" : "PCT")}
+                    />
+                    <PostedValue name={model.amountKind.key} value={amountKind} />
+                    <p className="text-body-sm text-text-tertiary max-w-[52ch]">{model.amountKind.help}</p>
+                    {errors[model.amountKind.key] && (
+                      <p className="text-body-sm text-danger-fg" role="alert">{errors[model.amountKind.key]}</p>
+                    )}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {section.rows.map((row) => (
+                    <div key={row.key} hidden={hiddenAmountBox(row.key)}>
+                      <Field
+                        label={row.label}
+                        dataField={row.key}
+                        error={errors[row.key]}
+                        hint={
+                          <>
+                            <span className="block">{row.help}</span>
+                            {row.hint !== "" && <span className="block mt-0.5">{row.hint}</span>}
+                            {row.range !== "" && <span className="block mt-0.5">{row.range}</span>}
+                            {/* ⛔ WHICH SWITCH OWNS THIS NUMBER, and whether anything reads it RIGHT NOW —
+                                derived on the server from the engine's own predicate, warned only while the
+                                box is genuinely idle so the tone stays worth reading. */}
+                            {row.usedBy !== "" && (
+                              <span className={row.idle ? "block mt-0.5 text-warning-fg" : "block mt-0.5"}>
+                                {row.usedBy}{row.idle ? ` ${model.copy.idleNote}` : ""}
+                              </span>
+                            )}
+                            <span className="block mt-0.5">
+                              {row.value === "" && boxEmpty[row.key] ? (
+                                ""
+                              ) : boxEmpty[row.key] ? (
+                                <span className="text-warning-fg">{model.copy.notSavedYet}</span>
+                              ) : row.value === "" ? (
+                                model.copy.notSavedYet
+                              ) : (
+                                <>
+                                  Saved{" "}
+                                  <span className={row.unit === "TZS" ? "amount tabular-nums" : "font-mono tabular-nums"}>{row.saved}</span>.
+                                </>
+                              )}
+                            </span>
+                          </>
+                        }
+                      >
+                        {row.options !== null ? (
+                          <>
+                            <Select
+                              size="md"
+                              defaultValue={row.value}
+                              ariaLabel={row.label}
+                              options={row.options.map((o) => ({ value: o.value, label: o.label }))}
+                              onChange={(v) => setChoice(row.key, v)}
+                            />
+                            <PostedValue name={row.key} value={choices[row.key] ?? row.value} />
+                          </>
+                        ) : (
+                          <Input
+                            name={row.key}
+                            size="md"
+                            mono
+                            error={!!errors[row.key]}
+                            defaultValue={row.value}
+                            inputMode="numeric"
+                            autoComplete="off"
+                            prefix={row.unit === "TZS" ? "TZS" : undefined}
+                            aria-label={row.label}
+                          />
+                        )}
+                      </Field>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/**
+              * ⭐ THE SCHEDULE (2026-09-23). Seven days, an all-day switch and four HH:MM rows in **EAT**.
+              *
+              * ⛔ THE TIMES GO UP AS TYPED AND ARE READ BY THE SERVER'S CLOCK ALONE. A 00:00 END is midnight
+              * at the end of the day and a 00:00 START is the beginning of it; an end before its start is an
+              * overnight window. None of that is decided here.
+              * ⛔ ALL FOUR ROWS ARE DRAWN AND ALL FOUR TRAVEL, empty ones included: the server drops a row
+              * whose two boxes are both empty and refuses one with a single side typed.
+              */}
+            <div className="space-y-3">
+              <p className="text-body-sm font-medium text-text">{model.schedule.section}</p>
+              <fieldset
+                data-field={model.schedule.daysKey}
+                data-list={model.schedule.daysKey}
+                aria-invalid={errors[model.schedule.daysKey] ? true : undefined}
+                className="min-w-0 space-y-2"
+              >
+                <legend className="text-body-sm font-medium text-text">{model.schedule.daysLabel}</legend>
+                <p className="text-body-sm text-text-tertiary max-w-[52ch]">{model.schedule.daysHelp}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3">
+                  {model.schedule.days.map((d) => (
+                    <Checkbox
+                      key={d.key}
+                      name={d.key}
+                      value={d.value}
+                      label={d.label}
+                      defaultChecked={d.on}
+                      invalid={!!errors[model.schedule.daysKey]}
+                    />
+                  ))}
+                </div>
+                {errors[model.schedule.daysKey] && (
+                  <p className="text-body-sm text-danger-fg" role="alert">{errors[model.schedule.daysKey]}</p>
+                )}
+                {/* ⛔ THE GROUP'S MARKER, LAST — its presence is what the submit reads as "this group rendered". */}
+                <input type="hidden" name={model.schedule.daysKey} value="" />
+              </fieldset>
+
+              <div className="space-y-1" data-field={model.schedule.allDayKey}>
+                <Checkbox
+                  name={model.schedule.allDayKey}
+                  label={model.schedule.allDayLabel}
+                  defaultChecked={model.schedule.allDay}
+                  invalid={!!errors[model.schedule.allDayKey]}
+                  onChange={setAllDay}
+                />
+                <p className="text-body-sm text-text-tertiary max-w-[52ch] pl-7">{model.schedule.allDayHelp}</p>
+                {errors[model.schedule.allDayKey] && (
+                  <p className="text-body-sm text-danger-fg pl-7" role="alert">{errors[model.schedule.allDayKey]}</p>
+                )}
+              </div>
+
+              <fieldset
+                data-field={model.schedule.windowsKey}
+                data-list={model.schedule.windowsKey}
+                aria-invalid={errors[model.schedule.windowsKey] ? true : undefined}
+                className="min-w-0 space-y-2"
+              >
+                <legend className="text-body-sm font-medium text-text">{model.schedule.windowsLabel}</legend>
+                <p className="text-body-sm text-text-tertiary max-w-[52ch]">{model.schedule.windowsHelp}</p>
+                {/* ⛔ THE ROWS STAY ON SCREEN WHILE ALL DAY IS ON AND SAY WHY — a control that vanishes is the
+                    empty-filter defect, and an officer who typed hours and then ticked All day must be able to
+                    see that their hours are still there. */}
+                {allDay && (
+                  <p className="text-body-sm text-warning-fg max-w-[52ch]">{model.schedule.windowsIgnored}</p>
+                )}
+                <div className="space-y-2">
+                  {model.schedule.windows.map((w) => (
+                    <div key={w.startKey} className="flex flex-wrap items-start gap-3">
+                      {[
+                        { key: w.startKey, label: model.schedule.startLabel, saved: w.start },
+                        { key: w.endKey, label: model.schedule.endLabel, saved: w.end },
+                      ].map((box) => (
+                        <div key={box.key} className="space-y-1" data-field={box.key}>
+                          <FieldLegend className="block mb-1.5">{box.label}</FieldLegend>
+                          <TimeSelect
+                            size="md"
+                            defaultValue={box.saved}
+                            error={!!errors[box.key]}
+                            aria-label={box.label}
+                            onChange={(v) => setTime(box.key, v)}
+                          />
+                          {/* ⛔ AFTER the control, so `focusFirstInvalid` lands on a segment an officer can type
+                              into and not on a hidden field nothing can focus. */}
+                          <PostedValue name={box.key} value={times[box.key] ?? ""} />
+                          {errors[box.key] && (
+                            <p className="text-body-sm text-danger-fg" role="alert">{errors[box.key]}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                {errors[model.schedule.windowsKey] && (
+                  <p className="text-body-sm text-danger-fg" role="alert">{errors[model.schedule.windowsKey]}</p>
+                )}
+                <input type="hidden" name={model.schedule.windowsKey} value="" />
+              </fieldset>
+
+              {model.schedule.saved.length > 0 && (
+                <ul className="space-y-1">
+                  {model.schedule.saved.map((s) => (
+                    <li key={s} className="text-body-sm text-text-tertiary">{s}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
 
           <div className="space-y-3">
             <p className="text-body-sm font-semibold text-text">Limits</p>

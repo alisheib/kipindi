@@ -1588,10 +1588,23 @@ section("§2 · the strip, the band, the roster and every failure");
      * the shared sentence or as a bare identifier, and nothing would go red on the day it happened. */
     const desigSrc = decomment(read("src/lib/server/house-bot/designation.ts"));
     const codesOf = (re: RegExp): string[] => [...(re.exec(desigSrc)?.[1] ?? "").matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]);
+    /**
+     * 🔴 THE UNION IS READ TO THE NEXT TOP-LEVEL DECLARATION, NOT TO THE NEXT BLANK LINE (2026-09-23).
+     *
+     * ⛔ THE OLD `\n\s*\n` TERMINATOR MADE THIS GUARD SILENTLY MEASURE LESS. `decomment` replaces a stripped
+     * docblock with blank lines, so the moment `StartResult` gained a comment on one of its MEMBERS — which
+     * it did when Start started returning its warnings — the capture stopped at that blank line, the union's
+     * codes left the population, and `missing` went empty for the best possible reason and the worst possible
+     * cause: there was nothing left to check. The count fell 18 → 16 and the case went red on the floor,
+     * which is the only reason this was noticed at all.
+     * ⭐ A TOP-LEVEL DECLARATION IS WHAT ACTUALLY ENDS A TYPE, and `\n(?=\S)` is that: the next line whose
+     * first character is not whitespace. It is blind to comments, blank lines and formatting, and it is why
+     * the floor below stays a floor rather than being lowered to whatever a run happened to find.
+     */
     const serviceCodes = [...new Set([
       ...codesOf(/export type VerifyRefusalCode\s*=([\s\S]*?);/),
-      ...codesOf(/export type ReverifyResult\s*=([\s\S]*?)\n\s*\n/),
-      ...codesOf(/export type StartResult\s*=([\s\S]*?)\n\s*\n/),
+      ...codesOf(/export type ReverifyResult\s*=([\s\S]*?)\n(?=\S)/),
+      ...codesOf(/export type StartResult\s*=([\s\S]*?)\n(?=\S)/),
       ...["NOT_FOUND", "REMOVED", "SCHEMA", "UNREADABLE", "WRITE_FAILED"],
     ])];
     const gateSrc = read(GATE);
@@ -2992,12 +3005,32 @@ try {
     const v = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId);
     const rulesRow = await w.dal.houseBotStore.get(acct.botId);
     /* ⭐ FIVE SCOPE FACTS SINCE 2026-09-22: the two lists joined the record as LABELS, beside the three words. */
-    ok("1.508 · the rules panel lists every saved cap plus the five scope facts, as VALUES — the record the overview, a REMOVED account and the unparseable fallback all read",
-      Array.isArray(v.rules) && v.rules.length === (R.CAP_FIELDS as readonly string[]).length + 5
+    /**
+     * ⭐ THE RECORD GREW TO THE WHOLE DOCUMENT (2026-09-23 · register A1 item 6), and the count is DERIVED.
+     *
+     * ⛔ WHAT A REMOVED ACCOUNT'S RECORD COULD NOT SAY UNTIL TODAY: which of the six entry modes were on, any
+     * of the 29 numbers that decided its stakes, or the hours it was allowed to bet. A removed account has no
+     * form (358) — this card IS its rules — so the one screen that outlives the account answered almost
+     * nothing about what it had been doing.
+     * ⛔ THE EXPECTED LENGTH IS COMPOSED FROM THE SAME EXPORTS THE READER BUILDS FROM (`CAP_FIELDS`,
+     * `RULE_NUMBER_FIELDS`, the six modes, the five scope facts, one schedule row), never a literal: a leaf
+     * added to the document then lands on this card and in this count together, and a card that quietly
+     * stopped painting a section would be red here rather than merely smaller.
+     */
+    const expectedRecordRows = (R.CAP_FIELDS as readonly string[]).length + 5
+      + (R.SCOPE_PRODUCTS as readonly string[]).length * (R.ENTRY_MODES as readonly string[]).length
+      + (R.RULE_NUMBER_FIELDS as readonly string[]).length + 1;
+    ok("1.508 · the rules panel lists every saved cap, the five scope facts, the six entry modes, EVERY numeric rule and the schedule, as VALUES — the record the overview, a REMOVED account and the unparseable fallback all read",
+      Array.isArray(v.rules) && v.rules.length === expectedRecordRows
         && v.rules.some((r: Any) => r.name === GATEM.consoleLimitLabel("capDailyLossTzs") && r.value === formatTzs(50_000))
         && v.rules.some((r: Any) => r.name === R.FIELD_META["scope.categories"].label && r.value === "None chosen")
-        && v.rules.some((r: Any) => r.name === R.FIELD_META["scope.chains"].label && r.value === "None chosen"),
-      j({ rows: v.rules && v.rules.length, scope: v.rules && v.rules.filter((r: Any) => r.section === "Scope") }));
+        && v.rules.some((r: Any) => r.name === R.FIELD_META["scope.chains"].label && r.value === "None chosen")
+        /* ⛔ ONE ROW PER NUMERIC LEAF, EACH CARRYING ITS FIELD'S OWN LABEL — and the amounts wear the money
+           face, so the record and the form's hint cannot spell a figure two ways. */
+        && (R.RULE_NUMBER_FIELDS as readonly string[]).every((id: string) =>
+          v.rules.some((r: Any) => r.name === R.FIELD_META[id].label))
+        && v.rules.some((r: Any) => r.name === R.FIELD_META["schedule.days"].label),
+      j({ rows: v.rules && v.rules.length, expected: expectedRecordRows }));
     /**
      * ⭐ THE PANEL IS A FORM NOW, AND THIS CASE USED TO PIN THE OPPOSITE (2026-09-21).
      *
@@ -5001,16 +5034,32 @@ try {
   /* ━━ THE SAVE: THE LISTS ROUND-TRIP, THE SCOPE ROW MARKS THE GROUP, A STRANGER IS STALE ━━━━━━━━━━━━━━━━━━ */
   {
     const acct = await w.bot({ caps: { freqMinGapSec: 20 } });
-    const capValues = async (): Promise<Record<string, string>> => {
-      const v = await detail(acct.botId);
-      return Object.fromEntries((v.rulesForm.caps as Any[]).map((c: Any) => [c.key, c.value]));
-    };
     const flagsOff: Record<string, boolean> = Object.fromEntries(["product-updown", "product-polls", "updown-react", "updown-fill", "updown-opener", "polls-react", "polls-fill", "polls-opener", "enter-now", "targeted-stakes"].map((k) => [k, false]));
     /* ⚠️ The world's open caps put `stakeMaxTzs` ABOVE the live maximum stake, which the validator correctly
        refuses — so the form's own values are posted with that one cap brought inside the live bound. */
+    /**
+     * ⭐ THE POST IS BUILT FROM WHAT THE FORM RENDERS (2026-09-23 · register A1). The editor made the numbers,
+     * the amount kind and the schedule part of every save, and the door refuses a post that is missing any of
+     * them — so a case that hand-wrote a partial body would be testing a shape no browser can send. Reading
+     * the model back is also the round trip: what the form draws is what the save accepts.
+     */
+    const formPost = async (): Promise<Any> => {
+      const v = await detail(acct.botId);
+      const f: Any = v.rulesForm;
+      return {
+        values: { ...Object.fromEntries((f.caps as Any[]).map((c: Any) => [c.key, c.value])), "stake-max": "1000000" },
+        numbers: Object.fromEntries((f.rules as Any[]).map((r: Any) => [r.key, r.value])),
+        amountKind: f.amountKind.value,
+        schedule: {
+          days: (f.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value),
+          allDay: f.schedule.allDay,
+          windows: (f.schedule.windows as Any[]).map((w: Any) => ({ start: w.start, end: w.end })),
+        },
+      };
+    };
     const save = async (input: Any): Promise<Any> => {
       const row: Any = await w.dal.houseBotStore.get(acct.botId);
-      return GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { accountId: acct.botId, baseVersion: row.rulesVersion, values: { ...(await capValues()), "stake-max": "1000000" }, ...input });
+      return GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { accountId: acct.botId, baseVersion: row.rulesVersion, ...(await formPost()), ...input });
     };
     const refusedNoCategory = await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: [], chains: [] } });
     ok("2g.save · Polls ticked with no category is REFUSED, the poll-category GROUP is the field the refusal marks, and the sentence names the remedy",
@@ -5055,6 +5104,220 @@ try {
     ok("2g.save · CONTROL · the same save with the SAME switches and a real category lands, so the five refusals above are about the lists and not about the switches",
       (await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports"], chains: [] } })).ok === true
         && j((await w.dal.houseBotStore.get(acct.botId)).rules?.scope?.categories) === j(["sports"]), "");
+  }
+
+  /* ━━ 2h · THE NUMERIC + SCHEDULE EDITOR (2026-09-23 · register A1, the blocker) ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   *
+   * ⛔ WHAT THIS SECTION EXISTS FOR, MEASURED. 33 of the 45 rule leaves had no control on any screen: every
+   * delay, band, guard, the shaping, the whole schedule and both by-hand stakes ran at `DEFAULT_RULES_V1` for
+   * ever, and the two `enterNow` stakes were worse than absent — `N1-a` REQUIRES them when that switch is on,
+   * so every save with it ticked was refused on a box the form did not draw (register A2, the dead switch).
+   * ⛔ EVERY CASE HERE DRIVES THE REAL DOOR, in both stores, and every population is DERIVED from the
+   * validator's own exports — a leaf added to the document lands in these assertions without them being
+   * edited, which is the only way a form of this size stays complete.
+   */
+  {
+    const acct = await w.bot({ caps: { freqMinGapSec: 20 } });
+    const RULE_IDS = R.RULE_NUMBER_FIELDS as readonly string[];
+    const form = async (): Promise<Any> => (await detail(acct.botId)).rulesForm;
+    /** The whole form as the browser posts it, with `over` applied to the numeric boxes by KEY. */
+    const post = async (over: Record<string, Any> = {}): Promise<Any> => {
+      const f: Any = await form();
+      const row: Any = await w.dal.houseBotStore.get(acct.botId);
+      const numbers = Object.fromEntries((f.rules as Any[]).map((r: Any) => [r.key, r.value]));
+      return {
+        accountId: acct.botId,
+        baseVersion: row.rulesVersion,
+        values: { ...Object.fromEntries((f.caps as Any[]).map((c: Any) => [c.key, c.value])), "stake-max": "1000000" },
+        flags: Object.fromEntries((f.flags as Any[]).map((x: Any) => [x.key, x.on])),
+        lists: {
+          categories: (f.lists as Any[]).find((l: Any) => l.field === "categories").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+          chains: (f.lists as Any[]).find((l: Any) => l.field === "chains").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+        },
+        numbers: { ...numbers, ...over },
+        amountKind: f.amountKind.value,
+        schedule: {
+          days: (f.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value),
+          allDay: f.schedule.allDay,
+          windows: (f.schedule.windows as Any[]).map((x: Any) => ({ start: x.start, end: x.end })),
+        },
+      };
+    };
+    const send = async (over: Record<string, Any> = {}, patch: Record<string, Any> = {}): Promise<Any> =>
+      GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { ...(await post(over)), ...patch });
+    const formCache: Any = await form();
+
+    /* ── 1 · THE MODEL: ONE ROW PER LEAF, DERIVED, NEUTRAL, WITH ITS OWN HELP ─────────────────────────── */
+    ok("2h.model · one row per NUMERIC RULE LEAF of the document, in the validator's own order, each with a neutral key, a label, a one-sentence explanation and the section it belongs to — the population is `RULE_NUMBER_FIELDS`, never a list typed anywhere",
+      Array.isArray(formCache.rules) && formCache.rules.length === RULE_IDS.length
+        && j((formCache.rules as Any[]).map((r: Any) => r.label)) === j(RULE_IDS.map((id: string) => R.FIELD_META[id].label))
+        && (formCache.rules as Any[]).every((r: Any) => typeof r.key === "string" && r.key.length > 2 && !/[.]/.test(r.key))
+        && (formCache.rules as Any[]).every((r: Any) => typeof r.help === "string" && r.help.length >= 30)
+        && (formCache.rules as Any[]).every((r: Any) => typeof r.section === "string" && r.section.length > 0)
+        && new Set((formCache.rules as Any[]).map((r: Any) => r.key)).size === RULE_IDS.length,
+      j({ rows: formCache.rules?.length, leaves: RULE_IDS.length }));
+    /* ⛔ THE SECTION HEADINGS ARE THE ONE WORD HOME'S (453 keeps `FIELD_META`'s own words off this screen). */
+    ok("2h.model · the section headings are the console's own words — the three entry sections read `ENTRY_MODE_WORDS`, so a heading and the switch above it cannot be two spellings of one control",
+      (R.ENTRY_MODES as string[]).every((m: string) => (formCache.rules as Any[]).some((r: Any) => r.section === R.ENTRY_MODE_WORDS[m]))
+        && (formCache.rules as Any[]).every((r: Any) => !consoleNeutralRegExp().test(r.section)),
+      j([...new Set((formCache.rules as Any[]).map((r: Any) => r.section))]));
+    /* ⛔ THE BOUNDS ARE THE LIVE ONES, and the sentence beside them is the server's. */
+    ok("2h.model · every row carries the LIVE bounds and a range sentence built from them — `fieldBounds`, not `FIELD_META`'s raw table, so a box never looks more permissive than the seam",
+      (formCache.rules as Any[]).every((r: Any) => r.min !== "" && r.max !== "" && Number(r.min) <= Number(r.max) && r.range.length > 5)
+        /* ⛔ A LIVE-BOUND LEAF REALLY RESOLVED ITS WORD. `opener.stakeMinTzs` declares `LIVE_MIN`/`LIVE_MAX`,
+           which are WORDS in `FIELD_META` and numbers only once the platform's stake bounds are applied — so a
+           row carrying digits for both is proof the live read reached this form and not the raw table. */
+        && typeof R.FIELD_META["opener.stakeMinTzs"].min === "string"
+        && /^\d+$/.test((formCache.rules as Any[]).find((r: Any) => r.label === R.FIELD_META["opener.stakeMinTzs"].label)?.min ?? "")
+        && Number((formCache.rules as Any[]).find((r: Any) => r.label === R.FIELD_META["opener.stakeMinTzs"].label)?.min) > 0,
+      j((formCache.rules as Any[]).slice(0, 2).map((r: Any) => [r.label, r.min, r.max, r.range])));
+
+    /* ── 2 · "NOT USED WHILE X IS OFF", DERIVED FROM THE ENGINE'S OWN PREDICATE ───────────────────────── */
+    /* ⛔ BY POSITION IN `RULE_NUMBER_FIELDS`, NEVER BY LABEL — the rows are sent in exactly that order, and a
+       label lookup is only as unique as the labels are. 🔴 Measured on the first run of this section: `Jitter`
+       was the label of BOTH `fill.jitterSec` and `shaping.jitterPct`, so this helper returned the wrong row,
+       the case set the wrong leaf, and the round-trip case failed for a reason that had nothing to do with the
+       save. The labels are now distinct (a real finding the editor exposed, fixed at the field table) and this
+       lookup no longer depends on that. */
+    const byLabel = (id: string): Any => (formCache.rules as Any[])[RULE_IDS.indexOf(id)];
+    ok("2h.usedBy · the caption naming the switch a number belongs to is DERIVED by asking `leafUsedBy` with one switch on at a time — a leaf every state reads carries none, and a leaf no live switch reads is marked idle",
+      byLabel("fill.leadUdSec").usedBy.includes(R.ENTRY_MODE_WORDS.fill)
+        && byLabel("fill.leadUdSec").idle === true
+        && byLabel("counter.amount.fixedTzs").usedBy === ""
+        && byLabel("counter.amount.fixedTzs").idle === false
+        && byLabel("guards.minTimeToCutoffPollsMin").usedBy.includes("Enter now"),
+      j({ fill: byLabel("fill.leadUdSec").usedBy, fixed: byLabel("counter.amount.fixedTzs").usedBy }));
+
+    /* ── 3 · THE ROUND TRIP: WHAT THE OFFICER TYPES IS WHAT THE ROW STORES AND WHAT THE FORM READS BACK ── */
+    const delayKey = byLabel("counter.delayMinSec").key;
+    const maxDelayKey = byLabel("counter.delayMaxSec").key;
+    const zoneKey = byLabel("guards.noReactZoneUdSec").key;
+    const jitterKey = byLabel("shaping.jitterPct").key;
+    const landedNums = await send({ [delayKey]: "25", [maxDelayKey]: "55", [zoneKey]: "40", [jitterKey]: "7" });
+    const storedNums: Any = await w.dal.houseBotStore.get(acct.botId);
+    const backNums: Any = await form();
+    ok("2h.save · ⛔ THE NUMBERS ROUND-TRIP: four leaves from four different sections are typed, stored on the row and read back by the form — the whole of register A1",
+      landedNums.ok === true && landedNums.rulesChanged === true
+        && storedNums.rules?.counter?.delayMinSec === 25 && storedNums.rules?.counter?.delayMaxSec === 55
+        && storedNums.rules?.guards?.noReactZoneUdSec === 40 && storedNums.rules?.shaping?.jitterPct === 7
+        && (backNums.rules as Any[]).find((r: Any) => r.key === delayKey)?.value === "25"
+        && (backNums.rules as Any[]).find((r: Any) => r.key === zoneKey)?.value === "40",
+      j({
+        landed: landedNums.ok, error: landedNums.error,
+        stored: { min: storedNums.rules?.counter?.delayMinSec, max: storedNums.rules?.counter?.delayMaxSec, zone: storedNums.rules?.guards?.noReactZoneUdSec, jitter: storedNums.rules?.shaping?.jitterPct },
+        back: { min: (backNums.rules as Any[]).find((r: Any) => r.key === delayKey)?.value, zone: (backNums.rules as Any[]).find((r: Any) => r.key === zoneKey)?.value },
+      }));
+    /* ⛔ AND EVERY LEAF IS STORED EXPLICITLY (register A4). The save used to write a minimal PATCH whose own
+       docblock promised the untouched leaves would "follow the default"; measured on 2026-09-22, they froze at
+       the first save's defaults instead. The branch is gone: what was validated is what is stored. */
+    ok("2h.save · ⛔ REGISTER A4 · every numeric leaf is present in the STORED document after one save — the minimal patch that promised absent leaves would follow the default is gone, and the promise it could not keep with it",
+      RULE_IDS.every((id: string) => {
+        const v = id.split(".").reduce((o: Any, k: string) => (o == null ? undefined : o[k]), storedNums.rules as Any);
+        /* ⛔ A NULLABLE LEAF MAY BE `null` AND MUST STILL BE PRESENT — "not set" is a value the document holds,
+           not an absence, and the two are exactly what this case exists to tell apart. `counter.amount` is a
+           union, so its unchosen half is absent by construction. */
+        if (R.FIELD_META[id].nullable) return v === null || typeof v === "number";
+        return typeof v === "number" || id === "counter.amount.fixedTzs";
+      }),
+      j({
+        missing: RULE_IDS.filter((id: string) => {
+          const v = id.split(".").reduce((o: Any, k: string) => (o == null ? undefined : o[k]), storedNums.rules as Any);
+          return v === undefined && id !== "counter.amount.fixedTzs";
+        }),
+      }));
+
+    /* ── 4 · A BOUND IS A REFUSAL, ON THE BOX'S OWN KEY ──────────────────────────────────────────────── */
+    const overMax = await send({ [delayKey]: String(Number(byLabel("counter.delayMinSec").max) + 1) });
+    const notWhole = await send({ [zoneKey]: "12.5" });
+    ok("2h.bound · a number outside its live bound and a number that is not whole are each REFUSED on that box's own key — the control the officer has to change is the control that is marked",
+      overMax.ok === false && typeof overMax.fields?.[delayKey] === "string" && overMax.field === delayKey
+        && notWhole.ok === false && typeof notWhole.fields?.[zoneKey] === "string",
+      j({ overMax: overMax.fields, notWhole: notWhole.fields }));
+    ok("2h.bound · …and neither refusal wrote: the row still holds the values the landed save stored",
+      j((await w.dal.houseBotStore.get(acct.botId)).rules?.counter) === j(storedNums.rules?.counter), "");
+
+    /* ── 5 · THE SCHEDULE, IN EAT ────────────────────────────────────────────────────────────────────── */
+    const sched = async (days: string[], allDay: boolean, windows: Any[]): Promise<Any> =>
+      send({}, { schedule: { days, allDay, windows } });
+    const wkd = R.WEEKDAYS ?? ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+    const landedSched = await sched(["MON", "WED"], false, [{ start: "09:00", end: "17:00" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    const storedSched: Any = await w.dal.houseBotStore.get(acct.botId);
+    const backSched: Any = await form();
+    ok("2h.schedule · ⛔ THE DAYS AND THE HOURS ROUND-TRIP IN EAT: two days and one 09:00→17:00 window are typed, stored as minutes of the day, painted back into the boxes and described in words",
+      landedSched.ok === true
+        && j(storedSched.rules?.schedule?.days) === j(["MON", "WED"]) && storedSched.rules?.schedule?.allDay === false
+        /* ⛔ FIELD BY FIELD, NEVER `JSON.stringify` OF THE OBJECT. 🔴 Measured here: the memory twin keeps
+           insertion order and Postgres JSONB sorts the keys, so `{startMin,endMin}` comes back
+           `{endMin,startMin}` — a string compare passes on one store and fails on the other with identical,
+           correct data. A case that can only be green on one store measures the store, not the product. */
+        && storedSched.rules?.schedule?.windows?.length === 1
+        && storedSched.rules?.schedule?.windows?.[0]?.startMin === 540
+        && storedSched.rules?.schedule?.windows?.[0]?.endMin === 1020
+        && backSched.schedule.windows[0].start === "09:00" && backSched.schedule.windows[0].end === "17:00"
+        && (backSched.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value).join(",") === "MON,WED"
+        && (backSched.schedule.saved as string[]).some((s: string) => /09:00/.test(s) && /17:00/.test(s)),
+      j({ stored: storedSched.rules?.schedule, saved: backSched.schedule.saved }));
+    /* ⛔ 540 IS 09:00 **EAT**, WHICH IS 06:00 UTC — a schedule posted or read in UTC stores 360 here, and the
+       painted sentence would then say 06:00 to an officer who typed 09:00. This is the case that catches it. */
+    ok("2h.schedule · the stored minutes are EAT minutes-of-the-day, not UTC — 09:00 is 540 and never 360",
+      storedSched.rules?.schedule?.windows?.[0]?.startMin === 540, j(storedSched.rules?.schedule?.windows));
+    const halfTyped = await sched(["MON"], false, [{ start: "22:00", end: "" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    const noDay = await sched([], false, [{ start: "09:00", end: "17:00" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    const noWindow = await sched(["MON"], false, [{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    ok("2h.schedule · a half-typed row is refused on THAT ROW's own box, no day at all is refused on the day group, and no window with All day off is refused on the window group — each marked where the officer has to act",
+      halfTyped.ok === false && typeof halfTyped.fields?.["schedule-windows.0.end"] === "string"
+        && noDay.ok === false && typeof noDay.fields?.["schedule-days"] === "string"
+        && noWindow.ok === false && typeof noWindow.fields?.["schedule-windows"] === "string",
+      j({ half: halfTyped.fields, noDay: noDay.fields, noWindow: noWindow.fields }));
+    const overnight = await sched(["SAT"], false, [{ start: "22:00", end: "02:00" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    const backNight: Any = await form();
+    ok("2h.schedule · an end BEFORE its start is an overnight window — stored as typed and described as running into the next day, never silently swapped",
+      overnight.ok === true
+        && ((w2: Any) => w2?.length === 1 && w2[0].startMin === 1320 && w2[0].endMin === 120)((await w.dal.houseBotStore.get(acct.botId)).rules?.schedule?.windows)
+        && (backNight.schedule.saved as string[]).some((s: string) => /overnight/.test(s)),
+      j(backNight.schedule.saved));
+    const allDayOn = await sched([...wkd], true, [{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    ok("2h.schedule · All day with no window at all is accepted, stores the seven days and says so in words — the state a fresh account is SHOWN, and now the state it can actually save",
+      allDayOn.ok === true && (await w.dal.houseBotStore.get(acct.botId)).rules?.schedule?.allDay === true
+        && ((await form()).schedule.saved as string[]).length === 7,
+      "");
+
+    /* ── 6 · ENTER NOW: THE DEAD SWITCH BECOMES A LIVE ONE (register A2) ─────────────────────────────── */
+    const thinKey = byLabel("enterNow.thinStakeTzs").key;
+    const openerKey = byLabel("enterNow.openerStakeTzs").key;
+    /* ⛔ ENTER NOW IS A POLLS CONTROL, so the account is put in the state the switch is legal in before the
+       two stakes are tested — otherwise the refusal measured would be the product rule, not the stakes. */
+    const flagsNow = { ...Object.fromEntries((formCache.flags as Any[]).map((x: Any) => [x.key, x.on])), "product-polls": true, "polls-react": true, "enter-now": true };
+    const pollsLists = { categories: ["sports"], chains: [] };
+    const enterNoStake = await send({ [thinKey]: "", [openerKey]: "" }, { flags: flagsNow, lists: pollsLists });
+    const enterWithStake = await send({ [thinKey]: "10000", [openerKey]: "2000" }, { flags: flagsNow, lists: pollsLists });
+    ok("2h.enterNow · ⛔ REGISTER A2 · the switch is no longer dead: with its two stakes empty the save is refused ON THOSE BOXES, and with them filled it LANDS — until today neither box existed, so every save with this switch ticked was refused on a control the form did not draw",
+      enterNoStake.ok === false && typeof enterNoStake.fields?.[thinKey] === "string"
+        && enterWithStake.ok === true
+        && (await w.dal.houseBotStore.get(acct.botId)).rules?.enterNow?.thinStakeTzs === 10_000
+        && (await w.dal.houseBotStore.get(acct.botId)).rules?.enterNow?.openerStakeTzs === 2_000,
+      j({ refused: enterNoStake.fields, refusedError: enterNoStake.error, landed: enterWithStake.ok, landedError: enterWithStake.error, keys: [thinKey, openerKey] }));
+
+    /* ── 7 · THE AMOUNT'S KIND IS A CHOICE, AND ONLY THE CHOSEN BOX IS READ ──────────────────────────── */
+    const fixedKey = byLabel("counter.amount.fixedTzs").key;
+    const toFixed = await send({ [fixedKey]: "3000" }, { amountKind: "FIXED" });
+    const storedFixed: Any = await w.dal.houseBotStore.get(acct.botId);
+    const badKind = await send({}, { amountKind: "SOMETHING" });
+    ok("2h.amount · the amount's kind is posted with the form and switches which box the validator reads — FIXED stores `fixedTzs` and drops `pct`, and a kind the form cannot produce is the stale-form sentence",
+      toFixed.ok === true && storedFixed.rules?.counter?.amount?.kind === "FIXED"
+        && storedFixed.rules?.counter?.amount?.fixedTzs === 3_000 && storedFixed.rules?.counter?.amount?.pct === undefined
+        && badKind.ok === false && badKind.field === undefined,
+      j({ amount: storedFixed.rules?.counter?.amount, badKind: badKind.error }));
+
+    /* ── 8 · THE WHOLE FORM OR NOTHING ──────────────────────────────────────────────────────────────── */
+    const partial = await GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { ...(await post()), numbers: { [delayKey]: "20" } });
+    const noSchedule = await GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { ...(await post()), schedule: undefined });
+    const stranger = await send({ "not-a-real-box": "5" });
+    ok("2h.whole · a post missing a numeric box, a post with no schedule at all and a post carrying a key the form never drew are each the stale-form sentence — a control that is not there is a refusal, never a value",
+      [partial, noSchedule, stranger].every((r: Any) => r.ok === false && r.field === undefined
+        && r.error === "This form is out of date. Reload the page and make the change again — nothing was saved."),
+      j([partial.error, noSchedule.error, stranger.error]));
+    STATES.push(["rules-form-numeric", await detail(acct.botId)]);
   }
 
   /* ━━ THE START REFUSAL NAMES THE REMEDY, WITH THE RULES HREF ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -5117,6 +5380,35 @@ try {
     const started = await act({ id: pollsOnly.botId, act: "START" });
     ok("2g.start · CONTROL · with one category chosen the same account STARTS — so the refusal above was the list and nothing else",
       started.ok === true && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE", j(started));
+    /**
+     * ⭐ 2026-09-23 · REGISTER A3 · START'S OWN WARNINGS REACH THE SCREEN.
+     *
+     * 🔴 WHAT WAS MEASURED ON 2026-09-22: `rulesStartProblems` answers `{ refusals, warnings }`, `startHouseBot`
+     * read the refusals and DROPPED the warnings, and the console answered "Started". So an account configured
+     * to do something impossible was started, reported started, and then never placed a bet.
+     * ⛔ THE STATE IS BUILT, NOT SIMULATED: the only automatic mode is a COUNTER whose no-react zone is a full
+     * day, which is longer than a poll's minimum lifetime — so `effectiveTiming` answers "never" for every
+     * class and `START_COPY.allImpossible` is raised. ⚠️ The account STILL STARTS: this is advice, not a
+     * refusal, and an officer's decision to run it stays theirs.
+     * ⭐ AND IT IS REACHABLE ONLY BECAUSE THE EDITOR EXISTS. A day-long no-react zone could not be set from any
+     * screen before today, which is why this warning had never been seen on a desk.
+     */
+    /* ⛔ STOPPED THE WAY THE STORE STOPS IT — Start answers `alreadyRunning` for an ACTIVE account and never
+       re-reads the rules, so a warning taken from an account that was already running would be a warning
+       inferred from a read that did not happen. */
+    await w.dal.houseBotStore.setStatus(pollsOnly.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: false, polls: true };
+      r.scope.categories = ["sports"];
+      r.modes.polls = { counter: true, fill: false, opener: false };
+      r.guards.noReactZonePollsMin = 1_440;
+    }));
+    const warned = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · ⛔ REGISTER A3 · an account whose only enabled mode can NEVER enter is STARTED and told so — the warning Start already knew and used to throw away is painted, in the warning tone, with the account still running",
+      warned.ok === true && warned.warn === true
+        && typeof warned.note === "string" && warned.note.includes(R.START_COPY.allImpossible)
+        && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE",
+      j(warned));
   }
 
   /* ━━ THE BY-HAND-ONLY ACCOUNT, ON EVERY SURFACE (review finding 2026-09-22) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -5274,7 +5566,11 @@ try {
         && /<div key=\{flag\.key\} className="space-y-1" data-field=\{flag\.key\}>/.test(form)
         && /invalid=\{!!errors\[flag\.key\]\}/.test(form) && /invalid=\{!!errors\[list\.key\]\}/.test(form)
         && /\{!productOn\[list\.product\] && \(/.test(form)
-        && /onSave\(\{ accountId, baseVersion: model\.baseVersion, values, flags, lists \}\)/.test(form),
+        /* ⭐ AND THE WHOLE FORM TRAVELS (2026-09-23 · register A1): the 29 numbers, the amount kind and the
+           schedule joined the post when the editor shipped, and a call that dropped any of them would be a
+           save that silently kept the stored value while the officer watched their own typing vanish. */
+        && /onSave\(\{\s*accountId, baseVersion: model\.baseVersion, values, flags, lists,\s*numbers,\s*amountKind:/.test(form)
+        && /schedule: \{ days, allDay: allDayNode instanceof HTMLInputElement && allDayNode\.checked, windows \},/.test(form),
       "");
     ok("2g.act · the action dialog paints the refusal's href as a link labelled by the SERVER, and closes itself on the way through",
       /setWayOut\(result\.href && result\.hrefLabel \? \{ href: result\.href, label: result\.hrefLabel \} : null\)/.test(acts)

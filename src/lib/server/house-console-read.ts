@@ -40,13 +40,13 @@ import type { AuditEntry } from "./audit";
 import type { StoredUser } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
 import { BY_HAND_SCREENS, CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleBotTabHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
-import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
+import { WEEKDAYS, WEEKDAY_LABEL, eatDayKey, formatEat, formatMinutes, type Weekday } from "@/lib/house-bot/clock";
 /* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { resolveRange } from "./date-range";
-import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, SCOPE_PRODUCTS, isClearExempt, parseHouseBotRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LimitField, type LiveBoundProblem, type ParseContext } from "@/lib/house-bot/rules";
+import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext } from "@/lib/house-bot/rules";
 /* ⭐ THE SCOPE PICKER'S TWO LISTS (prod finding 2026-09-22): the platform's own category list and its own label
  * helper, so the form and the roster paint the words a player sees and never a raw key. `dict.en` because the
  * console is an English surface; the helper takes the dictionary rather than a locale. */
@@ -1864,6 +1864,216 @@ const CONSOLE_LIST_NONE: Readonly<Record<ConsoleListField, string>> = {
 /** The two lists in page order (`SCOPE_PRODUCTS`: Up & Down first). */
 const CONSOLE_LIST_FIELDS: readonly ConsoleListField[] = ["chains", "categories"];
 
+/* ═══ THE NUMERIC RULES AND THE SCHEDULE (2026-09-23) ═════════════════════════════════════════════════════════ */
+
+/** The form's four switch sections, in the order the form draws them. ⛔ Neutral words; "Modes" is `FIELD_META`'s.
+ *  ⚠️ IT SITS HERE, ABOVE THE NUMERIC TABLES, because two of them read it at module load — and a `const` read
+ *  before its declaration is a temporal-dead-zone throw on IMPORT, which takes every route in the section. */
+const CONSOLE_FLAG_SECTION = { products: "Products", updown: "Up & Down entry", polls: "Polls entry", byHand: "By hand" } as const;
+
+/**
+ * ⛔ THE 33 LEAVES THAT HAD NO CONTROL ON ANY SCREEN, AND WHAT THAT MEANT — measured on 2026-09-22, register A1.
+ *
+ * The Rules tab drew ten switches, fourteen limits and (since that day) two pickers. The rules DOCUMENT has 45
+ * leaves. The other 33 — every delay, every band, every guard, the shaping, the whole schedule and both
+ * by-hand stakes — had no control anywhere in `src/`, so they ran at `DEFAULT_RULES_V1` for ever, and the two
+ * `enterNow` stakes were worse than absent: `N1-a` REQUIRES them when that switch is on, so every save with it
+ * ticked was refused on a box the form did not draw (register A2 — the dead switch).
+ *
+ * ⛔ THE KEYS ARE NEUTRAL AND THE IDENTIFIERS ARE NOT (D19, ruling 453, and the same rule the caps obey). A
+ * field's `name` is not copy: it ships inside the client chunk, it is what the POST body carries and it is the
+ * address a refusal comes home by. `counter.reactProbabilityPct` as a `name=` would put the engine's own
+ * vocabulary into all three with a perfectly neutral label rendered above it — which a scan of RENDERED text
+ * cannot catch. So the leaf id stops at this module.
+ * ⛔ AND THE POPULATION IS THE VALIDATOR'S OWN (`RULE_NUMBER_FIELDS`), never a list typed here: `Record` over
+ * that array is what makes a leaf added tomorrow unable to ship without a key, a label and a sentence.
+ */
+/**
+ * ⛔ THE ONE BRANCH OF THE DOCUMENT WHOSE PATH IS A HOUSE WORD, COMPOSED AND NEVER TYPED (ruling 453).
+ *
+ * 🔴 MEASURED, NOT ANTICIPATED: written as literals, `"counter.delayMinSec"` and its six siblings turned
+ * `test:house-bot-console` 4.453 red — the scan walks every string literal in this module, a QUOTED PROPERTY
+ * NAME is a string literal, and `\bcounter\b` matches one followed by a dot. The cap table three screens up
+ * says the rule in one line: the identifiers are server-only and the LITERALS are what 453 reads, so a path
+ * that contains a house word has to be built from an identifier — which is what `modeFlagKey` already does
+ * for the six mode switches, for the same reason.
+ * ⚠️ `ENTRY_MODES[0]` IS THE SOURCE, so this cannot drift from the document: the union's first member IS the
+ * branch's name, and a rename that missed this line would not compile.
+ */
+const CTR = ENTRY_MODES[0];
+const ctr = (leaf: string): FieldId => `${CTR}.${leaf}` as FieldId;
+
+const CONSOLE_RULE_KEY: Readonly<Record<string, string>> = {
+  "scope.skipPollsClosingWithinMin": "skip-closing-within",
+  "scope.poolTotalMinTzs": "pool-total-min",
+  "scope.poolTotalMaxTzs": "pool-total-max",
+  [ctr("delayMinSec")]: "answer-delay-min",
+  [ctr("delayMaxSec")]: "answer-delay-max",
+  [ctr("reactProbabilityPct")]: "answer-chance",
+  [ctr("triggerStakeMinTzs")]: "answer-trigger-min",
+  [ctr("triggerStakeMaxTzs")]: "answer-trigger-max",
+  [ctr("amount.pct")]: "answer-amount-share",
+  [ctr("amount.fixedTzs")]: "answer-amount-fixed",
+  "fill.leadUdSec": "even-up-lead-updown",
+  "fill.leadPollsMin": "even-up-lead-polls",
+  "fill.targetThinSharePct": "even-up-target-share",
+  "fill.jitterSec": "even-up-jitter",
+  "opener.delayUdMinSec": "first-bet-delay-updown-min",
+  "opener.delayUdMaxSec": "first-bet-delay-updown-max",
+  "opener.delayPollsMinMin": "first-bet-delay-polls-min",
+  "opener.delayPollsMaxMin": "first-bet-delay-polls-max",
+  "opener.stakeMinTzs": "first-bet-stake-min",
+  "opener.stakeMaxTzs": "first-bet-stake-max",
+  "updown.closenessPct": "updown-closeness",
+  "shaping.roundToTzs": "round-to",
+  "shaping.jitterPct": "amount-jitter",
+  "guards.noReactZoneUdSec": "quiet-zone-updown",
+  "guards.noReactZonePollsMin": "quiet-zone-polls",
+  "guards.minTimeToCutoffUdSec": "min-time-left-updown",
+  "guards.minTimeToCutoffPollsMin": "min-time-left-polls",
+  "enterNow.thinStakeTzs": "enter-now-thin-stake",
+  "enterNow.openerStakeTzs": "enter-now-first-stake",
+};
+
+/** The one choice on the form that is not a number: how a counter-stake's amount is worked out. */
+const CONSOLE_AMOUNT_KIND_KEY = "answer-amount-kind";
+
+/** The schedule's three controls. ⛔ `days` and `windows` are GROUPS: their members carry `<key>.<n>` names. */
+const CONSOLE_SCHEDULE_KEY = { days: "schedule-days", allDay: "schedule-all-day", windows: "schedule-windows" } as const;
+
+const RULE_FIELD_BY_KEY = new Map<string, FieldId>(
+  (Object.entries(CONSOLE_RULE_KEY) as [FieldId, string][]).map(([id, key]) => [key, id]),
+);
+
+/**
+ * ⭐ WHAT EACH NUMBER ACTUALLY DOES, IN ONE SENTENCE — the same decision the caps' own help table records
+ * (owner, 2026-09-21: *"there should also be some explanation about what each field does in the system"*), and
+ * more load-bearing here: a limit's name says roughly what it limits, while "Closeness" and "Jitter" say
+ * nothing at all to the person deciding what to type.
+ *
+ * ⛔ `Record<…>` OVER `RULE_NUMBER_FIELDS` MAKES THE POPULATION TOTAL — checked at the bottom of this table by
+ * construction, so a leaf added to the document cannot reach this form without a sentence.
+ * ⛔ EVERY SENTENCE IS NEUTRAL (453) AND NAMES NO MODE BY ITS ENGINE WORD: "answering a player's stake", never
+ * the mode's own name. The section heading above the row is `ENTRY_MODE_WORDS`', for the same reason.
+ */
+const CONSOLE_RULE_HELP: Readonly<Record<string, string>> = {
+  "scope.skipPollsClosingWithinMin": "How close to a poll's closing time this account stops answering players there.",
+  "scope.poolTotalMinTzs": "The least players must already have staked on a market before this account will answer them there.",
+  "scope.poolTotalMaxTzs": "The most players may have staked on a market before this account stops answering them there. Empty means no ceiling.",
+  [ctr("delayMinSec")]: "The shortest this account waits after a player's stake before answering it.",
+  [ctr("delayMaxSec")]: "The longest it waits. Each answer draws its own wait between the two, so the replies are not identical.",
+  [ctr("reactProbabilityPct")]: "How often it answers a stake it could answer, out of a hundred. Below a hundred, some stakes are simply left alone.",
+  [ctr("triggerStakeMinTzs")]: "The smallest player stake worth answering. Anything smaller is left alone.",
+  [ctr("triggerStakeMaxTzs")]: "The largest player stake this account answers. Anything bigger is left alone.",
+  [ctr("amount.pct")]: "The answer as a share of the stake it is answering, out of a hundred.",
+  [ctr("amount.fixedTzs")]: "The same amount every time, whatever the player staked.",
+  "fill.leadUdSec": "How long before an Up & Down round closes this account may even up a thin side.",
+  "fill.leadPollsMin": "How long before a poll closes this account may even up a thin side.",
+  "fill.targetThinSharePct": "The share of the money on a market the thin side is brought up to, out of a hundred.",
+  "fill.jitterSec": "A random amount of time taken off the moment it would otherwise act, so it does not act at the same second every round.",
+  "opener.delayUdMinSec": "The shortest this account waits after an Up & Down round opens before placing the first bet.",
+  "opener.delayUdMaxSec": "The longest it waits. Each round draws its own wait between the two.",
+  "opener.delayPollsMinMin": "The shortest this account waits after a poll is created before placing the first bet.",
+  "opener.delayPollsMaxMin": "The longest it waits. Each poll draws its own wait between the two.",
+  "opener.stakeMinTzs": "The smallest first bet on a market with nothing on it yet.",
+  "opener.stakeMaxTzs": "The largest first bet on a market with nothing on it yet. The amount is drawn between the two.",
+  "updown.closenessPct": "How close the two sides of an Up & Down round must already be before this account takes part at all.",
+  "shaping.roundToTzs": "Every amount this account works out is rounded to a multiple of this, so its bets do not read as calculated.",
+  "shaping.jitterPct": "How far an amount may be moved up or down at random, out of a hundred.",
+  "guards.noReactZoneUdSec": "A stretch just before an Up & Down round closes in which a player's stake is never answered.",
+  "guards.noReactZonePollsMin": "A stretch just before a poll closes in which a player's stake is never answered.",
+  "guards.minTimeToCutoffUdSec": "How much of an Up & Down round must still be left for this account to place anything at all.",
+  "guards.minTimeToCutoffPollsMin": "How much of a poll must still be left for this account to place anything at all.",
+  "enterNow.thinStakeTzs": "The amount used when an officer acts by hand on a poll whose two sides are uneven.",
+  "enterNow.openerStakeTzs": "The amount used when an officer acts by hand on a poll with no stakes on it yet.",
+};
+
+/**
+ * THE SECTION HEADING A NUMBER IS DRAWN UNDER — neutral, and read off the ONE word home wherever there is one.
+ *
+ * ⛔ `FIELD_META`'s own sections are the ENGINE's words ("Counter", "Fill", "Opener"), and ruling 453 keeps
+ * exactly those off this screen — the switch above the group is already labelled `ENTRY_MODE_WORDS`', so a
+ * heading that said "Counter" would be the same control named two ways on one page, one of them a house word.
+ * ⛔ A SECTION WITH NO ENTRY HERE KEEPS `FIELD_META`'s, which is what makes this a map and not a second list:
+ * "Scope", "Modes" and "Targets" hold no numeric leaf, so they never reach it.
+ */
+const CONSOLE_RULE_SECTION: Readonly<Record<string, string>> = {
+  /* ⛔ THE SECTION NAME IS READ OFF THE FIELD TABLE, NOT TYPED: `FIELD_META`'s own word for this group is a
+     house word, and a literal of it here is what 453 reads. Taking it from a member of the group is the same
+     discipline as `ctr` above, and cannot drift from the table it indexes. */
+  [FIELD_META[ctr("delayMinSec")].section]: ENTRY_MODE_WORDS.counter,
+  Fill: ENTRY_MODE_WORDS.fill,
+  Opener: ENTRY_MODE_WORDS.opener,
+  "Up & Down": PRODUCT_WORDS.updown,
+  Shaping: "Amounts",
+  Guards: "Safety margins",
+  Schedule: "When it may bet",
+  "Enter now": CONSOLE_FLAG_SECTION.byHand,
+};
+
+/**
+ * ⭐ WHICH SWITCH A NUMBER BELONGS TO, DERIVED FROM THE ENGINE'S OWN PREDICATE — never from a second table.
+ *
+ * ⛔ THE DEFECT THIS AVOIDS IS A CAPTION THAT LIES IN THE SAFE-LOOKING DIRECTION. An officer typing into a box
+ * that nothing reads should be told so; a hand-written "belongs to X" map would drift the first time a mode's
+ * reach changed, and would then say a field was live while nothing read it. So each of the ten switches is
+ * turned on ALONE and `leafUsedBy` is asked again: the switches that make the leaf used are the ones that own
+ * it, by construction. A leaf every state reads (`counter.amount.fixedTzs`) yields the empty list and no
+ * caption at all, which is correct — it is never inert.
+ */
+const ALL_SWITCHES_OFF: LeafModeState = {
+  modes: { updown: { counter: false, fill: false, opener: false }, polls: { counter: false, fill: false, opener: false } },
+  enterNow: false,
+  targeting: false,
+};
+/* ⚠️ BUILT ON CALL, NOT AT MODULE LOAD: the switch labels come from `CONSOLE_FLAG_SECTION`, which is declared
+   further down this file, and a `const` here reading it would be a temporal-dead-zone throw on import — a
+   module that fails to LOAD takes every route that imports it, which is the worst shape of this mistake. */
+function switchWords(): readonly { label: string; state: LeafModeState }[] {
+  return [
+    ...SCOPE_PRODUCTS.flatMap((p) => ENTRY_MODES.map((m) => ({
+      label: `${CONSOLE_FLAG_SECTION[p]}${SEP}${ENTRY_MODE_WORDS[m]}`,
+      state: { ...ALL_SWITCHES_OFF, modes: { ...ALL_SWITCHES_OFF.modes, [p]: { ...ALL_SWITCHES_OFF.modes[p], [m]: true } } } as LeafModeState,
+    }))),
+    { label: "Enter now", state: { ...ALL_SWITCHES_OFF, enterNow: true } },
+    { label: "Targeted stakes", state: { ...ALL_SWITCHES_OFF, targeting: true } },
+  ];
+}
+/**
+ * The switches that, on their own, put this leaf in use. Empty = every state reads it.
+ *
+ * ⛔ THE ALL-OFF QUESTION IS ASKED FIRST, and it is not a shortcut. A leaf with no entry in the engine's table
+ * is read under EVERY state, so asking the ten switches one at a time would answer "all ten" — and the caption
+ * would then read "Used only while one of these is on: …" over a list of every switch on the form, about a
+ * number that is never idle. A field that is always in use owns no switch, and says nothing.
+ */
+function switchesUsing(id: FieldId): string[] {
+  if (leafUsedBy(id, ALL_SWITCHES_OFF)) return [];
+  return switchWords().filter((s) => leafUsedBy(id, s.state)).map((s) => s.label);
+}
+
+/** The ten switches of a parsed document, as `leafUsedBy` asks for them. */
+function modeStateOf(r: HouseBotRulesV1): LeafModeState {
+  return { modes: r.modes, enterNow: r.enterNow.enabled, targeting: r.targeting.enabled };
+}
+
+/**
+ * One numeric leaf of a parsed document, by its dotted id.
+ *
+ * ⛔ THE DOCUMENT IS TYPED AND THE IDS ARE ITS OWN PATHS, so this walks rather than switching on 29 names: a
+ * `switch` would be a second spelling of `RULE_NUMBER_FIELDS` and would go stale silently the day a leaf moved.
+ * ⚠️ `counter.amount.pct` and `counter.amount.fixedTzs` live in a UNION, so exactly one of them is present in
+ * any document; the absent one answers `null`, which is what the form draws as an empty box.
+ */
+function ruleLeaf(r: HouseBotRulesV1, id: FieldId): number | null {
+  let cur: unknown = r;
+  for (const part of id.split(".")) {
+    if (typeof cur !== "object" || cur === null) return null;
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return typeof cur === "number" ? cur : null;
+}
+
 /**
  * ⛔ THE TEN SWITCHES, AND THE TABLE IS THE CONTRACT. The form posts exactly these keys and no others; a
  * missing one is a stale tab rather than "off", because reading absence as OFF would let a form that failed to
@@ -1904,10 +2114,39 @@ const CONSOLE_RULES_FIELD_KEY: Readonly<Record<string, string>> = {
   ...Object.fromEntries(SCOPE_PRODUCTS.flatMap((p) => ENTRY_MODES.map((m) => [`modes.${p}.${m}`, modeFlagKey(p, m)]))),
   "enterNow.enabled": CONSOLE_FLAG_KEY.enterNow,
   "targeting.enabled": CONSOLE_FLAG_KEY.targeting,
+  /* ⭐ AND SINCE 2026-09-23 EVERY NUMERIC LEAF, THE AMOUNT CHOICE AND THE SCHEDULE — because they all have a
+     control now. This map's own docblock says an id outside it "still has no box and is said in `error` alone,
+     honestly"; before the editor that was 33 of the 45 leaves, so a refusal on a delay or a window arrived as a
+     top-level sentence naming a field the officer could not find. `schedule.windows.<n>.<end>` ids the
+     validator raises per ROW are mapped in `consoleRuleKeyFor`, which this table cannot express. */
+  ...Object.fromEntries(RULE_NUMBER_FIELDS.map((id) => [id, CONSOLE_RULE_KEY[id]])),
+  [ctr("amount.kind")]: CONSOLE_AMOUNT_KIND_KEY,
+  [ctr("amount")]: CONSOLE_AMOUNT_KIND_KEY,
+  "schedule.days": CONSOLE_SCHEDULE_KEY.days,
+  "schedule.allDay": CONSOLE_SCHEDULE_KEY.allDay,
+  "schedule.windows": CONSOLE_SCHEDULE_KEY.windows,
 };
 
-/** The form's four switch sections, in the order the form draws them. ⛔ Neutral words; "Modes" is `FIELD_META`'s. */
-const CONSOLE_FLAG_SECTION = { products: "Products", updown: "Up & Down entry", polls: "Polls entry", byHand: "By hand" } as const;
+/**
+ * ⛔ THE VALIDATOR'S FIELD ID → THE FORM'S KEY, INCLUDING THE IDS NO TABLE CAN HOLD (2026-09-23).
+ *
+ * `expandWindows` raises its refusals on the ROW: `schedule.windows.0.start`, `schedule.windows.2.end`,
+ * `schedule.windows.3` for an overlap and `schedule.windows.4` for a fifth row. Those ids are generated, so a
+ * static map cannot carry them, and dropping them would mean the one refusal an officer meets most often —
+ * a mistyped time — arrived with no box marked. The row's own control carries the same shape of key.
+ */
+function consoleRuleKeyFor(field: string): string | undefined {
+  const direct = CONSOLE_RULES_FIELD_KEY[field];
+  if (direct !== undefined) return direct;
+  const row = /^schedule\.windows\.(\d+)(?:\.(start|end))?$/.exec(field);
+  if (row === null) return undefined;
+  /* A fifth row has no control (the form draws MAX_SCHEDULE_WINDOWS of them); the group is what is marked. */
+  if (Number(row[1]) >= MAX_SCHEDULE_WINDOWS) return CONSOLE_SCHEDULE_KEY.windows;
+  return row[2] === undefined
+    ? `${CONSOLE_SCHEDULE_KEY.windows}.${row[1]}.start`
+    : `${CONSOLE_SCHEDULE_KEY.windows}.${row[1]}.${row[2]}`;
+}
+
 
 /**
  * The console's own label for a rules field an officer is refused on — the word the FORM paints beside its
@@ -1995,6 +2234,22 @@ export type ConsoleRulesSaveInput = {
    * would otherwise save `[]` and put every market out of the account's reach with "Saved" on screen.
    */
   lists: { categories: string[]; chains: string[] };
+  /**
+   * ⭐ EVERY NUMERIC RULE LEAF THE FORM DRAWS, BY THE FORM'S OWN KEY, AS TYPED (2026-09-23 · register A1).
+   *
+   * ⛔ THE WHOLE FORM OR NOTHING, exactly as the caps travel: a missing key is a STALE TAB, never a value.
+   * Reading absence as "keep what is stored" is what made the 33 leaves unreachable in the first place, and
+   * reading it as "" would silently clear a band. The strings are raw — the validator owns every parse.
+   */
+  numbers: Record<string, string>;
+  /** The counter amount's kind. ⛔ Posted, because the document holds a union and the form draws both boxes. */
+  amountKind: string;
+  /**
+   * ⭐ THE SCHEDULE AS TYPED. ⛔ `windows` carries the RAW `HH:MM` text of every row the form drew, including
+   * the empty ones: only the raw text can tell a half-typed time from an empty box (04 C15), and only the
+   * server may decide what either means.
+   */
+  schedule: { days: string[]; allDay: boolean; windows: { start: string; end: string }[] };
 };
 
 export type ConsoleRulesSaveResult =
@@ -2090,12 +2345,68 @@ export async function houseRulesSaveForConsole(
     return { ok: false, error: RULES_SAVE_COPY.stale };
   }
 
+  /**
+   * ⛔ THE 29 NUMBERS, THE KIND AND THE SCHEDULE — CHECKED FOR SHAPE HERE AND PARSED NOWHERE (2026-09-23).
+   *
+   * The same rule the caps obey one screen up: every key the form draws must arrive, an unknown key is
+   * REFUSED rather than ignored, and the VALUE is passed through untouched. A door that trimmed, coerced or
+   * defaulted a number here would be a second parser beside `checkNumber`, and the refusal an officer reads
+   * would stop being the one the validator raised.
+   * ⚠️ THE TWO AMOUNT BOXES ARE BOTH REQUIRED TO ARRIVE and only the chosen one is read — the form draws
+   * both and reveals one, so a post missing the hidden box is a form that did not render, not a choice.
+   */
+  /* ⛔ THE WHOLE OBJECT MAY BE ABSENT, AND THAT IS A REFUSAL AND NOT A THROW. A caller one version behind —
+     a stale tab, another service, a crafted POST — sends no `numbers` at all, and reading a key off
+     `undefined` would be a 500 where the product's answer is "this form is out of date". Measured: the
+     console suite's own scope-picker cases call this door with the pre-editor input shape. */
+  const rawNumbers: unknown = input.numbers;
+  if (typeof rawNumbers !== "object" || rawNumbers === null || Array.isArray(rawNumbers)) {
+    return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
+  const postedNumbers = rawNumbers as Record<string, unknown>;
+  const numbers: Record<string, string> = {};
+  for (const id of RULE_NUMBER_FIELDS) {
+    const raw = postedNumbers[CONSOLE_RULE_KEY[id]];
+    if (typeof raw !== "string") return { ok: false, error: RULES_SAVE_COPY.stale };
+    numbers[id] = raw.trim();
+  }
+  for (const key of Object.keys(postedNumbers)) {
+    if (!RULE_FIELD_BY_KEY.has(key)) return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
+  if (input.amountKind !== "PCT" && input.amountKind !== "FIXED") return { ok: false, error: RULES_SAVE_COPY.stale };
+  /* ⛔ THE SCHEDULE'S SHAPE, NOT ITS MEANING. `expandWindows` decides what a time IS — this only refuses a
+     post that could not have come from the form: a non-boolean all-day, a day outside the week, more rows
+     than the form draws, a row that is not two strings. A malformed day list is the stale sentence rather
+     than a silent drop, because a dropped day is an account that quietly stops betting on it. */
+  const rawSchedule: unknown = input.schedule;
+  if (typeof rawSchedule !== "object" || rawSchedule === null || Array.isArray(rawSchedule)) {
+    return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
+  const sched = rawSchedule as { days?: unknown; allDay?: unknown; windows?: unknown };
+  if (typeof sched.allDay !== "boolean") return { ok: false, error: RULES_SAVE_COPY.stale };
+  if (!Array.isArray(sched.days) || sched.days.some((d) => typeof d !== "string" || !(WEEKDAYS as readonly string[]).includes(d))) {
+    return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
+  if (!Array.isArray(sched.windows) || sched.windows.length > MAX_SCHEDULE_WINDOWS) {
+    return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
+  const windows: { start: string; end: string }[] = [];
+  for (const w of sched.windows) {
+    if (typeof w !== "object" || w === null || Array.isArray(w)) return { ok: false, error: RULES_SAVE_COPY.stale };
+    const row = w as { start?: unknown; end?: unknown };
+    if (typeof row.start !== "string" || typeof row.end !== "string") return { ok: false, error: RULES_SAVE_COPY.stale };
+    windows.push({ start: row.start, end: row.end });
+  }
+
   const saved = await saveHouseBotRules({
     actorId: viewerUserId,
     botId: input.accountId,
     baseVersion: input.baseVersion,
     caps: values,
     lists: { categories, chains },
+    numbers,
+    amountKind: input.amountKind,
+    schedule: { days: [...new Set(sched.days as string[])], allDay: sched.allDay, windows },
     flags: {
       products: { updown: input.flags[CONSOLE_FLAG_KEY.productUpdown], polls: input.flags[CONSOLE_FLAG_KEY.productPolls] },
       modes: {
@@ -2138,14 +2449,14 @@ export async function houseRulesSaveForConsole(
     (rule != null ? CONSOLE_LIMIT_REFUSAL[rule] : undefined) ?? message;
   const fields: Record<string, string> = {};
   for (const e of saved.errors) {
-    const key = CONSOLE_RULES_FIELD_KEY[e.field];
+    const key = consoleRuleKeyFor(e.field);
     if (key === undefined || key in fields) continue; // a field with no control, or the first sentence already stands
     fields[key] = sentenceFor(e.rule ?? null, e.message);
   }
   return {
     ok: false,
     error: sentenceFor(saved.rule, saved.message),
-    field: CONSOLE_RULES_FIELD_KEY[saved.field],
+    field: consoleRuleKeyFor(saved.field),
     fields,
   };
 }
@@ -2464,6 +2775,101 @@ export type ConsoleRulesForm = {
   }[];
   flags: readonly { key: string; section: string; label: string; on: boolean; help: string }[];
   /**
+   * ⭐ EVERY NUMERIC RULE LEAF, AS A ROW (2026-09-23, register A1 — the blocker).
+   *
+   * ⛔ THE 33 LEAVES WITH NO CONTROL WERE NOT A GAP IN THE FORM; THEY WERE A GAP IN WHAT AN OWNER OWNS. An
+   * account's delays, bands, guards, shaping, schedule and both by-hand stakes ran at `DEFAULT_RULES_V1`
+   * for ever, and the desk could not say what they were, let alone change them. `value` is the raw stored
+   * number as a string and "" for a nullable leaf that is unset — the same two-way state the caps use, so
+   * an empty box and a JSON null are one thing travelling in both directions.
+   * ⛔ `min`/`max` ARE THE LIVE BOUNDS (`fieldBounds`), not `FIELD_META`'s raw table: three of them resolve
+   * only against the platform (`LIVE_MIN`/`LIVE_MAX` are today's stake bounds, `MAX_UD_SEC` and
+   * `MAX_OPENER_UD_SEC` come off the enabled round durations, `FLOOR` off the `bet.place` refill). They are
+   * "" when the platform read that carries them failed — a bound that could not be read is NOT "no bound",
+   * and the form says so rather than drawing a box that looks unlimited (355).
+   * ⛔ `usedBy` IS DERIVED FROM THE ENGINE'S OWN PREDICATE (see `switchesUsing`), never from a hand list.
+   */
+  rules: readonly {
+    key: string;
+    /** The neutral heading this row is drawn under (`CONSOLE_RULE_SECTION`), in `FIELD_ORDER`. */
+    section: string;
+    label: string;
+    /** The raw stored number as a string, or "" when unset — never a formatted figure. */
+    value: string;
+    /** The same figure formatted with its unit word, for the hint. "" when the leaf is unset. */
+    saved: string;
+    unit: "TZS" | "percent" | "seconds" | "minutes" | "count";
+    /** The live bounds as plain digits, or "" when the platform read they need failed. */
+    min: string;
+    max: string;
+    /**
+     * ⛔ THE BOUNDS AS A SENTENCE, COMPOSED ON THE SERVER (ruling 388). The form may not build
+     * "Between 5 and 600 seconds." out of `min`, `max` and a unit word: that is a sentence, it would ship in
+     * the client chunk, and the unit's plural would be a second spelling of `unitSuffix`. "" when the bounds
+     * could not be read — the form then says the platform could not be read, and never a half-range.
+     */
+    range: string;
+    /** The documented default and the starting value, as plain digits ("" where the field has neither). */
+    defaultValue: string;
+    recommended: string;
+    /** An empty box saves as "not set" instead of being refused. */
+    nullable: boolean;
+    help: string;
+    /** `FIELD_META`'s own extra sentence, where it has one. */
+    hint: string;
+    /** "Used only while X is on" — "" for a leaf every state reads. */
+    usedBy: string;
+    /** True while no switch that uses this leaf is on: the row is drawn, and said to be idle. */
+    idle: boolean;
+    /** A fixed set of values (`shaping.roundToTzs`) — drawn as a chooser, never a free box. */
+    options: readonly { value: string; label: string }[] | null;
+  }[];
+  /**
+   * ⭐ THE COUNTER AMOUNT'S ONE CHOICE, AND THE TWO BOXES IT SWITCHES BETWEEN (2026-09-23). The document holds
+   * a discriminated union (`{kind:"PCT",pct}` | `{kind:"FIXED",fixedTzs}`), so the form must post a kind and
+   * the matching number — and the validator reads ONLY the matching one, which is why the other box's value
+   * is not a refusal when it is empty.
+   */
+  amountKind: {
+    key: string;
+    label: string;
+    help: string;
+    value: "PCT" | "FIXED";
+    options: readonly { value: "PCT" | "FIXED"; label: string; showsKey: string }[];
+  };
+  /**
+   * ⭐ THE SCHEDULE (2026-09-23) — seven days, an all-day switch and up to `MAX_SCHEDULE_WINDOWS` HH:MM rows
+   * in **EAT**, posted RAW so `expandWindows` is the one thing that decides what a time means.
+   *
+   * ⛔ THE TIMES TRAVEL AS TYPED, AND THAT IS THE WHOLE DESIGN. A half-typed "2_" must be an error and only
+   * the raw text can tell it from an empty box (04 C15), a 00:00 END means midnight at the END of the day
+   * (1440) while a 00:00 START means the start of it, and an end before its start is an overnight window
+   * that belongs to its start day. Parsing any of that in the browser would put a second reading of the
+   * clock in the client chunk; the server's `parseEatTime` is the only one.
+   */
+  schedule: {
+    daysKey: string;
+    allDayKey: string;
+    windowsKey: string;
+    section: string;
+    daysLabel: string;
+    daysHelp: string;
+    allDayLabel: string;
+    allDayHelp: string;
+    windowsLabel: string;
+    windowsHelp: string;
+    /** Said beside the rows while All day is on — they are kept, and nothing reads them. */
+    windowsIgnored: string;
+    startLabel: string;
+    endLabel: string;
+    allDay: boolean;
+    days: readonly { key: string; value: string; label: string; on: boolean }[];
+    /** Exactly `MAX_SCHEDULE_WINDOWS` rows: the saved ones filled, the rest empty and ready to type into. */
+    windows: readonly { startKey: string; endKey: string; start: string; end: string }[];
+    /** What is SAVED, in words (`describeWindow`) — "" for none, so the card and the form agree. */
+    saved: readonly string[];
+  };
+  /**
    * ⭐ THE TWO SCOPE PICKERS (prod finding 2026-09-22), in page order: Up & Down chains, then poll categories.
    * Each is a GROUP of boxes under one neutral key, and the group follows its product's switch: while that
    * switch is off the group stays on screen and says it applies once the product is on. `entries` is the LIVE
@@ -2524,6 +2930,19 @@ export type ConsoleRulesForm = {
     draftRestored: string;
     /** Said under a cap whose box holds a value that has never been saved. */
     notSavedYet: string;
+    /**
+     * ⛔ SAID WHEN THE PLATFORM READ BEHIND THE NUMERIC BOUNDS FAILED (2026-09-23). The boxes still draw and
+     * still save — the SERVER validates against the live bounds either way — but nothing on the form may
+     * imply a ceiling it could not read, which is 355's rule applied to an input instead of to a figure.
+     */
+    boundsUnreadable: string;
+    /** The heading over the numeric rules, and the one sentence that says what they all are. */
+    rulesSection: string;
+    rulesNote: string;
+    /** Said under a number no switch currently in force reads. */
+    idleNote: string;
+    /** The control that fills every EMPTY number with its starting value — the rules' own half of `fillLabel`. */
+    startingRulesDone: string;
   };
 };
 
@@ -3538,6 +3957,52 @@ function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1, ctx: Pick<ParseCon
     { section: "Scope", name: FIELD_META["scope.categories"].label, value: listWords(rules.scope.categories.map(categoryWord)), unset: false, caption: null, face: "word" as const },
     { section: "Scope", name: "Targeted stakes", value: rules.targeting.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
     { section: "Scope", name: "Enter now", value: rules.enterNow.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
+    /**
+     * ⭐ THE SIX ENTRY MODES, EVERY NUMBER AND THE SCHEDULE — THE RECORD SAYS WHAT THE ACCOUNT WAS SET TO DO
+     * (2026-09-23 · register A1 item 6).
+     *
+     * 🔴 WHY IT MATTERS MOST ON A REMOVED ACCOUNT. A removed account has no form — its rules ARE this card
+     * (ruling 358) — and until today the card showed fourteen caps, the products and the two lists. So the
+     * one screen that survives a removal could not answer "what was this account doing?": not which modes
+     * were on, not one of the 29 numbers that decided its stakes, not the hours it was allowed to bet.
+     * ⛔ THE POPULATION IS `RULE_NUMBER_FIELDS` AGAIN, so the record and the form cannot disagree about what
+     * a rule IS, and a leaf added later appears on both or neither.
+     * ⚠️ `limitValue` FORMATS IT, so a figure on the record wears the same face as the same figure in the
+     * form's own hint — one money spelling on this platform (361), one unit word (`unitSuffix`).
+     */
+    ...SCOPE_PRODUCTS.flatMap((p) => ENTRY_MODES.map((m) => ({
+      section: `${CONSOLE_FLAG_SECTION[p]}`,
+      name: ENTRY_MODE_WORDS[m],
+      value: rules.modes[p][m] ? "On" : "Off",
+      unset: false,
+      caption: null,
+      face: "word" as const,
+    }))),
+    ...RULE_NUMBER_FIELDS.map((id) => {
+      const raw = ruleLeaf(rules, id);
+      return {
+        section: CONSOLE_RULE_SECTION[FIELD_META[id].section] ?? FIELD_META[id].section,
+        name: FIELD_META[id].label,
+        value: limitValue(id, raw),
+        unset: raw == null,
+        caption: null,
+        face: (raw == null ? "word" : FIELD_META[id].unit === "TZS" ? "money" : "count") as ConsoleRuleRow["face"],
+      };
+    }),
+    {
+      section: CONSOLE_RULE_SECTION.Schedule,
+      name: FIELD_META["schedule.days"].label,
+      /* ⛔ THE SAME SENTENCES THE FORM PAINTS (`describeWindow`) — one home, so the record of a removed
+         account and the form of a live one describe an identical schedule identically. */
+      value: rules.schedule.days.length === 0
+        ? NONE_CHOSEN
+        : rules.schedule.allDay
+          ? rules.schedule.days.map((d) => `${WEEKDAY_LABEL[d]} · all day`).join(", ")
+          : rules.schedule.days.flatMap((d) => rules.schedule.windows.map((w) => describeWindow(d, w.startMin, w.endMin))).join(", "),
+      unset: rules.schedule.days.length === 0,
+      caption: null,
+      face: "word" as const,
+    },
   ];
 }
 
@@ -3829,10 +4294,29 @@ export async function houseAccountActForConsole(
     }
     /* ⛔ 04 C10 / C3-SPEC ruling 10 · AN ACCOUNT STARTS WHILE THE DESK IS OFF, and the officer is told so rather
      * than left to read a green chip beside a switch that is off. */
+    /**
+     * ⭐ AND START'S OWN WARNINGS ARE PAINTED (2026-09-23 · register A3), not dropped.
+     *
+     * 🔴 An account whose every enabled mode is impossible — or which has no automatic mode at all — was
+     * answered "Started", full stop, while the service had the sentence in its hand. The desk is where that
+     * sentence has to land: it is the last screen the officer looks at before they walk away believing the
+     * account is working.
+     * ⛔ THE SENTENCES ARE THE VALIDATOR'S, NOT THIS TABLE'S, and that is deliberate and checked: `START_COPY`
+     * and `NO_AUTOMATIC_MODE_LINE` are written for the OFFICER (they name the account's own label and say what
+     * to do), they are already scanned by 4.453 through this module's own lexicon sweep, and re-spelling them
+     * here would be the two-spellings defect this console has been pulled up on twice.
+     * ⚠️ IT IS A `warn`, NEVER AN ERROR: the account started, and the row says both.
+     */
+    const startWarning = started.warnings.length > 0 ? started.warnings.join(" ") : null;
+    const note = started.alreadyRunning
+      ? ACT_COPY.alreadyRunning
+      : started.masterOn
+        ? startWarning
+        : startWarning === null ? ACT_COPY.startedWhileOff : `${ACT_COPY.startedWhileOff} ${startWarning}`;
     return {
       ok: true, changed: !started.alreadyRunning,
-      note: started.alreadyRunning ? ACT_COPY.alreadyRunning : started.masterOn ? null : ACT_COPY.startedWhileOff,
-      warn: !started.masterOn && !started.alreadyRunning,
+      note,
+      warn: (!started.masterOn || startWarning !== null) && !started.alreadyRunning,
     };
   }
 
@@ -4260,6 +4744,56 @@ export async function houseDetailForConsole(
     const r = FIELD_META[f].recommended;
     return [f, r == null || typeof r === "string" ? "" : String(r)];
   })) as Record<CapField, string>;
+  /**
+   * ⭐ THE LIVE BOUNDS THE NUMERIC EDITOR NEEDS, AND WHAT IT DOES WITHOUT THEM (2026-09-23).
+   *
+   * ⛔ `fieldBounds` RESOLVES THREE WORDS AGAINST THE PLATFORM, so the page must have read it: `LIVE_MIN` and
+   * `LIVE_MAX` are today's stake bounds, `MAX_UD_SEC` and `MAX_OPENER_UD_SEC` come off the ENABLED round
+   * durations, and `FLOOR` off the `bet.place` refill. The account page already takes that read — it is what
+   * `rulesLiveBoundProblems` is computed from two paragraphs up — so this costs no second read; what it needs
+   * is the settled result, not a fresh call.
+   * ⛔ AND A FAILED READ IS `null`, NOT A DEFAULT (355). Filling in `FIELD_META`'s raw table when the platform
+   * could not be read would draw a box whose ceiling says 1,000,000,000 while the seam refuses anything over
+   * the live maximum — a form that looks permissive and a save that refuses. The rows carry "" for both
+   * bounds instead and the form says the platform could not be read.
+   */
+  const boundsCtx: BoundsContext | null = parseCtx != null && boundsR.status === "fulfilled"
+    ? {
+      stakeBounds: { minTzs: boundsR.value.minStake, maxTzs: boundsR.value.maxStake },
+      betPlaceRefillPerMin: RATE_RULES["bet.place"].refillPerMin,
+      durations: parseCtx.durations,
+    }
+    : null;
+  /* ⛔ THE STARTING VALUES FOR THE RULES COME THROUGH `recommendedRules`, UNLIKE THE CAPS' — and the difference
+     is measured, not stylistic: two rule recommendations resolve `LIVE_MIN` (the trigger-stake floor), so
+     reading `FIELD_META.recommended` directly would fill those boxes with the WORD or with nothing. The helper
+     is given the live bounds when they were read, and when they were not, every recommendation is "" and the
+     control that fills them says it filled nothing rather than filling a word. */
+  const recommendedRuleDoc = parsed != null && parsed.ok && boundsCtx != null
+    ? recommendedRules(parsed.rules, { stakeBounds: boundsCtx.stakeBounds })
+    : null;
+  /**
+   * ⛔ AN ACCOUNT THAT HAS NEVER CHOSEN A SCHEDULE IS SHOWN THE DOCUMENTED DEFAULT, ON SCREEN (2026-09-23).
+   *
+   * 🔴 THE TRAP THIS CLOSES, AND WHERE IT USED TO LIVE. Designation writes `{schemaVersion:1}`, and the parse
+   * answers `schedule: { days: [], allDay: false, windows: [] }` — which `expandWindows` refuses with "Pick at
+   * least one day." So `rules-save.ts` used to SEED `DEFAULT_RULES_V1`'s schedule behind the officer's back,
+   * and its own docblock defended the write as the least-bad way to keep a fresh account saveable with no
+   * picker on the screen.
+   * ⭐ THERE IS A PICKER NOW, so the seed belongs HERE, where a person sees it: the boxes show seven days and
+   * All day, the officer reads them before pressing Save, and the save stores exactly what was posted. Nothing
+   * is written that was not on screen, and "tick a product, turn on a mode, Save" still works on a brand-new
+   * account.
+   * ⚠️ ONLY WHEN THERE IS NONE — a schedule an officer has narrowed is never widened back. And `saved` below
+   * reads off the STORED document, so a seeded form correctly says nothing has been saved yet.
+   */
+  const shownSchedule = parsed != null && parsed.ok && parsed.rules.schedule.days.length > 0
+    ? parsed.rules.schedule
+    : DEFAULT_RULES_V1({ stakeBounds: boundsCtx?.stakeBounds ?? { minTzs: 0, maxTzs: 0 } }).schedule;
+  const ruleUnit = (id: FieldId): "TZS" | "percent" | "seconds" | "minutes" | "count" => {
+    const u = FIELD_META[id].unit;
+    return u === "TZS" ? "TZS" : u === "%" ? "percent" : u === "s" ? "seconds" : u === "min" ? "minutes" : "count";
+  };
   const rulesForm: ConsoleRulesForm | null = parsed == null || !parsed.ok || parseCtx == null ? null : {
     baseVersion: bot.rulesVersion,
     caps: CAP_FIELDS.map((field) => ({
@@ -4309,6 +4843,116 @@ export async function houseDetailForConsole(
       { key: CONSOLE_FLAG_KEY.enterNow, section: CONSOLE_FLAG_SECTION.byHand, label: "Enter now", on: parsed.rules.enterNow.enabled, help: CONSOLE_FLAG_HELP.enterNow },
       { key: CONSOLE_FLAG_KEY.targeting, section: CONSOLE_FLAG_SECTION.byHand, label: "Targeted stakes", on: parsed.rules.targeting.enabled, help: CONSOLE_FLAG_HELP.targeting },
     ],
+    /**
+     * ⭐ EVERY NUMERIC LEAF, IN `FIELD_ORDER`, GROUPED BY ITS OWN SECTION (2026-09-23 · register A1).
+     *
+     * ⛔ THE POPULATION IS `RULE_NUMBER_FIELDS`, THE VALIDATOR'S OWN LIST. Not a list typed here, and not
+     * "the ones the register named": a leaf added to the document tomorrow lands on this form and in the
+     * save together, or the `Record` above refuses to compile without its key, its help and its label.
+     * ⚠️ `counter.amount.pct` / `counter.amount.fixedTzs` ARE BOTH ROWS, and the form shows the one the
+     * kind chooser selects — which is what the validator reads, so the hidden one is never a refusal.
+     */
+    rules: RULE_NUMBER_FIELDS.map((id) => {
+      const meta = FIELD_META[id];
+      const raw = ruleLeaf(parsed.rules, id);
+      const bounds = boundsCtx === null ? null : fieldBounds(id, boundsCtx);
+      const rec = recommendedRuleDoc === null ? null : ruleLeaf(recommendedRuleDoc, id);
+      const def = meta.default;
+      const used = switchesUsing(id);
+      return {
+        key: CONSOLE_RULE_KEY[id],
+        section: CONSOLE_RULE_SECTION[meta.section] ?? meta.section,
+        label: meta.label,
+        /* ⛔ RAW, NEVER FORMATTED — the kit's numeric input strips every non-digit on the first keystroke. */
+        value: raw == null ? "" : String(raw),
+        saved: raw == null ? "" : limitValue(id, raw),
+        unit: ruleUnit(id),
+        min: bounds === null ? "" : String(bounds.min),
+        max: bounds === null ? "" : String(bounds.max),
+        /* ⛔ THE FIGURES WEAR THE FIELD'S OWN FACE (`limitValue`): money is formatted once on this platform
+           and a time's unit word comes from `unitSuffix`, so "600 seconds" and the refusal's own sentence
+           cannot disagree at n = 1. A nullable leaf says what empty means, because "Between 0 and …" would
+           read as a floor on a box whose empty state is legitimate. */
+        range: bounds === null
+          ? ""
+          : `${meta.nullable ? "Empty, or between" : "Between"} ${limitValue(id, bounds.min)} and ${limitValue(id, bounds.max)}.`,
+        /* ⚠️ `LIVE_MIN` as a DEFAULT is a word, not a number, and it is resolved through the live bounds or
+           not offered at all — a box filled with "LIVE_MIN" is the defect this branch exists to refuse. */
+        defaultValue: def == null ? "" : typeof def === "number" ? String(def) : boundsCtx === null ? "" : String(boundsCtx.stakeBounds.minTzs),
+        recommended: rec == null ? "" : String(rec),
+        nullable: meta.nullable,
+        help: CONSOLE_RULE_HELP[id],
+        hint: meta.hint ?? "",
+        /* ⛔ DERIVED FROM THE ENGINE'S PREDICATE, one switch at a time — never a hand-kept ownership map. */
+        /* ⚠️ ONE SWITCH READS AS A SENTENCE; SEVERAL READ AS A LIST. "…while A, B, C is on" is not English,
+           and this caption is read while an officer is deciding whether a box matters to them. */
+        usedBy: used.length === 0
+          ? ""
+          : used.length === 1
+            ? `Used only while ${used[0]} is on.`
+            : `Used only while one of these is on: ${used.join(", ")}.`,
+        idle: used.length > 0 && !leafUsedBy(id, modeStateOf(parsed.rules)),
+        options: meta.options == null
+          ? null
+          : meta.options.map((o) => ({ value: String(o), label: limitValue(id, o) })),
+      };
+    }),
+    /* ⭐ THE AMOUNT'S KIND, AND THE BOX EACH CHOICE REVEALS. ⛔ The document is a UNION, so the kind is posted
+       and the validator reads only the matching number — the other box is not a refusal when it is empty. */
+    amountKind: {
+      key: CONSOLE_AMOUNT_KIND_KEY,
+      label: FIELD_META[ctr("amount.kind")].label,
+      help: "Whether the answer is worked out from the player's stake or is the same amount every time.",
+      value: parsed.rules.counter.amount.kind,
+      options: [
+        { value: "PCT" as const, label: "A share of the player's stake", showsKey: CONSOLE_RULE_KEY[ctr("amount.pct")] },
+        { value: "FIXED" as const, label: "The same amount every time", showsKey: CONSOLE_RULE_KEY[ctr("amount.fixedTzs")] },
+      ],
+    },
+    /**
+     * ⭐ THE SCHEDULE (2026-09-23 · register A1). ⛔ EAT, SAID ON THE SCREEN AND MEANT ON THE SERVER: the rows
+     * travel as the officer typed them and `expandWindows` is the only thing that reads a clock.
+     * ⛔ `MAX_SCHEDULE_WINDOWS` ROWS ARE ALWAYS DRAWN, the saved ones filled. A form that draws only the saved
+     * rows and an "add" control cannot be posted whole, and "the whole form or nothing" is this save's rule.
+     */
+    schedule: {
+      daysKey: CONSOLE_SCHEDULE_KEY.days,
+      allDayKey: CONSOLE_SCHEDULE_KEY.allDay,
+      windowsKey: CONSOLE_SCHEDULE_KEY.windows,
+      section: CONSOLE_RULE_SECTION.Schedule,
+      daysLabel: FIELD_META["schedule.days"].label,
+      daysHelp: "The days this account may place bets at all. Times on this form are EAT.",
+      allDayLabel: FIELD_META["schedule.allDay"].label,
+      allDayHelp: "Bet at any hour of the chosen days. Turn it off to keep to the hours below.",
+      windowsLabel: FIELD_META["schedule.windows"].label,
+      windowsHelp: "The hours of each chosen day it may bet, as HH:MM. An end before its start runs past midnight into the next day.",
+      windowsIgnored: "All day is on, so these hours are kept but not used. Turn All day off to bet only inside them.",
+      startLabel: "From",
+      endLabel: "To",
+      allDay: shownSchedule.allDay,
+      days: WEEKDAYS.map((d) => ({
+        key: `${CONSOLE_SCHEDULE_KEY.days}.${d}`,
+        value: d,
+        label: WEEKDAY_LABEL[d],
+        on: (shownSchedule.days as readonly Weekday[]).includes(d),
+      })),
+      windows: Array.from({ length: MAX_SCHEDULE_WINDOWS }, (_, i) => {
+        const w = shownSchedule.windows[i];
+        return {
+          startKey: `${CONSOLE_SCHEDULE_KEY.windows}.${i}.start`,
+          endKey: `${CONSOLE_SCHEDULE_KEY.windows}.${i}.end`,
+          start: w === undefined ? "" : formatMinutes(w.startMin),
+          /* ⚠️ A 1440 END IS MIDNIGHT AT THE END OF THE DAY and `formatMinutes` would read it as 24:00; it is
+             typed back as the 00:00 the officer entered, which `parseEatTime` turns into 1440 again. */
+          end: w === undefined ? "" : w.endMin === 1440 ? "00:00" : formatMinutes(w.endMin),
+        };
+      }),
+      /* ⛔ WHAT IS SAVED, IN THE SAME SENTENCES THE RECORD CARD PAINTS (`describeWindow`) — one home. */
+      saved: parsed.rules.schedule.allDay
+        ? (parsed.rules.schedule.days as readonly Weekday[]).map((d) => `${WEEKDAY_LABEL[d]} · all day`)
+        : (parsed.rules.schedule.days as readonly Weekday[]).flatMap((d) =>
+          parsed.rules.schedule.windows.map((w) => describeWindow(d, w.startMin, w.endMin))),
+    },
     /* ⭐ THE TWO PICKERS, FROM THE LIVE PLATFORM LISTS THE PARSE CONTEXT HOLDS (prod finding 2026-09-22). */
     lists: CONSOLE_LIST_FIELDS.map((field) => ({
       key: CONSOLE_LIST_KEY[field],
@@ -4349,6 +4993,11 @@ export async function houseDetailForConsole(
       draftDrop: "Discard them",
       draftRestored: "Your earlier changes are back in the form. Nothing is saved yet — check them, then press Save.",
       notSavedYet: "Nothing saved for this yet.",
+      boundsUnreadable: "The platform's own stake range and round lengths could not be read, so the range each of these accepts is not shown. Saving still checks them.",
+      rulesSection: "How it decides",
+      rulesNote: "These decide how this account behaves once a product and an entry are on above. Every one of them is checked when you save.",
+      idleNote: "Nothing reads this while its switch is off. It is still saved.",
+      startingRulesDone: "Starting values filled in the empty boxes. Nothing is saved yet — check them, then press Save.",
     },
   };
 

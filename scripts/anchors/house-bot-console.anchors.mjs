@@ -3006,4 +3006,68 @@ import { formatEat } from "@/lib/utils";`,
     expect: "2g.words · ⛔ THE FINDING · the roster's scope line names what each ticked product can REACH",
     suite: "console-mem",
   },
+
+  /* ══ THE NUMERIC + SCHEDULE EDITOR (2026-09-23 · register A1/A2/A3/A4) ═══════════════════════════════════════
+   *
+   * ⛔ EACH OF THESE IS THE DEFECT THE EDITOR REPLACED, PUT BACK. The register's items were not opinions about
+   * a form: 33 of the 45 rule leaves had no control on any screen, the Enter-now switch was refused on a box
+   * that did not exist, Start threw its own warnings away, and the save's docblock promised a behaviour that
+   * was measured false. A mutation per item is what stops any of them coming back quietly.
+   */
+  {
+    name: "editor-numbers-dropped · the save stops storing one section's numbers, so an officer's guards silently keep the old values",
+    file: "src/lib/server/house-bot/rules-save.ts",
+    from: `  for (const [id, raw] of Object.entries(input.numbers)) setPath(rulesToCheck, id, raw);`,
+    to: `  for (const [id, raw] of Object.entries(input.numbers)) { if (!id.startsWith("guards.")) setPath(rulesToCheck, id, raw); }`,
+    expect: "2h.save · ⛔ THE NUMBERS ROUND-TRIP",
+    suite: "console-mem",
+  },
+  {
+    name: "editor-bounds-raw · the form's ranges come from the raw field table instead of the LIVE bounds, so a box looks more permissive than the seam",
+    file: GATE,
+    from: `      const bounds = boundsCtx === null ? null : fieldBounds(id, boundsCtx);`,
+    to: `      const bounds = boundsCtx === null ? null : { min: typeof meta.min === "number" ? meta.min : 0, max: typeof meta.max === "number" ? meta.max : 0 };`,
+    expect: "2h.model · every row carries the LIVE bounds",
+    suite: "console-mem",
+  },
+  {
+    name: "editor-schedule-utc · the saved window is painted back in UTC, so an officer who typed 09:00 EAT reads 06:00",
+    file: GATE,
+    from: `          start: w === undefined ? "" : formatMinutes(w.startMin),`,
+    to: `          start: w === undefined ? "" : formatMinutes((w.startMin + 1440 - 180) % 1440),`,
+    expect: "2h.schedule · ⛔ THE DAYS AND THE HOURS ROUND-TRIP IN EAT",
+    suite: "console-mem",
+  },
+  {
+    name: "editor-enter-now-boxes-gone · the two Enter-now stakes lose their rows again, which is exactly register A2 — a switch refused on a box the form does not draw",
+    file: GATE,
+    from: `    rules: RULE_NUMBER_FIELDS.map((id) => {`,
+    to: `    rules: RULE_NUMBER_FIELDS.filter((id) => !id.startsWith("enterNow.")).map((id) => {`,
+    expect: "2h.model · one row per NUMERIC RULE LEAF",
+    suite: "console-mem",
+  },
+  {
+    name: "editor-record-loses-the-numbers · a REMOVED account's record goes back to saying nothing about what it was set to do",
+    file: GATE,
+    from: `    ...RULE_NUMBER_FIELDS.map((id) => {\n      const raw = ruleLeaf(rules, id);`,
+    to: `    ...RULE_NUMBER_FIELDS.slice(0, 0).map((id) => {\n      const raw = ruleLeaf(rules, id);`,
+    expect: "1.508 · the rules panel lists every saved cap, the five scope facts, the six entry modes",
+    suite: "console-mem",
+  },
+  {
+    name: "start-drops-its-warnings · Start goes back to reporting `Started` for an account whose every enabled mode can never enter",
+    file: DESIG,
+    from: `  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: problems.warnings };`,
+    to: `  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: [] };`,
+    expect: "2g.start · ⛔ REGISTER A3 · an account whose only enabled mode can NEVER enter",
+    suite: "console-mem",
+  },
+  {
+    name: "editor-idle-caption-always-on · the `used only while` caption is painted for every leaf, including the ones every state reads",
+    file: GATE,
+    from: `  if (leafUsedBy(id, ALL_SWITCHES_OFF)) return [];`,
+    to: `  if (false) return [];`,
+    expect: "2h.usedBy · the caption naming the switch a number belongs to is DERIVED",
+    suite: "console-mem",
+  },
 ];

@@ -584,17 +584,37 @@ const RAW_FIELDS = {
   "scope.products.polls": toggle("rules", "Scope", "Polls"),
   "scope.chains": list("rules", "Scope", "Up & Down chains"),
   "scope.categories": list("rules", "Scope", "Poll categories"),
-  "scope.skipPollsClosingWithinMin": num("rules", "Scope", "Skip polls closing within", "min", 1, 43_200, {
+  /**
+   * ⭐ THESE THREE SIT IN THE **COUNTER** SECTION, NOT IN SCOPE, AND THAT IS MEASURED (2026-09-23).
+   *
+   * Their ids are `scope.*` — the stored document's shape, which is not changed — and until today their
+   * SECTION said `Scope` too, which reads as "these bound everything this account touches". They do not.
+   * Read at `decide.ts`: `poolTotalMinTzs`/`poolTotalMaxTzs` (`:367`) and `skipPollsClosingWithinMin`
+   * (`:368`) are evaluated INSIDE the untargeted-COUNTER loop and nowhere else — not at FILL, not at
+   * OPENER, and not on the TARGET path above it, which re-checks the trigger band, the no-react zone and
+   * the deadline and never these. An officer who narrows a "scope" band expecting it to hold the opener
+   * back is narrowing nothing, and the section heading was the only thing saying otherwise.
+   * ⛔ THE HINT SAYS IT IN WORDS AS WELL AS BY PLACEMENT, because a section heading is read once and a
+   * field is read while it is being typed.
+   * ⚠️ `LEAF_USED_BY` IS DELIBERATELY NOT RETIGHTENED WITH THEM, and the difference is recorded rather
+   * than quietly closed (HOUSE-BOTS.md §5). That table answers a different question — which leaves must be
+   * PRESENT in a stored document — and tightening it would make documents that are refused today parse
+   * tomorrow. That is a change to what a saved account may hold, on the money path, and it is not this
+   * change's to make.
+   */
+  "scope.skipPollsClosingWithinMin": num("rules", "Counter", "Skip polls closing within", "min", 1, 43_200, {
     default: 60,
     recommended: 60,
+    hint: "Only answering a player's stake reads this. Filling a thin side and opening a quiet market have their own margins.",
   }),
-  "scope.poolTotalMinTzs": num("rules", "Scope", "Pool total minimum", "TZS", 0, POOL_TOTAL_MAX_TZS, {
+  "scope.poolTotalMinTzs": num("rules", "Counter", "Pool total minimum", "TZS", 0, POOL_TOTAL_MAX_TZS, {
     default: 0,
     recommended: 0,
+    hint: "Only answering a player's stake reads this.",
   }),
-  "scope.poolTotalMaxTzs": num("rules", "Scope", "Pool total maximum", "TZS", 0, POOL_TOTAL_MAX_TZS, {
+  "scope.poolTotalMaxTzs": num("rules", "Counter", "Pool total maximum", "TZS", 0, POOL_TOTAL_MAX_TZS, {
     nullable: true,
-    hint: "Empty = no maximum.",
+    hint: "Empty = no maximum. Only answering a player's stake reads this.",
   }),
   // Rules · modes
   "modes.updown.counter": toggle("rules", "Modes", "Up & Down · Counter"),
@@ -634,7 +654,11 @@ const RAW_FIELDS = {
     recommended: 30,
   }),
   "fill.targetThinSharePct": num("rules", "Fill", "Target thin share", "%", 10, 50, { default: 40, recommended: 40 }),
-  "fill.jitterSec": num("rules", "Fill", "Jitter", "s", 0, 86_400, { default: 10, recommended: 10 }),
+  /* ⛔ "Jitter" TWICE WAS TWO FIELDS WEARING ONE NAME (2026-09-23). `fill.jitterSec` and `shaping.jitterPct`
+     both read "Jitter", which was invisible while NEITHER had a control — the editor put them on one screen,
+     where an officer choosing between them has only the label to go on, and my own case picked the wrong one.
+     One is a TIME taken off the moment it acts; the other is a SHARE the amount moves by. */
+  "fill.jitterSec": num("rules", "Fill", "Timing jitter", "s", 0, 86_400, { default: 10, recommended: 10 }),
   // Rules · opener
   "opener.delayUdMinSec": num("rules", "Opener", "Delay minimum (Up & Down)", "s", 1, "MAX_OPENER_UD_SEC", {
     default: 20,
@@ -668,7 +692,7 @@ const RAW_FIELDS = {
     recommended: 500,
     options: ROUND_TO_OPTIONS,
   }),
-  "shaping.jitterPct": num("rules", "Shaping", "Jitter", "%", 0, 30, { default: 10, recommended: 10 }),
+  "shaping.jitterPct": num("rules", "Shaping", "Amount jitter", "%", 0, 30, { default: 10, recommended: 10 }),
   // Rules · guards
   "guards.noReactZoneUdSec": num("rules", "Guards", "No-react zone (Up & Down)", "s", 0, 300, {
     default: 30,
@@ -864,7 +888,17 @@ const CAP_FIELD_IDS: readonly FieldId[] = CAP_FIELDS;
 const LIMIT_FIELD_IDS: readonly FieldId[] = LIMIT_FIELDS;
 
 /** The numeric rules-JSON fields, in page order. */
-const RULE_NUMBER_FIELDS: readonly FieldId[] = FIELD_ORDER.filter((id) => {
+/**
+ * EVERY NUMERIC LEAF OF THE RULES DOCUMENT, IN PAGE ORDER — the validator's own population, and since
+ * 2026-09-23 the EDITOR's too.
+ *
+ * ⛔ EXPORTED SO THE FORM IS BUILT FROM THE SAME LIST THE VALIDATOR READS. Until today 33 of the 45 rule
+ * leaves had no control on any screen and ran at their defaults for ever; the fix is not "draw the ones
+ * somebody listed" but "draw this list", because a leaf added tomorrow then arrives on the form and in the
+ * save together or not at all. A hand-kept second list is how a field comes to exist in the engine and
+ * nowhere an officer can see it, which is the defect this export closes.
+ */
+export const RULE_NUMBER_FIELDS: readonly FieldId[] = FIELD_ORDER.filter((id) => {
   const meta = FIELD_META[id];
   return meta.group === "rules" && meta.min !== null;
 });
@@ -2974,6 +3008,30 @@ const LEAF_USED_BY: Partial<Record<FieldId, (s: ModeState) => boolean>> = {
   "guards.minTimeToCutoffUdSec": (s) => anyOn(s.modes.updown),
   "guards.minTimeToCutoffPollsMin": (s) => anyOn(s.modes.polls) || s.enterNow || s.targeting,
 };
+
+/** The switch state the editor asks `leafUsedBy` about — the ten booleans the rules form owns. */
+export type LeafModeState = ModeState;
+
+/**
+ * DOES THIS LEAF DO ANYTHING UNDER THESE SWITCHES? — asked by the rules editor, answered by the table
+ * above rather than by a second one (2026-09-23).
+ *
+ * ⛔ WHY IT IS THE SAME PREDICATE AND NOT A PARALLEL "which switch owns this field" MAP. The editor draws
+ * 29 numeric boxes, and an officer typing into one deserves to know when it is inert — but a second table
+ * saying so would drift from this one the first time a mode's reach changed, and the drift would be
+ * SILENT in exactly the direction that matters: a box captioned "in use" that nothing reads. So the
+ * caption is computed from this predicate, and the console names the switches by turning each one on ALONE
+ * and asking again (see `house-console-read.ts`). A leaf with no entry here is read under every state, and
+ * `true` is the honest answer for it.
+ * ⚠️ THIS ANSWERS "MUST BE PRESENT IN A STORED DOCUMENT", WHICH IS NOT ALWAYS "IS READ AT DECIDE TIME" —
+ * the three `scope.*` COUNTER numbers are the recorded difference (see their `FIELD_META` entries and
+ * HOUSE-BOTS.md §5). Where the two differ this one is the WIDER of the two, so a caption built from it
+ * never claims a field is inert while something still reads it.
+ */
+export function leafUsedBy(id: FieldId, state: LeafModeState): boolean {
+  const p = LEAF_USED_BY[id];
+  return p === undefined ? true : p(state);
+}
 
 class InvalidStoredRules {
   constructor(readonly field: string) {}

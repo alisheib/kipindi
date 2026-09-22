@@ -55,6 +55,28 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 /**
+ * Write one dotted leaf into the document being validated, creating the objects on the way.
+ *
+ * ⛔ BY PATH, BECAUSE THE IDS ARE THE PATHS. The alternative is a 29-arm assignment block that is a second
+ * spelling of `RULE_NUMBER_FIELDS` and goes stale the first time a leaf moves — and goes stale SILENTLY, since
+ * a leaf that stopped being written would simply keep the parsed document's value and look saved.
+ * ⚠️ IT OVERWRITES A NON-OBJECT ON THE WAY DOWN rather than throwing: the base is the parser's own typed
+ * output, so the only way a branch is not an object is the `counter.amount` union changing kind — which is
+ * exactly the case that must be replaced rather than merged into.
+ */
+function setPath(target: Record<string, unknown>, path: string, value: unknown): void {
+  const parts = path.split(".");
+  let cur: Record<string, unknown> = target;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const next = cur[parts[i]];
+    const obj = isRecord(next) ? { ...next } : {};
+    cur[parts[i]] = obj;
+    cur = obj;
+  }
+  cur[parts[parts.length - 1]] = value;
+}
+
+/**
  * What the save answers.
  *
  * ⛔ `recorded` is FALSE when the write LANDED and its compliance row did not — the same gap `limits-save.ts`
@@ -119,6 +141,21 @@ export async function saveHouseBotRules(input: {
    * `R-PRODUCT-LIST` refuses a ticked product whose list is empty — on the list's own field.
    */
   lists: { categories: readonly string[]; chains: readonly string[] };
+  /**
+   * ⭐ EVERY NUMERIC RULE LEAF, AS THE OFFICER TYPED IT, KEYED BY THE VALIDATOR'S OWN FIELD ID (2026-09-23).
+   *
+   * ⛔ THE FORM NOW OWNS THESE, SO THE SAVE STORES THEM — the whole of register A1. Until today they were not
+   * a parameter at all: the overlay below spread the STORED document through and the officer had no way to
+   * move any of them, which is how 33 of the 45 leaves came to run at `DEFAULT_RULES_V1` on every account
+   * that has ever existed on this desk.
+   * ⚠️ RAW STRINGS, NEVER NUMBERS. `checkNumber` owns "", "12 ", "1e3" and every other shape a text box can
+   * produce, and a `Number()` here would decide the refusal before the validator saw the value.
+   */
+  numbers: Record<string, string>;
+  /** `"PCT"` or `"FIXED"` — the discriminant of `counter.amount`, checked at the door. */
+  amountKind: string;
+  /** The schedule as typed: the raw `HH:MM` of every row the form drew, so `expandWindows` reads the clock. */
+  schedule: { days: readonly string[]; allDay: boolean; windows: readonly { start: string; end: string }[] };
 }): Promise<RulesSaveResult> {
   let bot: StoredHouseBot | null;
   try {
@@ -187,48 +224,77 @@ export async function saveHouseBotRules(input: {
       : {};
   const storedScope = isRecord(storedRaw.scope) ? storedRaw.scope : {};
   /**
-   * ⛔ THE SCHEDULE IS SEEDED WHEN THERE IS NONE, AND THAT IS NOT THE SAME DECISION AS THE LEAVES ABOVE.
+   * ⛔ THE SCHEDULE IS THE OFFICER'S NOW, AND IS NO LONGER SEEDED BEHIND THEIR BACK (2026-09-23).
    *
-   * 🔴 MEASURED BY DRIVING IT (2026-09-21, before any of this shipped): `parseHouseBotRules({schemaVersion:1})`
-   * returns `schedule: { days: [], allDay: false, windows: [] }` — NOT `DEFAULT_RULES_V1`'s "every day, all
-   * day". `expandWindows` then refuses an empty `days` with "Pick at least one day.", so EVERY save on a fresh
-   * account was refused on a field this form does not draw. An officer would have been told to pick a day with
-   * no day picker on the screen — the same shape of trap as the Start refusal this whole change exists to fix,
-   * shipped by the fix for it.
-   * ⛔ SO ABSENCE IS NOT A SAFE STATE FOR THIS ONE KEY. Every other absent leaf follows its default through the
-   * parse; this one parses to something the validator rejects, so it has to be written down. It is the
-   * DOCUMENTED default (`DEFAULT_RULES_V1`), and the form says so in words rather than materialising it
-   * silently — which is the whole objection to writing values nobody reviewed.
-   * ⚠️ AND ONLY WHEN THERE IS NONE: a schedule an officer has already narrowed is never widened back.
+   * 🔴 WHAT IT USED TO DO, AND WHY. `parseHouseBotRules({schemaVersion:1})` returns
+   * `schedule: { days: [], allDay: false, windows: [] }` — NOT `DEFAULT_RULES_V1`'s "every day, all day" — and
+   * `expandWindows` refuses an empty `days` with "Pick at least one day." So every save on a fresh account was
+   * refused on a field the form did not draw, and this module seeded the documented default to get past it: a
+   * value written into a money-governing document that nobody had looked at, defended in a docblock that said
+   * so plainly.
+   * ⭐ THE FORM DRAWS THE PICKER NOW, so the seed moves to where a person can see it: the READER presents the
+   * documented default on an account that has never chosen one, the officer reads seven ticked days and an
+   * all-day switch on their screen, and what they POST is what is stored. The trap is closed by a control
+   * rather than by a silent write, which is what register A1 asked for.
+   * ⚠️ EMPTY ROWS ARE DROPPED, A HALF-TYPED ROW IS NOT. The form always posts `MAX_SCHEDULE_WINDOWS` rows so
+   * the whole form travels; a row with BOTH boxes empty is a row the officer did not use. One side typed and
+   * the other empty is an error, raised by `expandWindows` on that row's own box — never quietly discarded,
+   * because "22:00 → (nothing)" is a window somebody meant.
    */
-  const storedSchedule = isRecord(storedRaw.schedule) ? storedRaw.schedule : null;
-  const scheduleChosen = storedSchedule !== null && Array.isArray(storedSchedule.days) && storedSchedule.days.length > 0;
-  const schedule = scheduleChosen ? storedSchedule : DEFAULT_RULES_V1({ stakeBounds: ctx.stakeBounds }).schedule;
+  const typedRows = input.schedule.windows.filter((w) => w.start.trim() !== "" || w.end.trim() !== "");
+  const schedule = {
+    days: [...input.schedule.days],
+    allDay: input.schedule.allDay,
+    /* The placeholders `expandWindows` walks; `scheduleRawTimes` carries what was actually typed. */
+    windows: typedRows.map(() => ({ startMin: 0, endMin: 1 })),
+  };
   /* ⛔ THE TWO LISTS ARE WRITTEN INTO BOTH DOCUMENTS — the patch that is STORED and the document that is CHECKED
      — so the scope row the validator raises is raised against what will be saved, and what is saved is what the
      officer ticked. A list written into one and not the other is the defect this parameter exists to close, one
      layer down. */
   const scopeLists = { chains: [...input.lists.chains], categories: [...input.lists.categories] };
-  const rulesToStore = {
-    ...storedRaw,
-    schedule,
-    scope: { ...storedScope, products: { ...input.flags.products }, ...scopeLists },
-    modes: { updown: { ...input.flags.modes.updown }, polls: { ...input.flags.modes.polls } },
-    enterNow: { ...(isRecord(storedRaw.enterNow) ? storedRaw.enterNow : {}), enabled: input.flags.enterNow },
-    targeting: { ...(isRecord(storedRaw.targeting) ? storedRaw.targeting : {}), enabled: input.flags.targeting },
-  };
-  /* The COMPLETE document, for the validator only — the parse's filled leaves under the officer's switches. */
-  const rulesToCheck = {
+  /**
+   * ⛔ THE DOCUMENT THE OFFICER POSTED, BUILT FROM THEIR OWN VALUES (2026-09-23 · register A1/A4).
+   *
+   * 🔴 WHAT THIS REPLACES, AND WHY IT IS A CORRECTION AND NOT A PREFERENCE. This module used to build TWO
+   * objects: a minimal PATCH of the switches (stored when it round-tripped) and a complete document (stored
+   * otherwise), and its docblock promised that an absent leaf "keeps FOLLOWING the default instead of being
+   * frozen at it — the officer's own choices are preserved, and a later safety change reaches this account."
+   * ⛔ THAT PROMISE WAS MEASURED FALSE ON 2026-09-22 (register A4). The moment an officer turns any mode ON,
+   * `LEAF_USED_BY` puts that mode's leaves inside the parser's REQUIRED set, the minimal document stops
+   * round-tripping, and the COMPLETE document is stored — freezing all 33 leaves at the defaults of the day
+   * of the FIRST save. Every account on this desk has a mode on; the branch that "keeps following the
+   * default" could therefore never be taken by a configured account, and the comment described a state that
+   * does not occur.
+   * ⭐ SO THE BRANCH IS GONE AND THE HONEST SENTENCE REPLACES IT: the officer's numbers are stored
+   * EXPLICITLY, every one of them, because they are now on the screen and were chosen by a person. A later
+   * change to a DEFAULT does not reach a saved account, and that is the correct behaviour for a value an
+   * owner has reviewed — a ceiling or a delay that moves under a running account because a constant changed
+   * is the opposite of a control.
+   * ⚠️ WHAT IS VALIDATED IS WHAT IS STORED, byte for byte: `checked.rules` is the validator's own normalised
+   * output, so nothing is re-derived between the check and the write.
+   */
+  const rulesToCheck: Record<string, unknown> = {
     ...parsed.rules,
     schedule,
     scope: { ...parsed.rules.scope, products: { ...input.flags.products }, ...scopeLists },
     modes: { updown: { ...input.flags.modes.updown }, polls: { ...input.flags.modes.polls } },
     enterNow: { ...parsed.rules.enterNow, enabled: input.flags.enterNow },
     targeting: { ...parsed.rules.targeting, enabled: input.flags.targeting },
+    counter: { ...parsed.rules.counter, amount: { kind: input.amountKind } },
   };
+  /* ⛔ WRITTEN BY PATH, FROM THE VALIDATOR'S OWN IDS — so a leaf added to `RULE_NUMBER_FIELDS` arrives here
+     without this module being edited, and a leaf that is NOT in the posted set cannot be silently kept. */
+  for (const [id, raw] of Object.entries(input.numbers)) setPath(rulesToCheck, id, raw);
 
   const checked = validateHouseBotRules(
-    { rules: rulesToCheck, caps: input.caps, label: bot.label },
+    {
+      rules: rulesToCheck,
+      caps: input.caps,
+      label: bot.label,
+      /* ⛔ THE TYPED TIMES, SO A HALF-TYPED ONE IS AN ERROR AND NOT AN EMPTY BOX (04 C15). */
+      scheduleRawTimes: typedRows.map((w) => ({ start: w.start.trim(), end: w.end.trim() })),
+    },
     ctx,
     { status: bot.status, caps: capsOf(bot), label: bot.label },
   );
@@ -244,24 +310,19 @@ export async function saveHouseBotRules(input: {
   }
 
   /**
-   * ⭐ THE MINIMAL DOCUMENT IS STORED ONLY IF IT PROVABLY ROUND-TRIPS — measured, not assumed (2026-09-21).
+   * ⛔ WHAT IS STORED IS WHAT WAS CHECKED, AND IT IS STILL RE-READ BEFORE IT IS WRITTEN (2026-09-23).
    *
-   * 🔴 THE DRY FIRE CAUGHT THIS BEFORE IT SHIPPED. Storing the switches alone is right until the officer turns
-   * a mode ON: `LEAF_USED_BY` then puts that mode's leaves inside the parser's REQUIRED set, so
-   * `counter.amount` — absent, and previously filled from the default — makes the very document we just wrote
-   * fail to parse. Start then refused with "the saved rules can't be read", which is how a save that landed
-   * would have bricked the account it was configuring.
-   * ⭐ SO THE CHOICE IS DECIDED BY RE-READING IT. The minimal form is parsed back and compared with the
-   * document that was validated; it is stored only when the two are identical, and otherwise the complete
-   * validated document is stored instead. Absent leaves keep following their defaults wherever that is still
-   * safe, and the moment the officer's own choice makes a leaf load-bearing it is written down — which is the
-   * honest place for that line, because a value in use should not change under a running account.
-   * ⛔ AND THE GUARANTEE IS THE COMPARISON, NOT THE REASONING. This holds without this module knowing which
-   * leaves which mode reads, so a mode added later cannot quietly reintroduce the defect.
+   * The minimal-patch branch is gone (see the overlay above), but the check that guarded it is not: the
+   * document about to be written is parsed BACK, and a document that will not parse is refused instead of
+   * saved. 🔴 That guard earned its place on 2026-09-21, when a save that landed would have left the account
+   * it was configuring unable to start — "the saved rules can't be read" — and it costs one parse.
+   * ⚠️ IT CANNOT FAIL TODAY, and it stays anyway: `validateHouseBotRules` and `parseHouseBotRules` apply
+   * different bounds by design (04 F5 — parse never reads the live stake bounds), so the day those two
+   * disagree about a leaf, this refuses rather than bricking an account, and says which field.
    */
-  const roundTrip = parseHouseBotRules(rulesToStore, ctx);
-  const minimalHolds = roundTrip.ok && JSON.stringify(roundTrip.rules) === JSON.stringify(checked.rules);
-  const patch: HouseBotRulesPatch = { rules: minimalHolds ? rulesToStore : checked.rules };
+  const roundTrip = parseHouseBotRules(checked.rules, ctx);
+  if (!roundTrip.ok) return { ok: false, code: "RULES_UNREADABLE" };
+  const patch: HouseBotRulesPatch = { rules: checked.rules };
   const changes: CapChange[] = [];
   for (const field of CAP_FIELDS) {
     const after = checked.caps[field];

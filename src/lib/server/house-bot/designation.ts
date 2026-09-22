@@ -466,7 +466,20 @@ export async function reverifyHouseBot(input: { officerId: string; botId: string
 /* ═══ Start (02 §3.3, 04 A3, C8, C9, C10, C14) ═════════════════════════════════════════════════════════ */
 
 export type StartResult =
-  | { ok: true; alreadyRunning: boolean; masterOn: boolean }
+  /**
+   * ⭐ `warnings` — WHAT START KNEW AND USED TO THROW AWAY (2026-09-23 · register A3).
+   *
+   * 🔴 MEASURED ON 2026-09-22: `rulesStartProblems` answers `{ refusals, warnings }`, this branch read the
+   * refusals and dropped the warnings on the floor, and the console reported "Started". So an account whose
+   * every enabled mode is IMPOSSIBLE — a COUNTER whose entry can never fall inside any chain's window, or an
+   * account with no automatic mode at all — was started, said to be started, and then never placed a bet,
+   * with nothing on any screen saying why. The facts existed; only the shape lost them.
+   * ⛔ THEY ARE ADVICE AND NEVER A REFUSAL. The account IS started: a warning that blocked would be a refusal
+   * wearing the wrong word, and the officer's own decision to run a by-hand-only account is theirs to make.
+   * ⚠️ EMPTY ON `alreadyRunning`: the rules were not re-read for an account that was already ACTIVE, and a
+   * warning inferred from a read that did not happen is worse than none.
+   */
+  | { ok: true; alreadyRunning: boolean; masterOn: boolean; warnings: string[] }
   | { ok: false; code: "NOT_FOUND" | "REMOVED" | "INELIGIBLE" | "CONSENT" | "RULES" | "LOSS_CAP" | "OWNER_LOSS_LIMIT" | "CHANGED";
     message: string; field?: string; href?: string; row?: EligibilityRow };
 
@@ -492,7 +505,7 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
   if (!bot) return { ok: false, code: "NOT_FOUND", message: "No bot with that ID." };
   if (bot.status === "REMOVED") return { ok: false, code: "REMOVED", message: VERIFY_COPY.removed };
   const control = await houseBotControlStore.get();
-  if (bot.status === "ACTIVE") return { ok: true, alreadyRunning: true, masterOn: control.enabled };
+  if (bot.status === "ACTIVE") return { ok: true, alreadyRunning: true, masterOn: control.enabled, warnings: [] };
 
   const el = await houseBotEligibility(bot.userId, { context: "start", botId, actorId: officerId });
   const early = el.blocking.find((r) => !START_LATE_ROWS.includes(r.code));
@@ -537,11 +550,11 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
     return { kind: "ok", from: cur.status };
   }));
   if (written.kind === "removed") return { ok: false, code: "REMOVED", message: VERIFY_COPY.removed };
-  if (written.kind === "already") return { ok: true, alreadyRunning: true, masterOn: control.enabled };
+  if (written.kind === "already") return { ok: true, alreadyRunning: true, masterOn: control.enabled, warnings: [] };
   if (written.kind === "changed") return { ok: false, code: "CHANGED", message: "Can't start: their password or permission changed a moment ago. Enter their password to confirm it again.", href: consoleReverifyHref(botId) };
 
   await houseAudit("house_bot.started", officerId, { type: "HouseBot", id: botId }, { botId, holderUserId: bot.userId, from: written.from, to: "ACTIVE", rulesVersion: bot.rulesVersion });
-  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled };
+  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: problems.warnings };
 }
 
 /* ═══ Consent void (04 A3, C8, N2 §4 step 10) ═════════════════════════════════════════════════════════ */
