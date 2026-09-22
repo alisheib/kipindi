@@ -5,7 +5,7 @@ Endpoints: `POST /api/sms/send` · `POST /api/account/balance` (Swagger: `bulk-a
 Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib/server/sms.ts`
 (facade), `src/app/api/webhooks/blackball/route.ts` (delivery receipts).
 
-## Status — 2026-09-21
+## Status — 2026-09-22
 
 | | |
 |---|---|
@@ -14,10 +14,10 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
-| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 twice (2026-09-21 08:58 and 13:58 UTC) — **7 of 7** sends used; the ceiling was raised 6 → 7 on Ali's instruction to validate the vendor's whitelisting claim |
-| Delivery callback | 🔴 **still not received** — re-tested 2026-09-17, and twice on 2026-09-21 **after the vendor said our URLs were whitelisted**: no request from any address but our own, 9 and 10 minutes after a send (§4.3, §4.4) |
+| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 three times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55 UTC) — **8 of 8** sends used; the ceiling went 6 → 7 → 8 on Ali's instructions to validate the vendor's successive claims. ⭐ Ali confirms the handset RECEIVES every one of them |
+| Delivery callback | 🔴 **still not received** — re-tested 2026-09-17, twice on 2026-09-21 **after the vendor said our URLs were whitelisted**, and again 2026-09-22 **after they said they had changed the callback**: still not one POST (§4.3–§4.5) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
-| Balance | TZS 214 |
+| Balance | TZS 208 |
 
 ---
 
@@ -251,6 +251,29 @@ whitelisted"*): `sms_a4ef3c7a941cc4c5af0aadd5` at **13:58:24 UTC**, then a 10-mi
 request of its own and discarded this machine's address. **No audit row, no request from any other
 address.** Between the two sends, three hours apart, not one retry arrived either — although the vendor
 states the callback retries 5 times.
+
+### 4.5 Re-tested 2026-09-22, after "we changed things" — the fault is now isolated
+
+`sms_7166e21d7213fee54a288e17` at **06:55:36 UTC**; watched for POSTs only, excluding this machine.
+**No POST, no receipt row**, and no retry for either of the previous day's two references.
+
+Three facts now bound the problem from both sides, and together they say where it is NOT:
+
+1. ⭐ **The messages arrive.** Ali confirms the handset receives every test SMS. Sending, the approved
+   sender ID and the vendor's routing all work; only the receipt is missing.
+2. ⭐ **Their side can reach us, by hand.** At 06:43–06:44 UTC — twelve minutes BEFORE the send —
+   the edge log recorded `GET` from a Mac Chrome browser and two `HEAD`s from Skype's link-preview
+   bot (`52.112.103.x`, `52.123.138.x`), all answered **200**. Someone opened our callback URL and
+   pasted it into a chat. So the address is right, the network path works, and nothing of ours refuses
+   them. ⚠️ It is also NOT a receipt: a person opening a URL is not the gateway posting to it, and
+   this is the third shape of traffic in this file that could be mistaken for the vendor's callback
+   (after our own probe, §4.4, and the Tanzanian browser GET of 2026-09-16, §4.2).
+3. 🔴 **No POST has ever been made.** A POST with a wrong token would still be recorded
+   (`webhook.blackball.rejected`). Silence means the call is not attempted.
+
+So the remaining fault is entirely inside their platform: the delivery callback is not being fired for
+our account. What to ask for next is in §8 item 1 — and the cheapest decisive test is to have them post
+one receipt to the URL by hand while we watch, which distinguishes "cannot reach us" from "never fires".
 
 ⚠️ **Two facts about the instruments, so an empty result is never over-read.** Railway keeps HTTP logs
 only for the CURRENT deployment (this one had restarted 15 minutes earlier, so its log was empty of
