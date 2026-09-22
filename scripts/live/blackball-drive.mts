@@ -71,8 +71,10 @@ const TO = "+255772619619";
  *  The seventh send exists to answer exactly that one question — a callback cannot be provoked
  *  without a message. ⛔ Raise this only on an owner instruction, and record the instruction here.
  *  ⭐ 7 → 8 on 2026-09-22: Ali, *"they said please retest now, they changed things"*. One send, to see
- *  whether the change they made produces a callback. */
-const TOTAL_SEND_CEILING = 8;
+ *  whether the change they made produces a callback. ⭐ 8 → 9 on 2026-09-22: Ali, *"retry now, they
+ *  say"* — the vendor's third claim of a fix in two days. ⭐ 9 → 10 on 2026-09-22: Ali, *"test now,
+ *  they said they fixed it"* — the first claim made AFTER they were given the tokened URL. */
+const TOTAL_SEND_CEILING = 10;
 /** A balance under this is a stop: the float belongs to login codes. */
 const STOP_BELOW_TZS = 100;
 /** How long to let a charge land before re-reading the balance. */
