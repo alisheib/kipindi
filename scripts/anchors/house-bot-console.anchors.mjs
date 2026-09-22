@@ -637,7 +637,7 @@ export const MUTATIONS = [
     file: GATE,
     from: `           \`switched by \${control?.switchedById ?? "System"}\`,`,
     to: `           \`switched by \${control?.switchedReason ?? "System"}\`,`,
-    expect: "1.306 · the ON sentence names the time and the ACTOR BY ID",
+    expect: "1.306 · the ON sentence names the DAY and the time, and the ACTOR BY ID",
     suite: "console-mem",
   },
 
@@ -2477,9 +2477,9 @@ import { formatEat } from "@/lib/utils";`,
     name: "355-failed-reads-empty · a FAILED activity read answers an empty list, so the kit's failure treatment is never reached and a read that nobody could take looks like an account that has done nothing",
     file: GATE,
     from: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs));`,
     to: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? []
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs));`,
     expect: "1.355 · a failed activity read is `feed === null`",
     suite: "console-mem",
   },
@@ -2529,11 +2529,16 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
-    name: "410-rail-rank · the window filter drops the dense rank, so one rail is 44px beside 32px chips — the same control at two sizes on one screen",
+    /* 🔴 THE DEFECT TURNED OVER WITH THE PRODUCT (2026-09-23). The rail used to be uniformly DENSE and this
+       mutation dropped the rank from ONE control; the rail is now uniformly the shared 44px rung, because this
+       section's visual gate holds every control to a 40px tap floor, so the same defect is the dense rank
+       coming BACK to one control. Same disease — one control at a different size from its neighbours — planted
+       from the side the product is now on. */
+    name: "410-rail-rank · the window filter takes the dense rank BACK, so one 32px control stands beside 44px chips — the same control at two sizes on one screen, and under this section's own tap floor",
     file: RAIL,
-    from: `      <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />`,
-    to: `      <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />`,
-    expect: "1.410 · every rank-taking control on the rail takes the DENSE rank",
+    from: `        <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />`,
+    to: `        <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />`,
+    expect: "1.410 · every rank-taking control on the rail takes the SHARED rank",
     suite: "console-mem",
   },
   {

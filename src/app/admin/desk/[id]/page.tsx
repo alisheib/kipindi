@@ -508,7 +508,7 @@ async function AdminDeskAccountContent({
                   <table className="admin-tbl">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
@@ -525,7 +525,13 @@ async function AdminDeskAccountContent({
                              served markup, and a bounded record id is the one thing D19 says this section may
                              never put in a response. */
                           <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
-                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>
+                              {r.when}
+                              {/* ⭐ A QUEUED STAKE SAYS WHEN IT FIRES AND WHEN IT GIVES UP (register C8): the When
+                                  column is the instant the engine DECIDED, which for a held COUNTER can be minutes
+                                  before anything happens. The server owns every word of this line. */}
+                              {r.due !== null && <span className="block text-caption text-text-tertiary">{r.due}</span>}
+                            </td>
                             <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
                             <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                             <td className="p-3 text-text">{r.typeWord}</td>
@@ -684,7 +690,7 @@ async function AdminDeskAccountContent({
                   <table className="admin-tbl">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Event</th>
                         <th scope="col" className="text-left p-3">Change</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Who</th>

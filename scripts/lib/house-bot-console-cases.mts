@@ -817,8 +817,11 @@ section("§2 · the strip, the band, the roster and every failure");
     offView.stateSentence === "The desk is off. Nothing will be staked." && offView.chip.word === "Off", j(offView.stateSentence));
   await w.switchOn();
   const onView = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
-  ok("1.306 · the ON sentence names the time and the ACTOR BY ID — never a display name, a phone or an email (ruling 420)",
-    /^On since \d\d:\d\d:\d\d EAT/.test(onView.stateSentence) && onView.stateSentence.includes(`${SEP}switched by `)
+  /* ⭐ THE DAY, NOT ONLY THE CLOCK (register C8, 2026-09-23). This case used to accept `On since 20:14:12 EAT`,
+     and a desk left on over a weekend then read exactly like one switched on four minutes ago — on the one
+     control that starts money moving. The pattern is TIGHTENED here, never relaxed: the day is required. */
+  ok("1.306 · the ON sentence names the DAY and the time, and the ACTOR BY ID — never a display name, a phone or an email (ruling 420)",
+    /^On since \d{1,2} [A-Z][a-z]{2} \d\d:\d\d:\d\d EAT/.test(onView.stateSentence) && onView.stateSentence.includes(`${SEP}switched by `)
       && onView.stateSentence.includes(OFFICER) && onView.chip.word === "On",
     j(onView.stateSentence));
   /* ⛔ THE LABEL USED TO SAY THE OPPOSITE OF THE CODE, AND THE PREDICATE COULD NOT TELL THE TWO APART. It read "the
@@ -3695,7 +3698,10 @@ try {
       NEUTRAL.test("Counter · a sentence the console must never paint · TZS 9,999")
         && (await w.dal.houseBotIntentStore.get(feedIds[0]))!.why !== null, "");
     ok("1.453 · every painted feed field is a FINISHED string or a boolean — no id, no raw enum and no number crosses into the view model",
-      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+      /* ⭐ `due` JOINED THE ROW AT 2026-09-23 (register C8): a QUEUED stake now says when it fires and when it
+         expires, because the When column is the instant the engine DECIDED and a held COUNTER fires minutes
+         later. It is a FINISHED string like every other field — no id, no enum, no raw instant. */
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
         && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
       j(Object.keys(p1.feed[0] ?? {}).sort()));
     ok("1.317 · every row's outcome word and type word come from the console's own TOTAL maps, and its note is the console's own sentence — never a raw enum",
@@ -4187,12 +4193,24 @@ try {
         && (railSrc.match(/data-filter-rail/g) ?? []).length === 1
         && !/<Tabs[\s\S]*?data-filter-rail/.test(detail),
       j(railHooks));
-    ok("1.410 · every rank-taking control on the rail takes the DENSE rank and `replace` — a filter is not a navigation, and a rail half at one height is worse than either",
+    /**
+     * 🔴 THIS CASE USED TO REQUIRE THE DENSE RANK, AND THE SECTION'S OWN VISUAL GATE CALLED THAT A FAULT.
+     *
+     * The dense rank's floor is 32px — `--h-control-xs`, the documented admin exception — while
+     * `qa:house-bots-visual` holds every interactive control on this section to `--tap-min`, read from the
+     * page at **40px**. Measured on a served build (2026-09-23): 21 controls under the floor on the account's
+     * Activity route and 22 on the desk's, every one of them a chip on this rail.
+     * ⛔ SO THE ASSERTION IS INVERTED RATHER THAN RELAXED: the rail takes NO rank prop at all, which is the
+     * shared 44px rung, and this case now refuses the dense rank on this file specifically. `replace` and the
+     * "one height for the whole rail" rule are unchanged — a rail half at one height is still worse than either.
+     */
+    ok("1.410 · every rank-taking control on the rail takes the SHARED rank and `replace` — the dense 32px exception is refused here, because this section's own visual gate holds every control to the 40px tap floor",
       (railSrc.match(/<(?:FilterPill|DateTimeRangeFilter)\b/g) ?? []).length === 2
-        && (railSrc.match(/rank="dense"/g) ?? []).length === 2
+        && (railSrc.match(/rank="dense"/g) ?? []).length === 0
+        && (railSrc.match(/rank=/g) ?? []).length === 0
         && (railSrc.match(/\breplace\b/g) ?? []).length === 2
         && !/QueryStrip/.test(railSrc) && !/h-\[32px\]|32px/.test(railSrc),
-      j({ controls: (railSrc.match(/<(?:FilterPill|DateTimeRangeFilter)\b/g) ?? []).length }));
+      j({ controls: (railSrc.match(/<(?:FilterPill|DateTimeRangeFilter)\b/g) ?? []).length, ranks: (railSrc.match(/rank=/g) ?? []).length }));
     ok("1.410 · the rail is DECLARED in the filter-language gate's own surface list, which is what subjects it to that suite's §6 rules at all",
       read("scripts/filter-language.test.mts").includes(`"${rail}"`), rail);
     /* ⛔ AND THE RAIL FILE REACHES NOTHING: no route literal, no closed list, no house module, and no server module. */
@@ -4207,7 +4225,7 @@ try {
     const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the activity table's headers are the control facts in order, with the money column SECOND and headed exactly `Stake`",
-      all(feedHeaders) === all(["When", "Stake", "Outcome", "Type", "Product", "Note"]), j(feedHeaders));
+      all(feedHeaders) === all(["When (EAT)", "Stake", "Outcome", "Type", "Product", "Note"]), j(feedHeaders));
     ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
       /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
         && !/admin-tbl min-w-/.test(detail), "");
@@ -4216,7 +4234,7 @@ try {
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
-      all(histHeaders) === all(["When", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
+      all(histHeaders) === all(["When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
     /* 🔴 THE REFUSAL'S HEADING IS NUMBER-AGNOSTIC, AND THAT TOO WAS READ OFF A TILE: a singular title
        ("Part of this address was not used") sat above a plural sentence ("Parts of this address were …"), one
        above the other, on the same card. The heading comes from the SERVER like every other sentence here, so the
@@ -4305,10 +4323,10 @@ section("§2e3 · the desk landing page's activity and history panels");
     const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
-      j(feedHeaders) === j(["Account", "Stake", "When", "Outcome", "Type", "Product", "Note", ""]),
+      j(feedHeaders) === j(["Account", "Stake", "When (EAT)", "Outcome", "Type", "Product", "Note", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
-      j(histHeaders) === j(["Account", "When", "Event", "Change", "Who"]) && !/amount/.test(histThead),
+      j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
       j(histHeaders));
     ok("1.373 · the desk feed's money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither landing table takes a `min-w-*` on the table itself",
       /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(panelOf("activity"))

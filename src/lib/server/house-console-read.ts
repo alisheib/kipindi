@@ -711,9 +711,24 @@ export function consoleDutyPhrase(name: string): string {
   return CONSOLE_DUTY_PHRASE[name] ?? name;
 }
 
-/** "Last seen: 4 min ago" / "Last seen: never" / 354(c)'s "Last seen: unknown". */
+/**
+ * "Last seen: 45 s ago" / "Last seen: 4 min ago" / "Last seen: never" / 354(c)'s "Last seen: unknown".
+ *
+ * 🔴 WHY THIS DOES NOT SIMPLY CALL `relativeEat` (register C8, 2026-09-23). That helper buckets everything
+ * under a minute as "just now", which is right beside a last bet and WRONG here, because the two thresholds
+ * disagree: `ENGINE_STALE_MS` is 30 s. Between 30 s and 60 s the verdict is STALE and the meta line read
+ * **"The engine is not running · Last seen: just now"** — one card stating two opposite things about the same
+ * beat, which is the 432(n) defect inside a single Callout.
+ * ⛔ SO THE SUB-MINUTE BUCKET IS SECONDS, and it is only ever reached by a verdict that has already decided
+ * the engine is late. A reader who sees "45 s ago" under "not running" can tell it is a real stall and not a
+ * page that loaded a moment early.
+ */
 function lastSeen(atMs: number | null, nowMs: number): string {
   if (atMs === null) return "Last seen: never";
+  const secs = Math.floor((nowMs - atMs) / 1_000);
+  if (!Number.isFinite(secs)) return "Last seen: unknown";
+  if (secs < 0) return "Last seen: just now";
+  if (secs < 60) return `Last seen: ${secs} s ago`;
   const rel = relativeEat(new Date(atMs).toISOString(), nowMs);
   return `Last seen: ${rel ? rel.text : "unknown"}`;
 }
@@ -911,7 +926,18 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
   const { control, roster, dayBooks, exposure, schemaMissing, controlUnreadable } = core;
   const unsetRequired = control ? REQUIRED_FOR_MASTER_ON.filter((f) => control[f] == null).length : 0;
   const on = control ? control.enabled : null;
-  const switchedAt = control?.switchedAt ? formatEat(Date.parse(control.switchedAt), "HH:MM:SS") : null;
+  /**
+   * ⭐ THE DAY, NOT ONLY THE CLOCK (register C8, 2026-09-23).
+   *
+   * 🔴 IT READ `On since 20:14:12 EAT` AND SAID NOTHING ABOUT WHICH DAY. The master switch is the one control
+   * on this platform that starts money moving, and a desk left on over a weekend read exactly the same as one
+   * switched on four minutes ago — the officer's only way to tell them apart was to remember. A time with no
+   * date is not a timestamp; it is a time of day.
+   * ⚠️ The same shape `relativeEat` already uses for its title, so the two cannot spell one instant two ways.
+   */
+  const switchedAt = control?.switchedAt
+    ? `${formatEat(Date.parse(control.switchedAt), "D MMM")} ${formatEat(Date.parse(control.switchedAt), "HH:MM:SS")}`
+    : null;
   /* ⛔ RULING 474 · OPERATOR DATA, VERBATIM BUT BOUNDED. Never censored, never rewritten — clamped, so a
    * 300-code-point reason cannot run the length of the strip and out of the card, and into every screenshot
    * of it. ⚠️ ITS OWN STATEMENT, so the declared mutation that removes the bound can anchor on a line that is
@@ -1819,10 +1845,15 @@ const CONSOLE_FLAG_HELP: Readonly<Record<keyof typeof CONSOLE_FLAG_KEY, string>>
   productPolls: "Let this account take part in polls.",
   updownCounter: "When a player backs one side of a round, this account may answer on the other side.",
   updownFill: "When one side of a round is much thinner than the other, this account may even it up.",
-  updownOpener: "When a round has no bets at all, this account may place the first one so players have something to answer.",
+  /* ⭐ THE SCOPE WINDOW, SAID ON THE SWITCH ITSELF (register C8, 2026-09-23). An OPENER is the one mode bounded
+     by a MOMENT rather than by a market's own state: `planOpener` refuses any market whose bettable-from is
+     earlier than the later of the desk's switch-on and this account's Start (ruling 92). Nothing on any screen
+     said so, and the silence reads as a fault — an officer turns it on, watches quiet rounds go unopened, and
+     has no way to learn that the rule is working exactly as written. */
+  updownOpener: "When a round has no bets at all, this account may place the first one so players have something to answer. Only rounds that begin after the desk is switched on and after this account is started.",
   pollsCounter: "When a player backs one side of a poll, this account may answer on the other side.",
   pollsFill: "When one side of a poll is much thinner than the other, this account may even it up.",
-  pollsOpener: "When a poll has no bets at all, this account may place the first one so players have something to answer.",
+  pollsOpener: "When a poll has no bets at all, this account may place the first one so players have something to answer. Only polls created after the desk is switched on and after this account is started.",
   enterNow: "Permit an officer to place one bet from this account by hand. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
   targeting: "Permit an officer to point this account at a chosen poll. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
 };
@@ -3406,6 +3437,18 @@ export type ConsoleFeedRow = {
   productWord: string;
   /** The console's own sentence for the engine's outcome code, or `null` for a row that simply landed. */
   note: string | null;
+  /**
+   * ⭐ WHEN A QUEUED STAKE WILL ACTUALLY BE PLACED, AND WHEN IT STOPS BEING ABLE TO (register C8, 2026-09-23).
+   *
+   * 🔴 A PENDING ROW SAID ONLY WHEN IT WAS DECIDED. `when` is the row's `createdAt` — the instant the engine
+   * worked the stake out — and for a queued row that is the one time an officer does NOT need: the decision is
+   * made, and what they are waiting on is the FIRING. A COUNTER is held to the player's exit close, so "23:41:07"
+   * in the When column could be five minutes before anything happens, and nothing on the row said so.
+   * ⛔ BOTH INSTANTS, BECAUSE THEY ANSWER DIFFERENT QUESTIONS: `dueAt` is when it fires, `staleAt` is when it
+   * gives up. A row showing only the first cannot be told from one that will never fire at all.
+   * ⚠️ `null` ONCE THE ROW IS FINISHED — a countdown on a settled stake is a countdown to nothing.
+   */
+  due: string | null;
   /** True for the ONE row a delivered bell's `&intent=` names. ⛔ A flag, never the id — an id in an attribute is served markup. */
   anchored: boolean;
 };
@@ -3838,7 +3881,26 @@ function consoleLastPage(total: number | null, want: number, perPage: number): n
 }
 
 /** One intent, painted. ⛔ Finished strings and booleans only — see the section header for what may not cross. */
-function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null): ConsoleFeedRow {
+/**
+ * ⭐ WHAT A QUEUED ROW IS WAITING FOR, IN WORDS (register C8, 2026-09-23).
+ *
+ * ⛔ THE COUNT IS ROUNDED UP, NOT DOWN: "fires in 0 min" on a stake 40 seconds away is a row that looks
+ * finished and is not. Under a minute it says so in seconds; past its due time it says "due now", because a
+ * negative countdown is worse than no countdown.
+ * ⛔ THE EXPIRY IS `HH:MM` AND THE FIRING IS `HH:MM:SS`, deliberately: the officer acts on the first to the
+ * second, and reads the second as a deadline.
+ */
+function feedDueLine(dueAtIso: string | null, staleAtIso: string | null, nowMs: number): string | null {
+  const due = dueAtIso == null ? NaN : Date.parse(dueAtIso);
+  if (!Number.isFinite(due)) return null;
+  const secs = Math.round((due - nowMs) / 1_000);
+  const countdown = secs <= 0 ? "due now" : secs < 60 ? `fires in ${secs} s` : `fires in ${Math.ceil(secs / 60)} min`;
+  const fires = `${countdown}${SEP}${formatEat(due, "HH:MM:SS")} EAT`;
+  const stale = staleAtIso == null ? NaN : Date.parse(staleAtIso);
+  return Number.isFinite(stale) ? `${fires}${SEP}expires ${formatEat(stale, "HH:MM")}` : fires;
+}
+
+function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number): ConsoleFeedRow {
   const at = Date.parse(i.createdAt);
   /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
      instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
@@ -3858,6 +3920,9 @@ function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null): Conso
     note: code != null && Object.prototype.hasOwnProperty.call(CONSOLE_SKIP_SENTENCE, code)
       ? (CONSOLE_SKIP_SENTENCE as Record<string, string>)[code]
       : null,
+    /* ⛔ ONLY WHILE IT IS STILL GOING TO HAPPEN. `PENDING` is queued and `CLAIMED` is in flight; every other
+       status is a row whose story is over, and a countdown under it would be a promise about the past. */
+    due: i.status === "PENDING" || i.status === "CLAIMED" ? feedDueLine(i.dueAt, i.staleAt, nowMs) : null,
     anchored: anchorId != null && i.id === anchorId,
   };
 }
@@ -4604,7 +4669,7 @@ export async function houseDetailForConsole(
     } catch { feedPageRows = null; }
   }
   const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs));
 
   const historyTotal = wantHistory && historyCountR.status === "fulfilled" ? historyCountR.value : null;
   let historyPageRows = wantHistory && historyR.status === "fulfilled" ? historyR.value : null;
@@ -5337,7 +5402,7 @@ export async function houseFeedForConsole(
 
   const byId = consoleRosterMap(core.roster);
   const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({
-    ...consoleFeedRow(i, q.intentId),
+    ...consoleFeedRow(i, q.intentId, Date.now()),
     ...consoleAccountCell(byId, i.houseBotId),
     accountHref: consoleBotHref(i.houseBotId),
     /* ⛔ ONE POPULATION FOR THE BADGE AND FOR THE CONTROL (the `CONSOLE_PENDING_STATUSES` table): a row the badge
