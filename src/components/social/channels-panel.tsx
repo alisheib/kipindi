@@ -48,7 +48,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
-import { SOCIAL } from "@/lib/social";
+import { SOCIAL, SOCIAL_LIVE } from "@/lib/social";
 import { SOCIAL_MARK } from "@/components/ui/social-marks";
 import { isCommitSurface } from "@/lib/surfaces";
 import { useInvitationSlot } from "@/lib/invitation-slot";
@@ -356,7 +356,7 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
       </div>
 
       <ul className="mt-1 space-y-0.5">
-        {SOCIAL.map((s, i) => {
+        {SOCIAL_LIVE.map((s, i) => {
           const Mark = SOCIAL_MARK[s.labelKey];
           const copy = PANEL_COPY[s.labelKey];
           return (

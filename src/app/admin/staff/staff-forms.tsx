@@ -97,6 +97,8 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
   const [confirming, setConfirming] = useState(false);
   /* The bar submits through the FORM, not past it — see the note on onSave below. */
   const assignFormRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
 
   /* ⛔ `changed` alone is not the whole answer: an officer who has typed a REASON and not yet
      picked a role has still done work, and losing it means retyping an audited justification. */
@@ -144,12 +146,13 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
         /* ⛔ requestSubmit(), NOT setConfirming(true): the bar must take the SAME path as the
            button, or it skips this form onSubmit guard and would open the confirm ceremony for
            a no-op (a typed reason with no role change) or for a reason under 5 characters. */
+        saveAnchor={saveRef}
         onSave={() => assignFormRef.current?.requestSubmit()}
         onDiscard={() => { setRole(currentRole); setReason(""); }}
         saveLabel={isRevoke ? "Revoke staff access" : "Change role"}
       />
       <UnsavedChangesGuard dirty={unsaved} body="This role change has not been saved. Leaving now discards it." />
-      <Button type="submit" variant="primary" loading={pending} disabled={!changed}>
+      <Button ref={saveRef} type="submit" variant="primary" loading={pending} disabled={!changed}>
         {isRevoke ? "Revoke staff access" : "Change role"}
       </Button>
 

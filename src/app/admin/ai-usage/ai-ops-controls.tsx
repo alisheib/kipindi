@@ -30,6 +30,8 @@ export function AiOpsControls({
      lost the change and the AI keeps running on the old one. ⭐ This is why `useFormDirty`
      binds `change` as well as `input`: a select fires no `input` event in every engine. */
   const formRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
   const { dirty, markSaved, formProps } = useFormDirty(formRef);
 
   const onModelSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -71,7 +73,7 @@ export function AiOpsControls({
               }))}
             />
           </div>
-          <Button type="submit" size="sm" loading={pending}>Apply</Button>
+          <Button ref={saveRef} type="submit" size="sm" loading={pending}>Apply</Button>
         </form>
         <div className="mt-2 rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-body-sm text-text-muted leading-relaxed space-y-1">
           <p>
@@ -119,6 +121,7 @@ export function AiOpsControls({
         saving={pending}
         detail="The AI keeps running on the current model until this is applied."
         saveLabel="Apply"
+        saveAnchor={saveRef}
         onSave={() => formRef.current?.requestSubmit()}
         onDiscard={() => { formRef.current?.reset(); markSaved(); }}
       />

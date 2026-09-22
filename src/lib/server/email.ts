@@ -74,7 +74,7 @@ const COMPANY = "50pick";
  */
 import { HELPLINE } from "@/lib/support-config";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
-import { SOCIAL } from "@/lib/social";
+import { SOCIAL, SOCIAL_LIVE } from "@/lib/social";
 
 /**
  * The social labels as they appear in email. ⛔ NOT from `i18n-dict.ts`, and that is not an
@@ -625,7 +625,7 @@ function wrap(body: string, opts: { accent?: "gold" | "royal"; promo?: boolean }
     </p>
     ${!opts.promo ? "" : `
     <p style="margin:12px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_FAINT}">
-      ${SOCIAL.map((s) => `<a href="${s.url}" style="color:${TEXT_SUBTLE};text-decoration:none">${SOCIAL_EMAIL_LABEL[s.labelKey]}</a>`).join(` <span style="color:${TEXT_FAINT}">&middot;</span> `)}
+      ${SOCIAL_LIVE.map((s) => `<a href="${s.url}" style="color:${TEXT_SUBTLE};text-decoration:none">${SOCIAL_EMAIL_LABEL[s.labelKey]}</a>`).join(` <span style="color:${TEXT_FAINT}">&middot;</span> `)}
     </p>`}
   </td></tr>
 

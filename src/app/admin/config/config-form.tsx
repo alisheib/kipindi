@@ -38,6 +38,8 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
      state never sees an edit. useFormDirty snapshots the form and compares, so a value typed
      back to what it was stops being dirty rather than warning over nothing. */
   const formRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
   const { dirty, markSaved, formProps } = useFormDirty(formRef);
 
   const runSave = (fd: FormData) => {
@@ -315,6 +317,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         dirty={dirty && mayAct}
         saving={pending}
         detail="These rates govern every market on the platform."
+        saveAnchor={saveRef}
         onSave={() => formRef.current?.requestSubmit()}
         onDiscard={() => { formRef.current?.reset(); markSaved(); }}
         saveLabel="Save · Hifadhi"
@@ -325,7 +328,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
       />
 
       <div className="flex items-center gap-2 pt-1">
-        <Button type="submit" variant="primary" loading={pending} disabled={!mayAct} title={disabledReason}>
+        <Button ref={saveRef} type="submit" variant="primary" loading={pending} disabled={!mayAct} title={disabledReason}>
           Save · Hifadhi
         </Button>
         {/* The old note here read "Combined tax + commission + reserve + aggregator

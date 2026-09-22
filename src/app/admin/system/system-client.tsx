@@ -92,6 +92,8 @@ export function SystemActions({ kind }: { kind: "verify-chain" }) {
 export function SupportConfigForm({ config }: { config: SupportConfig }) {
   /* ADMIN-TABS-2026-09-01 — uncontrolled inputs, so the snapshot hook owns `dirty`. */
   const cfgFormRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
   /* ⭐ The ONE piece of controlled state on this form, and only so the dial target can be
      previewed as it is typed. The phone box stays uncontrolled (`defaultValue`) so the snapshot
      hook keeps owning `dirty` — this mirrors the value rather than driving it. */
@@ -192,7 +194,7 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
           <Input value={LICENCE_NUMBER()} readOnly disabled mono />
         </Field>
       </div>
-      <Button type="submit" variant="primary" loading={pending}>
+      <Button ref={saveRef} type="submit" variant="primary" loading={pending}>
         Save · Hifadhi
       </Button>
       {/* ⛔ THIS PAGE IS A SECTION RAIL, which is exactly why the bar earns its place: an
@@ -202,6 +204,7 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
         dirty={dirty}
         saving={pending}
         detail="Support contact details are shown on help, login, legal and KYC pages."
+        saveAnchor={saveRef}
         onSave={() => cfgFormRef.current?.requestSubmit()}
         onDiscard={() => { cfgFormRef.current?.reset(); markSaved(); }}
         saveLabel="Save · Hifadhi"

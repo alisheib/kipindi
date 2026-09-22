@@ -90,6 +90,22 @@ type BarProps = {
   detail?: React.ReactNode;
   saveLabel?: string;
   discardLabel?: string;
+  /**
+   * ⭐ THE FORM'S OWN SAVE BUTTON — pass it and the bar STOPS DRAWING A SECOND ONE whenever that
+   * button is on screen (owner, 2026-09-22: *"we have 2 save buttons, one pending changes and one
+   * always there, I don't know when should both be visible"*).
+   *
+   * ⛔ THE ANSWER IS "NEVER BOTH", AND THE RULE FALLS OUT OF WHAT THE BAR IS FOR. The bar exists
+   * because a form can be taller than the viewport, so the form's own Save may be scrolled out of
+   * reach — the bar's Save is a SHORTCUT TO A BUTTON YOU CANNOT SEE. The moment you can see it, the
+   * shortcut is a duplicate: two identical primary buttons, 40px apart, and an officer having to
+   * work out whether they differ. They never did.
+   * ⚠️ WHAT THE BAR KEEPS IN BOTH STATES is the part that is never redundant — that there ARE
+   * unsaved changes, and Discard. Only the Save is conditional.
+   * ⛔ OPTIONAL, AND ITS ABSENCE IS THE OLD BEHAVIOUR. A caller that passes nothing keeps its Save,
+   * so this cannot silently remove the only Save from a form that has no inline one.
+   */
+  saveAnchor?: React.RefObject<HTMLElement | null>;
 };
 
 /**
@@ -179,6 +195,34 @@ export function PendingChangesBar(props: BarProps) {
   const entries = [...registry.values()];
   const painterId = entries.length ? Math.min(...entries.map((e) => e.id)) : 0;
   const top = entries.length ? entries.reduce((a, b) => (b.seq > a.seq ? b : a)) : null;
+
+  /**
+   * ⛔ IS THE FORM'S OWN SAVE ON SCREEN? (see `saveAnchor`). While it is, this bar draws no Save.
+   *
+   * ⚠️ IT WATCHES THE PAINTED ENTRY'S ANCHOR, NOT THIS INSTANCE'S. The bar is a singleton: what it
+   * shows belongs to whichever form was dirtied last, which may be a different instance. Observing
+   * this instance's own anchor would hide the Save on the strength of a button belonging to a form
+   * nobody is looking at.
+   * ⚠️ AND IT FAILS TOWARDS SHOWING THE SAVE. No anchor, no `IntersectionObserver`, an anchor not
+   * yet mounted — every one of those leaves `anchorOnScreen` false and the bar keeps its Save. A
+   * bug here must never be able to remove the only way to save a form.
+   */
+  const shownAnchorEl = top?.props.current.saveAnchor?.current ?? null;
+  const [anchorOnScreen, setAnchorOnScreen] = React.useState(false);
+  React.useEffect(() => {
+    if (!shownAnchorEl || typeof IntersectionObserver === "undefined") {
+      setAnchorOnScreen(false);
+      return undefined;
+    }
+    /* ⚠️ A high threshold on purpose: a Save button one pixel into view is not "in reach", and a
+       low threshold makes the bar's button flicker on and off as the page settles. */
+    const io = new IntersectionObserver(
+      (records) => setAnchorOnScreen(records.some((r) => r.isIntersecting)),
+      { threshold: 0.75 },
+    );
+    io.observe(shownAnchorEl);
+    return () => io.disconnect();
+  }, [shownAnchorEl]);
 
   /**
    * ⚠️ THE PAGE RESERVES THE BAR'S MEASURED HEIGHT, AND BOTH HALVES OF THAT WERE LEARNED THE
@@ -288,7 +332,8 @@ export function PendingChangesBar(props: BarProps) {
                 {shownDiscardLabel}
               </Button>
             )}
-            {shownSave && (
+            {/* ⛔ NEVER A SECOND SAVE WHILE THE FORM'S OWN IS ON SCREEN — see `saveAnchor`. */}
+            {shownSave && !anchorOnScreen && (
               <Button type="button" variant="primary" size="sm" onClick={shownSave} loading={shownSaving}>
                 {shownSaveLabel}
               </Button>
@@ -541,22 +586,64 @@ export function useFormDraft({
 
   /* ⛔ READ ONCE, AFTER MOUNT. `localStorage` does not exist while the server renders, and a draft read during
      render would be a hydration mismatch on every page that has one. */
+  /**
+   * ⛔ THIS EFFECT IS AUTHORITATIVE — IT SETS `found` ON EVERY PATH, INCLUDING THE EMPTY ONES.
+   *
+   * 🔴 It used to `return` without touching `found` when there was no draft, and again when the
+   * stored draft belonged to an older row version. Both leave a STALE OFFER on screen. The second
+   * is the one that bites: `version` is the row version the form was rendered from, so a successful
+   * save BUMPS it and re-runs this effect — which is exactly the moment the offer must go, and
+   * exactly the moment the old code took the silent `return`. Found by a gate, not by reading.
+   */
   React.useEffect(() => {
     const e = readDraft(slot);
+    if (!e) { setFound(null); return; }
     /* A draft the account has moved past is DELETED, not shown: it can never be restored safely again. */
-    if (e && e.v !== version) { try { window.localStorage.removeItem(slot); } catch { /* nothing to do */ } return; }
-    if (e) setFound(e);
+    if (e.v !== version) {
+      try { window.localStorage.removeItem(slot); } catch { /* nothing to do */ }
+      setFound(null);
+      return;
+    }
+    setFound(e);
   }, [slot, version]);
 
-  /* Write while dirty, remove the moment the form is clean — a saved or discarded form holds nothing to recover,
-     and a draft left behind after a save is what turns "restore" into "undo my own save". */
+  /**
+   * ⛔ A DRAFT IS REMOVED WHEN THE FORM *BECOMES* CLEAN — NEVER MERELY BECAUSE IT *IS* CLEAN.
+   *
+   * 🔴 BOTH HALVES OF THIS WERE WRONG AND BOTH WERE REPRODUCED IN A BROWSER (2026-09-22), the second
+   * one reported by the owner: *"I had pending changes, but clicked the save in bottom, I still had
+   * the popup that pending changes from before"*.
+   *
+   * ① **THE DRAFT DELETED ITSELF ON MOUNT.** A form starts clean, so `!dirty` was true on the very
+   *   first effect run and the entry was removed immediately — the same render that had just read it
+   *   and offered it. Measured: after the reload that showed the offer, `localStorage` already held
+   *   ZERO draft keys. So the offer could be taken up on that one screen and never again: reload
+   *   twice, or leave and come back, and the work was gone. **That is data loss inside the feature
+   *   built to prevent data loss**, and it was invisible because the offer still appeared once.
+   * ② **THE OFFER SURVIVED A SAVE.** `found` is React state, and only `restore()` and `drop()`
+   *   cleared it — so an officer who ignored the offer, filled the form and pressed Save was left
+   *   looking at "Unsaved changes from earlier" over a form that had just saved cleanly. The bar was
+   *   correctly gone; this was not. A panel offering to restore work that no longer exists is worse
+   *   than no panel, because the obvious next click UNDOES the save.
+   *
+   * ⭐ `everDirty` is what tells the two states apart: a form that has never been edited in this
+   * mount has nothing to clear, and a form that goes clean after being dirty has been saved or
+   * discarded and its draft is spent. One ref, and the difference between them stops being invisible.
+   */
+  const everDirty = React.useRef(false);
   React.useEffect(() => {
     const form = formRef.current;
     if (!form) return undefined;
     if (!dirty) {
-      try { window.localStorage.removeItem(slot); } catch { /* nothing to do */ }
+      if (everDirty.current) {
+        everDirty.current = false;
+        try { window.localStorage.removeItem(slot); } catch { /* nothing to do */ }
+        /* The offer is about work that no longer exists. Clearing it is the whole of defect ②. */
+        setFound(null);
+      }
       return undefined;
     }
+    everDirty.current = true;
     const write = () => {
       try {
         const values: Record<string, string> = {};

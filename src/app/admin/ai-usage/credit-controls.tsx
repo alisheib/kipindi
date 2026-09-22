@@ -20,6 +20,8 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
      and a console that warns on some forms and not others teaches nobody when to trust it. The
      rule is uniform: every page-level form gets both surfaces. */
   const formRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
   const { dirty, markSaved, formProps } = useFormDirty(formRef);
 
   const onSetLimit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -53,7 +55,7 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
         <Field label="Spend limit per top-up window (USD)" className="flex-1 min-w-[140px]" dataField="limitUsd">
           <Input name="limitUsd" type="number" step="0.01" min="0.01" inputMode="decimal" defaultValue={String(limitUsd)} placeholder="20" mono />
         </Field>
-        <Button type="submit" loading={pending}>Set limit</Button>
+        <Button ref={saveRef} type="submit" loading={pending}>Set limit</Button>
       </form>
       <ConfirmDialog
         tone="warning"
@@ -80,6 +82,7 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
         saving={pending}
         detail="The spend limit governs every top-up window from here on."
         saveLabel="Set limit"
+        saveAnchor={saveRef}
         onSave={() => formRef.current?.requestSubmit()}
         onDiscard={() => { formRef.current?.reset(); markSaved(); }}
       />

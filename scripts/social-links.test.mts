@@ -185,10 +185,28 @@ section("§4 · THE EMAIL ROW IS OPT-IN, AND THE POPULATION IS DISCOVERED");
   /* ⭐ POSITIVE CONTROL, RENDERED. Without it everything above passes the day the row stops
      rendering in email at all — the check would be measuring an absence it caused itself. */
   const allowed = E.welcomeHtml({ name: "Asha" });
-  for (const s of SOCIAL) {
+  for (const s of SOCIAL.filter((a) => a.live)) {
     check(`positive control · an allow-listed email really carries ${s.labelKey}`, allowed.includes(s.url),
           "the renderer cannot see the links, so every check above is vacuous");
   }
+  /**
+   * ⭐ AND THE OTHER HALF OF THE SAME CONTROL — an account switched OFF must be ABSENT from what the
+   * renderer emits (2026-09-22, when TikTok was switched off while its account is deactivated).
+   *
+   * ⛔ THE POSITIVE CONTROL ABOVE NARROWED TO `live`, SO ON ITS OWN IT NOW PROVES LESS. This pair
+   * restores it: every live account is present, every dark one is absent, and the two sets together
+   * are the whole of `SOCIAL` — so "switched off" is measured rather than assumed, and an account
+   * that quietly came back on a page while its row says it is dark is caught.
+   * ⚠️ Asserted on `SOCIAL`, not `SOCIAL_LIVE`: the guard's population must stay the full list, which
+   * is the reason the row is flagged rather than deleted.
+   */
+  const dark = SOCIAL.filter((a) => !a.live);
+  const shown = dark.filter((s) => allowed.includes(s.url)).map((s) => s.labelKey);
+  check(`negative control · the ${dark.length} account(s) switched off render nowhere in email`,
+        shown.length === 0, shown.join(", "));
+  check("…and the live/dark split really covers every account (the pair is not vacuous)",
+        SOCIAL.filter((a) => a.live).length + dark.length === SOCIAL.length && SOCIAL.length >= 2,
+        `live ${SOCIAL.filter((a) => a.live).length} · dark ${dark.length} · total ${SOCIAL.length}`);
   /* …and the negative control, also rendered: the worst message in the corpus must be silent. */
   const closed = E.accountClosedHtml({ name: "Asha", time: "12 Sep 2026" });
   const leaked = SOCIAL.filter((s) => closed.includes(s.url)).map((s) => s.labelKey);

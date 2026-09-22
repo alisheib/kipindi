@@ -174,6 +174,30 @@ ok("3.3 …and the painted box agrees with what will be submitted",
   afterClick && afterClick.checked === true && afterClick.painted === true, JSON.stringify(afterClick));
 
 // ── §4 · Discard actually discards ───────────────────────────────────────────────────────────────────────────
+/**
+ * ⛔ EXACTLY ONE SAVE IS ON SCREEN AT ANY SCROLL POSITION (owner, 2026-09-22: *"we have 2 save
+ * buttons, one pending changes and one always there, I don't know when should both be visible"*).
+ * The bar's Save is a shortcut to a button you cannot see; the moment you can see it, it is a
+ * duplicate. Measured at BOTH ends of the page, because a rule that holds at one is not the rule.
+ */
+console.log("\n§3b · one Save, never two");
+const visibleSaves = () => page.evaluate(() =>
+  [...document.querySelectorAll(".kp-rail.fixed button, main form button")]
+    .filter((b) => /Save/i.test(b.innerText))
+    .filter((b) => { const r = b.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight && r.width > 0; })
+    .map((b) => (b.closest(".kp-rail") ? "BAR" : "FORM")));
+await soft("scroll top", () => page.evaluate(() => window.scrollTo(0, 0)));
+await page.waitForTimeout(900);
+const atTop = (await visibleSaves()) ?? [];
+ok("3b.1 scrolled AWAY from the form's Save, the bar carries the only one", atTop.length === 1 && atTop[0] === "BAR", JSON.stringify(atTop));
+await soft("scroll bottom", () => page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)));
+await page.waitForTimeout(1200);
+const atBottom = (await visibleSaves()) ?? [];
+ok("3b.2 scrolled TO the form's Save, the bar drops its own and the form's is the only one",
+  atBottom.length === 1 && atBottom[0] === "FORM", JSON.stringify(atBottom));
+ok("3b.3 …and the bar still says there are unsaved changes, and still offers Discard",
+  /UNSAVED CHANGES/i.test((await bar()) ?? "") && /Discard/.test((await bar()) ?? ""), (await bar() ?? "").slice(0, 80));
+
 console.log("\n§4 · Discard");
 await clickIfThere("Discard");
 await page.waitForTimeout(700);
@@ -289,9 +313,34 @@ ok("8.4 …including the switches, painted correctly", restoredBox && restoredBo
   JSON.stringify(restoredBox));
 ok("8.5 …and restoring arms the pending bar", (await bar()) !== null);
 
+/**
+ * ⛔ THE OFFER MUST SURVIVE BEING LEFT ALONE, AND MUST NOT SURVIVE A SAVE. 🔴 Both of these were
+ * WRONG when the draft first shipped, and 8.1/8.6 below passed over both of them:
+ *   ① the entry was deleted from storage ON MOUNT (the write effect saw a clean form and removed
+ *     what the read effect had just offered), so a second reload lost the work entirely — data loss
+ *     inside the feature built to prevent it, hidden because the offer still appeared ONCE;
+ *   ② `found` was React state cleared only by restore/discard, so an officer who ignored the offer,
+ *     filled the form and saved was left looking at "Unsaved changes from earlier" over a form that
+ *     had just saved — reported by the owner, and one click from undoing his own save.
+ * 8.6a and 8.6b are the two checks that would have caught them.
+ */
+console.log("\n§8a · the draft survives being left alone, and dies on a save");
+await soft("second reload", () => page.goto(RULES, { waitUntil: "load" }));
+await page.waitForTimeout(3000);
+ok("8.6a the offer is STILL there after a second visit — a draft is not consumed by being looked at",
+  (await page.locator("main").getByText(/Unsaved changes from earlier/).count()) > 0,
+  "the entry was deleted on mount; the work is gone");
+
+/* ⛔ IGNORE the offer — fill and save around it. That is the owner's own path. */
 await clearToasts();
+await clickIfThere("Use starting values");
+await page.waitForTimeout(800);
 await soft("submit", () => page.locator("main form button[type=submit]").click({ timeout: 4000 }));
-await page.waitForTimeout(4000);
+await page.waitForTimeout(4500);
+ok("8.6b a clean save clears the offer ON SCREEN, with no reload",
+  (await page.locator("main").getByText(/Unsaved changes from earlier/).count()) === 0,
+  "the panel still offers to restore work that no longer exists — one click from undoing the save");
+
 await page.goto(RULES, { waitUntil: "load" });
 await page.waitForTimeout(3000);
 ok("8.6 a saved form offers nothing back — the draft is gone",

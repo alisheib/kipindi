@@ -240,6 +240,8 @@ export function DeskLimitsForm({
      snapshots the form and compares, so a value typed back to what it was stops being dirty rather than warning
      over nothing. */
   const formRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
   const { dirty, markSaved, formProps } = useFormDirty(formRef);
   const armed = dirty;
 
@@ -342,6 +344,7 @@ export function DeskLimitsForm({
           markSaved();
         }}
         saveLabel="Save · Hifadhi"
+        saveAnchor={saveRef}
       />
       <UnsavedChangesGuard
         dirty={armed}
@@ -357,7 +360,7 @@ export function DeskLimitsForm({
           ⛔ `items-start` on the stacked axis, not `items-center`: a centred one-line sentence under a
           left-aligned button is the second look for one control this section has already been pulled up for. */}
       <div className="flex flex-col items-start sm:flex-row sm:items-center gap-2 pt-1">
-        <Button type="submit" size="md" variant="primary" loading={pending}>
+        <Button ref={saveRef} type="submit" size="md" variant="primary" loading={pending}>
           Save · Hifadhi
         </Button>
         {/**

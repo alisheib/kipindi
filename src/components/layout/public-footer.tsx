@@ -20,7 +20,7 @@ import { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER } from "@/lib/support-config";
    value in this file is a prop because a `defineConfig` read in a `"use client"` bundle
    returns the module default (E-226). `SOCIAL` has no persisted row to disagree with, so
    the browser and the server agree by construction and there is nothing to thread. */
-import { SOCIAL } from "@/lib/social";
+import { SOCIAL_LIVE } from "@/lib/social";
 import { SOCIAL_MARK } from "@/components/ui/social-marks";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
@@ -153,7 +153,7 @@ export function PublicFooter({
               Without wrapping the third link is pushed off the left edge of a 360 phone, which
               is the failure `qa:landmark-seal` measures and a desktop eyeball never sees. */}
           <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {SOCIAL.map((s) => (
+            {SOCIAL_LIVE.map((s) => (
               <SocialLink
                 key={s.labelKey}
                 href={s.url}

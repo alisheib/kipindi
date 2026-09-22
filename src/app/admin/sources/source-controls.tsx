@@ -124,6 +124,8 @@ export function AddSourceForm() {
      the four fields away deliberately, which is fine — the officer asked. Navigating away threw
      them away too, silently, which is not. */
   const formRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
   const { dirty, markSaved, formProps } = useFormDirty(formRef);
   /* E-254 · the standing refusal an operator may overrule. Held as STATE rather than shown as
      a toast, because a toast is gone in four seconds and this one ends in an audit row. */
@@ -276,7 +278,7 @@ export function AddSourceForm() {
       )}
 
       <div className="flex gap-2">
-        <button type="submit" disabled={pending} className="btn btn-primary btn-md">
+        <button ref={saveRef} type="submit" disabled={pending} className="btn btn-primary btn-md">
           {pending ? "Adding…" : "Add source"}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-md">
@@ -290,6 +292,7 @@ export function AddSourceForm() {
         saving={pending}
         detail="A source that is not added cannot be cited by any market."
         saveLabel="Add source"
+        saveAnchor={saveRef}
         onSave={() => formRef.current?.requestSubmit()}
         onDiscard={() => { formRef.current?.reset(); markSaved(); setOpen(false); }}
       />

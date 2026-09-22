@@ -54,6 +54,19 @@ export type SocialAccount = {
   readonly ariaKey: "ariaInstagram" | "ariaTiktok" | "ariaWhatsappChannel";
   /** Canonical URL. ⛔ No query string — see the docblock. */
   readonly url: string;
+  /**
+   * ⭐ WHETHER THE PRODUCT RENDERS IT RIGHT NOW (owner, 2026-09-22: *"remove any link to tiktok for
+   * now from the web page … any tiktok link, we deactivated for now the page, later we activate"*).
+   *
+   * ⛔ IT IS A FLAG, NOT A DELETION, AND THAT IS THE REQUIREMENT ITSELF. "Later we activate" means
+   * the account comes back, so the URL, the mark, the three locales' label and aria copy and this
+   * row's place in the order all stay exactly where they are. Re-activating is one word.
+   * ⛔ AND THE ENTRY STAYS IN `SOCIAL`, which is what `test:social-links` walks. Commenting the row
+   * out would take its URL out of the guard's population at the same moment it took it off the page
+   * — so the day somebody pastes a tiktok.com link back into a component, the guard that exists to
+   * catch exactly that would have nothing to compare it against.
+   */
+  readonly live: boolean;
 };
 
 export const SOCIAL: readonly SocialAccount[] = [
@@ -61,11 +74,15 @@ export const SOCIAL: readonly SocialAccount[] = [
     labelKey: "instagram",
     ariaKey: "ariaInstagram",
     url: "https://www.instagram.com/50pick.tz/",
+    live: true,
   },
   {
     labelKey: "tiktok",
     ariaKey: "ariaTiktok",
     url: "https://www.tiktok.com/@50pick",
+    /* ⛔ OFF 2026-09-22, by the owner, while the account itself is deactivated. Set this back to
+       `true` to bring it back — nothing else has to change. */
+    live: false,
   },
   /**
    * ⭐ THE CHANNEL IS LAST, AND IT IS LABELLED "channel" FOR A REASON THAT IS NOT STYLE.
@@ -85,5 +102,20 @@ export const SOCIAL: readonly SocialAccount[] = [
     labelKey: "whatsappChannel",
     ariaKey: "ariaWhatsappChannel",
     url: "https://www.whatsapp.com/channel/0029Vb8At5uCxoAtENkyS71Q",
+    live: true,
   },
 ] as const;
+
+/**
+ * ⭐ WHAT THE PRODUCT ACTUALLY RENDERS — every account whose own row says it is live.
+ *
+ * ⛔ THE THREE RENDER SITES USE THIS; THE GUARDS USE `SOCIAL`. That split is the whole point.
+ * `test:social-links` walks `src/` for stray social URLs and checks each account's own shape, and it
+ * must keep seeing an account the page is not currently showing — otherwise switching one off would
+ * quietly shrink the population of the guard that exists to catch a URL being pasted back in by hand.
+ *
+ * ⚠️ IT IS DERIVED, NEVER A SECOND LIST. A hand-kept "the live ones" array beside `SOCIAL` is two
+ * places to remember and one of them will be forgotten — which is exactly how this file's own
+ * docblock says three spellings of one link came about elsewhere in this product.
+ */
+export const SOCIAL_LIVE: readonly SocialAccount[] = SOCIAL.filter((s) => s.live);

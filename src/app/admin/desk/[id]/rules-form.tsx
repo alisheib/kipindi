@@ -112,6 +112,8 @@ export function DeskRulesForm({
   const [clearing, setClearing] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
   const { dirty, markSaved, formProps } = useFormDirty(formRef);
 
   /**
@@ -297,6 +299,13 @@ export function DeskRulesForm({
       setErrors({});
       setWarnings(result.warnings);
       markSaved();
+      /* ⛔ A SAVE ENDS ANY OLDER OFFER, SAID OUTRIGHT RATHER THAN INFERRED (owner's report,
+         2026-09-22: *"I had pending changes, but clicked the save in bottom, I still had the popup
+         that pending changes from before"*). The hook also clears it when the row version moves and
+         when the form goes clean — but neither fires for a form that was saved without ever being
+         dirty in this mount, and an offer to restore work older than the save is one click from
+         undoing the save. The form knows a save happened; it should not make the hook guess. */
+      draft.drop();
       router.refresh();
       /* ⛔ A SAVE THAT LANDED WITHOUT ITS COMPLIANCE ROW SAYS SO. The change is real either way, and telling
          the officer it was not saved is the most expensive sentence this console can print. */
@@ -491,6 +500,7 @@ export function DeskRulesForm({
           markSaved();
         }}
         saveLabel="Save · Hifadhi"
+        saveAnchor={saveRef}
       />
       <UnsavedChangesGuard dirty={dirty} body={model.copy.guardBody} />
 
@@ -515,7 +525,7 @@ export function DeskRulesForm({
        * for it. One `input` event per box, bubbling, is what the form is already listening for.
        */}
       <div className="flex flex-col items-start sm:flex-row sm:items-center gap-2 pt-1">
-        <Button type="submit" size="md" variant="primary" loading={pending}>
+        <Button ref={saveRef} type="submit" size="md" variant="primary" loading={pending}>
           Save · Hifadhi
         </Button>
         <Button type="button" size="md" variant="ghost" disabled={pending} onClick={fillStarting}>
