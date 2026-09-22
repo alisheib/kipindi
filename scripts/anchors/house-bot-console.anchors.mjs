@@ -1717,12 +1717,12 @@ import { formatEat } from "@/lib/utils";`,
      * ⚠️ AND THE ACCIDENT LEFT A REAL FINDING BEHIND: the `parsed == null` branch is measured by NOTHING in this
      * suite — no fixture plants a FAILED rules read — so it could become a lowercase fragment tomorrow and no
      * assertion would move. Registered as a suite finding rather than repaired here. */
+    /* ⭐ RE-ANCHORED 2026-09-22 to the SAME defect: the cell is one LINE per ticked product now, and the unknown is
+     * its one line — the lowercase fragment is planted in the same branch it always was. */
     name: "416-products-case · an unreadable rule set renders a lowercase fragment mid-table again",
     file: GATE,
-    from: `        : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
-          : "Couldn't read",`,
-    to: `        : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
-          : "couldn't read",`,
+    from: `      products: parsed == null || !parsed.ok || !parseCtx ? ["Couldn't read"] : scopeLines(parsed.rules, parseCtx),`,
+    to: `      products: parsed == null || !parsed.ok || !parseCtx ? ["couldn't read"] : scopeLines(parsed.rules, parseCtx),`,
     expect: "1.310 · 416 · a rule set the reader cannot parse renders ONE sentence-cased unknown",
     suite: "console-mem",
   },
@@ -2829,6 +2829,57 @@ import { formatEat } from "@/lib/utils";`,
     from: `      attempt.current = "";\n      if (!result.ok) {`,
     to: `      if (!result.ok) {`,
     expect: "1.CA19 · …and the DIALOG mints a fresh nonce per press and spends it on either answer",
+    suite: "console-mem",
+  },
+  /* ── THE SCOPE FINDING, THE CONSOLE HALF (2026-09-22) ─────────────────────────────────────────────────────────
+   * An ACTIVE account on a switched-ON desk had matched no market, ever, while the roster read "Active · Up & Down ·
+   * Polls": both scope lists were empty and no screen could write them. Each mutation below puts back one piece of
+   * the console as it stood that morning — or the one-line "fix" that would hide the finding again. */
+  {
+    /* (a) the roster paints the SWITCHES' words again — true of the switches, false of the account. */
+    name: "scope-roster-summary-words · the roster's scope cell prints the product words instead of what each product can reach",
+    file: GATE,
+    from: `      products: parsed == null || !parsed.ok || !parseCtx ? ["Couldn't read"] : scopeLines(parsed.rules, parseCtx),`,
+    to: `      products: parsed == null || !parsed.ok || !parseCtx ? ["Couldn't read"] : [productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)],`,
+    expect: "2g.words · ⛔ THE FINDING · the roster's scope line names what each ticked product can REACH",
+    suite: "console-mem",
+  },
+  {
+    /* (b) the row's own refusal dropped — an inert ACTIVE account is a plain green chip and nothing else again. */
+    name: "scope-roster-no-inert-line · the roster stops painting the refusal on an ACTIVE account whose rules reach nothing",
+    file: GATE,
+    from: `      inert: reasons === null || reasons.length === 0 ? null : { text: inertLine(reasons), href: consoleBotTabHref(bot.id, "rules") },`,
+    to: `      inert: null,`,
+    expect: "2g.inert · ⛔ THE FINDING · an ACTIVE account whose rules reach nothing carries its refusal on the roster",
+    suite: "console-mem",
+  },
+  {
+    /* (c) the save drops the category list on the floor — the picker posts it, the row never stores it.
+     * ⚠️ Anchored on the ONE object both documents read from: dropping it from the stored patch alone is masked by
+     * the round-trip fallback, which stores the complete validated document — a mutation the product would survive. */
+    name: "scope-save-drops-categories · the rules save writes an empty category list whatever the picker posted",
+    file: "src/lib/server/house-bot/rules-save.ts",
+    from: `  const scopeLists = { chains: [...input.lists.chains], categories: [...input.lists.categories] };`,
+    to: `  const scopeLists = { chains: [...input.lists.chains], categories: [] as string[] };`,
+    expect: "2g.save · ⛔ the two lists round-trip",
+    suite: "console-mem",
+  },
+  {
+    /* (d) the why-panel is fed a hard-coded empty list — it says nothing stops the account, whatever the rules say. */
+    name: "scope-why-panel-empty · the why-panel's item list is a constant empty array",
+    file: GATE,
+    from: `    items: [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n    ],`,
+    to: `    items: [],`,
+    expect: "2g.why · ⛔ the why-panel lists every reason the engine's predicate raises",
+    suite: "console-mem",
+  },
+  {
+    /* (e) the Start refusal falls back to the generic sentence for a scope cause — the remedy hidden again. */
+    name: "scope-start-generic · a Start refused on a scope cause is painted with the generic RULES sentence, the remedy unnamed",
+    file: GATE,
+    from: `  const scopeField = field in CONSOLE_RULES_FIELD_KEY && !Object.prototype.hasOwnProperty.call(CONSOLE_CAP_KEY, field);`,
+    to: `  const scopeField = false;`,
+    expect: "2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the category remedy",
     suite: "console-mem",
   },
 ];

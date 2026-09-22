@@ -570,12 +570,14 @@ section("§2 · the strip, the band, the roster and every failure");
       };
       unparsed = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
     } finally { w.dal.houseBotStore.listNonRemoved = realList4; }
+    /* ⭐ 2026-09-22 · `products` is one LINE per ticked product; the unknown is its one line, and a document nobody
+       could read carries NO refusal line either — a reason nobody could compute is not "none". */
     ok("1.310 · 416 · a rule set the reader cannot parse renders ONE sentence-cased unknown, the way every other failure string on this page reads",
-      unparsed.rows.length === 3 && unparsed.rows[0].products === "Couldn't read"
-        && unparsed.rows.slice(1).every((r: Any) => r.products !== "Couldn't read" && r.products.length > 0),
+      unparsed.rows.length === 3 && j(unparsed.rows[0].products) === j(["Couldn't read"]) && unparsed.rows[0].inert === null
+        && unparsed.rows.slice(1).every((r: Any) => Array.isArray(r.products) && r.products.length > 0 && !r.products.includes("Couldn't read")),
       j(unparsed.rows.map((r: Any) => r.products)));
     ok("1.310 · 416 · CONTROL · the plant really did reach the parser — the other two rows still name their products, so the cell above is the parse failure and not an empty roster",
-      unparsed.rows.slice(1).some((r: Any) => /Up|Poll|None/i.test(r.products)), j(unparsed.rows.map((r: Any) => r.products)));
+      unparsed.rows.slice(1).some((r: Any) => /Up|Poll|None/i.test(r.products.join(" "))), j(unparsed.rows.map((r: Any) => r.products)));
   }
   ok("1.310 · an account with NO stakes today reads used TZS 0 of its limit — a documented zero, not a failure",
     byId.get(b1.botId)!.lossCell.text === `used ${formatTzs(0)} of ${formatTzs(50_000)}`
@@ -2989,10 +2991,13 @@ try {
   {
     const v = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId);
     const rulesRow = await w.dal.houseBotStore.get(acct.botId);
-    ok("1.508 · the rules panel lists every saved cap plus the three scope facts, as VALUES — the record the overview, a REMOVED account and the unparseable fallback all read",
-      Array.isArray(v.rules) && v.rules.length === (R.CAP_FIELDS as readonly string[]).length + 3
-        && v.rules.some((r: Any) => r.name === GATEM.consoleLimitLabel("capDailyLossTzs") && r.value === formatTzs(50_000)),
-      j({ rows: v.rules && v.rules.length }));
+    /* ⭐ FIVE SCOPE FACTS SINCE 2026-09-22: the two lists joined the record as LABELS, beside the three words. */
+    ok("1.508 · the rules panel lists every saved cap plus the five scope facts, as VALUES — the record the overview, a REMOVED account and the unparseable fallback all read",
+      Array.isArray(v.rules) && v.rules.length === (R.CAP_FIELDS as readonly string[]).length + 5
+        && v.rules.some((r: Any) => r.name === GATEM.consoleLimitLabel("capDailyLossTzs") && r.value === formatTzs(50_000))
+        && v.rules.some((r: Any) => r.name === R.FIELD_META["scope.categories"].label && r.value === "None chosen")
+        && v.rules.some((r: Any) => r.name === R.FIELD_META["scope.chains"].label && r.value === "None chosen"),
+      j({ rows: v.rules && v.rules.length, scope: v.rules && v.rules.filter((r: Any) => r.section === "Scope") }));
     /**
      * ⭐ THE PANEL IS A FORM NOW, AND THIS CASE USED TO PIN THE OPPOSITE (2026-09-21).
      *
@@ -3051,17 +3056,16 @@ try {
      * neighbouring case scanned `v.rules` only, so the FORM's labels, sections and neutral KEYS were outside
      * every population — the words would have reached an officer's screen with the whole suite green.
      */
+    /* ⭐ 2026-09-22 · THE PICKERS' WORDS JOIN THE SCAN — their keys, labels, both state sentences and every entry. */
+    const formWords: string[] = [
+      ...v.rulesForm.caps.flatMap((c: Any) => [c.key, c.label]),
+      ...v.rulesForm.flags.flatMap((f: Any) => [f.key, f.section, f.label]),
+      ...v.rulesForm.lists.flatMap((l: Any) => [l.key, l.label, l.help, l.onceOn, l.none, ...l.entries.flatMap((e: Any) => [e.key, e.value, e.label])]),
+      ...Object.values(v.rulesForm.copy as Record<string, string>),
+    ];
     ok("1.508 · 453 · not one label, section, key or sentence the FORM paints carries a house-vocabulary word",
-      [
-        ...v.rulesForm.caps.flatMap((c: Any) => [c.key, c.label]),
-        ...v.rulesForm.flags.flatMap((f: Any) => [f.key, f.section, f.label]),
-        v.rulesForm.copy.barDetail, v.rulesForm.copy.guardBody,
-      ].every((s: string) => !NEUTRAL.test(s)),
-      j([
-        ...v.rulesForm.caps.flatMap((c: Any) => [c.key, c.label]),
-        ...v.rulesForm.flags.flatMap((f: Any) => [f.key, f.section, f.label]),
-        v.rulesForm.copy.barDetail, v.rulesForm.copy.guardBody,
-      ].filter((s: string) => NEUTRAL.test(s))));
+      formWords.length > 60 && formWords.every((s: string) => !NEUTRAL.test(s)),
+      j({ words: formWords.length, hits: formWords.filter((s: string) => NEUTRAL.test(s)) }));
     ok("1.508 · 453 · not one rule name, section or value the panel paints carries a house-vocabulary word",
       v.rules.flatMap((r: Any) => [r.name, r.section, r.value]).every((s: string) => !NEUTRAL.test(s)),
       j(v.rules.flatMap((r: Any) => [r.name, r.section, r.value]).filter((s: string) => NEUTRAL.test(s))));
@@ -3263,11 +3267,13 @@ try {
        ⭐ EIGHT BECAME NINE 2026-09-21, the same way: the per-tab guidance line is a ninth guarded panel, added in
        the commit that adds the panel. ⛔ IT WAS NOT FOLDED INTO THE RAIL'S GUARD, and that is the point — two
        siblings under one guard need a fragment, a fragment between `&& (` and the rail breaks the pin below, and
-       loosening a pin whose claim is correct to accommodate a wrapper is how a guard stops meaning what it says. */
+       loosening a pin whose claim is correct to accommodate a wrapper is how a guard stops meaning what it says.
+       ⭐ NINE BECAME TEN 2026-09-22: the overview's "why this account is not betting" card is a tenth guarded
+       panel (its rules-tab twin sits inside the rules panel's existing guard, so it adds none). */
     ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and all four other panels",
       /* ⚠️ THE SOURCE IS DECOMMENTED, so a pin may not reach for a comment as its landmark — measured on the
          first run of this very assertion, which looked for the `312` note above the rail and found nothing. */
-      guards === 9 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
+      guards === 10 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
         && /\{view\.removed && \(\s*<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(detail),
       j({ guards }));
     /* ⛔ AND THE TAB TESTS ARE STILL PURE, which is what keeps `test:tab-anchors` and the served probe able to read
@@ -4804,6 +4810,322 @@ try {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2g · THE SCOPE PICKERS, THE ROSTER'S OPERATIVE SCOPE AND THE WHY-PANEL (prod finding 2026-09-22, read-only)
+ *
+ * An ACTIVE account on a switched-ON desk had matched no market, ever — zero intents, zero positions — while the
+ * roster showed it green with "Up & Down · Polls". Its stored rules ticked both products with EMPTY scope lists,
+ * because NO SCREEN could write either: the form drew no picker, the save spread the stored scope through
+ * unchanged, Start never asked whether the scope selects anything, and the roster painted the switches' words.
+ * The rules core (`rulesCoverTarget`, `rulesReach`, `rulesInertReasons`, the two save rows, Start's refusals) is
+ * `test:house-bot-rules` §10's; THIS section is the console's half: the picker in the form model, the save that
+ * carries the lists, the roster line that names what a product reaches, the row's own refusal, the why-panel on
+ * the account page, and the Start refusal that names the remedy with the Rules href.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+section("§2g · the scope pickers, the roster's operative scope and the why-panel (2026-09-22)");
+try {
+  const RULES_HREF = (id: string): string => CR.consoleBotTabHref(id, "rules");
+  const LIST_KEYS = { categories: "poll-categories", chains: "updown-chains" } as const;
+  /* The roster's scope line binds each label and the product word with no-break spaces and a word joiner after a
+     hyphen or a slash (read off a tile: a chain label had split from its middot, then at its own hyphen, in the
+     narrow column); a member list still breaks at its commas. */
+  const nb = (s: string): string => s.replace(/ /g, " ").replace(/([-/])/g, "$1⁠");
+  const scopeLine = (product: string, members: readonly string[]): string => `${nb(product)} · ${members.map(nb).join(", ")}`;
+  /* ⭐ ONE REAL UP & DOWN CHAIN, THROUGH THE PLATFORM'S OWN SERVICE — the same fixture the caps cases use — so the
+     picker's chain entries and the roster's chain words are measured against a LIVE list, on both stores. */
+  const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+  const { seedDefaultSources, addSource }: Any = await import("../../src/lib/server/source-registry.ts");
+  await seedDefaultSources();
+  await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture (mirrors production)", addedBy: "system" });
+  const asset = await cfg.createAsset({
+    key: `C${process.pid}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2,
+  }, OFFICER);
+  if (asset.ok) await cfg.setAssetEnabled(asset.data.id, true, OFFICER);
+  const chain = asset.ok ? await cfg.createChain({ assetId: asset.data.id, durationMinutes: 5 }, OFFICER) : asset;
+  if (chain.ok) await cfg.setChainState(chain.data.id, "RUNNING", OFFICER);
+  const CHAIN_KEY = asset.ok ? `${asset.data.id}:5` : "";
+  const CHAIN_LABEL = "BTC/USD 5-min";
+  ok("2g.fixture · one enabled asset with one running 5-minute chain exists on this store, so a chain can be chosen and reached",
+    asset.ok === true && chain.ok === true, `${asset.ok ? "asset ok" : asset.error} · ${chain.ok ? "chain ok" : chain.error}`);
+
+  const stakeBounds = { minTzs: 1_000, maxTzs: 10_000_000 };
+  const ruleDoc = (patch: (r: Any) => void): Any => {
+    const r: Any = R.DEFAULT_RULES_V1({ stakeBounds });
+    patch(r);
+    return r;
+  };
+  const writeRules = async (botId: string, rules: Any): Promise<void> => {
+    const cur: Any = await w.dal.houseBotStore.get(botId);
+    const saved = await w.dal.houseBotStore.saveRules(botId, cur.rulesVersion, { rules });
+    if (!saved.ok) throw new Error("2g: the fixture could not save its rules");
+  };
+  const rosterRow = async (botId: string): Promise<Any> => {
+    const v = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    return v.rows.find((r: Any) => r.id === botId);
+  };
+  const detail = async (id: string): Promise<Any> => GATEM.houseDetailForConsole(OFFICER, "/admin/desk", id);
+
+  /* ━━ THE PRODUCTION SHAPE: both products ticked, every automatic mode on, BOTH lists empty, every cap set ━━ */
+  const prod = await w.bot({ caps: { freqMinGapSec: 20 } });
+  await writeRules(prod.botId, ruleDoc((r) => {
+    r.scope.products = { updown: true, polls: true };
+    r.modes.updown = { counter: true, fill: true, opener: true };
+    r.modes.polls = { counter: true, fill: true, opener: true };
+  }));
+
+  /* ━━ THE PICKER IN THE FORM MODEL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const v = await detail(prod.botId);
+    const lists: Any[] = v.rulesForm?.lists ?? [];
+    const byField = Object.fromEntries(lists.map((l: Any) => [l.field, l]));
+    const { MARKET_CATEGORIES }: Any = await import("../../src/lib/markets/categories.ts");
+    const { dict }: Any = await import("../../src/lib/i18n-dict.ts");
+    ok("2g.picker · the form model carries TWO pickers in page order — Up & Down chains, then poll categories — each keyed by a neutral key, tied to its product switch and posting as the save's own list",
+      lists.length === 2 && lists[0].field === "chains" && lists[1].field === "categories"
+        && lists[0].key === LIST_KEYS.chains && lists[1].key === LIST_KEYS.categories
+        && lists[0].product === "product-updown" && lists[1].product === "product-polls"
+        && lists.every((l: Any) => typeof l.label === "string" && l.help.length > 40 && l.onceOn.length > 20 && l.none.length > 20),
+      j(lists.map((l: Any) => ({ key: l.key, field: l.field, product: l.product, entries: l.entries.length }))));
+    ok("2g.picker · the category entries are the platform's OWN list in its own order, each labelled through the platform's label helper and carrying the category id as its value",
+      byField.categories.entries.length === MARKET_CATEGORIES.length
+        && byField.categories.entries.every((e: Any, i: number) => e.value === MARKET_CATEGORIES[i] && e.key === `${LIST_KEYS.categories}.${MARKET_CATEGORIES[i]}`)
+        && byField.categories.entries[0].label === dict.en.market.catSports
+        && byField.categories.entries.every((e: Any) => e.label !== e.value),
+      j(byField.categories.entries.map((e: Any) => [e.value, e.label])));
+    ok("2g.picker · the chain entries are the LIVE enabled-assets × chains list — the fixture's one chain, valued by its durable `<assetId>:<minutes>` key and labelled `SYMBOL N-min`",
+      byField.chains.entries.some((e: Any) => e.value === CHAIN_KEY && e.label === CHAIN_LABEL && e.key === `${LIST_KEYS.chains}.${CHAIN_KEY}`)
+        && byField.chains.entries.every((e: Any) => /^[^:]+:\d+$/.test(e.value)),
+      j(byField.chains.entries));
+    ok("2g.picker · on the production shape every entry is OFF and both product switches read ON — the state the finding was measured in",
+      lists.every((l: Any) => l.productOn === true && l.entries.every((e: Any) => e.on === false)), j(lists.map((l: Any) => l.productOn)));
+    ok("2g.picker · 453 · not one word of either picker — key, label, help, both state sentences, every entry — carries a house-vocabulary word",
+      lists.flatMap((l: Any) => [l.key, l.label, l.help, l.onceOn, l.none, ...l.entries.flatMap((e: Any) => [e.key, e.value, e.label])]).every((s: string) => !NEUTRAL.test(s)), "");
+    /* ⛔ THE MODE AND PRODUCT WORDS HAVE ONE HOME. The switches' labels are `ENTRY_MODE_WORDS` / `PRODUCT_WORDS`, the
+       same words the inert sentences use — read off the model, never off a literal. */
+    const flagLabels = (v.rulesForm.flags as Any[]).map((f: Any) => f.label);
+    ok("2g.words-home · the ten switches are labelled from `ENTRY_MODE_WORDS` and `PRODUCT_WORDS`, the one home the inert sentences read too — so a switch and the sentence that names it cannot spell one mode two ways",
+      j(flagLabels.slice(0, 8)) === j([R.PRODUCT_WORDS.updown, R.PRODUCT_WORDS.polls, ...(R.ENTRY_MODES as string[]).map((m) => R.ENTRY_MODE_WORDS[m]), ...(R.ENTRY_MODES as string[]).map((m) => R.ENTRY_MODE_WORDS[m])])
+        && !/"React to a player's stake"|"Fill a thin side"|"Open a quiet market"/.test(decomment(read(GATE))),
+      j(flagLabels));
+  }
+
+  /* ━━ THE ROSTER: THE OPERATIVE SCOPE AND THE ROW'S OWN REFUSAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const row = await rosterRow(prod.botId);
+    ok("2g.inert · ⛔ THE FINDING · an ACTIVE account whose rules reach nothing carries its refusal on the roster — the first reason's own sentence, a count of the rest, and the Rules tab as the way out — beside a status chip that still says Active",
+      row.statusWord === SD.HOUSE_BOT_STATUS_DISPLAY.ACTIVE.word && row.inert !== null
+        && /^Can't bet — /.test(row.inert.text) && row.inert.text.includes(R.INERT_COPY.noList.updown) && /\(1 more\)$/.test(row.inert.text)
+        && row.inert.href === RULES_HREF(prod.botId),
+      j({ status: row.statusWord, inert: row.inert }));
+    ok("2g.words · ⛔ THE FINDING · the roster's scope line names what each ticked product can REACH — one line per product, each saying it reaches none — never the summary words the switches spell",
+      j(row.products) === j([scopeLine("Up & Down", ["none chosen"]), scopeLine("Polls", ["none chosen"])]),
+      j(row.products));
+
+    /* ⭐ THE CONTROL: choose one category and the chain, and the same row stops refusing and names the members as
+       LABELS — the category as the player's word, the chain as `SYMBOL N-min` — never as keys. */
+    await writeRules(prod.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.scope.categories = ["macro"];
+      r.scope.chains = [CHAIN_KEY];
+      r.modes.updown = { counter: true, fill: true, opener: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const reached = await rosterRow(prod.botId);
+    ok("2g.words · CONTROL · with one chain and one category chosen the same row names them as LABELS — `BTC/USD 5-min` and `Macro`, never the asset id or the category key — and carries no refusal",
+      reached.inert === null && reached.products.length === 2
+        && reached.products[0] === scopeLine("Up & Down", [CHAIN_LABEL]) && !reached.products[0].includes(CHAIN_KEY)
+        && reached.products[1] === scopeLine("Polls", ["Macro"]) && !/macro/.test(reached.products[1]),
+      j({ products: reached.products, inert: reached.inert }));
+    STATES.push(["roster-inert", await GATEM.houseRosterForConsole(OFFICER, "/admin/desk")]);
+
+    /* ⛔ A HALF-CLAIM IS STILL A REFUSAL: Up & Down reaching a chain does not excuse a Polls that reaches nothing. */
+    await writeRules(prod.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.scope.chains = [CHAIN_KEY];
+      r.modes.updown = { counter: true, fill: true, opener: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const half = await rosterRow(prod.botId);
+    ok("2g.inert · a ticked product that reaches nothing is refused even while the other product is live — the row names the Polls remedy and the Up & Down line names its chain",
+      half.inert !== null && half.inert.text.includes(R.INERT_COPY.noList.polls) && !/more\)$/.test(half.inert.text)
+        && half.products[0] === scopeLine("Up & Down", [CHAIN_LABEL]) && half.products[1] === scopeLine("Polls", ["none chosen"]),
+      j({ products: half.products, inert: half.inert }));
+  }
+
+  /* ━━ THE WHY-PANEL AND THE READINESS BADGE, FROM THE SAME REASONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const v = await detail(prod.botId); // Up & Down reaches its chain; Polls is on with no category
+    const why = v.whyNotBetting;
+    ok("2g.why · ⛔ the why-panel lists every reason the engine's predicate raises, on the control that fixes it — here the poll-category list, with the Rules tab as its way out",
+      why !== null && why.items.length === 1
+        && why.items[0].key === LIST_KEYS.categories && why.items[0].label === R.FIELD_META["scope.categories"].label
+        && why.items[0].message === R.INERT_COPY.noList.polls
+        && why.href === RULES_HREF(prod.botId) && why.hrefLabel === "Open Rules" && /not betting/i.test(why.title),
+      j(why));
+    ok("2g.why · the readiness badge counts the SAME reasons — one blocker, named by the same label — so the rail, the panel above it and the why-panel cannot disagree",
+      v.startReadiness !== null && v.startReadiness.blockers === 1 && v.startReadiness.items.length === 1
+        && v.startReadiness.items[0].label === R.FIELD_META["scope.categories"].label && v.startReadiness.items[0].unset === false
+        && v.startReadiness.blockers === why.items.length,
+      j(v.startReadiness));
+    STATES.push(["detail-inert", v]);
+
+    await writeRules(prod.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.scope.categories = ["sports", "macro"];
+      r.scope.chains = [CHAIN_KEY];
+      r.modes.updown = { counter: true, fill: true, opener: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const clear = await detail(prod.botId);
+    ok("2g.why · CONTROL · with both lists reaching a member the panel's list is EMPTY and it says so in the one sentence, the badge reads zero, and the roster's two lines name two categories and the chain",
+      clear.whyNotBetting !== null && clear.whyNotBetting.items.length === 0
+        && clear.whyNotBetting.empty === "Nothing in the rules stops this account from betting."
+        && clear.startReadiness !== null && clear.startReadiness.blockers === 0
+        && (await rosterRow(prod.botId)).products[1] === scopeLine("Polls", ["Sports", "Macro"]),
+      j({ why: clear.whyNotBetting, readiness: clear.startReadiness, products: (await rosterRow(prod.botId)).products }));
+    /* ⛔ AND AN UNSET REQUIRED CAP IS STILL ON THE PANEL, AFTER THE REASONS, WITH ITS CONSEQUENCE. */
+    await w.setCaps(prod.botId, { capDailyLossTzs: null });
+    const capless = await detail(prod.botId);
+    ok("2g.why · an unset required cap joins the panel after the scope reasons, labelled from the one label home and carrying 364's consequence — and the badge counts it too",
+      capless.whyNotBetting.items.length === 1 && capless.whyNotBetting.items[0].label === GATEM.consoleLimitLabel("capDailyLossTzs")
+        && /cannot place a bet/.test(capless.whyNotBetting.items[0].message) && capless.startReadiness.blockers === 1
+        && capless.startReadiness.items[0].unset === true,
+      j(capless.whyNotBetting));
+    await w.setCaps(prod.botId, { capDailyLossTzs: 900_000_000 });
+    STATES.push(["detail-reaching", clear]);
+  }
+
+  /* ━━ THE SAVE: THE LISTS ROUND-TRIP, THE SCOPE ROW MARKS THE GROUP, A STRANGER IS STALE ━━━━━━━━━━━━━━━━━━ */
+  {
+    const acct = await w.bot({ caps: { freqMinGapSec: 20 } });
+    const capValues = async (): Promise<Record<string, string>> => {
+      const v = await detail(acct.botId);
+      return Object.fromEntries((v.rulesForm.caps as Any[]).map((c: Any) => [c.key, c.value]));
+    };
+    const flagsOff: Record<string, boolean> = Object.fromEntries(["product-updown", "product-polls", "updown-react", "updown-fill", "updown-opener", "polls-react", "polls-fill", "polls-opener", "enter-now", "targeted-stakes"].map((k) => [k, false]));
+    /* ⚠️ The world's open caps put `stakeMaxTzs` ABOVE the live maximum stake, which the validator correctly
+       refuses — so the form's own values are posted with that one cap brought inside the live bound. */
+    const save = async (input: Any): Promise<Any> => {
+      const row: Any = await w.dal.houseBotStore.get(acct.botId);
+      return GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { accountId: acct.botId, baseVersion: row.rulesVersion, values: { ...(await capValues()), "stake-max": "1000000" }, ...input });
+    };
+    const refusedNoCategory = await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: [], chains: [] } });
+    ok("2g.save · Polls ticked with no category is REFUSED, the poll-category GROUP is the field the refusal marks, and the sentence names the remedy",
+      refusedNoCategory.ok === false && refusedNoCategory.field === LIST_KEYS.categories
+        && refusedNoCategory.fields?.[LIST_KEYS.categories] === "Choose at least one poll category, or turn Polls off."
+        && refusedNoCategory.error === "Choose at least one poll category, or turn Polls off.",
+      j(refusedNoCategory));
+    const refusedOrphan = await save({ flags: { ...flagsOff, "product-updown": true, "updown-react": true, "polls-fill": true }, lists: { categories: [], chains: [CHAIN_KEY] } });
+    ok("2g.save · a mode on for a product that is OFF is refused on that switch's own key — the box the officer has to untick is the box that is marked",
+      refusedOrphan.ok === false && typeof refusedOrphan.fields?.["polls-fill"] === "string" && /Polls is off/.test(refusedOrphan.fields["polls-fill"]),
+      j(refusedOrphan));
+    const landed = await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports", "sports", "macro"], chains: [] } });
+    const stored: Any = await w.dal.houseBotStore.get(acct.botId);
+    const back = await detail(acct.botId);
+    const backCats = (back.rulesForm.lists as Any[]).find((l: Any) => l.field === "categories").entries.filter((e: Any) => e.on).map((e: Any) => e.value);
+    ok("2g.save · ⛔ the two lists round-trip: what the picker posted is what the row stores (deduplicated) and what the form reads back as ticked, and the roster names it",
+      landed.ok === true && landed.rulesChanged === true
+        && j(stored.rules?.scope?.categories) === j(["sports", "macro"]) && j(stored.rules?.scope?.chains) === j([])
+        && j(backCats) === j(["sports", "macro"])
+        && (await rosterRow(acct.botId)).products[0] === scopeLine("Polls", ["Sports", "Macro"]) && (await rosterRow(acct.botId)).inert === null,
+      j({ landed, stored: stored.rules?.scope, backCats }));
+    /* ⛔ EVERY STRANGER IS THE STALE-FORM SENTENCE, before anything is read for the write: a category the platform
+       does not have, a chain key it does not offer, a missing group, and a group that is not a list. */
+    const stale = "This form is out of date. Reload the page and make the change again — nothing was saved.";
+    const strangers = await Promise.all([
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["politics"], chains: [] } }),
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports"], chains: ["uda_00000000:5"] } }),
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports"] } }),
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: "sports", chains: [] } }),
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true } }),
+    ]);
+    ok("2g.save · a category the platform does not have, a chain key it does not offer, a missing group, a group that is not a list and no lists at all are each the stale-form sentence — never a silent drop and never a field sentence about a box that looks right",
+      strangers.every((r: Any) => r.ok === false && r.error === stale && r.field === undefined), j(strangers.map((r: Any) => r.error)));
+    ok("2g.save · CONTROL · the same save with the SAME switches and a real category lands, so the five refusals above are about the lists and not about the switches",
+      (await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports"], chains: [] } })).ok === true, "");
+    const afterStrangers: Any = await w.dal.houseBotStore.get(acct.botId);
+    ok("2g.save · …and the refused saves wrote nothing: the stored list is the one the last landed save chose",
+      j(afterStrangers.rules?.scope?.categories) === j(["sports"]), j(afterStrangers.rules?.scope));
+  }
+
+  /* ━━ THE START REFUSAL NAMES THE REMEDY, WITH THE RULES HREF ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const act = async (input: Any): Promise<Any> => {
+      try { return await GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input); }
+      catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
+    };
+    const pollsOnly = await w.bot({ caps: { freqMinGapSec: 20 } });
+    await w.setUserFields(pollsOnly.userId, { passwordSalt: "case-salt-for-2g" });
+    await w.dal.houseBotStore.setStatus(pollsOnly.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: false, polls: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const refused = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the category remedy and the Rules href, labelled for the dialog to draw",
+      refused.ok === false && refused.error.includes(R.INERT_COPY.noList.polls) && /Open Rules/.test(refused.error)
+        && refused.href === RULES_HREF(pollsOnly.botId) && refused.hrefLabel === "Open Rules"
+        && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "PAUSED",
+      j(refused));
+    ok("2g.start · 453 · the refusal carries no house-vocabulary word — the passed-through sentence is `INERT_COPY`'s, held neutral by the rules suite's own scan",
+      !NEUTRAL.test(refused.error) && !NEUTRAL.test(refused.hrefLabel ?? ""), j(refused.error));
+    /* ⛔ THE PASS-THROUGH IS SCOPED TO THE FIELDS THE FORM DRAWS A SWITCH OR LIST FOR: an unset CAP keeps the console's
+       generic sentence, because the validator's cap sentence is the engine's vocabulary. */
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: false, polls: true };
+      r.scope.categories = ["sports"];
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    await w.setCaps(pollsOnly.botId, { capDailyLossTzs: null });
+    const capRefused = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · CONTROL · an unset cap is still the console's generic RULES sentence with the same href — the pass-through is for the scope sentences only",
+      capRefused.ok === false && /Open Rules, review them, save, then start/.test(capRefused.error) && capRefused.href === RULES_HREF(pollsOnly.botId),
+      j(capRefused));
+    await w.setCaps(pollsOnly.botId, { capDailyLossTzs: 900_000_000 });
+    const started = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · CONTROL · with one category chosen the same account STARTS — so the refusal above was the list and nothing else",
+      started.ok === true && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE", j(started));
+  }
+
+  /* ━━ THE PAGES AND THE FORM, AT SOURCE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const page = decomment(read(PAGE));
+    const detailPage = decomment(read(DETAIL_PAGE));
+    const form = decomment(read(`${SECTION}/[id]/rules-form.tsx`));
+    const acts = decomment(read(`${SECTION}/[id]/account-actions.tsx`));
+    ok("2g.page · the roster paints one line per product off `r.products` and the refusal off `r.inert` as a LINK to its href, at the tap floor, in the warning tone",
+      /\{r\.products\.map\(\(line\) => <div key=\{line\}>\{line\}<\/div>\)\}/.test(page)
+        && /\{r\.inert !== null && \(\s*<Link href=\{r\.inert\.href as Route\} className="inline-flex items-center min-h-\[var\(--tap-min\)\] text-body-sm text-warning-fg hover:underline">\s*\{r\.inert\.text\}/.test(page),
+      "");
+    ok("2g.page · the account page draws the why-panel through ONE component, linked on the overview and unlinked above the rules form, and paints the empty sentence on its own branch",
+      (detailPage.match(/<WhyNotBettingCard model=\{view\.whyNotBetting\} linked \/>/g) ?? []).length === 1
+        && (detailPage.match(/<WhyNotBettingCard model=\{view\.whyNotBetting\} linked=\{false\} \/>/g) ?? []).length === 1
+        && /model\.items\.length === 0 \? \(\s*<p className="text-body-sm text-text-secondary" data-why-empty>\{model\.empty\}<\/p>/.test(detailPage)
+        && !/still to fill before this account can start/.test(detailPage),
+      "");
+    ok("2g.form · the form reads each list off the form's own controls through the group's hidden MARKER, treats a missing marker as a refusal, marks a refused group and a refused switch, and follows the live product switch for the once-on sentence",
+      /const marker = el\.elements\.namedItem\(list\.key\);/.test(form)
+        && /if \(!\(marker instanceof HTMLInputElement\) \|\| marker\.type !== "hidden"\) \{ missing\.push\(list\.key\); continue; \}/.test(form)
+        && /node\.name\.startsWith\(prefix\) && node\.checked\) chosen\.push\(node\.value\);/.test(form)
+        && /<input type="hidden" name=\{list\.key\} value="" \/>\s*<\/fieldset>/.test(form)
+        && /data-field=\{list\.key\}\s+data-list=\{list\.key\}\s+aria-invalid=\{errors\[list\.key\] \? true : undefined\}/.test(form)
+        && /<div key=\{flag\.key\} className="space-y-1" data-field=\{flag\.key\}>/.test(form)
+        && /invalid=\{!!errors\[flag\.key\]\}/.test(form) && /invalid=\{!!errors\[list\.key\]\}/.test(form)
+        && /\{!productOn\[list\.product\] && \(/.test(form)
+        && /onSave\(\{ accountId, baseVersion: model\.baseVersion, values, flags, lists \}\)/.test(form),
+      "");
+    ok("2g.act · the action dialog paints the refusal's href as a link labelled by the SERVER, and closes itself on the way through",
+      /setWayOut\(result\.href && result\.hrefLabel \? \{ href: result\.href, label: result\.hrefLabel \} : null\)/.test(acts)
+        && /<Link href=\{wayOut\.href as Route\} onClick=\{close\}/.test(acts),
+      "");
+  }
+} catch (err) {
+  ok("0.throw.2g · no scope-picker case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 300));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §3 · THE NEUTRAL LEXICON (ruling 453)
  * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -4843,9 +5165,18 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        picker row carries a handle and a refusal. A scanner that assumed one shape CRASHED on the other — measured
        here the day the wizard's states joined the list — and a crash in §3 skips §4's whole source law. So each
        row contributes what it HAS, and the picker's own strings are scanned rather than dropped. */
-    ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, r.products, r.handle, r.reason,
+    /* ⭐ 2026-09-22 · `products` is one LINE per ticked product now, and `inert` is the row's own refusal. */
+    ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, ...(Array.isArray(r.products) ? r.products : [r.products]), r.inert?.text, r.handle, r.reason,
       ...[r.lossCell, r.exposureCell, r.betsCell].filter(Boolean).flatMap((c: Any) => [c.text, c.edgeText,
         ...(c.halves ?? []).flatMap((h: Any) => [h.word, h.suffix])])]),
+    /* ⭐ 2026-09-22 · THE SCOPE PICKERS AND THE WHY-PANEL. A picker's group key, label, help, its two state
+       sentences and every entry's key, value and label reach the DOM (the value reaches the POST body); the
+       why-panel's title, empty sentence, link word and every item's label and sentence are painted on two tabs. */
+    ...(view.rulesForm?.lists ?? []).flatMap((l: Any) => [l.key, l.label, l.help, l.onceOn, l.none, ...(l.entries ?? []).flatMap((e: Any) => [e.key, e.value, e.label])]),
+    view.rulesForm?.copy?.listsSection,
+    view.whyNotBetting?.title, view.whyNotBetting?.empty, view.whyNotBetting?.hrefLabel,
+    ...(view.whyNotBetting?.items ?? []).flatMap((i: Any) => [i.key, i.label, i.message]),
+    ...(view.startReadiness?.items ?? []).map((i: Any) => i.label),
     /* ⭐ C7 step 6 · THE WIZARD'S OWN COPY. Every blocking and warning sentence the check card paints is the
        CONSOLE's own override of `eligibility.ts`'s rows, ELEVEN of which name the feature — so this is the branch
        most likely to break 453 on this checkpoint, exactly as the limits panel was on the last one. */
@@ -4963,7 +5294,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
       j({ exempted: copyOf(withReason).filter((c: string) => NEUTRAL.test(c)), copy: copyOf(withCopy).filter((c: string) => NEUTRAL.test(c)) }));
     /* ⛔ AND THE OTHER EXEMPTION IS A ROW'S `label`, which this sweep never reaches by construction — asserted, not
      * assumed, because "it is nested" is exactly the kind of claim that stops being true. */
-    const labelled = { ...base, rows: [{ statusWord: "ACTIVE", label: "house bot", handle: "@x", products: "None",
+    const labelled = { ...base, rows: [{ statusWord: "ACTIVE", label: "house bot", handle: "@x", products: ["None"], inert: null,
       lossCell: { text: "", halves: [], edgeText: "" }, exposureCell: { text: "", halves: [], edgeText: "" }, betsCell: { text: "", halves: [], edgeText: "" } }] };
     const loud = { ...labelled, rows: [{ ...labelled.rows[0], label: "ok", statusWord: "house bot" }] };
     ok("3.453 · 474 · CONTROL · a row's operator-chosen `label` is outside the scan, while the same words in the row's own STATUS word are inside it",
@@ -5723,7 +6054,10 @@ export default function Ruling513Control() {
        row's account cell, the history row's account cell — ONE shape for one thing, which is why they are the same
        expression — and the history row's door to the platform's transactions screen, which is what an OWNER_MONEY
        row carries INSTEAD of an amount (266, 369(c), 456). An `OR` would widen; eight positions are eight answers. */
-    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
+    /* ⭐ A NINTH AT 2026-09-22, PINNED IN POSITION LIKE THE EIGHT BEFORE IT: the roster row's own refusal — the first
+       reason its rules reach nothing, linked to its Rules tab — painted in the scope cell, one column before the way
+       out. An `OR` would widen; nine positions are nine answers. */
+    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
       j(linkExprs) === j(WANT) && j(elementsOf(pageCode)) === j(ELEMENTS) && linkExprs.length === openings,
       j({ found: linkExprs, want: WANT, elements: elementsOf(pageCode), openings }));

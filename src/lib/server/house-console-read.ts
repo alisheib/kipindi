@@ -39,14 +39,20 @@ import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
 import type { StoredUser } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
-import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleBotTabHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
+import { BY_HAND_SCREENS, CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleBotTabHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 /* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { resolveRange } from "./date-range";
-import { CAP_FIELDS, FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, isClearExempt, parseHouseBotRules, unitSuffix, type CapField, type FieldId, type HouseBotRulesV1, type LimitField } from "@/lib/house-bot/rules";
+import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, SCOPE_PRODUCTS, isClearExempt, parseHouseBotRules, rulesInertReasons, rulesReach, unitSuffix, type CapField, type FieldId, type HouseBotRulesV1, type InertReason, type LimitField, type ParseContext } from "@/lib/house-bot/rules";
+/* ⭐ THE SCOPE PICKER'S TWO LISTS (prod finding 2026-09-22): the platform's own category list and its own label
+ * helper, so the form and the roster paint the words a player sees and never a raw key. `dict.en` because the
+ * console is an English surface; the helper takes the dictionary rather than a locale. */
+import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
+import { categoryLabel } from "@/lib/markets/category-label";
+import { dict } from "@/lib/i18n-dict";
 import { sortCauses, wayOutCopy, wayOutForCause, type HolderCause } from "@/lib/house-bot/pause-reasons";
 import { TARGET_END_CAPTION } from "@/lib/house-bot/feed-copy";
 import { saveHouseBotLimits } from "./house-bot/limits-save";
@@ -198,8 +204,21 @@ export type ConsoleRosterRow = {
    * instant, and the instant of a house stake is a gated value.
    */
   lastBet: { text: string; title: string } | null;
-  /** The saved scope words, from `FIELD_META`'s own labels. */
-  products: string;
+  /**
+   * ⛔ THE OPERATIVE SCOPE, ONE LINE PER TICKED PRODUCT — the product's word and the chains or categories it can
+   * REACH, as LABELS (prod finding 2026-09-22). It printed the summary words "Up & Down · Polls" for an account
+   * whose two lists were empty and which had therefore matched nothing, ever: the words were true of the switches
+   * and false of the account. `["None"]` with no product ticked; `["Couldn't read"]` when the rules would not parse.
+   */
+  products: readonly string[];
+  /**
+   * Why this account cannot bet, when its own rules stop it: the first of `rulesInertReasons`' sentences, with a
+   * count of the rest and the Rules tab it is fixed on. `null` when nothing in the rules stops it — and `null`
+   * when the rules could not be read, because a reason nobody could compute is not "none".
+   * ⛔ Computed from the SAME parse context the scope line reads, through the one predicate the engine decides
+   * with: an ACTIVE account this line is painted on is an account the engine will refuse on every market.
+   */
+  inert: { text: string; href: string } | null;
 };
 
 /** The empty state's own cause, named. ⛔ An empty table that does not say WHY is the defect 416 exists for. */
@@ -539,12 +558,57 @@ export function consoleWayOutCopy(cause: HolderCause, label: string): string {
   return own ? own.replaceAll("{label}", label) : wayOutCopy(wayOutForCause(cause), label);
 }
 
-/** The scope words a row shows, from `FIELD_META`'s own labels — never typed beside the field. */
+/** The product words a record row shows, from the ONE home the sentences read too (`PRODUCT_WORDS`). */
 function productWords(updown: boolean, polls: boolean): string {
   const on: string[] = [];
-  if (updown) on.push(FIELD_META["scope.products.updown"].label);
-  if (polls) on.push(FIELD_META["scope.products.polls"].label);
+  if (updown) on.push(PRODUCT_WORDS.updown);
+  if (polls) on.push(PRODUCT_WORDS.polls);
   return on.length ? on.join(SEP) : "None";
+}
+
+/** A category as a player reads it — the platform's own label helper over the English dictionary, never the key. */
+const categoryWord = (c: string): string => categoryLabel(dict.en, c as MarketCategory);
+/** A chain as the parse context labels it (`BTC/USD 5-min`), keyed by the durable `<assetId>:<minutes>` key. */
+const chainWord = (ctx: Pick<ParseContext, "chains">, key: string): string =>
+  ctx.chains.find((c) => c.key === key)?.label ?? "a chain this platform no longer offers";
+/** A stored list as words: its members' labels, or the state when it holds none. */
+const listWords = (labels: readonly string[]): string => (labels.length > 0 ? labels.join(", ") : "None chosen");
+
+/**
+ * ⛔ THE OPERATIVE SCOPE, ONE LINE PER TICKED PRODUCT (prod finding 2026-09-22). "Up & Down · Polls" was true of
+ * the switches and false of the account: both lists were empty, so the engine's predicate ended in `[].includes`
+ * and refused every market. The line now names what each ticked product can REACH — computed by `rulesReach`,
+ * which asks the engine's own predicate member by member — so a product that reaches nothing says "none chosen"
+ * on the same row that says the account is active.
+ */
+function scopeLines(rules: HouseBotRulesV1, ctx: Pick<ParseContext, "chains" | "categories">): string[] {
+  const reach = rulesReach(rules, ctx);
+  const out: string[] = [];
+  for (const product of SCOPE_PRODUCTS) {
+    if (!rules.scope.products[product]) continue;
+    const members = product === "updown" ? reach.updown.chains.map((k) => chainWord(ctx, k)) : reach.polls.categories.map(categoryWord);
+    /* ⛔ EACH LABEL AND THE PRODUCT WORD IS ONE UNBREAKABLE UNIT, READ OFF THE 1280 TILE: in the roster's narrow
+       words column the line broke as "Up & Down" / "· XAU/USD 15-min," / "BTC/USD 5-min" — a chain label split
+       from its middot and a line opening on punctuation. Bound with no-break spaces, a line breaks only at the
+       comma between two members: the same rule `.amount` applies to a figure, applied to a label. */
+    /* The middot stays with the product word; the ONE break allowed before the members is after it — read off
+       the second re-shot tile, where binding the first member to the word made the widest line box wider than
+       the column and pushed the table past its scroller at 1280. */
+    out.push(`${oneLine(PRODUCT_WORDS[product])} · ${members.length > 0 ? members.map(oneLine).join(", ") : oneLine("none chosen")}`);
+  }
+  return out.length > 0 ? out : ["None"];
+}
+/**
+ * A label as ONE line box: its spaces made no-break, and a word joiner after each hyphen and slash — both are
+ * break opportunities of their own (read off the re-shot tile: `XAU/USD 15-min` had split at "15-"). A column
+ * can then break a member list only at the comma between two members.
+ */
+const oneLine = (s: string): string => s.replace(/ /g, " ").replace(/([-/])/g, "$1⁠");
+
+/** The roster's one-line refusal: the first reason, in the sentence Start refuses with, and how many more there are. */
+function inertLine(reasons: readonly InertReason[]): string {
+  const more = reasons.length - 1;
+  return `Can't bet — ${reasons[0].message}${more > 0 ? ` (${more} more)` : ""}`;
 }
 
 /**
@@ -1041,6 +1105,10 @@ export async function houseRosterForConsole(
     const book = dayBooks?.get(bot.id) ?? null;
     const open = exposure?.get(bot.id) ?? null;
     const parsed = parseCtx ? parseHouseBotRules(bot.rules, parseCtx) : null;
+    /* ⛔ THE SAME CONTEXT THE SCOPE LINE READS, THROUGH THE ENGINE'S OWN PREDICATE, WITH WHAT THIS BUILD CAN PRESS
+     * (`BY_HAND_SCREENS`): the reasons Start refuses with are the reasons this row paints. `null` is "could not
+     * tell", which is not "none". */
+    const reasons = parsed !== null && parsed.ok && parseCtx ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: BY_HAND_SCREENS }) : null;
     const display = HOUSE_BOT_STATUS_DISPLAY[bot.status];
     return {
       id: bot.id,
@@ -1062,9 +1130,10 @@ export async function houseRosterForConsole(
        * and the difference is one a roster row cannot honestly paint. */
       lastBet: relativeEat(rateById.get(bot.id)?.lastPlacedAt ?? null, nowMs),
       href: consoleBotHref(bot.id),
-      products: parsed == null ? "Couldn't read"
-        : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
-          : "Couldn't read",
+      products: parsed == null || !parsed.ok || !parseCtx ? ["Couldn't read"] : scopeLines(parsed.rules, parseCtx),
+      /* ⛔ AN ACTIVE ACCOUNT THAT IS INERT NEVER RENDERS AS A PLAIN GREEN "Active" AND NOTHING ELSE (prod finding
+       * 2026-09-22): the status chip keeps the lifecycle, and this is its own element beside it. */
+      inert: reasons === null || reasons.length === 0 ? null : { text: inertLine(reasons), href: consoleBotTabHref(bot.id, "rules") },
     };
   });
 
@@ -1751,9 +1820,46 @@ const CONSOLE_FLAG_HELP: Readonly<Record<keyof typeof CONSOLE_FLAG_KEY, string>>
   pollsCounter: "When a player backs one side of a poll, this account may answer on the other side.",
   pollsFill: "When one side of a poll is much thinner than the other, this account may even it up.",
   pollsOpener: "When a poll has no bets at all, this account may place the first one so players have something to answer.",
-  enterNow: "Permit an officer to place one bet from this account by hand. No screen on this build can do that yet.",
-  targeting: "Permit an officer to point this account at a chosen poll. No screen on this build can do that yet.",
+  enterNow: "Permit an officer to place one bet from this account by hand. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
+  targeting: "Permit an officer to point this account at a chosen poll. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
 };
+
+/**
+ * ⛔ THE TWO SCOPE LISTS, DRAWN AS PICKERS (prod finding 2026-09-22, read-only on production).
+ *
+ * An ACTIVE account on a switched-ON desk had matched no market, ever. Its stored rules ticked both products with
+ * EMPTY lists — `DEFAULT_RULES_V1` ships `chains: []` and `categories: []` — because NO SCREEN could write either:
+ * this section held zero references to the two fields, the form drew no picker, and the save spread the stored
+ * scope through unchanged. A fully validated field with no editor, the same class as the schedule the form's
+ * own header records. The engine's predicate ends in `[].includes(x)`, so every COUNTER, FILL and OPENER was refused
+ * before a cap, a schedule or a probability was consulted, while the roster read "Active · Up & Down · Polls".
+ *
+ * ⛔ THE VALUE THE BOX CARRIES IS THE DURABLE KEY THE RULES STORE — a category id, or `<assetId>:<minutes>` for a
+ * chain. The asset id is PLATFORM configuration (`uda_…`, the Up & Down asset table), not a house record id: the
+ * bounded-id families the disclosure walk and the bundle scan refuse are the house prefixes with 24 hex characters,
+ * and 4.453 scans literals, not computed values. An INDEX mapped server-side was the alternative and was refused
+ * because it goes stale the moment the platform's list moves under an open tab; the durable key cannot, and every
+ * posted value is checked against the LIVE list at save (unknown → the stale-form sentence).
+ * ⛔ EVERY SENTENCE IS THE SERVER'S AND NEUTRAL (388, 453); the form owns none.
+ */
+const CONSOLE_LIST_KEY = { chains: "updown-chains", categories: "poll-categories" } as const;
+type ConsoleListField = keyof typeof CONSOLE_LIST_KEY;
+const CONSOLE_LIST_HELP: Readonly<Record<ConsoleListField, string>> = {
+  chains: "Which Up & Down chains this account may take part in. Tick at least one while Up & Down is on — a round on any other chain is never touched.",
+  categories: "Which polls this account may take part in, by topic. Tick at least one while Polls is on — a poll outside these topics is never touched.",
+};
+/** Said above a list whose product is OFF: the control stays visible (a control that vanishes is the empty-filter defect). */
+const CONSOLE_LIST_ONCE_ON: Readonly<Record<ConsoleListField, string>> = {
+  chains: "Up & Down is off, so this list applies once Up & Down is switched on.",
+  categories: "Polls is off, so this list applies once Polls is switched on.",
+};
+/** Said instead of the boxes when the PLATFORM offers nothing to choose — so the save's remedy is never impossible. */
+const CONSOLE_LIST_NONE: Readonly<Record<ConsoleListField, string>> = {
+  chains: "No Up & Down chain is available on this platform yet, so Up & Down cannot be switched on for this account.",
+  categories: "No poll topic is available on this platform, so Polls cannot be switched on for this account.",
+};
+/** The two lists in page order (`SCOPE_PRODUCTS`: Up & Down first). */
+const CONSOLE_LIST_FIELDS: readonly ConsoleListField[] = ["chains", "categories"];
 
 /**
  * ⛔ THE TEN SWITCHES, AND THE TABLE IS THE CONTRACT. The form posts exactly these keys and no others; a
@@ -1775,6 +1881,63 @@ const CONSOLE_FLAG_KEY = {
 
 const FLAG_KEYS: readonly string[] = Object.values(CONSOLE_FLAG_KEY);
 
+/**
+ * ⛔ THE VALIDATOR'S FIELD ID → THE FORM'S NEUTRAL KEY, FOR EVERY FIELD THE FORM DRAWS A CONTROL FOR (prod finding
+ * 2026-09-22). Until this map existed the refusal mapper knew the fourteen caps and nothing else, so a refusal on
+ * a switch or a list — `R-PRODUCT-LIST` on `scope.categories`, `R-MODE-PRODUCT` on `modes.polls.fill`, the Start
+ * refusals `rulesStartProblems` now raises on the same ids — was painted as the top-level sentence with NO box
+ * marked, which is a refusal naming a remedy the officer then has to find by hand. Every id here has a control on
+ * the form; an id outside it still has no box and is said in `error` alone, honestly.
+ */
+/** The switch key of one product's one mode (`updownFill`, `pollsOpener`…) — derived, so no mode NAME is a literal here (4.453). */
+const modeFlagKey = (product: (typeof SCOPE_PRODUCTS)[number], mode: (typeof ENTRY_MODES)[number]): string =>
+  CONSOLE_FLAG_KEY[`${product}${mode.charAt(0).toUpperCase()}${mode.slice(1)}` as keyof typeof CONSOLE_FLAG_KEY];
+const CONSOLE_RULES_FIELD_KEY: Readonly<Record<string, string>> = {
+  ...CONSOLE_CAP_KEY,
+  "scope.chains": CONSOLE_LIST_KEY.chains,
+  "scope.categories": CONSOLE_LIST_KEY.categories,
+  "scope.products.updown": CONSOLE_FLAG_KEY.productUpdown,
+  "scope.products.polls": CONSOLE_FLAG_KEY.productPolls,
+  ...Object.fromEntries(SCOPE_PRODUCTS.flatMap((p) => ENTRY_MODES.map((m) => [`modes.${p}.${m}`, modeFlagKey(p, m)]))),
+  "enterNow.enabled": CONSOLE_FLAG_KEY.enterNow,
+  "targeting.enabled": CONSOLE_FLAG_KEY.targeting,
+};
+
+/** The form's four switch sections, in the order the form draws them. ⛔ Neutral words; "Modes" is `FIELD_META`'s. */
+const CONSOLE_FLAG_SECTION = { products: "Products", updown: "Up & Down entry", polls: "Polls entry", byHand: "By hand" } as const;
+
+/**
+ * The console's own label for a rules field an officer is refused on — the word the FORM paints beside its
+ * control, never `FIELD_META`'s ("Polls · Counter" carries a word 453 keeps off this screen). Caps come from the
+ * one label home; a mode is named with its section so "React to a player's stake" says WHICH product's.
+ */
+function consoleRulesFieldLabel(field: string): string {
+  if (Object.prototype.hasOwnProperty.call(CONSOLE_CAP_KEY, field)) return consoleLimitLabel(field as CapField);
+  if (field === "scope.chains" || field === "scope.categories") return FIELD_META[field].label;
+  if (field === "scope.products.updown") return PRODUCT_WORDS.updown;
+  if (field === "scope.products.polls") return PRODUCT_WORDS.polls;
+  if (field === "enterNow.enabled") return "Enter now";
+  if (field === "targeting.enabled") return "Targeted stakes";
+  for (const p of SCOPE_PRODUCTS) {
+    for (const m of ENTRY_MODES) {
+      if (field === `modes.${p}.${m}`) return `${CONSOLE_FLAG_SECTION[p]}${SEP}${ENTRY_MODE_WORDS[m]}`;
+    }
+  }
+  /* Unreachable for anything `rulesInertReasons` or the validator names on this form; a neutral word, never the id. */
+  return "Rules";
+}
+
+/**
+ * The label a reason is painted under. The two GLOBAL reasons sit on the first control of their group (that is
+ * the field the form marks), but "Up & Down — Choose at least one product." would read as an instruction about
+ * that one switch: they are labelled by the group instead. Every other reason is labelled by its field.
+ */
+function inertReasonLabel(r: InertReason): string {
+  if (r.code === "NO_PRODUCT") return CONSOLE_FLAG_SECTION.products;
+  if (r.code === "NO_MODE") return "Entry modes";
+  return consoleRulesFieldLabel(r.field);
+}
+
 /** What the account's rules form posts. ⛔ Neutral keys only, and the WHOLE form or nothing. */
 export type ConsoleRulesSaveInput = {
   /** ⛔ `accountId`, NOT the column's own name: this key is declared in a CLIENT file too, and 1.384/401 refuse
@@ -1783,6 +1946,12 @@ export type ConsoleRulesSaveInput = {
   baseVersion: number;
   values: Record<string, string>;
   flags: Record<string, boolean>;
+  /**
+   * ⛔ THE TWO SCOPE LISTS, READ OFF THE PICKER'S OWN NODES (prod finding 2026-09-22): every ticked box's durable
+   * key, per list. A list the form failed to render is a REFUSAL on the client, never "empty" — an absent group
+   * would otherwise save `[]` and put every market out of the account's reach with "Saved" on screen.
+   */
+  lists: { categories: string[]; chains: string[] };
 };
 
 export type ConsoleRulesSaveResult =
@@ -1846,12 +2015,44 @@ export async function houseRulesSaveForConsole(
   for (const key of Object.keys(input.flags)) {
     if (!FLAG_KEYS.includes(key)) return { ok: false, error: RULES_SAVE_COPY.stale };
   }
+  /**
+   * ⛔ THE TWO LISTS, EACH CHECKED AGAINST THE LIVE PLATFORM LIST BEFORE ANYTHING IS WRITTEN (prod finding
+   * 2026-09-22). A value the platform no longer offers — a chain archived since the tab was opened, a key a crafted
+   * POST invented — is the stale-form sentence, never a silent drop: the validator's own `pickList` would refuse it
+   * too, but on a field sentence ("Choose from the list.") that sends the officer back to boxes that look right.
+   * ⚠️ `loadParseContext()` is the ONE platform read this door takes and it is the same read the form was built
+   * from, so the list the officer ticked and the list the save accepts are one list.
+   */
+  const rawLists: unknown = input.lists;
+  if (typeof rawLists !== "object" || rawLists === null || Array.isArray(rawLists)) return { ok: false, error: RULES_SAVE_COPY.stale };
+  for (const key of Object.keys(rawLists)) {
+    if (key !== "categories" && key !== "chains") return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
+  const uniqueStrings = (v: unknown): string[] | null => {
+    if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) return null;
+    return [...new Set(v as string[])];
+  };
+  const categories = uniqueStrings((rawLists as { categories?: unknown }).categories);
+  const chains = uniqueStrings((rawLists as { chains?: unknown }).chains);
+  if (categories === null || chains === null) return { ok: false, error: RULES_SAVE_COPY.stale };
+  let parseCtx: ParseContext;
+  try {
+    parseCtx = await loadParseContext();
+  } catch {
+    return { ok: false, error: RULES_SAVE_COPY.UNREADABLE };
+  }
+  const liveChains = new Set<string>(parseCtx.chains.map((c) => c.key));
+  const liveCategories: readonly string[] = parseCtx.categories;
+  if (categories.some((c) => !liveCategories.includes(c)) || chains.some((k) => !liveChains.has(k))) {
+    return { ok: false, error: RULES_SAVE_COPY.stale };
+  }
 
   const saved = await saveHouseBotRules({
     actorId: viewerUserId,
     botId: input.accountId,
     baseVersion: input.baseVersion,
     caps: values,
+    lists: { categories, chains },
     flags: {
       products: { updown: input.flags[CONSOLE_FLAG_KEY.productUpdown], polls: input.flags[CONSOLE_FLAG_KEY.productPolls] },
       modes: {
@@ -1885,22 +2086,23 @@ export async function houseRulesSaveForConsole(
    * single sentence always did: the validator's message unless the rule's shared copy names the feature
    * (`CONSOLE_LIMIT_REFUSAL`), because those messages are also the engine's and the bell's and are not rewritten
    * at the source.
-   * ⛔ ONLY A TYPED FIELD GETS A KEY. A cross-rule error on the rules DOCUMENT (a schedule, a mode's own leaf)
-   * has no box on this form, and inventing one would send the officer to a control that is not the problem —
-   * so it is dropped from `fields` and still said in `error`.
+   * ⛔ ONLY A FIELD WITH A CONTROL GETS A KEY (`CONSOLE_RULES_FIELD_KEY`: the caps, the ten switches and the two
+   * lists). A cross-rule error on a leaf the form does not draw (a schedule, a delay) has no box here, and
+   * inventing one would send the officer to a control that is not the problem — so it is dropped from `fields`
+   * and still said in `error`.
    */
   const sentenceFor = (rule: string | null | undefined, message: string): string =>
     (rule != null ? CONSOLE_LIMIT_REFUSAL[rule] : undefined) ?? message;
   const fields: Record<string, string> = {};
   for (const e of saved.errors) {
-    const key = CONSOLE_CAP_KEY[e.field as CapField];
-    if (key === undefined || key in fields) continue; // unknown field, or the first sentence already stands
+    const key = CONSOLE_RULES_FIELD_KEY[e.field];
+    if (key === undefined || key in fields) continue; // a field with no control, or the first sentence already stands
     fields[key] = sentenceFor(e.rule ?? null, e.message);
   }
   return {
     ok: false,
     error: sentenceFor(saved.rule, saved.message),
-    field: CONSOLE_CAP_KEY[saved.field as CapField],
+    field: CONSOLE_RULES_FIELD_KEY[saved.field],
     fields,
   };
 }
@@ -2219,6 +2421,28 @@ export type ConsoleRulesForm = {
   }[];
   flags: readonly { key: string; section: string; label: string; on: boolean; help: string }[];
   /**
+   * ⭐ THE TWO SCOPE PICKERS (prod finding 2026-09-22), in page order: Up & Down chains, then poll categories.
+   * Each is a GROUP of boxes under one neutral key, and the group follows its product's switch: while that
+   * switch is off the group stays on screen and says it applies once the product is on. `entries` is the LIVE
+   * platform list (enabled assets × chains; the seven categories), each box's `value` the durable key the
+   * rules store and its `label` the word a player sees. An empty `entries` says so in `none` — a refusal that
+   * names a remedy nobody can perform is the class this section has paid for once already.
+   */
+  lists: readonly {
+    key: string;
+    /** Which of the save's two lists this group posts as. */
+    field: "categories" | "chains";
+    label: string;
+    help: string;
+    /** The neutral key of the product switch this group follows. */
+    product: string;
+    /** That switch, as SAVED — the form follows the live box from here on. */
+    productOn: boolean;
+    onceOn: string;
+    none: string;
+    entries: readonly { key: string; value: string; label: string; on: boolean }[];
+  }[];
+  /**
    * ⛔ EVERY SENTENCE THE FORM PAINTS, FROM HERE (ruling 388, and `house-bot-console-cases.mts`'s
    * `CLIENT_OWNED_COPY` enforces it: the console's client files hold a CLOSED set of six strings of 25
    * characters or more, asserted by size). A sentence typed into the form component would ship to every
@@ -2227,6 +2451,8 @@ export type ConsoleRulesForm = {
   copy: {
     barDetail: string;
     guardBody: string;
+    /** The heading over the two pickers. */
+    listsSection: string;
     /** The control that empties every limit on this form, and the dialog that asks before it does. */
     clearLabel: string;
     clearTitle: string;
@@ -2287,20 +2513,21 @@ export type ConsoleRulesForm = {
  * automatic guard and is written down instead.
  */
 export type ConsoleStartReadiness = {
-  /** Unfinished required things. `0` means a start is not refused for any of them. */
+  /** Unfinished things. `0` means the rules refuse a start for none of them. */
   blockers: number;
   /**
-   * Everything Start requires, so the page can say "3 of 13" rather than a bare count of what is wrong.
-   * ⛔ COUNTED OFF `ConsoleRulesForm.caps` plus the two scope facts, never off a typed 11.
-   */
-  total: number;
-  /**
-   * ⛔ What to fill, each in the console's own words. Empty when `blockers` is 0.
+   * ⛔ What to fix, each in the console's own words. Empty when `blockers` is 0.
    *
-   * ⚠️ `unset` SEPARATES THE TWO REASONS A REQUIRED THING CAN BLOCK A START, because they need different
-   * actions: a cap that was never set is FILLED, while one that was set and has since fallen outside a live
-   * bound (the platform minimum stake moved under it) is RECONSIDERED. Painting both as "still to set" would
-   * send an officer to an input that already holds a number and say nothing about why it is refused.
+   * ⚠️ `unset` SEPARATES THE TWO REASONS A THING CAN BLOCK A START, because they need different actions: a cap
+   * that was never set is FILLED, while a rule that is set and reaches nothing — a ticked product with no chain
+   * or category, a mode on for a product that is off, a by-hand switch no screen can press — is CHANGED. Painting
+   * both as "still to fill" would send an officer to a control that already holds a value and say nothing about
+   * why it is refused.
+   * ⭐ THE SECOND KIND IS `rulesInertReasons`' OWN LIST (prod finding 2026-09-22) — the same predicate the engine
+   * decides with and Start refuses on, so this badge and the why-panel and the Start refusal cannot disagree.
+   * The old "A product" / "An entry mode" pair restated the two flags and was silent on every other cause.
+   * ⛔ THERE IS NO DENOMINATOR ANY MORE: "3 of 13" counted caps plus two flags, and a list of reasons has no fixed
+   * total to be "of". A count that cannot be honest is not painted.
    */
   items: readonly { label: string; unset: boolean }[];
   /** The tab that holds every one of them, so the panel's way out is the server's and not the page's. */
@@ -2387,6 +2614,20 @@ export type ConsoleDetailView = {
   rulesForm: ConsoleRulesForm | null;
   /** ⛔ What still blocks a start, from the start service's OWN predicate. `null` when there is nothing to say. */
   startReadiness: ConsoleStartReadiness | null;
+  /**
+   * ⭐ "WHY THIS ACCOUNT IS NOT BETTING" (prod finding 2026-09-22) — one server-built model, painted on the overview
+   * AND above the rules form by ONE component. Every `rulesInertReasons` cause with the console's own label for
+   * the field that fixes it, then the required caps still unset with their consequence; `empty` is what the
+   * panel says when the list is empty. It is `null` for a removed account and for rules that would not parse.
+   * ⛔ IT SAYS NOTHING ABOUT THE MASTER SWITCH OR THE PAUSE: the strip above the rail already does (432(n)).
+   */
+  whyNotBetting: {
+    title: string;
+    items: readonly { key: string; label: string; message: string }[];
+    empty: string;
+    href: string;
+    hrefLabel: string;
+  } | null;
   /** What the officer is told beside the card — what the form is for, or why there is none (432(j)). */
   rulesReason: string;
   /** 508 · this account's targets, newest first — ONE PAGE of them. ⛔ `null` means the read FAILED or was not taken (358). */
@@ -3221,7 +3462,7 @@ export function relativeEat(atIso: string | null, nowMs: number): { text: string
  * ⛔ THE UNSET CAPTION IS 364's, CHOSEN BY MEMBERSHIP, and this page is the first surface to reach its THIRD branch —
  * "this account cannot place a bet" — because every row of the limits tab falls in one of the first two.
  */
-function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1): ConsoleRuleRow[] {
+function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1, ctx: Pick<ParseContext, "chains" | "categories">): ConsoleRuleRow[] {
   return [
     ...CAP_FIELDS.map((field) => {
       const raw = bot[field] as number | null;
@@ -3237,6 +3478,10 @@ function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1): ConsoleRuleRow[] 
       };
     }),
     { section: "Scope", name: "Products", value: productWords(rules.scope.products.updown, rules.scope.products.polls), unset: false, caption: null, face: "word" as const },
+    /* ⭐ THE TWO LISTS AS A RECORD (prod finding 2026-09-22): the stored members, as labels — what a removed
+       account was configured to touch, and what an unparseable-fallback card still shows. */
+    { section: "Scope", name: FIELD_META["scope.chains"].label, value: listWords(rules.scope.chains.map((k) => chainWord(ctx, k))), unset: false, caption: null, face: "word" as const },
+    { section: "Scope", name: FIELD_META["scope.categories"].label, value: listWords(rules.scope.categories.map(categoryWord)), unset: false, caption: null, face: "word" as const },
     { section: "Scope", name: "Targeted stakes", value: rules.targeting.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
     { section: "Scope", name: "Enter now", value: rules.enterNow.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
   ];
@@ -3285,8 +3530,10 @@ export type ConsoleAccountActInput = {
 
 export type ConsoleAccountActResult =
   | { ok: true; changed: boolean; note: string | null; warn: boolean }
-  /** `field` is the dialog's own control, never a column (D19); `href` is where the refusal says to go. */
-  | { ok: false; error: string; field?: "reason" | "password" | "typed"; href?: string };
+  /** `field` is the dialog's own control, never a column (D19); `href` is where the refusal says to go, and
+   *  `hrefLabel` is the console's own word for the link the dialog draws to it — a refusal that carried an href
+   *  the dialog never painted (measured 2026-09-22) was a way out nobody could take. */
+  | { ok: false; error: string; field?: "reason" | "password" | "typed"; href?: string; hrefLabel?: string };
 
 /**
  * ⛔ EVERY REFUSAL AN OFFICER READS IS THE CONSOLE'S OWN, KEYED BY CODE (ruling 453).
@@ -3460,6 +3707,31 @@ function actRefusal(code: string, extra: { attemptsBeforeLock?: number | null; r
 }
 
 /**
+ * ⛔ THE START REFUSAL NAMES THE REMEDY WHEN THE RULES' OWN SCOPE IS THE CAUSE (prod finding 2026-09-22).
+ *
+ * `startHouseBot` answers `RULES` for a parse failure, an unset cap and — now — every `rulesInertReasons` cause,
+ * and the console printed ONE generic sentence for all of them. For an unset cap that sentence is right: the
+ * validator's cap messages are the engine's and the bell's vocabulary, and the Rules tab marks the box. For a
+ * scope cause the generic sentence hid the one fact the officer needed ("no poll category is chosen"), so the
+ * sentence the service gives — `INERT_COPY`'s, held neutral by `test:house-bot-rules`' own 453 scan over all of
+ * them — is framed and passed through, exactly when the refused field is one the form has a switch or a list for.
+ */
+function startRefusal(started: { code: string; message: string; field?: string }): string {
+  const field = started.field ?? "";
+  const scopeField = field in CONSOLE_RULES_FIELD_KEY && !Object.prototype.hasOwnProperty.call(CONSOLE_CAP_KEY, field);
+  if (started.code === "RULES" && scopeField) return `${ACT_COPY.startRulesLead} ${started.message} ${ACT_COPY.startRulesTail}`;
+  return actRefusal(started.code);
+}
+
+/** The console's word for the link a refusal carries, from the href's own tab — never the service's sentence. */
+function consoleHrefLabel(href: string): string {
+  if (href.includes("tab=rules")) return "Open Rules";
+  if (href.includes("tab=limits")) return "Open Limits";
+  if (href.includes("reverify=1")) return "Confirm permission";
+  return "Open";
+}
+
+/**
  * ONE ACCOUNT'S ACTION ROW, GATED (rulings 259, 340, 512, 522, 523).
  *
  * ⛔ THE VERDICT IS THE FIRST STATEMENT, ON THE STORED ROW, AND IT IS IN THE ACTION'S OWN PATH (522, 523) — a Next
@@ -3493,7 +3765,14 @@ export async function houseAccountActForConsole(
     } catch {
       return { ok: false, error: CONSOLE_ACT_REFUSAL.WRITE_FAILED };
     }
-    if (!started.ok) return { ok: false, error: actRefusal(started.code), href: started.href };
+    if (!started.ok) {
+      return {
+        ok: false,
+        error: startRefusal(started),
+        href: started.href,
+        hrefLabel: started.href === undefined ? undefined : consoleHrefLabel(started.href),
+      };
+    }
     /* ⛔ 04 C10 / C3-SPEC ruling 10 · AN ACCOUNT STARTS WHILE THE DESK IS OFF, and the officer is told so rather
      * than left to read a green chip beside a switch that is off. */
     return {
@@ -3567,6 +3846,9 @@ function actCounts(cancelled: number, targetsEnded: number): string | null {
 
 /** The action row's own sentences — the console's, never a service's (453). */
 const ACT_COPY = {
+  /** The Start refusal's frame around a SCOPE sentence — `rulesInertReasons`' own, which the rules suite's 453 scan holds neutral. */
+  startRulesLead: "This account can't start yet.",
+  startRulesTail: "Open Rules, change that, save, then start.",
   alreadyRunning: "This account was already running. Nothing changed.",
   alreadyPaused: "This account was not running. Nothing changed.",
   alreadyRemoved: "This account was already removed. Nothing changed.",
@@ -3645,7 +3927,7 @@ export async function houseDetailForConsole(
     try {
       const ctx = await loadParseContext();
       const parsedRemoved = parseHouseBotRules(bot.rules, ctx);
-      if (parsedRemoved.ok) removedRules = capRows(bot, parsedRemoved.rules);
+      if (parsedRemoved.ok) removedRules = capRows(bot, parsedRemoved.rules, ctx);
     } catch { removedRules = null; }
     const removedAtMs = bot.removedAt ? Date.parse(bot.removedAt) : NaN;
     const at = Number.isFinite(removedAtMs) ? `${formatEat(removedAtMs, "D MMM YYYY")} ${formatEat(removedAtMs, "HH:MM")} EAT` : "an unrecorded time";
@@ -3662,6 +3944,7 @@ export async function houseDetailForConsole(
       rules: removedRules,
       rulesForm: null,
       startReadiness: null,
+      whyNotBetting: null,
       rulesReason: "A removed account's rules are kept as a record and cannot be changed.",
       /* 358 · a REMOVED account has no act left, which is why this page renders no action row at all. */
       acts: [],
@@ -3878,7 +4161,12 @@ export async function houseDetailForConsole(
   ];
 
   const parsed = parseCtx ? parseHouseBotRules(bot.rules, parseCtx) : null;
-  const rules: ConsoleRuleRow[] | null = parsed == null || !parsed.ok ? null : capRows(bot, parsed.rules);
+  const rules: ConsoleRuleRow[] | null = parsed == null || !parsed.ok || !parseCtx ? null : capRows(bot, parsed.rules, parseCtx);
+  /* ⭐ WHY THIS ACCOUNT CANNOT BET, FROM THE ENGINE'S OWN PREDICATE (prod finding 2026-09-22) — the same call the
+   * roster makes, over the same parse context, with what THIS build can press. `null` is "could not tell". */
+  const reasons: InertReason[] | null = parsed !== null && parsed.ok && parseCtx
+    ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: BY_HAND_SCREENS })
+    : null;
   /**
    * ⭐ THE SAME FACTS AS `rules`, AS INPUTS RATHER THAN SENTENCES (2026-09-21) — and it is a SEPARATE shape on
    * purpose. `ConsoleRuleRow` carries formatted display strings ("TZS 20,000", "Not set"), which is exactly
@@ -3906,7 +4194,7 @@ export async function houseDetailForConsole(
     const r = FIELD_META[f].recommended;
     return [f, r == null || typeof r === "string" ? "" : String(r)];
   })) as Record<CapField, string>;
-  const rulesForm: ConsoleRulesForm | null = parsed == null || !parsed.ok ? null : {
+  const rulesForm: ConsoleRulesForm | null = parsed == null || !parsed.ok || parseCtx == null ? null : {
     baseVersion: bot.rulesVersion,
     caps: CAP_FIELDS.map((field) => ({
       key: CONSOLE_CAP_KEY[field],
@@ -3940,21 +4228,39 @@ export async function houseDetailForConsole(
          word and not a number until the live stake bounds are applied to it. */
       recommended: recommendedFor[field],
     })),
+    /* ⛔ THE MODE AND PRODUCT WORDS COME FROM THEIR ONE HOME (`ENTRY_MODE_WORDS`, `PRODUCT_WORDS`): the sentences
+       `rulesInertReasons` paints on this same page name the modes with those words, and a switch labelled one way
+       beside a refusal that names it another is the two-spellings defect this section was pulled up on. */
     flags: [
-      { key: CONSOLE_FLAG_KEY.productUpdown, section: "Products", label: "Up & Down", on: parsed.rules.scope.products.updown, help: CONSOLE_FLAG_HELP.productUpdown },
-      { key: CONSOLE_FLAG_KEY.productPolls, section: "Products", label: "Polls", on: parsed.rules.scope.products.polls, help: CONSOLE_FLAG_HELP.productPolls },
-      { key: CONSOLE_FLAG_KEY.updownCounter, section: "Up & Down entry", label: "React to a player's stake", on: parsed.rules.modes.updown.counter, help: CONSOLE_FLAG_HELP.updownCounter },
-      { key: CONSOLE_FLAG_KEY.updownFill, section: "Up & Down entry", label: "Fill a thin side", on: parsed.rules.modes.updown.fill, help: CONSOLE_FLAG_HELP.updownFill },
-      { key: CONSOLE_FLAG_KEY.updownOpener, section: "Up & Down entry", label: "Open a quiet market", on: parsed.rules.modes.updown.opener, help: CONSOLE_FLAG_HELP.updownOpener },
-      { key: CONSOLE_FLAG_KEY.pollsCounter, section: "Polls entry", label: "React to a player's stake", on: parsed.rules.modes.polls.counter, help: CONSOLE_FLAG_HELP.pollsCounter },
-      { key: CONSOLE_FLAG_KEY.pollsFill, section: "Polls entry", label: "Fill a thin side", on: parsed.rules.modes.polls.fill, help: CONSOLE_FLAG_HELP.pollsFill },
-      { key: CONSOLE_FLAG_KEY.pollsOpener, section: "Polls entry", label: "Open a quiet market", on: parsed.rules.modes.polls.opener, help: CONSOLE_FLAG_HELP.pollsOpener },
-      { key: CONSOLE_FLAG_KEY.enterNow, section: "By hand", label: "Enter now", on: parsed.rules.enterNow.enabled, help: CONSOLE_FLAG_HELP.enterNow },
-      { key: CONSOLE_FLAG_KEY.targeting, section: "By hand", label: "Targeted stakes", on: parsed.rules.targeting.enabled, help: CONSOLE_FLAG_HELP.targeting },
+      { key: CONSOLE_FLAG_KEY.productUpdown, section: CONSOLE_FLAG_SECTION.products, label: PRODUCT_WORDS.updown, on: parsed.rules.scope.products.updown, help: CONSOLE_FLAG_HELP.productUpdown },
+      { key: CONSOLE_FLAG_KEY.productPolls, section: CONSOLE_FLAG_SECTION.products, label: PRODUCT_WORDS.polls, on: parsed.rules.scope.products.polls, help: CONSOLE_FLAG_HELP.productPolls },
+      { key: CONSOLE_FLAG_KEY.updownCounter, section: CONSOLE_FLAG_SECTION.updown, label: ENTRY_MODE_WORDS.counter, on: parsed.rules.modes.updown.counter, help: CONSOLE_FLAG_HELP.updownCounter },
+      { key: CONSOLE_FLAG_KEY.updownFill, section: CONSOLE_FLAG_SECTION.updown, label: ENTRY_MODE_WORDS.fill, on: parsed.rules.modes.updown.fill, help: CONSOLE_FLAG_HELP.updownFill },
+      { key: CONSOLE_FLAG_KEY.updownOpener, section: CONSOLE_FLAG_SECTION.updown, label: ENTRY_MODE_WORDS.opener, on: parsed.rules.modes.updown.opener, help: CONSOLE_FLAG_HELP.updownOpener },
+      { key: CONSOLE_FLAG_KEY.pollsCounter, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.counter, on: parsed.rules.modes.polls.counter, help: CONSOLE_FLAG_HELP.pollsCounter },
+      { key: CONSOLE_FLAG_KEY.pollsFill, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.fill, on: parsed.rules.modes.polls.fill, help: CONSOLE_FLAG_HELP.pollsFill },
+      { key: CONSOLE_FLAG_KEY.pollsOpener, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.opener, on: parsed.rules.modes.polls.opener, help: CONSOLE_FLAG_HELP.pollsOpener },
+      { key: CONSOLE_FLAG_KEY.enterNow, section: CONSOLE_FLAG_SECTION.byHand, label: "Enter now", on: parsed.rules.enterNow.enabled, help: CONSOLE_FLAG_HELP.enterNow },
+      { key: CONSOLE_FLAG_KEY.targeting, section: CONSOLE_FLAG_SECTION.byHand, label: "Targeted stakes", on: parsed.rules.targeting.enabled, help: CONSOLE_FLAG_HELP.targeting },
     ],
+    /* ⭐ THE TWO PICKERS, FROM THE LIVE PLATFORM LISTS THE PARSE CONTEXT HOLDS (prod finding 2026-09-22). */
+    lists: CONSOLE_LIST_FIELDS.map((field) => ({
+      key: CONSOLE_LIST_KEY[field],
+      field,
+      label: FIELD_META[field === "chains" ? "scope.chains" : "scope.categories"].label,
+      help: CONSOLE_LIST_HELP[field],
+      product: field === "chains" ? CONSOLE_FLAG_KEY.productUpdown : CONSOLE_FLAG_KEY.productPolls,
+      productOn: field === "chains" ? parsed.rules.scope.products.updown : parsed.rules.scope.products.polls,
+      onceOn: CONSOLE_LIST_ONCE_ON[field],
+      none: CONSOLE_LIST_NONE[field],
+      entries: field === "chains"
+        ? parseCtx.chains.map((c) => ({ key: `${CONSOLE_LIST_KEY.chains}.${c.key}`, value: c.key, label: c.label, on: (parsed.rules.scope.chains as readonly string[]).includes(c.key) }))
+        : parseCtx.categories.map((c) => ({ key: `${CONSOLE_LIST_KEY.categories}.${c}`, value: c, label: categoryWord(c), on: (parsed.rules.scope.categories as readonly string[]).includes(c) })),
+    })),
     copy: {
       barDetail: "These govern every stake this one account places.",
       guardBody: "This account's settings have been changed but not saved. Leaving now discards the change.",
+      listsSection: "Markets",
       /* ⛔ THE WORD IS "EMPTY", NOT "RESET" — the control empties the boxes, it does not restore anything, and
          a reader who expects a restore would press it to undo their typing and lose the saved values instead. */
       clearLabel: "Empty every limit",
@@ -3965,7 +4271,10 @@ export async function houseDetailForConsole(
       fillLabel: "Use starting values",
       fillDone: "Starting values filled. Nothing is saved yet — check the numbers, then press Save.",
       fillNothing: "Every limit already has a value, so nothing was filled.",
-      byHandNote: "These two permit an officer to act from this account by hand. No screen on this build can do that yet, so an account whose only entry is one of these will never place a bet.",
+      /* ⛔ THE SENTENCE KEEPS `test:house-bot-rules` 10.byhand's exact phrase, and its second half moved with the
+         product: Start now REFUSES an account whose only entry is one of these (`BY_HAND_NO_SCREEN`), where it
+         used to start it to do nothing. The note says what happens, not what used to. */
+      byHandNote: "These two permit an officer to act from this account by hand. No screen on this build can do that yet, so an account whose only entry is one of these is refused at Start rather than started to do nothing.",
       manyProblems: "{n} fields need fixing. Each one is marked below.",
       noFieldToMark: "Nothing on this form can be marked for it — read the message, then check the settings above.",
       draftTitle: "Unsaved changes from earlier",
@@ -3985,32 +4294,35 @@ export async function houseDetailForConsole(
    * The full reasoning — why it reads the form's own model rather than calling the start predicate, and why
    * the copy claims "still to fill" and never "ready to start" — is on `ConsoleStartReadiness` itself.
    */
+  /* ⛔ THE UNSET REQUIRED CAPS COME OFF `rulesForm`, THE OBJECT THE FORM ITSELF DRAWS; the scope reasons come off
+     `rulesInertReasons`, the predicate the engine decides with. Two sources for one fact is how a badge comes to
+     disagree with the panel it points at — and the old pair "A product" / "An entry mode" was exactly that: a
+     restatement of two flags, silent on an account whose product reached nothing (prod finding 2026-09-22). */
+  const unsetCaps = rulesForm == null ? [] : rulesForm.caps.filter((c) => c.required && c.value === "");
   const startReadiness: ConsoleStartReadiness | null = (() => {
-    if (rulesForm == null || removed) return null;
-    /* ⛔ EVERY FACT HERE COMES OFF `rulesForm`, THE OBJECT THE FORM ITSELF DRAWS. Two sources for one fact is
-       how a badge comes to disagree with the panel it points at, and this badge's whole job is to agree. */
-    const unsetCaps = rulesForm.caps.filter((c) => c.required && c.value === "");
-    const on = (key: string) => rulesForm.flags.some((f) => f.key === key && f.on);
-    const hasProduct = on(CONSOLE_FLAG_KEY.productUpdown) || on(CONSOLE_FLAG_KEY.productPolls);
-    /* N1 §5 / PLAN §18: an account has an entry mode when ANY automatic mode, Enter now or targeting is on —
-       the same union `hasAnyEntryMode` takes, read off the switches rather than restated as a rule. */
-    const hasMode = [
-      CONSOLE_FLAG_KEY.updownCounter, CONSOLE_FLAG_KEY.updownFill, CONSOLE_FLAG_KEY.updownOpener,
-      CONSOLE_FLAG_KEY.pollsCounter, CONSOLE_FLAG_KEY.pollsFill, CONSOLE_FLAG_KEY.pollsOpener,
-      CONSOLE_FLAG_KEY.enterNow, CONSOLE_FLAG_KEY.targeting,
-    ].some(on);
+    if (rulesForm == null || reasons == null || removed) return null;
     const items: { label: string; unset: boolean }[] = [
       ...unsetCaps.map((c) => ({ label: c.label, unset: true })),
-      ...(hasProduct ? [] : [{ label: "A product", unset: true }]),
-      ...(hasMode ? [] : [{ label: "An entry mode", unset: true }]),
+      ...reasons.map((r) => ({ label: inertReasonLabel(r), unset: false })),
     ];
-    return {
-      blockers: items.length,
-      total: rulesForm.caps.filter((c) => c.required).length + 2,
-      items,
-      href: consoleBotTabHref(bot.id, "rules"),
-    };
+    return { blockers: items.length, items, href: consoleBotTabHref(bot.id, "rules") };
   })();
+
+  /**
+   * ⭐ "WHY THIS ACCOUNT IS NOT BETTING" (prod finding 2026-09-22) — the same reasons, as sentences with the label
+   * of the control that fixes each, for the overview and for the head of the rules form. ⛔ The empty sentence is
+   * about the RULES only: the strip already says whether the desk is off or the account paused (432(n)).
+   */
+  const whyNotBetting: ConsoleDetailView["whyNotBetting"] = rulesForm == null || reasons == null || removed ? null : {
+    title: "Why this account is not betting",
+    items: [
+      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),
+      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),
+    ],
+    empty: "Nothing in the rules stops this account from betting.",
+    href: consoleBotTabHref(bot.id, "rules"),
+    hrefLabel: "Open Rules",
+  };
 
   const targets: ConsoleTargetRow[] | null = targetRows == null ? null : targetRows.map((t: StoredHouseBotTarget) => {
     const at = Date.parse(t.endedAt ?? t.createdAt);
@@ -4038,6 +4350,7 @@ export async function houseDetailForConsole(
     rules,
     rulesForm,
     startReadiness,
+    whyNotBetting,
     /* 432(j) · a control that is not drawn still says why, beside the card it would have been in. */
     /**
      * ⛔ THE SENTENCE THIS REPLACES SAID "Editing an account's rules is not ready on this build yet." — true

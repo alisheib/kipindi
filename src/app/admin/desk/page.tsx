@@ -601,7 +601,22 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                           {/* ⛔ AN ACCOUNT THAT HAS NEVER STAKED READS "—", never a fabricated date and never a zero
                               (§C2). The absolute EAT instant is in `title`, where the kit puts every exact time. */}
                           <td className="p-3 text-text-secondary" title={r.lastBet?.title}>{r.lastBet?.text ?? "—"}</td>
-                          <td className="p-3 text-text-secondary">{r.products}</td>
+                          {/* ⛔ THE OPERATIVE SCOPE, ONE LINE PER TICKED PRODUCT, AS LABELS — AND THE REFUSAL UNDER IT
+                              (prod finding 2026-09-22). This cell printed "Up & Down · Polls" for an ACTIVE
+                              account whose two lists were empty: true of the switches, false of the account,
+                              which had matched nothing since the day it was started. The lines now name what each
+                              product can REACH, and an account whose rules stop it carries its own line in the
+                              warning tone with the Rules tab as the way out — never a green chip and nothing else.
+                              ⛔ NO FLOOR AND NO NOWRAP ON THIS CELL (1.373): it is a words column, so it wraps inside
+                              the scroller; the link is `inline-flex` at the tap floor like every other. */}
+                          <td className="p-3 text-text-secondary">
+                            {r.products.map((line) => <div key={line}>{line}</div>)}
+                            {r.inert !== null && (
+                              <Link href={r.inert.href as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
+                                {r.inert.text}
+                              </Link>
+                            )}
+                          </td>
                           <td className="p-3 text-right">
                             <Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>
                           </td>

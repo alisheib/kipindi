@@ -100,7 +100,8 @@ export async function saveHouseBotRules(input: {
   caps: Record<CapField, unknown>;
   /**
    * ⛔ THE SWITCHES THE FORM OWNS, AND NOTHING ELSE — the rest of the rules object is carried through from what
-   * is stored (see the overlay below). The form posts ten booleans; it does not post a rules document, so a
+   * is stored (see the overlay below). The form posts ten booleans and, since 2026-09-22, the two scope lists
+   * (`lists` below); it does not post a rules document, so a
    * stale tab cannot silently revert a numeric rule it never showed.
    */
   flags: {
@@ -109,6 +110,15 @@ export async function saveHouseBotRules(input: {
     enterNow: boolean;
     targeting: boolean;
   };
+  /**
+   * ⛔ THE TWO SCOPE LISTS THE FORM OWNS NOW (prod finding 2026-09-22). Until this parameter existed the save
+   * spread the stored `scope` through unchanged, so `chains` and `categories` — the two fields the engine's
+   * predicate ends in — could be written by NOTHING under `src/`: every account kept `DEFAULT_RULES_V1`'s empty
+   * lists and matched no market, ever, while the roster called it active. The console checks every member
+   * against the live list before it reaches here; the validator's `pickList` refuses a stranger again, and
+   * `R-PRODUCT-LIST` refuses a ticked product whose list is empty — on the list's own field.
+   */
+  lists: { categories: readonly string[]; chains: readonly string[] };
 }): Promise<RulesSaveResult> {
   let bot: StoredHouseBot | null;
   try {
@@ -164,7 +174,8 @@ export async function saveHouseBotRules(input: {
    * theoretical: change a delay or a guard default later for a safety reason, and every account saved before
    * the change silently keeps the old number while never-saved accounts pick up the new one, with nothing on
    * any screen saying why two accounts behave differently.
-   * ⭐ SO THE STORED DOCUMENT IS A PATCH over whatever was already there: the ten switches, and nothing else.
+   * ⭐ SO THE STORED DOCUMENT IS A PATCH over whatever was already there: the ten switches and the two scope
+   * lists the form draws pickers for, and nothing else.
    * `readStoredRulesV1` falls back per leaf, so an absent leaf keeps FOLLOWING the default instead of being
    * frozen at it — the officer's own choices are preserved, and a later safety change reaches this account.
    * ⚠️ The patch carries only booleans, so nothing is lost by not storing the validator's normalised numbers:
@@ -193,10 +204,15 @@ export async function saveHouseBotRules(input: {
   const storedSchedule = isRecord(storedRaw.schedule) ? storedRaw.schedule : null;
   const scheduleChosen = storedSchedule !== null && Array.isArray(storedSchedule.days) && storedSchedule.days.length > 0;
   const schedule = scheduleChosen ? storedSchedule : DEFAULT_RULES_V1({ stakeBounds: ctx.stakeBounds }).schedule;
+  /* ⛔ THE TWO LISTS ARE WRITTEN INTO BOTH DOCUMENTS — the patch that is STORED and the document that is CHECKED
+     — so the scope row the validator raises is raised against what will be saved, and what is saved is what the
+     officer ticked. A list written into one and not the other is the defect this parameter exists to close, one
+     layer down. */
+  const scopeLists = { chains: [...input.lists.chains], categories: [...input.lists.categories] };
   const rulesToStore = {
     ...storedRaw,
     schedule,
-    scope: { ...storedScope, products: { ...input.flags.products } },
+    scope: { ...storedScope, products: { ...input.flags.products }, ...scopeLists },
     modes: { updown: { ...input.flags.modes.updown }, polls: { ...input.flags.modes.polls } },
     enterNow: { ...(isRecord(storedRaw.enterNow) ? storedRaw.enterNow : {}), enabled: input.flags.enterNow },
     targeting: { ...(isRecord(storedRaw.targeting) ? storedRaw.targeting : {}), enabled: input.flags.targeting },
@@ -205,7 +221,7 @@ export async function saveHouseBotRules(input: {
   const rulesToCheck = {
     ...parsed.rules,
     schedule,
-    scope: { ...parsed.rules.scope, products: { ...input.flags.products } },
+    scope: { ...parsed.rules.scope, products: { ...input.flags.products }, ...scopeLists },
     modes: { updown: { ...input.flags.modes.updown }, polls: { ...input.flags.modes.polls } },
     enterNow: { ...parsed.rules.enterNow, enabled: input.flags.enterNow },
     targeting: { ...parsed.rules.targeting, enabled: input.flags.targeting },

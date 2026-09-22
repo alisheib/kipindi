@@ -39,7 +39,7 @@
  * failed to render a control silently turns a mode off on save; the server refuses a missing key rather than
  * guessing, and the two are halves of one decision.
  */
-import { useRef, useState, useTransition } from "react";
+import { Fragment, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
@@ -67,8 +67,18 @@ export type RulesFormModel = {
     recommended: string;
   }[];
   flags: readonly { key: string; section: string; label: string; on: boolean; help: string }[];
+  /**
+   * ⭐ THE TWO SCOPE PICKERS (2026-09-22). Each is a GROUP of boxes under one neutral `key`, posted as the save's
+   * `lists[field]`; `product` is the switch the group follows, and `entries` is the live platform list with the
+   * durable value each box carries. ⛔ Every sentence (`help`, `onceOn`, `none`) is the server's.
+   */
+  lists: readonly {
+    key: string; field: "categories" | "chains"; label: string; help: string;
+    product: string; productOn: boolean; onceOn: string; none: string;
+    entries: readonly { key: string; value: string; label: string; on: boolean }[];
+  }[];
   copy: {
-    barDetail: string; guardBody: string;
+    barDetail: string; guardBody: string; listsSection: string;
     clearLabel: string; clearTitle: string; clearBody: string; clearConfirm: string; clearDone: string;
     fillLabel: string; fillDone: string; fillNothing: string;
     byHandNote: string; manyProblems: string; noFieldToMark: string;
@@ -94,6 +104,7 @@ export function DeskRulesForm({
     baseVersion: number;
     values: Record<string, string>;
     flags: Record<string, boolean>;
+    lists: { categories: string[]; chains: string[] };
   }) => Promise<SaveAnswer>;
 }) {
   const [pending, start] = useTransition();
@@ -158,6 +169,15 @@ export function DeskRulesForm({
   const [boxEmpty, setBoxEmpty] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(model.caps.map((c) => [c.key, c.value === ""])));
 
+  /**
+   * ⭐ WHICH PRODUCT SWITCHES ARE ON RIGHT NOW — so a picker can say "applies once Polls is on" about the BOX in
+   * front of the officer and not about the stored row (the same distinction the cap captions make). Seeded from
+   * the server's saved state so the first paint is right before any event fires; followed off the live switch
+   * from then on, through the same input/change/reset path every other live fact of this form uses.
+   */
+  const [productOn, setProductOn] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(model.lists.map((l) => [l.product, l.productOn])));
+
   /* ⚠️ Returns the SAME object when nothing moved, so an ordinary keystroke inside a box that was already
      filled does not re-render fourteen fields. */
   const syncEmptiness = () => {
@@ -169,6 +189,12 @@ export function DeskRulesForm({
       next[cap.key] = !(node instanceof HTMLInputElement) || node.value.trim() === "";
     }
     setBoxEmpty((cur) => (model.caps.some((c) => cur[c.key] !== next[c.key]) ? next : cur));
+    const on: Record<string, boolean> = {};
+    for (const list of model.lists) {
+      const node = form.elements.namedItem(list.product);
+      on[list.product] = node instanceof HTMLInputElement && node.checked;
+    }
+    setProductOn((cur) => (model.lists.some((l) => cur[l.product] !== on[l.product]) ? on : cur));
   };
 
   const setBox = (node: HTMLInputElement, next: string) => {
@@ -241,6 +267,22 @@ export function DeskRulesForm({
       if (!(node instanceof HTMLInputElement)) { missing.push(flag.key); continue; }
       flags[flag.key] = node.checked;
     }
+    /* ⛔ THE TWO LISTS, OFF THE FORM'S OWN CONTROLS, AND A GROUP THAT IS NOT THERE IS A REFUSAL (2026-09-22): a
+       picker that failed to render would otherwise post `[]`, which the server saves as "reaches no market" and
+       reports as "Saved". The group's MARKER is what is looked for — a hidden control named by the group's key,
+       rendered inside the fieldset — not its boxes: a platform with no chain to offer renders the group with no
+       box in it, and that is an empty list, honestly. ⛔ Read through `form.elements`, never a DOM query (1.316). */
+    const lists = { categories: [] as string[], chains: [] as string[] };
+    for (const list of model.lists) {
+      const marker = el.elements.namedItem(list.key);
+      if (!(marker instanceof HTMLInputElement) || marker.type !== "hidden") { missing.push(list.key); continue; }
+      const prefix = `${list.key}.`;
+      const chosen: string[] = [];
+      for (const node of Array.from(el.elements)) {
+        if (node instanceof HTMLInputElement && node.type === "checkbox" && node.name.startsWith(prefix) && node.checked) chosen.push(node.value);
+      }
+      lists[list.field] = chosen;
+    }
     if (missing.length > 0) {
       /* The server's own stale-form sentence is the right one here: the page no longer matches what it posts. */
       toast({ title: "Couldn't save", description: model.copy.noFieldToMark, variant: "danger" });
@@ -252,7 +294,7 @@ export function DeskRulesForm({
          failure — and a throw out of `startTransition` clears the pending state and shows nothing at all. */
       let result: SaveAnswer;
       try {
-        result = await onSave({ accountId, baseVersion: model.baseVersion, values, flags });
+        result = await onSave({ accountId, baseVersion: model.baseVersion, values, flags, lists });
       } catch {
         result = { ok: false, error: "Not saved — try again." };
       }
@@ -324,6 +366,9 @@ export function DeskRulesForm({
    */
   const onFormInput = () => { formProps.onInput(); syncEmptiness(); };
   const onFormChange = () => { formProps.onChange(); syncEmptiness(); };
+  /* ⚠️ A RESET FIRES BEFORE THE FORM IS RESET (the event is cancellable), so the live facts are re-read in a
+     microtask, once the reset has landed — the kit's Checkbox syncs its own paint the same way. */
+  const onFormReset = () => { queueMicrotask(syncEmptiness); };
 
   return (
     <form
@@ -331,13 +376,15 @@ export function DeskRulesForm({
       {...formProps}
       onInput={onFormInput}
       onChange={onFormChange}
+      onReset={onFormReset}
       onSubmit={onSubmit}
       className="space-y-5"
     >
       <FormColumn measure="form">
         <div className="space-y-5">
-          {sections.map((section) => (
-            <div key={section.name} className="space-y-3">
+          {sections.map((section, i) => (
+            <Fragment key={section.name}>
+            <div className="space-y-3">
               <p className="text-body-sm font-semibold text-text">{section.name}</p>
               {/* ⛔ THE SECTION WHOSE SWITCHES NOTHING CAN ACT ON SAYS SO, ABOVE THEM (2026-09-21). Neither
                   "Enter now" nor a target can be created from any screen on this build, and BOTH nevertheless
@@ -357,13 +404,65 @@ export function DeskRulesForm({
                      paragraph a toggle — a mis-tap on a rule that decides what an account may stake.
                      ⛔ `text-body-sm`, never `text-caption`: §T4 holds reading copy to a 12.5px floor and this is
                      a sentence an officer is meant to READ, not a microlabel. */
-                  <div key={flag.key} className="space-y-1">
-                    <Checkbox name={flag.key} label={flag.label} defaultChecked={flag.on} />
+                  /* ⛔ `data-field` ON THE SWITCH TOO (2026-09-22): a refusal that names a switch — a mode on for a
+                     product that is off — used to be painted as the top-level sentence with no control marked,
+                     because only the fourteen limits carried the address `focusFirstInvalid` looks for. */
+                  <div key={flag.key} className="space-y-1" data-field={flag.key}>
+                    <Checkbox name={flag.key} label={flag.label} defaultChecked={flag.on} invalid={!!errors[flag.key]} />
                     <p className="text-body-sm text-text-tertiary max-w-[52ch] pl-7">{flag.help}</p>
+                    {errors[flag.key] && <p className="text-body-sm text-danger-fg pl-7" role="alert">{errors[flag.key]}</p>}
                   </div>
                 ))}
               </div>
             </div>
+            {/* ⭐ THE TWO SCOPE PICKERS, RIGHT AFTER THE PRODUCT SWITCHES THEY FOLLOW (2026-09-22). Measured on
+                production: an ACTIVE account with both products ticked matched nothing, ever, because the two
+                lists behind the words were empty and NO screen could set them — this form drew no picker and
+                the save spread the stored lists through unchanged. Each group stays on screen while its product
+                is off and says so (a control that vanishes is the empty-filter defect); it is marked as a GROUP
+                when a refusal names it; and a platform with nothing to choose says that instead of drawing an
+                empty box row. ⛔ The section heading, the group labels and every sentence are the server's. */}
+            {i === 0 && model.lists.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-body-sm font-semibold text-text">{model.copy.listsSection}</p>
+                <div className="space-y-4">
+                  {model.lists.map((list) => (
+                    /* ⛔ `data-field` ON THE FIELDSET: `focusFirstInvalid` queries `[data-field]` and focuses the
+                       first control inside it, so a refused list lands on its first box. `data-list` names the
+                       group for a browser drive; the submit itself reads the group through the hidden marker at
+                       the fieldset's end, via `form.elements` (see `onSubmit`). */
+                    <fieldset
+                      key={list.key}
+                      data-field={list.key}
+                      data-list={list.key}
+                      aria-invalid={errors[list.key] ? true : undefined}
+                      className="min-w-0 space-y-2"
+                    >
+                      <legend className="text-body-sm font-medium text-text">{list.label}</legend>
+                      <p className="text-body-sm text-text-tertiary max-w-[52ch]">{list.help}</p>
+                      {!productOn[list.product] && (
+                        <p className="text-body-sm text-warning-fg max-w-[52ch]">{list.onceOn}</p>
+                      )}
+                      {list.entries.length === 0 ? (
+                        <p className="text-body-sm text-warning-fg max-w-[52ch]">{list.none}</p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
+                          {list.entries.map((entry) => (
+                            <Checkbox key={entry.key} name={entry.key} value={entry.value} label={entry.label} defaultChecked={entry.on} invalid={!!errors[list.key]} />
+                          ))}
+                        </div>
+                      )}
+                      {errors[list.key] && <p className="text-body-sm text-danger-fg" role="alert">{errors[list.key]}</p>}
+                      {/* ⛔ THE GROUP'S MARKER, LAST — after the boxes, so `focusFirstInvalid`'s first control inside
+                          this fieldset is a box and not a hidden field nothing can focus. Its presence is what the
+                          submit reads as "this group rendered"; its value is nothing. */}
+                      <input type="hidden" name={list.key} value="" />
+                    </fieldset>
+                  ))}
+                </div>
+              </div>
+            )}
+            </Fragment>
           ))}
 
           <div className="space-y-3">

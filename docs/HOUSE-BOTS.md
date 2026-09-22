@@ -399,6 +399,8 @@ A bound written as a symbol is resolved when the field is validated, from `Rules
 
 Toggles, lists and choices carry no bounds: `scope.products.updown`, `scope.products.polls`, `scope.chains`, `scope.categories`, the six mode flags (`modes.updown.counter` … `modes.polls.opener`), `counter.amount.kind`, `schedule.days`, `schedule.allDay`, `schedule.windows`, `enterNow.enabled` and `targeting.enabled`. A new bot has both products off, empty chain and category lists (scope is explicit: a chain or category added later stays out until someone adds it), every mode off, Enter now and targets off with null stakes, and a schedule of all seven days, all day.
 
+⛔ **An empty list reaches nothing, and absence is not a safe state for these two keys** (prod finding 2026-09-22, read-only). An ACTIVE bot on a switched-ON desk had matched no market, ever: both products ticked, both lists empty — the default — and nothing under `src/` could write either list. The engine's one scope predicate is `rulesCoverTarget` (`rules.ts`): product on ∧ mode on for that product ∧ the market's chain key or category IS ON THE LIST, and `[].includes(x)` is false. So a ticked product with an empty list is refused at save (`R-PRODUCT-LIST`, on the list's own field) and at Start (`PRODUCT_NO_LIST`), the Rules tab draws a **picker** for each list (§7.2 step 3), and the roster's scope column names what each product can reach (§7.2 step 7). The same class, closed at the same time: a mode on for a product that is off (`R-MODE-PRODUCT` / `MODE_WITHOUT_PRODUCT`), a ticked product with no mode on for it (`PRODUCT_NO_MODE`), and a by-hand switch no screen on this build can press (`BY_HAND_NO_SCREEN`, §7.5).
+
 Rules hints: `enterNow.enabled` "Polls only. You choose the poll; 50pick works out the side and the amount." · `enterNow.thinStakeTzs` "Used when players' locked money leaves one side thinner. Cut to fit." · `enterNow.openerStakeTzs` "Used on a poll with no stakes yet. The side is drawn once for that poll." · `targeting.enabled` "Targets use the Counter amount and trigger range below, and the staff-chosen limits."
 
 **Caps** (`HouseBot` columns; every one may be not set)
@@ -462,9 +464,15 @@ Lowering `maxDesignatedBots` below the number of designated bots is allowed and 
 - **Start** refuses while any cap in `REQUIRED_FOR_START` is not set: `stakeMinTzs`, `stakeMaxTzs`, `capPerMarketTzs`, `capDailyStakeTzs`, `capDailyLossTzs`, `capOpenExposureTzs`, `balanceFloorTzs`, `freqMinGapSec`, `freqMaxPerHour`, `freqMaxPerDay`, `freqMaxPerMarket`. It never names a staff-chosen cap or the target maximum; rules N1-a and N2-a already require those at save while Enter now or targets are on.
 - **Master ON** refuses while any limit in `REQUIRED_FOR_MASTER_ON` is not set: `gCapDailyStakeTzs`, `gCapDailyLossTzs`, `gCapOpenExposureTzs`, `gCapPerMarketTzs`, `gMaxBetsPerMinute`, `gMaxBetsPerDay`, `gCounterPerPlayerPerDay`, `gCounterPerPlayerTzsPerDay`. The staff-chosen limits, the target maximum and the staff-edge thresholds are not required, and they are left out of "Set N global limits first".
 - **What else the saved rules refuse at Start** (`rulesStartProblems`; the service adds the refusals that need reads):
-  - no product: "Choose at least one product.";
-  - no entry mode: "Turn on at least one entry mode." Enter now or targets alone count as an entry mode;
+  - ⛔ **every reason the rules cannot reach a market** — one refusal per `rulesInertReasons` cause, on the field that fixes it, with the Rules tab href (prod finding 2026-09-22; the console passes these sentences through to the Start dialog, framed "This account can't start yet. … Open Rules, change that, save, then start.", with an "Open Rules →" link):
+    - `NO_PRODUCT` — "Choose at least one product.";
+    - `NO_MODE` — "Turn on at least one entry mode.";
+    - `PRODUCT_NO_LIST` — "Polls is on but no poll category is chosen." / "Up & Down is on but no chain is chosen." A ticked product that reaches nothing is refused **even while the other product is live**: "Active · Up & Down · Polls" with an Up & Down that can never fire is the finding itself;
+    - `PRODUCT_NO_MODE` — "Polls is on but no entry mode is on for polls." / "Up & Down is on but no entry mode is on for Up & Down.";
+    - `MODE_WITHOUT_PRODUCT` — "{mode} is on for {product}, but {Product} is off.", one per orphan mode;
+    - `BY_HAND_NO_SCREEN` — "Enter now is the only entry mode on for polls, and no screen on this build can press it." (and the Targeted-stakes and both forms). Enter now or targets alone count as an entry mode **only once a screen exists that can press them** (`BY_HAND_SCREENS` in `console-routes.ts`, tied by existence to the page at each route);
   - a saved value that a live bound now breaks: "Can't start: the platform minimum stake is now TZS {m}; Stake min is TZS {x}." The same check covers a stake min above the live maximum and a min gap below the live floor, and, while Enter now is on, both Enter now stakes and the staff-chosen daily cap.
+- **Production follow-up (owner-side, no code):** an ACTIVE account whose stored rules are the production shape keeps running unchanged (the engine's semantics are identical — it matched nothing before and matches nothing now) and is refused at its next Start until a chain or category is chosen or the product is turned off. A Pause → Start cycle surfaces the refusal safely; the roster now names the reason on the row without it.
 - **Start warnings:** "{label} has no automatic mode: it bets only when you press Enter now." (or "… when you press Enter now or a target reacts.", or "… when a target reacts."), and "Every enabled mode is currently impossible." when every enabled counter is "never" and nothing else is on.
 
 ### 5.5 Clearing a cap while bots run (MON-14)
@@ -664,18 +672,41 @@ This is the whole path from "put an account on the desk" to "Start will run it".
 2. **The wizard lands on `?tab=rules`**, not on the overview. A freshly designated account has all fourteen
    limits NULL, no product and no entry mode — thirteen blockers, every one of them on that tab. ⛔ Landing on
    the overview made the first screen after creating an account a summary of an account that does nothing.
-3. **Rules.** Ten switches (two products, three entry modes each, two by-hand permissions) and fourteen limits.
-   Every one of the twenty-four carries a **one-sentence explanation of what it does**, built on the server
-   (`CONSOLE_CAP_HELP`, `CONSOLE_FLAG_HELP` in `house-console-read.ts`) and total by construction —
-   `Record<CapField, string>` means a new cap column cannot ship without a sentence.
+3. **Rules.** Ten switches (two products, three entry modes each, two by-hand permissions), **two scope pickers**
+   and fourteen limits. Every one of the twenty-four switches and limits carries a **one-sentence explanation of
+   what it does**, built on the server (`CONSOLE_CAP_HELP`, `CONSOLE_FLAG_HELP` in `house-console-read.ts`) and
+   total by construction — `Record<CapField, string>` means a new cap column cannot ship without a sentence.
+   ⭐ **The pickers (2026-09-22)** sit under "Markets", right after the product switches: *Up & Down chains* (the
+   live enabled-assets × chains list, each box labelled `SYMBOL N-min` and valued by the durable
+   `<assetId>:<minutes>` key the rules store) and *Poll categories* (the platform's seven topics, labelled through
+   the platform's own label helper). Each group stays on screen while its product is off and says it applies once
+   the product is on; a platform with nothing to choose says so instead of drawing an empty row. The switch
+   labels and the pickers' words are the server's, and the mode words come from `ENTRY_MODE_WORDS` — the one home
+   the refusal sentences read too.
 4. **Two controls fill and empty the limits.** *Use starting values* writes `FIELD_META`'s recommendation into
    every EMPTY limit (it never overwrites a chosen value); *Empty every limit* asks first, then clears them all.
    ⛔ **Neither saves.** Both make the form dirty, so the pending bar stands there with Save and Discard in
    reach and nothing either control does is one-way.
 5. **Save.** One CAS write against `rulesVersion`, all-or-nothing. A second officer on a second tab is REFUSED
-   and told — never merged, never clobbered.
-6. **Start** refuses while any of the eleven `REQUIRED_FOR_START` caps is unset, or there is no product, or no
-   entry mode. The rail badges `rules` with the count still outstanding.
+   and told — never merged, never clobbered. The form posts the ten switches AND the two lists, read off the
+   picker's own controls: a group that failed to render is a refusal on the client, never an empty list. Every
+   posted member is checked against the LIVE platform list before anything is read for the write (a stranger is
+   the stale-form sentence), and a ticked product whose list is empty is refused **on the picker** —
+   `R-PRODUCT-LIST` marks the group (`aria-invalid` on the fieldset and every box), the sentence names the remedy
+   ("Choose at least one poll category, or turn Polls off."), and focus lands in the group. A mode on for a
+   product that is off is refused on that switch (`R-MODE-PRODUCT`).
+6. **Start** refuses while any of the eleven `REQUIRED_FOR_START` caps is unset, or for any reason the rules
+   cannot reach a market (§5.4's list). The rail badges `rules` with the count still outstanding — the unset caps
+   plus one per reason — and the Callout above the rail says "N things to fix before this account can start".
+7. **"Why this account is not betting"** — one server-built panel (`whyNotBetting`, from `rulesInertReasons`
+   over the same parse context the roster reads, with `BY_HAND_SCREENS`), painted on the Overview (linked to the
+   Rules tab) and above the rules form (unlinked): every reason with the label of the control that fixes it, then
+   the required caps still unset with their consequence; when the list is empty it says "Nothing in the rules
+   stops this account from betting." It says nothing about the master switch or the pause — the strip does.
+   **The roster** paints the same facts on every row: the scope column reads one line per ticked product with
+   what it can REACH as labels ("Polls · Sports, Macro", "Up & Down · BTC/USD 5-min"), never the summary words
+   the switches spell, and an account whose rules stop it carries "Can't bet — {first reason} (N more)" in the
+   warning tone, linked to its Rules tab, beside a status chip that keeps saying what the lifecycle is.
 
 ### 7.3 What the form guarantees about not losing work
 
@@ -706,18 +737,28 @@ all. That is what the owner's managers were reporting.
 
 ⛔ **Two of the ten switches have no control behind them on this build.** Of the five `PRESS_PURPOSES` only
 `STAFF_CANCEL` has a screen, and nothing under `src/` inserts a target row — so neither "Enter now" nor a
-target can be created by anyone. Both switches nevertheless satisfy the start check, so an account whose only
-entry mode is one of them **starts cleanly and then never places a bet**.
+target can be created by anyone. Until 2026-09-22 both switches nevertheless satisfied the start check, so an
+account whose only entry mode was one of them **started cleanly and then never placed a bet**. ⭐ **Start refuses
+that account now** (`BY_HAND_NO_SCREEN`, §5.4): `BY_HAND_SCREENS` in `console-routes.ts` says which by-hand
+screen this build has, each flag tied by existence to the page at `BY_HAND_SCREEN_ROUTES` — `test:house-bot-rules`
+10.byhand refuses a flag flipped without its page and a page landed without its flag — and the form's by-hand
+note says so above the two switches.
 ⭐ The switches stay — the engine reads them, and they are real rules. What changed is that the form and the
-Targets tab now **say so**, in the server's own words, instead of implying a control exists. Building the
-by-hand press flow (N1 §4, N2 §6) is its own piece of work: it moves money, and it needs its caps, its
-oversight alerts and its audit rows before any of it is drawn.
+Targets tab **say so**, in the server's own words, instead of implying a control exists. Building the by-hand
+press flow (N1 §4, N2 §6) is its own piece of work: it moves money, and it needs its caps, its oversight alerts
+and its audit rows before any of it is drawn — and whoever builds it flips the flag in the same change.
 
 ### 7.6 The gate
 
-`npm run qa:desk-rules-flow` drives the whole of §7.2–§7.4 against a real browser: the wizard, a real pointer
-on a real checkbox, Discard, fill, empty, a refusal with several bad fields, two consecutive saves, and a page
-thrown away mid-edit. 35 checks, and it removes the account it created so it can run again.
+`npm run qa:desk-rules-flow` drives the whole of §7.2–§7.4 against a real browser: the wizard, the fresh
+account's own refusal on the roster, a real pointer on a real checkbox AND on a picker box, Discard, fill,
+empty, a refusal with several bad fields, Polls-with-no-category refused on its picker (the group marked, the
+remedy named, focus taken there), the save that lands once a category is chosen, two consecutive saves, the
+why-panel naming a reason on the Overview, Start refused in its dialog with that sentence and an "Open Rules →"
+link that lands on the Rules tab, the panel emptying on the fix without a reload, a page thrown away mid-edit,
+the picker inside a phone viewport at the tap floor, and the roster naming "Polls · Sports". It removes the
+account it created so it can run again. The check count it prints is the measurement; the run recorded in the
+commit that landed the pickers printed 69/69.
 
 ⚠️ **It needs `localhost`, not `127.0.0.1`.** Next 16 blocks cross-origin dev resources, and a drive pointed at
 the dotted form loads a page that **never hydrates**: every control is inert and nothing throws.
