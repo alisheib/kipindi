@@ -64,6 +64,13 @@ ecison" · "bots ar enoma player please".
 **⚠️ Already built and now WRONG — un-build it first (checkpoint C5-5b in `C5-D20-REPLAN.md` §3):** R9's `houseStake`/`houseStakes` audit keys and their reads (step 4), the emergency-void admin bell and letter house share, `kycMoneyFacts.houseBetCount/houseStakedTzs` and the KYC line, the R2 display (`exposure-copy.ts`, `exposure-line.tsx`, the held-chip titles, the bulk count, the row tag, the dialog slots — step 5), `houseStakeForConsole` / `houseBotLabelsForConsole`, and every step-3 reader whose only consumers were struck. Nothing of it is live (`origin/main` has none of it).
 
 ## ▶ RESUME AT (overwrite this block every time you stop)
+0. ▶▶ **RESUME HERE FIRST (2026-09-22, the seal session).** Read `plans/house-bots/NEXT-SESSION-2026-09-22.md` —
+   it carries what shipped (the empty-scope defect fixed at both layers with one shared predicate, the settlement
+   report defect, the pickers, the roster refusal line, the why-panel, fleet lanes D–M mutation-proved) and THE
+   REGISTER of everything the 2026-09-22 audit found and did not fix, ranked, with the numeric + schedule rules
+   EDITOR as item A1. Branch `bot-flow-seal` was merged into `main` and pushed live at that session's close; the
+   live desk's remedy is owner-side (tick the categories/chains on the Rules tab). Items 1–3 below are the standing
+   rules; the twenty-first-session material under them is history, kept for its rulings.
 1. Get onto the branch on whatever machine you are on: `README.md` → "Resume on any machine" (steps 0–5).
 2. **Coordination is light** (Ali, 2026-09-14: only pushes to live need coordinating). Send no hello, ALL-CLEAR, start or end messages, and never wait on another session's reply.
    - **Heavy Node on Ali-Blade15** means a build, `next start` or dev, tsc, Playwright, `test:all` or any full battery. `test:house-bot-migrations` counts too: it boots Postgres and runs migrate many times. Wrap the command in the shared lock: `bash /c/Users/Ali/heavy-node-lock.sh run <your-session-name> <command>`. It waits on its own while another session holds the lock; `bash /c/Users/Ali/heavy-node-lock.sh status` shows the holder. Light work (git, edits, a single pure tsx suite) needs no lock. On a PC where no other 50pick session runs, no lock is needed.

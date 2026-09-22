@@ -155,7 +155,23 @@ every mode off. Start will refuse with these exact sentences:
 > *"Choose at least one product."*
 > *"Turn on at least one entry mode."*
 
-**So: fill the numbers, save, tick a product, turn on a mode. Then Start.**
+**4. A ticked product needs at least one market it may touch (added 2026-09-22).** Under **Markets** on the
+Rules tab there are two lists: *Poll categories* (Sports, Macro, Weather, Crypto, Culture, Tech, Other) and
+*Up & Down chains* (BTC/USD 5-min, XAU/USD 15-min, …). A product ticked with **nothing** ticked underneath it
+reaches no market at all — the account starts, shows **Active**, and never places a bet. That is exactly what
+happened on the live desk on 21–22 September, and it can no longer happen silently:
+
+- **Save refuses it**, marking the list: *"Choose at least one poll category, or turn Polls off."* /
+  *"Choose at least one chain, or turn Up & Down off."*
+- **Start refuses it** with the same sentences and a link to the Rules tab.
+- The **roster row** says it in amber under the account's name: *"Can't bet — Polls is on but no poll category
+  is chosen."* — and the account page's **"Why this account is not betting"** panel lists every reason.
+
+The same goes for a mode ticked under a product that is off, and for an account whose only entry is *Enter now*
+or *Targeted stakes* (no screen on this build can press those yet — Start says so).
+
+**So: fill the numbers, save, tick a product, tick the categories or chains under it, turn on a mode. Then
+Start — and read the roster row: an Active account with no amber line is one that can bet.**
 
 ---
 
