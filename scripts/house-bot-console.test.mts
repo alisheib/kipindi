@@ -197,6 +197,11 @@ await runTwoStores({
    * `KP_SCRATCH_PORT=5453 npm run test:house-bot-console` PRINTED on the held cluster: `0.mem · exit 0 · 751
    * passed` and `0.pg · exit 0 · 513 passed`, ALL PASS on both stores. The +29 in EACH child is the measurement:
    * every §2g case reaches both stores, and the chain fixture is created through the platform's own service on each. */
+  /* ⭐ RAISED 751 → 763 MEMORY / 513 → 525 POSTGRES, 2026-09-22 — the review of the scope commit: the by-hand-only
+   * account on all three surfaces, the live-bound item on the why-panel, the lifecycle headlines, PRODUCT_NO_MODE by
+   * its section, the production shape at Start, the refusal in the Account cell. Both numbers are what
+   * `KP_SCRATCH_PORT=5453 npm run test:house-bot-console` PRINTED on the held cluster: `0.mem · exit 0 · 763 passed`
+   * and `0.pg · exit 0 · 525 passed`, ALL PASS on both stores — +12 in EACH child, every new case reaching both. */
   minPass: { memory: 763, postgres: 525 },
   dbPrefix: "hb_console",
 });

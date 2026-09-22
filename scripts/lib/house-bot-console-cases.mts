@@ -5206,8 +5206,11 @@ try {
     ok("2g.live · ⛔ …and Start refuses the same account on the same page — the panel and the dialog can no longer disagree — with the Rules href and the account still PAUSED",
       refused.ok === false && refused.href === RULES_HREF(low.botId) && (await w.dal.houseBotStore.get(low.botId)).status === "PAUSED",
       j(refused));
+    /* ⚠️ Optional on the item: under a mutation that empties the panel this line must go RED on its own claim, not throw
+       and take the rest of §2g with it (measured: the first count run of `scope-why-panel-no-live-bound` lost seven cases). */
     ok("2g.live · 453 · the composed sentence carries no house-vocabulary word (Start's own names the field in the engine's vocabulary, which is why the console composes its own)",
-      !NEUTRAL.test(v.whyNotBetting.items[0].message) && !NEUTRAL.test(v.whyNotBetting.title), j(v.whyNotBetting.items[0].message));
+      typeof v.whyNotBetting.items[0]?.message === "string" && !NEUTRAL.test(v.whyNotBetting.items[0].message) && !NEUTRAL.test(v.whyNotBetting.title),
+      j(v.whyNotBetting.items[0]?.message ?? null));
     STATES.push(["detail-live-bound", v]);
     /* CONTROL: the limit brought back inside the bound, and the panel empties while Start lands. */
     await w.setCaps(low.botId, { stakeMinTzs: cfg.minStake });
