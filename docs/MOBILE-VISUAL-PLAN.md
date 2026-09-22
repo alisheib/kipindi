@@ -31,6 +31,7 @@
 
 ```
 ▶ NEXT: Session S1 → U1 (baseline instrument + signed-in QA player) and U2 (density setting + switch, no visual change).
+  ⚠️ S1 IS IN FLIGHT on branch `mobile-visual` — resume it from the HALF-DONE checklist below; do not start it again.
   Read §5 (hard rules) and §9 U1–U2 before touching code.
 
 ✔ LAST SESSION (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
@@ -44,7 +45,26 @@
   (S0b, 2026-09-15: the seven-lens review, U21–U30, D10–D27, §8a, §8b. S0, same day: the first plan,
   the owner rulings in PLAN-OF-RECORD §8.8, the NEXT-PLAN board.)
 
-◐ HALF-DONE: nothing. ⚠️ U31 carries a real backlog: 379 of the 718 findings are still UNVERIFIED
+◐ HALF-DONE — S1 IS IN FLIGHT (started 2026-09-22 on ALI-BLADE15). EVERY LINE OF IT IS ON GITHUB, branch `mobile-visual`:
+    git fetch origin && git log --oneline origin/main..origin/mobile-visual
+  Resume on ANY PC: `git worktree add ../kipindi-mobile mobile-visual` (or `git checkout mobile-visual`; if the local branch is
+  missing: `git worktree add -b mobile-visual ../kipindi-mobile origin/mobile-visual`), `npm ci`, `npx prisma generate`, read the
+  newest commit messages on the branch, then continue at the first unchecked box:
+    [x] U1 driver `qa:mobile-visual` (scripts/live/mobile-visual-drive.mjs) + `ops:mint-qa-mobile`
+    [x] U1 QA player MINTED on production 2026-09-22 20:37 UTC — "QA Mobile 01", usr_ffb3c5cdd44a35cfca12125a, +255712000110,
+        qa.mobile01@50pick.test (Ali's choice; it does not deliver), PLAYER, wallet 0, never funded.
+        ⚠️ Its password lives ONLY in the gitignored `.env.qa.local` of C:\kipindi-mobile on ALI-BLADE15. Another PC: copy that
+        line; if it is lost, ⛔ never re-mint 01 — run signed-out + local (/auth/demo), or mint "QA Mobile 02" (+255712000111).
+    [ ] U1 production baseline → the compact baseline file committed + the §11 "Before" column re-derived from it
+    [ ] U1 RED control: `RED=1 COMPARE=<baseline>` must exit 1 on the card heights; the noise-floor pair must agree
+    [ ] U1 docs + push to main, then its §1 row ✅
+    [x] U2 code (card-spacing.ts, layout, nav-more row, decorative Toggle, i18n ×3, Privacy v2026-09-22 approved by Ali,
+        test:density-contract 21/21 + red 2/2)
+    [ ] U2 gates twice (typecheck, build, predeploy list, test:all vs clean main), local drive + screenshots (menu open, SW/EN/ZH,
+        both settings, reload keeps the choice, zero diff), push to main, production re-measure, §1 row ✅
+  Parallel-session rules in force on ALI-BLADE15 (house-bots desk session): own worktree, ports 5463/3041, heavy Node via
+  `bash ~/heavy-node-lock.sh run mobile <cmd>`, never `git add -A`, merge origin/main (never rebase) before pushing <sha>:main.
+⚠️ U31 carries a real backlog: 379 of the 718 findings are still UNVERIFIED
   (usage limits stopped the verifiers for surface groups S07–S13). Treat them as leads, not facts.
 
 ? OPEN OWNER ITEMS (none blocks S1):
@@ -115,7 +135,7 @@ Continue the 50pick MOBILE VISUAL PLAN. Perfect beats fast. No lost work, no rep
 
 1) GET THE TRUTH FIRST — never assume
    Open the kipindi repo on this PC (office PC: F:\kipindi-main). Run:
-     git branch --show-current     (must be main)
+     git branch --show-current     (must be main — or the in-flight branch that §0 HALF-DONE names; then work THERE)
      git pull
      git status
      git log --oneline -8 origin/main
