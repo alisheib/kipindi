@@ -6,6 +6,27 @@
 
 ---
 
+## 2026-09-22 · Privacy v2026-09-22 — §7 names the card-spacing cookie `kp-density`
+
+**Owner approval (Ali, 2026-09-22), asked explicitly:** *"U2 remembers each player's 'Card spacing' choice in a small
+cookie (kp-density), like the language cookie … OK to add one line?"* — **"Yes, add the line."**
+
+The Mobile Visual Plan (docs/MOBILE-VISUAL-PLAN.md §4 decision 1, unit U2) gives phones a **Card spacing: Compact /
+Comfortable** switch in the rail's More menu. The choice is kept in a first-party cookie, `kp-density`, for one year —
+the same shape as the language cookie — because the root layout must read it on the server to paint the right spacing
+with no flash and no script (`src/lib/card-spacing.ts`). It holds one word, `comfortable`, and only while that is the
+choice: **choosing Compact deletes it**, so a player on the default keeps no cookie at all. It identifies no one and is
+never sent anywhere else.
+
+- §7 in en/sw/zh now lists it beside the language cookie: *"your card spacing choice on phones"* · *"chaguo lako la
+  nafasi ya kadi kwenye simu"* · *"您在手机上选择的卡片间距"*. Nothing else in the notice changed.
+- `test:privacy-notice` pins the census (`COOKIES` gains `kp-density`), the words each language must use for it
+  (`COOKIE_WORDS`), the version and the English hash. A new cookie written anywhere in `src/` without this step fails §4a.
+- Other alternative considered and declined by Ali: keeping the choice in browser storage (already covered by §7's
+  "display choices" sentence) would have needed a script before first paint, which the plan rules out (§12).
+
+---
+
 ## 2026-09-21 (second) · A lost compliance row becomes VISIBLE, and `valid` stops surviving an edited one — AR-3 CLOSED
 
 **Status:** built and driven on branch `rel-lane`. ⛔ **Nothing here was deployed by a session**, and nothing here

@@ -74,6 +74,12 @@ export const PERSONA = {
   // ⚠️ They are QA instruments, named so they can never be mistaken for a real hire.
   support:  { phone: "712000108", secret: "QA_SUPPORT_PASSWORD",  label: "SUPPORT desk (QA)" },
   auditor:  { phone: "712000109", secret: "QA_AUDITOR_PASSWORD",  label: "AUDITOR read-only (QA)" },
+  // ⭐ MINTED 2026-09-22 FOR THE MOBILE VISUAL PLAN (U1): the signed-in player every phone
+  // measurement uses on production. The 2026-09-11 reset deleted every earlier persona and the
+  // whole fleet, so there was NO player a production drive could sign in as. Registered through
+  // the real form by `ops:mint-qa-mobile` (email qa.mobile01@50pick.test, which does not
+  // deliver — Ali's choice, 2026-09-22), wallet 0, never funded. PLAYER only: not in the staff list.
+  mobile01: { phone: "712000110", secret: "QA_MOBILE01_PASSWORD", label: "QA Mobile 01 (player)" },
   // ⛔ Ali's own console login. Use ONLY for something genuinely ADMIN-only, and say so
   // in the finding — ADMIN bypasses every domain check, so a sweep run as ADMIN measures
   // nothing about RBAC. NEVER re-mint this password.
@@ -397,8 +403,10 @@ export async function waitForText(page, re, timeoutMs = 120_000) {
  * ⚠️ A WRAP satisfies `scrollWidth === clientWidth` exactly as a fit does, so this finds
  * truncation, never a line that merely wrapped. Report the px budget, never just a verdict.
  */
-export async function measureClipping(page, scope = "main") {
-  return page.evaluate((sel) => {
+export async function measureClipping(page, scope = "main", limit = 8) {
+  // `limit` — the sample size. 8 keeps every existing driver's output unchanged; a census
+  // (`qa:mobile-visual`) passes a larger number because it reports the COUNT, not a sample.
+  return page.evaluate(([sel, limit]) => {
     const out = [];
     const root = document.querySelector(sel) ?? document.body;
     for (const el of root.querySelectorAll("*")) {
@@ -415,8 +423,8 @@ export async function measureClipping(page, scope = "main") {
         out.push({ text: text.slice(0, 44), box: w, content: el.scrollWidth, over: el.scrollWidth - w });
       }
     }
-    return out.slice(0, 8);
-  }, scope);
+    return out.slice(0, limit);
+  }, [scope, limit]);
 }
 
 /** One-line rendering of `measureClipping`, with the px budget spelled out. */

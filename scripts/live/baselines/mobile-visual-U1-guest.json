@@ -1,0 +1,5678 @@
+{
+ "meta": {
+  "base": "https://www.50pick.tz",
+  "who": "guest",
+  "unit": "U1",
+  "phase": "before",
+  "red": false,
+  "motion": "full",
+  "cells": [
+   "320x640",
+   "360x640",
+   "360x780",
+   "412x915",
+   "780x360",
+   "768x1024",
+   "1280x800"
+  ],
+  "locales": [
+   "sw",
+   "en",
+   "zh"
+  ],
+  "routes": [
+   "home",
+   "markets",
+   "detail",
+   "updown",
+   "live",
+   "results",
+   "leaderboard",
+   "help",
+   "login",
+   "register",
+   "forgot"
+  ],
+  "market": "mkt_78acfcce86564e4e5a48",
+  "servedDpl": "feca192cea534c92d435b7293da63d9e4d1e165c",
+  "at": "2026-09-22T21:04:04.066Z"
+ },
+ "summary": [
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.21,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Mwanzo 56",
+    "Hali ya soko 116",
+    "Kuu 65"
+   ],
+   "homeScreens": 14.15,
+   "heroH": 2026,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 185,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 65,
+     "right": 228
+    },
+    {
+     "h": 48,
+     "w": 76,
+     "right": 308
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Je, kadi nyekundu moja au zaidi itaonyes",
+    "Je, wimbo wowote wa msanii wa Tanzania u",
+    "Unga mkono HAPANA kwa 0%",
+    "Je, Cristiano Ronaldo atafunga goli NA k",
+    "Bitcoin Juu na Chini · 5 dakika",
+    "Juu na Chinidakika 7 zimebakiBitcoin Juu",
+    "Juu na ChiniInasubiri matokeoDhahabu Juu",
+    "sportsImetatuliwa · NDIO Matokeo mashuhu",
+    "ImekamilikaMichezoJe, makipa mawili ya w",
+    "Barua pepemsaada@50pick.tzTuandikie waka",
+    "Soko likifutwa?"
+   ],
+   "countdown": {
+    "h": 266,
+    "tiles": 8
+   },
+   "updownCards": [
+    581,
+    514
+   ],
+   "liveFeatured": 395,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [
+    "login 222",
+    "register 222",
+    "forgot 222"
+   ],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 2,
+    "markets": 7,
+    "detail": 5,
+    "updown": 14,
+    "live": 1,
+    "results": 7,
+    "leaderboard": 12,
+    "help": 15,
+    "login": 14,
+    "register": 17,
+    "forgot": 13
+   },
+   "clipped": {
+    "home": [
+     "\"Hakuna bwawa bado\" +11",
+     "\"Hali ya hewa\" +2",
+     "\"Je, Gameweek 5 ya Premier League (Sept 19–21\" +424",
+     "\"Je, timu za nyumbani zitafunga mabao mengi z\" +659"
+    ],
+    "markets": [
+     "\"Pesa nyingi\" +13",
+     "\"Hakuna bwawa bado\" +11",
+     "\"Hakuna bwawa bado\" +11",
+     "\"Hakuna bwawa bado\" +11"
+    ],
+    "detail": [
+     "\"Hakuna bwawa bado\" +11",
+     "\"Hakuna bwawa bado\" +18",
+     "\"Hakuna bwawa bado\" +18"
+    ],
+    "live": [
+     "\"Lililo na shaka zaidi\" +77"
+    ],
+    "results": [
+     "\"Mpya zaidi\" +9"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.21,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Home 56",
+    "Market status 116",
+    "Primary 65"
+   ],
+   "homeScreens": 13.37,
+   "heroH": 1891,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 164,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 79,
+     "right": 219
+    },
+    {
+     "h": 48,
+     "w": 85,
+     "right": 308
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Will any song by a Tanzanian artist accu",
+    "Back NO at 0%",
+    "Will Cristiano Ronaldo score AND perform",
+    "Bitcoin Up & Down · 5 min",
+    "Up & DownWaiting for resultsGold Up or D",
+    "sportsResolved · YES Notable resultWill ",
+    "ResolvedSportsWill the two goalkeepers c",
+    "Emailmsaada@50pick.tzWrite to us anytime",
+    "Can I cash out before resolution?"
+   ],
+   "countdown": {
+    "h": 266,
+    "tiles": 8
+   },
+   "updownCards": [
+    584,
+    486
+   ],
+   "liveFeatured": 395,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [
+    "login 222",
+    "register 222",
+    "forgot 222"
+   ],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 2,
+    "markets": 7,
+    "detail": 4,
+    "updown": 14,
+    "live": 1,
+    "results": 7,
+    "leaderboard": 12,
+    "help": 12,
+    "login": 14,
+    "register": 16,
+    "forgot": 14
+   },
+   "clipped": {
+    "home": [
+     "\"Will Premier League Gameweek 5 (Sept 19–21, \" +442",
+     "\"Will home teams score more total goals than \" +544",
+     "\"Will Mwanza record wind gusts exceeding 35 k\" +408",
+     "\"Will the two goalkeepers combine for more th\" +434"
+    ],
+    "markets": [
+     "\"Biggest pool\" +7"
+    ],
+    "updown": [
+     "\"Higher or lower than $86,238.01\" +25"
+    ],
+    "live": [
+     "\"Most contested\" +26"
+    ],
+    "results": [
+     "\"Newest resolved\" +34"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.21,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick 首页 56",
+    "市场状态 116",
+    "主要 65"
+   ],
+   "homeScreens": 12.6,
+   "heroH": 1738,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 121,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 60,
+     "right": 244
+    },
+    {
+     "h": 48,
+     "w": 60,
+     "right": 308
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "创建账户",
+    "2026年9月，是否有任何坦桑尼亚艺人的歌曲在YouTube单月内累计超过100",
+    "以 0% 押注「否」",
+    "克里斯蒂亚诺·罗纳尔多能否在葡萄牙对阵威尔士（UEFA国家联赛MD1，9月24日",
+    "比特币 涨跌 · 5 分钟",
+    "涨跌5分钟后比特币涨跌 · 15分钟暂无投注",
+    "sports已结算 · 是 值得关注的结果2026年英超联赛第5轮（9月18日至",
+    "已结算体育富勒姆对阵曼联（英超第5轮，9月20日）两队门将合计扑救次数是否超过7",
+    "电子邮件msaada@50pick.tz欢迎随时来信",
+    "负责任博彩限额 · 休息 · 自我排除"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    550,
+    468
+   ],
+   "liveFeatured": 348,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [
+    "login 222",
+    "register 222",
+    "forgot 222"
+   ],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 5,
+    "markets": 13,
+    "detail": 7,
+    "updown": 14,
+    "live": 7,
+    "results": 7,
+    "leaderboard": 12,
+    "help": 18,
+    "login": 14,
+    "register": 19,
+    "forgot": 14
+   },
+   "clipped": {
+    "home": [
+     "\"英超联赛第5轮（2026年9月19–21日）全部10场比赛合计进球是否达到25球或以上？\" +244",
+     "\"2026年英超联赛第5轮（9月18日至21日）所有比赛中，主队总进球数是否会超过客队？\" +260",
+     "\"2026年9月20日，姆万扎维多利亚湖畔的阵风是否会超过35公里/小时？\" +172",
+     "\"富勒姆对阵曼联（英超第5轮，9月20日）两队门将合计扑救次数是否超过7次？\" +212"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "360x640",
+   "locale": "sw",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.21,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Mwanzo 56",
+    "Hali ya soko 116",
+    "Kuu 65"
+   ],
+   "homeScreens": 13.52,
+   "heroH": 1905,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 164,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 65,
+     "right": 268
+    },
+    {
+     "h": 48,
+     "w": 76,
+     "right": 348
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Je, wimbo wowote wa msanii wa Tanzania u",
+    "Unga mkono HAPANA kwa 0%",
+    "Je, Cristiano Ronaldo atafunga goli NA k",
+    "Bitcoin Juu na Chini · 5 dakika",
+    "Juu na Chinidakika 3 zimebakiBitcoin Juu",
+    "sportsImetatuliwa · NDIO Matokeo mashuhu",
+    "ImekamilikaMichezoJe, makipa mawili ya w",
+    "Barua pepemsaada@50pick.tzTuandikie waka",
+    "Soko likifutwa?"
+   ],
+   "countdown": {
+    "h": 266,
+    "tiles": 8
+   },
+   "updownCards": [
+    578,
+    503
+   ],
+   "liveFeatured": 371,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 2,
+    "markets": 7,
+    "detail": 5,
+    "updown": 14,
+    "live": 7,
+    "results": 7,
+    "leaderboard": 12,
+    "help": 16
+   },
+   "clipped": {
+    "home": [
+     "\"Je, Gameweek 5 ya Premier League (Sept 19–21\" +384",
+     "\"Je, timu za nyumbani zitafunga mabao mengi z\" +619",
+     "\"Je, Mwanza itarekodi mawimbo ya upepo yanayo\" +506",
+     "\"Je, makipa mawili ya wasimamizi wa lango wat\" +704"
+    ],
+    "live": [
+     "\"Lililo na shaka zaidi\" +37"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "360x640",
+   "locale": "en",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.21,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Home 56",
+    "Market status 116",
+    "Primary 65"
+   ],
+   "homeScreens": 13.14,
+   "heroH": 1811,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 143,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 79,
+     "right": 259
+    },
+    {
+     "h": 48,
+     "w": 85,
+     "right": 348
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Will any song by a Tanzanian artist accu",
+    "Back NO at 0%",
+    "Will Cristiano Ronaldo score AND perform",
+    "Bitcoin Up & Down · 5 min",
+    "Up & DownWaiting for resultsGold Up or D",
+    "sportsResolved · YES Notable resultWill ",
+    "ResolvedSportsWill the two goalkeepers c",
+    "Emailmsaada@50pick.tzWrite to us anytime",
+    "Is the platform fair?"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    468
+   ],
+   "liveFeatured": 371,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 2,
+    "markets": 7,
+    "detail": 5,
+    "updown": 14,
+    "live": 7,
+    "results": 7,
+    "leaderboard": 12,
+    "help": 15
+   },
+   "clipped": {
+    "home": [
+     "\"Will Premier League Gameweek 5 (Sept 19–21, \" +402",
+     "\"Will home teams score more total goals than \" +504",
+     "\"Will Mwanza record wind gusts exceeding 35 k\" +368",
+     "\"Will the two goalkeepers combine for more th\" +394"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "360x640",
+   "locale": "zh",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.21,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick 首页 56",
+    "市场状态 116",
+    "主要 65"
+   ],
+   "homeScreens": 12.32,
+   "heroH": 1676,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 121,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 60,
+     "right": 284
+    },
+    {
+     "h": 48,
+     "w": 60,
+     "right": 348
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "浏览全部 49 个市场",
+    "2026年9月，是否有任何坦桑尼亚艺人的歌曲在YouTube单月内累计超过100",
+    "以 0% 押注「否」",
+    "克里斯蒂亚诺·罗纳尔多能否在葡萄牙对阵威尔士（UEFA国家联赛MD1，9月24日",
+    "登录",
+    "比特币 涨跌 · 5 分钟",
+    "搜索直播市场",
+    "体育1天后克里斯蒂亚诺·罗纳尔多能否在葡萄牙对阵威尔士（UEFA国家联赛MD1，",
+    "体育1天后2026–27赛季欧国联第1轮（9月24日至26日）所有比赛中，是否会",
+    "sports已结算 · 是 值得关注的结果2026年英超联赛第5轮（9月18日至",
+    "已结算体育富勒姆对阵曼联（英超第5轮，9月20日）两队门将合计扑救次数是否超过7",
+    "电子邮件msaada@50pick.tz欢迎随时来信"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    519,
+    447
+   ],
+   "liveFeatured": 268,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 3,
+    "markets": 13,
+    "detail": 10,
+    "updown": 14,
+    "live": 7,
+    "results": 7,
+    "leaderboard": 12,
+    "help": 19
+   },
+   "clipped": {
+    "home": [
+     "\"英超联赛第5轮（2026年9月19–21日）全部10场比赛合计进球是否达到25球或以上？\" +204",
+     "\"2026年英超联赛第5轮（9月18日至21日）所有比赛中，主队总进球数是否会超过客队？\" +220",
+     "\"2026年9月20日，姆万扎维多利亚湖畔的阵风是否会超过35公里/小时？\" +132",
+     "\"富勒姆对阵曼联（英超第5轮，9月20日）两队门将合计扑救次数是否超过7次？\" +172"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.63,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Mwanzo 56",
+    "Hali ya soko 116",
+    "Kuu 65"
+   ],
+   "homeScreens": 11.09,
+   "heroH": 1905,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 164,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 65,
+     "right": 268
+    },
+    {
+     "h": 48,
+     "w": 76,
+     "right": 348
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Je, timu za nyumbani zitashinda zaidi ya",
+    "Je, Mchezo wa 1 wa UEFA Nations League 2",
+    "Inavyofanya kazi",
+    "Maelezo",
+    "Je, wimbo wowote wa msanii wa Tanzania u",
+    "Je, Wananchi watashinda Derby ya Kariako",
+    "Unga mkono HAPANA kwa 15%",
+    "Bitcoin Juu na Chini · 5 dakika",
+    "Juu na Chinidakika 7 zimebakiBitcoin Juu",
+    "sportsImetatuliwa · NDIO Matokeo mashuhu",
+    "ImekamilikaMichezoJe, timu 3 au zaidi za",
+    "Msaada wa pochiAmana · kutoa · pesa zina"
+   ],
+   "countdown": {
+    "h": 266,
+    "tiles": 8
+   },
+   "updownCards": [
+    584,
+    503
+   ],
+   "liveFeatured": 371,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [
+    "login 262",
+    "register 262",
+    "forgot 262"
+   ],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 4,
+    "markets": 12,
+    "detail": 6,
+    "updown": 14,
+    "live": 7,
+    "results": 7,
+    "leaderboard": 12,
+    "help": 16,
+    "login": 14,
+    "register": 19,
+    "forgot": 14
+   },
+   "clipped": {
+    "home": [
+     "\"Je, Gameweek 5 ya Premier League (Sept 19–21\" +384",
+     "\"Je, timu za nyumbani zitafunga mabao mengi z\" +619",
+     "\"Je, Mwanza itarekodi mawimbo ya upepo yanayo\" +506",
+     "\"Je, makipa mawili ya wasimamizi wa lango wat\" +704"
+    ],
+    "live": [
+     "\"Lililo na shaka zaidi\" +37"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.63,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Home 56",
+    "Market status 116",
+    "Primary 65"
+   ],
+   "homeScreens": 10.78,
+   "heroH": 1811,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 143,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 79,
+     "right": 259
+    },
+    {
+     "h": 48,
+     "w": 85,
+     "right": 348
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Will home teams win more than half (14+)",
+    "Will UEFA Nations League 2026/27 Matchda",
+    "How it works",
+    "Details",
+    "Will any song by a Tanzanian artist accu",
+    "Will Wananchi win their Kariakoo Derby o",
+    "Back NO at 15%",
+    "Sign in",
+    "Bitcoin Up & Down · 5 min",
+    "Up & Down10m leftGold Up or Down · 15 mi",
+    "sportsResolved · YES Notable resultWill ",
+    "ResolvedSportsWill 3 or more away teams "
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    550,
+    489
+   ],
+   "liveFeatured": 371,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [
+    "login 262",
+    "register 262",
+    "forgot 262"
+   ],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 5,
+    "markets": 12,
+    "detail": 8,
+    "updown": 14,
+    "live": 7,
+    "results": 8,
+    "leaderboard": 12,
+    "help": 15,
+    "login": 14,
+    "register": 19,
+    "forgot": 14
+   },
+   "clipped": {
+    "home": [
+     "\"Will Premier League Gameweek 5 (Sept 19–21, \" +402",
+     "\"Will home teams score more total goals than \" +504",
+     "\"Will Mwanza record wind gusts exceeding 35 k\" +368",
+     "\"Will the two goalkeepers combine for more th\" +394"
+    ],
+    "updown": [
+     "\"Higher or lower than $86,322.00\" +5"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.63,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick 首页 56",
+    "市场状态 116",
+    "主要 65"
+   ],
+   "homeScreens": 10.11,
+   "heroH": 1676,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 121,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 60,
+     "right": 284
+    },
+    {
+     "h": 48,
+     "w": 60,
+     "right": 348
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "2026/27赛季欧国联第1轮26场比赛（9月24-26日）中，主队获胜场数是否",
+    "押注「否」",
+    "2026/27赛季欧洲国家联赛第1轮（9月24日至26日）全部比赛进球总数是否超",
+    "如何运作",
+    "详情",
+    "2026年9月，是否有任何坦桑尼亚艺人的歌曲在YouTube单月内累计超过100",
+    "瓦纳奇队能否在2026年10月10日的卡里亚科德比中获胜？",
+    "以 15% 押注「否」",
+    "「是」概率随时间变化",
+    "ALL",
+    "比特币 涨跌 · 5 分钟",
+    "涨跌2分钟后比特币涨跌 · 10分钟暂无投注"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    519,
+    447
+   ],
+   "liveFeatured": 268,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [
+    "login 262",
+    "register 262",
+    "forgot 262"
+   ],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 11,
+    "markets": 21,
+    "detail": 17,
+    "updown": 14,
+    "live": 7,
+    "results": 10,
+    "leaderboard": 12,
+    "help": 20,
+    "login": 14,
+    "register": 19,
+    "forgot": 14
+   },
+   "clipped": {
+    "home": [
+     "\"英超联赛第5轮（2026年9月19–21日）全部10场比赛合计进球是否达到25球或以上？\" +204",
+     "\"2026年英超联赛第5轮（9月18日至21日）所有比赛中，主队总进球数是否会超过客队？\" +220",
+     "\"2026年9月20日，姆万扎维多利亚湖畔的阵风是否会超过35公里/小时？\" +132",
+     "\"富勒姆对阵曼联（英超第5轮，9月20日）两队门将合计扑救次数是否超过7次？\" +172"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "412x915",
+   "locale": "sw",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 2.03,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Mwanzo 56",
+    "Hali ya soko 116",
+    "Kuu 65"
+   ],
+   "homeScreens": 9.05,
+   "heroH": 1790,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 143,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 65,
+     "right": 320
+    },
+    {
+     "h": 48,
+     "w": 76,
+     "right": 400
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Je, mechi yoyote katika Raundi ya 1 ya U",
+    "Je, S!TE 2026 (Swahili International Tou",
+    "Je, PUBG Global Championship 2026 (Des 1",
+    "Bitcoin Juu na Chini · 5 dakika",
+    "Juu na Chinidakika 1 zimebakiBitcoin Juu",
+    "Juu na Chinidakika 2 zimebakiBitcoin Juu",
+    "Michezosiku 1 zimebakiJe, Cristiano Rona",
+    "sportsImetatuliwa · NDIO Matokeo mashuhu",
+    "ImekamilikaMichezoJe, Fulham au Manchest"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    564,
+    482
+   ],
+   "liveFeatured": 292,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 7,
+    "markets": 11,
+    "detail": 16,
+    "updown": 14,
+    "live": 7,
+    "results": 20,
+    "leaderboard": 12,
+    "help": 18
+   },
+   "clipped": {
+    "home": [
+     "\"Je, Gameweek 5 ya Premier League (Sept 19–21\" +332",
+     "\"Je, timu za nyumbani zitafunga mabao mengi z\" +567",
+     "\"Je, Mwanza itarekodi mawimbo ya upepo yanayo\" +454",
+     "\"Je, makipa mawili ya wasimamizi wa lango wat\" +652"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "412x915",
+   "locale": "en",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 2.03,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Home 56",
+    "Market status 116",
+    "Primary 65"
+   ],
+   "homeScreens": 8.88,
+   "heroH": 1738,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 121,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 79,
+     "right": 311
+    },
+    {
+     "h": 48,
+     "w": 85,
+     "right": 400
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Will any single match in UEFA Nations Le",
+    "Will S!TE 2026 (Swahili International To",
+    "Will the PUBG Global Championship 2026 (",
+    "Bitcoin Up & Down · 5 min",
+    "Up & Down1m leftBitcoin Up or Down · 5 m",
+    "Sports1d leftWill any player score a hat",
+    "ResolvedSportsWill either Fulham or Manc",
+    "How do price-competition markets work?"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    531,
+    429
+   ],
+   "liveFeatured": 292,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 8,
+    "markets": 11,
+    "detail": 16,
+    "updown": 14,
+    "live": 7,
+    "results": 19,
+    "leaderboard": 12,
+    "help": 18
+   },
+   "clipped": {
+    "home": [
+     "\"Will Premier League Gameweek 5 (Sept 19–21, \" +350",
+     "\"Will home teams score more total goals than \" +452",
+     "\"Will Mwanza record wind gusts exceeding 35 k\" +316",
+     "\"Will the two goalkeepers combine for more th\" +342"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "412x915",
+   "locale": "zh",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 2.03,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick 首页 56",
+    "市场状态 116",
+    "主要 65"
+   ],
+   "homeScreens": 8.35,
+   "heroH": 1655,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 121,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 60,
+     "right": 336
+    },
+    {
+     "h": 48,
+     "w": 60,
+     "right": 400
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "2026年欧洲国家联赛第1轮（9月24–26日）是否有任何单场比赛总进球数达到5",
+    "在所有UEFA国家联赛A组第1轮比赛（2026年9月24-26日）中，主队总进球",
+    "2026年斯瓦希里国际旅游博览会（S!TE，10月23-25日，达累斯萨拉姆）能",
+    "PUBG全球总决赛2026（12月1–13日，伊斯坦布尔）冠军是否将由非亚洲战队",
+    "跌 — 比特币",
+    "比特币 涨跌 · 5 分钟",
+    "涨跌1分钟后比特币涨跌 · 5分钟暂无投注",
+    "体育1天后2026–27赛季欧国联第1轮（9月24日至26日）所有比赛中，是否会",
+    "已作废体育2026年欧洲国家联赛A级第1轮（9月24-26日）是否至少有3支客队",
+    "已结算体育富勒姆或曼联是否会在英超联赛克雷文农场主场赛（2026年9月20日）中",
+    "价格竞争市场如何运作？"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    514,
+    412
+   ],
+   "liveFeatured": 268,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 13,
+    "markets": 20,
+    "detail": 21,
+    "updown": 14,
+    "live": 7,
+    "results": 19,
+    "leaderboard": 12,
+    "help": 19
+   },
+   "clipped": {
+    "home": [
+     "\"英超联赛第5轮（2026年9月19–21日）全部10场比赛合计进球是否达到25球或以上？\" +152",
+     "\"2026年英超联赛第5轮（9月18日至21日）所有比赛中，主队总进球数是否会超过客队？\" +168",
+     "\"2026年9月20日，姆万扎维多利亚湖畔的阵风是否会超过35公里/小时？\" +80",
+     "\"富勒姆对阵曼联（英超第5轮，9月20日）两队门将合计扑救次数是否超过7次？\" +120"
+    ]
+   },
+   "chromeGlyphs": [
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "780x360",
+   "locale": "sw",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 0.37,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Mwanzo 56",
+    "Hali ya soko 116",
+    "Kuu 65"
+   ],
+   "homeScreens": 16.47,
+   "heroH": 1405,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 108,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 77,
+     "right": 656
+    },
+    {
+     "h": 48,
+     "w": 88,
+     "right": 756
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Je, timu za nyumbani zitafunga mabao men",
+    "Inavyofanya kazi",
+    "Maelezo",
+    "Je, S!TE 2026 (Swahili International Tou",
+    "Juu na Chinidakika 3 zimebakiDhahabu Juu",
+    "sportsImetatuliwa · NDIO Matokeo mashuhu",
+    "Kwa nini nathibitisha kitambulisho?"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    482
+   ],
+   "liveFeatured": 244,
+   "helpRows": [
+    165,
+    165,
+    165
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": null,
+   "under40": {
+    "home": 2,
+    "markets": 3,
+    "detail": 3,
+    "updown": 12,
+    "live": 7,
+    "results": 3,
+    "leaderboard": 12,
+    "help": 17
+   },
+   "clipped": {
+    "home": [
+     "\"Je, Gameweek 5 ya Premier League (Sept 19–21\" +291",
+     "\"Je, timu za nyumbani zitafunga mabao mengi z\" +534",
+     "\"Je, Mwanza itarekodi mawimbo ya upepo yanayo\" +406",
+     "\"Je, makipa mawili ya wasimamizi wa lango wat\" +557"
+    ]
+   },
+   "chromeGlyphs": [
+    "12x12",
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "780x360",
+   "locale": "en",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 0.37,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Home 56",
+    "Market status 116",
+    "Primary 65"
+   ],
+   "homeScreens": 16.03,
+   "heroH": 1341,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 87,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 91,
+     "right": 647
+    },
+    {
+     "h": 48,
+     "w": 97,
+     "right": 756
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Will home teams score more total goals t",
+    "How it works",
+    "Details",
+    "Will S!TE 2026 (Swahili International To",
+    "Bitcoin Up & Down · 5 min",
+    "Up & Down7m leftBitcoin Up or Down · 15 ",
+    "sportsResolved · YES Notable resultWill ",
+    "Why do I have to verify my identity?",
+    "I think I have a problem with gambling. "
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    552,
+    552
+   ],
+   "liveFeatured": 244,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": null,
+   "under40": {
+    "home": 3,
+    "markets": 3,
+    "detail": 3,
+    "updown": 12,
+    "live": 7,
+    "results": 3,
+    "leaderboard": 12,
+    "help": 18
+   },
+   "clipped": {
+    "home": [
+     "\"Will Premier League Gameweek 5 (Sept 19–21, \" +270",
+     "\"Will home teams score more total goals than \" +380",
+     "\"Will Mwanza record wind gusts exceeding 35 k\" +229",
+     "\"Will the two goalkeepers combine for more th\" +215"
+    ]
+   },
+   "chromeGlyphs": [
+    "12x12",
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "780x360",
+   "locale": "zh",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 0.37,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick 首页 56",
+    "市场状态 116",
+    "主要 65"
+   ],
+   "homeScreens": 15.64,
+   "heroH": 1341,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 87,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 72,
+     "right": 672
+    },
+    {
+     "h": 48,
+     "w": 72,
+     "right": 756
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "在所有UEFA国家联赛A组第1轮比赛（2026年9月24-26日）中，主队总进球",
+    "如何运作",
+    "详情",
+    "2026年斯瓦希里国际旅游博览会（S!TE，10月23-25日，达累斯萨拉姆）能",
+    "比特币 涨跌 · 5 分钟",
+    "涨跌7分钟后比特币涨跌 · 10分钟暂无投注",
+    "sports已结算 · 是 值得关注的结果2026年英超联赛第5轮（9月18日至",
+    "为什么需要验证身份？",
+    "我觉得我有博彩问题。怎么办？"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    501,
+    501
+   ],
+   "liveFeatured": 244,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": null,
+   "under40": {
+    "home": 3,
+    "markets": 5,
+    "detail": 4,
+    "updown": 12,
+    "live": 7,
+    "results": 3,
+    "leaderboard": 12,
+    "help": 18
+   },
+   "clipped": {
+    "home": [
+     "\"英超联赛第5轮（2026年9月19–21日）全部10场比赛合计进球是否达到25球或以上？\" +80",
+     "\"2026年英超联赛第5轮（9月18日至21日）所有比赛中，主队总进球数是否会超过客队？\" +104"
+    ]
+   },
+   "chromeGlyphs": [
+    "12x12",
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "768x1024",
+   "locale": "sw",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 2.36,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Mwanzo 56",
+    "Hali ya soko 116",
+    "Kuu 65"
+   ],
+   "homeScreens": 5.79,
+   "heroH": 1405,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 108,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 77,
+     "right": 644
+    },
+    {
+     "h": 48,
+     "w": 88,
+     "right": 744
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Je, Wananchi watashinda Derby ya Kariako",
+    "Unga mkono HAPANA kwa 15%",
+    "Je, mechi yoyote katika Raundi ya 1 ya U",
+    "Unga mkono HAPANA",
+    "Je, msanii yeyote wa Bongo Flava wa Tanz",
+    "Inavyofanya kazi",
+    "Bitcoin Juu na Chini · 5 dakika",
+    "Juu na Chinidakika 5 zimebakiBitcoin Juu",
+    "Michezosiku 4 zimebakiJe, angalau mechi ",
+    "ImekamilikaMichezoJe, makipa mawili ya w",
+    "Mfumo huu uko sawa?"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    564,
+    564
+   ],
+   "liveFeatured": 244,
+   "helpRows": [
+    165,
+    165,
+    165
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 19,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 13,
+    "markets": 26,
+    "detail": 18,
+    "updown": 12,
+    "live": 7,
+    "results": 17,
+    "leaderboard": 12,
+    "help": 20
+   },
+   "clipped": {
+    "home": [
+     "\"Je, Gameweek 5 ya Premier League (Sept 19–21\" +303",
+     "\"Je, timu za nyumbani zitafunga mabao mengi z\" +546",
+     "\"Je, Mwanza itarekodi mawimbo ya upepo yanayo\" +418",
+     "\"Je, makipa mawili ya wasimamizi wa lango wat\" +569"
+    ]
+   },
+   "chromeGlyphs": [
+    "12x12",
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "768x1024",
+   "locale": "en",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 2.36,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick Home 56",
+    "Market status 116",
+    "Primary 65"
+   ],
+   "homeScreens": 5.63,
+   "heroH": 1341,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 87,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 91,
+     "right": 635
+    },
+    {
+     "h": 48,
+     "w": 97,
+     "right": 744
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "Will Wananchi win their Kariakoo Derby o",
+    "Back NO at 15%",
+    "Will any single match in UEFA Nations Le",
+    "How it works",
+    "Details",
+    "Will any Tanzanian Bongo Flava artist re",
+    "Bitcoin Up & Down · 5 min",
+    "Up & Down5m leftBitcoin Up or Down · 15 ",
+    "Up & Down50m leftGold Up or Down · 60 mi",
+    "Sports4d leftWill at least one match in ",
+    "Macro7d leftWill the Bank of Tanzania of",
+    "ResolvedSportsWill the two goalkeepers c"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    550,
+    550
+   ],
+   "liveFeatured": 244,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 19,
+    "markets": 26,
+    "detail": 17,
+    "updown": 12,
+    "live": 7,
+    "results": 17,
+    "leaderboard": 12,
+    "help": 20
+   },
+   "clipped": {
+    "home": [
+     "\"Will Premier League Gameweek 5 (Sept 19–21, \" +282",
+     "\"Will home teams score more total goals than \" +392",
+     "\"Will Mwanza record wind gusts exceeding 35 k\" +241",
+     "\"Will the two goalkeepers combine for more th\" +227"
+    ]
+   },
+   "chromeGlyphs": [
+    "12x12",
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "768x1024",
+   "locale": "zh",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 320,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 2.36,
+   "pinnedMarkets": 237,
+   "pinnedBars": [
+    "50pick 首页 56",
+    "市场状态 116",
+    "主要 65"
+   ],
+   "homeScreens": 5.5,
+   "heroH": 1341,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 87,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 72,
+     "right": 660
+    },
+    {
+     "h": 48,
+     "w": 72,
+     "right": 744
+    }
+   ],
+   "bubble": {
+    "w": 52,
+    "h": 52,
+    "right": 16,
+    "bottom": 80
+   },
+   "bubbleCovers": [
+    "2026年斯瓦希里国际旅游博览会（S!TE，10月23-25日，达累斯萨拉姆）能",
+    "瓦纳奇队能否在2026年10月10日的卡里亚科德比中获胜？",
+    "以 15% 押注「否」",
+    "2026年欧洲国家联赛第1轮（9月24–26日）是否有任何单场比赛总进球数达到5",
+    "详情",
+    "2026年12月31日前，任意一位坦桑尼亚Bongo Flava艺人能否在单个日",
+    "比特币 涨跌 · 5 分钟",
+    "涨跌3分钟后比特币涨跌 · 15分钟暂无投注",
+    "涨跌48分钟后黄金涨跌 · 60分钟暂无投注",
+    "体育4天后2026/27赛季欧国联第2轮（9月27-29日）是否至少有一场比赛以",
+    "宏观6天后2026年9月30日坦桑尼亚央行官方美元/坦桑尼亚先令中间价是否将收于",
+    "已结算体育富勒姆对阵曼联（英超第5轮，9月20日）两队门将合计扑救次数是否超过7"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    514,
+    514
+   ],
+   "liveFeatured": 244,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 26,
+    "markets": 36,
+    "detail": 21,
+    "updown": 12,
+    "live": 7,
+    "results": 17,
+    "leaderboard": 12,
+    "help": 20
+   },
+   "clipped": {
+    "home": [
+     "\"英超联赛第5轮（2026年9月19–21日）全部10场比赛合计进球是否达到25球或以上？\" +92",
+     "\"2026年英超联赛第5轮（9月18日至21日）所有比赛中，主队总进球数是否会超过客队？\" +116",
+     "\"2026年9月20日，姆万扎维多利亚湖畔的阵风是否会超过35公里/小时？\" +12",
+     "\"英超联赛第5轮（2026年9月18-20日）是否会有3支或更多客队获胜？\" +8"
+    ]
+   },
+   "chromeGlyphs": [
+    "12x12",
+    "14x14",
+    "15x15",
+    "20x20",
+    "26x26"
+   ]
+  },
+  {
+   "cell": "1280x800",
+   "locale": "sw",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 347,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.58,
+   "pinnedMarkets": 228,
+   "pinnedBars": [
+    "50pick Mwanzo 56",
+    "Hali ya soko 172"
+   ],
+   "homeScreens": 5.99,
+   "heroH": 1212,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 88,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 77,
+     "right": 1156
+    },
+    {
+     "h": 48,
+     "w": 88,
+     "right": 1256
+    }
+   ],
+   "bubble": {
+    "w": 56,
+    "h": 56,
+    "right": 16,
+    "bottom": 16
+   },
+   "bubbleCovers": [
+    "Je, timu za nyumbani zitafunga mabao men",
+    "Je, kadi nyekundu moja au zaidi itaonyes",
+    "Maelezo",
+    "Je, Cristiano Ronaldo atafunga goli NA k",
+    "Unga mkono HAPANA",
+    "Je, mechi yoyote katika Raundi ya 1 ya U",
+    "Inavyofanya kazi",
+    "Juu na Chinidakika 3 zimebakiBitcoin Juu",
+    "Michezosiku 4 zimebakiJe, angalau mechi ",
+    "sportsImetatuliwa · NDIO Matokeo mashuhu",
+    "ImekamilikaMichezoJe, Erling Haaland ata"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    550,
+    550
+   ],
+   "liveFeatured": 287,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 7,
+    "markets": 27,
+    "detail": 16,
+    "updown": 11,
+    "live": 6,
+    "results": 17,
+    "leaderboard": 11,
+    "help": 19
+   },
+   "clipped": {
+    "home": [
+     "\"Je, timu za nyumbani zitafunga mabao mengi z\" +34",
+     "\"Je, makipa mawili ya wasimamizi wa lango wat\" +57"
+    ]
+   },
+   "chromeGlyphs": [
+    "12x12",
+    "14x14",
+    "27x27"
+   ]
+  },
+  {
+   "cell": "1280x800",
+   "locale": "en",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 347,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.58,
+   "pinnedMarkets": 228,
+   "pinnedBars": [
+    "50pick Home 56",
+    "Market status 172"
+   ],
+   "homeScreens": 5.96,
+   "heroH": 1212,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 88,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 91,
+     "right": 1147
+    },
+    {
+     "h": 48,
+     "w": 97,
+     "right": 1256
+    }
+   ],
+   "bubble": {
+    "w": 56,
+    "h": 56,
+    "right": 16,
+    "bottom": 16
+   },
+   "bubbleCovers": [
+    "Will home teams score more total goals t",
+    "Will at least one red card be shown acro",
+    "Details",
+    "Will Cristiano Ronaldo score AND perform",
+    "Back NO",
+    "Will any single match in UEFA Nations Le",
+    "How it works",
+    "Up & Down3m leftBitcoin Up or Down · 10 ",
+    "Other2d leftWill Kenya's total active fi",
+    "sportsResolved · YES Notable resultWill ",
+    "ResolvedSportsWill Erling Haaland score "
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    412
+   ],
+   "liveFeatured": 287,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 7,
+    "markets": 27,
+    "detail": 16,
+    "updown": 11,
+    "live": 6,
+    "results": 17,
+    "leaderboard": 11,
+    "help": 19
+   },
+   "clipped": {},
+   "chromeGlyphs": [
+    "12x12",
+    "14x14",
+    "27x27"
+   ]
+  },
+  {
+   "cell": "1280x800",
+   "locale": "zh",
+   "cardLivePriced": {
+    "n": 8,
+    "min": 320,
+    "med": 347,
+    "max": 354
+   },
+   "cardsAll": {
+    "min": 312,
+    "max": 354
+   },
+   "cardsVisible": 1.74,
+   "pinnedMarkets": 172,
+   "pinnedBars": [
+    "50pick 首页 56",
+    "市场状态 116"
+   ],
+   "homeScreens": 5.8,
+   "heroH": 1212,
+   "heroCtaH": [
+    56,
+    56
+   ],
+   "closingRow": 88,
+   "authPills": [
+    {
+     "h": 48,
+     "w": 72,
+     "right": 1172
+    },
+    {
+     "h": 48,
+     "w": 72,
+     "right": 1256
+    }
+   ],
+   "bubble": {
+    "w": 56,
+    "h": 56,
+    "right": 16,
+    "bottom": 16
+   },
+   "bubbleCovers": [
+    "在所有UEFA国家联赛A组第1轮比赛（2026年9月24-26日）中，主队总进球",
+    "2026/27赛季欧洲国家联赛第1轮全部赛事（9月24日至26日）中是否至少出现",
+    "美国与伊朗能否在2026年10月1日前签署正式最终和平协议（超越2026年6月的",
+    "如何运作",
+    "详情",
+    "2026年欧洲国家联赛第1轮（9月24–26日）是否有任何单场比赛总进球数达到5",
+    "涨跌16分钟后黄金涨跌 · 30分钟暂无投注",
+    "体育1天后2026–27赛季欧国联第1轮（9月24日至26日）所有比赛中，是否会",
+    "体育等待结果坦桑尼亚\"国家之星\"能否在2027年非洲杯首批两场资格赛中（9月21",
+    "sports已结算 · 是 值得关注的结果2026年英超联赛第5轮（9月18日至",
+    "已结算体育厄林·哈兰德会在曼城对阵桑德兰（英超，2026年9月20日）打入首粒进"
+   ],
+   "countdown": {
+    "h": 248,
+    "tiles": 8
+   },
+   "updownCards": [
+    501,
+    501
+   ],
+   "liveFeatured": 257,
+   "helpRows": [
+    147,
+    147,
+    147
+   ],
+   "authFieldW": [],
+   "footerLinks": {
+    "n": 14,
+    "min": 15,
+    "med": 19
+   },
+   "share": {
+    "glyph": "13x13",
+    "w": 26,
+    "h": 37
+   },
+   "under40": {
+    "home": 14,
+    "markets": 39,
+    "detail": 20,
+    "updown": 11,
+    "live": 6,
+    "results": 20,
+    "leaderboard": 11,
+    "help": 19
+   },
+   "clipped": {},
+   "chromeGlyphs": [
+    "12x12",
+    "14x14",
+    "27x27"
+   ]
+  }
+ ],
+ "rows": [
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 185,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "login",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 222,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "register",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 222,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "forgot",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 222,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 164,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "login",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 222,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "register",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 222,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "forgot",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 222,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 121,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "login",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 222,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "register",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 222,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "320x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "forgot",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 222,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 164,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 143,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 121,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x640",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 164,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "login",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "register",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "forgot",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 164,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "login",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "register",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "sw",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "forgot",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 143,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "login",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "register",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "forgot",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 143,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "login",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "register",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "en",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "forgot",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 121,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "login",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "register",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "forgot",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 121,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "login",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "register",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "360x780",
+   "locale": "zh",
+   "density": "comfortable",
+   "who": "guest",
+   "route": "forgot",
+   "s": {
+    "authPills.h": 48,
+    "authFieldW": 262,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 143,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 121,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 121,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "412x915",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 108,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 87,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 87,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "780x360",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 108,
+    "footerLinks.min": 19,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 19,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 19,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 19,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 19,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 19,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 19,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 19,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 87,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "closingRows.med": 87,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 121,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 278,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 237,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "768x1024",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 52,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 121
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "closingRows.med": 88,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 56,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 347,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 228,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 284,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "sw",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "closingRows.med": 88,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 56,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 347,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 228,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 284,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "en",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "home",
+   "s": {
+    "cards.livePriced.med": 320,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": null,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "closingRows.med": 88,
+    "footerLinks.min": 15,
+    "hero.ctaH": 56,
+    "hero.ledePx": 20,
+    "pinnedPx.scrolled": 56,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "markets",
+   "s": {
+    "cards.livePriced.med": 347,
+    "cards.livePriced.max": 354,
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 172,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "detail",
+   "s": {
+    "cards.closed.med": null,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "countdown.tiles": 8,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "updown",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "live",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "results",
+   "s": {
+    "cards.closed.med": 312,
+    "gridGap": 14,
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 228,
+    "share.w": 26,
+    "share.h": 37
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "leaderboard",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  },
+  {
+   "cell": "1280x800",
+   "locale": "zh",
+   "density": "compact",
+   "who": "guest",
+   "route": "help",
+   "s": {
+    "authPills.h": 48,
+    "bubble.w": 56,
+    "footerLinks.min": 15,
+    "pinnedPx.scrolled": 56
+   }
+  }
+ ]
+}

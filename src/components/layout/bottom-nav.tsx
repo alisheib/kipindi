@@ -159,6 +159,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
             label={t.common.more}
             variant="rail"
             active={moreActive}
+            cardSpacing
           />
         </li>
       </ul>

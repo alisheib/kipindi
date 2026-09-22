@@ -26,12 +26,20 @@ export function Toggle({
   onClick,
   tone = "brand",
   disabled,
+  decorative,
   "aria-label": ariaLabel,
 }: {
   on: boolean;
   onClick?: () => void;
   tone?: "brand" | "gold" | "claret";
   disabled?: boolean;
+  /**
+   * The switch's PICTURE only — a non-interactive `<span aria-hidden>` inside a row that IS the control
+   * (Mobile Visual Plan U2: the rail menu's `role="menuitemcheckbox"` row, which owns the name, the state and the
+   * tap). A `<button role="switch">` there would be a button inside a button, and a focusable node under
+   * `aria-hidden` (axe `aria-hidden-focus`). Same track, same thumb, no role, no focus, no own hover.
+   */
+  decorative?: boolean;
   "aria-label"?: string;
 }) {
   const onBorder = {
@@ -46,6 +54,41 @@ export function Toggle({
   }[tone];
   // The focus ring follows the tone so it never reads as a different control's ring.
   const ring = { brand: "var(--brand-500)", gold: "var(--gold-400)", claret: "var(--claret-400)" }[tone];
+  // ONE thumb for both branches, so the switch and its picture can never drift apart.
+  const thumb = (
+    <span
+      style={{
+        position: "absolute",
+        top: 3,
+        left: 3,
+        width: 20,
+        height: 20,
+        borderRadius: 999,
+        background: "var(--pearl-50)",
+        transform: on ? "translateX(18px)" : "translateX(0)",
+        transition: "transform var(--t-base) var(--m-glide)",
+        boxShadow: "0 1px 3px oklch(10% 0.05 264 / 0.5)",
+        willChange: "transform",
+      }}
+    />
+  );
+  if (decorative) {
+    return (
+      <span
+        aria-hidden
+        className="relative inline-block shrink-0 rounded-pill"
+        style={{
+          width: 44,
+          height: 26,
+          border: on ? onBorder : "1px solid var(--border)",
+          background: on ? onFill : "var(--bg-inset)",
+          transition: "background var(--t-base) var(--m-glide), border-color var(--t-base) ease-out",
+        }}
+      >
+        {thumb}
+      </span>
+    );
+  }
   return (
     <button
       type="button"
@@ -78,21 +121,7 @@ export function Toggle({
         transition: "background var(--t-base) var(--m-glide), border-color var(--t-base) ease-out, transform var(--t-flick) ease-out",
       }}
     >
-      <span
-        style={{
-          position: "absolute",
-          top: 3,
-          left: 3,
-          width: 20,
-          height: 20,
-          borderRadius: 999,
-          background: "var(--pearl-50)",
-          transform: on ? "translateX(18px)" : "translateX(0)",
-          transition: "transform var(--t-base) var(--m-glide)",
-          boxShadow: "0 1px 3px oklch(10% 0.05 264 / 0.5)",
-          willChange: "transform",
-        }}
-      />
+      {thumb}
     </button>
   );
 }
