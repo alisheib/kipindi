@@ -789,6 +789,7 @@
     "db:seed-house-bots-local": "tsx scripts/seed-house-bots-local.mts",
     "db:seed-house-bot-panels": "tsx scripts/seed-house-bot-panels-local.mts",
     "qa:house-bots-local": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bots-local-drive.mts",
+    "qa:house-bot-fleet": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-fleet-drive.mts",
     "red:house-bot-chatbot": "tsx scripts/house-bot-chatbot-red.mts",
     "test:reset-identifier": "tsx scripts/reset-identifier.test.mts",
     "red:reset-identifier": "node scripts/reset-identifier-red.mjs",

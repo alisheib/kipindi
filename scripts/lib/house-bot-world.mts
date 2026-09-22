@@ -70,10 +70,22 @@ export async function loadWorld() {
   }
 
   /** A LIVE poll through `createMarket`. `graceMin` 0 gives stakes no exit window (locked on placement). */
-  async function poll(o: { graceMin?: number; paidMin?: number; resolutionInMs?: number } = {}): Promise<Any> {
+  /**
+   * ⭐ `category` AND `closeInMs` ARE OPTIONAL AND BOTH DEFAULT TO WHAT EVERY EXISTING CALLER ALREADY GOT
+   * (added 2026-09-22 for the fleet drive; every prior call passes neither and is unchanged).
+   *
+   * ⛔ THE CATEGORY IS HOW A FLEET ISOLATES ITS LANES, and it is the PRODUCT's own mechanism rather than a
+   * test-only namespace: `rulesCover` filters a poll by `rules.scope.categories`, so a bot scoped to
+   * `crypto` is structurally incapable of deciding about a `macro` market — it is filtered out before any
+   * flag is loaded. Several bots can therefore run under ONE engine without their decisions crossing.
+   * ⚠️ `closeInMs` sets `selectionClosedAt`, which FILL and OPENER read as the cutoff they plan against; a
+   * poll with no explicit close is what the counter cases want and what every caller before this had.
+   */
+  async function poll(o: { graceMin?: number; paidMin?: number; resolutionInMs?: number; category?: string; closeInMs?: number; title?: string } = {}): Promise<Any> {
     return svc.createMarket({
-      titleEn: "House seam poll", titleSw: "Soko la jaribio", category: "macro", sourceUrl: "https://bot.go.tz",
+      titleEn: o.title ?? "House seam poll", titleSw: "Soko la jaribio", category: o.category ?? "macro", sourceUrl: "https://bot.go.tz",
       resolutionCriterion: "Resolves at the official date.", resolutionAt: iso(o.resolutionInMs ?? 7 * 864e5), proposedBy: OFFICER,
+      ...(o.closeInMs != null ? { selectionClosedAt: iso(o.closeInMs) } : {}),
       rateOverrides: { freeExitGraceMinutes: o.graceMin ?? 0, paidExitWindowMinutes: o.paidMin ?? 0 },
     });
   }
