@@ -88,6 +88,24 @@ Severity as the auditors ranked it; effort S/M/L. Fix in this order.
     vs independent rounding not discriminated (needs a house LOSS with ≥ 3 winners). Wire `qa:house-bot-fleet` into
     the house verify ladder so the hand-derived oracle runs on a schedule.
 
+### F0 · THE CLOSING GATE BATCH — two reds, named (run on `e978d1c5`, 2026-09-22 15:20 UTC)
+
+Green: `typecheck` 0 · `house-bot-rules` 574/0 · `house-bot-console` ALL PASS (3 children) · `house-bot-engine`
+ALL PASS · `house-bot-money` ALL PASS · `dal-parity` 1380/0 · `house-bot-surfaces` 73/0 · **the full fleet
+A–M 364/364** · `next build` 0 · `verify:house-bot-bundle` ALL PASS. `house-bot-disclosure` hung and was killed
+in that batch; the cause was the suite's own ReDoS, fixed and proved afterwards at `2f67f87f` — it now runs
+**115/0** with control `1.re`. **Fix these two before anything else that needs a green ladder:**
+
+1. **`red:house-bot-console` exit 1, two FAILs.** `0.232.2` — the seven marked sites are line-pinned and this
+   session's edits moved them (re-derive the line numbers from the tree, as the pin's own comment says).
+   `0.512` — ⛔ D19 · `CONSOLE_GATES` and the gate module's exports no longer agree in both directions: the
+   console work added readers/exports without their entries. Both are OURS and both are a one-pass fix; neither
+   is a product defect, but `0.512` is the pin that stops an ungated reader shipping, so it does not wait.
+2. **`qa:live` 291 passed / 1 failed**, run against **production** (`BASE=https://www.50pick.tz`, the read-only
+   subset — production still runs `main` without this branch, so the red is NOT ours): `✗ 31/02/2000 -> "Invalid
+   date" shown`. Re-run it locally against a built tree to see whether it reproduces there; if it does, it is a
+   platform date-validation defect worth its own fix and its own case (`test:date` owns that family).
+
 ### F · Not measured this session (owed)
 - The audit's **activity-paging** and **functional-flow** lenses never finished (stopped on the owner's word to
   bank tokens): paging past one page / the 500 clamp / page-past-end / bell anchor on a served build, and every
