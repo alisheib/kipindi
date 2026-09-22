@@ -40,6 +40,33 @@
 type Any = any;
 
 import { ROSTER, EXPECT, FLEET, COUNTER_CUTOFF_MIN } from "./lib/house-bot-fleet-roster.mts";
+/**
+ * ── LANE MODULES ─────────────────────────────────────────────────────────────────────────────────────────
+ * Lanes D onward each live in ONE file of their own (`lib/house-bot-fleet-lane-<x>.mts`), so a lane can be
+ * built, run and mutation-proved without touching another lane's file. Each module exports `LANE` (the letter
+ * `--only` selects it by), `roster` (its desks, merged into the fleet BEFORE any account is created — a desk
+ * is designated and STARTED before the switch goes on, whatever lane it belongs to), `expect` (its
+ * hand-derived literals, merged into the oracle under the same rule as the roster's: they import nothing from
+ * `src/`), and `run(env, prior)`. ⛔ A lane whose `run` returns null is reported NOT MEASURED, never as a
+ * pass — a lane that is not built yet must not read as a lane that is green.
+ */
+import * as LANE_D from "./lib/house-bot-fleet-lane-d.mts";
+import * as LANE_E from "./lib/house-bot-fleet-lane-e.mts";
+import * as LANE_F from "./lib/house-bot-fleet-lane-f.mts";
+import * as LANE_G from "./lib/house-bot-fleet-lane-g.mts";
+import * as LANE_M from "./lib/house-bot-fleet-lane-money.mts";
+const LANE_MODULES = [LANE_D, LANE_E, LANE_F, LANE_G, LANE_M] as const;
+const ROSTER_ALL = [...ROSTER, ...LANE_MODULES.flatMap((m) => m.roster)];
+const EXPECT_ALL: Record<string, unknown> = Object.assign({}, EXPECT, ...LANE_MODULES.map((m) => m.expect));
+{
+  /* ⛔ Two lanes claiming one desk key, or two modules claiming one letter, is a fixture that answers the wrong
+     lane's question — refused before anything is created. */
+  const keys = ROSTER_ALL.map((s) => s.key);
+  const dupKey = keys.find((k, i) => keys.indexOf(k) !== i);
+  const letters = LANE_MODULES.map((m) => m.LANE);
+  const dupLane = letters.find((l, i) => letters.indexOf(l) !== i || ["A", "B", "C"].includes(l));
+  if (dupKey || dupLane) { console.error(`REFUSED — duplicate desk key ${dupKey ?? "-"} / lane letter ${dupLane ?? "-"}`); process.exit(2); }
+}
 
 const ONLY = (() => {
   const i = process.argv.indexOf("--only");
@@ -202,7 +229,7 @@ try {
    * that is refused in a sentence rather than as an opaque CAS failure fifty lines later.
    */
   const MAX_DESIGNATED = 20;
-  const wantedBots = ROSTER.filter((s) => laneWanted(s.lane)).length;
+  const wantedBots = ROSTER_ALL.filter((s) => laneWanted(s.lane)).length;
   if (wantedBots > MAX_DESIGNATED) {
     console.error(`REFUSED — the selected lanes ask for ${wantedBots} accounts and \`maxDesignatedBots\` cannot exceed ${MAX_DESIGNATED}. Split the run with --only.`);
     process.exit(2);
@@ -257,12 +284,12 @@ try {
   };
 
   const fleet: Record<string, Any> = {};
-  for (const spec of ROSTER) {
+  for (const spec of ROSTER_ALL) {
     if (!laneWanted(spec.lane)) continue;
     fleet[spec.key] = await mkBot(spec);
   }
   ok("fleet.1 · every account in the roster designated and STARTED through the real services",
-    Object.keys(fleet).length === ROSTER.filter((s) => laneWanted(s.lane)).length, j(Object.keys(fleet)));
+    Object.keys(fleet).length === ROSTER_ALL.filter((s) => laneWanted(s.lane)).length, j(Object.keys(fleet)));
 
   /** A player's stake, optionally aged past its exit close so it counts as locked. */
   const stake = async (marketId: string, side: string, amount: number, ageMs = 0): Promise<Any> => {
@@ -306,10 +333,21 @@ try {
   /* ⛔ The snapshot that lets the meta-mutation JUDGE ITSELF — see `fleet.silent` below. */
   const beforeLanes = { count, fail };
   const { runCounterLanes, runPoolTrapLane }: Any = await import("./lib/house-bot-fleet-lanes.mts");
-  const laneEnv = { ok, section, until, j, w, S, fleet, stake, EXPECT, COUNTER_CUTOFF_MIN, laneWanted, passes, calls, seen, sleep };
+  const laneEnv = { ok, section, until, j, w, S, fleet, stake, EXPECT: EXPECT_ALL, COUNTER_CUTOFF_MIN, laneWanted, passes, calls, seen, sleep, FLEET, TICKS, ENG, C, RULES, D, RCTX, CTX, OFFICER, alerts };
   const laneOut = await runCounterLanes(laneEnv);
   const poolOut = await runPoolTrapLane(laneEnv);
-  void laneOut; void poolOut;
+  /* Every placement the lanes recorded, for the money lane — the lanes before it append to this list. */
+  const placed: Any[] = [...(laneOut?.placed ?? []), ...(poolOut?.measured ? [{ key: "C1-POOLS", stake: poolOut.fired, side: "YES", market: poolOut.market, botId: poolOut.botId, holder: poolOut.holder }] : [])];
+  for (const mod of LANE_MODULES) {
+    if (!laneWanted(mod.LANE)) continue;
+    const out = await mod.run(laneEnv, { placed });
+    if (out == null) {
+      /* ⛔ NOT MEASURED IS A FAILURE OF THE RUN, NOT A PASS: a lane that was asked for and measured nothing. */
+      ok(`lane ${mod.LANE} · NOT MEASURED — the lane module returned null (not built, or it refused before measuring)`, false);
+      continue;
+    }
+    if (Array.isArray(out.placed)) placed.push(...out.placed);
+  }
 
   /**
    * ⭐ THE META-MUTATION NOW ENFORCES ITS OWN VERDICT, instead of leaving it to whoever reads the log.
