@@ -484,6 +484,15 @@ section("§5 · settlement carries the marker (PLAN §3 propagation, 04 A17)");
     const settled = await w.svc.getMarket(market.id);
     const fee = poolFee(5_000, 10_000, w.svc.ratesFor(settled), "YES").fee;
     ok("5.3b · levy identity with a house stake in the pool: 15,000 staked − payout = the pool fee", payout && 15_000 - payout.amount === fee, `payout ${payout?.amount} · fee ${fee}`);
+    /* ⛔ THE SETTLEMENT'S OWN REPORT IS THE ROWS IT WROTE (2026-09-22, found by the fleet drive's money lane on
+       Postgres). `settleMarket` read its totals through `listPositionsForMarket` — a fresh query on the singleton
+       client, OUTSIDE the lock transaction — so on Postgres it could not see the WIN/LOSS writes still uncommitted in
+       that very transaction and reported "0 positions settled · TZS 0 paid to winners" to the officer, the audit
+       rows and the return value, while the memory twin (same objects, no transaction) told the truth. This case is
+       the discriminator: two positions here (the player's NO, the house YES) and one payout, on BOTH stores. */
+    ok("5.3d · the settlement REPORTS what it wrote: positionsSettled 2 (the player's NO, the house YES) and winnersPaid = the BET_PAYOUT it booked — on this store too, not only in memory",
+      st.ok === true && st.data?.positionsSettled === 2 && payout != null && st.data?.winnersPaid === payout.amount,
+      `reported ${show(st)} · payout ${payout?.amount}`);
     if (w.onPostgres) {
       const sums: Any[] = await w.prisma()!.$queryRawUnsafe(
         `SELECT coalesce(sum("amount") FILTER (WHERE "account" = $1), 0)::text AS "pool",`
