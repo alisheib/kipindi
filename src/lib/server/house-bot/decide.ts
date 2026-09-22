@@ -312,7 +312,22 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
     const { requestedMs, dueMs } = targetDueAt({ placedAtMs: placedMs, exitCloseAtMs: exit.exitCloseAtMs, timingFrom: target.timingFrom, delaySec: target.drawnDelaySec });
     const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;
     let code: EngineCode | null = marketCode;
-    if (!code && !inSchedule(bot.rules, placedMs)) code = "OUTSIDE_SCHEDULE";
+    /**
+     * ⭐ THE SCHEDULE IS JUDGED AT THE INSTANT THE BET WOULD BE PLACED (2026-09-23 · register B6).
+     *
+     * ⛔ IT USED TO BE JUDGED AT THE TRIGGER'S PLACED INSTANT while FILL and OPENER judged theirs at DUE —
+     * one document, one schedule, two readings, and nothing on any screen saying which was meant.
+     * ⭐ DUE IS THE ONE AN OFFICER MEANS. The Rules tab's own sentence is "the hours of each chosen day it
+     * may bet", and a COUNTER bets at its DUE time — held to the player's exit close, which can be minutes
+     * after the stake that triggered it.
+     * ⛔ NOTHING CAN NOW BE PLACED THAT COULD NOT BE PLACED BEFORE. `fire.ts` re-checks the schedule at the
+     * REAL firing instant for every kind but Enter now, so a row queued outside its hours was already
+     * refused there. What changes is which rows are QUEUED — and the direction of that change is recorded
+     * rather than buried: a trigger arriving just BEFORE the window opens, whose due falls INSIDE it, is now
+     * answered, where before it was dropped at decide and nothing on the desk said why. That is what "from
+     * 09:00 it answers players" means, and it is written down in HOUSE-BOTS.md §5 as an owner decision.
+     */
+    if (!code && !inSchedule(bot.rules, dueMs)) code = "OUTSIDE_SCHEDULE";
     if (!code && (trigger.stakeTzs < bot.rules.counter.triggerStakeMinTzs || trigger.stakeTzs > bot.rules.counter.triggerStakeMaxTzs)) code = "TRIGGER_STAKE_RANGE";
     if (!code && !(placedMs < cutoffMs - g.noReactZoneSec * 1000)) code = "NO_REACT_ZONE";
     if (!code && dueMs > deadlineMs) code = requestedMs <= deadlineMs ? "EXIT_WINDOW_TOO_LATE" : "CUTOFF";
@@ -362,7 +377,8 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
     const dueMs = Math.max(requestedMs, exit.exitCloseAtMs);
     const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;
     let code: EngineCode | null = marketCode;
-    if (!code && !inSchedule(bot.rules, placedMs)) code = "OUTSIDE_SCHEDULE";
+    /* ⛔ THE SAME INSTANT AS THE TARGET PATH ABOVE, AND AS FILL AND OPENER — see the block there. */
+    if (!code && !inSchedule(bot.rules, dueMs)) code = "OUTSIDE_SCHEDULE";
     const total = input.pools.YES.raw + input.pools.NO.raw;
     if (!code && (total < bot.rules.scope.poolTotalMinTzs || (bot.rules.scope.poolTotalMaxTzs != null && total > bot.rules.scope.poolTotalMaxTzs))) code = "POOL_BAND";
     if (!code && product === "MARKET" && cutoffMs - placedMs < bot.rules.scope.skipPollsClosingWithinMin * 60_000) code = "CUTOFF";

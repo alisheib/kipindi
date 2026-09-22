@@ -31,8 +31,17 @@
  * the marker and demands `null` back, and 20.21 proves a real thrown claim message is not read as the marker.
  * **memory 756, Postgres 735** — what the run PRINTED, and exactly +5 in EACH child, which is the five new
  * labels reaching BOTH stores rather than only the memory one.
+ * ⭐ RAISED AGAIN with §7b — the rule leaves no `test:` suite pinned (register B6, 2026-09-23). Until that block
+ * existed the only instrument that moved most of the engine's 29 numeric leaves was `qa:house-bot-fleet`, a
+ * whole-engine drive on a real database: a leaf could be dropped from `decide.ts` and every `test:` suite stayed
+ * green. Twenty-four pure cases, each a PAIR (the value that refuses and the value one step away that allows) —
+ * both no-react units, the pool band's two inclusive edges, closing-soon with its Up & Down control, the trigger
+ * band's four edges, the delay and jitter DRAWS read off a recording RNG, FIXED and PCT amounts, the round-to
+ * floor, min-time-to-cutoff, the schedule in EAT with a UTC discriminator, and the opener's two delay units and
+ * its stake draw. **memory 780, Postgres 759** — what the run PRINTED, and exactly +24 in EACH child, which is
+ * the twenty-four new labels reaching BOTH stores rather than only the memory one.
  * ⛔ A floor only ever rises, and only to a count a run printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 756, postgres: 735 }, dbPrefix: "hb_engine" });
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 780, postgres: 759 }, dbPrefix: "hb_engine" });
