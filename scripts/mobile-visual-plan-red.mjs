@@ -100,7 +100,10 @@ const plants = [
       if (!defectRow) return p;
       const id = (defectRow.match(/^\|\s*(D\d+)/) || [])[1];
       const boardRow = p.split(/\r?\n/).find((l) => new RegExp(`^\\|\\s*${id}\\s*\\|`).test(l) && l !== defectRow);
-      return boardRow ? p.replace(`${boardRow}\n`, "") : p;
+      // Remove the line with EITHER line ending: a checkout with CRLF (git autocrlf) never matched `${row}\n`, and the
+      // plant silently applied nowhere (found 2026-09-22, the first time this ran on a CRLF checkout).
+      const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return boardRow ? p.replace(new RegExp(`${esc(boardRow)}\\r?\\n`), "") : p;
     } },
   { name: "a defect 🔵 shipped with no commit", expect: /names the commit that shipped it/,
     plan: (p) => {
