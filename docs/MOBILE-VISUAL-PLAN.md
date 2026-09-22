@@ -30,7 +30,7 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ NEXT: finish Session S1 → U2 (density setting + switch, no visual change) — U1 is ✅. Then S2 → U3 + U4.
+▶ NEXT: finish Session S1 → U2 (density setting + switch, no visual change). Then S2 → U3 + U4.
   ⚠️ U2 IS IN FLIGHT on branch `mobile-visual` — resume it from the HALF-DONE checklist below; do not start it again.
   Read §5 (hard rules) and §9 U2 before touching code.
 
@@ -202,7 +202,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 
 | Unit | Kind | Status | Session | Commit | Before → After (measured) | Guard RED-proven | Live ✅ (date) · notes |
 |---|---|---|---|---|---|---|---|
-| U1 Baseline instrument + QA player | — | ⬜ | S1 | | | | |
+| U1 Baseline instrument + QA player | — | ✅ | S1 | `ba8f18e3` | no instrument, no production player → `qa:mobile-visual` over 315 production pages, §11 "Before" re-derived, baseline committed; "QA Mobile 01" minted | yes (RED=1 exits 1 on card heights; clean exits 0) | 2026-09-22 · production, served `feca192c` |
 | U2 Density setting + switch | Compact | ⬜ | S1 | | | | |
 | U3 Market card + Up & Down card + skeleton token | Compact | ⬜ | S2 | | | | |
 | U4 Discovery bar | Compact | ⬜ | S2 | | | | |
