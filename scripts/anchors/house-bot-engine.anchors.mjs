@@ -642,8 +642,11 @@ export const MUTATIONS = [
   {
     name: "leaf-schedule-read-in-utc · the week's windows are built three hours out, so an officer's 09:00 EAT means 09:00 UTC",
     file: "src/lib/house-bot/clock.ts",
-    from: `export function eatWeekday(atMs: number): Weekday {`,
-    to: `export function eatWeekday(atMs: number): Weekday {\n  atMs -= EAT_OFFSET_MS;`,
+    /* 🔴 RE-AIMED 2026-09-23 · the first version shifted `eatWeekday` and was MISSED, correctly: a three-hour
+       shift at midday does not change the DAY, and the day index is all `eatWeekday` contributes here. The
+       minute-of-week is what a window is compared against, so that is where a zone error actually lands. */
+    from: `  return WEEKDAYS.indexOf(eatWeekday(atMs)) * MINUTES_PER_DAY + eatMinuteOfDay(atMs);`,
+    to: `  return WEEKDAYS.indexOf(eatWeekday(atMs)) * MINUTES_PER_DAY + eatMinuteOfDay(atMs) - 180;`,
     expect: "7b.13 · schedule.windows · ⭐ THE UTC DISCRIMINATOR",
     suite: "engine-mem",
     sections: "7b",
@@ -703,10 +706,17 @@ export const MUTATIONS = [
     sections: "7b",
   },
   {
-    name: "leaf-opener-stake-unfloored · the opener's drawn amount stops being floored to the step, so its bets read as calculated",
+    name: "leaf-opener-stake-unfloored · the drawn amount stops being floored to the step, so a shaped bet reads as calculated",
     file: DECIDE,
-    from: `  const drawn = floorTo(deps.randomInt(r.opener.stakeMinTzs, r.opener.stakeMaxTzs), r.shaping.roundToTzs);`,
-    to: `  const drawn = deps.randomInt(r.opener.stakeMinTzs, r.opener.stakeMaxTzs);`,
+    /**
+     * 🔴 RE-AIMED 2026-09-23, AND THE MISS WAS A FINDING. The first version removed the `floorTo` around the
+     * OPENER's own draw and was MISSED — because `clampStake` floors again, to the same `roundToTzs`, two lines
+     * later. The opener's own call is therefore belt-and-braces: it cannot change any answer, on any path.
+     * ⛔ SO THE MUTATION MOVED TO THE FLOOR THAT BINDS. `clampStake` is the one every kind of stake passes
+     * through, and a step that stops being applied there is the defect this case is named for.
+     */
+    from: `  const capped = floorTo(Math.min(stake, bot.stakeMaxTzs ?? 0, bounds.max), bot.rules.shaping.roundToTzs);`,
+    to: `  const capped = Math.min(stake, bot.stakeMaxTzs ?? 0, bounds.max);`,
     expect: "7b.24 · opener.stakeMin/MaxTzs",
     suite: "engine-mem",
     sections: "7b",
