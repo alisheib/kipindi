@@ -567,7 +567,18 @@ export function planOpener(input: PlanInput & { openerSide: DecideSide }, deps: 
   if (dueMs > deadlineMs) return { row: null, code: null };
   if (product === "UPDOWN" && udCloseness(view, input.price, r.updown.closenessPct)) return { row: null, code: null };
   if (bot.marketHeld || bot.capPrecheck || !inSchedule(r, dueMs)) return { row: null, code: null };
-  const drawn = floorTo(deps.randomInt(r.opener.stakeMinTzs, r.opener.stakeMaxTzs), r.shaping.roundToTzs);
+  /**
+   * ⛔ DRAWN, NOT FLOORED HERE — `clampStake` applies the step, and applying it twice hid a defect.
+   *
+   * 🔴 MEASURED 2026-09-23 by a mutation that did NOT bite. This line used to read
+   * `floorTo(deps.randomInt(…), r.shaping.roundToTzs)`, and removing that floor changed no answer on any
+   * path: `clampStake` floors `min(stake, stakeMax, bounds.max)` to the SAME step two lines down, and
+   * flooring twice over a monotone step is flooring once. So the call could not be shown to matter — which
+   * is the definition of code no test can protect, and two floors meant neither had a discriminating
+   * mutation: each one masked the other's removal.
+   * ⛔ THE STEP IS STILL APPLIED, and it is applied where every kind of stake passes through.
+   */
+  const drawn = deps.randomInt(r.opener.stakeMinTzs, r.opener.stakeMaxTzs);
   const clamped = clampStake(drawn, bot, input.bounds);
   if (!clamped.ok) return { row: null, code: null };
   const staleMs = dueMs + (product === "UPDOWN" ? STALE_AFTER_SEC.updown : STALE_AFTER_SEC.polls) * 1000;
