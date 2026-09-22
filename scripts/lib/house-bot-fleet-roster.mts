@@ -204,10 +204,18 @@ export const EXPECT = {
 
   /**
    * D1 · FILL. A player's NO 50,000 aged past the exit close; YES raw 0; thin = YES.
-   *   wanted = floor(50,000 × 40 / (100−40)) = floor(33,333.3) = 33,333
-   *   room   = locked NO 50,000 − raw YES 0  = 50,000
-   *   stake  = floorTo(min(33,333, 50,000), 1,000) = 33,000
+   *   wanted = floor(locked NO 50,000 × 40 / (100−40)) − raw YES 0 = floor(33,333.3) − 0 = 33,333
+   *   room   = locked NO 50,000 − raw YES 0                        = 50,000
+   *   stake  = floorTo(min(33,333, 50,000), 1,000)                 = 33,000
    * ⭐ `wantedTzs` is asserted too — 33,333 is a number a single-rounding implementation never produces.
+   * 🔴 THE `− raw[thin]` TERM WAS MISSING FROM THIS DERIVATION, and the figure was right anyway — which is
+   *   the dangerous kind of wrong. `decide.ts:502` is `floor(locked[opp] × p / (100 − p)) − pools[thin].raw`,
+   *   and it agrees with the old comment ONLY because D1's raw YES is 0. Written out, the next person to give
+   *   this market a YES pool would have kept a literal that had quietly stopped describing the arithmetic.
+   *   A hand-derived oracle is only as good as the hand derivation printed beside it.
+   * ⚠️ THE CUTOFF IS THE OPPOSITE OF LANE A's. FILL is planned at `cutoff − leadPollsMin`, and the planner
+   *   only scans markets closing within `lead + 15 s`, so the market must close in EXACTLY 30 minutes:
+   *   later and the planner never sees it, much earlier and `dueAt` has already passed.
    */
   "D1-FILL": { lockedNo: 50_000, wanted: 33_333, decide: 33_000, fire: 33_000, side: "YES" },
 

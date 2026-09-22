@@ -315,10 +315,15 @@ export async function runPoolTrapLane(env: Any): Promise<Any> {
     fired?.stakeTzs === exp.fire, j({ row: fired?.stakeTzs, staked }));
 
   /* ⭐ THE CONTROL THAT MAKES THE LANE DISCRIMINATING. If the two sites ever read the same column these two
-     numbers collapse into one, so their DIFFERENCE is the property under test — not either number alone. */
+     numbers collapse into one, so their DIFFERENCE is the property under test — not either number alone.
+     ⛔ IT READS `stakeTzs`, THE SIZE THE ENGINE DECIDED, AND NOT `askedStakeTzs`. It read the asked amount
+     once, and the first mutation run showed why that was worthless here: `asked` is the pre-cut 80,000 and
+     `exp.decide` is also 80,000, so the two agreed for a reason that had nothing to do with the cut. With
+     `decide.ts` mutated to size on `lockedA15` the decided stake fell to 60,000 and this control still
+     passed — a check reading the wrong field, agreeing by coincidence. */
   ok("C1-POOLS · the decide-stage and fire-stage sizes are DIFFERENT numbers (80,000 → 40,000) — one column at both sites collapses them",
-    decided?.decision?.askedStakeTzs === exp.decide && staked === exp.fire && exp.decide !== exp.fire,
-    j({ decided: decided?.decision?.askedStakeTzs, fired: staked }));
+    decided?.stakeTzs === exp.decide && staked === exp.fire && exp.decide !== exp.fire,
+    j({ decided: decided?.stakeTzs, fired: staked }));
 
   // ── the premise, read back off the rows rather than assumed ──────────────────────────────────────
   const at = (id: string): number => {
@@ -329,16 +334,25 @@ export async function runPoolTrapLane(env: Any): Promise<Any> {
   const yesAt = at(lateYes.positionId);
   const noAt = at(lateNo.positionId);
   const trigAt = at(trig.positionId);
+  /**
+   * ⛔ A GUARDED VERDICT DOES NOT GUARD ITS OWN MESSAGE. Every assertion below already refuses a missing
+   * instant with `Number.isFinite` — but the DETAIL argument is evaluated EAGERLY, before `ok` is entered,
+   * so on the run where nothing was placed `new Date(NaN).toISOString()` threw `RangeError: Invalid time
+   * value` and took the last five cases of the lane with it. Found by the `fire.ts` mutation, which is the
+   * one run where the bet is legitimately absent: the mutation was still caught, but the lane CRASHED
+   * instead of reporting, and a crash says far less about an engine defect than five clean reds do.
+   */
+  const stamp = (t: number): string => (Number.isFinite(t) ? new Date(t).toISOString() : "— never placed —");
 
   ok("C1-POOLS · PREMISE · the late YES really was on the book before the bet — otherwise the fire-stage cut never saw it",
     Number.isFinite(yesAt) && Number.isFinite(betAt) && yesAt < betAt,
-    j({ yes: new Date(yesAt).toISOString(), bet: new Date(betAt).toISOString() }));
+    j({ yes: stamp(yesAt), bet: stamp(betAt) }));
   ok("C1-POOLS · PREMISE · the trigger HAD locked by the time the bet was placed — it is 100,000 of the 160,000 lockedA15 was sized on",
     Number.isFinite(trigAt) && Number.isFinite(betAt) && trigAt + GRACE_MS <= betAt,
-    j({ locks: new Date(trigAt + GRACE_MS).toISOString(), bet: new Date(betAt).toISOString() }));
+    j({ locks: stamp(trigAt + GRACE_MS), bet: stamp(betAt) }));
   ok("C1-POOLS · PREMISE · the late NO had NOT locked by then — had its window shut in time, lockedA15 would have been 200,000 and this lane would have measured nothing",
     Number.isFinite(noAt) && Number.isFinite(betAt) && noAt + GRACE_MS > betAt,
-    j({ locks: new Date(noAt + GRACE_MS).toISOString(), bet: new Date(betAt).toISOString() }));
+    j({ locks: stamp(noAt + GRACE_MS), bet: stamp(betAt) }));
 
   // ── the accuracy chain, joined ───────────────────────────────────────────────────────────────────
   const after = (await w.bal(bot.userId)).balance as number;
