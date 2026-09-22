@@ -211,3 +211,29 @@ export function consoleNewHref(opts: { userId?: string | null; step?: ConsoleWiz
   const step = opts.step && opts.step !== "find" && opts.step !== "check" ? `&step=${opts.step}` : "";
   return `${CONSOLE_NEW_ROUTE}?u=${encodeURIComponent(opts.userId)}${step}`;
 }
+
+/**
+ * ⛔ THE TWO BY-HAND ENTRY MODES, AND WHETHER THIS BUILD HAS A SCREEN THAT CAN USE THEM (prod finding 2026-09-22).
+ *
+ * Enter now and Targeted stakes are two of the five press purposes (`PRESS_PURPOSES`); of the five, only the
+ * staff cancel has a screen on this build, and nothing under `src/` inserts a target. Yet both satisfied Start's
+ * "some entry mode" rule, so an account whose only entry was one of them started and never placed a bet — the
+ * rules form even says so in prose (`byHandNote`). `rulesStartProblems` now reads THESE flags (its
+ * `byHandScreens` default) and refuses such an account with `BY_HAND_NO_SCREEN` while its flag is false.
+ *
+ * ⛔ A FLAG IS TRUE EXACTLY WHEN THE PAGE AT ITS ROUTE EXISTS — tied by existence, as ruling 432(h) ties the roster's
+ * way-out column to the detail page. `test:house-bot-rules` §10 reads `src/app<route>/page.tsx` off disk for each
+ * key and holds the flag to it in BOTH directions: a true flag with no page is the inert switch Start exists to
+ * refuse; a false flag beside a built page is Start over-refusing a working screen. Building a screen elsewhere
+ * (a dialog on the account page, say) means moving the tie here first, in the same change.
+ */
+export type ByHandScreens = { readonly enterNow: boolean; readonly targeting: boolean };
+
+/** Where each by-hand screen lives when it exists. Routes, so the tie is a page file and not a class of files. */
+export const BY_HAND_SCREEN_ROUTES = {
+  enterNow: `${CONSOLE_ROUTE}/[id]/enter-now`,
+  targeting: `${CONSOLE_ROUTE}/[id]/targets/new`,
+} as const satisfies Record<keyof ByHandScreens, string>;
+
+/** ⛔ Flip a value here ONLY in the change that lands its page; the existence tie refuses either alone. */
+export const BY_HAND_SCREENS: ByHandScreens = { enterNow: false, targeting: false };

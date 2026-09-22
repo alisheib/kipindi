@@ -21,7 +21,7 @@ import {
   UD_VENDOR_BAR_MAX_AGE_SEC,
   type EngineCode,
 } from "@/lib/house-bot/constants";
-import { expandWindows, formatWhole, type HouseBotRulesV1 } from "@/lib/house-bot/rules";
+import { expandWindows, formatWhole, rulesCoverTarget, type HouseBotRulesV1 } from "@/lib/house-bot/rules";
 import type { LockedPool, NewHouseBotIntent } from "../house-bot-dal";
 import { bettableFrom, cutoffOf, scopeCode, type PublicMarketView } from "./market-view";
 
@@ -171,12 +171,18 @@ const productOf = (view: PublicMarketView): "MARKET" | "UPDOWN" => (view.product
 /**
  * The saved rules' scope for this market (C14): the product on and the chain or category listed, and — when `mode` is
  * given — that mode on. Fire asks with `mode` null for staff-chosen rows, which no automatic mode governs (ruling 66).
+ *
+ * ⛔ A THIN DELEGATE SINCE 2026-09-22. The predicate itself is `rulesCoverTarget` in `rules.ts`, where the desk asks
+ * it the other way round (`rulesReach`, `rulesInertReasons`) and the save's scope rows refuse the shapes it cannot
+ * cover. This module keeps only what the view adds: an Up & Down market without a round covers nothing. Measured on
+ * production the day before: a document with both products ticked and both lists empty reached `[].includes(x)`
+ * here on every market, and nothing upstream had refused it.
  */
 export function rulesCover(r: HouseBotRulesV1, view: PublicMarketView, mode: "counter" | "fill" | "opener" | null): boolean {
   if (productOf(view) === "UPDOWN") {
-    return r.scope.products.updown && (mode == null || r.modes.updown[mode]) && view.round != null && (r.scope.chains as string[]).includes(view.round.chainKey);
+    return view.round != null && rulesCoverTarget(r, { product: "UPDOWN", chainKey: view.round.chainKey }, mode);
   }
-  return r.scope.products.polls && (mode == null || r.modes.polls[mode]) && (r.scope.categories as string[]).includes(view.category);
+  return rulesCoverTarget(r, { product: "MARKET", category: view.category }, mode);
 }
 
 /** The bot's scope for this market: product on, the mode on, and the chain or category listed (C14). */
@@ -246,8 +252,7 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
   const targetEligible =
     input.target && targetBot && product === "MARKET" && ms(input.target.effectiveFrom) <= placedMs
       && targetBot.scopeFrom != null && placedMs >= ms(targetBot.scopeFrom)
-      && targetBot.rules.targeting.enabled && targetBot.rules.scope.products.polls
-      && (targetBot.rules.scope.categories as string[]).includes(view.category)
+      && targetBot.rules.targeting.enabled && rulesCoverTarget(targetBot.rules, { product: "MARKET", category: view.category }, null)
       ? { target: input.target, bot: targetBot }
       : null;
   if (!targetEligible && inBotScope.length === 0) return { row: null, code: null };

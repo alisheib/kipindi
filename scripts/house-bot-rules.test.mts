@@ -46,6 +46,9 @@ import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
 import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./lib/house-bot-expect-drift.mts";
 import { MUTATIONS as CEREMONY_ANCHORS } from "./anchors/house-bot-ceremony.anchors.mjs";
+import { MUTATIONS as SCOPE_ANCHORS } from "./anchors/house-bot-scope.anchors.mjs";
+import { consoleNeutralRegExp } from "./lib/house-bot-vocabulary.mjs";
+import { BY_HAND_SCREENS, BY_HAND_SCREEN_ROUTES, consoleBotTabHref } from "../src/lib/house-bot/console-routes.ts";
 import { MARKET_CATEGORIES, type MarketCategory } from "../src/lib/markets/categories.ts";
 import { ALLOWED_DURATIONS } from "../src/lib/updown-durations.ts";
 import {
@@ -108,12 +111,16 @@ import {
   type HolderCauseCode,
 } from "../src/lib/house-bot/pause-reasons.ts";
 import {
+  CHOOSE_FROM_LIST_COPY,
   CLEAR_EXEMPT,
   COUNT_LIMIT_FIELDS,
   CROSS_FIELD_RULES,
   DEFAULT_RULES_V1,
+  ENTRY_MODES,
+  ENTRY_MODE_WORDS,
   FIELD_META,
   FIELD_ORDER,
+  INERT_COPY,
   LIMIT_FIELDS,
   LIMITS_TAB_HREF,
   NULLABLE_LIMIT_FIELDS,
@@ -122,6 +129,8 @@ import {
   REQUIRED_FOR_MASTER_ON,
   REQUIRED_FOR_START,
   RULES_MIGRATIONS,
+  SCOPE_PRODUCTS,
+  START_COPY,
   TARGETS_LOWERING_PREVIEW,
   countChars,
   countInRollingWindow,
@@ -144,6 +153,9 @@ import {
   recommendedLimits,
   recommendedRules,
   ruleCopy,
+  rulesCoverTarget,
+  rulesInertReasons,
+  rulesReach,
   rulesStartProblems,
   targetDueAfterStakeSec,
   toWhole,
@@ -154,16 +166,20 @@ import {
   validateNote,
   validateReason,
   validateTargetInput,
+  type EntryMode,
   type ExitRates,
   type FieldError,
   type FieldId,
   type HouseBotCaps,
   type HouseBotLimits,
   type HouseBotRulesV1,
+  type InertReason,
   type ParseContext,
   type RulesBot,
   type RulesChain,
   type RulesContext,
+  type ScopeProduct,
+  type ScopeTarget,
   type TargetTimingInput,
 } from "../src/lib/house-bot/rules.ts";
 
@@ -644,15 +660,53 @@ section("§3 · cross-field rules — the rules form");
     } }));
   }
 
+  /* ⚠️ Since the scope rows (2026-09-22) a mode is on WITH its product and one member, or the save refuses the mode itself. */
+  const udFillOn = (r: HouseBotRulesV1) => { r.scope.products.updown = true; r.scope.chains = ["BTC:3"]; r.modes.updown.fill = true; };
+  const pollsFillOn = (r: HouseBotRulesV1) => { r.scope.products.polls = true; r.scope.categories = [SPORTS]; r.modes.polls.fill = true; };
   refuses("3.R-FILL-LEAD-UD · an Up & Down FILL lead under min time to cutoff + jitter is refused",
-    saveRules({ rules: (r) => { r.modes.updown.fill = true; r.fill.leadUdSec = 25; } }),
+    saveRules({ rules: (r) => { udFillOn(r); r.fill.leadUdSec = 25; } }),
     "fill.leadUdSec", "R-FILL-LEAD-UD", "FILL lead must be at least min time to cutoff plus jitter (30 s).");
-  saves("3.R-FILL-LEAD-UD · exactly 30 s saves", saveRules({ rules: (r) => { r.modes.updown.fill = true; r.fill.leadUdSec = 30; } }));
+  saves("3.R-FILL-LEAD-UD · exactly 30 s saves", saveRules({ rules: (r) => { udFillOn(r); r.fill.leadUdSec = 30; } }));
 
   refuses("3.R-FILL-LEAD-POLLS · a polls FILL lead of 6 min (360 s < 370 s) is refused",
-    saveRules({ rules: (r) => { r.modes.polls.fill = true; r.fill.leadPollsMin = 6; } }),
+    saveRules({ rules: (r) => { pollsFillOn(r); r.fill.leadPollsMin = 6; } }),
     "fill.leadPollsMin", "R-FILL-LEAD-POLLS", "FILL lead must be more than min time to cutoff plus jitter.");
-  saves("3.R-FILL-LEAD-POLLS · 7 min saves", saveRules({ rules: (r) => { r.modes.polls.fill = true; r.fill.leadPollsMin = 7; } }));
+  saves("3.R-FILL-LEAD-POLLS · 7 min saves", saveRules({ rules: (r) => { pollsFillOn(r); r.fill.leadPollsMin = 7; } }));
+
+  /* ⛔ THE TWO SCOPE ROWS (prod finding 2026-09-22): a ticked product with no member on its list, and a mode on for a
+   * product that is off. Both are evaluated through the same function Start's inert reasons are built on. */
+  refuses("3.R-PRODUCT-LIST · Polls ticked with no category is refused on the category list, naming the remedy",
+    saveRules({ rules: (r) => { r.scope.products.polls = true; r.modes.polls.counter = true; } }),
+    "scope.categories", "R-PRODUCT-LIST", "Choose at least one poll category, or turn Polls off.");
+  refuses("3.R-PRODUCT-LIST · Up & Down ticked with no chain is refused on the chain list",
+    saveRules({ rules: (r) => { r.scope.products.updown = true; r.modes.updown.counter = true; } }),
+    "scope.chains", "R-PRODUCT-LIST", "Choose at least one chain, or turn Up & Down off.");
+  {
+    const both = saveRules({ rules: (r) => { r.scope.products = { updown: true, polls: true }; r.modes.updown.counter = true; r.modes.polls.counter = true; } });
+    ok("3.R-PRODUCT-LIST · ⛔ THE PRODUCTION SHAPE (both ticked, both lists empty) is refused once per list and on NEITHER product switch",
+      !both.ok && errOn(both, "scope.chains")?.rule === "R-PRODUCT-LIST" && errOn(both, "scope.categories")?.rule === "R-PRODUCT-LIST"
+        && !errOn(both, "scope.products.updown") && !errOn(both, "scope.products.polls") && errorsOf(both).length === 2, canon(errorsOf(both)));
+    const stale = saveRules({ rules: (r) => { r.scope.products.polls = true; r.modes.polls.counter = true; r.scope.categories = ["astrology" as MarketCategory]; } });
+    ok("3.R-PRODUCT-LIST · a member the platform does not have is the list's own refusal (\"Choose from the list.\"), and the row does not add a second sentence to that field",
+      !stale.ok && errOn(stale, "scope.categories")?.message === CHOOSE_FROM_LIST_COPY && errorsOf(stale).filter((e) => e.field === "scope.categories").length === 1, canon(errorsOf(stale)));
+  }
+  saves("3.R-PRODUCT-LIST · one member on each list saves",
+    saveRules({ rules: (r) => { r.scope.products = { updown: true, polls: true }; r.scope.chains = ["BTC:3"]; r.scope.categories = [SPORTS]; r.modes.updown.counter = true; r.modes.polls.counter = true; } }));
+  saves("3.R-PRODUCT-LIST · an empty list under a product that is OFF is the default document, and it still saves", saveRules());
+  refuses("3.R-MODE-PRODUCT · a polls mode on with Polls off is refused on that mode, in the console's words for it",
+    saveRules({ rules: (r) => { r.modes.polls.counter = true; } }),
+    "modes.polls.counter", "R-MODE-PRODUCT", "React to a player's stake is on for polls, but Polls is off. Turn Polls on, or turn this off.");
+  refuses("3.R-MODE-PRODUCT · an Up & Down mode on with Up & Down off — the fill, on its own field",
+    saveRules({ rules: (r) => { r.modes.updown.fill = true; } }),
+    "modes.updown.fill", "R-MODE-PRODUCT", "Fill a thin side is on for Up & Down, but Up & Down is off. Turn Up & Down on, or turn this off.");
+  {
+    const three = saveRules({ rules: (r) => { r.modes.polls = { counter: true, fill: true, opener: true }; } });
+    ok("3.R-MODE-PRODUCT · three orphan modes are three refusals, one on each mode field, and none on the product switch",
+      !three.ok && (["modes.polls.counter", "modes.polls.fill", "modes.polls.opener"] as const).every((f) => errOn(three, f)?.rule === "R-MODE-PRODUCT")
+        && !errOn(three, "scope.products.polls") && errorsOf(three).length === 3, canon(errorsOf(three)));
+  }
+  saves("3.R-MODE-PRODUCT · the same mode with its product on and a member chosen saves",
+    saveRules({ rules: (r) => { r.scope.products.polls = true; r.scope.categories = [SPORTS]; r.modes.polls.counter = true; } }));
 
   // Against a SET global (04 C6): raising a bot above it is refused here; lowering the global is §3's limits half.
   // C7-SPEC rulings 319, 320, 452 · the console ships at `/admin/desk` and the segment is typed in ONE file, so this
@@ -910,7 +964,7 @@ section("§5 · min-gap floor");
   // Every CROSS_FIELD_RULES row has now been seen firing with its exact copy (§3 and 5.2).
   const ids = CROSS_FIELD_RULES.map((r) => r.id as string);
   const unseen = ids.filter((id) => !seenRules.has(id));
-  ok(`5.coverage · all ${ids.length} CROSS_FIELD_RULES rows were exercised`, ids.length >= 31 && unseen.length === 0, unseen.join(", "));
+  ok(`5.coverage · all ${ids.length} CROSS_FIELD_RULES rows were exercised`, ids.length >= 33 && unseen.length === 0, unseen.join(", "));
   ok("5.c2 · CONTROL · a planted rule id is reported unexercised", [...ids, "R-PLANTED"].filter((id) => !seenRules.has(id)).includes("R-PLANTED"));
 }
 
@@ -1349,8 +1403,9 @@ section("§10 · timing and Start");
     asTiming(t60.counter.polls)?.lastCounterableFromOpenSec === 3_000 && formatAfterStake(3_000) === "50:00", canon(t60.counter.polls));
   ok("10.9 · a 60-min paid exit on polls leaves the 3-min Up & Down timing unchanged", same(t60.counter.updown["BTC:3"], t0.counter.updown["BTC:3"]));
   {
-    const impossible = rulesStartProblems(rulesOf((r) => { delay20(r); r.scope.products.polls = true; r.modes.polls.counter = true; }), capsOf(), timingCtx({ freeExitGraceMinutes: 5, paidExitWindowMinutes: 120 }));
-    ok("10.10 · Start warns when the only enabled mode can never fire", impossible.warnings.includes("Every enabled mode is currently impossible."), canon(impossible.warnings));
+    const impossible = rulesStartProblems(rulesOf((r) => { delay20(r); r.scope.products.polls = true; r.scope.categories = [SPORTS]; r.modes.polls.counter = true; }), capsOf(), timingCtx({ freeExitGraceMinutes: 5, paidExitWindowMinutes: 120 }));
+    ok("10.10 · Start warns when the only enabled mode can never fire — on a document it would otherwise start",
+      impossible.refusals.length === 0 && impossible.warnings.includes("Every enabled mode is currently impossible."), canon(impossible));
   }
   // ⛔ CONTROL — the margin added to the automatic counter moves the 10-min row off PLAN §12.
   ok("10.c1 · CONTROL · adding LOCK_MARGIN_MS to the automatic 10-min counter gives 5:07, which turns the 5:00 row red",
@@ -1498,12 +1553,15 @@ section("§10 · timing and Start");
         NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow: false, targets: true }) === "Bot A has no automatic mode: it bets only when a target reacts." &&
         NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow: false, targets: false }) === null);
     const caps = capsOf({ targetsMaxActive: 5 });
+    const NO_SCREENS = { enterNow: false, targeting: false };
+    const ALL_SCREENS = { enterNow: true, targeting: true };
     const wrong: string[] = [];
     let rows = 0;
+    let screensDecide = 0;
     for (let bits = 0; bits < 32; bits++) {
       const [pollsCounter, updownFill, pollsOpener, enterNow, targets] = [0, 1, 2, 3, 4].map((i) => (bits & (1 << i)) !== 0);
       const r = rulesOf((x) => {
-        x.scope.products.polls = true;
+        x.scope.products = { updown: true, polls: true };
         x.scope.categories = [SPORTS];
         x.scope.chains = ["BTC:3"];
         x.modes.polls.counter = pollsCounter;
@@ -1512,18 +1570,39 @@ section("§10 · timing and Start");
         x.enterNow = { enabled: enterNow, thinStakeTzs: 10_000, openerStakeTzs: 2_000 };
         x.targeting.enabled = targets;
       });
-      const got = rulesStartProblems(r, caps, CTX, { label: "Bot A" });
       const automatic = pollsCounter || updownFill || pollsOpener;
-      const wantRefusals = automatic || enterNow || targets ? [] : ["Turn on at least one entry mode."];
+      const byHand = enterNow || targets;
       const line = automatic ? null : NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow, targets });
       const wantWarnings = line ? [line] : [];
-      rows++;
-      if (!same(got.refusals.map((f) => f.message), wantRefusals) || !same(got.warnings, wantWarnings)) {
-        wrong.push(`bits ${bits}: ${canon(got)}`);
+      /* ⛔ THE NEW TRUTH (2026-09-22), row by row. Nothing on at all is ONE refusal. Otherwise each ticked product needs
+       * an entry of its own: Up & Down its fill; polls its counter or opener, or a by-hand switch a SCREEN can press —
+       * so an account whose only polls entry is Enter now or targets is refused on this build and allowed once the
+       * screens are declared. Page order: the Up & Down mode field, the polls mode field, then the by-hand switch. */
+      const want = (screens: { enterNow: boolean; targeting: boolean }): string[] => {
+        if (!automatic && !byHand) return [START_COPY.noMode];
+        const out: string[] = [];
+        if (!updownFill) out.push(INERT_COPY.productNoMode.updown);
+        if (!pollsCounter && !pollsOpener) {
+          if (!byHand) out.push(INERT_COPY.productNoMode.polls);
+          else if (!((enterNow && screens.enterNow) || (targets && screens.targeting))) {
+            out.push(enterNow && targets ? INERT_COPY.byHandNoScreen.both : enterNow ? INERT_COPY.byHandNoScreen.enterNow : INERT_COPY.byHandNoScreen.targeting);
+          }
+        }
+        return out;
+      };
+      const verdicts: boolean[] = [];
+      for (const screens of [NO_SCREENS, ALL_SCREENS]) {
+        const got = rulesStartProblems(r, caps, CTX, { label: "Bot A", byHandScreens: screens });
+        rows++;
+        verdicts.push(got.refusals.length === 0);
+        if (!same(got.refusals.map((f) => f.message), want(screens)) || !same(got.warnings, wantWarnings)) {
+          wrong.push(`bits ${bits} screens ${canon(screens)}: got ${canon(got)} want ${canon(want(screens))}`);
+        }
       }
+      if (verdicts[0] !== verdicts[1]) screensDecide++;
     }
-    ok("10.S · the \"no mode\" truth table over 5 booleans (polls counter, Up & Down fill, polls opener, Enter now, targets)",
-      rows === 32 && wrong.length === 0, wrong[0] ?? "");
+    ok("10.S · the Start truth table over 5 booleans (polls counter, Up & Down fill, polls opener, Enter now, targets) × 2 screen settings — an account whose only polls entry is by hand is REFUSED on this build and allowed (warned) once a screen is declared",
+      rows === 64 && wrong.length === 0 && screensDecide > 0, wrong[0] ?? `rows ${rows} · screens decided ${screensDecide}`);
 
     const min2000 = ctxWith({ stakeBounds: { minTzs: 2_000, maxTzs: LIVE_MAX } });
     const liveCaps = capsOf({ stakeMinTzs: 2_000 }, min2000);
@@ -1537,6 +1616,243 @@ section("§10 · timing and Start");
     const bare = rulesStartProblems(rulesOf((x) => { x.scope.products.polls = true; x.modes.polls.counter = true; }), unset, CTX);
     ok("10.S · with every cap unset, Start names exactly the 11 required caps — never a staff-chosen cap or the target maximum",
       same(bare.refusals.filter((f) => f.code === "UNSET").map((f) => f.field).sort(), [...REQUIRED_FOR_START].sort()), canon(bare.refusals));
+  }
+
+  /* ═══ scope reach — ONE predicate for the engine and the desk (prod finding 2026-09-22) ═══════════════════════════
+   * Verified read-only on production: an ACTIVE account on a switched-ON desk had matched nothing, ever — both products
+   * ticked, both scope lists EMPTY, [].includes(x) false on every market — and Start had refused nothing. Everything
+   * below holds the predicate, its reach, the inert reasons, the save rows and Start to one truth; the class guard at
+   * the end generates every combination of the twelve switches and compares Start with the engine's predicate through
+   * two different paths. */
+  {
+    const SCOPE_CTX = { chains: CHAINS, categories: MARKET_CATEGORIES };
+    const NO_SCREENS = { enterNow: false, targeting: false };
+    const sports: ScopeTarget = { product: "MARKET", category: "sports" };
+    const macro: ScopeTarget = { product: "MARKET", category: "macro" };
+    const btc3: ScopeTarget = { product: "UPDOWN", chainKey: "BTC:3" };
+    const btc10: ScopeTarget = { product: "UPDOWN", chainKey: "BTC:10" };
+    const ALL_ON = { counter: true, fill: true, opener: true };
+    const pollsDoc = rulesOf((r) => { r.scope.products.polls = true; r.scope.categories = [SPORTS]; r.modes.polls.counter = true; });
+    const udDoc = rulesOf((r) => { r.scope.products.updown = true; r.scope.chains = ["BTC:3"]; r.modes.updown.fill = true; });
+    const prodShape = (r: HouseBotRulesV1) => { r.scope.products = { updown: true, polls: true }; r.modes.updown.counter = true; r.modes.polls.counter = true; };
+
+    // ── the predicate ──────────────────────────────────────────────────────────────────────────
+    ok("10.cover · polls on + sports + counter: covers (sports, counter) and (sports, null); not macro, not fill, not an Up & Down round",
+      rulesCoverTarget(pollsDoc, sports, "counter") && rulesCoverTarget(pollsDoc, sports, null) && !rulesCoverTarget(pollsDoc, macro, "counter")
+        && !rulesCoverTarget(pollsDoc, sports, "fill") && !rulesCoverTarget(pollsDoc, btc3, "counter") && !rulesCoverTarget(pollsDoc, btc3, null));
+    ok("10.cover · Up & Down on + BTC:3 + fill: covers (BTC:3, fill) and (BTC:3, null); not BTC:10, not counter, not a poll",
+      rulesCoverTarget(udDoc, btc3, "fill") && rulesCoverTarget(udDoc, btc3, null) && !rulesCoverTarget(udDoc, btc10, "fill")
+        && !rulesCoverTarget(udDoc, btc3, "counter") && !rulesCoverTarget(udDoc, sports, "fill") && !rulesCoverTarget(udDoc, sports, null));
+    ok("10.cover · ⛔ THE FINDING · a ticked product with an EMPTY list covers nothing — every member, every mode, and mode null",
+      (() => {
+        const doc = rulesOf((r) => { r.scope.products = { updown: true, polls: true }; r.modes.updown = { ...ALL_ON }; r.modes.polls = { ...ALL_ON }; });
+        const modes: (EntryMode | null)[] = [...ENTRY_MODES, null];
+        return MARKET_CATEGORIES.every((c) => modes.every((m) => !rulesCoverTarget(doc, { product: "MARKET", category: c }, m)))
+          && CHAINS.every((ch) => modes.every((m) => !rulesCoverTarget(doc, { product: "UPDOWN", chainKey: ch.key }, m)));
+      })());
+    ok("10.cover · the product switch off covers nothing, with the member listed and every mode on",
+      !rulesCoverTarget(rulesOf((r) => { r.scope.categories = [SPORTS]; r.modes.polls = { ...ALL_ON }; }), sports, "counter")
+        && !rulesCoverTarget(rulesOf((r) => { r.scope.chains = ["BTC:3"]; r.modes.updown = { ...ALL_ON }; }), btc3, null));
+
+    // ── the reach: the predicate asked the other way ───────────────────────────────────────────
+    {
+      const reach = rulesReach(pollsDoc, SCOPE_CTX);
+      ok("10.reach · polls on + sports + counter → live [{polls, counter}], categories [sports], polls.modes counter only, Up & Down nothing, by-hand off",
+        same(reach.live, [{ product: "polls", mode: "counter" }]) && same(reach.polls.categories, ["sports"]) && same(reach.polls.modes, { counter: true, fill: false, opener: false })
+          && reach.polls.product === true && reach.updown.product === false && reach.updown.chains.length === 0 && same(reach.updown.modes, { counter: false, fill: false, opener: false })
+          && same(reach.byHand, { enterNow: false, targeting: false }), canon(reach));
+      const both = rulesReach(rulesOf((r) => {
+        r.scope.products = { updown: true, polls: true }; r.scope.categories = [SPORTS]; r.scope.chains = ["BTC:3", "BTC:10"];
+        r.modes.polls.counter = true; r.modes.updown.opener = true; r.enterNow.enabled = true;
+      }), SCOPE_CTX);
+      ok("10.reach · both products: live pairs in page order (Up & Down first), both chains listed, by-hand Enter now read off the switch",
+        same(both.live, [{ product: "updown", mode: "opener" }, { product: "polls", mode: "counter" }]) && same(both.updown.chains, ["BTC:3", "BTC:10"])
+          && same(both.polls.categories, ["sports"]) && both.byHand.enterNow === true && both.byHand.targeting === false, canon(both));
+      const empty = rulesReach(rulesOf(prodShape), SCOPE_CTX);
+      ok("10.reach · ⛔ THE FINDING · the production shape (both products ticked, both lists empty, a mode on each) reaches NOTHING: live empty, both member lists empty, both product switches still reported on",
+        empty.live.length === 0 && empty.polls.categories.length === 0 && empty.updown.chains.length === 0 && empty.polls.product && empty.updown.product
+          && same(empty.polls.modes, { counter: false, fill: false, opener: false }), canon(empty));
+      const stale = rulesReach(pollsDoc, { chains: [], categories: ["macro"] });
+      ok("10.reach.c1 · CONTROL · the reach is asked over the CONTEXT's members, not the document's list: a listed category the platform no longer has reaches nothing",
+        stale.live.length === 0 && stale.polls.categories.length === 0 && stale.polls.product === true, canon(stale));
+    }
+
+    // ── the reasons: one per cause, exact sentence, page order ────────────────────────────────
+    const reasonsOf = (mut?: (r: HouseBotRulesV1) => void, screens = NO_SCREENS): InertReason[] => rulesInertReasons(rulesOf(mut), SCOPE_CTX, { byHandScreens: screens });
+    const keyed = (rs: InertReason[]) => rs.map((r) => `${r.code}${r.product ? `:${r.product}` : ""}${r.mode ? `:${r.mode}` : ""}@${r.field}`);
+    ok("10.inert · a coherent document has no reason", reasonsOf((r) => { r.scope.products.polls = true; r.scope.categories = [SPORTS]; r.modes.polls.counter = true; }).length === 0);
+    ok("10.inert · the default document is NO_PRODUCT and NO_MODE, once each, on the first field of each group, with the two sealed Start sentences",
+      same(reasonsOf().map((r) => [r.code, r.field, r.message]), [
+        ["NO_PRODUCT", "scope.products.updown", "Choose at least one product."],
+        ["NO_MODE", "modes.updown.counter", "Turn on at least one entry mode."],
+      ]) && START_COPY.noProduct === INERT_COPY.noProduct && START_COPY.noMode === INERT_COPY.noMode, canon(reasonsOf()));
+    ok("10.inert · ⛔ THE PRODUCTION SHAPE: exactly PRODUCT_NO_LIST twice, on the two list fields, page order, the sealed sentences",
+      same(reasonsOf(prodShape).map((r) => [r.code, r.product, r.field, r.message]), [
+        ["PRODUCT_NO_LIST", "updown", "scope.chains", "Up & Down is on but no chain is chosen."],
+        ["PRODUCT_NO_LIST", "polls", "scope.categories", "Polls is on but no poll category is chosen."],
+      ]), canon(reasonsOf(prodShape)));
+    ok("10.inert · …the same shape with NO mode on adds NO_MODE once, never a per-product 'no mode' beside it",
+      same(keyed(reasonsOf((r) => { r.scope.products = { updown: true, polls: true }; })), ["PRODUCT_NO_LIST:updown@scope.chains", "PRODUCT_NO_LIST:polls@scope.categories", "NO_MODE@modes.updown.counter"]),
+      canon(keyed(reasonsOf((r) => { r.scope.products = { updown: true, polls: true }; }))));
+    {
+      const orphans = reasonsOf((r) => { r.modes.polls = { ...ALL_ON }; r.scope.products.updown = true; r.scope.chains = ["BTC:3"]; r.modes.updown.counter = true; });
+      ok("10.inert · a mode on for a product that is OFF is one reason per mode, on the mode's own field, in the console's words — while the other product is live",
+        same(orphans.map((r) => [r.code, r.product, r.mode, r.field, r.message]), [
+          ["MODE_WITHOUT_PRODUCT", "polls", "counter", "modes.polls.counter", "React to a player's stake is on for polls, but Polls is off."],
+          ["MODE_WITHOUT_PRODUCT", "polls", "fill", "modes.polls.fill", "Fill a thin side is on for polls, but Polls is off."],
+          ["MODE_WITHOUT_PRODUCT", "polls", "opener", "modes.polls.opener", "Open a quiet market is on for polls, but Polls is off."],
+        ]), canon(orphans));
+      const half = reasonsOf((r) => { r.scope.products = { updown: true, polls: true }; r.scope.chains = ["BTC:3"]; r.scope.categories = [SPORTS]; r.modes.polls.counter = true; });
+      ok("10.inert · a ticked product with a member but none of its modes on, beside a live product: PRODUCT_NO_MODE on its first mode field",
+        same(half.map((r) => [r.code, r.product, r.field, r.message]), [["PRODUCT_NO_MODE", "updown", "modes.updown.counter", "Up & Down is on but no entry mode is on for Up & Down."]]), canon(half));
+      const en = (r: HouseBotRulesV1) => { enterNowOn(r); };
+      const tg = (r: HouseBotRulesV1) => { r.scope.products.polls = true; r.scope.categories = [SPORTS]; r.targeting.enabled = true; };
+      const bothHand = (r: HouseBotRulesV1) => { enterNowOn(r); r.targeting.enabled = true; };
+      ok("10.inert · polls with a category and no automatic mode, by hand only: BY_HAND_NO_SCREEN with this build's screens — the Enter now, targets and both-on sentences, on the by-hand field — and nothing once a screen can press it",
+        same(reasonsOf(en).map((r) => [r.code, r.field, r.message]), [["BY_HAND_NO_SCREEN", "enterNow.enabled", INERT_COPY.byHandNoScreen.enterNow]])
+          && same(reasonsOf(tg).map((r) => [r.code, r.field, r.message]), [["BY_HAND_NO_SCREEN", "targeting.enabled", INERT_COPY.byHandNoScreen.targeting]])
+          && same(reasonsOf(bothHand).map((r) => [r.code, r.field, r.message]), [["BY_HAND_NO_SCREEN", "enterNow.enabled", INERT_COPY.byHandNoScreen.both]])
+          && reasonsOf(en, { enterNow: true, targeting: false }).length === 0 && reasonsOf(tg, { enterNow: false, targeting: true }).length === 0
+          && reasonsOf(bothHand, { enterNow: false, targeting: true }).length === 0
+          && same(keyed(reasonsOf(en, { enterNow: false, targeting: true })), ["BY_HAND_NO_SCREEN:polls@enterNow.enabled"]),
+        canon({ en: reasonsOf(en), tg: reasonsOf(tg), both: reasonsOf(bothHand) }));
+      ok("10.inert · by hand beside a live automatic polls mode is no reason at all (an inert switch is not a refusal), and Enter now with Polls OFF is the product's problem, not the screen's",
+        reasonsOf((r) => { enterNowOn(r); r.modes.polls.counter = true; }).length === 0
+          && same(keyed(reasonsOf((r) => { r.enterNow = { enabled: true, thinStakeTzs: 10_000, openerStakeTzs: 2_000 }; r.scope.products.updown = true; r.scope.chains = ["BTC:3"]; })), ["PRODUCT_NO_MODE:updown@modes.updown.counter"]));
+    }
+    {
+      /* ⛔ 453 · every sentence a reason or a save row can carry, scanned with the console's own lexicon. */
+      const sentences = [
+        INERT_COPY.noProduct, INERT_COPY.noMode, ...Object.values(INERT_COPY.noList), ...Object.values(INERT_COPY.productNoMode), ...Object.values(INERT_COPY.byHandNoScreen),
+        ...SCOPE_PRODUCTS.flatMap((p: ScopeProduct) => ENTRY_MODES.map((m) => INERT_COPY.modeWithoutProduct(m, p))),
+        ...SCOPE_PRODUCTS.flatMap((p: ScopeProduct) => ENTRY_MODES.map((m) => ruleCopy("R-MODE-PRODUCT", 0, { mode: ENTRY_MODE_WORDS[m], product: p === "polls" ? "polls" : "Up & Down", switch: p === "polls" ? "Polls" : "Up & Down" }))),
+        ruleCopy("R-PRODUCT-LIST", 0), ruleCopy("R-PRODUCT-LIST", 1),
+      ];
+      const lexicon = consoleNeutralRegExp();
+      const hits = sentences.filter((s) => lexicon.test(s));
+      ok(`10.inert · ⛔ 453 · not one of the ${sentences.length} sentences a reason or a scope row can paint names the feature (the console's lexicon, the four extra words included)`,
+        sentences.length >= 20 && hits.length === 0 && sentences.every((s) => s.length > 0 && !s.includes("{")), hits.join(" | "));
+      ok("10.inert.c1 · CONTROL · the same lexicon fires on the field label the sentences deliberately avoid (\"Polls · Counter\"), so the zero above is a measurement",
+        lexicon.test(FIELD_META["modes.polls.counter"].label) && lexicon.test("this bot cannot bet"));
+    }
+
+    // ── Start: one refusal per reason, with the Rules href; the default screens are this build's ──
+    {
+      const href = consoleBotTabHref("hb_x", "rules");
+      const got = rulesStartProblems(rulesOf(prodShape), capsOf(), CTX, { botId: "hb_x", label: "Bot A" });
+      ok("10.start · ⛔ THE PRODUCTION SHAPE is refused at Start with exactly two refusals — one per product, on its list field, code INVALID, each linking to the Rules tab",
+        same(got.refusals, [
+          { field: "scope.chains", code: "INVALID", message: INERT_COPY.noList.updown, href },
+          { field: "scope.categories", code: "INVALID", message: INERT_COPY.noList.polls, href },
+        ]) && href === "/admin/desk/hb_x?tab=rules", canon(got.refusals));
+      const half = rulesStartProblems(rulesOf((r) => { prodShape(r); r.scope.categories = [SPORTS]; }), capsOf(), CTX, { botId: "hb_x" });
+      ok("10.start · populating the category list with one member clears the polls refusal ONLY — Up & Down still claims a product it cannot reach",
+        same(half.refusals.map((f) => [f.field, f.message]), [["scope.chains", INERT_COPY.noList.updown]]), canon(half.refusals));
+      const whole = rulesStartProblems(rulesOf((r) => { prodShape(r); r.scope.categories = [SPORTS]; r.scope.chains = ["BTC:3"]; }), capsOf(), CTX, { botId: "hb_x" });
+      ok("10.start · …and one chain as well leaves nothing refused", whole.refusals.length === 0, canon(whole.refusals));
+      const byHandOnly = rulesOf(enterNowOn);
+      const dflt = rulesStartProblems(byHandOnly, capsOf(), CTX, { label: "Bot A" });
+      const withScreen = rulesStartProblems(byHandOnly, capsOf(), CTX, { label: "Bot A", byHandScreens: { enterNow: true, targeting: false } });
+      ok("10.start · an Enter-now-only account is REFUSED by default — the default is BY_HAND_SCREENS, this build's honest {false, false} — and allowed, with the dialog's warning, once its screen is declared",
+        same(dflt.refusals.map((f) => [f.field, f.code, f.message]), [["enterNow.enabled", "INVALID", INERT_COPY.byHandNoScreen.enterNow]])
+          && same(BY_HAND_SCREENS, { enterNow: false, targeting: false })
+          && withScreen.refusals.length === 0 && same(withScreen.warnings, [NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow: true, targets: false })]) && same(dflt.warnings, withScreen.warnings),
+        canon({ dflt, withScreen }));
+      const none = rulesStartProblems(rulesOf(), capsOf(), CTX, { botId: "hb_x" });
+      ok("10.start · the default document's two old refusals are still exactly two, each said once, now on a field of the form and with the href",
+        same(none.refusals, [
+          { field: "scope.products.updown", code: "INVALID", message: START_COPY.noProduct, href },
+          { field: "modes.updown.counter", code: "INVALID", message: START_COPY.noMode, href },
+        ]), canon(none.refusals));
+    }
+
+    // ── the existence tie (ruling 432(h)'s shape): a by-hand flag is true exactly when the page at its route exists ──
+    {
+      const pageOf = (route: string) => join(ROOT, "src/app", route, "page.tsx");
+      const untied = (flags: Record<string, boolean>, routes: Record<string, string>, exists: (p: string) => boolean): string[] =>
+        Object.keys(routes).filter((k) => flags[k] !== exists(pageOf(routes[k])));
+      const routes = Object.values(BY_HAND_SCREEN_ROUTES);
+      ok("10.byhand · ⛔ BY_HAND_SCREENS is tied by existence: each flag equals whether src/app<route>/page.tsx exists on disk, for both keys, both routes under the console's own account page",
+        untied(BY_HAND_SCREENS, BY_HAND_SCREEN_ROUTES, existsSync).length === 0 && same(Object.keys(BY_HAND_SCREENS).sort(), ["enterNow", "targeting"])
+          && same(Object.keys(BY_HAND_SCREEN_ROUTES).sort(), ["enterNow", "targeting"]) && routes.every((r) => r.startsWith("/admin/desk/[id]/")) && new Set(routes).size === 2,
+        canon({ BY_HAND_SCREENS, BY_HAND_SCREEN_ROUTES, untied: untied(BY_HAND_SCREENS, BY_HAND_SCREEN_ROUTES, existsSync) }));
+      ok("10.byhand.c1 · CONTROL · a planted true flag with no page is reported, and a planted false flag beside a page that exists is reported too — the tie refuses both directions",
+        same(untied({ enterNow: true, targeting: false }, BY_HAND_SCREEN_ROUTES, existsSync), ["enterNow"])
+          && same(untied({ enterNow: false, targeting: false }, BY_HAND_SCREEN_ROUTES, () => true), ["enterNow", "targeting"]));
+      /* ⛔ AND THE FORM'S PROSE FOLLOWS THE FLAGS: while neither screen exists the console says so above the two switches. */
+      const gate = readFileSync(join(ROOT, "src/lib/server/house-console-read.ts"), "utf8");
+      const saysNoScreen = /No screen on this build can do that yet/.test(gate);
+      ok("10.byhand · the rules form's by-hand note says no screen exists exactly while both flags are false — a flag that flips without the sentence, or the sentence without the flag, is reported",
+        saysNoScreen === (!BY_HAND_SCREENS.enterNow && !BY_HAND_SCREENS.targeting), `says no screen: ${saysNoScreen} · flags ${canon(BY_HAND_SCREENS)}`);
+    }
+
+    // ── the engine reads the scope through the one predicate only (a source pin on decide.ts, with its control) ──
+    {
+      const decideSrc = decomment(readFileSync(join(ROOT, "src/lib/server/house-bot/decide.ts"), "utf8"));
+      const importsIt = /import \{[^}]*\brulesCoverTarget\b[^}]*\} from "@\/lib\/house-bot\/rules"/.test(decideSrc);
+      const LIST_READ = /scope\.(chains|categories)/;
+      const calls = (decideSrc.match(/\brulesCoverTarget\(/g) ?? []).length;
+      ok("10.engine · decide.ts value-imports rulesCoverTarget, calls it at its three sites (the Up & Down and polls halves of rulesCover, the target's scope) and reads NEITHER scope list itself — so the desk and the engine cannot disagree about what a document covers",
+        importsIt && !LIST_READ.test(decideSrc) && calls === 3, `imports ${importsIt} · list reads ${LIST_READ.test(decideSrc)} · calls ${calls}`);
+      ok("10.engine.c1 · CONTROL · the body this pin replaced — a direct .includes over the document's own list — is what the list-read sweep reports, and the delegate is not",
+        LIST_READ.test("(r.scope.chains as string[]).includes(view.round.chainKey)") && LIST_READ.test("(targetBot.rules.scope.categories as string[]).includes(view.category)")
+          && !LIST_READ.test("rulesCoverTarget(r, { product: \"UPDOWN\", chainKey: view.round.chainKey }, mode)"));
+    }
+
+    // ── ⭐ THE CLASS GUARD · every combination of the twelve switches, Start against the engine's predicate ──
+    {
+      const caps = capsOf({ targetsMaxActive: 5 });
+      const ALL_SCREENS = { enterNow: true, targeting: true };
+      const targetsOf = (p: ScopeProduct): ScopeTarget[] =>
+        p === "updown" ? CHAINS.map((c) => ({ product: "UPDOWN", chainKey: c.key })) : MARKET_CATEGORIES.map((c) => ({ product: "MARKET", category: c }));
+      const wrong: string[] = [];
+      let n = 0, allowedNone = 0, allowedAll = 0, prodShapeVerdict: boolean | null = null;
+      for (let bits = 0; bits < 4096; bits++) {
+        const b = (i: number) => (bits & (1 << i)) !== 0;
+        const doc = rulesOf((r) => {
+          r.scope.products = { updown: b(0), polls: b(1) };
+          r.modes.updown = { counter: b(2), fill: b(3), opener: b(4) };
+          r.modes.polls = { counter: b(5), fill: b(6), opener: b(7) };
+          r.scope.categories = b(8) ? [SPORTS] : [];
+          r.scope.chains = b(9) ? ["BTC:3"] : [];
+          r.enterNow = { enabled: b(10), thinStakeTzs: 10_000, openerStakeTzs: 2_000 };
+          r.targeting.enabled = b(11);
+        });
+        /* THE ORACLE: the engine's own predicate, asked DIRECTLY over the context's lists — never rulesReach, so the
+         * start check and the engine predicate meet through two different paths. Start allows exactly when some product
+         * is ticked, every ticked product reaches a member with a mode that is on (polls also through a by-hand switch a
+         * screen can press, over a member the product lists), and no mode is on for a product that is off. */
+        const reaches = (p: ScopeProduct) => targetsOf(p).some((t) => ENTRY_MODES.some((m) => rulesCoverTarget(doc, t, m)));
+        const listed = (p: ScopeProduct) => targetsOf(p).some((t) => rulesCoverTarget(doc, t, null));
+        const orphan = SCOPE_PRODUCTS.some((p: ScopeProduct) => !doc.scope.products[p] && ENTRY_MODES.some((m) => doc.modes[p][m]));
+        const someProduct = doc.scope.products.updown || doc.scope.products.polls;
+        for (const screens of [NO_SCREENS, ALL_SCREENS]) {
+          const usable = (doc.enterNow.enabled && screens.enterNow) || (doc.targeting.enabled && screens.targeting);
+          const updownOk = !doc.scope.products.updown || reaches("updown");
+          const pollsOk = !doc.scope.products.polls || reaches("polls") || (listed("polls") && usable);
+          const expectAllowed = someProduct && updownOk && pollsOk && !orphan;
+          const got = rulesStartProblems(doc, caps, CTX, { byHandScreens: screens });
+          const allowed = got.refusals.length === 0;
+          n++;
+          if (allowed) { if (screens === NO_SCREENS) allowedNone++; else allowedAll++; }
+          if (bits === 0b0000_0010_0011 && screens === NO_SCREENS) prodShapeVerdict = allowed; // both products, counter on each, both lists empty
+          if (allowed !== expectAllowed) wrong.push(`bits ${bits.toString(2).padStart(12, "0")} screens ${screens.enterNow}: Start ${allowed ? "allows" : canon(got.refusals.map((f) => f.message))}, the predicate says ${expectAllowed}`);
+          const reasons = rulesInertReasons(doc, SCOPE_CTX, { byHandScreens: screens }).map((r) => r.message);
+          if (!same(got.refusals.map((f) => f.message), reasons)) wrong.push(`bits ${bits}: Start's refusals are not exactly the inert reasons`);
+        }
+      }
+      ok("10.class · ⭐ over all 4096 documents × 2 screen settings, Start allows EXACTLY the documents whose every ticked product reaches a member of the context through rulesCoverTarget (polls also by a by-hand switch a screen can press), with no mode on for a product that is off — and its refusals are exactly the inert reasons; the oracle calls the engine's predicate directly, never rulesReach",
+        n === 8192 && wrong.length === 0, wrong.slice(0, 3).join(" | ") || `${n} verdicts`);
+      ok("10.class.population · both verdicts occur in numbers, the screens change some verdicts, and the production shape is one of the refused",
+        allowedNone >= 100 && allowedNone <= 4096 - 100 && allowedAll > allowedNone && prodShapeVerdict === false, `allowed ${allowedNone} of 4096 without screens, ${allowedAll} with · production shape allowed: ${prodShapeVerdict}`);
+      /* ⛔ CONTROL · the oracle discriminates on the LIST: the production shape is refused by it, and the same document with
+       * both lists filled is allowed — so a predicate that ignored the list would put the oracle and Start on different
+       * sides of that row, which is what the mutation run of this commit measured. */
+      const filled = rulesOf((r) => { prodShape(r); r.scope.categories = [SPORTS]; r.scope.chains = ["BTC:3"]; });
+      const oracle = (d: HouseBotRulesV1) => SCOPE_PRODUCTS.every((p: ScopeProduct) => !d.scope.products[p] || targetsOf(p).some((t) => ENTRY_MODES.some((m) => rulesCoverTarget(d, t, m))));
+      ok("10.class.c1 · CONTROL · the oracle refuses the production shape and allows it once both lists hold a member — it measures the list, not the switches",
+        oracle(rulesOf(prodShape)) === false && oracle(filled) === true);
+    }
   }
 }
 
@@ -1890,12 +2206,14 @@ section("§14 · F1 typecheck");
   const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
   const LBL = "7.505 · every declared `rules` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
   const LBLC = "7.505 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  /* ⭐ BOTH anchors files that declare a `rules` entry (the scope anchors joined on 2026-09-22 with the scope-reach
+   * mutations of that day's production finding), the way the seam and comms roll-calls read theirs. */
   const input = {
-    suiteKeys: ["rules"], declarations: CEREMONY_ANCHORS as DeclaredMutation[],
+    suiteKeys: ["rules"], declarations: [...CEREMONY_ANCHORS, ...SCOPE_ANCHORS] as DeclaredMutation[],
     emitted, source: selfCode, ownLabels: [LBL, LBLC],
   };
   const rc = expectDriftReport(input);
-  ok(LBL, rc.declared >= 5 && rc.stale.length === 0, JSON.stringify(rc));
+  ok(LBL, rc.declared >= 10 && rc.stale.length === 0, JSON.stringify(rc));
   const control = expectDriftControl(input, 40);
   ok(LBLC, control.pass, control.extra);
 }
@@ -1924,7 +2242,10 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-rules: ${pa
  * the arithmetic guess the paragraph above forbids, and it would be wrong the moment either side's count was
  * itself approximate. The value below is the number `npm run test:house-bot-rules` PRINTED in this merged
  * tree, re-derived after the merge and not inherited from either lane. */
-const MIN_ASSERTIONS = 529;
+/* ⭐ RAISED 529 → 570 on 2026-09-22, to what this run PRINTED once the scope-reach block (§10) and the two scope rows'
+ * §3 cases landed with that day's production finding. The +41 IS the measurement — the count the run printed, never
+ * an arithmetic guess. */
+const MIN_ASSERTIONS = 570;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-rules ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

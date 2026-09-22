@@ -22,7 +22,7 @@
  */
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
 import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
-import { CONSOLE_LIMITS_HREF as LIMITS_TAB_HREF, consoleBotTabHref } from "./console-routes";
+import { BY_HAND_SCREENS, CONSOLE_LIMITS_HREF as LIMITS_TAB_HREF, consoleBotTabHref, type ByHandScreens } from "./console-routes";
 import {
   EAT_LABEL,
   MINUTES_PER_DAY,
@@ -248,6 +248,18 @@ export function formatWhole(n: number): string {
 
 export type ModeFlags = { counter: boolean; fill: boolean; opener: boolean };
 
+/**
+ * The scope switches, the two lists and the mode switches — the ONLY leaves `rulesCoverTarget` reads. A
+ * `HouseBotRulesV1` is one; the rules form's save builds one from its raw flags before any number is parsed.
+ */
+export type ScopeDoc = {
+  scope: { products: { updown: boolean; polls: boolean }; chains: readonly string[]; categories: readonly string[] };
+  modes: { updown: ModeFlags; polls: ModeFlags };
+};
+
+/** A `ScopeDoc` plus the two by-hand switches, which the reach and Start read as well. */
+export type EntryDoc = ScopeDoc & { enterNow: { enabled: boolean }; targeting: { enabled: boolean } };
+
 export const ROUND_TO_OPTIONS = [100, 500, 1000, 5000] as const;
 export type RoundToTzs = (typeof ROUND_TO_OPTIONS)[number];
 
@@ -423,16 +435,19 @@ export function DEFAULT_RULES_V1(ctx: Pick<RulesContext, "stakeBounds">): HouseB
 }
 
 /** Is any automatic mode (COUNTER, FILL, OPENER on either product) on? */
-export function hasAnyAutomaticMode(r: HouseBotRulesV1): boolean {
+export function hasAnyAutomaticMode(r: Pick<ScopeDoc, "modes">): boolean {
   const on = (m: ModeFlags) => m.counter || m.fill || m.opener;
   return on(r.modes.updown) || on(r.modes.polls);
 }
 
 /**
  * Start's "no mode" rule (N1 §5, PLAN §18): a bot has an entry mode when any automatic mode, Enter
- * now or targeting is on. A bot whose only way in is Enter now still starts.
+ * now or targeting is on.
+ * ⚠️ SINCE 2026-09-22 THIS IS THE WEAKEST OF START's SCOPE RULES, NOT THE ONLY ONE (`rulesInertReasons`): a bot
+ * whose only way in is Enter now starts only while a screen on this build can press it (`BY_HAND_SCREENS`), and
+ * a ticked product must reach at least one market through `rulesCoverTarget`.
  */
-export function hasAnyEntryMode(r: HouseBotRulesV1): boolean {
+export function hasAnyEntryMode(r: EntryDoc): boolean {
   return hasAnyAutomaticMode(r) || r.enterNow.enabled || r.targeting.enabled;
 }
 
@@ -1510,6 +1525,29 @@ export const CROSS_FIELD_RULES = [
     messages: ["Pool minimum can't be above pool maximum."],
     source: "PLAN §5",
   },
+  /* ⛔ THE TWO SCOPE ROWS (prod finding 2026-09-22). An ACTIVE account on a switched-ON desk had matched nothing,
+   * ever: both products ticked, both scope lists EMPTY, and the engine's predicate ends in `[].includes(x)`. No
+   * screen wrote the lists and nothing refused the shape. Both rows are evaluated through `scopeShapeReasons` —
+   * the SAME function Start's `rulesInertReasons` is built on — so the save refuses exactly the shapes Start
+   * refuses, and both ask `rulesCoverTarget`, the engine's own predicate, over the platform's lists. */
+  {
+    id: "R-PRODUCT-LIST",
+    scopes: ["RULES"],
+    kind: "REFUSE",
+    fields: ["scope.products.polls", "scope.categories", "scope.products.updown", "scope.chains"],
+    reportOn: "the empty list of the ticked product",
+    messages: ["Choose at least one poll category, or turn Polls off.", "Choose at least one chain, or turn Up & Down off."],
+    source: "prod 2026-09-22 (a ticked product whose list selects nothing can never place a bet)",
+  },
+  {
+    id: "R-MODE-PRODUCT",
+    scopes: ["RULES"],
+    kind: "REFUSE",
+    fields: ["modes.updown.counter", "modes.updown.fill", "modes.updown.opener", "modes.polls.counter", "modes.polls.fill", "modes.polls.opener", "scope.products.updown", "scope.products.polls"],
+    reportOn: "the mode that is on for a product that is off",
+    messages: ["{mode} is on for {product}, but {switch} is off. Turn {switch} on, or turn this off."],
+    source: "prod 2026-09-22 (same class: a mode whose product is off is inert and passes \"some mode\")",
+  },
   {
     id: "N2-b",
     scopes: ["RULES"],
@@ -1790,6 +1828,9 @@ type RulesEvalInput = {
   products: { updown: boolean; polls: boolean };
   modes: { updown: ModeFlags; polls: ModeFlags };
   categories: readonly string[];
+  chains: readonly string[];
+  /** The platform's lists, so the two scope rows ask `rulesCoverTarget` the way the engine does — never a raw length. */
+  ctx: Pick<RulesContext, "chains" | "categories">;
   amountKind: "PCT" | "FIXED";
   enterNow: boolean;
   targeting: boolean;
@@ -1808,6 +1849,8 @@ const RULES_SCOPE_IDS = [
   "R-HOUR-FITS-GAP",
   "R-DAY-GE-HOUR",
   "R-POOL-BAND",
+  "R-PRODUCT-LIST",
+  "R-MODE-PRODUCT",
   "N2-b",
   "R-TRIGGER-RANGE",
   "R-OPENER-ORDER",
@@ -1863,6 +1906,21 @@ const RULES_EVAL: Record<(typeof RULES_SCOPE_IDS)[number], (x: RulesEvalInput) =
     above(x.num("scope.poolTotalMinTzs"), x.num("scope.poolTotalMaxTzs"))
       ? [{ field: "scope.poolTotalMaxTzs", message: ruleCopy("R-POOL-BAND") }]
       : [],
+  "R-PRODUCT-LIST": (x) =>
+    scopeShapeReasons(scopeDocOf(x), x.ctx)
+      .filter((r) => r.code === "PRODUCT_NO_LIST")
+      .map((r) => ({ field: r.field, message: ruleCopy("R-PRODUCT-LIST", r.product === "updown" ? 1 : 0) })),
+  "R-MODE-PRODUCT": (x) =>
+    scopeShapeReasons(scopeDocOf(x), x.ctx)
+      .filter((r) => r.code === "MODE_WITHOUT_PRODUCT")
+      .map((r) => ({
+        field: r.field,
+        message: ruleCopy("R-MODE-PRODUCT", 0, {
+          mode: ENTRY_MODE_WORDS[r.mode as EntryMode],
+          product: PRODUCT_WORDS_IN_SENTENCE[r.product as ScopeProduct],
+          switch: PRODUCT_WORDS[r.product as ScopeProduct],
+        }),
+      })),
   "N2-b": (x) =>
     above(x.num("counter.delayMinSec"), x.num("counter.delayMaxSec"))
       ? [{ field: "counter.delayMinSec", message: ruleCopy("N2-b") }]
@@ -2270,6 +2328,8 @@ export function validateHouseBotRules(
     products,
     modes,
     categories,
+    chains,
+    ctx: { chains: ctx.chains, categories: ctx.categories },
     amountKind,
     enterNow,
     targeting,
@@ -2465,12 +2525,249 @@ export function validateTargetInput(
 }
 
 // ---------------------------------------------------------------------------
+// Scope reach — ONE predicate for the engine and the desk (prod finding, 2026-09-22)
+// ---------------------------------------------------------------------------
+
+/**
+ * ⛔ WHY THIS SECTION EXISTS. Verified read-only on production, 2026-09-22: an ACTIVE account on a switched-ON desk
+ * had matched no market, ever — zero intents, zero positions — while the roster showed it green with both products.
+ * Its stored rules ticked both products with EMPTY scope lists. `DEFAULT_RULES_V1` ships `chains: []` and
+ * `categories: []`, no screen wrote either, the engine's `rulesCover` (`decide.ts`) ended in `[].includes(x)` —
+ * false for every market, before any cap, schedule, guard or probability is consulted — and Start refused nothing:
+ * it checked the caps, "some product" and "some entry mode", and never asked whether the scope selects anything.
+ * The same class as the `schedule.days` defect fixed in 1546c9c8: an absence is not a safe state for these keys.
+ *
+ * ⭐ ONE PREDICATE, ASKED TWO WAYS. `rulesCoverTarget` is the engine's question — does this document cover this
+ * market for this mode? — and `decide.ts`'s `rulesCover` is a thin delegate to it. `rulesReach` asks the SAME
+ * function the other way round, over the platform's lists — which members can this document ever reach? — so the
+ * desk's answer and the engine's answer come from one body of code and cannot disagree. `rulesInertReasons` turns
+ * the reach into the sentences the desk paints and Start refuses with, and the two scope rows of `CROSS_FIELD_RULES`
+ * (`R-PRODUCT-LIST`, `R-MODE-PRODUCT`) are built from the same reasons, so a document the save refuses is a
+ * document Start refuses, and Start keeps refusing the stored documents that predate the rows.
+ *
+ * ⛔ A TICKED PRODUCT THAT REACHES NOTHING IS REFUSED EVEN WHILE THE OTHER PRODUCT IS LIVE. "Active · Up & Down ·
+ * Polls" on the roster with an Up & Down that can never fire IS this finding; the refusal names the product and the
+ * remedy. So: no reason ⇒ the account can bet; and the converse holds exactly for a document that claims no more
+ * than it can do (`test:house-bot-rules` §10 proves both directions over the generated population).
+ *
+ * ⚠️ EVERY SENTENCE HERE IS PAINTED ON THE CONSOLE and scanned by ruling 453's lexicon: the console's own entry-mode
+ * words, never the field labels (`FIELD_META`'s "Polls · Counter" carries a word 453 forbids on that screen).
+ */
+
+/** One market as the scope predicate sees it: a poll's category, or an Up & Down round's `<assetId>:<minutes>` chain key. */
+export type ScopeTarget = { product: "MARKET"; category: string } | { product: "UPDOWN"; chainKey: string };
+
+/** The three automatic entry modes, in `ModeFlags` order. */
+export const ENTRY_MODES = ["counter", "fill", "opener"] as const satisfies readonly (keyof ModeFlags)[];
+export type EntryMode = (typeof ENTRY_MODES)[number];
+
+/** The two products, in page order (`scope.products.updown` is the first field of the form). */
+export const SCOPE_PRODUCTS = ["updown", "polls"] as const;
+export type ScopeProduct = (typeof SCOPE_PRODUCTS)[number];
+
+/**
+ * The console's words for the three modes — what a painted sentence names them (ruling 453 keeps "Counter" off that
+ * screen). ⛔ ONE HOME: the console's own flag labels must read from here, never restate these.
+ */
+export const ENTRY_MODE_WORDS: Readonly<Record<EntryMode, string>> = {
+  counter: "React to a player's stake",
+  fill: "Fill a thin side",
+  opener: "Open a quiet market",
+};
+
+/** The product as its switch is labelled, and as a sentence names it mid-way ("…is on for polls"). */
+export const PRODUCT_WORDS: Readonly<Record<ScopeProduct, string>> = { updown: "Up & Down", polls: "Polls" };
+const PRODUCT_WORDS_IN_SENTENCE: Readonly<Record<ScopeProduct, string>> = { updown: "Up & Down", polls: "polls" };
+
+/**
+ * THE ONE SCOPE PREDICATE (C14): the product on, the mode on for that product when one is asked for, and the market's
+ * chain or category on the document's list. `decide.ts` delegates to it for every COUNTER, FILL and OPENER
+ * decision and for fire's re-check (`mode` null for a staff-chosen row, which no automatic mode governs, ruling 66);
+ * `rulesReach` and the save's scope rows ask it over the platform's lists.
+ * ⛔ `[].includes(x)` IS FALSE, AND THAT IS THE WHOLE FINDING: an empty list covers nothing, so a document that
+ * ticks a product with an empty list is refused at save and at Start rather than left to match nothing forever.
+ */
+export function rulesCoverTarget(r: ScopeDoc, target: ScopeTarget, mode: EntryMode | null): boolean {
+  if (target.product === "UPDOWN") {
+    return r.scope.products.updown && (mode == null || r.modes.updown[mode]) && r.scope.chains.includes(target.chainKey);
+  }
+  return r.scope.products.polls && (mode == null || r.modes.polls[mode]) && r.scope.categories.includes(target.category);
+}
+
+/** What one product of a document can reach in a context — computed by asking `rulesCoverTarget`, member by member. */
+export type ProductReach = {
+  /** The product switch, as saved. */
+  product: boolean;
+  /** Per automatic mode: it reaches at least one member of the context. */
+  modes: ModeFlags;
+};
+
+export type ScopeReach = {
+  polls: ProductReach & { categories: MarketCategory[] };
+  updown: ProductReach & { chains: ChainKey[] };
+  /** Every (product, mode) pair that reaches a member — what the engine can act on, in page order. */
+  live: { product: ScopeProduct; mode: EntryMode }[];
+  /** The two by-hand switches, as saved. Whether a screen can press them is `BY_HAND_SCREENS`, not the document. */
+  byHand: { enterNow: boolean; targeting: boolean };
+};
+
+/**
+ * Which (product, mode) pairs of this document can ever reach a market in this context, and which members.
+ * ⛔ COMPUTED BY CALLING `rulesCoverTarget` OVER THE CONTEXT'S LISTS, NEVER BY RESTATING THE RULE — a change to
+ * the predicate changes this answer, which is what makes the desk's reading of a document the engine's reading.
+ * The member lists are those the predicate covers with `mode` null (the product on and the member listed).
+ */
+export function rulesReach(r: EntryDoc, ctx: Pick<RulesContext, "chains" | "categories">): ScopeReach {
+  const reachOf = <M extends string>(members: readonly M[], target: (m: M) => ScopeTarget) => {
+    const modes: ModeFlags = { counter: false, fill: false, opener: false };
+    const covered: M[] = [];
+    for (const m of members) {
+      if (rulesCoverTarget(r, target(m), null)) covered.push(m);
+      for (const mode of ENTRY_MODES) if (rulesCoverTarget(r, target(m), mode)) modes[mode] = true;
+    }
+    return { modes, covered };
+  };
+  const ud = reachOf(ctx.chains.map((c) => c.key), (chainKey) => ({ product: "UPDOWN", chainKey }));
+  const po = reachOf(ctx.categories, (category) => ({ product: "MARKET", category }));
+  const live: ScopeReach["live"] = [];
+  for (const mode of ENTRY_MODES) if (ud.modes[mode]) live.push({ product: "updown", mode });
+  for (const mode of ENTRY_MODES) if (po.modes[mode]) live.push({ product: "polls", mode });
+  return {
+    polls: { product: r.scope.products.polls, modes: po.modes, categories: po.covered },
+    updown: { product: r.scope.products.updown, modes: ud.modes, chains: ud.covered },
+    live,
+    byHand: { enterNow: r.enterNow.enabled, targeting: r.targeting.enabled },
+  };
+}
+
+export type InertReasonCode =
+  | "NO_PRODUCT"
+  | "NO_MODE"
+  | "PRODUCT_NO_LIST"
+  | "PRODUCT_NO_MODE"
+  | "MODE_WITHOUT_PRODUCT"
+  | "BY_HAND_NO_SCREEN";
+
+/** One reason an account cannot bet, on the field that fixes it. The console maps `field` to its own form key. */
+export type InertReason = {
+  code: InertReasonCode;
+  product?: ScopeProduct;
+  /** The orphan mode, for `MODE_WITHOUT_PRODUCT`. */
+  mode?: EntryMode;
+  field: FieldId;
+  message: string;
+};
+
+/** The sentences, each without a word ruling 453 keeps off the console. */
+export const INERT_COPY = {
+  noProduct: "Choose at least one product.",
+  noMode: "Turn on at least one entry mode.",
+  noList: {
+    polls: "Polls is on but no poll category is chosen.",
+    updown: "Up & Down is on but no chain is chosen.",
+  },
+  productNoMode: {
+    polls: "Polls is on but no entry mode is on for polls.",
+    updown: "Up & Down is on but no entry mode is on for Up & Down.",
+  },
+  modeWithoutProduct: (mode: EntryMode, product: ScopeProduct): string =>
+    `${ENTRY_MODE_WORDS[mode]} is on for ${PRODUCT_WORDS_IN_SENTENCE[product]}, but ${PRODUCT_WORDS[product]} is off.`,
+  byHandNoScreen: {
+    enterNow: "Enter now is the only entry mode on for polls, and no screen on this build can press it.",
+    targeting: "Targeted stakes is the only entry mode on for polls, and no screen on this build can add one.",
+    both: "Enter now and Targeted stakes are the only entry modes on for polls, and no screen on this build can use either.",
+  },
+} as const;
+
+/** The eval input as a document — the save asks the same predicate the engine does, before any number is parsed. */
+function scopeDocOf(x: { products: ScopeDoc["scope"]["products"]; chains: readonly string[]; categories: readonly string[]; modes: ScopeDoc["modes"]; enterNow: boolean; targeting: boolean }): EntryDoc {
+  return {
+    scope: { products: x.products, chains: x.chains, categories: x.categories },
+    modes: x.modes,
+    enterNow: { enabled: x.enterNow },
+    targeting: { enabled: x.targeting },
+  };
+}
+
+/**
+ * The two SHAPE reasons — a ticked product with no reachable member, and a mode on for a product that is off. The
+ * save refuses both (`R-PRODUCT-LIST`, `R-MODE-PRODUCT`) and Start refuses both, from this one function.
+ */
+function scopeShapeReasons(r: EntryDoc, ctx: Pick<RulesContext, "chains" | "categories">): InertReason[] {
+  const reach = rulesReach(r, ctx);
+  const out: InertReason[] = [];
+  for (const product of SCOPE_PRODUCTS) {
+    if (!r.scope.products[product]) {
+      for (const mode of ENTRY_MODES) {
+        if (r.modes[product][mode]) {
+          out.push({ code: "MODE_WITHOUT_PRODUCT", product, mode, field: `modes.${product}.${mode}` as const, message: INERT_COPY.modeWithoutProduct(mode, product) });
+        }
+      }
+      continue;
+    }
+    const members: readonly string[] = product === "updown" ? reach.updown.chains : reach.polls.categories;
+    if (members.length === 0) {
+      out.push({ code: "PRODUCT_NO_LIST", product, field: product === "updown" ? "scope.chains" : "scope.categories", message: INERT_COPY.noList[product] });
+    }
+  }
+  return out;
+}
+
+/**
+ * Why this account cannot bet — one reason per cause, on the field that fixes it, in page order. Empty means it
+ * can: every ticked product reaches a market with a mode that is on (or, for polls, a by-hand mode a screen can
+ * press), no mode is on for a product that is off, and something is on at all.
+ *
+ * - NO_PRODUCT — neither product is ticked.
+ * - NO_MODE — no automatic mode, and neither by-hand switch, is on (the per-product "no mode" reasons stand down:
+ *   it is one fact).
+ * - PRODUCT_NO_LIST — a ticked product whose list reaches no member of the context (`rulesCoverTarget`, mode null).
+ * - PRODUCT_NO_MODE — a ticked product with none of its three modes on; for polls only while no by-hand switch is
+ *   on either, since Enter now and targets are polls entries.
+ * - MODE_WITHOUT_PRODUCT — a mode on for a product that is off, one per mode.
+ * - BY_HAND_NO_SCREEN — polls is on with no automatic polls mode, and the only entries on are by-hand switches no
+ *   screen on this build can press (`opts.byHandScreens`, the honest default being `BY_HAND_SCREENS`).
+ */
+export function rulesInertReasons(
+  r: EntryDoc,
+  ctx: Pick<RulesContext, "chains" | "categories">,
+  opts: { byHandScreens: ByHandScreens },
+): InertReason[] {
+  const out = scopeShapeReasons(r, ctx);
+  const byHandOn = r.enterNow.enabled || r.targeting.enabled;
+  const byHandUsable = (r.enterNow.enabled && opts.byHandScreens.enterNow) || (r.targeting.enabled && opts.byHandScreens.targeting);
+  const noEntryAtAll = !hasAnyEntryMode(r);
+  if (!r.scope.products.updown && !r.scope.products.polls) {
+    out.push({ code: "NO_PRODUCT", field: "scope.products.updown", message: INERT_COPY.noProduct });
+  }
+  if (noEntryAtAll) out.push({ code: "NO_MODE", field: "modes.updown.counter", message: INERT_COPY.noMode });
+  for (const product of SCOPE_PRODUCTS) {
+    if (!r.scope.products[product] || noEntryAtAll) continue;
+    if (ENTRY_MODES.some((mode) => r.modes[product][mode])) continue;
+    if (product === "polls" && byHandOn) {
+      if (!byHandUsable) {
+        const both = r.enterNow.enabled && r.targeting.enabled;
+        out.push({
+          code: "BY_HAND_NO_SCREEN",
+          product,
+          field: r.enterNow.enabled ? "enterNow.enabled" : "targeting.enabled",
+          message: both ? INERT_COPY.byHandNoScreen.both : r.enterNow.enabled ? INERT_COPY.byHandNoScreen.enterNow : INERT_COPY.byHandNoScreen.targeting,
+        });
+      }
+      continue;
+    }
+    out.push({ code: "PRODUCT_NO_MODE", product, field: product === "updown" ? "modes.updown.counter" : "modes.polls.counter", message: INERT_COPY.productNoMode[product] });
+  }
+  return sortFieldErrors(out);
+}
+
+// ---------------------------------------------------------------------------
 // Start (02 §3.3 items 4–6, 04 C14, N1 §5)
 // ---------------------------------------------------------------------------
 
 export const START_COPY = {
-  noProduct: "Choose at least one product.",
-  noMode: "Turn on at least one entry mode.",
+  noProduct: INERT_COPY.noProduct,
+  noMode: INERT_COPY.noMode,
   allImpossible: "Every enabled mode is currently impossible.",
 } as const;
 
@@ -2492,12 +2789,19 @@ export const NO_AUTOMATIC_MODE_LINE = (label: string, on: { enterNow: boolean; t
  *
  * ⚠️ The unset-cap refusal never names a staff-chosen cap or the target maximum (N1 §5): N1-a and
  * N2-a already require them at save while Enter now or targets are on.
+ *
+ * ⛔ THE SCOPE MUST REACH A MARKET (prod finding 2026-09-22). After the caps, one refusal per `rulesInertReasons`
+ * cause — on the field that fixes it, code INVALID, the Rules tab href when `opts.botId` is given. "No product"
+ * and "no entry mode" are two of those causes now, not a pair of checks beside them, so one fact is never said
+ * twice. `opts.byHandScreens` defaults to `BY_HAND_SCREENS` — what THIS build can press — so an account whose only
+ * entry is Enter now or targets is refused until a screen exists, and allowed (with the dialog's warning) once the
+ * flag is tied to one.
  */
 export function rulesStartProblems(
   r: HouseBotRulesV1,
   caps: HouseBotCaps,
   ctx: RulesContext,
-  opts: { botId?: string; label?: string } = {},
+  opts: { botId?: string; label?: string; byHandScreens?: ByHandScreens } = {},
 ): { refusals: FieldError[]; warnings: string[] } {
   const refusals: FieldError[] = [];
   const label = opts.label ?? DEFAULT_BOT_LABEL;
@@ -2508,11 +2812,8 @@ export function rulesStartProblems(
       refusals.push({ field: cap, code: "UNSET", message: `Set ${FIELD_META[cap].label} before starting.`, href: rulesHref });
     }
   }
-  if (!r.scope.products.updown && !r.scope.products.polls) {
-    refusals.push({ field: "scope.products", code: "INVALID", message: START_COPY.noProduct, href: rulesHref });
-  }
-  if (!hasAnyEntryMode(r)) {
-    refusals.push({ field: "modes", code: "INVALID", message: START_COPY.noMode, href: rulesHref });
+  for (const reason of rulesInertReasons(r, ctx, { byHandScreens: opts.byHandScreens ?? BY_HAND_SCREENS })) {
+    refusals.push({ field: reason.field, code: "INVALID", message: reason.message, href: rulesHref });
   }
 
   // A saved value that a live bound now breaks (04 C14, F5; N1 §5 extends it to Enter now).
