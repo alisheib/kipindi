@@ -14,10 +14,10 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
-| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 three times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55 UTC) — **8 of 8** sends used; the ceiling went 6 → 7 → 8 on Ali's instructions to validate the vendor's successive claims. ⭐ Ali confirms the handset RECEIVES every one of them |
+| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 four times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55 and 08:28 UTC) — **9 of 9** sends used; the ceiling went 6 → 7 → 8 on Ali's instructions to validate the vendor's successive claims. ⭐ Ali confirms the handset RECEIVES every one of them |
 | Delivery callback | 🔴 **still not received** — re-tested 2026-09-17, twice on 2026-09-21 **after the vendor said our URLs were whitelisted**, and again 2026-09-22 **after they said they had changed the callback**: still not one POST (§4.3–§4.5) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
-| Balance | TZS 208 |
+| Balance | TZS 202 |
 
 ---
 
@@ -270,6 +270,16 @@ Three facts now bound the problem from both sides, and together they say where i
    (after our own probe, §4.4, and the Tanzanian browser GET of 2026-09-16, §4.2).
 3. 🔴 **No POST has ever been made.** A POST with a wrong token would still be recorded
    (`webhook.blackball.rejected`). Silence means the call is not attempted.
+
+**A fourth send, `sms_cf102b4e4b31c69c7c7ac433` at 08:28:19 UTC**, on their next *"we changed it, retry
+now"*: same watch, same result — no POST, no row. Four claimed fixes in two days, four identical
+outcomes, and nothing arrived in between either.
+
+⛔ **STOP PAYING TO RE-TEST A CLAIM THAT HAS NOT CHANGED THE EVIDENCE.** Each send is TZS 6 of the float
+that belongs to login codes, and a send only tests OUR side of a fault we have already located on theirs.
+The next test is worth its money only after the vendor reports something new and specific — a log line
+from their attempt, or a receipt they have posted to the URL by hand. That manual POST is the cheap,
+decisive discriminator: it separates "cannot reach us" from "never fires", and it costs nothing.
 
 So the remaining fault is entirely inside their platform: the delivery callback is not being fired for
 our account. What to ask for next is in §8 item 1 — and the cheapest decisive test is to have them post
