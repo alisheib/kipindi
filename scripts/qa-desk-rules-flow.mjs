@@ -92,8 +92,11 @@ const boxState = (name) => page.evaluate((nm) => {
 /** Click the LABEL with a real pointer — see the header. */
 const clickSwitch = (name) =>
   page.locator("main form label").filter({ has: page.locator(`input[name="${name}"]`) }).click();
+/* ⛔ THE LIMITS, SCOPED TO THEIR OWN SECTION (2026-09-23). "Empty every limit" empties the CAPS — it has never
+   touched the numeric rules, and nor should it: those are behaviour, not ceilings, and emptying a delay would
+   leave an account that cannot be saved. A form-wide query started counting 51 boxes the day the editor landed. */
 const capValues = () => page.evaluate(() =>
-  Object.fromEntries([...document.querySelectorAll("main form input:not([type=checkbox])")].map((i) => [i.name, i.value])));
+  Object.fromEntries([...document.querySelectorAll('main form [data-rules="limits"] input:not([type=checkbox])')].map((i) => [i.name, i.value])));
 const invalidFields = () => page.evaluate(() =>
   [...document.querySelectorAll('main form input[aria-invalid="true"]')].map((i) => i.name));
 /**
@@ -186,7 +189,7 @@ console.log("\n§2 · every field says what it does");
 /* ⛔ THE LIMITS ARE THE `[data-field]` WRAPPERS THAT HOLD A TYPED BOX (2026-09-22): the ten switches and the two
    pickers carry the same address now, so a refusal can mark them, and a count of every wrapper would read 26. */
 const capHelp = await page.evaluate(() =>
-  [...document.querySelectorAll("main form [data-field]")]
+  [...document.querySelectorAll('main form [data-rules="limits"] [data-field]')]
     .filter((d) => d.querySelector("input:not([type=checkbox]):not([type=hidden])"))
     .map((d) => ({
       key: d.getAttribute("data-field"),
@@ -198,7 +201,7 @@ ok("2.2 every limit carries an explanation", helpless.length === 0, helpless.map
 /* ⛔ THE SWITCHES ARE THE BOXES OUTSIDE THE TWO PICKER GROUPS (2026-09-22): a picker box is a list member, not a
    switch, and a count that took every checkbox on the form would read the seven categories as seven switches. */
 const flagHelp = await page.evaluate(() =>
-  [...document.querySelectorAll("main form input[type=checkbox]")].filter((i) => !i.closest("[data-list]")).map((i) => ({
+  [...document.querySelectorAll("main form input[type=checkbox]")].filter((i) => !i.closest("[data-list]") && !i.closest('[data-rules="numbers"]')).map((i) => ({
     key: i.name,
     help: (i.closest("div")?.querySelector("p")?.innerText ?? "").trim(),
   })));
@@ -217,7 +220,7 @@ ok("2.5 the by-hand section warns that no screen can act on it yet",
  */
 console.log("\n§2b · the two scope pickers");
 const pickers = await page.evaluate(() =>
-  [...document.querySelectorAll("main form [data-list]")].map((g) => ({
+  [...document.querySelectorAll("main form [data-list]")].filter((g) => !g.closest('[data-rules="numbers"]')).map((g) => ({
     key: g.getAttribute("data-list"),
     legend: (g.querySelector("legend")?.innerText ?? "").trim(),
     text: g.innerText.replace(/\s+/g, " ").trim(),
@@ -342,7 +345,7 @@ ok("6.4 …and focus is taken to a marked field",
  * meanings — on the panel whose whole job is to say which limits are missing.
  */
 const contradictions = await page.evaluate(() =>
-  [...document.querySelectorAll("main form [data-field]")]
+  [...document.querySelectorAll('main form [data-rules="limits"] [data-field]')]
     .map((d) => {
       const input = d.querySelector("input");
       const text = d.innerText.replace(/\s+/g, " ");
@@ -611,6 +614,96 @@ if (consoleErrors.length !== realErrors.length) {
  * ⚠️ Soft throughout: a cleanup that cannot run must never turn a green flow into a red one. If it fails the
  * next run's §1 will say the roster is full, in the product's own words, which is the honest signal.
  */
+/* ── §9b · THE NUMERIC EDITOR AND THE SCHEDULE, TYPED AND READ BACK (2026-09-23 · register A1) ───────────────
+ *
+ * ⛔ THIS IS THE HALF NO VIEW-MODEL CASE CAN REACH. `test:house-bot-console` proves the door: post these
+ * values, the row stores them, the next read hands them back. What it cannot prove is that an officer can
+ * PUT them there — that the boxes exist, that the kit's segmented time control posts what was typed, that
+ * turning All day off leaves the window rows usable, and that a reload shows the officer their own numbers
+ * rather than the defaults. Every one of those lived in the gap between a real pointer and a real React tree,
+ * which is the gap this whole file exists for.
+ * ⚠️ THE ENTER-NOW STAKE IS CHOSEN INSIDE THE ACCOUNT'S OWN BAND. Measured while writing this: 12,000 against
+ * a 10,000 stake max is REFUSED, correctly, on that box — so a gate typing a round number would be measuring
+ * the refusal path and calling it a round trip.
+ */
+console.log("\n§9b · the numeric rules and the schedule, typed and read back");
+await page.setViewportSize({ width: 1440, height: 1100 });
+await page.goto(RULES, { waitUntil: "load" });
+await page.waitForTimeout(2200);
+
+const ruleBoxes = await page.evaluate(() => ({
+  numeric: document.querySelectorAll('main form [data-rules="numbers"] input:not([type=checkbox]):not([type=hidden])').length,
+  days: document.querySelectorAll('main form fieldset[data-list="schedule-days"] input[type=checkbox]').length,
+  windowRows: document.querySelectorAll('main form input[type=hidden][name^="schedule-windows."]').length,
+  sections: [...document.querySelectorAll('main form [data-rules="numbers"] p')].map((p) => p.innerText.trim()).filter((t) => t.length > 0 && t.length < 40).slice(0, 12),
+}));
+ok("9b.1 the editor draws the numeric rules, seven day boxes and four window rows",
+  ruleBoxes.numeric >= 25 && ruleBoxes.days === 7 && ruleBoxes.windowRows === 8, JSON.stringify(ruleBoxes));
+
+const setBox = async (name, value) => {
+  const el = page.locator(`main form input[name="${name}"]`);
+  if ((await el.count()) === 0) return `absent:${name}`;
+  await el.fill("");
+  await el.pressSequentially(value, { delay: 8 });
+  return el.inputValue();
+};
+const typedDelay = await setBox("answer-delay-min", "25");
+const typedZone = await setBox("quiet-zone-polls", "7");
+/* The account's stake max is 10,000 on this drive's caps, so 5,000 is inside the band on purpose. */
+const typedThin = await setBox("enter-now-thin-stake", "5000");
+ok("9b.2 a delay, a guard and an Enter-now stake all take what is typed into them",
+  typedDelay === "25" && typedZone === "7" && typedThin === "5000",
+  JSON.stringify({ typedDelay, typedZone, typedThin }));
+
+const allDayBox = page.locator('main form input[name="schedule-all-day"]');
+if (await allDayBox.isChecked()) {
+  await page.locator("main form label").filter({ has: page.locator('input[name="schedule-all-day"]') }).click();
+}
+const segs = page.locator('main form fieldset[data-list="schedule-windows"] input:not([type=hidden])');
+await soft("window 0 start hh", () => segs.nth(0).fill("09"));
+await soft("window 0 start mm", () => segs.nth(1).fill("00"));
+await soft("window 0 end hh", () => segs.nth(2).fill("17"));
+await soft("window 0 end mm", () => segs.nth(3).fill("30"));
+await page.waitForTimeout(400);
+const posted = await page.evaluate(() =>
+  [...document.querySelectorAll('main form input[type=hidden][name^="schedule-windows."]')].map((i) => `${i.name}=${i.value}`));
+/* ⛔ THE KIT'S TIME CONTROL IS REACT-HELD: what it POSTS is a hidden input this form keeps in step. A control
+   whose pixels moved and whose posted value did not is the defect class this whole file was written for. */
+ok("9b.3 the segmented time control posts what was typed, as EAT text",
+  posted.includes("schedule-windows.0.start=09:00") && posted.includes("schedule-windows.0.end=17:30"),
+  JSON.stringify(posted.slice(0, 4)));
+ok("9b.4 …and turning All day off makes the form dirty, so the pending bar stands",
+  /UNSAVED/i.test((await bar()) ?? ""), (await bar()) ?? "no bar");
+
+await submitForm();
+const savedToasts = await toasts();
+const stillInvalid = await invalidFields();
+ok("9b.5 the whole form saves — no box is marked, and the toast says it landed",
+  savedToasts.some((t) => /^Saved/.test(t)) && stillInvalid.length === 0,
+  JSON.stringify({ savedToasts, stillInvalid }));
+await clearToasts();
+
+await page.goto(RULES, { waitUntil: "load" });
+await page.waitForTimeout(2400);
+const readBack = await page.evaluate(() => {
+  const v = (n) => document.querySelector(`main form input[name="${n}"]`)?.value ?? null;
+  return {
+    delay: v("answer-delay-min"),
+    zone: v("quiet-zone-polls"),
+    thin: v("enter-now-thin-stake"),
+    allDay: document.querySelector('main form input[name="schedule-all-day"]')?.checked ?? null,
+    segs: [...document.querySelectorAll('main form fieldset[data-list="schedule-windows"] input:not([type=hidden])')].slice(0, 4).map((i) => i.value),
+    saved: [...document.querySelectorAll("main form li")].map((li) => li.innerText.trim()).filter((t) => /→|all day/i.test(t)),
+  };
+});
+ok("9b.6 ⭐ THE ROUND TRIP: a reload shows the officer their own numbers, All day still off, and the window in its boxes",
+  readBack.delay === "25" && readBack.zone === "7" && readBack.thin === "5000"
+    && readBack.allDay === false && readBack.segs.join(":") === "09:00:17:30",
+  JSON.stringify(readBack).slice(0, 300));
+ok("9b.7 …and the saved schedule is painted in words, per chosen day",
+  readBack.saved.length > 0 && readBack.saved.every((s) => /09:00 → 17:30/.test(s)),
+  JSON.stringify(readBack.saved.slice(0, 3)));
+
 console.log("\n§10 · putting the roster back");
 const removed = await soft("remove the drive's account", async () => {
   await page.setViewportSize({ width: 1440, height: 1100 });

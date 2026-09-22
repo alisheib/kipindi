@@ -834,7 +834,10 @@ export function DeskRulesForm({
             </div>
           </div>
 
-          <div className="space-y-3">
+          {/* ⛔ THE SECTION MARKER IS LOAD-BEARING FOR THE BROWSER GATE (2026-09-23): once the numeric rules
+              landed, a query for "every typed box on the form" counted 51 where fourteen was the fact under test.
+              A population that silently widens is a case measuring something other than its own sentence. */}
+          <div className="space-y-3" data-rules="limits">
             <p className="text-body-sm font-semibold text-text">Limits</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {model.caps.map((cap) => (
