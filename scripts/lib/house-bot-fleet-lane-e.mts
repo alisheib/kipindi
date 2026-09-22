@@ -35,6 +35,25 @@
  *   every assertion here red.
  * · A stake on a category no desk covers for `counter` produces no row and no alert (`decideCounter` returns
  *   `{ row: null, code: null }` with no bot in scope), so the control poll's seed disturbs nothing.
+ *
+ * ── NOT MEASURED, said here so nobody credits it ─────────────────────────────────────────────────────────
+ * · Six assertions have no discriminating engine mutation on record — the deadline/stale arithmetic
+ *   (decide.ts:122, :545-546), the decision's field shape, draw-predates-intent, HOUSE_ONLY not applied to a
+ *   planned OPENER, every money row marked, exactly one placed alert. Each compares a literal with a field the
+ *   engine wrote (cutoff − 300,000 vs − 10,000 under the floor; a SKIPPED · CONDITION_GONE row if HOUSE_ONLY
+ *   reached a planned OPENER), and the KP_FLEET_SILENT red proves each cannot pass with a dead engine — but not
+ *   that it catches a wrong one. Reasoned, not witnessed. The ×60 (decide.ts:541) WAS run: `* 1` → 5 red
+ *   (delaySec 1, dueAt, the why sentence, the uniqueness case and the bet landing before createdAt + 60 s).
+ * · Per-market OPENER uniqueness is enforced at THREE layers — the scan's NOT EXISTS (dal:4487), the OWN_INTENT
+ *   hold (enter-now.ts:204 via planner.ts:582) and the partial unique index `hbi_fill_opener_anchor_uq` behind
+ *   `insertIgnoringConflict`'s ON CONFLICT DO NOTHING (dal:3769-3773). The product-level cases here (one row on
+ *   the market, `opened` counted once — incremented only when the insert returned a row, planner.ts:593-594) stay
+ *   green with BOTH code layers removed, because the index absorbs them (measured: NOT EXISTS keyed to 'NEVER'
+ *   left them green; only the scan case went red). The hold and the index are NOT measured one by one.
+ * · `openedSince === 1` sums EVERY desk's `counts.opened` over the lane's window: exact today because E1 is the
+ *   only opener desk in every roster (a lane-set coupling, not a per-desk count — PlannerPass has no per-desk
+ *   counts). The security/switchedOff counts are scoped to this lane's window so an earlier lane's alert is
+ *   that lane's red, not this one's.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
@@ -93,12 +112,15 @@ export const expect = {
 
 export async function run(env: Any, prior: Any): Promise<Any> {
   void prior;
-  const { ok, section, until, j, w, S, C, fleet, stake, EXPECT, COUNTER_CUTOFF_MIN, laneWanted, passes, calls, seen } = env;
+  const { ok, section, until, j, w, S, C, fleet, stake, EXPECT, COUNTER_CUTOFF_MIN, laneWanted, passes, calls } = env;
   if (!laneWanted("E")) return null;
   const bot = fleet["E1-OPENER"];
   if (!bot) return null;
   const exp: Any = EXPECT["E1-OPENER"];
   const K = "E1-OPENER";
+  /* Alerts are counted from THIS lane's start: an earlier lane's security alert is that lane's finding, not a red here. */
+  const callsStart: number = calls.length;
+  const inWindow = (fn: string): number => calls.slice(callsStart).filter((c: Any) => c.fn === fn).length;
 
   /* ── the shared idioms, copied from the lanes file (its helpers are not exported) ─────────────────── */
   /** ⛔ The guard that keeps the ruling-120 placeholder out of every arithmetic comparison. */
@@ -145,7 +167,12 @@ export async function run(env: Any, prior: Any): Promise<Any> {
   const decided = await until(`${K} · an OPENER decision on the empty poll`, 60_000, async () => {
     const rows = await rowsOf(bot.botId);
     const hit = rows.find((r: Any) => r.kind === "OPENER" && r.marketId === market.id);
-    return hit ? await S.houseBotIntentStore.get(hit.id) : null;
+    if (!hit) return null;
+    /* ⛔ THE ROW AND ITS PASS, TOGETHER. The intent is INSERTed mid-pass (duty 7f) and the pass structure is pushed
+       only after the trailing duties (planner.ts:186-240; drive:205) — a poll landing in that window finds the row
+       and no pass, and the WITNESS below would cry wolf on a correct product. So this returns only once both exist. */
+    const witnessed = passes.planner.slice(passesBefore).some((p: Any) => p?.duties?.fillOpener === "ok" && (p?.counts?.opened ?? 0) >= 1);
+    return witnessed ? await S.houseBotIntentStore.get(hit.id) : null;
   });
   const dec: Any = decided?.decision ?? null;
   const scopeFrom = {
@@ -216,12 +243,13 @@ export async function run(env: Any, prior: Any): Promise<Any> {
   const rowsNow = await openerRowsOn(market.id);
   const stillPending = decided ? await S.houseBotIntentStore.get(decided.id) : null;
   const positionsNow = (await w.positionsOf(market.id)).length;
+  const mNow: Any = await w.svc.getMarket(market.id);
   ok(`${K} · WITNESS · a LATER planner pass (passNow after the intent's createdAt) ran duty fillOpener "ok" over the same poll`,
     !!later, j({ at: later?.passNowIso ?? null, intentAt: decided?.createdAt ?? null }));
-  ok(`${K} · …and it did NOT plan a second OPENER: across ALL accounts exactly ONE OPENER row on this market — the first, still PENDING, with the pools still 0 (so the empty-pool gate is not what excluded it)`,
-    !!later && rowsNow.length === 1 && rowsNow[0]?.id === decided?.id && stillPending?.status === "PENDING" && positionsNow === 0,
+  ok(`${K} · …and it did NOT plan a second OPENER: across ALL accounts exactly ONE OPENER row on this market — the first, still PENDING, with the market row's yesPool and noPool still 0 (read off the row, beside a positions count of 0 — so the empty-pool gate is not what excluded it)`,
+    !!later && rowsNow.length === 1 && rowsNow[0]?.id === decided?.id && stillPending?.status === "PENDING" && positionsNow === 0 && mNow?.yesPool === 0 && mNow?.noPool === 0,
     /* ⛔ `undefined === undefined` is not agreement — the detail says so too, not only the verdict. */
-    j({ rows: rowsNow.length, sameRow: !!decided && rowsNow[0]?.id === decided.id, status: stillPending?.status ?? null, positions: positionsNow }));
+    j({ rows: rowsNow.length, sameRow: !!decided && rowsNow[0]?.id === decided.id, status: stillPending?.status ?? null, positions: positionsNow, pools: [mNow?.yesPool ?? null, mNow?.noPool ?? null] }));
 
   // ── the SCAN itself, called as the planner calls it — the SQL layer measured directly, beside the positive ──
   /* ⛔ The empty-pool gate and the per-market OPENER uniqueness are each enforced at THREE sites: the scan's SQL
@@ -246,7 +274,7 @@ export async function run(env: Any, prior: Any): Promise<Any> {
   const openerScan = await scanIds("OPENER");
   const scanned = { fillHasControl: fillScan.ids.includes(control.id), openerHasControl: openerScan.ids.includes(control.id),
     fillHasMarket: fillScan.ids.includes(market.id), openerHasMarket: openerScan.ids.includes(market.id), error: fillScan.error ?? openerScan.error };
-  ok(`${K} · the SCAN, called as the planner calls it: the FILL scan (no pool predicate) lists the control poll — the scan is alive and sees it — and the OPENER scan does NOT: its raw NO pool is ${exp.controlSeed}, so the SQL empty-pool gate excluded it there, measured at the statement beside the planner's positive`,
+  ok(`${K} · the SCAN STATEMENT, called in the planner's OPENER shape (toIso null — ⚠️ the FILL leg is a LIVENESS witness with toIso null, NOT the planner's bounded FILL call, which stops at now + lead + 15 s and would not list a poll 90 min out): the FILL scan (no pool predicate) lists the control poll — the statement is alive and sees it — and the OPENER scan does NOT: its raw NO pool is ${exp.controlSeed}, so the SQL empty-pool gate excluded it there, measured at the statement beside the planner's positive`,
     !!decided && !!planning && scanned.error === null && scanned.fillHasControl && !scanned.openerHasControl,
     j({ ...scanned, fillRows: fillScan.ids.length, openerRows: openerScan.ids.length }));
   ok(`${K} · …and the OPENER scan does NOT list the empty poll either, while the FILL scan does — its OPENER row exists and is not CANCELLED, so the SQL NOT EXISTS excluded it: one OPENER per market, measured at the statement`,
@@ -274,8 +302,8 @@ export async function run(env: Any, prior: Any): Promise<Any> {
     house.length === 1 && house[0]?.side === exp.side && !!fired?.positionId && house[0]?.id === fired.positionId,
     j({ n: house.length, side: house[0]?.side ?? null, joined: !!fired?.positionId && house[0]?.id === fired?.positionId }));
   const staked = house[0]?.stake;
-  ok(`${K} · …of exactly ${exp.fire} — the number the rules decided is the number that was staked, and the row still says so (nothing re-drew at fire)`,
-    staked === exp.fire && fired?.stakeTzs === exp.fire, j({ staked: staked ?? null, row: fired?.stakeTzs ?? null, expected: exp.fire }));
+  ok(`${K} · …of exactly ${exp.fire} — the number the rules decided is the number that was staked, and the PLACED row still says so (nothing re-drew at fire; the row's stakeTzs is compared only on a PLACED row — a SKIPPED/EXPIRED one carries the ruling-120 placeholder)`,
+    fired?.status === "PLACED" && staked === exp.fire && fired?.stakeTzs === exp.fire, j({ status: fired?.status ?? null, staked: staked ?? null, row: fired?.stakeTzs ?? null, expected: exp.fire }));
   /* ⛔ HOUSE_ONLY is Enter now's refusal (the MANUAL path, mapped to CONDITION_GONE at fire). Had it applied to a
      planned OPENER, a poll holding nothing but house money could never take one — so the placement INTO such a poll
      is the assertion, with the premise read back off the positions rather than assumed. */
@@ -319,9 +347,9 @@ export async function run(env: Any, prior: Any): Promise<Any> {
   // ── nothing tripped — asserted WITH the placement, so a dead engine cannot supply the zeros ─────────
   const ctl = await S.houseBotControlStore.get();
   const deskRow = await S.houseBotStore.get(bot.botId);
-  ok(`${K} · …and nothing in the lane tripped a security alert or the master switch — the switch is still ON and the account still ACTIVE (asserted WITH the placement)`,
-    fired?.status === "PLACED" && seen("security") === 0 && seen("switchedOff") === 0 && ctl?.enabled === true && deskRow?.status === "ACTIVE",
-    j({ security: seen("security"), switchedOff: seen("switchedOff"), enabled: ctl?.enabled ?? null, status: deskRow?.status ?? null }));
+  ok(`${K} · …and nothing in THIS LANE'S WINDOW tripped a security alert or the master switch (alerts counted from the lane's start) — the switch is still ON and the account still ACTIVE (asserted WITH the placement)`,
+    fired?.status === "PLACED" && inWindow("security") === 0 && inWindow("switchedOff") === 0 && ctl?.enabled === true && deskRow?.status === "ACTIVE",
+    j({ security: inWindow("security"), switchedOff: inWindow("switchedOff"), enabled: ctl?.enabled ?? null, status: deskRow?.status ?? null }));
 
   return {
     lane: "E", measured: true,
