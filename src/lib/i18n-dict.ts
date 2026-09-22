@@ -3106,8 +3106,9 @@ export const dict = {
       currentSection: "sehemu ya sasa",
       // 2026-09-14 · the phone rail's SHORT tab name only ("Juu na Chini" cannot fit a fifth of a 360 screen); the product name everywhere else stays "Juu na Chini".
       updown: "Juu/Chini",
-      // 2026-09-22 · U2. "Nafasi finyu / pana" — narrow / wide spacing; the values agree with "nafasi" (N-class).
-      cardSpacing: "Nafasi ya kadi", densityCompact: "Finyu", densityComfortable: "Pana",
+      // 2026-09-22 · U2. "Nafasi ndogo / kubwa" — small / large spacing; the values agree with "nafasi" (N-class).
+      // Not "finyu": it reads as cramped, i.e. it would describe the default as a complaint. Native reader: plan §0 item 3.
+      cardSpacing: "Nafasi ya kadi", densityCompact: "Ndogo", densityComfortable: "Kubwa",
       cardSpacingHint: "Kwa simu pekee. Hubadilisha jinsi kadi za masoko zinavyokaribiana. Hakuna kinachofichwa.",
     },
     auth: {

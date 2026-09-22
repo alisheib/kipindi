@@ -89,6 +89,7 @@
     "qa:withdrawal-visual": "node scripts/live/withdrawal-visual-drive.mjs",
     "qa:mobile-visual": "node scripts/live/mobile-visual-drive.mjs",
     "qa:mobile-visual-capture": "node scripts/live/mobile-visual-capture.mjs",
+    "qa:card-spacing": "node scripts/live/card-spacing-drive.mjs",
     "ops:mint-qa-mobile": "node scripts/live/mint-qa-mobile.mjs",
     "qa:agent-drive": "node scripts/live/agent-programme-drive.mjs",
     "qa:agent-visual": "node scripts/live/agent-v1-visual.mjs",
