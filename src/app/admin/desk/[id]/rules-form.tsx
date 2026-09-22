@@ -670,10 +670,13 @@ export function DeskRulesForm({
                             {row.hint !== "" && <span className="block mt-0.5">{row.hint}</span>}
                             {row.range !== "" && <span className="block mt-0.5">{row.range}</span>}
                             {/* ⛔ WHICH SWITCH OWNS THIS NUMBER, and whether anything reads it RIGHT NOW —
-                                derived on the server from the engine's own predicate, warned only while the
-                                box is genuinely idle so the tone stays worth reading. */}
+                                derived on the server from the engine's own predicate.
+                                ⛔ NEUTRAL, NOT A WARNING — read off the rendered tab (2026-09-23). On a fresh
+                                account NO mode is on, so EVERY numeric row is idle: a warning tone there made
+                                twenty-nine rows amber at once and stopped meaning anything. The FACT is worth
+                                saying; the alarm is not. */}
                             {row.usedBy !== "" && (
-                              <span className={row.idle ? "block mt-0.5 text-warning-fg" : "block mt-0.5"}>
+                              <span className="block mt-0.5 text-text-tertiary">
                                 {row.usedBy}{row.idle ? ` ${model.copy.idleNote}` : ""}
                               </span>
                             )}

@@ -46,7 +46,7 @@ import { WEEKDAYS, WEEKDAY_LABEL, eatDayKey, formatEat, formatMinutes, type Week
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { resolveRange } from "./date-range";
-import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext } from "@/lib/house-bot/rules";
+import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext, type ScopeProduct, type EntryMode } from "@/lib/house-bot/rules";
 /* ⭐ THE SCOPE PICKER'S TWO LISTS (prod finding 2026-09-22): the platform's own category list and its own label
  * helper, so the form and the roster paint the words a player sees and never a raw key. `dict.en` because the
  * console is an English surface; the helper takes the dictionary rather than a locale. */
@@ -2060,14 +2060,16 @@ const ALL_SWITCHES_OFF: LeafModeState = {
 /* ⚠️ BUILT ON CALL, NOT AT MODULE LOAD: the switch labels come from `CONSOLE_FLAG_SECTION`, which is declared
    further down this file, and a `const` here reading it would be a temporal-dead-zone throw on import — a
    module that fails to LOAD takes every route that imports it, which is the worst shape of this mistake. */
-function switchWords(): readonly { label: string; state: LeafModeState }[] {
+function switchWords(): readonly { label: string; product: ScopeProduct | null; mode: EntryMode | null; state: LeafModeState }[] {
   return [
     ...SCOPE_PRODUCTS.flatMap((p) => ENTRY_MODES.map((m) => ({
       label: `${CONSOLE_FLAG_SECTION[p]}${SEP}${ENTRY_MODE_WORDS[m]}`,
+      product: p as ScopeProduct,
+      mode: m as EntryMode,
       state: { ...ALL_SWITCHES_OFF, modes: { ...ALL_SWITCHES_OFF.modes, [p]: { ...ALL_SWITCHES_OFF.modes[p], [m]: true } } } as LeafModeState,
     }))),
-    { label: "Enter now", state: { ...ALL_SWITCHES_OFF, enterNow: true } },
-    { label: "Targeted stakes", state: { ...ALL_SWITCHES_OFF, targeting: true } },
+    { label: "Enter now", product: null, mode: null, state: { ...ALL_SWITCHES_OFF, enterNow: true } },
+    { label: "Targeted stakes", product: null, mode: null, state: { ...ALL_SWITCHES_OFF, targeting: true } },
   ];
 }
 /**
@@ -2081,6 +2083,42 @@ function switchWords(): readonly { label: string; state: LeafModeState }[] {
 function switchesUsing(id: FieldId): string[] {
   if (leafUsedBy(id, ALL_SWITCHES_OFF)) return [];
   return switchWords().filter((s) => leafUsedBy(id, s.state)).map((s) => s.label);
+}
+
+/**
+ * ⭐ THE SAME FACT, SAID IN ONE LINE (2026-09-23, read off the rendered tile).
+ *
+ * 🔴 THE FIRST VERSION LISTED EVERY SWITCH, AND ON THE ROWS THAT MATTER MOST THAT IS SIX OF THEM: *"Used only
+ * while one of these is on: Up & Down entry · React to a player's stake, Up & Down entry · Fill a thin side,
+ * Up & Down entry · Open a quiet market, Polls entry · React to a player's stake, Polls entry · Fill a thin
+ * side, Polls entry · Open a quiet market."* — three lines of caption under a one-line box, on a form with
+ * twenty-nine of them. It was measured by screenshotting the tab and READING it, which is the only way a
+ * defect of this kind is ever found: every assertion about it was green.
+ * ⛔ THE STRUCTURE IS DERIVED, NOT MATCHED BY LENGTH. A set that is every mode says "any entry mode"; one
+ * product's three say that product; one mode across both products says that mode; two or fewer are named;
+ * anything else falls back to the list, which is now unreachable for the leaves the engine actually has and
+ * stays correct if that changes.
+ */
+function usedByLine(id: FieldId): string {
+  if (leafUsedBy(id, ALL_SWITCHES_OFF)) return "";
+  const hits = switchWords().filter((s) => leafUsedBy(id, s.state));
+  if (hits.length === 0) return "";
+  const modes = hits.filter((h) => h.mode !== null);
+  const byHand = hits.filter((h) => h.mode === null).map((h) => h.label);
+  const allModes = modes.length === SCOPE_PRODUCTS.length * ENTRY_MODES.length;
+  const products = [...new Set(modes.map((m) => m.product as ScopeProduct))];
+  const modeKinds = [...new Set(modes.map((m) => m.mode as EntryMode))];
+  let core: string | null = null;
+  if (allModes) core = "any entry mode is on";
+  else if (products.length === 1 && modeKinds.length === ENTRY_MODES.length) core = `any ${PRODUCT_WORDS[products[0]]} entry is on`;
+  else if (modeKinds.length === 1 && products.length === SCOPE_PRODUCTS.length) core = `${ENTRY_MODE_WORDS[modeKinds[0]]} is on for either product`;
+  else if (modes.length > 0 && modes.length <= 2) core = `${modes.map((m) => m.label).join(" or ")} is on`;
+  else if (modes.length > 0) core = `one of these is on: ${modes.map((m) => m.label).join(", ")}`;
+  /* The by-hand switches are named beside the modes rather than folded into them: they are a different kind of
+     entry, and an officer deciding whether a number matters needs to see which. */
+  const tail = byHand.length === 0 ? null : `${byHand.join(" or ")} is on`;
+  const both = core !== null && tail !== null ? `${core}, or ${tail}` : (core ?? tail);
+  return both === null ? "" : `Used only while ${both}.`;
 }
 
 /** The ten switches of a parsed document, as `leafUsedBy` asks for them. */
@@ -5019,13 +5057,7 @@ export async function houseDetailForConsole(
         help: CONSOLE_RULE_HELP[id],
         hint: meta.hint ?? "",
         /* ⛔ DERIVED FROM THE ENGINE'S PREDICATE, one switch at a time — never a hand-kept ownership map. */
-        /* ⚠️ ONE SWITCH READS AS A SENTENCE; SEVERAL READ AS A LIST. "…while A, B, C is on" is not English,
-           and this caption is read while an officer is deciding whether a box matters to them. */
-        usedBy: used.length === 0
-          ? ""
-          : used.length === 1
-            ? `Used only while ${used[0]} is on.`
-            : `Used only while one of these is on: ${used.join(", ")}.`,
+        usedBy: usedByLine(id),
         idle: used.length > 0 && !leafUsedBy(id, modeStateOf(parsed.rules)),
         options: meta.options == null
           ? null
@@ -5131,7 +5163,8 @@ export async function houseDetailForConsole(
       boundsUnreadable: "The platform's own stake range and round lengths could not be read, so the range each of these accepts is not shown. Saving still checks them.",
       rulesSection: "How it decides",
       rulesNote: "These decide how this account behaves once a product and an entry are on above. Every one of them is checked when you save.",
-      idleNote: "Nothing reads this while its switch is off. It is still saved.",
+      /* ⚠️ "ITS SWITCH" WAS WRONG THE MOMENT SEVERAL SWITCHES COULD OWN ONE NUMBER — read off the tile. */
+      idleNote: "Nothing reads it yet. It is still saved.",
       startingRulesDone: "Starting values filled in the empty boxes. Nothing is saved yet — check them, then press Save.",
     },
   };
