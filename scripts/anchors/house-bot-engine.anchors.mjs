@@ -475,8 +475,12 @@ export const MUTATIONS = [
   {
     name: "alerts-skew-silent · the clock-skew stop goes back to telling nobody (the tree before C5 alerts)",
     file: WORKER,
-    from: "    const alerted = SKEW_GATE_REASONS.has(gate.reason) ? await alertSkewGate(ctx, alerts, gate.reason) : false;",
-    to: "    const alerted = false;",
+    /* 🔴 RE-ANCHORED 2026-09-23 · IT WAS STALE AND HAD BEEN MEASURING NOTHING. `pollerPass` moved from a
+       ternary to an `if (SKEW_GATE_REASONS.has(...))` block and neither skew anchor moved with it, so
+       `resolveAnchor` refused to inject and `red:house-bot-engine` reported a MISS instead of a catch — the
+       same class as the two console anchors this session opened with, found the same way. */
+    from: "      const alerted = await alertSkewGate(ctx, alerts, gate.reason);",
+    to: "      const alerted = false;",
     expect: "16.515a · ⛔ register:1218",
     suite: "engine-mem",
     sections: "16",
@@ -484,8 +488,11 @@ export const MUTATIONS = [
   {
     name: "alerts-skew-every-gate · every refused gate rings, so a deploy and a full slot table wake an officer",
     file: WORKER,
-    from: "    const alerted = SKEW_GATE_REASONS.has(gate.reason) ? await alertSkewGate(ctx, alerts, gate.reason) : false;",
-    to: "    const alerted = await alertSkewGate(ctx, alerts, gate.reason);",
+    /* 🔴 RE-ANCHORED 2026-09-23 · stale for the same reason as its sibling above. The POSITIVE control plants
+       by widening the GATE rather than the assignment, which is the defect it is named for: every refused gate
+       rings, so a deploy and a full slot table wake an officer. */
+    from: "    if (SKEW_GATE_REASONS.has(gate.reason)) {",
+    to: "    if (gate.reason !== undefined) {",
     expect: "16.515c · ⭐ POSITIVE CONTROL",
     suite: "engine-mem",
     sections: "16",
@@ -525,5 +532,193 @@ export const MUTATIONS = [
     expect: "11.15e · ⭐ POSITIVE CONTROL",
     suite: "engine-mem",
     sections: "11",
+  },
+
+  /* ══ §7b · THE RULE LEAVES (2026-09-23 · register B6) ════════════════════════════════════════════════════════
+   *
+   * ⛔ ONE MUTATION PER FAMILY OF LEAF, AND EACH ONE IS THE DEFECT THE CASE EXISTS FOR — a leaf dropped, a unit
+   * swapped, a draw's bounds moved, a clock read in the wrong zone. Before §7b every one of these could be made
+   * and only the whole-engine fleet drive would have noticed.
+   */
+  {
+    name: "leaf-no-react-zone-dropped · the no-react zone stops being read, so a stake is answered inside the quiet stretch before a market closes",
+    file: DECIDE,
+    from: `    if (!code && !(placedMs < cutoffMs - g.noReactZoneSec * 1000)) code = "NO_REACT_ZONE";\n    if (!code && dueMs > deadlineMs) code = requestedMs <= deadlineMs ? "EXIT_WINDOW_TOO_LATE" : "CUTOFF";\n    if (!code && product === "UPDOWN") code = udCloseness(view, input.price, bot.rules.updown.closenessPct);`,
+    to: `    if (!code && dueMs > deadlineMs) code = requestedMs <= deadlineMs ? "EXIT_WINDOW_TOO_LATE" : "CUTOFF";\n    if (!code && product === "UPDOWN") code = udCloseness(view, input.price, bot.rules.updown.closenessPct);`,
+    expect: "7b.1 · guards.noReactZonePollsMin",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-no-react-zone-unit-swapped · the polls zone is read as SECONDS instead of minutes, so a 60-minute guard becomes a one-minute one",
+    file: DECIDE,
+    from: `    noReactZoneSec: ud ? rules.guards.noReactZoneUdSec : rules.guards.noReactZonePollsMin * 60,`,
+    to: `    noReactZoneSec: ud ? rules.guards.noReactZoneUdSec : rules.guards.noReactZonePollsMin,`,
+    expect: "7b.1 · guards.noReactZonePollsMin",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-pool-band-exclusive · the pool band's edges stop being inclusive, so a total exactly at the officer's minimum is refused",
+    file: DECIDE,
+    from: `    if (!code && (total < bot.rules.scope.poolTotalMinTzs || (bot.rules.scope.poolTotalMaxTzs != null && total > bot.rules.scope.poolTotalMaxTzs))) code = "POOL_BAND";`,
+    to: `    if (!code && (total <= bot.rules.scope.poolTotalMinTzs || (bot.rules.scope.poolTotalMaxTzs != null && total >= bot.rules.scope.poolTotalMaxTzs))) code = "POOL_BAND";`,
+    expect: "7b.3 · scope.poolTotalMinTzs / MaxTzs",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-closing-soon-everywhere · the closing-soon skip stops being a POLLS rule and starts holding rounds back too",
+    file: DECIDE,
+    from: `    if (!code && product === "MARKET" && cutoffMs - placedMs < bot.rules.scope.skipPollsClosingWithinMin * 60_000) code = "CUTOFF";`,
+    to: `    if (!code && cutoffMs - placedMs < bot.rules.scope.skipPollsClosingWithinMin * 60_000) code = "CUTOFF";`,
+    expect: "7b.5 · scope.skipPollsClosingWithinMin",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-trigger-band-exclusive · the trigger band's edges stop being inclusive, so a stake exactly at the floor is left alone",
+    file: DECIDE,
+    from: `    if (!code && (trigger.stakeTzs < bot.rules.counter.triggerStakeMinTzs || trigger.stakeTzs > bot.rules.counter.triggerStakeMaxTzs)) code = "TRIGGER_STAKE_RANGE";\n    if (!code && !(placedMs < cutoffMs - g.noReactZoneSec * 1000)) code = "NO_REACT_ZONE";\n    if (!code && dueMs > deadlineMs) code = requestedMs <= deadlineMs ? "EXIT_WINDOW_TOO_LATE" : "CUTOFF";\n    if (!code && product === "UPDOWN") code = udCloseness(view, input.price, bot.rules.updown.closenessPct);`,
+    to: `    if (!code && (trigger.stakeTzs <= bot.rules.counter.triggerStakeMinTzs || trigger.stakeTzs >= bot.rules.counter.triggerStakeMaxTzs)) code = "TRIGGER_STAKE_RANGE";\n    if (!code && !(placedMs < cutoffMs - g.noReactZoneSec * 1000)) code = "NO_REACT_ZONE";\n    if (!code && dueMs > deadlineMs) code = requestedMs <= deadlineMs ? "EXIT_WINDOW_TOO_LATE" : "CUTOFF";\n    if (!code && product === "UPDOWN") code = udCloseness(view, input.price, bot.rules.updown.closenessPct);`,
+    expect: "7b.6 · counter.triggerStakeMin/MaxTzs",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-delay-draw-narrowed · the reaction delay is drawn over the minimum alone, so the officer's range does nothing",
+    file: DECIDE,
+    from: `    const delaySec = deps.randomInt(bot.rules.counter.delayMinSec, bot.rules.counter.delayMaxSec);`,
+    to: `    const delaySec = deps.randomInt(bot.rules.counter.delayMinSec, bot.rules.counter.delayMinSec);`,
+    expect: "7b.7 · counter.delayMin/MaxSec",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-amount-jitter-ignored · the amount jitter stops being applied, so every answer is the same clean percentage",
+    file: DECIDE,
+    from: `  const jittered = j > 0 ? Math.floor((base * (100 + randomInt(-j, j))) / 100) : base;`,
+    to: `  const jittered = base;`,
+    expect: "7b.8 · shaping.jitterPct",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-fixed-amount-ignored · a FIXED amount is answered as a percentage anyway, so the one number an officer typed is not the one staked",
+    file: DECIDE,
+    from: `  const base = a.kind === "PCT" ? Math.floor((triggerStake * a.pct) / 100) : a.fixedTzs;`,
+    to: `  const base = Math.floor((triggerStake * (a.kind === "PCT" ? a.pct : 80)) / 100);`,
+    expect: "7b.9 · counter.amount FIXED",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-round-to-rounds-up · amounts are rounded to the NEAREST step instead of floored, so a shaped stake can exceed what was worked out",
+    file: DECIDE,
+    from: `const floorTo = (n: number, step: number) => (step > 0 ? Math.floor(Math.max(0, n) / step) * step : Math.max(0, Math.floor(n)));`,
+    to: `const floorTo = (n: number, step: number) => (step > 0 ? Math.round(Math.max(0, n) / step) * step : Math.max(0, Math.floor(n)));`,
+    expect: "7b.10 · shaping.roundToTzs",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-min-time-to-cutoff-dropped · the deadline stops subtracting the officer's margin, so a bet is queued into the last seconds of a round",
+    file: DECIDE,
+    from: `    minTimeToCutoffSec: Math.max(MIN_TIME_TO_CUTOFF_FLOOR_SEC, ud ? rules.guards.minTimeToCutoffUdSec : rules.guards.minTimeToCutoffPollsMin * 60),`,
+    to: `    minTimeToCutoffSec: MIN_TIME_TO_CUTOFF_FLOOR_SEC,`,
+    expect: "7b.11 · guards.minTimeToCutoffUdSec",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-schedule-unread-at-decide · the schedule stops gating the untargeted COUNTER, so an account bets outside the hours its officer set",
+    file: DECIDE,
+    from: `    /* ⛔ THE SAME INSTANT AS THE TARGET PATH ABOVE, AND AS FILL AND OPENER — see the block there. */\n    if (!code && !inSchedule(bot.rules, dueMs)) code = "OUTSIDE_SCHEDULE";`,
+    to: `    if (!code && false) code = "OUTSIDE_SCHEDULE";`,
+    expect: "7b.12 · schedule.days",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-schedule-read-in-utc · the week's windows are built three hours out, so an officer's 09:00 EAT means 09:00 UTC",
+    file: "src/lib/house-bot/clock.ts",
+    /* 🔴 RE-AIMED 2026-09-23 · the first version shifted `eatWeekday` and was MISSED, correctly: a three-hour
+       shift at midday does not change the DAY, and the day index is all `eatWeekday` contributes here. The
+       minute-of-week is what a window is compared against, so that is where a zone error actually lands. */
+    from: `  return WEEKDAYS.indexOf(eatWeekday(atMs)) * MINUTES_PER_DAY + eatMinuteOfDay(atMs);`,
+    to: `  return WEEKDAYS.indexOf(eatWeekday(atMs)) * MINUTES_PER_DAY + eatMinuteOfDay(atMs) - 180;`,
+    expect: "7b.13 · schedule.windows · ⭐ THE UTC DISCRIMINATOR",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-schedule-judged-at-the-trigger · the COUNTER goes back to judging its hours at the player's stake instead of at the instant it would bet",
+    file: DECIDE,
+    from: `    /* ⛔ THE SAME INSTANT AS THE TARGET PATH ABOVE, AND AS FILL AND OPENER — see the block there. */\n    if (!code && !inSchedule(bot.rules, dueMs)) code = "OUTSIDE_SCHEDULE";\n    const total = input.pools.YES.raw + input.pools.NO.raw;`,
+    to: `    if (!code && !inSchedule(bot.rules, placedMs)) code = "OUTSIDE_SCHEDULE";\n    const total = input.pools.YES.raw + input.pools.NO.raw;`,
+    expect: "7b.15 · ⛔ THE SCHEDULE IS JUDGED AT THE DUE INSTANT",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-fill-lead-unit-swapped · the poll fill lead is read as SECONDS, so a 30-minute lead fills half a minute before the poll closes",
+    file: DECIDE,
+    from: `  const leadMs = (product === "UPDOWN" ? r.fill.leadUdSec : r.fill.leadPollsMin * 60) * 1000;`,
+    to: `  const leadMs = (product === "UPDOWN" ? r.fill.leadUdSec : r.fill.leadPollsMin) * 1000;`,
+    expect: "7b.17 · fill.leadPollsMin",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-fill-jitter-added · the fill jitter is ADDED to the due time instead of subtracted, so it pushes the bet past the lead it was meant to soften",
+    file: DECIDE,
+    from: `  const dueMs = Math.max(cutoffMs - leadMs - jitterMs, passNowMs);`,
+    to: `  const dueMs = Math.max(cutoffMs - leadMs + jitterMs, passNowMs);`,
+    expect: "7b.18 · fill.jitterSec",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-fill-jitter-draws-at-zero · a bot that does not jitter draws anyway, shifting every later draw on the same pass",
+    file: DECIDE,
+    from: `  const jitterMs = r.fill.jitterSec > 0 ? deps.randomInt(0, r.fill.jitterSec) * 1000 : 0;`,
+    to: `  const jitterMs = deps.randomInt(0, r.fill.jitterSec) * 1000;`,
+    expect: "7b.19 · …and a zero jitter never asks the RNG at all",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-closeness-unread-at-fill · the Up & Down closeness stops gating FILL, so a round that has already moved is filled anyway",
+    file: DECIDE,
+    from: `  if (product === "UPDOWN" && udCloseness(view, input.price, r.updown.closenessPct)) return { row: null, code: null };\n  if (bot.marketHeld || bot.capPrecheck || !inSchedule(r, dueMs)) return { row: null, code: null };\n\n  const wanted = Math.floor((pools[opp].locked * p) / (100 - p)) - pools[thin].raw;`,
+    to: `  if (bot.marketHeld || bot.capPrecheck || !inSchedule(r, dueMs)) return { row: null, code: null };\n\n  const wanted = Math.floor((pools[opp].locked * p) / (100 - p)) - pools[thin].raw;`,
+    expect: "7b.20 · updown.closenessPct at FILL",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-opener-delay-unit-swapped · the poll opener's wait is read as SECONDS, so a 30-minute delay opens the market half a minute in",
+    file: DECIDE,
+    from: `    : deps.randomInt(r.opener.delayPollsMinMin, r.opener.delayPollsMaxMin) * 60;`,
+    to: `    : deps.randomInt(r.opener.delayPollsMinMin, r.opener.delayPollsMaxMin);`,
+    expect: "7b.23 · opener.delayPollsMin/MaxMin",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "leaf-opener-stake-unfloored · the drawn amount stops being floored to the step, so a shaped bet reads as calculated",
+    file: DECIDE,
+    /**
+     * 🔴 RE-AIMED 2026-09-23, AND THE MISS WAS A FINDING. The first version removed the `floorTo` around the
+     * OPENER's own draw and was MISSED — because `clampStake` floors again, to the same `roundToTzs`, two lines
+     * later. The opener's own call is therefore belt-and-braces: it cannot change any answer, on any path.
+     * ⛔ SO THE MUTATION MOVED TO THE FLOOR THAT BINDS. `clampStake` is the one every kind of stake passes
+     * through, and a step that stops being applied there is the defect this case is named for.
+     */
+    from: `  const capped = floorTo(Math.min(stake, bot.stakeMaxTzs ?? 0, bounds.max), bot.rules.shaping.roundToTzs);`,
+    to: `  const capped = Math.min(stake, bot.stakeMaxTzs ?? 0, bounds.max);`,
+    expect: "7b.24 · opener.stakeMin/MaxTzs",
+    suite: "engine-mem",
+    sections: "7b",
   },
 ];

@@ -381,7 +381,7 @@ try {
            it is what a `Referer` hands the next request — so a vocabulary word that reached a path segment or a
            query key would have passed 1,398 checks. Collected here and asserted at §5.6 below. */
         const url = `${location.pathname}${location.search}`;
-        return { url, clipped, moneyCount: money.length, tiles, shortControls, labelReach, controlCount: controls.length, tap, firstCells, firstRowEmpty, railCount, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
+        return { url, clipped, moneyCount: money.length, moneyFigures: money.filter((m) => { const t = m.innerText ?? ""; return /[0-9]/.test(t) && /TZS/.test(`${t} ${m.parentElement?.innerText ?? ""}`); }).length, tiles, shortControls, labelReach, controlCount: controls.length, tap, firstCells, firstRowEmpty, railCount, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
       });
 
       ok(`§5.1 ${route} @${width} · no money figure is clipped by a box that cannot scroll, and none is broken across two lines`, facts.clipped.length === 0, facts.clipped.join(" | "));
@@ -428,8 +428,17 @@ try {
            currency at all asserts that instead. Strictly stronger where money exists, correct-population where it
            does not. ⛔ `/new`'s inverted form (ruling 459) is untouched. */
         : `§5.1 ${route} @${width} · CONTROL · every currency figure this surface paints is inside the money atom the scan reads — or it paints none and says so`,
-        MONEYLESS ? facts.moneyCount === 0 && !/TZS/.test(facts.ownText) : (paintsFigure ? facts.moneyCount >= 1 : facts.moneyCount === 0),
-        `${facts.moneyCount} money spans; currency FIGURE in the surface's own text: ${paintsFigure} (bare unit word: ${/TZS/.test(facts.ownText)})`);
+        /* 🔴 THE NO-FIGURE BRANCH ASKED FOR ZERO ATOMS, AND AN ATOM IS NOT A FIGURE (measured 2026-09-23).
+           On a desk whose global limits are all UNSET, the KPI tiles paint `.amount` spans reading **"Not set"**
+           and "2 of 5" — the atom is the TILE's shape, not currency — so a correct screen reported "4 money
+           spans" against a demand for zero and both §5.1 and §5.2 went red. That is the same class of
+           false-population error this case's own docblock records from 2026-09-20, fixed on the `paintsFigure`
+           half and left standing on this one.
+           ⛔ IT IS STILL A TIGHTENING: what the control needs is that every currency FIGURE is inside the atom,
+           so the no-figure branch now asks that no atom holds a figure either — a surface painting no currency
+           proves it paints none. `TZS 50,000` outside `.amount` still fires, which is the defect it exists for. */
+        MONEYLESS ? facts.moneyCount === 0 && !/TZS/.test(facts.ownText) : (paintsFigure ? facts.moneyFigures >= 1 : facts.moneyFigures === 0),
+        `${facts.moneyCount} money spans (${facts.moneyFigures} carrying a figure); currency FIGURE in the surface's own text: ${paintsFigure} (bare unit word: ${/TZS/.test(facts.ownText)})`);
       ok(`§5.3 ${route} @${width} · no tile carries two amounts`, facts.tiles.every((t) => t.amounts <= 1), facts.tiles.filter((t) => t.amounts > 1).map((t) => t.text).join(" | "));
       ok(`§5.3 ${route} @${width} · no KPI delta carries a currency-prefixed figure`, facts.tiles.every((t) => !/TZS\s*[\d,]/.test(t.delta)), facts.tiles.map((t) => t.delta).filter((d) => /TZS\s*[\d,]/.test(d)).join(" | "));
       // ⛔ A CONTROL FOR THE CHECK ABOVE: an empty selector reads exactly like compliance.
@@ -583,8 +592,10 @@ try {
            `.admin-tbl` AND paints its caps outside the atom, so the bare `moneyCount >= 1` fired here too and said
            "no table" was the problem. The two assertions must agree or one of them teaches the wrong lesson. */
         ok(`§5.2 ${route} @${width} · this surface renders no `+"`.admin-tbl`"+`, so it has no money CELL to push out of a scroll strip — and §5.1 ${MONEYLESS ? "proved it paints no money at all" : "measured its figures where they are"}`,
-          MONEYLESS ? facts.moneyCount === 0 : (paintsFigure ? facts.moneyCount >= 1 : facts.moneyCount === 0),
-          `${facts.moneyCount} money spans, ${facts.tableCount} tables, currency FIGURE in text: ${paintsFigure} (bare unit word: ${/TZS/.test(facts.ownText)})`);
+          /* ⛔ THE SAME CORRECTION AS §5.1's, and for the same reason: the two must agree or one teaches the
+             wrong lesson. An `.amount` reading "Not set" is a tile, not currency. */
+          MONEYLESS ? facts.moneyCount === 0 : (paintsFigure ? facts.moneyFigures >= 1 : facts.moneyFigures === 0),
+          `${facts.moneyCount} money spans (${facts.moneyFigures} carrying a figure), ${facts.tableCount} tables, currency FIGURE in text: ${paintsFigure} (bare unit word: ${/TZS/.test(facts.ownText)})`);
       } else {
         nm(`§5.2 ${route} @${width}`, `a money table rendered with NO row (${facts.tableCount} table(s)), so the money columns' position was not measured`);
       }

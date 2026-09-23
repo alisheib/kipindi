@@ -26,6 +26,8 @@
  * @see src/app/admin/desk/actions.ts · src/lib/server/house-console-read.ts
  */
 import { useEffect, useId, useRef, useState, useTransition } from "react";
+import type { Route } from "next";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -114,12 +116,16 @@ export function DeskAccountActions({
   acts: DeskActCopy[];
   id: string;
   act: (input: { id: string; act: DeskActCopy["act"]; reason?: string; password?: string; typed?: string; submitId?: string }) => Promise<
-    { ok: true; changed: boolean; note: string | null; warn: boolean } | { ok: false; error: string; field?: string; href?: string }
+    { ok: true; changed: boolean; note: string | null; warn: boolean } | { ok: false; error: string; field?: string; href?: string; hrefLabel?: string }
   >;
 }) {
   const [open, setOpen] = useState<DeskActCopy | null>(null);
   const [v, setV] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
+  /* ⭐ THE WAY OUT A REFUSAL CARRIES (2026-09-22). The Start refusal has always answered with an `href` — the Rules
+     tab, the re-verify field — and this dialog never painted it, so the officer read "Open Rules, review them,
+     save, then start" with nothing to press. The label is the SERVER's word for the link (388). */
+  const [wayOut, setWayOut] = useState<{ href: string; label: string } | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
@@ -147,6 +153,7 @@ export function DeskAccountActions({
     setOpen(null);
     setV(EMPTY);
     setError(null);
+    setWayOut(null);
   };
 
   const submit = () => {
@@ -172,6 +179,7 @@ export function DeskAccountActions({
         /* ⛔ THE REFUSAL STAYS IN THE DIALOG — closing it would throw away what the officer typed and leave them to
            write it again to find out whether the second attempt is refused too. The PASSWORD still goes. */
         setError(result.error);
+        setWayOut(result.href && result.hrefLabel ? { href: result.href, label: result.hrefLabel } : null);
         setV((cur) => ({ ...cur, password: "" }));
         toast({ title: copy.failTitle, description: result.error, variant: "danger" });
         return;
@@ -179,6 +187,7 @@ export function DeskAccountActions({
       setOpen(null);
       setV(EMPTY);
       setError(null);
+      setWayOut(null);
       router.refresh();
       deferToast({
         title: copy.doneTitle,
@@ -271,7 +280,21 @@ export function DeskAccountActions({
               </Field>
             )}
 
-            {error !== null && <p className="text-body-sm text-danger-fg" role="alert">{error}</p>}
+            {error !== null && (
+              <p className="text-body-sm text-danger-fg" role="alert">
+                {error}
+                {/* ⛔ THE LINK CLOSES THE DIALOG ON THE WAY: this row sits above the rail on EVERY tab, so the
+                    component survives the navigation and an open dialog would cover the form it just pointed at. */}
+                {wayOut !== null && (
+                  <>
+                    {" "}
+                    <Link href={wayOut.href as Route} onClick={close} className="inline-flex items-center min-h-[var(--tap-min)] underline text-text">
+                      {wayOut.label} →
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
 
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
               <Button type="button" size="md" variant="ghost" onClick={close} disabled={pending}>{open.cancelLabel}</Button>

@@ -399,6 +399,8 @@ A bound written as a symbol is resolved when the field is validated, from `Rules
 
 Toggles, lists and choices carry no bounds: `scope.products.updown`, `scope.products.polls`, `scope.chains`, `scope.categories`, the six mode flags (`modes.updown.counter` … `modes.polls.opener`), `counter.amount.kind`, `schedule.days`, `schedule.allDay`, `schedule.windows`, `enterNow.enabled` and `targeting.enabled`. A new bot has both products off, empty chain and category lists (scope is explicit: a chain or category added later stays out until someone adds it), every mode off, Enter now and targets off with null stakes, and a schedule of all seven days, all day.
 
+⛔ **An empty list reaches nothing, and absence is not a safe state for these two keys** (prod finding 2026-09-22, read-only). An ACTIVE bot on a switched-ON desk had matched no market, ever: both products ticked, both lists empty — the default — and nothing under `src/` could write either list. The engine's one scope predicate is `rulesCoverTarget` (`rules.ts`): product on ∧ mode on for that product ∧ the market's chain key or category IS ON THE LIST, and `[].includes(x)` is false. So a ticked product with an empty list is refused at save (`R-PRODUCT-LIST`, on the list's own field) and at Start (`PRODUCT_NO_LIST`), the Rules tab draws a **picker** for each list (§7.2 step 3), and the roster's scope column names what each product can reach (§7.2 step 7). The same class, closed at the same time: a mode on for a product that is off (`R-MODE-PRODUCT` / `MODE_WITHOUT_PRODUCT`), a ticked product with no mode on for it (`PRODUCT_NO_MODE`), and a by-hand switch no screen on this build can press (`BY_HAND_NO_SCREEN`, §7.5).
+
 Rules hints: `enterNow.enabled` "Polls only. You choose the poll; 50pick works out the side and the amount." · `enterNow.thinStakeTzs` "Used when players' locked money leaves one side thinner. Cut to fit." · `enterNow.openerStakeTzs` "Used on a poll with no stakes yet. The side is drawn once for that poll." · `targeting.enabled` "Targets use the Counter amount and trigger range below, and the staff-chosen limits."
 
 **Caps** (`HouseBot` columns; every one may be not set)
@@ -462,9 +464,15 @@ Lowering `maxDesignatedBots` below the number of designated bots is allowed and 
 - **Start** refuses while any cap in `REQUIRED_FOR_START` is not set: `stakeMinTzs`, `stakeMaxTzs`, `capPerMarketTzs`, `capDailyStakeTzs`, `capDailyLossTzs`, `capOpenExposureTzs`, `balanceFloorTzs`, `freqMinGapSec`, `freqMaxPerHour`, `freqMaxPerDay`, `freqMaxPerMarket`. It never names a staff-chosen cap or the target maximum; rules N1-a and N2-a already require those at save while Enter now or targets are on.
 - **Master ON** refuses while any limit in `REQUIRED_FOR_MASTER_ON` is not set: `gCapDailyStakeTzs`, `gCapDailyLossTzs`, `gCapOpenExposureTzs`, `gCapPerMarketTzs`, `gMaxBetsPerMinute`, `gMaxBetsPerDay`, `gCounterPerPlayerPerDay`, `gCounterPerPlayerTzsPerDay`. The staff-chosen limits, the target maximum and the staff-edge thresholds are not required, and they are left out of "Set N global limits first".
 - **What else the saved rules refuse at Start** (`rulesStartProblems`; the service adds the refusals that need reads):
-  - no product: "Choose at least one product.";
-  - no entry mode: "Turn on at least one entry mode." Enter now or targets alone count as an entry mode;
-  - a saved value that a live bound now breaks: "Can't start: the platform minimum stake is now TZS {m}; Stake min is TZS {x}." The same check covers a stake min above the live maximum and a min gap below the live floor, and, while Enter now is on, both Enter now stakes and the staff-chosen daily cap.
+  - ⛔ **every reason the rules cannot reach a market** — one refusal per `rulesInertReasons` cause, on the field that fixes it, with the Rules tab href (prod finding 2026-09-22; the console passes these sentences through to the Start dialog, framed "This account can't start yet. … Open Rules, change that, save, then start.", with an "Open Rules →" link):
+    - `NO_PRODUCT` — "Choose at least one product.";
+    - `NO_MODE` — "Turn on at least one entry mode.";
+    - `PRODUCT_NO_LIST` — "Polls is on but no poll category is chosen." / "Up & Down is on but no chain is chosen." A ticked product that reaches nothing is refused **even while the other product is live**: "Active · Up & Down · Polls" with an Up & Down that can never fire is the finding itself;
+    - `PRODUCT_NO_MODE` — "Polls is on but no entry mode is on for polls." / "Up & Down is on but no entry mode is on for Up & Down.";
+    - `MODE_WITHOUT_PRODUCT` — "{mode} is on for {product}, but {Product} is off.", one per orphan mode;
+    - `BY_HAND_NO_SCREEN` — "Enter now is the only entry mode on for polls, and no screen on this build can press it." (and the Targeted-stakes and both forms). Enter now or targets alone count as an entry mode **only once a screen exists that can press them** (`BY_HAND_SCREENS` in `console-routes.ts`, tied by existence to the page at each route);
+  - a saved value that a live bound now breaks: "Can't start: the platform minimum stake is now TZS {m}; Stake min is TZS {x}." The same check covers a stake min above the live maximum and a min gap below the live floor, and, while Enter now is on, both Enter now stakes and the staff-chosen daily cap. ⭐ **One home (review finding 2026-09-22):** these four checks are `rulesLiveBoundProblems`, which Start pushes as its BELOW_MIN/ABOVE_MAX refusals (now with the Rules href, which they never carried) and the account page's why-panel reads too — until then the panel printed "Nothing in the rules stops this account from betting." on the page whose Start dialog refused the account on a moved platform minimum. The panel composes its own sentence from the entry's `value` and `bound`, under the limit's own label ("Stake min · Saved as TZS 500; the platform minimum is now TZS 1,000."), because Start's own names one field in the engine's vocabulary. `revalidateLive` (planner.ts) auto-pauses a RUNNING account on the same stake minimum and gap floor, so the panel's item is honest in every lifecycle state.
+- **Production follow-up (owner-side, no code):** an ACTIVE account whose stored rules are the production shape keeps running unchanged (the engine's semantics are identical — it matched nothing before and matches nothing now) and is refused at its next Start until a chain or category is chosen or the product is turned off. A Pause → Start cycle surfaces the refusal safely; the roster now names the reason on the row without it.
 - **Start warnings:** "{label} has no automatic mode: it bets only when you press Enter now." (or "… when you press Enter now or a target reacts.", or "… when a target reacts."), and "Every enabled mode is currently impossible." when every enabled counter is "never" and nothing else is on.
 
 ### 5.5 Clearing a cap while bots run (MON-14)
@@ -536,6 +544,104 @@ Lowering `maxDesignatedBots` below the number of designated bots is allowed and 
 - `parseHouseBotRules` never writes and never widens. A missing or zero `schemaVersion` gives RULES_OUTDATED, a newer one RULES_FROM_FUTURE, and a wrong type or a broken static bound RULES_INVALID naming the field. A chain or category that no longer exists is dropped into a stale list ("Rules mention {label}, which no longer exists — review and save."). Live stake bounds are F5's revalidation, never parse's.
 - Only the rules form converts old rules, through `migrateRules`, shown as a diff the owner saves. The engine and the planner never convert rules or write them back.
 - Rules saved by a newer build raise one alert once they have lasted 10 minutes (`rules-future`) and pause nothing; nothing is placed until that build is back.
+
+### 5.11 Every leaf has a control, and where the schedule is judged (2026-09-23, register A1/B6)
+
+The rules document has 45 leaves. Until 2026-09-23 the Rules tab drew ten switches, fourteen limits and two
+pickers, so the other 33 — every delay and band, every guard, the shaping, the whole schedule and both
+by-hand stakes — had no control anywhere in `src/`: every account that has ever existed on this desk ran them
+at `DEFAULT_RULES_V1`, and the desk could not say what they were. All 29 numeric leaves, the counter amount's
+kind and the schedule are editable from the desk now.
+
+- The population the form draws is `RULE_NUMBER_FIELDS`, the validator's own list, exported for this. A leaf
+  added to the document tomorrow lands on the form and in the save together, or the `Record` of keys, labels
+  and help sentences refuses to compile.
+- The form shows the **live** bounds through `fieldBounds`, never `FIELD_META`'s raw table: `LIVE_MIN`,
+  `LIVE_MAX`, `MAX_UD_SEC`, `MAX_OPENER_UD_SEC` and `FLOOR` are words until the platform resolves them, and a
+  box whose ceiling reads 1,000,000,000 while the seam refuses anything over the live maximum is a form that
+  looks permissive and a save that refuses. When that read fails the row carries no range at all and the form
+  says the platform could not be read — a bound that could not be read is not "no bound".
+- One of the 29 rows is a chooser rather than a box (`shaping.roundToTzs`, over `ROUND_TO_OPTIONS`), and the
+  counter amount's kind is a chooser that reveals the box the validator actually reads.
+- ⛔ **A save stores the officer's numbers explicitly.** The minimal-patch branch is deleted with the promise
+  it could not keep: its docblock said an absent leaf would "follow the default", and measured 2026-09-22 the
+  moment any mode is on the document stops round-tripping and every leaf freezes at the first save's defaults.
+  The re-read guard stays — what is about to be written is parsed back, and a document that will not parse is
+  refused rather than saved.
+- ⛔ **The schedule's seed moved out of the save and onto the screen.** `parseHouseBotRules({schemaVersion:1})`
+  answers `days: []`, which `expandWindows` refuses with "Pick at least one day.", so `rules-save.ts` used to
+  write `DEFAULT_RULES_V1`'s schedule behind the officer's back to keep a fresh account saveable with no
+  picker on the screen. There is a picker now: the reader SHOWS the documented default on an account that has
+  never chosen one, the officer reads seven ticked days and an All-day switch, and the save stores what was
+  posted. Nothing is written that was not on screen.
+
+**The neutral form key of every leaf the form draws.** ⛔ The keys are neutral and the leaf ids are not (D19,
+ruling 453): a field's `name` is not copy — it ships inside the client chunk, it is what the POST body carries
+and it is the address a refusal comes home by. The leaf id stops at the server. The `counter.*` paths are
+composed from `ENTRY_MODES[0]` rather than typed, because a quoted property name is a string literal and
+`\bcounter\b` matches one followed by a dot — measured red on 4.453 before it was composed.
+
+| Leaf | Form key |
+|---|---|
+| `scope.skipPollsClosingWithinMin` | `skip-closing-within` |
+| `scope.poolTotalMinTzs` / `scope.poolTotalMaxTzs` | `pool-total-min` / `pool-total-max` |
+| `counter.delayMinSec` / `counter.delayMaxSec` | `answer-delay-min` / `answer-delay-max` |
+| `counter.reactProbabilityPct` | `answer-chance` |
+| `counter.triggerStakeMinTzs` / `counter.triggerStakeMaxTzs` | `answer-trigger-min` / `answer-trigger-max` |
+| `counter.amount.kind` | `answer-amount-kind` |
+| `counter.amount.pct` / `counter.amount.fixedTzs` | `answer-amount-share` / `answer-amount-fixed` |
+| `fill.leadUdSec` / `fill.leadPollsMin` | `even-up-lead-updown` / `even-up-lead-polls` |
+| `fill.targetThinSharePct` / `fill.jitterSec` | `even-up-target-share` / `even-up-jitter` |
+| `opener.delayUdMinSec` / `opener.delayUdMaxSec` | `first-bet-delay-updown-min` / `first-bet-delay-updown-max` |
+| `opener.delayPollsMinMin` / `opener.delayPollsMaxMin` | `first-bet-delay-polls-min` / `first-bet-delay-polls-max` |
+| `opener.stakeMinTzs` / `opener.stakeMaxTzs` | `first-bet-stake-min` / `first-bet-stake-max` |
+| `updown.closenessPct` | `updown-closeness` |
+| `shaping.roundToTzs` / `shaping.jitterPct` | `round-to` / `amount-jitter` |
+| `guards.noReactZoneUdSec` / `guards.noReactZonePollsMin` | `quiet-zone-updown` / `quiet-zone-polls` |
+| `guards.minTimeToCutoffUdSec` / `guards.minTimeToCutoffPollsMin` | `min-time-left-updown` / `min-time-left-polls` |
+| `enterNow.thinStakeTzs` / `enterNow.openerStakeTzs` | `enter-now-thin-stake` / `enter-now-first-stake` |
+| `schedule.days` | `schedule-days`, each day `schedule-days.<weekday>` |
+| `schedule.allDay` | `schedule-all-day` |
+| `schedule.windows` | `schedule-windows`, each row `schedule-windows.<n>.start` / `.end` |
+
+**⛔ THE OWNER DECISION, TAKEN 2026-09-23: A COUNTER'S SCHEDULE IS JUDGED AT THE DUE INSTANT.**
+
+- It used to be judged at the TRIGGER'S placed instant while FILL and OPENER judged theirs at DUE — one
+  document, one schedule, two readings, and nothing on any screen saying which was meant. DUE is the instant
+  the bet is actually placed, and it is what the Rules tab's own sentence promises ("the hours of each chosen
+  day it may bet"). A COUNTER is held to the player's exit close, which can be minutes after the stake that
+  triggered it. Both COUNTER paths in `decide.ts` — targeted and untargeted — now ask `inSchedule(rules, dueMs)`.
+- ⛔ **Nothing can now be PLACED that could not be placed before.** `fire.ts` re-checks the schedule at the
+  real firing instant for every kind but Enter now, so a row queued outside its hours was already refused there.
+- ⚠️ **What changes is which rows are QUEUED, and the direction is recorded rather than buried.** A trigger
+  arriving just BEFORE a window opens, whose due falls INSIDE it, is now queued where before it was dropped at
+  decide with nothing on the desk saying why. That widening is deliberate: it is what "from 09:00 it answers
+  players" means. Case `7b.15` in `test:house-bot-engine` is the discriminator, and the declared mutation
+  `leaf-schedule-judged-at-the-trigger` turns it red.
+
+**`LEAF_USED_BY` answers a different question, and is deliberately not retightened.** It says which leaves must
+be PRESENT in a stored document; it is not the list of leaves the engine READS at decide time, and the two are
+not being made to match. Tightening it would make documents that are refused today parse tomorrow — a change
+to what a saved account may hold, on the money path, and not this change's to make. The difference is recorded
+here rather than quietly closed.
+
+- The three `scope.*` numbers are the case that exposed it. Measured at `decide.ts`: `poolTotalMinTzs`,
+  `poolTotalMaxTzs` and `skipPollsClosingWithinMin` are evaluated inside the untargeted-COUNTER loop and
+  nowhere else — not at FILL, not at OPENER, and not on the TARGET path above them, which re-checks the trigger
+  band, the no-react zone and the deadline and reads none of the three. They are therefore in the **Counter**
+  section of `FIELD_META`, each carrying the hint that says so ("Only answering a player's stake reads this.").
+- `LEAF_USED_BY` still requires `scope.poolTotalMinTzs` under any automatic mode and
+  `scope.skipPollsClosingWithinMin` under any polls mode, which is WIDER than what the engine reads. Where the
+  two differ this one is the wider, so a caption built from it never claims a field is inert while something
+  still reads it.
+
+**Two fields wore one name.** `fill.jitterSec` and `shaping.jitterPct` both shipped the label "Jitter" —
+invisible while neither had a control, and on one screen it is two fields under one name. They are **"Timing
+jitter"** and **"Amount jitter"** now, and every one of the 28 numeric rules labels is unique, checked. 🔴 It
+was found by a case of my own failing for a reason that had nothing to do with the save: a label lookup
+returned the wrong row. The console cases look a row up by its POSITION in `RULE_NUMBER_FIELDS` now, so that
+lookup no longer depends on the labels being distinct.
+
 
 ---
 
@@ -664,18 +770,137 @@ This is the whole path from "put an account on the desk" to "Start will run it".
 2. **The wizard lands on `?tab=rules`**, not on the overview. A freshly designated account has all fourteen
    limits NULL, no product and no entry mode — thirteen blockers, every one of them on that tab. ⛔ Landing on
    the overview made the first screen after creating an account a summary of an account that does nothing.
-3. **Rules.** Ten switches (two products, three entry modes each, two by-hand permissions) and fourteen limits.
-   Every one of the twenty-four carries a **one-sentence explanation of what it does**, built on the server
-   (`CONSOLE_CAP_HELP`, `CONSOLE_FLAG_HELP` in `house-console-read.ts`) and total by construction —
-   `Record<CapField, string>` means a new cap column cannot ship without a sentence.
+3. **Rules.** Ten switches (two products, three entry modes each, two by-hand permissions), **two scope pickers**
+   and fourteen limits. Every one of the twenty-four switches and limits carries a **one-sentence explanation of
+   what it does**, built on the server (`CONSOLE_CAP_HELP`, `CONSOLE_FLAG_HELP` in `house-console-read.ts`) and
+   total by construction — `Record<CapField, string>` means a new cap column cannot ship without a sentence.
+   ⭐ **The pickers (2026-09-22)** sit under "Markets", right after the product switches: *Up & Down chains* (the
+   live enabled-assets × chains list, each box labelled `SYMBOL N-min` and valued by the durable
+   `<assetId>:<minutes>` key the rules store) and *Poll categories* (the platform's seven topics, labelled through
+   the platform's own label helper). Each group stays on screen while its product is off and says it applies once
+   the product is on; a platform with nothing to choose says so instead of drawing an empty row. The switch
+   labels and the pickers' words are the server's, and the mode words come from `ENTRY_MODE_WORDS` — the one home
+   the refusal sentences read too.
 4. **Two controls fill and empty the limits.** *Use starting values* writes `FIELD_META`'s recommendation into
    every EMPTY limit (it never overwrites a chosen value); *Empty every limit* asks first, then clears them all.
    ⛔ **Neither saves.** Both make the form dirty, so the pending bar stands there with Save and Discard in
    reach and nothing either control does is one-way.
 5. **Save.** One CAS write against `rulesVersion`, all-or-nothing. A second officer on a second tab is REFUSED
-   and told — never merged, never clobbered.
-6. **Start** refuses while any of the eleven `REQUIRED_FOR_START` caps is unset, or there is no product, or no
-   entry mode. The rail badges `rules` with the count still outstanding.
+   and told — never merged, never clobbered. The form posts the ten switches AND the two lists, read off the
+   picker's own controls: a group that failed to render is a refusal on the client, never an empty list. Every
+   posted member is checked against the LIVE platform list before anything is read for the write (a stranger is
+   the stale-form sentence), and a ticked product whose list is empty is refused **on the picker** —
+   `R-PRODUCT-LIST` marks the group (`aria-invalid` on the fieldset and every box), the sentence names the remedy
+   ("Choose at least one poll category, or turn Polls off."), and focus lands in the group. A mode on for a
+   product that is off is refused on that switch (`R-MODE-PRODUCT`).
+6. **Start** refuses while any of the eleven `REQUIRED_FOR_START` caps is unset, for any reason the rules
+   cannot reach a market (§5.4's list), or for a saved limit a live bound now breaks. The rail badges `rules`
+   with the count still outstanding — the unset caps, one per reason, one per broken bound — and the Callout
+   above the rail carries the SERVER's headline, chosen by the lifecycle (review finding 2026-09-22): "N things
+   to fix before this account can start" on a paused account, "N things stop this account from betting" on a
+   running one. Until then the page typed "before this account can start" beside a green ACTIVE chip on the
+   production-shaped account, which had been started for days.
+7. **The why-panel** — one server-built panel (`whyNotBetting`, from `rulesInertReasons` over the same parse
+   context the roster reads, with `BY_HAND_SCREENS`, plus the unset required caps and `rulesLiveBoundProblems`
+   over the platform's live stake bounds), painted on the Overview (linked to the Rules tab) and above the rules
+   form (unlinked): every reason with the label of the control that fixes it (`PRODUCT_NO_MODE` by its product's
+   entry section, since any of the three switches fixes it), then the required caps still unset with their
+   consequence, then each broken bound with both figures. Its heading follows the lifecycle too: "Why this
+   account is not betting" on a running account, "Why this account can't start" on a paused one, and — with
+   nothing to list — the topic heading "Rules and limits" over "Nothing in the rules or limits stops this
+   account from betting." (a heading that asserted "is not betting" over that sentence, on an account that was
+   betting, was the review's finding). It says nothing about the master switch or the pause — the strip does.
+   **The roster** paints the same facts on every row: the scope column reads one line per ticked product with
+   what it can REACH as labels ("Polls · Sports, Macro", "Up & Down · BTC/USD 5-min"; "None chosen" — the record
+   rows' spelling — for a product that reaches nothing), never the summary words the switches spell, and an
+   account whose rules stop it carries "Can't bet — {first reason} (N more)" in the warning tone, linked to its
+   Rules tab, **in the Account cell under the handle** — the first column, on screen at 360 without a sideways
+   scroll; the status chip three columns on keeps saying what the lifecycle is. (It sat in the Products cell,
+   the seventh column of the scroller, and an earlier revision of this paragraph called that "beside the chip".)
+
+### 7.2a The Rules tab, control by control (2026-09-23)
+
+§7.2 above is the flow. This is the tab itself, and what an officer does on it.
+
+1. **The switches and the two scope pickers are unchanged** — ten switches (two products, three entry modes
+   each, two by-hand permissions) with their server-built sentences, the by-hand note above the last two, and
+   the two pickers under "Markets". ⛔ Five console and browser cases that counted the WHOLE form were
+   measuring something other than their own sentence once the editor landed ("all fourteen limits render" saw
+   51). They are SCOPED, not relaxed: the Limits section carries `data-rules="limits"`, the numeric block
+   `data-rules="numbers"`, and each query names the section it is about.
+2. **"How it decides"** holds the 29 numeric rules, in the document's own order, grouped under neutral section
+   headings: *React to a player's stake* · *Fill a thin side* · *Open a quiet market* · *Up & Down* ·
+   *Amounts* · *Safety margins* · *By hand*. ⛔ The engine's own section words are kept off this screen: the
+   switch above the group already carries the mode's console word, and a heading naming it again in house
+   vocabulary is the same control named two ways on one page.
+3. **Each row carries what an officer needs in order to type into it:** the label, a one-sentence server-owned
+   explanation of what the number does, the LIVE bounds and a range sentence composed from them on the server
+   ("Between 5 and 600 seconds.", or "Empty, or between …" where empty is legitimate), the saved figure in the
+   money atom where it is money, and — where the number is not read in every state — a caption naming the
+   switch it belongs to.
+   - ⭐ **The caption is derived, not written down.** Each of the ten switches is turned on ALONE and the
+     engine's own predicate is asked again, so a number no switch reads carries no caption at all. A set that
+     is every mode says "any entry mode is on"; one product's three name that product; one mode across both
+     names that mode; two or fewer are named. 🔴 The first version listed every switch, and on the rows that
+     matter most that is six of them — three lines of caption under a one-line box, on a form with twenty-nine
+     of them. Every assertion about it was green; it was found by screenshotting the tab at 1280 and 360 and
+     reading it.
+   - A number no live switch reads is marked idle and says "Nothing reads it yet. It is still saved." ⛔ **In
+     the ordinary tone, not the warning tone:** on a fresh account no mode is on, so all twenty-nine rows are
+     idle at once and an alarm on every row stops meaning anything.
+4. **The amount chooser** asks how a reply's amount is worked out — "A share of the player's stake" or "The
+   same amount every time" — and reveals the box that choice makes the validator read. The document is a
+   union, so the hidden box being empty is never a refusal, and it is HIDDEN rather than unmounted: the submit
+   refuses a control that is not in `form.elements`.
+5. **The schedule** is seven day boxes in week order, an All-day switch, and up to four HH:MM window rows, **in
+   EAT and said so on the screen**. The rows travel exactly as typed and `expandWindows` is the only thing
+   that reads a clock. All four rows are always drawn, the saved ones filled: a form that draws only the saved
+   rows and an "add" control cannot be posted whole, and "the whole form or nothing" is this save's rule. An
+   end before its start runs past midnight into the next day. With All day on, typed hours are kept and not
+   used, and the form says so. What is saved is painted back in words, per chosen day.
+6. **"Use starting values"** fills the empty boxes only — it never overwrites a value somebody chose — and
+   saves nothing.
+7. **Nothing on this tab saves by itself.** Every control makes the form dirty, so the pending bar stands with
+   Save and Discard in reach, and the three layers of §7.3 cover the exits. ⚠️ A Discard puts the schedule,
+   the amount kind and the rounding step back too: `form.reset()` restores `defaultValue` and knows nothing
+   about React state, so a Discard that left them as typed would be a Discard that discards nothing.
+8. **A refusal marks the box.** The field is outlined, its own message sits under it, the toast says how many
+   fields need fixing, and focus lands on the first bad field in document order. A value outside its live
+   bound is refused on its own box; a half-typed window row on that row's box; no day at all on the day group;
+   and four shapes of partial post are refused as a stale form rather than read as "off".
+9. **Pause asks why, and the answer is kept.** ⛔ The service has stored a pause reason since it was written
+   and the door has always read it — the DIALOG never asked. Measured by driving the real console: pressing
+   Pause opened no dialog at all, so History could say the account was paused by an officer and nothing
+   anywhere could answer *why*, on the one act an officer performs when something looks wrong. The reason is
+   **required**, checked in the dialog and again on the server, against the same shared floor as the switch-on
+   and the removal. ⚠️ A draft that made it optional was refused by two of this section's own guards (every
+   reason the console asks for is marked required; the arming predicate has no concept of a field asked for
+   and not needed). The emergency stop is the master switch, not this control.
+10. **An auto-pause names its cause in History.** ⛔ Every one used to read "Stopped by a limit", and most of
+    them are not limits: a holder changing their sign-in details, excluding themselves, closing their account,
+    failing an identity check or asking for erasure all stop the account, and the blanket sentence sent the
+    officer to the limits tab to look for a number that is not there while the real cause sat with the holder.
+    Nineteen causes have nineteen sentences now, in the console's own words, total by construction so a cause
+    cannot ship without one, read defensively off the stored payload — a cause this build has no word for falls
+    back to the kind's blanket sentence rather than painting a raw code.
+11. **Start paints its warnings.** `startHouseBot` returns `problems.warnings` on its ok branch and the console
+    shows them in the warning tone: an account whose every enabled mode can never enter is started AND told so.
+12. **A retired chain or category is named in the why-panel.** ⛔ It used to vanish silently: the parser drops a
+    scope member the platform no longer offers and records it, and nothing read that list — so an account whose
+    only chain was archived kept its ticked product, showed an empty picker, reached no market, and the panel
+    whose whole job is to answer why the account is not betting said nothing. It is a reason now, on its own
+    field, with the same way out as every other item there. ⭐ And the tab names the reach requirement: the
+    sentence used to say only that stakes are held to these limits, and was silent on the thing that actually
+    stops an account — a ticked product with nothing chosen reaches no market at all.
+13. **A removed account's record card** holds the six entry modes, every number and the schedule sentence: it
+    is that account's only rules screen, and until today it could not say what the account had been set to do.
+14. **The gate.** `qa:desk-rules-flow` §9b drives the editor on a served build — the boxes exist, the kit's
+    segmented time control posts what was typed as EAT text, turning All day off leaves the window rows usable
+    and makes the form dirty, the whole form saves with no box marked, and a reload shows the officer their own
+    numbers rather than the defaults. ⚠️ The Enter-now stake it types is inside the account's own band on
+    purpose: a round number against a lower stake maximum is refused on that box, correctly, and a gate doing
+    that would be measuring the refusal path and calling it a round trip.
+
 
 ### 7.3 What the form guarantees about not losing work
 
@@ -706,18 +931,28 @@ all. That is what the owner's managers were reporting.
 
 ⛔ **Two of the ten switches have no control behind them on this build.** Of the five `PRESS_PURPOSES` only
 `STAFF_CANCEL` has a screen, and nothing under `src/` inserts a target row — so neither "Enter now" nor a
-target can be created by anyone. Both switches nevertheless satisfy the start check, so an account whose only
-entry mode is one of them **starts cleanly and then never places a bet**.
+target can be created by anyone. Until 2026-09-22 both switches nevertheless satisfied the start check, so an
+account whose only entry mode was one of them **started cleanly and then never placed a bet**. ⭐ **Start refuses
+that account now** (`BY_HAND_NO_SCREEN`, §5.4): `BY_HAND_SCREENS` in `console-routes.ts` says which by-hand
+screen this build has, each flag tied by existence to the page at `BY_HAND_SCREEN_ROUTES` — `test:house-bot-rules`
+10.byhand refuses a flag flipped without its page and a page landed without its flag — and the form's by-hand
+note says so above the two switches.
 ⭐ The switches stay — the engine reads them, and they are real rules. What changed is that the form and the
-Targets tab now **say so**, in the server's own words, instead of implying a control exists. Building the
-by-hand press flow (N1 §4, N2 §6) is its own piece of work: it moves money, and it needs its caps, its
-oversight alerts and its audit rows before any of it is drawn.
+Targets tab **say so**, in the server's own words, instead of implying a control exists. Building the by-hand
+press flow (N1 §4, N2 §6) is its own piece of work: it moves money, and it needs its caps, its oversight alerts
+and its audit rows before any of it is drawn — and whoever builds it flips the flag in the same change.
 
 ### 7.6 The gate
 
-`npm run qa:desk-rules-flow` drives the whole of §7.2–§7.4 against a real browser: the wizard, a real pointer
-on a real checkbox, Discard, fill, empty, a refusal with several bad fields, two consecutive saves, and a page
-thrown away mid-edit. 35 checks, and it removes the account it created so it can run again.
+`npm run qa:desk-rules-flow` drives the whole of §7.2–§7.4 against a real browser: the wizard, the fresh
+account's own refusal on the roster, a real pointer on a real checkbox AND on a picker box, Discard, fill,
+empty, a refusal with several bad fields, Polls-with-no-category refused on its picker (the group marked, the
+remedy named, focus taken there), the save that lands once a category is chosen, two consecutive saves, the
+why-panel naming a reason on the Overview, Start refused in its dialog with that sentence and an "Open Rules →"
+link that lands on the Rules tab, the panel emptying on the fix without a reload, a page thrown away mid-edit,
+the picker inside a phone viewport at the tap floor, and the roster naming "Polls · Sports". It removes the
+account it created so it can run again. The check count it prints is the measurement; the run recorded in the
+commit that landed the pickers printed 69/69.
 
 ⚠️ **It needs `localhost`, not `127.0.0.1`.** Next 16 blocks cross-origin dev resources, and a drive pointed at
 the dotted form loads a page that **never hydrates**: every control is inert and nothing throws.
@@ -883,7 +1118,7 @@ ready.* So the sequence is fixed — a session states readiness, Ali decides —
 
 | Step | What it is | How it is proved |
 |---|---|---|
-| **R0** (T-1 day) | Merge `origin/main`. Everything green on ONE SHA. Checklist to Ali. | `npm run test:all`, every `red:house-bot-*`, `npm run qa:house-bots-local`, `npm run qa:house-bots-visual`, the S4 rehearsals, the coverage gate (`npm run test:scenario-coverage` — read its printed bracket, do not tick it), `npm run ops:release-migration-parity` GO and `npm run ops:preflight-house-bot-migrations` GO |
+| **R0** (T-1 day) | Merge `origin/main`. Everything green on ONE SHA. Checklist to Ali. | `npm run test:all`, every `red:house-bot-*`, `KP_SCRATCH_PORT=5453 npm run qa:house-bot-fleet` (lanes A–M on one database, with `KP_FLEET_SILENT=1` as its meta-mutation — register E, 2026-09-23: it is the ONLY instrument where several accounts decide under a real engine at once, and until today it ran when somebody remembered to run it), `npm run qa:house-bots-local`, `npm run qa:house-bots-visual`, the S4 rehearsals, the coverage gate (`npm run test:scenario-coverage` — read its printed bracket, do not tick it), `npm run ops:release-migration-parity` GO and `npm run ops:preflight-house-bot-migrations` GO |
 | **R1** | A quiet hour is CHOSEN — not computed. | The preflight prints the bets in the last 15 minutes as evidence; ⛔ never during the nightly trial balance, and never a window under 10 minutes |
 | **R2** | The migrations, if any are still pending. ⚠️ **Struck for THIS release** — see below. | `npx prisma migrate status` against the production URL, then `migrate deploy`, then each row's checksum |
 | **R3** | While the OLD container still serves: the schema read is true, the switch is `false`, `/api/health` is ok, the Position count is still rising. | `npm run ops:house-bots-status` and one `/api/health` read |
@@ -1096,6 +1331,16 @@ blocked. Every figure names the population it counts. ⛔ A figure with no popul
 | 4 | `test:all` (`--skip responsive,motion`) against clean `origin/main` `b726cb7f` in `F:/kipindi-old-build` | The build machine | 2026-09-16 · OMEGA-COMPILE01 · **349/369 green** here vs **338/358** on clean `origin/main` `b726cb7f`: **19 of the 20 reds are identical in both trees** (recategorise · read-tiers · lock-tx-threading · type-scale · red-anchors · revoked-deadend · admin-section-gate · needle-rest · decomment · updown-digest · updown-source-class · settlement-expectation · orphans · grid-paging · chart-one-home · popup-fit · admin-act-gate · failure-reasons · updown-handover; three of them need port 3009, which another session holds). The 20th, `test:labels`, was red HERE and green on main — measured, not assumed — and it was this branch's: rulings 166 and 167 fixed it, and it is green now. On main only, `test:kyc-restart-docs` is NOT MEASURED in the baseline tree (it needs the 107 MB embedded-postgres binaries, which that checkout does not carry). ⚠️ **THE BASELINE IS PER MACHINE, and this row is OMEGA-COMPILE01's — read it as history, not as an instruction.** The `F:` drive does not exist on Ali-Blade15. **On ALI-BLADE15 the baseline is `C:/kipindi-old-build`, detached at `418f1b5973a8af7c70ea7fc85851dfeba7f548a8` = exactly `origin/main`** (moved there on 2026-09-20 under ruling 516(a) from `8416a37c`, which was a HOUSE-BOTS commit 20 behind and therefore not a control at all — a "clean main" baseline that is the branch's own ancestor excuses every red `main` has since fixed). Ruling 465's schema test was NEGATIVE across that move (`prisma/` and `package-lock.json` diffs both EMPTY), so no `prisma generate` and no install. **And the 107 MB note no longer applies there:** that checkout carries `node_modules/embedded-postgres`, `node_modules/@embedded-postgres` and a `.pgscratch` directory, and `node_modules` is a real directory, not a junction. ⛔ A baseline whose commit is not written down is not a control (ruling 467) — so the sha is written here and in `PROGRESS.md`, and a session on a third machine writes its own rather than inheriting either. |
 | 6 · step (a) · D19 + D19d | `test:house-bot-disclosure` §6 — the chatbot guard, 35 assertions over the four channels a player can be shown — and `red:house-bot-chatbot`, which runs that whole section against a **shadow tree** in a scratch directory: it writes nothing into the repository and §5 asserts `git status --porcelain` is byte-identical before and after | Every machine. No database, no build, no network, no API key | ✅ 2026-09-20 · OMEGA-COMPILE01: disclosure **66/0** (floor raised 31 → 66, to the number a run printed), `red:house-bot-chatbot` **93/0** — 30 declared mutations, each driving ITS OWN assertion red by name, plus the whole-harness positive control that the UNMUTATED shadow is green assertion for assertion. 5 of 35 cases have no mutation, against a ceiling of 5 asserted as an equality and named in `DEFERRED-TESTS.md` §1o row 203. `npx tsc --noEmit` 0 errors · `test:guards-exist` 9/0 · `test:docs` ✅ · `test:deferred-register` 14/0 · `test:chat-safety` ✅ · `test:red-anchors`: all 28 new anchors resolve exactly once, and the run carries the same 4 reds this branch already had (rg-doors ×2 and the 66-vs-65 ratchet, register row 4) — the new harness is NOT among the un-audited. ⛔ `src/app/_actions/chat.ts` was never edited, and nothing was exported from it: 6.6 pins it byte-identical to `origin/main`. |
 | 6 · steps (b) + (c) · D19 + D19a + D21 | **The absence suite and the docs of record.** `test:house-bot-disclosure` §0-pipe (the two gates that ran in no chain), §5.1 (the published legal text pinned to `origin/main`), §5.2 (the print measure over the WHOLE player-rendered population instead of two files), §8 (the struck Board draft, its 15 citations, and the dormant `BOARD_DISCLOSURE_RECORDED` value) and §docs (risk 21 verbatim in both registers, its premise measured live in the rulebooks, F6 §5 condition 1 still unsatisfied) | Every machine. No database, no build, no network | ✅ 2026-09-20 · OMEGA-COMPILE01 · on `a0a6bb67`+: disclosure **108/0** (floor raised 66 → 108, to the number a run PRINTED; §5.2 read **394 files / 585,817 printed characters**, §5.1 compared **16 files against `418f1b59`**, §8.2 held **15 citations across 9 files**). `npx tsc --noEmit` 0 errors · `test:docs` ✅ (542 links) · `test:guards-exist` **9/0** · `test:deferred-register` **14/0** (104 rows) · `test:erasure` **226/0** · `test:house-bot-reports` **memory 200/0 · PostgreSQL 61/0 · 3/0** · `test:house-bot-ops` **memory 58/0 · PostgreSQL 69/0 · 3/0** · `test:red-anchors` carries the same **4** reds this branch already had (`rg-doors` ×2 and the 66-vs-65 ratchet) — this build added no harness and moved the count by zero. 🔴 **Running `test:house-bot-reports` for the first time on this lane turned `0.170.1` RED by name** and found a fabricated audit actor (`sunset.ts` `input.actorId ?? "system"`) that this lane itself shipped in `8004de9b`; fixed, and the suite is green above. ⛔ **NOT MEASURED, and recorded as such in `DEFERRED-TESTS.md` §1l:** `npx next build && verify:house-bot-bundle` (row 205 — the wiring is not the run) and a declared-mutation harness for the four new sections (row 206 — every assertion carries an in-suite planted control AND a positive control, which is a different thing and is named as one). |
+| 7 · the scope pickers, the roster's operative scope and the why-panel (prod finding 2026-09-22, console half) | `test:house-bot-console` §2g (both stores): the two pickers in the form model against the platform's own lists, the save's list round trip and its refusals on the GROUP and on the orphan switch, five strangers each the stale-form sentence, the roster's one-line-per-product scope as labels and its own refusal on an ACTIVE account, the why-panel and the readiness badge from the same reasons, and Start refused with the sentence that names the remedy and the Rules href; `qa:desk-rules-flow` on a migrated scratch Postgres (§7.6); the six declared `scope-*`/`416-products-case` mutations through `red:house-bot-console` | A machine with the held scratch cluster (`KP_SCRATCH_PORT`) for the suite; a local `next dev` on a migrated scratch database for the gate | ✅ 2026-09-22 · Ali-Blade15 · `7c9b1c68`: console **memory 751/0 · Postgres 513/0** (floors raised 722/484 → 751/513, to what the run printed); rules 570/0 · disclosure 114/0 · surfaces 73/0 · dal-parity 1380/0 · engine memory 756/0, Postgres 735/0 · typecheck 0 errors · `test:red-anchors` 2893/8 — the eight standing reds only (390-sentence, 390-catch, alerts-skew ×2, rg-doors ×2, the §4 ratchet ×2). Gate **69/69**; twelve tiles at 1280 and 360 opened and read (roster with an inert ACTIVE account and a healthy one, rules tab with the products off / on with nothing chosen after a refused save / two chosen, overview panel in both states), the roster re-shot twice until each label held together. `red:house-bot-console --only scope-,416-products-case`: **6 caught, 0 missed, 0 files dirty**; the red counts, each mutation applied and restored byte-identically: roster-summary-words 5 red (746/5) · roster-no-inert-line 2 red (749/2) · save-drops-categories 3 red (748/3) · why-panel-empty 3 red (748/3) · start-generic 1 red (750/1). On the gate: the inert line dropped → 68/69 (1b.1 red); the save dropping the categories → 58/69 (red from 7.1 through 8c.2); the restored tree 69/69. ⛔ NOT MEASURED: the visual gate `qa:house-bots-visual` (its own capture list, not re-run for this pass) and `verify:house-bot-bundle` (no `next build` in this pass). |
+| 8 · the review of row 7 (2026-09-22): the why-panel refuses what Start refuses, the by-hand axis on every surface, the headlines by lifecycle, the roster's refusal in the first column | `test:house-bot-rules` §10 (10.S.live: Start's live-bound refusals are exactly `rulesLiveBoundProblems`' entries, each with its value and bound; 10.class: the inert reasons' CODES against a set derived by hand from the twelve switches; 10.engine: the whole engine directory swept for a scope-list read, planner.ts asking `rulesCoverTarget`); `test:house-bot-console` §2g (both stores): an Enter-now-only account on the roster, the account page and the Start service with a CONTROL that stands all three down (2g.byhand), a Stake min under the platform minimum on the panel and refused at Start with the same href (2g.live), the headlines by lifecycle (2g.title, 2g.why), `PRODUCT_NO_MODE` labelled by its entry section (2g.label), the real production shape at Start (2g.start), "wrote nothing" read before the control lands (2g.save), the refusal link in the Account cell (2g.page); `qa:desk-rules-flow`; twelve new declared `scope-*` mutations and one re-aimed through `red:house-bot-console` | The held scratch cluster for the suites; a local `next dev` on a migrated scratch database for the gate and the tiles | ✅ 2026-09-22 · Ali-Blade15 · `952e4dd9` + the docs commit: rules 574/0 · console **memory 763/0 · Postgres 525/0** (floors 751/513 → 763/525, to what the run printed) · engine ALL PASS (3 children) · disclosure 114/0 · surfaces 73/0 · typecheck 0 errors · `test:red-anchors` 2917/8 — the eight standing reds only. Gate **69/69** (its why-panel pins re-aimed at the lifecycle headlines and the "rules or limits" sentence). Tiles at 1280 and 360 opened and read: the roster with the refusal under the handle in the FIRST column at both widths and the chip three columns on; the ACTIVE production shape headed "2 things stop this account from betting" over "Why this account is not betting"; the clean account under "Rules and limits"; a PAUSED account with Stake min 500 under "Why this account can't start · Stake min · Saved as TZS 500; the platform minimum is now TZS 1,000." `red:house-bot-console --only scope-,416-products-case`: **18 caught, 0 missed, 0 files dirty**; the red counts (memory child, each mutation applied alone and restored byte-identically): byhand-roster-screens 1 · byhand-detail-screens 1 · byhand-start-screens 1 · why-panel-no-live-bound 2 · start-chains-key 1 · product-no-mode-switch-label 1 · save-strangers-filtered 2 · roster-line-off-page 3 · callout-title-on-page 1 · callout-title-ignores-lifecycle 1 · why-title-constant 4 · none-chosen-two-spellings 3 · and the standing five re-measured: roster-summary-words 6 · roster-no-inert-line 3 · save-drops-categories 3 · why-panel-empty 8 · start-generic 3. Rules-core mutations through `test:house-bot-rules`: the bound reported as the saved value → 573/1 (10.S.live); Start no longer pushing the live-bound list → 571/3 (5.5, 10.S, 10.S.live); a per-product PRODUCT_NO_MODE pushed beside NO_MODE (verdict unchanged) → 571/3 (10.S, 10.inert, 10.class's hand-derived oracle); planner restating the predicate → 573/1 (10.engine) — each restored byte-identically. ⚠️ Environment note: the console suite's §4 plants and removes `zz-ruling-513-control.tsx` under the section; a `next dev` watching the tree at that moment is left with a stale Tailwind content entry that fails every page until `.next/dev` is cleared and the server restarted — run the console suite and the dev server one at a time. ⛔ NOT MEASURED: the roster's refusal line reads `rulesInertReasons` alone (the desk's read set takes no platform config read), so an ACTIVE account whose saved limit breaks a live bound shows no line until `revalidateLive` pauses it — the account page names it; `qa:house-bots-visual` and `verify:house-bot-bundle` not re-run; `test:dal-parity` not re-run (no DAL change). |
+| 9 · the numeric + schedule rules editor (register A1, with A2, A3 and A4 falling out of it) | `test:house-bot-console` §2h on BOTH stores: the model's derived population, the neutral section words, the live bounds, the derived "used only while …" caption, the round trip through the real door, every leaf present in the stored document, a bound refused on its own box, the schedule in EAT (540 and never 360), an overnight window, a half-typed row refused on that row's box, All-day, Enter now, the amount union, and four shapes of partial post refused as stale; `test:house-bot-rules`; `test:house-bot-disclosure`; the declared editor mutations through `red:house-bot-console` | A machine with the held scratch cluster for the Postgres child; the memory child and the pure suites run anywhere | ✅ 2026-09-23 · Ali-Blade15 · `8fc40f48`: console **memory 787/0 · Postgres 541/0** (from 763/525) · rules **574/0** · disclosure **115/0** · typecheck 0. The seven declared editor mutations: **7 caught, 0 missed, 0 files left dirty** |
+| 10 · the rule leaves no `test:` suite pinned, and the schedule judged at DUE (register B6, and the owner decision it asked for) | `test:house-bot-engine` §7b — 24 pure cases, each a PAIR (the value that refuses and the value one step away that allows), including a UTC discriminator for the schedule and `7b.15` for the queued-before-the-window case; 18 declared mutations, one per family — a leaf dropped, a unit swapped, a band's edges made exclusive, a draw's bounds narrowed, a jitter added instead of subtracted, the clock read in UTC, the schedule judged at the trigger again | A machine with the embedded Postgres for the Postgres child; the memory child anywhere. The red drive on the build machine | ✅ 2026-09-23 · Ali-Blade15 · `f4d3ba08` `ededabfb` `437c40be`: engine ALL PASS on both stores — **memory 780 · Postgres 759**, exactly **+24 in EACH child**, floors raised to those printed counts · typecheck 0. 🔴 Two PRE-EXISTING engine anchors were stale and had been measuring nothing (`alerts-skew-silent`, `alerts-skew-every-gate`): `pollerPass` moved from a ternary to an `if` block and neither anchor moved with it, so the runner refused to inject both. Found the same way: the opener's own `floorTo` was redundant — `clampStake` applies the same step two lines down — so neither floor had a discriminating mutation; removed, and the mutation bites at `clampStake` |
+| 11 · the two console mutations that were measuring nothing | `red:house-bot-console`, and every anchor in `house-bot-console.anchors.mjs` resolved through `resolveAnchor` itself — the runner's own resolver, EOL-normalised, never a text scan (a naive `split` check reports 49 false positives on this CRLF tree) | The build machine | ✅ 2026-09-23 · Ali-Blade15 · `3e4db59b`: both were `anchor matches 2× — ambiguous, refusing to inject`, caused by correct product copy giving a one-line text anchor a second site. `390-sentence` re-anchored on the NOT_FOUND/REMOVED/CONFLICT triple, `390-catch` on the limits action's single-line revalidate. Every anchor in the file resolves EXACTLY ONCE |
+| 12 · the ReDoS that stopped a suite finishing | `test:house-bot-surfaces` and `test:house-bot-disclosure`, with the directive test in ONE home (`scripts/lib/is-directive.mts`) imported by both, and a new `0.re` control beside the existing `1.re` | Every machine. No database, no build, no network | ✅ 2026-09-23 · Ali-Blade15 · `c6cf23f1`: surfaces **74/0** — from HANGING (it stalled after `0.pop.4`, before a single graph case, and was killed three times at 10+ minutes each, every kill reporting nothing at all) to finishing, with `0.re` deciding **450 leading comments in 0 ms** and still answering that a directive after code or inside a comment is not one. Disclosure **115/0** with `1.re` unchanged. ⛔ The cause was a byte-identical copy of the regex fixed one day earlier in the disclosure suite; the editor's own comment headers pushed the console files over the threshold. Putting the regex back makes both controls red BY TIMEOUT rather than by verdict — still red, and that is how the mutation is proved |
+| 13 · the desk read on a served build: time on the screen, the tap floor, Pause's reason, the auto-pause cause and the retired chain (registers C8, D9 and A5) | `test:house-bot-console` on both stores, with four pins moved WITH the product and none loosened — the ON-sentence pattern gained the day, the feed's key set gained `due`, four header arrays gained the zone, and `410-rail-rank` now plants the dense rank COMING BACK rather than going away; the Pause reason population raised to five and the arming case measured in BOTH directions | A machine with the held scratch cluster for the Postgres child; the findings themselves measured on a local `next dev` against a migrated scratch database | ✅ 2026-09-23 · Ali-Blade15 · `2fea957c` `ee5ab7fa`: console **ALL PASS on BOTH stores** · typecheck 0. Measured on the served build first, then fixed: **21 controls under the 40px tap floor on the account's Activity route and 22 on the desk's**; the window presets rendering in Swahili on an English desk with NO cookie set (the shell answers `lang="sw"` because that is `DEFAULT_LOCALE` — wider than the register said, and not a player-cookie leak); every `When` column headed without its zone across four tables; Pause opening no dialog at all |
+| 14 · the editor's browser round trip, made permanent | `qa:desk-rules-flow` §9b, seven cases on a served build: the editor draws the numeric rules, seven day boxes and four window rows; a delay, a guard and an Enter-now stake take what is typed; the segmented time control POSTS what was typed as EAT text; turning All day off makes the form dirty; the whole form saves with no box marked; a reload shows 25, 7, 5,000, All day still off and 09:00 → 17:30 in its boxes; and the saved schedule is painted in words per chosen day | A local `next dev` on `localhost` (never `127.0.0.1`) against a migrated scratch database | ✅ 2026-09-23 · Ali-Blade15 · `6f622bbf`: **76/76** on a served build · typecheck 0. ⛔ This is the half no view-model case can reach: the console suite proves the door takes these values and hands them back, not that an officer can put them there |
+| 15 · the Rules tab opened and READ, and a visual-gate control that fired on a correct screen | `qa:house-bots-visual` at 360 and 1280, with §5.1/§5.2 re-aimed at money atoms carrying a CURRENCY figure rather than at the atom's shape; the tab captured in all three states — defaults, refused, saved — at BOTH widths and read | The build machine, on a served build | ✅ 2026-09-23 · Ali-Blade15 · `e5af8f2d`: visual **156 passed / 0 failed / 0 NOT MEASURED** at 360 and 1280 (from 150/6) · console ALL PASS on both stores · typecheck 0. Two defects only reading the rendered tab could find — a caption running to three lines, and the warning tone on all twenty-nine idle rows at once — and one false population in the gate itself: the no-figure branch demanded ZERO money atoms, and on a desk whose global limits are unset the KPI tiles paint `.amount` spans reading "Not set" and "2 of 5". The refused tile shows the box outlined, its own message under it and the toast; the saved tile shows 09:00 → 17:30 with the kit's 12-hour echo and the schedule in words for all seven days |
+| 16 · the closing ladder, on ONE tree, after `origin/main` was merged in | Everything above, re-run on the merge commit: typecheck · `test:house-bot-rules` · `test:house-bot-disclosure` · `test:house-bot-surfaces` · `test:house-bot-console` · `test:house-bot-engine` · `test:house-bot-money` · `test:dal-parity` · `qa:house-bot-fleet` lanes A–M with `KP_FLEET_SILENT=1` as its meta-mutation · `red:house-bot-console` · `red:house-bot-engine` · `next build` · `verify:house-bot-bundle` · both browser gates | The build machine, with the scratch cluster held on 5453 and NO dev server on the tree while a red gate runs | ✅ 2026-09-23 · Ali-Blade15 · `79c2962d`: typecheck **0** · rules **574/0** · disclosure **115/0** · surfaces **74/0** · console **ALL PASS both stores** · engine **ALL PASS both stores** · money **ALL PASS** · dal-parity **1380/0** · fleet **364/364** and its meta-mutation **351 assertions red, 5/356 passing** · `red:house-bot-console` **305 caught, 0 missed, 0 files left dirty** · `red:house-bot-engine` **65 caught, 0 missed, 0 not measured, 0 files left dirty** · `next build` ok · `verify:house-bot-bundle` ALL PASS. ⚠️ Recorded rather than smoothed: the fleet printed **363/364 once** while other work ran on the same machine and **364/364** every time it was run alone; a red gate CRASHED once on `rename loading.tsx.red-tmp → loading.tsx` because a `next dev` server was watching `src/` (it restored the tree and left no residue, and a red gate now runs with no dev server); and `red:house-bot-console` MISSED its own declared mutation until the caption and the idle flag were given ONE guard instead of two |
 
 ### 12.1 C7 step 5's four panels, opened and read on a served build — 2026-09-21, Ali-Blade15
 

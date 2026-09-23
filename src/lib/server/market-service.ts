@@ -4028,7 +4028,17 @@ export async function settleMarket(
   // accumulator under-counts on re-entry; Σ(finalPayout WHERE WIN) and the
   // non-OPEN count are correct whether this is the first run or a re-entry. This
   // is the number a regulator reconciles. Money-neutral — reporting only.
-  const settledNow = await listPositionsForMarket(m.id);
+  // ⛔ READ FROM THE ROWS THIS TRANSACTION ALREADY HOLDS, NEVER A FRESH QUERY (2026-09-22,
+  // found by the fleet drive's money lane on Postgres). This line was
+  // `await listPositionsForMarket(m.id)`: a read on the singleton client, OUTSIDE
+  // `lockTx`, so it could not see the WIN/LOSS/VOID writes still uncommitted in this
+  // very transaction — and on Postgres every settlement reported `0 positions settled ·
+  // TZS 0 paid to winners` to the officer, the audit rows and the return value, while
+  // the memory store (same objects, no transaction) reported the truth. The in-memory
+  // twin is why no suite saw it. `allMarketPositions` is the set fetched before the
+  // loop, mutated IN PLACE by it (`p.status = "WIN"; p.finalPayout = …`), and it
+  // already carries previously settled rows for the resume case.
+  const settledNow = allMarketPositions;
   const totalWinnersPaid = settledNow.reduce((s, p) => s + (p.status === "WIN" ? (p.finalPayout ?? 0) : 0), 0);
   const totalPositionsSettled = settledNow.filter((p) => p.status !== "OPEN").length;
 

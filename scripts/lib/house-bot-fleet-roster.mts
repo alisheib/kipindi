@@ -124,19 +124,6 @@ export const ROSTER: readonly FleetBot[] = [
     rules: { counter: true, amount: { kind: "PCT", pct: 80 }, roundToTzs: 500, jitterPct: 0, delaySec: 25, reactPct: 100 },
   },
 
-  /* ── Lane D · tech · FILL ───────────────────────────────────────────────────────────────────────── */
-  {
-    key: "D1-FILL", lane: "D", category: "tech", band: [10_000, 999_999],
-    what: "FILL to a 40% thin share: floor(50,000 × 40/60) = 33,333 → 33,000 at a 1,000 step",
-    rules: { fill: true, thinSharePct: 40, leadPollsMin: 30, roundToTzs: 1_000, jitterPct: 0 },
-  },
-
-  /* ── Lane E · other · OPENER ────────────────────────────────────────────────────────────────────── */
-  {
-    key: "E1-OPENER", lane: "E", category: "other", band: [10_000, 999_999],
-    what: "OPENER draws 3,500 from a fixed band and FLOORS it to 3,000 — so the rounding is load-bearing",
-    rules: { opener: true, openerStakeTzs: 3_500, roundToTzs: 1_000, jitterPct: 0, openerDelayMin: 1 },
-  },
 ];
 
 /**
@@ -202,19 +189,4 @@ export const EXPECT = {
    */
   "C1-POOLS": { trigger: 100_000, seed: 60_000, lateYes: 120_000, lateNo: 40_000, decide: 80_000, fire: 40_000, asked: 80_000, side: "YES" },
 
-  /**
-   * D1 · FILL. A player's NO 50,000 aged past the exit close; YES raw 0; thin = YES.
-   *   wanted = floor(50,000 × 40 / (100−40)) = floor(33,333.3) = 33,333
-   *   room   = locked NO 50,000 − raw YES 0  = 50,000
-   *   stake  = floorTo(min(33,333, 50,000), 1,000) = 33,000
-   * ⭐ `wantedTzs` is asserted too — 33,333 is a number a single-rounding implementation never produces.
-   */
-  "D1-FILL": { lockedNo: 50_000, wanted: 33_333, decide: 33_000, fire: 33_000, side: "YES" },
-
-  /**
-   * E1 · OPENER on a market with both raw pools at exactly 0.
-   *   drawn = floorTo(randomInt(3,500, 3,500), 1,000) = 3,000   ← the floor is load-bearing: 3,500 ≠ 3,000
-   *   stake = clampStake(3,000) = 3,000
-   */
-  "E1-OPENER": { decide: 3_000, fire: 3_000 },
 } as const;

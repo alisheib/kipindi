@@ -99,7 +99,12 @@ export async function POST(req: Request) {
     status: "APPROVED",
     rejectReason: null,
     rejectNote: null,
-    idType: "NIDA", idNumber: "19900101000000001", idExpiry: null, idVerifiedAt: now,
+    /* ⚠️ UNIQUE PER PHONE, NOT A CONSTANT (2026-09-22). `KycSubmission` carries a unique index on
+       (`idType`, `idNumber`), and every user this route seeded got the SAME number — which the memory store never
+       noticed and Postgres refuses on the second user: the `qa:desk-rules-flow` recipe on a migrated scratch
+       database died at its first holder with P2002. The phone's digits are the one thing already unique per
+       seeded user, so the number is derived from them, twenty digits like `fresh-kyc-player`'s. */
+    idType: "NIDA", idNumber: `1990${phone.replace(/\D/g, "").padStart(16, "0").slice(-16)}`, idExpiry: null, idVerifiedAt: now,
     fullName: name,
     dob: "1990-01-01",
     documents: [],

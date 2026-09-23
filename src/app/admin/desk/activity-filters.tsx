@@ -16,14 +16,23 @@
  * rail with server-built hrefs; this is that idiom, one directory over.
  *
  * ⛔ **ONE `data-filter-rail`, AND IT IS NOT ON THE `<Tabs>`** (`test:filter-language` §0.4, §6.1-§6.8, and the
- * console's own rail case). Every rank-taking control here takes `rank="dense"` — the documented 32px admin
- * exception — and `replace`, because a filter is not a navigation and a rail that stacks history buries the page
- * an officer arrived from under twenty of its own states.
+ * console's own rail case), with `replace`, because a filter is not a navigation and a rail that stacks history
+ * buries the page an officer arrived from under twenty of its own states.
+ *
+ * 🔴 **THE CONTROLS ARE NO LONGER `rank="dense"`, AND THAT IS A MEASUREMENT AND NOT A PREFERENCE (2026-09-23).**
+ * The dense rank's floor is 32px — `--h-control-xs`, the documented admin exception — and this section's own
+ * visual gate holds every interactive control to `--tap-min`, which this platform sets to **40px**. Driven on a
+ * served build: **21 controls under the floor on the account's Activity route and 22 on the desk's**, every one
+ * of them a chip on this rail. An exception that a surface's own gate reports as a fault is not an exception;
+ * it is a defect with a name. The chips take the shared 44px rank, which clears the floor with room.
+ * ⚠️ THE DENSE RANK ITSELF IS UNTOUCHED — other admin rails still use it, and this changes only the rail whose
+ * gate was red.
  *
  * @see src/lib/server/house-console-read.ts · scripts/filter-language.test.mts
  */
 import { FilterGroupKey, FilterPill } from "@/components/ui/filter-pill";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
+import { I18nProvider } from "@/lib/i18n";
 
 /** One option: a finished label, a finished link, and whether it is the one in force. */
 export type RailOption = { key: string; label: string; href: string; on: boolean };
@@ -44,7 +53,22 @@ export function ActivityFilters({
       {/* The window, at the admin density. ⛔ It resets the page itself (`p.delete("page")` inside the kit), which
           is half of ruling 411's "a filter change drops the page"; the chips below carry the other half in their
           own server-built hrefs. */}
-      <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />
+      {/**
+        * 🔴 THE WINDOW PRESETS RENDERED IN SWAHILI ON AN ENGLISH DESK, AND THE CAUSE WAS NOT A PLAYER COOKIE.
+        *
+        * Measured on a served build (2026-09-23): the admin shell answers `lang="sw"` with NO `kp-locale`
+        * cookie set at all — `DEFAULT_LOCALE` is `sw`, which is right for this platform's players and wrong
+        * for an officer console whose every other sentence is English server copy. So the rail read
+        * **Leo · Saa 24 · Siku 7 · Muda wote · Maalum** beside "Every stake this one account has decided on".
+        * ⛔ THE KIT IS NOT TOUCHED. `DateTimeRangeFilter` takes its words from `useT`, and the honest fix at
+        * this call site is to say which language this surface is in — not to add a label prop to a control
+        * eleven other surfaces share.
+        * ⚠️ AN OFFICER WHO HAS CHOSEN A LANGUAGE STILL GETS IT: the provider's own effect reads the cookie and
+        * overrides this seed. What changes is the DEFAULT, which is the state that was measured.
+        */}
+      <I18nProvider initial="en">
+        <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />
+      </I18nProvider>
       {groups.map((g) => (
         <div key={g.param} className="flex items-center gap-1 flex-wrap gap-y-1.5">
           {/* ⛔ THE GROUP KEY IS LOAD-BEARING, NOT DECORATION. Three axes each open with an "Any …" option; without
@@ -56,7 +80,6 @@ export function ActivityFilters({
               href={o.href}
               label={o.label}
               on={o.on}
-              rank="dense"
               semantics="tab"
               replace
               scroll={false}

@@ -63,6 +63,7 @@ import { fileURLToPath } from "node:url";
 import { transformSync } from "esbuild";
 import ts from "typescript";
 import { decomment } from "./lib/decomment.mts";
+import { isDirective as isDirectiveLinear } from "./lib/is-directive.mts";
 import {
   houseHitsByFamily, houseHits, houseCamelHits,
   HOUSE_WORD_SAMPLES, HOUSE_CAMEL_SAMPLES, HOUSE_CAMEL_BENIGN_SAMPLES, HOUSE_BENIGN_SAMPLES,
@@ -165,10 +166,48 @@ ok("0.pop.4 · the ADMIN SURFACE population is derived the same way and holds ev
     && surfaces.filter((f) => f.startsWith("src/app/api/admin/")).length >= 5,
   `surfaces ${surfaces.length}`);
 
+/**
+ * ⭐ 0.re · THE DETECTOR IS LINEAR, AND THIS SUITE IS WHERE IT STOPPED BEING SO (2026-09-23).
+ *
+ * 🔴 MEASURED, TWICE, IN TWO SUITES. The disclosure suite lost fourteen minutes to the regex form of
+ * `isDirective` on 2026-09-22 and was fixed. THIS suite carried a byte-identical copy, and on 2026-09-23 it
+ * stalled at exactly this point — after `0.pop.4`, before a single graph case — the moment the rules editor's
+ * comment headers landed on the console files. It was killed three times before the cause was recognised, and
+ * every one of those kills reported NOTHING: not a pass, not a fail, just silence with an operator waiting.
+ * ⛔ SO THE GUARD SITS IN THE SUITE THAT WAS HANGING, not only in the one that was fixed first. Putting the
+ * regex back makes this case red BY TIMEOUT rather than by verdict — which is still red, and is how the
+ * mutation is proved.
+ * ⚠️ The four verdicts matter as much as the clock: a directive AFTER code is not a directive, one INSIDE a
+ * comment is not a directive, and a single-quoted one at the top of a file IS.
+ */
+{
+  const header = "/* a */\n".repeat(400) + "// b\n".repeat(50);
+  const t0 = Date.now();
+  const first = isDirectiveLinear(`${header}"use client";\nexport const x = 1;`, "use client");
+  const afterCode = isDirectiveLinear(`${header}export const x = 1;\n"use client";`, "use client");
+  const inComment = isDirectiveLinear('/* "use client" */\nexport const x = 1;', "use client");
+  const single = isDirectiveLinear("\n\n'use server'\nexport async function f() {}", "use server");
+  const ms = Date.now() - t0;
+  ok("0.re · the directive detector is LINEAR: 450 leading comments decide in under 100 ms, and a directive after code or inside a comment is not one",
+    first && !afterCode && !inComment && single && ms < 100,
+    `first=${first} afterCode=${afterCode} inComment=${inComment} single=${single} ${ms}ms`);
+}
+
 /* ── the client graph, re-derived, so "another guard covers it" is MEASURED ──────────────────────────────────── */
 const GRAPH_EXTS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts"];
-const isDirective = (code: string, d: "use client" | "use server") =>
-  new RegExp(`^\\s*(?:\\/\\/[^\\n]*\\n|\\/\\*[\\s\\S]*?\\*\\/\\s*)*["']${d}["']`).test(code);
+/**
+ * 🔴 THE SAME ReDoS THAT KILLED THE DISCLOSURE SUITE ON 2026-09-22 LIVED HERE TOO, AND IT BIT ON 2026-09-23.
+ *
+ * This line used to build `^\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/\s*)*["']<directive>["']` and test it against
+ * every file of the client graph. On a file that does NOT carry the directive, the whitespace between two
+ * comment blocks can be split among the repetitions in exponentially many ways and the engine tries all of
+ * them before answering false. The disclosure suite lost fourteen minutes to it on three checkouts; THIS suite
+ * stalled immediately after `0.pop.4` the moment the rules editor's comment headers landed on the console
+ * files — measured, killed, and then found to be the identical defect one directory over.
+ * ⛔ THE FIX HAD BEEN WRITTEN DOWN ONCE AND APPLIED ONCE, which is the whole argument for one home: it now
+ * lives in `scripts/lib/is-directive.mts`, both suites import it, and neither can drift from the other.
+ */
+const isDirective = (code: string, d: "use client" | "use server") => isDirectiveLinear(code, d);
 const fileExists = (abs: string) => existsSync(abs) && statSync(abs).isFile();
 function resolveFrom(fromRel: string, spec: string): string | null {
   let base: string;

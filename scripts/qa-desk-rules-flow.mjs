@@ -92,10 +92,32 @@ const boxState = (name) => page.evaluate((nm) => {
 /** Click the LABEL with a real pointer — see the header. */
 const clickSwitch = (name) =>
   page.locator("main form label").filter({ has: page.locator(`input[name="${name}"]`) }).click();
+/* ⛔ THE LIMITS, SCOPED TO THEIR OWN SECTION (2026-09-23). "Empty every limit" empties the CAPS — it has never
+   touched the numeric rules, and nor should it: those are behaviour, not ceilings, and emptying a delay would
+   leave an account that cannot be saved. A form-wide query started counting 51 boxes the day the editor landed. */
 const capValues = () => page.evaluate(() =>
-  Object.fromEntries([...document.querySelectorAll("main form input:not([type=checkbox])")].map((i) => [i.name, i.value])));
+  Object.fromEntries([...document.querySelectorAll('main form [data-rules="limits"] input:not([type=checkbox])')].map((i) => [i.name, i.value])));
 const invalidFields = () => page.evaluate(() =>
   [...document.querySelectorAll('main form input[aria-invalid="true"]')].map((i) => i.name));
+/**
+ * ⛔ SUBMIT, THEN WAIT FOR THE TRANSITION TO END — NEVER A FIXED DELAY (2026-09-22). The form's Save is the kit's
+ * Button with `loading={pending}`, which sets `aria-busy` and `disabled` for exactly as long as the server action is
+ * in flight. A fixed 3–4 s wait raced it: on a dev server compiling the action's chunk on its first call — measured
+ * at 24.5 s under load — every check after the submit read the form MID-FLIGHT (no toast yet, every control
+ * disabled), and the failures cascaded through the next four sections. A gate that fails for a reason that has
+ * nothing to do with the product teaches people to ignore it.
+ */
+const submitForm = async (maxMs = 120_000) => {
+  await soft("submit", () => page.locator("main form button[type=submit]").click({ timeout: 4000 }));
+  await page.waitForTimeout(250);
+  await page.waitForFunction(() => {
+    const b = document.querySelector("main form button[type=submit]");
+    return !!b && !b.disabled && b.getAttribute("aria-busy") !== "true";
+  }, null, { timeout: maxMs }).catch(() => consoleErrors.push("soft(submit settle): the Save button stayed busy"));
+  /* the toast paints on the next frame after the transition; the router refresh that follows a landed save may
+     take a moment more, and the checks below read the toast first */
+  await page.waitForTimeout(900);
+};
 
 console.log("──────────────────────────────────────────────────────────────────────");
 console.log("qa:desk-rules-flow · create an account, configure it, and try to lose work");
@@ -138,21 +160,48 @@ ok("1.3 …and it lands on the RULES tab, where every blocker is", /[?&]tab=rule
 
 if (!ACCOUNT) { console.log("\nno account — cannot continue"); await browser.close(); process.exit(1); }
 const RULES = `${BASE}/admin/desk/${ACCOUNT}?tab=rules`;
+
+/* ⭐ A FRESH ACCOUNT IS INERT, AND THE ROSTER SAYS SO ON ITS ROW (2026-09-22): no product, no mode — the row carries
+   the first reason in the warning tone with the Rules tab as the way out, in the ACCOUNT cell under the handle (the
+   first column, on screen at 360 without a sideways scroll — review finding 2026-09-22), while the status chip three
+   columns on keeps saying what the lifecycle is. Read before the account is configured, so the line is measured in
+   the state it exists for. */
+console.log("\n§1b · the roster's own refusal on a fresh account");
+await page.goto(`${BASE}/admin/desk`, { waitUntil: "load" });
+await page.waitForTimeout(2200);
+const freshRow = await page.evaluate((id) => {
+  const link = document.querySelector(`main a[href^="/admin/desk/${id}"]`);
+  const tr = link?.closest("tr");
+  if (!tr) return null;
+  const inert = tr.querySelector('a[href$="tab=rules"]');
+  return { text: tr.innerText.replace(/\s+/g, " ").trim(), inert: inert ? inert.innerText.trim() : null, href: inert ? inert.getAttribute("href") : null };
+}, ACCOUNT);
+ok("1b.1 the fresh account's row carries `Can't bet — Choose at least one product.` as a link to its Rules tab",
+  freshRow && freshRow.inert !== null && /^Can't bet — Choose at least one product\./.test(freshRow.inert) && freshRow.href === `/admin/desk/${ACCOUNT}?tab=rules`,
+  JSON.stringify(freshRow));
+ok("1b.2 …and the scope cell reads None rather than a product word", freshRow && /\bNone\b/.test(freshRow.text), freshRow?.text.slice(0, 160));
+
 await page.goto(RULES, { waitUntil: "load" });
 await page.waitForTimeout(3000);
 
 // ── §2 · the form explains itself ────────────────────────────────────────────────────────────────────────────
 console.log("\n§2 · every field says what it does");
+/* ⛔ THE LIMITS ARE THE `[data-field]` WRAPPERS THAT HOLD A TYPED BOX (2026-09-22): the ten switches and the two
+   pickers carry the same address now, so a refusal can mark them, and a count of every wrapper would read 26. */
 const capHelp = await page.evaluate(() =>
-  [...document.querySelectorAll("main form [data-field]")].map((d) => ({
-    key: d.getAttribute("data-field"),
-    text: d.innerText.replace(/\s+/g, " ").trim(),
-  })));
+  [...document.querySelectorAll('main form [data-rules="limits"] [data-field]')]
+    .filter((d) => d.querySelector("input:not([type=checkbox]):not([type=hidden])"))
+    .map((d) => ({
+      key: d.getAttribute("data-field"),
+      text: d.innerText.replace(/\s+/g, " ").trim(),
+    })));
 ok("2.1 all fourteen limits render", capHelp.length === 14, `saw ${capHelp.length}`);
 const helpless = capHelp.filter((c) => c.text.length < 60);
 ok("2.2 every limit carries an explanation", helpless.length === 0, helpless.map((h) => h.key).join(", "));
+/* ⛔ THE SWITCHES ARE THE BOXES OUTSIDE THE TWO PICKER GROUPS (2026-09-22): a picker box is a list member, not a
+   switch, and a count that took every checkbox on the form would read the seven categories as seven switches. */
 const flagHelp = await page.evaluate(() =>
-  [...document.querySelectorAll("main form input[type=checkbox]")].map((i) => ({
+  [...document.querySelectorAll("main form input[type=checkbox]")].filter((i) => !i.closest("[data-list]") && !i.closest('[data-rules="numbers"]')).map((i) => ({
     key: i.name,
     help: (i.closest("div")?.querySelector("p")?.innerText ?? "").trim(),
   })));
@@ -162,6 +211,37 @@ ok("2.4 every switch carries an explanation", flagHelp.every((f) => f.help.lengt
 /* The two switches nothing on this build can act on say so, above them. */
 ok("2.5 the by-hand section warns that no screen can act on it yet",
   (await page.locator("main form").getByText(/No screen on this build can do that yet, so an account/).count()) > 0);
+
+/**
+ * ⭐ THE SCOPE PICKERS (prod finding 2026-09-22). An ACTIVE account on the live desk had matched no market, ever:
+ * both products ticked, both scope lists EMPTY, and no screen able to set either — this form drew no picker. The
+ * two groups now sit under the product switches; each stays on screen while its product is off and says so, each
+ * carries a sentence, and the category group is the platform's own seven topics as words.
+ */
+console.log("\n§2b · the two scope pickers");
+const pickers = await page.evaluate(() =>
+  [...document.querySelectorAll("main form [data-list]")].filter((g) => !g.closest('[data-rules="numbers"]')).map((g) => ({
+    key: g.getAttribute("data-list"),
+    legend: (g.querySelector("legend")?.innerText ?? "").trim(),
+    text: g.innerText.replace(/\s+/g, " ").trim(),
+    boxes: [...g.querySelectorAll("input[type=checkbox]")].map((i) => ({ name: i.name, value: i.value, checked: i.checked })),
+  })));
+const catGroup = pickers.find((p) => p.key === "poll-categories");
+const chainGroup = pickers.find((p) => p.key === "updown-chains");
+ok("2b.1 both pickers render, chains first, each with a legend", pickers.length === 2 && pickers[0].key === "updown-chains" && !!catGroup && !!chainGroup
+  && pickers.every((p) => p.legend.length > 3), JSON.stringify(pickers.map((p) => [p.key, p.legend])));
+ok("2b.2 the category picker holds the platform's seven topics as WORDS, each valued by its key and none ticked",
+  !!catGroup && catGroup.boxes.length === 7 && catGroup.boxes.every((b) => b.checked === false && /^poll-categories\./.test(b.name) && b.value === b.name.slice("poll-categories.".length))
+    && /Sports/.test(catGroup.text) && !/\bsports\b/.test(catGroup.text.replace(/poll-categories\.\w+/g, "")),
+  JSON.stringify(catGroup?.boxes.map((b) => b.value)));
+ok("2b.3 while Polls is off, its picker stays on screen and says it applies once Polls is on",
+  !!catGroup && /applies once Polls is switched on/.test(catGroup.text), catGroup?.text.slice(0, 120));
+ok("2b.4 the chain picker either lists the platform's chains as `SYMBOL N-min` or says plainly that none is available yet — never an empty row of nothing",
+  !!chainGroup && (chainGroup.boxes.length > 0
+    ? chainGroup.boxes.every((b) => /^[^:]+:\d+$/.test(b.value)) && /\d+-min/.test(chainGroup.text)
+    : /No Up & Down chain is available on this platform yet/.test(chainGroup.text)),
+  chainGroup?.text.slice(0, 140));
+ok("2b.5 no picker word names the feature", pickers.every((p) => !/\b(bots?|house|counter)\b/i.test(p.text)), "");
 
 // ── §3 · THE REPORTED BUG · a real pointer on a real checkbox ────────────────────────────────────────────────
 console.log("\n§3 · a mouse click arms the pending bar (the owner's report)");
@@ -206,6 +286,18 @@ ok("4.1 Discard clears the pending bar", (await bar()) === null);
 ok("4.2 …and puts the switch back, in the DOM AND in the paint",
   afterDiscard && afterDiscard.checked === false && afterDiscard.painted === false, JSON.stringify(afterDiscard));
 
+/* ⭐ THE SAME REAL-POINTER RULE, ON A PICKER BOX: the label is the hit area and the click must reach the form. */
+console.log("\n§4b · a mouse click on a picker box arms the bar, and Discard puts it back");
+await soft("switch poll-categories.sports", () => clickSwitch("poll-categories.sports"));
+await page.waitForTimeout(500);
+ok("4b.1 a MOUSE click on a category label arms the pending bar", (await bar()) !== null);
+const sportsOn = await boxState("poll-categories.sports");
+ok("4b.2 …and the painted box agrees with what will be submitted", sportsOn && sportsOn.checked === true && sportsOn.painted === true, JSON.stringify(sportsOn));
+await clickIfThere("Discard");
+await page.waitForTimeout(700);
+const sportsBack = await boxState("poll-categories.sports");
+ok("4b.3 Discard puts the category box back, in the DOM and in the paint", (await bar()) === null && sportsBack && sportsBack.checked === false && sportsBack.painted === false, JSON.stringify(sportsBack));
+
 // ── §5 · fill and empty ──────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§5 · the two controls that fill and empty");
 await clearToasts();
@@ -237,8 +329,7 @@ for (const [k, v] of Object.entries({ "stake-min": "9000", "stake-max": "1000", 
   await soft(`fill ${k}`, () => page.locator(`main form input[name="${k}"]`).fill(v, { timeout: 4000 }));
 }
 await page.waitForTimeout(300);
-await soft("submit", () => page.locator("main form button[type=submit]").click({ timeout: 4000 }));
-await page.waitForTimeout(3000);
+await submitForm();
 const refusal = (await toasts()).join(" ~~ ");
 const marked = await invalidFields();
 ok("6.1 the save is refused and says so", /Couldn't save/.test(refusal), refusal.slice(0, 160));
@@ -254,7 +345,7 @@ ok("6.4 …and focus is taken to a marked field",
  * meanings — on the panel whose whole job is to say which limits are missing.
  */
 const contradictions = await page.evaluate(() =>
-  [...document.querySelectorAll("main form [data-field]")]
+  [...document.querySelectorAll('main form [data-rules="limits"] [data-field]')]
     .map((d) => {
       const input = d.querySelector("input");
       const text = d.innerText.replace(/\s+/g, " ");
@@ -264,8 +355,13 @@ const contradictions = await page.evaluate(() =>
 ok("6.5 no field says it is unset while holding a value", contradictions.length === 0, contradictions.join(" | "));
 await page.screenshot({ path: `${SHOTS}/refusal-1440.png` });
 
-// ── §7 · the save itself ─────────────────────────────────────────────────────────────────────────────────────
-console.log("\n§7 · a save that lands");
+// ── §6b · a product with nothing chosen is refused ON ITS PICKER ────────────────────────────────────────────
+/**
+ * ⛔ THE FINDING'S OWN SHAPE, AT THE SAVE (2026-09-22). Polls ticked with no category used to SAVE, START and match
+ * nothing for ever. It is refused now — and the refusal must mark the GROUP, name the remedy and take focus there,
+ * or it is a refusal naming a box the officer has to find by hand.
+ */
+console.log("\n§6b · Polls with no category is refused on the category picker");
 await clearToasts();
 await clickIfThere("Empty every limit");
 await page.waitForTimeout(500);
@@ -273,24 +369,113 @@ await clickIfThere("Empty them");
 await page.waitForTimeout(600);
 await clickIfThere("Use starting values");
 await page.waitForTimeout(900);
-await soft("switch product-updown", () => clickSwitch("product-updown"));
-await soft("switch updown-react", () => clickSwitch("updown-react"));
+await soft("switch product-polls", () => clickSwitch("product-polls"));
+await soft("switch polls-react", () => clickSwitch("polls-react"));
 await page.waitForTimeout(400);
 await clearToasts();
-await soft("submit", () => page.locator("main form button[type=submit]").click({ timeout: 4000 }));
-await page.waitForTimeout(4000);
+await submitForm();
+const noCategory = (await toasts()).join(" ~~ ");
+const groupMark = await page.evaluate(() => {
+  const g = document.querySelector('main form [data-list="poll-categories"]');
+  if (!g) return null;
+  return {
+    groupInvalid: g.getAttribute("aria-invalid"),
+    boxesInvalid: [...g.querySelectorAll("input[type=checkbox]")].every((i) => i.getAttribute("aria-invalid") === "true"),
+    sentence: (g.querySelector("[role=alert]")?.innerText ?? "").trim(),
+    focusInside: g.contains(document.activeElement),
+  };
+});
+ok("6b.1 the save is refused", /Couldn't save/.test(noCategory), noCategory.slice(0, 160));
+ok("6b.2 the category GROUP is marked — aria-invalid on the fieldset and on every box in it", groupMark && groupMark.groupInvalid === "true" && groupMark.boxesInvalid, JSON.stringify(groupMark));
+ok("6b.3 …and the sentence names the remedy, under the group", groupMark && /Choose at least one poll category, or turn Polls off/.test(groupMark.sentence), groupMark?.sentence);
+ok("6b.4 …and focus is taken into the group", groupMark && groupMark.focusInside === true, JSON.stringify(groupMark));
+ok("6b.5 …and no limit box is marked for a refusal that is not about it", (await invalidFields()).every((n) => /^poll-categories\./.test(n)), JSON.stringify(await invalidFields()));
+await page.screenshot({ path: `${SHOTS}/picker-refused-1440.png` });
+
+// ── §7 · the save itself ─────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§7 · a save that lands");
+await clearToasts();
+await soft("switch poll-categories.sports", () => clickSwitch("poll-categories.sports"));
+await page.waitForTimeout(400);
+await submitForm();
 const saved = (await toasts()).join(" ~~ ");
-ok("7.1 the save lands", /Saved/.test(saved) && !/Couldn't save/.test(saved), saved.slice(0, 160));
+ok("7.1 the save lands once a category is chosen", /Saved/.test(saved) && !/Couldn't save/.test(saved), saved.slice(0, 160));
 ok("7.2 …and the pending bar goes away", (await bar()) === null);
+ok("7.2b …and the group's mark is gone", (await invalidFields()).length === 0, JSON.stringify(await invalidFields()));
 
 // a SECOND save straight after the first must not meet a version conflict
 await clearToasts();
 await soft("fill bets-per-day", () => page.locator('main form input[name="bets-per-day"]').fill("180", { timeout: 4000 }));
 await page.waitForTimeout(300);
-await soft("submit", () => page.locator("main form button[type=submit]").click({ timeout: 4000 }));
-await page.waitForTimeout(4000);
+await submitForm();
 const saved2 = (await toasts()).join(" ~~ ");
 ok("7.3 a second save straight after the first also lands", /Saved/.test(saved2) && !/Couldn't save/.test(saved2), saved2.slice(0, 160));
+
+// ── §7b · the why-panel names a reason, Start refuses with it and a link, and the panel empties on the fix ──
+/**
+ * ⭐ WHY THIS ACCOUNT IS NOT BETTING (2026-09-22). With Polls on, a category chosen and its one mode switched
+ * OFF again, the rules SAVE (that is not a save-time rule) and Start REFUSES (it is): the overview's panel names
+ * the reason, the Start dialog's refusal carries the same sentence with an "Open Rules →" link that closes the
+ * dialog on the way, and putting the mode back empties the panel to its one sentence — read on the page itself.
+ */
+console.log("\n§7b · the why-panel, the Start refusal and the way out");
+await clearToasts();
+await soft("switch polls-react off", () => clickSwitch("polls-react"));
+await page.waitForTimeout(400);
+await submitForm();
+const savedNoMode = (await toasts()).join(" ~~ ");
+ok("7b.1 a product with a category but no mode SAVES (it is a Start-time refusal, not a save-time one)", /Saved/.test(savedNoMode) && !/Couldn't save/.test(savedNoMode), savedNoMode.slice(0, 160));
+const whyCard = () => page.evaluate(() => {
+  const main = document.querySelector("main");
+  /* The headline follows the lifecycle (review finding 2026-09-22): this account is PAUSED (fresh from designation),
+     so with items it is headed "Why this account can't start"; with none, the topic heading "Rules and limits". */
+  const titled = /Why this account can't start|Rules and limits/.test(main?.innerText ?? "");
+  const items = [...document.querySelectorAll("main [data-why-item]")].map((li) => li.innerText.replace(/\s+/g, " ").trim());
+  const empty = document.querySelector("main [data-why-empty]")?.innerText?.trim() ?? null;
+  const link = [...document.querySelectorAll("main a")].find((a) => /Open Rules/.test(a.innerText));
+  return { present: titled && (items.length > 0 || empty !== null), items, empty, link: link ? link.getAttribute("href") : null };
+});
+await page.goto(`${BASE}/admin/desk/${ACCOUNT}?tab=overview`, { waitUntil: "load" });
+await page.waitForTimeout(2600);
+const whyOverview = await whyCard();
+/* With Polls the only product and its only mode now off, nothing is on at all — the rules' one global reason. */
+ok("7b.2 the overview's why-panel names the reason — `Turn on at least one entry mode.` — under the group that fixes it",
+  whyOverview.present && whyOverview.items.length === 1 && /Turn on at least one entry mode\./.test(whyOverview.items[0]) && /^Entry modes/.test(whyOverview.items[0]),
+  JSON.stringify(whyOverview));
+ok("7b.3 …with a link to the Rules tab", typeof whyOverview.link === "string" && /tab=rules$/.test(whyOverview.link), JSON.stringify(whyOverview.link));
+/* Start, on the strip. The dialog's confirm is also named "Start"; the refusal must stay in the dialog with its link. */
+await clickIfThere("Start");
+await page.waitForTimeout(600);
+const startDlg = page.locator("[role=alertdialog]").last();
+await soft("confirm start", () => startDlg.getByRole("button", { name: /^Start$/ }).click({ timeout: 4000 }));
+/* the same rule as `submitForm`: the confirm is `loading` for as long as the action is in flight */
+await page.waitForTimeout(250);
+await page.waitForFunction(() => ![...document.querySelectorAll("[role=alertdialog] button")].some((b) => b.getAttribute("aria-busy") === "true"), null, { timeout: 120_000 })
+  .catch(() => consoleErrors.push("soft(start settle): the confirm stayed busy"));
+await page.waitForTimeout(900);
+const startRefusal = await soft("read refusal", () => startDlg.locator("[role=alert]").innerText({ timeout: 4000 }), "") ?? "";
+const startLink = await soft("read link", () => startDlg.locator("[role=alert] a").getAttribute("href", { timeout: 2000 }), null);
+ok("7b.4 Start is refused IN the dialog with the reason's own sentence and the console's frame",
+  /can't start yet/.test(startRefusal) && /Turn on at least one entry mode\./.test(startRefusal) && /Open Rules/.test(startRefusal), startRefusal.slice(0, 200));
+ok("7b.5 …and the refusal carries a link to the Rules tab", typeof startLink === "string" && /tab=rules$/.test(startLink), JSON.stringify(startLink));
+await soft("follow the link", () => startDlg.locator("[role=alert] a").click({ timeout: 4000 }));
+await page.waitForTimeout(2500);
+ok("7b.6 following it lands on the Rules tab and the dialog is gone", /[?&]tab=rules/.test(page.url()) && (await page.locator("[role=alertdialog]").count()) === 0, page.url());
+const whyRules = await whyCard();
+ok("7b.7 the same panel sits above the form, unlinked, naming the same reason", whyRules.present && whyRules.items.length === 1 && whyRules.link === null, JSON.stringify(whyRules));
+await clearToasts();
+await soft("switch polls-react on", () => clickSwitch("polls-react"));
+await page.waitForTimeout(400);
+await submitForm();
+/* the panel above the form is server-rendered, so it moves on the `router.refresh()` the landed save issues */
+let whyAfter = null;
+for (let i = 0; i < 30; i++) {
+  whyAfter = await whyCard();
+  if (whyAfter.empty) break;
+  await page.waitForTimeout(500);
+}
+ok("7b.8 putting the mode back and saving empties the panel to its one sentence, on the page, without a reload",
+  whyAfter && whyAfter.items.length === 0 && /Nothing in the rules or limits stops this account from betting/.test(whyAfter.empty ?? ""), JSON.stringify(whyAfter));
 
 // ── §8 · the exit nobody can stand at ────────────────────────────────────────────────────────────────────────
 console.log("\n§8 · work survives a sudden quit");
@@ -335,8 +520,7 @@ ok("8.6a the offer is STILL there after a second visit — a draft is not consum
 await clearToasts();
 await clickIfThere("Use starting values");
 await page.waitForTimeout(800);
-await soft("submit", () => page.locator("main form button[type=submit]").click({ timeout: 4000 }));
-await page.waitForTimeout(4500);
+await submitForm();
 ok("8.6b a clean save clears the offer ON SCREEN, with no reload",
   (await page.locator("main").getByText(/Unsaved changes from earlier/).count()) === 0,
   "the panel still offers to restore work that no longer exists — one click from undoing the save");
@@ -352,6 +536,41 @@ await page.waitForTimeout(600);
 await page.screenshot({ path: `${SHOTS}/rules-390.png` });
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
 ok("8.7 the form does not scroll sideways on a phone", !overflow);
+/* ⛔ THE PICKER'S CONTROLS ARE INSIDE THE PHONE VIEWPORT, AT THE TAP FLOOR, and the category group does not repeat
+   the switch line above it — read off the geometry, not off the markup. */
+const phonePicker = await page.evaluate(() => {
+  const g = document.querySelector('main form [data-list="poll-categories"]');
+  if (!g) return null;
+  const labels = [...g.querySelectorAll("label")].map((l) => l.getBoundingClientRect());
+  const tap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap-min")) || 40;
+  return { boxes: labels.length, inside: labels.every((r) => r.left >= 0 && r.right <= window.innerWidth + 1), tall: labels.every((r) => r.height >= tap - 0.5), tap };
+});
+ok("8.8 on a phone every category box sits inside the viewport and reaches the tap floor", phonePicker && phonePicker.boxes === 7 && phonePicker.inside && phonePicker.tall, JSON.stringify(phonePicker));
+
+// ── §8c · the roster shows the words, not the switches ─────────────────────────────────────────────────────
+/**
+ * ⛔ THE ROSTER LINE THAT LIED (2026-09-22). "Up & Down · Polls" was true of the switches and false of the account.
+ * It names what each product REACHES now — "Polls · Sports" for this account — and carries no refusal once the
+ * rules reach a market.
+ */
+console.log("\n§8c · the roster names what the account reaches");
+await page.setViewportSize({ width: 1440, height: 1000 });
+await page.goto(`${BASE}/admin/desk`, { waitUntil: "load" });
+await page.waitForTimeout(2200);
+const rosterRow = await page.evaluate((id) => {
+  const link = document.querySelector(`main a[href^="/admin/desk/${id}"]`);
+  const tr = link?.closest("tr");
+  if (!tr) return null;
+  const cells = [...tr.querySelectorAll("td")].map((td) => td.innerText.replace(/\s+/g, " ").trim());
+  const inert = tr.querySelector('a[href$="tab=rules"]');
+  return { cells, inert: inert ? inert.innerText.trim() : null };
+}, ACCOUNT);
+ok("8c.1 the roster row names the reach — `Polls · Sports` — as words, never the summary switches",
+  rosterRow && rosterRow.cells.some((c) => /Polls\s*·\s*Sports/.test(c)) && !rosterRow.cells.some((c) => /Up & Down\s*·\s*Polls/.test(c)),
+  JSON.stringify(rosterRow));
+ok("8c.2 …and carries no refusal, because the rules reach a market", rosterRow && rosterRow.inert === null, JSON.stringify(rosterRow?.inert));
+await page.goto(RULES, { waitUntil: "load" });
+await page.waitForTimeout(2200);
 
 /**
  * ⛔ AN ADDRESS THAT NAMES NOTHING MUST SAY SO. 🔴 Measured on a served build before this was fixed: signed in
@@ -395,6 +614,96 @@ if (consoleErrors.length !== realErrors.length) {
  * ⚠️ Soft throughout: a cleanup that cannot run must never turn a green flow into a red one. If it fails the
  * next run's §1 will say the roster is full, in the product's own words, which is the honest signal.
  */
+/* ── §9b · THE NUMERIC EDITOR AND THE SCHEDULE, TYPED AND READ BACK (2026-09-23 · register A1) ───────────────
+ *
+ * ⛔ THIS IS THE HALF NO VIEW-MODEL CASE CAN REACH. `test:house-bot-console` proves the door: post these
+ * values, the row stores them, the next read hands them back. What it cannot prove is that an officer can
+ * PUT them there — that the boxes exist, that the kit's segmented time control posts what was typed, that
+ * turning All day off leaves the window rows usable, and that a reload shows the officer their own numbers
+ * rather than the defaults. Every one of those lived in the gap between a real pointer and a real React tree,
+ * which is the gap this whole file exists for.
+ * ⚠️ THE ENTER-NOW STAKE IS CHOSEN INSIDE THE ACCOUNT'S OWN BAND. Measured while writing this: 12,000 against
+ * a 10,000 stake max is REFUSED, correctly, on that box — so a gate typing a round number would be measuring
+ * the refusal path and calling it a round trip.
+ */
+console.log("\n§9b · the numeric rules and the schedule, typed and read back");
+await page.setViewportSize({ width: 1440, height: 1100 });
+await page.goto(RULES, { waitUntil: "load" });
+await page.waitForTimeout(2200);
+
+const ruleBoxes = await page.evaluate(() => ({
+  numeric: document.querySelectorAll('main form [data-rules="numbers"] input:not([type=checkbox]):not([type=hidden])').length,
+  days: document.querySelectorAll('main form fieldset[data-list="schedule-days"] input[type=checkbox]').length,
+  windowRows: document.querySelectorAll('main form input[type=hidden][name^="schedule-windows."]').length,
+  sections: [...document.querySelectorAll('main form [data-rules="numbers"] p')].map((p) => p.innerText.trim()).filter((t) => t.length > 0 && t.length < 40).slice(0, 12),
+}));
+ok("9b.1 the editor draws the numeric rules, seven day boxes and four window rows",
+  ruleBoxes.numeric >= 25 && ruleBoxes.days === 7 && ruleBoxes.windowRows === 8, JSON.stringify(ruleBoxes));
+
+const setBox = async (name, value) => {
+  const el = page.locator(`main form input[name="${name}"]`);
+  if ((await el.count()) === 0) return `absent:${name}`;
+  await el.fill("");
+  await el.pressSequentially(value, { delay: 8 });
+  return el.inputValue();
+};
+const typedDelay = await setBox("answer-delay-min", "25");
+const typedZone = await setBox("quiet-zone-polls", "7");
+/* The account's stake max is 10,000 on this drive's caps, so 5,000 is inside the band on purpose. */
+const typedThin = await setBox("enter-now-thin-stake", "5000");
+ok("9b.2 a delay, a guard and an Enter-now stake all take what is typed into them",
+  typedDelay === "25" && typedZone === "7" && typedThin === "5000",
+  JSON.stringify({ typedDelay, typedZone, typedThin }));
+
+const allDayBox = page.locator('main form input[name="schedule-all-day"]');
+if (await allDayBox.isChecked()) {
+  await page.locator("main form label").filter({ has: page.locator('input[name="schedule-all-day"]') }).click();
+}
+const segs = page.locator('main form fieldset[data-list="schedule-windows"] input:not([type=hidden])');
+await soft("window 0 start hh", () => segs.nth(0).fill("09"));
+await soft("window 0 start mm", () => segs.nth(1).fill("00"));
+await soft("window 0 end hh", () => segs.nth(2).fill("17"));
+await soft("window 0 end mm", () => segs.nth(3).fill("30"));
+await page.waitForTimeout(400);
+const posted = await page.evaluate(() =>
+  [...document.querySelectorAll('main form input[type=hidden][name^="schedule-windows."]')].map((i) => `${i.name}=${i.value}`));
+/* ⛔ THE KIT'S TIME CONTROL IS REACT-HELD: what it POSTS is a hidden input this form keeps in step. A control
+   whose pixels moved and whose posted value did not is the defect class this whole file was written for. */
+ok("9b.3 the segmented time control posts what was typed, as EAT text",
+  posted.includes("schedule-windows.0.start=09:00") && posted.includes("schedule-windows.0.end=17:30"),
+  JSON.stringify(posted.slice(0, 4)));
+ok("9b.4 …and turning All day off makes the form dirty, so the pending bar stands",
+  /UNSAVED/i.test((await bar()) ?? ""), (await bar()) ?? "no bar");
+
+await submitForm();
+const savedToasts = await toasts();
+const stillInvalid = await invalidFields();
+ok("9b.5 the whole form saves — no box is marked, and the toast says it landed",
+  savedToasts.some((t) => /^Saved/.test(t)) && stillInvalid.length === 0,
+  JSON.stringify({ savedToasts, stillInvalid }));
+await clearToasts();
+
+await page.goto(RULES, { waitUntil: "load" });
+await page.waitForTimeout(2400);
+const readBack = await page.evaluate(() => {
+  const v = (n) => document.querySelector(`main form input[name="${n}"]`)?.value ?? null;
+  return {
+    delay: v("answer-delay-min"),
+    zone: v("quiet-zone-polls"),
+    thin: v("enter-now-thin-stake"),
+    allDay: document.querySelector('main form input[name="schedule-all-day"]')?.checked ?? null,
+    segs: [...document.querySelectorAll('main form fieldset[data-list="schedule-windows"] input:not([type=hidden])')].slice(0, 4).map((i) => i.value),
+    saved: [...document.querySelectorAll("main form li")].map((li) => li.innerText.trim()).filter((t) => /→|all day/i.test(t)),
+  };
+});
+ok("9b.6 ⭐ THE ROUND TRIP: a reload shows the officer their own numbers, All day still off, and the window in its boxes",
+  readBack.delay === "25" && readBack.zone === "7" && readBack.thin === "5000"
+    && readBack.allDay === false && readBack.segs.join(":") === "09:00:17:30",
+  JSON.stringify(readBack).slice(0, 300));
+ok("9b.7 …and the saved schedule is painted in words, per chosen day",
+  readBack.saved.length > 0 && readBack.saved.every((s) => /09:00 → 17:30/.test(s)),
+  JSON.stringify(readBack.saved.slice(0, 3)));
+
 console.log("\n§10 · putting the roster back");
 const removed = await soft("remove the drive's account", async () => {
   await page.setViewportSize({ width: 1440, height: 1100 });

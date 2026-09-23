@@ -42,7 +42,7 @@ import { FormColumn } from "@/components/ui/form-column";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { currentSession } from "@/lib/server/auth-service";
-import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
+import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, type ConsoleDetailView, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
 import { ActivityFilters } from "../activity-filters";
 import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
@@ -139,6 +139,46 @@ function SavedRulesCard({ rows, reason, captions }: { rows: ConsoleRuleRow[] | n
           </dl>
         </FormColumn>
       )}
+    </AdminCard>
+  );
+}
+
+/**
+ * ⭐ "WHY THIS ACCOUNT IS NOT BETTING" — ONE COMPONENT FOR THE OVERVIEW AND FOR THE HEAD OF THE RULES FORM (prod
+ * finding 2026-09-22). An ACTIVE account on a switched-ON desk had matched no market for days, and nothing on
+ * any screen said why: both products ticked, both scope lists empty, and the engine's predicate refusing every
+ * market before a cap or a probability was read. The model is the SERVER's (`rulesInertReasons`, the predicate
+ * the engine decides with), so this panel and `decide.ts` cannot diverge; the page chooses only the skin.
+ * ⛔ `linked` is false on the rules tab, where the form the link would open is directly below (432(a): a link
+ * to the page it is on is a control that does nothing). ⛔ The empty sentence is about the RULES: the strip
+ * above the rail already says whether the desk is off or the account is paused (432(n)).
+ */
+function WhyNotBettingCard({ model, linked }: { model: NonNullable<ConsoleDetailView["whyNotBetting"]>; linked: boolean }) {
+  return (
+    <AdminCard title={model.title}>
+      <FormColumn measure="form">
+        {model.items.length === 0 ? (
+          <p className="text-body-sm text-text-secondary" data-why-empty>{model.empty}</p>
+        ) : (
+          <>
+            <ul className="space-y-3">
+              {model.items.map((it) => (
+                <li key={`${it.key}-${it.message}`} className="max-w-[72ch]" data-why-item={it.key}>
+                  <span className="block text-body-sm text-text-secondary">{it.label}</span>
+                  <span className="block text-body-sm text-warning-fg">{it.message}</span>
+                </li>
+              ))}
+            </ul>
+            {linked && (
+              <p className="mt-3">
+                <Link href={model.href as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">
+                  {model.hrefLabel} →
+                </Link>
+              </p>
+            )}
+          </>
+        )}
+      </FormColumn>
     </AdminCard>
   );
 }
@@ -303,7 +343,13 @@ async function AdminDeskAccountContent({
             size="md"
             surface="panel"
             role="status"
-            title={`${view.startReadiness.blockers} of ${view.startReadiness.total} still to fill before this account can start`}
+            /* ⛔ NO DENOMINATOR (2026-09-22). "3 of 13" counted caps plus two flags; the list is now the caps still
+               unset plus every scope reason the engine's own predicate raises, which has no fixed total to be "of".
+               A count that cannot be honest is not painted; the count that can be is.
+               ⛔ AND THE HEADLINE IS THE SERVER'S (review finding 2026-09-22): "before this account can start" was
+               typed here and painted beside a green ACTIVE chip on the production-shaped account. The lifecycle
+               decides the sentence, and the lifecycle is the server's to read. */
+            title={view.startReadiness.title}
           >
             {/* ⛔ NO WAY-OUT LINK, AND BOTH REASONS WERE MEASURED RATHER THAN ARGUED.
                 ① IT PUSHED THE NOTICE OFF A PHONE. With an "Open Rules" line the box ran y=578..850 in an
@@ -426,6 +472,12 @@ async function AdminDeskAccountContent({
             )}
           </AdminCard>
           )}
+
+          {/* ⭐ WHY THIS ACCOUNT IS NOT BETTING (prod finding 2026-09-22) — the rules' own reasons, linked to the
+              tab that fixes them. Its OWN `removed` guard, for the reason the guidance line has one (1.435). */}
+          {!view.removed && (
+            view.whyNotBetting !== null && <WhyNotBettingCard model={view.whyNotBetting} linked />
+          )}
         </>)}
 
         {tab === "activity" && (<>
@@ -456,7 +508,7 @@ async function AdminDeskAccountContent({
                   <table className="admin-tbl">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
@@ -473,7 +525,13 @@ async function AdminDeskAccountContent({
                              served markup, and a bounded record id is the one thing D19 says this section may
                              never put in a response. */
                           <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
-                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>
+                              {r.when}
+                              {/* ⭐ A QUEUED STAKE SAYS WHEN IT FIRES AND WHEN IT GIVES UP (register C8): the When
+                                  column is the instant the engine DECIDED, which for a held COUNTER can be minutes
+                                  before anything happens. The server owns every word of this line. */}
+                              {r.due !== null && <span className="block text-caption text-text-tertiary">{r.due}</span>}
+                            </td>
                             <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
                             <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                             <td className="p-3 text-text">{r.typeWord}</td>
@@ -530,6 +588,10 @@ async function AdminDeskAccountContent({
               would not parse — and the card already tells those apart in its own words. Adding an
               `AdminLoadError` here would put a SIXTH one on a page whose count 355 pins, and would tell an
               officer to refresh over rules that refreshing cannot fix. */}
+          {/* ⭐ THE SAME WHY-PANEL, ABOVE THE FORM THAT FIXES IT — unlinked, because the form is right below. */}
+          {view.whyNotBetting !== null && (
+            <WhyNotBettingCard model={view.whyNotBetting} linked={false} />
+          )}
           {view.rulesForm === null ? (
             <SavedRulesCard rows={rulesRows} reason={view.rulesReason} captions />
           ) : (
@@ -628,7 +690,7 @@ async function AdminDeskAccountContent({
                   <table className="admin-tbl">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Event</th>
                         <th scope="col" className="text-left p-3">Change</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Who</th>
