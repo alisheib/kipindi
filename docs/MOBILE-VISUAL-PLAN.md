@@ -30,9 +30,17 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ NEXT: Session S3 → U5 (header pills + phone rhythm tokens) and U6 (home tightening, with D33 and D51).
-  Read §5 (hard rules) and §9 U5–U6 before touching code. Phase A and the first half of Phase B are done:
-  the switch exists, the card and the bar are Compact, and pinned chrome is 197.25 against a 201 target.
+▶ NEXT: Session S4 → U7 (chat bubble 44px + hides while scrolling, D3) and U8 (countdown everywhere +
+  guest market split). Read §5 (hard rules) and §9 U7–U8 before touching code. **Phase A and Phase B are
+  DONE** — the switch exists, the card, the bar, the header and the home page are on the phone rung.
+  ⛔ U7 IS THE ONE WITH A NAMED VICTIM AND IT IS WIDER THAN ITS REGISTER LINE. D3's own note records the
+  chat bubble covering content on SEVEN OF NINE surfaces; S3 saw it again on the landing page twice in the
+  same pass — over the first Closing-soonest question, and over a card's traders row — so U7's driver runs
+  all nine surfaces, not the board alone. The overlap is measured on the `::after` pulse ring, not the 44px
+  box, and `scripts/chat-responsiveness-e2e.mjs` is stale (wrong breakpoints) and is NOT evidence.
+  ⚠️ U6 SPENT ITS BUDGET AND THE HOME TARGET IS A RESTATED ONE — see §11. 8.78 screens at 360 SW against a
+  restated ≤ 9.5; the written 7.5/7.8 was shown to be unreachable without deleting a section, which §4
+  decision 2 and §6 both forbid. Do not carry 7.8 forward as if it were still live.
   ✔ `test:stacking` §5.2 is FIXED (`d1476eed`) — 112/1 → **113/0**. `LocaleChangeOverlay` is `fixed
   inset-0` rendered inside route content, and a transformed ancestor (`.route-enter`) becomes the
   containing block for a `fixed` child, so a language change during a navigation laid the scrim out
@@ -47,7 +55,24 @@
   ⚠️ Still open and NOT U5's: `test:type-scale` §3 (746 vs a ratchet of 744; ⛔ find the two, never
   bump the ratchet) and `qa:tap-hit`'s chart-range section (no market exposes a range rail — it fails
   on production too, so it is a product gap, not a fixture one).
-✔ LAST SESSION (S2, 2026-09-23): **U3 ✅ and U4 ✅** — 4/40 — plus **D28 and D49 closed** and **D30
+✔ LAST SESSION (S3, 2026-09-23): **U5 ✅ and U6 ✅** — 6/40 — plus **D33, D51 and D31 closed**, the managers'
+  **right-click → open in new tab** shipped platform-wide, and `/help`'s FAQ rows lifted off a 20.3px floor.
+  ⭐ THE SHAPE S3 KEPT MEETING: **a fact that existed, was correct, and was never read.** `.kp-topic__n` carried
+  a `text-overflow: ellipsis` written for a case that could not reach it, because flex-wrap breaks a line
+  BEFORE it shrinks one — a law this very file states in the hero CTA block, two hundred lines above. `py-3`
+  on `/help` was real padding on the wrong element. D31's box was sized from the real figure while the mask
+  it painted was a fixed nine characters. In each case the code looked right, a guard existed nearby, and
+  nobody had measured what the page actually did.
+  ⚠️ AND TWO OF THIS PLAN'S OWN LINES WERE WRONG, CORRECTED FROM MEASUREMENT RATHER THAN FOLLOWED: D33's
+  register said "every pooled tile at 360 in all three locales" (at 360 SW, the DEFAULT locale, nothing
+  split); D51's said 17px (it is 16 — an 8px pip and an 8px gap), and both remedies it suggested were
+  measured and rejected. §9 U6 also prescribed `white-space: nowrap` for D33, which the proof rail forbids
+  outright for money — allowed here ONLY because the widest figure the book can print was measured to fit,
+  66px against 78px at 320. ⛔ A prescription in this plan is a hypothesis; the page is the authority.
+  👁 READ, NOT JUST MEASURED: the home page at 360 SW. The tile grid was the find — one grid drawing two
+  different tiles, the glyph orphaned above the name on two of six, its partner stretched to match. The
+  numbers said "74 and 98" and nothing more; the screenshot said what was wrong with it.
+✔ BEFORE IT (S2, 2026-09-23): **U3 ✅ and U4 ✅** — plus **D28 and D49 closed** and **D30
   shipped early in the safe-fix lane**. The card's rhythm became six `:root` tokens the card and the
   SKELETON both read; the bar went from two stacked control rows to one control line plus a count line.
   Measured on production, before → after: card 353.5 → 301.5 (live+band), 347.44 → 303.44, 319.5 → 279.5,
@@ -251,8 +276,8 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U2 Density setting + switch | Compact | ✅ | S1 | `e2ba9a3e` | no setting → the Card spacing switch (kp-density, served `data-density`, 44px row); zero diff vs the U1 baseline on 120 production pages, both densities | yes (density-contract RED 2/2; card-spacing step F fails with the re-sync off) | 2026-09-23 · production, served `e2ba9a3e` |
 | U3 Market card + Up & Down card + skeleton token | Compact | ✅ | S2 | `ea84e4a9` | market card 353.5 → **301.5** live+band · 347.44 → 303.44 cold start · 319.5 → 279.5 · 312 → 264 · 278 → 242; Up & Down 578.25 → **526.25** (`open`); share reach 26×37 → **41–42 × 40**; `/results` skeleton literal 220 → the closed-card token | yes (`qa:tap-hit` share section fails all 12 cells on the UNFIXED production tree naming 26×37 and the 6.5px gap; passes 42 controls here. `red:density-contract` 2/2 over a population that is real for the first time) | 2026-09-23 · production, served `ea84e4a9` |
 | U4 Discovery bar | Compact | ✅ | S2 | `94a43227` | two stacked 44px control rows → **one control line + a ~17px count line**: bar **116 → 76.25px**, pinned chrome **237 → 197.25** (≤ 201), identical in SW/EN/ZH at 320 and 360; strip floor 160px held; the sort's listbox no longer runs 41–55px off-screen | yes (`RED_RAILMENU=1` fails 9/9 cells for D30; `red:density-contract` 2/2; the zero-diff breach in Comfortable was caught by measurement and fixed) | 2026-09-23 · production, served `94a43227` |
-| U5 Header pills + phone rhythm tokens | General | ⬜ | S3 | | | | |
-| U6 Home tightening | General | ⬜ | S3 | | | | |
+| U5 Header pills + phone rhythm tokens | General | ✅ | S3 | `7d068f10` | the signed-out auth pills stepped 48 → **40** (`--h-control-sm`), type to 13px, the 14px measure KEPT because it was chosen by measurement for the 320 fit (E-276) and re-measured here: both pills visible at 320 in sw/en/zh, document overflow 0, the pair ending 12px short of the edge. ⚠️ **The `--rh-*` step was measured and HALF REFUSED** — section 64 → 48 is worth 32px, but close 32 → 24 is worth 112px of 8367 (1.3%) and 24 already equals `--rh-tight`, so taking it would have collapsed a rung of hierarchy to buy one percent of a page | yes (`test:wallet-reach` asserts `.kp-auth-cta` declares `height: var(--h-control-sm)`; the row fails if the declaration is removed) | 2026-09-23 · production |
+| U6 Home tightening | General | ✅ | S3 | `de2e9643` | **D51** the three proof figures now share one left edge — spread **16 → 0px** at 320/360/412 × sw/en/zh (the pip left the first number's flow and now follows it). **D33** the pool figure is one token — split on **5/6 tiles at 320 sw, 5/6 at 360 zh, 2/6 at 360 en → 0 everywhere**, and the widest figure the book can print (`TZS 999.9B`, 66px) FITS with 20–47px of slack, so the nowrap is not a clip. **The topic tile drew two layouts from one grid** — the name's `flex: 1 1 auto` made it wrap under the glyph instead of shrinking, orphaning the glyph on a row of its own and dragging its grid partner to 98px; the name now takes the tile's whole measure and the glyph drops to the meta row: tiles **74/98/98 → a uniform 71.3** at 360 sw, no name cut at any width or locale. Plus hero padding 48/32 → 32/24, the lede one rung to 17px, the CTAs to `--h-control-lg`, and a 3-line bound on the Closing-soonest question. ⚠️ **That bound was first written up as "it crops nothing today", which was true locally and FALSE live** — production's four markets carry 120-character UEFA titles that run 4–7 lines, so the clamp engages on 4 of 4 rows at 320 and 360 SW/EN and 3 of 4 at 412. It STAYS, because without it one such title takes a row past 180px: live it holds every row to **121.3px from a ragged 164/143/164/164**, the cut is SIGNALLED by an ellipsis, and the link's accessible name is still the whole question (read back off the row on production). Home **7017 → 6845px local**; **verified on production: 7104px = 9.11 screens at 360 SW** (was 9.51), 320 SW 11.59, 360 EN 8.92, 360 ZH 8.39, 412 SW 7.71, document overflow 0 at all five | yes (`qa:home-tighten`: `RED_D51=1` fails 9/9 naming the 16px spread · `RED_D33=1` fails naming the split figures AND the planted worst case · `RED_TILE=1` fails naming both the cut name and the orphaned glyph — each firing only on its own section, and a green RED run exits 2 as a broken harness) | 2026-09-23 · **production, verified**: `qa:home-tighten` GREEN over 9 width×locale cells against www.50pick.tz, home 9.11 screens at 360 SW, and re-verified in BOTH densities |
 | U7 Chat bubble (D3) | General | ⬜ | S4 | | | | |
 | U8 Countdown + guest order | General | ⬜ | S4 | | | | |
 | U9 Defects D1 · D5 · D7 · D18 · D34 | General | ⬜ | S5 | | | | |
@@ -320,9 +345,9 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D28 | ✅ `ea84e4a9` 2026-09-23 (live) | U3 |
 | D29 | ⬜ | U32 |
 | D30 | 🔵 shipped `94a43227` 2026-09-23 (live) — a player reported it; the rail takes the menu rung while its menu is open, so the bubble takes 0 of 36 menu-row taps (was 3/5 on the last row) | U33 |
-| D31 | ⬜ | U34 |
+| D31 | ◐ HALF — the mask overflow only (`252a9f55` 2026-09-23, local proof; the 32px eye, the 800ms flash and the "Hide password" label are still open) | U34 |
 | D32 | ⬜ | U33 |
-| D33 | ⬜ | U6 |
+| D33 | ✅ `de2e9643` 2026-09-23 | U6 |
 | D34 | ⬜ | U9 |
 | D35 | ⬜ | U32 |
 | D36 | ⬜ | U35 |
@@ -340,7 +365,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D48 | ⬜ | U19 |
 | D49 | ✅ by design `ea84e4a9` 2026-09-23 (live) — §4 decision 11: the band stays where real history exists, trimmed 28 → 20 in Compact; never removed, no reserved space | U3 |
 | D50 | ⬜ | U36 |
-| D51 | ⬜ | U6 |
+| D51 | ✅ `de2e9643` 2026-09-23 | U6 |
 | D52 | ⬜ | U35 |
 | D53 | ⬜ | U40 |
 
@@ -375,6 +400,45 @@ The programme may be marked **🏁 CLOSED** in the status line at the top of thi
 Until then the status line stays 🟠 and `§0 NEXT` names real work.
 
 ## §2 — Session log (newest first)
+
+- **S3 · 2026-09-23 — U5 and U6 shipped, plus five things found on the way.** Ali: *"keep going until mobile visualisation is
+  perfectly sealed for users, end to end"*, *"fix any issue you find, you have all rights and push live"*, and *"even if things are
+  not your work, we need perfect fixing of items you encounter as you go"*.
+  - **U5 · header pills** (`7d068f10`). 48 → 40px on the `sm` rung, 13px type. ⚠️ **Its own acceptance already passed before it** —
+    the unit existed to buy height the header had already given back — so what it actually bought was written down honestly rather
+    than claimed. The 14px measure was KEPT: it was chosen by measurement for the 320 fit (E-276), and re-measuring it here showed
+    slack. **Changing a measured value for tidiness is what this campaign exists to stop.**
+  - **U6 · home tightening** (`de2e9643`, D33 + D51 + the topic tile + hero rhythm). Full account in the §1 row and in §8.
+  - **Right-click → open in new tab, everywhere** (`8fc9c638`), asked for by the managers, not by this plan. A market card was
+    `role="link"` plus `router.push`, and a browser offers that menu only for a real `<a href>`. The card contains buttons, so it
+    cannot BE one → a **stretched link** (`.mcardp-open`, absolute inset-0, z-2) with the interactive rows raised above it.
+    ⛔ Raising `.mcardp-share`/`.mcardp-details` individually does NOTHING — `.mcardp` sets `isolation: isolate`, so their z is
+    spent inside the footer row. Exactly the trap D30 had already paid for once. A platform-wide scan found only two such elements.
+  - **`/help` FAQ rows** (`a7efcb18`): 20.3px controls, half the 44px floor. `py-3` sat on the `<details>`, not the `<summary>` —
+    padding on the parent adds LOOK, not tap area. ⭐ And the height was an accident of WRAPPING: long questions ran to two lines and
+    reached 40px, so in landscape, where they all fit one line, **a wider screen made every tap target smaller**. The same shape is
+    still unfixed on `markets/[id]:708` and `profile/kyc:546` — carried to §8, not quietly closed.
+  - **D31** (`252a9f55`), reported by Ali from his phone: the hidden balance ran under the eye. The box was sized from the REAL
+    figure and painted with a FIXED nine-character mask, so it overflowed at every balance up to a million — 27.2px at TZS 0. Fixed
+    by making the box the MAX of both states: three children in one grid cell. ⛔ `[grid-area:1/1]` GENERATES NOTHING in Tailwind
+    (the slash is read as an opacity modifier); it needs `[grid-row-start:1] [grid-column-start:1]`. The first attempt looked right
+    and did nothing. ⚠️ **Proved on a signed-in session locally at 320/360/412 only** — this machine has no signed-in production
+    account, so it is NOT verified on production and is not recorded as if it were.
+  - **The home board, 6 → 3 cards** (`2de56fd0`) — an owner decision Ali delegated. Recorded in §4 decision 16 and §11.
+  - ⛔ **A Railway build failed on a commit with nothing wrong in it.** 28 × `Can't resolve
+    '@vercel/turbopack-next/internal/font/google/font'`. `next/font/google` DOWNLOADS the three families at BUILD time, so a builder
+    that cannot reach fonts.gstatic.com fails the whole build. Settled in minutes rather than guessed: the same commit built clean
+    locally, then `railway redeploy --from-source` succeeded byte-identical. ⚠️ Do NOT correlate deploys by grepping 40 hex
+    characters out of a build log — that matches the railpack IMAGE DIGEST, not a commit.
+
+- **S2 · 2026-09-23 — U3 and U4 shipped.** The card, the Up & Down card, the skeleton token and the discovery bar, all on the
+  Compact rung. Figures in the §1 rows. Two things are worth keeping out of those cells:
+  - **The card's height became a token sum rather than a number.** `--mcard-h` is now computed from the parts (`--mcard-pt`,
+    `--mcard-gap`, the traders and sparkline rungs), so the Compact block re-states the PARTS and the height follows. ⛔ The
+    overrides must sit on `html` itself, because a custom property resolves where it is DECLARED, not where it is read.
+  - **The discovery bar's zero-diff breach in Comfortable was caught by measurement, not by review.** U4's first cut moved the bar
+    in both densities; the promise is that Comfortable is byte-identical to the U1 baseline. It was found because the baseline was
+    re-run, which is the whole reason §11 asks for it.
 
 - **S1 · 2026-09-22 — U1 and U2 shipped.** Ali: *"proceed with mobile visualisation … keep the progress tracker"*, then
   *"push live after each section, so another device can continue where it stopped"*, then *"keep going all night until done and live"*.
@@ -842,7 +906,7 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | ID | Defect | Where | Unit |
 |---|---|---|---|
 | D1 | Status strip's half chip collides with the result count (412 EN, 360 SW) | `.kp-strip-fade` `globals.css:3063-3068` | U9 |
-| D2 | Leaderboard podium handles break mid-word ("@Dhire / sh") | `leaderboard/page.tsx:591-594` | U10 |
+| D2 | Leaderboard podium handles break mid-word. ⚠️ **Re-measured on production 2026-09-23 and it is WORSE than this line recorded.** The example here was "@Dhire / sh" — two lines. Live at **320 SW the podium takes THREE lines with an orphan final letter**: `@Ful / genc / e` and `@Jay / kisha / n`; at 360 it is two, `@Fulge / nce` and `@Libuh / i` (again an orphan letter). The name column is **44px at 320 and 57.3px at 360**, at `--type-h4`-ish 15px with `overflow-wrap: break-word`, against handles wanting 70–80px. ⭐ **AND THE SAME HANDLES RENDER ON ONE LINE IN THE LIST DIRECTLY BELOW THE PODIUM** — @Libuhi, @Fulgence, @Jaykishan, @Ameet, @Dhiresh all whole at 13px. So this is not a handle-length problem, it is the podium’s three-column layout starving a column that the list gives room to; the fix belongs to the layout, and DG-P-08 forbids reaching for truncation. ⛔ **DO NOT MEASURE THIS WITH `Range.getClientRects().length`** — it over-counted by exactly one at both widths here (reporting 4 at 320 and 3 at 360) and the cropped screenshots are what settled it. Count painted lines some other way, or read the crop | `leaderboard/page.tsx:591-594` | U10 |
 | D3 | 52px chat bubble covers card Details / "Maelezo" / a tier badge | `ChatRoot.tsx:313-319`, `chat-styles.css:57` | U7 |
 | D4 | First visit: primer modal and consent card both show, uncoordinated | `first-visit-primer.tsx:296-317`, `consent-prompt.tsx:61-62` | U16 |
 | D5 | `/results` ≈ 65px gap between search and filter tabs | `search-box.tsx:181-187`, `results/page.tsx:104` | U9 |
@@ -871,9 +935,9 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D28 | The card share control is 25–26 × 36–37px — under the tap floor on both axes — on **every** card on every board, 12px from "Details" (S02-home-07, S03-03, S07-06) | `.mcardp-share` + its `::after`, `globals.css:5106` | U3 |
 | D29 | Resolved and void cards with no bets state an invented "YES 50%" and a centred needle; `noPrice` is gated on `live`, so the cold-start rule never reaches terminal states (S03-10, S07-01) | `market-card.tsx:276-277` | U32 |
 | D30 | The chat bubble covers the rail More menu's last row: its status badge is cut and ~27% of the row opens chat instead of navigating. U7's 44px bubble does not clear it (S01-01) | `nav-more.tsx:94`, `ChatRoot.tsx:317` | U33 |
-| D31 | Signed-in balance capsule: the hidden-balance mask overflows its reserved box (26.4px at TZS 0), the eye control is 32px, the 800ms delta flash shifts the header, and the link announces "Hide password" (S01-chrome-02/03/04/06) | `wallet-balance-pill.tsx:172` | U34 |
+| D31 | ◐ **HALF closed — one of four parts** (`252a9f55`, 2026-09-23). Signed-in balance capsule. ✅ **The hidden-balance mask no longer overflows its reserved box.** Ali reported it from his phone ("the eye icon overrides most of the dots"). Re-measured before fixing: the box was sized from the REAL figure while the hidden state painted a FIXED nine-character mask, so it overflowed at EVERY balance up to a million — **27.2px at TZS 0** (the register said 26.4), 13.6 at TZS 500 — and the eye’s own box begins 4px past that edge. The box is now the MAX of both states: three children in one grid cell, so toggling the eye still moves nothing. ⛔ `[grid-area:1/1]` GENERATES NOTHING in Tailwind — the slash is read as an opacity modifier — so it needs `[grid-row-start:1] [grid-column-start:1]`; the first attempt looked right and did nothing. ⚠️ **Proved at 320/360/412 on a signed-in session LOCALLY only** — this machine has no signed-in production account, so it is NOT verified on production. □ **STILL OPEN and still U34’s:** the eye control is 32px (under the 44px floor), the 800ms delta flash shifts the header, and the link announces "Hide password" | `wallet-balance-pill.tsx` | U34 |
 | D32 | The live ticker cannot be paused, stopped or hidden on a phone (pause is hover/focus only), has no accessible name, and its duplicated track makes a screen reader read every event twice (S01-02) | `live-ticker.tsx:85-91, :153-154` | U33 |
-| D33 | Home topic tiles break the pool figure across lines — "TZS" on one line, "6K" on the next — on every pooled tile at 360 in all three locales (S02-home-01) | `.kp-topic__m`, `globals.css:4622` | U6 |
+| D33 | ✅ `de2e9643` — Home topic tiles break the pool figure across lines. ⚠️ **The register line was wider than the defect and is corrected from measurement**: it said "every pooled tile at 360 in all three locales", but at 360 SW — the DEFAULT locale — nothing split on the day it was measured. What splits is **width-and-locale dependent**: 5 of 6 tiles at 320 SW, 5 of 6 at 360 ZH, 2 of 6 at 360 EN, 0 at 360 SW and 0 at 412. It was a bare text node sharing the meta's wrapping; it is now `.kp-topic__pool` with `white-space: nowrap`. ⛔ The break MOVES rather than vanishing — the meta may still wrap at the separator — and the nowrap is legal here only because it was MEASURED not to clip: the widest figure `formatTzsCompact` can emit is ten characters (66px) against 78px of usable meta at 320. The proof rail forbids the same declaration outright for the opposite reason | `.kp-topic__pool`, `globals.css` · `topic-tiles.tsx` | U6 |
 | D34 | At 320 SW the board stats row ("25 hai · TZS 27K katika mchezo") cannot wrap or shrink and runs past the viewport edge beside a money figure (S03-01) | `markets/page.tsx` header row | U9 |
 | D35 | On cold-start cards at 320 SW the pool slot — the money slot — is the one thing allowed to shrink, so it ellipsises while the countdown and 44px info plate keep their width (S03-02) | `.mcardp-meta` | U32 |
 | D36 | Up & Down truth: at the lock the pod shows a dead "Betting closes in 00:00" beside a panel saying betting has closed, and a resolved card keeps ticking a live price that contradicts its own close (S05-01, S05-02) | `updown-card.tsx`, round page | U35 |
@@ -891,7 +955,7 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D48 | The sign-in form sets "Umesahau nenosiri?" as its dimmest label, dimmer than the static hint beside it and with no link ink, and carries the sign-up rules: the "Angalau herufi 8." hint, `minLength={8}` and an eight-dot placeholder that reads as a filled password (critics panel, code-confirmed) | `auth/login/page.tsx:288-296,310` | U19 |
 | D49 | A flat sparkline band — about 43px at ~1.06:1 against the card — renders on some cards and not others, so one list holds two card heights: /results 312 vs 278, /markets 354 vs 320 (critics panel, measured) | `market-card.tsx:390` (`MicroSpark … height={28} … area stretch`) | U3 |
 | D50 | On the /live hero the INASOGEA chip sits in the needle's value-label row ("NDIO 50%  INASOGEA  50% HAPANA"), so it reads as the name of the needle's position rather than a status (critics panel) | `tipping` (`i18n-dict.ts:3280`) in the /live hero | U36 |
-| D51 | The home hero's first figure "32" starts about 17px right of its own label because the live pip sits inside the number's flow, while "TZS 29K" and "8" sit on the 16px edge (critics panel, measured) | `landing-hero.tsx:131-132` (`.kp-proof__pip` inside `.kp-proof__num`) | U6 |
+| D51 | ✅ `de2e9643` — the hero's three figures did not share a left edge. Re-measured before fixing: the offset is **16px, not 17** (an 8px pip plus an 8px `--sp-2` gap), and it holds at 320/360/412 in all three locales. ⛔ **The two remedies this row suggested were both measured and REJECTED** — hanging the pip outside the flow puts it at x=8 or x=0, off the page's own 16px content edge; giving all three numbers a matching leading slot indents every figure while its CAPTION stays at 16, trading a spread between rows for a spread inside every row. The pip now FOLLOWS the figure it annotates: same pip, same `--live-400`, same gap, still on the open-markets figure and no other. Spread **16 → 0px**. ⚠️ A box measurement cannot see this defect — `.kp-proof__num` reports `left: 16` either way — so the guard reads the TEXT's own client rects | `landing-hero.tsx` (`.kp-proof__pip` after the figure) | U6 |
 | D52 | Up & Down's settled pod wraps its price pair with the arrow ending the first line ("$75,819.68 →" then "$75,824.01") (critics panel) | `updown-card.tsx:1121` | U35 |
 | D53 | The Swahili responsible-gambling line has two grammar slips: "Kama kucheza kamari **imekuwa sio** burudani, acha." — the ku- infinitive subject takes "kumekuwa", and the negative before a noun is "si" (critics panel, verified) | `stopGambling` (`i18n-dict.ts:4326`) | U40 |
 
@@ -1102,6 +1166,7 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   keeps a short word, or whether the glyphs are clear enough on their own — and show Ali at the phase sign-off.
 
 **U6 · [General] Home tightening (all sections kept)**
+- ✅ **DONE in `de2e9643`; what follows is the ORDER AS WRITTEN, kept for the record, and two of its sentences turned out to be false.** The ≤560 reflow it prescribes ALREADY EXISTED and had already bought the −195, so the row gained a 3-line BOUND rather than a saving; and `white-space: nowrap` for D33 is forbidden near money by the proof rail's own note, so it was taken only after the widest printable figure was measured to fit. `.kp-qrow__q` now HAS the clamp this order asked for.
 - **Closing soonest** (`landing-hero.tsx:186-188` → `QuestionRow`; `globals.css:3695-3746`): `.kp-qrow__q` is `--type-h4` (17px) with no clamp,
   in a 3-column grid `"i q p" / ". s p"` with a 20px gap, so at 360 the price column squeezes the title to ≈ 200px (4–5 lines). The cause is layout,
   so the size stays. Below 561px the grid becomes `"i q" / ". s"`, the price moves onto the sub line (same element), and the title gets a 3-line clamp
@@ -1135,7 +1200,7 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Overlap is measured on the `::after` pulse ring, not the 44px box. `scripts/chat-responsiveness-e2e.mjs` is stale (wrong breakpoints) and not evidence.
 - Guard: a stacking-contract row plus a driver asserting the bubble spot hits the page while scrolling and the bubble after 400ms idle. RED: remove the hide rule.
 - 📐 **D3 is wider than its register line** (critics panel, 360 SW, 2026-09-16). The bubble covers content on **seven of nine** surfaces: a
-  ranked player's ROI on the leaderboard, the resolution criteria on a detail page (the line ends "…itathibitisha kwam" under it), the first
+  ranked player’s ROI on the leaderboard — re-measured live 2026-09-23, the 52×52 bubble covers the WHOLE third-place podium column at 360 SW ("@Jaykishan", its tier badge, "+24.0%" and "12 imetatuliwa"), and at 412 it covers the top summary line instead ("Mtabiri · ROI · +52.9%"); at 320 it covers nothing, so the overlap MOVES with the width rather than being one spot — the resolution criteria on a detail page (the line ends "…itathibitisha kwam" under it), the first
   card title on home ("…litafungwa n"), the ⓘ plate and "Maelezo" on the board, and the /results pager. This unit's driver runs on all nine
   surfaces, not on the board alone.
 
@@ -1749,6 +1814,45 @@ U7–U10 don't depend on the density switch and may move earlier if Ali wants th
 7. Production: deploy SUCCESS + `/api/health` ok, re-run the driver against `https://www.50pick.tz` (signed out and as the QA player), read the shots.
    Only then ✅.
 
+⚠️ **MOST OF THIS MATRIX HAS NEVER BEEN RUN, AND SAYING SO IS THE POINT.** Every figure this
+campaign holds through S3 was taken PORTRAIT, at 320/360/412, on a settled page, signed out. The
+Landscape, Keyboard-proxy, Large-text and Slow-network rows below are DEFINED and have never been
+executed once. A matrix that is quoted as coverage while four of its eight rows have never run is
+the same shape of untruth this plan exists to remove, so the rows now carry their own status.
+
+✅ **MEASURED 2026-09-23 — the 561–767px band, which this repo records as never measured.**
+`globals.css`'s own proof-rail note says "the §A6 matrix is 360/768/1280/1920 — 561–767 is never
+measured", and records a real defect that hid there (the gilt pool figure wrapping at its own
+space from 561 up). It matters doubly now because **U6's phone rules end at exactly 560.98**, so
+561 is the seam where the tile layout flips from the U6 grid back to the shared flex row. Driven
+on production at 540/560/561/600/680/767/768 on the home page, and at 561/640/767 × sw/en on
+`/markets`, `/results` and `/updown`: **document overflow false everywhere, no money figure
+wrapped, no topic name cut, no glyph orphaned, and all three proof figures on one line each**. The
+seam behaves: at 560 the tiles are the U6 grid at 71.3px, at 561 the flex row at 74px, and nothing
+is lost crossing it.
+⛔ TWO INSTRUMENT LIES WERE CAUGHT DOING THIS, both of which would have filed a defect that is not
+there. (1) `range.selectNodeContents(el).getClientRects().length` counted the 8px live pip — a
+child ELEMENT — as a second LINE, so `.kp-proof__num` read "2 lines" at every width in the band;
+the two figures with no pip read 1, which is the discriminator. Count the TEXT NODES' distinct
+line-tops. (2) A "runs past the right edge" scan flagged `.ticker-track` at x=27563 — a duplicated
+marquee, deliberately wider than the screen inside an `overflow: hidden` parent. DESIGN_AUTHORITY
+already records the identical false positive ("67 escapes on /markets that were one animating
+ticker"). `document.scrollWidth > clientWidth` stayed FALSE throughout, and that is the number
+that means overflow.
+
+✅ **U6 VERIFIED IN BOTH DENSITIES** (production, 2026-09-23, 360 and 320 SW). U6 is a General
+unit, so its rules are deliberately ungated and must hold in Comfortable too. They do, exactly:
+proof spread 0, pool figures unsplit, no orphaned glyph, no cut name, tiles and question rows
+identical to the pixel. The ONLY differences are `total` +204px and `hero` +40px — which is the
+card density doing its own job on the three board cards and the hero's featured card, not a U6
+rule leaking.
+
+⛔ **STILL NOT VERIFIABLE FROM THIS PC: the signed-in half.** §11 asks every cell to run "signed
+out and signed in as the QA player". `.env.qa.local` exists here but predates the player's minting
+and carries NO `mobile01` key — checked by key NAME, not value — so the password for "QA Mobile
+01" is genuinely not on this machine. Everything S3 measured is SIGNED OUT, and no signed-in claim
+should be read into it.
+
 **Test matrix: the device and condition every driver runs**
 
 | Cell | Viewport | Why | Emulation |
@@ -1777,7 +1881,7 @@ with its reason in §2, never silently.
 | Market card, live priced | **320–354** (median 320 in SW/EN/ZH; the 354s carry the sparkline band, D49) — U1. Quoted before as 347–354 | ≤ **305px** live priced — **met: 301.5** (U3, measured). ⚠️ *"every state ≥ 45px shorter" is RESTATED per state by U3, 2026-09-23*, because it is arithmetic the §9 rules cannot produce: the deltas are **−52** live+band (353.5 → 301.5), **−48** resolved+band (312 → 264), **−44** cold start (347.44 → 303.44), **−40** live no-band (319.5 → 279.5), **−36** resolved no-band (278 → 242). A card with no sparkline has one child fewer and therefore **one 4px row gap fewer**, so the two no-band shapes cannot reach −45 by spacing at all. Target: **every state ≥ 36px shorter, and ≤ 305 wherever a price is shown** |
 | Cards visible while scrolling `/markets` | **1.63** at 360×780 (1.21 at 360×640 and 320×640, 2.03 at 412×915) — U1 | ≈ 1.9 (a true 2.0 needs a card ≤ 280px, more than spacing can give) |
 | Pinned chrome `/markets` | **237** = header 56 + discovery bar 116 + rail 65, in every phone cell and language — U1 | ≤ 201px |
-| Home length | **EN 10.78 · SW 11.09 · ZH 10.11** screens (320×640: EN 13.37 · SW 14.15) — U1. Re-measured 2026-09-23 after U3/U4: **SW 10.66** (8311px) — the compact card gave back ~0.4 of a screen | ⚠️ **≤ 7.5 / 7.8 IS NOT REACHABLE BY U6's LISTED CHANGES, measured before implementing.** The bands at 360 SW are hero **1837** (22%) · how **970** (12%) · board **2575** (31%) · Up&Down 296 · trust **1468** (18%) · 18+ 93. Reaching 7.8 means cutting **2227px**. What §9 U6 lists delivers about **350**: Closing-soonest 4 rows at 164/143/164/164 → ≤110 (**−195**), the 3 proof figures 47/60/60 stacked → one row (**−110**), hero padding (−24), CTA 56→48 (−8), lede one step (−10); the topic tiles' min-h 64→48 gives **~0** because all seven (91·91·91·91·115·115·74) are already content-bound, not floor-bound. That lands at **~10.2 screens**. ⛔ The only blocks big enough to close a 1900px gap are the **6-card home board (1815px)** and the **trust band (1468px)**, and §4 decision 2 with §6 both forbid removing sections. **The number of cards on the home board was an OWNER decision, and Ali delegated it 2026-09-23.** ⭐ **RULED: 3, and it is LIVE (`2de56fd0`).** Six was a DESKTOP number — the constant's own comment said "two rows of three at desktop" — and nobody had written down what it is on a phone: six rows of ONE, 1815px. The hero already draws `HERO_MARKETS` (5) of its own, so six more put ELEVEN markets in front of a visitor before the trust band, under a banner reading "biggest pool first". Measured like for like on one server (the constant flipped and flipped back, because local and production hold different data): **7957 → 7017px, 10.2 → 9.0 screens**. Re-measured on production: **8311 → 7420px, 10.66 → 9.51 screens**, board 1815 → 925. ⚠️ **The target is therefore RESTATED to ≤ 9.5 screens at 360 SW** — met — with U6's own tightening (~350px) expected to take it to ~9.0. ⛔ 7.5/7.8 stays unreachable and is not carried forward as if it were: closing that gap needs a section removed, which §4 decision 2 and §6 both forbid |
+| Home length | **EN 10.78 · SW 11.09 · ZH 10.11** screens (320×640: EN 13.37 · SW 14.15) — U1. Re-measured 2026-09-23 after U3/U4: **SW 10.66** (8311px) — the compact card gave back ~0.4 of a screen | ⚠️ **≤ 7.5 / 7.8 IS NOT REACHABLE BY U6's LISTED CHANGES, measured before implementing.** The bands at 360 SW are hero **1837** (22%) · how **970** (12%) · board **2575** (31%) · Up&Down 296 · trust **1468** (18%) · 18+ 93. Reaching 7.8 means cutting **2227px**. What §9 U6 lists delivers about **350**: Closing-soonest 4 rows at 164/143/164/164 → ≤110 (**−195**), the 3 proof figures 47/60/60 stacked → one row (**−110**), hero padding (−24), CTA 56→48 (−8), lede one step (−10); the topic tiles' min-h 64→48 gives **~0** because all seven (91·91·91·91·115·115·74) are already content-bound, not floor-bound. That lands at **~10.2 screens**. ⛔ The only blocks big enough to close a 1900px gap are the **6-card home board (1815px)** and the **trust band (1468px)**, and §4 decision 2 with §6 both forbid removing sections. **The number of cards on the home board was an OWNER decision, and Ali delegated it 2026-09-23.** ⭐ **RULED: 3, and it is LIVE (`2de56fd0`).** Six was a DESKTOP number — the constant's own comment said "two rows of three at desktop" — and nobody had written down what it is on a phone: six rows of ONE, 1815px. The hero already draws `HERO_MARKETS` (5) of its own, so six more put ELEVEN markets in front of a visitor before the trust band, under a banner reading "biggest pool first". Measured like for like on one server (the constant flipped and flipped back, because local and production hold different data): **7957 → 7017px, 10.2 → 9.0 screens**. Re-measured on production: **8311 → 7420px, 10.66 → 9.51 screens**, board 1815 → 925. ⚠️ **The target is therefore RESTATED to ≤ 9.5 screens at 360 SW** — met — with U6's own tightening (~350px) expected to take it to ~9.0. ⛔ 7.5/7.8 stays unreachable and is not carried forward as if it were: closing that gap needs a section removed, which §4 decision 2 and §6 both forbid . ⭐ **U6 LANDED AND SPENT THAT BUDGET** (`de2e9643`): hero padding 48/32 → 32/24 (−64), the lede one rung to 17px (−48), the CTAs to `--h-control-lg` (−16), and the topic tiles from a ragged 74/98/98 to a uniform 71.3 (−40). Measured on ONE local server before → after: **7017 → 6845px, 9.00 → 8.78 screens** at 360 SW; 320 SW 7184 (9.21), 360 EN 6725 (8.62), 360 ZH 6314 (8.09), 412 SW 6645 (8.52). ✅ **THE PRODUCTION RE-MEASURE IS TAKEN** (2026-09-23, after `f52dcb17` landed): **7104px = 9.11 screens at 360 SW**, against 9.51 before U6 — so U6 bought 0.40 of a screen live, and the restated ≤ 9.5 target is MET with margin. Also 320 SW 7417 (11.59), 360 EN 6954 (8.92), 360 ZH 6543 (8.39), 412 SW 6880 (7.71); document overflow 0 at all five. ⚠️ The live figures are HIGHER than local because the two trees hold different markets — production's four Closing-soonest titles are 120-character UEFA questions where local's were short — which is the same difference that made the clamp claim wrong, and is why a home-length number is only ever quoted with the tree it was taken on. ⬛ Two of U6's listed items were measured and NOT taken, with the reasons kept: the Closing-soonest rows were ALREADY at 100px (the ≤560 reflow that bought the −195 had shipped before the target was written, so the row gained a 3-line BOUND rather than a saving), and the topic tiles' `min-h 64 → 48` gives ~0 because every tile is content-bound — while §9's "with the meta inline" was REFUSED outright: `.kp-topic`'s own comment records that layout being tried and failing at 195px, and the tiles here are 140–160 |
 | Closing-soonest row | **SW 164 · EN 143 · ZH 121** (median) — U1. Quoted before as ≈ 150 | ≤ 110px |
 | Header auth pills | **48** (both pills, every phone cell) — U1 | 40px, both visible at 320 |
 | Chat bubble | 52px, covers Details | 44px, never covers while scrolling |

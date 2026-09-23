@@ -65,7 +65,11 @@ export function TopicTiles({
               <span className="kp-topic__live">{fill(t.home.topicLive, { n: tp.count })}</span>
               {/* The pool is real even at zero, so it is always stated — the same distinction
                   the card draws between `fresh` (no badge) and `noPrice` (no price). */}
-              {" · "}{formatTzsCompact(tp.poolTzs)}
+              {/* 🔴 D33 · the figure is WRAPPED so it can be one unbreakable token. As a bare text
+                  node it shared the meta’s normal wrapping and split at its own space — "TZS" on one
+                  line, "8K" on the next, on most tiles at 320. `.kp-topic__pool` carries the rule and
+                  globals.css carries the arithmetic that proves it cannot clip. */}
+              {" · "}<span className="kp-topic__pool">{formatTzsCompact(tp.poolTzs)}</span>
             </span>
             {tp.leanYesPct != null && (
               <span className="kp-topic__lean" style={{ width: `${tp.leanYesPct}%` }} aria-hidden />

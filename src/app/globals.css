@@ -3643,9 +3643,16 @@ html[data-sheet-open] .route-enter { animation: none; }
   position: relative;
   max-width: var(--w-board);
   margin-inline: auto;
-  padding: var(--sp-12) var(--sp-4);
+  /* ⚠️ THE PHONE RUNG IS SET HERE, NOT IN A MEDIA QUERY — the 768 block below overrides both
+     values, so this declaration is now read as "the phone hero" and nothing else. U6 stepped it
+     48/32 → 32/24 (measured −64px at 360: 16 of padding at each end, 8 off each of four gaps).
+     ⛔ THE GAP IS NOT DECORATION HERE. `.kp-hero__inner` is the grid whose five children are the
+     eyebrow+headline, the proof rail, the conviction bar, the question board and the foot — so
+     this one number is every seam inside the hero, and §Spacing's note (§4576) records that this
+     element deliberately does NOT consume --rh-*. It is padded, not rhythm-scaled. */
+  padding: var(--sp-8) var(--sp-4);
   display: grid;
-  gap: var(--sp-8);
+  gap: var(--sp-6);
 }
 @media (min-width: 768px) {
   .kp-hero__inner { padding: var(--sp-16) var(--sp-6); gap: var(--sp-10); }
@@ -3672,6 +3679,15 @@ html[data-sheet-open] .route-enter { animation: none; }
   color: var(--text-muted);
   max-width: 52ch;
   margin: 0;
+}
+/* At 360 the lede is the page's longest unbroken run of prose and it was set at --type-h3 (20px),
+   one rung under the H1 — five lines and 150px of a hero that is already 22% of the page. The
+   rung below (17px) is where the question rows are set, and a lede that explains the board should
+   not out-type the board. ⛔ It does NOT go to --type-body: that is the rung of ordinary page copy,
+   and this sentence is the hero's only sentence. */
+@media (max-width: 560.98px) {
+  /* density: general — the home hero's lede, not the board; both card-spacing settings. */
+  .kp-hero__lede { font-size: var(--type-h4); }
 }
 .kp-hero__ctas { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-6); }
 .kp-conv__read {
@@ -3914,6 +3930,35 @@ html[data-sheet-open] .route-enter { animation: none; }
      a stacked figure, which at this size looked like two unrelated fields. */
   .kp-qrow__num { font-size: var(--type-h3); }
   .kp-qrow__unit { display: inline; }
+  /* 🔴 A BOUND, AND IT DOES CROP — CORRECTED 2026-09-23, HAVING FIRST BEEN WRITTEN THE OTHER WAY.
+     This comment said "today it crops nothing", measured on a LOCAL server whose four markets had
+     short titles and ran 2 lines. Production's four do not: re-measured live, the questions run
+     4–7 lines at 320 SW, 4–5 at 360 SW and EN, 3 at 360 ZH, so the clamp engages on 4 of 4 rows at
+     320 and 360 and on 3 of 4 at 412. ⛔ A CLAIM ABOUT WHAT A PAGE SHOWS IS A CLAIM ABOUT ITS
+     CONTENT, AND THE TWO TREES HOLD DIFFERENT CONTENT. The rule is unchanged; the sentence about it
+     was wrong and is the thing that got fixed.
+     WHY IT STAYS. The board takes whatever four markets close soonest, so without a ceiling one long
+     title runs seven lines and takes a row past 180px — four of those are most of a hero. §9 U6
+     ordered this clamp for exactly that reason, at exactly this number. Live it holds every row to
+     121.3px against a 110 budget, from a ragged 164/143/164/164 before.
+     ⭐ AND THE CUT IS BOTH SIGNALLED AND RECOVERABLE. `-webkit-line-clamp` paints an ellipsis, so a
+     sighted reader is TOLD the question continues rather than shown a sentence that stops; and it
+     hides overflow without removing the text node, so the link's accessible name is still the whole
+     question — verified on production, where the full 120-character title reads back off the row.
+     The rest of it is one tap away, which is what a teaser board is for.
+     ⭐ AND IT IS THE PLATFORM'S OWN PATTERN, NOT A NEW ONE — checked against the law rather than
+     assumed. DESIGN_AUTHORITY's fit law says truncation is legitimate PAIRED WITH `title`, which
+     keeps the full string reachable (DG-A-10). `.mcardp-q` — the player-facing market card, shipped
+     and design-frozen — already clamps the SAME content type, a market question inside a link, to
+     `-webkit-line-clamp: 2` with no `title`; `admin/markets` and the resolver queue do the same.
+     This row is ONE LINE MORE GENEROUS than the card, and on a touch surface the link to the full
+     market is a stronger affordance than a `title` tooltip a finger can never summon. */
+  .kp-qrow__q {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
   /* ⚠️ The unpriced label is a PHRASE and needs the word space that a "%" must never have. Set
      inline it rendered "—Hakuna dau bado". A `gap` on the cell would have fixed this one and
      broken the other, turning "71% YES" into "71 % YES". */
@@ -3933,7 +3978,14 @@ html[data-sheet-open] .route-enter { animation: none; }
    at half width and ragged. */
 @media (max-width: 560.98px) {
   /* density: general — the home hero's calls to action, not the board; both card-spacing settings. */
-  .kp-hero__cta { width: 100%; justify-content: center; }
+  /* ⚠️ `btn-xl` (56px) IS KEPT ON THE ELEMENT and only its height steps down, to --h-control-lg.
+     The xl rung also carries 24px of measure, 16.5px type and --r-lg, and those are what make
+     these two read as the page's primary action; stepping the CLASS down would have changed all
+     four. 56 is the desktop rung for a control that is one of two buttons on a wide line — at 360
+     each one is full-width, where height is the only thing carrying weight and 48 carries it.
+     ⛔ 48 IS --h-control-lg, a rung, not a number: it is 4px clear of --h-input/--h-control-md (44)
+     and 4px clear of the 44px tap floor, so this does not touch §A3. */
+  .kp-hero__cta { width: 100%; justify-content: center; height: var(--h-control-lg); }
 }
 
 /* ===========================================================================
@@ -4770,6 +4822,75 @@ textarea::-webkit-resizer {
 }
 /* 2026-09-14 (E-400 ⑦f): "N live" on a topic tile was betting-YES green (§B2a); neutral ink, one step above the
    faint meta line it sits in. */
+/* 🔴 D33 · THE POOL FIGURE IS ONE TOKEN, BECAUSE MONEY NEVER REFLOWS (§M4).
+   It used to be a bare text node in `.kp-topic__m`, so the meta's normal wrapping was free to break
+   it at its own space: measured 2026-09-23, "TZS 0" and "TZS 8K" split across two lines on 5 of 6
+   tiles at 320 SW, 5 of 6 at 360 ZH and 2 of 6 at 360 EN — "TZS" over "0", a figure reading as two.
+   ⚠️ THE BREAK DOES NOT DISAPPEAR, IT MOVES. The meta is still allowed to wrap at the " · " before
+   the figure, so a tile that needs two lines still gets two — this rule decides only WHERE, and the
+   figure is no longer a legal break point.
+   ⛔ AND THIS IS THE ONE PLACE `white-space: nowrap` IS ALLOWED NEAR MONEY. The proof-rail note
+   above forbids it outright, because there a nowrap would convert a wrap into a CLIP and §A5 forbids
+   clipping money. The difference is measured, not assumed: the widest figure `formatTzsCompact` can
+   emit is ten characters (`test:money-format` §3 pins that), 66px at --type-micro's 0.6em advance,
+   against 78px of usable meta at 320 — the narrowest tile the book has. It fits with 12px to spare,
+   so there is nothing for `.kp-topic`'s `overflow: hidden` to cut. Change the type rung or the
+   meta's padding and that margin is what you have spent. */
+.kp-topic__pool { white-space: nowrap; }
+
+/* 🔴 THE PHONE TILE PUTS THE NAME ON ITS OWN LINE, AND THE GLYPH DOWN BESIDE THE META.
+   ⚠️ WHAT WAS WRONG: the tile is a wrapping flex row — glyph, name, then a meta forced onto
+   its own line by `flex-basis: 100%`. The name carries `flex: 1 1 auto`, so its basis is its
+   CONTENT width, and flex-wrap breaks a line before it shrinks one (the hero CTA block states
+   the same law). A name wider than the box beside the glyph therefore did not ellipsise and did
+   not shrink — it WRAPPED, dropping under the glyph and leaving the glyph alone on a row.
+   Measured 2026-09-23 at 360 SW, `Hali ya hewa` and `Utamaduni` did this while `Michezo` and
+   `Kripto` did not: one grid drawing two different tiles, and because grid rows stretch, each
+   ragged tile dragged its partner to 98px with its content floating in the middle of it.
+   ⛔ AND NEITHER ELLIPSIS NOR A SMALLER TYPE RUNG COULD FIX IT — measured, not assumed. The
+   glyph plus its gap takes 30px, so the name box is 96px at 360 and only 76px at 320, out of
+   108px of tile. Against that, the seven category labels in Swahili (the DEFAULT locale) run:
+     Hali ya hewa 107.7 · Utamaduni 96.5 · Teknolojia 90.7 · Mada zote 89.5 · Nyingine 79.5   @17px
+   At 320, FIVE of them overflow 76px at 17px and `Utamaduni` still overflows at 14px (79.4) —
+   so no type rung clears it, and `Utamaduni` and `Teknolojia` are single unbroken words that
+   cannot wrap, which means the only thing left for them is a cut: `Utamadu…`. A category label
+   is what a player navigates by. Truncating one to save a row is the wrong trade.
+   ⭐ SO THE GLYPH MOVES INSTEAD OF THE WORD. The name takes the tile's whole measure — 108px at
+   320, 128px at 360 — which clears every label above on ONE line, and the glyph goes down to the
+   meta row, where it costs nothing: `.kp-topic__m` was already paying a hand-typed
+   `padding-left: calc(18px + var(--sp-3))` for the express purpose of clearing a glyph that is
+   now actually there. Every tile ends the same height, no name is cut, and the row is shorter
+   than the ragged one it replaces.
+   ⛔ PHONE ONLY. From 561 up the tile is 300px or wider and the flex row has never had this
+   problem, so the glyph keeps leading the name there — the layout the design system froze. */
+@media (max-width: 560.98px) {
+  /* density: general — the home topic tiles, not the board; both card-spacing settings. */
+  .kp-topic {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "n n"
+      "g m";
+    align-items: center;
+  }
+  .kp-topic__glyph { grid-area: g; }
+  /* ⚠️ AND THE NAME MUST BE ALLOWED TO WRAP HERE, OR THE MEASURE ABOVE IS HALF A FIX. The base
+     rule sets `white-space: nowrap` with an ellipsis, which is right at desktop where the tile is
+     300px+ and a cut can only mean something pathological. At 320 the tile gives the name 106px
+     and `Hali ya hewa` needs 107.7 — so with nowrap it came back as `Hali ya hew…`, cut by 1.7px.
+     It is two words: it should take a second line, not lose a letter. Every SINGLE word now fits
+     (Utamaduni 96.5, Teknolojia 90.7, Nyingine 79.5 against 106), which is what made this layout
+     the right one; the clamp is a bound on a pathological string, not the normal case. */
+  .kp-topic__n {
+    grid-area: n;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.25;
+  }
+  .kp-topic__m { grid-area: m; flex-basis: auto; padding-left: 0; }
+}
 .kp-topic__live { color: var(--text-muted); }
 /* The topic's crowd lean, drawn with the conviction bar's own gradient. ⛔ Rendered ONLY when the
    topic has money on it — a 50%-wide bar over an empty topic is the same fabricated claim as a
