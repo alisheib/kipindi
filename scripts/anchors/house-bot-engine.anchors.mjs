@@ -29,6 +29,9 @@ const WORKER = "src/lib/server/house-bot/worker.ts";
 /* ⭐ C7 step 4b · the one server-side staleness predicate the console renders (rulings 352, 353, 354). */
 const HEALTH = "src/lib/server/house-bot/engine-health.ts";
 const OUTCOMES = "src/lib/server/house-bot/outcomes.ts";
+/* ⭐ 2026-09-23 · the desk's price read. Not a house-bot file, but `peekVendorBar` is consumed by the house bot
+   and by NOTHING else, so its behaviour is the desk's behaviour and belongs in the desk's own red drive. */
+const TERMINAL_VENDOR = "src/lib/server/updown-terminal-vendor.ts";
 /* ⭐ C5 alerts · the boot refusal that had no voice until the clock-skew build (01 register:1210). */
 const ENGINE = "src/lib/server/house-bot/engine.ts";
 
@@ -845,5 +848,23 @@ export const MUTATIONS = [
     expect: "7.10a · ⭐ THE PRODUCTION SHAPE · a one-tick band (±0.02 on an open of 86,379.20) is floored to 43.19, so a $10 drift is ALLOWED at 25%",
     suite: "engine-mem",
     sections: "7",
+  },
+  {
+    /* ⭐ THE THIRD BLOCKER OF 2026-09-23, PUT BACK. `peekVendorBar` saw only the terminal's cache, which a PLAYER
+       warms by opening the 1-minute chart; the desk's other route is a CONFIRMED observation under 60 s old, and
+       the provider's dated bar publishes ~91 s after its boundary, so that route is older than its own threshold
+       the moment it exists. Removing the oracle's republished reading restores exactly that: with no chart open
+       the desk holds no price at all and skips every market, silently.
+       ⛔ 14.7c MUST STAY GREEN under this mutation — a stale reading is refused either way; what this removes is
+       the desk's ability to hold ANY reading, not its ability to judge one. */
+    name: "oracle-bar-unpublished · the desk goes back to seeing only a chart cache a player warms, so with no chart open it has no price at all",
+    file: TERMINAL_VENDOR,
+    from: `  const oracle = oracleBars.get(assetId);
+  if (oracle && (!newest || oracle.t > newest.t)) newest = oracle;
+  return newest;`,
+    to: `  return newest;`,
+    expect: "14.7b · ⭐ …and the oracle's own confirmed reading now serves it — the desk can price with no chart open",
+    suite: "engine-mem",
+    sections: "14",
   },
 ];

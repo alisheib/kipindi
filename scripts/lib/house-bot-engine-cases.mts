@@ -1702,6 +1702,33 @@ await guard("14", async () => {
     VEN.__clearVendorCacheForTests();
     await cacheBars("6H", [{ t: minute(now), c: 999 }]);
     ok("14.7 · a 5-minute bar (6H) is not a 1-minute bar → no vendor price", VEN.peekVendorBar(asset.id) === null && (await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 5_000 })) === null);
+    /* 14.7a–14.7e · THE ORACLE'S READING, REPUBLISHED (2026-09-23).
+       🔴 THE PRODUCTION SHAPE. The desk's two price routes were a chart cache only a PLAYER warms and a CONFIRMED
+       observation under 60 s old — and the provider's dated bar publishes ~91 s after its boundary, so that second
+       route is older than its own threshold the moment it exists. Measured live: the newest confirmed BTC
+       observation never read under 90 s across twenty minutes. With no chart open the desk had NO price at all. */
+    VEN.__clearVendorCacheForTests();
+    ok("14.7a · ⭐ THE PRODUCTION SHAPE · no chart has been opened, so there is no cached bar at all",
+      VEN.peekVendorBar(asset.id) === null && (await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 30_000 })) === null);
+    VEN.publishOracleBar(asset.id, 777, new Date(minute(now)).toISOString());
+    const viaOracle = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 30_000 });
+    ok("14.7b · ⭐ …and the oracle's own confirmed reading now serves it — the desk can price with no chart open",
+      viaOracle?.source === "vendor_bar" && viaOracle.price === 777 && viaOracle.ageSec === 30, j(viaOracle));
+    /* ⛔ THE ONE THAT KEEPS THE AGE CHECK HONEST. `t` is the QUOTED instant, never the instant it was published —
+       stamping it "now" would make every reading look fresh and turn the caller's staleness test into a check
+       that cannot fail, which is the whole reason the desk may refuse a price at all. */
+    ok("14.7c · ⭐ DISCRIMINATES · the age is judged from the QUOTED instant, not from when it was published — 150 s is still refused",
+      (await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 150_000 })) === null);
+    await cacheBars("15M", [{ t: minute(now) + 60_000, c: 888 }]);
+    const chartWins = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 90_000 });
+    ok("14.7d · a chart-warmed bar that is NEWER still wins — the oracle only decides the no-chart case",
+      chartWins?.price === 888, j(chartWins));
+    VEN.publishOracleBar(asset.id, 111, new Date(minute(now) - 300_000).toISOString());
+    const notBackwards = VEN.peekVendorBar(asset.id);
+    ok("14.7e · ⛔ the oracle clock never moves backwards — an OLDER boundary does not replace what is held",
+      notBackwards != null && notBackwards.c === 888, j(notBackwards));
+    ok("14.7f · ⛔ A15 · not one of these made a paid call", paid === 0, `${paid} calls`);
+
     VEN.__clearVendorCacheForTests();
     await cacheBars("30M", [{ t: minute(now), c: 1 }], 500);
     ok("14.8 · a cached vendor FAILURE is no bar", VEN.peekVendorBar(asset.id) === null);

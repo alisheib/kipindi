@@ -19,6 +19,9 @@
 import { randomId } from "./crypto";
 import { audit } from "./audit";
 import { withLock } from "./locks";
+// The oracle's confirmed reading is republished here for the house desk's own price read (2026-09-23);
+// see `publishOracleBar` for why the desk could otherwise never hold a price it was allowed to use.
+import { publishOracleBar } from "./updown-terminal-vendor";
 import { marketStore } from "./market-dal";
 import { createMarket, settleMarket } from "./market-service";
 import {
@@ -642,6 +645,17 @@ export async function acquireObservation(
   if (!fresh || fresh.state !== "CONFIRMED" || fresh.price == null) {
     return { state: "pending", id: obs.id, detail: "confirmation did not stick" };
   }
+  /**
+   * ⭐ THE READING THE HOUSE DESK COULD NEVER SEE — 2026-09-23. The oracle has just paid for this bar; keeping it
+   * where `peekVendorBar` can find it costs nothing and calls nothing, so A15 stands. Without it the desk's only
+   * price routes were a player-warmed chart cache and a CONFIRMED observation under 60 s old — and the provider's
+   * dated bar publishes ~91 s after its boundary, so that second route is older than its own threshold the moment
+   * it exists. Measured: the newest confirmed BTC observation never read under 90 s across twenty minutes.
+   * ⛔ MONEY IS NOT TOUCHED. Settlement, `openPrice`, the frozen targets and this confirmation all still read the
+   * observation row exactly as before; this republishes the same number for a READ the desk alone performs, and
+   * `publishOracleBar` carries the QUOTED instant so the desk still judges its age and can still refuse it.
+   */
+  publishOracleBar(asset.id, fresh.price, fresh.sourceQuotedAt);
   audit({
     category: "SYSTEM",
     action: "updown.observation.confirmed",

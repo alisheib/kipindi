@@ -129,7 +129,43 @@ export async function vendorBarsFor(
 const ONE_MINUTE_RANGES = (Object.keys(VENDOR_PLAN) as TerminalRange[]).filter((r) => VENDOR_PLAN[r].intervalMs === 60_000);
 
 /**
- * The newest cached 1-minute bar for this asset, or null — from the cache ONLY (04 A15: house bots make no new
+ * ⭐ THE ORACLE'S OWN READING, REPUBLISHED FOR THE HOUSE DESK — 2026-09-23.
+ *
+ * 🔴 WHY THIS MAP EXISTS. `peekVendorBar` saw the terminal's cache and nothing else, and that cache is warmed
+ * only when a PLAYER opens the 1-minute chart in this same container. The desk's other price route, a CONFIRMED
+ * observation, is bounded by `UD_OBSERVATION_MAX_AGE_SEC` = 60 s — and the provider's dated bar publishes about
+ * 91 s after its boundary (E-166 measured that a month before anyone joined the two numbers). So a confirmed
+ * observation is ALREADY OLDER THAN ITS OWN THRESHOLD the moment it first exists, and that route is dead by
+ * construction. Measured live over twenty minutes: the newest confirmed BTC observation never once read under
+ * 90 s. With no player on the chart the desk had NO price at all and skipped every market, silently — the third
+ * of three stacked blockers behind a desk that had placed nothing in 23 hours.
+ *
+ * ⛔ THIS COSTS NOTHING AND CALLS NOTHING, so A15 stands untouched: the desk still makes no metered call. The
+ * oracle already fetched this bar to settle the boundary. All that changes is that its reading is kept where the
+ * desk can see it, instead of living only in a row the desk is forbidden by age to read.
+ *
+ * ⛔ AND IT IS A SEPARATE MAP, NEVER A WRITE INTO `cache`. The terminal reads `cache` to DRAW the chart, so
+ * publishing a one-bar array under `<assetId>:15M` would replace a viewer's whole series with a single point.
+ */
+const oracleBars = new Map<string, VendorBar>();
+
+/**
+ * Publish the oracle's confirmed boundary reading so `peekVendorBar` can serve it. A flat bar: the oracle reads
+ * ONE price at a named instant, so o/h/l/c are that price and there is no volume to claim.
+ * ⚠️ `t` IS THE INSTANT THE PRICE WAS QUOTED, never the instant it was stored. Stamping it "now" would make every
+ * reading look fresh and would turn the caller's age check — the only thing standing between the desk and a bet
+ * priced on a stale number — into a check that cannot fail.
+ */
+export function publishOracleBar(assetId: string, price: number, quotedAtIso: string | null): void {
+  if (quotedAtIso == null) return;
+  const t = Date.parse(quotedAtIso);
+  if (!Number.isFinite(t) || !Number.isFinite(price) || price <= 0) return;
+  const prev = oracleBars.get(assetId);
+  if (prev && prev.t >= t) return; // a later boundary only; never move this clock backwards
+  oracleBars.set(assetId, { t, o: price, h: price, l: price, c: price, v: null });
+}
+
+/** The newest cached 1-minute bar for this asset, or null — from the cache ONLY (04 A15: house bots make no new
  * metered calls). Never fetches, never extends a TTL, whatever the cache holds and however old it is; the caller
  * judges the bar's age. A cached failure (null bars) is no bar.
  */
@@ -140,10 +176,15 @@ export function peekVendorBar(assetId: string): VendorBar | null {
     const last = bars && bars.length > 0 ? bars[bars.length - 1] : null;
     if (last && (!newest || last.t > newest.t)) newest = last;
   }
+  // The oracle's reading competes on the SAME terms — newest `t` wins, and the caller still judges its age. A
+  // chart-warmed bar is usually fresher and keeps winning; this only decides the case where there is no chart.
+  const oracle = oracleBars.get(assetId);
+  if (oracle && (!newest || oracle.t > newest.t)) newest = oracle;
   return newest;
 }
 
 /** Test hook — the suite clears the cache between fixtures. */
 export function __clearVendorCacheForTests(): void {
   cache.clear();
+  oracleBars.clear();
 }

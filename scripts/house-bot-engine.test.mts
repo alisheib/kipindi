@@ -62,5 +62,15 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  *   at the default 25%, and within 0.02 even at 100, which is the highest the field admits. 7.10d is the case
  *   that says so: NO officer setting could have fixed it. 7.10b and 7.10e are the discriminators — the guard
  *   still refuses $50 of drift, and a band that already describes its asset still binds unchanged.
- * What a run PRINTED: `794 passed` memory and `773 passed` Postgres, ALL PASS on both stores, 0 failed. */
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 794, postgres: 773 }, dbPrefix: "hb_engine" });
+ * What a run PRINTED: `794 passed` memory and `773 passed` Postgres, ALL PASS on both stores, 0 failed.
+ *
+ * ⭐ RAISED AGAIN 794 → 800 MEMORY / 773 → 779 POSTGRES, 2026-09-23 — six cases, +6 in EACH child:
+ * · 14.7a–f · THE ORACLE'S READING, REPUBLISHED. The desk's two price routes were a chart cache only a PLAYER
+ *   warms and a CONFIRMED observation under 60 s old — and the provider's dated bar publishes ~91 s after its
+ *   boundary (E-166 measured that a month earlier), so that second route is older than its own threshold the
+ *   moment it exists. Measured live: the newest confirmed BTC observation never read under 90 s across twenty
+ *   minutes, so with no chart open the desk had NO price and skipped every market silently. 14.7c is the case
+ *   that keeps the fix honest — the age is judged from the QUOTED instant, so a reading that is genuinely stale
+ *   is still refused and the staleness test cannot become a check that cannot fail.
+ * What a run PRINTED: `800 passed` memory and `779 passed` Postgres, ALL PASS on both stores, 0 failed. */
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 800, postgres: 779 }, dbPrefix: "hb_engine" });
