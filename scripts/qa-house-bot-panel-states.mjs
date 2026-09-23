@@ -60,6 +60,13 @@ const STATES = [
   ["A-A5", `/admin/desk/${ACTIVE}?tab=activity&kind=responding&product=polls&outcome=placed&range=7d`, "ACTIVE account · every filter at once"],
   ["A-H1", `/admin/desk/${ACTIVE}?tab=history`, "ACTIVE account · history, rows"],
   ["A-H2", `/admin/desk/${ACTIVE}?tab=history&hpage=2`, "ACTIVE account · history, page 2"],
+  /* ⭐ 2026-09-23 · THE IDLE EXPLANATION, WHICH IS REACHED BY A FLAG AND NOT A TAB — the shape this file was
+     built to catch. Its body is a Callout holding a reason list whose rows are a sentence beside a count: the
+     sentence is `min-w-0` so it wraps, the count is `shrink-0` so it never does (432(b)). At 360 that pairing
+     is the whole risk, and nothing had ever looked at it. The REMOVED twin is here too because the link is not
+     offered there and the panel must therefore be absent rather than empty. */
+  ["A-W1", `/admin/desk/${ACTIVE}?why=1`, "ACTIVE account · the idle explanation panel"],
+  ["R-W1", `/admin/desk/${REMOVED}?why=1`, "REMOVED account · the idle explanation is NOT offered"],
   ["R-A1", `/admin/desk/${REMOVED}?tab=activity`, "REMOVED account · activity"],
   ["R-H1", `/admin/desk/${REMOVED}?tab=history`, "REMOVED account · history"],
 ].filter(([id, route]) => (!ONLY || ONLY.includes(id)) && !/\/undefined|\/\?/.test(route));
