@@ -28,6 +28,7 @@ import { HOUSE_AUDIT, isAllowedHouseAuditPayload } from "@/lib/house-bot/constan
 import {
   CAP_FIELDS,
   DEFAULT_RULES_V1,
+  migrateRules,
   parseHouseBotRules,
   validateHouseBotRules,
   type CapField,
@@ -195,7 +196,28 @@ export async function saveHouseBotRules(input: {
    * throw away an account's saved rules on the one day they could not be read — the officer is told instead.
    */
   const parsed = parseHouseBotRules(bot.rules, ctx);
-  if (!parsed.ok) return { ok: false, code: "RULES_UNREADABLE" };
+  /**
+   * ⭐ THE WORD THAT CARRIED THE OLD REFUSAL WAS "SILENTLY", AND IT NO LONGER APPLIES (Ali ruled 2026-09-23).
+   *
+   * 🔴 This returned `RULES_UNREADABLE` the moment the stored document would not parse — correct while the
+   * console drew NO form for that state, because a rebuild would then have thrown an account's saved rules away
+   * with nobody looking. But it also meant there was no write path at all, while Start told the officer to
+   * "Open Rules … save" and painted it as a live link: a refusal naming a remedy that did not exist, with
+   * Remove and re-designate as the only real exit.
+   *
+   * ⛔ NOTHING IS SILENT NOW. The console draws the form for this state seeded from `migrateRules` — the
+   * converted values the refusal has always promised — or from `DEFAULT_RULES_V1`, and it SAYS which through
+   * `ConsoleRulesForm.basis`. The officer reads the values, and the save posts every leaf explicitly, so what
+   * lands is what they saw and pressed Save on, not a rebuild that happened behind them.
+   * ⛔ AND THE ROUND TRIP STILL GUARDS THE WRITE. `RULES_UNREADABLE` below is unchanged: whatever this base
+   * produces must parse back, or the save is refused — so a base that is itself wrong cannot be stored.
+   */
+  const base = parsed.ok
+    ? parsed.rules
+    : (() => {
+      const migrated = migrateRules(bot.rules, ctx);
+      return migrated.ok ? migrated.rules : DEFAULT_RULES_V1(ctx);
+    })();
 
   /**
    * ⛔ WHAT IS VALIDATED IS THE WHOLE DOCUMENT; WHAT IS STORED IS ONLY WHAT THE FORM OWNS. Two objects, and
@@ -275,13 +297,13 @@ export async function saveHouseBotRules(input: {
    * output, so nothing is re-derived between the check and the write.
    */
   const rulesToCheck: Record<string, unknown> = {
-    ...parsed.rules,
+    ...base,
     schedule,
-    scope: { ...parsed.rules.scope, products: { ...input.flags.products }, ...scopeLists },
+    scope: { ...base.scope, products: { ...input.flags.products }, ...scopeLists },
     modes: { updown: { ...input.flags.modes.updown }, polls: { ...input.flags.modes.polls } },
-    enterNow: { ...parsed.rules.enterNow, enabled: input.flags.enterNow },
-    targeting: { ...parsed.rules.targeting, enabled: input.flags.targeting },
-    counter: { ...parsed.rules.counter, amount: { kind: input.amountKind } },
+    enterNow: { ...base.enterNow, enabled: input.flags.enterNow },
+    targeting: { ...base.targeting, enabled: input.flags.targeting },
+    counter: { ...base.counter, amount: { kind: input.amountKind } },
   };
   /* ⛔ WRITTEN BY PATH, FROM THE VALIDATOR'S OWN IDS — so a leaf added to `RULE_NUMBER_FIELDS` arrives here
      without this module being edited, and a leaf that is NOT in the posted set cannot be silently kept. */
