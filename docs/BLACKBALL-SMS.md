@@ -5,7 +5,25 @@ Endpoints: `POST /api/sms/send` · `POST /api/account/balance` (Swagger: `bulk-a
 Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib/server/sms.ts`
 (facade), `src/app/api/webhooks/blackball/route.ts` (delivery receipts).
 
-## Status — 2026-09-23
+## Status — 2026-09-23 · ✅ **DONE — the integration is CLOSED**
+
+> **Ali, 2026-09-23: *"it's fine till here, I think we are good, push this as done; we will later implement
+> a campaign for SMS sending."*** The rail is complete and proven end to end (§4.8): the platform sends,
+> the handset receives, the receipt comes back by itself and settles the real row. Nothing here is left
+> half-built, and no further work is planned in this file.
+>
+> ▶ **Bulk/marketing sending is a SEPARATE programme, already planned:**
+> [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) — the contacts
+> book and the campaign engine, 52 units, starting at S1. ⛔ It ships CLOSED until the Gaming Board
+> advertising approval is on file, and Phase A builds the consent, suppression, opt-out and
+> responsible-gambling gates *before* anything can send.
+>
+> **Left with the vendor, none of it blocking:** the three whitelisted sender-ID strings with TCRA
+> confirmation, the interval between their 5 retries, and the `CODE` values that accompany failure
+> tokens (only `DELIVRD` has ever arrived). **Owner item:** the webhook secret travelled through chat and
+> WhatsApp while this was being fixed — rotate it when convenient (new value in Railway, new URL to them,
+> one test send to confirm).
+
 
 | | |
 |---|---|
