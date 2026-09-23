@@ -235,6 +235,13 @@ await runTwoStores({
    * ⛔ THE CONTROLS MATTER AS MUCH AS THE CASE. An account whose document PARSES must still read `saved`, or the
    * failure path has quietly become the path everyone gets; and a form seeded from defaults that did not SAY so
    * would read as the account's own numbers, which is worse than drawing no form at all. */
-  minPass: { memory: 799, postgres: 560 },
+  /* ⭐ RAISED 799 → 803 MEMORY / 560 → 564 POSTGRES, 2026-09-23, to what this run PRINTED. +4 in each child:
+   * 1.541 and its two controls — "Why is it not staking?", the one question the desk could not answer. A
+   * running account with no bets painted the same row whether there was nothing to stake on or four hundred
+   * markets had been considered and refused.
+   * ⛔ THE CONTROLS ARE THE HALF THAT MATTERS: the officer must GET an answer, or the refused viewer's two
+   * nulls measure a door that is simply broken; and switching the desk back ON must CHANGE the sentence, or
+   * the switched-off answer is a constant this door would paint whatever the state. */
+  minPass: { memory: 803, postgres: 564 },
   dbPrefix: "hb_console",
 });

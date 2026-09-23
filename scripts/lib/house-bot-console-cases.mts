@@ -2970,6 +2970,36 @@ try {
       real !== null && real.found === true && invented !== null && invented.found === false,
       j({ real: real && real.found, invented: invented && invented.found }));
 
+    /* ━━ 1.541 · "WHY IS IT NOT STAKING?" — THE ONE QUESTION THE DESK COULD NOT ANSWER ━━━━━━━━━━━━━━━━━━━━
+     * A running account with no bets painted the same row whether there was nothing to stake on or four hundred
+     * markets had been considered and refused. The door walks the planner`s own ladder read-only and answers in
+     * the console`s own sentences. It is gated like every other reader here, and it is not an id oracle either. */
+    {
+      const mine: Any = await GATEM.houseWhyIdleForConsole(OFFICER, "/admin/desk", acct.botId);
+      const refused = await GATEM.houseWhyIdleForConsole(playerId, "/admin/desk", acct.botId);
+      const inventedWhy = await GATEM.houseWhyIdleForConsole(playerId, "/admin/desk", "hb_0123456789abcdef01234567");
+      ok("1.541 · a viewer OUTSIDE the audience receives `null` and nothing else, and a real id answers exactly as an invented one — this panel is no more an id oracle than the page it sits on",
+        refused === null && inventedWhy === null && all(refused) === all(inventedWhy) && !all(refused).includes(acct.botId),
+        j({ refused, inventedWhy }));
+      ok("1.541 · CONTROL · the officer DOES get an answer — which is what makes the two nulls above a measurement — and it is a FINISHED SENTENCE, never an engine code handed to the page to translate",
+        mine !== null && typeof mine.headline === "string" && mine.headline.length > 20 && /[.!?]$/.test(mine.headline)
+          && !/[A-Z][A-Z0-9]{2,}_[A-Z]/.test(all(mine)),
+        j(mine));
+
+      /* ⛔ THE DESK`S OWN SWITCH ANSWERS BEFORE THE ACCOUNT`S STATE DOES, and before any market is read: an
+         officer whose whole desk is off must be told THAT, not something true of this one account. */
+      await w.switchOff();
+      const off: Any = await GATEM.houseWhyIdleForConsole(OFFICER, "/admin/desk", acct.botId);
+      await w.switchOn();
+      const backOn: Any = await GATEM.houseWhyIdleForConsole(OFFICER, "/admin/desk", acct.botId);
+      ok("1.541 · a switched-off DESK is the whole answer, given with no walk behind it: no reasons, no counts, nothing that could be read as a fault in the rules of this one account",
+        off !== null && /switched off/i.test(off.headline) && off.reasons.length === 0 && off.scanned === "" && off.wouldStake === 0,
+        j(off));
+      ok("1.541 · CONTROL · switching the desk back ON changes the answer — so the sentence above was read off the switch and is not a constant this door paints whatever the state",
+        backOn !== null && backOn.headline !== off.headline && !/switched off/i.test(backOn.headline),
+        j({ off: off && off.headline, backOn: backOn && backOn.headline }));
+    }
+
     /* ⭐ 456's OTHER HALF (Ali, 2026-09-23) · READING a holder's money and CHANGING it are both PLATFORM acts, and
        until now only the reading one had a door on this page. An account stakes from an ordinary player's wallet,
        so funding it is funding that player — and `/admin/players/<id>` already carries the audited control: a

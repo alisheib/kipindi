@@ -3187,4 +3187,28 @@ import { formatEat } from "@/lib/utils";`,
     expect: "1.626 · a document this build CANNOT read still draws the rules form, seeded from the defaults, and SAYS so",
     suite: "console-mem",
   },
+
+  /* ── 2026-09-23 · "WHY IS IT NOT STAKING?" ─────────────────────────────────────────────────────────────
+   * The door that answers it walks the planner@s ladder read-only. Two things about it are load-bearing and
+   * each fails on its own: it is GATED like every other reader here, and its first answer is read off the
+   * desk@s own switch rather than painted regardless. */
+  {
+    name: "why-idle-ungated · the idle explanation stops checking its audience, so any signed-in account can ask why a house account is not staking",
+    file: GATE,
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const id = typeof botId === "string" ? botId : "";`,
+    to: `  const id = typeof botId === "string" ? botId : "";`,
+    expect: "1.541 · a viewer OUTSIDE the audience receives",
+    suite: "console-mem",
+    sections: "2e",
+  },
+  {
+    name: "why-idle-ignores-the-switch · a switched-off desk stops being the answer, so an officer whose whole desk is off is told something true only of this one account",
+    file: GATE,
+    from: `  if (!controlR.value.enabled) return only(WHY_IDLE_COPY.deskOff);`,
+    to: `  if (false) return only(WHY_IDLE_COPY.deskOff);`,
+    expect: "1.541 · a switched-off DESK is the whole answer",
+    suite: "console-mem",
+    sections: "2e",
+  },
 ];
