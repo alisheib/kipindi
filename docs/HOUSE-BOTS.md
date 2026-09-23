@@ -1489,6 +1489,72 @@ outside the dictionary (`In flight` is not in it) picked the player's half with 
 panels carry **no filter rail** while the activity panels carry four axes, although the history reader already
 holds a `fromIso` facet.
 
+### 12.2 Why a switched-on, funded, correctly-scoped desk placed nothing for 23 hours — 2026-09-23
+
+⭐ **THE FINDING IS THAT EVERY AXIS AN OPERATOR OR AN ENGINEER WOULD CHECK WAS GREEN.** Read off production,
+SELECT-only, ids hashed, every age computed in SQL: the master switch ON, one account ACTIVE, `rulesVersion` 19,
+all eleven caps set, wallet **TZS 70,000** ACTIVE and unfrozen, holder not closed, schedule all-day on all seven
+days, scope correctly ticked to BTC/USD 5, 10 and 15 — every one of them `state = RUNNING` with an open round —
+`beat:planner` **5 seconds** old, eleven engine rows `engineEnabled = true` with no `pollerErrorCode`. And
+`HouseBotIntent` = **0 rows, ever**. The scope defect of 2026-09-22 was genuinely fixed; this was a second,
+independent blocker underneath it, and the desk said nothing about either.
+
+**THE CAUSE.** A15 scales "has the price run away from the open?" by the round's OWN winning margin. `computeTargets`
+(`updown-config.ts:1526`) is `max(openPrice × marginBps/10_000, tick)`, and `updown-config.ts:298` sets
+`defaultMarginBps: 0` with an EMPTY `marginSchedule` — *"every duration now runs at the TICK FLOOR (Ali's decision,
+2026-08-04)"*. `marginBpsForChain` is `chain.marginBps ?? scheduled ?? default`, and `??` does not fall through 0.
+So every chain without a deliberate override freezes a band of ONE TICK. BTC is `decimals 2, minMoveTicks 2` →
+**0.02 against an open of 86,379.20**, a margin of 0.23 parts per million. `udCloseness` then required
+
+    |price − open| ≤ (closenessPct / 100) × 0.02
+
+which is **0.005** at the default 25 and **0.02** at 100 — and 100 is the highest `FIELD_META["updown.closenessPct"]`
+admits. Three rounds open at one instant carried opens of 86,329.34, 86,361.07 and 86,379.20: BTC moved **fifty
+dollars inside fifteen minutes**. ⛔ **So no setting an officer could choose would ever have let it bet**, and the
+same line refuses OPENER, FILL and COUNTER alike — which is why the count was 0 and not merely low.
+
+**THE FIX** is a floor under the band *this one test* uses, never a cap: `band = max(margin, openPrice ×
+UD_CLOSENESS_FLOOR_BPS / 10_000)`, 5 bps — the value the one chain with a deliberate margin (XAU/USD 15-min) already
+carries. BTC's band becomes 43.19, so at 25% the desk may sit within 10.80 of the open. ⛔ **The player game is
+untouched:** `computeTargets`, the frozen `upTarget`/`downTarget` and settlement all still read the round's own
+margin. What a player wins did not change.
+
+**A SECOND, INDEPENDENT BLOCKER, FOUND THE SAME MORNING.** The live document also had `scope.poolTotalMaxTzs = 0`.
+`decide.ts:383` refuses `POOL_BAND` when `total > max`, and a COUNTER is by construction a reply to a stake ALREADY
+in the pool — so the total is never 0 and every counter was refused. The field's own default is EMPTY (`null`, no
+ceiling); a typed 0 reads like "no limit" and means "only a pool holding nothing". Same shape as the empty chain
+list: a value that looks permissive and matches nothing. Now refused at save (`R-COUNTER-POOL-MAX-ZERO`), with the
+two discriminators that make the rule honest — an EMPTY maximum still saves, and a 0 with every counter OFF still
+saves.
+
+**WHAT THIS COST, AND THE INSTRUMENT THAT IS STILL MISSING.** A refused decision is written NOWHERE: `HouseBotIntent`
+gets a row only when the engine decides to bet, so "0 rows" is indistinguishable from "never considered". Every
+screen read healthy while three modes were being refused on every market on the platform. ⚠️ **Recording the last
+refusal code per account, and painting it on the roster row and the why-panel, is the remaining work** — without it
+the next configuration that silently zeroes a band will be just as invisible, and this is now the THIRD time a
+value that looks permissive has made the desk inert with no screen saying so.
+
+| What | Count |
+|---|---|
+| `test:house-bot-engine` | **794** memory / **773** Postgres, 0 failed (from 789/768; +5, floors raised to the printed counts) |
+| New cases | 7.10a–e — the production shape, the $50 discriminator, the boundary, the "no setting could fix it" case at closenessPct 100, and the floor-not-a-cap control |
+| `test:house-bot-rules` | **577**, 0 failed (from 574; +3, floor 570 → 577) |
+| `qa:house-bot-fleet` | **364/364** |
+| `test:dal-parity` | 1380 · `verify:house-bot-bundle` ALL PASS over a real build |
+| Mutations | `ud-closeness-no-floor` CAUGHT on 7.10a · `opener-deadline-ignores-the-guard` re-anchored and CAUGHT on 7c.1 |
+
+⛔ **TWO RED ANCHORS HAD STOPPED MEASURING, AND THAT IS THE REUSABLE LESSON.**
+`opener-deadline-ignores-the-guard` anchored on a line standing at FOUR sites in `decide.ts`; `resolveAnchor`
+refuses a non-unique anchor, so the harness planted nothing and reported nothing — the case had evaporated, not
+failed. **Verify every anchor through `resolveAnchor` itself before trusting a red drive** — a naive
+`split(from).length - 1` reports every anchor in a CRLF file as missing, which is how 14 healthy anchors were
+briefly mis-read as broken here. All 74 engine anchors now resolve exactly once.
+
+⚠️ **AND A GATE THAT CAN LIE IN EITHER DIRECTION.** `qa:house-bot-fleet` ran **363/364 and then 364/364 on the same
+commit**, the mover being lane E's "exactly ONE placed alert" going to 0. Lane E is an empty POLL, `udCloseness`
+runs only for UPDOWN, and lane E passes 33/33 alone — so it is a cross-lane race in the alert capture, not a
+regression. Recorded rather than dismissed: a racy assertion inside a gate is a gate that can go green wrongly too.
+
 ---
 
 ## 13. Accepted risks

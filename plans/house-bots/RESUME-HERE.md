@@ -74,7 +74,42 @@ git merge origin/main                                                     # if m
   below a table in the same file recording it as ON since 2026-09-21. A wrong authority travels further than
   wrong copy, so it is corrected here rather than only in the newer block.
 
+## 0a · ▶ READ THIS FIRST — 2026-09-23 AFTERNOON, ON THE F: MACHINE (asheib), AND IT SUPERSEDES §0b
+
+🔴 **THE DESK COULD NEVER HAVE BET, AND THE SCOPE WAS NOT THE REASON.** §0b's ladder was worked and `main`
+is pushed at **`c5f84e77`**. On the way through, a production read found a SECOND blocker underneath the
+2026-09-22 scope defect, and it is the one that mattered: **BTC's Up & Down chains carry `marginBps = 0`**,
+so `computeTargets` froze each round's winning band at ONE TICK — **0.02 against an open of 86,379.20** —
+and `udCloseness` scaled by that band, demanding the live price sit within **half a cent** of the round's
+open. It refused OPENER, FILL and COUNTER on every round for 23 hours, **at every setting an officer could
+choose** (the field caps at 100; at 100 the tolerance is still 0.02). Fixed with a 5-bps floor under the band
+that ONE test uses — `UD_CLOSENESS_FLOOR_BPS`. ⛔ The player game, `computeTargets`, the frozen targets and
+settlement are untouched. Full reasoning, numbers and mutation table: **`docs/HOUSE-BOTS.md` §12.2**.
+
+⚠️ **AND A SECOND ONE THE OFFICER MUST CLEAR BY HAND.** The live document also has **`scope.poolTotalMaxTzs
+= 0`**, which refuses every COUNTER (a counter answers a stake already IN the pool, so the total is never 0).
+It is now refused at SAVE — but a document that already carries it is only corrected when someone saves the
+Rules tab again. **Clear that field (leave it EMPTY = no ceiling) or set a real number.**
+
+▶ **WHAT IS LEFT, and none of it blocks betting:**
+1. **Record the refusal reason.** A refused decision is written NOWHERE, so `HouseBotIntent = 0` cannot be
+   told apart from "never considered" — which is why this took a morning with every screen green. Record the
+   last engine code per account and paint it on the roster row and the why-panel. **This is the highest-value
+   remaining work on the programme.**
+2. The two browser gates (`qa:desk-rules-flow`, `qa:house-bots-visual` at 360/1280, PNGs READ).
+3. `red:house-bot-console` — its last run died on an EPERM rename and left a planted defect on disk (restored
+   from the HEAD blob, tree proved clean). It has not completed since.
+4. ⚠️ `qa:house-bot-fleet` ran **363/364 then 364/364 on the same commit** — lane E's "exactly ONE placed
+   alert" is racy across lanes. A gate that can lie in either direction.
+
 ## 0b · WHAT IS FINISHED, AND WHAT THE NEXT MACHINE PICKS UP (2026-09-23 · handover)
+
+⚠️ **SUPERSEDED IN PART BY §0a ABOVE** — items 1–6 below were worked on the F: machine and `main` is pushed.
+⚠️ **AND THE PATHS HERE ARE THE C: MACHINE'S.** On Ali-Blade15 the trees are `C:/kipindi-house-bots` and
+`C:/kipindi-main`; on the **F: machine (asheib)** they are `F:/kipindi-house-bots` and `F:/kipindi-main`, and
+memory is `C:/Users/asheib/.claude/…`. Read the drive letter off the machine you are on, never off this file.
+⛔ **`main` CANNOT BE PUSHED FROM THE HOUSE-BOTS WORKTREE** — a pre-push hook refuses it ("house-bots worktree
+may not push main before REL-4"). Push it from `kipindi-main` as a pure ref update, which is what §0b meant.
 
 **Branch `bot-flow-seal` is PUSHED and is the state to pull.** `git fetch && git checkout bot-flow-seal`.
 
