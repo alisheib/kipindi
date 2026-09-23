@@ -22,6 +22,9 @@ const root = resolve(__dirname, "..");
 const TARGETS = [
   { in: "docs/updown-operator-guide.html", out: "docs/50pick-updown-operator-guide.pdf" },
   { in: "docs/ai-cycles-admin-guide.html", out: "docs/50pick-ai-cycles-admin-guide.pdf" },
+  /* ⭐ 2026-09-23 · the desk's admin guide. Its HTML is GENERATED from the console's own field list and help
+     sentences — run `npm run docs:house-bots-guide` first, or this renders yesterday's copy. */
+  { in: "docs/house-bots-desk-guide.html", out: "docs/50pick-house-bots-desk-guide.pdf" },
 ];
 
 const browser = await chromium.launch();

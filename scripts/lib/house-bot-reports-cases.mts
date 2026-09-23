@@ -2528,6 +2528,11 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      page hands its form. None awaits, reaches `db.`, names a store member or decides an audience — the gated
      door itself is `houseRulesSaveForConsole`, which has its `CONSOLE_GATES` arity entry. */
   "ConsoleRulesForm", "ConsoleRulesSaveInput", "ConsoleRulesSaveResult",
+  /* ⭐ 2026-09-23 · the rules COPY TABLE, exported so the admin PDF guide is generated from the console's own
+     sentences rather than a hand-copied second set of them. It is a `Record<string, string>` of prose: it
+     awaits nothing, reaches no `db.`, names no store member and decides no audience. A guide that disagrees
+     with the screen is worse than no guide, and 29 sentences copied by hand disagree within one edit. */
+  "CONSOLE_RULE_HELP",
   /* ⭐ 2026-09-21 · the account's START-READINESS shape — what is still to fill before it can run, the owner's
      report from the live demo. It is a pure view model built from `ConsoleRulesForm`'s own caps and switches:
      it awaits nothing, reaches no `db.`, names no store member and decides no audience. The gated door that
