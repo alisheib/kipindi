@@ -16,6 +16,7 @@
 | **Live state** | ⚠️ re-derive every session: `git log --oneline -1 origin/main`. A merge state written in a table has a shelf life |
 | **Evidence** | `.qa-shots/mobile-visual/<unit>/<before\|after>/` (gitignored, per DESIGN_AUTHORITY §0b). Only numbers are written here |
 | **Findings record** | [`MOBILE-VISUAL-FINDINGS-2026-09.md`](MOBILE-VISUAL-FINDINGS-2026-09.md) — all 718 inspected items with evidence and verdicts |
+| **Unseen-conditions record** | [`MOBILE-VISUAL-UNSEEN-2026-09.md`](MOBILE-VISUAL-UNSEEN-2026-09.md) — 2026-09-23, the seven conditions the §11 matrix defined and never ran, on production: **39 claims, 23 confirmed, 16 refuted**, each survivor re-measured by an adversarial verifier. D56–D70 come from it |
 | **Tracker guard** | `npm run test:mobile-visual-plan` (RED control: `npm run red:mobile-visual-plan`, 19/19 planted lies caught, incl. a defect with two different owners and a table that no longer renders). Run it at the start and the end of every session |
 | **Critics panel** | §3b — six professional lenses on live phone frames; baseline 5–6.5/10. Re-run at the Seal: `scripts/live/mobile-visual-capture.mjs`, then the `visual-critics-panel` workflow |
 
@@ -312,6 +313,8 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U38 One money grammar and number rules | General | ⬜ | S21 | | | | formats, signs, nowrap, tabular |
 | U39 Close the type ladder and icon set | General | ⬜ | S21 | | | | off-ladder literals, glyph sizes |
 | U40 Player copy and terminology (EN/SW/ZH) | General | ⬜ | S22 | | | | needs a native reader |
+| U41 /fairness on a phone (D60 · D61) | General | ⬜ | S23 | | | | the route was never captured; the SOURCE column is 157px outside its scroller |
+| U42 The sign-up funnel on a phone (D69) | General | ⬜ | S23 | | | | six /auth/* routes never named in this plan; all six serve 200 to a guest |
 
 | Defect | Status | Owning unit |
 |---|---|---|
@@ -370,6 +373,21 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D53 | ⬜ | U40 |
 | D54 | ⬜ | U30 + the landscape row of §11 |
 | D55 | ⬜ | U30 |
+| D56 | ⬜ | U3 |
+| D57 | ⬜ | U22 |
+| D58 | ⬜ | U9 |
+| D59 | ⬜ | U28 |
+| D60 | ⬜ | U41 |
+| D61 | ⬜ | U41 |
+| D62 | ⬜ | U22 |
+| D63 | ⬜ | U9 |
+| D64 | ⬜ | U9 |
+| D65 | ⬜ | U24 |
+| D66 | ⬜ | U33 |
+| D67 | ⬜ | U33 |
+| D68 | ⬜ | U26 |
+| D69 | ⬜ | U42 |
+| D70 | ⬜ | U24 |
 
 | Seven-lens re-score (§13), done at the Seal from measurements | Responsiveness | UI/UX | Graphic | Video motion | Animation | Artist | Compatibility |
 |---|---|---|---|---|---|---|---|
@@ -962,6 +980,21 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D53 | The Swahili responsible-gambling line has two grammar slips: "Kama kucheza kamari **imekuwa sio** burudani, acha." — the ku- infinitive subject takes "kumekuwa", and the negative before a noun is "si" (critics panel, verified) | `stopGambling` (`i18n-dict.ts:4326`) | U40 |
 | D54 | 🔴 **LANDSCAPE ON A NOTCHED PHONE: the whole product ignores the LEFT and RIGHT safe-area insets, and nothing in this repo can see it.** `layout.tsx:165` sets `viewportFit: "cover"` — deliberately, so the app draws under the notch and `env(safe-area-inset-*)` returns REAL values instead of 0. In portrait that is right and handled: 19 usages pad `safe-area-inset-bottom` and 6 pad `-top`. **In landscape the notch moves to the SIDE, and exactly ONE file in `src/` pads `-left`/`-right`** (`needle.css:143-144`, a full-screen overlay). Everything else does not. The sharpest case is the phone rail: `bottom-nav.tsx:114` is `fixed inset-x-0 bottom-0`, `.kp-rail` (`globals.css:5136`) pads ONLY `safe-area-inset-bottom`, and `.kp-rail__item` is `flex: 1` — so five equal slots span the full width and, at a landscape inset of ~44px, the first item loses roughly a third of its 64px tap target under the notch and the last loses the same to the opposite corner. The page gutter is `--sp-4`, far under 44px, so body content sits under it too. Same shape on `bet-confirm-modal`, `notifications-panel`, `consent-prompt`, `install-invite`, `avatar-menu`, `date-select`. ⛔ **THIS WAS FOUND BY READING, NOT BY DRIVING, AND IT COULD NOT HAVE BEEN FOUND BY DRIVING.** Playwright does not synthesise safe-area insets, so every emulated landscape cell reports them as 0 and the page looks perfect. That is why it survived a matrix that already lists Landscape. It needs a real notched device — which is what U30 exists for — or a `@media (orientation: landscape)` rule that pads the inline edges. ⚠️ Unverified on hardware: the mechanism is established from the source and from `viewport-fit: cover` being set; the PIXELS have not been seen. | `bottom-nav.tsx:114` · `globals.css:5136` `.kp-rail` · + 12 files padding bottom-only | U30 + the landscape row of §11 |
 | D55 | 🔴 **THE INSTALL PROMPT ADVERTISES AN APP THAT NO LONGER EXISTS.** `public/manifest.json` offers Chrome a rich install dialog via `screenshots[]`, and the narrow one, `/screenshots/markets-narrow.png` (390×844, 200 on production), was committed **2026-07-09** — before the card redesign, before the design freeze, before U3/U4, and before `8822b648` made Swahili the default. Read it: it shows (a) the ENTIRE UI IN ENGLISH, to a market whose default language is Swahili; (b) the OLD stacked filter block — a `WHEN` row of five chips over a `TOPIC` block of eight — which is precisely the layout **U4 deleted** and replaced with the one-line discovery bar; (c) a five-item bottom rail reading *Markets / Live / Bets / Wallet / Profile*, where the shipped rail is *Masoko / Juu na Chini / Mubashara / Matokeo / Zaidi* (`bottom-nav.tsx:46-52` — different items, different count); (d) the pre-U3 card; (e) a signed-in header showing a funded **TZS 100,000** balance; and (f) the chat bubble sitting on top of a price, so **D3 is baked into the marketing image**. ⚠️ AND THE MANIFEST ITSELF DECLARES `"lang": "en"` while the product serves `<html lang="sw">` — so the installed app's declared language is wrong for the default user, and `name`/`description` are English-only. ⭐ Two things this also SETTLES rather than raises: `"orientation": "portrait-primary"` means the INSTALLED app never rotates, so **D54 is a browser-tab defect, not an installed-app one**; and every icon and shortcut asset referenced does exist and serves 200 — the defect is staleness, not a broken reference. ⛔ No driver in this repo looks at the manifest or its assets, which is why a seven-route visual sweep can be clean while the FIRST impression of the product is two design generations old. Fix: re-shoot the narrow screenshot at 390×844 in Swahili on the current build, set `"lang": "sw"`, and add a manifest check to a guard so the shot cannot rot again (assert the screenshot's commit is newer than the last change to `market-card.tsx` or the discovery bar). | `public/manifest.json` · `public/screenshots/markets-narrow.png` | U30 |
+| D56 | 🟠 **The market card's card-wide link paints no focus ring at all: the card's own overflow:hidden clips 100% of it** (360x780, sw). The whole card is the link to the market — it is the largest target on the board and the one that opens a page where money is staked. A player using a keyboard, a switch, or a Bluetooth keyboard on a phone tabs onto it and the screen does not change in any way. They cannot tell whether Enter will open a market or do nothing. This is a WCAG 2.4.7 (Focus Visible) failure on the product's primary navigation control, and it is not one card — it is every card on the board. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-01`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U3 |
+| D57 | 🟠 **Plain Tab parks the focused control under the fixed bottom rail — four of thirty stops on home are 100% invisible** (360x780, sw). A player tabbing down the board reaches a control, the page scrolls to "show" it, and it is drawn underneath the navigation bar. There is no focus ring anywhere on screen — I read the /markets screenshot at that moment and the viewport contains no indicator at all. The player's next Enter press fires a control they cannot see. This is not the on-screen-keyboard case the plan already notes in §3 ("the rail can sit over the focused field in layout-resizing browsers"): there is no keyboard open here, it happens on an ordinary portrait page with a hardware or Bluetooth keyboard, and a single scrol ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-02`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U22 |
+| D58 | 🟠 **At 130% text the /markets sort control collapses to a 12-unit sliver underneath its own direction toggle: 0 of 5 hit-test points reach it, so the sort menu cannot be opened** (360x780 @ zoom 1.3 (277 layout); reproduced at 277x600 native and 320x780 @ zoom 1.3, sw AND en — identical, so this is structural, not a Swahili-length problem). A player who has raised their phone font size loses the ability to re-sort the board. /markets is the main board; the sort menu is how you get from "Newest" to "Biggest pool". Every tap aimed at it instead flips the sort DIRECTION, which silently reorders the list the opposite way — so the control does not feel dead, it feels wrong. The active sort value is still printed in the sub-line ("masoko 49 · Pesa nyingi"), so the player can see what the sort is and cannot change it. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-05`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U9 |
+| D59 | 🟠 **The header and the hero fade to opacity 0 and re-rise 2.7 seconds AFTER the page was already readable — and CLS cannot see it** (360x780, sw). A player who has been reading the hero for three seconds — the headline, the 49 open markets, the TZS 482K staked — watches the header and those figures vanish to nothing and slide back in. It reads as a crash or a reload, on the one surface that is supposed to establish that this platform is solid with money. The CSS comment at globals.css:5257 explains that `.js` is added from JavaScript so that a load where the bundle never arrives still shows everything: that correctly protects the no-JS case and creates the slow-JS case, because `kp-rise`/`kp-fade` carry `both` fill and so replay from the ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-07`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U28 |
+| D60 | 🟠 **/fairness: the SOURCE (CHANZO) proof column — the page's entire purpose — starts 157px outside its own scroller, with no at-rest affordance that it can be reached** (360x780 (also 320x640, also 360x780 en), sw (reproduced in en)). This is the fairness page. Its promise, printed above the table, is that every market was resolved against a named official source URL — the row's `srcHref` values are real (wikipedia.org, premierleague.com, accuweather.com). On a phone a player sees MARKET / OUTCOME / OFFICERS and nothing else: the source link and the resolution timestamp, the two facts that make the claim checkable, are off-screen behind a horizontal scroll that gives no sign it exists. A player who suspects a resolution cannot audit it, which is the one thing this page is for. It is also the page the footer link "Uthibitish ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-08`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U41 |
+| D61 | 🟠 **/fairness: every market title is clamped to 2 of up to 16 lines in a 91.8px column, and in Swahili two different markets paint identical text** (320x640 (and 360x780), sw (geometry identical in en; the collision is sw-only)). The log's job is to say which market was resolved how. On a phone no row identifies its market — "Je, Gameweek …" is 14 characters of a 103-character question — and in the platform's default language two separate resolutions, one YES and one on a different competition, are indistinguishable rows. A player checking whether the market they lost on was resolved correctly cannot find it. The title IS a link to /markets/<id>, so the row is still navigable, but you have to tap blind. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-09`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U41 |
+| D62 | 🟡 **Shift+Tab parks the focused control under the sticky header — both bet buttons land 100% behind it, with a different clickable control on the same point** (360x780, sw). NDIO and HAPANA are the money buttons. A keyboard user reversing up the board puts focus on one of them while the point it occupies is painted over by the header's sign-up button. They see the sign-up button, not their own focus; Enter commits to a market side they cannot see. Same one-line root cause as the rail case above (no scroll-padding on the root), so the two want fixing together, but this one is worse because the control that is hidden is the one that takes a position. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-11`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U22 |
+| D63 | 🟡 **Filter-strip chips lose three of the four sides of their focus ring to the strip's own horizontal scroller** (360x780, sw). These chips are how a player narrows the board (Wazi 49 / Zinafunga leo / Mpya 35 / Inasubiri matokeo / Zote 52). A keyboard user tabbing across them sees at most a 2px vertical sliver on the right-hand cap of the current chip — the two long horizontal edges, which are what actually reads as a ring, are never painted. On the first chip even the left cap is cut, so the strongest signal left is a soft gradient that is easy to mistake for the strip's own fade. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-12`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U9 |
+| D64 | 🟡 **The /results outcome count is clipped by the viewport at 130%, so "HAPANA 110" paints as "HAPANA 1" — a truncated numeral that still reads as a valid, smaller number** (360x780 @ zoom 1.3 (277 layout); reproduced at 277x600 native (+10 units), sw only — EN is clean (body 277/277, nothing past the edge)). This is worse than a cut label because the survivor is still a plausible number: a player reads the settled board as 69 YES against 11 (or 1) NO when it is 110. Nothing signals truncation — no ellipsis, no fade — and the page cannot be scrolled sideways to check. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-14`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U9 |
+| D65 | 🟡 **Market-card category chips lose 82% of their word at large text: "UTAMADUNI" becomes "UTAMA..." at 360 and a single letter "U..." at 320** (360x780 @ zoom 1.3 (277 layout) and 320x780 @ zoom 1.3 (246 layout), sw (measured); the chip vocabulary is localised so EN words are shorter). The chip is how a player tells a football market from a politics market at a glance on a dense board. A one-letter chip followed by an ellipsis carries no information at all, and it sits in the row that already spends its space on two other chips. The plan's own rule (DG-P-08) forbids reaching for truncation as a fit strategy. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-15`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U24 |
+| D66 | 🟡 **The rail More menu and the language menu have no scrim: the tap that dismisses them also fires the control under the finger** (320x640, sw). Tapping away is how a phone player closes a menu — there is no visible ✕ on either panel. Here that gesture costs them the page: they open Zaidi, decide against it, tap the board to dismiss, and land on a market detail page they never chose, losing their scroll position on a 49-card board. The product's own `<Modal>` and `.kp-fsheet` both ship a scrim that absorbs this tap; the two menus that a guest meets most often do not. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-17`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U33 |
+| D67 | 🟡 **The language listbox flips away from the left edge and then runs off the right one, where body overflow-clip slices its border** (320x640, sw). Small, and honestly so: 1.8px of border and one rounded corner. But the panel's top-right corner is squared off against the screen edge while its top-left is rounded, so on the narrowest supported phone the language menu reads as running off the screen — on a platform whose default language is Swahili and whose players use this control to leave English. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-18`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U33 |
+| D68 | 🟡 **404 at 320x640: the page says "choose where to go below" and not one of its three destinations is usable — the first is 30px of 101px above the bottom rail, the other two are off-screen** (320x640, sw). A 404 has one job: get the player somewhere. On the smallest common phone this one tells them to choose from a list they cannot see, and the only thing within reach at rest is the sliver of one card that the rail is sitting on — which reads as a cut-off box rather than a choice. A player who lands here from a stale link or a resolved-market link sees a dead end. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-21`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U26 |
+| D69 | 🟡 **/auth/register: the date-of-birth inputs carry English accessible names "Day", "Month", "Year" on a page served lang="sw"** (320x640 and 360x780, sw). A Swahili-speaking player using TalkBack hears the whole form in Swahili and then three English words at the one field that decides whether they are allowed an account. It is the same class as D39 (the raw YES/NO enum surviving into SW copy) on a surface the programme had not opened. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-22`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U42 |
+| D70 | ⚪ **The bottom navigation rail ellipsises its labels at 130% on every route in both locales — "Mubashara" -> "Mubash...", and a third label goes at 320** (360x780 @ zoom 1.3 (277 layout); worse at 320x780 @ zoom 1.3, sw and en both). This is the permanent, five-item primary navigation — the only way a phone player moves between the board, live, results and Up & Down. The rail is also where the plan has already spent work (D30), so it is the surface a fix is cheapest on. Small in pixels, but it is the one component present on every screen, in both languages, at every width once the font is scaled up. ⭐ Measured on production 2026-09-23 by an examiner and then RE-MEASURED by an adversarial verifier that reproduced it independently — full numbers and the verifier's corrections in [`UNSEEN-23`](MOBILE-VISUAL-UNSEEN-2026-09.md) | see the record | U24 |
 
 ## §8a — Phone design sheet (graphic + artist lenses; binds every unit)
 
@@ -1079,6 +1112,11 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 ### Phase B — Phone density and fit
 
 **U3 · [Compact] Market card + Up & Down card + skeleton token**
+- 🔴 **D56 — the card-wide link paints NO focus ring, on every card.** Found 2026-09-23 in the keyboard-focus pass, which this programme had never run; full numbers in [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
+  `.mcardp-open` is `position: absolute; inset: 0` inside `.mcardp`, which clips — so a ring drawn on the link has nowhere to paint and 100% of it is cut.
+  **Fix:** draw the indicator on the CARD, `.mcardp:has(> .mcardp-open:focus-visible)`, which is the one selector that puts it on a box with room for it.
+  ⛔ This is the board's primary control and a WCAG 2.4.7 failure: a keyboard or switch user tabs onto a card and the screen does not change at all.
+  RED: remove the rule — the link still focuses and the ring disappears, which is exactly the state that shipped.
 - Gated CSS: card top padding 14→10, row gap 10→6 (footer keeps its 10px via margin-top), actions margin 11/9→6/4, sparkline 28→20,
   traders min-h 24→22, grid gap 14→10.
 - Keep: title, %, chips, 40px YES/NO, 44 info button, 17px footer, 13px bottom padding.
@@ -1220,6 +1258,20 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   seen from a critic's chair: the simplified form is the fix.
 
 **U9 · [General] Defects D1 · D5 · D7 · D18 · D34**
+- 🔴 **D58 — at ≤ ~290 effective CSS px the /markets SORT control is not merely clipped, it is unreachable.** Found 2026-09-23; [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
+  ⚠️ **It extends D18 and the examiner missed that; the verifier caught it.** D18 owns the CLIPPING (320 native: summary 27px, clientWidth 26 vs scrollWidth 61) and at 320 the control is still
+  tappable 27/28 — so D18 is a LEGIBILITY defect. What is new, and in no register row, is the collapse to ZERO reachability: `details.kp-menu` width 0, the 44×44 direction link taking the
+  summary's exact left edge and painting over it (it is later in DOM order), **0 of 14 hit-test points**, and Playwright's own actionability check failing and naming the interceptor.
+  ⭐ Two instruments agreed with a healthy control in the same run, and the crops agree with the numbers. It is NOT a zoom artefact and NOT a Swahili-length problem: a zoom-free 277×600 native
+  cell reproduces it identically, and EN is the same to the pixel. The cliff was swept: 360 → 67px (67/68 tappable) · 344 → 51 (already clipped) · 320 → 27 (27/28) · 300 → 7 (7/14) · ≤290 → 0 (0/14).
+  ⛔ **And there is no second path to sort.** The Filters sheet at 277 contains no sort section and none of the four sort values; sort is changeable only from this control or by editing the URL.
+  The active sort stays legible on the count line, so the player is not misinformed — only unable to change it.
+  **Fix:** give the sort cell a minimum inline size in `ch` and let the direction control shrink or wrap instead of overlapping it. RED: restore the collapse; 0/14 returns.
+- 🟡 **D63 — the filter-strip chips lose three of four sides of their focus ring** to the strip's own horizontal scroller (360×780 sw, 7 tabs). At most a 2px right-hand cap is painted, and on the
+  first chip even that is cut, leaving a soft gradient easy to mistake for the strip's own fade. **Fix:** inward `outline-offset`, or strip padding equal to the ring with a matching negative margin.
+- 🟡 **D64 — `HAPANA 110` paints as `HAPANA 1` at 130% text**, 13.1px past the viewport, per-character advance 7.8px, with `overflow-x: clip` on `html`/`body` so the player cannot pan to it.
+  🔴 A TRUNCATED NUMERAL IS A MISREPORTED FIGURE — DESIGN_AUTHORITY's fit law says so explicitly — and the survivor is a plausible smaller number with no ellipsis to signal the cut.
+  **Fix:** let the outcome legend wrap at large text instead of carrying `whitespace-nowrap`. RED: restore nowrap and the `0` leaves the screen.
 - D1: `.kp-strip-fade` fade 24→40px (below 1024; no test pins 24). If that isn't enough, add one gap step before the count; never put a positioned menu inside the mask.
 - ✅ **D7 — SHIPPED EARLY, `a25c127b`, 2026-09-16, verified live.** `aria-label`s on `updown/page.tsx` from the same keys the visible spans use
   (`common.readFullRules` / `market.udHistoryTitle`), matching the idiom `top-app-bar.tsx:302-320` already documents. The guard is the class, not
@@ -1239,6 +1291,9 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   "HAPAI", at every scroll position, in the default language.
 
 **U10 · [General] Defects D2 · D6 · D10 · D11 · D43 · D44**
+- 🟡 **D41 extends here too, in a second component.** Focusing a podium TIER BADGE opens a tooltip whose box runs 87.3px past a 360 viewport — 76.3px of actual glyphs, which is exactly the clause
+  `· ≥15% ROI`. The badge is the only place the leaderboard says what Dhahabu or Almasi mean, and the part cut is the qualification itself. ⛔ Fixing D41's `InfoHint` will NOT touch this: it is
+  `.kp-tooltip`, 11 triggers, all `tabIndex=0`. Crop read by eye. [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
 - D2 (DG-P-08 binds): below `sm` the `TierBadge` moves under the handle (`:591` wrapper) and the handle steps one rung down, so it gets the full ≈ 85px
   column; `break-words` stays as the last resort. Measure the real handles plus a 15-char fixture.
 - D6: split the `:430-467` row into a wrapping status group (chips and closing/waiting/resolved pills) and a no-wrap action group
@@ -1464,6 +1519,15 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Accept: pinned chrome ≤ **150px of 360** (from 237), no unreachable overlay, and 1024+ zero diff.
 
 **U22 · [General] On-screen keyboard and viewport units (D19)**
+- 🔴 **D57 / D62 — plain Tab and Shift+Tab park the focused control underneath the fixed chrome.** Found 2026-09-23; [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
+  On `/` , 30 Tab stops: **11 overlap the rail, 14 the bubble, and 4 are 100% behind the rail** — `.mcardp-share` 13×17.3 (225 of 225 px²) and `.mcardp-details` 63.9×17.3 (1,105 of 1,105 px²), twice each.
+  ⚠️ **THE OBSTRUCTION IS TWO LAYERS, NOT ONE.** `.kp-discovery-bar` is `sticky top-[56px] z-20` and opaque, so the band is **0 → 132.3px**, not 0 → 56px. The examiner's instrument compared each
+  stop against `<header>` alone and was blind to everything parked in the 56–132.3px strip; the verifier re-measured against the whole band. A guard written the examiner's way would miss it too.
+  **Fix:** `scroll-padding-bottom` = 88px + `env(safe-area-inset-bottom)` and `scroll-padding-top` = 132.3px on the scrolling element. `scrollPaddingTop` is currently `auto` on documentElement,
+  body and scrollingElement, and a grep confirms no `scroll-padding` or `scroll-margin` anywhere. RED: remove it and the four fully-buried stops return.
+- 🟡 **D3 reaches a surface D30's fix cannot.** At 360×500 the chat bubble covers 1,820px² — 30.9% sw / 33.9% en — of the `/results` Filter trigger, taking 3 of 6 taps across its midline.
+  ⚠️ **The keyboard proxy contributes NOTHING**: the verifier ran the same shrink without ever focusing the field and got a byte-identical result. It is a SHORT-VIEWPORT defect, not a keyboard one,
+  and the register line should say so. D30 was closed by giving `.kp-rail` a z rung while its menu is open; the filter trigger is ordinary page content with no such lever, so the bug is still live here.
 - Measured in code: no keyboard handling (the only `visualViewport` user is the Needle); the rail, consent/install cards (148) and chat bubble are fixed at the bottom;
   the filter sheet uses `min(82vh, 640px)` (`globals.css:3345`); auth, live and offline use `min-h-[calc(100vh-44px)]`. `interactiveWidget` is unset, so Chrome uses
   `resizes-visual`, while older engines and a Capacitor WebView resize the layout.
@@ -1501,6 +1565,12 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Guard: a source contract that every `fixed|sticky` element at `top-0` on player surfaces reads the top inset. RED: remove it from the header.
 
 **U24 · [General] Large system text (D22 · D23)**
+- 🟡 **D65 — the market-card category chip loses up to 82% of its word at large text**: `UTAMADUNI` → `UTAMA…` at 360 @1.3 and `U…` at 320 @1.3. [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
+  ⚠️ **NOT a word-length problem.** The slot is clamped to the SAME 43px at 277 and 12px at 246 on every card — `Michezo` (52px) → `MICHE…` / `M…`, `Nyingine` (59) → `NYING…` / `N…`. It is the
+  row's space allocation. **Fix:** let `.mcardp-top` wrap at large text instead of holding `flex-wrap: nowrap` (`globals.css:4077`). RED: restore nowrap.
+- ⚪ **D70 — the bottom rail ellipsises its labels, and THE THRESHOLD IS NOT 130%.** At 320 SW the two longest labels sit 63px inside a 64px slot — **1px of headroom** — so the ellipsis is painted at
+  **102%**, the first step above Android's default (`Masoko | Juu/Chi… | Mubasha… | Matokeo | Zaidi`). At 360 SW headroom is 9px and it goes at **115%**. At 130% three labels are cut.
+  Small in pixels; it is the one component on every screen, in both languages. **Fix:** a smaller rung, or two lines, for the rail label at large text.
 - Measured in code: all type in px (so Android text scaling enlarges it), and `.btn-sm/md/lg/xl` use a hard `height` with `white-space: nowrap`
   (`globals.css:1061,1088-1091`). Detail pills are `h-[26px]` (D22), the tier badge is 22×22, rail labels ellipsise, and the sell button wraps inside a fixed 44
   (D23).
@@ -1517,6 +1587,13 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   `scrollWidth > clientWidth` (except intentional ellipsis, listed). RED: restore `height` on `.btn-md`.
 
 **U25 · [General] Loading skeletons without layout jumps (D26)**
+- 🔴 **D26 is bigger than its line says, and it breaks this unit's OWN accept threshold.** Measured on production 2026-09-23 under slow 4G + CPU 4×; [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
+  **At first paint every route puts the 18+ licence footer INSIDE the viewport and then throws it off screen.** `/` and `/markets` CLS **0.1594**, `/results` **0.1838** — against this unit's
+  "CLS ≤ 0.05 per route, and no single shift > 0.02". One shift of **0.158974** does it: `footer` `{x0 y656 w360 h124}` → `{0,0,0,0}` as `main` grows 520 → 6032px. Byte-identical on all three routes.
+  ⛔ So for about a second the first thing a player on a slow connection sees of 50pick is a spinner with a gambling-licence block under it, then the whole screen jumps.
+  **And `/results` shifts a second time, 0.0237, which breaks the > 0.02 rule on its own**: the list and filter tabs paint before the page's own title row, then everything snaps 24px up.
+  ⭐ The cause was isolated, not inferred: the first element child of the `div.space-y-5` container in the fallback state is React's Suspense boundary marker `<template id="B:1">`, present in the raw
+  streamed HTML from the first bytes. **A `space-y-*` idiom is unsafe anywhere a first child can stream in late** — that is a class of bug, not one number.
 - Measured in code: `/live/loading.tsx` ghosts are 180px against 347px cards (the biggest jump); `/results` uses 220px; the markets skeleton filter bar wraps to
   about 250px at 360 against the real 116px bar; watchlist, notifications, help, proposals and most `profile/*` use the generic `PageLoader` (spinner box + 64px rows)
   whatever the real shape; `positions/[positionId]` inherits a list ghost; 6 `SearchBox` Suspense boundaries have no fallback.
@@ -1530,6 +1607,9 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Accept: CLS ≤ **0.05** per route, and no single shift > 0.02 after the skeleton swap.
 
 **U26 · [General] Empty, error and offline states (D12 · D13)**
+- 🟡 **D68 — the 404 tells the player to choose from three destinations and, at 320×640 at rest, none is usable.** The first is 30px of 101px above the bottom rail; the other two are off-screen.
+  A player arriving from a stale or resolved-market link sees a dead end that reads as a cut-off box rather than a choice. **Fix:** relax the `min-h-[80svh]` centring on short screens so at least
+  one destination is whole above the rail. [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
 - Measured: two 404 designs.
   - The generic `app/not-found.tsx:111` has a medallion, "404 · PAGE NOT FOUND", and three ≈ 100px mostly-empty cards.
   - `markets/[id]/not-found.tsx` has compact rows, a gold "404", a different apostrophe and a different link order.
@@ -1572,6 +1652,13 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   RED per item.
 
 **U28 · [General] Low-end performance and motion tiers (D17)**
+- 🔴 **D59 — the header and hero fade to opacity 0 and re-rise 2.8 seconds AFTER the page was already readable, and CLS cannot see it.** [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
+  Timeline on slow 4G + CPU 4×, clean run: FCP t=9416; the hero column FULLY readable at **t=9761** (all five `.kp-hero__inner > *` at opacity 1); `.js` flips at **t=12539** — topbar and all five
+  children to 0, hero child y 121.8 → 129.6. **Gap readable → flip = 2,778 ms.** No frame renders for the next 132 ms; fully back at t=13077, so the visible event is **406 ms**.
+  ⭐ **The cause is a correct fix creating a second case.** `globals.css:5257` adds `.js` from JavaScript so a load where the bundle never arrives still shows everything — that protects the NO-JS case
+  and creates the SLOW-JS case, because `kp-rise`/`kp-fade` carry `both` fill and so replay from their invisible first frame whenever `.js` lands after paint.
+  **Fix, and it has a natural home here:** this unit already plans a tiny pre-paint inline script to resolve the motion tier (`data-motion` only appears at t=12190, also after paint). `.js` belongs in
+  that same script. ⛔ Do not delete the no-JS protection — move WHEN it is applied, not whether. RED: set `.js` from the bundle again and the flash returns.
 - Measured in code:
   - `theme-provider.tsx:22-44` sets `data-motion="reduced"` for ≤ 4 cores, ≤ 4 GB or Save-Data (most Tanzanian budget phones), **after hydration**.
   - The reduced tier stops ticker and pulses but keeps every `backdrop-filter` (modal scrim 7px, menus `blur-md`, chat 16px, Needle drawer) and the `live-dot` breathe.
@@ -1609,6 +1696,28 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   4. In-app browsers (WhatsApp, Instagram, Facebook), the installed PWA and the planned Capacitor WebView are checked in U30.
 - Guard: A: the notice renders when `CSS.supports` is forced false. B: a build test that every `oklch()` token has a generated fallback and the fallback
   page passes contrast AA. RED control for each.
+
+**U41 · [General] /fairness on a phone (D60 · D61)**
+- 🔴 **The route was never once captured by this programme, and it is the page the footer's `Uthibitisho wa utatuzi` link sends players to.** [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
+- **D60 — the SOURCE (CHANZO) column, which is the page's entire purpose, starts 157px outside its own scroller with no at-rest affordance.** At 360×780 sw the scroller is `clientWidth 326` against
+  `scrollWidth 559`, so **41.7% of the table is off-screen**; at 320 it is **48.8%** and the link sits 197.1px past the edge; at 412 it is still 32.4%. All 12 `Chanzo` anchors are at x=501.1 against
+  an x=344 edge. The `srcHref` values are real (wikipedia.org, premierleague.com, accuweather.com) — a player who suspects a resolution simply cannot reach the proof.
+- **D61 — every market title is clamped to 2 of up to 16 lines in a column that never grows.** The title box is **91.8px at 320, 360 AND 412** — width-invariant, because the five columns' content
+  minimums (127.8 + 99.1 + 83.8 + 157.4 + 90.6 = 558.7) beat `.admin-tbl { width: 100% }`. So a 103-character Swahili question paints as 14 characters, and **two different markets — one YES, one on a
+  different competition — paint identical rows.** The title is still a link, so the row is navigable; you just have to tap blind.
+- **Fix (one change closes both):** on a phone the attestation table stops being a five-column table and each row becomes a stacked card — market, outcome, officers, time, source. ⛔ Raising the clamp
+  alone does not work, because the column never grows. At minimum the scroller needs a visible at-rest affordance and SOURCE must move to the second column.
+- **Guard:** at 320/360 sw, every row's source link must be inside the scroller's client box at `scrollLeft = 0`, and no two rows may paint identical title text. RED: restore the table layout.
+
+**U42 · [General] The sign-up funnel on a phone (D69)**
+- 🔴 **Six `/auth/*` routes — register, otp, forgot-password, reset-password, verify-email, 2fa — are never named anywhere in this plan, and all six serve 200 to a guest.** They are the only way a new
+  player joins. Examined 2026-09-23 at 320 and 360 in sw: **zero horizontal overflow on all six**, which is the good news.
+- **D69 — `/auth/register`'s date-of-birth inputs carry the English accessible names `Day`, `Month`, `Year` on a page served `lang="sw"`.** ⚠️ It is not a missing translation but a **hardcoded
+  constant** — the verifier showed the same three words with the locale set to sw at both widths. A Swahili player using TalkBack hears the whole form in Swahili and then three English words at the
+  one field that decides whether they are allowed an account. Same class as D39 (a raw enum surviving into SW copy), on a surface nobody had opened.
+- **Fix:** route the three names through the dictionary like every other label; `test:i18n` parity then covers them.
+- ⚠️ **What this unit CANNOT close from here:** the funnel's real test is a keyboard over every field on a real device, and signing in is impossible from this machine (§11). The six routes above are
+  measured signed-out and at rest only; nothing here says the funnel WORKS, only that it does not overflow.
 
 **U30 · Real-device and accessibility pass (the checks no emulator can do)**
 - **Where:** Ali's Android phone plus one budget Android (≤ 4 GB; Tecno/Infinix/itel class), over `chrome://inspect` remote debugging. Run a 30-minute
@@ -1651,6 +1760,12 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
 - Accept: 0 rows left at 🕓 in the findings record; §1 shows the resulting defect rows.
 
 **U32 · [General] Market-card state truth (D29 · D35 · D42)**
+- 🔴 **D35 at large text: the POOL FIGURE is the only thing on the card allowed to shrink, and it loses the whole amount.** Production, sw (EN is clean at every width); [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
+  `/markets` 360 @1.3: **12 of 15** pooled cards clip — pool box 76.0px against 85.8px of demand — and the crop reads `TZS 79,…`. At 320 @1.3: **13 of 15**, box 36.0 (worst row 27.4), crop reads
+  **`TZS…`** — the currency code alone, the amount entirely gone. Home: 4 of 4 pooled cards.
+  ⭐ **The discriminator naming the fix:** `.mcardp-timeleft` measures **192.3px at 360 AND at 320, identical** — the countdown never yields a pixel, because `.mcardp-meta-right` is `flex-shrink: 0`
+  (`globals.css:4159`) while the pool span alone carries `min-width: 0; overflow: hidden; text-overflow: ellipsis`. The platform forbids clipping money outright, and this is 13 of 15 cards on the
+  main board in the DEFAULT locale. **Fix:** the countdown shares the shrink, or the pool is exempted from it.
 - `noPrice` must describe the pool, not the phase: a market with no bets shows no crowd price in **any** state (live, closed, resolved, void).
   Terminal cards show the outcome and an empty bar, never a centred needle; the outcome word takes its own ink (a NO result is never YES-green).
 - The meta row protects money first: at 320 SW the pool keeps its width and the countdown or info plate yields.
@@ -1676,6 +1791,21 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
   "3 watabiri". Initials that are digits, or any disc that looks like an overflow counter, must not appear in a stack that is counting people.
 
 **U33 · [General] Chrome: one menu recipe, ticker semantics (D30 · D32)**
+- 🔴 **D32 under `prefers-reduced-motion` the ticker does not slow down — it FREEZES showing 24% of one of twelve events.** [the record](MOBILE-VISUAL-UNSEEN-2026-09.md).
+  The clipping window is 245×31 at x=115 on a 360 screen: `clientWidth 245` against `scrollWidth 27,449`, **no scrollbar, no touch scroll, and zero buttons or links inside the strip**. `.ticker-track`
+  is 27,440.6px holding 24 spans (12 events rendered twice). Entry 1 is 1,045.4px wide, so the readable share is **24.2%** and it reads `TZS 10K completed YES on` — a sum of money and an outcome,
+  stopping before it names the market. **11 of the 12 live events are unreachable by any means.** Confirmed frozen twice, at t=6s and t=14s.
+  ⛔ Reduced motion should remove the MOVEMENT, not 99% of the content — and it is set by players with vestibular disorders and by anyone who turned motion down on a budget phone.
+  **Fix:** under reduced motion the strip becomes a static list or a scrollable region with real affordances, not a frozen marquee. RED: restore the freeze.
+- 🔴 **D30 is not closed for the SORT LISTBOX.** At 320×640 with the sort menu open, the panel resolves at **z 20** — its `z-index: 30` is spent inside `.kp-discovery-bar.sticky.z-20`, its only
+  positioned ancestor — while the chat bubble sits at **z 60**. Overlap is the bubble's full 52px over x 252–304 of a panel ending at x=320, across y 508–560. A nine-point census per row shows
+  **row 4 `Mabadiliko makubwa ↓` losing 2 of 9 taps to the bubble**. ⭐ **This is the same stacking trap D30 already paid for once** — a number on the panel cannot escape its ancestor's context.
+- 🟡 **D66 — neither the rail More menu nor the language menu has a scrim, so the tap that dismisses them also fires the control underneath.** Proven with a REAL touch event (CDP
+  `Input.dispatchTouchEvent`), not a synthetic mouse click: one tap at (47,469) to dismiss the `Zaidi` panel landed on `a.mcardp-open` and navigated. Neither panel has a visible ✕, so tapping away
+  IS the close gesture. The product's own `<Modal>` and `.kp-fsheet` both ship the scrim that absorbs this. **Fix:** give these two the same scrim.
+- 🟡 **D67 — the language listbox flips away from the left edge and then overflows the right one by 1.75px**, where `overflow-x: clip` slices its border and squares off one corner while the other
+  stays rounded. Caught frame by frame: frame 0 `right-0` (x −26.25), frame 1 onward `left-0` (x 125.75 → 321.75, min-width 196). No text is lost in sw. Small, and recorded as small — but it is the
+  control a Swahili-default platform's players use to leave English. **Fix:** clamp the panel to the viewport with a margin instead of choosing an edge.
 - One popover recipe for the language menu, the rail More menu, the bar More menu and the avatar menu: one radius, one row inset, one row
   height (44), one selected-row treatment (`--pill-active`, never gilt), one scrim.
 - The More menu clears the chat bubble (raise the menu above it or inset the last row); D30's `elementFromPoint` check is the guard.
@@ -1849,11 +1979,20 @@ U7–U10 don't depend on the density switch and may move earlier if Ali wants th
 7. Production: deploy SUCCESS + `/api/health` ok, re-run the driver against `https://www.50pick.tz` (signed out and as the QA player), read the shots.
    Only then ✅.
 
-⚠️ **MOST OF THIS MATRIX HAS NEVER BEEN RUN, AND SAYING SO IS THE POINT.** Every figure this
-campaign holds through S3 was taken PORTRAIT, at 320/360/412, on a settled page, signed out. The
-Landscape, Keyboard-proxy, Large-text and Slow-network rows below are DEFINED and have never been
-executed once. A matrix that is quoted as coverage while four of its eight rows have never run is
-the same shape of untruth this plan exists to remove, so the rows now carry their own status.
+✅ **THE FOUR ROWS THAT HAD NEVER RUN, RAN ON 2026-09-23 — and they were where the defects were.**
+Every figure this campaign held through S3 was taken PORTRAIT, at 320/360/412, on a settled page,
+signed out; Landscape, Keyboard-proxy, Large-text and Slow-network were DEFINED and had never been
+executed once. A matrix quoted as coverage while half its rows have never run is the same shape of
+untruth this plan exists to remove. Those four were driven on production, together with three
+conditions that had no row at all — **overlays opened**, **keyboard focus**, and **the routes nobody
+had captured** — one examiner each, every claim then re-measured by an adversarial verifier.
+**39 claims, 23 confirmed, 16 refuted; D56–D70 and U41–U42 come from that pass**, and the full record
+with every number is [`MOBILE-VISUAL-UNSEEN-2026-09.md`](MOBILE-VISUAL-UNSEEN-2026-09.md).
+⛔ **The refuted sixteen are kept WITH THEIR REASONS** in §2 of that record. Re-discovering a
+non-defect every few sessions is the most expensive thing a campaign like this can do.
+⚠️ **Still never run: the signed-in half of every cell** (§11 asks for it and the QA player's password
+is not on this machine), and **the real-device row**, which is U30 and cannot be emulated at all —
+D54 is the proof of that, a landscape defect no driver here can see.
 
 ✅ **MEASURED 2026-09-23 — the 561–767px band, which this repo records as never measured.**
 `globals.css`'s own proof-rail note says "the §A6 matrix is 360/768/1280/1920 — 561–767 is never
