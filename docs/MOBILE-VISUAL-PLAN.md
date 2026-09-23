@@ -32,8 +32,14 @@
 ```
 ▶ NEXT: Session S2 (continuing) → **U4** (the discovery bar on one control line). Read §5, §9 U4 AND its
   "S2 prep notes" before touching code. Two things U4 must fix in its own commit, both already confirmed here:
-  · `red:filter-language` case `range-reverted` anchors on `  min-height: 44px;\n}` — this tree is CRLF, so that
-    string cannot match and the case has been planting NOTHING. A RED case that applies nowhere reports GREEN.
+  · ✔ FIXED IN S2, and the prep note's diagnosis was WRONG in its mechanism. `red:filter-language`'s
+    `range-reverted` case anchored on `  min-height: 44px;` immediately followed by `}` — and PLAYER-FILTERS
+    (2026-09-09) inserted a comment and a `min-width: 44px` between them, so the anchor matched nothing.
+    ⛔ NOT a line-ending problem: `resolveAnchor` already normalises CRLF (`toEol`). Re-anchored on the unique
+    comment tail above the declaration, so a future declaration landing between the two cannot orphan it again.
+    ⛔ It never reported a false GREEN either — `injectDefect` THROWS on a missing anchor. What hid it is that
+    `red:filter-language` REFUSES to run at all while `test:filter-language` §6.6 is red, so a dead RED case sat
+    behind somebody else's failure. ⚠️ U4 still cannot exercise this harness until §6.6 lands (house-bots owns it).
   · `qa:bar-geometry` OVERLAP and `qa:tap-truth` DISJOINT would both go red FALSELY on a one-line bar (a scrolled
     strip's boxes must be clipped to their scroller first; `seen` includes scrolled-out chips).
   After U4, S3 → U5 + U6.
