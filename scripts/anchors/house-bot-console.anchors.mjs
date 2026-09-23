@@ -2450,8 +2450,10 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "317-raw-enum-fallback · the history's Event cell grows a `?? kind` escape, which paints the raw enum for any kind the map has lost",
     file: GATE,
-    from: `    eventWord: CONSOLE_EVENT_WORD[e.kind],`,
-    to: `    eventWord: (CONSOLE_EVENT_WORD as Record<string, string>)[e.kind] ?? e.kind,`,
+    /* ⚠️ RE-ANCHORED 2026-09-23: the Event cell now names an auto-pause's CAUSE and falls back to the kind's
+       blanket sentence, so the plant goes on the FALLBACK arm — which is the arm a lost map entry reaches. */
+    from: `      : CONSOLE_EVENT_WORD[e.kind],`,
+    to: `      : ((CONSOLE_EVENT_WORD as Record<string, string>)[e.kind] ?? e.kind),`,
     expect: "1.317 · 453 · no raw-enum fallback survives",
     suite: "console-mem",
   },
@@ -2889,8 +2891,10 @@ import { formatEat } from "@/lib/utils";`,
     /* (d) the why-panel is fed a hard-coded empty list — it says nothing stops the account, whatever the rules say. */
     name: "scope-why-panel-empty · the why-panel's item list is a constant empty array",
     file: GATE,
-    from: `    const items = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),\n    ];`,
-    to: `    const items: { key: string; label: string; message: string }[] = [];`,
+    /* ⚠️ RE-ANCHORED 2026-09-23: a retired chain or category joined the panel's items (register A5), so the
+       list is longer. The plant is unchanged in meaning — the whole list becomes a constant empty array. */
+    from: `    const items = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),`,
+    to: `    const items: { key: string; label: string; message: string }[] = [];\n    const unusedItems = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),`,
     expect: "2g.why · ⛔ the why-panel lists every reason the engine's predicate raises",
     suite: "console-mem",
   },
