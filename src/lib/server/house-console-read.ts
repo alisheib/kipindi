@@ -6591,8 +6591,8 @@ const WHY_IDLE_COPY = {
   nothingOpen: "No market was open in the window this account looks at. Between rounds that is normal and nothing is wrong.",
   working: "This account would stake right now, so it is working. The desk places at most one stake per market each pass, which is why bets appear a few seconds apart.",
   refused: "None of the markets looked at could be staked right now. The reasons are below, commonest first.",
-  /* ⛔ THE ANSWER THAT USED TO BE SILENCE. An account whose saved rules will not parse is stopped by the
-     engine, and this panel returned nothing at all — the officer clicked and the page did not change. */
+  /* ⛔ THE ANSWER THAT USED TO BE SILENCE. An account whose saved rules will not parse is stopped by the engine —
+     and this panel returned nothing at all — the officer clicked and the page did not change. */
   rulesUnreadable: "This account's saved rules cannot be read, so nothing is staked from it. Its Rules tab draws the form again, seeded from the closest readable values — open it, check every figure, and save.",
 } as const;
 
