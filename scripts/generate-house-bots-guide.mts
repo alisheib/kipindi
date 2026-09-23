@@ -235,10 +235,15 @@ ordinary money reports — house accounts appear there as normal players, which 
 and everyone is refunded. That is the system working correctly: the account risked nothing and lost nothing. A run
 of refunds means the markets were quiet, not that anything is broken.</p></div>
 
-<div class="box warn"><b class="lead">Where profit is NOT shown</b>
-<p>The desk deliberately shows <b>risk</b>, not profit: what an account has staked today, what it may still lose,
-and how close it is to each limit. It does not carry a profit-and-loss card. For results, use the ordinary money
-reports, where house accounts are counted exactly like any other player.</p></div>
+<div class="box good"><b class="lead">Where to read today's result</b>
+<p>On the <b>Limits</b> tab, and on each account's own page, the daily loss limit has <b>two</b> rows against one
+cap. <b>Projected</b> is what could still be lost — your open stakes counted as though they all lost, which is what
+decides whether a new bet is allowed. <b>Settled</b> is what has actually finished: it reads
+<i>used TZS 4,000 of TZS 100,000</i> when the day is down, and <b><i>ahead by TZS 186 · limit TZS 100,000</i></b>
+when it is up.</p>
+<p>The rest of the desk shows <b>risk</b> on purpose — staked today, what may still be lost, how close each limit
+is. For full results over time, use the ordinary money reports, where house accounts are counted exactly like any
+other player.</p></div>
 
 <h2>7 · Money limits</h2>
 <p>On the <b>Limits</b> tab, at two levels: limits on one account, and desk-wide limits that no account may exceed

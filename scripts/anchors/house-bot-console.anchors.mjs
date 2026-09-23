@@ -1065,13 +1065,18 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
-    name: "366-clamp · the settled loss row renders a cohort's PROFIT as a negative amount — today's net wearing a cap's label",
+    /* ⭐ RE-AIMED 2026-09-23, FROM THE SIDE THE PRODUCT IS NOW ON. This planted the clamp's REMOVAL, to prove a
+       profit rendered as zero — the behaviour ruling 266 argued for and the owner reversed on 2026-09-23 after
+       the live desk finished a session ahead by TZS 186 and every money surface read "used TZS 0". The defect to
+       guard against is now the opposite one: the "ahead by" branch going away, so a profit silently collapses
+       back to zero and a desk in profit reads exactly like one that broke even.
+       ⛔ THE CONDITION IS MADE UNREACHABLE RATHER THAN THE BLOCK DELETED: the branch still compiles, still
+       type-checks and still reads as live code, which is the shape this regression would really take. */
+    name: "366-profit-hidden · the settled loss row goes back to rendering a PROFIT as zero, so a desk in profit reads exactly like one that broke even",
     file: GATE,
-    from: `  const shown = Math.max(0, used);
-  const cell = moneyUsage(shown, limit);`,
-    to: `  const shown = used;
-  const cell = moneyUsage(shown, limit);`,
-    expect: "1.366 · the two loss rows are separate, share ONE cap, and the SETTLED one renders a profit as zero",
+    from: `  if (used < 0) {`,
+    to: `  if (used < Number.NEGATIVE_INFINITY) {`,
+    expect: "1.366 · the two loss rows are separate, share ONE cap, and the SETTLED one STATES a profit",
     suite: "console-mem",
   },
   {

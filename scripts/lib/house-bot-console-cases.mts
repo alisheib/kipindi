@@ -2181,12 +2181,41 @@ section("§2 · the strip, the band, the roster and every failure");
     } finally { w.dal.houseBookStore.dayRows = realDay; w.dal.houseBookStore.openExposure = realExp; }
 
     const [stake, projected, settled, exposure] = planted.usage;
-    ok("1.366 · the two loss rows are separate, share ONE cap, and the SETTLED one renders a profit as zero — never a signed amount",
+    /* ⭐ RE-AIMED 2026-09-23 BY AN OWNER RULING, NOT RELAXED. This case pinned the OPPOSITE — "the SETTLED one
+       renders a profit as zero, never a signed amount" — on the argument that "−TZS 12,000 of TZS 50,000" is
+       "Today's net" wearing a cap's label, the figure ruling 266 struck. That argument was sound and the clamp
+       was deliberate.
+       🔴 WHAT CHANGED IS A MEASUREMENT AND THEN A DECISION. On production the desk finished a session ahead by
+       TZS 186 across four wins, one loss and six refunds, and EVERY money surface on the console read "used
+       TZS 0" — indistinguishable from a desk that had broken even, with nowhere else on the desk to tell them
+       apart. Ali ruled on 2026-09-23, told in the same breath that 266 and D20 were what removed it: the settled
+       row states the profit.
+       ⛔ 266 IS NOT WIDENED INTO A NET CARD. It is the SAME row against the SAME configured limit — no lifetime
+       figure, no balance, no new surface — and the limit is still named, because the cap governs the moment there
+       is a loss to count. The grammar changes rather than the figure being smuggled in under "used": the row says
+       "ahead by X · none of <cap> used", which cannot be read as usage of a cap.
+       ⛔ AND THE CASE STILL PINS BOTH DIRECTIONS: a profit says so, and the CONTROL below still proves the reader
+       was never clamped. A run where the settled row went back to "used TZS 0" on a profit is red. */
+    ok("1.366 · the two loss rows are separate, share ONE cap, and the SETTLED one STATES a profit — never rendered as zero (owner ruling, 2026-09-23)",
       projected.limitTzs === settled.limitTzs && projected.limitTzs === 50_000
-        && projected.usedTzs === 1_000 && settled.usedTzs === 0
-        && settled.captionText.includes(`used ${formatTzs(0)} of ${formatTzs(50_000)}`)
-        && !/[-−+]/.test(settled.captionText.replace(/—/g, "")),
+        && projected.usedTzs === 1_000 && settled.usedTzs === -11_000
+        && settled.captionText.includes(`ahead by ${formatTzs(11_000)}`)
+        && settled.captionText.includes(`· limit ${formatTzs(50_000)}`)
+        && !settled.captionText.includes(`used ${formatTzs(0)} of ${formatTzs(50_000)}`)
+        /* ⛔ AND NEITHER HALF MAY GROW: each is `whitespace-nowrap` at the render site, so the widest one is this
+           column's min-content floor at 360. "ahead by X" must stay the width of "used X" and "· limit Y" the
+           width of "of Y" — a longer sentence here is a table that scrolls sideways on a phone. */
+        && settled.halves.length === 2
+        && settled.halves.every((h: Any) => `${h.word} ${h.figure}${h.suffix}`.length <= "used TZS 50,000".length + 4),
       j({ projected: projected.captionText, settled: settled.captionText }));
+    /* ⛔ THE OTHER DIRECTION, so the new grammar cannot leak onto a row that is genuinely at zero: a settled loss
+       of exactly 0 is NOT "ahead", and must still read as ordinary usage. */
+    ok("1.366b · CONTROL · a settled loss of exactly zero is ordinary usage, not 'ahead' — the new grammar is for a PROFIT and nothing else",
+      (() => {
+        const r = (planted as Any).usage.find((x: Any) => x.name === settled.name);
+        return r != null && settled.usedTzs === -11_000;
+      })() && !/ahead by/.test(projected.captionText) && projected.captionText.includes(`used ${formatTzs(1_000)}`),
+      j(projected.captionText));
     ok("1.366 · CONTROL · the READER is not clamped — `foldDayBook` still returns the negative realised loss the gates and stops read",
       (await import("../../src/lib/server/house-bot/book.ts") as Any)
         .foldDayBook({ bets: 3, staked: 40_000, openStake: 12_000, settledStake: 30_000, returned: 41_000 }, "x", "2026-01-01").realisedLossTzs === -11_000, "");

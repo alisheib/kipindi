@@ -1568,6 +1568,44 @@ function usageRow(name: string, used: number | null, limit: number | null): Cons
   if (limit == null) {
     return { name, usedTzs: null, limitTzs: null, halves: [], edgeText: "", captionText: name, unsetCaption: null, unsetLinked: false, unreadable: false };
   }
+  /**
+   * ⭐ A NEGATIVE IS NOT ZERO USAGE — IT IS A PROFIT, AND "used TZS 0" HID IT (owner ruling, Ali 2026-09-23).
+   *
+   * 🔴 MEASURED ON PRODUCTION THE SAME DAY. The desk was ahead by TZS 186 across four wins, one loss and six
+   * refunds, and every money surface on the console read `used TZS 0` — identical to a desk that had broken even,
+   * with nowhere else to tell the two apart. Only the SETTLED loss row can reach here negative
+   * (`realisedLossTzs` = settled stake − returned; a stake total and an exposure total cannot go below zero), and
+   * `book.ts` already says of that figure: *"Realised loss may be negative: that is a profit, and it is reported
+   * as such, never clamped."* This cell was the clamp.
+   *
+   * ⛔ AND IT IS THE CELL'S OWN RULE, NOT A NEW ONE. Ruling 367's docblock on `ConsoleUsageCell` already promises
+   * "the TRUE used amount — never clamped to the limit", and the grammar honours that ABOVE the limit while
+   * silently clamping BELOW zero: it refused to lie upward and lied downward. This removes the asymmetry.
+   *
+   * ⛔ RULING 266 IS NOT WIDENED. No net, no balance, no lifetime figure, and no new surface: this is the same row
+   * against the same configured limit, which is exactly what 266 confines console money to. The limit is still
+   * named, because the cap still governs the moment the day turns and there is a loss to count.
+   */
+  if (used < 0) {
+    const ahead = formatTzs(-used);
+    const lf = formatTzs(limit);
+    return {
+      name,
+      usedTzs: used,
+      limitTzs: limit,
+      /* ⛔ BOTH HALVES STAY THE SIZE THE OLD ONES WERE (432(b)). Each half is `whitespace-nowrap` at the render
+         site, so a half is an UNBREAKABLE unit and the widest one sets this column's minimum width — at 360 a
+         long second half ("· none of TZS 50,000 used") is a min-content floor that pushes the table sideways.
+         "ahead by X" is the width of "used X", and "· limit Y" is the width of "of Y", so the profit state costs
+         the column nothing it was not already paying. */
+      halves: [{ word: "ahead by", figure: ahead, suffix: "" }, { word: "· limit", figure: lf, suffix: "" }],
+      edgeText: "",
+      captionText: `${name} · ahead by ${ahead} · limit ${lf}`,
+      unsetCaption: null,
+      unsetLinked: false,
+      unreadable: false,
+    };
+  }
   const shown = Math.max(0, used);
   const cell = moneyUsage(shown, limit);
   return {

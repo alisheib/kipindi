@@ -216,6 +216,11 @@ await runTwoStores({
    * control that the same rows with an agreeing clock paint nothing, and the control that the spy came off);
    * the fourth is the memory-only source pin, which is why memory rises by four and Postgres by three.
    * What a run PRINTED: `0.mem · exit 0 · 792 passed` and `0.pg · exit 0 · 553 passed`, ALL PASS on both. */
-  minPass: { memory: 792, postgres: 553 },
+  /* ⭐ RAISED 792 → 793 MEMORY / 553 → 554 POSTGRES, 2026-09-23, to what this run PRINTED. +1 in each child:
+   * 1.366b, the CONTROL for the owner's 2026-09-23 ruling that the settled loss row STATES a profit instead of
+   * rendering it as zero. The control is the half that keeps the new grammar honest — a settled loss of exactly
+   * zero is ordinary usage and must NOT read "ahead", so "ahead by" cannot leak onto a row that is simply at nil.
+   * 1.366 itself was re-aimed rather than added, so it is +1 and not +2. */
+  minPass: { memory: 793, postgres: 554 },
   dbPrefix: "hb_console",
 });
