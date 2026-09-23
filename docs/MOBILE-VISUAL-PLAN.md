@@ -1774,6 +1774,7 @@ with its reason in §2, never silently.
 | Up & Down card, live round | **447–660**, and the same card moves with the round's state within minutes (U1's noise floor), so it is measured, never diffed. U3 re-measured the guest `open` card on production at 360 SW: **578.25** and 502.97 | ⚠️ **RESTATED by U3, 2026-09-23: ≤ 430 is unreachable by spacing.** The card is 578.25 in `open` with 419px of that in its own content; every gap and pad it owns sums to ~130px, so even zeroing them all leaves it above 430. Measured result: **578.25 → 526.25 (−52)** at 360 SW `open`. The card now carries **`data-phase`** (11 values), so the target is stated and read **per phase**, never against a card in another state. Reaching ≤ 430 needs content decisions (U35's round shape), not this unit |
 | `/live` featured card | **SW/EN 371 · ZH 268** (the carousel box, 360×780) — U1. Quoted before as ≈ 460 from a screenshot | ≤ 360px |
 | `/help` contact rows | **147** each (three rows) — U1 | ≤ 84px |
+| Disclosure rows (`<summary>`) on player surfaces | **20.3px** on /help — half the floor, and ALL NINE collapse to it in landscape because every question then fits one line (2026-09-23). ⛔ The height was an accident of WRAPPING, so a wider screen made every target smaller | ≥ 40px. /help **fixed** (`a7efcb18`, 20.3 → 44, under-40 count 8 → 0). ⚠️ The same shape is unfixed on two more: `markets/[id]/page.tsx:708` and `profile/kyc/page.tsx:546` both put the spacing on the `<details>` and leave the `<summary>` at text height |
 | Auth form field width (7 pages) | **262** at 360 (login, register, forgot password), **222** at 320 — U1 | ≥ 277px |
 | Footer navigation links | **19** median, **15** smallest — U1 | ≥ 40px |
 | Confirmation questions | centred cards | bottom sheets, primary visible at 360×640, safe area respected |
@@ -1787,7 +1788,7 @@ with its reason in §2, never silently.
 | Control glyph sizes | U1 counts **4** distinct icon boxes in the header, discovery bar and rail at 360 (5 at 768+); the 9 was a different count of board chrome | the 16/18/20/24 set |
 | Tap floor / overflow / clipped money | holds | still holds in EN/SW/ZH |
 | Comfortable and ≥ 640 | — | zero diff against the U1 baseline |
-| Landscape 780×360 pinned chrome on `/markets` | **237 of 360** (66%), 0.37 cards visible — U1 | ≤ 150px |
+| Landscape 780×360 pinned chrome on `/markets` | **237 of 360** (66%), 0.37 cards visible — U1. Re-measured at 740×360 on production 2026-09-23: **65.8%** on /markets and /results, and **33.6% on every other route** (header 56 + rail 65 of 360) across 16 routes — so landscape costs a THIRD of the screen everywhere, not only on the boards | ≤ 150px |
 | Overlays at 740×360 | a sheet's top can be unreachable (D20) | title, close and primary always reachable |
 | Keyboard proxy: focused field visible, rail and bubble hidden | not handled | 100% of form fields |
 | Large text (zoom 1.3): controls with clipped text | not measured | 0 |
