@@ -10,6 +10,7 @@ import {
   useCallback,
   useMemo,
 } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { DEFAULT_LOCALE, dict, type Locale, type Dict } from "./i18n-dict";
 
@@ -166,9 +167,22 @@ const GLYPHS = [
 
 export function LocaleChangeOverlay() {
   const { isChangingLocale, t } = useT();
-  if (!isChangingLocale) return null;
+  /* 🔴 PORTALED TO document.body, AND NOT FOR TIDINESS. This is `fixed inset-0` — a
+     FULL-VIEWPORT scrim — rendered from inside the provider tree that wraps route content. A
+     `fixed` element resolves against the nearest ancestor with a transform, filter or
+     containment, NOT against the viewport, and this app animates route entry with a transform
+     (`.route-enter`). So mid-transition this scrim would have been laid out against the
+     animating box instead of the screen: a language change during a navigation could show the
+     loader offset, part-covering the page it is meant to cover. `test:stacking` §5.2 has been
+     naming this file for exactly that reason, and it is in `predeploy`.
+     ⛔ `useState`/`useEffect` run BEFORE the `isChangingLocale` bail-out: hooks cannot sit
+     behind a conditional return. The host stays null until mount, so the server renders
+     nothing and there is no hydration mismatch — the overlay only ever appears after a tap. */
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => setHost(document.body), []);
+  if (!isChangingLocale || !host) return null;
   const n = GLYPHS.length;
-  return (
+  const overlay = (
     <div
       className="lcl-scrim fixed inset-0 z-[9000] flex items-center justify-center"
       style={{
@@ -279,4 +293,5 @@ export function LocaleChangeOverlay() {
       `}</style>
     </div>
   );
+  return createPortal(overlay, host);
 }

@@ -56,12 +56,24 @@ type Finding = { rule: string; file: string; line: number; snippet: string };
 //   needle-drawer               — the Needle bottom-sheet (Modal `sheet` is centered ≥sm)
 //   market-card                 — the "How it works" hover popover (anchored, not modal)
 //   share-button                — the share menu popover (anchored dropdown)
+//   i18n.tsx                    — LocaleChangeOverlay, and it is REQUIRED to portal, not merely
+//                                 allowed to: `test:stacking` §5.2 refuses a full-viewport `fixed`
+//                                 overlay rendered inside route content, because a transformed
+//                                 ancestor (the route-enter animation) becomes its containing block
+//                                 and `inset: 0` then resolves against THAT, not the viewport.
+//                                 ⛔ And <Modal> is the wrong primitive for it: this is a
+//                                 non-interactive loading scrim shown for one beat during a language
+//                                 change — there is no focus to trap, nothing to dismiss, and no
+//                                 dialog semantics to announce. The two rules were briefly in
+//                                 conflict (§5.2 demanding the portal, this one calling it ad-hoc);
+//                                 the allowance is how that is settled, rather than by baselining
+//                                 a drift that would then read as debt.
 // Anything ELSE calling createPortal is an ad-hoc overlay that should adopt the kit.
 const PORTAL_ALLOW = new Set([
   "modal.tsx", "select.tsx", "date-select.tsx", "tooltip.tsx", "toast.tsx",
   "avatar-menu.tsx", "notifications-panel.tsx",
   "action-overlay.tsx", "admin-mobile-nav.tsx", "needle-drawer.tsx",
-  "market-card.tsx", "share-button.tsx",
+  "market-card.tsx", "share-button.tsx", "i18n.tsx",
 ]);
 // Kit files that legitimately render the native element they wrap.
 const KIT_NATIVE = new Set(["select.tsx", "checkbox.tsx", "toggle.tsx", "button.tsx", "submit-button.tsx"]);
