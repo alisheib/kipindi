@@ -128,9 +128,20 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
         <div className="kp-proof">
           <div className="kp-proof__fig">
             {/* Plain text ink (E-400 ⑦f): a count of open markets is not a side; the pip carries the live signal. */}
+            {/* 🔴 D51 · THE PIP FOLLOWS THE FIGURE, AND THAT IS WHAT PUTS THE RAIL ON ONE EDGE.
+                It used to lead, and at ≤560 the rail is ONE COLUMN — three figures stacked on the
+                page's 16px edge with hairlines between them — so the 8px pip plus its 8px gap started
+                "36" at x=32 while "TZS 16K" and "8" started at x=16. Measured spread 16px: a ragged
+                left edge on the one element whose job is to look like a ledger.
+                ⛔ THE TWO FIXES THE REGISTER SUGGESTED WERE BOTH WORSE. Hanging the pip outside the
+                flow puts it at x=8 or x=0, off the page's own content edge; giving all three numbers a
+                matching 16px leading slot indents the figures while their CAPTIONS stay at 16, which
+                trades a spread between rows for a spread inside every row.
+                ⭐ Nothing about the signal changes — same pip, same `--live-400`, same gap, still on
+                the open-markets figure and no other. It annotates the count instead of announcing it. */}
             <span className="kp-proof__num" style={{ color: "var(--text)" }}>
-              <span className="kp-proof__pip" aria-hidden />
               {formatNumber(figures.openCount)}
+              <span className="kp-proof__pip" aria-hidden />
             </span>
             <span className="kp-proof__cap">{t.home.heroProofOpen}</span>
           </div>
