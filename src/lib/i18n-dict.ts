@@ -468,6 +468,10 @@ export const dict = {
       rangeFrom: "From", rangeTo: "To", rangeApply: "Apply", rangeClear: "Clear", rangeStart: "Start", rangeEnd: "End",
       monthsLong: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
       monthsShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+      /* 🔴 D69 · localised on 2026-09-23. `date-mask.ts` carried these as a hardcoded English
+         constant, so a Swahili player using TalkBack heard the whole sign-up form in Swahili and then
+         three English words at the one field that decides whether they are allowed an account. */
+      dateDay: "Day", dateMonth: "Month", dateYear: "Year",
       weekdaysShort: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
     },
     nav: {
@@ -3100,6 +3104,7 @@ export const dict = {
       rangeFrom: "Kuanzia", rangeTo: "Hadi", rangeApply: "Tumia", rangeClear: "Futa", rangeStart: "Anza", rangeEnd: "Mwisho",
       monthsLong: ["Januari", "Februari", "Machi", "Aprili", "Mei", "Juni", "Julai", "Agosti", "Septemba", "Oktoba", "Novemba", "Desemba"],
       monthsShort: ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ago", "Sep", "Okt", "Nov", "Des"],
+      dateDay: "Siku", dateMonth: "Mwezi", dateYear: "Mwaka",
       weekdaysShort: ["Jtt", "Jnn", "Jtn", "Alh", "Iju", "Jms", "Jpl"],
     },
     nav: {
@@ -5246,6 +5251,7 @@ export const dict = {
       rangeFrom: "从", rangeTo: "至", rangeApply: "应用", rangeClear: "清除", rangeStart: "开始", rangeEnd: "结束",
       monthsLong: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"],
       monthsShort: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+      dateDay: "日", dateMonth: "月", dateYear: "年",
       weekdaysShort: ["一", "二", "三", "四", "五", "六", "日"],
     },
     nav: {

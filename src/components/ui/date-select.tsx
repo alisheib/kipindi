@@ -68,6 +68,8 @@ const SEG_WIDTH: Record<SegKey, string> = { dd: "2.6ch", mm: "2.6ch", yyyy: "4.8
 export function DateSelect({ name, id, required, min, max, defaultValue, value, onChange, size = "md" }: Props) {
   const { t } = useT();
   const sm = size === "sm";
+  // 🔴 D69 · the segment names come from the dictionary, never from `date-mask.ts` — see the note there.
+  const SEG_ARIA: Record<SegKey, string> = { dd: t.common.dateDay, mm: t.common.dateMonth, yyyy: t.common.dateYear };
   const MONTH_NAMES = t.common.monthsLong;
   const MONTH_SHORT = t.common.monthsShort;
   const DAY_LABELS = t.common.weekdaysShort;
@@ -265,7 +267,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                    labelable element — so every `<label htmlFor="dob">` in the
                    product was pointing at nothing and clicking it did not focus
                    the field. On the day segment it focuses exactly where typing
-                   starts. The segment's own `aria-label` ("Day") still wins the
+                   starts. The segment's own `aria-label` (localised, D69) still wins the
                    name computation, so nothing is renamed. */
                 id={idx === 0 ? id : undefined}
                 type="text"
@@ -275,7 +277,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                 data-lpignore="true"
                 value={get(seg.key)}
                 placeholder={seg.ph}
-                aria-label={seg.aria}
+                aria-label={SEG_ARIA[seg.key]}
                 maxLength={seg.max}
                 style={{ width: SEG_WIDTH[seg.key] }}
                 className="bg-transparent text-center text-text outline-none placeholder:text-text-subtle"
