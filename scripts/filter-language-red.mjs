@@ -345,8 +345,15 @@ const CASES = [
     //    reads like respecting a floor and is actually reverting Ali's 2026-08-14 decision.
     name: "range-reverted (the chart range back to 40 via the token, which reads like a floor)",
     file: CSS,
-    from: `  min-height: 44px;\n}`,
-    to: `  min-height: var(--tap-min);\n}`,
+    // ⚠️ RE-ANCHORED 2026-09-23. PLAYER-FILTERS (2026-09-09) added a comment and a `min-width: 44px` after this
+    //    declaration, so `min-height: 44px;` stopped being the last thing before the brace and this anchor matched
+    //    NOTHING. ⛔ It is NOT a line-ending problem — `resolveAnchor` normalises CRLF — the text simply moved.
+    //    `injectDefect` throws on a missing anchor, so it would have failed loudly the moment this harness could
+    //    run at all; it could not, because `test:filter-language` §6.6 has been red on main. A dead RED case
+    //    hiding behind an unrelated red is still a dead RED case. Anchored on the comment tail above it, which is
+    //    unique, so a future declaration landing between the two cannot silently orphan it again.
+    from: `not a duplication to collapse. */\n  min-height: 44px;`,
+    to: `not a duplication to collapse. */\n  min-height: var(--tap-min);`,
     expect: "4.3",
   },
   {

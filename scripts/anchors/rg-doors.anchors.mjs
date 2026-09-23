@@ -96,9 +96,16 @@ export const MUTATIONS = [
        + "counted by the Board-facing RG report — and nothing consults it. The report goes on "
        + "saying the player set a limit while six hours of play go through.",
     file: RG,
-    from: `  const playedMin = Math.floor((Date.now() - playStartedAt) / 60_000);
+    // ⚠️ RE-ANCHORED 2026-09-23. E-408's per-player play clock (2026-09-14) renamed `Date.now()` to `now`
+    //    and `playStartedAt` to `start` in this return, and this anchor was never moved with it. `injectDefect`
+    //    throws on an anchor it cannot find, so the case was LOUD rather than silently green — but the whole
+    //    suite was red for other reasons, so nobody read it. ⛔ A RED control for a Board-facing responsible
+    //    gambling guarantee had been unable to fire for nine days. The mutation is unchanged: `exceeded` is
+    //    pinned false, so the limit keeps its value, keeps showing on the player page and keeps being reported,
+    //    and simply stops refusing anything.
+    from: `  const playedMin = Math.floor((now - start) / 60_000);
   return { exceeded: playedMin >= limitMin, limitMin, playedMin };`,
-    to: `  const playedMin = Math.floor((Date.now() - playStartedAt) / 60_000);
+    to: `  const playedMin = Math.floor((now - start) / 60_000);
   return { exceeded: false, limitMin, playedMin };`,
     check: "4.1 ⭐ forty-five minutes into a thirty-minute limit, the bet is REFUSED",
   },
@@ -146,8 +153,10 @@ export const MUTATIONS = [
        + "the only check was 'a non-negative integer'. Harmless while nothing enforced the value; "
        + "now it lets a player set 1 and stop themselves betting a minute into every session.",
     file: RG,
-    from: `    next.sessionTimeLimitMin = v === null || v <= 0 ? null : Math.max(15, Math.min(480, v));`,
-    to: `    next.sessionTimeLimitMin = v === null || v <= 0 ? null : v;`,
+    // ⚠️ RE-ANCHORED 2026-09-23, same cause as the case above: the pending-session-limit flow moved this clamp
+    //    off `next.sessionTimeLimitMin` and onto a local `requested`, and the anchor stayed behind.
+    from: `    const requested = v === null || v <= 0 ? null : Math.max(15, Math.min(480, v));`,
+    to: `    const requested = v === null || v <= 0 ? null : v;`,
     check: "5.1 a 1-minute limit is raised to the platform's stated floor of 15",
   },
   {

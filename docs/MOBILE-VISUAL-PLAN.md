@@ -30,14 +30,45 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ NEXT: Session S2 → U3 (Compact market card + Up & Down card + skeleton token, with D28; D49 is BY DESIGN — §4 item 11)
-  and U4 (the discovery bar on one control line). Read §5, §9 U3–U4 AND their "S2 prep notes" before touching code:
-  the notes correct stale line numbers and show which written targets cannot be met as written (restate them in §2 first).
-
-✔ LAST SESSION (S1, 2026-09-22 → 23): U1 ✅ and U2 ✅ — the phone instrument `qa:mobile-visual` with its committed baseline,
+▶ NEXT: Session S2 (continuing) → **U4** (the discovery bar on one control line). Read §5, §9 U4 AND its
+  "S2 prep notes" before touching code. Two things U4 must fix in its own commit, both already confirmed here:
+  · ✔ FIXED IN S2, and the prep note's diagnosis was WRONG in its mechanism. `red:filter-language`'s
+    `range-reverted` case anchored on `  min-height: 44px;` immediately followed by `}` — and PLAYER-FILTERS
+    (2026-09-09) inserted a comment and a `min-width: 44px` between them, so the anchor matched nothing.
+    ⛔ NOT a line-ending problem: `resolveAnchor` already normalises CRLF (`toEol`). Re-anchored on the unique
+    comment tail above the declaration, so a future declaration landing between the two cannot orphan it again.
+    ⛔ It never reported a false GREEN either — `injectDefect` THROWS on a missing anchor. What hid it is that
+    `red:filter-language` REFUSES to run at all while `test:filter-language` §6.6 is red, so a dead RED case sat
+    behind somebody else's failure. ⚠️ U4 still cannot exercise this harness until §6.6 lands (house-bots owns it).
+  · `qa:bar-geometry` OVERLAP and `qa:tap-truth` DISJOINT would both go red FALSELY on a one-line bar (a scrolled
+    strip's boxes must be clipped to their scroller first; `seen` includes scrolled-out chips).
+  After U4, S3 → U5 + U6.
+✔ LAST SESSION (S2, 2026-09-23): **U3 ✅** — the market card's rhythm became six `:root` tokens the card and the
+  SKELETON both read, so Compact is those numbers and nothing else; D28 (the share control reached 26 × 37px on
+  every card) is fixed at 41–42 × 40 by stretching the box to the row it already sat in; D49 closed BY DESIGN on
+  Ali's ruling; the Up & Down card gained `data-phase` and six class hooks. Measured, then re-measured:
+  353.5 → 301.5 · 347.44 → 303.44 · 319.5 → 279.5 · 312 → 264 · 278 → 242 · Up & Down 578.25 → 526.25.
+  ⚠️ TWO WRITTEN TARGETS WERE RESTATED IN §11 RATHER THAN MISSED QUIETLY: "every state ≥ 45px shorter" is
+  arithmetic the §9 rules cannot produce (a card with no sparkline has one child, and so one row gap, fewer), and
+  the Up & Down ≤ 430 is unreachable by spacing at all. Before it: the `revoked-deadend` locale fix verified
+  40/6 → 46/0 and pushed (`1da32fd9`).
+  👁 THE SHOTS WERE READ, NOT JUST THE NUMBERS (§11 step 4, and Ali asked for it directly): /markets, /results,
+  /updown and the landing at 360 SW in BOTH densities, on production. Compact is the better screen — the whole
+  card now fits with the next one starting, where Comfortable clips at the rail and puts the chat bubble on top
+  of "Maelezo". Two things visible on /results are D1 (the half chip under the count) and D5 (the gap under the
+  search box) — both already registered to U9, neither caused here. A 72-cell damage sweep over / · /markets ·
+  /results · /live · /watchlist · /updown × 320/360 × SW/EN/ZH × both densities found ZERO horizontal overflow,
+  both card tokens resolving to real heights everywhere (303/347 and 242/278), and no collapsed or runaway card.
+  ⚠️ FOUR REDS ON MAIN, NONE OF THEM U3's — each proven at HEAD with U3's files reverted, failing identically:
+  `test:stacking` §5.2 (LocaleChangeOverlay, i18n.tsx via theme-provider.tsx — plausibly U2's), `test:type-scale`
+  §3 (746 vs a ratchet of 744; ⛔ do NOT bump the ratchet — find the two), `test:filter-language` §6.6 (the
+  house-bots session owns it and has taken it), and `qa:tap-hit`'s chart-range section (fails on production too,
+  so it is a product gap). ⛔ `test:stacking` and `test:filter-language` are both in `predeploy`, so predeploy
+  does NOT go green on main today.
+✔ BEFORE IT (S1, 2026-09-22 → 23): U1 ✅ and U2 ✅ — the phone instrument `qa:mobile-visual` with its committed baseline,
   the production QA player "QA Mobile 01", and the Card spacing switch (Privacy v2026-09-22, approved by Ali). Nothing looks
   different yet: U3/U4 add the first Compact rules, which `test:density-contract` fences (§2 S1).
-✔ BEFORE IT (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
+✔ AND (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
   experience 5–6.5/10 in Swahili (the Seal's baseline); 12 new defects D42–D53; owner items 6–9; the panel and
   its capture stored in the repo so the Seal can repeat them exactly. No product code changed.
 ✔ AND (S0c, 2026-09-16): plan v3 — the 718-finding element inspection (§3a, record in
@@ -48,10 +79,11 @@
   the owner rulings in PLAN-OF-RECORD §8.8, the NEXT-PLAN board.)
 
 ◐ HALF-DONE: S1 is closed and merged to main. Start S2 from `origin/main` on any PC (a new branch or worktree off it).
-  ONE small item first: `origin/mobile-visual` carries a single unmerged commit, `f80f1d33` — `test:revoked-deadend` sets
-  `kp-locale=en` on every context (its six English copy checks have read Swahili pages since 8822b648; found by S1's test:all).
-  It is UNVERIFIED: boot next dev, run `BASE=http://localhost:<port> npm run test:revoked-deadend` (40/6 → 46/0), then push it
-  to main — a test-only change, no product code. Two things that do NOT travel through git:
+  ✔ The small item is DONE: `f80f1d33` (`test:revoked-deadend` sets `kp-locale=en` on every context) was VERIFIED against a
+  server on 2026-09-23 on OMEGA-COMPILE01, and is on main. Proven BOTH ways on one `next dev` (:3042, no database — the disk
+  store): the pre-fix file, taken from `bc25f00a` and run beside it, failed **40/6**, and its own failure excerpt is visibly
+  Swahili ("Ruka hadi maudhui … Si bahati") — the diagnosis, not an inference; the fixed file passed **46/0**, twice. The six
+  failures were the six named. A test-only change, no product code. Two things that do NOT travel through git:
   · the QA player's password — "QA Mobile 01" (usr_ffb3c5cdd44a35cfca12125a, +255712000110, WHO=mobile01) signs in only with the
     `QA_MOBILE01_PHONE` / `QA_MOBILE01_PASSWORD` lines of `.env.qa.local` in C:\kipindi-mobile on ALI-BLADE15. Copy those two lines
     into the new checkout's `.env.qa.local`; if they are lost, ⛔ never re-mint 01 — mint "QA Mobile 02" (+255712000111) with
@@ -196,7 +228,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 |---|---|---|---|---|---|---|---|
 | U1 Baseline instrument + QA player | — | ✅ | S1 | `ba8f18e3` | no instrument, no production player → `qa:mobile-visual` over 315 production pages, §11 "Before" re-derived, baseline committed; "QA Mobile 01" minted | yes (RED=1 exits 1 on card heights; clean exits 0) | 2026-09-22 · production, served `feca192c` |
 | U2 Density setting + switch | Compact | ✅ | S1 | `e2ba9a3e` | no setting → the Card spacing switch (kp-density, served `data-density`, 44px row); zero diff vs the U1 baseline on 120 production pages, both densities | yes (density-contract RED 2/2; card-spacing step F fails with the re-sync off) | 2026-09-23 · production, served `e2ba9a3e` |
-| U3 Market card + Up & Down card + skeleton token | Compact | ⬜ | S2 | | | | |
+| U3 Market card + Up & Down card + skeleton token | Compact | ✅ | S2 | `ea84e4a9` | market card 353.5 → **301.5** live+band · 347.44 → 303.44 cold start · 319.5 → 279.5 · 312 → 264 · 278 → 242; Up & Down 578.25 → **526.25** (`open`); share reach 26×37 → **41–42 × 40**; `/results` skeleton literal 220 → the closed-card token | yes (`qa:tap-hit` share section fails all 12 cells on the UNFIXED production tree naming 26×37 and the 6.5px gap; passes 42 controls here. `red:density-contract` 2/2 over a population that is real for the first time) | 2026-09-23 · production, served `ea84e4a9` |
 | U4 Discovery bar | Compact | ⬜ | S2 | | | | |
 | U5 Header pills + phone rhythm tokens | General | ⬜ | S3 | | | | |
 | U6 Home tightening | General | ⬜ | S3 | | | | |
@@ -264,7 +296,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D25 | ⬜ | U27 |
 | D26 | ⬜ | U25 |
 | D27 | ⬜ | U16 |
-| D28 | ⬜ | U3 |
+| D28 | ✅ `ea84e4a9` 2026-09-23 (live) | U3 |
 | D29 | ⬜ | U32 |
 | D30 | ⬜ | U33 |
 | D31 | ⬜ | U34 |
@@ -285,7 +317,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D46 | ⬜ | U37 |
 | D47 | ⬜ | U36 |
 | D48 | ⬜ | U19 |
-| D49 | ⬜ | U3 |
+| D49 | ✅ by design `ea84e4a9` 2026-09-23 (live) — §4 decision 11: the band stays where real history exists, trimmed 28 → 20 in Compact; never removed, no reserved space | U3 |
 | D50 | ⬜ | U36 |
 | D51 | ⬜ | U6 |
 | D52 | ⬜ | U35 |
@@ -1590,7 +1622,7 @@ with its reason in §2, never silently.
 
 | Measure | Before | Target |
 |---|---|---|
-| Market card, live priced | **320–354** (median 320 in SW/EN/ZH; the 354s carry the sparkline band, D49) — U1. Quoted before as 347–354 | ≤ 305px; every state ≥ 45px shorter |
+| Market card, live priced | **320–354** (median 320 in SW/EN/ZH; the 354s carry the sparkline band, D49) — U1. Quoted before as 347–354 | ≤ **305px** live priced — **met: 301.5** (U3, measured). ⚠️ *"every state ≥ 45px shorter" is RESTATED per state by U3, 2026-09-23*, because it is arithmetic the §9 rules cannot produce: the deltas are **−52** live+band (353.5 → 301.5), **−48** resolved+band (312 → 264), **−44** cold start (347.44 → 303.44), **−40** live no-band (319.5 → 279.5), **−36** resolved no-band (278 → 242). A card with no sparkline has one child fewer and therefore **one 4px row gap fewer**, so the two no-band shapes cannot reach −45 by spacing at all. Target: **every state ≥ 36px shorter, and ≤ 305 wherever a price is shown** |
 | Cards visible while scrolling `/markets` | **1.63** at 360×780 (1.21 at 360×640 and 320×640, 2.03 at 412×915) — U1 | ≈ 1.9 (a true 2.0 needs a card ≤ 280px, more than spacing can give) |
 | Pinned chrome `/markets` | **237** = header 56 + discovery bar 116 + rail 65, in every phone cell and language — U1 | ≤ 201px |
 | Home length | **EN 10.78 · SW 11.09 · ZH 10.11** screens (320×640: EN 13.37 · SW 14.15) — U1 | ≤ 7.5 (SW ≤ 7.8) |
@@ -1598,7 +1630,7 @@ with its reason in §2, never silently.
 | Header auth pills | **48** (both pills, every phone cell) — U1 | 40px, both visible at 320 |
 | Chat bubble | 52px, covers Details | 44px, never covers while scrolling |
 | Countdown panel (≥ 1 day), all widths | **SW 266 · EN/ZH 248**, 8 tiles — U1. Quoted before as ≈ 220 | ≤ 160px, 4 tiles |
-| Up & Down card, live round | **447–660**, and the same card moves with the round's state within minutes (U1's noise floor), so it is measured, never diffed | ≤ 430px |
+| Up & Down card, live round | **447–660**, and the same card moves with the round's state within minutes (U1's noise floor), so it is measured, never diffed. U3 re-measured the guest `open` card on production at 360 SW: **578.25** and 502.97 | ⚠️ **RESTATED by U3, 2026-09-23: ≤ 430 is unreachable by spacing.** The card is 578.25 in `open` with 419px of that in its own content; every gap and pad it owns sums to ~130px, so even zeroing them all leaves it above 430. Measured result: **578.25 → 526.25 (−52)** at 360 SW `open`. The card now carries **`data-phase`** (11 values), so the target is stated and read **per phase**, never against a card in another state. Reaching ≤ 430 needs content decisions (U35's round shape), not this unit |
 | `/live` featured card | **SW/EN 371 · ZH 268** (the carousel box, 360×780) — U1. Quoted before as ≈ 460 from a screenshot | ≤ 360px |
 | `/help` contact rows | **147** each (three rows) — U1 | ≤ 84px |
 | Auth form field width (7 pages) | **262** at 360 (login, register, forgot password), **222** at 320 — U1 | ≥ 277px |
@@ -1607,7 +1639,7 @@ with its reason in §2, never silently.
 | Overlays (census) | not measured | all "fits"; ≤ 1 blocking overlay at a time; toasts ≤ 2 |
 | Defects D1–D41 (register §8) | 41 open | 0 |
 | Inspection backlog (findings record) | 379 unverified | 0 left unverified (U31) |
-| Card share control | **26 × 37** reach around a 13×13 glyph (measured by hit extent, not the box) — U1 | ≥ 40 × 40px on every card |
+| Card share control | **26 × 37** reach around a 13×13 glyph (measured by hit extent, not the box) — U1 | ≥ 40 × 40px on every card — **met: 41–42 × 40** (U3/D28), and ≥ 8px clear of Details (measured 8.5–9.5), on /markets and /results at 320 and 360 in SW/EN/ZH |
 | Cards stating a price with no bets | every resolved/void empty card | 0 in any state |
 | Money that wraps or ellipsises (320/360 × 3 locales, 7-figure fixtures) | multiple per surface | 0 |
 | Off-ladder type sizes on player surfaces | 8+ literals counted | 0 new; ratchet may only shrink |

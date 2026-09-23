@@ -740,6 +740,12 @@ export function UpDownCard(props: UpDownCardProps) {
   return (
     <article
       className={cn("mcardp group", cardPulse && "ud-place-pulse", className)}
+      /* The round's own phase, on the card. It changes NOTHING a player sees — it is here so a
+         measurement can be keyed to the state that produced it. U1 found this card measuring 468
+         and then 660px minutes apart on the SAME board, because its height follows the live round;
+         a before/after taken without the phase is comparing two different cards. 11 values:
+         open · locked · result · spent · settled · idle · h:unavailable · h:waiting · h:counting · h:live. */
+      data-phase={podPhase}
       aria-label={`${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`}
       style={{
         cursor: "pointer", display: "flex", flexDirection: "column",
@@ -811,7 +817,7 @@ export function UpDownCard(props: UpDownCardProps) {
       </div>
 
       {/* ── Countdown (mandatory: TIMER) ───────────────────────────────── */}
-      <div className="mt-3 rounded-xl px-3 py-2.5"
+      <div className="ud-pod rounded-xl px-3 py-2.5"
            style={{ background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)" }}>
         {/* ⛔ THE CAPTION IS THE FIX, NOT THE DIGITS. Same `0:36` means two different things
             either side of the lock, so the label must say which — "Betting closes in" before,
@@ -861,7 +867,7 @@ export function UpDownCard(props: UpDownCardProps) {
       </div>
 
       {/* ── Stats (mandatory: VOLUME · PLAYERS) ────────────────────────── */}
-      <div className="mt-3 flex items-center justify-between gap-2">
+      <div className="ud-stats flex items-center justify-between gap-2">
         <span className="font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
           <span className="text-micro uppercase eyebrow text-text-faint">{t.market.udVolume} </span>
           {formatTzs(volumeTzs)}
@@ -888,7 +894,7 @@ export function UpDownCard(props: UpDownCardProps) {
           ⚠️ `height={7}` matches `.mcardp`'s own bar deliberately (market-card.tsx). Both card
           families sit in the same `.mcardp` shell; a 5px bar here and a 7px bar there was one
           idea drawn two ways on one board. */}
-      <div className="mt-2">
+      <div className="ud-split">
         {upPct !== null && downPct !== null && (
           <div className="flex items-center justify-between font-mono text-[9.5px] font-bold tracking-[0.06em]">
             <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {Math.round(upPct)}%</span>
@@ -931,7 +937,7 @@ export function UpDownCard(props: UpDownCardProps) {
           Frozen at open; hidden once the round settles (it shows its outcome instead) or
           before a price is confirmed (we never invent a boundary). */}
       {upTarget != null && downTarget != null && state !== "resolved" && state !== "void" && (
-        <div className="mt-2.5">
+        <div className="ud-prices">
           {/* "Higher or lower than $63,572.10" — the OPEN price is the thing being compared
               against, so it is what the heading names. The ± figure stays because it is the
               honest size of the band, and at the tick floor it is reassuringly tiny. */}
@@ -973,7 +979,7 @@ export function UpDownCard(props: UpDownCardProps) {
       )}
 
       {/* ── The one action / status block. Exactly one renders. ────────── */}
-      <div style={{ marginTop: "auto", paddingTop: 12 }}>
+      <div className="ud-act">
         {bettable ? (
           canQuickBet ? (
             // Authed + has its market → the shared quick-bet control (chips + custom
@@ -1203,7 +1209,7 @@ export function UpDownCard(props: UpDownCardProps) {
           had quoted 14 minutes before we read it; second-level precision is the evidence.
           ⚠️ Found by LOOKING, at a width a suite had no reason to visit — `document.scrollWidth`
           cannot see clipping INSIDE a card, which is why `qa:asset-board` measures elements. */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-2.5 font-mono text-[9.5px] text-text-faint"
+      <div className="ud-foot flex flex-wrap items-center justify-between gap-x-2 gap-y-1 font-mono text-[9.5px] text-text-faint"
            style={{ borderTop: "1px solid color-mix(in oklab, var(--border) 55%, transparent)" }}>
         <span className="min-w-0">
           {t.market[SOURCE_CLASS_KEY[sourceClass]]}{quoted ? ` · ${t.market.udQuoted} ${quoted}` : ""}

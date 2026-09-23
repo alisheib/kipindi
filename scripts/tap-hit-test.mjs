@@ -20,6 +20,8 @@ const TAP_MIN = 40;
 const b = await chromium.launch();
 const failures = [];
 let cardsProbed = 0;
+let sharesProbed = 0;
+const SHARE_RED = process.env.RED_SHARE === "1";
 
 for (const path of ["/markets", "/"]) {
   for (const W of [{ n: "360", w: 360, h: 780 }, { n: "768", w: 768, h: 1024 }, { n: "1280", w: 1280, h: 900 }, { n: "1920", w: 1920, h: 1080 }]) {
@@ -91,6 +93,105 @@ for (const path of ["/markets", "/"]) {
 
     console.log(`${path.padEnd(9)} ${W.n.padStart(4)} | cards=${String(res.length).padStart(2)} hitArea=${minHit}px painted=${maxPainted}px infoIntact=${infoChecked - infoStolen}/${infoChecked}`);
     await ctx.close();
+  }
+}
+/* ── D28 · THE CARD'S SHARE CONTROL — the other control in the same 17px row ────────────────
+ *
+ * MEASURED ON PRODUCTION, 2026-09-23, 360 SW: the share trigger's hit extent was 26 x 37px —
+ * under the 40px floor on BOTH axes, on every card, on every board, in every state. Its glyph
+ * box is 13 x 13 and `getBoundingClientRect()` reports exactly that, correctly, before and
+ * after the fix. So no measurement driver in this repo could tell the defect from its absence;
+ * only `elementFromPoint` can, which is why the probe lives here beside Details' own.
+ *
+ * WHAT THE FIX IS, SO THAT THIS CAN CHECK THE RIGHT THING. The box now stretches to the row it
+ * already sits in (17.25px, a height `.mcardp-details` sets), and the ::after reaches -24 left /
+ * -4 right / -9 top / -14 bottom. 9 + 17.25 + 14 = 40.25 tall, 24 + 13 + 4 = 41 wide.
+ *
+ * THE ASYMMETRY IS THE LOAD-BEARING PART, and it is what this guard exists to defend:
+ * `Details` begins 12px to the right and owns its own left edge. A reach that grew evenly would
+ * cross into it and the two controls would fight over the same pixels — the exact failure
+ * `.mcardp-info` is called out for elsewhere in this file. So the gap is asserted, not assumed.
+ *
+ * FOUR INSET CORNERS, not just the centre: a centre-only probe passes on a reach of any shape,
+ * including the 26 x 37 one this replaces.
+ *
+ *   RED CONTROL:  RED_SHARE=1 npm run qa:tap-hit -- <base>
+ * restores the shipped 26px box (left/right -6px, no stretch) in the page and nothing else.
+ * It must FAIL, and fail naming the reach — if it passes, this guard proves nothing. */
+for (const W of [{ n: "320", w: 320, h: 640 }, { n: "360", w: 360, h: 780 }]) {
+  for (const locale of ["sw", "en", "zh"]) {
+    for (const path of ["/markets", "/results"]) {
+      const ctx = await localisedContext(b, { locale, width: W.w, height: W.h, baseUrl: BASE, reducedMotion: "reduce" });
+      const p = await ctx.newPage();
+      await p.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 90000 });
+      await p.waitForTimeout(2500);
+      await assertLang(p, locale);
+      if (SHARE_RED) {
+        await p.addStyleTag({ content: ".mcardp-share { align-self: auto !important; } .mcardp-share::after { left: -6px !important; right: -6px !important; }" });
+        await p.waitForTimeout(150);
+      }
+
+      const count = await p.locator(".mcardp").count();
+      const res = [];
+      for (let i = 0; i < Math.min(count, 4); i++) {
+        await p.evaluate((idx) => { const c = document.querySelectorAll(".mcardp")[idx]; if (c) c.scrollIntoView({ block: "center" }); }, i);
+        await p.waitForTimeout(200);
+        const one = await p.evaluate((idx) => {
+          const card = document.querySelectorAll(".mcardp")[idx];
+          if (!card) return null;
+          const share = card.querySelector(".mcardp-share");
+          const det = card.querySelector(".mcardp-details");
+          if (!share || !det) return null;
+          const sr = share.getBoundingClientRect();
+          const dr = det.getBoundingClientRect();
+          if (sr.height === 0 || sr.top < 60 || sr.bottom > innerHeight - 45) return null;
+          const ownsShare = (el) => !!el && (el === share || share.contains(el) || el.closest(".mcardp-share") === share);
+          const ownsDet = (el) => !!el && (el === det || det.contains(el) || el.closest(".mcardp-details") === det);
+          const at = (x, y) => document.elementFromPoint(Math.round(x), Math.round(y));
+          const cx = (sr.left + sr.right) / 2, cy = (sr.top + sr.bottom) / 2;
+
+          let l = 0, r = 0, t = 0, bm = 0;
+          for (let d = 0; d <= 50; d++) { if (ownsShare(at(cx - d, cy))) l = d; else break; }
+          for (let d = 0; d <= 50; d++) { if (ownsShare(at(cx + d, cy))) r = d; else break; }
+          for (let d = 0; d <= 50; d++) { if (ownsShare(at(cx, cy - d))) t = d; else break; }
+          for (let d = 0; d <= 50; d++) { if (ownsShare(at(cx, cy + d))) bm = d; else break; }
+          const reachW = l + r + 1, reachH = t + bm + 1;
+
+          // The four corners of the reach, inset 1px so the sample is inside the box it claims.
+          const corners = [[cx - l + 1, cy - t + 1], [cx + r - 1, cy - t + 1], [cx - l + 1, cy + bm - 1], [cx + r - 1, cy + bm - 1]];
+          const cornersOwned = corners.filter(([x, y]) => ownsShare(at(x, y))).length;
+
+          return {
+            reachW, reachH, cornersOwned,
+            centreOwned: ownsShare(at(cx, cy)),
+            detCentreOwned: ownsDet(at((dr.left + dr.right) / 2, (dr.top + dr.bottom) / 2)),
+            gapToDetails: Math.round((dr.left - (cx + r)) * 100) / 100,
+            rowPainted: Math.round(det.parentElement.getBoundingClientRect().height),
+          };
+        }, i);
+        if (one) res.push(one);
+      }
+
+      const where = `${path} @${W.n} ${locale}`;
+      if (!res.length) { failures.push(`${where}: no share control fully in view — probed nothing`); console.log(`share ${where.padEnd(22)} | NOTHING PROBED`); await ctx.close(); continue; }
+      sharesProbed += res.length;
+      const minW = Math.min(...res.map((c) => c.reachW));
+      const minH = Math.min(...res.map((c) => c.reachH));
+      const minGap = Math.min(...res.map((c) => c.gapToDetails));
+      const badCorners = res.filter((c) => c.cornersOwned < 4).length;
+      const noCentre = res.filter((c) => !c.centreOwned).length;
+      const detStolen = res.filter((c) => !c.detCentreOwned).length;
+      const painted = Math.max(...res.map((c) => c.rowPainted));
+      if (minW < TAP_MIN) failures.push(`${where}: share reach is ${minW}px WIDE (< ${TAP_MIN})`);
+      if (minH < TAP_MIN) failures.push(`${where}: share reach is ${minH}px TALL (< ${TAP_MIN})`);
+      if (noCentre) failures.push(`${where}: the share control does not own its own centre on ${noCentre}/${res.length} card(s)`);
+      if (badCorners) failures.push(`${where}: a corner of the share reach belongs to something else on ${badCorners}/${res.length} card(s)`);
+      if (detStolen) failures.push(`${where}: share swallowed Details' centre on ${detStolen}/${res.length} card(s)`);
+      if (minGap < 8) failures.push(`${where}: only ${minGap}px between the share reach and Details (needs >= 8)`);
+      if (painted !== 17) failures.push(`${where}: the footer row's PAINTED height moved to ${painted}px (must stay 17)`);
+      console.log(`share ${where.padEnd(22)} | cards=${res.length} reach=${minW}x${minH} corners=${4 - badCorners > 0 ? "all" : "BAD"} gap=${minGap}px painted=${painted}px`);
+      await ctx.close();
+    }
   }
 }
 /* ── the market chart's time-range rail — batch 6 ────────────────────────────────────────────
@@ -222,8 +323,10 @@ let rangesProbed = 0;
 
 await b.close();
 
-console.log(`\n${cardsProbed} cards hit-tested · ${rangesProbed} chart-range buttons hit-tested`);
+console.log(`\n${cardsProbed} cards hit-tested · ${sharesProbed} share controls hit-tested · ${rangesProbed} chart-range buttons hit-tested`);
 if (!cardsProbed) { console.log("FAILED: nothing was probed — this proves nothing."); process.exit(1); }
+if (!sharesProbed) { console.log("FAILED: no SHARE control was probed — D28 would be unguarded."); process.exit(1); }
 if (failures.length) { console.log(`FAILURES (${failures.length}):`); failures.forEach((f) => console.log(`  - ${f}`)); process.exit(1); }
 console.log(`every Details target >= ${TAP_MIN}px · every row still painted at 17px · no info button swallowed`);
 console.log(`every chart-range target >= ${RANGE_MIN}px · the chart header does not overflow at 4 widths`);
+console.log(`every share reach >= ${TAP_MIN}px on both axes at 320/360 in sw/en/zh · >= 8px clear of Details · row still 17px`);
