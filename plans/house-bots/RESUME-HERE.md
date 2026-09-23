@@ -5,6 +5,31 @@ only *"continue the house bots development where it was"* starts here, and nothi
 
 ---
 
+
+## ⚠️ READ THIS BEFORE ANYTHING ELSE — the production desk is ON
+
+**Measured on production 2026-09-23 02:01 EAT, SELECT-only:**
+
+| Fact | Value |
+|---|---|
+| Master switch | **enabled = true**, switched on **2026-09-21 18:56:11 EAT**, with an actor and a reason recorded |
+| Switch trail | five events that evening — ON, OFF, ON, OFF, **ON** |
+| Accounts | **one ACTIVE**, designated 2026-09-21 16:49:37 EAT, `rulesVersion` 14 |
+| Its scope | Up & Down ticked, **0 chains chosen**, 0 categories, polls off |
+| Money it has placed | **0 positions, 0 intents, 0 transactions** |
+
+⛔ **NO SESSION EVER TOUCHES THAT SWITCH.** It is the owner's own act, and this record exists so nobody reads
+the older "the switch is OFF" lines and believes them. It was already on when this session started.
+
+⭐ **AND THE DESK IS DOING NOTHING, FOR A REASON THE WORK BELOW FIXES.** The one ACTIVE account has Up & Down
+ticked and **no chain chosen**, so `rulesCoverTarget` is false for every market and it reaches nothing — which
+is exactly why it has placed no bet in 31 hours with the switch on. `rulesVersion` 14 says somebody saved it
+thirteen times trying. The scope pickers (2026-09-22) are the control that fixes it; the roster now names the
+reason on the account's own row, the why-panel says it, and Start refuses it.
+
+**What an officer does about it, in order:** open the desk → the account's row says why it cannot bet → Rules →
+tick the chains it may touch (and the categories, if polls is wanted) → Save → Start.
+
 ## 0 · Do this first
 
 ```bash
