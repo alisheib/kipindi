@@ -14,8 +14,8 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
-| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 four times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55 and 08:28 UTC) — **9 of 9** sends used; the ceiling went 6 → 7 → 8 on Ali's instructions to validate the vendor's successive claims. ⭐ Ali confirms the handset RECEIVES every one of them |
-| Delivery callback | ✅ **WORKING since 2026-09-23 03:46:48 UTC** — the gateway called us BY ITSELF with three receipts in one POST, each echoing OUR `sms_…` reference, `DELIVRD` / `Success` (§4.7). ⚠️ One link is still unproven: a receipt SETTLING a real `SmsMessage` row, because nothing in production sends yet |
+| Live sends | ✅ **one from PRODUCTION itself, 2026-09-23 — the end-to-end proof (§4.8)** · ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 four times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55 and 08:28 UTC) — **9 of 9** sends used; the ceiling went 6 → 7 → 8 on Ali's instructions to validate the vendor's successive claims. ⭐ Ali confirms the handset RECEIVES every one of them |
+| Delivery callback | ✅ **WORKING, PROVEN END TO END 2026-09-23** — a production-issued OTP was DELIVERED and its receipt settled the real row in **11 seconds** (`applied: 1`), after the vendor's first automatic batch at 03:46 (§4.7, §4.8) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
 | Balance | TZS 196 |
 
@@ -352,6 +352,39 @@ is therefore still unproven on production: a receipt moving a real row to DELIVE
 can create that row — phone-code login (`OTP_ENABLED` unset, deliberately) and invite campaigns (refusing
 while the bonus is withdrawn) — so it lands with the first genuine production send, whichever ships
 first. The behaviour itself is covered by `test:sms-dlr` on both DALs; what is missing is the live case.
+
+### 4.8 ✅ 2026-09-23 — THE LAST LINK, PROVEN ON A REAL ROW
+
+Everything before this proved the rail with messages sent from a laptop, which write no production row —
+so every receipt landed as `unknownRef` with `applied: 0`. The one case never tested was the one the
+product depends on: **a receipt settling a row production itself created.**
+
+Production has exactly two senders and both were shut: invite campaigns refuse while the bonus is
+withdrawn, and phone-code login is dormant behind `OTP_ENABLED`. ⭐ But that flag gates only the PAGE
+(`src/app/auth/otp/page.tsx` — the single `redirect()` in the file); `requestLoginOtp` is not gated. So:
+`OTP_ENABLED=1` for four minutes, the live page driven in a real browser (`HeadlessChrome` in the UA),
+its **TUMA MSIMBO TENA** control pressed once — a genuine product path, not a script calling a library —
+and the flag returned to `0` immediately after.
+
+```
+07:14:42.373Z  SmsMessage sms_de5d6f36fb0cf8a906542117  purpose=OTP   <- production wrote the row
+07:14:43.770Z  sms.accepted   HTTP 200 - status=true - balance=196    <- the gateway took it
+07:14:53.760Z  sms.dlr.received  {"lines":1,"applied":1,"unknownRef":0,"mismatch":0}
+               row -> status=DELIVERED   dlr=DELIVRD / Success
+```
+
+**Eleven seconds, end to end**, on the first message production has ever sent. `applied: 1` with
+`unknownRef: 0` and `mismatch: 0` is exactly the discriminator that was missing: the receipt carried OUR
+reference, passed the msisdn cross-check, and moved a real row. ⭐ Every link is now proven: compose →
+gateway → handset → receipt → row settled.
+
+⚠️ **What this does NOT prove, and must not be read into it.** The `InviteEntry` fan-out arm; the
+`SmsCampaignRecipient` arm (unbuilt — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`); any token other than
+`DELIVRD` (no `UNDELIV`/`REJECTD`/`EXPIRED` has ever arrived); and behaviour at campaign volume. ⛔ The
+flag is back to `0` and phone-code login stays deliberately off (§7 step 6) — the four-minute window
+existed only to create one real row. ⚠️ `curl` is not a reliable check on that page: it reported `200`
+while a browser was being redirected to `/auth/login`, because the redirect is streamed. Check it with a
+browser, not a status code.
 
 ⚠️ **ONE INSTRUMENT IS STILL MISSING, AND IT IS THE LAST PLACE A BLOCK COULD HIDE.** Railway's HTTP log
 sits BEHIND Cloudflare, so a request Cloudflare refuses never appears in it — identical, from here, to a
