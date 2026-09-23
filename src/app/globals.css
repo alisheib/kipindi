@@ -5379,13 +5379,34 @@ textarea::-webkit-resizer {
    count. ⚠️ The cascade shortens 210ms → 120ms and loses its deceleration; the old
    figures are written here so the choice can be re-taken deliberately rather than
    rediscovered. The 4-item cap was already correct and is unchanged. */
-.js .kp-hero__inner > *:nth-child(1) { animation: kp-rise var(--t-move) var(--m-glide) 0ms both; }
-.js .kp-hero__inner > *:nth-child(2) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 1) both; }
-.js .kp-hero__inner > *:nth-child(3) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 2) both; }
-.js .kp-hero__inner > *:nth-child(4) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
+/* 🔴 D59 · THESE SIX RULES USED TO BE SCOPED TO `.js`, AND THAT SCOPE WAS THE DEFECT.
+   `.js` is added from a `useEffect` in `reveal.tsx`, so it lands after hydration. On slow 4G with a 4× CPU,
+   measured on production: FCP t=9416, the hero column FULLY READABLE at t=9761 with all five children at
+   opacity 1 — and then `.js` flipped at t=12539 and every one of them went to opacity 0 and rose again.
+   **A gap of 2,778 ms between readable and the flash**, then 132ms with no frame at all, back at t=13077 —
+   a 406ms visible event. A player who has been reading the headline, the open-market count and the staked
+   total for three seconds watches them vanish and slide back in. It reads as a crash, on the one surface
+   whose job is to establish that this platform is solid with money. ⛔ AND CLS CANNOT SEE IT: nothing
+   reflows, so every layout-shift budget stays green while the screen blinks.
+   ⭐ THE CAUSE IS `both` FILL MEETING A LATE CLASS. `animation-fill-mode: both` applies the first keyframe
+   BACKWARDS during the delay — so the moment `.js` matches, each child snaps to `kp-rise`'s frame 0
+   (invisible) and plays in. The animation is not wrong; arriving late is.
+   ⭐ AND THE FIX IS TO DELETE THE GATE, NOT TO ADD A SCRIPT. §12 of the plan says the motion tier must use
+   the guarded no-flash pattern `kp-density` uses — a server-rendered attribute — and **never a
+   render-blocking script**; and `.js` is the one thing a server cannot know. But these six rules never
+   needed it: they are finite CSS entrance animations that END VISIBLE, so a no-JS reader is safe by
+   construction — the animation simply runs and finishes. Unscoped, they play at FIRST PAINT, which is what
+   an entrance is for, and are over long before hydration.
+   ⛔ THE GATE STAYS ON `[data-reveal]` BELOW, WHERE IT IS LOAD-BEARING: that rule HIDES content until
+   `data-revealed` is set, and without JS it never would be — so removing `.js` there would leave every
+   below-the-fold band permanently blank. Two uses of one class, only one of which was ever about JS. */
+.kp-hero__inner > *:nth-child(1) { animation: kp-rise var(--t-move) var(--m-glide) 0ms both; }
+.kp-hero__inner > *:nth-child(2) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 1) both; }
+.kp-hero__inner > *:nth-child(3) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 2) both; }
+.kp-hero__inner > *:nth-child(4) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
 /* Anything after the fourth block rises with it rather than extending the budget. */
-.js .kp-hero__inner > *:nth-child(n+5) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
-.js .app-topbar { animation: kp-fade var(--t-base) linear 0ms both; }
+.kp-hero__inner > *:nth-child(n+5) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
+.app-topbar { animation: kp-fade var(--t-base) linear 0ms both; }
 
 /* Below the fold: revealed on first intersection by `section-reveal.tsx`, which sets
    `data-revealed` and then unobserves. */
@@ -5408,8 +5429,13 @@ textarea::-webkit-resizer {
    than merely shortening the animation, because the failure being prevented is a surface that is
    invisible for the length of a delay — not a flourish that is too long. */
 @media (prefers-reduced-motion: reduce) {
-  .js .kp-hero__inner > *,
-  .js .app-topbar { animation: none; opacity: 1; transform: none; }
+  /* ⛔ THE ENTRANCE SELECTORS LOST THEIR `.js` HERE TOO, AND THEY HAD TO — D59, 2026-09-23. The moment the
+     entrance rules above stopped waiting for `.js`, a calm branch that still waited would have let a
+     reduced-motion reader watch the very animation they asked not to have, for however long hydration took
+     — 2.8 seconds on the slow-4G cell that found D59. A gate removed on one side of a pair must come off
+     the other. `[data-reveal]` KEEPS its gate, because the rule it cancels is itself `.js`-scoped. */
+  .kp-hero__inner > *,
+  .app-topbar { animation: none; opacity: 1; transform: none; }
   .js [data-reveal] { opacity: 1; transform: none; transition: none; }
 }
 [data-motion="minimal"] .kp-hero__inner > *,
