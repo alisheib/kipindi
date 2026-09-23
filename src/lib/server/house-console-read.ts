@@ -742,12 +742,30 @@ function lastSeen(atMs: number | null, nowMs: number): string {
  */
 function engineNotice(input: {
   on: boolean | null;
-  instances: StoredHouseBotRuntime[] | null;
+  /**
+   * 🔴 THE BEATS AND THE CLOCK THEY ARE AGED AGAINST ARRIVE AS ONE READ (C8 minor M1, 2026-09-23).
+   *
+   * Every field of `HouseEngineBeats` is parsed off a DURABLE row written on the DATABASE clock — which is the
+   * whole reason this console reads beats instead of asking a process how it feels. Ageing them against
+   * `Date.now()` handed that back: the number subtracted was the WEB container's clock, a container whose skew
+   * against the database nothing measures. (The ENGINE's containers are measured — `claimGate` blocks claims on
+   * unknown or large skew and the desk paints `CLAIMS_BLOCKED` — but the container rendering this page is not
+   * one of them.) A skew either way moves "Last seen: 45 s ago" and can flip `STALE` across `ENGINE_STALE_MS`,
+   * which is a danger Callout about money appearing, or failing to appear, because of a clock nobody checked.
+   * ⛔ SO THEY ARE ONE MEMBER OF THE SETTLED SET, WRAPPED ON PURPOSE — and that is not a lapse from 435(d),
+   * which forbids wrapping reads that produce DIFFERENT figures. These two produce ONE: neither the rows nor the
+   * instant says anything about the engine without the other, so a failure of either is honestly `null`, and the
+   * `UNREADABLE` limb's own sentence ("Nothing here says whether it is running") is true of both causes.
+   */
+  read: { instances: StoredHouseBotRuntime[]; nowMs: number } | null;
   activeAccounts: number | null;
-  nowMs: number;
 }): ConsoleEngineNotice | null {
-  const beats = input.instances === null ? null : houseEngineBeats(input.instances);
-  const verdict = houseEngineVerdict({ on: input.on, beats, activeAccounts: input.activeAccounts, nowMs: input.nowMs });
+  const beats = input.read === null ? null : houseEngineBeats(input.read.instances);
+  /* ⛔ THE FALLBACK IS ONLY EVER REACHED WITH `beats === null`, where the verdict is `UNREADABLE` and no limb
+     reads the instant at all. It is written as a value rather than left optional so `tsc` keeps the arithmetic
+     total, and it can never be the number a painted age was computed from. */
+  const nowMs = input.read === null ? 0 : input.read.nowMs;
+  const verdict = houseEngineVerdict({ on: input.on, beats, activeAccounts: input.activeAccounts, nowMs });
   if (verdict === null) return null;
   /* 414 · several servers is a CAPTION, never a verdict: two replicas is a normal deployment, not a fault. */
   const caption = beats !== null && beats.instances > 1 ? `${formatNumber(beats.instances)} servers answered.` : null;
@@ -764,7 +782,7 @@ function engineNotice(input: {
         title: "The engine has just started",
         body: "Its first pass runs within the minute. Nothing is wrong; this notice clears itself." };
     case "STALE":
-      return { ...shared, tone: "danger", alert: true, meta: lastSeen(beats?.plannerBeatAtMs ?? null, input.nowMs),
+      return { ...shared, tone: "danger", alert: true, meta: lastSeen(beats?.plannerBeatAtMs ?? null, nowMs),
         title: "The engine is not running",
         body: "No account will place a bet while this stands, and nothing already queued will be acted on. The desk is on, so this is not a state it can be left in." };
     case "CLAIMS_BLOCKED":
@@ -834,7 +852,8 @@ type DeskCore = {
   dayBooks: Map<string, HouseDayBook> | null;
   exposure: Map<string, number> | null;
   /** ⭐ 435(e) · the engine's DURABLE beat rows, settled on their own. `null` means the READ FAILED (354(c)/355). */
-  instances: StoredHouseBotRuntime[] | null;
+  /** ⛔ The beats AND the instant they are aged against, or `null` when either could not be read (M1). */
+  engineRead: { instances: StoredHouseBotRuntime[]; nowMs: number } | null;
   /**
    * ⭐ C7 STEP 5 (the LANDING half) · HOW MANY STAKES ARE QUEUED ACROSS THE WHOLE DESK — the activity tab's badge.
    * ⛔ IT IS A MEMBER OF THE CORE SET AND NOT A CALLER'S EXTRA, AND THE REASON IS MEASURED, NOT PREFERRED. The rail
@@ -859,8 +878,9 @@ type DeskCore = {
  * reads in a single `Promise.all` inside the settled set would make ONE failure blank BOTH figures, which is the
  * attribution 355 exists to keep — a failed Products read must not take the Last bet column with it.
  * ⛔ SEVEN MEMBERS, AND THE COUNT IS STATED HERE BECAUSE IT WAS ONCE WRONG IN THIS VERY DOCBLOCK: the array below is
- * the control row, the roster, the day books, the open exposure, the engine's beats, the QUEUED-stake count the
- * rail's badge paints, and the caller's two extras.
+ * the control row, the roster, the day books, the open exposure, the engine's beats WITH THE DATABASE CLOCK THEY
+ * ARE AGED AGAINST (M1, 2026-09-23 — one member, because they are one figure: see `engineNotice`'s own note), the
+ * QUEUED-stake count the rail's badge paints, and the caller's two extras.
  */
 async function readDeskCore<A, B>(
   extraA: (dayKey: string) => Promise<A>,
@@ -877,7 +897,14 @@ async function readDeskCore<A, B>(
      * member of this very set has already read, so a second door would put a SECOND control read in one render —
      * 433(d)'s named refusal. ⛔ Settled on its OWN, never wrapped with another read: one failed read must not
      * take another figure with it (355, 435(d)). */
-    houseBotRuntimeStore.listInstances(),
+    /* ⛔ THE BEATS AND THE DATABASE'S OWN INSTANT, TOGETHER (M1). The rows are stamped on the database clock, so
+       the number they are aged against must come from it too — the full reasoning is on `engineNotice`'s `read`.
+       `dbClock()` is the store's own helper and costs one `clock_timestamp()`; in the memory twin it is
+       `Date.now()`, which is the same clock the memory rows were stamped with. */
+    (async () => ({
+      instances: await houseBotRuntimeStore.listInstances(),
+      nowMs: (await houseBotRuntimeStore.dbClock()).nowMs,
+    }))(),
     /* ⭐ C7 step 5 · THE RAIL'S BADGE, COUNTED ACROSS EVERY ACCOUNT AND UNFILTERED BY THE RAIL (ruling 312). It is a
      * COUNTING reader over the same shared predicate the feed pages over, never `listFeed(...).length` (344), and it
      * is settled on its OWN so a failed count cannot blank a figure beside it (355). */
@@ -903,7 +930,7 @@ async function readDeskCore<A, B>(
       /* ⛔ A FAILED BEAT READ IS `null`, WHICH IS NOT AN EMPTY SET OF ROWS (355, 354(c)). An empty array means the
        * engine has never booted on this database; `null` means nobody could tell, and the two paint different
        * Callouts. Collapsing them is the class 421 had to be corrected for one card over. */
-      instances: instancesR.status === "fulfilled" ? instancesR.value : null,
+      engineRead: instancesR.status === "fulfilled" ? instancesR.value : null,
       /* ⛔ `null` IS A FAILED COUNT, NOT A ZERO (355, and the badge's own rule above). */
       pendingIntents: pendingR.status === "fulfilled" ? pendingR.value : null,
     },
@@ -1045,9 +1072,8 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
    * running" row is then not claimed, because a failed read must never be painted as a finding. */
   const engine = engineNotice({
     on,
-    instances: core.instances,
+    read: core.engineRead,
     activeAccounts: roster === null ? null : roster.filter((b) => b.status === "ACTIVE").length,
-    nowMs: Date.now(),
   });
 
   return {

@@ -3095,6 +3095,17 @@ import { formatEat } from "@/lib/utils";`,
   },
   /* ══ THE 2026-09-23 D9 MINORS ═════════════════════════════════════════════════════════════ */
   {
+    /* ⛔ M1's DEFECT, PUT BACK: the beats go back to being aged against the WEB CONTAINER's clock. On a machine
+       whose clock agrees with its database this changes no answer at all — which is exactly why the case that
+       catches it MOVES the database's clock and nothing else. A source pin alone would not have bitten. */
+    name: "engine-notice-uses-the-container-clock · M1 · durable beats written on the database clock are aged against the web container's, whose skew nothing measures",
+    file: GATE,
+    from: `      nowMs: (await houseBotRuntimeStore.dbClock()).nowMs,`,
+    to: `      nowMs: Date.now(),`,
+    expect: "1.353 · M1 · the engine notice ages the durable beats against the DATABASE's clock",
+    suite: "console-mem",
+  },
+  {
     /* ⛔ M2's DEFECT, PUT BACK EXACTLY: the custom branch stops asking whether the bounds parsed and hands them
        to `resolveRange`, whose fallback answers an unreadable pair with the last 24 hours under the label the
        officer chose. The plant keeps the `else` arm so the shape compiles; what it removes is the QUESTION. */

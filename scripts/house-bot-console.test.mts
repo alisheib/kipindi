@@ -211,6 +211,11 @@ await runTwoStores({
    * refused and named, its bounds do not travel into the rail's links, and `range=custom` with no bounds is
    * refused too, each measured against the CONTROL that the same pair in a readable shape is honoured in full.
    * What a run PRINTED: `0.mem · exit 0 · 788 passed` and `0.pg · exit 0 · 550 passed`, ALL PASS on both. */
-  minPass: { memory: 788, postgres: 550 },
+  /* ⭐ RAISED 788 → 792 MEMORY / 550 → 553 POSTGRES, 2026-09-23 — C8 minor M1: the engine notice ages the
+   * durable beats against the DATABASE's clock. Three of the four are behavioural (the skewed clock, the
+   * control that the same rows with an agreeing clock paint nothing, and the control that the spy came off);
+   * the fourth is the memory-only source pin, which is why memory rises by four and Postgres by three.
+   * What a run PRINTED: `0.mem · exit 0 · 792 passed` and `0.pg · exit 0 · 553 passed`, ALL PASS on both. */
+  minPass: { memory: 792, postgres: 553 },
   dbPrefix: "hb_console",
 });

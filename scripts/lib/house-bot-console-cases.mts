@@ -1163,6 +1163,40 @@ section("§2 · the strip, the band, the roster and every failure");
     const booting = await noticeFor([[ENGINE_KEY, { bootAt: ago(20_000) }]]);
     ok("1.414 · a boot inside the grace is NEUTRAL and does NOT announce — an alert that fires on every deploy trains an officer to ignore the one that matters",
       booting?.tone === "neutral" && booting?.alert === false, j(booting));
+
+    /* ══ M1 · THE BEATS ARE AGED AGAINST THE DATABASE'S CLOCK, NOT THE WEB CONTAINER'S ══════════════════
+     * 🔴 Every field of `HouseEngineBeats` is parsed off a DURABLE row written on the database clock — the whole
+     * reason this console reads rows instead of asking a process how it feels — and the number they were
+     * SUBTRACTED FROM was `Date.now()` in the container rendering the page, whose skew against the database
+     * nothing measures. (The engine's own containers are measured: `claimGate` blocks claims on unknown or large
+     * skew and the desk paints `CLAIMS_BLOCKED`. The web container is not one of them.)
+     * ⛔ SO IT IS MEASURED BY MOVING THE DATABASE'S CLOCK AND NOTHING ELSE. The beat row stays exactly where it
+     * is; only what the database says "now" is moves. A build that ages against the container clock cannot see
+     * that at all, which is precisely what makes this the discriminating case and the source pin was not.
+     * ⚠️ The patch is on the DAL handle the reader calls, restored in a `finally` — a spy left installed is how
+     * one case poisons every case after it. */
+    const realClock = w.dal.houseBotRuntimeStore.dbClock;
+    let clockCalls = 0;
+    const withDbClock = async (aheadMs: number, rows: Array<[string, Any]>): Promise<Any> => {
+      await setRuntime(rows);
+      w.dal.houseBotRuntimeStore.dbClock = async () => { clockCalls++; return { nowMs: Date.now() + aheadMs }; };
+      try { return (await withControl({ enabled: true, offCause: null })).engine ?? null; }
+      finally { w.dal.houseBotRuntimeStore.dbClock = realClock; }
+    };
+    /* A planner beat 5 s old by the CONTAINER's clock is healthy and paints nothing (the case above). The same
+       row, read by a database that is 10 minutes ahead, is 10 minutes old — far past `ENGINE_STALE_MS`. */
+    const skewed = await withDbClock(600_000, [[ENGINE_KEY, { bootAt: ago(1_800_000) }], [RK.plannerBeat, { beatAt: ago(5_000) }]]);
+    ok("1.353 · M1 · the engine notice ages the durable beats against the DATABASE's clock: a planner beat that is 5 s old by this container's clock is painted as NOT RUNNING when the database says ten minutes have passed — and the clock really was asked",
+      clockCalls >= 1 && skewed?.tone === "danger" && skewed?.alert === true
+        && String(skewed?.meta).startsWith("Last seen:") && !/just now/.test(String(skewed?.meta)),
+      j({ calls: clockCalls, notice: skewed }));
+    /* ⛔ AND THE CONTROL IS THE SAME ROWS WITH THE DATABASE AGREEING WITH THE CONTAINER: the notice goes away.
+       Without it, "danger" above would be satisfied by a build that painted danger over any beat at all. */
+    const unskewed = await withDbClock(0, [[ENGINE_KEY, { bootAt: ago(1_800_000) }], [RK.plannerBeat, { beatAt: ago(5_000) }]]);
+    ok("1.353 · M1 · CONTROL · the SAME rows with the database agreeing with this container paint NOTHING — so the danger above is the clock and not the rows",
+      unskewed === null, j(unskewed));
+    ok("1.353 · M1 · CONTROL · the spy was removed: the store's own `dbClock` is back on the handle the reader calls",
+      w.dal.houseBotRuntimeStore.dbClock === realClock, "");
     const failing = await noticeFor([
       [ENGINE_KEY, { bootAt: ago(600_000) }], [RK.plannerBeat, { beatAt: ago(5_000) }],
       [POLLER_KEY, { beatAt: ago(120_000), pollerErrorAt: ago(4_000), pollerErrorCode: "claim exploded", pollerErrorStreak: 11 }],
@@ -2067,11 +2101,38 @@ section("§2 · the strip, the band, the roster and every failure");
          would have had to rise every time a route was added, which is a ratchet that teaches you to raise it. */
       const deskSlice = gateSrc.slice(gateSrc.indexOf("async function readDeskCore"), gateSrc.indexOf("export async function houseUsageForConsole"));
       const detailSlice = gateSrc.slice(gateSrc.indexOf("export async function houseDetailForConsole"));
-      ok("1.348 · exactly ONE `eatDayKey(` call in EACH gated reader's own slice — two renders, two passes, never two days in one — and no `dbClock(` anywhere in the module",
+      /* ⛔ RE-AIMED AT M1 (2026-09-23), AND THE CLAIM IS NARROWED TO WHAT 348 ACTUALLY RULES — not loosened.
+         348's subject is THE DAY KEY: the seam refuses on `eatDayKey(Date.now())`, so a console measuring the
+         DATABASE's day could disagree with the gate it is reporting on. `!/dbClock\(/` was a blunt PROXY for
+         that — it banned the database clock from the module for any purpose whatever — and C8 minor M1 is a
+         purpose 348 has no quarrel with: the engine's beats are stamped on the database clock and were being
+         AGED against the web container's, which is a skew nothing measures. So the pin now states the rule
+         itself, which is strictly stronger for 348's own claim than the proxy was: each day key is derived
+         exactly once per render pass AND each one is derived from `Date.now()`, never from a read. */
+      /* ⚠️ THE TWO CALLS ARE NOT SPELLED THE SAME, and the first draft of this pin assumed they were. The desk
+         derives `eatDayKey(Date.now())` inline; the account page binds `const nowMs = Date.now()` first, because
+         the SAME instant feeds its relative-time captions, and then derives `eatDayKey(nowMs)`. Both are the
+         container clock, which is what 348 requires — so the pin follows the BINDING rather than demanding one
+         spelling, and a `nowMs` that ever came from a read would fail on the second limb. */
+      const dayKeyArgs = [...gateSrc.matchAll(/eatDayKey\(([^;]*?)\);/g)].map((m) => m[1]);
+      const nowBindings = [...gateSrc.matchAll(/const nowMs = ([^;]+);/g)].map((m) => m[1]);
+      ok("1.348 · exactly ONE `eatDayKey(` call in EACH gated reader's own slice — two renders, two passes, never two days in one — and each is derived from the CONTAINER clock, never from the database's",
         (deskSlice.match(/eatDayKey\(/g) ?? []).length === 1
           && (detailSlice.match(/eatDayKey\(/g) ?? []).length === 1
-          && (gateSrc.match(/eatDayKey\(/g) ?? []).length === 2 && !/dbClock\(/.test(gateSrc),
-        j({ desk: (deskSlice.match(/eatDayKey\(/g) ?? []).length, detail: (detailSlice.match(/eatDayKey\(/g) ?? []).length, dbClock: /dbClock\(/.test(gateSrc) }));
+          && (gateSrc.match(/eatDayKey\(/g) ?? []).length === 2
+          && j(dayKeyArgs) === j(["Date.now()", "nowMs"])
+          && nowBindings.every((b) => b === "Date.now()" || b === `input.read === null ? 0 : input.read.nowMs`)
+          /* Two ordered `indexOf`s, NOT a regex: the binding comes first and the derivation reads it. */
+          && detailSlice.indexOf("const nowMs = Date.now();") >= 0
+          && detailSlice.indexOf("const dayKey = eatDayKey(nowMs);") > detailSlice.indexOf("const nowMs = Date.now();"),
+        j({ desk: (deskSlice.match(/eatDayKey\(/g) ?? []).length, detail: (detailSlice.match(/eatDayKey\(/g) ?? []).length, dayKeyArgs, nowBindings }));
+      /* ⭐ AND THE DATABASE CLOCK IS READ EXACTLY ONCE, IN THE ONE PLACE M1 PUT IT: beside the beats it ages, in
+         the SAME settled member, so the rows and the instant can never come from two different reads. */
+      ok("1.348 · M1 · the database clock is read exactly ONCE in the module, inside the settled member that reads the engine's beats — so the durable rows and the instant they are aged against fail together or arrive together",
+        (gateSrc.match(/dbClock\(/g) ?? []).length === 1
+          && /instances: await houseBotRuntimeStore\.listInstances\(\),\s*nowMs: \(await houseBotRuntimeStore\.dbClock\(\)\)\.nowMs,/.test(gateSrc)
+          && !/nowMs: Date\.now\(\)/.test(gateSrc),
+        j({ dbClock: (gateSrc.match(/dbClock\(/g) ?? []).length }));
       /* ⛔ AND THE FIFTH READ REALLY IS GIVEN IT AT SOURCE. The behavioural case above proves today's code; this
          pins the SHAPE, so a future panel that adds a sixth read without a key is reported beside it. */
       /* ⭐ TWO FACTORIES FROM C7 STEP 4, EACH SETTLED ON ITS OWN. The roster needs the Products words AND the
