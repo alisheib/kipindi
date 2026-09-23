@@ -51,16 +51,36 @@ export function NavMore({
   // Close on navigation.
   useEffect(() => setOpen(false), [pathname]);
 
+  /**
+   * 🔴 D66 · THE TAP THAT DISMISSED THIS MENU ALSO FIRED THE CONTROL UNDER THE FINGER.
+   * This listener used to run in the BUBBLE phase, so the same tap closed the menu AND reached whatever
+   * was beneath it. Reproduced on production at 320×640 with a REAL touch event (CDP
+   * `Input.dispatchTouchEvent`, not a synthetic mouse click): one tap at (47, 469) to dismiss the `Zaidi`
+   * panel landed on `a.mcardp-open` and navigated to a market. A player opens the menu, decides against it,
+   * taps the board to dismiss, and loses their place on a 49-card board.
+   * ⭐ NEITHER PANEL HAS A VISIBLE ✕, SO TAPPING AWAY *IS* THE CLOSE GESTURE — and a close gesture must not
+   * also be an activation. The product's own `<Modal>` and `.kp-fsheet` both ship a scrim that absorbs it.
+   * ⛔ A CAPTURE-PHASE LISTENER INSTEAD OF A SCRIM ELEMENT, deliberately: a scrim is a new painted layer in a
+   * stacking context this rail has already been burned by (D30), and it would have to be positioned and
+   * z-ordered correctly to cover a `fixed` rail. Capturing costs no DOM and cannot be out-ranked.
+   * ⛔ `click` ONLY, AND `pointerdown` WAS TRIED FIRST AND WAS WRONG — measured with a real touch tap. Closing
+   * on `pointerdown` sets state, React re-renders, this effect's cleanup REMOVES the listener, and the `click`
+   * the browser synthesises from that same touch then arrives UNGUARDED and navigates. The fix that looked
+   * more thorough was the one that did nothing. One listener, on the event that actually activates a link.
+   */
   useEffect(() => {
     if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    const dismiss = (e: Event) => {
+      if (ref.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("click", onClick);
+    document.addEventListener("click", dismiss, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("click", onClick);
+      document.removeEventListener("click", dismiss, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
