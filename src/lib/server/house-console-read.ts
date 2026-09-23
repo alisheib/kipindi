@@ -5031,7 +5031,11 @@ export async function houseDetailForConsole(
       const bounds = boundsCtx === null ? null : fieldBounds(id, boundsCtx);
       const rec = recommendedRuleDoc === null ? null : ruleLeaf(recommendedRuleDoc, id);
       const def = meta.default;
-      const used = switchesUsing(id);
+      /* ⛔ ONE GUARD FOR BOTH THE CAPTION AND THE IDLE FLAG. They used to ask two different helpers, so a
+         defect in the caption's own early return left the flag correct and nothing went red — measured by the
+         red drive on 2026-09-23, which MISSED its own declared mutation. `usedByLine` answers "" for a leaf
+         every state reads, which is exactly the leaf that can never be idle. */
+      const usedBy = usedByLine(id);
       return {
         key: CONSOLE_RULE_KEY[id],
         section: CONSOLE_RULE_SECTION[meta.section] ?? meta.section,
@@ -5057,8 +5061,8 @@ export async function houseDetailForConsole(
         help: CONSOLE_RULE_HELP[id],
         hint: meta.hint ?? "",
         /* ⛔ DERIVED FROM THE ENGINE'S PREDICATE, one switch at a time — never a hand-kept ownership map. */
-        usedBy: usedByLine(id),
-        idle: used.length > 0 && !leafUsedBy(id, modeStateOf(parsed.rules)),
+        usedBy,
+        idle: usedBy !== "" && !leafUsedBy(id, modeStateOf(parsed.rules)),
         options: meta.options == null
           ? null
           : meta.options.map((o) => ({ value: String(o), label: limitValue(id, o) })),

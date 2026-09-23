@@ -3072,10 +3072,14 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
+    /* ⚠️ RE-AIMED 2026-09-23, AND THE MISS WAS THE FINDING. It planted in `switchesUsing`, whose early return
+       stopped governing the caption when `usedByLine` was written — and the idle flag was still asking the
+       OTHER helper, so the plant changed a list nothing read and the suite stayed green. The caption and the
+       flag now share ONE guard, and this plants on it. */
     name: "editor-idle-caption-always-on · the `used only while` caption is painted for every leaf, including the ones every state reads",
     file: GATE,
-    from: `  if (leafUsedBy(id, ALL_SWITCHES_OFF)) return [];`,
-    to: `  if (false) return [];`,
+    from: `  if (leafUsedBy(id, ALL_SWITCHES_OFF)) return "";`,
+    to: `  if (false) return "";`,
     expect: "2h.usedBy · the caption naming the switch a number belongs to is DERIVED",
     suite: "console-mem",
   },
