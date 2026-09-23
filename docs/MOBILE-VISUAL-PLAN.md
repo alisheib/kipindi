@@ -1410,6 +1410,25 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 **U20 · [General] Footer tap rows + Discussion copy (D8)**
 - Footer list links (`src/components/layout/public-footer.tsx`, ≈ 19px rows) below 640 become `inline-flex items-center min-h-[var(--tap-min)]`,
   keeping font, colour and case. Not `.row-link` (`globals.css:1664`), which is uppercase. `qa:footer-reachable` stays green.
+- 🔴 **MEASURED ON PRODUCTION 2026-09-23, AND THE UNIT AS WRITTEN WOULD MISS THE WORST THREE.** Hit-tested (reach, not the painted box) on
+  `/legal/responsible-gambling` at 320 and 360 SW: **14 of the footer's 16 controls reach under 44px**, and reach equals box — there is no `::after`
+  extending any of them. The list rows are 19–19.5px as this unit says. ⚠️ **But the three contact links are 15px AND `display: inline`, and
+  `min-height` DOES NOT APPLY TO A NON-REPLACED INLINE ELEMENT.** So the prescription above, applied to "footer list links", leaves
+  `tel:0800110011`, `tel:+255769777877` and `mailto:msaada@50pick.tz` exactly as they are. They need the display change too, not just the min-height
+  — the same shape as `/help`, where `py-3` sat on the `<details>` and added look rather than tap area.
+- ⭐ **THE DISCRIMINATOR THAT SAYS THIS IS AN OVERSIGHT, NOT A CHOICE:** the same footer's Instagram and WhatsApp links measure **exactly 44**.
+  The floor was applied to the social row and to nothing else in the block.
+- 🔴 **AND IT IS NOT ONLY TASTE — four of the sub-floor controls are the licensed operator's duty-of-care doors:** `Simu ya msaada · 0800 11 0011`
+  (the support helpline, **15px**), `Pumzika / Jizuie` (take a break / self-exclude, 19px), `Weka mipaka` (set limits, 19px) and
+  `Hamisha / funga akaunti yangu` (export / close my account, 19px — the same data-rights door `qa:footer-reachable` was written for in the first
+  place). This footer is on EVERY page. ⭐ That is an argument for moving U20 earlier than S11; it is recorded here rather than acted on, because
+  the schedule is Ali's.
+- ⛔ **NO GUARD OWNS THIS, AND TWO GUARDS SITTING ON THE FOOTER MAKE IT LOOK OWNED.** `test:tap-target` reads the height a control DECLARES IN
+  SOURCE — these declare none, and an inline link has no height to declare. `qa:footer-reachable` measures OCCLUSION with `elementFromPoint`,
+  which is a different property and which its own header is careful to say ("being covered is not a property of the element"); it ran green here,
+  108/0, against a footer where 14 of 16 controls are under the floor. **Neither is wrong; the SIZE of a footer control is simply unowned.** Read
+  `qa:footer-reachable` green as "nothing is buried", never as "the footer is fine". The `≥ 40 at 360` guard in this unit's Guards line is what
+  closes the gap — and it must probe the contact links too, not just the list rows.
 - D8: new `market.signInToComment` in EN/SW/ZH (native check) used at `comments-thread.tsx:224-229`; `signInToPredict` stays on bet surfaces.
   - ⛔ **Examined in the safe-fix lane on 2026-09-16 and deliberately NOT shipped.** The one-line version — swap in the existing `common.signIn`
     ("Ingia" / "登录") — is accurate but strictly less informative than the wrong string it replaces, and it would spend a visible copy change in
