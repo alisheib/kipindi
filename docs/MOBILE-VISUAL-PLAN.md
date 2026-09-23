@@ -684,6 +684,21 @@ own words beneath it.**
   The card keeps showing the pool and "1 mtabiri" — nothing is hidden, one false claim stops being made.
   ⛔ And ungate it from `live` in the same change, which is **D29**: terminal states never reached the rule.
   Owned by **U32**, and clear to ship early in the safe-fix lane — it is a money surface making a false statement.
+- ⭐ **AND THE TRIPWIRE THAT WAS SUPPOSED TO CATCH THIS IS CAMOUFLAGED BY IT.** `app/page.tsx:209` passes
+  `yesPct={r.yesPct ?? 0}` under a comment arguing the fallback is safe because *"a 50 would look like a price and
+  ship, a 0 is visibly absurd and gets caught."* ⛔ A 0 is NOT visibly absurd on this card: it renders as
+  "NDIO 0%" with a full red bar and a tappable "HAPANA @ 100%" — exactly what a confident price looks like, and
+  exactly the value the one-sided defect produces naturally. **The tripwire and the defect are the same number, so
+  the tripwire can never fire.** Ruling 13 removes both at once.
+- **Implementation map for U32, done 2026-09-23 so it is not re-derived:** SEVEN `<MarketCard>` call sites —
+  `markets/page.tsx` x2, `markets/[id]/page.tsx` x3, `page.tsx`, `results/page.tsx`, `watchlist/page.tsx`,
+  `landing-hero.tsx`. Five compute `yesPct={impliedYesPct(m)}` and hold the pools already; TWO read a pre-shaped
+  object (`r.yesPct ?? 0`, `featured.yesPct ?? 0`) built through `landingComposition`, so the fact must be plumbed
+  into that shape too.
+  ⛔ **Do NOT infer one-sidedness from a rounded `yesPct === 0 || === 100`**: a genuine 99.6% market rounds to 100
+  and would lose a price it really has. Pass the fact, never re-derive it. The card's own `productLine` doc states
+  the law — *"a default is exactly the bug: it lets a caller that does not know its product compile"* — so the new
+  prop is REQUIRED with no default, and a guard asserts every call site passes it.
 
 **14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**
 - Measured on production 2026-09-23: **@Libuhi crowned at +52.9% on 17 settled**, above @Fulgence at +47.5% on 38
