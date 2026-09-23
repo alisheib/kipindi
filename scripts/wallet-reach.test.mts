@@ -38,6 +38,8 @@ const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log
 const bar = decomment(readFileSync(join(ROOT, "src/components/layout/top-app-bar.tsx"), "utf8"));
 const pill = decomment(readFileSync(join(ROOT, "src/components/layout/wallet-balance-pill.tsx"), "utf8"));
 const rail = decomment(readFileSync(join(ROOT, "src/components/layout/bottom-nav.tsx"), "utf8"));
+/* U5 · the pills stand on a rung declared in the stylesheet, so the stylesheet is read here too. */
+const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
 
 const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } =
   await import("../src/lib/utils.ts");
@@ -155,6 +157,15 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
   ok("4: …and both account actions carry `.kp-auth-cta`, which is what makes 320 fit",
      (bar.match(/btn-pill kp-auth-cta/g) ?? []).length === 2,
      `${(bar.match(/kp-auth-cta/g) ?? []).length} occurrence(s)`);
+
+  /* U5 · THE PAIR SITS ON THE sm RUNG BELOW 640, AND IT MUST BE THE TOKEN, NOT THE NUMBER.
+     40 is also --tap-min, so a literal 40px here would read as correct while silently
+     un-coupling the pill from the control ladder — the next ladder decision would move .btn-sm
+     and leave these two behind. This asserts the phone block declares the RUNG. */
+  const phoneBlock = css.slice(css.indexOf("@media (max-width: 639.98px)", css.indexOf(".kp-auth-cta") - 2000), css.indexOf(".kp-auth-cta") + 400);
+  ok("4: the auth pills take the sm rung below 640 — the token, never the number",
+     /\.kp-auth-cta\s*\{[^}]*height:\s*var\(--h-control-sm\)/.test(css),
+     phoneBlock.slice(-160));
 }
 
 // ── 5 · THE THRESHOLD RULE — pure, exported, and driven ─────────────────────
