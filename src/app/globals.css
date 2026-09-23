@@ -4105,6 +4105,19 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 .mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
 .mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
+/* 🔴 D65 · AT LARGE TEXT THIS ROW CUT THE CATEGORY WORD TO A SINGLE LETTER.
+   `UTAMADUNI` painted as `UTAMA…` at an effective 277px and as `U…` at 246 — which is 360 and 320 with
+   Android text at 130%. ⚠️ NOT a word-length problem: the slot is clamped to the SAME 43px at 277 and 12px
+   at 246 on every card, so `Michezo` (52px) and `Nyingine` (59px) go the same way. It is this row's space
+   allocation, and the chip is how a player tells a football market from a politics one at a glance.
+   ⭐ THE GATE IS 300px AND THAT NUMBER IS MEASURED, NOT ROUND. Chips are whole at 320 native (0 of 15 cut)
+   and cut at 277 (8 of 15) and 246 (9 of 15). A `max-width: 359.98px` rule — the obvious one — would have
+   added 20px to every card at 320 and 360 where nothing is wrong: measured, card 301.5 → 321.5. Gated here,
+   320 is untouched at 301.5 and 0 cut, while 277 and 246 go to 0 cut for that same 20px, paid only where
+   the benefit is. */
+@media (max-width: 300px) {
+  .mcardp-top { flex-wrap: wrap; }
+}
 /* ⛔ `.mcardp .chip` and `.mcardp .chip .live-dot` DELETED — PV-13c, 2026-09-03. This pair WAS
    the per-surface descendant override stage 9 named as the reason the component had to win:
    it reached around <Chip> to restyle it, and could not reach a <Chip> at all (the component
@@ -4180,6 +4193,21 @@ html[data-sheet-open] .route-enter { animation: none; }
    so the footer height is identical on every card (a previous double margin-auto
    wrapped to a variable number of lines, making cards different heights). */
 .mcardp-meta { display:flex; align-items:center; flex-wrap: nowrap; gap: 5px 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); min-width: 0; margin-top: auto; margin-bottom: var(--mcard-meta-mb); }
+/* 🔴 D35 · AT LARGE TEXT THE POOL FIGURE WAS THE ONLY THING ON THE CARD ALLOWED TO SHRINK.
+   The pool is the number that says how much money is on a market — it is the reason to tap the card. At an
+   effective 277px it read `TZS 79,…`; at 246 it read `TZS…`, the currency code alone, the amount entirely
+   gone. Measured on production: **12 of 15 cards at 277 and 13 of 15 at 246**, in the DEFAULT locale.
+   ⭐ THE DISCRIMINATOR THAT NAMES THE CAUSE: `.mcardp-timeleft` measures **148px at 320, 277 AND 246 —
+   identical**. The countdown never yields a pixel, because `.mcardp-meta-right` is `flex-shrink: 0` while
+   the pool span alone carries `min-width: 0; overflow: hidden; text-overflow: ellipsis`. So the row did not
+   run out of space; it spent all of it on the clock and charged the money.
+   ⛔ AND §A5 FORBIDS CLIPPING MONEY OUTRIGHT, which is why the fix is to WRAP and not to let the clock
+   shrink: shrinking it would only move the clipping onto a different field. Wrapped, both are whole.
+   Gated at the same measured 300px as D65 — at 320 nothing is clipped and nothing changes (0 of 15, card
+   301.5); at 277 and 246 clipping goes to 0 for 21.5px of card height, paid only where the benefit is. */
+@media (max-width: 300px) {
+  .mcardp-meta { flex-wrap: wrap; }
+}
 .mcardp-meta > span:not(.dot):not(.mcardp-meta-right) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .mcardp-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--border-strong); flex-shrink:0; }
 /* 2026-09-14 (register E-400 ⑦f): the time left on a live card was painted `--yes-300`, directly under the YES/NO
