@@ -5256,6 +5256,39 @@ textarea::-webkit-resizer {
   color: var(--text);
   filter: drop-shadow(0 0 5px color-mix(in oklab, var(--royal-300) 55%, transparent));
 }
+/* ─────────────────────────────────────────────────────────────────────────────
+   THE STRETCHED LINK — how a card that CONTAINS BUTTONS can still BE a link.
+
+   🔴 THE REQUEST: managers right-clicked an open market, an Up & Down round or a poll and got no
+   "open in new tab". They were right, and it was not a browser quirk — a browser offers that item
+   (and middle-click, ctrl-click and "copy link address") only for an ANCHOR WITH AN HREF. Both
+   cards carried `role="link"` and a router.push: announced as a link to a screen reader, invisible
+   as one to the browser. A RESOLVED market card has always been a real <Link>, so the same
+   component offered the menu on a settled card and withheld it on a live one.
+
+   ⛔ WRAPPING THE CARD IN AN <a> IS NOT AVAILABLE: a live card contains the YES/NO <button>s and
+   the round card contains a stake input, and an <a> may not contain either. So a real link is
+   stretched across the card, transparent, and the interactive children are raised above it.
+
+   ⛔ THE CHILDREN ARE RAISED AS WHOLE ROWS, NOT AS CONTROLS. `.mcardp-share` and `.mcardp-details`
+   live inside the footer row, and the card sets `isolation: isolate`, so a z-index on THEM is
+   spent inside the ROW's stacking context and never reaches the card — it would read as a fix and
+   change nothing. That is exactly D30, one level down. The rows are raised instead.
+
+   Everything else — the title, the price, the bar, the sparkline — sits BENEATH the anchor on
+   purpose. That is what makes a right-click anywhere on the card reach the link. */
+.mcardp > .mcardp-open {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+}
+/* The rows that hold real controls, above the link. Whole rows — see the note above. */
+.mcardp > .mcardp-actions,
+.mcardp > .mcardp-meta,
+.mcardp > .mcardp-foot,
+.mcardp > .ud-act { z-index: 3; }
+
 .mcardp-share::after {
   content: "";
   position: absolute;

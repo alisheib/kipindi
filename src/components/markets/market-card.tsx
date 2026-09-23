@@ -474,7 +474,12 @@ export function MarketCard({
           ⚠️ `stopPropagation` on the share trigger is load-bearing: the whole card is a click
           target that opens the market, so without it every share tap would navigate away
           before the dialog could open. */}
-      <div className="flex items-center justify-end gap-2">
+      {/* `mcardp-foot` is a stacking hook, not styling: the share and Details controls must sit
+          ABOVE the stretched link, and a z-index on THEM would be spent inside this row's own
+          stacking context and never reach the card — the exact trap D30 was. The row is raised, so
+          everything in it is. ⛔ The three class tokens after it are matched verbatim by
+          `test:card-share`; they stay adjacent and in order. */}
+      <div className="mcardp-foot flex items-center justify-end gap-2">
         <ShareButton compact marketId={id} title={title} />
         {live ? (
           <Link
@@ -507,17 +512,26 @@ export function MarketCard({
       data-row-id={id}
       className={cn("mcardp group", featured && "mcardp--featured", className)}
       style={{ cursor: "pointer" }}
-      aria-label={title}
-      role="link"
-      tabIndex={0}
-      onClick={goDetails}
-      onKeyDown={(e) => {
-        if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
-          e.preventDefault();
-          goDetails();
-        }
-      }}
     >
+      {/* 🔴 A REAL LINK, BECAUSE A role="link" IS NOT ONE. Managers asked for "open in new tab" on
+          every openable card and could not get it: the browser only offers that — and middle-click,
+          ctrl-click and "copy link address" — for an anchor with an href. This card carried
+          `role="link"` and a router.push, which announces itself as a link to a screen reader and
+          is invisible to the browser as one.
+          ⛔ AND IT COULD NOT SIMPLY BE WRAPPED IN ONE: a live card contains the YES/NO <button>s,
+          and an <a> may not contain a button. So the anchor is STRETCHED over the card instead
+          (`.mcardp-open`, globals.css) and the genuinely interactive children are raised above it.
+          ⭐ The non-live branch below has always been a real <Link> — so a RESOLVED card offered
+          "open in new tab" and a LIVE one did not, in the same component.
+          It stays a Next <Link>, so the client-side navigation and the `50pick:navigating` beat
+          are both unchanged; only the element a browser sees is different. Keyboard focus now lands
+          on a real link, which is why role/tabIndex/onKeyDown are gone rather than kept alongside. */}
+      <Link
+        href={`/markets/${id}` as never}
+        className="mcardp-open"
+        aria-label={title}
+        onClick={() => window.dispatchEvent(new Event("50pick:navigating"))}
+      />
       {body}
     </article>
   ) : (

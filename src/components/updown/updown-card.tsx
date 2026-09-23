@@ -27,6 +27,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Dot } from "@/components/ui/dot";
@@ -752,16 +753,18 @@ export function UpDownCard(props: UpDownCardProps) {
         // UD-17a · the settle window for a card that JUST mounted bettable.
         pointerEvents: tapGuard && bettable ? "none" : undefined,
       }}
-      role="link"
-      tabIndex={0}
-      onClick={() => { window.dispatchEvent(new Event("50pick:navigating")); router.push(`/updown/${roundId}`); }}
-      onKeyDown={(e) => {
-        if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
-          e.preventDefault();
-          router.push(`/updown/${roundId}`);
-        }
-      }}
     >
+      {/* 🔴 THE SAME FIX AS THE MARKET CARD, AND FOR THE SAME REQUEST. `role="link"` + router.push
+          is not an anchor, so the browser offered no "open in new tab", no middle-click and no
+          "copy link address" on a round card. This card holds the UP/DOWN buttons and a stake
+          input, so it cannot BE an anchor — the link is stretched over it and the action block is
+          raised above the link (`.ud-act`, globals.css). */}
+      <Link
+        href={`/updown/${roundId}` as never}
+        className="mcardp-open"
+        aria-label={`${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`}
+        onClick={() => window.dispatchEvent(new Event("50pick:navigating"))}
+      />
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-start gap-2.5">
         <AssetMark icon={assetIcon} ticker={assetTicker} />
