@@ -33,7 +33,7 @@ Ali, 2026-09-15: *"later any session please start with the mobile visual plan an
 | **Next** | Session S2 → U3 (the Compact market card) and U4 (the discovery bar). S1 (U1 + U2) is done and live since 2026-09-23. Two units per session |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit** |
 
-## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟠 **PLANNED 2026-09-16 · RUNS WHEN ALI SAYS SO, ON ANY PC** · 0/52 units ✅ · 0/25 defects ✅
+## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟠 **PLANNED 2026-09-16 · REFRESHED 2026-09-23 with the sealed SMS rail (§3a, §3b) · RUNS WHEN ALI SAYS SO, ON ANY PC** · 0/52 units ✅ · 0/25 defects ✅
 
 Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marketing campaign and contacts setup"* · *"make it perfectly working for 50pick, perfect design and logic."*
 **▶ Work order and tracker: [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md). Open it at §0 (RESUME AT), then §0a (the copy-paste session prompt), then §1 (status board).**
@@ -45,6 +45,7 @@ Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marke
 | **Shape** | 52 units in four phases: foundations and permission (one phone key, the Tanzanian number library, septet arithmetic, the statutory footer, consent ledger, suppression, opt-out, the one gate, RG, 18+, send window, frequency cap) → the contacts book → campaigns (composer, audience, confirm, approval, enqueue, slice, pump, receipts, live page, budget) → declarations, the operator's guide, and a ledger-capped live drive. Defects D1–D25, 46 owner decisions taken on delegation, 10 legal questions each with a built safe default |
 | **Law** | 🔴 A gaming advertisement needs Gaming Board approval and unsolicited SMS needs its **prior written** approval (GN 478T reg 56(1), GBT Advertising Code cl. 2.2.6) — so the broadcast surface ships **built and closed** until Ali records that approval |
 | **Next** | Session S1 → U1 (one phone key + the wire refusal) and U2 (the Tanzanian number library). Two units per session |
+| **Since it was written** | ✅ Delivery receipts now WORK end to end — a production message was DELIVERED and its receipt settled the real row in 11 seconds. The plan was drafted when none had ever arrived; §3a replaces that premise, §3b carries the vendor's measured behaviour and the seven lessons from the eleven days it took |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit**. The tracker guard asserts the two doors agree |
 
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
