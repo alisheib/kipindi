@@ -91,11 +91,36 @@ settlement are untouched. Full reasoning, numbers and mutation table: **`docs/HO
 It is now refused at SAVE — but a document that already carries it is only corrected when someone saves the
 Rules tab again. **Clear that field (leave it EMPTY = no ceiling) or set a real number.**
 
+✅ **AND THE DESK IS BETTING.** Measured on production 2026-09-23 afternoon: **12 OPENER intents PLACED**,
+4 won · 1 lost · 6 refunded (one-sided markets, everyone's stake back — correct, not a fault) · 1 open,
+**+TZS 186 realised**. `beat:poller` exists for the first time in the programme's history, so plan → claim →
+fire → position → money is proven end to end. Three further fixes shipped the same afternoon:
+`UD_VENDOR_BAR_MAX_AGE_SEC` 120 → 180 (the window was shorter than the delay a bet waits out, so the first two
+live intents were both refused UD_STALE_PRICE); the oracle's reading republished so the desk has a price without
+a player on the chart; and the settled loss row now STATES a profit instead of clamping it to zero.
+
+⚠️ **ONE FIELD STILL NEEDS THE OFFICER'S HAND:** the live account has `scope.poolTotalMaxTzs = 0`, and four
+COUNTER intents are refused `POOL_BAND` because of it. A counter only answers a stake already IN the pool, so a
+ceiling of 0 can never be satisfied. Clear that box (empty = no ceiling). Refused at SAVE since 2026-09-23, but
+an already-saved 0 is only corrected when someone saves the Rules tab again.
+
 ▶ **WHAT IS LEFT, and none of it blocks betting:**
-1. **Record the refusal reason.** A refused decision is written NOWHERE, so `HouseBotIntent = 0` cannot be
-   told apart from "never considered" — which is why this took a morning with every screen green. Record the
-   last engine code per account and paint it on the roster row and the why-panel. **This is the highest-value
-   remaining work on the programme.**
+1. **Record the refusal reason — still the highest-value work on the programme.** `planFill` and `planOpener`
+   have **18 refusal points and every one returns `code: null`**, so `HouseBotIntent = 0` cannot be told from
+   "refused four hundred times". ⚠️ The COUNTER path is NOT affected — `decideCounter` already sets a code and
+   writes a SKIPPED row, which is how `POOL_BAND` and `UD_STALE_PRICE` became visible today. The design, so it
+   is not re-derived:
+   · Give each of the 18 a code. Most already exist: `MARKET_NOT_LIVE`, `MARKET_REOPENED`, `OUT_OF_SCOPE`,
+     `CHAIN_NOT_RUNNING`, `OUTSIDE_SCHEDULE`, `MARKET_HELD`, `CUTOFF`/`EXIT_WINDOW_TOO_LATE`,
+     `STAKE_BELOW_MIN`, the cap code from `capPrecheck`, and `udCloseness`'s own three.
+   · THREE need new codes, and ruling A10 means each arrives with a `BET_PATH_REASONS` entry and a mapper row in
+     the SAME commit: an OPENER's market already holding a pool; a market that opened before `scopeFrom`
+     (ruling 92); and a FILL with no thin side.
+   · ⛔ DO NOT write a row per refusal per market per pass — hundreds of markets every 15 s would flood
+     `HouseBotIntent`. Record the LAST code per ACCOUNT on its `bot:<id>` `HouseBotRuntime` row (an expand-only
+     migration adds `lastSkipCode` + `lastSkipAt`), and paint it on the roster row and the why-panel.
+   · The instrument that proves it: an account that is Active and silent must name its reason on screen, and a
+     mutation that drops the recording must turn that case red.
 2. The two browser gates (`qa:desk-rules-flow`, `qa:house-bots-visual` at 360/1280, PNGs READ).
 3. `red:house-bot-console` — its last run died on an EPERM rename and left a planted defect on disk (restored
    from the HEAD blob, tree proved clean). It has not completed since.
