@@ -665,6 +665,20 @@ own words beneath it.**
   market card already ships exactly this shape in `.mcardp-q-sw` (`globals.css:4027`), the original with its
   translation beneath. No law is overturned, the type spec is untouched, and the default reader is served.
   Owned by **U6**; `IDENTICAL_OK` stays as it is, because the headline key itself does not change.
+- ⛔ **THE ACCENTS ARE PAINTED BY A REGEX OVER THE SHIPPED SENTENCE, AND IT ONLY KNOWS ASCII.**
+  `landing-hero.tsx:56-61` renders the headline as `text.split(/\b(YES|NO)\b/g)` and colours the two
+  captured tokens with `--hero-yes-accent` / `--hero-no-accent`. So the green/red is not in the string and not
+  in the CSS — it is in a matcher that recognises the literal words YES and NO. **Translate the line and the
+  outcome inks vanish silently**, and §6 below is why nobody would notice: no guard asserts the headline's
+  language or its accents. The sub-line this ruling adds must carry its OWN tokens (NDIO/HAPANA, 是/否) or it
+  will render as flat text while looking correct in review.
+- ⚠️ **AND NOTHING IS STOPPING A FUTURE SESSION FROM JUST TRANSLATING IT.** `IDENTICAL_OK` is an EXEMPTION from a
+  "sw/zh must differ from en" check (`i18n-parity.test.mts:113-115` filters `loc.get(k) === v && !IDENTICAL_OK.has(k)`),
+  not an assertion that the value IS English. Translating the headline would therefore pass `test:i18n` cleanly,
+  lose the inks, and overturn a DESIGN_AUTHORITY ruling — all three silently. U6 adds the guard that closes this:
+  the headline is English in all three locales AND both accent tokens still match.
+- 📍 Path correction for whoever follows the citation: **`design-brief/PLAN-OF-RECORD.md` is at the repo ROOT**, not
+  under `docs/`. The authority is real; only the path written in earlier notes was wrong.
 
 **13. Item 6 — a market with one bet states certainty. RULED: a price needs two sides.**
 - 🔴 Live on production, 2026-09-23, in the default language: *"Je, Manchester City wata shinda Premier League
@@ -684,6 +698,21 @@ own words beneath it.**
   The card keeps showing the pool and "1 mtabiri" — nothing is hidden, one false claim stops being made.
   ⛔ And ungate it from `live` in the same change, which is **D29**: terminal states never reached the rule.
   Owned by **U32**, and clear to ship early in the safe-fix lane — it is a money surface making a false statement.
+- ⭐ **AND THE TRIPWIRE THAT WAS SUPPOSED TO CATCH THIS IS CAMOUFLAGED BY IT.** `app/page.tsx:209` passes
+  `yesPct={r.yesPct ?? 0}` under a comment arguing the fallback is safe because *"a 50 would look like a price and
+  ship, a 0 is visibly absurd and gets caught."* ⛔ A 0 is NOT visibly absurd on this card: it renders as
+  "NDIO 0%" with a full red bar and a tappable "HAPANA @ 100%" — exactly what a confident price looks like, and
+  exactly the value the one-sided defect produces naturally. **The tripwire and the defect are the same number, so
+  the tripwire can never fire.** Ruling 13 removes both at once.
+- **Implementation map for U32, done 2026-09-23 so it is not re-derived:** SEVEN `<MarketCard>` call sites —
+  `markets/page.tsx` x2, `markets/[id]/page.tsx` x3, `page.tsx`, `results/page.tsx`, `watchlist/page.tsx`,
+  `landing-hero.tsx`. Five compute `yesPct={impliedYesPct(m)}` and hold the pools already; TWO read a pre-shaped
+  object (`r.yesPct ?? 0`, `featured.yesPct ?? 0`) built through `landingComposition`, so the fact must be plumbed
+  into that shape too.
+  ⛔ **Do NOT infer one-sidedness from a rounded `yesPct === 0 || === 100`**: a genuine 99.6% market rounds to 100
+  and would lose a price it really has. Pass the fact, never re-derive it. The card's own `productLine` doc states
+  the law — *"a default is exactly the bug: it lets a caller that does not know its product compile"* — so the new
+  prop is REQUIRED with no default, and a guard asserts every call site passes it.
 
 **14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**
 - Measured on production 2026-09-23: **@Libuhi crowned at +52.9% on 17 settled**, above @Fulgence at +47.5% on 38
@@ -1745,6 +1774,7 @@ with its reason in §2, never silently.
 | Up & Down card, live round | **447–660**, and the same card moves with the round's state within minutes (U1's noise floor), so it is measured, never diffed. U3 re-measured the guest `open` card on production at 360 SW: **578.25** and 502.97 | ⚠️ **RESTATED by U3, 2026-09-23: ≤ 430 is unreachable by spacing.** The card is 578.25 in `open` with 419px of that in its own content; every gap and pad it owns sums to ~130px, so even zeroing them all leaves it above 430. Measured result: **578.25 → 526.25 (−52)** at 360 SW `open`. The card now carries **`data-phase`** (11 values), so the target is stated and read **per phase**, never against a card in another state. Reaching ≤ 430 needs content decisions (U35's round shape), not this unit |
 | `/live` featured card | **SW/EN 371 · ZH 268** (the carousel box, 360×780) — U1. Quoted before as ≈ 460 from a screenshot | ≤ 360px |
 | `/help` contact rows | **147** each (three rows) — U1 | ≤ 84px |
+| Disclosure rows (`<summary>`) on player surfaces | **20.3px** on /help — half the floor, and ALL NINE collapse to it in landscape because every question then fits one line (2026-09-23). ⛔ The height was an accident of WRAPPING, so a wider screen made every target smaller | ≥ 40px. /help **fixed** (`a7efcb18`, 20.3 → 44, under-40 count 8 → 0). ⚠️ The same shape is unfixed on two more: `markets/[id]/page.tsx:708` and `profile/kyc/page.tsx:546` both put the spacing on the `<details>` and leave the `<summary>` at text height |
 | Auth form field width (7 pages) | **262** at 360 (login, register, forgot password), **222** at 320 — U1 | ≥ 277px |
 | Footer navigation links | **19** median, **15** smallest — U1 | ≥ 40px |
 | Confirmation questions | centred cards | bottom sheets, primary visible at 360×640, safe area respected |
@@ -1758,7 +1788,7 @@ with its reason in §2, never silently.
 | Control glyph sizes | U1 counts **4** distinct icon boxes in the header, discovery bar and rail at 360 (5 at 768+); the 9 was a different count of board chrome | the 16/18/20/24 set |
 | Tap floor / overflow / clipped money | holds | still holds in EN/SW/ZH |
 | Comfortable and ≥ 640 | — | zero diff against the U1 baseline |
-| Landscape 780×360 pinned chrome on `/markets` | **237 of 360** (66%), 0.37 cards visible — U1 | ≤ 150px |
+| Landscape 780×360 pinned chrome on `/markets` | **237 of 360** (66%), 0.37 cards visible — U1. Re-measured at 740×360 on production 2026-09-23: **65.8%** on /markets and /results, and **33.6% on every other route** (header 56 + rail 65 of 360) across 16 routes — so landscape costs a THIRD of the screen everywhere, not only on the boards | ≤ 150px |
 | Overlays at 740×360 | a sheet's top can be unreachable (D20) | title, close and primary always reachable |
 | Keyboard proxy: focused field visible, rail and bubble hidden | not handled | 100% of form fields |
 | Large text (zoom 1.3): controls with clipped text | not measured | 0 |
