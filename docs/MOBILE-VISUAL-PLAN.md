@@ -30,14 +30,39 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ NEXT: Session S2 → U3 (Compact market card + Up & Down card + skeleton token, with D28; D49 is BY DESIGN — §4 item 11)
-  and U4 (the discovery bar on one control line). Read §5, §9 U3–U4 AND their "S2 prep notes" before touching code:
-  the notes correct stale line numbers and show which written targets cannot be met as written (restate them in §2 first).
-
-✔ LAST SESSION (S1, 2026-09-22 → 23): U1 ✅ and U2 ✅ — the phone instrument `qa:mobile-visual` with its committed baseline,
+▶ NEXT: Session S2 (continuing) → **U4** (the discovery bar on one control line). Read §5, §9 U4 AND its
+  "S2 prep notes" before touching code. Two things U4 must fix in its own commit, both already confirmed here:
+  · `red:filter-language` case `range-reverted` anchors on `  min-height: 44px;\n}` — this tree is CRLF, so that
+    string cannot match and the case has been planting NOTHING. A RED case that applies nowhere reports GREEN.
+  · `qa:bar-geometry` OVERLAP and `qa:tap-truth` DISJOINT would both go red FALSELY on a one-line bar (a scrolled
+    strip's boxes must be clipped to their scroller first; `seen` includes scrolled-out chips).
+  After U4, S3 → U5 + U6.
+✔ LAST SESSION (S2, 2026-09-23): **U3 ✅** — the market card's rhythm became six `:root` tokens the card and the
+  SKELETON both read, so Compact is those numbers and nothing else; D28 (the share control reached 26 × 37px on
+  every card) is fixed at 41–42 × 40 by stretching the box to the row it already sat in; D49 closed BY DESIGN on
+  Ali's ruling; the Up & Down card gained `data-phase` and six class hooks. Measured, then re-measured:
+  353.5 → 301.5 · 347.44 → 303.44 · 319.5 → 279.5 · 312 → 264 · 278 → 242 · Up & Down 578.25 → 526.25.
+  ⚠️ TWO WRITTEN TARGETS WERE RESTATED IN §11 RATHER THAN MISSED QUIETLY: "every state ≥ 45px shorter" is
+  arithmetic the §9 rules cannot produce (a card with no sparkline has one child, and so one row gap, fewer), and
+  the Up & Down ≤ 430 is unreachable by spacing at all. Before it: the `revoked-deadend` locale fix verified
+  40/6 → 46/0 and pushed (`1da32fd9`).
+  👁 THE SHOTS WERE READ, NOT JUST THE NUMBERS (§11 step 4, and Ali asked for it directly): /markets, /results,
+  /updown and the landing at 360 SW in BOTH densities, on production. Compact is the better screen — the whole
+  card now fits with the next one starting, where Comfortable clips at the rail and puts the chat bubble on top
+  of "Maelezo". Two things visible on /results are D1 (the half chip under the count) and D5 (the gap under the
+  search box) — both already registered to U9, neither caused here. A 72-cell damage sweep over / · /markets ·
+  /results · /live · /watchlist · /updown × 320/360 × SW/EN/ZH × both densities found ZERO horizontal overflow,
+  both card tokens resolving to real heights everywhere (303/347 and 242/278), and no collapsed or runaway card.
+  ⚠️ FOUR REDS ON MAIN, NONE OF THEM U3's — each proven at HEAD with U3's files reverted, failing identically:
+  `test:stacking` §5.2 (LocaleChangeOverlay, i18n.tsx via theme-provider.tsx — plausibly U2's), `test:type-scale`
+  §3 (746 vs a ratchet of 744; ⛔ do NOT bump the ratchet — find the two), `test:filter-language` §6.6 (the
+  house-bots session owns it and has taken it), and `qa:tap-hit`'s chart-range section (fails on production too,
+  so it is a product gap). ⛔ `test:stacking` and `test:filter-language` are both in `predeploy`, so predeploy
+  does NOT go green on main today.
+✔ BEFORE IT (S1, 2026-09-22 → 23): U1 ✅ and U2 ✅ — the phone instrument `qa:mobile-visual` with its committed baseline,
   the production QA player "QA Mobile 01", and the Card spacing switch (Privacy v2026-09-22, approved by Ali). Nothing looks
   different yet: U3/U4 add the first Compact rules, which `test:density-contract` fences (§2 S1).
-✔ BEFORE IT (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
+✔ AND (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
   experience 5–6.5/10 in Swahili (the Seal's baseline); 12 new defects D42–D53; owner items 6–9; the panel and
   its capture stored in the repo so the Seal can repeat them exactly. No product code changed.
 ✔ AND (S0c, 2026-09-16): plan v3 — the 718-finding element inspection (§3a, record in
@@ -197,7 +222,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 |---|---|---|---|---|---|---|---|
 | U1 Baseline instrument + QA player | — | ✅ | S1 | `ba8f18e3` | no instrument, no production player → `qa:mobile-visual` over 315 production pages, §11 "Before" re-derived, baseline committed; "QA Mobile 01" minted | yes (RED=1 exits 1 on card heights; clean exits 0) | 2026-09-22 · production, served `feca192c` |
 | U2 Density setting + switch | Compact | ✅ | S1 | `e2ba9a3e` | no setting → the Card spacing switch (kp-density, served `data-density`, 44px row); zero diff vs the U1 baseline on 120 production pages, both densities | yes (density-contract RED 2/2; card-spacing step F fails with the re-sync off) | 2026-09-23 · production, served `e2ba9a3e` |
-| U3 Market card + Up & Down card + skeleton token | Compact | ⬜ | S2 | | | | |
+| U3 Market card + Up & Down card + skeleton token | Compact | ✅ | S2 | `ea84e4a9` | market card 353.5 → **301.5** live+band · 347.44 → 303.44 cold start · 319.5 → 279.5 · 312 → 264 · 278 → 242; Up & Down 578.25 → **526.25** (`open`); share reach 26×37 → **41–42 × 40**; `/results` skeleton literal 220 → the closed-card token | yes (`qa:tap-hit` share section fails all 12 cells on the UNFIXED production tree naming 26×37 and the 6.5px gap; passes 42 controls here. `red:density-contract` 2/2 over a population that is real for the first time) | 2026-09-23 · production, served `ea84e4a9` |
 | U4 Discovery bar | Compact | ⬜ | S2 | | | | |
 | U5 Header pills + phone rhythm tokens | General | ⬜ | S3 | | | | |
 | U6 Home tightening | General | ⬜ | S3 | | | | |
@@ -265,7 +290,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D25 | ⬜ | U27 |
 | D26 | ⬜ | U25 |
 | D27 | ⬜ | U16 |
-| D28 | ⬜ | U3 |
+| D28 | ✅ `ea84e4a9` 2026-09-23 (live) | U3 |
 | D29 | ⬜ | U32 |
 | D30 | ⬜ | U33 |
 | D31 | ⬜ | U34 |
@@ -286,7 +311,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D46 | ⬜ | U37 |
 | D47 | ⬜ | U36 |
 | D48 | ⬜ | U19 |
-| D49 | ⬜ | U3 |
+| D49 | ✅ by design `ea84e4a9` 2026-09-23 (live) — §4 decision 11: the band stays where real history exists, trimmed 28 → 20 in Compact; never removed, no reserved space | U3 |
 | D50 | ⬜ | U36 |
 | D51 | ⬜ | U6 |
 | D52 | ⬜ | U35 |
