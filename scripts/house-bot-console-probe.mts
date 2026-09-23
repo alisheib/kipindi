@@ -421,7 +421,18 @@ try {
   const queriesFor = (route: string, file: string) => {
     const code = readFileSync(file, "utf8");
     const tabs = [...new Set([...code.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]))];
-    const q = ["", ...tabs.map((t) => `?tab=${t}`)];
+    /**
+     * ⭐ AND THE FLAGS, NOT ONLY THE TABS (2026-09-23) — the blind spot this file's own §2.routes.tabs note
+     * has warned about in as many words: "any other shape leaves panels silently unrequested". A panel
+     * reached by a query FLAG rather than a tab was invisible to this walk, so the desk's "Why is it not
+     * staking?" panel — which streams the engine's refusal sentences, the most leak-prone thing the section
+     * renders — was never requested by the served gate at all.
+     * ⛔ DERIVED, NEVER LISTED. It reads `sp.<name> === "1"` out of the page file, the same way the tabs are
+     * read, so a flag added by a later step is inside this gate on the day its panel lands. A hard-coded
+     * `?why=1` would have closed this one hole and left the next one open.
+     */
+    const flags = [...new Set([...code.matchAll(/\bsp\.([a-zA-Z]+) === "1"/g)].map((m) => m[1]))];
+    const q = ["", ...tabs.map((t) => `?tab=${t}`), ...flags.map((f) => `?${f}=1`)];
     if (route === "/admin/audit") q.push(...AUDIT_CATEGORIES.map((c) => `?category=${c}`), `?actorId=${holder}`);
     if (route === "/admin/resolver-queue") q.push("?window=all");
     return q;
@@ -464,12 +475,21 @@ try {
      and still never have required the two most leak-prone surfaces of the section to be REQUESTED. The names are
      derived from the disk walk — route + fixture label + query — so naming them costs no fixture and no guess. */
   const hasTab = (tab: string) => consoleInstances.some((r) => r.name.endsWith(`?tab=${tab}`));
+  const hasFlag = (flag: string) => consoleInstances.some((r) => r.name.endsWith(`?${flag}=1`));
   ok("2.routes.tabs · 315 · the desk's bare route and every tab its pages name are requested, and nothing else — the account page's activity and history panels by name",
     consoleInstances.length >= 3 && consoleInstances.some((r) => r.name === CONSOLE_PREFIX)
       && consoleInstances.some((r) => r.name === `${CONSOLE_PREFIX}?tab=limits`)
       && hasTab("activity") && hasTab("history")
       && consoleInstances.some((r) => r.name.startsWith(`${CONSOLE_PREFIX}/[id]`) && r.name.endsWith("?tab=activity")),
     consoleInstances.map((r) => r.name).join(", "));
+  /* ⭐ AND THE FLAG-REACHED PANELS BY NAME, for the same reason the two tab panels are named: a floor alone
+     would have risen with the account page's tabs and still never required the idle-explanation panel to be
+     REQUESTED. It is the surface that paints the engine's own refusal sentences, so it is the one whose served
+     body most needs reading. `reverify` is named beside it because it is the other flag the page reads. */
+  ok("2.routes.flags · the account page's QUERY-FLAG panels are requested too — the shape §2.routes.tabs' own note says leaves panels silently unrequested",
+    hasFlag("why") && hasFlag("reverify")
+      && consoleInstances.some((r) => r.name.startsWith(`${CONSOLE_PREFIX}/[id]`) && r.name.endsWith("?why=1")),
+    consoleInstances.filter((r) => /[?][a-zA-Z]+=1$/.test(r.name)).map((r) => r.name).join(", ") || "(none)");
   const apiRoutes: string[] = [];
   const walkApi = (dir: string, rel: string) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
