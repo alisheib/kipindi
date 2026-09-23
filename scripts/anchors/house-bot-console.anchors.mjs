@@ -637,7 +637,7 @@ export const MUTATIONS = [
     file: GATE,
     from: `           \`switched by \${control?.switchedById ?? "System"}\`,`,
     to: `           \`switched by \${control?.switchedReason ?? "System"}\`,`,
-    expect: "1.306 · the ON sentence names the time and the ACTOR BY ID",
+    expect: "1.306 · the ON sentence names the DAY and the time, and the ACTOR BY ID",
     suite: "console-mem",
   },
 
@@ -1717,12 +1717,12 @@ import { formatEat } from "@/lib/utils";`,
      * ⚠️ AND THE ACCIDENT LEFT A REAL FINDING BEHIND: the `parsed == null` branch is measured by NOTHING in this
      * suite — no fixture plants a FAILED rules read — so it could become a lowercase fragment tomorrow and no
      * assertion would move. Registered as a suite finding rather than repaired here. */
+    /* ⭐ RE-ANCHORED 2026-09-22 to the SAME defect: the cell is one LINE per ticked product now, and the unknown is
+     * its one line — the lowercase fragment is planted in the same branch it always was. */
     name: "416-products-case · an unreadable rule set renders a lowercase fragment mid-table again",
     file: GATE,
-    from: `        : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
-          : "Couldn't read",`,
-    to: `        : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
-          : "couldn't read",`,
+    from: `      products: parsed == null || !parsed.ok || !parseCtx ? ["Couldn't read"] : scopeLines(parsed.rules, parseCtx),`,
+    to: `      products: parsed == null || !parsed.ok || !parseCtx ? ["couldn't read"] : scopeLines(parsed.rules, parseCtx),`,
     expect: "1.310 · 416 · a rule set the reader cannot parse renders ONE sentence-cased unknown",
     suite: "console-mem",
   },
@@ -1965,8 +1965,17 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "390-sentence · a refusal sentence names the feature, on the one screen 453 exists to keep neutral",
     file: GATE,
-    from: `  NOT_FOUND: "That account is not on the desk any more. Reload the desk.",`,
-    to: `  NOT_FOUND: "That house bot is not on the desk any more. Reload the desk.",`,
+    /**
+     * ⛔ THE ANCHOR CARRIES ITS NEIGHBOUR BECAUSE THE SENTENCE ALONE STOPPED BEING UNIQUE (2026-09-23).
+     * `red:house-bot-console` reported this defect STALE — "anchor matches 2× — ambiguous, refusing to inject" —
+     * and a refused injection is a mutation that measures NOTHING while the run still says 1 caught for every
+     * other one. The console work gave `CONSOLE_ACT_REFUSAL` the same `NOT_FOUND` sentence as `RULES_SAVE_COPY`
+     * (and an `ACCOUNT_MISSING` beside it with the same words again), which is correct product copy — one fact,
+     * one spelling — and fatal to a one-line text anchor. The CONFLICT line below names *this account*, so the
+     * pair belongs to the rules save and to nothing else; it is checked by the runner's own once-only rule.
+     */
+    from: `  NOT_FOUND: "That account is not on the desk any more. Reload the desk.",\n  REMOVED: "This account was removed from the desk. Nothing on it can be changed.",\n  CONFLICT: "Someone else changed this account while this page was open. Nothing was saved — reload the page and make the change again.",`,
+    to: `  NOT_FOUND: "That house bot is not on the desk any more. Reload the desk.",\n  REMOVED: "This account was removed from the desk. Nothing on it can be changed.",\n  CONFLICT: "Someone else changed this account while this page was open. Nothing was saved — reload the page and make the change again.",`,
     expect: "and every refusal SENTENCE the door can hand back is free of the shared vocabulary",
     suite: "console-mem",
   },
@@ -2084,8 +2093,15 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "390-catch · a console action loses the catch that turns a throw from behind the door into a typed refusal",
     file: ACTIONS,
-    from: `    return { ok: false, error: safeError(err, "Nothing was saved. Reload the page and try again.") };`,
-    to: `    return { ok: false, error: String(err) };`,
+    /**
+     * ⛔ SAME STALENESS, SAME CAUSE (2026-09-23): `saveBotRulesAction` landed beside `saveBotLimitsAction` with
+     * the identical catch, so this one-line anchor matched twice and the runner refused to inject — the defect
+     * was measuring nothing. The LIMITS action's one-line `revalidatePath` above it is what tells the two apart
+     * (the rules action revalidates two routes in a block), so the anchor plants on that action and the
+     * assertion it expects covers every exported action in the file either way.
+     */
+    from: `    if (result.ok) revalidatePath(CONSOLE_ROUTE);\n    return result;\n  } catch (err) {\n    return { ok: false, error: safeError(err, "Nothing was saved. Reload the page and try again.") };`,
+    to: `    if (result.ok) revalidatePath(CONSOLE_ROUTE);\n    return result;\n  } catch (err) {\n    return { ok: false, error: String(err) };`,
     expect: "1.390 · and every exported console action turns a throw from BEHIND the door into a typed refusal",
     suite: "console-mem",
   },
@@ -2434,8 +2450,10 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "317-raw-enum-fallback · the history's Event cell grows a `?? kind` escape, which paints the raw enum for any kind the map has lost",
     file: GATE,
-    from: `    eventWord: CONSOLE_EVENT_WORD[e.kind],`,
-    to: `    eventWord: (CONSOLE_EVENT_WORD as Record<string, string>)[e.kind] ?? e.kind,`,
+    /* ⚠️ RE-ANCHORED 2026-09-23: the Event cell now names an auto-pause's CAUSE and falls back to the kind's
+       blanket sentence, so the plant goes on the FALLBACK arm — which is the arm a lost map entry reaches. */
+    from: `      : CONSOLE_EVENT_WORD[e.kind],`,
+    to: `      : ((CONSOLE_EVENT_WORD as Record<string, string>)[e.kind] ?? e.kind),`,
     expect: "1.317 · 453 · no raw-enum fallback survives",
     suite: "console-mem",
   },
@@ -2461,9 +2479,9 @@ import { formatEat } from "@/lib/utils";`,
     name: "355-failed-reads-empty · a FAILED activity read answers an empty list, so the kit's failure treatment is never reached and a read that nobody could take looks like an account that has done nothing",
     file: GATE,
     from: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs));`,
     to: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? []
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId));`,
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs));`,
     expect: "1.355 · a failed activity read is `feed === null`",
     suite: "console-mem",
   },
@@ -2513,11 +2531,16 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
-    name: "410-rail-rank · the window filter drops the dense rank, so one rail is 44px beside 32px chips — the same control at two sizes on one screen",
+    /* 🔴 THE DEFECT TURNED OVER WITH THE PRODUCT (2026-09-23). The rail used to be uniformly DENSE and this
+       mutation dropped the rank from ONE control; the rail is now uniformly the shared 44px rung, because this
+       section's visual gate holds every control to a 40px tap floor, so the same defect is the dense rank
+       coming BACK to one control. Same disease — one control at a different size from its neighbours — planted
+       from the side the product is now on. */
+    name: "410-rail-rank · the window filter takes the dense rank BACK, so one 32px control stands beside 44px chips — the same control at two sizes on one screen, and under this section's own tap floor",
     file: RAIL,
-    from: `      <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />`,
-    to: `      <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />`,
-    expect: "1.410 · every rank-taking control on the rail takes the DENSE rank",
+    from: `        <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />`,
+    to: `        <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />`,
+    expect: "1.410 · every rank-taking control on the rail takes the SHARED rank",
     suite: "console-mem",
   },
   {
@@ -2829,6 +2852,235 @@ import { formatEat } from "@/lib/utils";`,
     from: `      attempt.current = "";\n      if (!result.ok) {`,
     to: `      if (!result.ok) {`,
     expect: "1.CA19 · …and the DIALOG mints a fresh nonce per press and spends it on either answer",
+    suite: "console-mem",
+  },
+  /* ── THE SCOPE FINDING, THE CONSOLE HALF (2026-09-22) ─────────────────────────────────────────────────────────
+   * An ACTIVE account on a switched-ON desk had matched no market, ever, while the roster read "Active · Up & Down ·
+   * Polls": both scope lists were empty and no screen could write them. Each mutation below puts back one piece of
+   * the console as it stood that morning — or the one-line "fix" that would hide the finding again. */
+  {
+    /* (a) the roster paints the SWITCHES' words again — true of the switches, false of the account. */
+    name: "scope-roster-summary-words · the roster's scope cell prints the product words instead of what each product can reach",
+    file: GATE,
+    from: `      products: parsed == null || !parsed.ok || !parseCtx ? ["Couldn't read"] : scopeLines(parsed.rules, parseCtx),`,
+    to: `      products: parsed == null || !parsed.ok || !parseCtx ? ["Couldn't read"] : [productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)],`,
+    expect: "2g.words · ⛔ THE FINDING · the roster's scope line names what each ticked product can REACH",
+    suite: "console-mem",
+  },
+  {
+    /* (b) the row's own refusal dropped — an inert ACTIVE account is a plain green chip and nothing else again. */
+    name: "scope-roster-no-inert-line · the roster stops painting the refusal on an ACTIVE account whose rules reach nothing",
+    file: GATE,
+    from: `      inert: reasons === null || reasons.length === 0 ? null : { text: inertLine(reasons), href: consoleBotTabHref(bot.id, "rules") },`,
+    to: `      inert: null,`,
+    expect: "2g.inert · ⛔ THE FINDING · an ACTIVE account whose rules reach nothing carries its refusal on the roster",
+    suite: "console-mem",
+  },
+  {
+    /* (c) the save drops the category list on the floor — the picker posts it, the row never stores it.
+     * ⚠️ Anchored on the ONE object both documents read from: dropping it from the stored patch alone is masked by
+     * the round-trip fallback, which stores the complete validated document — a mutation the product would survive. */
+    name: "scope-save-drops-categories · the rules save writes an empty category list whatever the picker posted",
+    file: "src/lib/server/house-bot/rules-save.ts",
+    from: `  const scopeLists = { chains: [...input.lists.chains], categories: [...input.lists.categories] };`,
+    to: `  const scopeLists = { chains: [...input.lists.chains], categories: [] as string[] };`,
+    expect: "2g.save · ⛔ the two lists round-trip",
+    suite: "console-mem",
+  },
+  {
+    /* (d) the why-panel is fed a hard-coded empty list — it says nothing stops the account, whatever the rules say. */
+    name: "scope-why-panel-empty · the why-panel's item list is a constant empty array",
+    file: GATE,
+    /* ⚠️ RE-ANCHORED 2026-09-23: a retired chain or category joined the panel's items (register A5), so the
+       list is longer. The plant is unchanged in meaning — the whole list becomes a constant empty array. */
+    from: `    const items = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),`,
+    to: `    const items: { key: string; label: string; message: string }[] = [];\n    const unusedItems = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),`,
+    expect: "2g.why · ⛔ the why-panel lists every reason the engine's predicate raises",
+    suite: "console-mem",
+  },
+  {
+    /* (e) the Start refusal falls back to the generic sentence for a scope cause — the remedy hidden again. */
+    name: "scope-start-generic · a Start refused on a scope cause is painted with the generic RULES sentence, the remedy unnamed",
+    file: GATE,
+    from: `  const scopeField = field in CONSOLE_RULES_FIELD_KEY && !Object.prototype.hasOwnProperty.call(CONSOLE_CAP_KEY, field);`,
+    to: `  const scopeField = false;`,
+    expect: "2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the CHAIN remedy",
+    suite: "console-mem",
+  },
+  /* ⭐ THE REVIEW OF THAT COMMIT (2026-09-22) · eleven more, one per finding it confirmed or the fix pass took on.
+   * The by-hand axis first: `BY_HAND_NO_SCREEN` was proven at the pure function only, and the three sites that hand the
+   * build's screen table to the predicate — the roster, the account page, the Start service — were invisible to this
+   * suite; a wrong table at any of them left the roster with no line, the panel saying nothing stops the account and
+   * Start starting it to do nothing. Each is put back below, one site at a time. */
+  {
+    name: "scope-byhand-roster-screens · the roster tells the predicate every by-hand screen exists, so an Enter-now-only account carries no line",
+    file: GATE,
+    from: `    const reasons = parsed !== null && parsed.ok && parseCtx ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: BY_HAND_SCREENS }) : null;`,
+    to: `    const reasons = parsed !== null && parsed.ok && parseCtx ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: { enterNow: true, targeting: true } }) : null;`,
+    expect: "2g.byhand · ⛔ the roster hands the predicate THIS build's screens",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-byhand-detail-screens · the account page tells the predicate every by-hand screen exists, so the why-panel and the badge say nothing",
+    file: GATE,
+    from: `    ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: BY_HAND_SCREENS })\n    : null;`,
+    to: `    ? rulesInertReasons(parsed.rules, parseCtx, { byHandScreens: { enterNow: true, targeting: true } })\n    : null;`,
+    expect: "2g.byhand · ⛔ the why-panel hands the predicate the same screens",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-byhand-start-screens · the Start service overrides the build's screen table with all-true, so an Enter-now-only account starts to do nothing",
+    file: DESIG,
+    from: `  const problems = rulesStartProblems(parsed.rules, caps, input.rulesContext, { botId, label: bot.label });`,
+    to: `  const problems = rulesStartProblems(parsed.rules, caps, input.rulesContext, { botId, label: bot.label, byHandScreens: { enterNow: true, targeting: true } });`,
+    expect: "2g.byhand · ⛔ Start hands the predicate the same screens",
+    suite: "console-mem",
+  },
+  {
+    /* The why-panel is built without the live-bound list again — "nothing stops this account" on the page whose Start refuses it. */
+    name: "scope-why-panel-no-live-bound · the why-panel drops the saved limits a live bound now breaks",
+    file: GATE,
+    from: `      ...(liveBound ?? []).map(liveBoundItem),\n`,
+    to: `      /* dropped */\n`,
+    expect: "2g.live · ⛔ a saved limit a live bound now breaks is ON the panel",
+    suite: "console-mem",
+  },
+  {
+    /* The chains row of the key map goes, so the production shape's FIRST Start refusal falls back to the generic sentence. */
+    name: "scope-start-chains-key · the console's field-key map loses `scope.chains`, so a Start refused on the chain list is painted generic",
+    file: GATE,
+    from: `  "scope.chains": CONSOLE_LIST_KEY.chains,\n  "scope.categories": CONSOLE_LIST_KEY.categories,`,
+    to: `  "scope.categories": CONSOLE_LIST_KEY.categories,`,
+    expect: "2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the CHAIN remedy",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-product-no-mode-switch-label · PRODUCT_NO_MODE is labelled by one switch of three again",
+    file: GATE,
+    from: `  if (r.code === "PRODUCT_NO_MODE" && r.product !== undefined) return CONSOLE_FLAG_SECTION[r.product];\n`,
+    to: `  /* dropped */\n`,
+    expect: "2g.label · a ticked product with a chain but none of its own modes on is labelled `Up & Down entry`",
+    suite: "console-mem",
+  },
+  {
+    /* A stranger is silently FILTERED instead of refused — the chain-stranger save then lands and writes. This is the
+     * write the "wrote nothing" assertion could not see while it read the row AFTER the control save. */
+    name: "scope-save-strangers-filtered · a member the platform does not offer is dropped from the list and the save proceeds",
+    file: GATE,
+    from: `  if (categories.some((c) => !liveCategories.includes(c)) || chains.some((k) => !liveChains.has(k))) {\n    return { ok: false, error: RULES_SAVE_COPY.stale };\n  }`,
+    to: `  categories.splice(0, categories.length, ...categories.filter((c) => liveCategories.includes(c)));\n  chains.splice(0, chains.length, ...chains.filter((k) => liveChains.has(k)));`,
+    expect: "2g.save · …and the refused saves wrote nothing",
+    suite: "console-mem",
+  },
+  {
+    /* The row's refusal leaves the page altogether. */
+    name: "scope-roster-line-off-page · the roster page stops painting the account cell's refusal link",
+    file: PAGE,
+    from: `                            {r.inert !== null && (\n                              <Link href={r.inert.href as Route} className="inline-flex items-center min-h-[var(--tap-min)] max-w-[34ch] text-body-sm text-warning-fg hover:underline">\n                                {r.inert.text}\n                              </Link>\n                            )}\n`,
+    to: ``,
+    expect: "2g.page · the roster paints the refusal off `r.inert` as a LINK to its href, at the tap floor, in the warning tone, INSIDE THE ACCOUNT CELL",
+    suite: "console-mem",
+  },
+  {
+    /* The page types the lifecycle sentence itself again — "before this account can start" beside a green ACTIVE chip. */
+    name: "scope-callout-title-on-page · the account page types the Callout's headline instead of painting the server's",
+    file: DETAIL,
+    from: `            title={view.startReadiness.title}`,
+    to: "            title={`${view.startReadiness.blockers} things to fix before this account can start`}",
+    expect: "2g.page · the Callout's headline is the server's",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-callout-title-ignores-lifecycle · the server's Callout headline says `before this account can start` whatever the lifecycle",
+    file: GATE,
+    from: `    const title = bot.status === "ACTIVE" ? READINESS_COPY.calloutActive(items.length) : READINESS_COPY.calloutStart(items.length);`,
+    to: `    const title = READINESS_COPY.calloutStart(items.length);`,
+    expect: "2g.why · the readiness badge counts the SAME reasons",
+    suite: "console-mem",
+  },
+  {
+    name: "scope-why-title-constant · the why-panel is headed `Why this account is not betting` over an empty list and over a paused account alike",
+    file: GATE,
+    from: `      title: items.length === 0 ? READINESS_COPY.panelClear : bot.status === "ACTIVE" ? READINESS_COPY.panelNotBetting : READINESS_COPY.panelCantStart,`,
+    to: `      title: READINESS_COPY.panelNotBetting,`,
+    expect: "2g.title · on a PAUSED account with reasons the why-panel is headed",
+    suite: "console-mem",
+  },
+  {
+    /* The roster spells the empty list one way and the record rows another again. */
+    name: "scope-none-chosen-two-spellings · the one spelling home for an empty list is lowercased, so the roster and the record rows disagree",
+    file: GATE,
+    from: `const NONE_CHOSEN = "None chosen";`,
+    to: `const NONE_CHOSEN = "none chosen";`,
+    expect: "2g.words · ⛔ THE FINDING · the roster's scope line names what each ticked product can REACH",
+    suite: "console-mem",
+  },
+
+  /* ══ THE NUMERIC + SCHEDULE EDITOR (2026-09-23 · register A1/A2/A3/A4) ═══════════════════════════════════════
+   *
+   * ⛔ EACH OF THESE IS THE DEFECT THE EDITOR REPLACED, PUT BACK. The register's items were not opinions about
+   * a form: 33 of the 45 rule leaves had no control on any screen, the Enter-now switch was refused on a box
+   * that did not exist, Start threw its own warnings away, and the save's docblock promised a behaviour that
+   * was measured false. A mutation per item is what stops any of them coming back quietly.
+   */
+  {
+    name: "editor-numbers-dropped · the save stops storing one section's numbers, so an officer's guards silently keep the old values",
+    file: "src/lib/server/house-bot/rules-save.ts",
+    from: `  for (const [id, raw] of Object.entries(input.numbers)) setPath(rulesToCheck, id, raw);`,
+    to: `  for (const [id, raw] of Object.entries(input.numbers)) { if (!id.startsWith("guards.")) setPath(rulesToCheck, id, raw); }`,
+    expect: "2h.save · ⛔ THE NUMBERS ROUND-TRIP",
+    suite: "console-mem",
+  },
+  {
+    name: "editor-bounds-raw · the form's ranges come from the raw field table instead of the LIVE bounds, so a box looks more permissive than the seam",
+    file: GATE,
+    from: `      const bounds = boundsCtx === null ? null : fieldBounds(id, boundsCtx);`,
+    to: `      const bounds = boundsCtx === null ? null : { min: typeof meta.min === "number" ? meta.min : 0, max: typeof meta.max === "number" ? meta.max : 0 };`,
+    expect: "2h.model · every row carries the LIVE bounds",
+    suite: "console-mem",
+  },
+  {
+    name: "editor-schedule-utc · the saved window is painted back in UTC, so an officer who typed 09:00 EAT reads 06:00",
+    file: GATE,
+    from: `          start: w === undefined ? "" : formatMinutes(w.startMin),`,
+    to: `          start: w === undefined ? "" : formatMinutes((w.startMin + 1440 - 180) % 1440),`,
+    expect: "2h.schedule · ⛔ THE DAYS AND THE HOURS ROUND-TRIP IN EAT",
+    suite: "console-mem",
+  },
+  {
+    name: "editor-enter-now-boxes-gone · the two Enter-now stakes lose their rows again, which is exactly register A2 — a switch refused on a box the form does not draw",
+    file: GATE,
+    from: `    rules: RULE_NUMBER_FIELDS.map((id) => {`,
+    to: `    rules: RULE_NUMBER_FIELDS.filter((id) => !id.startsWith("enterNow.")).map((id) => {`,
+    expect: "2h.model · one row per NUMERIC RULE LEAF",
+    suite: "console-mem",
+  },
+  {
+    name: "editor-record-loses-the-numbers · a REMOVED account's record goes back to saying nothing about what it was set to do",
+    file: GATE,
+    from: `    ...RULE_NUMBER_FIELDS.map((id) => {\n      const raw = ruleLeaf(rules, id);`,
+    to: `    ...RULE_NUMBER_FIELDS.slice(0, 0).map((id) => {\n      const raw = ruleLeaf(rules, id);`,
+    expect: "1.508 · the rules panel lists every saved cap, the five scope facts, the six entry modes",
+    suite: "console-mem",
+  },
+  {
+    name: "start-drops-its-warnings · Start goes back to reporting `Started` for an account whose every enabled mode can never enter",
+    file: DESIG,
+    from: `  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: problems.warnings };`,
+    to: `  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: [] };`,
+    expect: "2g.start · ⛔ REGISTER A3 · an account whose only enabled mode can NEVER enter",
+    suite: "console-mem",
+  },
+  {
+    /* ⚠️ RE-AIMED 2026-09-23, AND THE MISS WAS THE FINDING. It planted in `switchesUsing`, whose early return
+       stopped governing the caption when `usedByLine` was written — and the idle flag was still asking the
+       OTHER helper, so the plant changed a list nothing read and the suite stayed green. The caption and the
+       flag now share ONE guard, and this plants on it. */
+    name: "editor-idle-caption-always-on · the `used only while` caption is painted for every leaf, including the ones every state reads",
+    file: GATE,
+    from: `  if (leafUsedBy(id, ALL_SWITCHES_OFF)) return "";`,
+    to: `  if (false) return "";`,
+    expect: "2h.usedBy · the caption naming the switch a number belongs to is DERIVED",
     suite: "console-mem",
   },
 ];

@@ -386,6 +386,186 @@ await guard("7", () => {
   ok("7.36 · …and decideCounter uses it: a targeted EXIT_CLOSE 10 s reaction is due at the exit + 10 s", tgtTwo.row?.dueAt === at(-1 + 310), j(tgtTwo.row));
 });
 
+/* ═══ §7b · THE RULE LEAVES NO SUITE PINNED (2026-09-23 · register B6) ═══════════════════════════
+ *
+ * ⛔ WHAT THE AUDIT FOUND, AND WHY IT IS A GAP AND NOT A STYLE POINT. The engine reads 29 numeric leaves.
+ * Before today the only instrument that moved most of them was `qa:house-bot-fleet` — a whole-engine drive
+ * on a real database — so a leaf could be dropped from `decide.ts` and every `test:` suite stayed green. A
+ * pure case per leaf is what makes the DEFECT, not the drive, the thing that goes red.
+ * ⛔ EVERY CASE HERE IS A PAIR: the value that REFUSES and the value one step away that ALLOWS. A single-sided
+ * case passes just as well when the rule is deleted and the answer happens to be "no row" for another reason
+ * — which is exactly how these leaves came to be unmeasured while the suites read 756 green.
+ * ⚠️ THE ARITHMETIC IS WRITTEN OUT at each case, from the fixture's own clock: the market cutoff is T0+7,200 s,
+ * the trigger is placed at T0−1 s, and a round locks at T0+240 s.
+ */
+await guard("7b", () => {
+  /* The two fixtures §7 keeps inside its own guard, rebuilt here so this block stands alone. */
+  const fillIn = (o: Any = {}) => merge({ view: MV.projectMarketView(viewRow()), bot: botOf(), pools: { YES: side({ raw: 10_000, nonHouse: 10_000, locked: 10_000 }), NO: side({ raw: 1_000, nonHouse: 1_000, locked: 1_000 }) },
+    price: null, bounds: { min: 1_000, max: 1_000_000 }, globalScopeFrom: at(-86_400), passNow: NOW }, o);
+  const openIn = (o: Any = {}) => merge(fillIn({ pools: { YES: side(), NO: side() } }), o);
+  const maxRand = (_min: number, max: number) => max;
+  /** An RNG that RECORDS what it was asked for — the only way a draw's own bounds can be asserted. */
+  const recorder = (pick: "min" | "max" = "max") => {
+    const calls: Array<[number, number]> = [];
+    const fn = (min: number, max: number) => { calls.push([min, max]); return pick === "max" ? max : min; };
+    return { calls, fn };
+  };
+  const counterWith = (rules: Any, o: Any = {}, rng: Any = minRand) =>
+    DE.decideCounter(ctrIn({ bots: [botOf({ rules: rulesOf(rules) })], ...o }), { randomInt: rng });
+  const codeOf = (r: Any): Any => r.row?.reasonCode ?? (r.row?.status === "PENDING" ? "PENDING" : r.row?.status ?? "no-row");
+  /* An Up & Down view whose closeness PASSES (open 100, targets ±10, price 102 at 25%), so a UD case measures
+     the leaf it names and not the price gate. Its round locks at T0+240 s. */
+  const udFresh = { price: 102, source: "observation", ageSec: 10 };
+  const udView = () => MV.projectMarketView(viewRow({ productLine: "UPDOWN", selectionClosedAt: at(240), resolutionAt: at(900), exitGraceMin: 0, round: roundOf({ downTarget: 90 }) }));
+
+  /* ── the no-react zone, in BOTH units ─────────────────────────────────────────────────────────── */
+  /* polls: the zone is minutes. cutoff T0+7,200 s, trigger T0−1 s → the zone bites at 7,201 s = 120.02 min. */
+  ok("7b.1 · guards.noReactZonePollsMin · a zone that reaches the trigger is NO_REACT_ZONE, and one minute less is a bet — the band edge, in MINUTES",
+    codeOf(counterWith({ guards: { noReactZonePollsMin: 121 } })) === "NO_REACT_ZONE"
+      && codeOf(counterWith({ guards: { noReactZonePollsMin: 120 } })) === "PENDING",
+    j({ over: codeOf(counterWith({ guards: { noReactZonePollsMin: 121 } })), under: codeOf(counterWith({ guards: { noReactZonePollsMin: 120 } })) }));
+  /* Up & Down: the same leaf in SECONDS, against a round that locks at T0+240 s. */
+  ok("7b.2 · guards.noReactZoneUdSec · the same guard in SECONDS on a round: 241 refuses, 240 bets — so the two units cannot be swapped without a red",
+    codeOf(counterWith({ guards: { noReactZoneUdSec: 241 } }, { view: udView(), price: udFresh })) === "NO_REACT_ZONE"
+      && codeOf(counterWith({ guards: { noReactZoneUdSec: 240 } }, { view: udView(), price: udFresh })) === "PENDING",
+    j({ over: codeOf(counterWith({ guards: { noReactZoneUdSec: 241 } }, { view: udView(), price: udFresh })) }));
+
+  /* ── the pool band, with its edges ───────────────────────────────────────────────────────────── */
+  /* the fixture's raw pools are 10,000 + 0. */
+  ok("7b.3 · scope.poolTotalMinTzs / MaxTzs · the band is INCLUSIVE at both ends: a total equal to the minimum bets, one TZS under is POOL_BAND",
+    codeOf(counterWith({ scope: { poolTotalMinTzs: 10_000 } })) === "PENDING"
+      && codeOf(counterWith({ scope: { poolTotalMinTzs: 10_001 } })) === "POOL_BAND",
+    j({ at: codeOf(counterWith({ scope: { poolTotalMinTzs: 10_000 } })), over: codeOf(counterWith({ scope: { poolTotalMinTzs: 10_001 } })) }));
+  ok("7b.4 · …and the ceiling the same way: equal to the maximum bets, one TZS over is POOL_BAND — with a NULL maximum meaning no ceiling at all",
+    codeOf(counterWith({ scope: { poolTotalMaxTzs: 10_000 } })) === "PENDING"
+      && codeOf(counterWith({ scope: { poolTotalMaxTzs: 9_999 } })) === "POOL_BAND"
+      && codeOf(counterWith({ scope: { poolTotalMaxTzs: null } })) === "PENDING",
+    j({ at: codeOf(counterWith({ scope: { poolTotalMaxTzs: 10_000 } })), under: codeOf(counterWith({ scope: { poolTotalMaxTzs: 9_999 } })) }));
+
+  /* ── closing-soon, and the control that it gates POLLS only ──────────────────────────────────── */
+  ok("7b.5 · scope.skipPollsClosingWithinMin · 121 minutes reaches a poll closing in 120.02 and is CUTOFF; 120 does not — and the SAME rule leaves a round alone, which is why it belongs to the Counter section and not to Scope",
+    codeOf(counterWith({ scope: { skipPollsClosingWithinMin: 121 } })) === "CUTOFF"
+      && codeOf(counterWith({ scope: { skipPollsClosingWithinMin: 120 } })) === "PENDING"
+      && codeOf(counterWith({ scope: { skipPollsClosingWithinMin: 121 } }, { view: udView(), price: udFresh })) === "PENDING",
+    j({ polls: codeOf(counterWith({ scope: { skipPollsClosingWithinMin: 121 } })), ud: codeOf(counterWith({ scope: { skipPollsClosingWithinMin: 121 } }, { view: udView(), price: udFresh })) }));
+
+  /* ── the trigger-stake band, inclusive at both edges ─────────────────────────────────────────── */
+  /* ⛔ THE ANSWER IS 100% OF THE TRIGGER HERE, AND THAT IS NOT COSMETIC. 🔴 Measured on this case's first run:
+     at the default 80%, a trigger exactly at the 1,000 floor produces an 800 answer, which is below the bot's
+     own 1,000 minimum stake — so the row came back STAKE_BELOW_MIN and the case reported the BAND as broken
+     when the band was right. A case whose edge value is decided by a different leaf measures that leaf. */
+  const trig = (stakeTzs: number) => codeOf(DE.decideCounter(ctrIn({ trigger: { positionId: "pos_t1", userId: "usr_p1", handle: "Player #A3F2K8", side: "YES", stakeTzs, placedAt: at(-1) }, pools: { YES: side({ raw: stakeTzs, nonHouse: stakeTzs }), NO: side() }, bots: [botOf({ rules: rulesOf({ scope: { poolTotalMinTzs: 0, poolTotalMaxTzs: null }, counter: { amount: { kind: "PCT", pct: 100 } } }) })] }), { randomInt: minRand }));
+  ok("7b.6 · counter.triggerStakeMin/MaxTzs · the band is INCLUSIVE: a stake exactly at the floor and exactly at the ceiling are both answered, one either side is TRIGGER_STAKE_RANGE",
+    trig(1_000) === "PENDING" && trig(200_000) === "PENDING"
+      && trig(999) === "TRIGGER_STAKE_RANGE" && trig(200_001) === "TRIGGER_STAKE_RANGE",
+    j({ floor: trig(1_000), ceiling: trig(200_000), under: trig(999), over: trig(200_001) }));
+
+  /* ── the delay draw, and the amount shaping ──────────────────────────────────────────────────── */
+  /* ⛔ THE EXIT HOLD IS TURNED OFF for this one (grace 0), or the due time is the exit close and the draw is
+     invisible — which is how a delay range could have been read from the wrong leaves and nothing gone red. */
+  const noHold = { view: MV.projectMarketView(viewRow({ exitGraceMin: 0 })) };
+  const drawRec = recorder("max");
+  const drawn = counterWith({ counter: { delayMinSec: 15, delayMaxSec: 45 } }, noHold, drawRec.fn);
+  const drawnMin = counterWith({ counter: { delayMinSec: 15, delayMaxSec: 45 } }, noHold, minRand);
+  ok("7b.7 · counter.delayMin/MaxSec · the wait is DRAWN between the two leaves — the RNG is asked for exactly (15, 45), and the due time moves with what it answers: T0+44 s at the top, T0+14 s at the bottom",
+    j(drawRec.calls[0]) === j([15, 45]) && drawn.row?.dueAt === at(-1 + 45) && drawnMin.row?.dueAt === at(-1 + 15),
+    j({ asked: drawRec.calls[0], max: drawn.row?.dueAt, min: drawnMin.row?.dueAt }));
+  const jitterRec = recorder("max");
+  const jittered = counterWith({ counter: { amount: { kind: "PCT", pct: 80 } }, shaping: { jitterPct: 10, roundToTzs: 100 } }, {}, jitterRec.fn);
+  ok("7b.8 · shaping.jitterPct · the amount is moved by a draw over ±the leaf — asked for exactly (−10, 10), and 80% of 10,000 at +10% is 8,800 once rounded to 100",
+    j(jitterRec.calls.find((c: Any) => c[0] < 0)) === j([-10, 10]) && jittered.row?.stakeTzs === 8_800,
+    j({ asked: jitterRec.calls, stake: jittered.row?.stakeTzs }));
+  const fixed = counterWith({ counter: { amount: { kind: "FIXED", fixedTzs: 4_000 } } });
+  ok("7b.9 · counter.amount FIXED · the same amount whatever the player staked — 4,000 against a 10,000 trigger, where the PCT arm would have answered 8,000",
+    fixed.row?.stakeTzs === 4_000 && counterWith({}).row?.stakeTzs === 8_000,
+    j({ fixed: fixed.row?.stakeTzs, pct: counterWith({}).row?.stakeTzs }));
+  ok("7b.10 · shaping.roundToTzs · the amount is floored to the step, never rounded up: 80% of 10,000 = 8,000 at a 3,000 step is 6,000",
+    counterWith({ shaping: { roundToTzs: 3_000 } }).row?.stakeTzs === 6_000, j(counterWith({ shaping: { roundToTzs: 3_000 } }).row?.stakeTzs));
+
+  /* ── min time to cutoff, at decide ──────────────────────────────────────────────────────────── */
+  ok("7b.11 · guards.minTimeToCutoffUdSec · the deadline is the cutoff MINUS this leaf: at 230 s of a round that locks at T0+240 the due T0+14 is past it and the row is CUTOFF; at 225 the same bet stands",
+    codeOf(counterWith({ guards: { minTimeToCutoffUdSec: 230 } }, { view: udView(), price: udFresh })) === "CUTOFF"
+      && codeOf(counterWith({ guards: { minTimeToCutoffUdSec: 225 } }, { view: udView(), price: udFresh })) === "PENDING",
+    j({ tight: codeOf(counterWith({ guards: { minTimeToCutoffUdSec: 230 } }, { view: udView(), price: udFresh })) }));
+
+  /* ── the schedule, at decide, in EAT ────────────────────────────────────────────────────────── */
+  /* ⛔ THE DAY IS DERIVED FROM THE FIXTURE'S OWN CLOCK, never typed: T0 is 12:00 EAT. */
+  const today = CLOCK.eatWeekday(T0);
+  const tomorrow = ALL_DAYS[(ALL_DAYS.indexOf(today) + 1) % 7];
+  ok("7b.12 · schedule.days · a day the account may bet is answered and a day it may not is OUTSIDE_SCHEDULE — the day taken from the fixture's own EAT clock, not typed here",
+    codeOf(counterWith({ schedule: { days: [today], allDay: true, windows: [] } })) === "PENDING"
+      && codeOf(counterWith({ schedule: { days: [tomorrow], allDay: true, windows: [] } })) === "OUTSIDE_SCHEDULE",
+    j({ today, tomorrow }));
+  /* ⛔ AND THE WINDOW IS READ IN **EAT** MINUTES, WHICH IS THE WHOLE POINT OF THE DISCRIMINATOR BELOW.
+     T0 is 09:00 UTC and 12:00 EAT. A window of 11:00–13:00 must CONTAIN it and a window of 09:00–10:00 must
+     NOT — an implementation that read the clock in UTC gets both backwards. */
+  const win = (startMin: number, endMin: number) =>
+    codeOf(counterWith({ schedule: { days: [today], allDay: false, windows: [{ startMin, endMin }] } }));
+  ok("7b.13 · schedule.windows · ⭐ THE UTC DISCRIMINATOR · 11:00→13:00 EAT contains a trigger at 12:00 EAT and 09:00→10:00 does not — the same instant is 09:00 UTC, so a window read in UTC answers both the wrong way round",
+    win(11 * 60, 13 * 60) === "PENDING" && win(9 * 60, 10 * 60) === "OUTSIDE_SCHEDULE",
+    j({ eatWindow: win(11 * 60, 13 * 60), utcLookalike: win(9 * 60, 10 * 60) }));
+  ok("7b.14 · schedule.allDay · All day on the right day bets at any hour, and a schedule with no day at all never bets — an unreadable schedule is a refusal, never an open door",
+    codeOf(counterWith({ schedule: { days: [today], allDay: true, windows: [] } })) === "PENDING"
+      && codeOf(counterWith({ schedule: { days: [], allDay: true, windows: [] } })) === "OUTSIDE_SCHEDULE", "");
+  /**
+   * ⭐ AND THE INSTANT IT IS JUDGED AT IS THE DUE TIME (2026-09-23 · the owner decision recorded in §5).
+   *
+   * The trigger is placed at T0−1 s and, with the fixture's 5-minute exit grace, the bet is DUE at T0+299 s.
+   * A window that opens at 12:05 EAT (T0+300 s is 12:05:00) therefore contains the DUE instant and not the
+   * placed one: a COUNTER judged at `placedMs` refuses it, and one judged at `dueMs` answers it. This is the
+   * case that tells the two readings apart, and it is the direction the change widens.
+   */
+  const dueInWindow = codeOf(counterWith({ schedule: { days: [today], allDay: false, windows: [{ startMin: 12 * 60 + 4, endMin: 13 * 60 }] } }));
+  ok("7b.15 · ⛔ THE SCHEDULE IS JUDGED AT THE DUE INSTANT, NOT AT THE TRIGGER'S · a window opening at 12:04 EAT answers a stake placed at 11:59:59 whose bet is DUE at 12:04:59 — judged at the placed instant this row would not exist",
+    dueInWindow === "PENDING", j({ verdict: dueInWindow }));
+
+  /* ── FILL: the lead in both units, and the jitter draw ──────────────────────────────────────── */
+  const udFill = (o: Any = {}) => fillIn(merge({ view: udView(), price: udFresh }, o));
+  ok("7b.16 · fill.leadUdSec · a round is filled `lead` seconds before it locks: 45 s before T0+240 is T0+195, and 90 s before it is T0+150",
+    DE.planFill(udFill({ bot: botOf({ rules: rulesOf({ fill: { leadUdSec: 45 } }) }) }), { randomInt: minRand }).row?.dueAt === at(240 - 45)
+      && DE.planFill(udFill({ bot: botOf({ rules: rulesOf({ fill: { leadUdSec: 90 } }) }) }), { randomInt: minRand }).row?.dueAt === at(240 - 90),
+    j(DE.planFill(udFill(), { randomInt: minRand }).row?.dueAt));
+  ok("7b.17 · fill.leadPollsMin · and a poll `lead` MINUTES before its cutoff: 30 min before T0+7,200 s is T0+5,400 s, 45 min is T0+4,500 s — the two units cannot be swapped without a red",
+    DE.planFill(fillIn({ bot: botOf({ rules: rulesOf({ fill: { leadPollsMin: 30 } }) }) }), { randomInt: minRand }).row?.dueAt === at(7_200 - 1_800)
+      && DE.planFill(fillIn({ bot: botOf({ rules: rulesOf({ fill: { leadPollsMin: 45 } }) }) }), { randomInt: minRand }).row?.dueAt === at(7_200 - 2_700), "");
+  const fillRec = recorder("max");
+  const jitterFill = DE.planFill(fillIn({ bot: botOf({ rules: rulesOf({ fill: { leadPollsMin: 30, jitterSec: 60 } }) }) }), { randomInt: fillRec.fn });
+  ok("7b.18 · fill.jitterSec · the jitter is DRAWN over (0, the leaf) and SUBTRACTED from the due time — asked for exactly (0, 60), and 60 s earlier than the unjittered T0+5,400 is T0+5,340",
+    j(fillRec.calls[0]) === j([0, 60]) && jitterFill.row?.dueAt === at(7_200 - 1_800 - 60),
+    j({ asked: fillRec.calls[0], due: jitterFill.row?.dueAt }));
+  ok("7b.19 · …and a zero jitter never asks the RNG at all — a draw consumed on a bot that does not jitter shifts every later draw on the pass",
+    (() => { const r = recorder("max"); DE.planFill(fillIn({ bot: botOf({ rules: rulesOf({ fill: { jitterSec: 0 } }) }) }), { randomInt: r.fn }); return r.calls.length === 0; })(), "");
+
+  /* ── FILL and OPENER read the Up & Down closeness ───────────────────────────────────────────── */
+  const farPrice = { price: 108, source: "observation", ageSec: 10 };
+  ok("7b.20 · updown.closenessPct at FILL · a price outside the closeness stops the fill, and the same price inside a wider closeness fills — the leaf is read, not the fixture",
+    DE.planFill(udFill({ price: farPrice, bot: botOf({ rules: rulesOf({ updown: { closenessPct: 25 } }) }) }), { randomInt: minRand }).row === null
+      && DE.planFill(udFill({ price: farPrice, bot: botOf({ rules: rulesOf({ updown: { closenessPct: 90 } }) }) }), { randomInt: minRand }).row !== null, "");
+  const udOpen = (o: Any = {}) => ({ ...openIn(merge({ view: udView(), price: farPrice }, o)), openerSide: "NO" as const });
+  ok("7b.21 · updown.closenessPct at OPENER · the same leaf on the opener: refused at 25%, opened at 90%",
+    DE.planOpener(udOpen({ bot: botOf({ rules: rulesOf({ updown: { closenessPct: 25 }, opener: { delayUdMinSec: 1, delayUdMaxSec: 1 } }) }) }), { randomInt: minRand }).row === null
+      && DE.planOpener(udOpen({ bot: botOf({ rules: rulesOf({ updown: { closenessPct: 90 }, opener: { delayUdMinSec: 1, delayUdMaxSec: 1 } }) }) }), { randomInt: minRand }).row !== null, "");
+
+  /* ── OPENER: the two delay units and the stake draw ─────────────────────────────────────────── */
+  /* A round opens at T0−60 s, so a 120-second delay is due at T0+60; read as MINUTES it would be past the lock. */
+  const udOpenRec = recorder("min");
+  const udOpened = DE.planOpener({ ...openIn({ view: udView(), price: udFresh, bot: botOf({ rules: rulesOf({ opener: { delayUdMinSec: 120, delayUdMaxSec: 120 } }) }) }), openerSide: "NO" }, { randomInt: udOpenRec.fn });
+  ok("7b.22 · opener.delayUdMin/MaxSec · the opener's wait on a round is drawn in SECONDS over the two leaves — asked for (120, 120) and due at the round's open + 120 s = T0+60",
+    j(udOpenRec.calls[0]) === j([120, 120]) && udOpened.row?.dueAt === at(-60 + 120),
+    j({ asked: udOpenRec.calls[0], due: udOpened.row?.dueAt }));
+  /* A poll is bettable from its creation; moved to T0−100 s so the draw is visible above the pass clock. */
+  const pollOpenRec = recorder("min");
+  const pollOpened = DE.planOpener({ ...openIn({ view: MV.projectMarketView(viewRow({ createdAt: at(-100) })), bot: botOf({ rules: rulesOf({ opener: { delayPollsMinMin: 7, delayPollsMaxMin: 7 } }) }) }), openerSide: "NO" }, { randomInt: pollOpenRec.fn });
+  ok("7b.23 · opener.delayPollsMin/MaxMin · and on a poll it is MINUTES: asked for (7, 7) and due 7 minutes after the poll became bettable at T0−100 s, which is T0+320",
+    j(pollOpenRec.calls[0]) === j([7, 7]) && pollOpened.row?.dueAt === at(-100 + 420),
+    j({ asked: pollOpenRec.calls[0], due: pollOpened.row?.dueAt }));
+  const stakeRec = recorder("max");
+  const openStake = DE.planOpener({ ...openIn({ view: MV.projectMarketView(viewRow({ createdAt: at(-100) })), bot: botOf({ rules: rulesOf({ opener: { stakeMinTzs: 1_500, stakeMaxTzs: 4_700 }, shaping: { roundToTzs: 1_000 } }) }) }), openerSide: "NO" }, { randomInt: stakeRec.fn });
+  ok("7b.24 · opener.stakeMin/MaxTzs · the opener's amount is DRAWN between the two leaves and then FLOORED to the step — asked for (1,500, 4,700), drawn 4,700, and stored 4,000",
+    j(stakeRec.calls.find((c: Any) => c[0] === 1_500)) === j([1_500, 4_700]) && openStake.row?.stakeTzs === 4_000,
+    j({ asked: stakeRec.calls, stake: openStake.row?.stakeTzs }));
+});
+
 /* ═══ §8 · source pins (memory child only) ═══════════════════════════════════════════════════════ */
 if (STORE === "memory") {
   section("§8 · source pins");

@@ -892,9 +892,20 @@ if (STORE === "memory") {
      * exactly seven marker spreads (1586, 2843, 3219, 3628, 3760, 3903, 4484 — each inside the `db.txn.create`
      * call whose opening line is the site), each site line is still a txn write, and the text-anchored controls
      * below still plant on their own site and still go red. The numbers changed; nothing else did.
+     *
+     * ⭐ THEN THE SEVENTH ALONE MOVED +10 (2026-09-22), and only the seventh — which is why the re-pin is one
+     * number and not seven. `bb231238` (the settlement report read from inside its own transaction) is +11/−1 on
+     * this file in a SINGLE hunk, `@@ -4028,7 +4028,17 @@`: below the sixth site (3891) and above the seventh
+     * (4433→4474→4484), so every other number must stay still, and a delta that had reached them would have been
+     * a different defect, not this one.
+     * ⛔ RE-DERIVED FROM THE TREE, NOT INFERRED FROM THE DELTA. The seven `db.txn.create(` opening lines now read
+     * 1565, 2833, 3208, 3618, 3750, 3891, 4484, and the seven markers inside them are the stake form at 1586 plus
+     * six spreads at 2843, 3219, 3628, 3760, 3903, 4494. The moved site is still the EMERGENCY VOID's `BET_REFUND`
+     * write, still carrying `...(p.houseBotId ? { houseBotId: p.houseBotId } : {})` beside `positionId: p.id` — so
+     * it is the same site at a new line, which is the only reading under which a re-pin is honest.
      */
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1565", "market-service.ts:2833", "market-service.ts:3208", "market-service.ts:3618", "market-service.ts:3750", "market-service.ts:3891", "market-service.ts:4474"]), j(marked));
+      j(marked) === j(["market-service.ts:1565", "market-service.ts:2833", "market-service.ts:3208", "market-service.ts:3618", "market-service.ts:3750", "market-service.ts:3891", "market-service.ts:4484"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -922,7 +933,7 @@ if (STORE === "memory") {
     /* ⭐ RAISED 2 → 7 BY C5-8 (2026-09-20), §1j row 84, and this is the only direction this assertion may move.
        Until today the five sites this printed as "uncovered (deferred by name)" — the cash-out (`:3208`), the
        one-sided refund (`:3618`), the void refund (`:3750`), the winner payout (`:3891`) and the emergency void
-       (`:4474`) — had NO declared mutation in any file under `scripts/`, so `test:red-anchors` never demonstrated
+       (`:4484`, `:4474` before `bb231238` moved it) — had NO declared mutation in any file under `scripts/`, so `test:red-anchors` never demonstrated
        that deleting their marker reddens anything. All five are now declared in
        `scripts/anchors/house-bot-money.anchors.mjs` and run by `red:house-bot-money` under `reports-mem`.
        ⛔ The deferral list is GONE rather than shortened, and the equality is EXACT on both numbers: a site that
@@ -2577,6 +2588,13 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      `houseHistoryForConsole`, each with its own `CONSOLE_GATES` entry above at arity THREE — the viewer, the
      calling file's own route as a string literal, and the REQUEST's untouched query string. */
   "ConsoleCancelCopy", "ConsoleCancelInput", "ConsoleCancelResult", "ConsoleDeskEventRow", "ConsoleDeskFeedRow", "ConsoleFeedView", "ConsoleHistoryView",
+  /* ⭐ 2026-09-22 · the account page's NOT-FOUND copy. `CONSOLE_ACCOUNT_MISSING` is a frozen object of three
+     sentences the `[id]` page paints when the address names an account the desk does not have. It shipped with
+     the console work and without a classification, which is exactly the hole 0.512 exists to take: it is pure
+     copy — it awaits nothing, reaches no `db.`, names no store member and decides no audience (0.512b checks
+     that rather than taking this sentence on trust). It CREATES NO ORACLE either: a viewer outside the audience
+     is answered `null` by the gated reader whether or not the record exists, so only an admin ever sees it. */
+  "CONSOLE_ACCOUNT_MISSING",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**

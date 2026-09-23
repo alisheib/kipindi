@@ -31,7 +31,7 @@ import {
   SWEEP_PAGE_SIZE,
   type TargetEndCause,
 } from "@/lib/house-bot/constants";
-import { HOUSE_LIMITS_SCHEMA_VERSION, effectiveTargetTiming, minGapFloorSec, parseHouseBotRules, type HouseBotRulesV1, type ParseContext } from "@/lib/house-bot/rules";
+import { HOUSE_LIMITS_SCHEMA_VERSION, effectiveTargetTiming, minGapFloorSec, parseHouseBotRules, rulesCoverTarget, type HouseBotRulesV1, type ParseContext } from "@/lib/house-bot/rules";
 import { getGlobalConfig } from "../market-config";
 import { RATE_RULES } from "../rate-limit";
 import { db } from "../store";
@@ -327,7 +327,10 @@ export async function endTargets(nowMs: number, parseCtx: ParseContext): Promise
       const parsed = parseHouseBotRules(bot.rules, parseCtx);
       if (parsed.ok) {
         const r = parsed.rules;
-        if (!r.scope.products.polls || !(r.scope.categories as string[]).includes(view!.category)) cause = "OUT_OF_SCOPE";
+        /* ⛔ THE ONE SCOPE PREDICATE, HERE TOO (review finding 2026-09-22): this line restated "polls on and the
+         * category listed" by hand, a second home for the rule `decide.ts`, `fire.ts` and the desk all read through
+         * `rulesCoverTarget` — and the only one `test:house-bot-rules` 10.engine's source pin could not see. */
+        if (!rulesCoverTarget(r, { product: "MARKET", category: view!.category }, null)) cause = "OUT_OF_SCOPE";
         else {
           const timing = effectiveTargetTiming(t, view!.exitRates, guardsFor(r, "MARKET"), cutoffOf(view!) as string, iso(nowMs), t.effectiveFrom);
           if (timing.lastReactableStakeAt == null || nowMs >= Date.parse(timing.lastReactableStakeAt) + SWEEP_LOOKBACK_MS) cause = "CUTOFF_PASSED";

@@ -20,6 +20,7 @@ export function Checkbox({
   className,
   indeterminate = false,
   ariaLabel,
+  invalid = false,
 }: {
   defaultChecked?: boolean;
   checked?: boolean;
@@ -54,6 +55,13 @@ export function Checkbox({
    * wrong name that way once already.
    */
   ariaLabel?: string;
+  /**
+   * ⭐ A REFUSED BOX SAYS SO TO THE TREE (2026-09-22, the desk's scope pickers). A server refusal that names a
+   * checkbox group — "choose at least one poll category" — had no way to mark it: `aria-invalid` is what
+   * `focusFirstInvalid`'s callers read back and what a browser drive counts, and this control set it nowhere.
+   * ⛔ camelCase, for the same reason as `ariaLabel`: a hyphenated attribute on a component is silently dropped.
+   */
+  invalid?: boolean;
 }) {
   const [internal, setInternal] = React.useState(defaultChecked ?? false);
   const isControlled = controlledChecked !== undefined;
@@ -186,6 +194,7 @@ export function Checkbox({
         required={required}
         {...(isControlled ? { checked: controlledChecked } : { defaultChecked: defaultChecked ?? false })}
         aria-label={ariaLabel}
+        aria-invalid={invalid ? true : undefined}
         /* The native toggle has already happened by the time this runs, so the new state is
            READ off the element rather than derived from the old one — a derived `!on` is
            what makes a box disagree with itself the moment anything else moves it. */

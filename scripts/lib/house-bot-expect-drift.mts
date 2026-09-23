@@ -52,7 +52,7 @@ export const ROLL_CALL_SITES: Readonly<Record<string, string>> = {
   "reports-mem": "scripts/lib/house-bot-reports-cases.mts · 0.505b (ruling 434's declarations, memory child)",
   "comms-mem": "scripts/lib/house-bot-comms-cases.mts · 7.505 (reads BOTH anchors files that declare a comms entry, memory child)",
   seam: "scripts/house-bot-seam.test.mts · 8.505 (reads BOTH anchors files that declare a seam entry)",
-  rules: "scripts/house-bot-rules.test.mts · 7.505 (the ceremony anchors, written 2026-09-20 — the key arrived that day and 0.505 reported it audited by nobody the same day)",
+  rules: "scripts/house-bot-rules.test.mts · 7.505 (reads BOTH anchors files that declare a rules entry: the ceremony anchors, written 2026-09-20 — the key arrived that day and 0.505 reported it audited by nobody the same day — and the scope anchors of the 2026-09-22 production finding)",
   "(none)": "scripts/house-book.test.mts · 16.505 and scripts/house-page.test.mts · 16.505, by SECTION TOKEN",
 };
 

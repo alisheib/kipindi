@@ -570,12 +570,14 @@ section("§2 · the strip, the band, the roster and every failure");
       };
       unparsed = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
     } finally { w.dal.houseBotStore.listNonRemoved = realList4; }
+    /* ⭐ 2026-09-22 · `products` is one LINE per ticked product; the unknown is its one line, and a document nobody
+       could read carries NO refusal line either — a reason nobody could compute is not "none". */
     ok("1.310 · 416 · a rule set the reader cannot parse renders ONE sentence-cased unknown, the way every other failure string on this page reads",
-      unparsed.rows.length === 3 && unparsed.rows[0].products === "Couldn't read"
-        && unparsed.rows.slice(1).every((r: Any) => r.products !== "Couldn't read" && r.products.length > 0),
+      unparsed.rows.length === 3 && j(unparsed.rows[0].products) === j(["Couldn't read"]) && unparsed.rows[0].inert === null
+        && unparsed.rows.slice(1).every((r: Any) => Array.isArray(r.products) && r.products.length > 0 && !r.products.includes("Couldn't read")),
       j(unparsed.rows.map((r: Any) => r.products)));
     ok("1.310 · 416 · CONTROL · the plant really did reach the parser — the other two rows still name their products, so the cell above is the parse failure and not an empty roster",
-      unparsed.rows.slice(1).some((r: Any) => /Up|Poll|None/i.test(r.products)), j(unparsed.rows.map((r: Any) => r.products)));
+      unparsed.rows.slice(1).some((r: Any) => /Up|Poll|None/i.test(r.products.join(" "))), j(unparsed.rows.map((r: Any) => r.products)));
   }
   ok("1.310 · an account with NO stakes today reads used TZS 0 of its limit — a documented zero, not a failure",
     byId.get(b1.botId)!.lossCell.text === `used ${formatTzs(0)} of ${formatTzs(50_000)}`
@@ -815,8 +817,11 @@ section("§2 · the strip, the band, the roster and every failure");
     offView.stateSentence === "The desk is off. Nothing will be staked." && offView.chip.word === "Off", j(offView.stateSentence));
   await w.switchOn();
   const onView = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
-  ok("1.306 · the ON sentence names the time and the ACTOR BY ID — never a display name, a phone or an email (ruling 420)",
-    /^On since \d\d:\d\d:\d\d EAT/.test(onView.stateSentence) && onView.stateSentence.includes(`${SEP}switched by `)
+  /* ⭐ THE DAY, NOT ONLY THE CLOCK (register C8, 2026-09-23). This case used to accept `On since 20:14:12 EAT`,
+     and a desk left on over a weekend then read exactly like one switched on four minutes ago — on the one
+     control that starts money moving. The pattern is TIGHTENED here, never relaxed: the day is required. */
+  ok("1.306 · the ON sentence names the DAY and the time, and the ACTOR BY ID — never a display name, a phone or an email (ruling 420)",
+    /^On since \d{1,2} [A-Z][a-z]{2} \d\d:\d\d:\d\d EAT/.test(onView.stateSentence) && onView.stateSentence.includes(`${SEP}switched by `)
       && onView.stateSentence.includes(OFFICER) && onView.chip.word === "On",
     j(onView.stateSentence));
   /* ⛔ THE LABEL USED TO SAY THE OPPOSITE OF THE CODE, AND THE PREDICATE COULD NOT TELL THE TWO APART. It read "the
@@ -1382,13 +1387,13 @@ section("§2 · the strip, the band, the roster and every failure");
       j({ live: [vLive.statusNote, vLive.wayOut], removed: vGone.statusNote, paused: vPaused.statusNote }));
 
     /* ── PAUSE, the act itself ── */
-    const pausedOut = await callAct(OFFICER, { id: live.botId, act: "PAUSE" });
+    const pausedOut = await callAct(OFFICER, { id: live.botId, act: "PAUSE", reason: "the officer said why" });
     const pausedRow: Any = await w.dal.houseBotStore.get(live.botId);
     ok("1.415 · ⭐ PAUSE STOPS A RUNNING ACCOUNT: PAUSED with the MANUAL reason, written by the officer — never the engine's AUTO_PAUSED, which carries a cause, no actor and a SYSTEM audit",
       pausedOut.ok === true && pausedOut.changed === true
         && pausedRow?.status === "PAUSED" && pausedRow?.pauseReason === "MANUAL",
       j({ ok: pausedOut.ok, changed: pausedOut.changed, status: pausedRow?.status, reason: pausedRow?.pauseReason }));
-    const pausedTwice = await callAct(OFFICER, { id: live.botId, act: "PAUSE" });
+    const pausedTwice = await callAct(OFFICER, { id: live.botId, act: "PAUSE", reason: "the officer said why" });
     ok("1.415 · a second Pause changes NOTHING and says so — the write is conditional, so two officers produce one act, one event and one alert",
       pausedTwice.ok === true && pausedTwice.changed === false && typeof pausedTwice.note === "string",
       j(pausedTwice));
@@ -1586,10 +1591,23 @@ section("§2 · the strip, the band, the roster and every failure");
      * the shared sentence or as a bare identifier, and nothing would go red on the day it happened. */
     const desigSrc = decomment(read("src/lib/server/house-bot/designation.ts"));
     const codesOf = (re: RegExp): string[] => [...(re.exec(desigSrc)?.[1] ?? "").matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]);
+    /**
+     * 🔴 THE UNION IS READ TO THE NEXT TOP-LEVEL DECLARATION, NOT TO THE NEXT BLANK LINE (2026-09-23).
+     *
+     * ⛔ THE OLD `\n\s*\n` TERMINATOR MADE THIS GUARD SILENTLY MEASURE LESS. `decomment` replaces a stripped
+     * docblock with blank lines, so the moment `StartResult` gained a comment on one of its MEMBERS — which
+     * it did when Start started returning its warnings — the capture stopped at that blank line, the union's
+     * codes left the population, and `missing` went empty for the best possible reason and the worst possible
+     * cause: there was nothing left to check. The count fell 18 → 16 and the case went red on the floor,
+     * which is the only reason this was noticed at all.
+     * ⭐ A TOP-LEVEL DECLARATION IS WHAT ACTUALLY ENDS A TYPE, and `\n(?=\S)` is that: the next line whose
+     * first character is not whitespace. It is blind to comments, blank lines and formatting, and it is why
+     * the floor below stays a floor rather than being lowered to whatever a run happened to find.
+     */
     const serviceCodes = [...new Set([
       ...codesOf(/export type VerifyRefusalCode\s*=([\s\S]*?);/),
-      ...codesOf(/export type ReverifyResult\s*=([\s\S]*?)\n\s*\n/),
-      ...codesOf(/export type StartResult\s*=([\s\S]*?)\n\s*\n/),
+      ...codesOf(/export type ReverifyResult\s*=([\s\S]*?)\n(?=\S)/),
+      ...codesOf(/export type StartResult\s*=([\s\S]*?)\n(?=\S)/),
       ...["NOT_FOUND", "REMOVED", "SCHEMA", "UNREADABLE", "WRITE_FAILED"],
     ])];
     const gateSrc = read(GATE);
@@ -1610,7 +1628,12 @@ section("§2 · the strip, the band, the roster and every failure");
       (() => {
         try {
           const full = { reason: "closing this account", password: "pw", typed: GATEM.CONSOLE_REMOVE_WORD };
-          return deskActArmed(pauseCopy, { reason: "", password: "", typed: "" }) === true
+          /* ⭐ PAUSE ASKS WHY SINCE 2026-09-23 (register A5), so an EMPTY reason no longer arms it — and the
+             case keeps both directions: filled arms, empty does not, and the password it never asks for is
+             still not a reason to refuse. */
+          return deskActArmed(pauseCopy, { reason: "the officer said why", password: "", typed: "" }) === true
+            && deskActArmed(pauseCopy, { reason: "", password: "", typed: "" }) === false
+            && deskActArmed(pauseCopy, { reason: "the officer said why", password: "", typed: "" }) === true
             && deskActArmed(removeCopy, full) === true
             && deskActArmed(removeCopy, { ...full, typed: "remove" }) === false
             && deskActArmed(removeCopy, { ...full, reason: "no" }) === false
@@ -2989,10 +3012,33 @@ try {
   {
     const v = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId);
     const rulesRow = await w.dal.houseBotStore.get(acct.botId);
-    ok("1.508 · the rules panel lists every saved cap plus the three scope facts, as VALUES — the record the overview, a REMOVED account and the unparseable fallback all read",
-      Array.isArray(v.rules) && v.rules.length === (R.CAP_FIELDS as readonly string[]).length + 3
-        && v.rules.some((r: Any) => r.name === GATEM.consoleLimitLabel("capDailyLossTzs") && r.value === formatTzs(50_000)),
-      j({ rows: v.rules && v.rules.length }));
+    /* ⭐ FIVE SCOPE FACTS SINCE 2026-09-22: the two lists joined the record as LABELS, beside the three words. */
+    /**
+     * ⭐ THE RECORD GREW TO THE WHOLE DOCUMENT (2026-09-23 · register A1 item 6), and the count is DERIVED.
+     *
+     * ⛔ WHAT A REMOVED ACCOUNT'S RECORD COULD NOT SAY UNTIL TODAY: which of the six entry modes were on, any
+     * of the 29 numbers that decided its stakes, or the hours it was allowed to bet. A removed account has no
+     * form (358) — this card IS its rules — so the one screen that outlives the account answered almost
+     * nothing about what it had been doing.
+     * ⛔ THE EXPECTED LENGTH IS COMPOSED FROM THE SAME EXPORTS THE READER BUILDS FROM (`CAP_FIELDS`,
+     * `RULE_NUMBER_FIELDS`, the six modes, the five scope facts, one schedule row), never a literal: a leaf
+     * added to the document then lands on this card and in this count together, and a card that quietly
+     * stopped painting a section would be red here rather than merely smaller.
+     */
+    const expectedRecordRows = (R.CAP_FIELDS as readonly string[]).length + 5
+      + (R.SCOPE_PRODUCTS as readonly string[]).length * (R.ENTRY_MODES as readonly string[]).length
+      + (R.RULE_NUMBER_FIELDS as readonly string[]).length + 1;
+    ok("1.508 · the rules panel lists every saved cap, the five scope facts, the six entry modes, EVERY numeric rule and the schedule, as VALUES — the record the overview, a REMOVED account and the unparseable fallback all read",
+      Array.isArray(v.rules) && v.rules.length === expectedRecordRows
+        && v.rules.some((r: Any) => r.name === GATEM.consoleLimitLabel("capDailyLossTzs") && r.value === formatTzs(50_000))
+        && v.rules.some((r: Any) => r.name === R.FIELD_META["scope.categories"].label && r.value === "None chosen")
+        && v.rules.some((r: Any) => r.name === R.FIELD_META["scope.chains"].label && r.value === "None chosen")
+        /* ⛔ ONE ROW PER NUMERIC LEAF, EACH CARRYING ITS FIELD'S OWN LABEL — and the amounts wear the money
+           face, so the record and the form's hint cannot spell a figure two ways. */
+        && (R.RULE_NUMBER_FIELDS as readonly string[]).every((id: string) =>
+          v.rules.some((r: Any) => r.name === R.FIELD_META[id].label))
+        && v.rules.some((r: Any) => r.name === R.FIELD_META["schedule.days"].label),
+      j({ rows: v.rules && v.rules.length, expected: expectedRecordRows }));
     /**
      * ⭐ THE PANEL IS A FORM NOW, AND THIS CASE USED TO PIN THE OPPOSITE (2026-09-21).
      *
@@ -3051,17 +3097,16 @@ try {
      * neighbouring case scanned `v.rules` only, so the FORM's labels, sections and neutral KEYS were outside
      * every population — the words would have reached an officer's screen with the whole suite green.
      */
+    /* ⭐ 2026-09-22 · THE PICKERS' WORDS JOIN THE SCAN — their keys, labels, both state sentences and every entry. */
+    const formWords: string[] = [
+      ...v.rulesForm.caps.flatMap((c: Any) => [c.key, c.label]),
+      ...v.rulesForm.flags.flatMap((f: Any) => [f.key, f.section, f.label]),
+      ...v.rulesForm.lists.flatMap((l: Any) => [l.key, l.label, l.help, l.onceOn, l.none, ...l.entries.flatMap((e: Any) => [e.key, e.value, e.label])]),
+      ...Object.values(v.rulesForm.copy as Record<string, string>),
+    ];
     ok("1.508 · 453 · not one label, section, key or sentence the FORM paints carries a house-vocabulary word",
-      [
-        ...v.rulesForm.caps.flatMap((c: Any) => [c.key, c.label]),
-        ...v.rulesForm.flags.flatMap((f: Any) => [f.key, f.section, f.label]),
-        v.rulesForm.copy.barDetail, v.rulesForm.copy.guardBody,
-      ].every((s: string) => !NEUTRAL.test(s)),
-      j([
-        ...v.rulesForm.caps.flatMap((c: Any) => [c.key, c.label]),
-        ...v.rulesForm.flags.flatMap((f: Any) => [f.key, f.section, f.label]),
-        v.rulesForm.copy.barDetail, v.rulesForm.copy.guardBody,
-      ].filter((s: string) => NEUTRAL.test(s))));
+      formWords.length > 60 && formWords.every((s: string) => !NEUTRAL.test(s)),
+      j({ words: formWords.length, hits: formWords.filter((s: string) => NEUTRAL.test(s)) }));
     ok("1.508 · 453 · not one rule name, section or value the panel paints carries a house-vocabulary word",
       v.rules.flatMap((r: Any) => [r.name, r.section, r.value]).every((s: string) => !NEUTRAL.test(s)),
       j(v.rules.flatMap((r: Any) => [r.name, r.section, r.value]).filter((s: string) => NEUTRAL.test(s))));
@@ -3263,11 +3308,13 @@ try {
        ⭐ EIGHT BECAME NINE 2026-09-21, the same way: the per-tab guidance line is a ninth guarded panel, added in
        the commit that adds the panel. ⛔ IT WAS NOT FOLDED INTO THE RAIL'S GUARD, and that is the point — two
        siblings under one guard need a fragment, a fragment between `&& (` and the rail breaks the pin below, and
-       loosening a pin whose claim is correct to accommodate a wrapper is how a guard stops meaning what it says. */
+       loosening a pin whose claim is correct to accommodate a wrapper is how a guard stops meaning what it says.
+       ⭐ NINE BECAME TEN 2026-09-22: the overview's "why this account is not betting" card is a tenth guarded
+       panel (its rules-tab twin sits inside the rules panel's existing guard, so it adds none). */
     ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and all four other panels",
       /* ⚠️ THE SOURCE IS DECOMMENTED, so a pin may not reach for a comment as its landmark — measured on the
          first run of this very assertion, which looked for the `312` note above the rail and found nothing. */
-      guards === 9 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
+      guards === 10 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
         && /\{view\.removed && \(\s*<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(detail),
       j({ guards }));
     /* ⛔ AND THE TAB TESTS ARE STILL PURE, which is what keeps `test:tab-anchors` and the served probe able to read
@@ -3656,7 +3703,10 @@ try {
       NEUTRAL.test("Counter · a sentence the console must never paint · TZS 9,999")
         && (await w.dal.houseBotIntentStore.get(feedIds[0]))!.why !== null, "");
     ok("1.453 · every painted feed field is a FINISHED string or a boolean — no id, no raw enum and no number crosses into the view model",
-      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+      /* ⭐ `due` JOINED THE ROW AT 2026-09-23 (register C8): a QUEUED stake now says when it fires and when it
+         expires, because the When column is the instant the engine DECIDED and a held COUNTER fires minutes
+         later. It is a FINISHED string like every other field — no id, no enum, no raw instant. */
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
         && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
       j(Object.keys(p1.feed[0] ?? {}).sort()));
     ok("1.317 · every row's outcome word and type word come from the console's own TOTAL maps, and its note is the console's own sentence — never a raw enum",
@@ -4148,12 +4198,24 @@ try {
         && (railSrc.match(/data-filter-rail/g) ?? []).length === 1
         && !/<Tabs[\s\S]*?data-filter-rail/.test(detail),
       j(railHooks));
-    ok("1.410 · every rank-taking control on the rail takes the DENSE rank and `replace` — a filter is not a navigation, and a rail half at one height is worse than either",
+    /**
+     * 🔴 THIS CASE USED TO REQUIRE THE DENSE RANK, AND THE SECTION'S OWN VISUAL GATE CALLED THAT A FAULT.
+     *
+     * The dense rank's floor is 32px — `--h-control-xs`, the documented admin exception — while
+     * `qa:house-bots-visual` holds every interactive control on this section to `--tap-min`, read from the
+     * page at **40px**. Measured on a served build (2026-09-23): 21 controls under the floor on the account's
+     * Activity route and 22 on the desk's, every one of them a chip on this rail.
+     * ⛔ SO THE ASSERTION IS INVERTED RATHER THAN RELAXED: the rail takes NO rank prop at all, which is the
+     * shared 44px rung, and this case now refuses the dense rank on this file specifically. `replace` and the
+     * "one height for the whole rail" rule are unchanged — a rail half at one height is still worse than either.
+     */
+    ok("1.410 · every rank-taking control on the rail takes the SHARED rank and `replace` — the dense 32px exception is refused here, because this section's own visual gate holds every control to the 40px tap floor",
       (railSrc.match(/<(?:FilterPill|DateTimeRangeFilter)\b/g) ?? []).length === 2
-        && (railSrc.match(/rank="dense"/g) ?? []).length === 2
+        && (railSrc.match(/rank="dense"/g) ?? []).length === 0
+        && (railSrc.match(/rank=/g) ?? []).length === 0
         && (railSrc.match(/\breplace\b/g) ?? []).length === 2
         && !/QueryStrip/.test(railSrc) && !/h-\[32px\]|32px/.test(railSrc),
-      j({ controls: (railSrc.match(/<(?:FilterPill|DateTimeRangeFilter)\b/g) ?? []).length }));
+      j({ controls: (railSrc.match(/<(?:FilterPill|DateTimeRangeFilter)\b/g) ?? []).length, ranks: (railSrc.match(/rank=/g) ?? []).length }));
     ok("1.410 · the rail is DECLARED in the filter-language gate's own surface list, which is what subjects it to that suite's §6 rules at all",
       read("scripts/filter-language.test.mts").includes(`"${rail}"`), rail);
     /* ⛔ AND THE RAIL FILE REACHES NOTHING: no route literal, no closed list, no house module, and no server module. */
@@ -4168,7 +4230,7 @@ try {
     const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the activity table's headers are the control facts in order, with the money column SECOND and headed exactly `Stake`",
-      all(feedHeaders) === all(["When", "Stake", "Outcome", "Type", "Product", "Note"]), j(feedHeaders));
+      all(feedHeaders) === all(["When (EAT)", "Stake", "Outcome", "Type", "Product", "Note"]), j(feedHeaders));
     ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
       /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
         && !/admin-tbl min-w-/.test(detail), "");
@@ -4177,7 +4239,7 @@ try {
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
-      all(histHeaders) === all(["When", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
+      all(histHeaders) === all(["When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
     /* 🔴 THE REFUSAL'S HEADING IS NUMBER-AGNOSTIC, AND THAT TOO WAS READ OFF A TILE: a singular title
        ("Part of this address was not used") sat above a plural sentence ("Parts of this address were …"), one
        above the other, on the same card. The heading comes from the SERVER like every other sentence here, so the
@@ -4266,10 +4328,10 @@ section("§2e3 · the desk landing page's activity and history panels");
     const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
-      j(feedHeaders) === j(["Account", "Stake", "When", "Outcome", "Type", "Product", "Note", ""]),
+      j(feedHeaders) === j(["Account", "Stake", "When (EAT)", "Outcome", "Type", "Product", "Note", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
-      j(histHeaders) === j(["Account", "When", "Event", "Change", "Who"]) && !/amount/.test(histThead),
+      j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
       j(histHeaders));
     ok("1.373 · the desk feed's money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither landing table takes a `min-w-*` on the table itself",
       /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(panelOf("activity"))
@@ -4804,6 +4866,746 @@ try {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2g · THE SCOPE PICKERS, THE ROSTER'S OPERATIVE SCOPE AND THE WHY-PANEL (prod finding 2026-09-22, read-only)
+ *
+ * An ACTIVE account on a switched-ON desk had matched no market, ever — zero intents, zero positions — while the
+ * roster showed it green with "Up & Down · Polls". Its stored rules ticked both products with EMPTY scope lists,
+ * because NO SCREEN could write either: the form drew no picker, the save spread the stored scope through
+ * unchanged, Start never asked whether the scope selects anything, and the roster painted the switches' words.
+ * The rules core (`rulesCoverTarget`, `rulesReach`, `rulesInertReasons`, the two save rows, Start's refusals) is
+ * `test:house-bot-rules` §10's; THIS section is the console's half: the picker in the form model, the save that
+ * carries the lists, the roster line that names what a product reaches, the row's own refusal, the why-panel on
+ * the account page, and the Start refusal that names the remedy with the Rules href.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+section("§2g · the scope pickers, the roster's operative scope and the why-panel (2026-09-22)");
+try {
+  const RULES_HREF = (id: string): string => CR.consoleBotTabHref(id, "rules");
+  const LIST_KEYS = { categories: "poll-categories", chains: "updown-chains" } as const;
+  /* The roster's scope line binds each label and the product word with no-break spaces and a word joiner after a
+     hyphen or a slash (read off a tile: a chain label had split from its middot, then at its own hyphen, in the
+     narrow column); a member list still breaks at its commas. */
+  const nb = (s: string): string => s.replace(/ /g, " ").replace(/([-/])/g, "$1⁠");
+  const scopeLine = (product: string, members: readonly string[]): string => `${nb(product)} · ${members.map(nb).join(", ")}`;
+  /* ⭐ ONE REAL UP & DOWN CHAIN, THROUGH THE PLATFORM'S OWN SERVICE — the same fixture the caps cases use — so the
+     picker's chain entries and the roster's chain words are measured against a LIVE list, on both stores. */
+  const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+  const { seedDefaultSources, addSource }: Any = await import("../../src/lib/server/source-registry.ts");
+  await seedDefaultSources();
+  await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture (mirrors production)", addedBy: "system" });
+  const asset = await cfg.createAsset({
+    key: `C${process.pid}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2,
+  }, OFFICER);
+  if (asset.ok) await cfg.setAssetEnabled(asset.data.id, true, OFFICER);
+  const chain = asset.ok ? await cfg.createChain({ assetId: asset.data.id, durationMinutes: 5 }, OFFICER) : asset;
+  if (chain.ok) await cfg.setChainState(chain.data.id, "RUNNING", OFFICER);
+  const CHAIN_KEY = asset.ok ? `${asset.data.id}:5` : "";
+  const CHAIN_LABEL = "BTC/USD 5-min";
+  ok("2g.fixture · one enabled asset with one running 5-minute chain exists on this store, so a chain can be chosen and reached",
+    asset.ok === true && chain.ok === true, `${asset.ok ? "asset ok" : asset.error} · ${chain.ok ? "chain ok" : chain.error}`);
+
+  const stakeBounds = { minTzs: 1_000, maxTzs: 10_000_000 };
+  const ruleDoc = (patch: (r: Any) => void): Any => {
+    const r: Any = R.DEFAULT_RULES_V1({ stakeBounds });
+    patch(r);
+    return r;
+  };
+  const writeRules = async (botId: string, rules: Any): Promise<void> => {
+    const cur: Any = await w.dal.houseBotStore.get(botId);
+    const saved = await w.dal.houseBotStore.saveRules(botId, cur.rulesVersion, { rules });
+    if (!saved.ok) throw new Error("2g: the fixture could not save its rules");
+  };
+  const rosterRow = async (botId: string): Promise<Any> => {
+    const v = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    return v.rows.find((r: Any) => r.id === botId);
+  };
+  const detail = async (id: string): Promise<Any> => GATEM.houseDetailForConsole(OFFICER, "/admin/desk", id);
+
+  /* ━━ THE PRODUCTION SHAPE: both products ticked, every automatic mode on, BOTH lists empty, every cap set ━━ */
+  const prod = await w.bot({ caps: { freqMinGapSec: 20 } });
+  await writeRules(prod.botId, ruleDoc((r) => {
+    r.scope.products = { updown: true, polls: true };
+    r.modes.updown = { counter: true, fill: true, opener: true };
+    r.modes.polls = { counter: true, fill: true, opener: true };
+  }));
+
+  /* ━━ THE PICKER IN THE FORM MODEL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const v = await detail(prod.botId);
+    const lists: Any[] = v.rulesForm?.lists ?? [];
+    const byField = Object.fromEntries(lists.map((l: Any) => [l.field, l]));
+    const { MARKET_CATEGORIES }: Any = await import("../../src/lib/markets/categories.ts");
+    const { dict }: Any = await import("../../src/lib/i18n-dict.ts");
+    ok("2g.picker · the form model carries TWO pickers in page order — Up & Down chains, then poll categories — each keyed by a neutral key, tied to its product switch and posting as the save's own list",
+      lists.length === 2 && lists[0].field === "chains" && lists[1].field === "categories"
+        && lists[0].key === LIST_KEYS.chains && lists[1].key === LIST_KEYS.categories
+        && lists[0].product === "product-updown" && lists[1].product === "product-polls"
+        && lists.every((l: Any) => typeof l.label === "string" && l.help.length > 40 && l.onceOn.length > 20 && l.none.length > 20),
+      j(lists.map((l: Any) => ({ key: l.key, field: l.field, product: l.product, entries: l.entries.length }))));
+    ok("2g.picker · the category entries are the platform's OWN list in its own order, each labelled through the platform's label helper and carrying the category id as its value",
+      byField.categories.entries.length === MARKET_CATEGORIES.length
+        && byField.categories.entries.every((e: Any, i: number) => e.value === MARKET_CATEGORIES[i] && e.key === `${LIST_KEYS.categories}.${MARKET_CATEGORIES[i]}`)
+        && byField.categories.entries[0].label === dict.en.market.catSports
+        && byField.categories.entries.every((e: Any) => e.label !== e.value),
+      j(byField.categories.entries.map((e: Any) => [e.value, e.label])));
+    ok("2g.picker · the chain entries are the LIVE enabled-assets × chains list — the fixture's one chain, valued by its durable `<assetId>:<minutes>` key and labelled `SYMBOL N-min`",
+      byField.chains.entries.some((e: Any) => e.value === CHAIN_KEY && e.label === CHAIN_LABEL && e.key === `${LIST_KEYS.chains}.${CHAIN_KEY}`)
+        && byField.chains.entries.every((e: Any) => /^[^:]+:\d+$/.test(e.value)),
+      j(byField.chains.entries));
+    ok("2g.picker · on the production shape every entry is OFF and both product switches read ON — the state the finding was measured in",
+      lists.every((l: Any) => l.productOn === true && l.entries.every((e: Any) => e.on === false)), j(lists.map((l: Any) => l.productOn)));
+    ok("2g.picker · 453 · not one word of either picker — key, label, help, both state sentences, every entry — carries a house-vocabulary word",
+      lists.flatMap((l: Any) => [l.key, l.label, l.help, l.onceOn, l.none, ...l.entries.flatMap((e: Any) => [e.key, e.value, e.label])]).every((s: string) => !NEUTRAL.test(s)), "");
+    /* ⛔ THE MODE AND PRODUCT WORDS HAVE ONE HOME. The switches' labels are `ENTRY_MODE_WORDS` / `PRODUCT_WORDS`, the
+       same words the inert sentences use — read off the model, never off a literal. */
+    const flagLabels = (v.rulesForm.flags as Any[]).map((f: Any) => f.label);
+    ok("2g.words-home · the ten switches are labelled from `ENTRY_MODE_WORDS` and `PRODUCT_WORDS`, the one home the inert sentences read too — so a switch and the sentence that names it cannot spell one mode two ways",
+      j(flagLabels.slice(0, 8)) === j([R.PRODUCT_WORDS.updown, R.PRODUCT_WORDS.polls, ...(R.ENTRY_MODES as string[]).map((m) => R.ENTRY_MODE_WORDS[m]), ...(R.ENTRY_MODES as string[]).map((m) => R.ENTRY_MODE_WORDS[m])])
+        && !/"React to a player's stake"|"Fill a thin side"|"Open a quiet market"/.test(decomment(read(GATE))),
+      j(flagLabels));
+  }
+
+  /* ━━ THE ROSTER: THE OPERATIVE SCOPE AND THE ROW'S OWN REFUSAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const row = await rosterRow(prod.botId);
+    ok("2g.inert · ⛔ THE FINDING · an ACTIVE account whose rules reach nothing carries its refusal on the roster — the first reason's own sentence, a count of the rest, and the Rules tab as the way out — on the same row as a status chip that still says Active",
+      row.statusWord === SD.HOUSE_BOT_STATUS_DISPLAY.ACTIVE.word && row.inert !== null
+        && /^Can't bet — /.test(row.inert.text) && row.inert.text.includes(R.INERT_COPY.noList.updown) && /\(1 more\)$/.test(row.inert.text)
+        && row.inert.href === RULES_HREF(prod.botId),
+      j({ status: row.statusWord, inert: row.inert }));
+    ok("2g.words · ⛔ THE FINDING · the roster's scope line names what each ticked product can REACH — one line per product, each saying it reaches none, in the record rows' own spelling — never the summary words the switches spell",
+      j(row.products) === j([scopeLine("Up & Down", ["None chosen"]), scopeLine("Polls", ["None chosen"])]),
+      j(row.products));
+
+    /* ⭐ THE CONTROL: choose one category and the chain, and the same row stops refusing and names the members as
+       LABELS — the category as the player's word, the chain as `SYMBOL N-min` — never as keys. */
+    await writeRules(prod.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.scope.categories = ["macro"];
+      r.scope.chains = [CHAIN_KEY];
+      r.modes.updown = { counter: true, fill: true, opener: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const reached = await rosterRow(prod.botId);
+    ok("2g.words · CONTROL · with one chain and one category chosen the same row names them as LABELS — `BTC/USD 5-min` and `Macro`, never the asset id or the category key — and carries no refusal",
+      reached.inert === null && reached.products.length === 2
+        && reached.products[0] === scopeLine("Up & Down", [CHAIN_LABEL]) && !reached.products[0].includes(CHAIN_KEY)
+        && reached.products[1] === scopeLine("Polls", ["Macro"]) && !/macro/.test(reached.products[1]),
+      j({ products: reached.products, inert: reached.inert }));
+    STATES.push(["roster-inert", await GATEM.houseRosterForConsole(OFFICER, "/admin/desk")]);
+
+    /* ⛔ A HALF-CLAIM IS STILL A REFUSAL: Up & Down reaching a chain does not excuse a Polls that reaches nothing. */
+    await writeRules(prod.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.scope.chains = [CHAIN_KEY];
+      r.modes.updown = { counter: true, fill: true, opener: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const half = await rosterRow(prod.botId);
+    ok("2g.inert · a ticked product that reaches nothing is refused even while the other product is live — the row names the Polls remedy and the Up & Down line names its chain",
+      half.inert !== null && half.inert.text.includes(R.INERT_COPY.noList.polls) && !/more\)$/.test(half.inert.text)
+        && half.products[0] === scopeLine("Up & Down", [CHAIN_LABEL]) && half.products[1] === scopeLine("Polls", ["None chosen"]),
+      j({ products: half.products, inert: half.inert }));
+  }
+
+  /* ━━ THE WHY-PANEL AND THE READINESS BADGE, FROM THE SAME REASONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const v = await detail(prod.botId); // Up & Down reaches its chain; Polls is on with no category
+    const why = v.whyNotBetting;
+    ok("2g.why · ⛔ the why-panel lists every reason the engine's predicate raises, on the control that fixes it — here the poll-category list, with the Rules tab as its way out",
+      why !== null && why.items.length === 1
+        && why.items[0].key === LIST_KEYS.categories && why.items[0].label === R.FIELD_META["scope.categories"].label
+        && why.items[0].message === R.INERT_COPY.noList.polls
+        && why.href === RULES_HREF(prod.botId) && why.hrefLabel === "Open Rules" && why.title === "Why this account is not betting",
+      j(why));
+    ok("2g.why · the readiness badge counts the SAME reasons — one blocker, named by the same label — so the rail, the panel above it and the why-panel cannot disagree; and on this ACTIVE account the Callout's headline says the account is not betting, never that it cannot start",
+      v.startReadiness !== null && v.startReadiness.blockers === 1 && v.startReadiness.items.length === 1
+        && v.startReadiness.items[0].label === R.FIELD_META["scope.categories"].label && v.startReadiness.items[0].unset === false
+        && v.startReadiness.blockers === why.items.length
+        && v.startReadiness.title === "1 thing stops this account from betting",
+      j(v.startReadiness));
+    STATES.push(["detail-inert", v]);
+
+    await writeRules(prod.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.scope.categories = ["sports", "macro"];
+      r.scope.chains = [CHAIN_KEY];
+      r.modes.updown = { counter: true, fill: true, opener: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const clear = await detail(prod.botId);
+    ok("2g.why · CONTROL · with both lists reaching a member the panel's list is EMPTY and it says so in the one sentence — about the rules AND the limits — under a topic heading that claims nothing, the badge reads zero, and the roster's two lines name two categories and the chain",
+      clear.whyNotBetting !== null && clear.whyNotBetting.items.length === 0
+        && clear.whyNotBetting.empty === "Nothing in the rules or limits stops this account from betting."
+        && clear.whyNotBetting.title === "Rules and limits"
+        && clear.startReadiness !== null && clear.startReadiness.blockers === 0
+        && (await rosterRow(prod.botId)).products[1] === scopeLine("Polls", ["Sports", "Macro"]),
+      j({ why: clear.whyNotBetting, readiness: clear.startReadiness, products: (await rosterRow(prod.botId)).products }));
+    /* ⛔ AND AN UNSET REQUIRED CAP IS STILL ON THE PANEL, AFTER THE REASONS, WITH ITS CONSEQUENCE. */
+    await w.setCaps(prod.botId, { capDailyLossTzs: null });
+    const capless = await detail(prod.botId);
+    ok("2g.why · an unset required cap joins the panel after the scope reasons, labelled from the one label home and carrying 364's consequence — and the badge counts it too",
+      capless.whyNotBetting.items.length === 1 && capless.whyNotBetting.items[0].label === GATEM.consoleLimitLabel("capDailyLossTzs")
+        && /cannot place a bet/.test(capless.whyNotBetting.items[0].message) && capless.startReadiness.blockers === 1
+        && capless.startReadiness.items[0].unset === true,
+      j(capless.whyNotBetting));
+    await w.setCaps(prod.botId, { capDailyLossTzs: 900_000_000 });
+    STATES.push(["detail-reaching", clear]);
+  }
+
+  /* ━━ THE SAVE: THE LISTS ROUND-TRIP, THE SCOPE ROW MARKS THE GROUP, A STRANGER IS STALE ━━━━━━━━━━━━━━━━━━ */
+  {
+    const acct = await w.bot({ caps: { freqMinGapSec: 20 } });
+    const flagsOff: Record<string, boolean> = Object.fromEntries(["product-updown", "product-polls", "updown-react", "updown-fill", "updown-opener", "polls-react", "polls-fill", "polls-opener", "enter-now", "targeted-stakes"].map((k) => [k, false]));
+    /* ⚠️ The world's open caps put `stakeMaxTzs` ABOVE the live maximum stake, which the validator correctly
+       refuses — so the form's own values are posted with that one cap brought inside the live bound. */
+    /**
+     * ⭐ THE POST IS BUILT FROM WHAT THE FORM RENDERS (2026-09-23 · register A1). The editor made the numbers,
+     * the amount kind and the schedule part of every save, and the door refuses a post that is missing any of
+     * them — so a case that hand-wrote a partial body would be testing a shape no browser can send. Reading
+     * the model back is also the round trip: what the form draws is what the save accepts.
+     */
+    const formPost = async (): Promise<Any> => {
+      const v = await detail(acct.botId);
+      const f: Any = v.rulesForm;
+      return {
+        values: { ...Object.fromEntries((f.caps as Any[]).map((c: Any) => [c.key, c.value])), "stake-max": "1000000" },
+        numbers: Object.fromEntries((f.rules as Any[]).map((r: Any) => [r.key, r.value])),
+        amountKind: f.amountKind.value,
+        schedule: {
+          days: (f.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value),
+          allDay: f.schedule.allDay,
+          windows: (f.schedule.windows as Any[]).map((w: Any) => ({ start: w.start, end: w.end })),
+        },
+      };
+    };
+    const save = async (input: Any): Promise<Any> => {
+      const row: Any = await w.dal.houseBotStore.get(acct.botId);
+      return GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { accountId: acct.botId, baseVersion: row.rulesVersion, ...(await formPost()), ...input });
+    };
+    const refusedNoCategory = await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: [], chains: [] } });
+    ok("2g.save · Polls ticked with no category is REFUSED, the poll-category GROUP is the field the refusal marks, and the sentence names the remedy",
+      refusedNoCategory.ok === false && refusedNoCategory.field === LIST_KEYS.categories
+        && refusedNoCategory.fields?.[LIST_KEYS.categories] === "Choose at least one poll category, or turn Polls off."
+        && refusedNoCategory.error === "Choose at least one poll category, or turn Polls off.",
+      j(refusedNoCategory));
+    const refusedOrphan = await save({ flags: { ...flagsOff, "product-updown": true, "updown-react": true, "polls-fill": true }, lists: { categories: [], chains: [CHAIN_KEY] } });
+    ok("2g.save · a mode on for a product that is OFF is refused on that switch's own key — the box the officer has to untick is the box that is marked",
+      refusedOrphan.ok === false && typeof refusedOrphan.fields?.["polls-fill"] === "string" && /Polls is off/.test(refusedOrphan.fields["polls-fill"]),
+      j(refusedOrphan));
+    const landed = await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports", "sports", "macro"], chains: [] } });
+    const stored: Any = await w.dal.houseBotStore.get(acct.botId);
+    const back = await detail(acct.botId);
+    const backCats = (back.rulesForm.lists as Any[]).find((l: Any) => l.field === "categories").entries.filter((e: Any) => e.on).map((e: Any) => e.value);
+    ok("2g.save · ⛔ the two lists round-trip: what the picker posted is what the row stores (deduplicated) and what the form reads back as ticked, and the roster names it",
+      landed.ok === true && landed.rulesChanged === true
+        && j(stored.rules?.scope?.categories) === j(["sports", "macro"]) && j(stored.rules?.scope?.chains) === j([])
+        && j(backCats) === j(["sports", "macro"])
+        && (await rosterRow(acct.botId)).products[0] === scopeLine("Polls", ["Sports", "Macro"]) && (await rosterRow(acct.botId)).inert === null,
+      j({ landed, stored: stored.rules?.scope, backCats }));
+    /* ⛔ EVERY STRANGER IS THE STALE-FORM SENTENCE, before anything is read for the write: a category the platform
+       does not have, a chain key it does not offer, a missing group, and a group that is not a list. */
+    const stale = "This form is out of date. Reload the page and make the change again — nothing was saved.";
+    const strangers = await Promise.all([
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["politics"], chains: [] } }),
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports"], chains: ["uda_00000000:5"] } }),
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports"] } }),
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: "sports", chains: [] } }),
+      save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true } }),
+    ]);
+    ok("2g.save · a category the platform does not have, a chain key it does not offer, a missing group, a group that is not a list and no lists at all are each the stale-form sentence — never a silent drop and never a field sentence about a box that looks right",
+      strangers.every((r: Any) => r.ok === false && r.error === stale && r.field === undefined), j(strangers.map((r: Any) => r.error)));
+    /* ⛔ READ BEFORE THE CONTROL WRITES (review finding 2026-09-22): this read used to follow a landed save of exactly
+       the value it then asserted, so a stranger branch that WROTE before answering "stale" was overwritten and
+       invisible. The row is read while the five refusals are the last thing that touched it. */
+    const afterStrangers: Any = await w.dal.houseBotStore.get(acct.botId);
+    ok("2g.save · …and the refused saves wrote nothing: read before anything else lands, the stored list is still the one the last landed save chose",
+      j(afterStrangers.rules?.scope?.categories) === j(["sports", "macro"]) && j(afterStrangers.rules?.scope?.chains) === j([])
+        && afterStrangers.rulesVersion === stored.rulesVersion,
+      j({ scope: afterStrangers.rules?.scope, version: [afterStrangers.rulesVersion, stored.rulesVersion] }));
+    ok("2g.save · CONTROL · the same save with the SAME switches and a real category lands, so the five refusals above are about the lists and not about the switches",
+      (await save({ flags: { ...flagsOff, "product-polls": true, "polls-react": true }, lists: { categories: ["sports"], chains: [] } })).ok === true
+        && j((await w.dal.houseBotStore.get(acct.botId)).rules?.scope?.categories) === j(["sports"]), "");
+  }
+
+  /* ━━ 2h · THE NUMERIC + SCHEDULE EDITOR (2026-09-23 · register A1, the blocker) ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   *
+   * ⛔ WHAT THIS SECTION EXISTS FOR, MEASURED. 33 of the 45 rule leaves had no control on any screen: every
+   * delay, band, guard, the shaping, the whole schedule and both by-hand stakes ran at `DEFAULT_RULES_V1` for
+   * ever, and the two `enterNow` stakes were worse than absent — `N1-a` REQUIRES them when that switch is on,
+   * so every save with it ticked was refused on a box the form did not draw (register A2, the dead switch).
+   * ⛔ EVERY CASE HERE DRIVES THE REAL DOOR, in both stores, and every population is DERIVED from the
+   * validator's own exports — a leaf added to the document lands in these assertions without them being
+   * edited, which is the only way a form of this size stays complete.
+   */
+  {
+    const acct = await w.bot({ caps: { freqMinGapSec: 20 } });
+    const RULE_IDS = R.RULE_NUMBER_FIELDS as readonly string[];
+    const form = async (): Promise<Any> => (await detail(acct.botId)).rulesForm;
+    /** The whole form as the browser posts it, with `over` applied to the numeric boxes by KEY. */
+    const post = async (over: Record<string, Any> = {}): Promise<Any> => {
+      const f: Any = await form();
+      const row: Any = await w.dal.houseBotStore.get(acct.botId);
+      const numbers = Object.fromEntries((f.rules as Any[]).map((r: Any) => [r.key, r.value]));
+      return {
+        accountId: acct.botId,
+        baseVersion: row.rulesVersion,
+        values: { ...Object.fromEntries((f.caps as Any[]).map((c: Any) => [c.key, c.value])), "stake-max": "1000000" },
+        flags: Object.fromEntries((f.flags as Any[]).map((x: Any) => [x.key, x.on])),
+        lists: {
+          categories: (f.lists as Any[]).find((l: Any) => l.field === "categories").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+          chains: (f.lists as Any[]).find((l: Any) => l.field === "chains").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+        },
+        numbers: { ...numbers, ...over },
+        amountKind: f.amountKind.value,
+        schedule: {
+          days: (f.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value),
+          allDay: f.schedule.allDay,
+          windows: (f.schedule.windows as Any[]).map((x: Any) => ({ start: x.start, end: x.end })),
+        },
+      };
+    };
+    const send = async (over: Record<string, Any> = {}, patch: Record<string, Any> = {}): Promise<Any> =>
+      GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { ...(await post(over)), ...patch });
+    const formCache: Any = await form();
+
+    /* ── 1 · THE MODEL: ONE ROW PER LEAF, DERIVED, NEUTRAL, WITH ITS OWN HELP ─────────────────────────── */
+    ok("2h.model · one row per NUMERIC RULE LEAF of the document, in the validator's own order, each with a neutral key, a label, a one-sentence explanation and the section it belongs to — the population is `RULE_NUMBER_FIELDS`, never a list typed anywhere",
+      Array.isArray(formCache.rules) && formCache.rules.length === RULE_IDS.length
+        && j((formCache.rules as Any[]).map((r: Any) => r.label)) === j(RULE_IDS.map((id: string) => R.FIELD_META[id].label))
+        && (formCache.rules as Any[]).every((r: Any) => typeof r.key === "string" && r.key.length > 2 && !/[.]/.test(r.key))
+        && (formCache.rules as Any[]).every((r: Any) => typeof r.help === "string" && r.help.length >= 30)
+        && (formCache.rules as Any[]).every((r: Any) => typeof r.section === "string" && r.section.length > 0)
+        && new Set((formCache.rules as Any[]).map((r: Any) => r.key)).size === RULE_IDS.length,
+      j({ rows: formCache.rules?.length, leaves: RULE_IDS.length }));
+    /* ⛔ THE SECTION HEADINGS ARE THE ONE WORD HOME'S (453 keeps `FIELD_META`'s own words off this screen). */
+    ok("2h.model · the section headings are the console's own words — the three entry sections read `ENTRY_MODE_WORDS`, so a heading and the switch above it cannot be two spellings of one control",
+      (R.ENTRY_MODES as string[]).every((m: string) => (formCache.rules as Any[]).some((r: Any) => r.section === R.ENTRY_MODE_WORDS[m]))
+        && (formCache.rules as Any[]).every((r: Any) => !consoleNeutralRegExp().test(r.section)),
+      j([...new Set((formCache.rules as Any[]).map((r: Any) => r.section))]));
+    /* ⛔ THE BOUNDS ARE THE LIVE ONES, and the sentence beside them is the server's. */
+    ok("2h.model · every row carries the LIVE bounds and a range sentence built from them — `fieldBounds`, not `FIELD_META`'s raw table, so a box never looks more permissive than the seam",
+      (formCache.rules as Any[]).every((r: Any) => r.min !== "" && r.max !== "" && Number(r.min) <= Number(r.max) && r.range.length > 5)
+        /* ⛔ A LIVE-BOUND LEAF REALLY RESOLVED ITS WORD. `opener.stakeMinTzs` declares `LIVE_MIN`/`LIVE_MAX`,
+           which are WORDS in `FIELD_META` and numbers only once the platform's stake bounds are applied — so a
+           row carrying digits for both is proof the live read reached this form and not the raw table. */
+        && typeof R.FIELD_META["opener.stakeMinTzs"].min === "string"
+        && /^\d+$/.test((formCache.rules as Any[]).find((r: Any) => r.label === R.FIELD_META["opener.stakeMinTzs"].label)?.min ?? "")
+        && Number((formCache.rules as Any[]).find((r: Any) => r.label === R.FIELD_META["opener.stakeMinTzs"].label)?.min) > 0,
+      j((formCache.rules as Any[]).slice(0, 2).map((r: Any) => [r.label, r.min, r.max, r.range])));
+
+    /* ── 2 · "NOT USED WHILE X IS OFF", DERIVED FROM THE ENGINE'S OWN PREDICATE ───────────────────────── */
+    /* ⛔ BY POSITION IN `RULE_NUMBER_FIELDS`, NEVER BY LABEL — the rows are sent in exactly that order, and a
+       label lookup is only as unique as the labels are. 🔴 Measured on the first run of this section: `Jitter`
+       was the label of BOTH `fill.jitterSec` and `shaping.jitterPct`, so this helper returned the wrong row,
+       the case set the wrong leaf, and the round-trip case failed for a reason that had nothing to do with the
+       save. The labels are now distinct (a real finding the editor exposed, fixed at the field table) and this
+       lookup no longer depends on that. */
+    const byLabel = (id: string): Any => (formCache.rules as Any[])[RULE_IDS.indexOf(id)];
+    ok("2h.usedBy · the caption naming the switch a number belongs to is DERIVED by asking `leafUsedBy` with one switch on at a time — a leaf every state reads carries none, and a leaf no live switch reads is marked idle",
+      byLabel("fill.leadUdSec").usedBy.includes(R.ENTRY_MODE_WORDS.fill)
+        && byLabel("fill.leadUdSec").idle === true
+        && byLabel("counter.amount.fixedTzs").usedBy === ""
+        && byLabel("counter.amount.fixedTzs").idle === false
+        && byLabel("guards.minTimeToCutoffPollsMin").usedBy.includes("Enter now"),
+      j({ fill: byLabel("fill.leadUdSec").usedBy, fixed: byLabel("counter.amount.fixedTzs").usedBy }));
+
+    /* ── 3 · THE ROUND TRIP: WHAT THE OFFICER TYPES IS WHAT THE ROW STORES AND WHAT THE FORM READS BACK ── */
+    const delayKey = byLabel("counter.delayMinSec").key;
+    const maxDelayKey = byLabel("counter.delayMaxSec").key;
+    const zoneKey = byLabel("guards.noReactZoneUdSec").key;
+    const jitterKey = byLabel("shaping.jitterPct").key;
+    const landedNums = await send({ [delayKey]: "25", [maxDelayKey]: "55", [zoneKey]: "40", [jitterKey]: "7" });
+    const storedNums: Any = await w.dal.houseBotStore.get(acct.botId);
+    const backNums: Any = await form();
+    ok("2h.save · ⛔ THE NUMBERS ROUND-TRIP: four leaves from four different sections are typed, stored on the row and read back by the form — the whole of register A1",
+      landedNums.ok === true && landedNums.rulesChanged === true
+        && storedNums.rules?.counter?.delayMinSec === 25 && storedNums.rules?.counter?.delayMaxSec === 55
+        && storedNums.rules?.guards?.noReactZoneUdSec === 40 && storedNums.rules?.shaping?.jitterPct === 7
+        && (backNums.rules as Any[]).find((r: Any) => r.key === delayKey)?.value === "25"
+        && (backNums.rules as Any[]).find((r: Any) => r.key === zoneKey)?.value === "40",
+      j({
+        landed: landedNums.ok, error: landedNums.error,
+        stored: { min: storedNums.rules?.counter?.delayMinSec, max: storedNums.rules?.counter?.delayMaxSec, zone: storedNums.rules?.guards?.noReactZoneUdSec, jitter: storedNums.rules?.shaping?.jitterPct },
+        back: { min: (backNums.rules as Any[]).find((r: Any) => r.key === delayKey)?.value, zone: (backNums.rules as Any[]).find((r: Any) => r.key === zoneKey)?.value },
+      }));
+    /* ⛔ AND EVERY LEAF IS STORED EXPLICITLY (register A4). The save used to write a minimal PATCH whose own
+       docblock promised the untouched leaves would "follow the default"; measured on 2026-09-22, they froze at
+       the first save's defaults instead. The branch is gone: what was validated is what is stored. */
+    ok("2h.save · ⛔ REGISTER A4 · every numeric leaf is present in the STORED document after one save — the minimal patch that promised absent leaves would follow the default is gone, and the promise it could not keep with it",
+      RULE_IDS.every((id: string) => {
+        const v = id.split(".").reduce((o: Any, k: string) => (o == null ? undefined : o[k]), storedNums.rules as Any);
+        /* ⛔ A NULLABLE LEAF MAY BE `null` AND MUST STILL BE PRESENT — "not set" is a value the document holds,
+           not an absence, and the two are exactly what this case exists to tell apart. `counter.amount` is a
+           union, so its unchosen half is absent by construction. */
+        if (R.FIELD_META[id].nullable) return v === null || typeof v === "number";
+        return typeof v === "number" || id === "counter.amount.fixedTzs";
+      }),
+      j({
+        missing: RULE_IDS.filter((id: string) => {
+          const v = id.split(".").reduce((o: Any, k: string) => (o == null ? undefined : o[k]), storedNums.rules as Any);
+          return v === undefined && id !== "counter.amount.fixedTzs";
+        }),
+      }));
+
+    /* ── 4 · A BOUND IS A REFUSAL, ON THE BOX'S OWN KEY ──────────────────────────────────────────────── */
+    const overMax = await send({ [delayKey]: String(Number(byLabel("counter.delayMinSec").max) + 1) });
+    const notWhole = await send({ [zoneKey]: "12.5" });
+    ok("2h.bound · a number outside its live bound and a number that is not whole are each REFUSED on that box's own key — the control the officer has to change is the control that is marked",
+      overMax.ok === false && typeof overMax.fields?.[delayKey] === "string" && overMax.field === delayKey
+        && notWhole.ok === false && typeof notWhole.fields?.[zoneKey] === "string",
+      j({ overMax: overMax.fields, notWhole: notWhole.fields }));
+    ok("2h.bound · …and neither refusal wrote: the row still holds the values the landed save stored",
+      j((await w.dal.houseBotStore.get(acct.botId)).rules?.counter) === j(storedNums.rules?.counter), "");
+
+    /* ── 5 · THE SCHEDULE, IN EAT ────────────────────────────────────────────────────────────────────── */
+    const sched = async (days: string[], allDay: boolean, windows: Any[]): Promise<Any> =>
+      send({}, { schedule: { days, allDay, windows } });
+    const wkd = R.WEEKDAYS ?? ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+    const landedSched = await sched(["MON", "WED"], false, [{ start: "09:00", end: "17:00" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    const storedSched: Any = await w.dal.houseBotStore.get(acct.botId);
+    const backSched: Any = await form();
+    ok("2h.schedule · ⛔ THE DAYS AND THE HOURS ROUND-TRIP IN EAT: two days and one 09:00→17:00 window are typed, stored as minutes of the day, painted back into the boxes and described in words",
+      landedSched.ok === true
+        && j(storedSched.rules?.schedule?.days) === j(["MON", "WED"]) && storedSched.rules?.schedule?.allDay === false
+        /* ⛔ FIELD BY FIELD, NEVER `JSON.stringify` OF THE OBJECT. 🔴 Measured here: the memory twin keeps
+           insertion order and Postgres JSONB sorts the keys, so `{startMin,endMin}` comes back
+           `{endMin,startMin}` — a string compare passes on one store and fails on the other with identical,
+           correct data. A case that can only be green on one store measures the store, not the product. */
+        && storedSched.rules?.schedule?.windows?.length === 1
+        && storedSched.rules?.schedule?.windows?.[0]?.startMin === 540
+        && storedSched.rules?.schedule?.windows?.[0]?.endMin === 1020
+        && backSched.schedule.windows[0].start === "09:00" && backSched.schedule.windows[0].end === "17:00"
+        && (backSched.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value).join(",") === "MON,WED"
+        && (backSched.schedule.saved as string[]).some((s: string) => /09:00/.test(s) && /17:00/.test(s)),
+      j({ stored: storedSched.rules?.schedule, saved: backSched.schedule.saved }));
+    /* ⛔ 540 IS 09:00 **EAT**, WHICH IS 06:00 UTC — a schedule posted or read in UTC stores 360 here, and the
+       painted sentence would then say 06:00 to an officer who typed 09:00. This is the case that catches it. */
+    ok("2h.schedule · the stored minutes are EAT minutes-of-the-day, not UTC — 09:00 is 540 and never 360",
+      storedSched.rules?.schedule?.windows?.[0]?.startMin === 540, j(storedSched.rules?.schedule?.windows));
+    const halfTyped = await sched(["MON"], false, [{ start: "22:00", end: "" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    const noDay = await sched([], false, [{ start: "09:00", end: "17:00" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    const noWindow = await sched(["MON"], false, [{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    ok("2h.schedule · a half-typed row is refused on THAT ROW's own box, no day at all is refused on the day group, and no window with All day off is refused on the window group — each marked where the officer has to act",
+      halfTyped.ok === false && typeof halfTyped.fields?.["schedule-windows.0.end"] === "string"
+        && noDay.ok === false && typeof noDay.fields?.["schedule-days"] === "string"
+        && noWindow.ok === false && typeof noWindow.fields?.["schedule-windows"] === "string",
+      j({ half: halfTyped.fields, noDay: noDay.fields, noWindow: noWindow.fields }));
+    const overnight = await sched(["SAT"], false, [{ start: "22:00", end: "02:00" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    const backNight: Any = await form();
+    ok("2h.schedule · an end BEFORE its start is an overnight window — stored as typed and described as running into the next day, never silently swapped",
+      overnight.ok === true
+        && ((w2: Any) => w2?.length === 1 && w2[0].startMin === 1320 && w2[0].endMin === 120)((await w.dal.houseBotStore.get(acct.botId)).rules?.schedule?.windows)
+        && (backNight.schedule.saved as string[]).some((s: string) => /overnight/.test(s)),
+      j(backNight.schedule.saved));
+    const allDayOn = await sched([...wkd], true, [{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+    ok("2h.schedule · All day with no window at all is accepted, stores the seven days and says so in words — the state a fresh account is SHOWN, and now the state it can actually save",
+      allDayOn.ok === true && (await w.dal.houseBotStore.get(acct.botId)).rules?.schedule?.allDay === true
+        && ((await form()).schedule.saved as string[]).length === 7,
+      "");
+
+    /* ── 6 · ENTER NOW: THE DEAD SWITCH BECOMES A LIVE ONE (register A2) ─────────────────────────────── */
+    const thinKey = byLabel("enterNow.thinStakeTzs").key;
+    const openerKey = byLabel("enterNow.openerStakeTzs").key;
+    /* ⛔ ENTER NOW IS A POLLS CONTROL, so the account is put in the state the switch is legal in before the
+       two stakes are tested — otherwise the refusal measured would be the product rule, not the stakes. */
+    const flagsNow = { ...Object.fromEntries((formCache.flags as Any[]).map((x: Any) => [x.key, x.on])), "product-polls": true, "polls-react": true, "enter-now": true };
+    const pollsLists = { categories: ["sports"], chains: [] };
+    const enterNoStake = await send({ [thinKey]: "", [openerKey]: "" }, { flags: flagsNow, lists: pollsLists });
+    const enterWithStake = await send({ [thinKey]: "10000", [openerKey]: "2000" }, { flags: flagsNow, lists: pollsLists });
+    ok("2h.enterNow · ⛔ REGISTER A2 · the switch is no longer dead: with its two stakes empty the save is refused ON THOSE BOXES, and with them filled it LANDS — until today neither box existed, so every save with this switch ticked was refused on a control the form did not draw",
+      enterNoStake.ok === false && typeof enterNoStake.fields?.[thinKey] === "string"
+        && enterWithStake.ok === true
+        && (await w.dal.houseBotStore.get(acct.botId)).rules?.enterNow?.thinStakeTzs === 10_000
+        && (await w.dal.houseBotStore.get(acct.botId)).rules?.enterNow?.openerStakeTzs === 2_000,
+      j({ refused: enterNoStake.fields, refusedError: enterNoStake.error, landed: enterWithStake.ok, landedError: enterWithStake.error, keys: [thinKey, openerKey] }));
+
+    /* ── 7 · THE AMOUNT'S KIND IS A CHOICE, AND ONLY THE CHOSEN BOX IS READ ──────────────────────────── */
+    const fixedKey = byLabel("counter.amount.fixedTzs").key;
+    const toFixed = await send({ [fixedKey]: "3000" }, { amountKind: "FIXED" });
+    const storedFixed: Any = await w.dal.houseBotStore.get(acct.botId);
+    const badKind = await send({}, { amountKind: "SOMETHING" });
+    ok("2h.amount · the amount's kind is posted with the form and switches which box the validator reads — FIXED stores `fixedTzs` and drops `pct`, and a kind the form cannot produce is the stale-form sentence",
+      toFixed.ok === true && storedFixed.rules?.counter?.amount?.kind === "FIXED"
+        && storedFixed.rules?.counter?.amount?.fixedTzs === 3_000 && storedFixed.rules?.counter?.amount?.pct === undefined
+        && badKind.ok === false && badKind.field === undefined,
+      j({ amount: storedFixed.rules?.counter?.amount, badKind: badKind.error }));
+
+    /* ── 8 · THE WHOLE FORM OR NOTHING ──────────────────────────────────────────────────────────────── */
+    const partial = await GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { ...(await post()), numbers: { [delayKey]: "20" } });
+    const noSchedule = await GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", { ...(await post()), schedule: undefined });
+    const stranger = await send({ "not-a-real-box": "5" });
+    ok("2h.whole · a post missing a numeric box, a post with no schedule at all and a post carrying a key the form never drew are each the stale-form sentence — a control that is not there is a refusal, never a value",
+      [partial, noSchedule, stranger].every((r: Any) => r.ok === false && r.field === undefined
+        && r.error === "This form is out of date. Reload the page and make the change again — nothing was saved."),
+      j([partial.error, noSchedule.error, stranger.error]));
+    STATES.push(["rules-form-numeric", await detail(acct.botId)]);
+  }
+
+  /* ━━ THE START REFUSAL NAMES THE REMEDY, WITH THE RULES HREF ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const act = async (input: Any): Promise<Any> => {
+      try { return await GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input); }
+      catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
+    };
+    const pollsOnly = await w.bot({ caps: { freqMinGapSec: 20 } });
+    await w.setUserFields(pollsOnly.userId, { passwordSalt: "case-salt-for-2g" });
+    await w.dal.houseBotStore.setStatus(pollsOnly.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    /* ⛔ THE PRODUCTION SHAPE ITSELF (review finding 2026-09-22): both products ticked, every automatic mode on, BOTH
+       lists empty. The case used to drive a polls-only fixture under this label, so the pass-through was exercised
+       through `scope.categories` alone and a chains-side break of it stayed green. Start's FIRST refusal on the real
+       shape is the Up & Down one (page order puts `scope.chains` first), so the chain row of the key map is what this
+       assertion measures. */
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.modes.updown = { counter: true, fill: true, opener: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const refused = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · ⛔ Start on the production-shaped account is refused with the sentence that names the CHAIN remedy — its first refusal, in page order — and the Rules href, labelled for the dialog to draw",
+      refused.ok === false && refused.error.includes(R.INERT_COPY.noList.updown) && !refused.error.includes(R.INERT_COPY.noList.polls) && /Open Rules/.test(refused.error)
+        && refused.href === RULES_HREF(pollsOnly.botId) && refused.hrefLabel === "Open Rules"
+        && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "PAUSED",
+      j(refused));
+    ok("2g.start · 453 · the refusal carries no house-vocabulary word — the passed-through sentence is `INERT_COPY`'s, held neutral by the rules suite's own scan",
+      !NEUTRAL.test(refused.error) && !NEUTRAL.test(refused.hrefLabel ?? ""), j(refused.error));
+    /* ⛔ AND ON THIS PAUSED ACCOUNT THE PANEL'S HEADLINE IS START'S: the account can't start, and the Callout counts two. */
+    {
+      const pausedView = await detail(pollsOnly.botId);
+      ok("2g.title · on a PAUSED account with reasons the why-panel is headed `Why this account can't start` and the Callout reads `2 things to fix before this account can start` — never `is not betting`, which the pause already explains",
+        pausedView.whyNotBetting?.title === "Why this account can't start" && pausedView.whyNotBetting?.items.length === 2
+          && pausedView.startReadiness?.title === "2 things to fix before this account can start" && pausedView.startReadiness?.blockers === 2,
+        j({ why: pausedView.whyNotBetting?.title, callout: pausedView.startReadiness?.title }));
+      STATES.push(["detail-paused-inert", pausedView]);
+    }
+    /* THE POLLS-ONLY SHAPE, still measured: the category sentence passes through on its own. */
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: false, polls: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    const refusedPolls = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · a polls-only account with no category is refused with the category sentence and the same href",
+      refusedPolls.ok === false && refusedPolls.error.includes(R.INERT_COPY.noList.polls) && refusedPolls.href === RULES_HREF(pollsOnly.botId), j(refusedPolls));
+    /* ⛔ THE PASS-THROUGH IS SCOPED TO THE FIELDS THE FORM DRAWS A SWITCH OR LIST FOR: an unset CAP keeps the console's
+       generic sentence, because the validator's cap sentence is the engine's vocabulary. */
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: false, polls: true };
+      r.scope.categories = ["sports"];
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    await w.setCaps(pollsOnly.botId, { capDailyLossTzs: null });
+    const capRefused = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · CONTROL · an unset cap is still the console's generic RULES sentence with the same href — the pass-through is for the scope sentences only",
+      capRefused.ok === false && /Open Rules, review them, save, then start/.test(capRefused.error) && capRefused.href === RULES_HREF(pollsOnly.botId),
+      j(capRefused));
+    await w.setCaps(pollsOnly.botId, { capDailyLossTzs: 900_000_000 });
+    const started = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · CONTROL · with one category chosen the same account STARTS — so the refusal above was the list and nothing else",
+      started.ok === true && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE", j(started));
+    /**
+     * ⭐ 2026-09-23 · REGISTER A3 · START'S OWN WARNINGS REACH THE SCREEN.
+     *
+     * 🔴 WHAT WAS MEASURED ON 2026-09-22: `rulesStartProblems` answers `{ refusals, warnings }`, `startHouseBot`
+     * read the refusals and DROPPED the warnings, and the console answered "Started". So an account configured
+     * to do something impossible was started, reported started, and then never placed a bet.
+     * ⛔ THE STATE IS BUILT, NOT SIMULATED: the only automatic mode is a COUNTER whose no-react zone is a full
+     * day, which is longer than a poll's minimum lifetime — so `effectiveTiming` answers "never" for every
+     * class and `START_COPY.allImpossible` is raised. ⚠️ The account STILL STARTS: this is advice, not a
+     * refusal, and an officer's decision to run it stays theirs.
+     * ⭐ AND IT IS REACHABLE ONLY BECAUSE THE EDITOR EXISTS. A day-long no-react zone could not be set from any
+     * screen before today, which is why this warning had never been seen on a desk.
+     */
+    /* ⛔ STOPPED THE WAY THE STORE STOPS IT — Start answers `alreadyRunning` for an ACTIVE account and never
+       re-reads the rules, so a warning taken from an account that was already running would be a warning
+       inferred from a read that did not happen. */
+    await w.dal.houseBotStore.setStatus(pollsOnly.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: false, polls: true };
+      r.scope.categories = ["sports"];
+      r.modes.polls = { counter: true, fill: false, opener: false };
+      r.guards.noReactZonePollsMin = 1_440;
+    }));
+    const warned = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.start · ⛔ REGISTER A3 · an account whose only enabled mode can NEVER enter is STARTED and told so — the warning Start already knew and used to throw away is painted, in the warning tone, with the account still running",
+      warned.ok === true && warned.warn === true
+        && typeof warned.note === "string" && warned.note.includes(R.START_COPY.allImpossible)
+        && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE",
+      j(warned));
+  }
+
+  /* ━━ THE BY-HAND-ONLY ACCOUNT, ON EVERY SURFACE (review finding 2026-09-22) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * `BY_HAND_NO_SCREEN` was proven at the pure function only: no console or service case had an account whose only
+   * entry was Enter now, so the three sites that hand `BY_HAND_SCREENS` to the predicate — the roster, the account
+   * page, the Start service — were invisible to this suite, and a wrong screen table at any of them left the roster
+   * with no line, the panel saying nothing stops the account, and Start starting it to do nothing. */
+  {
+    const act = async (input: Any): Promise<Any> => {
+      try { return await GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input); }
+      catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
+    };
+    const byHand = await w.bot({ caps: { freqMinGapSec: 20 } });
+    await w.setUserFields(byHand.userId, { passwordSalt: "case-salt-for-2g-byhand" });
+    const enterNowOnly = (r: Any) => {
+      r.scope.products = { updown: false, polls: true };
+      r.scope.categories = ["sports"];
+      r.modes.updown = { counter: false, fill: false, opener: false };
+      r.modes.polls = { counter: false, fill: false, opener: false };
+      r.enterNow = { enabled: true, thinStakeTzs: 10_000, openerStakeTzs: 2_000 };
+    };
+    await writeRules(byHand.botId, ruleDoc(enterNowOnly));
+    const row = await rosterRow(byHand.botId);
+    ok("2g.byhand · ⛔ the roster hands the predicate THIS build's screens: an ACTIVE polls account with a category and Enter now as its only entry carries `Can't bet — Enter now is the only entry mode on for polls, and no screen on this build can press it.` — one reason, no count — while its scope line names Sports",
+      row.statusWord === SD.HOUSE_BOT_STATUS_DISPLAY.ACTIVE.word && row.inert !== null
+        && row.inert.text === `Can't bet — ${R.INERT_COPY.byHandNoScreen.enterNow}` && row.inert.href === RULES_HREF(byHand.botId)
+        && j(row.products) === j([scopeLine("Polls", ["Sports"])]),
+      j({ status: row.statusWord, inert: row.inert, products: row.products }));
+    const v = await detail(byHand.botId);
+    ok("2g.byhand · ⛔ the why-panel hands the predicate the same screens: ONE item, on the Enter now switch's own key, labelled `Enter now`, carrying the by-hand sentence — and the badge counts it",
+      v.whyNotBetting !== null && v.whyNotBetting.items.length === 1
+        && v.whyNotBetting.items[0].key === "enter-now" && v.whyNotBetting.items[0].label === "Enter now"
+        && v.whyNotBetting.items[0].message === R.INERT_COPY.byHandNoScreen.enterNow
+        && v.startReadiness?.blockers === 1 && v.startReadiness?.items[0].label === "Enter now" && v.startReadiness?.items[0].unset === false,
+      j({ why: v.whyNotBetting, readiness: v.startReadiness }));
+    STATES.push(["roster-byhand", await GATEM.houseRosterForConsole(OFFICER, "/admin/desk")], ["detail-byhand", v]);
+    await w.dal.houseBotStore.setStatus(byHand.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    const refused = await act({ id: byHand.botId, act: "START" });
+    ok("2g.byhand · ⛔ Start hands the predicate the same screens — its default — and refuses the account with the by-hand sentence passed through, the Rules href and the label, leaving it PAUSED",
+      refused.ok === false && refused.error.includes(R.INERT_COPY.byHandNoScreen.enterNow) && /Open Rules/.test(refused.error)
+        && refused.href === RULES_HREF(byHand.botId) && refused.hrefLabel === "Open Rules"
+        && (await w.dal.houseBotStore.get(byHand.botId)).status === "PAUSED",
+      j(refused));
+    /* CONTROL: one automatic polls mode beside the switch, and all three surfaces stand down at once. */
+    await writeRules(byHand.botId, ruleDoc((r) => { enterNowOnly(r); r.modes.polls.counter = true; }));
+    const rowOn = await rosterRow(byHand.botId);
+    const vOn = await detail(byHand.botId);
+    const startedOn = await act({ id: byHand.botId, act: "START" });
+    ok("2g.byhand · CONTROL · with an automatic polls mode on beside Enter now the row carries no line, the panel is empty and Start lands — so the three refusals above were the by-hand switch and nothing else",
+      rowOn.inert === null && vOn.whyNotBetting?.items.length === 0 && vOn.startReadiness?.blockers === 0
+        && startedOn.ok === true && (await w.dal.houseBotStore.get(byHand.botId)).status === "ACTIVE",
+      j({ inert: rowOn.inert, why: vOn.whyNotBetting?.items, started: startedOn }));
+  }
+
+  /* ━━ A SAVED LIMIT A LIVE BOUND NOW BREAKS — THE PANEL REFUSES WHAT START REFUSES (review finding 2026-09-22) ━━
+   * The panel was built from the inert reasons and the unset caps only, so it printed "Nothing in the rules stops this
+   * account from betting." on the page whose Start dialog refused the account on a Stake min under the platform's
+   * minimum. The panel now reads `rulesLiveBoundProblems`, the list Start refuses from. */
+  {
+    const act = async (input: Any): Promise<Any> => {
+      try { return await GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input); }
+      catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
+    };
+    const { getGlobalConfig }: Any = await import("../../src/lib/server/market-config.ts");
+    const cfg = await getGlobalConfig();
+    const under = Math.max(1, cfg.minStake - 500);
+    const low = await w.bot({ caps: { freqMinGapSec: 20 } });
+    await w.setUserFields(low.userId, { passwordSalt: "case-salt-for-2g-live" });
+    await w.dal.houseBotStore.setStatus(low.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    await writeRules(low.botId, ruleDoc((r) => {
+      r.scope.products = { updown: false, polls: true };
+      r.scope.categories = ["sports"];
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    await w.setCaps(low.botId, { stakeMinTzs: under });
+    const v = await detail(low.botId);
+    const refused = await act({ id: low.botId, act: "START" });
+    /* The sentence sits UNDER the label, so it does not name the field again (432(n)); both figures, the console's units. */
+    const want = `Saved as TZS ${under.toLocaleString("en-US")}; the platform minimum is now TZS ${cfg.minStake.toLocaleString("en-US")}.`;
+    ok("2g.live · ⛔ a saved limit a live bound now breaks is ON the panel — Stake min under the platform minimum, on the cap's own key, labelled from the one label home, in the console's own sentence with both figures — and the badge counts it, headed `Why this account can't start` on this paused account",
+      v.whyNotBetting !== null && v.whyNotBetting.items.length === 1
+        && v.whyNotBetting.items[0].key === "stake-min" && v.whyNotBetting.items[0].label === GATEM.consoleLimitLabel("stakeMinTzs")
+        && v.whyNotBetting.items[0].message === want
+        && v.whyNotBetting.title === "Why this account can't start"
+        && v.startReadiness?.blockers === 1 && v.startReadiness?.items[0].label === GATEM.consoleLimitLabel("stakeMinTzs") && v.startReadiness?.items[0].unset === false,
+      j({ why: v.whyNotBetting, readiness: v.startReadiness, want }));
+    ok("2g.live · ⛔ …and Start refuses the same account on the same page — the panel and the dialog can no longer disagree — with the Rules href and the account still PAUSED",
+      refused.ok === false && refused.href === RULES_HREF(low.botId) && (await w.dal.houseBotStore.get(low.botId)).status === "PAUSED",
+      j(refused));
+    /* ⚠️ Optional on the item: under a mutation that empties the panel this line must go RED on its own claim, not throw
+       and take the rest of §2g with it (measured: the first count run of `scope-why-panel-no-live-bound` lost seven cases). */
+    ok("2g.live · 453 · the composed sentence carries no house-vocabulary word (Start's own names the field in the engine's vocabulary, which is why the console composes its own)",
+      typeof v.whyNotBetting.items[0]?.message === "string" && !NEUTRAL.test(v.whyNotBetting.items[0].message) && !NEUTRAL.test(v.whyNotBetting.title),
+      j(v.whyNotBetting.items[0]?.message ?? null));
+    STATES.push(["detail-live-bound", v]);
+    /* CONTROL: the limit brought back inside the bound, and the panel empties while Start lands. */
+    await w.setCaps(low.botId, { stakeMinTzs: cfg.minStake });
+    const vOk = await detail(low.botId);
+    const started = await act({ id: low.botId, act: "START" });
+    ok("2g.live · CONTROL · with Stake min at the platform minimum the panel is empty under its topic heading, the badge reads zero and Start lands — so the refusal above was the live bound and nothing else",
+      vOk.whyNotBetting?.items.length === 0 && vOk.whyNotBetting?.title === "Rules and limits" && vOk.startReadiness?.blockers === 0
+        && started.ok === true && (await w.dal.houseBotStore.get(low.botId)).status === "ACTIVE",
+      j({ why: vOk.whyNotBetting, started }));
+  }
+
+  /* ━━ PRODUCT_NO_MODE IS LABELLED BY ITS PRODUCT'S ENTRY SECTION, NOT ONE SWITCH (review finding 2026-09-22) ━━ */
+  {
+    const noMode = await w.bot({ caps: { freqMinGapSec: 20 } });
+    await writeRules(noMode.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.scope.chains = [CHAIN_KEY];
+      r.scope.categories = ["sports"];
+      r.modes.updown = { counter: false, fill: false, opener: false };
+      r.modes.polls = { counter: true, fill: false, opener: false };
+    }));
+    const v = await detail(noMode.botId);
+    ok("2g.label · a ticked product with a chain but none of its own modes on is labelled `Up & Down entry` — the section any of the three switches sits in — over its sentence, on the first switch's key, in the panel and in the Callout alike; never one switch's name over a sentence that says no mode at all is on",
+      v.whyNotBetting?.items.length === 1 && v.whyNotBetting.items[0].label === "Up & Down entry" && v.whyNotBetting.items[0].key === "updown-react"
+        && v.whyNotBetting.items[0].message === R.INERT_COPY.productNoMode.updown
+        && v.startReadiness?.items[0].label === "Up & Down entry"
+        && !/React to a player's stake/.test(v.whyNotBetting.items[0].label),
+      j({ why: v.whyNotBetting, readiness: v.startReadiness }));
+    STATES.push(["detail-product-no-mode", v]);
+  }
+
+  /* ━━ THE PAGES AND THE FORM, AT SOURCE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const page = decomment(read(PAGE));
+    const detailPage = decomment(read(DETAIL_PAGE));
+    const form = decomment(read(`${SECTION}/[id]/rules-form.tsx`));
+    const acts = decomment(read(`${SECTION}/[id]/account-actions.tsx`));
+    /* ⛔ THE REFUSAL IS IN THE ACCOUNT CELL — the FIRST column, on screen at 360 without a sideways scroll (review
+       finding 2026-09-22) — under the handle, and the Products cell paints the scope lines and nothing else. */
+    ok("2g.page · the roster paints the refusal off `r.inert` as a LINK to its href, at the tap floor, in the warning tone, INSIDE THE ACCOUNT CELL under the handle — and one line per product off `r.products` in the Products cell, with no link there",
+      /* `decomment` leaves a stripped JSX comment as `{ }`, so each gap between the cell's three children may hold one. */
+      /data-operator-text="label">\{r\.label\}<\/div>[\s{}]*<div className="font-mono text-body-sm text-text-subtle">\{r\.handle\}<\/div>[\s{}]*\{r\.inert !== null && \(\s*<Link href=\{r\.inert\.href as Route\} className="inline-flex items-center min-h-\[var\(--tap-min\)\] max-w-\[34ch\] text-body-sm text-warning-fg hover:underline">\s*\{r\.inert\.text\}\s*<\/Link>\s*\)\}\s*<\/td>/.test(page)
+        && /<td className="p-3 text-text-secondary">\s*\{r\.products\.map\(\(line\) => <div key=\{line\}>\{line\}<\/div>\)\}\s*<\/td>/.test(page)
+        && (page.match(/r\.inert/g) ?? []).length === 3,
+      j({ inertRefs: (page.match(/r\.inert/g) ?? []).length }));
+    ok("2g.page · the Callout's headline is the server's (`view.startReadiness.title`) — the page types no lifecycle sentence of its own",
+      /title=\{view\.startReadiness\.title\}/.test(detailPage) && !/before this account can start/.test(detailPage) && !/stops? this account from betting/.test(detailPage),
+      "");
+    ok("2g.page · the account page draws the why-panel through ONE component, linked on the overview and unlinked above the rules form, and paints the empty sentence on its own branch",
+      (detailPage.match(/<WhyNotBettingCard model=\{view\.whyNotBetting\} linked \/>/g) ?? []).length === 1
+        && (detailPage.match(/<WhyNotBettingCard model=\{view\.whyNotBetting\} linked=\{false\} \/>/g) ?? []).length === 1
+        && /model\.items\.length === 0 \? \(\s*<p className="text-body-sm text-text-secondary" data-why-empty>\{model\.empty\}<\/p>/.test(detailPage)
+        && !/still to fill before this account can start/.test(detailPage),
+      "");
+    ok("2g.form · the form reads each list off the form's own controls through the group's hidden MARKER, treats a missing marker as a refusal, marks a refused group and a refused switch, and follows the live product switch for the once-on sentence",
+      /const marker = el\.elements\.namedItem\(list\.key\);/.test(form)
+        && /if \(!\(marker instanceof HTMLInputElement\) \|\| marker\.type !== "hidden"\) \{ missing\.push\(list\.key\); continue; \}/.test(form)
+        && /node\.name\.startsWith\(prefix\) && node\.checked\) chosen\.push\(node\.value\);/.test(form)
+        && /<input type="hidden" name=\{list\.key\} value="" \/>\s*<\/fieldset>/.test(form)
+        && /data-field=\{list\.key\}\s+data-list=\{list\.key\}\s+aria-invalid=\{errors\[list\.key\] \? true : undefined\}/.test(form)
+        && /<div key=\{flag\.key\} className="space-y-1" data-field=\{flag\.key\}>/.test(form)
+        && /invalid=\{!!errors\[flag\.key\]\}/.test(form) && /invalid=\{!!errors\[list\.key\]\}/.test(form)
+        && /\{!productOn\[list\.product\] && \(/.test(form)
+        /* ⭐ AND THE WHOLE FORM TRAVELS (2026-09-23 · register A1): the 29 numbers, the amount kind and the
+           schedule joined the post when the editor shipped, and a call that dropped any of them would be a
+           save that silently kept the stored value while the officer watched their own typing vanish. */
+        && /onSave\(\{\s*accountId, baseVersion: model\.baseVersion, values, flags, lists,\s*numbers,\s*amountKind:/.test(form)
+        && /schedule: \{ days, allDay: allDayNode instanceof HTMLInputElement && allDayNode\.checked, windows \},/.test(form),
+      "");
+    ok("2g.act · the action dialog paints the refusal's href as a link labelled by the SERVER, and closes itself on the way through",
+      /setWayOut\(result\.href && result\.hrefLabel \? \{ href: result\.href, label: result\.hrefLabel \} : null\)/.test(acts)
+        && /<Link href=\{wayOut\.href as Route\} onClick=\{close\}/.test(acts),
+      "");
+  }
+} catch (err) {
+  ok("0.throw.2g · no scope-picker case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 300));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §3 · THE NEUTRAL LEXICON (ruling 453)
  * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -4843,9 +5645,18 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        picker row carries a handle and a refusal. A scanner that assumed one shape CRASHED on the other — measured
        here the day the wizard's states joined the list — and a crash in §3 skips §4's whole source law. So each
        row contributes what it HAS, and the picker's own strings are scanned rather than dropped. */
-    ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, r.products, r.handle, r.reason,
+    /* ⭐ 2026-09-22 · `products` is one LINE per ticked product now, and `inert` is the row's own refusal. */
+    ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, ...(Array.isArray(r.products) ? r.products : [r.products]), r.inert?.text, r.handle, r.reason,
       ...[r.lossCell, r.exposureCell, r.betsCell].filter(Boolean).flatMap((c: Any) => [c.text, c.edgeText,
         ...(c.halves ?? []).flatMap((h: Any) => [h.word, h.suffix])])]),
+    /* ⭐ 2026-09-22 · THE SCOPE PICKERS AND THE WHY-PANEL. A picker's group key, label, help, its two state
+       sentences and every entry's key, value and label reach the DOM (the value reaches the POST body); the
+       why-panel's title, empty sentence, link word and every item's label and sentence are painted on two tabs. */
+    ...(view.rulesForm?.lists ?? []).flatMap((l: Any) => [l.key, l.label, l.help, l.onceOn, l.none, ...(l.entries ?? []).flatMap((e: Any) => [e.key, e.value, e.label])]),
+    view.rulesForm?.copy?.listsSection,
+    view.whyNotBetting?.title, view.whyNotBetting?.empty, view.whyNotBetting?.hrefLabel,
+    ...(view.whyNotBetting?.items ?? []).flatMap((i: Any) => [i.key, i.label, i.message]),
+    ...(view.startReadiness?.items ?? []).map((i: Any) => i.label),
     /* ⭐ C7 step 6 · THE WIZARD'S OWN COPY. Every blocking and warning sentence the check card paints is the
        CONSOLE's own override of `eligibility.ts`'s rows, ELEVEN of which name the feature — so this is the branch
        most likely to break 453 on this checkpoint, exactly as the limits panel was on the last one. */
@@ -4963,7 +5774,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
       j({ exempted: copyOf(withReason).filter((c: string) => NEUTRAL.test(c)), copy: copyOf(withCopy).filter((c: string) => NEUTRAL.test(c)) }));
     /* ⛔ AND THE OTHER EXEMPTION IS A ROW'S `label`, which this sweep never reaches by construction — asserted, not
      * assumed, because "it is nested" is exactly the kind of claim that stops being true. */
-    const labelled = { ...base, rows: [{ statusWord: "ACTIVE", label: "house bot", handle: "@x", products: "None",
+    const labelled = { ...base, rows: [{ statusWord: "ACTIVE", label: "house bot", handle: "@x", products: ["None"], inert: null,
       lossCell: { text: "", halves: [], edgeText: "" }, exposureCell: { text: "", halves: [], edgeText: "" }, betsCell: { text: "", halves: [], edgeText: "" } }] };
     const loud = { ...labelled, rows: [{ ...labelled.rows[0], label: "ok", statusWord: "house bot" }] };
     ok("3.453 · 474 · CONTROL · a row's operator-chosen `label` is outside the scan, while the same words in the row's own STATUS word are inside it",
@@ -5723,7 +6534,10 @@ export default function Ruling513Control() {
        row's account cell, the history row's account cell — ONE shape for one thing, which is why they are the same
        expression — and the history row's door to the platform's transactions screen, which is what an OWNER_MONEY
        row carries INSTEAD of an amount (266, 369(c), 456). An `OR` would widen; eight positions are eight answers. */
-    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
+    /* ⭐ A NINTH AT 2026-09-22, PINNED IN POSITION LIKE THE EIGHT BEFORE IT: the roster row's own refusal — the first
+       reason its rules reach nothing, linked to its Rules tab — painted in the scope cell, one column before the way
+       out. An `OR` would widen; nine positions are nine answers. */
+    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
       j(linkExprs) === j(WANT) && j(elementsOf(pageCode)) === j(ELEMENTS) && linkExprs.length === openings,
       j({ found: linkExprs, want: WANT, elements: elementsOf(pageCode), openings }));
@@ -7259,7 +8073,11 @@ export default function Ruling513Control() {
       (() => {
         const gateSrc = decomment(read(GATE));
         const labels = [...gateSrc.matchAll(/reasonLabel: "([^"]+)"/g)].map((m) => m[1]);
-        return labels.length === 4 && labels.every((t) => t.endsWith("(required)"))
+        /* ⭐ FIVE SINCE 2026-09-23: Pause joined the ceremonies that ask why (register A5). It was measured
+           on a served build asking NOTHING — no dialog, no field — while the service had stored a pause reason
+           since it was written. The COUNT rises with the population; the rule that every asked reason is marked
+           required, and held to the shared floor, is unchanged. */
+        return labels.length === 5 && labels.every((t) => t.endsWith("(required)"))
           && /export const CONSOLE_REASON_MIN = 5;/.test(gateSrc)
           && /reason\.length < CONSOLE_REASON_MIN/.test(gateSrc);
       })(),

@@ -589,6 +589,18 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 because a row outlives the holder's erasure. 13px mono in a subdued tone is
                                 /admin/agents' own shape for the same thing, and it clears §T4's 12.5px floor. */}
                             <div className="font-mono text-body-sm text-text-subtle">{r.handle}</div>
+                            {/* ⛔ THE ROW'S OWN REFUSAL, IN THE FIRST COLUMN (review finding 2026-09-22). It sat in the
+                                Products cell, the seventh column of the scroller, so at 360 an officer saw "Desk
+                                000102" and a loss figure and had to drag the table ~900px to learn the account
+                                could not bet — and the docs called that "beside the status chip". Under the
+                                handle it is on screen at every width, in the warning tone, with the Rules tab as
+                                the way out. `max-w` so a long sentence wraps here instead of widening the column;
+                                `inline-flex` at the tap floor like every other link. */}
+                            {r.inert !== null && (
+                              <Link href={r.inert.href as Route} className="inline-flex items-center min-h-[var(--tap-min)] max-w-[34ch] text-body-sm text-warning-fg hover:underline">
+                                {r.inert.text}
+                              </Link>
+                            )}
                           </td>
                           {/* Money SECOND and THIRD — the ANSWER columns. Each amount is one object (`.amount` is
                               `white-space: nowrap` in the kit), and the CELL may break between the used figure and its
@@ -601,7 +613,16 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                           {/* ⛔ AN ACCOUNT THAT HAS NEVER STAKED READS "—", never a fabricated date and never a zero
                               (§C2). The absolute EAT instant is in `title`, where the kit puts every exact time. */}
                           <td className="p-3 text-text-secondary" title={r.lastBet?.title}>{r.lastBet?.text ?? "—"}</td>
-                          <td className="p-3 text-text-secondary">{r.products}</td>
+                          {/* ⛔ THE OPERATIVE SCOPE, ONE LINE PER TICKED PRODUCT, AS LABELS (prod finding 2026-09-22).
+                              This cell printed "Up & Down · Polls" for an ACTIVE account whose two lists were
+                              empty: true of the switches, false of the account, which had matched nothing since the
+                              day it was started. The lines now name what each product can REACH; the account's own
+                              refusal is in the FIRST column, where it is on screen without a sideways scroll.
+                              ⛔ NO FLOOR AND NO NOWRAP ON THIS CELL (1.373): it is a words column, so it wraps inside
+                              the scroller. */}
+                          <td className="p-3 text-text-secondary">
+                            {r.products.map((line) => <div key={line}>{line}</div>)}
+                          </td>
                           <td className="p-3 text-right">
                             <Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>
                           </td>
@@ -656,7 +677,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                             column absorbs the whole shortfall at 360 and the label and the handle crush together. */}
                         <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
                         <th scope="col" className="text-left p-3">Product</th>
@@ -705,7 +726,13 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                               {r.accountHandle && <div className="font-mono text-body-sm text-text-subtle">{r.accountHandle}</div>}
                             </td>
                             <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
-                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>{r.when}</td>
+                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>
+                              {r.when}
+                              {/* ⭐ A QUEUED STAKE SAYS WHEN IT FIRES AND WHEN IT GIVES UP (register C8): the When
+                                  column is the instant the engine DECIDED, which for a held COUNTER can be minutes
+                                  before anything happens. The server owns every word of this line. */}
+                              {r.due !== null && <span className="block text-caption text-text-tertiary">{r.due}</span>}
+                            </td>
                             <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                             <td className="p-3 text-text">{r.typeWord}</td>
                             <td className="p-3 text-text-secondary">{r.productWord}</td>
@@ -833,7 +860,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When</th>
+                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Event</th>
                         <th scope="col" className="text-left p-3">Change</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Who</th>

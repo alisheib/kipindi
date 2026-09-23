@@ -190,6 +190,18 @@ await runTwoStores({
    * true count is exactly the headroom in which cases can stop running and the suite still reports
    * green — the ratchet's whole job is to make a disappearance loud. Raised here rather than left for
    * the next session to wonder about. */
-  minPass: { memory: 722, postgres: 484 },
+  /* ⭐ RAISED 722 → 751 MEMORY / 484 → 513 POSTGRES, 2026-09-22 — the scope finding's console half (§2g: the
+   * two pickers in the form model, the save's list round trip and its refusals, the roster's operative scope
+   * line and its own refusal, the why-panel and the readiness badge from the same reasons, and the Start refusal
+   * that names the remedy with its href), plus the re-aimed 1.310/1.435/1.508 pins. Both numbers are what
+   * `KP_SCRATCH_PORT=5453 npm run test:house-bot-console` PRINTED on the held cluster: `0.mem · exit 0 · 751
+   * passed` and `0.pg · exit 0 · 513 passed`, ALL PASS on both stores. The +29 in EACH child is the measurement:
+   * every §2g case reaches both stores, and the chain fixture is created through the platform's own service on each. */
+  /* ⭐ RAISED 751 → 763 MEMORY / 513 → 525 POSTGRES, 2026-09-22 — the review of the scope commit: the by-hand-only
+   * account on all three surfaces, the live-bound item on the why-panel, the lifecycle headlines, PRODUCT_NO_MODE by
+   * its section, the production shape at Start, the refusal in the Account cell. Both numbers are what
+   * `KP_SCRATCH_PORT=5453 npm run test:house-bot-console` PRINTED on the held cluster: `0.mem · exit 0 · 763 passed`
+   * and `0.pg · exit 0 · 525 passed`, ALL PASS on both stores — +12 in EACH child, every new case reaching both. */
+  minPass: { memory: 763, postgres: 525 },
   dbPrefix: "hb_console",
 });

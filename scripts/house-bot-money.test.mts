@@ -26,4 +26,4 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  * what `npm run test:house-bot-money` PRINTED on this run — BOTH children measured, neither number an arithmetic
  * guess. The +9 in EACH child is the measurement: §12's nine assertions reaching both stores. A build where they
  * reached only the memory twin would have shown +9 and +0, which is the divergence the pair exists to catch. */
-await runTwoStores({ suite: "test:house-bot-money", casesFile: "scripts/lib/house-bot-money-cases.mts", minPass: { memory: 131, postgres: 149 }, dbPrefix: "hb_money" });
+await runTwoStores({ suite: "test:house-bot-money", casesFile: "scripts/lib/house-bot-money-cases.mts", minPass: { memory: 132, postgres: 150 }, dbPrefix: "hb_money" });

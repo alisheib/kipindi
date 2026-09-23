@@ -22,7 +22,7 @@
  */
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
 import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
-import { CONSOLE_LIMITS_HREF as LIMITS_TAB_HREF, consoleBotTabHref } from "./console-routes";
+import { BY_HAND_SCREENS, CONSOLE_LIMITS_HREF as LIMITS_TAB_HREF, consoleBotTabHref, type ByHandScreens } from "./console-routes";
 import {
   EAT_LABEL,
   MINUTES_PER_DAY,
@@ -248,6 +248,18 @@ export function formatWhole(n: number): string {
 
 export type ModeFlags = { counter: boolean; fill: boolean; opener: boolean };
 
+/**
+ * The scope switches, the two lists and the mode switches — the ONLY leaves `rulesCoverTarget` reads. A
+ * `HouseBotRulesV1` is one; the rules form's save builds one from its raw flags before any number is parsed.
+ */
+export type ScopeDoc = {
+  scope: { products: { updown: boolean; polls: boolean }; chains: readonly string[]; categories: readonly string[] };
+  modes: { updown: ModeFlags; polls: ModeFlags };
+};
+
+/** A `ScopeDoc` plus the two by-hand switches, which the reach and Start read as well. */
+export type EntryDoc = ScopeDoc & { enterNow: { enabled: boolean }; targeting: { enabled: boolean } };
+
 export const ROUND_TO_OPTIONS = [100, 500, 1000, 5000] as const;
 export type RoundToTzs = (typeof ROUND_TO_OPTIONS)[number];
 
@@ -423,16 +435,19 @@ export function DEFAULT_RULES_V1(ctx: Pick<RulesContext, "stakeBounds">): HouseB
 }
 
 /** Is any automatic mode (COUNTER, FILL, OPENER on either product) on? */
-export function hasAnyAutomaticMode(r: HouseBotRulesV1): boolean {
+export function hasAnyAutomaticMode(r: Pick<ScopeDoc, "modes">): boolean {
   const on = (m: ModeFlags) => m.counter || m.fill || m.opener;
   return on(r.modes.updown) || on(r.modes.polls);
 }
 
 /**
  * Start's "no mode" rule (N1 §5, PLAN §18): a bot has an entry mode when any automatic mode, Enter
- * now or targeting is on. A bot whose only way in is Enter now still starts.
+ * now or targeting is on.
+ * ⚠️ SINCE 2026-09-22 THIS IS THE WEAKEST OF START's SCOPE RULES, NOT THE ONLY ONE (`rulesInertReasons`): a bot
+ * whose only way in is Enter now starts only while a screen on this build can press it (`BY_HAND_SCREENS`), and
+ * a ticked product must reach at least one market through `rulesCoverTarget`.
  */
-export function hasAnyEntryMode(r: HouseBotRulesV1): boolean {
+export function hasAnyEntryMode(r: EntryDoc): boolean {
   return hasAnyAutomaticMode(r) || r.enterNow.enabled || r.targeting.enabled;
 }
 
@@ -569,17 +584,37 @@ const RAW_FIELDS = {
   "scope.products.polls": toggle("rules", "Scope", "Polls"),
   "scope.chains": list("rules", "Scope", "Up & Down chains"),
   "scope.categories": list("rules", "Scope", "Poll categories"),
-  "scope.skipPollsClosingWithinMin": num("rules", "Scope", "Skip polls closing within", "min", 1, 43_200, {
+  /**
+   * ⭐ THESE THREE SIT IN THE **COUNTER** SECTION, NOT IN SCOPE, AND THAT IS MEASURED (2026-09-23).
+   *
+   * Their ids are `scope.*` — the stored document's shape, which is not changed — and until today their
+   * SECTION said `Scope` too, which reads as "these bound everything this account touches". They do not.
+   * Read at `decide.ts`: `poolTotalMinTzs`/`poolTotalMaxTzs` (`:367`) and `skipPollsClosingWithinMin`
+   * (`:368`) are evaluated INSIDE the untargeted-COUNTER loop and nowhere else — not at FILL, not at
+   * OPENER, and not on the TARGET path above it, which re-checks the trigger band, the no-react zone and
+   * the deadline and never these. An officer who narrows a "scope" band expecting it to hold the opener
+   * back is narrowing nothing, and the section heading was the only thing saying otherwise.
+   * ⛔ THE HINT SAYS IT IN WORDS AS WELL AS BY PLACEMENT, because a section heading is read once and a
+   * field is read while it is being typed.
+   * ⚠️ `LEAF_USED_BY` IS DELIBERATELY NOT RETIGHTENED WITH THEM, and the difference is recorded rather
+   * than quietly closed (HOUSE-BOTS.md §5). That table answers a different question — which leaves must be
+   * PRESENT in a stored document — and tightening it would make documents that are refused today parse
+   * tomorrow. That is a change to what a saved account may hold, on the money path, and it is not this
+   * change's to make.
+   */
+  "scope.skipPollsClosingWithinMin": num("rules", "Counter", "Skip polls closing within", "min", 1, 43_200, {
     default: 60,
     recommended: 60,
+    hint: "Only answering a player's stake reads this. Filling a thin side and opening a quiet market have their own margins.",
   }),
-  "scope.poolTotalMinTzs": num("rules", "Scope", "Pool total minimum", "TZS", 0, POOL_TOTAL_MAX_TZS, {
+  "scope.poolTotalMinTzs": num("rules", "Counter", "Pool total minimum", "TZS", 0, POOL_TOTAL_MAX_TZS, {
     default: 0,
     recommended: 0,
+    hint: "Only answering a player's stake reads this.",
   }),
-  "scope.poolTotalMaxTzs": num("rules", "Scope", "Pool total maximum", "TZS", 0, POOL_TOTAL_MAX_TZS, {
+  "scope.poolTotalMaxTzs": num("rules", "Counter", "Pool total maximum", "TZS", 0, POOL_TOTAL_MAX_TZS, {
     nullable: true,
-    hint: "Empty = no maximum.",
+    hint: "Empty = no maximum. Only answering a player's stake reads this.",
   }),
   // Rules · modes
   "modes.updown.counter": toggle("rules", "Modes", "Up & Down · Counter"),
@@ -619,7 +654,11 @@ const RAW_FIELDS = {
     recommended: 30,
   }),
   "fill.targetThinSharePct": num("rules", "Fill", "Target thin share", "%", 10, 50, { default: 40, recommended: 40 }),
-  "fill.jitterSec": num("rules", "Fill", "Jitter", "s", 0, 86_400, { default: 10, recommended: 10 }),
+  /* ⛔ "Jitter" TWICE WAS TWO FIELDS WEARING ONE NAME (2026-09-23). `fill.jitterSec` and `shaping.jitterPct`
+     both read "Jitter", which was invisible while NEITHER had a control — the editor put them on one screen,
+     where an officer choosing between them has only the label to go on, and my own case picked the wrong one.
+     One is a TIME taken off the moment it acts; the other is a SHARE the amount moves by. */
+  "fill.jitterSec": num("rules", "Fill", "Timing jitter", "s", 0, 86_400, { default: 10, recommended: 10 }),
   // Rules · opener
   "opener.delayUdMinSec": num("rules", "Opener", "Delay minimum (Up & Down)", "s", 1, "MAX_OPENER_UD_SEC", {
     default: 20,
@@ -653,7 +692,7 @@ const RAW_FIELDS = {
     recommended: 500,
     options: ROUND_TO_OPTIONS,
   }),
-  "shaping.jitterPct": num("rules", "Shaping", "Jitter", "%", 0, 30, { default: 10, recommended: 10 }),
+  "shaping.jitterPct": num("rules", "Shaping", "Amount jitter", "%", 0, 30, { default: 10, recommended: 10 }),
   // Rules · guards
   "guards.noReactZoneUdSec": num("rules", "Guards", "No-react zone (Up & Down)", "s", 0, 300, {
     default: 30,
@@ -849,7 +888,17 @@ const CAP_FIELD_IDS: readonly FieldId[] = CAP_FIELDS;
 const LIMIT_FIELD_IDS: readonly FieldId[] = LIMIT_FIELDS;
 
 /** The numeric rules-JSON fields, in page order. */
-const RULE_NUMBER_FIELDS: readonly FieldId[] = FIELD_ORDER.filter((id) => {
+/**
+ * EVERY NUMERIC LEAF OF THE RULES DOCUMENT, IN PAGE ORDER — the validator's own population, and since
+ * 2026-09-23 the EDITOR's too.
+ *
+ * ⛔ EXPORTED SO THE FORM IS BUILT FROM THE SAME LIST THE VALIDATOR READS. Until today 33 of the 45 rule
+ * leaves had no control on any screen and ran at their defaults for ever; the fix is not "draw the ones
+ * somebody listed" but "draw this list", because a leaf added tomorrow then arrives on the form and in the
+ * save together or not at all. A hand-kept second list is how a field comes to exist in the engine and
+ * nowhere an officer can see it, which is the defect this export closes.
+ */
+export const RULE_NUMBER_FIELDS: readonly FieldId[] = FIELD_ORDER.filter((id) => {
   const meta = FIELD_META[id];
   return meta.group === "rules" && meta.min !== null;
 });
@@ -1510,6 +1559,33 @@ export const CROSS_FIELD_RULES = [
     messages: ["Pool minimum can't be above pool maximum."],
     source: "PLAN §5",
   },
+  /* ⛔ THE TWO SCOPE ROWS (prod finding 2026-09-22). An ACTIVE account on a switched-ON desk had matched nothing,
+   * ever: both products ticked, both scope lists EMPTY, and the engine's predicate ends in `[].includes(x)`. No
+   * screen wrote the lists and nothing refused the shape. Both rows are evaluated through `scopeShapeReasons` —
+   * the SAME function Start's `rulesInertReasons` is built on — so a shape the save refuses is a shape Start
+   * refuses, through one predicate (`rulesCoverTarget`) over the platform's lists.
+   * ⚠️ NOT THE CONVERSE. No product, no entry mode, a ticked product with a reachable member and none of its own
+   * modes on (`PRODUCT_NO_MODE`), and a polls entry that is by hand only (`BY_HAND_NO_SCREEN`) all SAVE with
+   * "Saved" and are refused at Start alone — the roster line and the why-panel name them the moment they are
+   * stored. Those four have always been Start-time refusals; only the two shapes below are refused at save. */
+  {
+    id: "R-PRODUCT-LIST",
+    scopes: ["RULES"],
+    kind: "REFUSE",
+    fields: ["scope.products.polls", "scope.categories", "scope.products.updown", "scope.chains"],
+    reportOn: "the empty list of the ticked product",
+    messages: ["Choose at least one poll category, or turn Polls off.", "Choose at least one chain, or turn Up & Down off."],
+    source: "prod 2026-09-22 (a ticked product whose list selects nothing can never place a bet)",
+  },
+  {
+    id: "R-MODE-PRODUCT",
+    scopes: ["RULES"],
+    kind: "REFUSE",
+    fields: ["modes.updown.counter", "modes.updown.fill", "modes.updown.opener", "modes.polls.counter", "modes.polls.fill", "modes.polls.opener", "scope.products.updown", "scope.products.polls"],
+    reportOn: "the mode that is on for a product that is off",
+    messages: ["{mode} is on for {product}, but {switch} is off. Turn {switch} on, or turn this off."],
+    source: "prod 2026-09-22 (same class: a mode whose product is off is inert and passes \"some mode\")",
+  },
   {
     id: "N2-b",
     scopes: ["RULES"],
@@ -1790,6 +1866,9 @@ type RulesEvalInput = {
   products: { updown: boolean; polls: boolean };
   modes: { updown: ModeFlags; polls: ModeFlags };
   categories: readonly string[];
+  chains: readonly string[];
+  /** The platform's lists, so the two scope rows ask `rulesCoverTarget` the way the engine does — never a raw length. */
+  ctx: Pick<RulesContext, "chains" | "categories">;
   amountKind: "PCT" | "FIXED";
   enterNow: boolean;
   targeting: boolean;
@@ -1808,6 +1887,8 @@ const RULES_SCOPE_IDS = [
   "R-HOUR-FITS-GAP",
   "R-DAY-GE-HOUR",
   "R-POOL-BAND",
+  "R-PRODUCT-LIST",
+  "R-MODE-PRODUCT",
   "N2-b",
   "R-TRIGGER-RANGE",
   "R-OPENER-ORDER",
@@ -1863,6 +1944,21 @@ const RULES_EVAL: Record<(typeof RULES_SCOPE_IDS)[number], (x: RulesEvalInput) =
     above(x.num("scope.poolTotalMinTzs"), x.num("scope.poolTotalMaxTzs"))
       ? [{ field: "scope.poolTotalMaxTzs", message: ruleCopy("R-POOL-BAND") }]
       : [],
+  "R-PRODUCT-LIST": (x) =>
+    scopeShapeReasons(scopeDocOf(x), x.ctx)
+      .filter((r) => r.code === "PRODUCT_NO_LIST")
+      .map((r) => ({ field: r.field, message: ruleCopy("R-PRODUCT-LIST", r.product === "updown" ? 1 : 0) })),
+  "R-MODE-PRODUCT": (x) =>
+    scopeShapeReasons(scopeDocOf(x), x.ctx)
+      .filter((r) => r.code === "MODE_WITHOUT_PRODUCT")
+      .map((r) => ({
+        field: r.field,
+        message: ruleCopy("R-MODE-PRODUCT", 0, {
+          mode: ENTRY_MODE_WORDS[r.mode as EntryMode],
+          product: PRODUCT_WORDS_IN_SENTENCE[r.product as ScopeProduct],
+          switch: PRODUCT_WORDS[r.product as ScopeProduct],
+        }),
+      })),
   "N2-b": (x) =>
     above(x.num("counter.delayMinSec"), x.num("counter.delayMaxSec"))
       ? [{ field: "counter.delayMinSec", message: ruleCopy("N2-b") }]
@@ -2270,6 +2366,8 @@ export function validateHouseBotRules(
     products,
     modes,
     categories,
+    chains,
+    ctx: { chains: ctx.chains, categories: ctx.categories },
     amountKind,
     enterNow,
     targeting,
@@ -2465,12 +2563,249 @@ export function validateTargetInput(
 }
 
 // ---------------------------------------------------------------------------
+// Scope reach — ONE predicate for the engine and the desk (prod finding, 2026-09-22)
+// ---------------------------------------------------------------------------
+
+/**
+ * ⛔ WHY THIS SECTION EXISTS. Verified read-only on production, 2026-09-22: an ACTIVE account on a switched-ON desk
+ * had matched no market, ever — zero intents, zero positions — while the roster showed it green with both products.
+ * Its stored rules ticked both products with EMPTY scope lists. `DEFAULT_RULES_V1` ships `chains: []` and
+ * `categories: []`, no screen wrote either, the engine's `rulesCover` (`decide.ts`) ended in `[].includes(x)` —
+ * false for every market, before any cap, schedule, guard or probability is consulted — and Start refused nothing:
+ * it checked the caps, "some product" and "some entry mode", and never asked whether the scope selects anything.
+ * The same class as the `schedule.days` defect fixed in 1546c9c8: an absence is not a safe state for these keys.
+ *
+ * ⭐ ONE PREDICATE, ASKED TWO WAYS. `rulesCoverTarget` is the engine's question — does this document cover this
+ * market for this mode? — and `decide.ts`'s `rulesCover` is a thin delegate to it. `rulesReach` asks the SAME
+ * function the other way round, over the platform's lists — which members can this document ever reach? — so the
+ * desk's answer and the engine's answer come from one body of code and cannot disagree. `rulesInertReasons` turns
+ * the reach into the sentences the desk paints and Start refuses with, and the two scope rows of `CROSS_FIELD_RULES`
+ * (`R-PRODUCT-LIST`, `R-MODE-PRODUCT`) are built from the same reasons, so a document the save refuses is a
+ * document Start refuses, and Start keeps refusing the stored documents that predate the rows.
+ *
+ * ⛔ A TICKED PRODUCT THAT REACHES NOTHING IS REFUSED EVEN WHILE THE OTHER PRODUCT IS LIVE. "Active · Up & Down ·
+ * Polls" on the roster with an Up & Down that can never fire IS this finding; the refusal names the product and the
+ * remedy. So: no reason ⇒ the account can bet; and the converse holds exactly for a document that claims no more
+ * than it can do (`test:house-bot-rules` §10 proves both directions over the generated population).
+ *
+ * ⚠️ EVERY SENTENCE HERE IS PAINTED ON THE CONSOLE and scanned by ruling 453's lexicon: the console's own entry-mode
+ * words, never the field labels (`FIELD_META`'s "Polls · Counter" carries a word 453 forbids on that screen).
+ */
+
+/** One market as the scope predicate sees it: a poll's category, or an Up & Down round's `<assetId>:<minutes>` chain key. */
+export type ScopeTarget = { product: "MARKET"; category: string } | { product: "UPDOWN"; chainKey: string };
+
+/** The three automatic entry modes, in `ModeFlags` order. */
+export const ENTRY_MODES = ["counter", "fill", "opener"] as const satisfies readonly (keyof ModeFlags)[];
+export type EntryMode = (typeof ENTRY_MODES)[number];
+
+/** The two products, in page order (`scope.products.updown` is the first field of the form). */
+export const SCOPE_PRODUCTS = ["updown", "polls"] as const;
+export type ScopeProduct = (typeof SCOPE_PRODUCTS)[number];
+
+/**
+ * The console's words for the three modes — what a painted sentence names them (ruling 453 keeps "Counter" off that
+ * screen). ⛔ ONE HOME: the console's own flag labels must read from here, never restate these.
+ */
+export const ENTRY_MODE_WORDS: Readonly<Record<EntryMode, string>> = {
+  counter: "React to a player's stake",
+  fill: "Fill a thin side",
+  opener: "Open a quiet market",
+};
+
+/** The product as its switch is labelled, and as a sentence names it mid-way ("…is on for polls"). */
+export const PRODUCT_WORDS: Readonly<Record<ScopeProduct, string>> = { updown: "Up & Down", polls: "Polls" };
+const PRODUCT_WORDS_IN_SENTENCE: Readonly<Record<ScopeProduct, string>> = { updown: "Up & Down", polls: "polls" };
+
+/**
+ * THE ONE SCOPE PREDICATE (C14): the product on, the mode on for that product when one is asked for, and the market's
+ * chain or category on the document's list. `decide.ts` delegates to it for every COUNTER, FILL and OPENER
+ * decision and for fire's re-check (`mode` null for a staff-chosen row, which no automatic mode governs, ruling 66);
+ * `rulesReach` and the save's scope rows ask it over the platform's lists.
+ * ⛔ `[].includes(x)` IS FALSE, AND THAT IS THE WHOLE FINDING: an empty list covers nothing, so a document that
+ * ticks a product with an empty list is refused at save and at Start rather than left to match nothing forever.
+ */
+export function rulesCoverTarget(r: ScopeDoc, target: ScopeTarget, mode: EntryMode | null): boolean {
+  if (target.product === "UPDOWN") {
+    return r.scope.products.updown && (mode == null || r.modes.updown[mode]) && r.scope.chains.includes(target.chainKey);
+  }
+  return r.scope.products.polls && (mode == null || r.modes.polls[mode]) && r.scope.categories.includes(target.category);
+}
+
+/** What one product of a document can reach in a context — computed by asking `rulesCoverTarget`, member by member. */
+export type ProductReach = {
+  /** The product switch, as saved. */
+  product: boolean;
+  /** Per automatic mode: it reaches at least one member of the context. */
+  modes: ModeFlags;
+};
+
+export type ScopeReach = {
+  polls: ProductReach & { categories: MarketCategory[] };
+  updown: ProductReach & { chains: ChainKey[] };
+  /** Every (product, mode) pair that reaches a member — what the engine can act on, in page order. */
+  live: { product: ScopeProduct; mode: EntryMode }[];
+  /** The two by-hand switches, as saved. Whether a screen can press them is `BY_HAND_SCREENS`, not the document. */
+  byHand: { enterNow: boolean; targeting: boolean };
+};
+
+/**
+ * Which (product, mode) pairs of this document can ever reach a market in this context, and which members.
+ * ⛔ COMPUTED BY CALLING `rulesCoverTarget` OVER THE CONTEXT'S LISTS, NEVER BY RESTATING THE RULE — a change to
+ * the predicate changes this answer, which is what makes the desk's reading of a document the engine's reading.
+ * The member lists are those the predicate covers with `mode` null (the product on and the member listed).
+ */
+export function rulesReach(r: EntryDoc, ctx: Pick<RulesContext, "chains" | "categories">): ScopeReach {
+  const reachOf = <M extends string>(members: readonly M[], target: (m: M) => ScopeTarget) => {
+    const modes: ModeFlags = { counter: false, fill: false, opener: false };
+    const covered: M[] = [];
+    for (const m of members) {
+      if (rulesCoverTarget(r, target(m), null)) covered.push(m);
+      for (const mode of ENTRY_MODES) if (rulesCoverTarget(r, target(m), mode)) modes[mode] = true;
+    }
+    return { modes, covered };
+  };
+  const ud = reachOf(ctx.chains.map((c) => c.key), (chainKey) => ({ product: "UPDOWN", chainKey }));
+  const po = reachOf(ctx.categories, (category) => ({ product: "MARKET", category }));
+  const live: ScopeReach["live"] = [];
+  for (const mode of ENTRY_MODES) if (ud.modes[mode]) live.push({ product: "updown", mode });
+  for (const mode of ENTRY_MODES) if (po.modes[mode]) live.push({ product: "polls", mode });
+  return {
+    polls: { product: r.scope.products.polls, modes: po.modes, categories: po.covered },
+    updown: { product: r.scope.products.updown, modes: ud.modes, chains: ud.covered },
+    live,
+    byHand: { enterNow: r.enterNow.enabled, targeting: r.targeting.enabled },
+  };
+}
+
+export type InertReasonCode =
+  | "NO_PRODUCT"
+  | "NO_MODE"
+  | "PRODUCT_NO_LIST"
+  | "PRODUCT_NO_MODE"
+  | "MODE_WITHOUT_PRODUCT"
+  | "BY_HAND_NO_SCREEN";
+
+/** One reason an account cannot bet, on the field that fixes it. The console maps `field` to its own form key. */
+export type InertReason = {
+  code: InertReasonCode;
+  product?: ScopeProduct;
+  /** The orphan mode, for `MODE_WITHOUT_PRODUCT`. */
+  mode?: EntryMode;
+  field: FieldId;
+  message: string;
+};
+
+/** The sentences, each without a word ruling 453 keeps off the console. */
+export const INERT_COPY = {
+  noProduct: "Choose at least one product.",
+  noMode: "Turn on at least one entry mode.",
+  noList: {
+    polls: "Polls is on but no poll category is chosen.",
+    updown: "Up & Down is on but no chain is chosen.",
+  },
+  productNoMode: {
+    polls: "Polls is on but no entry mode is on for polls.",
+    updown: "Up & Down is on but no entry mode is on for Up & Down.",
+  },
+  modeWithoutProduct: (mode: EntryMode, product: ScopeProduct): string =>
+    `${ENTRY_MODE_WORDS[mode]} is on for ${PRODUCT_WORDS_IN_SENTENCE[product]}, but ${PRODUCT_WORDS[product]} is off.`,
+  byHandNoScreen: {
+    enterNow: "Enter now is the only entry mode on for polls, and no screen on this build can press it.",
+    targeting: "Targeted stakes is the only entry mode on for polls, and no screen on this build can add one.",
+    both: "Enter now and Targeted stakes are the only entry modes on for polls, and no screen on this build can use either.",
+  },
+} as const;
+
+/** The eval input as a document — the save asks the same predicate the engine does, before any number is parsed. */
+function scopeDocOf(x: { products: ScopeDoc["scope"]["products"]; chains: readonly string[]; categories: readonly string[]; modes: ScopeDoc["modes"]; enterNow: boolean; targeting: boolean }): EntryDoc {
+  return {
+    scope: { products: x.products, chains: x.chains, categories: x.categories },
+    modes: x.modes,
+    enterNow: { enabled: x.enterNow },
+    targeting: { enabled: x.targeting },
+  };
+}
+
+/**
+ * The two SHAPE reasons — a ticked product with no reachable member, and a mode on for a product that is off. The
+ * save refuses both (`R-PRODUCT-LIST`, `R-MODE-PRODUCT`) and Start refuses both, from this one function.
+ */
+function scopeShapeReasons(r: EntryDoc, ctx: Pick<RulesContext, "chains" | "categories">): InertReason[] {
+  const reach = rulesReach(r, ctx);
+  const out: InertReason[] = [];
+  for (const product of SCOPE_PRODUCTS) {
+    if (!r.scope.products[product]) {
+      for (const mode of ENTRY_MODES) {
+        if (r.modes[product][mode]) {
+          out.push({ code: "MODE_WITHOUT_PRODUCT", product, mode, field: `modes.${product}.${mode}` as const, message: INERT_COPY.modeWithoutProduct(mode, product) });
+        }
+      }
+      continue;
+    }
+    const members: readonly string[] = product === "updown" ? reach.updown.chains : reach.polls.categories;
+    if (members.length === 0) {
+      out.push({ code: "PRODUCT_NO_LIST", product, field: product === "updown" ? "scope.chains" : "scope.categories", message: INERT_COPY.noList[product] });
+    }
+  }
+  return out;
+}
+
+/**
+ * Why this account cannot bet — one reason per cause, on the field that fixes it, in page order. Empty means it
+ * can: every ticked product reaches a market with a mode that is on (or, for polls, a by-hand mode a screen can
+ * press), no mode is on for a product that is off, and something is on at all.
+ *
+ * - NO_PRODUCT — neither product is ticked.
+ * - NO_MODE — no automatic mode, and neither by-hand switch, is on (the per-product "no mode" reasons stand down:
+ *   it is one fact).
+ * - PRODUCT_NO_LIST — a ticked product whose list reaches no member of the context (`rulesCoverTarget`, mode null).
+ * - PRODUCT_NO_MODE — a ticked product with none of its three modes on; for polls only while no by-hand switch is
+ *   on either, since Enter now and targets are polls entries.
+ * - MODE_WITHOUT_PRODUCT — a mode on for a product that is off, one per mode.
+ * - BY_HAND_NO_SCREEN — polls is on with no automatic polls mode, and the only entries on are by-hand switches no
+ *   screen on this build can press (`opts.byHandScreens`, the honest default being `BY_HAND_SCREENS`).
+ */
+export function rulesInertReasons(
+  r: EntryDoc,
+  ctx: Pick<RulesContext, "chains" | "categories">,
+  opts: { byHandScreens: ByHandScreens },
+): InertReason[] {
+  const out = scopeShapeReasons(r, ctx);
+  const byHandOn = r.enterNow.enabled || r.targeting.enabled;
+  const byHandUsable = (r.enterNow.enabled && opts.byHandScreens.enterNow) || (r.targeting.enabled && opts.byHandScreens.targeting);
+  const noEntryAtAll = !hasAnyEntryMode(r);
+  if (!r.scope.products.updown && !r.scope.products.polls) {
+    out.push({ code: "NO_PRODUCT", field: "scope.products.updown", message: INERT_COPY.noProduct });
+  }
+  if (noEntryAtAll) out.push({ code: "NO_MODE", field: "modes.updown.counter", message: INERT_COPY.noMode });
+  for (const product of SCOPE_PRODUCTS) {
+    if (!r.scope.products[product] || noEntryAtAll) continue;
+    if (ENTRY_MODES.some((mode) => r.modes[product][mode])) continue;
+    if (product === "polls" && byHandOn) {
+      if (!byHandUsable) {
+        const both = r.enterNow.enabled && r.targeting.enabled;
+        out.push({
+          code: "BY_HAND_NO_SCREEN",
+          product,
+          field: r.enterNow.enabled ? "enterNow.enabled" : "targeting.enabled",
+          message: both ? INERT_COPY.byHandNoScreen.both : r.enterNow.enabled ? INERT_COPY.byHandNoScreen.enterNow : INERT_COPY.byHandNoScreen.targeting,
+        });
+      }
+      continue;
+    }
+    out.push({ code: "PRODUCT_NO_MODE", product, field: product === "updown" ? "modes.updown.counter" : "modes.polls.counter", message: INERT_COPY.productNoMode[product] });
+  }
+  return sortFieldErrors(out);
+}
+
+// ---------------------------------------------------------------------------
 // Start (02 §3.3 items 4–6, 04 C14, N1 §5)
 // ---------------------------------------------------------------------------
 
 export const START_COPY = {
-  noProduct: "Choose at least one product.",
-  noMode: "Turn on at least one entry mode.",
+  noProduct: INERT_COPY.noProduct,
+  noMode: INERT_COPY.noMode,
   allImpossible: "Every enabled mode is currently impossible.",
 } as const;
 
@@ -2485,54 +2820,54 @@ export const NO_AUTOMATIC_MODE_LINE = (label: string, on: { enterNow: boolean; t
   return null;
 };
 
+/** A saved value that a live platform bound now breaks — Start refuses it, and the planner's F5 pass pauses a running account on it. */
+export type LiveBoundProblem = {
+  field: FieldId;
+  code: "BELOW_MIN" | "ABOVE_MAX";
+  /** The saved value and the bound it breaks, in the field's own unit — for a surface that composes its own sentence. */
+  value: number;
+  bound: number;
+  /** Start's own sentence. */
+  message: string;
+};
+
 /**
- * What the saved rules and caps alone refuse at Start, in 02 §3.3's order, plus the warnings the
- * dialog shows. The service adds the refusals that need reads (removed, eligibility, fingerprint,
- * today's loss, the holder's own limit).
- *
- * ⚠️ The unset-cap refusal never names a staff-chosen cap or the target maximum (N1 §5): N1-a and
- * N2-a already require them at save while Enter now or targets are on.
+ * ⛔ THE LIVE-BOUND REFUSALS, IN ONE HOME (review finding 2026-09-22). These four checks lived inside
+ * `rulesStartProblems` alone, so the console's why-panel — built from `rulesInertReasons` and the unset caps —
+ * printed "Nothing in the rules stops this account from betting." on the very page whose Start dialog refused the
+ * account with "the platform minimum stake is now TZS 2,000; Stake min is TZS 1,000.". Start still pushes exactly
+ * these (field, code, sentence); the panel reads the same list and composes its own neutral sentence from
+ * `value` and `bound`, so the two surfaces cannot disagree about whether a saved limit breaks a live bound.
+ * ⚠️ Not a hidden inert account: `revalidateLive` (planner.ts) AUTO-PAUSES a running account on the same stake
+ * minimum and gap floor, so a problem here is "can't start" on a paused account and "will be paused" on a live one.
  */
-export function rulesStartProblems(
-  r: HouseBotRulesV1,
-  caps: HouseBotCaps,
-  ctx: RulesContext,
-  opts: { botId?: string; label?: string } = {},
-): { refusals: FieldError[]; warnings: string[] } {
-  const refusals: FieldError[] = [];
-  const label = opts.label ?? DEFAULT_BOT_LABEL;
-  const rulesHref = opts.botId ? consoleBotTabHref(opts.botId, "rules") : undefined;
-
-  for (const cap of REQUIRED_FOR_START) {
-    if (caps[cap] === null) {
-      refusals.push({ field: cap, code: "UNSET", message: `Set ${FIELD_META[cap].label} before starting.`, href: rulesHref });
-    }
-  }
-  if (!r.scope.products.updown && !r.scope.products.polls) {
-    refusals.push({ field: "scope.products", code: "INVALID", message: START_COPY.noProduct, href: rulesHref });
-  }
-  if (!hasAnyEntryMode(r)) {
-    refusals.push({ field: "modes", code: "INVALID", message: START_COPY.noMode, href: rulesHref });
-  }
-
-  // A saved value that a live bound now breaks (04 C14, F5; N1 §5 extends it to Enter now).
+export function rulesLiveBoundProblems(
+  r: Pick<HouseBotRulesV1, "enterNow">,
+  caps: Pick<HouseBotCaps, "stakeMinTzs" | "freqMinGapSec" | "capStaffChosenDailyTzs">,
+  ctx: Pick<RulesContext, "stakeBounds" | "betPlaceRefillPerMin">,
+): LiveBoundProblem[] {
+  const out: LiveBoundProblem[] = [];
   const liveMin = ctx.stakeBounds.minTzs;
   const liveMax = ctx.stakeBounds.maxTzs;
   const minNow = `Can't start: the platform minimum stake is now TZS ${tzs(liveMin)}`;
   if (caps.stakeMinTzs !== null && caps.stakeMinTzs < liveMin) {
-    refusals.push({ field: "stakeMinTzs", code: "BELOW_MIN", message: `${minNow}; Stake min is TZS ${tzs(caps.stakeMinTzs)}.` });
+    out.push({ field: "stakeMinTzs", code: "BELOW_MIN", value: caps.stakeMinTzs, bound: liveMin, message: `${minNow}; Stake min is TZS ${tzs(caps.stakeMinTzs)}.` });
   } else if (caps.stakeMinTzs !== null && caps.stakeMinTzs > liveMax) {
-    refusals.push({
+    out.push({
       field: "stakeMinTzs",
       code: "ABOVE_MAX",
+      value: caps.stakeMinTzs,
+      bound: liveMax,
       message: `Can't start: the platform maximum stake is now TZS ${tzs(liveMax)}; Stake min is TZS ${tzs(caps.stakeMinTzs)}.`,
     });
   }
   const floor = minGapFloorSec(ctx.betPlaceRefillPerMin);
   if (caps.freqMinGapSec !== null && caps.freqMinGapSec < floor) {
-    refusals.push({
+    out.push({
       field: "freqMinGapSec",
       code: "BELOW_MIN",
+      value: caps.freqMinGapSec,
+      bound: floor,
       /* ⭐ THE WORD COMES FROM `unitSuffix`, THE SAME SOURCE THE CONSOLE'S `limitValue` NOW READS, so the sentence an
          officer is refused with and the value they see on the card cannot spell one unit two ways. It also fixes
          "1 seconds": this was an unconditional " seconds" and the floor can be 1. */
@@ -2547,9 +2882,53 @@ export function rulesStartProblems(
     ];
     for (const [field, value, name] of belowLive) {
       if (value !== null && value < liveMin) {
-        refusals.push({ field, code: "BELOW_MIN", message: `${minNow}; ${name} is TZS ${tzs(value)}.` });
+        out.push({ field, code: "BELOW_MIN", value, bound: liveMin, message: `${minNow}; ${name} is TZS ${tzs(value)}.` });
       }
     }
+  }
+  return out;
+}
+
+/**
+ * What the saved rules and caps alone refuse at Start, in 02 §3.3's order, plus the warnings the
+ * dialog shows. The service adds the refusals that need reads (removed, eligibility, fingerprint,
+ * today's loss, the holder's own limit).
+ *
+ * ⚠️ The unset-cap refusal never names a staff-chosen cap or the target maximum (N1 §5): N1-a and
+ * N2-a already require them at save while Enter now or targets are on.
+ *
+ * ⛔ THE SCOPE MUST REACH A MARKET (prod finding 2026-09-22). After the caps, one refusal per `rulesInertReasons`
+ * cause — on the field that fixes it, code INVALID, the Rules tab href when `opts.botId` is given. "No product"
+ * and "no entry mode" are two of those causes now, not a pair of checks beside them, so one fact is never said
+ * twice. `opts.byHandScreens` defaults to `BY_HAND_SCREENS` — what THIS build can press — so an account whose only
+ * entry is Enter now or targets is refused until a screen exists, and allowed (with the dialog's warning) once the
+ * flag is tied to one.
+ */
+export function rulesStartProblems(
+  r: HouseBotRulesV1,
+  caps: HouseBotCaps,
+  ctx: RulesContext,
+  opts: { botId?: string; label?: string; byHandScreens?: ByHandScreens } = {},
+): { refusals: FieldError[]; warnings: string[] } {
+  const refusals: FieldError[] = [];
+  const label = opts.label ?? DEFAULT_BOT_LABEL;
+  const rulesHref = opts.botId ? consoleBotTabHref(opts.botId, "rules") : undefined;
+
+  for (const cap of REQUIRED_FOR_START) {
+    if (caps[cap] === null) {
+      refusals.push({ field: cap, code: "UNSET", message: `Set ${FIELD_META[cap].label} before starting.`, href: rulesHref });
+    }
+  }
+  for (const reason of rulesInertReasons(r, ctx, { byHandScreens: opts.byHandScreens ?? BY_HAND_SCREENS })) {
+    refusals.push({ field: reason.field, code: "INVALID", message: reason.message, href: rulesHref });
+  }
+
+  // A saved value that a live bound now breaks (04 C14, F5; N1 §5 extends it to Enter now) — from the ONE home
+  // the console's why-panel reads too (`rulesLiveBoundProblems`), so the panel cannot say "nothing" where this refuses.
+  /* ⛔ WITH THE RULES HREF, LIKE EVERY OTHER REFUSAL HERE: these three pushes alone carried none, so a Start refused on
+     a moved platform minimum reached the console's dialog with no way out — measured by the console suite's 2g.live. */
+  for (const problem of rulesLiveBoundProblems(r, caps, ctx)) {
+    refusals.push({ field: problem.field, code: problem.code, message: problem.message, href: rulesHref });
   }
 
   const warnings: string[] = [];
@@ -2629,6 +3008,30 @@ const LEAF_USED_BY: Partial<Record<FieldId, (s: ModeState) => boolean>> = {
   "guards.minTimeToCutoffUdSec": (s) => anyOn(s.modes.updown),
   "guards.minTimeToCutoffPollsMin": (s) => anyOn(s.modes.polls) || s.enterNow || s.targeting,
 };
+
+/** The switch state the editor asks `leafUsedBy` about — the ten booleans the rules form owns. */
+export type LeafModeState = ModeState;
+
+/**
+ * DOES THIS LEAF DO ANYTHING UNDER THESE SWITCHES? — asked by the rules editor, answered by the table
+ * above rather than by a second one (2026-09-23).
+ *
+ * ⛔ WHY IT IS THE SAME PREDICATE AND NOT A PARALLEL "which switch owns this field" MAP. The editor draws
+ * 29 numeric boxes, and an officer typing into one deserves to know when it is inert — but a second table
+ * saying so would drift from this one the first time a mode's reach changed, and the drift would be
+ * SILENT in exactly the direction that matters: a box captioned "in use" that nothing reads. So the
+ * caption is computed from this predicate, and the console names the switches by turning each one on ALONE
+ * and asking again (see `house-console-read.ts`). A leaf with no entry here is read under every state, and
+ * `true` is the honest answer for it.
+ * ⚠️ THIS ANSWERS "MUST BE PRESENT IN A STORED DOCUMENT", WHICH IS NOT ALWAYS "IS READ AT DECIDE TIME" —
+ * the three `scope.*` COUNTER numbers are the recorded difference (see their `FIELD_META` entries and
+ * HOUSE-BOTS.md §5). Where the two differ this one is the WIDER of the two, so a caption built from it
+ * never claims a field is inert while something still reads it.
+ */
+export function leafUsedBy(id: FieldId, state: LeafModeState): boolean {
+  const p = LEAF_USED_BY[id];
+  return p === undefined ? true : p(state);
+}
 
 class InvalidStoredRules {
   constructor(readonly field: string) {}
