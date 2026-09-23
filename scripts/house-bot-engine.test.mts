@@ -72,5 +72,14 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  *   minutes, so with no chart open the desk had NO price and skipped every market silently. 14.7c is the case
  *   that keeps the fix honest — the age is judged from the QUOTED instant, so a reading that is genuinely stale
  *   is still refused and the staleness test cannot become a check that cannot fail.
- * What a run PRINTED: `800 passed` memory and `779 passed` Postgres, ALL PASS on both stores, 0 failed. */
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 800, postgres: 779 }, dbPrefix: "hb_engine" });
+ * What a run PRINTED: `800 passed` memory and `779 passed` Postgres, ALL PASS on both stores, 0 failed.
+ *
+ * ⭐ RAISED AGAIN 800 → 801 MEMORY / 779 → 780 POSTGRES, 2026-09-23 — one case, +1 in EACH child:
+ * · 14.5a · the closeness window widened 120 → 180 s, because it has to outlast the provider's ~91 s publish
+ *   lag PLUS the delay an OPENER waits out (up to 90 s). At 120 the first two live intents this desk ever
+ *   created were both refused UD_STALE_PRICE, at 151 s and 144 s — the engine's own reason codes. 14.5 was
+ *   re-aimed from 120 to 180 and 14.7c from 150 to 200, and 14.5a pins the INSIDE edge at 179 s so the pair
+ *   makes the number itself the subject: "180 is refused" alone would stay green if the window were widened
+ *   again to 300.
+ * What a run PRINTED: `801 passed` memory and `780 passed` Postgres, ALL PASS on both stores, 0 failed. */
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 801, postgres: 780 }, dbPrefix: "hb_engine" });
