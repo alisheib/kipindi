@@ -201,6 +201,31 @@ export function botCovers(bot: DecideBot, view: PublicMarketView, mode: "counter
   return rulesCover(bot.rules, view, mode);
 }
 
+/**
+ * The market-level refusals FILL and OPENER share, in the order they have always been checked — only now
+ * each one carries its name out. Every branch here used to be a null code, and a null code is why a desk
+ * showing no bets could not be told apart from a desk that had considered four hundred markets.
+ */
+function coverCode(view: PublicMarketView, bot: DecideBot, mode: "fill" | "opener"): EngineCode | null {
+  if (view.status !== "LIVE") return "MARKET_NOT_LIVE";
+  if (view.reopenedAt) return "MARKET_REOPENED";
+  if (!botCovers(bot, view, mode)) return "OUT_OF_SCOPE";
+  if (view.round && (!view.round.chainRunning || !view.round.assetEnabled)) return "CHAIN_NOT_RUNNING";
+  return null;
+}
+
+/**
+ * The account-level refusals FILL and OPENER share: a market another account or a queued stake already
+ * holds, an H2 cap that failed its precheck (which carries its own CAP_ code), then the schedule — judged
+ * at the instant the bet would be placed, never at the instant it was planned (register B6).
+ */
+function guardCode(bot: DecideBot, dueMs: number): EngineCode | null {
+  if (bot.marketHeld) return "MARKET_HELD";
+  if (bot.capPrecheck) return bot.capPrecheck;
+  if (!inSchedule(bot.rules, dueMs)) return "OUTSIDE_SCHEDULE";
+  return null;
+}
+
 /* ═══ COUNTER ═══════════════════════════════════════════════════════════════════════════════════ */
 
 export type CounterInput = {
@@ -237,7 +262,7 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
   if (view.status !== "LIVE") return { row: null, code: "MARKET_NOT_LIVE" };
   const placedMs = ms(trigger.placedAt);
   // A11 · a NULL scope start is OUT of scope, never "no bound" (C4-SPEC ruling 92).
-  if (input.globalScopeFrom == null || placedMs < ms(input.globalScopeFrom)) return { row: null, code: null };
+  if (input.globalScopeFrom == null || placedMs < ms(input.globalScopeFrom)) return { row: null, code: "BEFORE_SCOPE" };
 
   const product = productOf(view);
   const cutoffMs = ms(cutoffOf(view));
@@ -266,7 +291,7 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
       && targetBot.rules.targeting.enabled && rulesCoverTarget(targetBot.rules, { product: "MARKET", category: view.category }, null)
       ? { target: input.target, bot: targetBot }
       : null;
-  if (!targetEligible && inBotScope.length === 0) return { row: null, code: null };
+  if (!targetEligible && inBotScope.length === 0) return { row: null, code: "NO_ELIGIBLE_BOT" };
 
   const base = (bot: DecideBot, extra: Partial<DecidedRow>): DecidedRow => ({
     houseBotId: bot.botId,
@@ -504,15 +529,15 @@ export function planFill(input: PlanInput, deps: { randomInt: RandomInt }): Deci
   const { view, bot, pools } = input;
   const scope = scopeCode(view);
   if (scope) return { row: null, code: scope };
-  if (view.status !== "LIVE" || view.reopenedAt || !botCovers(bot, view, "fill")) return { row: null, code: null };
-  if (view.round && (!view.round.chainRunning || !view.round.assetEnabled)) return { row: null, code: null };
+  const cover = coverCode(view, bot, "fill");
+  if (cover) return { row: null, code: cover };
   const product = productOf(view);
   const r = bot.rules;
   const cutoffMs = ms(cutoffOf(view));
   const leadMs = (product === "UPDOWN" ? r.fill.leadUdSec : r.fill.leadPollsMin * 60) * 1000;
-  if (input.globalScopeFrom == null || bot.scopeFrom == null) return { row: null, code: null }; // ruling 92
+  if (input.globalScopeFrom == null || bot.scopeFrom == null) return { row: null, code: "BEFORE_SCOPE" }; // ruling 92
   const scopeFromMs = Math.max(ms(input.globalScopeFrom), ms(bot.scopeFrom));
-  if (cutoffMs - leadMs < scopeFromMs) return { row: null, code: null };
+  if (cutoffMs - leadMs < scopeFromMs) return { row: null, code: "BEFORE_SCOPE" };
 
   const p = r.fill.targetThinSharePct;
   const thin = (["YES", "NO"] as const).find((s) => {
@@ -520,21 +545,23 @@ export function planFill(input: PlanInput, deps: { randomInt: RandomInt }): Deci
     const total = pools[s].raw + pools[opp].raw;
     return pools[opp].locked > 0 && pools[s].raw * 100 < p * total;
   });
-  if (!thin) return { row: null, code: null };
+  if (!thin) return { row: null, code: "NO_THIN_SIDE" };
   const opp = oppositeSide(thin);
   const passNowMs = ms(input.passNow);
   const jitterMs = r.fill.jitterSec > 0 ? deps.randomInt(0, r.fill.jitterSec) * 1000 : 0;
   const dueMs = Math.max(cutoffMs - leadMs - jitterMs, passNowMs);
   const g = guardsFor(r, product);
   const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;
-  if (dueMs > deadlineMs) return { row: null, code: null };
-  if (product === "UPDOWN" && udCloseness(view, input.price, r.updown.closenessPct)) return { row: null, code: null };
-  if (bot.marketHeld || bot.capPrecheck || !inSchedule(r, dueMs)) return { row: null, code: null };
+  if (dueMs > deadlineMs) return { row: null, code: "CUTOFF" };
+  const close = product === "UPDOWN" ? udCloseness(view, input.price, r.updown.closenessPct) : null;
+  if (close) return { row: null, code: close };
+  const guard = guardCode(bot, dueMs);
+  if (guard) return { row: null, code: guard };
 
   const wanted = Math.floor((pools[opp].locked * p) / (100 - p)) - pools[thin].raw;
   const room = pools[opp].locked - pools[thin].raw;
   const clamped = clampStake(Math.min(wanted, room), bot, input.bounds);
-  if (!clamped.ok) return { row: null, code: null };
+  if (!clamped.ok) return { row: null, code: "STAKE_BELOW_MIN" };
   const staleMs = dueMs + (product === "UPDOWN" ? STALE_AFTER_SEC.updown : STALE_AFTER_SEC.polls) * 1000;
   return {
     row: {
@@ -559,15 +586,15 @@ export function planOpener(input: PlanInput & { openerSide: DecideSide }, deps: 
   const { view, bot, pools } = input;
   const scope = scopeCode(view);
   if (scope) return { row: null, code: scope };
-  if (view.status !== "LIVE" || view.reopenedAt || !botCovers(bot, view, "opener")) return { row: null, code: null };
-  if (view.round && (!view.round.chainRunning || !view.round.assetEnabled)) return { row: null, code: null };
-  if (pools.YES.raw !== 0 || pools.NO.raw !== 0) return { row: null, code: null };
+  const cover = coverCode(view, bot, "opener");
+  if (cover) return { row: null, code: cover };
+  if (pools.YES.raw !== 0 || pools.NO.raw !== 0) return { row: null, code: "MARKET_NOT_EMPTY" };
   const product = productOf(view);
   const r = bot.rules;
   const fromMs = ms(bettableFrom(view));
-  if (input.globalScopeFrom == null || bot.scopeFrom == null) return { row: null, code: null }; // ruling 92
+  if (input.globalScopeFrom == null || bot.scopeFrom == null) return { row: null, code: "BEFORE_SCOPE" }; // ruling 92
   const scopeFromMs = Math.max(ms(input.globalScopeFrom), ms(bot.scopeFrom));
-  if (fromMs < scopeFromMs) return { row: null, code: null };
+  if (fromMs < scopeFromMs) return { row: null, code: "BEFORE_SCOPE" };
   const delaySec = product === "UPDOWN"
     ? deps.randomInt(r.opener.delayUdMinSec, r.opener.delayUdMaxSec)
     : deps.randomInt(r.opener.delayPollsMinMin, r.opener.delayPollsMaxMin) * 60;
@@ -575,9 +602,11 @@ export function planOpener(input: PlanInput & { openerSide: DecideSide }, deps: 
   const g = guardsFor(r, product);
   const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;
   const dueMs = Math.max(fromMs + delaySec * 1000, ms(input.passNow));
-  if (dueMs > deadlineMs) return { row: null, code: null };
-  if (product === "UPDOWN" && udCloseness(view, input.price, r.updown.closenessPct)) return { row: null, code: null };
-  if (bot.marketHeld || bot.capPrecheck || !inSchedule(r, dueMs)) return { row: null, code: null };
+  if (dueMs > deadlineMs) return { row: null, code: "CUTOFF" };
+  const close = product === "UPDOWN" ? udCloseness(view, input.price, r.updown.closenessPct) : null;
+  if (close) return { row: null, code: close };
+  const guard = guardCode(bot, dueMs);
+  if (guard) return { row: null, code: guard };
   /**
    * ⛔ DRAWN, NOT FLOORED HERE — `clampStake` applies the step, and applying it twice hid a defect.
    *
@@ -591,7 +620,7 @@ export function planOpener(input: PlanInput & { openerSide: DecideSide }, deps: 
    */
   const drawn = deps.randomInt(r.opener.stakeMinTzs, r.opener.stakeMaxTzs);
   const clamped = clampStake(drawn, bot, input.bounds);
-  if (!clamped.ok) return { row: null, code: null };
+  if (!clamped.ok) return { row: null, code: "STAKE_BELOW_MIN" };
   const staleMs = dueMs + (product === "UPDOWN" ? STALE_AFTER_SEC.updown : STALE_AFTER_SEC.polls) * 1000;
   return {
     row: {

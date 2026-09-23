@@ -401,6 +401,55 @@ await guard("7", () => {
   ok("7.33 · …FILL with the bot's scopeFrom NULL → no row; CONTROL: set → a row",
     DE.planFill(fillIn({ bot: botOf({ scopeFrom: null }) }), { randomInt: minRand }).row === null && DE.planFill(fillIn(), { randomInt: minRand }).row != null);
   ok("7.34 · …OPENER with global scopeFrom NULL → no row", DE.planOpener({ ...openIn({ globalScopeFrom: null }), openerSide: "NO" }, { randomInt: minRand }).row === null);
+
+  /* ━━ 2026-09-23 · THE EIGHTEEN REFUSALS THAT HAD NO NAME ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * Every case above this line asserts `.row === null` — which is the defect, stated by the tests themselves.
+   * A null row says "not this market" and stops. `planFill` and `planOpener` had EIGHTEEN refusal points and
+   * every one returned a null CODE beside it, so an officer looking at an account with no bets could not tell
+   * "there was nothing to stake on" from "four hundred markets were considered and every one refused". These
+   * assert the REASON, which is the thing a desk can actually paint. */
+  ok("7.34a · the three refusals that had no name at all: FILL before the account was Started, FILL with neither side thin, OPENER on a market that already holds money",
+    DE.planFill(fillIn({ bot: botOf({ scopeFrom: null }) }), { randomInt: minRand }).code === "BEFORE_SCOPE"
+      && DE.planFill(fillIn({ pools: { YES: side({ raw: 10_000, nonHouse: 10_000, unlocked: 10_000 }), NO: side({ raw: 1_000 }) } }), { randomInt: minRand }).code === "NO_THIN_SIDE"
+      && DE.planOpener({ ...fillIn(), openerSide: "NO" }, { randomInt: minRand }).code === "MARKET_NOT_EMPTY",
+    j({
+      beforeScope: DE.planFill(fillIn({ bot: botOf({ scopeFrom: null }) }), { randomInt: minRand }).code,
+      noThin: DE.planFill(fillIn({ pools: { YES: side({ raw: 10_000, nonHouse: 10_000, unlocked: 10_000 }), NO: side({ raw: 1_000 }) } }), { randomInt: minRand }).code,
+      notEmpty: DE.planOpener({ ...fillIn(), openerSide: "NO" }, { randomInt: minRand }).code,
+    }));
+  ok("7.34b · …and a refusal that DID have a name elsewhere carries it here too, rather than collapsing to nothing: a market that is no longer live",
+    DE.planFill(fillIn({ view: { status: "SETTLED" } }), { randomInt: minRand }).code === "MARKET_NOT_LIVE",
+    j({ notLive: DE.planFill(fillIn({ view: { status: "SETTLED" } }), { randomInt: minRand }).code }));
+
+  /* ⭐ THE CLAIM THE CONSOLE`S READ-ONLY WALK RESTS ON, HELD HERE RATHER THAN IN A COMMENT.
+   * `explainBotIdle` walks the planner`s own ladder with `place: false` and SKIPS `openerSide`, because that
+   * call INSERTS the audited, once-per-market draw and an officer opening a panel must not mint one. Skipping
+   * it is sound for exactly one reason: `planOpener` reads the drawn side ONLY to fill the row it returns.
+   * ⛔ THE DAY A SIDE-DEPENDENT REFUSAL IS ADDED, THIS FAILS — which is the point. Without it, the comment
+   * over there is the only thing holding the panel honest, and a comment has never failed a build. */
+  {
+    const openSide = (sd: "YES" | "NO", o: Any = {}) => DE.planOpener({ ...openIn(o), openerSide: sd }, { randomInt: minRand });
+    const yes = openSide("YES"), no = openSide("NO");
+    const strip = (r: Any) => j({ ...r, side: null, why: null });
+    const refYes = openSide("YES", { globalScopeFrom: null }), refNo = openSide("NO", { globalScopeFrom: null });
+    ok("7.34c · the drawn side changes the ROW and never the ANSWER — same draws, both sides: the two rows differ in their side and in the sentence naming it, and in NOTHING else; a refusal answers the same code either way",
+      yes.row != null && no.row != null && yes.row.side === "YES" && no.row.side === "NO"
+        && strip(yes.row) === strip(no.row) && yes.row.why !== no.row.why
+        && refYes.code === "BEFORE_SCOPE" && refNo.code === "BEFORE_SCOPE",
+      j({ yes: yes.row, no: no.row, refYes: refYes.code, refNo: refNo.code }));
+  }
+
+  /* ⛔ AND THE SOURCE IS PINNED, because eighteen points is too many to hold by example: a nineteenth refusal
+   * added tomorrow would be nameless again, and every behavioural case above would still pass. */
+  {
+    const decideSrc = decomment(readFileSync(join(ROOT, "src/lib/server/house-bot/decide.ts"), "utf8"));
+    const NAMELESS = /return { row: null, code: null }/g;
+    ok("7.34d · not one refusal in decide.ts returns a nameless code — eighteen of them did; CONTROL: the same pattern IS found in a planted line, so a zero here means absence and not a broken pattern",
+      (decideSrc.match(NAMELESS) ?? []).length === 0
+        && ("  return { row: null, code: null };".match(NAMELESS) ?? []).length === 1
+        && decideSrc.length > 5_000,
+      j({ nameless: (decideSrc.match(NAMELESS) ?? []).length, bytes: decideSrc.length }));
+  }
   const tdStake = DE.targetDueAt({ placedAtMs: 0, exitCloseAtMs: 300_000, timingFrom: "STAKE", delaySec: 10 });
   const tdExit = DE.targetDueAt({ placedAtMs: 0, exitCloseAtMs: 300_000, timingFrom: "EXIT_CLOSE", delaySec: 10 });
   ok("7.35 · ruling 108 · one due-time formula: STAKE 10 s on a 5-min exit → requested 0:10, held to 5:07; EXIT_CLOSE 10 s → 5:10",

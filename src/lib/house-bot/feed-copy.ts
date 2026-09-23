@@ -76,6 +76,9 @@ export const ENGINE_CODE_SENTENCE = {
   CAP_COUNTERPARTY_TZS: "the TZS set against this player today reached its limit",
   CAP_GLOBAL_STAFF_CHOSEN_PER_DAY: "house bots had used today's staff-chosen stakes",
   CAP_GLOBAL_STAFF_CHOSEN_DAILY_STAKE: "house bots' staff-chosen TZS limit for today was reached",
+  MARKET_NOT_EMPTY: "the market already held money, so there was nothing to open",
+  BEFORE_SCOPE: "the market opened before the desk was switched on",
+  NO_THIN_SIDE: "neither side was thin enough to fill",
 } as const satisfies Record<EngineCode, string>;
 
 /** Every CAP_ code has its own row above — `CapCode` is closed, so this is a compile-time proof too. */

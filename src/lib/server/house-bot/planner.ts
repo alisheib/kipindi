@@ -44,6 +44,8 @@ import { houseDayBook, houseDayBooks } from "./book";
 import { alertOnce, engineAudit, engineSwitchOff, stopBot, type EngineAlerts } from "./outcomes";
 import type { EngineState, EngineTicks, TickContext } from "./engine";
 import { botCovers, guardsFor, intentRowOf, orderBots, planFill, planOpener, type DecideBot, type DecideResult, type RandomInt } from "./decide";
+import type { EngineCode } from "@/lib/house-bot/constants";
+import { SCOPE_PRODUCTS } from "@/lib/house-bot/rules";
 import type { LockedPool, LockedPoolSide } from "../house-bot-dal";
 import { cutoffOf, projectMarketView, scopeCode } from "./market-view";
 import { lockedForHouse, lockedPoolInputsOfView } from "./pools";
@@ -540,7 +542,8 @@ export async function planFillAndOpener(
           kind, productLine: product, fromIso: iso(nowMs + PLANNER_MIN_CUTOFF_AHEAD_MS), toIso, after: state.planner.scan[cursorKey] ?? null, limit: SWEEP_PAGE_SIZE,
         });
         for (const r of rows) {
-          if (await planMarket(kind, r.id, eligible, { nowMs, control, globalScopeFrom, ...deps })) result[kind === "FILL" ? "fill" : "opener"]++;
+          const v = await runMarket(kind, r.id, eligible, { nowMs, control, globalScopeFrom, ...deps }, true);
+          if (v.placed) result[kind === "FILL" ? "fill" : "opener"]++;
         }
         const full = rows.length === SWEEP_PAGE_SIZE;
         state.planner.scan[cursorKey] = full ? rows[rows.length - 1] : null;
@@ -551,23 +554,47 @@ export async function planFillAndOpener(
   return result;
 }
 
-async function planMarket(
+/**
+ * ⭐ ONE LADDER, TWO READERS (2026-09-23).
+ *
+ * The planner walks this to PLACE; the console walks the very same call with `place: false` to say WHY
+ * nothing was placed. A second, explaining copy of this ladder is the thing to fear here — two ladders
+ * agree right up to the day one of them is amended, and then the screen explains a decision the engine
+ * did not make. So there is one function, and the only thing `place` changes is whether the row is
+ * written and whether the walk stops at the first account that would place.
+ *
+ * ⛔ WITH `place: true` THE CONTROL FLOW IS EXACTLY WHAT IT WAS: the same reads in the same order, the
+ * first covering account that would write a row wins, and nothing else is evaluated. The codes are
+ * collected on the way past; collecting them costs a Map write and changes no decision.
+ */
+export type MarketExplain = {
+  placed: boolean;
+  /** Refused before any account was reached — the market itself, not the rules. */
+  marketCode: EngineCode | null;
+  /** Per covering account, in PLAN §4.4 order. A null code is an account that WOULD have staked. */
+  byBot: Array<{ botId: string; code: EngineCode | null }>;
+};
+
+async function runMarket(
   kind: "FILL" | "OPENER",
   marketId: string,
   eligible: ReadonlyArray<DecideBot & { stored: StoredHouseBot }>,
   o: { nowMs: number; control: StoredHouseBotControl; globalScopeFrom: string; randomInt: RandomInt; drawRandomInt?: DrawRandomInt },
-): Promise<boolean> {
+  place: boolean,
+): Promise<MarketExplain> {
+  const byBot: MarketExplain["byBot"] = [];
+  const no = (marketCode: EngineCode | null): MarketExplain => ({ placed: false, marketCode, byBot });
   const row = await houseSeamStore.marketView(marketId);
-  if (!row) return false;
+  if (!row) return no("MARKET_GONE");
   const view = projectMarketView(row);
   const mode = kind === "FILL" ? "fill" : "opener";
   // Ruling 96 · per market, the covering bots in PLAN §4.4 order; the first row wins.
   const covering = orderBots(eligible.filter((b) => botCovers(b, view, mode)));
-  if (covering.length === 0) return false;
+  if (covering.length === 0) return no("OUT_OF_SCOPE");
   // An OPENER needs only the raw pools (both 0, H3's own condition); `lockedForHouse` is a FILL's read.
   const rawSide = (raw: number): LockedPoolSide => ({ raw, nonHouse: 0, locked: 0, unlocked: 0, earliestLockAt: null, excluded: 0, lockedA15: 0, accounts: [] });
   const pools: LockedPool = kind === "FILL" ? await lockedForHouse(view.id, lockedPoolInputsOfView(view)) : { YES: rawSide(view.yesPool), NO: rawSide(view.noPool) };
-  if (kind === "OPENER" && (pools.YES.raw !== 0 || pools.NO.raw !== 0)) return false;
+  if (kind === "OPENER" && (pools.YES.raw !== 0 || pools.NO.raw !== 0)) return no("MARKET_NOT_EMPTY");
   const product = view.productLine === "UPDOWN" ? "UPDOWN" : "MARKET";
   const price = product === "UPDOWN" && view.round ? await udPriceForDecision(assetIdOf(view.round.chainKey), { nowMs: o.nowMs }) : null;
   const bounds = await stakeBoundsForMarket({ id: view.id, productLine: product });
@@ -580,23 +607,143 @@ async function planMarket(
     const record: RandomInt = (min, max) => { const v = o.randomInt(min, max); draws.push(v); return v; };
     const input = { view, bot: b as DecideBot, pools, price, bounds, globalScopeFrom: o.globalScopeFrom, passNow };
     const probe = kind === "FILL" ? planFill(input, { randomInt: record }) : planOpener({ ...input, openerSide: "YES" }, { randomInt: record });
-    if (!probe.row) continue;
+    if (!probe.row) { byBot.push({ botId: b.botId, code: probe.code }); continue; }
     // Only now, for a bot that would write a row: the holding predicate and the money caps, one read at a time.
-    if ((await marketHeld(b.botId, view.id)).held) continue;
+    if ((await marketHeld(b.botId, view.id)).held) { byBot.push({ botId: b.botId, code: "MARKET_HELD" }); continue; }
     const facts = await loadCapFacts(b.stored, view.id, { control: o.control, nowMs: o.nowMs, staffChosen: false, counterpartyUserId: null });
-    if (capPrecheck(facts, Math.max(b.stakeMinTzs ?? bounds.min, bounds.min))) continue;
+    const capped = capPrecheck(facts, Math.max(b.stakeMinTzs ?? bounds.min, bounds.min));
+    if (capped) { byBot.push({ botId: b.botId, code: capped }); continue; }
     let decided: DecideResult = probe;
-    if (kind === "OPENER") {
+    /**
+     * ⛔ THE EXPLAINING WALK DOES NOT DRAW. `openerSide` INSERTS the draw event — it is the audited,
+     * once-per-market record of which side the house took — and an officer opening a panel must not
+     * mint one. Skipping it is sound for exactly one reason, and only while that reason holds:
+     * `planOpener` reads `openerSide` ONLY to fill the row it returns (its `side` and its `why`).
+     * No refusal branch looks at it, so the probe above already carries the verdict, and re-running
+     * with the drawn side could change the row but never the answer.
+     * 🔒 HELD BY a case that runs planOpener twice, YES and NO, on the same draws and demands the same
+     * refusal — so the day a side-dependent refusal is added, that case fails instead of this comment.
+     */
+    if (kind === "OPENER" && place) {
       const draw = await openerSide(view.id, { houseBotId: b.botId, actorId: null, drawnFor: "OPENER_PLAN" }, { randomInt: o.drawRandomInt });
       let k = 0;
       const replay: RandomInt = (min, max) => (k < draws.length ? draws[k++] : o.randomInt(min, max));
       decided = planOpener({ ...input, openerSide: draw.side }, { randomInt: replay });
-      if (!decided.row) continue;
+      if (!decided.row) { byBot.push({ botId: b.botId, code: decided.code }); continue; }
     }
+    byBot.push({ botId: b.botId, code: null });
+    // ⛔ THE EXPLAINING WALK NEVER WRITES, and it never stops early: the officer asked about every account.
+    if (!place) continue;
     const inserted = await houseBotIntentStore.insertIgnoringConflict(intentRowOf(decided.row!, { id: newHouseId("intent"), anchorKey: view.id, nowIso: passNow }));
-    return inserted != null;
+    return { placed: inserted != null, marketCode: null, byBot };
   }
-  return false;
+  return no(null);
+}
+
+/* ═══ 8b · "why is this account not staking?" (2026-09-23) ═══════════════════════════════════════ */
+
+/**
+ * ⭐ THE ANSWER IS ALWAYS ABOUT NOW.
+ *
+ * An officer asks this with the desk in front of them: they change a rule, reload, and expect the reason
+ * to change. So this walks live markets through the SAME `runMarket` the planner walks, with
+ * `place: false`, and counts the reasons it comes back with. It writes nothing and places nothing.
+ *
+ * ⛔ IT IS NOT A RECORD OF THE LAST PASS, deliberately. A reason stamped an hour ago answers a question
+ * nobody asked, and it keeps answering it after the rule that caused it has been changed.
+ *
+ * ⚠️ IT IS A SAMPLE, and it says so: `looked` carries how many markets each kind actually offered, so a
+ * screen can never present "12 markets" as though it were the whole book.
+ */
+export type IdleExplain = {
+  botId: string;
+  /** Per kind and product this account's rules leave switched ON, how many markets the scan offered. */
+  looked: Array<{ kind: "FILL" | "OPENER"; product: "MARKET" | "UPDOWN"; markets: number }>;
+  considered: number;
+  /** Markets where this account would have staked right now — a non-zero count with no bets is its own story. */
+  wouldStake: number;
+  /** Every refusal met, commonest first; ties by code so the order is stable between reloads. */
+  byCode: Array<{ code: EngineCode; markets: number }>;
+  /**
+   * ⭐ THE ACCOUNT THAT ONLY REACTS, WHICH THIS READER WOULD OTHERWISE SLANDER (2026-09-23).
+   *
+   * This walk covers FILL and OPENER, because those are the two the PLANNER plans. The third entry mode
+   * is driven by a player's own stake in `trigger.ts` and reaches no planner at all. An account with
+   * only that mode on therefore offers this walk nothing — and the first version of this reader reported
+   * that as "every market kind is switched off", which is false and would have sent an officer to change
+   * a correctly configured account. It is a different sentence, so it is a different field.
+   */
+  reactsOnly: boolean;
+  scopeFrom: string | null;
+  globalScopeFrom: string | null;
+};
+
+/** How many markets each (kind × product) contributes to the sample. Bounded: an officer is waiting. */
+export const IDLE_EXPLAIN_LIMIT = 25;
+
+/**
+ * ⛔ THE INSTANT IS THE ENGINE'S OWN, AND IT IS CHOSEN HERE. The planner decides which markets are in its
+ * window against the CONTAINER clock (`plannerPass` does the same), so a probe that means to agree with
+ * the planner must read the same clock. Letting a caller hand one in would let a screen ask about a
+ * moment the engine never planned at.
+ */
+export async function explainBotIdle(
+  botId: string,
+  o: { nowMs?: number; limit?: number; randomInt?: RandomInt } = {},
+): Promise<IdleExplain | null> {
+  const nowMs = o.nowMs ?? Date.now();
+  const bot = await houseBotStore.get(botId);
+  if (!bot || bot.status === "REMOVED") return null;
+  const parsed = parseHouseBotRules(bot.rules, await loadParseContext());
+  if (!parsed.ok) return null; // the Rules tab says this in its own words, and offers the repair
+  const rules = parsed.rules;
+  const globalScopeFrom = (await houseBotRuntimeStore.get(RUNTIME_KEY.global))?.scopeFrom ?? null;
+  const scopeFrom = (await houseBotRuntimeStore.get(RUNTIME_KEY.bot(bot.id)))?.scopeFrom ?? null;
+  // The third entry mode never reaches a planner: a player's stake triggers it. Read it before the walk.
+  const reactsOnly = SCOPE_PRODUCTS.every((k) => !(rules.scope.products[k] && (rules.modes[k].fill || rules.modes[k].opener)))
+    && SCOPE_PRODUCTS.some((k) => rules.scope.products[k] && rules.modes[k].counter);
+  const out: IdleExplain = { botId, looked: [], considered: 0, wouldStake: 0, byCode: [], reactsOnly, scopeFrom, globalScopeFrom };
+  // Ruling 92 · a NULL scope start is OUT of scope, never "no bound". The switch is the whole answer.
+  if (globalScopeFrom == null || scopeFrom == null) return out;
+
+  const control = await houseBotControlStore.get();
+  const exposure = (await houseBookStore.openExposure(null)).find((r) => r.houseBotId === bot.id)?.openStakeTzs ?? 0;
+  const last = (await houseSeamStore.placedTimes({ houseBotId: bot.id, withinSec: 86_400 }))[0] ?? null;
+  const candidate: DecideBot & { stored: StoredHouseBot } = {
+    botId: bot.id, botUserId: bot.userId, label: bot.label, rules, stakeMinTzs: bot.stakeMinTzs, stakeMaxTzs: bot.stakeMaxTzs,
+    capOpenExposureTzs: bot.capOpenExposureTzs, openExposure: exposure, lastPlacedAt: last, scopeFrom,
+    marketHeld: false, capPrecheck: null, stored: bot,
+  };
+
+  const tally = new Map<EngineCode, number>();
+  const limit = o.limit ?? IDLE_EXPLAIN_LIMIT;
+  const randomInt = o.randomInt ?? defaultRandomInt;
+  for (const kind of ["FILL", "OPENER"] as const) {
+    for (const product of ["MARKET", "UPDOWN"] as const) {
+      const mode = kind === "FILL" ? "fill" : "opener";
+      const key = product === "UPDOWN" ? "updown" : "polls";
+      // Switched off in this account's own rules: not a refusal, and counting it as one would be a lie.
+      if (!rules.scope.products[key] || !rules.modes[key][mode]) continue;
+      const toIso = kind === "FILL"
+        ? iso(nowMs + (product === "UPDOWN" ? rules.fill.leadUdSec : rules.fill.leadPollsMin * 60) * 1000 + rules.fill.jitterSec * 1000 + PLANNER_INTERVAL_MS)
+        : null;
+      const rows = await houseSeamStore.plannableMarkets({
+        kind, productLine: product, fromIso: iso(nowMs + PLANNER_MIN_CUTOFF_AHEAD_MS), toIso, after: null, limit,
+      });
+      out.looked.push({ kind, product, markets: rows.length });
+      for (const r of rows) {
+        const v = await runMarket(kind, r.id, [candidate], { nowMs, control, globalScopeFrom, randomInt }, false);
+        out.considered++;
+        const mine = v.byBot.find((x) => x.botId === bot.id);
+        const code = v.marketCode ?? mine?.code ?? null;
+        if (code != null) tally.set(code, (tally.get(code) ?? 0) + 1);
+        else if (mine) out.wouldStake++;
+      }
+    }
+  }
+  out.byCode = [...tally].map(([code, markets]) => ({ code, markets }))
+    .sort((a, b) => b.markets - a.markets || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
+  return out;
 }
 
 /* ═══ 9 · hourly: summaries (C13, N1 §7; rulings 80–81) and the prune (ruling 87) ════════════════ */

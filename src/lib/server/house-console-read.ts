@@ -58,6 +58,7 @@ import { TARGET_END_CAPTION } from "@/lib/house-bot/feed-copy";
 import { saveHouseBotLimits } from "./house-bot/limits-save";
 import { saveHouseBotRules } from "./house-bot/rules-save";
 import { switchOnHouseBots } from "./house-bot/switch-on";
+import { explainBotIdle } from "./house-bot/planner";
 import { switchOffHouseBots } from "./house-bot/kill-switch";
 import { houseEngineAlerts } from "./house-bot/emitters";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
@@ -3544,6 +3545,9 @@ const CONSOLE_SKIP_SENTENCE = {
   CAP_COUNTERPARTY_TZS: "The TZS set against that player today reached its limit",
   CAP_GLOBAL_STAFF_CHOSEN_PER_DAY: "The desk had used today's manual stakes",
   CAP_GLOBAL_STAFF_CHOSEN_DAILY_STAKE: "The desk's manual TZS limit for today was reached",
+  MARKET_NOT_EMPTY: "The market already held money, so there was nothing to open",
+  BEFORE_SCOPE: "The market opened before the desk was switched on",
+  NO_THIN_SIDE: "Neither side was thin enough to fill",
 } as const satisfies Record<EngineCode, string>;
 
 /**
@@ -3645,6 +3649,11 @@ export type ConsoleEventRow = {
  */
 export type ConsoleQuery = {
   tab?: string | string[];
+  /**
+   * ⭐ THE ONE QUESTION A LINK MAY ASK (2026-09-23), beside `reverify` below and read the same way: as a
+   * FLAG, never as a name. It costs a walk of live markets, so it is asked for rather than always paid.
+   */
+  why?: string | string[];
   tpage?: string | string[];
   page?: string | string[];
   hpage?: string | string[];
@@ -6529,5 +6538,97 @@ export async function houseDesignateForConsole(
     ok: false,
     field: "password",
     error: actRefusal(done.code, { attemptsBeforeLock: done.attemptsBeforeLock, retryAfterSec: done.retryAfterSec }),
+  };
+}
+
+
+/* ═══ "Why is this account not staking?" — the desk answers in its own words (2026-09-23) ════════ */
+
+/**
+ * ⭐ THE QUESTION AN OFFICER ACTUALLY ASKS, AND THE ONLY SCREEN THAT COULD NOT ANSWER IT.
+ *
+ * A roster row showed a running account with no bets and nothing else. Every refusal the two planners
+ * can make was unnamed — eighteen of them returned a null code — so "there was nothing to stake on"
+ * and "four hundred markets were considered and every one refused" painted the same blank row.
+ *
+ * ⛔ IT WALKS THE ENGINE'S OWN LADDER, NOT A SECOND ONE. `explainBotIdle` calls the SAME `runMarket`
+ * the planner calls, with `place: false`. A screen that explains a decision the engine did not make is
+ * worse than a screen that explains nothing, and two ladders agree only until one of them is amended.
+ *
+ * ⛔ IT WRITES NOTHING. No intent, no opener draw, no event — an officer opening a panel must not move
+ * the desk they are inspecting.
+ *
+ * ⛔ A REFUSED VIEWER GETS `null` AND NOTHING ELSE — no label, no count, no sentence (259, 399).
+ */
+export type ConsoleWhyIdleView = {
+  /** The one-line answer, always present and always in the officer's words. */
+  headline: string;
+  /** The refusals met, commonest first. Empty when the walk refused nothing. */
+  reasons: Array<{ text: string; markets: number }>;
+  /** What the walk actually looked at, so a sample is never read as the whole book. */
+  scanned: string;
+  /** Markets this account would stake on right now, counted on the same walk. */
+  wouldStake: number;
+};
+
+const WHY_IDLE_COPY = {
+  deskOff: "The desk is switched off. Nothing is staked from any account until an officer switches it back on.",
+  notActive: "This account is not running. Only a running account stakes — use Start on its card.",
+  neverStarted: "This account has never been started, so no market is in its scope yet. Start it and it takes the markets that open from that moment on, never the ones already running.",
+  /* ⛔ NEUTRAL, AND THE LEXICON MEASURED IT (453). This sentence named the three entry modes, and one of
+        them IS the mechanism's name — the console may not print it. It names the two switches instead, which
+        is also the shorter sentence, and the Rules tab carries each mode's own neutral words. */
+  allModesOff: "This account's rules leave it nothing to stake on: either no product is switched on, or no entry mode is. Its Rules tab is where both are set.",
+  /* ⭐ THE CORRECTLY CONFIGURED ACCOUNT THIS PANEL WOULD OTHERWISE SLANDER. An account whose only entry mode
+     is the one a player's own stake triggers offers the planner nothing to walk, which is not a fault and
+     must not be reported as one. */
+  reactsOnly: "This account only stakes when a player does — it waits for a player's stake on a market its rules cover, rather than opening or filling one itself. Nothing is wrong, and there is nothing here to count.",
+  nothingOpen: "No market was open in the window this account looks at. Between rounds that is normal and nothing is wrong.",
+  working: "This account would stake right now, so it is working. The desk places at most one stake per market each pass, which is why bets appear a few seconds apart.",
+  refused: "None of the markets looked at could be staked right now. The reasons are below, commonest first.",
+} as const;
+
+export async function houseWhyIdleForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  botId: string,
+): Promise<ConsoleWhyIdleView | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const id = typeof botId === "string" ? botId : "";
+  if (id.length === 0) return null;
+
+  /* ⛔ ONE SETTLED SET (355): a failed control read is not a switched-off desk, and a failed account read is
+     not a missing account. Either one answers `null` — the panel says nothing rather than something false. */
+  const [controlR, botR] = await Promise.allSettled([
+    (async () => houseBotControlStore.get())(),
+    (async () => houseBotStore.get(id))(),
+  ]);
+  if (controlR.status !== "fulfilled" || botR.status !== "fulfilled") return null;
+  const bot = botR.value;
+  if (!bot || bot.status === "REMOVED") return null;
+
+  const only = (headline: string): ConsoleWhyIdleView => ({ headline, reasons: [], scanned: "", wouldStake: 0 });
+  /* The two answers that need no market at all, in the order an officer meets them. */
+  if (!controlR.value.enabled) return only(WHY_IDLE_COPY.deskOff);
+  if (bot.status !== "ACTIVE") return only(WHY_IDLE_COPY.notActive);
+
+  /* ⛔ NO CLOCK CROSSES THIS LINE (1.348, M1). The engine decides which markets are in its window against
+        its OWN instant — the same one the planner reads — so handing one down from a render would let this
+        screen ask about a moment the engine never planned at. */
+  const seen = await explainBotIdle(id);
+  if (!seen) return null;
+  // Ruling 92 · a NULL scope start is OUT of scope, never "no bound".
+  if (seen.globalScopeFrom == null || seen.scopeFrom == null) return only(WHY_IDLE_COPY.neverStarted);
+  if (seen.reactsOnly) return only(WHY_IDLE_COPY.reactsOnly);
+  if (seen.looked.length === 0) return only(WHY_IDLE_COPY.allModesOff);
+  if (seen.considered === 0) return only(WHY_IDLE_COPY.nothingOpen);
+
+  return {
+    headline: seen.wouldStake > 0 ? WHY_IDLE_COPY.working : WHY_IDLE_COPY.refused,
+    reasons: seen.byCode.map((r) => ({ text: CONSOLE_SKIP_SENTENCE[r.code], markets: r.markets })),
+    /* ⚠️ IT SAYS IT IS A SAMPLE. A panel that prints "12 markets" beside a book of four hundred reads as
+       the whole book, and an officer would then believe the desk had run out of markets. */
+    scanned: `${formatNumber(seen.considered)} ${seen.considered === 1 ? "market" : "markets"} looked at — a sample of what is open now, not the whole book.`,
+    wouldStake: seen.wouldStake,
   };
 }

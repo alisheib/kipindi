@@ -391,6 +391,17 @@ export const ENGINE_CODES = [
   "CAP_OPPOSITE_SIDE",
   // C4-SPEC ruling 66: the bot's saved scope no longer covers the market at fire
   "OUT_OF_SCOPE",
+  /**
+   * 2026-09-23 · THE THREE REFUSALS THE PLANNERS HAD NO NAME FOR.
+   *
+   * Every other reason planFill and planOpener can refuse for already had a code here. These three did
+   * not, so those two planners returned a null code at all eighteen of their refusal points, and a desk
+   * reading zero intents could not tell "there was nothing to consider" from "considered four hundred
+   * markets and refused every one". Naming them is what makes the difference readable.
+   */
+  "MARKET_NOT_EMPTY",
+  "BEFORE_SCOPE",
+  "NO_THIN_SIDE",
 ] as const;
 
 /**

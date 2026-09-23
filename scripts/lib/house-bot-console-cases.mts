@@ -3465,11 +3465,18 @@ try {
        siblings under one guard need a fragment, a fragment between `&& (` and the rail breaks the pin below, and
        loosening a pin whose claim is correct to accommodate a wrapper is how a guard stops meaning what it says.
        ⭐ NINE BECAME TEN 2026-09-22: the overview's "why this account is not betting" card is a tenth guarded
-       panel (its rules-tab twin sits inside the rules panel's existing guard, so it adds none). */
+       panel (its rules-tab twin sits inside the rules panel's existing guard, so it adds none).
+       ⭐ TEN BECAME TWELVE 2026-09-23, AND ONE OF THE TWO IS NOT A CARD — said plainly here, because a number
+       that quietly stops meaning its own sentence is worse than a number that is wrong. The eleventh is a card:
+       the "Why is it not staking?" panel, the answer an officer gets by asking for it, which walks live markets
+       through the planner's own ladder. The twelfth is its LINK up in the account strip, and it is guarded for
+       ruling 312 rather than 358: on a REMOVED account the door answers `null`, so an unguarded link would be
+       a control that opens nothing — a dead control one click from the page saying the account is gone. The
+       count stays an EQUALITY either way, so a panel or a control that ships without its guard is still red. */
     ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and all four other panels",
       /* ⚠️ THE SOURCE IS DECOMMENTED, so a pin may not reach for a comment as its landmark — measured on the
          first run of this very assertion, which looked for the `312` note above the rail and found nothing. */
-      guards === 10 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
+      guards === 12 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
         && /\{view\.removed && \(\s*<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(detail),
       j({ guards }));
     /* ⛔ AND THE TAB TESTS ARE STILL PURE, which is what keeps `test:tab-anchors` and the served probe able to read

@@ -42,7 +42,7 @@ import { FormColumn } from "@/components/ui/form-column";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { currentSession } from "@/lib/server/auth-service";
-import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, type ConsoleDetailView, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
+import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, houseWhyIdleForConsole, type ConsoleDetailView, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
 import { ActivityFilters } from "../activity-filters";
 import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
@@ -228,6 +228,15 @@ async function AdminDeskAccountContent({
   const sp = await searchParams;
   const tab = consoleDetailTab(sp.tab);
   const answer = await houseDetailForConsole(session?.userId ?? null, "/admin/desk", id, sp);
+  /**
+   * ⭐ "WHY IS IT NOT STAKING?" — ASKED FOR, NEVER ON EVERY LOAD (2026-09-23).
+   *
+   * The answer is a WALK of live markets through the planner's own ladder, so it costs real reads per
+   * market. On a page an officer opens twenty times an hour that would be a tax paid mostly by officers
+   * who were not asking. So it is behind its own flag and its own door, and an account nobody asks about
+   * costs nothing. ⛔ READ AS A FLAG, never as a name off the URL, exactly as `?reverify=1` is below.
+   */
+  const why = sp.why === "1" ? await houseWhyIdleForConsole(session?.userId ?? null, "/admin/desk", id) : null;
   if (!answer) return null;
   if (!answer.found) notFound();
   const view = answer;
@@ -316,6 +325,15 @@ async function AdminDeskAccountContent({
               <WayOutLink href={view.holderFundsHref}>
                 Add or adjust funds
               </WayOutLink>
+              {/* ⭐ THE ONE QUESTION THE DESK COULD NOT ANSWER (2026-09-23). A running account with no bets
+                  painted the same row whether there was nothing to stake on or four hundred markets had been
+                  considered and refused. This asks the engine, on the spot, and prints what it says. ⛔ Not
+                  offered on a REMOVED account: there is nothing left for it to stake on (358). */}
+              {!view.removed && (
+                <WayOutLink href={`${CONSOLE_ROUTE}/${view.id}?why=1`}>
+                  Why is it not staking?
+                </WayOutLink>
+              )}
             </div>
           </div>
 
@@ -338,6 +356,34 @@ async function AdminDeskAccountContent({
             </div>
           )}
         </AdminCard>
+
+        {/* ⭐ THE ANSWER, IN THE CONSOLE'S OWN SENTENCES. Every line here is `CONSOLE_SKIP_SENTENCE` — the
+            engine's outcomes in the officer's words, from the one copy home (rulings 370(c), 453) — so a screen
+            and a feed never describe the same refusal two ways. ⛔ The count column is `shrink-0` beside a
+            `min-w-0` sentence (432(b)): a long reason wraps, the number never does. */}
+        {!view.removed && (
+          /* ⛔ THE GUARD IS THE PANEL'S OWN FIRST TERM, IN THE FORM 1.435 COUNTS (433(e)) — and the fragment
+             is what keeps it there. `{!view.removed && why && (` guards this card just as truly, but the pin
+             reads a literal shape, and a guard the instrument cannot see is a guard nobody will notice the
+             loss of. ⚠️ `why` is ALSO null on a removed account, because the door refuses one; that is a
+             second, independent answer, not this one. */
+          <>{why && (
+            <Callout tone="neutral" title="Why is it not staking?">
+              {why.headline}
+              {why.reasons.length > 0 && (
+                <ul className="mt-3 space-y-1">
+                  {why.reasons.map((r) => (
+                    <li key={r.text} className="flex items-baseline justify-between gap-4">
+                      <span className="min-w-0">{r.text}</span>
+                      <span className="tabular-nums shrink-0">{r.markets}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {why.scanned && <p className="text-caption mt-3">{why.scanned}</p>}
+            </Callout>
+          )}</>
+        )}
 
         {/* 358 · A REMOVED ACCOUNT IS READ-ONLY, AND THE CALLOUT IS THE STATE — not a failure and not an empty page.
             No action row is rendered here at all, because there is no action left to take. */}

@@ -81,5 +81,10 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  *   re-aimed from 120 to 180 and 14.7c from 150 to 200, and 14.5a pins the INSIDE edge at 179 s so the pair
  *   makes the number itself the subject: "180 is refused" alone would stay green if the window were widened
  *   again to 300.
- * What a run PRINTED: `801 passed` memory and `780 passed` Postgres, ALL PASS on both stores, 0 failed. */
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 801, postgres: 780 }, dbPrefix: "hb_engine" });
+ * ⭐ RAISED AGAIN 801 → 805 MEMORY / 780 → 784 POSTGRES, 2026-09-23 — four cases, +4 in EACH child, which is
+ * what says they are store-independent: 7.34a names the three refusals that had no code at all, 7.34b holds a
+ * refusal that had one elsewhere to carrying it here, 7.34c pins that the drawn OPENER side changes the row and
+ * never the answer (the claim the console`s read-only walk rests on), and 7.34d pins the SOURCE at zero nameless
+ * refusals, because eighteen points is too many to hold by example.
+ * What a run PRINTED: `805 passed` memory and `784 passed` Postgres, ALL PASS on both stores, 0 failed. */
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 805, postgres: 784 }, dbPrefix: "hb_engine" });

@@ -694,8 +694,21 @@ export const MUTATIONS = [
   {
     name: "leaf-closeness-unread-at-fill · the Up & Down closeness stops gating FILL, so a round that has already moved is filled anyway",
     file: DECIDE,
-    from: `  if (product === "UPDOWN" && udCloseness(view, input.price, r.updown.closenessPct)) return { row: null, code: null };\n  if (bot.marketHeld || bot.capPrecheck || !inSchedule(r, dueMs)) return { row: null, code: null };\n\n  const wanted = Math.floor((pools[opp].locked * p) / (100 - p)) - pools[thin].raw;`,
-    to: `  if (bot.marketHeld || bot.capPrecheck || !inSchedule(r, dueMs)) return { row: null, code: null };\n\n  const wanted = Math.floor((pools[opp].locked * p) / (100 - p)) - pools[thin].raw;`,
+    /* ⭐ RE-ANCHORED 2026-09-23. The two refusals this used to quote both answered a NULL code; both now carry
+       their own names, and the closeness gate binds its code so the reason reaches the desk. What the mutation
+       REMOVES is unchanged — the Up & Down closeness gate at FILL — but it must still name the FILL copy of
+       these lines, because OPENER now holds three identical ones. The `const wanted` tail is what tells them apart.
+       ⛔ 7b.20 MUST STILL FAIL UNDER IT, and that is the only thing this re-anchoring is allowed to preserve. */
+    from: `  const close = product === "UPDOWN" ? udCloseness(view, input.price, r.updown.closenessPct) : null;
+  if (close) return { row: null, code: close };
+  const guard = guardCode(bot, dueMs);
+  if (guard) return { row: null, code: guard };
+
+  const wanted = Math.floor((pools[opp].locked * p) / (100 - p)) - pools[thin].raw;`,
+    to: `  const guard = guardCode(bot, dueMs);
+  if (guard) return { row: null, code: guard };
+
+  const wanted = Math.floor((pools[opp].locked * p) / (100 - p)) - pools[thin].raw;`,
     expect: "7b.20 · updown.closenessPct at FILL",
     suite: "engine-mem",
     sections: "7b",
@@ -866,5 +879,44 @@ export const MUTATIONS = [
     expect: "14.7b · ⭐ …and the oracle's own confirmed reading now serves it — the desk can price with no chart open",
     suite: "engine-mem",
     sections: "14",
+  },
+
+  /* ── 2026-09-23 · THE EIGHTEEN NAMELESS REFUSALS, AND THE ONE CLAIM THE READ-ONLY WALK RESTS ON ─────────────
+   * 'planFill' and 'planOpener' refused in eighteen places and every one answered a null code, so a desk with no
+   * bets on it could not be told from a desk that had considered four hundred markets and refused every one.
+   * These three put the silence back, one shape at a time. */
+  {
+    name: "nameless-refusal · a refusal answers a null code again, so the desk is back to a blank row that could mean anything",
+    file: DECIDE,
+    from: `  if (!thin) return { row: null, code: "NO_THIN_SIDE" };`,
+    to: `  if (!thin) return { row: null, code: null };`,
+    expect: "7.34a · the three refusals that had no name at all",
+    suite: "engine-mem",
+    sections: "7",
+  },
+  {
+    /* ⛔ A REFUSAL THAT ALREADY HAD A NAME, COLLAPSED BACK INTO THE COVER CHECK'S NULL. This is the subtler half:
+     * the code existed and was used elsewhere, so nothing but an assertion on THIS path can see it go. */
+    name: "cover-code-unnamed · a settled market stops saying it is settled, and planning walks on past it",
+    file: DECIDE,
+    from: `  if (view.status !== "LIVE") return "MARKET_NOT_LIVE";`,
+    to: `  if (view.status !== "LIVE") return null;`,
+    expect: "7.34b · …and a refusal that DID have a name elsewhere carries it here too",
+    suite: "engine-mem",
+    sections: "7",
+  },
+  {
+    /* ⭐ THE ONE THAT KEEPS THE CONSOLE HONEST. 'explainBotIdle' skips 'openerSide' — which INSERTS the audited
+     * once-per-market draw — on the sole ground that the drawn side never changes whether the account would
+     * stake. Make it change that, and the panel would be explaining a decision the engine did not make. */
+    name: "opener-side-decides · the drawn side starts deciding the ANSWER, so the read-only walk skipping the draw is no longer sound",
+    file: DECIDE,
+    from: `  const clamped = clampStake(drawn, bot, input.bounds);
+  if (!clamped.ok) return { row: null, code: "STAKE_BELOW_MIN" };`,
+    to: `  const clamped = clampStake(drawn, bot, input.bounds);
+  if (!clamped.ok || input.openerSide === "NO") return { row: null, code: "STAKE_BELOW_MIN" };`,
+    expect: "7.34c · the drawn side changes the ROW and never the ANSWER",
+    suite: "engine-mem",
+    sections: "7",
   },
 ];
