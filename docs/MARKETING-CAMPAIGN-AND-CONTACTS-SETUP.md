@@ -32,11 +32,17 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 ```
 ▶ NEXT: Session S1 — U1 (one phone key, and the wire refusal) + U2 (the Tanzanian number library)
 
-✔ LAST SESSION: S0, 2026-09-16 — planning only. This document, its tracker guard, and the three
-  doors (NEXT-PLAN ▶ 0a row, docs README row, LIVE-QA §6b pointer). No product code.
+✔ LAST SESSION: S0b, 2026-09-23 — the SMS rail was SEALED and its lessons folded into this plan
+  (§3a, §3b). Still no product code here; the board is untouched at 0/52.
 
-✔ BEFORE IT: Blackball SMS went live the same day (b726cb7f). TZS 6 per segment, sender `50pick`,
-  balance TZS 232, and NO delivery receipt has EVER reached production (vendor side).
+✔ BEFORE IT: S0, 2026-09-16 — this document, its tracker guard, and the three doors (NEXT-PLAN ▶ 0a
+  row, docs README row, LIVE-QA §6b pointer).
+
+⭐ WHAT CHANGED UNDER THIS PLAN SINCE IT WAS WRITTEN: delivery receipts now WORK, end to end. A
+  production-issued message was DELIVERED and its receipt settled the real row in 11 seconds
+  (`applied: 1`). The plan was written when no receipt had ever arrived; §3a replaces that premise and
+  §3b carries the vendor's measured behaviour. ⛔ Read both before U39, U46 and U47 — each was drafted
+  around an absence that no longer holds.
 
 ◐ HALF-DONE: nothing.
 
@@ -74,6 +80,13 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
      reaching a `"use client"` file is the failure. U27 ships the boundary guard for this.
   ⛔ 20 suites are already RED on clean `main`. Compare against clean main; never claim them.
   ⛔ Visual drives keep `HeadlessChrome` in the UA or `/api/pv` counts the drive as real visitors.
+  ⛔ `railway logs --http` is a TAIL, not a history — 5,000 lines covered FIFTEEN MINUTES when measured,
+     and `--json` returned nothing while the plain form returned thousands. Trust it only LIVE during a
+     watch; the durable instrument is the audit chain (§3b).
+  ⛔ Your own probe writes the same rows the vendor's call would. Discriminate on `srcIp`, exclude this
+     machine, and never probe an endpoint while a watch on it is running (§3b).
+  ⛔ `curl` answers `200` on a page a browser is redirected away from (streamed redirect). Check
+     reachability with a browser, never a status code (§3b).
   ⛔ `git commit --only <paths>`. ⛔ Never `git add -A` — the House Bots checkout shares files.
 ```
 
@@ -101,9 +114,11 @@ The planner and the progress tracker are ONE file: `docs/MARKETING-CAMPAIGN-AND-
 not a summary, not another document — decides what is done. If `git log` shows a commit newer than §0's
 ✔ LAST SESSION, another session is in flight: **stop and ask Ali**.
 
-**2 · Read, in this order.** `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §0 → §1 → §5 (hard rules) →
-§6 (what you may not change) → the two units named in ▶ NEXT, in §9. Then `docs/BLACKBALL-SMS.md` §1 and
-`CLAUDE.md`. ⛔ Do not read the whole `docs/` tree; this file is the contract.
+**2 · Read, in this order.** `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §0 → §1 → **§3a and §3b
+(what the SMS rail actually does now, and what the vendor is — these replace premises the plan was
+written on)** → §5 (hard rules) → §6 (what you may not change) → the two units named in ▶ NEXT, in §9.
+Then `docs/BLACKBALL-SMS.md` §1 and `CLAUDE.md`. ⛔ Do not read the whole `docs/` tree; this file is the
+contract.
 
 **3 · Say the plan back.** Before writing code, state in one message: the two units, the guard each one
 gets, the RED control that proves that guard, and what you will measure. If a unit will not fit in half a
@@ -233,7 +248,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | D18 | U27 | ⬜ | no admin uploader, no CSV parser, and a 1 MB server-action ceiling |
 | D19 | U30 | ⬜ | a pre-flight that says "400 of these are players" is a membership oracle |
 | D20 | U45 | ⬜ | `sendBatch` updates `SmsMessage` rows one at a time — 10k serial UPDATEs for a 10k campaign |
-| D21 | U46 | ⬜ | the DLR route fans out to `InviteEntry` only, and no callback has ever arrived |
+| D21 | U46 | ⬜ | the DLR route fans out to `InviteEntry` only — receipts now arrive (§3a), and a campaign recipient has nowhere to receive one |
 | D22 | U35 | ⬜ | no `MARKETING` purpose: per-lane volume and cost are unreadable |
 | D23 | U43 | ⬜ | the 30 s `withLock` transaction timeout makes the existing send shape unusable at scale |
 | D24 | U49 | ⬜ | no campaign budget; the only spend control is a floor worth eight messages |
@@ -257,6 +272,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S0b | 2026-09-23 | **The SMS rail was sealed, and its lessons folded in — no code, board untouched at 0/52.** Delivery receipts now work end to end: a production-issued OTP was DELIVERED and its receipt settled the real row in 11 seconds (`applied: 1`, `unknownRef: 0`, `mismatch: 0`), after the gateway's first unattended batch of three receipts in one POST. §3a replaces the "no receipt has ever arrived" premise this plan was written on; §3b records the vendor's measured vocabulary and operational facts, plus the seven lessons from eleven days of chasing it — chief among them that four vendor claims of "it is fixed" produced four identical silences, that the real fault (a missing `?token=` on their saved URL) only became visible because our receiver records REFUSED attempts, and that our own probe was briefly mistaken for theirs until it was discriminated by `srcIp`. D21, OD41, §7.7, U46, U47 and U51 were rewritten against the new truth; every guard and unit count is unchanged. |
 | S0 | 2026-09-16 | **Planning only.** Nine agents: four research lenses (Tanzanian law · data model + engine · contacts + import · campaign UX), one draft, three adversarial critics (compliance/abuse/money · code truth · completeness/trackability), one revision. 52 critique findings, all resolved or refuted in writing. **Four critic claims were refuted with evidence:** (1) the `00255…` defect is *latent*, not live — every current caller is pre-validated, so it becomes live only when an importer exists; (2) `isLockedOut` is not "wrong" — Ali ruled on 2026-08-27 that a chosen period is a MINIMUM and the account is not reinstated by itself, so marketing needs its OWN predicate and ⛔ `isLockedOut` is not modified; (3) the helpline is not a citation-free assertion — the Gaming Board's own Advertising Code names `0800110051` three times while `support-config.ts:120` pins `0800 11 0011`, so the defect is real but the remedy is an owner question, not a silent edit; (4) routing campaign bodies through `test:cert-c1`/`c3` aims at a gate that structurally cannot fail — `comms-registry.ts` places SMS outside the module, so marketing gets its own wording assertion instead. Unit count was raised from 22 to **52** after measuring the shipped equivalent at Awarkeh (8,625 + 8,948 lines): 22 units would have been ~800 lines each, which is not half a session. ⚠️ Recorded as UNVERIFIED at S0 and to be re-scored at S1: §0a's self-sufficiency on a fresh machine, and whether the two-unit cadence holds for U30/U43. |
 
 ---
@@ -267,8 +283,8 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 sender `50pick`; **TZS 6 per delivered single-segment GSM-7 SMS**, measured (balance 250 → 244 on one
 send); balance **TZS 232** — thirty-eight single-segment messages; `BATCH_MAX` 50 per request; every
 gateway failure is HTTP 400, so the `status` boolean is the only verdict; the success reply carries no
-per-message id. 🔴 **No delivery receipt has ever reached production** — the Cloudflare BIC rule for
-`/api/webhooks/*` is fixed and the vendor still has not called. Guide: `docs/BLACKBALL-SMS.md`.
+per-message id. ✅ **Delivery receipts WORK** — see §3a, which supersedes the "no receipt has ever
+arrived" premise this plan was written on. Guide: `docs/BLACKBALL-SMS.md`.
 
 **Nothing on this platform checks marketing permission before an SMS.** There is no suppression list, no
 consent ledger, no opt-out, no age check and no responsible-gambling gate on the SMS rail.
@@ -312,6 +328,76 @@ characters (Code cl. 3.7.1–3.7.2); **no promotional material to a self-exclude
 10,000,000 or a year (ETA s.32(3)), and licence suspension or revocation (GN 478T reg 64).
 
 ---
+
+### §3a — ✅ THE RECEIPT RAIL IS PROVEN (2026-09-23) — this replaces the premise above
+
+Measured on production, end to end, on a message production itself sent:
+
+```
+07:14:42.373Z  SmsMessage sms_de5d…  purpose=OTP            production wrote the row
+07:14:43.770Z  sms.accepted   HTTP 200 · balance=196        the gateway took it
+07:14:53.760Z  sms.dlr.received  {lines:1, applied:1, unknownRef:0, mismatch:0}
+               row → status=DELIVERED   dlr=DELIVRD / Success
+```
+
+**Eleven seconds.** `applied: 1` with `unknownRef: 0` and `mismatch: 0` is the discriminator: the receipt
+carried OUR `sms_…` reference, passed the msisdn cross-check, and moved a real row. Earlier the same
+morning the gateway sent its first unattended batch — **three receipts in ONE POST**, one per earlier
+test send, each echoing our reference.
+
+**What this hands the campaign engine, free:**
+
+- ⭐ **`DELIVERED` is a real state, not an aspiration.** U47's figures, U48's results and the export can
+  show delivery as fact. ⛔ But `accepted → delivered` still takes seconds to minutes, so OD41 stands:
+  `accepted` is never rendered as delivered, and `UNCONFIRMED` after 15 minutes (U46) is still needed.
+- ⭐ **The reference echo is PROVEN**, which is what makes `SmsCampaignRecipient.smsReference` a usable
+  join. The plan hedged on this (§3 of `BLACKBALL-SMS.md` warned their emailed example carried a
+  23-character id of their own); the hedge is discharged.
+- ⭐ **The multi-line batch shape is real** — `{statuses:[…]}` with several lines in one POST, handled
+  line by line. A campaign will receive receipts in batches, not one per call.
+- ⛔ **Still unproven, so U46 keeps its RED controls:** the `SmsCampaignRecipient` arm (unbuilt), every
+  failure token (only `DELIVRD` has ever arrived — see §3b), and behaviour at campaign volume.
+
+### §3b — WHAT THE VENDOR IS, MEASURED (and how the last exchange with them actually went)
+
+**Their delivery-status vocabulary, given in writing 2026-09-17 and checked against `mapDlrStatus`:**
+`DELIVRD` → DELIVERED · `UNDELIV`, `REJECTD`, `EXPIRED`, `FAILED` → FAILED · `SENT` → *no verdict yet*
+(the row stays ACCEPTED, which is correct: it means the network has it). ⚠️ Only `DELIVRD` has ever been
+seen in a live callback; the rest are their words, not our measurements, so U46's failure fixtures stay
+synthetic until one arrives.
+
+**Their operational facts:** callbacks retry **5 times** on a non-200 (interval not given) · three sender
+IDs are whitelisted on the account (the exact strings still not supplied) · the portal's `COUNT` column is
+the **segment** count, i.e. the billed unit — the cross-check for U3's arithmetic and U52's drive ·
+`CODE 0` accompanies `DELIVRD` (the failure codes are still unknown).
+
+**And the part worth keeping for the next vendor, because it cost eleven days:**
+
+1. ⛔ **A vendor's "it is fixed" is a claim, not evidence.** Four separate claims of a fix produced four
+   identical silences. Each retest cost TZS 6 of the float that belongs to login codes. **The rule this
+   earns: re-test on evidence, not on assurance** — a log line from their side, or a receipt they posted
+   by hand. U52 inherits this: the live drive is capped and ledger-counted for the same reason.
+2. ⭐ **The fault was a missing `?token=` on the URL they had saved** — invisible from our side until
+   they were asked to POST by hand and the 401 appeared **in our own audit rows**. ⭐ The receiver
+   recording *refused* attempts is what turned "nothing is happening" into "your token is wrong". Every
+   guard this plan writes should record the refusal, not only the success (§5.14 already says so for
+   audit content; this is the same rule for coverage).
+3. ⛔ **Our own probe is indistinguishable from the vendor's call.** A `curl -X POST` reachability check
+   wrote the same `webhook.blackball.rejected` row and was briefly read as "they are calling us at last".
+   ⭐ Discriminate on `srcIp`, exclude the operator's own address, and never probe an endpoint while a
+   watch on it is running. U52's drive and any campaign watch inherit this.
+4. ⛔ **`railway logs --http` is a TAIL, not a history** — measured: 5,000 lines covered **fifteen
+   minutes**, and `--json` returned nothing while the plain form returned thousands. It can be trusted
+   only LIVE, during a watch. **The durable instrument is the audit chain**, which is why every unit in
+   this plan writes an audit row for refusals as well as sends.
+5. ⛔ **`curl` reports `200` where a browser is redirected**, because the redirect is streamed
+   (`/auth/otp`). Any "is this page reachable" check in this programme uses a browser, not a status code.
+6. ⭐ **A flag can gate a PAGE and not the SERVICE behind it.** `OTP_ENABLED` gates only
+   `src/app/auth/otp/page.tsx`; `requestLoginOtp` was never gated. U17's five doors and U41's approval
+   gate are written on the opposite principle — the refusal lives in the server action, not the route.
+7. ⚠️ **The webhook secret travelled through chat and WhatsApp during the fix.** Rotating it is an open
+   owner item in `BLACKBALL-SMS.md`; if it is rotated while this programme runs, the campaign engine
+   needs nothing — the secret lives only in Railway and the vendor's saved URL.
 
 ## §4 — OWNER DECISIONS, TAKEN ON ALI'S DELEGATION
 
@@ -434,8 +520,10 @@ is decided, with what it rules out. They are not questions.
 - **OD40 · Failures are grouped by reason with the dominant one visible**, and "not receiving" is neutral
   ink, never danger. Nothing failed: the consent gate worked. ⛔ Retry is offered only for retryable
   reasons — never for a skip.
-- **OD41 · `accepted` is never rendered as delivered**, and the page says in one sentence that no
-  delivery receipt has ever arrived — rendered from the data, so it disappears by itself the day one does.
+- **OD41 · `accepted` is never rendered as delivered.** ⭐ Amended 2026-09-23: receipts now arrive
+  (§3a), so the page's honesty line is rendered FROM THE DATA — "no receipt yet for this campaign" while
+  none has landed, and gone by itself once one does. ⛔ The rule it protects is unchanged: handing a
+  message to the gateway is not delivery, and only a receipt earns the delivered count.
 - **OD42 · One campaign carries a required Swahili body and an optional English one**; per-recipient
   selection from `User.locale`, defaulting to Swahili; an empty English body means everyone gets Swahili,
   stated on screen. ⛔ No machine translation, ever. Exactly one placeholder, `{jina}`.
@@ -546,7 +634,7 @@ The chain is unprunable: a marketing list inside it is one nobody can ever delet
 5. **No fabrication:** a promise about money is computed from measured data, never stated as a constant.
 6. **One filter language** across the console; one home for every design decision.
 7. **Blackball facts** (`docs/BLACKBALL-SMS.md`): 400-for-everything, `status` is the verdict, 12-char
-   sender, ≥20-char reference, no per-message id, no receipt has ever arrived.
+   sender, ≥20-char reference, no per-message id. ⭐ Receipts arrive and settle rows since 2026-09-23 (§3a).
 
 ---
 
@@ -594,7 +682,7 @@ text. The one-line summaries are in §1; what follows is what each one actually 
   may not read a number at all. **U30**
 - **D20 · `sendBatch` updates `SmsMessage` rows one at a time** — and the patch is identical for every row
   in a chunk, because the gateway's verdict is per-request. **U45**
-- **D21 · The DLR route updates `InviteEntry` only**, and no receipt has ever arrived. **U46**
+- **D21 · The DLR route updates `InviteEntry` only.** ⭐ Rewritten 2026-09-23: receipts now arrive and settle real rows in seconds (§3a), so this is no longer "a fan-out nothing feeds" — it is the one arm a campaign recipient needs and does not have. **U46**
 - **D22 · No `MARKETING` purpose** — folding 50k rows into `INVITE` destroys the invite lane's meaning
   and makes a per-lane cost report impossible. **U35**
 - **D23 · The 30 s `withLock` timeout** makes the existing send shape unusable at campaign scale. **U43**
@@ -1054,11 +1142,17 @@ receipt; ⭐ `UNCONFIRMED` is deliberately **not** terminal, so a late receipt c
 as `SmsStatus.UNKNOWN` is not terminal one layer up, and the two layers must agree.
 **Guard:** `test:sms-dlr`. **RED:** a receipt must move the row; a replay must not; a late FAILED after
 DELIVERED must be discarded; an `UNCONFIRMED` row must still settle.
+⭐ **The `SmsMessage` half of this is PROVEN on production (§3a)** — 11 seconds, `applied: 1`,
+`mismatch: 0` — so this unit adds the recipient arm to a rail that works, and its live acceptance is a
+campaign receipt moving a `SmsCampaignRecipient` row, not the first receipt of any kind. ⚠️ Receipts
+arrive in BATCHES (three lines in one POST, measured), so the fixtures use multi-line bodies, and only
+`DELIVRD` has ever been seen live — every failure fixture is synthetic until one arrives (§3b).
 
 **U47 · The live campaign page** — `/admin/campaigns/[id]` (OD34, OD41)
 The standing facts first, because each changes what the numbers mean: the list is not finished · the rail
 is not configured · nobody is driving this (running, and no slice for 90 s, and the pump is not holding the
-lease) · **delivery receipts have never arrived** (rendered from the data, so it disappears by itself the
+lease) · **no receipt yet for THIS campaign** (rendered from the data — receipts do work platform-wide
+since 2026-09-23, §3a — so it disappears by itself the
 day one does) · the mapped stop reason (⛔ never the raw key; an unrecognised key is still shown, labelled
 as the engine's own words). Then four KPIs (**On campaign · Handed over · Failed · Skipped** — "handed
 over", not "sent", and `accepted` is info, never green), two determinate bars that are never shown at once
@@ -1101,7 +1195,8 @@ actions registered: `marketing.campaign_created|started|paused|cancelled|slice`,
 **Guard:** `test:cert-c1`, `test:cert-c3`, `test:audit`. **RED:** send a body with no footer → red.
 
 **U51 · The operator's guide** — `docs/HOW-TO-SEND-A-CAMPAIGN.md` + updates (OD46)
-Plain words, for Ali: what a campaign costs, what "handed over" means and why DELIVERED may stay empty, how
+Plain words, for Ali: what a campaign costs, what "handed over" means and why DELIVERED lags it by seconds
+to minutes (and what `UNCONFIRMED` means when a receipt never comes), how
 to stop one, what the refusals mean and what to do about each. Plus `docs/BLACKBALL-SMS.md` (the marketing
 lane), `docs/DATA-RETENTION.md` (the new rows), `docs/COMPLIANCE-DECISIONS.md` (every ruling in §4 and
 §4a).
