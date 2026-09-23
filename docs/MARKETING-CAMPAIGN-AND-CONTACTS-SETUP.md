@@ -114,9 +114,11 @@ The planner and the progress tracker are ONE file: `docs/MARKETING-CAMPAIGN-AND-
 not a summary, not another document — decides what is done. If `git log` shows a commit newer than §0's
 ✔ LAST SESSION, another session is in flight: **stop and ask Ali**.
 
-**2 · Read, in this order.** `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §0 → §1 → §5 (hard rules) →
-§6 (what you may not change) → the two units named in ▶ NEXT, in §9. Then `docs/BLACKBALL-SMS.md` §1 and
-`CLAUDE.md`. ⛔ Do not read the whole `docs/` tree; this file is the contract.
+**2 · Read, in this order.** `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §0 → §1 → **§3a and §3b
+(what the SMS rail actually does now, and what the vendor is — these replace premises the plan was
+written on)** → §5 (hard rules) → §6 (what you may not change) → the two units named in ▶ NEXT, in §9.
+Then `docs/BLACKBALL-SMS.md` §1 and `CLAUDE.md`. ⛔ Do not read the whole `docs/` tree; this file is the
+contract.
 
 **3 · Say the plan back.** Before writing code, state in one message: the two units, the guard each one
 gets, the RED control that proves that guard, and what you will measure. If a unit will not fit in half a
