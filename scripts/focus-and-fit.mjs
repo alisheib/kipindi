@@ -39,6 +39,7 @@ const RED = {
   D57: process.env.RED_D57 === "1",
   D63: process.env.RED_D63 === "1",
   FIT: process.env.RED_FIT === "1",
+  D3: process.env.RED_D3 === "1",
 };
 const ANY_RED = Object.values(RED).some(Boolean);
 /** Each control restores EXACTLY the state its fix replaced — nothing else. */
@@ -47,6 +48,7 @@ const RED_CSS = {
   D57: `html{scroll-padding-bottom:auto !important;}`,
   D63: `.kp-strip-fade :where(a,button):focus-visible{outline-offset:2px !important;}`,
   FIT: `@media (max-width:300px){.mcardp-top{flex-wrap:nowrap !important;}.mcardp-meta{flex-wrap:nowrap !important;}}`,
+  D3: `html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within){opacity:1 !important;pointer-events:auto !important;transform:none !important;}`,
 };
 
 const failures = [];
@@ -156,6 +158,46 @@ for (const w of [320, 277, 246]) {
   await ctx.close();
 }
 
+// ── §5 · D3 the chat bubble leaves while the reader is moving, and comes back ────────────
+{
+  const { ctx, p } = await open(b, 360, 780, "/markets", "D3");
+  const read = () => p.evaluate(() => {
+    const R = (n) => Math.round(n * 10) / 10;
+    const btn = document.querySelector(".cm-bubble");
+    const fab = document.querySelector(".cm-fab");
+    if (!btn || !fab) return null;
+    const q = btn.getBoundingClientRect();
+    const el = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+    return { w: R(q.width), h: R(q.height), opacity: Number(getComputedStyle(fab).opacity),
+             scrolling: document.documentElement.hasAttribute("data-scrolling"),
+             hits: !!(el && (el === btn || btn.contains(el) || el.contains(btn))) };
+  });
+  const rest = await read();
+  if (!rest) failures.push("§5 no chat bubble on the page — the probe proves nothing");
+  else {
+    // the phone bubble is the tap floor, not more: every extra pixel is spent on someone's content
+    if (rest.w > 44 || rest.h > 44) failures.push(`§5 the phone bubble is ${rest.w}×${rest.h}, over the 44px floor`);
+    if (rest.w < 44 || rest.h < 44) failures.push(`§5 the phone bubble is ${rest.w}×${rest.h}, UNDER the 44px floor`);
+    if (!rest.hits || rest.opacity < 0.99) failures.push(`§5 at rest the bubble is not reachable (opacity ${rest.opacity}, hits ${rest.hits})`);
+    await p.evaluate(() => window.scrollBy(0, 400));
+    await p.waitForTimeout(80);
+    const during = await read();
+    if (!during.scrolling) failures.push("§5 `data-scrolling` was never set — the probe cannot see the state it tests");
+    else if (during.opacity > 0.9 || during.hits) failures.push(`§5 the bubble does NOT leave while the page is moving (opacity ${during.opacity}, still hittable ${during.hits})`);
+    await p.waitForTimeout(900);
+    const settled = await read();
+    if (settled.opacity < 0.99 || !settled.hits) failures.push(`§5 the bubble did not come back after the reader stopped (opacity ${settled.opacity}, hits ${settled.hits})`);
+    // ⛔ and it must NEVER leave while its own panel is open, or the close control goes with it
+    await p.evaluate(() => document.querySelector(".cm-bubble")?.click());
+    await p.waitForTimeout(700);
+    await p.evaluate(() => window.scrollBy(0, 300));
+    await p.waitForTimeout(80);
+    const whileOpen = await read();
+    if (whileOpen.opacity < 0.99) failures.push(`§5 the bubble hid while its own panel was open (opacity ${whileOpen.opacity}) — that takes the close control with it`);
+  }
+  await ctx.close();
+}
+
 await b.close();
 
 const which = Object.entries(RED).filter(([, v]) => v).map(([k]) => k).join("+");
@@ -167,7 +209,7 @@ if (ANY_RED) {
   /* ⛔ "IT WENT RED" IS NOT ENOUGH, AND THIS COST A ROUND OF FALSE CONFIDENCE. While D35/D65 were
      written but not yet deployed, §4 failed on every run — so a RED_D56 run "went red" whether or not its
      own control did anything. A control must be shown to break THE SECTION IT TARGETS. */
-  const SECTION = { D56: "§1", D57: "§2", D63: "§3", FIT: "§4" };
+  const SECTION = { D56: "§1", D57: "§2", D63: "§3", FIT: "§4", D3: "§5" };
   const missed = Object.entries(RED).filter(([, on]) => on).filter(([k]) => !failures.some((f) => f.startsWith(SECTION[k])));
   if (missed.length) {
     console.error(`

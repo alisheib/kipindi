@@ -38,7 +38,8 @@ export function ChatBubble({
       aria-expanded={open}
       onClick={onClick}
     >
-      <HelpMark size={isMobile ? 30 : 34} />
+      {/* 30 → 24 with the box (D3): the glyph kept the same share of a 44px bubble as it had of a 52px one. */}
+      <HelpMark size={isMobile ? 24 : 34} />
       {/* ⭐ STAGE 9b — the kit <CountBadge>, replacing the `.cm-bubble-pip` rule in
           `src/styles/chat/chat-styles.css`. Same data as the bell's pip, so it must not
           wear a second chrome: `lg` is this one's box (min-width 20, height 20, 0 6px,

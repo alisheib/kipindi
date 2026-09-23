@@ -1394,6 +1394,35 @@ body {
    here so the one rule that needs to override it can. */
 .ticker-copy-dup { display: contents; }
 
+/* 🔴 D3 · THE CHAT BUBBLE GETS OUT OF THE WAY WHILE THE READER IS MOVING.
+   It covers content on NINE surfaces — a ranked player's ROI on the leaderboard, the resolution criteria on
+   a detail page, a card title on home, the ⓘ plate and "Maelezo" on the board, the /results pager, a
+   /results filter control (3 of 6 taps at 360×500), the sort listbox's bottom rows, and the 404's third
+   destination — and **a real player reported it**. It cannot simply be moved: wherever it sits, it sits on
+   something. So it leaves while the page is in motion, which is exactly when nobody is reaching for it, and
+   returns 250ms after the reader settles, which is when they might want it.
+   ⛔ TWO STATES MUST NEVER HIDE IT, and both are excluded by name:
+   · `.cm-fab--open` — a bubble that vanished while its own panel was open would take the CLOSE control with
+     it, so a reader who scrolled inside the chat could not shut it.
+   · `:focus-within` — a keyboard user who has tabbed onto it must not lose it because the page scrolled to
+     bring it into view. That scroll is caused BY the focus.
+   ⚠️ `visibility` is deliberately NOT used: it would make the bubble unfocusable mid-transition. Opacity
+   plus `pointer-events: none` leaves it in the tree and out of the way.
+   ⚠️ AND THE CALM BRANCH KEEPS THE FADE. Reduced motion removes the MOVEMENT (the 8px lift), not the
+   behaviour — a bubble that stayed put over the text would be the defect, and hiding is not a flourish. */
+html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within) {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+.cm-fab {
+  transition: opacity var(--t-quick) var(--m-glide), transform var(--t-quick) var(--m-glide);
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within) { transform: none; }
+  .cm-fab { transition: opacity var(--t-quick) linear; }
+}
+
 /* 🔴 D68 · A CENTRED 80svh BLOCK ON A SHORT SCREEN PUSHES ITS OWN EXIT BELOW THE FOLD.
    `/not-found` (and the market and proposal variants) centre their stack inside `min-h-[80svh]`. At 320×640
    — the smallest supported phone, and shorter still once browser chrome is subtracted — that centring put

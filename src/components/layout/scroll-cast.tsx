@@ -31,16 +31,44 @@ export function HeaderScrollCast() {
   useEffect(() => {
     const root = document.documentElement;
     let on: boolean | null = null;
+    let moving = false;
+    let idle: ReturnType<typeof setTimeout> | undefined;
     const apply = () => {
       const should = window.scrollY > 0;
-      if (should === on) return;      // one attribute write per crossing, not per frame
-      on = should;
-      if (should) root.setAttribute("data-scrolled", "");
-      else root.removeAttribute("data-scrolled");
+      if (should !== on) {            // one attribute write per crossing, not per frame
+        on = should;
+        if (should) root.setAttribute("data-scrolled", "");
+        else root.removeAttribute("data-scrolled");
+      }
+      /**
+       * 🔴 D3 · `data-scrolling` — TRUE WHILE THE READER IS MOVING, GONE 250ms AFTER THEY STOP.
+       * The chat bubble covers content on nine surfaces, and a player reported it. It cannot simply be
+       * moved: wherever it sits, it sits on something. So it gets out of the way while the page is in
+       * motion — which is exactly when nobody is reaching for it — and returns the moment the reader
+       * settles, which is when they might want it.
+       * ⭐ ONE WRITE PER BURST, NOT PER FRAME, for the same reason `data-scrolled` is written that way:
+       * this listener runs while the browser is compositing every frame, on a low-end Android. The
+       * `moving` flag is what keeps a burst to a single `setAttribute`.
+       * ⚠️ The timer is cleared on unmount as well as on each event, or a route change mid-scroll leaves
+       * the attribute set on `<html>` forever and the bubble never comes back.
+       */
+      if (!moving) {
+        moving = true;
+        root.setAttribute("data-scrolling", "");
+      }
+      clearTimeout(idle);
+      idle = setTimeout(() => {
+        moving = false;
+        root.removeAttribute("data-scrolling");
+      }, 250);
     };
     apply();                          // a page restored mid-scroll starts cast
     window.addEventListener("scroll", apply, { passive: true });
-    return () => window.removeEventListener("scroll", apply);
+    return () => {
+      window.removeEventListener("scroll", apply);
+      clearTimeout(idle);
+      root.removeAttribute("data-scrolling");
+    };
   }, []);
   return null;
 }
