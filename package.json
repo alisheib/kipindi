@@ -894,7 +894,8 @@
     "qa:desk-rules-flow": "node scripts/qa-desk-rules-flow.mjs",
     "qa:checkbox-surfaces": "node scripts/qa-checkbox-surfaces.mjs",
     "docs:house-bots-guide": "tsx scripts/generate-house-bots-guide.mts && node scripts/generate-pdfs.mjs",
-    "qa:home-tighten": "node scripts/home-tighten.mjs"
+    "qa:home-tighten": "node scripts/home-tighten.mjs",
+    "qa:focus-and-fit": "node scripts/focus-and-fit.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
