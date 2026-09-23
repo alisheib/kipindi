@@ -3930,15 +3930,22 @@ html[data-sheet-open] .route-enter { animation: none; }
      a stacked figure, which at this size looked like two unrelated fields. */
   .kp-qrow__num { font-size: var(--type-h3); }
   .kp-qrow__unit { display: inline; }
-  /* A BOUND, NOT A CROP — and today it crops nothing. Measured at 360 SW the four rows run 2 lines
-     and 100px each, inside U6's 110px budget, because the reflow above already gave the question
-     the full 292px measure. What is missing is a CEILING: the board takes whatever four markets
-     close soonest, so a single long title could run four or five lines and take a 100px row past
-     160 with nothing to stop it. Three lines is the bound, which is one more than anything the
-     book prints today.
-     ⭐ THE FULL QUESTION SURVIVES. `-webkit-line-clamp` hides overflow; it does not remove the text
-     node, so the row's accessible name — the whole point of a question on a link — is unchanged,
-     and a clamp that never engages changes nothing a sighted reader sees either. */
+  /* 🔴 A BOUND, AND IT DOES CROP — CORRECTED 2026-09-23, HAVING FIRST BEEN WRITTEN THE OTHER WAY.
+     This comment said "today it crops nothing", measured on a LOCAL server whose four markets had
+     short titles and ran 2 lines. Production's four do not: re-measured live, the questions run
+     4–7 lines at 320 SW, 4–5 at 360 SW and EN, 3 at 360 ZH, so the clamp engages on 4 of 4 rows at
+     320 and 360 and on 3 of 4 at 412. ⛔ A CLAIM ABOUT WHAT A PAGE SHOWS IS A CLAIM ABOUT ITS
+     CONTENT, AND THE TWO TREES HOLD DIFFERENT CONTENT. The rule is unchanged; the sentence about it
+     was wrong and is the thing that got fixed.
+     WHY IT STAYS. The board takes whatever four markets close soonest, so without a ceiling one long
+     title runs seven lines and takes a row past 180px — four of those are most of a hero. §9 U6
+     ordered this clamp for exactly that reason, at exactly this number. Live it holds every row to
+     121.3px against a 110 budget, from a ragged 164/143/164/164 before.
+     ⭐ AND THE CUT IS BOTH SIGNALLED AND RECOVERABLE. `-webkit-line-clamp` paints an ellipsis, so a
+     sighted reader is TOLD the question continues rather than shown a sentence that stops; and it
+     hides overflow without removing the text node, so the link's accessible name is still the whole
+     question — verified on production, where the full 120-character title reads back off the row.
+     The rest of it is one tap away, which is what a teaser board is for. */
   .kp-qrow__q {
     display: -webkit-box;
     -webkit-box-orient: vertical;
