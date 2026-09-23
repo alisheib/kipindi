@@ -3181,6 +3181,20 @@ await guard("17", async () => {
          Start and the walk would answer BEFORE_SCOPE — a green pair of assertions below measuring nothing. */
       const b5 = await botWith({}, rules);
       const fresh = await pollAt({ closeInMs: 5 * 3_600_000 });
+      /**
+       * ⛔ SCOPE IS A PRECONDITION HERE, NOT THE SUBJECT, SO IT IS SET RATHER THAN INHERITED.
+       * 🔴 MEASURED 2026-09-23: run §17 ALONE — which is exactly what a red drive does — and the global scope
+       * start restored two lines above resolves to NOW, so every market including this one answers
+       * BEFORE_SCOPE, `wouldStake` is 0, and BOTH assertions below measure nothing while still reading green
+       * in a full-suite run. That is how this pair first passed: on state an earlier section happened to
+       * leave behind. A case that only works in one ordering is not a case.
+       * ⛔ IT DOES NOT WEAKEN THEM: what is asserted is that the WALK agrees with the PLANNER and writes
+       * nothing. Scope decides whether either has anything to look at, so it is arranged, not measured — and
+       * 7.34a already holds BEFORE_SCOPE itself, on the pure planner, where it belongs.
+       */
+      const scopeAt = new Date((await dbNow()) - 3_600_000).toISOString();
+      await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: scopeAt });
+      await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b5.botId), { scopeFrom: scopeAt });
       const intentsBefore = (await S.houseBotIntentStore.listLiveOnMarket(fresh.id)).length;
       const seen: Any = await safe(async () => PL.explainBotIdle(b5.botId, { limit: 50 }));
       const drawAfter = await S.houseBotEventStore.findOpenerDraw(fresh.id);
