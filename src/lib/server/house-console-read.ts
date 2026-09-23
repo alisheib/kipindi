@@ -6565,10 +6565,15 @@ export type ConsoleWhyIdleView = {
   headline: string;
   /** The refusals met, commonest first. Empty when the walk refused nothing. */
   reasons: Array<{ text: string; markets: number }>;
-  /** What the walk actually looked at, so a sample is never read as the whole book. */
+  /**
+   * What the walk actually looked at: how many markets, split by what it was looking FOR, and how many
+   * of them this account would stake on right now.
+   * ⛔ IT IS ONE SENTENCE AND NOT THREE FIELDS, and that is the correction. This type carried a
+   * `wouldStake: number` the page never painted, beside a `looked` breakdown nothing read — the very
+   * "writer with no reader" this whole change exists to remove, reintroduced inside the fix for it.
+   * A number the screen does not show is not a number the desk has.
+   */
   scanned: string;
-  /** Markets this account would stake on right now, counted on the same walk. */
-  wouldStake: number;
 };
 
 const WHY_IDLE_COPY = {
@@ -6587,6 +6592,27 @@ const WHY_IDLE_COPY = {
   working: "This account would stake right now, so it is working. The desk places at most one stake per market each pass, which is why bets appear a few seconds apart.",
   refused: "None of the markets looked at could be staked right now. The reasons are below, commonest first.",
 } as const;
+
+/**
+ * The one sentence that carries every figure the walk produced: how many markets were looked at, what
+ * they were looked at FOR, and how many this account would stake on right now.
+ * ⛔ THE SPLIT IS BY KIND AND NOT BY PRODUCT. `looked` carries a row per kind AND product, but an
+ * officer does not need "polls" and "Up & Down" counted separately to answer this question — they need
+ * to know the desk considered both opening and filling. Four numbers where two will do is noise.
+ * ⛔ NEUTRAL WORDS ONLY (453): "to open" and "to fill", never the mechanism's own name.
+ */
+function scannedSentence(seen: { considered: number; wouldStake: number; looked: ReadonlyArray<{ kind: "FILL" | "OPENER"; markets: number }> }): string {
+  const sum = (k: "FILL" | "OPENER") => seen.looked.reduce((t, l) => t + (l.kind === k ? l.markets : 0), 0);
+  const split = [
+    sum("OPENER") > 0 ? `${formatNumber(sum("OPENER"))} to open` : null,
+    sum("FILL") > 0 ? `${formatNumber(sum("FILL"))} to fill` : null,
+  ].filter((p): p is string => p !== null).join(" and ");
+  const head = `${formatNumber(seen.considered)} ${seen.considered === 1 ? "market" : "markets"} looked at${split ? ` (${split})` : ""}`;
+  const stakeable = seen.wouldStake > 0
+    ? `this account would stake on ${formatNumber(seen.wouldStake)} of them right now`
+    : seen.considered === 1 ? "it could not be staked right now" : "not one of them could be staked right now";
+  return `${head}, and ${stakeable}. That is a sample of what is open now, never the whole book.`;
+}
 
 export async function houseWhyIdleForConsole(
   viewerUserId: string | null | undefined,
@@ -6607,7 +6633,7 @@ export async function houseWhyIdleForConsole(
   const bot = botR.value;
   if (!bot || bot.status === "REMOVED") return null;
 
-  const only = (headline: string): ConsoleWhyIdleView => ({ headline, reasons: [], scanned: "", wouldStake: 0 });
+  const only = (headline: string): ConsoleWhyIdleView => ({ headline, reasons: [], scanned: "" });
   /* The two answers that need no market at all, in the order an officer meets them. */
   if (!controlR.value.enabled) return only(WHY_IDLE_COPY.deskOff);
   if (bot.status !== "ACTIVE") return only(WHY_IDLE_COPY.notActive);
@@ -6627,8 +6653,10 @@ export async function houseWhyIdleForConsole(
     headline: seen.wouldStake > 0 ? WHY_IDLE_COPY.working : WHY_IDLE_COPY.refused,
     reasons: seen.byCode.map((r) => ({ text: CONSOLE_SKIP_SENTENCE[r.code], markets: r.markets })),
     /* ⚠️ IT SAYS IT IS A SAMPLE. A panel that prints "12 markets" beside a book of four hundred reads as
-       the whole book, and an officer would then believe the desk had run out of markets. */
-    scanned: `${formatNumber(seen.considered)} ${seen.considered === 1 ? "market" : "markets"} looked at — a sample of what is open now, not the whole book.`,
-    wouldStake: seen.wouldStake,
+       the whole book, and an officer would then believe the desk had run out of markets.
+       ⛔ AND IT SPENDS EVERY FIGURE THE WALK PRODUCED. The split comes from `looked`, which until now was
+       computed per kind and read only for its LENGTH, and the stakeable count from `wouldStake`, which the
+       page never painted at all. Both are on the screen here or they are not collected. */
+    scanned: scannedSentence(seen),
   };
 }

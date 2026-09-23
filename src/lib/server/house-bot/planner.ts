@@ -652,8 +652,13 @@ async function runMarket(
  * ⛔ IT IS NOT A RECORD OF THE LAST PASS, deliberately. A reason stamped an hour ago answers a question
  * nobody asked, and it keeps answering it after the rule that caused it has been changed.
  *
- * ⚠️ IT IS A SAMPLE, and it says so: `looked` carries how many markets each kind actually offered, so a
- * screen can never present "12 markets" as though it were the whole book.
+ * ⚠️ IT IS A SAMPLE, and the SCREEN says so: `looked` carries how many markets each kind actually
+ * offered, and `houseWhyIdleForConsole` spends it — the panel prints the split and the caveat, so a
+ * reader can never take "12 markets" for the whole book.
+ * ⛔ THAT SENTENCE USED TO BE A LIE BY OMISSION. `looked` was computed per kind and read only for its
+ * LENGTH; nothing painted the split, and the caveat came from a different field. A comment claiming a
+ * protection the code does not implement is worse than no comment, because it stops the next reader
+ * looking.
  */
 export type IdleExplain = {
   botId: string;

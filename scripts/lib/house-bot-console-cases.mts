@@ -2993,7 +2993,10 @@ try {
       await w.switchOn();
       const backOn: Any = await GATEM.houseWhyIdleForConsole(OFFICER, "/admin/desk", acct.botId);
       ok("1.541 · a switched-off DESK is the whole answer, given with no walk behind it: no reasons, no counts, nothing that could be read as a fault in the rules of this one account",
-        off !== null && /switched off/i.test(off.headline) && off.reasons.length === 0 && off.scanned === "" && off.wouldStake === 0,
+        /* ⛔ NOT ONE DIGIT anywhere in the answer, which is stronger than the field-by-field check this
+           replaced: it forbids a count reaching the screen by ANY route, including one added later. */
+        off !== null && /switched off/i.test(off.headline) && off.reasons.length === 0 && off.scanned === ""
+          && !/[0-9]/.test(all(off)),
         j(off));
       ok("1.541 · CONTROL · switching the desk back ON changes the answer — so the sentence above was read off the switch and is not a constant this door paints whatever the state",
         backOn !== null && backOn.headline !== off.headline && !/switched off/i.test(backOn.headline),
