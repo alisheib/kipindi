@@ -2026,7 +2026,14 @@ const RULE_FIELD_BY_KEY = new Map<string, FieldId>(
  * ⛔ EVERY SENTENCE IS NEUTRAL (453) AND NAMES NO MODE BY ITS ENGINE WORD: "answering a player's stake", never
  * the mode's own name. The section heading above the row is `ENTRY_MODE_WORDS`', for the same reason.
  */
-const CONSOLE_RULE_HELP: Readonly<Record<string, string>> = {
+/**
+ * ⭐ EXPORTED 2026-09-23 SO THE ADMIN GUIDE IS BUILT FROM THE CONSOLE'S OWN SENTENCES, never a second copy of
+ * them. A printed guide that says one thing while the screen says another is the worst kind of documentation,
+ * and hand-copying 29 sentences into an HTML file guarantees it within one edit.
+ * ⛔ DECLARED IN `CONSOLE_GATE_NON_READERS` (ruling 512): it is a copy table, not a gated reader — it awaits
+ * nothing, reaches no `db.`, names no store member and decides no audience.
+ */
+export const CONSOLE_RULE_HELP: Readonly<Record<string, string>> = {
   "scope.skipPollsClosingWithinMin": "How close to a poll's closing time this account stops answering players there.",
   "scope.poolTotalMinTzs": "The least players must already have staked on a market before this account will answer them there.",
   "scope.poolTotalMaxTzs": "The most players may have staked on a market before this account stops answering them there. Empty means no ceiling.",
@@ -2047,7 +2054,12 @@ const CONSOLE_RULE_HELP: Readonly<Record<string, string>> = {
   "opener.delayPollsMaxMin": "The longest it waits. Each poll draws its own wait between the two.",
   "opener.stakeMinTzs": "The smallest first bet on a market with nothing on it yet.",
   "opener.stakeMaxTzs": "The largest first bet on a market with nothing on it yet. The amount is drawn between the two.",
-  "updown.closenessPct": "How close the two sides of an Up & Down round must already be before this account takes part at all.",
+  /* 🔴 CORRECTED 2026-09-23. This read "How close the two sides of an Up & Down round must already be" — which is
+     not what the rule does, and an officer following it would set the wrong number for the wrong reason. A15
+     compares the LIVE PRICE with the round's OPENING price, and has nothing to do with how the two sides are
+     balanced; `udCloseness` never reads a pool. Measured the same day, on the live desk this setting had kept
+     silent for 23 hours. */
+  "updown.closenessPct": "How far the price may have moved from where the round opened and this account will still take part. Smaller means it only bets while the price is close to the opening price.",
   "shaping.roundToTzs": "Every amount this account works out is rounded to a multiple of this, so its bets do not read as calculated.",
   "shaping.jitterPct": "How far an amount may be moved up or down at random, out of a hundred.",
   "guards.noReactZoneUdSec": "A stretch just before an Up & Down round closes in which a player's stake is never answered.",

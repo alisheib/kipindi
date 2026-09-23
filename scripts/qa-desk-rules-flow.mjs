@@ -917,6 +917,21 @@ const removed = await soft("remove the drive's account", async () => {
 ok("10.1 the drive leaves the roster as it found it", removed === true,
   "the next run will meet the product's own 'roster is full' refusal at §1");
 
+/**
+ * ⛔ WHY A STEP COULD NOT RUN, PRINTED WHERE IT CAN BE READ (2026-09-23).
+ *
+ * 🔴 `soft()` records the exception into `consoleErrors` and returns a fallback, and §9's note counted those —
+ * but §9 runs at line 611 and §9d and §10 run AFTER it. So a step that threw down there reported a bare FAIL
+ * with its cause collected and never printed: the drive knew exactly why and said nothing. That is the same
+ * shape as every other finding this programme met today — the fact existed, was correct, and was never read.
+ * Printed at the END, after the last step, so no later step can hide behind an earlier summary.
+ */
+const softFailures = consoleErrors.filter((e) => e.startsWith("soft("));
+if (softFailures.length > 0) {
+  console.log("\n⚠ steps that could not run, and the reason each gave:");
+  for (const s of softFailures) console.log(`  · ${s}`);
+}
+
 console.log("\n──────────────────────────────────────────────────────────────────────");
 console.log(`${n - fail}/${n} passed · account ${ACCOUNT} · tiles in ${SHOTS}`);
 console.log("──────────────────────────────────────────────────────────────────────");

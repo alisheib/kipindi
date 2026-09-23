@@ -892,7 +892,8 @@
     "qa:corner-radius": "node scripts/qa-corner-radius.mjs",
     "qa:desk-recommend": "tsx scripts/qa-desk-recommend.mts",
     "qa:desk-rules-flow": "node scripts/qa-desk-rules-flow.mjs",
-    "qa:checkbox-surfaces": "node scripts/qa-checkbox-surfaces.mjs"
+    "qa:checkbox-surfaces": "node scripts/qa-checkbox-surfaces.mjs",
+    "docs:house-bots-guide": "tsx scripts/generate-house-bots-guide.mts && node scripts/generate-pdfs.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
