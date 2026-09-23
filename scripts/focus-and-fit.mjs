@@ -159,8 +159,12 @@ for (const w of [320, 277, 246]) {
 }
 
 // ── §5 · D3 the chat bubble leaves while the reader is moving, and comes back ────────────
-{
-  const { ctx, p } = await open(b, 360, 780, "/markets", "D3");
+/* ⛔ THREE SURFACES, NOT ONE. D3's own note records the bubble covering content on NINE, and a
+   register line narrower than the defect is how it survived this long. The hide rule is global, so
+   one surface would prove the MECHANISM — but the leaderboard and /results are two of the surfaces
+   D3 actually names, and a rule that is global today can be scoped by someone tomorrow. */
+for (const surface of ["/markets", "/leaderboard", "/results"]) {
+  const { ctx, p } = await open(b, 360, 780, surface, "D3");
   const read = () => p.evaluate(() => {
     const R = (n) => Math.round(n * 10) / 10;
     const btn = document.querySelector(".cm-bubble");
@@ -173,27 +177,27 @@ for (const w of [320, 277, 246]) {
              hits: !!(el && (el === btn || btn.contains(el) || el.contains(btn))) };
   });
   const rest = await read();
-  if (!rest) failures.push("§5 no chat bubble on the page — the probe proves nothing");
+  if (!rest) failures.push(`§5 ${surface} no chat bubble on the page — the probe proves nothing`);
   else {
     // the phone bubble is the tap floor, not more: every extra pixel is spent on someone's content
-    if (rest.w > 44 || rest.h > 44) failures.push(`§5 the phone bubble is ${rest.w}×${rest.h}, over the 44px floor`);
-    if (rest.w < 44 || rest.h < 44) failures.push(`§5 the phone bubble is ${rest.w}×${rest.h}, UNDER the 44px floor`);
-    if (!rest.hits || rest.opacity < 0.99) failures.push(`§5 at rest the bubble is not reachable (opacity ${rest.opacity}, hits ${rest.hits})`);
+    if (rest.w > 44 || rest.h > 44) failures.push(`§5 ${surface} the phone bubble is ${rest.w}×${rest.h}, over the 44px floor`);
+    if (rest.w < 44 || rest.h < 44) failures.push(`§5 ${surface} the phone bubble is ${rest.w}×${rest.h}, UNDER the 44px floor`);
+    if (!rest.hits || rest.opacity < 0.99) failures.push(`§5 ${surface} at rest the bubble is not reachable (opacity ${rest.opacity}, hits ${rest.hits})`);
     await p.evaluate(() => window.scrollBy(0, 400));
     await p.waitForTimeout(80);
     const during = await read();
-    if (!during.scrolling) failures.push("§5 `data-scrolling` was never set — the probe cannot see the state it tests");
-    else if (during.opacity > 0.9 || during.hits) failures.push(`§5 the bubble does NOT leave while the page is moving (opacity ${during.opacity}, still hittable ${during.hits})`);
+    if (!during.scrolling) failures.push(`§5 ${surface} \`data-scrolling\` was never set — the probe cannot see the state it tests`);
+    else if (during.opacity > 0.9 || during.hits) failures.push(`§5 ${surface} the bubble does NOT leave while the page is moving (opacity ${during.opacity}, still hittable ${during.hits})`);
     await p.waitForTimeout(900);
     const settled = await read();
-    if (settled.opacity < 0.99 || !settled.hits) failures.push(`§5 the bubble did not come back after the reader stopped (opacity ${settled.opacity}, hits ${settled.hits})`);
+    if (settled.opacity < 0.99 || !settled.hits) failures.push(`§5 ${surface} the bubble did not come back after the reader stopped (opacity ${settled.opacity}, hits ${settled.hits})`);
     // ⛔ and it must NEVER leave while its own panel is open, or the close control goes with it
     await p.evaluate(() => document.querySelector(".cm-bubble")?.click());
     await p.waitForTimeout(700);
     await p.evaluate(() => window.scrollBy(0, 300));
     await p.waitForTimeout(80);
     const whileOpen = await read();
-    if (whileOpen.opacity < 0.99) failures.push(`§5 the bubble hid while its own panel was open (opacity ${whileOpen.opacity}) — that takes the close control with it`);
+    if (whileOpen.opacity < 0.99) failures.push(`§5 ${surface} the bubble hid while its own panel was open (opacity ${whileOpen.opacity}) — that takes the close control with it`);
   }
   await ctx.close();
 }
