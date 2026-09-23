@@ -46,7 +46,7 @@ import { WEEKDAYS, WEEKDAY_LABEL, eatDayKey, formatEat, formatMinutes, type Week
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { parseEatLocal, resolveRange } from "./date-range";
-import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext, type ScopeProduct, type EntryMode } from "@/lib/house-bot/rules";
+import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, migrateRules, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext, type ScopeProduct, type EntryMode } from "@/lib/house-bot/rules";
 /* ⭐ THE SCOPE PICKER'S TWO LISTS (prod finding 2026-09-22): the platform's own category list and its own label
  * helper, so the form and the roster paint the words a player sees and never a raw key. `dict.en` because the
  * console is an English surface; the helper takes the dictionary rather than a locale. */
@@ -2891,6 +2891,18 @@ export async function houseSwitchForConsole(
 export type ConsoleRulesForm = {
   /** The version the form was rendered from; the save is conditional on it (CAS). */
   baseVersion: number;
+  /**
+   * ⭐ WHERE THE VALUES IN THIS FORM CAME FROM (Ali ruled 2026-09-23).
+   * · `saved` — the stored document parsed; these are the account's own values.
+   * · `converted` — it did not parse but `migrateRules` could carry it forward; these are the converted values
+   *   the Start refusal has always promised and no screen had ever computed.
+   * · `default` — it could not even be converted, so these are `DEFAULT_RULES_V1` and the account's stored
+   *   values are GONE from view. Nothing is written until the officer presses Save.
+   * ⛔ THE FORM IS DRAWN IN ALL THREE. Before this, an account whose document would not parse got NO form and NO
+   * save path at all, while Start told the officer to "Open Rules … save" — a refusal naming a remedy that did
+   * not exist, and the only real exit was Remove and re-designate.
+   */
+  basis: "saved" | "converted" | "default";
   caps: readonly {
     key: string;
     label: string;
@@ -5019,6 +5031,38 @@ export async function houseDetailForConsole(
   ];
 
   const parsed = parseCtx ? parseHouseBotRules(bot.rules, parseCtx) : null;
+  /**
+   * ⭐ THE SEED THE RULES FORM IS DRAWN FROM, AND THE DEAD END IT REMOVES (Ali ruled 2026-09-23).
+   *
+   * 🔴 A document that would not parse got NO form and NO save path: this guard returned null, `DeskRulesForm`
+   * has one call site on the other branch, and `rules-save.ts` refused outright. Meanwhile Start said "Open
+   * Rules, review them, save, then start" and painted it as a live LINK, and the tab it led to answered "no
+   * form is shown". A refusal naming a remedy that did not exist, with Remove as the only real exit — and
+   * `migrateRules`, the converter "review the converted values" promised, had ZERO call sites under src/.
+   *
+   * ⛔ ONLY A FAILED CONTEXT READ STILL WITHHOLDS THE FORM. `parseCtx == null` is a LOAD failure a reload can
+   * fix, and drawing boxes whose bounds could not be read would invite a save against bounds nobody knows. A
+   * document fault is different in kind: the values are wrong, the screen is not.
+   * ⛔ AND NOTHING IS RESET BY BEING SHOWN. This decides only what the boxes are SEEDED with; the stored
+   * document is untouched until an officer presses Save, and the save posts every leaf explicitly.
+   */
+  const formSeed: { rules: HouseBotRulesV1; basis: ConsoleRulesForm["basis"] } | null = parseCtx == null
+    ? null
+    : parsed !== null && parsed.ok
+      ? { rules: parsed.rules, basis: "saved" as const }
+      : (() => {
+        const migrated = migrateRules(bot.rules, parseCtx);
+        if (migrated.ok) return { rules: migrated.rules, basis: "converted" as const };
+        /* ⛔ NO DEFAULTS AGAINST BOUNDS NOBODY COULD READ (355). A failed stake-bounds read is not a zero, and
+           seeding boxes from it would invite a save measured against limits that were never known. The form is
+           withheld for that ONE combination — unparseable document AND unreadable bounds — and the reload the
+           load error asks for is the right remedy, because the bounds are what a reload can fix. */
+        if (boundsR.status !== "fulfilled") return null;
+        return {
+          rules: DEFAULT_RULES_V1({ stakeBounds: { minTzs: boundsR.value.minStake, maxTzs: boundsR.value.maxStake } }),
+          basis: "default" as const,
+        };
+      })();
   const rules: ConsoleRuleRow[] | null = parsed == null || !parsed.ok || !parseCtx ? null : capRows(bot, parsed.rules, parseCtx);
   /* ⭐ WHY THIS ACCOUNT CANNOT BET, FROM THE ENGINE'S OWN PREDICATE (prod finding 2026-09-22) — the same call the
    * roster makes, over the same parse context, with what THIS build can press. `null` is "could not tell". */
@@ -5111,7 +5155,8 @@ export async function houseDetailForConsole(
     const u = FIELD_META[id].unit;
     return u === "TZS" ? "TZS" : u === "%" ? "percent" : u === "s" ? "seconds" : u === "min" ? "minutes" : "count";
   };
-  const rulesForm: ConsoleRulesForm | null = parsed == null || !parsed.ok || parseCtx == null ? null : {
+  const rulesForm: ConsoleRulesForm | null = formSeed == null || parseCtx == null ? null : {
+    basis: formSeed.basis,
     baseVersion: bot.rulesVersion,
     caps: CAP_FIELDS.map((field) => ({
       key: CONSOLE_CAP_KEY[field],
@@ -5149,16 +5194,16 @@ export async function houseDetailForConsole(
        `rulesInertReasons` paints on this same page name the modes with those words, and a switch labelled one way
        beside a refusal that names it another is the two-spellings defect this section was pulled up on. */
     flags: [
-      { key: CONSOLE_FLAG_KEY.productUpdown, section: CONSOLE_FLAG_SECTION.products, label: PRODUCT_WORDS.updown, on: parsed.rules.scope.products.updown, help: CONSOLE_FLAG_HELP.productUpdown },
-      { key: CONSOLE_FLAG_KEY.productPolls, section: CONSOLE_FLAG_SECTION.products, label: PRODUCT_WORDS.polls, on: parsed.rules.scope.products.polls, help: CONSOLE_FLAG_HELP.productPolls },
-      { key: CONSOLE_FLAG_KEY.updownCounter, section: CONSOLE_FLAG_SECTION.updown, label: ENTRY_MODE_WORDS.counter, on: parsed.rules.modes.updown.counter, help: CONSOLE_FLAG_HELP.updownCounter },
-      { key: CONSOLE_FLAG_KEY.updownFill, section: CONSOLE_FLAG_SECTION.updown, label: ENTRY_MODE_WORDS.fill, on: parsed.rules.modes.updown.fill, help: CONSOLE_FLAG_HELP.updownFill },
-      { key: CONSOLE_FLAG_KEY.updownOpener, section: CONSOLE_FLAG_SECTION.updown, label: ENTRY_MODE_WORDS.opener, on: parsed.rules.modes.updown.opener, help: CONSOLE_FLAG_HELP.updownOpener },
-      { key: CONSOLE_FLAG_KEY.pollsCounter, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.counter, on: parsed.rules.modes.polls.counter, help: CONSOLE_FLAG_HELP.pollsCounter },
-      { key: CONSOLE_FLAG_KEY.pollsFill, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.fill, on: parsed.rules.modes.polls.fill, help: CONSOLE_FLAG_HELP.pollsFill },
-      { key: CONSOLE_FLAG_KEY.pollsOpener, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.opener, on: parsed.rules.modes.polls.opener, help: CONSOLE_FLAG_HELP.pollsOpener },
-      { key: CONSOLE_FLAG_KEY.enterNow, section: CONSOLE_FLAG_SECTION.byHand, label: "Enter now", on: parsed.rules.enterNow.enabled, help: CONSOLE_FLAG_HELP.enterNow },
-      { key: CONSOLE_FLAG_KEY.targeting, section: CONSOLE_FLAG_SECTION.byHand, label: "Targeted stakes", on: parsed.rules.targeting.enabled, help: CONSOLE_FLAG_HELP.targeting },
+      { key: CONSOLE_FLAG_KEY.productUpdown, section: CONSOLE_FLAG_SECTION.products, label: PRODUCT_WORDS.updown, on: formSeed.rules.scope.products.updown, help: CONSOLE_FLAG_HELP.productUpdown },
+      { key: CONSOLE_FLAG_KEY.productPolls, section: CONSOLE_FLAG_SECTION.products, label: PRODUCT_WORDS.polls, on: formSeed.rules.scope.products.polls, help: CONSOLE_FLAG_HELP.productPolls },
+      { key: CONSOLE_FLAG_KEY.updownCounter, section: CONSOLE_FLAG_SECTION.updown, label: ENTRY_MODE_WORDS.counter, on: formSeed.rules.modes.updown.counter, help: CONSOLE_FLAG_HELP.updownCounter },
+      { key: CONSOLE_FLAG_KEY.updownFill, section: CONSOLE_FLAG_SECTION.updown, label: ENTRY_MODE_WORDS.fill, on: formSeed.rules.modes.updown.fill, help: CONSOLE_FLAG_HELP.updownFill },
+      { key: CONSOLE_FLAG_KEY.updownOpener, section: CONSOLE_FLAG_SECTION.updown, label: ENTRY_MODE_WORDS.opener, on: formSeed.rules.modes.updown.opener, help: CONSOLE_FLAG_HELP.updownOpener },
+      { key: CONSOLE_FLAG_KEY.pollsCounter, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.counter, on: formSeed.rules.modes.polls.counter, help: CONSOLE_FLAG_HELP.pollsCounter },
+      { key: CONSOLE_FLAG_KEY.pollsFill, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.fill, on: formSeed.rules.modes.polls.fill, help: CONSOLE_FLAG_HELP.pollsFill },
+      { key: CONSOLE_FLAG_KEY.pollsOpener, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.opener, on: formSeed.rules.modes.polls.opener, help: CONSOLE_FLAG_HELP.pollsOpener },
+      { key: CONSOLE_FLAG_KEY.enterNow, section: CONSOLE_FLAG_SECTION.byHand, label: "Enter now", on: formSeed.rules.enterNow.enabled, help: CONSOLE_FLAG_HELP.enterNow },
+      { key: CONSOLE_FLAG_KEY.targeting, section: CONSOLE_FLAG_SECTION.byHand, label: "Targeted stakes", on: formSeed.rules.targeting.enabled, help: CONSOLE_FLAG_HELP.targeting },
     ],
     /**
      * ⭐ EVERY NUMERIC LEAF, IN `FIELD_ORDER`, GROUPED BY ITS OWN SECTION (2026-09-23 · register A1).
@@ -5171,7 +5216,7 @@ export async function houseDetailForConsole(
      */
     rules: RULE_NUMBER_FIELDS.map((id) => {
       const meta = FIELD_META[id];
-      const raw = ruleLeaf(parsed.rules, id);
+      const raw = ruleLeaf(formSeed.rules, id);
       const bounds = boundsCtx === null ? null : fieldBounds(id, boundsCtx);
       const rec = recommendedRuleDoc === null ? null : ruleLeaf(recommendedRuleDoc, id);
       const def = meta.default;
@@ -5213,7 +5258,7 @@ export async function houseDetailForConsole(
         hint: meta.hint ?? "",
         /* ⛔ DERIVED FROM THE ENGINE'S PREDICATE, one switch at a time — never a hand-kept ownership map. */
         usedBy,
-        idle: usedBy !== "" && !leafUsedBy(id, modeStateOf(parsed.rules)),
+        idle: usedBy !== "" && !leafUsedBy(id, modeStateOf(formSeed.rules)),
         options: meta.options == null
           ? null
           : meta.options.map((o) => ({ value: String(o), label: limitValue(id, o) })),
@@ -5225,7 +5270,7 @@ export async function houseDetailForConsole(
       key: CONSOLE_AMOUNT_KIND_KEY,
       label: FIELD_META[ctr("amount.kind")].label,
       help: "Whether the answer is worked out from the player's stake or is the same amount every time.",
-      value: parsed.rules.counter.amount.kind,
+      value: formSeed.rules.counter.amount.kind,
       options: [
         { value: "PCT" as const, label: "A share of the player's stake", showsKey: CONSOLE_RULE_KEY[ctr("amount.pct")] },
         { value: "FIXED" as const, label: "The same amount every time", showsKey: CONSOLE_RULE_KEY[ctr("amount.fixedTzs")] },
@@ -5270,10 +5315,10 @@ export async function houseDetailForConsole(
         };
       }),
       /* ⛔ WHAT IS SAVED, IN THE SAME SENTENCES THE RECORD CARD PAINTS (`describeWindow`) — one home. */
-      saved: parsed.rules.schedule.allDay
-        ? (parsed.rules.schedule.days as readonly Weekday[]).map((d) => `${WEEKDAY_LABEL[d]} · all day`)
-        : (parsed.rules.schedule.days as readonly Weekday[]).flatMap((d) =>
-          parsed.rules.schedule.windows.map((w) => describeWindow(d, w.startMin, w.endMin))),
+      saved: formSeed.rules.schedule.allDay
+        ? (formSeed.rules.schedule.days as readonly Weekday[]).map((d) => `${WEEKDAY_LABEL[d]} · all day`)
+        : (formSeed.rules.schedule.days as readonly Weekday[]).flatMap((d) =>
+          formSeed.rules.schedule.windows.map((w) => describeWindow(d, w.startMin, w.endMin))),
     },
     /* ⭐ THE TWO PICKERS, FROM THE LIVE PLATFORM LISTS THE PARSE CONTEXT HOLDS (prod finding 2026-09-22). */
     lists: CONSOLE_LIST_FIELDS.map((field) => ({
@@ -5282,12 +5327,12 @@ export async function houseDetailForConsole(
       label: FIELD_META[field === "chains" ? "scope.chains" : "scope.categories"].label,
       help: CONSOLE_LIST_HELP[field],
       product: field === "chains" ? CONSOLE_FLAG_KEY.productUpdown : CONSOLE_FLAG_KEY.productPolls,
-      productOn: field === "chains" ? parsed.rules.scope.products.updown : parsed.rules.scope.products.polls,
+      productOn: field === "chains" ? formSeed.rules.scope.products.updown : formSeed.rules.scope.products.polls,
       onceOn: CONSOLE_LIST_ONCE_ON[field],
       none: CONSOLE_LIST_NONE[field],
       entries: field === "chains"
-        ? parseCtx.chains.map((c) => ({ key: `${CONSOLE_LIST_KEY.chains}.${c.key}`, value: c.key, label: c.label, on: (parsed.rules.scope.chains as readonly string[]).includes(c.key) }))
-        : parseCtx.categories.map((c) => ({ key: `${CONSOLE_LIST_KEY.categories}.${c}`, value: c, label: categoryWord(c), on: (parsed.rules.scope.categories as readonly string[]).includes(c) })),
+        ? parseCtx.chains.map((c) => ({ key: `${CONSOLE_LIST_KEY.chains}.${c.key}`, value: c.key, label: c.label, on: (formSeed.rules.scope.chains as readonly string[]).includes(c.key) }))
+        : parseCtx.categories.map((c) => ({ key: `${CONSOLE_LIST_KEY.categories}.${c}`, value: c, label: categoryWord(c), on: (formSeed.rules.scope.categories as readonly string[]).includes(c) })),
     })),
     copy: {
       barDetail: "These govern every stake this one account places.",
@@ -5454,9 +5499,18 @@ export async function houseDetailForConsole(
        ever betting: a ticked product whose list is empty reaches no market at all, which is the defect
        measured on the live desk and the reason `rulesInertReasons` exists. The sentence an officer reads
        before they start typing should name it. */
-    rulesReason: parsed !== null && parsed.ok
-      ? "Every stake this account places is held to these limits and to the desk's own. Tick a product, turn on how it enters, and choose the markets it may touch — a product with nothing chosen reaches no market at all."
-      : "These settings could not be read, so no form is shown. Reload the page, and if it says this again, raise it before changing anything.",
+    /* ⭐ AND THE SENTENCE MATCHES WHAT IS NOW DRAWN (2026-09-23). It used to read "could not be read, so no
+       form is shown" — which contradicted the Start refusal that had just sent the officer here to save, and
+       described a screen that no longer exists: the form IS drawn for a document that will not parse, seeded
+       from the converted values or from the defaults, and `basis` says which. The one state that still shows
+       no form is a failed BOUNDS or CONTEXT read, which a reload genuinely can fix. */
+    rulesReason: formSeed == null
+      ? "These settings could not be read, so no form is shown. Reload the page, and if it says this again, raise it before changing anything."
+      : formSeed.basis === "saved"
+        ? "Every stake this account places is held to these limits and to the desk's own. Tick a product, turn on how it enters, and choose the markets it may touch — a product with nothing chosen reaches no market at all."
+        : formSeed.basis === "converted"
+          ? "These settings were saved in an older format. The values below are the converted ones — review every one of them and Save to repair this account. Nothing is stored until you press Save."
+          : "These settings could not be read at all, so the values below are the starting ones and this account's saved numbers are not shown. Review every one of them and Save to repair this account. Nothing is stored until you press Save.",
     /* ⭐ 415 · the action row, from the status the reader already holds — no second read decides what is offered. */
     acts: actDialogsFor(bot.status),
     statusNote: statusNoteFor(bot.status, bot.pauseReason, wayOut),

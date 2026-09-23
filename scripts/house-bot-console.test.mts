@@ -227,6 +227,14 @@ await runTwoStores({
    * already carries the audited write. The controls are the half that matters: the href must be a PLATFORM route
    * and NOT a route of this section (the moment it is, the desk has grown a second money path), the two doors
    * must be different screens, and the page must actually RENDER it — a model field nothing paints is not a door. */
-  minPass: { memory: 796, postgres: 557 },
+  /* ⭐ RAISED 796 → 799 MEMORY / 557 → 560 POSTGRES, 2026-09-23, to what this run PRINTED. +3 in each child:
+   * 1.626 and its two discriminators — an account whose stored rules will not parse now DRAWS the form, seeded
+   * from the converted values or from the defaults, and SAYS which through `basis`. Before this it got no form
+   * and no save path at all, while Start told the officer to open Rules and save and painted that as a live
+   * link — a refusal naming a remedy that did not exist, with Remove as the only real exit.
+   * ⛔ THE CONTROLS MATTER AS MUCH AS THE CASE. An account whose document PARSES must still read `saved`, or the
+   * failure path has quietly become the path everyone gets; and a form seeded from defaults that did not SAY so
+   * would read as the account's own numbers, which is worse than drawing no form at all. */
+  minPass: { memory: 799, postgres: 560 },
   dbPrefix: "hb_console",
 });

@@ -3173,4 +3173,18 @@ import { formatEat } from "@/lib/utils";`,
     expect: "2g.page · M7 · the blockers are named once per screen",
     suite: "console-mem",
   },
+  {
+    /* ⭐ THE DEAD END, PUT BACK (2026-09-23). Until today an account whose stored rules would not parse got NO
+       form and NO save path, while Start told the officer to "Open Rules, review them, save, then start" and
+       painted it as a live LINK — a refusal naming a remedy that did not exist, whose only real exit was Remove
+       and re-designate. This restores exactly that guard, so 1.626 goes red the moment the form stops being drawn.
+       ⛔ 1.626's CONTROL must stay GREEN under it: an account whose document PARSES is unaffected either way,
+       which is what makes the case a measurement of the FAILURE path and not of the form's existence. */
+    name: "626-no-form-for-an-unreadable-document · the rules form goes back to being withheld from the one state that needs it, so the account can never be repaired",
+    file: GATE,
+    from: `  const rulesForm: ConsoleRulesForm | null = formSeed == null || parseCtx == null ? null : {`,
+    to: `  const rulesForm: ConsoleRulesForm | null = formSeed == null || parseCtx == null || formSeed.basis !== "saved" ? null : {`,
+    expect: "1.626 · a document this build CANNOT read still draws the rules form, seeded from the defaults, and SAYS so",
+    suite: "console-mem",
+  },
 ];

@@ -2993,6 +2993,47 @@ try {
     ok("1.456f · …and the page RENDERS it as a link, so the model field is not a value nothing paints",
       /<WayOutLink href=\{view\.holderFundsHref\}>/.test(read("src/app/admin/desk/[id]/page.tsx")),
       "the account page draws no holderFundsHref door");
+    /* ⭐ 1.626 · THE DEAD END, AND THAT IT IS GONE (Ali ruled 2026-09-23; the gap audit's one surviving finding).
+       🔴 An account whose stored document would not parse got NO form and NO save path, while Start told the
+       officer to "Open Rules, review them, save, then start" and painted it as a live LINK. The tab answered
+       "no form is shown", `rules-save.ts` refused outright, and `migrateRules` — the converter "review the
+       converted values" promised — had ZERO call sites under src/. The only exit was Remove and re-designate.
+       ⛔ THE ASSERTION IS THAT THE FORM IS DRAWN AND SAYS WHERE ITS VALUES CAME FROM. A form seeded from
+       defaults that did NOT say so would be worse than no form: it would read as the account's own numbers. */
+    {
+      const realGet = w.dal.houseBotStore.get;
+      let future: Any, broken: Any;
+      try {
+        /* A FUTURE schema: `migrateRules` refuses it, so the seed falls to the defaults. */
+        w.dal.houseBotStore.get = async (...a: Any[]) => {
+          const b = await realGet.apply(w.dal.houseBotStore, a as Any);
+          return b == null ? b : { ...b, rules: { schemaVersion: 9_999 } };
+        };
+        future = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId);
+        /* A v0 document: `migrateRules` CAN carry it forward, so the seed is the converted values. */
+        w.dal.houseBotStore.get = async (...a: Any[]) => {
+          const b = await realGet.apply(w.dal.houseBotStore, a as Any);
+          return b == null ? b : { ...b, rules: { schemaVersion: 0 } };
+        };
+        broken = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId);
+      } finally { w.dal.houseBotStore.get = realGet; }
+
+      ok("1.626 · a document this build CANNOT read still draws the rules form, seeded from the defaults, and SAYS so",
+        future !== null && future.rulesForm !== null && future.rulesForm.basis === "default"
+          && future.rulesForm.flags.length > 0 && future.rulesForm.rules.length > 0
+          && /Save to repair this account/.test(future.rulesReason)
+          && !/no form is shown/.test(future.rulesReason),
+        j({ basis: future && future.rulesForm && future.rulesForm.basis, reason: future && future.rulesReason }));
+      ok("1.626 · ⭐ DISCRIMINATES · a document that CAN be carried forward is seeded from the CONVERTED values, not the defaults — the two are different answers and the officer is told which they are reading",
+        broken !== null && broken.rulesForm !== null && broken.rulesForm.basis === "converted"
+          && /converted ones/.test(broken.rulesReason)
+          && future.rulesForm.basis !== broken.rulesForm.basis,
+        j({ basis: broken && broken.rulesForm && broken.rulesForm.basis, reason: broken && broken.rulesReason }));
+      ok("1.626 · CONTROL · the account whose document PARSES is untouched — still `saved`, still its own sentence, so the branch above is the failure path and not a form everyone now gets",
+        real !== null && real.rulesForm !== null && real.rulesForm.basis === "saved"
+          && /held to these limits/.test(real.rulesReason),
+        j({ basis: real && real.rulesForm && real.rulesForm.basis }));
+    }
     /* ⛔ AND A REFUSED VIEWER'S PAYLOAD CARRIES NOTHING AT ALL — no label, no id, no figure, no sentence. */
     ok("1.399 · a refused viewer's answer holds no label, no handle and no figure",
       !all(playerReal).includes(acct.botId) && all(playerReal) === "null", j(all(playerReal)));
