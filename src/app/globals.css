@@ -1386,6 +1386,13 @@ body {
 /* The clipping box around the marquee. ⛔ It used to carry `overflow: hidden` as an INLINE style, which
    no rule can override — so the calm branch below could not turn it into a scroller. Moved here. */
 .ticker-viewport { overflow: hidden; }
+/* ⚠️ AND THE SAME TRAP CAUGHT THE DUPLICATE COPY, one commit after it was written down for the box above.
+   This wrapper carried `style={{ display: "contents" }}` INLINE, so the calm branch's `display: none` could
+   not touch it — verified on production: `dupDisplay` read `contents` under `prefers-reduced-motion` and the
+   strip still scrolled 27,449px of twenty-four items instead of 12. `display: contents` keeps the spans as
+   direct flex children of the track, which is the only reason the wrapper is invisible to layout; it belongs
+   here so the one rule that needs to override it can. */
+.ticker-copy-dup { display: contents; }
 
 /* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
    `animation-play-state: paused` stops the marquee at frame 0, and frame 0 is not a readable state: measured
