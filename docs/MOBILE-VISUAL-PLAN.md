@@ -906,7 +906,7 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | ID | Defect | Where | Unit |
 |---|---|---|---|
 | D1 | Status strip's half chip collides with the result count (412 EN, 360 SW) | `.kp-strip-fade` `globals.css:3063-3068` | U9 |
-| D2 | Leaderboard podium handles break mid-word ("@Dhire / sh") | `leaderboard/page.tsx:591-594` | U10 |
+| D2 | Leaderboard podium handles break mid-word. ⚠️ **Re-measured on production 2026-09-23 and it is WORSE than this line recorded.** The example here was "@Dhire / sh" — two lines. Live at **320 SW the podium takes THREE lines with an orphan final letter**: `@Ful / genc / e` and `@Jay / kisha / n`; at 360 it is two, `@Fulge / nce` and `@Libuh / i` (again an orphan letter). The name column is **44px at 320 and 57.3px at 360**, at `--type-h4`-ish 15px with `overflow-wrap: break-word`, against handles wanting 70–80px. ⭐ **AND THE SAME HANDLES RENDER ON ONE LINE IN THE LIST DIRECTLY BELOW THE PODIUM** — @Libuhi, @Fulgence, @Jaykishan, @Ameet, @Dhiresh all whole at 13px. So this is not a handle-length problem, it is the podium’s three-column layout starving a column that the list gives room to; the fix belongs to the layout, and DG-P-08 forbids reaching for truncation. ⛔ **DO NOT MEASURE THIS WITH `Range.getClientRects().length`** — it over-counted by exactly one at both widths here (reporting 4 at 320 and 3 at 360) and the cropped screenshots are what settled it. Count painted lines some other way, or read the crop | `leaderboard/page.tsx:591-594` | U10 |
 | D3 | 52px chat bubble covers card Details / "Maelezo" / a tier badge | `ChatRoot.tsx:313-319`, `chat-styles.css:57` | U7 |
 | D4 | First visit: primer modal and consent card both show, uncoordinated | `first-visit-primer.tsx:296-317`, `consent-prompt.tsx:61-62` | U16 |
 | D5 | `/results` ≈ 65px gap between search and filter tabs | `search-box.tsx:181-187`, `results/page.tsx:104` | U9 |
@@ -1199,7 +1199,7 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Overlap is measured on the `::after` pulse ring, not the 44px box. `scripts/chat-responsiveness-e2e.mjs` is stale (wrong breakpoints) and not evidence.
 - Guard: a stacking-contract row plus a driver asserting the bubble spot hits the page while scrolling and the bubble after 400ms idle. RED: remove the hide rule.
 - 📐 **D3 is wider than its register line** (critics panel, 360 SW, 2026-09-16). The bubble covers content on **seven of nine** surfaces: a
-  ranked player's ROI on the leaderboard, the resolution criteria on a detail page (the line ends "…itathibitisha kwam" under it), the first
+  ranked player’s ROI on the leaderboard — re-measured live 2026-09-23, the 52×52 bubble covers the WHOLE third-place podium column at 360 SW ("@Jaykishan", its tier badge, "+24.0%" and "12 imetatuliwa"), and at 412 it covers the top summary line instead ("Mtabiri · ROI · +52.9%"); at 320 it covers nothing, so the overlap MOVES with the width rather than being one spot — the resolution criteria on a detail page (the line ends "…itathibitisha kwam" under it), the first
   card title on home ("…litafungwa n"), the ⓘ plate and "Maelezo" on the board, and the /results pager. This unit's driver runs on all nine
   surfaces, not on the board alone.
 
