@@ -549,6 +549,21 @@ const PORTAL_EXEMPT = new Set([
   "src/components/admin/admin-mobile-nav.tsx",     // slide-over
   "src/components/admin/action-overlay.tsx",       // full-screen progress overlay
   "src/components/markets/share-button.tsx",       // anchored share menu
+  /* ⭐ ADDED 2026-09-23 — `LocaleChangeOverlay`, and it is the SAME shape as `PendingChangesBar`
+     below: it portals because ANOTHER GATE REQUIRES IT. `test:stacking` §5.2 refuses a
+     full-viewport `fixed` overlay rendered inside route content, because `.route-enter` holds a
+     transform and a transformed ancestor is the containing block for every fixed descendant — so
+     a language change during a navigation laid this scrim out against the animating box instead
+     of the screen. §5.2 was RED on main for exactly that, inside `predeploy`.
+     ⛔ And `<Modal>` is the wrong primitive for it, for the reason this rule states: it is not a
+     DIALOG. It is a non-interactive loading scrim shown for one beat while the locale switches —
+     there is no focus to trap, nothing to dismiss and no dialog semantics to announce. Adopting
+     Modal would give it four behaviours it must not have.
+     ⚠️ Recorded here rather than left to be rediscovered: THREE separate guards police portals
+     (`test:stacking` §5.2 demands one here, this rule and `ui-consistency`'s `adhoc-portal` both
+     forbid it), and the first fix satisfied two of the three. Anything that starts portalling must
+     be reconciled in all three, in the same commit. */
+  "src/lib/i18n.tsx",                              // LocaleChangeOverlay — required to portal by test:stacking §5.2
   /* ⭐ ADDED 2026-09-01 (ADMIN-TABS-2026-09-01) — `PendingChangesBar`, and it is the OPPOSITE
      of the shape this rule exists to catch. The reason above is *"a hand-rolled createPortal
      DIALOG is a popup that skipped the focus trap, the focus return and the scroll lock"*.

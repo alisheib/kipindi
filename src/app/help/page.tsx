@@ -109,9 +109,19 @@ export default async function HelpPage() {
             return (
               <details
                 key={key}
-                className="group border-t border-border first:border-t-0 py-3"
+                /* ⛔ NO VERTICAL PADDING HERE — it moved onto the <summary> below, and that is the
+                   whole fix. Padding on the DETAILS makes the row look comfortable and adds nothing a
+                   thumb can hit: the tappable box is the summary, and the summary was the text line. */
+                className="group border-t border-border first:border-t-0"
               >
-                <summary className="cursor-pointer list-none flex items-start justify-between gap-3 font-display text-[13.5px] font-semibold text-text">
+                {/* 🔴 MEASURED ON PRODUCTION, 2026-09-23: these rows were 20.3px tall — HALF the 40px
+                    floor (DESIGN_AUTHORITY §A2) — and they are this page's primary controls. The height
+                    was an accident of WRAPPING: a question long enough to run to two lines reached 40px,
+                    a short one did not. In landscape at 740 every question fits one line, so ALL EIGHT
+                    collapsed to 20.3px — a wider screen made every tap target smaller.
+                    The padding simply moves from the <details> into the control, so the row measures the
+                    same closed and the thumb gets the whole of it. */}
+                <summary className="cursor-pointer list-none flex items-start justify-between gap-3 py-3 font-display text-[13.5px] font-semibold text-text">
                   <span className="flex items-start gap-2.5 min-w-0">
                     <span className="mt-0.5 shrink-0 text-brand-300"><Glyph s={15} /></span>
                     <span>{t.help[`${key}q` as keyof typeof t.help]}</span>
