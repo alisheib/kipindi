@@ -2920,6 +2920,12 @@ export type ConsoleRulesForm = {
     /** The documented default and the starting value, as plain digits ("" where the field has neither). */
     defaultValue: string;
     recommended: string;
+    /**
+     * The recommended figure as a SENTENCE, wearing the field's own face — "Recommended: TZS 5,000." The form
+     * renders it beside `range`; `recommended` above stays plain digits because the fill button writes it into
+     * an input. "" where the field has no recommendation.
+     */
+    recommendedNote: string;
     /** An empty box saves as "not set" instead of being refused. */
     nullable: boolean;
     help: string;
@@ -5129,6 +5135,13 @@ export async function houseDetailForConsole(
         range: bounds === null
           ? ""
           : `${meta.nullable ? "Empty, or between" : "Between"} ${limitValue(id, bounds.min)} and ${limitValue(id, bounds.max)}.`,
+        /* ⭐ WHAT TO SET IT TO, SAID IN THE ROW (2026-09-23). The recommended figure already existed and was
+           reachable only by pressing "Use starting values" — which fills EVERY empty box at once, so an officer
+           who wanted to know what one field should hold had to fill all of them to find out. Saying it in the
+           row is the difference between a form you can answer and a form you can only accept wholesale.
+           ⛔ THROUGH `limitValue`, exactly as `range` above: a recommendation reading "500" beside a range
+           reading "TZS 500" is two voices for one number. */
+        recommendedNote: rec == null ? "" : `Recommended: ${limitValue(id, rec)}.`,
         /* ⚠️ `LIVE_MIN` as a DEFAULT is a word, not a number, and it is resolved through the live bounds or
            not offered at all — a box filled with "LIVE_MIN" is the defect this branch exists to refuse. */
         defaultValue: def == null ? "" : typeof def === "number" ? String(def) : boundsCtx === null ? "" : String(boundsCtx.stakeBounds.minTzs),

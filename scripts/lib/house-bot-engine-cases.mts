@@ -1692,8 +1692,15 @@ await guard("14", async () => {
     const fresh = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 30_000 });
     ok("14.3 · the newest cached bar, 90 s from its open → vendor_bar at its close", fresh?.source === "vendor_bar" && fresh.price === 102 && fresh.ageSec === 90, j(fresh));
     ok("14.4 · …and still no paid call (peek reads the cache only)", paid === 0, `${paid} calls`);
-    const aged = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 60_000 });
-    ok("14.5 · 120 s from the bar's open → not a vendor price; no observation → null", aged === null, j(aged));
+    /* ⭐ RE-AIMED 2026-09-23, 120 → 180, WITH THE EDGE PINNED ON BOTH SIDES. The window was widened because it
+       had to outlast the provider's ~91 s publish lag PLUS the delay an OPENER waits out (up to 90 s) — at 120
+       the first two live intents this desk ever created were both refused UD_STALE_PRICE at 151 s and 144 s.
+       ⛔ A ONE-SIDED CASE WOULD NOT HAVE NOTICED THE WIDENING AT ALL: "180 s is refused" alone stays green if
+       the window is widened again to 300. The pair is what makes the number itself the subject. */
+    const justInside = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 119_000 });
+    ok("14.5a · 179 s from the bar's open is still INSIDE the window", justInside?.price === 102 && justInside.ageSec === 179, j(justInside));
+    const aged = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 120_000 });
+    ok("14.5 · 180 s from the bar's open → not a vendor price; no observation → null", aged === null, j(aged));
 
     await cacheBars("1H", [{ t: minute(now), c: 105 }]);
     const newest = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 10_000 });
@@ -1717,8 +1724,8 @@ await guard("14", async () => {
     /* ⛔ THE ONE THAT KEEPS THE AGE CHECK HONEST. `t` is the QUOTED instant, never the instant it was published —
        stamping it "now" would make every reading look fresh and turn the caller's staleness test into a check
        that cannot fail, which is the whole reason the desk may refuse a price at all. */
-    ok("14.7c · ⭐ DISCRIMINATES · the age is judged from the QUOTED instant, not from when it was published — 150 s is still refused",
-      (await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 150_000 })) === null);
+    ok("14.7c · ⭐ DISCRIMINATES · the age is judged from the QUOTED instant, not from when it was published — 200 s is still refused",
+      (await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 200_000 })) === null);
     await cacheBars("15M", [{ t: minute(now) + 60_000, c: 888 }]);
     const chartWins = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 90_000 });
     ok("14.7d · a chart-warmed bar that is NEWER still wins — the oracle only decides the no-chart case",

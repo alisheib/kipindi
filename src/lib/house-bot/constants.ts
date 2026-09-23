@@ -602,8 +602,41 @@ export const MIN_TIME_TO_CUTOFF_FLOOR_SEC = 10;
 /** A claimed bet usually lands this long after `dueAt` — the "Usually lands" copy (04 A24, N2 §5). */
 export const USUAL_LATENESS_SEC = { min: 2, max: 5 } as const;
 
-/** Up & Down price freshness for the closeness rule (04 A15). */
-export const UD_VENDOR_BAR_MAX_AGE_SEC = 120;
+/**
+ * Up & Down price freshness for the closeness rule (04 A15).
+ *
+ * ⭐ THE WINDOW MUST OUTLAST THE PUBLISH LAG PLUS THE DELAY THE BET WAITS OUT, AND UNTIL 2026-09-23 IT DID NOT.
+ *
+ * 🔴 MEASURED ON PRODUCTION, AND THE ENGINE SAID IT ITSELF. The provider's dated 1-minute bar publishes about
+ * 91 s after its boundary (E-166), so a price is ~91 s old the moment the platform first holds one. An OPENER is
+ * then PLANNED on that price and FIRES after its own drawn delay — `opener.delayUdMinSec`..`delayUdMaxSec`, a
+ * range whose own ceiling is 90 s. `fire.ts` re-reads the price and re-checks closeness at that later instant, so
+ * the age at the moment that matters is `publish lag + delay`, not the age at plan time. With the window at 120 s
+ * the first two live intents this desk ever created were both refused:
+ *
+ *   OPENER · delay 60 s · price age at fire 91 + 60 = 151 s · SKIPPED UD_STALE_PRICE
+ *   OPENER · delay 53 s · price age at fire 91 + 53 = 144 s · SKIPPED UD_STALE_PRICE
+ *
+ * ⛔ SO THE OLD 120 COULD ONLY EVER ADMIT A DRAWN DELAY UNDER ~29 s — SHORTER THAN THE FIELD'S OWN MINIMUM RANGE
+ * ALLOWS AN OFFICER TO CHOOSE. The constant was not tuned wrong; it was set without the delay in the sentence,
+ * the same shape as the 91-vs-60 pair below it. 180 covers a delay up to 89 s, which is the whole of the range
+ * the Rules tab offers.
+ *
+ * ⚠️ WHAT THIS TRADES, STATED PLAINLY: the desk may now judge closeness on a price up to three minutes old. That
+ * is a real widening and it is deliberate. It is bounded by the fact that the ONLY price this vendor publishes is
+ * the boundary's own bar — there is no fresher number to prefer, so a narrower window does not buy a better price,
+ * it buys no bet at all. The stake it admits is 1,000–5,000 TZS on an empty round, under every cap.
+ * ⛔ IT IS STILL A WINDOW, NOT A WAIVER: `udCloseness` keeps returning UD_STALE_PRICE beyond it, and case 14.7c
+ * pins that a reading is judged from the instant it was QUOTED — never from when the desk happened to receive it.
+ */
+export const UD_VENDOR_BAR_MAX_AGE_SEC = 180;
+/**
+ * ⚠️ 60 IS LOWER THAN THE ~91 s THE PROVIDER TAKES TO PUBLISH, so this route is older than its own threshold the
+ * moment it exists and has never once admitted a price — measured over twenty minutes, the newest CONFIRMED
+ * observation never read under 90 s. It is left at 60 DELIBERATELY: the observation is pinned to the boundary
+ * instant, so for the round it opened it IS that round's `openPrice`, and admitting it would compare the open
+ * price with itself and make closeness a check that cannot fail. The desk prices from the bar above instead.
+ */
 export const UD_OBSERVATION_MAX_AGE_SEC = 60;
 
 /**

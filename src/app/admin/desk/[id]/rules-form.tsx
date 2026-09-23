@@ -88,6 +88,8 @@ export type RulesFormModel = {
     key: string; section: string; label: string; value: string; saved: string;
     unit: "TZS" | "percent" | "seconds" | "minutes" | "count";
     min: string; max: string; range: string; defaultValue: string; recommended: string;
+    /** "Recommended: TZS 5,000." — the server's sentence; this file owns no copy. */
+    recommendedNote: string;
     nullable: boolean; help: string; hint: string; usedBy: string; idle: boolean;
     options: readonly { value: string; label: string }[] | null;
   }[];
@@ -669,6 +671,10 @@ export function DeskRulesForm({
                             <span className="block">{row.help}</span>
                             {row.hint !== "" && <span className="block mt-0.5">{row.hint}</span>}
                             {row.range !== "" && <span className="block mt-0.5">{row.range}</span>}
+                            {/* ⭐ WHAT TO SET IT TO (2026-09-23). It sat behind "Use starting values", which
+                                fills every empty box at once — so an officer who wanted one field's answer had
+                                to accept all of them to see it. The server owns the sentence. */}
+                            {row.recommendedNote !== "" && <span className="block mt-0.5">{row.recommendedNote}</span>}
                             {/* ⛔ WHICH SWITCH OWNS THIS NUMBER, and whether anything reads it RIGHT NOW —
                                 derived on the server from the engine's own predicate.
                                 ⛔ NEUTRAL, NOT A WARNING — read off the rendered tab (2026-09-23). On a fresh
