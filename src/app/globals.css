@@ -3337,6 +3337,28 @@ html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
    without `:has()` — the same reason `[data-sheet-open]` exists two rules above. */
 html[data-rail-menu-open] .kp-rail { z-index: 61; }
 
+/* 🔴 THE PAGER SPLIT SIX CONTROLS THAT FIT ONE LINE. Below `sm` the numbers group carries
+   `basis-full`, so it owns a row and the four arrows share the next — right when eleven controls
+   would otherwise wrap into three rows with one arrow stranded (E-400 ⑦, 2026-09-14). It fired
+   unconditionally: on a two-page board the rail is 284px and `« ‹ 1 2 › »` is 6 x 44 + 5 x 4 =
+   284 EXACTLY, and it was still split — "1 2" alone in a wide empty row, arrows underneath. A
+   player reported it as broken. The component now says which it needs on `data-pager-rows`, and
+   these two rules undo the break for the uncrowded case only.
+   ⛔ These beat Tailwind on specificity (0,2,0 against `.basis-full`/`.order-1` at 0,1,0) rather
+   than by `!important`, and they set exactly what the `sm:` variants already set from 640 up, so
+   the desktop row is untouched either way. */
+[data-pager-rows="one"] > [data-pager-group] { order: 0; }
+[data-pager-rows="one"] > [data-pager-group="pages"] { flex-basis: auto; }
+
+@media (max-width: 639.98px) {
+  /* density: general — this is a pager that must fit its own row, not card spacing, so it holds in
+     BOTH densities. ⛔ AND IT IS NOT COSMETIC: at 360 the rail is 284–286px and six controls at
+     `gap-1` are 6 x 44 + 5 x 4 = 284 EXACTLY. A fit with zero margin is a fit that one sub-pixel
+     undoes, and the failure mode is the wrap this change exists to remove. 2px between controls
+     buys 10px of room and costs nothing a thumb can feel — the controls themselves stay 44px. */
+  [data-pager-rows="one"] { gap: 2px; }
+}
+
 /* 🔴 AND THE LIFT ABOVE NAMES A COMPONENT, WHICH IS NOT WHERE THE RULE LIVES — found 2026-08-25
    the first time this sheet gained a SECOND call site (UD-13b, the Up & Down board's phone
    filters). The rule above lifts `.kp-discovery-bar`, so the sheet was only ever safe because

@@ -193,7 +193,24 @@ export function Pagination({
           alone. The controls now wrap as GROUPS: below `sm` the numbers take the first row (`phoneWindow`, at most
           five) and the four arrows share the second, so no control can be left on a row of its own; from `sm`
           the three groups sit in one row in reading order, exactly as before. */}
-      <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1">
+      {/* 🔴 THE FULL-WIDTH BREAK IS CONDITIONAL NOW, AND THAT IS THE WHOLE FIX. Below sm the
+          numbers group takes `basis-full` so it owns a row and the four arrows share the next —
+          added 2026-09-14 (E-400 ⑦) to stop eleven controls wrapping into THREE rows with one
+          arrow stranded alone. ⛔ But it fired unconditionally, so a pager with TWO pages split
+          six controls that fit one line: measured on production at 360, the rail is 284px and
+          `« ‹ 1 2 › »` is 6 x 44 + 5 x 4 = 284 EXACTLY. A player saw "1 2" marooned in a wide
+          empty row with the arrows underneath and called it broken, and he was right — a fix for
+          the crowded case was disfiguring the uncrowded one.
+          ⭐ So the break is asked for only when it is needed: with more than two numbers in the
+          phone window the controls genuinely cannot share a line (7 x 44 + 6 x 4 = 332 > 284) and
+          the two-row grouping stands; with two or fewer they sit in reading order on one.
+          ⛔ Expressed as an ATTRIBUTE on this wrapper, not as a conditional className on the
+          groups: `pager-reach` §2b matches all three group divs byte for byte, and a spec that
+          moves must move its test with it. Nothing here moves one. */}
+      <div
+        className="flex flex-wrap items-center justify-center sm:justify-end gap-1"
+        data-pager-rows={onPhone.size > 2 ? "two" : "one"}
+      >
         {/* ⛔ FIRST and LAST are the point of this control existing: a player on page 40 of
             60 could otherwise only step one page at a time. They are disabled exactly as
             prev/next are — a `<span aria-disabled>` in URL mode, so a dead control is never
