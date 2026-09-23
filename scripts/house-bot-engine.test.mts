@@ -44,4 +44,13 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 780, postgres: 759 }, dbPrefix: "hb_engine" });
+/* ⭐ RAISED 780 → 789 MEMORY / 759 → 768 POSTGRES, 2026-09-23 — nine cases, +9 in EACH child:
+ * · §7c (4) · the OPENER's deadline arithmetic, its 10 s floor, the per-product stale window and the decision's
+ *   field shape. These are register E's M9: the fleet's lane E asserted them END TO END and its own header
+ *   admitted they had no discriminating mutation, and they could not get one there — `red:*` runs declared
+ *   `suite:` values and there is no fleet suite. `planOpener` is pure, so the claims moved to where they bite.
+ * · 11.16a–e (5) · C8 minor M4: a `DB_TIMEZONE` boot refusal now records its CAUSE on the instance's own row,
+ *   the beats carry it, the verdict names it ABOVE `STALE`, an ENV_DISABLED refusal records nothing (the
+ *   CONTROL), and a boot that lands clears it.
+ * What a run PRINTED: `0.mem · exit 0 · 789 passed` and `0.pg · exit 0 · 768 passed`, ALL PASS on both stores. */
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 789, postgres: 768 }, dbPrefix: "hb_engine" });

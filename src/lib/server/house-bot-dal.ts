@@ -2331,7 +2331,10 @@ const memoryHouseBotRuntime: HouseBotRuntimeStore = {
     return memRuntimeUpsert(key, { ...(extra ?? {}), beatAt: nowIso() });
   },
   async boot(key, input) {
-    return memRuntimeUpsert(key, { engineEnabled: input.engineEnabled, bootAt: nowIso() });
+    /* ⛔ `pollerErrorCode: null` CLEARS A BOOT REFUSAL (M4). This row's code carries only `BOOT_REFUSED:*`, and a
+       boot that LANDED is the end of that state — a current state outliving its cause is the lie
+       `clearClaimsBlocked` exists against one layer down. */
+    return memRuntimeUpsert(key, { engineEnabled: input.engineEnabled, bootAt: nowIso(), pollerErrorCode: null });
   },
   async advanceSweep(placedAt, positionId) {
     memSeed();
@@ -3576,7 +3579,8 @@ const prismaHouseBotRuntime: HouseBotRuntimeStore = {
   },
   async boot(key, input) {
     const p = new Params();
-    const rows = await sql(null, runtimeUpsertSql(key, { engineEnabled: input.engineEnabled }, ["bootAt"], p), p.values);
+    /* The twin of the memory store's own line, and the same reason: a landed boot ENDS a boot refusal (M4). */
+    const rows = await sql(null, runtimeUpsertSql(key, { engineEnabled: input.engineEnabled, pollerErrorCode: null }, ["bootAt"], p), p.values);
     return toHouseBotRuntime(rows[0]);
   },
   async advanceSweep(placedAt, positionId) {

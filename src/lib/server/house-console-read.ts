@@ -781,6 +781,19 @@ function engineNotice(input: {
       return { ...shared, tone: "neutral", alert: false, meta: at(beats?.bootAtMs ?? null),
         title: "The engine has just started",
         body: "Its first pass runs within the minute. Nothing is wrong; this notice clears itself." };
+    case "BOOT_REFUSED":
+      /**
+       * ⭐ C8 minor M4 · THE CAUSE, NAMED, instead of "not running" and a search (see `BOOT_REFUSED_CODE`).
+       * ⛔ "A server", never "the desk": the marker is per instance, and one refusing replica beside three
+       * healthy ones is a different state from all four refusing — the same distinction the claims sentence
+       * below draws, and the reason both rows are written per instance rather than globally.
+       * ⛔ NO `meta`: there is no instant to show. A refusal writes no beat and no boot, so `lastSeen` here
+       * would age a figure this state does not have — and "Last seen: never" beside a named cause would read
+       * as a second, vaguer verdict (432(n)).
+       */
+      return { ...shared, tone: "danger", alert: true, meta: null,
+        title: "A server refused to start",
+        body: "Its database reports a time zone other than UTC, so it stopped rather than work against a clock it cannot trust. Nothing will be placed from that server until the database time zone is UTC and it is started again." };
     case "STALE":
       return { ...shared, tone: "danger", alert: true, meta: lastSeen(beats?.plannerBeatAtMs ?? null, nowMs),
         title: "The engine is not running",

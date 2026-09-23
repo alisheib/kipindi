@@ -299,7 +299,23 @@ export async function run(env: Any, prior: Any): Promise<Any> {
       !!led0 && !!d.m && led0.pool === d.m.yesPool + d.m.noPool && led0.pool === gross && led0.commission === 0 && led0.tra === 0 && led0.gbt === 0 && led0.holderReturnRows === 0,
       j({ ledger: led0, yes: d.m?.yesPool, no: d.m?.noPool, gross }));
 
-    /* Each desk keeps ITS OWN EAT day of placement: four placements minutes apart can straddle 21:00 UTC. */
+    /**
+     * Each desk keeps ITS OWN EAT day of placement: four placements minutes apart can straddle 21:00 UTC.
+     *
+     * ⚠️ **M10 DID NOT REPRODUCE, and the note is kept so nobody re-opens it** (register E, 2026-09-23). It was
+     * recorded as "`dayKey` goes null when placements straddle 21:00 UTC", which fuses two adjacent and
+     * unrelated things: the sentence above, and the `: null` on the line below.
+     * · A STRADDLE NEVER PRODUCES A NULL. `eatDay` is total — it returns a `YYYY-MM-DD` for every finite input.
+     *   EAT midnight IS 21:00 UTC, and straddling it makes `days` (below) hold TWO day strings instead of one,
+     *   which is exactly what the per-desk key, `booksByDay` and the per-day loop are built for.
+     * · THE `: null` IS A MISSING-`placedAt` GUARD, and it is unreachable on any run whose premises hold:
+     *   `pos` is `null` only when this desk has no single marked OPEN position, which is the M.0 premise — so
+     *   `P[expKey]` is false, every `okP` on the desk is RED (`okP` AND-s the premise; it does not skip), and
+     *   `allPremises` reddens M.5, M.17, M.17n, M.17b and M.18-M.20 besides. `Position.placedAt` is
+     *   non-nullable with a default, so the other route does not exist.
+     * · The guard still EARNS its place: `houseDayBook` throws on a malformed day key, so this stops a crash,
+     *   not a false green.
+     */
     d.dayKey = pos?.placedAt ? eatDay(Date.parse(pos.placedAt)) : null;
     const b0 = d.dayKey && bot ? await BOOK.houseDayBook(d.dayKey, bot.botId) : null;
     const x0 = bot ? await BOOK.houseOpenExposure(bot.botId) : null;
@@ -452,7 +468,12 @@ export async function run(env: Any, prior: Any): Promise<Any> {
       nullOk.push({ day, rows: all.length, mDesks: desks.filter((d) => d.dayKey === day).length, same, bets: bf?.bets, open: bf?.openStakeTzs, realised: bf?.realisedLossTzs });
     }
     ok(`M.17n · houseDayBook(day, null) equals the SUM of every per-desk row houseDayBooks(day) returns for that day, field by field, on each day a fleet placement fell on (${days.length}) — and those rows hold all four M desks (⚠️ an aggregation identity: the sign mutation at book.ts:53 flips both sides alike and is caught by M.16/M.17, not here)`,
-      allPremises && days.length >= 1 && mine.every(Boolean) && nullOk.every((n) => n.same && n.rows >= n.mDesks),
+      /* ⛔ `desks.every((d) => d.dayKey)` IS THE ONE THING M10's RE-DERIVATION DID CHANGE. A desk whose day key
+         were null would be dropped from `days` by the `.filter(Boolean)` above AND under-counted in `mDesks`,
+         so the `n.rows >= n.mDesks` limb would go SLACK in exactly the state where it should be strictest. It
+         can only ever weaken an assertion the two conjuncts beside it have already turned red — which is why
+         this is belt-and-braces and not a defect — but a limb that loosens itself is worth one token. */
+      allPremises && desks.every((d) => d.dayKey) && days.length >= 1 && mine.every(Boolean) && nullOk.every((n) => n.same && n.rows >= n.mDesks),
       j({ days: nullOk }));
 
     const fees = desks.map((d) => d.led1).filter(Boolean);

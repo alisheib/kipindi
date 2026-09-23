@@ -28,6 +28,7 @@ const DAL = "src/lib/server/house-bot-dal.ts";
 const WORKER = "src/lib/server/house-bot/worker.ts";
 /* ⭐ C7 step 4b · the one server-side staleness predicate the console renders (rulings 352, 353, 354). */
 const HEALTH = "src/lib/server/house-bot/engine-health.ts";
+const OUTCOMES = "src/lib/server/house-bot/outcomes.ts";
 /* ⭐ C5 alerts · the boot refusal that had no voice until the clock-skew build (01 register:1210). */
 const ENGINE = "src/lib/server/house-bot/engine.ts";
 
@@ -720,5 +721,102 @@ export const MUTATIONS = [
     expect: "7b.24 · opener.stakeMin/MaxTzs",
     suite: "engine-mem",
     sections: "7b",
+  },
+  /* == M4 - THE BOOT REFUSAL THE DESK CAN READ (2026-09-23) ============================================ */
+  {
+    /* THE DEFECT ITSELF, PUT BACK: the refusal goes back to ringing a bell and writing nothing durable, so the
+       desk sees no boot and no beat and can only say the vaguer thing. */
+    name: "boot-refusal-writes-nothing \u00b7 M4 \u00b7 a database whose time zone is not UTC stops the engine and leaves no record the desk can read",
+    file: ENGINE,
+    from: `      await houseBotRuntimeStore.upsert(RUNTIME_KEY.engine(INSTANCE_ID), { pollerErrorCode: \`\${BOOT_REFUSED_CODE}:DB_TIMEZONE\` });`,
+    to: `      void BOOT_REFUSED_CODE;`,
+    expect: "11.16a \u00b7 M4 \u00b7 \u2026and it RECORDS THE CAUSE where the desk can read it",
+    suite: "engine-mem",
+    sections: "11",
+  },
+  {
+    /* AND THE HALF THAT KEEPS IT FROM OUTLIVING ITS CAUSE - a danger Callout nobody can clear. */
+    name: "boot-refusal-outlives-its-cause \u00b7 M4 \u00b7 a boot that LANDS stops clearing the refusal, so the desk keeps naming a fault that is over",
+    file: DAL,
+    from: `    return memRuntimeUpsert(key, { engineEnabled: input.engineEnabled, bootAt: nowIso(), pollerErrorCode: null });`,
+    to: `    return memRuntimeUpsert(key, { engineEnabled: input.engineEnabled, bootAt: nowIso() });`,
+    expect: "11.16e \u00b7 M4 \u00b7 a boot that LANDS clears the refusal",
+    suite: "engine-mem",
+    sections: "11",
+  },
+  {
+    /* AND THE VERDICT'S PLACE IN THE LADDER: below `STALE` it would never be reached on the very state it
+       exists to explain, because a refused engine writes no planner beat either. */
+    name: "boot-refusal-below-stale \u00b7 M4 \u00b7 the refusal is ranked under `STALE`, so the desk goes back to saying the engine is not running with no cause named",
+    file: HEALTH,
+    from: `  if (beats.bootRefusedReason !== null) return "BOOT_REFUSED";`,
+    to: `  void beats.bootRefusedReason;`,
+    expect: "11.16c \u00b7 M4 \u00b7 and the verdict is `BOOT_REFUSED`, ABOVE `STALE`",
+    suite: "engine-mem",
+    sections: "11",
+  },
+  /* == 7c - THE FLEET LANE E CLAIMS, NOW DISCRIMINATED (register E - M9, 2026-09-23) ==================
+   * The lane asserted these end to end and its own header admitted they had no discriminating mutation: the
+   * fleet's only red is `KP_FLEET_SILENT`, which proves an assertion cannot pass with a DEAD engine, never that
+   * it catches a WRONG one. There is no fleet `suite:`, so they could not be declared there. The claims moved to
+   * §7c, where `planOpener` is pure — and these are the mutations that make them bite. */
+  {
+    name: "opener-deadline-ignores-the-guard · the cutoff guard stops reaching the OPENER's deadline, so a stake may be planned with no room to land",
+    file: DECIDE,
+    from: `  const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;`,
+    to: `  const deadlineMs = cutoffMs - MIN_TIME_TO_CUTOFF_FLOOR_SEC * 1000;`,
+    expect: "7c.1 · guards.minTimeToCutoffPollsMin",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    /* ⛔ THE FLOOR, NOT THE GUARD — a different line from the one above, so the two cannot mask each other. */
+    name: "opener-deadline-loses-its-floor · a guard of zero minutes collapses the deadline onto the cutoff itself",
+    file: DECIDE,
+    from: `    minTimeToCutoffSec: Math.max(MIN_TIME_TO_CUTOFF_FLOOR_SEC, ud ? rules.guards.minTimeToCutoffUdSec : rules.guards.minTimeToCutoffPollsMin * 60),`,
+    to: `    minTimeToCutoffSec: (ud ? rules.guards.minTimeToCutoffUdSec : rules.guards.minTimeToCutoffPollsMin * 60),`,
+    expect: "7c.2 · …and the 10 s FLOOR holds under it",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "opener-stale-reads-the-wrong-product · a poll's OPENER takes the Up & Down stale window, so it expires twenty times early",
+    file: DECIDE,
+    from: `  const staleMs = dueMs + (product === "UPDOWN" ? STALE_AFTER_SEC.updown : STALE_AFTER_SEC.polls) * 1000;
+  return {
+    row: {
+      houseBotId: bot.botId, botUserId: bot.botUserId, kind: "OPENER",`,
+    to: `  const staleMs = dueMs + STALE_AFTER_SEC.updown * 1000;
+  return {
+    row: {
+      houseBotId: bot.botId, botUserId: bot.botUserId, kind: "OPENER",`,
+    expect: "7c.3 · STALE_AFTER_SEC",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    name: "opener-asks-for-an-amount · the OPENER's decision grows a `wantedTzs`, so a bet it DREW reads as one it calculated",
+    file: DECIDE,
+    from: `        entry: "AUTO", delaySec, bettableFrom: bettableFrom(view),`,
+    to: `        entry: "AUTO", delaySec, bettableFrom: bettableFrom(view), wantedTzs: clamped.stake,`,
+    expect: "7c.4 · an OPENER's decision carries NO asked amount",
+    suite: "engine-mem",
+    sections: "7b",
+  },
+  {
+    /* ⭐ THE SIXTH LANE-E CLAIM, AND THE CASE FOR IT ALREADY EXISTED — only the mutation was missing. `13.1`
+       has asserted "ONE placed alert" since it was written and nothing ever put the defect back.
+       ⛔ `markAlerted` IS LEFT ALONE deliberately: it still wins the claim, so `alertedAt` is set and the A8
+       repair pass (whose predicate is `status = 'PLACED' AND "alertedAt" IS NULL`) will not quietly re-send and
+       hide the mutation. What this removes is the send itself — one alert becomes none. */
+    name: "placed-alert-never-sent · a placed stake stops ringing its bell while still claiming the alert, so nobody is told and the repair pass cannot tell",
+    file: OUTCOMES,
+    from: `      const won = await houseBotIntentStore.markAlerted(intent.id);
+      if (won) await alerts.placed(intent);`,
+    to: `      const won = await houseBotIntentStore.markAlerted(intent.id);
+      void won;`,
+    expect: "13.1 · ok → placed, the A8 alertedAt claim taken, ONE placed alert",
+    suite: "engine-mem",
+    sections: "13",
   },
 ];

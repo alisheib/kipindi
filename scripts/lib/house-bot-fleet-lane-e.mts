@@ -37,13 +37,36 @@
  *   `{ row: null, code: null }` with no bot in scope), so the control poll's seed disturbs nothing.
  *
  * ── NOT MEASURED, said here so nobody credits it ─────────────────────────────────────────────────────────
- * · Six assertions have no discriminating engine mutation on record — the deadline/stale arithmetic
- *   (decide.ts:122, :545-546), the decision's field shape, draw-predates-intent, HOUSE_ONLY not applied to a
- *   planned OPENER, every money row marked, exactly one placed alert. Each compares a literal with a field the
- *   engine wrote (cutoff − 300,000 vs − 10,000 under the floor; a SKIPPED · CONDITION_GONE row if HOUSE_ONLY
- *   reached a planned OPENER), and the KP_FLEET_SILENT red proves each cannot pass with a dead engine — but not
- *   that it catches a wrong one. Reasoned, not witnessed. The ×60 (decide.ts:541) WAS run: `* 1` → 5 red
- *   (delaySec 1, dueAt, the why sentence, the uniqueness case and the bet landing before createdAt + 60 s).
+ * · ⭐ **RESOLVED 2026-09-23 (register E · M9), AND THE ANSWER IS FOUR / ONE / TWO.** Six assertions here had
+ *   no discriminating engine mutation on record — the deadline/stale arithmetic, the decision's field shape,
+ *   draw-predates-intent, HOUSE_ONLY not applied to a planned OPENER, every money row marked, exactly one placed
+ *   alert. The KP_FLEET_SILENT red proves each cannot pass with a DEAD engine; it never proved any of them
+ *   catches a WRONG one. They could not be fixed HERE: `red:*` runs declared `suite:` values and there is no
+ *   fleet suite, because a fleet red would rebuild a scratch Postgres fleet per mutation.
+ *   — **FOUR now have one, elsewhere.** The deadline arithmetic, its 10 s floor, the per-product stale window and
+ *     the decision's field shape moved to `test:house-bot-engine` §7c, where `planOpener` is PURE, each as a PAIR
+ *     with its own declared mutation in `house-bot-engine.anchors.mjs` (`opener-deadline-ignores-the-guard`,
+ *     `opener-deadline-loses-its-floor`, `opener-stale-reads-the-wrong-product`, `opener-asks-for-an-amount`).
+ *   — **ONE already had one and nobody had noticed:** "every money row it wrote carries the marker" is the same
+ *     claim as `test:house-bot-money` `1.4`, whose `SEAM:txnMarker` mutation has been declared in
+ *     `house-bot-money.anchors.mjs` all along. And "exactly one placed alert" is `13.1` in the engine suite,
+ *     which had the case but not the mutation — `placed-alert-never-sent` is now declared against it.
+ *   — **TWO ARE STRUCTURALLY UNMUTATABLE AT THIS GRANULARITY, and that is a finding, not an omission.**
+ *     (a) *draw predates intent* is true by STATEMENT ORDER in `planner.ts` — the draw is written, then the row,
+ *         and the row's own side comes FROM the draw. Inverting it is not a one-line edit, and the nearest
+ *         one-line mutation (the declared `N1-2`, which deletes the draw row) reddens the assertion above it
+ *         too, so it is a WRONG-ASSERTION plant rather than a discriminating one. The only single-assertion
+ *         change would be forging a future `createdAt` inside the store, which is a clock lie, not a defect any
+ *         plan would put back.
+ *     (b) *HOUSE_ONLY not applied to a planned OPENER* is gated on `intent.kind` at ONE site in `fire.ts`.
+ *         Making it reach an OPENER turns the row into SKIPPED · CONDITION_GONE and reddens ten assertions in
+ *         this lane at once. The absence is structural, so it cannot be made to bite only its own label.
+ *   ⚠️ AND THE LINE NUMBERS THIS BULLET USED TO CARRY WERE STALE, which is why they are gone: it cited
+ *   `decide.ts:545-546` and `:541` for the stale arithmetic and the ×60, and those are now a docblock and a
+ *   closing brace. A number that has to be maintained by hand in prose is a number that rots; the mutations
+ *   above are anchored on TEXT, which `resolveAnchor` refuses to resolve ambiguously.
+ *   The ×60 (`planOpener`'s minutes-to-seconds) WAS run: `* 1` → 5 red (delaySec 1, dueAt, the why sentence,
+ *   the uniqueness case and the bet landing before createdAt + 60 s).
  * · Per-market OPENER uniqueness is enforced at THREE layers — the scan's NOT EXISTS (dal:4487), the OWN_INTENT
  *   hold (enter-now.ts:204 via planner.ts:582) and the partial unique index `hbi_fill_opener_anchor_uq` behind
  *   `insertIgnoringConflict`'s ON CONFLICT DO NOTHING (dal:3769-3773). The product-level cases here (one row on

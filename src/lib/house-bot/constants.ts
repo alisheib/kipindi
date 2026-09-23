@@ -90,6 +90,27 @@ export const SUBMIT_ID_RE = /^[0-9a-f-]{36}$/;
  * `HouseBotRuntime` keys (`HouseBotRuntime_key_check`). `engine:<instance>` and `beat:poller:<instance>`
  * are per boot — the instance id is random — which is why those rows are pruned after 24 h.
  */
+/**
+ * ⭐ A BOOT REFUSAL THE DESK CAN READ (C8 minor M4, 2026-09-23) — written the way `CLAIMS_BLOCKED_CODE` is,
+ * for the same reason its own note gives: **the bell alone was never enough.**
+ *
+ * 🔴 WHAT IT REPLACES. A database whose `TimeZone` is not UTC makes the engine refuse to start (04 A4). That
+ * refusal set an in-process flag, logged, and rang ONE alert per EAT day — and wrote nothing durable at all,
+ * because it returns BEFORE the boot row is written. So the desk, which reads durable rows on purpose, saw no
+ * boot and no beat and said "The engine is not running" with no cause named, while `/admin/system` could only
+ * answer for the replica that happened to render it. An officer was left to find a time-zone setting by guessing.
+ * ⛔ IT RIDES THE `engine:<instance>` ROW'S `pollerErrorCode`, WHICH NOTHING ELSE READS: `pollerErrorAtMs`,
+ * `pollerErrorStreak` and `claimsBlockedReason` are all taken from `beat:poller:*` rows and the failed-duty list
+ * from `beat:planner`. No new key prefix (352), no migration, and `listInstances()` already selects `engine:%`.
+ * ⛔ AND IT IS CLEARED BY A SUCCESSFUL BOOT, in `boot()` itself — a current state that survives its own end is
+ * a lie, which is exactly what `clearClaimsBlocked` exists to prevent one layer down.
+ * ⚠️ ONLY `DB_TIMEZONE` IS RECORDED, and the other four refusals are named here rather than left to be wondered
+ * about: `SCHEMA_NOT_READY` and `BOOT_FAILED` cannot write (there is no schema, or the write is the thing that
+ * failed), and `FEATURE_WITHDRAWN` / `ENV_DISABLED` are DELIBERATE — one replica with the engine switched off is
+ * a normal deployment, and marking the whole desk danger over it would be a false alarm nobody could clear.
+ */
+export const BOOT_REFUSED_CODE = "BOOT_REFUSED";
+
 export const RUNTIME_KEY = {
   global: "global",
   plannerBeat: "beat:planner",
