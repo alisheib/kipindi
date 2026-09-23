@@ -1383,8 +1383,29 @@ body {
   animation: ticker-scroll 70s linear infinite;
   will-change: transform;
 }
+/* The clipping box around the marquee. ⛔ It used to carry `overflow: hidden` as an INLINE style, which
+   no rule can override — so the calm branch below could not turn it into a scroller. Moved here. */
+.ticker-viewport { overflow: hidden; }
+
+/* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
+   `animation-play-state: paused` stops the marquee at frame 0, and frame 0 is not a readable state: measured
+   on production at 360, the clipping window is 245px against a track of 27,440px, entry 1 alone is 1,045px, and
+   the window held `TZS 10K completed YES on` — a sum of money and an outcome, stopping before it names the
+   market. There was no scrollbar, no touch scroll and not one link inside the strip, so **11 of the 12 events
+   were unreachable by any means**. Confirmed frozen twice, at t=6s and t=14s.
+   ⛔ REDUCED MOTION MUST REMOVE THE MOVEMENT, NOT THE CONTENT. It is set by players with vestibular disorders
+   and by anyone who turned motion down on a budget phone, and Swahili — the default locale — has the longest
+   sentences here, so they lost the most.
+   ⭐ So the calm branch stops being a frozen marquee and becomes an ordinary horizontal SCROLLER: the animation
+   is off (not merely paused), the box scrolls, and the duplicate copy is removed so the list is twelve events
+   once rather than twenty-four. `-webkit-overflow-scrolling` is not set — momentum scrolling is motion the
+   reader asked not to have.
+   ⚠️ `animation: none`, not `animation-play-state: paused`: a paused animation still holds its first frame's
+   `transform`, so the track would stay translated and the scroll would start in the wrong place. */
 @media (prefers-reduced-motion: reduce) {
-  .ticker-track { animation-play-state: paused; }
+  .ticker-track { animation: none; transform: none; }
+  .ticker-viewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+  .ticker-copy-dup { display: none; }
 }
 @keyframes ticker-scroll {
   0%   { transform: translateX(0); }
@@ -3359,6 +3380,28 @@ textarea::placeholder { color: var(--text-subtle); }
 .kp-discovery-bar:has(.kp-fsheet[open]),
 html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
 
+/* 🔴 D30 IS NOT CLOSED BY THE RULE ABOVE — THE SORT MENU IS A `<details>`, NOT A `.kp-fsheet`.
+   Measured on production at 320×640 with the sort menu open: the panel's own `z-index: 30` is spent inside
+   `.kp-discovery-bar.sticky.z-20`, its only positioned ancestor, so it resolves at **20** against the page,
+   while the chat bubble is `z-60` at the root. The bubble's 52px covers x 252–304 of a panel ending at 320,
+   and a nine-point census per row shows the bottom two rows — `Mabadiliko makubwa` and `Mpya kwanza` — each
+   losing 2 of 9 taps to it. Tapping to sort opens a support chat instead. **This is the defect a real player
+   reported on the rail, on a second surface.**
+   ⛔ RAISING THE BAR DOES NOT WORK HERE, AND IT WAS TRIED AND MEASURED. Lifting `.kp-discovery-bar` to
+   `z-index: 100` sets the bar's own z to 100 and changes NOTHING — still 2 of 9 lost on both rows — because
+   a sticky element inside page content cannot out-rank a root-level `fixed` one whose context it does not
+   share. The rail's own D30 fix worked because the RAIL is fixed at the root; this bar is not.
+   ⭐ SO THE BUBBLE YIELDS INSTEAD, which is the only element that can. With this rule the same census
+   returns **zero rows losing a tap**. It is scoped to the moment the menu is open and reverts when it
+   closes, and it is the behaviour U7 already plans for the bubble while scrolling.
+   ⚠️ The wrapper is matched as well as the button: the bubble is a `.cm-bubble` inside an UNCLASSED fixed
+   `div`, and the hit test found BOTH — the div at x=263 and the button at x=289. Hiding only the button
+   leaves the wrapper still taking the tap. When U7 gives that wrapper `.cm-fab`, add it here. */
+html:has([data-bar-cell="sort"] details[open]) :is(.cm-bubble, div:has(> .cm-bubble)) {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* 🔴 D30 · THE RAIL'S MENU AND THE CHAT BUBBLE, AND WHY THE PANEL'S OWN z-index IS POWERLESS.
    `.kp-rail` is `fixed z-40`; the More menu is `absolute z-[50]` INSIDE it. An element cannot
    escape its ancestor's stacking context, so that 50 orders the panel against its siblings in
@@ -3861,6 +3904,48 @@ html[data-sheet-open] .route-enter { animation: none; }
 
 .kp-conv { max-width: 620px; }
 
+
+/* 🔴 D60 + D61 · THE FAIRNESS RECORD STOPS BEING A FIVE-COLUMN TABLE ON A PHONE.
+   Measured on production: the five columns' content minimums (128 + 99 + 84 + 157 + 91 = 559px) beat
+   `.admin-tbl { width: 100% }`, so the table is 559px wide at EVERY phone width. At 360 the scroller shows
+   326 of it — **41.7% off-screen**; at 320, 48.8%. Every `Chanzo` link sat **157px past the right edge**
+   with nothing at rest to say it could be reached. That column is the page's entire promise: each
+   settlement checkable against a named official URL. A player who suspected a resolution could not audit
+   it, on the page the footer's “Uthibitisho wa utatuzi” link sends them to.
+   ⛔ AND BECAUSE THE WIDTH NEVER CHANGED, NEITHER DID THE TITLE COLUMN: 91.8px at 320, 360 AND 412. A
+   103-character Swahili question painted as 14 characters, and two different markets — one YES, one on a
+   different competition — rendered IDENTICAL rows. Raising the line clamp could not have fixed that.
+   ⭐ So each row becomes a stack of labelled fields, which is what a table of five short fields should be
+   at this width. The label comes from `data-th`, which the page fills from the same dictionary keys the
+   `<th>`s use — so there is one source of truth for the column names and it is localised.
+   ⚠️ `display: block` DESTROYS TABLE SEMANTICS, so `fairness/page.tsx` states `role="table"`, `role="row"`
+   and `role="cell"` explicitly; they survive the display change and a screen reader keeps its rows.
+   ⛔ The `<thead>` is hidden rather than deleted: it is still the desktop header, and it is where the
+   labels come from. */
+@media (max-width: 639.98px) {
+  /* density: general — a proof column 157px off-screen is unreachable in BOTH card spacings, and this is
+     not the board: `kp-density` governs card rhythm, and `/fairness` has no cards. Gated on WIDTH. */
+  .fairness-tbl, .fairness-tbl tbody, .fairness-tbl tr, .fairness-tbl td { display: block; width: auto; max-width: none; }
+  .fairness-tbl thead { display: none; }
+  .fairness-tbl tr { padding: var(--sp-3) var(--sp-3) var(--sp-4); }
+  .fairness-tbl td { padding: 0; }
+  .fairness-tbl td + td { margin-top: 10px; }
+  /* the field's name, in the eyebrow voice the hidden header used */
+  .fairness-tbl td[data-th]::before {
+    content: attr(data-th);
+    display: block;
+    margin-bottom: 2px;
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+  }
+  /* the question now has the whole measure, so it is allowed more of itself */
+  .fairness-tbl td[data-th] .line-clamp-2 { -webkit-line-clamp: 4; }
+}
+
 /* The question board — the hero's substance. Four real open markets, closing soonest. */
 .kp-qboard { border-top: 1px solid var(--border-royal); }
 .kp-qrow {
@@ -4116,6 +4201,9 @@ html[data-sheet-open] .route-enter { animation: none; }
    320 is untouched at 301.5 and 0 cut, while 277 and 246 go to 0 cut for that same 20px, paid only where
    the benefit is. */
 @media (max-width: 300px) {
+  /* density: general — a word that has been cut to one letter is unreadable in BOTH card spacings, so
+     this is not a Compact rule. It is gated on WIDTH, not on density: below 300px the chip is clipped at
+     every setting, and above it nothing is. */
   .mcardp-top { flex-wrap: wrap; }
 }
 /* ⛔ `.mcardp .chip` and `.mcardp .chip .live-dot` DELETED — PV-13c, 2026-09-03. This pair WAS
@@ -4206,6 +4294,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    Gated at the same measured 300px as D65 — at 320 nothing is clipped and nothing changes (0 of 15, card
    301.5); at 277 and 246 clipping goes to 0 for 21.5px of card height, paid only where the benefit is. */
 @media (max-width: 300px) {
+  /* density: general — §A5 forbids clipping money at BOTH card spacings, so this is not a Compact rule.
+     Gated on WIDTH: below 300px the pool figure is clipped at every setting, and above it none is. */
   .mcardp-meta { flex-wrap: wrap; }
 }
 .mcardp-meta > span:not(.dot):not(.mcardp-meta-right) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -5331,13 +5421,34 @@ textarea::-webkit-resizer {
    count. ⚠️ The cascade shortens 210ms → 120ms and loses its deceleration; the old
    figures are written here so the choice can be re-taken deliberately rather than
    rediscovered. The 4-item cap was already correct and is unchanged. */
-.js .kp-hero__inner > *:nth-child(1) { animation: kp-rise var(--t-move) var(--m-glide) 0ms both; }
-.js .kp-hero__inner > *:nth-child(2) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 1) both; }
-.js .kp-hero__inner > *:nth-child(3) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 2) both; }
-.js .kp-hero__inner > *:nth-child(4) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
+/* 🔴 D59 · THESE SIX RULES USED TO BE SCOPED TO `.js`, AND THAT SCOPE WAS THE DEFECT.
+   `.js` is added from a `useEffect` in `reveal.tsx`, so it lands after hydration. On slow 4G with a 4× CPU,
+   measured on production: FCP t=9416, the hero column FULLY READABLE at t=9761 with all five children at
+   opacity 1 — and then `.js` flipped at t=12539 and every one of them went to opacity 0 and rose again.
+   **A gap of 2,778 ms between readable and the flash**, then 132ms with no frame at all, back at t=13077 —
+   a 406ms visible event. A player who has been reading the headline, the open-market count and the staked
+   total for three seconds watches them vanish and slide back in. It reads as a crash, on the one surface
+   whose job is to establish that this platform is solid with money. ⛔ AND CLS CANNOT SEE IT: nothing
+   reflows, so every layout-shift budget stays green while the screen blinks.
+   ⭐ THE CAUSE IS `both` FILL MEETING A LATE CLASS. `animation-fill-mode: both` applies the first keyframe
+   BACKWARDS during the delay — so the moment `.js` matches, each child snaps to `kp-rise`'s frame 0
+   (invisible) and plays in. The animation is not wrong; arriving late is.
+   ⭐ AND THE FIX IS TO DELETE THE GATE, NOT TO ADD A SCRIPT. §12 of the plan says the motion tier must use
+   the guarded no-flash pattern `kp-density` uses — a server-rendered attribute — and **never a
+   render-blocking script**; and `.js` is the one thing a server cannot know. But these six rules never
+   needed it: they are finite CSS entrance animations that END VISIBLE, so a no-JS reader is safe by
+   construction — the animation simply runs and finishes. Unscoped, they play at FIRST PAINT, which is what
+   an entrance is for, and are over long before hydration.
+   ⛔ THE GATE STAYS ON `[data-reveal]` BELOW, WHERE IT IS LOAD-BEARING: that rule HIDES content until
+   `data-revealed` is set, and without JS it never would be — so removing `.js` there would leave every
+   below-the-fold band permanently blank. Two uses of one class, only one of which was ever about JS. */
+.kp-hero__inner > *:nth-child(1) { animation: kp-rise var(--t-move) var(--m-glide) 0ms both; }
+.kp-hero__inner > *:nth-child(2) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 1) both; }
+.kp-hero__inner > *:nth-child(3) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 2) both; }
+.kp-hero__inner > *:nth-child(4) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
 /* Anything after the fourth block rises with it rather than extending the budget. */
-.js .kp-hero__inner > *:nth-child(n+5) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
-.js .app-topbar { animation: kp-fade var(--t-base) linear 0ms both; }
+.kp-hero__inner > *:nth-child(n+5) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
+.app-topbar { animation: kp-fade var(--t-base) linear 0ms both; }
 
 /* Below the fold: revealed on first intersection by `section-reveal.tsx`, which sets
    `data-revealed` and then unobserves. */
@@ -5360,8 +5471,13 @@ textarea::-webkit-resizer {
    than merely shortening the animation, because the failure being prevented is a surface that is
    invisible for the length of a delay — not a flourish that is too long. */
 @media (prefers-reduced-motion: reduce) {
-  .js .kp-hero__inner > *,
-  .js .app-topbar { animation: none; opacity: 1; transform: none; }
+  /* ⛔ THE ENTRANCE SELECTORS LOST THEIR `.js` HERE TOO, AND THEY HAD TO — D59, 2026-09-23. The moment the
+     entrance rules above stopped waiting for `.js`, a calm branch that still waited would have let a
+     reduced-motion reader watch the very animation they asked not to have, for however long hydration took
+     — 2.8 seconds on the slow-4G cell that found D59. A gate removed on one side of a pair must come off
+     the other. `[data-reveal]` KEEPS its gate, because the rule it cancels is itself `.js`-scoped. */
+  .kp-hero__inner > *,
+  .app-topbar { animation: none; opacity: 1; transform: none; }
   .js [data-reveal] { opacity: 1; transform: none; transition: none; }
 }
 [data-motion="minimal"] .kp-hero__inner > *,
@@ -5578,6 +5694,7 @@ textarea::-webkit-resizer {
     --mcard-meta-mb: 4px;
   }
   html:not([data-density="comfortable"]) .market-grid { gap: 10px; }
+
   /* The Up & Down card, one rung down each. Its height follows the LIVE ROUND (U1 measured the
      same card at 468 and 660px minutes apart), so its target is stated per phase in §2 and read
      off data-phase — never diffed against a card in another state. */
@@ -5617,11 +5734,37 @@ textarea::-webkit-resizer {
        chip and starts cutting one mid-word, which is the clipped-not-scrolled failure. Stating
        it in the track is what makes the strip win the argument against the two controls. */
     grid-template-columns: minmax(160px, 1fr) auto auto;
+
+    /* 🔴 D58 · AND BELOW 300px THAT FLOOR KILLED THE SORT CONTROL, WHICH IS THE WORSE FAILURE.
+       `auto` lets the sort track collapse without limit, and it did: measured on production at an effective
+       277 and 246 (= 360 and 320 with Android text at 130%), `details` computed to width **0**, the summary
+       painted as a 13px sliver with 12 of 61 units of label visible, and the 44×44 direction link — later in
+       DOM order, so it paints on top — took its exact left edge. **0 of 14 hit-test points reached the sort
+       control**, and the Filters sheet carries no sort section, so sort could not be changed at all except by
+       editing the URL. Two instruments agreed, with a healthy control in the same run.
+       ⚠️ THE TRADE IS STATED, NOT HIDDEN. Giving the sort track a 76px floor costs the strip its 160px one
+       at these widths (measured: strip 160 → 96). The strip is `overflow-x: auto` and masked, so it DEGRADES
+       TO SCROLLING, which is a thing a player can still use; a 0px control is dead. That is why the trade goes
+       this way — and why it is gated at 300 rather than applied to the whole phone band: at **320 and 360
+       nothing moves at all**, verified to the pixel (summary 27 and 67, strip 160 and 160, 14/14 both).
+       ⭐ It also closes D18 at these widths as a side effect: the label goes from 12/61 to 47/61 at 277. */
     align-items: center;
     column-gap: 6px;
     row-gap: 2px;
     padding-top: 6px;
     padding-bottom: 6px;
+  }
+
+  /* ⛔ THIS OVERRIDE MUST COME AFTER THE RULE ABOVE, AND THE FIRST ATTEMPT DID NOT — D58, 2026-09-23.
+     Same selector, same specificity, so SOURCE ORDER decides. It was first written into an EARLIER
+     `@media (max-width: 639.98px)` block — this file has more than one — and shipped: the media query
+     matched (`mq300 = true`), `:has()` matched, and the computed track was still `160px 28px 45px`,
+     because the 160px rule compiled 321 bytes LATER and won. Read the compiled sheet, not the source,
+     when a rule that should match does nothing. */
+  @media (max-width: 300px) {
+    html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) {
+      grid-template-columns: minmax(96px, 1fr) minmax(76px, auto) auto;
+    }
   }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) > [data-bar-row] { display: contents; }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-strip-autoscroll] { grid-area: 1 / 1 / 2 / 2; }

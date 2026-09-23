@@ -82,6 +82,12 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
 
   return (
     <div
+      /* 🔴 D32 · THE STRIP HAD NO ACCESSIBLE NAME. It carries real settlement figures and market
+         questions, and a screen-reader user met it as an unlabelled run of text with no way to tell what
+         it was or to skip it. A named region is also a landmark a reader can jump over. */
+      role="region"
+      aria-label={t.common.liveTickerLabel}
+      className="ticker-strip"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       /* Pauses for the KEYBOARD too, not only the mouse. The run holds real settlement figures
@@ -148,10 +154,20 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
           begins 8px INSIDE the viewport in en, sw and zh. Corrected here rather than quietly
           deleted, because a comment claiming a fix for a defect that was really the
           instrument's is how the next reader "protects" behaviour nothing ever needed. */}
-      <div style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", display: "flex", alignItems: "center", paddingLeft: 8 }}>
+      {/* ⛔ `overflow` LIVES IN THE STYLESHEET NOW, NOT HERE. An inline style beats any rule, and the
+          reduced-motion branch has to be able to turn this box into a scroller — see `.ticker-viewport`
+          in globals.css. Everything else stays inline because it is layout this component owns. */}
+      <div className="ticker-viewport" style={{ flex: "1 1 auto", minWidth: 0, display: "flex", alignItems: "center", paddingLeft: 8 }}>
         <div className="ticker-track" style={{ animationPlayState: paused ? "paused" : "running" }}>
           <Items events={events} prefix="a" verbs={verbs} sides={sides} />
-          <Items events={events} prefix="b" verbs={verbs} sides={sides} />
+          {/* 🔴 D32 · THE SECOND COPY IS SCENERY, AND IT WAS BEING READ ALOUD. It exists only so the
+              marquee can loop seamlessly — `translateX(-50%)` lands copy b exactly where copy a began —
+              so a screen reader was reading all twelve settlements TWICE, as if they were 24 events.
+              `aria-hidden` on a `display: contents` wrapper removes it from the tree without moving a
+              single pixel: the spans stay direct flex children of the track. */}
+          <span className="ticker-copy-dup" style={{ display: "contents" }} aria-hidden>
+            <Items events={events} prefix="b" verbs={verbs} sides={sides} />
+          </span>
         </div>
       </div>
     </div>

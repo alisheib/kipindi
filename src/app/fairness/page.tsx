@@ -291,9 +291,23 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
           />
         ) : (
           <ScrollX label="Resolved markets" className="glass-panel">
-            <table className="admin-tbl">
+            {/* 🔴 D60 + D61 · ON A PHONE THIS STOPS BEING A FIVE-COLUMN TABLE.
+                Measured on production: the five columns' content minimums (128 + 99 + 84 + 157 + 91 = 559)
+                beat `.admin-tbl { width: 100% }`, so the table is 559px wide whatever the phone is. At 360
+                the scroller shows 326 of it — **41.7% off-screen**, 48.8% at 320 — and every `Chanzo` link
+                sits 157px past the right edge with no at-rest affordance that it can be reached. That is the
+                SOURCE column: the page's entire promise is that each settlement can be checked against a named
+                official URL, and on a phone a player saw MARKET / OUTCOME / OFFICERS and nothing else.
+                And because the width never changes, the title column is 91.8px at 320, 360 AND 412 — so a
+                103-character Swahili question painted as 14 characters and TWO DIFFERENT MARKETS rendered
+                identical rows. Raising the clamp could not fix that; the column never grows.
+                ⛔ `role` IS SPELLED OUT BECAUSE `display: block` DESTROYS TABLE SEMANTICS. A screen reader
+                stops announcing rows and cells the moment the display type changes, so the roles are stated
+                explicitly and survive it. The phone layout is a stack of labelled fields, which is what a
+                table of five short fields should be at this width anyway. */}
+            <table className="admin-tbl fairness-tbl" role="table">
               <thead className="border-b border-border bg-bg-overlay">
-                <tr className="font-mono text-micro uppercase eyebrow text-text-subtle">
+                <tr role="row" className="font-mono text-micro uppercase eyebrow text-text-subtle">
                   <th className="text-left p-3">{t.common.thMarket}</th>
                   <th className="text-left p-3">{t.common.thOutcome}</th>
                   <th className="text-left p-3">{t.common.thOfficers}</th>
@@ -306,11 +320,11 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                   /* ⛔ `data-row-id` — the instrumentation contract's third attribute. Without it
                      `qa:count-truth` cannot prove disjointness or no-double-counting over SETS,
                      which is the only way those properties are checkable in three languages. */
-                  <tr key={m.id} data-row-id={m.id} className="border-b border-border last:border-b-0 align-top">
-                    <td className="p-3 max-w-[420px]">
+                  <tr key={m.id} role="row" data-row-id={m.id} className="border-b border-border last:border-b-0 align-top">
+                    <td role="cell" data-th={t.common.thMarket} className="p-3 max-w-[420px]">
                       <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-brand-300 line-clamp-2">{titleOf(m)}</Link>
                     </td>
-                    <td className="p-3">
+                    <td role="cell" data-th={t.common.thOutcome} className="p-3">
                       {/* §L3 — this printed the stored token, and its null arm printed the
                           LITERAL string "VOID". The fairness page is the one surface whose
                           whole purpose is a player checking a settlement, so an untranslated
@@ -344,14 +358,14 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                       * nothing \u2014 it could not be looked up, compared or challenged. What the record must
                       * prove is that two DISTINCT officers signed, and that is exactly what is shown.
                       */}
-                    <td className="p-3 text-[11px] text-text-muted">
+                    <td role="cell" data-th={t.common.thOfficers} className="p-3 text-[11px] text-text-muted">
                       <div className="flex items-center gap-1">
                         {m.twoOfficer ? <I.users s={11} /> : <I.shieldcheck s={11} />}
                         <span>{m.twoOfficer ? t.common.twoOfficerSealed : t.common.oneOfficerSealed}</span>
                       </div>
                     </td>
-                    <td className="p-3 font-mono text-[11px] text-text-muted whitespace-nowrap">{fmtTime(m.resolvedAtMs ? new Date(m.resolvedAtMs).toISOString() : null)}</td>
-                    <td className="p-3">
+                    <td role="cell" data-th={t.common.thResolved} className="p-3 font-mono text-[11px] text-text-muted whitespace-nowrap">{fmtTime(m.resolvedAtMs ? new Date(m.resolvedAtMs).toISOString() : null)}</td>
+                    <td role="cell" data-th={t.common.thSource} className="p-3">
                       <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-brand-300 hover:text-brand-200 underline">
                         {t.common.thSource}
                         <I.ext s={11} />

@@ -17,10 +17,21 @@ export type Parsed = { y: number; m: number; d: number };
 export type SegKey = "dd" | "mm" | "yyyy";
 export type MaskState = { dd: string; mm: string; yyyy: string; focus: 0 | 1 | 2 };
 
-export const SEGMENTS: ReadonlyArray<{ key: SegKey; max: number; ph: string; aria: string }> = [
-  { key: "dd", max: 2, ph: "DD", aria: "Day" },
-  { key: "mm", max: 2, ph: "MM", aria: "Month" },
-  { key: "yyyy", max: 4, ph: "YYYY", aria: "Year" },
+/**
+ * 🔴 D69 · THE `aria` FIELD WAS REMOVED FROM HERE, 2026-09-23, AND MUST NOT COME BACK.
+ * It held `"Day" / "Month" / "Year"` as a hardcoded English constant, and those three strings are the
+ * ONLY name a screen reader gets for these inputs. Measured on production: a page served `lang="sw"`
+ * announced the whole sign-up form in Swahili and then three English words at the one field that
+ * decides whether a player is allowed an account. It is not a missing translation — the same three
+ * words appeared with the locale set to sw at both 320 and 360, because nothing here could vary.
+ * ⛔ This module is locale-free BY DESIGN (it is pure masking arithmetic and has no `t`), which is
+ * exactly why the strings cannot live here. `date-select.tsx` names the segments from the dictionary.
+ * `ph` stays: DD/MM/YYYY are format placeholders, not prose, and are the same in all three locales.
+ */
+export const SEGMENTS: ReadonlyArray<{ key: SegKey; max: number; ph: string }> = [
+  { key: "dd", max: 2, ph: "DD" },
+  { key: "mm", max: 2, ph: "MM" },
+  { key: "yyyy", max: 4, ph: "YYYY" },
 ];
 
 export function emptyState(): MaskState {
