@@ -16,7 +16,7 @@ export default async function ProposalNotFound() {
   const t = dict[locale];
 
   return (
-    <div className="mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
+    <div className="kp-shortpage mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
       <div className="mb-5">
         <FiftyMark size={64} />
       </div>

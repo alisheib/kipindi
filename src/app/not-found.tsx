@@ -79,7 +79,7 @@ export default async function NotFound() {
     // BrandTopo, a glyph badge, neutral chrome. A 404 is "not found", not an
     // error — so the badge is royal/info (not the RouteError rose alert tint),
     // and there's no gold here (404 isn't earned-money).
-    <div className="relative mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center overflow-hidden px-5 py-10 text-center">
+    <div className="kp-shortpage relative mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center overflow-hidden px-5 py-10 text-center">
       <BrandTopo id="notfound-topo" opacity={0.09} />
       <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
@@ -100,7 +100,17 @@ export default async function NotFound() {
         <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
           {d.notFoundHint}
         </p>
-        <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2.5 sm:grid-cols-3">
+        {/* 🔴 D68 · THREE ACROSS AT EVERY WIDTH, BECAUSE ONE PER ROW PUT THEM OFF THE SCREEN.
+            This page tells the player to choose where to go next, and at 320×640 — the smallest supported
+            phone — not one destination was usable: measured, the first was 61.6% visible behind the bottom
+            rail and the other two were **entirely off-screen**, with nothing at rest to say they existed.
+            Each card stacks a 28px glyph over its label inside `p-3.5`, so it is 101.5px tall and three of
+            them are 304px — more than the page had left after the mark, the badge, the code line, the
+            heading and the hint. ⭐ The labels are one short word each (`Mwanzo` / `Masoko` / `Msaada`,
+            and shorter in EN and ZH), so three across at 320 gives each ~86px of an ~48px word and turns
+            304px into one row. The `sm:` gate was the whole defect: the phone got the layout designed for
+            the case where there is room to spare. */}
+        <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-3 gap-2.5">
           <Link
             href="/"
             className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"

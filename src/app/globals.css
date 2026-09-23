@@ -1394,6 +1394,18 @@ body {
    here so the one rule that needs to override it can. */
 .ticker-copy-dup { display: contents; }
 
+/* 🔴 D68 · A CENTRED 80svh BLOCK ON A SHORT SCREEN PUSHES ITS OWN EXIT BELOW THE FOLD.
+   `/not-found` (and the market and proposal variants) centre their stack inside `min-h-[80svh]`. At 320×640
+   — the smallest supported phone, and shorter still once browser chrome is subtracted — that centring put
+   the row of destinations behind the fixed rail: measured, 61.6% of it visible with the page offering no
+   sign at rest that there was anything to reach. Centring is right when there is room to spare and wrong
+   when there is not, so below 700px of viewport height the stack simply starts at the top.
+   ⚠️ A HEIGHT query, not a width one: this is about how much room the page has, and a 740×360 landscape
+   phone has the same problem as a 320×640 portrait one. */
+@media (max-height: 700px) {
+  .kp-shortpage { min-height: auto; justify-content: flex-start; padding-top: var(--sp-4); padding-bottom: var(--sp-4); }
+}
+
 /* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
    `animation-play-state: paused` stops the marquee at frame 0, and frame 0 is not a readable state: measured
    on production at 360, the clipping window is 245px against a track of 27,440px, entry 1 alone is 1,045px, and

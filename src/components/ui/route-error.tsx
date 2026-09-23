@@ -142,7 +142,7 @@ export function RouteError({
   const backs = Array.isArray(back) ? back : back ? [back] : [];
 
   return (
-    <div className="relative mx-auto flex min-h-[60svh] w-full max-w-[560px] flex-col items-center justify-center overflow-hidden px-5 py-12 text-center">
+    <div className="kp-shortpage relative mx-auto flex min-h-[60svh] w-full max-w-[560px] flex-col items-center justify-center overflow-hidden px-5 py-12 text-center">
       <BrandTopo id="route-error-topo" opacity={0.09} />
       <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
