@@ -305,6 +305,17 @@ async function AdminDeskAccountContent({
               <WayOutLink href={view.holderHref}>
                 Holder&apos;s transactions
               </WayOutLink>
+              {/* ⭐ 456's OTHER HALF (Ali, 2026-09-23) · READING a holder's money and CHANGING it are both platform
+                  acts, and until now only the reading one had a door here. An account stakes from an ordinary
+                  player's wallet, so an officer who needs to fund it had to know, unaided, that the control lives
+                  on that player's own page. ⛔ THE DESK STILL MOVES NO MONEY: this is a link to the platform's
+                  audited control — mandatory reason, one atomic wallet + transaction + ledger write,
+                  overdraw-guarded, COMPLIANCE-logged, and gated on the accounting capability, so an officer
+                  without it is TOLD rather than shown a dead button. A money control of this section's own would
+                  be a second ledger story to reconcile, and D20 struck that tab already. */}
+              <WayOutLink href={view.holderFundsHref}>
+                Add or adjust funds
+              </WayOutLink>
             </div>
           </div>
 

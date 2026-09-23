@@ -221,6 +221,12 @@ await runTwoStores({
    * rendering it as zero. The control is the half that keeps the new grammar honest — a settled loss of exactly
    * zero is ordinary usage and must NOT read "ahead", so "ahead by" cannot leak onto a row that is simply at nil.
    * 1.366 itself was re-aimed rather than added, so it is +1 and not +2. */
-  minPass: { memory: 793, postgres: 554 },
+  /* ⭐ RAISED AGAIN 793 → 796 MEMORY / 554 → 557 POSTGRES, 2026-09-23, to what this run PRINTED. +3 in each child:
+   * 1.456f and its two controls — the account page's door to the PLATFORM's own funding control. An account
+   * stakes from an ordinary player's wallet, so funding it is funding that player, and `/admin/players/<id>`
+   * already carries the audited write. The controls are the half that matters: the href must be a PLATFORM route
+   * and NOT a route of this section (the moment it is, the desk has grown a second money path), the two doors
+   * must be different screens, and the page must actually RENDER it — a model field nothing paints is not a door. */
+  minPass: { memory: 796, postgres: 557 },
   dbPrefix: "hb_console",
 });

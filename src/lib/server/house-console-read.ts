@@ -3324,6 +3324,17 @@ export type ConsoleDetailView = {
   statusNote: string | null;
   /** 456 · the door to the holder's own money, which is a platform surface. */
   holderHref: string;
+  /**
+   * ⭐ 456's OTHER HALF (Ali, 2026-09-23): the platform surface where an admin may legitimately CHANGE this
+   * holder's money. An account stakes from an ordinary player's wallet, so funding it IS funding that player, and
+   * `/admin/players/<id>` already carries the audited control — mandatory reason, one atomic wallet + transaction
+   * + ledger write, overdraw-guarded, COMPLIANCE-logged, gated on the accounting capability.
+   * ⛔ A DOOR, NEVER A SECOND MONEY PATH. The desk must not grow a control that moves money: 456 settled that the
+   * door is the PLATFORM's screen and D20 struck the money tab this section once had. A second writer would be a
+   * second ledger story to reconcile against a first one that is already correct.
+   * ⛔ AND NOT A BALANCE (459) — a href, and nothing else.
+   */
+  holderFundsHref: string;
   /** The EAT day every figure on this render was measured over — derived ONCE (348). */
   dayKey: string;
 };
@@ -4758,6 +4769,7 @@ export async function houseDetailForConsole(
     /* 456 · the door to a holder's money is a PLATFORM surface, where an admin may legitimately read a player's
      * transactions — never a house-specific money tab, which D20 struck and 456 settled for good. */
     holderHref: `/admin/transactions?q=${encodeURIComponent(bot.userId)}`,
+    holderFundsHref: `/admin/players/${encodeURIComponent(bot.userId)}`,
     dayKey,
   };
 
@@ -6163,6 +6175,18 @@ export type ConsoleCheckView = {
   hasPhone: boolean;
   /** 456 · the platform surface where an admin may legitimately read this player's money. */
   holderHref: string;
+  /**
+   * ⭐ 456 AGAIN, AND THE OTHER HALF OF IT (Ali, 2026-09-23): the platform surface where an admin may legitimately
+   * CHANGE this player's money. An account stakes from an ordinary player's wallet, so funding it is funding that
+   * player — and `/admin/players/<id>` already carries the audited control that does it: a mandatory reason, one
+   * atomic wallet + transaction + ledger write, overdraw-guarded, COMPLIANCE-logged, and gated on the accounting
+   * capability so an officer without it is told rather than shown a dead button.
+   * ⛔ THIS IS A DOOR, NOT A SECOND MONEY PATH. The desk must never grow a control that moves money: 456 says the
+   * door to a holder's money is the PLATFORM's own screen and D20 struck the money tab this section once had. A
+   * second writer would be a second ledger story to reconcile, and the first one is already correct.
+   * ⛔ AND IT IS NOT A BALANCE. 459 keeps a figure off this section entirely; this is a href and nothing more.
+   */
+  holderFundsHref: string;
   /** ⛔ A STATE, NEVER A BALANCE (459). `null` when the wallet could not be read — a blocking row then says so. */
   funded: ConsoleFunded | null;
   /** Why the wallet's own bonus money is not part of that state. A FACT, and it reads nothing. */
@@ -6303,6 +6327,7 @@ export async function houseCheckForConsole(
     phoneE164: phone,
     hasPhone: phone !== null,
     holderHref: `/admin/transactions?q=${encodeURIComponent(id)}`,
+    holderFundsHref: `/admin/players/${encodeURIComponent(id)}`,
     funded,
     bonusCaption: "Bonus money is never staked from the desk, whatever the wallet holds.",
     openPositions: open === null ? EM_DASH : formatNumber(open),

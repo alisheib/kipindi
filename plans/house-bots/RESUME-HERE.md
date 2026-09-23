@@ -121,6 +121,31 @@ an already-saved 0 is only corrected when someone saves the Rules tab again.
      migration adds `lastSkipCode` + `lastSkipAt`), and paint it on the roster row and the why-panel.
    · The instrument that proves it: an account that is Active and silent must name its reason on screen, and a
      mutation that drops the recording must turn that case red.
+2. 🔴 **A REFUSAL THAT NAMES AN IMPOSSIBLE REMEDY — an account whose rules will not parse can never be repaired.**
+   Found by a four-lens gap audit on 2026-09-23 (26 candidates raised, 25 refuted, this ONE survived).
+   An account in `RULES_INVALID`, `RULES_OUTDATED` or `RULES_FROM_FUTURE` is stopped by the engine
+   (`planner.ts:401`, `fire.ts:130`). Start then says *"Open Rules, review them, save, then start"* and paints it
+   as a LIVE LINK. Follow it and the Rules tab draws **no form, no fields, no Save**:
+   · `house-console-read.ts:5102` nulls `rulesForm` when the document does not parse, and `:5010` nulls the
+     read-only rows too — so `SavedRulesCard` falls to `AdminLoadError`;
+   · `DeskRulesForm` has ONE call site (`[id]/page.tsx:633`), drawn only on the parsing branch;
+   · `rules-save.ts:196` refuses outright — its own docblock, "a document that will not parse is REFUSED, never
+     reset" — and the overlay is built from `...parsed.rules`, so **there is no write path at all**;
+   · the tab's own sentence then contradicts the refusal: *"no form is shown … raise it before changing anything"*;
+   · ⛔ `migrateRules` — the converter "review the converted values" promises — has **ZERO call sites under
+     `src/`**. It is the `scope.chains` archetype again: modelled, validated, unit-tested, no control anywhere.
+   ⚠️ **A COPY-ONLY FIX WAS TRIED AND DELIBERATELY REVERTED.** Saying "remove and designate again" is honest, but
+   it sets the way-out to `["REMOVE"]` and `test:house-bot-rules` **12.2** refuses that: *"no pause reason but
+   ACCOUNT_CLOSED is a dead end."* That guard is right — the standard here is to remove dead ends, not describe
+   them — so the real fix is to make the form appear:
+   · `house-console-read.ts:5102` — when `parseCtx != null` but the document does not parse, still build
+     `rulesForm`, seeded from `migrateRules(bot.rules, parseCtx)` when that returns ok (the "converted values" the
+     copy already promises) and otherwise from `DEFAULT_RULES_V1`, with a flag saying which. Keep the read-only
+     `rules` rows null — the stored values genuinely cannot be shown. Only `parseCtx == null` keeps the form null.
+   · `rules-save.ts:196` — use that same base for the overlay instead of returning `RULES_UNREADABLE`. Nothing is
+     silently reset: the form posts every leaf explicitly, and the round-trip check at `:323` still refuses
+     anything that would not parse back. Keep `RULES_UNREADABLE` for the CONFLICT and context-read failures.
+   ⚠️ It touches a money-adjacent write path, which is why it was not done beside a copy correction.
 2. The two browser gates (`qa:desk-rules-flow`, `qa:house-bots-visual` at 360/1280, PNGs READ).
 3. `red:house-bot-console` — its last run died on an EPERM rename and left a planted defect on disk (restored
    from the HEAD blob, tree proved clean). It has not completed since.
