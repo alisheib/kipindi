@@ -20,6 +20,18 @@ import Link from "next/link";
 import { cn, formatTzs, formatBalancePill, formatNumber } from "@/lib/utils";
 import { CashEye, useCashHidden } from "@/components/ui/cash";
 
+/**
+ * 🔴 THE MASK IS A LAYOUT INPUT, NOT DECORATION — which is why it has a name now.
+ * D31: the reserved box was sized from the REAL figure while the hidden state painted THIS
+ * string, so a short balance reserved a short box and the mask ran out of it. Measured at 360:
+ * the mask needs 75px, and the box reserved 34px at TZS 0, 47.6 at TZS 500, 61.2 at TZS 9,999
+ * and 74.8 at TZS 100,000 — so it overflowed at EVERY balance up to a million, by 41px at zero.
+ * The eye's own box begins 4px past that edge, so the dots ran under the eye. Ali reported it
+ * from his phone: "the eye icon overrides most of the dots".
+ * ⛔ Change the glyph count here and the box follows, because both sizers below read this.
+ */
+const BALANCE_MASK = "TZS •••••";
+
 const TWEEN_DURATION = 600;     // ms — full rolling-counter run
 const FLASH_DURATION = 800;     // ms — gilt outline pulse decay
 
@@ -221,10 +233,22 @@ export function WalletBalancePill({ balance }: { balance: number }) {
           ⚠️ `tabular-nums` on the Link is what makes this exact rather than approximate —
           every digit is one advance width, so the reserved box matches any balance of the
           same length, not merely the one measured. */}
-      <span className="relative inline-flex items-center">
-        <span aria-hidden className="invisible">{formatBalancePill(effectiveBalance)}</span>
-        <span aria-hidden className="absolute inset-0 flex items-center">
-          {hidden ? "TZS •••••" : formatBalancePill(display)}
+      {/* 🔴 D31 · THE BOX IS THE WIDER OF THE TWO STATES, AND THAT IS THE FIX.
+          It used to be sized from the figure alone, so the mask — which is a FIXED nine
+          characters — overflowed whenever the balance was shorter than it. That is most
+          balances: measured at 360, the mask needs 75px and the box reserved 34px at TZS 0.
+          The overflow ran right, into the hairline divider and under the eye.
+          ⭐ THREE CHILDREN IN ONE GRID CELL. Two invisible sizers and the painted value all
+          occupy `[grid-row-start:1] [grid-column-start:1]`, so the container takes the WIDTH OF THE WIDEST and neither
+          state can exceed it. An absolutely-positioned second sizer could not do this — an
+          out-of-flow element contributes no width, which is precisely how the old one failed.
+          ⛔ It keeps the property the old code existed for: toggling the eye still moves
+          NOTHING, because the box is now the max and therefore identical in both states. */}
+      <span className="relative inline-grid items-center">
+        <span aria-hidden className="invisible [grid-row-start:1] [grid-column-start:1]">{formatBalancePill(effectiveBalance)}</span>
+        <span aria-hidden className="invisible [grid-row-start:1] [grid-column-start:1]">{BALANCE_MASK}</span>
+        <span aria-hidden className="flex items-center [grid-row-start:1] [grid-column-start:1]">
+          {hidden ? BALANCE_MASK : formatBalancePill(display)}
         </span>
       </span>
       {/* Tiny delta indicator that fades out alongside the flash —

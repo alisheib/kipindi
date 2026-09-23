@@ -24,8 +24,27 @@
 import { matchesStatus, sortRows, pricedYesPct, type SortId } from "./discovery";
 import type { HeroRow } from "./hero";
 
-/** Cards on the landing grid. Six is two rows of three at desktop, three rows of two at 768. */
-export const LANDING_GRID_SIZE = 6;
+/**
+ * Cards on the landing grid.
+ *
+ * ⚠️ WAS 6, AND 6 WAS A DESKTOP NUMBER — the line this replaces said so: "two rows of three at
+ * desktop, three rows of two at 768". On a phone it is six rows of ONE: 1815px, 22% of the whole
+ * landing page, measured at 360 SW on production. The default visitor is on a phone and reads
+ * Swahili since 8822b648, so the grid is sized from THAT screen now — three cards, ~940px, and
+ * still one clean row at desktop.
+ *
+ * ⭐ AND THE CONTENT WAS ALREADY DOUBLED. The hero draws HERO_MARKETS (5) of its own — a featured
+ * card plus the Closing-soonest rows — so a six-card grid put ELEVEN markets in front of a visitor
+ * before the trust band, the same markets in two formats. The band's own eyebrow is "biggest pool
+ * first"; a superlative shown six times stops being one. Browsing is what /markets is for, and the
+ * hero already carries the "Browse all {n} markets" link to it.
+ *
+ * ⛔ THIS IS A DESIGN DECISION, NOT TARGET-CHASING. The plan's ≤ 7.8-screen home is unreachable
+ * whatever this is set to — see MOBILE-VISUAL-PLAN §11, where the arithmetic is written out. This
+ * is set to what a landing SAMPLE should be; the home-length target is restated from measurement
+ * rather than met by cutting content. Ali delegated the number on 2026-09-23.
+ */
+export const LANDING_GRID_SIZE = 3;
 
 /** Markets the hero itself draws: the featured card plus the question board. */
 export const HERO_MARKETS = 5;
