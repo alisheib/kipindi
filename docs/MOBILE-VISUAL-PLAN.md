@@ -47,8 +47,11 @@
   (S0b, 2026-09-15: the seven-lens review, U21–U30, D10–D27, §8a, §8b. S0, same day: the first plan,
   the owner rulings in PLAN-OF-RECORD §8.8, the NEXT-PLAN board.)
 
-◐ HALF-DONE: nothing — S1 is closed and merged to main. Start S2 from `origin/main` on any PC (a new branch or worktree off it;
-  `origin/mobile-visual` is fully merged and may be reused). Two things that do NOT travel through git:
+◐ HALF-DONE: S1 is closed and merged to main. Start S2 from `origin/main` on any PC (a new branch or worktree off it).
+  ONE small item first: `origin/mobile-visual` carries a single unmerged commit, `f80f1d33` — `test:revoked-deadend` sets
+  `kp-locale=en` on every context (its six English copy checks have read Swahili pages since 8822b648; found by S1's test:all).
+  It is UNVERIFIED: boot next dev, run `BASE=http://localhost:<port> npm run test:revoked-deadend` (40/6 → 46/0), then push it
+  to main — a test-only change, no product code. Two things that do NOT travel through git:
   · the QA player's password — "QA Mobile 01" (usr_ffb3c5cdd44a35cfca12125a, +255712000110, WHO=mobile01) signs in only with the
     `QA_MOBILE01_PHONE` / `QA_MOBILE01_PASSWORD` lines of `.env.qa.local` in C:\kipindi-mobile on ALI-BLADE15. Copy those two lines
     into the new checkout's `.env.qa.local`; if they are lost, ⛔ never re-mint 01 — mint "QA Mobile 02" (+255712000111) with
