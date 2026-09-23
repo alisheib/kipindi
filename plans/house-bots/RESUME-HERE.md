@@ -104,53 +104,54 @@ COUNTER intents are refused `POOL_BAND` because of it. A counter only answers a 
 ceiling of 0 can never be satisfied. Clear that box (empty = no ceiling). Refused at SAVE since 2026-09-23, but
 an already-saved 0 is only corrected when someone saves the Rules tab again.
 
-▶ **WHAT IS LEFT, and none of it blocks betting:**
-1. **Record the refusal reason — still the highest-value work on the programme.** `planFill` and `planOpener`
-   have **18 refusal points and every one returns `code: null`**, so `HouseBotIntent = 0` cannot be told from
-   "refused four hundred times". ⚠️ The COUNTER path is NOT affected — `decideCounter` already sets a code and
-   writes a SKIPPED row, which is how `POOL_BAND` and `UD_STALE_PRICE` became visible today. The design, so it
-   is not re-derived:
-   · Give each of the 18 a code. Most already exist: `MARKET_NOT_LIVE`, `MARKET_REOPENED`, `OUT_OF_SCOPE`,
-     `CHAIN_NOT_RUNNING`, `OUTSIDE_SCHEDULE`, `MARKET_HELD`, `CUTOFF`/`EXIT_WINDOW_TOO_LATE`,
-     `STAKE_BELOW_MIN`, the cap code from `capPrecheck`, and `udCloseness`'s own three.
-   · THREE need new codes, and ruling A10 means each arrives with a `BET_PATH_REASONS` entry and a mapper row in
-     the SAME commit: an OPENER's market already holding a pool; a market that opened before `scopeFrom`
-     (ruling 92); and a FILL with no thin side.
-   · ⛔ DO NOT write a row per refusal per market per pass — hundreds of markets every 15 s would flood
-     `HouseBotIntent`. Record the LAST code per ACCOUNT on its `bot:<id>` `HouseBotRuntime` row (an expand-only
-     migration adds `lastSkipCode` + `lastSkipAt`), and paint it on the roster row and the why-panel.
-   · The instrument that proves it: an account that is Active and silent must name its reason on screen, and a
-     mutation that drops the recording must turn that case red.
-2. 🔴 **A REFUSAL THAT NAMES AN IMPOSSIBLE REMEDY — an account whose rules will not parse can never be repaired.**
-   Found by a four-lens gap audit on 2026-09-23 (26 candidates raised, 25 refuted, this ONE survived).
-   An account in `RULES_INVALID`, `RULES_OUTDATED` or `RULES_FROM_FUTURE` is stopped by the engine
-   (`planner.ts:401`, `fire.ts:130`). Start then says *"Open Rules, review them, save, then start"* and paints it
-   as a LIVE LINK. Follow it and the Rules tab draws **no form, no fields, no Save**:
-   · `house-console-read.ts:5102` nulls `rulesForm` when the document does not parse, and `:5010` nulls the
-     read-only rows too — so `SavedRulesCard` falls to `AdminLoadError`;
-   · `DeskRulesForm` has ONE call site (`[id]/page.tsx:633`), drawn only on the parsing branch;
-   · `rules-save.ts:196` refuses outright — its own docblock, "a document that will not parse is REFUSED, never
-     reset" — and the overlay is built from `...parsed.rules`, so **there is no write path at all**;
-   · the tab's own sentence then contradicts the refusal: *"no form is shown … raise it before changing anything"*;
-   · ⛔ `migrateRules` — the converter "review the converted values" promises — has **ZERO call sites under
-     `src/`**. It is the `scope.chains` archetype again: modelled, validated, unit-tested, no control anywhere.
-   ⚠️ **A COPY-ONLY FIX WAS TRIED AND DELIBERATELY REVERTED.** Saying "remove and designate again" is honest, but
-   it sets the way-out to `["REMOVE"]` and `test:house-bot-rules` **12.2** refuses that: *"no pause reason but
-   ACCOUNT_CLOSED is a dead end."* That guard is right — the standard here is to remove dead ends, not describe
-   them — so the real fix is to make the form appear:
-   · `house-console-read.ts:5102` — when `parseCtx != null` but the document does not parse, still build
-     `rulesForm`, seeded from `migrateRules(bot.rules, parseCtx)` when that returns ok (the "converted values" the
-     copy already promises) and otherwise from `DEFAULT_RULES_V1`, with a flag saying which. Keep the read-only
-     `rules` rows null — the stored values genuinely cannot be shown. Only `parseCtx == null` keeps the form null.
-   · `rules-save.ts:196` — use that same base for the overlay instead of returning `RULES_UNREADABLE`. Nothing is
-     silently reset: the form posts every leaf explicitly, and the round-trip check at `:323` still refuses
-     anything that would not parse back. Keep `RULES_UNREADABLE` for the CONFLICT and context-read failures.
-   ⚠️ It touches a money-adjacent write path, which is why it was not done beside a copy correction.
-2. The two browser gates (`qa:desk-rules-flow`, `qa:house-bots-visual` at 360/1280, PNGs READ).
-3. `red:house-bot-console` — its last run died on an EPERM rename and left a planted defect on disk (restored
-   from the HEAD blob, tree proved clean). It has not completed since.
-4. ⚠️ `qa:house-bot-fleet` ran **363/364 then 364/364 on the same commit** — lane E's "exactly ONE placed
+▶ **BOTH HEADLINE ITEMS ARE NOW DONE. What follows is what they became, then what is still left.**
+
+✅ **1 · THE REFUSAL REASON — DONE 2026-09-23, though NOT the way this file specified. Read the divergence.**
+   Every one of the 18 refusal points now carries a name; 15 reuse codes that already existed, 3 are new
+   (`MARKET_NOT_EMPTY`, `BEFORE_SCOPE`, `NO_THIN_SIDE`), each with its row in BOTH total copy tables, which is
+   what tsc enforces. Two more nameless refusals in `decideCounter` were named at the same time.
+   ⛔ **BUT NAMING THEM CHANGED NOTHING BY ITSELF, and that is the finding worth keeping.** Nothing in production
+   read the code channel on a no-row result: `planFillAndOpener` does `if (!probe.row) continue` and discards it,
+   and `trigger.ts` never reads `.code` at all. It was a writer with no reader. The read side was the work.
+   ⚠️ **THE STORAGE THIS FILE SPECIFIED WAS CONSIDERED AND REJECTED.** `lastSkipCode`/`lastSkipAt` on
+   `HouseBotRuntime` needs DDL on a live money engine, and two gates hard-code "exactly 2 house migration
+   folders" (one of them says in as many words that it must be re-read if that changes). More decisively, it
+   answers the wrong question: an officer asks this with the desk in front of them, changes a rule, reloads and
+   expects the answer to CHANGE. A reason stamped an hour ago keeps answering after the cause is fixed.
+   ▶ **WHAT WAS BUILT INSTEAD:** `planMarket` became `runMarket(..., place)`, walked by the planner to PLACE and
+   by the console with `place: false` to EXPLAIN. **One ladder, not two** — a screen that explains a decision the
+   engine did not make is worse than one that explains nothing, and two ladders agree only until one is amended.
+   `explainBotIdle` (planner.ts) walks live markets and counts the reasons; `houseWhyIdleForConsole` paints them
+   in the console's own sentences. On screen: **"Why is it not staking?"** on the account strip, behind its own
+   flag because the walk costs real reads per market.
+   ⛔ **IT WRITES NOTHING**, and that is proved rather than asserted: 17.53b holds that the walk minted neither an
+   intent nor an OPENER DRAW, with 17.53c as its control (the PLANNER over the same account and market writes
+   both). It skips `openerSide` — the audited once-per-market draw — and that is sound only because
+   `planOpener` reads the drawn side to fill its row and never to refuse; **7.34c pins exactly that**, so the day
+   a side-dependent refusal is added, a case fails instead of a comment.
+   ⚠️ **TWO THINGS THE FAILING SUITES FOUND, not review.** (a) An account whose only entry mode is the triggered
+   one reaches no planner at all, and the first draft reported that as "every market kind switched off" — false,
+   and it would have sent an officer to change a correct account; it is its own sentence now. (b) The first copy
+   named the three entry modes, and one of them IS the mechanism's name, which ruling 453 forbids the console to
+   print — the lexicon caught it.
+   Cases 7.34a–d, 17.53a–c, 1.541 (+2 controls); 7 declared mutations, all CAUGHT. Floors raised to printed
+   counts: engine 808/787, console 803/564.
+
+✅ **2 · THE REFUSAL THAT NAMED AN IMPOSSIBLE REMEDY — DONE, pushed `762e7fd0`.** An account whose stored rules
+   will not parse now DRAWS the form, seeded from `migrateRules` or from `DEFAULT_RULES_V1`, and says which
+   through `basis`; `rules-save.ts` builds its overlay from that same base instead of refusing outright. The
+   round-trip check is untouched, so nothing that would not parse back can be saved. Cases 1.626 + 2 controls.
+
+▶ **WHAT IS STILL LEFT, and none of it blocks betting:**
+1. The two browser gates (`qa:desk-rules-flow`, `qa:house-bots-visual` at 360/1280, PNGs READ). The new panel
+   has never been SEEN — it is held by cases and by the build, which is not the same as looking at it.
+2. `red:house-bot-console` and `red:house-bot-engine` have not been driven WHOLE since this work. The seven new
+   mutations were each driven with `--only` and all seven were caught; the full fleet is the outstanding run.
+3. ⚠️ `qa:house-bot-fleet` ran **363/364 then 364/364 on the same commit** — lane E's "exactly ONE placed
    alert" is racy across lanes. A gate that can lie in either direction.
+4. ⚠️ `test:red-anchors` §4.1/4.2 are RED on a ratchet that **predates this branch**: 67 harnesses do not declare
+   anchors against a ceiling of 65. `package.json` is untouched here and none of the 67 are ours, so it belongs
+   to whoever added them — do not bump the ceiling to silence it without finding out who.
 
 ## 0b · WHAT IS FINISHED, AND WHAT THE NEXT MACHINE PICKS UP (2026-09-23 · handover)
 
