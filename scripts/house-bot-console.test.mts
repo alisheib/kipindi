@@ -242,6 +242,15 @@ await runTwoStores({
    * ⛔ THE CONTROLS ARE THE HALF THAT MATTERS: the officer must GET an answer, or the refused viewer's two
    * nulls measure a door that is simply broken; and switching the desk back ON must CHANGE the sentence, or
    * the switched-off answer is a constant this door would paint whatever the state. */
-  minPass: { memory: 803, postgres: 564 },
+  /* ⭐ RAISED 803 → 805 MEMORY / 564 → 566 POSTGRES, 2026-09-23, to what this run PRINTED. +2 in each child:
+   * 1.541 and its control — an ACTIVE account whose stored document will not parse is the single most decisive
+   * reason it is not staking, and the panel answered it with SILENCE: the reader returned null, the door
+   * returned null, and the page painted nothing, so an officer pressed "Why is it not staking?" and got back
+   * the page they pressed it from. Found by this session's own closing audit, not by review.
+   * ⛔ THE CONTROL IS THE HALF THAT MATTERS: the same account with a readable document must answer something
+   * ELSE, or the new sentence is just what this door says to everyone.
+   * ⚠️ And no other surface covered it: an unreadable document nulls the blockers, which nulls the callout,
+   * the why-not-betting panel and the rules badge, so the tab the link lands on said nothing either. */
+  minPass: { memory: 805, postgres: 566 },
   dbPrefix: "hb_console",
 });

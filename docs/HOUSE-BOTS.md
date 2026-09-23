@@ -1527,12 +1527,28 @@ list: a value that looks permissive and matches nothing. Now refused at save (`R
 two discriminators that make the rule honest — an EMPTY maximum still saves, and a 0 with every counter OFF still
 saves.
 
-**WHAT THIS COST, AND THE INSTRUMENT THAT IS STILL MISSING.** A refused decision is written NOWHERE: `HouseBotIntent`
-gets a row only when the engine decides to bet, so "0 rows" is indistinguishable from "never considered". Every
-screen read healthy while three modes were being refused on every market on the platform. ⚠️ **Recording the last
-refusal code per account, and painting it on the roster row and the why-panel, is the remaining work** — without it
-the next configuration that silently zeroes a band will be just as invisible, and this is now the THIRD time a
-value that looks permissive has made the desk inert with no screen saying so.
+**WHAT THIS COST, AND THE INSTRUMENT THAT WAS BUILT BECAUSE OF IT (closed 2026-09-23 evening).** A refused decision
+was written NOWHERE: `HouseBotIntent` gets a row only when the engine decides to bet, so "0 rows" was
+indistinguishable from "never considered". Every screen read healthy while three modes were being refused on every
+market on the platform — the THIRD time a value that looks permissive had made the desk inert with no screen saying
+so.
+
+⛔ **THE REMEDY IS NOT THE ONE THIS SECTION USED TO PRESCRIBE, AND THE DIFFERENCE MATTERS TO ANYONE READING THIS
+NEXT.** It said to record the last refusal code per account on a runtime row and paint it. That was considered and
+**rejected**: it needs DDL on a live money engine, two release gates hard-code "exactly 2 house migration folders",
+and — decisively — it answers the wrong question. An officer asks this with the desk in front of them, changes a
+rule, reloads, and expects the answer to CHANGE; a reason stamped an hour ago keeps answering after its cause is
+fixed. **Do not open that migration.**
+
+✅ **WHAT SHIPPED INSTEAD.** All eighteen refusal points in `planFill`/`planOpener` now carry a code, and
+`planMarket` became `runMarket(…, place)` — walked by the planner to PLACE and by the console with `place: false`
+to EXPLAIN. **One ladder, not two:** a screen that explains a decision the engine did not make is worse than one
+that explains nothing, and two ladders agree only until one of them is amended. `explainBotIdle`
+(`src/lib/server/house-bot/planner.ts`) walks live markets and counts the reasons; `houseWhyIdleForConsole` paints
+them in the console's own sentences, behind **"Why is it not staking?"** on the account strip. It writes nothing —
+not an intent, and not the audited opener draw — and cases 17.53b/17.53c hold that, the second being the control
+that makes the first mean something. The POOL_BAND ceiling this very section is about is exactly what the panel
+now names.
 
 | What | Count |
 |---|---|

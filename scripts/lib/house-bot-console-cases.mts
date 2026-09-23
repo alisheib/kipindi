@@ -2993,11 +2993,41 @@ try {
       await w.switchOn();
       const backOn: Any = await GATEM.houseWhyIdleForConsole(OFFICER, "/admin/desk", acct.botId);
       ok("1.541 · a switched-off DESK is the whole answer, given with no walk behind it: no reasons, no counts, nothing that could be read as a fault in the rules of this one account",
-        off !== null && /switched off/i.test(off.headline) && off.reasons.length === 0 && off.scanned === "" && off.wouldStake === 0,
+        /* ⛔ NOT ONE DIGIT anywhere in the answer, which is stronger than the field-by-field check this
+           replaced: it forbids a count reaching the screen by ANY route, including one added later. */
+        off !== null && /switched off/i.test(off.headline) && off.reasons.length === 0 && off.scanned === ""
+          && !/[0-9]/.test(all(off)),
         j(off));
       ok("1.541 · CONTROL · switching the desk back ON changes the answer — so the sentence above was read off the switch and is not a constant this door paints whatever the state",
         backOn !== null && backOn.headline !== off.headline && !/switched off/i.test(backOn.headline),
         j({ off: off && off.headline, backOn: backOn && backOn.headline }));
+
+      /* ⭐ 1.541 · THE DEAD CONTROL THIS PANEL ALMOST SHIPPED WITH (closing audit, 2026-09-23).
+       * An ACTIVE account whose stored document will not parse is stopped by the engine — the single most
+       * decisive reason it is not staking. The reader answered `null`, the door answered `null`, and the page
+       * then painted NOTHING: the officer pressed "Why is it not staking?" and got back a page byte-identical
+       * to the one they pressed it from. ⛔ And no other surface on that tab said it either, because an
+       * unreadable document also nulls the blockers, which nulls the callout, the why-not-betting panel and
+       * the rules badge. Silence was the one answer this control must never give. */
+      {
+        const realGet = w.dal.houseBotStore.get;
+        let unreadable: Any;
+        try {
+          w.dal.houseBotStore.get = async (...a: Any[]) => {
+            const b = await realGet.apply(w.dal.houseBotStore, a as Any);
+            return b == null ? b : { ...b, rules: { schemaVersion: 9_999 } };
+          };
+          unreadable = await GATEM.houseWhyIdleForConsole(OFFICER, "/admin/desk", acct.botId);
+        } finally { w.dal.houseBotStore.get = realGet; }
+        ok("1.541 · an account whose saved rules CANNOT be read is told so, and pointed at the tab that now repairs it — never answered with an unchanged page",
+          unreadable !== null && /cannot be read/i.test(unreadable.headline) && /Rules tab/i.test(unreadable.headline)
+            && unreadable.reasons.length === 0 && unreadable.scanned === "",
+          j(unreadable));
+        ok("1.541 · CONTROL · the SAME account with its document readable answers something else entirely — so the sentence above is read off the document and is not what this door says to everyone",
+          backOn !== null && unreadable !== null && backOn.headline !== unreadable.headline
+            && !/cannot be read/i.test(backOn.headline),
+          j({ unreadable: unreadable && unreadable.headline, readable: backOn && backOn.headline }));
+      }
     }
 
     /* ⭐ 456's OTHER HALF (Ali, 2026-09-23) · READING a holder's money and CHANGING it are both PLATFORM acts, and

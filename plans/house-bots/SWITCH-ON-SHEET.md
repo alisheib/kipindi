@@ -248,8 +248,16 @@ Then the button becomes pressable. It reads **Switch on**. On success you see *"
 > **A quiet first five minutes is the expected shape, not a fault.** It usually means nothing in scope
 > matched — not that anything is broken.
 
-**If you see nothing, look at the refused rows in the Activity tab before touching anything.** They tell you
-*why* nothing happened, and it is almost always a limit or a scope doing exactly what you set it to do.
+**If you see nothing, press "Why is it not staking?" on the account's page before touching anything.** The desk
+checks the markets open right now, exactly the way it does when it decides whether to bet, and answers in plain
+words — how many it looked at, how many it would stake on, and the reasons it refused, commonest first. It changes
+nothing. Change a setting and press it again; the answer changes with it.
+
+⛔ **The Activity tab is NOT where this answer lives, and that is why this paragraph was rewritten (2026-09-23).**
+That tab is built on intent rows, and the desk writes an intent only when it decides to bet — so the refusals that
+matter most, the ones that stopped every market before a row existed, were never there to read. Refused rows in
+Activity are still worth reading for the stakes it DID consider placing; they are not the answer to "nothing at
+all is happening".
 
 **What "it is working" looks like:** bets appearing in the feed at a believable pace, each inside your
 limits, with the switch showing ON and your reason beside it.

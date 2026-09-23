@@ -189,8 +189,14 @@ once; it does not save by itself.</p>
 ${settingsTables}
 
 <h2 class="pb">5 · An account is Active but not betting</h2>
-<p>Work down this list. The account's own row on the roster, and the panel beside the Rules form, will usually
-name the reason for you.</p>
+<p><b>Ask the desk first.</b> On the account's own page, beside "Holder's transactions", there is a link that
+reads <b>"Why is it not staking?"</b>. Press it and the desk checks the markets that are open right now, exactly
+the way it does when it decides whether to bet, and tells you in plain words what it found — for example
+"51 markets looked at (25 to open and 26 to fill), and this account would stake on 1 of them right now", or the
+reasons it refused, commonest first. It changes nothing and stakes nothing; it only reports. If you have changed
+a setting, press it again and the answer changes with it.</p>
+<p>The list below is what to check if that answer does not make the cause obvious. The account's own row on the
+roster, and the panel beside the Rules form, will usually name the reason too.</p>
 <table>
   <thead><tr><th style="width:38%">Check</th><th>Why it stops the account</th></tr></thead>
   <tbody>
