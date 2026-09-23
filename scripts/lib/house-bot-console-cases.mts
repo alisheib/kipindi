@@ -2969,6 +2969,30 @@ try {
     ok("1.399 · CONTROL · the ADMIN can tell them apart, which is what makes the two nulls above a measurement",
       real !== null && real.found === true && invented !== null && invented.found === false,
       j({ real: real && real.found, invented: invented && invented.found }));
+
+    /* ⭐ 456's OTHER HALF (Ali, 2026-09-23) · READING a holder's money and CHANGING it are both PLATFORM acts, and
+       until now only the reading one had a door on this page. An account stakes from an ordinary player's wallet,
+       so funding it is funding that player — and `/admin/players/<id>` already carries the audited control: a
+       mandatory reason, one atomic wallet + transaction + ledger write, overdraw-guarded, COMPLIANCE-logged, and
+       gated on the accounting capability. An officer who needed to fund an account previously had to know that
+       unaided.
+       ⛔ THE ASSERTION IS THAT IT IS A DOOR AND NOT A CONTROL. The href must be a PLATFORM route; the moment it
+       becomes a route of this section, the desk has grown a second money path — a second ledger story to
+       reconcile against a first one that is already correct — which is exactly what D20 struck and 456 settled. */
+    ok("1.456f · the account page carries a door to the platform's own funding control, and it is a PLATFORM route — never a route of this section",
+      real !== null
+        && typeof real.holderFundsHref === "string"
+        && real.holderFundsHref.startsWith("/admin/players/")
+        && !real.holderFundsHref.startsWith("/admin/desk")
+        && real.holderFundsHref !== real.holderHref,
+      j({ funds: real && real.holderFundsHref, read: real && real.holderHref }));
+    ok("1.456f · CONTROL · the two doors are DIFFERENT screens — reading a holder's money and changing it are not the same act, and one href for both would send an officer to the wrong one",
+      real !== null && real.holderHref.startsWith("/admin/transactions")
+        && real.holderFundsHref.startsWith("/admin/players/"),
+      j({ read: real && real.holderHref, funds: real && real.holderFundsHref }));
+    ok("1.456f · …and the page RENDERS it as a link, so the model field is not a value nothing paints",
+      /<WayOutLink href=\{view\.holderFundsHref\}>/.test(read("src/app/admin/desk/[id]/page.tsx")),
+      "the account page draws no holderFundsHref door");
     /* ⛔ AND A REFUSED VIEWER'S PAYLOAD CARRIES NOTHING AT ALL — no label, no id, no figure, no sentence. */
     ok("1.399 · a refused viewer's answer holds no label, no handle and no figure",
       !all(playerReal).includes(acct.botId) && all(playerReal) === "null", j(all(playerReal)));
