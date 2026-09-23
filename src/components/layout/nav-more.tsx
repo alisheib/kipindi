@@ -68,6 +68,29 @@ export function NavMore({
   if (items.length === 0) return null;
 
   const isRail = variant === "rail";
+
+  /* 🔴 D30 — THE CHAT BUBBLE WAS EATING THIS MENU'S LAST ROW, AND NO z-index ON THE PANEL
+     COULD HAVE FIXED IT. The rail is `fixed z-40` and this panel is `absolute z-[50]` INSIDE
+     it, so that 50 is spent inside the RAIL'S OWN stacking context and the panel resolves at
+     40 against the page. The chat bubble is `fixed z-60` at the document root, so it wins —
+     and a raised number on the panel would have looked like a fix and changed nothing.
+     🔴 MEASURED AT 360 SW, and a real player reported it before this was written: the menu
+     spans 455–708, the bubble 648–700, and THREE OF FIVE sample points across the last row
+     returned the bubble instead of the row. Tapping the bottom option opened chat.
+     ⛔ SO THE FIX IS ON THE CONTEXT, NOT THE PANEL: while this menu is open the RAIL itself
+     is lifted to the menu rung (61, one above the bubble), so everything it contains paints
+     AND RECEIVES TAPS above the bubble. Nothing moves, nothing is hidden, and the bubble is
+     still there the moment the menu closes.
+     ⛔ An ATTRIBUTE rather than `:has()`, deliberately — `data-sheet-open` is set the same way
+     and for the same reason, so a browser without `:has()` still stacks correctly.
+     ⚠️ Rail only. The bar twin is a desktop control that never shares a corner with the bubble. */
+  useEffect(() => {
+    if (!isRail) return;
+    const el = document.documentElement;
+    if (open) el.setAttribute("data-rail-menu-open", "");
+    else el.removeAttribute("data-rail-menu-open");
+    return () => el.removeAttribute("data-rail-menu-open");
+  }, [isRail, open]);
   const anyActive = active ?? items.some((it) => pathname.startsWith(it.href));
 
   if (isRail) {

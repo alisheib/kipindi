@@ -21,6 +21,8 @@ const b = await chromium.launch();
 const failures = [];
 let cardsProbed = 0;
 let sharesProbed = 0;
+let railRowsProbed = 0;
+const RAILMENU_RED = process.env.RED_RAILMENU === "1";
 const SHARE_RED = process.env.RED_SHARE === "1";
 
 for (const path of ["/markets", "/"]) {
@@ -194,6 +196,70 @@ for (const W of [{ n: "320", w: 320, h: 640 }, { n: "360", w: 360, h: 780 }]) {
     }
   }
 }
+/* ── D30 · THE RAIL'S MORE MENU vs THE CHAT BUBBLE ──────────────────────────────────────────
+ *
+ * 🔴 A PLAYER REPORTED THIS, IN THESE WORDS: tapping the three-line More button and then an
+ * option did nothing — the chat assistant "covers the options". It is real and it is a
+ * stacking-context defect, not a z-index typo: `.kp-rail` is `fixed z-40`, the menu panel is
+ * `absolute z-[50]` INSIDE it — so the 50 never escapes the rail — and the chat bubble is
+ * `fixed z-60` at the document root. Measured at 360 SW before the fix: the menu spans 455–708,
+ * the bubble 648–700, and THREE OF FIVE sample points across the LAST row returned the bubble.
+ *
+ * ⛔ A BOUNDING BOX CANNOT SEE THIS. Both elements are exactly where they should be and both
+ * measure correctly; the question is only which one `elementFromPoint` returns, which is why the
+ * check lives here. And it samples ACROSS each row rather than at its centre — the bubble takes
+ * the row's right-hand end, so a centre-only probe passes while the defect is live.
+ *
+ *   RED CONTROL:  RED_RAILMENU=1 npm run qa:tap-hit -- <base>
+ * puts the rail back under the bubble (z-index 40) and nothing else. It must FAIL, naming the
+ * row the bubble takes. */
+for (const W of [{ n: "320", w: 320, h: 640 }, { n: "360", w: 360, h: 780 }, { n: "412", w: 412, h: 915 }]) {
+  for (const locale of ["sw", "en", "zh"]) {
+    const ctx = await localisedContext(b, { locale, width: W.w, height: W.h, baseUrl: BASE, reducedMotion: "reduce" });
+    const p = await ctx.newPage();
+    await p.goto(`${BASE}/markets`, { waitUntil: "load", timeout: 90000 });
+    await p.waitForTimeout(2600);
+    await assertLang(p, locale);
+    if (RAILMENU_RED) {
+      await p.addStyleTag({ content: "html[data-rail-menu-open] .kp-rail { z-index: 40 !important; }" });
+      await p.waitForTimeout(120);
+    }
+    await p.locator(".kp-rail button").last().click().catch(() => {});
+    await p.waitForTimeout(450);
+    const r = await p.evaluate(() => {
+      const menu = document.querySelector('[role="menu"]');
+      if (!menu) return { open: false };
+      const bubble = [...document.querySelectorAll("div")].find((d) => {
+        const st = getComputedStyle(d);
+        return st.position === "fixed" && st.zIndex === "60" && d.querySelector("button");
+      });
+      if (!bubble) return { open: true, noBubble: true };
+      const mr = menu.getBoundingClientRect(), br = bubble.getBoundingClientRect();
+      const overlaps = Math.min(mr.right, br.right) > Math.max(mr.left, br.left) && Math.min(mr.bottom, br.bottom) > Math.max(mr.top, br.top);
+      const rows = [...menu.querySelectorAll('[role="menuitem"],[role="menuitemcheckbox"],a,button')];
+      const stolen = [];
+      for (const row of rows) {
+        const q = row.getBoundingClientRect();
+        if (q.height < 4) continue;
+        const cy = (q.top + q.bottom) / 2;
+        let bad = 0;
+        for (const x of [q.left + 8, (q.left + q.right) / 2, q.right - 40, q.right - 20, q.right - 6]) {
+          const el = document.elementFromPoint(Math.round(x), Math.round(cy));
+          if (el && bubble.contains(el)) bad++;
+        }
+        if (bad) stolen.push({ txt: (row.textContent || "").trim().slice(0, 22), bad });
+      }
+      return { open: true, rows: rows.length, overlaps, stolen };
+    });
+    const where = `rail-menu @${W.n} ${locale}`;
+    if (!r.open) { failures.push(`${where}: the More menu did not open — nothing probed`); console.log(`${where.padEnd(24)} | NOT OPEN`); await ctx.close(); continue; }
+    if (r.noBubble) { failures.push(`${where}: no chat bubble found — this check would pass vacuously`); await ctx.close(); continue; }
+    railRowsProbed += r.rows;
+    if (r.stolen.length) failures.push(`${where}: the chat bubble takes taps on ${r.stolen.length} menu row(s) — ${r.stolen.map((x) => `"${x.txt}" ${x.bad}/5`).join(", ")}`);
+    console.log(`${where.padEnd(24)} | rows=${r.rows} bubbleOverlapsBox=${r.overlaps} rowsLosingTaps=${r.stolen.length}`);
+    await ctx.close();
+  }
+}
 /* ── the market chart's time-range rail — batch 6 ────────────────────────────────────────────
  *
  * ⭐ `.pchart-range` went 40 → 44px on Ali's ruling (2026-08-14): it is the eighth filter
@@ -326,7 +392,9 @@ await b.close();
 console.log(`\n${cardsProbed} cards hit-tested · ${sharesProbed} share controls hit-tested · ${rangesProbed} chart-range buttons hit-tested`);
 if (!cardsProbed) { console.log("FAILED: nothing was probed — this proves nothing."); process.exit(1); }
 if (!sharesProbed) { console.log("FAILED: no SHARE control was probed — D28 would be unguarded."); process.exit(1); }
+if (!railRowsProbed) { console.log("FAILED: no rail MENU ROW was probed — D30 would be unguarded."); process.exit(1); }
 if (failures.length) { console.log(`FAILURES (${failures.length}):`); failures.forEach((f) => console.log(`  - ${f}`)); process.exit(1); }
 console.log(`every Details target >= ${TAP_MIN}px · every row still painted at 17px · no info button swallowed`);
 console.log(`every chart-range target >= ${RANGE_MIN}px · the chart header does not overflow at 4 widths`);
 console.log(`every share reach >= ${TAP_MIN}px on both axes at 320/360 in sw/en/zh · >= 8px clear of Details · row still 17px`);
+console.log(`${railRowsProbed} rail More-menu rows own their own taps at 320/360/412 in sw/en/zh — the chat bubble takes none of them`);

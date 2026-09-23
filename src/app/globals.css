@@ -3178,6 +3178,12 @@ textarea::placeholder { color: var(--text-subtle); }
 /* 140ms IS `--t-quick` — the rung, written four times as a literal. None of these
    four properties travels, so all four take `linear` (the same recipe `.m-raise`
    and `.mat-raised-i` use for border-color and box-shadow). */
+/* ⛔ OFF BY DEFAULT, AND THAT IS THE ZERO DIFF. `QueryResultCount` renders the active sort
+   unconditionally when a host passes it; only the Compact phone bar — which had to take the value
+   OUT of the sort control to fit one line — turns it on. Caught by measurement: with this rule
+   missing, the count read "masoko 36 · Pesa nyingi" in Comfortable and at 768 and 1280 too, which
+   is exactly the promise the Card spacing switch makes and must not break. */
+.kp-count-sort { display: none; }
 .kp-fsheet-trigger { transition: background var(--t-quick) linear, border-color var(--t-quick) linear, color var(--t-quick) linear, box-shadow var(--t-quick) linear; }
 .kp-fsheet-trigger[data-on] { background: var(--pill-active); border-color: var(--brand-400); color: var(--text); box-shadow: var(--glow-selected); }
 .kp-fsheet[open] > summary { border-color: var(--brand-400); color: var(--text); }
@@ -3316,6 +3322,20 @@ textarea::placeholder { color: var(--text-subtle); }
    correctly once hydrated. Same declaration, no second rule to keep in step. */
 .kp-discovery-bar:has(.kp-fsheet[open]),
 html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
+
+/* 🔴 D30 · THE RAIL'S MENU AND THE CHAT BUBBLE, AND WHY THE PANEL'S OWN z-index IS POWERLESS.
+   `.kp-rail` is `fixed z-40`; the More menu is `absolute z-[50]` INSIDE it. An element cannot
+   escape its ancestor's stacking context, so that 50 orders the panel against its siblings in
+   the rail and resolves at 40 against the page — while the chat bubble is `fixed z-60` at the
+   root. The bubble therefore painted over the menu AND took its taps: measured at 360 SW, the
+   menu spans 455–708, the bubble 648–700, and 3 of 5 points across the last row returned the
+   bubble. A player reported exactly that — the bottom option opened chat instead of navigating.
+   ⛔ RAISING THE PANEL WOULD HAVE BEEN THE FIX THAT LOOKS RIGHT AND DOES NOTHING. The context
+   is what has to move, so the RAIL takes the menu rung (61) for as long as its menu is open —
+   one rung above the bubble, still far below the chat panel (80) and the drawers (70/71).
+   ⚠️ Driven by an attribute the component sets, not by `:has()`, so this holds on a browser
+   without `:has()` — the same reason `[data-sheet-open]` exists two rules above. */
+html[data-rail-menu-open] .kp-rail { z-index: 61; }
 
 /* 🔴 AND THE LIFT ABOVE NAMES A COMPONENT, WHICH IS NOT WHERE THE RULE LIVES — found 2026-08-25
    the first time this sheet gained a SECOND call site (UD-13b, the Up & Down board's phone
@@ -5261,6 +5281,79 @@ textarea::-webkit-resizer {
     --ud-gap-sm: 8px;
     --ud-act-pt: 8px;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   [COMPACT] THE DISCOVERY BAR ON ONE CONTROL LINE — U4, docs/MOBILE-VISUAL-PLAN.md.
+
+   Measured at 360 in SW, EN and ZH alike: header 56 + bar 116 + rail 65 = 237px of pinned
+   chrome on a 780px phone, so roughly 1.6 cards are ever visible. The bar is two 44px control
+   rows stacked; this puts them on ONE line and gives the count its own ~17px line.
+
+   ⛔ OPT-IN, NOT GLOBAL. `QueryStrip`, `QuerySort`, `QueryResultCount` and `FilterSheet` drive
+   twelve other bars in this product. The `:has(> [data-bar-row])` gate means only a bar whose
+   OWN rows opted in is re-laid — /markets today. Nothing else moves, at any width.
+
+   ⛔ `display: contents` on the two rows is what makes this possible: the four controls become
+   grid items of the BAR, so they can share a line they are not siblings in. The rows keep their
+   classes so ≥ 640 and Comfortable are untouched.
+
+   ⚠️ DOM ORDER IS strip, count, sort, filters — which is NOT the visual order. Auto-placement
+   would put the count where sort belongs, so every cell states its own area explicitly. A
+   `grid-area` on four named hooks is also what lets the count SPAN the line underneath.
+
+   The bar does not hide on scroll and row 2 never scrolls (§5, filter language): only the
+   status strip scrolls, and sort and status still cost ZERO taps. */
+@media (max-width: 639.98px) {
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) {
+    display: grid;
+    /* ⛔ 160px is a FLOOR, not a preference: below it the status strip stops showing a whole
+       chip and starts cutting one mid-word, which is the clipped-not-scrolled failure. Stating
+       it in the track is what makes the strip win the argument against the two controls. */
+    grid-template-columns: minmax(160px, 1fr) auto auto;
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 2px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) > [data-bar-row] { display: contents; }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-strip-autoscroll] { grid-area: 1 / 1 / 2 / 2; }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-bar-cell="sort"] { grid-area: 1 / 2 / 2 / 3; }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet { grid-area: 1 / 3 / 2 / 4; }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-result-count] { grid-area: 2 / 1 / 3 / -1; text-align: right; }
+
+  /* ⛔ THE ARITHMETIC THAT FORCED THIS, measured at 360 rather than guessed. The first build of
+     this line kept the sort's value inside its control and the STATUS STRIP paid for it: it was
+     squeezed to ~60px and rendered "Wazi" as "azi" — a chip cut mid-word, which is the
+     clipped-not-scrolled failure this campaign has a driver for. 328px of bar cannot hold a
+     160px strip, a sort value, a 44px direction button and the word "Vichujio". So the two
+     WORDS give and the two CONTROLS stay: Filters keeps its icon and its count badge, sort keeps
+     its key and its caret, and the active sort's name moves to the count line, where it is still
+     readable with ZERO taps (§5, filter language). Nothing is hidden behind a tap. */
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-bar-cell="sort"] .kp-menu-value { display: none; }
+  /* …and the KEY comes back in its place, so the control is never a bare caret. It is
+     `hidden lg:inline` at its call site precisely because the value usually says what it is. */
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-bar-cell="sort"] summary > span:first-of-type { display: inline; }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet-trigger-label,
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet-caret { display: none; }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-count-sort] { display: inline; color: var(--text-muted); }
+  /* The sort trigger gives its remaining slack to the strip: the key is short and constant, so
+     the padding around it is the only fat left on this line. Measured: the strip goes 147 -> 163px,
+     clearing the 160px floor the driver asserts. The 44px direction button is NOT touched — it is
+     on the tap floor. */
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-bar-cell="sort"] > details > summary { padding-left: 6px; padding-right: 6px; gap: 4px; }
+  /* ⛔ AND ITS PANEL MOVES TO THE RIGHT EDGE. The listbox is 220px and `left: 0` of a control that
+     now sits MID-BAR, so it ran 41px (sw), 48 (en) and 55 (zh) past the viewport — measured, and
+     invisible until the control is actually OPENED. Anchored right, it spans 63..283 inside 360. */
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-bar-cell="sort"] > details { position: static; }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-bar-cell="sort"] [role="listbox"] { left: auto; right: 0; }
+
+  /* 📐 The bar's lower edge, so content visibly passes UNDER it rather than being guillotined
+     (critics panel, art direction): the header's own recipe — a hairline, and the elevation only
+     once something is actually scrolled beneath. No transition, exactly as the header has none. */
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) { border-bottom: 1px solid var(--border); }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row])[data-scrolled] { box-shadow: var(--shadow-2); }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

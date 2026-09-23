@@ -157,7 +157,22 @@ export function QueryStrip({
  *
  * ⛔ Never recompute this number for the pager. Pass the same variable to both.
  */
-export function QueryResultCount({ count, phrase }: { count: number; phrase: string }) {
+export function QueryResultCount({
+  count,
+  phrase,
+  sortName,
+}: {
+  count: number;
+  phrase: string;
+  /**
+   * ⭐ The ACTIVE SORT, printed beside the count — for a bar too narrow to keep it inside the
+   * control. §5 (filter language) says sort and status never cost a tap at ANY width, so the
+   * value has to stay readable somewhere; on a 360px phone the one place with room is this line.
+   * ⛔ It does NOT add a second `data-result-count`: the attribute stays on this one element and
+   * still carries the number alone, so `qa:count-truth` reads exactly what it always read.
+   */
+  sortName?: string;
+}) {
   return (
     <p
       aria-live="polite"
@@ -165,6 +180,12 @@ export function QueryResultCount({ count, phrase }: { count: number; phrase: str
       className="shrink-0 font-mono text-[11.5px] tabular-nums text-text-subtle"
     >
       {phrase}
+      {sortName ? (
+        <span className="kp-count-sort" data-count-sort>
+          <span aria-hidden> · </span>
+          {sortName}
+        </span>
+      ) : null}
     </p>
   );
 }
@@ -259,7 +280,10 @@ export function QuerySort({
   descLabel: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 items-center lg:flex-none">
+    /* `data-bar-cell` is INERT unless this control sits in a bar whose rows carry
+       `data-bar-row` (globals.css, the Compact one-line bar). The strip, the count and the
+       filter sheet each already publish a hook of their own; this wrapper did not. */
+    <div className="flex min-w-0 flex-1 items-center lg:flex-none" data-bar-cell="sort">
       <MenuShell
         /* At 360 sort shares its line with the Filters button, so it is the control that gives:
            the KEY never truncates and the VALUE ellipsises, which is MenuShell's own rule.
