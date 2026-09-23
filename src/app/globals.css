@@ -5197,6 +5197,30 @@ textarea::-webkit-resizer {
   box-shadow: var(--shadow-overlay-up);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+/* 🔴 D54 · IN LANDSCAPE THE NOTCH MOVES TO THE SIDE, AND THIS RAIL PADDED NEITHER SIDE.
+   `layout.tsx` sets `viewportFit: "cover"` deliberately, so the app draws under the notch and
+   `env(safe-area-inset-*)` returns REAL values instead of 0. In portrait that is handled — 19 usages pad
+   `-bottom`, 6 pad `-top`. In landscape it was not: before this rule, exactly ONE file in `src/` padded
+   `-left`/`-right` (`needle.css`), and there were **zero `orientation:` media queries** among 47.
+   This rail is the sharpest case. It is `fixed inset-x-0 bottom-0` with five `flex: 1` slots, so at a
+   landscape inset of ~44px the first item loses roughly a third of its 64px tap target under the notch and
+   the last loses the same to the opposite corner. Measured at 780×360: the rail spans 0→780 and the five
+   items span 0→780 with nothing held back.
+   ⛔ NO DRIVER IN THIS REPO CAN SEE THE DEFECT, AND THAT IS WHY IT SURVIVED A MATRIX THAT LISTS LANDSCAPE.
+   Playwright reports every inset as 0, so an emulated landscape cell looks perfect. What WAS verified here
+   is the other half — that this rule is **inert where the insets are 0**: at 780×360 the rail's box, its
+   padding, its first and last item edges and the document overflow are byte-identical with and without it.
+   ⚠️ The PIXELS have not been seen. U30 photographs this on a real notched device, rotated both ways.
+   ⚠️ STILL UNPADDED, deliberately, because each needs its own measurement on hardware: the page gutter
+   (`--sp-4`, far under 44px) and the bottom-anchored overlays — `bet-confirm-modal`, `notifications-panel`,
+   `consent-prompt`, `install-invite`, `avatar-menu`, `date-select`. The rail is fixed first because it is
+   the only one of them whose failure is an unreachable TAP TARGET rather than clipped reading. */
+@media (orientation: landscape) {
+  .kp-rail {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}
 .kp-rail__item {
   display: flex;
   flex: 1;
