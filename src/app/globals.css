@@ -3359,6 +3359,28 @@ textarea::placeholder { color: var(--text-subtle); }
 .kp-discovery-bar:has(.kp-fsheet[open]),
 html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
 
+/* 🔴 D30 IS NOT CLOSED BY THE RULE ABOVE — THE SORT MENU IS A `<details>`, NOT A `.kp-fsheet`.
+   Measured on production at 320×640 with the sort menu open: the panel's own `z-index: 30` is spent inside
+   `.kp-discovery-bar.sticky.z-20`, its only positioned ancestor, so it resolves at **20** against the page,
+   while the chat bubble is `z-60` at the root. The bubble's 52px covers x 252–304 of a panel ending at 320,
+   and a nine-point census per row shows the bottom two rows — `Mabadiliko makubwa` and `Mpya kwanza` — each
+   losing 2 of 9 taps to it. Tapping to sort opens a support chat instead. **This is the defect a real player
+   reported on the rail, on a second surface.**
+   ⛔ RAISING THE BAR DOES NOT WORK HERE, AND IT WAS TRIED AND MEASURED. Lifting `.kp-discovery-bar` to
+   `z-index: 100` sets the bar's own z to 100 and changes NOTHING — still 2 of 9 lost on both rows — because
+   a sticky element inside page content cannot out-rank a root-level `fixed` one whose context it does not
+   share. The rail's own D30 fix worked because the RAIL is fixed at the root; this bar is not.
+   ⭐ SO THE BUBBLE YIELDS INSTEAD, which is the only element that can. With this rule the same census
+   returns **zero rows losing a tap**. It is scoped to the moment the menu is open and reverts when it
+   closes, and it is the behaviour U7 already plans for the bubble while scrolling.
+   ⚠️ The wrapper is matched as well as the button: the bubble is a `.cm-bubble` inside an UNCLASSED fixed
+   `div`, and the hit test found BOTH — the div at x=263 and the button at x=289. Hiding only the button
+   leaves the wrapper still taking the tap. When U7 gives that wrapper `.cm-fab`, add it here. */
+html:has([data-bar-cell="sort"] details[open]) :is(.cm-bubble, div:has(> .cm-bubble)) {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* 🔴 D30 · THE RAIL'S MENU AND THE CHAT BUBBLE, AND WHY THE PANEL'S OWN z-index IS POWERLESS.
    `.kp-rail` is `fixed z-40`; the More menu is `absolute z-[50]` INSIDE it. An element cannot
    escape its ancestor's stacking context, so that 50 orders the panel against its siblings in
@@ -4116,6 +4138,9 @@ html[data-sheet-open] .route-enter { animation: none; }
    320 is untouched at 301.5 and 0 cut, while 277 and 246 go to 0 cut for that same 20px, paid only where
    the benefit is. */
 @media (max-width: 300px) {
+  /* density: general — a word that has been cut to one letter is unreadable in BOTH card spacings, so
+     this is not a Compact rule. It is gated on WIDTH, not on density: below 300px the chip is clipped at
+     every setting, and above it nothing is. */
   .mcardp-top { flex-wrap: wrap; }
 }
 /* ⛔ `.mcardp .chip` and `.mcardp .chip .live-dot` DELETED — PV-13c, 2026-09-03. This pair WAS
@@ -4206,6 +4231,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    Gated at the same measured 300px as D65 — at 320 nothing is clipped and nothing changes (0 of 15, card
    301.5); at 277 and 246 clipping goes to 0 for 21.5px of card height, paid only where the benefit is. */
 @media (max-width: 300px) {
+  /* density: general — §A5 forbids clipping money at BOTH card spacings, so this is not a Compact rule.
+     Gated on WIDTH: below 300px the pool figure is clipped at every setting, and above it none is. */
   .mcardp-meta { flex-wrap: wrap; }
 }
 .mcardp-meta > span:not(.dot):not(.mcardp-meta-right) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -5578,6 +5605,13 @@ textarea::-webkit-resizer {
     --mcard-meta-mb: 4px;
   }
   html:not([data-density="comfortable"]) .market-grid { gap: 10px; }
+
+  /* D58 · see the note on the grid above. Only below 300px, where the sort control is otherwise unreachable. */
+  @media (max-width: 300px) {
+    html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) {
+      grid-template-columns: minmax(96px, 1fr) minmax(76px, auto) auto;
+    }
+  }
   /* The Up & Down card, one rung down each. Its height follows the LIVE ROUND (U1 measured the
      same card at 468 and 660px minutes apart), so its target is stated per phase in §2 and read
      off data-phase — never diffed against a card in another state. */
@@ -5617,6 +5651,20 @@ textarea::-webkit-resizer {
        chip and starts cutting one mid-word, which is the clipped-not-scrolled failure. Stating
        it in the track is what makes the strip win the argument against the two controls. */
     grid-template-columns: minmax(160px, 1fr) auto auto;
+
+    /* 🔴 D58 · AND BELOW 300px THAT FLOOR KILLED THE SORT CONTROL, WHICH IS THE WORSE FAILURE.
+       `auto` lets the sort track collapse without limit, and it did: measured on production at an effective
+       277 and 246 (= 360 and 320 with Android text at 130%), `details` computed to width **0**, the summary
+       painted as a 13px sliver with 12 of 61 units of label visible, and the 44×44 direction link — later in
+       DOM order, so it paints on top — took its exact left edge. **0 of 14 hit-test points reached the sort
+       control**, and the Filters sheet carries no sort section, so sort could not be changed at all except by
+       editing the URL. Two instruments agreed, with a healthy control in the same run.
+       ⚠️ THE TRADE IS STATED, NOT HIDDEN. Giving the sort track a 76px floor costs the strip its 160px one
+       at these widths (measured: strip 160 → 96). The strip is `overflow-x: auto` and masked, so it DEGRADES
+       TO SCROLLING, which is a thing a player can still use; a 0px control is dead. That is why the trade goes
+       this way — and why it is gated at 300 rather than applied to the whole phone band: at **320 and 360
+       nothing moves at all**, verified to the pixel (summary 27 and 67, strip 160 and 160, 14/14 both).
+       ⭐ It also closes D18 at these widths as a side effect: the label goes from 12/61 to 47/61 at 277. */
     align-items: center;
     column-gap: 6px;
     row-gap: 2px;
