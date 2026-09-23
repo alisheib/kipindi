@@ -923,6 +923,24 @@ html {
      where `clip` isn't supported. */
   overflow-x: hidden;
   overflow-x: clip;
+
+  /* 🔴 D57 · TABBING PARKED CONTROLS UNDERNEATH THE FIXED BOTTOM RAIL.
+     The rail is `fixed` at the bottom and the browser's own focus-scroll knew nothing about it, so a
+     keyboard user tabbing down the page landed on controls the rail was painted over. Measured on
+     production at 360×780 sw, tabbing 30 stops and excluding the chrome's own children: on `/`, **4 stops
+     were 100% buried and 13 touched the rail** (`.mcardp-share` 225 of 225 px², `.mcardp-details` 1,105 of
+     1,105, twice each); on `/markets`, 2 buried and 4 touching. With this one declaration: **0 and 0, on
+     both routes.** `scroll-padding` is what the focus scroll honours, and it belongs on the scrolling
+     element — which is this one.
+     ⛔ `scroll-padding-TOP` WAS BUILT, MEASURED AND NOT SHIPPED. The obvious companion was 56px for the
+     header (136 on board pages, where `.kp-discovery-bar` sticks under it). I could not make it change
+     anything: driving a control from above the viewport and focusing it, the browser already scrolled it
+     to 251px on `/` and 370px on `/markets`, far clear of chrome ending at 56 and 132.3 — identical with
+     the rule and without it. A rule that cannot be shown to move a pixel does not ship on the strength of
+     sounding right. ⚠️ If a real case is ever found, note the top band is TWO sticky layers (header 0–56
+     plus the bar to 132.3), not one — a probe that compares against `<header>` alone is blind to the strip
+     between them, which is how D57 itself stayed hidden. */
+  scroll-padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
 * { box-sizing: border-box; }
@@ -3135,6 +3153,18 @@ textarea::placeholder { color: var(--text-subtle); }
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
     mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
   }
+}
+/* 🔴 D63 · THE CHIPS' FOCUS RING WAS BEING EATEN BY THE STRIP THAT HOLDS THEM.
+   These chips are how a player narrows the board (Wazi 49 / Zinafunga leo / Mpya 35 / …). The strip is
+   `overflow-x: auto` AND masked, so the ring the `:focus-visible` catch-all paints at `outline-offset: 2px`
+   falls outside the scroller on three sides. Measured on production at 360 sw, first chip focused:
+   ring box 227.8–279.8 against a strip of 231.8–275.8 — **top, bottom and left all lost**, leaving at most a
+   2px sliver on the right cap, which is easy to mistake for the strip's own fade.
+   ⭐ Same one-declaration fix as D56, and the same idiom the section rail already uses: move the ring
+   INSIDE. With `-2px` the ring measures 231.8–275.8 against 231.8–275.8 — every side inside the strip.
+   ⚠️ A mask clips like an overflow does; the note above says so for panels, and it is true for rings too. */
+@media (max-width: 1023.98px) {
+  .kp-strip-fade :where(a, button):focus-visible { outline-offset: -2px; }
 }
 
 /* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
@@ -5398,6 +5428,24 @@ textarea::-webkit-resizer {
 
    Everything else — the title, the price, the bar, the sparkline — sits BENEATH the anchor on
    purpose. That is what makes a right-click anywhere on the card reach the link. */
+/* 🔴 D56 · THE CARD'S OWN FOCUS RING WAS BEING CLIPPED TO NOTHING, ON EVERY CARD.
+   The whole card is this link, so it is the largest control on the board and the one that opens a page
+   where money is staked. The `:where(a, button, …):focus-visible` catch-all (§ above) already gives it a
+   2px ring at `outline-offset: 2px` — but the link is `inset: 0`, so that ring is drawn 2px OUTSIDE the
+   card, and `.mcardp` is `overflow: hidden`. One hundred per cent of it was cut. A keyboard, switch or
+   Bluetooth-keyboard user tabbed onto a card and NOTHING on the screen changed.
+   ⛔ MEASURED, NOT ASSUMED, AND THE FIRST INSTRUMENT LIED. Comparing whole-card screenshots said "58,544
+   bytes changed" — the sparkline and the live pulse animate, so the card is never byte-identical to itself.
+   The honest probe is a 6px strip down the card's own EDGE, where a ring must paint and nothing else moves:
+   **0 of 919 bytes changed on focus** before, 581 of 632 after. Confirmed on `/markets` and on the home board.
+   ⭐ AND THE FIX IS ONE DECLARATION, NOT A NEW RING. `outline-offset: -2px` moves the ring the catch-all
+   already paints to the INSIDE of the clip, where it follows the card's radius and sits clear of the 15px
+   padding, so no child covers it. This is the file's own idiom — `[data-section-rail] :where(a, button)`
+   does exactly this, for exactly this reason.
+   ⛔ Two richer fixes were built and REJECTED as unnecessary: an `outline` on `.mcardp` via `:has()`, and a
+   `::after` ring at `z-index: 4`. Both paint, and both restate a ring this element is already given.
+   ⚠️ `outline`, never `box-shadow`: forced-colors strips a shadow and keeps an outline (E-129). */
+.mcardp > .mcardp-open:focus-visible { outline-offset: -2px; }
 .mcardp > .mcardp-open {
   position: absolute;
   inset: 0;
