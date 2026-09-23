@@ -7,7 +7,9 @@
 > ⚠️ **The `scripts/.probe-*.mjs` names that appear in the verifier text below are UNTRACKED SCRATCH FILES and are gone.** They are named so a
 > reader can see HOW a number was taken, not so it can be re-run. DESIGN_AUTHORITY §0b keeps evidence out of the repo, and a dot-prefixed
 > probe is deliberately untracked. Where a verifier wrote a range like `-1..3`, that shorthand has been replaced with plain words, because
-> `test:docs` reads any `scripts/….mjs` in prose as a file reference and is right to.
+> `test:docs` reads any `scripts/….mjs` in prose as a file reference and is right to — so they are written here as
+> **probe `name`**, with no path and no extension. The 175 of them were deleted when this pass closed, which is what
+> makes the paragraph above literally true rather than aspirational.
 
 ## §0 — Why this exists
 
@@ -92,7 +94,7 @@ Focus ring geometry: outline is "solid 2px" at outline-offset 2px on all of thes
 **The verifier's own measurement** (it re-drove production; where it differs from the examiner's claim, this is the number that stands):
 
 ```
-Route `/` (and `/live`, identical), 360x780, locale sw, settled page. My probe: `scripts/.probe-refmo-1.mjs`, `scripts/.probe-refmo-2.mjs`. Crops: refmo/home-reduce-t2.png, home-reduce-t14.png, home-no-preference-low-b.png, live-reduce-b.png.
+Route `/` (and `/live`, identical), 360x780, locale sw, settled page. My probe: `probe `refmo-1``, `probe `refmo-2``. Crops: refmo/home-reduce-t2.png, home-reduce-t14.png, home-no-preference-low-b.png, live-reduce-b.png.
 
 GEOMETRY (mine, matches theirs): clipping window (the `overflow:hidden` flex child holding the track) = 245.0 x 31 at x=115 on a 360 screen; clientWidth 245 vs scrollWidth 27,449 and no scrollbar, no touch scroll, and zero buttons/links inside the strip. `.ticker-track` = 27,440.6px holding 24 spans = 12 events rendered twice. Entry 1 starts at x=123 and is 1,045.4px wide — but that figure INCLUDES its own 32px `pr-8`, so the text is ~1,013px, and the readable share is 24.2%, not the claimed 23.4%. One of 24 spans intersects the window; zero are whole; 11 of the 12 events never intersect it at any time.
 
@@ -168,13 +170,13 @@ NEW FACT THE CLAIM DID NOT ESTABLISH — there is no second path. I opened the F
 **The verifier's own measurement** (it re-drove production; where it differs from the examiner's claim, this is the number that stands):
 
 ```
-**/markets · 320×640 · sw · guest · reduced motion · scrollY 0 · sort menu open** (my own probe `scripts/.probe-refute-1.mjs`, run against https://www.50pick.tz):
+**/markets · 320×640 · sw · guest · reduced motion · scrollY 0 · sort menu open** (my own probe `probe `refute-1``, run against https://www.50pick.tz):
 
 Panel `[data-bar-cell="sort"] [role=listbox]` x=100 y=307 w=220 h=274 bottom=581, computed `z-index: 30`, but its only positioned ancestor is `div.kp-discovery-bar.sticky.top-[56px].z-20` — so it resolves at **20** against the page. `.cm-bubble.cm-bubble-mobile` x=252 y=508 w=52 h=52 bottom=560, itself `z-index: auto` inside a `position: fixed` wrapper at **z-index 60**. Overlap = the bubble's full 52px width over x 252–304 of a panel that ends at x=320, across y 508–560.
 
 Nine-point `elementFromPoint` census per row (x = row.left+4 → row.right−4): rows 0–3 lose 0/9; **row 4 "Mabadiliko makubwa ↓" (href `/markets?sort=move`, cy=510) loses 2/9** — x=263 → the bubble's fixed wrapper `div`, x=289 → `button.cm-bubble.cm-bubble-mobile`; **row 5 "Mpya kwanza ↓" (href `/markets?sort=new`, cy=554) loses 2/9** — x=263 and x=289, both `button.cm-bubble.cm-bubble-mobile`. 2 of 6 rows, 4 of 54 points.
 
-**Real click, and a control that discriminates it** (`.probe-refute-2.mjs`, one context per click):
+**Real click, and a control that discriminates it** (probe `refute-2``, one context per click):
 - `mouse.click(263, 554)` over "Mpya kwanza ↓" → `url` stays `https://www.50pick.tz/markets`, `sort` param `null`, active sort label still "PANGA", and `.cm-list` + `.cm-scrim` are both present: the full-screen "Msaada wa 50pick" chat opened.
 - **Same row, same cell, x=170 (centre): → `https://www.50pick.tz/markets?sort=new`.** So the option is alive; the bubble is what takes the tap.
 - 360×780 sw, same relative x (303) on the same row: → `?sort=new`. Height-bound, not an x problem.
@@ -202,7 +204,7 @@ Nine-point `elementFromPoint` census per row (x = row.left+4 → row.right−4):
 ```
 / at 360x780, sw, signed out, cold, slow 4G (400 kbps / 400 ms RTT) + CPU 4x, data-motion="full" (read back from <html>, not forced).
 
-Timeline, clean run (in-page rAF sampler only, no capture overhead — scripts/.probe-refute-reveal-4.mjs cell A):
+Timeline, clean run (in-page rAF sampler only, no capture overhead — probe `refute-reveal-4` cell A):
 - FCP t=9416. Hero column FULLY readable at t=9761: all 5 `.kp-hero__inner > *` at computed opacity 1, `main` h=6032.3.
 - Last pre-`.js` sample t=12518: topbar 1, kids [1,1,1,1,1], hero child1 y=121.8.
 - `.js` flips at t=12539: topbar 0, kids [0,0,0,0,0], y 121.8 -> 129.6.
@@ -210,12 +212,12 @@ Timeline, clean run (in-page rAF sampler only, no capture overhead — scripts/.
 - ⛔ NO FRAME IS RENDERED FOR THE NEXT 132 ms. First painted frame carrying the new styles is t=12671: topbar 0.152, kids [0.264, 0, 0, 0, 0].
 - Fully back t=13077. VISIBLE EVENT = 406 ms (claim said 338).
 
-What the screen actually shows (CDP Page.screencast, per-frame metadata timestamps, scripts/.probe-refute-reveal-3.mjs):
+What the screen actually shows (CDP Page.screencast, per-frame metadata timestamps, probe `refute-reveal-3`):
 - Frame c021261, timestamped inside the run of computed-0.00 samples: header pills, "The wisdom of YES & NO.", 49, TZS 482K, 27 ALL AT FULL BRIGHTNESS. It is a live frame, not a stale one — the MUBASHARA ticker advanced ~3 characters between c021178 and c021261, so the compositor was producing fresh frames while the main thread was blocked.
 - Deepest topbar value ever PAINTED: 0.152 (throttled) / 0.076 (unthrottled). Deepest headline value painted: 0.264.
 - Frame c021344 (topbar 0.152): 579 of 780 visible px of the hero column are at opacity < 0.05 — 49 / MASOKO YALIYO WAZI, TZS 482K / FEDHA ZILIZOWEKWA, 27 / UTABIRI ULIO WAZI, the BODI YOTE SASA HIVI tipping bar and the YANAYOFUNGWA KARIBUNI block with both market cards are GONE. Those are hero children 2-5, sitting in the backwards fill of their 40/80/120 ms kp-rise delays.
 
-CLS, measured myself (scripts/.probe-refute-reveal-5.mjs, PerformanceObserver layout-shift buffered): 2 entries this load, 0.00106 at t=14040 and 0.15897 at t=14803, both BEFORE `.js` (t=15698). Entries inside the replay window [15648, 16391]: 0, summed value 0.00000. Confirmed.
+CLS, measured myself (probe `refute-reveal-5`, PerformanceObserver layout-shift buffered): 2 entries this load, 0.00106 at t=14040 and 0.15897 at t=14803, both BEFORE `.js` (t=15698). Entries inside the replay window [15648, 16391]: 0, summed value 0.00000. Confirmed.
 
 Unthrottled control (same probe, cell B): gap readable -> flip = 81 ms, event 424 ms. Identical mechanism, invisible as a defect. The defect is purely a function of how late the bundle lands.
 ```
@@ -286,7 +288,7 @@ THE PICTURE (one 232x388 clip holding both rows, 320 sw, read with the Read tool
 **The verifier's own measurement** (it re-drove production; where it differs from the examiner's claim, this is the number that stands):
 
 ```
-/leaderboard, 360x780, sw, my own probes (F:\kipindi-main\scripts\.probe-refute-1.mjs / -2.mjs / -3.mjs), 4 page loads.
+/leaderboard, 360x780, sw, my own probes (probe `refute-1` / -2.mjs / -3.mjs), 4 page loads.
 
 Population: 11 `.kp-tooltip` triggers, all really visible, all `tabIndex=0`; podium 22x23.3, list 22x22. Podium badge #3 trigger at [301, 377.9, 22, 23.3] — the claim's [301,378,22,23] to the pixel.
 
@@ -367,7 +369,7 @@ elementFromPoint mapping is off by one control: at the HAPANA centre I get `A.bt
 ```
 Reproduced to the decimal on https://www.50pick.tz, but the stated CONDITION is causally wrong and the tap figure is over-stated.
 
-WHAT MATCHES (my probe, scripts/.probe-refute-1.mjs, /results, 360 wide, sw and en):
+WHAT MATCHES (my probe, probe `refute-1`, /results, 360 wide, sw and en):
 - `.kp-fsheet-trigger` x=209.9..344, y=359..403, h=44, w=134.1 sw ("Vichujio") / 122.1 en ("Filter") — identical at every height I drove.
 - Chat bubble `.cm-bubble`, fixed z-index:60 wrapper, 52x52. At h=780: x=292..344, y=648..700, overlap 0. At h=500: y=368..420, rect overlap 52 x 35 = 1820px^2 = 30.9% sw / 33.9% en.
 - Six-point midline hit line at x-fractions 0.1/0.3/0.5/0.7/0.85/0.95: TRIG,TRIG,TRIG,BUBBLE,BUBBLE,BUBBLE at 500; all six TRIG at 780.
@@ -451,7 +453,7 @@ INSTRUMENT NOTE: with the plan's own prescribed emulation (§11 line 1514, `docu
 **The verifier's own measurement** (it re-drove production; where it differs from the examiner's claim, this is the number that stands):
 
 ```
-Production https://www.50pick.tz/markets, 320x640, locale sw, guest, DEFAULT (Compact) density, control line resting/closed. `scripts/.probe-refute-1.mjs` and `-3.mjs` (my own, untracked).
+Production https://www.50pick.tz/markets, 320x640, locale sw, guest, DEFAULT (Compact) density, control line resting/closed. `probe `refute-1`` and `-3.mjs` (my own, untracked).
 
 SW 320: `<summary aria-label="Panga masoko">` box x=182→209, 27x44; `clientWidth 26` vs `scrollWidth 61`; `overflow-x: visible`, padding 6/6, gap 4. Key span (`Panga`, 10px mono, uppercase, `flex-shrink: 0`) paints 189→226 = 37.0px — its Range rects and its element box agree, one rect, one line — so it runs 17.0px past the summary's own right edge of 209, which is exactly where the 44x44 direction link (`aria-label="Imepangwa kushuka"`, 209→253, opaque `bg-bg-inset`, later in DOM order) begins and paints over it. `overflow: visible`, `text-overflow: clip`, `white-space: normal` — no ellipsis anywhere.
 EN 320: "SORT" 189→218.6 = 29.6px, 9.6px past 209, `scrollWidth 54` in `clientWidth 26`. Same box, same geometry.
@@ -492,7 +494,7 @@ Coverage: /markets x {320x640 sw, 320x640 en, 360x780 sw} + one deep re-drive at
 **The verifier's own measurement** (it re-drove production; where it differs from the examiner's claim, this is the number that stands):
 
 ```
-Production https://www.50pick.tz/, guest, portrait, my own probes `scripts/.probe-refute-lang-1.mjs` (Playwright via `localisedContext`/`assertLang`) + `full-*.png` pixel reads.
+Production https://www.50pick.tz/, guest, portrait, my own probes `probe `refute-lang-1`` (Playwright via `localisedContext`/`assertLang`) + `full-*.png` pixel reads.
 
 320x640 **sw** — every number the claim gave is right, to the sub-pixel:
 - trigger `<summary>` **44.00 x 44.00 at x=125.75** (right=169.75); cluster is `[LanguageMenu, "Ingia", "Jisajili"]`, guest.
@@ -693,7 +695,7 @@ The row-2 geometry is mis-measured. The sort group is `flex: 1 1 0%` and 561.9px
 - **Condition:** Landscape (740/780/915 × 360–412) · claimed `all routes (header)` 740x360 (holds at 780x360 and 915x412)
 
 ```
-REPRODUCED THE NUMBERS, REFUTED THE FINDING. My own probe (scripts/.probe-rf1-1.mjs, scripts/.probe-rf1-2.mjs; F:\kipindi-main\scripts\.shots-rf1\) drove https://www.50pick.tz/ signed out, locale sw via kp-locale + assertLang, HeadlessChrome UA confirmed, reducedMotion reduce, at 740x360, 780x360, 915x412, plus two controls: 360x640 (portrait) and 1280x800 (desktop) — 7 page loads, home only. The stated measurement is exactly right: at 740x360 sw both `.kp-auth-cta` ("Ingia", "Jisajili") are h=48, y=3.5, bottom=51.5, font-size 15px, padding 20px, inside a `.app-topbar` of h=56 (border-box, padding 0, 1px bottom border). Identical at 780x360 and 915x412. Portrait 360x640 gives h=40, y=7.5..47.5, 13px, padding 14px. So the numbers are not the problem.
+REPRODUCED THE NUMBERS, REFUTED THE FINDING. My own probe (probe `rf1-1`, probe `rf1-2`; F:\kipindi-main\scripts\.shots-rf1\) drove https://www.50pick.tz/ signed out, locale sw via kp-locale + assertLang, HeadlessChrome UA confirmed, reducedMotion reduce, at 740x360, 780x360, 915x412, plus two controls: 360x640 (portrait) and 1280x800 (desktop) — 7 page loads, home only. The stated measurement is exactly right: at 740x360 sw both `.kp-auth-cta` ("Ingia", "Jisajili") are h=48, y=3.5, bottom=51.5, font-size 15px, padding 20px, inside a `.app-topbar` of h=56 (border-box, padding 0, 1px bottom border). Identical at 780x360 and 915x412. Portrait 360x640 gives h=40, y=7.5..47.5, 13px, padding 14px. So the numbers are not the problem.
 
 THREE REASONS THE FINDING IS WRONG AS STATED.
 
@@ -815,7 +817,7 @@ THE INSTRUMENT COULD PRODUCE THIS NUMBER WITH NOTHING NEW PRESENT. Two of your l
 ```
 REFUTED AS A NEW FINDING — it is D34, and the headline condition ("at 360") is false. But be clear: the pixels are real. I reproduced every number the examiner gave, to the tenth, with my own probes.
 
-WHAT I DROVE (13 loads, all https://www.50pick.tz/markets, read-only, `localisedContext`-equivalent contexts with the `kp-locale` cookie + `assertLang` after every nav, reducedMotion=reduce): 412x780 sw z1, 360x780 sw z1, 320x780 sw z1, 340/333/327 sw z1, 277x600 dsf1.3 sw (=360@z1.3), 246x600 dsf1.3 sw (=320@z1.3), 277 dsf1.3 en, plus two full-page unclipped-overflow scans. Scripts: F:\kipindi-main\scripts\.probe-refute-1.mjs .. .probe-refute-5.mjs (all untracked; `git status` shows no tracked file touched, branch mobile-s2).
+WHAT I DROVE (13 loads, all https://www.50pick.tz/markets, read-only, `localisedContext`-equivalent contexts with the `kp-locale` cookie + `assertLang` after every nav, reducedMotion=reduce): 412x780 sw z1, 360x780 sw z1, 320x780 sw z1, 340/333/327 sw z1, 277x600 dsf1.3 sw (=360@z1.3), 246x600 dsf1.3 sw (=320@z1.3), 277 dsf1.3 en, plus two full-page unclipped-overflow scans. Scripts: probe `refute-1` .. probe `refute-5` (all untracked; `git status` shows no tracked file touched, branch mobile-s2).
 
 WHAT I CONFIRMED
 - The element is `main p.flex.items-center.whitespace-nowrap.font-mono.text-[12.5px]`, innerText "49 hai · TZS 482K katika mchezo", width 251.5 CSS at EVERY width (it is a flex item that cannot shrink below min-content).
@@ -834,7 +836,7 @@ WHY IT IS STILL NOT A NEW FINDING
 - **Condition:** Large text (Android/browser scaling 1.3) · claimed `/markets and /` 320x780 @ zoom 1.3 (246 layout); one card also at 360x780 @ zoom 1.3
 
 ```
-REFUTED AS STATED. I drove the exact cell myself (scripts/.probe-refute-1.mjs, -2, -3; 7 page loads on production via `localisedContext` + `assertLang`, HeadlessChrome UA, read-only) and got the examiner's numbers to the unit — and then the screenshot contradicted his conclusion.
+REFUTED AS STATED. I drove the exact cell myself (probe `refute-1`, -2, -3; 7 page loads on production via `localisedContext` + `assertLang`, HeadlessChrome UA, read-only) and got the examiner's numbers to the unit — and then the screenshot contradicted his conclusion.
 
 WHY THE INSTRUMENT LIED. `scrollWidth − clientWidth` says the content is wider than the content box. It says NOTHING about whether anything is clipped — that needs `overflow: hidden` or `text-overflow: ellipsis`, and `.btn` has neither (`overflow-x: visible`, and `text-overflow: clip` is the inert default that applies only under hidden overflow). `.mcardp-actions .btn` (globals.css:4147) sets `height: var(--tap-min); min-width: 0; padding: 0 10px` and never adds hiding; the one `overflow: hidden` ancestor is `.mcardp` itself, and the label's right edge stops 5–15px INSIDE the card border on every one of the 24 buttons. So "clips its own price", "loses characters", "6 units clipped", "9 units clipped" are all wrong: the units counted are units of SPILL, not of loss. This is the register's own named trap — measuring a BOX when the claim is about TEXT. Measured the text's way (Range rects per text node vs the button's border box) the overflow turns out to be symmetric, left and right, which is what `justify-content: center` + visible overflow must produce and what a clip could never produce: a clip would eat BOTH ends, not "only the price".
 
@@ -868,7 +870,7 @@ REFUTED AS A NEW FINDING — it is D43, to the pixel, and its stated mechanism a
 ```
 REFUTED as stated. The measurement is honest — I reproduced 51 (sw) and 76 (en) to the unit — but the finding's load-bearing claim, "where it was whole at 100%", is wrong, and what is left is D18 verbatim.
 
-1. It is not a text-scaling condition. The instrument is `document.documentElement.style.zoom = "1.3"` (I read the original probe, `.probe-lgtext-1.mjs:120`). Android/Chrome "Text scaling" multiplies FONT SIZE inside an unchanged 360px layout; CSS root `zoom` shrinks the LAYOUT to 360/1.3 = 277 units. I drove a native 277×600 context and got the same numbers within one unit (52 vs 51, 77 vs 76). So the condition reduces to "layout narrower than ~320px", not "the player raised their text size".
+1. It is not a text-scaling condition. The instrument is `document.documentElement.style.zoom = "1.3"` (I read the original probe, probe `lgtext-1`:120`). Android/Chrome "Text scaling" multiplies FONT SIZE inside an unchanged 360px layout; CSS root `zoom` shrinks the LAYOUT to 360/1.3 = 277 units. I drove a native 277×600 context and got the same numbers within one unit (52 vs 51, 77 vs 76). So the condition reduces to "layout narrower than ~320px", not "the player raised their text size".
 
 2. And the register already owns that width. At a plain 320×780 at 100%, with no zoom and no scaling, the same span on the same route clips in BOTH locales — sw hides 9 units painting "Mpya z…", en hides 34 painting "Newest r…". That is D18: "Active sort value clipped at 320 … `query-bar.tsx` QuerySort" (MOBILE-VISUAL-PLAN.md:927). The plan's matrix at line 585 even states the same consequence the claim offers as its novelty: "active sort value clipped …, so the player can't read which sort is on (D18)". 320 is a standard cell of this matrix; the examiner measured 360 and 360-at-zoom and skipped it.
 
@@ -876,7 +878,7 @@ REFUTED as stated. The measurement is honest — I reproduced 51 (sw) and 76 (en
 
 4. What is genuinely new here is not a defect: "unlike /markets the control itself survives" is the control passing. The one fact worth carrying back to D18 is a relocation, not a new row — on /markets the value is now `display:none` on phones (globals.css:5540 hides it inside the Compact one-line bar and prints the sort name on the count line), so D18's own example ("Pesa nyingi" at 320) no longer reproduces where the row says it does; /results, whose ResultsBar carries no `data-bar-row`, is where D18 still bites.
 
-Housekeeping: a peer agent and I collided on the filename `scripts/.probe-refute-2.mjs` — I wrote mine, then read back the
+Housekeeping: a peer agent and I collided on the filename `probe `refute-2`` — I wrote mine, then read back the
 ```
 
 ### ⚪ The home route's entire loading state is a wordless 360px box — and U25's fix list does not name the root loader that produces it
