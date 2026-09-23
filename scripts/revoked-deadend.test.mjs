@@ -63,6 +63,18 @@ await wait(500);
 const browser = await chromium.launch(
   process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {},
 );
+// ⛔ THIS SUITE ASSERTS ENGLISH COPY ("another device", "wrong phone or password"), so every context it opens says it
+// reads English. Since 8822b648 (2026-09-15) a visitor with no language cookie is served SWAHILI, and six checks here
+// were reading Swahili pages as failures for everyone — found by the Mobile Visual Plan's S1 test:all on 2026-09-22.
+// The language is a premise of the copy checks, set on the context before the first request (skill §4).
+{
+  const raw = browser.newContext.bind(browser);
+  browser.newContext = async (opts) => {
+    const c = await raw(opts);
+    await c.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
+    return c;
+  };
+}
 
 const readPage = (p) => p.evaluate(() => ({
   path: location.pathname,
