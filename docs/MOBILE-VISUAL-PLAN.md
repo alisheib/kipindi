@@ -33,9 +33,20 @@
 ▶ NEXT: Session S3 → U5 (header pills + phone rhythm tokens) and U6 (home tightening, with D33 and D51).
   Read §5 (hard rules) and §9 U5–U6 before touching code. Phase A and the first half of Phase B are done:
   the switch exists, the card and the bar are Compact, and pinned chrome is 197.25 against a 201 target.
-  ⚠️ Still open and NOT U5's: `test:stacking` §5.2 (LocaleChangeOverlay in `src/lib/i18n.tsx` is a
-  non-portaled viewport-anchored `fixed` overlay inside route content — it is in `predeploy`), and
-  `test:type-scale` §3 (746 vs a ratchet of 744; ⛔ find the two, never bump the ratchet).
+  ✔ `test:stacking` §5.2 is FIXED (`d1476eed`) — 112/1 → **113/0**. `LocaleChangeOverlay` is `fixed
+  inset-0` rendered inside route content, and a transformed ancestor (`.route-enter`) becomes the
+  containing block for a `fixed` child, so a language change during a navigation laid the scrim out
+  against the animating box instead of the screen. Portaled to `document.body`, and DRIVEN to prove it:
+  the scrim appears, `parentElement === document.body`, 360 × 780 against a 360 × 780 viewport, z 9000,
+  six glyphs, `<html lang>` lands on `en`. ⚠️ Four probes said "not found" first and were WRONG — the
+  menu is a `<details>` whose panel is in the DOM while closed, so the click never landed; the same
+  probe gave the identical false negative on PRODUCTION's old code, which is what proved the probe at
+  fault. `ui-consistency` then flagged the portal as ad-hoc: settled by adding `i18n.tsx` to
+  `PORTAL_ALLOW` with the reasoning, NOT by baselining a drift, because `<Modal>`'s focus-trap and
+  scroll-lock are wrong for a non-interactive one-beat loading scrim.
+  ⚠️ Still open and NOT U5's: `test:type-scale` §3 (746 vs a ratchet of 744; ⛔ find the two, never
+  bump the ratchet) and `qa:tap-hit`'s chart-range section (no market exposes a range rail — it fails
+  on production too, so it is a product gap, not a fixture one).
 ✔ LAST SESSION (S2, 2026-09-23): **U3 ✅ and U4 ✅** — 4/40 — plus **D28 and D49 closed** and **D30
   shipped early in the safe-fix lane**. The card's rhythm became six `:root` tokens the card and the
   SKELETON both read; the bar went from two stacked control rows to one control line plus a count line.
@@ -68,7 +79,7 @@
   /results · /live · /watchlist · /updown × 320/360 × SW/EN/ZH × both densities found ZERO horizontal overflow,
   both card tokens resolving to real heights everywhere (303/347 and 242/278), and no collapsed or runaway card.
   ⚠️ FOUR REDS ON MAIN, NONE OF THEM U3's — each proven at HEAD with U3's files reverted, failing identically:
-  `test:stacking` §5.2 (LocaleChangeOverlay, i18n.tsx via theme-provider.tsx — plausibly U2's), `test:type-scale`
+  `test:stacking` §5.2 (LocaleChangeOverlay — **since FIXED in this session, `d1476eed`**), `test:type-scale`
   §3 (746 vs a ratchet of 744; ⛔ do NOT bump the ratchet — find the two), `test:filter-language` §6.6 (the
   house-bots session owns it and has taken it), and `qa:tap-hit`'s chart-range section (fails on production too,
   so it is a product gap). ⛔ `test:stacking` and `test:filter-language` are both in `predeploy`, so predeploy
