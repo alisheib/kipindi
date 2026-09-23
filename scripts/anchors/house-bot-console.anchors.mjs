@@ -2891,10 +2891,13 @@ import { formatEat } from "@/lib/utils";`,
     /* (d) the why-panel is fed a hard-coded empty list — it says nothing stops the account, whatever the rules say. */
     name: "scope-why-panel-empty · the why-panel's item list is a constant empty array",
     file: GATE,
-    /* ⚠️ RE-ANCHORED 2026-09-23: a retired chain or category joined the panel's items (register A5), so the
-       list is longer. The plant is unchanged in meaning — the whole list becomes a constant empty array. */
-    from: `    const items = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),`,
-    to: `    const items: { key: string; label: string; message: string }[] = [];\n    const unusedItems = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),`,
+    /* ⚠️ RE-ANCHORED TWICE, AND BOTH TIMES THE PLANT'S MEANING IS UNCHANGED — the panel's whole list becomes a
+       constant empty array. (a) 2026-09-23 morning: a retired chain or category joined the items (register A5).
+       (b) 2026-09-23, M7: the callout and the panel became ONE `blockerItems` list with two skins, so the panel's
+       own line is now the MAP off it. The plant still empties the panel and leaves the callout alone, which is
+       what this mutation has always been for. */
+    from: `    const items = blockerItems.map((b) => ({ key: b.key, label: b.label, message: b.message }));`,
+    to: `    const items: { key: string; label: string; message: string }[] = [];`,
     expect: "2g.why · ⛔ the why-panel lists every reason the engine's predicate raises",
     suite: "console-mem",
   },
@@ -2940,7 +2943,11 @@ import { formatEat } from "@/lib/utils";`,
     /* The why-panel is built without the live-bound list again — "nothing stops this account" on the page whose Start refuses it. */
     name: "scope-why-panel-no-live-bound · the why-panel drops the saved limits a live bound now breaks",
     file: GATE,
-    from: `      ...(liveBound ?? []).map(liveBoundItem),\n`,
+    /* ⚠️ RE-ANCHORED AND WIDENED BY M7 (2026-09-23), said plainly rather than left to be discovered: the
+       callout and the panel are ONE list now, so removing this source removes those problems from BOTH — where
+       before it removed them from the panel alone. The expect below is the PANEL's own assertion and still
+       bites; what changed is that the plant is now a broader defect than it was, not a narrower one. */
+    from: `    ...(liveBound ?? []).map((p) => ({ ...liveBoundItem(p), unset: false })),\n`,
     to: `      /* dropped */\n`,
     expect: "2g.live · ⛔ a saved limit a live bound now breaks is ON the panel",
     suite: "console-mem",
@@ -2985,8 +2992,11 @@ import { formatEat } from "@/lib/utils";`,
     /* The page types the lifecycle sentence itself again — "before this account can start" beside a green ACTIVE chip. */
     name: "scope-callout-title-on-page · the account page types the Callout's headline instead of painting the server's",
     file: DETAIL,
-    from: `            title={view.startReadiness.title}`,
-    to: "            title={`${view.startReadiness.blockers} things to fix before this account can start`}",
+    /* ⚠️ RE-ANCHORED BY M7 (2026-09-23): the page binds the readiness ONCE, as `calloutReadiness`, so the
+       callout and the overview's panel cannot disagree about whether there is anything to say. The plant is
+       unchanged — the page types the lifecycle sentence itself instead of painting the server's. */
+    from: `            title={calloutReadiness.title}`,
+    to: "            title={`${calloutReadiness.blockers} things to fix before this account can start`}",
     expect: "2g.page · the Callout's headline is the server's",
     suite: "console-mem",
   },
