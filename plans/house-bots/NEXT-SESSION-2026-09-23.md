@@ -77,23 +77,41 @@ DATABASE_URL='postgresql://postgres:scratch@127.0.0.1:5453/hb_desk' USE_PRISMA_D
 ⛔ **A `red:*` gate MUTATES tracked files in place**: it refuses to run on a dirty tree, and two at once in one
 tree is how a live guard is left disabled while the harness reports clean.
 
-## 5 · WHAT IS STILL OPEN after the 2026-09-23 live push (b8615d28)
+## 5 · THE TEN NAMED MINORS — ALL CLOSED, AND TWO OF THEM WERE RECORDED WRONG
 
-Everything the brief called a blocker is shipped and live. These are the named minors that are not:
+Everything the brief called a blocker shipped on 2026-09-23 (`b8615d28`). The ten minors below were the
+remainder, and **all ten are now closed** — eight fixed with an assertion and a mutation each, one struck
+because it does not reproduce, and one resolved into three different answers.
 
-| # | Item | Register |
+⛔ **TWO OF THE TEN WERE MIS-RECORDED, which is the reason this table now carries what was MEASURED rather
+than what was remembered.** Re-derive a shorthand before fixing anything from it.
+
+| # | What it was | What it is now |
 |---|---|---|
-| M1 | The engine notice compares DB-stamped beats with the web containers own clock — it should read dbClock() in the settled read | C8 minor |
-| M2 | An unreadable custom from/to is answered silently with 24 h under Custom; it should be REFUSED in the existing Callout | C8 minor |
-| M3 | The kits range picker defaults to to 23:59 and bounds days by the browsers zone, not EAT | C8 minor |
-| M4 | A DB_TIMEZONE boot refusal is invisible beyond not running | C8 minor |
-| M5 | An empty Targets table keeps its header floors (LAST CHAN) | D9 minor |
-| M6 | A removed accounts History subject cell prints the event word instead of a subject | D9 minor |
-| M7 | The why-panel repeats a fact the Callout already states on a fresh account | D9 minor, 432(n) |
-| M8 | The Start dialogs Confirm permission link lands on the overview, not a focused re-verify | A5 minor |
-| M9 | Lane E: seven assertions have no discriminating engine mutation (SILENT red only) | E |
-| M10 | Lane M: dayKey goes null when placements straddle 21:00 UTC | E |
+| M1 | The engine notice aged DB-stamped beats against the web container's own clock | ✅ The beats and the database's instant arrive as ONE settled member. Proved BEHAVIOURALLY: a planner beat 5 s old by this container's clock is painted "not running · Last seen: 10 min ago" when the database says ten minutes passed. Ruling 348's source pin was **re-aimed onto its own claim** (the DAY KEY), not loosened |
+| M2 | An unreadable custom from/to was answered silently with 24 h under the officer's own label | ✅ Parsed before `resolveRange` can guess, refused into the Callout that already exists, and the refused bounds do not travel into the rail's links. `resolveRange` itself untouched — seven other rails use it |
+| M3 | The picker defaulted `to` to 23:59 and bounded days by the browser's zone | ✅ `eatDayKey` for the bound; the day-end posts as a DATE, which `resolveRange` already reads as the whole EAT day. ⭐ Its CONTROL is two extreme zones 25 h apart — this laptop sits in EAT, where a page agrees with EAT by accident |
+| M4 | A `DB_TIMEZONE` boot refusal was invisible beyond "not running" | ✅ It records `BOOT_REFUSED:DB_TIMEZONE` on the instance's own row — the pattern `recordClaimsBlocked` already uses — and the verdict names it ABOVE `STALE`. A landed boot clears it. ⚠️ `11.16`'s "no boot row" proxy was re-aimed onto its claim: no `bootAt`, no `engineEnabled` |
+| M5 | An empty Targets table forced a sideways scroller at 360 | ✅ One CSS rule on the marker row `AdminTableEmpty` now carries — ~15 admin tables, no call site edited. ⚠️ The recorded symptom ("LAST CHAN") was WRONG: the header did not clip. The real cost was a scroller whose entire reachable content was one centred sentence |
+| M6 | A removed account's subject cell printed the event word | ✅ `CONSOLE_ACCOUNT_GONE` was `CONSOLE_EVENT_WORD.REMOVED` character for character. The three words are one exported object and a case compares the whole of BOTH total maps |
+| M7 | The why-panel repeated what the Callout already stated | ✅ ONE `blockerItems` list, two skins, named once per screen. The two had also DIVERGED: the panel counted a retired chain that the callout and the `rules` badge did not |
+| M8 | `Confirm permission →` landed on the overview with nothing to press | ✅ `?reverify=1` opens the dialog it names, once on arrival |
+| M9 | "Seven lane-E assertions have no discriminating mutation" | ✅ **The count is SIX, not seven**, and the answer is FOUR / ONE / TWO: four moved to engine §7c where `planOpener` is pure, one already had a mutation nobody had noticed (money `1.4`'s `SEAM:txnMarker`) plus `13.1` which had the case but not the plant, and TWO are structurally unmutatable at assertion granularity — a finding, written into the lane's header with its reasoning |
+| M10 | "`dayKey` goes null when placements straddle 21:00 UTC" | ❌ **DOES NOT REPRODUCE — STRUCK.** The shorthand fused two adjacent, unrelated things. `eatDay` is TOTAL: a straddle makes TWO day strings, never a null, which is what the per-desk key exists for. The `: null` is a missing-`placedAt` guard, unreachable while the premises hold. 🔑 One token DID change: `desks.every((d) => d.dayKey)` joins M.17n, whose `rows >= mDesks` limb would otherwise go slack in exactly that state |
 
-⚠️ **And one finding outside this programme, left for its owner:** scripts/anchors/rg-doors.anchors.mjs has
-**2 anchors that no longer resolve**, so red:rg-doors is measuring nothing on them. It is not in the house
+⚠️ **And one finding outside this programme, left for its owner:** `scripts/anchors/rg-doors.anchors.mjs` has
+**2 anchors that no longer resolve**, so `red:rg-doors` is measuring nothing on them. It is not in the house
 ladder, so it was reported rather than fixed here.
+
+## 6 · TWO WAYS THIS SESSION NEARLY REPORTED SOMETHING FALSE
+
+Both are recorded because the next session will meet them, and neither announced itself.
+
+1. 🔴 **A PIPE MASKED A FAILED GATE.** `npm run red:house-bot-console | tail -25` printed
+   `306 caught, 3 missed` and the harness reported **exit 0** — a pipeline's status is the LAST command's, and
+   the runner's own `process.exit(1)` never reached it. `tail` also cut off the only lines naming WHICH three.
+   **Redirect a gate to a file and read `$?` on its own line. Never pipe one.**
+2. 🔴 **THREE DECLARED MUTATIONS SILENTLY STOPPED MEASURING ANYTHING.** A refactor deleted the exact text they
+   were anchored on, and an anchor that matches nothing does not fail — it plants nothing and reports nothing.
+   **After any refactor, load the `*.anchors.mjs` module and assert every `from` appears exactly once in its
+   file, before trusting a red drive.**
