@@ -113,37 +113,28 @@
 ⚠️ U31 carries a real backlog: 379 of the 718 findings are still UNVERIFIED
   (usage limits stopped the verifiers for surface groups S07–S13). Treat them as leads, not facts.
 
-? OPEN OWNER ITEMS (none blocks S1):
+? OPEN OWNER ITEMS — 4 left, and every one needs Ali to SUPPLY something, not to decide:
   1. U29: the browser floor, option A or B. Decided WITH NUMBERS: Ali pulls GA4 browser/version/screen data for
      Tanzania mobile (or grants read access).
   2. U30: Ali's Android phone plus one budget Android for the real-device checklist at each phase end.
-  3. A native SW/ZH reader for the new keys (U2, U20).
+  3. A native SW/ZH reader for the new keys (U2, U20, and decision 12's hero sub-line).
   4. Phase-end visual sign-off (§8a): Ali approves each phase's before/after contact sheet.
-  5. **NEW — the hero headline is English on a Swahili-default home page, and the ruling that made it
-     English predates the ruling that made Swahili the default.** `home.heroHeadline` is
-     "The wisdom of YES & NO." verbatim in all three locales, on `test:i18n`'s IDENTICAL_OK list, with
-     the reason written into the dictionary: *"YES and NO are product terms and the sentence is the
-     brand line."* That was decided when a new visitor saw English. Today the largest type on the
-     first screen a Tanzanian visitor meets is English, and two inches below it the same two words
-     appear as NDIO and HAPANA in the conviction bar and on every button. ⚖️ **Ali's call, not a
-     defect** — keep the English brand line, translate it, or keep English with the Swahili beneath.
-     Nothing in this plan changes it either way; U6 must not quietly re-set it.
-  6. **NEW (critics panel, §3b) — a market with one bet shows certainty.** A single TZS 1,000 stake renders "NDIO 100%",
-     a solid bar with the needle pinned to the rail, and a tappable "HAPANA @ 0%". It is the true pool price, and the card
-     prints "1 mtabiri" under it, so nothing is hidden — but 0% reads as impossible. Options: a minimum pool before any crowd
-     price is shown; the displayed price shrunk toward 50% until then; or the display clamped off 0 and 100. ⚖️ Every option
-     changes the §5 cold-start rule, so this is a product rule for Ali, not a unit for a session.
-  7. **NEW (critics panel) — the leaderboard ranks raw ROI with no stated minimum and no stated window.** The crowned leader
-     has 6 settled predictions, third place has 44, and the settled count is the faintest type on the podium. Options: a
-     minimum settled count named on the page, ranking on a confidence bound, a window in the panel header.
-  8. **NEW (critics panel) — the how-it-works copy exposes a configuration switch.** "An officer signs it off — two, when
-     two-officer authorisation is enabled" (all locales) was hedged on purpose: one-officer resolution is the default, and a
-     page claiming two officers would be a regulatory finding (`i18n-dict.ts:609-617`). But a player reads a settings toggle.
-     "An officer signs it off" is true in both modes. ⚖️ Compliance copy — Ali's wording.
-  9. **NEW (critics panel) — the footer's legal furniture.** "RTP ya mchezo na sheria" is casino language on a product whose
-     own headline is "Si bahati" (it may be a Gaming Board requirement — confirm before touching); "Pendekeza masoko upate pesa"
-     carries an INAKUJA (coming soon) pill, so every page advertises a way to earn money that does not exist yet; "Kuwa wakala"
-     sits under UADILIFU (integrity); "Sera ya AML / KYC" is not translated. ⚖️ Compliance and marketing — Ali's call.
+
+✔ THE FIVE JUDGEMENT ITEMS ARE RULED — Ali delegated them on 2026-09-23 (*"proceed taking the right decision based
+  on overall 50pick logic and design"*). The rulings, with their evidence, are **§4 decisions 12–16**:
+  · 12 (was item 5) the English hero — KEEP the brand line (it is DESIGN_AUTHORITY law), add the reader's own
+    words beneath it in SW/ZH, reusing the card's existing `.mcardp-q-sw` pattern → **U6**
+  · 13 (was item 6) one bet is not a price — no crowd price while EITHER side's pool is empty; ungate from `live`
+    (that is D29). Display only: settlement never reads the number → **U32**, clear for the safe-fix lane
+  · 14 (was item 7) the leaderboard — rank by the floor its OWN tier ladder already publishes (5 settled), and
+    state the window; the filter goes in the QUERY, not over its result → **U-leaderboard work, with U10**
+  · 15 (was item 8) the two-officer clause — **NO CHANGE**; it is accurate, consistent across seven sites
+    including the binding legal pages, and the real per-market count is already published. Fix only the English
+    name drift (two-officer vs two-admin) → **U40**
+  · 16 (was item 9) the footer — only the RTP label survives: no recorded Gaming Board requirement exists and the
+    page states no RTP. The other three claims are NOT defects → **U20**
+  ⛔ THREE OF THE NINE SUB-CLAIMS WERE FALSE. Ruling from the critics-panel summary alone would have shipped three
+  wrong changes and reworded compliance copy that is correct. Read §4 before re-opening any of them.
 
 ⚠ TRAPS ALREADY MET (2026-09-15 capture):
   · `networkidle` never fires on www (live stream). Use `load` + a 2.5s wait.
@@ -647,6 +638,108 @@ sign-in screen is "the most assured screen in the set". §8a already protects th
     real history (the card's existing rule: 4+ points in the last 7 days), trimmed 28 → 20 on phones in Compact; two card heights in
     one list are accepted as honest. D49 closes as **by design** when U3 ships — U3 does not reserve band space or remove the band.
 
+
+### Decisions 12–16 — the five open owner items, delegated (Ali, 2026-09-23)
+
+Ali: *"proceed taking the right decision based on overall 50pick logic and design"* and *"we need the perfect
+result."* So these five were ruled here, not asked. ⛔ Each was ruled from EVIDENCE — the live product measured on
+production and the code and compliance record read — never from the critics-panel summary. **Three of the nine
+sub-claims turned out to be FALSE**, and a ruling made on the summary alone would have shipped three wrong changes.
+
+**12. Item 5 — the English hero headline on a Swahili-default page. RULED: keep the brand line, add the reader's
+own words beneath it.**
+- ⛔ **It is LAW, not drift.** `DESIGN_AUTHORITY.md:1491-1492` — *"`home.heroHeadline` is the brand line, verbatim
+  in all three locales by Ali's call (PLAN-OF-RECORD §7b)"* — with a type spec built around it
+  (`design-system/v3…/README.md:76`: `--type-display-1`, `YES` → `--hero-yes-accent`, `NO` → `--hero-no-accent`)
+  and an `IDENTICAL_OK` entry (`i18n-parity.test.mts:54`). This plan mints no law, so the line is NOT overturned.
+- ⚠️ But the ruling's PREMISE changed under it: it was taken when a new visitor saw English, and `8822b648`
+  (2026-09-15) made Swahili the default afterwards. Measured on production 2026-09-23 at 390 SW: the `<h1>` is the
+  **only English string on the entire first screen** — the eyebrow, all three proof figures, the conviction
+  caption and the section heading are Swahili, and the caption one inch below reads *"69% NDIO · 31% HAPANA"*.
+- ⭐ **The argument that settles it is the line's own JOB.** It sets YES green and NO red — it teaches the colour
+  rule. For a Swahili reader it teaches that rule with two words the product then never uses again, because every
+  button, the conviction bar and the leaderboard say NDIO and HAPANA. A brand line that has to be translated to do
+  its work is still doing its work; one that cannot be read is not.
+- **RULING:** keep the English line verbatim, and render the locale's reading BENEATH it — NDIO and HAPANA in the
+  same outcome inks — in SW and ZH. EN shows no sub-line (nothing to translate). ⭐ This invents no pattern: the
+  market card already ships exactly this shape in `.mcardp-q-sw` (`globals.css:4027`), the original with its
+  translation beneath. No law is overturned, the type spec is untouched, and the default reader is served.
+  Owned by **U6**; `IDENTICAL_OK` stays as it is, because the headline key itself does not change.
+
+**13. Item 6 — a market with one bet states certainty. RULED: a price needs two sides.**
+- 🔴 Live on production, 2026-09-23, in the default language: *"Je, Manchester City wata shinda Premier League
+  2026/27? — **NDIO 0% · HAPANA @ 100%** · 1 mtabiri."* One stake tells every visitor that outcome is impossible.
+- The gate today is `noPrice = live && (isNew ?? volume === 0)` (`market-card.tsx:277`) — **any** money at all
+  switches the card from "—" to a crowd price, so a single wager buys a probability.
+- ⭐ **The product has already ruled this, in its own words.** The comment above that line rejects a hardcoded 50%
+  on an empty pool as *"an artefact of the default, not a signal"* and concludes: ***"RULES law 5 is real data or
+  nothing, so the price gate is now the pool."*** A 0%/100% off one stake is the same artefact one bet later.
+- ⛔ **CHECKED BEFORE RULING — IT IS DISPLAY ONLY AND CANNOT MOVE MONEY.** Settlement never reads the number:
+  `payout = stake + (their_stake / winning_pool) × (losing_pool × 0.91)` (`market-service.ts:14`), and a grep of
+  the settle path for `yesPct`/`impliedYesPct` returns nothing. The card's own prop doc already forbids inferring
+  an outcome from it: *"a completely independent quantity… Never infer this."*
+- **RULING:** extend the existing gate rather than invent a threshold — **there is no crowd price while EITHER
+  side's pool is empty.** A percentage is a SPLIT, and a split needs two parts; one-sided is the exact shape that
+  produces 0/100. No minimum stake, no clamping, no shrink-toward-50 (all three would state a number nobody bet).
+  The card keeps showing the pool and "1 mtabiri" — nothing is hidden, one false claim stops being made.
+  ⛔ And ungate it from `live` in the same change, which is **D29**: terminal states never reached the rule.
+  Owned by **U32**, and clear to ship early in the safe-fix lane — it is a money surface making a false statement.
+
+**14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**
+- Measured on production 2026-09-23: **@Libuhi crowned at +52.9% on 17 settled**, above @Fulgence at +47.5% on 38
+  and @Dhiresh on 75. The settled count is present but the faintest type on the podium, and **no window is stated**
+  anywhere on the page although the file's own header calls it *"top predictors of the rolling window"*.
+- ⭐ **The platform already decided that a claim about skill needs a sample — and wrote the numbers down.**
+  `leaderboard/page.tsx:81-84` pairs every tier with a minimum: `silver {resolved: 5}`, `gold {10}`,
+  `diamond {20}`, `sovereign {50}`. The BADGE obeys that ladder; the ORDERING ignores it.
+- **RULING:** apply the floor the product already published — **5 settled (the silver rung) to be RANKED**. Below
+  it a player is listed, never podiumed or crowned. No new number is invented, which is the point: a threshold
+  argued from scratch is a threshold the next session re-argues. **And state the window in the panel header**, in
+  all three locales — a ranking whose period is unstated is not checkable.
+- ⛔ Implementation constraint, from the page's own warning (`:141-149`): the floor goes **into the query**, beside
+  the ORDER BY. A JS filter would leave the SELECTION on raw ROI and change only the label — the exact defect that
+  seam exists to prevent. Rank pays nothing (no prize, payout or bonus reads it), so this is status, not money.
+
+**15. Item 8 — the two-officer clause. RULED: NO CHANGE to the clause. Fix only the name.**
+- ⛔ **The critique is right that a player reads a switch, and acting on it would still have been wrong.** The
+  conditional is not a hedge nobody revisited: it exists because the kit's *"Two officers sign it off"* is **false
+  by default** — single-admin resolution is the default in every money mode — and the dictionary says so:
+  *"A landing page claiming a two-officer ceremony the product does not perform is a regulatory finding, not a
+  copy preference"* (`i18n-dict.ts:624-626`).
+- **It is seven player-facing sites, not one**, all consistent, and two of them are the BINDING legal rules pages
+  (`legal/rules/_content-yes-no.tsx:189`, `_content-up-down.tsx:151`). Rewording the landing line alone would
+  create the inconsistency the critique fears. No guard pins the content — `test:i18n`, `test:trilingual`,
+  `kyc-copy-truth` and `translation-safety` were each checked and none asserts the officer count.
+- ⭐ **And the specific truth is already published per market**, which the critique omits: `/fairness` derives
+  `twoOfficer` from two genuinely distinct signatures (`fairness/page.tsx:135`) and the resolution panel prints
+  *"Confirmed under the two-officer review rule"* or *"Resolved by an officer against the declared public source"*
+  — the latter being the exact sentence `COMPLIANCE-DECISIONS.md:3683` mandates. General copy hedges; the record
+  tells the truth. Under-claiming is not a finding; over-claiming is.
+- **RULING:** the clause stays, verbatim, at all seven sites. The one real defect underneath it is **terminology
+  drift**: English names one switch two ways — *"two-officer authorisation"* (`:631`) and *"two-admin
+  authorisation"* (`:307`, `:316`, `:607`). A player meeting both reasonably reads two different controls. Unify
+  on **"two-officer authorisation"** (it matches the legal pages and the admin lexicon), in all three locales in
+  one commit as `test:i18n` requires. Owned by **U40** (player copy), and safe to ship earlier.
+
+**16. Item 9 — the footer's legal furniture. RULED: ONE of the four claims survives.**
+- **(a) "RTP ya mchezo na sheria" — UPHELD, and on stronger grounds than tone.** The note said to confirm a Gaming
+  Board requirement before touching it. Confirmed: **"RTP" appears in no compliance document, licence record,
+  LIVE-QA register or CLAUDE.md — nobody ever recorded such a requirement.** And the page it points at,
+  `/legal/rules` (*"Kanuni za Michezo"*), **states no RTP**: its only occurrence of the term is the footer link
+  pointing back at itself. ⭐ The product structurally cannot state one — it is pari-mutuel, so the return varies
+  with every pool split and the only fixed figure is a 9% commission on the LOSING side. **RULING: the label says
+  what the page is — the game rules — and stops promising a number that does not exist.** ⚠️ If a licence
+  condition does require an RTP disclosure, the present state ALREADY fails it, because none is published; this
+  removes a false promise, it does not remove a disclosure. Owned by **U20**.
+- **(b) "Pendekeza masoko upate pesa" with a coming-soon pill — NOT A DEFECT.** The link is dropped from the footer
+  ENTIRELY when proposals are DISABLED, and otherwise carries its real state flag (`public-footer.tsx:213-220`).
+  It advertises nothing that is unavailable without saying so on the same line.
+- **(c) "Kuwa wakala" under UADILIFU — NOT A DEFECT.** It is the agent programme's single public door, deliberately
+  a plain directory line with no badge, no number and no earnings verb, and it closes with the programme
+  (`public-footer.tsx:229-233`). The placement is recorded, not accidental.
+- **(d) "Sera ya AML / KYC" is not translated — FALSE.** It IS translated: *"Sera ya"* is Swahili for "policy of"
+  (`i18n-dict.ts:4354`). Only the two initialisms stay in Latin letters, which is ordinary Swahili regulatory
+  usage and matches how the rest of the product writes them.
 **⚖️ Decision 1 supersedes the 2026-08-13/14 deferral** "compact list / density toggle" (`NEXT-PLAN.md` "ruled out" line;
 `design-brief/PLAN-OF-RECORD.md` §8.8). It stays honest to that deferral's reason: the switch is labelled **"Card spacing"** (never "list
 view"), it changes spacing only, and **`MarketListRow` is still not built**. `DENSITY_IDS ["grid","list"]` (`discovery.ts:133`) stays unwired.
