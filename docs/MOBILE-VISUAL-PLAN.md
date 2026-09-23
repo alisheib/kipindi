@@ -368,6 +368,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D51 | ✅ `de2e9643` 2026-09-23 | U6 |
 | D52 | ⬜ | U35 |
 | D53 | ⬜ | U40 |
+| D54 | ⬜ | U30 + the landscape row of §11 |
 
 | Seven-lens re-score (§13), done at the Seal from measurements | Responsiveness | UI/UX | Graphic | Video motion | Animation | Artist | Compatibility |
 |---|---|---|---|---|---|---|---|
@@ -957,7 +958,8 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D50 | On the /live hero the INASOGEA chip sits in the needle's value-label row ("NDIO 50%  INASOGEA  50% HAPANA"), so it reads as the name of the needle's position rather than a status (critics panel) | `tipping` (`i18n-dict.ts:3280`) in the /live hero | U36 |
 | D51 | ✅ `de2e9643` — the hero's three figures did not share a left edge. Re-measured before fixing: the offset is **16px, not 17** (an 8px pip plus an 8px `--sp-2` gap), and it holds at 320/360/412 in all three locales. ⛔ **The two remedies this row suggested were both measured and REJECTED** — hanging the pip outside the flow puts it at x=8 or x=0, off the page's own 16px content edge; giving all three numbers a matching leading slot indents every figure while its CAPTION stays at 16, trading a spread between rows for a spread inside every row. The pip now FOLLOWS the figure it annotates: same pip, same `--live-400`, same gap, still on the open-markets figure and no other. Spread **16 → 0px**. ⚠️ A box measurement cannot see this defect — `.kp-proof__num` reports `left: 16` either way — so the guard reads the TEXT's own client rects | `landing-hero.tsx` (`.kp-proof__pip` after the figure) | U6 |
 | D52 | Up & Down's settled pod wraps its price pair with the arrow ending the first line ("$75,819.68 →" then "$75,824.01") (critics panel) | `updown-card.tsx:1121` | U35 |
-| D53 | The Swahili responsible-gambling line has two grammar slips: "Kama kucheza kamari **imekuwa sio** burudani, acha." — the ku- infinitive subject takes "kumekuwa", and the negative before a noun is "si" (critics panel, verified) | `stopGambling` (`i18n-dict.ts:4326`) | U40 |
+| D53 | The Swahili responsible-gambling line has two grammar slips: "Kama kucheza kamari **imekuwa sio** burudani, acha." — the ku- infinitive subject takes "kumekuwa", and the negative before a noun is "si" (critics panel, verified) | `stopGambling` (`i18n-dict.ts:4326`) | U40 |
+| D54 | 🔴 **LANDSCAPE ON A NOTCHED PHONE: the whole product ignores the LEFT and RIGHT safe-area insets, and nothing in this repo can see it.** `layout.tsx:165` sets `viewportFit: "cover"` — deliberately, so the app draws under the notch and `env(safe-area-inset-*)` returns REAL values instead of 0. In portrait that is right and handled: 19 usages pad `safe-area-inset-bottom` and 6 pad `-top`. **In landscape the notch moves to the SIDE, and exactly ONE file in `src/` pads `-left`/`-right`** (`needle.css:143-144`, a full-screen overlay). Everything else does not. The sharpest case is the phone rail: `bottom-nav.tsx:114` is `fixed inset-x-0 bottom-0`, `.kp-rail` (`globals.css:5136`) pads ONLY `safe-area-inset-bottom`, and `.kp-rail__item` is `flex: 1` — so five equal slots span the full width and, at a landscape inset of ~44px, the first item loses roughly a third of its 64px tap target under the notch and the last loses the same to the opposite corner. The page gutter is `--sp-4`, far under 44px, so body content sits under it too. Same shape on `bet-confirm-modal`, `notifications-panel`, `consent-prompt`, `install-invite`, `avatar-menu`, `date-select`. ⛔ **THIS WAS FOUND BY READING, NOT BY DRIVING, AND IT COULD NOT HAVE BEEN FOUND BY DRIVING.** Playwright does not synthesise safe-area insets, so every emulated landscape cell reports them as 0 and the page looks perfect. That is why it survived a matrix that already lists Landscape. It needs a real notched device — which is what U30 exists for — or a `@media (orientation: landscape)` rule that pads the inline edges. ⚠️ Unverified on hardware: the mechanism is established from the source and from `viewport-fit: cover` being set; the PIXELS have not been seen. | `bottom-nav.tsx:114` · `globals.css:5136` `.kp-rail` · + 12 files padding bottom-only | U30 + the landscape row of §11 |
 
 ## §8a — Phone design sheet (graphic + artist lenses; binds every unit)
 
@@ -1595,7 +1597,13 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   3. a TalkBack pass: board → card → detail → bet confirm (cancel) → a question sheet → close;
   4. WhatsApp in-app browser opening a shared market link (sign-in persists, primer suppressed, `?side=` honoured);
   5. the installed PWA (status bar, notch, back button closes sheets; notes for the Capacitor plan);
-  6. rotation on `/markets` with a sheet open;
+  6. rotation on `/markets` with a sheet open — **and D54 with it, which is the one item on this list that already has a diagnosis waiting**: photograph the phone
+     rail ROTATED on the notched device, with the notch on the left and then on the right, and read whether the first and last rail slots are reachable;
+     `layout.tsx` sets `viewportFit: "cover"`, so in landscape `env(safe-area-inset-left/right)` is a real ~44px and `.kp-rail` pads neither. ⛔ Do not try to
+     settle D54 with an emulator: Playwright reports every inset as 0, which is exactly why a matrix that already lists Landscape never caught it.
+     **The fix, once the photo confirms it:** one `@media (orientation: landscape)` rule giving `.kp-rail`, the page gutter and the bottom-anchored overlays
+     `padding-left: env(safe-area-inset-left)` / `padding-right: env(safe-area-inset-right)` — `needle.css:143-144` already does exactly this and is the pattern
+     to copy. Guard: the rail's first and last item rects, with the insets forced on via a test stylesheet, must stay inside the safe box. RED: remove the rule;
   7. an Up & Down round with battery saver on (reduced tier).
 - **Accessibility at phone width:** `scripts/axe-audit.mjs` with `WIDTHS=320,360`, and axe injected into the U11 overlay census with every overlay
   open. Target: **0 serious or critical** issues.
