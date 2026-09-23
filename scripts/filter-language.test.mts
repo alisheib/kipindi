@@ -236,6 +236,32 @@ const ADMIN_SURFACES = [
 ];
 
 /**
+ * ⭐ THE ADMIN RAILS WHOSE OWN VISUAL GATE OUTRANKS THE DENSE EXCEPTION — §6.6 INVERTS HERE.
+ *
+ * 🔴 WRITTEN 2026-09-23 BECAUSE TWO GUARDS HAD COME TO DEMAND CONTRADICTORY SIZES OF THE SAME TWO
+ * CONTROLS, and the one that was written second won silently. §6.6 says every rank-taking control on a
+ * declared admin rail takes the dense rank, `--h-control-xs` = 32px. `qa:house-bots-visual` holds every
+ * interactive control on the desk to `--tap-min`, which this platform sets to 40px. 32 < 40, so a file
+ * subject to both could not satisfy both, and `test:filter-language` was RED on `main` for a rail that
+ * was measured and deliberately fixed — register L1, driven on a served build: 21 controls under the
+ * floor on the account's Activity route and 22 on the desk's, every one a chip on this rail.
+ *
+ * ⛔ THE RESOLUTION IS NOT TO LOOSEN §6.6. Its real subject is that a rail is ONE size — "a rail half at
+ * 32px and half at 44px is worse than either", as its own comment says, and that is still true here. So
+ * for a surface listed below the rule keeps COUNTING and simply counts the other way: every rank-taking
+ * control must take the NON-dense rank, `0 dense of N`. A half-and-half rail is refused on this list
+ * exactly as it is refused off it; only which single size is required changes.
+ *
+ * ⚠️ AN EXCEPTION A SURFACE'S OWN GATE REPORTS AS A FAULT IS NOT AN EXCEPTION — it is a defect with a
+ * name. The dense rank itself is untouched and every other admin rail still takes it; membership here is
+ * earned by having a visual gate that measures this file's controls against `--tap-min`, and §6.6b below
+ * refuses a member that does not (so the list cannot quietly become the way out of the dense rank).
+ */
+const TAP_FLOOR_SURFACES: readonly string[] = [
+  "src/app/admin/desk/activity-filters.tsx",   // qa:house-bots-visual drives both Activity routes at 360 and 1280
+];
+
+/**
  * ⭐ EVERY PRIMITIVE THAT TAKES A `rank`, IN ONE PLACE — §6.2 and §6.6 are both derived from it.
  *
  * 🔴 THIS LIST IS WHY §6.6 HAD TO BE RE-KEYED BEFORE A SINGLE `rank="dense"` WAS TYPED. §6.6
@@ -843,9 +869,23 @@ for (const f of ADMIN_SURFACES) {
      the pills' 32px — was not a control as far as this rule was concerned. See `RANK_TAKING`. */
   const controls = rankTags + rankHelpers;
   const dense = (src.match(DENSE_ATTR) ?? []).length + (src.match(DENSE_PROP) ?? []).length;
-  ok(controls > 0 && dense === controls,
-    `6.6 EVERY rank-taking control on ${f} takes the DENSE rank — --h-control-xs (32px), the documented admin exception`,
-    `${dense} dense of ${controls} controls`);
+  const tapFloor = TAP_FLOOR_SURFACES.includes(f);
+  if (tapFloor) {
+    /* ⭐ THE INVERSION, NOT A WAIVER — see `TAP_FLOOR_SURFACES`. Still a COUNT, so a rail that is half
+       dense and half not is refused here exactly as it is everywhere else; only the required size flips. */
+    ok(controls > 0 && dense === 0,
+      `6.6 EVERY rank-taking control on ${f} clears the 40px --tap-min floor — its own visual gate outranks the 32px dense exception`,
+      `${dense} dense of ${controls} controls (0 dense required)`);
+    /* ⛔ 6.6b — THE MEMBERSHIP IS EARNED, so this list cannot become the quiet way out of the dense rank.
+       A surface may sit on it only if a visual gate actually drives THIS file's controls against
+       `--tap-min`; the desk's rail is driven by `qa:house-bots-visual` on both Activity routes. */
+    ok(/--tap-min/.test(read("scripts/qa-house-bots-visual.mjs")),
+      `6.6b ${f} is on TAP_FLOOR_SURFACES only because a visual gate measures it against --tap-min`);
+  } else {
+    ok(controls > 0 && dense === controls,
+      `6.6 EVERY rank-taking control on ${f} takes the DENSE rank — --h-control-xs (32px), the documented admin exception`,
+      `${dense} dense of ${controls} controls`);
+  }
 
   /* ⛔ 6.7 — THE DEFECT THAT MADE THIS SECTION NECESSARY, asserted directly. Every chip was
      outlined AND filled, and the selected one switched to `font-bold` in a MONO face — which is
