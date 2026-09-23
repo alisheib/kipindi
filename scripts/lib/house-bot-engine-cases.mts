@@ -3170,6 +3170,33 @@ await guard("17", async () => {
     const r5 = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(b4.botId)], { randomInt: minDraw }));
     ok("17.53 · ruling 92 · never switched on (global scopeFrom NULL) → nothing planned", r5?.opener === 0 && (await S.houseBotIntentStore.findByAnchor("OPENER", late.id)) == null, j(r5));
     await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: g?.scopeFrom ?? w.iso() });
+
+    /* ⭐ 2026-09-23 · THE EXPLAINING WALK: IT SEES WHAT THE PLANNER SEES, AND IT MOVES NOTHING.
+     * The console answers "why is it not staking?" by walking `runMarket` with `place: false`. Two things have
+     * to hold or the panel is either useless or dangerous: it must reach the verdict the PLANNER reaches, and
+     * it must not WRITE — no intent, and above all no OPENER DRAW, which is the audited once-per-market record
+     * of which side the house took. An officer opening a panel must not move the desk they are inspecting. */
+    {
+      /* ⛔ THE ACCOUNT IS STARTED BEFORE THE MARKET EXISTS, or A11 refuses the market for being older than the
+         Start and the walk would answer BEFORE_SCOPE — a green pair of assertions below measuring nothing. */
+      const b5 = await botWith({}, rules);
+      const fresh = await pollAt({ closeInMs: 5 * 3_600_000 });
+      const intentsBefore = (await S.houseBotIntentStore.listLiveOnMarket(fresh.id)).length;
+      const seen: Any = await safe(async () => PL.explainBotIdle(b5.botId, { limit: 50 }));
+      const drawAfter = await S.houseBotEventStore.findOpenerDraw(fresh.id);
+      const intentsAfter = (await S.houseBotIntentStore.listLiveOnMarket(fresh.id)).length;
+      ok("17.53a · the walk reaches the planner's own verdict: it considers the open markets and counts the ones this account WOULD stake on right now",
+        seen != null && seen.considered > 0 && seen.wouldStake > 0,
+        j({ considered: seen?.considered, wouldStake: seen?.wouldStake, looked: seen?.looked, byCode: seen?.byCode }));
+      ok("17.53b · ⛔ …AND IT WRITES NOTHING: no intent appears on the market it just judged stakeable, and no OPENER DRAW is minted",
+        intentsAfter === intentsBefore && drawAfter == null, j({ intentsBefore, intentsAfter, draw: drawAfter }));
+      /* ⛔ AND THE CONTROL, because "wrote nothing" passes just as well on a walk that found NOTHING: the very
+         same account over the very same market, walked by the PLANNER, writes both. */
+      const r6 = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(b5.botId)], { randomInt: minDraw, drawRandomInt: () => 1 }));
+      ok("17.53c · CONTROL · the PLANNER over that same account and market writes both the intent and the draw the walk declined to write — so 17.53b is absence, not emptiness",
+        (await S.houseBotIntentStore.findByAnchor("OPENER", fresh.id)) != null && (await S.houseBotEventStore.findOpenerDraw(fresh.id)) != null, j(r6));
+    }
+
     await w.switchOff();
     const off = await safe(() => PL.plannerPass(ctxOf(), { alerts: recorder().alerts, liveBounds: async () => ({ minStake: 1_000, maxStake: 10_000_000, refillPerMin: 10 }) }));
     await w.switchOn();

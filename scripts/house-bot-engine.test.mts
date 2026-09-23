@@ -86,5 +86,9 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  * refusal that had one elsewhere to carrying it here, 7.34c pins that the drawn OPENER side changes the row and
  * never the answer (the claim the console`s read-only walk rests on), and 7.34d pins the SOURCE at zero nameless
  * refusals, because eighteen points is too many to hold by example.
- * What a run PRINTED: `805 passed` memory and `784 passed` Postgres, ALL PASS on both stores, 0 failed. */
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 805, postgres: 784 }, dbPrefix: "hb_engine" });
+ * ⭐ RAISED AGAIN 805 → 808 MEMORY / 784 → 787 POSTGRES, 2026-09-23 — three cases, +3 in EACH child: 17.53a
+ * walks the console`s read-only explanation over live markets and finds one this account would stake on,
+ * 17.53b holds that the walk wrote NEITHER an intent NOR an opener draw, and 17.53c is its control — the
+ * PLANNER over that same account and market writes both, so 17.53b measures absence and not emptiness.
+ * What a run PRINTED: `808 passed` memory and `787 passed` Postgres, ALL PASS on both stores, 0 failed. */
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 808, postgres: 787 }, dbPrefix: "hb_engine" });

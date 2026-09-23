@@ -919,4 +919,28 @@ export const MUTATIONS = [
     suite: "engine-mem",
     sections: "7",
   },
+
+  /* ── 2026-09-23 · THE WALK THAT MUST NOT WRITE ──────────────────────────────────────────────────────────
+   * The console explains an idle account by walking the planner@s own ladder read-only. Both halves of that
+   * promise are load-bearing, and each fails on its own, so each has its own mutation. */
+  {
+    name: "explaining-walk-writes-intents · the read-only walk starts inserting the intents it was only meant to judge, so opening a panel stakes money",
+    file: PLANNER,
+    from: `    if (!place) continue;`,
+    to: `    if (!place && false) continue;`,
+    expect: "17.53b · ⛔ …AND IT WRITES NOTHING",
+    suite: "engine-mem",
+    sections: "17",
+  },
+  {
+    /* ⛔ THE QUIETER HALF. An OPENER draw is the audited, once-per-market record of which side the house
+     * took; minting one from a panel would put a side on record for a market nobody staked on. */
+    name: "explaining-walk-mints-a-draw · the read-only walk draws the opener side, putting an audited record on a market it was only inspecting",
+    file: PLANNER,
+    from: `    if (kind === "OPENER" && place) {`,
+    to: `    if (kind === "OPENER") {`,
+    expect: "17.53b · ⛔ …AND IT WRITES NOTHING",
+    suite: "engine-mem",
+    sections: "17",
+  },
 ];
