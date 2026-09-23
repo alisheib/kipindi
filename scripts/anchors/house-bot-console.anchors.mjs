@@ -441,8 +441,18 @@ export const MUTATIONS = [
   {
     name: "414-notice-absent · the engine Callout is never painted, so a dead engine is invisible on the one page that could say so",
     file: GATE,
-    from: `    engine,`,
-    to: `    engine: null,`,
+    /* ⭐ RE-ANCHORED 2026-09-23. It was the bare line `    engine,` — which is a SUBSTRING of any deeper-
+       indented prose containing the word, and a comment written in this module on 2026-09-23 duly matched it. The
+       drive then found the anchor 2x, refused to inject, and scored this mutation MISSED: the harness measured
+       NOTHING while reporting a number. ⛔ THE COMMENT WAS REWORDED TOO (a raw-text guard reads your prose, and
+       the guard is not the thing to bend) — this widening is belt AND braces, and it removes NOTHING from what
+       the mutation does: the same field is still nulled, just named with the two lines that make it unique. */
+    from: `    switchDialog,
+    engine,
+    live,`,
+    to: `    switchDialog,
+    engine: null,
+    live,`,
     expect: "1.353 · 414 · a STALE engine paints the DANGER Callout",
     suite: "console-mem",
   },
