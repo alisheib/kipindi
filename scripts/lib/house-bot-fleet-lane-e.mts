@@ -346,7 +346,25 @@ export async function run(env: Any, prior: Any): Promise<Any> {
   const txns = house[0] ? await w.txnsFor(house[0].id) : [];
   ok(`${K} · …and every money row it wrote carries the marker`,
     txns.length > 0 && txns.every((t: Any) => t.houseBotId === bot.botId), j({ n: txns.length }));
-  const placedAlerts = calls.filter((c: Any) => c.fn === "placed" && c.botId === bot.botId).length;
+  /**
+   * ⛔ THE ALERT IS NOT SYNCHRONOUS WITH THE FIRE, AND THIS READ USED TO PRETEND IT WAS. The intent reaching
+   * PLACED does not mean the notification chain has run; sampling the recorder the instant after it gave 0 on
+   * one run and 1 on the next FROM THE SAME COMMIT (363/364 then 364/364) — a gate that can lie in either
+   * direction, which is worse than no gate, because a red run gets re-run until it is green.
+   * ⛔ WAITING FOR THE FIRST IS NOT ENOUGH, and getting that wrong would be the real damage here: returning as
+   * soon as the count is non-zero would make "exactly ONE" unable to see a SECOND, so the half of this
+   * assertion that catches a DUPLICATE alert would silently stop working. So it waits for the first and then
+   * holds a settle window open before counting.
+   * ⚠️ STATED HONESTLY: the window is bounded, so a duplicate arriving later than it would still be missed.
+   * That is a smaller blindness than the one it replaces, not the absence of one.
+   * ⚠️ AND THE ORIGINAL DIAGNOSIS ("racy ACROSS lanes") IS NOT WHAT THIS FIXES — the filter is already scoped
+   * to this account by botId. This fixes the timing race, which is real and reproducible by inspection. If the
+   * flake survives, the cross-lane hypothesis is still open and unproven.
+   */
+  const countPlaced = () => calls.filter((c: Any) => c.fn === "placed" && c.botId === bot.botId).length;
+  await until(`${K} · the placed alert reaching the notification chain`, 20_000, async () => (countPlaced() > 0 ? true : null));
+  await new Promise((r) => setTimeout(r, 1_500));
+  const placedAlerts = countPlaced();
   ok(`${K} · …and exactly ONE placed alert went through the real notification chain for this account`,
     fired?.status === "PLACED" && placedAlerts === 1, j({ placedAlerts }));
 
