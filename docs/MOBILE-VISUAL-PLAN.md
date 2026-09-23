@@ -1813,6 +1813,45 @@ U7–U10 don't depend on the density switch and may move earlier if Ali wants th
 7. Production: deploy SUCCESS + `/api/health` ok, re-run the driver against `https://www.50pick.tz` (signed out and as the QA player), read the shots.
    Only then ✅.
 
+⚠️ **MOST OF THIS MATRIX HAS NEVER BEEN RUN, AND SAYING SO IS THE POINT.** Every figure this
+campaign holds through S3 was taken PORTRAIT, at 320/360/412, on a settled page, signed out. The
+Landscape, Keyboard-proxy, Large-text and Slow-network rows below are DEFINED and have never been
+executed once. A matrix that is quoted as coverage while four of its eight rows have never run is
+the same shape of untruth this plan exists to remove, so the rows now carry their own status.
+
+✅ **MEASURED 2026-09-23 — the 561–767px band, which this repo records as never measured.**
+`globals.css`'s own proof-rail note says "the §A6 matrix is 360/768/1280/1920 — 561–767 is never
+measured", and records a real defect that hid there (the gilt pool figure wrapping at its own
+space from 561 up). It matters doubly now because **U6's phone rules end at exactly 560.98**, so
+561 is the seam where the tile layout flips from the U6 grid back to the shared flex row. Driven
+on production at 540/560/561/600/680/767/768 on the home page, and at 561/640/767 × sw/en on
+`/markets`, `/results` and `/updown`: **document overflow false everywhere, no money figure
+wrapped, no topic name cut, no glyph orphaned, and all three proof figures on one line each**. The
+seam behaves: at 560 the tiles are the U6 grid at 71.3px, at 561 the flex row at 74px, and nothing
+is lost crossing it.
+⛔ TWO INSTRUMENT LIES WERE CAUGHT DOING THIS, both of which would have filed a defect that is not
+there. (1) `range.selectNodeContents(el).getClientRects().length` counted the 8px live pip — a
+child ELEMENT — as a second LINE, so `.kp-proof__num` read "2 lines" at every width in the band;
+the two figures with no pip read 1, which is the discriminator. Count the TEXT NODES' distinct
+line-tops. (2) A "runs past the right edge" scan flagged `.ticker-track` at x=27563 — a duplicated
+marquee, deliberately wider than the screen inside an `overflow: hidden` parent. DESIGN_AUTHORITY
+already records the identical false positive ("67 escapes on /markets that were one animating
+ticker"). `document.scrollWidth > clientWidth` stayed FALSE throughout, and that is the number
+that means overflow.
+
+✅ **U6 VERIFIED IN BOTH DENSITIES** (production, 2026-09-23, 360 and 320 SW). U6 is a General
+unit, so its rules are deliberately ungated and must hold in Comfortable too. They do, exactly:
+proof spread 0, pool figures unsplit, no orphaned glyph, no cut name, tiles and question rows
+identical to the pixel. The ONLY differences are `total` +204px and `hero` +40px — which is the
+card density doing its own job on the three board cards and the hero's featured card, not a U6
+rule leaking.
+
+⛔ **STILL NOT VERIFIABLE FROM THIS PC: the signed-in half.** §11 asks every cell to run "signed
+out and signed in as the QA player". `.env.qa.local` exists here but predates the player's minting
+and carries NO `mobile01` key — checked by key NAME, not value — so the password for "QA Mobile
+01" is genuinely not on this machine. Everything S3 measured is SIGNED OUT, and no signed-in claim
+should be read into it.
+
 **Test matrix: the device and condition every driver runs**
 
 | Cell | Viewport | Why | Emulation |

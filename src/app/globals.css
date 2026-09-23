@@ -3945,7 +3945,14 @@ html[data-sheet-open] .route-enter { animation: none; }
      sighted reader is TOLD the question continues rather than shown a sentence that stops; and it
      hides overflow without removing the text node, so the link's accessible name is still the whole
      question — verified on production, where the full 120-character title reads back off the row.
-     The rest of it is one tap away, which is what a teaser board is for. */
+     The rest of it is one tap away, which is what a teaser board is for.
+     ⭐ AND IT IS THE PLATFORM'S OWN PATTERN, NOT A NEW ONE — checked against the law rather than
+     assumed. DESIGN_AUTHORITY's fit law says truncation is legitimate PAIRED WITH `title`, which
+     keeps the full string reachable (DG-A-10). `.mcardp-q` — the player-facing market card, shipped
+     and design-frozen — already clamps the SAME content type, a market question inside a link, to
+     `-webkit-line-clamp: 2` with no `title`; `admin/markets` and the resolver queue do the same.
+     This row is ONE LINE MORE GENEROUS than the card, and on a touch surface the link to the full
+     market is a stronger affordance than a `title` tooltip a finger can never summon. */
   .kp-qrow__q {
     display: -webkit-box;
     -webkit-box-orient: vertical;
