@@ -90,6 +90,27 @@ export const SUBMIT_ID_RE = /^[0-9a-f-]{36}$/;
  * `HouseBotRuntime` keys (`HouseBotRuntime_key_check`). `engine:<instance>` and `beat:poller:<instance>`
  * are per boot — the instance id is random — which is why those rows are pruned after 24 h.
  */
+/**
+ * ⭐ A BOOT REFUSAL THE DESK CAN READ (C8 minor M4, 2026-09-23) — written the way `CLAIMS_BLOCKED_CODE` is,
+ * for the same reason its own note gives: **the bell alone was never enough.**
+ *
+ * 🔴 WHAT IT REPLACES. A database whose `TimeZone` is not UTC makes the engine refuse to start (04 A4). That
+ * refusal set an in-process flag, logged, and rang ONE alert per EAT day — and wrote nothing durable at all,
+ * because it returns BEFORE the boot row is written. So the desk, which reads durable rows on purpose, saw no
+ * boot and no beat and said "The engine is not running" with no cause named, while `/admin/system` could only
+ * answer for the replica that happened to render it. An officer was left to find a time-zone setting by guessing.
+ * ⛔ IT RIDES THE `engine:<instance>` ROW'S `pollerErrorCode`, WHICH NOTHING ELSE READS: `pollerErrorAtMs`,
+ * `pollerErrorStreak` and `claimsBlockedReason` are all taken from `beat:poller:*` rows and the failed-duty list
+ * from `beat:planner`. No new key prefix (352), no migration, and `listInstances()` already selects `engine:%`.
+ * ⛔ AND IT IS CLEARED BY A SUCCESSFUL BOOT, in `boot()` itself — a current state that survives its own end is
+ * a lie, which is exactly what `clearClaimsBlocked` exists to prevent one layer down.
+ * ⚠️ ONLY `DB_TIMEZONE` IS RECORDED, and the other four refusals are named here rather than left to be wondered
+ * about: `SCHEMA_NOT_READY` and `BOOT_FAILED` cannot write (there is no schema, or the write is the thing that
+ * failed), and `FEATURE_WITHDRAWN` / `ENV_DISABLED` are DELIBERATE — one replica with the engine switched off is
+ * a normal deployment, and marking the whole desk danger over it would be a false alarm nobody could clear.
+ */
+export const BOOT_REFUSED_CODE = "BOOT_REFUSED";
+
 export const RUNTIME_KEY = {
   global: "global",
   plannerBeat: "beat:planner",
@@ -584,6 +605,32 @@ export const USUAL_LATENESS_SEC = { min: 2, max: 5 } as const;
 /** Up & Down price freshness for the closeness rule (04 A15). */
 export const UD_VENDOR_BAR_MAX_AGE_SEC = 120;
 export const UD_OBSERVATION_MAX_AGE_SEC = 60;
+
+/**
+ * ⭐ THE FLOOR UNDER THE CLOSENESS BAND (04 A15), AND WHY IT EXISTS.
+ *
+ * A15 scales "has the price run away from the open?" by the round's OWN winning margin, which is right
+ * whenever that margin describes the asset. It does not when the margin is a bare tick: `computeTargets`
+ * is `max(openPrice × marginBps/10_000, tick)`, so a chain whose `marginBps` is 0 freezes a band of ONE
+ * TICK, and a tick is a property of the price's DECIMALS, not of how far the price moves.
+ *
+ * 🔴 MEASURED ON PRODUCTION 2026-09-23. The live desk had run 23 hours, switched on, funded (TZS 70,000),
+ * ACTIVE, correctly scoped to BTC/USD 5, 10 and 15 — and had placed NOTHING, ever. All three BTC chains
+ * carry `marginBps = 0`, so each round's band was `tick` = 0.02 on an open price of 86,379.20: a margin
+ * of 0.23 PARTS PER MILLION. A15 then demanded the live price sit within `closenessPct%` of two cents —
+ * 0.005 at the default 25, and 0.02 even at 100, which is the highest the field admits. Three rounds open
+ * at the same instant carried opens of 86,329.34, 86,361.07 and 86,379.20: BTC moved fifty dollars inside
+ * fifteen minutes. So every FILL and OPENER was refused UD_CLOSENESS on every round, for ever, and NO
+ * setting an officer could choose would have changed it.
+ *
+ * ⛔ THE FLOOR BELONGS TO THIS TEST, NOT TO THE GAME. `computeTargets`, the frozen targets and settlement
+ * are untouched: what a player wins is decided by the round's own band exactly as before. This constant
+ * only stops a degenerate band from standing in as the ruler of a house bet's own judgement.
+ *
+ * 5 bps is the value the one chain with a deliberate margin already uses (XAU/USD 15-min), and it leaves
+ * every band that was ever meaningful unchanged — a floor, never a cap.
+ */
+export const UD_CLOSENESS_FLOOR_BPS = 5;
 
 /** Postgres `lock_timeout` for the OFF drain and for a house bet's market and control locks (04 A9). */
 export const OFF_DRAIN_LOCK_TIMEOUT = "3s";

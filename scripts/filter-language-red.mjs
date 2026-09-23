@@ -375,6 +375,24 @@ const CASES = [
     to: `          <FilterSheetGroup label={t.common.sort}>{null}</FilterSheetGroup>\n          <FilterSheetGroup label={t.market.oddsKey}>`,
     expect: "5.20",
   },
+  {
+    /* ⭐ THE FORK'S OTHER SIDE, PLANTED — 2026-09-23. §6.6 INVERTS on `TAP_FLOOR_SURFACES`: a rail whose
+       own visual gate measures it against `--tap-min` (40px) must take the NON-dense rank, because the
+       32px dense exception cannot satisfy a 40px floor and an exception a surface's own gate reports as
+       a fault is not an exception. Without this plant the inverted branch would assert `dense === 0` on
+       a file that simply has no `rank=` anywhere — true for the right reason today and true for the
+       WRONG reason the moment someone re-densifies the rail. Putting the dense rank back is exactly the
+       regression that re-opens register L1 (21 controls under the floor on one route, 22 on the other),
+       and it must be red.
+       ⛔ ANCHORED ON THE WINDOW FILTER, not on a `<FilterPill`: the pills are rendered inside a `.map`,
+       so a pill anchor would match once in source but describe every chip, and `resolveAnchor` refuses a
+       non-unique anchor and kills the whole run. */
+    name: "desk-rail-redensified (the desk's Activity rail takes the 32px dense rank again, under a 40px floor)",
+    file: "src/app/admin/desk/activity-filters.tsx",
+    from: `        <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />`,
+    to: `        <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />`,
+    expect: "6.6",
+  },
 ];
 
 const runGate = () => {

@@ -17,6 +17,7 @@ import {
   LOCK_MARGIN_MS,
   MIN_TIME_TO_CUTOFF_FLOOR_SEC,
   STALE_AFTER_SEC,
+  UD_CLOSENESS_FLOOR_BPS,
   UD_OBSERVATION_MAX_AGE_SEC,
   UD_VENDOR_BAR_MAX_AGE_SEC,
   type EngineCode,
@@ -124,8 +125,17 @@ export function guardsFor(rules: HouseBotRulesV1, product: "MARKET" | "UPDOWN") 
 }
 
 /**
- * A15 closeness: `|price − open|·100 ≤ closenessPct · min(upTarget − open, open − downTarget)`. Checked against
- * BOTH targets, on a fresh price only.
+ * A15 closeness: `|price − open|·100 ≤ closenessPct · band`. Checked against BOTH targets, on a fresh price only.
+ *
+ * ⭐ `band` IS THE ROUND'S MARGIN, FLOORED AT `UD_CLOSENESS_FLOOR_BPS` OF THE OPEN PRICE — and the floor is
+ * the whole of the 2026-09-23 fix. A chain with `marginBps = 0` freezes a band of one TICK (0.02 on BTC), and
+ * a tick measures the price's decimals, not the asset's movement; scaling by it demanded the live price sit
+ * within two cents of an 86,379 open and refused every Up & Down bet the desk ever considered. The floor is
+ * a floor, never a cap: every band that already described its asset (XAU/USD 15-min's 2.16, the suites' 4 on
+ * an open of 100) is larger than it and passes through untouched. See `UD_CLOSENESS_FLOOR_BPS`.
+ *
+ * ⛔ THE GAME IS NOT TOUCHED. `computeTargets`, the frozen `upTarget`/`downTarget` and settlement all keep
+ * reading the round's own margin; `band` is local to this judgement and decides only whether the HOUSE bets.
  */
 export function udCloseness(view: PublicMarketView, price: UdPrice, closenessPct: number): EngineCode | null {
   const r = view.round;
@@ -135,7 +145,8 @@ export function udCloseness(view: PublicMarketView, price: UdPrice, closenessPct
   if (price == null) return "UD_STALE_PRICE";
   const maxAge = price.source === "vendor_bar" ? UD_VENDOR_BAR_MAX_AGE_SEC : UD_OBSERVATION_MAX_AGE_SEC;
   if (!(price.ageSec < maxAge)) return "UD_STALE_PRICE";
-  return Math.abs(price.price - r.openPrice) * 100 <= closenessPct * margin ? null : "UD_CLOSENESS";
+  const band = Math.max(margin, (r.openPrice * UD_CLOSENESS_FLOOR_BPS) / 10_000);
+  return Math.abs(price.price - r.openPrice) * 100 <= closenessPct * band ? null : "UD_CLOSENESS";
 }
 
 /** Amount before cuts: % of the trigger or fixed, jittered by ± `jitterPct`, floored to round-to. */

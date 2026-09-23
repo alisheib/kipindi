@@ -45,7 +45,7 @@ import { WEEKDAYS, WEEKDAY_LABEL, eatDayKey, formatEat, formatMinutes, type Week
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
-import { resolveRange } from "./date-range";
+import { parseEatLocal, resolveRange } from "./date-range";
 import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext, type ScopeProduct, type EntryMode } from "@/lib/house-bot/rules";
 /* ⭐ THE SCOPE PICKER'S TWO LISTS (prod finding 2026-09-22): the platform's own category list and its own label
  * helper, so the form and the roster paint the words a player sees and never a raw key. `dict.en` because the
@@ -742,12 +742,30 @@ function lastSeen(atMs: number | null, nowMs: number): string {
  */
 function engineNotice(input: {
   on: boolean | null;
-  instances: StoredHouseBotRuntime[] | null;
+  /**
+   * 🔴 THE BEATS AND THE CLOCK THEY ARE AGED AGAINST ARRIVE AS ONE READ (C8 minor M1, 2026-09-23).
+   *
+   * Every field of `HouseEngineBeats` is parsed off a DURABLE row written on the DATABASE clock — which is the
+   * whole reason this console reads beats instead of asking a process how it feels. Ageing them against
+   * `Date.now()` handed that back: the number subtracted was the WEB container's clock, a container whose skew
+   * against the database nothing measures. (The ENGINE's containers are measured — `claimGate` blocks claims on
+   * unknown or large skew and the desk paints `CLAIMS_BLOCKED` — but the container rendering this page is not
+   * one of them.) A skew either way moves "Last seen: 45 s ago" and can flip `STALE` across `ENGINE_STALE_MS`,
+   * which is a danger Callout about money appearing, or failing to appear, because of a clock nobody checked.
+   * ⛔ SO THEY ARE ONE MEMBER OF THE SETTLED SET, WRAPPED ON PURPOSE — and that is not a lapse from 435(d),
+   * which forbids wrapping reads that produce DIFFERENT figures. These two produce ONE: neither the rows nor the
+   * instant says anything about the engine without the other, so a failure of either is honestly `null`, and the
+   * `UNREADABLE` limb's own sentence ("Nothing here says whether it is running") is true of both causes.
+   */
+  read: { instances: StoredHouseBotRuntime[]; nowMs: number } | null;
   activeAccounts: number | null;
-  nowMs: number;
 }): ConsoleEngineNotice | null {
-  const beats = input.instances === null ? null : houseEngineBeats(input.instances);
-  const verdict = houseEngineVerdict({ on: input.on, beats, activeAccounts: input.activeAccounts, nowMs: input.nowMs });
+  const beats = input.read === null ? null : houseEngineBeats(input.read.instances);
+  /* ⛔ THE FALLBACK IS ONLY EVER REACHED WITH `beats === null`, where the verdict is `UNREADABLE` and no limb
+     reads the instant at all. It is written as a value rather than left optional so `tsc` keeps the arithmetic
+     total, and it can never be the number a painted age was computed from. */
+  const nowMs = input.read === null ? 0 : input.read.nowMs;
+  const verdict = houseEngineVerdict({ on: input.on, beats, activeAccounts: input.activeAccounts, nowMs });
   if (verdict === null) return null;
   /* 414 · several servers is a CAPTION, never a verdict: two replicas is a normal deployment, not a fault. */
   const caption = beats !== null && beats.instances > 1 ? `${formatNumber(beats.instances)} servers answered.` : null;
@@ -763,8 +781,21 @@ function engineNotice(input: {
       return { ...shared, tone: "neutral", alert: false, meta: at(beats?.bootAtMs ?? null),
         title: "The engine has just started",
         body: "Its first pass runs within the minute. Nothing is wrong; this notice clears itself." };
+    case "BOOT_REFUSED":
+      /**
+       * ⭐ C8 minor M4 · THE CAUSE, NAMED, instead of "not running" and a search (see `BOOT_REFUSED_CODE`).
+       * ⛔ "A server", never "the desk": the marker is per instance, and one refusing replica beside three
+       * healthy ones is a different state from all four refusing — the same distinction the claims sentence
+       * below draws, and the reason both rows are written per instance rather than globally.
+       * ⛔ NO `meta`: there is no instant to show. A refusal writes no beat and no boot, so `lastSeen` here
+       * would age a figure this state does not have — and "Last seen: never" beside a named cause would read
+       * as a second, vaguer verdict (432(n)).
+       */
+      return { ...shared, tone: "danger", alert: true, meta: null,
+        title: "A server refused to start",
+        body: "Its database reports a time zone other than UTC, so it stopped rather than work against a clock it cannot trust. Nothing will be placed from that server until the database time zone is UTC and it is started again." };
     case "STALE":
-      return { ...shared, tone: "danger", alert: true, meta: lastSeen(beats?.plannerBeatAtMs ?? null, input.nowMs),
+      return { ...shared, tone: "danger", alert: true, meta: lastSeen(beats?.plannerBeatAtMs ?? null, nowMs),
         title: "The engine is not running",
         body: "No account will place a bet while this stands, and nothing already queued will be acted on. The desk is on, so this is not a state it can be left in." };
     case "CLAIMS_BLOCKED":
@@ -834,7 +865,8 @@ type DeskCore = {
   dayBooks: Map<string, HouseDayBook> | null;
   exposure: Map<string, number> | null;
   /** ⭐ 435(e) · the engine's DURABLE beat rows, settled on their own. `null` means the READ FAILED (354(c)/355). */
-  instances: StoredHouseBotRuntime[] | null;
+  /** ⛔ The beats AND the instant they are aged against, or `null` when either could not be read (M1). */
+  engineRead: { instances: StoredHouseBotRuntime[]; nowMs: number } | null;
   /**
    * ⭐ C7 STEP 5 (the LANDING half) · HOW MANY STAKES ARE QUEUED ACROSS THE WHOLE DESK — the activity tab's badge.
    * ⛔ IT IS A MEMBER OF THE CORE SET AND NOT A CALLER'S EXTRA, AND THE REASON IS MEASURED, NOT PREFERRED. The rail
@@ -859,8 +891,9 @@ type DeskCore = {
  * reads in a single `Promise.all` inside the settled set would make ONE failure blank BOTH figures, which is the
  * attribution 355 exists to keep — a failed Products read must not take the Last bet column with it.
  * ⛔ SEVEN MEMBERS, AND THE COUNT IS STATED HERE BECAUSE IT WAS ONCE WRONG IN THIS VERY DOCBLOCK: the array below is
- * the control row, the roster, the day books, the open exposure, the engine's beats, the QUEUED-stake count the
- * rail's badge paints, and the caller's two extras.
+ * the control row, the roster, the day books, the open exposure, the engine's beats WITH THE DATABASE CLOCK THEY
+ * ARE AGED AGAINST (M1, 2026-09-23 — one member, because they are one figure: see `engineNotice`'s own note), the
+ * QUEUED-stake count the rail's badge paints, and the caller's two extras.
  */
 async function readDeskCore<A, B>(
   extraA: (dayKey: string) => Promise<A>,
@@ -877,7 +910,14 @@ async function readDeskCore<A, B>(
      * member of this very set has already read, so a second door would put a SECOND control read in one render —
      * 433(d)'s named refusal. ⛔ Settled on its OWN, never wrapped with another read: one failed read must not
      * take another figure with it (355, 435(d)). */
-    houseBotRuntimeStore.listInstances(),
+    /* ⛔ THE BEATS AND THE DATABASE'S OWN INSTANT, TOGETHER (M1). The rows are stamped on the database clock, so
+       the number they are aged against must come from it too — the full reasoning is on `engineNotice`'s `read`.
+       `dbClock()` is the store's own helper and costs one `clock_timestamp()`; in the memory twin it is
+       `Date.now()`, which is the same clock the memory rows were stamped with. */
+    (async () => ({
+      instances: await houseBotRuntimeStore.listInstances(),
+      nowMs: (await houseBotRuntimeStore.dbClock()).nowMs,
+    }))(),
     /* ⭐ C7 step 5 · THE RAIL'S BADGE, COUNTED ACROSS EVERY ACCOUNT AND UNFILTERED BY THE RAIL (ruling 312). It is a
      * COUNTING reader over the same shared predicate the feed pages over, never `listFeed(...).length` (344), and it
      * is settled on its OWN so a failed count cannot blank a figure beside it (355). */
@@ -903,7 +943,7 @@ async function readDeskCore<A, B>(
       /* ⛔ A FAILED BEAT READ IS `null`, WHICH IS NOT AN EMPTY SET OF ROWS (355, 354(c)). An empty array means the
        * engine has never booted on this database; `null` means nobody could tell, and the two paint different
        * Callouts. Collapsing them is the class 421 had to be corrected for one card over. */
-      instances: instancesR.status === "fulfilled" ? instancesR.value : null,
+      engineRead: instancesR.status === "fulfilled" ? instancesR.value : null,
       /* ⛔ `null` IS A FAILED COUNT, NOT A ZERO (355, and the badge's own rule above). */
       pendingIntents: pendingR.status === "fulfilled" ? pendingR.value : null,
     },
@@ -1045,9 +1085,8 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
    * running" row is then not claimed, because a failed read must never be painted as a finding. */
   const engine = engineNotice({
     on,
-    instances: core.instances,
+    read: core.engineRead,
     activeAccounts: roster === null ? null : roster.filter((b) => b.status === "ACTIVE").length,
-    nowMs: Date.now(),
   });
 
   return {
@@ -3538,6 +3577,13 @@ export type ConsoleQuery = {
   outcome?: string | string[];
   intent?: string | string[];
   event?: string | string[];
+  /**
+   * ⭐ THE ONE ACT A LINK MAY OPEN (register A5, 2026-09-23). `consoleReverifyHref` has answered a stale
+   * consent with `?reverify=1` since it was written and nothing read it, so the way out landed on the
+   * overview with no dialog. ⛔ IT IS A FLAG, NOT AN ACT NAME: only this parameter opens anything, and only
+   * the re-verify dialog, so no crafted link can open a removal.
+   */
+  reverify?: string | string[];
 };
 
 /** The parsed, validated query. `refusals` names every axis that was thrown away, by its own screen word. */
@@ -3652,10 +3698,36 @@ function parseConsoleQuery(
   let fromIso: string | undefined;
   let toIso: string | undefined;
   if (custom) {
-    const win = resolveRange({ range: "custom", from: fromOne.value, to: toOne.value }, nowMs, CONSOLE_FEED_PRESET_DEFAULT);
-    preset = "custom";
-    fromIso = new Date(win.start).toISOString();
-    toIso = new Date(win.end).toISOString();
+    /**
+     * 🔴 AN UNREADABLE CUSTOM WINDOW WAS ANSWERED WITH 24 HOURS, IN SILENCE (C8 minor M2, 2026-09-23).
+     *
+     * `resolveRange`'s custom branch falls back to `now - DAY_MS → now` for a `from` it could not read — its own
+     * docblock records this, measured: "a link built from `toISOString()` therefore lands on a window labelled
+     * **custom** that is silently the LAST 24 HOURS … because nothing in the custom branch reports a `from` it
+     * could not read." Every axis on this rail that cannot be read is REFUSED BY NAME and says so in the
+     * console's own Callout; the window was the one axis that answered a question nobody had asked, under a
+     * label that claimed the officer's own. On a money log that is the worst kind of wrong: a narrower window
+     * than the officer chose hides rows, and a wider one invents them, and neither says anything.
+     * ⛔ SO IT IS PARSED HERE, BEFORE `resolveRange` IS GIVEN THE CHANCE TO GUESS — with the parser
+     * `resolveRange` itself uses, so this check and that fallback can never read a string differently.
+     * ⛔ AND `range=custom` WITH NO BOUNDS AT ALL IS REFUSED TOO: it names a window and states none, which is
+     * the same address-that-cannot-be-honoured. The picker always posts both, so this is a hand-typed address.
+     * ⚠️ `resolveRange` ITSELF IS NOT TOUCHED. Seven other admin rails resolve their windows through it, and a
+     * refusal is a property of THIS console's address — it has a refusal channel, a Callout and a sentence for
+     * exactly this. Widening a shared resolver to carry one caller's policy is how seven screens change at once.
+     */
+    const unreadable = (v: string | null | undefined): boolean => v != null && parseEatLocal(v) === null;
+    if (unreadable(fromOne.value) || unreadable(toOne.value) || (fromOne.value == null && toOne.value == null)) {
+      /* The window falls back to the rail's own DEFAULT PRESET, which is named on the rail — never to an
+         unlabelled 24 hours. `preset` is left at the default and no `from`/`to` is carried forward, so the
+         unreadable pair does not travel into every link this rail builds (`consoleFeedParams`). */
+      say("window");
+    } else {
+      const win = resolveRange({ range: "custom", from: fromOne.value, to: toOne.value }, nowMs, CONSOLE_FEED_PRESET_DEFAULT);
+      preset = "custom";
+      fromIso = new Date(win.start).toISOString();
+      toIso = new Date(win.end).toISOString();
+    }
   } else if (askedPreset != null && askedPreset !== CONSOLE_FEED_PRESET_DEFAULT) {
     if (!(CONSOLE_FEED_PRESETS as readonly string[]).includes(askedPreset)) {
       say("window");
@@ -3675,8 +3747,12 @@ function parseConsoleQuery(
     hpage: history.n,
     hpageAsked: history.asked,
     preset,
-    from: custom ? fromOne.value : null,
-    to: custom ? toOne.value : null,
+    /* ⛔ A REFUSED WINDOW DOES NOT TRAVEL (M2). `preset` is only `"custom"` when the pair PARSED, so testing it
+       here is testing the same decision the branch above took — `custom` alone would carry the unreadable values
+       into every rail link and hand them back to the next read, which is a refusal that refuses once and then
+       quietly stops refusing. */
+    from: preset === "custom" ? fromOne.value : null,
+    to: preset === "custom" ? toOne.value : null,
     fromIso,
     toIso,
     kind: closed<IntentKind>(q.kind, "kind", "type"),
@@ -5189,13 +5265,47 @@ export async function houseDetailForConsole(
   /* ⭐ THE THIRD KIND — a saved limit a live bound now breaks — COUNTS IN BOTH the badge and the panel (review finding
      2026-09-22), and its label is the same label home's; `null` bounds count nothing and the panel says so. */
   const liveBoundItem = (p: LiveBoundProblem) => ({ key: CONSOLE_RULES_FIELD_KEY[p.field] ?? p.field, label: consoleRulesFieldLabel(p.field), message: liveBoundSentence(p) });
+
+  /**
+   * ⭐ **ONE LIST OF BLOCKERS, TWO SKINS** (D9 minor M7, 2026-09-23). The callout above the rail and the panel
+   * below it were built SEPARATELY from the same three sources, and the divergence the comment four lines up
+   * warns about had already happened twice over:
+   * 🔴 (a) A DIFFERENT POPULATION. The panel carried a FOURTH source — a retired chain or category (`stale`) —
+   *     and the callout did not. An account whose only chain was archived therefore had a blocker the panel named,
+   *     the callout was silent about, and the `rules` tab's badge — which counts `blockers` — did not count. The
+   *     badge disagreeing with the panel it points at is the exact failure the `unsetCaps` note above records.
+   * 🔴 (b) A DIFFERENT ORDER. The callout listed the unset limits first, the panel the scope reasons first, so
+   *     the same two facts read in two orders on one screen.
+   * ⛔ SO THERE IS ONE LIST. The callout takes its labels from it and the panel takes its labels AND remedies
+   *     from it; neither can name something the other does not, in an order the other does not, ever again.
+   */
+  const blockerItems = rulesForm == null || reasons == null || removed ? null : [
+    ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message, unset: false })),
+    ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption, unset: true })),
+    ...(liveBound ?? []).map((p) => ({ ...liveBoundItem(p), unset: false })),
+    /**
+     * ⭐ A RETIRED CHAIN OR CATEGORY, NAMED (register A5, 2026-09-23).
+     *
+     * 🔴 IT VANISHED SILENTLY. `parseHouseBotRules` drops a scope member the platform no longer offers and
+     * records it in `stale` — and nothing read that list. So an account whose only chain was archived kept
+     * its ticked product, showed an empty picker, reached no market, and the panel whose whole job is to
+     * answer "why is this account not betting" said nothing about the one thing that had changed.
+     * ⛔ IT IS A REASON, NOT A TOAST: it belongs beside the other reasons, on the field it belongs to, so
+     * the way out is the same click as every other item here — and, since M7, it counts in the badge too.
+     */
+    ...(parsed !== null && parsed.ok
+      ? parsed.stale.map((s) => ({
+        key: CONSOLE_RULES_FIELD_KEY[s.path] ?? s.path,
+        label: FIELD_META[s.path].label,
+        message: s.message,
+        unset: false,
+      }))
+      : []),
+  ];
+
   const startReadiness: ConsoleStartReadiness | null = (() => {
-    if (rulesForm == null || reasons == null || removed) return null;
-    const items: { label: string; unset: boolean }[] = [
-      ...unsetCaps.map((c) => ({ label: c.label, unset: true })),
-      ...reasons.map((r) => ({ label: inertReasonLabel(r), unset: false })),
-      ...(liveBound ?? []).map((p) => ({ label: consoleRulesFieldLabel(p.field), unset: false })),
-    ];
+    if (blockerItems === null) return null;
+    const items: { label: string; unset: boolean }[] = blockerItems.map((b) => ({ label: b.label, unset: b.unset }));
     const title = bot.status === "ACTIVE" ? READINESS_COPY.calloutActive(items.length) : READINESS_COPY.calloutStart(items.length);
     return { blockers: items.length, title, items, href: consoleBotTabHref(bot.id, "rules") };
   })();
@@ -5208,29 +5318,8 @@ export async function houseDetailForConsole(
    * told why it can't start, a running one why it is not betting, and a clean list gets a topic, not a claim.
    */
   const whyNotBetting: ConsoleDetailView["whyNotBetting"] = (() => {
-    if (rulesForm == null || reasons == null || removed) return null;
-    const items = [
-      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),
-      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),
-      ...(liveBound ?? []).map(liveBoundItem),
-      /**
-       * ⭐ A RETIRED CHAIN OR CATEGORY, NAMED (register A5, 2026-09-23).
-       *
-       * 🔴 IT VANISHED SILENTLY. `parseHouseBotRules` drops a scope member the platform no longer offers and
-       * records it in `stale` — and nothing read that list. So an account whose only chain was archived kept
-       * its ticked product, showed an empty picker, reached no market, and the panel whose whole job is to
-       * answer "why is this account not betting" said nothing about the one thing that had changed.
-       * ⛔ IT IS A REASON, NOT A TOAST: it belongs beside the other reasons, on the field it belongs to, so
-       * the way out is the same click as every other item here.
-       */
-      ...(parsed !== null && parsed.ok
-        ? parsed.stale.map((s) => ({
-          key: CONSOLE_RULES_FIELD_KEY[s.path] ?? s.path,
-          label: FIELD_META[s.path].label,
-          message: s.message,
-        }))
-        : []),
-    ];
+    if (blockerItems === null) return null;
+    const items = blockerItems.map((b) => ({ key: b.key, label: b.label, message: b.message }));
     return {
       title: items.length === 0 ? READINESS_COPY.panelClear : bot.status === "ACTIVE" ? READINESS_COPY.panelNotBetting : READINESS_COPY.panelCantStart,
       items,
@@ -5331,11 +5420,28 @@ export async function houseDetailForConsole(
  * anchor rule. What is added is the column that only a desk-wide list needs: WHOSE stake it was.
  */
 
-/** ⛔ The three honest answers to "which account is this row about", each a different fact (355, 358). */
-const CONSOLE_ACCOUNT_UNREADABLE = "Could not be read";
-const CONSOLE_ACCOUNT_GONE = "Removed from the desk";
-/** An event of the CONTROL ROW itself — the switch, a limits save, the withdrawal. It belongs to no account. */
-const CONSOLE_ACCOUNT_DESK = "The desk";
+/**
+ * ⛔ The three honest answers to "which account is this row about", each a different fact (355, 358).
+ *
+ * 🔴 `gone` WAS THE EVENT WORD (D9 minor M6, 2026-09-23). It read "Removed from the desk" — character for
+ * character `CONSOLE_EVENT_WORD.REMOVED`. So on the desk-wide history the row that RECORDS a removal printed the
+ * same five words in the SUBJECT column and in the EVENT column, and every other row about that account answered
+ * "which account is this about?" with something that happened. A subject column states WHO, never WHAT: the event
+ * column is the only one that may say what was done. The words are one frozen object, exported, so the collision
+ * is checked over the whole of both TOTAL maps rather than over the rows a fixture happened to paint.
+ * ⚠️ They are the console's OWN words, not the Owner's text, so they carry no `data-operator-text` hook (474).
+ */
+export const CONSOLE_ACCOUNT_WORD = {
+  /** The roster read FAILED — nobody can tell which account this was. */
+  unreadable: "Could not be read",
+  /** The account is not on the roster any more. A fact about the SUBJECT, not an event on the row. */
+  gone: "An account no longer on the desk",
+  /** An event of the CONTROL ROW itself — the switch, a limits save, the withdrawal. It belongs to no account. */
+  desk: "The desk",
+} as const;
+const CONSOLE_ACCOUNT_UNREADABLE = CONSOLE_ACCOUNT_WORD.unreadable;
+const CONSOLE_ACCOUNT_GONE = CONSOLE_ACCOUNT_WORD.gone;
+const CONSOLE_ACCOUNT_DESK = CONSOLE_ACCOUNT_WORD.desk;
 
 /** One row of the desk-wide activity panel: the account page's row, plus whose stake it was. */
 export type ConsoleDeskFeedRow = ConsoleFeedRow & {
@@ -5362,7 +5468,13 @@ export type ConsoleDeskFeedRow = ConsoleFeedRow & {
 /** One row of the desk-wide history: the account page's row, plus whose account it is — or the desk's own. */
 export type ConsoleDeskEventRow = ConsoleEventRow & {
   accountName: string;
-  /** True only when `accountName` is the operator's own text — which is also exactly when `accountHref` opens a page. */
+  /**
+   * True only when `accountName` is the operator's own text, which is what 474's DOM hook is for.
+   * ⚠️ IT IS NOT "there is a page to open", and this docblock said it was until M6's case measured it
+   * (2026-09-23). A REMOVED account keeps its own read-only page (ruling 358), so its rows carry an `accountHref`
+   * while this flag is false; only a row belonging to the CONTROL ROW itself has no account and no href. The page
+   * paints a link on this flag, so the two claims are separate and the one that was wrong is the one written here.
+   */
   accountIsOperatorText: boolean;
   /** `null` for the control row's own events, which belong to no account and open no page (432(a)). */
   accountHref: string | null;

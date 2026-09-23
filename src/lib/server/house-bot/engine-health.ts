@@ -31,7 +31,7 @@
  * describes the process RENDERING the page, which is not necessarily the process running the engine — a healthy engine
  * on another replica would render as dead. Those figures may be shown only labelled as THIS server's.
  */
-import { BOOT_GRACE_MS, CLAIMS_BLOCKED_CODE, ENGINE_STALE_MS, RUNTIME_KEY } from "@/lib/house-bot/constants";
+import { BOOT_GRACE_MS, BOOT_REFUSED_CODE, CLAIMS_BLOCKED_CODE, ENGINE_STALE_MS, RUNTIME_KEY } from "@/lib/house-bot/constants";
 import type { StoredHouseBotRuntime } from "../house-bot-dal";
 import { db } from "../store";
 import { inHouseAlertAudience } from "./alerts";
@@ -104,6 +104,12 @@ export type HouseEngineBeats = {
    * it produces says "a server" rather than "the desk".
    */
   claimsBlockedReason: string | null;
+  /**
+   * ⭐ A SERVER THAT REFUSED TO BOOT, AND WHY (C8 minor M4). Read off the `engine:<instance>` rows' own
+   * `pollerErrorCode`, which nothing else on this type reads — every other error field here comes from a
+   * `beat:poller:*` or `beat:planner` row. `null` means no server has recorded a refusal.
+   */
+  bootRefusedReason: string | null;
 };
 
 const ms = (iso: string | null): number | null => {
@@ -146,6 +152,14 @@ export function houseEngineBeats(rows: readonly StoredHouseBotRuntime[]): HouseE
       const code = r.pollerErrorCode ?? "";
       return code.startsWith(`${CLAIMS_BLOCKED_CODE}:`) ? code.slice(CLAIMS_BLOCKED_CODE.length + 1) : null;
     }, null),
+    /* ⛔ THE PREFIX, NOT THE WHOLE STRING, and off the ENGINE rows — the same shape as the line above and for
+       the same reason: the suffix is the cause the sentence needs, and the prefix is what keeps a refusal from
+       being read as anything else that might one day be written here. */
+    bootRefusedReason: engines.reduce<string | null>((acc, r) => {
+      if (acc !== null) return acc;
+      const code = r.pollerErrorCode ?? "";
+      return code.startsWith(`${BOOT_REFUSED_CODE}:`) ? code.slice(BOOT_REFUSED_CODE.length + 1) : null;
+    }, null),
   };
 }
 
@@ -172,7 +186,7 @@ export function houseEngineBeats(rows: readonly StoredHouseBotRuntime[]): HouseE
  * INDISTINGUISHABLE from one that never booted, and it is already reported — as `STALE`, which is the true
  * statement. A branch nothing can reach is the dead control ruling 432(a) refuses, one layer down.
  */
-export type HouseEngineVerdict = "UNREADABLE" | "BOOTING" | "STALE" | "CLAIMS_BLOCKED" | "POLLER_FAILING" | "DUTY_FAILED" | "IDLE";
+export type HouseEngineVerdict = "UNREADABLE" | "BOOTING" | "BOOT_REFUSED" | "STALE" | "CLAIMS_BLOCKED" | "POLLER_FAILING" | "DUTY_FAILED" | "IDLE";
 
 export function houseEngineVerdict(input: {
   /** The master switch, from the control row the caller has ALREADY read (ruling 435(e)). */
@@ -200,6 +214,20 @@ export function houseEngineVerdict(input: {
   if (beats === null) return "UNREADABLE";
   const booting = beats.bootAtMs !== null && nowMs - beats.bootAtMs <= BOOT_GRACE_MS;
   if (booting) return "BOOTING";
+  /**
+   * ⭐ A SERVER REFUSED TO BOOT, AND IT SAYS WHY (C8 minor M4, 2026-09-23).
+   *
+   * ⛔ IT SITS ABOVE `STALE` BECAUSE IT IS THE SAME FACT, STATED PROPERLY. `STALE` is "the engine is not
+   * running" with no cause; this is that sentence with the cause in it, and an officer who reads the vaguer one
+   * goes looking in the wrong place — the exact argument this file already makes for `CLAIMS_BLOCKED` above
+   * `POLLER_FAILING`. Before M4 the refusal wrote nothing durable at all, so this limb was unreachable and the
+   * desk could only ever say the vaguer thing.
+   * ⛔ IT SITS BELOW `BOOTING` because a deploy in progress is not a refusal, and a refusal row is cleared by
+   * the very boot that would set `bootAtMs` — so the two cannot both be current for one server.
+   * ⚠️ THE SENTENCE IT DRIVES SAYS "A SERVER", NOT "THE DESK", and the row is per instance for exactly that
+   * reason: one refusing replica beside three healthy ones is a real and different state from all four refusing.
+   */
+  if (beats.bootRefusedReason !== null) return "BOOT_REFUSED";
   /* 353 · the boot grace has passed (or nothing ever booted) AND the planner beat is missing or older than the
    * threshold. `PLANNER_INTERVAL_MS` 15 s against `ENGINE_STALE_MS` 30 s leaves exactly one missed tick of headroom. */
   if (beats.plannerBeatAtMs === null || nowMs - beats.plannerBeatAtMs > ENGINE_STALE_MS) return "STALE";

@@ -112,14 +112,36 @@ export function DeskAccountActions({
   acts,
   id,
   act,
+  openAct,
 }: {
   acts: DeskActCopy[];
   id: string;
+  /**
+   * ⭐ THE ACT A LINK ASKED FOR (register A5, 2026-09-23).
+   *
+   * 🔴 THE START REFUSAL HAS ALWAYS CARRIED `?reverify=1`, AND NOTHING READ IT. The service answers a stale
+   * consent with a way out, the dialog paints it as `Confirm permission →`, and following it landed the
+   * officer on the account overview with no dialog and no indication of what to press — a way out that
+   * stops one click short is a way out nobody takes. The page reads the parameter and names the act here.
+   * ⚠️ A NAME, NEVER A COPY OBJECT: the row owns its own dialogs, and an act it does not offer in this
+   * lifecycle (Confirm permission is not offered on a RUNNING account) simply opens nothing.
+   */
+  openAct?: DeskActCopy["act"] | null;
   act: (input: { id: string; act: DeskActCopy["act"]; reason?: string; password?: string; typed?: string; submitId?: string }) => Promise<
     { ok: true; changed: boolean; note: string | null; warn: boolean } | { ok: false; error: string; field?: string; href?: string; hrefLabel?: string }
   >;
 }) {
   const [open, setOpen] = useState<DeskActCopy | null>(null);
+  /* ⛔ ONCE, ON ARRIVAL, AND NEVER AGAIN: a link that re-opened its dialog on every render would trap an
+     officer who closed it. The effect runs on the act NAME, so a second visit to the same URL re-opens it
+     (which is what following the link again means) and a close inside one visit stands. */
+  const arrived = useRef(false);
+  useEffect(() => {
+    if (arrived.current || openAct == null) return;
+    arrived.current = true;
+    const wanted = acts.find((a) => a.act === openAct);
+    if (wanted) setOpen(wanted);
+  }, [openAct, acts]);
   const [v, setV] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
   /* ⭐ THE WAY OUT A REFUSAL CARRIES (2026-09-22). The Start refusal has always answered with an `href` — the Rules

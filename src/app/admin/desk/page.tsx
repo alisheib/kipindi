@@ -716,8 +716,11 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                               }
                               {/* ⛔ RULING 474 · an account's label is OPERATOR DATA and the DOM says so — 453's
                                   lexicon binds this section's COPY and may not silently rewrite what the Owner
-                                  typed. The two console words ("Removed from the desk", "Could not be read") are
-                                  the console's own and carry no hook, because they are not the Owner's text. */}
+                                  typed. The console's own three subject words
+                                  (`CONSOLE_ACCOUNT_WORD`) carry no hook, because they are not the Owner's text.
+                                  ⛔ AND NONE OF THEM MAY BE AN EVENT WORD (M6): `gone` read "Removed from the desk",
+                                  the event word for a removal, so this column stated what happened instead of who
+                                  it happened to. A case compares the whole of both maps. */}
                               {r.accountIsOperatorText
                                 ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
                                 : <span className="text-text-tertiary">{r.accountName}</span>}

@@ -4254,6 +4254,20 @@ html[data-sheet-open] .route-enter { animation: none; }
 .admin-tbl thead { font-family: var(--font-mono); font-size: var(--type-label); text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
 .admin-tbl th { padding: 10px 16px; font-weight: 500; white-space: nowrap; }
 .admin-tbl td { padding: 12px 16px; vertical-align: middle; }
+/* 🔴 AN EMPTY TABLE WAS STILL SCROLLING SIDEWAYS, OVER NOTHING (D9 minor M5, 2026-09-23).
+   Measured on the desk's Targets tab at 360 with zero rows: the header floors (`min-w-[150px]` POLL +
+   `min-w-[128px]` STATUS + LAST CHANGE) totalled more than the visible strip, so `ScrollX` scrolled — a
+   horizontal scroller whose entire reachable content was one centred sentence. Those floors exist to stop a
+   DATA cell being squeezed (see the `break-all` note on the desk history, and `.tabular`'s nowrap below); with
+   no data cell to protect they cost a gesture and buy nothing. And the head itself is column furniture for
+   columns that hold nothing: `AdminTableEmpty` already states the topic and why it is empty, in prose.
+   ⛔ ONE RULE, NOT A CONDITION PER TABLE. `AdminTableEmpty` is the ONE way an admin table renders its zero-row
+   state (its own docblock), so its marker row is the only thing a rule needs to see — ~15 tables across the
+   console, no call site edited, and no way for a new table to opt out by forgetting.
+   ⚠️ `:has()` degrades to exactly today's behaviour where it is unsupported (a scroller over the message),
+   which is why this one carries no `[data-*]` twin the way `.kp-discovery-bar` above does. */
+.admin-tbl:has(> tbody > tr[data-table-empty]) > thead { display: none; }
+.admin-tbl:has(> tbody > tr[data-table-empty]) { min-width: 0; }
 /* 🔴 A MONEY FIGURE IS ONE OBJECT, AND 61 OF THEM WERE BROKEN IN HALF (2026-09-02).
    `th` above has carried `white-space: nowrap` since the table shipped; `td` never did. So a
    column narrower than its content split `TZS 550,560` into "TZS" above "550,560" — §M4 says a

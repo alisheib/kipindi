@@ -315,6 +315,29 @@ await guard("7", () => {
   ok("7.8 · a 4-minute-old observation → UD_STALE_PRICE", DE.udCloseness(udView(null).view, { price: 100, source: "observation", ageSec: 240 }, 25) === "UD_STALE_PRICE");
   ok("7.9 · a 100 s vendor bar is fresh and close enough", DE.udCloseness(udView(null).view, { price: 100.5, source: "vendor_bar", ageSec: 100 }, 25) === null);
   ok("7.10 · no targets → UD_NO_PRICE", DE.udCloseness(MV.projectMarketView(viewRow({ productLine: "UPDOWN", round: roundOf({ upTarget: null }) })), fresh, 25) === "UD_NO_PRICE");
+
+  /* 7.10a–7.10e · THE FLOOR UNDER THE CLOSENESS BAND (04 A15; UD_CLOSENESS_FLOOR_BPS).
+     The fixture is PRODUCTION's own, read 2026-09-23: BTC/USD, `marginBps = 0`, so `computeTargets` froze
+     the band at one tick — open 86,379.20, targets ±0.02. Before the floor these five all refused, which is
+     why a switched-on, funded, correctly-scoped desk placed nothing for 23 hours. */
+  const btcRound = (o: Any = {}) => MV.projectMarketView(viewRow({ productLine: "UPDOWN", selectionClosedAt: at(240), resolutionAt: at(900), exitGraceMin: 0,
+    round: roundOf({ chainKey: "BTC:5", openPrice: 86_379.20, upTarget: 86_379.22, downTarget: 86_379.18, ...o }) }));
+  const obs = (price: number) => ({ price, source: "observation", ageSec: 10 });
+  // 86,379.20 × 5/10_000 = 43.1896 → at 25% the bot may sit within 10.797 of the open.
+  ok("7.10a · ⭐ THE PRODUCTION SHAPE · a one-tick band (±0.02 on an open of 86,379.20) is floored to 43.19, so a $10 drift is ALLOWED at 25%",
+    DE.udCloseness(btcRound(), obs(86_369.20), 25) === null);
+  ok("7.10b · ⭐ DISCRIMINATES · the floor did NOT disable the guard — $50 of drift on the same round is still UD_CLOSENESS",
+    DE.udCloseness(btcRound(), obs(86_329.20), 25) === "UD_CLOSENESS");
+  ok("7.10c · the boundary binds on the floored band: 10.79 passes and 10.80 does not",
+    DE.udCloseness(btcRound(), obs(86_379.20 - 10.79), 25) === null && DE.udCloseness(btcRound(), obs(86_379.20 - 10.80), 25) === "UD_CLOSENESS");
+  /* ⛔ WITHOUT the floor this case is the whole finding: 100 is the HIGHEST `closenessPct` the field admits
+     (`FIELD_META["updown.closenessPct"]` is 0–100), and at 100 a one-tick band still only tolerated 0.02. */
+  ok("7.10d · ⭐ NO OFFICER SETTING COULD HAVE FIXED IT · at closenessPct 100, the field's maximum, a $10 drift is allowed only because of the floor",
+    DE.udCloseness(btcRound(), obs(86_369.20), 100) === null);
+  /* A FLOOR, NEVER A CAP: XAU/USD 15-min's real 5-bps band (2.16 on 4,323.36) exceeds the floor of 2.1617
+     by a hair, and the suites' own 4-on-100 band exceeds it 80×; both must keep deciding for themselves. */
+  ok("7.10e · ⭐ A FLOOR, NOT A CAP · a band that already describes its asset still binds — 4 on an open of 100 refuses +5 exactly as before",
+    DE.udCloseness(udView(fresh).view, fresh, 25) === "UD_CLOSENESS");
   const udRow = DE.decideCounter(ctrIn(udView(fresh)), { randomInt: minRand });
   ok("7.11 · the Up & Down COUNTER records its closeness skip", udRow.row && udRow.row.reasonCode === "UD_CLOSENESS", j(udRow.row));
 
@@ -564,6 +587,66 @@ await guard("7b", () => {
   ok("7b.24 · opener.stakeMin/MaxTzs · the opener's amount is DRAWN between the two leaves and then FLOORED to the step — asked for (1,500, 4,700), drawn 4,700, and stored 4,000",
     j(stakeRec.calls.find((c: Any) => c[0] === 1_500)) === j([1_500, 4_700]) && openStake.row?.stakeTzs === 4_000,
     j({ asked: stakeRec.calls, stake: openStake.row?.stakeTzs }));
+
+  /* ══ §7c · WHAT THE FLEET'S LANE E MEASURED AND COULD NOT DISCRIMINATE (register E · M9, 2026-09-23) ════
+   *
+   * 🔴 THE HONEST STATE THESE REPLACE. `house-bot-fleet-lane-e.mts` asserts the OPENER's deadline/stale
+   * arithmetic and its decision's field shape END TO END, and its own header admits they have "no discriminating
+   * engine mutation on record": the drive's only red is `KP_FLEET_SILENT`, which proves an assertion cannot pass
+   * with a DEAD engine — never that it catches a WRONG one. And it cannot be fixed there: the anchors run against
+   * declared `suite:` values and there is no fleet suite, because a fleet red would rebuild a scratch Postgres
+   * fleet per mutation.
+   * ⛔ SO THE CLAIMS MOVE TO WHERE THEY ARE PURE. `planOpener` is a pure function of its input; asserting its
+   * arithmetic here costs microseconds, and `red:house-bot-engine` already mutates this file's subjects. The lane
+   * keeps its end-to-end assertion — what it stops claiming is that nothing but a dead engine could break it.
+   * ⚠️ EACH IS A PAIR, the section's own rule: an equality against a literal is satisfied by any code that
+   * happens to produce that literal, so each case MOVES a leaf and reads the answer move with it. */
+  const openView = () => MV.projectMarketView(viewRow({ createdAt: at(-100) }));
+  const openerAt = (min: number) => DE.planOpener({
+    ...openIn({ view: openView(), bot: botOf({ rules: rulesOf({ guards: { minTimeToCutoffPollsMin: min }, opener: { delayPollsMinMin: 1, delayPollsMaxMin: 1 } }) }) }),
+    openerSide: "NO",
+  }, { randomInt: minRand });
+  const dl5 = openerAt(5);
+  const dl9 = openerAt(9);
+  const cutoffMs = Date.parse(dl5.row!.decision.snapshot.cutoff);
+  ok("7c.1 · guards.minTimeToCutoffPollsMin · an OPENER's `deadlineAt` is the market's own cutoff LESS that guard in minutes — 5 minutes gives cutoff − 300,000 ms, and moving the leaf to 9 moves the deadline by exactly 240,000 ms more",
+    dl5.row?.deadlineAt === new Date(cutoffMs - 300_000).toISOString()
+      && dl9.row?.deadlineAt === new Date(cutoffMs - 540_000).toISOString()
+      && Date.parse(dl5.row!.deadlineAt) - Date.parse(dl9.row!.deadlineAt) === 240_000,
+    j({ cutoff: dl5.row?.decision.snapshot.cutoff, at5: dl5.row?.deadlineAt, at9: dl9.row?.deadlineAt }));
+  /* ⛔ AND THE FLOOR IS THE OTHER HALF OF THE SAME LEAF: `guardsFor` holds `minTimeToCutoffSec` at
+     `MIN_TIME_TO_CUTOFF_FLOOR_SEC`, so a guard of ZERO minutes is not zero — it is the floor, and a deadline that
+     collapsed onto the cutoff would let a stake be planned with no room to land. */
+  const dl0 = openerAt(0);
+  ok("7c.2 · …and the 10 s FLOOR holds under it: a guard of 0 minutes gives cutoff − 10,000 ms, not cutoff",
+    dl0.row?.deadlineAt === new Date(cutoffMs - K.MIN_TIME_TO_CUTOFF_FLOOR_SEC * 1_000).toISOString()
+      && dl0.row?.deadlineAt !== dl5.row?.deadlineAt,
+    j({ floorSec: K.MIN_TIME_TO_CUTOFF_FLOOR_SEC, at0: dl0.row?.deadlineAt }));
+  /* ⛔ `staleAt` IS PER PRODUCT, and the pair is the two products rather than two numbers: one table, two rows,
+     and a plan that read the wrong row would still produce a perfectly well-formed instant. */
+  const stalePoll = dl5;
+  const staleUd = DE.planOpener({ ...openIn({ view: udView(), price: udFresh, bot: botOf({ rules: rulesOf({ opener: { delayUdMinSec: 60, delayUdMaxSec: 60 } }) }) }), openerSide: "NO" }, { randomInt: minRand });
+  ok("7c.3 · STALE_AFTER_SEC · an OPENER's `staleAt` is its OWN `dueAt` plus the window for ITS product — the polls row on a poll, the Up & Down row on a round, and the two rows are different",
+    stalePoll.row?.staleAt === new Date(Date.parse(stalePoll.row!.dueAt) + K.STALE_AFTER_SEC.polls * 1_000).toISOString()
+      && staleUd.row?.staleAt === new Date(Date.parse(staleUd.row!.dueAt) + K.STALE_AFTER_SEC.updown * 1_000).toISOString()
+      && K.STALE_AFTER_SEC.polls !== K.STALE_AFTER_SEC.updown,
+    j({ poll: [stalePoll.row?.dueAt, stalePoll.row?.staleAt], ud: [staleUd.row?.dueAt, staleUd.row?.staleAt], table: K.STALE_AFTER_SEC }));
+  /* ⛔ THE DECISION'S SHAPE, MEASURED AS A DIFFERENCE AND NOT AS AN ABSENCE. "It carries no `wantedTzs`" is
+     satisfied by a build that writes no decision at all, or by a field renamed everywhere — so the case reads a
+     FILL's decision from the same module in the same breath: an OPENER asks for nothing because it DRAWS, and a
+     FILL asks for an amount because it is filling to a share. The population is both, never one. */
+  const fillDecision = DE.planFill(fillIn(), { randomInt: minRand }).row?.decision;
+  const openDecision = dl5.row?.decision;
+  /* The SEVEN keys a FILL's decision carries and an OPENER's does not. `askedStakeTzs` is deliberately NOT in
+     this list: no plan in the module writes it, so asserting its absence would measure nothing. */
+  const ASKS = ["wantedTzs", "rawYes", "rawNo", "lockedYes", "lockedNo", "targetSharePct", "lockMarginMs"];
+  ok("7c.4 · an OPENER's decision carries NO asked amount and NO pool figure — entry, the drawn delay, `bettableFrom` and the snapshot, and nothing else — while a FILL's decision from the same module carries every one of those seven, which is what makes the absence a measurement",
+    !!openDecision && !!fillDecision
+      && ASKS.every((k) => !(k in openDecision)) && ASKS.every((k) => k in fillDecision)
+      && openDecision.entry === "AUTO" && typeof openDecision.delaySec === "number" && typeof openDecision.bettableFrom === "string"
+      && j(Object.keys(openDecision).sort()) === j(["bettableFrom", "delaySec", "entry", "snapshot"])
+      && openDecision.snapshot.roundNumber === null && typeof openDecision.snapshot.titleEn === "string",
+    j({ opener: openDecision, fillKeys: Object.keys(fillDecision ?? {}).sort() }));
 });
 
 /* ═══ §8 · source pins (memory child only) ═══════════════════════════════════════════════════════ */
@@ -725,6 +808,9 @@ section("§11 · engine boot, back-pressure and stop");
 const EN2: Any = await import("../../src/lib/server/house-bot/engine.ts");
 const { INSTANCE_ID }: Any = await import("../../src/lib/server/leader.ts");
 const HDAL: Any = await import("../../src/lib/server/house-bot-dal.ts");
+/* M4 (2026-09-23): the health reader and the constants, for the boot-refusal cases at 11.16a-e. */
+const EH2: Any = await import("../../src/lib/server/house-bot/engine-health.ts");
+const KX: Any = await import("../../src/lib/house-bot/constants.ts");
 await guard("11", async () => {
   const st = (o: Any = {}) => ({ ...EN2.engineState(), started: true, stopping: false, skewMs: 0, inFlight: new Map(), ...o });
   const adm = (o: Any = {}) => ({ inFlight: 0, queueDepth: 0, limits: { maxInFlight: 10, maxQueue: 500, maxWaitMs: 15_000 }, ...o });
@@ -754,7 +840,45 @@ await guard("11", async () => {
   globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
   const zone = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, timeZone: async () => "Africa/Dar_es_Salaam" });
   ok("11.15 · A4: a database TimeZone that is not UTC → not started", zone.started === false && zone.refused === "DB_TIMEZONE");
-  ok("11.16 · …and no boot row was written by a refused start", (await HDAL.houseBotRuntimeStore.get(`engine:${INSTANCE_ID}`)) === null);
+  /* ══ M4 · A BOOT REFUSAL THE DESK CAN READ (2026-09-23) ═════════════════════════════════════
+   * ⚠️ 11.16 USED TO READ "no boot row was written", AND THAT PROXY IS NOW TOO STRONG. Its CLAIM — a refused
+   * start must never be readable as a boot — is unchanged and is asserted here directly, on the fields that
+   * decide it. What changed is that a `DB_TIMEZONE` refusal now RECORDS ITSELF on that row, because the desk
+   * reads durable rows and had no way to name the cause: it saw no boot and no beat and said "The engine is not
+   * running" while `/admin/system` could answer only for whichever replica happened to render it.
+   * ⛔ THE ROW IS NOT A BOOT AND MAY NOT BECOME ONE: no `bootAt`, so `bootAtMs` stays null and `BOOTING`
+   * cannot fire; no `engineEnabled`. That is the half a "no row at all" assertion was standing in for. */
+  const refusedRow: Any = await HDAL.houseBotRuntimeStore.get(`engine:${INSTANCE_ID}`);
+  ok("11.16 · a refused start writes NO BOOT — the row it leaves carries no `bootAt` and no `engineEnabled`, so nothing can read it as a started engine",
+    refusedRow !== null && refusedRow.bootAt == null && refusedRow.engineEnabled !== true,
+    j(refusedRow));
+  ok("11.16a · M4 · …and it RECORDS THE CAUSE where the desk can read it: `BOOT_REFUSED:DB_TIMEZONE` on the instance's own row, the same shape `CLAIMS_BLOCKED:` uses one layer down",
+    refusedRow?.pollerErrorCode === `${KX.BOOT_REFUSED_CODE}:DB_TIMEZONE`, j(refusedRow?.pollerErrorCode));
+  const refusedBeats: Any = EH2.houseEngineBeats(await HDAL.houseBotRuntimeStore.listInstances());
+  ok("11.16b · M4 · the beats carry the refusal as a CAUSE and still carry no boot — read off the durable rows, which is the only thing the desk reads",
+    refusedBeats.bootRefusedReason === "DB_TIMEZONE" && refusedBeats.bootAtMs === null, j(refusedBeats));
+  ok("11.16c · M4 · and the verdict is `BOOT_REFUSED`, ABOVE `STALE` — the same fact with its cause in it, where an officer reading the vaguer sentence goes looking in the wrong place",
+    EH2.houseEngineVerdict({ on: true, beats: refusedBeats, activeAccounts: 1, nowMs: Date.now() }) === "BOOT_REFUSED",
+    j({ verdict: EH2.houseEngineVerdict({ on: true, beats: refusedBeats, activeAccounts: 1, nowMs: Date.now() }) }));
+  /* ⛔ AND THE CONTROL IS THE OTHER REFUSAL, which must leave NOTHING: one replica with the engine switched off
+     is a normal deployment, and marking the whole desk danger over it would be a false alarm nobody can clear. */
+  await HDAL.houseBotRuntimeStore.upsert(`engine:${INSTANCE_ID}`, { pollerErrorCode: null });
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  const envOff = await EN2.startHouseBotEngine(ticks, { env: () => "false", schemaReady: ready, timeZone: async () => "UTC" });
+  const envRow: Any = await HDAL.houseBotRuntimeStore.get(`engine:${INSTANCE_ID}`);
+  ok("11.16d · M4 · CONTROL · an ENV_DISABLED refusal records NOTHING — only the one refusal that is a FAULT is written down, so 11.16a measured the cause and not "
+    + "every refusal alike",
+    envOff.refused === "ENV_DISABLED" && envRow?.pollerErrorCode == null,
+    j({ refused: envOff.refused, code: envRow?.pollerErrorCode }));
+  /* ⛔ AND A LANDED BOOT ENDS IT. A current state that outlives its cause is the lie `clearClaimsBlocked`
+     exists against one layer down, and a refusal nobody can clear is worse than one nobody was told about. */
+  await HDAL.houseBotRuntimeStore.upsert(`engine:${INSTANCE_ID}`, { pollerErrorCode: `${KX.BOOT_REFUSED_CODE}:DB_TIMEZONE` });
+  await HDAL.houseBotRuntimeStore.boot(`engine:${INSTANCE_ID}`, { engineEnabled: true });
+  const clearedBeats: Any = EH2.houseEngineBeats(await HDAL.houseBotRuntimeStore.listInstances());
+  ok("11.16e · M4 · a boot that LANDS clears the refusal in `boot()` itself — the beats stop carrying a cause and the verdict stops being `BOOT_REFUSED`",
+    clearedBeats.bootRefusedReason === null && clearedBeats.bootAtMs !== null
+      && EH2.houseEngineVerdict({ on: true, beats: clearedBeats, activeAccounts: 1, nowMs: Date.now() }) !== "BOOT_REFUSED",
+    j({ reason: clearedBeats.bootRefusedReason, boot: clearedBeats.bootAtMs }));
 
   /* ── 11.15b–f · ⛔ THE BOOT REFUSAL THAT TOLD NOBODY (01 register:1210; `ALERT_KEY.dbTimezone`) ────────────────
    * 11.15 has pinned the REFUSAL since commit 4, and the refusal is right: a database whose TimeZone is not UTC makes

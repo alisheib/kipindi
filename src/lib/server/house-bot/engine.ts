@@ -35,6 +35,7 @@ import {
   PLANNER_LEASE_MS,
   POLLER_INTERVAL_MS,
   POLLER_JITTER_MS,
+  BOOT_REFUSED_CODE,
   RUNTIME_KEY,
   SWEEP_INTERVAL_MS,
 } from "@/lib/house-bot/constants";
@@ -282,6 +283,19 @@ export async function startHouseBotEngine(ticks: EngineTicks, deps: EngineDeps =
     state.refused = "DB_TIMEZONE";
     console.error(`[house-bot] database TimeZone is ${zone ?? "unreadable"}, not UTC — the engine is not started (04 A4)`);
     await alertBootRefused(ticks, "DB_TIMEZONE", { zone: zone ?? null, expected: [...UTC_ZONES] });
+    /**
+     * ⛔ AND WRITE IT DOWN WHERE THE DESK CAN READ IT (C8 minor M4, 2026-09-23) — the same decision, for the
+     * same reason, as `recordClaimsBlocked` in `worker.ts`: a bell rings once per EAT day and an officer who
+     * opens the Desk an hour later sees a page that names no cause. The full reasoning is on
+     * `BOOT_REFUSED_CODE`, including why this is the ONLY one of the five refusals that is recorded.
+     * ⚠️ IT MAY NOT COST THE REFUSAL. The engine is already refusing, correctly; losing the record to a write
+     * error must leave a reported stop, never turn it into an unreported one.
+     */
+    try {
+      await houseBotRuntimeStore.upsert(RUNTIME_KEY.engine(INSTANCE_ID), { pollerErrorCode: `${BOOT_REFUSED_CODE}:DB_TIMEZONE` });
+    } catch (e) {
+      console.error("[house-bot] the boot refusal could not be recorded for the desk:", (e as Error)?.message ?? e);
+    }
     return { started: false, refused: state.refused };
   }
   try {

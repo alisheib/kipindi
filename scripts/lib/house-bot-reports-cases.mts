@@ -2595,6 +2595,13 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      that rather than taking this sentence on trust). It CREATES NO ORACLE either: a viewer outside the audience
      is answered `null` by the gated reader whether or not the record exists, so only an admin ever sees it. */
   "CONSOLE_ACCOUNT_MISSING",
+  /* ⭐ 2026-09-23 · the desk-wide history's own THREE subject words (D9 minor M6). They were three module-scope
+     consts; `gone` read "Removed from the desk", which is `CONSOLE_EVENT_WORD.REMOVED` character for character, so
+     the subject column of a removal row printed the event. The fix is a word that names a subject — and the check
+     that keeps it fixed compares the whole of this map with the whole of the event map, which is why the object is
+     exported rather than regexed out of the source. Pure copy: it awaits nothing, reaches no `db.`, names no store
+     member and decides no audience (0.512b checks that rather than taking this sentence on trust). */
+  "CONSOLE_ACCOUNT_WORD",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**

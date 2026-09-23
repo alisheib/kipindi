@@ -2891,10 +2891,13 @@ import { formatEat } from "@/lib/utils";`,
     /* (d) the why-panel is fed a hard-coded empty list — it says nothing stops the account, whatever the rules say. */
     name: "scope-why-panel-empty · the why-panel's item list is a constant empty array",
     file: GATE,
-    /* ⚠️ RE-ANCHORED 2026-09-23: a retired chain or category joined the panel's items (register A5), so the
-       list is longer. The plant is unchanged in meaning — the whole list becomes a constant empty array. */
-    from: `    const items = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),`,
-    to: `    const items: { key: string; label: string; message: string }[] = [];\n    const unusedItems = [\n      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),\n      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),\n      ...(liveBound ?? []).map(liveBoundItem),`,
+    /* ⚠️ RE-ANCHORED TWICE, AND BOTH TIMES THE PLANT'S MEANING IS UNCHANGED — the panel's whole list becomes a
+       constant empty array. (a) 2026-09-23 morning: a retired chain or category joined the items (register A5).
+       (b) 2026-09-23, M7: the callout and the panel became ONE `blockerItems` list with two skins, so the panel's
+       own line is now the MAP off it. The plant still empties the panel and leaves the callout alone, which is
+       what this mutation has always been for. */
+    from: `    const items = blockerItems.map((b) => ({ key: b.key, label: b.label, message: b.message }));`,
+    to: `    const items: { key: string; label: string; message: string }[] = [];`,
     expect: "2g.why · ⛔ the why-panel lists every reason the engine's predicate raises",
     suite: "console-mem",
   },
@@ -2940,7 +2943,11 @@ import { formatEat } from "@/lib/utils";`,
     /* The why-panel is built without the live-bound list again — "nothing stops this account" on the page whose Start refuses it. */
     name: "scope-why-panel-no-live-bound · the why-panel drops the saved limits a live bound now breaks",
     file: GATE,
-    from: `      ...(liveBound ?? []).map(liveBoundItem),\n`,
+    /* ⚠️ RE-ANCHORED AND WIDENED BY M7 (2026-09-23), said plainly rather than left to be discovered: the
+       callout and the panel are ONE list now, so removing this source removes those problems from BOTH — where
+       before it removed them from the panel alone. The expect below is the PANEL's own assertion and still
+       bites; what changed is that the plant is now a broader defect than it was, not a narrower one. */
+    from: `    ...(liveBound ?? []).map((p) => ({ ...liveBoundItem(p), unset: false })),\n`,
     to: `      /* dropped */\n`,
     expect: "2g.live · ⛔ a saved limit a live bound now breaks is ON the panel",
     suite: "console-mem",
@@ -2985,8 +2992,11 @@ import { formatEat } from "@/lib/utils";`,
     /* The page types the lifecycle sentence itself again — "before this account can start" beside a green ACTIVE chip. */
     name: "scope-callout-title-on-page · the account page types the Callout's headline instead of painting the server's",
     file: DETAIL,
-    from: `            title={view.startReadiness.title}`,
-    to: "            title={`${view.startReadiness.blockers} things to fix before this account can start`}",
+    /* ⚠️ RE-ANCHORED BY M7 (2026-09-23): the page binds the readiness ONCE, as `calloutReadiness`, so the
+       callout and the overview's panel cannot disagree about whether there is anything to say. The plant is
+       unchanged — the page types the lifecycle sentence itself instead of painting the server's. */
+    from: `            title={calloutReadiness.title}`,
+    to: "            title={`${calloutReadiness.blockers} things to fix before this account can start`}",
     expect: "2g.page · the Callout's headline is the server's",
     suite: "console-mem",
   },
@@ -3081,6 +3091,81 @@ import { formatEat } from "@/lib/utils";`,
     from: `  if (leafUsedBy(id, ALL_SWITCHES_OFF)) return "";`,
     to: `  if (false) return "";`,
     expect: "2h.usedBy · the caption naming the switch a number belongs to is DERIVED",
+    suite: "console-mem",
+  },
+  /* ══ THE 2026-09-23 D9 MINORS ═════════════════════════════════════════════════════════════ */
+  {
+    /* ⛔ M1's DEFECT, PUT BACK: the beats go back to being aged against the WEB CONTAINER's clock. On a machine
+       whose clock agrees with its database this changes no answer at all — which is exactly why the case that
+       catches it MOVES the database's clock and nothing else. A source pin alone would not have bitten. */
+    name: "engine-notice-uses-the-container-clock · M1 · durable beats written on the database clock are aged against the web container's, whose skew nothing measures",
+    file: GATE,
+    from: `      nowMs: (await houseBotRuntimeStore.dbClock()).nowMs,`,
+    to: `      nowMs: Date.now(),`,
+    expect: "1.353 · M1 · the engine notice ages the durable beats against the DATABASE's clock",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ M2's DEFECT, PUT BACK EXACTLY: the custom branch stops asking whether the bounds parsed and hands them
+       to `resolveRange`, whose fallback answers an unreadable pair with the last 24 hours under the label the
+       officer chose. The plant keeps the `else` arm so the shape compiles; what it removes is the QUESTION. */
+    name: "custom-window-guesses-again · M2 · an unreadable from/to is answered silently with 24 hours under the officer's own label",
+    file: GATE,
+    from: `    if (unreadable(fromOne.value) || unreadable(toOne.value) || (fromOne.value == null && toOne.value == null)) {`,
+    to: `    if (false) {`,
+    expect: "1.302 · M2 · a custom window whose bounds cannot be read is REFUSED",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ AND THE HALF THAT KEEPS THE REFUSAL FROM TRAVELLING: a refused pair carried into the rail's links is a
+       refusal that refuses once and then quietly stops refusing on every page after it. */
+    name: "refused-window-travels · M2 · the unreadable bounds are carried into every link the rail builds, so the next read is asked the same unanswerable question",
+    file: GATE,
+    from: `    from: preset === "custom" ? fromOne.value : null,
+    to: preset === "custom" ? toOne.value : null,`,
+    to: `    from: custom ? fromOne.value : null,
+    to: custom ? toOne.value : null,`,
+    expect: "1.302 · M2 · a custom window whose bounds cannot be read is REFUSED",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ THE MUTATION IS THE DEFECT ITSELF, PUT BACK. It is not a paraphrase or a near miss: it restores the
+       exact string the column carried, which is `CONSOLE_EVENT_WORD.REMOVED` character for character. */
+    name: "account-word-is-the-event-word · M6 · the desk history's SUBJECT column goes back to printing what happened instead of who it happened to",
+    file: GATE,
+    from: `  gone: "An account no longer on the desk",`,
+    to: `  gone: "Removed from the desk",`,
+    expect: "1.317 · 432(n) · M6 · not one of the console's three ACCOUNT words is also one of its event words",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ AND THE RENDERED HALF HAS ITS OWN PLANT, because the structural case above would still be satisfied by a
+       reader that stopped taking the `gone` branch at all — a word nothing paints collides with nothing. */
+    name: "removed-account-borrows-a-name · M6 · a row about an account the roster no longer holds is answered with the desk's own word, so the removal row names the wrong subject",
+    file: GATE,
+    from: `  if (!found) return { accountName: CONSOLE_ACCOUNT_GONE, accountIsOperatorText: false, accountHandle: null };`,
+    to: `  if (!found) return { accountName: CONSOLE_ACCOUNT_DESK, accountIsOperatorText: false, accountHandle: null };`,
+    expect: "1.317 · M6 · a REMOVED account's desk-history rows name it as a SUBJECT the roster no longer holds",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ M7's FOURTH SOURCE, TAKEN BACK OFF THE CALLOUT AND THE BADGE — which is precisely the state that shipped:
+       the panel named a retired chain, the callout did not, and the tab an officer fixes it on showed no count. */
+    name: "callout-drops-the-retired-chain · M7 · the badge and the callout stop counting a scope member the platform no longer offers, while the panel keeps naming it",
+    file: GATE,
+    from: `    const items: { label: string; unset: boolean }[] = blockerItems.map((b) => ({ label: b.label, unset: b.unset }));`,
+    to: `    const items: { label: string; unset: boolean }[] = blockerItems.filter((b) => b.key !== "updown-chains" && b.key !== "poll-categories").map((b) => ({ label: b.label, unset: b.unset }));`,
+    expect: "2g.why · M7 · the callout above the rail and the why-panel below it are ONE list in two skins",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ AND THE PAGE'S HALF: the overview draws its panel again while the callout above it names the same
+       blockers — the two statements of one fact an officer met on a fresh account. */
+    name: "overview-states-it-twice · M7 · the overview's why-panel loses its guard, so the blockers are named above the rail AND again below it",
+    file: DETAIL,
+    from: `            calloutReadiness === null && view.whyNotBetting !== null && <WhyNotBettingCard model={view.whyNotBetting} linked />`,
+    to: `            view.whyNotBetting !== null && <WhyNotBettingCard model={view.whyNotBetting} linked />`,
+    expect: "2g.page · M7 · the blockers are named once per screen",
     suite: "console-mem",
   },
 ];

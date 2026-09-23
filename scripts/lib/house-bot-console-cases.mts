@@ -1163,6 +1163,40 @@ section("§2 · the strip, the band, the roster and every failure");
     const booting = await noticeFor([[ENGINE_KEY, { bootAt: ago(20_000) }]]);
     ok("1.414 · a boot inside the grace is NEUTRAL and does NOT announce — an alert that fires on every deploy trains an officer to ignore the one that matters",
       booting?.tone === "neutral" && booting?.alert === false, j(booting));
+
+    /* ══ M1 · THE BEATS ARE AGED AGAINST THE DATABASE'S CLOCK, NOT THE WEB CONTAINER'S ══════════════════
+     * 🔴 Every field of `HouseEngineBeats` is parsed off a DURABLE row written on the database clock — the whole
+     * reason this console reads rows instead of asking a process how it feels — and the number they were
+     * SUBTRACTED FROM was `Date.now()` in the container rendering the page, whose skew against the database
+     * nothing measures. (The engine's own containers are measured: `claimGate` blocks claims on unknown or large
+     * skew and the desk paints `CLAIMS_BLOCKED`. The web container is not one of them.)
+     * ⛔ SO IT IS MEASURED BY MOVING THE DATABASE'S CLOCK AND NOTHING ELSE. The beat row stays exactly where it
+     * is; only what the database says "now" is moves. A build that ages against the container clock cannot see
+     * that at all, which is precisely what makes this the discriminating case and the source pin was not.
+     * ⚠️ The patch is on the DAL handle the reader calls, restored in a `finally` — a spy left installed is how
+     * one case poisons every case after it. */
+    const realClock = w.dal.houseBotRuntimeStore.dbClock;
+    let clockCalls = 0;
+    const withDbClock = async (aheadMs: number, rows: Array<[string, Any]>): Promise<Any> => {
+      await setRuntime(rows);
+      w.dal.houseBotRuntimeStore.dbClock = async () => { clockCalls++; return { nowMs: Date.now() + aheadMs }; };
+      try { return (await withControl({ enabled: true, offCause: null })).engine ?? null; }
+      finally { w.dal.houseBotRuntimeStore.dbClock = realClock; }
+    };
+    /* A planner beat 5 s old by the CONTAINER's clock is healthy and paints nothing (the case above). The same
+       row, read by a database that is 10 minutes ahead, is 10 minutes old — far past `ENGINE_STALE_MS`. */
+    const skewed = await withDbClock(600_000, [[ENGINE_KEY, { bootAt: ago(1_800_000) }], [RK.plannerBeat, { beatAt: ago(5_000) }]]);
+    ok("1.353 · M1 · the engine notice ages the durable beats against the DATABASE's clock: a planner beat that is 5 s old by this container's clock is painted as NOT RUNNING when the database says ten minutes have passed — and the clock really was asked",
+      clockCalls >= 1 && skewed?.tone === "danger" && skewed?.alert === true
+        && String(skewed?.meta).startsWith("Last seen:") && !/just now/.test(String(skewed?.meta)),
+      j({ calls: clockCalls, notice: skewed }));
+    /* ⛔ AND THE CONTROL IS THE SAME ROWS WITH THE DATABASE AGREEING WITH THE CONTAINER: the notice goes away.
+       Without it, "danger" above would be satisfied by a build that painted danger over any beat at all. */
+    const unskewed = await withDbClock(0, [[ENGINE_KEY, { bootAt: ago(1_800_000) }], [RK.plannerBeat, { beatAt: ago(5_000) }]]);
+    ok("1.353 · M1 · CONTROL · the SAME rows with the database agreeing with this container paint NOTHING — so the danger above is the clock and not the rows",
+      unskewed === null, j(unskewed));
+    ok("1.353 · M1 · CONTROL · the spy was removed: the store's own `dbClock` is back on the handle the reader calls",
+      w.dal.houseBotRuntimeStore.dbClock === realClock, "");
     const failing = await noticeFor([
       [ENGINE_KEY, { bootAt: ago(600_000) }], [RK.plannerBeat, { beatAt: ago(5_000) }],
       [POLLER_KEY, { beatAt: ago(120_000), pollerErrorAt: ago(4_000), pollerErrorCode: "claim exploded", pollerErrorStreak: 11 }],
@@ -2067,11 +2101,38 @@ section("§2 · the strip, the band, the roster and every failure");
          would have had to rise every time a route was added, which is a ratchet that teaches you to raise it. */
       const deskSlice = gateSrc.slice(gateSrc.indexOf("async function readDeskCore"), gateSrc.indexOf("export async function houseUsageForConsole"));
       const detailSlice = gateSrc.slice(gateSrc.indexOf("export async function houseDetailForConsole"));
-      ok("1.348 · exactly ONE `eatDayKey(` call in EACH gated reader's own slice — two renders, two passes, never two days in one — and no `dbClock(` anywhere in the module",
+      /* ⛔ RE-AIMED AT M1 (2026-09-23), AND THE CLAIM IS NARROWED TO WHAT 348 ACTUALLY RULES — not loosened.
+         348's subject is THE DAY KEY: the seam refuses on `eatDayKey(Date.now())`, so a console measuring the
+         DATABASE's day could disagree with the gate it is reporting on. `!/dbClock\(/` was a blunt PROXY for
+         that — it banned the database clock from the module for any purpose whatever — and C8 minor M1 is a
+         purpose 348 has no quarrel with: the engine's beats are stamped on the database clock and were being
+         AGED against the web container's, which is a skew nothing measures. So the pin now states the rule
+         itself, which is strictly stronger for 348's own claim than the proxy was: each day key is derived
+         exactly once per render pass AND each one is derived from `Date.now()`, never from a read. */
+      /* ⚠️ THE TWO CALLS ARE NOT SPELLED THE SAME, and the first draft of this pin assumed they were. The desk
+         derives `eatDayKey(Date.now())` inline; the account page binds `const nowMs = Date.now()` first, because
+         the SAME instant feeds its relative-time captions, and then derives `eatDayKey(nowMs)`. Both are the
+         container clock, which is what 348 requires — so the pin follows the BINDING rather than demanding one
+         spelling, and a `nowMs` that ever came from a read would fail on the second limb. */
+      const dayKeyArgs = [...gateSrc.matchAll(/eatDayKey\(([^;]*?)\);/g)].map((m) => m[1]);
+      const nowBindings = [...gateSrc.matchAll(/const nowMs = ([^;]+);/g)].map((m) => m[1]);
+      ok("1.348 · exactly ONE `eatDayKey(` call in EACH gated reader's own slice — two renders, two passes, never two days in one — and each is derived from the CONTAINER clock, never from the database's",
         (deskSlice.match(/eatDayKey\(/g) ?? []).length === 1
           && (detailSlice.match(/eatDayKey\(/g) ?? []).length === 1
-          && (gateSrc.match(/eatDayKey\(/g) ?? []).length === 2 && !/dbClock\(/.test(gateSrc),
-        j({ desk: (deskSlice.match(/eatDayKey\(/g) ?? []).length, detail: (detailSlice.match(/eatDayKey\(/g) ?? []).length, dbClock: /dbClock\(/.test(gateSrc) }));
+          && (gateSrc.match(/eatDayKey\(/g) ?? []).length === 2
+          && j(dayKeyArgs) === j(["Date.now()", "nowMs"])
+          && nowBindings.every((b) => b === "Date.now()" || b === `input.read === null ? 0 : input.read.nowMs`)
+          /* Two ordered `indexOf`s, NOT a regex: the binding comes first and the derivation reads it. */
+          && detailSlice.indexOf("const nowMs = Date.now();") >= 0
+          && detailSlice.indexOf("const dayKey = eatDayKey(nowMs);") > detailSlice.indexOf("const nowMs = Date.now();"),
+        j({ desk: (deskSlice.match(/eatDayKey\(/g) ?? []).length, detail: (detailSlice.match(/eatDayKey\(/g) ?? []).length, dayKeyArgs, nowBindings }));
+      /* ⭐ AND THE DATABASE CLOCK IS READ EXACTLY ONCE, IN THE ONE PLACE M1 PUT IT: beside the beats it ages, in
+         the SAME settled member, so the rows and the instant can never come from two different reads. */
+      ok("1.348 · M1 · the database clock is read exactly ONCE in the module, inside the settled member that reads the engine's beats — so the durable rows and the instant they are aged against fail together or arrive together",
+        (gateSrc.match(/dbClock\(/g) ?? []).length === 1
+          && /instances: await houseBotRuntimeStore\.listInstances\(\),\s*nowMs: \(await houseBotRuntimeStore\.dbClock\(\)\)\.nowMs,/.test(gateSrc)
+          && !/nowMs: Date\.now\(\)/.test(gateSrc),
+        j({ dbClock: (gateSrc.match(/dbClock\(/g) ?? []).length }));
       /* ⛔ AND THE FIFTH READ REALLY IS GIVEN IT AT SOURCE. The behavioural case above proves today's code; this
          pins the SHAPE, so a future panel that adds a sixth read without a key is reported beside it. */
       /* ⭐ TWO FACTORIES FROM C7 STEP 4, EACH SETTLED ON ITS OWN. The roster needs the Products words AND the
@@ -3643,6 +3704,35 @@ try {
       badWindow.feedTotal === 41 && typeof badWindow.queryRefusal === "string" && badWindow.queryRefusal.includes("window"),
       j({ refusal: badWindow.queryRefusal }));
 
+    /* ══ M2 · A CUSTOM WINDOW NOBODY CAN READ IS REFUSED, NOT ANSWERED WITH 24 HOURS ═══════════════════
+     * 🔴 `resolveRange`'s custom branch falls back to `now − DAY_MS → now` for a bound it could not parse — its
+     * own docblock records this, measured — and nothing in that branch reports it. Every OTHER axis on this rail
+     * is refused BY NAME; the window was the one that quietly answered a question nobody asked, under a label
+     * ("custom") claiming the officer's own. On a money log a narrower window hides rows and a wider one invents
+     * them, and neither said anything.
+     * ⛔ THE ISO SHAPE IS THE ONE THAT MATTERS, not a nonsense string: `parseEatLocal`'s pattern is ANCHORED, so
+     * a perfectly well-formed `toISOString()` instant does NOT match it — which is exactly how a link built from
+     * a timestamp landed on a silent 24 hours. A case that only tried "banana" would have missed the real one.
+     * ⛔ AND IT IS A PAIR: the same address with a shape the parser DOES accept is honoured in full, so this
+     * measures the parse and not a door that refuses every custom window. */
+    const isoPair = await feedView({ from: "2026-09-20T13:00:00.000Z", to: "2026-09-20T14:00:00.000Z" });
+    ok("1.302 · M2 · a custom window whose bounds cannot be read is REFUSED and named `window`, the rail falls back to its own DEFAULT preset rather than a silent 24 hours, and the unreadable pair does not travel into the links this rail builds",
+      typeof isoPair.queryRefusal === "string" && isoPair.queryRefusal.includes("window")
+        && isoPair.feedParams.range === undefined
+        && isoPair.feedParams.from === undefined && isoPair.feedParams.to === undefined
+        && isoPair.feedTotal === 41,
+      j({ refusal: isoPair.queryRefusal, params: isoPair.feedParams, fallback: isoPair.feedPresetDefault }));
+    const readable = await feedView({ from: "2026-09-20T13:00", to: "2026-09-20T14:00" });
+    ok("1.302 · M2 · CONTROL · the SAME two bounds in the shape the parser accepts are honoured in full — nothing refused, the preset reads `custom`, and both bounds travel — so the refusal above is the parse and not a door that refuses every custom window",
+      readable.queryRefusal === null && readable.feedParams.range === "custom"
+        && readable.feedParams.from === "2026-09-20T13:00" && readable.feedParams.to === "2026-09-20T14:00",
+      j({ refusal: readable.queryRefusal, params: readable.feedParams }));
+    const bareCustom = await feedView({ range: "custom" });
+    ok("1.302 · M2 · …and `range=custom` with NO bounds at all is refused too: it names a window and states none, which is the same address that cannot be honoured",
+      typeof bareCustom.queryRefusal === "string" && bareCustom.queryRefusal.includes("window")
+        && bareCustom.feedParams.range === undefined,
+      j({ refusal: bareCustom.queryRefusal, params: bareCustom.feedParams }));
+
     /* ── THE RAIL IS BUILT FROM THE SAME PARSE, SO THE CONTROL AND THE READ CANNOT DISAGREE ──────────────── */
     const railed = await feedView({ outcome: "failed" });
     const groups = railed.feedFilters as Any[];
@@ -4075,6 +4165,47 @@ try {
           && deskH.history.some((r: Any) => r.accountIsOperatorText === true && r.accountHref !== null)
           && deskH.history.some((r: Any) => r.accountIsOperatorText === false && r.accountHref === null),
         j(deskH.history.slice(0, 4).map((r: Any) => [r.accountName, r.accountIsOperatorText, r.accountHref !== null])));
+
+      /* ══ M6 · A SUBJECT COLUMN STATES WHO, AND THE EVENT COLUMN IS THE ONLY ONE THAT MAY STATE WHAT ══════════
+       * 🔴 WHAT WAS WRONG, AND WHY NOTHING REPORTED IT. `CONSOLE_ACCOUNT_GONE` read "Removed from the desk" —
+       * character for character `CONSOLE_EVENT_WORD.REMOVED`. Both are the console's own copy, both pass 453's
+       * lexicon (no house vocabulary in either), both are non-empty strings with a `false` operator-text flag, and
+       * the case above is satisfied by both — so the desk-wide history printed the SAME five words in the Account
+       * column and the Event column of the row that records a removal, and every later row about that account
+       * answered "which account is this about?" with something that had happened to it.
+       * ⛔ THE STRUCTURAL HALF IS OVER THE WHOLE OF BOTH TOTAL MAPS, never over the rows this fixture paints:
+       * a collision check at fixture coverage is a check at whatever coverage the fixture reached, and a kind
+       * added later with the account word's sentence would pass it in silence.
+       * ⛔ AND THE RENDERED HALF PROVES THE BRANCH IS REACHABLE: the roster read is `listNonRemoved`, so a removed
+       * account's rows take the `gone` branch on the desk-wide read while its own page keeps them. */
+      const m6Bot = await w.bot({});
+      await w.dal.houseBotEventStore.append({
+        houseBotId: m6Bot.botId, userId: null, marketId: null, kind: "REMOVED",
+        fromStatus: "PAUSED", toStatus: "REMOVED", reason: null, actorId: OFFICER, payload: {},
+      } as Any);
+      await w.dal.houseBotStore.setStatus(m6Bot.botId, { from: ["PAUSED", "ACTIVE", "VERIFIED", "DESIGNATED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } });
+      const m6Total = (await deskHist()).historyTotal;
+      const m6Pages: Any[] = [];
+      for (let n = 1; n <= Math.max(1, Math.ceil(m6Total / 20)); n++) m6Pages.push(await deskHist({ hpage: String(n) }));
+      const m6Rows: Any[] = m6Pages.flatMap((v: Any) => v.history);
+      const ACCOUNT_WORDS: string[] = Object.values(GATEM.CONSOLE_ACCOUNT_WORD as Record<string, string>);
+      const EVENT_WORDS: string[] = Object.values(GATEM.CONSOLE_EVENT_WORD as Record<string, string>);
+      const collisions = ACCOUNT_WORDS.filter((a) => EVENT_WORDS.includes(a));
+      ok("1.317 · 432(n) · M6 · not one of the console's three ACCOUNT words is also one of its event words — checked over the whole of both TOTAL maps, so the row that records a removal cannot print the same sentence in the subject column and the event column",
+        ACCOUNT_WORDS.length === 3 && EVENT_WORDS.length >= 20 && collisions.length === 0,
+        j({ accountWords: ACCOUNT_WORDS, collisions, eventWords: EVENT_WORDS.length }));
+      const m6Removed = m6Rows.filter((r: Any) => r.accountName === GATEM.CONSOLE_ACCOUNT_WORD.gone);
+      /* ⚠️ WHAT THIS CASE MEASURED ON ITS FIRST RUN, AND WHY THE CLAIM IS THE ONE BELOW. The first form demanded
+         `accountHref === null` on these rows, because `ConsoleDeskEventRow`'s own docblock said the operator-text
+         flag was true "exactly when `accountHref` opens a page". It is not: a REMOVED account keeps its read-only
+         page (358), so the href is there and the FLAG is what the page paints a link on. The docblock was the
+         thing that was wrong, and it has been corrected rather than the case bent to fit it. */
+      ok("1.317 · M6 · a REMOVED account's desk-history rows name it as a SUBJECT the roster no longer holds, in the console's own word rather than the Owner's text, and on the very row that records the removal the Account cell and the Event cell are two different sentences",
+        m6Removed.length > 0
+          && m6Removed.every((r: Any) => r.accountIsOperatorText === false && typeof r.accountHref === "string")
+          && m6Removed.some((r: Any) => r.eventWord === GATEM.CONSOLE_EVENT_WORD.REMOVED)
+          && m6Removed.every((r: Any) => r.accountName !== r.eventWord),
+        j({ rows: m6Removed.length, sample: m6Removed.slice(0, 2).map((r: Any) => [r.accountName, r.eventWord, r.accountHref]) }));
       ok("1.317 · the desk history pages against a COUNTING reader in the same declared order, and a page past the end is served as the LAST page",
         (await deskHist({ hpage: "1" })).historyPage === 1
           && (await deskHist({ hpage: "999" })).historyPage === Math.max(1, Math.ceil(deskH.historyTotal / deskH.historyPerPage))
@@ -5051,7 +5182,55 @@ try {
         && capless.startReadiness.items[0].unset === true,
       j(capless.whyNotBetting));
     await w.setCaps(prod.botId, { capDailyLossTzs: 900_000_000 });
-    STATES.push(["detail-reaching", clear]);
+
+    /* ══ M7 · THE CALLOUT AND THE PANEL ARE ONE LIST IN TWO SKINS (2026-09-23, 432(n)) ═════════════════
+     * 🔴 THEY WERE BUILT SEPARATELY FROM THE SAME SOURCES AND HAD ALREADY PARTED COMPANY TWICE. The panel read a
+     * FOURTH source — a retired chain or category (`stale`) — that the callout and therefore the `rules` tab's
+     * badge did not, so an account whose only chain was archived had a blocker the panel named and the badge did
+     * not count. And they listed the same items in two orders: unset limits first in the callout, scope reasons
+     * first in the panel. The case above pins the COUNTS on one fixture; this one pins the RELATIONSHIP over
+     * every state the block builds, which is what a shared source is worth.
+     * ⛔ IT IS MEASURED OVER A LIST THAT IS NOT EMPTY IN AT LEAST ONE STATE — a pair of empty lists agrees
+     * trivially, which is the silent hole a "they match" case is worth nothing without. */
+    const m7States: Any[] = [await detail(prod.botId), v, clear, capless];
+    const m7Pairs = m7States
+      .filter((s: Any) => s.startReadiness !== null && s.whyNotBetting !== null)
+      .map((s: Any) => ({
+        callout: s.startReadiness.items.map((i: Any) => i.label),
+        panel: s.whyNotBetting.items.map((i: Any) => i.label),
+        blockers: s.startReadiness.blockers,
+      }));
+    ok("2g.why · M7 · the callout above the rail and the why-panel below it are ONE list in two skins — the same labels in the same ORDER, and `blockers` is that list's length — over every state this block built, at least one of them non-empty",
+      m7Pairs.length === 4 && m7Pairs.some((p: Any) => p.panel.length > 0)
+        && m7Pairs.every((p: Any) => j(p.callout) === j(p.panel) && p.blockers === p.panel.length),
+      j(m7Pairs));
+
+    /* ⛔ AND THE FOURTH SOURCE IS IN BOTH, WHICH IS THE HALF A "THEY MATCH" CASE CANNOT SEE ON A CLEAN FIXTURE:
+       a scope member the platform no longer offers is dropped by the parse into `stale`, and before M7 it reached
+       the panel alone. Here the chain is ticked and then made unknown to the platform under the account's feet. */
+    await writeRules(prod.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: false };
+      r.scope.chains = [CHAIN_KEY, "kp_no_such_chain_m7"];
+      r.scope.categories = [];
+      r.modes.updown = { counter: true, fill: false, opener: false };
+      r.modes.polls = { counter: false, fill: false, opener: false };
+    }));
+    const stale = await detail(prod.botId);
+    const staleLabels: string[] = (stale.whyNotBetting?.items ?? []).map((i: Any) => i.label);
+    ok("2g.why · M7 · a retired chain reaches the CALLOUT and the badge too, not the panel alone — the divergence that let an archived chain stop an account while the tab it is fixed on showed no count",
+      stale.whyNotBetting !== null && stale.startReadiness !== null
+        && staleLabels.includes(R.FIELD_META["scope.chains"].label)
+        && j(stale.startReadiness.items.map((i: Any) => i.label)) === j(staleLabels)
+        && stale.startReadiness.blockers === staleLabels.length,
+      j({ callout: stale.startReadiness?.items, panel: stale.whyNotBetting?.items }));
+    await writeRules(prod.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: true };
+      r.scope.categories = ["sports", "macro"];
+      r.scope.chains = [CHAIN_KEY];
+      r.modes.updown = { counter: true, fill: true, opener: true };
+      r.modes.polls = { counter: true, fill: true, opener: true };
+    }));
+    STATES.push(["detail-reaching", clear], ["detail-stale-scope", stale]);
   }
 
   /* ━━ THE SAVE: THE LISTS ROUND-TRIP, THE SCOPE ROW MARKS THE GROUP, A STRANGER IS STALE ━━━━━━━━━━━━━━━━━━ */
@@ -5571,8 +5750,22 @@ try {
         && /<td className="p-3 text-text-secondary">\s*\{r\.products\.map\(\(line\) => <div key=\{line\}>\{line\}<\/div>\)\}\s*<\/td>/.test(page)
         && (page.match(/r\.inert/g) ?? []).length === 3,
       j({ inertRefs: (page.match(/r\.inert/g) ?? []).length }));
-    ok("2g.page · the Callout's headline is the server's (`view.startReadiness.title`) — the page types no lifecycle sentence of its own",
-      /title=\{view\.startReadiness\.title\}/.test(detailPage) && !/before this account can start/.test(detailPage) && !/stops? this account from betting/.test(detailPage),
+    /* ⛔ RE-AIMED BY M7 (2026-09-23), AND THE CLAIM IS UNCHANGED. The callout's headline is still the SERVER's
+       sentence; what moved is that the page binds the readiness ONCE, in an expression the panel below reads too,
+       so the two cannot disagree about whether there is anything to say. The pin therefore covers BOTH ends of
+       that binding — the source (`view.startReadiness`) and the use (`calloutReadiness.title`) — because a pin on
+       the use alone would be satisfied by a binding that had quietly stopped reading the server. */
+    ok("2g.page · the Callout's headline is the server's — the page binds `view.startReadiness` once and paints that binding's own title, typing no lifecycle sentence of its own",
+      /const calloutReadiness = !view\.removed && tab !== "rules" && view\.startReadiness !== null && view\.startReadiness\.blockers > 0\s*\?\s*view\.startReadiness\s*:\s*null;/.test(detailPage)
+        && /title=\{calloutReadiness\.title\}/.test(detailPage) && /\{calloutReadiness\.items\.map\(/.test(detailPage)
+        && !/before this account can start/.test(detailPage) && !/stops? this account from betting/.test(detailPage),
+      "");
+    /* ⭐ M7 · ONE STATEMENT PER SCREEN, PINNED AT SOURCE. The callout is drawn only where the panel is not, and
+       the overview's panel only where the callout is not — one expression, read at both sites. A page that drew
+       both would state the same blockers twice, which is what an officer met on a fresh account before this. */
+    ok("2g.page · M7 · the blockers are named once per screen: the callout is guarded by the binding, the overview's panel is guarded by that SAME binding being null, and the rules tab's panel is guarded by neither because the callout never draws there",
+      /\{calloutReadiness !== null && \(\s*<Callout/.test(detailPage)
+        && /calloutReadiness === null && view\.whyNotBetting !== null && <WhyNotBettingCard model=\{view\.whyNotBetting\} linked \/>/.test(detailPage),
       "");
     ok("2g.page · the account page draws the why-panel through ONE component, linked on the overview and unlinked above the rules form, and paints the empty sentence on its own branch",
       (detailPage.match(/<WhyNotBettingCard model=\{view\.whyNotBetting\} linked \/>/g) ?? []).length === 1
