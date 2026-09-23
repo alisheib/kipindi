@@ -165,7 +165,7 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
               so a screen reader was reading all twelve settlements TWICE, as if they were 24 events.
               `aria-hidden` on a `display: contents` wrapper removes it from the tree without moving a
               single pixel: the spans stay direct flex children of the track. */}
-          <span className="ticker-copy-dup" style={{ display: "contents" }} aria-hidden>
+          <span className="ticker-copy-dup" aria-hidden>
             <Items events={events} prefix="b" verbs={verbs} sides={sides} />
           </span>
         </div>

@@ -309,8 +309,17 @@ function ChatRootInner({
           via fixed coordinates: 16 px from edges, 80 px from bottom
           whenever the bottom rail shows, i.e. below 1024 (clears the
           64 px rail + 16 px gap). */}
+      {/* 🔴 D3 · `cm-fab` IS WHAT LETS THE BUBBLE GET OUT OF THE WAY. The bubble covers content on
+          nine surfaces — a ranked player's ROI on the leaderboard, the resolution criteria on a detail
+          page, a card title on home, the ⓘ plate and "Maelezo" on the board, the /results pager, a
+          /results filter control, the sort listbox, and the 404's third destination. `globals.css` hides
+          it while the page is scrolling and brings it back when the reader stops.
+          ⛔ `cm-fab--open` IS NOT DECORATION: a bubble that vanished while its own panel was open would
+          take the close control with it. The hide rule excludes this class and `:focus-within`, so a
+          keyboard user who has tabbed onto it never loses it either. */}
       <div
         ref={bubbleRef}
+        className={open ? "cm-fab cm-fab--open" : "cm-fab"}
         style={{
           position: "fixed",
           right: 16,

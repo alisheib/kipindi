@@ -54,7 +54,12 @@
   transform: scale(0.96);
   border-color: var(--pearl-soft);
 }
-.cm-bubble.cm-bubble-mobile { width: 52px; height: 52px; }
+/* 🔴 D3 · 52 → 44. The floating bubble is the only control on a phone that is BIGGER than the
+   44px floor, and it spends that extra 8px sitting on other people's content — measured on nine
+   surfaces. 44 is the floor itself, so nothing is traded away: it is still a full-size target.
+   ⚠️ The overlap is measured on the `::after` pulse ring, not on this box, so shrinking the box
+   alone was never going to be the whole answer — the hide-while-scrolling rule in globals.css is. */
+.cm-bubble.cm-bubble-mobile { width: 44px; height: 44px; }
 .cm-bubble::after {
   content: "";
   position: absolute;
