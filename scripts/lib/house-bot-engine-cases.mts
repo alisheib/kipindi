@@ -315,6 +315,29 @@ await guard("7", () => {
   ok("7.8 · a 4-minute-old observation → UD_STALE_PRICE", DE.udCloseness(udView(null).view, { price: 100, source: "observation", ageSec: 240 }, 25) === "UD_STALE_PRICE");
   ok("7.9 · a 100 s vendor bar is fresh and close enough", DE.udCloseness(udView(null).view, { price: 100.5, source: "vendor_bar", ageSec: 100 }, 25) === null);
   ok("7.10 · no targets → UD_NO_PRICE", DE.udCloseness(MV.projectMarketView(viewRow({ productLine: "UPDOWN", round: roundOf({ upTarget: null }) })), fresh, 25) === "UD_NO_PRICE");
+
+  /* 7.10a–7.10e · THE FLOOR UNDER THE CLOSENESS BAND (04 A15; UD_CLOSENESS_FLOOR_BPS).
+     The fixture is PRODUCTION's own, read 2026-09-23: BTC/USD, `marginBps = 0`, so `computeTargets` froze
+     the band at one tick — open 86,379.20, targets ±0.02. Before the floor these five all refused, which is
+     why a switched-on, funded, correctly-scoped desk placed nothing for 23 hours. */
+  const btcRound = (o: Any = {}) => MV.projectMarketView(viewRow({ productLine: "UPDOWN", selectionClosedAt: at(240), resolutionAt: at(900), exitGraceMin: 0,
+    round: roundOf({ chainKey: "BTC:5", openPrice: 86_379.20, upTarget: 86_379.22, downTarget: 86_379.18, ...o }) }));
+  const obs = (price: number) => ({ price, source: "observation", ageSec: 10 });
+  // 86,379.20 × 5/10_000 = 43.1896 → at 25% the bot may sit within 10.797 of the open.
+  ok("7.10a · ⭐ THE PRODUCTION SHAPE · a one-tick band (±0.02 on an open of 86,379.20) is floored to 43.19, so a $10 drift is ALLOWED at 25%",
+    DE.udCloseness(btcRound(), obs(86_369.20), 25) === null);
+  ok("7.10b · ⭐ DISCRIMINATES · the floor did NOT disable the guard — $50 of drift on the same round is still UD_CLOSENESS",
+    DE.udCloseness(btcRound(), obs(86_329.20), 25) === "UD_CLOSENESS");
+  ok("7.10c · the boundary binds on the floored band: 10.79 passes and 10.80 does not",
+    DE.udCloseness(btcRound(), obs(86_379.20 - 10.79), 25) === null && DE.udCloseness(btcRound(), obs(86_379.20 - 10.80), 25) === "UD_CLOSENESS");
+  /* ⛔ WITHOUT the floor this case is the whole finding: 100 is the HIGHEST `closenessPct` the field admits
+     (`FIELD_META["updown.closenessPct"]` is 0–100), and at 100 a one-tick band still only tolerated 0.02. */
+  ok("7.10d · ⭐ NO OFFICER SETTING COULD HAVE FIXED IT · at closenessPct 100, the field's maximum, a $10 drift is allowed only because of the floor",
+    DE.udCloseness(btcRound(), obs(86_369.20), 100) === null);
+  /* A FLOOR, NEVER A CAP: XAU/USD 15-min's real 5-bps band (2.16 on 4,323.36) exceeds the floor of 2.1617
+     by a hair, and the suites' own 4-on-100 band exceeds it 80×; both must keep deciding for themselves. */
+  ok("7.10e · ⭐ A FLOOR, NOT A CAP · a band that already describes its asset still binds — 4 on an open of 100 refuses +5 exactly as before",
+    DE.udCloseness(udView(fresh).view, fresh, 25) === "UD_CLOSENESS");
   const udRow = DE.decideCounter(ctrIn(udView(fresh)), { randomInt: minRand });
   ok("7.11 · the Up & Down COUNTER records its closeness skip", udRow.row && udRow.row.reasonCode === "UD_CLOSENESS", j(udRow.row));
 

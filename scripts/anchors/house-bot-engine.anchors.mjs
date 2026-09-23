@@ -819,4 +819,20 @@ export const MUTATIONS = [
     suite: "engine-mem",
     sections: "13",
   },
+  {
+    /* ⭐ THE 2026-09-23 DEFECT, PUT BACK. This is the line that kept a switched-on, funded, correctly-scoped
+       live desk from placing a single bet in 23 hours: A15 scaled "has the price run away?" by the round's own
+       winning margin, and BTC's chains carry `marginBps = 0`, so that margin was ONE TICK — 0.02 against an
+       open of 86,379.20. Removing the floor restores exactly that, and 7.10a is the production shape itself.
+       ⛔ 7.10b and 7.10e must STAY GREEN under this mutation: the guard still refuses $50 of drift, and a band
+       that already describes its asset is unchanged either way. A run that reds those instead is WRONG-ASSERTION. */
+    name: "ud-closeness-no-floor · the closeness band is the raw margin again, so a marginBps=0 chain demands the price sit within two cents and the desk never bets",
+    file: DECIDE,
+    from: `  const band = Math.max(margin, (r.openPrice * UD_CLOSENESS_FLOOR_BPS) / 10_000);
+  return Math.abs(price.price - r.openPrice) * 100 <= closenessPct * band ? null : "UD_CLOSENESS";`,
+    to: `  return Math.abs(price.price - r.openPrice) * 100 <= closenessPct * margin ? null : "UD_CLOSENESS";`,
+    expect: "7.10a · ⭐ THE PRODUCTION SHAPE · a one-tick band (±0.02 on an open of 86,379.20) is floored to 43.19, so a $10 drift is ALLOWED at 25%",
+    suite: "engine-mem",
+    sections: "7",
+  },
 ];

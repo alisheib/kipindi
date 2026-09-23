@@ -52,5 +52,15 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  * · 11.16a–e (5) · C8 minor M4: a `DB_TIMEZONE` boot refusal now records its CAUSE on the instance's own row,
  *   the beats carry it, the verdict names it ABOVE `STALE`, an ENV_DISABLED refusal records nothing (the
  *   CONTROL), and a boot that lands clears it.
- * What a run PRINTED: `0.mem · exit 0 · 789 passed` and `0.pg · exit 0 · 768 passed`, ALL PASS on both stores. */
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 789, postgres: 768 }, dbPrefix: "hb_engine" });
+ * What a run PRINTED: `0.mem · exit 0 · 789 passed` and `0.pg · exit 0 · 768 passed`, ALL PASS on both stores.
+ *
+ * ⭐ RAISED AGAIN 789 → 794 MEMORY / 768 → 773 POSTGRES, 2026-09-23 — five cases, +5 in EACH child:
+ * · 7.10a–e · THE FLOOR UNDER THE CLOSENESS BAND (`UD_CLOSENESS_FLOOR_BPS`). Read off PRODUCTION the same
+ *   day: a switched-on, funded, ACTIVE desk correctly scoped to BTC/USD 5, 10 and 15 had placed NOTHING in
+ *   23 hours, because those chains carry `marginBps = 0` and `computeTargets` floors the band at ONE TICK —
+ *   ±0.02 on an open of 86,379.20. A15 scaled by that, so it demanded the price sit within 0.005 of the open
+ *   at the default 25%, and within 0.02 even at 100, which is the highest the field admits. 7.10d is the case
+ *   that says so: NO officer setting could have fixed it. 7.10b and 7.10e are the discriminators — the guard
+ *   still refuses $50 of drift, and a band that already describes its asset still binds unchanged.
+ * What a run PRINTED: `794 passed` memory and `773 passed` Postgres, ALL PASS on both stores, 0 failed. */
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 794, postgres: 773 }, dbPrefix: "hb_engine" });
