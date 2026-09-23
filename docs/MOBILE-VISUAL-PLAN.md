@@ -30,20 +30,28 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ NEXT: Session S2 (continuing) → **U4** (the discovery bar on one control line). Read §5, §9 U4 AND its
-  "S2 prep notes" before touching code. Two things U4 must fix in its own commit, both already confirmed here:
-  · ✔ FIXED IN S2, and the prep note's diagnosis was WRONG in its mechanism. `red:filter-language`'s
-    `range-reverted` case anchored on `  min-height: 44px;` immediately followed by `}` — and PLAYER-FILTERS
-    (2026-09-09) inserted a comment and a `min-width: 44px` between them, so the anchor matched nothing.
-    ⛔ NOT a line-ending problem: `resolveAnchor` already normalises CRLF (`toEol`). Re-anchored on the unique
-    comment tail above the declaration, so a future declaration landing between the two cannot orphan it again.
-    ⛔ It never reported a false GREEN either — `injectDefect` THROWS on a missing anchor. What hid it is that
-    `red:filter-language` REFUSES to run at all while `test:filter-language` §6.6 is red, so a dead RED case sat
-    behind somebody else's failure. ⚠️ U4 still cannot exercise this harness until §6.6 lands (house-bots owns it).
-  · `qa:bar-geometry` OVERLAP and `qa:tap-truth` DISJOINT would both go red FALSELY on a one-line bar (a scrolled
-    strip's boxes must be clipped to their scroller first; `seen` includes scrolled-out chips).
-  After U4, S3 → U5 + U6.
-✔ LAST SESSION (S2, 2026-09-23): **U3 ✅** — the market card's rhythm became six `:root` tokens the card and the
+▶ NEXT: Session S3 → U5 (header pills + phone rhythm tokens) and U6 (home tightening, with D33 and D51).
+  Read §5 (hard rules) and §9 U5–U6 before touching code. Phase A and the first half of Phase B are done:
+  the switch exists, the card and the bar are Compact, and pinned chrome is 197.25 against a 201 target.
+  ⚠️ Still open and NOT U5's: `test:stacking` §5.2 (LocaleChangeOverlay in `src/lib/i18n.tsx` is a
+  non-portaled viewport-anchored `fixed` overlay inside route content — it is in `predeploy`), and
+  `test:type-scale` §3 (746 vs a ratchet of 744; ⛔ find the two, never bump the ratchet).
+✔ LAST SESSION (S2, 2026-09-23): **U3 ✅ and U4 ✅** — 4/40 — plus **D28 and D49 closed** and **D30
+  shipped early in the safe-fix lane**. The card's rhythm became six `:root` tokens the card and the
+  SKELETON both read; the bar went from two stacked control rows to one control line plus a count line.
+  Measured on production, before → after: card 353.5 → 301.5 (live+band), 347.44 → 303.44, 319.5 → 279.5,
+  312 → 264, 278 → 242; Up & Down 578.25 → 526.25 (`open`); bar 116 → 76.25; pinned chrome 237 → 197.25.
+  ⛔ D30 WAS REPORTED BY A REAL PLAYER — tapping the rail's More menu opened chat instead of the option.
+  It is a stacking-context defect: `.kp-rail` is `fixed z-40` and the panel is `absolute z-[50]` INSIDE it,
+  so the 50 never escapes, while the chat bubble is `fixed z-60` at the root. Raising the panel's own
+  number would have looked like a fix and done nothing; the RAIL takes rung 61 while its menu is open.
+  ⚠️ TWO TARGETS RESTATED IN §11 RATHER THAN MISSED QUIETLY: "every state ≥ 45px shorter" is arithmetic
+  the §9 rules cannot produce, and the Up & Down ≤ 430 is unreachable by spacing at all.
+  ⭐ THREE DEAD RED CONTROLS WERE FOUND AND REPAIRED (`287bc056`), two of them the responsible-gambling
+  session-limit doors, unable to inject since E-408 renamed what they anchored on. `red:rg-doors` 9/11 → 11/11.
+  👁 The shots were READ at 360 SW in both densities, and a 72-cell damage sweep over six routes × 320/360 ×
+  SW/EN/ZH × both densities found zero horizontal overflow and no collapsed or runaway card.
+✔ (S2 first half) **U3 ✅** — the market card's rhythm became six `:root` tokens the card and the
   SKELETON both read, so Compact is those numbers and nothing else; D28 (the share control reached 26 × 37px on
   every card) is fixed at 41–42 × 40 by stretching the box to the row it already sat in; D49 closed BY DESIGN on
   Ali's ruling; the Up & Down card gained `data-phase` and six class hooks. Measured, then re-measured:
@@ -229,7 +237,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U1 Baseline instrument + QA player | — | ✅ | S1 | `ba8f18e3` | no instrument, no production player → `qa:mobile-visual` over 315 production pages, §11 "Before" re-derived, baseline committed; "QA Mobile 01" minted | yes (RED=1 exits 1 on card heights; clean exits 0) | 2026-09-22 · production, served `feca192c` |
 | U2 Density setting + switch | Compact | ✅ | S1 | `e2ba9a3e` | no setting → the Card spacing switch (kp-density, served `data-density`, 44px row); zero diff vs the U1 baseline on 120 production pages, both densities | yes (density-contract RED 2/2; card-spacing step F fails with the re-sync off) | 2026-09-23 · production, served `e2ba9a3e` |
 | U3 Market card + Up & Down card + skeleton token | Compact | ✅ | S2 | `ea84e4a9` | market card 353.5 → **301.5** live+band · 347.44 → 303.44 cold start · 319.5 → 279.5 · 312 → 264 · 278 → 242; Up & Down 578.25 → **526.25** (`open`); share reach 26×37 → **41–42 × 40**; `/results` skeleton literal 220 → the closed-card token | yes (`qa:tap-hit` share section fails all 12 cells on the UNFIXED production tree naming 26×37 and the 6.5px gap; passes 42 controls here. `red:density-contract` 2/2 over a population that is real for the first time) | 2026-09-23 · production, served `ea84e4a9` |
-| U4 Discovery bar | Compact | ⬜ | S2 | | | | |
+| U4 Discovery bar | Compact | ✅ | S2 | `94a43227` | two stacked 44px control rows → **one control line + a ~17px count line**: bar **116 → 76.25px**, pinned chrome **237 → 197.25** (≤ 201), identical in SW/EN/ZH at 320 and 360; strip floor 160px held; the sort's listbox no longer runs 41–55px off-screen | yes (`RED_RAILMENU=1` fails 9/9 cells for D30; `red:density-contract` 2/2; the zero-diff breach in Comfortable was caught by measurement and fixed) | 2026-09-23 · production, served `94a43227` |
 | U5 Header pills + phone rhythm tokens | General | ⬜ | S3 | | | | |
 | U6 Home tightening | General | ⬜ | S3 | | | | |
 | U7 Chat bubble (D3) | General | ⬜ | S4 | | | | |
@@ -298,7 +306,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D27 | ⬜ | U16 |
 | D28 | ✅ `ea84e4a9` 2026-09-23 (live) | U3 |
 | D29 | ⬜ | U32 |
-| D30 | ⬜ | U33 |
+| D30 | 🔵 shipped `94a43227` 2026-09-23 (live) — a player reported it; the rail takes the menu rung while its menu is open, so the bubble takes 0 of 36 menu-row taps (was 3/5 on the last row) | U33 |
 | D31 | ⬜ | U34 |
 | D32 | ⬜ | U33 |
 | D33 | ⬜ | U6 |

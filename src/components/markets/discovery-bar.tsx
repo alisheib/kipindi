@@ -211,7 +211,7 @@ export function DiscoveryBar({
      */
     <div data-filter-rail className={QUERY_BAR_CLASS}>
       {/* ── row 1 · status · count ───────────────────────────────────────────────────── */}
-      <div className={QUERY_BAR_ROW1_CLASS}>
+      <div className={QUERY_BAR_ROW1_CLASS} data-bar-row>
         <QueryStrip ariaLabel={t.market.statusAria}>
           {statuses.map((s) => (
             <Chip
@@ -231,7 +231,7 @@ export function DiscoveryBar({
             seven columns with their own hide points (COMPONENTS §5). A toggle carrying that
             label while only restyling the cards would be a false promise, so it is recorded as
             an open item in PLAN-OF-RECORD §8.8 rather than half-built. */}
-        <QueryResultCount count={resultCount} phrase={resultPhrase} />
+        <QueryResultCount count={resultCount} phrase={resultPhrase} sortName={SORT_LABEL[state.sort]} />
       </div>
 
       {/* ── row 2 · sort + direction, then EITHER the phone sheet OR the desktop groups ──
@@ -257,7 +257,7 @@ export function DiscoveryBar({
           options and 0 of 8 topics reachable at 360px. ⛔ Every automated check passed while that
           was true; only OPENING the control found it. This row WRAPS, it does not scroll, on
           either axis — which is what lets sort keep its panel here at every width. */}
-      <div className={QUERY_BAR_ROW2_CLASS}>
+      <div className={QUERY_BAR_ROW2_CLASS} data-bar-row>
         {/* Choosing a new sort resets direction to null — that is why every option passes
             `dir: null`, and `SORT_NATURAL_DIR` then decides which way it arrives pointing. */}
         <QuerySort

@@ -99,7 +99,10 @@ export function MenuShell({
         <span className={cn("shrink-0 font-mono text-micro font-bold uppercase eyebrow text-text-subtle", labelClassName)}>
           {label}
         </span>
-        <span className="min-w-0 truncate text-[13px] font-semibold text-text">{value}</span>
+        {/* `kp-menu-value` names the VALUE so a host can address it. The Compact discovery bar
+            hides it at ≤ 639.98px and prints the same string on its count line instead — the
+            control cannot hold it and a 160px status strip at 360 in the same row. */}
+        <span className="kp-menu-value min-w-0 truncate text-[13px] font-semibold text-text">{value}</span>
         {count != null && (
           <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-text-faint">{count}</span>
         )}
