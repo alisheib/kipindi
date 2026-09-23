@@ -143,10 +143,29 @@ an already-saved 0 is only corrected when someone saves the Rules tab again.
    round-trip check is untouched, so nothing that would not parse back can be saved. Cases 1.626 + 2 controls.
 
 ▶ **WHAT IS STILL LEFT, and none of it blocks betting:**
-1. The two browser gates (`qa:desk-rules-flow`, `qa:house-bots-visual` at 360/1280, PNGs READ). The new panel
-   has never been SEEN — it is held by cases and by the build, which is not the same as looking at it.
+1. ✅ **CLOSED — THE PANEL HAS BEEN SEEN.** Photographed and measured at 360 and 1280 in three states (desk
+   off · nothing open · a populated reason list) on a local `next start` over a scratch cluster. The long reason
+   wraps to two lines at 360 with its count right-aligned and unclipped, which is what `min-w-0`/`shrink-0` was
+   chosen for. Both gates that should have covered it are extended so it STAYS covered: `qa:house-bot-panel-states`
+   gains `A-W1`/`R-W1`, and the served disclosure probe now derives query FLAGS the way it derives tabs.
+   ⛔ **THE PROBE'S BLIND SPOT WAS ITS OWN DOCUMENTED ONE:** it enumerated panels by `tab === "…"` and its note
+   said "any other shape leaves panels silently unrequested" — a flag-reached panel was exactly that shape, so the
+   surface painting the engine's refusal sentences was in NO served gate. Now: 3332 requests, 30 console
+   instances, 0 leaks.
+   ⚠️ **HOW TO RE-RUN IT** (nothing here is automatic yet): start the cluster with `KP_SCRATCH_PORT=5473 npx tsx
+   scripts/db-scratch.mts`, create a db, `npx prisma migrate deploy`, seed `seed-admin-local` →
+   `seed-house-bots-local` → `seed-house-bot-panels-local`, `npx next start -p 3021` with
+   `DISABLE_ADMIN_TOTP=true HOUSE_BOT_ENGINE=false`, then
+   `KP_BASE=http://127.0.0.1:3021 KP_ACTIVE_ID=<id> KP_REMOVED_ID=<id> KP_ONLY=A-W1 npm run qa:house-bot-panel-states`.
+   ⛔ **AND THE TRAP THAT COST THE MOST:** to make the account CONSIDER a market you must move its cutoff into the
+   FILL window, and `selectionClosedAt` is a **NAIVE** column while `plannableMarkets` casts its bounds
+   `::timestamp`. `now() + interval '25 minutes'` on a cluster whose zone is `Asia/Beirut` lands THREE HOURS
+   ahead of a UTC bound and the scan silently returns nothing — which reads exactly like "no market was open".
+   Use `(now() AT TIME ZONE 'UTC') + …`. See [[a-naive-timestamp-read-in-a-local-zone]].
 2. `red:house-bot-console` and `red:house-bot-engine` have not been driven WHOLE since this work. The seven new
    mutations were each driven with `--only` and all seven were caught; the full fleet is the outstanding run.
+   ⚠️ It is ~1 min per mutation memory-only, so the console fleet alone (315) is ~5 hours — a scheduled run,
+   not a session-end one. Do not read "not driven whole" as "not driven".
 3. ⚠️ `qa:house-bot-fleet` ran **363/364 then 364/364 on the same commit** — lane E's "exactly ONE placed
    alert" is racy across lanes. A gate that can lie in either direction.
 4. ⚠️ `test:red-anchors` §4.1/4.2 are RED on a ratchet that **predates this branch**: 67 harnesses do not declare
