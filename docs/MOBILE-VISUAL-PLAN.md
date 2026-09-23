@@ -665,6 +665,20 @@ own words beneath it.**
   market card already ships exactly this shape in `.mcardp-q-sw` (`globals.css:4027`), the original with its
   translation beneath. No law is overturned, the type spec is untouched, and the default reader is served.
   Owned by **U6**; `IDENTICAL_OK` stays as it is, because the headline key itself does not change.
+- ⛔ **THE ACCENTS ARE PAINTED BY A REGEX OVER THE SHIPPED SENTENCE, AND IT ONLY KNOWS ASCII.**
+  `landing-hero.tsx:56-61` renders the headline as `text.split(/\b(YES|NO)\b/g)` and colours the two
+  captured tokens with `--hero-yes-accent` / `--hero-no-accent`. So the green/red is not in the string and not
+  in the CSS — it is in a matcher that recognises the literal words YES and NO. **Translate the line and the
+  outcome inks vanish silently**, and §6 below is why nobody would notice: no guard asserts the headline's
+  language or its accents. The sub-line this ruling adds must carry its OWN tokens (NDIO/HAPANA, 是/否) or it
+  will render as flat text while looking correct in review.
+- ⚠️ **AND NOTHING IS STOPPING A FUTURE SESSION FROM JUST TRANSLATING IT.** `IDENTICAL_OK` is an EXEMPTION from a
+  "sw/zh must differ from en" check (`i18n-parity.test.mts:113-115` filters `loc.get(k) === v && !IDENTICAL_OK.has(k)`),
+  not an assertion that the value IS English. Translating the headline would therefore pass `test:i18n` cleanly,
+  lose the inks, and overturn a DESIGN_AUTHORITY ruling — all three silently. U6 adds the guard that closes this:
+  the headline is English in all three locales AND both accent tokens still match.
+- 📍 Path correction for whoever follows the citation: **`design-brief/PLAN-OF-RECORD.md` is at the repo ROOT**, not
+  under `docs/`. The authority is real; only the path written in earlier notes was wrong.
 
 **13. Item 6 — a market with one bet states certainty. RULED: a price needs two sides.**
 - 🔴 Live on production, 2026-09-23, in the default language: *"Je, Manchester City wata shinda Premier League
