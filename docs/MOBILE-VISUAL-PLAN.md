@@ -1,6 +1,6 @@
 # MOBILE VISUAL PLAN — 50pick on a phone
 
-> **STATUS: 🟠 PLAN v3 — approved by Ali 2026-09-15; seven-lens review (§13), a full element inspection (§3a) and a professional critics panel (§3b) folded in 2026-09-16. In progress since 2026-09-22 — the tally is §1 (U1 shipped: the baseline instrument).**
+> **STATUS: 🟠 PLAN v3 — approved by Ali 2026-09-15; seven-lens review (§13), a full element inspection (§3a) and a professional critics panel (§3b) folded in 2026-09-16. In progress since 2026-09-22 — the tally is §1 (S1 done: U1 the baseline instrument, U2 the Card spacing switch).**
 > This file is a RECORD and a WORK ORDER, **not** design law.
 > The law is [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md); token values live only in `src/app/globals.css`. This file mints no
 > law. Where it quotes a number, the number is a measurement with a date or a target with its arithmetic, never a definition.
@@ -30,44 +30,34 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ NEXT: finish Session S1 → U2 (density setting + switch, no visual change). Then S2 → U3 + U4.
-  ⚠️ U2 IS IN FLIGHT on branch `mobile-visual` — resume it from the HALF-DONE checklist below; do not start it again.
-  Read §5 (hard rules) and §9 U2 before touching code.
+▶ NEXT: Session S2 → U3 (Compact market card + Up & Down card + skeleton token, with D28; D49 is BY DESIGN — §4 item 11)
+  and U4 (the discovery bar on one control line). Read §5, §9 U3–U4 AND their "S2 prep notes" before touching code:
+  the notes correct stale line numbers and show which written targets cannot be met as written (restate them in §2 first).
 
-✔ LAST SESSION (S1, 2026-09-22, still open): U1 ✅ — the baseline instrument `qa:mobile-visual`, the production QA player
-  "QA Mobile 01", the §11 "Before" column re-derived from 315 production pages, and the compared numbers committed as the
-  baseline every later unit diffs against (§2). U2's code is written and reviewed on branch `mobile-visual`.
+✔ LAST SESSION (S1, 2026-09-22 → 23): U1 ✅ and U2 ✅ — the phone instrument `qa:mobile-visual` with its committed baseline,
+  the production QA player "QA Mobile 01", and the Card spacing switch (Privacy v2026-09-22, approved by Ali). Nothing looks
+  different yet: U3/U4 add the first Compact rules, which `test:density-contract` fences (§2 S1).
 ✔ BEFORE IT (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
   experience 5–6.5/10 in Swahili (the Seal's baseline); 12 new defects D42–D53; owner items 6–9; the panel and
   its capture stored in the repo so the Seal can repeat them exactly. No product code changed.
 ✔ AND (S0c, 2026-09-16): plan v3 — the 718-finding element inspection (§3a, record in
   MOBILE-VISUAL-FINDINGS-2026-09.md), units U31–U40, defects D28–D41, §0a the session prompt, §1a closure,
-  and the tracker guard test:mobile-visual-plan (379 checks, RED 19/19) — which then caught six ownership
-  errors in this very plan. One product fix shipped in the safe-fix lane: D7 (a25c127b, live).
+  and the tracker guard test:mobile-visual-plan (RED 19/19). One product fix shipped in the safe-fix lane: D7 (a25c127b, live).
   D8 and D15 were examined in that lane and deliberately left — the reasons are written in U20 and U27.
   (S0b, 2026-09-15: the seven-lens review, U21–U30, D10–D27, §8a, §8b. S0, same day: the first plan,
   the owner rulings in PLAN-OF-RECORD §8.8, the NEXT-PLAN board.)
 
-◐ HALF-DONE — S1 IS IN FLIGHT (started 2026-09-22 on ALI-BLADE15). EVERY LINE OF IT IS ON GITHUB, branch `mobile-visual`:
-    git fetch origin && git log --oneline origin/main..origin/mobile-visual
-  Resume on ANY PC: `git worktree add ../kipindi-mobile mobile-visual` (or `git checkout mobile-visual`; if the local branch is
-  missing: `git worktree add -b mobile-visual ../kipindi-mobile origin/mobile-visual`), `npm ci`, `npx prisma generate`, read the
-  newest commit messages on the branch, then continue at the first unchecked box:
-    [x] U1 driver `qa:mobile-visual` (scripts/live/mobile-visual-drive.mjs) + `ops:mint-qa-mobile`
-    [x] U1 QA player MINTED on production 2026-09-22 20:37 UTC — "QA Mobile 01", usr_ffb3c5cdd44a35cfca12125a, +255712000110,
-        qa.mobile01@50pick.test (Ali's choice; it does not deliver), PLAYER, wallet 0, never funded.
-        ⚠️ Its password lives ONLY in the gitignored `.env.qa.local` of C:\kipindi-mobile on ALI-BLADE15. Another PC: copy that
-        line; if it is lost, ⛔ never re-mint 01 — run signed-out + local (/auth/demo), or mint "QA Mobile 02" (+255712000111).
-    [x] U1 production baseline → committed as scripts/live/baselines/mobile-visual-U1-{guest,mobile01}.json; §11 "Before" re-derived
-    [x] U1 RED control: `RED=1 COMPARE=<baseline>` exits 1 on the card heights (320 → 373); the clean control exits 0
-    [x] U1 docs + push to main; its §1 row ✅
-    [x] U2 code (card-spacing.ts, layout, nav-more row, decorative Toggle, i18n ×3, Privacy v2026-09-22 approved by Ali,
-        test:density-contract + red), and the six fixes of its adversarial review (see the branch's commit log)
-    [x] U2 gates (typecheck 0, build, the predeploy guards it touches, test:all vs clean main), local drive + screenshots (qa:card-spacing
-        50/0 signed out, 51/0 signed in, SW/EN/ZH, reload keeps the choice, the refresh race RED-proven, 360×400), pushed to main
-    [ ] U2 production re-measure (qa:card-spacing on www, signed out and as mobile01; qa:mobile-visual COMPARE= against the U1
-        baseline in both densities = the zero diff), then its §1 row ✅ and NEXT → S2
-  Parallel-session rules in force on ALI-BLADE15 (house-bots desk session): own worktree, ports 5463/3041, heavy Node via
+◐ HALF-DONE: S1 is closed and merged to main. Start S2 from `origin/main` on any PC (a new branch or worktree off it).
+  ONE small item first: `origin/mobile-visual` carries a single unmerged commit, `f80f1d33` — `test:revoked-deadend` sets
+  `kp-locale=en` on every context (its six English copy checks have read Swahili pages since 8822b648; found by S1's test:all).
+  It is UNVERIFIED: boot next dev, run `BASE=http://localhost:<port> npm run test:revoked-deadend` (40/6 → 46/0), then push it
+  to main — a test-only change, no product code. Two things that do NOT travel through git:
+  · the QA player's password — "QA Mobile 01" (usr_ffb3c5cdd44a35cfca12125a, +255712000110, WHO=mobile01) signs in only with the
+    `QA_MOBILE01_PHONE` / `QA_MOBILE01_PASSWORD` lines of `.env.qa.local` in C:\kipindi-mobile on ALI-BLADE15. Copy those two lines
+    into the new checkout's `.env.qa.local`; if they are lost, ⛔ never re-mint 01 — mint "QA Mobile 02" (+255712000111) with
+    `ops:mint-qa-mobile` after editing its persona, or run signed-out + local (/auth/demo) only;
+  · the frames and full JSON under `.qa-shots/` (gitignored) — the COMPARED numbers are committed in scripts/live/baselines/.
+  On ALI-BLADE15 only: a parallel house-bots session shares the machine — own worktree, ports 5463/3041, heavy Node via
   `bash ~/heavy-node-lock.sh run mobile <cmd>`, never `git add -A`, merge origin/main (never rebase) before pushing <sha>:main.
 ⚠️ U31 carries a real backlog: 379 of the 718 findings are still UNVERIFIED
   (usage limits stopped the verifiers for surface groups S07–S13). Treat them as leads, not facts.
@@ -205,7 +195,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | Unit | Kind | Status | Session | Commit | Before → After (measured) | Guard RED-proven | Live ✅ (date) · notes |
 |---|---|---|---|---|---|---|---|
 | U1 Baseline instrument + QA player | — | ✅ | S1 | `ba8f18e3` | no instrument, no production player → `qa:mobile-visual` over 315 production pages, §11 "Before" re-derived, baseline committed; "QA Mobile 01" minted | yes (RED=1 exits 1 on card heights; clean exits 0) | 2026-09-22 · production, served `feca192c` |
-| U2 Density setting + switch | Compact | ⬜ | S1 | | | | |
+| U2 Density setting + switch | Compact | ✅ | S1 | `e2ba9a3e` | no setting → the Card spacing switch (kp-density, served `data-density`, 44px row); zero diff vs the U1 baseline on 120 production pages, both densities | yes (density-contract RED 2/2; card-spacing step F fails with the re-sync off) | 2026-09-23 · production, served `e2ba9a3e` |
 | U3 Market card + Up & Down card + skeleton token | Compact | ⬜ | S2 | | | | |
 | U4 Discovery bar | Compact | ⬜ | S2 | | | | |
 | U5 Header pills + phone rhythm tokens | General | ⬜ | S3 | | | | |
@@ -602,6 +592,9 @@ sign-in screen is "the most assured screen in the set". §8a already protects th
    *"would let a player permanently hide the reason their deposit will be refused"*), and it reads first by design (`app-shell.tsx:334-336`).
    So it keeps first place and non-dismissibility, and the **away summary waits** until the email bar is collapsed or absent.
 10. **Scope:** the plan also covers toasts, popups/sheets, questions, celebrations, warnings, notifications and detail pages. Name: Mobile Visual Plan.
+11. **D49 — the sparkline band (Ali, 2026-09-23, asked explicitly):** *keep it where data exists.* The band stays only on markets with
+    real history (the card's existing rule: 4+ points in the last 7 days), trimmed 28 → 20 on phones in Compact; two card heights in
+    one list are accepted as honest. D49 closes as **by design** when U3 ships — U3 does not reserve band space or remove the band.
 
 **⚖️ Decision 1 supersedes the 2026-08-13/14 deferral** "compact list / density toggle" (`NEXT-PLAN.md` "ruled out" line;
 `design-brief/PLAN-OF-RECORD.md` §8.8). It stays honest to that deferral's reason: the switch is labelled **"Card spacing"** (never "list
@@ -860,6 +853,31 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - (taste, critics panel) The card watermark sits at about 1% contrast and does no work; the art director would delete it. For the phase
   sign-off, not a session.
 
+- **S2 prep notes (mapped read-only 2026-09-23; re-check the lines before editing):**
+  - Lines moved: the last card rule is `.mcardp-share::after` at `globals.css:5130-5137` (not ≈5115); `.mcardp-spark` 3947/3962,
+    `.mcardp-traders` 3948/3952; the Up & Down `<article>` is `updown-card.tsx:741-742`; D52's pair is at 1138-1140.
+  - Pinned text a Compact block must not duplicate: `tap-rung.anchors.mjs` (`box-sizing: border-box; width: var(--h-control-md); …` —
+    exactly once, comments included), `card-share.anchors.mjs` (a column-0 `.mcardp-share::after {` + 2-space body), `test:tap-target`
+    §6 (the first column-0 `.mcardp-info {`), `test:betting-ink` (the first `.mcardp-meta .live`). Indent the Compact block.
+  - Token route for the skeletons (no second hand-typed number): card rhythm tokens on `:root` (`--mcard-pt/gap/act-mt/act-mb/
+    traders-h`) consumed by the base rules (a zero diff), Compact overrides ON `html` itself (a var() resolves where declared), and
+    `--mcard-h` / `--mcard-h-closed` as `calc()` of them; skeletons read `h-[var(--mcard-h)]`. `updown/loading.tsx` and
+    `app/loading.tsx` are NOT market cards — keep them off `--mcard-h`.
+  - The footer has no class (`market-card.tsx:477`, `gap-2` = 12px, pinned by `card-share.test.mts:57`): restore its 10px with
+    `html:not([data-density="comfortable"]) .mcardp-meta { margin-bottom: 4px }` rather than a TSX hook.
+  - ⚠️ "every state ≥ 45px shorter" is arithmetic the listed deltas cannot meet for three shapes (live no-band −40, fresh −44,
+    closed no-band −36); "≤ 305 live priced" holds (302). Restate the per-state target in §2 before shipping.
+  - D28: 40 × 40 CENTRED does not fit — Details is 12px away and the card clips at its 13px padding. Grow the reach lopsided
+    (e.g. left −15, right −12) and prove it with elementFromPoint at the share centre + four inset corners in ZH too; editing the
+    base `::after` changes `card-share.test.mts` §4's `-9px/-14px` literals in the same commit (B10).
+  - D49 is BY DESIGN (§4 item 11): keep the band where data exists, trim 20px in Compact; no reserved space, no removal.
+  - The Up & Down card cannot reach ≤ 430 in every state by spacing alone (SW open guest ≈ 464 at best; signed-in open needs
+    −230). Add `data-phase={podPhase}` to its article (zero diff) so the target and the driver key on the state, and restate the
+    target per phase in §2. Its inner blocks need class hooks (lines 814, 864, 891, 934, 976, 1206 are unpinned); the action
+    block's inline `paddingTop: 12` must move to a class; red anchors pin lines 768, 850, 902, 1022 byte for byte.
+  - Known-broken instruments (not U3's to fix, but do not trust them): `qa:card360` (signs in as the deleted `fleet:01`, and its
+    ` est.` regex predates E-196); `qa:card-share-glow` (signs in as the deleted `alpha`). `qa:tap-hit` has no share probe.
+
 **U4 · [Compact] Discovery bar (still sticky, still one tap)**
 - `src/components/ui/query-bar.tsx:53-165` + CSS via a `data-bar-row` hook: rows become `display:contents` in a grid, giving one control line
   `[strip][sort][dir][filters]` and a ~16px count line ("25 markets · Biggest pool", still the single `data-result-count`). Only the strip scrolls.
@@ -872,6 +890,21 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - 📐 (critics panel, taste — art direction and layout) The pinned bar cuts the board's loudest objects mid-control as they scroll under it —
   a card's YES/NO buttons sliced in half — with no fade and no elevation edge to say "this passes beneath". Whatever height this unit lands on,
   the bar's lower edge carries a short fade or a hairline shadow so content visibly goes under it rather than being guillotined.
+
+- **S2 prep notes (mapped read-only 2026-09-23; re-check the lines before editing):**
+  - CSS alone cannot do it at 360: strip ≥ 160 + sort + direction + Filters leaves ≤ 25px for the sort's value, so the active sort's
+    name must move to the count line — an optional prop on `QueryResultCount` (still ONE `data-result-count`). Opt `/markets` in
+    with `data-bar-row` on the two row divs of `discovery-bar.tsx` (the same primitives drive 12 other bars — do not re-lay them),
+    and give the MenuShell value span a `kp-menu-value` class. Grid: `minmax(0,1fr) auto auto`, rows `display: contents`, all
+    rules sharing one `:has(> [data-bar-row])` gate; move the sort listbox to the bar's right edge (it would clip at x ≈ 424).
+    Projected bar ≈ 77px → pinned chrome ≈ 198 ≤ 201.
+  - The bar lives in `discovery-bar.tsx:212-405`, not `query-bar.tsx:53-165`. Byte-pinned lines: `query-bar.tsx:54` (sticky class),
+    `:307` (sort summary), `:331` (direction link), `:416` (desktop group). Never write `min-height: 44px;` right before `}`.
+  - Two live guards would go red FALSELY on the one-line layout — fix them in the same commit: `qa:bar-geometry` OVERLAP (clip each
+    scrolled box to its scroller first) and `qa:tap-truth` DISJOINT (its `seen` includes scrolled-out chips).
+  - Probably already red on main, before U4: `red:filter-language` case "range-reverted" anchors on `  min-height: 44px;\n}`,
+    which no longer exists (`f883a104`). Confirm by running it; repair its anchor.
+  - The hairline: copy the header's recipe (`1px var(--border)` + `--shadow-2` under `[data-scrolled]`, no transition), gated.
 
 **U5 · [General] Header pills + phone rhythm tokens**
 - CSS only, inside the existing `@media (max-width:639.98px)` E-276 block (`globals.css:3388`): `.kp-auth-cta { height: var(--h-control-sm) }`
