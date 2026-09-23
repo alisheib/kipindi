@@ -5,7 +5,7 @@ Endpoints: `POST /api/sms/send` · `POST /api/account/balance` (Swagger: `bulk-a
 Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib/server/sms.ts`
 (facade), `src/app/api/webhooks/blackball/route.ts` (delivery receipts).
 
-## Status — 2026-09-22
+## Status — 2026-09-23
 
 | | |
 |---|---|
@@ -15,7 +15,7 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
 | Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 four times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55 and 08:28 UTC) — **9 of 9** sends used; the ceiling went 6 → 7 → 8 on Ali's instructions to validate the vendor's successive claims. ⭐ Ali confirms the handset RECEIVES every one of them |
-| Delivery callback | 🟠 **channel PROVEN 2026-09-22, the callback itself still never fires** (§4.6) — their manual POST reached us and was recorded; the same request with the right token answers `{"status":"Ok"}`. What has never happened is the gateway sending one BY ITSELF. Previously: 🔴 **not received** — re-tested 2026-09-17, twice on 2026-09-21 **after the vendor said our URLs were whitelisted**, and again 2026-09-22 **after they said they had changed the callback**: still not one POST (§4.3–§4.5) |
+| Delivery callback | ✅ **WORKING since 2026-09-23 03:46:48 UTC** — the gateway called us BY ITSELF with three receipts in one POST, each echoing OUR `sms_…` reference, `DELIVRD` / `Success` (§4.7). ⚠️ One link is still unproven: a receipt SETTLING a real `SmsMessage` row, because nothing in production sends yet |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
 | Balance | TZS 196 |
 
@@ -122,7 +122,9 @@ wrong token → 401, the portal URL → `200 {"status":"Ok"}`.
 
 ### The status vocabulary
 
-**Observed:** `DELIVRD` / `Success` (first live send, portal Out SMS).
+**Observed:** `DELIVRD` / `Success` — first in the portal's Out SMS, and since 2026-09-23 **in real
+callbacks** (§4.7), which also settles that their example's `DELIVERD` spelling was a typo in the email
+and not what the gateway sends.
 
 **The vendor's official list** (their developer, by email, 2026-09-17) — every token already maps, checked
 by running each through the real `mapDlrStatus()`:
@@ -320,6 +322,36 @@ zero rows while the plain form returned thousands. ⛔ So the edge log can only 
 watch — never to prove that something did not arrive two hours ago. The durable instrument is the audit
 chain: every POST that reaches the app writes a row, `webhook.blackball.rejected` included, which is
 exactly how their 12:29:44 attempt was caught.
+
+### 4.7 ✅ 2026-09-23 — it fired, by itself, and the reference echoes
+
+After the token was corrected (their POST answered `200 {"status":"Ok"}` at 2026-09-22 13:21:40 UTC,
+recorded here as `sms.dlr.unknown_reference` for `sms_1e96dca904c66bc4154acfbb`), the gateway began
+sending on its own. At **03:46:48 UTC** a single callback arrived carrying **three** status lines:
+
+```
+03:46:48.284Z  sms.dlr.unknown_reference  sms_7166e21d7213fee54a288e17  DELIVRD / Success
+03:46:48.310Z  sms.dlr.unknown_reference  sms_cf102b4e4b31c69c7c7ac433  DELIVRD / Success
+03:46:48.351Z  sms.dlr.unknown_reference  sms_1e96dca904c66bc4154acfbb  DELIVRD / Success
+03:46:48.375Z  sms.dlr.received           {"lines":3, …, "unknownRef":3}
+```
+
+Nobody typed that, at 06:46 EAT, and it was the queued backlog of three earlier drive sends. It settles
+three open questions at once:
+
+1. ⭐ **The callback fires automatically** — the one thing eleven test messages had never produced.
+2. ⭐ **It echoes OUR reference**, not an internal id. §3's warning about their 23-character example
+   was right to be raised and is now answered: matching works.
+3. ⭐ **The documented batch shape is real** — `{statuses:[…]}` with several lines in one POST, handled
+   line by line exactly as the receiver was built to.
+
+⚠️ **`applied: 0` is CORRECT here and must not be read as a failure.** The drive sends from a local
+process and deliberately writes no production `SmsMessage` row (§ *Where the receipts go*), so every
+reference is legitimately unknown to production and the receiver acks and audits it. 🔴 **The last link
+is therefore still unproven on production: a receipt moving a real row to DELIVERED.** Only two paths
+can create that row — phone-code login (`OTP_ENABLED` unset, deliberately) and invite campaigns (refusing
+while the bonus is withdrawn) — so it lands with the first genuine production send, whichever ships
+first. The behaviour itself is covered by `test:sms-dlr` on both DALs; what is missing is the live case.
 
 ⚠️ **ONE INSTRUMENT IS STILL MISSING, AND IT IS THE LAST PLACE A BLOCK COULD HIDE.** Railway's HTTP log
 sits BEHIND Cloudflare, so a request Cloudflare refuses never appears in it — identical, from here, to a
