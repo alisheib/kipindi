@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
+import { MARKET_CARD_H_CLOSED } from "@/components/markets/card-geometry";
 import { Chip } from "@/components/ui/chip";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { TippingBar } from "@/components/brand";
@@ -621,7 +622,7 @@ function ResultsSkeleton() {
               <div
                 key={i}
                 className="rounded-md border border-border bg-bg-elevated overflow-hidden kp-shimmer-track"
-                style={{ height: 220 }}
+                style={{ height: MARKET_CARD_H_CLOSED }}
               >
                 <div className="p-4 space-y-3">
                   <div className="flex items-center gap-2">

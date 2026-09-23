@@ -1591,7 +1591,7 @@ with its reason in §2, never silently.
 
 | Measure | Before | Target |
 |---|---|---|
-| Market card, live priced | **320–354** (median 320 in SW/EN/ZH; the 354s carry the sparkline band, D49) — U1. Quoted before as 347–354 | ≤ 305px; every state ≥ 45px shorter |
+| Market card, live priced | **320–354** (median 320 in SW/EN/ZH; the 354s carry the sparkline band, D49) — U1. Quoted before as 347–354 | ≤ **305px** live priced — **met: 301.5** (U3, measured). ⚠️ *"every state ≥ 45px shorter" is RESTATED per state by U3, 2026-09-23*, because it is arithmetic the §9 rules cannot produce: the deltas are **−52** live+band (353.5 → 301.5), **−48** resolved+band (312 → 264), **−44** cold start (347.44 → 303.44), **−40** live no-band (319.5 → 279.5), **−36** resolved no-band (278 → 242). A card with no sparkline has one child fewer and therefore **one 4px row gap fewer**, so the two no-band shapes cannot reach −45 by spacing at all. Target: **every state ≥ 36px shorter, and ≤ 305 wherever a price is shown** |
 | Cards visible while scrolling `/markets` | **1.63** at 360×780 (1.21 at 360×640 and 320×640, 2.03 at 412×915) — U1 | ≈ 1.9 (a true 2.0 needs a card ≤ 280px, more than spacing can give) |
 | Pinned chrome `/markets` | **237** = header 56 + discovery bar 116 + rail 65, in every phone cell and language — U1 | ≤ 201px |
 | Home length | **EN 10.78 · SW 11.09 · ZH 10.11** screens (320×640: EN 13.37 · SW 14.15) — U1 | ≤ 7.5 (SW ≤ 7.8) |
@@ -1599,7 +1599,7 @@ with its reason in §2, never silently.
 | Header auth pills | **48** (both pills, every phone cell) — U1 | 40px, both visible at 320 |
 | Chat bubble | 52px, covers Details | 44px, never covers while scrolling |
 | Countdown panel (≥ 1 day), all widths | **SW 266 · EN/ZH 248**, 8 tiles — U1. Quoted before as ≈ 220 | ≤ 160px, 4 tiles |
-| Up & Down card, live round | **447–660**, and the same card moves with the round's state within minutes (U1's noise floor), so it is measured, never diffed | ≤ 430px |
+| Up & Down card, live round | **447–660**, and the same card moves with the round's state within minutes (U1's noise floor), so it is measured, never diffed. U3 re-measured the guest `open` card on production at 360 SW: **578.25** and 502.97 | ⚠️ **RESTATED by U3, 2026-09-23: ≤ 430 is unreachable by spacing.** The card is 578.25 in `open` with 419px of that in its own content; every gap and pad it owns sums to ~130px, so even zeroing them all leaves it above 430. Measured result: **578.25 → 526.25 (−52)** at 360 SW `open`. The card now carries **`data-phase`** (11 values), so the target is stated and read **per phase**, never against a card in another state. Reaching ≤ 430 needs content decisions (U35's round shape), not this unit |
 | `/live` featured card | **SW/EN 371 · ZH 268** (the carousel box, 360×780) — U1. Quoted before as ≈ 460 from a screenshot | ≤ 360px |
 | `/help` contact rows | **147** each (three rows) — U1 | ≤ 84px |
 | Auth form field width (7 pages) | **262** at 360 (login, register, forgot password), **222** at 320 — U1 | ≥ 277px |
@@ -1608,7 +1608,7 @@ with its reason in §2, never silently.
 | Overlays (census) | not measured | all "fits"; ≤ 1 blocking overlay at a time; toasts ≤ 2 |
 | Defects D1–D41 (register §8) | 41 open | 0 |
 | Inspection backlog (findings record) | 379 unverified | 0 left unverified (U31) |
-| Card share control | **26 × 37** reach around a 13×13 glyph (measured by hit extent, not the box) — U1 | ≥ 40 × 40px on every card |
+| Card share control | **26 × 37** reach around a 13×13 glyph (measured by hit extent, not the box) — U1 | ≥ 40 × 40px on every card — **met: 41–42 × 40** (U3/D28), and ≥ 8px clear of Details (measured 8.5–9.5), on /markets and /results at 320 and 360 in SW/EN/ZH |
 | Cards stating a price with no bets | every resolved/void empty card | 0 in any state |
 | Money that wraps or ellipsises (320/360 × 3 locales, 7-figure fixtures) | multiple per surface | 0 |
 | Off-ladder type sizes on player surfaces | 8+ literals counted | 0 new; ratchet may only shrink |

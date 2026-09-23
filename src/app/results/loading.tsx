@@ -1,5 +1,6 @@
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { MARKET_CARD_H_CLOSED } from "@/components/markets/card-geometry";
 
 export default async function ResultsLoading() {
   const { t } = await getServerT();
@@ -22,7 +23,7 @@ export default async function ResultsLoading() {
       {/* Card grid skeleton */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" aria-hidden>
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-md border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 220 }}>
+          <div key={i} className="rounded-md border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: MARKET_CARD_H_CLOSED }}>
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="h-4 w-14 rounded-pill bg-bg-overlay" />
