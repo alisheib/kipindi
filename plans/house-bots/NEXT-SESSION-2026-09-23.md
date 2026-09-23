@@ -53,11 +53,11 @@ the 20-row page and the DAL's 500-row clamp). ⛔ Production was never touched.
 
 ## 3 · Where to resume
 
-1. **Fix L1–L5 and the rest of register C8/D9/A5** (§3, §4, §6 of the 2026-09-23 prompt).
-2. Fold the editor's browser round trip (§2b above) into `qa:desk-rules-flow` as permanent cases.
+1. ✅ **L1–L5 are fixed and LIVE** (see §5 for what remains). L3 and L4 were exactly as measured; L2 was wider than the register said; L5 turned out to be a control with no dialog by design — the cancel is the row own control.
+2. ✅ DONE — `qa:desk-rules-flow` §9b, 76/76.
 3. Lane hygiene (register E): lane E's seven SILENT-only assertions, lane M's `dayKey` across 21:00 UTC,
    `qa:house-bot-fleet` into the house verify ladder.
-4. The closing ladder on ONE tree, the visual gate at 360/1280 with the PNGs READ, docs + PROGRESS, then
+4. ✅ DONE — every gate green on the merge commit, main pushed live (`b8615d28`), the deploy verified and production read. The closing ladder on ONE tree, the visual gate at 360/1280 with the PNGs READ, docs + PROGRESS, then
    `main` as a pure ref update from `C:/kipindi-main`, the deploy verified and production read.
 
 ## 4 · How to stand the instruments up again
@@ -76,3 +76,24 @@ DATABASE_URL='postgresql://postgres:scratch@127.0.0.1:5453/hb_desk' USE_PRISMA_D
 (mobile visualisation) is working in parallel on its own worktree, ports 5463/3041.
 ⛔ **A `red:*` gate MUTATES tracked files in place**: it refuses to run on a dirty tree, and two at once in one
 tree is how a live guard is left disabled while the harness reports clean.
+
+## 5 · WHAT IS STILL OPEN after the 2026-09-23 live push (b8615d28)
+
+Everything the brief called a blocker is shipped and live. These are the named minors that are not:
+
+| # | Item | Register |
+|---|---|---|
+| M1 | The engine notice compares DB-stamped beats with the web containers own clock — it should read dbClock() in the settled read | C8 minor |
+| M2 | An unreadable custom from/to is answered silently with 24 h under Custom; it should be REFUSED in the existing Callout | C8 minor |
+| M3 | The kits range picker defaults to to 23:59 and bounds days by the browsers zone, not EAT | C8 minor |
+| M4 | A DB_TIMEZONE boot refusal is invisible beyond not running | C8 minor |
+| M5 | An empty Targets table keeps its header floors (LAST CHAN) | D9 minor |
+| M6 | A removed accounts History subject cell prints the event word instead of a subject | D9 minor |
+| M7 | The why-panel repeats a fact the Callout already states on a fresh account | D9 minor, 432(n) |
+| M8 | The Start dialogs Confirm permission link lands on the overview, not a focused re-verify | A5 minor |
+| M9 | Lane E: seven assertions have no discriminating engine mutation (SILENT red only) | E |
+| M10 | Lane M: dayKey goes null when placements straddle 21:00 UTC | E |
+
+⚠️ **And one finding outside this programme, left for its owner:** scripts/anchors/rg-doors.anchors.mjs has
+**2 anchors that no longer resolve**, so red:rg-doors is measuring nothing on them. It is not in the house
+ladder, so it was reported rather than fixed here.
