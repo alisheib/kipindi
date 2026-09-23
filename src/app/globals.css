@@ -1383,8 +1383,29 @@ body {
   animation: ticker-scroll 70s linear infinite;
   will-change: transform;
 }
+/* The clipping box around the marquee. ⛔ It used to carry `overflow: hidden` as an INLINE style, which
+   no rule can override — so the calm branch below could not turn it into a scroller. Moved here. */
+.ticker-viewport { overflow: hidden; }
+
+/* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
+   `animation-play-state: paused` stops the marquee at frame 0, and frame 0 is not a readable state: measured
+   on production at 360, the clipping window is 245px against a track of 27,440px, entry 1 alone is 1,045px, and
+   the window held `TZS 10K completed YES on` — a sum of money and an outcome, stopping before it names the
+   market. There was no scrollbar, no touch scroll and not one link inside the strip, so **11 of the 12 events
+   were unreachable by any means**. Confirmed frozen twice, at t=6s and t=14s.
+   ⛔ REDUCED MOTION MUST REMOVE THE MOVEMENT, NOT THE CONTENT. It is set by players with vestibular disorders
+   and by anyone who turned motion down on a budget phone, and Swahili — the default locale — has the longest
+   sentences here, so they lost the most.
+   ⭐ So the calm branch stops being a frozen marquee and becomes an ordinary horizontal SCROLLER: the animation
+   is off (not merely paused), the box scrolls, and the duplicate copy is removed so the list is twelve events
+   once rather than twenty-four. `-webkit-overflow-scrolling` is not set — momentum scrolling is motion the
+   reader asked not to have.
+   ⚠️ `animation: none`, not `animation-play-state: paused`: a paused animation still holds its first frame's
+   `transform`, so the track would stay translated and the scroll would start in the wrong place. */
 @media (prefers-reduced-motion: reduce) {
-  .ticker-track { animation-play-state: paused; }
+  .ticker-track { animation: none; transform: none; }
+  .ticker-viewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+  .ticker-copy-dup { display: none; }
 }
 @keyframes ticker-scroll {
   0%   { transform: translateX(0); }
