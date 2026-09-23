@@ -763,8 +763,19 @@ export const MUTATIONS = [
   {
     name: "opener-deadline-ignores-the-guard · the cutoff guard stops reaching the OPENER's deadline, so a stake may be planned with no room to land",
     file: DECIDE,
-    from: `  const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;`,
-    to: `  const deadlineMs = cutoffMs - MIN_TIME_TO_CUTOFF_FLOOR_SEC * 1000;`,
+    /* 🔴 RE-ANCHORED 2026-09-23. `const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;` stands at FOUR
+       sites in this file — twice in `decideCounter` (324, 389), once in `planFill` (529) and once in
+       `planOpener` (576) — so this anchor matched 4× and `resolveAnchor` refused to inject it. An anchor that
+       cannot resolve plants NOTHING and reports NOTHING, so this declared mutation had been measuring nothing
+       (the §6.2 trap the 2026-09-23 handover names, met again). `expect` is a §7c case and §7c tests
+       `planOpener`, so the site is 576; it is pinned on the two lines above it, which occur only there —
+       `planFill` computes `dueMs` before `guardsFor`, and `decideCounter` never calls `guardsFor` at all. */
+    from: `  const cutoffMs = ms(cutoffOf(view));
+  const g = guardsFor(r, product);
+  const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;`,
+    to: `  const cutoffMs = ms(cutoffOf(view));
+  const g = guardsFor(r, product);
+  const deadlineMs = cutoffMs - MIN_TIME_TO_CUTOFF_FLOOR_SEC * 1000;`,
     expect: "7c.1 · guards.minTimeToCutoffPollsMin",
     suite: "engine-mem",
     sections: "7b",

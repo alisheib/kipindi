@@ -637,6 +637,27 @@ section("§3 · cross-field rules — the rules form");
     "scope.poolTotalMaxTzs", "R-POOL-BAND", "Pool minimum can't be above pool maximum.");
   saves("3.R-POOL-BAND · an equal band saves", saveRules({ rules: (r) => { r.scope.poolTotalMinTzs = 5_000; r.scope.poolTotalMaxTzs = 5_000; } }));
 
+  /* 3.R-COUNTER-POOL-MAX-ZERO · PRODUCTION 2026-09-23. The live account had `poolTotalMaxTzs = 0` saved with
+     every COUNTER on, and `decide.ts:383` refuses POOL_BAND whenever `total > max`. A COUNTER only ever answers
+     a stake already IN the pool, so the total is never 0 and every counter was refused, on every market, for
+     ever. ⭐ THE TWO `saves` ROWS ARE THE DISCRIMINATORS: an EMPTY maximum (the field's own default) means no
+     ceiling and must keep saving, and a 0 with every counter OFF is merely inert, not contradictory. */
+  refuses("3.R-COUNTER-POOL-MAX-ZERO · ⭐ a pool maximum of 0 with a counter on is refused — it can never be satisfied",
+    saveRules({ rules: (r) => { r.scope.poolTotalMinTzs = 0; r.scope.poolTotalMaxTzs = 0; r.modes.updown.counter = true; } }),
+    "scope.poolTotalMaxTzs", "R-COUNTER-POOL-MAX-ZERO",
+    "A pool maximum of 0 stops every counter: a counter answers a stake that is already in the pool, so the total is never 0. Leave it empty for no maximum.");
+  saves("3.R-COUNTER-POOL-MAX-ZERO · ⭐ DISCRIMINATES · an EMPTY maximum is no ceiling at all, and saves with a counter on",
+    saveRules({ rules: (r) => {
+      r.scope.products.updown = true; r.scope.chains = ["BTC:3"]; r.modes.updown.counter = true;
+      r.scope.poolTotalMinTzs = 0; r.scope.poolTotalMaxTzs = null;
+    } }));
+  saves("3.R-COUNTER-POOL-MAX-ZERO · ⭐ DISCRIMINATES · a 0 maximum with NO counter anywhere is not a contradiction and saves",
+    saveRules({ rules: (r) => {
+      r.scope.products.updown = true; r.scope.chains = ["BTC:3"]; r.modes.updown.fill = true;
+      r.modes.updown.counter = false; r.modes.polls.counter = false;
+      r.scope.poolTotalMinTzs = 0; r.scope.poolTotalMaxTzs = 0;
+    } }));
+
   refuses("3.N2-b · a COUNTER minimum delay above the maximum is refused",
     saveRules({ rules: (r) => { r.counter.delayMinSec = 50; r.counter.delayMaxSec = 45; } }),
     "counter.delayMinSec", "N2-b", "Minimum delay can't be above maximum delay.");
@@ -2307,7 +2328,14 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-rules: ${pa
 /* ⭐ RAISED 529 → 570 on 2026-09-22, to what this run PRINTED once the scope-reach block (§10) and the two scope rows'
  * §3 cases landed with that day's production finding. The +41 IS the measurement — the count the run printed, never
  * an arithmetic guess. */
-const MIN_ASSERTIONS = 570;
+/* ⭐ RAISED 570 → 577 on 2026-09-23, to what this run PRINTED. +4 for `R-PRODUCT-LIST`'s and the scope rows'
+ * settling, and +3 for `R-COUNTER-POOL-MAX-ZERO`: the refusal itself plus its TWO discriminators — an EMPTY
+ * maximum (the field's own default, meaning no ceiling) still saves, and a 0 with every counter off is inert
+ * rather than contradictory and still saves. That rule is the second production finding of 2026-09-23: the
+ * live account had `poolTotalMaxTzs = 0` saved with every counter on, and `decide.ts:383` refuses POOL_BAND
+ * whenever `total > max` — while a COUNTER only ever answers a stake ALREADY in the pool, so the total is
+ * never 0 and every counter was refused for ever. The +3 IS the measurement, never an arithmetic guess. */
+const MIN_ASSERTIONS = 577;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-rules ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

@@ -1559,6 +1559,23 @@ export const CROSS_FIELD_RULES = [
     messages: ["Pool minimum can't be above pool maximum."],
     source: "PLAN §5",
   },
+  /* ⛔ A POOL MAXIMUM OF ZERO IS A COUNTER THAT CAN NEVER FIRE (prod finding 2026-09-23, the SECOND blocker
+   * found the same morning). `decide.ts:383` refuses POOL_BAND when `total > poolTotalMaxTzs`, and a COUNTER
+   * is by construction a reply to a stake that is ALREADY in the pool — so the total it sees is never 0, and a
+   * maximum of 0 refuses every one of them, on every market, for ever. The live account had exactly that saved.
+   * ⚠️ THE FIELD'S OWN DEFAULT IS EMPTY, WHICH MEANS NO CEILING (`poolTotalMaxTzs: null`, rules.ts:405). A typed
+   * 0 reads to an officer like "no limit" and means "only a pool holding nothing", which is the same shape as
+   * the empty chain list: a value that looks permissive and matches nothing. Refused at save, and named at
+   * Start and on the why-panel through `COUNTER_POOL_MAX_ZERO` for the documents that already carry it. */
+  {
+    id: "R-COUNTER-POOL-MAX-ZERO",
+    scopes: ["RULES"],
+    kind: "REFUSE",
+    fields: ["scope.poolTotalMaxTzs", "modes.updown.counter", "modes.polls.counter"],
+    reportOn: "scope.poolTotalMaxTzs",
+    messages: ["A pool maximum of 0 stops every counter: a counter answers a stake that is already in the pool, so the total is never 0. Leave it empty for no maximum."],
+    source: "prod 2026-09-23",
+  },
   /* ⛔ THE TWO SCOPE ROWS (prod finding 2026-09-22). An ACTIVE account on a switched-ON desk had matched nothing,
    * ever: both products ticked, both scope lists EMPTY, and the engine's predicate ends in `[].includes(x)`. No
    * screen wrote the lists and nothing refused the shape. Both rows are evaluated through `scopeShapeReasons` —
@@ -1887,6 +1904,7 @@ const RULES_SCOPE_IDS = [
   "R-HOUR-FITS-GAP",
   "R-DAY-GE-HOUR",
   "R-POOL-BAND",
+  "R-COUNTER-POOL-MAX-ZERO",
   "R-PRODUCT-LIST",
   "R-MODE-PRODUCT",
   "N2-b",
@@ -1943,6 +1961,12 @@ const RULES_EVAL: Record<(typeof RULES_SCOPE_IDS)[number], (x: RulesEvalInput) =
   "R-POOL-BAND": (x) =>
     above(x.num("scope.poolTotalMinTzs"), x.num("scope.poolTotalMaxTzs"))
       ? [{ field: "scope.poolTotalMaxTzs", message: ruleCopy("R-POOL-BAND") }]
+      : [],
+  /* ⛔ ZERO ONLY — an EMPTY maximum is `null` and means no ceiling, which is the field's own default and must
+   * keep passing. `x.num` returns null for an empty box, so `=== 0` distinguishes the two exactly. */
+  "R-COUNTER-POOL-MAX-ZERO": (x) =>
+    x.num("scope.poolTotalMaxTzs") === 0 && (x.modes.updown.counter || x.modes.polls.counter)
+      ? [{ field: "scope.poolTotalMaxTzs", message: ruleCopy("R-COUNTER-POOL-MAX-ZERO") }]
       : [],
   "R-PRODUCT-LIST": (x) =>
     scopeShapeReasons(scopeDocOf(x), x.ctx)
