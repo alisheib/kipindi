@@ -140,6 +140,38 @@ correctly, not a fault.
 | Bets per day | 200 |
 | Bets per market | 2 |
 
+## Step 3a — What it may touch, and how it behaves (2026-09-23)
+
+⛔ **THE STEP THAT DECIDES WHETHER ANYTHING HAPPENS AT ALL.** The limits above say how much; this says
+*what* and *when*. An account with every limit filled and nothing ticked here is switched on, green, and
+completely idle — which is the state the live desk was in for a day and a half.
+
+**On the Rules tab, in order:**
+
+1. **Tick a product** — Up & Down, or Polls, or both.
+2. **Tick how it enters** — *React to a player's stake*, *Fill a thin side*, *Open a quiet market*. At least
+   one, for a product you ticked.
+3. 🔴 **CHOOSE THE MARKETS IT MAY TOUCH.** Under *Markets*: the Up & Down chains, the poll categories. **A
+   ticked product with nothing chosen reaches no market at all** — it will sit there, active, and never place
+   a bet. This is the single most expensive thing to get wrong on this screen, and it is what the roster's
+   "Can't bet — …" line and the account page's *Why this account is not betting* panel exist to tell you.
+4. **Leave the rest alone unless you mean to change it.** Everything under *How it decides* arrives filled in
+   with the documented values, and each box says what it does, what range it accepts and what is saved.
+5. **When it may bet.** Seven day boxes, an *All day* switch, and up to four **HH:MM windows in EAT**. A fresh
+   account is shown every day, all day — read it and save it; it is not assumed behind your back. An end
+   earlier than its start runs past midnight into the next day. What you save is printed back in words under
+   the boxes, one line per chosen day.
+6. **Press Save.** Nothing on this tab saves by itself. A refusal outlines the box, puts the reason under it
+   and takes you to the first one; the toast says how many need fixing.
+7. **Then Start.** If every enabled mode is impossible for this account, it still starts and *tells you so* in
+   the warning tone — read that sentence rather than assuming it is running.
+
+⚠️ **Pause now asks why, and keeps the answer.** Five characters or more. It is on the record beside the pause.
+
+⚠️ **If an account stops by itself**, History names the cause — a holder changing their sign-in details, a
+self-exclusion, a closed account, a failed identity check, a limit. It no longer says "Stopped by a limit"
+about causes that are not limits, so read the sentence before going to look for a number.
+
 ## ⛔ The three things that will actually trip you up
 
 **1. Blank is not zero.** A limit left blank does not mean "no limit" — it means **refuse everything**. A
