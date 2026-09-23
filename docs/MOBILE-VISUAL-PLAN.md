@@ -137,6 +137,17 @@
   wrong changes and reworded compliance copy that is correct. Read §4 before re-opening any of them.
 
 ⚠ TRAPS ALREADY MET (2026-09-15 capture):
+  · ⛔ **A RAILWAY BUILD CAN FAIL WITH NOTHING WRONG IN THE COMMIT.** 2026-09-23: a deploy failed with 28
+    errors, every one `Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'`.
+    `layout.tsx` pulls Sora, Inter and JetBrains Mono through `next/font/google`, which DOWNLOADS them at BUILD
+    time — so a builder that cannot reach fonts.gstatic.com fails the whole build. This repo already records
+    the same fact twice ("Google Fonts blocked → no local build"). ⭐ How it was settled in minutes rather
+    than guessed: the same commit BUILT CLEAN locally (exit 0, every route), and `railway redeploy
+    --from-source` then succeeded with byte-identical code. ⚠️ Do NOT read a font-module failure as a code
+    defect, and do NOT correlate deployments by grepping 40-hex out of a build log — that matches the
+    railpack IMAGE DIGEST, not a commit. Correlate by TIMESTAMP against `git log --date=format:%H:%M:%S`.
+    🎯 The standing fix, not taken yet because it re-types the whole site: serve the three families from
+    `next/font/local` with the files committed, and the build stops depending on a third party.
   · `networkidle` never fires on www (live stream). Use `load` + a 2.5s wait.
   · The first-visit primer covers every guest page — for a real visitor. A HeadlessChrome agent never gets it (nor the
     consent card), so a drive that "declines" them proves nothing; qa:mobile-visual seeds both keys anyway
@@ -1766,7 +1777,7 @@ with its reason in §2, never silently.
 | Market card, live priced | **320–354** (median 320 in SW/EN/ZH; the 354s carry the sparkline band, D49) — U1. Quoted before as 347–354 | ≤ **305px** live priced — **met: 301.5** (U3, measured). ⚠️ *"every state ≥ 45px shorter" is RESTATED per state by U3, 2026-09-23*, because it is arithmetic the §9 rules cannot produce: the deltas are **−52** live+band (353.5 → 301.5), **−48** resolved+band (312 → 264), **−44** cold start (347.44 → 303.44), **−40** live no-band (319.5 → 279.5), **−36** resolved no-band (278 → 242). A card with no sparkline has one child fewer and therefore **one 4px row gap fewer**, so the two no-band shapes cannot reach −45 by spacing at all. Target: **every state ≥ 36px shorter, and ≤ 305 wherever a price is shown** |
 | Cards visible while scrolling `/markets` | **1.63** at 360×780 (1.21 at 360×640 and 320×640, 2.03 at 412×915) — U1 | ≈ 1.9 (a true 2.0 needs a card ≤ 280px, more than spacing can give) |
 | Pinned chrome `/markets` | **237** = header 56 + discovery bar 116 + rail 65, in every phone cell and language — U1 | ≤ 201px |
-| Home length | **EN 10.78 · SW 11.09 · ZH 10.11** screens (320×640: EN 13.37 · SW 14.15) — U1 | ≤ 7.5 (SW ≤ 7.8) |
+| Home length | **EN 10.78 · SW 11.09 · ZH 10.11** screens (320×640: EN 13.37 · SW 14.15) — U1. Re-measured 2026-09-23 after U3/U4: **SW 10.66** (8311px) — the compact card gave back ~0.4 of a screen | ⚠️ **≤ 7.5 / 7.8 IS NOT REACHABLE BY U6's LISTED CHANGES, measured before implementing.** The bands at 360 SW are hero **1837** (22%) · how **970** (12%) · board **2575** (31%) · Up&Down 296 · trust **1468** (18%) · 18+ 93. Reaching 7.8 means cutting **2227px**. What §9 U6 lists delivers about **350**: Closing-soonest 4 rows at 164/143/164/164 → ≤110 (**−195**), the 3 proof figures 47/60/60 stacked → one row (**−110**), hero padding (−24), CTA 56→48 (−8), lede one step (−10); the topic tiles' min-h 64→48 gives **~0** because all seven (91·91·91·91·115·115·74) are already content-bound, not floor-bound. That lands at **~10.2 screens**. ⛔ The only blocks big enough to close a 1900px gap are the **6-card home board (1815px)** and the **trust band (1468px)**, and §4 decision 2 with §6 both forbid removing sections. **So the number of cards on the home board is an OWNER decision, not a unit's** — six compact cards at 302/302/302/302/280/280 are 22% of the page |
 | Closing-soonest row | **SW 164 · EN 143 · ZH 121** (median) — U1. Quoted before as ≈ 150 | ≤ 110px |
 | Header auth pills | **48** (both pills, every phone cell) — U1 | 40px, both visible at 320 |
 | Chat bubble | 52px, covers Details | 44px, never covers while scrolling |
