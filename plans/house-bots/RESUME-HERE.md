@@ -152,6 +152,26 @@ an already-saved 0 is only corrected when someone saves the Rules tab again.
 4. ⚠️ `test:red-anchors` §4.1/4.2 are RED on a ratchet that **predates this branch**: 67 harnesses do not declare
    anchors against a ceiling of 65. `package.json` is untouched here and none of the 67 are ours, so it belongs
    to whoever added them — do not bump the ceiling to silence it without finding out who.
+5. ⚠️ **The `{!view.removed && (` wrapper around the why-panel cannot change what renders**, and it is there so a
+   regex-counting assertion (console 1.435) reaches 12. `why` is already null for a removed account, because the
+   door refuses one. It is disclosed in the comment beside it, which is why it was left rather than removed — but
+   it IS a product-code guard that cannot fail, and if 1.435 is ever re-derived, this is the one to drop.
+6. ⚠️ **NOT OURS, measured during this session's closing audit — report, do not "fix":**
+   · `docs/MOBILE-VISUAL-UNSEEN-2026-09.md` — the owning session repaired its 13 broken script references while
+     this audit was running (`test:docs` is green again), but the reword was shaped by what the link checker
+     GREPS rather than by what the doc claims: two `.mjs` names survive the convention it announces about itself,
+     and two cited screenshots point at directories that do not exist, which the evidence ratchet is blind to.
+     ⛔ That worktree commits every 1–3 minutes; an edit from here collides.
+   · `scripts/focus-and-fit.mjs:113` reports `buried` and `touching` as if they were disjoint sets — every buried
+     control is also counted as touching, so "4 fully under the rail and 4 touching it" describes 4 controls, not 8.
+
+▶ **HOW THIS SESSION'S CLOSING AUDIT WAS RUN, because it paid for itself twice.** Four read-only lenses over the
+shipped diff (unread fields · docs that now contradict the code · the broken references and who owns them · loose
+ends), each finding then handed to an adversarial verifier told to REFUTE it. 19 candidates, 8 survived. The two
+that mattered most were both defects the session had introduced while FIXING that same defect class: a panel field
+produced and never painted, and — worse — an account whose rules will not parse got **no panel at all** from the
+control the officer had just clicked, on a tab that says nothing else about it either. Neither was visible from
+inside the work. ⛔ **After fixing a class, grep your own diff for it.**
 
 ## 0b · WHAT IS FINISHED, AND WHAT THE NEXT MACHINE PICKS UP (2026-09-23 · handover)
 

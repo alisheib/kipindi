@@ -171,6 +171,17 @@ export function consoleBotTabHref(botId: string, tab: string): string {
   return `${CONSOLE_ROUTE}/${botId}?tab=${tab}`;
 }
 
+/**
+ * One account's page with the idle explanation open, STAYING on the tab the officer was reading.
+ * ⛔ IT KEEPS THE TAB, and that is the whole reason it is a function. Built inline in the page it was
+ * `${CONSOLE_ROUTE}/${id}?why=1` — which drops `?tab=`, so an officer asking the question from Rules or
+ * Activity was silently thrown back to the Overview and had to find their way again. A link that moves
+ * you somewhere you did not ask to go is the kind of thing nobody reports and everybody works around.
+ */
+export function consoleWhyHref(botId: string, tab: string | null): string {
+  return tab && tab !== DEFAULT_TAB ? `${CONSOLE_ROUTE}/${botId}?tab=${tab}&why=1` : `${CONSOLE_ROUTE}/${botId}?why=1`;
+}
+
 /** One account's page with the re-verify field focused (`PLAN.md:816`'s canonical form). */
 export function consoleReverifyHref(botId: string): string {
   return `${CONSOLE_ROUTE}/${botId}?reverify=1`;

@@ -44,7 +44,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { currentSession } from "@/lib/server/auth-service";
 import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, houseWhyIdleForConsole, type ConsoleDetailView, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
 import { ActivityFilters } from "../activity-filters";
-import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab } from "@/lib/house-bot/console-routes";
+import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab, consoleWhyHref } from "@/lib/house-bot/console-routes";
 import { UsageBar } from "../page";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422): a client component under
  * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
@@ -330,7 +330,7 @@ async function AdminDeskAccountContent({
                   considered and refused. This asks the engine, on the spot, and prints what it says. ⛔ Not
                   offered on a REMOVED account: there is nothing left for it to stake on (358). */}
               {!view.removed && (
-                <WayOutLink href={`${CONSOLE_ROUTE}/${view.id}?why=1`}>
+                <WayOutLink href={consoleWhyHref(view.id, tab)}>
                   Why is it not staking?
                 </WayOutLink>
               )}

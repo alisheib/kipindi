@@ -565,9 +565,11 @@ export async function planFillAndOpener(
  *
  * ⛔ WITH `place: true` THE CONTROL FLOW IS EXACTLY WHAT IT WAS: the same reads in the same order, the
  * first covering account that would write a row wins, and nothing else is evaluated. The codes are
- * collected on the way past; collecting them costs a Map write and changes no decision.
+ * collected on the way past; collecting them costs one array push per account and changes no decision.
  */
-export type MarketExplain = {
+/* ⛔ NOT EXPORTED: it is the return type of a private function, and the console consumes `IdleExplain`.
+     An exported type is module surface, and surface invites the second caller this design has no room for. */
+type MarketExplain = {
   placed: boolean;
   /** Refused before any account was reached — the market itself, not the rules. */
   marketCode: EngineCode | null;
@@ -661,9 +663,21 @@ async function runMarket(
  * looking.
  */
 export type IdleExplain = {
-  botId: string;
-  /** Per kind and product this account's rules leave switched ON, how many markets the scan offered. */
-  looked: Array<{ kind: "FILL" | "OPENER"; product: "MARKET" | "UPDOWN"; markets: number }>;
+  /**
+   * ⭐ THE ACCOUNT WHOSE RULES WILL NOT PARSE, WHICH THIS READER USED TO ANSWER WITH SILENCE.
+   *
+   * It returned `null`, the door returned `null`, and the page then rendered NO panel — so an officer
+   * who clicked "Why is it not staking?" got back a page byte-identical to the one they clicked from,
+   * with nothing saying why. That is the dead control ruling 312 forbids, built into the very feature
+   * that exists to end silent refusals. `null` is now reserved for an account that does not exist.
+   */
+  rulesUnreadable: boolean;
+  /**
+   * How many markets the scan offered, per kind. The console sums it by KIND and prints the split.
+   * ⛔ NO `product` FIELD. It was carried here and read by nothing — an officer does not need polls and
+   * Up & Down counted apart to learn that the desk considered both opening and filling.
+   */
+  looked: Array<{ kind: "FILL" | "OPENER"; markets: number }>;
   considered: number;
   /** Markets where this account would have staked right now — a non-zero count with no bets is its own story. */
   wouldStake: number;
@@ -700,14 +714,21 @@ export async function explainBotIdle(
   const bot = await houseBotStore.get(botId);
   if (!bot || bot.status === "REMOVED") return null;
   const parsed = parseHouseBotRules(bot.rules, await loadParseContext());
-  if (!parsed.ok) return null; // the Rules tab says this in its own words, and offers the repair
+  const blank = { rulesUnreadable: true, looked: [], considered: 0, wouldStake: 0, byCode: [], reactsOnly: false };
+  const parseCtxScope = async () => ({
+    scopeFrom: (await houseBotRuntimeStore.get(RUNTIME_KEY.bot(bot.id)))?.scopeFrom ?? null,
+    globalScopeFrom: (await houseBotRuntimeStore.get(RUNTIME_KEY.global))?.scopeFrom ?? null,
+  });
+  // ⛔ A SENTENCE, NEVER SILENCE. The Rules tab draws a seeded form for this account since 2026-09-23, so
+  // there IS a repair to point at — which is exactly why answering nothing here was the wrong answer.
+  if (!parsed.ok) return { ...blank, ...(await parseCtxScope()) };
   const rules = parsed.rules;
   const globalScopeFrom = (await houseBotRuntimeStore.get(RUNTIME_KEY.global))?.scopeFrom ?? null;
   const scopeFrom = (await houseBotRuntimeStore.get(RUNTIME_KEY.bot(bot.id)))?.scopeFrom ?? null;
   // The third entry mode never reaches a planner: a player's stake triggers it. Read it before the walk.
   const reactsOnly = SCOPE_PRODUCTS.every((k) => !(rules.scope.products[k] && (rules.modes[k].fill || rules.modes[k].opener)))
     && SCOPE_PRODUCTS.some((k) => rules.scope.products[k] && rules.modes[k].counter);
-  const out: IdleExplain = { botId, looked: [], considered: 0, wouldStake: 0, byCode: [], reactsOnly, scopeFrom, globalScopeFrom };
+  const out: IdleExplain = { rulesUnreadable: false, looked: [], considered: 0, wouldStake: 0, byCode: [], reactsOnly, scopeFrom, globalScopeFrom };
   // Ruling 92 · a NULL scope start is OUT of scope, never "no bound". The switch is the whole answer.
   if (globalScopeFrom == null || scopeFrom == null) return out;
 
@@ -735,7 +756,7 @@ export async function explainBotIdle(
       const rows = await houseSeamStore.plannableMarkets({
         kind, productLine: product, fromIso: iso(nowMs + PLANNER_MIN_CUTOFF_AHEAD_MS), toIso, after: null, limit,
       });
-      out.looked.push({ kind, product, markets: rows.length });
+      out.looked.push({ kind, markets: rows.length });
       for (const r of rows) {
         const v = await runMarket(kind, r.id, [candidate], { nowMs, control, globalScopeFrom, randomInt }, false);
         out.considered++;
