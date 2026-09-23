@@ -1433,6 +1433,11 @@ html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within) {
    phone has the same problem as a 320×640 portrait one. */
 @media (max-height: 700px) {
   .kp-shortpage { min-height: auto; justify-content: flex-start; padding-top: var(--sp-4); padding-bottom: var(--sp-4); }
+  /* ⚠️ AND THE LAST 7px CAME OFF THE GAP ABOVE THE DESTINATIONS, measured on PRODUCTION rather than
+     locally — the live page carries the ticker strip this database does not, so at 320 the row sat 93.1%
+     clear where the local build read 100%. Two trees, two heights, and the live one is the one that
+     counts. `--sp-4` instead of the `mt-6` the wide layout uses: 8px, which is exactly the shortfall. */
+  .kp-shortpage nav { margin-top: var(--sp-4); }
 }
 
 /* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
