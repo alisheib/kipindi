@@ -45,7 +45,7 @@ import { WEEKDAYS, WEEKDAY_LABEL, eatDayKey, formatEat, formatMinutes, type Week
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
-import { resolveRange } from "./date-range";
+import { parseEatLocal, resolveRange } from "./date-range";
 import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext, type ScopeProduct, type EntryMode } from "@/lib/house-bot/rules";
 /* ⭐ THE SCOPE PICKER'S TWO LISTS (prod finding 2026-09-22): the platform's own category list and its own label
  * helper, so the form and the roster paint the words a player sees and never a raw key. `dict.en` because the
@@ -3659,10 +3659,36 @@ function parseConsoleQuery(
   let fromIso: string | undefined;
   let toIso: string | undefined;
   if (custom) {
-    const win = resolveRange({ range: "custom", from: fromOne.value, to: toOne.value }, nowMs, CONSOLE_FEED_PRESET_DEFAULT);
-    preset = "custom";
-    fromIso = new Date(win.start).toISOString();
-    toIso = new Date(win.end).toISOString();
+    /**
+     * 🔴 AN UNREADABLE CUSTOM WINDOW WAS ANSWERED WITH 24 HOURS, IN SILENCE (C8 minor M2, 2026-09-23).
+     *
+     * `resolveRange`'s custom branch falls back to `now - DAY_MS → now` for a `from` it could not read — its own
+     * docblock records this, measured: "a link built from `toISOString()` therefore lands on a window labelled
+     * **custom** that is silently the LAST 24 HOURS … because nothing in the custom branch reports a `from` it
+     * could not read." Every axis on this rail that cannot be read is REFUSED BY NAME and says so in the
+     * console's own Callout; the window was the one axis that answered a question nobody had asked, under a
+     * label that claimed the officer's own. On a money log that is the worst kind of wrong: a narrower window
+     * than the officer chose hides rows, and a wider one invents them, and neither says anything.
+     * ⛔ SO IT IS PARSED HERE, BEFORE `resolveRange` IS GIVEN THE CHANCE TO GUESS — with the parser
+     * `resolveRange` itself uses, so this check and that fallback can never read a string differently.
+     * ⛔ AND `range=custom` WITH NO BOUNDS AT ALL IS REFUSED TOO: it names a window and states none, which is
+     * the same address-that-cannot-be-honoured. The picker always posts both, so this is a hand-typed address.
+     * ⚠️ `resolveRange` ITSELF IS NOT TOUCHED. Seven other admin rails resolve their windows through it, and a
+     * refusal is a property of THIS console's address — it has a refusal channel, a Callout and a sentence for
+     * exactly this. Widening a shared resolver to carry one caller's policy is how seven screens change at once.
+     */
+    const unreadable = (v: string | null | undefined): boolean => v != null && parseEatLocal(v) === null;
+    if (unreadable(fromOne.value) || unreadable(toOne.value) || (fromOne.value == null && toOne.value == null)) {
+      /* The window falls back to the rail's own DEFAULT PRESET, which is named on the rail — never to an
+         unlabelled 24 hours. `preset` is left at the default and no `from`/`to` is carried forward, so the
+         unreadable pair does not travel into every link this rail builds (`consoleFeedParams`). */
+      say("window");
+    } else {
+      const win = resolveRange({ range: "custom", from: fromOne.value, to: toOne.value }, nowMs, CONSOLE_FEED_PRESET_DEFAULT);
+      preset = "custom";
+      fromIso = new Date(win.start).toISOString();
+      toIso = new Date(win.end).toISOString();
+    }
   } else if (askedPreset != null && askedPreset !== CONSOLE_FEED_PRESET_DEFAULT) {
     if (!(CONSOLE_FEED_PRESETS as readonly string[]).includes(askedPreset)) {
       say("window");
@@ -3682,8 +3708,12 @@ function parseConsoleQuery(
     hpage: history.n,
     hpageAsked: history.asked,
     preset,
-    from: custom ? fromOne.value : null,
-    to: custom ? toOne.value : null,
+    /* ⛔ A REFUSED WINDOW DOES NOT TRAVEL (M2). `preset` is only `"custom"` when the pair PARSED, so testing it
+       here is testing the same decision the branch above took — `custom` alone would carry the unreadable values
+       into every rail link and hand them back to the next read, which is a refusal that refuses once and then
+       quietly stops refusing. */
+    from: preset === "custom" ? fromOne.value : null,
+    to: preset === "custom" ? toOne.value : null,
     fromIso,
     toIso,
     kind: closed<IntentKind>(q.kind, "kind", "type"),

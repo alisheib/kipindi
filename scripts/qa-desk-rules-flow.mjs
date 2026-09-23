@@ -815,6 +815,82 @@ const bareArrival = await dialogText(`${BASE}/admin/desk/${ACCOUNT}`);
 ok("9c.7 CONTROL - the same page without the parameter opens NO dialog, so 9c.6 measured the link and not a page that always opens one",
   bareArrival === null, JSON.stringify(bareArrival));
 
+/* -- 9d - THE RANGE PICKER'S DAY BOUND IS EAT, AND ITS WHOLE-DAY END IS A WHOLE DAY (C8 minor M3) ---------
+ *
+ * Neither half is visible to a view-model case. `DateSelect` never renders its `max` as a DOM attribute - the
+ * bound shows up only as DISABLED CELLS in the calendar an officer opens - and what `applyCustom` posts is
+ * decided in the browser, by a "use client" component, from React state.
+ *
+ * THE CONTROL IS THE WHOLE POINT, and it is built from two extreme zones rather than argued. This laptop sits
+ * in EAT, so a page rendered here agrees with EAT by accident and would prove nothing. Kiritimati (UTC+14) and
+ * Niue (UTC-11) are 25 hours apart, so AT EVERY INSTANT at least one of them is on a different calendar day
+ * from EAT - the case asserts that too, and would go red on a machine where it stopped being true.
+ */
+console.log("\n\u00a79d \u00b7 the range picker's day bound and its whole-day end");
+
+const ACTIVITY = `${BASE}/admin/desk/${ACCOUNT}?tab=activity`;
+const eatDayNow = () => new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 10);
+
+const pickerIn = async (zone) => {
+  const c = await browser.newContext({ viewport: { width: 1440, height: 1100 }, timezoneId: zone });
+  const p = await c.newPage();
+  try {
+    await p.request.post(`${BASE}/api/dev-test/seed-admin`, { data: {} });
+    await p.goto(ACTIVITY, { waitUntil: "load" });
+    await p.waitForTimeout(2400);
+    await p.getByRole("button", { name: /^Custom$/ }).first().click({ timeout: 6000 });
+    await p.waitForTimeout(500);
+    await p.getByRole("button", { name: /Open calendar/i }).first().click({ timeout: 6000 });
+    await p.waitForTimeout(600);
+    return await p.evaluate(() => {
+      const dlg = document.querySelector('[role=dialog][aria-modal="true"]');
+      const cells = [...(dlg?.querySelectorAll("button") ?? [])].filter((b) => /^\d{1,2}$/.test(b.textContent.trim()));
+      const live = cells.filter((b) => !b.disabled).map((b) => Number(b.textContent.trim()));
+      const head = dlg?.innerText?.split("\n").find((l) => /\d{4}/.test(l)) ?? "";
+      return {
+        lastEnabledDay: live.length ? Math.max(...live) : null,
+        head: head.trim(),
+        localDay: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
+      };
+    });
+  } finally { await c.close(); }
+};
+
+const far = await soft("picker in UTC+14", () => pickerIn("Pacific/Kiritimati"), null);
+const near = await soft("picker in UTC-11", () => pickerIn("Pacific/Niue"), null);
+const eatDay = eatDayNow();
+const eatDom = Number(eatDay.slice(8, 10));
+ok("9d.1 the calendar's last selectable day is the EAT day in BOTH extreme zones - the bound is the platform's clock, not the machine the officer is sitting at",
+  !!far && !!near && far.lastEnabledDay === eatDom && near.lastEnabledDay === eatDom,
+  JSON.stringify({ eatDay, far, near }));
+ok("9d.2 CONTROL - the two zones really do disagree with EAT about what day it is, so 9d.1 measured the fix and not a coincidence of this laptop's own clock",
+  !!far && !!near && (far.localDay !== eatDay || near.localDay !== eatDay),
+  JSON.stringify({ eatDay, far: far?.localDay, near: near?.localDay }));
+
+/* -- and the whole-day end is posted as a DATE, which `resolveRange` reads as the whole EAT day -------- */
+await page.setViewportSize({ width: 1440, height: 1100 });
+await page.goto(ACTIVITY, { waitUntil: "load" });
+await page.waitForTimeout(2400);
+const applied = await soft("apply a custom window", async () => {
+  await page.getByRole("button", { name: /^Custom$/ }).first().click({ timeout: 6000 });
+  await page.waitForTimeout(500);
+  const segs = page.locator("main input[inputmode=numeric]");
+  const nSeg = await segs.count();
+  if (nSeg >= 6) {
+    const d = eatDay.split("-");
+    for (const [i, v] of [[0, d[2]], [1, d[1]], [2, d[0]]]) await segs.nth(i).fill(v);
+    for (const [i, v] of [[0, d[2]], [1, d[1]], [2, d[0]]]) await segs.nth(nSeg >= 12 ? i + 6 : i).fill(v);
+  }
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: /^Apply$/ }).first().click({ timeout: 6000 });
+  await page.waitForTimeout(2200);
+  return page.url();
+}, "");
+const toParam = new URL(applied || ACTIVITY).searchParams.get("to");
+ok("9d.3 the picker's untouched day-end posts `to` as a DATE with no time - `resolveRange` reads a date-only `to` as the whole EAT day, where `T23:59` dropped that day's last 59.999 seconds",
+  typeof toParam === "string" && /^\d{4}-\d{2}-\d{2}$/.test(toParam) && !toParam.includes("T"),
+  JSON.stringify({ url: applied, to: toParam }));
+
 console.log("\n\u00a710 \u00b7 putting the roster back");
 const removed = await soft("remove the drive's account", async () => {
   await page.setViewportSize({ width: 1440, height: 1100 });

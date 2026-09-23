@@ -3095,6 +3095,29 @@ import { formatEat } from "@/lib/utils";`,
   },
   /* ══ THE 2026-09-23 D9 MINORS ═════════════════════════════════════════════════════════════ */
   {
+    /* ⛔ M2's DEFECT, PUT BACK EXACTLY: the custom branch stops asking whether the bounds parsed and hands them
+       to `resolveRange`, whose fallback answers an unreadable pair with the last 24 hours under the label the
+       officer chose. The plant keeps the `else` arm so the shape compiles; what it removes is the QUESTION. */
+    name: "custom-window-guesses-again · M2 · an unreadable from/to is answered silently with 24 hours under the officer's own label",
+    file: GATE,
+    from: `    if (unreadable(fromOne.value) || unreadable(toOne.value) || (fromOne.value == null && toOne.value == null)) {`,
+    to: `    if (false) {`,
+    expect: "1.302 · M2 · a custom window whose bounds cannot be read is REFUSED",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ AND THE HALF THAT KEEPS THE REFUSAL FROM TRAVELLING: a refused pair carried into the rail's links is a
+       refusal that refuses once and then quietly stops refusing on every page after it. */
+    name: "refused-window-travels · M2 · the unreadable bounds are carried into every link the rail builds, so the next read is asked the same unanswerable question",
+    file: GATE,
+    from: `    from: preset === "custom" ? fromOne.value : null,
+    to: preset === "custom" ? toOne.value : null,`,
+    to: `    from: custom ? fromOne.value : null,
+    to: custom ? toOne.value : null,`,
+    expect: "1.302 · M2 · a custom window whose bounds cannot be read is REFUSED",
+    suite: "console-mem",
+  },
+  {
     /* ⛔ THE MUTATION IS THE DEFECT ITSELF, PUT BACK. It is not a paraphrase or a near miss: it restores the
        exact string the column carried, which is `CONSOLE_EVENT_WORD.REMOVED` character for character. */
     name: "account-word-is-the-event-word · M6 · the desk history's SUBJECT column goes back to printing what happened instead of who it happened to",

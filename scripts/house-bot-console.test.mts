@@ -207,6 +207,10 @@ await runTwoStores({
    * subject cell, the one-list relationship over four states, the retired chain reaching the callout and the
    * badge too, and the page-source pins the M7 shape rests on. What a run PRINTED on the held cluster:
    * `0.mem · exit 0 · 785 passed` and `0.pg · exit 0 · 547 passed`, ALL PASS on both stores. */
-  minPass: { memory: 785, postgres: 547 },
+  /* ⭐ RAISED 785 → 788 MEMORY / 547 → 550 POSTGRES, 2026-09-23 — C8 minor M2: an unreadable custom window is
+   * refused and named, its bounds do not travel into the rail's links, and `range=custom` with no bounds is
+   * refused too, each measured against the CONTROL that the same pair in a readable shape is honoured in full.
+   * What a run PRINTED: `0.mem · exit 0 · 788 passed` and `0.pg · exit 0 · 550 passed`, ALL PASS on both. */
+  minPass: { memory: 788, postgres: 550 },
   dbPrefix: "hb_console",
 });

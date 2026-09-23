@@ -35,6 +35,7 @@ import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { FilterPill, filterPillClass, type FilterPillRank } from "@/components/ui/filter-pill";
 import { cn } from "@/lib/utils";
+import { eatDayKey } from "@/lib/eat-day";
 import { useT } from "@/lib/i18n";
 
 /**
@@ -109,10 +110,18 @@ export function DateTimeRangeFilter({
   const [toDate, setToDate] = useState(initTo.date);
   const [toTime, setToTime] = useState(initTo.time || "23:59");
 
-  const todayIso = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }, []);
+  /**
+   * 🔴 THE UPPER BOUND WAS THE BROWSER'S DAY, NOT THE PLATFORM'S (C8 minor M3, 2026-09-23). `getFullYear` and
+   * its siblings read the machine the officer happens to be sitting at, and this platform keeps ONE clock: EAT.
+   * For the three hours either side of EAT midnight an officer on a UTC or European machine had the current EAT
+   * day DISABLED in the calendar (or a future EAT day offered), on every admin rail this control serves.
+   * ⛔ `@/lib/eat-day`, NOT the house-bot `clock.ts` that re-exports it: this is a `components/ui` primitive and
+   * it serves player surfaces too, so it takes the neutral home. Both are pure and client-safe; `date-range.ts`'s
+   * `parseEatLocal` is NOT — it lives under `src/lib/server/`, which a `"use client"` file may not import.
+   * ⚠️ STILL `useMemo(…, [])`: it does not refresh across an EAT midnight while the page is open. That is the
+   * behaviour it has always had and it is left alone deliberately — written down rather than fixed silently.
+   */
+  const todayIso = useMemo(() => eatDayKey(Date.now()), []);
 
   const pushParams = (mut: (p: URLSearchParams) => void) => {
     const p = new URLSearchParams(sp.toString());
@@ -140,7 +149,21 @@ export function DateTimeRangeFilter({
     pushParams((p) => {
       p.set("range", "custom");
       p.set("from", `${fromDate}T${fromTime || "00:00"}`);
-      p.set("to", `${toDate}T${toTime || "23:59"}`);
+      /**
+       * 🔴 "TO THE END OF THAT DAY" WAS POSTED AS 23:59, AND IT IS NOT (C8 minor M3, 2026-09-23).
+       * `resolveRange` reads a `to` WITH a time as an exact instant, so `…T23:59` ended the window at
+       * 23:59:00.000 and dropped the last 59.999 seconds of the chosen EAT day. On a money log that is a stake
+       * placed at 23:59:30 falling outside a window an officer set to that very day — a row that is simply not
+       * there, with nothing to say why.
+       * ⛔ THE SHAPE FOR "that whole day" ALREADY EXISTS and `resolveRange` documents it one line above its own
+       * fallback: a DATE-ONLY `to` is inclusive of the whole EAT day. So the day-end default is posted as the
+       * date alone, which is what the control's `23:59` means when nobody has touched it — and what a person
+       * means by "to 23:59" in any case. A time the officer actually chose is still posted exactly.
+       * ⚠️ THE WIDER QUESTION IS LEFT OPEN ON PURPOSE: whether a `to` time should mean "through the end of that
+       * MINUTE" for every window everywhere is a change to `resolveRange`, which seven other admin rails resolve
+       * through. It is written down here rather than taken in a commit about a picker's defaults.
+       */
+      p.set("to", !toTime || toTime === "23:59" ? toDate : `${toDate}T${toTime}`);
     });
   };
 

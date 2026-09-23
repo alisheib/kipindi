@@ -3643,6 +3643,35 @@ try {
       badWindow.feedTotal === 41 && typeof badWindow.queryRefusal === "string" && badWindow.queryRefusal.includes("window"),
       j({ refusal: badWindow.queryRefusal }));
 
+    /* ══ M2 · A CUSTOM WINDOW NOBODY CAN READ IS REFUSED, NOT ANSWERED WITH 24 HOURS ═══════════════════
+     * 🔴 `resolveRange`'s custom branch falls back to `now − DAY_MS → now` for a bound it could not parse — its
+     * own docblock records this, measured — and nothing in that branch reports it. Every OTHER axis on this rail
+     * is refused BY NAME; the window was the one that quietly answered a question nobody asked, under a label
+     * ("custom") claiming the officer's own. On a money log a narrower window hides rows and a wider one invents
+     * them, and neither said anything.
+     * ⛔ THE ISO SHAPE IS THE ONE THAT MATTERS, not a nonsense string: `parseEatLocal`'s pattern is ANCHORED, so
+     * a perfectly well-formed `toISOString()` instant does NOT match it — which is exactly how a link built from
+     * a timestamp landed on a silent 24 hours. A case that only tried "banana" would have missed the real one.
+     * ⛔ AND IT IS A PAIR: the same address with a shape the parser DOES accept is honoured in full, so this
+     * measures the parse and not a door that refuses every custom window. */
+    const isoPair = await feedView({ from: "2026-09-20T13:00:00.000Z", to: "2026-09-20T14:00:00.000Z" });
+    ok("1.302 · M2 · a custom window whose bounds cannot be read is REFUSED and named `window`, the rail falls back to its own DEFAULT preset rather than a silent 24 hours, and the unreadable pair does not travel into the links this rail builds",
+      typeof isoPair.queryRefusal === "string" && isoPair.queryRefusal.includes("window")
+        && isoPair.feedParams.range === undefined
+        && isoPair.feedParams.from === undefined && isoPair.feedParams.to === undefined
+        && isoPair.feedTotal === 41,
+      j({ refusal: isoPair.queryRefusal, params: isoPair.feedParams, fallback: isoPair.feedPresetDefault }));
+    const readable = await feedView({ from: "2026-09-20T13:00", to: "2026-09-20T14:00" });
+    ok("1.302 · M2 · CONTROL · the SAME two bounds in the shape the parser accepts are honoured in full — nothing refused, the preset reads `custom`, and both bounds travel — so the refusal above is the parse and not a door that refuses every custom window",
+      readable.queryRefusal === null && readable.feedParams.range === "custom"
+        && readable.feedParams.from === "2026-09-20T13:00" && readable.feedParams.to === "2026-09-20T14:00",
+      j({ refusal: readable.queryRefusal, params: readable.feedParams }));
+    const bareCustom = await feedView({ range: "custom" });
+    ok("1.302 · M2 · …and `range=custom` with NO bounds at all is refused too: it names a window and states none, which is the same address that cannot be honoured",
+      typeof bareCustom.queryRefusal === "string" && bareCustom.queryRefusal.includes("window")
+        && bareCustom.feedParams.range === undefined,
+      j({ refusal: bareCustom.queryRefusal, params: bareCustom.feedParams }));
+
     /* ── THE RAIL IS BUILT FROM THE SAME PARSE, SO THE CONTROL AND THE READ CANNOT DISAGREE ──────────────── */
     const railed = await feedView({ outcome: "failed" });
     const groups = railed.feedFilters as Any[];
