@@ -27,7 +27,15 @@ export function AdminTableEmpty({
   className?: string;
 }) {
   return (
-    <tr>
+    /**
+     * ⛔ `data-table-empty` IS READ BY CSS, NOT BY A TEST (D9 minor M5, 2026-09-23) — see
+     * `.admin-tbl:has(> tbody > tr[data-table-empty])` in `globals.css`. A table with no rows has nothing its
+     * column floors can be protecting, and those floors were still forcing a sideways scroller over a single
+     * message: measured on the desk's Targets tab at 360, `POLL` 150px + `STATUS` 128px + `LAST CHANGE` put the
+     * header strip past the viewport with an empty body underneath it. The marker goes HERE, on the one component
+     * every admin table's zero-row state goes through, so no call site has to remember it.
+     */
+    <tr data-table-empty>
       <td colSpan={colSpan} className={className}>
         {/* ⭐ PINNED TO THE VISIBLE STRIP (2026-09-13). The cell spans the whole table, and these tables carry a
             720–980px minimum inside a sideways scroller — so at 390 the message centred across the full width,

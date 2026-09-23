@@ -3083,4 +3083,45 @@ import { formatEat } from "@/lib/utils";`,
     expect: "2h.usedBy · the caption naming the switch a number belongs to is DERIVED",
     suite: "console-mem",
   },
+  /* ══ THE 2026-09-23 D9 MINORS ═════════════════════════════════════════════════════════════ */
+  {
+    /* ⛔ THE MUTATION IS THE DEFECT ITSELF, PUT BACK. It is not a paraphrase or a near miss: it restores the
+       exact string the column carried, which is `CONSOLE_EVENT_WORD.REMOVED` character for character. */
+    name: "account-word-is-the-event-word · M6 · the desk history's SUBJECT column goes back to printing what happened instead of who it happened to",
+    file: GATE,
+    from: `  gone: "An account no longer on the desk",`,
+    to: `  gone: "Removed from the desk",`,
+    expect: "1.317 · 432(n) · M6 · not one of the console's three ACCOUNT words is also one of its event words",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ AND THE RENDERED HALF HAS ITS OWN PLANT, because the structural case above would still be satisfied by a
+       reader that stopped taking the `gone` branch at all — a word nothing paints collides with nothing. */
+    name: "removed-account-borrows-a-name · M6 · a row about an account the roster no longer holds is answered with the desk's own word, so the removal row names the wrong subject",
+    file: GATE,
+    from: `  if (!found) return { accountName: CONSOLE_ACCOUNT_GONE, accountIsOperatorText: false, accountHandle: null };`,
+    to: `  if (!found) return { accountName: CONSOLE_ACCOUNT_DESK, accountIsOperatorText: false, accountHandle: null };`,
+    expect: "1.317 · M6 · a REMOVED account's desk-history rows name it as a SUBJECT the roster no longer holds",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ M7's FOURTH SOURCE, TAKEN BACK OFF THE CALLOUT AND THE BADGE — which is precisely the state that shipped:
+       the panel named a retired chain, the callout did not, and the tab an officer fixes it on showed no count. */
+    name: "callout-drops-the-retired-chain · M7 · the badge and the callout stop counting a scope member the platform no longer offers, while the panel keeps naming it",
+    file: GATE,
+    from: `    const items: { label: string; unset: boolean }[] = blockerItems.map((b) => ({ label: b.label, unset: b.unset }));`,
+    to: `    const items: { label: string; unset: boolean }[] = blockerItems.filter((b) => b.key !== "updown-chains" && b.key !== "poll-categories").map((b) => ({ label: b.label, unset: b.unset }));`,
+    expect: "2g.why · M7 · the callout above the rail and the why-panel below it are ONE list in two skins",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ AND THE PAGE'S HALF: the overview draws its panel again while the callout above it names the same
+       blockers — the two statements of one fact an officer met on a fresh account. */
+    name: "overview-states-it-twice · M7 · the overview's why-panel loses its guard, so the blockers are named above the rail AND again below it",
+    file: DETAIL,
+    from: `            calloutReadiness === null && view.whyNotBetting !== null && <WhyNotBettingCard model={view.whyNotBetting} linked />`,
+    to: `            view.whyNotBetting !== null && <WhyNotBettingCard model={view.whyNotBetting} linked />`,
+    expect: "2g.page · M7 · the blockers are named once per screen",
+    suite: "console-mem",
+  },
 ];

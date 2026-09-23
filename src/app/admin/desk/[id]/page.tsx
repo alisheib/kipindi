@@ -237,6 +237,18 @@ async function AdminDeskAccountContent({
   const countRows = view.counts;
   const feedRows = view.feed;
   const historyRows = view.history;
+  /**
+   * ⭐ THE BLOCKERS ARE NAMED ONCE PER SCREEN (D9 minor M7, 432(n) · 2026-09-23) — and the rule is ONE
+   * expression, read by the callout and by the overview's panel, so the two cannot both fall silent or both
+   * speak. On the Rules tab the panel at the head of the form carries the same names WITH their remedies, so the
+   * callout is not drawn there; everywhere else the panel is not on the screen, so it is.
+   * ⚠️ It binds the READINESS, not a boolean, so the callout's own body narrows off the same expression the
+   * panel's guard tests — a boolean would need `view.startReadiness!` beside it, and a `!` is where the two
+   * would part company again.
+   */
+  const calloutReadiness = !view.removed && tab !== "rules" && view.startReadiness !== null && view.startReadiness.blockers > 0
+    ? view.startReadiness
+    : null;
 
   return (
     <>
@@ -306,7 +318,12 @@ async function AdminDeskAccountContent({
               not. */}
           {view.acts.length > 0 && (
             <div className="mt-4 pt-4 border-t border-border-subtle">
-              <DeskAccountActions acts={view.acts} id={view.id} act={runDeskAccountAction} />
+              {/* ⭐ THE WAY OUT OPENS THE DIALOG IT NAMES (register A5, 2026-09-23). The Start refusal has
+                  always answered a stale consent with `?reverify=1`, and nothing read it — the officer landed
+                  on this page with no dialog and nothing saying what to press. ⛔ Read as a FLAG, never as an
+                  act name off the URL: only this one parameter opens anything, so a crafted link cannot open
+                  a removal. */}
+              <DeskAccountActions acts={view.acts} id={view.id} act={runDeskAccountAction} openAct={sp.reverify === "1" ? "REVERIFY" : null} />
             </div>
           )}
         </AdminCard>
@@ -336,8 +353,15 @@ async function AdminDeskAccountContent({
             on a phone without scrolling past the strip, the callouts and four tiles. The one thing an officer
             opening an unfinished account needs is the first thing on the page.
             ⚠️ It says "still to fill", never "ready" — see `ConsoleStartReadiness`: it reads what is EMPTY, and
-            only the start service decides what is acceptable. */}
-        {!view.removed && view.startReadiness !== null && view.startReadiness.blockers > 0 && (
+            only the start service decides what is acceptable.
+            ⛔ AND IT IS NOT DRAWN ON THE RULES TAB (D9 minor M7, 432(n) · 2026-09-23). There the why-panel sits at
+            the head of the form with the SAME names — the same list, since both now read one `blockerItems` — and
+            a remedy sentence under each. Read on a fresh account at 1280 before the fix: the box said "2 things
+            stop this account from betting · Products · Entry modes" and eighty pixels below it the panel said
+            "Products — Choose at least one product." and "Entry modes — Turn on at least one entry mode." Two
+            statements of one fact, and the fuller one is the one beside the control that fixes it. On every other
+            tab the panel is not on the screen, so the callout is the only carrier and it is drawn. */}
+        {calloutReadiness !== null && (
           <Callout
             tone="warning"
             size="md"
@@ -349,7 +373,7 @@ async function AdminDeskAccountContent({
                ⛔ AND THE HEADLINE IS THE SERVER'S (review finding 2026-09-22): "before this account can start" was
                typed here and painted beside a green ACTIVE chip on the production-shaped account. The lifecycle
                decides the sentence, and the lifecycle is the server's to read. */
-            title={view.startReadiness.title}
+            title={calloutReadiness.title}
           >
             {/* ⛔ NO WAY-OUT LINK, AND BOTH REASONS WERE MEASURED RATHER THAN ARGUED.
                 ① IT PUSHED THE NOTICE OFF A PHONE. With an "Open Rules" line the box ran y=578..850 in an
@@ -366,7 +390,7 @@ async function AdminDeskAccountContent({
                 types it happily. `layout="stack"` is not the answer either: it centres the notice behind a
                 56px icon plate and caps the body at 42ch, a hero treatment for thirteen field names. */}
             <ul className="flex flex-wrap gap-x-2 gap-y-1 max-w-[72ch]">
-              {view.startReadiness.items.map((it) => (
+              {calloutReadiness.items.map((it) => (
                 <li key={it.label} className="after:content-['·'] after:ml-2 last:after:content-['']">{it.label}</li>
               ))}
             </ul>
@@ -474,9 +498,16 @@ async function AdminDeskAccountContent({
           )}
 
           {/* ⭐ WHY THIS ACCOUNT IS NOT BETTING (prod finding 2026-09-22) — the rules' own reasons, linked to the
-              tab that fixes them. Its OWN `removed` guard, for the reason the guidance line has one (1.435). */}
+              tab that fixes them. Its OWN `removed` guard, for the reason the guidance line has one (1.435).
+              ⛔ AND NOT WHILE THE CALLOUT ABOVE IS NAMING THE SAME THINGS (M7, 432(n)). One screen states the
+              blockers once: above the rail where an officer cannot miss them, or here when there is no callout —
+              which is also the ONLY way the all-clear sentence ("Nothing in the rules or limits stops this account
+              from betting.") is ever read, because a callout is not drawn at zero. The remedies live one click
+              away on Rules, where the form that applies them is. ⚠️ The test is `calloutShown`, never
+              `blockers === 0`: the two lists are one list, but the callout is also absent on a REMOVED account and
+              on a read that produced no readiness at all, and in both of those the panel must still speak. */}
           {!view.removed && (
-            view.whyNotBetting !== null && <WhyNotBettingCard model={view.whyNotBetting} linked />
+            calloutReadiness === null && view.whyNotBetting !== null && <WhyNotBettingCard model={view.whyNotBetting} linked />
           )}
         </>)}
 

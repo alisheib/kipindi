@@ -3538,6 +3538,13 @@ export type ConsoleQuery = {
   outcome?: string | string[];
   intent?: string | string[];
   event?: string | string[];
+  /**
+   * ⭐ THE ONE ACT A LINK MAY OPEN (register A5, 2026-09-23). `consoleReverifyHref` has answered a stale
+   * consent with `?reverify=1` since it was written and nothing read it, so the way out landed on the
+   * overview with no dialog. ⛔ IT IS A FLAG, NOT AN ACT NAME: only this parameter opens anything, and only
+   * the re-verify dialog, so no crafted link can open a removal.
+   */
+  reverify?: string | string[];
 };
 
 /** The parsed, validated query. `refusals` names every axis that was thrown away, by its own screen word. */
@@ -5189,13 +5196,47 @@ export async function houseDetailForConsole(
   /* ⭐ THE THIRD KIND — a saved limit a live bound now breaks — COUNTS IN BOTH the badge and the panel (review finding
      2026-09-22), and its label is the same label home's; `null` bounds count nothing and the panel says so. */
   const liveBoundItem = (p: LiveBoundProblem) => ({ key: CONSOLE_RULES_FIELD_KEY[p.field] ?? p.field, label: consoleRulesFieldLabel(p.field), message: liveBoundSentence(p) });
+
+  /**
+   * ⭐ **ONE LIST OF BLOCKERS, TWO SKINS** (D9 minor M7, 2026-09-23). The callout above the rail and the panel
+   * below it were built SEPARATELY from the same three sources, and the divergence the comment four lines up
+   * warns about had already happened twice over:
+   * 🔴 (a) A DIFFERENT POPULATION. The panel carried a FOURTH source — a retired chain or category (`stale`) —
+   *     and the callout did not. An account whose only chain was archived therefore had a blocker the panel named,
+   *     the callout was silent about, and the `rules` tab's badge — which counts `blockers` — did not count. The
+   *     badge disagreeing with the panel it points at is the exact failure the `unsetCaps` note above records.
+   * 🔴 (b) A DIFFERENT ORDER. The callout listed the unset limits first, the panel the scope reasons first, so
+   *     the same two facts read in two orders on one screen.
+   * ⛔ SO THERE IS ONE LIST. The callout takes its labels from it and the panel takes its labels AND remedies
+   *     from it; neither can name something the other does not, in an order the other does not, ever again.
+   */
+  const blockerItems = rulesForm == null || reasons == null || removed ? null : [
+    ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message, unset: false })),
+    ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption, unset: true })),
+    ...(liveBound ?? []).map((p) => ({ ...liveBoundItem(p), unset: false })),
+    /**
+     * ⭐ A RETIRED CHAIN OR CATEGORY, NAMED (register A5, 2026-09-23).
+     *
+     * 🔴 IT VANISHED SILENTLY. `parseHouseBotRules` drops a scope member the platform no longer offers and
+     * records it in `stale` — and nothing read that list. So an account whose only chain was archived kept
+     * its ticked product, showed an empty picker, reached no market, and the panel whose whole job is to
+     * answer "why is this account not betting" said nothing about the one thing that had changed.
+     * ⛔ IT IS A REASON, NOT A TOAST: it belongs beside the other reasons, on the field it belongs to, so
+     * the way out is the same click as every other item here — and, since M7, it counts in the badge too.
+     */
+    ...(parsed !== null && parsed.ok
+      ? parsed.stale.map((s) => ({
+        key: CONSOLE_RULES_FIELD_KEY[s.path] ?? s.path,
+        label: FIELD_META[s.path].label,
+        message: s.message,
+        unset: false,
+      }))
+      : []),
+  ];
+
   const startReadiness: ConsoleStartReadiness | null = (() => {
-    if (rulesForm == null || reasons == null || removed) return null;
-    const items: { label: string; unset: boolean }[] = [
-      ...unsetCaps.map((c) => ({ label: c.label, unset: true })),
-      ...reasons.map((r) => ({ label: inertReasonLabel(r), unset: false })),
-      ...(liveBound ?? []).map((p) => ({ label: consoleRulesFieldLabel(p.field), unset: false })),
-    ];
+    if (blockerItems === null) return null;
+    const items: { label: string; unset: boolean }[] = blockerItems.map((b) => ({ label: b.label, unset: b.unset }));
     const title = bot.status === "ACTIVE" ? READINESS_COPY.calloutActive(items.length) : READINESS_COPY.calloutStart(items.length);
     return { blockers: items.length, title, items, href: consoleBotTabHref(bot.id, "rules") };
   })();
@@ -5208,29 +5249,8 @@ export async function houseDetailForConsole(
    * told why it can't start, a running one why it is not betting, and a clean list gets a topic, not a claim.
    */
   const whyNotBetting: ConsoleDetailView["whyNotBetting"] = (() => {
-    if (rulesForm == null || reasons == null || removed) return null;
-    const items = [
-      ...reasons.map((r) => ({ key: CONSOLE_RULES_FIELD_KEY[r.field] ?? r.field, label: inertReasonLabel(r), message: r.message })),
-      ...unsetCaps.map((c) => ({ key: c.key, label: c.label, message: c.caption })),
-      ...(liveBound ?? []).map(liveBoundItem),
-      /**
-       * ⭐ A RETIRED CHAIN OR CATEGORY, NAMED (register A5, 2026-09-23).
-       *
-       * 🔴 IT VANISHED SILENTLY. `parseHouseBotRules` drops a scope member the platform no longer offers and
-       * records it in `stale` — and nothing read that list. So an account whose only chain was archived kept
-       * its ticked product, showed an empty picker, reached no market, and the panel whose whole job is to
-       * answer "why is this account not betting" said nothing about the one thing that had changed.
-       * ⛔ IT IS A REASON, NOT A TOAST: it belongs beside the other reasons, on the field it belongs to, so
-       * the way out is the same click as every other item here.
-       */
-      ...(parsed !== null && parsed.ok
-        ? parsed.stale.map((s) => ({
-          key: CONSOLE_RULES_FIELD_KEY[s.path] ?? s.path,
-          label: FIELD_META[s.path].label,
-          message: s.message,
-        }))
-        : []),
-    ];
+    if (blockerItems === null) return null;
+    const items = blockerItems.map((b) => ({ key: b.key, label: b.label, message: b.message }));
     return {
       title: items.length === 0 ? READINESS_COPY.panelClear : bot.status === "ACTIVE" ? READINESS_COPY.panelNotBetting : READINESS_COPY.panelCantStart,
       items,
@@ -5331,11 +5351,28 @@ export async function houseDetailForConsole(
  * anchor rule. What is added is the column that only a desk-wide list needs: WHOSE stake it was.
  */
 
-/** ⛔ The three honest answers to "which account is this row about", each a different fact (355, 358). */
-const CONSOLE_ACCOUNT_UNREADABLE = "Could not be read";
-const CONSOLE_ACCOUNT_GONE = "Removed from the desk";
-/** An event of the CONTROL ROW itself — the switch, a limits save, the withdrawal. It belongs to no account. */
-const CONSOLE_ACCOUNT_DESK = "The desk";
+/**
+ * ⛔ The three honest answers to "which account is this row about", each a different fact (355, 358).
+ *
+ * 🔴 `gone` WAS THE EVENT WORD (D9 minor M6, 2026-09-23). It read "Removed from the desk" — character for
+ * character `CONSOLE_EVENT_WORD.REMOVED`. So on the desk-wide history the row that RECORDS a removal printed the
+ * same five words in the SUBJECT column and in the EVENT column, and every other row about that account answered
+ * "which account is this about?" with something that happened. A subject column states WHO, never WHAT: the event
+ * column is the only one that may say what was done. The words are one frozen object, exported, so the collision
+ * is checked over the whole of both TOTAL maps rather than over the rows a fixture happened to paint.
+ * ⚠️ They are the console's OWN words, not the Owner's text, so they carry no `data-operator-text` hook (474).
+ */
+export const CONSOLE_ACCOUNT_WORD = {
+  /** The roster read FAILED — nobody can tell which account this was. */
+  unreadable: "Could not be read",
+  /** The account is not on the roster any more. A fact about the SUBJECT, not an event on the row. */
+  gone: "An account no longer on the desk",
+  /** An event of the CONTROL ROW itself — the switch, a limits save, the withdrawal. It belongs to no account. */
+  desk: "The desk",
+} as const;
+const CONSOLE_ACCOUNT_UNREADABLE = CONSOLE_ACCOUNT_WORD.unreadable;
+const CONSOLE_ACCOUNT_GONE = CONSOLE_ACCOUNT_WORD.gone;
+const CONSOLE_ACCOUNT_DESK = CONSOLE_ACCOUNT_WORD.desk;
 
 /** One row of the desk-wide activity panel: the account page's row, plus whose stake it was. */
 export type ConsoleDeskFeedRow = ConsoleFeedRow & {
@@ -5362,7 +5399,13 @@ export type ConsoleDeskFeedRow = ConsoleFeedRow & {
 /** One row of the desk-wide history: the account page's row, plus whose account it is — or the desk's own. */
 export type ConsoleDeskEventRow = ConsoleEventRow & {
   accountName: string;
-  /** True only when `accountName` is the operator's own text — which is also exactly when `accountHref` opens a page. */
+  /**
+   * True only when `accountName` is the operator's own text, which is what 474's DOM hook is for.
+   * ⚠️ IT IS NOT "there is a page to open", and this docblock said it was until M6's case measured it
+   * (2026-09-23). A REMOVED account keeps its own read-only page (ruling 358), so its rows carry an `accountHref`
+   * while this flag is false; only a row belonging to the CONTROL ROW itself has no account and no href. The page
+   * paints a link on this flag, so the two claims are separate and the one that was wrong is the one written here.
+   */
   accountIsOperatorText: boolean;
   /** `null` for the control row's own events, which belong to no account and open no page (432(a)). */
   accountHref: string | null;

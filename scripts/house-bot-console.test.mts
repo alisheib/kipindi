@@ -202,6 +202,11 @@ await runTwoStores({
    * its section, the production shape at Start, the refusal in the Account cell. Both numbers are what
    * `KP_SCRATCH_PORT=5453 npm run test:house-bot-console` PRINTED on the held cluster: `0.mem · exit 0 · 763 passed`
    * and `0.pg · exit 0 · 525 passed`, ALL PASS on both stores — +12 in EACH child, every new case reaching both. */
-  minPass: { memory: 763, postgres: 525 },
+  /* ⭐ RAISED 763 → 785 MEMORY / 525 → 547 POSTGRES, 2026-09-23 — the four D9/A5 minors (M5 M6 M7 M8): the
+   * account-word/event-word collision checked over the whole of both TOTAL maps, the removed account's rendered
+   * subject cell, the one-list relationship over four states, the retired chain reaching the callout and the
+   * badge too, and the page-source pins the M7 shape rests on. What a run PRINTED on the held cluster:
+   * `0.mem · exit 0 · 785 passed` and `0.pg · exit 0 · 547 passed`, ALL PASS on both stores. */
+  minPass: { memory: 785, postgres: 547 },
   dbPrefix: "hb_console",
 });

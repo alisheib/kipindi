@@ -438,11 +438,24 @@ const whyCard = () => page.evaluate(() => {
 await page.goto(`${BASE}/admin/desk/${ACCOUNT}?tab=overview`, { waitUntil: "load" });
 await page.waitForTimeout(2600);
 const whyOverview = await whyCard();
-/* With Polls the only product and its only mode now off, nothing is on at all — the rules' one global reason. */
-ok("7b.2 the overview's why-panel names the reason — `Turn on at least one entry mode.` — under the group that fixes it",
-  whyOverview.present && whyOverview.items.length === 1 && /Turn on at least one entry mode\./.test(whyOverview.items[0]) && /^Entry modes/.test(whyOverview.items[0]),
-  JSON.stringify(whyOverview));
-ok("7b.3 …with a link to the Rules tab", typeof whyOverview.link === "string" && /tab=rules$/.test(whyOverview.link), JSON.stringify(whyOverview.link));
+/* RE-AIMED BY M7 (2026-09-23). It read the overview's WHY-PANEL, and the overview no longer draws one while the
+   callout above the rail is naming the same blockers - one screen states them once. What the overview must still
+   do is NAME the reason where an officer cannot miss it and offer the way to it; both are measured here, and the
+   panel with its remedy sentence is measured on the Rules tab at 7b.7, where the form that fixes it is. */
+const overviewStates = await page.evaluate(() => {
+  const main = document.querySelector("main");
+  const box = [...(main?.querySelectorAll("[role=status]") ?? [])].map((e) => e.innerText.replace(/\s+/g, " ").trim())
+    .find((t) => /thing(s)? (to fix|stop)/.test(t)) ?? null;
+  const badge = [...(main?.querySelectorAll('a[href*="tab=rules"]') ?? [])].map((a) => a.innerText.replace(/\s+/g, " ").trim());
+  return { box, panels: main?.querySelectorAll("[data-why-item], [data-why-empty]").length ?? 0, badge };
+});
+/* With Polls the only product and its only mode now off, nothing is on at all - the rules' one global reason. */
+ok("7b.2 the overview NAMES the reason above the rail - one blocker, `Entry modes` - and does NOT restate it in a panel below (M7, 432(n))",
+  typeof overviewStates.box === "string" && /1 thing/.test(overviewStates.box) && /Entry modes/.test(overviewStates.box)
+    && whyOverview.present === false && overviewStates.panels === 0,
+  JSON.stringify(overviewStates).slice(0, 260));
+ok("7b.3 ...and the way to it is the rail's own `Rules` tab, carrying the same count as a badge",
+  overviewStates.badge.some((t) => /^Rules\b/.test(t) && /\b1\b/.test(t)), JSON.stringify(overviewStates.badge));
 /* Start, on the strip. The dialog's confirm is also named "Start"; the refusal must stay in the dialog with its link. */
 await clickIfThere("Start");
 await page.waitForTimeout(600);
@@ -704,7 +717,105 @@ ok("9b.7 …and the saved schedule is painted in words, per chosen day",
   readBack.saved.length > 0 && readBack.saved.every((s) => /09:00 → 17:30/.test(s)),
   JSON.stringify(readBack.saved.slice(0, 3)));
 
-console.log("\n§10 · putting the roster back");
+/* -- 9c - THREE MINORS THAT ONLY A REAL TREE CAN SHOW (2026-09-23 - registers D9 and A5) -------------------
+ *
+ * M5 an empty table scrolling sideways over nothing, M7 the same blockers stated twice on one screen, and M8 a
+ * way out that stopped one click short. Not one of the three is visible to a view-model case: the first is a CSS
+ * rule over a rendered table, the second is which of two panels a PAGE chose to draw, and the third is an effect
+ * that runs on arrival in the browser. Each carries its own CONTROL, because "no scroller" and "no dialog" are
+ * both satisfied by a screen that failed to render at all.
+ */
+console.log("\n\u00a79c \u00b7 the empty table, the one statement per screen, and the way out that lands");
+
+/* -- M5 - a table with nothing in it does not scroll sideways, and one with rows still does ---------------- */
+await page.setViewportSize({ width: 360, height: 900 });
+const tableShape = async (tab) => {
+  await page.goto(`${BASE}/admin/desk/${ACCOUNT}?tab=${tab}`, { waitUntil: "load" });
+  await page.waitForTimeout(2200);
+  return page.evaluate(() => {
+    const t = document.querySelector("main table.admin-tbl");
+    if (!t) return { table: false };
+    const strip = t.closest(".scrollx, .overflow-x-auto");
+    const head = t.querySelector("thead");
+    const emptyRow = t.querySelector("tbody tr[data-table-empty]");
+    return {
+      table: true,
+      empty: !!emptyRow,
+      headShown: head ? getComputedStyle(head).display !== "none" : null,
+      scrolls: strip ? strip.scrollWidth > strip.clientWidth + 1 : null,
+      message: emptyRow ? emptyRow.innerText.replace(/\s+/g, " ").trim() : null,
+    };
+  });
+};
+const emptyTable = await tableShape("targets");
+ok("9c.1 an EMPTY table at 360 does not scroll sideways over nothing - its column floors and its head are furniture for columns that hold nothing, and the message is still there",
+  emptyTable.table === true && emptyTable.empty === true && emptyTable.scrolls === false
+    && emptyTable.headShown === false && /No targets yet/.test(emptyTable.message ?? ""),
+  JSON.stringify(emptyTable).slice(0, 240));
+const fullTable = await tableShape("history");
+ok("9c.2 CONTROL - a table WITH rows keeps its head at the same width, so the rule is scoped to the empty state and not a header removed everywhere",
+  fullTable.table === true && fullTable.empty === false && fullTable.headShown === true,
+  JSON.stringify(fullTable).slice(0, 240));
+
+/* -- M7 - the blockers are named once per screen, and the two skins are one list --------------------------- */
+await page.setViewportSize({ width: 1440, height: 1100 });
+await page.goto(RULES, { waitUntil: "load" });
+await page.waitForTimeout(2200);
+await clearToasts();
+/* A blocker state made on purpose: with every entry mode off, the rules raise their one global reason. */
+for (const s of ["updown-react", "updown-fill", "updown-open", "polls-react", "polls-fill", "polls-open"]) {
+  const box = page.locator(`main form input[name="${s}"]`);
+  if ((await box.count()) === 1 && (await box.isChecked())) await soft(`switch ${s} off`, () => clickSwitch(s));
+}
+await page.waitForTimeout(400);
+await submitForm();
+await clearToasts();
+const screenShape = async (tab) => {
+  await page.goto(`${BASE}/admin/desk/${ACCOUNT}?tab=${tab}`, { waitUntil: "load" });
+  await page.waitForTimeout(2400);
+  return page.evaluate(() => {
+    const main = document.querySelector("main");
+    const box = [...(main?.querySelectorAll("[role=status]") ?? [])].find((e) => /thing(s)? (to fix|stop)/.test(e.innerText));
+    return {
+      callout: box ? box.innerText.replace(/\s+/g, " ").trim() : null,
+      calloutItems: box ? [...box.querySelectorAll("li")].map((li) => li.innerText.trim()) : [],
+      panelItems: [...(main?.querySelectorAll("[data-why-item]") ?? [])].map((li) => li.innerText.replace(/\s+/g, " ").trim()),
+      panelEmpty: !!main?.querySelector("[data-why-empty]"),
+    };
+  });
+};
+const onOverviewM7 = await screenShape("overview");
+const onRulesM7 = await screenShape("rules");
+ok("9c.3 the OVERVIEW states the blockers ONCE - the callout above the rail names them, and no panel below restates them",
+  onOverviewM7.callout !== null && onOverviewM7.calloutItems.length > 0
+    && onOverviewM7.panelItems.length === 0 && onOverviewM7.panelEmpty === false,
+  JSON.stringify(onOverviewM7).slice(0, 280));
+ok("9c.4 the RULES tab states them ONCE too - the panel beside the form names them WITH the remedy, and the callout is not drawn there",
+  onRulesM7.callout === null && onRulesM7.panelItems.length > 0
+    && onRulesM7.panelItems.every((t) => t.split(" ").length > 2),
+  JSON.stringify(onRulesM7).slice(0, 280));
+ok("9c.5 ...and the two screens name the SAME blockers in the SAME order - one list, two skins",
+  onOverviewM7.calloutItems.length === onRulesM7.panelItems.length
+    && onRulesM7.panelItems.every((t, i) => t.startsWith(onOverviewM7.calloutItems[i])),
+  JSON.stringify({ callout: onOverviewM7.calloutItems, panel: onRulesM7.panelItems }).slice(0, 300));
+
+/* -- M8 - `?reverify=1` opens the dialog it names, on arrival ---------------------------------------------- */
+const dialogText = async (url) => {
+  await page.goto(url, { waitUntil: "load" });
+  await page.waitForTimeout(2600);
+  return page.evaluate(() => {
+    const d = document.querySelector("[role=dialog], [role=alertdialog]");
+    return d ? d.innerText.replace(/\s+/g, " ").trim().slice(0, 160) : null;
+  });
+};
+const arrivedOn = await dialogText(`${BASE}/admin/desk/${ACCOUNT}?reverify=1`);
+ok("9c.6 the Start refusal's `Confirm permission` way out LANDS on the dialog it names - `?reverify=1` opens it on arrival",
+  typeof arrivedOn === "string" && /Confirm the holder's permission/.test(arrivedOn), JSON.stringify(arrivedOn));
+const bareArrival = await dialogText(`${BASE}/admin/desk/${ACCOUNT}`);
+ok("9c.7 CONTROL - the same page without the parameter opens NO dialog, so 9c.6 measured the link and not a page that always opens one",
+  bareArrival === null, JSON.stringify(bareArrival));
+
+console.log("\n\u00a710 \u00b7 putting the roster back");
 const removed = await soft("remove the drive's account", async () => {
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.goto(`${BASE}/admin/desk/${ACCOUNT}`, { waitUntil: "load" });
