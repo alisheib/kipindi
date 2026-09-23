@@ -3904,6 +3904,48 @@ html[data-sheet-open] .route-enter { animation: none; }
 
 .kp-conv { max-width: 620px; }
 
+
+/* 🔴 D60 + D61 · THE FAIRNESS RECORD STOPS BEING A FIVE-COLUMN TABLE ON A PHONE.
+   Measured on production: the five columns' content minimums (128 + 99 + 84 + 157 + 91 = 559px) beat
+   `.admin-tbl { width: 100% }`, so the table is 559px wide at EVERY phone width. At 360 the scroller shows
+   326 of it — **41.7% off-screen**; at 320, 48.8%. Every `Chanzo` link sat **157px past the right edge**
+   with nothing at rest to say it could be reached. That column is the page's entire promise: each
+   settlement checkable against a named official URL. A player who suspected a resolution could not audit
+   it, on the page the footer's “Uthibitisho wa utatuzi” link sends them to.
+   ⛔ AND BECAUSE THE WIDTH NEVER CHANGED, NEITHER DID THE TITLE COLUMN: 91.8px at 320, 360 AND 412. A
+   103-character Swahili question painted as 14 characters, and two different markets — one YES, one on a
+   different competition — rendered IDENTICAL rows. Raising the line clamp could not have fixed that.
+   ⭐ So each row becomes a stack of labelled fields, which is what a table of five short fields should be
+   at this width. The label comes from `data-th`, which the page fills from the same dictionary keys the
+   `<th>`s use — so there is one source of truth for the column names and it is localised.
+   ⚠️ `display: block` DESTROYS TABLE SEMANTICS, so `fairness/page.tsx` states `role="table"`, `role="row"`
+   and `role="cell"` explicitly; they survive the display change and a screen reader keeps its rows.
+   ⛔ The `<thead>` is hidden rather than deleted: it is still the desktop header, and it is where the
+   labels come from. */
+@media (max-width: 639.98px) {
+  /* density: general — a proof column 157px off-screen is unreachable in BOTH card spacings, and this is
+     not the board: `kp-density` governs card rhythm, and `/fairness` has no cards. Gated on WIDTH. */
+  .fairness-tbl, .fairness-tbl tbody, .fairness-tbl tr, .fairness-tbl td { display: block; width: auto; max-width: none; }
+  .fairness-tbl thead { display: none; }
+  .fairness-tbl tr { padding: var(--sp-3) var(--sp-3) var(--sp-4); }
+  .fairness-tbl td { padding: 0; }
+  .fairness-tbl td + td { margin-top: 10px; }
+  /* the field's name, in the eyebrow voice the hidden header used */
+  .fairness-tbl td[data-th]::before {
+    content: attr(data-th);
+    display: block;
+    margin-bottom: 2px;
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+  }
+  /* the question now has the whole measure, so it is allowed more of itself */
+  .fairness-tbl td[data-th] .line-clamp-2 { -webkit-line-clamp: 4; }
+}
+
 /* The question board — the hero's substance. Four real open markets, closing soonest. */
 .kp-qboard { border-top: 1px solid var(--border-royal); }
 .kp-qrow {
