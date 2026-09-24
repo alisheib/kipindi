@@ -82,11 +82,14 @@ const RAW_WIDTH_ALLOWLIST = new Set<string>([
   "src/app/markets/[id]/not-found.tsx",   // min-h-[80svh] px-5 py-10, centred
   "src/app/proposals/[id]/not-found.tsx", // min-h-[80svh] px-5 py-10, centred
   "src/components/ui/route-error.tsx",    // min-h-[60svh] px-5 py-12, centred
-  // ── Up & Down states a flat px-4, not px-3 lg:px-6 ────────────────────────
-  "src/app/updown/page.tsx",
-  "src/app/updown/loading.tsx",
-  "src/app/updown/history/page.tsx",
-  "src/app/updown/history/loading.tsx",
+  // ⭐ D45 · THE FOUR UP & DOWN ENTRIES LEFT THIS LIST ON 2026-09-24, and the list may only
+  //    shrink, so they cannot come back quietly. They stated a flat `px-4` — which is **20px**
+  //    on this repo's overridden scale (tailwind.config.ts:216), not the 16 it reads as — beside
+  //    hand-typed `max-w-[1280px]`/`max-w-[1080px]`. They now carry `max-w-board`/`max-w-reading`
+  //    and the house `px-3 lg:px-6`, which is what `/updown/[roundId]` one directory away had
+  //    already been using. ⭐ AND THAT PUTS THEM INSIDE CHECK 3 FOR THE FIRST TIME: a hand-typed
+  //    pixel width matches no tier, so `tierIn()` answered null and the page/loading parity check
+  //    silently skipped both routes — the exact class of bug check 3 exists for.
 ]);
 
 
@@ -170,6 +173,30 @@ for (const f of tsx) {
 check("no NEW hand-typed page width (>=500px) outside the ratchet list",
   raw.length === 0, raw.join(", "));
 log(`  (ratchet holds ${RAW_WIDTH_ALLOWLIST.size} file(s) — the list may only shrink)`);
+
+/* ── 2b · D45 · the routes that LEFT the ratchet keep the house gutter ───────
+   ⛔ CHECK 2 ABOVE CANNOT SEE THIS. It matches `max-w-[NNNpx]` only, so a route that
+   swaps the hand-typed width for a tier token and keeps its flat `px-4` passes it
+   cleanly — and `px-4` is **20px** on this repo's overridden scale (tailwind.config.ts:216),
+   which was the whole of D45. The gutter needs its own assertion or the fix is
+   one edit away from silently coming back. */
+const HOUSE_GUTTER_ROUTES = [
+  "src/app/updown/page.tsx",
+  "src/app/updown/loading.tsx",
+  "src/app/updown/history/page.tsx",
+  "src/app/updown/history/loading.tsx",
+];
+for (const rel of HOUSE_GUTTER_ROUTES) {
+  const src = decomment(readFileSync(join(ROOT, rel), "utf8"));
+  const wrappers = [...src.matchAll(/mx-auto w-full (max-w-[a-z]+)([^"]*)/g)];
+  // ⛔ A FAILED READ IS NOT A PASS: if the wrapper cannot be found at all, fail loudly.
+  check(`${rel} still states a page wrapper this guard can read`, wrappers.length > 0);
+  for (const w of wrappers) {
+    check(`${rel} wrapper ${w[1]} uses the house gutter, not a flat px-4`,
+      /px-3 lg:px-6/.test(w[0]) && !/px-4(?=[ "]|$)/.test(w[0]),
+      `reads "${w[0].slice(0, 60)}"`);
+  }
+}
 
 // ── 3. A page and its loading.tsx must agree on the tier ────────────────────
 // This is the guard for the class of bug nothing could see: /updown/[roundId]

@@ -42,8 +42,11 @@ type Props = {
   t: Dict;
   locale: Locale;
   isAuthed: boolean;
-  /** Σ CONFIRMED payouts + cashouts, TZS — the hero's third proof figure. */
-  paidOutTzs: number;
+  /**
+   * Σ CONFIRMED payouts + cashouts, TZS — the hero’s third proof figure.
+   * **null means the read failed**, and the slot is withheld rather than printed as a zero.
+   */
+  paidOutTzs: number | null;
   nowMs: number;
   cards: HeroCardData;
 };
@@ -204,12 +207,19 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, paidOu
               Gilt because it is real money (ACCEPTANCE §6 / Q5 — gold means money, and money that
               reached a player is the strongest claim on this page). Compact form so it fits at 360
               in all three locales without a second DOM copy, exactly as the pool figure does. */}
-          <div className="kp-proof__fig">
-            <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
-              {formatTzsCompact(paidOutTzs)}
-            </span>
-            <span className="kp-proof__cap">{t.home.heroProofPaid}</span>
-          </div>
+          {/* ⛔ WITHHELD WHEN UNKNOWN, NEVER PRINTED AS ZERO. `paidOutTzs` is null when the
+              aggregate could not be read, and a printed "TZS 0" would be a figure nobody produced
+              on the one rail whose job is proof — the same licence condition that makes
+              `pricedYesPct` return null instead of a plausible 50. A genuine zero is a real fact
+              and still prints. */}
+          {paidOutTzs != null && (
+            <div className="kp-proof__fig">
+              <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
+                {formatTzsCompact(paidOutTzs)}
+              </span>
+              <span className="kp-proof__cap">{t.home.heroProofPaid}</span>
+            </div>
+          )}
         </div>
 
         {/* ── aggregate conviction ─────────────────────────────────────────────────────
