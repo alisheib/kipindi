@@ -129,7 +129,9 @@ export function TrustBand({
                   <span className="kp-hero__tick" aria-hidden />
                   {t.home.settledEyebrow}
                 </p>
-                <h3 className="kp-shead__h">{t.home.settledHead}</h3>
+                {/* `text-balance` on every .kp-shead__h, not some of them — it was on 3 of 5, which is the
+                    kind of inconsistency that reads as a bug on whichever heading happens to wrap. */}
+                <h3 className="kp-shead__h text-balance">{t.home.settledHead}</h3>
               </div>
               <Link href={"/results" as never} className="kp-shead__link">
                 {t.home.settledSeeAll}
@@ -242,7 +244,14 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
            and prints nothing.
            ⛔ `aria-hidden` and no text: a screen reader must not announce an empty money cell as if
            it were a figure, and there is no figure here to announce. */
-        <span className="kp-settled__amt" aria-hidden />
+        /* 🔴 THE EMPTY SPAN RESERVED NOTHING — an empty block box has height 0, so the grid track
+           stayed at 0px and row 4 stayed 70.5px against its neighbours’ 90px at 360 and 412.
+           Re-measured on production after it shipped: amtH = 0, tracks "21px 16.5px 0px". The
+           element was there and did nothing, which is the shape this session keeps paying for.
+           A non-breaking space gives the box exactly one line box at the cell’s own line-height —
+           no magic number, and it tracks the type scale if that ever moves. `aria-hidden` keeps it
+           out of the accessibility tree, so nothing is announced for a sum nobody staked. */
+        <span className="kp-settled__amt" aria-hidden>{" "}</span>
       )}
     </Link>
   );

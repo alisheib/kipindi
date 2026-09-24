@@ -580,6 +580,19 @@ try {
           inBox(subject) && first != null && inBox(first), JSON.stringify(facts.firstCells.slice(0, 2)));
         if (width >= 640) {
           ok(`§5.2 ${route} @${width} · …and from 640 up the SECOND money answer is in the strip too`, second == null || inBox(second), JSON.stringify(second));
+        } else if (/[?&]tab=activity/.test(route)) {
+          /* 🔴 THE LICENCE BELOW WAS WITHDRAWN FOR THIS ONE PANEL, BY THE OWNER, ON A LIVE SCREEN (2026-09-24).
+             The `else` branch states the old design in its own words and PASSED throughout — which is precisely the
+             complaint: the activity table's second money answer is `Left today`, the falling budget the owner asked
+             for so he could watch it, and "one scroll away" is not watching it. A gate that certifies the thing
+             being complained about is the gate agreeing with the defect.
+             ⛔ SCOPED TO THE ACTIVITY ROUTES, and the scope is the whole of 432(b)'s reasoning: that arithmetic was
+             measured on a cell holding a usage PAIR ("used X of Y", two figures bound into one line). This column
+             holds ONE figure, with its ceiling in the header — 373's own named fallback — so the arithmetic that
+             justified the scroll does not describe this panel. The roster keeps the licence below, where it was
+             measured. C7-SPEC 373(d) carries the amendment. */
+          ok(`§5.2 ${route} @${width} · …and on the ACTIVITY panel the second money answer is IN the strip even here — a budget you have to drag sideways to read is not one you can watch`,
+            second == null || inBox(second), JSON.stringify(second));
         } else {
           // 432(b)'s arithmetic: two usage pairs plus a readable subject column do not fit 360, so the second answer
           // is one scroll away BY DESIGN — and the region must actually be scrollable for that to be an answer.

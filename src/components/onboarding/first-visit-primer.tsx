@@ -375,9 +375,17 @@ export function FirstVisitPrimer() {
          page where the primer never appeared — the file says so a few lines below. The first screen a
          new player ever sees was the least measured surface on the site.
          The cap is on the PANEL and the scroll is internal, so the sheet stays docked and the
-         content is reachable at any height. `overflow-x` stays hidden, which is what the previous
+         content is reachable at any height.
+         🔴 A PERCENTAGE WAS THE WRONG INSTRUMENT AND 85dvh WAS A REGRESSION AT 360. Card 3 is 714px:
+         at 360x780 it FITTED (top 66, nothing cut), and an 85% cap squeezed it to 663 and forced
+         internal scrolling — putting the primary action below the scroll fold on the commonest
+         phone size, to fix a defect that only existed at 320. A cap must bite only where it must.
+         `calc(100dvh - 48px)` is a fixed gutter instead: 732 at 780, so card 3 fits untouched; 592
+         at 640, so the 789px card still scrolls and stays reachable. Caught by an audit of this
+         session’s own commits, measuring both phone sizes rather than the one the fix was aimed at.
+         `overflow-x` stays hidden, which is what the previous
          `overflow-hidden` was really buying: the gilt corners clipped to the rounded edge. */
-      panelClassName="!p-0 max-h-[85dvh] overflow-y-auto overflow-x-hidden"
+      panelClassName="!p-0 max-h-[calc(100dvh-48px)] overflow-y-auto overflow-x-hidden"
     >
         {/* Gilt corners — heraldic framing from the brand kit */}
         <div className="pointer-events-none absolute top-0 left-0" aria-hidden>

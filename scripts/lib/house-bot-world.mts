@@ -170,6 +170,28 @@ export async function loadWorld() {
     return svc.placeHouseBet(b.userId, { marketId: i.marketId, side: i.side, stake: i.stakeTzs, idempotencyKey: constants.houseIntentKey(i.id) }, { botId: b.botId, intentId: i.id });
   }
 
+  /**
+   * Move an INTENT's decision instant into the past — the same fixture of time as `backdate`, for the one claim
+   * that cannot be made without it: the activity table's budget column answers for TODAY only, because the cap it
+   * counts against is read LIVE and an officer may edit it, so pricing an older day against today's ceiling would
+   * put a limit on screen that was never in force on it. `createdAt` is `Omit`ted from `NewHouseBotIntent`, so a
+   * yesterday row cannot be inserted — it has to be moved.
+   */
+  async function backdateIntent(intentId: string, byMs: number): Promise<void> {
+    if (onPostgres) {
+      await prisma()!.$executeRawUnsafe(`UPDATE "HouseBotIntent" SET "createdAt" = "createdAt" - ($1::int * interval '1 millisecond') WHERE "id" = $2`, byMs, intentId);
+    } else {
+      /* ⛔ NOT THROUGH `get()` — THE MEMORY TWIN CLONES ON READ (`return r ? clone(r) : null`), so mutating
+         what it hands back changes a copy and the fixture silently does nothing, leaving a CONTROL that cannot
+         fail. The live row is reachable because the store keeps its map on `globalThis`, which is a test-only
+         door into an existing production detail rather than a new one cut for the suite. */
+      const map = (globalThis as Any).__50PICK_HB_INTENTS as Map<string, Any> | undefined;
+      const row = map?.get(intentId);
+      if (!row) throw new Error(`world.backdateIntent: no intent ${intentId} in the memory store`);
+      row.createdAt = new Date(Date.parse(row.createdAt) - byMs).toISOString();
+    }
+  }
+
   /** Move a position's placement instant into the past (a fixture of time; see the header). */
   async function backdate(positionId: string, byMs: number): Promise<void> {
     if (onPostgres) {
@@ -203,7 +225,7 @@ export async function loadWorld() {
 
   return {
     svc, db, mdal, dal, constants, prisma, onPostgres, uid, iso,
-    user, setUserFields, poll, limits, switchOn, switchOff, bot, setCaps, intent, place, backdate, ageHouseMinute, bal, positionsOf, txnsFor, seededBonus,
+    user, setUserFields, poll, limits, switchOn, switchOff, bot, setCaps, intent, place, backdate, backdateIntent, ageHouseMinute, bal, positionsOf, txnsFor, seededBonus,
     OPEN_CAPS, OPEN_LIMITS,
   };
 }

@@ -4236,43 +4236,64 @@ type FeedLeftCell = { text: string; title: string };
  * ⚠️ TODAY ONLY, and this is not a simplification. The cap is read LIVE and an officer may edit it, so applying
  * today's ceiling to an older day would paint a limit that was never in force on it (`rulesVersion` is 27 on the
  * oldest live account). A blank under a header reading "Left today" is honest; a reconstructed one is not.
- * ⚠️ PLACED ONLY: a skipped, expired or failed row moved no money, so nothing became anything.
+ * ⭐ EVERY ROW OF THE DAY ANSWERS, NOT ONLY THE PLACED ONES — corrected 2026-09-24 after the owner could not
+ * find the column on the live desk. The first cut painted a figure only where money moved, reasoning that "a row
+ * that moved no money made nothing become anything". MEASURED ON PRODUCTION: 16 of the newest 20 rows are
+ * SKIPPED, so the column rendered as sixteen em dashes and four figures and read as empty. The question this
+ * column answers is "what did the budget stand at, at this row", and that is well defined for a skipped row too —
+ * it simply has not changed. A ledger that repeats a value between movements is what makes the steps VISIBLE,
+ * which is the whole of what was asked for. The Outcome chip beside it already says whether the stake was taken.
  * ⚠️ CLAMPED INTO `[0, cap]`. The book sums POSITIONS and these rows are INTENTS; they agree for every placed row,
  * but a clamp means an unexpected disagreement shows as a flat 0 rather than as a negative amount on an admin
  * screen. A cap lowered mid-day legitimately lands here too, and 0 is the true answer in that case.
  */
-function feedLeftTodayMap(
+function feedLeftTodayLookup(
   todayPlaced: readonly StoredHouseBotIntent[] | null,
+  scanWasFull: boolean,
+  dayFromMs: number,
   capFor: (houseBotId: string) => number | null,
   stakedFor: (houseBotId: string) => number | null,
-): Map<string, FeedLeftCell> {
-  const out = new Map<string, FeedLeftCell>();
+): (row: StoredHouseBotIntent) => FeedLeftCell | null {
   /* ⛔ 355 · A FAILED SCAN IS NOT AN EMPTY DAY. `null` leaves every cell blank; it never paints a full budget. */
-  if (todayPlaced == null) return out;
+  if (todayPlaced == null) return () => null;
   const byBot = new Map<string, StoredHouseBotIntent[]>();
+  let oldestScannedMs = Number.POSITIVE_INFINITY;
   for (const r of todayPlaced) {
     const list = byBot.get(r.houseBotId);
     if (list) list.push(r); else byBot.set(r.houseBotId, [r]);
+    const at = Date.parse(r.createdAt);
+    if (Number.isFinite(at) && at < oldestScannedMs) oldestScannedMs = at;
   }
-  for (const [botId, rows] of byBot) {
-    const cap = capFor(botId);
-    const staked = stakedFor(botId);
+  /* The feed's own order, so "after this row" here means what it means on the page: `("createdAt","id") DESC`. */
+  const isNewer = (p: StoredHouseBotIntent, atMs: number, id: string): boolean => {
+    const pAt = Date.parse(p.createdAt);
+    if (!Number.isFinite(pAt)) return false;
+    return pAt !== atMs ? pAt > atMs : p.id > id;
+  };
+  return (row) => {
+    const at = Date.parse(row.createdAt);
+    /* ⚠️ TODAY ONLY. The cap is read LIVE and officers edit it, so an older day priced against today's ceiling
+       would put a limit on screen that was never in force on it. */
+    if (!Number.isFinite(at) || at < dayFromMs) return null;
+    const cap = capFor(row.houseBotId);
+    const staked = stakedFor(row.houseBotId);
     /* An account with no daily cap has no budget to count down, and a failed book read is not a zero (355). */
-    if (cap == null || staked == null) continue;
-    let used = staked;
-    for (const r of rows) {
-      const shown = Math.max(0, used);
-      out.set(r.id, {
-        text: formatTzs(Math.min(cap, Math.max(0, cap - used))),
-        title: `used ${formatTzs(shown)} of ${formatTzs(cap)}`,
-      });
-      used -= r.stakeTzs;
-    }
-  }
-  return out;
+    if (cap == null || staked == null) return null;
+    /* ⛔ AND A TRUNCATED SCAN ANSWERS NOTHING BELOW ITS REACH. The window holds the day's NEWEST placements; for
+       a row older than all of them we cannot know what was staked in between, and a figure computed anyway would
+       silently overstate what is left. Only fires on a day busier than the window. */
+    if (scanWasFull && at < oldestScannedMs) return null;
+    let newer = 0;
+    for (const p of byBot.get(row.houseBotId) ?? []) if (isNewer(p, at, row.id)) newer += p.stakeTzs;
+    const used = staked - newer;
+    return {
+      text: formatTzs(Math.min(cap, Math.max(0, cap - used))),
+      title: `used ${formatTzs(Math.max(0, used))} of ${formatTzs(cap)}`,
+    };
+  };
 }
 
-function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number, left: Map<string, FeedLeftCell>): ConsoleFeedRow {
+function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number, left: (row: StoredHouseBotIntent) => FeedLeftCell | null): ConsoleFeedRow {
   const at = Date.parse(i.createdAt);
   /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
      instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
@@ -4285,8 +4306,8 @@ function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs:
     stake: formatTzs(i.stakeTzs),
     /* ⛔ LOOKED UP, NEVER COMPUTED HERE: this function sees ONE row and the budget is a property of the day. A row
        the map has no answer for paints nothing — the four refusals are named on `feedLeftTodayMap`. */
-    leftToday: left.get(i.id)?.text ?? null,
-    leftTodayTitle: left.get(i.id)?.title ?? null,
+    leftToday: left(i)?.text ?? null,
+    leftTodayTitle: left(i)?.title ?? null,
     statusWord: status.word,
     statusChip: status.chip,
     typeWord: CONSOLE_INTENT_KIND_WORD[i.kind],
@@ -5136,8 +5157,10 @@ export async function houseDetailForConsole(
   /* ⛔ ONE ACCOUNT, SO BOTH LOOKUPS ANSWER FOR IT AND FOR NOTHING ELSE — a stray id gets `null`, never this
      account's budget. `book` is the SAME read the `capDailyStakeTzs` usage row above the table renders. */
   const leftScan = leftScanR.status === "fulfilled" ? leftScanR.value : null;
-  const leftToday = feedLeftTodayMap(
+  const leftToday = feedLeftTodayLookup(
     leftScan == null ? null : leftScan.rows,
+    leftScan != null && leftScan.rows.length >= CONSOLE_LEFT_TODAY_SCAN,
+    feedDayWindow == null ? Number.POSITIVE_INFINITY : Date.parse(feedDayWindow.fromIso),
     (id) => (id === bot.id ? bot.capDailyStakeTzs : null),
     (id) => (id === bot.id && book != null ? book.stakedTzs : null),
   );
@@ -6003,8 +6026,11 @@ export async function houseFeedForConsole(
      renders zeros for today (documented behaviour), which is NOT a failed read". The account page reaches the
      same fact through `houseDayBook(dayKey, bot.id)`, which answers a ZEROED book rather than nothing — so
      `?? null` here painted a figure on the account page and an em dash on the desk for the very same stake. */
-  const leftToday = feedLeftTodayMap(
+  const deskDayWindow = eatDayFromIso(core.dayKey);
+  const leftToday = feedLeftTodayLookup(
     leftScan == null ? null : leftScan.rows,
+    leftScan != null && leftScan.rows.length >= CONSOLE_LEFT_TODAY_SCAN,
+    deskDayWindow == null ? Number.POSITIVE_INFINITY : Date.parse(deskDayWindow.fromIso),
     (id) => capById.get(id) ?? null,
     (id) => (core.dayBooks == null ? null : (core.dayBooks.get(id)?.stakedTzs ?? 0)),
   );

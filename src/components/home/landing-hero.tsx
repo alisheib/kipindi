@@ -42,8 +42,11 @@ type Props = {
   t: Dict;
   locale: Locale;
   isAuthed: boolean;
-  /** Σ CONFIRMED payouts + cashouts, TZS — the hero's third proof figure. */
-  paidOutTzs: number;
+  /**
+   * Σ CONFIRMED payouts + cashouts, TZS — the hero’s third proof figure.
+   * **null means the read failed**, and the slot is withheld rather than printed as a zero.
+   */
+  paidOutTzs: number | null;
   nowMs: number;
   cards: HeroCardData;
 };
@@ -195,21 +198,33 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, paidOu
               production 2026-09-24. Both numbers were true and the pair told a reader the platform
               is empty. A count of things not yet decided also SHRINKS every time a market settles,
               so the figure moved the wrong way whenever the product worked.
-              ⭐ Money already paid out only grows, it is the number a bettor actually wants, and the
-              settled strip lower down proves it row by row with a public source on each one — so the
-              hero is not asserting something the page cannot back up.
+              ⭐ Money already paid out only grows, and it is the number a bettor actually wants.
+              ⚠️ BUT THE SETTLED STRIP DOES NOT PROVE THIS FIGURE, AND THE FIRST VERSION OF THIS NOTE
+              SAID IT DID. The strip is filtered to `productLine === "MARKET"` (platform-stats.ts),
+              because an Up & Down round settles inside a minute and would turn the strip into a
+              clock. This aggregate is the whole ledger, both product lines. So the strip corroborates
+              the CLAIM — that money reaches players, with a public source on each row — and not the
+              TOTAL. Writing otherwise would have been the page vouching for a number with evidence
+              that does not cover it.
               ⛔ `figures.openPredictions` is deliberately still computed and still on `HeroFigures`.
               It is a real fact about the book and a future surface may want it; what changed is that
               this slot is no longer the place to say it.
               Gilt because it is real money (ACCEPTANCE §6 / Q5 — gold means money, and money that
               reached a player is the strongest claim on this page). Compact form so it fits at 360
               in all three locales without a second DOM copy, exactly as the pool figure does. */}
-          <div className="kp-proof__fig">
-            <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
-              {formatTzsCompact(paidOutTzs)}
-            </span>
-            <span className="kp-proof__cap">{t.home.heroProofPaid}</span>
-          </div>
+          {/* ⛔ WITHHELD WHEN UNKNOWN, NEVER PRINTED AS ZERO. `paidOutTzs` is null when the
+              aggregate could not be read, and a printed "TZS 0" would be a figure nobody produced
+              on the one rail whose job is proof — the same licence condition that makes
+              `pricedYesPct` return null instead of a plausible 50. A genuine zero is a real fact
+              and still prints. */}
+          {paidOutTzs != null && (
+            <div className="kp-proof__fig">
+              <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
+                {formatTzsCompact(paidOutTzs)}
+              </span>
+              <span className="kp-proof__cap">{t.home.heroProofPaid}</span>
+            </div>
+          )}
         </div>
 
         {/* ── aggregate conviction ─────────────────────────────────────────────────────

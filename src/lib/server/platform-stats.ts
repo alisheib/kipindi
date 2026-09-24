@@ -52,7 +52,7 @@ export type PlatformStats = {
    * ⛔ It is an AGGREGATE, not a scan: `sumConfirmedByTypes` sums in the database. BET_PAYOUT and
    * CASHOUT are both stored positive, so this is money out to players and never a signed total.
    */
-  paidOutTzs: number;
+  paidOutTzs: number | null;
   /** Most recently settled FIRST. Only rows whose money has actually moved. */
   recentSettlements: SettlementRow[];
 };
@@ -134,7 +134,15 @@ export async function getPlatformStats(): Promise<PlatformStats> {
 
   // ⛔ AWAITED ALONGSIDE, NOT INSIDE A SECOND SCAN. This is a DB-side SUM over the ledger; it
   // loads no rows and does not re-read the market table this function already walked.
-  const paidOutTzs = await Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"])).catch(() => 0);
+  // 🔴 A FAILED READ IS NOT A ZERO, AND THIS SWALLOWED ONE INTO A PRINTED FIGURE. The catch
+  // returned 0 and the hero rendered it unconditionally, so a database hiccup published
+  // "TZS 0 paid out to players" on a licensed money surface — a number nobody produced, which is
+  // exactly what this codebase refuses everywhere else: `pricedYesPct` returns null rather than a
+  // plausible 50, and the card gates on the pool rather than on a guess. null now means UNKNOWN
+  // and the hero withholds the slot; a real zero still prints, because a platform that has paid
+  // out nothing yet should say so.
+  const paidOutTzs = await Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"]))
+    .catch(() => null);
   const value: PlatformStats = { settledCount: resolved.length, recentSettlements: settlements, paidOutTzs };
   globalThis.__50PICK_PLATFORM_STATS = { at: now, value };
   return value;

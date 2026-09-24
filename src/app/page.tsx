@@ -289,7 +289,7 @@ export default async function LandingPage() {
                 <p className="kp-hero__eyebrow text-balance" style={{ marginBottom: "var(--sp-1)" }}>
                   <span className="live-dot" /> {t.home.updownEyebrow}
                 </p>
-                <h2 className="kp-shead__h" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
+                <h2 className="kp-shead__h text-balance" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
                 <p className="kp-trust__b" style={{ maxWidth: "52ch" }}>{t.market.udTagline}</p>
                 <p className="kp-topic__m" style={{ paddingLeft: 0, marginTop: "var(--sp-2)" }}>
                   {updownLiveCount > 0
@@ -302,7 +302,14 @@ export default async function LandingPage() {
                   thing on the document. It keeps `shrink-0` so it does not compress beside the copy
                   at ordinary widths — it simply stops being allowed to exceed its container, and
                   wraps to a second line only when it truly cannot fit. */}
-              <span className="btn btn-primary btn-lg shrink-0 max-w-full whitespace-normal">
+              {/* 🔴 `whitespace-normal` NEVER TOOK EFFECT. Re-measured on production: computed
+                  white-space stayed `nowrap` with the class present. The utility lives in
+                  `@layer utilities` and `.btn` is unlayered — and a cascade layer loses to unlayered
+                  CSS outright, regardless of specificity. The class was in the markup, the diff read
+                  correct, and the button was still 229px.
+                  An inline style is the one mechanism that cannot lose here, and it is scoped to this
+                  call site rather than changing `.btn` for every button on the platform. */}
+              <span className="btn btn-primary btn-lg shrink-0 max-w-full" style={{ whiteSpace: "normal" }}>
                 <I.trendingUp s={16} /> {t.home.updownCta}
                 <I.chevronRight s={14} />
               </span>
