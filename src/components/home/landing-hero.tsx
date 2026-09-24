@@ -205,7 +205,11 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
         {/* ── the foot: the lede, two CTAs, and one real card ──────────────────────── */}
         <div className="kp-hero__foot">
           <div>
-            <p className="kp-hero__lede break-keep [overflow-wrap:anywhere]">{t.home.heroBody}</p>
+            {/* Same `break-keep` exception as the trust bodies, for the same measured reason: in zh it
+                forbids breaking between characters, so the lede renders three ragged lines
+                (204 / 238 / 170px) where two would do, costing 26px of the fold. See the note in
+                trust-band.tsx. */}
+            <p className={`kp-hero__lede [overflow-wrap:anywhere]${locale === "zh" ? "" : " break-keep"}`}>{t.home.heroBody}</p>
             {/* TWO CTAs, not three — `Sign in` lives in the header at every width. */}
             <div className="kp-hero__ctas">
               {isAuthed ? (
