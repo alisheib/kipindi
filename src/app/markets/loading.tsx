@@ -58,12 +58,17 @@ export default async function MarketsLoading() {
         <div className="kp-shimmer-track h-4 w-40 rounded bg-bg-elevated" aria-hidden />
       </div>
 
-      {/* Search — full width, with the echo row reserved exactly as the real box reserves it. */}
+      {/* Search — full width, with the echo row reserved exactly as the real box reserves it.
+          ⚠️ THE BOX IS `--h-input` PLUS 2px, NOT `--h-input`. The real `.input-group` renders
+          **46px**: globals.css's own note says its PADDING box is 44 (`--h-input`), and Tailwind
+          borders sit outside a padding box but inside a border-box height — so a ghost given
+          `h-[var(--h-input)]` with a `border` draws 44 where the field draws 46. Measured on
+          production: `.search-box-wrap` 71px = 46 + 8 (`mt-1.5`) + 17 (the echo row). */}
       <div aria-hidden className="search-box-wrap">
         {/* ⚠️ TOKEN, not `h-11` — spacing is overridden (tailwind.config.ts:200-215) so `h-11`
             drew 96px. This ghosts `<Input size="md">`, which reads --h-input (44px); consume the
             same token so the ghost and the field can never drift apart. */}
-        <div className="kp-shimmer-track h-[var(--h-input)] rounded-lg border border-border bg-bg-inset" />
+        <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
         <p className="mt-1.5 min-h-[17px]" />
       </div>
 

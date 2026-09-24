@@ -3,7 +3,7 @@
  *
  *   npm run qa:ghost-landing -- https://www.50pick.tz
  *   RED_GHOST=1 npm run qa:ghost-landing -- <base>   §A's fix is served back out
- *   RED_STACK=1 npm run qa:ghost-landing -- <base>   §B's fix is served back out
+ *   RED_STACK=1 npm run qa:ghost-landing -- <base>   §B AND §C's fix is served back out
  *
  * ── §A · WHERE THE GHOST PROMISED THE CONTENT WOULD BE ───────────────────────────────────────
  * `layout-shift` only counts a node that is present BEFORE and AFTER a frame. A skeleton is
@@ -30,6 +30,19 @@
  * `reducedMotion: "reduce"` — correct for stable screenshots — and `featured-contest.tsx`
  * disables the auto-advance under reduced motion. The guard switched the defect OFF and then
  * reported it could not find one. §B runs with motion ON and dwells past four advances.
+ *
+ * ── §C · WHAT MOVES WHEN THE PLAYER TAPS A CAROUSEL DOT ──────────────────────────────────────
+ * `/results`' notable carousel is `featured-contest.tsx`'s declared twin. It has no timer, so §B
+ * cannot reach it — but it hid inactive slides with the `hidden` ATTRIBUTE (`display: none`), so
+ * its box was the height of whichever slide was showing: 458 / 436 / 413px, moving the results
+ * grid 919 → 874. **45px under the finger, every time a player asks to see the next result.**
+ *
+ * ⛔ CLS SCORES THAT EXACTLY ZERO AND ALWAYS WILL, because the move lands within 500ms of the tap
+ * and `hadRecentInput` excludes it. That exclusion is right for a control whose PURPOSE is to
+ * move the page. It is wrong for one whose purpose is to swap a card in place. ⚠️ So §C does not
+ * read the metric at all — it taps every dot and asserts the BOARD BELOW does not move. A number
+ * of 0.0000 from an excluded shift is indistinguishable from a number of 0.0000 from a page that
+ * held still, and only one of those is the product working.
  */
 import { chromium } from "playwright";
 import { localisedContext, assertLang } from "./qa-locale.mjs";
@@ -39,9 +52,12 @@ const RED_GHOST = process.env.RED_GHOST === "1";
 const RED_STACK = process.env.RED_STACK === "1";
 const RED = RED_GHOST || RED_STACK;
 
-/** Which section each RED control is required to break — a control that breaks the OTHER
- *  section proves nothing about the one it is named for. */
-const SECTION = { RED_GHOST: "A", RED_STACK: "B" };
+/** Which sections each RED control is required to break — a control that breaks the OTHER
+ *  section proves nothing about the one it is named for.
+ *  ⭐ `RED_STACK` owns BOTH §B and §C and must break BOTH: one `.kp-slide-stack` mechanism now
+ *  serves `/live`'s timed carousel and `/results`' tapped one, so a control that reaches only
+ *  one of them would leave the other's fix unproven while reading green. */
+const SECTION = { RED_GHOST: ["A"], RED_STACK: ["B", "C"] };
 
 /** How far a ghost may miss where the content lands. A card is ~180–300px, so 120 is well
  *  inside "the reader's eye does not have to re-find the board", and both live defects were
@@ -212,25 +228,91 @@ console.log(`\n§B · /live with MOTION ON — what moves over ${DWELL_MS / 1000
   await ctx.close();
 }
 
+/* ── §C ─────────────────────────────────────────────────────────────────────────────────── */
+console.log("\n§C · tapping a carousel dot must not move the board below it");
+for (const surface of [
+  { path: "/results", dot: "Onyesha tokeo maarufu" },
+  { path: "/live", dot: "Onyesha soko" },
+]) {
+  const ctx = await localisedContext(b, { locale: "sw", width: 360, height: 780, baseUrl: BASE, reducedMotion: "reduce" });
+  const p = await ctx.newPage();
+
+  if (RED_STACK) {
+    await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
+      const res = await route.fetch();
+      const css = (await res.text()) + "\n.kp-slide-stack>*:not([data-slide-active]){display:none}\n";
+      await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
+    });
+  }
+
+  await p.goto(BASE + surface.path, { waitUntil: "load", timeout: 180000 });
+  await p.waitForTimeout(6000);
+  await assertLang(p, "sw");
+
+  const probe = () =>
+    p.evaluate(() => {
+      const g = document.querySelector(".market-grid");
+      const st = document.querySelector(".kp-slide-stack");
+      return {
+        gridY: g ? Math.round(g.getBoundingClientRect().top + scrollY) : -1,
+        visible: st ? [...st.children].filter((c) => getComputedStyle(c).visibility !== "hidden" && getComputedStyle(c).display !== "none").length : -1,
+        slides: st ? st.children.length : 0,
+      };
+    });
+
+  const dots = p.locator(`button[aria-label^="${surface.dot}"]`);
+  const n = await dots.count();
+  // ⛔ VACUITY: one slide, or no dots, means nothing was exercised on this surface.
+  if (n < 2) {
+    failures.push(`C ${surface.path} has ${n} carousel dot(s) — §C proved nothing here; re-run when the board carries two or more`);
+    await ctx.close();
+    continue;
+  }
+
+  const seen = [await probe()];
+  for (let i = 2; i <= n; i++) {
+    await p.locator(`button[aria-label="${surface.dot} ${i}"]`).first().click({ timeout: 20000 }).catch(() => {});
+    await p.waitForTimeout(1200);
+    seen.push(await probe());
+  }
+
+  const ys = seen.map((x) => x.gridY).filter((y) => y > 0);
+  if (!ys.length) {
+    failures.push(`C ${surface.path} no grid was found to measure against — §C proved nothing here`);
+    await ctx.close();
+    continue;
+  }
+  const spread = Math.max(...ys) - Math.min(...ys);
+  const badVis = seen.filter((x) => x.visible !== 1).length;
+  if (spread > 0) failures.push(`C ${surface.path} the board moves ${spread}px as the carousel is tapped through its ${n} slides (${[...new Set(ys)].join(" / ")})`);
+  // ⛔ a stack showing none or several slides is a broken fix that would still score spread 0
+  if (badVis) failures.push(`C ${surface.path} ${badVis} of ${seen.length} steps showed ${seen.map((x) => x.visible).join("/")} visible slides — exactly one must be`);
+  console.log(`   ${surface.path.padEnd(9)} ${n} dots  board at ${[...new Set(ys)].join(" / ")}  spread ${spread}px  visible-per-step ${seen.map((x) => x.visible).join("/")}`);
+  await ctx.close();
+}
+
 await b.close();
 
-const label = RED_GHOST ? "RED_GHOST (§A's fix served back out)" : RED_STACK ? "RED_STACK (§B's fix served back out)" : "GREEN";
+const label = RED_GHOST ? "RED_GHOST (§A's fix served back out)" : RED_STACK ? "RED_STACK (§B and §C's fix served back out)" : "GREEN";
 console.log(`\nghost landing — ${label} — ${BASE}`);
 if (failures.length) for (const f of failures) console.log("  FAIL " + f);
 else console.log("  no failures");
 
 if (RED) {
   const want = SECTION[RED_GHOST ? "RED_GHOST" : "RED_STACK"];
-  const hit = failures.filter((f) => f.startsWith(want + " "));
-  if (!hit.length) {
+  // ⛔ EVERY section the control owns must fail. Requiring only "at least one" would let a
+  // control that reaches §B but not §C certify §C's fix while never having tested it — the
+  // shape this guard exists to refuse, one level up.
+  const silent = want.filter((sec) => !failures.some((f) => f.startsWith(sec + " ")));
+  if (silent.length) {
     console.error(
-      `\n🔴 BROKEN HARNESS — the control was applied and §${want} still PASSED.` +
-        `\n   A control that does not break the section it is named for certifies nothing.` +
-        `\n   ${failures.length ? "It broke a DIFFERENT section, which is worse than silence: " + failures[0] : "Nothing failed at all."}`,
+      `\n🔴 BROKEN HARNESS — the control was applied and §${silent.join(", §")} still PASSED.` +
+        `\n   A control that does not break every section it is named for certifies nothing about the ones it missed.` +
+        `\n   ${failures.length ? "What it DID break: §" + [...new Set(failures.map((f) => f.slice(0, 1)))].join(", §") : "Nothing failed at all."}`,
     );
     process.exit(2);
   }
-  console.log(`\nRED control behaved: §${want} failed ${hit.length} time(s), as required.`);
+  console.log(`\nRED control behaved: §${want.join(" and §")} failed, as required (${failures.length} failure(s) total).`);
   process.exit(0);
 }
 process.exit(failures.length ? 1 : 0);
