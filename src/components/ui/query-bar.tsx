@@ -121,6 +121,22 @@ export const QUERY_BAR_ROW2_CLASS = "flex flex-wrap items-center gap-2 pb-2.5 pt
  * ACTIVE lens entirely off-screen. §3 rule 9. ⛔ A seven-pill lens strip without this opens on a
  * lens the player cannot see, which reads as the control having done nothing.
  */
+/**
+ * ⭐ THE STRIP'S CLASS, PUBLISHED SO THE SKELETON CAN CONSUME IT INSTEAD OF RE-TYPING IT.
+ *
+ * 🔴 `markets/loading.tsx` re-typed this row as `flex-wrap` and the six status pills — 456px
+ * of them — wrapped into THREE lines at 360. Measured on production 2026-09-24 during a real
+ * client-side hop: the ghost put the first card at y=557 and the real board put it at y=318, so
+ * the whole grid jumped **239px upward** the moment the content arrived. `overflow-x-auto` here
+ * vs `flex-wrap` there is the entire difference, and no gate caught it because both files were
+ * individually valid TSX.
+ *
+ * ⛔ A ghost that WRAPS where the real strip SCROLLS cannot be the right height at any width
+ * narrower than its own content — which on a phone is every width. Import this.
+ */
+export const QUERY_STRIP_CLASS =
+  "kp-thin-scroll kp-strip-fade flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0";
+
 export function QueryStrip({
   ariaLabel,
   children,
@@ -134,10 +150,7 @@ export function QueryStrip({
     <nav
       aria-label={ariaLabel}
       data-strip-autoscroll
-      className={cn(
-        "kp-thin-scroll kp-strip-fade flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0",
-        className,
-      )}
+      className={cn(QUERY_STRIP_CLASS, className)}
     >
       <StripAutoScroll />
       {children}

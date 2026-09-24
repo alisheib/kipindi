@@ -2,6 +2,13 @@ import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { MARKET_CARD_H } from "@/components/markets/card-geometry";
+import {
+  QUERY_BAR_CLASS,
+  QUERY_BAR_ROW1_CLASS,
+  QUERY_BAR_ROW2_CLASS,
+  QUERY_GROUP_CLASS,
+  QUERY_STRIP_CLASS,
+} from "@/components/ui/query-bar";
 
 /**
  * /markets loading skeleton.
@@ -62,10 +69,18 @@ export default async function MarketsLoading() {
 
       {/* The discovery bar — TWO rows at the real 44px control height, so the grid below starts
           where it will actually start. Row 1: status segments + count. Row 2: sort + direction,
-          odds, pool, topic. */}
-      <div aria-hidden className="sticky top-[56px] z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-2.5">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+          odds, pool, topic.
+          ⛔ EVERY WRAPPER CLASS HERE IS IMPORTED, NOT RE-TYPED. Each one of them was a literal
+          until 2026-09-24, and the copies had drifted: row 1 said `flex-wrap` where the real
+          strip says `overflow-x-auto`, so at 360 the six status pills (456px of them) stacked
+          into THREE lines and row 2's six controls into three more. Measured on production
+          during a real client-side hop, the ghost put the first card at y=557 and the board put
+          it at y=318 — the grid jumped **239px upward** as the content arrived. CLS scored that
+          0.0000, because layout-shift only counts nodes present BEFORE and AFTER and the ghost
+          nodes are removed rather than moved. The metric is blind here; the eye is not. */}
+      <div aria-hidden className={QUERY_BAR_CLASS}>
+        <div className={QUERY_BAR_ROW1_CLASS}>
+          <div className={QUERY_STRIP_CLASS}>
             {/* ⛔ ONE WIDTH PER STATUS, IN `STATUS_IDS` ORDER — open · today · new · progress ·
                 watch · all. The widths are per-LABEL so they stay literal, but the COUNT is not
                 allowed to drift: `test:board-discovery` §7 asserts this array is exactly as long
@@ -78,12 +93,21 @@ export default async function MarketsLoading() {
           </div>
           <div className="kp-shimmer-track h-4 w-[80px] shrink-0 rounded bg-bg-elevated" />
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-2.5 pt-1.5">
+        <div className={QUERY_BAR_ROW2_CLASS}>
+          {/* Sort + direction, and the phone's single filters button — the two controls this row
+              renders at EVERY width. */}
           <div className="kp-shimmer-track h-[44px] w-[210px] rounded-pill bg-bg-elevated" />
-          {[56, 92, 88, 84].map((w, i) => (
-            <div key={i} className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated" style={{ width: w }} />
-          ))}
           <div className="kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated" />
+          {/* ⛔ ODDS, POOL AND TOPIC ARE DESKTOP-ONLY. On a phone the real bar folds all three
+              behind the button above (`FilterSheet`), and their desktop rows carry
+              `QUERY_GROUP_CLASS`, which is `hidden … lg:flex`. Ghosting them unconditionally drew
+              four 44px pills a phone never receives. Consume the SAME visibility class rather
+              than re-stating the breakpoint, so a change to one moves both. */}
+          {[56, 92, 88, 84].map((w, i) => (
+            <div key={i} className={QUERY_GROUP_CLASS}>
+              <div className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated" style={{ width: w }} />
+            </div>
+          ))}
         </div>
       </div>
 
