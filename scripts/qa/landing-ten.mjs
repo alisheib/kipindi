@@ -951,6 +951,10 @@ if (cells.some((c) => c.state === "signedin")) {
   }
 }
 
+// Declared above the run loop: the per-cell reporter reads it too, and a const used before its
+// declaration is a temporal-dead-zone throw.
+const SKELETON_CLASSES = new Set(["V1", "V2", "V3", "V5", "V9"]);
+
 const results = [];
 for (const c of cells) {
   // ⛔ signed-in cannot be driven until a QA player exists on this machine. Reported BLOCKED,
@@ -963,9 +967,19 @@ for (const c of cells) {
   const r = await runCell(browser, c, null, SIGNED_IN_STATE);
   results.push(r);
   if (!r.ok) { console.log(`ERROR ${r.cell}  ${r.error}`); continue; }
-  const n = r.V.reduce((a, v) => a + v.items.length, 0);
-  const classes = r.V.filter((v) => v.items.length).map((v) => `${v.cls}:${v.items.length}`).join(" ");
-  console.log(`${n === 0 ? "clean" : "FAIL "} ${r.cell.padEnd(22)} ${n === 0 ? "" : classes}`);
+  // 🔴 THE LINE MUST COUNT WHAT THE SUMMARY COUNTS. It printed every class with items, including
+  //    ones the summary deliberately filters — the content classes on a loading skeleton, and every
+  //    class on the sub-normative zoom cell. So state-clienthop-768 read "FAIL V10:1 V14:4" while
+  //    contributing nothing to the total, and a reader would chase a defect that does not gate.
+  //    Overstating failure misleads exactly as much as hiding it. Filtered classes are still shown,
+  //    in brackets, so nothing is silently dropped either.
+  const counts = (v) => (r.skeleton && !SKELETON_CLASSES.has(v.cls)) || r.informational ? false : true;
+  const scored = r.V.filter((v) => v.items.length && counts(v));
+  const filtered = r.V.filter((v) => v.items.length && !counts(v));
+  const n = scored.reduce((a, v) => a + v.items.length, 0);
+  const fmt = (list) => list.map((v) => `${v.cls}:${v.items.length}`).join(" ");
+  const tail = [n === 0 ? "" : fmt(scored), filtered.length ? `(not counted: ${fmt(filtered)})` : ""].filter(Boolean).join("  ");
+  console.log(`${n === 0 ? "clean" : "FAIL "} ${r.cell.padEnd(22)} ${tail}`);
 }
 await browser.close();
 
@@ -1001,7 +1015,7 @@ const summary = {
 // A loading skeleton has no topic tiles, no priced rows and no settled bands, so the classes that
 // read CONTENT would report the skeleton's absence as a defect. On that cell we judge only what a
 // skeleton can actually get wrong: overflow, clipping, occlusion, contrast and focus.
-const SKELETON_CLASSES = new Set(["V1", "V2", "V3", "V5", "V9"]);
+
 for (const r of results) for (const v of r.V || []) {
   if (r.skeleton && !SKELETON_CLASSES.has(v.cls)) continue;
   if (r.informational) continue;   // reported below, never gated
