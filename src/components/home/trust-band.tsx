@@ -79,7 +79,20 @@ export function TrustBand({
               {/* `text-balance` (2026-09-13): at 1280 and 768 the zh bodies left one glyph alone on
                   the last line. Balance, not pretty, because Firefox and older Safari ignore pretty. */}
               <h3 className="kp-trust__h text-balance">{c.h}</h3>
-              <p className="kp-trust__b text-balance break-keep [overflow-wrap:anywhere]">{c.b}</p>
+              {/* ⛔ `break-keep` IS APPLIED TO EVERY LOCALE EXCEPT CHINESE, AND THAT EXCEPTION IS THE POINT.
+                    It is `word-break: keep-all`, which in CJK forbids a break BETWEEN CHARACTERS — so on
+                    the Chinese page a paragraph can only break at punctuation and a line ends after
+                    about seven glyphs, leaving 91px of a 328px column empty. Measured at 360 zh on
+                    production 2026-09-24. It earns its place in sw/en, where it stops a long Swahili
+                    compound splitting mid-word; in zh it has no word to protect and only does harm.
+                    ⚠️ The measure is capped too. `.kp-trust__b` declares no max-width, so between 561
+                    and 1023 — where this band is a single column — the line grew with the viewport:
+                    89 characters at 640, 105 at 768, 142 at 1023. 62ch is the same order as the
+                    52ch the Up & Down tagline already uses on this page. */}
+                <p
+                  className={`kp-trust__b text-balance [overflow-wrap:anywhere]${locale === "zh" ? "" : " break-keep"}`}
+                  style={{ maxWidth: "62ch" }}
+                >{c.b}</p>
               {c.marks && (
                 /* All four rails (2026-09-13). The cell says "mobile money in and out", and one
                    M-Pesa mark was left over from the old M-Pesa-only copy. The list and its order
@@ -192,11 +205,25 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
       {/* The named public source the outcome was judged against — the host only, because a full
           URL on a display row is noise and the market page carries the link itself. */}
       <span className="kp-settled__src">{sourceHost(row.sourceUrl)}</span>
-      {isVoid || row.amountTzs == null || row.amountTzs <= 0 ? (
+      {/* 🔴 THIS SAID "REFUNDED" OVER MARKETS THAT WERE NEVER REFUNDED. The condition was
+          `isVoid || amountTzs == null || amountTzs <= 0`, which folds THREE different states into
+          one word. A VOID really was refunded — every stake went back. But a market resolved YES or
+          NO whose pool was empty paid nothing because there was nothing in it, and telling a player
+          their money came back when no money was ever staked is a false statement about money on
+          the same panel whose header says the outcome is read and never inferred.
+          ⛔ THE ZERO ARM NOW RENDERS NOTHING rather than borrowing a word that belongs to a
+          different event. The outcome pill and the source still say what happened; silence about a
+          sum nobody staked is the only honest thing this column can say, and inventing a fourth
+          phrase would be new assessed copy in three locales for a row that has nothing to report.
+          ⚠️ `amountTzs == null` stays WITH the void arm: `settledAmount` returns null exactly when
+          the outcome is not YES or NO, so null here means VOID and nothing else.
+          Caught on production 2026-09-24: a settled row carried the "NDIO" outcome pill and the
+          refund word in the same row. */}
+      {isVoid || row.amountTzs == null ? (
         <span className="kp-settled__amt kp-settled__amt--void">{t.home.settledVoid}</span>
-      ) : (
+      ) : row.amountTzs > 0 ? (
         <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
-      )}
+      ) : null}
     </Link>
   );
 }

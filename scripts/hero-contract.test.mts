@@ -171,36 +171,83 @@ log("\n── 4 · the open book, and nothing else ─────────�
 }
 
 // ── 5 · ordering, capping, and the featured card ───────────────────────────────
-log("\n── 5 · closing soonest, and the card beside the lede ───────────");
+log("\n── 5 · the lens: closing today, most contested first ─────────");
 {
-  const rows = [
-    heroRow({ bettableUntilMs: NOW + 9 * H }),
-    heroRow({ bettableUntilMs: NOW + 1 * H }),
-    heroRow({ bettableUntilMs: NOW + 5 * H }),
-    heroRow({ bettableUntilMs: NOW + 3 * H }),
-    heroRow({ bettableUntilMs: NOW + 7 * H }),
-    heroRow({ bettableUntilMs: NOW + 2 * H }),
-  ];
+  // ⭐ THE PRICES ARE THE POINT OF THIS FIXTURE. The previous version gave every row the helper's
+  // default 10k/10k — a dead-even 50% — so all six tied at |50-50| = 0 and the ordering fell
+  // through to the tie-break. It could not have told the contested lens from a coin toss.
+  //
+  // ⛔ AND THE DEADLINES ARE ARRANGED SO A REVERT IS VISIBLE. The most contested market closes
+  // LAST of the six and the unpriced one closes FIRST, so restoring a plain `closing` sort moves
+  // the featured card — see the CONTROL at the end of this block. A fixture where both lenses
+  // agree would pass either way and prove nothing.
+  const even     = heroRow({ yesPool: 10_000, noPool: 10_000, bettableUntilMs: NOW + 9 * H }); // 50%
+  const near     = heroRow({ yesPool: 13_000, noPool: 12_000, bettableUntilMs: NOW + 7 * H }); // 52%
+  const lopsided = heroRow({ yesPool: 15_000, noPool:  5_000, bettableUntilMs: NOW + 5 * H }); // 75%
+  const allYes   = heroRow({ yesPool: 20_000, noPool:      0, bettableUntilMs: NOW + 3 * H }); // 100%
+  const allNo    = heroRow({ yesPool:      0, noPool: 20_000, bettableUntilMs: NOW + 2 * H }); // 0%
+  const unpriced = heroRow({ yesPool:      0, noPool:      0, bettableUntilMs: NOW + 1 * H }); // no price
+  const rows = [even, near, lopsided, allYes, allNo, unpriced];
   const f = heroFigures(rows, NOW);
+  const shown = [f.featured!, ...f.board];
+
   ok("the board is capped", f.board.length === QUESTION_BOARD_SIZE, String(f.board.length));
-  const deadlines = f.board.map((r) => r.bettableUntilMs);
-  ok("soonest first", deadlines.every((d, i) => i === 0 || deadlines[i - 1] <= d), deadlines.join(","));
-  // The single soonest market is the CARD, so the board opens at the second-soonest.
-  ok("the featured card is the soonest-closing market", f.featured?.bettableUntilMs === NOW + 1 * H,
-    String(f.featured?.bettableUntilMs));
-  ok("the board opens at the SECOND soonest", f.board[0].bettableUntilMs === NOW + 2 * H,
-    String(f.board[0].bettableUntilMs));
-  // 🔴 THE DEFECT THIS PAIR EXISTS FOR. While the board started at [0], the hero stated its lead
-  // market twice — row 1 and the featured card, same title, same price, 400px apart. Found by
-  // reading a whole-page frame; nothing automated saw it.
+  ok("the most contested market leads the hero", f.featured?.id === even.id,
+    `featured=${f.featured?.yesPct}%`);
+  ok("the board follows it by distance from even", f.board[0]?.id === near.id,
+    `board[0]=${f.board[0]?.yesPct}%`);
+
+  // 🔴 THE DEFECT THE WHOLE LENS EXISTS FOR. Measured on production 2026-09-24: three of the
+  // four board rows read "100% NDIO", because the markets closing soonest are exactly the ones
+  // whose price has already collapsed. A market nobody can disagree about is the worst possible
+  // advertisement for a prediction market, and it held the loudest position on the site.
+  const firstDegenerate = shown.findIndex((r) => r.yesPct === 0 || r.yesPct === 100);
+  const lastContested = shown.reduce((acc, r, idx) =>
+    (r.yesPct != null && r.yesPct !== 0 && r.yesPct !== 100 ? idx : acc), -1);
+  ok("⛔ no collapsed price outranks a contested one",
+    firstDegenerate === -1 || firstDegenerate > lastContested,
+    shown.map((r) => String(r.yesPct)).join(","));
+  ok("⛔ an unpriced market never takes a seat from a priced one",
+    !shown.some((r) => r.yesPct == null),
+    shown.map((r) => String(r.yesPct)).join(","));
+
+  // 🔴 THE PAIR THIS EXISTS FOR, UNCHANGED BY THE LENS. While the board started at [0], the hero
+  // stated its lead market twice — row 1 and the featured card, same title, same price, 400px
+  // apart. Found by reading a whole-page frame; nothing automated saw it.
   ok("⛔ the featured market is NEVER also a board row",
     !!f.featured && !f.board.some((r) => r.id === f.featured!.id),
     `featured=${f.featured?.id} board=${f.board.map((r) => r.id).join(",")}`);
-  // …and they are still slices of ONE ordering, so nobody can pin a favourite into the card: the
-  // card must close sooner than every row beside it.
-  ok("the card still comes from the same ordering as the board",
-    f.board.every((r) => f.featured!.bettableUntilMs <= r.bettableUntilMs));
+  ok("the card and the board are slices of ONE ordering",
+    f.board.every((r) => Math.abs(50 - (f.featured!.yesPct ?? -999)) <= Math.abs(50 - (r.yesPct ?? 999))),
+    shown.map((r) => String(r.yesPct)).join(","));
+
+  // ⭐ THE CONTROL. Under the old `closing` order the card was whichever market closed soonest —
+  // here the UNPRICED one at +1h. If this ever passes trivially the fixture has stopped telling
+  // the two lenses apart, and everything above it proves nothing.
+  const soonest = [...rows].sort((a, b) => a.bettableUntilMs - b.bettableUntilMs)[0];
+  ok("CONTROL: the lens is not plain closing-soonest", f.featured?.id !== soonest.id,
+    `soonest=${soonest.id} featured=${f.featured?.id}`);
+
   ok("closing-today counts the 24h window", f.closingToday === 6, String(f.closingToday));
+}
+
+log("\n── 5b · fewer than a boardful close today ─────────────");
+{
+  // Two markets close today, four close days out. The board must not go short, and the tail must
+  // arrive in the old closing order — the fallback is STATED here, not left to emerge.
+  const t1 = heroRow({ yesPool: 10_000, noPool: 10_000, bettableUntilMs: NOW + 4 * H });
+  const t2 = heroRow({ yesPool: 15_000, noPool:  5_000, bettableUntilMs: NOW + 6 * H });
+  const later = [5, 3, 4, 6].map((d) => heroRow({
+    bettableUntilMs: NOW + d * 24 * H, resolvesAtMs: NOW + (d + 1) * 24 * H }));
+  const f = heroFigures([...later, t2, t1], NOW);
+  const shown = [f.featured!, ...f.board];
+  ok("the board is still full", f.board.length === QUESTION_BOARD_SIZE, String(f.board.length));
+  ok("today leads, most contested first", shown[0]?.id === t1.id && shown[1]?.id === t2.id,
+    shown.map((r) => r.id).join(","));
+  const tail = shown.slice(2).map((r) => r.bettableUntilMs);
+  ok("and the rest follow by closing time", tail.every((d, i) => i === 0 || tail[i - 1] <= d),
+    tail.join(","));
+  ok("closing-today still counts only the 24h window", f.closingToday === 2, String(f.closingToday));
 }
 
 // ── 6 · an empty platform ──────────────────────────────────────────────────────

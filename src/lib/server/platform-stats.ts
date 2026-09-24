@@ -21,6 +21,7 @@
  * this scan again — but as a live consumer, not as a query kept warm for nobody.
  */
 import { listMarkets, ratesFor, type StoredMarket } from "./market-service";
+import { db } from "./store";
 import { poolFee } from "@/lib/payout";
 import type { TickerRow } from "@/lib/markets/ticker";
 
@@ -38,6 +39,20 @@ export type SettlementRow = Omit<TickerRow, "title"> & {
 export type PlatformStats = {
   /** Settled polls AND Up & Down rounds — see the productLine note in the read below. */
   settledCount: number;
+  /**
+   * Σ of every CONFIRMED payout and cashout, TZS — money that has actually reached players.
+   *
+   * ⭐ RESTORED 2026-09-24, AS A LIVE CONSUMER. This figure existed, was deleted with `StatsBand`
+   * because nothing rendered it, and the note above says it belongs beside this scan again only
+   * if something READS it. The hero's third proof slot now does: it used to state `Open
+   * predictions`, which on a thin book reads as an invitation to divide — 35 predictions against
+   * 59 open markets. A figure that only grows, and that says players have actually been paid, is
+   * the one a reader wants from a betting site and the one the settled strip already proves row
+   * by row.
+   * ⛔ It is an AGGREGATE, not a scan: `sumConfirmedByTypes` sums in the database. BET_PAYOUT and
+   * CASHOUT are both stored positive, so this is money out to players and never a signed total.
+   */
+  paidOutTzs: number;
   /** Most recently settled FIRST. Only rows whose money has actually moved. */
   recentSettlements: SettlementRow[];
 };
@@ -117,7 +132,10 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     .sort((a, b) => (b.settledAtMs! - a.settledAtMs!) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
     .slice(0, RECENT_LIMIT);
 
-  const value: PlatformStats = { settledCount: resolved.length, recentSettlements: settlements };
+  // ⛔ AWAITED ALONGSIDE, NOT INSIDE A SECOND SCAN. This is a DB-side SUM over the ledger; it
+  // loads no rows and does not re-read the market table this function already walked.
+  const paidOutTzs = await Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"])).catch(() => 0);
+  const value: PlatformStats = { settledCount: resolved.length, recentSettlements: settlements, paidOutTzs };
   globalThis.__50PICK_PLATFORM_STATS = { at: now, value };
   return value;
 }

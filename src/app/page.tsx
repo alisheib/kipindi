@@ -153,6 +153,7 @@ export default async function LandingPage() {
         t={t}
         locale={locale}
         isAuthed={isAuthed}
+        paidOutTzs={stats.paidOutTzs}
         nowMs={nowMs}
         cards={{ charts: cardCharts, traders: traderMap }}
       />
@@ -177,7 +178,11 @@ export default async function LandingPage() {
                       identically to the hero. See `gridLensFor`. */}
                   {comp.lens === "pool" ? t.home.gridEyebrowPool : t.home.gridEyebrowNew}
                 </p>
-                <h2 className="kp-shead__h">{t.home.pickASideNow}</h2>
+                {/* `text-balance` for the same reason how-it-works.tsx carries it: without it this heading
+                    breaks with its last word alone on line two ("Chagua upande / sasa" at 360 sw,
+                    measured on production 2026-09-24). A one-word last line under a 32px display
+                    face is the most visible raggedness on the page. */}
+                <h2 className="kp-shead__h text-balance">{t.home.pickASideNow}</h2>
               </div>
               <Link href={`/markets?sort=${comp.lens}` as never} className="kp-shead__link">
                 {fill(t.home.gridSeeAll, { n: figures.openCount })}
