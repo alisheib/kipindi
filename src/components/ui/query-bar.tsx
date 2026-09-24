@@ -341,7 +341,24 @@ export function QuerySort({
            this is a sort, so the VALUE is the label; from `lg` the row has room and the key
            returns. `aria-label` names the axis at every width. */
         labelClassName="hidden lg:inline"
-        className="w-full min-w-0 rounded-l-pill rounded-r-none border-r-0"
+        /* 🔴 D79 · `min-w-[var(--tap-min)]` REPLACES `min-w-0`, AND IT HAD TO BE HERE.
+             Measured on production at 320 in Swahili: this control was **27×44 drawn, 33×51 by
+             reach**, against the 40px floor (Law 9). Under 640 `globals.css` hides its value
+             label and the padding shrinks to `px-1.5`, so it collapses to a key and a chevron.
+             ⛔ TWO EARLIER PLACEMENTS SHIPPED AND DID NOTHING, AND BOTH FAILURES ARE WORTH
+             KEEPING. (1) `min-w-[var(--tap-min)]` in `menu-shell.tsx`’s base string: `cn()` is
+             tailwind-merge and on a conflict the CALLER wins — this very `min-w-0` deleted it.
+             (2) A plain rule in `globals.css` on `[data-bar-cell="sort"] > details > summary`:
+             the selector MATCHES (verified with `Element.matches`) and it still lost, because
+             `.min-w-0` lives in `@layer utilities` and a CASCADE LAYER beats specificity. The
+             same rule injected at runtime as an unlayered `<style>` applied immediately — which
+             is exactly why the pre-flight, done with `!important`, proved the geometry was safe
+             and proved nothing about whether the mechanism would win.
+             ⭐ So the floor is set where the conflict is: same layer, same element, replacing the
+             class it was fighting. `w-full` still lets it grow; it simply cannot collapse under
+             a finger. Pre-flighted: box 27 → 40, reach 33 → 46, page still unable to scroll
+             sideways at 320. */
+        className="w-full min-w-[var(--tap-min)] rounded-l-pill rounded-r-none border-r-0"
       >
         {options.map((o) => (
           <QueryOption
