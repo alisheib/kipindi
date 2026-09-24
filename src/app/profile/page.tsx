@@ -183,7 +183,7 @@ export default async function ProfilePage() {
                   unconfirmed-email pill beside it already has. Verified, it only states. */}
               {kycLevel === "APPROVED"
                 ? kycPillNode
-                : <Link href="/profile/kyc" data-testid="profile-kyc-pill" className="no-underline">{kycPillNode}</Link>}
+                : <Link href="/profile/kyc" data-testid="profile-kyc-pill" className="no-underline inline-flex items-center min-h-[var(--tap-min)]">{kycPillNode}</Link>}
               {/* 2026-09-13 — the language this page is IN (the kp-locale cookie, what the header menu shows), in its
                   own name. It read the stored `user.locale` with no ZH case, and the language menu never writes that
                   column, so a zh page said "English". */}

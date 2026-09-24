@@ -3520,6 +3520,16 @@ html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
 .kp-slide-stack > * { grid-area: 1 / 1; }
 .kp-slide-stack > *:not([data-slide-active]) { visibility: hidden; }
 
+/* ⚠️ D79's WIDTH FLOOR IS NOT HERE, AND A RULE THAT LOOKED CORRECT SAT HERE AND DID NOTHING.
+   It read `[data-bar-cell="sort"] > details > summary { min-width: var(--tap-min) }`. The selector
+   MATCHES — checked on production with `Element.matches`, which returned true — and the computed
+   value stayed `0px` anyway, because the competing `.min-w-0` lives in `@layer utilities` and a
+   CASCADE LAYER outranks specificity outright. ⛔ The same rule injected at runtime as an
+   unlayered `<style>` applied instantly, which is what made the failure so hard to read: the
+   pre-flight (done with `!important`) proved the geometry was safe and proved nothing about
+   whether the mechanism would win. The floor now lives in `query-bar.tsx`, on the element, in the
+   same layer, replacing the class it was fighting. */
+
 /* 🔴 D30 IS NOT CLOSED BY THE RULE ABOVE — THE SORT MENU IS A `<details>`, NOT A `.kp-fsheet`.
    Measured on production at 320×640 with the sort menu open: the panel's own `z-index: 30` is spent inside
    `.kp-discovery-bar.sticky.z-20`, its only positioned ancestor, so it resolves at **20** against the page,

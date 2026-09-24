@@ -152,7 +152,18 @@ export function LanguageMenu() {
                 {active ? <I.check s={14} /> : null}
               </span>
               <span className="min-w-0 flex-1 truncate">{NAMES[code]}</span>
-              <span className="shrink-0 font-mono text-[11px] font-bold text-text-faint">{CODES[code]}</span>
+              {/* 🔴 `--text-subtle`, NOT `--text-faint` — D81. At 11px bold this label is not "large
+                  text" under WCAG, so it owes 4.5:1, and on `--text-faint` it measured **4.12:1**.
+                  ⚠️ ONLY THE SELECTED ROW FAILED, AND THAT IS THE WHOLE POINT: EN and ZH measured
+                  4.86:1 with the SAME foreground — the miss comes from the active row's tinted
+                  background, so the one option that fails is always the player's OWN language.
+                  Measured on production with a canvas round-trip (these colours are oklch, so
+                  scraping digits out of the computed string gives nonsense) and alpha-composited
+                  through the ancestor chain; the instrument self-tests at 21:1 white-on-black.
+                  ⭐ `--text-subtle` takes SW to 5.63:1 and keeps the code SECONDARY to the language
+                  name beside it. `--text-muted` was measured too and rejected at 9.9:1 — it clears
+                  AA by promoting a secondary label over the thing it annotates. */}
+                <span className="shrink-0 font-mono text-[11px] font-bold text-text-subtle">{CODES[code]}</span>
             </button>
           );
         })}
