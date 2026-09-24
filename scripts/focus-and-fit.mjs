@@ -41,6 +41,7 @@ const RED = {
   FIT: process.env.RED_FIT === "1",
   D3: process.env.RED_D3 === "1",
   D75: process.env.RED_D75 === "1",
+  D67: process.env.RED_D67 === "1",
 };
 const ANY_RED = Object.values(RED).some(Boolean);
 /** Each control restores EXACTLY the state its fix replaced — nothing else. */
@@ -51,6 +52,10 @@ const RED_CSS = {
   FIT: `@media (max-width:300px){.mcardp-top{flex-wrap:nowrap !important;}.mcardp-meta{flex-wrap:nowrap !important;}}`,
   D3: `html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within){opacity:1 !important;pointer-events:auto !important;transform:none !important;}`,
   D75: `html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within){opacity:1 !important;pointer-events:auto !important;transform:none !important;}`,
+  // ⛔ D67's fix is a measured `translateX` applied as an INLINE style, so the control has to be
+  // `!important` to beat it. That is legitimate here — the control's job is to restore the
+  // pre-fix geometry, and the pre-fix geometry was "no transform at all".
+  D67: `.kp-menu[open] > div[class*="top-["]{transform:none !important;}`,
 };
 
 const failures = [];
@@ -273,6 +278,67 @@ for (const surface of ["/markets", "/"]) {
   await ctx.close();
 }
 
+/* ── §7 · D67 — AN OVERLAY PANEL MUST BE INSIDE THE SCREEN IT OPENS ON ──────────────────
+   The language listbox measures its own geometry on open and flips from right- to left-anchored when
+   right-anchoring would run off the LEFT edge. It then never looks again — and at 320 the flip put its
+   right edge at **321.8 against a 320 viewport, 1.75px past**, where `overflow-clip` on the body slices
+   the border and squares off one rounded corner while the other stays round.
+
+   ⭐ A BINARY LEFT/RIGHT CHOICE CANNOT SOLVE A PANEL WIDER THAN THE ROOM ON EITHER SIDE, and at 320
+   this one is: right-anchored puts it at left -64, left-anchored puts it at right +1.75. So the fix
+   clamps it back with a measured translate, and this section asserts the thing that clamp moves — the
+   panel's edges against the viewport — rather than the presence of a class.
+
+   ⚠️ 320 IS THE WIDTH THAT MATTERS AND 360 WOULD HAVE PASSED THROUGHOUT. The panel sits 150px clear
+   at 360; a sweep that only covered the common phone would have called this clean. It is also the
+   control a Swahili-default platform gives players for leaving English, on the narrowest phone it
+   supports. */
+console.log("");
+for (const w of [320, 360]) {
+  const ctx = await ctxFor(b, w, 640);
+  const p = await ctx.newPage();
+  await p.goto(BASE + "/markets", { waitUntil: "load", timeout: 90000 });
+  await p.waitForTimeout(2400);
+  await assertLang(p, "sw");
+  if (RED.D67) await p.addStyleTag({ content: RED_CSS.D67 });
+
+  const sum = p.locator('summary[aria-label*="Badilisha"], summary[aria-label*="Switch"]').first();
+  if (!(await sum.count())) {
+    failures.push(`§7 ${w} no language control on the page — the probe proves nothing`);
+    await ctx.close();
+    continue;
+  }
+  await sum.click().catch(() => {});
+  await p.waitForTimeout(800);
+
+  const r = await p.evaluate(() => {
+    const det = [...document.querySelectorAll("details[open]")].find((d) =>
+      /Badilisha|Switch|language/i.test(d.querySelector("summary")?.getAttribute("aria-label") || ""));
+    if (!det) return { closed: true };
+    const panel = [...det.children].find((c) => c.tagName !== "SUMMARY");
+    if (!panel) return { noPanel: true };
+    const q = panel.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    return {
+      left: Math.round(q.left * 100) / 100, right: Math.round(q.right * 100) / 100,
+      w: Math.round(q.width), vw,
+      pastRight: Math.round((q.right - vw) * 100) / 100,
+      pastLeft: Math.round((0 - q.left) * 100) / 100,
+      options: panel.querySelectorAll("button").length,
+    };
+  });
+
+  // ⛔ VACUITY: a panel that never opened, or that holds no options, cannot fail the assertion below.
+  if (r.closed) { failures.push(`§7 ${w} the language menu did not open — this width proved nothing`); await ctx.close(); continue; }
+  if (r.noPanel) { failures.push(`§7 ${w} the open menu has no panel — this width proved nothing`); await ctx.close(); continue; }
+  if (!r.options || r.options < 2) { failures.push(`§7 ${w} the panel holds ${r.options} option(s) — fewer than two, so nothing was really laid out`); await ctx.close(); continue; }
+
+  if (r.pastRight > 0) failures.push(`§7 ${w} the language panel runs ${r.pastRight}px PAST THE RIGHT EDGE (right ${r.right} vs a ${r.vw}px viewport) — body overflow-clip slices its border there`);
+  if (r.pastLeft > 0) failures.push(`§7 ${w} the language panel runs ${r.pastLeft}px past the LEFT edge (left ${r.left})`);
+  console.log(`   §7 ${String(w).padStart(3)}px  panel ${r.w}px at ${r.left}..${r.right} in a ${r.vw}px viewport  ·  clear of right by ${-r.pastRight}px, of left by ${-r.pastLeft}px  · ${r.options} options`);
+  await ctx.close();
+}
+
 await b.close();
 
 const which = Object.entries(RED).filter(([, v]) => v).map(([k]) => k).join("+");
@@ -284,7 +350,7 @@ if (ANY_RED) {
   /* ⛔ "IT WENT RED" IS NOT ENOUGH, AND THIS COST A ROUND OF FALSE CONFIDENCE. While D35/D65 were
      written but not yet deployed, §4 failed on every run — so a RED_D56 run "went red" whether or not its
      own control did anything. A control must be shown to break THE SECTION IT TARGETS. */
-  const SECTION = { D56: "§1", D57: "§2", D63: "§3", FIT: "§4", D3: "§5", D75: "§6" };
+  const SECTION = { D56: "§1", D57: "§2", D63: "§3", FIT: "§4", D3: "§5", D75: "§6", D67: "§7" };
   const missed = Object.entries(RED).filter(([, on]) => on).filter(([k]) => !failures.some((f) => f.startsWith(SECTION[k])));
   if (missed.length) {
     console.error(`
