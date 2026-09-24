@@ -737,14 +737,21 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                               {/* ⭐ A QUEUED STAKE SAYS WHEN IT FIRES AND WHEN IT GIVES UP (register C8): the When
                                   column is the instant the engine DECIDED, which for a held COUNTER can be minutes
                                   before anything happens. The server owns every word of this line. */}
-                              {r.due !== null && <span className="block text-caption text-text-tertiary">{r.due}</span>}
+                              {/* ⛔ THE DUE LINE WRAPS; THE TIMESTAMP ABOVE IT STILL DOES NOT (measured 2026-09-24).
+                                  🔴 `.admin-tbl td.tabular` is `white-space: nowrap`, and this sub-line is a SENTENCE —
+                                  "fires in 3 min · 08:34:12 EAT · expires 08:43" — so it could not break and set the When
+                                  column to 250px at 360. That pushed the STAKE cell to 271..405 while the scroll strip ends
+                                  at 339: the money answer was off the phone, and `qa:house-bots-visual` §5.2 had been failing
+                                  on this tab. ⛔ A15/432(b) forbids CLIPPING money or a timestamp; wrapping a sentence that
+                                  mentions times is neither, and `{r.when}` above keeps the inherited nowrap that protects it. */}
+                              {r.due !== null && <span className="block text-caption text-text-tertiary whitespace-normal">{r.due}</span>}
                             </td>
                             <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                             <td className="p-3 text-text">{r.typeWord}</td>
                             <td className="p-3 text-text-secondary">{r.productWord}</td>
                             {/* The same cell as the account page's Activity tab, and it must stay the same:
                                 one reader builds both rows, so two renderings would be two truths. */}
-                            <td className="p-3 max-w-[34ch]">
+                            <td className="p-3 min-w-[22ch] max-w-[34ch]">
                               {r.marketHref === null ? (
                                 <span className="text-text-tertiary">—</span>
                               ) : r.marketName === null ? (
@@ -753,7 +760,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 <Link href={r.marketHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">Open the market</Link>
                               ) : (
                                 <Link href={r.marketHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">
-                                  <span className="line-clamp-2" data-operator-text="marketTitle">{r.marketName}</span>
+                                  <span data-operator-text="marketTitle">{r.marketName}</span>
                                 </Link>
                               )}
                             </td>

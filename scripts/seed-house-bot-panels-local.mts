@@ -131,7 +131,19 @@ async function intent(bot: Any, kind: string, status: string, product: string, a
     status,
     reasonCode: status === "FAILED" ? "SEAM_REFUSED" : status === "SKIPPED" ? "MARKET_CLOSED"
       : status === "EXPIRED" ? "DEADLINE_PASSED" : status === "CANCELLED" ? "STAFF_CANCELLED" : null,
-    why: null, decision: FIXTURE_MARK, attempts: status === "FAILED" ? 3 : 0, transientAttempts: 0, nextAttemptAt: null,
+    /* ⭐ THE SNAPSHOT THE ENGINE REALLY WRITES (2026-09-24). `decide.ts` puts `{ titleEn, category, cutoff,
+       roundNumber }` on every intent it plans, and the Activity row now lifts the title out of it to name WHICH
+       game a stake was on. With a bare mark here the browser gates only ever saw the NO-NAME fallback, so the one
+       cell this fixture exists to photograph was the one it could not show. Every third row keeps a bare mark, so
+       the fallback is still on screen too — both branches, in one shot. */
+    why: null,
+    decision: i % 3 === 1
+      ? ({ ...FIXTURE_MARK } as Any)
+      : ({ ...FIXTURE_MARK, snapshot: { titleEn: line === "UPDOWN"
+          ? `Bitcoin Up or Down · ${[3, 5, 10, 15][i % 4]} min`
+          : `Will the ${["ferry route reopen", "policy rate hold", "rains arrive early", "bridge open on time"][i % 4]} this week?`,
+          category: line === "UPDOWN" ? "crypto" : "other", cutoff: iso(-ageMs + HOUR), roundNumber: line === "UPDOWN" ? 400 + i : null } } as Any),
+    attempts: status === "FAILED" ? 3 : 0, transientAttempts: 0, nextAttemptAt: null,
     claimedBy: status === "CLAIMED" ? "ops-visual" : null,
     claimedUntil: status === "CLAIMED" ? iso(HOUR) : null,
     positionId: status === "PLACED" ? `pos_house_${i}` : null,      // placed_check + unique
