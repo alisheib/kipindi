@@ -92,7 +92,7 @@ export default async function LiveLoading() {
 
       {/* Search — the real box and its echo row, by class rather than by measurement. */}
       <div aria-hidden className="search-box-wrap">
-        <div className="kp-shimmer-track h-[var(--h-input)] rounded-lg border border-border bg-bg-inset" />
+        <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
         <p className="mt-1.5 min-h-[17px]" />
       </div>
 

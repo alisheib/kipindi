@@ -64,7 +64,10 @@ export default async function ResultsLoading() {
         <div className="flex items-center justify-between gap-3" aria-hidden>
           <div className="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track" />
           <div className="flex items-center gap-2">
-            <div className="h-[26px] w-[26px] rounded-full bg-bg-overlay kp-shimmer-track" />
+            {/* The NDIO/HAPANA donut. ⚠️ 38px is what makes this row 38px tall — measured at
+                320, 360 and 414 alike; the eyebrow and the count text beside it are only 18px, so
+                the ring sets the height. A 26px ghost drew a 26px row and the board inherited it. */}
+            <div className="h-[38px] w-[38px] rounded-full bg-bg-overlay kp-shimmer-track" />
             <div className="h-3 w-[120px] rounded bg-bg-overlay kp-shimmer-track" />
           </div>
         </div>
@@ -73,7 +76,7 @@ export default async function ResultsLoading() {
           turns a 71px `search-box-wrap` into the 91px the page actually reserves. */}
         <div className="py-2.5" aria-hidden>
           <div className="search-box-wrap">
-            <div className="kp-shimmer-track h-[var(--h-input)] rounded-lg border border-border bg-bg-inset" />
+            <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
             <p className="mt-1.5 min-h-[17px]" />
           </div>
         </div>
@@ -94,8 +97,14 @@ export default async function ResultsLoading() {
             <div className="kp-shimmer-track h-4 w-[80px] shrink-0 rounded bg-bg-elevated" />
           </div>
           <div className={QUERY_BAR_ROW2_CLASS}>
-            <div className="kp-shimmer-track h-[44px] w-[210px] rounded-pill bg-bg-elevated" />
-            <div className="kp-shimmer-track h-[44px] w-[130px] rounded-pill bg-bg-elevated" />
+            {/* ⛔ 182 AND 134 ARE MEASURED, AND THE PAIR MUST FIT ON ONE LINE. The real row renders
+              182×44 (sort) + 134×44 (filters) = 316 plus a 16px gap = 332, inside 336px of content
+              width at 360 — by four pixels. Ghosting them at 210 and 130 overflowed that, so
+              `flex-wrap` broke the row in two and the bar drew **172px against a real 116**,
+              putting the board 56px too low. ⚠️ Unlike `/markets`, THIS bar does not opt into the
+              phone grid (it carries no `data-bar-row`), so nothing rescues a row that wraps. */}
+            <div className="kp-shimmer-track h-[44px] w-[182px] rounded-pill bg-bg-elevated" />
+            <div className="kp-shimmer-track h-[44px] w-[134px] rounded-pill bg-bg-elevated" />
             {/* ⛔ Desktop-only groups — the real ones carry `QUERY_GROUP_CLASS` (`hidden … lg:flex`),
               so a phone never receives them and neither does its ghost. */}
             {[88, 84].map((w, i) => (
