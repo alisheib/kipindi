@@ -233,7 +233,17 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
         <span className="kp-settled__amt kp-settled__amt--void">{t.home.settledVoid}</span>
       ) : row.amountTzs > 0 ? (
         <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
-      ) : null}
+      ) : (
+        /* 🔴 AN EMPTY CELL, NOT NO CELL. Returning null here removed the grid ITEM, so the row’s
+           money track collapsed: one row in five came out 19.5px shorter than its neighbours at 360
+           and 412, and at 1280 the track went to 0px and the source host slid across to fill it.
+           The silence about a sum nobody staked is correct and stays — what was wrong is that the
+           silence also took the layout with it. An empty span holds the track at its declared size
+           and prints nothing.
+           ⛔ `aria-hidden` and no text: a screen reader must not announce an empty money cell as if
+           it were a figure, and there is no figure here to announce. */
+        <span className="kp-settled__amt" aria-hidden />
+      )}
     </Link>
   );
 }
