@@ -21,7 +21,7 @@
 > closed **by owner direction with the code gap still present** and exposure measured at or near
 > zero. If exposure moves, they reopen — which is why the mechanism is kept legible in each row.
 
-## ▶ 0 · MOBILE VISUAL PLAN — `MOBILE-VISUAL` · 🟠 **APPROVED 2026-09-15 (v3) · START HERE** · 7/42 units ✅ · 5/81 defects ✅ (D28 · D49 · D33 · D51 · D56) · 🔵 shipped early and live: D57 · D63 · D65 · D30 · D7 · **D71–D81** (`371690b6` + follow-up 2026-09-24 — /live's hero resized on a timer for 0.0796 un-input CLS, and three skeletons promised the wrong page) · ◐ half: D31 · D35 · D54 · D30 and D7 shipped early and live (🔵 `a25c127b`) · D31 HALF closed — the mask overflow only
+## ▶ 0 · MOBILE VISUAL PLAN — `MOBILE-VISUAL` · 🟠 **APPROVED 2026-09-15 (v3) · START HERE** · 7/42 units ✅ · 5/82 defects ✅ (D28 · D49 · D33 · D51 · D56) · 🔵 shipped early and live: D57 · D63 · D65 · D30 · D7 · **D71–D81** (`371690b6` + follow-up 2026-09-24 — /live's hero resized on a timer for 0.0796 un-input CLS, and three skeletons promised the wrong page) · ◐ half: D31 · D35 · D54 · D30 and D7 shipped early and live (🔵 `a25c127b`) · D31 HALF closed — the mask overflow only
 
 Ali, 2026-09-15: *"later any session please start with the mobile visual plan and start with the progress."*
 **▶ Work order and tracker: [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md). Open it at §0 (RESUME AT), then §1 (status board).**
