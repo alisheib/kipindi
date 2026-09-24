@@ -3221,4 +3221,26 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
     sections: "2e",
   },
+
+  /* ── 2026-09-24 · WHICH GAME THE STAKE WAS ON ──
+   * Two claims carry this cell and each fails on its own: the name is BOUNDED by the reader, and the door is a
+   * PLATFORM route. A third — that the name is the market and not the product word — is held by a control. */
+  {
+    name: "game-name-unclamped " + String.fromCharCode(0xB7) + " the market title reaches the screen at its full length, so one operator question can widen the column without limit",
+    file: GATE,
+    from: `  return trimmed.length === 0 ? null : clampOperatorText(trimmed, operatorBound("marketTitle"));`,
+    to: `  return trimmed.length === 0 ? null : trimmed;`,
+    expect: "1.626b " + String.fromCharCode(0xB7) + " the game name is BOUNDED BY THE READER",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ A DOOR BACK INTO THIS SECTION. Ruling 456 sends a platform concern to a PLATFORM route; a desk
+     * route here would be the second money-and-market story the console spent this whole programme not growing. */
+    name: "game-door-turns-inward " + String.fromCharCode(0xB7) + " the game door points at a route of this section instead of the platform's own market page",
+    file: GATE,
+    from: '    marketHref: i.marketId.length > 0 ? `/admin/markets/${encodeURIComponent(i.marketId)}` : null,',
+    to: '    marketHref: i.marketId.length > 0 ? `${HOUSE_CONSOLE_PREFIX}/${encodeURIComponent(i.marketId)}` : null,',
+    expect: "1.626b " + String.fromCharCode(0xB7) + " every activity row names the GAME",
+    suite: "console-mem",
+  },
 ];

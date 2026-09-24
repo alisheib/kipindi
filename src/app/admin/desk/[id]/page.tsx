@@ -601,12 +601,18 @@ async function AdminDeskAccountContent({
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
                         <th scope="col" className="text-left p-3">Product</th>
+                        {/* ⛔ BESIDE PRODUCT, NOT FIRST. The visual gate's §5.2 contract measures the first
+                            THREE cells — today When · Stake · Outcome — and asserts the subject and the first
+                            money answer are in the 360 strip without scrolling. Putting the game there would
+                            push the OUTCOME out on a phone, and "did it land" outranks "which game" at a
+                            glance. Here it reads with Product, the other fact about what was played on. */}
+                        <th scope="col" className="text-left p-3 !whitespace-normal">Game</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Note</th>
                       </tr>
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={6} title={view.feedEmpty.title} body={view.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={7} title={view.feedEmpty.title} body={view.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
@@ -624,6 +630,20 @@ async function AdminDeskAccountContent({
                             <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                             <td className="p-3 text-text">{r.typeWord}</td>
                             <td className="p-3 text-text-secondary">{r.productWord}</td>
+                            <td className="p-3 max-w-[34ch]">
+                              {r.marketHref === null ? (
+                                <span className="text-text-tertiary">—</span>
+                              ) : r.marketName === null ? (
+                                /* ⚠️ NO NAME, BUT STILL A DOOR. An older row wrote no snapshot; the market is
+                                   still reachable and the officer still needs it. This label is the CONSOLE's
+                                   own copy, so it carries no operator-text mark and 453 keeps scanning it. */
+                                <Link href={r.marketHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">Open the market</Link>
+                              ) : (
+                                <Link href={r.marketHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">
+                                  <span className="line-clamp-2" data-operator-text="marketTitle">{r.marketName}</span>
+                                </Link>
+                              )}
+                            </td>
                             <td className="p-3 text-text-secondary">{r.note ?? "—"}</td>
                           </tr>
                         ))
@@ -725,7 +745,10 @@ async function AdminDeskAccountContent({
                       targetRows.map((t) => (
                         <tr key={t.id} className="border-b border-border-subtle">
                           <td className="p-3">
-                            <div className="text-text">{t.title}</div>
+                            {/* ⛔ MARKED AS OPERATOR TEXT (474, 2026-09-24). It always was operator text; it
+                                just was not declared, so the 453 scan read a market's question as this
+                                section's copy. The value is clamped in the reader on the same bound. */}
+                            <div className="text-text" data-operator-text="marketTitle">{t.title}</div>
                             {t.endCaption && <div className="text-body-sm text-text-subtle">{t.endCaption}</div>}
                           </td>
                           <td className="p-3"><Chip size="sm" variant={t.statusChip}>{t.statusWord}</Chip></td>

@@ -100,8 +100,12 @@ function operatorExemptNames() {
   return [...block.matchAll(/value:\s*"([^"]+)"/g)].map((m) => m[1]);
 }
 const OPERATOR_EXEMPT = operatorExemptNames();
-if (JSON.stringify(OPERATOR_EXEMPT) !== JSON.stringify(["label", "switchedReason"])) {
-  console.error(`REFUSED — OPERATOR_DATA_EXEMPT in src/lib/server/house-console-read.ts is ${JSON.stringify(OPERATOR_EXEMPT)}; this gate implements exactly ["label","switchedReason"] (ruling 474) and will not guess at a third.`);
+/* ⭐ THREE SINCE 2026-09-24. `marketTitle` joined the pair when the Activity row began naming the GAME a
+   stake was on, and the Targets grid's long-unmarked Poll cell was hooked onto the same mechanism in the
+   same commit. This list is restated here deliberately rather than imported: the gate implements each
+   exemption by hand, and one it has not been taught is one it would silently stop scanning for. */
+if (JSON.stringify(OPERATOR_EXEMPT) !== JSON.stringify(["label", "switchedReason", "marketTitle"])) {
+  console.error(`REFUSED — OPERATOR_DATA_EXEMPT in src/lib/server/house-console-read.ts is ${JSON.stringify(OPERATOR_EXEMPT)}; this gate implements exactly ["label","switchedReason","marketTitle"] (ruling 474) and will not guess at a fourth.`);
   process.exit(2);
 }
 /** The ON sentence's operator-typed tail — the same rule `test:house-bot-console` §3 applies to `stateSentence`. */

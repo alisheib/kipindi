@@ -373,8 +373,11 @@ section("§2 · the strip, the band, the roster and every failure");
      * lexicon exists to keep off the screen. */
     {
       const EX = GATEM.OPERATOR_DATA_EXEMPT as ReadonlyArray<Any>;
-      ok("1.474 · exactly TWO operator-typed values are exempted from 453, each NAMED with where it paints and the bound it paints under",
-        EX.length === 2 && j(EX.map((e: Any) => e.value)) === j(["label", "switchedReason"])
+      /* ⭐ THREE SINCE 2026-09-24. `marketTitle` joined when the Activity row began naming the GAME a stake was
+         on — a market's own question, or a generated round title: DATA, exactly like the other two. The count is
+         still an EQUALITY, so a fourth exemption cannot arrive without this line being read again. */
+      ok("1.474 · exactly THREE operator-typed values are exempted from 453, each NAMED with where it paints and the bound it paints under",
+        EX.length === 3 && j(EX.map((e: Any) => e.value)) === j(["label", "switchedReason", "marketTitle"])
           && EX.every((e: Any) => typeof e.where === "string" && e.where.length > 0 && e.maxCodePoints > 0), j(EX));
       /* ⛔ CODE POINTS, NOT UTF-16 UNITS, and the ellipsis is INSIDE the bound — a clamp that slices a surrogate
          pair in half paints a replacement glyph, and one that appends past its own bound is not a bound. */
@@ -415,7 +418,12 @@ section("§2 · the strip, the band, the roster and every failure");
                — so it is bounded by the SAME named bound, read from the same list, at the one site both panels
                get it from. */
             && /accountName: clampOperatorText\(found\.label, operatorBound\("label"\)\),/.test(gateSrc)
-            && (gateSrc.match(/clampOperatorText\(/g) ?? []).length === 5
+            /* ⭐ A SIXTH AND SEVENTH SITE, 2026-09-24: the Activity row's game name and the Targets grid's Poll
+               cell. The second of those had painted a RAW operator title since it shipped — the bound is new, not
+               moved, and it is read from the named list like every other. */
+            && /return trimmed\.length === 0 \? null : clampOperatorText\(trimmed, operatorBound\("marketTitle"\)\);/.test(gateSrc)
+            && /title: clampOperatorText\(t\.snapshot\.titleEn, operatorBound\("marketTitle"\)\),/.test(gateSrc)
+            && (gateSrc.match(/clampOperatorText\(/g) ?? []).length === 7
             && !/maxCodePoints: \d+/.test(gateSrc.slice(gateSrc.indexOf("function clampOperatorText"))),
           j({ sites: (gateSrc.match(/clampOperatorText\(/g) ?? []).length }));
       }
@@ -3727,7 +3735,16 @@ try {
         dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000),
         status, reasonCode: status === "SKIPPED" ? "CAP_PER_HOUR" : status === "FAILED" ? "INTERNAL" : null,
         why: "Counter · a sentence the console must never paint · TZS 9,999",
-        decision: { snapshot: "blob" }, attempts: 0, transientAttempts: 0, nextAttemptAt: null,
+        /* ⭐ BOTH SHAPES, ON PURPOSE (2026-09-24). Most rows carry a snapshot the way `decide.ts` writes one, so
+           the Game cell has something real to name and 1.626b measures a READ rather than a null. EVERY THIRD ROW
+           KEEPS THE HOSTILE SHAPE — `snapshot` as a STRING — because `decision` is `Record<string, unknown>` with
+           no type, no parse and no write-time guard anywhere, and a reader that only ever met well-formed blobs
+           would not be a reader anyone could trust. The title carries `n` so a reader painting a constant is caught.
+           ⛔ The `why` above is still the sentence the console must never paint; that pin is untouched. */
+        decision: n % 3 === 1
+          ? ({ snapshot: "blob" } as Any)
+          : ({ snapshot: { titleEn: n === 41 ? `${"Q".repeat(200)} ${n}` : `Will panel market ${n} resolve YES?`, category: "other", cutoff: w.iso(3_600_000), roundNumber: null } } as Any),
+        attempts: 0, transientAttempts: 0, nextAttemptAt: null,
         claimedBy: null, claimedUntil: null,
         positionId: status === "PLACED" ? `pos_placed_panel_${n}` : null,
         finishedAt: null, alertedAt: null,
@@ -3957,9 +3974,55 @@ try {
       /* ⭐ `due` JOINED THE ROW AT 2026-09-23 (register C8): a QUEUED stake now says when it fires and when it
          expires, because the When column is the instant the engine DECIDED and a held COUNTER fires minutes
          later. It is a FINISHED string like every other field — no id, no enum, no raw instant. */
-      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+      /* ⭐ TWELVE SINCE 2026-09-24: `marketName` and `marketHref` — WHICH game the stake was on, and the
+         door into it. The set is still an EQUALITY, so a thirteenth field cannot arrive unannounced. */
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "marketHref", "marketName", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
         && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
       j(Object.keys(p1.feed[0] ?? {}).sort()));
+
+    /* ━━ 1.626b · WHICH GAME THE STAKE WAS ON, AND A DOOR INTO IT (owner, 2026-09-24) ━━━━━━━━━━━━━━━━━━━
+     * The row named the PRODUCT and never the market: "Polls · Fill · 6,000 · Placed" could be any poll on
+     * the platform. The title was already on the intent, inside `decision.snapshot`, and was deliberately
+     * NOT projected because the blob is untyped and a sentence composed outside this section sits in no
+     * guard population. One value is now lifted — typed, clamped, and declared in OPERATOR_DATA_EXEMPT.
+     * ⛔ THE ASSERTIONS ARE THE THREE THINGS THAT COULD GO WRONG: the wrong value, an unbounded value, and
+     * a door built from something other than the market. */
+    {
+      const withGame = p1.feed.filter((r: Any) => r.marketName !== null);
+      ok("1.626b · every activity row names the GAME its stake was on, read from the intent's own snapshot, and carries a door to the PLATFORM's market page — never a route of this section",
+        withGame.length > 0
+          && withGame.every((r: Any) => typeof r.marketName === "string" && r.marketName.length > 0
+            && typeof r.marketHref === "string" && /^\/admin\/markets\/[^/]+$/.test(r.marketHref)
+            && !r.marketHref.startsWith(GATEM.HOUSE_CONSOLE_PREFIX)),
+        j(withGame.slice(0, 3).map((r: Any) => ({ name: r.marketName, href: r.marketHref }))));
+
+      /* ⛔ BOUNDED BY THE READER, MEASURED ON WHAT IT PAINTED — not on the clamp utility called by hand.
+          THIS ASSERTION USED TO CALL `clampOperatorText` ITSELF and check its result, which proves the utility
+         works and says NOTHING about whether the reader uses it: strip the clamp out of `feedMarketName` and that
+         version stayed green. The fixture now plants a 200-code-point title on one row, and what is asserted is
+         the string that came back THROUGH the projection. */
+      const bound = (GATEM.OPERATOR_DATA_EXEMPT as ReadonlyArray<Any>).find((e: Any) => e.value === "marketTitle")!.maxCodePoints;
+      const painted = p1.feed.map((r: Any) => r.marketName).filter((nm: Any) => typeof nm === "string");
+      const clampedOne = painted.find((nm: string) => nm.startsWith("QQQQQQQQQQ"));
+      ok("1.626b · the game name is BOUNDED BY THE READER — a 200-code-point market title comes back at the bound, verbatim up to it, with the ellipsis inside",
+        painted.length > 0 && painted.every((nm: string) => [...nm].length <= bound)
+          && typeof clampedOne === "string" && [...clampedOne].length === bound && clampedOne.endsWith("…"),
+        j({ bound, longest: Math.max(...painted.map((nm: string) => [...nm].length)), clamped: clampedOne?.slice(0, 12) }));
+
+      /* ⭐ CONTROL · THE NAME IS NOT INVENTED AND NOT THE PRODUCT WORD. Without this, a row that simply
+         echoed "Polls" into the new cell would satisfy every assertion above. */
+      ok("1.626b · CONTROL · the game name is the MARKET's own title — not the product word, not the type word, and not the same string on every row",
+        withGame.every((r: Any) => r.marketName !== r.productWord && r.marketName !== r.typeWord),
+        j({ names: [...new Set(withGame.map((r: Any) => r.marketName))].slice(0, 4), product: withGame[0]?.productWord }));
+
+      /* ⛔ CONTROL · A ROW WHOSE BLOB CARRIES NO USABLE TITLE ANSWERS `null`, NOT AN EMPTY NAME. `decision`
+         has no type, no parse and no write-time shape guard, and this suite plants a hostile shape on purpose. */
+      const feedMarketNames = p1.feed.map((r: Any) => r.marketName);
+      ok("1.626b · CONTROL · a row whose stored decision holds no usable title answers `null` rather than an empty cell pretending to be a name — and its door still stands",
+        feedMarketNames.every((n: Any) => n === null || (typeof n === "string" && n.trim().length > 0))
+          && p1.feed.every((r: Any) => r.marketHref === null || typeof r.marketHref === "string"),
+        j({ rows: p1.feed.length, named: withGame.length, unnamed: p1.feed.length - withGame.length }));
+    }
     ok("1.317 · every row's outcome word and type word come from the console's own TOTAL maps, and its note is the console's own sentence — never a raw enum",
       p1.feed.every((r: Any) => !(K_INTENT_STATUSES as string[]).includes(r.statusWord) && !(K_INTENT_KINDS as string[]).includes(r.typeWord))
         && p1.feed.some((r: Any) => typeof r.note === "string" && r.note.length > 10)
@@ -4522,12 +4585,15 @@ try {
     const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the activity table's headers are the control facts in order, with the money column SECOND and headed exactly `Stake`",
-      all(feedHeaders) === all(["When (EAT)", "Stake", "Outcome", "Type", "Product", "Note"]), j(feedHeaders));
+      /* ⭐ "Game" JOINED 2026-09-24, BESIDE PRODUCT AND NOT FIRST: the money column must stay SECOND (this
+         assertion's own claim), and the visual gate's §5.2 contract measures the first three cells — so naming
+         the game earlier would push the OUTCOME out of the 360 strip. */
+      all(feedHeaders) === all(["When (EAT)", "Stake", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
     ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
       /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
         && !/admin-tbl min-w-/.test(detail), "");
     ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
-      feedHeaders.length === 6 && !feedHeaders.includes("Event"), j(feedHeaders));
+      feedHeaders.length === 7 && !feedHeaders.includes("Event"), j(feedHeaders));
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
@@ -4620,7 +4686,7 @@ section("§2e3 · the desk landing page's activity and history panels");
     const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
-      j(feedHeaders) === j(["Account", "Stake", "When (EAT)", "Outcome", "Type", "Product", "Note", ""]),
+      j(feedHeaders) === j(["Account", "Stake", "When (EAT)", "Outcome", "Type", "Product", "Game", "Note", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
       j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
@@ -6054,7 +6120,14 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        rail's group labels and option labels are here too — a filter label is copy, and it reaches the DOM. */
     ...(view.feedFilters ?? []).flatMap((g: Any) => [g.label, ...(g.options ?? []).map((o: Any) => o.label)]),
     view.feedEmpty?.title, view.feedEmpty?.body, view.historyEmpty?.title, view.historyEmpty?.body,
-    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.statusWord, r.typeWord, r.productWord, r.note]),
+    /* ⛔ `marketHref` IS SCANNED AND `marketName` IS NOT, AND THAT ASYMMETRY IS THE WHOLE POINT (474).
+       The href is a route THIS module composes, so it is this section's own copy and 453 binds it — exactly
+       as `r.moneyHref` is scanned on the history row below. The NAME is a market's own title, typed by an
+       operator or generated for a round: it is DATA, it is declared in `OPERATOR_DATA_EXEMPT`, and feeding
+       it to the lexicon would turn the first live poll whose question carries a listed word into a red run.
+       ⚠️ THIS LIST IS HAND-MAINTAINED, which is the population defect this file warns about elsewhere — so a
+       new painted field must be added here BY NAME, or decided against here, never left to default. */
+    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.statusWord, r.typeWord, r.productWord, r.note, r.marketHref]),
     ...(view.history ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.eventWord, r.change, r.who, r.moneyHref]),
     ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
     /* ⛔ AND THE WHOLE OF BOTH TOTAL MAPS, NOT ONLY THE ROWS THIS FIXTURE HAPPENED TO PAINT. A word map scanned
@@ -6124,7 +6197,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     ok("3.453 · 474 · CONTROL · an operator's typed reason carrying a house word does NOT fire the lexicon — and the same words in the console's OWN copy DO",
       copyOf(withReason).filter((c: string) => NEUTRAL.test(c)).length === 0
         && copyOf(withCopy).filter((c: string) => NEUTRAL.test(c)).length === 1
-        && j(exemptNames) === j(["label", "switchedReason"]),
+        && j(exemptNames) === j(["label", "switchedReason", "marketTitle"]),
       j({ exempted: copyOf(withReason).filter((c: string) => NEUTRAL.test(c)), copy: copyOf(withCopy).filter((c: string) => NEUTRAL.test(c)) }));
     /* ⛔ AND THE OTHER EXEMPTION IS A ROW'S `label`, which this sweep never reaches by construction — asserted, not
      * assumed, because "it is nested" is exactly the kind of claim that stops being true. */
@@ -6143,7 +6216,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     ok("3.453 · 474 · CONTROL · the account page's TOP-LEVEL `label` is exempt by NAME, while the same words one key away are not",
       copyOf(detailShaped).filter((c: string) => NEUTRAL.test(c)).length === 0
         && copyOf(detailLoud).filter((c: string) => NEUTRAL.test(c)).length === 1
-        && EXEMPT_KEYS.has("label") && EXEMPT_KEYS.size === 2, j([...EXEMPT_KEYS]));
+        && EXEMPT_KEYS.has("label") && EXEMPT_KEYS.size === 3, j([...EXEMPT_KEYS]));
   }
   ok("3.453.c1 · CONTROL · the same test fires on each of the shared vocabulary's own samples and on the words 453 adds, and does NOT fire on an innocent word that merely contains one",
     HOUSE_WORD_SAMPLES.every((s: string) => NEUTRAL.test(s)) && CONSOLE_EXTRA_SAMPLES.every((s: string) => NEUTRAL.test(s))
@@ -6891,7 +6964,11 @@ export default function Ruling513Control() {
     /* ⭐ A NINTH AT 2026-09-22, PINNED IN POSITION LIKE THE EIGHT BEFORE IT: the roster row's own refusal — the first
        reason its rules reach nothing, linked to its Rules tab — painted in the scope cell, one column before the way
        out. An `OR` would widen; nine positions are nine answers. */
-    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
+    /* ⭐ ELEVEN SINCE 2026-09-24. The Activity row's Game cell paints the door in TWO branches — a named market
+       and an older row that wrote no snapshot but is still reachable — so both appear, in order, between the feed's
+       account link and the history's. Two entries and not one is the point of a POSITIONAL pin: a single OR would
+       have hidden which branch shipped. */
+    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
       j(linkExprs) === j(WANT) && j(elementsOf(pageCode)) === j(ELEMENTS) && linkExprs.length === openings,
       j({ found: linkExprs, want: WANT, elements: elementsOf(pageCode), openings }));

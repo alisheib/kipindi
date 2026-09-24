@@ -681,6 +681,9 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
                         <th scope="col" className="text-left p-3">Product</th>
+                        {/* ⛔ BESIDE PRODUCT, NOT FIRST — the account page says why in full. The
+                            desk-wide table leads with Account and Stake, and neither may leave the 360 strip. */}
+                        <th scope="col" className="text-left p-3 !whitespace-normal">Game</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Note</th>
                         {/* ⛔ THE CONTROL COLUMN CARRIES NO HEADER WORD — the kit's own shape for a per-row control
                             (`/admin/kyc`, `/admin/approvals`): the control says what it does, and a header
@@ -690,7 +693,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={8} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={9} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
@@ -739,6 +742,21 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                             <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                             <td className="p-3 text-text">{r.typeWord}</td>
                             <td className="p-3 text-text-secondary">{r.productWord}</td>
+                            {/* The same cell as the account page's Activity tab, and it must stay the same:
+                                one reader builds both rows, so two renderings would be two truths. */}
+                            <td className="p-3 max-w-[34ch]">
+                              {r.marketHref === null ? (
+                                <span className="text-text-tertiary">—</span>
+                              ) : r.marketName === null ? (
+                                /* ⚠️ NO NAME, BUT STILL A DOOR — an older row wrote no snapshot. This
+                                   label is the CONSOLE's own copy, so it carries no operator mark and 453 still reads it. */
+                                <Link href={r.marketHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">Open the market</Link>
+                              ) : (
+                                <Link href={r.marketHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">
+                                  <span className="line-clamp-2" data-operator-text="marketTitle">{r.marketName}</span>
+                                </Link>
+                              )}
+                            </td>
                             <td className="p-3 text-text-secondary">{r.note ?? "\u2014"}</td>
                             <td className="p-3 text-right">
                               {/* ⛔ 432(a) · THE CONTROL IS DRAWN ONLY WHERE IT CAN DO SOMETHING. A stake already in

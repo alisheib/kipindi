@@ -148,7 +148,14 @@ export async function loadWorld() {
       triggerPositionId: null, triggerUserId: null, targetId: null, requestedById: kind === "MANUAL" ? OFFICER : null,
       entryCondition: kind === "MANUAL" ? "THIN" : null, side: "YES", stakeTzs: 1_000,
       dueAt: iso(-1_000), deadlineAt: iso(3_600_000), staleAt: iso(600_000), status: "PENDING", reasonCode: null, why: null,
-      decision: {}, attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null, claimedUntil: null,
+      /* ⭐ A SNAPSHOT THE WAY THE ENGINE WRITES ONE (2026-09-24). `decide.ts` puts `{ titleEn, category,
+         cutoff, roundNumber }` on every intent it plans, and the console now lifts the title out of it to name
+         WHICH GAME a stake was on. A fixture whose decision is `{}` cannot exercise that at all — and a case
+         that only ever sees `null` proves the reader returns null, not that it reads.
+         ⛔ THE MARKET ID IS IN THE TITLE ON PURPOSE, so a case can tell one fixture row from another and a
+         reader that painted a constant would be caught. Callers override it through `o` like any other field. */
+      decision: { snapshot: { titleEn: `Will the fixture market ${marketId} resolve YES?`, category: "other", cutoff: iso(3_600_000), roundNumber: null } },
+      attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null, claimedUntil: null,
       positionId: null, finishedAt: null, alertedAt: null,
       ...o,
     };

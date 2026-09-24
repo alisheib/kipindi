@@ -491,6 +491,21 @@ const SEP = ` ·${String.fromCharCode(0xa0)}`;
 export const OPERATOR_DATA_EXEMPT = Object.freeze([
   { value: "label", where: "the Account column's first line", maxCodePoints: 32 },
   { value: "switchedReason", where: "the ON sentence's reason tail", maxCodePoints: 120 },
+  /**
+   * ⭐ 2026-09-24 · A MARKET'S OWN TITLE, on the Activity row's Game cell and the Targets grid's Poll cell.
+   *
+   * It is the third entry and it earns the exemption the way the first two do: it is DATA someone typed — an
+   * operator's poll question, or a generated Up & Down round title — and the console may not rewrite it. An
+   * officer asking "which game was this stake on" needs the words the market actually carries; a sanitised
+   * title answers a different question.
+   * ⛔ THE BOUND IS 80 AND IT IS A RENDER DECISION, never the storage limit — the docblock above says why, and
+   * 80 code points is a whole poll question in a cell that must also hold a door.
+   * ⚠️ THE TARGETS GRID HAS PAINTED THIS VALUE SINCE BEFORE THIS ENTRY EXISTED, unclamped and unmarked
+   * (ConsoleTargetRow.title). That was a latent red, NOT a precedent: the guard that would catch it has an
+   * empty population, because no live market title has yet carried a lexicon word. It is clamped and marked in
+   * the same commit that adds this row, rather than left standing as a second, wrong way to do it.
+   */
+  { value: "marketTitle", where: "the Activity row's Game cell and the Targets grid's Poll cell", maxCodePoints: 80 },
 ]);
 
 /** ⛔ CODE POINTS, NOT UTF-16 UNITS — the DAL's own checks count code points, and slicing a surrogate pair in half
@@ -3391,6 +3406,16 @@ function consolePageNumber(raw: number | undefined): number {
  * `intent.triggerUserId` is another player's raw id; the rule is `playerHandle`. None of the three is projected, and
  * no source guard could see them if they were: 4.453 collects LITERALS of this section, and a sentence composed in a
  * module outside it is in neither population.
+ *
+ * ⭐ **AMENDED 2026-09-24 — ONE FIELD, LIFTED OUT, TYPED AND BOUNDED.** The rule above stands for the BLOB: the
+ * decision is still not projected, and `why` still is not. What changed is that an officer could not tell WHICH
+ * market a stake was on — the row named the product ("Polls") and never the game — and the answer was already
+ * inside `decision.snapshot.titleEn`, which every kind writes. So exactly one value is lifted: the title, read
+ * DEFENSIVELY (the blob has no type, no parse and no write-time shape guard), clamped to a render bound, and
+ * declared in `OPERATOR_DATA_EXEMPT` so 453 treats it as the operator DATA it is rather than this section's copy.
+ * ⛔ THE ORIGINAL OBJECTION IS HONOURED, NOT SIDESTEPPED: it was that a sentence composed outside this section
+ * sits in no guard's population. A bounded title declared BY NAME sits in one — the same one the account label
+ * has sat in since ruling 474.
  * ══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /**
@@ -3595,6 +3620,26 @@ export type ConsoleFeedRow = {
   statusChip: StatusChipVariant;
   typeWord: string;
   productWord: string;
+  /**
+   * ⭐ WHICH GAME THE STAKE WAS ON (owner, 2026-09-24).
+   *
+   * The row named the PRODUCT — "Polls" or "Up & Down" — and never the market, so an officer scanning an
+   * account's activity could not tell one poll from another. This is the market's own title AS THE ENGINE SAW
+   * IT when it decided, read out of the intent's own snapshot.
+   * ⛔ THE SNAPSHOT, NOT A LIVE READ, and that is the whole point: a market renamed or voided afterwards must
+   * not silently rewrite what a past decision appears to say. The door below carries the current truth.
+   * ⚠️ `null` when the stored blob holds no usable title — an older row, or any path that wrote no snapshot.
+   * It is OPERATOR DATA (`OPERATOR_DATA_EXEMPT` "marketTitle"): the render site marks it and 453 skips it.
+   */
+  marketName: string | null;
+  /**
+   * The PLATFORM's own market page, never a surface of this section — ruling 456's shape, the same reasoning
+   * that sends the holder's money door to `/admin/players/<id>`. The current truth lives there and stays
+   * current by itself, so nothing here has to be refreshed to stay honest.
+   * ⛔ A PLATFORM id in a PLATFORM href is not what D19 forbids: what this section may never serve is its OWN
+   * record ids — a bot's, an intent's. That is why this row still carries no intent id.
+   */
+  marketHref: string | null;
   /** The console's own sentence for the engine's outcome code, or `null` for a row that simply landed. */
   note: string | null;
   /**
@@ -4102,6 +4147,21 @@ function feedDueLine(dueAtIso: string | null, staleAtIso: string | null, nowMs: 
   return Number.isFinite(stale) ? `${fires}${SEP}expires ${formatEat(stale, "HH:MM")}` : fires;
 }
 
+/**
+ * The ONE value lifted out of `intent.decision` (see the amendment on the projection rule above).
+ * ⚠️ EVERY STEP IS CHECKED, because `decision` is `Record<string, unknown>`: stored JSON with no type, no parse
+ * and no write-time shape guard anywhere — and the console suite deliberately plants a hostile shape in its feed
+ * fixture. A blank or whitespace-only title answers `null`, never an empty cell pretending to be a name.
+ */
+function feedMarketName(decision: Record<string, unknown>): string | null {
+  const snap: unknown = (decision as { snapshot?: unknown } | null)?.snapshot;
+  if (snap == null || typeof snap !== "object") return null;
+  const raw: unknown = (snap as { titleEn?: unknown }).titleEn;
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  return trimmed.length === 0 ? null : clampOperatorText(trimmed, operatorBound("marketTitle"));
+}
+
 function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number): ConsoleFeedRow {
   const at = Date.parse(i.createdAt);
   /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
@@ -4117,6 +4177,11 @@ function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs:
     statusChip: status.chip,
     typeWord: CONSOLE_INTENT_KIND_WORD[i.kind],
     productWord: CONSOLE_PRODUCT_WORD[i.productLine],
+    marketName: feedMarketName(i.decision),
+    /* ⛔ ENCODED, AND GUARDED ON AN EMPTY ID: a href built from a value this module did not compose is where a
+       stray character becomes markup. An id it cannot use is no door at all, which is honest; a half-built one
+       is a control that leads nowhere, which 312 forbids. */
+    marketHref: i.marketId.length > 0 ? `/admin/markets/${encodeURIComponent(i.marketId)}` : null,
     /* ⛔ THE CONSOLE'S OWN SENTENCE OR NOTHING — never `intent.why`, and never the engine's own table. An outcome
      * code this build does not know paints no sentence rather than a raw enum (453). */
     note: code != null && Object.prototype.hasOwnProperty.call(CONSOLE_SKIP_SENTENCE, code)
@@ -5462,7 +5527,11 @@ export async function houseDetailForConsole(
     const at = Date.parse(t.endedAt ?? t.createdAt);
     return {
       id: t.id,
-      title: t.snapshot.titleEn,
+      /* ⛔ CLAMPED ON THE SAME BOUND AS THE ACTIVITY ROW (2026-09-24). This cell has painted a raw operator title
+         since it shipped, unclamped and unmarked, so the 453 scan reads it as this section's own copy — a latent
+         red the day a market question carries a lexicon word, and an unbounded column width before that. It was
+         never a precedent for painting titles; it was the same gap, one tab away. */
+      title: clampOperatorText(t.snapshot.titleEn, operatorBound("marketTitle")),
       statusWord: t.status === "ACTIVE" ? "Active" : t.status === "REMOVED" ? "Removed" : "Ended",
       statusChip: (t.status === "ACTIVE" ? TONE_CHIP.green : TONE_CHIP.slate) as StatusChipVariant,
       endCaption: t.endCause == null ? null : consoleTargetEndCaption(t.endCause, label),

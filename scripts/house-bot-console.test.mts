@@ -251,6 +251,17 @@ await runTwoStores({
    * ELSE, or the new sentence is just what this door says to everyone.
    * ⚠️ And no other surface covered it: an unreadable document nulls the blockers, which nulls the callout,
    * the why-not-betting panel and the rules badge, so the tab the link lands on said nothing either. */
-  minPass: { memory: 805, postgres: 566 },
+  /* ⭐ RAISED 805 → 809 MEMORY / 566 → 570 POSTGRES, 2026-09-24, to what this run PRINTED. +4 in each child:
+   * 1.626b and its two controls — WHICH GAME a stake was on, and the door into it. The row named the PRODUCT
+   * ("Polls") and never the market, so an officer could not tell one poll from another; the title was already
+   * on the intent and deliberately unprojected, and exactly one value is now lifted out, clamped and declared.
+   * ⛔ THE CONTROLS ARE THE HALF THAT MATTERS. Without the first, a cell echoing the product word would pass
+   * every other assertion; without the second, a reader that only ever met a well-formed blob would look sound
+   * — so the fixture keeps the HOSTILE shape (`snapshot` as a STRING) on every third row and the case demands
+   * `null` there rather than an empty cell pretending to be a name.
+   * ⚠️ Six hand-typed pins moved in the same commit and each says why at its site: the exemption list (two →
+   * three), its clamped render sites (five → seven), both activity header lists, the 474 exempt-name control,
+   * and the POSITIONAL link pin (nine → eleven, because the Game cell paints a door in two branches). */
+  minPass: { memory: 809, postgres: 570 },
   dbPrefix: "hb_console",
 });
