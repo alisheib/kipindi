@@ -895,6 +895,7 @@
     "qa:checkbox-surfaces": "node scripts/qa-checkbox-surfaces.mjs",
     "docs:house-bots-guide": "tsx scripts/generate-house-bots-guide.mts && node scripts/generate-pdfs.mjs",
     "qa:home-tighten": "node scripts/home-tighten.mjs",
+    "qa:landing-ten": "node scripts/qa/landing-ten.mjs",
     "qa:focus-and-fit": "node scripts/focus-and-fit.mjs",
     "qa:cls-budget": "node scripts/cls-budget.mjs",
     "qa:ghost-landing": "node scripts/ghost-landing.mjs",
