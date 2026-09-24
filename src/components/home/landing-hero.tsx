@@ -82,8 +82,15 @@ function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale
           and 116 at 1280, against a comfortable 45–75 (measured on production 2026-09-24). At 360
           the column is 292px ≈ 44 characters, so this cap cannot touch a phone — it only stops the
           line running away on a desktop. The figures stay right-aligned where the design puts
-          them; this is about the length of a line of prose, not about where the money sits. */}
-      <span className="kp-qrow__q" style={{ maxWidth: "68ch" }}>{pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh)}</span>
+          them; this is about the length of a line of prose, not about where the money sits.
+          🔴 44ch, NOT 68ch, AND THE NUMBER IS CALIBRATED RATHER THAN CHOSEN. `ch` is the advance of
+          the digit ZERO, which in Sora at 17px is 12.97px — while the average character advance in
+          running text is about 8.9px. A 68ch cap therefore resolved to 882px and still produced 99
+          characters per line; measured on production after it shipped, which is the only reason it
+          was caught. 44ch ≈ 571px ≈ 64 characters in this face. ⚠️ If the hero question ever changes
+          typeface this number is wrong again — V7 in the landing gate is what re-catches it.
+          In zh the same cap yields roughly 33 glyphs, comfortably inside the same ceiling. */}
+      <span className="kp-qrow__q" style={{ maxWidth: "44ch" }}>{pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh)}</span>
       {/* The pool is REAL even when it is zero, so it is always stated. Only the PRICE is
           withheld — that is the distinction `market-card.tsx` draws between `fresh` and
           `noPrice`, and the two surfaces have to draw it the same way. */}
