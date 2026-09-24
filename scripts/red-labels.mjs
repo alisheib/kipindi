@@ -102,8 +102,12 @@ const MUTATIONS = [
     // money control — "YES @ 51%" — while the board cards on the same page read "是 @ 56%".
     name: "§3b · the pick-gate types the raw enum where a player reads it (PV-04, live 2026-09-03)",
     file: p("src", "components", "markets", "side-picker.tsx"),
-    from: `          {sideWord(t, "YES", "MARKET")} {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}`,
-    to: `          YES {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}`,
+    // ⚠️ RE-PINNED 2026-09-24. This anchor still carried `opacity-85`, which the call site
+    // dropped at some point, so the injection could not land and the mutation PROVED NOTHING
+    // for however long that has been true — §0 trap 2 exactly. The harness said so out loud
+    // rather than scoring it green, which is the only reason it was findable.
+    from: `          {sideWord(t, "YES", "MARKET")} {hasPool && <span className="font-mono text-[12.5px]">@ {yesPct}%</span>}`,
+    to: `          YES {hasPool && <span className="font-mono text-[12.5px]">@ {yesPct}%</span>}`,
   },
   {
     // 🔴 PV-04's second shape — and the one that proves WHY §3c judges the dictionary's

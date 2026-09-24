@@ -271,7 +271,17 @@ function stripComments(src: string): string {
     // turns `>Text{expr}` into `}Text{expr}`, which no pass matches. The PV-04 mutation was
     // MISSED for exactly that reason — the guard's blindness was caused by a comment explaining
     // the fix. A JSX comment renders nothing; it must leave nothing behind.
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, (m) => m.replace(/[^\r\n]/g, " "))
+    // ⛔ `[ \t]*`, NOT `\s*`, EITHER SIDE — and that one character was hiding 7,077 lines of
+    // real code from every scanner in this file, across 76 files (measured 2026-09-24).
+    // `\s` crosses NEWLINES, so in ordinary TypeScript an object literal's `{` followed by a doc
+    // comment on the next line — `pushOnly(userId, {` ↵ `/** … */` — opened a match that ran to
+    // whatever distant `*/ }` came next and blanked EVERYTHING between. 1,337 lines of
+    // `market-service.ts`, 867 of `i18n-dict.ts`, 160 of `updown-card.tsx`. That is why
+    // `red:labels`'s own "🔴 ALI'S BUG" mutation could never be caught: the line it mutates
+    // (`titleZh` in the Up & Down push) sits inside one of those blanked windows.
+    // ⭐ A real JSX comment is written `{/* … */}` with the brace and the star adjacent, so
+    // restricting the gap to spaces and tabs keeps every genuine one and ends the runaway.
+    .replace(/\{[ \t]*\/\*[\s\S]*?\*\/[ \t]*\}/g, (m) => m.replace(/[^\r\n]/g, " "))
     .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\r\n]/g, " "))
     .replace(/(^|[^:])\/\/[^\r\n]*/g, (m, p1) => p1 + " ".repeat(m.length - p1.length));
 }
@@ -488,6 +498,114 @@ for (const f of playerJsx) {
 check("§3c a {side}/{outcome}/{status} placeholder is filled from the lexicon, never from the stored token",
   phHits.length === 0, phHits.join(" · "));
 
+
+// ───────────────────────────────────────────────────────────────────────────
+// §3d · A STORED SIDE REACHING COPY THROUGH A VARIABLE.
+//
+// 🔴 THE SHAPE §3 AND §3b ARE BOTH STRUCTURALLY BLIND TO, and D39 lived in it for months.
+// §3 scans template literals that also carry PROSE; §3b scans for a LITERAL "YES"/"NO" typed
+// out. Neither can see these two, which is why both were ALL PASS over them:
+//
+//   markets/[id]/page.tsx  `const heldLabel = [...heldSides].join(" + ")`  → "YES + NO"
+//   conviction-dial.tsx    title={`${resultData.side} · ${formatTzs(...)}`} → "YES · TZS 5,000"
+//
+// The first has no side token on its own line at all — the `.side` read is two lines up, in
+// `heldSides`. The second's only literal text is " · ", so a prose gate skips it. Both were
+// the HEADLINE of a money confirmation in a Swahili sentence.
+//
+// ⛔ CRLF IS NORMALISED FIRST, and that is not housekeeping. `.` does not match `\r`, so with
+// CRLF left in place every `$`-anchored rule below matches nothing and the taint set comes back
+// EMPTY — a scanner reporting a confident zero over a tree full of hits. It did exactly that
+// for two runs while this was being written.
+{
+  const nl = (f: string) => stripComments(readFileSync(f, "utf8").replace(/\r\n/g, "\n").replace(/\r/g, "\n"));
+  const LEX = /sideWord|outcomeWord|displayDirection/;
+  const READS = /[.](?:side|outcome|resolvedOutcome)\b/;
+  // A POSITION, not a vocabulary: the prop names a reader sees text through.
+  const DISPLAY = /\b(?:title|label|subtitle|eyebrow|aria-label|ariaLabel|description|heading|placeholder)\s*[:=]\s*[{]?/;
+  const hitsA: string[] = [];
+  const hitsB: string[] = [];
+
+  for (const f of playerJsx) {
+    const rel = f.slice(ROOT.length + 1).split(String.fromCharCode(92)).join("/");
+    const lines = nl(f).split("\n");
+
+    // PASS A — a display-position template that interpolates a stored side directly.
+    lines.forEach((ln, i) => {
+      if (DISPLAY.test(ln)
+        && /`[^`]*[$][{][^}]*[.](?:side|outcome|resolvedOutcome)\b[^}]*[}]/.test(ln)
+        && !LEX.test(ln)) hitsA.push(`${rel}:${i + 1}`);
+    });
+
+    // PASS B — ONE-HOP TAINT. Names bound from a `.side`/`.outcome` read, then used to BUILD a
+    // string. ⛔ Only string-building uses count: `heldSides.has("YES")` reads the same name and
+    // is a test, not copy — counting it would push sessions to "fix" correct code (§3c's lesson).
+    const tainted = new Set<string>();
+    for (const ln of lines) {
+      const m = ln.match(/^\s*const\s+(\w+)\s*=(.*)$/);
+      if (m && READS.test(m[2]) && !LEX.test(m[2])) tainted.add(m[1]);
+    }
+    if (tainted.size) {
+      const names = [...tainted].join("|");
+      const build = new RegExp("(?:" + names + ")[^;]{0,60}[.]join[(]|[$][{]\s*(?:" + names + ")\s*[}]");
+      lines.forEach((ln, i) => {
+        if (build.test(ln) && !LEX.test(ln)) hitsB.push(`${rel}:${i + 1}`);
+      });
+    }
+  }
+
+  check("§3d no display-position template interpolates a stored side",
+    hitsA.length === 0, `${hitsA.join(" · ")} — route it through sideWord()/outcomeWord()`);
+  check("§3d no string BUILT from a stored side reaches a player",
+    hitsB.length === 0, `${hitsB.join(" · ")} — the read may be lines above; route it through the lexicon`);
+
+  /* ⭐ PASS C · THE SAME LEAK ON THE SERVER, where the player-tree population cannot reach.
+     `red:labels` carries a mutation for exactly this — "🔴 ALI'S BUG — the Up & Down push speaks
+     the poll's vocabulary again" — and it was going UNCAUGHT (the harness scored 10/12) for as
+     long as this pass did not exist: the push builds `titleZh` in `src/lib/server/market-service.ts`,
+     which is not JSX and so is not in `playerJsx`. A push notification is copy a player reads in
+     their own language; the rule is the same one, only the address differs.
+     ⛔ `subject:` is deliberately NOT in the field list. Both `subject:` lines in this tree are
+     English BY CONSTRUCTION (an email subject printed beside `market.titleEn`), so including them
+     would have bought an exemption list and taught the next session to park things in it. */
+  {
+    const NOTIFY = /\b(?:title|body|message)(?:En|Sw|Zh)?\s*:/;
+    const hitsC: string[] = [];
+    for (const f of walk(join(SRC, "lib", "server"))) {
+      const rel = f.slice(ROOT.length + 1).split(String.fromCharCode(92)).join("/");
+      nl(f).split("\n").forEach((ln, i) => {
+        if (NOTIFY.test(ln)
+          && /`[^`]*[$][{][^}]*[.](?:side|outcome|resolvedOutcome)\b[^}]*[}]/.test(ln)
+          && !LEX.test(ln)) hitsC.push(`${rel}:${i + 1}`);
+      });
+    }
+    check("§3d no localized NOTIFICATION field interpolates a stored side",
+      hitsC.length === 0, `${hitsC.join(" · ")} — a push is copy; route it through sideWordIn()`);
+    const PUSH_BAD = "titleZh: `X · ${opts.side} ${y}`";
+    const PUSH_OK = 'titleZh: `X · ${sideWordIn("zh", opts.side, "UPDOWN")} ${y}`';
+    check("§3d control · the Up & Down push in the poll's vocabulary IS detected",
+      NOTIFY.test(PUSH_BAD) && !LEX.test(PUSH_BAD));
+    check("§3d control · …and the shipped, routed spelling is NOT",
+      LEX.test(PUSH_OK));
+  }
+
+  // ⭐ CONTROLS — both matchers shown able to say no, against the defect verbatim.
+  {
+    const A_BAD = 'title={ok ? `${resultData.side} · ${formatTzs(x)}` : y}';
+    check("§3d control · the pre-fix modal title IS detected",
+      DISPLAY.test(A_BAD) && /`[^`]*[$][{][^}]*[.](?:side|outcome|resolvedOutcome)\b[^}]*[}]/.test(A_BAD) && !LEX.test(A_BAD));
+    check("§3d control · …and the FIXED spelling is NOT",
+      LEX.test('title={ok ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(x)}` : y}'));
+    const bld = new RegExp("(?:heldSides)[^;]{0,60}[.]join[(]");
+    check("§3d control · the pre-fix heldLabel IS detected",
+      bld.test('  const heldLabel = [...heldSides].join(" + ");'));
+    check("§3d control · a `.has()` test on the same name is NOT",
+      !bld.test('  const hedgeBoth = heldSides.has("YES") && heldSides.has("NO");'));
+    const TAINT = /^\s*const\s+(\w+)\s*=(.*)$/;
+    check("§3d control · a trailing CR WOULD have blinded the taint rule (why nl() exists)",
+      TAINT.test("  const x = p.side;") && !TAINT.test("  const x = p.side;" + String.fromCharCode(13)));
+  }
+}
 // ───────────────────────────────────────────────────────────────────────────
 // §4 · The lexicon is the only definition site — RATCHET, downward only.
 // ───────────────────────────────────────────────────────────────────────────
