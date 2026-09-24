@@ -290,7 +290,12 @@ export default async function LandingPage() {
                     : t.home.updownStartsSoon}
                 </p>
               </div>
-              <span className="btn btn-primary btn-lg shrink-0">
+              {/* `max-w-full whitespace-normal`: the button is nowrap by its own class AND `shrink-0`,
+                  so at a 180px viewport (200% zoom) it stayed 229px wide and was the single widest
+                  thing on the document. It keeps `shrink-0` so it does not compress beside the copy
+                  at ordinary widths — it simply stops being allowed to exceed its container, and
+                  wraps to a second line only when it truly cannot fit. */}
+              <span className="btn btn-primary btn-lg shrink-0 max-w-full whitespace-normal">
                 <I.trendingUp s={16} /> {t.home.updownCta}
                 <I.chevronRight s={14} />
               </span>
