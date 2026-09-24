@@ -175,6 +175,17 @@ an already-saved 0 is only corrected when someone saves the Rules tab again.
    regex-counting assertion (console 1.435) reaches 12. `why` is already null for a removed account, because the
    door refuses one. It is disclosed in the comment beside it, which is why it was left rather than removed — but
    it IS a product-code guard that cannot fail, and if 1.435 is ever re-derived, this is the one to drop.
+7. 🔴 **THE ACTIVITY TAB BREAKS ITS OWN 360 CONTRACT, AND IT PREDATES THE GAME COLUMN (measured 2026-09-24).**
+   `qa:house-bots-visual` §5.2 FAILS on `/admin/desk/<id>?tab=activity` at 360: the When cell runs 21→271px
+   and pushes Stake to 271→405 while the scroll strip ends at 339, so **the money answer is off the phone**.
+   ⛔ **PROVEN NOT TO BE THE NEW COLUMN**: the account page was reverted to its pre-feature version, rebuilt and
+   re-measured, and the numbers came back IDENTICAL (21/271/405/339). Game sits sixth and cannot move Stake.
+   ⚠️ **THE LIKELY CAUSE, not yet confirmed**: the When cell is `p-3 tabular`, and `.admin-tbl td.tabular` is
+   `white-space: nowrap` — so the queued row's `due` sub-line ("fires …, gives up …") cannot wrap and sets the
+   column's width. That would make it a defect of the C8 due-line, which landed after this contract was written.
+   ▶ The fix is probably to let the due line wrap (it is not a figure, and 432(b) only pins money and timestamps
+   against clipping) — but measure before changing: this gate is not in the default route population for that
+   page, which is why it ran green for so long.
 6. ⚠️ **NOT OURS, measured during this session's closing audit — report, do not "fix":**
    · `docs/MOBILE-VISUAL-UNSEEN-2026-09.md` — the owning session repaired its 13 broken script references while
      this audit was running (`test:docs` is green again), but the reword was shaped by what the link checker
