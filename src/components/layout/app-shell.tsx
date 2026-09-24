@@ -33,7 +33,6 @@ const LazyWinCelebration = lazy(() =>
   import("@/components/markets/win-celebration").then((m) => ({ default: m.WinCelebrationHost })),
 );
 import { TopAppBar } from "./top-app-bar";
-import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
@@ -45,7 +44,6 @@ import { SessionPresence } from "./session-presence";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/server/store";
 import { guestUser } from "@/lib/ui-stubs";
-import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
@@ -234,12 +232,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // JSX site so the two do not serialise; `getPlatformStats` is memoised on `globalThis` for 60s,
   // so on a warm shell this costs nothing at all. ⛔ It must never become a per-request scan —
   // this component renders on EVERY page (see the ONE-SCAN note in `platform-stats.ts`).
-  const [platformCfg, tickerEvents] = await Promise.all([
-    // Site-wide operator banner (§9.3 #5) — maintenance notice takes priority
-    // over an active broadcast. Cheap cached config read (graceful on failure).
-    getPlatformConfig().catch(() => null),
-    getTickerFeed(locale).catch(() => []),
-  ]);
+  // Site-wide operator banner (§9.3 #5) — maintenance notice takes priority over an active
+  // broadcast. Cheap cached config read (graceful on failure).
+  // ⚠️ This was a Promise.all of two reads; the ticker feed was the second and went with the
+  // strip that painted it. One await is not worth a Promise.all.
+  const platformCfg = await getPlatformConfig().catch(() => null);
   const maintBanner = platformCfg?.maintenanceMode ? await maintenanceMessage().catch(() => null) : null;
   const announcement = platformCfg?.announcement?.active && platformCfg.announcement.message.trim()
     ? { message: platformCfg.announcement.message, tone: platformCfg.announcement.tone }
@@ -345,10 +342,18 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           serverNowMs={Date.now()}
         />
       )}
-      {/* REAL settlements only, and NOTHING when the platform has settled nothing —
-          `LiveTicker` returns null on an empty list, so the strip stops existing rather than
-          inventing a line to fill itself. */}
-      <LiveTicker events={tickerEvents} />
+      {/* ⛔ THE SCROLLING SETTLEMENT STRIP WAS REMOVED ON 2026-09-24, BY THE OWNER, AS A DESIGN
+          DECISION — it sat under the header on every page and read as an advertising marquee.
+          The FEATURE it showed is not lost and nothing about settlements changed: the landing
+          page still carries the settled strip (trust-band.tsx), which names the public source
+          and the amount for each of the last five, and /live and /results carry the same events
+          in full. What went is one auto-scrolling presentation of data that is stated better,
+          and statically, elsewhere.
+          ⚠️ `LiveTicker` and `getTickerFeed` are DELIBERATELY still in the tree. They are the
+          feature, not the decoration, and re-siting the strip is a render away. But nothing in
+          the shell may read the feed while nothing paints it — a server read with no reader on a
+          component that renders on EVERY page is exactly the cost `platform-stats.ts` warns
+          about — so the fetch below went with the markup, not just the markup. */}
       {/* ⭐ NO BOTTOM PADDING ON <main> (2026-09-13). It used to clear the fixed rail here AND
           `PublicFooter` clears it too — but the footer below is rendered unconditionally, so the
           document never ends at main, and the two stacked into ~250px of blank above the footer

@@ -585,9 +585,14 @@ export const dict = {
       // the string has ONE home; it used to be hardcoded English JSX in page.tsx with no
       // key at all. `home.heroHeadline` is therefore on test:i18n's IDENTICAL_OK list.
       heroHeadline: "The wisdom of YES & NO.",
+      // The brand line, said in the reader's own language. Identical to `heroHeadline` in en on
+      // purpose: the component renders it only when the two differ, so an English reader is not
+      // shown the same sentence twice. See landing-hero.tsx.
+      heroHeadlineSub: "The wisdom of YES & NO.",
       heroProofOpen: "Open markets",
       heroProofPool: "In play now",
       heroProofPredictions: "Open predictions",
+      heroProofPaid: "Paid out to players",
       heroConvEyebrow: "The whole board, right now",
       heroConvRead: "{yesPct}% {yesWord} · {noPct}% {noWord} — every open market, weighted by the money on it",
       heroConvEmpty: "Nothing staked yet — there is no crowd price to show",
@@ -3201,9 +3206,11 @@ export const dict = {
       heroEst: "Tangu 2026",
       // The headline stays in English by decision — see the en block.
       heroHeadline: "The wisdom of YES & NO.",
+      heroHeadlineSub: "Hekima ya NDIO na HAPANA.",
       heroProofOpen: "Masoko yaliyo wazi",
       heroProofPool: "Fedha zilizowekwa",
       heroProofPredictions: "Utabiri ulio wazi",
+      heroProofPaid: "Yaliyolipwa kwa wachezaji",
       heroConvEyebrow: "Bodi yote, sasa hivi",
       heroConvRead: "{yesPct}% {yesWord} · {noPct}% {noWord} — kila soko lililo wazi, kwa uzito wa fedha zilizowekwa",
       heroConvEmpty: "Hakuna fedha iliyowekwa bado — hakuna bei ya umati ya kuonyesha",
@@ -5346,9 +5353,11 @@ export const dict = {
       heroEst: "创立于2026年",
       // The headline stays in English by decision — see the en block.
       heroHeadline: "The wisdom of YES & NO.",
+      heroHeadlineSub: "「是」与「否」的智慧。",
       heroProofOpen: "开放市场",
       heroProofPool: "当前投注总额",
       heroProofPredictions: "未结算预测",
+      heroProofPaid: "已支付给玩家",
       heroConvEyebrow: "全部市场，此刻",
       heroConvRead: "{yesPct}% {yesWord} · {noPct}% {noWord}——所有开放市场，按投注金额加权",
       heroConvEmpty: "尚无投注，暂无群众价格",

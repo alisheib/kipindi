@@ -46,6 +46,20 @@ export function LanguageMenu() {
    * change it), so a fixed threshold would be re-broken by the next thing added to the cluster.
    */
   const [align, setAlign] = useState<"right" | "left">("right");
+  /**
+   * 🔴 D67 · THE FLIP ALONE IS NOT ENOUGH, BECAUSE AT 320 NEITHER ANCHOR FITS.
+   * The measurement above checks the LEFT edge and flips — and then never looks again. Measured
+   * on production at 320×640 sw: right-anchored would put the panel at left **-64**, so it flips
+   * to left-anchored, which puts its right edge at **321.8 against a 320 viewport — 1.75px past**,
+   * where `overflow-clip` on the body slices the border and squares off one rounded corner. Small
+   * in pixels, and it is the control a Swahili-default platform gives players to leave English.
+   * ⭐ A binary left/right choice cannot solve a panel wider than the room on either side. So
+   * after the anchor is chosen the panel is CLAMPED back inside with a translate — measured, not
+   * guessed, for the same reason the flip is measured: the trigger’s position moves with auth
+   * state, width and locale string length, so any fixed number here would be re-broken by the
+   * next control added to the cluster.
+   */
+  const [shift, setShift] = useState(0);
 
   useEffect(() => {
     const el = ref.current;
@@ -64,11 +78,23 @@ export function LanguageMenu() {
       if (!el.open) return;
       // Measure the RIGHT-anchored geometry the CSS would otherwise produce, before deciding.
       setAlign("right");
+      setShift(0);
       requestAnimationFrame(() => {
         const panel = panelRef.current;
         if (!panel) return;
         const r = panel.getBoundingClientRect();
-        if (r.left < 4) setAlign("left");
+        if (r.left < 4) {
+          setAlign("left");
+          // ⛔ AND THEN CHECK THE OTHER EDGE. Flipping fixes the side it was asked about and can
+          // break the other one; at 320 it does. A second frame is needed because the flip has to
+          // be laid out before its result can be measured.
+          requestAnimationFrame(() => {
+            const p2 = panelRef.current;
+            if (!p2) return;
+            const over = p2.getBoundingClientRect().right - (window.innerWidth - 4);
+            if (over > 0) setShift(Math.ceil(over));
+          });
+        }
       });
     };
     document.addEventListener("mousedown", onDocDown);
@@ -126,7 +152,7 @@ export function LanguageMenu() {
            right-anchoring puts this panel 64px off the left edge at 360 in a guest session,
            because the trigger is not the rightmost thing in its own cluster. */
         className={`absolute top-[calc(100%+6px)] z-30 min-w-[196px] rounded-md border border-border bg-bg-elevated py-1 ${align === "right" ? "right-0" : "left-0"}`}
-        style={{ boxShadow: "var(--shadow-overlay)" }}
+        style={{ boxShadow: "var(--shadow-overlay)", transform: shift ? `translateX(-${shift}px)` : undefined }}
       >
         {LANGS.map((code) => {
           const active = code === locale;
@@ -152,7 +178,18 @@ export function LanguageMenu() {
                 {active ? <I.check s={14} /> : null}
               </span>
               <span className="min-w-0 flex-1 truncate">{NAMES[code]}</span>
-              <span className="shrink-0 font-mono text-[11px] font-bold text-text-faint">{CODES[code]}</span>
+              {/* 🔴 `--text-subtle`, NOT `--text-faint` — D81. At 11px bold this label is not "large
+                  text" under WCAG, so it owes 4.5:1, and on `--text-faint` it measured **4.12:1**.
+                  ⚠️ ONLY THE SELECTED ROW FAILED, AND THAT IS THE WHOLE POINT: EN and ZH measured
+                  4.86:1 with the SAME foreground — the miss comes from the active row's tinted
+                  background, so the one option that fails is always the player's OWN language.
+                  Measured on production with a canvas round-trip (these colours are oklch, so
+                  scraping digits out of the computed string gives nonsense) and alpha-composited
+                  through the ancestor chain; the instrument self-tests at 21:1 white-on-black.
+                  ⭐ `--text-subtle` takes SW to 5.63:1 and keeps the code SECONDARY to the language
+                  name beside it. `--text-muted` was measured too and rejected at 9.9:1 — it clears
+                  AA by promoting a secondary label over the thing it annotates. */}
+                <span className="shrink-0 font-mono text-[11px] font-bold text-text-subtle">{CODES[code]}</span>
             </button>
           );
         })}

@@ -87,6 +87,32 @@ const jbm = JetBrains_Mono({
 const APP_URL = appUrl();
 const APP_DESC = "Tanzania-licensed prediction markets. Pick YES or NO on real events — winners share the pool minus our commission. Mobile-first, trilingual EN/SW/ZH.";
 
+/**
+ * 🔴 EXPORTED SO A ROUTE CAN SPREAD IT, AND THAT IS NOT TIDINESS — IT IS A REGRESSION FIX.
+ * Next merges `metadata` per FIELD, not deeply: a route that exports `openGraph: { url: "/" }`
+ * REPLACES this whole object. On 2026-09-24 a commit that added og:url to the landing page did
+ * exactly that and deleted og:image, og:locale, og:site_name and og:type from the single most
+ * shared URL on the platform — measured 0 of each on "/" while /markets, untouched, had them all.
+ * The share card the commit was written to improve was the share card it removed.
+ * ⛔ Any route that needs ONE openGraph field must spread this object, never re-declare a partial.
+ */
+export const ROOT_OPEN_GRAPH = {
+    type: "website" as const,
+    siteName: "50pick",
+    title: "50pick — Predict events. Not chance.",
+    description: APP_DESC,
+    // 🔴 THIS SAID `en_US` ON A SWAHILI-DEFAULT PRODUCT. Since 8822b648 a visitor with no
+    // language cookie gets Swahili, so every link shared into WhatsApp — the main way players
+    // arrive here — announced the wrong language for the page it opens.
+    // ⚠️ NO `hreflang` IS ADDED, AND ITS ABSENCE IS CORRECT, NOT AN OVERSIGHT. hreflang requires a
+    // DISTINCT URL PER LANGUAGE; this product switches locale by cookie, so all three locales live
+    // at the same URL. Emitting three alternates pointing at one URL would declare duplicates to a
+    // crawler and describe the site less accurately than saying nothing.
+    locale: "sw_TZ",
+    alternateLocale: ["en_US", "zh_CN"],
+    images: [{ url: "/og/og-1200x630.png", width: 1200, height: 630 }],
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
@@ -138,14 +164,7 @@ export const metadata: Metadata = {
    * Guard: `npm run test:translation-safety`.
    */
   other: { "mobile-web-app-capable": "yes", google: "notranslate" },
-  openGraph: {
-    type: "website",
-    siteName: "50pick",
-    title: "50pick — Predict events. Not chance.",
-    description: APP_DESC,
-    locale: "en_US",
-    images: [{ url: "/og/og-1200x630.png", width: 1200, height: 630 }],
-  },
+  openGraph: ROOT_OPEN_GRAPH,
   twitter: {
     card: "summary_large_image",
     title: "50pick — Predict events. Not chance.",
@@ -153,6 +172,7 @@ export const metadata: Metadata = {
     images: ["/og/twitter-1200x600.png"],
   },
 };
+
 
 export const viewport: Viewport = {
   width: "device-width",

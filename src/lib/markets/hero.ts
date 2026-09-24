@@ -6,9 +6,11 @@
  * book: "44 open", "TZS 185,500 in play", "57% YES". `/markets` states numbers about the same
  * book. If the hero counted "open" its own way, the landing and the board could contradict each
  * other about how many markets a player can bet on right now — on the two most-visited surfaces
- * of a licensed money product. So `open` here IS `matchesStatus(row, "open")`, and "closing
- * soonest" IS `sortRows(..., "closing")`: the hero cannot drift from the board because it has no
- * definitions of its own to drift with.
+ * of a licensed money product. So `open` here IS `matchesStatus(row, "open")`, and the board
+ * lens is composed out of `matchesStatus(..., "today")` and `sortRows(..., "close")` — both of
+ * them the board's own — so the hero cannot drift from it, because it still has no definitions
+ * of its own to drift with. See the block above `const today` for why the lens is not a plain
+ * "closing soonest" any more.
  *
  * ⛔ NO SERVER IMPORTS — same contract as `discovery.ts`. The page decorates its markets and
  * hands them here, which is what lets `test:hero-contract` prove the licence conditions with no
@@ -58,7 +60,8 @@ export type HeroFigures = {
    */
   yesShare: number | null;
   /**
-   * The question board: the open markets closing soonest AFTER the featured one.
+   * The question board: the open markets AFTER the featured one, in the hero's own lens —
+   * closing today, most contested first, then the rest of the book by closing time.
    *
    * 🔴 IT STARTS AT THE SECOND MARKET, AND THAT IS DELIBERATE. While the board began at the first,
    * the hero stated its lead market TWICE — once as row 1 and again, 400px lower, as the featured
@@ -68,7 +71,7 @@ export type HeroFigures = {
    * favourite here — they are consecutive slices of it, not two queries.
    */
   board: HeroRow[];
-  /** The card beside the lede: the single soonest-closing open market. */
+  /** The card beside the lede: the first market in the lens the board shares. */
   featured: HeroRow | null;
 };
 
@@ -84,8 +87,30 @@ export function heroFigures(rows: readonly HeroRow[], nowMs: number): HeroFigure
     predictions += r.predictors;
   }
 
-  // `dir: null` = the sort's natural direction, which for `closing` is ascending — soonest first.
-  const ordered = sortRows(open, { sort: "closing", dir: null });
+  // ── THE LENS: CLOSING SOON, LED BY WHAT IS ACTUALLY CONTESTED ─────────────────────────────
+  // 🔴 THIS WAS `sortRows(open, { sort: "closing" })` AND IT LED THE WHOLE SITE WITH DEAD PRICES.
+  // Measured on production 2026-09-24: of the 54 market cards readable on /markets only 19 were
+  // priced at all, and 6 of those sat at exactly 0% or 100%. Those degenerate markets are almost
+  // always the ones closing soonest — money lands on one side and nothing moves it back before
+  // the cutoff — so a pure "closing" order handed the loudest position on the site to the rows
+  // that show a prediction market with nothing left to predict. Three of the four board rows read
+  // "100% NDIO", each drawing a full-width lean rule that reads as a divider rather than a price.
+  //
+  // ⭐ NO NEW ORDERING WAS INVENTED. `close` already exists in `discovery.ts` — "distance from an
+  // even market", null when there is no price — and its null partition puts unpriced rows last in
+  // BOTH directions. So the fix is a composition of two predicates this module already borrows,
+  // and `/markets` can still be sorted the same way by hand. Writing a private sort here is
+  // exactly what this file's header forbids: the hero and the board would start disagreeing.
+  //
+  // The eyebrow's claim stays true — everything in the leading group is closing within 24h — and
+  // the fallback is explicit rather than emergent: when fewer than five markets close today, the
+  // rest of the open book follows in the old "closing soonest" order, so the board is never short.
+  const today = open.filter((r) => matchesStatus(r, "today", nowMs));
+  const todayIds = new Set(today.map((r) => r.id));
+  const ordered = [
+    ...sortRows(today, { sort: "close", dir: null }),
+    ...sortRows(open.filter((r) => !todayIds.has(r.id)), { sort: "closing", dir: null }),
+  ];
 
   return {
     openCount: open.length,

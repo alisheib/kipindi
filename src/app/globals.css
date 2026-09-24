@@ -1434,11 +1434,47 @@ html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within) {
   transform: translateY(8px);
   pointer-events: none;
 }
+
+/* 🔴 D75 · AND IT ALSO GETS OUT OF THE WAY AT REST, WHICH IS WHERE IT WAS DOING THE DAMAGE.
+   D3 (above) clears the bubble while the page MOVES. Every measurement that mattered was taken
+   with the page STILL, above the fold, on production at 360 and 414 in Swahili:
+
+     /markets 360   100% of `.mcardp-pctcap` — a card's `NDIO` cap — and 37% of its `88%`
+     /markets 414    16% of a `HAPANA @ 12%` BUTTON, a betting control
+     /          360   62% of the landing hero's `% NDIO` unit; 95% at 414
+     /live    414     7% of a `Bila dau bado` line
+
+   ⛔ IT WAS REPORTED AS A LANDING-PAGE DEFECT AND THE LANDING PAGE IS THE CHEAPEST INSTANCE.
+   Fixing it in the hero would have made one gate green and left a bet button covered — which is
+   D30's shape returning: that was this same bubble taking 2 of 9 taps per row from the sort menu,
+   fixed for that ONE control with the general case left standing.
+
+   ⚠️ THE ALTERNATIVES WERE COSTED AND REJECTED BY THE OWNER (Ali, 2026-09-24), not skipped.
+   Insetting the price column would move every price off the right edge on every phone, paid on
+   all rows to protect whichever one the bubble happens to sit on; moving the bubble only relocates
+   the collision, because a viewport-fixed 44px square over a scrolling board can sit on ANY row —
+   which D3's own note above already says in the same words.
+
+   ⭐ `pointer-events: none` IS THE LOAD-BEARING DECLARATION, NOT THE FADE. An invisible square
+   that still takes taps is strictly worse than a visible one. Both rules therefore drop the bubble
+   out of hit-testing, and `scroll-cast.tsx` defers waking past the whole pointerdown → pointerup →
+   click sequence so a tap aimed at a bet button can never be re-stolen on the way back.
+
+   ⚠️ THE SAME TWO ESCAPES AS D3, FOR THE SAME REASONS: an open panel (`.cm-fab--open`) is never
+   faded, and `:focus-within` keeps a keyboard user from losing what they have tabbed onto. A
+   touch-only reader gets it back by touching the screen at all — any scroll, any tap, any key. */
+html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
 .cm-fab {
   transition: opacity var(--t-quick) var(--m-glide), transform var(--t-quick) var(--m-glide);
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within) { transform: none; }
+  html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within),
+  html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) { transform: none; }
   .cm-fab { transition: opacity var(--t-quick) linear; }
 }
 
@@ -3483,6 +3519,16 @@ html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
 .kp-slide-stack { display: grid; }
 .kp-slide-stack > * { grid-area: 1 / 1; }
 .kp-slide-stack > *:not([data-slide-active]) { visibility: hidden; }
+
+/* ⚠️ D79's WIDTH FLOOR IS NOT HERE, AND A RULE THAT LOOKED CORRECT SAT HERE AND DID NOTHING.
+   It read `[data-bar-cell="sort"] > details > summary { min-width: var(--tap-min) }`. The selector
+   MATCHES — checked on production with `Element.matches`, which returned true — and the computed
+   value stayed `0px` anyway, because the competing `.min-w-0` lives in `@layer utilities` and a
+   CASCADE LAYER outranks specificity outright. ⛔ The same rule injected at runtime as an
+   unlayered `<style>` applied instantly, which is what made the failure so hard to read: the
+   pre-flight (done with `!important`) proved the geometry was safe and proved nothing about
+   whether the mechanism would win. The floor now lives in `query-bar.tsx`, on the element, in the
+   same layer, replacing the class it was fighting. */
 
 /* 🔴 D30 IS NOT CLOSED BY THE RULE ABOVE — THE SORT MENU IS A `<details>`, NOT A `.kp-fsheet`.
    Measured on production at 320×640 with the sort menu open: the panel's own `z-index: 30` is spent inside

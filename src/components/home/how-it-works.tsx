@@ -23,7 +23,7 @@ export function HowItWorks({ t }: { t: Dict }) {
   return (
     <Reveal band="how" className="kp-band kp-band--overlay kp-band--tight">
       <div className="kp-band__inner">
-        <p className="kp-hero__eyebrow">
+        <p className="kp-hero__eyebrow text-balance">
           <span className="kp-hero__tick" aria-hidden />
           {t.home.howEyebrow}
         </p>

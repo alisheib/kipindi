@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { ROOT_OPEN_GRAPH } from "./layout";
 import Link from "next/link";
 import { fill } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
@@ -24,6 +26,28 @@ import { timeLeftLabel } from "@/lib/markets/time-left";
 import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * The landing page had NO canonical URL and NO og:url, so every variant a link picked up on the
+ * way here — a utm tag, a cache-buster, a trailing slash — was a separate page to a crawler and
+ * an unnamed page to a link preview.
+ *
+ * ⛔ DECLARED HERE, ON THE ROUTE, AND NOT IN THE ROOT LAYOUT. A canonical in the layout is
+ * inherited by every page under it, so the whole site would claim to be "/" — which is worse than
+ * having none at all. Metadata that names a URL belongs to exactly one route.
+ * `metadataBase` in the layout resolves these to the absolute site URL, which is why they are
+ * written relative and there is no second copy of the base URL here to drift.
+ */
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  // ⛔ SPREAD, NEVER REPLACE. `openGraph: { url: "/" }` on its own wiped og:image, og:locale,
+  // og:site_name and og:type from this page — Next merges metadata per FIELD, so a partial
+  // openGraph object replaces the layout’s entire one. Measured 0 of each on "/" against 6 on
+  // /markets, on the same deploy.
+  // ⚠️ `url` is KEPT rather than dropped: nothing here isolates whether Next synthesises og:url
+  // from `alternates.canonical`, and dropping it would risk re-deleting the tag this replaces.
+  openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },
+};
 
 /**
  * THE LANDING PAGE — round-2 kit README §1 / SPEC §1 + §3, applied in batch 3.
@@ -72,7 +96,21 @@ export default async function LandingPage() {
   ]);
   const nowMs = Date.now();
   const liveAll = liveRaw.filter((m) => !isClosedByTime(m));
-  const updownLiveCount = updownLiveRaw.filter((m) => !isClosedByTime(m)).length;
+  // 🔴 ONE PAGE WAS CARRYING TWO DEFINITIONS OF "LIVE". This counted `!isClosedByTime`, which is
+  // the RESOLUTION clock, while every other figure on this page — the open-markets count, the pool,
+  // the conviction bar, the grid — comes from `matchesStatus(..., "open")`, which is the BETTING
+  // clock (`!selectionClosed`). So the same word meant two different things a few hundred pixels
+  // apart, on a surface whose whole job is to state the size of the book.
+  // ⭐ The betting clock is the right one HERE and not merely the consistent one: the band it feeds
+  // is a CTA that says "play", and a round whose betting has shut is not one a reader can act on.
+  // ⚠️ THIS DOES NOT CLOSE THE WHOLE GAP, AND SAYING SO IS THE POINT. Measured on production
+  // 2026-09-24 at 08:00, over three uncached reads: the landing said 6 while /updown showed 9 rounds
+  // across its 12 asset x duration chains still taking bets. The resolution clock is the LOOSER of
+  // the two, so it should have over-counted and instead returned fewer — which means rows are also
+  // being dropped for a reason not visible from any public surface, and that needs a database read
+  // this change cannot make. What is fixed here is the contradiction the page could see about
+  // itself; the residual is recorded, not papered over.
+  const updownLiveCount = updownLiveRaw.filter((m) => !isSelectionClosed(m)).length;
 
   // ── ONE decorated board read, four consumers ────────────────────────────────────────────────
   // The hero's figures, the grid, the topic tiles and the cards all fold over THIS array. Every
@@ -153,6 +191,7 @@ export default async function LandingPage() {
         t={t}
         locale={locale}
         isAuthed={isAuthed}
+        paidOutTzs={stats.paidOutTzs}
         nowMs={nowMs}
         cards={{ charts: cardCharts, traders: traderMap }}
       />
@@ -169,7 +208,7 @@ export default async function LandingPage() {
           <div className="kp-band__inner">
             <div className="kp-shead">
               <div>
-                <p className="kp-hero__eyebrow">
+                <p className="kp-hero__eyebrow text-balance">
                   <span className="kp-hero__tick" aria-hidden />
                   {/* The eyebrow NAMES THE ORDERING. `pool` when there is money on the book,
                       `new` when there is not — because "biggest pools" over a book of empty pools
@@ -177,7 +216,11 @@ export default async function LandingPage() {
                       identically to the hero. See `gridLensFor`. */}
                   {comp.lens === "pool" ? t.home.gridEyebrowPool : t.home.gridEyebrowNew}
                 </p>
-                <h2 className="kp-shead__h">{t.home.pickASideNow}</h2>
+                {/* `text-balance` for the same reason how-it-works.tsx carries it: without it this heading
+                    breaks with its last word alone on line two ("Chagua upande / sasa" at 360 sw,
+                    measured on production 2026-09-24). A one-word last line under a 32px display
+                    face is the most visible raggedness on the page. */}
+                <h2 className="kp-shead__h text-balance">{t.home.pickASideNow}</h2>
               </div>
               <Link href={`/markets?sort=${comp.lens}` as never} className="kp-shead__link">
                 {fill(t.home.gridSeeAll, { n: figures.openCount })}
@@ -185,7 +228,11 @@ export default async function LandingPage() {
               </Link>
             </div>
 
-            <div className="market-grid">
+            {/* Same orphan-row fix as the topic tiles, for the same measured reason: at 768 the
+                grid is two columns with three cards, and the lone card in the final row came out
+                320px against its neighbours’ 354px. Scoped to the landing page by being written
+                here rather than on `.market-grid`, which /markets also uses. */}
+            <div className="market-grid" style={{ gridAutoRows: "1fr" }}>
               {comp.grid.slice(0, LANDING_GRID_SIZE).map((r) => {
                 const cc = cardCharts.get(r.id) ?? { spark: [] };
                 return (
@@ -239,7 +286,7 @@ export default async function LandingPage() {
           <Link href={"/updown" as never} className="kp-updown group">
             <div className="kp-updown__row">
               <div className="min-w-0">
-                <p className="kp-hero__eyebrow" style={{ marginBottom: "var(--sp-1)" }}>
+                <p className="kp-hero__eyebrow text-balance" style={{ marginBottom: "var(--sp-1)" }}>
                   <span className="live-dot" /> {t.home.updownEyebrow}
                 </p>
                 <h2 className="kp-shead__h" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
@@ -250,7 +297,12 @@ export default async function LandingPage() {
                     : t.home.updownStartsSoon}
                 </p>
               </div>
-              <span className="btn btn-primary btn-lg shrink-0">
+              {/* `max-w-full whitespace-normal`: the button is nowrap by its own class AND `shrink-0`,
+                  so at a 180px viewport (200% zoom) it stayed 229px wide and was the single widest
+                  thing on the document. It keeps `shrink-0` so it does not compress beside the copy
+                  at ordinary widths — it simply stops being allowed to exceed its container, and
+                  wraps to a second line only when it truly cannot fit. */}
+              <span className="btn btn-primary btn-lg shrink-0 max-w-full whitespace-normal">
                 <I.trendingUp s={16} /> {t.home.updownCta}
                 <I.chevronRight s={14} />
               </span>

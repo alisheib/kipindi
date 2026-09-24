@@ -181,9 +181,17 @@ export function WalletBalancePill({ balance }: { balance: number }) {
     >
     <Link
       href="/wallet"
-      aria-label={hidden ? `${t.common.wallet} · ${t.common.hidePassword}` : `${t.common.wallet} · ${formatTzs(effectiveBalance)}`}
+      /* 🔴 D31 · `hideBalances`, NOT `hidePassword`. With balances masked this control announced
+         "Pochi · Ficha nenosiri" — **"Wallet · Hide password"** — on the wallet button, to the only
+         users who cannot see the mask and must rely on the name. The string was simply the wrong
+         one: `common.hidePassword` is the password field's toggle, `common.hideBalances` is this
+         one, and both already existed in all three locales. */
+      aria-label={hidden ? `${t.common.wallet} · ${t.common.hideBalances}` : `${t.common.wallet} · ${formatTzs(effectiveBalance)}`}
       className={cn(
-        "inline-flex h-full items-center rounded-pill font-mono tabular-nums font-bold text-text transition-colors whitespace-nowrap",
+        // ⚠️ `relative` IS LOAD-BEARING: it is the containing block for the absolutely-positioned
+        // delta below. Without it the delta anchors to some ancestor further up and lands nowhere near
+        // the figure it belongs to.
+        "relative inline-flex h-full items-center rounded-pill font-mono tabular-nums font-bold text-text transition-colors whitespace-nowrap",
         // ⭐ DENSITY FOLLOWS WIDTH, PRECISION DOES NOT. `text-caption` (11) below `sm`,
         // `text-label` (12) from there — both ON the closed ladder (§T1). This also
         // RETIRES an inline `fontSize: 12.5`, which was an off-ladder literal counted by
@@ -251,14 +259,26 @@ export function WalletBalancePill({ balance }: { balance: number }) {
           {hidden ? BALANCE_MASK : formatBalancePill(display)}
         </span>
       </span>
-      {/* Tiny delta indicator that fades out alongside the flash —
-          appears next to the number for ~800 ms with the actual
-          +/- amount. Helps the player connect the visual to the
-          recent transaction. Suppressed while balances are masked. */}
+      {/* Tiny delta indicator that fades out alongside the flash — the actual +/- amount for
+          ~800ms. Suppressed while balances are masked. */}
+      {/* 🔴 D31 · ABSOLUTE, SO IT CANNOT MOVE THE HEADER. Rendered inline with `ml-1.5` this
+          span was in the LAYOUT, so every balance change widened the capsule and shoved the
+          controls beside it sideways for the ~800ms it was up. Measured on production, signed in:
+          capsule **113 → 164px (+51)** at 320 and 360, **132 → 182 (+50)** at 768 and 1280, moving
+          the notifications bell and the account menu by **~50px at EVERY width** — this was never a
+          phone-only problem.
+          ⛔ A BALANCE CHANGES AFTER EVERY BET, WIN AND DEPOSIT, so the jump lands exactly when a
+          player is most likely to be reaching for something: the same shape as D30, where this
+          product already lost taps to a floating element.
+          ⭐ It is `aria-hidden` decoration and the colour flash carries the same meaning, so it does
+          not need a box — it needs to be VISIBLE. Absolutely positioned inside the capsule's own
+          44px height, below the centred figure, where there is ~15px of clear space and nothing to
+          push. `pointer-events: none` because it must never take a tap from the wallet link it
+          sits on. */}
       {!hidden && flashing && delta !== 0 && (
         <span
           aria-hidden
-          className="wbp-delta ml-1.5 font-mono text-[9.5px] tabular-nums"
+          className="wbp-delta pointer-events-none absolute bottom-0 right-1 font-mono text-[9.5px] leading-none tabular-nums"
           style={{ color: delta > 0 ? "var(--yes-300)" : "var(--no-300)" }}
         >
           {delta > 0 ? "+" : ""}
@@ -342,7 +362,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
       <CashEye
         bare
         size={14}
-        className="inline-flex h-full w-[32px] shrink-0 sm:w-[36px] items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold-200"
+        className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold-200"
       />
     </div>
   );

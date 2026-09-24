@@ -32,6 +32,7 @@ import {
   ODDS_IDS,
   POOL_IDS,
   STATUS_IDS,
+  DEFAULT_STATE,
   buildDiscoveryHref,
   countFor,
   emptyCause,
@@ -140,6 +141,7 @@ function toRow(m: BoardMarket, watched: Set<string>, move24h: number | undefined
 export default async function MarketsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const { t } = await getServerT();
   const board = await getBoard();
+  const spTop = await searchParams;
 
   /**
    * 🔴 THE HEADER COUNTS THE SET IT NAMES, AND NOTHING WIDER.
@@ -157,8 +159,23 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
    */
   const NO_WATCH = new Set<string>();
   const nowMs = Date.now();
-  const openMarkets = board.filter((m) => matchesStatus(toRow(m, NO_WATCH, undefined), "open", nowMs));
-  const openVolume = openMarkets.reduce((s, m) => s + m.yesPool + m.noPool, 0);
+  // 🔴 THE HEADER RESTATED THE WHOLE BOOK OVER A FILTERED GRID — the defect this file’s own
+  // docblock above describes, in a second place. Arriving from the landing page’s "Michezo · 30
+  // hai · TZS 452K" tile, this line read "58 hai · TZS 635K" one tap later, and all six topic
+  // destinations printed the identical pair. The sentence names no topic, so it was true of the
+  // book — and it sits directly above a grid it was not describing, which is exactly the shape
+  // recorded above: "factually true of something; it just was not true of what the sentence
+  // claimed." Measured on production 2026-09-24 at 360 sw.
+  // ⛔ THE TOPIC AXIS ONLY, DELIBERATELY. The header is a statement about the BOOK a reader has
+  // narrowed to, not about a transient search string or an odds band, and widening it to every
+  // axis would make "0 live" appear the moment someone selected a settled-only view. `filterRows`
+  // is reused rather than a topic predicate written here, so there is still one definition of
+  // what a topic contains; the text matcher is the constant-true function because no text axis is
+  // being applied.
+  const topicState: DiscoveryState = { ...DEFAULT_STATE, topic: parseDiscoveryParams(spTop, MARKET_CATEGORIES).topic };
+  const topicRows = filterRows(board.map((m) => toRow(m, NO_WATCH, undefined)), topicState, nowMs, () => true);
+  const openMarkets = topicRows.filter((r) => matchesStatus(r, "open", nowMs));
+  const openVolume = openMarkets.reduce((sum, r) => sum + r.pool, 0);
 
   return (
     <PageContainer tier="board">

@@ -66,7 +66,7 @@ export function TrustBand({
   return (
     <Reveal band="trust" className="kp-band kp-band--overlay kp-band--seam kp-band--closes">
       <div className="kp-band__inner">
-        <p className="kp-hero__eyebrow">
+        <p className="kp-hero__eyebrow text-balance">
           <span className="kp-hero__tick" aria-hidden />
           {t.home.trustEyebrow}
         </p>
@@ -79,7 +79,25 @@ export function TrustBand({
               {/* `text-balance` (2026-09-13): at 1280 and 768 the zh bodies left one glyph alone on
                   the last line. Balance, not pretty, because Firefox and older Safari ignore pretty. */}
               <h3 className="kp-trust__h text-balance">{c.h}</h3>
-              <p className="kp-trust__b text-balance break-keep [overflow-wrap:anywhere]">{c.b}</p>
+              {/* ⛔ `break-keep` IS APPLIED TO EVERY LOCALE EXCEPT CHINESE, AND THAT EXCEPTION IS THE POINT.
+                    It is `word-break: keep-all`, which in CJK forbids a break BETWEEN CHARACTERS — so on
+                    the Chinese page a paragraph can only break at punctuation and a line ends after
+                    about seven glyphs, leaving 91px of a 328px column empty. Measured at 360 zh on
+                    production 2026-09-24. It earns its place in sw/en, where it stops a long Swahili
+                    compound splitting mid-word; in zh it has no word to protect and only does harm.
+                    ⚠️ The measure is capped too. `.kp-trust__b` declares no max-width, so between 561
+                    and 1023 — where this band is a single column — the line grew with the viewport:
+                    89 characters at 640, 105 at 768, 142 at 1023. 62ch is the same order as the
+                    52ch the Up & Down tagline already uses on this page.
+                    🔴 50ch, NOT 62ch — THE SAME MIS-CALIBRATION THE HERO PAID FOR. `ch` is the advance
+                    of the digit ZERO, which in Inter at 13px is 8.2px against an average character
+                    advance of about 6.5px. 62ch resolved to 508px and still admitted 78 characters
+                    on one line; measured on production after it shipped. 50ch ≈ 410px ≈ 63
+                    characters. V7 in the landing gate is what caught both. */}
+                <p
+                  className={`kp-trust__b text-balance [overflow-wrap:anywhere]${locale === "zh" ? "" : " break-keep"}`}
+                  style={{ maxWidth: "50ch" }}
+                >{c.b}</p>
               {c.marks && (
                 /* All four rails (2026-09-13). The cell says "mobile money in and out", and one
                    M-Pesa mark was left over from the old M-Pesa-only copy. The list and its order
@@ -101,8 +119,13 @@ export function TrustBand({
         {settlements.length > 0 && (
           <>
             <div className="kp-shead" style={{ marginTop: "var(--rh-close)" }}>
-              <div>
-                <p className="kp-hero__eyebrow">
+              {/* 🔴 `min-w-0` — A FLEX ITEM DEFAULTS TO `min-width: auto`, WHICH MEANS IT REFUSES TO
+                  SHRINK BELOW ITS CONTENT. This block sat at 236px inside a 148px column at a 180px
+                  viewport (360 at 200% browser zoom, WCAG 1.4.4), pushing the document to 255px and
+                  giving the whole page a horizontal scrollbar. Nothing here is nowrap; the text was
+                  simply never given permission to wrap. Measured on production 2026-09-24. */}
+              <div className="min-w-0">
+                <p className="kp-hero__eyebrow text-balance">
                   <span className="kp-hero__tick" aria-hidden />
                   {t.home.settledEyebrow}
                 </p>
@@ -192,10 +215,34 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
       {/* The named public source the outcome was judged against — the host only, because a full
           URL on a display row is noise and the market page carries the link itself. */}
       <span className="kp-settled__src">{sourceHost(row.sourceUrl)}</span>
-      {isVoid || row.amountTzs == null || row.amountTzs <= 0 ? (
+      {/* 🔴 THIS SAID "REFUNDED" OVER MARKETS THAT WERE NEVER REFUNDED. The condition was
+          `isVoid || amountTzs == null || amountTzs <= 0`, which folds THREE different states into
+          one word. A VOID really was refunded — every stake went back. But a market resolved YES or
+          NO whose pool was empty paid nothing because there was nothing in it, and telling a player
+          their money came back when no money was ever staked is a false statement about money on
+          the same panel whose header says the outcome is read and never inferred.
+          ⛔ THE ZERO ARM NOW RENDERS NOTHING rather than borrowing a word that belongs to a
+          different event. The outcome pill and the source still say what happened; silence about a
+          sum nobody staked is the only honest thing this column can say, and inventing a fourth
+          phrase would be new assessed copy in three locales for a row that has nothing to report.
+          ⚠️ `amountTzs == null` stays WITH the void arm: `settledAmount` returns null exactly when
+          the outcome is not YES or NO, so null here means VOID and nothing else.
+          Caught on production 2026-09-24: a settled row carried the "NDIO" outcome pill and the
+          refund word in the same row. */}
+      {isVoid || row.amountTzs == null ? (
         <span className="kp-settled__amt kp-settled__amt--void">{t.home.settledVoid}</span>
-      ) : (
+      ) : row.amountTzs > 0 ? (
         <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
+      ) : (
+        /* 🔴 AN EMPTY CELL, NOT NO CELL. Returning null here removed the grid ITEM, so the row’s
+           money track collapsed: one row in five came out 19.5px shorter than its neighbours at 360
+           and 412, and at 1280 the track went to 0px and the source host slid across to fill it.
+           The silence about a sum nobody staked is correct and stays — what was wrong is that the
+           silence also took the layout with it. An empty span holds the track at its declared size
+           and prints nothing.
+           ⛔ `aria-hidden` and no text: a screen reader must not announce an empty money cell as if
+           it were a figure, and there is no figure here to announce. */
+        <span className="kp-settled__amt" aria-hidden />
       )}
     </Link>
   );

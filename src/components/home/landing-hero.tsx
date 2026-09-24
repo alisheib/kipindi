@@ -42,6 +42,8 @@ type Props = {
   t: Dict;
   locale: Locale;
   isAuthed: boolean;
+  /** Σ CONFIRMED payouts + cashouts, TZS — the hero's third proof figure. */
+  paidOutTzs: number;
   nowMs: number;
   cards: HeroCardData;
 };
@@ -75,7 +77,20 @@ function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale
       <span className="kp-qrow__glyph" aria-hidden>
         <Glyph s={20} />
       </span>
-      <span className="kp-qrow__q">{pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh)}</span>
+      {/* ⛔ A MEASURE CEILING, NOT A WIDTH. The row is a grid whose middle track is 1fr, so the
+          question grew with the viewport and nothing stopped it: 77 characters per line at 1024
+          and 116 at 1280, against a comfortable 45–75 (measured on production 2026-09-24). At 360
+          the column is 292px ≈ 44 characters, so this cap cannot touch a phone — it only stops the
+          line running away on a desktop. The figures stay right-aligned where the design puts
+          them; this is about the length of a line of prose, not about where the money sits.
+          🔴 44ch, NOT 68ch, AND THE NUMBER IS CALIBRATED RATHER THAN CHOSEN. `ch` is the advance of
+          the digit ZERO, which in Sora at 17px is 12.97px — while the average character advance in
+          running text is about 8.9px. A 68ch cap therefore resolved to 882px and still produced 99
+          characters per line; measured on production after it shipped, which is the only reason it
+          was caught. 44ch ≈ 571px ≈ 64 characters in this face. ⚠️ If the hero question ever changes
+          typeface this number is wrong again — V7 in the landing gate is what re-catches it.
+          In zh the same cap yields roughly 33 glyphs, comfortably inside the same ceiling. */}
+      <span className="kp-qrow__q" style={{ maxWidth: "44ch" }}>{pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh)}</span>
       {/* The pool is REAL even when it is zero, so it is always stated. Only the PRICE is
           withheld — that is the distinction `market-card.tsx` draws between `fresh` and
           `noPrice`, and the two surfaces have to draw it the same way. */}
@@ -104,7 +119,7 @@ function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale
   );
 }
 
-export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Props) {
+export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, paidOutTzs }: Props) {
   const { featured } = figures;
   const chart = featured ? cards.charts.get(featured.id) : undefined;
 
@@ -117,11 +132,32 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
 
       <div className="kp-hero__inner">
         <div>
-          <p className="kp-hero__eyebrow">
+          {/* 🔴 `text-balance` ON EVERY EYEBROW. These are short uppercase mono labels, and when one
+              wraps it drops its last token alone: "TANZANIA · DAR ES SALAAM · TANGU / 2026" and
+              "YANAYOFUNGWA KARIBUNI · 8 YANAFUNGA / LEO" at 320, and "BODI YOTE, SASA / HIVI" under
+              browser zoom. A one-word second line under a letter-spaced label reads as a mistake
+              rather than a wrap. Measured on production 2026-09-24; V8b in the landing gate is what
+              found them and what will find the next one.
+              ⚠️ Applied at each call site rather than to `.kp-hero__eyebrow` itself, because that
+              class lives in globals.css, which another session owns this week. */}
+          <p className="kp-hero__eyebrow text-balance">
             <span className="kp-hero__tick" aria-hidden />
             {t.home.heroLocation} · {t.home.heroEst}
           </p>
           <Headline text={t.home.heroHeadline} />
+          {/* ⭐ THE BRAND LINE STAYS ENGLISH AND GETS A READING UNDERNEATH IT (owner decision,
+              2026-09-24). The headline is the largest thing on the page and Swahili is the DEFAULT
+              locale since 8822b648, so on the page most visitors get, the biggest element spoke a
+              language they had not chosen. The line is kept — it is the brand — and the meaning is
+              now said underneath in the reader’s own language.
+              ⛔ RENDERED ONLY WHERE IT SAYS SOMETHING NEW. In English the two strings are identical
+              by design, and repeating a sentence directly under itself is worse than not translating
+              it. Comparing the two strings rather than testing the locale means a translator who
+              fills the key in a new locale gets the subline automatically, and one who leaves it
+              equal gets nothing — no locale list to keep in sync in a fourth place. */}
+          {t.home.heroHeadlineSub !== t.home.heroHeadline && (
+            <p className="kp-hero__lede" style={{ marginTop: "var(--sp-2)" }}>{t.home.heroHeadlineSub}</p>
+          )}
         </div>
 
         {/* ── the proof rail: three measured facts about the live book ─────────────── */}
@@ -154,11 +190,25 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
             </span>
             <span className="kp-proof__cap">{t.home.heroProofPool}</span>
           </div>
+          {/* 🔴 THIS SLOT STATED `Open predictions` AND INVITED THE WRONG ARITHMETIC. Beside an
+              open-markets count it reads as a ratio: 35 predictions against 59 markets, measured on
+              production 2026-09-24. Both numbers were true and the pair told a reader the platform
+              is empty. A count of things not yet decided also SHRINKS every time a market settles,
+              so the figure moved the wrong way whenever the product worked.
+              ⭐ Money already paid out only grows, it is the number a bettor actually wants, and the
+              settled strip lower down proves it row by row with a public source on each one — so the
+              hero is not asserting something the page cannot back up.
+              ⛔ `figures.openPredictions` is deliberately still computed and still on `HeroFigures`.
+              It is a real fact about the book and a future surface may want it; what changed is that
+              this slot is no longer the place to say it.
+              Gilt because it is real money (ACCEPTANCE §6 / Q5 — gold means money, and money that
+              reached a player is the strongest claim on this page). Compact form so it fits at 360
+              in all three locales without a second DOM copy, exactly as the pool figure does. */}
           <div className="kp-proof__fig">
-            <span className="kp-proof__num" style={{ color: "var(--text)" }}>
-              {formatNumber(figures.openPredictions)}
+            <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
+              {formatTzsCompact(paidOutTzs)}
             </span>
-            <span className="kp-proof__cap">{t.home.heroProofPredictions}</span>
+            <span className="kp-proof__cap">{t.home.heroProofPaid}</span>
           </div>
         </div>
 
@@ -167,7 +217,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
             THIS BAR, not a second component — DESIGN_AUTHORITY B9", and its dashed
             `--bar-empty-track` rail is the platform's one cold-start bar vocabulary. */}
         <div className="kp-conv">
-          <p className="kp-hero__eyebrow">{t.home.heroConvEyebrow}</p>
+          <p className="kp-hero__eyebrow text-balance">{t.home.heroConvEyebrow}</p>
           {figures.yesShare == null ? (
             <TippingBar empty emptyLabel={t.home.heroConvEmpty} height={10} />
           ) : (
@@ -188,12 +238,21 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
         {/* ── the question board ───────────────────────────────────────────────────── */}
         {figures.board.length > 0 && (
           <div>
-            <p className="kp-hero__eyebrow">
+            {/* 🔴 AN h2, NOT A PARAGRAPH — THE PAGE SKIPPED FROM h1 STRAIGHT TO h3. axe-core reports
+                exactly one heading-order violation at both 360 and 1280: the featured card’s
+                <h3 class="mcardp-q"> in the hero foot, with no h2 between it and the headline. This
+                label names the question board, which is a section, so it IS the missing heading —
+                and it sits before the card in DOM order, which is what closes the skip.
+                ⛔ The class is unchanged, so nothing moves by a pixel: a heading may be styled as an
+                eyebrow, and `test:eyebrow-roles` governs tracking, not tag names. Fixing this by
+                demoting the card instead would have meant editing market-card.tsx, which another
+                session owns and which /markets renders too. */}
+            <h2 className="kp-hero__eyebrow text-balance">
               {t.home.heroBoardEyebrow}
               {figures.closingToday > 0 && (
                 <> · {fill(t.home.heroBoardCloseToday, { n: figures.closingToday })}</>
               )}
-            </p>
+            </h2>
             <div className="kp-qboard">
               {figures.board.map((row) => (
                 <QuestionRow key={row.id} row={row} t={t} locale={locale} />
@@ -205,7 +264,11 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
         {/* ── the foot: the lede, two CTAs, and one real card ──────────────────────── */}
         <div className="kp-hero__foot">
           <div>
-            <p className="kp-hero__lede break-keep [overflow-wrap:anywhere]">{t.home.heroBody}</p>
+            {/* Same `break-keep` exception as the trust bodies, for the same measured reason: in zh it
+                forbids breaking between characters, so the lede renders three ragged lines
+                (204 / 238 / 170px) where two would do, costing 26px of the fold. See the note in
+                trust-band.tsx. */}
+            <p className={`kp-hero__lede [overflow-wrap:anywhere]${locale === "zh" ? "" : " break-keep"}`}>{t.home.heroBody}</p>
             {/* TWO CTAs, not three — `Sign in` lives in the header at every width. */}
             <div className="kp-hero__ctas">
               {isAuthed ? (
