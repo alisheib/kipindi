@@ -189,7 +189,12 @@ export async function GET(
 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 14, opacity: 0.6, fontFamily: "JetBrains Mono, monospace" }}>
             <span>Predict events. Not chance.</span>
-            <span>{tzs(m.yesPool + m.noPool)} TZS volume · {m.predictorCount} predictors</span>
+            {/* 🔴 THIS PRINTED THE CURRENCY TWICE. `tzs()` above already prefixes "TZS ", and the
+                line appended it again, so every shared market card read "TZS 21,000 TZS volume".
+                A share card is the first thing many players ever see of this platform and the only
+                money figure on it; printing the unit twice makes the one number on the card look
+                like a rendering fault. Caught 2026-09-24. */}
+            <span>{tzs(m.yesPool + m.noPool)} volume · {m.predictorCount} predictors</span>
           </div>
         </div>
       </div>
