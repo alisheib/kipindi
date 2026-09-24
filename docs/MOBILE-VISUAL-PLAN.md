@@ -347,7 +347,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D23 | ⬜ | U24 |
 | D24 | ⬜ | U20 |
 | D25 | ⬜ | U27 |
-| D26 | ⬜ | U25 |
+| D26 | 🔵 shipped early `f70789df` 2026-09-24 — both load shifts; U25's SKELETON SIZING is untouched | U25 |
 | D27 | ⬜ | U16 |
 | D28 | ✅ `ea84e4a9` 2026-09-23 (live) | U3 |
 | D29 | ⬜ | U32 |
@@ -992,7 +992,7 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D23 | Sell button: `whitespace-normal` inside a fixed 44px height wraps and clips in SW at 360 | `sell-button.tsx:236` | U24 |
 | D24 | Comments "Post" button widens while pending ("Posting…"), shifting its row | `comments-thread.tsx:216-220` | U20 |
 | D25 | Tap leaves hover styles stuck (e.g. `.btn:hover` lift, `.kp-qrow:hover` padding reflow): 343 ungated `hover:` utilities + ungated CSS `:hover` | `tailwind.config.ts`, `globals.css:1065,1134-1210,3716` | U27 |
-| D26 | Loading ghosts don't match phone content (`/live` 180px, `/results` 220px, generic loaders), and 6 `SearchBox` Suspense boundaries have no fallback, so the page jumps | `live/loading.tsx`, `results/loading.tsx`, `ui/page-loader.tsx` | U25 |
+| D26 | Loading ghosts don't match phone content (`/live` 180px, `/results` 220px, generic loaders), and 6 `SearchBox` Suspense boundaries have no fallback, so the page jumps 🔵 **BOTH LOAD SHIFTS FIXED AND LIVE — `f70789df`.** `main` now reserves `100svh`, so the 18+ licence footer starts BELOW the fold and its later movement is neither visible nor counted. ⚠️ `svh`, not `vh` or `dvh`: `dvh` CHANGES as mobile browser chrome hides on scroll, which would introduce a second shift to cure the first. And it only ever ADDS height — on a page already taller than a viewport the rule is inert. `/results`' second shift is gone too: that container's `space-y-5` became `gap`, because `space-y-*` is a SELECTOR (`> :not([hidden]) ~ :not([hidden])`) and matches React's streamed `<template id="B:1">` boundary marker whether or not it renders — the comment above it claimed “`<Suspense>` renders no DOM node”, which is true of the CLIENT tree and false of the STREAM. ⭐ **VERIFIED ON THE SAME SITE, BEFORE AND AFTER, WITH THE SAME SCRIPT:** `/` **0.1594 → 0.0004**, `/markets` **0.1594 → 0.0004**, `/results` **0.1834 → 0.0007**, against a budget of 0.05 and a single-shift limit of 0.02. What is left is a 0.0004–0.0007 reflow as the header's auth cluster widens 188 → 194px on font swap. Sealed by `npm run qa:cls-budget` (§9 U25's own accept line, made checkable), whose `RED_SHELL=1` control **rewrites the served stylesheet** back to the pre-fix shell and reproduces 0.1668 / 0.1644 / 0.189 with the identical footer rect. ⛔ An injected `<style>` at document-start was tried first and did NOT take — the parser builds `<head>` after it — so that “RED” run scored the same as green and would have certified nothing. □ **STILL U25's, and untouched:** the skeleton SIZES — `/live` ghosts 180px against 347px cards, `/results` 220px, the markets filter-bar ghost ~250px against a real 116px bar, the generic `PageLoader` standing in for unknown shapes, and 6 `SearchBox` boundaries with no fallback. Those are a different defect from the shell shift and none of them is fixed. | `live/loading.tsx`, `results/loading.tsx`, `ui/page-loader.tsx` | U25 |
 | D27 | Reaching the RG session time limit is announced only by a toast (`failure-reasons.ts:285`), which can expire unseen; a compliance message must persist | `src/lib/failure-reasons.ts`, `conviction-dial.tsx` | U16 |
 | D28 | The card share control is 25–26 × 36–37px — under the tap floor on both axes — on **every** card on every board, 12px from "Details" (S02-home-07, S03-03, S07-06) | `.mcardp-share` + its `::after`, `globals.css:5106` | U3 |
 | D29 | Resolved and void cards with no bets state an invented "YES 50%" and a centred needle; `noPrice` is gated on `live`, so the cold-start rule never reaches terminal states (S03-10, S07-01) | `market-card.tsx:276-277` | U32 |
@@ -1505,6 +1505,23 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   matches the link token's style and contrast. RED per item.
 
 **U20 · [General] Footer tap rows + Discussion copy (D8)**
+- ✅ **THE FOOTER TAP ROWS ARE DONE AND LIVE (`c1f2c223`, 2026-09-24) — D8 and D24 below are NOT, so this unit stays open.**
+  Every one of the 16 controls now reaches 44px, measured by hit-test: **14 under the floor → 0**. `FooterLink` took the same rung
+  `SocialLink` already carried, and the three contact links took `inline-flex` WITH it — without that they would have been missed
+  entirely, because `min-height` does not apply to a non-replaced inline element and they were `display: inline`.
+  ⚠️ **THE COST IS MEASURED, NOT HIDDEN: the footer goes 953.7 → 1210.3px at 320 (+257).** 96px of that was given back by
+  dropping the list's `space-y-1.5`, which was sized for a 19px text row and was separating 44px controls that no longer touch.
+  §3b already measured this footer at ~920px on every page and called it a third to a half of the short ones — so the remaining
+  +257 is a real trade, and **slimming the footer elsewhere is now this unit's, not a nice-to-have**.
+  👁 And READING THE SHOT caught what no measurement did: `inline-flex` EATS THE SPACE between the label span and the value
+  span, because a whitespace-only text node is not a flex item — it rendered `Wasiliana nasi ·0769777877`. Every box was the
+  right size and the words were wrong. `gap-x-[0.28em]` is the font's own word space.
+  ⭐ **AND `qa:footer-reachable` LEARNED SOMETHING TRUE RATHER THAN BEING SILENCED.** The taller footer put one contact link under
+  the STICKY header at the final scroll position and the guard called it covered. Its own rule already says a link scrolled out of
+  the viewport is reachable by scrolling — and a sticky top header is one scroll-step away, whereas the defect it exists for (a link
+  under the FIXED bottom rail with the document ended) has nowhere left to scroll. It now RE-PROVES a sticky blocker by scrolling up
+  one header height and hit-testing again rather than inferring it. 108/0, and `--prove-red` still fails on exactly the original
+  defect: *"Export / close my account … covered by nav (fixed)"*, in all three locales.
 - Footer list links (`src/components/layout/public-footer.tsx`, ≈ 19px rows) below 640 become `inline-flex items-center min-h-[var(--tap-min)]`,
   keeping font, colour and case. Not `.row-link` (`globals.css:1664`), which is uppercase. `qa:footer-reachable` stays green.
 - 🔴 **MEASURED ON PRODUCTION 2026-09-23, AND THE UNIT AS WRITTEN WOULD MISS THE WORST THREE.** Hit-tested (reach, not the painted box) on
