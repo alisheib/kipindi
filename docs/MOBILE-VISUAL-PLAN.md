@@ -317,7 +317,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U38 One money grammar and number rules | General | ⬜ | S21 | | | | formats, signs, nowrap, tabular |
 | U39 Close the type ladder and icon set | General | ⬜ | S21 | | | | off-ladder literals, glyph sizes |
 | U40 Player copy and terminology (EN/SW/ZH) | General | ⬜ | S22 | | | | needs a native reader |
-| U41 /fairness on a phone (D60 · D61) | General | ⬜ | S23 | | | | the route was never captured; the SOURCE column is 157px outside its scroller |
+| U41 /fairness on a phone (D60 · D61) | General | ✅ | S23 | `c9ba60cc` + guard `qa:fairness-phone` | source links outside the scroller **12 of 12 → 0** at 320/360/412; table off-screen **48.8% / 41.7% / 32.4% → 0%** (client==scroll: 286/286, 326/326, 378/378); rows paint **0 identical titles** | yes (`qa:fairness-phone`, `RED_TABLE=1` serves the five-column table back and reproduces THIS UNIT'S OWN RECORDED NUMBERS: client 326 vs scroll **559**, 49%/42%/32% off-screen at 320/360/412, all 12 source links outside — a green RED run exits 2 as a broken harness) | 2026-09-24 — D60 and D61 both closed. ⚠️ The third assertion (no two rows paint identical title text) is DATA-DEPENDENT and did not fire under RED: today's twelve markets clamp to distinguishable text. It is kept because it is the defect that mattered most — two markets painting the same row is worse than a table that scrolls — but a green run of it is evidence about THIS board, not about the layout. |
 | U42 The sign-up funnel on a phone (D69) | General | ⬜ | S23 | | | | six /auth/* routes never named in this plan; all six serve 200 to a guest |
 
 | Defect | Status | Owning unit |
@@ -1828,6 +1828,12 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - **Fix (one change closes both):** on a phone the attestation table stops being a five-column table and each row becomes a stacked card — market, outcome, officers, time, source. ⛔ Raising the clamp
   alone does not work, because the column never grows. At minimum the scroller needs a visible at-rest affordance and SOURCE must move to the second column.
 - **Guard:** at 320/360 sw, every row's source link must be inside the scroller's client box at `scrollLeft = 0`, and no two rows may paint identical title text. RED: restore the table layout.
+- ✅ **CLOSED 2026-09-24 — that accept line is now `npm run qa:fairness-phone`, and it runs 320/360/412.** Measured on production: **0 of 12** source links outside the scroller (was 12 of 12, at x=501 against an x=344 edge),
+  **0 rows** painting identical titles, and the table no longer scrolls sideways at all — `clientWidth == scrollWidth` at every width (286/286, 326/326, 378/378), where it was 326 against **559**.
+  ⭐ `RED_TABLE` serves the five-column layout back and reproduces THIS UNIT'S OWN RECORDED NUMBERS to the percentage point: **49% / 42% / 32%** off-screen and all 12 links outside. A control that lands on the figure the
+  defect was filed with is the strongest form available.
+  ⚠️ **HONEST LIMIT:** the identical-titles assertion is DATA-DEPENDENT and did NOT fire under RED — today's twelve markets clamp to distinguishable text even in the old layout. It is kept because it is the defect that
+  mattered most (two markets painting the same row is worse than a table that scrolls), but a green run of it is evidence about THIS board, not about the layout.
 
 **U42 · [General] The sign-up funnel on a phone (D69)**
 - 🔴 **Six `/auth/*` routes — register, otp, forgot-password, reset-password, verify-email, 2fa — are never named anywhere in this plan, and all six serve 200 to a guest.** They are the only way a new
