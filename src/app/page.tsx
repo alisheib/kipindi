@@ -207,7 +207,11 @@ export default async function LandingPage() {
               </Link>
             </div>
 
-            <div className="market-grid">
+            {/* Same orphan-row fix as the topic tiles, for the same measured reason: at 768 the
+                grid is two columns with three cards, and the lone card in the final row came out
+                320px against its neighbours’ 354px. Scoped to the landing page by being written
+                here rather than on `.market-grid`, which /markets also uses. */}
+            <div className="market-grid" style={{ gridAutoRows: "1fr" }}>
               {comp.grid.slice(0, LANDING_GRID_SIZE).map((r) => {
                 const cc = cardCharts.get(r.id) ?? { spark: [] };
                 return (

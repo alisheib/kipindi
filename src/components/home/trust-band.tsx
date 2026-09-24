@@ -88,10 +88,15 @@ export function TrustBand({
                     ⚠️ The measure is capped too. `.kp-trust__b` declares no max-width, so between 561
                     and 1023 — where this band is a single column — the line grew with the viewport:
                     89 characters at 640, 105 at 768, 142 at 1023. 62ch is the same order as the
-                    52ch the Up & Down tagline already uses on this page. */}
+                    52ch the Up & Down tagline already uses on this page.
+                    🔴 50ch, NOT 62ch — THE SAME MIS-CALIBRATION THE HERO PAID FOR. `ch` is the advance
+                    of the digit ZERO, which in Inter at 13px is 8.2px against an average character
+                    advance of about 6.5px. 62ch resolved to 508px and still admitted 78 characters
+                    on one line; measured on production after it shipped. 50ch ≈ 410px ≈ 63
+                    characters. V7 in the landing gate is what caught both. */}
                 <p
                   className={`kp-trust__b text-balance [overflow-wrap:anywhere]${locale === "zh" ? "" : " break-keep"}`}
-                  style={{ maxWidth: "62ch" }}
+                  style={{ maxWidth: "50ch" }}
                 >{c.b}</p>
               {c.marks && (
                 /* All four rails (2026-09-13). The cell says "mobile money in and out", and one
