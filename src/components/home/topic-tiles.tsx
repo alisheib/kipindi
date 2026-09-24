@@ -1,5 +1,5 @@
 /**
- * §1d — BROWSE BY TOPIC, with a REAL count and a REAL pool on every tile.
+ * §1d — BROWSE BY TOPIC, with a REAL count on every tile and a REAL pool wherever there is one.
  *
  * The tiles this replaces were one glyph and one word each, so the eye skipped the whole band —
  * nothing distinguished one from another. A count is the cheapest possible information scent and
@@ -63,13 +63,26 @@ export function TopicTiles({
             <span className="kp-topic__n">{categoryLabel(t, tp.id as MarketCategory)}</span>
             <span className="kp-topic__m">
               <span className="kp-topic__live">{fill(t.home.topicLive, { n: tp.count })}</span>
-              {/* The pool is real even at zero, so it is always stated — the same distinction
-                  the card draws between `fresh` (no badge) and `noPrice` (no price). */}
-              {/* 🔴 D33 · the figure is WRAPPED so it can be one unbreakable token. As a bare text
-                  node it shared the meta’s normal wrapping and split at its own space — "TZS" on one
-                  line, "8K" on the next, on most tiles at 320. `.kp-topic__pool` carries the rule and
-                  globals.css carries the arithmetic that proves it cannot clip. */}
-              {" · "}<span className="kp-topic__pool">{formatTzsCompact(tp.poolTzs)}</span>
+              {/* 🔴 A ZERO POOL IS NO LONGER STATED, WHICH REVERSES THIS FILE’S OWN NOTE ABOVE.
+                  Measured on production 2026-09-24: 3 of the 7 tiles read “TZS 0”, in 46 of the 52
+                  cells of the landing gate. A tile exists to give a reader a reason to tap it; the
+                  COUNT is that reason. A zero turns the one band whose job is to show a live book
+                  into an advertisement that it is empty, and it is the single most repeated defect
+                  on the page.
+                  ⛔ THIS IS NOT THE COLD-START RULE BEING RELAXED. That rule (DESIGN_AUTHORITY §B6 /
+                  licence condition 1) forbids INVENTING a figure nobody produced — the hardcoded 50%.
+                  Omitting a true zero states nothing false, the count is never omitted, and the pool
+                  is one tap away on /markets?topic=. A tile with no money still says how many
+                  questions it holds, which is the honest version of the same scent.
+                  ⚠️ `landingTopicsReconcile` is unaffected: it folds over `comp.topics`, not over what
+                  this component paints, so the tiles still have to add up to the hero.
+                  🔴 D33 · when it IS drawn the figure stays WRAPPED so it is one unbreakable token. As a
+                  bare text node it shared the meta’s normal wrapping and split at its own space —
+                  “TZS” on one line, “8K” on the next, on most tiles at 320. `.kp-topic__pool` carries
+                  the rule and globals.css carries the arithmetic that proves it cannot clip. */}
+              {tp.poolTzs > 0 && (
+                <>{" · "}<span className="kp-topic__pool">{formatTzsCompact(tp.poolTzs)}</span></>
+              )}
             </span>
             {tp.leanYesPct != null && (
               <span className="kp-topic__lean" style={{ width: `${tp.leanYesPct}%` }} aria-hidden />
