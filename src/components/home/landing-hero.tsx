@@ -137,6 +137,19 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, paidOu
             {t.home.heroLocation} · {t.home.heroEst}
           </p>
           <Headline text={t.home.heroHeadline} />
+          {/* ⭐ THE BRAND LINE STAYS ENGLISH AND GETS A READING UNDERNEATH IT (owner decision,
+              2026-09-24). The headline is the largest thing on the page and Swahili is the DEFAULT
+              locale since 8822b648, so on the page most visitors get, the biggest element spoke a
+              language they had not chosen. The line is kept — it is the brand — and the meaning is
+              now said underneath in the reader’s own language.
+              ⛔ RENDERED ONLY WHERE IT SAYS SOMETHING NEW. In English the two strings are identical
+              by design, and repeating a sentence directly under itself is worse than not translating
+              it. Comparing the two strings rather than testing the locale means a translator who
+              fills the key in a new locale gets the subline automatically, and one who leaves it
+              equal gets nothing — no locale list to keep in sync in a fourth place. */}
+          {t.home.heroHeadlineSub !== t.home.heroHeadline && (
+            <p className="kp-hero__lede" style={{ marginTop: "var(--sp-2)" }}>{t.home.heroHeadlineSub}</p>
+          )}
         </div>
 
         {/* ── the proof rail: three measured facts about the live book ─────────────── */}
