@@ -27,12 +27,70 @@ import { useEffect } from "react";
  * width×locale frames. A data attribute on the document element is outside React's tree
  * altogether, which is exactly how this codebase already drives `[data-motion="reduced"]`.
  */
+/**
+ * 🔴 D75 · HOW LONG THE BUBBLE STAYS UP AFTER THE READER STOPS TOUCHING THE PAGE.
+ * D3 got it out of the way while the page MOVES. It still covered content AT REST, which is
+ * where it was measured doing real damage: on production at 360, **100% of a market card's
+ * `NDIO` probability cap**; at 414, **16% of a `HAPANA @ 12%` button** — a betting control.
+ * Ali's call (2026-09-24), against the alternatives of insetting every price on every phone or
+ * accepting it: the bubble shows itself, then gets out of the way until it is asked for.
+ */
+const FAB_IDLE_MS = 3000;
+/**
+ * ⛔ AND THIS DELAY IS THE WHOLE SAFETY OF THE FEATURE. Waking on `pointerdown` would make the
+ * bubble interactive again DURING the gesture, so the `click` the browser then synthesises could
+ * hit the bubble instead of the control the finger actually went for — which is D66's defect
+ * exactly (a state change on pointerdown, a navigation from the click that followed) and, worse,
+ * it would re-create the very tap-theft D30 fixed. The wake is therefore deferred past the whole
+ * pointerdown → pointerup → click sequence. 250ms is the same settle this file already uses.
+ */
+const FAB_WAKE_MS = 250;
+
 export function HeaderScrollCast() {
   useEffect(() => {
     const root = document.documentElement;
     let on: boolean | null = null;
     let moving = false;
     let idle: ReturnType<typeof setTimeout> | undefined;
+
+    /**
+     * 🔴 D75 · `data-fab-idle` — SET WHEN THE READER HAS NOT TOUCHED THE PAGE FOR 3s.
+     *
+     * ⚠️ WHEN IT IS SET THE BUBBLE IS NOT MERELY FADED, IT IS `pointer-events: none` (globals.css).
+     * That is the point rather than a detail: a 44px square that is invisible and still takes taps
+     * is strictly worse than a visible one, and it is the defect D30 documented — a player aiming
+     * at a control and opening a support chat.
+     *
+     * ⭐ WAKING IS DELIBERATELY CHEAP TO TRIGGER: any scroll, any tap anywhere, any key. A reader
+     * who wants the bubble does not have to know the rule — touching the screen at all brings it
+     * back. And a keyboard user never loses it, because `:focus-within` overrides this the same
+     * way it overrides D3's scroll rule.
+     *
+     * ⛔ THE CHAT BEING OPEN NEEDS NO SPECIAL CASE HERE. `.cm-fab--open` is already excluded by
+     * the CSS selector, so an open panel cannot be faded out by a sleeping timer. Adding a JS
+     * guard for it would be a second definition of the same rule, free to drift from the first.
+     */
+    let asleep = false;
+    let wake: ReturnType<typeof setTimeout> | undefined;
+    const sleep = () => {
+      if (asleep) return;             // one attribute write per transition, never per event
+      asleep = true;
+      root.setAttribute("data-fab-idle", "");
+    };
+    const rouse = (delay: number) => {
+      clearTimeout(wake);
+      wake = setTimeout(() => {
+        if (asleep) {
+          asleep = false;
+          root.removeAttribute("data-fab-idle");
+        }
+        clearTimeout(nap);
+        nap = setTimeout(sleep, FAB_IDLE_MS);
+      }, delay);
+    };
+    let nap: ReturnType<typeof setTimeout> = setTimeout(sleep, FAB_IDLE_MS);
+    const rouseNow = () => rouse(0);
+    const rouseLater = () => rouse(FAB_WAKE_MS);
     const apply = () => {
       const should = window.scrollY > 0;
       if (should !== on) {            // one attribute write per crossing, not per frame
@@ -64,10 +122,25 @@ export function HeaderScrollCast() {
     };
     apply();                          // a page restored mid-scroll starts cast
     window.addEventListener("scroll", apply, { passive: true });
+    // ⚠️ Scroll may rouse IMMEDIATELY because `data-scrolling` is keeping the bubble hidden
+    // anyway for another 250ms — there is no frame in which a moving page shows an interactive
+    // bubble. A tap and a key must wait out the click; see FAB_WAKE_MS.
+    window.addEventListener("scroll", rouseNow, { passive: true });
+    window.addEventListener("pointerup", rouseLater, { passive: true });
+    window.addEventListener("keydown", rouseLater, { passive: true });
     return () => {
       window.removeEventListener("scroll", apply);
+      window.removeEventListener("scroll", rouseNow);
+      window.removeEventListener("pointerup", rouseLater);
+      window.removeEventListener("keydown", rouseLater);
       clearTimeout(idle);
+      clearTimeout(nap);
+      clearTimeout(wake);
+      // ⛔ BOTH attributes are cleared on unmount, and for the same reason: a route change
+      // mid-scroll, or mid-nap, would otherwise leave the flag on `<html>` for good and the
+      // bubble would never come back on any page.
       root.removeAttribute("data-scrolling");
+      root.removeAttribute("data-fab-idle");
     };
   }, []);
   return null;

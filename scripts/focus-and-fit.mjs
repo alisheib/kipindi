@@ -40,6 +40,7 @@ const RED = {
   D63: process.env.RED_D63 === "1",
   FIT: process.env.RED_FIT === "1",
   D3: process.env.RED_D3 === "1",
+  D75: process.env.RED_D75 === "1",
 };
 const ANY_RED = Object.values(RED).some(Boolean);
 /** Each control restores EXACTLY the state its fix replaced — nothing else. */
@@ -49,6 +50,7 @@ const RED_CSS = {
   D63: `.kp-strip-fade :where(a,button):focus-visible{outline-offset:2px !important;}`,
   FIT: `@media (max-width:300px){.mcardp-top{flex-wrap:nowrap !important;}.mcardp-meta{flex-wrap:nowrap !important;}}`,
   D3: `html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within){opacity:1 !important;pointer-events:auto !important;transform:none !important;}`,
+  D75: `html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within){opacity:1 !important;pointer-events:auto !important;transform:none !important;}`,
 };
 
 const failures = [];
@@ -176,6 +178,13 @@ for (const surface of ["/markets", "/leaderboard", "/results"]) {
              scrolling: document.documentElement.hasAttribute("data-scrolling"),
              hits: !!(el && (el === btn || btn.contains(el) || el.contains(btn))) };
   });
+  /* ⚠️ ROUSE FIRST, DELIBERATELY. Since D75 "at rest" has a clock on it: the bubble is up for
+     `FAB_IDLE_MS` (3s) after the reader last touched the page, then sleeps. A bare read here
+     would land 2.4s after load — 600ms from the nap — and this section would pass or fail on
+     timing rather than on behaviour. One pixel of scroll restarts that clock, so what §5 asserts
+     is what it means to assert: within the window, a still page shows a reachable bubble. */
+  await p.evaluate(() => window.scrollBy(0, 1));
+  await p.waitForTimeout(420);
   const rest = await read();
   if (!rest) failures.push(`§5 ${surface} no chat bubble on the page — the probe proves nothing`);
   else {
@@ -202,6 +211,68 @@ for (const surface of ["/markets", "/leaderboard", "/results"]) {
   await ctx.close();
 }
 
+/* ── §6 · D75 — AND IT LEAVES AT REST TOO, WITHOUT TAKING TAPS WITH IT ─────────────────
+   §5 proves the bubble clears out while the page MOVES. Every measurement that mattered was taken
+   with the page STILL: at 360 the bubble covered **100% of a market card's `NDIO` probability cap**
+   and 37% of its `88%`; at 414 it covered **16% of a `HAPANA @ 12%` button**, a betting control.
+
+   ⛔ SO THE ASSERTION IS NOT "IT FADED". It is that the point under its centre belongs to the PAGE
+   — `elementFromPoint` must return content, not the bubble. A 44px square that is invisible and
+   still takes taps is strictly worse than a visible one, and is D30's defect (a player aiming at a
+   control and opening a support chat) wearing a disguise.
+
+   ⭐ AND IT CHECKS THE WAKE IS DEFERRED. Rousing on the press would hand the bubble back mid-gesture
+   and the click the browser then synthesises could land on it instead of the control the finger went
+   for — D66 exactly. So a key is pressed and the bubble must STILL be out of hit-testing 100ms
+   later, and back by 600ms. A fix that woke instantly would pass every other line here. */
+console.log("");
+for (const surface of ["/markets", "/"]) {
+  const { ctx, p } = await open(b, 360, 780, surface, "D75");
+  const read = () =>
+    p.evaluate(() => {
+      const btn = document.querySelector(".cm-bubble");
+      const fab = document.querySelector(".cm-fab");
+      if (!btn || !fab) return null;
+      const q = btn.getBoundingClientRect();
+      const el = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+      return {
+        idle: document.documentElement.hasAttribute("data-fab-idle"),
+        opacity: Number(getComputedStyle(fab).opacity),
+        hits: !!(el && (el === btn || btn.contains(el) || el.contains(btn))),
+        under: el ? el.tagName + "." + String(el.className || "").split(" ").slice(0, 2).join(".") : "(nothing)",
+      };
+    });
+
+  // no interaction of any kind; `open()` already spent 2.4s, so this is ~6.6s of stillness
+  await p.waitForTimeout(4200);
+  const napping = await read();
+  if (!napping) {
+    failures.push(`§6 ${surface} no chat bubble on the page — the probe proves nothing`);
+    await ctx.close();
+    continue;
+  }
+  // ⛔ VACUITY: if the attribute never arrives, every line below is about a state that never happened
+  if (!napping.idle) failures.push(`§6 ${surface} \`data-fab-idle\` was never set after 6.6s of stillness — the probe cannot see the state it tests`);
+  else {
+    if (napping.opacity > 0.05) failures.push(`§6 ${surface} the bubble is still painted at rest (opacity ${napping.opacity})`);
+    if (napping.hits) failures.push(`§6 ${surface} the bubble STILL TAKES THE TAP at rest — the point under its centre is the bubble, not the page. An invisible control that steals taps is worse than a visible one.`);
+  }
+
+  // a key press must not hand it back until the click it may belong to has been and gone
+  await p.keyboard.press("Escape");
+  await p.waitForTimeout(100);
+  const midWake = await read();
+  if (napping.idle && (midWake.hits || midWake.opacity > 0.05)) {
+    failures.push(`§6 ${surface} the bubble came back 100ms after a key — the wake is not deferred past the click, so a tap aimed at a control can be re-stolen on the way back (D66/D30)`);
+  }
+  await p.waitForTimeout(600);
+  const awake = await read();
+  if (awake.opacity < 0.99 || !awake.hits) failures.push(`§6 ${surface} the bubble did not come back after the reader touched the page (opacity ${awake.opacity}, hits ${awake.hits}) — the support entry point is unreachable`);
+
+  console.log(`   §6 ${surface.padEnd(9)} still 6.6s → idle=${napping.idle} opacity=${napping.opacity} takesTap=${napping.hits} (under it: ${napping.under})  ·  +100ms after a key → takesTap=${midWake.hits}  ·  +700ms → opacity=${awake.opacity} takesTap=${awake.hits}`);
+  await ctx.close();
+}
+
 await b.close();
 
 const which = Object.entries(RED).filter(([, v]) => v).map(([k]) => k).join("+");
@@ -213,7 +284,7 @@ if (ANY_RED) {
   /* ⛔ "IT WENT RED" IS NOT ENOUGH, AND THIS COST A ROUND OF FALSE CONFIDENCE. While D35/D65 were
      written but not yet deployed, §4 failed on every run — so a RED_D56 run "went red" whether or not its
      own control did anything. A control must be shown to break THE SECTION IT TARGETS. */
-  const SECTION = { D56: "§1", D57: "§2", D63: "§3", FIT: "§4", D3: "§5" };
+  const SECTION = { D56: "§1", D57: "§2", D63: "§3", FIT: "§4", D3: "§5", D75: "§6" };
   const missed = Object.entries(RED).filter(([, on]) => on).filter(([k]) => !failures.some((f) => f.startsWith(SECTION[k])));
   if (missed.length) {
     console.error(`
