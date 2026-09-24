@@ -677,6 +677,10 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                             column absorbs the whole shortfall at 360 and the label and the handle crush together. */}
                         <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
+                        {/* ⭐ THE DAY'S BUDGET, FALLING (owner, 2026-09-24) — 373's named fallback: the ceiling is
+                            in the header so the cell carries ONE figure. ⛔ ON THE DESK-WIDE TABLE EACH ROW COUNTS
+                            AGAINST ITS OWN ACCOUNT'S CAP, which is why the reader looks both up per account. */}
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
                         <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
@@ -693,7 +697,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={9} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={10} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
@@ -732,6 +736,13 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                               {r.accountHandle && <div className="font-mono text-body-sm text-text-subtle">{r.accountHandle}</div>}
                             </td>
                             <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
+                            {/* ⛔ A DASH, NOT A ZERO, AND NOT A FULL BUDGET — the four cases the reader refuses to
+                                answer for are "no answer", never "nothing was spent". */}
+                            <td className="p-3 tabular text-right" title={r.leftTodayTitle ?? undefined}>
+                              {r.leftToday === null
+                                ? <span className="text-text-tertiary">—</span>
+                                : <span className="amount">{r.leftToday}</span>}
+                            </td>
                             <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>
                               {r.when}
                               {/* ⭐ A QUEUED STAKE SAYS WHEN IT FIRES AND WHEN IT GIVES UP (register C8): the When

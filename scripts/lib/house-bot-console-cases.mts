@@ -2152,12 +2152,17 @@ section("§2 · the strip, the band, the roster and every failure");
         /* ⚠️ TERM BY TERM, NEVER AS ONE MULTI-LINE REGEX: the files in this repository are CRLF, so a pattern
            spelling `\n` between two lines of a signature matches nothing and the pin reads as a pass that proves
            less than it says. Measured on this very assertion. */
-        /async function readDeskCore<A, B>\(/.test(gateSrc)
+        /* ⭐ A THIRD SLOT SINCE 2026-09-24 (the activity panel's "Left today" scan), and it is pinned to the SAME
+           law as the other two: a FACTORY of the day key, so the scan is built with the render's own key and
+           still starts inside the one settled set. A third read added as a bare promise would pass the first
+           three terms and fail this one. */
+        /async function readDeskCore<A, B, C>\(/.test(gateSrc)
           && /extraA: \(dayKey: string\) => Promise<A>,/.test(gateSrc)
           && /extraB\?: \(dayKey: string\) => Promise<B>,/.test(gateSrc)
+          && /extraC\?: \(dayKey: string\) => Promise<C>,/.test(gateSrc)
           && /staffChosenPlacedToday\(\{ houseBotId: query\.houseBotId, dayKey \}\)/.test(gateSrc)
           && /readDeskCore\(\(dayKey\) =>/.test(gateSrc),
-        j({ factory: /async function readDeskCore<A, B>\(/.test(gateSrc) }));
+        j({ factory: /async function readDeskCore<A, B, C>\(/.test(gateSrc) }));
       /* ⛔ AND THE ACCOUNT PAGE HANDS ITS OWN KEY TO BOTH READS THAT NEED A DAY, for the same reason: the card
          would otherwise straddle EAT midnight and print two days on one screen. */
       ok("1.348 · the account page's day-book and targeted-and-manual reads are both given the render's OWN key",
@@ -3975,8 +3980,12 @@ try {
          expires, because the When column is the instant the engine DECIDED and a held COUNTER fires minutes
          later. It is a FINISHED string like every other field — no id, no enum, no raw instant. */
       /* ⭐ TWELVE SINCE 2026-09-24: `marketName` and `marketHref` — WHICH game the stake was on, and the
-         door into it. The set is still an EQUALITY, so a thirteenth field cannot arrive unannounced. */
-      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "marketHref", "marketName", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+         door into it. The set is still an EQUALITY, so a thirteenth field cannot arrive unannounced.
+         ⭐ FOURTEEN LATER THE SAME DAY: `leftToday` and `leftTodayTitle` — what was left of the account's own
+         daily stake budget after the row, and the same fact in 361's `used X of Y` grammar as the cell's title.
+         ⛔ BOTH ARE STILL FINISHED STRINGS OR `null`: the arithmetic happens in the reader, and a number crossing
+         into the view model here is exactly what this equality exists to catch. */
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "leftToday", "leftTodayTitle", "marketHref", "marketName", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
         && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
       j(Object.keys(p1.feed[0] ?? {}).sort()));
 
@@ -4023,6 +4032,125 @@ try {
           && p1.feed.every((r: Any) => r.marketHref === null || typeof r.marketHref === "string"),
         j({ rows: p1.feed.length, named: withGame.length, unnamed: p1.feed.length - withGame.length }));
     }
+    /* ━━ 1.626c · WHAT WAS LEFT OF THE DAY'S BUDGET AFTER EACH STAKE (owner, 2026-09-24) ━━━━━━━━━━━━━━━━━
+     * The table said what each stake COST and never what it cost the DAY: twenty rows of TZS 5,000 and no way
+     * to tell whether the account was one stake from stopping. `CAP_PER_DAY` is the second most common refusal
+     * on the live desk, so it is the question officers are actually asking.
+     * ⛔ THE FIGURE IS THE CONFIGURED DAILY CAP, NEVER THE HOLDER'S WALLET — D3's account belongs to a real
+     * person who may withdraw, and the C7 spec weighed a "Live balance" column on this table and struck it.
+     * ⛔ THE FIXTURE PLACES REAL BETS, and that is the whole reason this block exists rather than more assertions
+     * on `p1`: the panels fixture inserts INTENTS only, so its day book is 0 staked and every placed row would
+     * read the full cap. A column asserted against that would be asserted against a CONSTANT, and stripping the
+     * arithmetic out of `feedLeftTodayMap` would leave it green. Here the book is real, the three stakes differ,
+     * and the expected figures are computed from the stakes rather than typed. */
+    {
+      const bud = await w.bot({ caps: { capDailyStakeTzs: 50_000 } });
+      /* ⚠️ EVERY STAKE IS AN OPENER, AND THAT IS FORCED: a FILL or a MANUAL is refused at fire time with
+         `house_condition_gone` because a fresh poll has no thin side to enter on. The cross-account case below
+         is what carries the "not a sum of what is on screen" claim instead, and it carries it better. */
+      const STAKES = [5_000, 3_000, 2_000];
+      await w.switchOn();
+      for (const amt of STAKES) {
+        const mkt = await w.poll({ graceMin: 0 });
+        const i = await w.intent(bud, mkt.id, { kind: "OPENER", side: "YES", stakeTzs: amt });
+        const r = await w.place(bud, i);
+        if (!r.ok) throw new Error(`1.626c fixture bet refused: ${j(r)}`);
+        await new Promise((res) => setTimeout(res, 2));
+      }
+      await w.switchOff();
+      const bv = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", bud.botId, { tab: "activity" });
+      const brows = (bv.feed ?? []) as Any[];
+      const total = STAKES.reduce((a, b) => a + b, 0);
+      /* Newest first, so the expected figures run cap−10,000 · cap−8,000 · cap−5,000 down the page. */
+      const WANT = [50_000 - total, 50_000 - (total - 2_000), 50_000 - (total - 2_000 - 3_000)];
+
+      ok("1.626c · every placed row says what was LEFT of the day's stake budget after it — the exact ceiling less every stake up to and including that row",
+        brows.length === 3 && brows.every((r: Any, k: number) => r.leftToday === formatTzs(WANT[k])),
+        j({ want: WANT, got: brows.map((r: Any) => r.leftToday), stakes: brows.map((r: Any) => r.stake) }));
+
+      /* ⭐ THE OWNER'S OWN WORDS — "so we can keep seeing them as they decrease". Read forward in time the
+         figures fall; the table is newest-first, so down the page they RISE. A column that merely repeated one
+         number would satisfy the shape assertions above and fail this one. */
+      ok("1.626c · the figure DECREASES with every stake — the thing an officer watches, asserted as a strict order and not as a shape",
+        brows.length === 3 && WANT[0] < WANT[1] && WANT[1] < WANT[2]
+          && brows.every((r: Any, k: number) => k === 0 || formatTzs(WANT[k]) !== brows[k - 1].leftToday),
+        j(brows.map((r: Any) => r.leftToday)));
+
+      /* ⛔ IT CANNOT CONTRADICT THE PANEL ABOVE IT, AND THIS IS THE ASSERTION THAT PINS IT. The newest row is
+         handed the day book's OWN `stakedTzs` — the same read the `capDailyStakeTzs` usage row renders — so the
+         cell's title and that row's figures are one arithmetic, not two. `book.ts` names this exact hazard. */
+      const dayRow = (bv.usage ?? [])[0] as Any;
+      ok("1.626c · the newest row's title is the SAME day total the cap row above the table renders — one arithmetic for one day, in 361's untouched grammar",
+        dayRow != null && dayRow.usedTzs === total && dayRow.limitTzs === 50_000
+          && brows[0].leftTodayTitle === `used ${formatTzs(dayRow.usedTzs)} of ${formatTzs(dayRow.limitTzs)}`,
+        j({ title: brows[0]?.leftTodayTitle, used: dayRow?.usedTzs, limit: dayRow?.limitTzs }));
+
+      /* ⛔ THE DESIGN'S LOAD-BEARING CLAIM: the budget is spent by every placed stake whatever the officer has
+         filtered the table to. Computing it from the VISIBLE rows — the obvious implementation — makes the same
+         stake read differently under a different chip, which is a figure that changes meaning when you look at
+         it sideways. Filtering to one product must not move a single number. */
+      /* ⛔ THE DESK-WIDE TABLE IS THE ONE THAT CAN CATCH A SUM OF WHAT IS ON SCREEN, and it is the second
+         renderer besides. That page interleaves EVERY account: these three rows sit among the panels account's
+         41 and another account's stake, so a running total taken down the visible rows would fold four accounts'
+         money into one column. Each row must carry the SAME figure it carries on its own account's page, against
+         ITS OWN ceiling — which is only true if the reader looks the cap and the day total up per account. */
+      const deskWide = await GATEM.houseFeedForConsole(OFFICER, "/admin/desk", { tab: "activity" });
+      const mine = (deskWide.feed ?? []).filter((r: Any) => STAKES.some((amt) => r.stake === formatTzs(amt)) && r.leftToday !== null);
+      const onAccount = new Map(brows.map((r: Any) => [r.stake, r.leftToday]));
+      ok("1.626c · the desk-wide table carries the SAME figure per row as the account's own page — each row counts against ITS OWN account's ceiling, never a total swept down the page",
+        mine.length === 3 && mine.every((r: Any) => r.leftToday === onAccount.get(r.stake)),
+        j({ deskWide: mine.map((r: Any) => ({ stake: r.stake, left: r.leftToday })), onAccount: [...onAccount] }));
+
+      /* ⭐ AND A FILTER MOVES NOTHING. Narrowing to PLACED cannot change a budget that was spent whatever the
+         officer is looking at; a figure that shifted when a chip was clicked would be a different claim under
+         one header. */
+      const filtered = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", bud.botId, { tab: "activity", outcome: "PLACED" });
+      const fr = (filtered.feed ?? []) as Any[];
+      ok("1.626c · the figure is the same under a FILTER — it is the day's budget, not a running total of whatever rows happen to be on screen",
+        fr.length === brows.length && fr.every((r: Any, k: number) => r.leftToday === brows[k].leftToday),
+        j({ unfiltered: brows.map((r: Any) => r.leftToday), filtered: fr.map((r: Any) => r.leftToday) }));
+
+      /* ⛔ CONTROL · AN ACCOUNT WITH NO DAILY CAP HAS NO BUDGET TO COUNT DOWN, and the honest answer is no
+         figure. A reader that fell back to a zero ceiling would paint "TZS 0" on a healthy account and read as
+         "this account is finished for the day" — the opposite of the truth. */
+      /* ⚠️ THE STAKE IS PLACED FIRST AND THE CEILING CLEARED AFTERWARDS, and that ordering is forced: with the
+         cap already null `cap-precheck` refuses the bet outright with `DAILY_STAKE`, so a bot designated without
+         one can never produce the placed row this control needs. Clearing it after is the same END STATE — a
+         placed row on an account with no daily cap — which is what the reader is being asked about. */
+      const nocap = await w.bot({});
+      await w.switchOn();
+      const nm = await w.poll({ graceMin: 0 });
+      const ni = await w.intent(nocap, nm.id, { kind: "OPENER", side: "YES", stakeTzs: 4_000 });
+      const nr = await w.place(nocap, ni);
+      await w.switchOff();
+      if (!nr.ok) throw new Error(`1.626c no-cap fixture bet refused: ${j(nr)}`);
+      await w.setCaps(nocap.botId, { capDailyStakeTzs: null });
+      const nv = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", nocap.botId, { tab: "activity" });
+      ok("1.626c · CONTROL · an account with NO daily stake cap gets no figure at all — never a zero, and never a budget it was never given",
+        (nv.feed ?? []).length === 1 && (nv.feed ?? [])[0].leftToday === null && (nv.feed ?? [])[0].leftTodayTitle === null,
+        j((nv.feed ?? []).map((r: Any) => ({ stake: r.stake, left: r.leftToday }))));
+
+      /* ⛔ CONTROL · A ROW THAT MOVED NO MONEY MADE NOTHING BECOME ANYTHING. The panels fixture is the
+         population for this one on purpose: it carries all five statuses, and only PLACED may answer. The word
+         is read off a row this block KNOWS is placed, never typed — a typed word drifts from the status map. */
+      const PLACED_WORD = brows[0].statusWord;
+      ok("1.626c · CONTROL · only a PLACED row carries a budget figure — a queued, skipped, failed or cancelled row moved no money and answers `null`",
+        p1.feed.some((r: Any) => r.statusWord === PLACED_WORD)
+          && p1.feed.every((r: Any) => r.statusWord === PLACED_WORD || r.leftToday === null),
+        j([...new Set(p1.feed.map((r: Any) => `${r.statusWord}=${r.leftToday === null ? "null" : "figure"}`))]));
+
+      /* ⛔ THE SLOTS GO BACK, AND THIS IS NOT TIDINESS — IT IS A DEFECT THIS BLOCK CAUSED AND HAD TO REPAIR.
+         The roster is a BOUNDED shared resource (20 designations), and these two fixture accounts took it to
+         20 of 20: four later cases that designate an account — 1.359's own designation, 1.383's owner CONTROL
+         and 1.412's submit-id case — all failed with "The roster is full", nowhere near this block and with
+         nothing in their output pointing at it. ⛔ THE FIX IS TO RETURN THE SLOTS, NEVER TO RAISE THE LIMIT: the
+         ceiling is what 1.359 and 1.412 are measuring, so moving it would have hidden the breakage under a
+         green run. `countLive` excludes REMOVED, which is what makes the slot genuinely free again. */
+      for (const b of [bud, nocap]) {
+        await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE", "PAUSED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } });
+      }
+    }
+
     ok("1.317 · every row's outcome word and type word come from the console's own TOTAL maps, and its note is the console's own sentence — never a raw enum",
       p1.feed.every((r: Any) => !(K_INTENT_STATUSES as string[]).includes(r.statusWord) && !(K_INTENT_KINDS as string[]).includes(r.typeWord))
         && p1.feed.some((r: Any) => typeof r.note === "string" && r.note.length > 10)
@@ -4588,12 +4716,15 @@ try {
       /* ⭐ "Game" JOINED 2026-09-24, BESIDE PRODUCT AND NOT FIRST: the money column must stay SECOND (this
          assertion's own claim), and the visual gate's §5.2 contract measures the first three cells — so naming
          the game earlier would push the OUTCOME out of the 360 strip. */
-      all(feedHeaders) === all(["When (EAT)", "Stake", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
+      /* ⭐ "Left today" JOINED 2026-09-24, THIRD AND DIRECTLY AFTER Stake: ruling 1085 puts money "SECOND (and
+         third where two exist)", and this assertion's own claim — the FIRST `.amount` cell is still the row's
+         second — is what keeps 373 true with two money columns on one row. */
+      all(feedHeaders) === all(["When (EAT)", "Stake", "Left today", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
     ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
       /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
         && !/admin-tbl min-w-/.test(detail), "");
     ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
-      feedHeaders.length === 7 && !feedHeaders.includes("Event"), j(feedHeaders));
+      feedHeaders.length === 8 && !feedHeaders.includes("Event"), j(feedHeaders));
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
@@ -4686,7 +4817,7 @@ section("§2e3 · the desk landing page's activity and history panels");
     const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
-      j(feedHeaders) === j(["Account", "Stake", "When (EAT)", "Outcome", "Type", "Product", "Game", "Note", ""]),
+      j(feedHeaders) === j(["Account", "Stake", "Left today", "When (EAT)", "Outcome", "Type", "Product", "Game", "Note", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
       j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
@@ -6127,7 +6258,11 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        it to the lexicon would turn the first live poll whose question carries a listed word into a red run.
        ⚠️ THIS LIST IS HAND-MAINTAINED, which is the population defect this file warns about elsewhere — so a
        new painted field must be added here BY NAME, or decided against here, never left to default. */
-    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.statusWord, r.typeWord, r.productWord, r.note, r.marketHref]),
+    /* ⭐ `leftToday` AND `leftTodayTitle` ARE SCANNED, and they are the easy half of the asymmetry above: both
+       are money THIS module formats — a `formatTzs` figure and 361's own `used X of Y` sentence — so they are
+       the section's own copy and 453 binds them, exactly like `stake` three fields along. Nothing operator-typed
+       reaches either one. */
+    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.statusWord, r.typeWord, r.productWord, r.note, r.marketHref]),
     ...(view.history ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.eventWord, r.change, r.who, r.moneyHref]),
     ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
     /* ⛔ AND THE WHOLE OF BOTH TOTAL MAPS, NOT ONLY THE ROWS THIS FIXTURE HAPPENED TO PAINT. A word map scanned

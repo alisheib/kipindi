@@ -40,7 +40,7 @@ import type { AuditEntry } from "./audit";
 import type { StoredUser } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
 import { BY_HAND_SCREENS, CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleBotTabHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
-import { WEEKDAYS, WEEKDAY_LABEL, eatDayKey, formatEat, formatMinutes, type Weekday } from "@/lib/house-bot/clock";
+import { WEEKDAYS, WEEKDAY_LABEL, eatDayKey, eatDayWindow, formatEat, formatMinutes, type Weekday } from "@/lib/house-bot/clock";
 /* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
@@ -911,12 +911,16 @@ type DeskCore = {
  * ARE AGED AGAINST (M1, 2026-09-23 — one member, because they are one figure: see `engineNotice`'s own note), the
  * QUEUED-stake count the rail's badge paints, and the caller's two extras.
  */
-async function readDeskCore<A, B>(
+async function readDeskCore<A, B, C>(
   extraA: (dayKey: string) => Promise<A>,
   extraB?: (dayKey: string) => Promise<B>,
-): Promise<{ core: DeskCore; extra: A | null; extraB: B | null }> {
+  /* ⭐ A THIRD SLOT, ADDED 2026-09-24 FOR THE ACTIVITY PANEL'S "Left today" SCAN. It stays inside this ONE settled
+   * set for the reason the other two are here: a reader that awaits a second time turns one render's reads into
+   * two round trips, and a failure outside the set takes the whole page down instead of one column. */
+  extraC?: (dayKey: string) => Promise<C>,
+): Promise<{ core: DeskCore; extra: A | null; extraB: B | null; extraC: C | null }> {
   const dayKey = eatDayKey(Date.now());
-  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.allSettled([
+  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR, extraCR] = await Promise.allSettled([
     houseBotControlStore.get(),
     houseBotStore.listNonRemoved(),
     houseDayBooks(dayKey),
@@ -940,6 +944,7 @@ async function readDeskCore<A, B>(
     houseBotIntentStore.countFeed({ statuses: CONSOLE_PENDING_STATUSES }),
     extraA(dayKey),
     extraB ? extraB(dayKey) : Promise.resolve(null),
+    extraC ? extraC(dayKey) : Promise.resolve(null),
   ]);
   /* 421 · a schema the migration has not reached is a STATE. It is never an error boundary, never `AdminLoadError`
    * and never an empty roster with no cause. */
@@ -965,6 +970,7 @@ async function readDeskCore<A, B>(
     },
     extra: extraR.status === "fulfilled" ? extraR.value : null,
     extraB: extraBR.status === "fulfilled" ? (extraBR.value as B | null) : null,
+    extraC: extraCR.status === "fulfilled" ? (extraCR.value as C | null) : null,
   };
 }
 
@@ -3424,6 +3430,28 @@ function consolePageNumber(raw: number | undefined): number {
  */
 const CONSOLE_FEED_PER_PAGE = 20;
 const CONSOLE_HISTORY_PER_PAGE = 20;
+/**
+ * ⭐ HOW FAR BACK THE "Left today" COLUMN LOOKS — the day's newest placed stakes, across every account on the page.
+ *
+ * ⛔ A BOUND, NOT A GUESS, AND IT FAILS SAFE. `listFeed` orders newest first, so a window this size drops only the
+ * OLDEST rows of a very busy day — and `feedLeftTodayMap` walks from the NEWEST end, so a dropped row gets no
+ * figure while every row inside the window stays exact. Measured on the live desk 2026-09-24: 173 placed stakes
+ * across four accounts in a full day, against per-account daily ceilings of TZS 200,000–500,000.
+ * ⛔ AND IT IS BOUNDED AT ALL BECAUSE THIS RUNS ON A PAGE RENDER. The same objection this module already records
+ * against `placedTimes(...).length` applies here: an unbounded row read behind a table is how one screen becomes
+ * the slowest in the section.
+ */
+const CONSOLE_LEFT_TODAY_SCAN = 400;
+
+/**
+ * The lower bound of the "Left today" scan: the first instant of that EAT day, as the ISO the feed filter takes.
+ * ⛔ `eatDayWindow` OWNS THE ARITHMETIC — the offset is not re-derived here. It returns `null` for a day key it
+ * cannot parse, and that `null` travels: no window means no scan and no column, never a scan over all of time.
+ */
+function eatDayFromIso(dayKey: string): { fromIso: string } | null {
+  const w = eatDayWindow(dayKey);
+  return w == null ? null : { fromIso: new Date(w.fromMs).toISOString() };
+}
 
 /**
  * ⛔ **THE EVENT WORD MAP IS TOTAL, AND `WORD[kind] ?? kind` IS FORBIDDEN OUTRIGHT** (rulings 317, 453).
@@ -3614,8 +3642,33 @@ export type ConsoleFilterGroup = { param: string; label: string; options: Consol
 export type ConsoleFeedRow = {
   when: string;
   whenTitle: string;
-  /** ⛔ ONE intent's own stake, formatted, never a sum (rulings 266, 360 role C, 373). */
+  /**
+   * ⛔ ONE intent's own stake, formatted, never a sum (rulings 266, 360 role C, 373).
+   * ⚠️ AMENDED 2026-09-24, NOT BYPASSED: `leftToday` below is a second money cell on this row and it IS derived
+   * from a sum. "Never a sum" still governs THIS field — the Stake column is one intent's own figure and the
+   * first `.amount` cell on the row, which is what 373's "money second" assertion measures.
+   */
   stake: string;
+  /**
+   * ⭐ WHAT WAS LEFT OF THE DAY'S STAKE BUDGET AFTER THIS ROW (owner, 2026-09-24).
+   *
+   * ONE amount, because the ceiling it counts against is named in the column HEADER — ruling 373's own named
+   * fallback for a third money cell, and the reason it exists: two figures in one narrow cell is what pushed the
+   * money off a 360 screen the last time this table grew.
+   * ⛔ IT IS 50pick's CONFIGURED `capDailyStakeTzs`, NEVER THE HOLDER'S WALLET. The account belongs to a real
+   * person who may withdraw normally (D3); no console surface paints their balance (368, 459, 266), and the C7
+   * spec weighed a "Live balance" column on this very table and struck it.
+   * ⚠️ `null` for a row that moved no money, for a row from an earlier EAT day, for an account with no daily cap
+   * set, and for a row older than the scan window — the four cases `feedLeftTodayMap` refuses to answer.
+   */
+  leftToday: string | null;
+  /**
+   * The same fact in the console's ONE usage grammar (361), carried as the cell's `title`: `used X of Y`.
+   * ⛔ 361 IS UNTOUCHED BY THIS COLUMN — its words are not re-cut, they are reused verbatim. The cell paints the
+   * falling figure an officer asked to watch; the authoritative sentence is one hover away and reads exactly as
+   * the cap row on the account page reads, because both are built from the same day book.
+   */
+  leftTodayTitle: string | null;
   statusWord: string;
   statusChip: StatusChipVariant;
   typeWord: string;
@@ -4162,7 +4215,64 @@ function feedMarketName(decision: Record<string, unknown>): string | null {
   return trimmed.length === 0 ? null : clampOperatorText(trimmed, operatorBound("marketTitle"));
 }
 
-function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number): ConsoleFeedRow {
+/** One activity row's budget cell: the falling figure, and 361's own sentence behind it. */
+type FeedLeftCell = { text: string; title: string };
+
+/**
+ * ⭐ WHAT WAS LEFT OF THE DAY'S BUDGET AFTER EACH STAKE (owner, 2026-09-24).
+ *
+ * 🔴 THE ACTIVITY TABLE SAID WHAT EACH STAKE COST AND NEVER WHAT IT COST THE DAY. An officer watching the desk
+ * work could read twenty rows of TZS 5,000 and still not know whether the account was one stake from stopping —
+ * and `CAP_PER_DAY` is the second most common refusal on the live desk, so it is the question being asked.
+ *
+ * ⛔ ANCHORED ON THE DAY BOOK, SO IT CANNOT CONTRADICT THE PANEL ABOVE IT. The day's NEWEST placed row is given
+ * the book's own `stakedTzs` — the very figure the `capDailyStakeTzs` usage row renders — and each older row is
+ * that total less the stakes that came after it. Prefix-summing the intents instead would be a SECOND arithmetic
+ * for one day, and `book.ts` says why that is refused: a gate and the console may never disagree about the same
+ * day. Here they cannot, because the newest row IS the book by construction.
+ * ⛔ AND THAT IS WHY THE WALK RUNS NEWEST → OLDEST. The scan window drops a day's OLDEST rows, so a row beyond it
+ * gets NO figure rather than a wrong one; every figure returned is exact whatever the window cut off. A walk from
+ * the other end would silently understate usage on a busy day — the whole column would read too high.
+ * ⚠️ TODAY ONLY, and this is not a simplification. The cap is read LIVE and an officer may edit it, so applying
+ * today's ceiling to an older day would paint a limit that was never in force on it (`rulesVersion` is 27 on the
+ * oldest live account). A blank under a header reading "Left today" is honest; a reconstructed one is not.
+ * ⚠️ PLACED ONLY: a skipped, expired or failed row moved no money, so nothing became anything.
+ * ⚠️ CLAMPED INTO `[0, cap]`. The book sums POSITIONS and these rows are INTENTS; they agree for every placed row,
+ * but a clamp means an unexpected disagreement shows as a flat 0 rather than as a negative amount on an admin
+ * screen. A cap lowered mid-day legitimately lands here too, and 0 is the true answer in that case.
+ */
+function feedLeftTodayMap(
+  todayPlaced: readonly StoredHouseBotIntent[] | null,
+  capFor: (houseBotId: string) => number | null,
+  stakedFor: (houseBotId: string) => number | null,
+): Map<string, FeedLeftCell> {
+  const out = new Map<string, FeedLeftCell>();
+  /* ⛔ 355 · A FAILED SCAN IS NOT AN EMPTY DAY. `null` leaves every cell blank; it never paints a full budget. */
+  if (todayPlaced == null) return out;
+  const byBot = new Map<string, StoredHouseBotIntent[]>();
+  for (const r of todayPlaced) {
+    const list = byBot.get(r.houseBotId);
+    if (list) list.push(r); else byBot.set(r.houseBotId, [r]);
+  }
+  for (const [botId, rows] of byBot) {
+    const cap = capFor(botId);
+    const staked = stakedFor(botId);
+    /* An account with no daily cap has no budget to count down, and a failed book read is not a zero (355). */
+    if (cap == null || staked == null) continue;
+    let used = staked;
+    for (const r of rows) {
+      const shown = Math.max(0, used);
+      out.set(r.id, {
+        text: formatTzs(Math.min(cap, Math.max(0, cap - used))),
+        title: `used ${formatTzs(shown)} of ${formatTzs(cap)}`,
+      });
+      used -= r.stakeTzs;
+    }
+  }
+  return out;
+}
+
+function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number, left: Map<string, FeedLeftCell>): ConsoleFeedRow {
   const at = Date.parse(i.createdAt);
   /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
      instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
@@ -4173,6 +4283,10 @@ function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs:
     when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")}` : "—",
     whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM YYYY")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
     stake: formatTzs(i.stakeTzs),
+    /* ⛔ LOOKED UP, NEVER COMPUTED HERE: this function sees ONE row and the budget is a property of the day. A row
+       the map has no answer for paints nothing — the four refusals are named on `feedLeftTodayMap`. */
+    leftToday: left.get(i.id)?.text ?? null,
+    leftTodayTitle: left.get(i.id)?.title ?? null,
     statusWord: status.word,
     statusChip: status.chip,
     typeWord: CONSOLE_INTENT_KIND_WORD[i.kind],
@@ -4840,6 +4954,8 @@ export async function houseDetailForConsole(
   if (!bot) return { found: false };
 
   const dayKey = eatDayKey(nowMs);
+  /* The "Left today" scan's lower bound — the same EAT day the cap row above the table is measured over. */
+  const feedDayWindow = eatDayFromIso(dayKey);
   const label = clampOperatorText(bot.label, operatorBound("label"));
   const display = HOUSE_BOT_STATUS_DISPLAY[bot.status];
   const removed = bot.status === "REMOVED";
@@ -4939,7 +5055,7 @@ export async function houseDetailForConsole(
   const wantHistoryPage = wantHistory && q.eventId && !q.hpageAsked
     ? await consoleHistoryAnchorPage(q.eventId, bot.id, q.hpage) : q.hpage;
   const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR, boundsR,
-    feedR, feedCountR, historyR, historyCountR] = await Promise.allSettled([
+    feedR, feedCountR, historyR, historyCountR, leftScanR] = await Promise.allSettled([
     readBotAndHolder(bot.id, { nowMs }),
     houseDayBook(dayKey, bot.id),
     houseOpenExposure(bot.id),
@@ -4960,6 +5076,17 @@ export async function houseDetailForConsole(
       ? houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantHistoryPage - 1) * CONSOLE_HISTORY_PER_PAGE })
       : Promise.resolve(null),
     wantHistory ? houseBotEventStore.countAll({ houseBotId: bot.id }) : Promise.resolve(null),
+    /* ⭐ THE DAY'S PLACED STAKES, FOR THE "Left today" COLUMN — read ONLY when the activity panel is the one being
+     * drawn, and settled on its own so a failure blanks that column and nothing else (355, 435(d)).
+     * ⛔ IT IS DELIBERATELY NOT THE FEED'S OWN FILTER. The page may be filtered to one product or to SKIPPED rows,
+     * and the budget is spent by every placed stake whatever the officer is looking at — computing it from the
+     * visible rows would make the same stake read differently depending on the filter beside it. */
+    wantFeed && feedDayWindow != null
+      ? houseBotIntentStore.listFeed({
+        houseBotId: bot.id, statuses: ["PLACED"],
+        fromIso: feedDayWindow.fromIso, limit: CONSOLE_LEFT_TODAY_SCAN,
+      })
+      : Promise.resolve(null),
   ]);
 
   const holder = holderR.status === "fulfilled" && holderR.value.found ? holderR.value : null;
@@ -5006,8 +5133,16 @@ export async function houseDetailForConsole(
       feedPageRows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (feedShown - 1) * CONSOLE_FEED_PER_PAGE });
     } catch { feedPageRows = null; }
   }
+  /* ⛔ ONE ACCOUNT, SO BOTH LOOKUPS ANSWER FOR IT AND FOR NOTHING ELSE — a stray id gets `null`, never this
+     account's budget. `book` is the SAME read the `capDailyStakeTzs` usage row above the table renders. */
+  const leftScan = leftScanR.status === "fulfilled" ? leftScanR.value : null;
+  const leftToday = feedLeftTodayMap(
+    leftScan == null ? null : leftScan.rows,
+    (id) => (id === bot.id ? bot.capDailyStakeTzs : null),
+    (id) => (id === bot.id && book != null ? book.stakedTzs : null),
+  );
   const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs));
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday));
 
   const historyTotal = wantHistory && historyCountR.status === "fulfilled" ? historyCountR.value : null;
   let historyPageRows = wantHistory && historyR.status === "fulfilled" ? historyR.value : null;
@@ -5829,9 +5964,17 @@ export async function houseFeedForConsole(
   const wantPage = q.intentId && !q.pageAsked
     ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;
 
-  const { core, extra: pageRead, extraB: totalRead } = await readDeskCore(
+  const { core, extra: pageRead, extraB: totalRead, extraC: leftScan } = await readDeskCore(
     () => houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantPage - 1) * CONSOLE_FEED_PER_PAGE }),
     () => houseBotIntentStore.countFeed(feedFilter),
+    /* ⭐ THE DAY'S PLACED STAKES ACROSS EVERY ACCOUNT, for the "Left today" column. ⛔ NOT `feedFilter`: the budget
+     * is spent by every placed stake whatever the officer has filtered the table to, and a figure that changed
+     * when a product chip was clicked would be a different claim under the same header. */
+    (dayKey) => {
+      const w = eatDayFromIso(dayKey);
+      return w == null ? Promise.resolve(null)
+        : houseBotIntentStore.listFeed({ statuses: ["PLACED"], fromIso: w.fromIso, limit: CONSOLE_LEFT_TODAY_SCAN });
+    },
   );
   const shell = deskShell(core);
 
@@ -5849,8 +5992,17 @@ export async function houseFeedForConsole(
   }
 
   const byId = consoleRosterMap(core.roster);
+  /* ⛔ THE CAP AND THE DAY TOTAL BOTH COME OUT OF THE CORE SET, per account — `roster` carries every account's own
+     ceiling and `dayBooks` every account's own staked total, so a desk mixing four accounts counts each one
+     against ITS OWN budget. A bot missing from either map gets no figure rather than another bot's (355). */
+  const capById = new Map((core.roster ?? []).map((b) => [b.id, b.capDailyStakeTzs] as const));
+  const leftToday = feedLeftTodayMap(
+    leftScan == null ? null : leftScan.rows,
+    (id) => capById.get(id) ?? null,
+    (id) => core.dayBooks?.get(id)?.stakedTzs ?? null,
+  );
   const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({
-    ...consoleFeedRow(i, q.intentId, Date.now()),
+    ...consoleFeedRow(i, q.intentId, Date.now(), leftToday),
     ...consoleAccountCell(byId, i.houseBotId),
     accountHref: consoleBotHref(i.houseBotId),
     /* ⛔ ONE POPULATION FOR THE BADGE AND FOR THE CONTROL (the `CONSOLE_PENDING_STATUSES` table): a row the badge
