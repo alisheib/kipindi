@@ -127,7 +127,7 @@ for (const [locale, width] of CELLS) {
         if (hit && (hit === a || a.contains(hit))) { reachable = true; blocker = null; break; }
         if (hit) blocker = describeBlocker(hit);
       }
-      return { text: (a.textContent || "").trim().slice(0, 42), onScreen, reachable, blocker };
+      return { text: (a.textContent || "").trim().slice(0, 42), onScreen, reachable, blocker, blockedBySticky: !reachable && !!blocker && /\(sticky\)/.test(blocker) };
     });
   });
 
@@ -138,6 +138,45 @@ for (const [locale, width] of CELLS) {
     // scrolling. The defect is a link that IS on screen and still cannot be hit.
     if (!r.onScreen) { pass++; continue; }
     probed++;
+    /**
+     * ⭐ A STICKY TOP HEADER IS NOT THE DEFECT THIS GUARD EXISTS FOR, AND THE DIFFERENCE IS WHETHER
+     * SCROLLING CAN SAVE YOU. The defect it was written for — `Export / close my account` buried under
+     * the FIXED bottom rail — was unreachable because the DOCUMENT HAD ENDED: there was nowhere left to
+     * scroll. A link sitting under the sticky header at that same final position is one scroll-step away,
+     * which is the comment above's own rule ("a link scrolled out of the viewport is reachable by
+     * scrolling") applied to a link scrolled UNDER something instead of past the edge.
+     * ⛔ IT IS RE-PROVED, NOT ASSUMED. The page is scrolled up by the header's own height and the link is
+     * hit-tested again; only if it is STILL unreachable does it fail. Inferring it would have been the
+     * cheap version of this, and the cheap version is how a guard starts excusing real defects.
+     */
+    if (!r.reachable && r.blockedBySticky) {
+      const freed = await page.evaluate(async (text) => {
+        const hdr = document.querySelector("header");
+        const by = hdr ? Math.ceil(hdr.getBoundingClientRect().height) + 8 : 64;
+        window.scrollBy(0, -by);
+        await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+        const a = [...document.querySelectorAll("footer a")].find((x) => (x.textContent || "").trim().slice(0, 42) === text);
+        if (!a) return false;
+        for (const rect of a.getClientRects()) {
+          if (rect.width <= 0 || rect.height <= 0) continue;
+          const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+          if (cy < 0 || cy > window.innerHeight || cx < 0 || cx > window.innerWidth) continue;
+          const hit = document.elementFromPoint(cx, cy);
+          if (hit && (hit === a || a.contains(hit))) return true;
+        }
+        return false;
+      }, r.text);
+      ok(`${locale}@${width} · "${r.text}" is tappable (after one scroll step off the sticky header)`,
+         freed, `still covered by ${r.blocker} after scrolling`);
+      // put the page back where every other probe expects it
+      await page.evaluate(() => {
+        const el = document.scrollingElement || document.documentElement;
+        el.scrollTop = el.scrollHeight;
+        window.scrollTo(0, el.scrollHeight);
+      });
+      await page.waitForTimeout(250);
+      continue;
+    }
     ok(`${locale}@${width} · "${r.text}" is tappable`, r.reachable, r.blocker ? `covered by ${r.blocker}` : "");
   }
   /* ⛔ SECOND VACUITY FLOOR, and it is the one that would have caught the silent-scroll bug even

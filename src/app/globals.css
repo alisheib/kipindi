@@ -1394,6 +1394,25 @@ body {
    here so the one rule that needs to override it can. */
 .ticker-copy-dup { display: contents; }
 
+/* 🔴 D26 · THE 18+ LICENCE FOOTER SAT INSIDE THE VIEWPORT AT FIRST PAINT AND WAS THEN THROWN OFF IT.
+   `app-shell` is `min-h-screen flex flex-col` with `<main class="flex-1">` above `<PublicFooter>`, so while the
+   page is still a spinner `main` is short, `flex-1` stretches it to the remaining viewport, and the footer lands
+   at **y=656 inside a 780px screen**. Then the content arrives, `main` grows 520 → 6032px, and the footer leaves.
+   Measured on production at 360×780 on slow 4G with CPU 4×: one un-input shift of **0.158974** —
+   `{0, 656, 360, 124}` → `{0,0,0,0}` — **byte-identical on `/`, `/markets` and `/results`**, which is what says
+   it is the shell and not any page. Route CLS 0.1594 / 0.1594 / 0.1834 against this plan's budget of **≤ 0.05**.
+   ⛔ SO FOR ABOUT A SECOND THE FIRST THING A PLAYER ON A SLOW CONNECTION SEES OF 50PICK IS AN EMPTY BOX WITH A
+   GAMBLING-LICENCE BLOCK UNDER IT, and then the whole screen jumps.
+   ⭐ THE FIX IS TO KEEP THE FOOTER OUT OF THE FOLD, NOT TO ANIMATE THE JUMP. A layout shift is only counted for
+   what is IN the viewport, so a `main` that is at least one viewport tall puts the footer below the fold from the
+   first frame; it still moves down as content arrives, and none of that movement is visible or counted.
+   ⚠️ `svh`, NOT `vh` OR `dvh`: `dvh` CHANGES as mobile browser chrome hides on scroll, which would introduce a
+   second shift to cure the first, and `vh` is the large viewport, which overshoots on a phone. `svh` is the
+   stable small viewport — the one value here that cannot move.
+   ⚠️ It only ever ADDS height, so no page can get shorter: on a page whose content already exceeds a viewport
+   this rule is inert. `flex-1` still does the rest. */
+#main-content { min-height: 100svh; }
+
 /* 🔴 D3 · THE CHAT BUBBLE GETS OUT OF THE WAY WHILE THE READER IS MOVING.
    It covers content on NINE surfaces — a ranked player's ROI on the leaderboard, the resolution criteria on
    a detail page, a card title on home, the ⓘ plate and "Maelezo" on the board, the /results pager, a
@@ -1433,6 +1452,11 @@ html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within) {
    phone has the same problem as a 320×640 portrait one. */
 @media (max-height: 700px) {
   .kp-shortpage { min-height: auto; justify-content: flex-start; padding-top: var(--sp-4); padding-bottom: var(--sp-4); }
+  /* ⚠️ AND THE LAST 7px CAME OFF THE GAP ABOVE THE DESTINATIONS, measured on PRODUCTION rather than
+     locally — the live page carries the ticker strip this database does not, so at 320 the row sat 93.1%
+     clear where the local build read 100%. Two trees, two heights, and the live one is the one that
+     counts. `--sp-4` instead of the `mt-6` the wide layout uses: 8px, which is exactly the shortfall. */
+  .kp-shortpage nav { margin-top: var(--sp-4); }
 }
 
 /* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
@@ -4248,12 +4272,16 @@ html[data-sheet-open] .route-enter { animation: none; }
    added 20px to every card at 320 and 360 where nothing is wrong: measured, card 301.5 → 321.5. Gated here,
    320 is untouched at 301.5 and 0 cut, while 277 and 246 go to 0 cut for that same 20px, paid only where
    the benefit is. */
-@media (max-width: 300px) {
-  /* density: general — a word that has been cut to one letter is unreadable in BOTH card spacings, so
-     this is not a Compact rule. It is gated on WIDTH, not on density: below 300px the chip is clipped at
-     every setting, and above it nothing is. */
-  .mcardp-top { flex-wrap: wrap; }
-}
+/* ⛔ NOT GATED, AND THE GATE IT USED TO HAVE WAS THE WRONG MECHANISM — corrected 2026-09-23.
+   It shipped as `@media (max-width: 300px)`, reasoning that 277 and 246 are 360 and 320 at Android's
+   130% text. That is true of browser ZOOM, which shrinks the CSS viewport — but **Android's text-size
+   setting scales TEXT and leaves the viewport at 360**, so on the device the defect was found for, a
+   width gate never fires at all. A rule that cannot run in the case it was written for is not a fix.
+   ⭐ AND NO GATE IS NEEDED, WHICH IS WHAT MADE THE CORRECTION FREE: `flex-wrap: wrap` DOES NOTHING
+   while the row fits. Measured on production, gated versus ungated, at 360/320/277/246: chips cut 0 and
+   card height 301.5 / 301.5 / 343 / 343 — **identical, all eight cells**. The wrap engages exactly when
+   the content stops fitting, which is the condition we actually meant, however the text got bigger. */
+.mcardp-top { flex-wrap: wrap; }
 /* ⛔ `.mcardp .chip` and `.mcardp .chip .live-dot` DELETED — PV-13c, 2026-09-03. This pair WAS
    the per-surface descendant override stage 9 named as the reason the component had to win:
    it reached around <Chip> to restyle it, and could not reach a <Chip> at all (the component
@@ -4341,11 +4369,10 @@ html[data-sheet-open] .route-enter { animation: none; }
    shrink: shrinking it would only move the clipping onto a different field. Wrapped, both are whole.
    Gated at the same measured 300px as D65 — at 320 nothing is clipped and nothing changes (0 of 15, card
    301.5); at 277 and 246 clipping goes to 0 for 21.5px of card height, paid only where the benefit is. */
-@media (max-width: 300px) {
-  /* density: general — §A5 forbids clipping money at BOTH card spacings, so this is not a Compact rule.
-     Gated on WIDTH: below 300px the pool figure is clipped at every setting, and above it none is. */
-  .mcardp-meta { flex-wrap: wrap; }
-}
+/* ⛔ UNGATED for the same reason as `.mcardp-top` above — see that note. A width gate cannot see
+   Android's text-only scaling, and `flex-wrap: wrap` is a no-op while the row fits, so the gate bought
+   nothing and cost the case it was written for. §A5 forbids clipping money at every width and setting. */
+.mcardp-meta { flex-wrap: wrap; }
 .mcardp-meta > span:not(.dot):not(.mcardp-meta-right) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .mcardp-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--border-strong); flex-shrink:0; }
 /* 2026-09-14 (register E-400 ⑦f): the time left on a live card was painted `--yes-300`, directly under the YES/NO

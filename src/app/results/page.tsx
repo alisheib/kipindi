@@ -102,7 +102,21 @@ export default async function ResultsPage({
           been handed to the header for nothing — the exact defect this row fixed on `/live`
           (24px) and `/proposals` (32px). `<Suspense>` renders no DOM node, so this div's real
           children are the three bands of whichever branch is showing. */}
-      <div className="space-y-5">
+      {/* 🔴 D26 · `gap`, NOT `space-y-*` — AND THE SENTENCE ABOVE IS WHY IT HAD TO CHANGE.
+          “`<Suspense>` renders no DOM node” is true of the CLIENT tree and FALSE OF THE STREAM. React emits a
+          boundary marker `<template id="B:1">` into the raw HTML from the first bytes — confirmed with a plain
+          fetch, no browser — and `space-y-*` is `> :not([hidden]) ~ :not([hidden])`, a SELECTOR, which matches
+          that marker whether or not it renders. So the first real band was handed a margin it should not have,
+          and when the content swapped in, the whole column moved **24px up**: one un-input layout shift of
+          **0.0237**, measured on production, against this plan’s own “no single shift > 0.02”. The list and the
+          filter tabs painted before the page’s own title row, and anyone reaching for `Zote 210` had the target
+          move under their thumb.
+          ⭐ `gap` cannot do this: a flex container spaces RENDERED items, and a `<template>` is not one. The
+          reason this wrapper exists at all is unchanged — the container’s first child is an out-of-flow
+          `sr-only` `<h1>`, and gap ignores an absolutely-positioned child for the same reason.
+          ⛔ A `space-y-*` ON A STREAMING BOUNDARY IS A CLASS OF BUG, NOT ONE NUMBER. Swept 2026-09-24: this
+          was the only such container in `src/`. Do not reintroduce one. */}
+      <div className="flex flex-col gap-5">
         <Suspense fallback={<ResultsSkeleton />}>
           <ResultsContent state={state} searching={searching} pageNum={pageNum} />
         </Suspense>
@@ -315,19 +329,30 @@ async function ResultsContent({
           <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.results.title}</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* 🔴 D64 · `min-w-0` ALL THE WAY DOWN, OR THE COUNT RUNS OFF THE SCREEN.
+                At an effective 277px (360 at Android 130%) this block ended 10px past the viewport and at
+                246px it ended 41px past, so `NDIO 69 · HAPANA 110` painted as `NDIO 69 · HAPANA 1`.
+                ⛔ A TRUNCATED NUMERAL IS A MISREPORTED FIGURE — DESIGN_AUTHORITY's fit law says so in those
+                words — and this is worse than a cut label because the survivor is a PLAUSIBLE smaller number:
+                a reader sees 1 where the book says 110, with no ellipsis to signal it and no way to pan,
+                because `html`/`body` are `overflow-x: clip`.
+                ⭐ The cause was a flex item at `min-width: auto` refusing to shrink, measured up the chain:
+                the inner row was 170px wide ending at x=287 inside a parent 245px wide ending at x=261.
+                `min-w-0` restores shrinkability and the line is then allowed to wrap — with each SIDE kept
+                whole, so the break can only fall on the separator and never inside a figure (the D33 law). */}
           {totalCount > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <OutcomeDonut yes={yesWins} no={noWins} voided={voidCount} size={38} />
               {/* ⛔ ONE ROW PER PRODUCT, each in its own vocabulary, both words from the lexicon.
                   Never `t.results.yesOutcome` over a mixed set — see `winsIn` above. Two short
                   rows also keep this block narrow at 393px, where a single combined row would
                   have run past the viewport in SW and ZH. */}
-              <div className="flex flex-col leading-tight font-mono text-[10px] font-semibold tabular-nums">
+              <div className="flex min-w-0 flex-col leading-tight font-mono text-[10px] font-semibold tabular-nums">
                 {linesShown.map((line) => (
-                  <span key={line} className="whitespace-nowrap">
-                    <span className="text-yes-300">{sideWord(t, "YES", line)} {winsIn(line, "YES")}</span>
+                  <span key={line}>
+                    <span className="whitespace-nowrap text-yes-300">{sideWord(t, "YES", line)} {winsIn(line, "YES")}</span>
                     <span className="text-text-subtle"> · </span>
-                    <span className="text-no-300">{sideWord(t, "NO", line)} {winsIn(line, "NO")}</span>
+                    <span className="whitespace-nowrap text-no-300">{sideWord(t, "NO", line)} {winsIn(line, "NO")}</span>
                   </span>
                 ))}
               </div>

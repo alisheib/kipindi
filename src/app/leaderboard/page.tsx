@@ -588,7 +588,15 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
                   That is MEASURED, not argued: driven as a red control, `break-words` alone puts
                   `@Christopher` 2.1px past its own row's right edge at 390, while `min-w-0
                   break-words` wraps it to two lines inside the column and leaves `@asha` on one. */}
-              <div className="mt-2 flex max-w-full items-center gap-1.5">
+              {/* 🔴 D2 · BELOW `sm` THE TIER BADGE MOVES UNDER THE HANDLE, which is what gives the name
+                  its column back. Measured on production at 320: the podium handle box is ~44px, and
+                  `@Fulgence` came back as THREE lines ending in a single orphan letter — `@Ful / genc / e`
+                  — with `@Jaykishan` the same. ⭐ THE DISCRIMINATOR THAT NAMED THE CAUSE: the SAME handles
+                  render whole, on one line, in the list directly beneath the podium. So it was never handle
+                  length; it was a 22px badge and a gap taking a third of a three-column row on the narrowest
+                  phone. Stacking them returns that third to the name. ⛔ `break-words` and `min-w-0` STAY —
+                  the note above pays for both, and this change removes the pressure rather than the guard. */}
+              <div className="mt-2 flex max-w-full flex-col items-center gap-1 sm:flex-row sm:gap-1.5">
                 <span className="min-w-0 break-words font-medium text-text">@{r.handle}</span>
                 <TierBadge tier={r.tier} t={t} />
               </div>

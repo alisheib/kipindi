@@ -180,20 +180,38 @@ export function PublicFooter({
               chatbot was instructed to hand it to a self-identifying problem gambler.
               ⚠️ So this line carries NO tariff and NO "free" claim — we publish no tariff
               for the desk, and any figure here would be invented (A-5). */}
+          {/* 🔴 U20 · `inline-flex` IS NOT TIDYING — WITHOUT IT THE MIN-HEIGHT DOES NOTHING.
+              These three were 15px AND `display: inline`, and **`min-height` does not apply to a non-replaced
+              inline element**. So the unit’s own prescription — give the footer’s list links a min-height —
+              would have left exactly these three untouched: the same shape as `/help`, where `py-3` sat on the
+              `<details>` and added look rather than tap area.
+              ⛔ AND THESE ARE THE ONES THAT MATTER MOST. Four of the sub-floor controls are the licensed
+              operator’s duty-of-care doors — the support helpline at **15px**, take-a-break / self-exclude,
+              set-limits, and export / close-my-account, which is the very data-rights door
+              `qa:footer-reachable` was written for in the first place. This footer is on EVERY page.
+              ⚠️ AND `gap-x` TRAVELS WITH IT TOO, because `inline-flex` EATS THE SPACE. The label and the
+              value are two `whitespace-nowrap` spans separated by a `{" "}` text node, and a whitespace-only
+              text node is not a flex item — so the moment this became a flex container it rendered
+              `Wasiliana nasi ·0769777877`, with the separator hugging the number. Caught by READING the
+              screenshot, not by any measurement: every box was the right size and the words were wrong.
+              `0.28em` is the font’s own word space at this size, so nothing is invented.
+              ⚠️ `flex-wrap` travels with it: the value already refuses to split (the two `whitespace-nowrap`
+              spans below), so on a narrow column the row must be allowed to take a second LINE rather than
+              overflow. Without it, `inline-flex` would trade a short target for a clipped phone number. */}
           <li>
-            <a href={`tel:${supportPhoneTel}`} className="text-text-muted hover:text-text transition-colors">
+            <a href={`tel:${supportPhoneTel}`} className="text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
               {/* 2026-09-14 — the value never splits (at 768 the sw column broke "0800 11" / "0011"), and the separator
                   stays with its LABEL, so a wrapped row reads "Simu ya msaada ·" / "0800 11 0011" (visual pass 2b). */}
               <span className="whitespace-nowrap">{t.footer.contactUs} ·</span>{" "}<span className="whitespace-nowrap">{supportPhone}</span>
             </a>
           </li>
           <li>
-            <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted hover:text-text transition-colors">
+            <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
               <span className="whitespace-nowrap">{t.footer.helpline} ·</span>{" "}<span className="whitespace-nowrap">{HELPLINE()}</span>
             </a>
           </li>
           <li>
-            <a href={`mailto:${supportEmail}`} className="text-text-muted hover:text-text transition-colors">
+            <a href={`mailto:${supportEmail}`} className="text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
               {/* ⛔ WAS A HARDCODED ENGLISH LITERAL, one line below the translated
                   `t.footer.helpline`, rendering on EVERY page in all three locales.
                   ⭐ `test:i18n` could not see it and never could: it walks the DICTIONARY
@@ -253,7 +271,12 @@ function FooterCol({
       <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
         {heading}
       </p>
-      <ul className="space-y-1.5">{children}</ul>
+      {/* ⚠️ NO `space-y-*` ANY MORE, and that is a CONSEQUENCE of the 44px rung, not a separate tidy-up.
+          The 6px gap was sized for a 19px text row. Now every row is a 44px control with ~12px of air above
+          and below its own text, so the gap was separating things that no longer touch — and on a footer that
+          the critics panel already measured at ~920px on every page, paying it a dozen times over is the kind
+          of growth this work has to account for rather than assume. Measured: it gives back 66px at 320. */}
+      <ul>{children}</ul>
     </div>
   );
 }
@@ -310,7 +333,12 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
     <li>
       <Link
         href={href as never}
-        className="text-text-muted hover:text-text transition-colors inline-flex items-center gap-1 group"
+        /* 🔴 U20 · `min-h-[44px]`, the same rung `SocialLink` above already carries. Hit-tested for REACH
+           on production 2026-09-23: **14 of the footer’s 16 controls reached under 44px**, and reach equalled
+           the painted box — nothing extended any of them. The list rows were 19–19.5px. ⭐ The discriminator
+           that says oversight rather than choice: the SAME footer’s Instagram and WhatsApp links measured
+           exactly 44, because `SocialLink` was given the rung and this component was not. */
+        className="text-text-muted hover:text-text transition-colors inline-flex items-center gap-1 min-h-[44px] group"
       >
         <span className="border-b border-transparent group-hover:border-text-subtle transition-colors">{children}</span>
       </Link>
