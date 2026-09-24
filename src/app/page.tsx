@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ROOT_OPEN_GRAPH } from "./layout";
 import Link from "next/link";
 import { fill } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
@@ -39,7 +40,13 @@ export const dynamic = "force-dynamic";
  */
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
-  openGraph: { url: "/" },
+  // ⛔ SPREAD, NEVER REPLACE. `openGraph: { url: "/" }` on its own wiped og:image, og:locale,
+  // og:site_name and og:type from this page — Next merges metadata per FIELD, so a partial
+  // openGraph object replaces the layout’s entire one. Measured 0 of each on "/" against 6 on
+  // /markets, on the same deploy.
+  // ⚠️ `url` is KEPT rather than dropped: nothing here isolates whether Next synthesises og:url
+  // from `alternates.canonical`, and dropping it would risk re-deleting the tag this replaces.
+  openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },
 };
 
 /**
