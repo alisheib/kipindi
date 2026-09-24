@@ -92,7 +92,14 @@ export function MenuShell({
              that was never going to fail — the same shape as D78 on the balance-hide eye, found
              the same way, by measuring reach rather than reading a class. Pre-flighted against
              production: reach 33×51 → 46×51, `body.scrollWidth` unchanged at both 320 and 360. */
-          "inline-flex min-h-[44px] min-w-[var(--tap-min)] shrink-0 cursor-pointer list-none items-center justify-center gap-2 border border-border-control bg-bg-inset px-3 text-text-muted hover:text-text",
+          /* ⛔ D79's FLOOR IS NOT HERE, AND THE FIRST ATTEMPT TO PUT IT HERE SILENTLY DID NOTHING.
+             `min-w-[var(--tap-min)]` was added to this base string and shipped without effect:
+             `cn()` is tailwind-merge, the call site passes `min-w-0`, and on a conflict the CALLER
+             wins. Production still measured `min-width: 0px` with the new class nowhere in the
+             element's class list. ⚠️ A utility in a base string is a DEFAULT, not a guarantee —
+             anything a caller can name, a caller can delete. The floor is stated in `globals.css`
+             against `[data-bar-cell="sort"]`, where no className prop can reach it. */
+          "inline-flex min-h-[44px] shrink-0 cursor-pointer list-none items-center justify-center gap-2 border border-border-control bg-bg-inset px-3 text-text-muted hover:text-text",
           className,
         )}
       >
