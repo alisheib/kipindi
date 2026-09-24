@@ -238,6 +238,26 @@ async function maybePaymentSweeps(): Promise<void> {
   }
   const n = await notifyStillPendingDeposits();
   if (n.notified) console.log(`[lifecycle] told ${n.notified} player(s) their deposit is still pending`);
+  /**
+   * ⭐ AND IF THE QUEUE HAS CLOSED WITHDRAWALS FOR EVERYONE, SAY SO (2026-09-24).
+   *
+   * 🔴 The reconcile above already knew: on 2026-09-22 one ambiguous MIXX payout sat PROCESSING,
+   * the DERIVED payout status escalated to `unavailable` six hours later, and the withdraw form
+   * was dimmed for every player for **33 hours**. This sweep ran 396 times in that window and
+   * said nothing louder than a `console.log`. The escalation is once-per-shape and writes an
+   * audited row an officer can find; it changes NOTHING about when payouts close.
+   * ⛔ AFTER the reconcile, never before: a payout this very sweep just resolved must not be
+   * escalated as an outage, which is the same ordering the deposit notice above relies on.
+   * ⛔ AND IT CANNOT BREAK THE SWEEP. An escalation that threw would take the reconciler down
+   * with it — the one thing on this path that actually moves money back to players.
+   */
+  try {
+    const { escalatePayoutOutage } = await import("./payout-status");
+    const out = await escalatePayoutOutage();
+    if (out.raised) console.log(`[lifecycle] payouts are UNAVAILABLE and no officer declared it — raised ${out.key}`);
+  } catch (e) {
+    console.error("[lifecycle] payout outage escalation failed (the reconcile above still ran):", e instanceof Error ? e.message : e);
+  }
 }
 
 // ── Per-market scheduler reconcile (self-healing backstop, ~5-min cadence) ───

@@ -175,17 +175,23 @@ an already-saved 0 is only corrected when someone saves the Rules tab again.
    regex-counting assertion (console 1.435) reaches 12. `why` is already null for a removed account, because the
    door refuses one. It is disclosed in the comment beside it, which is why it was left rather than removed — but
    it IS a product-code guard that cannot fail, and if 1.435 is ever re-derived, this is the one to drop.
-7. 🔴 **THE ACTIVITY TAB BREAKS ITS OWN 360 CONTRACT, AND IT PREDATES THE GAME COLUMN (measured 2026-09-24).**
-   `qa:house-bots-visual` §5.2 FAILS on `/admin/desk/<id>?tab=activity` at 360: the When cell runs 21→271px
-   and pushes Stake to 271→405 while the scroll strip ends at 339, so **the money answer is off the phone**.
-   ⛔ **PROVEN NOT TO BE THE NEW COLUMN**: the account page was reverted to its pre-feature version, rebuilt and
-   re-measured, and the numbers came back IDENTICAL (21/271/405/339). Game sits sixth and cannot move Stake.
-   ⚠️ **THE LIKELY CAUSE, not yet confirmed**: the When cell is `p-3 tabular`, and `.admin-tbl td.tabular` is
-   `white-space: nowrap` — so the queued row's `due` sub-line ("fires …, gives up …") cannot wrap and sets the
-   column's width. That would make it a defect of the C8 due-line, which landed after this contract was written.
-   ▶ The fix is probably to let the due line wrap (it is not a figure, and 432(b) only pins money and timestamps
-   against clipping) — but measure before changing: this gate is not in the default route population for that
-   page, which is why it ran green for so long.
+7. ✅ **THE ACTIVITY TAB'S 360 CONTRACT IS FIXED (2026-09-24), and two of the three defects were found by
+   LOOKING at the rendered page after the gate had already passed.**
+   · **The money answer was off the phone**, and it predated the Game column: `.admin-tbl td.tabular` is
+     `white-space: nowrap`, and the queued row's due sub-line is a SENTENCE, so it could not break and set the
+     When column to 250px — pushing Stake to 271..405 against a strip ending at 339. Proven pre-existing by
+     reverting the page to its pre-feature build and re-measuring (identical numbers), then fixed by letting
+     that sentence wrap. The timestamp above it keeps the nowrap that protects it.
+   · **The Game cell was unreadable at 360** and NO GATE COULD SEE IT: the column was crushed to ~75px, so
+     `line-clamp-2` painted "Will the…" and "Bitcoin Up o…" — two markets, near-identical rows. That is the
+     /fairness defect verbatim, and `globals.css:3985` already records the answer: *"Raising the line clamp
+     could not have fixed that."* The cell gets a real minimum instead, and the CSS clamp is GONE — it was a
+     second, tighter bound nobody declared, under a server bound that is declared and pinned.
+   · **The local panel seed wrote no snapshot**, so every browser gate and every screenshot showed only the
+     no-name fallback — the one cell the fixture exists to photograph was the one it could not show.
+   ⭐ **THE LESSON, and it is the session's second of this shape: a gate passing is not the same as the screen
+   being right.** §5.2 measures the first three cells; the Game cell is sixth, so nothing in the gate looked at
+   it. `qa:house-bots-visual` now reads 64 passed / 0 failed at 360 and 1280 on both tables.
 6. ⚠️ **NOT OURS, measured during this session's closing audit — report, do not "fix":**
    · `docs/MOBILE-VISUAL-UNSEEN-2026-09.md` — the owning session repaired its 13 broken script references while
      this audit was running (`test:docs` is green again), but the reword was shaped by what the link checker
