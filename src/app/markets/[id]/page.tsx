@@ -354,7 +354,12 @@ export default async function MarketDetail({
   const heldSides = new Set(openPositions.map((p) => p.side));
   const hedgeBoth = heldSides.has("YES") && heldSides.has("NO");
   const hedgeOpposite = (side === "YES" && heldSides.has("NO")) || (side === "NO" && heldSides.has("YES"));
-  const heldLabel = [...heldSides].join(" + ");
+  /* 🔴 D39 · THIS JOINED THE STORED TOKENS, so a Swahili player read "YES + NO" inside a
+     Swahili sentence — at the moment the page tells them what they already hold. `sideWord` is
+     the one home for that word and this file already reaches for it at :519-520 and :630.
+     ⛔ `"MARKET"` is not a guess: an UPDOWN market never reaches this page (it is redirected
+     above), and it is the same literal every other call here passes. */
+  const heldLabel = [...heldSides].map((s) => sideWord(t, s, "MARKET")).join(" + ");
 
   // ── B2 · THE BONUS WARNING, BEFORE THEY CONFIRM (docs/RULES.md §2.5) ────────
   //
