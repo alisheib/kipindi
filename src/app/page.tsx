@@ -201,7 +201,7 @@ export default async function LandingPage() {
           <div className="kp-band__inner">
             <div className="kp-shead">
               <div>
-                <p className="kp-hero__eyebrow">
+                <p className="kp-hero__eyebrow text-balance">
                   <span className="kp-hero__tick" aria-hidden />
                   {/* The eyebrow NAMES THE ORDERING. `pool` when there is money on the book,
                       `new` when there is not — because "biggest pools" over a book of empty pools
@@ -279,7 +279,7 @@ export default async function LandingPage() {
           <Link href={"/updown" as never} className="kp-updown group">
             <div className="kp-updown__row">
               <div className="min-w-0">
-                <p className="kp-hero__eyebrow" style={{ marginBottom: "var(--sp-1)" }}>
+                <p className="kp-hero__eyebrow text-balance" style={{ marginBottom: "var(--sp-1)" }}>
                   <span className="live-dot" /> {t.home.updownEyebrow}
                 </p>
                 <h2 className="kp-shead__h" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
