@@ -153,6 +153,7 @@ export default async function LandingPage() {
         t={t}
         locale={locale}
         isAuthed={isAuthed}
+        paidOutTzs={stats.paidOutTzs}
         nowMs={nowMs}
         cards={{ charts: cardCharts, traders: traderMap }}
       />

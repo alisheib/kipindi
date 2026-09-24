@@ -42,6 +42,8 @@ type Props = {
   t: Dict;
   locale: Locale;
   isAuthed: boolean;
+  /** Σ CONFIRMED payouts + cashouts, TZS — the hero's third proof figure. */
+  paidOutTzs: number;
   nowMs: number;
   cards: HeroCardData;
 };
@@ -75,7 +77,13 @@ function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale
       <span className="kp-qrow__glyph" aria-hidden>
         <Glyph s={20} />
       </span>
-      <span className="kp-qrow__q">{pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh)}</span>
+      {/* ⛔ A MEASURE CEILING, NOT A WIDTH. The row is a grid whose middle track is 1fr, so the
+          question grew with the viewport and nothing stopped it: 77 characters per line at 1024
+          and 116 at 1280, against a comfortable 45–75 (measured on production 2026-09-24). At 360
+          the column is 292px ≈ 44 characters, so this cap cannot touch a phone — it only stops the
+          line running away on a desktop. The figures stay right-aligned where the design puts
+          them; this is about the length of a line of prose, not about where the money sits. */}
+      <span className="kp-qrow__q" style={{ maxWidth: "68ch" }}>{pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh)}</span>
       {/* The pool is REAL even when it is zero, so it is always stated. Only the PRICE is
           withheld — that is the distinction `market-card.tsx` draws between `fresh` and
           `noPrice`, and the two surfaces have to draw it the same way. */}
@@ -104,7 +112,7 @@ function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale
   );
 }
 
-export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Props) {
+export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, paidOutTzs }: Props) {
   const { featured } = figures;
   const chart = featured ? cards.charts.get(featured.id) : undefined;
 
@@ -154,11 +162,25 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
             </span>
             <span className="kp-proof__cap">{t.home.heroProofPool}</span>
           </div>
+          {/* 🔴 THIS SLOT STATED `Open predictions` AND INVITED THE WRONG ARITHMETIC. Beside an
+              open-markets count it reads as a ratio: 35 predictions against 59 markets, measured on
+              production 2026-09-24. Both numbers were true and the pair told a reader the platform
+              is empty. A count of things not yet decided also SHRINKS every time a market settles,
+              so the figure moved the wrong way whenever the product worked.
+              ⭐ Money already paid out only grows, it is the number a bettor actually wants, and the
+              settled strip lower down proves it row by row with a public source on each one — so the
+              hero is not asserting something the page cannot back up.
+              ⛔ `figures.openPredictions` is deliberately still computed and still on `HeroFigures`.
+              It is a real fact about the book and a future surface may want it; what changed is that
+              this slot is no longer the place to say it.
+              Gilt because it is real money (ACCEPTANCE §6 / Q5 — gold means money, and money that
+              reached a player is the strongest claim on this page). Compact form so it fits at 360
+              in all three locales without a second DOM copy, exactly as the pool figure does. */}
           <div className="kp-proof__fig">
-            <span className="kp-proof__num" style={{ color: "var(--text)" }}>
-              {formatNumber(figures.openPredictions)}
+            <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
+              {formatTzsCompact(paidOutTzs)}
             </span>
-            <span className="kp-proof__cap">{t.home.heroProofPredictions}</span>
+            <span className="kp-proof__cap">{t.home.heroProofPaid}</span>
           </div>
         </div>
 
