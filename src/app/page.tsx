@@ -289,7 +289,7 @@ export default async function LandingPage() {
                 <p className="kp-hero__eyebrow text-balance" style={{ marginBottom: "var(--sp-1)" }}>
                   <span className="live-dot" /> {t.home.updownEyebrow}
                 </p>
-                <h2 className="kp-shead__h" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
+                <h2 className="kp-shead__h text-balance" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
                 <p className="kp-trust__b" style={{ maxWidth: "52ch" }}>{t.market.udTagline}</p>
                 <p className="kp-topic__m" style={{ paddingLeft: 0, marginTop: "var(--sp-2)" }}>
                   {updownLiveCount > 0

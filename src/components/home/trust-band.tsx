@@ -129,7 +129,9 @@ export function TrustBand({
                   <span className="kp-hero__tick" aria-hidden />
                   {t.home.settledEyebrow}
                 </p>
-                <h3 className="kp-shead__h">{t.home.settledHead}</h3>
+                {/* `text-balance` on every .kp-shead__h, not some of them — it was on 3 of 5, which is the
+                    kind of inconsistency that reads as a bug on whichever heading happens to wrap. */}
+                <h3 className="kp-shead__h text-balance">{t.home.settledHead}</h3>
               </div>
               <Link href={"/results" as never} className="kp-shead__link">
                 {t.home.settledSeeAll}
