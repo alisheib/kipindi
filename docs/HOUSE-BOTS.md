@@ -1610,6 +1610,32 @@ against a constant — delete the arithmetic and it stays green. 1.626c therefor
 different sizes against a 50,000 ceiling. Its most valuable assertion is the filter one: the obvious implementation,
 summing the rows on screen, makes one stake read differently under a different chip.
 
+🔴 **AND THEN THE OWNER COULD NOT FIND IT ON THE LIVE DESK — twice over, and neither cause was visible from
+here.** Both are recorded because the pattern is the lesson: *every* instrument was green while the feature was
+effectively absent.
+
+1. **IT READ AS EMPTY.** The first cut answered only where money MOVED. Measured on production: **16 of the newest
+   20 desk rows are SKIPPED**, so the column rendered as sixteen em dashes and four figures. The question it
+   answers is *what did the budget stand at, at this row* — well defined for a queued row, which simply has not
+   changed it. A ledger that repeats a value between movements is what makes the steps visible. `feedLeftTodayMap`
+   (keyed by placed rows) became `feedLeftTodayLookup` (a function over any row): `used(row) = stakedToday −
+   Σ(placed stakes strictly newer than it)` in the feed's own order — one formula, a placed row counting its own
+   stake and a skipped one not.
+2. **IT WAS OFF THE PHONE**, at x=453 against a 339px strip. ⛔ **The GATE certified the complaint:**
+   `qa-house-bots-visual`'s below-640 §5.2 branch read *"the second answer is one scroll away BY DESIGN"* and
+   passed throughout. A gate that states the defect in its own words and goes green is the worst shape an
+   instrument can take. It now holds the activity routes to the same rule it applies from 640 up; the licence
+   survives on the ROSTER, where 432(b) actually measured it on a cell holding a usage PAIR.
+   ⭐ **The strip came back from DEAD GUTTERS, not from the figures.** `.admin-tbl td` is `padding: 12px 16px` at
+   (0,1,1), so the `p-3` those cells carry is dead, and 16px × 2 × three cells spent **96px of a 318px strip**
+   before a figure was drawn. Measured after: desk-wide **453 → 315**, per-account **453 → 320**, gate **156/0/0**.
+
+⚠️ **A GUARD THAT QUIETLY STOPPED DISCRIMINATING, in this same commit.** 1.373's subject-floor line was
+`/min-w-\[150px\]/.test(c)` — a SUBSTRING test. The responsive floor `min-w-[104px] sm:min-w-[150px]` satisfied it,
+so it kept reading *"every panel carries the floor"* while proving only *"every panel mentions 150px somewhere"*:
+it would have passed a phone floor of ZERO. Closed set now, with a control for the zero case. Found by reading the
+commit adversarially, not by any suite — which is the only way this class is ever found.
+
 ⚠️ **AND THE FIXTURE BROKE FOUR CASES NOWHERE NEAR IT.** Its two accounts took the roster to **20 of 20**, so
 1.359, 1.383 and 1.412 failed with "The roster is full" — no output pointing anywhere near this block. The repair is
 REMOVED accounts giving the slots back, **never a raised ceiling**: that ceiling is the very thing those cases
