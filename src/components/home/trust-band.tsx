@@ -192,11 +192,25 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
       {/* The named public source the outcome was judged against — the host only, because a full
           URL on a display row is noise and the market page carries the link itself. */}
       <span className="kp-settled__src">{sourceHost(row.sourceUrl)}</span>
-      {isVoid || row.amountTzs == null || row.amountTzs <= 0 ? (
+      {/* 🔴 THIS SAID "REFUNDED" OVER MARKETS THAT WERE NEVER REFUNDED. The condition was
+          `isVoid || amountTzs == null || amountTzs <= 0`, which folds THREE different states into
+          one word. A VOID really was refunded — every stake went back. But a market resolved YES or
+          NO whose pool was empty paid nothing because there was nothing in it, and telling a player
+          their money came back when no money was ever staked is a false statement about money on
+          the same panel whose header says the outcome is read and never inferred.
+          ⛔ THE ZERO ARM NOW RENDERS NOTHING rather than borrowing a word that belongs to a
+          different event. The outcome pill and the source still say what happened; silence about a
+          sum nobody staked is the only honest thing this column can say, and inventing a fourth
+          phrase would be new assessed copy in three locales for a row that has nothing to report.
+          ⚠️ `amountTzs == null` stays WITH the void arm: `settledAmount` returns null exactly when
+          the outcome is not YES or NO, so null here means VOID and nothing else.
+          Caught on production 2026-09-24: a settled row carried the "NDIO" outcome pill and the
+          refund word in the same row. */}
+      {isVoid || row.amountTzs == null ? (
         <span className="kp-settled__amt kp-settled__amt--void">{t.home.settledVoid}</span>
-      ) : (
+      ) : row.amountTzs > 0 ? (
         <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
-      )}
+      ) : null}
     </Link>
   );
 }
