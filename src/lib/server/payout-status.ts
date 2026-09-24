@@ -29,6 +29,7 @@
  * Guarded by `npm run test:cert-f1`.
  */
 import { db } from "./store";
+import { audit } from "./audit";
 import { defineConfig } from "./define-config";
 import { STUCK_PROCESSING_MS } from "./txn-filters";
 
@@ -142,6 +143,61 @@ export async function getPayoutStatus(now = Date.now()): Promise<PayoutStatusVie
     oldestStuckHours,
     derivedOverrodeDeclared: rank(derived) > rank(c.declared),
   };
+}
+
+/**
+ * ⭐ THE PLATFORM SAYS WHEN IT HAS CLOSED ITS OWN WITHDRAWALS (2026-09-24).
+ *
+ * 🔴 WHY THIS EXISTS, MEASURED. On 2026-09-22 a single withdrawal — TZS 30,000 on the MIXX rail —
+ * came back from Selcom as `resultcode=999 · AMBIGUOUS · "No reponse from upstream system"`. The
+ * reconciler correctly refused to guess and left it PROCESSING. Six hours later the DERIVED status
+ * escalated to `unavailable` and the withdraw form dimmed **for every player on the platform**.
+ * It stayed that way for **33 hours**, and the only reason anyone found out is that the owner
+ * happened to look. Nothing paged, nothing emailed, nothing alerted: the sweep that runs every five
+ * minutes already knew, and only `console.log`ged it.
+ *
+ * ⛔ THIS DOES NOT WEAKEN THE GATE, AND THAT IS DELIBERATE. It changes nothing about when payouts
+ * close — a stuck payout is unresolved money and it SHOULD stop the platform promising more. What
+ * was broken was the silence, so silence is what is fixed. Two things were considered and rejected:
+ *   · **A lower time bound on the stuck window.** It would not have helped here at all — the row
+ *     was 33 hours old, inside any sane window — so it would be loosening a money gate for a
+ *     failure nobody has seen, which is how a guard stops being able to fail.
+ *   · **Excluding house-bot or test accounts.** Owner ruling D20 says house bots are normal
+ *     players, and their withdrawals are real money leaving. A carve-out by account type is a
+ *     guard exempting exactly what it polices.
+ *
+ * ⚠️ "ONCE" IS PER PROCESS, like `auditNeedsReviewOnce` beside it: a redeploy or a second
+ * container speaks again. For an outage nobody is watching, repeating is the safe direction.
+ */
+const OUTAGE_SEEN = new Set<string>();
+
+export async function escalatePayoutOutage(now = Date.now()): Promise<{ raised: boolean; key: string | null }> {
+  const view = await getPayoutStatus(now);
+  /* Only the DERIVED half. An officer who declared an outage themselves knows about it. */
+  if (!view.derivedOverrodeDeclared || view.derived !== "unavailable") return { raised: false, key: null };
+  /* ⛔ KEYED ON THE SHAPE OF THE OUTAGE, NOT THE CLOCK: while it is the same N payouts this stays
+     one row, and the moment another joins them it speaks again — which is the transition an
+     officer most needs to hear about. */
+  const key = `payouts-unavailable::${view.stuckCount}`;
+  if (OUTAGE_SEEN.has(key)) return { raised: false, key };
+  if (OUTAGE_SEEN.size >= 50) OUTAGE_SEEN.clear();
+  OUTAGE_SEEN.add(key);
+  audit({
+    category: "WALLET",
+    action: "payouts.unavailable_derived",
+    actorId: null,
+    targetType: "PAYMENT",
+    targetId: "payouts",
+    payload: {
+      reason: "the queue closed withdrawals for every player; no officer declared this",
+      stuckCount: view.stuckCount,
+      oldestStuckHours: view.oldestStuckHours,
+      declared: view.declared,
+      derived: view.derived,
+      wayOut: "/admin/payments — Payout status, then the frozen payouts below it",
+    },
+  });
+  return { raised: true, key };
 }
 
 /** Officer action. Recorded and audited by `defineConfig`. */

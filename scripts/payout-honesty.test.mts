@@ -210,6 +210,45 @@ ok("bounds come from the validators, not re-typed literals",
   action.includes("WITHDRAW_MIN_TZS") && action.includes("WITHDRAW_MAX_TZS"),
   "The old code hardcoded 1000 / 5_000_000 beside a schema that already owned those numbers.");
 
+section("8 · a derived outage does not stay silent");
+
+/* 🔴 MEASURED, 2026-09-22. ONE withdrawal came back from Selcom as `resultcode=999 · AMBIGUOUS`,
+   the reconciler correctly refused to guess, and six hours later the DERIVED status dimmed the
+   withdraw form FOR EVERY PLAYER. It stayed that way 33 hours. The five-minute sweep already knew
+   and only console.logged it, so the outage was found because the owner happened to look.
+   ⛔ WHAT IS ASSERTED IS THE SOURCE, not a live run: the sweep must CALL the escalation, must call
+   it AFTER the reconcile (a payout this sweep just resolved is not an outage), and must not be able
+   to die of it — the reconciler is the one thing on this path that moves money back to players. */
+const lifecycleSrc = read("src/lib/server/lifecycle.ts");
+const payoutSrc = read("src/lib/server/payout-status.ts");
+
+ok("8.1 · the five-minute payment sweep CALLS the escalation",
+  /escalatePayoutOutage\(\)/.test(lifecycleSrc) && /payout-status/.test(lifecycleSrc));
+
+ok("8.2 · it runs AFTER the reconcile, so a payout this sweep just settled is never reported as an outage",
+  lifecycleSrc.indexOf("escalatePayoutOutage") > lifecycleSrc.indexOf("reconcileStalePayments"));
+
+ok("8.3 · and it cannot take the reconciler down with it — the escalation is wrapped",
+  /try \{[\s\S]{0,400}escalatePayoutOutage[\s\S]{0,400}\} catch/.test(lifecycleSrc));
+
+/* ⛔ THE HALF THAT MATTERS: it fires ONLY when nobody declared the outage. An officer who set
+   `unavailable` themselves already knows, and paging them for their own decision is how an alert
+   gets muted. */
+ok("8.4 · it speaks only for a DERIVED outage — never for one an officer declared",
+  /derivedOverrodeDeclared/.test(payoutSrc) && /view\.derived !== "unavailable"/.test(payoutSrc));
+
+/* ⭐ CONTROL · the gate itself is UNCHANGED. The fix was the silence, not the threshold: if this
+   commit had also loosened when payouts close, these three constants would have moved. */
+ok("8.5 · CONTROL · the escalation changed NOTHING about when payouts close — the thresholds are untouched",
+  DELAYED_AFTER_MS === STUCK_PROCESSING_MS && UNAVAILABLE_AFTER_HOURS === 6 && UNAVAILABLE_STUCK_COUNT === 3,
+  `${DELAYED_AFTER_MS}ms · ${UNAVAILABLE_AFTER_HOURS}h · ${UNAVAILABLE_STUCK_COUNT} rows`);
+
+/* ⭐ CONTROL · and the stuck query still counts EVERY account. A carve-out for house-bot or test
+   accounts was considered and refused: owner ruling D20 makes a house bot a normal player, and a
+   guard that exempts a class of the thing it polices is not a guard. */
+ok("8.6 · CONTROL · the derived query is not scoped to a subset of accounts — one stuck payout counts whoever owns it",
+  !/userId|houseBotId|excludeUser|isBot/.test(payoutSrc.slice(payoutSrc.indexOf("derivePayoutStatus"), payoutSrc.indexOf("export async function getPayoutStatus"))));
+
 console.log("");
 console.log("─".repeat(64));
 console.log(`  PAYOUT HONESTY (F1): ${pass} passed, ${fail} failed`);
