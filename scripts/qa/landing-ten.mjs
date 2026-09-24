@@ -171,6 +171,28 @@ const CHECKS = /* js */ `(() => {
     return [...groups.keys()].sort((a, b) => a - b).map((k) => groups.get(k));
   };
 
+  /* The physical length of the LONGEST rendered line, in em. This is what "measure" actually
+     means — a reading column of roughly 30–40em — and a raw character count is only a proxy for
+     it. The proxy breaks in Swahili, whose words are long, and it breaks on UI chrome. */
+  const widestLineEm = (el, fpx) => {
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const rows = new Map();
+    let n;
+    while ((n = walk.nextNode())) {
+      const rg = document.createRange();
+      rg.selectNodeContents(n);
+      for (const r of rg.getClientRects()) {
+        if (r.height === 0 || r.width === 0) continue;
+        const k = Math.round(r.top);
+        const cur = rows.get(k) || { l: Infinity, r: -Infinity };
+        rows.set(k, { l: Math.min(cur.l, r.left), r: Math.max(cur.r, r.right) });
+      }
+    }
+    let w = 0;
+    for (const v of rows.values()) w = Math.max(w, v.r - v.l);
+    return w / (fpx || 16);
+  };
+
   /* ── colour, through a 1×1 canvas so oklch/color-mix survive ─────────────────────────────── */
   const cv = document.createElement("canvas"); cv.width = cv.height = 1;
   const cx = cv.getContext("2d", { willReadFrequently: true });
@@ -441,7 +463,21 @@ const CHECKS = /* js */ `(() => {
       const lines = lineWords(el);                              // real lines, not height / line-height
       if (!lines) continue;
       const cpl = Math.round(t.length / lines.length);
-      if (cpl > 75) bad.push({ what: "measure above 75 characters", measured: cpl + " chars/line over " + lines.length + " lines", where: sel(el) + ' "' + textOf(el) + '"' });
+      if (cpl <= 75) continue;
+      /* 🔴 THE CHARACTER COUNT ALONE CONDEMNED A NOTICE BAR THAT IS THE RIGHT SHAPE. The signed-in
+         email-verify bar renders "Thibitisha barua pepe yako ili kuweka fedha kwenye akaunti.
+         Tumekutumia kiungo." as ONE 79-character line beside its action button — 36em, squarely
+         inside the ideal 30–40em reading column. Capping it to 75 characters would WRAP a notice
+         bar onto two lines, which is worse than the thing being reported. Seen on production
+         2026-09-24 at 768 and 1280; the frame is what settled it, not the number.
+         ⛔ THE OBVIOUS FIX — skipping single-line elements — WOULD HAVE KILLED V7 OUTRIGHT. Its own
+         RED control plants ONE 3000px line at 6px, so lines.length < 2 makes the control, and
+         therefore the whole class, unable to fail. The control is what caught that.
+         So both conditions must hold: too many characters AND a line physically longer than any
+         reading column. 36em passes, the control’s ~500em does not. */
+      const em = Math.round(widestLineEm(el, parseFloat(s.fontSize)));
+      if (em <= 45) continue;
+      bad.push({ what: "measure above 75 characters", measured: cpl + " chars/line over " + lines.length + " lines (" + em + "em)", where: sel(el) + ' "' + textOf(el) + '"' });
     }
     push("V7", bad);
   }
