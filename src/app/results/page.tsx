@@ -102,7 +102,21 @@ export default async function ResultsPage({
           been handed to the header for nothing — the exact defect this row fixed on `/live`
           (24px) and `/proposals` (32px). `<Suspense>` renders no DOM node, so this div's real
           children are the three bands of whichever branch is showing. */}
-      <div className="space-y-5">
+      {/* 🔴 D26 · `gap`, NOT `space-y-*` — AND THE SENTENCE ABOVE IS WHY IT HAD TO CHANGE.
+          “`<Suspense>` renders no DOM node” is true of the CLIENT tree and FALSE OF THE STREAM. React emits a
+          boundary marker `<template id="B:1">` into the raw HTML from the first bytes — confirmed with a plain
+          fetch, no browser — and `space-y-*` is `> :not([hidden]) ~ :not([hidden])`, a SELECTOR, which matches
+          that marker whether or not it renders. So the first real band was handed a margin it should not have,
+          and when the content swapped in, the whole column moved **24px up**: one un-input layout shift of
+          **0.0237**, measured on production, against this plan’s own “no single shift > 0.02”. The list and the
+          filter tabs painted before the page’s own title row, and anyone reaching for `Zote 210` had the target
+          move under their thumb.
+          ⭐ `gap` cannot do this: a flex container spaces RENDERED items, and a `<template>` is not one. The
+          reason this wrapper exists at all is unchanged — the container’s first child is an out-of-flow
+          `sr-only` `<h1>`, and gap ignores an absolutely-positioned child for the same reason.
+          ⛔ A `space-y-*` ON A STREAMING BOUNDARY IS A CLASS OF BUG, NOT ONE NUMBER. Swept 2026-09-24: this
+          was the only such container in `src/`. Do not reintroduce one. */}
+      <div className="flex flex-col gap-5">
         <Suspense fallback={<ResultsSkeleton />}>
           <ResultsContent state={state} searching={searching} pageNum={pageNum} />
         </Suspense>

@@ -1394,6 +1394,25 @@ body {
    here so the one rule that needs to override it can. */
 .ticker-copy-dup { display: contents; }
 
+/* 🔴 D26 · THE 18+ LICENCE FOOTER SAT INSIDE THE VIEWPORT AT FIRST PAINT AND WAS THEN THROWN OFF IT.
+   `app-shell` is `min-h-screen flex flex-col` with `<main class="flex-1">` above `<PublicFooter>`, so while the
+   page is still a spinner `main` is short, `flex-1` stretches it to the remaining viewport, and the footer lands
+   at **y=656 inside a 780px screen**. Then the content arrives, `main` grows 520 → 6032px, and the footer leaves.
+   Measured on production at 360×780 on slow 4G with CPU 4×: one un-input shift of **0.158974** —
+   `{0, 656, 360, 124}` → `{0,0,0,0}` — **byte-identical on `/`, `/markets` and `/results`**, which is what says
+   it is the shell and not any page. Route CLS 0.1594 / 0.1594 / 0.1834 against this plan's budget of **≤ 0.05**.
+   ⛔ SO FOR ABOUT A SECOND THE FIRST THING A PLAYER ON A SLOW CONNECTION SEES OF 50PICK IS AN EMPTY BOX WITH A
+   GAMBLING-LICENCE BLOCK UNDER IT, and then the whole screen jumps.
+   ⭐ THE FIX IS TO KEEP THE FOOTER OUT OF THE FOLD, NOT TO ANIMATE THE JUMP. A layout shift is only counted for
+   what is IN the viewport, so a `main` that is at least one viewport tall puts the footer below the fold from the
+   first frame; it still moves down as content arrives, and none of that movement is visible or counted.
+   ⚠️ `svh`, NOT `vh` OR `dvh`: `dvh` CHANGES as mobile browser chrome hides on scroll, which would introduce a
+   second shift to cure the first, and `vh` is the large viewport, which overshoots on a phone. `svh` is the
+   stable small viewport — the one value here that cannot move.
+   ⚠️ It only ever ADDS height, so no page can get shorter: on a page whose content already exceeds a viewport
+   this rule is inert. `flex-1` still does the rest. */
+#main-content { min-height: 100svh; }
+
 /* 🔴 D3 · THE CHAT BUBBLE GETS OUT OF THE WAY WHILE THE READER IS MOVING.
    It covers content on NINE surfaces — a ranked player's ROI on the leaderboard, the resolution criteria on
    a detail page, a card title on home, the ⓘ plate and "Maelezo" on the board, the /results pager, a
