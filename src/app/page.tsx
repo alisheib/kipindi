@@ -89,7 +89,21 @@ export default async function LandingPage() {
   ]);
   const nowMs = Date.now();
   const liveAll = liveRaw.filter((m) => !isClosedByTime(m));
-  const updownLiveCount = updownLiveRaw.filter((m) => !isClosedByTime(m)).length;
+  // 🔴 ONE PAGE WAS CARRYING TWO DEFINITIONS OF "LIVE". This counted `!isClosedByTime`, which is
+  // the RESOLUTION clock, while every other figure on this page — the open-markets count, the pool,
+  // the conviction bar, the grid — comes from `matchesStatus(..., "open")`, which is the BETTING
+  // clock (`!selectionClosed`). So the same word meant two different things a few hundred pixels
+  // apart, on a surface whose whole job is to state the size of the book.
+  // ⭐ The betting clock is the right one HERE and not merely the consistent one: the band it feeds
+  // is a CTA that says "play", and a round whose betting has shut is not one a reader can act on.
+  // ⚠️ THIS DOES NOT CLOSE THE WHOLE GAP, AND SAYING SO IS THE POINT. Measured on production
+  // 2026-09-24 at 08:00, over three uncached reads: the landing said 6 while /updown showed 9 rounds
+  // across its 12 asset x duration chains still taking bets. The resolution clock is the LOOSER of
+  // the two, so it should have over-counted and instead returned fewer — which means rows are also
+  // being dropped for a reason not visible from any public surface, and that needs a database read
+  // this change cannot make. What is fixed here is the contradiction the page could see about
+  // itself; the residual is recorded, not papered over.
+  const updownLiveCount = updownLiveRaw.filter((m) => !isSelectionClosed(m)).length;
 
   // ── ONE decorated board read, four consumers ────────────────────────────────────────────────
   // The hero's figures, the grid, the topic tiles and the cards all fold over THIS array. Every
@@ -207,7 +221,11 @@ export default async function LandingPage() {
               </Link>
             </div>
 
-            <div className="market-grid">
+            {/* Same orphan-row fix as the topic tiles, for the same measured reason: at 768 the
+                grid is two columns with three cards, and the lone card in the final row came out
+                320px against its neighbours’ 354px. Scoped to the landing page by being written
+                here rather than on `.market-grid`, which /markets also uses. */}
+            <div className="market-grid" style={{ gridAutoRows: "1fr" }}>
               {comp.grid.slice(0, LANDING_GRID_SIZE).map((r) => {
                 const cc = cardCharts.get(r.id) ?? { spark: [] };
                 return (

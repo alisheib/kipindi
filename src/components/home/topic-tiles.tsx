@@ -38,9 +38,19 @@ export function TopicTiles({
         <span className="kp-hero__tick" aria-hidden />
         {t.common.topic}
       </p>
-      <h3 className="kp-shead__h">{t.common.browseByTopic}</h3>
+      {/* `text-balance`: without it "Vinjari kwa mada" drops "mada" alone onto a second line
+          under browser zoom (measured at 130% and 200%). */}
+      <h3 className="kp-shead__h text-balance">{t.common.browseByTopic}</h3>
 
-      <div className="kp-topics">
+      {/* 🔴 `gridAutoRows: 1fr` — THE LAST TILE WAS 15px SHORTER THAN EVERY OTHER TILE. Measured at
+          360 on production: the tracks resolve to 86.25 / 86.25 / 86.25 / 71.25 because rows 1–3 each
+          contain at least one tile whose meta wraps to two lines, and the final row holds one tile
+          with a one-line meta. Every row here is IMPLICIT and `grid-auto-rows` was `auto`, so each
+          row sized to its own content and the orphan came up short against a visible bordered box.
+          ⚠️ `1fr` and not a fixed height: the tallest tile decides, so this cannot clip a longer
+          topic name or a wrapped pool figure, and it costs 15px once rather than a magic number that
+          would be wrong in the next locale. At widths where the rows are explicit this is inert. */}
+      <div className="kp-topics" style={{ gridAutoRows: "1fr" }}>
         {/* `All topics` carries the whole open count, which is the hero's own number. */}
         <Link href={"/markets" as never} className="kp-topic">
           <span className="kp-topic__glyph" aria-hidden><I.layoutGrid s={18} /></span>
