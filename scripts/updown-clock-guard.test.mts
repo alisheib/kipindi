@@ -36,7 +36,7 @@
  *
  * No network, no database, no build: pure functions plus a source read. Belongs in `predeploy`.
  */
-import { roundPhase, msOrNull } from "../src/lib/updown-card-phase.ts";
+import { roundPhase, msOrNull, heroPrice, heroMovePct, type RoundPhaseState } from "../src/lib/updown-card-phase.ts";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -175,7 +175,164 @@ console.log("\n§6 · controls");
     !Number.isFinite(NaN));
 }
 
+/* ── §7 · D36 · WHICH PRICE DOES A SURFACE PRINT FOR A DECIDED ROUND? ─────────────────────── */
+/* 🔴 THE DEFECT THIS REPLACES. `/updown` handed `activeAsset!.livePrice` to every card whatever
+   its state, so a RESOLVED card ticked today's quote in its big bold figure — while its own
+   settled pod, six rows below, printed the honest `open → close`. One card, one round, two
+   prices, and the loud one was the wrong one. Four things were wrong, not one: the price, the
+   percentage, the DIRECTION GLYPH and the win/lose INK — so a round that resolved DOWN wore a
+   green ▲ beside its own "Down wins" pill whenever the market had since risen past the open.
+
+   ⭐ WHY THIS IS A UNIT GUARD AND NOT A LIVE DRIVE — the population is the point (§0 trap 3).
+   A board driver sees only the rounds the market happens to be running: a `resolved` card is on
+   screen for one window before the chain rolls, and a **void** card — the ONLY state where
+   `closePrice` can be null, and so the only state that can produce a NaN — may not appear for
+   days. A sweep over such a board returns a confident zero about THIS BOARD and says nothing
+   about the code. Here every state is constructed, so the population is total and fixed. */
+console.log("\n§7 · the price a surface prints for a decided round (D36)");
+{
+  const LIVE = 100, OPEN = 80, CLOSE = 60;
+  const at = (state: RoundPhaseState, closePrice: number | null = CLOSE) =>
+    heroPrice({ state, closePrice, livePrice: LIVE });
+  const move = (state: RoundPhaseState, closePrice: number | null = CLOSE, openPrice: number | null = OPEN) =>
+    heroMovePct({ state, openPrice, closePrice, livePrice: LIVE });
+
+  // ⛔ VALUES, NOT SYMBOLS. Every figure below is computed here by hand: from 80, a close of 60
+  // is −25% and a live read of 100 is +25%. A helper returning a constant cannot satisfy both.
+  ok("§7a a RUNNING round prints the live read",
+    (["open", "locked", "closing", "confirming"] as RoundPhaseState[]).every((s) => at(s) === LIVE),
+    "one of the four running states is taking the close price");
+  ok("§7b a SETTLED round prints its own close",
+    at("resolved") === CLOSE && at("void") === CLOSE,
+    "this is the defect: a settled round showing today's quote");
+  ok("§7c ⛔ a void round with NO close price prints NOTHING — it does not fall back to live",
+    at("void", null) === null && at("resolved", null) === null,
+    "`?? livePrice` here is the defect wearing a null-check's face");
+  ok("§7d `confirming` deliberately keeps the live read",
+    at("confirming", null) === LIVE,
+    "its closePrice is null for the whole settlement window; treating it as settled blanks the price on every round");
+
+  ok("§7e the move is derived from the price that is PRINTED: −25% from the close, not +25% from live",
+    move("resolved") === -25 && move("open") === 25,
+    "a percentage off the live quote under a figure off the close is a card contradicting itself");
+  ok("§7f 🔴 …so a DOWN round stays negative however far the market has since risen",
+    move("resolved", 60) < 0 && move("open", 60) > 0,
+    "this is the green ▲ beside 'Down wins'");
+  ok("§7g the move is null — never NaN, never Infinity — where it cannot be computed",
+    move("void", null) === null && move("resolved", CLOSE, 0) === null && move("open", CLOSE, null) === null
+      && [move("void", null), move("resolved", CLOSE, 0)].every((v) => v === null || Number.isFinite(v)),
+    "a zero open divides by zero and Infinity formats as a string rather than throwing");
+
+  // ⭐ ANTI-CONSTANT. Same round, same prices, two states — a hardcoded return cannot pass both.
+  ok("§7h the same round answers DIFFERENTLY either side of settlement",
+    at("open") !== at("resolved") && move("open") !== move("resolved"));
+}
+
+/* ── §7i–§7r · the call sites, so the helper cannot become a writer with no reader ────────── */
+console.log("\n§7i · both surfaces call the one function");
+{
+  // ⛔ COMMENTS STRIPPED FIRST, and §7p is why. This section's own fix comment QUOTES the
+  // spelling it counts, so a guard reading raw text counted the prose and reported two. Same
+  // rule §5 states above: a guard that matches a comment is a guard that cannot fail.
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "");
+  const board = strip(read("src/app/updown/page.tsx"));
+  const detail = strip(read("src/app/updown/[roundId]/page.tsx"));
+  const phase = strip(read("src/lib/updown-card-phase.ts"));
+
+  /* ⛔ THE PROP'S VALUE IS EXTRACTED AND ASSERTED POSITIVELY, never tested with a bare negative.
+     `!/livePrice=\{activeAsset!\.livePrice\}/` looks like a guard and is not one: it passes if
+     the prop is renamed, if the call site is deleted, if the whole file is gone — and a revert
+     spelled `livePrice={ activeAsset!.livePrice }` walks straight through on one space. So the
+     value is brace-matched out and must START WITH the chooser. ⭐ And a failed extraction FAILS
+     (§7i, §7k): a read that did not land is not a zero. */
+  const propValue = (src: string, prop: string): string | null => {
+    const at = src.indexOf(`${prop}={`);
+    if (at < 0) return null;
+    let depth = 0;
+    for (let k = at + prop.length + 1; k < src.length; k++) {
+      if (src[k] === "{") depth++;
+      else if (src[k] === "}") { depth--; if (depth === 0) return src.slice(at + prop.length + 2, k); }
+    }
+    return null;
+  };
+  const bLive = propValue(board, "livePrice");
+  const bMove = propValue(board, "movePct");
+
+  ok("§7i the board's `livePrice` prop is still there to read", bLive !== null,
+    "a failed extraction must fail loudly, or every assertion below it is a confident zero");
+  ok("§7j …and its value is CHOSEN by `heroPrice`, not taken from the asset",
+    bLive !== null && /^heroPrice\(/.test(bLive.trim()),
+    "`livePrice={activeAsset!.livePrice}` is D36 verbatim — what shipped until 2026-09-24");
+  ok("§7k the board's `movePct` prop is still there to read", bMove !== null);
+  ok("§7l …and its value is CHOSEN by `heroMovePct`, with no arithmetic left on the board",
+    bMove !== null && /^heroMovePct\(/.test(bMove.trim()) && !/\/ r\.openPrice\) \* 100/.test(board),
+    "the half-fix: `livePrice=` corrected while the percentage below it still ticks every 20s");
+  // ⛔ AND BOTH MUST BE HANDED THE ROUND'S OWN STATE AND CLOSE. Calling the chooser with only the
+  // asset's live read would satisfy §7j and §7l and still tick on a settled card.
+  ok("§7m …and both are handed the ROUND's state and close, not just the asset's price",
+    [bLive, bMove].every((v) => v !== null && /state:\s*r\.state/.test(v) && /closePrice:\s*r\.closePrice/.test(v)),
+    "a chooser that is never told the state cannot choose");
+  ok("§7n …and there is still exactly ONE <UpDownCard> call site for all of this to govern",
+    (board.match(/<UpDownCard/g) ?? []).length === 1,
+    "a second board would need the same rule and nothing above would notice it");
+
+  ok("§7o ⭐ the ROUND PAGE chooses with the SAME function, so the two cannot disagree about the PRICE",
+    /const heroLive = heroPrice\(/.test(detail),
+    "a rule written on one of two surfaces is a coincidence, not a rule");
+  ok("§7p the phase module holds exactly ONE spelling of `settled`",
+    (phase.match(/state === "resolved" \|\| state === "void"/g) ?? []).length === 1,
+    "three functions here each carried their own copy; the board carried none, and that missing copy was D36");
+
+  /* ⚠️ THE REST OF THE TREE STILL SPELLS IT BY HAND — seven copies, and this counts them so an
+     EIGHTH cannot arrive unnoticed. They are correct today and are left alone rather than folded
+     into an unrelated commit; the number is the point, not the spelling. Raise it deliberately,
+     or better, replace a copy with `roundIsSettled` and lower it. */
+  const HAND_SPELT = [
+    ["src/components/updown/updown-card.tsx", 2],
+    ["src/app/updown/[roundId]/page.tsx", 1],
+    ["src/lib/server/updown-board.ts", 3],
+  ] as const;
+  for (const [rel, expected] of HAND_SPELT) {
+    const hits = (strip(read(rel)).match(/=== "resolved" \|\| [\w.]+ === "void"/g) ?? []).length;
+    ok(`§7q ${rel} still hand-spells the settled test exactly ${expected}×`, hits === expected,
+      `found ${hits} — if this grew, route it through \`roundIsSettled\`; if it shrank, lower the number here`);
+  }
+
+  /* ⭐ §7r · THE POPULATION PROOF. The six states §7a–§7b exercise are not a list somebody
+     remembered — they are the whole union, read out of the source and compared. Add a seventh
+     state to `RoundPhaseState` and this fails until someone decides which price it prints;
+     without it, a new state would silently inherit whichever branch it happened to fall into. */
+  const UNION = (phase.match(/export type RoundPhaseState = ([^;]+);/)?.[1] ?? "")
+    .split("|").map((x) => x.trim().replace(/"/g, "")).filter(Boolean);
+  const EXERCISED = ["open", "locked", "closing", "confirming", "resolved", "void"];
+  ok("§7r every state in the RoundPhaseState union has a price rule exercised above",
+    UNION.length === EXERCISED.length && UNION.every((x) => EXERCISED.includes(x)),
+    `union reads [${UNION.join(", ")}] — a state nobody tested is a state nobody chose a price for`);
+}
+
+/* ── §7s · controls — every §7 matcher shown able to say no ───────────────────────────────── */
+console.log("\n§7s · controls");
+{
+  ok("§7s control · the reverted prop spelling IS detected",
+    /livePrice=\{activeAsset!\.livePrice\}/.test("                livePrice={activeAsset!.livePrice}"));
+  ok("§7t control · the board doing its own move arithmetic IS detected",
+    /\/ r\.openPrice\) \* 100/.test("                movePct={ ((activeAsset!.livePrice - r.openPrice) / r.openPrice) * 100 }"));
+  // ⭐ THE MIRROR-CONTROL THAT MATTERS: the plausible wrong helper, written out, and §7c's own
+  // assertion run against it. If §7c could pass for `?? livePrice`, it would pass for the defect.
+  {
+    const withFallback = (closePrice: number | null, livePrice: number | null) => closePrice ?? livePrice;
+    ok("§7u control · §7c's assertion REJECTS a `?? livePrice` helper",
+      withFallback(null, 100) === 100 && heroPrice({ state: "void", closePrice: null, livePrice: 100 }) === null,
+      "the tempting null-check is the defect wearing a null-check's face");
+  }
+  ok("§7v control · a second copy of the settled spelling IS counted",
+    ('const settled = state === "resolved" || state === "void";\nconst s2 = state === "resolved" || state === "void";'
+      .match(/state === "resolved" \|\| state === "void"/g) ?? []).length === 2);
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 // ⛔ A suite that silently stops running is a suite that cannot fail (see `chart-series`).
-if (pass + fail < 28) { console.error(`!! only ${pass + fail} assertions ran — treating as failure.`); process.exit(3); }
+// ⛔ RAISE THIS WITH EVERY SECTION ADDED. Left at 28 while §7 added 17, the whole of §7 could be
+//    deleted and this suite would still report ALL PASS over the 32 that remained.
+if (pass + fail < 56) { console.error(`!! only ${pass + fail} assertions ran — treating as failure.`); process.exit(3); }
 process.exit(fail === 0 ? 0 : 1);

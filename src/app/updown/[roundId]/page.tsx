@@ -49,6 +49,7 @@ import { refreshCadence, handoverPollUntil } from "@/lib/refresh-cadence";
 // E-166 · the auto-advance. Client-side because it is a navigation on an observed transition.
 import { UpDownHandover } from "@/components/updown/updown-handover";
 import { usd } from "@/lib/usd-price";
+import { heroPrice, roundIsSettled } from "@/lib/updown-card-phase";
 
 export const dynamic = "force-dynamic";
 
@@ -141,10 +142,16 @@ export default async function UpDownRoundPage({
   // through from a locked card lands on a page still offering the buttons — and the server
   // then refuses the bet. That gap is worse than no lock at all.
   const locked = round.state === "locked";
-  const decided = round.state === "resolved" || round.state === "void";
+  const decided = roundIsSettled(round.state);
 
-  // Hero price: the current live read while open, the round's own close once decided.
-  const heroLive = decided ? round.closePrice : asset.livePrice;
+  /* Hero price: the current live read while open, the round's own close once decided.
+     ⭐ D36 · THIS RULE NOW LIVES IN `heroPrice`, and `/updown` CALLS THE SAME FUNCTION. It was
+     written here and only here, so the board — which never had it — showed a settled card
+     ticking today's quote while this page showed the same round's close. A rule that exists on
+     one of two surfaces is not a rule; it is a coincidence that held until someone built the
+     second surface. Sharing the function is what makes "the two cannot disagree" structural
+     rather than something a comment asserts. */
+  const heroLive = heroPrice({ state: round.state, closePrice: round.closePrice, livePrice: asset.livePrice });
   const move = heroLive != null && round.openPrice != null ? heroLive - round.openPrice : null;
   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.

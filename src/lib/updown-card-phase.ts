@@ -48,6 +48,68 @@ export function msOrNull(iso: string | null | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
+/**
+ * ⭐ D36 · IS THIS ROUND OVER FOR GOOD? One spelling, because the three functions below each
+ * carried their own copy of `state === "resolved" || state === "void"` — and `/updown`, the one
+ * surface that needed it most, carried none at all. That missing copy IS D36.
+ *
+ * ⚠️ Six further copies still spell it by hand: `updown-card.tsx` (×2), `updown/[roundId]/page.tsx`
+ * (×1) and `src/lib/server/updown-board.ts` (×3). They are correct today and are left alone here
+ * rather than folded into an unrelated commit — but §7q of `updown-clock-guard.test.mts` COUNTS
+ * them, file by file, so a SEVENTH cannot arrive unnoticed the way the missing one did.
+ */
+export function roundIsSettled(state: RoundPhaseState): boolean {
+  return state === "resolved" || state === "void";
+}
+
+/**
+ * ⭐ D36 · WHICH PRICE DOES A SURFACE PRINT FOR THIS ROUND — and it is NOT always the live one.
+ *
+ * 🔴 THE BOARD AND THE ROUND PAGE ANSWERED THIS DIFFERENTLY, and the board was wrong. `/updown`
+ * handed `asset.livePrice` to every card whatever its state, so a **settled** card kept ticking
+ * today's quote at the top while its own settled pod, three rows below, printed the honest
+ * `open → close`. One card, one round, two prices — and the ticking one was the bigger, bolder
+ * figure. `/updown/[roundId]` has had the rule right since E-72; this is that rule lifted to one
+ * place, so the two surfaces cannot describe one round differently again.
+ *
+ * ⛔ SETTLED IS `resolved` OR `void` ONLY, exactly where the round page draws the line. A
+ * `confirming` round has NO close price yet, so it keeps the live read rather than printing a
+ * null: the price there is not wrong, it is merely not final, and the card's own status word
+ * already says so.
+ *
+ * ⛔ AND IT RETURNS NULL ON PURPOSE. A void round can settle with no close price at all, and
+ * that null must reach the paint — the card renders A-5's em-dash and "awaiting read" for it.
+ * ⛔ Never `?? livePrice` on the way past. Falling back to the live quote IS the defect this
+ * function exists to stop, and it would fail only on the rounds nobody is watching.
+ */
+export function heroPrice(input: {
+  state: RoundPhaseState;
+  closePrice: number | null;
+  livePrice: number | null;
+}): number | null {
+  return roundIsSettled(input.state) ? input.closePrice : input.livePrice;
+}
+
+/**
+ * The move that belongs BESIDE `heroPrice` — derived from the same figure, never from a second
+ * one. A percentage computed off the live quote, printed under a price taken from the close, is
+ * how one card comes to show a move its own two numbers do not produce.
+ *
+ * ⛔ `openPrice !== 0` is not defensive noise. A zero open divides by zero, and `Infinity`
+ * formats as a string rather than throwing, so it would have shipped silently.
+ */
+export function heroMovePct(input: {
+  state: RoundPhaseState;
+  openPrice: number | null;
+  closePrice: number | null;
+  livePrice: number | null;
+}): number | null {
+  const price = heroPrice(input);
+  const { openPrice } = input;
+  if (price == null || openPrice == null || openPrice === 0) return null;
+  return ((price - openPrice) / openPrice) * 100;
+}
+
 export type RoundPhase = {
   /** Bets are closed but the round has not closed — the "result in" window. */
   locked: boolean;
@@ -63,7 +125,7 @@ export function roundPhase(input: {
 }): RoundPhase {
   const { state, selectionClosesAtMs, closesAtMs, nowMs } = input;
 
-  const settled = state === "resolved" || state === "void";
+  const settled = roundIsSettled(state);
   const pastLock = selectionClosesAtMs != null && nowMs >= selectionClosesAtMs;
   const beforeClose = nowMs < closesAtMs;
 
@@ -113,7 +175,7 @@ export function resultClock(input: {
   nowMs: number;
 }): ResultClock {
   const { state, closesAtMs, expectedResultAtMs, nowMs } = input;
-  const settled = state === "resolved" || state === "void";
+  const settled = roundIsSettled(state);
   const awaiting = !settled && nowMs >= closesAtMs;
   if (!awaiting || expectedResultAtMs == null) {
     return { awaiting, targetMs: null, counting: false };
@@ -222,7 +284,7 @@ export function handoverClock(input: {
   const { state, settledAtMs, successorExists, successorOpensAtMs, chainRunning, nowMs } = input;
   const holdMs = input.holdMs ?? DWELL_HANDOVER_HOLD_MS;
 
-  const settled = state === "resolved" || state === "void";
+  const settled = roundIsSettled(state);
   if (!settled) return { phase: "none", targetMs: null, counting: false, ready: false };
 
   // ⛔ THE HOLD IS ANCHORED TO THE RESULT, NOT TO THE MOUNT. Anchoring it to when the component
