@@ -248,6 +248,14 @@ log("\n── 5b · fewer than a boardful close today ────────�
   ok("and the rest follow by closing time", tail.every((d, i) => i === 0 || tail[i - 1] <= d),
     tail.join(","));
   ok("closing-today still counts only the 24h window", f.closingToday === 2, String(f.closingToday));
+  // ⭐ THE CONTROL FOR THIS WHOLE SECTION. §5b is the only place the FALLBACK branch runs, and the
+  // fallback is the one branch where the lens can quietly regress — if it ever stopped topping the
+  // board up, a reader would see a short board and no assertion above would notice, because they
+  // all describe rows that ARE there. Only 2 markets close today against a board of 5, so a FULL
+  // board is only possible if the tail came from outside the today set. Stated rather than implied.
+  ok("CONTROL: a full board here is only reachable through the fallback",
+    f.closingToday < QUESTION_BOARD_SIZE + 1 && f.board.length === QUESTION_BOARD_SIZE,
+    `today=${f.closingToday} board=${f.board.length} of ${QUESTION_BOARD_SIZE}`);
 }
 
 // ── 6 · an empty platform ──────────────────────────────────────────────────────
