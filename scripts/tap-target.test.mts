@@ -560,8 +560,29 @@ const NAMED_CONTROLS: Array<{ id: string; file: string; extract: (body: string) 
     extract: (body) => /\n\.mcardp-info\s*\{([^}]*)\}/.exec(body)?.[1] ?? null,
   },
 ];
-/** A hand-typed pixel height at the call site — the PV-13a/b defect shape itself. */
-const HAND_TYPED_PX = /\b(?:min-)?height:\s*(\d+)px\b|\bh-\[(\d+)px\]|\bmin-h-\[(\d+)px\]/;
+/**
+ * A hand-typed pixel SIZE at the call site — the PV-13a/b defect shape itself.
+ *
+ * 🔴 WIDTH WAS ADDED 2026-09-24, BECAUSE THIS GATE WATCHED ONE AXIS OF A TWO-AXIS CONTROL AND
+ * THE OTHER AXIS WAS ALREADY WRONG WHEN IT WAS WRITTEN. §6 exists because the balance-hide eye
+ * shipped `h-[42px]` inside a 44px capsule. The HEIGHT was moved to `h-full` and guarded here —
+ * and the same call site kept `w-[32px] sm:w-[36px]`, a hand-typed literal **8px under
+ * `--tap-min`**, which this regex could not see. Measured on production signed-in at 320 and
+ * 360: **reach 35×55px** against a 40px floor, on the control that hides a player's money.
+ *
+ * ⛔ A CONTROL IS NOT A RUNG IN ONE DIMENSION. The note above even says the bare default `h-7`
+ * "is already exactly --tap-min on this repo's overridden scale" — which makes `w-7` 40px too,
+ * and makes the 32 a deliberate-looking number that nothing in the repo could challenge.
+ *
+ * ⚠️ NO OTHER GATE COULD HAVE CAUGHT IT EITHER, AND THE REASON IS THE POPULATION, NOT THE RULE:
+ * `test:tap-target` §3 reads a VOCABULARY of JSX tags and `CashEye` is a kit component;
+ * `qa:tap-truth` and `qa:tap-hit` measure rendered boxes but run SIGNED OUT, and this control
+ * only exists for a signed-in player. Every gate was green on a surface none of them opened.
+ *
+ * ⚠️ IT DOES NOT FLAG THE OTHER NAMED CONTROL, AND THAT WAS CHECKED RATHER THAN HOPED:
+ * `.mcardp-info` declares `width: var(--h-control-md)` — a rung, not a literal.
+ */
+const HAND_TYPED_PX = /\b(?:min-)?(?:height|width):\s*(\d+)px\b|\b(?:min-)?[hw]-\[(\d+)px\]/;
 {
   const notFound: string[] = [];
   const offRung: string[] = [];
@@ -569,14 +590,14 @@ const HAND_TYPED_PX = /\b(?:min-)?height:\s*(\d+)px\b|\bh-\[(\d+)px\]|\bmin-h-\[
     const region = c.extract(rdSrc(c.file));
     if (region === null) { notFound.push(`${c.id} — not found at ${c.file} (the gate lost its subject)`); continue; }
     const m = HAND_TYPED_PX.exec(region);
-    if (m) offRung.push(`${c.id} hand-types ${m[1] ?? m[2] ?? m[3]}px at the call site instead of reading a --h-control-* rung`);
+    if (m) offRung.push(`${c.id} hand-types ${m[1] ?? m[2]}px at the call site instead of reading a --h-control-*/--tap-min rung`);
   }
   ok("6.1 both named controls were FOUND (the gate did not lose its subject)",
      notFound.length === 0, notFound.join(" · "),
      `${NAMED_CONTROLS.length} named controls checked: ${NAMED_CONTROLS.map((c) => c.id).join(" · ")}`);
-  ok("6.2 neither named control hand-types a pixel height at its call site — both defer to a --h-control-* rung",
+  ok("6.2 neither named control hand-types a pixel height OR WIDTH at its call site — both defer to a rung in BOTH axes",
      offRung.length === 0, offRung.join(" · "),
-     "wallet-balance-pill.tsx's CashEye takes h-full (the capsule's own --h-control-md); .mcardp-info takes var(--h-control-md) directly");
+     "wallet-balance-pill.tsx's CashEye takes h-full (the capsule's own --h-control-md) and w-[var(--tap-min)]; .mcardp-info takes var(--h-control-md) in both axes");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
