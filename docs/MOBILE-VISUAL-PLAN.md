@@ -30,185 +30,102 @@
 3. Work those two units exactly as §11 (Verification) says: RED guard first, gates twice, docs in the same commit, push, production re-measure.
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
-```
-▶ NEXT: Session S4 → **U8** (countdown everywhere + guest market split) and **U9/U10**, which now carry
-  most of what S3b found. Read §5 (hard rules) and §9 before touching code. **Phases A and B are DONE, and
-  U7 closed early in S3b** — the switch exists; the card, the bar, the header and the home page are on the
-  phone rung; and the chat bubble now leaves while the reader is moving.
-  ⛔ **READ §2's S3b ENTRY FIRST.** It records the method that made this session possible with a broken
-  toolchain (inject the candidate into PRODUCTION and measure the defect vanish), and the four instrument
-  lies that each cost a round trip. Both are worth more than any single fix in it.
-  ⛔ U7 IS THE ONE WITH A NAMED VICTIM AND IT IS WIDER THAN ITS REGISTER LINE. D3's own note records the
-  chat bubble covering content on SEVEN OF NINE surfaces; S3 saw it again on the landing page twice in the
-  same pass — over the first Closing-soonest question, and over a card's traders row — so U7's driver runs
-  all nine surfaces, not the board alone. The overlap is measured on the `::after` pulse ring, not the 44px
-  box, and `scripts/chat-responsiveness-e2e.mjs` is stale (wrong breakpoints) and is NOT evidence.
-  ⚠️ U6 SPENT ITS BUDGET AND THE HOME TARGET IS A RESTATED ONE — see §11. 8.78 screens at 360 SW against a
-  restated ≤ 9.5; the written 7.5/7.8 was shown to be unreachable without deleting a section, which §4
-  decision 2 and §6 both forbid. Do not carry 7.8 forward as if it were still live.
-  ✔ `test:stacking` §5.2 is FIXED (`d1476eed`) — 112/1 → **113/0**. `LocaleChangeOverlay` is `fixed
-  inset-0` rendered inside route content, and a transformed ancestor (`.route-enter`) becomes the
-  containing block for a `fixed` child, so a language change during a navigation laid the scrim out
-  against the animating box instead of the screen. Portaled to `document.body`, and DRIVEN to prove it:
-  the scrim appears, `parentElement === document.body`, 360 × 780 against a 360 × 780 viewport, z 9000,
-  six glyphs, `<html lang>` lands on `en`. ⚠️ Four probes said "not found" first and were WRONG — the
-  menu is a `<details>` whose panel is in the DOM while closed, so the click never landed; the same
-  probe gave the identical false negative on PRODUCTION's old code, which is what proved the probe at
-  fault. `ui-consistency` then flagged the portal as ad-hoc: settled by adding `i18n.tsx` to
-  `PORTAL_ALLOW` with the reasoning, NOT by baselining a drift, because `<Modal>`'s focus-trap and
-  scroll-lock are wrong for a non-interactive one-beat loading scrim.
-  ⚠️ Still open and NOT U5's: `test:type-scale` §3 (746 vs a ratchet of 744; ⛔ find the two, never
-  bump the ratchet) and `qa:tap-hit`'s chart-range section (no market exposes a range rail — it fails
-  on production too, so it is a product gap, not a fixture one).
-✔ LAST SESSION (S3, 2026-09-23): **U5 ✅ and U6 ✅** — 6/40 — plus **D33, D51 and D31 closed**, the managers'
-  **right-click → open in new tab** shipped platform-wide, and `/help`'s FAQ rows lifted off a 20.3px floor.
-  ⭐ THE SHAPE S3 KEPT MEETING: **a fact that existed, was correct, and was never read.** `.kp-topic__n` carried
-  a `text-overflow: ellipsis` written for a case that could not reach it, because flex-wrap breaks a line
-  BEFORE it shrinks one — a law this very file states in the hero CTA block, two hundred lines above. `py-3`
-  on `/help` was real padding on the wrong element. D31's box was sized from the real figure while the mask
-  it painted was a fixed nine characters. In each case the code looked right, a guard existed nearby, and
-  nobody had measured what the page actually did.
-  ⚠️ AND TWO OF THIS PLAN'S OWN LINES WERE WRONG, CORRECTED FROM MEASUREMENT RATHER THAN FOLLOWED: D33's
-  register said "every pooled tile at 360 in all three locales" (at 360 SW, the DEFAULT locale, nothing
-  split); D51's said 17px (it is 16 — an 8px pip and an 8px gap), and both remedies it suggested were
-  measured and rejected. §9 U6 also prescribed `white-space: nowrap` for D33, which the proof rail forbids
-  outright for money — allowed here ONLY because the widest figure the book can print was measured to fit,
-  66px against 78px at 320. ⛔ A prescription in this plan is a hypothesis; the page is the authority.
-  👁 READ, NOT JUST MEASURED: the home page at 360 SW. The tile grid was the find — one grid drawing two
-  different tiles, the glyph orphaned above the name on two of six, its partner stretched to match. The
-  numbers said "74 and 98" and nothing more; the screenshot said what was wrong with it.
-✔ BEFORE IT (S2, 2026-09-23): **U3 ✅ and U4 ✅** — plus **D28 and D49 closed** and **D30
-  shipped early in the safe-fix lane**. The card's rhythm became six `:root` tokens the card and the
-  SKELETON both read; the bar went from two stacked control rows to one control line plus a count line.
-  Measured on production, before → after: card 353.5 → 301.5 (live+band), 347.44 → 303.44, 319.5 → 279.5,
-  312 → 264, 278 → 242; Up & Down 578.25 → 526.25 (`open`); bar 116 → 76.25; pinned chrome 237 → 197.25.
-  ⛔ D30 WAS REPORTED BY A REAL PLAYER — tapping the rail's More menu opened chat instead of the option.
-  It is a stacking-context defect: `.kp-rail` is `fixed z-40` and the panel is `absolute z-[50]` INSIDE it,
-  so the 50 never escapes, while the chat bubble is `fixed z-60` at the root. Raising the panel's own
-  number would have looked like a fix and done nothing; the RAIL takes rung 61 while its menu is open.
-  ⚠️ TWO TARGETS RESTATED IN §11 RATHER THAN MISSED QUIETLY: "every state ≥ 45px shorter" is arithmetic
-  the §9 rules cannot produce, and the Up & Down ≤ 430 is unreachable by spacing at all.
-  ⭐ THREE DEAD RED CONTROLS WERE FOUND AND REPAIRED (`287bc056`), two of them the responsible-gambling
-  session-limit doors, unable to inject since E-408 renamed what they anchored on. `red:rg-doors` 9/11 → 11/11.
-  👁 The shots were READ at 360 SW in both densities, and a 72-cell damage sweep over six routes × 320/360 ×
-  SW/EN/ZH × both densities found zero horizontal overflow and no collapsed or runaway card.
-✔ (S2 first half) **U3 ✅** — the market card's rhythm became six `:root` tokens the card and the
-  SKELETON both read, so Compact is those numbers and nothing else; D28 (the share control reached 26 × 37px on
-  every card) is fixed at 41–42 × 40 by stretching the box to the row it already sat in; D49 closed BY DESIGN on
-  Ali's ruling; the Up & Down card gained `data-phase` and six class hooks. Measured, then re-measured:
-  353.5 → 301.5 · 347.44 → 303.44 · 319.5 → 279.5 · 312 → 264 · 278 → 242 · Up & Down 578.25 → 526.25.
-  ⚠️ TWO WRITTEN TARGETS WERE RESTATED IN §11 RATHER THAN MISSED QUIETLY: "every state ≥ 45px shorter" is
-  arithmetic the §9 rules cannot produce (a card with no sparkline has one child, and so one row gap, fewer), and
-  the Up & Down ≤ 430 is unreachable by spacing at all. Before it: the `revoked-deadend` locale fix verified
-  40/6 → 46/0 and pushed (`1da32fd9`).
-  👁 THE SHOTS WERE READ, NOT JUST THE NUMBERS (§11 step 4, and Ali asked for it directly): /markets, /results,
-  /updown and the landing at 360 SW in BOTH densities, on production. Compact is the better screen — the whole
-  card now fits with the next one starting, where Comfortable clips at the rail and puts the chat bubble on top
-  of "Maelezo". Two things visible on /results are D1 (the half chip under the count) and D5 (the gap under the
-  search box) — both already registered to U9, neither caused here. A 72-cell damage sweep over / · /markets ·
-  /results · /live · /watchlist · /updown × 320/360 × SW/EN/ZH × both densities found ZERO horizontal overflow,
-  both card tokens resolving to real heights everywhere (303/347 and 242/278), and no collapsed or runaway card.
-  ⚠️ FOUR REDS ON MAIN, NONE OF THEM U3's — each proven at HEAD with U3's files reverted, failing identically:
-  `test:stacking` §5.2 (LocaleChangeOverlay — **since FIXED in this session, `d1476eed`**), `test:type-scale`
-  §3 (746 vs a ratchet of 744; ⛔ do NOT bump the ratchet — find the two), `test:filter-language` §6.6 (the
-  house-bots session owns it and has taken it), and `qa:tap-hit`'s chart-range section (fails on production too,
-  so it is a product gap). ⛔ `test:stacking` and `test:filter-language` are both in `predeploy`, so predeploy
-  does NOT go green on main today.
-✔ BEFORE IT (S1, 2026-09-22 → 23): U1 ✅ and U2 ✅ — the phone instrument `qa:mobile-visual` with its committed baseline,
-  the production QA player "QA Mobile 01", and the Card spacing switch (Privacy v2026-09-22, approved by Ali). Nothing looks
-  different yet: U3/U4 add the first Compact rules, which `test:density-contract` fences (§2 S1).
-✔ AND (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
-  experience 5–6.5/10 in Swahili (the Seal's baseline); 12 new defects D42–D53; owner items 6–9; the panel and
-  its capture stored in the repo so the Seal can repeat them exactly. No product code changed.
-✔ AND (S0c, 2026-09-16): plan v3 — the 718-finding element inspection (§3a, record in
-  MOBILE-VISUAL-FINDINGS-2026-09.md), units U31–U40, defects D28–D41, §0a the session prompt, §1a closure,
-  and the tracker guard test:mobile-visual-plan (RED 19/19). One product fix shipped in the safe-fix lane: D7 (a25c127b, live).
-  D8 and D15 were examined in that lane and deliberately left — the reasons are written in U20 and U27.
-  (S0b, 2026-09-15: the seven-lens review, U21–U30, D10–D27, §8a, §8b. S0, same day: the first plan,
-  the owner rulings in PLAN-OF-RECORD §8.8, the NEXT-PLAN board.)
-
-◐ HALF-DONE: S1 is closed and merged to main. Start S2 from `origin/main` on any PC (a new branch or worktree off it).
-  ✔ The small item is DONE: `f80f1d33` (`test:revoked-deadend` sets `kp-locale=en` on every context) was VERIFIED against a
-  server on 2026-09-23 on OMEGA-COMPILE01, and is on main. Proven BOTH ways on one `next dev` (:3042, no database — the disk
-  store): the pre-fix file, taken from `bc25f00a` and run beside it, failed **40/6**, and its own failure excerpt is visibly
-  Swahili ("Ruka hadi maudhui … Si bahati") — the diagnosis, not an inference; the fixed file passed **46/0**, twice. The six
-  failures were the six named. A test-only change, no product code. Two things that do NOT travel through git:
-  · the QA player's password — "QA Mobile 01" (usr_ffb3c5cdd44a35cfca12125a, +255712000110, WHO=mobile01) signs in only with the
-    `QA_MOBILE01_PHONE` / `QA_MOBILE01_PASSWORD` lines of `.env.qa.local` in C:\kipindi-mobile on ALI-BLADE15. Copy those two lines
-    into the new checkout's `.env.qa.local`; if they are lost, ⛔ never re-mint 01 — mint "QA Mobile 02" (+255712000111) with
-    `ops:mint-qa-mobile` after editing its persona, or run signed-out + local (/auth/demo) only;
-  · the frames and full JSON under `.qa-shots/` (gitignored) — the COMPARED numbers are committed in scripts/live/baselines/.
-  On ALI-BLADE15 only: a parallel house-bots session shares the machine — own worktree, ports 5463/3041, heavy Node via
-  `bash ~/heavy-node-lock.sh run mobile <cmd>`, never `git add -A`, merge origin/main (never rebase) before pushing <sha>:main.
-⚠️ U31 carries a real backlog: 379 of the 718 findings are still UNVERIFIED
-  (usage limits stopped the verifiers for surface groups S07–S13). Treat them as leads, not facts.
-
-? OPEN OWNER ITEMS — 4 left, and every one needs Ali to SUPPLY something, not to decide:
-  1. U29: the browser floor, option A or B. Decided WITH NUMBERS: Ali pulls GA4 browser/version/screen data for
-     Tanzania mobile (or grants read access).
-  2. U30: Ali's Android phone plus one budget Android for the real-device checklist at each phase end.
-  3. A native SW/ZH reader for the new keys (U2, U20, and decision 12's hero sub-line).
-  4. Phase-end visual sign-off (§8a): Ali approves each phase's before/after contact sheet.
-
-✔ THE FIVE JUDGEMENT ITEMS ARE RULED — Ali delegated them on 2026-09-23 (*"proceed taking the right decision based
-  on overall 50pick logic and design"*). The rulings, with their evidence, are **§4 decisions 12–16**:
-  · 12 (was item 5) the English hero — KEEP the brand line (it is DESIGN_AUTHORITY law), add the reader's own
-    words beneath it in SW/ZH, reusing the card's existing `.mcardp-q-sw` pattern → **U6**
-  · 13 (was item 6) one bet is not a price — no crowd price while EITHER side's pool is empty; ungate from `live`
-    (that is D29). Display only: settlement never reads the number → **U32**, clear for the safe-fix lane
-  · 14 (was item 7) the leaderboard — rank by the floor its OWN tier ladder already publishes (5 settled), and
-    state the window; the filter goes in the QUERY, not over its result → **U-leaderboard work, with U10**
-  · 15 (was item 8) the two-officer clause — **NO CHANGE**; it is accurate, consistent across seven sites
-    including the binding legal pages, and the real per-market count is already published. Fix only the English
-    name drift (two-officer vs two-admin) → **U40**
-  · 16 (was item 9) the footer — only the RTP label survives: no recorded Gaming Board requirement exists and the
-    page states no RTP. The other three claims are NOT defects → **U20**
-  ⛔ THREE OF THE NINE SUB-CLAIMS WERE FALSE. Ruling from the critics-panel summary alone would have shipped three
-  wrong changes and reworded compliance copy that is correct. Read §4 before re-opening any of them.
-
-⚠ TRAPS ALREADY MET (2026-09-15 capture):
-  · ⛔ **A RAILWAY BUILD CAN FAIL WITH NOTHING WRONG IN THE COMMIT.** 2026-09-23: a deploy failed with 28
-    errors, every one `Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'`.
-    `layout.tsx` pulls Sora, Inter and JetBrains Mono through `next/font/google`, which DOWNLOADS them at BUILD
-    time — so a builder that cannot reach fonts.gstatic.com fails the whole build. This repo already records
-    the same fact twice ("Google Fonts blocked → no local build"). ⭐ How it was settled in minutes rather
-    than guessed: the same commit BUILT CLEAN locally (exit 0, every route), and `railway redeploy
-    --from-source` then succeeded with byte-identical code. ⚠️ Do NOT read a font-module failure as a code
-    defect, and do NOT correlate deployments by grepping 40-hex out of a build log — that matches the
-    railpack IMAGE DIGEST, not a commit. Correlate by TIMESTAMP against `git log --date=format:%H:%M:%S`.
-    🎯 The standing fix, not taken yet because it re-types the whole site: serve the three families from
-    `next/font/local` with the files committed, and the build stops depending on a third party.
-  · `networkidle` never fires on www (live stream). Use `load` + a 2.5s wait.
-  · The first-visit primer covers every guest page — for a real visitor. A HeadlessChrome agent never gets it (nor the
-    consent card), so a drive that "declines" them proves nothing; qa:mobile-visual seeds both keys anyway
-    (`50pick-primer-seen`, `50pick-analytics-consent`) and the primer is only photographed on purpose (`?primer=1`).
-  · The 2026-09-11 reset DELETED `alpha`/`echo`, every staff persona and the whole QA fleet — copying an old
-    `.env.qa.local` cannot bring them back. The QA player is "QA Mobile 01" (`WHO=mobile01`, minted by U1). One login per
-    account (a second login revokes the first; 5 failures lock it for 30 min): never run two drives as it at once.
-  · (U1) `data-dpl-id` is in the SERVED markup only — hydration removes it from the live DOM, so read it with curl or
-    from the response body, never `document.documentElement` (qa:mobile-visual prints the served commit per run).
-  · (U1) The Up & Down card's height follows the live round's state (468 → 660px on one card, minutes apart): never
-    compare it before/after without keying it on the state.
-  · Screenshot pixels are 2× CSS pixels at DPR 2. One "130px gap" was really 41px.
-  · ⛔ Every driver's user agent MUST contain "HeadlessChrome". The visit beacon and /api/pv drop only
-    HeadlessChrome/Playwright, so a plain Android UA is counted as a real visit. It happened on 2026-09-15:
-    about 25–60 QA page views landed in that day's /admin/traffic counts.
-  · Budget phones (≤ 4 cores or ≤ 4 GB, or Save-Data) run data-motion="reduced" automatically. Capture that tier, not only full motion.
-  · Landscape phones (640–1023 wide, ≤ 480 tall) miss every "< 640px" phone rule. U21 adds a short-height gate.
-  · Under CDP network + CPU throttling, clicking a nav link to capture skeletons times out. Apply throttling first, then
-    navigate by URL (`page.goto`) and screenshot at fixed times.
-  · ⛔ "THE DEPLOY IS UP" IS NOT "YOUR COMMIT IS LIVE". /api/health returning a small uptimeSec only says
-    SOMETHING deployed — on 2026-09-16 that was the PREVIOUS commit, and the fix looked absent on a page
-    that had simply not shipped yet. Read the commit: every page carries data-dpl-id on <html>, so
-      curl -s -A HeadlessChrome https://www.50pick.tz/<path> | grep -o 'data-dpl-id="[0-9a-f]\{8\}'
-    must equal YOUR sha before you re-measure anything or mark a row ✅.
-  · ⛔ THE DEFAULT LANGUAGE IS SWAHILI since 8822b648 (2026-09-15), AFTER the measurements in §3 were taken with an
-    English guest. A driver that photographs a fresh phone profile now gets SW, so a before/after pair captured
-    "the same way" as §3 is NOT comparable unless it sets the kp-locale cookie. Set the locale explicitly in every
-    capture, and read the SW numbers as the default player's experience (§5).
-  · The Session table is empty. Real browser data is in AuditLog.userAgent: read-only
-    `DATABASE_URL=<PROD_DATABASE_PUBLIC_URL> node scripts/live/q.cjs <sql-file>`, never printing the URL.
-```
+```
+▶ STATE, 2026-09-24 (rewrite this block at the end of every session)
+  10 of 42 units closed · 83 defects filed · branch mobile-s2 tracking origin/main.
+  Closed this session: U41 (/fairness), U42 (the sign-up funnel), U33 (chrome: menus + semantics).
+  Shipped and production-verified: D71–D83. Guards added: qa:ghost-landing, qa:fairness-phone,
+  qa:signup-funnel, plus qa:focus-and-fit §6/§7 and test:tap-target §6 now watching BOTH axes.
+
+▶ NEXT: **U35** (D36 half 2, then D37), then **U32**, **U37**, **U34**, **U11** — money truth first.
+  Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number. Take them
+  in order. Each was verified IN THE CODE on 2026-09-24, with the file and line to start from.
+
+  1. D36 half 2 (U35) — THE /updown BOARD TICKS A LIVE PRICE ON A RESOLVED ROUND.
+     `src/app/updown/page.tsx:286` passes `livePrice={activeAsset!.livePrice}` to every card whatever
+     its state, and :290-292 computes movePct from it for DECIDED rounds. ⭐ The correct rule already
+     exists one file away — `src/app/updown/[roundId]/page.tsx:147`:
+     `const heroLive = decided ? round.closePrice : asset.livePrice;`
+     Two surfaces describe one round differently and the BOARD is the wrong one. One conditional,
+     precedent already in the tree. Highest harm-to-cost ratio in the programme.
+
+  2. D37 (U35) — /updown/history's money figures are PAGE-scoped while its own comment says they are
+     not. `rounds` is paged (history/page.tsx:253), settledRounds derives from it (:259), and
+     staked/returned/net/decided/wins/winRate all derive from that — so **Net return and Win rate
+     change when the player turns the pager**, while the bar above shows a third scope
+     (`resultCount={matched.length}`, :313). The comment at :203-205 claims they "describe the whole
+     filtered view". ⛔ NEEDS AN OWNER DECISION FIRST (page scope or view scope), then labels on the
+     tiles and a corrected comment. Ask Ali before coding — it is money on screen.
+
+  3. D29 (U32) — terminal cards paint a crowd price nobody paid. `market-card.tsx:277` is still
+     `const noPrice = live && (isNew ?? volume === 0);` — on a resolved or void card `noPrice` is
+     false, so TippingBar draws the hardcoded 50. Deleting `live &&` is one token.
+     ⛔ BUILD THE GUARD FIRST and read trap 3 below: today's board may hold no resolved-empty and no
+     void card, so a live sweep would be green about THIS BOARD, not about the code.
+
+  4. D42 (U32) — the /results donut strokes a third segment its legend never names.
+     `results/page.tsx:529-537` divides by `yes + no + voided`; the legend at :352-360 prints two
+     spans. The parts do not sum to the ring. Same file as item 3's re-measure.
+
+  5. D39 (U37) — a Swahili player reads a raw English enum at two MONEY moments:
+     `markets/[id]/page.tsx:357` (`heldSides.join(" + ")`, rendered :774) and
+     `conviction-dial.tsx:1729` (`${resultData.side} · ${formatTzs(...)}`). Both files already import
+     `sideWord`, and the toast sibling at conviction-dial.tsx:1002 was ALREADY fixed with a comment
+     saying the modal is wrong the same way. Two one-line edits.
+
+  6. U34 — D31 is now DOWN TO NOTHING BUT BOOKKEEPING. Parts 1–4 are all fixed and live
+     (`252a9f55`, D78, `886e1992`). Verify on production and close the row.
+
+  7. U11 — the overlay census. The next big rock, it gates U12–U18 (SEVEN units), and it is NOT
+     blocked: see the §11 correction. Budget a whole session. ⛔ Do not build on
+     `scripts/overlay-responsiveness-test.mjs` — its selectors match nothing that ships.
+
+  8. D14 (U27) — pull-to-refresh fires inside sheets. `pull-to-refresh.tsx:32` gates on `scrollY > 5`
+     alone; `html[data-sheet-open]` already exists and is already set by `filter-sheet.tsx:252`.
+
+  9. Batch the one-line clipping fixes under ONE new guard with four RED controls: D1, D34, D45, D52.
+
+ 10. U31 — 379 verification rows. Background grind, fully parallelisable, and the only unit with a
+     mechanically checkable accept line: write the `grep -c "🕓 unverified" == 0` counter FIRST so
+     progress is a falling number. Sample ~20 rows before estimating; some will reclassify as duplicates.
+
+  ⛔ DEPRIORITISED ON PURPOSE, with reasons: D5 (re-measure first — the band it was measured against
+  has been rebuilt), D43 (RE-FILE, DO NOT FIX — its cell names the wrong element and the prescribed
+  remedy is a no-op), D62 (the one-declaration remedy was built, measured, and moved nothing),
+  D16 (measure first; if back-nav lands within ±40px it is a no-defect).
+
+▶ WHAT CANNOT BE DONE FROM THIS MACHINE — do not burn a day rediscovering it
+  U30 (real device + TalkBack; D54 needs a NOTCHED phone — Playwright reports every safe-area inset
+  as 0) · U29 (Ali's GA4 pull + an A/B decision; ⚠️ GA fires only after consent Allow, so it
+  under-counts exactly the old browsers this unit hunts — the AuditLog user-agent query is the less
+  biased instrument and IS machine-doable) · U40 (native SW/ZH readers, plus Ali's sign-off on D53,
+  which is compliance text). Inside otherwise workable units: D8, D46, D47.
+
+▶ THE THREE TRAPS — every session re-learns these unless it reads them here
+  1. THE SPACING SCALE IS OVERRIDDEN (tailwind.config.ts:211-226 — `h-8`=48px, `h-7`=40px, `p-5`=24px).
+     Read a unit's "close h-8 48 → 44" with stock Tailwind values and it looks like an instruction to
+     shrink a control BELOW the floor. And the floor is `--tap-min: 40px` (Law 9), **not the 44 that
+     several unit bodies still say**.
+  2. GUARDS ARE PINNED TO LITERAL SOURCE TEXT (stacking-contract.test.mts:164/188,
+     presence-class.test.mts:298-303, design-frozen.test.mts:183, token-collision.test.mts:201-209).
+     Reformat a call site and a RED control becomes a silent no-op that reads as "the guard failed to
+     catch the defect". Update the pin in the SAME commit as the code.
+  3. A GUARD WHOSE POPULATION CANNOT CONTAIN THE DEFECT REPORTS A CONFIDENT ZERO — a live board with
+     no void card; a `zoom: 1.3` proxy that narrows the viewport when Android's text scaling does not;
+     a CLS driver running `reducedMotion: "reduce"`, which switches the auto-advance OFF before
+     measuring it. Before writing any check: **would this still pass if the feature were absent?**
+
+▶ STALE TRUTH ALREADY CORRECTED — and what it cost
+  §11 said the signed-in half was "not verifiable from this PC" because the QA password "is not on
+  this machine". Both false; corrected 2026-09-24, struck through rather than deleted. It sat in the
+  section every session is told to read and told each of them not to try — and U11, the unit it
+  damaged most, is mostly signed-in surface. ⚠️ Three more cells are still wrong and are flagged in
+  place: **D43** (names the wrong element; a guard written from it could never fail), **U28's body**
+  (tells you to build the render-blocking script that globals.css:5590-5596 forbids in shipped
+  source), **U22** (asserts a grep result that stopped being true at `b096dd72`).
+  ⛔ When you find one of these, CORRECT IT IN THE SAME COMMIT and strike the old text rather than
+  deleting it — a claim that quietly vanishes gets re-derived by the next session.
+```
 
 ## §0a — The session prompt (paste this to start a session on any machine)
 
@@ -2168,10 +2085,10 @@ had captured** — one examiner each, every claim then re-measured by an adversa
 with every number is [`MOBILE-VISUAL-UNSEEN-2026-09.md`](MOBILE-VISUAL-UNSEEN-2026-09.md).
 ⛔ **The refuted sixteen are kept WITH THEIR REASONS** in §2 of that record. Re-discovering a
 non-defect every few sessions is the most expensive thing a campaign like this can do.
-⚠️ **Still never run: the signed-in half of every cell** (§11 asks for it and the QA player's password
-is not on this machine), and **the real-device row**, which is U30 and cannot be emulated at all —
-D54 is the proof of that, a landscape defect no driver here can see.
-
+⚠️ **The real-device row has still never been run** — that is U30 and cannot be emulated at all;
+D54 is the proof of it, a landscape defect no driver here can see. 🔴 **THIS LINE USED TO SAY THE SIGNED-IN
+HALF HAD NEVER BEEN RUN EITHER, "because the QA player's password is not on this machine". That is FALSE —
+see the corrected paragraph below. The signed-in half ran on 2026-09-24 and produced D78, D80 and D83.**
 ✅ **MEASURED 2026-09-23 — the 561–767px band, which this repo records as never measured.**
 `globals.css`'s own proof-rail note says "the §A6 matrix is 360/768/1280/1920 — 561–767 is never
 measured", and records a real defect that hid there (the gilt pool figure wrapping at its own
@@ -2199,11 +2116,30 @@ identical to the pixel. The ONLY differences are `total` +204px and `hero` +40px
 card density doing its own job on the three board cards and the hero's featured card, not a U6
 rule leaking.
 
-⛔ **STILL NOT VERIFIABLE FROM THIS PC: the signed-in half.** §11 asks every cell to run "signed
-out and signed in as the QA player". `.env.qa.local` exists here but predates the player's minting
-and carries NO `mobile01` key — checked by key NAME, not value — so the password for "QA Mobile
-01" is genuinely not on this machine. Everything S3 measured is SIGNED OUT, and no signed-in claim
-should be read into it.
+🔴 **CORRECTED 2026-09-24 — THIS PARAGRAPH SAID THE SIGNED-IN HALF WAS NOT VERIFIABLE FROM THIS PC,
+AND IT IS. It is kept, struck through, because it is the single most expensive sentence in this plan:**
+it sits in the section every session is told to read, and it told each of them not to try.
+
+> ~~`.env.qa.local` exists here but predates the player's minting and carries NO `mobile01` key — checked
+> by key NAME, not value — so the password for "QA Mobile 01" is genuinely not on this machine.~~
+
+✅ **A QA PLAYER SIGNS IN FINE.** `scripts/live/harness.mjs:82` declares
+`mobile01: { phone: "712000110", secret: "QA_MOBILE01_PASSWORD" }`, and `.env.qa.local` carries exactly
+that key. Used all afternoon on 2026-09-24 to measure the signed-in header, `/profile`, `/wallet`,
+`/positions`, `/markets` and the notice-bar region — which is where **D78, D80 and D83** were found,
+and D83 is a control on the path to a deposit.
+
+⚠️ **TWO TRAPS MAKE IT LOOK IMPOSSIBLE, AND BOTH ARE REAL — they are almost certainly what produced the
+struck sentence above.** (1) `harness.mjs` has its OWN `BASE`, defaulting to `http://localhost:3001`, so
+without `LIVE_BASE=https://www.50pick.tz` it signs in against a server that is not running and **the
+failure reads exactly like a bad password**. (2) It is ONE session per account: `login()` per cell
+revokes the previous one and trips attempt-limiting mid-matrix — call `loginOnce` once and reuse the
+`storageState`. Neither is a missing credential.
+
+⛔ **THE UNIT THIS DAMAGED MOST IS U11** (the overlay census), because most of its surface list is
+signed-in. Anything in this plan that reads "signed out only" as a LIMIT rather than as a description of
+what was done should be re-read with that in mind. ⚠️ The signed-in surface is also outside most guards'
+population — every tap gate in the repo runs signed out, which is what D78 recorded.
 
 **Test matrix: the device and condition every driver runs**
 
