@@ -119,7 +119,12 @@ export function TrustBand({
         {settlements.length > 0 && (
           <>
             <div className="kp-shead" style={{ marginTop: "var(--rh-close)" }}>
-              <div>
+              {/* 🔴 `min-w-0` — A FLEX ITEM DEFAULTS TO `min-width: auto`, WHICH MEANS IT REFUSES TO
+                  SHRINK BELOW ITS CONTENT. This block sat at 236px inside a 148px column at a 180px
+                  viewport (360 at 200% browser zoom, WCAG 1.4.4), pushing the document to 255px and
+                  giving the whole page a horizontal scrollbar. Nothing here is nowrap; the text was
+                  simply never given permission to wrap. Measured on production 2026-09-24. */}
+              <div className="min-w-0">
                 <p className="kp-hero__eyebrow text-balance">
                   <span className="kp-hero__tick" aria-hidden />
                   {t.home.settledEyebrow}
