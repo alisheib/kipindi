@@ -364,7 +364,20 @@ export function FirstVisitPrimer() {
       maxWidth={460}
       ariaLabel={t.primer.primerLabel}
       showClose={false}
-      panelClassName="overflow-hidden !p-0"
+      /* 🔴 THE LAST CARD LOST ITS TOP 149px ON A SHORT PHONE, UNREACHABLY. Measured on production
+         2026-09-24 with the automation opt-in (?primer=1): at 320x640 card 3 is 789px tall in a
+         640px viewport, so the panel sits at top:-148 — and `scrollHeight === clientHeight` (787/787)
+         means the panel itself does not scroll. The Modal wrapper IS `overflow-y: auto`, but it is
+         also `align-items: flex-end`, and overflow ABOVE a flex-end child sits before the scroll
+         origin: there is nothing to scroll back to. The card heading was simply gone.
+         ⛔ AND NOTHING COULD SEE IT. This component refuses to open for a HeadlessChrome UA unless
+         automation asks (`primerForced`), so every browser gate on this platform has photographed a
+         page where the primer never appeared — the file says so a few lines below. The first screen a
+         new player ever sees was the least measured surface on the site.
+         The cap is on the PANEL and the scroll is internal, so the sheet stays docked and the
+         content is reachable at any height. `overflow-x` stays hidden, which is what the previous
+         `overflow-hidden` was really buying: the gilt corners clipped to the rounded edge. */
+      panelClassName="!p-0 max-h-[85dvh] overflow-y-auto overflow-x-hidden"
     >
         {/* Gilt corners — heraldic framing from the brand kit */}
         <div className="pointer-events-none absolute top-0 left-0" aria-hidden>

@@ -34,7 +34,7 @@ export function TopicTiles({
   if (topics.length === 0) return null;
   return (
     <div>
-      <p className="kp-hero__eyebrow">
+      <p className="kp-hero__eyebrow text-balance">
         <span className="kp-hero__tick" aria-hidden />
         {t.common.topic}
       </p>

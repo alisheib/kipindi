@@ -132,7 +132,15 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, paidOu
 
       <div className="kp-hero__inner">
         <div>
-          <p className="kp-hero__eyebrow">
+          {/* 🔴 `text-balance` ON EVERY EYEBROW. These are short uppercase mono labels, and when one
+              wraps it drops its last token alone: "TANZANIA · DAR ES SALAAM · TANGU / 2026" and
+              "YANAYOFUNGWA KARIBUNI · 8 YANAFUNGA / LEO" at 320, and "BODI YOTE, SASA / HIVI" under
+              browser zoom. A one-word second line under a letter-spaced label reads as a mistake
+              rather than a wrap. Measured on production 2026-09-24; V8b in the landing gate is what
+              found them and what will find the next one.
+              ⚠️ Applied at each call site rather than to `.kp-hero__eyebrow` itself, because that
+              class lives in globals.css, which another session owns this week. */}
+          <p className="kp-hero__eyebrow text-balance">
             <span className="kp-hero__tick" aria-hidden />
             {t.home.heroLocation} · {t.home.heroEst}
           </p>
@@ -209,7 +217,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, paidOu
             THIS BAR, not a second component — DESIGN_AUTHORITY B9", and its dashed
             `--bar-empty-track` rail is the platform's one cold-start bar vocabulary. */}
         <div className="kp-conv">
-          <p className="kp-hero__eyebrow">{t.home.heroConvEyebrow}</p>
+          <p className="kp-hero__eyebrow text-balance">{t.home.heroConvEyebrow}</p>
           {figures.yesShare == null ? (
             <TippingBar empty emptyLabel={t.home.heroConvEmpty} height={10} />
           ) : (
@@ -230,7 +238,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, paidOu
         {/* ── the question board ───────────────────────────────────────────────────── */}
         {figures.board.length > 0 && (
           <div>
-            <p className="kp-hero__eyebrow">
+            <p className="kp-hero__eyebrow text-balance">
               {t.home.heroBoardEyebrow}
               {figures.closingToday > 0 && (
                 <> · {fill(t.home.heroBoardCloseToday, { n: figures.closingToday })}</>

@@ -66,7 +66,7 @@ export function TrustBand({
   return (
     <Reveal band="trust" className="kp-band kp-band--overlay kp-band--seam kp-band--closes">
       <div className="kp-band__inner">
-        <p className="kp-hero__eyebrow">
+        <p className="kp-hero__eyebrow text-balance">
           <span className="kp-hero__tick" aria-hidden />
           {t.home.trustEyebrow}
         </p>
@@ -120,7 +120,7 @@ export function TrustBand({
           <>
             <div className="kp-shead" style={{ marginTop: "var(--rh-close)" }}>
               <div>
-                <p className="kp-hero__eyebrow">
+                <p className="kp-hero__eyebrow text-balance">
                   <span className="kp-hero__tick" aria-hidden />
                   {t.home.settledEyebrow}
                 </p>
