@@ -20,8 +20,19 @@ export default async function ResultsLoading() {
         <div className="h-[var(--h-input)] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track" />
       </div>
 
-      {/* Card grid skeleton */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" aria-hidden>
+      {/* Card grid skeleton.
+          ⛔ `.market-grid`, NOT A HAND-ROLLED `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3`.
+          That is what stood here, and it disagreed with the real page twice over: the shared
+          class is `gap: 14px` against `gap-3`'s 16 (10px over six rows), and it tracks columns
+          with `auto-fill minmax(min(300px,100%),1fr)` rather than counting them at fixed
+          breakpoints, so the two laid out a different number of columns on a tablet. The real
+          `/results` grid and `ResultsSkeleton` both use `.market-grid`; this was the only one of
+          the three that did not. ⭐ It also made the route UNMEASURABLE: `qa:ghost-landing`
+          finds the board by `.market-grid > *`, the class the page itself uses, so `/results`
+          reported "no skeleton frame was ever captured" — a vacuous pass — rather than a
+          number. A ghost that does not speak the page's own class names cannot be compared
+          with the page. */}
+      <div className="market-grid" aria-hidden>
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="rounded-md border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: MARKET_CARD_H_CLOSED }}>
             <div className="space-y-3">
