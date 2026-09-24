@@ -875,7 +875,20 @@ async function runCell(browser, cell, plantKey = null, signedInState = null) {
       const home = page.locator('header a[href="/"]').first();
       if (!(await home.count())) throw new Error("no client-side route to / in the header — cannot reach loading.tsx");
       await home.click({ timeout: 10000, noWaitAfter: true }).catch(() => {});
-      await page.waitForTimeout(700);
+      /* 🔴 A BLIND 700ms MADE THIS CELL NON-DETERMINISTIC, AND A GATE THAT ANSWERS DIFFERENTLY ON
+         THE SAME INPUT CERTIFIES NOTHING. The hop starts on /markets, so until the route commits
+         the discovery bar is still mounted and CHECKS measures ANOTHER PAGE. Run three times on
+         one commit, this cell returned clean, clean, then V5:2 + V9:17 — all seventeen of them
+         a.kp-fchip inside nav.kp-thin-scroll, which is /markets chrome and does not exist on the
+         landing page (0 occurrences against 54). The two clean readings were luck, not evidence.
+         ⛔ SO WAIT FOR THE ROUTE TO COMMIT, NOT FOR A DURATION, and then PROVE the old route is
+         gone rather than assume it. If either never happens this throws, the cell is reported
+         unmeasured, and the matrix says so — a failed read is not a zero. */
+      await page.waitForFunction(() => location.pathname === "/", null, { timeout: 25000 });
+      await page.waitForTimeout(250);
+      if (await page.evaluate(() => !!document.querySelector(".kp-fchip"))) {
+        throw new Error("client hop measured /markets chrome: .kp-fchip still mounted after the route committed");
+      }
       const r0 = await page.evaluate(CHECKS);
       await page.screenshot({ path: join(OUT, `${cell.id}.png`) }).catch(() => {});
       await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
