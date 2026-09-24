@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { fill } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
@@ -24,6 +25,22 @@ import { timeLeftLabel } from "@/lib/markets/time-left";
 import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * The landing page had NO canonical URL and NO og:url, so every variant a link picked up on the
+ * way here — a utm tag, a cache-buster, a trailing slash — was a separate page to a crawler and
+ * an unnamed page to a link preview.
+ *
+ * ⛔ DECLARED HERE, ON THE ROUTE, AND NOT IN THE ROOT LAYOUT. A canonical in the layout is
+ * inherited by every page under it, so the whole site would claim to be "/" — which is worse than
+ * having none at all. Metadata that names a URL belongs to exactly one route.
+ * `metadataBase` in the layout resolves these to the absolute site URL, which is why they are
+ * written relative and there is no second copy of the base URL here to drift.
+ */
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: { url: "/" },
+};
 
 /**
  * THE LANDING PAGE — round-2 kit README §1 / SPEC §1 + §3, applied in batch 3.

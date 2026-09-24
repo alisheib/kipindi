@@ -143,7 +143,15 @@ export const metadata: Metadata = {
     siteName: "50pick",
     title: "50pick — Predict events. Not chance.",
     description: APP_DESC,
-    locale: "en_US",
+    // 🔴 THIS SAID `en_US` ON A SWAHILI-DEFAULT PRODUCT. Since 8822b648 a visitor with no
+    // language cookie gets Swahili, so every link shared into WhatsApp — the main way players
+    // arrive here — announced the wrong language for the page it opens.
+    // ⚠️ NO `hreflang` IS ADDED, AND ITS ABSENCE IS CORRECT, NOT AN OVERSIGHT. hreflang requires a
+    // DISTINCT URL PER LANGUAGE; this product switches locale by cookie, so all three locales live
+    // at the same URL. Emitting three alternates pointing at one URL would declare duplicates to a
+    // crawler and describe the site less accurately than saying nothing.
+    locale: "sw_TZ",
+    alternateLocale: ["en_US", "zh_CN"],
     images: [{ url: "/og/og-1200x630.png", width: 1200, height: 630 }],
   },
   twitter: {
