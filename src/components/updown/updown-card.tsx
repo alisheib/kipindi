@@ -1144,8 +1144,21 @@ export function UpDownCard(props: UpDownCardProps) {
               {outcome === "UP" ? t.market.udUpWins : t.market.udDownWins}
             </span>
             {openPrice != null && closePrice != null && (
+              /* 🔴 D52 · THE ARROW USED TO END A LINE. This was one loose text run, so at 360 SW a
+                 seven-figure pair broke wherever it ran out of room — "$75,819.68 →" on one line
+                 and "$75,824.01" on the next, with the connector stranded at the end of the first.
+                 A trailing arrow reads as a number that lost its other half.
+                 ⭐ THE ARROW IS BOUND TO THE PRICE IT POINTS AT, so the only break the browser can
+                 take is BEFORE it: the pair either sits on one line or stacks as
+                 "$75,819.68" / "→ $75,824.01", where the arrow leads as a connector. `text-right`
+                 keeps the stack aligned to the same edge.
+                 ⛔ And each figure is nowrap in its own right — a price may never break mid-digits.
+                 ⛔ Plain `whitespace-nowrap` is correct HERE and would NOT be on the history strip's
+                 sub-line: that one carries `.amount`, whose `.amount.amount` selector sets nowrap at
+                 doubled specificity and beats any utility (D37). Nothing on this span competes. */
               <span className="text-right font-mono text-[10.5px] tabular-nums text-text-muted">
-                {priceText.open} → {priceText.close}
+                <span className="whitespace-nowrap">{priceText.open}</span>{" "}
+                <span className="whitespace-nowrap">→ {priceText.close}</span>
               </span>
             )}
           </div>

@@ -310,6 +310,43 @@ console.log("\n§7i · both surfaces call the one function");
     `union reads [${UNION.join(", ")}] — a state nobody tested is a state nobody chose a price for`);
 }
 
+/* ── §8 · D52 · the settled pod's price pair never breaks AFTER the arrow ─────────────────── */
+/* 🔴 One loose text run printed `{open} → {close}`, so at 360 SW a long pair broke wherever it
+   ran out of room and stranded the connector at the end of the first line. The arrow is now bound
+   to the price it points at, so the only break available is BEFORE it. */
+console.log("\n§8 · the settled pod's price pair (D52)");
+{
+  const strip = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "");
+  const card = strip(read("src/components/updown/updown-card.tsx"));
+  /* ⛔ ANCHOR ON `priceText.close`, NOT `priceText.open`. The FIRST `priceText.open` in this file
+     is the win-target line ~200 lines above the pod, so a window opened there contains no close
+     price and §8a failed on a correct tree — a guard misreporting its own read. */
+  const closeAt = card.indexOf("priceText.close");
+  const pod = closeAt < 0 ? "" : card.slice(Math.max(0, closeAt - 200), closeAt + 120);
+
+  ok("§8a the pod's price pair is still there to read",
+    closeAt >= 0 && pod.includes("priceText.open"),
+    "a failed extraction is not a zero — every §8 assertion below depends on this landing");
+  ok("§8b the pair is no longer ONE loose text run",
+    !/\{priceText\.open\} → \{priceText\.close\}/.test(card),
+    "that spelling IS D52 — it is what shipped until 2026-09-24");
+  ok("§8c ⭐ the ARROW travels with the close price, so a wrap can only put it at the START of a line",
+    /whitespace-nowrap">→ \{priceText\.close\}/.test(card),
+    "binding it to the OPEN price instead would strand it at the end, which is the defect");
+  ok("§8d …and the open price is unbreakable in its own right",
+    /whitespace-nowrap">\{priceText\.open\}/.test(card),
+    "a price may never break mid-digits");
+}
+
+/* ── §8e · controls ───────────────────────────────────────────────────────────────────────── */
+console.log("\n§8e · controls");
+{
+  ok("§8e control · the old loose run IS detected",
+    /\{priceText\.open\} → \{priceText\.close\}/.test("                {priceText.open} → {priceText.close}"));
+  ok("§8f control · an arrow bound to the OPEN price is NOT accepted",
+    !/whitespace-nowrap">→ \{priceText\.close\}/.test('<span className="whitespace-nowrap">{priceText.open} →</span>'));
+}
+
 /* ── §7s · controls — every §7 matcher shown able to say no ───────────────────────────────── */
 console.log("\n§7s · controls");
 {
@@ -334,5 +371,5 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fai
 // ⛔ A suite that silently stops running is a suite that cannot fail (see `chart-series`).
 // ⛔ RAISE THIS WITH EVERY SECTION ADDED. Left at 28 while §7 added 17, the whole of §7 could be
 //    deleted and this suite would still report ALL PASS over the 32 that remained.
-if (pass + fail < 56) { console.error(`!! only ${pass + fail} assertions ran — treating as failure.`); process.exit(3); }
+if (pass + fail < 62) { console.error(`!! only ${pass + fail} assertions ran — treating as failure.`); process.exit(3); }
 process.exit(fail === 0 ? 0 : 1);
