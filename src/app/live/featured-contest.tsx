@@ -135,7 +135,7 @@ export function FeaturedContest({
             grid does the arithmetic instead: `grid-area: 1/1` on every child makes the track the
             height of the tallest, whatever the questions happen to say.
 
-            ⛔ `visibility: hidden` (in `.kp-contest-q`), NOT `display: none` or `aria-hidden`.
+            ⛔ `visibility: hidden` (in `.kp-slide-stack`), NOT `display: none` or `aria-hidden`.
             Hidden-by-visibility still contributes its box to the grid track — which is the whole
             point — while being removed from the a11y tree AND the tab order, so the inactive
             questions cannot be reached by a screen reader or by Tab. `display: none` would
@@ -143,11 +143,11 @@ export function FeaturedContest({
             leave six focusable headings inside one link, the exact self-contradiction the dot
             rail's note below exists to describe. */}
         <Link href={`/markets/${m.id}` as Route} className="group block">
-          <div className="kp-contest-q mb-4">
+          <div className="kp-slide-stack mb-4">
             {markets.map((mm, i) => (
               <h2
                 key={mm.id}
-                data-q-active={i === idx ? "" : undefined}
+                data-slide-active={i === idx ? "" : undefined}
                 className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100"
               >
                 {mm.title}
