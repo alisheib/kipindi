@@ -2536,6 +2536,17 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
+    name: "626c-absent-is-unknown · an account the day book has no row for is treated as UNREADABLE rather than as nothing staked, so the desk paints an em dash for a stake its own account page prices",
+    file: GATE,
+    /* 🔴 THIS DEFECT SHIPPED AND WAS FOUND BY RENDERING THE DESK, not by the suite: every row on a locally
+       seeded world read "—" while the account page priced the same stake. The suite could not see it because
+       its fixture places REAL bets and is therefore always in the book. */
+    from: `    (id) => (core.dayBooks == null ? null : (core.dayBooks.get(id)?.stakedTzs ?? 0)),`,
+    to: `    (id) => core.dayBooks?.get(id)?.stakedTzs ?? null,`,
+    expect: "1.626c · an account the day book holds NO row for reads the same on the desk as on its own page",
+    suite: "console-mem",
+  },
+  {
     name: "626c-scan-unscoped · the day scan stops asking for PLACED rows, so queued and skipped stakes are counted as money spent and every figure below them is too low",
     file: GATE,
     from: `        houseBotId: bot.id, statuses: ["PLACED"],`,

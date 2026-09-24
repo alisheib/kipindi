@@ -4101,6 +4101,22 @@ try {
         mine.length === 3 && mine.every((r: Any) => r.leftToday === onAccount.get(r.stake)),
         j({ deskWide: mine.map((r: Any) => ({ stake: r.stake, left: r.leftToday })), onAccount: [...onAccount] }));
 
+      /* ⛔ THE SAME TWO SURFACES, FOR AN ACCOUNT THE DAY BOOK HAS NO ROW FOR — the case that caught a real
+         disagreement (2026-09-24, found by RENDERING the desk, not by this suite). The panels account holds
+         PLACED intents whose positions were never marked, so `houseDayBooks` simply has no entry for it. The
+         account page reads `houseDayBook(dayKey, id)`, which answers a ZEROED book, and painted the full cap;
+         the desk read the MAP and, treating "absent" as "unreadable", painted an em dash. One stake, two
+         screens, two different claims. ⛔ ABSENT IS ZERO AND ONLY A FAILED READ IS NOTHING (C7-SPEC's own
+         roster decision) — and the fixture above cannot see this, because it places real bets and is therefore
+         always IN the book. */
+      const panelsDetail = await feedView();
+      const panelsPlaced = (panelsDetail.feed ?? []).find((r: Any) => r.statusWord === brows[0].statusWord);
+      const panelsOnDesk = (deskWide.feed ?? []).find((r: Any) => r.stake === panelsPlaced?.stake && r.statusWord === brows[0].statusWord);
+      ok("1.626c · an account the day book holds NO row for reads the same on the desk as on its own page — absent from the book is nothing staked, and only a FAILED read is no answer",
+        panelsPlaced != null && panelsOnDesk != null
+          && panelsPlaced.leftToday !== null && panelsOnDesk.leftToday === panelsPlaced.leftToday,
+        j({ onAccount: panelsPlaced?.leftToday, onDesk: panelsOnDesk?.leftToday, stake: panelsPlaced?.stake }));
+
       /* ⭐ AND A FILTER MOVES NOTHING. Narrowing to PLACED cannot change a budget that was spent whatever the
          officer is looking at; a figure that shifted when a chip was clicked would be a different claim under
          one header. */

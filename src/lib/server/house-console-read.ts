@@ -5996,10 +5996,17 @@ export async function houseFeedForConsole(
      ceiling and `dayBooks` every account's own staked total, so a desk mixing four accounts counts each one
      against ITS OWN budget. A bot missing from either map gets no figure rather than another bot's (355). */
   const capById = new Map((core.roster ?? []).map((b) => [b.id, b.capDailyStakeTzs] as const));
+  /* ⛔ A FAILED BOOK READ AND AN ACCOUNT ABSENT FROM THE BOOK ARE NOT THE SAME FACT, AND CONFLATING THEM MADE
+     TWO SCREENS DISAGREE ABOUT ONE ROW (found by rendering it, 2026-09-24). `dayBooks == null` is a read that
+     did not happen — no figure, 355. But a MAP that simply has no row for this account means it staked nothing
+     today, which C7-SPEC's own roster decision already settles: "a bot absent from the `houseDayBooks` map
+     renders zeros for today (documented behaviour), which is NOT a failed read". The account page reaches the
+     same fact through `houseDayBook(dayKey, bot.id)`, which answers a ZEROED book rather than nothing — so
+     `?? null` here painted a figure on the account page and an em dash on the desk for the very same stake. */
   const leftToday = feedLeftTodayMap(
     leftScan == null ? null : leftScan.rows,
     (id) => capById.get(id) ?? null,
-    (id) => core.dayBooks?.get(id)?.stakedTzs ?? null,
+    (id) => (core.dayBooks == null ? null : (core.dayBooks.get(id)?.stakedTzs ?? 0)),
   );
   const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({
     ...consoleFeedRow(i, q.intentId, Date.now(), leftToday),
