@@ -7,7 +7,7 @@ import { getServerT } from "@/lib/i18n-server";
 export default async function UpDownLoading() {
   const { t } = await getServerT();
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-4 py-6" aria-busy="true">
+    <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6" aria-busy="true">
       <div className="mb-4">
         <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.market.udStreaming}</p>
         <div className="mt-1 h-7 w-40 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />

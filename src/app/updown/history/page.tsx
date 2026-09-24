@@ -283,7 +283,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
   const anyLive = viewRounds.some((g) => g.anyOpen);
 
   return (
-    <div className="mx-auto w-full max-w-[1080px] px-4 py-6">
+    <div className="mx-auto w-full max-w-reading px-3 lg:px-6 py-6">
       <RefreshPoller intervalMs={20_000} enabled={anyLive} />
       {/* E-101b · a `#pos_…` fragment names one card in this grid; this is what scrolls to it.
           Without it the anchors render, the ring applies, and the player still lands at the top. */}
