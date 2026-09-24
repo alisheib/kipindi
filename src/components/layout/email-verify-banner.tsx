@@ -120,7 +120,16 @@ export function EmailVerifyBanner({ email }: { email: string | null }) {
         type="button"
         onClick={toggle}
         aria-expanded={!collapsed}
-        className="text-left text-balance underline-offset-2 hover:underline"
+        /* 🔴 D83 · `min-h` — this control was **289×36** at 360, under the platform floor
+           (`--tap-min: 40`, Law 9), and it is the control that tells a player to verify their
+           email before they can deposit: on the path to money, on every page, for every
+           unverified account. Its own sibling (`Tuma kiungo tena`) already carries `min-h-[44px]`.
+           ⚠️ IT PASSES AT 320 AND FAILS AT 360, which is the opposite of the usual direction:
+           the copy wraps to two lines on the narrower phone (249×54) and fits on one line on the
+           wider one (289×36). A width sweep that stops at the narrowest case would miss it —
+           text-length defects are worst where the text just fits.
+           Found by session asheib-b1 in the signed-in population named by D78, and verified here. */
+        className="inline-flex min-h-[var(--h-control-md)] items-center text-left text-balance underline-offset-2 hover:underline"
       >
         {collapsed
           ? (email ? t.wallet.verifyBannerShort : t.wallet.verifyBannerNoEmailShort)

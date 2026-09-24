@@ -897,7 +897,9 @@
     "qa:home-tighten": "node scripts/home-tighten.mjs",
     "qa:focus-and-fit": "node scripts/focus-and-fit.mjs",
     "qa:cls-budget": "node scripts/cls-budget.mjs",
-    "qa:ghost-landing": "node scripts/ghost-landing.mjs"
+    "qa:ghost-landing": "node scripts/ghost-landing.mjs",
+    "qa:fairness-phone": "node scripts/fairness-phone.mjs",
+    "qa:signup-funnel": "node scripts/signup-funnel.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
