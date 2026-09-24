@@ -27,7 +27,7 @@ import { BoardViz } from "@/components/charts/board-viz";
 import { OutcomeCubes } from "@/components/charts/outcome-cubes";
 import { UpDownChartLab } from "@/components/charts/updown-chart-lab";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
-import { msOrNull } from "@/lib/updown-card-phase";
+import { heroMovePct, heroPrice, msOrNull } from "@/lib/updown-card-phase";
 import { usd } from "@/lib/usd-price";
 
 export const dynamic = "force-dynamic";
@@ -283,15 +283,23 @@ export default async function UpDownPage({
                 assetIcon={activeAsset!.iconKey}
                 durationMinutes={r.durationMinutes}
                 decimals={activeAsset!.decimals}
-                livePrice={activeAsset!.livePrice}
+                /* 🔴 D36 · A SETTLED CARD USED TO KEEP TICKING TODAY'S PRICE. This was
+                   `activeAsset!.livePrice` on every card whatever its state, so a resolved round
+                   showed the current quote in the big bold figure at its top — while its own
+                   settled pod, three rows below, printed the honest `open → close`. One card,
+                   one round, two prices, and the wrong one was the loud one.
+                   ⭐ The rule is not new: `/updown/[roundId]` has had it since E-72. It now lives
+                   in `heroPrice` so the board and the round page cannot answer differently.
+                   ⛔ A void round with no close price lands on the card's own A-5 branch — an
+                   em-dash and "awaiting read" — and that is correct. Never `?? livePrice`. */
+                livePrice={heroPrice({ state: r.state, closePrice: r.closePrice, livePrice: activeAsset!.livePrice })}
                 openPrice={r.openPrice}
                 upTarget={r.upTarget}
                 downTarget={r.downTarget}
-                movePct={
-                  r.openPrice != null && activeAsset!.livePrice != null && r.openPrice !== 0
-                    ? ((activeAsset!.livePrice - r.openPrice) / r.openPrice) * 100
-                    : null
-                }
+                /* ⛔ THE MOVE COMES FROM THE PRICE THE CARD ACTUALLY PRINTS. Deriving it from the
+                   live quote while the figure above it came from the close is how one card shows
+                   a percentage its own two numbers do not produce. */
+                movePct={heroMovePct({ state: r.state, openPrice: r.openPrice, closePrice: r.closePrice, livePrice: activeAsset!.livePrice })}
                 closesAtMs={Date.parse(r.closesAt)}
                 /* ⛔ `msOrNull`, NOT `x ? Date.parse(x) : null` (2026-09-18). `Date.parse` answers
                    **NaN** for a string it cannot read, and NaN is not null, so the old spelling

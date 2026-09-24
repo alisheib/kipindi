@@ -57,6 +57,7 @@ const fmtDate = (iso: string) => {
   return `${s} EAT`;
 };
 import { usd } from "@/lib/usd-price"; // the ONE spelling (session 80)
+import { roundPnl } from "@/lib/updown-history-pnl";
 
 /**
  * ⭐ `DAY_PICKER_DAYS` RETIRED 2026-09-08 WITH THE RAIL IT SIZED. Its whole reason was that a
@@ -200,8 +201,10 @@ export default async function UpDownHistoryPage({ searchParams }: {
     q: t.common.clearSearch, tab: t.common.all,
   };
 
-  // The bets the P&L strip reasons over — still every bet, so the figures describe the whole
-  // filtered view rather than the twelve rounds on screen.
+  // Every bet in the filtered view — the population both the strip and the round cards group
+  // over. ⚠️ THIS COMMENT USED TO BE A CLAIM, NOT A FACT: it said the figures "describe the
+  // whole filtered view" while the strip below actually read the twelve rounds on screen. The
+  // words were right and the code was wrong for both of them (D37). Now they agree.
   const rows = allRows.filter((r) => matched.some((m) => m.id === r.marketId));
 
   /* ⭐ THE DAY PICKER — batch 5. Until now this page had a FILTER WITH NO CONTROL: `?day=` was
@@ -247,27 +250,37 @@ export default async function UpDownHistoryPage({ searchParams }: {
     if (at >= g.latest) { g.latest = at; }
     groups.set(r.marketId, g);
   }
+  /* ⭐ D37 · TWO SCOPES, NAMED, BECAUSE ONE STRIP WAS SILENTLY SHOWING BOTH.
+     `viewRounds` is every round the filters matched. `rounds` is the twelve on this page.
+     The LIST is paged — a player with 400 rounds must not get 400 in one DOM. The MONEY is
+     not: Ali, 2026-09-24, asked for the whole filtered view, so the pager moves the list and
+     never the figures. */
+  const viewRounds = matched.map((m) => groups.get(m.id)!).filter(Boolean);
   // ⛔ ORDERED BY THE BAR'S SORT, PAGED BY THE BAR'S PAGER. It was hardcoded newest-placement
   //    first with no control and no paging; a player with 400 rounds got all 400 in one DOM.
-  const rounds = matched
-    .filter((m) => pagedIds.has(m.id))
-    .map((m) => groups.get(m.id)!)
-    .filter(Boolean);
+  const rounds = viewRounds.filter((g) => pagedIds.has(g.row.marketId));
 
-  // P&L strip — ROUND-level now. A round counts once; a round is "won" when the player's
-  // net on it is positive (settled, non-void). Open rounds carry no realised result.
-  const settledRounds = rounds.filter((g) => !g.anyOpen && g.row.outcome !== "VOID");
-  const staked = settledRounds.reduce((s, g) => s + g.stake, 0);
-  const returned = settledRounds.reduce((s, g) => s + g.returned, 0);
-  const net = returned - staked;
-  const decided = settledRounds.length;
-  const wins = settledRounds.filter((g) => g.returned > g.stake).length;
-  const winRate = decided > 0 ? Math.round((wins / decided) * 100) : null;
+  /* P&L strip — ROUND-level. A round counts once; a round is "won" when the player's net on it
+     is positive (settled, non-void). Open rounds carry no realised result.
+
+     🔴 THIS READ `rounds` — THE PAGE — WHILE THE STRIP CLAIMED TO DESCRIBE THE VIEW. Net return
+     and Win rate changed when the player pressed "next", and the middle tile printed a PAGED
+     round count over an UNPAGED bet count: "Rounds 12 · 87 bets", two scopes in one tile, two
+     lines apart. Money on screen that moves when you turn a page is money the player cannot
+     check. ⛔ Every figure in the strip now derives from `viewRounds`, and the bar above already
+     reports that same population (`resultCount={matched.length}`), so the three numbers agree.
+     ⚠️ Still bounded by `UD_HISTORY_LIMIT` — the 400-position cap the caption below states. */
+  const { staked, returned, net, decided, wins, winRate } = roundPnl(
+    viewRounds.map((g) => ({ stake: g.stake, returned: g.returned, anyOpen: g.anyOpen, outcome: g.row.outcome })),
+  );
 
   // UD-19 · a history that lists LIVE rounds must move when they settle. Rule-shaped
   // enablement, like `refreshCadence`: poll only while an in-play round is on screen;
   // a page of finished rounds registers nothing.
-  const anyLive = rounds.some((g) => g.anyOpen);
+  // ⛔ NOW THE VIEW, NOT THE PAGE — and it has to be. The figures above describe every matched
+  // round, so a round settling on page 3 changes the Net return a player is reading on page 1.
+  // Polling only while something visible is live would leave those figures stale with no tell.
+  const anyLive = viewRounds.some((g) => g.anyOpen);
 
   return (
     <div className="mx-auto w-full max-w-[1080px] px-4 py-6">
@@ -372,11 +385,26 @@ export default async function UpDownHistoryPage({ searchParams }: {
                    style={{ color: net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
                 {net === 0 ? formatTzs(0) : formatTzsSigned(net)}
               </div>
-              <div className="amount text-micro text-text-subtle">{formatTzs(staked)} → {formatTzs(returned)}</div>
+              {/* 🔴 D37 · THIS SUB-LINE USED TO SPILL OUT OF ITS TILE. `.amount` sets
+                  `white-space: nowrap` at doubled specificity (globals.css:1013), so the whole
+                  string "410,000 → 441,800" was one unbreakable run inside a ~124px box at
+                  360px — and view-scoped figures are LARGER than the paged ones it overflowed
+                  with. ⛔ A `whitespace-normal` utility cannot fix it: `.amount.amount` is
+                  (0,2,0) and a utility is (0,1,0), so the utility loses outright.
+                  ⭐ So `.amount` moves onto each NUMBER, where nowrap belongs — a figure must
+                  never break mid-digits — and the arrow between them becomes the wrap point.
+                  The tile grows a line instead of spilling into its neighbour. */}
+              <div className="flex flex-wrap items-baseline gap-x-1 text-micro text-text-subtle">
+                <span className="amount">{formatTzs(staked)}</span>
+                <span>→</span>
+                <span className="amount">{formatTzs(returned)}</span>
+              </div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5">
               <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udRoundsPlayed}</div>
-              <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{rounds.length}</div>
+              {/* ⛔ THE VIEW, not the page — this tile printed a PAGED round count directly above
+                  an UNPAGED bet count, so it read "Rounds 12 · 87 bets" on one card (D37). */}
+              <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{viewRounds.length}</div>
               <div className="font-mono text-[10px] text-text-subtle">{rows.length} {t.market.udBets}</div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5 col-span-2 sm:col-span-1">

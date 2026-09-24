@@ -262,6 +262,24 @@ await runTwoStores({
    * ⚠️ Six hand-typed pins moved in the same commit and each says why at its site: the exemption list (two →
    * three), its clamped render sites (five → seven), both activity header lists, the 474 exempt-name control,
    * and the POSITIONAL link pin (nine → eleven, because the Game cell paints a door in two branches). */
-  minPass: { memory: 809, postgres: 570 },
+  /* ⭐ RAISED AGAIN 809 → 817 MEMORY / 570 → 578 POSTGRES, 2026-09-24, to what THIS run PRINTED. +7 in each
+   * child: 1.626c and its controls (eight assertions) — what was LEFT of the account's own daily stake budget after each row, so
+   * an officer can see the money fall rather than read twenty identical stakes and guess how close it is.
+   * ⛔ IT IS THE CONFIGURED CAP AND NEVER THE HOLDER'S WALLET. The owner asked to watch the money decrease; the
+   * number that decreases and may be shown is 50pick's own budget (D3, 368/459/266 — and the C7 spec weighed a
+   * "Live balance" column on this very table and struck it).
+   * ⛔ THE FIXTURE PLACES REAL BETS, and that is the load-bearing choice: the panels fixture inserts INTENTS
+   * only, so its day book is 0 staked and every placed row would read the FULL cap — a column asserted against
+   * that is asserted against a constant, and deleting the arithmetic would leave it green.
+   * ⛔ THE DESK-WIDE CASE IS THE DESIGN'S OWN CLAIM, and it is the one that can catch the obvious wrong
+   * implementation — a running total swept down the visible rows. That table interleaves EVERY account, so such
+   * a sum would fold four accounts' money into one column; each row must carry the same figure it carries on
+   * its own account's page, against ITS OWN ceiling. It is also the only coverage the desk-wide renderer has.
+   * ⚠️ A `kind` filter would have been the sharper single-account probe, but a FILL or MANUAL stake is refused
+   * at fire time on a fresh poll (`house_condition_gone`), so every fixture stake is an OPENER.
+   * ⚠️ AND THE FIXTURE GIVES ITS ROSTER SLOTS BACK. Its two accounts took the roster to 20 of 20 and broke
+   * 1.359, 1.383 and 1.412 — four failures nowhere near this block. The repair is REMOVED accounts, never a
+   * raised ceiling: that ceiling is the very thing 1.359 and 1.412 measure. */
+  minPass: { memory: 817, postgres: 578 },
   dbPrefix: "hb_console",
 });

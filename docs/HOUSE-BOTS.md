@@ -1571,6 +1571,50 @@ commit**, the mover being lane E's "exactly ONE placed alert" going to 0. Lane E
 runs only for UPDOWN, and lane E passes 33/33 alone — so it is a cross-lane race in the alert capture, not a
 regression. Recorded rather than dismissed: a racy assertion inside a gate is a gate that can go green wrongly too.
 
+### 12.3 The activity table's `Left today` column, and the balance it deliberately is not — 2026-09-24
+
+The owner asked for "a new column for amounts… the final amount after this activity row, how much it became, so we
+can keep seeing them as they decrease." Read literally that is the holder's **wallet balance**, and it is refused —
+not by preference, by a written decision. `COMPLIANCE-DECISIONS.md` D3: the account belongs to a real person who
+**may use it and withdraw normally**, the console reads the live balance but **never renders it**, and *no console
+surface paints a bare balance anywhere*. C7 ruling 368 as amended by 459, and 266's "console money is usage against
+a limit", say the same. The C7 spec had already weighed **a `Live balance` column on this very table and struck it**:
+*"a balance is headroom, not usage."*
+
+⭐ **SO THE COLUMN COUNTS DOWN 50pick's OWN BUDGET INSTEAD — and that is the better number anyway.** `Left today` is
+`capDailyStakeTzs` less the day's stakes up to and including that row. It falls exactly as asked, it is the figure
+that actually **stops** the account (`CAP_PER_DAY` is the second most common refusal on the live desk), and unlike a
+wallet balance — which drains slowly against a large float — a 200,000–500,000 ceiling makes each 5,000 stake
+visible. All four live accounts carry the cap, so the column is populated on every live row.
+
+⛔ **361 WAS NOT RE-CUT TO GET THERE.** The console's one usage grammar bans "left" and "remaining"; rather than
+widen it, the cell carries **one figure** with the ceiling named in the **header** — ruling 373's own documented
+fallback, already written into that ruling for the roster — and 361's `used X of Y` sentence is reused **verbatim**
+as the cell's `title`. The word "left" is a column header's, which is 373's jurisdiction.
+
+⛔ **ONE ARITHMETIC PER DAY, ANCHORED ON THE DAY BOOK.** The newest placed row is handed the book's own `stakedTzs`
+— the same read the cap row above the table renders — and each older row is that total less the stakes after it.
+Prefix-summing the intents would have been a second arithmetic for one day, and `book.ts` warns exactly against
+that: a gate and the console may never disagree about the same day. The walk runs **newest → oldest** for a second
+reason: the scan window drops a busy day's oldest rows, and from this end a dropped row gets **no** figure rather
+than a wrong one.
+
+⚠️ **FOUR THINGS IT REFUSES TO ANSWER, each a blank and never a zero:** a row that moved no money; a row from an
+earlier EAT day (the cap is read live and officers edit it, so today's ceiling was never in force then); an account
+with no daily cap; and a row past the scan window. A zero here would read as *"this account is finished for the
+day"* — the opposite of the truth.
+
+⭐ **THE TEST THAT WOULD HAVE BEEN VACUOUS.** The panels fixture inserts **intents only**, so its day book is 0
+staked and every placed row reads the *full cap*. Asserting the column against that population is asserting it
+against a constant — delete the arithmetic and it stays green. 1.626c therefore **places three real bets** of
+different sizes against a 50,000 ceiling. Its most valuable assertion is the filter one: the obvious implementation,
+summing the rows on screen, makes one stake read differently under a different chip.
+
+⚠️ **AND THE FIXTURE BROKE FOUR CASES NOWHERE NEAR IT.** Its two accounts took the roster to **20 of 20**, so
+1.359, 1.383 and 1.412 failed with "The roster is full" — no output pointing anywhere near this block. The repair is
+REMOVED accounts giving the slots back, **never a raised ceiling**: that ceiling is the very thing those cases
+measure. A bounded shared resource consumed by a fixture is a defect class worth remembering.
+
 ---
 
 ## 13. Accepted risks

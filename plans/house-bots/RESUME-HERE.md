@@ -56,6 +56,18 @@ git merge origin/main                                                     # if m
 | The Activity row named the product but never the MARKET | `54e9902b` — a **Game** cell, linked to `/admin/markets/<id>` |
 | The activity table's money answer was off the phone at 360 | `65717fe4` — the due sentence wraps; the timestamp still does not |
 | A stuck payout closed withdrawals platform-wide for 33 h with nothing paging anyone | `2a9b1ef5` — `escalatePayoutOutage()` on the 5-minute sweep |
+| The Activity row said what a stake COST and never what it cost the DAY | **`Left today`** on both activity tables — the account's own `capDailyStakeTzs`, counting down |
+
+⛔ **`Left today` IS THE CONFIGURED CAP, NOT THE HOLDER'S WALLET, AND THAT WAS A DECISION — do not "finish" it
+by switching it to a balance.** The owner asked to watch the money decrease, which read literally is the wallet;
+D3 makes that account a real person who may withdraw, 368/459/266 keep every bare balance off these screens, and
+the C7 spec had already weighed a `Live balance` column ON THIS TABLE and struck it. The budget is also the more
+useful number: it is what actually stops the account. Ruling 373(d) carries the full reasoning.
+⚠️ **Two traps this cost a run each.** (1) The suite's fixture places REAL bets — the panels fixture inserts
+INTENTS only, so its day book is 0 staked and every placed row reads the FULL cap; a column asserted against that
+is asserted against a constant. (2) An account ABSENT from `houseDayBooks` staked nothing; only `dayBooks == null`
+is a failed read. Conflating them made the desk paint an em dash for a stake its own account page priced — found
+by RENDERING it, never by the suite.
 
 ⭐ **THE TWO LESSONS WORTH CARRYING, both learned the expensive way here:**
 1. **A gate passing is not the same as the screen being right.** `qa:house-bots-visual` returned 64/64 while
