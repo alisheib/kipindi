@@ -598,6 +598,12 @@ async function AdminDeskAccountContent({
                       <tr>
                         <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
+                        {/* ⭐ THE DAY'S BUDGET, FALLING (owner, 2026-09-24). The CEILING is named here and not in
+                            the cell — ruling 373's own named fallback for a third money cell, and the reason it
+                            exists: two figures in one narrow cell is what put the money off a 360 screen before.
+                            ⛔ "Left" is this HEADER's word, not a usage caption's: 361 governs the `used X of Y`
+                            sentence and that sentence is untouched — it is the cell's `title`, verbatim. */}
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
                         <th scope="col" className="text-left p-3">Product</th>
@@ -612,7 +618,7 @@ async function AdminDeskAccountContent({
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={7} title={view.feedEmpty.title} body={view.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={8} title={view.feedEmpty.title} body={view.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
@@ -634,6 +640,14 @@ async function AdminDeskAccountContent({
                               {r.due !== null && <span className="block text-caption text-text-tertiary whitespace-normal">{r.due}</span>}
                             </td>
                             <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
+                            {/* ⛔ A DASH, NOT A ZERO, AND NOT A FULL BUDGET. A row that moved no money, one from an
+                                earlier day, an account with no daily cap and a row past the scan window all arrive
+                                here as `null` — and every one of them is "no answer", never "nothing was spent". */}
+                            <td className="p-3 tabular text-right" title={r.leftTodayTitle ?? undefined}>
+                              {r.leftToday === null
+                                ? <span className="text-text-tertiary">—</span>
+                                : <span className="amount">{r.leftToday}</span>}
+                            </td>
                             <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
                             <td className="p-3 text-text">{r.typeWord}</td>
                             <td className="p-3 text-text-secondary">{r.productWord}</td>

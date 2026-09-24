@@ -697,10 +697,11 @@ export const MUTATIONS = [
        puts inside this same door rather than behind a second one. RE-ANCHORED AGAIN at C7 step 5's landing
        half: an EIGHTH, the rail's queued-stake badge, which is a SHELL fact and so belongs to this set rather
        than to a caller's slot. 🔴 EACH TIME IT WAS THE RED HARNESS THAT REPORTED THE ROT, never a reading — an
-       anchor that stops resolving is a mutation that silently stops being driven. THE DEFECT IS UNCHANGED — one
-       failed read blanks the whole page instead of its own cell. */
-    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR] = await Promise.all([`,
+       anchor that stops resolving is a mutation that silently stops being driven. RE-ANCHORED AGAIN 2026-09-24:
+       a NINTH, the activity panel's "Left today" scan, which takes `readDeskCore`'s third caller slot. THE DEFECT
+       IS UNCHANGED — one failed read blanks the whole page instead of its own cell. */
+    from: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR, extraCR] = await Promise.allSettled([`,
+    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR, extraCR] = await Promise.all([`,
     expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
     suite: "console-mem",
   },
@@ -2493,11 +2494,64 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "355-failed-reads-empty · a FAILED activity read answers an empty list, so the kit's failure treatment is never reached and a read that nobody could take looks like an account that has done nothing",
     file: GATE,
+    /* ⚠️ RE-ANCHORED 2026-09-24: `consoleFeedRow` took a fourth argument (the day's budget map) when the
+       `Left today` column landed. THE DEFECT IS UNCHANGED — a failed read answers `[]` instead of `null`. */
     from: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs));`,
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday));`,
     to: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? []
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs));`,
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday));`,
     expect: "1.355 · a failed activity read is `feed === null`",
+    suite: "console-mem",
+  },
+  /* ━━ THE "Left today" COLUMN (owner, 2026-09-24) — four ways the budget figure can be quietly wrong ━━━━━━━━
+   * Every one of these leaves a column that still renders a plausible amount on every placed row. That is the
+   * point: this feature's failure mode is not a blank cell, it is a CONFIDENT WRONG NUMBER under a money header.
+   * ⛔ The fixture behind them places REAL bets — the panels fixture inserts intents only, its day book is 0
+   * staked, and against that population every mutation below would paint the full cap and stay green. */
+  {
+    name: "626c-walk-reversed · the budget walk runs the wrong way, so every row is credited with the stakes that came AFTER it and the column reads too high, still falling and still plausible",
+    file: GATE,
+    from: `      used -= r.stakeTzs;`,
+    to: `      used += r.stakeTzs;`,
+    expect: "1.626c · every placed row says what was LEFT of the day's stake budget after it",
+    suite: "console-mem",
+  },
+  {
+    name: "626c-not-anchored · the walk starts at zero instead of the day book's own total, so the column is a prefix sum of the rows it can see and drifts from the cap row above the table",
+    file: GATE,
+    /* 🔴 THIS IS THE DEFECT THE DESIGN EXISTS TO PREVENT — two arithmetics for one day, which `book.ts` names as
+       the hazard a gate and a console must never fall into. Its tell is subtle: the figures still fall, still
+       sit inside the cap, and only disagree with the usage row rendered four inches above them. */
+    from: `    let used = staked;`,
+    to: `    let used = 0;`,
+    expect: "1.626c · the newest row's title is the SAME day total the cap row above the table renders",
+    suite: "console-mem",
+  },
+  {
+    name: "626c-null-cap-is-zero · an account with NO daily cap is treated as having one, so a healthy account's rows read against a ceiling nobody set",
+    file: GATE,
+    from: `    if (cap == null || staked == null) continue;`,
+    to: `    if (staked == null) continue;`,
+    expect: "1.626c · CONTROL · an account with NO daily stake cap gets no figure at all",
+    suite: "console-mem",
+  },
+  {
+    name: "626c-absent-is-unknown · an account the day book has no row for is treated as UNREADABLE rather than as nothing staked, so the desk paints an em dash for a stake its own account page prices",
+    file: GATE,
+    /* 🔴 THIS DEFECT SHIPPED AND WAS FOUND BY RENDERING THE DESK, not by the suite: every row on a locally
+       seeded world read "—" while the account page priced the same stake. The suite could not see it because
+       its fixture places REAL bets and is therefore always in the book. */
+    from: `    (id) => (core.dayBooks == null ? null : (core.dayBooks.get(id)?.stakedTzs ?? 0)),`,
+    to: `    (id) => core.dayBooks?.get(id)?.stakedTzs ?? null,`,
+    expect: "1.626c · an account the day book holds NO row for reads the same on the desk as on its own page",
+    suite: "console-mem",
+  },
+  {
+    name: "626c-scan-unscoped · the day scan stops asking for PLACED rows, so queued and skipped stakes are counted as money spent and every figure below them is too low",
+    file: GATE,
+    from: `        houseBotId: bot.id, statuses: ["PLACED"],`,
+    to: `        houseBotId: bot.id,`,
+    expect: "1.626c · CONTROL · only a PLACED row carries a budget figure",
     suite: "console-mem",
   },
   {
