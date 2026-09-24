@@ -359,7 +359,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D36 | 🔵 BOTH HALVES LIVE — half 1 earlier; half 2 `a7da5f89` 2026-09-24. ⭐ **PROVED ON PRODUCTION BY DISCRIMINATION (`bedb6023`):** the price tape had moved on to **$84,258.42** while the settled card still held its own close of **$84,154.00** — pre-fix those were one number — and the board card and its round page print the same figure. ⚠️ A single reading could NOT have shown this: during handover the newest settled round's close IS the latest confirmed read, so the two agree by construction and the instrument reported BLIND twice before the feed moved. The tick waits on U35 (D37 on-screen) | U35 |
 | D37 | 🔵 shipped `a7da5f89` 2026-09-24 — the P&L strip is view-scoped (Ali's decision), and the sub-line wraps instead of spilling. ⭐ **FIT PROVED ON PRODUCTION'S OWN STYLESHEET as a BEFORE/AFTER delta** (`scripts/live/ops/d37-tile-fit.mjs`, 2026-09-24): with a seven-figure book the OLD markup spilled **72px at 320, 52px at 360, 26px at 412**; the new one spills **0px** at all three, buying one line of tile height (117 → 132px). ⛔ **THE DATA PATH IS PROVED BY UNIT, NOT ON SCREEN** — `test:updown-history-pnl` (26 assertions, 6/6 mutations) shows the page hands `roundPnl` the VIEW, but nobody has watched the real page with real rows page from 1 to 2. Neither door is open: no production account has Up & Down history, and **React does not hydrate in dev on this machine** (see §0), so no local bet can be placed. The tick waits on that | U35 |
 | D38 | ⬜ | U36 |
-| D39 | ⬜ | U37 |
+| D39 | 🔵 shipped `22fb75a9` 2026-09-24 — both money moments now read through `sideWord`. ⭐ Guarded by a NEW §3d in `test:labels` (3 passes + 7 controls) that catches the two shapes §3 and §3b are structurally blind to. ⛔ And fixing its guard exposed a far bigger one — see the cell | U37 |
 | D40 | ⬜ | U37 |
 | D41 | ⬜ | U37 |
 | D42 | ⬜ | U32 |
@@ -436,6 +436,33 @@ The programme may be marked **🏁 CLOSED** in the status line at the top of thi
 Until then the status line stays 🟠 and `§0 NEXT` names real work.
 
 ## §2 — Session log (newest first)
+
+- **S19d · 2026-09-24 — D39, and the comment-stripper that was hiding 7,077 lines from every scanner.**
+  - **D39 (`22fb75a9`)** — two one-line edits through `sideWord`: the hedge warning's `heldLabel` and the
+    bet-placed modal's title. A sweep of every player surface confirmed they were the LAST two raw-enum
+    leaks. ⛔ Three citations in D39's own register cell were wrong (singular `market/` path, a `.join`
+    on a `Set`, and a precedent comment that names a different sibling) — all corrected in place.
+  - **NEW §3d in `test:labels`** — 3 passes, 7 controls, catching the two shapes §3 and §3b are
+    STRUCTURALLY blind to: a stored side reaching copy through a VARIABLE (the `.side` read is two
+    lines above the string that ships), and a display-position template whose only literal text is
+    " · " so a prose gate skips it. ⛔ Its own taint pass came back EMPTY for two runs until CRLF was
+    normalised — `.` does not match ``, so every `$`-anchored rule silently matched nothing. A
+    control now pins that reason in place.
+  - 🔴 **AND THE REAL FIND, WHICH WAS NOT D39 AT ALL.** `red:labels` scored **10/12**, and chasing the
+    uncaught one led to `stripComments`. Its JSX-comment rule was `/{s*/*[sS]*?*/s*}/` —
+    and `s` CROSSES NEWLINES, so in ordinary TypeScript an object literal's `{` followed by a doc
+    comment on the next line opened a match that ran to whatever distant `*/ }` came next.
+    **Measured: 7,077 lines of REAL CODE hidden across 76 files** — 1,337 of `market-service.ts`,
+    867 of `i18n-dict.ts` (the dictionary this suite exists to police), 160 of `updown-card.tsx`.
+    Every check in the file was blind to them. `[ 	]*` either side ends it and keeps every genuine
+    `{/* … */}`. ⭐ The suite still passes with those 7,077 lines visible — nothing was hiding in
+    them — and `red:labels` now catches the Up & Down push mutation it never could.
+  - ⚠️ **A SECOND MUTATION WAS PROVING NOTHING**: §3b's pick-gate anchor still carried an
+    `opacity-85` the call site had dropped, so it could not inject (§0 trap 2). Re-pinned.
+    **`red:labels` is 12/12, up from 10/12.**
+  - ⛔ MY FIRST MEASUREMENT OF THE DAMAGE SAID 11.1% AND WAS WRONG — it counted the interiors of
+    legitimate multi-line comments as hidden code. The honest number came from diffing the OLD rule
+    against the NEW one, which can only report lines the change actually reveals.
 
 - **S19c · 2026-09-24 — D37's fit proved as a delta, and dev hydration found broken on this box.**
   - **D37 fit (`scripts/live/ops/d37-tile-fit.mjs`)** — the strip's exact markup injected into a real
@@ -1097,7 +1124,7 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D36 | Up & Down truth: at the lock the pod shows a dead "Betting closes in 00:00" beside a panel saying betting has closed, and a resolved card keeps ticking a live price that contradicts its own close (S05-01, S05-02). 🔵 **BOTH HALVES FIXED AND LIVE, 2026-09-24.** ⛔ **THIS CELL USED TO NAME ~~`updown-card.tsx`, round page~~ — BOTH INNOCENT**, and a session that started there would have spent its day in the two files that were already right: the card renders whatever `livePrice` it is handed and already branches on `state` for its status word, target tiles and result pod; the round page has had the correct rule since E-72. Half 2 lived in `updown/page.tsx:286,290-292`, a file this cell never named. It was also FOUR wrong things, not one — price, percentage, direction glyph and win/lose ink, so a DOWN round wore a green rise beside its own "Down wins" pill. The rule is now `heroPrice`/`heroMovePct` in `updown-card-phase.ts`, called by BOTH surfaces | `updown/page.tsx`, `updown-card-phase.ts`, round page | U35 |
 | D37 | Up & Down history mixes scopes in one strip: "40 rounds" in the bar, "Rounds 12 · 95 bets" in the tile (page vs whole history), and the net-return sub-line spills into the next tile (S05-updown-NUM-01/02). 🔵 **FIXED AND LIVE, 2026-09-24.** Worse than filed: **Net return and Win rate themselves were PAGE-scoped** while the page's own comment claimed they described the whole filtered view — the money moved when the player pressed "next". ⭐ **Ali decided the scope on 2026-09-24: the whole filtered view**, so the pager moves the list and never the figures. The arithmetic is now the pure `roundPnl` (`src/lib/updown-history-pnl.ts`), the poller watches the view too, and the spill was `.amount`'s `white-space: nowrap` at DOUBLED specificity — a `whitespace-*` utility could never have overridden it, so `.amount` moved onto the numbers and the arrow became the wrap point | `updown/history/page.tsx`, `updown-history-pnl.ts` | U35 |
 | D38 | /live search: one typo unmounts the field mid-typing (keyboard closes, the query can only be cleared), and the hero above it changes height while typing, jumping the field 110–134px (S06-live-01, S06-live-02) | `live/page.tsx`, `featured-contest.tsx` | U36 |
-| D39 | Market detail money copy shows the raw YES/NO enum in SW/ZH — on the hedge warning and the bet-placed modal — while the buttons beside them say NDIO/HAPANA or 是/否 (S04-detail-01, S04-detail-02) | detail aside, result modal | U37 |
+| D39 | Market detail money copy shows the raw YES/NO enum in SW/ZH — on the hedge warning and the bet-placed modal — while the buttons beside them say NDIO/HAPANA or 是/否 (S04-detail-01, S04-detail-02). 🔵 **FIXED AND LIVE `22fb75a9`.** ⛔ **THREE CITATIONS IN THIS REGISTER WERE WRONG** and would each have cost a session: the path is `src/components/markets/…` (**markets, plural** — `market/` returns "No such file"); the code is `[...heldSides].join(" + ")`, NOT `heldSides.join(…)` — `heldSides` is a `Set` and has no `.join`, so a guard pinned to the quoted text would match nothing; and the "already-fixed sibling" comment at conviction-dial.tsx:1002 names the bet-placed NOTIFICATION, not the modal — the real in-file rule is at **:553-555**. ⭐ A sweep of every player surface confirmed these were the **last two** raw-enum leaks. ⚠️ Guard: §3d catches BOTH shapes §3/§3b miss — a stored side reaching copy through a VARIABLE (the `.side` read is two lines above the string) and a display-position template whose only literal text is " · " | `markets/[id]/page.tsx:357`, `components/markets/conviction-dial.tsx:1729` | U37 |
 | D40 | On the detail page the bet widget and the guest sign-in prompt are announced last, under the wrong heading: reading order does not match visual order (S04-detail-L04) | `markets/[id]/page.tsx:756` | U37 |
 | D41 | The InfoHint explanations for fee, multiplier and payout render as a one-line strip ~4× the screen width with a ~10×14px trigger, so on a phone the money explanation cannot be read or opened (S04-detail-03) | InfoHint in the stake panel | U37 |
 | D42 | The /results summary ring draws three arcs on the 171-market denominator but its legend names two ("NDIO 59 · HAPANA 88" = 147): 24 settled markets — 14% of the ring — sit in an arc named nowhere on the page (critics panel, three lenses) | `results/page.tsx:319` (`OutcomeDonut … voided`), legend `:324-331` prints YES · NO only | U32 |
