@@ -141,7 +141,7 @@ console.log(`\n§B · /live with MOTION ON — what moves over ${DWELL_MS / 1000
     // track to the active one, which is precisely the pre-fix hero.
     await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
       const res = await route.fetch();
-      const css = (await res.text()) + "\n.kp-contest-q>h2:not([data-q-active]){display:none}\n";
+      const css = (await res.text()) + "\n.kp-slide-stack>*:not([data-slide-active]){display:none}\n";
       await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
     });
   }

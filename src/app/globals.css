@@ -3472,9 +3472,17 @@ html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
    ⚠️ NO `min-height` AND NO LINE COUNT HERE ON PURPOSE. A reserved height would be a number
    that has to be kept in step with whatever the board's copy says this week, which is the drift
    `app/markets/loading.tsx` documents twice in its own header. The grid computes it instead. */
-.kp-contest-q { display: grid; }
-.kp-contest-q > h2 { grid-area: 1 / 1; }
-.kp-contest-q > h2:not([data-q-active]) { visibility: hidden; }
+/* ⭐ ONE CLASS, BOTH CAROUSELS. `/results`' notable carousel is `featured-contest.tsx`'s
+   declared twin and it had the same defect from the other direction: it renders every slide and
+   hid the inactive ones with the `hidden` ATTRIBUTE, which is `display: none`, so its box was the
+   height of whichever slide was showing. Measured on production 2026-09-24: 458 / 436 / 413px
+   across its three slides, moving the results grid 919 → 874 — **45px under the finger** each
+   time a player taps a dot to see the next notable result.
+   ⚠️ That one is input-driven, so CLS excludes it (`hadRecentInput`) and the number stays 0.
+   The player still watches the board jump; the metric simply does not have an opinion about it. */
+.kp-slide-stack { display: grid; }
+.kp-slide-stack > * { grid-area: 1 / 1; }
+.kp-slide-stack > *:not([data-slide-active]) { visibility: hidden; }
 
 /* 🔴 D30 IS NOT CLOSED BY THE RULE ABOVE — THE SORT MENU IS A `<details>`, NOT A `.kp-fsheet`.
    Measured on production at 320×640 with the sort menu open: the panel's own `z-index: 30` is spent inside
