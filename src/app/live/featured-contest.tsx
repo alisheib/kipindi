@@ -110,10 +110,50 @@ export function FeaturedContest({
 
       {/* Featured market — keyed so the bar redraws on swap */}
       <div key={m.id} className="max-w-[64ch] contest-fade">
+        {/* 🔴 EVERY QUESTION IS RENDERED, STACKED IN ONE GRID CELL, AND ONLY THE ACTIVE ONE IS
+            VISIBLE — so this box is always as tall as the LONGEST of the six and the hero does
+            not change height when the slide does.
+
+            ⛔ THE DEFECT THIS REPLACES WAS NOT A SKELETON PROBLEM, IT WAS A SITTING-STILL
+            PROBLEM. Rendering only `m.title` made the hero exactly as tall as whichever question
+            happened to be showing, and this carousel AUTO-ADVANCES every `AUTO_ADVANCE_MS`. So on
+            production at 360 in Swahili the hero cycled **388 ↔ 483px** and the search box and
+            the entire market grid below it slid up and down by **95px, with no user input at
+            all**, for as long as a player stayed on the page. Measured 2026-09-24 over 45s:
+            **un-input CLS 0.0796** against this plan's 0.05 budget, single shifts of 0.0319
+            against a 0.02 limit — and still climbing, because the cycle never stops.
+
+            ⚠️ IT WAS INVISIBLE TO EVERY GATE WE HAD, AND THE REASON IS WORTH KEEPING: the CLS
+            driver opened every route with `reducedMotion: "reduce"`, and the `useEffect` above
+            returns early under reduced motion. The guard turned the defect OFF and then reported
+            that it could not find it. `qa:cls-budget` now runs `/live` with motion ON and dwells
+            past two advances.
+
+            ⭐ NO LINE-CLAMP AND NO MEASURED LITERAL. A clamp would truncate the page's
+            centrepiece, and a reserved pixel height would be a number to keep in step with the
+            board's copy — the drift `markets/loading.tsx` has already documented twice. The
+            grid does the arithmetic instead: `grid-area: 1/1` on every child makes the track the
+            height of the tallest, whatever the questions happen to say.
+
+            ⛔ `visibility: hidden` (in `.kp-slide-stack`), NOT `display: none` or `aria-hidden`.
+            Hidden-by-visibility still contributes its box to the grid track — which is the whole
+            point — while being removed from the a11y tree AND the tab order, so the inactive
+            questions cannot be reached by a screen reader or by Tab. `display: none` would
+            collapse the track and bring the defect straight back; `aria-hidden` alone would
+            leave six focusable headings inside one link, the exact self-contradiction the dot
+            rail's note below exists to describe. */}
         <Link href={`/markets/${m.id}` as Route} className="group block">
-          <h2 className="mb-4 font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100">
-            {m.title}
-          </h2>
+          <div className="kp-slide-stack mb-4">
+            {markets.map((mm, i) => (
+              <h2
+                key={mm.id}
+                data-slide-active={i === idx ? "" : undefined}
+                className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100"
+              >
+                {mm.title}
+              </h2>
+            ))}
+          </div>
         </Link>
         {/* ⭐ NO `empty` BRANCH HERE, AND THAT IS A TYPE GUARANTEE RATHER THAN AN OVERSIGHT.
             `/live`'s `topContested` narrows with `.filter((m): m is … & { yesPct: number })`, so

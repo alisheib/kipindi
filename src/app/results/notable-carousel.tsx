@@ -82,11 +82,30 @@ export function NotableCarousel({
           ⚠️ `aria-hidden` on the inactive slides keeps a screen reader from reading three cards
           where a sighted reader sees one, and `responsive-audit` skips zero-width boxes, so no
           false overflow is introduced. */}
-      {slides.map((s, i) => (
-        <div key={i} hidden={i !== current} aria-hidden={i !== current || undefined}>
-          {s}
-        </div>
-      ))}
+      {/* 🔴 THE SLIDES ARE STACKED IN ONE GRID CELL, so this box is always as tall as the
+          TALLEST notable result and the grid below it does not move when a dot is tapped.
+          Measured on production 2026-09-24 at 360 in Swahili: the three slides rendered 458 /
+          436 / 413px and the results grid sat at 919 / 897 / 874 — **45px of travel per tap**, on
+          a control whose entire purpose is "show me the next one".
+          ⚠️ CLS SCORES THAT ZERO and always will: the move happens within 500ms of the tap, so
+          `hadRecentInput` excludes it. A player asked to see another result, not to have the
+          board slide out from under the one they were reading. Do not reach for the metric here.
+          ⛔ `visibility: hidden` REPLACES THE `hidden` ATTRIBUTE, and the swap is exact for every
+          reason the paragraph below gives: the slides stay in the DOM, so `[data-row-id]` is
+          still countable and a crawler still sees all three; they stay out of the a11y tree and
+          out of the tab order, so a screen reader still meets one card and Tab cannot reach the
+          share button on a card nobody can see. What changes is only that a hidden slide still
+          contributes its BOX — which is the whole point, and which `responsive-audit` is already
+          built for: it skips `visibility: hidden` explicitly in all three of its checks (the
+          overflow pass, the clipped-ancestor pass and the tap-target pass), not merely by
+          zero-size, so no false overflow is introduced by laying them out. */}
+      <div className="kp-slide-stack">
+        {slides.map((s, i) => (
+          <div key={i} data-slide-active={i === current ? "" : undefined} aria-hidden={i !== current || undefined}>
+            {s}
+          </div>
+        ))}
+      </div>
 
       {/* ⭐ DG-P-07 · §A2 — THE DOT WAS THE BUTTON, SO THE TARGET WAS 6×8px.
           Re-derived: `h-1.5` is 8px on the OVERRIDDEN spacing scale (tailwind.config.ts:207),

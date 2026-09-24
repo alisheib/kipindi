@@ -19,6 +19,22 @@
  * 780px viewport at first paint and then being thrown off it, byte-identical on three routes,
  * which is what identified it as the SHELL and not any page.
  *
+ * 🔴 TWO THINGS THIS DRIVER CANNOT SEE, AND BOTH WERE LIVE ON 2026-09-24. Neither is a bug
+ * in the code below; both are consequences of what it chose to measure, and `qa:ghost-landing`
+ * exists to cover them. Do not read a green run here as "nothing moves".
+ *
+ *   1. IT OPENS EVERY ROUTE WITH `reducedMotion: "reduce"` — right for a stable screenshot, and
+ *      it turns OFF `/live`'s featured carousel, whose `useEffect` returns early under reduced
+ *      motion. That carousel auto-advanced every 6s and the hero was exactly as tall as whichever
+ *      question was up, so the grid below it moved by 95px on a timer: **0.0796 un-input CLS over
+ *      45s of sitting still**. This driver switched the defect off and then reported it could not
+ *      find one.
+ *   2. IT NAVIGATES, SO IT NEVER SEES A SKELETON. `loading.tsx` renders only on a CLIENT-SIDE
+ *      hop; a hard `goto` streams the real page. And `layout-shift` counts only nodes present
+ *      BEFORE and AFTER a frame — a ghost is REMOVED and different nodes appear — so a skeleton
+ *      can promise the board half a screen from where it lands and score a clean 0.0000. It did:
+ *      `/live` was out by 538px, `/markets` by 239px, both at CLS 0.0000.
+ *
  * ⛔ THE RED CONTROL REWRITES THE SERVED STYLESHEET rather than injecting a tag. An injected
  * `<style>` at document-start was tried and did NOT take — the parser builds `<head>` after it
  * and the rule was lost, so the "RED" run scored the same as the green one and would have
@@ -30,7 +46,14 @@ import { localisedContext, assertLang } from "./qa-locale.mjs";
 
 const BASE = process.argv[2] || process.env.BASE || "https://www.50pick.tz";
 const RED = process.env.RED_SHELL === "1";
-const ROUTES = ["/", "/markets", "/results"];
+/**
+ * The three routes whose shift was measured and fixed. ⚠️ A second argument replaces them —
+ *   npm run qa:cls-budget -- <base> "/live,/watchlist"
+ * — because a budget that can only ever be asked about three pages is not a budget for the
+ * product. On Git Bash prefix the command with `MSYS_NO_PATHCONV=1`, or a leading `/` is
+ * rewritten into a Windows path before node ever sees it.
+ */
+const ROUTES = (process.argv[3] || "/,/markets,/results").split(",").map((r) => r.trim()).filter(Boolean);
 const BUDGET = 0.05;
 const SINGLE = 0.02;
 

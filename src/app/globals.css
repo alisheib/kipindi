@@ -3452,6 +3452,38 @@ textarea::placeholder { color: var(--text-subtle); }
 .kp-discovery-bar:has(.kp-fsheet[open]),
 html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
 
+/* 🔴 `/live`'S FEATURED CAROUSEL MUST NOT CHANGE THE HERO'S HEIGHT WHEN IT CHANGES SLIDE.
+   All six questions are rendered into ONE grid cell (`featured-contest.tsx`), so the track is
+   sized by the TALLEST and the hero is the same height on every slide.
+
+   ⛔ THE DEFECT: with only the active question in the box, the hero measured 388px on the
+   shortest market and 483px on the longest — and this carousel auto-advances on a timer. On
+   production at 360 in Swahili the search box and the whole market grid below the hero moved by
+   up to **95px every few seconds, with the player touching nothing**. Over 45 seconds of sitting
+   still that is **un-input CLS 0.0796** against a 0.05 budget, with single shifts of 0.0319
+   against a 0.02 limit, and it does not converge — the loop runs as long as the page is open.
+
+   ⚠️ `visibility: hidden` IS THE LOAD-BEARING WORD. It keeps each hidden question's box in the
+   grid — which is what makes the track the height of the tallest — while removing it from the
+   accessibility tree and from the tab order. `display: none` would size the track to the active
+   question alone and restore the defect exactly; `opacity: 0` would leave six headings readable
+   and six links tabbable inside one anchor. Neither substitution is cosmetic.
+
+   ⚠️ NO `min-height` AND NO LINE COUNT HERE ON PURPOSE. A reserved height would be a number
+   that has to be kept in step with whatever the board's copy says this week, which is the drift
+   `app/markets/loading.tsx` documents twice in its own header. The grid computes it instead. */
+/* ⭐ ONE CLASS, BOTH CAROUSELS. `/results`' notable carousel is `featured-contest.tsx`'s
+   declared twin and it had the same defect from the other direction: it renders every slide and
+   hid the inactive ones with the `hidden` ATTRIBUTE, which is `display: none`, so its box was the
+   height of whichever slide was showing. Measured on production 2026-09-24: 458 / 436 / 413px
+   across its three slides, moving the results grid 919 → 874 — **45px under the finger** each
+   time a player taps a dot to see the next notable result.
+   ⚠️ That one is input-driven, so CLS excludes it (`hadRecentInput`) and the number stays 0.
+   The player still watches the board jump; the metric simply does not have an opinion about it. */
+.kp-slide-stack { display: grid; }
+.kp-slide-stack > * { grid-area: 1 / 1; }
+.kp-slide-stack > *:not([data-slide-active]) { visibility: hidden; }
+
 /* 🔴 D30 IS NOT CLOSED BY THE RULE ABOVE — THE SORT MENU IS A `<details>`, NOT A `.kp-fsheet`.
    Measured on production at 320×640 with the sort menu open: the panel's own `z-index: 30` is spent inside
    `.kp-discovery-bar.sticky.z-20`, its only positioned ancestor, so it resolves at **20** against the page,
