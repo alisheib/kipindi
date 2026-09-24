@@ -593,10 +593,18 @@ async function AdminDeskAccountContent({
                   <p className="text-body-sm text-text-tertiary">{view.feedOrderNote}</p>
                 </div>
                 <ScrollX label="Account activity">
-                  <table className="admin-tbl">
+                  {/* ⭐ THE MONEY ANSWERS FIT ON A PHONE, AND THE LEVER IS PADDING — the whole argument is at the
+                      desk-wide table's own activity table, which carries the same two classes for the same reason:
+                      `.admin-tbl td`/`th` are (0,1,1) with 16px gutters, so the `p-3` below is DEAD, and halving
+                      the gutter at phone width buys back more strip than the type could. `sm:` restores the kit's
+                      own 16px, so every width that already read well is unchanged. */}
+                  <table className="admin-tbl [&_td]:!px-2 [&_th]:!px-2 sm:[&_td]:!px-4 sm:[&_th]:!px-4">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
+                        {/* ⭐ LOWERED AT PHONE WIDTH ONLY so the second money answer reaches the strip. The
+                            timestamp keeps its nowrap either way — 432(b) forbids clipping a time, and the
+                            due sub-line under it is the one part allowed to wrap. */}
+                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
                         {/* ⭐ THE DAY'S BUDGET, FALLING (owner, 2026-09-24). The CEILING is named here and not in
                             the cell — ruling 373's own named fallback for a third money cell, and the reason it

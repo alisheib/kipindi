@@ -262,7 +262,7 @@ await runTwoStores({
    * ⚠️ Six hand-typed pins moved in the same commit and each says why at its site: the exemption list (two →
    * three), its clamped render sites (five → seven), both activity header lists, the 474 exempt-name control,
    * and the POSITIONAL link pin (nine → eleven, because the Game cell paints a door in two branches). */
-  /* ⭐ RAISED AGAIN 809 → 817 MEMORY / 570 → 578 POSTGRES, 2026-09-24, to what THIS run PRINTED. +7 in each
+  /* ⭐ RAISED AGAIN 809 → 819 MEMORY / 570 → 580 POSTGRES, 2026-09-24, to what THIS run PRINTED. +7 in each
    * child: 1.626c and its controls (eight assertions) — what was LEFT of the account's own daily stake budget after each row, so
    * an officer can see the money fall rather than read twenty identical stakes and guess how close it is.
    * ⛔ IT IS THE CONFIGURED CAP AND NEVER THE HOLDER'S WALLET. The owner asked to watch the money decrease; the
@@ -277,9 +277,14 @@ await runTwoStores({
    * its own account's page, against ITS OWN ceiling. It is also the only coverage the desk-wide renderer has.
    * ⚠️ A `kind` filter would have been the sharper single-account probe, but a FILL or MANUAL stake is refused
    * at fire time on a fresh poll (`house_condition_gone`), so every fixture stake is an OPENER.
+   * 🔴 AND THE COLUMN ANSWERS ON EVERY ROW OF THE DAY, NOT ONLY WHERE MONEY MOVED — corrected 2026-09-24 after
+   * the OWNER could not find the feature on the live desk. MEASURED ON PRODUCTION: 16 of the newest 20 rows were
+   * SKIPPED, so the first cut painted sixteen em dashes and four figures and read as an empty column. A budget
+   * standing at X is a fact about an INSTANT, true of a queued row too; a ledger that repeats a value between
+   * movements is what makes the steps visible, which is the whole of what was asked for.
    * ⚠️ AND THE FIXTURE GIVES ITS ROSTER SLOTS BACK. Its two accounts took the roster to 20 of 20 and broke
    * 1.359, 1.383 and 1.412 — four failures nowhere near this block. The repair is REMOVED accounts, never a
    * raised ceiling: that ceiling is the very thing 1.359 and 1.412 measure. */
-  minPass: { memory: 817, postgres: 578 },
+  minPass: { memory: 819, postgres: 580 },
   dbPrefix: "hb_console",
 });

@@ -805,11 +805,11 @@ export const MUTATIONS = [
     file: PAGE,
     /* ⚠️ RE-ANCHORED at C7 step 5's landing half: the page carries THREE of these openers now, the anchor
        matched 3× and the harness refused to inject — which is how the presence check this fires is known to have
-       been broken by the same change. The label above it is what makes the money-bearing one unique. */
-    from: `                <ScrollX label="Desk activity">
-                  <table className="admin-tbl">`,
-    to: `                <ScrollX label="Desk activity">
-                  <table className="admin-tbl min-w-[720px]">`,
+       been broken by the same change. ⚠️ RE-ANCHORED AGAIN 2026-09-24: the activity table now carries its own
+       phone-width gutter classes, which made it unique by itself — the ScrollX label above it is no longer needed
+       to single it out. THE DEFECT IS UNCHANGED: a width on the money table stretches every column. */
+    from: `                  <table className="admin-tbl [&_td]:!px-2 [&_th]:!px-2 sm:[&_td]:!px-4 sm:[&_th]:!px-4">`,
+    to: `                  <table className="admin-tbl min-w-[720px] [&_td]:!px-2 [&_th]:!px-2 sm:[&_td]:!px-4 sm:[&_th]:!px-4">`,
     expect: "1.373 · the money-bearing TABLE carries no `min-w-*` of its own",
     suite: "console-mem",
   },
@@ -817,11 +817,11 @@ export const MUTATIONS = [
     name: "373-subject · the subject column loses its floor, so it absorbs the whole shortfall at 360 again",
     file: PAGE,
     /* ⚠️ RE-ANCHORED at C7 step 5's landing half, same rot and same finding: three panels paint this header, so
-       the anchor matched 3×. The `Stake` header on the next line is the money-bearing panel's own. */
-    from: `                        <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
-    to: `                        <th scope="col" className="text-left p-3">Account</th>
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>`,
+       the anchor matched 3×. ⚠️ RE-ANCHORED AGAIN 2026-09-24: the floor is now responsive
+       (`min-w-[104px] sm:min-w-[150px]`), which makes this header unique without the `Stake` line beneath it.
+       THE DEFECT IS UNCHANGED: the subject column loses its floor and absorbs the whole shortfall at 360. */
+    from: `                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[150px]">Account</th>`,
+    to: `                        <th scope="col" className="text-left p-3">Account</th>`,
     expect: "1.373 · EVERY panel that paints the subject column carries the SAME floor",
     suite: "console-mem",
   },
@@ -2511,8 +2511,8 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "626c-walk-reversed · the budget walk runs the wrong way, so every row is credited with the stakes that came AFTER it and the column reads too high, still falling and still plausible",
     file: GATE,
-    from: `      used -= r.stakeTzs;`,
-    to: `      used += r.stakeTzs;`,
+    from: `    return pAt !== atMs ? pAt > atMs : p.id > id;`,
+    to: `    return pAt !== atMs ? pAt < atMs : p.id < id;`,
     expect: "1.626c · every placed row says what was LEFT of the day's stake budget after it",
     suite: "console-mem",
   },
@@ -2522,16 +2522,16 @@ import { formatEat } from "@/lib/utils";`,
     /* 🔴 THIS IS THE DEFECT THE DESIGN EXISTS TO PREVENT — two arithmetics for one day, which `book.ts` names as
        the hazard a gate and a console must never fall into. Its tell is subtle: the figures still fall, still
        sit inside the cap, and only disagree with the usage row rendered four inches above them. */
-    from: `    let used = staked;`,
-    to: `    let used = 0;`,
+    from: `    const used = staked - newer;`,
+    to: `    const used = newer;`,
     expect: "1.626c · the newest row's title is the SAME day total the cap row above the table renders",
     suite: "console-mem",
   },
   {
     name: "626c-null-cap-is-zero · an account with NO daily cap is treated as having one, so a healthy account's rows read against a ceiling nobody set",
     file: GATE,
-    from: `    if (cap == null || staked == null) continue;`,
-    to: `    if (staked == null) continue;`,
+    from: `    if (cap == null || staked == null) return null;`,
+    to: `    if (staked == null) return null;`,
     expect: "1.626c · CONTROL · an account with NO daily stake cap gets no figure at all",
     suite: "console-mem",
   },
@@ -2547,11 +2547,32 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
+    name: "626c-any-day · the day bound comes off the budget lookup, so a row from an EARLIER day is priced against TODAY's ceiling — a limit that was never in force on it",
+    file: GATE,
+    /* ⚠️ The cap is read LIVE and officers edit it. A figure on last week's row looks entirely normal and is
+       answerable to nothing — the worst shape a money column can take. */
+    from: `    if (!Number.isFinite(at) || at < dayFromMs) return null;`,
+    to: `    if (!Number.isFinite(at)) return null;`,
+    expect: "1.626c · CONTROL · a row from an EARLIER day answers nothing",
+    suite: "console-mem",
+  },
+  {
+    name: "626c-placed-only · the budget answers only where money MOVED, so four rows in five go blank and the column reads as empty",
+    file: GATE,
+    /* 🔴 THIS IS THE DEFECT AS SHIPPED, and it is here because it was found by the OWNER on the live desk rather
+       than by this suite. Production carried 16 SKIPPED among the newest 20 rows; the column rendered sixteen em
+       dashes and he could not find the feature at all. A budget standing at X is a fact about an INSTANT. */
+    from: `    leftToday: left(i)?.text ?? null,`,
+    to: `    leftToday: i.status === "PLACED" ? (left(i)?.text ?? null) : null,`,
+    expect: "1.626c · EVERY row of today carries the budget, whatever its outcome",
+    suite: "console-mem",
+  },
+  {
     name: "626c-scan-unscoped · the day scan stops asking for PLACED rows, so queued and skipped stakes are counted as money spent and every figure below them is too low",
     file: GATE,
     from: `        houseBotId: bot.id, statuses: ["PLACED"],`,
     to: `        houseBotId: bot.id,`,
-    expect: "1.626c · CONTROL · only a PLACED row carries a budget figure",
+    expect: "1.626c · every placed row says what was LEFT of the day's stake budget after it",
     suite: "console-mem",
   },
   {

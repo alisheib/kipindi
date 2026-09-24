@@ -670,12 +670,24 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                   <p className="text-body-sm text-text-tertiary">{feedView.feedOrderNote}</p>
                 </div>
                 <ScrollX label="Desk activity">
-                  <table className="admin-tbl">
+                  {/* ⭐ THE MONEY ANSWERS FIT ON A PHONE, AND THE LEVER IS PADDING — NOT THE TYPE (owner asked
+                      for the budget where he can see it, 2026-09-24). `.admin-tbl td` is `padding: 12px 16px` and
+                      `.admin-tbl th` `10px 16px`, both (0,1,1) — so the `p-3` these cells already carry is DEAD,
+                      losing on specificity, and 16px × 2 × 3 cells was 96px of the 318px strip spent on gutters
+                      before a single figure. Halving it at phone width buys back 48px, which is more than the
+                      type could give and costs nothing anyone reads.
+                      ⛔ THE `!` IS LOAD-BEARING for exactly the reason the header below states, and the arbitrary
+                      variant is what lets ONE class list reach every cell instead of nine hand-edited ones.
+                      ⛔ PHONE ONLY — `sm:` restores the kit's own 16px, so every width that already read well is
+                      byte-identical. Measured after, not assumed: see the 360 read in §12.3. */}
+                  <table className="admin-tbl [&_td]:!px-2 [&_th]:!px-2 sm:[&_td]:!px-4 sm:[&_th]:!px-4">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         {/* ⛔ A FLOOR ON THE SUBJECT COLUMN, the roster's own measured one: without it the account
-                            column absorbs the whole shortfall at 360 and the label and the handle crush together. */}
-                        <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
+                            column absorbs the whole shortfall at 360 and the label and the handle crush together.
+                            ⭐ LOWERED AT PHONE WIDTH ONLY so the second money answer reaches the strip; the label
+                            wraps to two lines there, which it already does for every long account name. */}
+                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[150px]">Account</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
                         {/* ⭐ THE DAY'S BUDGET, FALLING (owner, 2026-09-24) — 373's named fallback: the ceiling is
                             in the header so the cell carries ONE figure. ⛔ ON THE DESK-WIDE TABLE EACH ROW COUNTS

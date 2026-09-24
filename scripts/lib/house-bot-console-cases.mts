@@ -4057,24 +4057,57 @@ try {
         if (!r.ok) throw new Error(`1.626c fixture bet refused: ${j(r)}`);
         await new Promise((res) => setTimeout(res, 2));
       }
+      /* ⭐ TWO ROWS THAT MOVE NO MONEY, and they are the point of the 2026-09-24 correction. The first cut
+         answered only where money moved; MEASURED ON PRODUCTION, 16 of the newest 20 desk rows are SKIPPED, so
+         the column rendered as sixteen em dashes and read as empty. A budget standing at X is a fact about an
+         INSTANT, not about a payment — true of a queued row too, which is what makes the steps visible.
+         • `idle` is TODAY and newest: nothing was staked after it, so it must read the newest placed row's figure.
+         • `old` is moved two days back: it must read NOTHING, because the cap is live and an officer may have
+           changed it since — pricing an older day against today's ceiling is a limit that was never in force. */
+      const idleMkt = await w.poll({ graceMin: 0 });
+      const idle = await w.intent(bud, idleMkt.id, { kind: "OPENER", side: "YES", stakeTzs: 9_000 });
+      const oldMkt = await w.poll({ graceMin: 0 });
+      const old = await w.intent(bud, oldMkt.id, { kind: "OPENER", side: "YES", stakeTzs: 6_000 });
+      await w.backdateIntent(old.id, 2 * 86_400_000);
       await w.switchOff();
       const bv = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", bud.botId, { tab: "activity" });
       const brows = (bv.feed ?? []) as Any[];
       const total = STAKES.reduce((a, b) => a + b, 0);
       /* Newest first, so the expected figures run cap−10,000 · cap−8,000 · cap−5,000 down the page. */
       const WANT = [50_000 - total, 50_000 - (total - 2_000), 50_000 - (total - 2_000 - 3_000)];
+      const placedRows = STAKES.map((amt) => brows.find((r: Any) => r.stake === formatTzs(amt)));
+      const idleRow = brows.find((r: Any) => r.stake === formatTzs(9_000));
+      const oldRow = brows.find((r: Any) => r.stake === formatTzs(6_000));
 
       ok("1.626c · every placed row says what was LEFT of the day's stake budget after it — the exact ceiling less every stake up to and including that row",
-        brows.length === 3 && brows.every((r: Any, k: number) => r.leftToday === formatTzs(WANT[k])),
-        j({ want: WANT, got: brows.map((r: Any) => r.leftToday), stakes: brows.map((r: Any) => r.stake) }));
+        placedRows.every((r) => r != null)
+          && placedRows[0]!.leftToday === formatTzs(WANT[2])
+          && placedRows[1]!.leftToday === formatTzs(WANT[1])
+          && placedRows[2]!.leftToday === formatTzs(WANT[0]),
+        j({ want: WANT, got: placedRows.map((r: Any) => r?.leftToday), stakes: placedRows.map((r: Any) => r?.stake) }));
+
+      /* ⛔ A ROW THAT MOVED NO MONEY STILL SAYS WHERE THE BUDGET STOOD — the same figure as the newest stake,
+         because nothing was taken between them. Without this the column is blank on four rows in five. */
+      ok("1.626c · a QUEUED row from today carries the budget too — unchanged, because nothing was staked after it, and never blank",
+        idleRow != null && idleRow.leftToday === formatTzs(WANT[0]) && idleRow.statusWord !== placedRows[0]!.statusWord,
+        j({ idle: idleRow?.leftToday, newestPlaced: formatTzs(WANT[0]), status: idleRow?.statusWord }));
+
+      /* ⛔ CONTROL · AND AN EARLIER DAY SAYS NOTHING AT ALL. The ceiling is read live; applying today's to a
+         past day would put a limit on screen that was never in force on it. A blank is honest here. */
+      ok("1.626c · CONTROL · a row from an EARLIER day answers nothing — today's ceiling was never the one in force then",
+        oldRow != null && oldRow.leftToday === null && oldRow.leftTodayTitle === null,
+        j({ old: oldRow?.leftToday, stake: oldRow?.stake }));
 
       /* ⭐ THE OWNER'S OWN WORDS — "so we can keep seeing them as they decrease". Read forward in time the
          figures fall; the table is newest-first, so down the page they RISE. A column that merely repeated one
          number would satisfy the shape assertions above and fail this one. */
       ok("1.626c · the figure DECREASES with every stake — the thing an officer watches, asserted as a strict order and not as a shape",
-        brows.length === 3 && WANT[0] < WANT[1] && WANT[1] < WANT[2]
-          && brows.every((r: Any, k: number) => k === 0 || formatTzs(WANT[k]) !== brows[k - 1].leftToday),
-        j(brows.map((r: Any) => r.leftToday)));
+        WANT[0] < WANT[1] && WANT[1] < WANT[2]
+          && placedRows[2]!.leftToday === formatTzs(WANT[0])
+          && placedRows[1]!.leftToday === formatTzs(WANT[1])
+          && placedRows[0]!.leftToday === formatTzs(WANT[2])
+          && new Set(placedRows.map((r: Any) => r.leftToday)).size === 3,
+        j({ oldestToNewest: placedRows.map((r: Any) => r.leftToday).reverse() }));
 
       /* ⛔ IT CANNOT CONTRADICT THE PANEL ABOVE IT, AND THIS IS THE ASSERTION THAT PINS IT. The newest row is
          handed the day book's OWN `stakedTzs` — the same read the `capDailyStakeTzs` usage row renders — so the
@@ -4082,8 +4115,8 @@ try {
       const dayRow = (bv.usage ?? [])[0] as Any;
       ok("1.626c · the newest row's title is the SAME day total the cap row above the table renders — one arithmetic for one day, in 361's untouched grammar",
         dayRow != null && dayRow.usedTzs === total && dayRow.limitTzs === 50_000
-          && brows[0].leftTodayTitle === `used ${formatTzs(dayRow.usedTzs)} of ${formatTzs(dayRow.limitTzs)}`,
-        j({ title: brows[0]?.leftTodayTitle, used: dayRow?.usedTzs, limit: dayRow?.limitTzs }));
+          && placedRows[2]!.leftTodayTitle === `used ${formatTzs(dayRow.usedTzs)} of ${formatTzs(dayRow.limitTzs)}`,
+        j({ title: placedRows[2]?.leftTodayTitle, used: dayRow?.usedTzs, limit: dayRow?.limitTzs }));
 
       /* ⛔ THE DESIGN'S LOAD-BEARING CLAIM: the budget is spent by every placed stake whatever the officer has
          filtered the table to. Computing it from the VISIBLE rows — the obvious implementation — makes the same
@@ -4110,8 +4143,8 @@ try {
          roster decision) — and the fixture above cannot see this, because it places real bets and is therefore
          always IN the book. */
       const panelsDetail = await feedView();
-      const panelsPlaced = (panelsDetail.feed ?? []).find((r: Any) => r.statusWord === brows[0].statusWord);
-      const panelsOnDesk = (deskWide.feed ?? []).find((r: Any) => r.stake === panelsPlaced?.stake && r.statusWord === brows[0].statusWord);
+      const panelsPlaced = (panelsDetail.feed ?? []).find((r: Any) => r.statusWord === placedRows[0]!.statusWord);
+      const panelsOnDesk = (deskWide.feed ?? []).find((r: Any) => r.stake === panelsPlaced?.stake && r.statusWord === placedRows[0]!.statusWord);
       ok("1.626c · an account the day book holds NO row for reads the same on the desk as on its own page — absent from the book is nothing staked, and only a FAILED read is no answer",
         panelsPlaced != null && panelsOnDesk != null
           && panelsPlaced.leftToday !== null && panelsOnDesk.leftToday === panelsPlaced.leftToday,
@@ -4123,8 +4156,9 @@ try {
       const filtered = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", bud.botId, { tab: "activity", outcome: "PLACED" });
       const fr = (filtered.feed ?? []) as Any[];
       ok("1.626c · the figure is the same under a FILTER — it is the day's budget, not a running total of whatever rows happen to be on screen",
-        fr.length === brows.length && fr.every((r: Any, k: number) => r.leftToday === brows[k].leftToday),
-        j({ unfiltered: brows.map((r: Any) => r.leftToday), filtered: fr.map((r: Any) => r.leftToday) }));
+        fr.length === STAKES.length
+          && STAKES.every((amt, k) => fr.find((r: Any) => r.stake === formatTzs(amt))?.leftToday === placedRows[k]!.leftToday),
+        j({ unfiltered: placedRows.map((r: Any) => r.leftToday), filtered: fr.map((r: Any) => r.leftToday) }));
 
       /* ⛔ CONTROL · AN ACCOUNT WITH NO DAILY CAP HAS NO BUDGET TO COUNT DOWN, and the honest answer is no
          figure. A reader that fell back to a zero ceiling would paint "TZS 0" on a healthy account and read as
@@ -4149,11 +4183,16 @@ try {
       /* ⛔ CONTROL · A ROW THAT MOVED NO MONEY MADE NOTHING BECOME ANYTHING. The panels fixture is the
          population for this one on purpose: it carries all five statuses, and only PLACED may answer. The word
          is read off a row this block KNOWS is placed, never typed — a typed word drifts from the status map. */
-      const PLACED_WORD = brows[0].statusWord;
-      ok("1.626c · CONTROL · only a PLACED row carries a budget figure — a queued, skipped, failed or cancelled row moved no money and answers `null`",
-        p1.feed.some((r: Any) => r.statusWord === PLACED_WORD)
-          && p1.feed.every((r: Any) => r.statusWord === PLACED_WORD || r.leftToday === null),
-        j([...new Set(p1.feed.map((r: Any) => `${r.statusWord}=${r.leftToday === null ? "null" : "figure"}`))]));
+      const PLACED_WORD = placedRows[0]!.statusWord;
+      /* 🔴 THE COLUMN MUST NOT BE MOSTLY BLANK, AND THAT IS A MEASUREMENT, NOT A PREFERENCE. On production
+         2026-09-24 the newest 20 desk rows were 16 SKIPPED and 4 PLACED — under the first cut this column paint
+         sixteen em dashes, and the owner could not find the feature at all. The panels account carries all five
+         statuses on TODAY's date, so it is the population that proves every one of them answers. */
+      const statuses = new Set(p1.feed.map((r: Any) => r.statusWord));
+      ok("1.626c · EVERY row of today carries the budget, whatever its outcome — the column is a running line, not a payment receipt",
+        statuses.size >= 4 && statuses.has(PLACED_WORD)
+          && p1.feed.length > 0 && p1.feed.every((r: Any) => r.leftToday !== null),
+        j([...new Set(p1.feed.map((r: Any) => `${r.statusWord}=${r.leftToday === null ? "BLANK" : "figure"}`))]));
 
       /* ⛔ THE SLOTS GO BACK, AND THIS IS NOT TIDINESS — IT IS A DEFECT THIS BLOCK CAUSED AND HAD TO REPAIR.
          The roster is a BOUNDED shared resource (20 designations), and these two fixture accounts took it to
@@ -6975,8 +7014,20 @@ export default function Ruling513Control() {
      ⛔ DERIVED, NEVER TYPED: the openers are read off the page and each must be the bare one, so a fifth panel's
      table is inside this rule on the day it is written. */
   const tableOpeners = [...pageCode.matchAll(/<table className="[^"]*"/g)].map((m: Any) => m[0]);
-  ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column — and EVERY table on this page is the bare kit opener, derived from the page rather than asked of one of them",
-    tableOpeners.length >= 3 && tableOpeners.every((t: string) => t === '<table className="admin-tbl"'),
+  /* ⭐ AMENDED 2026-09-24, AND DELIBERATELY NOT LOOSENED TO "starts with admin-tbl". The activity table now
+     halves its own GUTTERS at phone width so the second money answer reaches the visible strip — `.admin-tbl td`
+     is `padding: 12px 16px` at (0,1,1), so 96px of a 318px strip went on gutters before a figure was drawn. That
+     is a legitimate class on a money table; a WIDTH is not, and the difference is what this line still guards.
+     The allowed set is CLOSED and spelled out, so a fifth class arriving on a table is reported like any width. */
+  const TABLE_CLASS_OK = new Set(["[&_td]:!px-2", "[&_th]:!px-2", "sm:[&_td]:!px-4", "sm:[&_th]:!px-4"]);
+  const openerClasses = (t: string) => (/className="([^"]*)"/.exec(t)?.[1] ?? "").split(/\s+/).filter(Boolean);
+  ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column — and EVERY table on this page opens with the kit class and nothing but the declared gutter set, derived from the page rather than asked of one of them",
+    tableOpeners.length >= 3 && tableOpeners.every((t: string) => {
+      const cls = openerClasses(t);
+      return cls[0] === "admin-tbl"
+        && cls.slice(1).every((c) => TABLE_CLASS_OK.has(c))
+        && !cls.some((c) => c.includes("min-w-"));
+    }),
     j({ openers: [...new Set(tableOpeners)], count: tableOpeners.length }));
   ok("1.373 · CONTROL · the sweep really would report ONE widened table among bare ones, which is what the presence check it replaced could not do",
     (() => {
