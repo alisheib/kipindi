@@ -262,7 +262,7 @@ await runTwoStores({
    * ⚠️ Six hand-typed pins moved in the same commit and each says why at its site: the exemption list (two →
    * three), its clamped render sites (five → seven), both activity header lists, the 474 exempt-name control,
    * and the POSITIONAL link pin (nine → eleven, because the Game cell paints a door in two branches). */
-  /* ⭐ RAISED AGAIN 809 → 819 MEMORY / 570 → 580 POSTGRES, 2026-09-24, to what THIS run PRINTED. +7 in each
+  /* ⭐ RAISED AGAIN 809 → 820 MEMORY / 570 → 580 POSTGRES, 2026-09-24, to what THIS run PRINTED. +7 in each
    * child: 1.626c and its controls (eight assertions) — what was LEFT of the account's own daily stake budget after each row, so
    * an officer can see the money fall rather than read twenty identical stakes and guess how close it is.
    * ⛔ IT IS THE CONFIGURED CAP AND NEVER THE HOLDER'S WALLET. The owner asked to watch the money decrease; the
@@ -285,6 +285,6 @@ await runTwoStores({
    * ⚠️ AND THE FIXTURE GIVES ITS ROSTER SLOTS BACK. Its two accounts took the roster to 20 of 20 and broke
    * 1.359, 1.383 and 1.412 — four failures nowhere near this block. The repair is REMOVED accounts, never a
    * raised ceiling: that ceiling is the very thing 1.359 and 1.412 measure. */
-  minPass: { memory: 819, postgres: 580 },
+  minPass: { memory: 820, postgres: 580 },
   dbPrefix: "hb_console",
 });

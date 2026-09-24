@@ -7019,7 +7019,7 @@ export default function Ruling513Control() {
      is `padding: 12px 16px` at (0,1,1), so 96px of a 318px strip went on gutters before a figure was drawn. That
      is a legitimate class on a money table; a WIDTH is not, and the difference is what this line still guards.
      The allowed set is CLOSED and spelled out, so a fifth class arriving on a table is reported like any width. */
-  const TABLE_CLASS_OK = new Set(["[&_td]:!px-2", "[&_th]:!px-2", "sm:[&_td]:!px-4", "sm:[&_th]:!px-4"]);
+  const TABLE_CLASS_OK = new Set(["[&_td]:!px-1.5", "[&_th]:!px-1.5", "sm:[&_td]:!px-4", "sm:[&_th]:!px-4", "max-sm:!text-caption"]);
   const openerClasses = (t: string) => (/className="([^"]*)"/.exec(t)?.[1] ?? "").split(/\s+/).filter(Boolean);
   ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column — and EVERY table on this page opens with the kit class and nothing but the declared gutter set, derived from the page rather than asked of one of them",
     tableOpeners.length >= 3 && tableOpeners.every((t: string) => {
@@ -7073,9 +7073,18 @@ export default function Ruling513Control() {
       operatorSites.filter((c: string) => /\bhover:underline\b/.test(c)).every((c: string) => /min-h-\[var\(--tap-min\)\]/.test(c)),
       j(operatorSites));
   }
-  ok("1.373 · EVERY panel that paints the subject column carries the SAME floor, read out of that panel's own slice — a floor deleted from one table can no longer pass on another table still having one",
-    subjectCols.length >= 3 && subjectCols.every(([, c]) => /min-w-\[150px\]/.test(c)),
+  /* 🔴 THIS WAS A SUBSTRING TEST AND IT QUIETLY STOPPED DISCRIMINATING (found by an adversarial read of this
+     very commit, 2026-09-24). When the activity panel's floor became responsive — `min-w-[104px] sm:min-w-[150px]`
+     — `/min-w-\[150px\]/` still matched, so the line kept reading "every panel carries the floor" while all it
+     proved was "every panel mentions 150px somewhere". It would have passed a phone floor of ZERO spelled
+     `min-w-[0px] sm:min-w-[150px]`. ⛔ The spellings are now a CLOSED SET, both stated, so a third one is reported
+     rather than absorbed — and what they share is the fact that matters: 150px from `sm` up. */
+  const SUBJECT_FLOOR = [/(^|\s)min-w-\[150px\](\s|$)/, /(^|\s)min-w-\[104px\]\s+sm:min-w-\[150px\](\s|$)/];
+  ok("1.373 · EVERY panel that paints the subject column carries the SAME floor from `sm` up, in one of two DECLARED spellings, read out of that panel's own slice — a floor deleted from one table can no longer pass on another table still having one",
+    subjectCols.length >= 3 && subjectCols.every(([, c]) => SUBJECT_FLOOR.some((re) => re.test(c))),
     j(subjectCols));
+  ok("1.373 · CONTROL · the closed set really would report a phone floor of zero hidden behind the same 150px — which the substring test it replaced accepted",
+    !SUBJECT_FLOOR.some((re) => re.test("text-left p-3 min-w-[0px] sm:min-w-[150px]")), "");
   ok("1.373 · …and only the SUBJECT and STATUS columns carry a floor — never a money column, which would pin its figure off-screen",
     /<th scope="col" className="text-left p-3 min-w-\[150px\]">Account<\/th>/.test(pageCode)
       && /<th scope="col" className="text-left p-3 min-w-\[128px\]">Status<\/th>/.test(pageCode)

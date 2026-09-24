@@ -675,12 +675,16 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                       `.admin-tbl th` `10px 16px`, both (0,1,1) — so the `p-3` these cells already carry is DEAD,
                       losing on specificity, and 16px × 2 × 3 cells was 96px of the 318px strip spent on gutters
                       before a single figure. Halving it at phone width buys back 48px, which is more than the
-                      type could give and costs nothing anyone reads.
+                      type could give and costs nothing anyone reads. ⚠️ THE GUTTER ALONE WAS NOT ENOUGH — measured,
+                      453 → 391 against a 339 strip — because the ACCOUNT cell's content (a label over a handle)
+                      runs wider than its floor. The owner offered the type, so the money PAIR drops to `caption`
+                      below `sm` and nothing else does: 11px against 13px across two mono figures is the last
+                      ≈30px, and it is a kit token rather than a hand-typed size.
                       ⛔ THE `!` IS LOAD-BEARING for exactly the reason the header below states, and the arbitrary
                       variant is what lets ONE class list reach every cell instead of nine hand-edited ones.
                       ⛔ PHONE ONLY — `sm:` restores the kit's own 16px, so every width that already read well is
                       byte-identical. Measured after, not assumed: see the 360 read in §12.3. */}
-                  <table className="admin-tbl [&_td]:!px-2 [&_th]:!px-2 sm:[&_td]:!px-4 sm:[&_th]:!px-4">
+                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-4 sm:[&_th]:!px-4 max-sm:!text-caption">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         {/* ⛔ A FLOOR ON THE SUBJECT COLUMN, the roster's own measured one: without it the account

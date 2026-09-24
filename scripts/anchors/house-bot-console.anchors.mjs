@@ -808,8 +808,8 @@ export const MUTATIONS = [
        been broken by the same change. ⚠️ RE-ANCHORED AGAIN 2026-09-24: the activity table now carries its own
        phone-width gutter classes, which made it unique by itself — the ScrollX label above it is no longer needed
        to single it out. THE DEFECT IS UNCHANGED: a width on the money table stretches every column. */
-    from: `                  <table className="admin-tbl [&_td]:!px-2 [&_th]:!px-2 sm:[&_td]:!px-4 sm:[&_th]:!px-4">`,
-    to: `                  <table className="admin-tbl min-w-[720px] [&_td]:!px-2 [&_th]:!px-2 sm:[&_td]:!px-4 sm:[&_th]:!px-4">`,
+    from: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-4 sm:[&_th]:!px-4 max-sm:!text-caption">`,
+    to: `                  <table className="admin-tbl min-w-[720px] [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-4 sm:[&_th]:!px-4 max-sm:!text-caption">`,
     expect: "1.373 · the money-bearing TABLE carries no `min-w-*` of its own",
     suite: "console-mem",
   },
