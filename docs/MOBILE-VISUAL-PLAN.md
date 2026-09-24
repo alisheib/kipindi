@@ -220,10 +220,21 @@ Continue the 50pick MOBILE VISUAL PLAN. Perfect beats fast. No lost work, no rep
 1) GET THE TRUTH FIRST — never assume
    Open the kipindi repo on this PC (office PC: F:\kipindi-main). Run:
      git branch --show-current     (must be main — or the in-flight branch that §0 HALF-DONE names; then work THERE)
+                                   ⚠️ On the office PC this work runs on the local branch **mobile-s2**, which
+                                   TRACKS origin/main. That is normal, not an in-flight branch: commit there and
+                                   push with `git push origin HEAD:main`, checking the merge-base first — main
+                                   moves often, because a second session pushes to it too.
      git pull
      git status
      git log --oneline -8 origin/main
      npm run test:mobile-visual-plan      (the tracker guard — must pass before you touch anything)
+   THE GUARDS THAT ALREADY EXIST — every one has a RED control that must break its OWN section:
+     qa:ghost-landing   §A skeleton landing · §B /live idle with MOTION ON · §C carousel dot taps
+     qa:focus-and-fit   §1–§3 focus rings · §4 card fit · §5 bubble on scroll · §6 bubble at rest · §7 language panel
+     qa:cls-budget      load shift per route — ⚠️ read its header first: it documents TWO things it CANNOT see
+     qa:home-tighten · qa:fairness-phone · qa:signup-funnel · qa:tap-truth · test:tap-target
+   ⛔ Run a guard's RED control before trusting its green run. A green guard that CANNOT fail is the most
+   expensive thing in this repository's history — §2 keeps the list.
    If origin has a commit newer than the last entry in docs/MOBILE-VISUAL-PLAN.md §2, or there are
    uncommitted changes you did not make: STOP and tell me — another session may be in flight.
    Never stage files you did not change. Never `git add -A`.
@@ -244,8 +255,21 @@ Continue the 50pick MOBILE VISUAL PLAN. Perfect beats fast. No lost work, no rep
    before changing anything.
 
 4) WORK EXACTLY AS §11 SAYS — one unit per commit
-   RED guard first → fix → green. Gates twice. Drive locally on `next dev` across the §11 test matrix
+   RED guard first → fix → green. Gates twice. Drive across the §11 test matrix
    (320/360/412/768/1280, SW/EN/ZH, Comfortable + Compact, phone emulation, reduced-motion tier).
+   ⭐ **MEASURE ON PRODUCTION — it is the primary instrument, not a fallback.** Every defect D71–D83 was found and
+   verified against https://www.50pick.tz with Playwright. ⛔ **NEVER RUN `npm start`**: its script is
+   `prisma migrate deploy && next start`, so it MIGRATES a database and (E-380) re-seeds float on boot. `npx next
+   start` skips the migrate — but you rarely need a local server at all.
+   ⭐ **PRE-FLIGHT A FIX BY INJECTING IT INTO THE LIVE PAGE BEFORE YOU WRITE IT** — and inject it the way the real
+   fix will exist. An `!important` injection proves the GEOMETRY is safe and proves NOTHING about whether the real
+   rule wins the cascade; an injected `<style>` is unlayered and beats every `@layer`. (§2, 2026-09-24: a fix
+   shipped TWICE without applying, blessed by a green pre-flight each time.)
+   ⭐ **A QA PLAYER EXISTS AND SIGNING IN WORKS** — `loginOnce(b, "mobile01")` from `scripts/live/harness.mjs`.
+   Two traps: that harness has its OWN `BASE` defaulting to `http://localhost:3001`, so without `LIVE_BASE` it
+   signs in against a server that is not running and the failure reads exactly like a bad password; and it is ONE
+   session per account, so `login()` per cell revokes the previous one — use `loginOnce` once and reuse the state.
+   ⚠️ The SIGNED-IN surface is outside most gates' population: D78, D79, D80 and D83 all came from there.
    ⛔ SWAHILI FIRST — it is the default language, so it is the case a new player actually meets (§5), and
    the §3 baselines were measured in English before that changed. Set the locale in every capture.
    ⛔ Every driver's user agent MUST contain "HeadlessChrome" or /api/pv counts it as real traffic.
