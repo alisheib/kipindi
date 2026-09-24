@@ -34,43 +34,48 @@
 ▶ STATE, 2026-09-24 (rewrite this block at the end of every session)
   10 of 42 units closed · 83 defects filed · branch mobile-s2 tracking origin/main.
   Closed EARLIER today: U41 (/fairness), U42 (the sign-up funnel), U33 (chrome: menus + semantics); D71–D83.
-  THIS session: **D36 half 2 and D37 are fixed, guarded and live.** U35 is NOT closed — D45 and D52 remain.
-  New guards: `test:updown-history-pnl` (+ `red:updown-history-pnl`, 6/6 mutations caught) and §7 of
-  `test:updown-clock-guard` (22 new assertions, 5 mutations proven RED). Both run in `predeploy`.
+  THIS session: **all FOUR of U35's defects are fixed, guarded and live** — D36 half 2, D37, D45, D52
+  (`a7da5f89`, `c6ebbedf`; deployed `bedb6023` and `4b30a069`). Guards added, all RED-proven against
+  PRODUCT mutations: `test:updown-history-pnl` + `red:updown-history-pnl` (6/6), §7 and §8 of
+  `test:updown-clock-guard` (26 new assertions, 8 mutations), and two additions to
+  `test:measure` whose own exemption ratchet SHRANK by the four Up & Down routes.
 
-▶ NEXT: **U35's remainder (D45, then D52)**, then **U32**, **U37**, **U34**, **U11** — money truth first.
+  ⛔ **U35 IS STILL OPEN, ON ONE THING: D37 HAS NEVER BEEN LOOKED AT ON A SCREEN.** Three of the four
+  are verified on production and the numbers are in their §3 cells. D37's LOGIC is proven —
+  26 assertions over the real `roundPnl` plus a source check that the page hands it the VIEW, with
+  6/6 mutations caught against a baseline proven green first — but nobody has seen the rendered strip.
+  Two things block it, and neither is a code problem:
+    · **No account on production has any Up & Down history.** `mobile01` is "wallet 0, never funded",
+      so the strip does not render at all and the tiles cannot be measured. Ali declined to fund it.
+    · **The local seeded drive Ali chose (2026-09-24) could not be started.** Next 16 refuses a second
+      `next dev` in the same directory, and PID 688 has held `F:kipindi-main` since 2026-09-23 17:56.
+      It does not answer on :3000, but it belongs to the other session, so it was NOT killed.
+      ⭐ NEXT SESSION: confirm with Ali that PID 688 is dead, kill it, then
+      `npx next dev -p 3010` → `/auth/demo` (funds a player) → POST `/api/dev-test/updown-seed`
+      `{"durations":[5],"feedProvider":"mock-bars"}` → loop [POST `/api/dev-test/updown-advance`,
+      bet via `/updown/{id}?side=UP`, advance twice to settle] × 14+ → drive `/updown/history` at
+      320/360/412 × sw/en/zh. 14 rounds is the minimum that fills a pager (`PLAYER_PER_PAGE` = 12) and
+      so the minimum that can show page 1 and page 2 carrying the SAME money.
+    ⚠️ Until that runs, D36/D45/D52 stay 🔵 too: the legend says a defect ticks when its UNIT does.
+
+▶ NEXT: **U35** (drive D37's strip, then close it), then **U32**, **U37**, **U34**, **U11** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number. Every item
   below was verified IN THE CODE on 2026-09-24 by a reader that opened the file, and the ones marked ⭐
   carry CORRECTIONS to this document — read them before trusting any cell elsewhere.
 
-  1. D45 (U35) — Up & Down is the ONE surface off the platform gutter, and the scope is wider than the cell.
-     ⭐ THE CELL'S LINE NUMBERS ARE STALE: `updown/page.tsx:68,86` is now **:73 and :91**. The real scope is
-     FOUR wrappers across TWO routes: `updown/page.tsx:73,91`, `updown/loading.tsx:10`,
-     `updown/history/page.tsx:273` and `history/loading.tsx:6`. All are hand-typed
-     `mx-auto w-full max-w-[NNNNpx] px-4 py-6`, and `px-4` is **20px on this scale**
-     (tailwind.config.ts:216) where the rest of the product uses `px-3 lg:px-6` via `<PageContainer>`.
-     ⭐ ALREADY BANKED: `/updown/[roundId]` and ITS loading.tsx agree with each other AND already use
-     `max-w-board px-3 lg:px-6`, so the width-jump-on-load class of bug is NOT present here — only the
-     gutter is. Copy that file's spelling.
-     ⭐ THE BETTER FIX, for one line more: migrate all four to `<PageContainer tier="board"|"reading">`.
-     It emits `data-measure`, which puts these routes into `scripts/responsive-audit.mjs`'s population for
-     the first time — and page-container.tsx:12-21 names Up & Down as exactly the route that drifted
-     before. Guard: no hand-typed `max-w-[` or `px-4` left in the four wrappers.
+  1. ⭐ **U35's LAST STEP — drive D37's strip and close the unit.** The code is live and the logic is
+     guarded; what is missing is a look at the rendered thing. Recipe and the two blockers are in the
+     STATE block above. Budget an hour, most of it seeding. ⛔ Do NOT mark U35 ✅ off the unit guard
+     alone: `test:updown-history-pnl` proves the page hands `roundPnl` the VIEW and proves the
+     arithmetic, and it cannot prove a tile is legible at 360 with a seven-figure net in it.
 
-  2. D52 (U35) — the settled pod's price pair wraps with the arrow ending the first line.
-     ⚠️ ITS CELL POINTS AT `updown-card.tsx:1121`; the pair is at **:1146-1148**
-     (`{priceText.open} → {priceText.close}`, inside the `state === "resolved"` branch).
-     ⭐ D37's SPILL FIX IS THE PRECEDENT, shipped today: `.amount` sets `white-space: nowrap` at DOUBLED
-     specificity (`.amount.amount`, globals.css:1013), so a `whitespace-*` utility LOSES the cascade
-     outright. Put `.amount` on each NUMBER and make the arrow the wrap point.
-
-  3. D29 (U32) — terminal cards paint a crowd price nobody paid. `market-card.tsx:277` is still
+  2. D29 (U32) — terminal cards paint a crowd price nobody paid. `market-card.tsx:277` is still
      `const noPrice = live && (isNew ?? volume === 0);` — on a resolved or void card `noPrice` is
      false, so TippingBar draws the hardcoded 50. Deleting `live &&` is one token.
      ⛔ BUILD THE GUARD FIRST and read trap 3 below: today's board may hold no resolved-empty and no
      void card, so a live sweep would be green about THIS BOARD, not about the code.
 
-  4. D42 (U32) — the /results donut strokes a third segment its legend never names.
+  3. D42 (U32) — the /results donut strokes a third segment its legend never names.
      ⭐ FOUR CORRECTIONS, verified against production on 2026-09-24: the donut is at **:528-538** (not
      :319) and the legend at **:350-358** (not :324-331). The figures in §8/§9 are STALE — production
      now reads **210 markets, "NDIO 69 · HAPANA 110" = 179, so THIRTY-ONE markets (14.76%) are an
@@ -81,7 +86,7 @@
      give 118.28/188.57/53.14. The remedy §9 prescribes is right: NAME the third arc in the legend, do
      NOT drop `voided` from the denominator.
 
-  5. D39 (U37) — a Swahili player reads a raw English enum at two MONEY moments.
+  4. D39 (U37) — a Swahili player reads a raw English enum at two MONEY moments.
      ⭐ THREE CITATIONS HERE ARE WRONG and will cost a session if trusted:
      · the path is `src/components/markets/conviction-dial.tsx` — **markets, plural**. The cell writes
        `market/` twice, and `sed` on that path returns "No such file or directory".
@@ -93,7 +98,7 @@
        (*"⛔ Never write `{effectiveSide}` into copy; reach for this."*).
      The two edits themselves are real, one line each, through `sideWord(t, side, "MARKET")`.
 
-  6. U34 — D31's PRODUCT work is genuinely done; the BOOKKEEPING is what is wrong.
+  5. U34 — D31's PRODUCT work is genuinely done; the BOOKKEEPING is what is wrong.
      ⭐ FIVE FALSE CLAIMS, all checked against the tree today:
      · §8's D31 cell says "the eye control is 32px (under the 44px floor), the 800ms delta flash shifts
        the header, and the link announces 'Hide password'". **All three are fixed**, and "the 44px floor"
@@ -105,16 +110,16 @@
      ⛔ SO IT IS NOT "nothing but bookkeeping": the RED anchor at `scripts/anchors/tap-rung.anchors.mjs:15-18`
      still describes the OLD markup, so that control CANNOT FIRE. Repair the anchor FIRST, then close.
 
-  7. U11 — the overlay census. The next big rock, it gates U12–U18 (SEVEN units), and it is NOT
+  6. U11 — the overlay census. The next big rock, it gates U12–U18 (SEVEN units), and it is NOT
      blocked: see the §11 correction. Budget a whole session. ⛔ Do not build on
      `scripts/overlay-responsiveness-test.mjs` — its selectors match nothing that ships.
 
-  8. D14 (U27) — pull-to-refresh fires inside sheets. `pull-to-refresh.tsx:32` gates on `scrollY > 5`
+  7. D14 (U27) — pull-to-refresh fires inside sheets. `pull-to-refresh.tsx:32` gates on `scrollY > 5`
      alone; `html[data-sheet-open]` already exists and is already set by `filter-sheet.tsx:252`.
 
-  9. Batch the one-line clipping fixes under ONE new guard with four RED controls: D1, D34, D45, D52.
+  8. Batch the one-line clipping fixes under ONE new guard with four RED controls: D1, D34, D45, D52.
 
- 10. U31 — 379 verification rows. Background grind, fully parallelisable, and the only unit with a
+  9. U31 — 379 verification rows. Background grind, fully parallelisable, and the only unit with a
      mechanically checkable accept line: write the `grep -c "🕓 unverified" == 0` counter FIRST so
      progress is a falling number. Sample ~20 rows before estimating; some will reclassify as duplicates.
 
@@ -340,7 +345,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D33 | ✅ `de2e9643` 2026-09-23 | U6 |
 | D34 | ⬜ | U9 |
 | D35 | ◐ fix is UNGATED and working (0 clipped, 12–13/15 rows wrap at 320/360 ± 1.3× text) — only the COLD-START card is unmeasured, and none is on the board | U32 |
-| D36 | 🔵 BOTH HALVES LIVE — half 1 earlier; half 2 `a7da5f89` 2026-09-24 (the board stopped pricing a settled round at today's quote). the tick waits on U35 (D45, D52) | U35 |
+| D36 | 🔵 BOTH HALVES LIVE — half 1 earlier; half 2 `a7da5f89` 2026-09-24. ⭐ **PROVED ON PRODUCTION BY DISCRIMINATION (`bedb6023`):** the price tape had moved on to **$84,258.42** while the settled card still held its own close of **$84,154.00** — pre-fix those were one number — and the board card and its round page print the same figure. ⚠️ A single reading could NOT have shown this: during handover the newest settled round's close IS the latest confirmed read, so the two agree by construction and the instrument reported BLIND twice before the feed moved. The tick waits on U35 (D37 on-screen) | U35 |
 | D37 | 🔵 shipped `a7da5f89` 2026-09-24 — the P&L strip is view-scoped (Ali's decision), and the sub-line wraps instead of spilling. the tick waits on U35 (D45, D52) | U35 |
 | D38 | ⬜ | U36 |
 | D39 | ⬜ | U37 |
@@ -349,14 +354,14 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D42 | ⬜ | U32 |
 | D43 | ⬜ | U10 |
 | D44 | ⬜ | U10 |
-| D45 | ⬜ | U35 |
+| D45 | 🔵 shipped `c6ebbedf` 2026-09-24 — all FOUR wrappers onto `max-w-board`/`max-w-reading` + the house `px-3 lg:px-6`. ⭐ **Verified on production (`4b30a069`): content edge 16px on /updown, /updown/history AND /markets at 320/360/412** — measured as a DELTA against /markets in the same run, never against a remembered number. The tick waits on U35 (D37 on-screen) | U35 |
 | D46 | ⬜ | U37 |
 | D47 | ⬜ | U36 |
 | D48 | ⬜ | U19 |
 | D49 | ✅ by design `ea84e4a9` 2026-09-23 (live) — §4 decision 11: the band stays where real history exists, trimmed 28 → 20 in Compact; never removed, no reserved space | U3 |
 | D50 | ⬜ | U36 |
 | D51 | ✅ `de2e9643` 2026-09-23 | U6 |
-| D52 | ⬜ | U35 |
+| D52 | 🔵 shipped `c6ebbedf` 2026-09-24 — the arrow travels with the price it points at, so a wrap can only put it at the START of a line. ⭐ **Verified on production (`4b30a069`) at 320/360/412:** the pair STACKS at 320 and 360 with "→ $84,490.16" leading its own line, sits on ONE line at 412, and no figure breaks mid-digits (0px overflow at every width). The tick waits on U35 (D37 on-screen) | U35 |
 | D53 | ⬜ | U40 |
 | D54 | ◐ the RAIL is padded (`be5b1cdd`); pixels unseen, 6 other surfaces still unpadded  ◐ **THE RAIL IS FIXED — `be5b1cdd`**, `@media (orientation: landscape)` padding it from `env(safe-area-inset-left/right)` — the first `orientation:` query in the codebase. ⛔ **The pixels have still not been seen**, because Playwright reports every inset as 0; what WAS verified is that the rule is inert where insets are 0 (rail box, padding, first and last item edges, document overflow byte-identical at 780×360). ⚠️ Six surfaces remain unpadded on purpose — the page gutter and `bet-confirm-modal`, `notifications-panel`, `consent-prompt`, `install-invite`, `avatar-menu`, `date-select`. The rail went first because it is the only one whose failure is an unreachable TAP TARGET rather than clipped reading.| U30 + the landscape row of §11 |
 | D55 | ⬜ | U30 |
@@ -420,6 +425,32 @@ The programme may be marked **🏁 CLOSED** in the status line at the top of thi
 Until then the status line stays 🟠 and `§0 NEXT` names real work.
 
 ## §2 — Session log (newest first)
+
+- **S19b · 2026-09-24 — D45 and D52, and three of U35's four verified on production.**
+  - **D45 (`c6ebbedf`)** — all four Up & Down wrappers onto `max-w-board`/`max-w-reading` + `px-3 lg:px-6`.
+    ⭐ **The guard already existed and the fix was its exemption list SHRINKING**: `measure-system.test.mts`
+    carried these four files by name. ⛔ But its check matches `max-w-[NNNpx]` only, so swapping the width
+    for a token while keeping `px-4` would have passed it clean — the gutter needed its own assertion,
+    and reverting the gutter ALONE now fails that one and nothing else.
+  - **D52 (`c6ebbedf`)** — the arrow travels with the price it points at, so a wrap can only put it at the
+    START of a line. On production at 320 and 360 the pair stacks with "→ $84,490.16" leading; at 412 it
+    sits on one line; nothing overflows.
+  - ⭐ **D36 WAS PROVED BY DISCRIMINATION, AND A SINGLE READING COULD NOT HAVE DONE IT.** During handover
+    the newest settled round's close IS the latest confirmed read, so the price tape and the settled card
+    agree BY CONSTRUCTION — the instrument reported BLIND twice before the feed moved. When it did:
+    tape **$84,258.42**, settled card **$84,154.00**. Pre-fix those were one number.
+  - ⛔ **AND THE FIRST D45 INSTRUMENT MEASURED THE WRONG ELEMENT.** It took the first div with a 1280px
+    max-width and some padding, which is the TOP APP BAR (`max-w-board … px-2`), and reported a serene
+    **12px on /markets, /updown and /updown/history alike** — three pages agreeing about a piece of chrome
+    that belongs to none of them. Scoped inside `<main>` it reads 16/16/16. ⛔ It also read `null` for
+    /updown/history signed out and would have called that a gutter; a failed read is not a zero.
+  - ⛔ **D37 IS STILL UNSEEN.** Its logic is guarded and its RED control is 6/6, but nobody has looked at
+    the rendered strip: no production account has Up & Down history, and the local drive Ali chose could
+    not start — Next 16 refuses a second `next dev` in a directory, and PID 688 has held this one since
+    2026-09-23. It is the other session's, so it was not killed. §0 carries the recipe.
+  - ⛔ **AND A TWO-LINE ▶ NEXT SILENTLY COST THE TRACKER TWO ASSERTIONS.** It reads unit ids from that ONE
+    line, so wrapping it dropped U37, U34 and U11 from its coverage — §4 fell 6 → 4 and still printed
+    "0 failed". Caught by watching the assertion COUNT, not the verdict. Keep ▶ NEXT on one line.
 
 - **S19a · 2026-09-24 — two money surfaces stopped lying, and four of this document's own cells were wrong.**
   - **D36 half 2 (`a7da5f89`)** — `/updown` handed `activeAsset.livePrice` to every card whatever the round's state, so a
@@ -1037,14 +1068,14 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D42 | The /results summary ring draws three arcs on the 171-market denominator but its legend names two ("NDIO 59 · HAPANA 88" = 147): 24 settled markets — 14% of the ring — sit in an arc named nowhere on the page (critics panel, three lenses) | `results/page.tsx:319` (`OutcomeDonut … voided`), legend `:324-331` prints YES · NO only | U32 |
 | D43 | The leaderboard list is ranked by ROI and no row shows ROI: the podium prints +26.8% / +13.2% / −3.9%, then rows 2–6 drop the number they are sorted by and leave 105–142px empty at the right (critics panel) | `leaderboard/page.tsx:460` (list row) | U10 |
 | D44 | The tier word "Fedha" (silver) is printed in the money gold, and podium rings #2 and #3 are the same pale blue — while the tier chips on the same screen already own real silver and bronze inks (critics panel, sampled) | `leaderboard/page.tsx:320` (`accent: "gold"`), podium `:546` | U10 |
-| D45 | Up & Down's page gutter is 20px; every other surface, and Up & Down's own footer, sits on 16. The wrapper is `px-4` — which reads like 16 and is **20 on this project's scale** (critics panel, measured on 8 surfaces) | `updown/page.tsx:68,86` | U35 |
+| D45 | Up & Down's page gutter is 20px; every other surface, and Up & Down's own footer, sits on 16. The wrapper is `px-4` — which reads like 16 and is **20 on this project's scale** (critics panel, measured on 8 surfaces). 🔵 **FIXED AND LIVE `c6ebbedf`, verified on production `4b30a069`: 16px on /updown, /updown/history and /markets alike at 320/360/412.** ⛔ **THE SCOPE WAS FOUR WRAPPERS, NOT TWO** — this cell named ~~`updown/page.tsx:68,86`~~ (now :73,91) and missed `updown/loading.tsx` and both history files. ⭐ The guard already existed: `measure-system.test.mts` carried these four on an explicit exemption ratchet, so the fix was the LIST SHRINKING — and that also put both routes inside its page/loading tier-parity check for the first time, since a hand-typed pixel width matches no tier. ⛔ But that check matches `max-w-[NNNpx]` only, so it could never have caught the gutter alone; a second assertion now does, proven RED by reverting `px-3 lg:px-6` → `px-4` with the token width left in place | `updown/page.tsx:73,91`, `updown/loading.tsx`, `updown/history/page.tsx`, `history/loading.tsx` | U35 |
 | D46 | The detail probability chart spaces date ticks by data point: a two-day interval and a one-day interval are both 153px, so the slope misstates the rate of change (critics panel, measured) | `charts/chart-toggle.tsx` (the chart library spaces points by index, not time) | U37 |
 | D47 | The /live hero truncates its own section label at 360 SW to "LILILO NA SHAKA…" — a relative clause whose head is exactly the part cut off, so the section never names itself (critics panel) | `mostContested` (`i18n-dict.ts:3254`) in the /live hero | U36 |
 | D48 | The sign-in form sets "Umesahau nenosiri?" as its dimmest label, dimmer than the static hint beside it and with no link ink, and carries the sign-up rules: the "Angalau herufi 8." hint, `minLength={8}` and an eight-dot placeholder that reads as a filled password (critics panel, code-confirmed) | `auth/login/page.tsx:288-296,310` | U19 |
 | D49 | A flat sparkline band — about 43px at ~1.06:1 against the card — renders on some cards and not others, so one list holds two card heights: /results 312 vs 278, /markets 354 vs 320 (critics panel, measured) | `market-card.tsx:390` (`MicroSpark … height={28} … area stretch`) | U3 |
 | D50 | On the /live hero the INASOGEA chip sits in the needle's value-label row ("NDIO 50%  INASOGEA  50% HAPANA"), so it reads as the name of the needle's position rather than a status (critics panel) | `tipping` (`i18n-dict.ts:3280`) in the /live hero | U36 |
 | D51 | ✅ `de2e9643` — the hero's three figures did not share a left edge. Re-measured before fixing: the offset is **16px, not 17** (an 8px pip plus an 8px `--sp-2` gap), and it holds at 320/360/412 in all three locales. ⛔ **The two remedies this row suggested were both measured and REJECTED** — hanging the pip outside the flow puts it at x=8 or x=0, off the page's own 16px content edge; giving all three numbers a matching leading slot indents every figure while its CAPTION stays at 16, trading a spread between rows for a spread inside every row. The pip now FOLLOWS the figure it annotates: same pip, same `--live-400`, same gap, still on the open-markets figure and no other. Spread **16 → 0px**. ⚠️ A box measurement cannot see this defect — `.kp-proof__num` reports `left: 16` either way — so the guard reads the TEXT's own client rects | `landing-hero.tsx` (`.kp-proof__pip` after the figure) | U6 |
-| D52 | Up & Down's settled pod wraps its price pair with the arrow ending the first line ("$75,819.68 →" then "$75,824.01") (critics panel) | `updown-card.tsx:1121` | U35 |
+| D52 | Up & Down's settled pod wraps its price pair with the arrow ending the first line ("$75,819.68 →" then "$75,824.01") (critics panel). 🔵 **FIXED AND LIVE `c6ebbedf`, verified on production `4b30a069`.** The arrow is bound to the price it POINTS AT, so the only break available is before it. Measured at 320/360/412: the pair stacks at 320 and 360 with **"→ $84,490.16" leading its own line**, sits on one line at 412, and no figure breaks mid-digits (0px overflow everywhere). ⚠️ The cell pointed at ~~`:1121`~~; the pair is at **:1146-1148**. ⛔ Plain `whitespace-nowrap` is right HERE and would have been wrong on D37's history sub-line, which carries `.amount` — `.amount.amount` sets nowrap at doubled specificity and beats any utility. Same symptom, opposite remedy | `updown-card.tsx:1146-1148` | U35 |
 | D53 | The Swahili responsible-gambling line has two grammar slips: "Kama kucheza kamari **imekuwa sio** burudani, acha." — the ku- infinitive subject takes "kumekuwa", and the negative before a noun is "si" (critics panel, verified) | `stopGambling` (`i18n-dict.ts:4326`) | U40 |
 | D54 | 🔴 **LANDSCAPE ON A NOTCHED PHONE: the whole product ignores the LEFT and RIGHT safe-area insets, and nothing in this repo can see it.** `layout.tsx:165` sets `viewportFit: "cover"` — deliberately, so the app draws under the notch and `env(safe-area-inset-*)` returns REAL values instead of 0. In portrait that is right and handled: 19 usages pad `safe-area-inset-bottom` and 6 pad `-top`. **In landscape the notch moves to the SIDE, and exactly ONE file in `src/` pads `-left`/`-right`** (`needle.css:143-144`, a full-screen overlay). Everything else does not. The sharpest case is the phone rail: `bottom-nav.tsx:114` is `fixed inset-x-0 bottom-0`, `.kp-rail` (`globals.css:5136`) pads ONLY `safe-area-inset-bottom`, and `.kp-rail__item` is `flex: 1` — so five equal slots span the full width and, at a landscape inset of ~44px, the first item loses roughly a third of its 64px tap target under the notch and the last loses the same to the opposite corner. The page gutter is `--sp-4`, far under 44px, so body content sits under it too. Same shape on `bet-confirm-modal`, `notifications-panel`, `consent-prompt`, `install-invite`, `avatar-menu`, `date-select`. ⛔ **THIS WAS FOUND BY READING, NOT BY DRIVING, AND IT COULD NOT HAVE BEEN FOUND BY DRIVING.** Playwright does not synthesise safe-area insets, so every emulated landscape cell reports them as 0 and the page looks perfect. That is why it survived a matrix that already lists Landscape. It needs a real notched device — which is what U30 exists for — or a `@media (orientation: landscape)` rule that pads the inline edges. ⚠️ Unverified on hardware: the mechanism is established from the source and from `viewport-fit: cover` being set; the PIXELS have not been seen. | `bottom-nav.tsx:114` · `globals.css:5136` `.kp-rail` · + 12 files padding bottom-only | U30 + the landscape row of §11 |
 | D55 | 🔴 **THE INSTALL PROMPT ADVERTISES AN APP THAT NO LONGER EXISTS.** `public/manifest.json` offers Chrome a rich install dialog via `screenshots[]`, and the narrow one, `/screenshots/markets-narrow.png` (390×844, 200 on production), was committed **2026-07-09** — before the card redesign, before the design freeze, before U3/U4, and before `8822b648` made Swahili the default. Read it: it shows (a) the ENTIRE UI IN ENGLISH, to a market whose default language is Swahili; (b) the OLD stacked filter block — a `WHEN` row of five chips over a `TOPIC` block of eight — which is precisely the layout **U4 deleted** and replaced with the one-line discovery bar; (c) a five-item bottom rail reading *Markets / Live / Bets / Wallet / Profile*, where the shipped rail is *Masoko / Juu na Chini / Mubashara / Matokeo / Zaidi* (`bottom-nav.tsx:46-52` — different items, different count); (d) the pre-U3 card; (e) a signed-in header showing a funded **TZS 100,000** balance; and (f) the chat bubble sitting on top of a price, so **D3 is baked into the marketing image**. ⚠️ AND THE MANIFEST ITSELF DECLARES `"lang": "en"` while the product serves `<html lang="sw">` — so the installed app's declared language is wrong for the default user, and `name`/`description` are English-only. ⭐ Two things this also SETTLES rather than raises: `"orientation": "portrait-primary"` means the INSTALLED app never rotates, so **D54 is a browser-tab defect, not an installed-app one**; and every icon and shortcut asset referenced does exist and serves 200 — the defect is staleness, not a broken reference. ⛔ No driver in this repo looks at the manifest or its assets, which is why a seven-route visual sweep can be clean while the FIRST impression of the product is two design generations old. Fix: re-shoot the narrow screenshot at 390×844 in Swahili on the current build, set `"lang": "sw"`, and add a manifest check to a guard so the shot cannot rot again (assert the screenshot's commit is newer than the last change to `market-card.tsx` or the discovery bar). | `public/manifest.json` · `public/screenshots/markets-narrow.png` | U30 |
