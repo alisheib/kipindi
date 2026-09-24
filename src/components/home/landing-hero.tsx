@@ -238,12 +238,21 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, paidOu
         {/* ── the question board ───────────────────────────────────────────────────── */}
         {figures.board.length > 0 && (
           <div>
-            <p className="kp-hero__eyebrow text-balance">
+            {/* 🔴 AN h2, NOT A PARAGRAPH — THE PAGE SKIPPED FROM h1 STRAIGHT TO h3. axe-core reports
+                exactly one heading-order violation at both 360 and 1280: the featured card’s
+                <h3 class="mcardp-q"> in the hero foot, with no h2 between it and the headline. This
+                label names the question board, which is a section, so it IS the missing heading —
+                and it sits before the card in DOM order, which is what closes the skip.
+                ⛔ The class is unchanged, so nothing moves by a pixel: a heading may be styled as an
+                eyebrow, and `test:eyebrow-roles` governs tracking, not tag names. Fixing this by
+                demoting the card instead would have meant editing market-card.tsx, which another
+                session owns and which /markets renders too. */}
+            <h2 className="kp-hero__eyebrow text-balance">
               {t.home.heroBoardEyebrow}
               {figures.closingToday > 0 && (
                 <> · {fill(t.home.heroBoardCloseToday, { n: figures.closingToday })}</>
               )}
-            </p>
+            </h2>
             <div className="kp-qboard">
               {figures.board.map((row) => (
                 <QuestionRow key={row.id} row={row} t={t} locale={locale} />
