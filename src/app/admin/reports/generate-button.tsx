@@ -17,8 +17,26 @@ type Format = "xlsx" | "pdf";
 export function GenerateButton({
   id,
   size = "sm",
+  query,
+  title,
 }: {
   id: string;
+  /**
+   * ⭐ EXTRA QUERY THE ROUTE NEEDS, e.g. the window a WINDOWED report must cover. It is appended
+   * after `format=`, so the caller decides what the document is bounded to instead of the
+   * builder guessing. `/admin/finance` passes the range it resolved plus the instant it resolved
+   * at, because a rolling preset ("7d") moves between the page render and the click — without
+   * that, the export and the screen would differ by every transaction in between.
+   */
+  query?: string;
+  /**
+   * ⛔ THE BUTTONS KEEP SAYING "Excel" AND "PDF". A first draft folded a group name into the
+   * button text and produced "This view PDF", which reads as a format. The FORMAT belongs on the
+   * button; WHICH DOCUMENT belongs on the group label the caller renders beside the pair, and on
+   * `title` below. Two facts, two places.
+   */
+  /** Tooltip; on the finance rail it is what states which window each pair actually covers. */
+  title?: string;
   /**
    * 🔴 THE RAIL AND THE BUTTON WERE TWO DIFFERENT SIZES, TEN PIXELS APART. On `/admin/finance`
    * these buttons sit in `AdminPageHead`'s actions slot directly beside the window rail, whose
@@ -54,7 +72,7 @@ export function GenerateButton({
       // non-dismissible (no Esc, no scrim, no ✕, and both buttons stay disabled by
       // `busy` because `finally` never runs), so the officer's only exit was a page
       // reload. 60s is generous against the slowest catalogue entry and still finite.
-      const res = await fetch(`/api/admin/reports/${encodeURIComponent(id)}?format=${format}`, {
+      const res = await fetch(`/api/admin/reports/${encodeURIComponent(id)}?format=${format}${query ? `&${query}` : ""}`, {
         signal: AbortSignal.timeout(60_000),
       });
       if (!res.ok) {
@@ -103,7 +121,7 @@ export function GenerateButton({
           type="button"
           onClick={() => handle("xlsx")}
           disabled={busy !== null}
-          title="Download as Excel (.xlsx)"
+          title={title ? `${title} — Excel (.xlsx)` : "Download as Excel (.xlsx)"}
           aria-label="Download Excel report"
           className={`btn btn-ghost ${size === "xs" ? "btn-xs" : "btn-sm"} rounded-pill`}
         >
@@ -116,7 +134,7 @@ export function GenerateButton({
           type="button"
           onClick={() => handle("pdf")}
           disabled={busy !== null}
-          title="Download as PDF"
+          title={title ? `${title} — PDF` : "Download as PDF"}
           aria-label="Download PDF report"
           className={`btn btn-ghost ${size === "xs" ? "btn-xs" : "btn-sm"} rounded-pill`}
         >

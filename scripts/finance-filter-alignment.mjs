@@ -101,7 +101,13 @@ for (const width of WIDTHS) {
   await settled("[data-chip^='range:']");
   const customBtn = page.locator("button.kp-fchip[aria-expanded]").first();
   ok("§2 CONTROL · the Custom toggle is present", await customBtn.count() > 0);
-  await customBtn.click();
+  /* ⛔ OPEN IT ONLY IF IT IS SHUT. The toggle is a toggle: in `inline` mode the panel seeds OPEN
+     from the URL, so an unconditional click CLOSES it and this probe then waits three minutes
+     for a panel it just dismissed. That is a coupling in the instrument, not a finding — and it
+     matters because this file has to measure BOTH modes: the mutation run that proves these
+     assertions can fail reverts the page to `inline`. Drive to the state you need, not through
+     a fixed number of clicks. */
+  if (await page.locator(".field-measure").count() === 0) await customBtn.click();
   await settled(".field-measure");
   const nDate = await page.locator(".field-measure").count();
   const nTime = await page.locator("[role='group']").count();

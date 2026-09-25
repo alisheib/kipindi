@@ -15,9 +15,11 @@ import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { REPORT_CATALOGUE, type ReportId } from "@/lib/server/reports/catalogue";
+import { REPORT_CATALOGUE, isWindowedReport, type ReportId } from "@/lib/server/reports/catalogue";
 import { renderXlsx } from "@/lib/server/reports/xlsx";
 import { renderPdf } from "@/lib/server/reports/pdf";
+import { resolveRange, MAX_RANGE_MS } from "@/lib/server/date-range";
+import type { Report } from "@/lib/server/reports/types";
 import { reportFilename } from "@/lib/server/reports/brand";
 import { canView } from "@/lib/server/rbac";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
@@ -57,11 +59,54 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Format must be xlsx or pdf" }, { status: 400 });
   }
 
+  /**
+   * ⭐ A WINDOWED REPORT RESOLVES ITS WINDOW THE SAME WAY THE SCREEN DID. Only entries marked
+   * `windowed` take one; everything else keeps its own statutory period and is called exactly
+   * as before. The window goes through `resolveRange`, the one platform resolver, so the
+   * workbook and the console cannot interpret the same URL differently.
+   *
+   * ⛔ `asof` EXISTS BECAUSE A ROLLING PRESET MOVES. "7d" means `now − 7 days`, and `now` here
+   * is a few seconds after the `now` the page rendered with — so without pinning it, the export
+   * and the screen would differ by every transaction that landed in between, on a money
+   * document. The page passes the instant it resolved with; it is clamped to a sane band so it
+   * cannot be used to ask for an arbitrary historical or future window.
+   *
+   * ⛔ AN UNREADABLE `from`/`to` IS REFUSED HERE, NOT SUBSTITUTED. `resolveRange` falls back to
+   * the last 24 hours when it cannot parse a bound — which is survivable on a screen that says
+   * so, and is NOT survivable in a downloadable artifact that will be read months later with no
+   * memory of the URL that made it. A document that cannot state its true window must not exist.
+   */
+  let win: { start: number; end: number; label?: string } | undefined;
+  if (isWindowedReport(id)) {
+    const asofRaw = Number(url.searchParams.get("asof"));
+    const now = Date.now();
+    const asof = Number.isFinite(asofRaw) && asofRaw > now - MAX_RANGE_MS && asofRaw < now + 60_000
+      ? asofRaw
+      : now;
+    const r = resolveRange(
+      { range: url.searchParams.get("range"), from: url.searchParams.get("from"), to: url.searchParams.get("to") },
+      asof,
+      "7d",
+    );
+    if (r.unreadable) {
+      return NextResponse.json({
+        ok: false,
+        error: `Unreadable ${r.unreadable.join(" and ")} — expected YYYY-MM-DD or YYYY-MM-DDTHH:MM (East Africa Time).`,
+      }, { status: 400 });
+    }
+    win = { start: r.start, end: r.end, label: r.label };
+  }
+
   // Build the report from the live store. Pass the actual userId so
   // the catalogue's regulatorSignatures() can look up the display name
   // itself. Previously this passed displayLabel(u) which broke the
   // db.user.findById() lookup inside every builder.
-  const report = await entry.build(session.userId);
+  /* The registry is `as const`, so `entry.build` narrows to a union of builder signatures and
+     TypeScript cannot see that only the windowed one takes a second argument. The cast names
+     exactly that fact; `win` is `undefined` for every other entry, so each builder receives
+     precisely what it received before. */
+  const build = entry.build as (uid: string, w?: { start: number; end: number; label?: string }) => Promise<Report>;
+  const report = await build(session.userId, win);
 
   let body: Buffer;
   let mime: string;
@@ -99,6 +144,10 @@ export async function GET(
       filename,
       reference: report.reference,
       sizeBytes: body.length,
+      /* ⛔ THE WINDOW IS PART OF THE RECORD. A download of a windowed money document whose audit
+         entry does not name the window it covered is not an audit entry — it cannot answer
+         "which figures did this officer take away?". */
+      ...(win ? { window: { start: win.start, end: win.end, label: win.label } } : {}),
     },
   });
 

@@ -74,7 +74,13 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
 
   const sp = await searchParams;
   // ONE platform window resolver — presets + custom date+hour+minute, EAT-safe (default 7d).
-  const range = resolveRange(sp, Date.now(), "7d");
+  /* ⭐ ONE `now` FOR THE PAGE AND FOR THE EXPORT. A rolling preset ("7d") is `now − 7 days`, so
+     if the export resolved its own `now` a few seconds later the workbook would cover a window
+     a few seconds after the screen's — different by any transaction that landed in between, on
+     a money document. The buttons below carry this instant as `asof`, so the two agree by
+     construction rather than by luck. */
+  const now = Date.now();
+  const range = resolveRange(sp, now, "7d");
   const period = { start: range.start, end: range.end };
 
   // A-5: money figures resolve to null (not 0) on a failed read, so the tile
@@ -236,12 +242,36 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
                 the title baseline — the buttons moved twice for a panel opened next to them. Out of
                 flow, this control's height never changes and nothing around it reflows. */}
             <DateTimeRangeFilter rank="dense" panel="overlay" defaultPreset="7d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "qtd"]} />
-            {/* Branded Excel + PDF export — the GBT monthly statutory pack.
-                ⭐ `size="xs"` so these sit at the same 32px as the window pills they share a row
-                with. This page is a DECLARED dense admin filter rail (filter-language ADMIN_SURFACES)
-                and is NOT on the tap-floor list, so the dense rung is the correct one here — at 40px
-                the row carried one control language at two heights. */}
-            <GenerateButton id="gbt-monthly" size="xs" />
+            {/* 🔴 TWO EXPORTS, AND THEY COVER DIFFERENT WINDOWS — WHICH IS EXACTLY WHY THEY ARE
+                LABELLED. Until now this rail held ONE pair that always built the GBT statutory
+                pack for the previous complete calendar month, sitting inches from a date picker
+                it ignored: choose "today", press Excel, receive last month. The figures were
+                never wrong, they were never the ones on screen.
+                ⛔ The statutory pack STAYS fixed to its calendar month — following a picker is
+                precisely what a filing must not do. So the fix is not to change it but to stop
+                it standing in for the other document, and to say on the rail which is which. */}
+            <span className="inline-flex items-center gap-1.5">
+              <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-tertiary">This view</span>
+              <GenerateButton
+                id="finance-window"
+                size="xs"
+                title={`Finance for the window on screen — ${range.label}`}
+                query={`range=${encodeURIComponent(range.preset)}${sp.from ? `&from=${encodeURIComponent(sp.from)}` : ""}${sp.to ? `&to=${encodeURIComponent(sp.to)}` : ""}&asof=${now}`}
+              />
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-tertiary">Statutory</span>
+              {/* ⭐ `size="xs"` on both pairs so they sit at the same 32px as the window pills
+                  they share a row with. This page is a DECLARED dense admin filter rail
+                  (filter-language ADMIN_SURFACES) and is NOT on the tap-floor list, so the dense
+                  rung is the correct one here — at 40px the row carried one control language at
+                  two heights. */}
+              <GenerateButton
+                id="gbt-monthly"
+                size="xs"
+                title="GBT monthly pack — the previous complete calendar month, NOT the window on screen"
+              />
+            </span>
           </>
         }
       />
