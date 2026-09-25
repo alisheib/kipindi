@@ -315,8 +315,8 @@ https://www.50pick.tz, read-only apart from the one write named below:
 | `/admin/affiliate`, laptop 1440 + phone 390 | ✅ **22/22** (`npm run qa:invite-admin`): chip "Unpaid — tracking only", the three reward toggles `disabled`, "stored, not applied" banner, "Paid by 50pick TZS 0", only two enabled controls (master switch · Save), roster present |
 | `/profile/invite` as a player, phone 390, sw/en/zh | ✅ code, `…/auth/register?ref=CODE`, QR, the joined dial, the no-reward line in each language, **no money word and no gilt** in `<main>` |
 | The link, opened signed OUT | ✅ lands on `/auth/register?ref=CODE`, the form's hidden `ref` carries it, the page names the inviter and makes no offer (GET only — no account created) |
-| Doors on a phone | ⚠️ present but hard to find: Zaidi read the bare "Alika", no footer link → **fixed in this commit** (§2) |
-| `/admin/affiliate` at 390 | ⚠️ the master-switch sentence was squeezed to ~110px → **fixed in this commit** |
+| Doors on a phone | ⚠️ present but hard to find: Zaidi read the bare "Alika", no footer link → **fixed in `5a904737`, verified LIVE 2026-09-26**: `qa:invite-phone` **70/70** on production (sw/en/zh — Zaidi row, avatar menu, footer tappable, /profile row, the page, the signed-out link) |
+| `/admin/affiliate` at 390 | ⚠️ the master-switch sentence was squeezed to ~110px → **fixed in `5a904737`, verified LIVE 2026-09-26**: `qa:invite-admin` **22/22** on production, the sentence wraps and the "Where players find it" note shows |
 
 ⭐ The sign-up → attribution step was proven **locally, never on production** (no real account
 created there): `test:player-invite-unpaid` §7 above, and `qa:live` (281/282 locally — the one red
