@@ -1,205 +1,218 @@
 # ▶ RESUME HERE — House Bots
 
-**This file is the one stable address of the house-bots programme.** Whatever else changes, a session told
-only *"continue the house bots development where it was"* starts here, and nothing else needs to be known.
+**This file is the one stable address of the house-bots programme.** A session told only *"continue the house bots
+where it was"* starts here. Rewritten 2026-09-25/26 overnight (Ali-Blade15) from a fresh production read, and every
+claim in it was put to five adversarial refuters before it was committed.
 
 ---
 
+## ⚠️ THE LIVE STATE — read from production 2026-09-25 23:48 EAT and 2026-09-26 ≈ 00:40 EAT
 
-## ⚠️ READ THIS FIRST — the desk is ON, the engine is RUNNING, and it is BETTING
-
-**Read from production 2026-09-24 ≈ 12:10 EAT, SELECT-only, ids redacted, every age computed in SQL.**
-⛔ **RE-READ BEFORE QUOTING ANY OF IT.** A number written into a file is wrong by however long the file has
-sat there — the previous version of this section said "0 positions, 0 intents" and told the next session to
-go tick a chain, five days after the desk had started betting. That is the failure mode this warning exists
-for, and it happened here.
+SELECT-only, in a session opened with `default_transaction_read_only=on`, ids never printed, ages computed in SQL,
+timestamps rendered as text in SQL. ⛔ **RE-READ BEFORE QUOTING** — a number in a file is wrong by however long the
+file has sat, and this section's own history proves it (below).
 
 | Fact | Value |
 |---|---|
-| Master switch | **enabled**, since 2026-09-21 18:56 EAT. ⛔ NO SESSION EVER TOUCHES IT — on or off is the owner's act |
-| The engine | ✅ RUNNING — durable planner beat **10 s** before the read |
-| Accounts | **two ACTIVE**: `Bot 1` (rulesVersion 27) and `Bot Fulgence` (rulesVersion 2, newly started) |
-| Money placed | **295 stakes in the last 24 h, TZS 808,500** · 596 intents ever, 295 of them PLACED |
-| What limits it now | `UD_STALE_PRICE` (×112/48 h) and `CAP_PER_DAY` (×67) — throughput, not configuration |
+| Master switch | **ON since 2026-09-24 21:56:11 EAT.** ⛔ NO SESSION EVER TOUCHES IT — on or off is the owner's act |
+| Its trail (EAT) | 09-21: ON 16:42 · OFF 17:13 · ON 18:34 · OFF 18:42 · ON 18:56:11 — **09-24: OFF 18:50:55 · ON 21:46:20 · OFF 21:52:26 (no actor — the system) · ON 21:56:11** |
+| The engine | RUNNING — durable planner beat 4 s old at the read |
+| Accounts | **2 ACTIVE, 2 PAUSED** (the newest `PAUSED` event 2026-09-25 22:37 EAT) |
+| Placed, per EAT day | 09-23 **150** (TZS 405,500) · 09-24 **220** (606,000) · 09-25 **320** (824,500) |
+| How placed stakes ended | 694 placed: **VOID 534 · LOSS 95 · WIN 64 · OPEN 1** — three in four come back as a refund |
+| What refuses most (48 h) | `UD_STALE_PRICE` 233 · `CAP_PER_DAY` 67 · `NO_REACT_ZONE` 36 · `POOL_BAND` 36 · `UD_CLOSENESS` 34 |
 
-⛔ **THE OLD "ONE THING IS MISSING" WALKTHROUGH IS GONE, and so is the instruction to clear
-`scope.poolTotalMaxTzs`.** Both were true once and are false now: `Bot 1` carries `null` there, and
-`Bot Fulgence` carries a deliberate `5000` on a freshly configured account. **Verified 2026-09-24 — do not
-"fix" either.** If a future session reads a configuration complaint here, re-measure before acting on it.
+⛔ **"ON SINCE 2026-09-21" WAS FALSE for a day** — in this file's previous version, `PROGRESS.md`, the memory and the
+brief that opened this session. The switch was OFF for three hours on 09-24, and at 21:52:26 the **system itself**
+switched it off (an event with no actor) before a person switched it back on 3¾ minutes later. Nothing is owed on the
+switch — it is the owner's — but the self-switch-off is worth his attention (§0b e). Both `SWITCH_ON` rows are real
+and distinct to the millisecond (18:56:11.203 on 09-21, 21:56:11.193 on 09-24).
+**The probe:** `railway run --project <50pick> --environment production --service Postgres -- bash -c
+'PROBE_DB_URL="$DATABASE_PUBLIC_URL" node plans/house-bots/tools/prod-probe.cjs'` — Railway injects the URL, so no
+credential is ever typed or written. ⚠️ Render times with `to_char(... AT TIME ZONE ...)` in SQL: an `AT TIME ZONE`
+on a `timestamptz` yields a NAIVE value, which node-pg then re-parses in the laptop's zone — that is how the 09-24
+instant first printed as `18:56:11Z` and looked like 09-21's.
 
 ## 0 · Do this first
 
 ```bash
-git fetch
-git checkout bot-flow-seal && git merge --ff-only origin/bot-flow-seal   # never rebase
-git merge origin/main                                                     # if main has moved
+git fetch origin
+git switch bot-flow-seal
+git merge --ff-only origin/bot-flow-seal       # the other machine's pushes
+git merge --no-edit origin/main                # never rebase, never force
+npx prisma generate                            # after any schema change
+npm ci                                         # only if package-lock.json changed — then see the trap below
 ```
 
-- **Worktree:** `C:/kipindi-house-bots` on Ali-Blade15. ⚠️ Older prompts say `F:/…` — **there is no F: drive**;
-  the trees are `C:/kipindi-house-bots` and `C:/kipindi-main`, and memory is `C:/Users/Ali/.claude/…`.
-- **Branch:** `bot-flow-seal`. `main` is pushed from `C:/kipindi-main` as a **pure ref update**, never forced.
-- 🔴 **The live desk's master switch is ON** (see the block at the top of this file), **and no session ever
-  touches it** — on or off is the owner's own act. ⚠️ This line said "is OFF" until 2026-09-23, four screens
-  below a table in the same file recording it as ON since 2026-09-21. A wrong authority travels further than
-  wrong copy, so it is corrected here rather than only in the newer block.
+- **Two machines, and the drive letter tells you which.** Ali-Blade15: `C:/kipindi-house-bots` + `C:/kipindi-main`,
+  memory under `C:/Users/Ali/.claude/`. The office PC: `F:/kipindi-house-bots` + `F:/kipindi-main`, memory under
+  `C:/Users/asheib/.claude/`.
+- **Heavy Node only through the lock:** `bash ~/heavy-node-lock.sh run housebots <cmd>` (Ali-Blade15's RAM is
+  failing; two builds at once bluescreen it). ⛔ **The lock counts as abandoned after 3 hours**, so any job longer
+  than that must be split — a waiting session will otherwise start beside it. Use `localhost`, never `127.0.0.1`.
+- **Pushing.** The branch: `git push origin bot-flow-seal`. `main` is refused from this worktree by a pre-push hook,
+  so it goes from the main checkout as a **pure ref update**, after merging `origin/main` into the branch:
+  `git -C <drive>/kipindi-main fetch origin && git -C <drive>/kipindi-main push origin <sha>:main`.
+  Parallel sessions push `main` all day — fetch and merge immediately before every push.
+- **Verify the deploy** before calling anything done: `curl -sSD - -o /dev/null https://50pick.tz/ | grep -o
+  'dpl=[0-9a-f]*'` must print your sha.
 
-## 0a · ▶ READ THIS FIRST — state at 2026-09-24, and it SUPERSEDES §0b
+## 0a · ▶ STATE AT 2026-09-25 — what shipped, and the decisions that bind it
 
-✅ **THE PROGRAMME'S HEADLINE WORK IS DONE AND LIVE.** One line each; the detail is in the commits.
-
-| What | Where |
-|---|---|
-| The silence that made three modes look healthy while every market was refused | `c5f84e77` — a 5-bps floor under the Up & Down closeness band |
-| An account whose rules would not parse could never be repaired | `762e7fd0` — the Rules tab draws a seeded form and says which basis |
-| 18 planner refusals answered a null code, so "nothing to stake on" and "refused 400 times" looked identical | `e8715df1` — every refusal named; `explainBotIdle` walks the planner's own ladder read-only |
-| An officer could not ask WHY an idle account was idle | **"Why is it not staking?"** on the account strip |
-| The Activity row named the product but never the MARKET | `54e9902b` — a **Game** cell, linked to `/admin/markets/<id>` |
-| The activity table's money answer was off the phone at 360 | `65717fe4` — the due sentence wraps; the timestamp still does not |
-| A stuck payout closed withdrawals platform-wide for 33 h with nothing paging anyone | `2a9b1ef5` — `escalatePayoutOutage()` on the 5-minute sweep |
-| The Activity row said what a stake COST and never what it cost the DAY | **`Left today`** on both activity tables — the account's own `capDailyStakeTzs`, counting down |
-
-⛔ **`Left today` IS THE CONFIGURED CAP, NOT THE HOLDER'S WALLET, AND THAT WAS A DECISION — do not "finish" it
-by switching it to a balance.** The owner asked to watch the money decrease, which read literally is the wallet;
-D3 makes that account a real person who may withdraw, 368/459/266 keep every bare balance off these screens, and
-the C7 spec had already weighed a `Live balance` column ON THIS TABLE and struck it. The budget is also the more
-useful number: it is what actually stops the account. Ruling 373(d) carries the full reasoning.
-⚠️ **Two traps this cost a run each.** (1) The suite's fixture places REAL bets — the panels fixture inserts
-INTENTS only, so its day book is 0 staked and every placed row reads the FULL cap; a column asserted against that
-is asserted against a constant. (2) An account ABSENT from `houseDayBooks` staked nothing; only `dayBooks == null`
-is a failed read. Conflating them made the desk paint an em dash for a stake its own account page priced — found
-by RENDERING it, never by the suite.
-
-⭐ **THE TWO LESSONS WORTH CARRYING, both learned the expensive way here:**
-1. **A gate passing is not the same as the screen being right.** `qa:house-bots-visual` returned 64/64 while
-   the new Game cell rendered as "Will the…" at 360 — §5.2 measures the first three cells and it is sixth.
-2. **After fixing a defect class, grep your own diff for it.** The fix for "a value nothing reads" twice
-   shipped with a value nothing read, and a comment of mine silently disarmed a mutation by matching its
-   anchor text.
-
-▶ **WHAT IS ACTUALLY OPEN.** Nothing here blocks betting.
-
-1. **The full mutation fleets have not been driven WHOLE on one tree.** Every mutation anchored on a file
-   this work changed WAS driven: 37 engine (`decide.ts`/`planner.ts`) + 161 console (`house-console-read.ts`)
-   = **198/198 caught, 0 missed**, plus 4 more for the later features. The remainder is a scheduled run —
-   ~1 min per mutation memory-only, so the console fleet alone is ~2.5 h. Do not read "not driven whole" as
-   "not driven".
-2. ⚠️ **`test:red-anchors` §4.1/4.2 are RED on a ratchet that predates this branch** — 67 harnesses do not
-   declare anchors against a ceiling of 65. None of the 67 are ours and `package.json` is untouched here, so
-   it belongs to whoever added them. **Do not bump the ceiling to silence it.**
-3. ⚠️ **The `{!view.removed && (` wrapper around the why-panel cannot change what renders** — `why` is already
-   null for a removed account. It exists so console case 1.435's literal-shape count reaches 12. It is a
-   product-code guard that cannot fail; if 1.435 is ever re-derived, this is the one to drop.
-4. ⚠️ **`scripts/focus-and-fit.mjs:113` reports `buried` and `touching` as disjoint sets** when every buried
-   control is also counted as touching — "4 fully under the rail and 4 touching it" describes 4, not 8.
-   **NOT OURS** (another session's harness); report it, do not edit it.
-
-⛔ **WORKTREE OWNERSHIP, because two sessions nearly collided over it on 2026-09-24:**
-`F:/kipindi-house-bots` = this programme (`bot-flow-seal`) · `F:/kipindi-main` = **mobile-s2** ·
-`F:/kipindi-landing` = the landing `/`-to-10 session. **`globals.css` and `i18n-dict.ts` are mobile-s2's, not
-ours.** A peer needing a tree without `npm install` (it is denied on this machine) junctions node_modules:
-`cmd /c mklink /J <newtree>\node_modules F:\kipindi-house-bots\node_modules`.
-⛔ **And `git worktree remove` deletes THROUGH that junction** — `cmd /c rmdir` the link FIRST. The tell is
-`node_modules/.bin` empty while the top-level count looks unchanged.
-⛔ **Never share a tree with a session running mutation drives:** a drive plants a defect on disk, and a
-concurrent build or `git commit --only` picks it up.
-
-## 0b · WHAT IS FINISHED, AND WHAT THE NEXT MACHINE PICKS UP (2026-09-23 · handover)
-
-⚠️ **SUPERSEDED BY §0a ABOVE** — this section is history, kept for the record of how the work was done. Its own to-do list is closed below.
-⚠️ **AND THE PATHS HERE ARE THE C: MACHINE'S.** On Ali-Blade15 the trees are `C:/kipindi-house-bots` and
-`C:/kipindi-main`; on the **F: machine (asheib)** they are `F:/kipindi-house-bots` and `F:/kipindi-main`, and
-memory is `C:/Users/asheib/.claude/…`. Read the drive letter off the machine you are on, never off this file.
-⛔ **`main` CANNOT BE PUSHED FROM THE HOUSE-BOTS WORKTREE** — a pre-push hook refuses it ("house-bots worktree
-may not push main before REL-4"). Push it from `kipindi-main` as a pure ref update, which is what §0b meant.
-
-**Branch `bot-flow-seal` is PUSHED and is the state to pull.** `git fetch && git checkout bot-flow-seal`.
-
-✅ **FINISHED AND ON THE BRANCH — all ten named minors M1–M10** (the full register, with what each turned out
-to be, is §5 of `NEXT-SESSION-2026-09-23.md`). Eight fixed with an assertion and a mutation each, M10 STRUCK
-because it does not reproduce, M9 resolved into four-moved / one-already-existed / two-unmutatable. Five
-commits, every one of them with its reasoning in the message:
+**The activity row is a round ledger.** Twelve columns on the desk-wide table: `Account · Opening · Stake · Closing
+· Left today · When (EAT) · Outcome · Type · Round · Game · Note · [stop]`. Below `sm` it is one stacked cell
+carrying every figure (one view model, two layouts).
 
 | Commit | What |
 |---|---|
-| `532a1fe8` | M5 M6 M7 M8 — the empty table's scroller, the subject column printing an event word, the blockers stated twice on one screen, the way out that stopped one click short |
-| `480d7077` | Re-anchoring three console mutations that M7's refactor had left measuring NOTHING |
-| `5c914dad` | M2 M3 — the unreadable window refused, the picker's day bound moved to EAT |
-| `7146f2b2` | M1 — the engine notice ages durable beats against the DATABASE's clock |
-| `f3fdf2ad` | M4 M9 M10 — the boot refusal reaches the desk; lane E's claims get real mutations; M10 struck |
+| `1ad5a513` `ac3acf3a` `17682d2b` `acd5ec62` | **`Left today`** — `capDailyStakeTzs` counting down, on every row of the day, inside the 360 strip |
+| `c7c4aefe` | A wallet column read from the ledger (`Transaction.balanceAfter`), refusing rather than carrying a stale figure across an unrecorded refund; and the phone stack |
+| `8018653b` | The **Outcome** chip says how the stake ENDED — Won · Lost · Void — from `Position.status`, never inferred from money (a LOSS writes no transaction) |
+| `00ef44e7` `3b7f01a6` | Eight blind or missing guards (numbered 1–6, 8, 9 — there is no 7), repaired before any column moved |
+| `3859118f` | **Round · Opening · Stake · Closing**; `Product` struck; the compliance register rewritten by ROLE |
+| `57c1c5bb` | Desktop gutters halved: 1519 → 1375px at 1280 (still over the 998px strip — §0b c) |
+| `7d2153eb` | `docs/HOUSE-BOTS.md` §12.4 — the five instruments that lied on the way |
 
-⛔ **THAT LIST IS DONE — DO NOT WORK FROM IT.** All six closed on 2026-09-23/24; §0a above is the live one.
-Kept only so nobody re-opens them from a stale copy:
+⛔ **THE DECISIONS — none is a session's to reopen.**
+1. **D3 is amended, narrowly — Ali's decision** (`docs/COMPLIANCE-DECISIONS.md`, entry `2026-09-25 · D3 AMENDED`,
+   second from the top, under the player-invite entry). The holder's wallet balance may be painted **only in the
+   activity tables' `Opening`/`Closing` cells** on `/admin/desk` and `/admin/desk/[id]`, written by ROLE. Still
+   forbidden: the designate wizard (a funded STATE), the roster (`Live balance` stays struck), the balance-floor
+   panel, and every player-reachable surface without exception.
+2. **`Left today` is the configured cap, not the wallet** — the session's 2026-09-24 choice under D3 (`1ad5a513`),
+   which Ali's 09-25 request for TWO separate columns kept. It is the cap `CAP_PER_DAY` enforces.
+3. **`Closing` is NOT `Opening + P/L` — Ali's decision** (`3859118f`). Closing is the ledger's figure stamped by the
+   stake's own debit; `Opening = Closing + Stake` by construction. A bot holds ~20 open rounds on one wallet, so a
+   line that "added up" would be a figure the wallet never held.
+4. **No P&L column in the activity table, and no amount beside Won/Lost — Ali's decision** (`8018653b`, `3859118f`).
+   He chose to build **house P&L once, as its own surface** (§0b d).
+5. **D19/D20 stand.** House bots are never public — not to players, not to the holder — and are ordinary players in
+   every report.
 
-1. ~~Finish the two mutation drives~~ — driven. Every mutation on a changed file: **198/198 caught, 0 missed**.
-2. ~~`qa:house-bot-fleet`~~ — run; lane E's racy placed-alert was diagnosed and fixed (it sampled an async
-   side effect without waiting, and the naive repair would have blinded the duplicate half).
-3. ~~The two browser gates~~ — `qa:house-bots-visual` **64 passed / 0 failed** at 360 and 1280, PNGs READ.
-   Reading them is what found two defects the gate itself could not see.
-4. ~~`build` + `verify:house-bot-bundle`~~ — both green, whole ladder on one tree.
-5. ~~`docs/HOUSE-BOTS.md` §12~~ — written, including the amendment recording which remedy was REJECTED and why.
-6. ~~Merge to `main`~~ — pushed repeatedly; `main` is at `2a9b1ef5` and deployed.
+**Suite floors — a lower count is a regression, not drift:** console **845 memory / 604 Postgres** · engine
+**808 / 787** · money **132 / 150**. **Declared mutations:** console 335 · engine 80 · money 56 + seam 7 · c5 97 —
+all resolve exactly once (`test:red-anchors` §3, 2026-09-25).
 
-⚠️ **CURRENT suite floors — a lower count is a real regression, not drift. The figures below this line in
-older sections are superseded:** console **809** memory / **570** Postgres · engine **808** / **787** ·
-rules 577 · disclosure 115 · surfaces 74 · money 132/150 · `test:cert-f1` 76.
+## 0b · ▶ WHAT IS OPEN, in the order to work it
 
-## 1 · The current state, and what is next
+Nothing here blocks betting.
 
-👉 **`plans/house-bots/NEXT-SESSION-2026-09-23.md`** — what shipped with its proof, what the two audit
-lenses MEASURED (register F is discharged), **§5: the named minors and what has become of each**, and §4: how
-to stand the instruments up. ⚠️ The five findings L1–L5 that sentence used to point at are all FIXED and LIVE;
-§5 is the list that is still worth reading.
+**⭐ FOUND 2026-09-26, before the list below — being fixed first:**
+- 🔴 **Opening/Closing bracketed the SETTLEMENT on every settled Won or Void row** — 598 of 694 placed rows on the live
+  desk. `feedRemainingLookup` matched the stake's movement on `positionId` alone; `BET_PAYOUT` and `BET_REFUND` carry
+  the same position and the scan is newest-first, so it took the payout or refund. Every fixture settled stakes by
+  flipping `Position.status` and wrote no money, so no case could see it.
+- 🔴 **1.368's D3 guard exempted `remaining`/`remainingTitle`** — names the row stopped carrying at `3859118f`, so the
+  exemption exempted nothing and the case passed only because its fixture paints no balance.
+- 🔴 **`reports-mem` was RED on clean `main`** (14.3/14.3b): another lane's `8acf067c` deleted `"today"` from
+  `analytics.Period`, and our case called `activePlayers("today")` through an `Any` — the window began at `NaN` and
+  every count was 0. It is why every red drive refused to start on 2026-09-25.
 
-Older sessions, kept as the record: `NEXT-SESSION-2026-09-22.md` (the 2026-09-22 register),
-`00-NEXT-SESSION-PROMPT-2026-09-23.md` (the owner's brief for this session).
+**a) The full mutation fleets.** Console and engine were last driven WHOLE at `79c2962d` (2026-09-23: 305/305,
+65/65); they have grown to 335/80 since, and money+seam (63) and c5 (97) have no whole-fleet record. Per-mutation
+time is not measured here. Drive in slices under 3 hours (`--only <prefix,…>`), each under the lock, each into its
+own log, **never through a pipe**:
+```bash
+KP_SCRATCH_PORT=5453 npm run red:house-bot-engine > red-engine.log 2>&1; echo "EXIT=$?" >> red-engine.log
+grep -E "MISSED|WRONG-ASSERTION|STALE|DIRTY|NOT MEASURED|RED: |EXIT=" red-*.log
+```
+⛔ A red runner **mutates tracked files in place**. It refuses to start only if a file IT mutates differs from HEAD,
+and its lock stops only a second copy of the SAME harness — so run drives in a tree nobody edits. The drive tree
+here is **`C:/kipindi-hb-red`** (detached; its `node_modules` is a JUNCTION into this worktree's). An anchor that no
+longer resolves is reported `STALE` and fails the run — check `test:red-anchors` §3 first, not after hours.
+
+**b) The `{!view.removed && (` wrapper around the why-panel cannot fail.** `why` is already null for a removed account
+(`houseWhyIdleForConsole` refuses one), so the wrapper changes nothing that renders; it exists so case 1.435's
+literal count reaches 12. Give it a real RED control, or drop it and re-derive 1.435.
+
+**c) At 1280 the 12-column ledger is 1375px inside a 998px strip.** `Round`, `Game`, `Note` and the stop control sit
+behind a sideways drag. Measure it on a served build, then **ASK ALI as a numbered one-line choice** which column to
+give up, or to accept the scroll. ⛔ Not a session's decision: every candidate is a column he asked for by name.
+
+**d) House P&L as its own surface.** Ali chose to build it once rather than accrete signed money into the activity
+row. **Write the plan, show Ali, then build.** ⛔ It is not only 266/360/361 that stand in the way: D20b
+(`COMPLIANCE-DECISIONS.md`: "no house-liquidity report … no house lines on admin screens") and the
+`C5-D20-REPLAN.md` §4 Commit-7 default ("no results/P&L report … in the console beyond what a control needs") say it
+in terms. The plan must name every text it amends and get Ali's words for each — D20 is his ruling. It must also say
+what "P&L" counts when three placed stakes in four come back VOID.
+
+**e) For Ali, not for a session:** the system switched the desk OFF at 2026-09-24 21:52:26 EAT (no actor). Read its
+recorded cause and tell him.
+
+**f) A house account label that is also a person's name sat in this file** (`cc211981`, 2026-09-24) and is in public
+git history. It is gone from the tip; rewriting history is Ali's decision alone.
+
+**NOT OURS — report, never fix:**
+- `test:red-anchors` is red on clean `main`: two rotted anchors in other lanes' files (`bar-geometry` →
+  `src/components/ui/query-bar.tsx`, `updown-handover` → `src/lib/updown-card-phase.ts`) and §4.1/4.2's ratchet at
+  **68** undeclared against a ceiling of 65. ⚠️ ONE of the 68 IS ours: `red:house-bot-ops`, counted because its red
+  entry point shares a source with an `rmSync` — the named fix is a red entry file of its own
+  (`house-bot-ops-cases.mts:55-75`, `red-anchors.test.mts:240-264`); it would leave 67. ⛔ Never bump the ceiling.
+- `scripts/focus-and-fit.mjs:119`/`:122` counts every buried control as touching too, then reports the two as
+  disjoint — "4 fully under the rail and 4 touching it" describes 4, not 8.
+
+## 1 · Traps that cost a run each — all still live
+
+- ⛔ **`npm ci` deletes `embedded-postgres`**, which is installed `--no-save` and is not in the lockfile. Every
+  Postgres half then "never ran" and every red drive refuses. Put it back: `npm i -D --no-save
+  embedded-postgres@18.3.0-beta.17`. And `npm ci` here rewrites `C:/kipindi-hb-red` too, through its junction.
+- ⛔ **`git worktree remove` deletes THROUGH a junctioned `node_modules`.** `cmd /c rmdir <tree>\node_modules` first.
+- ⛔ **`Transaction.createdAt` is a NAIVE `timestamp`**; `HouseBotIntent`/`HouseBotEvent`/`HouseBotControl` times are
+  `timestamptz`. The scratch cluster runs `Asia/Beirut`, so a raw-SQL fixture handed a JS `Date` lands **3 h in the
+  future** and `findByUserWindow`'s `nowMs + 1` bound drops it. Bound BOTH ends of any freshness check.
+- ⛔ **`db:scratch` is one `.pgscratch` per CHECKOUT, not per port** — a new `KP_SCRATCH_PORT` boots the old data.
+  `--reset` gives a clean one, and fails (`EPERM` on the delete, or "pre-existing shared memory block is still in
+  use") while an orphaned postgres from this checkout is alive; `db-scratch.mts` prints the stop command.
+  `seed-house-bots-local.mts` is **not idempotent** (it places a real bet).
+- ⛔ **`kill` did not stop `next start` on Windows** (recorded in §12.4): a survivor holds the port and serves the OLD
+  build. Clear the port; never trust it.
+- ⛔ **A typed-`Any` call survives another lane deleting its argument** — 14.3 above. When `main` moves under a house
+  suite, run the suite; a green compile says nothing about `Any`.
+- ⛔ **A fixture that consumes a bounded resource** (the roster's 20 slots) breaks cases nowhere near it. Give the slots
+  back by REMOVING accounts, never by raising the ceiling those cases measure.
 
 ## 2 · The authorities — read these before changing behaviour
 
 | What | Where |
 |---|---|
-| Every rule field, and the engine's own reading of it | `docs/HOUSE-BOTS.md` §5 |
+| Every rule field, and the engine's reading of it | `docs/HOUSE-BOTS.md` §5 |
 | The console flow an officer walks | `docs/HOUSE-BOTS.md` §7 |
-| The verification record — every suite number and its mutations | `docs/HOUSE-BOTS.md` §12 |
-| What an officer types to switch the desk on | `plans/house-bots/SWITCH-ON-SHEET.md` |
-| The long-running status board | `plans/house-bots/PROGRESS.md` |
+| The verification record | `docs/HOUSE-BOTS.md` §12 (§12.3 `Left today`, §12.4 the ledger — §12.4 sits at the END of the file) |
+| The console's money law (360, 361, 373) | `plans/house-bots/C7-SPEC.md`; ruling 266 is in `plans/house-bots/C5-D20-REPLAN.md` |
+| D3 and its 2026-09-25 amendment, D19, D20 | `docs/COMPLIANCE-DECISIONS.md` |
 
 ## 3 · The rules that do not bend
 
 1. The **production master switch is never touched**, and no production write is ever made.
-2. A production READ is **SELECT-only**, ids redacted, ages computed in SQL.
-3. The repository is **PUBLIC**: no account id, holder name, note text or switch-on reason in any file.
-4. **No house vocabulary on any player surface**, and none on the console either (ruling 453 — the console's
-   copy is lexicon-scanned; say "account", never "bot").
-5. Never `git checkout --` / `restore` / `stash` / `reset --hard`; never `git add -A`.
-6. A `red:*` gate **mutates tracked files in place**. It refuses a dirty tree, and two at once in one tree is
-   how a live guard gets left disabled while the harness reports clean.
-7. Heavy Node through the shared lock: `bash ~/heavy-node-lock.sh run <who> <cmd>` — this laptop's RAM is
-   failing and two builds at once bluescreen it.
+2. A production READ is **SELECT-only**, in a read-only session, ids never printed, ages computed in SQL.
+3. The repository is **PUBLIC**: no account id, **account label**, holder name, note text, credential or switch-on
+   reason in any file.
+4. **No house vocabulary on any player surface**, and none in the console's copy (ruling 453 — say "account").
+5. Never `git checkout --` / `restore` / bare `stash` / `reset --hard`; never `git add -A`.
+6. Update this file and `docs/HOUSE-BOTS.md` **in the same commit** as the change; push every green step, to `main`.
 
 ## 4 · The gates
 
-```
+```bash
 npm run -s typecheck
-npm run -s test:house-bot-rules          npm run -s test:house-bot-disclosure
-npm run -s test:house-bot-surfaces       npm run -s red:house-bot-console
-KP_SCRATCH_PORT=5453 npm run -s test:house-bot-console   # DB-backed, both stores
-KP_SCRATCH_PORT=5453 npm run -s test:house-bot-engine
-KP_SCRATCH_PORT=5453 npm run -s test:house-bot-money
+npm run -s test:house-bot-rules
+npm run -s test:house-bot-disclosure
+npm run -s test:house-bot-surfaces
+npx tsx scripts/red-anchors.test.mts
+KP_SCRATCH_PORT=5453 npm run -s test:house-bot-console    # both stores; floor 845 / 604
+KP_SCRATCH_PORT=5453 npm run -s test:house-bot-engine     # floor 808 / 787
+KP_SCRATCH_PORT=5453 npm run -s test:house-bot-money      # floor 132 / 150
 KP_SCRATCH_PORT=5453 npm run -s test:dal-parity
-KP_SCRATCH_PORT=5453 npm run -s qa:house-bot-fleet       # lanes A–M; KP_FLEET_SILENT=1 is its meta-mutation
+KP_SCRATCH_PORT=5453 npm run -s qa:house-bot-fleet        # KP_FLEET_SILENT=1 is its meta-mutation
 npm run build && npm run -s verify:house-bot-bundle
 ```
-Browser gates need a served desk — the recipe is in `NEXT-SESSION-2026-09-23.md` §4.
+The red drives are §0b a. The two browser gates are `qa:house-bots-visual` and `qa:desk-rules-flow`; both need a
+served desk. ⚠️ `qa:house-bots-visual` defaults to `KP_BASE=http://127.0.0.1:3021` and six widths — pass
+`KP_BASE=http://localhost:<port> KP_WIDTHS=360,1280`. Read every PNG: a green gate has twice certified a wrong screen.
 
-⛔ **NEVER PIPE A GATE, and read its exit code on its own line.** A pipeline's status is the LAST command's, so
-`npm run red:house-bot-console | tail -25` exits **0** while the runner exits 1 — measured here on 2026-09-23,
-where it reported `306 caught, 3 missed` as a success AND cut off the lines naming which three. Redirect:
+## 5 · Handover log
 
-```bash
-npm run red:house-bot-console > red.log 2>&1; echo "EXIT=$?"
-grep -E "^MISSED|^WRONG-ASSERTION|RED: " red.log
-```
-
-⭐ **And after any refactor, check every declared mutation still RESOLVES before trusting a red drive.** A
-`from:` whose text no longer exists plants nothing and reports nothing — load an `*.anchors.mjs` module and
-assert each `from` appears exactly once in its file. That is how those three misses were found.
+- **2026-09-25/26 overnight · Ali-Blade15.** Fast-forwarded `bot-flow-seal` to `origin/main` (308 behind). Read
+  production; found the switch date wrong and the system's own switch-off. Rewrote this file and put it to five
+  refuters, who found the ledger's settlement defect and the blind 1.368 exemption. Next: fix those three, then
+  §0b a → f.
