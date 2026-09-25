@@ -30,16 +30,18 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: Session S3 — U5 (one helpline) + U6 (consent ledger + suppression).
-  ⚠️ U5 IS THE OQ4 UNIT, AND IT IS A TRAP FOR THE UNWARY. U4 shipped a marketing footer carrying the
-  Board's `0800110051` while `support-config.ts` still publishes `0800 11 0011`, and
-  `test:campaign-compose` §12 ASSERTS THEY DIFFER. ⛔ U5 removes the DUPLICATION of the published
-  number across its print sites; it does NOT reconcile the two numbers. Making them agree is OQ4 —
-  Ali's answer — and doing it as an "obvious cleanup" turns an open owner question into a silent
-  product decision, which is exactly why that guard fails if you try.
-  ⚠️ U6 is this programme's first schema change: expand-only, both stores, named types, a new
-  `dal-parity` section with its own planted-key control, and an enum value ships in its OWN migration
-  one commit before anything writes it.
+▶ NEXT: Session S3 (second half) — U6 (consent ledger + suppression), then S4.
+  ⚠️ U6 IS THIS PROGRAMME'S FIRST SCHEMA CHANGE, and it carries the rules that have not been
+  exercised yet: expand-only migrations · an enum value ships in its OWN migration ONE COMMIT before
+  anything writes it (Postgres refuses a value added in the same transaction) · **two stores or it
+  does not exist** — every new `db.*` namespace lands in `store.ts` AND `prisma-dal.ts` with NAMED
+  types, never an inline object literal in a DAL signature · and `test:dal-parity` gains a §7 with
+  its own planted-key control. ⛔ Zero backfill (OD8), and ⛔ a `Suppression` row is never deleted —
+  not by contact deletion, not by re-import.
+  ⚠️ AND ITS PREDECESSOR'S TRAP IS STILL OPEN: `test:campaign-compose` §12 asserts the marketing
+  footer's `0800110051` still DIFFERS from the published `0800 11 0011`. That is OQ4 — Ali's answer —
+  and making them agree as an "obvious cleanup" turns an open owner question into a silent product
+  decision, which is why the guard fails if you try.
 
 ⚠️ AND A HABIT THIS LANE HAS NOW PAID FOR TWICE: **editing a file is exactly when a red anchor
   rots.** S2's own edits broke two (`otp-delivery`, `blackball`) and a parallel session noticed one
@@ -244,7 +246,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U2 | pure | ✅ | S1 | db44ebf3 | no operator map at all, and the table drafted for it had 5 of 19 rows wrong → TCRA v1.16, seven verdicts, 064 refused, two formatter copies collapsed to one | `test:tz-msisdn` | yes · `red:tz-msisdn` | 2026-09-25 · live on `db44ebf3`: the moved formatter groups 3-3-3 from its new home at 1280 and 360, and the deploy building at all is the client-graph proof |
 | U3 | pure | ✅ | S2 | ccc32526 | no segment arithmetic anywhere and the only GSM-7 table locked inside a server module → one pure table, PACKED segments, the gateway delegating to it | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `ccc32526`. The delegation is proven by EXECUTION — `test:otp-delivery` and `test:sms-cost-guard` drive the real send path through `smsCodingFor`. ⛔ Biller reconciliation is U52 |
 | U4 | pure | ✅ | S2 | b760fefe | no sender identity and no RG footer in any SMS, and a body-only quote would be 49 septets short → footer computed, counted and un-removable; operator budget 111, not 160 | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `b760fefe`; the U2 drive re-run green on it, so the new modules did not break the client bundle |
-| U5 | guard | ⬜ | — | — | — | `test:support-contact` | — | D6 helpline |
+| U5 | guard | ✅ | S3 | 64d6bc05 | a 15-section helpline guard with NO red control at all, and a product half already built → 4/4 mutations caught each on its own assertion | `test:support-contact` | yes · `red:support-contact` | 2026-09-25 · live on `64d6bc05`: every helpline-LABELLED link on /legal/responsible-gambling dials the pinned 0800110011, while the support desk legitimately differs. ⛔ D6 stays ⬜ — its substance is OQ4 |
 | U6 | data | ⬜ | — | — | — | `test:dal-parity` | — | consent + suppression |
 | U7 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | the ONE gate |
 | U8 | visual | ⬜ | — | — | — | `test:marketing-optout` | — | `/s/[token]` |
