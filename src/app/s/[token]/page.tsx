@@ -54,7 +54,12 @@ export default async function OptOutPage({ params }: { params: Promise<{ token: 
     return (
       <PageContainer tier="receipt" className="space-y-5">
         <PageHeader eyebrow={SENDER_IDENTITY} title={t.optout.title} />
-        <EmptyState kind="default" title={t.optout.invalid} body={t.optout.body} />
+        {/* ⛔ NO `body` HERE, AND THAT IS THE POINT. The first version passed `optout.body` —
+            "tap once to stop marketing messages" — onto a page that renders NO BUTTON TO TAP.
+            Caught by reading the screenshot rather than by any assertion: instructing an action
+            the page does not offer is a small false promise, on the one page whose whole job is
+            never to make one. The refusal sentence stands alone. */}
+        <EmptyState kind="default" title={t.optout.invalid} />
       </PageContainer>
     );
   }
