@@ -157,8 +157,9 @@ export default async function InvitePage({
    * This segment has a `loading.tsx`, which is a Suspense boundary, so Next flushes the
    * shell (and commits the status) BEFORE this async component throws. The player sees the
    * not-found view; the response line says 200. Verified on a running server, not reasoned
-   * about: role PLAYER → gate false → `notFound()` called → body is the not-found UI, and
-   * **no code, link or QR is rendered** — the referral read below never runs.
+   * about (measured while `invite` was WITHDRAWN, on a role-PLAYER account; since 2026-09-25 the same
+   * path is a CLOSED / SUSPENDED / SELF_EXCLUDED account): gate false → `notFound()` called → body is
+   * the not-found UI, and **no code, link or QR is rendered** — the referral read below never runs.
    * ⛔ DO NOT "FIX" THE STATUS BY DELETING `loading.tsx`. Every async route in this app has
    * one (CLAUDE.md), and the status is cosmetic here: nothing leaks either way. If a true
    * 404 is ever required, the gate has to move ahead of the render — `proxy.ts` — not be
@@ -227,8 +228,8 @@ export default async function InvitePage({
 
   // Build the referral link from the ACTUAL request host so it always matches
   // the URL the player is on (the live deploy) rather than a possibly-stale
-  // NEXT_PUBLIC_APP_URL. On Railway now → railway link; on 50pick.tz when the
-  // domain goes live → 50pick.tz link, automatically. Falls back to the
+  // NEXT_PUBLIC_APP_URL. On production that is whichever 50pick.tz host the player is on (apex or
+  // www); on any other deploy (the railway.app URL, localhost) it follows that host. Falls back to the
   // service-built link when headers are unavailable.
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");

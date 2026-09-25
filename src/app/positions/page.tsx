@@ -72,6 +72,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
    * against attributions nobody chose.
    *
    * ⭐ Now a code is minted and attached ONLY for someone the programme actually belongs to.
+   * ⚠️ 2026-09-25 — that is now every player in good standing (`invite` ACTIVE, unpaid): their
+   * position shares carry `?ref=` again and bind on purpose (`docs/PLAYER-INVITE-UNPAID.md` §2). The
+   * liability above now sits behind `inviteRewards` alone — switching it ACTIVE makes these binds pay (§12).
    */
   const myRefCode = inviteIsLiveFor(await inviteViewerFor(session.userId))
     ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)

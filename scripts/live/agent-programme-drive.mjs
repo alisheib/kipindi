@@ -18,7 +18,8 @@
  *   5 · Invitee   — officer issues an invitation BY EMAIL → link → create account (OTP) →
  *                   "Email me a code" → the code is read from the server outbox → accept →
  *                   application opens; officer's Approve names why it cannot fire yet
- *   6 · Player    — an ordinary signed-in player finds no invite / bonus solicitation
+ *   6 · Player    — an ordinary signed-in player gets the UNPAID invite share surface (a link, no money
+ *                   word, no agent dashboard) and no bonus / earnings solicitation
  *
  * ⛔ Every assertion is against RENDERED TEXT OR GEOMETRY, never against a status code alone.
  * A page that 200s with an empty body fails the CONTROL assertions.

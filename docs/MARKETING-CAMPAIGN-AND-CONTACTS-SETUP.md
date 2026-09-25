@@ -1148,7 +1148,7 @@ next dispatch.
 
 ⛔ **SCOPE CORRECTED BEFORE BUILDING (S4), because this unit's premise fails twice over.**
 ① **There is no recipient row to hang a token on.** `SmsCampaign` does not exist; `InviteCampaign` /
-`InviteEntry` (`schema.prisma:783,806`) are the unrelated referral system and carry no token. The
+`InviteEntry` (`schema.prisma:783,806`) are the unrelated invite-CAMPAIGN system (`/admin/invites` — not the player referral link on `/profile/invite`, which is `AffiliateAgent` / `ReferralReward`) and carry no token. The
 recipient table is U35 (S19) and the minting is U42 (S22) — both far downstream of S4. Worse, U35's own
 field list in this plan names no opt-out token column at all (the `claimToken` there is U43's slice
 token). So U8 ships **its own** token store, keyed by token and mirroring `Suppression`'s triple, which

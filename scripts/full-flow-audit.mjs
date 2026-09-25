@@ -149,7 +149,7 @@ async function checkPage(page, path, label, opts = {}) {
     ["/profile/sessions", "Sessions page"],
     ["/profile/responsible-gambling", "RG settings"],
     ["/profile/account", "Account settings"],
-    ["/profile/invite", "Invite & earn"],
+    ["/profile/invite", "Invite friends"],
     ["/profile/source-of-funds", "Source of funds"],
     ["/proposals", "Proposals (authed)"],
     ["/proposals/new", "New proposal"],

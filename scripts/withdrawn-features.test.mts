@@ -1,7 +1,9 @@
 /**
  * WITHDRAWN FEATURES — the guard that makes the withdrawal REAL rather than merely invisible.
  *
- * Invite and the bonus wallet are withdrawn from the player product (`src/lib/feature-state.ts`).
+ * The bonus wallet, and the MONEY half of the player invite (`inviteRewards`), are withdrawn from the
+ * player product (`src/lib/feature-state.ts`). The invite SURFACE (`invite`) has been ACTIVE and unpaid
+ * since 2026-09-25; see docs/PLAYER-INVITE-UNPAID.md.
  * Hiding surfaces is the easy half. This suite measures the two halves that actually matter:
  *
  *   LAW 1 — GATE THE OFFER, NEVER THE REFUSAL.  A feature flag may hide something we GIVE.
@@ -84,12 +86,9 @@ function ok(label: string, cond: boolean, extra?: string) {
   // refuses everyone is indistinguishable from a seam that is simply broken.
   ok("§1 CONTROL · invite IS live for an agent IN GOOD STANDING", inviteIsLiveFor(approvedAgent));
   ok("§1 bonus is not live for anyone", !bonusIsLiveFor("PLAYER") && !bonusIsLiveFor("AGENT") && !bonusIsLiveFor(null));
-  // ⛔ WITHDRAWN, NOT COMING_SOON. A gilt "coming soon" badge is a PROMISE, and we are not
-  // promising players this programme. If someone softens the constant back to COMING_SOON,
-  // every entry point starts advertising again and this is the line that says so.
-  // ⚠️ The LABEL said "the state is WITHDRAWN" — 26 lines after this section asserts it is ACTIVE.
-  // What the assertion actually pins is that the retired third state is unreachable, which is true
-  // whichever way the switch is set, so only the words were wrong.
+  // ⛔ NEVER COMING_SOON. A gilt "coming soon" badge is a PROMISE. `invite` was WITHDRAWN from
+  // 2026-09-06 and has been ACTIVE (unpaid) since 2026-09-25; the retired third state must stay
+  // unreachable either way. If someone brings it back, this is the line that says so.
   ok("§1 the state is never COMING_SOON — the retired third state stays unreachable", inviteStateFor(player) !== "COMING_SOON");
 }
 
@@ -198,17 +197,15 @@ function ok(label: string, cond: boolean, extra?: string) {
 }
 
 // ── §5 · ATTRIBUTION — A CODE ONLY RECRUITS IF ITS OWNER MAY REFER ─────────
-// 🔴 THE LIABILITY THIS CLOSES. Every player was auto-minted a code, and until this
-// programme every shared market/position link carried one. Those links are already out there
-// and they never expire. `bindRecruit` writes `recruitedBy` ONCE and `already_bound` means it
-// is never re-attributed — so a bind made today is permanent.
-// ⛔ "It pays nothing right now" is not a defence: nothing pays today because the reward modes
-// are gated, but the ROW is still written, and it becomes a live attribution nobody chose the
-// moment the programme returns.
+// (From 2026-09-06 to 2026-09-25 this section REFUSED every ordinary player's bind. A bind is
+// permanent (`already_bound`), and each one would start paying the day the programme returned.
+// Since 2026-09-25 the unpaid invite accepts that bind ON PURPOSE; docs/PLAYER-INVITE-UNPAID.md §12
+// says what these attributions do if `inviteRewards` is ever switched on.)
 //
-// ⛔ §5c IS THE CONTROL AND IT CARRIES THIS WHOLE SECTION. A gate that refused EVERYONE would
-// pass §5a and §5b while having silently broken the agent programme. The control is what makes
-// the two refusals mean something.
+// ⛔ THE REFUSAL THAT REMAINS is §5a2 (a SELF_EXCLUDED referrer binds nobody); §5c2 pins that a
+// role alone binds as PLAYER, never AGENT. §5c IS THE CONTROL: an approved agent's code still binds
+// and is stamped AGENT. A gate that refused everyone would fail §5a and §5c; a gate that admitted
+// everyone would fail §5a2.
 {
   const stamp = () => new Date().toISOString();
   let n = 0;
@@ -301,8 +298,8 @@ function ok(label: string, cond: boolean, extra?: string) {
 }
 
 // ── §5d · THE LEGACY ATTRIBUTION — bound BEFORE the gate existed ───────────
-// 🔴 THE HARDER HALF TO NOTICE. §5a stops NEW attributions, but `User.recruitedBy` rows
-// written before that gate are still on the table and are PERMANENT (`already_bound` means
+// 🔴 THE HARDER HALF TO NOTICE. `User.recruitedBy` rows written before the programme stamp existed
+// (no `recruitedProgramme`, which `programmeOf` reads as PLAYER) are still on the table and are PERMANENT (`already_bound` means
 // they are never re-attributed). Every one of those pairs would keep accruing on the
 // recruit's next bet/deposit/settlement — the prize mode is enabled by default, and with the
 // bonus wallet withdrawn the reward now lands as REAL, WITHDRAWABLE CASH rather than a
@@ -346,7 +343,7 @@ function ok(label: string, cond: boolean, extra?: string) {
     await ensureAffiliateAccount(`${n}_ref`);
   };
 
-  // §5d · the withdrawn referrer — a legacy attribution that must now pay nothing
+  // §5d · a legacy PLAYER attribution — it must pay nothing while `inviteRewards` is WITHDRAWN
   await mkPair("w5d", "PLAYER");
   ok("§5d PRECONDITION · the legacy attribution really is on the row",
      (await db.user.findById("w5d_rec"))?.recruitedBy === "w5d_ref");
@@ -622,7 +619,7 @@ function ok(label: string, cond: boolean, extra?: string) {
 
   // §9a · the state itself
   active();
-  ok("§9a the desk feature is ACTIVE as shipped — it is the one feature in this table that is live", houseBotsLive());
+  ok("§9a the desk feature is ACTIVE as shipped", houseBotsLive());
   withdrawn();
   ok("§9a FEATURE_DESK=WITHDRAWN is read", !houseBotsLive());
   process.env.FEATURE_DESK = "SOMETHING";

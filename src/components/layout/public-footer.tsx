@@ -55,9 +55,20 @@ export function PublicFooter({
    */
   supportPhone,
   supportPhoneTel,
+  /**
+   * ⭐ THE PLAYER INVITE'S FOOTER DOOR (2026-09-26, Ali: "shouldn't we also have in footer a link
+   * for invite?"). ⛔ A PROP FOR THE SAME REASON `agentDoorVisible` IS ONE: who may hold a link is
+   * decided on the server from the viewer's STANDING (`inviteIsLiveFor` in `app-shell.tsx`), and
+   * this file is `"use client"`. It is the SAME answer the rail, the bar and the avatar menu get,
+   * so a signed-out visitor, a self-excluded player and an agent out of standing see no door here
+   * either — the page refuses the first two and shows a deactivated agent only their read-only
+   * dashboard, which is reached from `/agent`, not from a share door.
+   */
+  inviteVisible,
 }: {
   proposalsState: ProposalsState;
   agentDoorVisible: boolean;
+  inviteVisible: boolean;
   supportEmail: string;
   supportPhone: string;
   supportPhoneTel: string;
@@ -243,6 +254,9 @@ export function PublicFooter({
               linked from the Privacy column below. Now that the two products have actual rules
               documents, the label finally reaches what it promises. */}
           <FooterLink href="/legal/rules">{t.footer.gameRtp}</FooterLink>
+          {/* The unpaid player invite — the page's own name, no reward word, same gate as every
+              other door to it (see the prop's note above). */}
+          {inviteVisible && <FooterLink href="/profile/invite">{t.profile.inviteFriends}</FooterLink>}
           {/* ⭐ THE AGENT PROGRAMME'S ONE DOOR. Site chrome, visible signed out, a plain directory
               line — no badge, no gilt, no number, no earnings verb. ⛔ Never in the account menu:
               the footer is not the account, and an ordinary player is not solicited. */}

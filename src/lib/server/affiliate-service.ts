@@ -5,14 +5,14 @@
  *  - Mint every player a stable, shareable referral code (lazy, on first touch).
  *  - Bind a new registration to its referrer from a referral code, with
  *    anti-fraud guards (no self-referral, one referrer per recruit, IP overlap).
- *  - Accrue the three reward modes — COMMISSION (from a recruit's betting),
- *    BONUS (sign-up / first-deposit), PRIZE (first-bet / deposit milestone) —
- *    each gated by the admin config, capped, idempotent, and audited.
- *  - Credit rewards straight to the recipient's wallet via a CONFIRMED
- *    BONUS_CREDIT transaction (immutable money history, same as every other
- *    money movement in the app).
- *  - Expose read models for the player Invite & Earn page and the admin
- *    dashboard (KPIs, leaderboard, payout ledger).
+ *  - Accrue the three PLAYER reward modes — COMMISSION, BONUS, PRIZE — gated first by the product
+ *    state `inviteRewards` (WITHDRAWN since 2026-09-25: every player accrual is refused in `policyFor`),
+ *    then by the admin config; capped, idempotent, audited. Agent commission is its own branch.
+ *  - Credit a PLAYER reward as a CONFIRMED BONUS_CREDIT (bonus wallet, cash fallback) and AGENT
+ *    commission as AGENT_COMMISSION cash — immutable money history, like every other movement.
+ *  - Expose read models for /profile/invite ("Invite friends", unpaid, for a player; the agent
+ *    dashboard for an approved agent) and /admin/affiliate (KPIs, the full invites-by-player roster
+ *    — `stats.leaderboard` — and the payout ledger).
  *
  * Money rule: every figure is whole TZS. No fractional shillings.
  */
@@ -406,9 +406,9 @@ export function playerInviteEligibleFor(
  * Loads the user and the affiliate row once and composes the `InviteViewer` that
  * `feature-state.ts` now requires. Every surface that used to call `inviteIsLiveFor(role)` —
  * the shell, the profile row, the share links on markets and positions, the achievements
- * shelf, the invite page itself — calls this instead, so "may see" and "may recruit" and
- * "may earn" are all derived from `agentStandingFor`, and a deactivated agent loses every one
- * of them in the same instant.
+ * shelf, the invite page itself — calls this instead, so "may see" and "may recruit" come from
+ * `agentStandingFor` (an agent) or `playerInviteEligibleFor` (everyone else), and anyone who loses
+ * standing loses both in the same instant.
  *
  * ⚠️ IT ANSWERS "MAY SEE AND MAY RECRUIT", AND SINCE 2026-09-25 THAT IS NO LONGER THE SAME
  * QUESTION AS "MAY EARN" — an ordinary player's invite pays nothing. `playerInviteRewardsLive()`
@@ -971,6 +971,11 @@ export async function bindRecruit(opts: { recruitUserId: string; code: string; i
    * ⭐ It reads the SAME seam as every other surface, so binding can never disagree with what
    * the product shows: if `feature-state.ts` says this owner may not refer, their code does
    * not recruit. Under re-enablement the gate opens for everyone at once, by construction.
+   *
+   * ⚠️ 2026-09-25 — THE GATE IS OPEN FOR EVERY PLAYER IN GOOD STANDING (`invite` ACTIVE, unpaid): these
+   * binds are now written on purpose and are the roster `/admin/affiliate` counts for Ali's off-platform
+   * cash. The concern above moved to `inviteRewards`: switching it ACTIVE makes every bind already
+   * recorded payable on the recruit's NEXT event (`docs/PLAYER-INVITE-UNPAID.md` §12).
    *
    * ⭐ `approvedAt` / `active` ARRIVED 2026-09-07, exactly as this comment reserved — and they
    * live in `mayRecruit`, the ONE predicate the ribbon reads too. A closed, suspended,

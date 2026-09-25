@@ -878,21 +878,21 @@ wallet? · a bonus expiring mid-bet.
 **Exit** Non-withdrawable invariant unbreakable, no double-grant, mixed-stake settlement exact.
 
 ### J3 · Invites & campaigns — `cert:j3`
-**Surfaces** `profile/invite` `admin/invites*` · **Owns** `invite-service` `share-token`
+**Surfaces** `admin/invites*` (+ `/auth/register?invite=`) · **Owns** `invite-service` `share-token` · ⚠️ `profile/invite` is NOT this module: it is the player referral page on `affiliate-service` (J4).
 **Existing** `test:invites` `test:invite-flow` · **Orphan** `marketing-invite-stress.mjs`
 **Attack** Forge a `share-token` · claim an invite twice · enumerate campaigns · invite a
 self-excluded account · a campaign past its end date · the branded OG image leaking data.
 **Exit** Token forgery impossible, claims exactly-once.
 
 ### J4 · Affiliates & referrals — `cert:j4` 💰
-**Surfaces** `admin/affiliate` · **Owns** `affiliate-service` `affiliate-config` (`ReferralReward`)
-**Existing** `test:referral` · **Orphans (6)** `affiliate-e2e` `affiliate-sprint1-stress`
-`affiliate-sprint2-ui-completeness` `affiliate-sprint3-kit-conformance` `affiliate-sprint4-security`
-`affiliate-sprint5-integration`
+**Surfaces** `admin/affiliate` `profile/invite` (the player's unpaid invite page, and the agent dashboard) · **Owns** `affiliate-service` `affiliate-config` (`ReferralReward`), and the `invite` / `inviteRewards` product states in `feature-state.ts` (`docs/PLAYER-INVITE-UNPAID.md`)
+**Existing** `test:referral` `test:player-invite-unpaid` (+ `red:player-invite-unpaid`) · **Orphans** `affiliate-e2e` `affiliate-sprint1-stress` `affiliate-sprint4-security` `affiliate-sprint5-integration` (`affiliate-sprint2-ui-completeness` and `affiliate-sprint3-kit-conformance` were deleted 2026-09-26: they audited the retired paid invite page)
 **Attack** Self-referral · cycles (A→B→A) · farm rewards with disposable accounts · claim a reward
-twice · reward on a self-excluded recruit · commission on a reversed/refunded deposit.
+twice · reward on a self-excluded recruit · commission on a reversed/refunded deposit · make a PLAYER
+referral pay with every admin reward mode at maximum · mint a link for a CLOSED / SUSPENDED /
+SELF_EXCLUDED account or a deactivated agent.
 **Exit** Self/cyclic referral impossible, rewards exactly-once, reversal claws back commission,
-6 orphans adopted or deleted.
+the remaining orphans adopted or deleted.
 **⭐ Agent tier (2026-09-07, `docs/AGENT-PROGRAMME.md`)** — J4 now also owns `agent-config`,
 `agent-application-service` (`AgentApplication`, `AgentApplicationDocument`, `AgentInvitation`)
 and the `/admin/agents*` console. **Gates:** `test:agent-policy` · `test:programme-isolation` ·
@@ -1192,7 +1192,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | J1 Up & Down | `cert:j1` | ⛔ **BLOCKED** — unmerged branch |
 | J2 Bonus wallet | `cert:j2` | ⬜ |
 | J3 Invites & campaigns | `cert:j3` | ⬜ |
-| J4 Affiliates & referrals | `cert:j4` | ⬜ 6 orphans |
+| J4 Affiliates & referrals | `cert:j4` | ⬜ 4 orphans |
 | J5 Proposals & voting | `cert:j5` | ⬜ 5 orphans |
 | J6 Comments & moderation | `cert:j6` | ⬜ no named gate |
 | J7 Leaderboard & achievements | `cert:j7` | ⬜ N+1 at ~1k users |

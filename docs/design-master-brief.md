@@ -213,7 +213,7 @@ specific change. Be candid; we would rather redo a built thing now than ship it 
 | `/profile/kyc` | Steps are chips; identical upload slots; APPROVED doesn't celebrate | **KYC progress rail illustration**; **ID-silhouette line-art** per slot; gilt burst on APPROVED | **H** |
 | `/profile/sessions` | Reads like a debug dump (raw mono IDs/IPs) | **Device/session cards** (phone vs desktop glyph); **aqua "live" accent** on current | **H** |
 | `/profile/source-of-funds` | Plain text radio tiles | **Per-source glyphs**; GiltCorner on declaration + signature line-art | M |
-| `/profile/invite` | **No share-card image** (text+URL only); no QR | **Generated invite SHARE-CARD image** (royal + FiftyMark + gilt "You've been invited" + code) via `navigator.share`; **QR** | **H** |
+| `/profile/invite` | **No share-card image** (text+URL only); no QR | **Generated invite SHARE-CARD image** (royal + FiftyMark + gilt "You've been invited" + code) via `navigator.share`; **QR** ⚠️ *2026-09-25: a share card and QR shipped on `/profile/invite` in ROYAL, not gilt. The player invite pays nothing, so gold on it would claim earned money (`DESIGN_AUTHORITY` §M3; `PLAYER-INVITE-UNPAID.md` §2). Do not add the gilt line.* | **H** |
 | `/profile/responsible-gambling` | Three gray panels; no wellbeing art | **RG self-care line-art**; helpline as `yes`-toned support callout | M |
 | `/fairness` | Flattest (no PageHero); 5-step list bare | `PageHero glow=info`; **provably-fair / two-officer audit-chain SVG diagram** | **H** |
 | `/help` | FAQ pure text | Per-FAQ topic glyphs; tone-coded quick-link chips | L–M |

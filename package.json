@@ -96,6 +96,8 @@
     "qa:withdrawn-render": "node scripts/live/withdrawn-render-drive.mjs",
     "qa:withdrawal-visual": "node scripts/live/withdrawal-visual-drive.mjs",
     "qa:mobile-visual": "node scripts/live/mobile-visual-drive.mjs",
+    "qa:invite-phone": "node scripts/live/invite-prod-drive.mjs",
+    "qa:invite-admin": "node scripts/live/invite-admin-drive.mjs",
     "qa:mobile-visual-capture": "node scripts/live/mobile-visual-capture.mjs",
     "qa:card-spacing": "node scripts/live/card-spacing-drive.mjs",
     "ops:mint-qa-mobile": "node scripts/live/mint-qa-mobile.mjs",

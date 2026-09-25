@@ -626,8 +626,8 @@ export type StoredSourceOfFunds = {
  * their referral surface is touched (visiting /profile/invite, or someone
  * registering with their code). Keyed by userId. `code` is the public,
  * shareable referral code embedded in their link. Running totals are
- * denormalised counters kept in sync by the affiliate service so the
- * Invite & Earn page and the admin leaderboard read in O(1).
+ * denormalised counters kept in sync by the affiliate service so
+ * /profile/invite and the /admin/affiliate roster read in O(1).
  */
 export type StoredAffiliateAccount = {
   userId: string;

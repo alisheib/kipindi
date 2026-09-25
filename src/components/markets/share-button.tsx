@@ -39,6 +39,10 @@ export function ShareButton({
    * `?ref=` and the OG preview — is shared verbatim. A second share control would be
    * `E-196` again: one control with two implementations, where the defect lives in the
    * copy nobody is editing.
+   * ⚠️ BUT THE CARD PASSES NO `refCode` (market-card.tsx), so a CARD share carries no `?ref=` — the
+   * mechanism is shared, the code is not. Deliberate, and an open decision (docs/PLAYER-INVITE-UNPAID.md
+   * §11: wiring it would put an account-minting write on /markets, /, /results and /watchlist). Of this
+   * component's callers, only the market detail page passes one.
    *
    * The 40px tap reach comes from `.mcardp-share`, which uses the same out-of-flow
    * pseudo-element `.mcardp-details` uses, for the same reason: grow the TARGET, not the
