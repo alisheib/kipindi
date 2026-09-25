@@ -3769,7 +3769,14 @@ try {
            ⛔ The `why` above is still the sentence the console must never paint; that pin is untouched. */
         decision: n % 3 === 1
           ? ({ snapshot: "blob" } as Any)
-          : ({ snapshot: { titleEn: n === 41 ? `${"Q".repeat(200)} ${n}` : `Will panel market ${n} resolve YES?`, category: "other", cutoff: w.iso(3_600_000), /* ⭐ A REAL ROUND ON THE UPDOWN ROWS AND NULL ON THE POLLS, which is the production shape: 1052 of 1052 Up & Down rows carry a round number and 0 of 6 poll rows do. The value carries `n` so a reader painting a constant is caught, and every third row keeps the HOSTILE `snapshot: "blob"` above. */ roundNumber: n % 3 === 0 ? 1500 + n : null } } as Any),
+          : ({ snapshot: { titleEn: n === 41 ? `${"Q".repeat(200)} ${n}` : `Will panel market ${n} resolve YES?`, category: "other", cutoff: w.iso(3_600_000), /* ⭐ A REAL ROUND ON THE UPDOWN ROWS AND NULL ON THE POLLS, which is the production shape: 1052 of 1052 Up & Down rows carry a round number and 0 of 6 poll rows do. The value carries `n` so a reader painting a constant is caught, and every third row keeps the HOSTILE `snapshot: "blob"` above. */ /* ⛔ AND TWO ROWS CARRY A WELL-FORMED SNAPSHOT WITH A MALFORMED ROUND — a STRING and a NEGATIVE. The hostile
+             `snapshot: "blob"` rows above are rejected at the OBJECT check and never reach the number guard, so without
+             these the guard was real but untested: its declared mutation came back MISSED, which is how a mutation
+             aimed at nothing announces itself.
+             ⚠️ n=38 AND n=35 ARE CHOSEN, NOT ARBITRARY: the feed pages at 20 over 41 rows, so only n≥22 is on
+             page 1 — the first pair sat on page 3 and the mutation came back MISSED a second time — and both avoid
+             the `n % 3 === 1` rows, which store the hostile blob and never reach the number guard at all. */
+          roundNumber: n === 38 ? ("1524" as unknown as number) : n === 35 ? -3 : n % 3 === 0 ? 1500 + n : null } } as Any),
         attempts: 0, transientAttempts: 0, nextAttemptAt: null,
         claimedBy: null, claimedUntil: null,
         positionId: status === "PLACED" ? `pos_placed_panel_${n}` : null,
@@ -4063,9 +4070,10 @@ try {
         /* ⛔ CONTROL · THE HOSTILE SHAPE AND THE ABSENT VALUE BOTH ANSWER NOTHING. `decision` is
            `Record<string, unknown>` with no type, no parse and no write-time guard, and every third fixture row
            stores `snapshot: "blob"` on purpose. A poll answers null for the same reason: it has no rounds. */
-        ok("1.626g · CONTROL · a hostile snapshot and a row with no round both answer `null` — never `#undefined`, never an empty badge",
-          rounds.some((v: Any) => v === null) && rounds.every((v: Any) => v === null || typeof v === "string"),
-          j({ nulls: rounds.filter((v: Any) => v === null).length, named: named.length }));
+        ok("1.626g · CONTROL · a hostile snapshot, a MALFORMED round number and a row with no round all answer `null` — never `#undefined`, never `#-3`, never an empty badge",
+          rounds.some((v: Any) => v === null) && rounds.every((v: Any) => v === null || /^#[\d,]+$/.test(v))
+            && !rounds.some((v: Any) => typeof v === "string" && /-|undefined|NaN/.test(v)),
+          j({ nulls: rounds.filter((v: Any) => v === null).length, named: named.length, shapes: [...new Set(rounds.map((v: Any) => v === null ? "null" : "figure"))] }));
         /* ⛔ CONTROL · IT IS THE STORED NUMBER AND NOT A ROW INDEX — the fixture writes `1500 + n`, so a reader
            painting a counter, a constant, or the page position is caught. */
         ok("1.626g · CONTROL · the figure is the SNAPSHOT's own number, not a row counter or a constant",

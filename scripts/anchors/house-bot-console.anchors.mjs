@@ -2573,7 +2573,7 @@ import { formatEat } from "@/lib/utils";`,
        suite plants a hostile shape on purpose. Dropping the guard paints `#undefined` or worse. */
     from: `  if (typeof raw !== "number" || !Number.isFinite(raw) || !Number.isInteger(raw) || raw <= 0) return null;`,
     to: `  if (raw == null) return null;`,
-    expect: "1.626g · CONTROL · a hostile snapshot and a row with no round both answer `null`",
+    expect: "1.626g · CONTROL · a hostile snapshot, a MALFORMED round number and a row with no round all answer `null`",
     suite: "console-mem",
   },
   {
