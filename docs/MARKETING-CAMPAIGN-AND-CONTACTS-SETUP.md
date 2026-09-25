@@ -1011,12 +1011,47 @@ produces one, which is the only way "un-removable" is true of software rather th
 document; the footer's length is asserted against a token of the real minted length; the 111 is
 computed from the footer and the single-segment limit, not written down.
 
-**U5 · One helpline** — `src/lib/support-config.ts` and its six print sites (D6)
-One constant, named sites, ⚠️ `global-error.tsx` keeps its hand-written copies **by design** (it must stay
-import-free) and the guard asserts they EQUAL the constant. ⛔ The published RG page's number is NOT
-changed here — OQ4 is Ali's to answer; this unit removes the duplication so the answer is a one-line
-change. **Guard:** `test:support-contact`. **RED:** change one site's literal → red.
-**Accept:** `grep` finds the number in exactly the declared places, all equal.
+**U5 · One helpline** — `src/lib/support-config.ts` and its print sites (D6) — ✅ SHIPPED S3
+🔴 **THE PRODUCT HALF OF THIS UNIT WAS ALREADY BUILT, AND THE PLAN DID NOT KNOW.** Measured at S3
+before writing any code: the statutory helpline is already ONE pinned constant with no setter and no
+persisted field; `global-error.tsx` already keeps its four hand-written copies **by design** (it is
+the root error boundary and must import nothing, because it renders when the root layout itself has
+failed); and `test:support-contact` §15 already **discovers** every helpline-shaped literal in that
+file rather than listing line numbers, asserts each equals the constant, and carries its own controls
+that the file still publishes the number at all and that the detector rejects a drifted copy. The
+support-and-care campaign shipped it. ⛔ Building it again would have been a second implementation of
+a working one.
+⭐ **WHAT WAS ACTUALLY MISSING WAS THE CONTROL.** `test:support-contact` is fifteen sections, one of
+the most careful suites in this repo — and it had **no `red:` key at all**. Fifteen sections on trust.
+§5.11 says every guard ships with a control that reintroduces the real defect, so this unit ships
+`red:support-contact`: four mutations, 4/4 caught each on its OWN named assertion, tree restored
+byte-identical.
+⭐ **DECLARED ANCHORS, NOT AN IN-MEMORY PLANT, AND THE REASON MATTERS.** The suite reads the tree from
+disk — that IS its method — so an in-memory plant would have to fake the whole sweep and would then be
+testing the fake. Mutating the real file is what proves the sweep sees it. Declaring the anchors in
+`scripts/anchors/support-contact.anchors.mjs` also keeps `test:red-anchors`'s undeclared count at 68
+against its ceiling of 65 — ⭐ measured before and after: **unchanged**.
+⚠️ **TWO OF THE FOUR MUTATIONS ARE CONTROLS ON THE SUITE'S OWN CONTROLS.** §15.1 passes perfectly over
+a file that has stopped printing the helpline altogether — every surviving copy still matches — so one
+mutation DELETES a copy rather than drifting it and requires §15.2 to be the thing that fires. Another
+drifts the `tel:` href while leaving the printed text right: a drifted display string is a bad number
+to read out; a drifted href dials one.
+⭐ **AND THE SUITE UNDER TEST CAUGHT THIS UNIT'S OWN FIRST DRAFT.** The mutation that makes the
+statutory helpline operator-settable first used the operator's REAL desk number as its replacement
+literal, and §8 — "no support contact is a literal outside `support-config.ts`", whose sweep includes
+`scripts/` — refused the whole harness because the tree was already red. A red harness that seeds a
+real contact number into the tree is a red harness that leaks one. The replacement is now plainly fake.
+⛔ **D6 IS NOT CLOSED BY THIS UNIT AND STAYS ⬜.** Its engineering half is done — one home, every copy
+pinned, drift now impossible and PROVEN impossible. Its substance is **which number is correct**, and
+that is OQ4: we publish `0800 11 0011`, the Board's own Advertising Code names `0800110051`. ⛔ Not a
+thing to settle by making them agree — `test:campaign-compose` §12 asserts the marketing footer's
+number still DIFFERS from the published one, precisely so an "obvious cleanup" fails instead of
+turning an open owner question into a silent product decision. When Ali answers, the constant moves
+and §15 forces all four copies to move with it.
+**Guard:** `test:support-contact` (already on `predeploy`; §13.1 asserts that).
+**RED:** `red:support-contact` — 4/4, declared anchors.
+**Accept:** `grep` finds the number in exactly the declared places, all equal — and, added here, the
+guard that says so is now proven able to fail.
 
 **U6 · Consent ledger + suppression** — schema, both DALs, `dal-parity` §7 (D7, D8)
 `MessagingConsent` (append-only: channel, `identifier` = the one key, category, status, source, **verbatim
