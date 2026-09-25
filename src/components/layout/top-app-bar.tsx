@@ -83,7 +83,7 @@ export type TopAppBarUser = {
   walletHeld?: boolean;
 };
 
-export function TopAppBar({ user, proposalsState, inviteVisible = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean }) {
+export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
 
@@ -387,6 +387,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false }: { use
             isAdmin={user.isAdmin ?? false}
             proposalsState={proposalsState}
             inviteVisible={inviteVisible}
+            invitePaid={invitePaid}
           />
         </div>
       </div>

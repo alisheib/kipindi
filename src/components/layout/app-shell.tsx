@@ -47,8 +47,8 @@ import { guestUser } from "@/lib/ui-stubs";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
-import { inviteIsLiveFor, installInviteIsLive, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
-import { agentStandingFor } from "@/lib/server/affiliate-service";
+import { inviteIsLiveFor, playerInviteRewardsLive, installInviteIsLive, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
+import { agentStandingFor, playerInviteEligibleFor } from "@/lib/server/affiliate-service";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
@@ -169,7 +169,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     const u = uResult.status === "fulfilled" ? uResult.value : null;
     const aff = affResult.status === "fulfilled" ? affResult.value : null;
     // ⚠️ A failed user read leaves NO_VIEWER — a failed read must never open a withdrawn programme.
-    inviteViewer = u ? { role: u.role, agentInGoodStanding: agentStandingFor(u, aff).ok } : NO_VIEWER;
+    // ⭐ `accountInGoodStanding` rides the same two rows: the shell decides the nav entry, and the
+    // unpaid player invite (2026-09-25) is closed to a CLOSED / SUSPENDED / SELF_EXCLUDED account.
+    // ⛔ Composed from `playerStandingFor`, not re-spelled here — the shell showing a link the
+    // bind would refuse is the drift this predicate exists to prevent.
+    inviteViewer = u
+      ? { role: u.role, agentInGoodStanding: agentStandingFor(u, aff).ok, playerInviteEligible: playerInviteEligibleFor(u, aff) }
+      : NO_VIEWER;
     const wallet = walletResult.status === "fulfilled" ? walletResult.value : null;
     const rg = rgResult.status === "fulfilled" ? rgResult.value : null;
     const userRef = u ?? { id: session.userId, displayName: null };
@@ -257,6 +263,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      🔴 AND IT IS STANDING, NOT ROLE (2026-09-07). `inviteIsLiveFor(viewerRole)` kept every
      entry point open for a DEACTIVATED agent, because deactivation leaves the role in place. */
   const inviteVisible = inviteIsLiveFor(inviteViewer);
+  /* ⭐ THE SECOND HALF OF THE PAIR, RESOLVED IN THE SAME PLACE AND FOR THE SAME REASON: the menu
+     row's WORDS depend on whether the programme pays, and a client component may not read the
+     product state to find out. ⛔ No viewer argument — `playerInviteRewardsLive()` is a property of
+     the programme, and an agent never reaches this label (they get the agent dashboard). */
+  const invitePaid = playerInviteRewardsLive();
 
   /**
    * 🔴 THE AGENT DOOR IS RESOLVED HERE FOR THE REASON THE COMMENT ABOVE ALREADY GIVES.
@@ -297,7 +308,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           state so React owns it. Do not reintroduce a shell-level DOM mutation for this. */}
       <HeaderScrollCast />
       <Suspense fallback={null}><NavProgress /></Suspense>
-      <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} />
+      <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {/* 🔴 E-381 · the in-place answer to a session that ended during a refresh — see the note at
           `endedReason`. Server-rendered, and its only action is a plain `<a>`. */}

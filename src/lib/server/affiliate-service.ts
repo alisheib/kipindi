@@ -17,7 +17,7 @@
  * Money rule: every figure is whole TZS. No fractional shillings.
  */
 import { db, type StoredAffiliateAccount, type StoredReferralReward, type StoredUser } from "./store";
-import { inviteIsLiveFor, bonusIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
+import { inviteIsLiveFor, playerInviteRewardsLive, bonusIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
 import { getAffiliateConfig } from "./affiliate-config";
 import { getAgentConfig, commissionWindowEnd, PLATFORM_MAX_COMMISSION_PCT, type AgentConfig } from "./agent-config";
 import { splitWithholding } from "@/lib/agent-commission";
@@ -253,6 +253,14 @@ export type ReferralRefusal =
   | "agent_self_excluded"
   | "agent_rate_unset"
   | "player_invite_withdrawn"
+  /** ⭐ The unpaid player invite (2026-09-25): the SURFACE is live and the attribution is real,
+   *  but `inviteRewards` is WITHDRAWN, so nothing accrues. ⛔ Distinct from
+   *  `player_invite_withdrawn` (no link at all) and from `programme_disabled` (the operator's own
+   *  master switch) — three different zeros, and an officer reading the audit must be able to
+   *  tell which one they are looking at. */
+  | "player_rewards_withdrawn"
+  /** The referrer's own account is CLOSED, SUSPENDED or SELF_EXCLUDED — `playerStandingFor`. */
+  | "player_account_not_in_standing"
   | "window_expired"
   | "cap_exhausted"
   | "no_fee";
@@ -353,6 +361,46 @@ export function agentStandingFor(
 }
 
 /**
+ * ⭐ MAY AN ORDINARY PLAYER HOLD A LINK AND RECRUIT ON IT? The player half of
+ * `agentStandingFor`, and deliberately its mirror image rather than a looser cousin.
+ *
+ * 🔴 IT EXISTS BECAUSE OPENING THE SURFACE CHANGED WHAT "WITHDRAWN" WAS HIDING. Until
+ * 2026-09-25 the player branch was shut for everyone, so no player's status could matter; the
+ * moment it opens, a CLOSED, SUSPENDED or SELF_EXCLUDED account with a link already on WhatsApp
+ * starts recruiting again — server-side, against their stored row, with nobody logged in.
+ *
+ * ⚠️ COOLED_OFF IS ABSENT, the same ruling `agentStandingFor` records above: a cooling-off break
+ * is about the player's own betting, and sharing a link is not betting.
+ *
+ * ⛔ ONE PREDICATE, read by the viewer composition below and therefore by the page, the nav, the
+ * share links and the bind — never re-derived at a call site. Two conditions that agree today are
+ * how the ribbon and the bind drifted apart the first time.
+ */
+export function playerStandingFor(user: Pick<StoredUser, "status">): { ok: true } | { ok: false; refusal: ReferralRefusal } {
+  if (user.status === "CLOSED" || user.status === "SUSPENDED" || user.status === "SELF_EXCLUDED") {
+    return { ok: false, refusal: "player_account_not_in_standing" };
+  }
+  return { ok: true };
+}
+
+/**
+ * ⭐ MAY THIS VIEWER HOLD THE **PLAYER** (UNPAID) INVITE LINK? The composition behind
+ * `InviteViewer.playerInviteEligible` — see that field for why each half is here.
+ *
+ * ⛔ AN AGENT NEVER FALLS BACK TO THE PLAYER SHARE, IN OR OUT OF STANDING. `mayRecruit` routes
+ * anyone with `approvedAt` down the AGENT branch and refuses a deactivated one there, so a player
+ * link minted for them would be refused for every person who used it. In standing they have their
+ * own, better surface; out of standing they have none. ⚠️ `isApprovedAgent` is `approvedAt` ALONE
+ * — the same one-fact rule the rest of this module is built on.
+ */
+export function playerInviteEligibleFor(
+  user: Pick<StoredUser, "status">,
+  account: Pick<StoredAffiliateAccount, "approvedAt"> | null | undefined,
+): boolean {
+  return playerStandingFor(user).ok && !isApprovedAgent(account);
+}
+
+/**
  * ⭐ THE ONE PLACE A PAGE ASKS "may this viewer see the invite programme?".
  *
  * Loads the user and the affiliate row once and composes the `InviteViewer` that
@@ -362,6 +410,10 @@ export function agentStandingFor(
  * "may earn" are all derived from `agentStandingFor`, and a deactivated agent loses every one
  * of them in the same instant.
  *
+ * ⚠️ IT ANSWERS "MAY SEE AND MAY RECRUIT", AND SINCE 2026-09-25 THAT IS NO LONGER THE SAME
+ * QUESTION AS "MAY EARN" — an ordinary player's invite pays nothing. `playerInviteRewardsLive()`
+ * is the money, and no viewer opens it.
+ *
  * `null` / a failed read → `NO_VIEWER`: a failed read must never open a withdrawn programme.
  */
 export async function inviteViewerFor(userId: string | null | undefined): Promise<InviteViewer> {
@@ -370,7 +422,7 @@ export async function inviteViewerFor(userId: string | null | undefined): Promis
     const user = await db.user.findById(userId);
     if (!user) return NO_VIEWER;
     const account = await db.affiliate.findByUserId(userId);
-    return { role: user.role, agentInGoodStanding: agentStandingFor(user, account).ok };
+    return inviteViewerOf(user, account);
   } catch {
     return NO_VIEWER;
   }
@@ -378,7 +430,11 @@ export async function inviteViewerFor(userId: string | null | undefined): Promis
 
 /** The same composition for rows already in hand — used inside the resolver. */
 function inviteViewerOf(user: StoredUser, account: StoredAffiliateAccount | null): InviteViewer {
-  return { role: user.role, agentInGoodStanding: agentStandingFor(user, account).ok };
+  return {
+    role: user.role,
+    agentInGoodStanding: agentStandingFor(user, account).ok,
+    playerInviteEligible: playerInviteEligibleFor(user, account),
+  };
 }
 
 /**
@@ -462,6 +518,27 @@ export function policyFor(
   }
 
   // ── PLAYER ────────────────────────────────────────────────────────────────
+  /**
+   * 🔴 THE PLATFORM PAYS A PLAYER NOTHING FOR AN INVITE, AND THIS IS THE LINE THAT MAKES IT
+   * TRUE (Ali, 2026-09-25: *"we don't want to pay anything on affiliate … i'll pay him cash not
+   * through 50pick"*). It sits ABOVE `cfg.enabled` on purpose: a product state outranks an
+   * operator config, so no combination of `/admin/affiliate` switches, no persisted row and no
+   * restored snapshot can put the player promo back on the money path. One word in
+   * `feature-state.ts` — or `FEATURE_INVITEREWARDS=ACTIVE` — brings it back, and every line
+   * below this one is kept alive and driven for exactly that day.
+   *
+   * ⛔ "WE'LL JUST SET THE COMMISSION TO 0%" WAS THE ALTERNATIVE, AND IT WOULD HAVE PAID. The
+   * shipped config carries `prize.enabled: true` at TZS 10,000 a head with commission already
+   * OFF, so a zero rate silences the branch that was never the payer. Three reward modes, one
+   * rate: the rate is not the switch.
+   *
+   * ⛔ AND IT IS A REFUSAL, NOT A ZERO POLICY. Returning `rate: 0, flatRewards: false` would have
+   * been quieter and wrong: the accrual hooks would have run the whole window/cap/idempotency
+   * path and written a TZS 0 reward row, and `auditRefusal` — the reason an unpaid accrual is
+   * explainable at all — would never fire. A payout of nothing and a refusal to pay are
+   * different facts, and the officer reading the audit needs the second one.
+   */
+  if (!playerInviteRewardsLive()) return { ok: false, refusal: "player_rewards_withdrawn" };
   if (!cfg.enabled) return { ok: false, refusal: "programme_disabled" };
   return {
     ok: true,
@@ -535,12 +612,22 @@ export async function accrualContextFor(
     const standing = agentStandingFor(referrer, account);
     if (!standing.ok) return { ok: false, refusal: standing.refusal, attribution };
   } else {
-    // The PLAYER programme's own gate: today `invite` is WITHDRAWN, so an ordinary player's
-    // attribution pays nothing. ⛔ `agentInGoodStanding` is passed as FALSE here on purpose —
-    // this is a PLAYER-stamped attribution, and an agent's standing must never open the player
-    // promo for it (that is the exploit: buy AGENT status, and the pre-approval book flips).
-    // Only the product state may open this branch.
-    if (!inviteIsLiveFor({ role: referrer.role, agentInGoodStanding: false })) {
+    // The PLAYER programme's own gate. ⛔ `agentInGoodStanding` is passed as FALSE here on
+    // purpose — this is a PLAYER-stamped attribution, and an agent's standing must never open the
+    // player promo for it (that is the exploit: buy AGENT status, and the pre-approval book
+    // flips). Only the product state and the referrer's OWN standing may open this branch.
+    //
+    // ⭐ SINCE 2026-09-25 REACHING THE OTHER SIDE OF THIS GATE IS NO LONGER A PAYMENT. The
+    // surface is ACTIVE, so an ordinary player's attribution passes here and is then refused by
+    // `policyFor` with `player_rewards_withdrawn` — a different refusal, in a different place,
+    // for a different reason, and both land in the audit. ⛔ Do not "simplify" the two into one
+    // check: a player whose link is dead and a player whose link works but pays nothing are not
+    // the same player, and the officer's zero has to name which.
+    if (!inviteIsLiveFor({
+      role: referrer.role,
+      agentInGoodStanding: false,
+      playerInviteEligible: playerInviteEligibleFor(referrer, account),
+    })) {
       return { ok: false, refusal: "player_invite_withdrawn", attribution };
     }
   }
@@ -635,8 +722,14 @@ export async function resolveReferralPreview(code: string) {
   // ⛔ NEVER FOR AN AGENT'S CODE. The agent programme pays commission to the agent and makes
   // no offer to the recruit at all, so advertising a welcome bonus on an agent's ribbon
   // would be the player promo's terms on a page the player promo does not govern.
+  // ⛔ `playerInviteRewardsLive()` FIRST, AND IT IS THE SAME REASON THE REST OF THIS CONDITION
+  // EXISTS: the ribbon is a promise, so it obeys the switch that decides whether the promise can
+  // be kept. With `inviteRewards` WITHDRAWN `policyFor` refuses every player accrual, so an
+  // offer here would be the product advertising money it has already decided not to pay.
+  // ⚠️ The bonus MODE is off in the shipped config too, so today both halves say zero — which is
+  // exactly why the product state is named explicitly rather than left to agree by accident.
   const newPlayerBonusTzs =
-    may.programme === "PLAYER" && cfg.enabled && cfg.bonus.enabled && (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH")
+    may.programme === "PLAYER" && playerInviteRewardsLive() && cfg.enabled && cfg.bonus.enabled && (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH")
       ? cfg.bonus.newAmountTzs
       : 0;
   const name =
@@ -1539,7 +1632,17 @@ export type PlayerReferralSummary = {
   earnedTzs: number;
   recruits: RecruitRow[];
   programEnabled: boolean;
-  /** Adaptive promise lines reflecting which modes are live. */
+  /**
+   * ⭐ DOES THIS PAGE TALK ABOUT MONEY AT ALL? `playerInviteRewardsLive()`, threaded rather than
+   * re-asked, so the page cannot render an earnings ring the accrual has already refused — and so
+   * the ONE question "is the player promo paid today" has ONE answer on the server.
+   * ⛔ Not the same fact as `programEnabled`, which is the operator's master switch INSIDE a paid
+   * programme. Today `rewardsLive` is false and `programEnabled` is true: the invite works, and
+   * the platform pays nothing for it.
+   */
+  rewardsLive: boolean;
+  /** Adaptive promise lines reflecting which modes are live. ⛔ Empty whenever `rewardsLive` is
+   *  false — every one of them is a sentence about money. */
   promises: Array<{ icon: "percent" | "ticket" | "gift"; en: string; sw: string }>;
 };
 
@@ -1572,15 +1675,25 @@ export async function getPlayerReferralSummary(userId: string) {
       return { maskedName: maskedRosterLabel(u, u.phoneE164), joinedAt: u.recruitedAt ?? u.createdAt, status, earnedTzs: earned };
     });
 
+  /**
+   * ⛔ EVERY PROMISE BELOW IS A SENTENCE ABOUT MONEY, so the whole block is gated on the same
+   * product state the accrual reads — not on the three config modes it interrogates. Those modes
+   * stay switched on in the shipped config (prize, TZS 10,000, FIRST_BET); reading them alone is
+   * precisely how this page would print *"Get TZS 10,000 when a friend deposits & places their
+   * first bet"* on the day `policyFor` refuses to pay a shilling.
+   * ⭐ The strings themselves are untouched and unreachable rather than deleted: flip
+   * `inviteRewards` back to ACTIVE and the paid promo returns whole.
+   */
+  const rewardsLive = playerInviteRewardsLive();
   const promises: PlayerReferralSummary["promises"] = [];
-  if (cfg.commission.enabled) {
+  if (rewardsLive && cfg.commission.enabled) {
     promises.push({
       icon: "percent",
       en: `Earn ${Math.round(cfg.commission.rate * 100)}% of your friends' fees for ${cfg.commission.windowMonths} months`,
       sw: `Pata ${Math.round(cfg.commission.rate * 100)}% ya ada za marafiki kwa miezi ${cfg.commission.windowMonths}`,
     });
   }
-  if (cfg.prize.enabled && cfg.prize.amountTzs > 0) {
+  if (rewardsLive && cfg.prize.enabled && cfg.prize.amountTzs > 0) {
     const minBet = cfg.prize.minBetAmountTzs ?? 0;
     const minBetLabel = minBet > 0 ? ` (min ${formatTzs(minBet)})` : "";
     const minBetLabelSw = minBet > 0 ? ` (angalau ${formatTzs(minBet)})` : "";
@@ -1594,7 +1707,7 @@ export async function getPlayerReferralSummary(userId: string) {
         : `Pata ${formatTzs(cfg.prize.amountTzs)} rafiki anapoweka amana`,
     });
   }
-  if (cfg.bonus.enabled && (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") && cfg.bonus.referrerAmountTzs > 0) {
+  if (rewardsLive && cfg.bonus.enabled && (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") && cfg.bonus.referrerAmountTzs > 0) {
     promises.push({
       icon: "gift",
       en: `Get ${formatTzs(cfg.bonus.referrerAmountTzs)} when a friend ${cfg.bonus.trigger === "SIGNUP" ? "signs up" : "makes their first deposit"}`,
@@ -1609,6 +1722,7 @@ export async function getPlayerReferralSummary(userId: string) {
     earnedTzs: acct.totalEarnedTzs,
     recruits,
     programEnabled: cfg.enabled,
+    rewardsLive,
     promises,
   };
 }
@@ -1899,13 +2013,25 @@ export async function getAdminAffiliateStats() {
   for (const r of rewards) { ids.add(r.referrerUserId); ids.add(r.recruitUserId); }
   const userById = new Map((await db.user.findByIds(Array.from(ids))).map((u) => [u.id, u] as const));
 
+  /**
+   * ⭐ THE ROSTER, AND SINCE 2026-09-25 IT IS THE WHOLE ROSTER — NOT A TOP TEN.
+   *
+   * Ali pays invite partners in CASH, OUTSIDE the platform ("i'll pay him cash not through
+   * 50pick"), so this table is the document that payment is made from. A top-ten cut is fine for
+   * a leaderboard and useless for a payables list: the eleventh person is not a rounding error,
+   * they are somebody who does not get paid. The page paginates it.
+   *
+   * ⛔ AND IT IS SORTED BY RECRUITS FIRST. It used to sort by `earnedTzs` and fall back to
+   * recruits — which, with the platform paying nothing, is a column of zeros deciding the order
+   * of the one column that has numbers in it. The money remains the tie-break so the paid
+   * programme's ranking is unchanged where it has data.
+   */
   const leaderboard: AdminLeaderboardRow[] = accounts
-    // The player-promo leaderboard: vetted agents have their own roster on /admin/agents.
+    // The player-promo roster: vetted agents have their own roster on /admin/agents.
     .filter((a) => !isApprovedAgent(a))
     .map((a) => ({ handle: handleOf(userById.get(a.userId)), userId: a.userId, recruits: a.recruitCount, earnedTzs: a.totalEarnedTzs }))
     .filter((r) => r.recruits > 0 || r.earnedTzs > 0)
-    .sort((a, b) => b.earnedTzs - a.earnedTzs || b.recruits - a.recruits)
-    .slice(0, 10);
+    .sort((a, b) => b.recruits - a.recruits || b.earnedTzs - a.earnedTzs);
 
   const ledger: AdminLedgerRow[] = rewards.map((r) => {
     const recruit = userById.get(r.recruitUserId);
@@ -1924,6 +2050,18 @@ export async function getAdminAffiliateStats() {
   return {
     totalReferrals,
     activeAffiliates,
+    /**
+     * ⭐ HOW MANY PLAYERS HAVE ACTUALLY BROUGHT SOMEBODY — over EVERY affiliate account, not over
+     * a page, and counted from `recruitCount` rather than from reward rows. ⛔ It exists because
+     * `activeAffiliates` beside it counts referrers who were PAID, which under the unpaid invite
+     * is permanently zero: a KPI that can only ever read 0 is not a measurement, it is a hole the
+     * officer learns to ignore. Both are returned so the page can show the true one for the
+     * product state it is in.
+     */
+    referrerCount: accounts.filter((a) => !isApprovedAgent(a) && a.recruitCount > 0).length,
+    /** Whether the PLAYER programme can pay at all today — the page's one discriminator, resolved
+     *  on the server beside the numbers it governs. */
+    rewardsLive: playerInviteRewardsLive(),
     commissionPaidTzs,
     totalPaidTzs,
     topReferrer: top ? { handle: top.handle, recruits: top.recruits } : null,

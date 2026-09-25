@@ -51,13 +51,22 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
   ok("§0 CONTROL · the session is authed (not the login page)", !html.includes("/auth/login?next="), "redirected to login");
 }
 
-// ── §1 · NO INVITE ENTRY POINT ANYWHERE A PLAYER LOOKS ─────────────────────
+// ── §1 · THE INVITE ENTRY POINT IS BACK, AND IT PROMISES NOTHING ───────────
+// 🔴 INVERTED 2026-09-25. This section asserted that no player surface links to
+// `/profile/invite`, which was the product from 2026-09-06 until the unpaid invite opened. The
+// entry point is deliberate now — so what is measured is the pair: the LINK is there, and the
+// WORDS around it promise no money. ⛔ Asserting only the link would pass on the old paid promo.
 {
   for (const path of ["/profile", "/wallet", "/positions", "/markets"]) {
     const { status, html } = await get(path, cookie);
     ok(`§1 ${path} renders 200`, status === 200, `status=${status}`);
-    ok(`§1 ${path} offers no /profile/invite link`, !html.includes("/profile/invite"),
+    // ⚠️ /profile is the only one of the four that carries the row itself; the others reach it
+    // through the shared chrome (avatar menu / More rail), which is on every page.
+    ok(`§1 ${path} offers the invite entry point`, html.includes("/profile/invite"),
       `found ${(html.match(/\/profile\/invite/g) ?? []).length} occurrence(s)`);
+    ok(`§1 ${path} ⛔ …and no entry point says "& Earn" / "upate zawadi" / "赚钱"`,
+      !/Invite &amp; Earn|Invite & Earn|upate zawadi|邀请赚钱/.test(html),
+      "an entry point still advertises earnings");
   }
 }
 
@@ -79,11 +88,21 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
 // no QR is drawn for someone the programme does not belong to.
 {
   const { status, html } = await get("/profile/invite", cookie);
-  ok("§2 /profile/invite renders the not-found view", /not found|404|haipatikani|未找到/i.test(html), `status=${status}`);
-  ok("§2 no referral QR is drawn", !/data:image\/(png|gif);base64/.test(html));
-  ok("§2 no referral link is built", !/register\?ref=/.test(html));
-  ok("§2 no referral code or share body is rendered", !/ReferralShare|referralCode/i.test(html));
-  console.log(`       (status ${status} — 200 by design: a loading.tsx boundary commits it before notFound() throws)`);
+  // ⭐ THE SHARE HALF — a real code, a real link, a real QR. These three were the SECURITY
+  // property while the feature was withdrawn (nothing minted for someone it does not belong to);
+  // they are the FEATURE now, and they are asserted just as literally.
+  ok("§2 /profile/invite renders 200 for a player", status === 200, `status=${status}`);
+  ok("§2 a referral QR is drawn", /data:image\/(png|gif);base64/.test(html));
+  ok("§2 a referral link is built", /register\?ref=/.test(html));
+  // ⛔ THE MONEY HALF — every sentence the PAID promo prints and this one must not. If
+  // `inviteRewards` is ever switched on without this drive being revisited, it fails here.
+  ok("§2 ⛔ no earnings figure", !/&gt;Earned&lt;|>Earned</.test(html));
+  ok("§2 ⛔ no prize amount or milestone copy", !/10,000/.test(html) && !/first bet/i.test(html));
+  ok("§2 ⛔ no bonus-requirements list", !/Bonus requirements|Masharti ya bonasi/i.test(html));
+  ok("§2 ⛔ no gilt corner on the share card (gold is money — DESIGN_AUTHORITY §M3)",
+    !/GiltCorner|gold-700/.test(html));
+  ok("§2 ⭐ it states plainly that invites pay nothing",
+    /no reward for invites|hailipi zawadi|不为邀请支付/.test(html), "the disclaimer line is missing");
 }
 
 // ── §3 · NO BONUS SURFACE ON THE WALLET ────────────────────────────────────

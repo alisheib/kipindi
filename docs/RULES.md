@@ -559,6 +559,31 @@ is indistinguishable from a successful one.
 
 No commission, first-bet or turnover reward accrues on house-marked stakes (§2.11, ⏳ landing).
 
+### 2.10a · The player invite is UNPAID — the link is tracked, the platform credits nothing
+
+**Decided** Ali, 2026-09-25: *"we don't want to pay anything on affiliate … i want to track how many
+people he got with this link, i'll pay him cash not through 50pick, and we can keep that option if
+needed."* (`docs/PLAYER-INVITE-UNPAID.md`; `docs/COMPLIANCE-DECISIONS.md` § 2026-09-25.)
+
+Every player in good standing holds a referral link, a code and a QR, and the people who sign up on
+it are attributed to them and counted — on `/profile/invite` for the player, and on
+`/admin/affiliate` for the operator. **50pick pays them nothing for it.** Any cash the operator
+chooses to give an inviter is paid outside the platform and is not recorded here.
+
+| Term | Rule |
+|---|---|
+| **Two switches, not one** | `feature-state.ts` → `invite` (the SURFACE: link, QR, share, attribution) and `inviteRewards` (the MONEY). Today `ACTIVE` and `WITHDRAWN`. ⛔ They are separate because the product needs the first without the second |
+| **The zero is a product state, not a config value** | `policyFor`'s PLAYER branch refuses with `player_rewards_withdrawn` **above** `cfg.enabled`. ⛔ "Set the commission to 0%" was considered and rejected: the shipped `affiliate.config` has `prize.enabled: true` at **TZS 10,000 a head** with commission already off, `defineConfig` hydrates a persisted row unvalidated, and `/admin/affiliate` is one click from switching a mode on. A rate of zero silences the branch that was never the payer |
+| **A refusal, not a zero payout** | No reward row is written at all — not PAID, not PENDING, not a TZS 0 row. A zero row is a payable an officer could later be asked to settle. Each refusal writes one audit row naming its reason |
+| **Who may hold a link** | A player whose account is **not** CLOSED, SUSPENDED or SELF_EXCLUDED (`playerStandingFor`) — the same three the agent programme refuses on. ⚠️ COOLED_OFF keeps their link: a cooling-off break is about their own betting, and sharing is not betting |
+| **An agent never falls back to it** | Anyone with `approvedAt` is routed down the AGENT branch by `mayRecruit`, in or out of standing. A deactivated agent gets **no** share surface — a player link minted for them would be refused for everyone who used it |
+| **The agent programme is untouched** | §2.10 above is contracted income bought with a TZS 100,000 fee. `inviteRewards` does not gate it, exactly as `cfg.enabled` does not |
+| **Nothing on the page claims money** | No earnings ring, no earned tile, no promise rows, no bonus-requirements list, no per-friend amount, and **no gold** (§M3: struck gold means money was earned). The page states plainly that invites pay nothing, in all three locales |
+| **Turning it on** | One word — `inviteRewards: "ACTIVE"`, or `FEATURE_INVITEREWARDS=ACTIVE`. The paid path is kept executable while it sleeps by `test:referral`, `test:rg-cash-incentive` §5, `test:agent-policy` §1 and `test:withdrawn-features` §4. ⛔ Rewarding referrals is a regulated inducement — clear it with the Gaming Board before flipping it |
+
+Enforced by `npm run test:player-invite-unpaid` (44 assertions) with `npm run
+red:player-invite-unpaid` (6/6 mutations proven to turn it red), both in `predeploy`.
+
 ### 2.11 · House liquidity stakes
 
 > ⏳ **LANDING.** Decided 2026-09-13; built on branch `house-bots`; nothing is live until the release merge, and the master switch ships OFF. The design authority is [`HOUSE-BOTS.md`](HOUSE-BOTS.md). Final text in build commit 8.

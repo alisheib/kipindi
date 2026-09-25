@@ -29,7 +29,7 @@ import { join } from "node:path";
 // ⛔ ONE HOME FOR COMMENT-STRIPPING — `test:decomment` §2.1 exists because two suites shipped
 // private four-line strippers. A note ABOUT a link must never be read as a link.
 import { decomment } from "./lib/decomment.mts";
-import { inviteIsLiveFor, bonusIsLiveFor, inviteStateFor } from "../src/lib/feature-state.ts";
+import { inviteIsLiveFor, bonusIsLiveFor, inviteStateFor, playerInviteRewardsLive } from "../src/lib/feature-state.ts";
 import { cashOutValue } from "../src/lib/server/market-service.ts";
 import { db } from "../src/lib/server/store.ts";
 import { bindRecruit, ensureAffiliateAccount, resolveReferralPreview, onRecruitBet, onRecruitSettlement } from "../src/lib/server/affiliate-service.ts";
@@ -50,16 +50,36 @@ function ok(label: string, cond: boolean, extra?: string) {
 // asserted an unapproved "agent" earning the PLAYER prize and stayed green. The seam now takes
 // an `InviteViewer` whose `agentInGoodStanding` is derived from `approvedAt` + `active` +
 // account status by `agentStandingFor`, and role alone opens nothing.
+// 🔴 REWRITTEN 2026-09-25 — `invite` IS NO LONGER WITHDRAWN. The SURFACE is ACTIVE (the unpaid
+// player invite) and the MONEY moved to its own switch, `inviteRewards`. Every assertion below
+// that used to read "not live for a player" now reads the fact that replaced it, and the section
+// gained the two that the change made load-bearing: an account out of standing, and an agent who
+// has LOST standing — neither may hold a player link.
 {
-  const player = { role: "PLAYER" as const, agentInGoodStanding: false };
-  const roleOnlyAgent = { role: "AGENT" as const, agentInGoodStanding: false };
-  const approvedAgent = { role: "AGENT" as const, agentInGoodStanding: true };
-  ok("§1 invite is WITHDRAWN for a player", inviteStateFor(player) === "WITHDRAWN", inviteStateFor(player));
-  ok("§1 invite is not live for a player", !inviteIsLiveFor(player));
+  const player = { role: "PLAYER" as const, agentInGoodStanding: false, playerInviteEligible: true };
+  const closedPlayer = { role: "PLAYER" as const, agentInGoodStanding: false, playerInviteEligible: false };
+  const roleOnlyAgent = { role: "AGENT" as const, agentInGoodStanding: false, playerInviteEligible: true };
+  const deactivatedAgent = { role: "AGENT" as const, agentInGoodStanding: false, playerInviteEligible: false };
+  const approvedAgent = { role: "AGENT" as const, agentInGoodStanding: true, playerInviteEligible: false };
+  ok("§1 invite is ACTIVE for a player in good standing", inviteStateFor(player) === "ACTIVE", inviteStateFor(player));
+  ok("§1 invite is live for a player in good standing", inviteIsLiveFor(player));
+  // ⛔ AND IT PAYS THEM NOTHING. The surface being live is not the programme being paid; these are
+  // two switches now, and this is the line that says a page cannot infer one from the other.
+  ok("§1 ⛔ the PLAYER programme pays nothing — inviteRewards is WITHDRAWN", !playerInviteRewardsLive());
   ok("§1 invite is not live for a signed-out viewer", !inviteIsLiveFor(null));
-  // ⛔ THE ROLE-ONLY TRAP, PINNED. An AGENT role with no standing is a deactivated agent, or a
-  // fixture nobody approved — and both must read as WITHDRAWN.
-  ok("§1 ⛔ role AGENT with NO standing is NOT live — a role opens nothing on its own", !inviteIsLiveFor(roleOnlyAgent));
+  // ⭐ THE CONTROL IN THE CLOSED DIRECTION. Without it the section would pass by opening the seam
+  // for everybody, which is indistinguishable from a seam that no longer decides anything.
+  ok("§1 CONTROL · a CLOSED / SUSPENDED / SELF_EXCLUDED account is NOT live", !inviteIsLiveFor(closedPlayer));
+  // ⛔ THE ROLE-ONLY TRAP, PINNED — and its meaning has changed with the product, not softened. A
+  // role string still opens nothing: an AGENT role with no approval is an ordinary player, so they
+  // are live on the PLAYER surface (eligible) and their standing is false, which is what keeps them
+  // off the commission path in `mayRecruit` and `policyFor`.
+  ok("§1 ⛔ role AGENT with NO standing is not an agent — no standing, player surface only",
+    inviteIsLiveFor(roleOnlyAgent) && !roleOnlyAgent.agentInGoodStanding);
+  // 🔴 AND A DEACTIVATED AGENT DOES NOT FALL BACK TO THE PLAYER SHARE. `mayRecruit` routes anyone
+  // with `approvedAt` down the AGENT branch and refuses them there, so a player link minted for
+  // them would be refused for every person who used it. Found by this class of assertion going red.
+  ok("§1 ⛔ a DEACTIVATED agent gets no surface at all — not the agent's, not the player's", !inviteIsLiveFor(deactivatedAgent));
   // ⭐ THE CONTROL. Without this the suite would pass by refusing everyone, and a seam that
   // refuses everyone is indistinguishable from a seam that is simply broken.
   ok("§1 CONTROL · invite IS live for an agent IN GOOD STANDING", inviteIsLiveFor(approvedAgent));
@@ -143,20 +163,35 @@ function ok(label: string, cond: boolean, extra?: string) {
 // ⭐ This is what stops re-enablement shipping broken. The state is read through an env
 // override precisely so the ACTIVE branch can be driven while the feature sleeps; without
 // it the ON path would go unexecuted for months and rot silently.
+// ⭐ AND SINCE 2026-09-25 THE DORMANT PATH IT DRIVES IS THE **PAID** ONE. `invite` is ACTIVE and
+// needs no override; what sleeps now is `inviteRewards`, so that is what this section drives — plus
+// the OFF direction of `invite`, which sleeps for the first time and would otherwise rot in its
+// place. ⛔ Two overrides, one block: a section that only ever drove the ON direction could not
+// tell a switch that works from a switch that is stuck.
 {
-  process.env.FEATURE_INVITE = "ACTIVE";
+  const player = { role: "PLAYER" as const, agentInGoodStanding: false, playerInviteEligible: true };
+  const agent = { role: "AGENT" as const, agentInGoodStanding: true, playerInviteEligible: false };
+  process.env.FEATURE_INVITEREWARDS = "ACTIVE";
   process.env.FEATURE_BONUS = "ACTIVE";
   try {
-    ok("§4 invite re-enables for an ordinary player", inviteIsLiveFor({ role: "PLAYER", agentInGoodStanding: false }));
-    ok("§4 invite stays live for an agent", inviteIsLiveFor({ role: "AGENT", agentInGoodStanding: true }));
+    ok("§4 the PAID player promo re-enables", playerInviteRewardsLive());
+    ok("§4 …and the surface is unaffected by the money switch", inviteIsLiveFor(player));
     ok("§4 bonus re-enables", bonusIsLiveFor("PLAYER"));
   } finally {
-    delete process.env.FEATURE_INVITE;
+    delete process.env.FEATURE_INVITEREWARDS;
     delete process.env.FEATURE_BONUS;
+  }
+  process.env.FEATURE_INVITE = "WITHDRAWN";
+  try {
+    ok("§4 the surface can be withdrawn again — one word closes it for a player", !inviteIsLiveFor(player));
+    ok("§4 …and an agent in good standing keeps it (door vs room)", inviteIsLiveFor(agent));
+  } finally {
+    delete process.env.FEATURE_INVITE;
   }
   // ⛔ And the override must not leak past this block, or every later assertion in any suite
   // that imports this module would be measuring the wrong state.
-  ok("§4 the override is restored, not leaked", !inviteIsLiveFor({ role: "PLAYER", agentInGoodStanding: false }) && !bonusIsLiveFor("PLAYER"));
+  ok("§4 the override is restored, not leaked",
+    inviteIsLiveFor(player) && !playerInviteRewardsLive() && !bonusIsLiveFor("PLAYER"));
 }
 
 // ── §5 · ATTRIBUTION — A CODE ONLY RECRUITS IF ITS OWNER MAY REFER ─────────
@@ -199,16 +234,38 @@ function ok(label: string, cond: boolean, extra?: string) {
   // call an agent, and it must recruit nothing.
   const roleOnlyCode = (await ensureAffiliateAccount("w5_roleonly_ref")).code;
 
-  // §5a · an ordinary player's code must not recruit
+  // §5a · 🔴 INVERTED 2026-09-25 — an ordinary player's code RECRUITS AGAIN, and the thing this
+  // section guards moved with it. The old risk was a bind nobody chose that would pay the day the
+  // programme returned; the new product accepts the bind DELIBERATELY (the operator pays invite
+  // partners in cash outside the platform and needs the count) and removes the money instead. So
+  // the assertions are: the bind lands, it is stamped PLAYER, and nothing accrues on it — §5d/§5e
+  // below prove the third one against a real bet.
   const viaPlayer = await bindRecruit({ recruitUserId: "w5_recruit_a", code: playerCode });
-  ok("§5a a PLAYER's code does not recruit", viaPlayer.bound === false, JSON.stringify(viaPlayer));
-  ok("§5a the refusal names its reason", viaPlayer.bound === false && viaPlayer.reason === "referrer_not_eligible", JSON.stringify(viaPlayer));
+  ok("§5a a PLAYER's code DOES recruit — the unpaid invite is live", viaPlayer.bound === true, JSON.stringify(viaPlayer));
   const recA = await db.user.findById("w5_recruit_a");
-  ok("§5a recruitedBy is NOT written — nothing to un-attribute later", !recA?.recruitedBy, `recruitedBy=${recA?.recruitedBy}`);
+  ok("§5a recruitedBy is written", recA?.recruitedBy === "w5_player_ref", `recruitedBy=${recA?.recruitedBy}`);
+  ok("§5a ⭐ …and STAMPED programme=PLAYER, never AGENT", recA?.recruitedProgramme === "PLAYER", String(recA?.recruitedProgramme));
 
-  // §5b · the register ribbon must not promise what the bind will refuse
+  // §5a2 · ⛔ THE REFUSAL HALF, WHICH KEEPS THE SECTION HONEST. A gate that now accepts every
+  // player would pass §5a while having stopped deciding anything. A SELF_EXCLUDED referrer is the
+  // case that must still be refused — their link is a public artefact that outlives them.
+  await mk("w5_selfex_ref", "PLAYER");
+  await db.user.update("w5_selfex_ref", { status: "SELF_EXCLUDED" });
+  const selfExCode = (await ensureAffiliateAccount("w5_selfex_ref")).code;
+  await mk("w5_recruit_d", "PLAYER");
+  const viaSelfEx = await bindRecruit({ recruitUserId: "w5_recruit_d", code: selfExCode });
+  ok("§5a2 ⛔ a SELF_EXCLUDED player's code does NOT recruit", viaSelfEx.bound === false && viaSelfEx.reason === "referrer_not_eligible", JSON.stringify(viaSelfEx));
+  ok("§5a2 …and nothing was attributed", !(await db.user.findById("w5_recruit_d"))?.recruitedBy);
+  ok("§5a2 …and no ribbon vouches for them", (await resolveReferralPreview(selfExCode)) === null);
+
+  // §5b · the register ribbon must not promise what the bind will refuse — so it now RENDERS for
+  // a player, and ⛔ it offers them nothing: no welcome bonus (the money switch is off) and no
+  // verified badge (that vouches for a vetted, fee-paying partner).
   const previewPlayer = await resolveReferralPreview(playerCode);
-  ok("§5b no ribbon for a withdrawn referrer", previewPlayer === null, JSON.stringify(previewPlayer));
+  ok("§5b the ribbon renders for a player referrer", previewPlayer !== null, JSON.stringify(previewPlayer));
+  ok("§5b ⛔ …with NO welcome bonus and NO verified badge",
+     previewPlayer?.newPlayerBonusTzs === 0 && previewPlayer?.verifiedAgent === false && previewPlayer?.programme === "PLAYER",
+     JSON.stringify(previewPlayer));
 
   // §5c · CONTROL — an AGENT's code still recruits, and still shows its ribbon
   const viaAgent = await bindRecruit({ recruitUserId: "w5_recruit_b", code: agentCode });
@@ -225,14 +282,19 @@ function ok(label: string, cond: boolean, extra?: string) {
   ok("§5c ⭐ the attribution is STAMPED programme=AGENT at bind", recB?.recruitedProgramme === "AGENT" && typeof recB?.recruitedAt === "string" && recB?.recruitedByCode === agentCode,
      JSON.stringify({ programme: recB?.recruitedProgramme, at: recB?.recruitedAt, code: recB?.recruitedByCode }));
 
-  // §5c2 · ⛔ ROLE ALONE RECRUITS NOTHING. An AGENT role with no `approvedAt` is a deactivated
-  // agent, a stripped agent, or a fixture nobody approved — and its code must be refused
-  // exactly as a withdrawn player's is. This is the case whose absence let three predeploy
-  // guards stay green while asserting the wrong answer.
+  // §5c2 · ⛔ ROLE ALONE STILL BUYS NOTHING, and the assertion had to change SHAPE rather than
+  // relax. An AGENT role with no `approvedAt` is not an agent, so with the unpaid invite live they
+  // recruit as an ORDINARY PLAYER — the bind lands. What must never happen is the thing this case
+  // was written for: the attribution being stamped AGENT, or the ribbon vouching for them as a
+  // vetted partner. A role string is not a commercial relationship.
   const viaRoleOnly = await bindRecruit({ recruitUserId: "w5_recruit_c", code: roleOnlyCode });
-  ok("§5c2 ⛔ role AGENT with no approval does NOT recruit", viaRoleOnly.bound === false && viaRoleOnly.reason === "referrer_not_eligible", JSON.stringify(viaRoleOnly));
-  ok("§5c2 …and no ribbon vouches for it", (await resolveReferralPreview(roleOnlyCode)) === null);
-  ok("§5c2 …and nothing was attributed", !(await db.user.findById("w5_recruit_c"))?.recruitedBy);
+  ok("§5c2 a role-only AGENT recruits as an ordinary player", viaRoleOnly.bound === true, JSON.stringify(viaRoleOnly));
+  const recC = await db.user.findById("w5_recruit_c");
+  ok("§5c2 ⛔ …STAMPED PLAYER, not AGENT — a role buys no commission", recC?.recruitedProgramme === "PLAYER", String(recC?.recruitedProgramme));
+  const previewRoleOnly = await resolveReferralPreview(roleOnlyCode);
+  ok("§5c2 ⛔ …and no VERIFIED badge vouches for them",
+     previewRoleOnly !== null && previewRoleOnly.verifiedAgent === false && previewRoleOnly.programme === "PLAYER",
+     JSON.stringify(previewRoleOnly));
 }
 
 // ── §5d · THE LEGACY ATTRIBUTION — bound BEFORE the gate existed ───────────

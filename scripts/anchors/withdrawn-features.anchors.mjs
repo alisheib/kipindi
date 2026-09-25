@@ -31,9 +31,15 @@ export const MUTATIONS = [
   },
   {
     // §7 on a server surface, proving the rule is not pinned to the client nav files.
+    // ⚠️ RE-ANCHORED 2026-09-25. The row stopped calling `inviteViewerFor` inline — the viewer is
+    // read ONCE at the top of the page now, because the unpaid player invite made the row's WORDS
+    // depend on the same fact as its visibility. The mutation is unchanged in meaning: the gate is
+    // removed and the row renders for everyone. ⛔ Re-anchoring is mandatory when the quoted line
+    // moves; an anchor that cannot inject is a control that has silently stopped controlling, which
+    // is the exact failure recorded in this file's own header.
     name: "profile/page.tsx — the settings row renders unconditionally",
     file: "src/app/profile/page.tsx",
-    from: `          {inviteIsLiveFor(await inviteViewerFor(user.id)) && (`,
+    from: `          {inviteIsLiveFor(inviteViewer) && (`,
     to: `          {true && (`,
     expect: "§7",
   },

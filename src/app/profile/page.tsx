@@ -51,6 +51,11 @@ export default async function ProfilePage() {
   const user = await db.user.findById(session.userId);
   if (!user) redirect("/auth/login?next=/profile");
 
+  /** ⭐ Read ONCE and used twice below — whether the invite row appears, and which programme's
+   *  words it wears. Two separate `inviteViewerFor` calls would be two round trips that can
+   *  disagree if a status changes between them. */
+  const inviteViewer = await inviteViewerFor(user.id);
+
   let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
   let sof: Awaited<ReturnType<typeof db.sourceOfFunds.get>> | null = null;
   let badges: Awaited<ReturnType<typeof computeAchievementShelf>> = [];
@@ -299,15 +304,25 @@ export default async function ProfilePage() {
           {t.profile.account}
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          {/* ⛔ INVITE IS WITHDRAWN FOR ORDINARY PLAYERS — THE ROW IS ABSENT, NOT BADGED.
-              It used to render with a gilt "coming soon" tag, which was right while the
-              programme was merely waiting for sign-off. It is no longer waiting: referral
-              earning now belongs to vetted, fee-paying, approved AGENTS only, so a badge
-              here would advertise a programme this player can never enter. A grid item that
-              is not rendered leaves no hole — the remaining rows simply flow up. */}
-          {inviteIsLiveFor(await inviteViewerFor(user.id)) && (
-            <SettingRow icon={I.shieldcheck}   title={t.agent.dashTitle}             subtitle={t.agent.dashSubtitle}             href="/profile/invite" accent
-              badge={t.common.newBadge} />
+          {/* 🔴 THIS ROW POINTED AT ONE HREF WEARING THE AGENT DASHBOARD'S WORDS, because while
+              invite was WITHDRAWN the only viewer who could see it WAS an approved agent. Opening
+              the unpaid player invite (2026-09-25) breaks that identity: an ordinary player would
+              have been handed "Agent dashboard · your recruits and commission" for a page that
+              pays them nothing and names no commission — a row describing somebody else's
+              programme.
+              ⭐ ONE PREDICATE DECIDES BOTH THE ROW AND ITS WORDS, read once: `agentInGoodStanding`
+              is the same fact `/profile/invite` uses to choose between the two bodies, so the door
+              and the room cannot describe different programmes.
+              ⛔ `accent` (gilt) AND the "New" badge STAY WITH THE AGENT. §M3 — the gold belongs to
+              the commission dashboard, not to a share link; and the badge announced a programme
+              being launched, which the player invite is not. */}
+          {inviteIsLiveFor(inviteViewer) && (
+            inviteViewer.agentInGoodStanding ? (
+              <SettingRow icon={I.shieldcheck} title={t.agent.dashTitle} subtitle={t.agent.dashSubtitle} href="/profile/invite" accent
+                badge={t.common.newBadge} />
+            ) : (
+              <SettingRow icon={I.users} title={t.profile.inviteFriends} subtitle={t.profile.inviteFriendsSub} href="/profile/invite" />
+            )
           )}
           <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
           <SettingRow icon={I.chart}           title={t.activity.title}              subtitle={t.activity.settingSub}             href="/profile/activity" />

@@ -502,11 +502,22 @@ const applicant = await applicantCtx.newPage();
   for (const route of ["/markets", "/profile", "/wallet"]) {
     await goto(player, route);
     const nav = await player.locator("nav, header").allInnerTexts().then((a) => a.join(" "));
-    ok(`6.nav${route} · no Invite entry point in the chrome`, !/\binvite\b|\bearn\b/i.test(nav), nav.slice(0, 200));
+    ok(`6.nav${route} · the chrome does not offer a player EARNINGS entry point`,
+      !/earn|zawadi|赚钱/i.test(nav), nav.slice(0, 200));
   }
+  // [2026-09-25] REWRITTEN. This block asserted that an ordinary player sees NO invite entry
+  // point and NO invite page - true from 2026-09-06 until the unpaid player invite opened. What
+  // this drive exists for is the AGENT programme, so what it must still prove about a player is
+  // that they get the PLAYER surface and nothing of the agent's: no dashboard, no commission,
+  // no verified badge, and no money word anywhere.
   await goto(player, "/profile/invite");
   const inv = await text(player);
-  ok("6.invite · /profile/invite is the not-found view for a player (no code, no link)", !/50PICK-/i.test(inv) && !/Open your agent dashboard/.test(inv), inv.slice(0, 200));
+  ok("6.invite · a player gets the UNPAID share surface, not the agent dashboard",
+    /50PICK-/i.test(inv) && !/Open your agent dashboard/.test(inv), inv.slice(0, 200));
+  ok("6.invite.money · and not one money word on it",
+    !/Earned|Pato|10,000|first bet|Bonus requirements/i.test(inv), inv.slice(0, 260));
+  ok("6.invite.says · it states that invites pay nothing",
+    /no reward for invites|hailipi zawadi|不为邀请支付/i.test(inv), inv.slice(-240));
   await goto(player, "/agent");
   const a = await text(player);
   ok("6.agent · /agent explains without soliciting: the CTA asks the player to verify identity first", /Verify your identity first/.test(a) && !/Apply now/.test(a), a.slice(0, 200));

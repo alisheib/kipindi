@@ -329,36 +329,40 @@ if (LOCAL) {
   ok(`/wallet no error overlay`, !(await hasErrorOverlay(page)));
 
   /**
-   * 🔴 THIS BLOCK ASSERTED A VIEW ITS OWN PERSONA CANNOT REACH, and it is now the other way round.
+   * 🔴 THIS BLOCK HAS BEEN WRONG IN BOTH DIRECTIONS, AND THE HISTORY IS WHY IT IS WRITTEN LIKE THIS.
    *
-   * It read `ok("invite shows 10,000 reward", inv.includes("10,000") && /first bet/i.test(inv))`.
-   * Session 90's handover recorded it as an unresolved disagreement between two gates:
-   * `qa:agent-drive` §6 asserts the OPPOSITE for an ordinary player. `qa:agent-drive` is right,
-   * and the proof is three lines of shipped code (PLAYER QUERY, task 4.11):
+   * ① It first read `ok("invite shows 10,000 reward", inv.includes("10,000") && /first bet/i…)` —
+   *    an assertion its own persona could not reach, because this script signs in at `/auth/demo`,
+   *    which mints a PLAYER, and the promo was WITHDRAWN. A gate that cannot pass is not a gate.
+   * ② It was then inverted to "the not-found view for a PLAYER", which was true from 2026-09-06
+   *    until 2026-09-25 — and is false now: `PRODUCT_STATE.invite` is ACTIVE, so this persona lands
+   *    on the live UNPAID body, with a real code, a real link and a real QR.
    *
-   *   · `feature-state.ts` — `PRODUCT_STATE = { invite: "WITHDRAWN", … }`, so `inviteIsLiveFor`
-   *     is true only for an agent in good standing, which requires `approvedAt`;
-   *   · `getAgentDashboard` returns non-null on exactly that same condition;
-   *   · and `page.tsx` consults it FIRST — approved ⇒ the agent dashboard, not approved ⇒
-   *     `notFound()`.
+   * ⭐ SO IT ASSERTS THE PAIR, WHICH IS THE ONLY DESCRIPTION THAT SURVIVES A FLIP OF EITHER SWITCH:
+   * the SHARE surface is present, and NO money word is on the page. Asserting only the first would
+   * pass on the old paid promo; asserting only the second would pass on the not-found view.
    *
-   * ⛔ THIS SCRIPT SIGNS IN AT `/auth/demo`, WHICH MINTS A PLAYER (`role: "PLAYER"`, and no
-   * affiliate account), so the promo body it was looking for opens only under
-   * `FEATURE_INVITE=ACTIVE`. The assertion could not pass against the shipped product state, and a
-   * gate that cannot pass is not a gate — it is a permanent red that teaches people to ignore reds.
-   *
-   * ⚠️ THE STATUS IS 200, NOT 404 — measured, and recorded in `invite/page.tsx`'s own note. Next's
-   * `notFound()` renders the not-found BODY at 200 here, so this must assert on CONTENT and never
-   * on a status code.
+   * ⚠️ A 200 IS NOT A RENDER — measured, and recorded in `invite/page.tsx`'s own note: Next's
+   * `notFound()` renders the not-found BODY at 200 here. So this asserts on CONTENT, never a status.
    */
   await page.goto(BASE + "/profile/invite", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const inv = await page.locator("body").innerText();
-  ok(`invite is the not-found view for a PLAYER (invite is WITHDRAWN)`,
-     !/50PICK-/i.test(inv) && !/first bet/i.test(inv),
-     inv.slice(0, 160));
-  ok(`invite leaks no referral code or link to a player`, !/\/auth\/register\?ref=/i.test(inv));
-  ok(`invite has NO 50% commission line`, !inv.includes("50%"));
-  ok(`invite has NO deposit-bonus line`, !/bonus on each/i.test(inv));
+  ok(`invite renders the unpaid SHARE body for a PLAYER — code present`, /50PICK-/i.test(inv), inv.slice(0, 200));
+  ok(`invite gives the player a real referral link`, /\/auth\/register\?ref=/i.test(inv), inv.slice(0, 200));
+  // ⛔ THE MONEY HALF. Every one of these is a sentence the PAID promo prints and the unpaid one
+  // must not: the earned tile's label, the prize amount, the milestone wording, a commission rate,
+  // and the bonus-requirements list. If `inviteRewards` is ever flipped on without this block being
+  // revisited, it goes red here rather than on a player's screen.
+  // WARN: THE WORD BOUNDARIES ARE A CHARACTER CLASS, NOT a backslash-b, DELIBERATELY. A regex
+  // word boundary written into this repo through a patch tool has been corrupted into a literal
+  // 0x08 BACKSPACE before (agent branch, 2026-09-07): the regex then matches nothing, the
+  // negation is always true, and the assertion reads GREEN while testing nothing. `cat -v` or
+  // `od -c` shows it; grep, sed and an editor do not. This form cannot be mangled that way.
+  ok(`invite shows NO earned figure`, !/(^|[^A-Za-z])Earned([^A-Za-z]|$)/i.test(inv) && !/(^|[^A-Za-z])Pato([^A-Za-z]|$)/i.test(inv), inv.slice(0, 200));
+  ok(`invite has NO prize amount or milestone line`, !/10,000/.test(inv) && !/first bet/i.test(inv), inv.slice(0, 200));
+  ok(`invite has NO commission line`, !inv.includes("50%") && !/%\s*of your friends/i.test(inv));
+  ok(`invite has NO deposit-bonus line`, !/bonus on each/i.test(inv) && !/bonus requirements/i.test(inv));
+  ok(`invite says plainly that it pays nothing`, /no reward for invites|hailipi zawadi|不为邀请支付/i.test(inv), inv.slice(-220));
   ok(`invite no error overlay`, !(await hasErrorOverlay(page)));
 
   // Card-body click opens the market detail WITH NO side preselected (like the

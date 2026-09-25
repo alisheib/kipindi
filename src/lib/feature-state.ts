@@ -64,10 +64,17 @@ import type { Role } from "@/lib/server/roles";
  *
  * ⚠️ The CONCEPT still exists where it is genuinely implemented — the Proposals feature-state
  * machine (`proposals-config.ts`, `propose-promo.tsx`, `coming-soon-banner.tsx`) renders a real
- * gilt badge for it. This module governs FOUR features: three player-facing ones, all WITHDRAWN today
- * and none promised, and `desk` — which is ACTIVE and is not a player surface at all (owner ruling
- * D19: nothing about it reaches a player or the holder). Its WITHDRAWN state is a SUNSET, written by
- * `ops:house-bots-sunset` in the database and by this constant in the code.
+ * gilt badge for it. This module governs FIVE features: `invite` (ACTIVE — the unpaid player
+ * share) and its money half `inviteRewards` (WITHDRAWN), `bonus` and `install` (WITHDRAWN, and
+ * neither promised), and `desk` — which is ACTIVE and is not a player surface at all (owner
+ * ruling D19: nothing about it reaches a player or the holder). Its WITHDRAWN state is a SUNSET,
+ * written by `ops:house-bots-sunset` in the database and by this constant in the code.
+ *
+ * ⭐ AND `invite` / `inviteRewards` ARE WHY THE TWO-STATE TYPE SURVIVED THE 2026-09-25 CHANGE
+ * RATHER THAN GROWING A THIRD MEMBER. An "UNPAID" state would have been settable on `bonus`,
+ * `install` and `desk`, where it means nothing and no consumer would distinguish it — the exact
+ * defect the paragraphs above record deleting twice. A feature whose surface and whose money
+ * switch independently has TWO facts, so it gets TWO entries in the table.
  */
 export type FeatureState = "ACTIVE" | "WITHDRAWN";
 
@@ -88,14 +95,41 @@ export type FeatureState = "ACTIVE" | "WITHDRAWN";
  * PRINT. What the feature is called in code stays honest; what it is called in a string stays neutral.
  * ⛔ The operator override moves with the key: it is `FEATURE_DESK`, not `FEATURE_HOUSEBOTS`.
  */
-export type FeatureName = "invite" | "bonus" | "install" | "desk";
+export type FeatureName = "invite" | "inviteRewards" | "bonus" | "install" | "desk";
 
 /**
  * ⛔ THE SWITCHES. Changing one word here changes the whole product surface.
  *
- * `invite` — WITHDRAWN for ordinary players. Approved AGENTs are the exception and are
- * handled in `inviteStateFor` below, because for them it is not a promo: it is the
- * commercial relationship they were vetted, charged and approved for.
+ * `invite` — the SURFACE: may a player hold a referral link, share it, and have the people who
+ * arrive on it attributed to them? ACTIVE since 2026-09-25. Approved AGENTs were the only
+ * exception while it was WITHDRAWN, and `inviteStateFor` below still carries that branch,
+ * because for them it is not a promo: it is the commercial relationship they were vetted,
+ * charged and approved for.
+ *
+ * ⭐ `inviteRewards` — THE MONEY, AND IT IS A SECOND SWITCH ON PURPOSE (Ali, 2026-09-25:
+ * *"we don't want to pay anything on affiliate … i want to track how many people he got with
+ * this link, i'll pay him cash not through 50pick, and we can keep that option if needed"*).
+ * The player invite is a SHARE, not an inducement: the link works, the recruits are counted, and
+ * the platform credits nothing. WITHDRAWN here refuses every PLAYER-programme accrual in
+ * `policyFor`, so the zero is a product state and not a config value.
+ *
+ * 🔴 AND THAT DISTINCTION IS THE WHOLE POINT — "set the commission to 0%" WOULD NOT HAVE HELD.
+ * `affiliate.config` is a DB row with `prize.enabled: true` and `amountTzs: 10_000` in its
+ * shipped defaults, `defineConfig` hydrates a persisted row as `{ ...defaults, ...restored }`
+ * with no validation, and `/admin/affiliate` is one click from switching a mode back on. A rate
+ * of zero beside a live prize mode still pays TZS 10,000 a head — the same route by which
+ * `feeVatRatePct` reached production as 0. The operator's levers stay exactly where they are and
+ * keep meaning what they say; this switch decides whether they are consulted at all.
+ *
+ * ⛔ IT GOVERNS THE PLAYER PROGRAMME ONLY. An approved agent's commission is contracted income
+ * bought with a TZS 100,000 fee; it is ended by their STANDING and their officer's rate, never by
+ * a promo switch. `policyFor`'s AGENT branch does not read this, exactly as it does not read
+ * `cfg.enabled` — see `test:player-invite-unpaid` §2 and `test:agent-policy` §4.
+ *
+ * ⚠️ TURNING IT ON IS ONE WORD HERE (or `FEATURE_INVITEREWARDS=ACTIVE`), and the paid path is
+ * NOT dead code while it sleeps: `test:referral-signup`, `test:rg-cash-incentive` §5 and
+ * `test:withdrawn-features` §4 all drive the ON branch on every deploy, which is the reason the
+ * override exists at all.
  *
  * `bonus` — WITHDRAWN for everyone. No role opens it.
  *
@@ -114,7 +148,8 @@ export type FeatureName = "invite" | "bonus" | "install" | "desk";
  * both and asserts they refuse identically.
  */
 const PRODUCT_STATE: Record<FeatureName, FeatureState> = {
-  invite: "WITHDRAWN",
+  invite: "ACTIVE",
+  inviteRewards: "WITHDRAWN",
   bonus: "WITHDRAWN",
   install: "WITHDRAWN",
   desk: "ACTIVE",
@@ -167,28 +202,92 @@ export type InviteViewer = {
   role: Role | null | undefined;
   /** ⭐ THE discriminator — never derived from `role`. */
   agentInGoodStanding: boolean;
+  /**
+   * ⭐ MAY THIS VIEWER HOLD THE **PLAYER** (UNPAID) INVITE LINK? Added 2026-09-25, and it is not
+   * decoration. `playerInviteEligibleFor` in `affiliate-service.ts` composes it from TWO facts,
+   * and each one is a defect that would otherwise ship:
+   *
+   * 🔴 (1) ACCOUNT STATUS. While `invite` was WITHDRAWN the player branch was shut for everyone,
+   * so a player's own status never reached this decision. Opening it makes CLOSED, SUSPENDED and
+   * SELF_EXCLUDED load-bearing — a self-excluded player recruiting gamblers is exactly the
+   * failure this field exists to stop, and it is not hypothetical: a referral link is a public
+   * artefact on WhatsApp that never expires, and `bindRecruit` runs server-side against the
+   * REFERRER's stored row long after they have gone. The agent programme already refuses on
+   * these three (`agentStandingFor`); the unvetted branch may not be looser than the vetted one.
+   *
+   * 🔴 (2) NOT AN AGENT — IN OR OUT OF STANDING, AND THE SECOND HALF IS THE ONE THAT BITES. A
+   * DEACTIVATED agent keeps `approvedAt`, so `mayRecruit` still routes them down the AGENT branch
+   * and refuses the bind with `agent_deactivated`. Without this clause they would pass the player
+   * gate instead, and every surface would hand them a fresh referral code — on `/markets/[id]`,
+   * on `/positions`, on the share sheet — that `bindRecruit` then refuses for every single person
+   * who uses it. A link that cannot bind is worse than no link: the sharer believes they are
+   * being counted. Found by `test:agent-eligibility` 3.deactivated going red, not by reasoning.
+   *
+   * ⚠️ COOLED_OFF IS DELIBERATELY ABSENT, the same ruling `agentStandingFor` records: a
+   * cooling-off break is about the player's OWN betting, and sharing a link is not betting.
+   *
+   * ⛔ REQUIRED, not optional — an optional flag would have let every existing call site keep
+   * compiling with the old, status-blind answer. That is the same reason `agentInGoodStanding`
+   * is required, and the compiler is the only thing that finds all of them.
+   */
+  playerInviteEligible: boolean;
 };
 
 /** A signed-out viewer, or a failed user read: the safe, closed default. */
-export const NO_VIEWER: InviteViewer = { role: null, agentInGoodStanding: false };
+export const NO_VIEWER: InviteViewer = { role: null, agentInGoodStanding: false, playerInviteEligible: false };
 
 /**
- * Invite's state for a given viewer. An agent in good standing gets the live programme;
- * everyone else gets whatever the product state says — today, nothing at all.
+ * Invite's state for a given viewer — may they hold a link and be credited with the people who
+ * arrive on it? ⛔ It says NOTHING about money; `playerInviteRewardsLive()` below is that
+ * question, and the two are separate switches.
+ *
+ * An agent in good standing gets the live programme whatever the product state says. Everyone
+ * else needs the product state ACTIVE *and* `playerInviteEligible` — which is closed both to an
+ * account out of standing and to an agent who has LOST standing (see the field's own note: their
+ * code is refused by the agent branch of the bind, so a player link would never work for them).
  *
  * ⚠️ `role === "AGENT"` is assigned in exactly ONE place: agent-application approval. But it
  * is NOT what opens the programme — standing is. A deactivated agent keeps the role and loses
  * the programme, which is exactly the point.
+ *
+ * ⛔ THE AGENT BRANCH IS FIRST AND THAT ORDERING IS THE RULING, NOT A STYLE. It used to sit
+ * second because the product state ACTIVE opened the gate for everybody, so the two orders
+ * agreed; now that an ordinary player must also clear `accountInGoodStanding`, reading the
+ * product state first would put an approved partner's contracted relationship behind the player
+ * promo's gate — the door-vs-room error, one level up. `test:agent-policy` §4 holds it open.
  */
 export function inviteStateFor(viewer: InviteViewer | null | undefined): FeatureState {
+  if (viewer?.agentInGoodStanding) return "ACTIVE";
   const state = resolvedState("invite");
-  if (state === "ACTIVE") return "ACTIVE";
-  return viewer?.agentInGoodStanding ? "ACTIVE" : state;
+  if (state !== "ACTIVE") return state;
+  return viewer?.playerInviteEligible ? "ACTIVE" : "WITHDRAWN";
 }
 
-/** True only when this viewer may actually refer and earn. */
+/** True only when this viewer may actually hold a referral link and recruit on it. */
 export function inviteIsLiveFor(viewer: InviteViewer | null | undefined): boolean {
   return inviteStateFor(viewer) === "ACTIVE";
+}
+
+/**
+ * ⭐ MAY A **PLAYER**-PROGRAMME REFERRAL PAY ANYTHING AT ALL? Today: no.
+ *
+ * This is the second half of the pair. `inviteIsLiveFor` opens the SURFACE — the link, the QR,
+ * the share sheet, the attribution. This opens the MONEY, and it is WITHDRAWN: the platform
+ * credits a player nothing for the friends they bring, by product state rather than by a config
+ * row anyone can click (see `inviteRewards` in the table above for why 0% would not have held).
+ *
+ * ⛔ NO VIEWER ARGUMENT, ON PURPOSE. It is a property of the PROGRAMME, not of a person: there
+ * is no player for whom the answer differs, and a viewer parameter would invite exactly the
+ * "this one account still earns" exception the state exists to forbid. An AGENT's income is not
+ * governed here at all — see the table above.
+ *
+ * ⛔ GATE THE OFFER, NEVER THE REFUSAL (this module's own header). This decides whether an
+ * accrual is CREATED. It must never be consulted to decide whether an already-accrued reward may
+ * be paid, reversed or clawed back: rewards written while the programme paid are real debts, and
+ * switching the product state must not strand them.
+ */
+export function playerInviteRewardsLive(): boolean {
+  return resolvedState("inviteRewards") === "ACTIVE";
 }
 
 /** Bonus wallet state. No role exception — withdrawn is withdrawn. */
