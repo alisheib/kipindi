@@ -86,6 +86,13 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/platform-timezone.ts",
     "lib/display-label.ts",
     "lib/status-tone.ts",
+    // ⭐ ADDED 2026-09-25. Both are imported by `phone-input.tsx`, which is `"use client"`, and both
+    // are also imported by server modules (`sms.ts`, `selcom.ts`, `wallet/withdraw/page.tsx`) — the
+    // exact double-life this ratchet exists to police. They were NOT in this list, so the guard had
+    // no opinion about them at all: a module can be client-reachable for months and this suite stay
+    // green because it only ever walks what is named here.
+    "lib/phone-normalize.ts",
+    "lib/tz-msisdn.ts",
   ];
   const offenders = [];
   let checked = 0;
