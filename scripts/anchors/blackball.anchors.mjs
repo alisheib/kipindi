@@ -113,10 +113,14 @@ export const MUTATIONS = [
   },
   {
     // GSM-7 cannot carry Chinese: a ZH login code would reach the player as unreadable glyphs.
+    // ⚠️ RE-ANCHORED 2026-09-25. The loop this quoted was the GSM-7 table's only reader, and U3 moved
+    // that table to `@/lib/sms-compose` so a composer screen could reach it — `smsCodingFor` now
+    // DELEGATES. The defect and its `expect` are unchanged; what this mutation now severs is the
+    // delegation rather than the loop, which is the same seam: the gateway is told the wrong coding.
     name: "sms-blackball.ts — coding detection always answers GSM7",
     file: "src/lib/server/sms-blackball.ts",
-    from: `  for (const ch of text) if (!GSM7_CHARS.has(ch)) return "UCS2";`,
-    to: `  void text;`,
+    from: `  return encodingFor(text);`,
+    to: `  void text; return "GSM7";`,
     expect: `§11 ⛔ the Chinese OTP is UCS2: GSM-7 would garble it`,
   },
   {

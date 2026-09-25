@@ -336,11 +336,32 @@ try {
         const firstCells = [...document.querySelectorAll("table.admin-tbl tbody tr")].slice(0, 1).flatMap((tr) => {
           const region = tr.closest("[role='region']") ?? tr.closest("div");
           const box = region ? region.getBoundingClientRect() : { left: 0, right: window.innerWidth };
-          return [...tr.children].slice(0, 3).map((td) => {
+          /* ⛔ ONLY THE CELLS ACTUALLY DISPLAYED (2026-09-25). The activity row now carries BOTH layouts in the
+             markup — a stacked cell for phones and the columns for wider screens — and exactly one of them is
+             displayed at any width. Slicing the first three CHILDREN therefore read a `display:none` cell whose
+             rect is all zeros and reported the subject as outside the strip at 1280. */
+          return [...tr.children].filter((td) => getComputedStyle(td).display !== "none").slice(0, 3).map((td) => {
             const r = td.getBoundingClientRect();
             return { text: (td.textContent ?? "").trim().slice(0, 24), left: Math.round(r.left), right: Math.round(r.right), boxLeft: Math.round(box.left), boxRight: Math.round(box.right) };
           });
         });
+        /* ⭐ THE ROW'S SHAPE AT THIS WIDTH (2026-09-25). Below `sm` the activity row stops being columns and
+           becomes a STACK — one spanning cell, every figure inside it — because three money columns plus a
+           subject cannot be read on a 360px phone (measured: the third cell ended at 357 against a 339 strip).
+           ⛔ THE GATE HAS TO KNOW, or it measures the wrong thing and says so confidently: `firstCells` takes the
+           first three CHILDREN whatever their display, so in the stacked shape it would read one real cell and two
+           `display:none` cells whose rects are all zeros, and report the money as outside the strip. */
+        const firstRowEl = document.querySelector("table.admin-tbl tbody tr");
+        const visibleCells = firstRowEl ? [...firstRowEl.children].filter((td) => getComputedStyle(td).display !== "none") : [];
+        const stackedRow = visibleCells.length === 1 && visibleCells[0].hasAttribute("colspan");
+        /* Every money atom on this surface, against the strip its own scroller shows — the assertion that REPLACES
+           the column contract when there are no columns. */
+        const moneyOutsideStrip = money.filter((m) => {
+          const sc = m.closest("[role='region']") ?? m.closest("div");
+          if (!sc) return false;
+          const b = sc.getBoundingClientRect(); const r = m.getBoundingClientRect();
+          return r.left < b.left - 1 || r.right > b.right + 1;
+        }).length;
         const tableCount = document.querySelectorAll("table.admin-tbl").length;
         /* ⛔ AN EMPTY-STATE ROW IS ONE `td[colspan]`, NOT A SUBJECT COLUMN AND TWO MONEY ANSWERS — AND IT CRASHED
            THIS GATE. MEASURED 2026-09-20 on `/admin/desk/<id>?tab=targets`, whose table renders "No targets yet"
@@ -385,7 +406,7 @@ try {
            it is what a `Referer` hands the next request — so a vocabulary word that reached a path segment or a
            query key would have passed 1,398 checks. Collected here and asserted at §5.6 below. */
         const url = `${location.pathname}${location.search}`;
-        return { url, clipped, moneyCount: money.length, moneyFigures: money.filter((m) => { const t = m.innerText ?? ""; return /[0-9]/.test(t) && /TZS/.test(`${t} ${m.parentElement?.innerText ?? ""}`); }).length, tiles, shortControls, labelReach, controlCount: controls.length, tap, firstCells, firstRowEmpty, railCount, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
+        return { url, clipped, moneyCount: money.length, moneyFigures: money.filter((m) => { const t = m.innerText ?? ""; return /[0-9]/.test(t) && /TZS/.test(`${t} ${m.parentElement?.innerText ?? ""}`); }).length, tiles, shortControls, labelReach, controlCount: controls.length, tap, firstCells, firstRowEmpty, stackedRow, moneyOutsideStrip, railCount, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, revealCount, revealReach, body: document.body.innerText, vw: window.innerWidth };
       });
 
       ok(`§5.1 ${route} @${width} · no money figure is clipped by a box that cannot scroll, and none is broken across two lines`, facts.clipped.length === 0, facts.clipped.join(" | "));
@@ -570,6 +591,15 @@ try {
            this branch believes it is, so "empty row" can never stand in for "the money columns were not read". */
         ok(`§5.2 ${route} @${width} · the table's only row is the empty state's one spanning cell, so it has no money CELL to push out of the strip — §5.5 measures that box`,
           facts.firstCells.length === 1, JSON.stringify(facts.firstCells));
+      } else if (facts.stackedRow) {
+        /* ⭐ THE STACKED SHAPE'S OWN CONTRACT, and it is STRICTER than the column one it replaces: not "the subject
+           and the first money answer are in the strip" but EVERY money atom on the surface, and the region must not
+           scroll sideways at all. A phone that has to be dragged to read a figure is the defect this shape exists
+           to remove, so the gate asserts the absence of the drag rather than its reachability. */
+        ok(`§5.2 ${route} @${width} · the row is STACKED here, and EVERY money figure is inside the visible strip — nothing is reachable only by dragging`,
+          facts.moneyOutsideStrip === 0, JSON.stringify({ moneyCount: facts.moneyCount, outside: facts.moneyOutsideStrip }));
+        ok(`§5.2 ${route} @${width} · CONTROL · …and the surface really did paint money for that to be a measurement`,
+          facts.moneyCount > 0, JSON.stringify({ moneyCount: facts.moneyCount }));
       } else if (facts.firstCells.length) {
         const [subject, first, second] = facts.firstCells;
         const inBox = (c) => c.left >= c.boxLeft - 1 && c.right <= c.boxRight + 1;

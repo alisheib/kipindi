@@ -3175,9 +3175,30 @@ try {
     /* ⛔ THE HOLDER'S BALANCE IS 5,000,000 IN THIS FIXTURE AND IT APPEARS NOWHERE IN THE PAINTED MODEL. That figure
      * is a real person's money — the one number on these screens belonging to someone other than 50pick, and the
      * one most likely to sit in a screenshot (ruling 459, which withdrew 368's last exception). */
-    ok("1.368 · 459 · the holder's own balance appears NOWHERE in the painted view model, in any form",
+    ok("1.368 · 459 · the holder's own balance appears NOWHERE in this page's painted view model, in any form",
       !all(above).includes(formatTzs(5_000_000)) && !all(above).includes("5000000")
         && !/balance is [A-Z]|TZS 5,000,000/.test(all(above)), j(above.floorSentence));
+    /* 🔴 AND THE ACTIVITY TAB IS SCANNED SEPARATELY, BECAUSE THAT IS WHERE THE ONE EXCEPTION LIVES (D3 amended
+     * 2026-09-25). The view above is the OVERVIEW tab and carries no feed at all — so once a balance could
+     * legitimately appear on a row, the line above would have gone on passing while saying nothing about the
+     * surface that changed. That is a guard passing for the wrong reason, and this is the repair.
+     * ⛔ THE EXEMPTION IS TWO FIELDS BY NAME. Every other painted string on the activity view is still held to
+     * 459: a balance leaking into the floor sentence, a usage caption, a note or a market title still fires. */
+    {
+      const act = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId, { tab: "activity" });
+      const exempt = new Set(["remaining", "remainingTitle"]);
+      const scanned = all({
+        ...act,
+        feed: (act.feed ?? []).map((r: Any) => Object.fromEntries(Object.entries(r).filter(([k]) => !exempt.has(k)))),
+      });
+      ok("1.368 · 459 · D3 · on the ACTIVITY tab the balance appears in the two named cells and NOWHERE ELSE — the amendment is one exception, not a withdrawal of the rule",
+        !scanned.includes(formatTzs(5_000_000)) && !scanned.includes("5000000"),
+        j({ rows: (act.feed ?? []).length }));
+      /* ⭐ CONTROL · the scan really would see a balance on this view — without it the line above proves only
+         that the fixture's holder happens to have spent nothing. */
+      ok("1.368 · 459 · D3 · CONTROL · the same scan DOES report that balance when it is put back into a painted field",
+        all({ ...act, feed: [{ note: formatTzs(5_000_000) }] }).includes(formatTzs(5_000_000)), "");
+    }
     /* ⛔ AND THE OTHER SIDE OF THE FLOOR IS A DIFFERENT SENTENCE, so the case above measures a BRANCH. */
     await w.setCaps(acct.botId, { balanceFloorTzs: 9_000_000 });
     const below = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId);
@@ -3985,7 +4006,7 @@ try {
          daily stake budget after the row, and the same fact in 361's `used X of Y` grammar as the cell's title.
          ⛔ BOTH ARE STILL FINISHED STRINGS OR `null`: the arithmetic happens in the reader, and a number crossing
          into the view model here is exactly what this equality exists to catch. */
-      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "leftToday", "leftTodayTitle", "marketHref", "marketName", "note", "productWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "leftToday", "leftTodayTitle", "marketHref", "marketName", "note", "productWord", "remaining", "remainingTitle", "resultChip", "resultWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
         && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
       j(Object.keys(p1.feed[0] ?? {}).sort()));
 
@@ -4049,12 +4070,14 @@ try {
          `house_condition_gone` because a fresh poll has no thin side to enter on. The cross-account case below
          is what carries the "not a sum of what is on screen" claim instead, and it carries it better. */
       const STAKES = [5_000, 3_000, 2_000];
+      const budPositions: Array<{ stakeTzs: number; positionId: string }> = [];
       await w.switchOn();
       for (const amt of STAKES) {
         const mkt = await w.poll({ graceMin: 0 });
         const i = await w.intent(bud, mkt.id, { kind: "OPENER", side: "YES", stakeTzs: amt });
         const r = await w.place(bud, i);
         if (!r.ok) throw new Error(`1.626c fixture bet refused: ${j(r)}`);
+        budPositions.push({ stakeTzs: amt, positionId: r.data.positionId });
         await new Promise((res) => setTimeout(res, 2));
       }
       /* ⭐ TWO ROWS THAT MOVE NO MONEY, and they are the point of the 2026-09-24 correction. The first cut
@@ -4193,6 +4216,120 @@ try {
         statuses.size >= 4 && statuses.has(PLACED_WORD)
           && p1.feed.length > 0 && p1.feed.every((r: Any) => r.leftToday !== null),
         j([...new Set(p1.feed.map((r: Any) => `${r.statusWord}=${r.leftToday === null ? "BLANK" : "figure"}`))]));
+
+      /* ━━ 1.626d · EVERYTHING THE ACCOUNT HAD LEFT AFTER THE ROW (owner amendment to D3, 2026-09-25) ━━━━━
+       * The owner asked for "the full amount remaining of this bot". There is no total-budget field on a house
+       * bot — every limit is per-day, per-market or open-exposure — so the only number that means it is the
+       * holder's WALLET, which D3 forbade rendering. He was shown the cost and the ruling-clean alternative and
+       * amended D3 for this one cell; `COMPLIANCE-DECISIONS.md` carries the date, his words and the scope.
+       * ⛔ THE FIGURE IS THE LEDGER'S, NOT A RECONSTRUCTION. These three stakes left a real wallet that started
+       * at 5,000,000, so the expected balances are arithmetic ON THE FIXTURE and the assertion measures what the
+       * reader read back out of `Transaction.balanceAfter`. */
+      {
+        const holderStart = 5_000_000;
+        const afterEach = [holderStart - 5_000, holderStart - 5_000 - 3_000, holderStart - 5_000 - 3_000 - 2_000];
+        ok("1.626d · every placed row says what the account had left AFTER IT — read from that stake's own ledger movement, never derived",
+          placedRows.every((r) => r != null)
+            && placedRows[0]!.remaining === formatTzs(afterEach[0])
+            && placedRows[1]!.remaining === formatTzs(afterEach[1])
+            && placedRows[2]!.remaining === formatTzs(afterEach[2]),
+          j({ want: afterEach, got: placedRows.map((r: Any) => r?.remaining) }));
+
+        /* ⛔ A ROW THAT MOVED NO MONEY CARRIES THE BALANCE FORWARD — the wallet stood where the last movement
+           left it, so the newest queued row must read the newest stake's figure and never a blank. */
+        ok("1.626d · a QUEUED row carries the balance forward — the wallet stood where the last movement left it",
+          idleRow != null && idleRow.remaining === formatTzs(afterEach[2]),
+          j({ idle: idleRow?.remaining, lastMovement: formatTzs(afterEach[2]) }));
+
+        /* ⛔ CONTROL · AND A ROW OLDER THAN EVERY MOVEMENT ANSWERS NOTHING. The ledger cannot say what the
+           wallet held before its first recorded movement, and a zero would read as "this account is empty". */
+        ok("1.626d · CONTROL · a row older than every recorded movement answers nothing — never a zero",
+          oldRow != null && oldRow.remaining === null && oldRow.remainingTitle === null,
+          j({ old: oldRow?.remaining }));
+
+        /* ⭐ AND THE TITLE NAMES THE MOVEMENT IT CAME FROM, so a carried figure says which instant it belongs to
+           rather than implying this row moved the money. */
+        ok("1.626d · the cell's title names the INSTANT the figure belongs to, in EAT",
+          placedRows[2]!.remainingTitle != null && /EAT$/.test(placedRows[2]!.remainingTitle),
+          j(placedRows[2]?.remainingTitle));
+
+        /* 🔴 CONTROL · IT REFUSES TO CARRY ACROSS A MOVEMENT THE LEDGER DID NOT RECORD — the defect this column
+         * would otherwise have shipped with, found by reading `wallet-service.ts` rather than by any suite.
+         * A withdrawal that FAILS returns the cash to `balance` and writes NO new row: `:876` patches the existing
+         * one, whose `balanceAfter` still holds the POST-DEBIT figure. Carry that forward and the desk paints a
+         * confident, wrong, SMALLER balance for as long as the account is quiet. The refund's instant is the
+         * failed row's `updatedAt`, and a figure from before it may not cross it. */
+        const budView = () => GATEM.houseDetailForConsole(OFFICER, "/admin/desk", bud.botId, { tab: "activity" });
+        const failedId = `txn_failed_wd_${bud.botId}`;
+        const wal = await w.db.wallet.findByUserId(bud.userId);
+        await w.db.txn.create({
+          id: failedId, walletId: wal.id, userId: bud.userId, type: "WITHDRAWAL", status: "FAILED",
+          amount: -400_000, fee: 0, taxWithheld: 0, balanceAfter: afterEach[2] - 400_000, currency: "TZS",
+          provider: "INTERNAL", providerRef: null, msisdn: null, description: "fixture",
+          positionId: null, amlReason: null,
+          createdAt: new Date(Date.now() - 60_000).toISOString(),
+          /* The REFUND's instant. `wallet-service.ts:876` writes no row for it and only patches this one. */
+          updatedAt: new Date().toISOString(), completedAt: null,
+        } as Any);
+        /* ⭐ THE ROW IS MADE AFTER THE REFUND, so the ordering this control depends on is INHERENT rather than
+           computed from a formatted timestamp — a row whose own instant is later than the unrecorded movement. */
+        await new Promise((res) => setTimeout(res, 5));
+        const strandedMkt = await w.poll({ graceMin: 0 });
+        await w.intent(bud, strandedMkt.id, { kind: "OPENER", side: "YES", stakeTzs: 11_000 });
+        const stranded = () => (budView() as Any).then((v: Any) => (v.feed ?? []).find((r: Any) => r.stake === formatTzs(11_000)));
+        const blanked = await stranded();
+        ok("1.626d · CONTROL · a refund the ledger never recorded BLANKS the carried figure — a failed withdrawal returns cash with no row, and a stale smaller balance is the one answer this column may not give",
+          blanked != null && blanked.remaining === null,
+          j({ carriedOnOlderRow: idleRow?.remaining, strandedRow: blanked?.remaining }));
+        await w.db.txn.update(failedId, { status: "CONFIRMED" } as Any);
+        const healed = await stranded();
+        ok("1.626d · CONTROL · …and with that same row CONFIRMED the figure comes back — so the blank above was the unrecorded refund and not the fixture merely existing",
+          healed != null && healed.remaining !== null,
+          j({ afterConfirm: healed?.remaining }));
+      }
+
+      /* ━━ 1.626e · HOW THE STAKE ENDED — WON, LOST OR VOID (owner, 2026-09-25) ━━━━━━━━━━━━━━━━━━━
+       * The Outcome chip said whether the ENGINE got the stake down, which stops the moment the money is on the
+       * table. The owner asked to see wins and losses in red and green; he was offered the AMOUNT beside them,
+       * shown that it would need rulings 266 and 361 amended, and chose the word alone. So no ruling moved:
+       * this is a STATE, and the console paints states everywhere.
+       * 🔴 AND IT COMES FROM THE POSITION, NEVER FROM THE MONEY — the assertion below is the whole reason this
+       * block exists. MEASURED ON PRODUCTION: a WIN carries a `BET_PAYOUT` (42 of 42) and a VOID a `BET_REFUND`
+       * (428 of 428), but a LOSS pays nothing and writes NO transaction (0 of 62). "No money came back" is
+       * therefore LOST and STILL RUNNING at once, and a reader that inferred from the ledger would call an open
+       * stake a loss. */
+      {
+        if (budPositions.length !== 3) throw new Error(`1.626e fixture: expected 3 positions, got ${budPositions.length}`);
+        await w.setPositionStatus(budPositions[0].positionId, "WIN");
+        await w.setPositionStatus(budPositions[1].positionId, "LOSS");
+        /* budPositions[2] is left OPEN on purpose — the branch that must invent nothing. */
+        const rv = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", bud.botId, { tab: "activity" });
+        const row = (amt: number) => (rv.feed ?? []).find((r: Any) => r.stake === formatTzs(amt));
+        const won = row(5_000), lost = row(3_000), open = row(2_000);
+
+        ok("1.626e · a settled stake says how it ENDED, in the chip that used to say only that it was placed — Won and Lost, each in its own tone",
+          won?.resultWord === "Won" && lost?.resultWord === "Lost"
+            && won?.resultChip !== lost?.resultChip && won?.resultChip != null && lost?.resultChip != null,
+          j({ won: won?.resultWord, wonChip: won?.resultChip, lost: lost?.resultWord, lostChip: lost?.resultChip }));
+
+        /* 🔴 THE LOAD-BEARING ONE. This position has NO payout and NO refund — a loss writes neither — so a
+           reader inferring the outcome from the transactions it already holds would answer nothing here. */
+        ok("1.626e · a LOST stake is named even though it left NO transaction behind — the outcome is read from the position, never inferred from the money",
+          lost?.resultWord === "Lost"
+            && (await w.txnsFor(budPositions[1].positionId)).every((t: Any) => t.type === "BET_PLACED"),
+          j({ lost: lost?.resultWord, txnTypes: (await w.txnsFor(budPositions[1].positionId)).map((t: Any) => t.type) }));
+
+        /* ⛔ CONTROL · A STAKE STILL RUNNING INVENTS NOTHING and keeps the intent's own word. Two chips about one
+           row is how a screen comes to contradict itself. */
+        ok("1.626e · CONTROL · a stake still running carries NO result and keeps its own word — nothing is invented for an undecided bet",
+          open?.resultWord === null && open?.resultChip === null && open?.statusWord === placedRows[0]!.statusWord,
+          j({ open: open?.resultWord, word: open?.statusWord }));
+
+        /* ⛔ CONTROL · AND A ROW THAT NEVER PLACED HAS NO POSITION AND SO NO RESULT. */
+        ok("1.626e · CONTROL · a queued row has no position and therefore no result — the chip stays the intent's own",
+          idleRow != null && (rv.feed ?? []).find((r: Any) => r.stake === formatTzs(9_000))?.resultWord === null,
+          j({ queued: (rv.feed ?? []).find((r: Any) => r.stake === formatTzs(9_000))?.resultWord }));
+      }
 
       /* ⛔ THE SLOTS GO BACK, AND THIS IS NOT TIDINESS — IT IS A DEFECT THIS BLOCK CAUSED AND HAD TO REPAIR.
          The roster is a BOUNDED shared resource (20 designations), and these two fixture accounts took it to
@@ -4774,12 +4911,12 @@ try {
       /* ⭐ "Left today" JOINED 2026-09-24, THIRD AND DIRECTLY AFTER Stake: ruling 1085 puts money "SECOND (and
          third where two exist)", and this assertion's own claim — the FIRST `.amount` cell is still the row's
          second — is what keeps 373 true with two money columns on one row. */
-      all(feedHeaders) === all(["When (EAT)", "Stake", "Left today", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
+      all(feedHeaders) === all(["When (EAT)", "Stake", "Left today", "Remaining", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
     ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
-      /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
+      /<td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
         && !/admin-tbl min-w-/.test(detail), "");
     ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
-      feedHeaders.length === 8 && !feedHeaders.includes("Event"), j(feedHeaders));
+      feedHeaders.length === 9 && !feedHeaders.includes("Event"), j(feedHeaders));
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
@@ -4872,13 +5009,13 @@ section("§2e3 · the desk landing page's activity and history panels");
     const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
-      j(feedHeaders) === j(["Account", "Stake", "Left today", "When (EAT)", "Outcome", "Type", "Product", "Game", "Note", ""]),
+      j(feedHeaders) === j(["Account", "Stake", "Left today", "Remaining", "When (EAT)", "Outcome", "Type", "Product", "Game", "Note", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
       j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
       j(histHeaders));
     ok("1.373 · the desk feed's money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither landing table takes a `min-w-*` on the table itself",
-      /<td className="p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(panelOf("activity"))
+      /<td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(panelOf("activity"))
         && !/admin-tbl min-w-/.test(landing), "");
   }
   /* ⛔ THE HOUR SUMMARY'S BELL LANDS ON THE WINDOW IT IS ABOUT. `parseEatLocal` requires a full instant and
@@ -6317,7 +6454,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        are money THIS module formats — a `formatTzs` figure and 361's own `used X of Y` sentence — so they are
        the section's own copy and 453 binds them, exactly like `stake` three fields along. Nothing operator-typed
        reaches either one. */
-    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.statusWord, r.typeWord, r.productWord, r.note, r.marketHref]),
+    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.remaining, r.remainingTitle, r.statusWord, r.resultWord, r.typeWord, r.productWord, r.note, r.marketHref]),
     ...(view.history ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.eventWord, r.change, r.who, r.moneyHref]),
     ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
     /* ⛔ AND THE WHOLE OF BOTH TOTAL MAPS, NOT ONLY THE ROWS THIS FIXTURE HAPPENED TO PAINT. A word map scanned
@@ -7179,7 +7316,10 @@ export default function Ruling513Control() {
        and an older row that wrote no snapshot but is still reachable — so both appear, in order, between the feed's
        account link and the history's. Two entries and not one is the point of a POSITIONAL pin: a single OR would
        have hidden which branch shipped. */
-    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
+    /* ⭐ THIRTEEN SINCE 2026-09-25: the activity row got a PHONE shape, and it carries the same two doors the wide
+       row does — the account and the market — so each appears twice in the file, once per layout. The pin is still
+       POSITIONAL and still an equality, so a door added to one layout and not the other is reported. */
+    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
       j(linkExprs) === j(WANT) && j(elementsOf(pageCode)) === j(ELEMENTS) && linkExprs.length === openings,
       j({ found: linkExprs, want: WANT, elements: elementsOf(pageCode), openings }));

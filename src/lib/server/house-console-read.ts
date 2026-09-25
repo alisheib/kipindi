@@ -37,7 +37,7 @@ import { db } from "./store";
 import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath } from "./roles";
 import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
-import type { StoredUser } from "./store";
+import type { StoredUser, StoredTxn } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
 import { BY_HAND_SCREENS, CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleBotTabHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
 import { WEEKDAYS, WEEKDAY_LABEL, eatDayKey, eatDayWindow, formatEat, formatMinutes, type Weekday } from "@/lib/house-bot/clock";
@@ -71,6 +71,7 @@ import { DESIGNATE_COPY, designateHouseBot, reverifyHouseBot, startHouseBot } fr
  * the check card is served by a gated reader rather than by the page. */
 import { houseBotEligibility } from "./house-bot/eligibility";
 import { positionStore } from "./market-dal";
+import type { PositionStatus } from "@/lib/positions/portfolio";
 import { RATE_RULES, rateCheckAsync } from "./rate-limit";
 import { getGlobalConfig } from "./market-config";
 import { displayLabel } from "@/lib/display-label";
@@ -2893,7 +2894,9 @@ export async function houseSwitchForConsole(
  * For `status === "REMOVED"` this reader performs NO wallet read, NO cap usage read, NO rate read and NO target read:
  * there is nothing left to use and no control attached to any of those figures, which is what D20 removed.
  *
- * ⛔ NO BALANCE, EVER — THE FLOOR STATE INSTEAD (rulings 368, 459, 266). The holder's wallet is read ONCE for a live
+ * ⛔ NO BALANCE HERE — THE FLOOR STATE INSTEAD (rulings 368, 459, 266). ⚠️ "EVER" was true until 2026-09-25, when
+ * the owner amended D3 for ONE cell: the activity row's `Remaining`, which reads the LEDGER's own `balanceAfter`.
+ * This card is not that cell and is unchanged. The holder's wallet is read ONCE for a live
  * account and the page paints a STATE, never the amount. The figure is a real person's wallet balance, the one number
  * on these screens belonging to someone other than 50pick and the one most likely to sit in a screenshot; the decision
  * the sentence supports — which side of the floor is this account on — is answered by a state, not a magnitude.
@@ -3444,6 +3447,17 @@ const CONSOLE_HISTORY_PER_PAGE = 20;
 const CONSOLE_LEFT_TODAY_SCAN = 400;
 
 /**
+ * ⭐ THE `Remaining` COLUMN'S REACH — how many of a holder's own movements are read, and how far back.
+ *
+ * ⛔ BOUNDED FOR THE SAME REASON THE BUDGET SCAN IS: this runs on a page render. The window is newest-first, so
+ * hitting the cap drops the OLDEST movements — and a row below the reach gets NO figure rather than a stale one.
+ * ⚠️ THE LOOKBACK IS WIDER THAN THE DAY because this column, unlike `Left today`, is a running line ACROSS days:
+ * the last movement before an older row may be from the previous week, and without it that row cannot be priced.
+ */
+const CONSOLE_REMAINING_SCAN = 400;
+const CONSOLE_REMAINING_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
  * The lower bound of the "Left today" scan: the first instant of that EAT day, as the ISO the feed filter takes.
  * ⛔ `eatDayWindow` OWNS THE ARITHMETIC — the offset is not re-derived here. It returns `null` for a day key it
  * cannot parse, and that `null` travels: no window means no scan and no column, never a scan over all of time.
@@ -3515,6 +3529,30 @@ const CONSOLE_INTENT_STATUS = {
   FAILED: { word: "Failed", chip: TONE_CHIP.rose },
   CANCELLED: { word: "Cancelled", chip: TONE_CHIP.claret },
 } as const satisfies Record<IntentStatus, { word: string; chip: StatusChipVariant }>;
+
+/**
+ * ⭐ HOW THE STAKE ACTUALLY ENDED — won, lost or voided (owner, 2026-09-25).
+ *
+ * The Outcome chip said whether the ENGINE got the stake down ("Placed"), which is the intent's own story and
+ * stops the moment the money is on the table. An officer watching a desk wants the next fact: did it come back.
+ * ⛔ IT IS A STATE, NOT A RESULT FIGURE, AND THAT IS WHY NO RULING MOVED. Ruling 266 confines console MONEY to
+ * usage against a configured limit — which is what struck the roster's "Today net" — and this map carries no
+ * money at all. The owner was offered the amount beside it, was shown that it would need 266 and 361 amended,
+ * and chose the word alone.
+ * ⛔ TOTAL OVER `PositionStatus`, so a sixth status cannot arrive without copy — `tsc` refuses it, which is the
+ * same construction `CONSOLE_INTENT_STATUS` above uses and for the same reason.
+ * ⚠️ `OPEN` DELIBERATELY ANSWERS NOTHING. A stake still running has no outcome yet, and the intent's own
+ * "Placed" already says the money is on the table — inventing a second word for one fact is how two chips come
+ * to disagree. ⚠️ `CASHED_OUT` cannot happen on a house position (`market-service.ts` refuses it) and is mapped
+ * anyway, because a map that is total only for the cases we expect is not total.
+ */
+const CONSOLE_POSITION_RESULT: Readonly<Record<PositionStatus, { word: string; chip: StatusChipVariant } | null>> = {
+  OPEN: null,
+  WIN: { word: "Won", chip: TONE_CHIP.green },
+  LOSS: { word: "Lost", chip: TONE_CHIP.rose },
+  VOID: { word: "Void", chip: TONE_CHIP.slate },
+  CASHED_OUT: { word: "Cashed out", chip: TONE_CHIP.slate },
+};
 
 /** One product line, in the platform's own screen words — the same two `/admin/house` already paints. */
 const CONSOLE_PRODUCT_WORD = {
@@ -3669,6 +3707,34 @@ export type ConsoleFeedRow = {
    * the cap row on the account page reads, because both are built from the same day book.
    */
   leftTodayTitle: string | null;
+  /**
+   * ⭐ EVERYTHING THIS ACCOUNT HAD LEFT AFTER THIS ROW (owner, 2026-09-25) — the holder's own wallet balance.
+   *
+   * ⛔ THIS IS THE ONE FIGURE D3 FORBADE, AND IT IS HERE BY A RECORDED OWNER AMENDMENT, NOT BY DRIFT. The owner
+   * asked for a second column meaning "the full amount remaining of this bot"; there is NO total-budget field on a
+   * house bot — every limit is per-day, per-market or open-exposure — so the only number that means it is the
+   * wallet. He was shown the cost and the ruling-clean alternative and chose this. `COMPLIANCE-DECISIONS.md`
+   * carries the amendment, dated, with his own words and the scope.
+   * ⛔ THE SCOPE IS THIS ROW AND NOTHING ELSE. The designate wizard still paints a funded STATE (459), the roster
+   * still carries no balance column (373(b)), the floor panel still names the FLOOR and never the amount (368),
+   * and no player-reachable surface carries it at all (259's payload measurement is why that matters).
+   * ⚠️ IT IS A RECORDED FACT, NOT A LIVE READ REPEATED DOWN THE PAGE: `Transaction.balanceAfter`, the REAL-cash
+   * balance the ledger stamped at that instant. A bonus-funded portion moves on the bonus wallet and is excluded
+   * by `market-service.ts` on purpose, precisely so this figure stays reconcilable with the real-balance sum.
+   * ⚠️ `null` when the ledger cannot answer for that instant — an older row past the scan window, or an account
+   * whose transactions could not be read. Never a zero, which would read as "this account is empty".
+   */
+  remaining: string | null;
+  /**
+   * ⭐ HOW THE STAKE ENDED — "Won", "Lost", "Void" — or `null` while it is still running or was never placed
+   * (owner, 2026-09-25). The Outcome cell paints THIS where it exists and the intent's own word otherwise, so one
+   * chip carries the furthest-along truth about the row instead of two chips disagreeing.
+   * ⛔ A STATE, NEVER A FIGURE: ruling 266 is untouched, and the amount won or lost is deliberately not here.
+   */
+  resultWord: string | null;
+  resultChip: StatusChipVariant | null;
+  /** The instant the figure belongs to, as the cell's `title` — so a carried-forward balance says which movement it came from. */
+  remainingTitle: string | null;
   statusWord: string;
   statusChip: StatusChipVariant;
   typeWord: string;
@@ -4293,7 +4359,116 @@ function feedLeftTodayLookup(
   };
 }
 
-function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number, left: (row: StoredHouseBotIntent) => FeedLeftCell | null): ConsoleFeedRow {
+/**
+ * ⭐ WHAT THE ACCOUNT HAD LEFT AFTER EACH ROW — the holder's wallet, from the LEDGER (owner, 2026-09-25).
+ *
+ * ⛔ IT IS READ, NEVER RECONSTRUCTED. `Transaction.balanceAfter` is what the wallet stood at when that row was
+ * written; deriving it instead (a starting balance less the stakes since) would be a SECOND arithmetic for one
+ * wallet, and it would be wrong the moment a settlement, payout, deposit or withdrawal landed between two bets —
+ * all of which move the balance and none of which the feed shows.
+ * ⛔ A PLACED ROW IS MATCHED ON ITS OWN POSITION FIRST, and that is not a nicety: an intent's `createdAt` is when
+ * the engine DECIDED, and its money moves when it FIRES, which for a held COUNTER is minutes later. Taking "the
+ * latest movement at or before the decision" for a placed row would price it BEFORE its own stake left the wallet.
+ * The bet's transaction carries `positionId`, so the row's own movement is identified exactly.
+ * ⛔ EVERY OTHER ROW TAKES THE LAST MOVEMENT AT OR BEFORE IT, which is the true balance at that instant: a queued
+ * or refused row moved nothing, so the wallet stood where the previous movement left it. That is what makes this a
+ * continuous line rather than a column of gaps — the same correction `Left today` needed on 2026-09-24.
+ * ⚠️ AND IT REFUSES RATHER THAN GUESSES. No movement at or before a row inside the window means the answer is not
+ * known here, and the cell stays blank. A zero would read as "this account is empty", which is a different claim.
+ */
+function feedRemainingLookup(
+  txnsByUser: Map<string, readonly StoredTxn[]> | null,
+): (row: StoredHouseBotIntent) => FeedLeftCell | null {
+  if (txnsByUser == null) return () => null;
+  /* ⛔ THE INSTANT A MOVEMENT LANDED, WHICH IS NOT ALWAYS THE ROW'S `createdAt` (measured, 2026-09-25). A deposit's
+     row is CREATED when the player starts it, with `balanceAfter` null, and `wallet-service.ts` patches the balance
+     in on confirmation WITHOUT moving `createdAt`. Ordering by `createdAt` would therefore hand a bet placed in
+     that gap a balance that did not exist yet. `completedAt` is when the money actually moved. */
+  const landedAt = (t: StoredTxn): number => Date.parse(t.completedAt ?? t.createdAt);
+  return (row) => {
+    const rows = txnsByUser.get(row.botUserId);
+    if (rows == null || rows.length === 0) return null;
+    const at = Date.parse(row.createdAt);
+    if (!Number.isFinite(at)) return null;
+    /* ⭐ THE ROW'S OWN MOVEMENT WHERE IT HAS ONE — `positionId` is unique on both the intent and the transaction.
+       This branch is EXACT and needs none of the care below: the figure was stamped by this very stake. */
+    const own = row.positionId == null ? undefined : rows.find((t) => t.positionId === row.positionId);
+    if (own != null && own.balanceAfter != null) return remainingCell(own, landedAt(own));
+
+    /* Otherwise the last movement at or before this instant — the balance the wallet stood at, unchanged since. */
+    let carried: StoredTxn | undefined;
+    for (const t of rows) {
+      const tAt = landedAt(t);
+      if (Number.isFinite(tAt) && tAt <= at && t.balanceAfter != null) { carried = t; break; }
+    }
+    if (carried == null) return null;
+
+    /* 🔴 AND IT REFUSES TO CARRY ACROSS A MOVEMENT THE LEDGER DID NOT RECORD. A withdrawal that FAILS returns the
+       cash to `balance` and writes NO new row — `wallet-service.ts:876` patches the existing one and leaves its
+       `balanceAfter` holding the POST-DEBIT figure — and an AML rejection refunds the same way. So between that
+       refund and the next real movement, the newest recorded balance is LOW by the whole withdrawal. Carrying it
+       forward would paint a confident, wrong, smaller number on a money screen, which is the one outcome this
+       column may not produce. The refund's instant is the failed row's `updatedAt`; if one lies between the figure
+       and the row, this answers NOTHING instead. */
+    const carriedAt = landedAt(carried);
+    const unrecorded = rows.some((t) => t.type === "WITHDRAWAL"
+      && (t.status === "FAILED" || t.status === "REVERSED" || t.status === "CANCELLED")
+      && (() => { const u = Date.parse(t.updatedAt); return Number.isFinite(u) && u > carriedAt && u <= at; })());
+    if (unrecorded) return null;
+    return remainingCell(carried, carriedAt);
+  };
+}
+
+/** One painted balance cell, with the instant it belongs to — so a carried figure says which movement it came from. */
+function remainingCell(t: StoredTxn, atMs: number): FeedLeftCell {
+  return {
+    text: formatTzs(Math.max(0, Math.round(Number(t.balanceAfter)))),
+    title: Number.isFinite(atMs)
+      ? `after the movement at ${formatEat(atMs, "D MMM")} ${formatEat(atMs, "HH:MM:SS")} EAT`
+      : "after the last movement on this account",
+  };
+}
+
+/**
+ * ⭐ THE OUTCOME OF EACH STAKE, from the POSITION rather than from the money (owner, 2026-09-25).
+ *
+ * ⛔ IT CANNOT BE INFERRED FROM THE TRANSACTIONS THIS READER ALREADY HAS, and that is measured, not assumed: on
+ * production a WIN carries a `BET_PAYOUT` (42 of 42) and a VOID a `BET_REFUND` (428 of 428), but a LOSS pays
+ * nothing and writes NO transaction at all (0 of 62). "No money came back" is therefore LOST and STILL RUNNING at
+ * the same time, and a column that guessed between them would call an open stake a loss. The position's own
+ * status is the only thing that distinguishes them.
+ * ⚠️ BOUNDED BY THE PAGE, by primary key. `PositionStore` has `get(id)` and `values()`, and `values()` is a full
+ * scan this module may not run on a render — so it is one point read per placed row on the page, at most twenty,
+ * settled together. A row whose position could not be read answers NOTHING rather than a guess (355).
+ */
+/**
+ * The page's own positions, by primary key — at most one read per placed row, settled together, and never
+ * `values()`, which is a full scan this module may not run on a render. A position that could not be read is
+ * simply absent, so its row answers NOTHING rather than a guessed outcome (355).
+ */
+async function feedPositionStatuses(rows: readonly StoredHouseBotIntent[]): Promise<Map<string, PositionStatus>> {
+  const ids = [...new Set(rows.map((r) => r.positionId).filter((v): v is string => v != null))];
+  const out = new Map<string, PositionStatus>();
+  if (ids.length === 0) return out;
+  const reads = await Promise.allSettled(ids.map((id) => positionStore.get(id)));
+  reads.forEach((r, k) => {
+    if (r.status === "fulfilled" && r.value != null) out.set(ids[k], r.value.status as PositionStatus);
+  });
+  return out;
+}
+
+function feedResultLookup(
+  byPosition: Map<string, PositionStatus> | null,
+): (row: StoredHouseBotIntent) => { word: string; chip: StatusChipVariant } | null {
+  if (byPosition == null) return () => null;
+  return (row) => {
+    if (row.positionId == null) return null;
+    const st = byPosition.get(row.positionId);
+    return st == null ? null : CONSOLE_POSITION_RESULT[st];
+  };
+}
+
+function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number, left: (row: StoredHouseBotIntent) => FeedLeftCell | null, remaining: (row: StoredHouseBotIntent) => FeedLeftCell | null, result: (row: StoredHouseBotIntent) => { word: string; chip: StatusChipVariant } | null): ConsoleFeedRow {
   const at = Date.parse(i.createdAt);
   /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
      instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
@@ -4308,6 +4483,12 @@ function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs:
        the map has no answer for paints nothing — the four refusals are named on `feedLeftTodayMap`. */
     leftToday: left(i)?.text ?? null,
     leftTodayTitle: left(i)?.title ?? null,
+    /* ⛔ LOOKED UP, NEVER COMPUTED HERE, for the same reason as the budget beside it: this function sees ONE row
+       and a balance is a property of the wallet's whole movement history. */
+    resultWord: result(i)?.word ?? null,
+    resultChip: result(i)?.chip ?? null,
+    remaining: remaining(i)?.text ?? null,
+    remainingTitle: remaining(i)?.title ?? null,
     statusWord: status.word,
     statusChip: status.chip,
     typeWord: CONSOLE_INTENT_KIND_WORD[i.kind],
@@ -5076,7 +5257,7 @@ export async function houseDetailForConsole(
   const wantHistoryPage = wantHistory && q.eventId && !q.hpageAsked
     ? await consoleHistoryAnchorPage(q.eventId, bot.id, q.hpage) : q.hpage;
   const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR, boundsR,
-    feedR, feedCountR, historyR, historyCountR, leftScanR] = await Promise.allSettled([
+    feedR, feedCountR, historyR, historyCountR, leftScanR, txnScanR] = await Promise.allSettled([
     readBotAndHolder(bot.id, { nowMs }),
     houseDayBook(dayKey, bot.id),
     houseOpenExposure(bot.id),
@@ -5107,6 +5288,17 @@ export async function houseDetailForConsole(
         houseBotId: bot.id, statuses: ["PLACED"],
         fromIso: feedDayWindow.fromIso, limit: CONSOLE_LEFT_TODAY_SCAN,
       })
+      : Promise.resolve(null),
+    /* ⭐ THE HOLDER'S OWN MOVEMENTS, for the `Remaining` column (owner amendment, 2026-09-25) — read ONLY when the
+     * activity panel is the one being drawn, and settled on its own so a failure blanks that column and nothing
+     * else (355, 435(d)).
+     * ⛔ IT IS A TRANSACTION READ, NOT A WALLET READ, which is why 1.356's "exactly one wallet read" still holds:
+     * the figure is the balance the LEDGER stamped at each row, never a live balance repeated down the page.
+     * ⛔ EVERY MOVEMENT, NOT JUST THE STAKES. A settlement, payout, deposit or withdrawal moves this wallet and
+     * none of them appears in the feed — scoping this read to house-marked rows would leave the column confidently
+     * stale from the first payout onward. */
+    wantFeed
+      ? db.txn.findByUserWindow(bot.userId, nowMs - CONSOLE_REMAINING_LOOKBACK_MS, nowMs + 1, CONSOLE_REMAINING_SCAN)
       : Promise.resolve(null),
   ]);
 
@@ -5164,8 +5356,13 @@ export async function houseDetailForConsole(
     (id) => (id === bot.id ? bot.capDailyStakeTzs : null),
     (id) => (id === bot.id && book != null ? book.stakedTzs : null),
   );
+  /* ⛔ ONE HOLDER ON THIS PAGE, so the map has exactly one key and a row naming any other account gets `null`
+     rather than somebody else's balance. */
+  const txnScan = txnScanR.status === "fulfilled" ? txnScanR.value : null;
+  const remaining = feedRemainingLookup(txnScan == null ? null : new Map([[bot.userId, txnScan]]));
+  const result = feedResultLookup(feedPageRows == null ? null : await feedPositionStatuses(feedPageRows.rows));
   const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday));
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday, remaining, result));
 
   const historyTotal = wantHistory && historyCountR.status === "fulfilled" ? historyCountR.value : null;
   let historyPageRows = wantHistory && historyR.status === "fulfilled" ? historyR.value : null;
@@ -6034,8 +6231,24 @@ export async function houseFeedForConsole(
     (id) => capById.get(id) ?? null,
     (id) => (core.dayBooks == null ? null : (core.dayBooks.get(id)?.stakedTzs ?? 0)),
   );
+  /* ⭐ THE HOLDERS' OWN MOVEMENTS, for the `Remaining` column (owner amendment, 2026-09-25).
+   * ⛔ IT CANNOT JOIN THE CORE SET, AND THE REASON IS ORDERING, NOT PREFERENCE: which accounts to read is decided
+   * by WHICH ROWS THIS PAGE SERVES, and those come out of the core set itself. So it is a second, data-dependent
+   * round trip — the same shape the pager's own re-read already takes — and it is BOUNDED BY THE PAGE: at most one
+   * read per distinct account among twenty rows, never one per account on the roster.
+   * ⛔ A HOLDER WHOSE READ FAILS IS SIMPLY ABSENT from the map, so its rows blank and every other account's figures
+   * stand (355). One failed read may not take another account's column down with it. */
+  const deskHolders = rows == null ? [] : [...new Set(rows.rows.map((i) => i.botUserId))];
+  const deskNowMs = Date.now();
+  const txnReads = deskHolders.length === 0 ? [] : await Promise.allSettled(
+    deskHolders.map((uid) => db.txn.findByUserWindow(uid, deskNowMs - CONSOLE_REMAINING_LOOKBACK_MS, deskNowMs + 1, CONSOLE_REMAINING_SCAN)),
+  );
+  const txnByUser = new Map<string, readonly StoredTxn[]>();
+  txnReads.forEach((r, k) => { if (r.status === "fulfilled") txnByUser.set(deskHolders[k], r.value); });
+  const remaining = feedRemainingLookup(deskHolders.length === 0 ? null : txnByUser);
+  const result = feedResultLookup(rows == null ? null : await feedPositionStatuses(rows.rows));
   const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({
-    ...consoleFeedRow(i, q.intentId, Date.now(), leftToday),
+    ...consoleFeedRow(i, q.intentId, Date.now(), leftToday, remaining, result),
     ...consoleAccountCell(byId, i.houseBotId),
     accountHref: consoleBotHref(i.houseBotId),
     /* ⛔ ONE POPULATION FOR THE BADGE AND FOR THE CONTROL (the `CONSOLE_PENDING_STATUSES` table): a row the badge

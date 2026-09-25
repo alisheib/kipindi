@@ -74,10 +74,15 @@ export const MUTATIONS = [
     // on the user, rather than the `255…` the gateway quotes back, makes the DLR route's
     // identity cross-check impossible to satisfy — so every genuine receipt is discarded AND
     // audited as a SECURITY mismatch.
+    // ⚠️ RE-ANCHORED 2026-09-25. The line this quoted (`    msisdn: toMsisdn255(m.to),`, inside a
+    // `messages.map`) stopped existing when U1 replaced that map with a two-pass partition that
+    // refuses a bad msisdn before any row is written. The DEFECT is unchanged — persist the stored
+    // `+255…` instead of the wire form and every delivery receipt is discarded as a mismatch — only
+    // the line that reintroduces it moved.
     name: "sms.ts — the persisted msisdn reverts to the stored E.164",
     file: "src/lib/server/sms.ts",
-    from: `    msisdn: toMsisdn255(m.to),`,
-    to: `    msisdn: m.to,`,
+    from: `    prepared.push({ out: m, index, reference: mintSmsReference(), msisdn: toMsisdn255(m.to) });`,
+    to: `    prepared.push({ out: m, index, reference: mintSmsReference(), msisdn: m.to });`,
     expect: `§6 …and stores the msisdn in the gateway's wire form, not E.164`,
   },
   {

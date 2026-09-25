@@ -15,23 +15,14 @@ import * as React from "react";
 import { Input } from "./input";
 import { useT } from "@/lib/i18n";
 import { normalizeTzLocalDigits } from "@/lib/phone-normalize";
+// 🔴 THE GROUPING USED TO LIVE IN THIS FILE, PRIVATELY — and a second copy of it lived in
+// `wallet/withdraw/page.tsx` as a regex with no nine-digit cap. One home now; see `tz-msisdn.ts`.
+import { formatTzPhone } from "@/lib/tz-msisdn";
 
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChange" | "size"> & {
   size?: "sm" | "md" | "lg";
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
-
-/**
- * Formats a 9-digit Tanzanian local number as "ABC DEF GHI" while
- * keeping the underlying form value as the raw 9 digits (so the server
- * receives the canonical shape).
- */
-function formatTzPhone(digits: string): string {
-  const d = digits.slice(0, 9);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)} ${d.slice(3)}`;
-  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
-}
 
 export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Props) {
   const { t } = useT();
