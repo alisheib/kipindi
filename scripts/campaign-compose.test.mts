@@ -39,6 +39,13 @@ import {
   type SmsSize,
 } from "../src/lib/sms-compose.ts";
 import { smsCodingFor } from "../src/lib/server/sms-blackball.ts";
+import {
+  marketingFooter, operatorBudget, composeMarketing, shortDomain,
+  SENDER_IDENTITY, STATUTORY_SMS_HELPLINE,
+  type MarketingCompose,
+} from "../src/lib/marketing/footer.ts";
+import { appUrl } from "../src/lib/app-url.ts";
+import { readFileSync } from "node:fs";
 
 process.exitCode = 1; // failure is the default
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -223,10 +230,107 @@ function check(size: Sizer, log: (l: string) => void): string[] {
   return failed;
 }
 
+/* ══ U4 — THE STATUTORY ENVELOPE ════════════════════════════════════════════
+ * Separate from `check` because these assertions are about the FOOTER, and the red control plants a
+ * different thing here: a composer that sizes the body instead of the message. */
+
+type Composer = (body: string, token: string) => MarketingCompose;
+
+function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
+  const failed: string[] = [];
+  const ok = (label: string, cond: boolean, extra = "") => {
+    if (cond) log(`  ok   ${label}`);
+    else { failed.push(label); log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+  };
+  const TOKEN = "a1b2c3d4";
+
+  /* ── §9 · the footer is what it says it is ─────────────────────────────── */
+  log("\n§9 · THE FOOTER, MEASURED");
+  {
+    const f = marketingFooter(TOKEN, "SW");
+    log(`       ${JSON.stringify(f)}`);
+    ok("§9 the footer carries the sender identity", f.includes(SENDER_IDENTITY));
+    ok("§9 …the age restriction, in the Swahili already shipped on the registration screen", f.includes("18+"));
+    ok("§9 …the Board's helpline", f.includes(STATUTORY_SMS_HELPLINE));
+    ok("§9 …and a working opt-out link", f.includes(`${shortDomain()}/s/${TOKEN}`), f);
+    ok("§9 ⭐ it is 49 septets — and that number is COMPUTED, not typed",
+      sizeSms(f).units === 49, `${sizeSms(f).units} septets`);
+    ok("§9 the footer is itself GSM-7 — a footer that forced UCS-2 would halve every message",
+      sizeSms(f).encoding === "GSM7");
+    ok("§9 it begins with a newline, and that newline is counted", f.startsWith("\n"));
+    ok("§9 the English footer costs exactly the same, so the budget does not move with locale",
+      sizeSms(marketingFooter(TOKEN, "EN")).units === sizeSms(f).units);
+  }
+
+  /* ── §10 · the budget is derived from the real deployment URL ──────────── */
+  log("\n§10 · THE OPERATOR'S BUDGET");
+  {
+    const budget = operatorBudget("SW");
+    ok("§10 ⭐ the budget is 111 characters — 160 minus the footer, computed from both",
+      budget === SMS_LIMITS.GSM7.single - 49 && budget === 111, `${budget}`);
+    // ⭐ THE DOMAIN IS NOT TYPED ANYWHERE. If `appUrl()` ever changes, this is what notices.
+    ok("§10 ⭐ the short domain is DERIVED from the real appUrl(), not typed",
+      appUrl().replace(/^https?:\/\//, "").replace(/^www\./, "") === shortDomain(),
+      `appUrl ${appUrl()} → ${shortDomain()}`);
+    ok("§10 control · the derivation actually produced something",
+      shortDomain().length > 3 && !shortDomain().includes("/"), shortDomain());
+    ok("§10 ⛔ a longer domain would cost budget, and the guard would see it",
+      operatorBudget("SW") > operatorBudget("SW", "x".repeat(10)));
+    // OQ3's shadow, priced rather than argued about.
+    const withSource = operatorBudget("SW", "Umetupa namba yako 50pick.");
+    ok("§10 ⚠️ if OQ3 forces the source phrase inline, the budget falls to about 89",
+      withSource >= 80 && withSource <= 92, `${withSource}`);
+    log(`       budget ${budget} without a source phrase, ${withSource} with one`);
+  }
+
+  /* ── §11 · nothing composes without the footer ─────────────────────────── */
+  log("\n§11 · NOTHING COMPOSES WITHOUT THE FOOTER");
+  {
+    const c = compose("50pick: soka leo. Weka dau sasa.", TOKEN);
+    ok("§11 a good body composes", c.ok, c.problems.join(" | "));
+    ok("§11 ⭐ and the composed text ENDS with the footer", c.text.endsWith(marketingFooter(TOKEN, "SW")));
+    ok("§11 ⭐ the size is taken of the WHOLE message, not the body",
+      c.size.units === sizeSms(c.text).units, `${c.size.units} vs ${sizeSms(c.text).units}`);
+
+    // ETA s.32(1)(b) — identity at the start.
+    const noIdentity = compose("Soka leo. Weka dau sasa.", TOKEN);
+    ok("§11 a body that does not begin with the sender identity is refused", !noIdentity.ok);
+    ok("§11 …and says so in words, not a code",
+      noIdentity.problems.some((p) => p.length > 30 && !/[A-Z]{4,}_/.test(p)), noIdentity.problems.join(" | "));
+
+    ok("§11 an empty body is refused", !compose("", TOKEN).ok);
+    ok("§11 ⭐ a missing or wrong-length opt-out token is refused — a message with no way to stop is unlawful",
+      !compose("50pick: habari", "").ok && !compose("50pick: habari", "short").ok);
+
+    // ⭐ THE BUDGET BOUNDARY, BOTH SIDES.
+    const at = "50pick " + "a".repeat(operatorBudget("SW") - 7);
+    const over = at + "a";
+    ok(`§11 ⭐ a body of exactly ${operatorBudget("SW")} characters is one message`, compose(at, TOKEN).size.segments === 1,
+      `${compose(at, TOKEN).size.units} units, ${compose(at, TOKEN).size.segments} segment(s)`);
+    ok("§11 ⛔ …and one more character is two, and is refused", compose(over, TOKEN).size.segments === 2 && !compose(over, TOKEN).ok);
+    ok("§11 …and the refusal quotes the budget the officer actually has",
+      compose(over, TOKEN).problems.some((p) => p.includes(String(operatorBudget("SW")))), compose(over, TOKEN).problems.join(" | "));
+  }
+
+  /* ── §12 · the helpline contradiction is deliberate ────────────────────── */
+  log("\n§12 · THE HELPLINE CONTRADICTION IS DELIBERATE, AND GUARDED AS SUCH");
+  {
+    const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
+    const published = (support.match(/STATUTORY_HELPLINE\s*=\s*"([^"]+)"/) || [])[1] ?? "";
+    ok("§12 control · support-config's published helpline was actually read", published.length > 5, `read "${published}"`);
+    ok("§12 ⭐ the marketing footer's helpline DIFFERS from the published one — OQ4, and it is Ali's to answer",
+      published.replace(/\s/g, "") !== STATUTORY_SMS_HELPLINE,
+      `both are now "${STATUTORY_SMS_HELPLINE}" — if OQ4 was answered, say so in §4a; if this was an "obvious cleanup", it is not one`);
+    ok("§12 …and the footer uses the Gaming Board's number", STATUTORY_SMS_HELPLINE === "0800110051");
+  }
+
+  return failed;
+}
+
 /* ══ THE RUN ════════════════════════════════════════════════════════════════ */
 
 if (!PROVE_RED) {
-  const failed = check(sizeSms, (l) => console.log(l));
+  const failed = [...check(sizeSms, (l) => console.log(l)), ...checkEnvelope((body, token) => composeMarketing(body, token), (l) => console.log(l))];
   console.log(`\nCAMPAIGN COMPOSE — ${failed.length === 0 ? "all checks passed" : `${failed.length} failed`}\n`);
   for (const f of failed) console.log(`  · ${f}`);
   process.exitCode = failed.length === 0 ? 0 : 1;
@@ -239,7 +343,7 @@ if (!PROVE_RED) {
   };
   console.log("RED CONTROL — the real defects, planted in memory\n");
 
-  const baseline = check(sizeSms, quiet);
+  const baseline = [...check(sizeSms, quiet), ...checkEnvelope((body, token) => composeMarketing(body, token), quiet)];
   ok("§0 baseline · the shipped module passes every assertion before anything is planted",
     baseline.length === 0, baseline.join("; "));
 
@@ -317,6 +421,56 @@ if (!PROVE_RED) {
   for (const p of plants) {
     ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
     const failures = check(p.sizer, quiet);
+    const matched = failures.filter((f) => p.expect.test(f));
+    ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, matched.length > 0,
+      failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+  }
+
+  /* ── U4's plants: the envelope ─────────────────────────────────────────── */
+  const REAL: Composer = (body, token) => composeMarketing(body, token);
+  type EnvPlant = { name: string; expect: RegExp; compose: Composer; landed: () => boolean; landedAs: string };
+  const envPlants: EnvPlant[] = [
+    {
+      // ⭐ THE DEFECT THIS WHOLE UNIT EXISTS TO PREVENT. Size the body, send body + footer, and every
+      // quote is short by 49 septets — a 140-character body reads as one message and sends as two.
+      name: "the composer sizes the BODY and the engine sends body + footer",
+      expect: /^§11 ⭐ the size is taken of the WHOLE message, not the body/,
+      compose: (body, token) => ({ ...REAL(body, token), size: sizeSms(body) }),
+      landed: () => sizeSms("50pick " + "a".repeat(140)).segments === 1 && REAL("50pick " + "a".repeat(140), "a1b2c3d4").size.segments === 2,
+      landedAs: "a 147-character body is one segment alone and two with the footer — 49 septets of difference",
+    },
+    {
+      name: "the identity check dropped — ETA s.32(1)(b) unenforced",
+      expect: /^§11 a body that does not begin with the sender identity is refused/,
+      compose: (body, token) => {
+        const c = REAL(body, token);
+        return { ...c, problems: c.problems.filter((p) => !p.includes("must begin")), ok: c.problems.filter((p) => !p.includes("must begin")).length === 0 };
+      },
+      landed: () => REAL("Soka leo", "a1b2c3d4").problems.some((p) => p.includes("must begin")),
+      landedAs: "the real composer refuses a body that does not begin with the sender identity",
+    },
+    {
+      name: "the footer made optional — an opt-out that is not in the message",
+      expect: /^§11 ⭐ and the composed text ENDS with the footer/,
+      compose: (body, token) => ({ ...REAL(body, token), text: body }),
+      landed: () => true,
+      landedAs: "a composer that can emit a body with no footer is one an officer can send without one",
+    },
+    {
+      name: "the opt-out token unchecked — a lawful-looking message with a dead link",
+      expect: /^§11 ⭐ a missing or wrong-length opt-out token is refused/,
+      compose: (body, token) => {
+        const c = REAL(body, token);
+        const problems = c.problems.filter((p) => !p.includes("opt-out link"));
+        return { ...c, problems, ok: problems.length === 0 };
+      },
+      landed: () => REAL("50pick: habari", "").problems.some((p) => p.includes("opt-out link")),
+      landedAs: "the real composer refuses an empty token",
+    },
+  ];
+  for (const p of envPlants) {
+    ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
+    const failures = checkEnvelope(p.compose, quiet);
     const matched = failures.filter((f) => p.expect.test(f));
     ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, matched.length > 0,
       failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);

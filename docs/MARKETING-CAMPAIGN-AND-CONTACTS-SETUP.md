@@ -965,16 +965,41 @@ made that visible.
 **Accept:** `smsCodingFor(s) === sizeSms(s).encoding` over a corpus containing both encodings; `bodyLen`
 is never used to price; the moved table is asserted byte-for-byte against a copy of the pre-move string.
 
-**U4 · The statutory envelope** — `src/lib/sms-compose.ts`, `src/lib/marketing/footer.ts` (D5)
+**U4 · The statutory envelope** — `src/lib/marketing/footer.ts`, `src/lib/sms-compose.ts` (D5) — ✅ SHIPPED S2
 The engine-appended footer, per locale, un-removable and counted:
-`\n50pick 18+ 0800110051 Acha: 50pick.tz/s/<8>` (SW, **49** septets) and its EN equivalent. A compose-time
-gate that the body **begins** with `50pick` (ETA s.32(1)(b)). The single-segment operator budget is
-therefore **111** characters, printed in the composer. The bare-domain form is measured against the real
-`appUrl()` by the guard — a domain change that costs a second segment fails the build instead of doubling
-the bill. If OQ3 forces the source phrase inline, the budget drops to ~89 and the guard says so.
-**Guard:** `test:campaign-compose`. **RED:** remove the footer from the sizing; drop the identity check.
-**Accept:** no marketing body can be composed without the footer; its length is asserted against a real
-minted token; the 111 is computed, not typed.
+`\n50pick 18+ 0800110051 Acha: 50pick.tz/s/<8>` — **49 septets, computed and asserted, never typed**.
+A compose-time gate that the body **begins** with `50pick` (ETA s.32(1)(b)), one that the opt-out token
+is present and the right length (a message with no way to stop is unlawful), and one that names the
+character that pushed a body out of GSM-7. The single-segment operator budget is therefore **111**
+characters — `160 − 49`, computed — and the composer prints THAT, not 160.
+⭐ **Every Swahili fragment is COPIED, and the lines are cited in the file** (§5.13, OQ9): `miaka 18+`
+from `i18n-dict.ts` `tanzaniaMobile18` — the string on the registration screen every player already
+passes — and `Acha` from `unfollow` ("Acha kufuatilia soko hili"), this product's existing verb for
+"stop doing this". `18+` is a symbol rather than prose deliberately: the shipped sentence "miaka 18 au
+zaidi" is fifteen septets and the whole footer has forty-nine to spend.
+⭐ **THE SHORT DOMAIN IS DERIVED FROM `appUrl()`, NEVER TYPED.** A typed domain is a bill waiting to
+happen: a longer one silently pushes every single-segment campaign into two, and a stale one prints a
+link that no longer resolves. Deriving it makes a domain change a failing assertion instead of an
+invoice. Measured 2026-09-25: the apex `https://50pick.tz/` answers 200, so the `www.` is dropped and
+four septets are returned to the officer — ⚠️ but §3b says a `curl` 200 is not proof a BROWSER reaches
+a page, so U8's live drive confirms the opt-out link before any message carries it.
+🔴 **THE HELPLINE HERE IS DELIBERATELY NOT THE ONE `support-config.ts` PUBLISHES**, and §12 of the
+guard asserts that they DIFFER. `support-config.ts` pins `0800 11 0011`; the Board's Advertising Code
+names `0800110051` three times. That is OQ4, Ali's to answer — ⛔ not a thing to resolve by quietly
+making the two agree, which is exactly what an "obvious cleanup" would do. The footer carries the
+regulator's number because a statutory footer citing a helpline the regulator does not recognise is the
+failure that matters, and no published page is changed silently.
+⚠️ **OQ3 is priced rather than argued about:** `operatorBudget(locale, sourcePhrase)` takes the source
+phrase, and with a realistic one the budget falls from 111 to **85**. If the lawyer's answer is "in the
+body", that is the number the composer will show.
+**Guard:** `test:campaign-compose` §9–§12. **RED:** `red:campaign-compose` — the composer sizing the
+BODY while the engine sends body + footer (every quote short by 49 septets: a 147-character body reads
+as one message and sends as two); the identity check dropped; the footer made optional; the opt-out
+token unchecked.
+**Accept:** no marketing body can be composed without the footer — there is no call shape that
+produces one, which is the only way "un-removable" is true of software rather than of a policy
+document; the footer's length is asserted against a token of the real minted length; the 111 is
+computed from the footer and the single-segment limit, not written down.
 
 **U5 · One helpline** — `src/lib/support-config.ts` and its six print sites (D6)
 One constant, named sites, ⚠️ `global-error.tsx` keeps its hand-written copies **by design** (it must stay
