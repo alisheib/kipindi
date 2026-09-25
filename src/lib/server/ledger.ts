@@ -947,6 +947,52 @@ export async function trialBalance(): Promise<TrialBalanceReport> {
 }
 
 /** Get all house account balances for the admin dashboard. */
+/**
+ * ⭐ HOUSE ACCOUNT MOVEMENT INSIDE A WINDOW — what was booked, not what has accumulated.
+ *
+ * `houseAccountBalances` above is cumulative and answers "what do we hold". A money page
+ * filtered to a period needs the other question: "what did this period BOOK". They are
+ * different numbers and must not be confused for one another.
+ *
+ * 🔴 WHY THIS EXISTS. `/admin/finance` accrued its statutory-levy tile as
+ * `GGR × (TRA + GBT)`. Those rates are defined throughout this codebase as a fraction OF OUR
+ * FEE — `levySplit` applies them to the settlement fee, the agent waterfall applies them to the
+ * gross fee — and the house standard is explicit that taxes are only ever on 50pick's
+ * commission, never on a player's money. GGR is not commission: it is stakes minus payouts
+ * minus refunds, so while positions are still open it also contains money that has not been
+ * earned and may yet be paid back out. Measured against production over September 2026 EAT:
+ * GGR 803,675 against 50,045 of commission actually booked, with 8,796 of TRA+GBT actually
+ * booked — the tile was overstating the levy by roughly fourteen times.
+ * ⛔ Read-only, and parameterised (`$1`/`$2`) rather than interpolated.
+ */
+export async function houseAccountMovement(
+  start: number,
+  end: number,
+): Promise<Record<string, number> | null> {
+  const pc = prisma();
+  /* ⛔ NULL, NOT `{}`. An empty map is indistinguishable from "this window booked nothing", and
+     the caller turns that into TZS 0 on a STATUTORY tile — the fabricated zero A-5 exists to
+     refuse. No ledger to read is not the same fact as a ledger that moved nothing. */
+  if (!pc) return null;
+
+  const results = await pc.$queryRawUnsafe<Array<{ account: string; sum: string }>>(
+    `SELECT account, SUM(amount) as sum
+     FROM "LedgerEntry"
+     WHERE (account LIKE 'HOUSE:%' OR account LIKE 'SYSTEM:%')
+       AND "createdAt" >= $1 AND "createdAt" < $2
+     GROUP BY account
+     ORDER BY account`,
+    new Date(start),
+    new Date(end),
+  );
+
+  const moved: Record<string, number> = {};
+  for (const r of results) {
+    moved[r.account] = Number(r.sum);
+  }
+  return moved;
+}
+
 export async function houseAccountBalances(): Promise<Record<string, number>> {
   const pc = prisma();
   if (!pc) return {};

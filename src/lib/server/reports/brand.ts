@@ -89,5 +89,17 @@ export function fmtDateTime(iso: string | Date | null | undefined): string {
 
 export function reportFilename(title: string, ext: "xlsx" | "pdf"): string {
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
-  return `50pick-${slug}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+  /**
+   * 🔴 THE STAMP WAS UTC WHILE EVERY FIGURE INSIDE IS EAT. `toISOString().slice(0, 10)` is the
+   * UTC calendar day, and this platform keeps one clock: East Africa Time, UTC+3. So between
+   * 21:00 and midnight EAT — three hours of every day, including the end of every month — a
+   * pack generated on the 1st was filed as the previous month's date, and a daily-ops report for
+   * "today" arrived named yesterday. The document was right and its own filename disagreed with
+   * it, which is the worst version of this defect: the artifact looks wrong to the only person
+   * checking, the auditor sorting a folder by name.
+   * ⛔ The EAT day, from the same offset every other formatter in this file uses.
+   */
+  const e = new Date(Date.now() + EAT_MS);
+  const day = `${e.getUTCFullYear()}-${String(e.getUTCMonth() + 1).padStart(2, "0")}-${String(e.getUTCDate()).padStart(2, "0")}`;
+  return `50pick-${slug}-${day}.${ext}`;
 }
