@@ -94,7 +94,18 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
           {paid ? (
             <AdminKpi label="Commission paid"   sw="Tume zilizolipwa" value={formatBalancePill(stats.commissionPaidTzs)} delta="all-time" />
           ) : (
-            <AdminKpi label="Paid by 50pick"    sw="Zilizolipwa na 50pick" value="0" delta="rewards withdrawn" deltaDir="flat" />
+            /* 🔴 THE FIGURE IS SUMMED, NEVER WRITTEN AS A CONSTANT. This tile read the literal "0"
+               with the caption "rewards withdrawn", and that is a money statement the page can
+               CONTRADICT ON ITSELF: `getAdminAffiliateStats` still totals every PAID
+               PLAYER-programme row truthfully, and the Payout ledger card further down renders
+               those very rows. Any legacy reward paid before 2026-09-25, and anything paid during a
+               future flip of `inviteRewards` to ACTIVE and back, would have the tile saying the
+               platform paid nothing four inches above the table of what it paid.
+               ⭐ `totalPaidTzs` was already computed and returned and read by nothing. On a clean
+               unpaid history it renders TZS 0 exactly as intended — now for a reason the data can
+               keep. The caption stays: it states the PRODUCT STATE (no new accrual can be created),
+               which is true regardless of history. ⛔ Never re-hardcode this. */
+            <AdminKpi label="Paid by 50pick"    sw="Zilizolipwa na 50pick" value={formatBalancePill(stats.totalPaidTzs)} delta="rewards withdrawn" deltaDir="flat" />
           )}
           <AdminKpi label="Top referrer"       sw="Bingwa"          value={stats.topReferrer?.handle ?? "—"} delta={stats.topReferrer ? `${stats.topReferrer.recruits} recruits` : "none yet"} deltaDir="flat" />
         </KpiGrid>
@@ -190,11 +201,18 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
         {/* Payout ledger */}
         <AdminCard title="Payout ledger" sw="Daftari la malipo" padding={ledgerSorted.length > 0 ? "p-0" : "p-4"}>
           {ledgerSorted.length === 0 ? (
+            /* ⛔ "yet" AND "appear here as friends sign up and play" BOTH PROMISE A FUTURE THE
+               PRODUCT HAS REFUSED. Under the unpaid invite no friend signing up or playing will
+               ever put a row here, so the empty state was telling an officer to wait for something
+               that cannot arrive. It states the reason instead — and the paid wording returns
+               untouched the day `inviteRewards` does. */
             <EmptyState
               kind="admin"
-              title="No payouts yet"
-              titleSw="Hakuna malipo bado"
-              body="Rewards appear here as friends sign up and play."
+              title={paid ? "No payouts yet" : "Nothing to pay — the invite is unpaid"}
+              titleSw={paid ? "Hakuna malipo bado" : "Hakuna malipo — mialiko hailipwi"}
+              body={paid
+                ? "Rewards appear here as friends sign up and play."
+                : "The platform credits nothing for a player referral (inviteRewards = WITHDRAWN), so no row can be created. Rows already here, if any, predate that or were paid while it was switched on."}
             />
           ) : (
             <>

@@ -25,7 +25,7 @@ at all: no commission, no prize, no bonus, no entry, no ranking prize. The regis
 the new player no offer. The player's own page carries no earnings figure, no reward conditions and no gold, and
 states in all three locales that invites pay nothing (`profile.inviteNoRewardNote`). ⛔ **Cash the operator chooses to
 pay an inviter is paid outside the platform and is recorded nowhere in it** — `/admin/affiliate` reports how many
-people each player brought, and the "Paid by 50pick" KPI reads 0 by construction.
+people each player brought, and the "Paid by 50pick" KPI sums what 50pick has actually paid on the player programme, which is 0 while `inviteRewards` is WITHDRAWN because no new accrual can be created.
 
 **Why the zero is in code rather than in the affiliate config — the alternative was considered and rejected.** Setting
 the commission rate to 0% would have left the payout live: the shipped `affiliate.config` has `prize.enabled: true` at

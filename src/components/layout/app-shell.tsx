@@ -168,12 +168,25 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     ]);
     const u = uResult.status === "fulfilled" ? uResult.value : null;
     const aff = affResult.status === "fulfilled" ? affResult.value : null;
-    // ⚠️ A failed user read leaves NO_VIEWER — a failed read must never open a withdrawn programme.
-    // ⭐ `accountInGoodStanding` rides the same two rows: the shell decides the nav entry, and the
-    // unpaid player invite (2026-09-25) is closed to a CLOSED / SUSPENDED / SELF_EXCLUDED account.
-    // ⛔ Composed from `playerStandingFor`, not re-spelled here — the shell showing a link the
-    // bind would refuse is the drift this predicate exists to prevent.
-    inviteViewer = u
+    /**
+     * ⚠️ A failed user read leaves NO_VIEWER — a failed read must never open a programme.
+     * ⭐ `playerInviteEligible` rides the same two rows: the shell decides the nav entry, and the
+     * unpaid player invite (2026-09-25) is closed to a CLOSED / SUSPENDED / SELF_EXCLUDED account
+     * and to an agent out of standing. ⛔ Composed from `playerInviteEligibleFor`, not re-spelled
+     * here — the shell showing a link the bind would refuse is the drift it exists to prevent.
+     *
+     * 🔴 AND A FAILED **AFFILIATE** READ MUST FAIL CLOSED TOO, WHICH IT DID NOT. `affResult` is one
+     * arm of a `Promise.allSettled`, so a rejected affiliate query yields `aff = null` — and null
+     * is indistinguishable from "this account has no affiliate row". `agentStandingFor` then reads
+     * `agent_not_approved` and `playerInviteEligibleFor`'s `!isApprovedAgent(null)` reads TRUE, so
+     * an APPROVED AGENT whose row failed to load was silently demoted to an eligible player: the
+     * nav would offer them the unpaid player surface, and every share surface would mint a player
+     * code that `bindRecruit` refuses on the agent branch. A transient database blip must not
+     * change which programme a viewer is in. When the affiliate read FAILED (as opposed to
+     * returning no row) the viewer is closed entirely — the same safe direction the user read takes.
+     */
+    const affReadFailed = affResult.status !== "fulfilled";
+    inviteViewer = u && !affReadFailed
       ? { role: u.role, agentInGoodStanding: agentStandingFor(u, aff).ok, playerInviteEligible: playerInviteEligibleFor(u, aff) }
       : NO_VIEWER;
     const wallet = walletResult.status === "fulfilled" ? walletResult.value : null;
@@ -264,10 +277,20 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      entry point open for a DEACTIVATED agent, because deactivation leaves the role in place. */
   const inviteVisible = inviteIsLiveFor(inviteViewer);
   /* ⭐ THE SECOND HALF OF THE PAIR, RESOLVED IN THE SAME PLACE AND FOR THE SAME REASON: the menu
-     row's WORDS depend on whether the programme pays, and a client component may not read the
-     product state to find out. ⛔ No viewer argument — `playerInviteRewardsLive()` is a property of
-     the programme, and an agent never reaches this label (they get the agent dashboard). */
-  const invitePaid = playerInviteRewardsLive();
+     row's WORDS depend on whether the viewer's invite destination pays, and a client component may
+     not read the product state to find out.
+     🔴 AND IT IS VIEWER-AWARE, BECAUSE THE FIRST VERSION SAID "an agent never reaches this label"
+     AND THAT WAS FALSE. `inviteIsLiveFor` returns ACTIVE for an agent in good standing BEFORE it
+     reads the product state, so their row survives the filter — and a PLAYER-only money switch was
+     relabelling it "Invite friends" and stripping its gilt, for a destination that renders their
+     COMMISSION DASHBOARD. `profile/page.tsx` gives that same viewer, for that same href, "Agent
+     dashboard · your recruits and commission" in gilt: two doors to one page describing two
+     different programmes.
+     ⛔ So the question this answers is "does THIS viewer's invite destination pay?" — the player
+     programme's product state, OR an approved agent's standing. `playerInviteRewardsLive()` keeps
+     its contract (no viewer, player programme only); the disjunction lives here, at the one place
+     that already knows the viewer. */
+  const invitePaid = playerInviteRewardsLive() || inviteViewer.agentInGoodStanding;
 
   /**
    * 🔴 THE AGENT DOOR IS RESOLVED HERE FOR THE REASON THE COMMENT ABOVE ALREADY GIVES.

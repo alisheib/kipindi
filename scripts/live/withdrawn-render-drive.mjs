@@ -84,6 +84,20 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
     if (path === "/profile") {
       ok(`§1 ${path} offers the invite entry point (server-rendered row)`, html.includes("/profile/invite"),
         `found ${(html.match(/\/profile\/invite/g) ?? []).length} occurrence(s)`);
+      /**
+       * 🔴 THE ABSENCE ASSERTION BELOW CANNOT FAIL ON ITS OWN, SO IT IS PAIRED WITH A PRESENCE ONE.
+       * "no surface says '& Earn'" is true of `/wallet`, `/positions` and `/markets` for a reason
+       * that has nothing to do with the feature: their invite entry points are CLIENT components
+       * that mount on open, so no invite label of any kind is in their payload. That check would
+       * read green with the row relabelled, deleted, or gilt.
+       * ⭐ `/profile` is the one page whose invite row is SERVER-rendered, so it is the only place
+       * this drive can hold the words to account — and it does it as a DELTA: the unpaid words must
+       * be PRESENT here, which is what makes their absence elsewhere mean anything. The client
+       * chrome's own label is covered by `qa:agent-drive` §6, the only instrument that opens a menu.
+       */
+      ok(`§1 ${path} ⭐ the row wears the UNPAID words`,
+        /Invite friends|Alika marafiki|邀请朋友/.test(html),
+        "the server-rendered invite row does not say 'Invite friends'");
     }
     ok(`§1 ${path} ⛔ no surface says "& Earn" / "upate zawadi" / "赚钱"`,
       !/Invite &amp; Earn|Invite & Earn|upate zawadi|邀请赚钱/.test(html),
@@ -91,7 +105,7 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
   }
 }
 
-// ── §2 · THE INVITE PAGE ITSELF IS GONE FOR A PLAYER ───────────────────────
+// ── §2 · THE INVITE PAGE IS A SHARE SURFACE, AND IT NAMES NO MONEY ─────────
 // 🔴 THIS SECTION IS WHAT THE FIRST RUN OF THIS DRIVE CORRECTED, TWICE, AND BOTH ARE
 // recorded because both were mistakes worth not repeating.
 //

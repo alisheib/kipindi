@@ -30,7 +30,17 @@ export async function generateMetadata() {
   // ⭐ The TAB TITLE obeys the same switch the body does. A browser tab and a history entry
   // reading "Invite & Earn" is a promise of money made outside the page, where no conditional in
   // the body can reach it — and it is the surface a player sees when the page is not even open.
-  return { title: playerInviteRewardsLive() ? t.profile.inviteEarn : t.profile.inviteFriends };
+  //
+  // 🔴 AND IT IS VIEWER-AWARE, BECAUSE THIS ROUTE SERVES TWO PROGRAMMES. `playerInviteRewardsLive()`
+  // alone titled an APPROVED AGENT's commission dashboard "Invite friends" — the body renders
+  // `<AgentDashboard>` with their recruits and their earnings, so the tab was describing the wrong
+  // product to the one viewer who IS paid. ⚠️ The session read costs one extra round trip on one
+  // low-traffic route, and a title that contradicts its own page is the thing it buys off.
+  // ⛔ It fails CLOSED: no session, a failed read, or anyone not in agent standing gets the
+  // unpaid words, never the promise.
+  const session = await currentSession();
+  const agent = session ? (await inviteViewerFor(session.userId)).agentInGoodStanding : false;
+  return { title: (playerInviteRewardsLive() || agent) ? t.profile.inviteEarn : t.profile.inviteFriends };
 }
 export const dynamic = "force-dynamic";
 
@@ -189,7 +199,13 @@ export default async function InvitePage({
    * ⛔ WHAT IT GATES IS NOT DECORATION. Under `paid === false` the page shows no earnings ring, no
    * earned tile, no promise rows, no bonus-requirements list, no per-friend money column and no
    * gold — because `DESIGN_AUTHORITY` §M3 is that struck gold means money was EARNED, and here
-   * none was. `npm run test:gold-is-money` is the guard that says so out loud.
+   * none was.
+   * ⚠️ THE GUARD IS `qa:withdrawn-render` §2, WHICH READS THE RENDERED PAGE — it asserts no
+   * `GiltCorner` and no `gold-700` reach the HTML. ⛔ This note used to cite
+   * `npm run test:gold-is-money`, and that suite has never read this file: it is scoped to a
+   * two-entry list of IDENTITY surfaces (`identity-avatar.tsx`, `updown-card.tsx`). A comment that
+   * names a guard is read as evidence the guard exists AND covers this — so it must name one that
+   * does, or the next reader trusts a check nobody is running.
    */
   const paid = s.rewardsLive;
   // F5 · the wagering multiple the requirements list quotes — READ, never written.
@@ -488,7 +504,7 @@ export default async function InvitePage({
       {/* Recruits */}
       <Cap className="!mt-1">{paid ? t.profile.yourReferrals : t.profile.yourFriends}</Cap>
       {/* ⛔ A PAGE OF A LIST SAYS SO. `recruitCount` is the true total and the dial prints it; this
-          array is capped at `recruitsPage`. Without this line a reader counting rows would reach a
+          array is capped by the read model. Without this line a reader counting rows would reach a
           different number than the dial and have no way to know which was wrong — the silent
           truncation `getAdminAffiliateStats` already records refusing. Rendered only when the two
           genuinely differ, so nobody reads a caveat about a limit they have not reached. */}

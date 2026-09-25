@@ -680,10 +680,27 @@ async function mayRecruit(
     // (`agentStandingFor`), the same rule the accrual applies. `test:agent-policy` §4.
     return { ok: true, programme: "AGENT" };
   }
-  // Everyone else falls to the player programme's own gate — the product state alone. A
-  // role of AGENT with no approval is NOT an agent (that is the fixture that kept three
-  // guards green while asserting the wrong answer), so standing is passed as false and only
-  // `FEATURE_INVITE=ACTIVE` can open this branch.
+  /**
+   * Everyone else falls to the player programme's own gate. A role of AGENT with no approval is
+   * NOT an agent (that is the fixture that kept three guards green while asserting the wrong
+   * answer), so `inviteViewerOf` composes their standing from the rows, never from the role.
+   *
+   * ⭐ TWO REFUSALS, NOT ONE, AND THE DIFFERENCE IS THE OFFICER'S. `playerStandingFor` is asked
+   * FIRST so a CLOSED / SUSPENDED / SELF_EXCLUDED referrer is refused as
+   * `player_account_not_in_standing` — the reason it actually was. Until 2026-09-25 that case was
+   * folded into `player_invite_withdrawn`, which told the officer reading the audit that the
+   * PROGRAMME was off when in fact this one ACCOUNT was barred; `ReferralRefusal`'s own note
+   * promises three distinguishable zeros, and this is the line that keeps the promise.
+   * ⚠️ The order matters: the account check must come first, or the product state would mask it
+   * again the moment `invite` is ever switched back to WITHDRAWN.
+   *
+   * ⛔ `FEATURE_INVITE=ACTIVE` IS NO LONGER WHAT OPENS THIS BRANCH — the shipped product state is
+   * ACTIVE and the override exists to CLOSE it. The money is the other switch entirely
+   * (`inviteRewards`, refused in `policyFor`), so passing here says a bind may be recorded and
+   * says nothing at all about payment.
+   */
+  const playerStanding = playerStandingFor(referrer);
+  if (!playerStanding.ok) return { ok: false, refusal: playerStanding.refusal };
   if (!inviteIsLiveFor(inviteViewerOf(referrer, null))) return { ok: false, refusal: "player_invite_withdrawn" };
   return { ok: true, programme: "PLAYER" };
 }
@@ -1644,8 +1661,6 @@ export type PlayerReferralSummary = {
    * the platform pays nothing for it.
    */
   rewardsLive: boolean;
-  /** How many rows `recruits` holds at most, so the page can SAY the list is a page. */
-  recruitsPage: number;
   /** Adaptive promise lines reflecting which modes are live. ⛔ Empty whenever `rewardsLive` is
    *  false — every one of them is a sentence about money. */
   promises: Array<{ icon: "percent" | "ticket" | "gift"; en: string; sw: string }>;
@@ -1670,8 +1685,8 @@ export async function getPlayerReferralSummary(userId: string) {
    * friends on it. The list was unbounded and in storage order: at fifty rows the page is a scroll
    * with no end, and the order it arrives in is not a promise anyone made.
    * ⛔ THE CAP IS STATED, NEVER SILENT. `recruitCount` above is the TRUE total and the page prints
-   * it on the dial; this array is a page of it, and `recruitsShown` lets the body say "the most
-   * recent N of M" rather than let a reader count rows and reach a wrong number. A total over a
+   * it on the dial; this array is a page of it, and the page compares it against `recruitCount`
+   * to say "the most recent N of M" rather than let a reader count rows and reach a wrong number. A total over a
    * silently truncated list is the defect `getAdminAffiliateStats` already documents refusing.
    */
   const recruits: RecruitRow[] = (await db.user.listByRecruiter(userId))
@@ -1739,7 +1754,6 @@ export async function getPlayerReferralSummary(userId: string) {
     recruits,
     programEnabled: cfg.enabled,
     rewardsLive,
-    recruitsPage: PLAYER_RECRUIT_PAGE,
     promises,
   };
 }
@@ -2013,7 +2027,24 @@ export async function getAdminAffiliateStats() {
   const totals = await db.referralReward.totals();
   const playerCells = totals.filter((c) => c.programme !== "AGENT");
 
-  const totalReferrals = await db.user.countRecruited();
+  /**
+   * 🔴 THIS KPI COUNTED THE OTHER PROGRAMME'S RECRUITS TOO, ON THE SCREEN THAT IS NOT ABOUT THEM.
+   * `db.user.countRecruited()` counts EVERY user with `recruitedBy` set, AGENT-stamped ones
+   * included — and vetted agents have their own roster on `/admin/agents`. So "Total referrals"
+   * sat above a table of player inviters and disagreed with it by however many recruits the agent
+   * programme had brought: an officer deciding who to pay cash reads the headline, then reads a
+   * roster that does not add up to it, and has no way to know which is wrong.
+   * ⭐ Summed from the SAME rows the roster is built from, so the headline and the table below it
+   * can never disagree again.
+   * ⚠️ THE ONE BOUNDARY, STATED: a player who has SINCE been approved as an agent is excluded
+   * whole, so the recruits they brought BEFORE approval are not in this figure. That population is
+   * reported to them by name on their own dashboard (`preAgentRecruitCount`), it is not
+   * commissionable, and folding it in here would put agent-account rows back into the player
+   * console — the exact confusion this fixes. A stated exclusion beats a silently mixed total.
+   */
+  const totalReferrals = accounts
+    .filter((a) => !isApprovedAgent(a))
+    .reduce((n, a) => n + (a.recruitCount ?? 0), 0);
   const commissionPaidTzs = playerCells.filter((c) => c.type === "COMMISSION" && c.status === "PAID").reduce((s, c) => s + c.sumTzs, 0);
   const totalPaidTzs = playerCells.filter((c) => c.status === "PAID").reduce((s, c) => s + c.sumTzs, 0);
 

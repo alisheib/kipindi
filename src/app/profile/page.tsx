@@ -51,9 +51,18 @@ export default async function ProfilePage() {
   const user = await db.user.findById(session.userId);
   if (!user) redirect("/auth/login?next=/profile");
 
-  /** ⭐ Read ONCE and used twice below — whether the invite row appears, and which programme's
-   *  words it wears. Two separate `inviteViewerFor` calls would be two round trips that can
-   *  disagree if a status changes between them. */
+  /**
+   * ⭐ Read once FOR THIS PAGE and used twice below — whether the invite row appears, and which
+   * programme's words it wears. Asking twice would be two round trips that can disagree if a
+   * status changes between them, and the row would then be visible while wearing the other
+   * programme's label.
+   * ⚠️ IT IS NOT THE ONLY READ IN THIS RENDER, and the note here claimed it was:
+   * `computeAchievementShelf` below calls `inviteViewerFor` again for the Connector badge. They
+   * are in different modules with no shared request cache, so they can in principle disagree —
+   * harmlessly, since the worst case is a badge that appears while the row does not. ⛔ Do not
+   * "fix" that by threading this value into the shelf: the shelf is called from several pages and
+   * would then take a prop only one of them can supply.
+   */
   const inviteViewer = await inviteViewerFor(user.id);
 
   let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;

@@ -162,11 +162,13 @@ const SURFACES = [
      span would be worse than one with no window at all). */
   "src/app/positions/performance/performance-bar.tsx", // /positions/performance — product lens
   /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.11). 🔴 THE LIST ON THIS ROUTE IS THE AGENT RECRUIT
-     BOOK, NOT THE PLAYER PROMO BODY, and that is the task's whole finding: `PRODUCT_STATE.invite`
-     is WITHDRAWN, so `inviteIsLiveFor` is true only for an agent in good standing — which requires
-     `approvedAt` — and `getAgentDashboard` returns non-null on exactly that same condition, and is
-     consulted FIRST. Approved ⇒ the dashboard; not approved ⇒ notFound(). The player promo body
-     opens only under FEATURE_INVITE=ACTIVE, which exists so the dormant branch does not rot.
+     BOOK, NOT THE PLAYER BODY, and that is the task's whole finding: `getAgentDashboard` returns
+     non-null exactly when `approvedAt` is set, and is consulted FIRST. Approved ⇒ the dashboard.
+     ⚠️ 2026-09-25 — THE OTHER BRANCH IS NO LONGER `notFound()`. `PRODUCT_STATE.invite` is ACTIVE and
+     an ordinary player lands on the UNPAID share body (`docs/PLAYER-INVITE-UNPAID.md`). ⭐ THE
+     DECLARATION IS UNCHANGED AND THE REASON IS NOW BETTER: the filter rail still belongs to the
+     agent book, because the player body's list is their own friends — a name and a date, with
+     nothing to filter BY once the money columns are gone.
      ⚠️ THIS GATE IS A SOURCE CHECK, WHICH IS WHY THE ROUTE CAN BE DECLARED HERE AND NOT IN THE
      LIVE DRIVERS — those sign in as a demo PLAYER, who gets notFound() on this URL, so declaring
      it there would report a fixture gap as a broken rail. See the note in

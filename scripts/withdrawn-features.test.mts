@@ -87,7 +87,10 @@ function ok(label: string, cond: boolean, extra?: string) {
   // ⛔ WITHDRAWN, NOT COMING_SOON. A gilt "coming soon" badge is a PROMISE, and we are not
   // promising players this programme. If someone softens the constant back to COMING_SOON,
   // every entry point starts advertising again and this is the line that says so.
-  ok("§1 the state is WITHDRAWN, never COMING_SOON", inviteStateFor(player) !== "COMING_SOON");
+  // ⚠️ The LABEL said "the state is WITHDRAWN" — 26 lines after this section asserts it is ACTIVE.
+  // What the assertion actually pins is that the retired third state is unreachable, which is true
+  // whichever way the switch is set, so only the words were wrong.
+  ok("§1 the state is never COMING_SOON — the retired third state stays unreachable", inviteStateFor(player) !== "COMING_SOON");
 }
 
 // ── §2 · LAW 1 — THE REFUSAL IS NOT GATED ──────────────────────────────────
@@ -303,8 +306,11 @@ function ok(label: string, cond: boolean, extra?: string) {
 // they are never re-attributed). Every one of those pairs would keep accruing on the
 // recruit's next bet/deposit/settlement — the prize mode is enabled by default, and with the
 // bonus wallet withdrawn the reward now lands as REAL, WITHDRAWABLE CASH rather than a
-// played-through grant, plus an AFFILIATE notification and an email pointing at
-// /profile/invite, a page that no longer exists for that player.
+// played-through grant, plus an AFFILIATE notification and an email pointing at /profile/invite.
+// ⚠️ 2026-09-25 — that page EXISTS for the player again (the unpaid invite), so the sentence that
+// once read "a page that no longer exists for that player" is gone. The section's point is
+// unchanged and is now carried entirely by the money: a legacy PLAYER attribution still accrues
+// NOTHING, refused by `policyFor` with `player_rewards_withdrawn` rather than by a closed surface.
 // ⛔ So attribution and PAYMENT must read the same seam. This writes the legacy row directly,
 // exactly as the old code would have left it, and proves nothing accrues on it.
 //
@@ -470,9 +476,9 @@ function ok(label: string, cond: boolean, extra?: string) {
 
 // ── §6–§8 · PORTED FROM THE RETIRED `test:invite-coming-soon` ──────────────
 // ⭐ WHY THESE ARE HERE AND THAT SUITE IS GONE. It guarded the rule "Invite is COMING_SOON and
-// every surface says so from ONE switch". That rule is superseded — invite is WITHDRAWN, and its
-// switch moved from `invite-feature.ts` to `feature-state.ts` — so the suite went red on its own
-// premise. But its INTENT outlived its subject, and it is the intent worth keeping:
+// every surface says so from ONE switch". That rule is superseded — the switch moved from
+// `invite-feature.ts` to `feature-state.ts`, and the feature has since been WITHDRAWN (2026-09-06)
+// and re-opened UNPAID (2026-09-25) — so the suite went red on its own premise. But its INTENT outlived its subject, and it is the intent worth keeping:
 //   · one fact, one home;
 //   · ⭐ no entry point decides on its own — a POSITIONAL rule, not a file-level mention;
 //   · ⭐ the page guards BEFORE it mints a code.
@@ -573,7 +579,9 @@ function ok(label: string, cond: boolean, extra?: string) {
   }
 }
 
-// ── §9 · desk — THE FOURTH FEATURE, AND THE ONLY ONE THAT IS ACTIVE ───
+// ── §9 · desk — THE ONE FEATURE HERE THAT IS NOT A PLAYER SURFACE ───
+// ⚠️ The heading counted "the fourth feature, and the only one that is ACTIVE". The table holds
+// FIVE entries since 2026-09-25 (`invite` and `inviteRewards` split), and `invite` is ACTIVE too.
 //
 // ⛔ THE KEY IS `desk` AND THE OVERRIDE IS `FEATURE_DESK` — RENAMED FROM `houseBots` / `FEATURE_HOUSEBOTS`
 // on 2026-09-21 and NOT to be "corrected" back. `FeatureName`'s members are STRING LITERALS and

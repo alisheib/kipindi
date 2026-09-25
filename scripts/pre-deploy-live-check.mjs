@@ -347,7 +347,13 @@ if (LOCAL) {
    */
   await page.goto(BASE + "/profile/invite", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const inv = await page.locator("body").innerText();
-  ok(`invite renders the unpaid SHARE body for a PLAYER — code present`, /50PICK-/i.test(inv), inv.slice(0, 200));
+  // 🔴 THIS ASSERTED `/50PICK-/` AND COULD NEVER PASS. That is the AGENT prefix
+  // (`AGENT_CODE_PREFIX = "50PICK-AG-"`); a PLAYER's code is a friendly word built from their
+  // display name ("DEMOENDS"), and this script's persona is a PLAYER. A gate that cannot pass is
+  // not a gate — it is a permanent red that teaches people to ignore reds, which is the exact
+  // failure the paragraph above records this block committing once already. Asserted on the
+  // format-independent fact instead: a usable referral link.
+  ok(`invite renders the unpaid SHARE body for a PLAYER — link present`, /\/auth\/register\?ref=/i.test(inv), inv.slice(0, 200));
   ok(`invite gives the player a real referral link`, /\/auth\/register\?ref=/i.test(inv), inv.slice(0, 200));
   // ⛔ THE MONEY HALF. Every one of these is a sentence the PAID promo prints and the unpaid one
   // must not: the earned tile's label, the prize amount, the milestone wording, a commission rate,

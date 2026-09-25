@@ -46,6 +46,20 @@ export async function startRegisterAction(formData: FormData) {
       params.set("message", result.error);
     }
     if (safeNext) params.set("next", safeNext); // don't lose intent on a retry
+    /**
+     * 🔴 AND DON'T LOSE THE INVITER ON A RETRY EITHER. This redirect carried the phone, the email
+     * and the destination back — everything except the referral code — so the FIRST failed attempt
+     * (a mistyped password, a rate limit, an email already in use) silently orphaned the
+     * attribution: the hidden `ref` field re-rendered empty, the player corrected one character,
+     * succeeded, and nobody was ever credited with bringing them. A validation failure is the most
+     * common event on this form, so this was not an edge case; it was the common path.
+     * ⛔ Nothing is logged when it happens, either — an attribution that never existed leaves no
+     * trace to notice, which is why this survived unseen.
+     * ⭐ Already NORMALISED above (`normalizeReferralCode`), so a malformed code stays dropped and
+     * only a well-formed one is carried; the same value the successful branch would have used.
+     */
+    if (referralCode) params.set("ref", referralCode);
+    if (inviteCode) params.set("invite", inviteCode);
     redirect(`/auth/register?${params.toString()}`);
   }
 

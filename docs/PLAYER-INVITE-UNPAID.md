@@ -35,15 +35,27 @@ design.** See §4.
 
 - their code, the share card and a QR of the link, in **royal** — not gilt;
 - the link itself, with WhatsApp / system share / copy;
-- a dial and a tile counting **friends joined**;
-- the list of who joined — masked name and date;
+- a **dial** counting **friends joined** — and only the dial: the paid page's second stat tile is
+  dropped, because unpaid it printed the same number under the same words as the dial above it;
+- the list of who joined — masked name and date, newest first, capped at 50 with the cap **stated**
+  when the list is shorter than the count;
 - one line, in their own language, saying invites pay nothing:
   *"Inviting is sharing, not earning — 50pick pays no reward for invites. 18+."*
 
 Entry points reappear with neutral wording (avatar menu, the profile settings row, the top bar and
-the More rail). Market and position share links carry their `?ref=` code again, so a friend who
-taps a shared market and signs up is counted. On the register page the friend sees **"Invited by
-&lt;name&gt;"** and **no offer**.
+the More rail). On the register page the friend sees **"Invited by &lt;name&gt;"** and **no offer**.
+
+**Shared links — what carries a code and what does not, measured:**
+
+| Surface | Carries `?ref=` | Does it bind? |
+|---|---|---|
+| The player's own link from `/profile/invite` | yes — `/auth/register?ref=CODE` | **yes**, directly |
+| A market shared from the **market detail** page | yes | **yes** — the detail page's sign-up CTA now forwards `ref` into `/auth/register` (it used to rebuild the query from `next` alone and drop it, so every one of these was dead) |
+| A position shared from `/positions` | yes | **yes**, via the same market landing |
+| The small share icon on a market **CARD** | **no** | ⛔ it has never passed a code, for any programme — see §11 |
+
+⚠️ `?ref=` is read in exactly ONE place, `/auth/register`. Any future surface that appends a code
+to a link which does not land there must forward it, or it is decoration.
 
 ⛔ **What is NOT on the page, by construction:** the earnings ring, the "Earned" tile, the adaptive
 promise rows, the bonus-requirements list, the per-friend money column, the paid programme's
@@ -61,8 +73,13 @@ campaigns) and not `/admin/agents` (the paid agent programme; both untouched):
   top ten ranked by money earned; with the platform paying nothing that sorted on a column of
   zeros, and a top-ten cut is useless as a payables list — the eleventh person is not a rounding
   error, they are somebody who does not get paid;
-- KPIs: **Players inviting** (how many brought ≥ 1 friend, over every account) and **Paid by
-  50pick: 0**;
+- KPIs: **Total referrals** (summed from the SAME roster rows below it, so the headline and the
+  table can never disagree — it used to count the AGENT programme's recruits too), **Players
+  inviting** (how many brought ≥ 1 friend, over every account), and **Paid by 50pick**, which SUMS
+  what the platform has actually paid on this programme rather than printing a constant. It reads
+  TZS 0 while `inviteRewards` is WITHDRAWN, because no new accrual can be created — but if the
+  switch is ever flipped on and off again, or a legacy reward was paid before 2026-09-25, the tile
+  agrees with the Payout ledger on the same page instead of contradicting it;
 - a compliance note stating what is live and what switching it on would make it.
 
 ⛔ **Cash paid to an inviter outside the platform is recorded nowhere in 50pick.**
@@ -192,3 +209,24 @@ found real defects while being rewritten:
 ⚠️ `scripts/anchors/withdrawn-features.anchors.mjs` was **re-anchored**: the profile settings row no
 longer calls `inviteViewerFor` inline. An anchor that cannot inject is a control that has silently
 stopped controlling.
+
+## 11 · The one gap left open, and why it is a decision rather than a bug
+
+The **compact share icon on market CARDS** (`market-card.tsx` → `<ShareButton compact>`) passes no
+`refCode`. It never has, for any programme — the paid agent's card shares were equally uncounted.
+
+It is left that way deliberately:
+
+- wiring it needs the player's code on `/markets`, `/`, `/results` and `/watchlist` — the four
+  hottest pages in the product — and `ensureAffiliateAccount` **WRITES** a row on first call, so it
+  would put a database write on the busiest read path for a player who has never opened the invite;
+- it would also change **agent** attribution, which nobody asked for and which has money attached.
+
+⭐ The journeys that matter are covered without it: the player's own link from `/profile/invite`
+(the surface built for sharing) and a market shared from its **detail** page both land on
+`/auth/register` with the code intact — §2 measures the first, and the detail page's CTA was fixed
+to stop dropping the second.
+
+⛔ If it is ever wired, the code must reach `/auth/register` — appending `?ref=` to a link that
+lands anywhere else produces a code that cannot bind, which is worse than no code at all: the
+sharer believes they are being counted.

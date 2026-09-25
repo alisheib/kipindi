@@ -51,7 +51,8 @@ export async function computeAchievementShelf(userId: string) {
 
   // Defensive: never let the referral lookup crash the whole shelf render.
   // ⭐ An agent's count is their AGENT-stamped book (the population they were approved to
-  // bring in); a player's — only under re-enablement — is the player promo's.
+  // bring in); a player's is their own unpaid invite book, which since 2026-09-25 is the ordinary
+  // case rather than something reachable "only under re-enablement".
   let recruits = 0;
   if (showConnector) {
     try {

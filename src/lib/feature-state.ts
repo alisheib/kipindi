@@ -20,9 +20,14 @@
  *
  * ── WHY `WITHDRAWN` IS NOT `COMING_SOON` ─────────────────────────────────────
  * A gilt "coming soon" badge is a PROMISE. Invite wore one while it waited for sign-off.
- * Ali's call (this programme): normal players do not get Invite & Earn or the bonus wallet
- * at all, so the badge would advertise a programme we are withdrawing. `WITHDRAWN` renders
- * NOTHING — no entry point, no badge, no tooltip, no mention.
+ * Ali's call (2026-09-06): normal players do not get Invite & Earn or the bonus wallet at all, so
+ * the badge would advertise a programme we are withdrawing. `WITHDRAWN` renders NOTHING — no
+ * entry point, no badge, no tooltip, no mention.
+ * ⚠️ 2026-09-25 — THE INVITE HALF OF THAT CALL WAS REPLACED, and the paragraph above is kept as
+ * the reasoning, not as the current product: players DO have an invite again, as a SHARE that
+ * pays nothing (`invite` ACTIVE + `inviteRewards` WITHDRAWN). The bonus wallet sentence stands,
+ * and so does the rule itself — a state that is not part of the product renders nothing, and a
+ * state that is renders without a badge.
  * ⭐ **AND SINCE 2026-09-06 THE STATE IS GONE, NOT MERELY UNUSED.** This section argued the
  * case and then left `COMING_SOON` in the type, where an operator could still set it — and
  * setting it would have changed nothing, because no consumer ever distinguished it. The
