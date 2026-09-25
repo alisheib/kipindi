@@ -237,7 +237,13 @@ log("\n── 5b · fewer than a boardful close today ────────�
   // arrive in the old closing order — the fallback is STATED here, not left to emerge.
   const t1 = heroRow({ yesPool: 10_000, noPool: 10_000, bettableUntilMs: NOW + 4 * H });
   const t2 = heroRow({ yesPool: 15_000, noPool:  5_000, bettableUntilMs: NOW + 6 * H });
+  // 🔴 THE TAIL IS UNPRICED, AND IT USED TO BE THE HELPER’S 10k/10k DEFAULT — a perfectly
+  // contested 50%. That put this fixture in the one shape that could not fail: whatever the
+  // fallback did, every row it returned was already good. The lens then shipped with no price
+  // floor on that branch and the live board read 79 · 0 — · — while nine contested markets sat
+  // unshown. A fallback test whose fallback rows are all healthy tests nothing about a fallback.
   const later = [5, 3, 4, 6].map((d) => heroRow({
+    yesPool: 0, noPool: 0,
     bettableUntilMs: NOW + d * 24 * H, resolvesAtMs: NOW + (d + 1) * 24 * H }));
   const f = heroFigures([...later, t2, t1], NOW);
   const shown = [f.featured!, ...f.board];
@@ -253,9 +259,41 @@ log("\n── 5b · fewer than a boardful close today ────────�
   // board up, a reader would see a short board and no assertion above would notice, because they
   // all describe rows that ARE there. Only 2 markets close today against a board of 5, so a FULL
   // board is only possible if the tail came from outside the today set. Stated rather than implied.
-  ok("CONTROL: a full board here is only reachable through the fallback",
+  ok("⛔ the two priced markets still lead the unpriced tail",
+      shown[0]?.yesPct != null && shown[1]?.yesPct != null,
+      shown.map((r) => String(r.yesPct)).join(","));
+    ok("CONTROL: a full board here is only reachable through the fallback",
     f.closingToday < QUESTION_BOARD_SIZE + 1 && f.board.length === QUESTION_BOARD_SIZE,
     `today=${f.closingToday} board=${f.board.length} of ${QUESTION_BOARD_SIZE}`);
+}
+
+log("\n── 5c · the price-quality floor ───────────────────────");
+{
+  // The case the live board actually hit: degenerate markets closing SOON, contested ones closing
+  // LATER. Under the first lens the soon ones won every seat, because quality was never consulted
+  // outside the today group. Timing must not promote a market nobody can disagree about.
+  const soonDead  = heroRow({ yesPool: 1_000, noPool: 0, bettableUntilMs: NOW + 1 * H });   // 100%
+  const soonEmpty = heroRow({ yesPool: 0, noPool: 0, bettableUntilMs: NOW + 2 * H });       // no price
+  const soonZero  = heroRow({ yesPool: 0, noPool: 9_000, bettableUntilMs: NOW + 3 * H });   // 0%
+  const lateGood1 = heroRow({ yesPool: 36_000, noPool: 36_000, bettableUntilMs: NOW + 9 * 24 * H, resolvesAtMs: NOW + 10 * 24 * H });
+  const lateGood2 = heroRow({ yesPool: 53_000, noPool: 27_000, bettableUntilMs: NOW + 8 * 24 * H, resolvesAtMs: NOW + 9 * 24 * H });
+  const f = heroFigures([soonDead, soonEmpty, soonZero, lateGood1, lateGood2], NOW);
+  const shown = [f.featured!, ...f.board];
+  const deg = (r: { yesPct: number | null }) => r.yesPct == null || r.yesPct === 0 || r.yesPct === 100;
+  const firstDeg = shown.findIndex(deg);
+  const lastGood = shown.reduce((acc, r, i) => (deg(r) ? acc : i), -1);
+  ok("⛔ no degenerate market outranks a contested one, however soon it closes",
+    firstDeg === -1 || firstDeg > lastGood, shown.map((r) => String(r.yesPct)).join(","));
+  ok("the two contested markets take the first two seats",
+    !deg(shown[0]) && !deg(shown[1]), shown.map((r) => String(r.yesPct)).join(","));
+  ok("and the degenerate ones are still SHOWN rather than dropped",
+    shown.length === 5, String(shown.length));
+  // ⭐ CONTROL: without the floor the soonest three would lead, so this fixture tells the two
+  // orderings apart. If it ever stops doing so, everything above it proves nothing.
+  const soonest = [soonDead, soonEmpty, soonZero].map((r) => r.id);
+  ok("CONTROL: the soonest-closing three are NOT the first three",
+    !soonest.includes(shown[0].id) || !soonest.includes(shown[1].id),
+    shown.slice(0, 3).map((r) => String(r.yesPct)).join(","));
 }
 
 // ── 6 · an empty platform ──────────────────────────────────────────────────────

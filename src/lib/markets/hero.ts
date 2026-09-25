@@ -105,12 +105,34 @@ export function heroFigures(rows: readonly HeroRow[], nowMs: number): HeroFigure
   // The eyebrow's claim stays true — everything in the leading group is closing within 24h — and
   // the fallback is explicit rather than emergent: when fewer than five markets close today, the
   // rest of the open book follows in the old "closing soonest" order, so the board is never short.
-  const today = open.filter((r) => matchesStatus(r, "today", nowMs));
-  const todayIds = new Set(today.map((r) => r.id));
-  const ordered = [
-    ...sortRows(today, { sort: "close", dir: null }),
-    ...sortRows(open.filter((r) => !todayIds.has(r.id)), { sort: "closing", dir: null }),
-  ];
+  // 🔴 A PRICE-QUALITY FLOOR, ADDED AFTER THE FIRST VERSION SHIPPED AND FAILED IN PUBLIC.
+  // The first lens ordered the markets closing TODAY by distance from even and then topped the
+  // board up from the rest of the book by closing time. It guaranteed "never short" and never
+  // guaranteed "never degenerate" — so on a day when only two markets closed within 24h, three of
+  // the five seats came from the fallback, which had no price filter at all. Measured live on
+  // 2026-09-24 at 16:08: the board read 79 · 0 · — · — while NINE contested markets sat unshown,
+  // including 71% on TZS 72,000 and 66% on TZS 53,000. The defect the lens was written to remove
+  // walked back in through the branch the lens added.
+  //
+  // ⭐ QUALITY IS A PARTITION, NOT A SORT KEY, and it is applied BEFORE position. A market with no
+  // price and a market priced 0 or 100 are not "slightly worse" than a contested one — they are a
+  // different kind of thing to put in front of a first-time visitor, and no amount of closing
+  // sooner should promote them past a real question.
+  // ⛔ TIERED RATHER THAN FILTERED, so the board is never SHORT either. Within each tier the
+  // original lens still applies: closing today by distance from even, then the rest by closing
+  // time. A degenerate row can therefore still appear — but only once every contested market in
+  // the entire open book is already on screen, which is the honest ordering of a thin day.
+  const degeneracy = (r: HeroRow): number =>
+    r.yesPct == null ? 2 : (r.yesPct === 0 || r.yesPct === 100) ? 1 : 0;
+  const lens = (rows: readonly HeroRow[]): HeroRow[] => {
+    const today = rows.filter((r) => matchesStatus(r, "today", nowMs));
+    const todayIds = new Set(today.map((r) => r.id));
+    return [
+      ...sortRows(today, { sort: "close", dir: null }),
+      ...sortRows(rows.filter((r) => !todayIds.has(r.id)), { sort: "closing", dir: null }),
+    ];
+  };
+  const ordered = [0, 1, 2].flatMap((tier) => lens(open.filter((r) => degeneracy(r) === tier)));
 
   return {
     openCount: open.length,

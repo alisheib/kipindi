@@ -48,6 +48,20 @@ Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marke
 | **Since it was written** | ✅ Delivery receipts now WORK end to end — a production message was DELIVERED and its receipt settled the real row in 11 seconds. The plan was drafted when none had ever arrived; §3a replaces that premise, §3b carries the vendor's measured behaviour and the seven lessons from the eleven days it took |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit**. The tracker guard asserts the two doors agree |
 
+## ▶ 0b · THE LANDING PAGE'S TEN — `LANDING-TEN` · 🟢 **ENGINEERING COMPLETE 2026-09-24 · TWO OWNER DECISIONS REMAIN** · 12 of 14 gate classes at ZERO across 61 cells
+
+Ali, 2026-09-24: *"nothing less than 10 visually is accepted. not 9.99, only 10."*
+**▶ Record and rules: [`LANDING-TEN.md`](LANDING-TEN.md). Read it before touching `/`, and before trusting a green gate.**
+
+| | |
+|---|---|
+| **What shipped** | A five-critic panel scored `/` at 7.2/10 (design 8.1, content 6.9, display 6.7). The deliverable is an instrument, not a list of fixes: `npm run qa:landing-ten` — 14 classes over 61 cells (11 widths × 3 locales, plus first-visit / compact / reduced-motion / no-JS / client-hop / signed-in states, landscape and zoom), each class proved able to fail by a DELTA control |
+| **Where it stands** | **V11 368 → 0 · V12 1 → 0 · V7 2 → 0.** The hero now applies a price-quality floor, four routes got their share cards back, the settled strip holds its money column, and the market grid stops stretching single-column rows |
+| **⛔ NOT ENGINEERING** | **V3** (the chat bubble over live prices, 52–54 findings) and **V14** (the page does not render without JS, 2,108px against 7,361px) are both owner decisions — every remedy is a visible product trade. The gate does not reach zero and should not be forced to |
+| **Not this plan's** | The **book**: 42 of 59 open markets hold no money and the busiest has 7 predictors, which is what holds the two lowest critics at 6.5 for content. Needs `scope.products.polls` on with categories ticked, `scope.poolTotalMaxTzs` cleared from `0`, then the COUNTER workstream with Ali's caps. ⛔ Never `OPENER` on polls — it manufactures 0%/100% cards, the exact defect the panel marked the page down for |
+| **One bad record** | `mkt_ed8bf4f01932b46fa0be` is settled NDIO while its own officer evidence reads *"No… a total of 20 goals were scored"* — TZS 1,000 on NDIO against TZS 10,000 on HAPANA. One disagreement in 210 resolved markets. The landing page prints the record truthfully; the record is wrong |
+| **Rule** | The gate measures **production**, because a claim about what a page shows is a claim about its content. A failed read is reported unmeasured, never clean. And a green gate is not a 10 until the frames have been looked at |
+
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 
 Ali's go-live instruction, 2026-09-11. **▶ Record and runbook:

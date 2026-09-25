@@ -171,6 +171,28 @@ const CHECKS = /* js */ `(() => {
     return [...groups.keys()].sort((a, b) => a - b).map((k) => groups.get(k));
   };
 
+  /* The physical length of the LONGEST rendered line, in em. This is what "measure" actually
+     means — a reading column of roughly 30–40em — and a raw character count is only a proxy for
+     it. The proxy breaks in Swahili, whose words are long, and it breaks on UI chrome. */
+  const widestLineEm = (el, fpx) => {
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const rows = new Map();
+    let n;
+    while ((n = walk.nextNode())) {
+      const rg = document.createRange();
+      rg.selectNodeContents(n);
+      for (const r of rg.getClientRects()) {
+        if (r.height === 0 || r.width === 0) continue;
+        const k = Math.round(r.top);
+        const cur = rows.get(k) || { l: Infinity, r: -Infinity };
+        rows.set(k, { l: Math.min(cur.l, r.left), r: Math.max(cur.r, r.right) });
+      }
+    }
+    let w = 0;
+    for (const v of rows.values()) w = Math.max(w, v.r - v.l);
+    return w / (fpx || 16);
+  };
+
   /* ── colour, through a 1×1 canvas so oklch/color-mix survive ─────────────────────────────── */
   const cv = document.createElement("canvas"); cv.width = cv.height = 1;
   const cx = cv.getContext("2d", { willReadFrequently: true });
@@ -441,7 +463,21 @@ const CHECKS = /* js */ `(() => {
       const lines = lineWords(el);                              // real lines, not height / line-height
       if (!lines) continue;
       const cpl = Math.round(t.length / lines.length);
-      if (cpl > 75) bad.push({ what: "measure above 75 characters", measured: cpl + " chars/line over " + lines.length + " lines", where: sel(el) + ' "' + textOf(el) + '"' });
+      if (cpl <= 75) continue;
+      /* 🔴 THE CHARACTER COUNT ALONE CONDEMNED A NOTICE BAR THAT IS THE RIGHT SHAPE. The signed-in
+         email-verify bar renders "Thibitisha barua pepe yako ili kuweka fedha kwenye akaunti.
+         Tumekutumia kiungo." as ONE 79-character line beside its action button — 36em, squarely
+         inside the ideal 30–40em reading column. Capping it to 75 characters would WRAP a notice
+         bar onto two lines, which is worse than the thing being reported. Seen on production
+         2026-09-24 at 768 and 1280; the frame is what settled it, not the number.
+         ⛔ THE OBVIOUS FIX — skipping single-line elements — WOULD HAVE KILLED V7 OUTRIGHT. Its own
+         RED control plants ONE 3000px line at 6px, so lines.length < 2 makes the control, and
+         therefore the whole class, unable to fail. The control is what caught that.
+         So both conditions must hold: too many characters AND a line physically longer than any
+         reading column. 36em passes, the control’s ~500em does not. */
+      const em = Math.round(widestLineEm(el, parseFloat(s.fontSize)));
+      if (em <= 45) continue;
+      bad.push({ what: "measure above 75 characters", measured: cpl + " chars/line over " + lines.length + " lines (" + em + "em)", where: sel(el) + ' "' + textOf(el) + '"' });
     }
     push("V7", bad);
   }
@@ -839,7 +875,20 @@ async function runCell(browser, cell, plantKey = null, signedInState = null) {
       const home = page.locator('header a[href="/"]').first();
       if (!(await home.count())) throw new Error("no client-side route to / in the header — cannot reach loading.tsx");
       await home.click({ timeout: 10000, noWaitAfter: true }).catch(() => {});
-      await page.waitForTimeout(700);
+      /* 🔴 A BLIND 700ms MADE THIS CELL NON-DETERMINISTIC, AND A GATE THAT ANSWERS DIFFERENTLY ON
+         THE SAME INPUT CERTIFIES NOTHING. The hop starts on /markets, so until the route commits
+         the discovery bar is still mounted and CHECKS measures ANOTHER PAGE. Run three times on
+         one commit, this cell returned clean, clean, then V5:2 + V9:17 — all seventeen of them
+         a.kp-fchip inside nav.kp-thin-scroll, which is /markets chrome and does not exist on the
+         landing page (0 occurrences against 54). The two clean readings were luck, not evidence.
+         ⛔ SO WAIT FOR THE ROUTE TO COMMIT, NOT FOR A DURATION, and then PROVE the old route is
+         gone rather than assume it. If either never happens this throws, the cell is reported
+         unmeasured, and the matrix says so — a failed read is not a zero. */
+      await page.waitForFunction(() => location.pathname === "/", null, { timeout: 25000 });
+      await page.waitForTimeout(250);
+      if (await page.evaluate(() => !!document.querySelector(".kp-fchip"))) {
+        throw new Error("client hop measured /markets chrome: .kp-fchip still mounted after the route committed");
+      }
       const r0 = await page.evaluate(CHECKS);
       await page.screenshot({ path: join(OUT, `${cell.id}.png`) }).catch(() => {});
       await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
