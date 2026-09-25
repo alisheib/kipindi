@@ -374,9 +374,12 @@ unrecognised status token is recorded raw rather than guessed. Observed so far:
 ⚠️ **Cloudflare's Browser Integrity Check answers `403 error 1010` to `Java/1.x` user
 agents.** A Configuration Rule (2026-09-16) turns it off for `/api/webhooks/*` only — keep
 it, or every server-to-server webhook from a Java 8 caller is refused before the app sees
-it. 🔴 Even with it, no Blackball delivery callback has reached production yet; the cause
-is on their side. Railway keeps HTTP logs only for the CURRENT deployment. Live state, the
-go-live order and the open vendor questions: `docs/BLACKBALL-SMS.md`.
+it. ✅ Delivery receipts WORK end to end since 2026-09-23: the gateway fires them by itself,
+echoes our `sms_…` reference, and settles the real `SmsMessage` row (11 s on the first
+production send). Railway keeps HTTP logs only for the CURRENT deployment — the audit chain
+is the durable record. Live state, the go-live order and the open vendor questions:
+`docs/BLACKBALL-SMS.md`. Marketing/broadcast SMS is a separate programme that ships CLOSED:
+`docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`.
 
 ## Persistence
 
@@ -583,14 +586,17 @@ full set (36 routes, all double-gated out of production).
   retained: **trust the tokens, not the name** — and never the superseded teal
   kit, which would revert the brand to teal 215 and resurrect the killed light
   theme (audit C9).
-- The Tanzania licensing path (Gaming Board of Tanzania) and the Selcom
-  payment + SMS aggregator are real prerequisites. Don't ship paid flows
-  before both are signed.
+- The Tanzania licensing path (Gaming Board of Tanzania) and the payment
+  aggregator (Selcom) are real prerequisites. SMS is a separate vendor —
+  Blackball, live since 2026-09-16 (`docs/BLACKBALL-SMS.md`).
 
 ## Open hard blockers before public launch
 
-1. **SMS contract** (no OTP delivery in production right now — currently
-   on `console` provider so OTP codes print to stdout).
+1. ~~**SMS contract**~~ — ✅ DONE 2026-09-16/23: Blackball is live
+   (`SMS_PROVIDER=blackball`) and delivery receipts settle real rows. *(This
+   line said OTP was still on `console`, corrected 2026-09-25.)* Marketing
+   SMS additionally needs the Gaming Board's written approval — see
+   `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §4a OQ1.
 2. **GBT pre-application meeting** (regulator confirmation that the
    pari-mutuel pool model classifies as betting under their license).
 3. **Mobile-money aggregator agreement** — deposit / withdrawal flows

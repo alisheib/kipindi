@@ -192,7 +192,11 @@ receipt is explicitly inert, and an empty callback writes nothing to the audit c
 
 ---
 
-## 4 · 🔴 The delivery callback has never reached production
+## 4 · The delivery callback — eleven days of silence, then ✅ proven on a real row (§4.7, §4.8)
+
+> ⚠️ **Struck 2026-09-25 (marketing S6): this heading read "🔴 The delivery callback has never reached
+> production".** That stopped being true on 2026-09-23 (§4.7, §4.8). §4.1–§4.6 are kept as the RECORD of
+> how the fault was found; read them as history, not as the current state.
 
 ### 4.1 Cloudflare was blocking Java 8 callers — fixed
 
@@ -246,8 +250,8 @@ Drive step 3 sent `sms_20c944fc48d687f677f532de` (to the test handset) and `sms_
   no receipt row on production, across 18 polls over the following 6 minutes — although earlier messages
   were delivered in 2 seconds and the vendor says it retries 5 times.
 
-So the callback is not being attempted against our URL at all. The questions in §8 item 1 are the ones
-that decide it.
+So the callback is not being attempted against our URL at all. *(The questions this pointed to were
+answered by §4.6–§4.7 and have left §8.)*
 
 ### 4.4 Re-tested 2026-09-21, after "we whitelisted the URL" — still nothing
 
@@ -404,23 +408,15 @@ existed only to create one real row. ⚠️ `curl` is not a reliable check on th
 while a browser was being redirected to `/auth/login`, because the redirect is streamed. Check it with a
 browser, not a status code.
 
-⚠️ **ONE INSTRUMENT IS STILL MISSING, AND IT IS THE LAST PLACE A BLOCK COULD HIDE.** Railway's HTTP log
-sits BEHIND Cloudflare, so a request Cloudflare refuses never appears in it — identical, from here, to a
-request never made. The BIC configuration rule (§4.1) covers only that one check; **Bot Fight Mode** is a
-zone-level toggle that no rule can exempt and it targets exactly this kind of automated POST. ⛔ Before
-any further paid send: read Cloudflare **Security → Events** filtered on `/api/webhooks/blackball`, and
-check **Security → Bots**. Owner action — Cloudflare zone changes are Ali's to approve.
+⚠️ **Two facts about the instruments, still true, so an empty result is never over-read.** Railway keeps
+HTTP logs only for the CURRENT deployment, so an empty log after a restart proves nothing about earlier
+hours — the DB audit rows are the durable evidence. And a callback that reaches us with a wrong token
+still WRITES a row (`webhook.blackball.rejected`), so "nothing at all" means the request was not made,
+not that it was refused.
 
-So the remaining fault is entirely inside their platform: the delivery callback is not being fired for
-our account. What to ask for next is in §8 item 1 — and the cheapest decisive test is to have them post
-one receipt to the URL by hand while we watch, which distinguishes "cannot reach us" from "never fires".
-
-⚠️ **Two facts about the instruments, so an empty result is never over-read.** Railway keeps HTTP logs
-only for the CURRENT deployment (this one had restarted 15 minutes earlier, so its log was empty of
-history and proves nothing about earlier hours); the DB audit rows are the durable evidence and they
-cover 48 hours. And a callback that reached us with a wrong token would still WRITE a row
-(`webhook.blackball.rejected`) — so "nothing at all" means the request is not being made, not that it is
-being refused.
+*(Removed 2026-09-25, marketing S6: two paragraphs written before the fix that sat under this proof as
+if the callback still never fired — a "check Cloudflare Security → Events / Bots before any paid send"
+action, and "the remaining fault is entirely inside their platform". Both were overtaken by §4.6–§4.8.)*
 
 ---
 
@@ -466,8 +462,8 @@ Each step is independently reversible, and none of the later ones is safe withou
 1. ✅ **Code lands with `SMS_PROVIDER=console`.** Nothing changes for players.
 2. ✅ **DLR secret in Railway; API configuration and callback URL saved in the portal.**
 3. ✅ **Live drive step 1** — `npm run live:blackball -- --step 1 --confirm`. Delivered.
-4. ◐ **Cloudflare: Browser Integrity Check off for `/api/webhooks/*`** ✅ (§4.1). A real receipt
-   landing ⬜ — blocked on Blackball (§4.2, §8 item 1).
+4. ✅ **Cloudflare: Browser Integrity Check off for `/api/webhooks/*`** (§4.1), and a real receipt has
+   landed — 2026-09-23, settling a production row (§4.8).
 5. ✅ **Railway: credentials, `SMS_SENDER_ID=50pick`, `SMS_PROVIDER=blackball`.** Safe before step 4:
    measured 2026-09-16, production has **zero** phone invite entries, `bonus` is `WITHDRAWN` with no
    `FEATURE_BONUS` override (so `sendCampaign` refuses before SMS), and `OTP_ENABLED` is unset — both
@@ -477,8 +473,8 @@ Each step is independently reversible, and none of the later ones is safe withou
      wired only to `startLoginAction` / `startRegisterAction` (password); nothing links or redirects
      into `/auth/otp` except the unwired OTP actions themselves. Flipping it would only expose an
      orphan page — an unlinked way to trigger paid sends, for no player benefit.
-   - The preconditions below are not met: no genuine receipt has reached production, and TZS 232 is
-     about 38 messages.
+   - Of the preconditions below, the receipt is met (§4.8); the balance is not — it covers only a few
+     dozen messages (re-read it from `/api/health`; never trust a figure written here).
 
    **Offering phone-code login is a product change, not a variable:** a "send me a code" option on
    `/auth/login` (and register), inside the frozen design system, in EN + SW + ZH, with the visual
@@ -511,22 +507,22 @@ example) · callbacks retry **5 times** on a non-200 · **three** sender IDs are
 authenticated by its token · the send-success question was answered with a callback example instead; not
 needed, the success body was measured (§1.3).
 
-1. 🔴 **Is the status callback enabled for `50pick-production`, and has our URL been whitelisted?**
-   Three messages were delivered and no callback POST ever reached us — even after the Cloudflare fix.
-   Did their side log an attempt, and what response did it get? Was the 14:42 UTC GET from
-   154.74.190.103 their check (it got 405; the URL now answers GET with 200)? Which User-Agent does the
-   callback send? *(§4)*
-2. Can they **resend** the callbacks for the three messages, and do callbacks **retry** on a non-200?
-   Does the callback echo **our `reference`** (the portal's Ref column shows the client id instead)?
-3. ~~Egress IP addresses~~ — not needed (answered 2026-09-17).
-4. The status list is answered; still open: **`DELIVRD` or `DELIVERD`** in a real callback, and the
-   `CODE` value that accompanies each failure token.
-5. Billing per **segment** for UCS2 (70 chars) and long GSM7 messages.
-6. Must `reference` be **unique forever** on the account; what does a duplicate do?
-7. Any **rate limit** on `/api/sms/send`.
-8. The **exact strings of the three whitelisted sender IDs**, confirmation they are **TCRA-registered**, and
+**Answered by the rail itself, 2026-09-23 (§4.7–§4.8):** the callback is enabled and fires on its own
+(the fault was the missing `?token=` on the URL they had saved, §4.5–§4.6) · it echoes OUR `sms_…`
+reference · a backlog arrives as ONE batched POST · the status token is spelled `DELIVRD`.
+*(Removed 2026-09-25, marketing S6: items 1, 2 and the spelling half of 4 still asked whether the
+callback was enabled and claimed "no callback POST ever reached us" two days after one had.)*
+
+**Still open (none of it blocking):**
+
+1. The `CODE` value that accompanies each failure token (only `DELIVRD` / `CODE 0` has ever arrived).
+2. Billing per **segment** for UCS2 (70 chars) and long GSM7 messages — the portal's `COUNT` column is
+   the segment count, but the vendor has not confirmed the price per segment.
+3. Must `reference` be **unique forever** on the account; what does a duplicate do?
+4. Any **rate limit** on `/api/sms/send`.
+5. The **exact strings of the three whitelisted sender IDs**, confirmation they are **TCRA-registered**, and
    whether they are case-sensitive.
-9. The **interval** between the 5 callback retries.
+6. The **interval** between the 5 callback retries.
 
 Answered already: sender ID, price, success body, `coding` values, balance endpoint.
 
