@@ -17,7 +17,7 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 | **Live state rule** | The broadcast surface ships **built and CLOSED**. Dispatch refuses until a Gaming Board advertising approval is recorded (§5.1). Contacts, compose, preview, estimate and test-send-to-self all work meanwhile |
 | **Evidence** | `.qa-shots/marketing-setup/<unit>/…` (gitignored). ⛔ A `shots/…png` path may only be written into a doc in the commit that also commits the PNG |
 | **Tracker guard** | `npm run test:marketing-setup-plan` · red control `npm run red:marketing-setup-plan` (the same file, `--prove-red`, plants in memory) |
-| **Cadence** | **TWO units per session** (Ali's standing cadence). 52 units → 26 sessions |
+| **Cadence** | **TWO units per session** (Ali's standing cadence). 52 units → 27 sessions (S5 closed U8's carried-over half, §10) |
 | **Priority** | The Mobile Visual Plan keeps `NEXT-PLAN.md` ▶ 0 START HERE. This programme is ▶ 0a and runs when Ali says so, on any machine |
 
 ---
@@ -844,8 +844,8 @@ text. The one-line summaries are in §1; what follows is what each one actually 
   rather than removing them. **U5**
 - **D7 · There is no SMS suppression list.** **U6**
 - **D8 · `marketingOptIn` carries no channel, no wording, no evidence and no history.** **U6**
-- **D9 · `isLockedOut` lifts itself** when the chosen period elapses (`responsible-gambling.ts:382`), so a
-  24-hour self-exclusion is marketable 25 hours later. **U10**
+- **D9 · `isLockedOut` lifts itself** when the chosen period elapses (`responsible-gambling.ts`,
+  `isLockedOut`), so a 24-hour self-exclusion is marketable 25 hours later. **U10**
 - **D10 · `push-service` gates on that same predicate** and inherits the lift. Filed here; changed only
   by owner ruling. **U10**
 - **D11 · No age check anywhere on outbound messaging.** **U11**
@@ -1152,7 +1152,7 @@ next dispatch.
 ⛔ **SCOPE CORRECTED BEFORE BUILDING (S4), because this unit's premise fails twice over.**
 ① **There is no recipient row to hang a token on.** `SmsCampaign` does not exist; `InviteCampaign` /
 `InviteEntry` (`schema.prisma:783,806`) are the unrelated referral system and carry no token. The
-recipient table is U35 (S18) and the minting is U42 (S21) — both far downstream of S4. Worse, U35's own
+recipient table is U35 (S19) and the minting is U42 (S22) — both far downstream of S4. Worse, U35's own
 field list in this plan names no opt-out token column at all (the `claimToken` there is U43's slice
 token). So U8 ships **its own** token store, keyed by token and mirroring `Suppression`'s triple, which
 U42 later writes into at enqueue.
@@ -1177,22 +1177,74 @@ recipient row — a person who is never messaged and never appears as a failure.
 sent to Google in a page path); `/s` must stay OUT of `PROTECTED_PREFIXES` (`proxy.ts:40`) or the no-login
 promise breaks; and every player lookup goes through `userPhoneKeyFor` (U7), never a bare `findByPhone`.
 
-**U9 · The gate runs in the loop, and the proof of it** — `test:marketing-consent`
+**U9 · The gate runs in the loop, and the proof of it** — `test:marketing-consent` — BUILT S6, RE-SCOPED
 The unit is the guard: a fixture that opts out **between** slice one and slice two, and must not receive
 slice two's message.
 **RED:** hoist the gate to list-build time → the suite must fail. ⭐ If it still passes, the suite was
 testing the list, not the send, and the control has found the worse defect.
 **Accept:** the mid-send opt-out fixture is red before the in-loop gate exists and green after.
 
-**U10 · The marketing RG predicate** — `src/lib/server/marketing/rg.ts` (D9, D10)
-`marketingRgStanding(userId)` built on `selfExclusionStanding` (⛔ not `isLockedOut`, which is not
-modified), cooling-off, and `detectHarmMarkers`, with six-months-minimum semantics and a fresh
-post-restoration consent required. Each refusal carries its own skip reason and an audit line matching the
-`push.suppressed.rg_lockout` precedent. D10 is filed as an owner item, not silently changed.
-**Guard:** `test:rg-doors` + `test:marketing-consent`.
+⛔ **RE-SCOPED BEFORE BUILDING (S6), BECAUSE THE PREMISE FAILED — and not the way the plan guessed.** There
+is no send loop to put a gate in: nothing loops over marketing recipients, `mayReceiveMarketingSms` has no
+caller outside tests, `SmsPurpose` has no `MARKETING` (D22) and `SmsMessage` has no `skipped` status. ⚠️ The
+loop is not U35 either, as §0 said — U35 is the tables; the loop is **U43** ("the slice", `engine.ts`).
+So U9 does not wrap a gate round nothing. It ships **the innermost step of U43's loop** —
+`dispatchSlice` in `src/lib/server/marketing/dispatch.ts`: the gate asked per recipient IMMEDIATELY before
+ONE send, a refusal `skipped` (never `failed`), results settled by KEY (never by position), a shop-wide
+refusal or an unanswerable gate `held` (nothing about the person was decided — U43 returns it to PENDING),
+a thrown transport `unconfirmed` (never retried by itself, OD23), and the RG audit line
+`marketing.suppressed.rg` written HERE, when a refusal is acted on (an audience count asks the same gate and
+must not write). ⛔ `send` has NO default — until U35 gives the wire an honest purpose, nothing in
+production can reach it through this step. And **the loop contract**: a real two-slice drive in which three
+people change their minds between the slices through the REAL acts (`stopMarketing`, `selfExclude`,
+`coolOff`), the wire answering in reverse order. ⭐ **U43 inherits it: its engine joins the contract as a
+second DRIVER and must pass the same assertions** — this is the proof U9 promised, waiting for its loop.
+**Measured:** the hoisted driver sends the opted-out number (red), `dispatchSlice` does not (green) ·
+`test:marketing-consent` 20 → 36 · `red:marketing-consent` 8 → 13 (loop: hoisted gate · settle by
+position · skip recorded as failed · unanswerable gate sends · RG refusal unaudited), each on its own
+assertion, after the shipped step and the defect-free model both pass the contract first.
+
+**U10 · The marketing RG predicate** — `src/lib/server/marketing/rg.ts` (D9, D10) — BUILT S6
+`marketingRgStanding(user, identifier)` built on the ONE standing definition (⛔ not `isLockedOut`, which is
+not modified), cooling-off, and `detectHarmMarkers`, with six-months-minimum semantics and a fresh
+post-restoration consent required. Each refusal carries its own skip reason; the audit line matching the
+`push.suppressed.rg_lockout` precedent is written by the LOOP when it acts on the refusal (U9), never by
+the predicate — an audience count must not write to the chain. D10 is filed as an owner item, not silently
+changed.
+**Guard:** `test:rg-doors` §8 + `test:marketing-consent`.
 **RED:** plant a player whose standing is `minimum_served` — a control planting only `serving` would pass
 today and prove nothing.
 **Accept:** a player who self-excluded for 24 hours a year ago is still refused.
+
+⭐ **WHAT SHIPPED, AND THE FOUR PREMISES IT HAD TO CORRECT (S6, 2026-09-25):**
+① **U7's "deciding must not write" fix was half a fix.** It skipped `selfExclusionStanding` when no RG row
+existed — but on an EXISTING row that call still goes through `getRgSettings` → `effectivize`, which
+REWRITES the row whenever a pending limit change has come due (and, on the memory store, mutates the live
+object). The predicate now reads `db.responsible.get` and computes from the raw row through
+`selfExclusionStandingOf`, the pure half split out of `selfExclusionStanding` so there is still ONE
+definition — and `red:rg-doors`' existing `minimum_served` mutation now reaches marketing too.
+② **Cooling-off was already refused for ever — under the wrong reason.** Nothing ever clears `COOLED_OFF`,
+so U7 refused anyone who had ever taken even a one-hour break as `account_status`. ⭐ RULED ON DELEGATION: a
+break is standing for marketing — refused while it runs, and after it until the player consents again
+AFTER it ended; only then is the `COOLED_OFF` status admitted. (Betting still reads the timer, by design.)
+③ **The restore leaves no column.** `restorePlayerAction` writes only the audit row
+`rg.self_exclusion.reopened`, so that is what the predicate reads (`getAuditForTargetsDurable`, one indexed
+query, only for a player who has consented and served the minimum). A restore must postdate the latest
+`rg.self_exclusion.activated`; six months are six CALENDAR months and never under 182 days (the platform's
+"6m" is 182 days, shorter than some half-years), counted from the last activation or, without one, from the
+END date — the safe direction; and the consent must postdate the restore. Missing record → refuses.
+④ **Harm markers are NOT standing, and the plan's wording cannot be met as written.** Nothing persists a
+harm flag (no table, no namespace, no audit action — a code comment claiming otherwise was corrected), so a
+marker refuses for as long as its detector's window, ≤ 8 days. A check that cannot be read REFUSES (the
+compliance panel's `.catch(() => [])` turns a failed read into "no flags"). Standing harm markers need a
+persisted, officer-reviewed flag store — an owner item in §0, not invented here.
+⭐ **And U7's order was not §5.6's.** It asked self-exclusion before consent; the gate now asks suppression →
+consent → self-exclusion → cooling-off → harm markers → status, which also keeps the 10,000-transaction harm
+scan off every non-consenting player.
+**Measured:** `test:rg-doors` 54 → 91 (§8: 37 assertions, 4 mutually exclusive outcomes as a property, both
+lifts proven to EXIST) · `red:rg-doors` 11 → 19 mutations, each caught by its own named check, tree restored
+· `test:marketing-consent` 15 → 20 · `red:marketing-consent` 5 → 8, three of the plants being U7's SHIPPED
+shapes (the half-fix that still wrote, RG before consent, the permanent break refusal).
 
 **U11 · 18+** — the loop (D11)
 Account-linked: `dob` must yield ≥18 at send time. Contact-only: marketable solely when the import
@@ -1501,6 +1553,11 @@ shop-wide fact. Slice budget ≤50 recipients or 10 s, re-derived in U52.
 **Guard:** `test:marketing-engine`. **RED:** ⭐ five concurrent drivers over 1,000 rows must produce exactly
 1,000 sends — a single-driver test passes with or without the conditional claim, which is why the control
 is concurrent; and removing the unique index must fail it.
+⭐ **And U9's loop contract (added S6):** the "GATE each claimed row immediately before dispatch → ONE
+`sendBatch` → settle by `targetId`" middle of this slice already exists as `dispatchSlice` (U9) — call it,
+do not rewrite it — and the engine joins `test:marketing-consent`'s U9 section as a second DRIVER, passing
+the same assertions (an opt-out, a self-exclusion and a break between two slices never reach the wire).
+It supplies the real `send`, with `purpose: "MARKETING"` from U35.
 
 **U44 · The pump** — `src/lib/server/marketing/pump.ts` (OD19, OD20)
 Its own timer and its own leader lease, started from `instrumentation.register()`, yielding whenever the
@@ -1607,28 +1664,34 @@ removed — the refusal is the evidence, not the send.
 | S2 | U3 · U4 | the counter and the envelope: what a message costs and what it must contain |
 | S3 | U5 · U6 | one helpline; the ledger and the suppression list |
 | S4 | U7 · U8 | the gate, and the way out of it (a gate with no exit is not lawful) |
-| S5 | U9 · U10 | prove the gate runs in the loop; the RG predicate |
-| S6 | U11 · U12 | age, and the published promise reconciled |
-| S7 | U13 · U14 | the window and the cap |
-| S8 | U15 · U16 | one send path; erasure and retention reach the new stores |
-| S9 | U17 · U18 | the route exists; the book exists |
-| S10 | U19 · U20 | masked by construction, then the list |
-| S11 | U21 · U22 | filters, then one contact |
-| S12 | U23 · U24 | bulk, then the one resolver it proves |
-| S13 | U25 · U26 | CSV and vCard |
-| S14 | U27 · U28 | XLSX + the boundary guard; the field list |
-| S15 | U29 · U30 | staging, then the pre-flight it makes resumable |
-| S16 | U31 · U32 | `decide()`, then the loop that executes it |
-| S17 | U33 · U34 | consent basis; export (and the round trip that proves both) |
-| S18 | U35 · U36 | campaign models (enum migration first), then the list |
-| S19 | U37 · U38 | composer and audience — read together or not at all |
-| S20 | U39 · U40 | the estimate, then the confirmation that quotes it |
-| S21 | U41 · U42 | authorisation, then the enqueue it guards |
-| S22 | U43 · U44 | the slice, then the pump that drives it |
-| S23 | U45 · U46 | scale, then receipts |
-| S24 | U47 · U48 | the live page, then its results |
-| S25 | U49 · U50 | budget; declarations |
-| S26 | U51 · U52 | the guide, then the live drive and the Seal |
+| S5 | U8 (second half) | carried over: S4 shipped U8's store and stopped rather than half-apply the `liftedAt` decision |
+| S6 | U9 · U10 | prove the gate runs in the loop; the RG predicate |
+| S7 | U11 · U12 | age, and the published promise reconciled |
+| S8 | U13 · U14 | the window and the cap |
+| S9 | U15 · U16 | one send path; erasure and retention reach the new stores |
+| S10 | U17 · U18 | the route exists; the book exists |
+| S11 | U19 · U20 | masked by construction, then the list |
+| S12 | U21 · U22 | filters, then one contact |
+| S13 | U23 · U24 | bulk, then the one resolver it proves |
+| S14 | U25 · U26 | CSV and vCard |
+| S15 | U27 · U28 | XLSX + the boundary guard; the field list |
+| S16 | U29 · U30 | staging, then the pre-flight it makes resumable |
+| S17 | U31 · U32 | `decide()`, then the loop that executes it |
+| S18 | U33 · U34 | consent basis; export (and the round trip that proves both) |
+| S19 | U35 · U36 | campaign models (enum migration first), then the list |
+| S20 | U37 · U38 | composer and audience — read together or not at all |
+| S21 | U39 · U40 | the estimate, then the confirmation that quotes it |
+| S22 | U41 · U42 | authorisation, then the enqueue it guards |
+| S23 | U43 · U44 | the slice, then the pump that drives it |
+| S24 | U45 · U46 | scale, then receipts |
+| S25 | U47 · U48 | the live page, then its results |
+| S26 | U49 · U50 | budget; declarations |
+| S27 | U51 · U52 | the guide, then the live drive and the Seal |
+
+⚠️ **Relabelled 2026-09-25 (S6).** This table said S5 = U9 · U10 while §0 called them S6's pair — off by one
+since S4 carried U8 into S5. Every row from S5 on moved down one; the pairings are unchanged. ⚠️ §2 rows
+written before this date are a log and keep the OLD labels (S4's row says "U35 (S18)", "U42 (S21)") —
+read them as S19 and S22.
 
 ⚠️ U30, U43 and U47 are the three most likely to overrun. If one will not fit, **split it before starting**
 and write the split into §2 — a half-built unit is worse than a smaller one.

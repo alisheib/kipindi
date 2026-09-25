@@ -1,24 +1,29 @@
 import { db } from "@/lib/server/store";
 import type { MessagingKey } from "@/lib/server/store";
 import { toMsisdn255 } from "@/lib/phone-normalize";
-import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
+import { marketingRgStanding } from "@/lib/server/marketing/rg";
 
 /**
  * U7 · THE ONE GATE. Nothing sends a marketing SMS without asking this first.
  *
- * ⭐ ITS ORDER IS THE LAW'S ORDER, NOT A CONVENIENCE (§5.6, OD11): suppression is asked
- * BEFORE consent. Somebody who said stop has said stop, and a stale consent row must never
- * out-argue that — which is exactly what happens if the two are swapped, because a withdrawn
- * person usually still has the consent row they gave you last year.
+ * ⭐ ITS ORDER IS THE LAW'S ORDER, NOT A CONVENIENCE (§5.6, OD11): suppression → consent →
+ * self-exclusion → cooling-off → harm markers, then account status. Suppression is asked BEFORE
+ * consent: somebody who said stop has said stop, and a stale consent row must never out-argue that
+ * — which is exactly what happens if the two are swapped, because a withdrawn person usually still
+ * has the consent row they gave you last year.
+ * ⚠️ Corrected at U10 (2026-09-25): this docblock said "ordered exactly as §5.6" while the code
+ * asked self-exclusion BEFORE consent. The outcome is a refusal either way; the difference is COST —
+ * harm markers read up to 10,000 transactions, and asking them before consent would scan every
+ * non-consenting player on the platform, which on day one is nearly everyone.
  *
  * ⛔ A CONTACT-BOOK ROW CAN NEVER OVERRIDE A PLAYER'S OWN "NO". When the number belongs to a
- * `User`, that user governs and the ledger is not consulted at all. An imported spreadsheet
+ * `User`, that user governs and the ledger is not consulted for permission. An imported spreadsheet
  * cannot re-permit somebody who turned the toggle off (OD10).
  *
- * ⚠️ WHAT THIS UNIT DOES **NOT** DECIDE, so nobody reads a false completeness into it:
- * cooling-off and harm markers (U10), age (U11), the frequency cap (U14), the send window
- * (U13) and the Board's approval (U41) are separate gates in the loop. This one answers
- * suppression, consent, self-exclusion standing and account status.
+ * ⚠️ WHAT THIS GATE DOES **NOT** YET DECIDE, so nobody reads a false completeness into it: age (U11),
+ * the frequency cap (U14), the send window (U13) and the Board's approval (U41) are separate steps.
+ * ⛔ AND IT IS ASKED BY THE LOOP, NOT BY A LIST: `dispatch.ts` (U9) asks it per recipient immediately
+ * before the send, so somebody who opts out in minute two does not receive minute four's message.
  */
 
 /** ⭐ Named, and each value is a `skipped` reason — never a failure (§5.6). A refusal is the
@@ -29,14 +34,18 @@ export type MarketingSkipReason =
   | "no_consent"
   | "consent_withdrawn"
   | "rg_self_excluded"
+  | "rg_cooling_off"
+  | "rg_harm_marker"
   | "account_status";
 
+/** `userId` is set on every refusal the PLAYER branch makes, so the loop can write the RG audit line
+ *  against the account (§5.14 — never against a phone number). */
 export type MarketingGateVerdict =
   | { ok: true }
-  | { ok: false; skipReason: MarketingSkipReason; detail: string };
+  | { ok: false; skipReason: MarketingSkipReason; detail: string; userId?: string };
 
-const refuse = (skipReason: MarketingSkipReason, detail: string): MarketingGateVerdict =>
-  ({ ok: false, skipReason, detail });
+const refuse = (skipReason: MarketingSkipReason, detail: string, userId?: string): MarketingGateVerdict =>
+  (userId ? { ok: false, skipReason, detail, userId } : { ok: false, skipReason, detail });
 
 /**
  * 🔴 THE TWO PHONE FORMATS THIS PLATFORM ACTUALLY HAS, AND WHY THIS FUNCTION EXISTS.
@@ -88,32 +97,27 @@ export async function mayReceiveMarketingSms(msisdn: string): Promise<MarketingG
   // ── 2 · IF THE NUMBER BELONGS TO A PLAYER, THE PLAYER GOVERNS ───────────────────────────
   const user = await Promise.resolve(db.user.findByPhone(userPhoneKeyFor(identifier)));
   if (user) {
-    // ⛔ `selfExclusionStanding`, NEVER `isLockedOut` (OD12, D9). `isLockedOut` LIFTS ITSELF
-    // when the chosen period elapses, so a 24-hour self-exclusion would be marketable 25 hours
-    // later. `minimum_served` is refused for exactly that reason: the period ending is not the
-    // person asking to be marketed again. ⚠️ U10 adds cooling-off, harm markers and the
-    // fresh-consent-after-restoration rule on top of this; it does not replace it.
-    // 🔴 THE ROW IS READ BEFORE THE PREDICATE IS ASKED, AND THAT IS NOT A MICRO-OPTIMISATION.
-    // `selfExclusionStanding` → `getRgSettings`, which ends in `await db.responsible.upsert(fresh)`
-    // (`responsible-gambling.ts:90`) for any user who has no row yet. So ASKING THE QUESTION
-    // WRITES. This gate runs once per recipient, and §3c's audience is 150,000 — a single
-    // campaign would have created up to 150,000 ResponsibleGambling rows on a live money
-    // platform as a side effect of deciding not to message people.
-    // ⛔ No row means no `selfExclusionUntil` has ever been set, which IS standing "none", so the
-    // early-out is exact rather than an approximation — and it is deliberately NOT a second copy
-    // of the predicate's logic. `test:marketing-consent` asserts the gate creates no row.
-    const hasRgRow = (await Promise.resolve(db.responsible.get(user.id))) !== null;
-    const rg = hasRgRow ? await selfExclusionStanding(user.id) : ({ state: "none" } as const);
-    if (rg.state === "serving" || rg.state === "minimum_served") {
-      return refuse("rg_self_excluded", `self-exclusion ${rg.state} (until ${rg.until})`);
-    }
-    if (!MARKETABLE_STATUS.has(user.status)) {
-      return refuse("account_status", `account is ${user.status}`);
-    }
-    // OD8 · the profile screen says the toggle means this, in the shipped wording, so the
-    // boolean IS the player's consent.
+    // ── 2a · CONSENT — OD8 · the profile screen says the toggle means this, in the shipped
+    // wording, so the boolean IS the player's consent. Asked before RG because it is one field
+    // already in hand, and the RG step below is the costly one.
     if (user.marketingOptIn !== true) {
-      return refuse("no_consent", "the player's own marketing toggle is off");
+      return refuse("no_consent", "the player's own marketing toggle is off", user.id);
+    }
+    // ── 2b · RG STANDING — self-exclusion → cooling-off → harm markers (U10, `rg.ts`).
+    // ⛔ NEVER `isLockedOut` (OD12, D9): it LIFTS ITSELF when the chosen period elapses, so a 24-hour
+    // self-exclusion would be marketable 25 hours later. The period ending is not the person asking.
+    // 🔴 AND NEVER A PREDICATE THAT WRITES. U7 first asked `selfExclusionStanding`, which goes
+    // through `getRgSettings`: that CREATES a row for a user with none (fixed at U7 by reading the
+    // row first) and REWRITES a row whose pending limit change has come due (`effectivize`) — which
+    // the U7 fix did not cover. `rg.ts` reads the raw row and computes from it; nothing it calls writes.
+    const rg = await marketingRgStanding(user, identifier);
+    if (!rg.ok) return refuse(rg.skipReason, rg.detail, user.id);
+    // ── 2c · ACCOUNT STATUS. COOLED_OFF is never cleared by anything, so it is admitted ONLY when
+    // the RG step has proven the break is over AND the player consented again after it.
+    // SELF_EXCLUDED never reaches here — the RG step refuses it.
+    const statusOk = MARKETABLE_STATUS.has(user.status) || (user.status === "COOLED_OFF" && rg.coolingOffEnded);
+    if (!statusOk) {
+      return refuse("account_status", `account is ${user.status}`, user.id);
     }
     return { ok: true };
   }
