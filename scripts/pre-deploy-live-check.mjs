@@ -135,7 +135,7 @@ const PUBLIC_ROUTES = [
   const PASSES = [{ locale: "en", tag: "" }, { locale: "sw", tag: "[sw] " }];
   let pagesRead = 0;
   for (const pass of PASSES) {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const ctx = await enContext({ viewport: { width: 1280, height: 900 } });
     if (pass.locale !== "en") await ctx.addCookies([{ name: "kp-locale", value: pass.locale, url: BASE }]);
     const page = await ctx.newPage();
     for (const route of PUBLIC_ROUTES) {
@@ -167,12 +167,28 @@ const PUBLIC_ROUTES = [
     `${pagesRead} of ${expectedPages} pages read (${PUBLIC_ROUTES.length} routes × ${PASSES.length} locales)`);
 }
 
+/**
+ * THE ENGLISH CONTEXT. DEFAULT_LOCALE is "sw" (src/lib/i18n-dict.ts), so a context with no
+ * `kp-locale` cookie renders SWAHILI - and every section below that finds a control by its
+ * ENGLISH label ("Day", "Month", "Year", "Email", ...) then waits 20s for an element that is
+ * never going to exist. Section [B] died exactly there: `getByLabel("Day")` against a page
+ * showing "Mwezi". The drive stopped before reaching any later section, including the invite
+ * assertions, so one wrong assumption about the default language hid the rest of the run.
+ * This is the one place the language is declared; a context built any other way inherits the
+ * product default, which is what a locale-agnostic section should use.
+ */
+async function enContext(opts) {
+  const ctx = await browser.newContext(opts);
+  await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
+  return ctx;
+}
+
 // ── B. Date field cruelty (/auth/register DOB) ──────────────────────
 console.log("\n[B] Date field — clipping, typing order, validation, junk");
 {
   // B1 clipping at 3 widths with a full date
   for (const w of [360, 768, 1280]) {
-    const ctx = await browser.newContext({ viewport: { width: w, height: 800 } });
+    const ctx = await enContext({ viewport: { width: w, height: 800 } });
     const page = await ctx.newPage();
     await page.goto(BASE + "/auth/register", { waitUntil: "domcontentloaded" });
     const day = page.getByLabel("Day"); await day.waitFor({ state: "visible", timeout: 20000 }); await page.waitForTimeout(400);
@@ -184,7 +200,7 @@ console.log("\n[B] Date field — clipping, typing order, validation, junk");
     await ctx.close();
   }
   // B2 behavior + validation on one context
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const ctx = await enContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
   const errs = attach(page);
   await page.goto(BASE + "/auth/register", { waitUntil: "domcontentloaded" });
@@ -244,7 +260,7 @@ console.log("\n[B] Date field — clipping, typing order, validation, junk");
 // ── C. Responsive overflow (no horizontal scroll on mobile) ─────────
 console.log("\n[C] Responsive — no horizontal overflow at 360px");
 {
-  const ctx = await browser.newContext({ viewport: { width: 360, height: 800 } });
+  const ctx = await enContext({ viewport: { width: 360, height: 800 } });
   const page = await ctx.newPage();
   for (const route of ["/", "/markets", "/auth/register", "/leaderboard", "/proposals", "/help"]) {
     await page.goto(BASE + route, { waitUntil: "domcontentloaded" }); await page.waitForTimeout(300);
@@ -257,7 +273,7 @@ console.log("\n[C] Responsive — no horizontal overflow at 360px");
 // ── D. Dead internal links on key pages ─────────────────────────────
 console.log("\n[D] Dead-link crawl (internal links must not 404/5xx)");
 {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const ctx = await enContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   const seen = new Set();
   for (const route of ["/", "/markets", "/help", "/proposals"]) {
@@ -279,7 +295,7 @@ console.log("\n[D] Dead-link crawl (internal links must not 404/5xx)");
 // ── E. Tester-change surfaces (public) ──────────────────────────────
 console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
 {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const ctx = await enContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   await page.goto(BASE + "/markets?when=new", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const body = await page.locator("body").innerText();
@@ -305,7 +321,7 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
 // ── F. Authed surfaces (LOCAL only — uses /auth/demo, 404 in prod) ──
 if (LOCAL) {
   console.log("\n[F] Authed surfaces (local /auth/demo)");
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const ctx = await enContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   const errs = attach(page);
   await page.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
@@ -329,36 +345,63 @@ if (LOCAL) {
   ok(`/wallet no error overlay`, !(await hasErrorOverlay(page)));
 
   /**
-   * 🔴 THIS BLOCK ASSERTED A VIEW ITS OWN PERSONA CANNOT REACH, and it is now the other way round.
+   * 🔴 THIS BLOCK HAS BEEN WRONG IN BOTH DIRECTIONS, AND THE HISTORY IS WHY IT IS WRITTEN LIKE THIS.
    *
-   * It read `ok("invite shows 10,000 reward", inv.includes("10,000") && /first bet/i.test(inv))`.
-   * Session 90's handover recorded it as an unresolved disagreement between two gates:
-   * `qa:agent-drive` §6 asserts the OPPOSITE for an ordinary player. `qa:agent-drive` is right,
-   * and the proof is three lines of shipped code (PLAYER QUERY, task 4.11):
+   * ① It first read `ok("invite shows 10,000 reward", inv.includes("10,000") && /first bet/i…)` —
+   *    an assertion its own persona could not reach, because this script signs in at `/auth/demo`,
+   *    which mints a PLAYER, and the promo was WITHDRAWN. A gate that cannot pass is not a gate.
+   * ② It was then inverted to "the not-found view for a PLAYER", which was true from 2026-09-06
+   *    until 2026-09-25 — and is false now: `PRODUCT_STATE.invite` is ACTIVE, so this persona lands
+   *    on the live UNPAID body, with a real code, a real link and a real QR.
    *
-   *   · `feature-state.ts` — `PRODUCT_STATE = { invite: "WITHDRAWN", … }`, so `inviteIsLiveFor`
-   *     is true only for an agent in good standing, which requires `approvedAt`;
-   *   · `getAgentDashboard` returns non-null on exactly that same condition;
-   *   · and `page.tsx` consults it FIRST — approved ⇒ the agent dashboard, not approved ⇒
-   *     `notFound()`.
+   * ⭐ SO IT ASSERTS THE PAIR, WHICH IS THE ONLY DESCRIPTION THAT SURVIVES A FLIP OF EITHER SWITCH:
+   * the SHARE surface is present, and NO money word is on the page. Asserting only the first would
+   * pass on the old paid promo; asserting only the second would pass on the not-found view.
    *
-   * ⛔ THIS SCRIPT SIGNS IN AT `/auth/demo`, WHICH MINTS A PLAYER (`role: "PLAYER"`, and no
-   * affiliate account), so the promo body it was looking for opens only under
-   * `FEATURE_INVITE=ACTIVE`. The assertion could not pass against the shipped product state, and a
-   * gate that cannot pass is not a gate — it is a permanent red that teaches people to ignore reds.
-   *
-   * ⚠️ THE STATUS IS 200, NOT 404 — measured, and recorded in `invite/page.tsx`'s own note. Next's
-   * `notFound()` renders the not-found BODY at 200 here, so this must assert on CONTENT and never
-   * on a status code.
+   * ⚠️ A 200 IS NOT A RENDER — measured, and recorded in `invite/page.tsx`'s own note: Next's
+   * `notFound()` renders the not-found BODY at 200 here. So this asserts on CONTENT, never a status.
    */
   await page.goto(BASE + "/profile/invite", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const inv = await page.locator("body").innerText();
-  ok(`invite is the not-found view for a PLAYER (invite is WITHDRAWN)`,
-     !/50PICK-/i.test(inv) && !/first bet/i.test(inv),
-     inv.slice(0, 160));
-  ok(`invite leaks no referral code or link to a player`, !/\/auth\/register\?ref=/i.test(inv));
-  ok(`invite has NO 50% commission line`, !inv.includes("50%"));
-  ok(`invite has NO deposit-bonus line`, !/bonus on each/i.test(inv));
+  // 🔴 THIS ASSERTED `/50PICK-/` AND COULD NEVER PASS. That is the AGENT prefix
+  // (`AGENT_CODE_PREFIX = "50PICK-AG-"`); a PLAYER's code is a friendly word built from their
+  // display name ("DEMOENDS"), and this script's persona is a PLAYER. A gate that cannot pass is
+  // not a gate — it is a permanent red that teaches people to ignore reds, which is the exact
+  // failure the paragraph above records this block committing once already. Asserted on the
+  // format-independent fact instead: a usable referral link.
+  /**
+   * ⚠️ THE LINK IS NOT IN `innerText`, AND BOTH OF THESE ASSERTED IT WAS. The referral URL lives in
+   * a `<textarea>`'s VALUE (`invite-client.tsx`), and a textarea's value is not its text content —
+   * so `body.innerText` carries the page's words, the player's CODE and the disclaimer, but never
+   * the URL. The two assertions failed on a page that was rendering perfectly. Measured on a live
+   * server, not reasoned about: the same page passes `qa:withdrawn-render` §5, which reads HTML.
+   * ⭐ So this reads the ELEMENT the player actually copies, and asserts the anchor too — the
+   * `href` a tapped link would follow. Between them they cover both ways the link is offered.
+   */
+  const refLink = await page.evaluate(() => {
+    const ta = document.querySelector("main textarea");
+    const byHref = [...document.querySelectorAll("main a[href]")].map((a) => a.getAttribute("href")).find((h) => /\/auth\/register\?ref=/.test(h || ""));
+    return { value: ta ? ta.value : "", href: byHref || "" };
+  });
+  ok(`invite renders the unpaid SHARE body for a PLAYER — a copyable referral link`,
+     /\/auth\/register\?ref=[A-Za-z0-9%-]+/.test(refLink.value), JSON.stringify(refLink).slice(0, 200));
+  ok(`invite gives the player a code, and exactly one`,
+     new Set([refLink.value, refLink.href].filter((u) => /\?ref=/.test(u)).map((u) => u.split("?ref=")[1])).size === 1,
+     JSON.stringify(refLink).slice(0, 200));
+  // ⛔ THE MONEY HALF. Every one of these is a sentence the PAID promo prints and the unpaid one
+  // must not: the earned tile's label, the prize amount, the milestone wording, a commission rate,
+  // and the bonus-requirements list. If `inviteRewards` is ever flipped on without this block being
+  // revisited, it goes red here rather than on a player's screen.
+  // WARN: THE WORD BOUNDARIES ARE A CHARACTER CLASS, NOT a backslash-b, DELIBERATELY. A regex
+  // word boundary written into this repo through a patch tool has been corrupted into a literal
+  // 0x08 BACKSPACE before (agent branch, 2026-09-07): the regex then matches nothing, the
+  // negation is always true, and the assertion reads GREEN while testing nothing. `cat -v` or
+  // `od -c` shows it; grep, sed and an editor do not. This form cannot be mangled that way.
+  ok(`invite shows NO earned figure`, !/(^|[^A-Za-z])Earned([^A-Za-z]|$)/i.test(inv) && !/(^|[^A-Za-z])Pato([^A-Za-z]|$)/i.test(inv), inv.slice(0, 200));
+  ok(`invite has NO prize amount or milestone line`, !/10,000/.test(inv) && !/first bet/i.test(inv), inv.slice(0, 200));
+  ok(`invite has NO commission line`, !inv.includes("50%") && !/%\s*of your friends/i.test(inv));
+  ok(`invite has NO deposit-bonus line`, !/bonus on each/i.test(inv) && !/bonus requirements/i.test(inv));
+  ok(`invite says plainly that it pays nothing`, /no reward for invites|hailipi zawadi|不为邀请支付/i.test(inv), inv.slice(-220));
   ok(`invite no error overlay`, !(await hasErrorOverlay(page)));
 
   // Card-body click opens the market detail WITH NO side preselected (like the

@@ -1018,11 +1018,17 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
       JSON.stringify({ again, rows: rows.length, balBefore, balAfter: (await w.bal(b.userId)).balance }));
   }
 
-  // (3) and (4) The deposit reads behind the recruiter prizes. ⚠️ Reachable only while the PLAYER referral programme is live
-  // (`invite` is WITHDRAWN as shipped): the case turns it on for this process with FEATURE_INVITE=ACTIVE, the server's own
-  // switch, and sets the prize through the config's own setter.
+  // (3) and (4) The deposit reads behind the recruiter prizes. ⚠️ Reachable only while the PLAYER referral programme
+  // PAYS, and since 2026-09-25 that is TWO product states, not one: `invite` is ACTIVE (the surface — a player holds a
+  // link and recruits are attributed) while `inviteRewards` is WITHDRAWN (the money — `policyFor` refuses every PLAYER
+  // accrual with `player_rewards_withdrawn`). ⛔ SETTING ONLY `FEATURE_INVITE` IS NOT ENOUGH ANY MORE, and it fails
+  // SILENTLY in the worst way: the bind still lands, the hooks still run, and the prize is simply never created — so
+  // 11.6/11.8 read `prizes: []` and this suite drops under its own `minPass`. Both switches are declared, and both are
+  // restored below. See docs/PLAYER-INVITE-UNPAID.md §7.
   const inviteBefore = process.env.FEATURE_INVITE;
+  const rewardsBefore = process.env.FEATURE_INVITEREWARDS;
   process.env.FEATURE_INVITE = "ACTIVE";
+  process.env.FEATURE_INVITEREWARDS = "ACTIVE";
   try {
     const recruited = async (bot: { userId: string }) => {
       const referrer = await w.user({ balance: 0 });
@@ -1087,6 +1093,7 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
     }
   } finally {
     if (inviteBefore === undefined) delete process.env.FEATURE_INVITE; else process.env.FEATURE_INVITE = inviteBefore;
+    if (rewardsBefore === undefined) delete process.env.FEATURE_INVITEREWARDS; else process.env.FEATURE_INVITEREWARDS = rewardsBefore;
   }
 
   // (5) The option itself, on the DAL twin this child runs: before the limit, and a player's read byte-identical.

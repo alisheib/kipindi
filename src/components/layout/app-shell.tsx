@@ -47,8 +47,8 @@ import { guestUser } from "@/lib/ui-stubs";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
-import { inviteIsLiveFor, installInviteIsLive, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
-import { agentStandingFor } from "@/lib/server/affiliate-service";
+import { inviteIsLiveFor, playerInviteRewardsLive, installInviteIsLive, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
+import { agentStandingFor, playerInviteEligibleFor } from "@/lib/server/affiliate-service";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
@@ -168,8 +168,27 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     ]);
     const u = uResult.status === "fulfilled" ? uResult.value : null;
     const aff = affResult.status === "fulfilled" ? affResult.value : null;
-    // ⚠️ A failed user read leaves NO_VIEWER — a failed read must never open a withdrawn programme.
-    inviteViewer = u ? { role: u.role, agentInGoodStanding: agentStandingFor(u, aff).ok } : NO_VIEWER;
+    /**
+     * ⚠️ A failed user read leaves NO_VIEWER — a failed read must never open a programme.
+     * ⭐ `playerInviteEligible` rides the same two rows: the shell decides the nav entry, and the
+     * unpaid player invite (2026-09-25) is closed to a CLOSED / SUSPENDED / SELF_EXCLUDED account
+     * and to an agent out of standing. ⛔ Composed from `playerInviteEligibleFor`, not re-spelled
+     * here — the shell showing a link the bind would refuse is the drift it exists to prevent.
+     *
+     * 🔴 AND A FAILED **AFFILIATE** READ MUST FAIL CLOSED TOO, WHICH IT DID NOT. `affResult` is one
+     * arm of a `Promise.allSettled`, so a rejected affiliate query yields `aff = null` — and null
+     * is indistinguishable from "this account has no affiliate row". `agentStandingFor` then reads
+     * `agent_not_approved` and `playerInviteEligibleFor`'s `!isApprovedAgent(null)` reads TRUE, so
+     * an APPROVED AGENT whose row failed to load was silently demoted to an eligible player: the
+     * nav would offer them the unpaid player surface, and every share surface would mint a player
+     * code that `bindRecruit` refuses on the agent branch. A transient database blip must not
+     * change which programme a viewer is in. When the affiliate read FAILED (as opposed to
+     * returning no row) the viewer is closed entirely — the same safe direction the user read takes.
+     */
+    const affReadFailed = affResult.status !== "fulfilled";
+    inviteViewer = u && !affReadFailed
+      ? { role: u.role, agentInGoodStanding: agentStandingFor(u, aff).ok, playerInviteEligible: playerInviteEligibleFor(u, aff) }
+      : NO_VIEWER;
     const wallet = walletResult.status === "fulfilled" ? walletResult.value : null;
     const rg = rgResult.status === "fulfilled" ? rgResult.value : null;
     const userRef = u ?? { id: session.userId, displayName: null };
@@ -257,6 +276,21 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      🔴 AND IT IS STANDING, NOT ROLE (2026-09-07). `inviteIsLiveFor(viewerRole)` kept every
      entry point open for a DEACTIVATED agent, because deactivation leaves the role in place. */
   const inviteVisible = inviteIsLiveFor(inviteViewer);
+  /* ⭐ THE SECOND HALF OF THE PAIR, RESOLVED IN THE SAME PLACE AND FOR THE SAME REASON: the menu
+     row's WORDS depend on whether the viewer's invite destination pays, and a client component may
+     not read the product state to find out.
+     🔴 AND IT IS VIEWER-AWARE, BECAUSE THE FIRST VERSION SAID "an agent never reaches this label"
+     AND THAT WAS FALSE. `inviteIsLiveFor` returns ACTIVE for an agent in good standing BEFORE it
+     reads the product state, so their row survives the filter — and a PLAYER-only money switch was
+     relabelling it "Invite friends" and stripping its gilt, for a destination that renders their
+     COMMISSION DASHBOARD. `profile/page.tsx` gives that same viewer, for that same href, "Agent
+     dashboard · your recruits and commission" in gilt: two doors to one page describing two
+     different programmes.
+     ⛔ So the question this answers is "does THIS viewer's invite destination pay?" — the player
+     programme's product state, OR an approved agent's standing. `playerInviteRewardsLive()` keeps
+     its contract (no viewer, player programme only); the disjunction lives here, at the one place
+     that already knows the viewer. */
+  const invitePaid = playerInviteRewardsLive() || inviteViewer.agentInGoodStanding;
 
   /**
    * 🔴 THE AGENT DOOR IS RESOLVED HERE FOR THE REASON THE COMMENT ABOVE ALREADY GIVES.
@@ -297,7 +331,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           state so React owns it. Do not reintroduce a shell-level DOM mutation for this. */}
       <HeaderScrollCast />
       <Suspense fallback={null}><NavProgress /></Suspense>
-      <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} />
+      <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {/* 🔴 E-381 · the in-place answer to a session that ended during a refresh — see the note at
           `endedReason`. Server-rendered, and its only action is a plain `<a>`. */}

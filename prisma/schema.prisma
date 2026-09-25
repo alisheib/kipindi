@@ -3153,6 +3153,12 @@ model MessagingConsent {
 /// erasure. It is the record that somebody said no, and deleting it is exactly how a person
 /// who opted out receives the next campaign. The unique triple makes re-suppression a no-op
 /// rather than a duplicate, so the "add it again" path is safe to call from anywhere.
+///
+/// ⭐ NEVER DELETED, BUT IT MAY BE SUPERSEDED (U8). A row with `liftedAt` set is no longer
+/// refusing anybody, and the row itself — with its ORIGINAL `createdAt` — is still there to
+/// answer "when did this person first say no". That is what makes U8's resubscribe button
+/// honest: without it, "start them again" would report a success while this row went on
+/// refusing for ever, which is precisely the false success U8's own copy forbids.
 model Suppression {
   id         String            @id @default(cuid())
   channel    MessagingChannel
@@ -3165,6 +3171,14 @@ model Suppression {
   /// The staff user who recorded it. NULL when the data subject acted for themselves.
   recordedBy String?
   createdAt  DateTime          @default(now())
+  /// ⭐ WHEN THIS REFUSAL STOPPED APPLYING — NULL means it is still refusing. The gate reads
+  /// `liftedAt IS NULL` as "active"; nothing reads this column as a reason to delete the row.
+  /// ⛔ It is set ONCE. A second lift must not move it forward, for the same reason a re-import
+  /// must not move `createdAt` forward: the date is evidence, not a status flag.
+  liftedAt   DateTime?
+  /// Free text, the same shape as `evidence`: what lifted it. ⛔ NEVER a raw phone number
+  /// (§5.14) — `identifier` is the only place one belongs.
+  liftedReason String?
 
   /// ⭐ THE GUARANTEE THE SEND LOOP LEANS ON (§5.6): suppression is asked FIRST, and this
   /// index is what makes asking it per recipient affordable at 150k contacts (§3c).

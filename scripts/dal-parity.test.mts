@@ -1145,14 +1145,78 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // ⭐ RE-SUPPRESSION MUST NOT MOVE THE DATE. The `createdAt` on a suppression row is the
   // answer to "when did this person say no"; an upsert that refreshed it would walk that
   // date forward on every re-import, and the evidence would always look brand new.
-  ok("17.idempotent.prisma · re-suppression is an upsert whose update block is EMPTY",
-    mentions(sCreate, "upsert") && /update:\s*\{\s*\}/.test(sCreate));
+  //
+  // 🔴 THIS ASSERTION USED TO READ `update: {}` — AN EMPTY BLOCK — AND U8 MADE THAT WRONG.
+  // ⛔ It is REPLACED rather than softened, because the old form now describes a defect. Once a
+  // suppression can be LIFTED (U8's `liftedAt`), `stop → start again → stop again` returns
+  // through this upsert, and an EMPTY update block hands back the LIFTED row untouched: the
+  // page tells the person they will never be marketed again while the suppression stays lifted
+  // and the next campaign sends to them. That is a false success pointing the opposite way from
+  // the one U8 was written to prevent.
+  // ⭐ SO THE RULE IS STATED AS WHAT IT ALWAYS MEANT: the update block must NOT touch
+  // `createdAt`, `id`, `reason` or `evidence` — and it MUST clear the lift.
+  const sUpdateBlock = sCreate.match(/update:\s*\{([^}]*)\}/)?.[1] ?? "@@none@@";
+  ok("17.idempotent.prisma · re-suppression is an UPSERT whose update block touches nothing that is evidence",
+    mentions(sCreate, "upsert") && sUpdateBlock !== "@@none@@"
+      && !/\b(createdAt|id|reason|evidence|recordedBy|identifier)\b/.test(sUpdateBlock),
+    `update block = {${sUpdateBlock.trim()}}`);
+  ok("17.rearm.prisma · ⛔ …and it CLEARS THE LIFT, so re-suppression re-arms a lifted row rather than handing it back",
+    /liftedAt:\s*null/.test(sUpdateBlock) && /liftedReason:\s*null/.test(sUpdateBlock),
+    `update block = {${sUpdateBlock.trim()}}`);
   // ⛔ SCOPED TO THE CREATE BODY ON PURPOSE. `find` also ends in `return r;`, so asking this
   // of the whole namespace would pass even after create stopped being idempotent — a guard
   // that reads the wrong region is a guard that cannot fail.
   const sMemCreate = region(sMem, "create: (");
   ok("17.idempotent.memory · the memory twin returns the row ALREADY THERE instead of replacing it",
     sMemCreate.length > 80 && /return r;/.test(sMemCreate), `${sMemCreate.length} chars`);
+  ok("17.rearm.memory · ⛔ …and it clears the lift on that row, the same way the Prisma twin does",
+    /r\.liftedAt = null/.test(sMemCreate) && /r\.liftedReason = null/.test(sMemCreate),
+    `${sMemCreate.length} chars`);
+
+  /* ═══ U8 · A ROW IS NEVER DELETED, BUT IT MAY BE SUPERSEDED ═══════════════════════════
+   * ⛔ THE "NO DELETE" ASSERTIONS ABOVE STAY EXACTLY AS THEY WERE. This is the other half of
+   * the same promise, and without it "no delete" is satisfied by a resubscribe button that
+   * cannot work: U7's gate asks suppression FIRST, so a person who opted out and then asked to
+   * be started again would be told it worked while the row refused them for ever. */
+  const sLiftPri = delegateMethod("suppression", "lift");
+  const sLiftMem = region(sMem, "lift: (");
+  ok("17.lift.prisma · the Prisma twin exposes a LIFT", sLiftPri.length > 100, `${sLiftPri.length} chars`);
+  ok("17.lift.memory · so does the memory twin", sLiftMem.length > 80, `${sLiftMem.length} chars`);
+  // ⭐ A LIFT IS AN UPDATE, NEVER A REMOVAL — asserted on the lift's OWN body, because the
+  // namespace-wide "no delete" check above would pass even if the lift called one under a name
+  // that check does not spell.
+  ok("17.lift.nodelete.prisma · ⛔ the lift writes an UPDATE and removes nothing",
+    /updateMany|update\(/.test(sLiftPri) && !/delete|destroy|remove\(/i.test(sLiftPri));
+  ok("17.lift.nodelete.memory · ⛔ the memory lift mutates the row in place and removes nothing",
+    sLiftMem.length > 80 && !/delete|\.clear\(|\.splice\(/i.test(sLiftMem));
+  // ⭐ ONLY AN ACTIVE ROW IS LIFTED, IN BOTH TWINS — that is what stops a SECOND lift walking
+  // `liftedAt` forward. The date is evidence, exactly as `createdAt` is.
+  ok("17.lift.once.prisma · the Prisma lift is scoped to rows whose liftedAt is still null",
+    /liftedAt:\s*null/.test(sLiftPri));
+  ok("17.lift.once.memory · and the memory lift refuses a row that is already lifted",
+    /if \(r\.liftedAt\) return null/.test(sLiftMem), `${sLiftMem.length} chars`);
+  // ⭐ `find` MEANS ACTIVE, IN BOTH TWINS. A twin that answered "is this number suppressed"
+  // differently from the other is the whole class this file exists to refuse — and here the
+  // disagreement would be a suppressed person receiving marketing on production while every
+  // in-memory test stayed green.
+  const sFindPri = delegateMethod("suppression", "find");
+  const sFindMem = region(sMem, "find: (");
+  ok("17.active.prisma · the Prisma `find` returns only rows that are still refusing",
+    /liftedAt:\s*null/.test(sFindPri), `${sFindPri.length} chars`);
+  // 🔴 AND IT READS THE LIFT *FALSILY*, WHICH IS NOT A STYLE POINT. `r.liftedAt === null` is
+  // FALSE for a row that carries no lift field at all, so the strict form reported an
+  // un-lifted row as lifted and handed a suppressed person back as marketable — failing OPEN,
+  // in the one direction the law does not forgive. `!r.liftedAt` fails CLOSED: absent, null or
+  // empty all mean nobody lifted it, so it still refuses.
+  ok("17.active.memory · and the memory `find` does too, reading the lift FALSILY so a row with no lift still REFUSES",
+    /!r\.liftedAt/.test(sFindMem) && !/liftedAt === null/.test(sFindMem), `${sFindMem.length} chars`);
+  // ⛔ AND `listFor` MUST NOT FILTER — it is the reader that proves a lift removed nothing.
+  const sListPri = delegateMethod("suppression", "listFor");
+  const sListMem = region(sMem, "listFor: (");
+  ok("17.history.prisma · ⛔ `listFor` returns EVERY row, lifted or not — it is how 'never deleted' is OBSERVED",
+    sListPri.length > 80 && !/liftedAt/.test(sListPri), `${sListPri.length} chars`);
+  ok("17.history.memory · and the memory twin does not filter either",
+    sListMem.length > 60 && !/liftedAt/.test(sListMem), `${sListMem.length} chars`);
 
   // ⭐ BOTH TWINS MUST EXPOSE THE SAME MEMBERS. A method that exists on only one side is a
   // call that works in every test and throws on production, or the reverse.
@@ -1193,8 +1257,20 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     /\bupdate\s*:/.test("    update: async (id: string) => null,"));
   ok("17.c4 · CONTROL · a `deleteMany:` added to suppression IS seen by the absence check",
     /\bdelete\w*\s*:/.test("    deleteMany: async () => 0,"));
-  ok("17.c5 · CONTROL · an upsert that REFRESHES the row is not mistaken for an empty update",
-    !/update:\s*\{\s*\}/.test("update: { createdAt: new Date() },"));
+  ok("17.c5 · CONTROL · an upsert that REFRESHES `createdAt` IS caught by the evidence-untouched rule",
+    /\b(createdAt|id|reason|evidence|recordedBy|identifier)\b/.test(
+      "update: { createdAt: new Date(), liftedAt: null },".match(/update:\s*\{([^}]*)\}/)?.[1] ?? ""));
+  ok("17.c5b · CONTROL · an EMPTY update block — the shape U8 made wrong — fails the re-arm rule",
+    !/liftedAt:\s*null/.test("update: {},".match(/update:\s*\{([^}]*)\}/)?.[1] ?? ""));
+  ok("17.c5c · CONTROL · a `find` that never asks about the lift is reported, so 'active' cannot be assumed",
+    !/liftedAt:\s*null/.test("findUnique({ where: { channel_identifier_category: k } })"));
+  ok("17.c5f · CONTROL · the STRICT memory predicate is REJECTED — `=== null` reads a row with no lift as lifted, and that fails OPEN",
+    !(/!r\.liftedAt/.test("return r.liftedAt === null ? r : null;")
+      && !/liftedAt === null/.test("return r.liftedAt === null ? r : null;")));
+  ok("17.c5d · CONTROL · a lift that DELETES instead of updating is seen",
+    /delete/i.test("deleteMany({ where: { identifier } })"));
+  ok("17.c5e · CONTROL · a `listFor` that filtered lifted rows out WOULD be caught — the history reader must not hide them",
+    /liftedAt/.test("findMany({ where: { identifier, liftedAt: null } })"));
   ok("17.c6 · CONTROL · the tiebreak needle does not match an order that omits the id leg",
     !/\{ createdAt: "desc" \}, \{ id: "desc" \}/.test('orderBy: { createdAt: "desc" },'));
 }

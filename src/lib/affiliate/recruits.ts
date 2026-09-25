@@ -13,16 +13,21 @@
  *   · and it is consulted FIRST — `if (agentDash) return <AgentDashboard/>; if
  *     (!inviteIsLiveFor(viewer)) notFound();`
  *
- * ⇒ `approvedAt` set means the agent dashboard; unset means `notFound()`. There is no third case
- * outside the `FEATURE_INVITE=ACTIVE` override, which exists so the dormant branch does not rot.
- * ⛔ So the list a live viewer actually sees is `dash.recruits` — unbounded, unsorted, unpaged and
- * unfiltered, exactly as the board describes, on the other component. Putting a bar on the player
- * body would be copy nobody can proofread and guards nobody can run.
+ * ⇒ `approvedAt` set means the agent dashboard; unset means the player body.
+ * ⛔ So the list this filter rail serves is `dash.recruits` — the AGENT's book, unbounded and
+ * unpaged, exactly as the board describes, on the other component.
  *
- * ⚠️ AND THIS SETTLES A STANDING DISAGREEMENT BETWEEN TWO GATES, recorded in session 90's handover:
- * `qa:live` asserts `/profile/invite` SHOWS a 10,000 reward; `qa:agent-drive` §6 asserts the
- * opposite for an ordinary player. `qa:agent-drive` is right, and `qa:live` is asserting a view
- * its own demo persona cannot open.
+ * ⚠️ 2026-09-25 — THE OTHER BRANCH IS NO LONGER `notFound()`. `PRODUCT_STATE.invite` is ACTIVE and
+ * an ordinary player lands on the UNPAID share body (`docs/PLAYER-INVITE-UNPAID.md`). ⭐ THE
+ * RULING HERE IS UNCHANGED AND FOR A BETTER REASON THAN BEFORE: the player body still gets no
+ * filter rail, because the list it shows is the player's own friends — a handful of rows with a
+ * name and a date, and nothing to filter BY once the money columns are gone.
+ *
+ * ⚠️ THE OLD NOTE HERE RECORDED A DISAGREEMENT BETWEEN TWO GATES — `qa:live` asserting
+ * `/profile/invite` SHOWS a 10,000 reward, `qa:agent-drive` §6 asserting the opposite — and ruled
+ * for the second. BOTH have since been rewritten: `qa:live` now asserts the share surface is
+ * present AND that no money word is on it, and `qa:agent-drive` §6 asserts the same pair. There
+ * is no longer a disagreement to settle, and neither gate asserts a reward.
  *
  * ⛔ NO SERVER IMPORTS.
  */

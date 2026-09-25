@@ -112,7 +112,13 @@ function RewardCard({
   );
 }
 
-export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
+export function AffiliateAdminClient({ config, rewardsLive = false }: {
+  config: AffiliateConfig;
+  /** ⭐ Resolved on the SERVER (`playerInviteRewardsLive()`) and threaded, like every other product
+   *  state a client component needs: this file is `"use client"` and may not read `feature-state`.
+   *  ⛔ Defaults to FALSE — the safe direction: a lost prop understates what the platform pays. */
+  rewardsLive?: boolean;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);
@@ -169,10 +175,20 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
           <div className="text-[15px] font-bold">
             Program master switch · <span className="font-normal italic text-text-subtle text-body-sm">Swichi kuu</span>
           </div>
+          {/* 🔴 "rewards are accruing" WAS A FALSE STATEMENT ON A MONEY SCREEN, and only looking at
+              the rendered page found it. With `inviteRewards` WITHDRAWN (2026-09-25) nothing accrues
+              on this programme whatever this switch says — it is the operator's switch INSIDE the
+              paid promo, and the product state sits above it. An officer reading "rewards are
+              accruing" would reasonably conclude the platform was paying referrers, and act on it.
+              ⛔ The switch itself is NOT disabled: it is a real setting, it is saved, and it governs
+              the promo the day it is switched back on. What changes is that the sentence stops
+              claiming an outcome the product has already refused. */}
           <div className="mt-0.5 text-[12px] text-text-muted">
-            {on
-              ? "Live — every player has an active referral link and rewards are accruing."
-              : "Paused — links still resolve, but no new rewards accrue. Players see a paused banner."}
+            {!rewardsLive
+              ? "Unpaid — every player has an active referral link and the platform credits nothing for a referral (product state inviteRewards = WITHDRAWN). This switch is stored for the day rewards are turned back on."
+              : on
+                ? "Live — every player has an active referral link and rewards are accruing."
+                : "Paused — links still resolve, but no new rewards accrue. Players see a paused banner."}
           </div>
         </div>
         <Toggle on={on} onClick={() => setMaster(!on)} aria-label="Program master switch" />

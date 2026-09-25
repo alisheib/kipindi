@@ -118,6 +118,13 @@ export const RATE_RULES: Record<string, RateRule> = {
   // endpoint is to learn that a crash happened — the tenth copy teaches nothing. 5 burst,
   // ~1/min steady is enough to catch a reload-crash-reload cycle without funding a flood.
   "clientError.ip": { capacity: 5, refillPerMin: 1 },
+  // The marketing opt-out page (`/s/<token>`, U8), per IP. ⛔ DELIBERATELY WIDE, and the reason
+  // is legal rather than generous: ETA s.32(1)(c) requires an opt-out in every message and has
+  // no rate-limit exception, so a refused STOP is a person who asked to leave and was told no.
+  // Tanzanian mobile networks put many real people behind one carrier NAT address; 30 burst and
+  // 10/min steady stops a script walking the token space and is nowhere near anybody tapping a
+  // link in their own SMS. ⚠️ A throttled act reports the RETRY message, never a success.
+  "optout.ip":      { capacity: 30, refillPerMin: 10 },
 };
 
 export type RateResult = { allowed: boolean; remaining: number; retryAfterSec: number };

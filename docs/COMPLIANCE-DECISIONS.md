@@ -6,6 +6,50 @@
 
 ---
 
+## 2026-09-25 · The player invite is re-opened UNPAID — a tracked link that is not an inducement
+
+**Owner instruction (Ali, 2026-09-25), in his own words:** *"we have a way for people to share our links but we won't
+give them profit"* … *"no we don't want to pay anything on affiliate"* … *"we want sometimes unpaid affiliate but i
+want to track how many people he got with this link, i'll pay him cash not through 50pick, and we can keep that option
+if needed"* … *"lets add it so users can start inviting each other."*
+
+**What changed.** `PRODUCT_STATE.invite` goes `WITHDRAWN → ACTIVE`, so every player in good standing again holds a
+referral code, link and QR, shares them from `/profile/invite` and from any market or position share sheet, and has the
+people who sign up on that link attributed to them. A new, separate product state `inviteRewards` is **WITHDRAWN**:
+`policyFor`'s PLAYER branch refuses every accrual with `player_rewards_withdrawn`, so **the platform credits an
+ordinary player nothing for a referral**.
+
+**Why this is not a regulated inducement.** A reward for bringing gamblers is an inducement under Gaming Board of
+Tanzania guidance, and that is the thing the previous withdrawal removed. What is live now offers the inviter nothing
+at all: no commission, no prize, no bonus, no entry, no ranking prize. The register ribbon names the inviter and makes
+the new player no offer. The player's own page carries no earnings figure, no reward conditions and no gold, and
+states in all three locales that invites pay nothing (`profile.inviteNoRewardNote`). ⛔ **Cash the operator chooses to
+pay an inviter is paid outside the platform and is recorded nowhere in it** — `/admin/affiliate` reports how many
+people each player brought, and the "Paid by 50pick" KPI sums what 50pick has actually paid on the player programme, which is 0 while `inviteRewards` is WITHDRAWN because no new accrual can be created.
+
+**Why the zero is in code rather than in the affiliate config — the alternative was considered and rejected.** Setting
+the commission rate to 0% would have left the payout live: the shipped `affiliate.config` has `prize.enabled: true` at
+**TZS 10,000 a head** with commission already off, `defineConfig` hydrates a persisted row with no validation, and
+`/admin/affiliate` is one click from switching a mode back on. That is the exact route by which `feeVatRatePct` reached
+production as 0 (§ 2026-09-09). A product state outranks an operator config and a misclick cannot reverse it.
+
+**Responsible gambling.** The surface is closed to CLOSED, SUSPENDED and SELF_EXCLUDED accounts — the same three
+statuses the agent programme refuses on, and load-bearing here because a referral link is a public artefact that
+outlives the account and `bindRecruit` reads the referrer's stored row long after they have gone. COOLED_OFF keeps
+their link: that break is about their own betting, and sharing is not betting.
+
+**The agent programme is untouched.** An approved agent's commission is contracted income bought with a TZS 100,000
+fee; `inviteRewards` does not gate it, and a deactivated agent gets no player surface either (their code is refused by
+the agent branch, so a player link would be one that could never bind).
+
+**Turning payment on later is one word** — `inviteRewards: "ACTIVE"` — and ⛔ **it needs Gaming Board clearance first**,
+because at that moment it becomes an inducement again. The paid path is kept executable while it sleeps.
+
+Enforced by `npm run test:player-invite-unpaid` (44 assertions) with `npm run red:player-invite-unpaid` (6/6 mutations
+proven to turn it red), in `predeploy`. Rule: `docs/RULES.md` §2.10a. Spec: `docs/PLAYER-INVITE-UNPAID.md`.
+
+---
+
 ## 2026-09-25 · D3 AMENDED — the desk's activity rows may paint the holder's wallet balance
 
 **Owner decision (Ali, 2026-09-25), asked explicitly.** He asked for a second money column on the desk's activity

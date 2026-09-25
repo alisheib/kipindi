@@ -76,11 +76,15 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
     proposalsState !== "DISABLED"
       ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState }]
       : [];
-  /* ⛔ INVITE IS ABSENT UNLESS THIS VIEWER IS AN APPROVED AGENT — the same shape as
-     `proposalsRow` above, and for the same reason: a destination the operator has closed
-     must not be shown at all. It used to sit here permanently wearing a "coming soon"
-     flag, which was honest while the programme was merely unopened. It is withdrawn from
-     the player product now, so the row goes rather than wears a badge.
+  /* ⛔ INVITE IS ABSENT UNLESS THIS VIEWER MAY ACTUALLY HOLD A LINK — the same shape as
+     `proposalsRow` above, and for the same reason: a destination that is closed for this viewer
+     must not be shown at all. It used to sit here permanently wearing a "coming soon" flag,
+     which was honest while the programme was merely unopened; a row goes rather than wears a
+     badge.
+     ⭐ 2026-09-25 — `inviteVisible` is TRUE for every player in good standing now (the UNPAID
+     invite: a tracked link that pays nothing), and FALSE for a closed / suspended /
+     self-excluded account and for an agent out of standing. The rule above is unchanged; only
+     the population it admits is.
      ⚠️ The role lives on the server, so the SHELL resolves this and passes the answer —
      `feature-state.ts` explains why a client component never reads the state itself. */
   const inviteRow: { href: string; label: string }[] =

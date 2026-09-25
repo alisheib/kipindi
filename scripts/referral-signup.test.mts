@@ -8,7 +8,14 @@
  *   - Self-referral blocked, unknown codes rejected
  *   - Idempotency: a recruit can only be bound once, prize paid once per recruit
  *
- * 🔴 WHY §1–§5 RUN UNDER `FEATURE_INVITE=ACTIVE` (2026-09-07). Invite is WITHDRAWN from the
+ * 🔴 WHY §1–§5 RUN UNDER `FEATURE_INVITEREWARDS=ACTIVE` (2026-09-25). The SURFACE is ACTIVE now —
+ * a player binds with no override at all — and what sleeps is the MONEY. ⛔ NOT A RENAME of the
+ * old `FEATURE_INVITE` line: that one would leave `policyFor` refusing every accrual with
+ * `player_rewards_withdrawn`, and §1–§5 would assert TZS 0 everywhere while looking like they had
+ * tested the promo. The paragraph below is the original reasoning, kept because it is still why
+ * the population is a PLAYER and not a role-only "agent".
+ *
+ * (2026-09-07) Invite was WITHDRAWN from the
  * player product, so a PLAYER referrer is refused at the bind and none of the mechanics above
  * can execute. This suite used to work around that by fixturing every referrer as
  * `role: "AGENT"` — and then asserted that an "agent" earned the PLAYER PRIZE into the BONUS
@@ -73,7 +80,7 @@ async function confirmedDeposit(uid: string, ref: string) {
 const PRIZE = getAffiliateConfig().prize.amountTzs;
 
 // ── §1–§5 · THE PLAYER PROMO, WITH THE PROMO ON ───────────────────────────────
-process.env.FEATURE_INVITE = "ACTIVE";
+process.env.FEATURE_INVITEREWARDS = "ACTIVE";
 try {
   // ── §1 · bind recruit → no immediate reward (FIRST_BET, not SIGNUP) ──────────
   await mkUser("ref_alice");                              // ⭐ a PLAYER — the promo's own population
@@ -120,30 +127,43 @@ try {
   ok("§5 an over-length code is refused, not truncated", tooLong.bound === false && tooLong.reason === "no_code", JSON.stringify(tooLong));
   ok("§5 blocked binds paid nothing", (await bonus("ref_dave")) === 0 && (await cash("ref_dave")) === 0);
 } finally {
-  delete process.env.FEATURE_INVITE;
+  delete process.env.FEATURE_INVITEREWARDS;
 }
-ok("§5 the override is restored, not leaked", process.env.FEATURE_INVITE === undefined);
+ok("§5 the override is restored, not leaked", process.env.FEATURE_INVITEREWARDS === undefined);
 
-// ── §6 · the 2026-09-06 rule: an ordinary player's code does not recruit ──────
-// ⛔ WITH THE PROMO OFF (the live product), the identical code from §1 recruits nobody.
-// ⭐ Note the pairing: §1–§5 above are the CONTROL — the same population, with the promo on,
-// recruits and pays all the way to a real grant — so this refusal cannot be a gate that
-// simply says no to everyone.
+// ── §6 · THE SHIPPED STATE — the code RECRUITS, and it PAYS NOTHING ──────────
+// 🔴 REPLACES THE 2026-09-06 RULE ("an ordinary player's code does not recruit"), which was the
+// product until 2026-09-25 and is not any more. The two halves that replaced it are both asserted
+// here, because either one alone is a false description of the feature: a bind that pays would be
+// the promo nobody approved, and a refusal to bind would be the withdrawn surface we just opened.
+// ⭐ Note the pairing: §1–§5 above are the CONTROL — the same population, with the MONEY switched
+// on, pays all the way to a real grant — so the zero below cannot be a machine that is simply
+// broken. And the override is OFF here: this section measures production.
 {
   await mkUser("ref_erin");                       // deliberately a PLAYER
   await mkUser("rec_frank");
   const erin = await ensureAffiliateAccount("ref_erin");
   const viaPlayer = await bindRecruit({ recruitUserId: "rec_frank", code: erin.code });
-  ok("§6 a PLAYER's code does not recruit", viaPlayer.bound === false, JSON.stringify(viaPlayer));
-  ok("§6 …and it says why", viaPlayer.bound === false && viaPlayer.reason === "referrer_not_eligible", JSON.stringify(viaPlayer));
-  ok("§6 …and nothing was attributed", !(await db.user.findById("rec_frank"))?.recruitedBy);
+  ok("§6 a PLAYER's code DOES recruit", viaPlayer.bound === true, JSON.stringify(viaPlayer));
+  const frank = await db.user.findById("rec_frank");
+  ok("§6 …and the attribution is stamped PLAYER", frank?.recruitedBy === "ref_erin" && frank?.recruitedProgramme === "PLAYER",
+     JSON.stringify({ by: frank?.recruitedBy, programme: frank?.recruitedProgramme }));
+  // ⛔ THE MONEY HALF, THROUGH THE REAL HOOK. §1 pays a TZS 10,000 prize on this exact call; here
+  // it must pay nothing at all — no balance, and no reward ROW either (a TZS 0 row would be a
+  // payable the operator could later be asked to settle).
+  await onRecruitBet("rec_frank", { stake: 25_000 });
+  ok("§6 ⛔ …and the referrer is paid NOTHING", (await bonus("ref_erin")) === 0, `bonus=${await bonus("ref_erin")}`);
+  ok("§6 ⛔ …with no reward row written at all", (await db.referralReward.listByReferrer("ref_erin")).length === 0,
+     JSON.stringify((await db.referralReward.listByReferrer("ref_erin")).map((r) => [r.type, r.status])));
   // ⛔ AND A ROLE IS NOT AN APPROVAL. `role: "AGENT"` with no `approvedAt` is exactly what this
-  // suite used to fixture as an agent. It must be refused like any withdrawn player.
+  // suite used to fixture as an agent. They recruit as the ordinary player they are — what must
+  // never happen is the AGENT stamp, which is what would put them on the commission path.
   await mkUser("ref_gina", "AGENT");
   await mkUser("rec_hal");
   const gina = await ensureAffiliateAccount("ref_gina");
   const viaRoleOnly = await bindRecruit({ recruitUserId: "rec_hal", code: gina.code });
-  ok("§6 ⛔ role AGENT with NO approval does not recruit either", viaRoleOnly.bound === false && viaRoleOnly.reason === "referrer_not_eligible", JSON.stringify(viaRoleOnly));
+  ok("§6 role AGENT with NO approval recruits as a player", viaRoleOnly.bound === true, JSON.stringify(viaRoleOnly));
+  ok("§6 ⛔ …stamped PLAYER, never AGENT", (await db.user.findById("rec_hal"))?.recruitedProgramme === "PLAYER");
 }
 
 // ── §7 · AN APPROVED AGENT ON THE IDENTICAL PATH EARNS NO PRIZE ───────────────

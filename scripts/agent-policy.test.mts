@@ -56,13 +56,47 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
   const doorShut = policyFor("AGENT", { commissionPct: 20 }, playerCfg, { ...agentCfg, enabled: false });
   ok("1.door · closing the programme door does not stop an approved agent's policy", doorShut.ok, JSON.stringify(doorShut));
 
-  const player = policyFor("PLAYER", { commissionPct: 20 }, playerCfg, agentCfg);
-  ok("1.player · CONTROL — the PLAYER programme resolves to BONUS + BONUS_CREDIT + flat rewards",
-    player.ok && player.policy.destination === "BONUS" && player.policy.txnType === "BONUS_CREDIT" && player.policy.flatRewards === true, JSON.stringify(player));
-  const playerOff = policyFor("PLAYER", null, { ...playerCfg, enabled: false }, agentCfg);
-  ok("1.playeroff · CONTROL — the promo switch DOES gate the player programme", !playerOff.ok && playerOff.refusal === "programme_disabled", JSON.stringify(playerOff));
-  const playerIgnoresAgentRate = policyFor("PLAYER", { commissionPct: 35 }, playerCfg, agentCfg);
-  ok("1.playerrate · a PLAYER policy never reads the agent rate column", playerIgnoresAgentRate.ok && playerIgnoresAgentRate.policy.rate !== 0.35);
+  /**
+   * ⭐ THE PLAYER SIDE, 2026-09-25 — TWO PRODUCT STATES, BOTH ASSERTED IN ONE PLACE.
+   *
+   * ⛔ ON THE SHIPPED STATE THE PLAYER BRANCH REFUSES, AND THAT REFUSAL IS THE PRODUCT: the
+   * platform pays a player nothing for an invite, in code rather than in a config row. It is
+   * asserted FIRST and without any override, because that is what production runs.
+   *
+   * ⭐ AND THE OLD CONTROLS SURVIVE INSIDE THE OVERRIDE. They are the ones that prove the paid
+   * path still resolves correctly the day it is switched back on — deleting them would leave the
+   * re-enablement untested, which is the rot `withdrawn-features` §4 exists to prevent.
+   */
+  const playerUnpaid = policyFor("PLAYER", { commissionPct: 20 }, playerCfg, agentCfg);
+  ok("1.playerunpaid · ⛔ SHIPPED STATE — the PLAYER programme REFUSES: inviteRewards is WITHDRAWN",
+    !playerUnpaid.ok && playerUnpaid.refusal === "player_rewards_withdrawn", JSON.stringify(playerUnpaid));
+  // ⛔ AND IT OUTRANKS THE OPERATOR'S CONFIG. With every reward mode switched ON, the product state
+  // still refuses — this is the assertion that says "set the commission to 0%" was not the fix.
+  const playerAllModesOn = policyFor(
+    "PLAYER",
+    { commissionPct: 20 },
+    { ...playerCfg, enabled: true, commission: { ...playerCfg.commission, enabled: true }, prize: { ...playerCfg.prize, enabled: true } },
+    agentCfg,
+  );
+  ok("1.playerconfig · ⛔ …even with every reward mode ON in the config — a product state outranks a row",
+    !playerAllModesOn.ok && playerAllModesOn.refusal === "player_rewards_withdrawn", JSON.stringify(playerAllModesOn));
+
+  process.env.FEATURE_INVITEREWARDS = "ACTIVE";
+  try {
+    const player = policyFor("PLAYER", { commissionPct: 20 }, playerCfg, agentCfg);
+    ok("1.player · CONTROL — switched ON, the PLAYER programme resolves to BONUS + BONUS_CREDIT + flat rewards",
+      player.ok && player.policy.destination === "BONUS" && player.policy.txnType === "BONUS_CREDIT" && player.policy.flatRewards === true, JSON.stringify(player));
+    const playerOff = policyFor("PLAYER", null, { ...playerCfg, enabled: false }, agentCfg);
+    ok("1.playeroff · CONTROL — the promo switch DOES gate the player programme", !playerOff.ok && playerOff.refusal === "programme_disabled", JSON.stringify(playerOff));
+    const playerIgnoresAgentRate = policyFor("PLAYER", { commissionPct: 35 }, playerCfg, agentCfg);
+    ok("1.playerrate · a PLAYER policy never reads the agent rate column", playerIgnoresAgentRate.ok && playerIgnoresAgentRate.policy.rate !== 0.35);
+  } finally {
+    delete process.env.FEATURE_INVITEREWARDS;
+  }
+  // ⭐ AND THE AGENT IS UNTOUCHED BY THAT SWITCH — the money half of the door-vs-room ruling. An
+  // agent's commission is contracted income; the player promo's product state must not reach it.
+  ok("1.agentunaffected · ⛔ the player rewards switch does NOT gate an approved agent",
+    policyFor("AGENT", { commissionPct: 20 }, playerCfg, agentCfg).ok, JSON.stringify(policyFor("AGENT", { commissionPct: 20 }, playerCfg, agentCfg)));
 }
 
 // ── §2 · A LIVE SETTLEMENT — the policy becomes money ──────────────────────────────────────
@@ -139,6 +173,11 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
 {
   const playerSnap = getAffiliateConfig();
   setAffiliateConfig({ enabled: true, commission: { enabled: true, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 } }, "test-officer");
+  // ⭐ AND THE PLAYER MONEY NEEDS ITS OWN DECLARATION FOR THE SAME REASON THE BONUS WALLET DOES
+  // (2026-09-25). `inviteRewards` is WITHDRAWN on the shipped state, so without this the player
+  // arm of the control would pay nothing, the two arms would "agree" at zero, and the split this
+  // section exists to prove would be untested — the gate-that-cannot-fail the note below forbids.
+  process.env.FEATURE_INVITEREWARDS = "ACTIVE";
   process.env.FEATURE_INVITE = "ACTIVE";
   /**
    * ⭐ THE BONUS WALLET IS WITHDRAWN FROM THE PRODUCT, AND THIS SECTION DRIVES ITS ON PATH
@@ -167,6 +206,7 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
     ok("5.txn · CONTROL — no AGENT_COMMISSION transaction exists for a player referrer", !txns.some((t) => t.type === "AGENT_COMMISSION" || t.type === "AGENT_COMMISSION_REVERSAL"), JSON.stringify(txns.map((t) => t.type)));
   } finally {
     delete process.env.FEATURE_INVITE;
+    delete process.env.FEATURE_INVITEREWARDS;
     delete process.env.FEATURE_BONUS;
     setAffiliateConfig({ enabled: playerSnap.enabled, commission: playerSnap.commission }, "test-officer");
   }
