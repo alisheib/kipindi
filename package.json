@@ -910,7 +910,9 @@
     "qa:ghost-landing": "node scripts/ghost-landing.mjs",
     "qa:fairness-phone": "node scripts/fairness-phone.mjs",
     "qa:signup-funnel": "node scripts/signup-funnel.mjs",
-    "qa:detail-order-hints": "node scripts/detail-order-and-hints.mjs"
+    "qa:detail-order-hints": "node scripts/detail-order-and-hints.mjs",
+    "qa:updown-history-strip": "node scripts/live/updown-history-strip-drive.mjs",
+    "test:time-axis": "tsx scripts/chart-time-axis.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
