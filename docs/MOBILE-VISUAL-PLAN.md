@@ -31,126 +31,88 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ STATE, 2026-09-24 (rewrite this block at the end of every session)
-  10 of 42 units closed · 83 defects filed · branch mobile-s2 tracking origin/main.
-  Closed EARLIER today: U41 (/fairness), U42 (the sign-up funnel), U33 (chrome: menus + semantics); D71–D83.
-  THIS session: **all FOUR of U35's defects are fixed, guarded and live** — D36 half 2, D37, D45, D52
-  (`a7da5f89`, `c6ebbedf`; deployed `bedb6023` and `4b30a069`). Guards added, all RED-proven against
-  PRODUCT mutations: `test:updown-history-pnl` + `red:updown-history-pnl` (6/6), §7 and §8 of
-  `test:updown-clock-guard` (26 new assertions, 8 mutations), and two additions to
-  `test:measure` whose own exemption ratchet SHRANK by the four Up & Down routes.
+▶ SESSION CLOSED 2026-09-25 (this block replaces the previous ▶ STATE)
+  **11 of 42 units closed · 83 defects filed · U34 closed this session.**
+  Shipped, guarded and LIVE this session: **D36 half 2 · D37 · D45 · D52 · D39 · D29 · D42**,
+  and **U34/D31 verified on production and closed**. Commits `a7da5f89` `c6ebbedf` `22fb75a9`
+  `5c00588c` `1d3bbc28` `67b2a9cd`. Every fix carries a guard proven RED against PRODUCT
+  mutations, never a plant.
 
-  ⛔ **U35 IS STILL OPEN, ON ONE THING, AND IT IS NOT A CODE PROBLEM.** D36, D45 and D52 are
-  verified on production with their numbers in §3. D37 is proved in BOTH halves, by two
-  instruments, but never on the real page with real rows:
-    · **the money** — `test:updown-history-pnl`, 26 assertions over the real `roundPnl` plus a
-      source check that the page hands it `viewRounds`, 6/6 mutations caught against a baseline
-      proven green first. M1 is the defect verbatim.
-    · **the fit** — `scripts/live/ops/d37-tile-fit.mjs` injects the strip's exact markup into a
-      real production page at a real width and measures OLD against NEW in the same frame: with a
-      seven-figure book the old spilled **72 / 52 / 26px** at 320 / 360 / 412 and the new spills
-      **0px**, for one extra line of tile height. A delta, not a threshold — where the old did not
-      spill, it reports BLIND rather than claiming a fix.
-    · **what is missing** — watching the real strip, fed by real rows, hold still while the player
-      pages from 1 to 2.
+  ⛔ **THE REGISTER IS DRIFTING FASTER THAN IT IS READ. Do not trust a cell you have not checked.**
+  This session found, in six defects: THREE citations pointing at files that do not exist
+  (`components/market/` for `markets/`), TWO prescribed remedies that were actively HARMFUL
+  (D29's "one token" would have lied to screen-reader users; D42's cell had every figure stale by
+  ~40 rows), ONE unit body prescribing the very instrument §0 trap 3 forbids, and FIVE false
+  statements about D31. Every one is struck in place rather than deleted.
 
-  🔴 **AND HERE IS WHY NOBODY CAN DO THAT TODAY — READ THIS BEFORE PLANNING ANY LOCAL DRIVE.**
-  **REACT DOES NOT HYDRATE IN `next dev` ON THIS MACHINE.** Measured 2026-09-24 on BOTH dev
-  servers (the other session's on :3000 and a fresh one on :3010) and on EVERY route tried —
-  `/`, `/markets`, `/updown`, `/updown/history`, `/updown/{id}`: **4 hydrated elements out of
-  367–560**, and those four are two `<link>`s in the head plus the Next dev portal. The same
-  probe against production reads **215 of 543**. There are NO page errors, NO console errors and
-  NO 4xx — it fails completely silently, and `window.next` is defined, so the client runtime does
-  load. Ruled out on the way: a stale `.next` (deleted 2.3GB and rebuilt — no change), slow
-  lazy compilation (polled 90s — flat at 4), and the `webpack-hmr` WebSocket errors (present on
-  production-serving dev too, so they are noise, not the cause).
-  ⛔ WHAT THIS COSTS: **no click in dev can ever become a bet, a vote or a filter change**, so
-  every UI-driven local drive on this box is dead on arrival and will look like a product defect.
-  ⭐ It cost this session an hour and two wrong theories. Check it FIRST with one probe —
-  count elements carrying `__react*` props — before trusting any local drive.
+  ⭐ **THREE GUARDS WERE PROVING NOTHING, AND ALL THREE SAID SO IF YOU LOOKED:**
+   · `red:labels` scored 10/12. Chasing the gap found `stripComments`, whose JSX-comment rule used
+     `\s*` — which crosses NEWLINES — so an object literal's `{` followed by a doc comment opened a
+     match running to a distant `*/ }`. **7,077 lines of real code hidden across 76 files**,
+     including 867 of `i18n-dict.ts`, the dictionary that suite exists to police. Now 12/12.
+   · `red:tap-rung` scored 1/2 and printed "⛔ ANCHOR NOT FOUND — the harness is stale, not the
+     gate". Its CashEye mutation described pre-D78 markup. Re-pinned. Now 2/2.
+   · A second `red:labels` mutation had the same drift (`opacity-85` the call site had dropped).
+  🔑 A harness that reports a failed injection instead of scoring it CAUGHT is the only reason any
+  of this was findable. Keep that property in anything you write.
+
+  🔴 **READ THIS BEFORE PLANNING ANY LOCAL DRIVE — IT COST THIS SESSION AN HOUR.**
+  **REACT DOES NOT HYDRATE IN `next dev` ON THIS MACHINE.** Measured on BOTH dev servers and every
+  route: **4 hydrated elements out of 367–560**, and those four are two `<link>`s and the Next dev
+  portal. Production reads **215 of 543**. No page error, no console error, no 4xx — it fails
+  silently, and `window.next` IS defined. Ruled out by measurement: a stale `.next` (2.3GB deleted
+  and rebuilt, no change), slow lazy compilation (polled 90s, flat), and the `webpack-hmr` errors
+  (present against a server that DOES hydrate, so noise). ⛔ No click in dev can become a bet, a
+  vote or a filter change. Check it FIRST, in one line, before trusting any local drive:
+  `[...document.querySelectorAll("*")].filter(e=>Object.keys(e).some(k=>k.startsWith("__react"))).length`
+  ⛔ COUNT, never a boolean — "any react props?" answers true for those four head nodes, and that
+  is exactly how this session first concluded, wrongly, that the home page hydrated.
+
+  ⚠️ **NEW, UNFILED — file these properly:**
+   · **the settled Up & Down card's quote stamp is TODAY'S read.** `updown/page.tsx` hands every
+     card `sourceQuotedAt={activeAsset!.sourceQuotedAt}` — asset-level — so a round that settled an
+     hour ago footers "quoted 01:54:11" against the CURRENT quote. `/updown/[roundId]` is wrong the
+     same way, so "two surfaces disagree" does NOT catch it. `proof.closeQuotedAt` exists but only
+     on the DETAIL payload; `BoardRound` has no such field, so this needs a payload change.
+   · **`/markets` carries a 12px body overflow at 320** (bodyScrollWidth 332 vs client 320),
+     identical before and after any interaction; the widest boxes past the edge are `.kp-fchip`
+     rail chips. Measured 2026-09-25, signed in. NOT caused by D31 — checked as a delta.
+   · **`test:updown-source-class` is RED on main** (`0f01c28f`) and is NOT in `predeploy`, so it has
+     failed unwatched. It is a FALSE positive — `updown-board.ts:1032` hands `sourceDomain` to a
+     SERVER call, not the client payload — but a vendor-leak guard nobody watches is worth nothing.
+   · **`results/page.tsx:481`** has a `<MarketCard>` call site that rendered zero cards on
+     production, so `test:outcome`'s rule 2 may be governing an unreachable site.
 
 ▶ NEXT: **U35** (drive D37's strip, then close it), then **U37**, **U11**, **U27**, **U31** — money truth first.
-  Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number. Every item
-  below was verified IN THE CODE on 2026-09-24 by a reader that opened the file, and the ones marked ⭐
-  carry CORRECTIONS to this document — read them before trusting any cell elsewhere.
+  Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
 
-  1. ⭐ **U35's LAST STEP — drive D37's strip and close the unit.** The code is live and the logic is
-     guarded; what is missing is a look at the rendered thing. Recipe and the two blockers are in the
-     STATE block above. Budget an hour, most of it seeding. ⛔ Do NOT mark U35 ✅ off the unit guard
-     alone: `test:updown-history-pnl` proves the page hands `roundPnl` the VIEW and proves the
-     arithmetic, and it cannot prove a tile is legible at 360 with a seven-figure net in it.
+  1. ⭐ **U35's LAST STEP — D37's strip, on a screen.** Everything else in U35 is live and
+     verified. D37's money is proved by `test:updown-history-pnl` (26 assertions, 6/6 mutations)
+     and its FIT by `scripts/live/ops/d37-tile-fit.mjs` against production's own stylesheet — the
+     old markup spilled **72 / 52 / 26px** at 320/360/412, the new spills **0**. What is missing is
+     watching the real strip, fed by real rows, hold still while the player pages 1 → 2.
+     ⛔ BOTH DOORS ARE SHUT ON THIS MACHINE: no production account has Up & Down history
+     (`mobile01` is "wallet 0, never funded", so the tiles do not render at all), and dev cannot
+     place a bet (see the hydration block above). Ali declined funding a production account.
+     ⭐ So this needs EITHER a machine where dev hydrates, OR Ali's go-ahead to fund `mobile01` and
+     place ~13 small bets (13 is the floor: `PLAYER_PER_PAGE` = 12, so fewer cannot show two pages
+     carrying the SAME money). The drive is written and waiting: `.d37-local-drive.mjs` in the
+     session scratchpad, and its recipe is in §2's S19c entry.
+     ⛔ Do NOT mark U35 ✅ off the unit guard alone — it proves the page hands `roundPnl` the VIEW
+     and proves the arithmetic; it cannot prove a tile is legible at 360 with a seven-figure net.
 
-  2. D29 (U32) — terminal cards paint a crowd price nobody paid. `market-card.tsx:277` is still
-     `const noPrice = live && (isNew ?? volume === 0);` — on a resolved or void card `noPrice` is
-     false, so TippingBar draws the hardcoded 50. Deleting `live &&` is one token.
-     ⛔ BUILD THE GUARD FIRST and read trap 3 below: today's board may hold no resolved-empty and no
-     void card, so a live sweep would be green about THIS BOARD, not about the code.
+  2. U37 (D39 is done; D40 remains) · 3. U11 the overlay census — the next big rock, it gates
+     U12–U18 (SEVEN units), NOT blocked, budget a whole session, and ⛔ do not build on
+     `scripts/overlay-responsiveness-test.mjs` (its selectors match nothing that ships).
+  4. D14 (U27) — pull-to-refresh fires inside sheets. `pull-to-refresh.tsx:32` gates on
+     `scrollY > 5` alone; `html[data-sheet-open]` already exists and is set by `filter-sheet.tsx:252`.
+  5. Batch the one-line clipping fixes under ONE guard with four RED controls: D1, D34, D45, D52.
+  6. U31 — 379 verification rows. Write the `grep -c "🕓 unverified" == 0` counter FIRST so
+     progress is a falling number.
 
-  3. D42 (U32) — the /results donut strokes a third segment its legend never names.
-     ⭐ FOUR CORRECTIONS, verified against production on 2026-09-24: the donut is at **:528-538** (not
-     :319) and the legend at **:350-358** (not :324-331). The figures in §8/§9 are STALE — production
-     now reads **210 markets, "NDIO 69 · HAPANA 110" = 179, so THIRTY-ONE markets (14.76%) are an
-     unnamed arc**, not the 171/147/24 those cells state. ⛔ AND "the legend prints two spans" is true
-     only on a SINGLE-PRODUCT view: `:351` is `{linesShown.map(…)}` — two spans PER PRODUCT LINE, so a
-     mixed set prints four. A guard built on "two" is built on the current filter default. ⛔ §9's arc
-     triple "124/182/49" sums to 355° and cannot be a reading of this component; today's dasharrays
-     give 118.28/188.57/53.14. The remedy §9 prescribes is right: NAME the third arc in the legend, do
-     NOT drop `voided` from the denominator.
-
-  4. D39 (U37) — a Swahili player reads a raw English enum at two MONEY moments.
-     ⭐ THREE CITATIONS HERE ARE WRONG and will cost a session if trusted:
-     · the path is `src/components/markets/conviction-dial.tsx` — **markets, plural**. The cell writes
-       `market/` twice, and `sed` on that path returns "No such file or directory".
-     · `markets/[id]/page.tsx:357` reads `const heldLabel = [...heldSides].join(" + ")`, NOT
-       `heldSides.join(" + ")` — `heldSides` is a `Set` and has no `.join`. A guard pinned to the cell's
-       literal text matches nothing and reports a confident zero.
-     · the claimed precedent is wrong: conviction-dial.tsx:1000-1001 says the sibling is the bet-placed
-       NOTIFICATION, not the modal. The real in-file prohibition is at **:553-555**
-       (*"⛔ Never write `{effectiveSide}` into copy; reach for this."*).
-     The two edits themselves are real, one line each, through `sideWord(t, side, "MARKET")`.
-
-  5. U34 — D31's PRODUCT work is genuinely done; the BOOKKEEPING is what is wrong.
-     ⭐ FIVE FALSE CLAIMS, all checked against the tree today:
-     · §8's D31 cell says "the eye control is 32px (under the 44px floor), the 800ms delta flash shifts
-       the header, and the link announces 'Hide password'". **All three are fixed**, and "the 44px floor"
-       is wrong twice over — the floor is `--tap-min: 40px` (trap 1). `wallet-balance-pill.tsx:365` is
-       `w-[var(--tap-min)]`, `:281` is `absolute`, `:189` reads `t.common.hideBalances`.
-     · §3's D31 row repeats those same three as "still open".
-     · §8's D78 cell credits `3d644e4e`, which is a MERGE. The fix is **`70c8bcaa`**.
-     · the old §0 credited `886e1992`, also a merge; parts 3–4 are in **`f438bc41`**.
-     ⛔ SO IT IS NOT "nothing but bookkeeping": the RED anchor at `scripts/anchors/tap-rung.anchors.mjs:15-18`
-     still describes the OLD markup, so that control CANNOT FIRE. Repair the anchor FIRST, then close.
-
-  6. U11 — the overlay census. The next big rock, it gates U12–U18 (SEVEN units), and it is NOT
-     blocked: see the §11 correction. Budget a whole session. ⛔ Do not build on
-     `scripts/overlay-responsiveness-test.mjs` — its selectors match nothing that ships.
-
-  7. D14 (U27) — pull-to-refresh fires inside sheets. `pull-to-refresh.tsx:32` gates on `scrollY > 5`
-     alone; `html[data-sheet-open]` already exists and is already set by `filter-sheet.tsx:252`.
-
-  8. Batch the one-line clipping fixes under ONE new guard with four RED controls: D1, D34, D45, D52.
-
-  9. U31 — 379 verification rows. Background grind, fully parallelisable, and the only unit with a
-     mechanically checkable accept line: write the `grep -c "🕓 unverified" == 0` counter FIRST so
-     progress is a falling number. Sample ~20 rows before estimating; some will reclassify as duplicates.
-
-  ⛔ FOUND TODAY, NOT YET IN THE REGISTER — file these properly next session:
-     · **the settled card's quote stamp is TODAY'S read.** `updown/page.tsx` hands every card
-       `sourceQuotedAt={activeAsset!.sourceQuotedAt}` — asset-level — so a round that settled an hour ago
-       footers "quoted 01:54:11" against the CURRENT quote. `/updown/[roundId]` is wrong the same way, so
-       the "two surfaces disagree" framing does NOT catch it. The round's own `proof.closeQuotedAt` exists
-       but only on the DETAIL payload; `BoardRound` has no such field, so this needs a payload change and
-       does not belong in a one-line lane. Same root cause as D36 half 2.
-     · **`test:updown-source-class` is RED on main and nothing notices.** Its §2/§4 assert
-       `!/sourceDomain/` over the whole of `src/lib/server/updown-board.ts`, and `:1032` legitimately
-       hands `sourceDomain` to `vendorBarsFor` — a SERVER call, not the client payload. Introduced by
-       `0f01c28f`; the suite is NOT in `predeploy`, so it has failed unwatched ever since. Scope the
-       matcher to the exported payload type, or exempt the vendor call. Do not silence it.
-
-  ⛔ DEPRIORITISED ON PURPOSE, with reasons: D5 (re-measure first — the band it was measured against
-  has been rebuilt), D43 (RE-FILE, DO NOT FIX — its cell names the wrong element and the prescribed
-  remedy is a no-op), D62 (the one-declaration remedy was built, measured, and moved nothing),
-  D16 (measure first; if back-nav lands within ±40px it is a no-defect).
+  ⛔ DEPRIORITISED, with reasons: D5 (re-measure first — the band it was measured against has been
+  rebuilt), D43 (RE-FILE, DO NOT FIX — its cell names the wrong element and the remedy is a no-op),
+  D62 (built, measured, moved nothing), D16 (measure first; within ±40px it is a no-defect).
 
 ▶ WHAT CANNOT BE DONE FROM THIS MACHINE — do not burn a day rediscovering it
   U30 (real device + TalkBack; D54 needs a NOTCHED phone — Playwright reports every safe-area inset
