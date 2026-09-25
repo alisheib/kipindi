@@ -17,7 +17,7 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 | **Live state rule** | The broadcast surface ships **built and CLOSED**. Dispatch refuses until a Gaming Board advertising approval is recorded (§5.1). Contacts, compose, preview, estimate and test-send-to-self all work meanwhile |
 | **Evidence** | `.qa-shots/marketing-setup/<unit>/…` (gitignored). ⛔ A `shots/…png` path may only be written into a doc in the commit that also commits the PNG |
 | **Tracker guard** | `npm run test:marketing-setup-plan` · red control `npm run red:marketing-setup-plan` (the same file, `--prove-red`, plants in memory) |
-| **Cadence** | **TWO units per session** (Ali's standing cadence). 52 units → 26 sessions |
+| **Cadence** | **TWO units per session** (Ali's standing cadence). 52 units → 27 sessions (S5 closed U8's carried-over half, §10) |
 | **Priority** | The Mobile Visual Plan keeps `NEXT-PLAN.md` ▶ 0 START HERE. This programme is ▶ 0a and runs when Ali says so, on any machine |
 
 ---
@@ -1152,7 +1152,7 @@ next dispatch.
 ⛔ **SCOPE CORRECTED BEFORE BUILDING (S4), because this unit's premise fails twice over.**
 ① **There is no recipient row to hang a token on.** `SmsCampaign` does not exist; `InviteCampaign` /
 `InviteEntry` (`schema.prisma:783,806`) are the unrelated referral system and carry no token. The
-recipient table is U35 (S18) and the minting is U42 (S21) — both far downstream of S4. Worse, U35's own
+recipient table is U35 (S19) and the minting is U42 (S22) — both far downstream of S4. Worse, U35's own
 field list in this plan names no opt-out token column at all (the `claimToken` there is U43's slice
 token). So U8 ships **its own** token store, keyed by token and mirroring `Suppression`'s triple, which
 U42 later writes into at enqueue.
@@ -1607,28 +1607,34 @@ removed — the refusal is the evidence, not the send.
 | S2 | U3 · U4 | the counter and the envelope: what a message costs and what it must contain |
 | S3 | U5 · U6 | one helpline; the ledger and the suppression list |
 | S4 | U7 · U8 | the gate, and the way out of it (a gate with no exit is not lawful) |
-| S5 | U9 · U10 | prove the gate runs in the loop; the RG predicate |
-| S6 | U11 · U12 | age, and the published promise reconciled |
-| S7 | U13 · U14 | the window and the cap |
-| S8 | U15 · U16 | one send path; erasure and retention reach the new stores |
-| S9 | U17 · U18 | the route exists; the book exists |
-| S10 | U19 · U20 | masked by construction, then the list |
-| S11 | U21 · U22 | filters, then one contact |
-| S12 | U23 · U24 | bulk, then the one resolver it proves |
-| S13 | U25 · U26 | CSV and vCard |
-| S14 | U27 · U28 | XLSX + the boundary guard; the field list |
-| S15 | U29 · U30 | staging, then the pre-flight it makes resumable |
-| S16 | U31 · U32 | `decide()`, then the loop that executes it |
-| S17 | U33 · U34 | consent basis; export (and the round trip that proves both) |
-| S18 | U35 · U36 | campaign models (enum migration first), then the list |
-| S19 | U37 · U38 | composer and audience — read together or not at all |
-| S20 | U39 · U40 | the estimate, then the confirmation that quotes it |
-| S21 | U41 · U42 | authorisation, then the enqueue it guards |
-| S22 | U43 · U44 | the slice, then the pump that drives it |
-| S23 | U45 · U46 | scale, then receipts |
-| S24 | U47 · U48 | the live page, then its results |
-| S25 | U49 · U50 | budget; declarations |
-| S26 | U51 · U52 | the guide, then the live drive and the Seal |
+| S5 | U8 (second half) | carried over: S4 shipped U8's store and stopped rather than half-apply the `liftedAt` decision |
+| S6 | U9 · U10 | prove the gate runs in the loop; the RG predicate |
+| S7 | U11 · U12 | age, and the published promise reconciled |
+| S8 | U13 · U14 | the window and the cap |
+| S9 | U15 · U16 | one send path; erasure and retention reach the new stores |
+| S10 | U17 · U18 | the route exists; the book exists |
+| S11 | U19 · U20 | masked by construction, then the list |
+| S12 | U21 · U22 | filters, then one contact |
+| S13 | U23 · U24 | bulk, then the one resolver it proves |
+| S14 | U25 · U26 | CSV and vCard |
+| S15 | U27 · U28 | XLSX + the boundary guard; the field list |
+| S16 | U29 · U30 | staging, then the pre-flight it makes resumable |
+| S17 | U31 · U32 | `decide()`, then the loop that executes it |
+| S18 | U33 · U34 | consent basis; export (and the round trip that proves both) |
+| S19 | U35 · U36 | campaign models (enum migration first), then the list |
+| S20 | U37 · U38 | composer and audience — read together or not at all |
+| S21 | U39 · U40 | the estimate, then the confirmation that quotes it |
+| S22 | U41 · U42 | authorisation, then the enqueue it guards |
+| S23 | U43 · U44 | the slice, then the pump that drives it |
+| S24 | U45 · U46 | scale, then receipts |
+| S25 | U47 · U48 | the live page, then its results |
+| S26 | U49 · U50 | budget; declarations |
+| S27 | U51 · U52 | the guide, then the live drive and the Seal |
+
+⚠️ **Relabelled 2026-09-25 (S6).** This table said S5 = U9 · U10 while §0 called them S6's pair — off by one
+since S4 carried U8 into S5. Every row from S5 on moved down one; the pairings are unchanged. ⚠️ §2 rows
+written before this date are a log and keep the OLD labels (S4's row says "U35 (S18)", "U42 (S21)") —
+read them as S19 and S22.
 
 ⚠️ U30, U43 and U47 are the three most likely to overrun. If one will not fit, **split it before starting**
 and write the split into §2 — a half-built unit is worse than a smaller one.

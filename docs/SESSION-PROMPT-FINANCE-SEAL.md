@@ -44,9 +44,20 @@ is a second implementation that will drift.
 
 ## §2 · 🔴 STILL OPEN — pick these up
 
-- **`LEAD-A.2`** (`docs/MONEY-GATE-REMEDIATION.md`): the `market.resolved` audit payload records a
-  levy figure the ledger never booked — **the third site of the levy defect**, untouched here.
-  Same fix shape: read the ledger, do not recompute.
+- ~~**`LEAD-A.2`** (`docs/MONEY-GATE-REMEDIATION.md`): the `market.resolved` audit payload records a
+  levy figure the ledger never booked — the third site of the levy defect.~~ ❌ **NOT A DEFECT —
+  already REFUTED 3/3** in `MONEY-GATE-REMEDIATION.md` §7.5; only its row in the findings table
+  had never been annotated (done 2026-09-25). The payload's `levies` and the ledger's levy lines
+  come from ONE `levySplit` since §6.1. Re-confirmed at `360935a3`: `test:levy-allocation` 26/0,
+  `red:levy-allocation` 7/7. ⛔ This bullet sent a session to "fix" a closed finding — do not
+  reopen it.
+- ✅ **The neighbouring `LEAD-F.1` / `LEAD-F.2` are ALSO already fixed** (`781f397e`,
+  `MONEY-GATE-REMEDIATION.md` §7.15: `HOUSE:TAX` is subtracted from free cash and captioned
+  "Statutory tax held — owed to the state, NOT ours"; `test:house-solvency` 21/0). Their rows
+  still read 🟠 with no marker — the same stale-row shape as `LEAD-A.2`. Annotated 2026-09-25,
+  and the two code comments that still called `HOUSE:TAX` "retired" (`house-book.ts`,
+  `house-ledger.ts`) corrected. ⭐ **Before working a 🟠 row in that table, search the file for
+  its id: a later section may already have closed it.**
 - **`buildDailyOps` walks the WHOLE `Transaction` table** (`db.txn.listAll()`), which threw once
   against production during verification and passed on retry. It is the exact pattern
   `report-parity` exists because of. Latent scale risk; not a correctness bug.
