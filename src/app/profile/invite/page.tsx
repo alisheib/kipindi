@@ -419,33 +419,31 @@ export default async function InvitePage({
       </div>
       )}
 
-      {/* How it works. ⭐ THE THIRD STEP IS THE WHOLE DIFFERENCE between the two products, so the
-          two ladders are written out rather than patched: paid ends at "Earned", in gold, because
-          money is the outcome; unpaid ends at "They appear in your list", in royal, because being
-          counted is the outcome. ⛔ Reusing the paid ladder with the last word swapped is how a
-          gold numeral 3 survives on a page that pays nothing. */}
+      {/* How it works — PAID ONLY.
+          🔴 THE UNPAID LADDER WAS FILLER AND IT READ AS FILLER. "Share your link · They sign up ·
+          They appear in your list" explains nothing a player cannot see: the link is on the screen
+          above it, and the list is on the screen below it. Its third step existed only to give the
+          ladder a third step. A panel that restates the page around it makes a simple feature look
+          padded, and pads the scroll on a phone for nothing.
+          ⭐ The PAID ladder stays, because there it teaches something the screen does NOT show —
+          that money arrives only after a friend signs up AND bets — and it is the page's one place
+          to say so before a player forms the wrong expectation. */}
+      {paid && (
       <section className="rounded-xl glass-panel p-4">
         <p className="font-display text-[15px] font-bold leading-tight">
           {t.profile.howItWorks}
         </p>
         <div className="mt-3 space-y-3">
-          {(paid
-            ? [
-                t.common.share + " " + t.profile.yourReferralLink.toLowerCase(),
-                t.common.signUp + " & " + t.common.placeBet.toLowerCase(),
-                t.proposals.earned,
-              ]
-            : [
-                t.profile.inviteStepShare,
-                t.profile.inviteStepJoin,
-                t.profile.inviteStepCounted,
-              ]
-          ).map((label, i) => (
+          {[
+            t.common.share + " " + t.profile.yourReferralLink.toLowerCase(),
+            t.common.signUp + " & " + t.common.placeBet.toLowerCase(),
+            t.proposals.earned,
+          ].map((label, i) => (
             <div key={i} className="flex items-center gap-3">
               <span
                 className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full font-mono text-[14px] font-bold"
                 style={
-                  i === 2 && paid
+                  i === 2
                     ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
                     : { background: "color-mix(in oklab, var(--royal-500) 18%, transparent)", color: "var(--royal-200)", border: "1px solid color-mix(in oklab, var(--royal-500) 36%, transparent)" }
                 }
@@ -459,6 +457,7 @@ export default async function InvitePage({
           ))}
         </div>
       </section>
+      )}
 
       {/* Requirements banner — Management Bonus Rules §4 + §5.
           ⛔ THE ENTIRE BANNER IS THE PAID PROGRAMME'S. Every line in it is a condition attached to

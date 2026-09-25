@@ -11,6 +11,9 @@ import { useDeferredToast } from "@/components/ui/toast";
 import type { AffiliateConfig, BonusRecipient, BonusTrigger, PrizeMilestone } from "@/lib/server/affiliate-config";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { saveAffiliateConfigAction } from "./actions";
+// ⭐ THE PLATFORM'S ONE MONEY FORMATTER. The banner below quotes the officer's own figures back
+// to them, and a hand-rolled `toLocaleString()` beside it would be a second spelling of TZS.
+import { formatTzs as fmt } from "@/lib/utils";
 
 /**
  * Interactive affiliate-config editor (master switch + reward modes + save).
@@ -205,13 +208,99 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
           as ONE child of the outer `space-y-3`, so the surrounding rhythm is unchanged. */}
       <div>
         <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Reward modes · Njia za zawadi</p>
-        <p className="mt-0.5 text-body-sm text-text-subtle">independently toggleable</p>
+        <p className="mt-0.5 text-body-sm text-text-subtle">
+          {rewardsLive ? "independently toggleable" : "stored, but not consulted while the invite is unpaid"}
+        </p>
       </div>
+
+      {/* 🔴 A CONTROL THAT DOES NOTHING IS WORSE THAN NO CONTROL, and until this banner these three
+          cards were exactly that: an officer could switch commission on, type 50%, press Save, get a
+          success toast — and not one shilling would move, because `policyFor` refuses the PLAYER
+          branch ABOVE the config. The numbers were real, the save was real, the effect was zero, and
+          nothing on the screen said so. Whoever typed a rate would reasonably believe 50pick had
+          started paying referrers.
+          ⭐ SO THE CARDS ARE DISABLED AND THE REASON IS NAMED. They keep their stored values — this
+          is not a deletion, and flipping `inviteRewards` back to ACTIVE returns them exactly as the
+          officer left them. ⛔ It also names the ONE thing that changes it, because the honest answer
+          to "which button turns payment on?" is that there is no button: it is a code state and a
+          deploy, deliberately out of one-click reach of a misclick, and it is a regulated inducement
+          that needs Gaming Board clearance before it is switched on at all. */}
+      {!rewardsLive && (
+        <div
+          className="flex gap-2.5 rounded-xl border p-3"
+          style={{
+            background: "color-mix(in oklab, var(--warning-500) 12%, transparent)",
+            borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)",
+          }}
+        >
+          <span className="shrink-0 text-warning-fg mt-0.5"><I.info s={16} /></span>
+          <div className="text-caption text-text-secondary leading-relaxed">
+            <p className="font-bold text-text mb-1">These three switches are stored, not applied.</p>
+            The player invite is <strong className="text-text">unpaid</strong>: every referral accrual
+            is refused before these values are read, so changing a rate or an amount here moves no
+            money and pays no player. Your numbers are kept exactly as you set them.
+            <br />
+            <span className="text-text">To actually pay referrers</span> the product state
+            <code className="font-mono mx-1">inviteRewards</code> must go to
+            <code className="font-mono mx-1">ACTIVE</code> — a one-word code change and a deploy,
+            not a setting on this page. ⛔ Rewarding referrals is a regulated inducement: clear the
+            structure with the Gaming Board of Tanzania first.
+            <br />
+            {/* ⭐ WHAT WOULD HAPPEN THE MOMENT IT IS SWITCHED ON, priced from the values on screen.
+                An officer who has armed a mode is entitled to know what their own numbers would do —
+                "it is off" is only half an answer, and the half that leaves them guessing. Read from
+                the live config, so it moves as they type and can never quote a stale figure. */}
+            {(c.commission.enabled || c.prize.enabled || c.bonus.enabled) && (
+              <>
+                <br />
+                {/* ⛔ THE CLAUSES ARE JOINED, NOT CONCATENATED WITH TRAILING SEMICOLONS. Appending
+                    "…;" to each enabled mode reads correctly only when all three are on: with one
+                    mode it printed "a TZS 10,000 prize on the recruit's first bet; — and it would
+                    apply…", a semicolon against a dash. The list is built first and punctuated
+                    once, so it reads as a sentence at one, two or three modes. */}
+                <span className="text-text">If it were switched on right now</span>, with the values
+                on this screen, each qualifying referral would pay{" "}
+                {(() => {
+                  const parts: React.ReactNode[] = [];
+                  if (c.commission.enabled) parts.push(<><strong className="text-text">{Math.round(c.commission.rate * 100)}%</strong> of the operator margin their recruits generate{c.commission.windowMonths > 0 ? ` for ${c.commission.windowMonths} months` : " for life"}</>);
+                  if (c.prize.enabled && c.prize.amountTzs > 0) parts.push(<>a <strong className="text-text">{fmt(c.prize.amountTzs)}</strong> prize on {c.prize.milestone === "FIRST_BET" ? "the recruit's first bet" : "a qualifying deposit"}</>);
+                  if (c.bonus.enabled && c.bonus.referrerAmountTzs > 0 && (c.bonus.recipient === "REFERRER" || c.bonus.recipient === "BOTH")) parts.push(<><strong className="text-text">{fmt(c.bonus.referrerAmountTzs)}</strong> to the referrer on {c.bonus.trigger === "SIGNUP" ? "sign-up" : "first deposit"}</>);
+                  return parts.map((p, i) => (
+                    <span key={i}>{i > 0 && (i === parts.length - 1 ? ", and " : ", ")}{p}</span>
+                  ));
+                })()}
+                .{" "}
+                {/* 🔴 THIS SENTENCE SAID "never retroactively to the people already in the roster
+                    below", AND THAT WAS FALSE — a wrong statement about money on the screen an
+                    officer would read before switching payment on. Two facts, and they are not the
+                    same: no BACK-PAY happens (accruals fire from live hooks; nothing re-walks past
+                    bets), but every recruit ALREADY bound becomes payable on their NEXT bet,
+                    deposit or settlement — and their commission window is already running, because
+                    `commissionWindowEnd` measures from `attribution.boundAt`, not from the day the
+                    switch moved. The roster below is therefore the population that would start
+                    paying, not a population that is excluded. Found by an adversarial audit that
+                    drove the flip and watched already-bound recruits pay out immediately. */}
+                <strong className="text-text">
+                  Everyone already in the roster below would start paying
+                </strong>{" "}
+                on their next bet, deposit or settlement — their window runs from the day they were
+                invited, not from the day you switch this on. Activity that has already happened is
+                not back-paid.
+              </>
+            )}
+            <br />
+            <span className="text-text-subtle">
+              What still works today: every player has a link, and the roster below counts who they
+              brought. Cash paid to an inviter outside the platform is recorded nowhere in 50pick.
+            </span>
+          </div>
+        </div>
+      )}
 
       <RewardCard
         icon={I.percent} title="Commission" sw="Tume"
         desc="Referrer earns a share of the operator margin their recruits generate."
-        on={c.commission.enabled} onToggle={() => patchCommission({ enabled: !c.commission.enabled })} disabled={!on}
+        on={c.commission.enabled} onToggle={() => patchCommission({ enabled: !c.commission.enabled })} disabled={!on || !rewardsLive}
       >
         <Field label="Commission rate" hint="Share of operator margin" suffix="%" width={140}
           value={Math.round(c.commission.rate * 100)} onChange={(n) => patchCommission({ rate: Math.max(0, Math.min(100, n)) / 100 })} />
@@ -224,7 +313,7 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
       <RewardCard
         icon={I.gift} title="Bonus / discount" sw="Bonasi"
         desc="Sign-up or first-deposit credit to the new player and/or referrer."
-        on={c.bonus.enabled} onToggle={() => patchBonus({ enabled: !c.bonus.enabled })} disabled={!on}
+        on={c.bonus.enabled} onToggle={() => patchBonus({ enabled: !c.bonus.enabled })} disabled={!on || !rewardsLive}
       >
         <div className="w-full">
           <div className="mb-1.5 text-[12px] font-semibold">Who gets it</div>
@@ -243,7 +332,7 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
       <RewardCard
         icon={I.ticket} title="Prize" sw="Tuzo"
         desc="A fixed reward to the referrer when a recruit hits a milestone."
-        on={c.prize.enabled} onToggle={() => patchPrize({ enabled: !c.prize.enabled })} disabled={!on}
+        on={c.prize.enabled} onToggle={() => patchPrize({ enabled: !c.prize.enabled })} disabled={!on || !rewardsLive}
       >
         <div className="w-full">
           <div className="mb-1.5 text-[12px] font-semibold">Milestone</div>

@@ -230,3 +230,44 @@ to stop dropping the second.
 ⛔ If it is ever wired, the code must reach `/auth/register` — appending `?ref=` to a link that
 lands anywhere else produces a code that cannot bind, which is worse than no code at all: the
 sharer believes they are being counted.
+
+## 12 - Which button turns payment on (there is none), and what happens when it moves
+
+**There is no button.** `/admin/affiliate` cannot start payments, and that is the design, not an
+omission. The only two levers are a one-word code change (`inviteRewards: "ACTIVE"`) or the
+`FEATURE_INVITEREWARDS` variable on Railway - both need a deploy, both leave a trail, neither is a
+misclick. Rewarding referrals is a regulated inducement: clear it with the Gaming Board first.
+
+PROVEN, not argued (a 39-agent adversarial hunt, six angles, zero surviving paths):
+
+- every admin field at maximum (commission **100%**, prize **TZS 1,000,000**, bonus **1,000,000**
+  to both sides) then a real recruit driven through deposit, bet and settlement -> referrer
+  **cash 0, bonus 0, zero reward rows**, four `affiliate.accrual_refused` audit rows;
+- a **persisted config row hydrated past `validate()`** with `rate: 9999` -> still refused;
+- CONTROLS that prove the machine works: an approved AGENT on the identical hooks was paid, and
+  the same PLAYER path with `FEATURE_INVITEREWARDS=ACTIVE` paid out immediately;
+- the only writer of a `ReferralReward` is `recordReward`, and every money caller funnels through
+  `policyFor`; the invite-CAMPAIGN system credits the NEW user, never a referrer; `creditBonus`
+  refuses outright; a forced `recruitedProgramme = "AGENT"` stamp plus a `commissionPct` still
+  refuses with `agent_not_approved`. Only a direct database write of `approvedAt` pays, which is
+  the agent programme behaving correctly, not the player invite.
+
+### What happens the moment it IS switched on
+
+Stated on the admin screen itself, because it is the thing an officer would get wrong:
+
+- **Everyone already in the roster starts paying** on their NEXT bet, deposit or settlement. Their
+  commission window runs from `attribution.boundAt` - the day they were invited - not from the day
+  the switch moved (`commissionWindowEnd`), and the config is read at accrual time.
+- Activity that has already happened is **not** back-paid: accruals fire from live hooks and
+  nothing re-walks past bets.
+- The banner prices this live from the officer's own stored values, so it can never quote a stale
+  figure. An earlier draft of that banner said "never retroactively to the people already in the
+  roster" - **false**, and corrected: it is the exact population that would start paying.
+
+### The admin screen while unpaid
+
+The three reward cards are **disabled**, not hidden: their stored values survive and return
+untouched when the state flips. A banner says they are stored but not applied, names the one thing
+that changes it, and prices what they would pay. ⛔ Before this, an officer could enable commission,
+type 50%, press Save and get a success toast while nothing whatsoever happened.
