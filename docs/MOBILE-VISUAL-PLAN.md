@@ -327,6 +327,53 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   biased instrument and IS machine-doable) · U40 (native SW/ZH readers, plus Ali's sign-off on D53,
   which is compliance text). Inside otherwise workable units: D8, D46, D47.
 
+▶ ON A DIFFERENT MACHINE — written 2026-09-25 because Ali is continuing this elsewhere
+
+  ⛔ **ONE THING GENUINELY BLOCKS A FRESH CLONE, AND IT IS NOT IN GIT.** `.env.qa.local` is ignored
+  by `.gitignore:9` and is not tracked. `qaEnv()` reads it and THROWS if a key is missing, so
+  without it `loginOnce(b, "mobile01")` cannot sign in and **every signed-in production measurement
+  in this programme is unavailable** — which is most of them. It holds 14 keys; the ones this plan
+  uses are **`QA_MOBILE01_PASSWORD`** (the phone-measurement player, `+255712000110`) and
+  `QA_ADMIN_PASSWORD`. Ali has them. ⚠️ Without that file a session can still do everything
+  SIGNED-OUT, plus every source-level suite — do not conclude the programme is unworkable.
+
+  ⭐ **WHAT TRAVELS UNCHANGED**, because it is a fact about the product rather than the box: the
+  defect register and every unit body; all the guards and their RED controls; the recipes in §2;
+  and the measured CSS numbers (the chart plot is 190px at a 320 viewport, `--tap-min` is 40, the
+  spacing scale is overridden, `PLAYER_PER_PAGE` is 12, the Up & Down lock is `close − 60s` on a
+  5-minute chain and `close − 180s` on a 15-minute one). None of those need re-measuring.
+
+  ⛔ **WHAT IS MACHINE-LOCAL AND MUST BE RE-MEASURED RATHER THAN READ:**
+   · **Whether `next dev` hydrates.** On this box it read 4 of ~500 on 2026-09-24 and 775 of 919 on
+     2026-09-25 — same server process. Probe it, COUNT `__react` props, then click something and
+     assert the state changed. Never trust either verdict, including the good one.
+   · **Which port, and whether a server is already up.** Next 16 refuses a second `next dev` per
+     directory, so an existing one IS the host — and it compiles from the working tree, so it serves
+     uncommitted edits. A spare worktree is the only way to get a second.
+   · **The dev server's stability.** Turbopack's CSS worker died here after a `globals.css` edit
+     ("failed to receive message / reading packet length") and EVERY route began answering 500 while
+     `tsc` stayed clean. A restart fixed it; a fresh `next dev` starts with an EMPTY in-memory store,
+     so re-seed before believing anything.
+   · **`npx next start` does not work on this repo at all** — `.env.local` (also gitignored) carries
+     no `DATABASE_URL` and the instrumentation hook refuses the in-memory store, so every route 500s.
+     `next dev` is the only local host.
+
+  ⭐ **THE FIRST FIVE THINGS TO RUN SOMEWHERE NEW**, in this order:
+   1. `npm run test:mobile-visual-plan` — the tracker. It needs nothing but the repo and must pass.
+   2. `npm run test:time-axis` · `test:tap-target` · `test:labels` · `test:design-frozen` — all
+      source-only, all must pass, none needs a server or a secret.
+   3. `npm run qa:detail-order-hints -- https://www.50pick.tz` — needs `.env.qa.local`. GREEN over 9
+      cells is the current truth; anything else means something regressed, not that the gate is wrong.
+   4. Only then a local server, and the hydration probe before any drive.
+   5. `git log --oneline -8 origin/main` — two other sessions push to main most days.
+
+  ⚠️ **WHAT NEEDS ALI WHEREVER THE WORK HAPPENS** (no machine changes these): U30's real-phone pass
+  (keyboard, TalkBack, large text, in-app browser, installed app, landscape — Playwright reports
+  every safe-area inset as 0, so this is not a tooling gap that a better PC closes); **D88's ruling**
+  on whether Law 9's 40px floor reaches a link inside a sentence; **D90's ruling** on 13.5px/bold
+  versus a new 13px rung in `ui/stat.tsx`; U29's A/B browser-floor decision; D53's compliance text;
+  and funding `mobile01` if the production route for U35 is ever preferred to the local one.
+
 ▶ THE THREE TRAPS — every session re-learns these unless it reads them here
   1. THE SPACING SCALE IS OVERRIDDEN (tailwind.config.ts:211-226 — `h-8`=48px, `h-7`=40px, `p-5`=24px).
      Read a unit's "close h-8 48 → 44" with stock Tailwind values and it looks like an instruction to
@@ -364,7 +411,11 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
 
 ## §0a — The session prompt (paste this to start a session on any machine)
 
-⛔ This block is the contract. It relies only on this repository, so it works on any PC, with or without memory.
+⛔ This block is the contract, and it is **NOT self-sufficient** — the older wording here said it
+"relies only on this repository, so it works on any PC", and that is false for every measurement
+this programme actually trusts. **Production measurement needs `.env.qa.local`, which is gitignored
+(`.gitignore:9`) and therefore absent from a fresh clone.** Read the ▶ ON A DIFFERENT MACHINE block
+in §0 before starting anywhere new. Everything else here does travel.
 
 ```
 Continue the 50pick MOBILE VISUAL PLAN. Perfect beats fast. No lost work, no repeated work.
