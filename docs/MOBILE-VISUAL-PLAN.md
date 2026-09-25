@@ -24,6 +24,47 @@
 
 ## §0 — RESUME AT
 
+### ⛔ IS MOBILE VISUALISATION DONE? **NO.** Read this before telling anyone otherwise.
+
+Ali asked on 2026-09-25 whether the programme was finished. It is not, and the honest figure is
+worse than the unit count suggests. Updated at the end of every session; `test:mobile-visual-plan`
+enforces that these numbers agree with §1 and with `NEXT-PLAN.md`.
+
+| | |
+|---|---|
+| **Units** | **12 of 42 ✅** (U1 U2 U3 U4 U5 U6 U7 U33 U34 U37 U41 U42) · 1 🔵 shipped-not-closed (U25) · **29 not started** |
+| **Defects** | **90 filed, 15 ✅** · the rest are 🔵 live-but-unclosed, ◐ half-done, or ⬜ open |
+| **Closure conditions (§1a)** | **9, of which 4 are partly under way and 5 HAVE NOT BEGUN** |
+
+⭐ **THE UNIT COUNT IS THE OPTIMISTIC NUMBER, AND ANYONE READING ONLY IT WILL MISJUDGE THIS.**
+"12 of 42" measures the unit queue. Five of §1a's nine closure conditions are whole-programme
+activities that no session has started, and none of them shrinks as units close:
+ 1. ⬜ **U31 — the inspection backlog: 379 🕓 items** in the findings record, none verified or refuted.
+    This is the single largest piece of remaining work and it is not a unit's worth, it is a
+    session's worth several times over.
+ 2. ⬜ **§11's acceptance table re-measured on production in ONE final run** — every width × locale
+    × density × condition, with the numbers written in beside the targets. Never done end to end.
+ 3. ⬜ **U30 on real phones** — keyboard, large text, TalkBack, WhatsApp in-app browser, installed
+    app, landscape, battery saver, plus axe at 0 serious/critical with overlays open. **Needs Ali's
+    handsets; nothing on this machine can do it** (Playwright reports every safe-area inset as 0).
+ 4. ⬜ **The critics panel re-run at the Seal** on the same nine surfaces, with nothing the
+    verifiers mark `new` or `known` still visible on production.
+ 5. ⬜ **Ali's sign-off on the final before/after contact sheet** (§8a), recorded in §2.
+
+⚠️ **AND THE DEFECT COUNT GREW FASTER THAN IT SHRANK THIS SESSION** — 6 closed, 6 new ones filed
+(D85–D90), every one found by building a gate rather than by looking for them. Four of the six were
+invisible to every check in the repository. **Expect the register to keep growing while units close;
+that is the programme working, not failing.** A session that measures its own success by the defect
+count falling will stop looking.
+
+⭐ **WHAT IS ACTUALLY TRUE, AND WORTH SAYING TO ALI:** the surfaces a player meets first — the board,
+the market card, the discovery bar, the header, home, the chat bubble, the sign-up funnel, /fairness,
+the signed-in header cluster and the market detail page — are done, measured on production, and each
+carries a guard proven RED against a product mutation. What remains is mostly the depth behind
+them: overlays (U11 gates seven units), touch behaviour, short screens and landscape, the keyboard,
+safe areas, large text, the empty/error/offline states, and the 379-item backlog.
+
+
 **Starting a session on this plan** (Ali, 2026-09-15: every later session starts here, with the progress):
 1. `git pull` then `git log --oneline -5 origin/main`. A commit newer than §2's last entry means another session is in flight; coordinate first.
 2. Read this §0 block, then the §1 status board, then §5 (hard rules), then the two units named in **NEXT** below (§9).
