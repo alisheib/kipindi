@@ -15,6 +15,7 @@
 import { REPORT_CATALOGUE } from "../src/lib/server/reports/catalogue.ts";
 import { renderPdf } from "../src/lib/server/reports/pdf.ts";
 import { renderXlsx } from "../src/lib/server/reports/xlsx.ts";
+import { summaryText, type SummaryItem } from "../src/lib/server/reports/types.ts";
 import { writeFileSync, mkdirSync } from "node:fs";
 
 const RENDER = process.argv.includes("--render");
@@ -29,6 +30,8 @@ function check(label: string, cond: boolean, detail = "") {
 }
 
 const num = (s: unknown) => Number(String(s ?? "").replace(/[^\d.-]/g, "")) || 0;
+/** A headline figure's RAW number — never re-parsed from its display text (see `SummaryItem`). */
+const fig = (k: SummaryItem | undefined) => (k?.num !== undefined ? k.num : num(k?.value));
 
 if (RENDER) { try { mkdirSync(OUT, { recursive: true }); } catch { /* exists */ } }
 
@@ -78,7 +81,14 @@ for (const [id, entry] of Object.entries(REPORT_CATALOGUE)) {
 
   log(`    · built in ${ms}ms · ${report.sections?.length ?? 0} sections · ` +
       `${(report.sections ?? []).reduce((n, s) => n + (s.rows?.length ?? 0), 0)} rows`);
-  for (const item of report.summary ?? []) log(`      ${item.label}: ${item.value}`);
+  for (const item of report.summary ?? []) log(`      ${item.label}: ${summaryText(item)}`);
+
+  /* ⭐ A MONEY OR COUNT TILE MUST REACH THE WORKBOOK AS A NUMBER. Before 2026-09-25 every
+     headline figure was pre-formatted text ("158,000   (11 txns)" in the XLSX), so Excel
+     could not sum it. A "(TZS)" label carrying only text is that defect coming back. */
+  for (const item of report.summary ?? []) {
+    if (/\(TZS\)/.test(item.label)) check(`"${item.label}" carries a raw number`, typeof item.num === "number", `value="${item.value}"`);
+  }
 
   // ── Per-report numeric invariants ──
   if (id === "daily-ops") {
@@ -101,10 +111,10 @@ for (const [id, entry] of Object.entries(REPORT_CATALOGUE)) {
 
     const netItem = pick(/net after tax/i);
     if (netItem && ggrItem) {
-      const g = num(ggrItem.value);
-      const tra = num(pick(/^TRA\b/i)?.value);
-      const gbt = num(pick(/^GBT\b/i)?.value);
-      const net = num(netItem.value);
+      const g = fig(ggrItem);
+      const tra = fig(pick(/^TRA\b/i));
+      const gbt = fig(pick(/^GBT\b/i));
+      const net = fig(netItem);
       // The document's own arithmetic must close on its face — it states a tax liability.
       check("net after tax == GGR − TRA − GBT (as printed)", Math.abs(net - (g - tra - gbt)) < 1,
         `printed net=${net}, derived=${g - tra - gbt} (ggr=${g} tra=${tra} gbt=${gbt})`);
@@ -120,8 +130,8 @@ for (const [id, entry] of Object.entries(REPORT_CATALOGUE)) {
   }
 
   if (id === "iso-audit") {
-    const inFile = num(report.summary?.find((s) => /in this export/i.test(s.label))?.value);
-    const inLog = num(report.summary?.find((s) => /in the log/i.test(s.label))?.value);
+    const inFile = fig(report.summary?.find((s) => /in this export/i.test(s.label)));
+    const inLog = fig(report.summary?.find((s) => /in the log/i.test(s.label)));
     check("states rows-in-file and rows-in-log separately",
       report.summary!.some((s) => /in this export/i.test(s.label)) &&
       report.summary!.some((s) => /in the log/i.test(s.label)));

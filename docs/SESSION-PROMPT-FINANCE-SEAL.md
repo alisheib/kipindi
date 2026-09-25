@@ -61,8 +61,22 @@ is a second implementation that will drift.
 - **`buildDailyOps` walks the WHOLE `Transaction` table** (`db.txn.listAll()`), which threw once
   against production during verification and passed on retry. It is the exact pattern
   `report-parity` exists because of. Latent scale risk; not a correctness bug.
-- **The XLSX headline "At a glance" block writes money as fused strings** (`"158,000   (11 txns)"`)
-  — unsummable in Excel. Needs `SummaryItem` widened to carry a raw number + format.
+- ~~**The XLSX headline "At a glance" block writes money as fused strings**
+  (`"158,000   (11 txns)"`) — unsummable in Excel.~~ ✅ **FIXED 2026-09-25.** `SummaryItem` is
+  now EITHER `{ num, format }` OR `{ value }` — never both, and the display words come only from
+  `summaryText()` so a tile cannot carry two figures. 32 numeric tiles moved (29 always present,
+  plus daily-ops' three levy tiles, which exist only when the ledger is readable); the workbook
+  writes B as a number cell with the table's own number format, the delta in C, sizes A/B itself
+  (a number wider than its column prints `#####`; text only spills), and writes a non-finite
+  figure as "—" (never `<v>NaN</v>`, which Excel refuses to open).
+  **Proven in real Excel** (COM, the rendered `finance-window.xlsx`): all six glance cells are
+  `Double`, `SUM()` = 273,000 and `COUNT()` = 6 — both were 0 on the old text cells.
+  ⚠️ **And the daily-ops Margin is rounded ONCE in the builder** (`marginShown`): Excel rounds the
+  raw fraction half-up in decimal while `toFixed` rounds the binary double, so GGR 23,000 on
+  80,000 retained read 28.8% in the workbook and 28.7% in the PDF and the same file's "Operator
+  margin" row. `test:report-cells` 22/0 (§5 carries 13 of them — per-report tile counts pinned,
+  exact number formats, the tie case, a negative and a NaN tile), RED **10/10**. The count deltas
+  now use the repo's `adminCount()` (utils.ts) — "1 txns" is gone.
 - **`REPORT_PERIODS` and the `"today"`/`"mtd"` arms of `report-money.periodBounds` have NO
   readers** — dead vocabulary, safe to delete in a tidy-up.
 - **`reports-verify-live.mts` and `report-renderers-smoke.mjs` are NOT npm-wired**, so they never
@@ -78,7 +92,7 @@ Every one has a red control; a guard without one is a claim on trust.
 | Command | What it holds | Proven by |
 |---|---|---|
 | `npm run test:finance-window` | legend == bars, EAT labels, day-aligned series, bucket grain, active-player basis | §5's controls: a FAILED-only player moves the count by 0, a CONFIRMED one by exactly 1, and the all-status count really is higher |
-| `npm run test:report-cells` | renders the real documents and reads CELLS back with ExcelJS | reverting the fixes reproduces the documented symptoms: an EMPTY totals cell, and "width 10 vs 27 chars" |
+| `npm run test:report-cells` | renders the real documents and reads CELLS back with ExcelJS; §5 — every "At a glance" figure is a formatted NUMBER cell with its delta beside it, the money tiles SUM to the builder's figures, and a ten-figure sum is never `#####` | reverting the fixes reproduces the documented symptoms: an EMPTY totals cell, and "width 10 vs 27 chars"; §5 caught 10/10 mutations (2026-09-25) |
 | `npm run test:brand-assets` | every report/brand asset is pixel-identical to `src/lib/brand-mark.ts` | decoded-pixel compare, 0 differing samples of 1,048,576 |
 | `npm run qa:finance-alignment` | 63 rectangle measurements at 360/768/1280 | **fails 15 assertions on the pre-fix code** |
 
