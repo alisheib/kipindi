@@ -374,6 +374,61 @@ export type SmsDlr = { status: SmsStatus | null; rawStatus: string; desc: string
  *  body — every assertion about the implementation then fails against 100 characters of type
  *  annotation. Keep both sides of this signature named. */
 export type SmsDlrResult = { changed: boolean; row: StoredSmsMessage | null };
+/* ═══ MESSAGING CONSENT AND SUPPRESSION (marketing U6 — D7, D8) ═══════════════════════
+ *
+ * ⭐ THESE UNIONS ARE THE MEMORY TWIN OF THE PRISMA ENUMS, AND THEY ARE NAMED ON PURPOSE.
+ * `dal-parity`'s `region()` finds a function body by the first `{` after the signature, so
+ * an inline object literal anywhere in a DAL signature hands the gate the TYPE instead of
+ * the body and every assertion about the implementation passes against an annotation. Every
+ * signature below is named for that reason, not for tidiness. */
+export type MessagingChannel = "SMS";
+export type MessagingCategory = "MARKETING";
+export type MessagingConsentStatus = "GIVEN" | "WITHDRAWN";
+export type MessagingConsentSource =
+  | "REGISTRATION" | "PROFILE" | "OPT_OUT_PAGE" | "KEYWORD" | "IMPORT" | "OPERATOR" | "RETENTION_LAPSE";
+export type SuppressionReason = "WITHDRAWN" | "COMPLAINT" | "OPERATOR" | "SELF_EXCLUSION";
+export type MessagingLocale = "EN" | "SW" | "ZH";
+
+/** The triple that identifies one person's standing on one channel for one purpose. Named
+ *  because it is a DAL parameter — see the note above. */
+export type MessagingKey = {
+  channel: MessagingChannel;
+  identifier: string;
+  category: MessagingCategory;
+};
+
+/** ⭐ APPEND-ONLY. A withdrawal is a NEW row, never an edit of the row that granted consent,
+ *  so the ledger can always answer what was true on the day a message went out (GN 478T reg
+ *  51(1)). ⛔ There is deliberately no `update` and no `delete` for this namespace in either
+ *  store; `test:dal-parity` §17 asserts their ABSENCE. */
+export type StoredMessagingConsent = {
+  id: string;
+  channel: MessagingChannel;
+  identifier: string;
+  category: MessagingCategory;
+  status: MessagingConsentStatus;
+  source: MessagingConsentSource;
+  /** ⛔ VERBATIM (§5.7) — what this person actually read. Never re-rendered from today's copy. */
+  wording: string;
+  locale: MessagingLocale;
+  evidence: string | null;
+  recordedBy: string | null;
+  createdAt: string;
+};
+
+/** ⛔ NEVER DELETED — not by contact deletion, not by re-import, not by erasure. Deleting one
+ *  is exactly how a person who opted out receives the next campaign. */
+export type StoredSuppression = {
+  id: string;
+  channel: MessagingChannel;
+  identifier: string;
+  category: MessagingCategory;
+  reason: SuppressionReason;
+  evidence: string | null;
+  recordedBy: string | null;
+  createdAt: string;
+};
+
 
 /**
  * ⭐ EVERY TRANSACTION TYPE, AS DATA. The union below is DERIVED from this array so the
@@ -954,6 +1009,8 @@ declare global {
     inviteCampaigns: Map<string, StoredInviteCampaign>;
     inviteEntries: Map<string, StoredInviteEntry>;
     smsMessages: Map<string, StoredSmsMessage>;
+    messagingConsents: Map<string, StoredMessagingConsent>;
+    suppressions: Map<string, StoredSuppression>;
   } | undefined;
 }
 
@@ -983,6 +1040,8 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   inviteCampaigns: new Map(),
   inviteEntries: new Map(),
   smsMessages: new Map(),
+  messagingConsents: new Map(),
+  suppressions: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -1006,6 +1065,8 @@ if (!store.bonusGrants)     store.bonusGrants = new Map();
 if (!store.inviteCampaigns) store.inviteCampaigns = new Map();
 if (!store.inviteEntries)   store.inviteEntries = new Map();
 if (!store.smsMessages)     store.smsMessages = new Map();
+if (!store.messagingConsents) store.messagingConsents = new Map();
+if (!store.suppressions)    store.suppressions = new Map();
 
 const memoryDb = {
   // USER
@@ -2217,6 +2278,55 @@ const memoryDb = {
     },
     listRecent: (limit = 50): StoredSmsMessage[] =>
       Array.from(store.smsMessages.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit),
+  },
+  /* ═══ MESSAGING CONSENT (marketing U6) ═════════════════════════════════════════════════
+   * ⛔ NO `update` AND NO `delete`, IN EITHER TWIN. An append-only ledger that grows an
+   * update path stops being evidence and becomes an opinion. `dal-parity` §17 asserts the
+   * absence, so adding one later fails the gate rather than passing quietly. */
+  messagingConsent: {
+    create: (row: StoredMessagingConsent): StoredMessagingConsent => {
+      store.messagingConsents.set(row.id, row);
+      return row;
+    },
+    /** The one question the send-loop gate asks (§5.6): what is this person's latest word?
+     *  ⭐ The tiebreak on `id` is not decoration — two rows can share a millisecond, and a
+     *  twin that resolves a tie differently from Postgres is a gate that answers differently
+     *  in memory than it does in production. */
+    latestFor: (key: MessagingKey): StoredMessagingConsent | null =>
+      Array.from(store.messagingConsents.values())
+        .filter((r) => r.channel === key.channel && r.identifier === key.identifier && r.category === key.category)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0] ?? null,
+    listFor: (key: MessagingKey): StoredMessagingConsent[] =>
+      Array.from(store.messagingConsents.values())
+        .filter((r) => r.channel === key.channel && r.identifier === key.identifier && r.category === key.category)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
+  },
+
+  /* ═══ SUPPRESSION (marketing U6) ═══════════════════════════════════════════════════════
+   * ⛔ NO `delete`, IN EITHER TWIN, EVER. Not by contact deletion, not by re-import, not by
+   * erasure. */
+  suppression: {
+    /** ⭐ IDEMPOTENT ON THE TRIPLE, exactly as the database's unique index is. Re-suppressing
+     *  returns THE ROW THAT IS ALREADY THERE rather than replacing it: the first refusal is
+     *  the evidence, and its timestamp is the answer to "when did they say no". A re-import
+     *  that overwrote it would quietly move that date forward. */
+    create: (row: StoredSuppression): StoredSuppression => {
+      for (const r of store.suppressions.values()) {
+        if (r.channel === row.channel && r.identifier === row.identifier && r.category === row.category) return r;
+      }
+      store.suppressions.set(row.id, row);
+      return row;
+    },
+    find: (key: MessagingKey): StoredSuppression | null => {
+      for (const r of store.suppressions.values()) {
+        if (r.channel === key.channel && r.identifier === key.identifier && r.category === key.category) return r;
+      }
+      return null;
+    },
+    listFor: (identifier: string): StoredSuppression[] =>
+      Array.from(store.suppressions.values())
+        .filter((r) => r.identifier === identifier)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
   },
 };
 
