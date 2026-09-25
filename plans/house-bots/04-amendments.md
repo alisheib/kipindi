@@ -40,7 +40,7 @@
 > summary, chip and Stop action (A2's Holder column and row 15, A3, A5, A8, A16, A18 (o), C13, F2, F6, N1 §4.5, §4.6 and
 > §7, N2 §7, and their tests); and F2's public sunset line. **Not touched by D19:** the switch ships OFF, D3/D3b, D5
 > (consent by password), D6, the admin console and its alerts (apart from the disclosure-tracking lines above), audits,
-> internal docs, the engine rules, the private Board draft apart from that one section (D19b) and the chatbot's
+> internal docs, the engine rules, the private Board draft (itself STRUCK 2026-09-20 by owner ruling D21 — the Gaming Board needs nothing) and the chatbot's
 > forbidden-phrase guard (D19d). Read PROGRESS.md "OWNER RULING D19" first.
 
 Order of authority: this file > 02-sealed-flows.md / 03-design-spec.md > PLAN.md body. Overlaps between amendment sets are resolved in PLAN.md §18.
@@ -51,7 +51,7 @@ Contents: A1–A24 (flows, data, money seam, engine) · C1–C3, C8–C15 (rules
 
 All code paths are under `C:\kipindi-main\`. Every `path:line` below was checked against the working tree (HEAD `ac411357`, which includes the local KYC work).
 
-> ⚠️ **Line anchors in this file are as of 2026-09-13.** Since then the KYC-at-withdrawal release reached `origin/main`, and its audit fixes moved code in `kyc-service`, `auth-service`, `wallet-service`, `wallet-freeze`, `user-service` and `notification-service`; `TERMS_VERSION` moved to `src/lib/terms-version.ts`. Any "local only" KYC commit or `origin/main` SHA quoted below is history. Re-derive every `path:line` against the merged code before relying on it (PROGRESS.md RESUME AT).
+> ⚠️ **Line anchors in this file are as of 2026-09-13.** Since then the KYC-at-withdrawal release reached `origin/main`, and its audit fixes moved code in `kyc-service`, `auth-service`, `wallet-service`, `wallet-freeze`, `user-service` and `notification-service`; `TERMS_VERSION` moved to `src/lib/terms-version.ts`. Any "local only" KYC commit or `origin/main` SHA quoted below is history. Re-derive every `path:line` against the merged code before relying on it (the current branch and tree: `RESUME-HERE.md` §0).
 
 Numbering follows the slots in the sequencing notes where they name the content: A1, A2, A3, A7, A8, A9, A11, A12, A15, A18, A19, A20, A21, A22, A23. The remaining numbers are assigned here. Slot A6 (data-rights export, D10) is outside §1–§4 and is not written.
 
@@ -2109,7 +2109,7 @@ NO-GO before R4: nothing merges. NO-GO after R4: go to S3.
 
 **P1 · MAJOR (privacy line) / MINOR (the rest) · Disclosure completeness.** Merged: CRA-09, CRA-23, CRA-24, CRA-25, CRA-26, CRA-27, FS-30.
 
-⛔ **Superseded by D19 (Ali, 2026-09-16):** struck below, each marked in place: the privacy line, the version bumps and the announcement question, the chatbot bullet, the disclosure tracking and the holder copy. **Still standing:** the chatbot's forbidden-phrase guard (D19d, with its full list), the private Board draft (D19b), the COMPLIANCE entry, the §12 leak list, and their tests.
+⛔ **Superseded by D19 (Ali, 2026-09-16):** struck below, each marked in place: the privacy line, the version bumps and the announcement question, the chatbot bullet, the disclosure tracking and the holder copy. **Still standing:** the chatbot's forbidden-phrase guard (D19d, with its full list), ~~the private Board draft (D19b)~~ (STRUCK 2026-09-20 by owner ruling D21), the COMPLIANCE entry, the §12 leak list, and their tests.
 
 *Evidence:*
 - The privacy page's lawful-basis section says nothing about automated processing of bets for liquidity (`legal/privacy/page.tsx:57-63`).
@@ -2123,7 +2123,7 @@ NO-GO before R4: nothing merges. NO-GO after R4: go to S3.
   - ~~Existing players keep their accepted version, with no re-acceptance gate, stated explicitly.~~
   - ~~Owner rules whether an in-app announcement goes out, since Terms §10 promises one.~~
 - **Chatbot:** ~~quote the exact bullet.~~ Forbidden phrases: "independent", "cannot influence", "never bets against you", or naming or confirming an account. ⛔ **Superseded by D19 (Ali, 2026-09-16):** the chatbot gets no disclosure bullet; only the forbidden-phrase guard is built, with D19d's full list, over the system prompt and `faq8a` in all three locales.
-- **Board disclosure draft**, required sections:
+- ~~**Board disclosure draft**, required sections:~~ ⛔ **STRUCK 2026-09-20 by owner ruling D21** (`docs/COMPLIANCE-DECISIONS.md`): the Gaming Board needs nothing, so none of the sections below is written.
   - what 50pick does;
   - a request to confirm the licence class;
   - levy treatment;

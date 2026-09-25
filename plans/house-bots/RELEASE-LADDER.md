@@ -1,7 +1,22 @@
 # THE RELEASE LADDER — REWRITTEN 2026-09-21 (rel-lane)
 
+> # ⛔ SPENT 2026-09-26 — READ AS HISTORY, EXCEPT §10 AND §12–§14
+> **Every rung below has fired or been overtaken.** The house code has been on `main` since Ali's own push of
+> 2026-09-18; the owner first switched the desk on on 2026-09-21, and the last production read found the master
+> switch ON continuously since **2026-09-24 21:56:11 EAT** (its live state is `RESUME-HERE.md`, never this file);
+> the desk is placing stakes. ⛔ **Do not act on §0–§9.** Their rungs still marked owed (REL-M, REL-0, REL-5, REL-6),
+> their ban on even a production read, and their placing of the `ops:house-bots-*` instruments on
+> `origin/ops-lane` only were true on 2026-09-21 and are not now: production is read SELECT-only under
+> `RESUME-HERE.md` §3, and every `ops:house-bots-*` key is in `package.json`. File:line citations below describe
+> other files as they stood that day; several of those files have since been deleted as spent (2026-09-26).
+> **Why this file is kept:** §10 is the only written procedure for the rest of S4 drill 2 — `npm run rehearse`
+> prints this path from `scripts/rehearsals/registry.mts` (row `rollback`, status `partial`), and so does
+> `scripts/rehearsals/rollback.mts` — and §12–§14 are the audit-loss record `src/lib/server/audit-drain.ts` and
+> `scripts/rehearsals/audit-loss-window.mts` cite. The accepted-risk register itself (AR-1…AR-4) is
+> `docs/COMPLIANCE-DECISIONS.md`, entries of 2026-09-21. **Start at `plans/house-bots/RESUME-HERE.md`.**
+
 > **This file supersedes the REL-0…REL-6 table wherever it is mirrored** — `PROGRESS.md`, amendment S2 in
-> `04-amendments.md`, `00-NEW-SESSION-PROMPT.md`, `README.md`, `PLAN.md` §17's release block and
+> `04-amendments.md`, the old new-session prompt and `README.md` (both deleted 2026-09-26 as spent), `PLAN.md` §17's release block and
 > `docs/HOUSE-BOTS.md` §11. Those rows are left in place and now carry a one-line pointer here, because
 > three lanes are editing them concurrently and a union merge combines small edits but cannot combine two
 > rewrites.
@@ -132,7 +147,7 @@ be diagnosed by the one lane that can have the tree to itself, before REL-M. ⚠
   7. `ops:preflight-house-bot-migrations` — ⛔ **ALI'S, ON THE DAY, or NOT MEASURED.** It is a production read.
      No session runs it. See §5.
   8. **The readiness statement**, written out with its measurement, and **the switch-on sheet delivered**
-     (REL-6 → `SWITCH-ON-SHEET.md`).
+     (REL-6 → the switch-on sheet, delivered 2026-09-21 and deleted 2026-09-26 as spent; what still holds is `docs/HOUSE-BOTS.md` §11).
   9. **Ali's go.** See §6 — the "explicitly naming REL-2" clause is struck.
 - **Performed by:** a session for 1–6 and 8; **Ali** for 7 and 9.
 - **Discharged by:** each condition's own named instrument reporting its own verdict on **this** SHA, with the
@@ -319,7 +334,7 @@ It is also the one Ali actually asked for, repeatedly.
   to stop in order including the case where the admin screen will not load, and an honest list of what could
   not be checked from here and why.
 - **Performed by:** a session writes it; **Ali** reads it.
-- **Discharged by:** ✅ **`plans/house-bots/SWITCH-ON-SHEET.md`, delivered 2026-09-21.**
+- **Discharged by:** ✅ **the switch-on sheet, delivered 2026-09-21** — deleted 2026-09-26, once the switch was on; what it said that still holds is in `docs/HOUSE-BOTS.md` §11 ("Rollback levers", "First switch-on") and, for officers, `docs/house-bots-desk-guide.html`.
 - ⚠️ It is delivered as its own file because `docs/HOUSE-BOTS.md` §11's "First switch-on" is still
   `⏳ Written in commit 8` on this branch, and the same section has been rewritten on `ops-lane` — editing it
   from here would be a direct conflict. After REL-M, §11 and this sheet should be reconciled into one, with
@@ -333,7 +348,7 @@ Unchanged, and nothing measured on this lane moves it. His action, and his alone
 
 ⛔ **This row exists in exactly ONE place in the whole ladder** — `PROGRESS.md:676`, unnumbered, after REL-6.
 Verified by grep across `plans/` and `docs/`: it is **absent from amendment S2** (whose table ends at R6),
-**absent from `00-NEW-SESSION-PROMPT.md`'s REL table** (ends at REL-6), **absent from `README.md`**, and
+**absent from the old new-session prompt's REL table** (ends at REL-6), **absent from the old `README.md`** (both deleted 2026-09-26 as spent), and
 `docs/HOUSE-BOTS.md` §11's "First switch-on" is a placeholder on this branch. Only the weaker D1 form survives
 elsewhere. **A session following S2 or the session prompt to the end finishes at "handover note delivered"
 with nothing telling it the switch is not its own.** That is a structural hole, and this file closes it by
@@ -493,7 +508,7 @@ pipeline), and `qa:house-bot-panel-states` joins the list. Same count, different
 | 5 | REL-4 step 1, the live service config (`overlapSeconds`) | **NOT MEASURED, permanently, reason named:** this programme may not read the live service config |
 | 6 | REL-5's five post-deploy reads | **ALI'S, ON THE DAY**, with `ops:house-bots-status --watch` as the +10-minute recheck |
 | 7 | L9: production `TimeZone` must be UTC, "REL-0 checklist" | **ALI'S, ON THE DAY** — the preflight is its instrument and its timezone line is a verdict, not a print |
-| 8 | `00-NEW-SESSION-PROMPT.md:101` — *"**Production access** is read-only through `railway login` … Never write to production before REL-2."* | ⛔ **THE DANGEROUS ONE. This is the line a session would cite as permission**, and it is flatly contradicted by ruling 553 and by the standing law. It must be corrected at source, in the prompt every new session reads |
+| 8 | the old new-session prompt, line 101 — *"**Production access** is read-only through `railway login` … Never write to production before REL-2."* | ✅ **Removed at source 2026-09-26: the prompt was deleted as spent.** The live rule is `RESUME-HERE.md` §3: a production read is SELECT-only in a read-only session, and no production write is ever made |
 
 ---
 
@@ -549,10 +564,10 @@ GO"* — and this ladder says it once more plainly: **a GO is a reading. Permiss
    REL-0 that REL-0 did not name (§4).
 7. ⚠️ **`PROGRESS.md:18` cites `migrated:true` as proof the house migrations applied.** Wrong field; wrong
    population (§REL-2).
-8. ⚠️ **The stale no-push side.** `PROGRESS.md:70`, `00-NEW-SESSION-PROMPT.md:10-12,38` and
-   `README.md:96-98` all still say "never push `main` before REL-4". Ruling 555 records the owner discharging
+8. ⚠️ **The stale no-push side.** `PROGRESS.md:70`, `00-NEW-SESSION-PROMPT.md:10-12,38` (deleted 2026-09-26 as spent) and
+   `README.md:96-98` (likewise deleted) all said "never push `main` before REL-4". Ruling 555 records the owner discharging
    that. Four documents carry the stale side; one ruling carries the live one.
-9. ⛔ **`C6-SPEC-EXTRACT.md:490` owes REL-0 a version-re-derivation line. Do NOT add it — moot twice.** D19a
+9. ⛔ **`C6-SPEC-EXTRACT.md:490` (deleted 2026-09-26 as spent) owed REL-0 a version-re-derivation line. Do NOT add it — moot twice.** D19a
    freezes all legal text, and measured on both refs the terms versions are byte-identical on `origin/main`
    and `house-bots`.
 
@@ -592,8 +607,8 @@ the second one — and it was the row Ali reads before flipping, concluding that
 
 ## 9 · WHERE THE OLD ROWS NOW POINT
 
-A one-line dated pointer has been added to `PROGRESS.md`, `04-amendments.md` (S2) and
-`00-NEW-SESSION-PROMPT.md`. Their tables are left standing, unrewritten, so three lanes' concurrent edits
+A one-line dated pointer has been added to `PROGRESS.md` and `04-amendments.md` (S2); the old new-session prompt
+that also carried one was deleted 2026-09-26 as spent. The remaining tables are left standing, unrewritten, so three lanes' concurrent edits
 still union-merge.
 
 ⛔ **Deliberately NOT edited from this lane, and why:**
@@ -613,7 +628,7 @@ still union-merge.
 "passed", not "waived". Two of its four steps cannot be taken from this lane, and both reasons are structural
 rather than a matter of effort:
 
-1. ⛔ **Its instruments are on another branch.** `ops:house-bots-status` and `ops:house-bots-remark` exist as
+1. ⛔ **Its instruments are on another branch.** ⚠️ *Overtaken (re-derived 2026-09-26): `ops:house-bots-status` and `ops:house-bots-remark` are keys in `package.json` on `main`, so the instruments steps 4–7 need now exist; step 2 is still not a script, so the drill stays `partial`.* `ops:house-bots-status` and `ops:house-bots-remark` exist as
    keys on `origin/ops-lane` only (measured in `git show origin/ops-lane:package.json`). They were read
    read-only for this section; they were **not merged**, because lane 2 is renumbering the register inside
    that branch at this moment and a merge would pull a half-finished id space into the release tree.

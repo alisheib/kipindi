@@ -356,8 +356,15 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     /** 8.2's ONE measure, used by 8.2 and by its controls alike: which citing lines lack the dated strike note. */
     const unmarkedIn = (rows: Array<{ file: string; line: number; text: string }>) => rows.filter((c) => !c.text.includes(MARKER));
     const files = [...new Set(citations.map((c) => c.file))];
-    ok("8.2.0 · POPULATION · every tracked file was read and the citations were FOUND: at least 9 files and at least 14 lines name the struck draft. A scan that found none would pass 8.2 over nothing",
-      files.length >= 9 && citations.length >= 14, j({ files: files.length, lines: citations.length, where: files }));
+    /* The floor is a VACUITY check, set to the measured population — not a quality bar. It was 9 files / 14 lines until
+     * 2026-09-26, when spent plan papers that cited the struck draft (a session prompt and a Commit 6 build extract among
+     * them) were deleted from the tree: a deliberate reduction of the population under owner ruling D21a ("strike the
+     * citations"), not a relaxation. Re-derived that day with `git grep -l -I <name> | wc -l` (7 files) and
+     * `git grep -I <name> | wc -l` (9 lines) over the staged tree. Re-derive the same way before moving it again. */
+    const FLOOR_FILES = 7;
+    const FLOOR_LINES = 9;
+    ok(`8.2.0 · POPULATION · every tracked file was read and the citations were FOUND: at least ${FLOOR_FILES} files and at least ${FLOOR_LINES} lines name the struck draft. A scan that found none would pass 8.2 over nothing`,
+      files.length >= FLOOR_FILES && citations.length >= FLOOR_LINES, j({ files: files.length, lines: citations.length, where: files }));
     const unmarked = unmarkedIn(citations);
     ok(`8.2 · ⛔ every one of the ${citations.length} citations across ${files.length} files carries the dated strike note \`${MARKER}\` ON THE CITING LINE — nine documents named this draft as a live authority, and a reader who meets any one of them without the note rebuilds a file the owner struck`,
       unmarked.length === 0, j(unmarked.slice(0, 6).map((c) => `${c.file}:${c.line}`)));
@@ -389,7 +396,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const sectionSitesIn = (files: Array<{ rel: string; code: string }>) => files.filter((f) => f.code.includes("BOARD_DISCLOSURE_SECTIONS")).map((f) => f.rel);
     const realFiles = src.map((rel) => ({ rel, code: read(rel) }));
     const sectionsIn = sectionSitesIn(realFiles);
-    ok("8.3 · ⛔ `BOARD_DISCLOSURE_SECTIONS` exists nowhere under `src/` — the constant existed only to be checked against the draft's section headings, and the owner ruling that struck the draft struck it with the draft. `plans/house-bots/C6-SPEC-EXTRACT.md` still instructs a builder to add it, which is what this pin is for",
+    ok("8.3 · ⛔ `BOARD_DISCLOSURE_SECTIONS` exists nowhere under `src/` — the constant existed only to be checked against the draft's section headings, and the owner ruling that struck the draft struck it with the draft. the pre-ruling Commit 6 extract that told a builder to add it was deleted 2026-09-26 as spent, but git history still carries that instruction, which is what this pin is for",
       sectionsIn.length === 0, j({ src: src.length, found: sectionsIn }));
     const REC = () => /BOARD_DISCLOSURE_RECORDED|board_disclosure_recorded/g;
     const recSitesIn = (files: Array<{ rel: string; code: string }>) =>
