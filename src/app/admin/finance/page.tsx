@@ -16,10 +16,10 @@ import {
   moneyFlowSeries,
   marginSeries,
   providerStackedSeries,
-  listProvidersInPeriod,
+  bucketGrain,
   settlementFeesByPoll,
 } from "@/lib/server/analytics";
-import { dailyKpiSeries } from "@/lib/server/report-money";
+import { dailyKpiSeries, lastEatDays } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { formatTzs, formatTzsCompact, formatNumber, adminCount } from "@/lib/utils";
@@ -31,7 +31,7 @@ import { GenerateButton } from "../reports/generate-button";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { getEffectiveConfig } from "@/lib/server/market-config";
-import { houseAccountBalances, trialBalance } from "@/lib/server/ledger";
+import { houseAccountBalances, houseAccountMovement, trialBalance } from "@/lib/server/ledger";
 import { Stat } from "@/components/ui/stat";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
@@ -119,17 +119,42 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
   const activePeriod = await activePlayers(period).catch(() => null);
   const flow = await moneyFlowSeries(period, 28).catch(() => null);
   const margins = await marginSeries(period, 28).catch(() => null);
-  const provBars = await providerStackedSeries(period, 14).catch(() => null);
-  // ⛔ THE LEGEND IS A LABEL (§L1), SO IT IS SPELLED BY THE LEXICON — the chart printed
-  // `AIRTEL_MONEY` / `TIGO_PESA` beside its swatches while the transactions, payments and
-  // player pages four clicks away all render the same enum through `txnProviderLabel`.
-  // ⚠️ Only the LEGEND is mapped. `listProvidersInPeriod`'s raw keys are also the stack keys
-  // that `providerStackedSeries` bins by, so the read itself must stay untouched.
-  const providers = (await listProvidersInPeriod(period).catch(() => null))?.map(txnProviderLabel) ?? null;
+  /**
+   * ⛔ THE LEGEND IS A LABEL (§L1), SO IT IS SPELLED BY THE LEXICON — the chart printed
+   * `AIRTEL_MONEY` / `TIGO_PESA` beside its swatches while the transactions, payments and
+   * player pages four clicks away all render the same enum through `txnProviderLabel`.
+   * 🔴 AND IT USED TO BE READ FROM A SECOND QUERY. `listProvidersInPeriod` listed providers over
+   * EVERY txn type and EVERY status while the bars binned CONFIRMED DEPOSITS only, and the chart
+   * paired them by INDEX — so a provider seen only on a withdrawal, or only on a failed deposit,
+   * took a swatch with no stack behind it and shifted every label after it onto the wrong bar.
+   * `providerStackedSeries` now returns the keys it actually binned by; there is no second list
+   * to disagree with. The raw keys stay the bin keys — only this line maps them for display.
+   */
+  const provSeries = await providerStackedSeries(period, 14).catch(() => null);
+  const provBars = provSeries?.bars ?? null;
+  const providers = provSeries?.providers.map(txnProviderLabel) ?? null;
   // Read-only 7-day daily trend for the GGR/NGR/active tile sparklines — each
   // point is that day's REAL metric (canonical `summarise`), the metric's own
   // recent history, not a proxy series. `spark()` hides an all-zero line.
-  const trends = await dailyKpiSeries("7d").catch(() => ({ ggr: [], ngr: [], active: [] }));
+  /**
+   * 🔴 THE SPARKLINE IGNORED THE PICKER, UNDER A CAPTION THAT NAMED IT. These tiles caption
+   * themselves `range.label` — "Last 28 days" — while the line beneath was hard-coded to 7 days,
+   * so the number, the caption and the line described three different windows.
+   * ⭐ `lastEatDays` makes the window WHOLE EAT DAYS, which also fixes a second defect: the `7d`
+   * preset is `now − 7×DAY_MS`, not a day boundary, so a "7-day" series returned EIGHT points
+   * with a short first bar. The spark follows the selected window when that window spans at
+   * least two whole days, and otherwise falls back to a 7-day trend — a single intraday bucket
+   * is not a trend, and drawing one point as a line would be a shape with nothing in it.
+   * ⛔ The caption below says which of the two it is. A spark on a different window from its
+   * own tile is only honest if it says so.
+   */
+  // What a bucket on each Trends card actually is, for the subtitles below.
+  const flowGrain = bucketGrain(range.start, range.end, 28);
+  const provGrain = bucketGrain(range.start, range.end, 14);
+  const sparkDays = Math.max(1, Math.round((range.end - range.start) / 86_400_000));
+  const sparkWindow = sparkDays >= 2 ? lastEatDays(Math.min(sparkDays, 90)) : lastEatDays(7);
+  const sparkLabel = sparkDays >= 2 ? `${Math.min(sparkDays, 90)}d trend` : "7d trend";
+  const trends = await dailyKpiSeries(sparkWindow).catch(() => ({ ggr: [], ngr: [], active: [] }));
   const spark = (s: number[]) => (s.some((v) => v !== 0) ? s : undefined);
 
   // Tax accrued — the REAL statutory levies, at the admin-configured rates, on
@@ -171,9 +196,31 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
   const tabHref = (t: (typeof FIN_TABS)[number]) =>
     buildBaseHref("/admin/finance", { range: sp.range, from: sp.from, to: sp.to, tab: t === "ledger" ? undefined : t }, "feepage") as Route;
   const feeModelLabel = rates?.feeModel === "loser-share" ? "loser-share (new polls)" : "capped-fee (new polls)";
-  const taxAccrued = rates && ggr !== null
-    ? Math.round(Math.max(0, ggr) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
+  /**
+   * 🔴 THE LEVY WAS ACCRUED ON GGR, AND GGR IS NOT OUR COMMISSION (owner ruling, 2026-09-25).
+   * `traTaxOnCommissionRate` and `gbtLevyOnCommissionRate` are defined throughout this codebase
+   * as a fraction OF OUR FEE — `levySplit` (payout.ts) applies them to the settlement fee and
+   * the agent waterfall applies them to the gross fee — and the house standard is explicit that
+   * taxes are only ever on 50pick's commission, never on a player's money. GGR is stakes minus
+   * payouts minus refunds, so while positions are still open it also holds money that has not
+   * been earned and may yet be paid back out to players.
+   * ⭐ MEASURED, NOT ARGUED. Production, September 2026 EAT: GGR 803,675 · commission actually
+   * booked 50,045 · TRA+GBT actually booked 8,796. The old formula put 120,551 on this tile —
+   * about fourteen times the real liability, on the screen an owner reads tax off.
+   * ⛔ The basis is now the commission the LEDGER actually booked in this window, so the tile
+   * reconciles against the house accounts on this very page rather than against a formula.
+   * ⚠️ `buildDailyOps` (reports/catalogue.ts) still accrues its TRA/GBT lines on GGR. That is a
+   * REGULATOR-FILED document and is deliberately NOT changed here — it is raised with the owner
+   * separately. Until it is ruled on, this tile and that report use different bases on purpose.
+   */
+  const houseMoved = await houseAccountMovement(period.start, period.end).catch(() => null);
+  const commissionBooked = houseMoved === null ? null : (houseMoved["HOUSE:COMMISSION"] ?? 0);
+  const taxAccrued = rates && commissionBooked !== null
+    ? Math.round(Math.max(0, commissionBooked) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
     : null;
+  const levyBasisCaption = rates
+    ? `TRA ${(rates.traTaxOnCommissionRate * 100).toFixed(0)}% + GBT ${(rates.gbtLevyOnCommissionRate * 100).toFixed(0)}% of commission booked`
+    : undefined;
 
   return (
     <>
@@ -182,15 +229,44 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
         sw="Fedha"
         actions={
           <>
-            {/* Platform date+hour+minute window (presets + custom), EAT-safe. */}
-            <DateTimeRangeFilter rank="dense" defaultPreset="7d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "qtd"]} />
-            {/* Branded Excel + PDF export — the GBT monthly statutory pack. */}
-            <GenerateButton id="gbt-monthly" />
+            {/* Platform date+hour+minute window (presets + custom), EAT-safe.
+                ⭐ `panel="overlay"` because this rail lives in the page head's ACTIONS slot. Inline,
+                opening Custom grew the control to ~180px and the export buttons beside it slid down
+                with it (`items-center`), while the header's `items-end` hauled the whole block up to
+                the title baseline — the buttons moved twice for a panel opened next to them. Out of
+                flow, this control's height never changes and nothing around it reflows. */}
+            <DateTimeRangeFilter rank="dense" panel="overlay" defaultPreset="7d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "qtd"]} />
+            {/* Branded Excel + PDF export — the GBT monthly statutory pack.
+                ⭐ `size="xs"` so these sit at the same 32px as the window pills they share a row
+                with. This page is a DECLARED dense admin filter rail (filter-language ADMIN_SURFACES)
+                and is NOT on the tap-floor list, so the dense rung is the correct one here — at 40px
+                the row carried one control language at two heights. */}
+            <GenerateButton id="gbt-monthly" size="xs" />
           </>
         }
       />
 
       <AdminBody>
+        {/* 🔴 A WINDOW THAT SUBSTITUTED ITSELF USED TO DO IT IN SILENCE. `resolveRange` reads
+            `from`/`to` as EAT wall-clock through an ANCHORED pattern, so a full ISO instant —
+            exactly what `toISOString()` produces, and what a pasted or generated link carries —
+            fails to parse and the resolver quietly falls back to the last 24 hours while STILL
+            labelling the window "custom". Every figure below is then computed over a window
+            nobody chose. The numbers were never wrong for the window they used; what was missing
+            was any way to know which window that was. */}
+        {range.unreadable && (
+          <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
+            <span aria-hidden className="mt-1 h-1.5 w-1.5 shrink-0 rounded-pill" style={{ background: "var(--warning-500)" }} />
+            <p className="text-caption text-text-secondary">
+              The <span className="font-mono">{range.unreadable.join(" and ")}</span>{" "}
+              {range.unreadable.length > 1 ? "values" : "value"} in this link could not be read as a date,
+              so the figures below cover{" "}
+              <strong className="text-text">{range.label}</strong> instead of the window that was asked for.
+              Dates are East Africa Time and must be written{" "}
+              <code className="font-mono">YYYY-MM-DD</code> or <code className="font-mono">YYYY-MM-DDTHH:MM</code>.
+            </p>
+          </div>
+        )}
         {/* KPI 9-up — THREE ROWS OF THREE since 2026-09-13, each one question an owner asks:
             what moved · what we earned · what we owe. ⭐ The regroup exists so "Held for
             unverified" sits BESIDE "Wallet liability", the figure it is a subset of: the two
@@ -209,23 +285,28 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
           <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? formatTzsCompact(dep.amount) : ""} unavailable={dep === null} delta={dep ? adminCount(dep.count, "txn") : undefined} />
           <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? formatTzsCompact(wd.amount) : ""}  unavailable={wd === null}  delta={wd ? adminCount(wd.count, "txn") : undefined} />
           <div className="col-span-2 grid lg:col-span-1">
-            <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
+            <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={`${range.label} · ${sparkLabel}`} series={spark(trends.active)} />
           </div>
         </KpiGrid>
         <KpiGrid cols="3">
-          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : formatTzsCompact(ggr)}        unavailable={ggr === null} delta={range.label} series={spark(trends.ggr)} />
-          <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : formatTzsCompact(ngr)}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
+          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : formatTzsCompact(ggr)}        unavailable={ggr === null} delta={`${range.label} · ${sparkLabel}`} series={spark(trends.ggr)} />
+          <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : formatTzsCompact(ngr)}        unavailable={ngr === null} delta={`net of bonus + fees · ${sparkLabel}`} series={spark(trends.ngr)} />
           <div className="col-span-2 grid lg:col-span-1">
             <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
           </div>
         </KpiGrid>
         <KpiGrid cols="3">
           <div className="col-span-2 grid lg:col-span-1">
+            {/* ⛔ A-5, AND IT WAS THE ONE TILE ON THIS PAGE WITHOUT IT. A failed rates or ledger
+                read rendered a bare "—", which on a tax figure reads as ZERO — the fabricated
+                all-clear every sibling tile here already refuses. It now takes the same explicit
+                "n/a · couldn't compute" treatment as the eight tiles around it. */}
             <AdminKpi
               label="Statutory levies"
               sw="Kodi za kisheria"
-              value={taxAccrued === null ? "—" : formatTzsCompact(taxAccrued)}
-              delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
+              value={taxAccrued === null ? "" : formatTzsCompact(taxAccrued)}
+              unavailable={taxAccrued === null}
+              delta={levyBasisCaption}
               deltaDir="flat"
             />
           </div>
@@ -288,8 +369,11 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
                from — reading copy, not an identifier — so it drops the eyebrow's uppercase and
                tracking and moves up to `text-body-sm`, the smallest rung above §T4's 12.5px
                reading floor. The tone stays; §A1's contrast gate owns that, not this pass. */
+            /* ⛔ AND IT IS ALL-TIME. These are cumulative ledger balances, not a window — the
+               settlement-fee table directly below IS filtered by the picker, so two cards on one
+               tab answer to different clocks and only one of them used to say which. */
             <span className="font-mono text-body-sm text-text-tertiary">
-              summed from ledger entries
+              summed from all ledger entries · all time
             </span>
           }
         >
@@ -505,7 +589,12 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
         {tab === "trends" && (<>
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <AdminCard title="Net flow over time" sw="Mtiririko wa pesa · 28-day daily series">
+          {/* 🔴 THESE SUBTITLES NAMED A WINDOW THE CHART DOES NOT PLOT. All three series slice the
+              SELECTED range into N buckets — they never plotted 28 or 14 days — so at the 7-day
+              default an officer was reading six-hour buckets under the words "28-day daily
+              series". `bucketGrain` reports what a bucket actually is, and the subtitle is
+              rendered from the live window instead of a remembered number. */}
+          <AdminCard title="Net flow over time" sw={`Mtiririko wa pesa · ${range.label} · ${flowGrain.buckets} × ${flowGrain.grain}`}>
             {flow === null ? <AdminLoadError what="the money-flow series" /> : (
               <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
             )}
@@ -516,23 +605,46 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
               were 12.8× its stakes. Inviting an officer to read those points against a
               7–10% band was the compounding half of the defect. Now cumulative, so the last
               point IS the KPI tile above. */}
-          <AdminCard title="Operator margin" sw="Faida ya mfumo · cumulative to date · 28-day window">
+          <AdminCard title="Operator margin" sw={`Faida ya mfumo · cumulative to date · ${range.label}`}>
             {margins === null ? <AdminLoadError what="the margin series" /> : (
               <AdminAreaChart series={margins} xLabels={margins.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
             )}
           </AdminCard>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <AdminCard title="Provider mix over time" sw="Mchanganyiko wa watoa huduma · 14-day daily">
+          <AdminCard
+            title="Provider mix over time"
+            sw={`Mchanganyiko wa watoa huduma · ${range.label} · ${provGrain.buckets} × ${provGrain.grain}`}
+            /* ⛔ A CAPPED VIEW SAYS SO. The stack keeps the five largest providers by deposit
+               volume; anything beyond that is named here rather than silently dropped. */
+            action={provSeries && provSeries.otherCount > 0 ? (
+              <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                top 5 of {provSeries.providers.length + provSeries.otherCount} by deposit volume
+              </span>
+            ) : null}
+          >
             {provBars === null || providers === null ? <AdminLoadError what="the provider mix" /> : (
               <AdminStackedBars bars={provBars} legend={providers} height={240} />
             )}
           </AdminCard>
-          <AdminCard title="Top-10 player concentration" sw="Wachezaji 10 wakubwa">
+          {/* ⛔ THIS ONE IS ALL-TIME AND THE CARD NOW SAYS SO. `topNgrContributors` is a GROUP BY
+              over the whole transactions table — it takes no window, by design — yet it sat under
+              the page's window filter with an empty state that read "No active players yet in
+              this window". Every other card on this tab moves with the picker; this one never
+              did, and the copy claimed otherwise. The basis is stated instead of implied. */}
+          <AdminCard
+            title="Top-10 player concentration"
+            sw="Wachezaji 10 wakubwa · all time"
+            action={
+              <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                all time · not this window
+              </span>
+            }
+          >
             {top === null ? (
               <AdminLoadError what="the concentration list" />
             ) : top.length === 0 ? (
-              <p className="text-caption text-text-tertiary">No active players yet in this window.</p>
+              <p className="text-caption text-text-tertiary">No player activity recorded yet.</p>
             ) : (
               // AdminBarList (royal fill) — replaces the hand-rolled gold bar
               // (admin gold-discipline) and adopts the A8 distribution primitive.

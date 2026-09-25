@@ -39,6 +39,31 @@ export function SkChip({ className = "h-[26px] w-[80px]" }: { className?: string
 }
 
 /**
+ * The TAB-RAIL ghost — DG-P-04 applied to the one shape no loader used to draw at all.
+ *
+ * 🔴 No shipped loader drew a rail, so on every tabbed console the content jumped DOWN by the
+ * rail's full height the instant the data landed. `/admin/finance`'s loader went further and
+ * drew the UNION of all three tabs' cards, so it matched no tab it could ever resolve into —
+ * chart ghosts on a page about to render a ledger table, and no ghost at all for the settlement
+ * table that the default tab actually shows.
+ * ⚠️ The measurements come from the real control, not from memory: `<Tabs variant="line">`
+ * renders `h-[44px] px-4` items on a rail that is `flex items-end gap-1 border-b border-border`
+ * (`ui/tabs.tsx`). The ghost reproduces the rail's border so the card below it does not shift
+ * when the real border arrives.
+ */
+export function SkTabs({ count = 3, widths = ["w-16", "w-16", "w-20"] }: { count?: number; widths?: string[] }) {
+  return (
+    <div className="flex items-end gap-1 border-b border-border" aria-hidden>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="h-[44px] px-4 flex items-center">
+          <div className={`h-3 rounded bg-bg-overlay ${widths[i] ?? "w-16"}`} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * The CARD-HEADER ghost — the one shape 150 call sites across this console get wrong.
  *
  * 🔴 The real `<AdminCard>` header (admin-shell.tsx:556-561) is a

@@ -14,7 +14,28 @@ import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overl
 
 type Format = "xlsx" | "pdf";
 
-export function GenerateButton({ id }: { id: string }) {
+export function GenerateButton({
+  id,
+  size = "sm",
+}: {
+  id: string;
+  /**
+   * 🔴 THE RAIL AND THE BUTTON WERE TWO DIFFERENT SIZES, TEN PIXELS APART. On `/admin/finance`
+   * these buttons sit in `AdminPageHead`'s actions slot directly beside the window rail, whose
+   * pills take the dense rank (`--h-control-xs`, 32px) because that page is a DECLARED admin
+   * filter rail (`filter-language.test.mts` ADMIN_SURFACES). `.btn-sm` is 40px, so one row held
+   * the same control language at two heights — which §6.6's own comment calls worse than either
+   * size on its own.
+   * ⭐ `"xs"` IS THE EXISTING DENSE RUNG, NOT A NEW ONE. `globals.css` defines `.btn-xs` as
+   * `--h-control-xs` and documents it as the "dense, MOUSE-ONLY size for admin filter rows" —
+   * exactly this case. ⛔ The token is NOT moved: that file carries a dated ruling that making a
+   * filter row line up is never a reason to move a button token, and this obeys it by picking the
+   * rung that already exists.
+   * ⛔ THE DEFAULT STAYS `"sm"`, so the eight report template cards on `/admin/reports` — which
+   * are not a filter rail and not mouse-only — keep the 40px `--tap-min` floor untouched.
+   */
+  size?: "sm" | "xs";
+}) {
   const [busy, setBusy] = useState<Format | null>(null);
   // Which format the failure card offers to retry — the last one attempted.
   const [lastFormat, setLastFormat] = useState<Format | null>(null);
@@ -84,7 +105,7 @@ export function GenerateButton({ id }: { id: string }) {
           disabled={busy !== null}
           title="Download as Excel (.xlsx)"
           aria-label="Download Excel report"
-          className="btn btn-ghost btn-sm rounded-pill"
+          className={`btn btn-ghost ${size === "xs" ? "btn-xs" : "btn-sm"} rounded-pill`}
         >
           <I.fileSpreadsheet s={13} aria-hidden />
           <span className="ml-1.5 font-mono text-micro font-bold uppercase tracking-[0.12em]">
@@ -97,7 +118,7 @@ export function GenerateButton({ id }: { id: string }) {
           disabled={busy !== null}
           title="Download as PDF"
           aria-label="Download PDF report"
-          className="btn btn-ghost btn-sm rounded-pill"
+          className={`btn btn-ghost ${size === "xs" ? "btn-xs" : "btn-sm"} rounded-pill`}
         >
           <I.fileText s={13} aria-hidden />
           <span className="ml-1.5 font-mono text-micro font-bold uppercase tracking-[0.12em]">
