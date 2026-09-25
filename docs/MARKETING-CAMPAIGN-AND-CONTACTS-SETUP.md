@@ -30,15 +30,32 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: Session S2 — U3 (segment arithmetic, one home) + U4 (the statutory envelope).
-  ⚠️ U3 CARRIES THE SAME TRAP S1 JUST PAID FOR, IN A DIFFERENT COSTUME. Its text names boundary
-  vectors and a GSM-7 table written from a reading of the spec, not from this gateway. ⭐ Before
-  typing them in, check them against `smsCodingFor` in `sms-blackball.ts` AND against the provider's
-  own `COUNT` column (§3b says that column IS the billed segment count). A segment table that is
-  right about the standard and wrong about the biller prices every campaign wrongly, and the error is
-  invisible until the invoice.
+▶ NEXT: Session S3 — U5 (one helpline) + U6 (consent ledger + suppression).
+  ⚠️ U5 IS THE OQ4 UNIT, AND IT IS A TRAP FOR THE UNWARY. U4 shipped a marketing footer carrying the
+  Board's `0800110051` while `support-config.ts` still publishes `0800 11 0011`, and
+  `test:campaign-compose` §12 ASSERTS THEY DIFFER. ⛔ U5 removes the DUPLICATION of the published
+  number across its print sites; it does NOT reconcile the two numbers. Making them agree is OQ4 —
+  Ali's answer — and doing it as an "obvious cleanup" turns an open owner question into a silent
+  product decision, which is exactly why that guard fails if you try.
+  ⚠️ U6 is this programme's first schema change: expand-only, both stores, named types, a new
+  `dal-parity` section with its own planted-key control, and an enum value ships in its OWN migration
+  one commit before anything writes it.
 
-✔ LAST SESSION: S1, 2026-09-25 — U1 and U2 both ✅ LIVE. 2/52 units, 3/25 defects. **Five premises
+⚠️ AND A HABIT THIS LANE HAS NOW PAID FOR TWICE: **editing a file is exactly when a red anchor
+  rots.** S2's own edits broke two (`otp-delivery`, `blackball`) and a parallel session noticed one
+  of them before this one did. ⭐ Run `npm run test:red-anchors` and read §3 after touching any file
+  a `scripts/anchors/*.anchors.mjs` quotes — an anchor that cannot inject is a control that has
+  silently stopped controlling, and nothing else reports it.
+
+✔ LAST SESSION: S2, 2026-09-25 — U3 and U4 both ✅ LIVE. **4/52 units, 5/25 defects.** The GSM-7
+  table came out of the server module and the gateway now delegates to it; the statutory footer is
+  computed, counted and un-removable, and the operator's budget is 111 rather than 160. ⭐ Two
+  findings worth more than the units: the round-number boundary vectors this plan SPECIFIED cannot
+  detect the packing defect that costs the money (only an extension-character vector can), and
+  `String.length` is *correct* for UCS-2 — which is exactly why pricing from `bodyLen` looks fine.
+  ⚠️ Two red anchors rotted by this lane's own edits were re-anchored and re-proven by execution.
+
+✔ BEFORE IT: S1, 2026-09-25 — U1 and U2 both ✅ LIVE. **Five premises
   this plan was written on turned out to be false and are corrected in the document, not worked
   around:** the red control U1 was told to extend did not exist; `test:phone-normalize` gated nothing;
   `test:shell-boundary` was never U2's guard and `test:client-graph-safe` — which is — had never
@@ -58,18 +75,10 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   §3b carries the vendor's measured behaviour. ⛔ Read both before U39, U46 and U47 — each was drafted
   around an absence that no longer holds.
 
-◐ HALF-DONE — ⚠️ READ FIRST, ON ANY MACHINE: **U3's CODE IS ON main AND DEPLOYING as of this
-  commit**, and its §1 row still reads ⬜ because a commit cannot name its own SHA — the row is ticked
-  by the NEXT commit, the one carrying the live re-measure. A ⬜ row claims nothing, so the board
-  stays honest meanwhile. ⛔ The tracker refuses a 🔵 with a placeholder commit and refuses a ✅
-  defect whose unit is not ✅ — both were tried this session and both were caught.
+◐ HALF-DONE: nothing. **S1 AND S2 ARE BOTH CLOSED — U1, U2, U3 and U4 are ✅ LIVE and
+  re-measured on production.**
 
-  WHAT LANDED FOR U3: `src/lib/sms-compose.ts` (the GSM-7 table moved out of the server module, both
-  encodings, PACKED segments, `planSms`) · `smsCodingFor` delegating to it · `test:campaign-compose`
-  + `red:campaign-compose` in the `predeploy` chain · `sms-compose.ts` added to
-  `test:client-graph-safe`'s pinned set. OUTSTANDING: the live re-measure and the §1 tick, then U4.
-
-  **S1 IS CLOSED — U1 and U2 are both ✅ LIVE and re-measured on production.**
+  
 
   ⭐ TO CONFIRM BOTH UNITS ON ANY MACHINE: `npm run test:phone-normalize` (91 assertions) ·
   `npm run red:phone-normalize` (21 proofs) · `npm run test:tz-msisdn` · `npm run red:tz-msisdn`
@@ -233,8 +242,8 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 |---|---|---|---|---|---|---|---|---|
 | U1 | pure | ✅ | S1 | c0552156 | 4 malformed numbers billed as send attempts, one of them 16 digits → refused `BAD_MSISDN`, no row, no request | `test:phone-normalize` | yes · `red:phone-normalize` | 2026-09-25 · live on `934f8d80`: pasting `00255712345678` into /auth/register carries `712345678`, ⛔ not the pre-fix `255712345` |
 | U2 | pure | ✅ | S1 | db44ebf3 | no operator map at all, and the table drafted for it had 5 of 19 rows wrong → TCRA v1.16, seven verdicts, 064 refused, two formatter copies collapsed to one | `test:tz-msisdn` | yes · `red:tz-msisdn` | 2026-09-25 · live on `db44ebf3`: the moved formatter groups 3-3-3 from its new home at 1280 and 360, and the deploy building at all is the client-graph proof |
-| U3 | pure | ⬜ | — | — | — | `test:campaign-compose` | — | septets |
-| U4 | pure | ⬜ | — | — | — | `test:campaign-compose` | — | statutory footer |
+| U3 | pure | ✅ | S2 | ccc32526 | no segment arithmetic anywhere and the only GSM-7 table locked inside a server module → one pure table, PACKED segments, the gateway delegating to it | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `ccc32526`. The delegation is proven by EXECUTION — `test:otp-delivery` and `test:sms-cost-guard` drive the real send path through `smsCodingFor`. ⛔ Biller reconciliation is U52 |
+| U4 | pure | ✅ | S2 | b760fefe | no sender identity and no RG footer in any SMS, and a body-only quote would be 49 septets short → footer computed, counted and un-removable; operator budget 111, not 160 | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `b760fefe`; the U2 drive re-run green on it, so the new modules did not break the client bundle |
 | U5 | guard | ⬜ | — | — | — | `test:support-contact` | — | D6 helpline |
 | U6 | data | ⬜ | — | — | — | `test:dal-parity` | — | consent + suppression |
 | U7 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | the ONE gate |
@@ -291,8 +300,8 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | D1 | U1 | ✅ | `toMsisdn255("00255…")` produces a 16-digit MSISDN — latent today, live the day an importer exists |
 | D2 | U1 | ✅ | no refusal at the wire boundary: a malformed number is billed as a send attempt |
 | D3 | U2 | ✅ | no operator map; `tzPhone` accepts NDCs no licensee holds — ⚠️ re-scored at S1: **60 only**, not "60 and 70" (§3d), and the sharper case is 064, allocated on paper and dead on the wire |
-| D4 | U3 | ⬜ | no segment arithmetic anywhere; the only GSM-7 table is inside a server module |
-| D5 | U4 | ⬜ | no statutory RG footer and no sender identity in any SMS body |
+| D4 | U3 | ✅ | no segment arithmetic anywhere; the only GSM-7 table is inside a server module |
+| D5 | U4 | ✅ | no statutory RG footer and no sender identity in any SMS body |
 | D6 | U5 | ⬜ | the helpline we publish (0800 11 0011) is not the one the Gaming Board's code names |
 | D7 | U6 | ⬜ | there is no SMS suppression list at all |
 | D8 | U6 | ⬜ | `marketingOptIn` is a boolean with no channel, no wording and no ledger |
@@ -332,6 +341,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S2 | 2026-09-25 | **U3 and U4 ✅ LIVE — D4 and D5 closed.** The GSM-7 table came out of `lib/server/sms-blackball.ts` into a pure client-safe `sms-compose.ts` and the gateway now DELEGATES to it, so the price an officer is quoted and the coding the wire receives come from one table; the move is asserted lossless byte-for-byte against a copy of the pre-move string. **Two findings worth more than the units themselves.** ① **Segments are PACKED, not divided** — a two-septet extension character cannot be split across a boundary, so 152 plain characters then 77 euro signs is 306 septets, which `ceil()` prices as TWO segments and which sends as THREE; at 150,000 recipients that one unit of slack is TZS 900,000. ⛔ And **every boundary vector this plan SPECIFIED is blind to it** — all eight are plain text, and on plain text packing and division agree exactly, so the suite as drafted would have looked thorough, passed, and never caught the defect that costs the money. The red control now asserts that about itself: the division plant breaks exactly ONE assertion in the file. ② **`String.length` is CORRECT for UCS-2** — it already counts an emoji as its two UTF-16 units — and wrong only for GSM-7 extension characters, which is precisely why pricing from `bodyLen` looks fine. U4 made the statutory footer computed (49 septets), counted, and impossible to omit — there is no call shape that produces a marketing body without it — so the operator budget is 111 rather than 160; every Swahili fragment is copied from a shipped string with the line cited, and §12 ASSERTS the footer helpline still DIFFERS from the published one so that OQ4 cannot be closed by an "obvious cleanup". ⚠️ **Two red anchors rotted by this lane own edits** (`otp-delivery`, `blackball`) were flagged by a parallel session and re-anchored here, then re-proven by EXECUTION (8/8 and 11/11 on their own assertions, tree restored byte-identical). ⭐ Two of the first red plants written this session were AIMED AT NOTHING and the baseline-plus-named-assertion shape is what caught them. ⛔ Recorded: `npm run build` cannot run in a junction worktree, so the build proof is typecheck + client-graph-safe + the Railway deploy. |
 | S1 | 2026-09-25 | **U1 ✅ LIVE — the first product code in this programme. D1 and D2 closed.** Worked in a worktree off `origin/main`: the checkout was on another session's branch (`mobile-s2`) with their files in the tree, and `main` moved twice under this lane mid-session. **Three premises in the plan were false and are corrected here rather than worked around.** ① U1's text said it extends "its existing red control" — `test:phone-normalize` had NO red control and never touched `toMsisdn255` at all, while §1's own rule needs a backticked `red:` key to tick a row; `red:phone-normalize` was added, in-process, costing the `red-anchors` ceiling zero (measured: **68 vs 65 on clean `origin/main` AND 68 vs 65 here** — that suite was already red and is not claimed). ② The suite gated nothing: it was in no `predeploy` chain. ③ §3d — the NDC table U2 was drafted from is the 2020 edition and five rows are wrong today. **Two findings came from auditing the instruments rather than the code:** `00712000101` has sat in this suite since August labelled "the double-zero fat finger", the one input it calls a real user mistake — and nothing anywhere evaluated `toMsisdn255` on it, which returned a THIRTEEN-digit msisdn; and `test:shell-boundary`, named on U2 as its gate, is E-70 (plain `<a>` across shells) and cannot pass or fail on a module move — the real import guard is `test:client-graph-safe`, whose pinned set a new module must be added to or the guard is decoration. Ali added two standing requirements mid-session, both written into the contract so they bind later units rather than living in a chat: **§5.15** (every grid ships paging, sorting, a determinate loading state, an empty state and a retryable error state) and **§3c** (the import is ~150k contacts or a `.vcf`, *and* could be small — which breaks D18's 1 MB server-action ceiling outright, makes a full send TZS 900,000 against a measured float of TZS 232, and rules out pairwise duplicate detection at 1.1 × 10¹⁰ comparisons). ⚠️ RECORDED, NOT FIXED — outside §6's permission: `payout-destination.ts`'s canonical `destination.msisdn` is computed at `wallet-service.ts:1597` and **never read again**; the ledger and the gateway both take `parse.data.msisdn`. Harmless today because the two are equal, but the comment describes a reader that does not exist.  **U2 ✅ LIVE — D3 closed.** The NDC table was researched from the regulator rather than trusted: TCRA has re-issued the numbering plan three times since the edition U2 was drafted from, and 63, 64, 66, 70 and 72 all changed holder, so five of nineteen rows were wrong — including the one the unit had chosen AS its red control (070 was spare in 2020 and is Honora/Yas, operational, in v1.16, so planting `verdictFor("701234567") === "ok"` as the DEFECT would have pinned the wrong answer permanently). Cross-checked row by row against libphonenumber TZ ranges and carrier map, which carry GSMA IR21 provenance; the two sources agree on every code except 60. **Three rulings the research forced:** the operator is the RANGE HOLDER and never the network, because MNP has been live in Tanzania since March 2017 — so `walletHint` is display-only and §7 asserts no money module reads the table; where the regulator and the carriers disagree the parser ACCEPTS and flags, because a false refusal is invisible for ever and a false send is a receipt that never arrives; and 064 is allocated on paper and dead on the wire, which `isGatewayMsisdn` cannot see by design, so this module is the only thing in front of it. ⚠️ **An instrument nearly lied about the most important one:** the ITU E.164 notification answers "sans objet" in its portability row, which reads like "no portability here" and in fact answers a request for a LINK to a database TCRA never published — a blank field is not a negative finding. Also folded in: the display formatter had a SECOND, drifted copy in `wallet/withdraw/page.tsx` (no nine-digit cap, groups every run of three) that agreed with the first on every nine-digit input and diverged on everything else; both now resolve to one function. ⛔ Recorded for every worktree lane: `npm run build` cannot run where `node_modules` is a junction (Turbopack refuses the symlink), so the build proof in a worktree is typecheck + client-graph-safe + the Railway deploy itself. |
 | S0b | 2026-09-23 | **The SMS rail was sealed, and its lessons folded in — no code, board untouched at 0/52.** Delivery receipts now work end to end: a production-issued OTP was DELIVERED and its receipt settled the real row in 11 seconds (`applied: 1`, `unknownRef: 0`, `mismatch: 0`), after the gateway's first unattended batch of three receipts in one POST. §3a replaces the "no receipt has ever arrived" premise this plan was written on; §3b records the vendor's measured vocabulary and operational facts, plus the seven lessons from eleven days of chasing it — chief among them that four vendor claims of "it is fixed" produced four identical silences, that the real fault (a missing `?token=` on their saved URL) only became visible because our receiver records REFUSED attempts, and that our own probe was briefly mistaken for theirs until it was discriminated by `srcIp`. D21, OD41, §7.7, U46, U47 and U51 were rewritten against the new truth; every guard and unit count is unchanged. |
 | S0 | 2026-09-16 | **Planning only.** Nine agents: four research lenses (Tanzanian law · data model + engine · contacts + import · campaign UX), one draft, three adversarial critics (compliance/abuse/money · code truth · completeness/trackability), one revision. 52 critique findings, all resolved or refuted in writing. **Four critic claims were refuted with evidence:** (1) the `00255…` defect is *latent*, not live — every current caller is pre-validated, so it becomes live only when an importer exists; (2) `isLockedOut` is not "wrong" — Ali ruled on 2026-08-27 that a chosen period is a MINIMUM and the account is not reinstated by itself, so marketing needs its OWN predicate and ⛔ `isLockedOut` is not modified; (3) the helpline is not a citation-free assertion — the Gaming Board's own Advertising Code names `0800110051` three times while `support-config.ts:120` pins `0800 11 0011`, so the defect is real but the remedy is an owner question, not a silent edit; (4) routing campaign bodies through `test:cert-c1`/`c3` aims at a gate that structurally cannot fail — `comms-registry.ts` places SMS outside the module, so marketing gets its own wording assertion instead. Unit count was raised from 22 to **52** after measuring the shipped equivalent at Awarkeh (8,625 + 8,948 lines): 22 units would have been ~800 lines each, which is not half a session. ⚠️ Recorded as UNVERIFIED at S0 and to be re-scored at S1: §0a's self-sufficiency on a fresh machine, and whether the two-unit cadence holds for U30/U43. |
