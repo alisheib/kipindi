@@ -324,10 +324,25 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
      bet on. **A retry against an endpoint that also ADVANCES is not a retry.** The real cause is
      ordinary: `advanceChain` needs a CONFIRMED close price and the observation arrives on a cadence,
      not at the boundary — a manual settle several MINUTES later resolved 4 of 4.
-     ⭐ So the drive now waits `SETTLE_MARGIN` seconds PAST the close and settles **once**, and counts
-     only rounds it can match against the ids it bet on. If it still comes back empty, **raise
-     `SETTLE_MARGIN` — do not add attempts.** 13 bets is the floor (`PLAYER_PER_PAGE` = 12, so fewer
-     cannot show two pages carrying the SAME money).
+     🔴 **AND THE SECOND FIX WAS WRONG TOO — MATCHING THE REPLY'S ROUND ID.** It reported
+     "resolved 4, of which 0 were bet on", four cycles running. The endpoint settles
+     `latestForChain`, and its OWN header warns that `roundStore.list` sorts by `boundaryAt` DESC, so
+     on a store carrying rounds from earlier cycles the newest BOUNDARY is not the round just opened.
+     ⭐ **The lesson is to stop asserting on the mechanism and assert on the PRODUCT**: the history
+     page states "N decided" in its third tile, which is the number the player reads and cannot be
+     confused by a stale boundary.
+     🔴 **AND THAT IS WHEN THE RUN WENT GREEN FOR ENTIRELY THE WRONG REASON — THE MOST IMPORTANT
+     THING ON THIS ITEM.** It reported **GREEN, "50 rounds resolved"**, with the strip reading
+     `0/50 decided`, `TZS 50,000 → TZS 50,000` and a net of **`TZS 0`**. Fifty rounds had settled and
+     **every one of them VOIDED**, so the stakes were refunded whole and nothing was won or lost.
+     "The figures did not move across the page turn" was true of a strip with **no P&L in it**, and
+     the `decided` count could not catch it because **a voided round is still resolved**.
+     ⛔ So §2 now also requires the NET to be non-zero and staked to differ from returned, and reports
+     BLIND by name otherwise. **The remaining work on U35 is exactly one thing: get a DECISIVE
+     settle** — `feedProvider: "mock-bars"` plus a price that actually moves past the asset's
+     `minMoveTicks` (2) — and re-run. Everything else in the drive is proven.
+     ⚠️ 13 bets is the floor (`PLAYER_PER_PAGE` = 12, so fewer cannot show two pages carrying the SAME
+     money), and the drive REFUSES a non-local base.
      ⛔ Do NOT mark U35 ✅ off the unit guard alone — it proves the page hands `roundPnl` the VIEW
      and proves the arithmetic; it cannot prove a tile is legible at 360 with a seven-figure net.
 

@@ -202,6 +202,8 @@ console.log(`\n§1 · build >=${WANT_ROUNDS} SETTLED rounds via arm/settle (lead
 const landed = [];       // round ids whose bet provably moved money
 const resolved = [];     // round ids the settle call reported as resolved
 let silent = 0;
+/** The history's own "N decided" reading, so progress is measured on the product, not the API. */
+let decidedSeen = 0;
 
 for (let cycle = 1; landed.length < WANT_ROUNDS && silent < 2 && cycle <= 12; cycle++) {
   const armed = await post("/api/dev-test/updown-handover", { phase: "arm", leadSeconds: LEAD });
@@ -250,38 +252,51 @@ for (let cycle = 1; landed.length < WANT_ROUNDS && silent < 2 && cycle <= 12; cy
   if (!landedThisCycle) { silent++; console.log(`  cycle ${cycle}: no bet landed (silent ${silent}/2)`); continue; }
   silent = 0;
 
-  // ⛔ ONE SETTLE, AFTER A LONG ENOUGH WAIT. DO NOT RETRY — MEASURED, AND THE RETRY WAS WORSE THAN
-  // THE PROBLEM IT FIXED. Settling 4s past the close reported "closed 0, resolved 0" on three of
-  // four cycles, so a six-attempt retry loop was added. It DID start resolving rounds (cycle 5:
-  // three of them, UP/DOWN/UP) — and the drive still reported `0 rounds resolved`, because **every
-  // failed attempt calls `advanceChain` too, which OPENS A SUCCESSOR**. By the attempt that finally
-  // resolved, `latestForChain` was several rounds past the one the player bet on, so what settled
-  // was a round nobody had staked. A retry on an endpoint that also ADVANCES is not a retry.
-  //
-  // The cause of the original emptiness is real and is not the endpoint's fault: `advanceChain`
-  // needs a CONFIRMED close price, and the observation arrives on a cadence rather than at the
-  // boundary — the endpoint's header says a boundary with no confirmed price "simply leaves the
-  // round pending, exactly as in production". A manual settle several MINUTES later resolved 4 of 4.
-  // So: wait past the close by `SETTLE_MARGIN` seconds and settle ONCE. If it still comes back
-  // empty, raise the margin; do not add attempts.
+  // ⛔ SETTLE, THEN ASK THE HISTORY PAGE — NOT THE API REPLY — WHETHER ANYTHING SETTLED.
+  // Two earlier versions of this step asserted on `settle`'s own reply and both were wrong:
+  //  1. A six-attempt retry DID resolve rounds and the drive still reported zero, because every
+  //     failed attempt also calls `advanceChain`, which OPENS A SUCCESSOR. A retry against an
+  //     endpoint that also advances is not a retry.
+  //  2. Matching the reply's `closed.id` against the ids bet on reported "resolved 4, of which 0
+  //     were bet on" — four times. The endpoint settles `latestForChain`, and its OWN header warns
+  //     that `roundStore.list` sorts by `boundaryAt` DESC, so on a store carrying rounds from
+  //     earlier cycles the newest BOUNDARY belongs to something other than the round just opened.
+  // ⭐ So stop asserting on the mechanism and assert on the PRODUCT. The question is whether the
+  // strip shows realised money, and the history page states that directly in its third tile
+  // ("N decided"). That is the number the player reads, it cannot be confused by a stale boundary,
+  // and it is true regardless of which round the endpoint happened to close.
   const waitMs = LEAD * 1000 + SETTLE_MARGIN * 1000;
   console.log(`  cycle ${cycle}: ${landedThisCycle} bet(s) placed, waiting ${Math.round(waitMs / 1000)}s — ${LEAD}s to the close plus a ${SETTLE_MARGIN}s margin for the close price to be confirmed…`);
   await sleep(waitMs);
   const settled = await post("/api/dev-test/updown-handover", { phase: "settle" });
   const closed = (settled.json?.out || []).map((o) => o.closed).filter(Boolean);
-  const good = closed.filter((c) => c.resolvedAt);
-  // ⭐ ONLY COUNT A ROUND THE PLAYER ACTUALLY BET ON. Counting every resolved round is how the
-  // retry version looked like it was working while the history stayed empty.
-  const mine = good.filter((c) => landed.includes(c.id));
-  for (const c of mine) resolved.push(c.id);
-  console.log(`  cycle ${cycle}: settle closed ${closed.length}, resolved ${good.length}, of which ${mine.length} were bet on — outcomes ${JSON.stringify(mine.map((c) => c.outcome))}`);
-  if (!mine.length) fail("1", `cycle ${cycle} resolved ${good.length} round(s) but NONE the player bet on — either the close price was not confirmed in ${SETTLE_MARGIN}s, or the chain advanced past the staked round`);
+  const anyResolved = closed.filter((c) => c.resolvedAt).length;
+
+  // the player's own view of how many of THEIR rounds are decided
+  const decided = await (async () => {
+    const pg = await ctx.newPage();
+    try {
+      await pg.goto(BASE + "/updown/history", { waitUntil: "load", timeout: 300000 });
+      await pg.waitForTimeout(1200);
+      return await pg.evaluate(() => {
+        const main = document.querySelector("main") ?? document.body;
+        const txt = (main.innerText || "").replace(/\s+/g, " ");
+        // the win-rate tile's sub-line: "<wins>/<decided> decided"
+        const m = txt.match(/(\d+)\s*\/\s*(\d+)\s+decided/i);
+        return m ? { wins: Number(m[1]), decided: Number(m[2]) } : null;
+      });
+    } finally { await pg.close(); }
+  })();
+  if (decided && decided.decided > decidedSeen) { resolved.push(...Array(decided.decided - decidedSeen).fill("decided")); decidedSeen = decided.decided; }
+  console.log(`  cycle ${cycle}: settle resolved ${anyResolved} round(s); the player's history now reads ${decided ? decided.wins + "/" + decided.decided + " decided" : "UNREADABLE — not a zero"}`);
+  if (!decided) fail("1", `cycle ${cycle} could not read the history's decided count — nothing was measured, and that is not a zero`);
 }
 
 console.log(`  bets that moved money: ${landed.length} · rounds the settle call resolved: ${resolved.length}`);
 if (silent >= 2) fail("1", `stopped after two silent cycles — ${landed.length} bets landed, not ${WANT_ROUNDS}`);
 if (landed.length < WANT_ROUNDS) fail("1", `only ${landed.length} of ${WANT_ROUNDS} bets landed — a history under ${PER_PAGE + 1} rounds cannot show a second page`);
-if (!resolved.length) fail("1", `no round the player bet on was ever RESOLVED — a history of unsettled rounds has no P&L to hold still`);
+if (!decidedSeen) fail("1", `the player's history still reads 0 decided — nothing settled at all`);
+else console.log(`  the player's history reads ${decidedSeen} decided round(s)`);
 
 // ── §2 · the page turn ───────────────────────────────────────────────────────────────────────
 console.log("\n§2 · the strip must not move when the list does");
@@ -350,8 +365,30 @@ if (p1.stripFound && p2.stripFound) {
   if (p1.rows.length && p1.rows.length !== PER_PAGE) blind.push(`2 page 1 listed ${p1.rows.length} rounds, not ${PER_PAGE} — the pager may not be engaged`);
 
   const zeroes = p1.tiles.every((t) => /^(TZS\s*0|0|—)$/.test(t.figure.trim()));
-  if (zeroes) blind.push(`2 every figure in the strip is zero or an em-dash — a strip of zeroes agrees with itself on every page for the wrong reason, so this run proves nothing about the scope`);
-  else console.log(`  ✓ the figures are non-zero, so agreeing across pages is a real result`);
+  if (zeroes) blind.push(`2 every figure in the strip is zero or an em-dash — a strip of zeroes agrees with itself on every page for the wrong reason`);
+  else console.log(`  ✓ the counts and the staked total are non-zero`);
+
+  // ⛔ THE ONE THAT MATTERS, AND THE RUN THAT FORCED IT. D37 is about MONEY moving when the player
+  // turns the page, so "the strip did not move" is only a result if the strip contains realised
+  // money. A run on 2026-09-25 reported GREEN with `0/50 decided`, `TZS 50,000 → TZS 50,000` and a
+  // net of `TZS 0`: fifty rounds had settled and every one of them VOIDED, so the money was refunded
+  // and nothing was won or lost. Identical-across-pages was true of a strip with no P&L in it — a
+  // pass for entirely the wrong reason, and the "decided" count did not catch it because a voided
+  // round is still resolved. So: the NET must be non-zero, and staked must differ from returned.
+  const netTile = p1.tiles[0];
+  const netZero = /^(TZS\s*0|—|0)$/.test((netTile?.figure || "").trim());
+  const pair = (netTile?.amounts || []).map((a) => a.text.replace(/[^0-9]/g, ""));
+  const refundedWhole = pair.length === 2 && pair[0] === pair[1];
+  if (netZero || refundedWhole) {
+    blind.push(
+      `2 THE STRIP CARRIES NO REALISED MONEY — net "${(netTile?.figure || "").trim()}", staked → returned "${(netTile?.amounts || []).map((a) => a.text).join(" → ")}"`
+      + `. Every round settled VOID and was refunded, so "the figures did not move across the page turn" is true of a strip with nothing in it. `
+      + `D37's claim is about MONEY; this run does not prove it. Get a DECISIVE settle first `
+      + `(feedProvider "mock-bars" and a price that actually moves past minMoveTicks), then re-run.`,
+    );
+  } else {
+    console.log(`  ✓ the strip carries REALISED money — net ${(netTile?.figure || "").trim()}, ${(netTile?.amounts || []).map((a) => a.text).join(" → ")}`);
+  }
 }
 
 // ── §3 · the sub-line fits ───────────────────────────────────────────────────────────────────
