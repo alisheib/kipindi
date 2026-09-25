@@ -235,5 +235,52 @@ check(
       .test('{noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
 }
 
+// ---------------------------------------------------------------------------
+// D42 · EVERY ARC THE RING PAINTS MUST HAVE A WORD.
+//
+// 🔴 `OutcomeDonut` divides by `yes + no + voided` and strokes all three, while the legend
+// printed only the two SIDES. Measured on production 2026-09-25: 210 markets, arcs
+// 118.29° / 188.57° / 53.14°, legend "YES 69 · NO 110" = 179 — so 31 markets, 14.76% of the
+// circle, were painted and named nowhere.
+//
+// 🔴 AND THE VOID FILTER WAS WORSE. `linesShown` keeps a product only when it has a YES or a
+// NO, so `/results?out=void` dropped EVERY legend row: 31 results, a full 360° grey circle,
+// and not one word on screen. The parts of a ring are a claim about a settled book; a ring
+// with an unnamed arc is the same class of defect as an inferred outcome above.
+// ---------------------------------------------------------------------------
+{
+  const res = decomment(readFileSync(join(SRC, "app/results/page.tsx"), "utf8"));
+
+  check("D42 the donut still divides by all three parts",
+    /const total = yes \+ no \+ voided \|\| 1;/.test(res),
+    "if the denominator loses a term the ring stops being a whole");
+
+  check("D42 …and the legend names the third one",
+    /\{voidCount > 0 && \(/.test(res) && /\{t\.market\.statusVoid\} \{voidCount\}/.test(res),
+    "an arc with no word is a part of the book the page refuses to account for");
+
+  check("D42 the void word comes from the lexicon, never a literal",
+    !/>\s*(Void|Batili|已作废)\s*\{voidCount\}/.test(res),
+    "a typed-out word here is the §3b defect in a new place");
+
+  // ⭐ THE VOID-ONLY VIEW IS THE ONE THAT WAS EMPTY. The row must be a SIBLING of the
+  //    per-product map, not a child of it, or it disappears exactly when it is the only
+  //    thing left to say.
+  const mapAt = res.indexOf("linesShown.map(");
+  const mapEnd = res.indexOf("))}", mapAt);
+  const voidAt = res.indexOf("{voidCount > 0 && (");
+  check("D42 the void row survives a view where no product settled a side",
+    mapAt > 0 && mapEnd > mapAt && voidAt > mapEnd,
+    "inside `linesShown.map` it renders zero times on /results?out=void — the empty-legend bug");
+
+  // ⭐ CONTROLS.
+  check("D42 control · a two-term denominator IS detected",
+    !/const total = yes \+ no \+ voided \|\| 1;/.test("  const total = yes + no || 1;"));
+  check("D42 control · a legend with no void row IS detected",
+    !/\{voidCount > 0 && \(/.test("{linesShown.map((line) => (<span key={line}>…</span>))}"));
+  check("D42 control · a typed-out void word IS detected",
+    />\s*(Void|Batili|已作废)\s*\{voidCount\}/.test('<span className="x">Void {voidCount}</span>'));
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — scanned ${files.length} ts/tsx files`);
 process.exit(fail === 0 ? 0 : 1);
