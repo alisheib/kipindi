@@ -1,13 +1,13 @@
 # F6 · Seeded / guaranteed liquidity — compliance & risk design
 
-> ⛔ **SUPERSEDED — house-backed liquidity is being built as "house bots" (owner decision D1, 2026-09-13).**
+> ⛔ **SUPERSEDED — house-backed liquidity was built as "house bots" (owner decision D1, 2026-09-13), and is live.**
 > The recommendation below ("do NOT build") no longer governs, and neither do the §5 conditions. The ruling of record is
 > the House bots entry in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md); the design authority is
 > [`HOUSE-BOTS.md`](HOUSE-BOTS.md). This file is kept unchanged as the record of the risks that design answers.
 
 > ⛔ **Owner ruling D19 (Ali, 2026-09-16): house bots are never public.** No rulebook, Terms, privacy, FAQ or chatbot
 > text names them, and the holder sees nothing, so nothing public stands in for §5's condition 6 (marked in place below).
-> The ruling: `plans/house-bots/PROGRESS.md` "OWNER RULING D19".
+> The ruling of record: [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) "Owner ruling D19".
 
 > ⚠️ **FEE ARITHMETIC IN THIS FILE IS THE RETIRED MODEL.** It reasons in
 > `min(commissionRate × pool, feeCeilingRate × smaller side)`, which since 2026-08-14 describes

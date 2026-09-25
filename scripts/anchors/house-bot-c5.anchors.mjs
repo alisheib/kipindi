@@ -3,7 +3,7 @@
  *
  * ⛔ WHAT THIS FILE IS FOR. Four registers under `plans/house-bots/tools/` hold 262 id-bearing mutation entries in three
  * incompatible grammars (`c5-s4` 85, `c5-s5` 140, `c5-5b` 25, `c5-s7` 12). They were WRITE-ONLY BY CONSTRUCTION: no file
- * in the repository reads a `*-mutations.json`, and the only two that name the pattern instruct an agent to WRITE one. So
+ * in the repository reads a `*-mutations.json`, and the only two that named the pattern (`tools/c5-step-fast.js`, `tools/c7-step.js`, both deleted 2026-09-26) instructed an agent to WRITE one. So
  * every from-text in them could rot — and 92 of the 262 had, silently, by the time anyone looked. §2e decided against
  * building a bespoke three-grammar runner and for CONVERSION into `scripts/anchors/`, because that puts the from-texts
  * under `test:red-anchors` §3, which re-resolves every declaration against the working tree every day and would have
