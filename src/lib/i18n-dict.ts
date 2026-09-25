@@ -1380,6 +1380,23 @@ export const dict = {
       badgesHint: "More badges unlock as you predict, win and propose.",
       account: "Account",
       inviteEarn: "Invite & Earn", inviteEarnSub: "Refer friends · earn rewards",
+      // ⭐ THE UNPAID INVITE'S OWN WORDS (2026-09-25). ⛔ NOT a rewording of the four keys above:
+      // those are the PAID promo's, they stay exactly as they are, and `inviteRewards` ACTIVE
+      // brings them back. A page that pays nothing may not borrow a sentence that promises
+      // something — which is what re-pointing `inviteEarn` at neutral copy would have quietly done
+      // to every other reader of that key.
+      inviteFriends: "Invite friends", inviteFriendsSub: "Share your link · see who joins",
+      friendsJoined: "Friends joined",
+      yourFriends: "Your friends",
+      noFriendsYet: "No friends yet",
+      noFriendsBody: "Share your link to invite your first friend.",
+      inviteStepShare: "Share your link",
+      inviteStepJoin: "Your friend signs up on it",
+      inviteStepCounted: "They appear in your list",
+      inviteNoRewardNote: "Inviting is sharing, not earning — 50pick pays no reward for invites. 18+.",
+      /** ⛔ Shown ONLY when the list is genuinely shorter than the count — a stated page, never a
+       *  silent truncation. `{shown}` and `{total}` are filled from the read model. */
+      inviteListCapped: "Showing your {shown} most recent friends of {total}.",
       myAccount: "My account", myAccountSub: "Activity · Export · Close",
       responsibleGambling: "Responsible gambling", responsibleGamblingSub: "Limits · Self-exclusion",
       verifyIdSub: "ID document · selfie · review",
@@ -3792,6 +3809,19 @@ export const dict = {
       badgesHint: "Beji zaidi zinafunguliwa unapocheza, kushinda na kupendekeza.",
       account: "Akaunti",
       inviteEarn: "Alika na upate zawadi", inviteEarnSub: "Alika marafiki · pata zawadi",
+      // ⭐ SWAHILI IS THE DEFAULT LOCALE, so this is the copy the platform actually speaks — it is
+      // written, not translated from the English above. ⛔ `zawadi` (reward) appears nowhere in it:
+      // that word is the paid promo's, and the whole point of these keys is that there is none.
+      inviteFriends: "Alika marafiki", inviteFriendsSub: "Shiriki kiungo chako · uone wanaojiunga",
+      friendsJoined: "Marafiki waliojiunga",
+      yourFriends: "Marafiki zako",
+      noFriendsYet: "Bado hakuna rafiki",
+      noFriendsBody: "Shiriki kiungo chako umwalike rafiki wako wa kwanza.",
+      inviteStepShare: "Shiriki kiungo chako",
+      inviteStepJoin: "Rafiki yako anajisajili kupitia kiungo hicho",
+      inviteStepCounted: "Anaonekana kwenye orodha yako",
+      inviteNoRewardNote: "Kualika ni kushiriki, si kupata pesa — 50pick hailipi zawadi kwa mialiko. Miaka 18+.",
+      inviteListCapped: "Unaona marafiki {shown} wa hivi karibuni kati ya {total}.",
       myAccount: "Akaunti yangu", myAccountSub: "Shughuli · Hamisha · Funga",
       responsibleGambling: "Vikomo", responsibleGamblingSub: "Mipaka · Kujitenga",
       verifyIdSub: "Kitambulisho · picha ya uso · ukaguzi",
@@ -5953,6 +5983,18 @@ export const dict = {
       badgesHint: "随着您的预测、获胜和提议，更多徽章将解锁。",
       account: "账户",
       inviteEarn: "邀请赚钱", inviteEarnSub: "推荐好友 · 赢取奖励",
+      // ⭐ The unpaid invite. ⛔ 赚钱 / 奖励 (earn money / reward) are the paid promo's words and do
+      // not appear below — the surface pays nothing, in every locale it speaks.
+      inviteFriends: "邀请朋友", inviteFriendsSub: "分享你的链接 · 查看谁加入",
+      friendsJoined: "已加入的朋友",
+      yourFriends: "你的朋友",
+      noFriendsYet: "还没有朋友加入",
+      noFriendsBody: "分享你的链接，邀请第一位朋友。",
+      inviteStepShare: "分享你的链接",
+      inviteStepJoin: "朋友通过链接注册",
+      inviteStepCounted: "他们出现在你的列表中",
+      inviteNoRewardNote: "邀请只是分享，不是赚钱 — 50pick 不为邀请支付任何奖励。18+。",
+      inviteListCapped: "显示最近的 {shown} 位好友，共 {total} 位。",
       myAccount: "我的账户", myAccountSub: "活动 · 导出 · 关闭",
       responsibleGambling: "负责任博彩", responsibleGamblingSub: "限额 · 自我排除",
       verifyIdSub: "证件 · 自拍 · 审核",

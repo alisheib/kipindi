@@ -69,6 +69,11 @@ try {
   }
 
   // ── §2 · CONTROL — a PLAYER referrer on the SAME hooks is paid the flat rewards ──────────
+  // ⭐ `FEATURE_INVITEREWARDS` JOINED THE OVERRIDE 2026-09-25. The player invite surface is
+  // ACTIVE by default now, but it PAYS NOTHING — so a control that proves "the same hooks pay a
+  // player" has to switch the money on, or it is measuring a programme that has been turned off
+  // and reporting isolation it never tested. ⛔ Both overrides are cleared in the `finally`.
+  process.env.FEATURE_INVITEREWARDS = "ACTIVE";
   process.env.FEATURE_INVITE = "ACTIVE";
   try {
     await mkFixtureUser("iso_player");
@@ -84,6 +89,7 @@ try {
     ok("2.commission · CONTROL — the player commission row is stamped PLAYER and lands in BONUS", after.some((r) => r.type === "COMMISSION" && r.programme === "PLAYER") && (await bonusOf("iso_player")) >= 5_000, `bonus=${await bonusOf("iso_player")}`);
   } finally {
     delete process.env.FEATURE_INVITE;
+    delete process.env.FEATURE_INVITEREWARDS;
   }
 
   // ── §3 · THE SWITCHES ARE SEPARATE ───────────────────────────────────────────────────────
@@ -99,6 +105,12 @@ try {
 
     // Attribution is SHARED (one system, always) — a pause is an ECONOMIC switch, so the bind
     // still records who recruited whom; what stops is the money.
+    // 🔴 AND THE REWARDS OVERRIDE IS LOAD-BEARING IN *THIS* BLOCK, NOT A COPY-PASTE. §3.control
+    // claims the OPERATOR PAUSE (`cfg.enabled = false`) is what stops a player referrer being
+    // paid. With `inviteRewards` WITHDRAWN globally, the money is already off — so the assertion
+    // would read 0 with the pause REMOVED and still pass, which is a control proving nothing.
+    // Switching the product state ON here leaves the pause as the only thing under test.
+    process.env.FEATURE_INVITEREWARDS = "ACTIVE";
     process.env.FEATURE_INVITE = "ACTIVE";
     try {
       await mkFixtureUser("iso_player2");
@@ -110,6 +122,7 @@ try {
       ok("3.control · CONTROL — the paused promo DOES stop a player referrer's money", (await bonusOf("iso_player2")) === 0 && (await cashOf("iso_player2")) === 0 && (await db.referralReward.listByReferrer("iso_player2")).length === 0, `bonus=${await bonusOf("iso_player2")} cash=${await cashOf("iso_player2")}`);
     } finally {
       delete process.env.FEATURE_INVITE;
+      delete process.env.FEATURE_INVITEREWARDS;
     }
     setAffiliateConfig({ enabled: true }, "test-officer");
   }

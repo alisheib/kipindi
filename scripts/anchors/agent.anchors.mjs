@@ -100,4 +100,56 @@ export const MUTATIONS = [
     to: `  const split = agentCommissionSplit(grossFee, rates.agentPct, rates.withholdingPct);`,
     expect: "7.share",
   },
+  // ── THE UNPAID PLAYER INVITE (2026-09-25) ─────────────────────────────────────────────────
+  // Six anchors, because the feature's promise is a NEGATIVE and a suite of zeros is the easiest
+  // kind to pass by accident. Each one is a real way this could ship broken, on the file where it
+  // would live, and each turns ITS OWN assertion red.
+  {
+    gate: "player-invite-unpaid",
+    name: "affiliate-service.ts — the PLAYER branch stops consulting the product state (the promo pays again, from a config row)",
+    file: "src/lib/server/affiliate-service.ts",
+    from: `  if (!playerInviteRewardsLive()) return { ok: false, refusal: "player_rewards_withdrawn" };`,
+    to: `  if (false) return { ok: false, refusal: "player_rewards_withdrawn" };`,
+    expect: "3.resolver",
+  },
+  {
+    gate: "player-invite-unpaid",
+    name: "affiliate-service.ts — the page's read model is told the programme pays (money copy over a refused accrual)",
+    file: "src/lib/server/affiliate-service.ts",
+    from: `  const rewardsLive = playerInviteRewardsLive();`,
+    to: `  const rewardsLive = true;`,
+    expect: "2.promises",
+  },
+  {
+    gate: "player-invite-unpaid",
+    name: "affiliate-service.ts — an agent out of standing falls back to the player share (a link that can never bind)",
+    file: "src/lib/server/affiliate-service.ts",
+    from: `  return playerStandingFor(user).ok && !isApprovedAgent(account);`,
+    to: `  return playerStandingFor(user).ok;`,
+    expect: "1.deactagent",
+  },
+  {
+    gate: "player-invite-unpaid",
+    name: "affiliate-service.ts — a CLOSED / SUSPENDED / SELF_EXCLUDED player keeps recruiting",
+    file: "src/lib/server/affiliate-service.ts",
+    from: `  if (user.status === "CLOSED" || user.status === "SUSPENDED" || user.status === "SELF_EXCLUDED") {`,
+    to: `  if (false) {`,
+    expect: "1.SELF_EXCLUDED",
+  },
+  {
+    gate: "player-invite-unpaid",
+    name: "feature-state.ts — the player branch opens for every viewer, signed out included",
+    file: "src/lib/feature-state.ts",
+    from: `  return viewer?.playerInviteEligible ? "ACTIVE" : "WITHDRAWN";`,
+    to: `  return "ACTIVE";`,
+    expect: "1.signedout",
+  },
+  {
+    gate: "player-invite-unpaid",
+    name: "affiliate-service.ts — the operator's payables roster is cut back to a top ten (the eleventh inviter is never paid)",
+    file: "src/lib/server/affiliate-service.ts",
+    from: `    .sort((a, b) => b.recruits - a.recruits || b.earnedTzs - a.earnedTzs);`,
+    to: `    .sort((a, b) => b.recruits - a.recruits || b.earnedTzs - a.earnedTzs).slice(0, 10);`,
+    expect: "6.full",
+  },
 ];

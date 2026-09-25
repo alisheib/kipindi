@@ -109,11 +109,16 @@ const SURFACES = [
    *
    * Its list is the AGENT RECRUIT BOOK (PLAYER QUERY, task 4.11), and that book renders only for a
    * viewer whose affiliate account has `approvedAt` set. Every driver here signs in at
-   * `/auth/demo`, which mints a PLAYER — and for a player this route is `notFound()`, because
-   * `PRODUCT_STATE.invite` is WITHDRAWN and `inviteIsLiveFor` needs the same `approvedAt`. So a
-   * declaration here would report "no `data-filter-rail` found" on a page that is behaving exactly
-   * as designed: a FIXTURE GAP wearing the costume of a broken rail, which is the confusion this
-   * campaign has already paid for twice.
+   * `/auth/demo`, which mints a PLAYER. So a declaration here would report "no `data-filter-rail`
+   * found" on a page that is behaving exactly as designed: a FIXTURE GAP wearing the costume of a
+   * broken rail, which is the confusion this campaign has already paid for twice.
+   *
+   * ⚠️ 2026-09-25 — THE REASON CHANGED AND THE CONCLUSION DID NOT, so read this before "fixing" it.
+   * This note used to rest on `notFound()`: `PRODUCT_STATE.invite` was WITHDRAWN, so a player got
+   * no page at all. It is ACTIVE now and a player DOES get a page — the UNPAID share body — but
+   * that body carries no filter rail by design (its list is a handful of friends with a name and a
+   * date), so a declaration here would still find nothing. ⛔ The omission stands; only its
+   * justification moved. See `docs/PLAYER-INVITE-UNPAID.md`.
    *
    * ⭐ IT IS NOT UNCHECKED. `test:filter-language` declares `recruits-bar.tsx` and is a SOURCE
    * check, so the idiom, the hook and the `FilterPill` usage are all guarded; and `qa:agent-drive`

@@ -3724,7 +3724,7 @@ export type ConsoleFeedRow = {
    * ⚠️ `null` when the ledger cannot answer for that instant — an older row past the scan window, or an account
    * whose transactions could not be read. Never a zero, which would read as "this account is empty".
    */
-  remaining: string | null;
+  closing: string | null;
   /**
    * ⭐ HOW THE STAKE ENDED — "Won", "Lost", "Void" — or `null` while it is still running or was never placed
    * (owner, 2026-09-25). The Outcome cell paints THIS where it exists and the intent's own word otherwise, so one
@@ -3734,7 +3734,21 @@ export type ConsoleFeedRow = {
   resultWord: string | null;
   resultChip: StatusChipVariant | null;
   /** The instant the figure belongs to, as the cell's `title` — so a carried-forward balance says which movement it came from. */
-  remainingTitle: string | null;
+  closingTitle: string | null;
+  /**
+   * ⭐ WHAT THE ACCOUNT HELD BEFORE THIS STAKE LEFT IT. `Opening − Stake = Closing` by construction, because
+   * closing is the ledger's own figure and opening is that plus the stake — neither is inferred.
+   * ⚠️ `null` on a row that moved no money: its closing is a balance CARRIED FORWARD, true about the instant
+   * but bracketing no stake, and an opening there would read as a movement that never happened.
+   */
+  opening: string | null;
+  /**
+   * ⭐ WHICH ROUND the stake was on, `#1524`, read from the intent's own stored snapshot.
+   * ⚠️ `null` on a poll — correct, not a gap: a poll has no rounds (1052/1052 Up & Down rows carry one, 0/6
+   * poll rows do). ⛔ A round number is NOT unique on its own: each Up & Down chain counts its own, so `#1524`
+   * exists once per chain. It identifies a round only beside the `Game` cell, which is why it sits there.
+   */
+  roundNo: string | null;
   statusWord: string;
   statusChip: StatusChipVariant;
   typeWord: string;
@@ -4283,6 +4297,12 @@ function feedMarketName(decision: Record<string, unknown>): string | null {
 
 /** One activity row's budget cell: the falling figure, and 361's own sentence behind it. */
 type FeedLeftCell = { text: string; title: string };
+/**
+ * The closing cell, plus the two facts `Opening` needs: the RAW figure, and whether this row had a movement of
+ * its own at all. ⛔ A carried-forward balance is true about the instant but brackets no stake, so it may not be
+ * turned into an opening — see `feedOpening`.
+ */
+type FeedClosingCell = FeedLeftCell & { value: number; ownMovement: boolean };
 
 /**
  * ⭐ WHAT WAS LEFT OF THE DAY'S BUDGET AFTER EACH STAKE (owner, 2026-09-24).
@@ -4378,7 +4398,7 @@ function feedLeftTodayLookup(
  */
 function feedRemainingLookup(
   txnsByUser: Map<string, readonly StoredTxn[]> | null,
-): (row: StoredHouseBotIntent) => FeedLeftCell | null {
+): (row: StoredHouseBotIntent) => FeedClosingCell | null {
   if (txnsByUser == null) return () => null;
   /* ⛔ THE INSTANT A MOVEMENT LANDED, WHICH IS NOT ALWAYS THE ROW'S `createdAt` (measured, 2026-09-25). A deposit's
      row is CREATED when the player starts it, with `balanceAfter` null, and `wallet-service.ts` patches the balance
@@ -4393,7 +4413,7 @@ function feedRemainingLookup(
     /* ⭐ THE ROW'S OWN MOVEMENT WHERE IT HAS ONE — `positionId` is unique on both the intent and the transaction.
        This branch is EXACT and needs none of the care below: the figure was stamped by this very stake. */
     const own = row.positionId == null ? undefined : rows.find((t) => t.positionId === row.positionId);
-    if (own != null && own.balanceAfter != null) return remainingCell(own, landedAt(own));
+    if (own != null && own.balanceAfter != null) return remainingCell(own, landedAt(own), true);
 
     /* Otherwise the last movement at or before this instant — the balance the wallet stood at, unchanged since. */
     let carried: StoredTxn | undefined;
@@ -4415,18 +4435,53 @@ function feedRemainingLookup(
       && (t.status === "FAILED" || t.status === "REVERSED" || t.status === "CANCELLED")
       && (() => { const u = Date.parse(t.updatedAt); return Number.isFinite(u) && u > carriedAt && u <= at; })());
     if (unrecorded) return null;
-    return remainingCell(carried, carriedAt);
+    return remainingCell(carried, carriedAt, false);
   };
 }
 
 /** One painted balance cell, with the instant it belongs to — so a carried figure says which movement it came from. */
-function remainingCell(t: StoredTxn, atMs: number): FeedLeftCell {
+function remainingCell(t: StoredTxn, atMs: number, ownMovement: boolean): FeedClosingCell {
   return {
     text: formatTzs(Math.max(0, Math.round(Number(t.balanceAfter)))),
     title: Number.isFinite(atMs)
       ? `after the movement at ${formatEat(atMs, "D MMM")} ${formatEat(atMs, "HH:MM:SS")} EAT`
       : "after the last movement on this account",
+    value: Math.max(0, Math.round(Number(t.balanceAfter))),
+    ownMovement,
   };
+}
+
+/**
+ * ⭐ WHAT THE ACCOUNT HELD BEFORE THIS STAKE LEFT IT (owner, 2026-09-25) — the ledger row's opening balance.
+ *
+ * ⛔ IT IS OFFERED ONLY WHERE THE ROW HAS A MOVEMENT OF ITS OWN, and that is the whole of its honesty. `Opening`
+ * and `Closing` BRACKET this stake: closing is what the ledger stamped when the money left, opening is that plus
+ * the stake, so `Opening − Stake = Closing` holds by construction and neither is inferred.
+ * ⚠️ A ROW THAT MOVED NO MONEY HAS NO OPENING. Its `Closing` is the wallet CARRIED FORWARD from the last
+ * movement — a true statement about the instant — but there is no bracket around a stake that never left, and
+ * inventing one would make the subtraction read as a movement that did not happen.
+ */
+function feedOpening(closing: FeedClosingCell | null, stakeTzs: number): string | null {
+  return closing == null || !closing.ownMovement ? null : formatTzs(closing.value + stakeTzs);
+}
+
+/**
+ * ⭐ WHICH ROUND THE STAKE WAS ON (owner, 2026-09-25) — Up & Down only, read from the intent's own snapshot.
+ *
+ * ⚠️ EVERY STEP IS CHECKED, for the same reason `feedMarketName` checks every step: `decision` is
+ * `Record<string, unknown>` — stored JSON with no type, no parse and no write-time shape guard — and the console
+ * suite deliberately plants a hostile shape in its feed fixture.
+ * ⛔ THE STORED SNAPSHOT, NEVER A LIVE READ. A chain re-numbered or a round voided afterwards must not rewrite
+ * what a past decision appears to say; the `Game` door beside it carries the current truth.
+ * ⚠️ `null` ON A POLL, and that is correct rather than a gap: a poll has no rounds. Measured on production —
+ * 1052 of 1052 Up & Down rows carry one, 0 of 6 poll rows do.
+ */
+function feedRoundNumber(decision: Record<string, unknown>): string | null {
+  const snap: unknown = (decision as { snapshot?: unknown } | null)?.snapshot;
+  if (snap == null || typeof snap !== "object") return null;
+  const raw: unknown = (snap as { roundNumber?: unknown }).roundNumber;
+  if (typeof raw !== "number" || !Number.isFinite(raw) || !Number.isInteger(raw) || raw <= 0) return null;
+  return `#${formatNumber(raw)}`;
 }
 
 /**
@@ -4468,13 +4523,15 @@ function feedResultLookup(
   };
 }
 
-function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number, left: (row: StoredHouseBotIntent) => FeedLeftCell | null, remaining: (row: StoredHouseBotIntent) => FeedLeftCell | null, result: (row: StoredHouseBotIntent) => { word: string; chip: StatusChipVariant } | null): ConsoleFeedRow {
+function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number, left: (row: StoredHouseBotIntent) => FeedLeftCell | null, remaining: (row: StoredHouseBotIntent) => FeedClosingCell | null, result: (row: StoredHouseBotIntent) => { word: string; chip: StatusChipVariant } | null): ConsoleFeedRow {
   const at = Date.parse(i.createdAt);
   /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
      instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
      not be used to check it. The targets grid keeps minutes: a target is a rare, deliberate act. A stake is not. */
   const status = CONSOLE_INTENT_STATUS[i.status];
   const code = i.reasonCode;
+  /* Resolved ONCE: `opening` is derived from it, and two calls could not disagree but would read as if they might. */
+  const closingCell = remaining(i);
   return {
     when: Number.isFinite(at) ? `${formatEat(at, "D MMM")} ${formatEat(at, "HH:MM:SS")}` : "—",
     whenTitle: Number.isFinite(at) ? `${formatEat(at, "D MMM YYYY")} ${formatEat(at, "HH:MM:SS")} EAT` : "—",
@@ -4487,8 +4544,10 @@ function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs:
        and a balance is a property of the wallet's whole movement history. */
     resultWord: result(i)?.word ?? null,
     resultChip: result(i)?.chip ?? null,
-    remaining: remaining(i)?.text ?? null,
-    remainingTitle: remaining(i)?.title ?? null,
+    closing: closingCell?.text ?? null,
+    closingTitle: closingCell?.title ?? null,
+    opening: feedOpening(closingCell, i.stakeTzs),
+    roundNo: feedRoundNumber(i.decision),
     statusWord: status.word,
     statusChip: status.chip,
     typeWord: CONSOLE_INTENT_KIND_WORD[i.kind],

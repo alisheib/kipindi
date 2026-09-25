@@ -3769,7 +3769,14 @@ try {
            ⛔ The `why` above is still the sentence the console must never paint; that pin is untouched. */
         decision: n % 3 === 1
           ? ({ snapshot: "blob" } as Any)
-          : ({ snapshot: { titleEn: n === 41 ? `${"Q".repeat(200)} ${n}` : `Will panel market ${n} resolve YES?`, category: "other", cutoff: w.iso(3_600_000), roundNumber: null } } as Any),
+          : ({ snapshot: { titleEn: n === 41 ? `${"Q".repeat(200)} ${n}` : `Will panel market ${n} resolve YES?`, category: "other", cutoff: w.iso(3_600_000), /* ⭐ A REAL ROUND ON THE UPDOWN ROWS AND NULL ON THE POLLS, which is the production shape: 1052 of 1052 Up & Down rows carry a round number and 0 of 6 poll rows do. The value carries `n` so a reader painting a constant is caught, and every third row keeps the HOSTILE `snapshot: "blob"` above. */ /* ⛔ AND TWO ROWS CARRY A WELL-FORMED SNAPSHOT WITH A MALFORMED ROUND — a STRING and a NEGATIVE. The hostile
+             `snapshot: "blob"` rows above are rejected at the OBJECT check and never reach the number guard, so without
+             these the guard was real but untested: its declared mutation came back MISSED, which is how a mutation
+             aimed at nothing announces itself.
+             ⚠️ n=38 AND n=35 ARE CHOSEN, NOT ARBITRARY: the feed pages at 20 over 41 rows, so only n≥22 is on
+             page 1 — the first pair sat on page 3 and the mutation came back MISSED a second time — and both avoid
+             the `n % 3 === 1` rows, which store the hostile blob and never reach the number guard at all. */
+          roundNumber: n === 38 ? ("1524" as unknown as number) : n === 35 ? -3 : n % 3 === 0 ? 1500 + n : null } } as Any),
         attempts: 0, transientAttempts: 0, nextAttemptAt: null,
         claimedBy: null, claimedUntil: null,
         positionId: status === "PLACED" ? `pos_placed_panel_${n}` : null,
@@ -4006,7 +4013,7 @@ try {
          daily stake budget after the row, and the same fact in 361's `used X of Y` grammar as the cell's title.
          ⛔ BOTH ARE STILL FINISHED STRINGS OR `null`: the arithmetic happens in the reader, and a number crossing
          into the view model here is exactly what this equality exists to catch. */
-      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "leftToday", "leftTodayTitle", "marketHref", "marketName", "note", "productWord", "remaining", "remainingTitle", "resultChip", "resultWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "closing", "closingTitle", "due", "leftToday", "leftTodayTitle", "marketHref", "marketName", "note", "opening", "productWord", "resultChip", "resultWord", "roundNo", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
         && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
       j(Object.keys(p1.feed[0] ?? {}).sort()));
 
@@ -4048,6 +4055,32 @@ try {
       /* ⛔ CONTROL · A ROW WHOSE BLOB CARRIES NO USABLE TITLE ANSWERS `null`, NOT AN EMPTY NAME. `decision`
          has no type, no parse and no write-time shape guard, and this suite plants a hostile shape on purpose. */
       const feedMarketNames = p1.feed.map((r: Any) => r.marketName);
+      /* ━━ 1.626g · WHICH ROUND THE STAKE WAS ON (owner, 2026-09-25) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       * ⛔ FROM THE STORED SNAPSHOT, NEVER A LIVE READ — a chain re-numbered or a round voided afterwards must
+       * not rewrite what a past decision appears to say; the `Game` door beside it carries the current truth.
+       * ⚠️ AND IT SITS BESIDE THE GAME FOR A MEASURED REASON: a round number is NOT unique on its own. Each
+       * Up & Down chain counts its own, so `#1524` exists once per chain on production and identifies a round
+       * only with its game next to it. */
+      {
+        const rounds = p1.feed.map((r: Any) => r.roundNo);
+        const named = rounds.filter((v: Any) => v !== null);
+        ok("1.626g · a row that stored a round number paints it, in the staff format `#1524`, read off the intent's own snapshot",
+          named.length > 0 && named.every((v: string) => /^#[\d,]+$/.test(v)),
+          j({ named: named.slice(0, 4), total: rounds.length }));
+        /* ⛔ CONTROL · THE HOSTILE SHAPE AND THE ABSENT VALUE BOTH ANSWER NOTHING. `decision` is
+           `Record<string, unknown>` with no type, no parse and no write-time guard, and every third fixture row
+           stores `snapshot: "blob"` on purpose. A poll answers null for the same reason: it has no rounds. */
+        ok("1.626g · CONTROL · a hostile snapshot, a MALFORMED round number and a row with no round all answer `null` — never `#undefined`, never `#-3`, never an empty badge",
+          rounds.some((v: Any) => v === null) && rounds.every((v: Any) => v === null || /^#[\d,]+$/.test(v))
+            && !rounds.some((v: Any) => typeof v === "string" && /-|undefined|NaN/.test(v)),
+          j({ nulls: rounds.filter((v: Any) => v === null).length, named: named.length, shapes: [...new Set(rounds.map((v: Any) => v === null ? "null" : "figure"))] }));
+        /* ⛔ CONTROL · IT IS THE STORED NUMBER AND NOT A ROW INDEX — the fixture writes `1500 + n`, so a reader
+           painting a counter, a constant, or the page position is caught. */
+        ok("1.626g · CONTROL · the figure is the SNAPSHOT's own number, not a row counter or a constant",
+          new Set(named).size > 1 && named.every((v: string) => Number(v.slice(1).replace(/,/g, "")) >= 1500),
+          j([...new Set(named)].slice(0, 4)));
+      }
+
       ok("1.626b · CONTROL · a row whose stored decision holds no usable title answers `null` rather than an empty cell pretending to be a name — and its door still stands",
         feedMarketNames.every((n: Any) => n === null || (typeof n === "string" && n.trim().length > 0))
           && p1.feed.every((r: Any) => r.marketHref === null || typeof r.marketHref === "string"),
@@ -4230,28 +4263,44 @@ try {
         const afterEach = [holderStart - 5_000, holderStart - 5_000 - 3_000, holderStart - 5_000 - 3_000 - 2_000];
         ok("1.626d · every placed row says what the account had left AFTER IT — read from that stake's own ledger movement, never derived",
           placedRows.every((r) => r != null)
-            && placedRows[0]!.remaining === formatTzs(afterEach[0])
-            && placedRows[1]!.remaining === formatTzs(afterEach[1])
-            && placedRows[2]!.remaining === formatTzs(afterEach[2]),
-          j({ want: afterEach, got: placedRows.map((r: Any) => r?.remaining) }));
+            && placedRows[0]!.closing === formatTzs(afterEach[0])
+            && placedRows[1]!.closing === formatTzs(afterEach[1])
+            && placedRows[2]!.closing === formatTzs(afterEach[2]),
+          j({ want: afterEach, got: placedRows.map((r: Any) => r?.closing) }));
 
         /* ⛔ A ROW THAT MOVED NO MONEY CARRIES THE BALANCE FORWARD — the wallet stood where the last movement
            left it, so the newest queued row must read the newest stake's figure and never a blank. */
         ok("1.626d · a QUEUED row carries the balance forward — the wallet stood where the last movement left it",
-          idleRow != null && idleRow.remaining === formatTzs(afterEach[2]),
-          j({ idle: idleRow?.remaining, lastMovement: formatTzs(afterEach[2]) }));
+          idleRow != null && idleRow.closing === formatTzs(afterEach[2]),
+          j({ idle: idleRow?.closing, lastMovement: formatTzs(afterEach[2]) }));
 
         /* ⛔ CONTROL · AND A ROW OLDER THAN EVERY MOVEMENT ANSWERS NOTHING. The ledger cannot say what the
            wallet held before its first recorded movement, and a zero would read as "this account is empty". */
+        /* ━━ 1.626f · THE ROUND'S OPENING BALANCE (owner, 2026-09-25) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         * The row became a ledger line: `Round · Opening · Stake · Closing`. ⛔ THE SUBTRACTION IS THE WHOLE
+         * CLAIM — closing is the ledger's own stamped figure and opening is that plus the stake, so
+         * `Opening − Stake = Closing` holds by construction and neither figure is inferred. Asserted as the
+         * IDENTITY rather than against a typed constant, because a typed pair would still agree if both were
+         * computed the same wrong way. */
+        ok("1.626f · Opening − Stake = Closing, exactly, on every row that moved money — the ledger line's own arithmetic, asserted as an identity",
+          placedRows.every((r, k) => r!.opening === formatTzs(afterEach[k] + STAKES[k])),
+          j(placedRows.map((r: Any, k: number) => ({ opening: r?.opening, stake: formatTzs(STAKES[k]), closing: r?.closing }))));
+
+        /* ⛔ CONTROL · A ROW THAT MOVED NO MONEY BRACKETS NO STAKE. Its closing is a balance CARRIED FORWARD —
+           true about the instant — but an opening there would read as a movement that never happened. */
+        ok("1.626f · CONTROL · a queued row has a carried-forward closing and NO opening — there is no bracket around a stake that never left",
+          idleRow != null && idleRow.closing !== null && idleRow.opening === null,
+          j({ closing: idleRow?.closing, opening: idleRow?.opening }));
+
         ok("1.626d · CONTROL · a row older than every recorded movement answers nothing — never a zero",
-          oldRow != null && oldRow.remaining === null && oldRow.remainingTitle === null,
-          j({ old: oldRow?.remaining }));
+          oldRow != null && oldRow.closing === null && oldRow.closingTitle === null,
+          j({ old: oldRow?.closing }));
 
         /* ⭐ AND THE TITLE NAMES THE MOVEMENT IT CAME FROM, so a carried figure says which instant it belongs to
            rather than implying this row moved the money. */
         ok("1.626d · the cell's title names the INSTANT the figure belongs to, in EAT",
-          placedRows[2]!.remainingTitle != null && /EAT$/.test(placedRows[2]!.remainingTitle),
-          j(placedRows[2]?.remainingTitle));
+          placedRows[2]!.closingTitle != null && /EAT$/.test(placedRows[2]!.closingTitle),
+          j(placedRows[2]?.closingTitle));
 
         /* 🔴 CONTROL · IT REFUSES TO CARRY ACROSS A MOVEMENT THE LEDGER DID NOT RECORD — the defect this column
          * would otherwise have shipped with, found by reading `wallet-service.ts` rather than by any suite.
@@ -4279,13 +4328,13 @@ try {
         const stranded = () => (budView() as Any).then((v: Any) => (v.feed ?? []).find((r: Any) => r.stake === formatTzs(11_000)));
         const blanked = await stranded();
         ok("1.626d · CONTROL · a refund the ledger never recorded BLANKS the carried figure — a failed withdrawal returns cash with no row, and a stale smaller balance is the one answer this column may not give",
-          blanked != null && blanked.remaining === null,
-          j({ carriedOnOlderRow: idleRow?.remaining, strandedRow: blanked?.remaining }));
+          blanked != null && blanked.closing === null,
+          j({ carriedOnOlderRow: idleRow?.closing, strandedRow: blanked?.closing }));
         await w.db.txn.update(failedId, { status: "CONFIRMED" } as Any);
         const healed = await stranded();
         ok("1.626d · CONTROL · …and with that same row CONFIRMED the figure comes back — so the blank above was the unrecorded refund and not the fixture merely existing",
-          healed != null && healed.remaining !== null,
-          j({ afterConfirm: healed?.remaining }));
+          healed != null && healed.closing !== null,
+          j({ afterConfirm: healed?.closing }));
       }
 
       /* ━━ 1.626e · HOW THE STAKE ENDED — WON, LOST OR VOID (owner, 2026-09-25) ━━━━━━━━━━━━━━━━━━━
@@ -4904,19 +4953,90 @@ try {
     /* ⛔ THE MONEY COLUMN IS SECOND, IT IS THE KIT'S OWN MONEY SHAPE, AND THE TABLE TAKES NO MIN-WIDTH. */
     const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    /* ⛔ THE ACTIVITY PANEL'S OWN SLICE, not the whole file — the page paints four tables and the targets and
+       history ones have their own, different column counts. Measured: an unscoped read returned spans [9,9,3,4]
+       and the pin failed for the right reason on the wrong population. */
+    const feedPanel = /\{tab === "activity"[\s\S]*?<\/table>/.exec(detail)?.[0] ?? "";
+    const wideCells = (panel: string): string[] => {
+      const row = /<tr key=\{`\$\{r\.whenTitle\}[\s\S]*?<\/tr>/.exec(panel)?.[0] ?? "";
+      const cuts = [...row.matchAll(/<td\s/g)].map((m) => m.index ?? 0);
+      return cuts.map((start, k) => row.slice(start, cuts[k + 1] ?? row.length))
+        .filter((cell) => /className="hidden sm:table-cell/.test(cell));
+    };
+    const firstAmountAt = (panel: string): number => wideCells(panel).findIndex((c) => /className="amount"/.test(c));
     ok("1.373 · the activity table's headers are the control facts in order, with the money column SECOND and headed exactly `Stake`",
-      /* ⭐ "Game" JOINED 2026-09-24, BESIDE PRODUCT AND NOT FIRST: the money column must stay SECOND (this
+      /* ⭐ "Game" JOINED 2026-09-24, BESIDE PRODUCT AND NOT FIRST: the money column must stay SECOND (measured below, not merely claimed here — this
          assertion's own claim), and the visual gate's §5.2 contract measures the first three cells — so naming
          the game earlier would push the OUTCOME out of the 360 strip. */
       /* ⭐ "Left today" JOINED 2026-09-24, THIRD AND DIRECTLY AFTER Stake: ruling 1085 puts money "SECOND (and
-         third where two exist)", and this assertion's own claim — the FIRST `.amount` cell is still the row's
+         third where two exist)", and the claim MEASURED a few assertions below — the FIRST `.amount` cell is the SECOND WIDE cell of the
          second — is what keeps 373 true with two money columns on one row. */
-      all(feedHeaders) === all(["When (EAT)", "Stake", "Left today", "Remaining", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
-    ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
-      /<td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
-        && !/admin-tbl min-w-/.test(detail), "");
+      all(feedHeaders) === all(["When (EAT)", "Opening", "Stake", "Closing", "Left today", "Outcome", "Type", "Round", "Game", "Note"]), j(feedHeaders));
+    /* 🔴 THIS WAS A `.test()` ON THE STAKE CELL ALONE, UNDER A LABEL THAT SAID "the money cell" (found 2026-09-25).
+     * `Left today` and `Remaining` already escaped it — both carry a `title=` and a null branch, so neither matches
+     * the pinned literal — and it kept passing on the strength of Stake while claiming to govern all of them.
+     * ⛔ DERIVED: every wide cell that carries an `.amount` must carry the kit's money shape, and the COUNT is
+     * asserted so a money cell that quietly loses its atom is reported rather than skipped.
+     * 🔴 AND `!/admin-tbl min-w-/` WAS STRUCTURALLY DEAD HERE, made so by this week's own gutter classes: the
+     * opener is now `admin-tbl [&_td]:!px-1.5 …`, so `admin-tbl` is never adjacent to `min-w-` and a width appended
+     * after the gutters passed. The landing page has the derived opener sweep as a backstop; this file had none. */
+    const moneyCells = wideCells(feedPanel).filter((c) => /className="amount"/.test(c));
+    ok("1.373 · EVERY money cell on the row is the kit's own money shape — `tabular text-right` with `.amount` — derived from the panel rather than asked of one cell",
+      moneyCells.length >= 3 && moneyCells.every((c) => /className="hidden sm:table-cell p-3 tabular text-right"/.test(c)),
+      j({ moneyCells: moneyCells.length }));
+    ok("1.373 · CONTROL · the derived sweep really would report ONE money cell losing the shape, which the single-cell `.test()` it replaced could not",
+      (() => {
+        const broken = feedPanel.replace(/(<td className="hidden sm:table-cell p-3 tabular text-right"[^>]*>(?:(?!<td)[\s\S])*?className="amount")/, '<td className="hidden sm:table-cell p-3"><span className="amount"');
+        const cells = wideCells(broken).filter((c) => /className="amount"/.test(c));
+        return cells.some((c) => !/className="hidden sm:table-cell p-3 tabular text-right"/.test(c));
+      })(), "");
+    ok("1.373 · neither activity table takes a `min-w-*` on the table itself — asserted on the OPENER, because the gutter classes made the old adjacency test unmatchable",
+      !/<table className="admin-tbl[^"]*min-w-/.test(detail), "");
+    /* ⚠️ 432(o) FOR THE ACTIVITY TABLE'S OWN MONEY HEADERS. The page-wide `!whitespace-normal` count reads the
+       FIRST thead on the page — the roster's — so these headers were bound by nothing. A money header that cannot
+       wrap sets its column's minimum at its own width and, the cells being right-aligned, pins the figure to the
+       far edge: that is the measured 432(o) defect, and more money columns is exactly the pressure that invites
+       it. ⛔ DERIVED: every right-aligned header in this panel must be allowed to wrap. */
+    const moneyHeaders = [...feedThead.matchAll(/<th\s[^>]*className="([^"]*text-right[^"]*)"[^>]*>/g)].map((m) => m[1]);
+    ok("1.373 · 432(o) · every money header on the ACTIVITY table may WRAP — a nowrap header sets the column's minimum and pins the right-aligned figure to the card's edge",
+      moneyHeaders.length >= 3 && moneyHeaders.every((c) => /!whitespace-normal/.test(c)),
+      j({ moneyHeaders: moneyHeaders.length }));
     ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
-      feedHeaders.length === 9 && !feedHeaders.includes("Event"), j(feedHeaders));
+      feedHeaders.length === 10 && !feedHeaders.includes("Event"), j(feedHeaders));
+
+    /* 🔴 THE CLAIM THIS RULING RESTS ON WAS ASSERTED IN THREE PLACES AND MEASURED IN NONE (found 2026-09-25).
+     * C7-SPEC's Proof line and two comments in this file say "the first `.amount`-carrying cell is the row's
+     * second cell", and what actually shipped was a header-WORD order check. Worse, the claim had quietly become
+     * FALSE of the markup: since the phone stack landed, the row's first cell is the stacked one, so the second
+     * cell is the wide When/Account cell and never a money cell at all.
+     * ⛔ SO IT IS MEASURED HERE, AGAINST THE CELLS THE CLAIM IS ABOUT — the WIDE ones. The stacked cell is a
+     * different layout with its own contract (the visual gate's §5.2 stacked branch), and holding one layout to
+     * the other's rule is how a true-sounding line survives a redesign while describing nothing. */
+    ok("1.373 · the first `.amount` cell is the SECOND wide cell — the claim this ruling rests on, measured for the first time, and measured against the layout it is about",
+      firstAmountAt(feedPanel) === 1 && wideCells(feedPanel).length === feedHeaders.length,
+      j({ firstAmountAt: firstAmountAt(feedPanel), wideCells: wideCells(feedPanel).length, headers: feedHeaders.length }));
+    ok("1.373 · CONTROL · the scan really would report money leaving the second wide cell",
+      (() => {
+        /* ⛔ A PLAIN CELL PUSHED IN FRONT OF THE FIRST WIDE ONE — written this way rather than against a NAMED
+           money cell, because the first money column is exactly the thing this change moves, and a control
+           pinned to yesterday's column stops being a control the day the row is reordered. */
+        const moved = feedPanel.replace('<td className="hidden sm:table-cell', '<td className="hidden sm:table-cell p-3">X</td><td className="hidden sm:table-cell');
+        return firstAmountAt(moved) === 2 && firstAmountAt(feedPanel) === 1;
+      })(), "");
+
+    /* 🔴 NOTHING ANYWHERE PINNED A `colSpan`, AND A STALE ONE IS INVISIBLE TO EVERY GATE (found 2026-09-25).
+     * A spanning cell renders as ONE cell whatever its number, so the visual gate's `firstRowEmpty` and
+     * `stackedRow` detections both still fire, §5.2's empty branch still counts one cell, and §5.5 still finds the
+     * box inside the viewport — a NARROWER box trivially is. So a column added without touching the two spans
+     * leaves the empty state and the whole phone layout silently short, at every width, in every suite.
+     * ⛔ DERIVED FROM THE PANEL'S OWN HEADER COUNT, never typed, so a column added tomorrow is inside this rule on
+     * the day it lands. Precedent: `scripts/kyc-stage.test.mts` does exactly this for `/admin/kyc`. */
+    const spansOf = (panel: string): number[] => [...panel.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]));
+    ok("1.373 · every `colSpan` in the activity panel equals that panel's own header count — the empty state and the phone stack span the whole row, derived rather than typed",
+      spansOf(feedPanel).length >= 2 && spansOf(feedPanel).every((n) => n === feedHeaders.length),
+      j({ spans: spansOf(feedPanel), headers: feedHeaders.length }));
+    ok("1.373 · CONTROL · the span scan really would report a stale number — the defect invisible to every gate, because a spanning cell renders as one cell whatever it says",
+      spansOf(feedPanel.replace(/colSpan=\{\d+\}/, "colSpan={3}")).some((n) => n !== feedHeaders.length), "");
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
@@ -5009,7 +5129,10 @@ section("§2e3 · the desk landing page's activity and history panels");
     const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
-      j(feedHeaders) === j(["Account", "Stake", "Left today", "Remaining", "When (EAT)", "Outcome", "Type", "Product", "Game", "Note", ""]),
+      /* ⛔ `all`, NOT `j` — its per-account twin already uses `all`, and this one was one column away from
+         comparing prefixes only. This suite's own header records the `317-word-hole` defect, where a long set
+         compared under the truncating serialiser let a rename through unreported. */
+      all(feedHeaders) === all(["Account", "Opening", "Stake", "Closing", "Left today", "When (EAT)", "Outcome", "Type", "Round", "Game", "Note", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
       j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
@@ -6454,7 +6577,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        are money THIS module formats — a `formatTzs` figure and 361's own `used X of Y` sentence — so they are
        the section's own copy and 453 binds them, exactly like `stake` three fields along. Nothing operator-typed
        reaches either one. */
-    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.remaining, r.remainingTitle, r.statusWord, r.resultWord, r.typeWord, r.productWord, r.note, r.marketHref]),
+    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.closing, r.closingTitle, r.opening, r.roundNo, r.statusWord, r.resultWord, r.typeWord, r.productWord, r.note, r.marketHref]),
     ...(view.history ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.eventWord, r.change, r.who, r.moneyHref]),
     ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
     /* ⛔ AND THE WHOLE OF BOTH TOTAL MAPS, NOT ONLY THE ROWS THIS FIXTURE HAPPENED TO PAINT. A word map scanned
@@ -7111,7 +7234,11 @@ export default function Ruling513Control() {
    * `white-space: nowrap`, so 22 tracked-mono characters set this column's minimum at ~210px and — the cells being
    * right-aligned — PINNED the figure to that far edge: read off the 360 tile, the header's ")" and the row's
    * "used TZS 0" were both sliced by the card's right edge. §A5 is never clip money. */
-  ok("1.373 · 432(o) · every money-bearing header may WRAP, so a long basis costs thead height and not a clipped figure",
+  /* ⚠️ THIS READS THE ROSTER'S THEAD AND ONLY THE ROSTER'S — `thead` is the FIRST `<thead>` on the page, and the
+     page paints four. Its label said "every money-bearing header", which was never true of the ACTIVITY table's
+     money headers; those are held by the assertion added beside the activity panel instead. The name is corrected
+     rather than the scope widened, because 432(o)'s measurement was taken on the roster's own 22-character basis. */
+  ok("1.373 · 432(o) · every money-bearing header ON THE ROSTER may WRAP, so a long basis costs thead height and not a clipped figure",
     (thead.match(/!whitespace-normal/g) ?? []).length === 3
       && /<th scope="col" className="text-right p-3 !whitespace-normal">Loss today \(projected\)<\/th>/.test(pageCode)
       /* ⛔ THE `!` IS THE ASSERTION. `.admin-tbl th` is (0,1,1) and a bare utility is (0,1,0), so the class LOST to
@@ -7156,7 +7283,7 @@ export default function Ruling513Control() {
      is `padding: 12px 16px` at (0,1,1), so 96px of a 318px strip went on gutters before a figure was drawn. That
      is a legitimate class on a money table; a WIDTH is not, and the difference is what this line still guards.
      The allowed set is CLOSED and spelled out, so a fifth class arriving on a table is reported like any width. */
-  const TABLE_CLASS_OK = new Set(["[&_td]:!px-1.5", "[&_th]:!px-1.5", "sm:[&_td]:!px-4", "sm:[&_th]:!px-4", "max-sm:!text-caption"]);
+  const TABLE_CLASS_OK = new Set(["[&_td]:!px-1.5", "[&_th]:!px-1.5", "sm:[&_td]:!px-2", "sm:[&_th]:!px-2", "max-sm:!text-caption"]);
   const openerClasses = (t: string) => (/className="([^"]*)"/.exec(t)?.[1] ?? "").split(/\s+/).filter(Boolean);
   ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column — and EVERY table on this page opens with the kit class and nothing but the declared gutter set, derived from the page rather than asked of one of them",
     tableOpeners.length >= 3 && tableOpeners.every((t: string) => {
@@ -7320,9 +7447,24 @@ export default function Ruling513Control() {
        row does — the account and the market — so each appears twice in the file, once per layout. The pin is still
        POSITIONAL and still an equality, so a door added to one layout and not the other is reported. */
     const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
+    /* 🔴 THIS EQUALITY COMPARED A TRUNCATED PREFIX, AND HAD DONE SINCE THE LIST OUTGREW IT (found 2026-09-25).
+       `j` slices at 260 characters — this file's own header says so, and says `all` is "the only form an assertion
+       may scan" — while `WANT` serialises to about 389. So this line compared entries 1–8 of 13 and silently
+       ignored the tail, which is exactly where this week's row doors were added: the account and market doors of
+       the activity row, in BOTH layouts. A door dropped from one layout, or a `<Link>` quietly becoming a
+       `<WayOutLink>` past entry 8, passed. Worse, every CONTROL below plants inside the compared prefix, so none
+       of them could reveal it. ⛔ `all` on both sides, and a control that plants in the TAIL. */
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
-      j(linkExprs) === j(WANT) && j(elementsOf(pageCode)) === j(ELEMENTS) && linkExprs.length === openings,
+      all(linkExprs) === all(WANT) && all(elementsOf(pageCode)) === all(ELEMENTS) && linkExprs.length === openings,
       j({ found: linkExprs, want: WANT, elements: elementsOf(pageCode), openings }));
+    /* ⛔ CONTROL · THE TAIL IS REALLY READ. A plant in the LAST entry must be reported; under the truncating
+       comparison this replaced, it was not — which is what makes this a measurement of the repair. */
+    ok("1.306 · CONTROL · the pin reads the WHOLE list — a door changed in the LAST position is reported, which the truncating comparison this replaced could not see",
+      (() => {
+        const tampered = [...linkExprs];
+        tampered[tampered.length - 1] = "Link somethingElse as Route";
+        return all(tampered) !== all(WANT) && tampered.length === WANT.length;
+      })(), j({ lastEntry: linkExprs[linkExprs.length - 1], entries: linkExprs.length }));
     /* ⛔ CONTROL · THE PIN MEASURES THE ELEMENT AS WELL AS THE HREF. The same href painted by a bare `<Link>`
        instead of the shared component is a DIFFERENT entry — which is the one difference the old scan could not
        see, and the reason it silently dropped a live link from its own population. */

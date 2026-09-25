@@ -34,9 +34,22 @@ ok("1.state · inviteStateFor reads ACTIVE, not the withdrawn product state", in
 // ── §2 · THE TRAP — a role with no approval is nobody ──────────────────────────────────
 await mkFixtureUser("el_roleonly", { role: "AGENT" });
 const roleCode = (await ensureAffiliateAccount("el_roleonly")).code;
-ok("2.role · role AGENT with no approvedAt is NOT live", !(await live("el_roleonly")));
+// 🔴 RESTATED 2026-09-25, NOT RELAXED. With the unpaid player invite live, "is NOT live" stopped
+// being the right question for this fixture: a role-only AGENT is an ordinary player, and ordinary
+// players now hold links. The trap this section exists for is unchanged and is asserted directly —
+// they have NO agent standing, so nothing routes them to the commission programme.
+ok("2.role · role AGENT with no approvedAt has NO agent standing", (await inviteViewerFor("el_roleonly")).agentInGoodStanding === false);
+ok("2.role.surface · …they get the ordinary player's unpaid surface instead", await live("el_roleonly"));
 ok("2.standing · standing refuses: agent_not_approved", (await standing("el_roleonly")).ok === false && (await standing("el_roleonly") as { refusal?: string }).refusal === "agent_not_approved", JSON.stringify(await standing("el_roleonly")));
-ok("2.bind · their code does not bind (the player promo is withdrawn)", (await tryBind(roleCode)).bound === false);
+{
+  const rec = `el_rec_${++n}`;
+  await mkFixtureUser(rec);
+  const bound = await bindRecruit({ recruitUserId: rec, code: roleCode });
+  ok("2.bind · their code binds as an ordinary player's does", bound.bound === true, JSON.stringify(bound));
+  // ⛔ THE ASSERTION THAT CARRIES §2: the STAMP. A role string must never buy the agent programme.
+  ok("2.bind.stamp · ⛔ …and the attribution is stamped PLAYER, never AGENT",
+     (await db.user.findById(rec))?.recruitedProgramme === "PLAYER", String((await db.user.findById(rec))?.recruitedProgramme));
+}
 
 // ── §3 · DEACTIVATED — paused, and reactivation is the control ─────────────────────────
 await mkFixtureUser("el_deact");
@@ -76,7 +89,11 @@ ok("5.bind · …and still recruits", (await tryBind(coolCode)).bound === true);
 
 // ── §6 · an ordinary player and nobody at all ──────────────────────────────────────────
 await mkFixtureUser("el_player");
-ok("6.player · a PLAYER is not live (the promo is withdrawn)", !(await live("el_player")));
+// 🔴 INVERTED 2026-09-25 — an ordinary player in good standing holds an UNPAID link. ⛔ The half
+// that matters to THIS suite is the second line: being live on the player surface must not confer
+// any agent standing, or the whole eligibility model collapses into "everyone is an agent".
+ok("6.player · a PLAYER in good standing IS live (the unpaid invite)", await live("el_player"));
+ok("6.player.notagent · ⛔ …with no agent standing whatsoever", (await inviteViewerFor("el_player")).agentInGoodStanding === false);
 ok("6.nobody · no viewer is never live", !inviteIsLiveFor(NO_VIEWER) && !inviteIsLiveFor(null));
 ok("6.unknown · an unknown user id resolves to no viewer", !(await live("el_does_not_exist")));
 

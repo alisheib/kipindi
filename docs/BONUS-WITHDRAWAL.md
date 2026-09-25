@@ -4,12 +4,29 @@
 **Authority for this change.** The money rules themselves stay in [`RULES.md`](RULES.md) — §2.5
 and §2.6 carry the roll-out markers this programme set.
 
+> 🔴 **SUPERSEDED IN PART ON 2026-09-25 — READ THIS BEFORE ANYTHING BELOW.**
+> The **INVITE** half of this document is no longer the product. `PRODUCT_STATE.invite` is
+> **ACTIVE**: every player in good standing again holds a referral link, code and QR, the entry
+> points are back, and market/position share links carry `?ref=` again. What replaced the
+> withdrawal is a second product state, `inviteRewards`, which is **WITHDRAWN** — the link is
+> tracked and **the platform credits a player nothing for a referral**. See
+> [`PLAYER-INVITE-UNPAID.md`](PLAYER-INVITE-UNPAID.md), `RULES.md` §2.10a and
+> `COMPLIANCE-DECISIONS.md` § 2026-09-25.
+>
+> ⭐ **The BONUS half of this document stands unchanged**, and so do all three Laws in §2 — the
+> unpaid invite is built on them (Law 1 in particular: `inviteRewards` gates the OFFER and is
+> never consulted to decide a refusal). ⛔ The sentences below that say a player gets no invite,
+> that referral earning belongs only to an agent, or that no entry point may exist, describe
+> 2026-09-06 and are kept as history. Do not restore them.
+
 ---
 
 ## 1 · What was decided, and what it is not
 
 Normal players get **no bonus wallet and no invite**. Referral earning becomes something only a
 vetted, fee-paying, compliance-approved **Agent Affiliate** does.
+*(⚠️ The invite sentence here was superseded 2026-09-25 — see the banner above. The bonus
+sentence stands.)*
 
 ⛔ **This is a feature-state, not a deletion.** It follows the precedent already recorded in
 `src/lib/server/bonus-config.ts` for the cashback promo (Gaming Board item #5): *"disabled/hidden

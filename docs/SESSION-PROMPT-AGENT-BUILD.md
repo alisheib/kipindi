@@ -230,8 +230,13 @@ wrong way.** Find them first and rewrite them deliberately.
    badge → deposit, bet, settle. Commission at **their** rate, on the **net** fee, stamped
    `programme=AGENT` + `rateApplied`, paid **once**, **withdrawable cash**, `AGENT_COMMISSION`.
    Then **void the market → clawback**.
-5. **Ordinary player** — finds nothing about invites or bonuses anywhere, including the assistant.
+5. **Ordinary player** — finds nothing about **bonuses** anywhere, including the assistant.
    `/agent` is reachable and explains the programme without soliciting them.
+   ⚠️ **SUPERSEDED 2026-09-25 as to INVITES.** This criterion read "finds nothing about invites or
+   bonuses". A player now HAS an invite — an unpaid one — so the acceptance test is the opposite and
+   is narrower: they find a share link and a count of who joined, and **nothing anywhere that
+   offers them money for it** (no reward, prize, bonus or commission, on the page, in the nav, on
+   the register ribbon, or from the assistant). See `docs/PLAYER-INVITE-UNPAID.md`.
 
 ⛔ **A build is not a render — load every page.** Lock the red harness, mutate a **copy** via
 `KP_SRC`. Every guard needs a control that must go red. Cover `src/app/agent/**`,

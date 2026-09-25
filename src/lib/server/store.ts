@@ -417,7 +417,12 @@ export type StoredMessagingConsent = {
 };
 
 /** ⛔ NEVER DELETED — not by contact deletion, not by re-import, not by erasure. Deleting one
- *  is exactly how a person who opted out receives the next campaign. */
+ *  is exactly how a person who opted out receives the next campaign.
+ *
+ *  ⭐ NEVER DELETED, BUT SUPERSEDABLE (U8). `liftedAt` is the whole of the difference between a
+ *  resubscribe button that works and one that reports a success it cannot deliver: the row —
+ *  and its original `createdAt` — survive a lift, so "when did this person first say no" is
+ *  still answerable years later, while the gate stops refusing them. */
 export type StoredSuppression = {
   id: string;
   channel: MessagingChannel;
@@ -427,6 +432,10 @@ export type StoredSuppression = {
   evidence: string | null;
   recordedBy: string | null;
   createdAt: string;
+  /** ⭐ NULL means STILL REFUSING. Set once, by `lift`; ⛔ a second lift must not move it. */
+  liftedAt: string | null;
+  /** Free text, the shape of `evidence`. ⛔ Never a raw phone number (§5.14). */
+  liftedReason: string | null;
 };
 /** ⭐ ONE MINTED OPT-OUT LINK (U8, OD43). The token IS the key, so uniqueness is the database's
  *  job. ⛔ Never expires — OD43 — which is exactly why a collision would be permanent and why
@@ -2316,27 +2325,80 @@ const memoryDb = {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
   },
 
-  /* ═══ SUPPRESSION (marketing U6) ═══════════════════════════════════════════════════════
+  /* ═══ SUPPRESSION (marketing U6, lift U8) ══════════════════════════════════════════════
    * ⛔ NO `delete`, IN EITHER TWIN, EVER. Not by contact deletion, not by re-import, not by
-   * erasure. */
+   * erasure, and ⛔ NOT BY RESUBSCRIBE — a lift SUPERSEDES the row, it does not remove it. */
   suppression: {
     /** ⭐ IDEMPOTENT ON THE TRIPLE, exactly as the database's unique index is. Re-suppressing
-     *  returns THE ROW THAT IS ALREADY THERE rather than replacing it: the first refusal is
+     *  keeps THE ROW THAT IS ALREADY THERE rather than replacing it: the first refusal is
      *  the evidence, and its timestamp is the answer to "when did they say no". A re-import
-     *  that overwrote it would quietly move that date forward. */
+     *  that overwrote it would quietly move that date forward.
+     *
+     *  🔴 BUT IT MUST CLEAR A LIFT, AND THAT IS NOT A DETAIL — IT IS THE SECOND FALSE SUCCESS.
+     *  Once a row can be lifted, `stop → start again → stop again` comes back through here. A
+     *  create that returned the LIFTED row untouched would tell the person "you will not get
+     *  marketing texts again" while the suppression stayed lifted and the next campaign sent
+     *  to them. ⛔ So `liftedAt`/`liftedReason` are cleared and `createdAt` is NOT touched:
+     *  re-suppression re-arms the refusal without rewriting when it was first made. */
     create: (row: StoredSuppression): StoredSuppression => {
       for (const r of store.suppressions.values()) {
-        if (r.channel === row.channel && r.identifier === row.identifier && r.category === row.category) return r;
+        if (r.channel === row.channel && r.identifier === row.identifier && r.category === row.category) {
+          r.liftedAt = null;
+          r.liftedReason = null;
+          return r;
+        }
       }
       store.suppressions.set(row.id, row);
       return row;
     },
+    /** ⭐ ACTIVE ONLY — a lifted row is not refusing anybody, so it is not found here.
+     *
+     *  ⛔ THE NAME CARRIES THE SAFE DIRECTION ON PURPOSE. The gate's question is "is this
+     *  number being refused right now", and that is what the plainest name must answer. A
+     *  future caller who reaches for `find` and forgets that rows can be lifted OVER-refuses
+     *  — annoying and lawful. The opposite arrangement, where the plainest name returned
+     *  lifted rows too and the caller had to remember to filter, fails the other way: a
+     *  suppressed person receives marketing. Only one of those two is a breach.
+     *  ⛔ The row itself is still there — `listFor` returns it — which is how "never deleted"
+     *  is OBSERVED rather than merely asserted. */
     find: (key: MessagingKey): StoredSuppression | null => {
       for (const r of store.suppressions.values()) {
-        if (r.channel === key.channel && r.identifier === key.identifier && r.category === key.category) return r;
+        if (r.channel === key.channel && r.identifier === key.identifier && r.category === key.category) {
+          // 🔴 `!r.liftedAt`, NOT `r.liftedAt === null`, AND THE DIFFERENCE IS A BREACH.
+          // A row that carries no lift FIELD AT ALL has `undefined` here, and `undefined === null`
+          // is FALSE — so the strict form read "this row has been lifted" and handed a suppressed
+          // person back as marketable. It failed OPEN, in the one direction the law does not
+          // forgive. ⛔ Found by running `test:marketing-consent` after this field landed: U7's
+          // own suppressed fixture went ALLOWED, and `tsc` could not see it because
+          // `tsconfig.json` includes `scripts/**/*.ts` and every suite here is `.mts`.
+          // ⭐ A row is REFUSING unless it has been explicitly lifted. Anything falsy — absent,
+          // null, empty — means nobody lifted it, so it still refuses.
+          return !r.liftedAt ? r : null;
+        }
       }
       return null;
     },
+    /** ⭐ SUPERSEDE, NEVER DELETE (U8). Returns the row it lifted, or null when there was no
+     *  ACTIVE row to lift — so the caller can tell "I stopped their refusal" from "there was
+     *  nothing refusing them", and never reports a change it did not make.
+     *
+     *  ⛔ ONLY AN ACTIVE ROW IS TOUCHED, which is what stops a second lift moving `liftedAt`
+     *  forward. The date is evidence, the same way `createdAt` is. */
+    lift: (key: MessagingKey, reason: string | null, at: string): StoredSuppression | null => {
+      for (const r of store.suppressions.values()) {
+        if (r.channel === key.channel && r.identifier === key.identifier && r.category === key.category) {
+          // ⛔ The same tolerant reading as `find`, for the same reason: a row with no lift on it
+          // is an ACTIVE row and may be lifted once. A strict `!== null` would refuse to lift a
+          // row whose field was absent, stranding somebody who asked to be resubscribed.
+          if (r.liftedAt) return null;
+          r.liftedAt = at;
+          r.liftedReason = reason;
+          return r;
+        }
+      }
+      return null;
+    },
+    /** ⛔ EVERY ROW, LIFTED OR NOT. This is the reader that proves a lift removed nothing. */
     listFor: (identifier: string): StoredSuppression[] =>
       Array.from(store.suppressions.values())
         .filter((r) => r.identifier === identifier)
