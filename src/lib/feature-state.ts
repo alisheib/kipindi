@@ -127,7 +127,7 @@ export type FeatureName = "invite" | "inviteRewards" | "bonus" | "install" | "de
  * `cfg.enabled` — see `test:player-invite-unpaid` §2 and `test:agent-policy` §4.
  *
  * ⚠️ TURNING IT ON IS ONE WORD HERE (or `FEATURE_INVITEREWARDS=ACTIVE`), and the paid path is
- * NOT dead code while it sleeps: `test:referral-signup`, `test:rg-cash-incentive` §5 and
+ * NOT dead code while it sleeps: `test:referral`, `test:rg-cash-incentive` §5 and
  * `test:withdrawn-features` §4 all drive the ON branch on every deploy, which is the reason the
  * override exists at all.
  *

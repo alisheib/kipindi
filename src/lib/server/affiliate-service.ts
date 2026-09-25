@@ -1625,6 +1625,9 @@ export type RecruitRow = {
   earnedTzs: number;
 };
 
+/** How many friends the player's own page lists. ⛔ The COUNT is never capped — only the list. */
+const PLAYER_RECRUIT_PAGE = 50;
+
 export type PlayerReferralSummary = {
   code: string;
   link: string;
@@ -1641,6 +1644,8 @@ export type PlayerReferralSummary = {
    * the platform pays nothing for it.
    */
   rewardsLive: boolean;
+  /** How many rows `recruits` holds at most, so the page can SAY the list is a page. */
+  recruitsPage: number;
   /** Adaptive promise lines reflecting which modes are live. ⛔ Empty whenever `rewardsLive` is
    *  false — every one of them is a sentence about money. */
   promises: Array<{ icon: "percent" | "ticket" | "gift"; en: string; sw: string }>;
@@ -1660,8 +1665,19 @@ export async function getPlayerReferralSummary(userId: string) {
   // Indexed on `recruitedBy` — this used to `db.user.list()` and filter the whole table.
   // ⭐ Only PLAYER-stamped recruits: an attribution created under the other programme is
   // not this promo's book, and listing it would show money that will never be paid here.
+  /**
+   * ⭐ NEWEST FIRST, AND CAPPED — added 2026-09-25 after looking at the rendered page with fifteen
+   * friends on it. The list was unbounded and in storage order: at fifty rows the page is a scroll
+   * with no end, and the order it arrives in is not a promise anyone made.
+   * ⛔ THE CAP IS STATED, NEVER SILENT. `recruitCount` above is the TRUE total and the page prints
+   * it on the dial; this array is a page of it, and `recruitsShown` lets the body say "the most
+   * recent N of M" rather than let a reader count rows and reach a wrong number. A total over a
+   * silently truncated list is the defect `getAdminAffiliateStats` already documents refusing.
+   */
   const recruits: RecruitRow[] = (await db.user.listByRecruiter(userId))
     .filter((u) => programmeOf(u) === "PLAYER")
+    .sort((a, b) => String(b.recruitedAt ?? b.createdAt).localeCompare(String(a.recruitedAt ?? a.createdAt)))
+    .slice(0, PLAYER_RECRUIT_PAGE)
     .map((u) => {
       const earned = referrerRewards
         .filter((r) => r.recruitUserId === u.id && r.recipientUserId === userId && r.status === "PAID")
@@ -1723,6 +1739,7 @@ export async function getPlayerReferralSummary(userId: string) {
     recruits,
     programEnabled: cfg.enabled,
     rewardsLive,
+    recruitsPage: PLAYER_RECRUIT_PAGE,
     promises,
   };
 }

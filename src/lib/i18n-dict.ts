@@ -1394,6 +1394,9 @@ export const dict = {
       inviteStepJoin: "Your friend signs up on it",
       inviteStepCounted: "They appear in your list",
       inviteNoRewardNote: "Inviting is sharing, not earning — 50pick pays no reward for invites. 18+.",
+      /** ⛔ Shown ONLY when the list is genuinely shorter than the count — a stated page, never a
+       *  silent truncation. `{shown}` and `{total}` are filled from the read model. */
+      inviteListCapped: "Showing your {shown} most recent friends of {total}.",
       myAccount: "My account", myAccountSub: "Activity · Export · Close",
       responsibleGambling: "Responsible gambling", responsibleGamblingSub: "Limits · Self-exclusion",
       verifyIdSub: "ID document · selfie · review",
@@ -3806,6 +3809,7 @@ export const dict = {
       inviteStepJoin: "Rafiki yako anajisajili kupitia kiungo hicho",
       inviteStepCounted: "Anaonekana kwenye orodha yako",
       inviteNoRewardNote: "Kualika ni kushiriki, si kupata pesa — 50pick hailipi zawadi kwa mialiko. Miaka 18+.",
+      inviteListCapped: "Unaona marafiki {shown} wa hivi karibuni kati ya {total}.",
       myAccount: "Akaunti yangu", myAccountSub: "Shughuli · Hamisha · Funga",
       responsibleGambling: "Vikomo", responsibleGamblingSub: "Mipaka · Kujitenga",
       verifyIdSub: "Kitambulisho · picha ya uso · ukaguzi",
@@ -5966,6 +5970,7 @@ export const dict = {
       inviteStepJoin: "朋友通过链接注册",
       inviteStepCounted: "他们出现在你的列表中",
       inviteNoRewardNote: "邀请只是分享，不是赚钱 — 50pick 不为邀请支付任何奖励。18+。",
+      inviteListCapped: "显示最近的 {shown} 位好友，共 {total} 位。",
       myAccount: "我的账户", myAccountSub: "活动 · 导出 · 关闭",
       responsibleGambling: "负责任博彩", responsibleGamblingSub: "限额 · 自我排除",
       verifyIdSub: "证件 · 自拍 · 审核",

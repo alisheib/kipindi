@@ -100,7 +100,7 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
         </KpiGrid>
 
         {/* Interactive config editor */}
-        <AffiliateAdminClient config={config} />
+        <AffiliateAdminClient config={config} rewardsLive={paid} />
 
         {/* Compliance note */}
         <AdminCard className="border-no-700/40 bg-no-500/[0.06]">

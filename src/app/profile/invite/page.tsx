@@ -361,17 +361,23 @@ export default async function InvitePage({
 
       {/* Referral link + share (client) */}
       <div id="referral-share">
-        <ReferralShare link={shareLink} shareText={shareText} />
+        <ReferralShare link={shareLink} shareText={shareText} paid={paid} />
       </div>
 
-      {/* Stat tiles. ⭐ ONE TILE WHEN NOTHING IS EARNED, and it spans the row rather than leaving
-          a hole: a 2-up grid with an empty right cell reads as a figure that failed to load. */}
-      <div className={`grid gap-2.5 ${paid ? "grid-cols-2" : "grid-cols-1"}`}>
+      {/* Stat tiles.
+          🔴 THE WHOLE ROW IS GONE WHEN THE PROGRAMME PAYS NOTHING, AND A SCREENSHOT IS WHAT SAID SO.
+          Unpaid, the two tiles collapse to one — and that one printed `recruitCount` under the label
+          "Friends joined", which is exactly what the hero dial four inches above it already shows,
+          with the same label. The same number, twice, in the same words, on a phone screen: a reader
+          asks what the difference is, and there is none. The dial keeps it (it is the page's anchor)
+          and the duplicate goes. */}
+      {paid && (
+      <div className="grid grid-cols-2 gap-2.5">
         <Stat
           size="3xl"
           labelStyle="strong"
           boxed="glass"
-          label={paid ? t.common.invite : t.profile.friendsJoined}
+          label={t.common.invite}
           value={String(s.recruitCount)}
           hint={s.recruitCount > 0 ? t.common.allTime : "—"}
           icon={<I.users s={14} />}
@@ -381,11 +387,8 @@ export default async function InvitePage({
             balance and the fork rendered it as a bare numeral, outside the <Cash>
             privacy mask that covers every other personal figure in the product.
             `tone="gold"` stays FLAT rather than `struck` — M3's struck gilt is a
-            separate, visible decision and is not smuggled in by a consolidation.
-            ⛔ AND THE WHOLE TILE IS GONE WHEN THE PROGRAMME PAYS NOTHING. "Earned · TZS 0" is not
-            a harmless zero: it states that earning is how this page works and that this player has
-            simply not managed it yet. Both halves are false under the unpaid invite. */}
-        {paid && (
+            separate, visible decision and is not smuggled in by a consolidation. */}
+        {(
           <Stat
             size="3xl"
             labelStyle="strong"
@@ -400,6 +403,7 @@ export default async function InvitePage({
           />
         )}
       </div>
+      )}
 
       {/* How it works. ⭐ THE THIRD STEP IS THE WHOLE DIFFERENCE between the two products, so the
           two ladders are written out rather than patched: paid ends at "Earned", in gold, because
@@ -485,6 +489,16 @@ export default async function InvitePage({
 
       {/* Recruits */}
       <Cap className="!mt-1">{paid ? t.profile.yourReferrals : t.profile.yourFriends}</Cap>
+      {/* ⛔ A PAGE OF A LIST SAYS SO. `recruitCount` is the true total and the dial prints it; this
+          array is capped at `recruitsPage`. Without this line a reader counting rows would reach a
+          different number than the dial and have no way to know which was wrong — the silent
+          truncation `getAdminAffiliateStats` already records refusing. Rendered only when the two
+          genuinely differ, so nobody reads a caveat about a limit they have not reached. */}
+      {s.recruitCount > s.recruits.length && (
+        <p className="-mt-1 text-body-sm text-text-subtle">
+          {fill(t.profile.inviteListCapped, { shown: s.recruits.length, total: s.recruitCount })}
+        </p>
+      )}
       {s.recruits.length > 0 ? (
         <div className="overflow-hidden rounded-xl glass-panel">
           {s.recruits.map((r, i) => (

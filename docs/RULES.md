@@ -581,8 +581,8 @@ chooses to give an inviter is paid outside the platform and is not recorded here
 | **Nothing on the page claims money** | No earnings ring, no earned tile, no promise rows, no bonus-requirements list, no per-friend amount, and **no gold** (§M3: struck gold means money was earned). The page states plainly that invites pay nothing, in all three locales |
 | **Turning it on** | One word — `inviteRewards: "ACTIVE"`, or `FEATURE_INVITEREWARDS=ACTIVE`. The paid path is kept executable while it sleeps by `test:referral`, `test:rg-cash-incentive` §5, `test:agent-policy` §1 and `test:withdrawn-features` §4. ⛔ Rewarding referrals is a regulated inducement — clear it with the Gaming Board before flipping it |
 
-Enforced by `npm run test:player-invite-unpaid` (44 assertions) with `npm run
-red:player-invite-unpaid` (6/6 mutations proven to turn it red), both in `predeploy`.
+Enforced by `npm run test:player-invite-unpaid` (44 assertions) with
+`npm run red:player-invite-unpaid` (6/6 mutations proven to turn it red), both in `predeploy`.
 
 ### 2.11 · House liquidity stakes
 

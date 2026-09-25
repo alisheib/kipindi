@@ -46,7 +46,15 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
 {
   const { status, html } = await get("/profile", cookie);
   ok("§0 CONTROL · /profile renders 200", status === 200, `status=${status}`);
-  ok("§0 CONTROL · it is the real profile page", html.includes("/profile/account") && html.includes("/profile/kyc"),
+  /**
+   * 🔴 THIS CONTROL WAS BROKEN AND NOBODY KNEW — it required `/profile/kyc`, and the demo session
+   * is KYC **APPROVED**, so that row is deliberately absent (2026-09-13: "an approved identity is
+   * not offered Verify ID again"). The control therefore failed on every run, and a failing
+   * control invalidates every ABSENCE assertion below it — which is exactly the thing §0 exists to
+   * prevent. Found 2026-09-25 while driving the unpaid invite; it is not caused by that work.
+   * ⭐ Re-anchored to two rows that render for EVERY signed-in player whatever their KYC state.
+   */
+  ok("§0 CONTROL · it is the real profile page", html.includes("/profile/account") && html.includes("/profile/security"),
     `len=${html.length}`);
   ok("§0 CONTROL · the session is authed (not the login page)", !html.includes("/auth/login?next="), "redirected to login");
 }
@@ -57,16 +65,29 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
 // entry point is deliberate now — so what is measured is the pair: the LINK is there, and the
 // WORDS around it promise no money. ⛔ Asserting only the link would pass on the old paid promo.
 {
+  /**
+   * ⚠️ WHAT THIS SECTION CAN AND CANNOT SEE — MEASURED, NOT ASSUMED. This drive reads SERVER HTML
+   * with `fetch`. The invite row on `/profile` is server-rendered and appears there; the chrome's
+   * other two doors (the avatar menu and the More rail) are CLIENT components that mount their
+   * lists on open, so `/wallet`, `/positions` and `/markets` carry no `/profile/invite` string at
+   * all — and neither does `/leaderboard`, which is unconditional in the same nav list. That is
+   * the measurement, not a defect: a first draft of this section asserted the link on all four
+   * pages and failed on three of them for a reason that has nothing to do with the feature.
+   * ⭐ So the LINK is asserted where it is genuinely server-rendered, the ABSENCE OF A MONEY
+   * PROMISE is asserted on all four (that string would be in the payload wherever a label is),
+   * and the clicked-open chrome is left to the browser drive (`qa:agent-drive` §6), which is the
+   * only instrument that can actually see it.
+   */
   for (const path of ["/profile", "/wallet", "/positions", "/markets"]) {
     const { status, html } = await get(path, cookie);
     ok(`§1 ${path} renders 200`, status === 200, `status=${status}`);
-    // ⚠️ /profile is the only one of the four that carries the row itself; the others reach it
-    // through the shared chrome (avatar menu / More rail), which is on every page.
-    ok(`§1 ${path} offers the invite entry point`, html.includes("/profile/invite"),
-      `found ${(html.match(/\/profile\/invite/g) ?? []).length} occurrence(s)`);
-    ok(`§1 ${path} ⛔ …and no entry point says "& Earn" / "upate zawadi" / "赚钱"`,
+    if (path === "/profile") {
+      ok(`§1 ${path} offers the invite entry point (server-rendered row)`, html.includes("/profile/invite"),
+        `found ${(html.match(/\/profile\/invite/g) ?? []).length} occurrence(s)`);
+    }
+    ok(`§1 ${path} ⛔ no surface says "& Earn" / "upate zawadi" / "赚钱"`,
       !/Invite &amp; Earn|Invite & Earn|upate zawadi|邀请赚钱/.test(html),
-      "an entry point still advertises earnings");
+      "a surface still advertises earnings");
   }
 }
 
@@ -124,13 +145,23 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
   ok("§4 no cashback promo", !/cash\s?back/i.test(html), "cashback copy present");
 }
 
-// ── §5 · A SHARED LINK NO LONGER CARRIES A REFERRAL CODE ───────────────────
-// The sharpest of the lot: this was minting a code for every player and binding
-// permanently, paying nothing today and standing ready to pay tomorrow.
+// ── §5 · THE PLAYER'S OWN LINK CARRIES THEIR CODE, AND IT IS THEIRS ────────
+// 🔴 INVERTED 2026-09-25. This asserted that NO shared link carries a `?ref=` code — the right
+// rule while the programme was withdrawn, because a bind is permanent and every one of those
+// links was quietly recruiting for a programme that might return. The unpaid invite makes the
+// attribution the POINT, so what must be true instead is that the code on the page belongs to
+// the viewer and that the link is usable.
+//
+// ⚠️ MEASURED: the demo store carries no markets and the demo player holds no positions, so the
+// market-card and position share surfaces render nothing on this host and cannot be read here.
+// `/profile/invite` is the surface that always renders, so that is the one asserted, and the
+// limit is stated rather than papered over with an assertion that would pass on an empty page.
 {
-  const { html } = await get("/positions", cookie);
-  ok("§5 /positions share links carry no ?ref= code", !/[?&]ref=/.test(html),
-    (html.match(/[?&]ref=[A-Z0-9]+/g) ?? []).slice(0, 3).join(" "));
+  const { html } = await get("/profile/invite", cookie);
+  const refs = html.match(/register\?ref=([A-Za-z0-9%-]+)/g) ?? [];
+  ok("§5 the invite page carries a referral link with a code", refs.length > 0, `found ${refs.length}`);
+  ok("§5 ⛔ …and exactly ONE distinct code — a page offering two would attribute to whichever was tapped",
+    new Set(refs).size === 1, [...new Set(refs)].slice(0, 3).join(" "));
 }
 
 console.log(`\n${pass} passed · ${fail} failed`);

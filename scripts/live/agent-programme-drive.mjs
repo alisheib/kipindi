@@ -512,8 +512,12 @@ const applicant = await applicantCtx.newPage();
   // no verified badge, and no money word anywhere.
   await goto(player, "/profile/invite");
   const inv = await text(player);
+  // ⚠️ MEASURED, NOT ASSUMED. A PLAYER's referral code is a friendly word derived from their
+  // display name ("DEMOENDS") — the `50PICK-AG-` form is the AGENT prefix only. This assertion
+  // was first written against that prefix and failed on a real page, which is the whole reason
+  // this drive exists. It asserts the format-independent fact instead: a usable referral link.
   ok("6.invite · a player gets the UNPAID share surface, not the agent dashboard",
-    /50PICK-/i.test(inv) && !/Open your agent dashboard/.test(inv), inv.slice(0, 200));
+    /register\?ref=/i.test(inv) && !/Open your agent dashboard/.test(inv), inv.slice(0, 200));
   ok("6.invite.money · and not one money word on it",
     !/Earned|Pato|10,000|first bet|Bonus requirements/i.test(inv), inv.slice(0, 260));
   ok("6.invite.says · it states that invites pay nothing",

@@ -29,15 +29,22 @@ export async function computeAchievementShelf(userId: string) {
   /**
    * ⛔ CONNECTOR IS ONLY ON THE SHELF OF SOMEONE WHO CAN ACTUALLY EARN IT.
    *
-   * Referral earning is withdrawn from the player product (`feature-state.ts`), so for an
-   * ordinary player this badge could never move off `locked` — a permanently unearnable
-   * award sitting on every profile, with a 1 / 5 / 25 ladder nobody can climb. A shelf is a
-   * statement about what this account has done and can do; a badge with no reachable path
-   * is the shelf lying quietly.
+   * The badge is scoped to whoever can actually move it, and the rule has not changed — the
+   * population has. While invite was WITHDRAWN an ordinary player could never move it off
+   * `locked`: a permanently unearnable award on every profile, with a 1 / 5 / 25 ladder nobody
+   * could climb. A shelf states what this account has done and can do; a badge with no reachable
+   * path is the shelf lying quietly.
    *
-   * ⭐ Approved AGENTS keep it, and for them it is real: recruits are exactly what they were
-   * vetted and approved to bring in. So the badge is not deleted — it is scoped to the
-   * population it describes, and it returns for everyone the moment the state flips back.
+   * ⭐ 2026-09-25 — IT RETURNS FOR PLAYERS, exactly as the last line of this note reserved: the
+   * unpaid invite gives every player in good standing a real link, so the ladder is climbable
+   * again and `getPlayerReferralSummary().recruitCount` is a real number.
+   * ⛔ AND A BADGE IS NOT A REWARD. The Connector is recognition of something the account did; it
+   * pays nothing, so it does not make the invite an inducement and it is not gated on
+   * `playerInviteRewardsLive()`. ⚠️ If it ever grows a prize, that changes and this is the line
+   * that has to change with it.
+   * ⭐ Approved AGENTS keep it on their own AGENT-stamped book, and someone out of standing —
+   * closed, suspended, self-excluded, or a deactivated agent — loses it with every other surface,
+   * because `inviteIsLiveFor` is the one predicate they all read.
    */
   const inviteViewer = await inviteViewerFor(userId);
   const showConnector = inviteIsLiveFor(inviteViewer);
