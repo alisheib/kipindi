@@ -50,11 +50,14 @@ type NavItem = {
   href: string;
   label: string;
   proposalsBadge?: ProposalsState;
-  /* ⛔ A generic `comingSoon?: boolean` used to live here. Invite was its ONLY producer, and
-     Invite is WITHDRAWN now rather than promised — a withdrawn destination is dropped from
-     the list entirely (see MORE_ITEMS below), never badged. The field is deleted rather than
-     left unused because it was worse than dead: generically named, it rendered the INVITE
-     copy key, so the next feature to set it would have worn Invite's words. */
+  /* ⛔ A generic `comingSoon?: boolean` used to live here. Invite was its ONLY producer, and a
+     destination that is not part of the product is dropped from the list entirely (see
+     MORE_ITEMS below), never badged. The field is deleted rather than left unused because it was
+     worse than dead: generically named, it rendered the INVITE copy key, so the next feature to
+     set it would have worn Invite's words.
+     ⚠️ 2026-09-25 — the REASON survives the product change but the example no longer does: invite
+     is ACTIVE again (unpaid). It is in the list because it is live, not badged because it is
+     promised, which is the same rule this note states. */
   /**
    * Marks a destination as a DISTINCT PRODUCT LINE rather than another page of the same game —
    * currently only Up & Down. It keeps destination geometry (see the note above); the accent is a
@@ -83,7 +86,7 @@ export type TopAppBarUser = {
   walletHeld?: boolean;
 };
 
-export function TopAppBar({ user, proposalsState, inviteVisible = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean }) {
+export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
 
@@ -125,9 +128,13 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false }: { use
           ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState } as NavItem]
           : []),
         { href: "/wallet",         label: t.nav.wallet },
-        /* ⛔ Invite is DROPPED from the nav entirely unless this viewer is an approved agent —
-           the same treatment Proposals gets when DISABLED, three lines above. It is withdrawn
-           from the player product, not merely unopened, so it does not wear a badge here. */
+        /* ⛔ Invite appears only for a viewer who may actually hold a link — the same treatment
+           Proposals gets when DISABLED, three lines above, and it never wears a badge.
+           ⭐ 2026-09-25: `inviteVisible` is TRUE for every player in good standing now (the unpaid
+           invite), and FALSE for a closed/suspended/self-excluded account and for an agent out of
+           standing. ⛔ The label is `t.common.invite` — the neutral word — and must stay neutral:
+           `invitePaid` decides the wording in the avatar menu, and this rail has no room for a
+           promise it would have to retract. */
         ...(inviteVisible
           ? [{ href: "/profile/invite", label: t.common.invite } as NavItem]
           : []),
@@ -387,6 +394,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false }: { use
             isAdmin={user.isAdmin ?? false}
             proposalsState={proposalsState}
             inviteVisible={inviteVisible}
+            invitePaid={invitePaid}
           />
         </div>
       </div>

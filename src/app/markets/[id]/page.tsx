@@ -31,7 +31,7 @@ import { roundStore } from "@/lib/server/updown-dal";
 import { sideToOutcome } from "@/lib/server/updown-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
+import { ensureAffiliateAccount, inviteViewerFor, normalizeReferralCode } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
@@ -103,7 +103,7 @@ export default async function MarketDetail({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string }>;
+  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string; ref?: string }>;
 }) {
   const { t, locale } = await getServerT();
   const { id } = await params;
@@ -639,7 +639,27 @@ export default async function MarketDetail({
                 </p>
                 {(() => {
                   const betNext = "/markets/" + m.id + (side === "YES" || side === "NO" ? `?side=${side}` : "");
-                  const q = `?next=${encodeURIComponent(betNext)}`;
+                  /**
+                   * 🔴 THE REFERRAL CODE USED TO DIE HERE, AND THAT MADE EVERY SHARED MARKET LINK A
+                   * LIE. `ShareButton` appends `?ref=<code>` to the URL a player sends; the friend
+                   * opens `/markets/<id>?ref=CODE`, reads the market, taps Sign up — and this CTA
+                   * rebuilt the query from `next` alone, so the code never reached
+                   * `/auth/register`, which is the ONLY reader of it. The sharer was told their
+                   * friends would be counted; not one of them ever was.
+                   *
+                   * ⚠️ IT PREDATES THE UNPAID INVITE — agents' shared market links were equally
+                   * dead — but that programme's links are rare and this one is every player's, so
+                   * it stops being a curiosity and becomes the common path.
+                   *
+                   * ⛔ NORMALISED, NOT PASSED THROUGH. `normalizeReferralCode` is the same one the
+                   * bind and the ribbon use, so a malformed or over-length code degrades to "no
+                   * ref" here exactly as it would there — never truncated into somebody else's
+                   * code. An unknown code still binds nothing; it simply renders no ribbon.
+                   * ⭐ No cookie and no storage: the code rides the query string the visitor is
+                   * already carrying, so nothing is tracked and the privacy notice is unchanged.
+                   */
+                  const shared = normalizeReferralCode(typeof sp.ref === "string" ? sp.ref : null);
+                  const q = `?next=${encodeURIComponent(betNext)}${shared ? `&ref=${encodeURIComponent(shared)}` : ""}`;
                   return (
                     <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
                       <Link href={`/auth/register${q}` as never} className="btn btn-primary btn-md btn-pill">

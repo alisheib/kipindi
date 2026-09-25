@@ -132,6 +132,12 @@ const HOUR = 3_600_000;
   // the PLAYER PRIZE, which the agent programme forbids. The honest population for a
   // player-promo prize is a PLAYER referrer with the promo ON: the same env override
   // `withdrawn-features` §4 uses to keep the dormant path executable, restored in a `finally`.
+  // ⭐ AND SINCE 2026-09-25 THE MONEY NEEDS ITS OWN OVERRIDE. The surface is ACTIVE by default now,
+  // but the player promo PAYS NOTHING (`inviteRewards` WITHDRAWN) — and this section is about what
+  // happens to a cash incentive when the referrer is in a cooling-off break. With the money off
+  // there is no incentive to hold, "no cash" would be true for a reason that has nothing to do
+  // with responsible gambling, and the HELD row this guard exists for would never be written.
+  process.env.FEATURE_INVITEREWARDS = "ACTIVE";
   process.env.FEATURE_INVITE = "ACTIVE";
   try {
     await mkUser("aff_referrer");                          // a PLAYER — the promo's population
@@ -151,8 +157,9 @@ const HOUR = 3_600_000;
     ok("§5 the reward is recorded HELD, not silently dropped", rewards.some((r) => r.status === "HELD"), `rows=${JSON.stringify(rewards.map((r) => r.status))}`);
   } finally {
     delete process.env.FEATURE_INVITE;
+    delete process.env.FEATURE_INVITEREWARDS;
   }
-  ok("§5 the override is restored, not leaked", process.env.FEATURE_INVITE === undefined);
+  ok("§5 the override is restored, not leaked", process.env.FEATURE_INVITE === undefined && process.env.FEATURE_INVITEREWARDS === undefined);
 }
 
 // ── §5b · THE AGENT RULE DEPARTS FROM THE PLAYER RULE IN ONE PLACE ─────────
