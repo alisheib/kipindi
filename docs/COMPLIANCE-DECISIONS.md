@@ -67,8 +67,12 @@ still the one most likely to sit in a screenshot. What changed is that the owner
 watching a desk of funded accounts needs to see the pot fall, on **one owner-only surface**, and has accepted that
 trade knowingly.
 
-**Permitted, from this date:** the `Remaining` cell on the ACTIVITY tables of `/admin/desk` and
-`/admin/desk/[id]` — an Owner-only route behind `houseConsoleAudience`.
+**Permitted, from this date:** the balance cell on the ACTIVITY tables of `/admin/desk` and `/admin/desk/[id]` — an
+Owner-only route behind `houseConsoleAudience`. ⚠️ **RENAMED 2026-09-25: that cell is now `Closing`, and the row also
+gained an `Opening` cell derived from it** (`Opening = Closing + Stake`, so it is the same wallet figure one movement
+earlier, not a second disclosure). The permission is written by ROLE rather than by cell name, because a permission
+pinned to a name stops being true the day the name changes — which is exactly what happened to the wording this
+replaces. What is permitted is the holder's wallet balance, bracketing a stake, on those two tables and nowhere else.
 
 **Still forbidden, and the guards stay pointed at all of it:**
 - the designate wizard's check card (C7 ruling 459's own subject) — it keeps painting a funded **STATE**;
