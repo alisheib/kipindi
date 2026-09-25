@@ -285,6 +285,6 @@ await runTwoStores({
    * ⚠️ AND THE FIXTURE GIVES ITS ROSTER SLOTS BACK. Its two accounts took the roster to 20 of 20 and broke
    * 1.359, 1.383 and 1.412 — four failures nowhere near this block. The repair is REMOVED accounts, never a
    * raised ceiling: that ceiling is the very thing 1.359 and 1.412 measure. */
-  minPass: { memory: 832, postgres: 592 },
+  minPass: { memory: 837, postgres: 596 },
   dbPrefix: "hb_console",
 });

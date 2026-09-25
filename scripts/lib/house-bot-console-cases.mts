@@ -4905,11 +4905,11 @@ try {
     const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the activity table's headers are the control facts in order, with the money column SECOND and headed exactly `Stake`",
-      /* ⭐ "Game" JOINED 2026-09-24, BESIDE PRODUCT AND NOT FIRST: the money column must stay SECOND (this
+      /* ⭐ "Game" JOINED 2026-09-24, BESIDE PRODUCT AND NOT FIRST: the money column must stay SECOND (measured below, not merely claimed here — this
          assertion's own claim), and the visual gate's §5.2 contract measures the first three cells — so naming
          the game earlier would push the OUTCOME out of the 360 strip. */
       /* ⭐ "Left today" JOINED 2026-09-24, THIRD AND DIRECTLY AFTER Stake: ruling 1085 puts money "SECOND (and
-         third where two exist)", and this assertion's own claim — the FIRST `.amount` cell is still the row's
+         third where two exist)", and the claim MEASURED a few assertions below — the FIRST `.amount` cell is the SECOND WIDE cell of the
          second — is what keeps 373 true with two money columns on one row. */
       all(feedHeaders) === all(["When (EAT)", "Stake", "Left today", "Remaining", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
     ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
@@ -4917,6 +4917,49 @@ try {
         && !/admin-tbl min-w-/.test(detail), "");
     ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
       feedHeaders.length === 9 && !feedHeaders.includes("Event"), j(feedHeaders));
+
+    /* 🔴 THE CLAIM THIS RULING RESTS ON WAS ASSERTED IN THREE PLACES AND MEASURED IN NONE (found 2026-09-25).
+     * C7-SPEC's Proof line and two comments in this file say "the first `.amount`-carrying cell is the row's
+     * second cell", and what actually shipped was a header-WORD order check. Worse, the claim had quietly become
+     * FALSE of the markup: since the phone stack landed, the row's first cell is the stacked one, so the second
+     * cell is the wide When/Account cell and never a money cell at all.
+     * ⛔ SO IT IS MEASURED HERE, AGAINST THE CELLS THE CLAIM IS ABOUT — the WIDE ones. The stacked cell is a
+     * different layout with its own contract (the visual gate's §5.2 stacked branch), and holding one layout to
+     * the other's rule is how a true-sounding line survives a redesign while describing nothing. */
+    /* ⛔ THE ACTIVITY PANEL'S OWN SLICE, not the whole file — the page paints four tables and the targets and
+       history ones have their own, different column counts. Measured: an unscoped read returned spans [9,9,3,4]
+       and the pin failed for the right reason on the wrong population. */
+    const feedPanel = /\{tab === "activity"[\s\S]*?<\/table>/.exec(detail)?.[0] ?? "";
+    const wideCells = (panel: string): string[] => {
+      const row = /<tr key=\{`\$\{r\.whenTitle\}[\s\S]*?<\/tr>/.exec(panel)?.[0] ?? "";
+      const cuts = [...row.matchAll(/<td\s/g)].map((m) => m.index ?? 0);
+      return cuts.map((start, k) => row.slice(start, cuts[k + 1] ?? row.length))
+        .filter((cell) => /className="hidden sm:table-cell/.test(cell));
+    };
+    const firstAmountAt = (panel: string): number => wideCells(panel).findIndex((c) => /className="amount"/.test(c));
+    ok("1.373 · the first `.amount` cell is the SECOND wide cell — the claim this ruling rests on, measured for the first time, and measured against the layout it is about",
+      firstAmountAt(feedPanel) === 1 && wideCells(feedPanel).length === feedHeaders.length,
+      j({ firstAmountAt: firstAmountAt(feedPanel), wideCells: wideCells(feedPanel).length, headers: feedHeaders.length }));
+    ok("1.373 · CONTROL · the scan really would report money leaving the second wide cell",
+      (() => {
+        const moved = feedPanel.replace(/<td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">\{r\.stake\}/,
+          '<td className="hidden sm:table-cell p-3">X</td><td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">{r.stake}');
+        return firstAmountAt(moved) !== 1;
+      })(), "");
+
+    /* 🔴 NOTHING ANYWHERE PINNED A `colSpan`, AND A STALE ONE IS INVISIBLE TO EVERY GATE (found 2026-09-25).
+     * A spanning cell renders as ONE cell whatever its number, so the visual gate's `firstRowEmpty` and
+     * `stackedRow` detections both still fire, §5.2's empty branch still counts one cell, and §5.5 still finds the
+     * box inside the viewport — a NARROWER box trivially is. So a column added without touching the two spans
+     * leaves the empty state and the whole phone layout silently short, at every width, in every suite.
+     * ⛔ DERIVED FROM THE PANEL'S OWN HEADER COUNT, never typed, so a column added tomorrow is inside this rule on
+     * the day it lands. Precedent: `scripts/kyc-stage.test.mts` does exactly this for `/admin/kyc`. */
+    const spansOf = (panel: string): number[] => [...panel.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]));
+    ok("1.373 · every `colSpan` in the activity panel equals that panel's own header count — the empty state and the phone stack span the whole row, derived rather than typed",
+      spansOf(feedPanel).length >= 2 && spansOf(feedPanel).every((n) => n === feedHeaders.length),
+      j({ spans: spansOf(feedPanel), headers: feedHeaders.length }));
+    ok("1.373 · CONTROL · the span scan really would report a stale number — the defect invisible to every gate, because a spanning cell renders as one cell whatever it says",
+      spansOf(feedPanel.replace(/colSpan=\{\d+\}/, "colSpan={3}")).some((n) => n !== feedHeaders.length), "");
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
@@ -5009,7 +5052,10 @@ section("§2e3 · the desk landing page's activity and history panels");
     const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
     const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
     ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
-      j(feedHeaders) === j(["Account", "Stake", "Left today", "Remaining", "When (EAT)", "Outcome", "Type", "Product", "Game", "Note", ""]),
+      /* ⛔ `all`, NOT `j` — its per-account twin already uses `all`, and this one was one column away from
+         comparing prefixes only. This suite's own header records the `317-word-hole` defect, where a long set
+         compared under the truncating serialiser let a rename through unreported. */
+      all(feedHeaders) === all(["Account", "Stake", "Left today", "Remaining", "When (EAT)", "Outcome", "Type", "Product", "Game", "Note", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
       j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
@@ -7320,9 +7366,24 @@ export default function Ruling513Control() {
        row does — the account and the market — so each appears twice in the file, once per layout. The pin is still
        POSITIONAL and still an equality, so a door added to one layout and not the other is reported. */
     const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
+    /* 🔴 THIS EQUALITY COMPARED A TRUNCATED PREFIX, AND HAD DONE SINCE THE LIST OUTGREW IT (found 2026-09-25).
+       `j` slices at 260 characters — this file's own header says so, and says `all` is "the only form an assertion
+       may scan" — while `WANT` serialises to about 389. So this line compared entries 1–8 of 13 and silently
+       ignored the tail, which is exactly where this week's row doors were added: the account and market doors of
+       the activity row, in BOTH layouts. A door dropped from one layout, or a `<Link>` quietly becoming a
+       `<WayOutLink>` past entry 8, passed. Worse, every CONTROL below plants inside the compared prefix, so none
+       of them could reveal it. ⛔ `all` on both sides, and a control that plants in the TAIL. */
     ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
-      j(linkExprs) === j(WANT) && j(elementsOf(pageCode)) === j(ELEMENTS) && linkExprs.length === openings,
+      all(linkExprs) === all(WANT) && all(elementsOf(pageCode)) === all(ELEMENTS) && linkExprs.length === openings,
       j({ found: linkExprs, want: WANT, elements: elementsOf(pageCode), openings }));
+    /* ⛔ CONTROL · THE TAIL IS REALLY READ. A plant in the LAST entry must be reported; under the truncating
+       comparison this replaced, it was not — which is what makes this a measurement of the repair. */
+    ok("1.306 · CONTROL · the pin reads the WHOLE list — a door changed in the LAST position is reported, which the truncating comparison this replaced could not see",
+      (() => {
+        const tampered = [...linkExprs];
+        tampered[tampered.length - 1] = "Link somethingElse as Route";
+        return all(tampered) !== all(WANT) && tampered.length === WANT.length;
+      })(), j({ lastEntry: linkExprs[linkExprs.length - 1], entries: linkExprs.length }));
     /* ⛔ CONTROL · THE PIN MEASURES THE ELEMENT AS WELL AS THE HREF. The same href painted by a bare `<Link>`
        instead of the shared component is a DIFFERENT entry — which is the one difference the old scan could not
        see, and the reason it silently dropped a live link from its own population. */
