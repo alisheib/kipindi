@@ -66,16 +66,20 @@ export function authorized(req: Request): boolean {
 /**
  * Their status token → ours, or `null` for "we do not recognise this".
  *
- * ⛔ BLACKBALL HAS NOT PUBLISHED ITS VALUE SET. These arms are seeded from the
- * common SMPP vocabulary and are a STARTING POINT, not a specification. An
- * unrecognised token returns null: the row keeps its status, the RAW token is
- * stored on `SmsMessage.dlrStatus`, and the real vocabulary gets learned from
- * production rather than invented here.
+ * ⭐ THE VENDOR'S OFFICIAL LIST (their developer, by email, 2026-09-17; docs/BLACKBALL-SMS.md §3),
+ * and every token on it already maps (corrected 2026-09-25):
+ *   DELIVRD → DELIVERED · UNDELIV, REJECTD, EXPIRED, FAILED → FAILED ·
+ *   SENT → null (received by the network, not yet a verdict, so the row stays ACCEPTED).
+ * The other spellings in the arms below are SMPP synonyms kept as tolerance. An unrecognised
+ * token returns null: the row keeps its status, the RAW token is stored on
+ * `SmsMessage.dlrStatus` and audited as `sms.dlr.unmapped_status`, so the vocabulary is
+ * extended from evidence, never guessed. Their own example spelled the token `DELIVERD`,
+ * which maps to null; the real callbacks carry `DELIVRD`.
  *
- * ⭐ OBSERVED, NOT ASSUMED: `DELIVRD` with description `Success`. The first live send
- * (2026-09-16, sender `50pick`, Tigo Tz) reached the handset in two seconds and the
- * portal's Out SMS recorded exactly that pair. It is the only token confirmed from
- * Blackball so far; every other arm below is still the SMPP seed.
+ * ⭐ OBSERVED, NOT ASSUMED: `DELIVRD` with description `Success`, and no other token yet.
+ * First in the portal's Out SMS on 2026-09-16 (sender `50pick`, Tigo Tz, on the handset in
+ * two seconds), and in real callbacks since 2026-09-23 (§4.7, §4.8). No failure token has
+ * ever arrived, so the FAILED arms are the vendor's word, not yet evidence.
  *
  * ⛔ THE ONE ARM THAT MUST NEVER EXIST IS A DEFAULT TO DELIVERED. That would report
  * delivery we have no evidence for, on the rail that carries login codes — and a
@@ -117,11 +121,13 @@ const looksLikeLine = (v: unknown): boolean => isObject(v) && typeof v.reference
 /**
  * The status lines in a callback body, or `null` when the body matches no shape we recognise.
  *
- * ⭐ THE DOCUMENTED SHAPE IS `{statuses:[…]}`, AND IT IS NOT THE ONLY ONE ACCEPTED. The first
- * genuine callback has not been observed yet, and every other fact about this vendor that was
- * measured contradicted its PDF (§1 of docs/BLACKBALL-SMS.md). A single status object, or a bare
- * array of them, would otherwise be acknowledged with 200 and silently dropped — a delivery
- * report lost with no trace, which is the one outcome this receiver must never have.
+ * ⭐ THE DOCUMENTED SHAPE IS `{statuses:[…]}`, AND IT IS THE ONE OBSERVED: genuine callbacks
+ * have arrived on their own since 2026-09-23, one or more lines per POST (§4.7 and §4.8 of
+ * docs/BLACKBALL-SMS.md; corrected 2026-09-25). The other two shapes stay accepted anyway,
+ * because several facts this vendor documented turned out wrong when measured (§1). A single
+ * status object, or a bare array of them, would otherwise be acknowledged with 200 and silently
+ * dropped — a delivery report lost with no trace, which is the one outcome this receiver must
+ * never have.
  *
  * `{statuses: []}` is a recognised, empty callback (not malformed); `null` means "unrecognised".
  */
@@ -223,8 +229,8 @@ export async function POST(req: Request) {
           // (`scripts/live/blackball-drive.mts`) lands HERE by design — the drive talks to the
           // gateway directly and never writes a production SmsMessage row, because a local
           // process writing production audit rows would fork the HMAC chain. So this row is
-          // where the vendor's undocumented status AND description vocabulary is first
-          // observed, and dropping the description would throw away half of it.
+          // where any status or description beyond the vendor's list (§3) is first observed,
+          // and dropping the description would throw away half of it.
           payload: { rawStatus, description: desc, msisdn: msisdn ? maskPhone(msisdn) : null },
         });
       }
@@ -257,8 +263,8 @@ export async function POST(req: Request) {
           actorId: null,
           targetType: "SmsMessage",
           targetId: reference,
-          // ⭐ THE RAW TOKEN, VERBATIM. This audit row is how the vendor's undocumented
-          // vocabulary gets extended from evidence instead of guessed.
+          // ⭐ THE RAW TOKEN, VERBATIM. This audit row is how any token beyond the vendor's
+          // list gets mapped from evidence instead of guessed.
           payload: { rawStatus, description: desc },
         });
       }

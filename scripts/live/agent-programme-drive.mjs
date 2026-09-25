@@ -441,9 +441,10 @@ const applicant = await applicantCtx.newPage();
 // ═══════════════════════ 5 · INVITEE — invitation, OTP, acceptance ═══════════════════════
 {
   await goto(officer, "/admin/agents");
-  // ⭐ AN EMAIL, NOT A PHONE (2026-09-08). No SMS provider is licensed — `sms.ts` ships
-  // `console` by default and both other adapters throw — so the officer's console promised a
-  // text that was never sent. The invitation and its code go through Postmark now.
+  // ⭐ AN EMAIL, NOT A PHONE (since 2026-09-08). When this shipped no SMS provider was licensed,
+  // so the officer's console promised a text that was never sent. Blackball went live 2026-09-16
+  // and the invitation stays on email BY DECISION (`issueInvitation`, agent-application-service.ts).
+  // The invitation and its code go through Postmark.
   await officer.locator('input[name="email"]').fill(EMAIL_INVITEE);
   await officer.locator('input[name="displayName"]').fill("Neema Invitee");
   await clickButton(officer, /^Invite$/);

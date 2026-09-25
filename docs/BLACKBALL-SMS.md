@@ -12,11 +12,11 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 > the handset receives, the receipt comes back by itself and settles the real row. Nothing here is left
 > half-built, and no further work is planned in this file.
 >
-> ▶ **Bulk/marketing sending is a SEPARATE programme, already planned:**
+> ▶ **Bulk/marketing sending is a SEPARATE programme, in build:**
 > [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) — the contacts
-> book and the campaign engine, 52 units, starting at S1. ⛔ It ships CLOSED until the Gaming Board
-> advertising approval is on file, and Phase A builds the consent, suppression, opt-out and
-> responsible-gambling gates *before* anything can send.
+> book and the campaign engine. Where it stands lives only in its §0 and §1, so no count is restated
+> here. ⛔ It ships CLOSED until the Gaming Board advertising approval is on file, and Phase A builds
+> the consent, suppression, opt-out and responsible-gambling gates *before* anything can send.
 >
 > **Left with the vendor, none of it blocking:** the three whitelisted sender-ID strings with TCRA
 > confirmation, the interval between their 5 retries, and the `CODE` values that accompany failure
@@ -32,10 +32,10 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
-| Live sends | ✅ **one from PRODUCTION itself, 2026-09-23 — the end-to-end proof (§4.8)** · ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 four times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55 and 08:28 UTC) — **9 of 9** sends used; the ceiling went 6 → 7 → 8 on Ali's instructions to validate the vendor's successive claims. ⭐ Ali confirms the handset RECEIVES every one of them |
+| Live sends | ✅ **one from PRODUCTION itself, 2026-09-23 — the end-to-end proof (§4.8)** · ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 five times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55, 08:28 and 09:12 UTC) — **10 of 10** drive sends used; the ceiling went 6 → 7 → 8 → 9 → 10 on Ali's instructions to validate the vendor's successive claims (`TOTAL_SEND_CEILING` in `scripts/live/blackball-drive.mts`). ⭐ Ali confirms the handset RECEIVES every one of them |
 | Delivery callback | ✅ **WORKING, PROVEN END TO END 2026-09-23** — a production-issued OTP was DELIVERED and its receipt settled the real row in **11 seconds** (`applied: 1`), after the vendor's first automatic batch at 03:46 (§4.7, §4.8) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
-| Balance | TZS 196 |
+| Balance | ⛔ Not recorded here — every delivered SMS costs TZS 6 (§5), so any figure in this file is wrong after the next send. Read it live: the portal, or the free `POST /api/account/balance` (§1.4). *(This cell said "TZS 196"; removed 2026-09-25.)* |
 
 ---
 
@@ -160,8 +160,9 @@ by running each through the real `mapDlrStatus()`:
 `null`, so a delivered message would stay "handed over"), and its `reference` is
 `6aabaaa7c5aea109abee145` — 23 hex characters, a shape we never send (ours are `sms_` + 24 hex). Neither
 is coded around: an unrecognised token is stored raw and audited as `sms.dlr.unmapped_status`, so if a
-real callback carries `DELIVERD` the evidence lands and the fix is one line — but the spelling and the
-reference echo are asked back (§8) rather than guessed.
+real callback ever carries `DELIVERD` the evidence lands and the fix is one line. ✅ Both contradictions
+were settled by the rail itself on 2026-09-23 (§4.7): real callbacks spell the token `DELIVRD` and echo
+OUR `sms_…` reference.
 
 The portal's Out SMS **CSV export** for that message (supplied by Ali, 2026-09-16):
 
@@ -174,9 +175,8 @@ The portal's Out SMS **CSV export** for that message (supplied by Ali, 2026-09-1
   carry a non-zero code; ask for the code list with the status list (§8).
 - `COUNT` `1` is the **segment count** — the billed unit (TZS 6 × COUNT).
 - ⚠️ **Neither the export nor the Out SMS screen shows our `reference`** (the screen's "Ref" column
-  holds the API client id). So it is still unproven that the callback's `reference` echoes the one we
-  sent. The first genuine receipt settles it: `sms-receipts.cjs` prints the reference it carried, and
-  the `sms_95f851757b62d3a8ea5a5865` of the first send is the value to look for. An unrecognised token returns `null`: the row keeps its
+  holds the API client id) — so the CALLBACK is the only place our reference comes back, and since
+  2026-09-23 it does (§4.7). An unrecognised token returns `null`: the row keeps its
 status, the raw token is stored on `SmsMessage.dlrStatus`, and `sms.dlr.unmapped_status` is audited.
 ⛔ **There is no default-to-DELIVERED arm and there must never be one.**
 
@@ -342,8 +342,10 @@ carried a 23-character id of their own, which would match no message we ever sen
 history: measured today, 5,000 lines covered **fifteen minutes** (12:01 → 12:16), and `--json` returned
 zero rows while the plain form returned thousands. ⛔ So the edge log can only be trusted LIVE, during a
 watch — never to prove that something did not arrive two hours ago. The durable instrument is the audit
-chain: every POST that reaches the app writes a row, `webhook.blackball.rejected` included, which is
-exactly how their 12:29:44 attempt was caught.
+chain: every POST carrying a receipt line writes `sms.dlr.received`, and every refused one writes
+`webhook.blackball.rejected` — which is exactly how their 12:29:44 attempt was caught. (Only an authorised
+EMPTY callback, and a repeat of a malformed one inside its dedupe window, write nothing — corrected
+2026-09-25, this said "every POST … writes a row".)
 
 ### 4.7 ✅ 2026-09-23 — it fired, by itself, and the reference echoes
 
@@ -369,11 +371,9 @@ three open questions at once:
 
 ⚠️ **`applied: 0` is CORRECT here and must not be read as a failure.** The drive sends from a local
 process and deliberately writes no production `SmsMessage` row (§ *Where the receipts go*), so every
-reference is legitimately unknown to production and the receiver acks and audits it. 🔴 **The last link
-is therefore still unproven on production: a receipt moving a real row to DELIVERED.** Only two paths
-can create that row — phone-code login (`OTP_ENABLED` unset, deliberately) and invite campaigns (refusing
-while the bonus is withdrawn) — so it lands with the first genuine production send, whichever ships
-first. The behaviour itself is covered by `test:sms-dlr` on both DALs; what is missing is the live case.
+reference is legitimately unknown to production and the receiver acks and audits it. At that point
+the last link — a receipt moving a real production row to DELIVERED — was still unproven; it was proven
+the same morning, below (§4.8).
 
 ### 4.8 ✅ 2026-09-23 — THE LAST LINK, PROVEN ON A REAL ROW
 
@@ -532,7 +532,7 @@ Answered already: sender ID, price, success body, `coding` values, balance endpo
 
 | | |
 |---|---|
-| `npm run live:blackball` | the live drive — one hard-coded number, a 6-send ledger, balance read before and after, raw reply captured |
+| `npm run live:blackball` | the live drive — one hard-coded number, a send ledger capped by `TOTAL_SEND_CEILING` (spent; raising it is Ali's call), balance read before and after, raw reply captured |
 | `node scripts/live/ops/sms-receipts.cjs [ref]` | read-only: SMS and receipt audit rows on production, cross-checked against `/api/health` |
 | `test:blackball` / `red:blackball` | the transport: HTTP-400 trap, `data` shapes, sender cap, reference floor, batching, timeouts, `coding`, balance endpoint |
 | `test:sms-dlr` / `red:sms-dlr` | the receiver: auth, exact reply body, unknown references, msisdn cross-check, monotonicity, no-guess rule, the observed DELIVRD receipt, no empty-callback audit |

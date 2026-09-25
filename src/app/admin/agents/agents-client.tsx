@@ -66,12 +66,17 @@ export function SettlePayable({ rewardId }: { rewardId: string }) {
 /**
  * Issue an invitation to an EMAIL address. The token is shown ONCE.
  *
- * 🔴 IT USED TO SAY "A text with the link is on its way." It was not. `sms.ts` ships the
- * `console` provider by default, Beem and Africa's Talking are stubs that throw, and the
- * Selcom contract is unsigned — so in production the log read "console provider active in
- * PRODUCTION … NOT delivered" while this sentence promised an officer it had gone. Worse, the
- * sibling invite paths (`invite-service.ts`, `/admin/invites/[id]`) both consult
- * `smsConfigured()` before promising anything; only the agent path did not.
+ * 🔴 IT USED TO SAY "A text with the link is on its way." It was not. When this shipped
+ * (2026-09-08), `sms.ts` defaulted to the `console` provider, Beem and Africa's Talking were
+ * stubs that threw, and the Selcom SMS contract was unsigned — so in production the log read
+ * "console provider active in PRODUCTION … NOT delivered" while this sentence promised an
+ * officer it had gone. Worse, the sibling invite paths (`invite-service.ts`,
+ * `/admin/invites/[id]`) both consult `smsConfigured()` before promising anything; only the
+ * agent path did not.
+ * ⚠️ Since 2026-09-16 the Beem, Africa's Talking and Selcom SMS adapters are deleted (`console`
+ * remains, for development only) and Blackball is the live SMS provider
+ * (see the header of sms.ts), but this flow stays on email by decision — see the UPDATE
+ * 2026-09-16 note on `issueInvitation` in agent-application-service.ts (corrected 2026-09-25).
  *
  * ⭐ SO THE SENTENCE NOW REPORTS WHAT THE PROVIDER ACTUALLY RETURNED. `sendEmail` answers
  * `sent` · `stub` · `suppressed` · `failed`, and each gets its own sentence — including the

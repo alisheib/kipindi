@@ -176,7 +176,7 @@ given how it is built. Add to them; do not stop at them.
 
 ### A4 · OTP & SMS — `cert:a4`
 **Surfaces** `auth/otp` · **Owns** `sms` (`Otp` model)
-**Attack** Brute-force the code (what is the attempt ceiling, and is it per-code or per-account?) · replay after use · reuse across accounts · race two verifications · request-flood for cost (SMS is billed) · 🔴 **`auth-service.ts:170` passes a `"SW"` literal** — OTP SMS is hardcoded Swahili for every player regardless of locale (G5 failure) · does a suppressed/failed send tell the player, or hang?
+**Attack** Brute-force the code (what is the attempt ceiling, and is it per-code or per-account?) · replay after use · reuse across accounts · race two verifications · request-flood for cost (SMS is billed) · ✅ ~~OTP SMS hardcoded to a `"SW"` literal~~ — closed 2026-09-16 (`8fceee03`, corrected here 2026-09-25): `issueOtp` in `auth-service.ts` reads `User.locale` (EN/SW/ZH; SW is the default and the fallback on any error), pinned by `test:otp-delivery` §7 and `red:otp-delivery` — attack: does an EN/ZH player really get their language, and does ZH arrive intact? · ✅ a failed send now uses up the code, refunds the resend allowance, audits `sms.delivery_failed` and returns `SMS_UNDELIVERABLE` so the page can offer the password route (same commit) — still to attack: is a suppressed send surfaced too?
 **Exit** Attempt ceiling proven, replay impossible, OTP localised, send failure surfaced.
 
 ### A5 · Player 2FA — `cert:a5`
@@ -1155,7 +1155,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | A1 Registration & onboarding | `cert:a1` | ⬜ |
 | A2 Login & sessions | `cert:a2` | ⬜ no dedicated gate today |
 | A3 Password recovery | `cert:a3` | ⬜ |
-| A4 OTP & SMS | `cert:a4` | ⬜ OTP hardcoded Swahili |
+| A4 OTP & SMS | `cert:a4` | ⬜ gate not written (OTP localisation + send-failure honesty fixed 2026-09-16, `test:otp-delivery`) |
 | A5 Player 2FA | `cert:a5` | ⬜ |
 | A6 Admin TOTP | `test:cert-a6` | 🟨 **honesty DONE 2026-07-31** (16 assertions) — health + boot now report the state. 🔴 Still OFF in production: run `ops:admin-2fa-readiness` and enrol an admin **before** flipping |
 | B1 Roles & domain grants | `cert:b1` | ⬜ |

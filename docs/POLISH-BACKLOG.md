@@ -126,9 +126,10 @@ Ranked. Localization first, per the standing priority that Swahili must be perfe
 - **Localize the OG route and the PWA manifest.** Both are new-install / shared-link surfaces
   — worth doing before marketing spend, not after.
 
-- **OTP SMS is hardcoded to Swahili** — `auth-service.ts:170` passes a `"SW"` literal, making
-  the EN/ZH branches at `sms.ts:156-163` dead code. Latent while SMS is off; fix before the
-  SMS provider is armed.
+- ✅ **OTP SMS locale — FIXED 2026-09-16 (`8fceee03`).** Was a hardcoded `"SW"` literal that
+  left the EN/ZH templates dead. `issueOtp` in `auth-service.ts` now reads `User.locale` and
+  falls back to Swahili (`otpMessage` in `sms.ts`); pinned by `test:otp-delivery` §7. SMS itself
+  is live on Blackball since 2026-09-16 (`BLACKBALL-SMS.md`).
 
 ---
 

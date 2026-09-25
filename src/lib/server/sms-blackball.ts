@@ -2,8 +2,8 @@
  * Blackball SMS Gateway — the raw transport.
  *
  * Owns everything Blackball-specific: the credential reader, the batch request
- * shape, and the reply parser. `sms.ts`'s `blackballSms` adapter is a thin wrapper
- * over `blackballSend`, exactly as `payments.ts`'s `selcomAdapter` wraps
+ * shape, and the reply parser. `sms.ts`'s `blackballTransport` (an `SmsTransport`) is
+ * a thin wrapper over `blackballSend`, exactly as `payments.ts`'s `selcomAdapter` wraps
  * `selcom.ts`. Same house shape as `selcomFetch`: an AbortController timeout,
  * `res.text()` then `JSON.parse` in a try (never `res.json()`), an envelope
  * returned rather than an exception thrown for a non-2xx, `clearTimeout` in a
@@ -51,7 +51,8 @@
  * batch-level verdict. PER-MESSAGE truth arrives later on the delivery receipt,
  * keyed by `reference` — which is the whole reason every send is persisted with
  * one. Do not invent per-message outcomes here: there is no per-message data to
- * read, and the success-body shape is still unconfirmed by the vendor.
+ * read — the measured success body is `{status:true, message, data:null, balance}`
+ * with no message id (docs/BLACKBALL-SMS.md §1.3, §1.6; corrected 2026-09-25).
  *
  * ⛔ NOTHING IN THIS FILE PASSES A MESSAGE BODY, AN MSISDN OR A CREDENTIAL TO
  * `console.*`. That is stricter than the allow-list entry `sms.ts` holds in

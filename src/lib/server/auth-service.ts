@@ -311,9 +311,11 @@ async function issueOtp(
    * consulted `smsConfigured()` — `invite-service.ts` and `/admin/invites` both did.
    * Without this the platform writes an Otp row, audits `otp.login.sent`, and sends the
    * player to a screen counting down five minutes for a code that physically cannot
-   * arrive. ⭐ This matters far more now than it did: while OTP was dormant behind
-   * `OTP_ENABLED`, a misconfigured provider cost nothing. As a login path it IS the
-   * outage, and the player needs to be told to use their password, now.
+   * arrive. ⭐ Today OTP is dormant: `OTP_ENABLED` is deliberately unset and no login or
+   * register form offers a code (docs/BLACKBALL-SMS.md §7 step 6), so a misconfigured
+   * provider costs little. But this service is not gated by the flag (§4.8), and on the day
+   * phone-code login ships a dead provider IS the login outage — the player must be told at
+   * once to use their password. (corrected 2026-09-25 — this called OTP a live login path)
    */
   if (!smsConfigured()) {
     audit({ category: "SECURITY", action: "otp.refused_no_channel", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { purpose, provider: sms.name }, ip: meta.ip, userAgent: meta.ua });
@@ -350,10 +352,11 @@ async function issueOtp(
 
   /**
    * 🔴 THIS WAS `sms.send(...).catch(() => audit(...))` — FIRE AND FORGET — AND OTP IS
-   * NOW A LOGIN PATH.
+   * BUILT TO BECOME A LOGIN PATH.
    *
-   * Fire-and-forget was defensible while auth ran on passwords and OTP was a dormant
-   * second door: a provider blip cost nothing, because nobody was waiting on the code.
+   * Fire-and-forget is tolerable only while auth runs on passwords and OTP is a dormant
+   * second door — as it still is (`OTP_ENABLED` unset, no form offers it; corrected
+   * 2026-09-25): a provider blip costs nothing, because nobody is waiting on the code.
    * With `OTP_ENABLED=1` the swallowed rejection IS the login outage — the player is sent
    * to /auth/otp to type a code that was never sent, watching a five-minute countdown,
    * with no way forward and nothing in any log saying why.

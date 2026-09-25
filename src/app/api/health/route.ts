@@ -106,9 +106,13 @@ export async function GET() {
         },
         sms: {
           provider: sms.name,
-          // ⛔ `configured` IS THE LOAD-BEARING FIELD, NOT `successRate`. A rate of
-          // null with provider "console" reads as a healthy idle rail; the same
-          // reading with provider "blackball" means every login code is failing.
+          // ⛔ `configured` IS THE LOAD-BEARING FIELD, NOT `successRate`. A rate of null
+          // means only "nothing attempted since this process booted" — the normal reading
+          // on production, where phone-code login is off (OTP_ENABLED unset) and invite
+          // sends refuse while the bonus is withdrawn (corrected 2026-09-25). A dead rail
+          // reads null too, because every send refuses BEFORE attempting when
+          // smsConfigured() is false (the sms.ts facade, auth-service issueOtp,
+          // invite-service). Only `configured` tells the two apart.
           // ⭐ `webhookSecretSet` is a BOOLEAN. This endpoint is public.
           configured: smsConfigured(),
           successRate: smsHealth.successRate,

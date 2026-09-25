@@ -17,9 +17,11 @@ function sanitizeNext(raw: string): string {
 }
 
 /**
- * Phone + password sign-in. The OTP path below is preserved verbatim;
- * route /auth/login back to startLoginOtpAction once SMS provider is
- * signed and the OTP delivery is reliable.
+ * Phone + password sign-in — the only sign-in any form offers. The OTP path below is
+ * preserved verbatim but wired to no form. SMS is live (Blackball) and its delivery is
+ * proven, so offering phone-code login is a product change, not a provider wait: a
+ * "send me a code" option in EN/SW/ZH with its visual drives, then OTP_ENABLED=1.
+ * See docs/BLACKBALL-SMS.md §7 step 6 (corrected 2026-09-25).
  */
 export async function startLoginAction(formData: FormData) {
   // One field, either credential. `phone` is still read as a fallback so any
@@ -137,7 +139,7 @@ export async function verifyLogin2faAction(formData: FormData) {
   redirect((safeNext || "/?welcome=back") as never);
 }
 
-/** Legacy OTP login — re-enable once SMS goes live. */
+/** OTP login: built, and the SMS rail is live (Blackball), but wired to no form. Offering it is a product change (docs/BLACKBALL-SMS.md §7 step 6). */
 export async function startLoginOtpAction(formData: FormData) {
   const phoneRaw = String(formData.get("phone") ?? "");
   const nextRaw = String(formData.get("next") ?? "").trim();

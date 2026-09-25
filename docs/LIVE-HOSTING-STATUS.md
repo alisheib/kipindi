@@ -5,6 +5,9 @@
 > Full procedures/architecture live in [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md); this file
 > is just "where are we RIGHT NOW."
 >
+> **2026-09-25 — correction only:** SMS is live on Blackball since 2026-09-16 (env section
+> below). Nothing else in this file was re-verified in that pass.
+>
 > **Last updated: 2026-08-24 — 🛡️ `www` IS NOW PROXIED THROUGH CLOUDFLARE (SSL/TLS `Full (strict)`),
 > and production runs Node 24.19.0. The apex is deliberately still DNS-only. See
 > "EDGE POSTURE" below for what was measured and the one-click rollback.**
@@ -211,8 +214,14 @@ touched. `qa:sse-edge` takes `SSE_RESOLVE=<ip>` for exactly this; `curl` takes `
   objection-frozen view). Payout gates are unchanged (objection window, objection freeze,
   winner-floor, exact conservation, idempotency). Owner decision 2026-07-24 —
   see `docs/COMPLIANCE-DECISIONS.md`.
-- **Staying as-is (Ali's calls):** `DISABLE_ADMIN_TOTP=true` (2FA later), `SMS_PROVIDER=console`
-  (launching without SMS).
+- **Staying as-is (Ali's call):** `DISABLE_ADMIN_TOTP=true` (2FA later).
+- **SMS — live (corrected 2026-09-25; the old "`SMS_PROVIDER=console`, launching without SMS" call
+  was reversed):** `SMS_PROVIDER=blackball` since 2026-09-16, with `BLACKBALL_CLIENT_ID` /
+  `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET` and `SMS_SENDER_ID=50pick`. Delivery
+  receipts proven end to end 2026-09-23. Phone-code login stays off on purpose (`OTP_ENABLED`
+  unset). Marketing/bulk SMS stays CLOSED until the Gaming Board's written approval (OQ1 in
+  [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md)).
+  Authority: [`BLACKBALL-SMS.md`](BLACKBALL-SMS.md).
 - **To remove at the switch (still set, no-op):** `SPORTS_API_PROVIDER` (markets are
   AI-generated), `DEMO_MODE_ENABLED` (read nowhere) — folded into the switch redeploy.
 - **Added + live (R2 KYC):** `KYC_STORAGE=r2`, `R2_BUCKET=50pick-kyc`, `R2_ENDPOINT`,

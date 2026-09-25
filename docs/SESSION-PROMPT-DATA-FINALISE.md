@@ -230,6 +230,15 @@ checked.
 
 ### The DDL, ready for the release AFTER this one
 
+> 🔴 **ALREADY APPLIED ON PRODUCTION, 2026-09-25 — by the wrong migration (found 2026-09-25, marketing S6).**
+> `prisma/migrations/20260925120000_marketing_consent_suppression/migration.sql` (marketing U6) was generated
+> with `prisma migrate diff` against a database that still held these objects, and the diff swept in every
+> drop below — the four tables, the three columns, the three enums — WITHOUT `IF EXISTS`. Production ran it
+> (U6 served at `32067c92`), so F-05's contract step is DONE. ⛔ Do not ship the file below: with `IF EXISTS`
+> it would be a no-op; the record of what removed the objects is that U6 migration. The same diff also
+> dropped `AffiliateAgent.tier` (AGENT-PROGRAMME's release 2) and the eight `*_trgm_idx` search indexes
+> from `20260728030000_search_trgm_small_tables` — see `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §0.
+
 ⛔ Not committed. Paste into `prisma/migrations/<next>_f05_drop_dead_schema/migration.sql` in the
 release after the schema change has deployed, with the reasoning above it, and hand-apply on
 production first (`IF EXISTS` makes the file a no-op afterwards).

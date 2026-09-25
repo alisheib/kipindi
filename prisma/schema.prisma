@@ -377,17 +377,20 @@ model Session {
   @@index([userId, revokedAt])
 }
 
-/// ⭐ DORMANT, DELIBERATELY KEPT (audit F-05, 2026-08-21). **0 rows on production, measured.**
+/// ⭐ MOSTLY DORMANT, DELIBERATELY KEPT (audit F-05, 2026-08-21: 0 rows on production at that date).
 ///
-/// Unlike `Session` this one is dormant for a reason that will END: `SMS_PROVIDER=console`, so
-/// no code has ever been issued. `codeHash` is scrypt-hashed and peppered (`crypto.ts`) and the
-/// whole issue/verify/consume path is live in `auth-service.ts` — it is waiting on an SMS
-/// contract, not on engineering.
+/// Dormant by DECISION now, not for want of a provider (corrected 2026-09-25). Blackball has been
+/// live since 2026-09-16 (`SMS_PROVIDER=blackball`), and production issued its first SMS login
+/// code on 2026-09-23 (docs/BLACKBALL-SMS.md §4.8). Phone-code login stays off: `OTP_ENABLED` is
+/// not `1`, and offering it is a product change, not a variable (BLACKBALL-SMS.md §7 step 6).
+/// Agent invitations also write rows here (by email, purpose `agent_invite`, since 2026-09-08).
+/// `codeHash` is scrypt-hashed and peppered (`crypto.ts`) and the whole issue/verify/consume path
+/// is live in `auth-service.ts`.
 ///
 /// ⛔ AND IT IS THE ONE DORMANT TABLE THAT ALREADY HAS AN ENFORCED PERIOD. `retention.purge.daily`
 /// deletes rows older than `OTP_RETENTION_DAYS` (30) from ISSUE, wired 2026-08-20 and asserted by
-/// `test:retention`. That prune deletes nothing today and is wired anyway, because *the day SMS is
-/// switched on is the wrong day to discover that nothing expires a credential hash.*
+/// `test:retention`. That prune was wired before any row existed, because *the day SMS was switched
+/// on was the wrong day to discover that nothing expires a credential hash.*
 model Otp {
   id         String    @id @default(cuid())
   userId     String?
@@ -1264,9 +1267,11 @@ model AgentInvitation {
   applicationId  String?               @unique
   application    AgentApplication?     @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   /// The officer-entered phone a PRE-2026-09-08 token was bound to. ⚠️ Nullable now, and
-  /// NULL on every invitation issued since: the programme moved to email delivery because
-  /// there is no licensed SMS provider. Kept — not dropped — so invitations issued in the
-  /// programme's first days stay readable, revocable and acceptable.
+  /// NULL on every invitation issued since: the programme moved to email delivery on
+  /// 2026-09-08, when no SMS provider was licensed, and STAYED on email by decision after
+  /// Blackball went live on 2026-09-16 (see `issueInvitation` in agent-application-service.ts).
+  /// Kept — not dropped — so invitations issued in the programme's first days stay readable,
+  /// revocable and acceptable.
   phoneE164      String?
   /// ⭐ THE ADDRESS THE TOKEN IS BOUND TO, since 2026-09-08. Acceptance requires an OTP
   /// delivered to THIS mailbox AND a signed-in account whose own email matches it — so a
@@ -3025,10 +3030,12 @@ model SmsMessage {
   status       SmsStatus   @default(QUEUED)
   /// The gateway's own `message`, scrubbed and truncated. Never the body.
   providerMsg  String?
-  /// ⭐ THE DELIVERY RECEIPT'S RAW STATUS TOKEN, UNMAPPED AND UNJUDGED. Blackball has
-  /// not published its value set, so this column is how the real vocabulary gets
-  /// learned from production instead of guessed here. An unrecognised token leaves
-  /// `status` untouched and lands here.
+  /// ⭐ THE DELIVERY RECEIPT'S RAW STATUS TOKEN, UNMAPPED AND UNJUDGED. Every token on the
+  /// vendor's official list (by email, 2026-09-17 — docs/BLACKBALL-SMS.md §3) is handled by
+  /// `mapDlrStatus()` (`SENT` deliberately gives no verdict), but only `DELIVRD` has ever
+  /// arrived live. This column keeps the token verbatim, so one outside that list is recorded,
+  /// never guessed: it leaves `status` untouched, lands here, and is audited as
+  /// `sms.dlr.unmapped_status`.
   dlrStatus    String?
   dlrDesc      String?
   /// The undocumented `balance` echoed on the reply that carried this message.
@@ -3200,8 +3207,10 @@ model Suppression {
 /// `ON CONFLICT DO NOTHING` with no target, so a token collision would silently drop the whole
 /// recipient row: a person who is never messaged and never appears as a failure either.
 ///
-/// ⚠️ This table exists because U8 ships at S4 and the recipient row does not exist until U35
-/// (S18). U42 writes into it at enqueue; nothing here assumes a campaign.
+/// ⚠️ This table exists because U8 shipped before any campaign recipient row exists — that row
+/// is U35 (campaign models), and nothing mints a token until U42. Session labels are left out on
+/// purpose: they live in docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md §10, and they move.
+/// U42 writes into it at enqueue; nothing here assumes a campaign.
 model MarketingOptOutToken {
   /// Eight characters from the ambiguity-free alphabet — no I, O, 0 or 1.
   token      String            @id

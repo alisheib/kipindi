@@ -73,9 +73,11 @@ export async function withdrawAction(formData: FormData) {
   }
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
-  // Pass the chosen destination through (don't coerce to MPESA). Step-up SMS
-  // verification is gated on the licensed SMS provider, so no unenforced OTP is
-  // collected in the meantime.
+  // Pass the chosen destination through (don't coerce to MPESA). Step-up SMS verification is
+  // NOT built into withdrawal: nothing here issues or checks a code, and `WithdrawSchema.otpCode`
+  // is never read, so no unenforced OTP field is shown. The SMS rail itself is live (Blackball,
+  // since 2026-09-16), so this is no longer waiting on a provider (corrected 2026-09-25); adding
+  // it is a product change (a code step on the withdraw confirm in EN/SW/ZH, plus a check here).
   // ⚠️ WHAT PROTECTS A PAYOUT WHILE THE OTP WAITS — read this before deciding it can keep waiting.
   // Since 2026-09-13 the protections are three: identity approval (at least once — `kyc-gate.ts`),
   // the binding of the payout to the registered number (E-215), and the per-withdrawal cap

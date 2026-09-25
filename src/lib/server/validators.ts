@@ -208,9 +208,11 @@ export const WithdrawSchema = z.object({
   // REQUIRED: the payee mobile number is where the money is sent. It was previously
   // optional server-side while required client-side — the mismatch is closed here.
   msisdn: tzPhone,
-  // Optional until the licensed SMS provider (Selcom/Beem) is signed — the
-  // withdrawal is gated by KYC + AML + (planned) step-up SMS verification.
-  // We do NOT present an OTP field that isn't actually enforced.
+  // Optional because no withdrawal step-up SMS check is built: the withdraw path never reads
+  // this field. The SMS rail itself is live (Blackball, since 2026-09-16), so this is no longer
+  // waiting on a provider (corrected 2026-09-25). Today's payout protections are listed in
+  // src/app/wallet/withdraw/actions.ts (identity approval, registered-number binding, the
+  // per-withdrawal cap). We do NOT present an OTP field that isn't actually enforced.
   otpCode: otpCode.optional(),
 });
 export type WithdrawInput = z.infer<typeof WithdrawSchema>;
