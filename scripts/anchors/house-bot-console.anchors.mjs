@@ -1572,7 +1572,9 @@ import { formatEat } from "@/lib/utils";`,
     file: PAGE,
     from: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Loss today (projected)</th>`,
     to: `                      <th scope="col" className="text-right p-3 whitespace-normal">Loss today (projected)</th>`,
-    expect: "1.373 · 432(o) · every money-bearing header may WRAP",
+    /* ⚠️ RE-AIMED 2026-09-25: the assertion was renamed to say ON THE ROSTER, because it reads the FIRST thead on
+       the page and never governed the activity table's money headers, whose own pin now sits beside that panel. */
+    expect: "1.373 · 432(o) · every money-bearing header ON THE ROSTER may WRAP",
     suite: "console-mem",
   },
   {
@@ -2544,6 +2546,26 @@ import { formatEat } from "@/lib/utils";`,
     from: `    (id) => (core.dayBooks == null ? null : (core.dayBooks.get(id)?.stakedTzs ?? 0)),`,
     to: `    (id) => core.dayBooks?.get(id)?.stakedTzs ?? null,`,
     expect: "1.626c · an account the day book holds NO row for reads the same on the desk as on its own page",
+    suite: "console-mem",
+  },
+  {
+    name: "373-activity-header-order · an activity column is renamed, so the header equality that carries the whole column contract is asked to prove it can fail",
+    file: DETAIL,
+    /* ⚠️ DECLARED 2026-09-25 BECAUSE IT DID NOT EXIST. The two header equalities (per-account and desk-wide) carry
+       the entire column contract for this table, and no mutation anywhere renamed or reordered an activity header
+       — so neither had ever been shown to fail. That is the WRONG-ASSERTION class this file's own header names. */
+    from: `                        <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>`,
+    to: `                        <th scope="col" className="text-right p-3 !whitespace-normal">Budget left</th>`,
+    expect: "1.373 · the activity table's headers are the control facts in order",
+    suite: "console-mem",
+  },
+  {
+    name: "373-activity-colspan-stale · a column is added to the activity table and the spans are left behind, which every gate reads as healthy because a spanning cell renders as one cell whatever it says",
+    file: DETAIL,
+    from: `                        <th scope="col" className="text-left p-3">Type</th>`,
+    to: `                        <th scope="col" className="text-left p-3">Type</th>
+                        <th scope="col" className="text-left p-3">Extra</th>`,
+    expect: "1.373 · every `colSpan` in the activity panel equals that panel's own header count",
     suite: "console-mem",
   },
   {

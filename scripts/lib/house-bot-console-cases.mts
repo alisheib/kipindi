@@ -4904,28 +4904,6 @@ try {
     /* ⛔ THE MONEY COLUMN IS SECOND, IT IS THE KIT'S OWN MONEY SHAPE, AND THE TABLE TAKES NO MIN-WIDTH. */
     const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
     const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
-    ok("1.373 · the activity table's headers are the control facts in order, with the money column SECOND and headed exactly `Stake`",
-      /* ⭐ "Game" JOINED 2026-09-24, BESIDE PRODUCT AND NOT FIRST: the money column must stay SECOND (measured below, not merely claimed here — this
-         assertion's own claim), and the visual gate's §5.2 contract measures the first three cells — so naming
-         the game earlier would push the OUTCOME out of the 360 strip. */
-      /* ⭐ "Left today" JOINED 2026-09-24, THIRD AND DIRECTLY AFTER Stake: ruling 1085 puts money "SECOND (and
-         third where two exist)", and the claim MEASURED a few assertions below — the FIRST `.amount` cell is the SECOND WIDE cell of the
-         second — is what keeps 373 true with two money columns on one row. */
-      all(feedHeaders) === all(["When (EAT)", "Stake", "Left today", "Remaining", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
-    ok("1.373 · the money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither panel's table takes a `min-w-*`, which would push the figure off a phone",
-      /<td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(detail)
-        && !/admin-tbl min-w-/.test(detail), "");
-    ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
-      feedHeaders.length === 9 && !feedHeaders.includes("Event"), j(feedHeaders));
-
-    /* 🔴 THE CLAIM THIS RULING RESTS ON WAS ASSERTED IN THREE PLACES AND MEASURED IN NONE (found 2026-09-25).
-     * C7-SPEC's Proof line and two comments in this file say "the first `.amount`-carrying cell is the row's
-     * second cell", and what actually shipped was a header-WORD order check. Worse, the claim had quietly become
-     * FALSE of the markup: since the phone stack landed, the row's first cell is the stacked one, so the second
-     * cell is the wide When/Account cell and never a money cell at all.
-     * ⛔ SO IT IS MEASURED HERE, AGAINST THE CELLS THE CLAIM IS ABOUT — the WIDE ones. The stacked cell is a
-     * different layout with its own contract (the visual gate's §5.2 stacked branch), and holding one layout to
-     * the other's rule is how a true-sounding line survives a redesign while describing nothing. */
     /* ⛔ THE ACTIVITY PANEL'S OWN SLICE, not the whole file — the page paints four tables and the targets and
        history ones have their own, different column counts. Measured: an unscoped read returned spans [9,9,3,4]
        and the pin failed for the right reason on the wrong population. */
@@ -4937,6 +4915,54 @@ try {
         .filter((cell) => /className="hidden sm:table-cell/.test(cell));
     };
     const firstAmountAt = (panel: string): number => wideCells(panel).findIndex((c) => /className="amount"/.test(c));
+    ok("1.373 · the activity table's headers are the control facts in order, with the money column SECOND and headed exactly `Stake`",
+      /* ⭐ "Game" JOINED 2026-09-24, BESIDE PRODUCT AND NOT FIRST: the money column must stay SECOND (measured below, not merely claimed here — this
+         assertion's own claim), and the visual gate's §5.2 contract measures the first three cells — so naming
+         the game earlier would push the OUTCOME out of the 360 strip. */
+      /* ⭐ "Left today" JOINED 2026-09-24, THIRD AND DIRECTLY AFTER Stake: ruling 1085 puts money "SECOND (and
+         third where two exist)", and the claim MEASURED a few assertions below — the FIRST `.amount` cell is the SECOND WIDE cell of the
+         second — is what keeps 373 true with two money columns on one row. */
+      all(feedHeaders) === all(["When (EAT)", "Stake", "Left today", "Remaining", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
+    /* 🔴 THIS WAS A `.test()` ON THE STAKE CELL ALONE, UNDER A LABEL THAT SAID "the money cell" (found 2026-09-25).
+     * `Left today` and `Remaining` already escaped it — both carry a `title=` and a null branch, so neither matches
+     * the pinned literal — and it kept passing on the strength of Stake while claiming to govern all of them.
+     * ⛔ DERIVED: every wide cell that carries an `.amount` must carry the kit's money shape, and the COUNT is
+     * asserted so a money cell that quietly loses its atom is reported rather than skipped.
+     * 🔴 AND `!/admin-tbl min-w-/` WAS STRUCTURALLY DEAD HERE, made so by this week's own gutter classes: the
+     * opener is now `admin-tbl [&_td]:!px-1.5 …`, so `admin-tbl` is never adjacent to `min-w-` and a width appended
+     * after the gutters passed. The landing page has the derived opener sweep as a backstop; this file had none. */
+    const moneyCells = wideCells(feedPanel).filter((c) => /className="amount"/.test(c));
+    ok("1.373 · EVERY money cell on the row is the kit's own money shape — `tabular text-right` with `.amount` — derived from the panel rather than asked of one cell",
+      moneyCells.length >= 3 && moneyCells.every((c) => /className="hidden sm:table-cell p-3 tabular text-right"/.test(c)),
+      j({ moneyCells: moneyCells.length }));
+    ok("1.373 · CONTROL · the derived sweep really would report ONE money cell losing the shape, which the single-cell `.test()` it replaced could not",
+      (() => {
+        const broken = feedPanel.replace(/(<td className="hidden sm:table-cell p-3 tabular text-right"[^>]*>(?:(?!<td)[\s\S])*?className="amount")/, '<td className="hidden sm:table-cell p-3"><span className="amount"');
+        const cells = wideCells(broken).filter((c) => /className="amount"/.test(c));
+        return cells.some((c) => !/className="hidden sm:table-cell p-3 tabular text-right"/.test(c));
+      })(), "");
+    ok("1.373 · neither activity table takes a `min-w-*` on the table itself — asserted on the OPENER, because the gutter classes made the old adjacency test unmatchable",
+      !/<table className="admin-tbl[^"]*min-w-/.test(detail), "");
+    /* ⚠️ 432(o) FOR THE ACTIVITY TABLE'S OWN MONEY HEADERS. The page-wide `!whitespace-normal` count reads the
+       FIRST thead on the page — the roster's — so these headers were bound by nothing. A money header that cannot
+       wrap sets its column's minimum at its own width and, the cells being right-aligned, pins the figure to the
+       far edge: that is the measured 432(o) defect, and more money columns is exactly the pressure that invites
+       it. ⛔ DERIVED: every right-aligned header in this panel must be allowed to wrap. */
+    const moneyHeaders = [...feedThead.matchAll(/<th\s[^>]*className="([^"]*text-right[^"]*)"[^>]*>/g)].map((m) => m[1]);
+    ok("1.373 · 432(o) · every money header on the ACTIVITY table may WRAP — a nowrap header sets the column's minimum and pins the right-aligned figure to the card's edge",
+      moneyHeaders.length >= 3 && moneyHeaders.every((c) => /!whitespace-normal/.test(c)),
+      j({ moneyHeaders: moneyHeaders.length }));
+    ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
+      feedHeaders.length === 9 && !feedHeaders.includes("Event"), j(feedHeaders));
+
+    /* 🔴 THE CLAIM THIS RULING RESTS ON WAS ASSERTED IN THREE PLACES AND MEASURED IN NONE (found 2026-09-25).
+     * C7-SPEC's Proof line and two comments in this file say "the first `.amount`-carrying cell is the row's
+     * second cell", and what actually shipped was a header-WORD order check. Worse, the claim had quietly become
+     * FALSE of the markup: since the phone stack landed, the row's first cell is the stacked one, so the second
+     * cell is the wide When/Account cell and never a money cell at all.
+     * ⛔ SO IT IS MEASURED HERE, AGAINST THE CELLS THE CLAIM IS ABOUT — the WIDE ones. The stacked cell is a
+     * different layout with its own contract (the visual gate's §5.2 stacked branch), and holding one layout to
+     * the other's rule is how a true-sounding line survives a redesign while describing nothing. */
     ok("1.373 · the first `.amount` cell is the SECOND wide cell — the claim this ruling rests on, measured for the first time, and measured against the layout it is about",
       firstAmountAt(feedPanel) === 1 && wideCells(feedPanel).length === feedHeaders.length,
       j({ firstAmountAt: firstAmountAt(feedPanel), wideCells: wideCells(feedPanel).length, headers: feedHeaders.length }));
@@ -7157,7 +7183,11 @@ export default function Ruling513Control() {
    * `white-space: nowrap`, so 22 tracked-mono characters set this column's minimum at ~210px and — the cells being
    * right-aligned — PINNED the figure to that far edge: read off the 360 tile, the header's ")" and the row's
    * "used TZS 0" were both sliced by the card's right edge. §A5 is never clip money. */
-  ok("1.373 · 432(o) · every money-bearing header may WRAP, so a long basis costs thead height and not a clipped figure",
+  /* ⚠️ THIS READS THE ROSTER'S THEAD AND ONLY THE ROSTER'S — `thead` is the FIRST `<thead>` on the page, and the
+     page paints four. Its label said "every money-bearing header", which was never true of the ACTIVITY table's
+     money headers; those are held by the assertion added beside the activity panel instead. The name is corrected
+     rather than the scope widened, because 432(o)'s measurement was taken on the roster's own 22-character basis. */
+  ok("1.373 · 432(o) · every money-bearing header ON THE ROSTER may WRAP, so a long basis costs thead height and not a clipped figure",
     (thead.match(/!whitespace-normal/g) ?? []).length === 3
       && /<th scope="col" className="text-right p-3 !whitespace-normal">Loss today \(projected\)<\/th>/.test(pageCode)
       /* ⛔ THE `!` IS THE ASSERTION. `.admin-tbl th` is (0,1,1) and a bare utility is (0,1,0), so the class LOST to
