@@ -81,7 +81,12 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 ✔ BEFORE IT: S5 (U8 ✅), S4 (U7 ✅), S3/S3b (U5, U6 ✅), S2 (U3, U4 ✅), S1 (U1, U2 ✅), S0b, S0 —
   each in §2, newest first. ⭐ The habit that found most of it: audit the INSTRUMENT, not only the code.
 
-◐ HALF-DONE: nothing. U1–U10 are ✅ LIVE.
+◐ HALF-DONE: ⛔ S7 IS IN FLIGHT — started 2026-09-26 on Ali-Blade15, worktree `C:/kipindi-marketing`,
+  branch `marketing-s7`. Scope: the U6 repair (the eight trigram indexes + a guard), U11, U12 and D10.
+  ⛔ Do not start S7 on another PC; this line is rewritten when S7 closes. U1–U10 are ✅ LIVE.
+  ⭐ Ali, 2026-09-26, on delegation: *"take any decision needed based on overall decisions I took ever
+  and architecture of platform, keep going until live."* S7 takes the open owner items under that
+  instruction and records each ruling, with the precedent it rests on, where it is taken.
 
 ? OWNER ITEMS FOR ALI (none blocks U11; U12 needs the first):
   1. OQ6 — build the "under-25 vulnerability segment" or re-version /legal/responsible-gambling §4.
