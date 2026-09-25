@@ -307,13 +307,26 @@ export function CommentsThread({
                   ) : null}
                 </div>
                 <p className="mt-0.5 whitespace-pre-line break-words text-[14px] leading-relaxed text-text-muted">{c.body}</p>
+                {/* 🔴 D85 · THESE TWO DECLARED NO HEIGHT AT ALL, AND NO GATE COULD SEE THEM.
+                    Measured: an 11px glyph beside 10.5px mono inside a box whose only height came
+                    from the unitless 1.5 body line-height — about **15.8px tall**, 24px under
+                    Law 9's `--tap-min` 40. Width ~53px in Swahili ("Ripoti"), ~36px in Chinese.
+                    ⛔ AND THE REASON THEY SURVIVED IS THE IMPORTANT PART: `tap-target.test.mts`
+                    skips any interactive tag that declares no height — "declares nothing — the
+                    rendered half's job" — and the rendered gates' populations never included the
+                    comment thread. A control can be 24px under the floor and be invisible to
+                    every guard in the repo, which is a hole in the GATES, not just two buttons.
+                    ⚠️ The floor is bought with `-my-` rather than padding alone, so the row does
+                    not grow: same §L6 pattern as `side-picker.tsx`'s "change side" and D41's hint
+                    trigger. `qa:detail-order-hints` §5 asserts the outcome by `elementFromPoint`,
+                    so if the arithmetic stops working the gate says so. */}
                 <div className="mt-1 flex items-center gap-3">
                   {!c.mine && (
                     <button
                       type="button"
                       onClick={() => report(c.id)}
                       disabled={pending || c.reportedByMe}
-                      className="inline-flex items-center gap-1 font-mono text-[10.5px] text-text-subtle hover:text-warning-fg transition-colors disabled:opacity-50"
+                      className="inline-flex items-center gap-1 min-h-[var(--tap-min)] -my-[12px] py-[12px] font-mono text-[10.5px] text-text-subtle hover:text-warning-fg transition-colors disabled:opacity-50"
                       aria-label={t.common.reportComment}
                     >
                       <I.flag s={11} />
@@ -325,7 +338,7 @@ export function CommentsThread({
                       type="button"
                       onClick={() => remove(c.id)}
                       disabled={pending}
-                      className="inline-flex items-center gap-1 font-mono text-[10.5px] text-text-subtle hover:text-danger-fg transition-colors disabled:opacity-50"
+                      className="inline-flex items-center gap-1 min-h-[var(--tap-min)] -my-[12px] py-[12px] font-mono text-[10.5px] text-text-subtle hover:text-danger-fg transition-colors disabled:opacity-50"
                       aria-label={t.common.deleteComment}
                     >
                       <I.trash s={11} />

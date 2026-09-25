@@ -4538,6 +4538,20 @@ html[data-sheet-open] .route-enter { animation: none; }
   right: 0;
   top: -9px;
   bottom: -14px;
+  /* 🔴 D89 · THE VERTICAL REACH WAS ENGINEERED TO EXACTLY 40px AND THE HORIZONTAL REACH WAS
+     LEFT TO THE TRANSLATION. `left:0; right:0` makes this overlay exactly as wide as the link's
+     text, and the text is not the same width in every language: measured 2026-09-25 on the detail
+     page's similar-markets cards, the hit area is 63.9x40.3 in Swahili ("Maelezo") and 56.4x40.3
+     in English ("Details") — but **38x40.3 in Chinese ("详情")**, two pixels under Law 9's floor,
+     in every one of three widths.
+     ⛔ D28 MEASURED THIS CONTROL AND CLOSED IT, IN ONE LANGUAGE. That is the whole lesson: a floor
+     bought from text width holds only in the locale it was measured in, and the plan's own §A5 lens
+     is pointed the wrong way for it — Swahili running 35-40% LONGER is the safe direction, and it
+     is SHORT text that breaks a width-driven target. Chinese is the short case on this platform.
+     ⚠️ `min-width` and not a wider `right`: with `left` anchored, the overlay grows toward the
+     card's own right padding, away from the share trigger on its left — which is the neighbour
+     whose clicks this pseudo-element already swallowed once (see the note above). */
+  min-width: var(--tap-min);
 }
 .mcardp-timeleft { display:inline-flex; align-items:center; gap:6px; }
 

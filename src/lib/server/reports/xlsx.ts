@@ -32,8 +32,22 @@ function applyValue(cell: ExcelJS.Cell, raw: string | number | null, format?: Co
     else if (format === "percent") cell.numFmt = '0.0%';
     return;
   }
-  if (format === "datetime") cell.value = raw ? fmtDateTime(String(raw)) : "";
-  else if (format === "date") cell.value = raw ? fmtDate(String(raw)) : "";
+  /**
+   * 🔴 A DATE COLUMN USED TO ERASE ANYTHING THAT WAS NOT A DATE, AND IT ATE A REGULATOR-FACING
+   * TOTAL. `fmtDate` returns "" for an unparseable string, so the match-integrity "Stake refunds"
+   * totals row — whose first cell is the label `"Total (all)"` in a `format: "date"` column —
+   * shipped to the Gaming Board with a BLANK first cell, taking with it the one signal that
+   * distinguishes a capped table's total from a partial one. The `i === 0 -> "Total"` fallback in
+   * `renderSection` never fires, because a value WAS supplied and this function consumed it.
+   * The same erasure silently swallowed the "—" placeholders that kyc-reverify and
+   * match-integrity use to say "we do not hold this date".
+   * ⭐ THE FIX IS THE RULE THE OTHER FORMATS ALREADY FOLLOW. `tzs`, `integer` and `percent` all
+   * fall through to `String(raw)` when the value is not a number; only the two date formats threw
+   * their input away. A date formatter's job is to format a DATE — anything else passes through
+   * as the text it is, which can be read, rather than as nothing, which cannot.
+   */
+  const asDate = format === "datetime" ? fmtDateTime(String(raw)) : format === "date" ? fmtDate(String(raw)) : null;
+  if (asDate !== null) cell.value = asDate || neutralizeFormula(String(raw));
   else cell.value = neutralizeFormula(String(raw));
 }
 
@@ -285,8 +299,20 @@ function renderSection(sheet: ExcelJS.Worksheet, sec: Section, startRow: number)
     row++;
   }
 
+  /**
+   * 🔴 A PER-SECTION WIDTH WRITTEN TO A WORKSHEET-GLOBAL PROPERTY (REP-07, filed 2026-09-02).
+   * `sheet.getColumn(n).width` is a property of the WHOLE worksheet, but this ran once per
+   * section, so the LAST section silently clobbered every earlier one. Proven on daily-ops.xlsx:
+   * column A ends up 10 characters wide — sized for the hourly table's "Hour" — while the summary
+   * section above it puts 27-character metric labels in that very column, where they are cut off.
+   * ⭐ A COLUMN IS NOW AS WIDE AS THE WIDEST SECTION NEEDS IT. Taking the max is the only rule
+   * that can satisfy every section at once on a single sheet, and it can never shrink a column a
+   * previous section had already sized — which is exactly the failure being fixed.
+   */
   sec.columns.forEach((c, i) => {
-    sheet.getColumn(i + 1).width = colWidthFor(c, sec.rows);
+    const col = sheet.getColumn(i + 1);
+    const needed = colWidthFor(c, sec.rows);
+    col.width = Math.max(col.width ?? 0, needed);
   });
 
   const headerRow = sheet.getRow(row);

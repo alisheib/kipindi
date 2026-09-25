@@ -468,11 +468,20 @@ export default async function MarketDetail({
           {isResolved && m.resolvedOutcome && (
             <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>
           )}
+          {/* 🔴 D86 · A STANDALONE CONTROL AT ~55x18, IN A ROW WITH TWO 40x40 ONES.
+              Measured ~55x18 in Swahili and ~40x18 in Chinese: it declared no height, so its box
+              came from the 12px type alone while WatchStar and ShareButton beside it are both 40
+              square. ⛔ It is NOT the criterion's inline source URL further down the page — that
+              one sits inside a sentence and is phrasing content, and Law 9 (DESIGN_AUTHORITY §A2)
+              is written about CONTROLS. This one stands alone in a control row, which is why it
+              is convicted and the prose link is not; the open question about inline links is
+              recorded in the register for Ali rather than decided here.
+              ⚠️ `-my-` absorbs the growth so the header row does not move. */}
           <a
             href={m.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 ml-auto text-[12px] font-mono text-text-muted hover:text-text"
+            className="inline-flex items-center gap-1 ml-auto min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
           >
             {t.common.source}
             <I.ext s={12} />
@@ -900,9 +909,19 @@ export default async function MarketDetail({
               </details>
             ) : null}
 
+            {/* 🔴 D88 · A STANDALONE LINK AT 221x33, SEVEN PIXELS UNDER THE FLOOR.
+                Measured 2026-09-25 at 320/360/412 in all three locales: 221.2x33, 259.7x33, 311.7x33,
+                with no pseudo-element behind it. ⛔ IT IS NOT AN INLINE PROSE LINK and must not be
+                excused as one: this paragraph contains an icon and this link and nothing else, so
+                the link IS the control — which is exactly how `qa:detail-order-hints` §5 tells the
+                two apart (a link is exempt only when its paragraph says more than it does).
+                ⚠️ The real inline case is elsewhere on this page and is deliberately left alone; the
+                open question of whether Law 9 should say anything about links inside a sentence is
+                recorded in the register for Ali rather than decided by this edit.
+                `-my-` absorbs the growth, so the criterion block does not get taller. */}
             <p className="mt-3 pt-3 border-t border-border/50 font-mono text-[11px] text-text-subtle flex items-center gap-1.5">
               <I.ext s={11} />
-              <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>
+              <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[var(--tap-min)] -my-[4px] py-[4px] items-center text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>
             </p>
           </section>
 

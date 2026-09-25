@@ -25,6 +25,7 @@ import { AML_REVIEW_THRESHOLD_TZS } from "../payments";
 import { getGlobalConfig } from "../market-config";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
 import { formatDateTime, formatTzs } from "@/lib/utils";
+import { buildFinanceWindow, type FinanceWindowArg } from "./finance-window";
 
 /** Standard regulator attestation block — three roles at the foot of every
  *  hand-off-grade report. Only "Prepared by" is filled (the real generator, who
@@ -1172,9 +1173,38 @@ export const REPORT_CATALOGUE = {
   "kyc-reverify":   { name: "KYC re-verification roster", build: buildKycReverify },
   "rg-engagement":  { name: "Responsible-gambling engagement", build: buildRgEngagement },
   "match-integrity":{ name: "Match-integrity quarterly review", build: buildMatchIntegrity },
+  /**
+   * ⭐ THE ONLY WINDOWED ENTRY, AND THE FLAG IS HOW THE ROUTE KNOWS. `windowed` tells
+   * `/api/admin/reports/[id]` to resolve `?range/from/to` through the SAME `resolveRange` the
+   * console used and hand the result to the builder as a further argument — the shape
+   * `buildGbtMonthly(generatorId, packPeriod = …)` already proved is compatible both with this
+   * `as const` registry and with a route that calls `entry.build(userId)`. Every other entry
+   * carries no flag and is not touched.
+   * ⛔ `gbt-monthly` STAYS FIXED TO ITS CALENDAR MONTH. It is the statutory pack; following a
+   * picker is exactly what it must not do. The two now sit under separate labels on the finance
+   * page so an officer cannot mistake one for the other.
+   */
+  "finance-window": {
+    name: "Finance — selected window",
+    windowed: true,
+    build: (generatorId: string, win?: FinanceWindowArg) =>
+      buildFinanceWindow(generatorId, makeReference, win),
+  },
 } as const;
 
 export type ReportId = keyof typeof REPORT_CATALOGUE;
+
+/**
+ * ⭐ ONE ANSWER TO "DOES THIS REPORT TAKE A WINDOW?", read off the registry itself rather than
+ * re-listed by each surface. The route uses it to decide whether to resolve `?range/from/to`;
+ * the reports library uses it to decide whether to hand the button its page's window. A second
+ * hand-typed list of windowed ids is exactly the shape that lets a console and a route disagree
+ * about what a URL means.
+ */
+export function isWindowedReport(id: string): boolean {
+  const entry = (REPORT_CATALOGUE as Record<string, { windowed?: boolean }>)[id];
+  return entry?.windowed === true;
+}
 
 /** The house entries' ids and the audit actions the route writes for them — a closed list (C5-SPEC ruling 170). */
 export { HOUSE_REPORT_IDS, HOUSE_REPORT_AUDIT_ACTIONS } from "./house-report-ids";
