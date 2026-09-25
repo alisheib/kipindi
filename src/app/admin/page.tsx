@@ -6,8 +6,9 @@ import { db } from "@/lib/server/store";
 import { getAuditPage, type AuditCategory } from "@/lib/server/audit";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
-import { activePlayers, grossGamingRevenue, netGamingRevenue, kycFunnel, providerSummary, rgRosterCounts, moneyFlowSeries } from "@/lib/server/analytics";
-import { dailyKpiSeries } from "@/lib/server/report-money";
+import { activePlayers, grossGamingRevenue, netGamingRevenue, kycFunnel, providerSummary, rgRosterCounts, moneyFlowSeries, bucketGrain } from "@/lib/server/analytics";
+import { dailyKpiSeries, lastEatDays } from "@/lib/server/report-money";
+import { resolveRange } from "@/lib/server/date-range";
 import { formatTzsCompact } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -36,9 +37,21 @@ export default async function AdminOverviewPage() {
 async function AdminOverviewContent() {
   // A-5: null (not 0) on a failed read → an explicit "couldn't compute" tile,
   // never a fabricated "TZS 0" / "0 pending" presented as real.
-  const active24h = await activePlayers("today").catch(() => null);
-  const ggr = await grossGamingRevenue("today").catch(() => null);
-  const ngr = await netGamingRevenue("today").catch(() => null);
+  /**
+   * ⭐ THIS PAGE ASKS FOR WHAT IT SAYS: the last 24 HOURS, resolved once through the one platform
+   * resolver. It used to pass the string `"today"`, which `analytics.periodToMs` read as a
+   * rolling 24 hours while every other module in the repo reads "today" as the EAT calendar day.
+   * The captions here were always honest — "GGR · 24h", `delta="last 24h"`, and this very
+   * variable is `active24h` — so the argument was the only thing lying. `"today"` has been
+   * removed from that union; rolling callers name a rolling window.
+   * ⛔ Resolved ONCE and shared, so the tiles and the chart below cannot land on windows a few
+   * milliseconds apart and disagree by whatever settled in between.
+   */
+  const win24h = resolveRange({ range: "24h" }, Date.now());
+  const period24h = { start: win24h.start, end: win24h.end };
+  const active24h = await activePlayers(period24h).catch(() => null);
+  const ggr = await grossGamingRevenue(period24h).catch(() => null);
+  const ngr = await netGamingRevenue(period24h).catch(() => null);
   let amlPending: number | null = 0;
   try { amlPending = (await db.txn.listByStatus("AML_REVIEW")).length; } catch { amlPending = null; }
   // A-5: null (not fabricated zeros) on a failed read so the KYC-funnel and
@@ -51,12 +64,20 @@ async function AdminOverviewContent() {
   const rg = await rgRosterCounts().catch(() => null);
   const session = await currentSession();
   const recent = await houseAuditForConsole(session?.userId ?? null, "/admin", getAuditPage({ limit: 12 }));
-  const flow = await moneyFlowSeries("today", 24).catch(() => null);
+  const flow = await moneyFlowSeries(period24h, 24).catch(() => null);
+  /* What a bucket on that chart actually is, so the card's subtitle is rendered rather than
+     typed. 24 buckets over 24 hours is hourly — but if either number ever moves, the caption
+     moves with it instead of quietly becoming false (the defect just repaired on /admin/finance). */
+  const flowGrain = bucketGrain(period24h.start, period24h.end, 24);
   // Read-only 7-day daily trend for the money-tile sparklines — each point is
   // that day's REAL GGR/NGR/active (canonical `summarise`), so the spark is the
   // metric's OWN recent history, not a net-flow proxy. `spark()` suppresses a
   // meaningless all-zero line (honest data or nothing).
-  const trends = await dailyKpiSeries("7d").catch(() => ({ ggr: [], ngr: [], active: [] }));
+  /* ⛔ `lastEatDays(7)`, NOT the string `"7d"`. The preset is `now − 7×DAY`, which is not an EAT
+     midnight, while the series buckets FROM one — so `"7d"` returned EIGHT points with a short
+     first bar. Same defect `/admin/finance` was repaired for; `test:finance-window` §3 carries
+     the red control that proves it. */
+  const trends = await dailyKpiSeries(lastEatDays(7)).catch(() => ({ ggr: [], ngr: [], active: [] }));
   const spark = (s: number[]) => (s.some((v) => v !== 0) ? s : undefined);
 
   // Provider mix flex shares — total deposits across the top 5 providers
@@ -86,7 +107,10 @@ async function AdminOverviewContent() {
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
           <AdminCard
             title="24-hour money flow"
-            sw="Mtiririko wa pesa · TZS net per hour"
+            /* ⛔ RENDERED FROM THE WINDOW, NOT TYPED. "TZS net per hour" was a hardcoded claim
+               about a bucket width nothing checked — exactly the class just repaired on
+               /admin/finance, where three cards named windows they did not plot. */
+            sw={`Mtiririko wa pesa · TZS net per ${flowGrain.grain.replace(/^1-/, "").replace("-", " ")}`}
             action={<span className="font-mono text-micro eyebrow uppercase text-text-tertiary">net inflow vs outflow</span>}
           >
             {flow === null ? <AdminLoadError what="the money-flow series" /> : (

@@ -8,8 +8,9 @@ import { getAuditPage } from "@/lib/server/audit";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { matches } from "@/lib/ui-stubs";
-import { activePlayers, moneyFlowSeries, grossGamingRevenue } from "@/lib/server/analytics";
-import { dailyKpiSeries } from "@/lib/server/report-money";
+import { activePlayers, moneyFlowSeries, grossGamingRevenue, bucketGrain } from "@/lib/server/analytics";
+import { dailyKpiSeries, lastEatDays } from "@/lib/server/report-money";
+import { resolveRange } from "@/lib/server/date-range";
 import { formatTzs, formatTzsCompact, formatTime, formatNumber } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -38,13 +39,25 @@ export default async function AdminLivePage() {
 async function AdminLiveContent() {
   const liveMatches = (matches as MatchStub[]).filter((m) => m.status === "live");
   // A-5: null (not 0) on a failed read → an explicit "couldn't compute" tile.
-  const ggr = await grossGamingRevenue("today").catch(() => null);
-  const active = await activePlayers("today").catch(() => null);
-  const flow = await moneyFlowSeries("today", 24).catch(() => []);
-  // Read-only 7-day daily trend for the GGR/active tile sparklines — the
-  // metric's own recent history (canonical `summarise`), not a proxy. `spark()`
-  // hides an all-zero line.
-  const trends = await dailyKpiSeries("7d").catch(() => ({ ggr: [], ngr: [], active: [] }));
+  /**
+   * ⭐ ASKS FOR THE LAST 24 HOURS BY NAME. This used to pass the string `"today"`, which
+   * `analytics` read as a rolling 24 hours while the rest of the repo reads "today" as the EAT
+   * calendar day. The captions here already said "24h" — the argument was the lie — so `"today"`
+   * was removed from that union rather than re-pointed, which would have falsified the captions
+   * AND collapsed the chart's buckets below an hour at every instant of every day.
+   * ⛔ Resolved ONCE and shared by the tiles and the chart, so they cannot disagree.
+   */
+  const win24h = resolveRange({ range: "24h" }, Date.now());
+  const period24h = { start: win24h.start, end: win24h.end };
+  const ggr = await grossGamingRevenue(period24h).catch(() => null);
+  const active = await activePlayers(period24h).catch(() => null);
+  const flow = await moneyFlowSeries(period24h, 24).catch(() => []);
+  const flowGrain = bucketGrain(period24h.start, period24h.end, 24);
+  /* Read-only 7-day daily trend for the GGR/active tile sparklines — the metric's own recent
+     history (canonical `summarise`), not a proxy. `spark()` hides an all-zero line.
+     ⛔ `lastEatDays(7)`, not `"7d"`: the rolling preset does not start on an EAT midnight while
+     the series buckets from one, so it returned EIGHT points with a short first bar. */
+  const trends = await dailyKpiSeries(lastEatDays(7)).catch(() => ({ ggr: [], ngr: [], active: [] }));
   const spark = (s: number[]) => (s.some((v) => v !== 0) ? s : undefined);
 
   // Recent BET / WALLET events.
@@ -142,7 +155,9 @@ async function AdminLiveContent() {
 
         {/* Live flow + bet feed */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
-          <AdminCard title="24-hour money flow · TZS net per hour" sw="Mtiririko">
+          {/* ⛔ The bucket width is RENDERED from the window, not typed into the title — the class
+            just repaired on /admin/finance, where three cards named windows they never plotted. */}
+        <AdminCard title={`24-hour money flow · TZS net per ${flowGrain.grain.replace(/^1-/, "").replace("-", " ")}`} sw="Mtiririko">
             <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
           </AdminCard>
           <AdminCard title={`Live bet feed · last ${BET_FEED}`} sw="Madau ya moja kwa moja" action={<a href="/admin/audit?category=BET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all →</a>}>

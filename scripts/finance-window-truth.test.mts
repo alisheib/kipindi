@@ -22,8 +22,8 @@ process.env.TZ = "UTC";
 
 import { db } from "../src/lib/server/store.ts";
 import type { StoredTxn } from "../src/lib/server/store.ts";
-import { providerStackedSeries, bucketGrain } from "../src/lib/server/analytics.ts";
-import { dailyKpiSeries, lastEatDays } from "../src/lib/server/report-money.ts";
+import { providerStackedSeries, bucketGrain, activePlayers } from "../src/lib/server/analytics.ts";
+import { dailyKpiSeries, lastEatDays, moneyForWindow } from "../src/lib/server/report-money.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -132,6 +132,44 @@ ok("28 buckets over 7 days is six-HOURLY, not daily", g7.grain === "6-hour", g7.
 ok("…which is exactly why '28-day daily series' was false on the default window", g7.buckets === 28);
 const g28 = bucketGrain(NOW - 28 * DAY, NOW, 28);
 ok("28 buckets over 28 days really is daily", g28.grain === "daily", g28.grain);
+
+console.log("\n── 5 · An 'active player' is one whose money actually MOVED ──");
+/* `summarise()` filtered every money figure to CONFIRMED and then counted active players over
+   the UNFILTERED rows — so a declined deposit made someone active. Both halves are asserted from
+   the SAME window so the negative cannot pass by looking at nothing. */
+{
+  const W = Date.UTC(2027, 5, 1);
+  const w = { start: W, end: W + DAY };
+  const before = (await moneyForWindow(w.start, w.end)).activePlayers;
+
+  // A player whose ONLY transaction in the window FAILED. Money never moved.
+  await db.txn.create(txn("ap_failed", W + 3600_000, {
+    userId: "usr_ap_failed", type: "DEPOSIT", status: "FAILED", amount: 250_000,
+  }));
+  const afterFailed = (await moneyForWindow(w.start, w.end)).activePlayers;
+  ok("a FAILED-only player does not become active",
+    afterFailed === before, `${before} → ${afterFailed}`);
+
+  // CONTROL, from the same query: a CONFIRMED transaction MUST move it by exactly one.
+  await db.txn.create(txn("ap_ok", W + 7200_000, {
+    userId: "usr_ap_ok", type: "DEPOSIT", status: "CONFIRMED", amount: 10_000,
+  }));
+  const afterOk = (await moneyForWindow(w.start, w.end)).activePlayers;
+  ok("CONTROL · a CONFIRMED player moves it by exactly one",
+    afterOk === afterFailed + 1, `${afterFailed} → ${afterOk}`);
+
+  /* ⭐ THE DELTA. This is what the shipped code counted — every status — and it must DISAGREE
+     with the figure above, or §5 is measuring nothing. */
+  const all = await db.txn.listInRange(w.start, w.end);
+  const oldWay = new Set(all.map((t) => t.userId)).size;
+  ok("CONTROL · the all-status count that shipped really is higher",
+    oldWay === afterOk + 1, `all-status ${oldWay} vs confirmed ${afterOk}`);
+
+  // `analytics.activePlayers` must not be a second opinion.
+  const viaAnalytics = await activePlayers(w);
+  ok("analytics.activePlayers agrees with summarise, because it delegates to it",
+    viaAnalytics === afterOk, `analytics ${viaAnalytics} vs summarise ${afterOk}`);
+}
 
 console.log(`\nfinance-window-truth: ${pass} passed, ${fail} failed`);
 process.exitCode = fail === 0 ? 0 : 1;

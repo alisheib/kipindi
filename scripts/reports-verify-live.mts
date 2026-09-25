@@ -82,15 +82,39 @@ for (const [id, entry] of Object.entries(REPORT_CATALOGUE)) {
 
   // ── Per-report numeric invariants ──
   if (id === "daily-ops") {
-    const g = num(report.summary?.find((s) => /gross gaming/i.test(s.label))?.value);
-    const tra = num(report.summary?.find((s) => /TRA/i.test(s.label))?.value);
-    const gbt = num(report.summary?.find((s) => /GBT/i.test(s.label))?.value);
-    const net = num(report.summary?.find((s) => /net after tax/i.test(s.label))?.value);
-    if (report.summary?.some((s) => /net after tax/i.test(s.label))) {
-      // The document's own arithmetic must close on its face. Before the rounding
-      // fix this could be off by up to 1 TZS on a document stating a tax liability.
+    /**
+     * 🔴 THIS CHECK HAD BEEN VACUOUS SINCE THE DAY IT WAS WRITTEN (REP-01, filed 2026-09-02,
+     * still open until now). It looked the GGR figure up with `/gross gaming/i` — but the
+     * summary's label is `"GGR (TZS)"`, which contains neither word. `find` returned undefined,
+     * `num(undefined)` returned 0, and the assertion reduced to `|net − (0 − tra − gbt)| < 1`:
+     * it PASSED silently on every day where net happened to be 0, and would have FALSE-FAILED
+     * the moment real money made it non-zero. The only numeric guard on a document that states
+     * a tax liability was, in effect, asserting nothing.
+     * ⛔ SO THE LABEL LOOKUP NOW HAS A CONTROL. Matching a label that no longer exists must be a
+     * LOUD failure, never a silent zero — that is the whole defect, and a wider regex without a
+     * found-check would simply re-arm it for the next rename.
+     */
+    const pick = (re: RegExp) => report.summary?.find((s) => re.test(s.label));
+    const ggrItem = pick(/^GGR\b|gross gaming/i);
+    check("CONTROL · the GGR summary label was actually FOUND (REP-01)", ggrItem !== undefined,
+      `labels: ${(report.summary ?? []).map((s) => s.label).join(" | ")}`);
+
+    const netItem = pick(/net after tax/i);
+    if (netItem && ggrItem) {
+      const g = num(ggrItem.value);
+      const tra = num(pick(/^TRA\b/i)?.value);
+      const gbt = num(pick(/^GBT\b/i)?.value);
+      const net = num(netItem.value);
+      // The document's own arithmetic must close on its face — it states a tax liability.
       check("net after tax == GGR − TRA − GBT (as printed)", Math.abs(net - (g - tra - gbt)) < 1,
-        `printed net=${net}, derived=${g - tra - gbt}`);
+        `printed net=${net}, derived=${g - tra - gbt} (ggr=${g} tra=${tra} gbt=${gbt})`);
+    } else {
+      /* ⭐ OMISSION IS A VALID STATE, AND IT IS CHECKED RATHER THAN SKIPPED. The levy lines are
+         dropped wholesale when the ledger cannot be read — never printed as 0 — so their absence
+         must be ALL-OR-NOTHING. A document showing TRA but no net is a half-stated liability. */
+      const anyLevy = pick(/^TRA\b/i) || pick(/^GBT\b/i);
+      check("levy lines are omitted together, or not at all", !anyLevy,
+        anyLevy ? `found "${anyLevy.label}" with no "Net after tax" beside it` : "all omitted (ledger unreadable)");
     }
     check("period names EAT", /EAT/i.test(report.meta?.period ?? ""), report.meta?.period);
   }

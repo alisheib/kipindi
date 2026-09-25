@@ -81,16 +81,79 @@ console.log("\n── 2 · Every reported figure is unchanged ──────
 
 const { moneyForWindow } = await import("../src/lib/server/report-money.ts");
 
-/** `summarise` is not exported; reproduce the comparison through the public function by
- *  feeding it the same rows two ways. */
+/**
+ * 🔴 THIS SECTION CERTIFIED TWELVE FIGURES BY COMPARING EACH ONE TO ITSELF.
+ * It read: `const viaSql = await moneyForWindow(start, end);` then
+ * `const viaJs = await moneyForWindow(start, end);` — the SAME CALL, twice — and looped
+ * `viaSql[k] === viaJs[k]`. Every assertion was `x === x`. It printed "✓ ggr matches",
+ * "✓ activePlayers matches" and ten more, and could not have failed for any input, any
+ * implementation or any regression. Its own comment said "feeding it the same rows two ways";
+ * the code fed them the same way once. Two spec documents cite this section as the thing that
+ * holds `MoneySummary`, and one of them asserts "its two calls are separate", which was false.
+ *
+ * ⭐ THE REFERENCE IS NOW AN INDEPENDENT DERIVATION — a deliberate SECOND implementation over
+ * the fixture rows, in this file, filtered in JS. That is the whole point of a parity suite: if
+ * the module and the re-derivation agree, the figure is real; if the module is rewritten, only
+ * one side moves. ⛔ It must never be refactored to call `moneyForWindow` again.
+ */
+/* ⛔ SEEDED HERE, AFTER §1, AND DELIBERATELY NOT CONFIRMED. §1 asserts window BOUNDARIES and is
+   left untouched; §2 needs at least one non-CONFIRMED row inside the window or its
+   `activePlayers` assertion is satisfied by a fixture that cannot tell the two definitions
+   apart — the same "fixture in the one shape that cannot fail" the rest of this file avoids by
+   seeding rows exactly on the boundary instants. §2b asserts this row is doing its job. */
+await db.txn.create(txn("declined", T0 + 6 * DAY, { status: "FAILED", type: "DEPOSIT", amount: 250_000 }));
+
+const inWin = (await db.txn.listAll()).filter((t) => {
+  const at = new Date(t.createdAt).getTime();
+  return at >= start && at < end;
+});
+const conf = inWin.filter((t) => t.status === "CONFIRMED");
+const sum = (rows: StoredTxn[], f: (t: StoredTxn) => number) => rows.reduce((s, t) => s + f(t), 0);
+const ofType = (...types: string[]) => conf.filter((t) => types.includes(t.type));
+const abs = (t: StoredTxn) => Math.abs(t.amount);
+
+const stakes = sum(ofType("BET_PLACED"), abs);
+const payouts = sum(ofType("BET_PAYOUT", "CASHOUT"), abs);
+const refunds = sum(ofType("BET_REFUND"), abs);
+const bonusCost = sum(ofType("BONUS_CREDIT"), abs);
+const agentCommissionCost =
+  sum(ofType("AGENT_COMMISSION"), abs) - sum(ofType("AGENT_COMMISSION_REVERSAL"), abs);
+const fees = sum(ofType("DEPOSIT", "WITHDRAWAL"), (t) => t.fee || 0);
+const depositRows = ofType("DEPOSIT");
+const withdrawalRows = ofType("WITHDRAWAL");
+const ggrRef = stakes - payouts - refunds;
+
 const viaSql = await moneyForWindow(start, end);
-// Reference: summarise the legacy row set by calling moneyForWindow over a window that
-// contains exactly those rows and nothing else — bounds proven identical above.
-const viaJs = await moneyForWindow(start, end);
+const viaJs: typeof viaSql = {
+  stakes, payouts, refunds,
+  ggr: ggrRef,
+  bonusCost, agentCommissionCost, fees,
+  ngr: ggrRef - bonusCost - agentCommissionCost - fees,
+  holdPct: stakes > 0 ? (ggrRef / stakes) * 100 : 0,
+  deposits: sum(depositRows, (t) => t.amount),
+  depositCount: depositRows.length,
+  withdrawals: sum(withdrawalRows, abs),
+  withdrawalCount: withdrawalRows.length,
+  /* ⛔ CONFIRMED ONLY — the rule `summarise` now states. Deriving it from `inWin` instead is
+     precisely the defect this field had, and §2b below proves the two differ. */
+  activePlayers: new Set(conf.map((t) => t.userId)).size,
+};
+
+ok("CONTROL · the reference derivation actually saw the fixture",
+  inWin.length > 0 && conf.length > 0, `${conf.length} confirmed of ${inWin.length} in window`);
 
 for (const k of Object.keys(viaSql) as Array<keyof typeof viaSql>) {
-  ok(`${k} matches`, viaSql[k] === viaJs[k], `${String(viaSql[k])}`);
+  ok(`${k} matches`, viaSql[k] === viaJs[k], `sql=${String(viaSql[k])} ref=${String(viaJs[k])}`);
 }
+
+console.log("\n── 2b · …and the comparison can actually FAIL ──────────────────");
+/* ⭐ A RED CONTROL FOR THE SECTION ITSELF. If §2's reference were ever collapsed back into a
+   second `moneyForWindow` call, these two would be equal and this assertion would go red —
+   which is exactly the alarm that was missing for as long as the section was vacuous. */
+const activeAllStatus = new Set(inWin.map((t) => t.userId)).size;
+ok("the all-status count and the CONFIRMED count are genuinely different numbers here",
+  activeAllStatus !== viaJs.activePlayers,
+  `all-status=${activeAllStatus} vs confirmed=${viaJs.activePlayers} — if these are equal the fixture lost its non-CONFIRMED rows and §2's activePlayers assertion proves nothing`);
 
 console.log("\n── 3 · Per-user reads no longer walk the whole table ───────────");
 

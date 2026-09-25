@@ -288,19 +288,28 @@ export function DateTimeRangeFilter({
             "rounded-lg border border-border bg-bg-inset p-3",
             /* ⛔ `right-0`, NOT `left-0`. Every overlay caller renders inside `AdminPageHead`'s
                actions slot, which sits at the RIGHT edge of the header — anchoring the panel's
-               left edge there would push a 600px card straight off the viewport. Anchored right
+               left edge there would push a 460px card straight off the viewport. Anchored right
                it opens inward. The width is capped to the viewport (minus the page gutter) so it
                still fits a 360px phone, where the header has wrapped and the slot is full-width.
                ⚠️ z-30 sits above page content (z-10/z-20 in this kit) and below the sticky nav
                layer (z-40/z-50) — an open window picker must not cover the console's own chrome.
-               🔴 THE WIDTH IS 600, NOT 520, AND IT WAS MEASURED. At 520 the two-column grid left
-               the date field ~115px against the ~145px that "18 / 09 / 2026" plus the calendar
-               trigger actually needs, so the YEAR WAS CLIPPED at 768 and 1280 — a date picker
-               that cannot show its own date. Below `sm` the grid is one column and the field had
-               room all along, which is why the defect only ever appeared on the wide layouts.
+               🔴 WIDTH WAS THE WRONG LEVER, AND CHASING IT BROKE SOMETHING ELSE. 520 clipped the
+               YEAR. 600 made the segment strip fit exactly — and the field was still visibly
+               cropped, because a strip fitting is not a FIELD fitting: the box is
+               `overflow-hidden`, the strip is `flex-1` (it will not shrink below its min-content)
+               and the calendar trigger is `shrink-0`, so the part that gets sliced is the
+               TRIGGER. The owner saw the clipped calendar glyph a strip-only assertion had
+               certified as fine. Then 660 fixed 1280, still clipped 360, and pushed the panel
+               23.7px OFF THE LEFT EDGE at 768 — a new defect bought with the old one.
+               ⭐ MEASURED, THE ARITHMETIC NEVER CLOSES SIDE BY SIDE: the field needs ~187px
+               (148 strip + 39 trigger) and a two-up row inside a panel narrow enough to fit a
+               768 viewport can only give it ~174. So the date and the time stop sharing a row.
+               Stacked, each column needs 187 instead of 305, the panel is 460 rather than 660,
+               and every width has headroom — including 360, where the viewport cap bites and no
+               amount of panel width could ever have helped.
                The probe now asserts the segments fit rather than trusting this number. */
             panel === "overlay" &&
-              "absolute right-0 top-full z-30 mt-2 w-[min(600px,calc(100vw-2rem))] shadow-lg",
+              "absolute right-0 top-full z-30 mt-2 w-[min(460px,calc(100vw-2rem))] shadow-lg",
           )}
         >
           {/* 🔴 `items-center` PUT THE TWO FIELDS ON DIFFERENT BASELINES, AND IT WAS THE ONE
@@ -317,15 +326,21 @@ export function DateTimeRangeFilter({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <div className="mb-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.common.rangeFrom}</div>
-              <div className="flex items-start gap-1.5">
-                <div className="min-w-0 flex-1"><DateSelect size="sm" max={todayIso} value={fromDate} onChange={setFromDate} /></div>
+              {/* ⛔ STACKED, NOT SIDE BY SIDE — see the panel-width note above. A date field needs
+                  ~187px (a 148px segment strip plus a 39px calendar trigger) and it is
+                  `overflow-hidden`, so anything it does not get is taken off the TRIGGER. Sharing
+                  a row with the 112px TimeSelect inside a panel narrow enough for a 768 viewport
+                  left it ~174px, and at 360 the viewport cap made side-by-side impossible at any
+                  panel width. Stacking is the only arrangement that fits every breakpoint. */}
+              <div className="flex flex-col gap-1.5">
+                <DateSelect size="sm" max={todayIso} value={fromDate} onChange={setFromDate} />
                 <TimeSelect size="sm" value={fromTime} onChange={setFromTime} aria-label={`${t.common.rangeFrom} ${t.common.time24}`} />
               </div>
             </div>
             <div>
               <div className="mb-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.common.rangeTo}</div>
-              <div className="flex items-start gap-1.5">
-                <div className="min-w-0 flex-1"><DateSelect size="sm" max={todayIso} value={toDate} onChange={setToDate} /></div>
+              <div className="flex flex-col gap-1.5">
+                <DateSelect size="sm" max={todayIso} value={toDate} onChange={setToDate} />
                 <TimeSelect size="sm" value={toTime} onChange={setToTime} aria-label={`${t.common.rangeTo} ${t.common.time24}`} />
               </div>
             </div>
