@@ -388,20 +388,18 @@ export default async function InvitePage({
             privacy mask that covers every other personal figure in the product.
             `tone="gold"` stays FLAT rather than `struck` — M3's struck gilt is a
             separate, visible decision and is not smuggled in by a consolidation. */}
-        {(
-          <Stat
-            size="3xl"
-            labelStyle="strong"
-            boxed="glass"
-            tone="gold"
-            money
-            label={t.proposals.earned}
-            value={formatNumber(s.earnedTzs)}
-            hint="TZS"
-            icon={<I.coins s={14} />}
-            iconAlign="end"
-          />
-        )}
+        <Stat
+          size="3xl"
+          labelStyle="strong"
+          boxed="glass"
+          tone="gold"
+          money
+          label={t.proposals.earned}
+          value={formatNumber(s.earnedTzs)}
+          hint="TZS"
+          icon={<I.coins s={14} />}
+          iconAlign="end"
+        />
       </div>
       )}
 
