@@ -49,9 +49,10 @@ export type BookSource = "ledger" | "rail";
  * 🔴 **`all` IS THE POPULATION; THE NAMED FIELDS ARE A CONVENIENCE OVER IT.** The reader takes
  * `account LIKE 'HOUSE:%'` as a GROUP, exactly as `ledger.ts → houseAccountBalances()` does.
  * Enumerating four accounts by name was the shipped defect: `acct` also mints `HOUSE:RG_SUSPENSE`
- * (money we hold and owe a self-excluded player), and the retired `HOUSE:TAX` / `HOUSE:RESERVE`
- * still carry historical rows. A named read silently drops every shilling on an account it has
- * not heard of, and the page then disagrees with `/admin/finance` with no error anywhere.
+ * (money we hold and owe a self-excluded player), `HOUSE:TAX` is LIVE (statutory tax owed to the
+ * state — see `tax` below), and the retired `HOUSE:RESERVE` still carries historical rows. A
+ * named read silently drops every shilling on an account it has not heard of, and the page then
+ * disagrees with `/admin/finance` with no error anywhere.
  * ⛔ The page renders every non-zero entry of `all`, not just the four below.
  */
 export type HouseAccounts = {
