@@ -1389,11 +1389,13 @@ export const dict = {
       friendsJoined: "Friends joined",
       yourFriends: "Your friends",
       noFriendsYet: "No friends yet",
-      noFriendsBody: "Share your link to invite your first friend.",
-      inviteStepShare: "Share your link",
-      inviteStepJoin: "Your friend signs up on it",
-      inviteStepCounted: "They appear in your list",
-      inviteNoRewardNote: "Inviting is sharing, not earning — 50pick pays no reward for invites. 18+.",
+      noFriendsBody: "Send your link to someone who would enjoy the game.",
+      /* ⛔ `inviteStepShare` / `inviteStepJoin` / `inviteStepCounted` ARE DELETED, not reworded. They
+         were a three-step "how it works" panel sitting between the link and the list — "Share your
+         link · They sign up · They appear in your list" — which restated the two things already on
+         screen either side of it. A ladder whose steps describe the surrounding page is padding,
+         and its third step existed only so the ladder had three. */
+      inviteNoRewardNote: "50pick pays no reward for invites. 18+.",
       /** ⛔ Shown ONLY when the list is genuinely shorter than the count — a stated page, never a
        *  silent truncation. `{shown}` and `{total}` are filled from the read model. */
       inviteListCapped: "Showing your {shown} most recent friends of {total}.",
@@ -3816,11 +3818,8 @@ export const dict = {
       friendsJoined: "Marafiki waliojiunga",
       yourFriends: "Marafiki zako",
       noFriendsYet: "Bado hakuna rafiki",
-      noFriendsBody: "Shiriki kiungo chako umwalike rafiki wako wa kwanza.",
-      inviteStepShare: "Shiriki kiungo chako",
-      inviteStepJoin: "Rafiki yako anajisajili kupitia kiungo hicho",
-      inviteStepCounted: "Anaonekana kwenye orodha yako",
-      inviteNoRewardNote: "Kualika ni kushiriki, si kupata pesa — 50pick hailipi zawadi kwa mialiko. Miaka 18+.",
+      noFriendsBody: "Tuma kiungo chako kwa mtu ambaye mchezo utampendeza.",
+      inviteNoRewardNote: "50pick hailipi zawadi kwa mialiko. Miaka 18+.",
       inviteListCapped: "Unaona marafiki {shown} wa hivi karibuni kati ya {total}.",
       myAccount: "Akaunti yangu", myAccountSub: "Shughuli · Hamisha · Funga",
       responsibleGambling: "Vikomo", responsibleGamblingSub: "Mipaka · Kujitenga",
@@ -5989,11 +5988,8 @@ export const dict = {
       friendsJoined: "已加入的朋友",
       yourFriends: "你的朋友",
       noFriendsYet: "还没有朋友加入",
-      noFriendsBody: "分享你的链接，邀请第一位朋友。",
-      inviteStepShare: "分享你的链接",
-      inviteStepJoin: "朋友通过链接注册",
-      inviteStepCounted: "他们出现在你的列表中",
-      inviteNoRewardNote: "邀请只是分享，不是赚钱 — 50pick 不为邀请支付任何奖励。18+。",
+      noFriendsBody: "把你的链接发给可能喜欢这个游戏的人。",
+      inviteNoRewardNote: "50pick 不为邀请支付任何奖励。18+。",
       inviteListCapped: "显示最近的 {shown} 位好友，共 {total} 位。",
       myAccount: "我的账户", myAccountSub: "活动 · 导出 · 关闭",
       responsibleGambling: "负责任博彩", responsibleGamblingSub: "限额 · 自我排除",
