@@ -123,7 +123,8 @@ Nothing here blocks betting.
 - ✅ **(b) is done:** the why-panel's `removed` guard lives in `AccountWhyPanel` and is RENDERED by 1.435b with a live
   answer (the one input where it alone stands); the door's own refusal is a new 1.541 case. Each has a mutation.
 
-**a) The full mutation fleets.** Console and engine were last driven WHOLE at `79c2962d` (2026-09-23: 305/305,
+**a) The full mutation fleets — ⏳ RUNNING since 2026-09-26 22:56 UTC on `754a7fe3`** (see §5). Console and engine
+were last driven WHOLE at `79c2962d` (2026-09-23: 305/305,
 65/65); they have grown to 340/80 since, and money+seam (63) and c5 (97) have no whole-fleet record. Per-mutation
 time is not measured here. Drive in slices under 3 hours (`--only <prefix,…>`), each under the lock, each into its
 own log, **never through a pipe**:
@@ -306,7 +307,21 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
 
 ## 5 · Handover log
 
-- **2026-09-25/26 overnight · Ali-Blade15.** Fast-forwarded `bot-flow-seal` to `origin/main` (308 behind). Read
-  production; found the switch date wrong and the system's own switch-off. Rewrote this file and put it to five
-  refuters, who found the ledger's settlement defect and the blind 1.368 exemption. Next: fix those three, then
-  §0b a → f.
+- **2026-09-25/26 overnight · Ali-Blade15 — everything below is on `main` and live unless marked.**
+  - Read production (read-only session): the switch has been ON since **2026-09-24 21:56:11 EAT**, not 09-21; the
+    system's own 21:52:26 switch-off was `GLOBAL_LOSS_STOP`. This file rewritten from that read and put to five
+    refuters (`f87be054`).
+  - 🔴 Fixed and LIVE (`6427ef64`): Opening/Closing bracketed the settlement on 598 of 694 live rows; 1.368's D3 guard
+    was vacuous twice; `reports-mem` was red on main (another lane's `"today"` deletion). (b) done: the why-panel
+    guard is rendered by 1.435b. Console floor 854/613; 6 new/re-aimed mutations 6/6 caught.
+  - (d) The House P&L plan is written (`608d292c`, `HOUSE-PNL-PLAN.md`) — 11 choices for Ali, nothing built.
+  - (c) The 1280 ledger measured on a served desk (table in §0b c) and put to Ali.
+  - The stale sweep (`c6b5e0fb`): 26 spent papers deleted, the survivors corrected, reviewed twice; the officers'
+    guide regenerated (Void, and the ledger row). Two reds other lanes put on `main` were closed: surfaces 2.ids.1 by
+    the finance lane after we told them, and reports 0.260.1 by classifying the marketing lane's new audit reader
+    (`467282dd`). `main` = `754a7fe3`.
+  - ⏳ **RUNNING (a):** the four fleets WHOLE on `754a7fe3` in `C:/kipindi-hb-red` (detached; its `node_modules` is a
+    junction — `cmd /c rmdir C:\kipindi-hb-red\node_modules` BEFORE `git worktree remove`), in slices under the
+    lock. Record the totals in §0b a and `docs/HOUSE-BOTS.md` §12.5 when they finish; a MISSED is a real gap.
+  - **For Ali:** the P&L choices (d), the 1280 column (c), ISO ruling 501 (g), who may open the desk (h), the
+    account-finder list (i), and the unconfirmed "half-configured account" decision in `docs/HOUSE-BOTS.md` §5.4.
