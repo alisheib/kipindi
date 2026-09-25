@@ -737,7 +737,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 {r.accountIsOperatorText
                                   ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-body-sm text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
                                   : <span className="text-body-sm text-text-tertiary">{r.accountName}</span>}
-                                <Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip>
+                                <Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip>
                               </div>
                               {r.accountHandle && <div className="font-mono text-caption text-text-subtle">{r.accountHandle}</div>}
                               {/* The market's own door, named where the row stored a title and still offered where
@@ -828,7 +828,12 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                   mentions times is neither, and `{r.when}` above keeps the inherited nowrap that protects it. */}
                               {r.due !== null && <span className="block text-caption text-text-tertiary whitespace-normal">{r.due}</span>}
                             </td>
-                            <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
+                            {/* ⭐ THE FURTHEST-ALONG TRUTH ABOUT THIS ROW, IN ONE CHIP (owner, 2026-09-25). "Placed" is the
+                                INTENT's story and it stops the moment the money is on the table; once the position has
+                                ended the officer wants the next fact, so the same chip becomes Won / Lost / Void.
+                                ⛔ ONE CHIP, NOT TWO — a second badge beside the first is how two states come to
+                                disagree about one row. A stake still running has no result and keeps "Placed". */}
+                            <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip></td>
                             <td className="hidden sm:table-cell p-3 text-text">{r.typeWord}</td>
                             <td className="hidden sm:table-cell p-3 text-text-secondary">{r.productWord}</td>
                             {/* The same cell as the account page's Activity tab, and it must stay the same:

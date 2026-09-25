@@ -664,7 +664,7 @@ async function AdminDeskAccountContent({
                                     <span data-operator-text="marketTitle">{r.marketName}</span>
                                   </Link>
                                 )}
-                                <Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip>
+                                <Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip>
                               </div>
                               {/* ⛔ A DEFINITION LIST, because that is what these are: a label and the figure it
                                   names. The money keeps `.amount` and `tabular`, so a phone reads the same atoms
@@ -717,7 +717,12 @@ async function AdminDeskAccountContent({
                                 ? <span className="text-text-tertiary">—</span>
                                 : <span className="amount">{r.remaining}</span>}
                             </td>
-                            <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
+                            {/* ⭐ THE FURTHEST-ALONG TRUTH ABOUT THIS ROW, IN ONE CHIP (owner, 2026-09-25). "Placed" is the
+                                INTENT's story and it stops the moment the money is on the table; once the position has
+                                ended the officer wants the next fact, so the same chip becomes Won / Lost / Void.
+                                ⛔ ONE CHIP, NOT TWO — a second badge beside the first is how two states come to
+                                disagree about one row. A stake still running has no result and keeps "Placed". */}
+                            <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip></td>
                             <td className="hidden sm:table-cell p-3 text-text">{r.typeWord}</td>
                             <td className="hidden sm:table-cell p-3 text-text-secondary">{r.productWord}</td>
                             <td className="hidden sm:table-cell p-3 min-w-[22ch] max-w-[34ch]">

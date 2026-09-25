@@ -71,6 +71,7 @@ import { DESIGNATE_COPY, designateHouseBot, reverifyHouseBot, startHouseBot } fr
  * the check card is served by a gated reader rather than by the page. */
 import { houseBotEligibility } from "./house-bot/eligibility";
 import { positionStore } from "./market-dal";
+import type { PositionStatus } from "@/lib/positions/portfolio";
 import { RATE_RULES, rateCheckAsync } from "./rate-limit";
 import { getGlobalConfig } from "./market-config";
 import { displayLabel } from "@/lib/display-label";
@@ -3529,6 +3530,30 @@ const CONSOLE_INTENT_STATUS = {
   CANCELLED: { word: "Cancelled", chip: TONE_CHIP.claret },
 } as const satisfies Record<IntentStatus, { word: string; chip: StatusChipVariant }>;
 
+/**
+ * ⭐ HOW THE STAKE ACTUALLY ENDED — won, lost or voided (owner, 2026-09-25).
+ *
+ * The Outcome chip said whether the ENGINE got the stake down ("Placed"), which is the intent's own story and
+ * stops the moment the money is on the table. An officer watching a desk wants the next fact: did it come back.
+ * ⛔ IT IS A STATE, NOT A RESULT FIGURE, AND THAT IS WHY NO RULING MOVED. Ruling 266 confines console MONEY to
+ * usage against a configured limit — which is what struck the roster's "Today net" — and this map carries no
+ * money at all. The owner was offered the amount beside it, was shown that it would need 266 and 361 amended,
+ * and chose the word alone.
+ * ⛔ TOTAL OVER `PositionStatus`, so a sixth status cannot arrive without copy — `tsc` refuses it, which is the
+ * same construction `CONSOLE_INTENT_STATUS` above uses and for the same reason.
+ * ⚠️ `OPEN` DELIBERATELY ANSWERS NOTHING. A stake still running has no outcome yet, and the intent's own
+ * "Placed" already says the money is on the table — inventing a second word for one fact is how two chips come
+ * to disagree. ⚠️ `CASHED_OUT` cannot happen on a house position (`market-service.ts` refuses it) and is mapped
+ * anyway, because a map that is total only for the cases we expect is not total.
+ */
+const CONSOLE_POSITION_RESULT: Readonly<Record<PositionStatus, { word: string; chip: StatusChipVariant } | null>> = {
+  OPEN: null,
+  WIN: { word: "Won", chip: TONE_CHIP.green },
+  LOSS: { word: "Lost", chip: TONE_CHIP.rose },
+  VOID: { word: "Void", chip: TONE_CHIP.slate },
+  CASHED_OUT: { word: "Cashed out", chip: TONE_CHIP.slate },
+};
+
 /** One product line, in the platform's own screen words — the same two `/admin/house` already paints. */
 const CONSOLE_PRODUCT_WORD = {
   MARKET: "Polls",
@@ -3700,6 +3725,14 @@ export type ConsoleFeedRow = {
    * whose transactions could not be read. Never a zero, which would read as "this account is empty".
    */
   remaining: string | null;
+  /**
+   * ⭐ HOW THE STAKE ENDED — "Won", "Lost", "Void" — or `null` while it is still running or was never placed
+   * (owner, 2026-09-25). The Outcome cell paints THIS where it exists and the intent's own word otherwise, so one
+   * chip carries the furthest-along truth about the row instead of two chips disagreeing.
+   * ⛔ A STATE, NEVER A FIGURE: ruling 266 is untouched, and the amount won or lost is deliberately not here.
+   */
+  resultWord: string | null;
+  resultChip: StatusChipVariant | null;
   /** The instant the figure belongs to, as the cell's `title` — so a carried-forward balance says which movement it came from. */
   remainingTitle: string | null;
   statusWord: string;
@@ -4396,7 +4429,46 @@ function remainingCell(t: StoredTxn, atMs: number): FeedLeftCell {
   };
 }
 
-function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number, left: (row: StoredHouseBotIntent) => FeedLeftCell | null, remaining: (row: StoredHouseBotIntent) => FeedLeftCell | null): ConsoleFeedRow {
+/**
+ * ⭐ THE OUTCOME OF EACH STAKE, from the POSITION rather than from the money (owner, 2026-09-25).
+ *
+ * ⛔ IT CANNOT BE INFERRED FROM THE TRANSACTIONS THIS READER ALREADY HAS, and that is measured, not assumed: on
+ * production a WIN carries a `BET_PAYOUT` (42 of 42) and a VOID a `BET_REFUND` (428 of 428), but a LOSS pays
+ * nothing and writes NO transaction at all (0 of 62). "No money came back" is therefore LOST and STILL RUNNING at
+ * the same time, and a column that guessed between them would call an open stake a loss. The position's own
+ * status is the only thing that distinguishes them.
+ * ⚠️ BOUNDED BY THE PAGE, by primary key. `PositionStore` has `get(id)` and `values()`, and `values()` is a full
+ * scan this module may not run on a render — so it is one point read per placed row on the page, at most twenty,
+ * settled together. A row whose position could not be read answers NOTHING rather than a guess (355).
+ */
+/**
+ * The page's own positions, by primary key — at most one read per placed row, settled together, and never
+ * `values()`, which is a full scan this module may not run on a render. A position that could not be read is
+ * simply absent, so its row answers NOTHING rather than a guessed outcome (355).
+ */
+async function feedPositionStatuses(rows: readonly StoredHouseBotIntent[]): Promise<Map<string, PositionStatus>> {
+  const ids = [...new Set(rows.map((r) => r.positionId).filter((v): v is string => v != null))];
+  const out = new Map<string, PositionStatus>();
+  if (ids.length === 0) return out;
+  const reads = await Promise.allSettled(ids.map((id) => positionStore.get(id)));
+  reads.forEach((r, k) => {
+    if (r.status === "fulfilled" && r.value != null) out.set(ids[k], r.value.status as PositionStatus);
+  });
+  return out;
+}
+
+function feedResultLookup(
+  byPosition: Map<string, PositionStatus> | null,
+): (row: StoredHouseBotIntent) => { word: string; chip: StatusChipVariant } | null {
+  if (byPosition == null) return () => null;
+  return (row) => {
+    if (row.positionId == null) return null;
+    const st = byPosition.get(row.positionId);
+    return st == null ? null : CONSOLE_POSITION_RESULT[st];
+  };
+}
+
+function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs: number, left: (row: StoredHouseBotIntent) => FeedLeftCell | null, remaining: (row: StoredHouseBotIntent) => FeedLeftCell | null, result: (row: StoredHouseBotIntent) => { word: string; chip: StatusChipVariant } | null): ConsoleFeedRow {
   const at = Date.parse(i.createdAt);
   /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
      instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
@@ -4413,6 +4485,8 @@ function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs:
     leftTodayTitle: left(i)?.title ?? null,
     /* ⛔ LOOKED UP, NEVER COMPUTED HERE, for the same reason as the budget beside it: this function sees ONE row
        and a balance is a property of the wallet's whole movement history. */
+    resultWord: result(i)?.word ?? null,
+    resultChip: result(i)?.chip ?? null,
     remaining: remaining(i)?.text ?? null,
     remainingTitle: remaining(i)?.title ?? null,
     statusWord: status.word,
@@ -5286,8 +5360,9 @@ export async function houseDetailForConsole(
      rather than somebody else's balance. */
   const txnScan = txnScanR.status === "fulfilled" ? txnScanR.value : null;
   const remaining = feedRemainingLookup(txnScan == null ? null : new Map([[bot.userId, txnScan]]));
+  const result = feedResultLookup(feedPageRows == null ? null : await feedPositionStatuses(feedPageRows.rows));
   const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday, remaining));
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday, remaining, result));
 
   const historyTotal = wantHistory && historyCountR.status === "fulfilled" ? historyCountR.value : null;
   let historyPageRows = wantHistory && historyR.status === "fulfilled" ? historyR.value : null;
@@ -6171,8 +6246,9 @@ export async function houseFeedForConsole(
   const txnByUser = new Map<string, readonly StoredTxn[]>();
   txnReads.forEach((r, k) => { if (r.status === "fulfilled") txnByUser.set(deskHolders[k], r.value); });
   const remaining = feedRemainingLookup(deskHolders.length === 0 ? null : txnByUser);
+  const result = feedResultLookup(rows == null ? null : await feedPositionStatuses(rows.rows));
   const feed: ConsoleDeskFeedRow[] | null = rows == null ? null : rows.rows.map((i) => ({
-    ...consoleFeedRow(i, q.intentId, Date.now(), leftToday, remaining),
+    ...consoleFeedRow(i, q.intentId, Date.now(), leftToday, remaining, result),
     ...consoleAccountCell(byId, i.houseBotId),
     accountHref: consoleBotHref(i.houseBotId),
     /* ⛔ ONE POPULATION FOR THE BADGE AND FOR THE CONTROL (the `CONSOLE_PENDING_STATUSES` table): a row the badge
