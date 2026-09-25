@@ -274,7 +274,23 @@ export function MarketCard({
   //
   // RULES law 5 is real data or nothing, so the price gate is now the pool.
   const fresh = live && (isNew ?? (volume === 0 && predictors === 0));
-  const noPrice = live && (isNew ?? volume === 0);
+  /* 🔴 D29 · `live &&` WAS HERE, AND IT MADE THE PRICE GATE A QUESTION ABOUT THE PHASE.
+     On a resolved or void card `live` is false, so `noPrice` was false, so the bar drew
+     `yesPct` — and `impliedYesPct` returns a hardcoded 50 for an empty pool. A market that
+     was emergency-voided and refunded every stake showed a serene 50/50 split nobody paid.
+     ⛔ The gate is the POOL, in EVERY state: a market with no pool has no crowd price whether
+     it is live, closed, resolved or void. `fresh` above keeps its `live &&` on purpose — it
+     drives the NEW badge and the sparkline suppression, which are genuinely live-only. */
+  const noPrice = isNew ?? volume === 0;
+  /* ⛔ AND "NO BETS YET" IS A DIFFERENT CLAIM FROM "NO PRICE". `volume` is about NOW; whether
+     anyone ever bet is about HISTORY. `predictorCount` is set at creation and only ever
+     incremented (market-service.ts:717, 1546-1547) — `emergencyVoidMarket` zeroes both pools
+     and never touches it — so this is the only honest test for "nobody ever bet", in any phase.
+     ⭐ Today every absence branch below is reachable only when this is true (a pool is zeroed
+     only by voiding, and that stamps `resolvedOutcome`, which the outcome arm takes first). It
+     is still asserted rather than assumed: if that ever stops holding, the card must fall silent
+     rather than tell a refunded player that nobody bet. */
+  const neverBet = predictors === 0;
   const signal = getSignalBadge(live, yesPct, volume, predictors, timeLeft, fresh, {
     hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping, new: t.common.newBadge,
   });
@@ -357,17 +373,32 @@ export function MarketCard({
           <h3 className="mcardp-q">{title}</h3>
         </div>
         <div className="mcardp-prob">
-          {noPrice ? (
-            // No crowd price — an honest em-dash, never a fabricated 50%.
-            // No "YES" caption either: there is no figure for it to label.
-            // ⚠️ Gated on `noPrice` (empty POOL), not `fresh`: a market whose only
-            // bettor cashed out has volume 0 with predictors 1, and its 50% is the
-            // default, not a price.
-            <div className="mcardp-pct mcardp-pct--empty" aria-label={t.market.noBetsYet}>—</div>
+          {/* 🔴 D29 · THE OUTCOME COMES FIRST, and it used to be gated on `isResolved` — which is
+              `status === "RESOLVED"` and so is FALSE on a VOIDED market. A void therefore fell
+              through to the percentage arm and printed the empty pool's default 50%. Keying on
+              `resolvedOutcome` covers both, and `outcomeWord` already owns the VOID arm in all
+              three languages, so a refunded market names itself instead of claiming a crowd.
+              ⭐ That is also why this fix needs NO new copy: the only state where a pool is empty
+              AND money changed hands is a void, and a void now takes this branch. */}
+          {resolvedOutcome ? (
+            <>
+              <div className="mcardp-pctcap">{t.market.result}</div>
+              <div className="mcardp-pct">{outcomeLabel}</div>
+            </>
+          ) : noPrice ? (
+            /* No crowd price — an honest em-dash, never a fabricated 50%.
+               No "YES" caption either: there is no figure for it to label.
+               ⚠️ Gated on the POOL, not on `fresh` or the phase: a market whose only bettor
+               cashed out has volume 0 with predictors 1, and its 50% is the default, not a price.
+               ⛔ The accessible name is only "no bets yet" when NOBODY EVER BET. Where bets did
+               happen the slot keeps the em-dash and says nothing — a screen reader hearing
+               "no bets yet" on a market that refunded real money is the same false statement
+               this defect is about, moved from the eye to the ear. */
+            <div className="mcardp-pct mcardp-pct--empty" {...(neverBet ? { "aria-label": t.market.noBetsYet } : {})}>—</div>
           ) : (
             <>
-              <div className="mcardp-pctcap">{isResolved ? t.market.result : sideWord(t, "YES", productLine)}</div>
-              <div className="mcardp-pct">{isResolved ? (outcomeLabel ?? "—") : <>{yesPct}<span className="u">%</span></>}</div>
+              <div className="mcardp-pctcap">{sideWord(t, "YES", productLine)}</div>
+              <div className="mcardp-pct">{yesPct}<span className="u">%</span></div>
             </>
           )}
         </div>
@@ -383,8 +414,14 @@ export function MarketCard({
 
       {/* `noPrice`, not `fresh` — a centred bar on an empty pool reads as "contested",
           which is a claim about a crowd that is not there. */}
-      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice} emptyLabel={t.market.noBetsYet} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
-      {noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
+      {/* ⛔ D29 · THE BAR'S LABEL IS THE SAME CLAIM, and it reaches a screen reader as the empty
+          rail's accessible NAME (brand.tsx:296). So it is named by what is actually KNOWN: the
+          outcome where there is one — `outcomeWord` owns VOID in all three languages — and "no
+          bets yet" only where nobody ever bet. ⛔ NOT `""`: an empty string leaves a
+          `role="progressbar"` with no name at all, which is what a voided card would have got,
+          and a nameless control is not an improvement on a false one. */}
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice} emptyLabel={outcomeLabel ?? t.market.noBetsYet} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
+      {noPrice && neverBet && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
 
       {showSpark && (
         <MicroSpark data={spark!} width={300} height={28} padX={0} padY={4} smooth area stretch

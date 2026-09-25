@@ -175,5 +175,65 @@ check(
   "recentSettlements must apply the same rule the ticker does",
 );
 
+// ---------------------------------------------------------------------------
+// D29 · A TERMINAL CARD MAY NOT PAINT A CROWD PRICE NOBODY PAID.
+//
+// 🔴 The sibling of rule 1 above. That rule says the settled SIDE may never be inferred;
+// this one says the crowd PRICE may never be fabricated. `noPrice` was
+// `live && (isNew ?? volume === 0)` — a question about the PHASE — so on a resolved or void
+// card it was false, and `TippingBar` drew `yesPct`, which `impliedYesPct` returns as a
+// hardcoded 50 for an empty pool. A market that was emergency-voided and refunded every
+// stake showed a serene 50/50 split nobody had paid.
+//
+// ⛔ AND THE OBVIOUS ONE-TOKEN FIX IS A REGRESSION, which is why these checks exist in pairs:
+// deleting `live &&` alone leaves TWO absence claims behind — the price slot's `aria-label`
+// and the bar's own accessible name — both reading "no bets yet" on a market that took real
+// money and refunded it. It also destroyed the outcome readout on resolved cards, because that
+// was gated on `isResolved` while the absence branch came first. The gate is the POOL; the
+// absence claim is about HISTORY; they are different questions and must be asked separately.
+//
+// ⛔ WHY SOURCE AND NOT A LIVE SWEEP: today's board may hold no resolved-empty and no void
+// card for days, so a driver would be green about THIS BOARD and silent about the code
+// (MOBILE-VISUAL-PLAN §0 trap 3). The population here is the one file, always present.
+// ---------------------------------------------------------------------------
+{
+  const card = decomment(readFileSync(join(SRC, "components/markets/market-card.tsx"), "utf8"));
+
+  check("D29 the price gate is the POOL, not the phase",
+    /const noPrice = isNew \?\? volume === 0;/.test(card) && !/const noPrice = live &&/.test(card),
+    "`live && (...)` is the defect verbatim — it shipped until 2026-09-24");
+
+  check("D29 …and 'nobody ever bet' is asked of the predictor count, never of the pool",
+    /const neverBet = predictors === 0;/.test(card),
+    "`volume` is a claim about NOW; whether anyone ever bet is a claim about HISTORY");
+
+  check("D29 the settled outcome is read before any absence branch, so a VOID is not an absence",
+    card.indexOf("{resolvedOutcome ? (") > 0
+    && card.indexOf("{resolvedOutcome ? (") < card.indexOf("mcardp-pct--empty"),
+    "gated on `isResolved` a VOIDED market falls through to the percentage arm — status is VOIDED, not RESOLVED");
+
+  // ⭐ EVERY PLACE THE CLAIM IS MADE, not just the visible one. Two of the three reach a
+  //    screen reader only, which is exactly how the one-token fix looked complete.
+  check("D29 the price slot only NAMES an absence of bets where nobody ever bet",
+    /neverBet \? \{ "aria-label": t\.market\.noBetsYet \} : \{\}/.test(card),
+    "an unconditional aria-label tells a refunded player nobody bet");
+  check("D29 the empty rail is named by what is KNOWN — the outcome, else 'no bets yet'",
+    /emptyLabel=\{outcomeLabel \?\? t\.market\.noBetsYet\}/.test(card),
+    "`\"\"` would leave a role=progressbar with no name at all on every voided card");
+  check("D29 the visible 'no bets yet' caption is gated on the history test too",
+    /\{noPrice && neverBet && <div className="mcardp-nobets">/.test(card),
+    "the caption is the one claim a sighted player can check — it must be true");
+
+  // ⭐ CONTROLS — each matcher shown able to say no, against the pre-fix spelling.
+  check("D29 control · the pre-fix phase gate IS detected",
+    /const noPrice = live &&/.test("  const noPrice = live && (isNew ?? volume === 0);"));
+  check("D29 control · an unconditional aria-label IS detected",
+    !/neverBet \? \{ "aria-label": t\.market\.noBetsYet \} : \{\}/
+      .test('<div className="mcardp-pct mcardp-pct--empty" aria-label={t.market.noBetsYet}>—</div>'));
+  check("D29 control · an ungated caption IS detected",
+    !/\{noPrice && neverBet && <div className="mcardp-nobets">/
+      .test('{noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — scanned ${files.length} ts/tsx files`);
 process.exit(fail === 0 ? 0 : 1);
