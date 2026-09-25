@@ -151,6 +151,27 @@ is a second implementation that will drift.
     K5/K7. `scripts/reports-retest.mjs` — a July orphan that could not pass on today's page — deleted.
   - ⚠️ Left for its owner: `plans/house-bots/01-scenario-register.md` CRA-30 still expects levies =
     rate × GGR (house-bots lane; told).
+- ✅ **VERIFIED ON PRODUCTION, 2026-09-25 (`754a7fe3`).** `verify:reports-live` against the live
+  database: every check passed across all nine reports, one honest SKIP (chain integrity —
+  `AUDIT_CHAIN_SECRET` is an app variable, absent under `railway run --service Postgres`, and the
+  tile then reads UNVERIFIED, which is not evidence). /admin/reports: the "Generation pipeline"
+  card is gone, the GGR/NGR definitions name refunds and agent commission; /admin and
+  /admin/finance at 360/1280: no NaN, no sideways scroll.
+  - 🔴 **AND THE SCREENSHOT CAUGHT WHAT THE CHECKS COULD NOT: the NGR SPARKLINE HAD VANISHED.**
+    `AdminKpi` put the spark (`flex-1`, no floor) and the caption chip on one row, so the truthful —
+    longer — NGR caption took the whole row and shrank the trend line to ZERO width: no clip, no
+    overflow, invisible to every scan. The component now gives the spark a 64px floor and lets the
+    row WRAP (a caption that does not fit drops below the spark). `test:admin-clip` 1.5/1.6, each
+    proven red. ⚠️ The probe that was meant to measure it returned `null` — it never found the
+    tile — and only the photograph showed the defect.
+  - `test:ui-consistency` was RED on main since `24dca6aa`: `finance/loading.tsx` sized six
+    skeleton chips `w-12`, which on this repo's OVERRIDDEN spacing scale is 128px, not 48px. Now
+    `w-[48px]`; the new spark floor is a literal for the same reason.
+  - ⚠️ Two Railway builds (`c928b870`, `6d7561ce`) FAILED on a Google-Fonts fetch for Inter
+    (`next/font/google … Can't resolve '@vercel/turbopack-next/internal/font/google/font'`); the
+    next build of the same code passed. §4's "a transient build failure is not a defect" held —
+    but read the deployment list after every push: a failed build leaves production on the OLD
+    commit with nothing on the site to say so.
 - ❓ **FOR ALI — "Net after tax" on the Daily Operations report** is `GGR − booked TRA − booked
   GBT`: a tax on the settlement FEE subtracted from a TURNOVER figure, so the line mixes two bases.
   Either relabel it ("GGR less levies booked") or base it on the commission booked

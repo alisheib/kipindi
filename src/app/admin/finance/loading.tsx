@@ -28,7 +28,7 @@ export default function Loading() {
         actions={
           <div className="flex items-center gap-1.5" aria-hidden>
             {/* The window rail: eight presets + Custom, at the dense 32px rung. */}
-            {["w-14", "w-20", "w-12", "w-12", "w-12", "w-12", "w-12", "w-12", "w-16"].map((w, i) => (
+            {["w-14", "w-20", "w-[48px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-16"].map((w, i) => (
               <SkChip key={i} className={`h-[32px] ${w}`} />
             ))}
             {/* Excel + PDF, also 32px since 2026-09-25. */}
