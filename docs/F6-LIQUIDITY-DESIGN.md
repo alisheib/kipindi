@@ -297,13 +297,22 @@ These are live today and I did not go looking for them:
    > two-sided + one-sided + voided workload (report TRA/GBT == ledger
    > HOUSE:TRA_LEVY / HOUSE:GBT_LEVY). The rates (10% TRA + 5% GBT = 15% of
    > commission) live in admin config and are the single source of truth.
+   >
+   > ⛔ **CORRECTED 2026-09-25 (Finance Seal):** the equality above was false on production —
+   > GGR is a turnover measure that still holds stakes on open positions, not the fee. Every
+   > report now READS the booked `HOUSE:TRA_LEVY` / `HOUSE:GBT_LEVY` and computes no levy
+   > (`SESSION-PROMPT-FINANCE-SEAL.md` §5).
 
 2. **✅ FIXED (verified against the code 2026-08-08) — `/admin/finance` showed a FABRICATED
    tax number.** It computed `taxAccrued = ggr × 0.05` with a *"placeholder formula"*
    comment and presented it to the owner as real. Today `admin/finance/page.tsx` derives
    the figure from the live admin-config rates on the real commission base and renders
    "—" with *"rates unavailable"* when it cannot — the never-fabricate rule holds; its own
-   comment records the history.
+   comment records the history. ⚠️ **Superseded 2026-09-25:** that "config rates on the
+   commission base" formula was itself wrong (it read ~14× the booked levy on GGR, then 15%
+   low on the net commission). The "Statutory levies" tile now reads `HOUSE:TRA_LEVY` +
+   `HOUSE:GBT_LEVY` movement over the window, applies no rate, and omits the figure when the
+   ledger cannot be read (`SESSION-PROMPT-FINANCE-SEAL.md` §0, §5).
 
 3. **✅ FIXED 2026-07-14 — The cash-out fee is documented as revenue but is not.**
    `market-config.ts` said the cash-out fee was *"booked to the house reserve as

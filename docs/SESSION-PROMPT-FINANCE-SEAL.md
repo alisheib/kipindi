@@ -2,7 +2,9 @@
 
 > **Written to be picked up on ANOTHER MACHINE.** Everything a next session needs is in this
 > file and in git; nothing here depends on the local memory of the machine that wrote it.
-> Branch `finance-seal`, merged to `main` and deployed live on 2026-09-25.
+> Branch `finance-seal` (§1), merged to `main` and deployed live on 2026-09-25; follow-up branch
+> `finance-seal-2` (the §2 strikes below) pushed to `main` step by step the same night, each step
+> verified on production.
 
 ---
 
@@ -108,6 +110,29 @@ is a second implementation that will drift.
   docs and its dangling `periodBounds("today")` pointer corrected.
 - **`reports-verify-live.mts` and `report-renderers-smoke.mjs` are NOT npm-wired**, so they never
   run in `test:all`. They are the only instruments that read real money and the real route.
+- ✅ **STALE-TEXT SWEEP, 2026-09-25** (an adversarial review lane over docs + comments + on-screen
+  copy, every change re-read against the code). The ones a reader actually saw:
+  - the **Daily Operations document** called GGR "the operator's commission" two notes above its
+    own levy note saying it is not;
+  - **/admin/reports** printed `GGR = Stakes − Payouts · NGR = GGR − Bonus − Fees` (both missing a
+    term), a **"Generation pipeline (production)" card** promising HMAC envelopes, SFTP/mTLS upload,
+    on-call alerts and IP/reason logging that do not exist (deleted, with its skeleton), a Monthly
+    card describing a "12-sheet workbook … Signed JSON" the builder never made, and an empty-state
+    promising "a signed receipt the regulator can verify";
+  - the **NGR tiles** on /admin/finance and /admin said "net of bonus + fees" — NGR also nets agent
+    commission; the House-accounts panel now says `HOUSE:COMMISSION` is already net of the levies.
+  - Docs presenting the false "report == ledger" as current truth corrected with dated notes (never
+    rewritten history): `CLAUDE.md` tax section, `FEE-MODEL-DECISION` §3, `F6-LIQUIDITY` §6,
+    `MONEY-GATE-REMEDIATION` (two §3.3 leads, the §7.16 LEAD-F.3 row, and LEAD-F.3's guard claim —
+    it named two guards and neither guards it), `SESSION-PROMPT-HOUSE-LEDGER` glossary, `NEXT-PLAN`,
+    `perfection-plan`, `feature-backlog`, `FLOWS` (a "placeholder formula" row), `MODULE-CERTIFICATION`
+    K5/K7. `scripts/reports-retest.mjs` — a July orphan that could not pass on today's page — deleted.
+  - ⚠️ Left for its owner: `plans/house-bots/01-scenario-register.md` CRA-30 still expects levies =
+    rate × GGR (house-bots lane; told).
+- ❓ **FOR ALI — "Net after tax" on the Daily Operations report** is `GGR − booked TRA − booked
+  GBT`: a tax on the settlement FEE subtracted from a TURNOVER figure, so the line mixes two bases.
+  Either relabel it ("GGR less levies booked") or base it on the commission booked
+  (`HOUSE:COMMISSION` movement). A wording/definition call, not a bug fix — not changed.
 - ⚠️ **Rotate the production DB password.** It was echoed into a session transcript on 2026-09-25.
 
 ---

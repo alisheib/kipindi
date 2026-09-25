@@ -195,7 +195,6 @@
     "referral-proposal-walkthrough.mjs",
     "regulator-audit.mjs",
     "report-renderers-smoke.mjs",
-    "reports-retest.mjs",
     "reports-verify-live.mts",
     "resolver-queue-retest.mjs",
     "resolver-queue-shots.mjs",

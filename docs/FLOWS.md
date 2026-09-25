@@ -120,7 +120,6 @@ For RG (responsible-gambling) gates, the check lives in the **service layer** (`
 | Authed-user bouncer on `/auth/login` and `/auth/register` not active | Low | Prototyped via layout-level guard but destabilised the test suite in Next.js 16 dev mode (hook-count mismatch). Pre-existing `/auth/admin` bouncer has the same dev-mode behaviour. Revisit after a production-build smoke pass confirms the redirect-from-server-component path is stable. |
 | Sportradar match-integrity adapter is a stub | Medium | Labeled "stub adapter" on `/admin` and `/admin/compliance`. Will be wired in the data-feed integration sprint. |
 | Document upload on `/profile/kyc` is stubbed | Medium | Object-storage integration sprint. |
-| Tax accrual on `/admin/finance` uses a placeholder formula | Low | TRA filing module sprint. |
 | Mock payments adapter | High (blocks live) | Selcom / Azampay aggregator contract sprint. |
 
 Every item above is a contract-pending integration — the platform code is ready to receive each adapter via the existing service interface.

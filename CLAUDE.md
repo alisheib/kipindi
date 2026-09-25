@@ -883,11 +883,14 @@ code comment called itself *"naïve"*. It is gone.
 
 Nothing else. If you find yourself adding a deduction to a player's money, stop.
 
-**✅ RESOLVED 2026-07-15 — tax on what we KEEP.** The ledger and the statutory report
-now levy TRA/GBT on the same base: our actual commission. GGR is computed net of
-refunds (`stakes − payouts − refunds`) so a voided/one-sided poll — where we keep
-nothing — is taxed on nothing. Report == ledger, verified end-to-end. Rates live in
-admin config. See `docs/F6-LIQUIDITY-DESIGN.md` §6.1 and the decision doc.
+**✅ RESOLVED 2026-07-15 — tax on what we KEEP; ⚠️ CORRECTED 2026-09-25.** TRA and GBT
+are levied on our settlement FEE (`levySplit`, payout.ts) and BOOKED per settlement to
+`HOUSE:TRA_LEVY` / `HOUSE:GBT_LEVY`. Every report and the /admin/finance tile READ those
+accounts (`ledger.leviesBooked`); nothing multiplies a rate by GGR. GGR
+(`stakes − payouts − refunds`) is a TURNOVER measure — it still holds stakes on open
+positions — NOT our commission and NOT the levy base. ⛔ The "Report == ledger" line that
+used to stand here was false, and it is how the levy was over-stated ~14× on the finance tile.
+Rates live in admin config. Authority: `docs/SESSION-PROMPT-FINANCE-SEAL.md` §5.
 
 ## Gold budget (June 2026 design authority)
 

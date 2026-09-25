@@ -36,8 +36,6 @@ export default function Loading() {
         </div>
         {/* Generation log */}
         <SkTableCard cols={3} rows={6} />
-        {/* Generation pipeline note */}
-        <SkCard lines={2} />
       </SkBody>
     </>
   );
