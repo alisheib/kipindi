@@ -172,10 +172,12 @@ function toStoredMessagingConsent(c: MessagingConsentRow): StoredMessagingConsen
   };
 }
 
-/** Suppression row → StoredSuppression (marketing U6). ⛔ No update, no delete. */
+/** Suppression row → StoredSuppression (marketing U6, lift U8). ⛔ No delete — a lift
+ *  SUPERSEDES the row (`liftedAt`), it never removes it. */
 type SuppressionRow = {
   id: string; channel: string; identifier: string; category: string; reason: string;
   evidence: string | null; recordedBy: string | null; createdAt: Date;
+  liftedAt: Date | null; liftedReason: string | null;
 };
 function toStoredSuppression(s: SuppressionRow): StoredSuppression {
   return {
@@ -187,6 +189,8 @@ function toStoredSuppression(s: SuppressionRow): StoredSuppression {
     evidence: s.evidence,
     recordedBy: s.recordedBy,
     createdAt: iso(s.createdAt),
+    liftedAt: iso(s.liftedAt),
+    liftedReason: s.liftedReason,
   };
 }
 
@@ -3299,13 +3303,21 @@ export const prismaDb = {
     },
   },
 
-  /* ═══ SUPPRESSION (marketing U6) ═════════════════════════════════════════════════════
-   * ⛔ NO `delete`, EVER. */
+  /* ═══ SUPPRESSION (marketing U6, lift U8) ════════════════════════════════════════════
+   * ⛔ NO `delete`, EVER — and ⛔ NOT BY RESUBSCRIBE EITHER. A lift SUPERSEDES the row. */
   suppression: {
-    /** ⭐ IDEMPOTENT ON THE TRIPLE. `update: {}` is deliberate and is not a stub: a repeat
-     *  suppression must leave the ORIGINAL row — and its original `createdAt` — exactly
-     *  where it is, because that timestamp is the answer to "when did they say no". An
-     *  `update` that refreshed it would quietly move the date forward on every re-import. */
+    /** ⭐ IDEMPOTENT ON THE TRIPLE, and the update block is deliberate rather than a stub: a
+     *  repeat suppression must leave the ORIGINAL row's `createdAt` exactly where it is,
+     *  because that timestamp is the answer to "when did they say no". An update that
+     *  refreshed it would quietly move the date forward on every re-import.
+     *
+     *  🔴 IT CLEARS A LIFT, AND THAT IS THE SECOND FALSE SUCCESS — the one in the opposite
+     *  direction from the one U8 was written to prevent. Once a row can be lifted,
+     *  `stop → start again → stop again` returns through here, and an EMPTY update block
+     *  would hand back the LIFTED row untouched: the page would tell the person they will
+     *  never be marketed again while the suppression stayed lifted and the next campaign
+     *  sent to them. ⛔ So the update clears the lift and touches NOTHING else — above all
+     *  not `createdAt`, which is why this is not a plain overwrite. */
     create: async (row: StoredSuppression): Promise<StoredSuppression> => {
       const created = await pc().suppression.upsert({
         where: {
@@ -3313,16 +3325,45 @@ export const prismaDb = {
             channel: row.channel, identifier: row.identifier, category: row.category,
           },
         },
-        update: {},
+        update: { liftedAt: null, liftedReason: null },
         create: {
           id: row.id, channel: row.channel, identifier: row.identifier, category: row.category,
           reason: row.reason, evidence: row.evidence, recordedBy: row.recordedBy,
           createdAt: new Date(row.createdAt),
+          liftedAt: row.liftedAt === null ? null : new Date(row.liftedAt),
+          liftedReason: row.liftedReason,
         },
       });
       return toStoredSuppression(created);
     },
+    /** ⭐ ACTIVE ONLY — `liftedAt: null` is part of the QUESTION, not a filter applied after.
+     *  See the memory twin for why the plainest name is the one that answers safely: a caller
+     *  who forgets that rows can be lifted over-refuses, which is lawful; the arrangement
+     *  where they under-refuse is a breach. ⛔ The row is still there — `listFor` returns it. */
     find: async (key: MessagingKey): Promise<StoredSuppression | null> => {
+      const row = await pc().suppression.findFirst({
+        where: {
+          channel: key.channel, identifier: key.identifier, category: key.category,
+          liftedAt: null,
+        },
+      });
+      return row ? toStoredSuppression(row) : null;
+    },
+    /** ⭐ SUPERSEDE, NEVER DELETE (U8). `updateMany` scoped to `liftedAt: null` does two jobs
+     *  in one statement: it is the only write, and it is what stops a SECOND lift moving the
+     *  date forward — the date is evidence, exactly as `createdAt` is. A count of 0 means
+     *  there was no ACTIVE row, and the caller is told null rather than a change that did not
+     *  happen. ⛔ `deleteMany` would satisfy the caller identically and is the whole reason
+     *  `dal-parity` §17 asserts the absence of a delete in both twins. */
+    lift: async (key: MessagingKey, reason: string | null, at: string): Promise<StoredSuppression | null> => {
+      const hit = await pc().suppression.updateMany({
+        where: {
+          channel: key.channel, identifier: key.identifier, category: key.category,
+          liftedAt: null,
+        },
+        data: { liftedAt: new Date(at), liftedReason: reason },
+      });
+      if (hit.count === 0) return null;
       const row = await pc().suppression.findUnique({
         where: {
           channel_identifier_category: {
@@ -3332,6 +3373,7 @@ export const prismaDb = {
       });
       return row ? toStoredSuppression(row) : null;
     },
+    /** ⛔ EVERY ROW, LIFTED OR NOT. This is the reader that proves a lift removed nothing. */
     listFor: async (identifier: string): Promise<StoredSuppression[]> => {
       const rows = await pc().suppression.findMany({
         where: { identifier },

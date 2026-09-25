@@ -993,7 +993,7 @@ total written in prose.
 | Group | Routes | Why nothing |
 |---|---|---|
 | Live board | `/updown` | The board shows one current round plus at most two neighbours; its pills are already the primitive. A lens would be a control with no job. |
-| Single object | `/updown/[roundId]` · `/proposals/[id]` · `/wallet/receipt/[id]` · `/positions/[positionId]` (a redirect) · `/agent/invite/[token]` · `/wallet/deposit/return` | One object, or a handful of the viewer's own rows on it. A filter over three rows is noise. |
+| Single object | `/updown/[roundId]` · `/proposals/[id]` · `/wallet/receipt/[id]` · `/positions/[positionId]` (a redirect) · `/agent/invite/[token]` · `/wallet/deposit/return` · `/s/[token]` | One object, or a handful of the viewer's own rows on it. A filter over three rows is noise. `/s/[token]` is the marketing opt-out (U8): one number, one button, no login — a lens on it would be a control with nothing to sort. |
 | Forms and flows | `/auth/login` · `/auth/register` · `/auth/otp` · `/auth/2fa` · `/auth/forgot-password` · `/auth/reset-password` · `/auth/verify-email` · `/auth/admin` · `/proposals/new` · `/wallet/deposit` · `/wallet/withdraw` · `/profile/source-of-funds` | Nothing is listed. |
 | Settings | `/profile` · `/profile/notifications` · `/profile/responsible-gambling` · `/profile/security` · `/profile/sessions` | Fixed short lists of controls, not collections. `/profile/sessions` renders exactly one device **by design** — single-session model. |
 | Public agent | `/agent` · `/agent/apply` · `/agent/status` | Static copy and a form. |

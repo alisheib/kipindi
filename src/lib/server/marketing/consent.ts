@@ -74,6 +74,12 @@ export async function mayReceiveMarketingSms(msisdn: string): Promise<MarketingG
   // ── 1 · SUPPRESSION, FIRST, ALWAYS (OD11) ───────────────────────────────────────────────
   // ⛔ Before consent, not after. A suppressed number usually still carries the consent row it
   // gave before it withdrew, so asking consent first lets that stale row win.
+  // ⭐ `find` ANSWERS "IS THIS NUMBER BEING REFUSED RIGHT NOW" — it returns only rows whose
+  // `liftedAt` is null (U8). The row is never deleted, so a person who opted out in 2026 and
+  // asked to be resubscribed in 2027 is marketable again WITHOUT the evidence of the original
+  // refusal being destroyed. ⛔ Nothing here filters the lift a second time: a gate that
+  // re-implemented the DAL's question would be a second definition of "suppressed", and the
+  // two only have to disagree once.
   const suppressed = await Promise.resolve(db.suppression.find(key));
   if (suppressed) {
     return refuse("suppressed", `suppressed ${suppressed.reason.toLowerCase()} on ${suppressed.createdAt}`);
