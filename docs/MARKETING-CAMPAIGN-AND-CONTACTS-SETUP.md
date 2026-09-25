@@ -30,15 +30,21 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: Session S3 (second half) — U6 (consent ledger + suppression), then S4.
-  ⚠️ U6 IS THIS PROGRAMME'S FIRST SCHEMA CHANGE, and it carries the rules that have not been
-  exercised yet: expand-only migrations · an enum value ships in its OWN migration ONE COMMIT before
-  anything writes it (Postgres refuses a value added in the same transaction) · **two stores or it
-  does not exist** — every new `db.*` namespace lands in `store.ts` AND `prisma-dal.ts` with NAMED
-  types, never an inline object literal in a DAL signature · and `test:dal-parity` gains a §7 with
-  its own planted-key control. ⛔ Zero backfill (OD8), and ⛔ a `Suppression` row is never deleted —
-  not by contact deletion, not by re-import.
-  ⚠️ AND ITS PREDECESSOR'S TRAP IS STILL OPEN: `test:campaign-compose` §12 asserts the marketing
+▶ NEXT: Session S4 — U7 (the ONE gate), then U8 (opt-out that works).
+  ⭐ U7 AND U8 NOW HAVE THEIR STORE. U6 shipped `MessagingConsent` and `Suppression` in both
+  DALs, so U7's `mayReceiveMarketingSms` reads `db.suppression.find(key)` and
+  `db.messagingConsent.latestFor(key)` — both take the SAME named `MessagingKey` triple, and both
+  twins break a createdAt tie on `id` so memory and Postgres answer identically.
+  ⛔ U7 MUST NOT NAME ITS PREDICATE `isSuppressed`. That identifier is already exported by
+  `src/lib/server/email-suppression.ts` and means something else entirely — bounced or
+  spam-complained, i.e. DELIVERABILITY, not consent. Two different questions under one name on a
+  live money platform is how a marketing send starts reading a bounce list.
+  ⚠️ AND THE LEDGER HAS FIVE WRITERS, NOT THE TWO U6 WIRED. `marketingOptIn` is written at
+  registration and the profile toggle (both now append a row), and ALSO by the 730-day retention
+  lapse, account closure (`user-service.ts:147`) and erasure (`erasure.ts:476`). U16 owns the lapse
+  explicitly; closure and erasure are unowned, and until they append, the ledger and the boolean
+  disagree after any of the three. Recorded in §2, not silently absorbed into U7.
+  ⚠️ ITS PREDECESSOR'S TRAP IS STILL OPEN: `test:campaign-compose` §12 asserts the marketing
   footer's `0800110051` still DIFFERS from the published `0800 11 0011`. That is OQ4 — Ali's answer —
   and making them agree as an "obvious cleanup" turns an open owner question into a silent product
   decision, which is why the guard fails if you try.
@@ -49,12 +55,21 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   a `scripts/anchors/*.anchors.mjs` quotes — an anchor that cannot inject is a control that has
   silently stopped controlling, and nothing else reports it.
 
-✔ LAST SESSION: S3 (part), 2026-09-25 — U5 ✅ LIVE. **5/52 units, 5/25 defects.** ⭐ U5 found its own
-  PRODUCT HALF ALREADY BUILT by the support-and-care campaign. What was missing was that the
-  fifteen-section suite holding it had **no red control at all**, so U5 shipped one: 4/4 caught,
-  declared anchors, undeclared ratchet unmoved at 68. ⛔ D6 stays ⬜ — its engineering half is closed,
-  its substance is OQ4 and Ali has not answered it.
-  ⚠️ U6 IS BLOCKED ON THIS MACHINE; see ◐ below. ⛔ Do not push an unverified migration.
+✔ LAST SESSION: S3b, 2026-09-25 — U6 🔵 SHIPPED `6429f86f`, live re-measure pending. **5/52 units ✅ + 1 🔵, 5/25 defects ✅ + D7/D8 🔵.** ⭐ THE
+  UNIT WAS NEVER BLOCKED — THE BLOCKER WAS. `db-scratch.mts` uses `embedded-postgres`, not Docker,
+  and raised PostgreSQL 18.3 here; all 82 migrations apply from empty. The migration was generated
+  offline, applied for real, and proven 10/10 with two controls.
+  ⛔ AND THE PLAN'S OWN INSTRUCTION WAS STALE IN TWO PLACES: `dal-parity` was told to gain a
+  "§7 with its own planted-key control", but §7 has belonged to house bots since their build and
+  the gate already HAS a planted-key control at §0. U6 took §17 and extended the existing
+  `red:dal-parity` instead of inventing a second one — 1380 → 1440 assertions, 24/24 caught.
+  ⭐ THE RED CONTROL FOUND A HOLE IN THIS UNIT'S OWN GUARD: the tiebreak assertion asked whether
+  the ordering appeared ANYWHERE in the namespace, and each twin has TWO readers — so removing it
+  from `latestFor` left the gate GREEN because `listFor` still carried it. It counts both now.
+  ⚠️ AND A FINDING OUTSIDE THIS PROGRAMME, NOT FIXED HERE: `schema.prisma` has declared
+  `@@unique([provider, providerRef])` on `Transaction` since 2026-06-08 (`1112ee3c`) with NO
+  migration — production has only the non-unique index. See §2; §6 puts money tables outside this
+  programme's permission.
 
 ✔ BEFORE IT: S2, 2026-09-25 — U3 and U4 both ✅ LIVE. **4/52 units, 5/25 defects.** The GSM-7
   table came out of the server module and the gateway now delegates to it; the statutory footer is
@@ -86,25 +101,27 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 
 ◐ HALF-DONE: nothing. **S1, S2 AND U5 ARE CLOSED — U1–U5 are ✅ LIVE and re-measured on production.**
 
-⛔ U6 IS BLOCKED ON THE MACHINE, NOT ON THE WORK — READ THIS BEFORE PICKING IT UP:
-  U6 is this programme's first schema change, and **this environment cannot verify a migration**:
-  `docker` is not on PATH, so `scripts/db-scratch.mts` cannot raise a scratch Postgres, and
-  `.env.local` carries no `DATABASE_URL`. There is therefore no database anywhere to apply a
-  migration against.
-  ⛔ AND PUSHING ONE ANYWAY IS NOT A SMALL RISK: a push to `main` deploys, and the deploy runs the
-  migration against PRODUCTION. An unverified migration whose first execution is on the live money
-  platform is exactly the action this plan's §11 forbids claiming and §0a's cadence assumes away.
-  `prisma migrate diff --from-empty --to-schema-datamodel --script` will GENERATE the SQL offline,
-  but generating it is not applying it, and the enum rule in §0a step 4 exists precisely because
-  Postgres behaves subtly on the apply.
-  ⭐ WHAT UNBLOCKS IT, either one: Docker Desktop running (then `scripts/db-scratch.mts` works and the
-  scratch port rule applies — ⚠️ sibling worktrees share 5433, so set `KP_SCRATCH_PORT`), or a
-  non-production `DATABASE_URL` in `.env.local`.
-  ⚠️ `test:dal-parity` itself needs NO database — it is deliberately source-level, because a guard
-  that talks to Postgres SKIPS when `DATABASE_URL` is absent and a skipped guard reads as a pass. So
-  the two-stores half of U6 is verifiable here; the migration half is not, and they ship together.
+⭐ THE MACHINE CAN VERIFY A MIGRATION, AND THE BLOCKER THAT SAID OTHERWISE WAS FALSE.
+  S3b measured it: `scripts/db-scratch.mts` does NOT use Docker. It loads `embedded-postgres`
+  (`:129-146`), whose 107 MB Windows binaries are already installed, and it raised
+  **PostgreSQL 18.3 — production's own major version** on this box with no Docker anywhere.
+  All 82 migrations apply from empty through the real `prisma migrate deploy`. So the premise
+  "docker is not on PATH, therefore no database exists" was wrong about the mechanism, and it
+  had stopped a unit for a whole session.
+  ⚠️ Two environment facts that cost time, recorded so they do not cost it twice:
+  • `prisma migrate dev` needs a SHADOW database and dies `P1017` here, leaving ~14 orphaned
+    `postgres.exe` behind that then hold `.pgscratch` against deletion. Use the offline path
+    instead: `prisma migrate diff --from-url <scratch> --to-schema-datamodel --script`, write the
+    migration, then prove it with `migrate deploy`. ⛔ Do not kill postgres globally to clear the
+    orphans — sibling sessions run their own clusters and this session killed theirs.
+  • `prisma migrate diff` reports EVERY difference, not only yours. It swept a pre-existing
+    `Transaction_provider_providerRef_key` into U6's migration; see the finding in §2.
 
-  
+  ⭐ AND THE ENUM RULE IS NARROWER THAN THIS PLAN STATES — measured on 18.3, not assumed:
+  a value added to an EXISTING enum cannot be used in the same transaction (`55P04 unsafe use of
+  new value`), which is the rule, and it binds U35/D22 adding `MARKETING` to `SmsPurpose`. But a
+  BRAND-NEW enum type created and used in one transaction is ALLOWED, so U6's five new types
+  shipped in ONE migration rather than two.
 
   ⭐ TO CONFIRM BOTH UNITS ON ANY MACHINE: `npm run test:phone-normalize` (91 assertions) ·
   `npm run red:phone-normalize` (21 proofs) · `npm run test:tz-msisdn` · `npm run red:tz-msisdn`
@@ -271,7 +288,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U3 | pure | ✅ | S2 | ccc32526 | no segment arithmetic anywhere and the only GSM-7 table locked inside a server module → one pure table, PACKED segments, the gateway delegating to it | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `ccc32526`. The delegation is proven by EXECUTION — `test:otp-delivery` and `test:sms-cost-guard` drive the real send path through `smsCodingFor`. ⛔ Biller reconciliation is U52 |
 | U4 | pure | ✅ | S2 | b760fefe | no sender identity and no RG footer in any SMS, and a body-only quote would be 49 septets short → footer computed, counted and un-removable; operator budget 111, not 160 | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `b760fefe`; the U2 drive re-run green on it, so the new modules did not break the client bundle |
 | U5 | guard | ✅ | S3 | 64d6bc05 | a 15-section helpline guard with NO red control at all, and a product half already built → 4/4 mutations caught each on its own assertion | `test:support-contact` | yes · `red:support-contact` | 2026-09-25 · live on `64d6bc05`: every helpline-LABELLED link on /legal/responsible-gambling dials the pinned 0800110011, while the support desk legitimately differs. ⛔ D6 stays ⬜ — its substance is OQ4 |
-| U6 | data | ⬜ | — | — | — | `test:dal-parity` | — | consent + suppression |
+| U6 | data | 🔵 | S3b | 6429f86f | no consent ledger and no SMS suppression list anywhere, and `marketingOptIn` a bare boolean with no channel, wording, evidence or history → two append-only stores in BOTH DALs with named types, the 82nd migration generated offline and APPLIED on real PostgreSQL 18.3 (10/10, two controls), dal-parity 1380 → 1440 | `test:dal-parity` · `test:marketing-consent-ledger` | yes · `red:dal-parity` (24/24) · `red:marketing-consent-ledger` (4/4) | 🔵 shipped — live re-measure pending |
 | U7 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | the ONE gate |
 | U8 | visual | ⬜ | — | — | — | `test:marketing-optout` | — | `/s/[token]` |
 | U9 | guard | ⬜ | — | — | — | `test:marketing-consent` | — | gate INSIDE the loop |
@@ -367,6 +384,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S3b | 2026-09-25 | **U6 🔵 SHIPPED — D7 and D8 closed; the consent ledger and the SMS suppression list exist, in both stores.** ⭐ **The unit was never blocked — the blocker was.** §0 had stopped U6 for a whole session on "`docker` is not on PATH, so `db-scratch.mts` cannot raise a scratch Postgres". That script does not use Docker: it loads `embedded-postgres` (`:129-146`), whose 107 MB binaries are already installed, and it raised **PostgreSQL 18.3 — production's own major version** here. All 82 migrations apply from empty through the real `prisma migrate deploy`. The lesson is the one this lane keeps re-learning: **audit the instrument, not only the code** — the blocker named a MECHANISM (`docker`) and nobody opened the file to see whether that was the mechanism. ⛔ **Two more of the plan's own instructions were stale**, both because parallel programmes moved underneath it: `dal-parity` was to gain "§7 with its own planted-key control", but §7–§16 have been taken since house bots' build and the gate has had a planted-key control at §0 all along — so U6 took §17 and EXTENDED `red:dal-parity` rather than shipping a second control beside a working one. ⭐ **The red control then found a hole in this unit's own guard**: the tiebreak assertion asked whether the ordering appeared ANYWHERE in the namespace, and each twin has TWO readers — so planting its removal from `latestFor` left the gate GREEN, because `listFor` still carried it. An assertion a sibling can satisfy on your behalf is not an assertion about you; it counts both readers now, with a control proving one is not enough. ⭐ **And the enum rule is narrower than this plan states** — measured, not assumed: adding a value to an EXISTING enum cannot be used in the same transaction (`55P04 unsafe use of new value`), which binds U35/D22 adding `MARKETING` to `SmsPurpose`; a BRAND-NEW type created and used in one transaction is allowed, so U6's five types ship in ONE migration rather than two. 🔴 **A FINDING OUTSIDE THIS PROGRAMME, RECORDED AND NOT FIXED (§6 forbids it):** `schema.prisma` has declared `@@unique([provider, providerRef])` on `Transaction` since 2026-06-08 (`1112ee3c`, "Hardening sprint") with **no migration** — the init migration creates only a non-unique `Transaction_providerRef_idx`, so production has never had the constraint. Its own comment says "a retried webhook with the same providerRef must not" duplicate. Money is NOT leaking today: `settlePaymentWebhook` is idempotent in application code (`wallet-service.ts:1015`, `txn.status !== "PROCESSING"`). The exposure is that `findByProviderRef` is `findFirst({ where: { providerRef } })` — it does not even use the compound key — so two rows sharing a ref would resolve arbitrarily. ⚠️ It also means **`prisma migrate diff` sweeps it into any unrelated migration**, which is exactly what happened here: it was generated into U6's SQL and removed by hand before the commit. ⚠️ **Environment, recorded so it costs nobody else a session:** `prisma migrate dev` needs a shadow database, dies `P1017` on the embedded cluster and leaves ~14 orphaned `postgres.exe` holding `.pgscratch` against deletion — use `migrate diff --from-url` + `migrate deploy` instead; and ⛔ do not clear those orphans with a global kill, because sibling sessions run their own clusters and this session killed theirs. ⚠️ **Also recorded for U7:** `isSuppressed` is ALREADY an exported name (`email-suppression.ts`) meaning bounced/complained — deliverability, not consent — and `marketingOptIn` has FIVE writers, of which U6 wired two. |
 | S3 (part) | 2026-09-25 | **U5 ✅ LIVE.** ⭐ Its product half was ALREADY BUILT and the plan did not know: the statutory helpline is already one pinned constant with no setter, `global-error.tsx` already keeps its four hand-written copies BY DESIGN (root error boundary, imports nothing, renders when the root layout has already failed), and `test:support-contact` §15 already DISCOVERS every helpline-shaped literal there and pins each to the constant. Building it again would have been a second implementation of a working one. **What was actually missing was the control** — that suite is fifteen sections, among the most careful in this repo, and had NO `red:` key at all. `red:support-contact` ships it: 4/4 caught each on its own assertion, tree restored byte-identical, DECLARED anchors so the undeclared ratchet stays at 68. Two of the four are controls on the suite's own controls — §15.1 passes perfectly over a file that has stopped printing the helpline altogether, so one mutation DELETES a copy rather than drifting it. ⭐ **And the suite under test caught this unit's own first draft:** the mutation seeding an operator-settable helpline used the operator's REAL desk number as its literal, and §8 (no support-contact literal outside `support-config.ts`, sweep includes `scripts/`) refused to run at all. A red harness that seeds a real contact number into the tree is one that leaks one. ⚠️ **The live drive's first answer was also a false alarm** — it asserted every `tel:` link dials the helpline, but the page carries three and one is 50pick's own support desk under "Wasiliana nasi", which SHOULD be there and SHOULD differ. The defect was never "another number exists" but "a link that says helpline dials something else"; the drive now classifies by LABEL, with controls that it found at least two helpline links and at least one non-helpline link, so the classifier is proven to discriminate. ⛔ D6 stays ⬜: engineering half closed, substance is OQ4. ⛔ U6 NOT STARTED — no Docker and no `DATABASE_URL` on this machine, so a migration cannot be verified anywhere, and a push deploys it straight onto production. |
 | S2 | 2026-09-25 | **U3 and U4 ✅ LIVE — D4 and D5 closed.** The GSM-7 table came out of `lib/server/sms-blackball.ts` into a pure client-safe `sms-compose.ts` and the gateway now DELEGATES to it, so the price an officer is quoted and the coding the wire receives come from one table; the move is asserted lossless byte-for-byte against a copy of the pre-move string. **Two findings worth more than the units themselves.** ① **Segments are PACKED, not divided** — a two-septet extension character cannot be split across a boundary, so 152 plain characters then 77 euro signs is 306 septets, which `ceil()` prices as TWO segments and which sends as THREE; at 150,000 recipients that one unit of slack is TZS 900,000. ⛔ And **every boundary vector this plan SPECIFIED is blind to it** — all eight are plain text, and on plain text packing and division agree exactly, so the suite as drafted would have looked thorough, passed, and never caught the defect that costs the money. The red control now asserts that about itself: the division plant breaks exactly ONE assertion in the file. ② **`String.length` is CORRECT for UCS-2** — it already counts an emoji as its two UTF-16 units — and wrong only for GSM-7 extension characters, which is precisely why pricing from `bodyLen` looks fine. U4 made the statutory footer computed (49 septets), counted, and impossible to omit — there is no call shape that produces a marketing body without it — so the operator budget is 111 rather than 160; every Swahili fragment is copied from a shipped string with the line cited, and §12 ASSERTS the footer helpline still DIFFERS from the published one so that OQ4 cannot be closed by an "obvious cleanup". ⚠️ **Two red anchors rotted by this lane own edits** (`otp-delivery`, `blackball`) were flagged by a parallel session and re-anchored here, then re-proven by EXECUTION (8/8 and 11/11 on their own assertions, tree restored byte-identical). ⭐ Two of the first red plants written this session were AIMED AT NOTHING and the baseline-plus-named-assertion shape is what caught them. ⛔ Recorded: `npm run build` cannot run in a junction worktree, so the build proof is typecheck + client-graph-safe + the Railway deploy. |
 | S1 | 2026-09-25 | **U1 ✅ LIVE — the first product code in this programme. D1 and D2 closed.** Worked in a worktree off `origin/main`: the checkout was on another session's branch (`mobile-s2`) with their files in the tree, and `main` moved twice under this lane mid-session. **Three premises in the plan were false and are corrected here rather than worked around.** ① U1's text said it extends "its existing red control" — `test:phone-normalize` had NO red control and never touched `toMsisdn255` at all, while §1's own rule needs a backticked `red:` key to tick a row; `red:phone-normalize` was added, in-process, costing the `red-anchors` ceiling zero (measured: **68 vs 65 on clean `origin/main` AND 68 vs 65 here** — that suite was already red and is not claimed). ② The suite gated nothing: it was in no `predeploy` chain. ③ §3d — the NDC table U2 was drafted from is the 2020 edition and five rows are wrong today. **Two findings came from auditing the instruments rather than the code:** `00712000101` has sat in this suite since August labelled "the double-zero fat finger", the one input it calls a real user mistake — and nothing anywhere evaluated `toMsisdn255` on it, which returned a THIRTEEN-digit msisdn; and `test:shell-boundary`, named on U2 as its gate, is E-70 (plain `<a>` across shells) and cannot pass or fail on a module move — the real import guard is `test:client-graph-safe`, whose pinned set a new module must be added to or the guard is decoration. Ali added two standing requirements mid-session, both written into the contract so they bind later units rather than living in a chat: **§5.15** (every grid ships paging, sorting, a determinate loading state, an empty state and a retryable error state) and **§3c** (the import is ~150k contacts or a `.vcf`, *and* could be small — which breaks D18's 1 MB server-action ceiling outright, makes a full send TZS 900,000 against a measured float of TZS 232, and rules out pairwise duplicate detection at 1.1 × 10¹⁰ comparisons). ⚠️ RECORDED, NOT FIXED — outside §6's permission: `payout-destination.ts`'s canonical `destination.msisdn` is computed at `wallet-service.ts:1597` and **never read again**; the ledger and the gateway both take `parse.data.msisdn`. Harmless today because the two are equal, but the comment describes a reader that does not exist.  **U2 ✅ LIVE — D3 closed.** The NDC table was researched from the regulator rather than trusted: TCRA has re-issued the numbering plan three times since the edition U2 was drafted from, and 63, 64, 66, 70 and 72 all changed holder, so five of nineteen rows were wrong — including the one the unit had chosen AS its red control (070 was spare in 2020 and is Honora/Yas, operational, in v1.16, so planting `verdictFor("701234567") === "ok"` as the DEFECT would have pinned the wrong answer permanently). Cross-checked row by row against libphonenumber TZ ranges and carrier map, which carry GSMA IR21 provenance; the two sources agree on every code except 60. **Three rulings the research forced:** the operator is the RANGE HOLDER and never the network, because MNP has been live in Tanzania since March 2017 — so `walletHint` is display-only and §7 asserts no money module reads the table; where the regulator and the carriers disagree the parser ACCEPTS and flags, because a false refusal is invisible for ever and a false send is a receipt that never arrives; and 064 is allocated on paper and dead on the wire, which `isGatewayMsisdn` cannot see by design, so this module is the only thing in front of it. ⚠️ **An instrument nearly lied about the most important one:** the ITU E.164 notification answers "sans objet" in its portability row, which reads like "no portability here" and in fact answers a request for a LINK to a database TCRA never published — a blank field is not a negative finding. Also folded in: the display formatter had a SECOND, drifted copy in `wallet/withdraw/page.tsx` (no nine-digit cap, groups every run of three) that agreed with the first on every nine-digit input and diverged on everything else; both now resolve to one function. ⛔ Recorded for every worktree lane: `npm run build` cannot run where `node_modules` is a junction (Turbopack refuses the symlink), so the build proof in a worktree is typecheck + client-graph-safe + the Railway deploy itself. |
@@ -1080,15 +1098,36 @@ and §15 forces all four copies to move with it.
 **Accept:** `grep` finds the number in exactly the declared places, all equal — and, added here, the
 guard that says so is now proven able to fail.
 
-**U6 · Consent ledger + suppression** — schema, both DALs, `dal-parity` §7 (D7, D8)
+**U6 · Consent ledger + suppression** — schema, both DALs, `dal-parity` §17 (D7, D8) — 🔵 SHIPPED S3b
 `MessagingConsent` (append-only: channel, `identifier` = the one key, category, status, source, **verbatim
 wording**, locale, evidence, recorder, time) and `Suppression` (`@@unique([channel, identifier,
 category])`). From this commit, the profile toggle and registration ALSO append a ledger row. ⛔ Zero
 backfill (OD8). ⛔ `Suppression` rows are never deleted — not by contact deletion, not by re-import.
-**Guard:** `test:dal-parity` §7 + `test:marketing-consent`. **RED:** a planted key in one mapper only;
-delete a suppression row through the contact path.
+**Guard:** `test:dal-parity` §17 + `test:marketing-consent-ledger`. **RED:** `red:dal-parity` gains nine mutations
+(the wording dropped from the read mapper and from the create; an `update` added to the ledger; a
+`deleteMany` added to suppression; an upsert that refreshes `createdAt`; the id tiebreak removed from
+either twin) — 24/24 caught. `red:marketing-consent-ledger` is in-process: the wording re-rendered from
+English, the second decision lost, an unusable identifier accepted, re-suppression replacing the row —
+4/4, after a §0 baseline proving the shipped code passes first.
 **Accept:** both DALs, named types, the new section's own control green; a withdrawal survives a
-re-import.
+re-import. ✅ All four met and MEASURED — the withdrawal/re-import pair is proven twice over: in Postgres
+(a second suppression for the same triple refused `23505`, two consent rows coexisting, the GIVEN row
+un-overwritten) and in the memory twin (re-suppression returns the row already there, with its
+ORIGINAL `createdAt`).
+
+⛔ **THREE THINGS THIS UNIT WAS TOLD THAT WERE NOT TRUE, corrected here rather than worked around:**
+① §0 said a migration could not be verified on a machine without Docker. `db-scratch.mts` does not use
+Docker — it loads `embedded-postgres` (`:129-146`), already installed, and raises PostgreSQL 18.3.
+② This unit was told to add §7 "with its own planted-key control". §7–§16 were long since taken, and the
+gate has had a planted-key control at §0 since it was written; U6 took §17 and EXTENDED the existing
+`red:dal-parity`. A second control beside a working one is the U5 mistake in mirror image.
+③ The enum rule is narrower than §0a states: it binds a value added to an EXISTING enum (`55P04`), which
+is U35/D22's problem, not a brand-new type, which may be created and used in one transaction.
+
+⚠️ **AND `marketingOptIn` HAS FIVE WRITERS, NOT THE TWO THIS UNIT WIRED.** Registration and the profile
+toggle now append; the 730-day retention lapse (U16 owns it, explicitly), account closure
+(`user-service.ts:147`) and erasure (`erasure.ts:476`) do not. Until they do, the ledger and the boolean
+disagree after any of those three. ⛔ Not absorbed into U6 — closure and erasure are currently unowned.
 
 **U7 · The ONE gate** — `src/lib/server/marketing/consent.ts`
 `mayReceiveMarketingSms(msisdn) → { ok } | { ok:false, skipReason, detail }`, ordered exactly as §5.6.
