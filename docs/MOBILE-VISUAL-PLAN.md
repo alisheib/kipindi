@@ -31,115 +31,88 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ STATE, 2026-09-24 (rewrite this block at the end of every session)
-  10 of 42 units closed · 83 defects filed · branch mobile-s2 tracking origin/main.
-  Closed EARLIER today: U41 (/fairness), U42 (the sign-up funnel), U33 (chrome: menus + semantics); D71–D83.
-  THIS session: **all FOUR of U35's defects are fixed, guarded and live** — D36 half 2, D37, D45, D52
-  (`a7da5f89`, `c6ebbedf`; deployed `bedb6023` and `4b30a069`). Guards added, all RED-proven against
-  PRODUCT mutations: `test:updown-history-pnl` + `red:updown-history-pnl` (6/6), §7 and §8 of
-  `test:updown-clock-guard` (26 new assertions, 8 mutations), and two additions to
-  `test:measure` whose own exemption ratchet SHRANK by the four Up & Down routes.
+▶ SESSION CLOSED 2026-09-25 (this block replaces the previous ▶ STATE)
+  **11 of 42 units closed · 83 defects filed · U34 closed this session.**
+  Shipped, guarded and LIVE this session: **D36 half 2 · D37 · D45 · D52 · D39 · D29 · D42**,
+  and **U34/D31 verified on production and closed**. Commits `a7da5f89` `c6ebbedf` `22fb75a9`
+  `5c00588c` `1d3bbc28` `67b2a9cd`. Every fix carries a guard proven RED against PRODUCT
+  mutations, never a plant.
 
-  ⛔ **U35 IS STILL OPEN, ON ONE THING: D37 HAS NEVER BEEN LOOKED AT ON A SCREEN.** Three of the four
-  are verified on production and the numbers are in their §3 cells. D37's LOGIC is proven —
-  26 assertions over the real `roundPnl` plus a source check that the page hands it the VIEW, with
-  6/6 mutations caught against a baseline proven green first — but nobody has seen the rendered strip.
-  Two things block it, and neither is a code problem:
-    · **No account on production has any Up & Down history.** `mobile01` is "wallet 0, never funded",
-      so the strip does not render at all and the tiles cannot be measured. Ali declined to fund it.
-    · **The local seeded drive Ali chose (2026-09-24) could not be started.** Next 16 refuses a second
-      `next dev` in the same directory, and PID 688 has held `F:kipindi-main` since 2026-09-23 17:56.
-      It does not answer on :3000, but it belongs to the other session, so it was NOT killed.
-      ⭐ NEXT SESSION: confirm with Ali that PID 688 is dead, kill it, then
-      `npx next dev -p 3010` → `/auth/demo` (funds a player) → POST `/api/dev-test/updown-seed`
-      `{"durations":[5],"feedProvider":"mock-bars"}` → loop [POST `/api/dev-test/updown-advance`,
-      bet via `/updown/{id}?side=UP`, advance twice to settle] × 14+ → drive `/updown/history` at
-      320/360/412 × sw/en/zh. 14 rounds is the minimum that fills a pager (`PLAYER_PER_PAGE` = 12) and
-      so the minimum that can show page 1 and page 2 carrying the SAME money.
-    ⚠️ Until that runs, D36/D45/D52 stay 🔵 too: the legend says a defect ticks when its UNIT does.
+  ⛔ **THE REGISTER IS DRIFTING FASTER THAN IT IS READ. Do not trust a cell you have not checked.**
+  This session found, in six defects: THREE citations pointing at files that do not exist
+  (`components/market/` for `markets/`), TWO prescribed remedies that were actively HARMFUL
+  (D29's "one token" would have lied to screen-reader users; D42's cell had every figure stale by
+  ~40 rows), ONE unit body prescribing the very instrument §0 trap 3 forbids, and FIVE false
+  statements about D31. Every one is struck in place rather than deleted.
 
-▶ NEXT: **U35** (drive D37's strip, then close it), then **U32**, **U37**, **U34**, **U11** — money truth first.
-  Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number. Every item
-  below was verified IN THE CODE on 2026-09-24 by a reader that opened the file, and the ones marked ⭐
-  carry CORRECTIONS to this document — read them before trusting any cell elsewhere.
+  ⭐ **THREE GUARDS WERE PROVING NOTHING, AND ALL THREE SAID SO IF YOU LOOKED:**
+   · `red:labels` scored 10/12. Chasing the gap found `stripComments`, whose JSX-comment rule used
+     `\s*` — which crosses NEWLINES — so an object literal's `{` followed by a doc comment opened a
+     match running to a distant `*/ }`. **7,077 lines of real code hidden across 76 files**,
+     including 867 of `i18n-dict.ts`, the dictionary that suite exists to police. Now 12/12.
+   · `red:tap-rung` scored 1/2 and printed "⛔ ANCHOR NOT FOUND — the harness is stale, not the
+     gate". Its CashEye mutation described pre-D78 markup. Re-pinned. Now 2/2.
+   · A second `red:labels` mutation had the same drift (`opacity-85` the call site had dropped).
+  🔑 A harness that reports a failed injection instead of scoring it CAUGHT is the only reason any
+  of this was findable. Keep that property in anything you write.
 
-  1. ⭐ **U35's LAST STEP — drive D37's strip and close the unit.** The code is live and the logic is
-     guarded; what is missing is a look at the rendered thing. Recipe and the two blockers are in the
-     STATE block above. Budget an hour, most of it seeding. ⛔ Do NOT mark U35 ✅ off the unit guard
-     alone: `test:updown-history-pnl` proves the page hands `roundPnl` the VIEW and proves the
-     arithmetic, and it cannot prove a tile is legible at 360 with a seven-figure net in it.
+  🔴 **READ THIS BEFORE PLANNING ANY LOCAL DRIVE — IT COST THIS SESSION AN HOUR.**
+  **REACT DOES NOT HYDRATE IN `next dev` ON THIS MACHINE.** Measured on BOTH dev servers and every
+  route: **4 hydrated elements out of 367–560**, and those four are two `<link>`s and the Next dev
+  portal. Production reads **215 of 543**. No page error, no console error, no 4xx — it fails
+  silently, and `window.next` IS defined. Ruled out by measurement: a stale `.next` (2.3GB deleted
+  and rebuilt, no change), slow lazy compilation (polled 90s, flat), and the `webpack-hmr` errors
+  (present against a server that DOES hydrate, so noise). ⛔ No click in dev can become a bet, a
+  vote or a filter change. Check it FIRST, in one line, before trusting any local drive:
+  `[...document.querySelectorAll("*")].filter(e=>Object.keys(e).some(k=>k.startsWith("__react"))).length`
+  ⛔ COUNT, never a boolean — "any react props?" answers true for those four head nodes, and that
+  is exactly how this session first concluded, wrongly, that the home page hydrated.
 
-  2. D29 (U32) — terminal cards paint a crowd price nobody paid. `market-card.tsx:277` is still
-     `const noPrice = live && (isNew ?? volume === 0);` — on a resolved or void card `noPrice` is
-     false, so TippingBar draws the hardcoded 50. Deleting `live &&` is one token.
-     ⛔ BUILD THE GUARD FIRST and read trap 3 below: today's board may hold no resolved-empty and no
-     void card, so a live sweep would be green about THIS BOARD, not about the code.
+  ⚠️ **NEW, UNFILED — file these properly:**
+   · **the settled Up & Down card's quote stamp is TODAY'S read.** `updown/page.tsx` hands every
+     card `sourceQuotedAt={activeAsset!.sourceQuotedAt}` — asset-level — so a round that settled an
+     hour ago footers "quoted 01:54:11" against the CURRENT quote. `/updown/[roundId]` is wrong the
+     same way, so "two surfaces disagree" does NOT catch it. `proof.closeQuotedAt` exists but only
+     on the DETAIL payload; `BoardRound` has no such field, so this needs a payload change.
+   · **`/markets` carries a 12px body overflow at 320** (bodyScrollWidth 332 vs client 320),
+     identical before and after any interaction; the widest boxes past the edge are `.kp-fchip`
+     rail chips. Measured 2026-09-25, signed in. NOT caused by D31 — checked as a delta.
+   · **`test:updown-source-class` is RED on main** (`0f01c28f`) and is NOT in `predeploy`, so it has
+     failed unwatched. It is a FALSE positive — `updown-board.ts:1032` hands `sourceDomain` to a
+     SERVER call, not the client payload — but a vendor-leak guard nobody watches is worth nothing.
+   · **`results/page.tsx:481`** has a `<MarketCard>` call site that rendered zero cards on
+     production, so `test:outcome`'s rule 2 may be governing an unreachable site.
 
-  3. D42 (U32) — the /results donut strokes a third segment its legend never names.
-     ⭐ FOUR CORRECTIONS, verified against production on 2026-09-24: the donut is at **:528-538** (not
-     :319) and the legend at **:350-358** (not :324-331). The figures in §8/§9 are STALE — production
-     now reads **210 markets, "NDIO 69 · HAPANA 110" = 179, so THIRTY-ONE markets (14.76%) are an
-     unnamed arc**, not the 171/147/24 those cells state. ⛔ AND "the legend prints two spans" is true
-     only on a SINGLE-PRODUCT view: `:351` is `{linesShown.map(…)}` — two spans PER PRODUCT LINE, so a
-     mixed set prints four. A guard built on "two" is built on the current filter default. ⛔ §9's arc
-     triple "124/182/49" sums to 355° and cannot be a reading of this component; today's dasharrays
-     give 118.28/188.57/53.14. The remedy §9 prescribes is right: NAME the third arc in the legend, do
-     NOT drop `voided` from the denominator.
+▶ NEXT: **U35** (drive D37's strip, then close it), then **U37**, **U11**, **U27**, **U31** — money truth first.
+  Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
 
-  4. D39 (U37) — a Swahili player reads a raw English enum at two MONEY moments.
-     ⭐ THREE CITATIONS HERE ARE WRONG and will cost a session if trusted:
-     · the path is `src/components/markets/conviction-dial.tsx` — **markets, plural**. The cell writes
-       `market/` twice, and `sed` on that path returns "No such file or directory".
-     · `markets/[id]/page.tsx:357` reads `const heldLabel = [...heldSides].join(" + ")`, NOT
-       `heldSides.join(" + ")` — `heldSides` is a `Set` and has no `.join`. A guard pinned to the cell's
-       literal text matches nothing and reports a confident zero.
-     · the claimed precedent is wrong: conviction-dial.tsx:1000-1001 says the sibling is the bet-placed
-       NOTIFICATION, not the modal. The real in-file prohibition is at **:553-555**
-       (*"⛔ Never write `{effectiveSide}` into copy; reach for this."*).
-     The two edits themselves are real, one line each, through `sideWord(t, side, "MARKET")`.
+  1. ⭐ **U35's LAST STEP — D37's strip, on a screen.** Everything else in U35 is live and
+     verified. D37's money is proved by `test:updown-history-pnl` (26 assertions, 6/6 mutations)
+     and its FIT by `scripts/live/ops/d37-tile-fit.mjs` against production's own stylesheet — the
+     old markup spilled **72 / 52 / 26px** at 320/360/412, the new spills **0**. What is missing is
+     watching the real strip, fed by real rows, hold still while the player pages 1 → 2.
+     ⛔ BOTH DOORS ARE SHUT ON THIS MACHINE: no production account has Up & Down history
+     (`mobile01` is "wallet 0, never funded", so the tiles do not render at all), and dev cannot
+     place a bet (see the hydration block above). Ali declined funding a production account.
+     ⭐ So this needs EITHER a machine where dev hydrates, OR Ali's go-ahead to fund `mobile01` and
+     place ~13 small bets (13 is the floor: `PLAYER_PER_PAGE` = 12, so fewer cannot show two pages
+     carrying the SAME money). The drive is written and waiting: `.d37-local-drive.mjs` in the
+     session scratchpad, and its recipe is in §2's S19c entry.
+     ⛔ Do NOT mark U35 ✅ off the unit guard alone — it proves the page hands `roundPnl` the VIEW
+     and proves the arithmetic; it cannot prove a tile is legible at 360 with a seven-figure net.
 
-  5. U34 — D31's PRODUCT work is genuinely done; the BOOKKEEPING is what is wrong.
-     ⭐ FIVE FALSE CLAIMS, all checked against the tree today:
-     · §8's D31 cell says "the eye control is 32px (under the 44px floor), the 800ms delta flash shifts
-       the header, and the link announces 'Hide password'". **All three are fixed**, and "the 44px floor"
-       is wrong twice over — the floor is `--tap-min: 40px` (trap 1). `wallet-balance-pill.tsx:365` is
-       `w-[var(--tap-min)]`, `:281` is `absolute`, `:189` reads `t.common.hideBalances`.
-     · §3's D31 row repeats those same three as "still open".
-     · §8's D78 cell credits `3d644e4e`, which is a MERGE. The fix is **`70c8bcaa`**.
-     · the old §0 credited `886e1992`, also a merge; parts 3–4 are in **`f438bc41`**.
-     ⛔ SO IT IS NOT "nothing but bookkeeping": the RED anchor at `scripts/anchors/tap-rung.anchors.mjs:15-18`
-     still describes the OLD markup, so that control CANNOT FIRE. Repair the anchor FIRST, then close.
+  2. U37 (D39 is done; D40 remains) · 3. U11 the overlay census — the next big rock, it gates
+     U12–U18 (SEVEN units), NOT blocked, budget a whole session, and ⛔ do not build on
+     `scripts/overlay-responsiveness-test.mjs` (its selectors match nothing that ships).
+  4. D14 (U27) — pull-to-refresh fires inside sheets. `pull-to-refresh.tsx:32` gates on
+     `scrollY > 5` alone; `html[data-sheet-open]` already exists and is set by `filter-sheet.tsx:252`.
+  5. Batch the one-line clipping fixes under ONE guard with four RED controls: D1, D34, D45, D52.
+  6. U31 — 379 verification rows. Write the `grep -c "🕓 unverified" == 0` counter FIRST so
+     progress is a falling number.
 
-  6. U11 — the overlay census. The next big rock, it gates U12–U18 (SEVEN units), and it is NOT
-     blocked: see the §11 correction. Budget a whole session. ⛔ Do not build on
-     `scripts/overlay-responsiveness-test.mjs` — its selectors match nothing that ships.
-
-  7. D14 (U27) — pull-to-refresh fires inside sheets. `pull-to-refresh.tsx:32` gates on `scrollY > 5`
-     alone; `html[data-sheet-open]` already exists and is already set by `filter-sheet.tsx:252`.
-
-  8. Batch the one-line clipping fixes under ONE new guard with four RED controls: D1, D34, D45, D52.
-
-  9. U31 — 379 verification rows. Background grind, fully parallelisable, and the only unit with a
-     mechanically checkable accept line: write the `grep -c "🕓 unverified" == 0` counter FIRST so
-     progress is a falling number. Sample ~20 rows before estimating; some will reclassify as duplicates.
-
-  ⛔ FOUND TODAY, NOT YET IN THE REGISTER — file these properly next session:
-     · **the settled card's quote stamp is TODAY'S read.** `updown/page.tsx` hands every card
-       `sourceQuotedAt={activeAsset!.sourceQuotedAt}` — asset-level — so a round that settled an hour ago
-       footers "quoted 01:54:11" against the CURRENT quote. `/updown/[roundId]` is wrong the same way, so
-       the "two surfaces disagree" framing does NOT catch it. The round's own `proof.closeQuotedAt` exists
-       but only on the DETAIL payload; `BoardRound` has no such field, so this needs a payload change and
-       does not belong in a one-line lane. Same root cause as D36 half 2.
-     · **`test:updown-source-class` is RED on main and nothing notices.** Its §2/§4 assert
-       `!/sourceDomain/` over the whole of `src/lib/server/updown-board.ts`, and `:1032` legitimately
-       hands `sourceDomain` to `vendorBarsFor` — a SERVER call, not the client payload. Introduced by
-       `0f01c28f`; the suite is NOT in `predeploy`, so it has failed unwatched ever since. Scope the
-       matcher to the exported payload type, or exempt the vendor call. Do not silence it.
-
-  ⛔ DEPRIORITISED ON PURPOSE, with reasons: D5 (re-measure first — the band it was measured against
-  has been rebuilt), D43 (RE-FILE, DO NOT FIX — its cell names the wrong element and the prescribed
-  remedy is a no-op), D62 (the one-declaration remedy was built, measured, and moved nothing),
-  D16 (measure first; if back-nav lands within ±40px it is a no-defect).
+  ⛔ DEPRIORITISED, with reasons: D5 (re-measure first — the band it was measured against has been
+  rebuilt), D43 (RE-FILE, DO NOT FIX — its cell names the wrong element and the remedy is a no-op),
+  D62 (built, measured, moved nothing), D16 (measure first; within ±40px it is a no-defect).
 
 ▶ WHAT CANNOT BE DONE FROM THIS MACHINE — do not burn a day rediscovering it
   U30 (real device + TalkBack; D54 needs a NOTCHED phone — Playwright reports every safe-area inset
@@ -298,7 +271,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U31 Verify the inspection backlog (379 items) | — | ⬜ | S17 | | | | S07–S13 findings, unverified |
 | U32 Market-card state truth (D29 · D35 · D42) | General | ⬜ | S18 | | | | money-truth; also E-415 |
 | U33 Chrome: menus, ticker, semantics (D30 · D32) | General | ✅ | S18 | `94a43227` `07f736f9` `787ca533` `6a20bd78` `82d3e067` | D30 rail + sort listbox · D66 dismiss no longer activates what is under the finger · D81 language code **4.12:1 → 5.63:1** · D67 language panel **1.75px past the right edge → 4.25px inside** at 320 | yes (`qa:focus-and-fit` §7 + `RED_D67` reproduces 1.75px past at 320 and stays silent at 360; `test:filter-language` §5.9/§5.10 hold D30's stacking by name) | 2026-09-24. ⚠️ **CLOSED WITH ONE CONDITION:** D32's last item (a phone PAUSE control for the marquee) is UNREACHABLE rather than done — the ticker was removed from the shell on Ali's instruction (`adbc31e7`) and renders nowhere, measured 0 instances on `/`, `/markets`, `/live`. Its component and CSS were kept deliberately, so **re-siting the strip re-opens D32**. |
-| U34 Signed-in header cluster (D31) | General | ⬜ | S19 | | | | balance capsule, eye, delta |
+| U34 Signed-in header cluster (D31) | General | ✅ | S19 | `252a9f55` · `70c8bcaa` · `f438bc41` | eye **32→40px wide** (40×44 at 320/360/412, floor 40); accessible name "Hide password" → **"Ficha salio"**; the hidden-balance mask overflowed its box by **27.2px at TZS 0** → the box is now the MAX of both states and toggling moves **nothing** (header and overflow unchanged at all three widths) | yes — `red:tap-rung` **2/2**, and it was **1/2 until 2026-09-25**: the CashEye anchor still described the pre-D78 markup, so it could not inject and had been proving nothing | 2026-09-25 · production, signed in as mobile01 in SW. ⚠️ The delta flash is `absolute` in source but UNOBSERVED — it paints only on a balance CHANGE and this account is unfunded |
 | U35 Up & Down truth and fit (D36 · D37 · D45 · D52) | General | ⬜ | S19 | | | | board, round page, history |
 | U36 /live carousel, search and wall (D38 · D47 · D50) | General | ⬜ | S20 | | | | search survives a miss |
 | U37 Detail page copy, order and hints (D39 · D40 · D41 · D46) | General | ⬜ | S20 | | | | enum copy, reading order, InfoHint |
@@ -338,20 +311,20 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D26 | 🔵 shipped early `f70789df` 2026-09-24 — both load shifts; the skeleton-sizing follow-ups are D72–D74 (`371690b6`, live) and the surface's real defect was D71 | U25 |
 | D27 | ⬜ | U16 |
 | D28 | ✅ `ea84e4a9` 2026-09-23 (live) | U3 |
-| D29 | ⬜ | U32 |
+| D29 | 🔵 shipped `5c00588c` 2026-09-25 — the price gate is the POOL, not the phase, and the outcome is read before any absence branch. ⛔ **THE FILED ONE-TOKEN REMEDY WAS A REGRESSION** — see the §8 cell. Guarded in `test:outcome` (6 assertions + 3 controls, 5 product mutations proven RED). ⭐ NO new copy was needed. ⚠️ **The production check is BLIND and says so**: `qa:d29-terminal` read 12 cards and found NO settled or void card on any card surface (`/markets` is all Live; `/results` renders none at all), which is §0 trap 3 exactly — the code is proven by the unit guard, not by that sweep | U32 |
 | D30 | 🔵 shipped early `94a43227` + `07f736f9` 2026-09-23 (live) — the rail AND the sort listbox | U33 |
-| D31 | ◐ HALF — the mask overflow only (`252a9f55` 2026-09-23, local proof; the 32px eye, the 800ms flash and the "Hide password" label are still open) | U34 |
+| D31 | ✅ **ALL FOUR PARTS, verified on production 2026-09-25** — mask `252a9f55`, eye width `70c8bcaa` (D78), accessible name + delta flash `f438bc41`. Signed in as mobile01 at 320/360/412 SW: eye **40×44** against the 40px floor in BOTH axes, name **"Ficha salio"**, and toggling the mask moves NOTHING (header unchanged, overflow unchanged). ⚠️ The delta flash is `position: absolute` in source but could not be OBSERVED — it paints only when the balance CHANGES and this account is unfunded | U34 |
 | D32 | ◐ fixed parts live; the phone PAUSE control is DORMANT — the ticker renders nowhere since `adbc31e7`, and re-opens if it is ever re-sited | U33 |
 | D33 | ✅ `de2e9643` 2026-09-23 | U6 |
 | D34 | ⬜ | U9 |
 | D35 | ◐ fix is UNGATED and working (0 clipped, 12–13/15 rows wrap at 320/360 ± 1.3× text) — only the COLD-START card is unmeasured, and none is on the board | U32 |
 | D36 | 🔵 BOTH HALVES LIVE — half 1 earlier; half 2 `a7da5f89` 2026-09-24. ⭐ **PROVED ON PRODUCTION BY DISCRIMINATION (`bedb6023`):** the price tape had moved on to **$84,258.42** while the settled card still held its own close of **$84,154.00** — pre-fix those were one number — and the board card and its round page print the same figure. ⚠️ A single reading could NOT have shown this: during handover the newest settled round's close IS the latest confirmed read, so the two agree by construction and the instrument reported BLIND twice before the feed moved. The tick waits on U35 (D37 on-screen) | U35 |
-| D37 | 🔵 shipped `a7da5f89` 2026-09-24 — the P&L strip is view-scoped (Ali's decision), and the sub-line wraps instead of spilling. the tick waits on U35 (D45, D52) | U35 |
+| D37 | 🔵 shipped `a7da5f89` 2026-09-24 — the P&L strip is view-scoped (Ali's decision), and the sub-line wraps instead of spilling. ⭐ **FIT PROVED ON PRODUCTION'S OWN STYLESHEET as a BEFORE/AFTER delta** (`scripts/live/ops/d37-tile-fit.mjs`, 2026-09-24): with a seven-figure book the OLD markup spilled **72px at 320, 52px at 360, 26px at 412**; the new one spills **0px** at all three, buying one line of tile height (117 → 132px). ⛔ **THE DATA PATH IS PROVED BY UNIT, NOT ON SCREEN** — `test:updown-history-pnl` (26 assertions, 6/6 mutations) shows the page hands `roundPnl` the VIEW, but nobody has watched the real page with real rows page from 1 to 2. Neither door is open: no production account has Up & Down history, and **React does not hydrate in dev on this machine** (see §0), so no local bet can be placed. The tick waits on that | U35 |
 | D38 | ⬜ | U36 |
-| D39 | ⬜ | U37 |
+| D39 | 🔵 shipped `22fb75a9` 2026-09-24 — both money moments now read through `sideWord`. ⭐ Guarded by a NEW §3d in `test:labels` (3 passes + 7 controls) that catches the two shapes §3 and §3b are structurally blind to. ⛔ And fixing its guard exposed a far bigger one — see the cell | U37 |
 | D40 | ⬜ | U37 |
 | D41 | ⬜ | U37 |
-| D42 | ⬜ | U32 |
+| D42 | 🔵 shipped `1d3bbc28` 2026-09-25 — the third arc has its word, and the void-only view is no longer a wordless circle. Guarded in `test:outcome` (4 assertions + 3 controls, 4 product mutations proven RED) | U32 |
 | D43 | ⬜ | U10 |
 | D44 | ⬜ | U10 |
 | D45 | 🔵 shipped `c6ebbedf` 2026-09-24 — all FOUR wrappers onto `max-w-board`/`max-w-reading` + the house `px-3 lg:px-6`. ⭐ **Verified on production (`4b30a069`): content edge 16px on /updown, /updown/history AND /markets at 320/360/412** — measured as a DELTA against /markets in the same run, never against a remembered number. The tick waits on U35 (D37 on-screen) | U35 |
@@ -387,7 +360,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D75 | 🔵 shipped early `7b7b15ef` 2026-09-24 (live) — the bubble leaves at rest and stops taking the tap | U7 |
 | D76 | 🔵 shipped early `5fe0bd64` 2026-09-24 — the results carousel resized under the finger | U25 |
 | D77 | 🔵 shipped early `5fe0bd64` 2026-09-24 | U25 |
-| D78 | 🔵 shipped early `3d644e4e` 2026-09-24 — SIGNED-IN surface; every tap gate was blind to it | U27 |
+| D78 | 🔵 shipped early **`70c8bcaa`** 2026-09-24 — SIGNED-IN surface; every tap gate was blind to it. ⚠️ ~~`3d644e4e`~~ was a MERGE commit, not the fix. Re-measured on production 2026-09-25: **40×44** | U27 |
 | D79 | 🔵 shipped `be4fb670` 2026-09-24 (live) — THIRD placement; the first two shipped and did nothing | U27 |
 | D80 | 🔵 shipped early `5b3c6cf1` 2026-09-24 (live) — KYC pill 163×38, signed in | U27 |
 | D81 | 🔵 shipped early `6a20bd78` 2026-09-24 (live) — AA 4.12:1, and only on the player's OWN language | U33 |
@@ -425,6 +398,117 @@ The programme may be marked **🏁 CLOSED** in the status line at the top of thi
 Until then the status line stays 🟠 and `§0 NEXT` names real work.
 
 ## §2 — Session log (newest first)
+
+- **S19f · 2026-09-25 — D42, and a filter nobody had ever looked at.**
+  - **D42 (`1d3bbc28`)** — the ring's third arc has its word. Measured on production: 210 markets,
+    arcs 118.29° / 188.57° / 53.14°, legend "YES 69 · NO 110" = 179 — **31 markets, 14.76% of the
+    circle, painted and named nowhere.**
+  - 🔴 **AND WORSE THAN FILED, ON `/results?out=void`:** `linesShown` keeps a product only when it
+    has a YES or a NO, so the void-only view dropped EVERY legend row — **31 results, a full 360°
+    grey circle, and not one word on screen.** Nothing in the register mentioned it; it was found
+    by reading the filter rather than the defect. ⭐ That is why the fix is a SIBLING row and not a
+    third term inside the map: inside it, it renders zero times on exactly the view that was empty.
+  - ⛔ **EVERY FIGURE AND ADDRESS IN D42'S CELL WAS STALE** — 171 → 210 markets, 147 → 179 named,    24 → 31 unnamed, both line references off by ~200. The archive grew by 39 rows and the defect
+    grew with it; only the percentage held. And §9's arc triple "124/182/49" sums to **355°**, so it
+    cannot be a reading of this component — a `Ring` clamps to exactly 1 (ring.tsx:52).
+  - ⭐ **THIRD ROW, NOT THIRD TERM** — D64 measured that legend row 10px past the viewport at 277px
+    and 41px at 246px, so it may not grow wider. A row costs ~12px against the donut's 38px.
+  - ⭐ NO NEW COPY, for the third defect running: `t.market.statusVoid` already exists in all three
+    languages. ⛔ Not through `sideWord` — a refund has no direction (§C4).
+
+- **S19e · 2026-09-25 — D29, and the filed remedy that would have made it worse.**
+  - **D29 (`5c00588c`)** — the price gate is the POOL, not the phase, and the settled outcome is read
+    BEFORE any absence branch. Four edits, guarded in `test:outcome` (6 assertions + 3 controls,
+    5 product mutations proven RED — M2 is the register's own half-fix, and only the aria-label
+    assertion catches it).
+  - ⛔ **THE FILED REMEDY WAS A REGRESSION, AND ALI APPROVED THE FULL FIX INSTEAD.** "Delete
+    `live &&`, one token" trades a fabricated PRICE for a fabricated ABSENCE. Two of the three
+    "no bets yet" claims reach a SCREEN READER ONLY — the price slot's `aria-label` and the empty
+    rail's accessible name — so an emergency-voided market that refunded real money would have
+    told a blind player nobody bet, while deleting the visible caption a sighted colleague could    have caught. It also destroyed the outcome readout on resolved cards: that arm was gated on
+    `isResolved` (status `RESOLVED`) and sat AFTER the absence branch, so a VOIDED market — whose
+    status is `VOIDED` — fell through to the percentage arm and printed the empty pool's 50%.
+  - ⭐ **THE TWO CLAIMS ARE DIFFERENT QUESTIONS, and that is the whole lesson.** `noPrice` asks the
+    POOL — is there a crowd price? `neverBet` asks `predictorCount` — did anyone EVER bet? The
+    count is only ever incremented and `emergencyVoidMarket` never touches it, so it is the only
+    honest test in any phase. `volume` is about NOW; history is a different question.
+  - ⭐ **AND THE NEW TRILINGUAL KEY TURNED OUT NOT TO BE NEEDED.** Ali approved wording for it;
+    it was never used. `emergencyVoidMarket` stamps `resolvedOutcome = "VOID"`
+    (market-service.ts:4525), and `outcomeWord` already owns the VOID arm in all three languages —
+    so a voided card NAMES itself and never reaches an absence branch at all. ⛔ The empty rail's
+    label is `outcomeLabel ?? noBetsYet` and not `""`: an empty string leaves a
+    `role="progressbar"` with NO NAME on every voided card, and a nameless control is not an
+    improvement on a false one.
+  - ⚠️ D29's cell also carried the singular `components/market/` path — the third defect this
+    session whose citation would have sent a session to a file that does not exist.
+  - ⛔ **AND THE PRODUCTION PROBE FOR IT WAS WRONG TWICE BEFORE IT WAS RIGHT** — `qa:d29-terminal`,
+    kept because the next session will want it and because how it failed is the lesson:
+    · **v1 reported "2 PROVED".** It called a card terminal when its price slot was EMPTY — but a
+      LIVE cold-start card has exactly that, so it proved D29 over two live cards with no bets and
+      never looked at a settled or void one. A population that cannot contain the defect, scored
+      green. The tell was in its own output: `cap=null pct="—"`, which is the NO-PRICE branch, so
+      those cards had no `resolvedOutcome` and could not have been terminal.
+    · **v2 reported BLIND — also wrongly.** It read the status from `.chip`, and the kit's Chip
+      renders no such class, so every status came back null and nothing matched. A false green
+      became a false blind from the same instrument.
+    · **v3 reads the status word out of `.mcardp-top` and is BLIND for the right reason:** 12 cards,      all "Live". `/markets` lists only live markets and its recently-resolved strip is empty;
+      `/results` renders NO `MarketCard` at all. So no terminal card is reachable on production
+      today, which is §0 trap 3 — and why D29 rests on `test:outcome`'s five RED mutations.
+    ⭐ THE TRANSFERABLE PART: an instrument that can report BLIND will still report it for the wrong
+    reason. Check that the discriminator itself resolves before trusting either verdict.
+  - ⚠️ Noted, not filed: `results/page.tsx:481` has a `<MarketCard>` call site that rendered zero
+    cards on production today, so `test:outcome`'s rule 2 may be governing an unreachable site.
+
+- **S19d · 2026-09-24 — D39, and the comment-stripper that was hiding 7,077 lines from every scanner.**
+  - **D39 (`22fb75a9`)** — two one-line edits through `sideWord`: the hedge warning's `heldLabel` and the
+    bet-placed modal's title. A sweep of every player surface confirmed they were the LAST two raw-enum
+    leaks. ⛔ Three citations in D39's own register cell were wrong (singular `market/` path, a `.join`
+    on a `Set`, and a precedent comment that names a different sibling) — all corrected in place.
+  - **NEW §3d in `test:labels`** — 3 passes, 7 controls, catching the two shapes §3 and §3b are
+    STRUCTURALLY blind to: a stored side reaching copy through a VARIABLE (the `.side` read is two
+    lines above the string that ships), and a display-position template whose only literal text is
+    " · " so a prose gate skips it. ⛔ Its own taint pass came back EMPTY for two runs until CRLF was
+    normalised — `.` does not match ``, so every `$`-anchored rule silently matched nothing. A
+    control now pins that reason in place.
+  - 🔴 **AND THE REAL FIND, WHICH WAS NOT D39 AT ALL.** `red:labels` scored **10/12**, and chasing the
+    uncaught one led to `stripComments`. Its JSX-comment rule was `/{s*/*[sS]*?*/s*}/` —
+    and `s` CROSSES NEWLINES, so in ordinary TypeScript an object literal's `{` followed by a doc
+    comment on the next line opened a match that ran to whatever distant `*/ }` came next.
+    **Measured: 7,077 lines of REAL CODE hidden across 76 files** — 1,337 of `market-service.ts`,
+    867 of `i18n-dict.ts` (the dictionary this suite exists to police), 160 of `updown-card.tsx`.
+    Every check in the file was blind to them. `[ 	]*` either side ends it and keeps every genuine
+    `{/* … */}`. ⭐ The suite still passes with those 7,077 lines visible — nothing was hiding in
+    them — and `red:labels` now catches the Up & Down push mutation it never could.
+  - ⚠️ **A SECOND MUTATION WAS PROVING NOTHING**: §3b's pick-gate anchor still carried an
+    `opacity-85` the call site had dropped, so it could not inject (§0 trap 2). Re-pinned.
+    **`red:labels` is 12/12, up from 10/12.**
+  - ⛔ MY FIRST MEASUREMENT OF THE DAMAGE SAID 11.1% AND WAS WRONG — it counted the interiors of
+    legitimate multi-line comments as hidden code. The honest number came from diffing the OLD rule
+    against the NEW one, which can only report lines the change actually reveals.
+
+- **S19c · 2026-09-24 — D37's fit proved as a delta, and dev hydration found broken on this box.**
+  - **D37 fit (`scripts/live/ops/d37-tile-fit.mjs`)** — the strip's exact markup injected into a real
+    production page at a real width, OLD and NEW measured in the same frame with a seven-figure book:
+    old spilled **72 / 52 / 26px** at 320 / 360 / 412, new spills **0px**, for one extra line of tile
+    height (117 → 132px). ⛔ A DELTA, not a threshold: where the old markup does not spill, the cell
+    reports BLIND rather than crediting the fix.
+  - 🔴 **REACT DOES NOT HYDRATE IN `next dev` ON THIS MACHINE** — both dev servers, every route,
+    4 hydrated elements out of 367–560, silently, with no error of any kind. Production reads 215 of
+    543. Every UI-driven local drive on this box is dead on arrival. Full detail and the one-probe
+    check are in §0; it is the reason D37's on-screen half is still open.
+  - ⛔ **AND MY OWN DRIVE LIED FIRST.** Version one reported "16 bets placed". Zero landed: it took its
+    target round from the ADVANCE RESPONSE, which lists the rounds that just CLOSED, so every bet was
+    aimed at a shut window — and it counted CLICKS. The wallet never moved and the history stayed
+    empty. Version two asks the BOARD which round is open (`data-phase="open"`) and asserts the wallet
+    FELL, stopping after two silent failures. That guard is what surfaced the hydration fault at all.
+    ⭐ A fixture that silently produces nothing is worse than no fixture: it makes everything
+    downstream look like a pass. Same lesson as [[a-failed-read-is-not-a-zero]], one layer out.
+  - ⚠️ **TWO THEORIES WERE WRONG AND WERE TESTED, NOT ASSUMED.** A stale `.next` (2.3GB deleted and
+    rebuilt — no change) and the `webpack-hmr` WebSocket errors (present against a hydrating server
+    too, so noise). The control that settled it was running the SAME probe against production.
+  - ⚠️ Borrowed `F:/kipindi-old-build` for the drive — the other session holds the only `next dev`
+    for `F:/kipindi-main` (PID 688, alive and serving, NOT killed). It was checked out to `b081b8b6`
+    and restored to `418f1b59` clean; its `.next` was deleted and will rebuild on next use.
 
 - **S19b · 2026-09-24 — D45 and D52, and three of U35's four verified on production.**
   - **D45 (`c6ebbedf`)** — all four Up & Down wrappers onto `max-w-board`/`max-w-reading` + `px-3 lg:px-6`.
@@ -1052,9 +1136,9 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D26 | Loading ghosts don't match phone content (`/live` 180px, `/results` 220px, generic loaders), and 6 `SearchBox` Suspense boundaries have no fallback, so the page jumps 🔵 **BOTH LOAD SHIFTS FIXED AND LIVE — `f70789df`.** `main` now reserves `100svh`, so the 18+ licence footer starts BELOW the fold and its later movement is neither visible nor counted. ⚠️ `svh`, not `vh` or `dvh`: `dvh` CHANGES as mobile browser chrome hides on scroll, which would introduce a second shift to cure the first. And it only ever ADDS height — on a page already taller than a viewport the rule is inert. `/results`' second shift is gone too: that container's `space-y-5` became `gap`, because `space-y-*` is a SELECTOR (`> :not([hidden]) ~ :not([hidden])`) and matches React's streamed `<template id="B:1">` boundary marker whether or not it renders — the comment above it claimed “`<Suspense>` renders no DOM node”, which is true of the CLIENT tree and false of the STREAM. ⭐ **VERIFIED ON THE SAME SITE, BEFORE AND AFTER, WITH THE SAME SCRIPT:** `/` **0.1594 → 0.0004**, `/markets` **0.1594 → 0.0004**, `/results` **0.1834 → 0.0007**, against a budget of 0.05 and a single-shift limit of 0.02. What is left is a 0.0004–0.0007 reflow as the header's auth cluster widens 188 → 194px on font swap. Sealed by `npm run qa:cls-budget` (§9 U25's own accept line, made checkable), whose `RED_SHELL=1` control **rewrites the served stylesheet** back to the pre-fix shell and reproduces 0.1668 / 0.1644 / 0.189 with the identical footer rect. ⛔ An injected `<style>` at document-start was tried first and did NOT take — the parser builds `<head>` after it — so that “RED” run scored the same as green and would have certified nothing. 🔴 **THE SENTENCE THAT USED TO END THIS CELL WAS PARTLY WRONG, AND IT IS CORRECTED HERE RATHER THAN DELETED.** It read: *"the skeleton SIZES — `/live` ghosts 180px against 347px cards, `/results` 220px, the markets filter-bar ghost ~250px against a real 116px bar, the generic `PageLoader`… and 6 `SearchBox` boundaries with no fallback… none of them is fixed."* Measured item by item on production 2026-09-24: ⛔ **`/live`'s 180px ghost was ALREADY CORRECT** — the real PulseCards measure **178–183px** at 320/360/390/414. 347px is the `/markets` card (`--mcard-h`), not `/live`'s, so the comparison was between two different cards and the one number in that file that needed no change was the one named as the defect. ⛔ **`/results`' 220px was already gone** — that file consumes `MARKET_CARD_H_CLOSED` (a `var()`, both densities). ✅ The markets filter bar was real and is **FIXED — D73**; `/live`'s ghost was wrong in a way nobody had written down (no hero, no search box, 538px out) and is **FIXED — D72**; `results/loading.tsx`'s hand-rolled grid is **FIXED — D74**. ✅ **The 6 `SearchBox` boundaries with no fallback exist — the count is exact** (`fairness`, `live/pulse-grid`, `notifications`, `profile/account`, `proposals`, `results`) — **but they cost nothing measurable**: throttled slow-4G, `/live` 0.0011, `/results` 0.0007. The reason is structural rather than lucky: the `SearchBox` arrives in the same component as the content it sits above, so there is no frame in which the grid is painted and the search box is not. A missing fallback only shifts a page when something BELOW it is already on screen. ✅ **THE GENERIC `PageLoader` IS MEASURED NOW, AND ON EVERY ROUTE A SIGNED-OUT PLAYER CAN REACH IT NEVER RENDERS AT ALL.** Sixteen public routes use it; `/proposals`, `/help` and `/fairness` are reachable by a visible link from `/`. Hopped to each with a `MutationObserver` armed before the click — which, unlike a polling loop, cannot have a gap — on throttled slow-4G: **not one shimmer row was ever inserted on any of the three**. ⭐ **THE SAME RUN CARRIED ITS OWN CONTROL:** `/markets`, measured by the identical code in the same session, painted **27 rows at +329ms**. So the instrument can see a skeleton when there is one, and the three zeros are the routes' behaviour rather than a blind probe — the distinction an earlier pass in this same session got wrong twice by writing a selector that matched nothing. ⚠️ The cause is prefetch: Next already holds those routes' payload when the link is clicked, so the transition is instant and `loading.tsx` never runs. A generic ghost that never paints costs a player nothing. ⛔ **WHAT IS STILL UNMEASURED, SAID PLAINLY:** the thirteen SIGNED-IN routes that use it (`/watchlist`, `/notifications`, every `/profile/*`). They are not reachable signed-out, so nothing above is evidence about them. ⭐ **AND THE REAL DEFECT ON THIS UNIT'S SURFACE WAS NONE OF THE ABOVE:** `/live`'s hero resized on a 6-second timer and walked the whole board up and down by 95px for 0.0796 of un-input CLS — **D71**. It is not a loading defect at all, which is why a unit about loading skeletons never looked for it. | `live/loading.tsx`, `results/loading.tsx`, `ui/page-loader.tsx` | U25 |
 | D27 | Reaching the RG session time limit is announced only by a toast (`failure-reasons.ts:285`), which can expire unseen; a compliance message must persist | `src/lib/failure-reasons.ts`, `conviction-dial.tsx` | U16 |
 | D28 | The card share control is 25–26 × 36–37px — under the tap floor on both axes — on **every** card on every board, 12px from "Details" (S02-home-07, S03-03, S07-06) | `.mcardp-share` + its `::after`, `globals.css:5106` | U3 |
-| D29 | Resolved and void cards with no bets state an invented "YES 50%" and a centred needle; `noPrice` is gated on `live`, so the cold-start rule never reaches terminal states (S03-10, S07-01) | `market-card.tsx:276-277` | U32 |
+| D29 | Resolved and void cards with no bets state an invented "YES 50%" and a centred needle; `noPrice` is gated on `live`, so the cold-start rule never reaches terminal states (S03-10, S07-01). 🔵 **FIXED AND LIVE `5c00588c` 2026-09-25.** ⛔ **THE REMEDY THIS CELL IMPLIED — "delete `live &&`, one token" — IS A REGRESSION, and the fix is four edits.** Deleting the gate alone trades a fabricated PRICE for a fabricated ABSENCE: two of the three "no bets yet" claims reach a SCREEN READER only (the price slot's `aria-label` and the empty rail's accessible name), so an emergency-voided market that refunded real money would have told a blind player nobody bet — while the visible caption that a sighted colleague could have caught was deleted. It also destroyed the outcome readout on resolved cards, because that arm was gated on `isResolved` and sat AFTER the absence branch. ⭐ THE TWO CLAIMS ARE DIFFERENT QUESTIONS: `noPrice` asks the POOL (is there a crowd price?), `neverBet` asks `predictorCount` (did anyone ever bet?) — which is only ever incremented and which `emergencyVoidMarket` never touches, so it is the only honest test in any phase. ⭐ AND NO NEW COPY WAS NEEDED: `emergencyVoidMarket` stamps `resolvedOutcome = "VOID"` (market-service.ts:4525) and `outcomeWord` already owns the VOID arm in all three languages, so a voided card now NAMES itself instead of claiming a crowd. ⚠️ The cell's path said `market-card.tsx` under `components/market/` — it is `components/markets/` | `components/markets/market-card.tsx:277` | U32 |
 | D30 | The chat bubble covers the rail More menu's last row: its status badge is cut and ~27% of the row opens chat instead of navigating. U7's 44px bubble does not clear it (S01-01) ✅ **CLOSED ON BOTH SURFACES.** The rail was `94a43227`; the SORT LISTBOX is `07f736f9`, where the panel's `z-index: 30` was spent inside `.kp-discovery-bar.sticky.z-20` and resolved at 20 against a bubble at 60, so the bottom two rows each lost 2 of 9 taps. ⛔ Raising the bar to `z-index: 100` was tried and MEASURED and changed nothing — a sticky element inside page content cannot out-rank a root-level fixed one whose context it does not share, which is why the rail's fix worked and this one could not. The bubble yields instead, matched together with its UNCLASSED fixed wrapper, because the hit test found both. **Verified on production 2026-09-23.** The nine-point census returns zero rows losing a tap. | `nav-more.tsx:94`, `ChatRoot.tsx:317` | U33 |
-| D31 | ◐ **HALF closed — one of four parts** (`252a9f55`, 2026-09-23). Signed-in balance capsule. ✅ **The hidden-balance mask no longer overflows its reserved box.** Ali reported it from his phone ("the eye icon overrides most of the dots"). Re-measured before fixing: the box was sized from the REAL figure while the hidden state painted a FIXED nine-character mask, so it overflowed at EVERY balance up to a million — **27.2px at TZS 0** (the register said 26.4), 13.6 at TZS 500 — and the eye’s own box begins 4px past that edge. The box is now the MAX of both states: three children in one grid cell, so toggling the eye still moves nothing. ⛔ `[grid-area:1/1]` GENERATES NOTHING in Tailwind — the slash is read as an opacity modifier — so it needs `[grid-row-start:1] [grid-column-start:1]`; the first attempt looked right and did nothing. ⚠️ **Proved at 320/360/412 on a signed-in session LOCALLY only** — this machine has no signed-in production account, so it is NOT verified on production. □ **STILL OPEN and still U34’s:** the eye control is 32px (under the 44px floor), the 800ms delta flash shifts the header, and the link announces "Hide password" | `wallet-balance-pill.tsx` | U34 |
+| D31 | ◐ **HALF closed — one of four parts** (`252a9f55`, 2026-09-23). Signed-in balance capsule. ✅ **The hidden-balance mask no longer overflows its reserved box.** Ali reported it from his phone ("the eye icon overrides most of the dots"). Re-measured before fixing: the box was sized from the REAL figure while the hidden state painted a FIXED nine-character mask, so it overflowed at EVERY balance up to a million — **27.2px at TZS 0** (the register said 26.4), 13.6 at TZS 500 — and the eye’s own box begins 4px past that edge. The box is now the MAX of both states: three children in one grid cell, so toggling the eye still moves nothing. ⛔ `[grid-area:1/1]` GENERATES NOTHING in Tailwind — the slash is read as an opacity modifier — so it needs `[grid-row-start:1] [grid-column-start:1]`; the first attempt looked right and did nothing. ⚠️ **Proved at 320/360/412 on a signed-in session LOCALLY only** — this machine has no signed-in production account, so it is NOT verified on production. ✅ **ALL FOUR PARTS ARE NOW FIXED AND VERIFIED ON PRODUCTION (2026-09-25).** ⛔ This cell used to end: ~~"STILL OPEN and still U34's: the eye control is 32px (under the 44px floor), the 800ms delta flash shifts the header, and the link announces 'Hide password'"~~ — **all three were already fixed, and "the 44px floor" was wrong twice over**: the floor is `--tap-min: 40px` (Law 9), which §0 trap 1 states and this cell contradicted. Measured signed in at 320/360/412 SW: eye **40×44** (`w-[var(--tap-min)]`, `70c8bcaa`), name **"Ficha salio"** (`t.common.hideBalances`, `f438bc41`), toggling the mask moves **nothing**. ⚠️ `hidePassword` still appears twice in the file — BOTH inside the fix comment that explains the change, so a raw-text guard here would report a defect that is not there. ⚠️ The delta flash is `absolute` (`:281`) but UNOBSERVED live: it paints only on a balance CHANGE and the QA account is unfunded | `wallet-balance-pill.tsx:189,281,365` | U34 |
 | D32 | The live ticker cannot be paused, stopped or hidden on a phone (pause is hover/focus only), has no accessible name, and its duplicated track makes a screen reader read every event twice (S01-02) ◐ **THREE OF ITS FOUR PARTS ARE CLOSED** (`230ac116`, `9d2da8ee`). Under reduced motion the strip FROZE at frame 0 showing 24% of one of twelve events — 245px of window against a 27,440px track, no scrollbar, no touch scroll, no links, so **11 of 12 events were unreachable by any means**. It is now a real scroller with `animation: none` — not merely paused, which would hold the first frame's transform. The strip also gained an accessible NAME, and the duplicate copy is `aria-hidden`, so a reader no longer hears twelve settlements as twenty-four. ⚠️ Both halves were bitten by the SAME trap one commit apart: an INLINE style beats any rule, so `overflow` had to leave the component before the box could scroll, and then `display: contents` had to leave it before the duplicate could be hidden — caught on production, where `dupDisplay` still read `contents`. **Verified on production 2026-09-23.** □ STILL OPEN, still U33's: the strip cannot be paused or hidden on a phone; pause is hover/focus only, which a touch user has neither of. ⚪ **THE REMAINING PART IS NOW UNREACHABLE, NOT UNDONE — 2026-09-24.** The outstanding item was a phone PAUSE control for the marquee. On Ali's instruction the scrolling settlement strip was removed from `app-shell.tsx` (`adbc31e7`, another session), so **the ticker renders nowhere**: measured on production, `.ticker-viewport`, `.ticker-track`, `.ticker-copy-dup` and any `[class*=ticker]` all return **0** on `/`, `/markets` and `/live`. ⚠️ `LiveTicker`, `getTickerFeed` and this defect's CSS (`.ticker-viewport`, `.ticker-copy-dup`, the `prefers-reduced-motion` branch) are all still in the tree and were kept deliberately, so re-siting the strip is one render away. `test:dead-css` therefore stays green and **nothing will flag them** — they are DORMANT, not wrong. ⛔ **IF THE STRIP IS EVER RE-SITED, THE PAUSE CONTROL BECOMES REQUIRED AGAIN** and this line re-opens. It is recorded as a condition rather than closed as done, because a reader who finds dormant ticker CSS and no defect against it will reasonably assume the work was finished.  | `live-ticker.tsx:85-91, :153-154` | U33 |
 | D33 | ✅ `de2e9643` — Home topic tiles break the pool figure across lines. ⚠️ **The register line was wider than the defect and is corrected from measurement**: it said "every pooled tile at 360 in all three locales", but at 360 SW — the DEFAULT locale — nothing split on the day it was measured. What splits is **width-and-locale dependent**: 5 of 6 tiles at 320 SW, 5 of 6 at 360 ZH, 2 of 6 at 360 EN, 0 at 360 SW and 0 at 412. It was a bare text node sharing the meta's wrapping; it is now `.kp-topic__pool` with `white-space: nowrap`. ⛔ The break MOVES rather than vanishing — the meta may still wrap at the separator — and the nowrap is legal here only because it was MEASURED not to clip: the widest figure `formatTzsCompact` can emit is ten characters (66px) against 78px of usable meta at 320. The proof rail forbids the same declaration outright for the opposite reason | `.kp-topic__pool`, `globals.css` · `topic-tiles.tsx` | U6 |
 | D34 | At 320 SW the board stats row ("25 hai · TZS 27K katika mchezo") cannot wrap or shrink and runs past the viewport edge beside a money figure (S03-01) | `markets/page.tsx` header row | U9 |
@@ -1062,10 +1146,10 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D36 | Up & Down truth: at the lock the pod shows a dead "Betting closes in 00:00" beside a panel saying betting has closed, and a resolved card keeps ticking a live price that contradicts its own close (S05-01, S05-02). 🔵 **BOTH HALVES FIXED AND LIVE, 2026-09-24.** ⛔ **THIS CELL USED TO NAME ~~`updown-card.tsx`, round page~~ — BOTH INNOCENT**, and a session that started there would have spent its day in the two files that were already right: the card renders whatever `livePrice` it is handed and already branches on `state` for its status word, target tiles and result pod; the round page has had the correct rule since E-72. Half 2 lived in `updown/page.tsx:286,290-292`, a file this cell never named. It was also FOUR wrong things, not one — price, percentage, direction glyph and win/lose ink, so a DOWN round wore a green rise beside its own "Down wins" pill. The rule is now `heroPrice`/`heroMovePct` in `updown-card-phase.ts`, called by BOTH surfaces | `updown/page.tsx`, `updown-card-phase.ts`, round page | U35 |
 | D37 | Up & Down history mixes scopes in one strip: "40 rounds" in the bar, "Rounds 12 · 95 bets" in the tile (page vs whole history), and the net-return sub-line spills into the next tile (S05-updown-NUM-01/02). 🔵 **FIXED AND LIVE, 2026-09-24.** Worse than filed: **Net return and Win rate themselves were PAGE-scoped** while the page's own comment claimed they described the whole filtered view — the money moved when the player pressed "next". ⭐ **Ali decided the scope on 2026-09-24: the whole filtered view**, so the pager moves the list and never the figures. The arithmetic is now the pure `roundPnl` (`src/lib/updown-history-pnl.ts`), the poller watches the view too, and the spill was `.amount`'s `white-space: nowrap` at DOUBLED specificity — a `whitespace-*` utility could never have overridden it, so `.amount` moved onto the numbers and the arrow became the wrap point | `updown/history/page.tsx`, `updown-history-pnl.ts` | U35 |
 | D38 | /live search: one typo unmounts the field mid-typing (keyboard closes, the query can only be cleared), and the hero above it changes height while typing, jumping the field 110–134px (S06-live-01, S06-live-02) | `live/page.tsx`, `featured-contest.tsx` | U36 |
-| D39 | Market detail money copy shows the raw YES/NO enum in SW/ZH — on the hedge warning and the bet-placed modal — while the buttons beside them say NDIO/HAPANA or 是/否 (S04-detail-01, S04-detail-02) | detail aside, result modal | U37 |
+| D39 | Market detail money copy shows the raw YES/NO enum in SW/ZH — on the hedge warning and the bet-placed modal — while the buttons beside them say NDIO/HAPANA or 是/否 (S04-detail-01, S04-detail-02). 🔵 **FIXED AND LIVE `22fb75a9`.** ⛔ **THREE CITATIONS IN THIS REGISTER WERE WRONG** and would each have cost a session: the path is `src/components/markets/…` (**markets, plural** — `market/` returns "No such file"); the code is `[...heldSides].join(" + ")`, NOT `heldSides.join(…)` — `heldSides` is a `Set` and has no `.join`, so a guard pinned to the quoted text would match nothing; and the "already-fixed sibling" comment at conviction-dial.tsx:1002 names the bet-placed NOTIFICATION, not the modal — the real in-file rule is at **:553-555**. ⭐ A sweep of every player surface confirmed these were the **last two** raw-enum leaks. ⚠️ Guard: §3d catches BOTH shapes §3/§3b miss — a stored side reaching copy through a VARIABLE (the `.side` read is two lines above the string) and a display-position template whose only literal text is " · " | `markets/[id]/page.tsx:357`, `components/markets/conviction-dial.tsx:1729` | U37 |
 | D40 | On the detail page the bet widget and the guest sign-in prompt are announced last, under the wrong heading: reading order does not match visual order (S04-detail-L04) | `markets/[id]/page.tsx:756` | U37 |
 | D41 | The InfoHint explanations for fee, multiplier and payout render as a one-line strip ~4× the screen width with a ~10×14px trigger, so on a phone the money explanation cannot be read or opened (S04-detail-03) | InfoHint in the stake panel | U37 |
-| D42 | The /results summary ring draws three arcs on the 171-market denominator but its legend names two ("NDIO 59 · HAPANA 88" = 147): 24 settled markets — 14% of the ring — sit in an arc named nowhere on the page (critics panel, three lenses) | `results/page.tsx:319` (`OutcomeDonut … voided`), legend `:324-331` prints YES · NO only | U32 |
+| D42 | The /results summary ring draws three arcs but its legend names two: settled markets sit in an arc named nowhere on the page (critics panel, three lenses). 🔵 **FIXED AND LIVE `1d3bbc28` 2026-09-25.** ⛔ **EVERY FIGURE AND ADDRESS IN THIS CELL WAS STALE** — struck and re-measured on production 2026-09-25: ~~171-market denominator~~ → **210**; ~~"NDIO 59 · HAPANA 88" = 147~~ → **"YES 69 · NO 110" = 179**; ~~24 markets, 14%~~ → **31 markets, 53.14° = 14.76%**; ~~`:319`~~ → the donut is `:528-542`; ~~legend `:324-331`~~ → `:348-372`. The archive grew by 39 rows and the defect grew with it; only the percentage held. ⛔ AND §9's arc triple "124/182/49" sums to **355°** and cannot be a reading of this component — a `Ring` clamps to exactly 1 (`ring.tsx:52`). Production emits **118.29 / 188.57 / 53.14**, which sums to 360. 🔴 **AND IT WAS WORSE THAN FILED, ON A FILTER NOBODY CHECKED:** `linesShown` (:258-260) keeps a product only when `winsIn(YES) + winsIn(NO) > 0`, so **`/results?out=void` dropped EVERY legend row — 31 results, a full 360° grey circle, and not one word on screen.** ⭐ Remedy: a THIRD ROW, not a third term (D64 measured that row 10px past the viewport at 277px), gated on `voidCount > 0`, wearing the arc's own ink, with the word from `t.market.statusVoid` — which already exists in all three languages, so NO new copy. ⛔ Not run through `sideWord`: a refund has no direction (§C4) | `results/page.tsx:528-542` (donut), `:348-372` (legend) | U32 |
 | D43 | The leaderboard list is ranked by ROI and no row shows ROI: the podium prints +26.8% / +13.2% / −3.9%, then rows 2–6 drop the number they are sorted by and leave 105–142px empty at the right (critics panel) | `leaderboard/page.tsx:460` (list row) | U10 |
 | D44 | The tier word "Fedha" (silver) is printed in the money gold, and podium rings #2 and #3 are the same pale blue — while the tier chips on the same screen already own real silver and bronze inks (critics panel, sampled) | `leaderboard/page.tsx:320` (`accent: "gold"`), podium `:546` | U10 |
 | D45 | Up & Down's page gutter is 20px; every other surface, and Up & Down's own footer, sits on 16. The wrapper is `px-4` — which reads like 16 and is **20 on this project's scale** (critics panel, measured on 8 surfaces). 🔵 **FIXED AND LIVE `c6ebbedf`, verified on production `4b30a069`: 16px on /updown, /updown/history and /markets alike at 320/360/412.** ⛔ **THE SCOPE WAS FOUR WRAPPERS, NOT TWO** — this cell named ~~`updown/page.tsx:68,86`~~ (now :73,91) and missed `updown/loading.tsx` and both history files. ⭐ The guard already existed: `measure-system.test.mts` carried these four on an explicit exemption ratchet, so the fix was the LIST SHRINKING — and that also put both routes inside its page/loading tier-parity check for the first time, since a hand-typed pixel width matches no tier. ⛔ But that check matches `max-w-[NNNpx]` only, so it could never have caught the gutter alone; a second assertion now does, proven RED by reverting `px-3 lg:px-6` → `px-4` with the token width left in place | `updown/page.tsx:73,91`, `updown/loading.tsx`, `updown/history/page.tsx`, `history/loading.tsx` | U35 |

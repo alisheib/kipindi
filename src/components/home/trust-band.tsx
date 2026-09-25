@@ -129,7 +129,9 @@ export function TrustBand({
                   <span className="kp-hero__tick" aria-hidden />
                   {t.home.settledEyebrow}
                 </p>
-                <h3 className="kp-shead__h">{t.home.settledHead}</h3>
+                {/* `text-balance` on every .kp-shead__h, not some of them — it was on 3 of 5, which is the
+                    kind of inconsistency that reads as a bug on whichever heading happens to wrap. */}
+                <h3 className="kp-shead__h text-balance">{t.home.settledHead}</h3>
               </div>
               <Link href={"/results" as never} className="kp-shead__link">
                 {t.home.settledSeeAll}
@@ -158,6 +160,43 @@ export function TrustBand({
  * describe what happened — it says "refunded", in the muted ink, never in the money gilt and
  * never as an error (licence condition 4 / §C4: a refund is neutral).
  */
+/* The floor under the settled strip’s money column.
+ *
+ * 🔴 EVERY SETTLED ROW IS ITS OWN GRID (`.kp-settled__row` is `display:grid`), so the four tracks
+ * are sized per row and nothing makes them agree. The silent row — a market decided with an empty
+ * pool, which prints no sum — sized its money track to the non-breaking space and collapsed it.
+ * Measured on production 2026-09-24, five rows, at BOTH 768 and 1280:
+ *
+ *     row0  amt 148.22px   source host x=449
+ *     row1  amt 156.02px   source host x=441
+ *     row2  amt 156.02px   source host x=456
+ *     row3  amt   7.81px   source host x=589   ← the silent row, 140px out of line
+ *     row4  amt 148.22px   source host x=449
+ *
+ * Fixing the row’s HEIGHT (the non-breaking space, above) did not fix its WIDTH: an empty line box
+ * is one line tall and nearly zero wide. The settling source is the trust signal on this panel and
+ * it sat 140px away from the column it belongs to, on one row in five.
+ *
+ * ⭐ `ch` IS EXACT HERE, AND IT IS NORMALLY NOT. `1ch` is the advance of the digit zero, which in a
+ * proportional face overshoots the average character by a quarter or more — this codebase has been
+ * bitten by that. `.kp-settled__amt` is `--font-mono`, where every advance is the same by
+ * definition. The arithmetic checks out against the measurement: 148.22px / 19 characters and
+ * 156.02px / 20 characters both give 7.80px per character.
+ *
+ * 20ch is the widest row present ("TZS 20,350 yalilipwa"). It is a FLOOR, never a cap, so a larger
+ * payout still widens its own cell rather than being clipped, and a shorter word in another locale
+ * is padded up to the column instead of breaking it. It costs the question column 7.8px on the two
+ * narrowest rows, which is the whole price.
+ *
+ * ⚠️ AND ONE QUESTION NOW TRUNCATES AT 1280 THAT DID NOT BEFORE — the silent row’s. Say it plainly:
+ * that row was reading wider than its neighbours ONLY because its money track had collapsed and
+ * handed the question the 148px it should never have had. Its un-truncated question was a symptom
+ * of the defect, not a feature being spent. After this it clips exactly like row1 already did, and
+ * clipping here is the designed behaviour — `.kp-settled__q` is `text-overflow: ellipsis` and the
+ * whole row is a link to the market. Simulated on production before shipping: source-host spread
+ * across the five rows falls from 148px to 15px at both 768 and 1280, no amount cell clips in any
+ * locale, and 360 is untouched because the row stacks below 768. */
+const AMT_MIN = "20ch";
 function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: Locale }) {
   // 🔴 THE NULL ARM, WHICH DID NOT EXIST. `SettlementRow.outcome` is
   // `"YES" | "NO" | "VOID" | null`, and the old line was a two-armed dictionary ternary on the
@@ -230,9 +269,9 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
           Caught on production 2026-09-24: a settled row carried the "NDIO" outcome pill and the
           refund word in the same row. */}
       {isVoid || row.amountTzs == null ? (
-        <span className="kp-settled__amt kp-settled__amt--void">{t.home.settledVoid}</span>
+        <span className="kp-settled__amt kp-settled__amt--void" style={{ minWidth: AMT_MIN }}>{t.home.settledVoid}</span>
       ) : row.amountTzs > 0 ? (
-        <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
+        <span className="kp-settled__amt" style={{ minWidth: AMT_MIN }}>{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
       ) : (
         /* 🔴 AN EMPTY CELL, NOT NO CELL. Returning null here removed the grid ITEM, so the row’s
            money track collapsed: one row in five came out 19.5px shorter than its neighbours at 360
@@ -242,7 +281,14 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
            and prints nothing.
            ⛔ `aria-hidden` and no text: a screen reader must not announce an empty money cell as if
            it were a figure, and there is no figure here to announce. */
-        <span className="kp-settled__amt" aria-hidden />
+        /* 🔴 THE EMPTY SPAN RESERVED NOTHING — an empty block box has height 0, so the grid track
+           stayed at 0px and row 4 stayed 70.5px against its neighbours’ 90px at 360 and 412.
+           Re-measured on production after it shipped: amtH = 0, tracks "21px 16.5px 0px". The
+           element was there and did nothing, which is the shape this session keeps paying for.
+           A non-breaking space gives the box exactly one line box at the cell’s own line-height —
+           no magic number, and it tracks the type scale if that ever moves. `aria-hidden` keeps it
+           out of the accessibility tree, so nothing is announced for a sum nobody staked. */
+        <span className="kp-settled__amt" style={{ minWidth: AMT_MIN }} aria-hidden>{" "}</span>
       )}
     </Link>
   );

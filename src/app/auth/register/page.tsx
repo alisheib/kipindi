@@ -18,6 +18,7 @@ import { startRegisterAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, fill } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
+import { ROOT_OPEN_GRAPH } from "../../layout";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string }> }) {
   const { t } = await getServerT();
@@ -31,7 +32,14 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const ogImage = `${appUrl()}/api/og/page?title=${encodeURIComponent(ogTitle)}&sub=${encodeURIComponent(ogSub)}`;
   return {
     title: t.auth.signUpTitle,
-    openGraph: { title: ogTitle, description: ogSub, images: [{ url: ogImage, width: 1200, height: 630 }] },
+    /* 🔴 SPREADING THE ROOT IS NOT COSMETIC — WITHOUT IT THIS ROUTE HAD NO og:locale,
+       og:site_name OR og:type. Next merges `metadata` PER FIELD, not deeply: a partial
+       `openGraph` here REPLACES the layout object whole. `images` and `title` survived only
+       because this file happens to set them, which is exactly why the loss reads as fine in
+       the diff and in the browser. Measured on production 2026-09-24: `/` and `/markets`
+       emitted 1/1/1, this route 0/0/0. The same edit deleted the landing page’s share card
+       once already (`openGraph: { url: "/" }`). ⛔ Never write a bare `openGraph` object here. */
+    openGraph: { ...ROOT_OPEN_GRAPH, title: ogTitle, description: ogSub, images: [{ url: ogImage, width: 1200, height: 630 }] },
     twitter: { card: "summary_large_image", title: ogTitle, description: ogSub, images: [ogImage] },
   };
 }

@@ -194,15 +194,27 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
           <SignalPip size={7} className="mr-0.5" />
           <span className="font-semibold text-text">{openMarkets.length}</span>
           <span className="text-text-subtle">{t.market.liveCount}</span>
-          <span className="text-border-strong">·</span>
-          {/* ⭐ ONE FIGURE, ONE GRAMMAR. This printed `TZS 1280k` while the landing hero
-              printed the SAME quantity — both sum yesPool+noPool over the open rows from
-              the same `discovery.ts` — as `TZS 1.3M`, on adjacent pages a player moves
-              between in one tap. The local `/1000` also had no magnitude threshold, so a
-              quiet book printed `TZS 0k`. `formatTzsCompact` owns the grammar and emits
-              its own `TZS ` prefix — do not put one back in front of it. */}
-          <span className="font-semibold text-text">{formatTzsCompact(openVolume)}</span>
-          <span className="text-text-subtle">{t.market.tzsInPlay}</span>
+          {/* 🔴 A ZERO POOL IS NOT STATED, FOR THE SAME REASON THE TOPIC TILES STOPPED STATING IT.
+              Making this header honour the topic filter was right, and it reintroduced the exact
+              dead string the tiles had just been cleared of: /markets?topic=tech, ?topic=weather and
+              ?topic=macro each printed "TZS 0" — 3 of 7 topic destinations, reached by tapping a tile
+              that deliberately no longer says it. The count is never omitted, so a quiet topic still
+              says how many questions it holds.
+              ⛔ This is not the cold-start rule being relaxed: that rule forbids INVENTING a figure
+              nobody produced. Omitting a true zero states nothing false. */}
+          {openVolume > 0 && (
+            <>
+            <span className="text-border-strong">·</span>
+            {/* ⭐ ONE FIGURE, ONE GRAMMAR. This printed `TZS 1280k` while the landing hero
+                printed the SAME quantity — both sum yesPool+noPool over the open rows from
+                the same `discovery.ts` — as `TZS 1.3M`, on adjacent pages a player moves
+                between in one tap. The local `/1000` also had no magnitude threshold, so a
+                quiet book printed `TZS 0k`. `formatTzsCompact` owns the grammar and emits
+                its own `TZS ` prefix — do not put one back in front of it. */}
+            <span className="font-semibold text-text">{formatTzsCompact(openVolume)}</span>
+            <span className="text-text-subtle">{t.market.tzsInPlay}</span>
+            </>
+          )}
         </p>
       </div>
 

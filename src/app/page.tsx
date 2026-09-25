@@ -231,8 +231,27 @@ export default async function LandingPage() {
             {/* Same orphan-row fix as the topic tiles, for the same measured reason: at 768 the
                 grid is two columns with three cards, and the lone card in the final row came out
                 320px against its neighbours’ 354px. Scoped to the landing page by being written
-                here rather than on `.market-grid`, which /markets also uses. */}
-            <div className="market-grid" style={{ gridAutoRows: "1fr" }}>
+                here rather than on `.market-grid`, which /markets also uses.
+                🔴 IT SHIPPED UNCONDITIONALLY AND COST 44px ON EVERY PHONE. Equal row heights are
+                worth having when cards sit BESIDE each other; in one column they sit BELOW each
+                other and there are no row-mates to match, so `1fr` only stretches the short cards
+                into dead space. Measured on production 2026-09-24 by removing the rule and
+                re-reading the same three cards:
+                    320 / 360 / 412 / 560   with 1fr [302,302,302]   without [280,302,280]   +22,0,+22
+                    768                     with 1fr [354,354,354]   without [354,354,320]   the fix earning its keep
+                    1024 / 1280             identical either way
+                ⭐ THE CONDITION IS WRITTEN IN THE SAME TERMS AS THE RULE THAT CREATES IT. The grid is
+                `repeat(auto-fill, minmax(min(300px,100%), 1fr))` with a 14px gap, so a second column
+                appears at exactly 300+14+300 = 614px OF GRID WIDTH — measured: 608px wide is one
+                column, 618px is two. A viewport media query would encode 646px instead, which is
+                that same 614 plus today’s 32px of page padding, and would silently drift the day
+                the padding changes. A container query asks the question the grid actually answers.
+                ⚠️ Where @container is unsupported the query never matches, so the rule simply does
+                not apply and the board renders as it did before this fix — the orphan row returns,
+                nothing breaks. */}
+            <style>{`.kp-lgw{container-type:inline-size}@container (min-width:614px){.kp-lgw .market-grid{grid-auto-rows:1fr}}`}</style>
+            <div className="kp-lgw">
+            <div className="market-grid">
               {comp.grid.slice(0, LANDING_GRID_SIZE).map((r) => {
                 const cc = cardCharts.get(r.id) ?? { spark: [] };
                 return (
@@ -267,6 +286,7 @@ export default async function LandingPage() {
                 );
               })}
             </div>
+            </div>
 
             {/* 48px below the grid, same surface — it belongs to this section (kit §1d). */}
             <div style={{ marginTop: "var(--rh-close)" }}>
@@ -289,7 +309,7 @@ export default async function LandingPage() {
                 <p className="kp-hero__eyebrow text-balance" style={{ marginBottom: "var(--sp-1)" }}>
                   <span className="live-dot" /> {t.home.updownEyebrow}
                 </p>
-                <h2 className="kp-shead__h" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
+                <h2 className="kp-shead__h text-balance" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
                 <p className="kp-trust__b" style={{ maxWidth: "52ch" }}>{t.market.udTagline}</p>
                 <p className="kp-topic__m" style={{ paddingLeft: 0, marginTop: "var(--sp-2)" }}>
                   {updownLiveCount > 0
@@ -302,7 +322,14 @@ export default async function LandingPage() {
                   thing on the document. It keeps `shrink-0` so it does not compress beside the copy
                   at ordinary widths — it simply stops being allowed to exceed its container, and
                   wraps to a second line only when it truly cannot fit. */}
-              <span className="btn btn-primary btn-lg shrink-0 max-w-full whitespace-normal">
+              {/* 🔴 `whitespace-normal` NEVER TOOK EFFECT. Re-measured on production: computed
+                  white-space stayed `nowrap` with the class present. The utility lives in
+                  `@layer utilities` and `.btn` is unlayered — and a cascade layer loses to unlayered
+                  CSS outright, regardless of specificity. The class was in the markup, the diff read
+                  correct, and the button was still 229px.
+                  An inline style is the one mechanism that cannot lose here, and it is scoped to this
+                  call site rather than changing `.btn` for every button on the platform. */}
+              <span className="btn btn-primary btn-lg shrink-0 max-w-full" style={{ whiteSpace: "normal" }}>
                 <I.trendingUp s={16} /> {t.home.updownCta}
                 <I.chevronRight s={14} />
               </span>

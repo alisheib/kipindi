@@ -48,9 +48,23 @@ export function moneyFormMsisdn(
   return normalizeTzLocalDigits(accountPhoneE164);
 }
 
-/** Canonical 9-digit local part, or as much of it as has been typed so far. */
+/**
+ * Canonical 9-digit local part, or as much of it as has been typed so far.
+ *
+ * 🔴 THE IDD PREFIX HAS TO COME OFF FIRST, AND UNTIL 2026-09-25 IT DID NOT. `00` is the
+ * international dialling prefix; `0` is the national trunk prefix. Testing for the trunk prefix
+ * first read the first zero of `00255712345678` as a trunk code, stripped every leading zero, and
+ * returned `255712345` — nine digits that look canonical and are a DIFFERENT number. `toMsisdn255`
+ * made the mirror-image mistake on the same input (see its own note), so the two rails disagreed in
+ * opposite directions and each looked correct read alone.
+ *
+ * ⚠️ `00712345678` STILL MEANS WHAT IT ALWAYS DID. Stripping the IDD leaves `712345678`, which is
+ * the same answer the old leading-zero strip gave — the "double-zero fat finger" vector this
+ * module's suite has carried since August is unchanged, deliberately.
+ */
 export function normalizeTzLocalDigits(raw: string): string {
   let d = (raw ?? "").replace(/\D+/g, "");
+  if (d.startsWith("00")) d = d.slice(2);               // IDD prefix — before the trunk prefix
   if (d.startsWith("255")) d = d.slice(3);              // +255 / 255 country code
   else if (d.startsWith("0")) d = d.replace(/^0+/, ""); // local trunk prefix
   return d.slice(0, 9);
@@ -79,11 +93,50 @@ export function normalizeTzLocalDigits(raw: string): string {
  * Guard: `npm run test:phone-normalize`.
  */
 export function toMsisdn255(raw: string): string {
-  const d = (raw ?? "").replace(/\D/g, "");
+  let d = (raw ?? "").replace(/\D/g, "");
+  // 🔴 D1, FIXED 2026-09-25. `00` is the INTERNATIONAL dialling prefix and has to come off before
+  // anything reads the next character as a national trunk zero. Without this line the branch below
+  // turned `00255712345678` into `255` + `0255712345678` — a SIXTEEN-digit msisdn, past the
+  // fifteen-digit E.164 maximum, which `sendBatch` then billed as a send attempt that could never
+  // deliver. Latent until 2026-09-25 only because every caller stood behind `tzPhone`, whose regex
+  // cannot pass a `00…` string; the contacts importer is the first caller that will not.
+  if (d.startsWith("00")) d = d.slice(2);
   if (d.startsWith("255")) return d;
-  if (d.startsWith("0")) return "255" + d.slice(1);
+  if (d.startsWith("0")) return "255" + d.replace(/^0+/, "");
   if (d.length === 9) return "255" + d;
   return d;
+}
+
+/**
+ * ⭐ MAY THE GATEWAY BE ASKED TO DIAL THIS AT ALL? Added 2026-09-25 (marketing plan U1, D2).
+ *
+ * 🔴 NOTHING REFUSED A MALFORMED NUMBER BEFORE THIS. `sendBatch` normalised whatever it was given,
+ * wrote the `SmsMessage` row, and POSTed it. Every Tanzanian gateway failure is an HTTP 400 with no
+ * per-message detail, so a malformed number came back as an indistinguishable batch refusal — and
+ * it had already been counted as a send attempt. Measured on the twelve vectors in
+ * `phone-normalize.test.mts`: a Kenyan `+254…`, a Dar es Salaam landline, a truncated nine-digit
+ * string and the sixteen-digit output of the `00…` defect all reached the wire.
+ *
+ * ── WHAT IT IS, AND WHAT IT DELIBERATELY IS NOT ──────────────────────────────
+ * TWELVE digits, `255` then `6` or `7`. That is the whole rule, and the narrowness is the point:
+ * this predicate answers "can a gateway dial this", not "is this a real subscriber".
+ *
+ * ⛔ IT IS NOT A NUMBERING PLAN AND MUST NEVER GROW INTO ONE. `255701234567` passes here, and this
+ * module has no opinion about whether anyone holds NDC 70 — deliberately. ⭐ THAT IS NOT A
+ * HYPOTHETICAL RISK: NDC 70 was spare in the TCRA plan's 2020, 2024 and 2025 editions and is
+ * allocated in the 2026 one, and 63, 64, 66 and 72 all changed holder over the same period. A
+ * numbering table on the money wire would go stale on the regulator's schedule, not ours, and the
+ * failure mode is refusing to text a real customer. Which NDCs are allocated, to whom, and under
+ * which edition is the single job of the numbering-plan module and its own suite, where the edition
+ * and its review date are recorded in the file. `phone-normalize.test.mts` §4 asserts this gap out
+ * loud so it cannot be mistaken for coverage.
+ *
+ * Lives in this module because it is pure and imports nothing, so the client may reach it too.
+ *
+ * Guard: `npm run test:phone-normalize`.
+ */
+export function isGatewayMsisdn(msisdn: string): boolean {
+  return /^255[67]\d{8}$/.test(msisdn ?? "");
 }
 
 /**

@@ -21,7 +21,7 @@
 > closed **by owner direction with the code gap still present** and exposure measured at or near
 > zero. If exposure moves, they reopen — which is why the mechanism is kept legible in each row.
 
-## ▶ 0 · MOBILE VISUAL PLAN — `MOBILE-VISUAL` · 🟠 **APPROVED 2026-09-15 (v3) · START HERE** · 10/42 units ✅ · 5/83 defects ✅ (D28 · D49 · D33 · D51 · D56) · 🔵 shipped early and live: D57 · D63 · D65 · D30 · D7 · **D71–D81** (`371690b6` + follow-up 2026-09-24 — /live's hero resized on a timer for 0.0796 un-input CLS, and three skeletons promised the wrong page) · **D36 · D37 · D45 · D52** (`a7da5f89` + `c6ebbedf` 2026-09-24 — the board priced a settled round at today's quote; the history strip's money moved when you turned the page; Up & Down sat on a 20px gutter where the platform uses 16; the settled pod stranded its arrow at a line end. **D36, D45 and D52 verified on production `4b30a069`.** ⛔ U35 is NOT closed — D37's strip has never been seen on a screen: no production account has Up & Down history, and the local dev host is held by another session. Recipe in MOBILE-VISUAL-PLAN §0) · ◐ half: D31 · D35 · D54 · D30 and D7 shipped early and live (🔵 `a25c127b`) · D31 HALF closed — the mask overflow only
+## ▶ 0 · MOBILE VISUAL PLAN — `MOBILE-VISUAL` · 🟠 **APPROVED 2026-09-15 (v3) · START HERE** · 11/42 units ✅ · 6/83 defects ✅ (D28 · D49 · D33 · D51 · D56 · D31) · 🔵 shipped early and live: D57 · D63 · D65 · D30 · D7 · **D71–D81** (`371690b6` + follow-up 2026-09-24 — /live's hero resized on a timer for 0.0796 un-input CLS, and three skeletons promised the wrong page) · **D36 · D37 · D45 · D52** (`a7da5f89` + `c6ebbedf` 2026-09-24 — the board priced a settled round at today's quote; the history strip's money moved when you turned the page; Up & Down sat on a 20px gutter where the platform uses 16; the settled pod stranded its arrow at a line end. **D36, D45 and D52 verified on production `4b30a069`.** ⛔ U35 is NOT closed on ONE thing: D37's data path is proved by unit (26 assertions, 6/6 mutations) and its FIT is proved on production's own stylesheet as a DELTA — the old markup spilled 72/52/26px at 320/360/412, the new spills 0 — but nobody has watched the real strip, fed by real rows, hold still while the player pages from 1 to 2. 🔴 **React does not hydrate in `next dev` on this machine** — both dev servers, every route, 4 hydrated elements of ~500, silently, no errors; production reads 215 of 543 — so no local drive can place a bet. Check that FIRST before planning one. Detail in MOBILE-VISUAL-PLAN §0) · ◐ half: D31 · D35 · D54 · D30 and D7 shipped early and live (🔵 `a25c127b`) · D31 HALF closed — the mask overflow only
 
 Ali, 2026-09-15: *"later any session please start with the mobile visual plan and start with the progress."*
 **▶ Work order and tracker: [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md). Open it at §0 (RESUME AT), then §1 (status board).**
@@ -33,7 +33,7 @@ Ali, 2026-09-15: *"later any session please start with the mobile visual plan an
 | **Next** | Session S2 → U3 (the Compact market card) and U4 (the discovery bar). S1 (U1 + U2) is done and live since 2026-09-23. Two units per session |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit** |
 
-## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟠 **PLANNED 2026-09-16 · REFRESHED 2026-09-23 with the sealed SMS rail (§3a, §3b) · RUNS WHEN ALI SAYS SO, ON ANY PC** · 0/52 units ✅ · 0/25 defects ✅
+## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟢 **BUILDING — S1 started 2026-09-25; U1 is live** · 1/52 units ✅ · 2/25 defects ✅
 
 Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marketing campaign and contacts setup"* · *"make it perfectly working for 50pick, perfect design and logic."*
 **▶ Work order and tracker: [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md). Open it at §0 (RESUME AT), then §0a (the copy-paste session prompt), then §1 (status board).**
@@ -47,6 +47,20 @@ Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marke
 | **Next** | Session S1 → U1 (one phone key + the wire refusal) and U2 (the Tanzanian number library). Two units per session |
 | **Since it was written** | ✅ Delivery receipts now WORK end to end — a production message was DELIVERED and its receipt settled the real row in 11 seconds. The plan was drafted when none had ever arrived; §3a replaces that premise, §3b carries the vendor's measured behaviour and the seven lessons from the eleven days it took |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit**. The tracker guard asserts the two doors agree |
+
+## ▶ 0b · THE LANDING PAGE'S TEN — `LANDING-TEN` · 🟢 **ENGINEERING COMPLETE 2026-09-24 · TWO OWNER DECISIONS REMAIN** · 12 of 14 gate classes at ZERO across 61 cells
+
+Ali, 2026-09-24: *"nothing less than 10 visually is accepted. not 9.99, only 10."*
+**▶ Record and rules: [`LANDING-TEN.md`](LANDING-TEN.md). Read it before touching `/`, and before trusting a green gate.**
+
+| | |
+|---|---|
+| **What shipped** | A five-critic panel scored `/` at 7.2/10 (design 8.1, content 6.9, display 6.7). The deliverable is an instrument, not a list of fixes: `npm run qa:landing-ten` — 14 classes over 61 cells (11 widths × 3 locales, plus first-visit / compact / reduced-motion / no-JS / client-hop / signed-in states, landscape and zoom), each class proved able to fail by a DELTA control |
+| **Where it stands** | **V11 368 → 0 · V12 1 → 0 · V7 2 → 0.** The hero now applies a price-quality floor, four routes got their share cards back, the settled strip holds its money column, and the market grid stops stretching single-column rows |
+| **⛔ NOT ENGINEERING** | **V3** (the chat bubble over live prices, 52–54 findings) and **V14** (the page does not render without JS, 2,108px against 7,361px) are both owner decisions — every remedy is a visible product trade. The gate does not reach zero and should not be forced to |
+| **Not this plan's** | The **book**: 42 of 59 open markets hold no money and the busiest has 7 predictors, which is what holds the two lowest critics at 6.5 for content. Needs `scope.products.polls` on with categories ticked, `scope.poolTotalMaxTzs` cleared from `0`, then the COUNTER workstream with Ali's caps. ⛔ Never `OPENER` on polls — it manufactures 0%/100% cards, the exact defect the panel marked the page down for |
+| **One bad record** | `mkt_ed8bf4f01932b46fa0be` is settled NDIO while its own officer evidence reads *"No… a total of 20 goals were scored"* — TZS 1,000 on NDIO against TZS 10,000 on HAPANA. One disagreement in 210 resolved markets. The landing page prints the record truthfully; the record is wrong |
+| **Rule** | The gate measures **production**, because a claim about what a page shows is a claim about its content. A failed read is reported unmeasured, never clean. And a green gate is not a 10 until the frames have been looked at |
 
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 

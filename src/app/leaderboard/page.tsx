@@ -6,6 +6,7 @@
  * ranked players (a genuine empty state until players settle predictions);
  * sample data is generated for the empty demo store in non-production only.
  */
+import { ROOT_OPEN_GRAPH } from "../layout";
 import { fill } from "@/lib/utils";
 import { db } from "@/lib/server/store";
 import Link from "next/link";
@@ -44,7 +45,14 @@ export async function generateMetadata() {
   const og = `/api/og/page?title=${encodeURIComponent(title)}`;
   return {
     title,
-    openGraph: { title, images: [{ url: og, width: 1200, height: 630 }] },
+    /* 🔴 SPREADING THE ROOT IS NOT COSMETIC — WITHOUT IT THIS ROUTE HAD NO og:locale,
+       og:site_name OR og:type. Next merges `metadata` PER FIELD, not deeply: a partial
+       `openGraph` here REPLACES the layout object whole. `images` and `title` survived only
+       because this file happens to set them, which is exactly why the loss reads as fine in
+       the diff and in the browser. Measured on production 2026-09-24: `/` and `/markets`
+       emitted 1/1/1, this route 0/0/0. The same edit deleted the landing page’s share card
+       once already (`openGraph: { url: "/" }`). ⛔ Never write a bare `openGraph` object here. */
+    openGraph: { ...ROOT_OPEN_GRAPH, title, images: [{ url: og, width: 1200, height: 630 }] },
     twitter: { card: "summary_large_image", title, images: [og] },
   };
 }

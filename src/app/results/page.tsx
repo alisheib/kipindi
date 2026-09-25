@@ -36,6 +36,7 @@ import { pickLocalized } from "@/lib/localized";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { PageContainer } from "@/components/layout/page-container";
+import { ROOT_OPEN_GRAPH } from "../layout";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -43,7 +44,14 @@ export async function generateMetadata() {
   const og = `/api/og/page?title=${encodeURIComponent(title)}`;
   return {
     title,
-    openGraph: { title, images: [{ url: og, width: 1200, height: 630 }] },
+    /* 🔴 SPREADING THE ROOT IS NOT COSMETIC — WITHOUT IT THIS ROUTE HAD NO og:locale,
+       og:site_name OR og:type. Next merges `metadata` PER FIELD, not deeply: a partial
+       `openGraph` here REPLACES the layout object whole. `images` and `title` survived only
+       because this file happens to set them, which is exactly why the loss reads as fine in
+       the diff and in the browser. Measured on production 2026-09-24: `/` and `/markets`
+       emitted 1/1/1, this route 0/0/0. The same edit deleted the landing page’s share card
+       once already (`openGraph: { url: "/" }`). ⛔ Never write a bare `openGraph` object here. */
+    openGraph: { ...ROOT_OPEN_GRAPH, title, images: [{ url: og, width: 1200, height: 630 }] },
     twitter: { card: "summary_large_image", title, images: [og] },
   };
 }
@@ -355,6 +363,25 @@ async function ResultsContent({
                     <span className="whitespace-nowrap text-no-300">{sideWord(t, "NO", line)} {winsIn(line, "NO")}</span>
                   </span>
                 ))}
+                {/* 🔴 D42 · THE THIRD ARC GETS ITS WORD. `OutcomeDonut` (below) divides by
+                    `yes + no + voided` and strokes the void share in `--text-subtle`, but this
+                    legend only ever printed the two SIDES — so part of the ring was painted and
+                    named nowhere. Measured on production 2026-09-25: 210 markets, arcs
+                    118.29° / 188.57° / 53.14° (they do sum to 360), legend "YES 69 · NO 110" =
+                    179. **31 markets — 14.76% of the circle — had no word at all.**
+                    🔴 AND IT WAS WORSE ON THE VOID FILTER. `linesShown` above keeps a product
+                    only when `winsIn(YES) + winsIn(NO) > 0`, so on `/results?out=void` EVERY row
+                    was dropped: 31 results, a FULL 360° grey circle, and a completely empty
+                    legend. A player who filtered to voids saw a solid ring and not one word.
+                    ⛔ A THIRD ROW, NOT A THIRD TERM on the side row — D64 measured that row
+                    running 10px past the viewport at 277px and 41px at 246px, so it may not grow
+                    wider. A new row costs ~12px of height against the donut's 38px.
+                    ⛔ The word comes from the lexicon (`statusVoid`, already in all three
+                    languages), never a literal — and it is NOT a side, so it is not run through
+                    `sideWord`: a refund has no direction (§C4). It carries the arc's own ink. */}
+                {voidCount > 0 && (
+                  <span className="whitespace-nowrap text-text-subtle">{t.market.statusVoid} {voidCount}</span>
+                )}
               </div>
             </div>
           )}

@@ -42,7 +42,7 @@
 import { audit } from "./audit";
 import { db, type SmsPurpose, type StoredSmsMessage } from "./store";
 import { randomId } from "./crypto";
-import { toMsisdn255 } from "@/lib/phone-normalize";
+import { toMsisdn255, isGatewayMsisdn, maskPhone } from "@/lib/phone-normalize";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs } from "@/lib/utils";
 import {
@@ -297,6 +297,8 @@ export type SmsFailureCode =
   | "NOT_CONFIGURED"
   | "PROVIDER_UNRECOGNISED"
   | "BALANCE_FLOOR"
+  /** The number is not one a gateway can dial — refused here, before a row exists. See `sendBatch`. */
+  | "BAD_MSISDN"
   | "REJECTED"
   | "TRANSPORT"
   | "UNKNOWN";
@@ -402,11 +404,76 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
   }
   if (!smsConfigured()) return refuse("NOT_CONFIGURED", "the SMS provider is not configured");
 
+  // ══ 🔴 D2 · THE REFUSAL COMES BEFORE THE ROW, AND BEFORE THE MONEY ═══════════
+  //
+  // Until 2026-09-25 `sendBatch` normalised whatever it was handed, wrote the `SmsMessage` row and
+  // POSTed it. A malformed number therefore cost a request, a row, and a charge, and came back as
+  // the SAME undifferentiated HTTP 400 every other gateway failure returns — so nobody could tell a
+  // bad number from a bad credential. Measured before this change: a Kenyan `+254…`, a Dar es
+  // Salaam landline, a truncated nine-digit string and D1's sixteen-digit output all reached the
+  // wire.
+  //
+  // ⭐ IT REFUSES PER MESSAGE, NOT PER BATCH. A campaign of ten thousand must not be killed by one
+  // bad row in an imported list — that is the whole reason this sits here rather than in a caller.
+  // `refused` (the whole-batch field) stays what it always was: the batch never left the building.
+  //
+  // ⭐ RESULTS ARE PLACED BY INDEX, NOT PUSHED. `invite-service` reads results back positionally as
+  // well as by `targetId`, and dropping a message from the middle of a pushed array shifts every
+  // later one — an invite marked SENT because a DIFFERENT invite succeeded. Assigning by the input
+  // index makes that impossible to reintroduce.
+  //
+  // ⚠️ AND IT RUNS BEFORE THE COST FLOOR, SO THE FLOOR JUDGES ONLY WHAT WILL ACTUALLY BE SENT. A
+  // batch of [good OTP, bad INVITE] is now an OTP-only send and keeps the OTP floor exemption,
+  // which is the safe direction: the floor exists to protect login codes, never to refuse one.
+  const results: SmsResult[] = new Array(messages.length);
+  const prepared: Array<{ out: SmsOutbound; index: number; reference: string; msisdn: string }> = [];
+  const badMasked: string[] = [];
+
+  messages.forEach((m, index) => {
+    const msisdn = toMsisdn255(m.to);
+    if (isGatewayMsisdn(msisdn)) return; // keep it; it is prepared below, in order
+    badMasked.push(maskPhone(msisdn));
+    results[index] = {
+      reference: "",
+      to: m.to,
+      ok: false,
+      // ⛔ The message names the SHAPE, never the number — §5.14, and this string reaches logs.
+      error: `not a number this gateway can dial: expected 255 then 6 or 7 and eight more digits, got ${msisdn.length} digits`,
+      code: "BAD_MSISDN",
+      targetType: m.targetType ?? null,
+      targetId: m.targetId ?? null,
+    };
+  });
+  messages.forEach((m, index) => {
+    if (results[index]) return;
+    prepared.push({ out: m, index, reference: mintSmsReference(), msisdn: toMsisdn255(m.to) });
+  });
+
+  if (badMasked.length > 0) {
+    // ⭐ THE REFUSAL IS AUDITED, NOT ONLY THE SEND. Eleven days of chasing a silent webhook were
+    // ended by a row recording a REFUSED attempt, not a successful one; the same rule applies here.
+    // ⛔ `maskPhone` or nothing — a marketing list inside the unprunable HMAC chain is one nobody
+    // can ever delete.
+    audit({
+      category: "SYSTEM",
+      action: "sms.refused",
+      actorId: null,
+      targetType: null,
+      targetId: null,
+      payload: { reason: "BAD_MSISDN", count: badMasked.length, masked: badMasked.slice(0, 20) },
+    });
+  }
+
+  // Nothing survivable left: no balance read, no row, no request.
+  if (prepared.length === 0) return { results, balanceTzs: smsBalanceSnapshot().tzs };
+
   // ⛔ THE COST FLOOR EXEMPTS OTP, DELIBERATELY. The floor exists to stop a CAMPAIGN
   // eating the float the login path needs. Once OTP is the login path, refusing a
   // login code to conserve a few shillings is a self-inflicted outage — the opposite of
   // what the floor is for. An OTP batch therefore never waits on a balance read either.
-  const everyMessageIsOtp = messages.every((m) => (m.purpose ?? "OPS") === "OTP");
+  // ⚠️ IT READS `prepared`, NOT `messages` (2026-09-25): the floor judges what will actually be
+  // sent, so a refused INVITE beside a good OTP can no longer drag the login code under the floor.
+  const everyMessageIsOtp = prepared.every((p) => (p.out.purpose ?? "OPS") === "OTP");
   if (!everyMessageIsOtp) {
     // ⭐ ASK, DON'T GUESS. With no reading, or a stale one, the floor would otherwise judge a
     // campaign on nothing — and a campaign held by the floor makes no request that could
@@ -419,6 +486,8 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
       if (fresh !== null) recordBalance(fresh);
     }
     if (smsBalanceSnapshot().belowFloor) {
+      // ⚠️ The whole batch is held, INCLUDING any message already refused BAD_MSISDN above. Nothing
+      // was attempted either way, and `refuse()` reports one reason per batch by contract.
       return refuse(
         "BALANCE_FLOOR",
         `SMS credit is below the TZS ${balanceFloor()} floor — non-critical messages are held so login codes keep sending`,
@@ -436,12 +505,6 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
   // SECURITY event, turning correct vendor behaviour into a wall of false alarms. Found by
   // `test:otp-delivery` §6, not by the DLR suite, which had seeded its own rows in the
   // right shape and so could not see it.
-  const prepared = messages.map((m) => ({
-    out: m,
-    reference: mintSmsReference(),
-    msisdn: toMsisdn255(m.to),
-  }));
-
   // ⭐ ROWS FIRST, HTTP SECOND. A crash between the two leaves QUEUED rows carrying
   // real references, so a receipt that arrives anyway still lands, and a sweep can
   // see exactly what we do not know the fate of. The reverse order loses both.
@@ -467,7 +530,6 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
   }));
   await db.smsMessage.createMany(rows);
 
-  const results: SmsResult[] = [];
   let balance = smsBalanceSnapshot().tzs;
 
   for (const group of chunk(prepared, BATCH_MAX)) {
@@ -482,7 +544,7 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
       for (const p of group) {
         health().failed++;
         await db.smsMessage.update(p.reference, { status: "FAILED", providerMsg: detail, failedAt: new Date().toISOString() });
-        results.push({ reference: p.reference, to: p.out.to, ok: false, error: detail, code, targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null });
+        results[p.index] = { reference: p.reference, to: p.out.to, ok: false, error: detail, code, targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null };
       }
       audit({
         category: "SYSTEM",
@@ -515,7 +577,7 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
           balanceTzs: outcome.balance,
           sentAt: settledAt,
         });
-        results.push({ reference: p.reference, to: p.out.to, ok: true, targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null });
+        results[p.index] = { reference: p.reference, to: p.out.to, ok: true, targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null };
       } else {
         health().failed++;
         await db.smsMessage.update(p.reference, {
@@ -525,7 +587,7 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
           balanceTzs: null,
           ...(ambiguous ? {} : { failedAt: settledAt }),
         });
-        results.push({
+        results[p.index] = {
           reference: p.reference,
           to: p.out.to,
           ok: false,
@@ -533,7 +595,7 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
           code: ambiguous ? "TRANSPORT" : "REJECTED",
           targetType: p.out.targetType ?? null,
           targetId: p.out.targetId ?? null,
-        });
+        };
       }
     }
 

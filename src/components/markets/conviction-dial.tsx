@@ -1726,7 +1726,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           open={resultOpen}
           variant={resultData.variant}
           eyebrow={resultData.variant === "success" ? t.common.betPlacedEyebrow : t.common.couldNotPlaceBet}
-          title={resultData.variant === "success" ? `${resultData.side} · ${formatTzs(resultData.stake)}` : (resultData.title ?? resultData.error ?? t.error.tryAgain)}
+          /* 🔴 D39 · THE STORED TOKEN WAS THE HEADLINE OF A MONEY CONFIRMATION. This read
+             `${resultData.side}`, so the modal that confirms a placed bet said "YES · TZS 5,000"
+             to a Swahili player. ⛔ The toast sibling at :1002 was fixed for exactly this and the
+             modal was left; :549-555 states the rule for this whole file — never write the stored
+             side into copy, reach for `sideWord`. */
+          title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}` : (resultData.title ?? resultData.error ?? t.error.tryAgain)}
           subtitle={
             resultData.variant === "success"
               ? (marketTitle ?? t.common.positionOpenNotify)

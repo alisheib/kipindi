@@ -175,5 +175,112 @@ check(
   "recentSettlements must apply the same rule the ticker does",
 );
 
+// ---------------------------------------------------------------------------
+// D29 · A TERMINAL CARD MAY NOT PAINT A CROWD PRICE NOBODY PAID.
+//
+// 🔴 The sibling of rule 1 above. That rule says the settled SIDE may never be inferred;
+// this one says the crowd PRICE may never be fabricated. `noPrice` was
+// `live && (isNew ?? volume === 0)` — a question about the PHASE — so on a resolved or void
+// card it was false, and `TippingBar` drew `yesPct`, which `impliedYesPct` returns as a
+// hardcoded 50 for an empty pool. A market that was emergency-voided and refunded every
+// stake showed a serene 50/50 split nobody had paid.
+//
+// ⛔ AND THE OBVIOUS ONE-TOKEN FIX IS A REGRESSION, which is why these checks exist in pairs:
+// deleting `live &&` alone leaves TWO absence claims behind — the price slot's `aria-label`
+// and the bar's own accessible name — both reading "no bets yet" on a market that took real
+// money and refunded it. It also destroyed the outcome readout on resolved cards, because that
+// was gated on `isResolved` while the absence branch came first. The gate is the POOL; the
+// absence claim is about HISTORY; they are different questions and must be asked separately.
+//
+// ⛔ WHY SOURCE AND NOT A LIVE SWEEP: today's board may hold no resolved-empty and no void
+// card for days, so a driver would be green about THIS BOARD and silent about the code
+// (MOBILE-VISUAL-PLAN §0 trap 3). The population here is the one file, always present.
+// ---------------------------------------------------------------------------
+{
+  const card = decomment(readFileSync(join(SRC, "components/markets/market-card.tsx"), "utf8"));
+
+  check("D29 the price gate is the POOL, not the phase",
+    /const noPrice = isNew \?\? volume === 0;/.test(card) && !/const noPrice = live &&/.test(card),
+    "`live && (...)` is the defect verbatim — it shipped until 2026-09-24");
+
+  check("D29 …and 'nobody ever bet' is asked of the predictor count, never of the pool",
+    /const neverBet = predictors === 0;/.test(card),
+    "`volume` is a claim about NOW; whether anyone ever bet is a claim about HISTORY");
+
+  check("D29 the settled outcome is read before any absence branch, so a VOID is not an absence",
+    card.indexOf("{resolvedOutcome ? (") > 0
+    && card.indexOf("{resolvedOutcome ? (") < card.indexOf("mcardp-pct--empty"),
+    "gated on `isResolved` a VOIDED market falls through to the percentage arm — status is VOIDED, not RESOLVED");
+
+  // ⭐ EVERY PLACE THE CLAIM IS MADE, not just the visible one. Two of the three reach a
+  //    screen reader only, which is exactly how the one-token fix looked complete.
+  check("D29 the price slot only NAMES an absence of bets where nobody ever bet",
+    /neverBet \? \{ "aria-label": t\.market\.noBetsYet \} : \{\}/.test(card),
+    "an unconditional aria-label tells a refunded player nobody bet");
+  check("D29 the empty rail is named by what is KNOWN — the outcome, else 'no bets yet'",
+    /emptyLabel=\{outcomeLabel \?\? t\.market\.noBetsYet\}/.test(card),
+    "`\"\"` would leave a role=progressbar with no name at all on every voided card");
+  check("D29 the visible 'no bets yet' caption is gated on the history test too",
+    /\{noPrice && neverBet && <div className="mcardp-nobets">/.test(card),
+    "the caption is the one claim a sighted player can check — it must be true");
+
+  // ⭐ CONTROLS — each matcher shown able to say no, against the pre-fix spelling.
+  check("D29 control · the pre-fix phase gate IS detected",
+    /const noPrice = live &&/.test("  const noPrice = live && (isNew ?? volume === 0);"));
+  check("D29 control · an unconditional aria-label IS detected",
+    !/neverBet \? \{ "aria-label": t\.market\.noBetsYet \} : \{\}/
+      .test('<div className="mcardp-pct mcardp-pct--empty" aria-label={t.market.noBetsYet}>—</div>'));
+  check("D29 control · an ungated caption IS detected",
+    !/\{noPrice && neverBet && <div className="mcardp-nobets">/
+      .test('{noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
+}
+
+// ---------------------------------------------------------------------------
+// D42 · EVERY ARC THE RING PAINTS MUST HAVE A WORD.
+//
+// 🔴 `OutcomeDonut` divides by `yes + no + voided` and strokes all three, while the legend
+// printed only the two SIDES. Measured on production 2026-09-25: 210 markets, arcs
+// 118.29° / 188.57° / 53.14°, legend "YES 69 · NO 110" = 179 — so 31 markets, 14.76% of the
+// circle, were painted and named nowhere.
+//
+// 🔴 AND THE VOID FILTER WAS WORSE. `linesShown` keeps a product only when it has a YES or a
+// NO, so `/results?out=void` dropped EVERY legend row: 31 results, a full 360° grey circle,
+// and not one word on screen. The parts of a ring are a claim about a settled book; a ring
+// with an unnamed arc is the same class of defect as an inferred outcome above.
+// ---------------------------------------------------------------------------
+{
+  const res = decomment(readFileSync(join(SRC, "app/results/page.tsx"), "utf8"));
+
+  check("D42 the donut still divides by all three parts",
+    /const total = yes \+ no \+ voided \|\| 1;/.test(res),
+    "if the denominator loses a term the ring stops being a whole");
+
+  check("D42 …and the legend names the third one",
+    /\{voidCount > 0 && \(/.test(res) && /\{t\.market\.statusVoid\} \{voidCount\}/.test(res),
+    "an arc with no word is a part of the book the page refuses to account for");
+
+  check("D42 the void word comes from the lexicon, never a literal",
+    !/>\s*(Void|Batili|已作废)\s*\{voidCount\}/.test(res),
+    "a typed-out word here is the §3b defect in a new place");
+
+  // ⭐ THE VOID-ONLY VIEW IS THE ONE THAT WAS EMPTY. The row must be a SIBLING of the
+  //    per-product map, not a child of it, or it disappears exactly when it is the only
+  //    thing left to say.
+  const mapAt = res.indexOf("linesShown.map(");
+  const mapEnd = res.indexOf("))}", mapAt);
+  const voidAt = res.indexOf("{voidCount > 0 && (");
+  check("D42 the void row survives a view where no product settled a side",
+    mapAt > 0 && mapEnd > mapAt && voidAt > mapEnd,
+    "inside `linesShown.map` it renders zero times on /results?out=void — the empty-legend bug");
+
+  // ⭐ CONTROLS.
+  check("D42 control · a two-term denominator IS detected",
+    !/const total = yes \+ no \+ voided \|\| 1;/.test("  const total = yes + no || 1;"));
+  check("D42 control · a legend with no void row IS detected",
+    !/\{voidCount > 0 && \(/.test("{linesShown.map((line) => (<span key={line}>…</span>))}"));
+  check("D42 control · a typed-out void word IS detected",
+    />\s*(Void|Batili|已作废)\s*\{voidCount\}/.test('<span className="x">Void {voidCount}</span>'));
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — scanned ${files.length} ts/tsx files`);
 process.exit(fail === 0 ? 0 : 1);
