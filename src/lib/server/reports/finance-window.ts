@@ -26,7 +26,7 @@ import { providerSummary, settlementFeesByPoll } from "../analytics";
 import { houseAccountMovement, houseAccountBalances } from "../ledger";
 import { formatEatLocal } from "../date-range";
 import { getGlobalConfig } from "../market-config";
-import { formatTzs } from "@/lib/utils";
+import { adminCount, formatTzs } from "@/lib/utils";
 
 const DAY_MS = 86_400_000;
 
@@ -68,15 +68,14 @@ export async function buildFinanceWindow(
   const levyRate = cfg ? cfg.traTaxOnCommissionRate + cfg.gbtLevyOnCommissionRate : null;
   const commissionBooked = moved ? (moved["HOUSE:COMMISSION"] ?? 0) : null;
   const leviesBooked = moved ? (moved["HOUSE:TRA_LEVY"] ?? 0) + (moved["HOUSE:GBT_LEVY"] ?? 0) : null;
-  const n = (v: number) => v.toLocaleString("en-US");
 
   const summary: SummaryItem[] = [
-    { label: "GGR (TZS)", value: n(m.ggr), tone: m.ggr >= 0 ? "good" : "bad" },
-    { label: "NGR (TZS)", value: n(m.ngr), tone: m.ngr >= 0 ? "good" : "bad" },
-    { label: "Stakes (TZS)", value: n(m.stakes) },
-    { label: "Payouts (TZS)", value: n(m.payouts) },
-    { label: "Deposits (TZS)", value: n(m.deposits), delta: `${n(m.depositCount)} txns` },
-    { label: "Withdrawals (TZS)", value: n(m.withdrawals), delta: `${n(m.withdrawalCount)} txns` },
+    { label: "GGR (TZS)", num: m.ggr, format: "tzs", tone: m.ggr >= 0 ? "good" : "bad" },
+    { label: "NGR (TZS)", num: m.ngr, format: "tzs", tone: m.ngr >= 0 ? "good" : "bad" },
+    { label: "Stakes (TZS)", num: m.stakes, format: "tzs" },
+    { label: "Payouts (TZS)", num: m.payouts, format: "tzs" },
+    { label: "Deposits (TZS)", num: m.deposits, format: "tzs", delta: adminCount(m.depositCount, "txn") },
+    { label: "Withdrawals (TZS)", num: m.withdrawals, format: "tzs", delta: adminCount(m.withdrawalCount, "txn") },
   ];
 
   const sections: Report["sections"] = [
@@ -100,8 +99,8 @@ export async function buildFinanceWindow(
         { metric: "Agent commission", value: m.agentCommissionCost, basis: "paid, net of clawbacks" },
         { metric: "Payment fees", value: m.fees, basis: "fee on DEPOSIT + WITHDRAWAL" },
         { metric: "NGR", value: m.ngr, basis: "GGR − bonus − agent commission − fees" },
-        { metric: "Deposits", value: m.deposits, basis: `${n(m.depositCount)} confirmed deposits` },
-        { metric: "Withdrawals", value: m.withdrawals, basis: `${n(m.withdrawalCount)} confirmed withdrawals` },
+        { metric: "Deposits", value: m.deposits, basis: adminCount(m.depositCount, "confirmed deposit") },
+        { metric: "Withdrawals", value: m.withdrawals, basis: adminCount(m.withdrawalCount, "confirmed withdrawal") },
         /* ⛔ THE NOTES BELOW NAME "active players", SO THE DOCUMENT MUST PRINT ONE. A basis
            stated on the face of a report for a figure the report does not contain is how the
            next reader applies it to the wrong number. `format: "integer"`, not `tzs` — it is a

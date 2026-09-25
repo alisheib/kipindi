@@ -25,6 +25,8 @@ const RG = "src/lib/server/responsible-gambling.ts";
 const MARKET = "src/lib/server/market-service.ts";
 const LOGIN_ACTION = "src/app/auth/login/actions.ts";
 const LOGIN_PAGE = "src/app/auth/login/page.tsx";
+const MKT_RG = "src/lib/server/marketing/rg.ts";
+const MKT_GATE = "src/lib/server/marketing/consent.ts";
 
 export const MUTATIONS = [
   // ── 1 · a door stops calling the gate ────────────────────────────────────────────────────
@@ -170,5 +172,81 @@ export const MUTATIONS = [
     from: `  const sessionLimit = ctx.kind === "player" ? await checkSessionTimeLimit(userId, ctx.playStartedAt) : null;`,
     to: `  const sessionLimit = null as { exceeded: boolean; limitMin: number; playedMin: number } | null;`,
     check: "4.1 ⭐ forty-five minutes into a thirty-minute limit, the bet is REFUSED",
+  },
+
+  // ── 4 · the MARKETING predicate lifts itself, or writes (marketing U10 · D9 · OD12 · OD13) ─────
+  // ⭐ Each is the edit a tidy-minded change would actually make, aimed at `test:rg-doors` §8. Added
+  // 2026-09-25; the file they quote is `src/lib/server/marketing/rg.ts` (and one, the gate).
+  {
+    name: "marketing-reads-a-served-exclusion-as-over",
+    why: "🔴 D9 ITSELF, IN THE MARKETING LANE. Skipping the minimum-served branch is `isLockedOut`'s "
+       + "shape: the period ends and the player is marketable again, with no officer and no consent.",
+    file: MKT_RG,
+    from: `  if (se.state === "minimum_served") {`,
+    to: `  if (se.state === "__never__") {`,
+    check: "8.3 ⭐ a 24-hour exclusion that ELAPSED A YEAR AGO",
+  },
+  {
+    name: "the-self-excluded-status-stops-being-evidence",
+    why: "A row can be missing or carry an unreadable end date; the status is the one thing that says "
+       + "no officer has reopened the account. Dropping it trusts the timer alone.",
+    file: MKT_RG,
+    from: `  if (user.status === "SELF_EXCLUDED") {`,
+    to: `  if (user.status === "__never__") {`,
+    check: "8.3c a SELF_EXCLUDED account with NO RG row",
+  },
+  {
+    name: "the-six-month-floor-is-dropped",
+    why: "⛔ GN 478T reg 48(3) REMOVED IN ONE LINE. A 24-hour exclusion, reopened the next day and "
+       + "re-consented, would be marketed inside a week.",
+    file: MKT_RG,
+    from: `    if (now < floorMs) {`,
+    to: `    if (false) {`,
+    check: "8.5 ⭐ reopened and re-consented, but INSIDE six months",
+  },
+  {
+    name: "a-consent-older-than-the-restore-counts",
+    why: "⛔ THE TOGGLE LEFT ON THROUGH THE EXCLUSION. Any GIVEN row would do — including one given "
+       + "years before the player excluded, or an old opt-out link tapped while still excluded.",
+    file: MKT_RG,
+    from: `    if (!(await consentedSince(rec.restoredAt as string))) {`,
+    to: `    if (!(await consentedSince("1970-01-01T00:00:00.000Z"))) {`,
+    check: "8.6b ⛔ a consent given BEFORE the restore",
+  },
+  {
+    name: "an-ended-break-reopens-marketing-by-itself",
+    why: "🔴 THE LIFT, FOR BREAKS. Deleting the consent check makes cooling-off exactly `isLockedOut`: "
+       + "the promotion arrives the minute the break ends.",
+    file: MKT_RG,
+    from: `    if (!(await consentedSince(co))) return refuse("rg_cooling_off", \`break ended on \${co}, and no consent given since\`, co);`,
+    to: `    // (consent-after-the-break check removed)`,
+    check: "8.8 ⭐ a break that ENDED yesterday",
+  },
+  {
+    name: "a-harm-check-that-cannot-read-permits",
+    why: "⛔ THE COMPLIANCE PANEL'S `.catch(() => [])`, COPIED. A failed read becomes \"no flags\", and "
+       + "the player the platform could not assess is the one it markets to.",
+    file: MKT_RG,
+    from: `    return refuse("rg_harm_marker", "the harm-marker check could not be read, so it refuses", null);`,
+    to: `    flags = [];`,
+    check: "8.12 ⛔ a harm check that cannot be READ refuses",
+  },
+  {
+    name: "the-predicate-reads-through-the-writer",
+    why: "🔴 U7's DEFECT, THE HALF ITS FIX MISSED. `getRgSettings` creates a row for a user with none "
+       + "and rewrites one whose pending limit has come due — once per recipient, 150,000 per campaign.",
+    file: MKT_RG,
+    from: `  const row = await Promise.resolve(db.responsible.get(user.id));`,
+    to: `  const row = await (await import("../responsible-gambling")).getRgSettings(user.id);`,
+    check: "8.13 🔴 a row whose pending limit change has come due is NOT rewritten",
+  },
+  {
+    name: "the-gate-stops-asking-the-rg-predicate",
+    why: "⭐ E-240's SHAPE, ONE LANE OVER. The predicate stays perfect and every behavioural test of it "
+       + "stays green; the gate simply stops calling it.",
+    file: MKT_GATE,
+    from: `    const rg = await marketingRgStanding(user, identifier);`,
+    to: `    const rg = { ok: true, coolingOffEnded: false, skipReason: "rg_self_excluded", detail: "" } as const;`,
+    check: "8.18 ⭐ the gate CALLS marketingRgStanding",
   },
 ];

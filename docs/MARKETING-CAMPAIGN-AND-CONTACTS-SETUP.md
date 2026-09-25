@@ -844,8 +844,8 @@ text. The one-line summaries are in §1; what follows is what each one actually 
   rather than removing them. **U5**
 - **D7 · There is no SMS suppression list.** **U6**
 - **D8 · `marketingOptIn` carries no channel, no wording, no evidence and no history.** **U6**
-- **D9 · `isLockedOut` lifts itself** when the chosen period elapses (`responsible-gambling.ts:382`), so a
-  24-hour self-exclusion is marketable 25 hours later. **U10**
+- **D9 · `isLockedOut` lifts itself** when the chosen period elapses (`responsible-gambling.ts`,
+  `isLockedOut`), so a 24-hour self-exclusion is marketable 25 hours later. **U10**
 - **D10 · `push-service` gates on that same predicate** and inherits the lift. Filed here; changed only
   by owner ruling. **U10**
 - **D11 · No age check anywhere on outbound messaging.** **U11**
@@ -1177,22 +1177,74 @@ recipient row — a person who is never messaged and never appears as a failure.
 sent to Google in a page path); `/s` must stay OUT of `PROTECTED_PREFIXES` (`proxy.ts:40`) or the no-login
 promise breaks; and every player lookup goes through `userPhoneKeyFor` (U7), never a bare `findByPhone`.
 
-**U9 · The gate runs in the loop, and the proof of it** — `test:marketing-consent`
+**U9 · The gate runs in the loop, and the proof of it** — `test:marketing-consent` — BUILT S6, RE-SCOPED
 The unit is the guard: a fixture that opts out **between** slice one and slice two, and must not receive
 slice two's message.
 **RED:** hoist the gate to list-build time → the suite must fail. ⭐ If it still passes, the suite was
 testing the list, not the send, and the control has found the worse defect.
 **Accept:** the mid-send opt-out fixture is red before the in-loop gate exists and green after.
 
-**U10 · The marketing RG predicate** — `src/lib/server/marketing/rg.ts` (D9, D10)
-`marketingRgStanding(userId)` built on `selfExclusionStanding` (⛔ not `isLockedOut`, which is not
-modified), cooling-off, and `detectHarmMarkers`, with six-months-minimum semantics and a fresh
-post-restoration consent required. Each refusal carries its own skip reason and an audit line matching the
-`push.suppressed.rg_lockout` precedent. D10 is filed as an owner item, not silently changed.
-**Guard:** `test:rg-doors` + `test:marketing-consent`.
+⛔ **RE-SCOPED BEFORE BUILDING (S6), BECAUSE THE PREMISE FAILED — and not the way the plan guessed.** There
+is no send loop to put a gate in: nothing loops over marketing recipients, `mayReceiveMarketingSms` has no
+caller outside tests, `SmsPurpose` has no `MARKETING` (D22) and `SmsMessage` has no `skipped` status. ⚠️ The
+loop is not U35 either, as §0 said — U35 is the tables; the loop is **U43** ("the slice", `engine.ts`).
+So U9 does not wrap a gate round nothing. It ships **the innermost step of U43's loop** —
+`dispatchSlice` in `src/lib/server/marketing/dispatch.ts`: the gate asked per recipient IMMEDIATELY before
+ONE send, a refusal `skipped` (never `failed`), results settled by KEY (never by position), a shop-wide
+refusal or an unanswerable gate `held` (nothing about the person was decided — U43 returns it to PENDING),
+a thrown transport `unconfirmed` (never retried by itself, OD23), and the RG audit line
+`marketing.suppressed.rg` written HERE, when a refusal is acted on (an audience count asks the same gate and
+must not write). ⛔ `send` has NO default — until U35 gives the wire an honest purpose, nothing in
+production can reach it through this step. And **the loop contract**: a real two-slice drive in which three
+people change their minds between the slices through the REAL acts (`stopMarketing`, `selfExclude`,
+`coolOff`), the wire answering in reverse order. ⭐ **U43 inherits it: its engine joins the contract as a
+second DRIVER and must pass the same assertions** — this is the proof U9 promised, waiting for its loop.
+**Measured:** the hoisted driver sends the opted-out number (red), `dispatchSlice` does not (green) ·
+`test:marketing-consent` 20 → 36 · `red:marketing-consent` 8 → 13 (loop: hoisted gate · settle by
+position · skip recorded as failed · unanswerable gate sends · RG refusal unaudited), each on its own
+assertion, after the shipped step and the defect-free model both pass the contract first.
+
+**U10 · The marketing RG predicate** — `src/lib/server/marketing/rg.ts` (D9, D10) — BUILT S6
+`marketingRgStanding(user, identifier)` built on the ONE standing definition (⛔ not `isLockedOut`, which is
+not modified), cooling-off, and `detectHarmMarkers`, with six-months-minimum semantics and a fresh
+post-restoration consent required. Each refusal carries its own skip reason; the audit line matching the
+`push.suppressed.rg_lockout` precedent is written by the LOOP when it acts on the refusal (U9), never by
+the predicate — an audience count must not write to the chain. D10 is filed as an owner item, not silently
+changed.
+**Guard:** `test:rg-doors` §8 + `test:marketing-consent`.
 **RED:** plant a player whose standing is `minimum_served` — a control planting only `serving` would pass
 today and prove nothing.
 **Accept:** a player who self-excluded for 24 hours a year ago is still refused.
+
+⭐ **WHAT SHIPPED, AND THE FOUR PREMISES IT HAD TO CORRECT (S6, 2026-09-25):**
+① **U7's "deciding must not write" fix was half a fix.** It skipped `selfExclusionStanding` when no RG row
+existed — but on an EXISTING row that call still goes through `getRgSettings` → `effectivize`, which
+REWRITES the row whenever a pending limit change has come due (and, on the memory store, mutates the live
+object). The predicate now reads `db.responsible.get` and computes from the raw row through
+`selfExclusionStandingOf`, the pure half split out of `selfExclusionStanding` so there is still ONE
+definition — and `red:rg-doors`' existing `minimum_served` mutation now reaches marketing too.
+② **Cooling-off was already refused for ever — under the wrong reason.** Nothing ever clears `COOLED_OFF`,
+so U7 refused anyone who had ever taken even a one-hour break as `account_status`. ⭐ RULED ON DELEGATION: a
+break is standing for marketing — refused while it runs, and after it until the player consents again
+AFTER it ended; only then is the `COOLED_OFF` status admitted. (Betting still reads the timer, by design.)
+③ **The restore leaves no column.** `restorePlayerAction` writes only the audit row
+`rg.self_exclusion.reopened`, so that is what the predicate reads (`getAuditForTargetsDurable`, one indexed
+query, only for a player who has consented and served the minimum). A restore must postdate the latest
+`rg.self_exclusion.activated`; six months are six CALENDAR months and never under 182 days (the platform's
+"6m" is 182 days, shorter than some half-years), counted from the last activation or, without one, from the
+END date — the safe direction; and the consent must postdate the restore. Missing record → refuses.
+④ **Harm markers are NOT standing, and the plan's wording cannot be met as written.** Nothing persists a
+harm flag (no table, no namespace, no audit action — a code comment claiming otherwise was corrected), so a
+marker refuses for as long as its detector's window, ≤ 8 days. A check that cannot be read REFUSES (the
+compliance panel's `.catch(() => [])` turns a failed read into "no flags"). Standing harm markers need a
+persisted, officer-reviewed flag store — an owner item in §0, not invented here.
+⭐ **And U7's order was not §5.6's.** It asked self-exclusion before consent; the gate now asks suppression →
+consent → self-exclusion → cooling-off → harm markers → status, which also keeps the 10,000-transaction harm
+scan off every non-consenting player.
+**Measured:** `test:rg-doors` 54 → 91 (§8: 37 assertions, 4 mutually exclusive outcomes as a property, both
+lifts proven to EXIST) · `red:rg-doors` 11 → 19 mutations, each caught by its own named check, tree restored
+· `test:marketing-consent` 15 → 20 · `red:marketing-consent` 5 → 8, three of the plants being U7's SHIPPED
+shapes (the half-fix that still wrote, RG before consent, the permanent break refusal).
 
 **U11 · 18+** — the loop (D11)
 Account-linked: `dob` must yield ≥18 at send time. Contact-only: marketable solely when the import
@@ -1501,6 +1553,11 @@ shop-wide fact. Slice budget ≤50 recipients or 10 s, re-derived in U52.
 **Guard:** `test:marketing-engine`. **RED:** ⭐ five concurrent drivers over 1,000 rows must produce exactly
 1,000 sends — a single-driver test passes with or without the conditional claim, which is why the control
 is concurrent; and removing the unique index must fail it.
+⭐ **And U9's loop contract (added S6):** the "GATE each claimed row immediately before dispatch → ONE
+`sendBatch` → settle by `targetId`" middle of this slice already exists as `dispatchSlice` (U9) — call it,
+do not rewrite it — and the engine joins `test:marketing-consent`'s U9 section as a second DRIVER, passing
+the same assertions (an opt-out, a self-exclusion and a break between two slices never reach the wire).
+It supplies the real `send`, with `purpose: "MARKETING"` from U35.
 
 **U44 · The pump** — `src/lib/server/marketing/pump.ts` (OD19, OD20)
 Its own timer and its own leader lease, started from `instrumentation.register()`, yielding whenever the
