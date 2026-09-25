@@ -62,7 +62,9 @@ import type {
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
   AgentApplicationStatus,
-  AgentDocType, StoredKycStageRow, NotificationRedactScope } from "./store";
+  AgentDocType, StoredKycStageRow, NotificationRedactScope,
+  StoredMessagingConsent, StoredSuppression, MessagingKey,
+  StoredMarketingOptOutToken } from "./store";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -140,6 +142,68 @@ function toStoredSmsMessage(s: SmsMessageRow): StoredSmsMessage {
  * ⛔ A DateTime column MUST be "date": an ISO string reaching Prisma throws on Postgres
  * and nowhere else, so every memory-backed suite would stay green straight through it.
  */
+/**
+ * MessagingConsent row → StoredMessagingConsent (marketing U6).
+ *
+ * ⛔ THERE IS NO COLUMN MAP BESIDE THIS ONE, AND THAT IS THE POINT. `SMS_MESSAGE_COLUMN`
+ * exists to drive an `update`; this table has none and never will, so a column map here
+ * would be a writer with no reader — a thing that looks like a safety net and catches
+ * nothing. `dal-parity` §17 asserts the create and the read mapper instead, and asserts
+ * that `update` and `delete` are ABSENT.
+ */
+type MessagingConsentRow = {
+  id: string; channel: string; identifier: string; category: string; status: string;
+  source: string; wording: string; locale: string; evidence: string | null;
+  recordedBy: string | null; createdAt: Date;
+};
+function toStoredMessagingConsent(c: MessagingConsentRow): StoredMessagingConsent {
+  return {
+    id: c.id,
+    channel: c.channel as StoredMessagingConsent["channel"],
+    identifier: c.identifier,
+    category: c.category as StoredMessagingConsent["category"],
+    status: c.status as StoredMessagingConsent["status"],
+    source: c.source as StoredMessagingConsent["source"],
+    wording: c.wording,
+    locale: c.locale as StoredMessagingConsent["locale"],
+    evidence: c.evidence,
+    recordedBy: c.recordedBy,
+    createdAt: iso(c.createdAt),
+  };
+}
+
+/** Suppression row → StoredSuppression (marketing U6). ⛔ No update, no delete. */
+type SuppressionRow = {
+  id: string; channel: string; identifier: string; category: string; reason: string;
+  evidence: string | null; recordedBy: string | null; createdAt: Date;
+};
+function toStoredSuppression(s: SuppressionRow): StoredSuppression {
+  return {
+    id: s.id,
+    channel: s.channel as StoredSuppression["channel"],
+    identifier: s.identifier,
+    category: s.category as StoredSuppression["category"],
+    reason: s.reason as StoredSuppression["reason"],
+    evidence: s.evidence,
+    recordedBy: s.recordedBy,
+    createdAt: iso(s.createdAt),
+  };
+}
+
+/** MarketingOptOutToken row → StoredMarketingOptOutToken (marketing U8). ⛔ No update, no delete. */
+type MarketingOptOutTokenRow = {
+  token: string; channel: string; identifier: string; category: string; createdAt: Date;
+};
+function toStoredMarketingOptOutToken(t: MarketingOptOutTokenRow): StoredMarketingOptOutToken {
+  return {
+    token: t.token,
+    channel: t.channel as StoredMarketingOptOutToken["channel"],
+    identifier: t.identifier,
+    category: t.category as StoredMarketingOptOutToken["category"],
+    createdAt: iso(t.createdAt),
+  };
+}
+
 const SMS_MESSAGE_COLUMN: Record<keyof StoredSmsMessage, "date" | "plain" | null> = {
   reference: null,
   createdAt: null,
@@ -3199,6 +3263,114 @@ export const prismaDb = {
     listRecent: async (limit = 50): Promise<StoredSmsMessage[]> => {
       const rows = await pc().smsMessage.findMany({ orderBy: { createdAt: "desc" }, take: limit });
       return rows.map(toStoredSmsMessage);
+    },
+  },
+  /* ═══ MESSAGING CONSENT (marketing U6) ═══════════════════════════════════════════════
+   * ⛔ NO `update`, NO `delete` — the append-only rule, enforced by there being no method
+   * to call. `dal-parity` §17 asserts their absence in BOTH twins. */
+  messagingConsent: {
+    create: async (row: StoredMessagingConsent): Promise<StoredMessagingConsent> => {
+      const created = await pc().messagingConsent.create({
+        data: {
+          id: row.id, channel: row.channel, identifier: row.identifier, category: row.category,
+          status: row.status, source: row.source, wording: row.wording, locale: row.locale,
+          evidence: row.evidence, recordedBy: row.recordedBy,
+          createdAt: new Date(row.createdAt),
+        },
+      });
+      return toStoredMessagingConsent(created);
+    },
+    /** ⭐ The tiebreak on `id` matches the memory twin exactly: two rows can share a
+     *  millisecond, and a gate that breaks the tie differently in memory than in Postgres
+     *  answers differently in a test than it does on production. */
+    latestFor: async (key: MessagingKey): Promise<StoredMessagingConsent | null> => {
+      const row = await pc().messagingConsent.findFirst({
+        where: { channel: key.channel, identifier: key.identifier, category: key.category },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return row ? toStoredMessagingConsent(row) : null;
+    },
+    listFor: async (key: MessagingKey): Promise<StoredMessagingConsent[]> => {
+      const rows = await pc().messagingConsent.findMany({
+        where: { channel: key.channel, identifier: key.identifier, category: key.category },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return rows.map(toStoredMessagingConsent);
+    },
+  },
+
+  /* ═══ SUPPRESSION (marketing U6) ═════════════════════════════════════════════════════
+   * ⛔ NO `delete`, EVER. */
+  suppression: {
+    /** ⭐ IDEMPOTENT ON THE TRIPLE. `update: {}` is deliberate and is not a stub: a repeat
+     *  suppression must leave the ORIGINAL row — and its original `createdAt` — exactly
+     *  where it is, because that timestamp is the answer to "when did they say no". An
+     *  `update` that refreshed it would quietly move the date forward on every re-import. */
+    create: async (row: StoredSuppression): Promise<StoredSuppression> => {
+      const created = await pc().suppression.upsert({
+        where: {
+          channel_identifier_category: {
+            channel: row.channel, identifier: row.identifier, category: row.category,
+          },
+        },
+        update: {},
+        create: {
+          id: row.id, channel: row.channel, identifier: row.identifier, category: row.category,
+          reason: row.reason, evidence: row.evidence, recordedBy: row.recordedBy,
+          createdAt: new Date(row.createdAt),
+        },
+      });
+      return toStoredSuppression(created);
+    },
+    find: async (key: MessagingKey): Promise<StoredSuppression | null> => {
+      const row = await pc().suppression.findUnique({
+        where: {
+          channel_identifier_category: {
+            channel: key.channel, identifier: key.identifier, category: key.category,
+          },
+        },
+      });
+      return row ? toStoredSuppression(row) : null;
+    },
+    listFor: async (identifier: string): Promise<StoredSuppression[]> => {
+      const rows = await pc().suppression.findMany({
+        where: { identifier },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return rows.map(toStoredSuppression);
+    },
+  },
+  /* ═══ OPT-OUT TOKENS (marketing U8) ══════════════════════════════════════════════════════
+   * ⛔ NO `delete` — OD43's link never expires. */
+  marketingOptOutToken: {
+    /** ⭐ A TAKEN TOKEN COMES BACK AS null, NOT AS A THROW AND NOT AS AN OVERWRITE. `upsert`
+     *  here would silently re-point a live opt-out link at a different person; letting P2002
+     *  escape would make every caller handle a Prisma error code. The memory twin returns the
+     *  same null, so the mint's retry loop is one piece of code on both backends. */
+    create: async (row: StoredMarketingOptOutToken): Promise<StoredMarketingOptOutToken | null> => {
+      try {
+        const created = await pc().marketingOptOutToken.create({
+          data: {
+            token: row.token, channel: row.channel, identifier: row.identifier,
+            category: row.category, createdAt: new Date(row.createdAt),
+          },
+        });
+        return toStoredMarketingOptOutToken(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;
+        throw err;
+      }
+    },
+    find: async (token: string): Promise<StoredMarketingOptOutToken | null> => {
+      const row = await pc().marketingOptOutToken.findUnique({ where: { token } });
+      return row ? toStoredMarketingOptOutToken(row) : null;
+    },
+    listFor: async (identifier: string): Promise<StoredMarketingOptOutToken[]> => {
+      const rows = await pc().marketingOptOutToken.findMany({
+        where: { identifier },
+        orderBy: [{ createdAt: "desc" }, { token: "desc" }],
+      });
+      return rows.map(toStoredMarketingOptOutToken);
     },
   },
 };

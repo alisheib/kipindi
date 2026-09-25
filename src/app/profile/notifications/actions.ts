@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { appendMarketingConsent } from "@/lib/server/marketing/consent-ledger";
 
 /**
  * E-409 · WITHDRAW OR GIVE MARKETING CONSENT — the control Privacy §3 has promised all along.
@@ -28,6 +29,19 @@ export async function setMarketingConsentAction(on: boolean): Promise<{ ok: true
       targetType: "User",
       targetId: session.userId,
       payload: { marketingOptIn: next },
+    });
+    // U6 · THE LEDGER ROW THE BOOLEAN COULD NEVER BE (D8). The audit row above says a change
+    // happened; it does not say what this player was SHOWN when they made it, and a regulator
+    // asking "what did they agree to" cannot be answered from a boolean (GN 478T reg 51(1)).
+    // ⛔ Append-only: a withdrawal is a NEW row, never an edit of the row that granted consent.
+    await appendMarketingConsent({
+      phoneE164: user.phoneE164,
+      locale: user.locale,
+      status: next ? "GIVEN" : "WITHDRAWN",
+      source: "PROFILE",
+      site: "PROFILE",
+      evidence: "/profile/notifications",
+      recordedBy: null,
     });
   }
   revalidatePath("/profile/notifications");

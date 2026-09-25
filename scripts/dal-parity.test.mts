@@ -1090,5 +1090,166 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && !/position\.count\(\{ where: \{ userId, status: "OPEN", houseBotId: null \} \}\)/.test(cntPri.replace("position.count(", "position.findMany(")));
 }
 
+/* ═══ §17 · MessagingConsent and Suppression — the consent ledger (marketing U6) ═══════ */
+{
+  // ⭐ WHY AN APPEND-ONLY TABLE NEEDS THIS GUARD MORE THAN A MUTABLE ONE. Nothing READS
+  // this ledger yet — U7's gate is the first thing that will — so a field dropped from the
+  // Prisma create is invisible to every test that exists today, and the memory backend that
+  // every behavioural suite runs on would stay green straight through it. It surfaces first
+  // as a consent record that cannot prove what the person was actually shown, which is the
+  // one thing the record exists to do (GN 478T reg 51(1)).
+  const cKeys = storedKeys("StoredMessagingConsent");
+  const cRead = region(dalSrc, "function toStoredMessagingConsent(");
+  const cCreate = delegateMethod("messagingConsent", "create");
+
+  ok("17.0 · the parser sees StoredMessagingConsent's fields", cKeys.length >= 11, `saw ${cKeys.length}: ${cKeys.join(",")}`);
+  ok("17.0b · the read mapper region resolves", cRead.length > 100, `${cRead.length} chars`);
+  ok("17.0c · the create delegate resolves", cCreate.length > 100, `${cCreate.length} chars`);
+  for (const k of cKeys) {
+    ok(`17.read · toStoredMessagingConsent maps "${k}" from the row`, readsFrom(cRead, k, "c"));
+    ok(`17.create · messagingConsent.create writes "${k}"`, writesKey(cCreate, k) || mentions(cCreate, k));
+  }
+  // ⛔ §5.7 — the wording IS the evidence. A ledger that stores a KEY into today's copy
+  // instead of the text re-renders history every time marketing rewrites the form.
+  ok("17.verbatim · the wording is carried as text from the row, never re-rendered",
+    readsFrom(cRead, "wording", "c") && !/wording:\s*[a-zA-Z]+\(/.test(cRead));
+
+  const sKeys = storedKeys("StoredSuppression");
+  const sRead = region(dalSrc, "function toStoredSuppression(");
+  const sCreate = delegateMethod("suppression", "create");
+  ok("17.1 · the parser sees StoredSuppression's fields", sKeys.length >= 8, `saw ${sKeys.length}: ${sKeys.join(",")}`);
+  for (const k of sKeys) {
+    ok(`17.read · toStoredSuppression maps "${k}" from the row`, readsFrom(sRead, k, "s"));
+    ok(`17.create · suppression.create writes "${k}"`, writesKey(sCreate, k) || mentions(sCreate, k));
+  }
+
+  // ⛔ THE APPEND-ONLY RULE, ASSERTED AS AN ABSENCE — IN BOTH TWINS. This is the assertion
+  // that actually holds the design in place: a later session adding `messagingConsent.update`
+  // to "correct" a row fails here, rather than quietly turning evidence into an opinion.
+  const cPri = region(dalSrc, "\n  messagingConsent: {");
+  const cMem = region(storeSrc, "\n  messagingConsent: {");
+  ok("17.append.prisma · the Prisma ledger exposes NO update and NO delete",
+    cPri.length > 200 && !/\bupdate\s*:/.test(cPri) && !/\bdelete\w*\s*:/.test(cPri), `${cPri.length} chars`);
+  ok("17.append.memory · the memory ledger exposes NO update and NO delete",
+    cMem.length > 200 && !/\bupdate\s*:/.test(cMem) && !/\bdelete\w*\s*:/.test(cMem), `${cMem.length} chars`);
+
+  // ⛔ A SUPPRESSION ROW IS NEVER DELETED — in either twin. Not by contact deletion, not by
+  // re-import, not by erasure.
+  const sPri = region(dalSrc, "\n  suppression: {");
+  const sMem = region(storeSrc, "\n  suppression: {");
+  ok("17.nodelete.prisma · the Prisma suppression namespace exposes NO delete",
+    sPri.length > 200 && !/\bdelete\w*\s*:/.test(sPri), `${sPri.length} chars`);
+  ok("17.nodelete.memory · the memory suppression namespace exposes NO delete",
+    sMem.length > 200 && !/\bdelete\w*\s*:/.test(sMem), `${sMem.length} chars`);
+
+  // ⭐ RE-SUPPRESSION MUST NOT MOVE THE DATE. The `createdAt` on a suppression row is the
+  // answer to "when did this person say no"; an upsert that refreshed it would walk that
+  // date forward on every re-import, and the evidence would always look brand new.
+  ok("17.idempotent.prisma · re-suppression is an upsert whose update block is EMPTY",
+    mentions(sCreate, "upsert") && /update:\s*\{\s*\}/.test(sCreate));
+  // ⛔ SCOPED TO THE CREATE BODY ON PURPOSE. `find` also ends in `return r;`, so asking this
+  // of the whole namespace would pass even after create stopped being idempotent — a guard
+  // that reads the wrong region is a guard that cannot fail.
+  const sMemCreate = region(sMem, "create: (");
+  ok("17.idempotent.memory · the memory twin returns the row ALREADY THERE instead of replacing it",
+    sMemCreate.length > 80 && /return r;/.test(sMemCreate), `${sMemCreate.length} chars`);
+
+  // ⭐ BOTH TWINS MUST EXPOSE THE SAME MEMBERS. A method that exists on only one side is a
+  // call that works in every test and throws on production, or the reverse.
+  const members = (block: string): string[] =>
+    Array.from(block.matchAll(/^\s{4}(\w+)\s*:/gm)).map((m) => m[1]).sort();
+  ok("17.parity.consent · the ledger exposes the same members in both twins",
+    members(cPri).length >= 3 && members(cPri).join(",") === members(cMem).join(","),
+    `prisma=[${members(cPri)}] memory=[${members(cMem)}]`);
+  ok("17.parity.suppression · suppression exposes the same members in both twins",
+    members(sPri).length >= 3 && members(sPri).join(",") === members(sMem).join(","),
+    `prisma=[${members(sPri)}] memory=[${members(sMem)}]`);
+
+  // ⭐ THE TIEBREAK MUST MATCH. Two rows can share a millisecond; a twin that breaks the tie
+  // differently from Postgres answers the gate's question differently in a test than it does
+  // on production — which is the whole class this file exists to refuse.
+  // ⭐ COUNTED, NOT MERELY PRESENT — AND THE RED CONTROL IS WHY. The first version of this
+  // assertion asked whether the tiebreak appeared ANYWHERE in the namespace, and each twin
+  // has TWO readers. `red:dal-parity` planted the tiebreak's removal from `latestFor` and
+  // the gate stayed GREEN, because `listFor` still carried it. An assertion that a sibling
+  // can satisfy on your behalf is not an assertion about you.
+  const tally = (block: string, needle: RegExp): number => (block.match(needle) || []).length;
+  const TIE_PRISMA = /\{ createdAt: "desc" \}, \{ id: "desc" \}/g;
+  const TIE_MEMORY = /b\.id\.localeCompare\(a\.id\)/g;
+  ok("17.tiebreak.prisma · BOTH Prisma readers order by createdAt DESC then id DESC",
+    tally(cPri, TIE_PRISMA) >= 2, `${tally(cPri, TIE_PRISMA)} of 2 readers`);
+  ok("17.tiebreak.memory · BOTH memory readers break the tie on id, the same way",
+    tally(cMem, TIE_MEMORY) >= 2, `${tally(cMem, TIE_MEMORY)} of 2 readers`);
+  ok("17.tiebreak.c1 · CONTROL · one reader carrying the tiebreak is NOT enough to pass",
+    tally('orderBy: [{ createdAt: "desc" }, { id: "desc" }], orderBy: { createdAt: "desc" },', TIE_PRISMA) < 2);
+
+  // ── CONTROLS — each proves the assertion above it is CAPABLE of failing. ──────────────
+  ok("17.c1 · CONTROL · `wording: null,` in a read mapper does NOT count as carrying it",
+    !readsFrom("    status: c.status,\n    wording: null,", "wording", "c"));
+  ok("17.c2 · CONTROL · a create body that omits `wording` is reported missing",
+    !writesKey("          identifier: row.identifier, category: row.category,", "wording")
+      && !mentions("          identifier: row.identifier, category: row.category,", "wording"));
+  ok("17.c3 · CONTROL · an `update:` added to a ledger delegate IS seen by the absence check",
+    /\bupdate\s*:/.test("    update: async (id: string) => null,"));
+  ok("17.c4 · CONTROL · a `deleteMany:` added to suppression IS seen by the absence check",
+    /\bdelete\w*\s*:/.test("    deleteMany: async () => 0,"));
+  ok("17.c5 · CONTROL · an upsert that REFRESHES the row is not mistaken for an empty update",
+    !/update:\s*\{\s*\}/.test("update: { createdAt: new Date() },"));
+  ok("17.c6 · CONTROL · the tiebreak needle does not match an order that omits the id leg",
+    !/\{ createdAt: "desc" \}, \{ id: "desc" \}/.test('orderBy: { createdAt: "desc" },'));
+}
+
+/* ═══ §18 · MarketingOptOutToken — the opt-out link (marketing U8) ═════════════════════ */
+{
+  // ⭐ WHY A LOOKUP TABLE NEEDS THE SAME GUARD AS A MONEY ROW. This row is the ONLY thing
+  // standing between a person and the marketing they asked to stop: the token in their SMS
+  // resolves to an identifier through here. A field dropped from the Prisma create is a link
+  // that 404s for somebody trying to leave — and OD43 says the link never expires, so the
+  // failure is permanent and arrives months after the send that caused it.
+  const tKeys = storedKeys("StoredMarketingOptOutToken");
+  const tRead = region(dalSrc, "function toStoredMarketingOptOutToken(");
+  const tCreate = delegateMethod("marketingOptOutToken", "create");
+
+  ok("18.0 · the parser sees StoredMarketingOptOutToken's fields", tKeys.length >= 5, `saw ${tKeys.length}: ${tKeys.join(",")}`);
+  ok("18.0b · the read mapper region resolves", tRead.length > 80, `${tRead.length} chars`);
+  ok("18.0c · the create delegate resolves", tCreate.length > 100, `${tCreate.length} chars`);
+  for (const k of tKeys) {
+    ok(`18.read · toStoredMarketingOptOutToken maps "${k}" from the row`, readsFrom(tRead, k, "t"));
+    ok(`18.create · marketingOptOutToken.create writes "${k}"`, writesKey(tCreate, k) || mentions(tCreate, k));
+  }
+
+  const tPri = region(dalSrc, "\n  marketingOptOutToken: {");
+  const tMem = region(storeSrc, "\n  marketingOptOutToken: {");
+  // ⛔ OD43 · THE LINK NEVER EXPIRES, so there is no delete in either twin. A person who kept
+  // an SMS from a year ago must still be able to click out of it.
+  ok("18.nodelete.prisma · the Prisma token namespace exposes NO delete",
+    tPri.length > 200 && !/\bdelete\w*\s*:/.test(tPri), `${tPri.length} chars`);
+  ok("18.nodelete.memory · the memory token namespace exposes NO delete",
+    tMem.length > 200 && !/\bdelete\w*\s*:/.test(tMem), `${tMem.length} chars`);
+
+  // ⭐ A TAKEN TOKEN COMES BACK AS null IN BOTH TWINS — not a throw, and above all not an
+  // overwrite. `upsert` here would silently re-point somebody else's live opt-out link at a
+  // different person, and they would never be able to leave.
+  const tCreateMem = region(tMem, "create: (");
+  ok("18.taken.prisma · the Prisma create turns its unique violation into null, and does not upsert",
+    /P2002/.test(tCreate) && /return null/.test(tCreate) && !mentions(tCreate, "upsert"), "P2002 → null");
+  ok("18.taken.memory · the memory create refuses a token already held, and does not overwrite",
+    /has\(row\.token\)/.test(tCreateMem) && /return null/.test(tCreateMem), `${tCreateMem.length} chars`);
+
+  const tMembers = (block: string): string[] =>
+    Array.from(block.matchAll(/^\s{4}(\w+)\s*:/gm)).map((m) => m[1]).sort();
+  ok("18.parity · both twins expose the same members",
+    tMembers(tPri).length >= 3 && tMembers(tPri).join(",") === tMembers(tMem).join(","),
+    `prisma=[${tMembers(tPri)}] memory=[${tMembers(tMem)}]`);
+
+  // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
+  ok("18.c1 · CONTROL · `identifier: null,` in a read mapper does NOT count as carrying it",
+    !readsFrom("    token: t.token,\n    identifier: null,", "identifier", "t"));
+  ok("18.c2 · CONTROL · an upsert IS detected, so a silent re-point cannot pass as a create",
+    mentions("const x = await pc().marketingOptOutToken.upsert({", "upsert"));
+  ok("18.c3 · CONTROL · a create that throws instead of returning null is reported",
+    !/return null/.test("      const created = await pc().marketingOptOutToken.create({ data });"));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
