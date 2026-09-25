@@ -1736,3 +1736,56 @@ Each rule is quoted verbatim from the amendment that sets it. A change that brea
 - **A10 — every refusal is mapped:** "A new bet refusal = a BET_PATH_REASONS entry + a mapper row in the same commit."
 - **FS-07 — rules schema bumps:** "A rules schema bump may never widen scope or caps by default."
 - **A7 — the session clock:** "A house bet neither advances nor is refused by the holder's session clock."
+
+### 12.4 What the ledger row cost to prove, and the five instruments that lied on the way — 2026-09-25
+
+The activity row became a betting ledger — `Round · Opening · Stake · Closing` beside the outcome chip, the game
+link and the note, with `Product` dropped. The reader work is in §12.3's siblings; this section exists for the next
+session **on any machine**, because the expensive part was not the feature. It was that a green gate and a green
+suite both sat on top of a screen that was wrong, and five separate instruments had to be repaired before the
+screen could be trusted at all.
+
+**THE COLUMN LOOKED BROKEN AND WAS NOT.** `Opening` painted an em dash on every row of both tables while SQL
+insisted the pairing existed — a `positionId` on the intent, a `BET_PLACED` transaction carrying it, a
+`balanceAfter`, the same holder. The cause was not in the product. ⛔ **`Transaction.createdAt` is a NAIVE
+`timestamp`** (`prisma/schema.prisma`: `createdAt DateTime @default(now())`, no `@db.Timestamptz`), unlike
+`HouseBotIntent.createdAt`, which IS `@db.Timestamptz(3)`. Hand `pg` a JS `Date` and it sends an offset-bearing
+literal, which Postgres resolves against the SESSION zone before dropping the zone — and the scratch cluster runs
+`Asia/Beirut`, which the server announces at boot in its own words (`[house-bot] database TimeZone is Asia/Beirut,
+not UTC`). Every fixture movement landed **three hours in the future**; `findByUserWindow` bounds its scan at
+`nowMs + 1` and filtered them straight back out, so the reader fell through to the older, unpositioned rows and
+painted their balance as a CARRIED figure. Anything writing transactions with raw SQL must write the UTC wall time
+with no zone at all. ⛔ **And the check that was supposed to catch it could not:** it read
+`createdAt > now() - interval '30 days'` — a LOWER bound only, which a future timestamp passes. Both bounds, or the
+question was never asked.
+
+**PROVED, NOT ASSERTED.** With the stamps fixed the page paints `withOpening: 5, identityHolds: 5` — five rows
+carry an opening and `Opening − Stake = Closing` holds on every one (1,247,500 − 7,500 = 1,240,000). SQL predicted
+exactly five on page one and the page painted exactly five; prediction and paint agree, which is the only form of
+this proof worth having.
+
+**THE FIVE INSTRUMENTS, each of which was returning a confident answer about something it never measured:**
+
+| what it claimed | what it did |
+|---|---|
+| the visual harness's step results | every step ended `\| tail -N`, and a pipeline's status is its LAST command — a failed `migrate deploy` or a crashed seed exited 0 through `tail` and the run carried on to serve a half-built database. `set -eo pipefail`. |
+| "the Round column reads #1,570" | matched `#` + digits anywhere in the table HTML and was reading `Player #8480_3`, the ACCOUNT reference, as a round number. Read the cell by its column index. |
+| "the account table has no ledger" | the probe hardcoded a bot id, and a reset cluster mints new ones — an ABSENT page read exactly like a broken one. Find the id the desk itself links to, and say so when there is none. |
+| the gate's own cleanup | `kill` does not stop `next start` on Windows. The survivor held :3021, the next run aborted, and — worse — a stale server serves the OLD build. Clear the port, never trust it. |
+| `373-minw` and `1.373`'s allowlist | both quoted the table opener VERBATIM, so changing a gutter rots them. Re-aim in the same commit. |
+
+**THE WIDTH, STATED RATHER THAN CLOSED.** At 1280 the desk-wide strip is 998px and the table measured **1519px**:
+`Round`, `Game`, `Note` and the STOP CONTROL were reachable only by dragging. Halving the desktop gutter
+(`sm:!px-4` → `!px-2`) and dropping the `Game` floor (`22ch` → `16ch`, which WAS its 180px) returned 144px →
+**1375px**. ⚠️ It still exceeds the strip, and that is reported, not hidden: **twelve discrete columns do not fit
+998px at any honest type size** — collapsing `Round`, `Note` and `Type` into their neighbours AND dropping money to
+the caption rung still lands near 1050px. What it falls back to is the scroll 432(b) and `qa-house-bots-visual`
+§5.2 already licence, and that rule holds: the subject and the first two money answers stay inside the strip and
+the region really scrolls. Closing the remainder costs a column the owner asked for by name, so it is his call.
+
+⛔ **`db:scratch` DOES NOT GIVE YOU A FRESH DATABASE.** `DATA_DIR` is `<checkout>/.pgscratch` — one directory per
+CHECKOUT, not per port — so `KP_SCRATCH_PORT=5474` boots the PREVIOUS run's data (110 intents accumulated across
+runs here, and a long recovery that reads as a hang). `--reset` is what gives you a clean one, and it fails `EPERM`
+while an orphaned postmaster still holds the directory: stop those first. `seed-house-bots-local.mts` is **not
+idempotent** — it places a real bet at line 170 and throws `the player's stake was refused` against an
+already-seeded database.

@@ -81,6 +81,8 @@ const WANT_ROUNDS = Number(process.env.WANT_ROUNDS || 13);
  * 200 clears the 15-minute lock with 20s to place the bet in.
  */
 const LEAD = Number(process.env.LEAD_SECONDS || 200);
+/** Seconds to wait PAST the close before settling, so the close price can be confirmed. */
+const SETTLE_MARGIN = Number(process.env.SETTLE_MARGIN || 180);
 const PER_PAGE = 12;
 const DEMO_PHONE = "+255700000000";
 
@@ -148,14 +150,23 @@ if (hyd.n < 50) {
   process.exit(2);
 }
 
-/** The balance, read where it was IDENTIFIED: the first TZS figure on /wallet, which equals the
- *  header's. Returns null rather than a guess, so a failed read can never look like "no change". */
+/**
+ * The balance, read where it was IDENTIFIED: the first TZS figure on /wallet, which equals the
+ * one the header prints, for the user `whoami` confirms is signed in. Returns null rather than a
+ * guess, so a failed read can never look like "no change".
+ *
+ * ⚠️ ONE REUSED PAGE, NOT A FRESH CONTEXT PER READ. The first version opened a context, loaded
+ * /wallet and closed it again — twice per bet, so 26 page loads for a 13-round run, which on a
+ * `next dev` server is most of the wall clock and was the reason a full run took long enough to be
+ * interrupted. The page is created once and reloaded.
+ */
+let walletPage = null;
 const walletNow = async () => {
-  const p = await ctx.newPage();
+  if (!walletPage) walletPage = await ctx.newPage();
   try {
-    await p.goto(BASE + "/wallet", { waitUntil: "load", timeout: 300000 });
-    await p.waitForTimeout(700);
-    return await p.evaluate(() => {
+    await walletPage.goto(BASE + "/wallet", { waitUntil: "domcontentloaded", timeout: 300000 });
+    await walletPage.waitForTimeout(500);
+    return await walletPage.evaluate(() => {
       // ⛔ REFUSE A COMPACTED FIGURE RATHER THAN PARSE ONE. "TZS 2.1M" matches `TZS ([\d,]+)` as
       // "2", and a delta between two silently-truncated numbers is an instrument that lies without
       // ever erroring. Take the whole token and reject anything that is not pure digits/commas.
@@ -165,7 +176,9 @@ const walletNow = async () => {
       if (!/^[\d,]+$/.test(tok)) return { compacted: tok };
       return Number(tok.replace(/,/g, ""));
     });
-  } finally { await p.close(); }
+  } catch {
+    return null;
+  }
 };
 
 const opening = await walletNow();
@@ -237,16 +250,32 @@ for (let cycle = 1; landed.length < WANT_ROUNDS && silent < 2 && cycle <= 12; cy
   if (!landedThisCycle) { silent++; console.log(`  cycle ${cycle}: no bet landed (silent ${silent}/2)`); continue; }
   silent = 0;
 
-  // wait out the lead, then settle — one advanceChain call closes this round and opens its heir
-  const waitMs = LEAD * 1000 + 4000;
-  console.log(`  cycle ${cycle}: ${landedThisCycle} bet(s) placed, waiting ${Math.round(waitMs / 1000)}s for the close…`);
+  // ⛔ ONE SETTLE, AFTER A LONG ENOUGH WAIT. DO NOT RETRY — MEASURED, AND THE RETRY WAS WORSE THAN
+  // THE PROBLEM IT FIXED. Settling 4s past the close reported "closed 0, resolved 0" on three of
+  // four cycles, so a six-attempt retry loop was added. It DID start resolving rounds (cycle 5:
+  // three of them, UP/DOWN/UP) — and the drive still reported `0 rounds resolved`, because **every
+  // failed attempt calls `advanceChain` too, which OPENS A SUCCESSOR**. By the attempt that finally
+  // resolved, `latestForChain` was several rounds past the one the player bet on, so what settled
+  // was a round nobody had staked. A retry on an endpoint that also ADVANCES is not a retry.
+  //
+  // The cause of the original emptiness is real and is not the endpoint's fault: `advanceChain`
+  // needs a CONFIRMED close price, and the observation arrives on a cadence rather than at the
+  // boundary — the endpoint's header says a boundary with no confirmed price "simply leaves the
+  // round pending, exactly as in production". A manual settle several MINUTES later resolved 4 of 4.
+  // So: wait past the close by `SETTLE_MARGIN` seconds and settle ONCE. If it still comes back
+  // empty, raise the margin; do not add attempts.
+  const waitMs = LEAD * 1000 + SETTLE_MARGIN * 1000;
+  console.log(`  cycle ${cycle}: ${landedThisCycle} bet(s) placed, waiting ${Math.round(waitMs / 1000)}s — ${LEAD}s to the close plus a ${SETTLE_MARGIN}s margin for the close price to be confirmed…`);
   await sleep(waitMs);
   const settled = await post("/api/dev-test/updown-handover", { phase: "settle" });
   const closed = (settled.json?.out || []).map((o) => o.closed).filter(Boolean);
   const good = closed.filter((c) => c.resolvedAt);
-  for (const c of good) if (landed.includes(c.id)) resolved.push(c.id);
-  console.log(`  cycle ${cycle}: settle closed ${closed.length}, resolved ${good.length} — outcomes ${JSON.stringify(good.map((c) => c.outcome))}`);
-  if (!good.length) fail("1", `cycle ${cycle} settled nothing — every round it closed came back unresolved, so no history was created`);
+  // ⭐ ONLY COUNT A ROUND THE PLAYER ACTUALLY BET ON. Counting every resolved round is how the
+  // retry version looked like it was working while the history stayed empty.
+  const mine = good.filter((c) => landed.includes(c.id));
+  for (const c of mine) resolved.push(c.id);
+  console.log(`  cycle ${cycle}: settle closed ${closed.length}, resolved ${good.length}, of which ${mine.length} were bet on — outcomes ${JSON.stringify(mine.map((c) => c.outcome))}`);
+  if (!mine.length) fail("1", `cycle ${cycle} resolved ${good.length} round(s) but NONE the player bet on — either the close price was not confirmed in ${SETTLE_MARGIN}s, or the chain advanced past the staked round`);
 }
 
 console.log(`  bets that moved money: ${landed.length} · rounds the settle call resolved: ${resolved.length}`);

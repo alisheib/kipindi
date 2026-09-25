@@ -808,8 +808,11 @@ export const MUTATIONS = [
        been broken by the same change. ⚠️ RE-ANCHORED AGAIN 2026-09-24: the activity table now carries its own
        phone-width gutter classes, which made it unique by itself — the ScrollX label above it is no longer needed
        to single it out. THE DEFECT IS UNCHANGED: a width on the money table stretches every column. */
-    from: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-4 sm:[&_th]:!px-4 max-sm:!text-caption">`,
-    to: `                  <table className="admin-tbl min-w-[720px] [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-4 sm:[&_th]:!px-4 max-sm:!text-caption">`,
+    /* ⚠️ RE-ANCHORED AGAIN 2026-09-25: the desktop gutter dropped from `px-4` to `px-2`. At 1280 the
+       desk-wide table measured 1519px inside a 998px strip, so four of its twelve columns — Round, Game,
+       Note and the STOP CONTROL — were reachable only by dragging sideways. THE DEFECT IS UNCHANGED. */
+    from: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">`,
+    to: `                  <table className="admin-tbl min-w-[720px] [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">`,
     expect: "1.373 · the money-bearing TABLE carries no `min-w-*` of its own",
     suite: "console-mem",
   },
@@ -1572,7 +1575,9 @@ import { formatEat } from "@/lib/utils";`,
     file: PAGE,
     from: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Loss today (projected)</th>`,
     to: `                      <th scope="col" className="text-right p-3 whitespace-normal">Loss today (projected)</th>`,
-    expect: "1.373 · 432(o) · every money-bearing header may WRAP",
+    /* ⚠️ RE-AIMED 2026-09-25: the assertion was renamed to say ON THE ROSTER, because it reads the FIRST thead on
+       the page and never governed the activity table's money headers, whose own pin now sits beside that panel. */
+    expect: "1.373 · 432(o) · every money-bearing header ON THE ROSTER may WRAP",
     suite: "console-mem",
   },
   {
@@ -2544,6 +2549,54 @@ import { formatEat } from "@/lib/utils";`,
     from: `    (id) => (core.dayBooks == null ? null : (core.dayBooks.get(id)?.stakedTzs ?? 0)),`,
     to: `    (id) => core.dayBooks?.get(id)?.stakedTzs ?? null,`,
     expect: "1.626c · an account the day book holds NO row for reads the same on the desk as on its own page",
+    suite: "console-mem",
+  },
+  {
+    name: "626f-opening-subtracts · the opening balance is computed by SUBTRACTING the stake instead of adding it, so the ledger line reads backwards while every figure still looks like money",
+    file: GATE,
+    /* ⚠️ THE WHOLE CLAIM OF THE ROW IS `Opening − Stake = Closing`. Flip the sign and the line still renders three
+       plausible amounts in the right shapes — it simply describes a stake that arrived rather than one that left. */
+    from: `  return closing == null || !closing.ownMovement ? null : formatTzs(closing.value + stakeTzs);`,
+    to: `  return closing == null || !closing.ownMovement ? null : formatTzs(closing.value - stakeTzs);`,
+    expect: "1.626f · Opening − Stake = Closing, exactly, on every row that moved money",
+    suite: "console-mem",
+  },
+  {
+    name: "626f-opening-on-a-row-that-moved-nothing · a carried-forward balance is turned into an opening, so a row whose stake never left the wallet is given a bracket around a movement that did not happen",
+    file: GATE,
+    from: `  return closing == null || !closing.ownMovement ? null : formatTzs(closing.value + stakeTzs);`,
+    to: `  return closing == null ? null : formatTzs(closing.value + stakeTzs);`,
+    expect: "1.626f · CONTROL · a queued row has a carried-forward closing and NO opening",
+    suite: "console-mem",
+  },
+  {
+    name: "626g-round-from-anywhere · the round number stops being type-checked, so a hostile stored blob paints whatever it happens to hold",
+    file: GATE,
+    /* ⚠️ `decision` is `Record<string, unknown>` with no type, no parse and no write-time guard anywhere, and the
+       suite plants a hostile shape on purpose. Dropping the guard paints `#undefined` or worse. */
+    from: `  if (typeof raw !== "number" || !Number.isFinite(raw) || !Number.isInteger(raw) || raw <= 0) return null;`,
+    to: `  if (raw == null) return null;`,
+    expect: "1.626g · CONTROL · a hostile snapshot, a MALFORMED round number and a row with no round all answer `null`",
+    suite: "console-mem",
+  },
+  {
+    name: "373-activity-header-order · an activity column is renamed, so the header equality that carries the whole column contract is asked to prove it can fail",
+    file: DETAIL,
+    /* ⚠️ DECLARED 2026-09-25 BECAUSE IT DID NOT EXIST. The two header equalities (per-account and desk-wide) carry
+       the entire column contract for this table, and no mutation anywhere renamed or reordered an activity header
+       — so neither had ever been shown to fail. That is the WRONG-ASSERTION class this file's own header names. */
+    from: `                        <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>`,
+    to: `                        <th scope="col" className="text-right p-3 !whitespace-normal">Budget left</th>`,
+    expect: "1.373 · the activity table's headers are the control facts in order",
+    suite: "console-mem",
+  },
+  {
+    name: "373-activity-colspan-stale · a column is added to the activity table and the spans are left behind, which every gate reads as healthy because a spanning cell renders as one cell whatever it says",
+    file: DETAIL,
+    from: `                        <th scope="col" className="text-left p-3">Type</th>`,
+    to: `                        <th scope="col" className="text-left p-3">Type</th>
+                        <th scope="col" className="text-left p-3">Extra</th>`,
+    expect: "1.373 · every `colSpan` in the activity panel equals that panel's own header count",
     suite: "console-mem",
   },
   {

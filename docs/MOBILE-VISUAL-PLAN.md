@@ -301,9 +301,33 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
      ⛔ STILL DO NOT SKIP THE PROBE. Count `__react` props on the actual route before driving it,
      and ⛔ do not trust a drive's own success line — §2's S19c entry records one that reported
      "16 bets placed" with zero landed. Assert the MONEY MOVED.
-     The drive is written and waiting: `.d37-local-drive.mjs` in the session scratchpad, recipe in
-     §2's S19c entry. 13 bets is the floor (`PLAYER_PER_PAGE` = 12, so fewer cannot show two pages
-     carrying the SAME money).
+     ⭐ **THE DRIVE IS COMMITTED AND TWO OF ITS THREE SECTIONS ARE PROVEN** —
+     `npm run qa:updown-history-strip -- http://localhost:3000`
+     (`scripts/live/updown-history-strip-drive.mjs`). It refuses a non-local base, because it seeds,
+     funds a wallet and drives chain boundaries through `/api/dev-test/*`, which 404s in production.
+     Run 2026-09-25: **13 bets landed, every one asserted by the WALLET FALLING**, and:
+      · ✅ **§2 — D37's actual claim, on a real two-page history.** Page 1 and page 2 printed
+        **identical** figures (`RAUNDI 20/20 dau`, `TZS 20,000 → TZS 20,000`) while listing
+        **different rounds — 12 against 8, no overlap**. The pager moves the list and never the
+        figures. The anti-vacuity halves both held: the pages genuinely differ, and the figures are
+        non-zero.
+      · ✅ **§3** — no tile spills and no figure is clipped at 320/360/412.
+      · ⛔ **§1 — NOTHING THE PLAYER BET ON SETTLED**, so Net return read `TZS 0` and Win rate `0%`.
+        Page-turn invariance for a NON-ZERO net is therefore still unshown. That is the whole of
+        what is left.
+     🔴 **AND THE FIRST FIX FOR IT WAS WORSE THAN THE PROBLEM — READ THIS BEFORE TOUCHING THE
+     SETTLE STEP.** Settling 4s past the close resolved nothing on three of four cycles, so a
+     six-attempt retry loop was added. It DID start resolving rounds (cycle 5: three, UP/DOWN/UP) and
+     the drive STILL reported `0 rounds resolved` — because **every failed attempt calls
+     `advanceChain` too, which OPENS A SUCCESSOR.** By the attempt that finally resolved,
+     `latestForChain` was several rounds past the staked one, so what settled was a round nobody had
+     bet on. **A retry against an endpoint that also ADVANCES is not a retry.** The real cause is
+     ordinary: `advanceChain` needs a CONFIRMED close price and the observation arrives on a cadence,
+     not at the boundary — a manual settle several MINUTES later resolved 4 of 4.
+     ⭐ So the drive now waits `SETTLE_MARGIN` seconds PAST the close and settles **once**, and counts
+     only rounds it can match against the ids it bet on. If it still comes back empty, **raise
+     `SETTLE_MARGIN` — do not add attempts.** 13 bets is the floor (`PLAYER_PER_PAGE` = 12, so fewer
+     cannot show two pages carrying the SAME money).
      ⛔ Do NOT mark U35 ✅ off the unit guard alone — it proves the page hands `roundPnl` the VIEW
      and proves the arithmetic; it cannot prove a tile is legible at 360 with a seven-figure net.
 
@@ -326,6 +350,53 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   under-counts exactly the old browsers this unit hunts — the AuditLog user-agent query is the less
   biased instrument and IS machine-doable) · U40 (native SW/ZH readers, plus Ali's sign-off on D53,
   which is compliance text). Inside otherwise workable units: D8, D46, D47.
+
+▶ ON A DIFFERENT MACHINE — written 2026-09-25 because Ali is continuing this elsewhere
+
+  ⛔ **ONE THING GENUINELY BLOCKS A FRESH CLONE, AND IT IS NOT IN GIT.** `.env.qa.local` is ignored
+  by `.gitignore:9` and is not tracked. `qaEnv()` reads it and THROWS if a key is missing, so
+  without it `loginOnce(b, "mobile01")` cannot sign in and **every signed-in production measurement
+  in this programme is unavailable** — which is most of them. It holds 14 keys; the ones this plan
+  uses are **`QA_MOBILE01_PASSWORD`** (the phone-measurement player, `+255712000110`) and
+  `QA_ADMIN_PASSWORD`. Ali has them. ⚠️ Without that file a session can still do everything
+  SIGNED-OUT, plus every source-level suite — do not conclude the programme is unworkable.
+
+  ⭐ **WHAT TRAVELS UNCHANGED**, because it is a fact about the product rather than the box: the
+  defect register and every unit body; all the guards and their RED controls; the recipes in §2;
+  and the measured CSS numbers (the chart plot is 190px at a 320 viewport, `--tap-min` is 40, the
+  spacing scale is overridden, `PLAYER_PER_PAGE` is 12, the Up & Down lock is `close − 60s` on a
+  5-minute chain and `close − 180s` on a 15-minute one). None of those need re-measuring.
+
+  ⛔ **WHAT IS MACHINE-LOCAL AND MUST BE RE-MEASURED RATHER THAN READ:**
+   · **Whether `next dev` hydrates.** On this box it read 4 of ~500 on 2026-09-24 and 775 of 919 on
+     2026-09-25 — same server process. Probe it, COUNT `__react` props, then click something and
+     assert the state changed. Never trust either verdict, including the good one.
+   · **Which port, and whether a server is already up.** Next 16 refuses a second `next dev` per
+     directory, so an existing one IS the host — and it compiles from the working tree, so it serves
+     uncommitted edits. A spare worktree is the only way to get a second.
+   · **The dev server's stability.** Turbopack's CSS worker died here after a `globals.css` edit
+     ("failed to receive message / reading packet length") and EVERY route began answering 500 while
+     `tsc` stayed clean. A restart fixed it; a fresh `next dev` starts with an EMPTY in-memory store,
+     so re-seed before believing anything.
+   · **`npx next start` does not work on this repo at all** — `.env.local` (also gitignored) carries
+     no `DATABASE_URL` and the instrumentation hook refuses the in-memory store, so every route 500s.
+     `next dev` is the only local host.
+
+  ⭐ **THE FIRST FIVE THINGS TO RUN SOMEWHERE NEW**, in this order:
+   1. `npm run test:mobile-visual-plan` — the tracker. It needs nothing but the repo and must pass.
+   2. `npm run test:time-axis` · `test:tap-target` · `test:labels` · `test:design-frozen` — all
+      source-only, all must pass, none needs a server or a secret.
+   3. `npm run qa:detail-order-hints -- https://www.50pick.tz` — needs `.env.qa.local`. GREEN over 9
+      cells is the current truth; anything else means something regressed, not that the gate is wrong.
+   4. Only then a local server, and the hydration probe before any drive.
+   5. `git log --oneline -8 origin/main` — two other sessions push to main most days.
+
+  ⚠️ **WHAT NEEDS ALI WHEREVER THE WORK HAPPENS** (no machine changes these): U30's real-phone pass
+  (keyboard, TalkBack, large text, in-app browser, installed app, landscape — Playwright reports
+  every safe-area inset as 0, so this is not a tooling gap that a better PC closes); **D88's ruling**
+  on whether Law 9's 40px floor reaches a link inside a sentence; **D90's ruling** on 13.5px/bold
+  versus a new 13px rung in `ui/stat.tsx`; U29's A/B browser-floor decision; D53's compliance text;
+  and funding `mobile01` if the production route for U35 is ever preferred to the local one.
 
 ▶ THE THREE TRAPS — every session re-learns these unless it reads them here
   1. THE SPACING SCALE IS OVERRIDDEN (tailwind.config.ts:211-226 — `h-8`=48px, `h-7`=40px, `p-5`=24px).
@@ -364,7 +435,11 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
 
 ## §0a — The session prompt (paste this to start a session on any machine)
 
-⛔ This block is the contract. It relies only on this repository, so it works on any PC, with or without memory.
+⛔ This block is the contract, and it is **NOT self-sufficient** — the older wording here said it
+"relies only on this repository, so it works on any PC", and that is false for every measurement
+this programme actually trusts. **Production measurement needs `.env.qa.local`, which is gitignored
+(`.gitignore:9`) and therefore absent from a fresh clone.** Read the ▶ ON A DIFFERENT MACHINE block
+in §0 before starting anywhere new. Everything else here does travel.
 
 ```
 Continue the 50pick MOBILE VISUAL PLAN. Perfect beats fast. No lost work, no repeated work.
@@ -620,6 +695,70 @@ The programme may be marked **🏁 CLOSED** in the status line at the top of thi
 Until then the status line stays 🟠 and `§0 NEXT` names real work.
 
 ## §2 — Session log (newest first)
+
+- **S19h · 2026-09-25 — U37 closed, five controls no gate could see, and a retry that made things worse.**
+  - **D46 (`eb4acd4a`)** — the probability axis is a TIME axis. `lightweight-charts`' time scale is
+    ORDINAL: one slot per item × one uniform `barSpacing`, so under calendar labels a two-day gap and
+    a one-day gap drew the same width. On live market `mkt_07204d65ca88106b160c`: **11 readings over
+    112.4h, gaps 95s to 2.60 days — 2,362:1, all drawn identically**, and 19 Sep absent from the axis
+    entirely. Fixed with `timeGridFill`, which reserves the missing width with the library's **own
+    whitespace items** (`{ time }`, no value) — the mechanism `terminal-chart.tsx` already uses "so an
+    outage keeps its width". ⛔ NEVER interpolated probabilities: this component's rule is "Real data
+    or nothing (A-5)". ⚠️ Order matters — fill, THEN `ascUnique`, whose tie rule keeps a real price
+    over a gap marker.
+  - ⛔ **AND D46'S FIX NEARLY BECAME WORSE THAN D46.** The library refuses to draw below
+    `minBarSpacing`, default **0.5px**, and the plot is **190px at 320 — measured, against the 210 I
+    first estimated**. A ceiling of 380 slots, so a 2,000-slot series would have clamped and shown
+    the player **about a tenth of their market's history, looking entirely normal**. The budget and
+    the floor now live together and `test:time-axis` §7 asserts the PAIR.
+  - **D85 · D86 · D88 (`eb4acd4a`)** — three controls under the tap floor on the detail page: comment
+    Report/Delete at **~15.8px tall**, the header Source link at **~55×18** beside two 40×40 controls,
+    the criterion's source URL at **221×33**. ⭐ **THE BLINDNESS IS THE FINDING.**
+    `tap-target.test.mts:344` skips any interactive tag that declares no height — "declares nothing
+    — the rendered half's job" — and no rendered gate's population contained them; §4 of the unit's
+    own driver scopes to three known triggers. So `qa:detail-order-hints` gained a **§5 whose
+    population is THE PAGE**, not a list. A list is maintained by the same people who forget.
+  - 🔴 **§5 CRIED WOLF TWICE FIRST, AND BOTH TIMES CONVICTED A CLOSED FIX IN 9/9 CELLS.** Judging
+    `getBoundingClientRect` convicted the card's Details and share controls (13×17, 64×17) — but D28
+    gave each a 40px `::after` the element's rect cannot see. Then a 40px `elementFromPoint` square
+    convicted the same two, because they are **neighbours ~20px apart**: two adjacent controls cannot
+    each own a clear 40px square, and Law 9 does not ask them to. The honest measure is the **hit
+    area, box ∪ pseudo-elements** — the accounting D28 itself used. ⭐ A gate that convicts a shipped
+    fix is worse than no gate; it teaches people to ignore it.
+  - **D89 (`eb4acd4a`)** — and that instrument immediately found what D28 could not: `.mcardp-details`
+    is **38px wide in Chinese** (63.9 sw, 56.4 en), under the floor at every width since the day D28
+    closed it. Its `::after` is `left:0; right:0`, so the height was engineered to the pixel and the
+    **width was left to the translation**. ⭐ §A5 watches Swahili running 35–40% LONGER — the SAFE
+    direction. It is SHORT text that breaks a width-driven target, and zh is the short case here.
+    Re-measured on `/markets`: 30 controls × 3 widths × 3 locales, 0 under the floor, **zh exactly 40**
+    against 41 in sw/en — so the `min-width` is what holds it, not the text.
+  - **D87 (`eb4acd4a`)** — the page's signature visualisation was absent from the outline D40 had just
+    repaired: an unnamed `<section>` labelled only by a `<span>` in its toggle. ⛔ D40's guard could
+    not have caught it — a heading-LEVEL check cannot see a MISSING heading. Now an `<h2>` reusing
+    `market.probOverTime`; nothing moved, because preflight resets h1–h6 to inherit.
+  - 🔴 **TWO RED CONTROLS BROKE A SECTION THEY WERE NOT NAMED FOR, BOTH BY DOM SURGERY**, and the
+    harness refused to certify either. `content.after(aside)` and `node.remove()` on a page that
+    **re-renders on a timer** left React reconciling against a cut tree, so §4 read `trigger is 0×0`.
+    Both are now CSS-only / attribute-only — RED_ORDER inverts the visual `order`, which is exactly
+    the property §1 asserts. A `0×0` box is now reported as an INSTRUMENT FAILURE, not a finding.
+  - 🔴 **AND §4/§5 MADE "EACH CONTROL BREAKS ONLY ITS OWN SECTION" UNSATISFIABLE.** Both policed the
+    tap floor, and §4's three triggers are a SUBSET of §5's page: RED_TAP broke §5 too (27) and
+    RED_FLOOR broke §4 too (54). The rule was right and the sections were wrong. §4 keeps the hints
+    because its test is stricter (reach, which guards the `relative z-10` against the stake input
+    below); §5 excludes them and says so, and §4 asserts its own population size so nothing falls
+    through. **One rule, one section, one population.**
+  - **U35** — `qa:updown-history-strip` committed. **13 bets landed, each proved by the wallet
+    falling**, and §2 PASSED on a real two-page history: identical figures across pages while listing
+    **12 rounds against 8, no overlap**. ⛔ §1 open — nothing the player bet on SETTLED, so Net return
+    and Win rate sat at zero. 🔴 **The retry I added for it was worse than the problem**: every failed
+    `settle` attempt also calls `advanceChain`, which OPENS A SUCCESSOR, so the round that eventually
+    resolved was one nobody had bet on. **A retry against an endpoint that also advances is not a
+    retry.** Replaced with one settle after a `SETTLE_MARGIN` past the close. Detail in §0 item 1.
+  - ⚠️ **HOUSEKEEPING THAT COST REAL TIME:** Turbopack's CSS worker died after a `globals.css` edit
+    and every route answered 500 while `tsc` stayed clean (a restart fixed it; a fresh `next dev`
+    starts with an EMPTY store — re-seed). Editing source while a drive runs against the same server
+    broke one run. And I POSTed a `settle` into the store a running drive depended on, which
+    invalidated its cycle — **do not mutate a store a drive is using.**
 
 - **S19g · 2026-09-25 — D40 and D41, and the dev server that hydrates after all.**
   - **D40 (`ee55a509`)** — the bet panel is FIRST in the source. `order` moves what a player
