@@ -36,6 +36,7 @@ const REFUSED = "src/app/admin/kyc/refused/page.tsx";
 const DAL = "src/lib/server/house-bot-dal.ts";
 /* ⭐ C7 step 4 · the account page. */
 const DETAIL = "src/app/admin/desk/[id]/page.tsx";
+const WHY_PANEL = "src/app/admin/desk/[id]/why-panel.tsx";
 /* ⭐ C7 step 4b · the master-switch ceremony's client half. */
 const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
 /* ⭐ C7 step 4b · the officer's two roster acts, which had no service under src/ at all before this step. */
@@ -1920,6 +1921,24 @@ import { formatEat } from "@/lib/utils";`,
     expect: "1.435 · 358 · every card of the account page is guarded",
     suite: "console-mem",
   },
+  {
+    name: "435b-why-panel-guard-dropped · the why-panel stops checking `removed`, so the moment the door answers for a removed account, that account is told why it is not staking",
+    file: WHY_PANEL,
+    /* ⭐ THE RED CONTROL THIS GUARD NEVER HAD (2026-09-26). As a page wrapper it could not fail — the door already
+       refuses a removed account — so it existed only to make 1.435's literal count reach twelve. */
+    from: `  if (removed || why == null) return null;`,
+    to: `  if (why == null) return null;`,
+    expect: "1.435b · a REMOVED account is told nothing, even when handed a live answer",
+    suite: "console-mem",
+  },
+  {
+    name: "541-why-explains-removed · the idle door stops refusing a REMOVED account and walks the planner for an account with nothing left to stake on",
+    file: GATE,
+    from: `  if (!bot || bot.status === "REMOVED") return null;`,
+    to: `  if (!bot) return null;`,
+    expect: "1.541 · a REMOVED account is not explained",
+    suite: "console-mem",
+  },
   /* ── C7 step 7 · THE CLOSING GATES (rulings 320, 370, 371, 375, 390, 391, 395, 397, 398) ────────────────────────
    * Each puts back the thing the closing step retired, or the shape the console could still have shipped: a results
    * reader with no reader, an amount behind a refusal sentence, a money record with no transaction behind it, a
@@ -2631,9 +2650,39 @@ import { formatEat } from "@/lib/utils";`,
     file: GATE,
     /* ⚠️ An intent's `createdAt` is when the engine DECIDED and the money moves when it FIRES, so the carried
        figure is the balance BEFORE this row's own stake — plausible, adjacent, and wrong on every placed row. */
-    from: `    const own = row.positionId == null ? undefined : rows.find((t) => t.positionId === row.positionId);`,
+    /* ⚠️ RE-AIMED 2026-09-26: the one-line `find` it quoted was split by the settlement fix below, and an anchor
+       that no longer resolves plants nothing. */
+    from: `    const own = row.positionId == null ? undefined\n      : rows.find((t) => t.positionId === row.positionId && t.type === "BET_PLACED");`,
     to: `    const own = undefined;`,
     expect: "1.626d · every placed row says what the account had left AFTER IT",
+    suite: "console-mem",
+  },
+  {
+    name: "368b-balance-leaks-into-the-budget-title · the wallet balance lands in the day-budget cell's title beside it, so a real person's money is painted outside the two cells D3's amendment permits",
+    file: GATE,
+    /* ⭐ 1.368b's own mutation (2026-09-26): the guard's needles are the balances the rows paint, so the leak is
+       caught whatever the figure is — two money cells side by side is exactly where a swapped field goes unnoticed. */
+    from: `    leftTodayTitle: left(i)?.title ?? null,`,
+    to: `    leftTodayTitle: closingCell?.text ?? left(i)?.title ?? null,`,
+    expect: "1.368b · 459 · D3 · on the activity view the holder's balance appears",
+    suite: "console-mem",
+  },
+  {
+    name: "626h-settlement-read-as-the-stake · the stake's own movement is matched on the position ALONE, so a settled stake's newest movement — its payout or refund — is read as the stake and Opening/Closing bracket the settlement",
+    file: GATE,
+    /* 🔴 THE SHIPPED DEFECT (found 2026-09-26 by an adversarial read, on three live rows in four): `BET_PAYOUT` and
+       `BET_REFUND` carry the stake's `positionId`, the scan is newest-first, and a bare `find` takes the settlement. */
+    from: `      : rows.find((t) => t.positionId === row.positionId && t.type === "BET_PLACED");`,
+    to: `      : rows.find((t) => t.positionId === row.positionId);`,
+    expect: "1.626h · a SETTLED stake's Opening and Closing still bracket THAT stake",
+    suite: "console-mem",
+  },
+  {
+    name: "626h-placed-row-borrows · a placed row whose own debit is out of view borrows the carried balance from BEFORE its stake left, so it paints a figure that still holds its own stake",
+    file: GATE,
+    from: `    if (row.positionId != null) return null;`,
+    to: `    if (false) return null;`,
+    expect: "1.626h · a PLACED row whose own stake movement is not in view answers NOTHING",
     suite: "console-mem",
   },
   {

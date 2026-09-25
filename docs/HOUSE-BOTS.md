@@ -1789,3 +1789,54 @@ runs here, and a long recovery that reads as a hang). `--reset` is what gives yo
 while an orphaned postmaster still holds the directory: stop those first. `seed-house-bots-local.mts` is **not
 idempotent** — it places a real bet at line 170 and throws `the player's stake was refused` against an
 already-seeded database.
+
+### 12.5 The ledger bracketed the settlement, and three guards that could not fail — 2026-09-26
+
+Found by putting the rewritten `RESUME-HERE.md` to five adversarial refuters before committing it — not by any suite,
+and not by the visual gate. Each claim they could not confirm was checked against the code; three were defects.
+
+🔴 **OPENING AND CLOSING BRACKETED THE SETTLEMENT, NOT THE STAKE, on every settled Won or Void row.**
+`feedRemainingLookup` found the row's own movement with `rows.find((t) => t.positionId === row.positionId)`. But
+`positionId` is not unique on `Transaction`: the refund (`BET_REFUND`) and the payout (`BET_PAYOUT`) carry the stake's
+position too (`market-service.ts`), and `findByUserWindow` returns rows NEWEST-FIRST on both stores — so the match was
+the settlement. `Closing` painted the balance after the payout or refund, and `Opening` that plus the stake: a bracket
+the wallet never held. Read SELECT-only from production: **598 of 694 placed rows** carry a settlement movement (534
+Void, 64 Won); only Lost rows (no transaction) and the one open stake were right.
+⭐ **Why nothing saw it:** every fixture settled a stake by flipping `Position.status` and wrote no money, so the
+settlement row the reader tripped on never existed in any test. **1.626h** now writes the settlement the product
+writes — newest, same position, a balance no stake row holds — with a control proving it IS the newest movement.
+⛔ **And a placed row whose own debit is out of the scan now answers nothing**, rather than borrowing the balance from
+the instant the engine decided — which is before its stake left (the reader's own docstring said so).
+
+🔴 **1.368's D3 GUARD WAS VACUOUS TWICE.** `3859118f` renamed the balance cells to `opening`/`closing`/`closingTitle`
+and rewrote the compliance register by ROLE so a rename could not rot it — and left the guard's exemption naming
+`remaining`/`remainingTitle`, so it exempted nothing. ⭐ **The control written to close that found the second hole at
+once:** the account 1.368 scans has **no activity rows at all** — its "the balance appears nowhere else on the
+activity tab" was a scan of nothing. It is now **1.368b**, inside the ledger block where three real bets leave real
+balances, and its needles are the Opening/Closing figures the rows actually paint — not a typed amount — so a rename,
+a new balance field or a different fixture balance cannot slide past. Its population control requires at least three
+distinct painted balances and every exempted field present on the row; its mutation plants the wallet balance in the
+day-budget cell's `title` beside it.
+
+🔴 **`reports-mem` WAS RED ON CLEAN `main`, AND EVERY RED DRIVE REFUSED TO START ON IT.** Another lane's `8acf067c`
+deleted `"today"` from `analytics.Period` (it meant a rolling 24 h there and the EAT day everywhere else). 14.3 called
+`AN.activePlayers("today")` through an `Any`, so no compiler objected: `periodToMs("today")` returned `undefined`, the
+window began at `NaN`, and every count was 0 before and after the fixture. 14.3/14.3b caught it; nobody ran them
+between that commit and this session. The case now asks `resolveRange({ range: "today" })` — the repo's one
+definition — and reads 3 → 4 on both stores.
+
+⭐ **THE WHY-PANEL'S `removed` GUARD GOT A RED CONTROL.** As `{!view.removed && (` on the page it could not fail: the
+door (`houseWhyIdleForConsole`) already refuses a removed account, so deleting the wrapper changed nothing any
+instrument could see — it existed only so 1.435's literal count reached twelve. It now lives in `AccountWhyPanel`
+(`src/app/admin/desk/[id]/why-panel.tsx`); **1.435b** RENDERS it with a live answer and `removed: true` — the one
+input on which it is the only thing standing — with the same answer on a live account as its control. The door's own
+refusal, asserted nowhere before, is a new 1.541 case. 1.435's count is eleven, with a pin that the page hands
+`removed` down.
+
+| Instrument | Result |
+|---|---|
+| `test:house-bot-console` | **854 memory / 613 Postgres, 0 failed** (floor raised from 845/604 — +11 −2 on each store) |
+| `test:house-bot-reports` | both stores, 0 failed; 14.3 reads 3 → 4 |
+| `typecheck` | 0 errors |
+| `test:red-anchors` §3 | all 340 console anchors resolve exactly once (the re-aimed `626d-own-movement-ignored` included) |
+| New mutations | `626h-settlement-read-as-the-stake`, `626h-placed-row-borrows`, `368b-balance-leaks-into-the-budget-title`, `435b-why-panel-guard-dropped`, `541-why-explains-removed` — driven in the commit after this one |
