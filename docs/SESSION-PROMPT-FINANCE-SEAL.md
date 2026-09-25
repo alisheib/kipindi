@@ -96,8 +96,12 @@ is a second implementation that will drift.
   ⚠️ **And the daily-ops Margin is rounded ONCE in the builder** (`marginShown`): Excel rounds the
   raw fraction half-up in decimal while `toFixed` rounds the binary double, so GGR 23,000 on
   80,000 retained read 28.8% in the workbook and 28.7% in the PDF and the same file's "Operator
-  margin" row. `test:report-cells` 22/0 (§5 carries 13 of them — per-report tile counts pinned,
-  exact number formats, the tie case, a negative and a NaN tile), RED **10/10**. The count deltas
+  margin" row — rounded half AWAY from zero, as Excel does, so a losing day's −28.75% agrees too.
+  `test:report-cells` 23/0 (per-report tile counts pinned, a declared text-tile allowlist, exact
+  number formats, the tie case on both signs, a negative and a NaN tile, and every report through
+  `renderPdf` — nothing in `test:all` rendered a PDF before), RED **11/11**.
+  **And on production** (`6427ef64`): the real "This view → Excel" download from 50pick.tz, opened
+  in Excel over COM — six `Double` cells, `COUNT()` 6, `SUM()` working, "8 txns" in C. The count deltas
   now use the repo's `adminCount()` (utils.ts) — "1 txns" is gone.
 - ~~**`REPORT_PERIODS` and the `"today"`/`"mtd"` arms of `report-money.periodBounds` have NO
   readers**~~ ✅ **DELETED 2026-09-25**, and `"7d"` with them: it survived only as
@@ -108,8 +112,26 @@ is a second implementation that will drift.
   levy is "15% of GGR" and that "the report and the ledger finally agree": all three false, and the
   reason the over-tax was re-derived twice. NGR now names agent commission; analytics.ts' GGR/NGR
   docs and its dangling `periodBounds("today")` pointer corrected.
-- **`reports-verify-live.mts` and `report-renderers-smoke.mjs` are NOT npm-wired**, so they never
-  run in `test:all`. They are the only instruments that read real money and the real route.
+- ~~**`reports-verify-live.mts` and `report-renderers-smoke.mjs` are NOT npm-wired**~~ ✅ **WIRED
+  2026-09-25**, neither as `test:*` (`test:all` runs every `test:*`, so it would then need a server
+  or production credentials):
+  - **`npm run verify:reports-live`** — every catalogue report built READ-ONLY against production.
+    Run `railway run --service Postgres npm run verify:reports-live` from a Railway-linked,
+    DEPLOYED checkout: Railway injects `DATABASE_PUBLIC_URL`, so the password never reaches a
+    command line (the old `DATABASE_URL=<url> npx tsx …` usage is how it reached a transcript).
+    It REFUSES with no `--prod`/URL (it used to print "all checks passed" about an EMPTY in-memory
+    store), on an internal host, with uncommitted `src/`, or when HEAD is not deployed —
+    `getGlobalConfig()`'s first hydration re-persists the config when the code's `CONFIG_VERSION`
+    is ahead of production's, the one write any builder can make. Its checks were vacuous in four
+    places and are now real: the totals-vs-rows block ran `check(…, true)`; the daily-ops levy
+    check was circular (net vs the builder's own three figures — it passed on the computed-levy
+    code too) and now compares the TRA/GBT tiles with an INDEPENDENT ledger read, before and after
+    the build; chain integrity was never asserted (now asserted, or SKIPPED and said so without
+    `AUDIT_CHAIN_SECRET`, never counted as a pass); only "(TZS)" tiles were checked for numbers.
+  - **`npm run qa:report-renderers`** — the download smoke through the real route. Needs
+    `rm -rf .next && DISABLE_ADMIN_TOTP=true npx next dev -p <port>` with NO DATABASE_URL; refuses
+    any host but localhost (it seeds an ADMIN and bets); its seed is now CHECKED (a refused seed
+    left an empty store and every download still passed); no browser binary, API context only.
 - ✅ **STALE-TEXT SWEEP, 2026-09-25** (an adversarial review lane over docs + comments + on-screen
   copy, every change re-read against the code). The ones a reader actually saw:
   - the **Daily Operations document** called GGR "the operator's commission" two notes above its
@@ -144,7 +166,9 @@ Every one has a red control; a guard without one is a claim on trust.
 | Command | What it holds | Proven by |
 |---|---|---|
 | `npm run test:finance-window` | legend == bars, EAT labels, day-aligned series, bucket grain, active-player basis | §5's controls: a FAILED-only player moves the count by 0, a CONFIRMED one by exactly 1, and the all-status count really is higher |
-| `npm run test:report-cells` | renders the real documents and reads CELLS back with ExcelJS; §5 — every "At a glance" figure is a formatted NUMBER cell with its delta beside it, the money tiles SUM to the builder's figures, and a ten-figure sum is never `#####` | reverting the fixes reproduces the documented symptoms: an EMPTY totals cell, and "width 10 vs 27 chars"; §5 caught 10/10 mutations (2026-09-25) |
+| `npm run test:report-cells` | renders the real documents and reads CELLS back with ExcelJS; §5 — every "At a glance" figure is a formatted NUMBER cell with its delta beside it, the money tiles SUM to the builder's figures, and a ten-figure sum is never `#####` | reverting the fixes reproduces the documented symptoms: an EMPTY totals cell, and "width 10 vs 27 chars"; §5 caught 11/11 mutations (2026-09-25) |
+| `npm run verify:reports-live` | PRODUCTION, read-only: every report builds; totals equal their rows (or a cap sentence says so); every non-text tile is a number; the daily-ops TRA/GBT tiles equal an INDEPENDENT ledger read | the refusals (no `--prod`, no URL, internal host, undeployed HEAD) each exit 2; run from `railway run --service Postgres` |
+| `npm run qa:report-renderers` | every report × PDF/XLSX through the real route, the seed checked, the 400/404/anonymous refusals | needs `DISABLE_ADMIN_TOTP=true next dev`, no DATABASE_URL, localhost only |
 | `npm run test:report-window-reads` | a windowed report reads its WINDOW: daily-ops and fiu-sar make exactly one `listInRange` of exactly their day/month and no other `db.txn` read; no builder but the all-time match-integrity walks the table; its "most recent 200" are the newest 200; a malformed pack period is refused | 8 failures on the pre-fix code; RED 7/7 (2026-09-25) |
 | `npm run test:brand-assets` | every report/brand asset is pixel-identical to `src/lib/brand-mark.ts` | decoded-pixel compare, 0 differing samples of 1,048,576 |
 | `npm run qa:finance-alignment` | 63 rectangle measurements at 360/768/1280 | **fails 15 assertions on the pre-fix code** |
