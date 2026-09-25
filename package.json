@@ -253,6 +253,10 @@
     "test:monitoring": "tsx scripts/monitoring.test.mts",
     "test:alerting": "tsx scripts/alerting.test.mts",
     "test:multi-container": "tsx scripts/multi-container.test.mts",
+    "qa:finance-alignment": "node scripts/finance-filter-alignment.mjs",
+    "test:report-cells": "tsx scripts/report-cells.test.mts",
+    "test:brand-assets": "tsx scripts/verify-brand-assets.mts",
+    "test:finance-window": "tsx scripts/finance-window-truth.test.mts",
     "test:report-parity": "tsx scripts/report-parity.test.mts",
     "test:payout-observability": "tsx scripts/payout-observability.test.mts",
     "test:payout-rails": "tsx scripts/payout-rails.test.mts",
@@ -916,7 +920,9 @@
     "qa:ghost-landing": "node scripts/ghost-landing.mjs",
     "qa:fairness-phone": "node scripts/fairness-phone.mjs",
     "qa:signup-funnel": "node scripts/signup-funnel.mjs",
-    "qa:detail-order-hints": "node scripts/detail-order-and-hints.mjs"
+    "qa:detail-order-hints": "node scripts/detail-order-and-hints.mjs",
+    "qa:updown-history-strip": "node scripts/live/updown-history-strip-drive.mjs",
+    "test:time-axis": "tsx scripts/chart-time-axis.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

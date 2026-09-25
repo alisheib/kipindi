@@ -79,6 +79,24 @@ export function eatDateLabel(ms: number): string {
 }
 
 /** Midnight EAT of the first day of the month containing `ms`. */
+/**
+ * ⭐ THE LAST `n` WHOLE EAT DAYS, ENDING NOW — the window a DAILY series actually wants.
+ *
+ * 🔴 A "7-DAY" SPARKLINE WAS RETURNING EIGHT POINTS, AND THE FIRST ONE WAS SHORT. The `7d`
+ * preset is `now − 7×DAY_MS`, which is not aligned to an EAT midnight, while `dailyKpiSeries`
+ * (and `dailyPnl`) bucket from `startOfEatDay(start)`. So the loop opened on a day that had
+ * already partly elapsed before the window did: bucket 0 covered only `[start, midnight)` —
+ * an understated first bar — and the run then produced one bucket more than the name promised,
+ * for every `now` that is not exactly EAT midnight.
+ * ⛔ Fixed at the CALLER rather than inside the bucketer: the bucketer is right to start on a
+ * day boundary (a "daily" series whose days are offset by the clock-time of the request is not
+ * a daily series). What was wrong is asking it for a window that does not start on one.
+ */
+export function lastEatDays(n: number, now = Date.now()): { start: number; end: number } {
+  const days = Math.max(1, Math.floor(n));
+  return { start: startOfEatDay(now) - (days - 1) * DAY_MS, end: now };
+}
+
 export function startOfEatMonth(ms: number): number {
   const d = new Date(ms + EAT_OFFSET_MS);
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) - EAT_OFFSET_MS;

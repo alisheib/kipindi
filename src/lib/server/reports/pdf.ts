@@ -263,8 +263,12 @@ function renderCellText(raw: string | number | null | undefined, format?: Column
   if (format === "tzs") return typeof raw === "number" ? fmtTzs(raw) : String(raw);
   if (format === "integer") return typeof raw === "number" ? raw.toLocaleString("en-US") : String(raw);
   if (format === "percent") return typeof raw === "number" ? `${(raw * 100).toFixed(1)}%` : String(raw);
-  if (format === "datetime") return fmtDateTime(String(raw));
-  if (format === "date") return fmtDate(String(raw));
+  /* ⛔ SAME RULE AS THE XLSX RENDERER, AND FOR THE SAME DEFECT — see the note in xlsx.ts's
+     `applyValue`. A `date` column handed a label ("Total (all)") or a placeholder ("—") used to
+     render EMPTY here too, so the printed pack and the workbook lost the cell together. Every
+     other format above already falls through to the raw string; these two now do as well. */
+  if (format === "datetime") return fmtDateTime(String(raw)) || toAnsiSafe(String(raw));
+  if (format === "date") return fmtDate(String(raw)) || toAnsiSafe(String(raw));
   return toAnsiSafe(String(raw));
 }
 

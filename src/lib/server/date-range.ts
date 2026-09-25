@@ -22,7 +22,13 @@ import { EAT_OFFSET_MS, startOfEatDay, startOfEatMonth } from "./report-money";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
-/** Hard cap on a resolved window — a filter can never trigger an unbounded scan. */
+/**
+ * Hard cap on a CUSTOM window, so a hand-typed from/to cannot trigger an unbounded scan.
+ * ⚠️ IT IS NOT APPLIED TO PRESETS, AND THAT IS A RULING, NOT AN OVERSIGHT. `?range=all`
+ * resolves to `win(0, now)` deliberately: capping it would silently understate a figure labelled
+ * "All time", which report-money.ts records as the worse defect of the two. This line used to
+ * read "a filter can never trigger an unbounded scan", which flatly contradicted that ruling.
+ */
 export const MAX_RANGE_MS = 400 * DAY_MS;
 
 export type RangeParams = { range?: string | null; from?: string | null; to?: string | null };
@@ -37,6 +43,18 @@ export type ResolvedRange = {
   /** Echoed back for the picker to re-render the custom fields. */
   from?: string;
   to?: string;
+  /**
+   * 🔴 THE PARAMS THAT COULD NOT BE READ — a window that silently substitutes itself is the
+   * defect this exists to surface. `parseEatLocal`'s pattern is anchored, so a full ISO instant
+   * (`2026-09-20T13:00:00.000Z`) does NOT match: it returns null, the custom branch below falls
+   * back to `now - 24h -> now`, and the result is still LABELLED "custom". A link built from
+   * `toISOString()` therefore lands an officer on a window nobody chose, with nothing anywhere
+   * saying so - measured: an hour-wide window handed over as an ISO pair came back spanning
+   * twenty-four hours.
+   * (Additive on purpose. The fallback behaviour is unchanged for all ten callers; this only
+   * lets a surface SAY that it substituted. A caller that ignores the field behaves as before.)
+   */
+  unreadable?: Array<"from" | "to">;
 };
 
 /** Preset ids offered by the UI, in display order. `custom` is handled separately. */
@@ -118,6 +136,11 @@ export function resolveRange(sp: RangeParams, now = Date.now(), defaultPreset: s
   if (range === "custom" || sp.from || sp.to) {
     const f = parseEatLocal(sp.from);
     const t = parseEatLocal(sp.to);
+    /* Present in the URL but unparseable - see `unreadable` on ResolvedRange. An ABSENT param is
+       not unreadable; only one the caller supplied and this resolver could not read. */
+    const unreadable: Array<"from" | "to"> = [];
+    if (sp.from && !f) unreadable.push("from");
+    if (sp.to && !t) unreadable.push("to");
     // A date-only "to" is inclusive of that whole EAT day.
     let start = f?.ms ?? (t ? t.ms - DAY_MS : now - DAY_MS);
     let end = t ? (t.hasTime ? t.ms : t.ms + DAY_MS) : now;
@@ -125,7 +148,13 @@ export function resolveRange(sp: RangeParams, now = Date.now(), defaultPreset: s
     end = Math.min(end, now);                                       // never report the future
     if (end - start > MAX_RANGE_MS) start = end - MAX_RANGE_MS;     // cap unbounded scans
     if (end <= start) start = end - HOUR_MS;                        // never a zero/negative window
-    return { start, end, preset: "custom", label: `${fmtEat(start)} → ${fmtEat(end)}`, from: sp.from ?? undefined, to: sp.to ?? undefined };
+    return {
+      start, end, preset: "custom",
+      label: `${fmtEat(start)} → ${fmtEat(end)}`,
+      from: sp.from ?? undefined,
+      to: sp.to ?? undefined,
+      ...(unreadable.length ? { unreadable } : {}),
+    };
   }
 
   // ── Presets ────────────────────────────────────────────────────────────────

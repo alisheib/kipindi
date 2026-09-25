@@ -37,6 +37,10 @@ const REPORTS = [
   { id: "kyc-reverify",    slug: "kyc-re-verification-roster" },
   { id: "rg-engagement",   slug: "responsible-gambling-engagement" },
   { id: "match-integrity", slug: "match-integrity-quarterly-review" },
+  /* The one WINDOWED entry. Requested with no window params here, so it must still build and
+     must still state the window it fell back to — a document that cannot name its own period
+     is the defect this report was added to end. */
+  { id: "finance-window",  slug: "finance-selected-window" },
 ];
 
 let pass = 0, fail = 0;

@@ -18,6 +18,7 @@ import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame, loadReportWindow } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
+import { isWindowedReport } from "@/lib/server/reports/catalogue";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
@@ -67,6 +68,19 @@ function deltaProps(cur: number, prior: number, compare: boolean, unit: "money" 
 const REPORT_FORMATS = ["Excel", "PDF"] as const;
 
 const TEMPLATES = [
+  {
+    /* ⭐ THE ONE WINDOWED TEMPLATE. Every other entry here builds its own statutory or
+       point-in-time period; this one covers whatever window the rail above is set to, and the
+       card says so because a document that follows a filter is useless unless the reader knows
+       it does. It is the same report `/admin/finance` exports — one builder, two doors. */
+    id: "finance-window",
+    title: "Finance — selected window",
+    sw: "Fedha — kipindi ulichochagua",
+    body: "Money summary (stakes, payouts, refunds, GGR, bonus, agent commission, fees, NGR), mobile-money provider summary, settlement fees per poll, house ledger accounts and daily P&L — all bounded to the window selected above. Operating export, not a regulator filing.",
+    cadence: "On demand · follows the window above",
+    severity: "low",
+    target: "Internal · finance",
+  },
   {
     id: "daily-ops",
     title: "Daily operations report",
@@ -552,7 +566,16 @@ async function AdminReportsContent({
                         </span>
                       ))}
                     </div>
-                    <GenerateButton id={t.id} />
+                    {/* A windowed template is handed the window this page resolved, with the
+                        instant it resolved at — see the note on `GenerateButton.query`. Every
+                        other template ignores both and keeps its own period. */}
+                    <GenerateButton
+                      id={t.id}
+                      query={isWindowedReport(t.id)
+                        ? `range=${encodeURIComponent(range.preset)}${sp.from ? `&from=${encodeURIComponent(sp.from)}` : ""}${sp.to ? `&to=${encodeURIComponent(sp.to)}` : ""}&asof=${generatedAt}`
+                        : undefined}
+                      title={isWindowedReport(t.id) ? `Covers the window selected above — ${range.label}` : undefined}
+                    />
                   </div>
                 </div>
               </div>

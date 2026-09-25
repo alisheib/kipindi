@@ -13,7 +13,7 @@ import type { StoredTxn, StoredUser } from "./store";
 import { tallyHeldForUnverified, type UnverifiedHeld } from "../kyc-stage";
 import { tallyWalletLiability, type WalletLiability } from "../wallet-liability";
 import { readKycMoneySnapshot } from "./kyc-money";
-import { moneyForWindow } from "./report-money";
+import { moneyForWindow, EAT_OFFSET_MS } from "./report-money";
 import { listMarkets, ratesFor } from "./market-service";
 import { poolFee, levySplit, type FeeModel } from "../payout";
 
@@ -329,6 +329,43 @@ export async function operatorMarginPct(period: Window = "28d") {
 // of the 1,000,000 TZS AML threshold (see `AML_REVIEW_THRESHOLD_TZS` in payments.ts — a reporting
 // line only since the owner ruling of 2026-09-13 switched the withdrawal hold it triggered off).
 /**
+ * 🔴 EVERY CHART LABEL ON THIS PAGE WAS IN THE CONTAINER'S TIMEZONE, NOT THE PLATFORM'S.
+ * The three series below each built their x-labels with `new Date(bucketStart).getHours()` /
+ * `.getDate()` / `.getMonth()` — and those read whatever zone the process runs in. Railway runs
+ * UTC; this platform keeps ONE clock, EAT (UTC+3). So every bucket on the Trends tab was
+ * labelled three hours behind the data it plotted, and a bucket that began at 00:30 EAT
+ * announced itself as 21:30 the previous day.
+ * ⭐ This is the SAME defect, two cards away, that the settlement-fee table's `settledAt`
+ * column already carries a dated note about — it was fixed there with `eatDayKey` and left
+ * standing in the charts. One formatter now, used by all three.
+ * ⛔ It reads the UTC fields of `ms + EAT_OFFSET_MS`, exactly as `date-range.fmtEat` and
+ * `reports/brand.fmtDate` do — never a local-zone getter.
+ */
+function eatBucketLabel(ms: number, intraday: boolean): string {
+  const d = new Date(ms + EAT_OFFSET_MS);
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  return intraday
+    ? `${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`
+    : `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+}
+
+/**
+ * ⭐ WHAT A BUCKET ACTUALLY IS, SO A CARD CAN STOP GUESSING. The series below slice the
+ * SELECTED window into N buckets (`bucketMs = totalMs / buckets`) — they do NOT plot N days.
+ * The finance cards nonetheless carried hard-typed subtitles ("28-day daily series",
+ * "14-day daily"), so at the 7-day default an officer read six-hour buckets as days.
+ * A card renders its subtitle from this instead of from a remembered number.
+ */
+export function bucketGrain(start: number, end: number, buckets: number): { buckets: number; bucketMs: number; grain: string } {
+  const bucketMs = (end - start) / Math.max(1, buckets);
+  const grain =
+    bucketMs >= 86_400_000 ? (bucketMs >= 2 * 86_400_000 ? `${Math.round(bucketMs / 86_400_000)}-day` : "daily")
+    : bucketMs >= 3_600_000 ? `${Math.max(1, Math.round(bucketMs / 3_600_000))}-hour`
+    : `${Math.max(1, Math.round(bucketMs / 60_000))}-minute`;
+  return { buckets, bucketMs, grain };
+}
+
+/**
  * Time-bucketed series for charting. Returns evenly-spaced buckets covering
  * the period. Each bucket has the net flow (deposits + bets stake) − (payouts +
  * cashouts + withdrawals). Useful for the money-flow area chart.
@@ -355,11 +392,7 @@ export async function moneyFlowSeries(period: Window = "today", buckets = 24) {
       else if (t.type === "BET_PAYOUT" || t.type === "CASHOUT") outflow += Math.abs(t.amount);
     }
     const net = inflow - outflow;
-    const d = new Date(bucketStart);
-    const label =
-      intraday ? `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}` :
-      `${d.getDate()}/${d.getMonth() + 1}`;
-    out.push({ x: i, y: net, label });
+    out.push({ x: i, y: net, label: eatBucketLabel(bucketStart, intraday) });
   }
   return out;
 }
@@ -420,21 +453,53 @@ export async function marginSeries(period: Window = "28d", buckets = 28) {
       else if (t.type === "BET_REFUND") refunds += Math.abs(t.amount);
     }
     const margin = stakes === 0 ? 0 : ((stakes - payouts - refunds) / stakes) * 100;
-    const d = new Date(bucketStart);
-    out.push({ x: i, y: margin, label: `${d.getDate()}/${d.getMonth() + 1}` });
+    out.push({ x: i, y: margin, label: eatBucketLabel(bucketStart, false) });
   }
   return out;
 }
 
-/** Per-day provider deposit volume — for the stacked-bar provider chart. */
+/**
+ * Per-day provider deposit volume — for the stacked-bar provider chart.
+ *
+ * 🔴 THE LEGEND AND THE BARS USED TO BE TWO DIFFERENT QUERIES, AND A CHART THAT NAMES ITS OWN
+ * SWATCHES WRONG IS WORSE THAN NO CHART. The finance page drew the stacks from this function and
+ * the legend from a separate `listProvidersInPeriod`, then relied on segment *i* meaning
+ * `legend[i]`. The two derivations never agreed on a population OR an order:
+ *   · this one binned CONFIRMED DEPOSITs; the legend listed EVERY type and EVERY status, so a
+ *     provider seen only on a withdrawal — or only on a FAILED deposit — took a swatch with no
+ *     stack behind it, and every colour after it named the wrong provider;
+ *   · the legend dropped `INTERNAL`, this one did not;
+ *   · both cut with `.slice(0, 5)` over FIRST-SEEN order, so "top 5" actually meant "first five
+ *     that happened to appear" and the largest provider could be cut while a one-deposit
+ *     provider kept a colour.
+ * ⭐ The fix is not to align the two lists — it is to stop having two. The binner now returns the
+ * keys it actually binned by, so the legend cannot be built from anything else. `otherCount` is
+ * what the cap left out, because a capped view has to say so.
+ * ⛔ The keys stay RAW ENUM VALUES — they are the bin keys. Only the caller's legend maps them
+ * through the display lexicon.
+ */
 export async function providerStackedSeries(period: Window = "28d", buckets = 14) {
   const { start, end } = windowBounds(period);
   const totalMs = end - start;
   const bucketMs = totalMs / buckets;
   const ts = (await txnsInPeriod(period)).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
-  // Discover provider order
-  const providers = Array.from(new Set(ts.map((t) => t.provider ?? "OTHER"))).slice(0, 5);
-  const out: Array<{ label: string; segments: number[] }> = [];
+  /* ⛔ `INTERNAL` is excluded here for the same reason `providerSummary` excludes it: it is a
+     bookkeeping leg (bonus credits, adjustments), not a payment provider, and the Provider
+     summary table on this very page already refuses it. Two panels on one screen must not
+     disagree about who counts as a provider. */
+  const volumes = new Map<string, number>();
+  for (const t of ts) {
+    const key = t.provider ?? "OTHER";
+    if (key === "INTERNAL") continue;
+    volumes.set(key, (volumes.get(key) ?? 0) + t.amount);
+  }
+  /* ⭐ ORDERED BY DEPOSIT VOLUME, THEN CAPPED — so "top 5" is true. First-seen order made the cap
+     arbitrary. Ties break on the key so the order is stable between renders. */
+  const ranked = [...volumes.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k]) => k);
+  const providers = ranked.slice(0, 5);
+  const otherCount = Math.max(0, ranked.length - providers.length);
+  const index = new Map(providers.map((k, i) => [k, i]));
+  const bars: Array<{ label: string; segments: number[] }> = [];
   for (let i = 0; i < buckets; i++) {
     const bucketStart = start + i * bucketMs;
     const bucketEnd = bucketStart + bucketMs;
@@ -442,17 +507,12 @@ export async function providerStackedSeries(period: Window = "28d", buckets = 14
     for (const t of ts) {
       const at = new Date(t.createdAt).getTime();
       if (at < bucketStart || at >= bucketEnd) continue;
-      const idx = providers.indexOf(t.provider ?? "OTHER");
-      if (idx >= 0) segments[idx] += t.amount;
+      const idx = index.get(t.provider ?? "OTHER");
+      if (idx !== undefined) segments[idx] += t.amount;
     }
-    const d = new Date(bucketStart);
-    out.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, segments });
+    bars.push({ label: eatBucketLabel(bucketStart, false), segments });
   }
-  return out;
-}
-
-export async function listProvidersInPeriod(period: Window = "28d") {
-  return Array.from(new Set((await txnsInPeriod(period)).map((t) => t.provider ?? "OTHER").filter((p) => p !== "INTERNAL"))).slice(0, 5);
+  return { providers, bars, otherCount };
 }
 
 /**
