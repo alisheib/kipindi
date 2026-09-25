@@ -685,7 +685,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                       ⛔ PHONE ONLY — `sm:` restores the kit's own 16px, so every width that already read well is
                       byte-identical. Measured after, not assumed: see the 360 read in §12.3. */}
                   <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-4 sm:[&_th]:!px-4 max-sm:!text-caption">
-                    <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+                    <thead className="max-sm:hidden font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         {/* ⛔ A FLOOR ON THE SUBJECT COLUMN, the roster's own measured one: without it the account
                             column absorbs the whole shortfall at 360 and the label and the handle crush together.
@@ -697,6 +697,11 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                             in the header so the cell carries ONE figure. ⛔ ON THE DESK-WIDE TABLE EACH ROW COUNTS
                             AGAINST ITS OWN ACCOUNT'S CAP, which is why the reader looks both up per account. */}
                         <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
+                        {/* ⭐ EVERYTHING THE ACCOUNT HAD LEFT AFTER THE ROW (owner, 2026-09-25) — the holder's own
+                            wallet, from the ledger. ⛔ D3 FORBADE THIS FIGURE AND THE OWNER AMENDED IT, narrowly:
+                            `COMPLIANCE-DECISIONS.md` carries the date, his words and the scope. The wizard still
+                            paints a STATE, the roster still carries no balance, and no player surface carries it. */}
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Remaining</th>
                         <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
@@ -713,14 +718,57 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={10} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={11} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
                              served markup, and a bounded record id is the one thing D19 says this section may
                              never put in a response it does not have to. */
                           <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
-                            <td className="p-3">
+                            {/* ⭐ THE PHONE'S OWN ROW SHAPE (owner, 2026-09-25) — the same decision and the same
+                                measurement as the account page's activity table, which carries the full argument.
+                                An eleven-column table is not readable at 360 by narrowing columns, so below `sm`
+                                the row becomes a stack and from `sm` up nothing changed.
+                                ⛔ THE CONTROL COMES WITH IT. A phone that can see a queued stake but cannot stop it
+                                would be 432(a)'s dead control in its worst form — the row that carries the button
+                                on a wide screen is the row that carries it here, on the same condition. */}
+                            <td className="sm:hidden p-3" colSpan={11}>
+                              <div className="flex items-start justify-between gap-2">
+                                {r.accountIsOperatorText
+                                  ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-body-sm text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                  : <span className="text-body-sm text-text-tertiary">{r.accountName}</span>}
+                                <Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip>
+                              </div>
+                              {r.accountHandle && <div className="font-mono text-caption text-text-subtle">{r.accountHandle}</div>}
+                              {/* The market's own door, named where the row stored a title and still offered where
+                                  it did not — the wide table's three branches, unchanged (1.626b). */}
+                              {r.marketHref !== null && (
+                                <Link href={r.marketHref as Route} className="mt-1 inline-flex items-center min-h-[var(--tap-min)] text-caption text-royal-300 hover:underline">
+                                  {r.marketName === null ? "Open the market" : <span data-operator-text="marketTitle">{r.marketName}</span>}
+                                </Link>
+                              )}
+                              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-caption">
+                                <dt className="text-text-tertiary">Stake</dt>
+                                <dd className="tabular text-right"><span className="amount">{r.stake}</span></dd>
+                                <dt className="text-text-tertiary">Left today</dt>
+                                <dd className="tabular text-right">
+                                  {r.leftToday === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.leftToday}</span>}
+                                </dd>
+                                <dt className="text-text-tertiary">Remaining</dt>
+                                <dd className="tabular text-right">
+                                  {r.remaining === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.remaining}</span>}
+                                </dd>
+                              </dl>
+                              <p className="mt-2 text-caption text-text-tertiary" title={r.whenTitle}>
+                                {r.when} · {r.typeWord} · {r.productWord}
+                              </p>
+                              {r.due !== null && <p className="text-caption text-text-tertiary">{r.due}</p>}
+                              {r.note !== null && <p className="mt-1 text-caption text-text-secondary">{r.note}</p>}
+                              {r.cancelId !== null && feedView.cancelCopy !== null && (
+                                <div className="mt-2"><StopQueued id={r.cancelId} copy={feedView.cancelCopy} act={cancelDeskIntentAction} /></div>
+                              )}
+                            </td>
+                            <td className="hidden sm:table-cell p-3">
                               {/* 🔴 AND IT IS NOT `.row-link`, WHICH IS THE POINT AND WAS FOUND ON A PHOTOGRAPH.
                                   `.row-link` is the platform's row-EXIT style and it carries
                                   `text-transform: uppercase` + `letter-spacing: .10em`; every one of its other call
@@ -751,15 +799,22 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                   email, because a row outlives the holder's erasure. */}
                               {r.accountHandle && <div className="font-mono text-body-sm text-text-subtle">{r.accountHandle}</div>}
                             </td>
-                            <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
+                            <td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
                             {/* ⛔ A DASH, NOT A ZERO, AND NOT A FULL BUDGET — the four cases the reader refuses to
                                 answer for are "no answer", never "nothing was spent". */}
-                            <td className="p-3 tabular text-right" title={r.leftTodayTitle ?? undefined}>
+                            <td className="hidden sm:table-cell p-3 tabular text-right" title={r.leftTodayTitle ?? undefined}>
                               {r.leftToday === null
                                 ? <span className="text-text-tertiary">—</span>
                                 : <span className="amount">{r.leftToday}</span>}
                             </td>
-                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>
+                            {/* ⛔ A DASH, NOT A ZERO — a zero here would read as "this account is empty", which is
+                                a different claim from "the ledger cannot answer for this instant". */}
+                            <td className="hidden sm:table-cell p-3 tabular text-right" title={r.remainingTitle ?? undefined}>
+                              {r.remaining === null
+                                ? <span className="text-text-tertiary">—</span>
+                                : <span className="amount">{r.remaining}</span>}
+                            </td>
+                            <td className="hidden sm:table-cell p-3 tabular text-text-secondary" title={r.whenTitle}>
                               {r.when}
                               {/* ⭐ A QUEUED STAKE SAYS WHEN IT FIRES AND WHEN IT GIVES UP (register C8): the When
                                   column is the instant the engine DECIDED, which for a held COUNTER can be minutes
@@ -773,12 +828,12 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                   mentions times is neither, and `{r.when}` above keeps the inherited nowrap that protects it. */}
                               {r.due !== null && <span className="block text-caption text-text-tertiary whitespace-normal">{r.due}</span>}
                             </td>
-                            <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
-                            <td className="p-3 text-text">{r.typeWord}</td>
-                            <td className="p-3 text-text-secondary">{r.productWord}</td>
+                            <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
+                            <td className="hidden sm:table-cell p-3 text-text">{r.typeWord}</td>
+                            <td className="hidden sm:table-cell p-3 text-text-secondary">{r.productWord}</td>
                             {/* The same cell as the account page's Activity tab, and it must stay the same:
                                 one reader builds both rows, so two renderings would be two truths. */}
-                            <td className="p-3 min-w-[22ch] max-w-[34ch]">
+                            <td className="hidden sm:table-cell p-3 min-w-[22ch] max-w-[34ch]">
                               {r.marketHref === null ? (
                                 <span className="text-text-tertiary">—</span>
                               ) : r.marketName === null ? (
@@ -791,8 +846,8 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 </Link>
                               )}
                             </td>
-                            <td className="p-3 text-text-secondary">{r.note ?? "\u2014"}</td>
-                            <td className="p-3 text-right">
+                            <td className="hidden sm:table-cell p-3 text-text-secondary">{r.note ?? "\u2014"}</td>
+                            <td className="hidden sm:table-cell p-3 text-right">
                               {/* ⛔ 432(a) · THE CONTROL IS DRAWN ONLY WHERE IT CAN DO SOMETHING. A stake already in
                                   flight cannot be stopped — the service refuses it — so no button is offered over
                                   one, and the rows that carry the control are exactly the rows the badge counts. */}

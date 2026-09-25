@@ -17,9 +17,12 @@
  * `houseDetailForConsole`, performs them inside `house-console-read.ts` after its own verdict and hands back a
  * PAINTED view model — finished strings, numbers and booleans.
  *
- * ⛔ **NO BALANCE** (rulings 368, 459, 266). The holder's wallet is read once and what this page paints is a STATE:
- * which side of the configured floor the account is on. The floor is a limit and may be named; the balance is a real
- * person's money and is one link away on the platform's own transactions screen (456).
+ * ⛔ **NO BALANCE, EXCEPT ON ONE ROW AND BY A RECORDED OWNER AMENDMENT** (rulings 368, 459, 266; D3 amended
+ * 2026-09-25). The floor panel still paints a STATE — which side of the configured floor the account is on — and
+ * the floor is a limit that may be named. What changed is the ACTIVITY row's `Remaining` cell: the owner asked for
+ * "the full amount remaining of this bot", there is no total-budget field on a house bot, and he amended D3 knowing
+ * the cost. `COMPLIANCE-DECISIONS.md` carries the date, his words and the scope, and the scope is this row: the
+ * wizard, the roster and every player-reachable surface are unchanged.
  *
  * ⛔ **THE COPY IS NEUTRAL** (owner-delegated ruling 453). Nothing here names the feature: an entry is an "account",
  * the section is "the desk", money moved is a "stake", a ceiling is a "limit". The one exception is the account's own
@@ -599,7 +602,7 @@ async function AdminDeskAccountContent({
                       the gutter at phone width buys back more strip than the type could. `sm:` restores the kit's
                       own 16px, so every width that already read well is unchanged. */}
                   <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-4 sm:[&_th]:!px-4 max-sm:!text-caption">
-                    <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+                    <thead className="max-sm:hidden font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         {/* ⭐ LOWERED AT PHONE WIDTH ONLY so the second money answer reaches the strip. The
                             timestamp keeps its nowrap either way — 432(b) forbids clipping a time, and the
@@ -612,6 +615,11 @@ async function AdminDeskAccountContent({
                             ⛔ "Left" is this HEADER's word, not a usage caption's: 361 governs the `used X of Y`
                             sentence and that sentence is untouched — it is the cell's `title`, verbatim. */}
                         <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
+                        {/* ⭐ EVERYTHING THE ACCOUNT HAD LEFT AFTER THE ROW (owner, 2026-09-25) — the holder's own
+                            wallet, from the ledger. ⛔ D3 FORBADE THIS FIGURE AND THE OWNER AMENDED IT, narrowly:
+                            `COMPLIANCE-DECISIONS.md` carries the date, his words and the scope. The wizard still
+                            paints a STATE, the roster still carries no balance, and no player surface carries it. */}
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Remaining</th>
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
                         <th scope="col" className="text-left p-3">Product</th>
@@ -626,14 +634,60 @@ async function AdminDeskAccountContent({
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={8} title={view.feedEmpty.title} body={view.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={9} title={view.feedEmpty.title} body={view.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
                              served markup, and a bounded record id is the one thing D19 says this section may
                              never put in a response. */
                           <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
-                            <td className="p-3 tabular text-text-secondary" title={r.whenTitle}>
+                            {/* ⭐ THE PHONE'S OWN ROW SHAPE (owner, 2026-09-25). MEASURED, not preferred: with three
+                                money columns the third cell ended at 357 against a 339px strip — and that was with an
+                                em dash in it. A 9-column table cannot be read on a 360px phone by narrowing columns,
+                                so below `sm` the row stops being columns and becomes a stack, and from `sm` up the
+                                table is exactly what it was.
+                                ⛔ ONE VIEW MODEL, TWO LAYOUTS — every string here is the same painted field the
+                                cells above use. Nothing is re-derived, re-formatted or re-worded for the phone, so
+                                the two shapes cannot drift into saying different things about one row. */}
+                            <td className="sm:hidden p-3" colSpan={9}>
+                              <div className="flex items-start justify-between gap-2">
+                                {/* ⛔ THE SAME THREE BRANCHES THE WIDE TABLE PAINTS, in the same order and with the
+                                    same words — a row with no stored title still gets its DOOR, because the market is
+                                    still reachable and the officer still needs it (1.626b). Falling back to the
+                                    product word here would say "Polls" twice on one row and drop the door. */}
+                                {r.marketHref === null ? (
+                                  <span className="text-body-sm text-text-tertiary">—</span>
+                                ) : r.marketName === null ? (
+                                  <Link href={r.marketHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">Open the market</Link>
+                                ) : (
+                                  <Link href={r.marketHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">
+                                    <span data-operator-text="marketTitle">{r.marketName}</span>
+                                  </Link>
+                                )}
+                                <Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip>
+                              </div>
+                              {/* ⛔ A DEFINITION LIST, because that is what these are: a label and the figure it
+                                  names. The money keeps `.amount` and `tabular`, so a phone reads the same atoms
+                                  §5.1 measures on the wide table. */}
+                              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-caption">
+                                <dt className="text-text-tertiary">Stake</dt>
+                                <dd className="tabular text-right"><span className="amount">{r.stake}</span></dd>
+                                <dt className="text-text-tertiary">Left today</dt>
+                                <dd className="tabular text-right">
+                                  {r.leftToday === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.leftToday}</span>}
+                                </dd>
+                                <dt className="text-text-tertiary">Remaining</dt>
+                                <dd className="tabular text-right">
+                                  {r.remaining === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.remaining}</span>}
+                                </dd>
+                              </dl>
+                              <p className="mt-2 text-caption text-text-tertiary" title={r.whenTitle}>
+                                {r.when} · {r.typeWord} · {r.productWord}
+                              </p>
+                              {r.due !== null && <p className="text-caption text-text-tertiary">{r.due}</p>}
+                              {r.note !== null && <p className="mt-1 text-caption text-text-secondary">{r.note}</p>}
+                            </td>
+                            <td className="hidden sm:table-cell p-3 tabular text-text-secondary" title={r.whenTitle}>
                               {r.when}
                               {/* ⭐ A QUEUED STAKE SAYS WHEN IT FIRES AND WHEN IT GIVES UP (register C8): the When
                                   column is the instant the engine DECIDED, which for a held COUNTER can be minutes
@@ -647,19 +701,26 @@ async function AdminDeskAccountContent({
                                   mentions times is neither, and `{r.when}` above keeps the inherited nowrap that protects it. */}
                               {r.due !== null && <span className="block text-caption text-text-tertiary whitespace-normal">{r.due}</span>}
                             </td>
-                            <td className="p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
+                            <td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
                             {/* ⛔ A DASH, NOT A ZERO, AND NOT A FULL BUDGET. A row that moved no money, one from an
                                 earlier day, an account with no daily cap and a row past the scan window all arrive
                                 here as `null` — and every one of them is "no answer", never "nothing was spent". */}
-                            <td className="p-3 tabular text-right" title={r.leftTodayTitle ?? undefined}>
+                            <td className="hidden sm:table-cell p-3 tabular text-right" title={r.leftTodayTitle ?? undefined}>
                               {r.leftToday === null
                                 ? <span className="text-text-tertiary">—</span>
                                 : <span className="amount">{r.leftToday}</span>}
                             </td>
-                            <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
-                            <td className="p-3 text-text">{r.typeWord}</td>
-                            <td className="p-3 text-text-secondary">{r.productWord}</td>
-                            <td className="p-3 min-w-[22ch] max-w-[34ch]">
+                            {/* ⛔ A DASH, NOT A ZERO — a zero here would read as "this account is empty", which is
+                                a different claim from "the ledger cannot answer for this instant". */}
+                            <td className="hidden sm:table-cell p-3 tabular text-right" title={r.remainingTitle ?? undefined}>
+                              {r.remaining === null
+                                ? <span className="text-text-tertiary">—</span>
+                                : <span className="amount">{r.remaining}</span>}
+                            </td>
+                            <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
+                            <td className="hidden sm:table-cell p-3 text-text">{r.typeWord}</td>
+                            <td className="hidden sm:table-cell p-3 text-text-secondary">{r.productWord}</td>
+                            <td className="hidden sm:table-cell p-3 min-w-[22ch] max-w-[34ch]">
                               {r.marketHref === null ? (
                                 <span className="text-text-tertiary">—</span>
                               ) : r.marketName === null ? (
@@ -673,7 +734,7 @@ async function AdminDeskAccountContent({
                                 </Link>
                               )}
                             </td>
-                            <td className="p-3 text-text-secondary">{r.note ?? "—"}</td>
+                            <td className="hidden sm:table-cell p-3 text-text-secondary">{r.note ?? "—"}</td>
                           </tr>
                         ))
                       )}

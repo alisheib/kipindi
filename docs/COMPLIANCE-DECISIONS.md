@@ -6,6 +6,45 @@
 
 ---
 
+## 2026-09-25 · D3 AMENDED — the desk's activity rows may paint the holder's wallet balance
+
+**Owner decision (Ali, 2026-09-25), asked explicitly.** He asked for a second money column on the desk's activity
+tables: *"column amount left today and column full amount remaining of this bot"*. He was shown that **there is no
+"total budget" field** — every money limit on a house bot is per-day, per-market or open-exposure, and
+`scope.poolTotalMaxTzs` bounds which POLLS to counter, not the account's pot — so the only number meaning
+"everything this bot has left" is the holder's **wallet balance**, which D3 forbade rendering. He was shown the
+cost (this amendment, plus C7 rulings 459/368/266 and the struck `Live balance` column) and the ruling-clean
+alternative (open exposure left, which recovers as bets settle and is therefore not the drain he asked for). He
+chose the wallet balance.
+
+⛔ **THE AMENDMENT IS NARROW, AND THE NARROWNESS IS THE POINT.** D3's reasoning is not withdrawn — it is still a
+real person's money figure, still the one number on these screens belonging to someone other than 50pick, and
+still the one most likely to sit in a screenshot. What changed is that the owner has judged that an officer
+watching a desk of funded accounts needs to see the pot fall, on **one owner-only surface**, and has accepted that
+trade knowingly.
+
+**Permitted, from this date:** the `Remaining` cell on the ACTIVITY tables of `/admin/desk` and
+`/admin/desk/[id]` — an Owner-only route behind `houseConsoleAudience`.
+
+**Still forbidden, and the guards stay pointed at all of it:**
+- the designate wizard's check card (C7 ruling 459's own subject) — it keeps painting a funded **STATE**;
+- the roster (the `Live balance` column stays struck — ruling 373(b) and C7-SPEC's own "a balance is headroom, not
+  usage");
+- the balance-FLOOR panel, which keeps saying which side of the floor the account is on and never the amount;
+- **every player-reachable surface, without exception** — ruling 259 measured that admin pages stream their payload
+  to any signed-in account, so this figure lives only behind the gated reader's own audience check.
+
+⚠️ **WHAT THE FIGURE IS.** `Transaction.balanceAfter` — the REAL-cash balance recorded by the ledger at that
+instant, which `market-service.ts` deliberately keeps reconcilable with the running real-balance sum (a
+bonus-funded portion moves on the bonus wallet and is excluded). It is a RECORDED historical fact per row, not a
+live read repeated down the page, and not a reconstruction.
+
+⚠️ **AND IT IS STILL NOT A SHADOW BALANCE.** D3's first sentence is untouched: the account belongs to a real
+person, they may use it and withdraw normally, and what the desk shows is the same ledger the holder's own wallet
+screen shows.
+
+---
+
 ## 2026-09-22 · Privacy v2026-09-22 — §7 names the card-spacing cookie `kp-density`
 
 **Owner approval (Ali, 2026-09-22), asked explicitly:** *"U2 remembers each player's 'Card spacing' choice in a small
@@ -469,7 +508,7 @@ moving the notice first.
 |---|---|
 | D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. |
 | D2/D7 | ⛔ **REVERSED by D19a (2026-09-16): no public text at all.** (Superseded text:) Amend the published Rules and Terms (en/sw/zh): a carve-out from the prohibited-conduct list for accounts 50pick operates, plus one disclosure line. **Effective on deploy, with no 14-day notice** (owner ruling; 50pick reports to GBT). |
-| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance) ⛔ **— but it never RENDERS it (corrected 2026-09-18; a consequence of D20 through replan ruling 266, sharpened by C7 ruling 459, that the marking passes missed).** The wallet read exists and is used to derive a funded **STATE**; **no console surface paints a bare balance anywhere**, because it is a real person's money figure, it is the one number on these screens belonging to someone other than 50pick, and it is the one most likely to sit in a screenshot. |
+| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance) ⛔ **— but it never RENDERS it (corrected 2026-09-18; a consequence of D20 through replan ruling 266, sharpened by C7 ruling 459, that the marking passes missed).** The wallet read exists and is used to derive a funded **STATE**; **no console surface paints a bare balance anywhere**, because it is a real person's money figure, it is the one number on these screens belonging to someone other than 50pick, and it is the one most likely to sit in a screenshot.  ⚠️ **AMENDED 2026-09-25 (owner): the desk’s ACTIVITY rows may paint it — see the dated entry at the head of this log. Everywhere else, including the designate wizard, the roster and every player surface, the prohibition stands.** |
 | D3b | **No payment feature.** The holder tops up through the normal deposit flow and is reimbursed out of band. While their bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
 | D4 | A **roster** of bots, each with its own rules. One master switch plus global limits. |
 | D5 | Consent = the owner types the account's **password** (only). |
