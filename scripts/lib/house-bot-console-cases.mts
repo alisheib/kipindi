@@ -3769,7 +3769,7 @@ try {
            ⛔ The `why` above is still the sentence the console must never paint; that pin is untouched. */
         decision: n % 3 === 1
           ? ({ snapshot: "blob" } as Any)
-          : ({ snapshot: { titleEn: n === 41 ? `${"Q".repeat(200)} ${n}` : `Will panel market ${n} resolve YES?`, category: "other", cutoff: w.iso(3_600_000), roundNumber: null } } as Any),
+          : ({ snapshot: { titleEn: n === 41 ? `${"Q".repeat(200)} ${n}` : `Will panel market ${n} resolve YES?`, category: "other", cutoff: w.iso(3_600_000), /* ⭐ A REAL ROUND ON THE UPDOWN ROWS AND NULL ON THE POLLS, which is the production shape: 1052 of 1052 Up & Down rows carry a round number and 0 of 6 poll rows do. The value carries `n` so a reader painting a constant is caught, and every third row keeps the HOSTILE `snapshot: "blob"` above. */ roundNumber: n % 3 === 0 ? 1500 + n : null } } as Any),
         attempts: 0, transientAttempts: 0, nextAttemptAt: null,
         claimedBy: null, claimedUntil: null,
         positionId: status === "PLACED" ? `pos_placed_panel_${n}` : null,
@@ -4006,7 +4006,7 @@ try {
          daily stake budget after the row, and the same fact in 361's `used X of Y` grammar as the cell's title.
          ⛔ BOTH ARE STILL FINISHED STRINGS OR `null`: the arithmetic happens in the reader, and a number crossing
          into the view model here is exactly what this equality exists to catch. */
-      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "leftToday", "leftTodayTitle", "marketHref", "marketName", "note", "productWord", "remaining", "remainingTitle", "resultChip", "resultWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "closing", "closingTitle", "due", "leftToday", "leftTodayTitle", "marketHref", "marketName", "note", "opening", "productWord", "resultChip", "resultWord", "roundNo", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
         && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
       j(Object.keys(p1.feed[0] ?? {}).sort()));
 
@@ -4048,6 +4048,31 @@ try {
       /* ⛔ CONTROL · A ROW WHOSE BLOB CARRIES NO USABLE TITLE ANSWERS `null`, NOT AN EMPTY NAME. `decision`
          has no type, no parse and no write-time shape guard, and this suite plants a hostile shape on purpose. */
       const feedMarketNames = p1.feed.map((r: Any) => r.marketName);
+      /* ━━ 1.626g · WHICH ROUND THE STAKE WAS ON (owner, 2026-09-25) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       * ⛔ FROM THE STORED SNAPSHOT, NEVER A LIVE READ — a chain re-numbered or a round voided afterwards must
+       * not rewrite what a past decision appears to say; the `Game` door beside it carries the current truth.
+       * ⚠️ AND IT SITS BESIDE THE GAME FOR A MEASURED REASON: a round number is NOT unique on its own. Each
+       * Up & Down chain counts its own, so `#1524` exists once per chain on production and identifies a round
+       * only with its game next to it. */
+      {
+        const rounds = p1.feed.map((r: Any) => r.roundNo);
+        const named = rounds.filter((v: Any) => v !== null);
+        ok("1.626g · a row that stored a round number paints it, in the staff format `#1524`, read off the intent's own snapshot",
+          named.length > 0 && named.every((v: string) => /^#[\d,]+$/.test(v)),
+          j({ named: named.slice(0, 4), total: rounds.length }));
+        /* ⛔ CONTROL · THE HOSTILE SHAPE AND THE ABSENT VALUE BOTH ANSWER NOTHING. `decision` is
+           `Record<string, unknown>` with no type, no parse and no write-time guard, and every third fixture row
+           stores `snapshot: "blob"` on purpose. A poll answers null for the same reason: it has no rounds. */
+        ok("1.626g · CONTROL · a hostile snapshot and a row with no round both answer `null` — never `#undefined`, never an empty badge",
+          rounds.some((v: Any) => v === null) && rounds.every((v: Any) => v === null || typeof v === "string"),
+          j({ nulls: rounds.filter((v: Any) => v === null).length, named: named.length }));
+        /* ⛔ CONTROL · IT IS THE STORED NUMBER AND NOT A ROW INDEX — the fixture writes `1500 + n`, so a reader
+           painting a counter, a constant, or the page position is caught. */
+        ok("1.626g · CONTROL · the figure is the SNAPSHOT's own number, not a row counter or a constant",
+          new Set(named).size > 1 && named.every((v: string) => Number(v.slice(1).replace(/,/g, "")) >= 1500),
+          j([...new Set(named)].slice(0, 4)));
+      }
+
       ok("1.626b · CONTROL · a row whose stored decision holds no usable title answers `null` rather than an empty cell pretending to be a name — and its door still stands",
         feedMarketNames.every((n: Any) => n === null || (typeof n === "string" && n.trim().length > 0))
           && p1.feed.every((r: Any) => r.marketHref === null || typeof r.marketHref === "string"),
@@ -4230,28 +4255,44 @@ try {
         const afterEach = [holderStart - 5_000, holderStart - 5_000 - 3_000, holderStart - 5_000 - 3_000 - 2_000];
         ok("1.626d · every placed row says what the account had left AFTER IT — read from that stake's own ledger movement, never derived",
           placedRows.every((r) => r != null)
-            && placedRows[0]!.remaining === formatTzs(afterEach[0])
-            && placedRows[1]!.remaining === formatTzs(afterEach[1])
-            && placedRows[2]!.remaining === formatTzs(afterEach[2]),
-          j({ want: afterEach, got: placedRows.map((r: Any) => r?.remaining) }));
+            && placedRows[0]!.closing === formatTzs(afterEach[0])
+            && placedRows[1]!.closing === formatTzs(afterEach[1])
+            && placedRows[2]!.closing === formatTzs(afterEach[2]),
+          j({ want: afterEach, got: placedRows.map((r: Any) => r?.closing) }));
 
         /* ⛔ A ROW THAT MOVED NO MONEY CARRIES THE BALANCE FORWARD — the wallet stood where the last movement
            left it, so the newest queued row must read the newest stake's figure and never a blank. */
         ok("1.626d · a QUEUED row carries the balance forward — the wallet stood where the last movement left it",
-          idleRow != null && idleRow.remaining === formatTzs(afterEach[2]),
-          j({ idle: idleRow?.remaining, lastMovement: formatTzs(afterEach[2]) }));
+          idleRow != null && idleRow.closing === formatTzs(afterEach[2]),
+          j({ idle: idleRow?.closing, lastMovement: formatTzs(afterEach[2]) }));
 
         /* ⛔ CONTROL · AND A ROW OLDER THAN EVERY MOVEMENT ANSWERS NOTHING. The ledger cannot say what the
            wallet held before its first recorded movement, and a zero would read as "this account is empty". */
+        /* ━━ 1.626f · THE ROUND'S OPENING BALANCE (owner, 2026-09-25) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         * The row became a ledger line: `Round · Opening · Stake · Closing`. ⛔ THE SUBTRACTION IS THE WHOLE
+         * CLAIM — closing is the ledger's own stamped figure and opening is that plus the stake, so
+         * `Opening − Stake = Closing` holds by construction and neither figure is inferred. Asserted as the
+         * IDENTITY rather than against a typed constant, because a typed pair would still agree if both were
+         * computed the same wrong way. */
+        ok("1.626f · Opening − Stake = Closing, exactly, on every row that moved money — the ledger line's own arithmetic, asserted as an identity",
+          placedRows.every((r, k) => r!.opening === formatTzs(afterEach[k] + STAKES[k])),
+          j(placedRows.map((r: Any, k: number) => ({ opening: r?.opening, stake: formatTzs(STAKES[k]), closing: r?.closing }))));
+
+        /* ⛔ CONTROL · A ROW THAT MOVED NO MONEY BRACKETS NO STAKE. Its closing is a balance CARRIED FORWARD —
+           true about the instant — but an opening there would read as a movement that never happened. */
+        ok("1.626f · CONTROL · a queued row has a carried-forward closing and NO opening — there is no bracket around a stake that never left",
+          idleRow != null && idleRow.closing !== null && idleRow.opening === null,
+          j({ closing: idleRow?.closing, opening: idleRow?.opening }));
+
         ok("1.626d · CONTROL · a row older than every recorded movement answers nothing — never a zero",
-          oldRow != null && oldRow.remaining === null && oldRow.remainingTitle === null,
-          j({ old: oldRow?.remaining }));
+          oldRow != null && oldRow.closing === null && oldRow.closingTitle === null,
+          j({ old: oldRow?.closing }));
 
         /* ⭐ AND THE TITLE NAMES THE MOVEMENT IT CAME FROM, so a carried figure says which instant it belongs to
            rather than implying this row moved the money. */
         ok("1.626d · the cell's title names the INSTANT the figure belongs to, in EAT",
-          placedRows[2]!.remainingTitle != null && /EAT$/.test(placedRows[2]!.remainingTitle),
-          j(placedRows[2]?.remainingTitle));
+          placedRows[2]!.closingTitle != null && /EAT$/.test(placedRows[2]!.closingTitle),
+          j(placedRows[2]?.closingTitle));
 
         /* 🔴 CONTROL · IT REFUSES TO CARRY ACROSS A MOVEMENT THE LEDGER DID NOT RECORD — the defect this column
          * would otherwise have shipped with, found by reading `wallet-service.ts` rather than by any suite.
@@ -4279,13 +4320,13 @@ try {
         const stranded = () => (budView() as Any).then((v: Any) => (v.feed ?? []).find((r: Any) => r.stake === formatTzs(11_000)));
         const blanked = await stranded();
         ok("1.626d · CONTROL · a refund the ledger never recorded BLANKS the carried figure — a failed withdrawal returns cash with no row, and a stale smaller balance is the one answer this column may not give",
-          blanked != null && blanked.remaining === null,
-          j({ carriedOnOlderRow: idleRow?.remaining, strandedRow: blanked?.remaining }));
+          blanked != null && blanked.closing === null,
+          j({ carriedOnOlderRow: idleRow?.closing, strandedRow: blanked?.closing }));
         await w.db.txn.update(failedId, { status: "CONFIRMED" } as Any);
         const healed = await stranded();
         ok("1.626d · CONTROL · …and with that same row CONFIRMED the figure comes back — so the blank above was the unrecorded refund and not the fixture merely existing",
-          healed != null && healed.remaining !== null,
-          j({ afterConfirm: healed?.remaining }));
+          healed != null && healed.closing !== null,
+          j({ afterConfirm: healed?.closing }));
       }
 
       /* ━━ 1.626e · HOW THE STAKE ENDED — WON, LOST OR VOID (owner, 2026-09-25) ━━━━━━━━━━━━━━━━━━━
@@ -4922,7 +4963,7 @@ try {
       /* ⭐ "Left today" JOINED 2026-09-24, THIRD AND DIRECTLY AFTER Stake: ruling 1085 puts money "SECOND (and
          third where two exist)", and the claim MEASURED a few assertions below — the FIRST `.amount` cell is the SECOND WIDE cell of the
          second — is what keeps 373 true with two money columns on one row. */
-      all(feedHeaders) === all(["When (EAT)", "Stake", "Left today", "Remaining", "Outcome", "Type", "Product", "Game", "Note"]), j(feedHeaders));
+      all(feedHeaders) === all(["When (EAT)", "Opening", "Stake", "Closing", "Left today", "Outcome", "Type", "Round", "Game", "Note"]), j(feedHeaders));
     /* 🔴 THIS WAS A `.test()` ON THE STAKE CELL ALONE, UNDER A LABEL THAT SAID "the money cell" (found 2026-09-25).
      * `Left today` and `Remaining` already escaped it — both carry a `title=` and a null branch, so neither matches
      * the pinned literal — and it kept passing on the strength of Stake while claiming to govern all of them.
@@ -4953,7 +4994,7 @@ try {
       moneyHeaders.length >= 3 && moneyHeaders.every((c) => /!whitespace-normal/.test(c)),
       j({ moneyHeaders: moneyHeaders.length }));
     ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
-      feedHeaders.length === 9 && !feedHeaders.includes("Event"), j(feedHeaders));
+      feedHeaders.length === 10 && !feedHeaders.includes("Event"), j(feedHeaders));
 
     /* 🔴 THE CLAIM THIS RULING RESTS ON WAS ASSERTED IN THREE PLACES AND MEASURED IN NONE (found 2026-09-25).
      * C7-SPEC's Proof line and two comments in this file say "the first `.amount`-carrying cell is the row's
@@ -4968,9 +5009,11 @@ try {
       j({ firstAmountAt: firstAmountAt(feedPanel), wideCells: wideCells(feedPanel).length, headers: feedHeaders.length }));
     ok("1.373 · CONTROL · the scan really would report money leaving the second wide cell",
       (() => {
-        const moved = feedPanel.replace(/<td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">\{r\.stake\}/,
-          '<td className="hidden sm:table-cell p-3">X</td><td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">{r.stake}');
-        return firstAmountAt(moved) !== 1;
+        /* ⛔ A PLAIN CELL PUSHED IN FRONT OF THE FIRST WIDE ONE — written this way rather than against a NAMED
+           money cell, because the first money column is exactly the thing this change moves, and a control
+           pinned to yesterday's column stops being a control the day the row is reordered. */
+        const moved = feedPanel.replace('<td className="hidden sm:table-cell', '<td className="hidden sm:table-cell p-3">X</td><td className="hidden sm:table-cell');
+        return firstAmountAt(moved) === 2 && firstAmountAt(feedPanel) === 1;
       })(), "");
 
     /* 🔴 NOTHING ANYWHERE PINNED A `colSpan`, AND A STALE ONE IS INVISIBLE TO EVERY GATE (found 2026-09-25).
@@ -5081,7 +5124,7 @@ section("§2e3 · the desk landing page's activity and history panels");
       /* ⛔ `all`, NOT `j` — its per-account twin already uses `all`, and this one was one column away from
          comparing prefixes only. This suite's own header records the `317-word-hole` defect, where a long set
          compared under the truncating serialiser let a rename through unreported. */
-      all(feedHeaders) === all(["Account", "Stake", "Left today", "Remaining", "When (EAT)", "Outcome", "Type", "Product", "Game", "Note", ""]),
+      all(feedHeaders) === all(["Account", "Opening", "Stake", "Closing", "Left today", "When (EAT)", "Outcome", "Type", "Round", "Game", "Note", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
       j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
@@ -6526,7 +6569,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        are money THIS module formats — a `formatTzs` figure and 361's own `used X of Y` sentence — so they are
        the section's own copy and 453 binds them, exactly like `stake` three fields along. Nothing operator-typed
        reaches either one. */
-    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.remaining, r.remainingTitle, r.statusWord, r.resultWord, r.typeWord, r.productWord, r.note, r.marketHref]),
+    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.closing, r.closingTitle, r.opening, r.roundNo, r.statusWord, r.resultWord, r.typeWord, r.productWord, r.note, r.marketHref]),
     ...(view.history ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.eventWord, r.change, r.who, r.moneyHref]),
     ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
     /* ⛔ AND THE WHOLE OF BOTH TOTAL MAPS, NOT ONLY THE ROWS THIS FIXTURE HAPPENED TO PAINT. A word map scanned

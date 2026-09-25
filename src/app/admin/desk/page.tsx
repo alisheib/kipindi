@@ -692,22 +692,23 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                             ⭐ LOWERED AT PHONE WIDTH ONLY so the second money answer reaches the strip; the label
                             wraps to two lines there, which it already does for every long account name. */}
                         <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[150px]">Account</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Opening</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
                         {/* ⭐ THE DAY'S BUDGET, FALLING (owner, 2026-09-24) — 373's named fallback: the ceiling is
                             in the header so the cell carries ONE figure. ⛔ ON THE DESK-WIDE TABLE EACH ROW COUNTS
                             AGAINST ITS OWN ACCOUNT'S CAP, which is why the reader looks both up per account. */}
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
                         {/* ⭐ EVERYTHING THE ACCOUNT HAD LEFT AFTER THE ROW (owner, 2026-09-25) — the holder's own
                             wallet, from the ledger. ⛔ D3 FORBADE THIS FIGURE AND THE OWNER AMENDED IT, narrowly:
                             `COMPLIANCE-DECISIONS.md` carries the date, his words and the scope. The wizard still
                             paints a STATE, the roster still carries no balance, and no player surface carries it. */}
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Remaining</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Closing</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
                         <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
-                        <th scope="col" className="text-left p-3">Product</th>
                         {/* ⛔ BESIDE PRODUCT, NOT FIRST — the account page says why in full. The
                             desk-wide table leads with Account and Stake, and neither may leave the 360 strip. */}
+                        <th scope="col" className="text-left p-3">Round</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Game</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Note</th>
                         {/* ⛔ THE CONTROL COLUMN CARRIES NO HEADER WORD — the kit's own shape for a per-row control
@@ -718,7 +719,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={11} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={12} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
@@ -732,7 +733,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 ⛔ THE CONTROL COMES WITH IT. A phone that can see a queued stake but cannot stop it
                                 would be 432(a)'s dead control in its worst form — the row that carries the button
                                 on a wide screen is the row that carries it here, on the same condition. */}
-                            <td className="sm:hidden p-3" colSpan={11}>
+                            <td className="sm:hidden p-3" colSpan={12}>
                               <div className="flex items-start justify-between gap-2">
                                 {r.accountIsOperatorText
                                   ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-body-sm text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
@@ -747,20 +748,26 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                   {r.marketName === null ? "Open the market" : <span data-operator-text="marketTitle">{r.marketName}</span>}
                                 </Link>
                               )}
+                              {r.roundNo !== null && <span className="ml-1 font-mono text-caption text-text-tertiary">{r.roundNo}</span>}
                               <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-caption">
+                                <dt className="text-text-tertiary">Opening</dt>
+                                <dd className="tabular text-right">
+                                  {r.opening === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.opening}</span>}
+                                </dd>
                                 <dt className="text-text-tertiary">Stake</dt>
                                 <dd className="tabular text-right"><span className="amount">{r.stake}</span></dd>
+
+                                <dt className="text-text-tertiary">Closing</dt>
+                                <dd className="tabular text-right">
+                                  {r.closing === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.closing}</span>}
+                                </dd>
                                 <dt className="text-text-tertiary">Left today</dt>
                                 <dd className="tabular text-right">
                                   {r.leftToday === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.leftToday}</span>}
                                 </dd>
-                                <dt className="text-text-tertiary">Remaining</dt>
-                                <dd className="tabular text-right">
-                                  {r.remaining === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.remaining}</span>}
-                                </dd>
                               </dl>
                               <p className="mt-2 text-caption text-text-tertiary" title={r.whenTitle}>
-                                {r.when} · {r.typeWord} · {r.productWord}
+                                {r.when} · {r.typeWord}
                               </p>
                               {r.due !== null && <p className="text-caption text-text-tertiary">{r.due}</p>}
                               {r.note !== null && <p className="mt-1 text-caption text-text-secondary">{r.note}</p>}
@@ -799,20 +806,25 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                   email, because a row outlives the holder's erasure. */}
                               {r.accountHandle && <div className="font-mono text-body-sm text-text-subtle">{r.accountHandle}</div>}
                             </td>
+                            {/* ⭐ THE ROUND'S OPENING BALANCE — the full argument sits on the account page's own activity table.
+                                `Opening − Stake = Closing` by construction; a row that moved no money brackets no stake. */}
+                            <td className="hidden sm:table-cell p-3 tabular text-right">
+                              {r.opening === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.opening}</span>}
+                            </td>
                             <td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
                             {/* ⛔ A DASH, NOT A ZERO, AND NOT A FULL BUDGET — the four cases the reader refuses to
                                 answer for are "no answer", never "nothing was spent". */}
+                            {/* ⛔ A DASH, NOT A ZERO — a zero here would read as "this account is empty", which is
+                                a different claim from "the ledger cannot answer for this instant". */}
+                            <td className="hidden sm:table-cell p-3 tabular text-right" title={r.closingTitle ?? undefined}>
+                              {r.closing === null
+                                ? <span className="text-text-tertiary">—</span>
+                                : <span className="amount">{r.closing}</span>}
+                            </td>
                             <td className="hidden sm:table-cell p-3 tabular text-right" title={r.leftTodayTitle ?? undefined}>
                               {r.leftToday === null
                                 ? <span className="text-text-tertiary">—</span>
                                 : <span className="amount">{r.leftToday}</span>}
-                            </td>
-                            {/* ⛔ A DASH, NOT A ZERO — a zero here would read as "this account is empty", which is
-                                a different claim from "the ledger cannot answer for this instant". */}
-                            <td className="hidden sm:table-cell p-3 tabular text-right" title={r.remainingTitle ?? undefined}>
-                              {r.remaining === null
-                                ? <span className="text-text-tertiary">—</span>
-                                : <span className="amount">{r.remaining}</span>}
                             </td>
                             <td className="hidden sm:table-cell p-3 tabular text-text-secondary" title={r.whenTitle}>
                               {r.when}
@@ -835,9 +847,11 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 disagree about one row. A stake still running has no result and keeps "Placed". */}
                             <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip></td>
                             <td className="hidden sm:table-cell p-3 text-text">{r.typeWord}</td>
-                            <td className="hidden sm:table-cell p-3 text-text-secondary">{r.productWord}</td>
                             {/* The same cell as the account page's Activity tab, and it must stay the same:
                                 one reader builds both rows, so two renderings would be two truths. */}
+                            {/* ⚠️ BESIDE THE GAME: each Up & Down chain counts its own rounds, so `#1524` exists once per chain and
+                                identifies a round only with its game next to it. */}
+                            <td className="hidden sm:table-cell p-3 tabular text-text-secondary">{r.roundNo ?? <span className="text-text-tertiary">—</span>}</td>
                             <td className="hidden sm:table-cell p-3 min-w-[22ch] max-w-[34ch]">
                               {r.marketHref === null ? (
                                 <span className="text-text-tertiary">—</span>

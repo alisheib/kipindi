@@ -2549,6 +2549,34 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
+    name: "626f-opening-subtracts · the opening balance is computed by SUBTRACTING the stake instead of adding it, so the ledger line reads backwards while every figure still looks like money",
+    file: GATE,
+    /* ⚠️ THE WHOLE CLAIM OF THE ROW IS `Opening − Stake = Closing`. Flip the sign and the line still renders three
+       plausible amounts in the right shapes — it simply describes a stake that arrived rather than one that left. */
+    from: `  return closing == null || !closing.ownMovement ? null : formatTzs(closing.value + stakeTzs);`,
+    to: `  return closing == null || !closing.ownMovement ? null : formatTzs(closing.value - stakeTzs);`,
+    expect: "1.626f · Opening − Stake = Closing, exactly, on every row that moved money",
+    suite: "console-mem",
+  },
+  {
+    name: "626f-opening-on-a-row-that-moved-nothing · a carried-forward balance is turned into an opening, so a row whose stake never left the wallet is given a bracket around a movement that did not happen",
+    file: GATE,
+    from: `  return closing == null || !closing.ownMovement ? null : formatTzs(closing.value + stakeTzs);`,
+    to: `  return closing == null ? null : formatTzs(closing.value + stakeTzs);`,
+    expect: "1.626f · CONTROL · a queued row has a carried-forward closing and NO opening",
+    suite: "console-mem",
+  },
+  {
+    name: "626g-round-from-anywhere · the round number stops being type-checked, so a hostile stored blob paints whatever it happens to hold",
+    file: GATE,
+    /* ⚠️ `decision` is `Record<string, unknown>` with no type, no parse and no write-time guard anywhere, and the
+       suite plants a hostile shape on purpose. Dropping the guard paints `#undefined` or worse. */
+    from: `  if (typeof raw !== "number" || !Number.isFinite(raw) || !Number.isInteger(raw) || raw <= 0) return null;`,
+    to: `  if (raw == null) return null;`,
+    expect: "1.626g · CONTROL · a hostile snapshot and a row with no round both answer `null`",
+    suite: "console-mem",
+  },
+  {
     name: "373-activity-header-order · an activity column is renamed, so the header equality that carries the whole column contract is asked to prove it can fail",
     file: DETAIL,
     /* ⚠️ DECLARED 2026-09-25 BECAUSE IT DID NOT EXIST. The two header equalities (per-account and desk-wide) carry

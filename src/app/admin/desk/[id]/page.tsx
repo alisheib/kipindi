@@ -608,33 +608,34 @@ async function AdminDeskAccountContent({
                             timestamp keeps its nowrap either way — 432(b) forbids clipping a time, and the
                             due sub-line under it is the one part allowed to wrap. */}
                         <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[128px]">When (EAT)</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Opening</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
                         {/* ⭐ THE DAY'S BUDGET, FALLING (owner, 2026-09-24). The CEILING is named here and not in
                             the cell — ruling 373's own named fallback for a third money cell, and the reason it
                             exists: two figures in one narrow cell is what put the money off a 360 screen before.
                             ⛔ "Left" is this HEADER's word, not a usage caption's: 361 governs the `used X of Y`
                             sentence and that sentence is untouched — it is the cell's `title`, verbatim. */}
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
                         {/* ⭐ EVERYTHING THE ACCOUNT HAD LEFT AFTER THE ROW (owner, 2026-09-25) — the holder's own
                             wallet, from the ledger. ⛔ D3 FORBADE THIS FIGURE AND THE OWNER AMENDED IT, narrowly:
                             `COMPLIANCE-DECISIONS.md` carries the date, his words and the scope. The wizard still
                             paints a STATE, the roster still carries no balance, and no player surface carries it. */}
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Remaining</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Closing</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
                         <th scope="col" className="text-left p-3">Type</th>
-                        <th scope="col" className="text-left p-3">Product</th>
                         {/* ⛔ BESIDE PRODUCT, NOT FIRST. The visual gate's §5.2 contract measures the first
                             THREE cells — today When · Stake · Outcome — and asserts the subject and the first
                             money answer are in the 360 strip without scrolling. Putting the game there would
                             push the OUTCOME out on a phone, and "did it land" outranks "which game" at a
                             glance. Here it reads with Product, the other fact about what was played on. */}
+                        <th scope="col" className="text-left p-3">Round</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Game</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Note</th>
                       </tr>
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={9} title={view.feedEmpty.title} body={view.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={10} title={view.feedEmpty.title} body={view.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
@@ -649,7 +650,7 @@ async function AdminDeskAccountContent({
                                 ⛔ ONE VIEW MODEL, TWO LAYOUTS — every string here is the same painted field the
                                 cells above use. Nothing is re-derived, re-formatted or re-worded for the phone, so
                                 the two shapes cannot drift into saying different things about one row. */}
-                            <td className="sm:hidden p-3" colSpan={9}>
+                            <td className="sm:hidden p-3" colSpan={10}>
                               <div className="flex items-start justify-between gap-2">
                                 {/* ⛔ THE SAME THREE BRANCHES THE WIDE TABLE PAINTS, in the same order and with the
                                     same words — a row with no stored title still gets its DOOR, because the market is
@@ -664,25 +665,31 @@ async function AdminDeskAccountContent({
                                     <span data-operator-text="marketTitle">{r.marketName}</span>
                                   </Link>
                                 )}
+                                {r.roundNo !== null && <span className="ml-1 font-mono text-caption text-text-tertiary">{r.roundNo}</span>}
                                 <Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip>
                               </div>
                               {/* ⛔ A DEFINITION LIST, because that is what these are: a label and the figure it
                                   names. The money keeps `.amount` and `tabular`, so a phone reads the same atoms
                                   §5.1 measures on the wide table. */}
                               <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-caption">
+                                <dt className="text-text-tertiary">Opening</dt>
+                                <dd className="tabular text-right">
+                                  {r.opening === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.opening}</span>}
+                                </dd>
                                 <dt className="text-text-tertiary">Stake</dt>
                                 <dd className="tabular text-right"><span className="amount">{r.stake}</span></dd>
+
+                                <dt className="text-text-tertiary">Closing</dt>
+                                <dd className="tabular text-right">
+                                  {r.closing === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.closing}</span>}
+                                </dd>
                                 <dt className="text-text-tertiary">Left today</dt>
                                 <dd className="tabular text-right">
                                   {r.leftToday === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.leftToday}</span>}
                                 </dd>
-                                <dt className="text-text-tertiary">Remaining</dt>
-                                <dd className="tabular text-right">
-                                  {r.remaining === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.remaining}</span>}
-                                </dd>
                               </dl>
                               <p className="mt-2 text-caption text-text-tertiary" title={r.whenTitle}>
-                                {r.when} · {r.typeWord} · {r.productWord}
+                                {r.when} · {r.typeWord}
                               </p>
                               {r.due !== null && <p className="text-caption text-text-tertiary">{r.due}</p>}
                               {r.note !== null && <p className="mt-1 text-caption text-text-secondary">{r.note}</p>}
@@ -701,21 +708,27 @@ async function AdminDeskAccountContent({
                                   mentions times is neither, and `{r.when}` above keeps the inherited nowrap that protects it. */}
                               {r.due !== null && <span className="block text-caption text-text-tertiary whitespace-normal">{r.due}</span>}
                             </td>
+                            {/* ⭐ THE ROUND'S OPENING BALANCE — what the account held before this stake left it. `Opening − Stake =
+                                Closing` by construction: closing is the ledger's own figure and this is that plus the stake. A row that
+                                moved no money brackets no stake and answers nothing here. */}
+                            <td className="hidden sm:table-cell p-3 tabular text-right">
+                              {r.opening === null ? <span className="text-text-tertiary">—</span> : <span className="amount">{r.opening}</span>}
+                            </td>
                             <td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">{r.stake}</span></td>
                             {/* ⛔ A DASH, NOT A ZERO, AND NOT A FULL BUDGET. A row that moved no money, one from an
                                 earlier day, an account with no daily cap and a row past the scan window all arrive
                                 here as `null` — and every one of them is "no answer", never "nothing was spent". */}
+                            {/* ⛔ A DASH, NOT A ZERO — a zero here would read as "this account is empty", which is
+                                a different claim from "the ledger cannot answer for this instant". */}
+                            <td className="hidden sm:table-cell p-3 tabular text-right" title={r.closingTitle ?? undefined}>
+                              {r.closing === null
+                                ? <span className="text-text-tertiary">—</span>
+                                : <span className="amount">{r.closing}</span>}
+                            </td>
                             <td className="hidden sm:table-cell p-3 tabular text-right" title={r.leftTodayTitle ?? undefined}>
                               {r.leftToday === null
                                 ? <span className="text-text-tertiary">—</span>
                                 : <span className="amount">{r.leftToday}</span>}
-                            </td>
-                            {/* ⛔ A DASH, NOT A ZERO — a zero here would read as "this account is empty", which is
-                                a different claim from "the ledger cannot answer for this instant". */}
-                            <td className="hidden sm:table-cell p-3 tabular text-right" title={r.remainingTitle ?? undefined}>
-                              {r.remaining === null
-                                ? <span className="text-text-tertiary">—</span>
-                                : <span className="amount">{r.remaining}</span>}
                             </td>
                             {/* ⭐ THE FURTHEST-ALONG TRUTH ABOUT THIS ROW, IN ONE CHIP (owner, 2026-09-25). "Placed" is the
                                 INTENT's story and it stops the moment the money is on the table; once the position has
@@ -724,7 +737,9 @@ async function AdminDeskAccountContent({
                                 disagree about one row. A stake still running has no result and keeps "Placed". */}
                             <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip></td>
                             <td className="hidden sm:table-cell p-3 text-text">{r.typeWord}</td>
-                            <td className="hidden sm:table-cell p-3 text-text-secondary">{r.productWord}</td>
+                            {/* ⚠️ BESIDE THE GAME, because a round number is not unique on its own — each Up & Down chain counts its
+                                own, so `#1524` exists once per chain and identifies a round only with its game next to it. */}
+                            <td className="hidden sm:table-cell p-3 tabular text-text-secondary">{r.roundNo ?? <span className="text-text-tertiary">—</span>}</td>
                             <td className="hidden sm:table-cell p-3 min-w-[22ch] max-w-[34ch]">
                               {r.marketHref === null ? (
                                 <span className="text-text-tertiary">—</span>
