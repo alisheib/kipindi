@@ -31,7 +31,7 @@ import { GenerateButton } from "../reports/generate-button";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { getEffectiveConfig } from "@/lib/server/market-config";
-import { houseAccountBalances, houseAccountMovement, trialBalance } from "@/lib/server/ledger";
+import { houseAccountBalances, leviesBooked, trialBalance } from "@/lib/server/ledger";
 import { Stat } from "@/components/ui/stat";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
@@ -231,10 +231,8 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
    * ⚠️ These accounts are credit-only (0 debits in 251 entries) — nothing has been remitted yet,
    * so movement-in-window is accrual, which is what "levies" on a period screen means.
    */
-  const houseMoved = await houseAccountMovement(period.start, period.end).catch(() => null);
-  const taxAccrued = houseMoved === null
-    ? null
-    : Math.round((houseMoved["HOUSE:TRA_LEVY"] ?? 0) + (houseMoved["HOUSE:GBT_LEVY"] ?? 0));
+  const levies = await leviesBooked(period.start, period.end).catch(() => null);
+  const taxAccrued = levies === null ? null : levies.tra + levies.gbt;
   const levyBasisCaption = "TRA + GBT as booked to the ledger";
 
   return (
