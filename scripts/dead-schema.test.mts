@@ -24,6 +24,7 @@
  */
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 
 const LOG = console.log.bind(console);
 let pass = 0;
@@ -48,6 +49,24 @@ const DEAD_MODELS = ["Device", "MatchIntegrityCheck", "AntiFraudFlag", "Provider
 const DEAD_ENUMS = ["FlagType", "FlagSeverity", "FlagStatus"] as const;
 /** The columns that left a model that STAYS. */
 const DEAD_FIELDS = ["ocrText", "blurScore", "pushToken", "deviceId", "fingerprint"] as const;
+
+/**
+ * ⚠️ APPLIED BEFORE THE RULE COULD BE MET — a dated exemption from 3.2 ONLY, pinned by content.
+ *
+ * `20260925120000_marketing_consent_suppression` (marketing U6, `32067c92`) was generated with
+ * `prisma migrate diff`, which swept in F-05's drops WITHOUT `IF EXISTS`; production applied it on
+ * 2026-09-25 (found at marketing S6, exempted at S7 on Ali's delegation of 2026-09-26). ⛔ An APPLIED
+ * migration is never edited — `prisma migrate deploy` checksums it, and a changed file stops the
+ * container booting — so the rule is waived for this one file rather than the file rewritten.
+ * ⭐ WAIVED, NOT WEAKENED: 3.2x asserts the rule still FINDS the offending lines in this file (so the
+ * exemption is doing work), 3.3 and 3.4 stay binding on it, the list is size-pinned and may only
+ * shrink, and a sha that no longer matches — the file edited after all — fails loudly.
+ */
+const APPLIED_BEFORE_THE_RULE: Record<string, { sha16: string; since: string }> = {
+  "20260925120000_marketing_consent_suppression": { sha16: "cd0bc6b44baceebb", since: "2026-09-26" },
+};
+const APPLIED_BEFORE_THE_RULE_SIZE = 1;
+const sha16 = (raw: string) => createHash("sha256").update(raw.replace(/\r\n/g, "\n")).digest("hex").slice(0, 16);
 
 const schemaRaw = read("prisma/schema.prisma");
 const schema = stripPrisma(schemaRaw);
@@ -191,6 +210,11 @@ section("3 · IF the DDL exists, it obeys the contract rules");
       || ["ocrText", "blurScore", "deviceId"].some((c) => new RegExp(`DROP COLUMN[^;]*"${c}"`, "i").test(sql));
   });
 
+  ok(`3.0b CONTROL · the applied-before-the-rule list is its pinned size (${APPLIED_BEFORE_THE_RULE_SIZE}) — it may only shrink`,
+    Object.keys(APPLIED_BEFORE_THE_RULE).length === APPLIED_BEFORE_THE_RULE_SIZE);
+  for (const m of Object.keys(APPLIED_BEFORE_THE_RULE)) {
+    ok(`3.0c ${m} · an exemption names a real dead-schema dropper — a stale entry is a hole`, droppers.includes(m));
+  }
   LOG(`   ${droppers.length} migration(s) drop a dead-schema object` +
       (droppers.length === 0 ? " — the contract release has not shipped yet, which is expected" : ""));
 
@@ -200,12 +224,20 @@ section("3 · IF the DDL exists, it obeys the contract rules");
     ok(`3.1 ${m} · control · stripping comments left the statements`,
       /\b(DROP|ALTER)\b/i.test(sql));
     const ddl = sql.split("\n").filter((l) => /^\s*(DROP|ALTER)\b/i.test(l));
-    ok(`3.2 ${m} · 🔴 every DDL statement is IF EXISTS`,
-      ddl.length > 0 && ddl.every((l) => /IF EXISTS/i.test(l)),
-      "CI replays each migration once against a fresh database, so a file that is not\n" +
-      "       re-runnable is GREEN in CI and fatal on production, where it aborts\n" +
-      "       `migrate deploy` and `next start` is never reached.\n" +
-      `       offenders: ${ddl.filter((l) => !/IF EXISTS/i.test(l)).slice(0, 2).join(" | ")}`);
+    const exempt = APPLIED_BEFORE_THE_RULE[m];
+    if (exempt) {
+      ok(`3.2x ${m} · ⚠️ exempt from 3.2 as applied before the rule (${exempt.since}) — and the file is byte-for-byte the one production applied`,
+        sha16(raw) === exempt.sha16, `sha16 ${sha16(raw)} ≠ pinned ${exempt.sha16} — an applied migration was EDITED`);
+      ok(`3.2x ${m} · ⚠️ CONTROL — the rule still FINDS its offending lines, so the exemption is doing work`,
+        ddl.some((l) => !/IF EXISTS/i.test(l)));
+    } else {
+      ok(`3.2 ${m} · 🔴 every DDL statement is IF EXISTS`,
+        ddl.length > 0 && ddl.every((l) => /IF EXISTS/i.test(l)),
+        "CI replays each migration once against a fresh database, so a file that is not\n" +
+        "       re-runnable is GREEN in CI and fatal on production, where it aborts\n" +
+        "       `migrate deploy` and `next start` is never reached.\n" +
+        `       offenders: ${ddl.filter((l) => !/IF EXISTS/i.test(l)).slice(0, 2).join(" | ")}`);
+    }
     ok(`3.3 ${m} · 🔴 no CONCURRENTLY`, !/CONCURRENTLY/i.test(sql),
       "migrate deploy wraps a migration in a transaction; CONCURRENTLY fails 25001 inside one.");
     const iIdx = sql.search(/DROP\s+INDEX/i);

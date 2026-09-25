@@ -114,12 +114,17 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
     `schema.prisma` cannot express, so the diff simply deleted them. Their own migration says they are
     "a BET ON GROWTH, not a fix for a present slowness" (the planner ignores them at today's size), so
     production search is unaffected NOW and the bet is lost until they are restored.
-  ▶ S7, BEFORE U11: (1) an expand-only migration re-creating the eight indexes with the original SQL
-  (`CREATE EXTENSION IF NOT EXISTS pg_trgm` + `CREATE INDEX IF NOT EXISTS … gin_trgm_ops`), proven FROM
-  EMPTY on the scratch cluster; (2) a guard that fails a new migration which DROPs an object created by
-  an earlier migration unless the drop is named, with its owning lane — it would have caught U6; (3)
-  `test:dead-schema` 3.2 is red on that U6 file (DROP without `IF EXISTS`) — ⛔ an APPLIED migration is
-  never edited, so the rule needs a dated exemption for it, not a rewrite.
+  ✅ REPAIRED AT S7 (2026-09-26), all three: (1) `20260926120000_restore_search_trgm_indexes` re-creates
+  the eight with the ORIGINAL statements, byte-identical (checked), expand-only — proven FROM EMPTY on
+  PostgreSQL 18.3: 85 migrations applied, all eight indexes present afterwards; (2)
+  `test:migration-ownership` (in `predeploy`): a registry of which migration created every table,
+  column, index, constraint, type and extension, and ⛔ a migration that drops an earlier migration's
+  object must declare it with an owner document that names both the object and the migration — ten
+  pre-rule files grandfathered by literal content pins, size-pinned; red 9/9 in memory, with a control
+  that a properly declared drop is ACCEPTED; it caught a gap in its own first parser (enum-typed columns
+  registered nothing); (3) `test:dead-schema` 3.2 carries a dated, sha-pinned exemption for the applied
+  U6 file (waived, not weakened — a control proves the rule still finds its lines) — the suite is green
+  again, and `red:dead-schema`, which could not even START while it was red, catches 7/7.
   ⛔ AND U35 WILL HIT THE SAME TRAP: `migrate diff` will emit these drops again every time until the
   indexes are declared somewhere it can see. A unit's migration contains ONLY that unit's statements.
 
