@@ -1,6 +1,6 @@
 # MARKETING CAMPAIGN & CONTACTS SETUP — work order and tracker
 
-**STATUS — 🟢 BUILDING. 10/52 units ✅ LIVE (U1–U10), 8/25 defects. 52 units · defects D1–D25 · 46 owner decisions taken on
+**STATUS — 🟢 BUILDING. 10/52 units ✅ LIVE (U1–U10), 9/25 defects. 52 units · defects D1–D25 · 46 owner decisions taken on
 Ali's delegation · 10 legal questions, each shipping with a safe default that IS built.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
@@ -90,8 +90,8 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 
 ? OWNER ITEMS FOR ALI (none blocks U11; U12 needs the first):
   1. OQ6 — build the "under-25 vulnerability segment" or re-version /legal/responsible-gambling §4.
-  2. D10 — `push-service` gates on `isLockedOut` and inherits the lift (a 24-hour self-excluder gets
-     push notifications 25 hours later). Filed, ⛔ not changed without Ali.
+  2. ✅ D10 — CLOSED at S7 on Ali's delegation (§8 D10): push and watchlist alerts now refuse a
+     SELF_EXCLUDED account until an officer reopens it.
   3. HARM MARKERS ARE NOT STANDING. A marker refuses marketing for its detector's window (≤ 8 days)
      and no longer, because nothing persists a flag. Standing markers need a persisted,
      officer-reviewed flag store — a product decision.
@@ -321,7 +321,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | D7 | U6 | ✅ | there is no SMS suppression list at all |
 | D8 | U6 | ✅ | `marketingOptIn` is a boolean with no channel, no wording and no ledger |
 | D9 | U10 | ✅ | `isLockedOut` lifts itself when the chosen period elapses — marketing must not use it |
-| D10 | U10 | ⬜ | `push-service` inherits that lift (filed here, changed only by owner ruling) |
+| D10 | U10 | ✅ | `push-service` inherits that lift — closed S7 on Ali's delegation: the STATUS decides for push and watchlist alerts too |
 | D11 | U11 | ⬜ | nothing checks age before an outbound marketing message |
 | D12 | U12 | ⬜ | `/legal/responsible-gambling` §4 publishes three commitments with no code behind them |
 | D13 | U13 | ⬜ | the published "late-night window" does not exist in code |
@@ -397,8 +397,8 @@ inside a `"use client"` file. There is no NDC → operator map anywhere.
 `money.figures` is **none**. So the officer who runs campaigns may not read a number and may not read a
 TZS figure — that is a design input, not an obstacle (§4 OD24, OD25).
 
-**Responsible gambling.** `responsible-gambling.ts:382` `isLockedOut` returns `locked:false` the moment
-the chosen period elapses; `:421` `selfExclusionStanding` is the predicate that knows an account is still
+**Responsible gambling.** `responsible-gambling.ts` `isLockedOut` returns `locked:false` the moment
+the chosen period elapses; `selfExclusionStanding` is the predicate that knows an account is still
 not reinstated; `:780` `detectHarmMarkers` is the only vulnerability signal that exists.
 `two-officer.ts:51` `twoOfficerGate` already exists and is reusable.
 
@@ -803,7 +803,7 @@ whose states omit `loading` or `error` cannot be ticked ✅ (`test:marketing-set
 | `invite-service.ts` (retire the SMS half) | `InviteEntry`, `bindRegistration`, the email lane, the admin pages |
 | `retention.ts`, `DATA-RETENTION.md` (new rows) | the published retention periods |
 | `comms-registry.ts` (a MARKETING lane) | the certification gates' meaning |
-| new `db.*` namespaces, new models, new routes | `isLockedOut` and every one of its nine money call sites (§7.2) |
+| new `db.*` namespaces, new models, new routes | `isLockedOut` and every one of its call sites (§7.2 — thirteen at 2026-09-26, including push and watchlist; re-derive with `grep -rn isLockedOut src`) |
 | `/legal/*` — only with an owner ruling and a version bump | the published helpline, silently (OQ4) |
 
 ---
@@ -850,7 +850,13 @@ text. The one-line summaries are in §1; what follows is what each one actually 
 - **D9 · `isLockedOut` lifts itself** when the chosen period elapses (`responsible-gambling.ts`,
   `isLockedOut`), so a 24-hour self-exclusion is marketable 25 hours later. **U10**
 - **D10 · `push-service` gates on that same predicate** and inherits the lift. Filed here; changed only
-  by owner ruling. **U10**
+  by owner ruling. ✅ **Closed at S7 (2026-09-26) on Ali's delegation of that day, resting on his
+  2026-08-27 ruling** (a self-exclusion is a MINIMUM; the account is not reinstated by itself): push and
+  its sibling, watchlist alerts ("a market you follow closes soon"), now refuse a `SELF_EXCLUDED`
+  account whatever the timer says — the rule the bet path already uses ("the STATUS decides"). ⛔
+  `isLockedOut` untouched; cooling-off keeps its timer (nothing clears `COOLED_OFF`); the inbox row and
+  email still go. Guard `test:rg-doors` §9 (a console spy on the real `[push-stub]` delivery line — "returned
+  0" proves nothing in stub mode), red `red:rg-doors` (both doors mutated back to the timer, both caught). **U10**
 - **D11 · No age check anywhere on outbound messaging.** **U11**
 - **D12 · Three published RG commitments have no code** (`legal/responsible-gambling/page.tsx:84,86`).
   Vacuously unbroken only because nothing markets yet. **U12**

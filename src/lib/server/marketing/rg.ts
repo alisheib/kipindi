@@ -31,8 +31,9 @@ import { getAuditForTargetsDurable } from "@/lib/server/audit";
  * first, so the one expensive step (harm markers read up to 10,000 transactions) runs only for a
  * player who has already said yes.
  *
- * ⛔ `isLockedOut` is not modified and not called (OD12, §6). `push-service` still gates on it and
- * inherits the lift — D10, an owner ruling, deliberately NOT changed here.
+ * ⛔ `isLockedOut` is not modified and not called (OD12, §6). `push-service` and `watchlist-service` still
+ * call it, and since S7 (D10, on Ali's delegation of 2026-09-26) each also refuses a SELF_EXCLUDED account
+ * whatever the timer says — the lift no longer reaches either door.
  */
 
 export type MarketingRgSkipReason = "rg_self_excluded" | "rg_cooling_off" | "rg_harm_marker";

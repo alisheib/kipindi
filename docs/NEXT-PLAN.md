@@ -33,7 +33,7 @@ Ali, 2026-09-15: *"later any session please start with the mobile visual plan an
 | **Next** | Session S2 → U3 (the Compact market card) and U4 (the discovery bar). S1 (U1 + U2) is done and live since 2026-09-23. Two units per session |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit** |
 
-## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟢 **BUILDING — S1–S6 done 2026-09-25; U1–U10 are live** · 10/52 units ✅ · 8/25 defects ✅ · 🔴 U9's premise failed (there was no send loop — it is U43's), so it shipped the loop's dispatch step and the contract U43 must pass; U10 found U7's "deciding must not write" fix was half a fix, and that a one-hour break had been refusing marketing for ever under the wrong reason
+## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟢 **BUILDING — S1–S6 done 2026-09-25; U1–U10 are live** · 10/52 units ✅ · 9/25 defects ✅ · 🔴 U9's premise failed (there was no send loop — it is U43's), so it shipped the loop's dispatch step and the contract U43 must pass; U10 found U7's "deciding must not write" fix was half a fix, and that a one-hour break had been refusing marketing for ever under the wrong reason
 
 Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marketing campaign and contacts setup"* · *"make it perfectly working for 50pick, perfect design and logic."*
 **▶ Work order and tracker: [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md). Open it at §0 (RESUME AT), then §0a (the copy-paste session prompt), then §1 (status board).**

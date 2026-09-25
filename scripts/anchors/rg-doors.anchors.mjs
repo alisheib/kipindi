@@ -249,4 +249,24 @@ export const MUTATIONS = [
     to: `    const rg = { ok: true, coolingOffEnded: false, skipReason: "rg_self_excluded", detail: "" } as const;`,
     check: "8.18 ⭐ the gate CALLS marketingRgStanding",
   },
+
+  // ── 5 · D10: push and watchlist alerts go back to trusting the timer (marketing S7) ────────────
+  {
+    name: "push-trusts-the-timer-again",
+    why: "🔴 D10 ITSELF, RESTORED. With the status check gone the door is `isLockedOut` alone, which lifts "
+       + "when the chosen period elapses — a 24-hour self-excluder is pushed at from hour 25.",
+    file: "src/lib/server/push-service.ts",
+    from: `    if (holder?.status === "SELF_EXCLUDED") {`,
+    to: `    if (holder?.status === "__never__") {`,
+    check: "9.1 ⭐ a self-excluder whose 24 h ELAPSED A YEAR AGO",
+  },
+  {
+    name: "watchlist-alerts-trust-the-timer-again",
+    why: "The same lift on the most engagement-shaped message the platform sends: \"a market you follow "
+       + "closes soon\", to somebody who is still self-excluded.",
+    file: "src/lib/server/watchlist-service.ts",
+    from: `    if (holder?.status === "SELF_EXCLUDED") {`,
+    to: `    if (holder?.status === "__never__") {`,
+    check: "9.5 ⭐ the watchlist alert set drops the self-excluder",
+  },
 ];
