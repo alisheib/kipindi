@@ -109,6 +109,21 @@ git pull --ff-only
 git log --oneline -8
 npm run test:marketing-setup-plan   # the tracker cannot lie; if it fails, fix the board first
 ```
+⚠️ **OTHER SESSIONS ARE WORKING IN THIS REPO AT THE SAME TIME, ON THEIR OWN PROGRAMMES.** So:
+`git pull --ff-only` before you start and again before every push; `git commit --only <paths>` and ⛔
+**never `git add -A`** — files you did not touch belong to someone else; and ⚠️ **the checkout may be on
+another branch, or carry their uncommitted work.** Check `git branch --show-current` and
+`git status --short` FIRST. If it is not on `main`, or their edits are in the tree, ⛔ do not switch the
+branch and do not stash — work in your own worktree instead (`git worktree add <dir> origin/main
+--detach`), commit there and push `HEAD:main`. ⛔ Do not remove a worktree with `--force` in this repo: it
+has deleted `node_modules/.bin` through the junction before (if `npm run` then says *"tsx is not
+recognized"*, run `npm install`; `node scripts/<file>.mts` works meanwhile).
+
+⭐ **PUSH YOUR WORK LIVE AS YOU GO — one unit, one commit, one push.** Do not hold a branch of finished
+units to merge later: this repo's trunk moves under you and other sessions are pushing to it. Each unit
+lands on `main`, deploys, and is re-measured live before its row is ticked (§11.4). A unit that is not
+pushed is not done.
+
 The planner and the progress tracker are ONE file: `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`.
 §0 is where we are, §1 is the board, §9 is the work, §10 is the order. Nothing else — not your memory,
 not a summary, not another document — decides what is done. If `git log` shows a commit newer than §0's
