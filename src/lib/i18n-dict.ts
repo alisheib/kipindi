@@ -73,7 +73,7 @@ export const dict = {
       browseAll: "Browse all markets →",
       changingLanguage: "Changing language…",
       readAll: "Read all", clearAll: "Clear all",
-      verifyId: "Verify ID", inviteEarn: "Invite & Earn",
+      verifyId: "Verify ID",
       proposeEarn: "Propose & earn", comingSoon: "Coming soon",
       copied: "Copied", copy: "Copy", share: "Share",
       copyLink: "Copy link", now: "now",
@@ -1380,7 +1380,8 @@ export const dict = {
       badgesHint: "More badges unlock as you predict, win and propose.",
       account: "Account",
       inviteEarn: "Invite & Earn", inviteEarnSub: "Refer friends · earn rewards",
-      // ⭐ THE UNPAID INVITE'S OWN WORDS (2026-09-25). ⛔ NOT a rewording of the four keys above:
+      // ⭐ THE UNPAID INVITE'S OWN WORDS (2026-09-25). ⛔ NOT a rewording of the paid promo's keys
+      // (`inviteEarn`/`inviteEarnSub` above; `yourReferrals`, `noReferralsYet/Body`, `rewardsDisclaimer`, `inviteReq*` below):
       // those are the PAID promo's, they stay exactly as they are, and `inviteRewards` ACTIVE
       // brings them back. A page that pays nothing may not borrow a sentence that promises
       // something — which is what re-pointing `inviteEarn` at neutral copy would have quietly done
@@ -2784,7 +2785,7 @@ export const dict = {
       browseAll: "Tazama masoko yote →",
       changingLanguage: "Inabadilisha lugha…",
       readAll: "Soma zote", clearAll: "Futa zote",
-      verifyId: "Thibitisha ID", inviteEarn: "Alika na upate zawadi",
+      verifyId: "Thibitisha ID",
       proposeEarn: "Pendekeza na upate zawadi", comingSoon: "Inakuja hivi karibuni",
       copied: "Imenakiliwa", copy: "Nakili", share: "Shiriki",
       copyLink: "Nakili kiungo", now: "sasa",
@@ -3812,8 +3813,8 @@ export const dict = {
       account: "Akaunti",
       inviteEarn: "Alika na upate zawadi", inviteEarnSub: "Alika marafiki · pata zawadi",
       // ⭐ SWAHILI IS THE DEFAULT LOCALE, so this is the copy the platform actually speaks — it is
-      // written, not translated from the English above. ⛔ `zawadi` (reward) appears nowhere in it:
-      // that word is the paid promo's, and the whole point of these keys is that there is none.
+      // written, not translated from the English above. ⛔ `zawadi` (reward) is never OFFERED here —
+      // it appears once, negated, in `inviteNoRewardNote` ("hailipi zawadi" — pays no reward).
       inviteFriends: "Alika marafiki", inviteFriendsSub: "Shiriki kiungo chako · uone wanaojiunga",
       friendsJoined: "Marafiki waliojiunga",
       yourFriends: "Marafiki zako",
@@ -4955,7 +4956,7 @@ export const dict = {
       browseAll: "浏览全部市场 →",
       changingLanguage: "正在切换语言…",
       readAll: "全部已读", clearAll: "全部清除",
-      verifyId: "身份验证", inviteEarn: "邀请赚钱",
+      verifyId: "身份验证",
       proposeEarn: "提议赚钱", comingSoon: "即将推出",
       copied: "已复制", copy: "复制", share: "分享",
       copyLink: "复制链接", now: "刚刚",
@@ -5982,8 +5983,8 @@ export const dict = {
       badgesHint: "随着您的预测、获胜和提议，更多徽章将解锁。",
       account: "账户",
       inviteEarn: "邀请赚钱", inviteEarnSub: "推荐好友 · 赢取奖励",
-      // ⭐ The unpaid invite. ⛔ 赚钱 / 奖励 (earn money / reward) are the paid promo's words and do
-      // not appear below — the surface pays nothing, in every locale it speaks.
+      // ⭐ The unpaid invite. ⛔ 赚钱 / 奖励 (earn money / reward) are never OFFERED below — 奖励 appears
+      // once, negated, in `inviteNoRewardNote` (不为邀请支付任何奖励). The surface pays nothing.
       inviteFriends: "邀请朋友", inviteFriendsSub: "分享你的链接 · 查看谁加入",
       friendsJoined: "已加入的朋友",
       yourFriends: "你的朋友",

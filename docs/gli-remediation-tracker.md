@@ -126,8 +126,16 @@ Deferred to a later round: 1.2 (CI/deploy), 2.1/2.2 (ledger flip + outbox), 4.5b
 
 ## APPENDIX D — Deferred, blocked on third-party contracts (NO engineering now)
 
-Payment aggregator (Selcom/Azampay/Pesapal), SMS/OTP (Beem/AT/Twilio), authoritative NIDA mTLS,
-Sportradar feed, live AI market generation. Keep interfaces clean; commercial action only.
+Payment aggregator (Selcom/Azampay/Pesapal), authoritative NIDA mTLS, Sportradar feed, live AI
+market generation. Keep interfaces clean; commercial action only.
+
+**D2 SMS — LIVE, no longer blocked (corrected 2026-09-25):** Blackball live since
+2026-09-16 (`SMS_PROVIDER=blackball`; delivery receipts proven end to end 2026-09-23), see
+[`BLACKBALL-SMS.md`](BLACKBALL-SMS.md). The Beem / Africa's Talking / Selcom SMS adapters were
+deleted 2026-09-16. Against the D2 criteria in the plan: console SMS in prod `[x]` (the console
+provider throws in production) · closed-loop withdrawal to the registered number `[x]` (E-215,
+`src/lib/payout-destination.ts`) · OTP at registration / withdrawal-destination change `[ ]` — off
+by owner decision (`OTP_ENABLED` unset, `BLACKBALL-SMS.md` §7 step 6), not for lack of a contract.
 
 ---
 

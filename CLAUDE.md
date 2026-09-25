@@ -16,7 +16,7 @@
 |---|---|
 | [`docs/SETUP.md`](docs/SETUP.md) | **Getting this running on a machine that has never seen it.** Prerequisites, install, how to boot with no database, and the eight symptoms that waste an afternoon. |
 | [`docs/README.md`](docs/README.md) | **The doc index** — every doc at that level, each with a status. From the outside a snapshot of a Tuesday in May looks identical to a law. ⚠️ This row used to say "42 docs" and the index itself said 45; the real number was **59**, and eleven were unindexed. A count restated in two places is a count that will disagree with itself — so neither states one now. |
-| [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md) | ⭐ **START HERE FOR WORK. It opens with THE BOARD: there are exactly TWO ongoing programmes** — `MASWALI-BUILD` (the third product) and `DESIGN-GATE-2026-08-28` (render consistency). Each names its state, its next move and what blocks it. ⛔ **Everything else under `docs/` is a RECORD of finished work, whatever its own header says.** Do not start a third thing — ask Ali which of the two to proceed with. |
+| [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md) | ⭐ **START HERE FOR WORK. It opens with THE BOARD** — the ▶-numbered rows at its top (▶ 0, ▶ 0a, ▶ 0b, …) are the live programmes, each with its state, next move and blocker. Read them there; this row deliberately does not count them, because a count here goes stale (it said "exactly TWO" long after there were more — corrected 2026-09-25). ⛔ **A doc that is not on the board is a RECORD of finished work, whatever its own header says.** Do not start a new programme — ask Ali. |
 | [`docs/PLAYER-QUERY-CAMPAIGN.md`](docs/PLAYER-QUERY-CAMPAIGN.md) | 🔵 **ACTIVE, opened 2026-09-07 on Ali's instruction — the THIRD programme, so the row above is now out of date by one.** One query language (lens · sort · search · window) on every client-facing page that needs one. **Its §0 is the RESUME AT block**; its §4 is a census of EVERY non-admin route, each with a ruling, so a page that needs nothing was *read and decided* rather than skipped. Branch `player-query-campaign`. ⛔ Admin is deliberately out of scope (§11). |
 | [`docs/MODULE-CERTIFICATION-PROGRAM.md`](docs/MODULE-CERTIFICATION-PROGRAM.md) | **The programme that finishes the platform** — 52 modules, 8 gates, the 12 laws, the status board. |
 
@@ -318,7 +318,7 @@ clear counter → admin bootstrap check → createSession → redirect
 - 7-day absolute expiry + 24h idle timeout + 5-min refresh throttle.
 - Every session event audited (create, expire, idle, revoke, destroy).
 
-### OTP verification (for future SMS)
+### OTP verification (server path live; phone-code login not offered in the UI — `OTP_ENABLED` unset, see above)
 - Checks ALL active OTPs for a phone+purpose, not just the newest.
   Fixes SMS delivery-order mismatch (user receives OTP #1 after #2).
 - On match: consumes ALL active OTPs for that phone+purpose.

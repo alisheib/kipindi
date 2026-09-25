@@ -15,7 +15,10 @@
  * mutation to a section it cannot affect would be worse than no anchor: a green run that proves
  * nothing at all.
  *
- * Each mutation below is a realistic way this withdrawal would be HALF-shipped.
+ * Each mutation below is a realistic way an invite entry point would ship UNGATED: shown to a viewer
+ * the seam refuses (signed out; closed, suspended or self-excluded; an agent out of standing), or
+ * minting a code before the gate is asked. (Written for the 2026-09-06 withdrawal; since 2026-09-25 the
+ * invite is ACTIVE and unpaid, and the gate is the eligibility seam.)
  */
 
 export const MUTATIONS = [
@@ -23,10 +26,22 @@ export const MUTATIONS = [
     // §7 — the shape the positional rule exists for: ONE surface left behind, still linking to
     // the page but no longer asking whether it may. The file's other references stay intact, so
     // a file-level "does it mention the gate?" check would sail straight past this.
+    // ⚠️ RE-ANCHORED 2026-09-26: the row's label became `t.profile.inviteFriends` (the page's own
+    // name). Same mutation, same meaning — the gate is dropped and the row renders for everyone.
     name: "bottom-nav.tsx — the More rail links to Invite without consulting the gate",
     file: "src/components/layout/bottom-nav.tsx",
-    from: `    inviteVisible ? [{ href: "/profile/invite", label: t.common.invite }] : [];`,
-    to: `    [{ href: "/profile/invite", label: t.common.invite }];`,
+    from: `    inviteVisible ? [{ href: "/profile/invite", label: t.profile.inviteFriends }] : [];`,
+    to: `    [{ href: "/profile/invite", label: t.profile.inviteFriends }];`,
+    expect: "§7",
+  },
+  {
+    // §7 — the FOOTER door (added 2026-09-26). It renders on every page at every width, signed out
+    // too, so a footer link that forgot its gate would show a signed-out visitor, a self-excluded
+    // player and an agent out of standing a door the page refuses them.
+    name: "public-footer.tsx — the footer links to Invite for everyone",
+    file: "src/components/layout/public-footer.tsx",
+    from: `          {inviteVisible && <FooterLink href="/profile/invite">{t.profile.inviteFriends}</FooterLink>}`,
+    to: `          {<FooterLink href="/profile/invite">{t.profile.inviteFriends}</FooterLink>}`,
     expect: "§7",
   },
   {
@@ -44,7 +59,7 @@ export const MUTATIONS = [
     expect: "§7",
   },
   {
-    // ⭐ §8 — THE ORDERING MUTATION, and the most valuable of the three. The page still consults
+    // ⭐ §8 — THE ORDERING MUTATION, and the most valuable of these. The page still consults
     // the gate, so a "does it check?" rule stays green — but it now does so AFTER the referral
     // summary has been fetched, i.e. a real code has been minted for a player who may not refer.
     // Only a POSITIONAL assertion catches this.

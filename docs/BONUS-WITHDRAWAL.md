@@ -1,13 +1,14 @@
 # Withdrawing Invite & the bonus wallet from the player product
 
-**Decided:** Ali, 2026-09-06. **Status:** live on branch `agent-affiliate-programme`.
+**Decided:** Ali, 2026-09-06. **Status:** BONUS half LIVE on `main` since 2026-09-07 (`a783299f`); INVITE half SUPERSEDED 2026-09-25 — see the banner below and `PLAYER-INVITE-UNPAID.md`.
 **Authority for this change.** The money rules themselves stay in [`RULES.md`](RULES.md) — §2.5
 and §2.6 carry the roll-out markers this programme set.
 
 > 🔴 **SUPERSEDED IN PART ON 2026-09-25 — READ THIS BEFORE ANYTHING BELOW.**
 > The **INVITE** half of this document is no longer the product. `PRODUCT_STATE.invite` is
 > **ACTIVE**: every player in good standing again holds a referral link, code and QR, the entry
-> points are back, and market/position share links carry `?ref=` again. What replaced the
+> points are back, and shares from a market's detail page and from a position carry `?ref=` again
+> (⚠️ the compact share icon on market CARDS never has; `PLAYER-INVITE-UNPAID.md` §11). What replaced the
 > withdrawal is a second product state, `inviteRewards`, which is **WITHDRAWN** — the link is
 > tracked and **the platform credits a player nothing for a referral**. See
 > [`PLAYER-INVITE-UNPAID.md`](PLAYER-INVITE-UNPAID.md), `RULES.md` §2.10a and
@@ -199,7 +200,10 @@ measure the OFF state, and a gate that chooses its own population cannot fail.
 ## 6 · One measured surprise, recorded so nobody "fixes" it
 
 `/profile/invite` returns **HTTP 200**, not 404, for a player — while correctly rendering the
-not-found view.
+not-found view. ⚠️ **Since 2026-09-25 this applies only to a signed-in viewer the gate still refuses:**
+a non-agent CLOSED, SUSPENDED or SELF_EXCLUDED account (`playerStandingFor`); a deactivated agent
+gets their read-only agent dashboard, not the not-found view. A player in good standing gets the
+real, unpaid page. The `loading.tsx` lesson below stands.
 
 The segment has a `loading.tsx`, which is a Suspense boundary, so Next flushes the shell and
 **commits the status** before the async page throws `notFound()`. Measured on a running server:
@@ -296,12 +300,19 @@ superseded, so it failed on its own premise. Its intent outlived its subject, so
 
 ## 8 · Turning it back on
 
+⚠️ **For `invite` this already happened (2026-09-25), and it opened the SURFACE only.** The money is
+a separate switch, `inviteRewards`, and turning THAT on is
+[`PLAYER-INVITE-UNPAID.md`](PLAYER-INVITE-UNPAID.md) §7 / §12 (Gaming Board clearance first), not
+the steps below. The steps below now apply to `bonus`.
+
 One word in `PRODUCT_STATE` in `src/lib/feature-state.ts`, per feature. Then:
 
 1. `npm run test:withdrawn-features` — §4 already drives the ON branch, so this should be green
    before and after; §1 and §3 will correctly go red, because they assert the withdrawn state.
-2. Re-run `scripts/live/withdrawn-render-drive.mjs` — its assertions are all absences and will
-   invert.
+2. Re-run `scripts/live/withdrawn-render-drive.mjs` (`npm run qa:withdrawn-render`). Its §3–§4
+   (bonus balance / cashback promo) assert absences and will invert. §1, §2 and §5 (the invite)
+   were already inverted on 2026-09-25 and assert the unpaid share surface: present, with no money
+   word.
 3. ⚠️ **CORRECTED 2026-09-06 — this step used to read *"The bonus machinery needs no change: it was
    never gated."* That sentence was true, and it was the defect** (§4b): granting was listed as
    withdrawn and nothing enforced it. The machinery IS gated now, at `creditBonus`, on the product

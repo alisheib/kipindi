@@ -2,7 +2,8 @@
  * /api/dev-test/affiliate-integration — Sprint 5. Proves the affiliate hooks
  * are wired into the REAL money flows (not just the engine): it calls the
  * actual wallet-service `deposit()` and market-service `buyPosition()` and
- * checks the referrer is credited as a side-effect.
+ * checks the referrer is credited as a side-effect — ⚠️ only with FEATURE_INVITEREWARDS=ACTIVE on the
+ * dev server: since 2026-09-25 a PLAYER referrer is refused (`player_rewards_withdrawn`) and nothing is credited.
  *
  * 404 in production. POST, no body.
  */

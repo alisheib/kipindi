@@ -3,6 +3,9 @@
  *   A. Real registration with ?ref= binds the recruit (UI form → auth-service → engine)
  *   B. Real deposit() + buyPosition() fire the affiliate hooks (money-flow wiring)
  *   C. Snapshot persistence: the new store collections are in the backup envelope
+ *   ⚠️ Since 2026-09-25 a PLAYER referrer is paid nothing (docs/PLAYER-INVITE-UNPAID.md). B's prize check
+ *      and C's referralRewards-entries check read zero on the shipped state; FEATURE_INVITEREWARDS=ACTIVE on
+ *      the dev server is the minimum to measure them. Only A describes the shipped product.
  *  (regression suites are run separately by the harness)
  */
 import { chromium } from "playwright";

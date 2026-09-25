@@ -11,6 +11,11 @@
  *   - cross-referrer attribution integrity (recruit of A can't pay B)
  *   - privacy: masked names never leak full displayName / phone
  *
+ * ⚠️ SINCE 2026-09-25 THE PLAYER PROGRAMME PAYS NOTHING (`inviteRewards` WITHDRAWN): every money
+ * assertion here uses a PLAYER referrer and is refused (`player_rewards_withdrawn`) unless the dev
+ * server runs with FEATURE_INVITEREWARDS=ACTIVE. The maintained guards are `test:player-invite-unpaid`
+ * and `test:referral` (docs/PLAYER-INVITE-UNPAID.md §7-§8).
+ *
  * 404 in production. POST, no body.
  */
 import { NextResponse } from "next/server";

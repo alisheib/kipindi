@@ -86,9 +86,14 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      self-excluded account and for an agent out of standing. The rule above is unchanged; only
      the population it admits is.
      ⚠️ The role lives on the server, so the SHELL resolves this and passes the answer —
-     `feature-state.ts` explains why a client component never reads the state itself. */
+     `feature-state.ts` explains why a client component never reads the state itself.
+     ⭐ 2026-09-26 — THE ROW SAYS WHAT THE PAGE IS CALLED. It read the bare verb "Alika" /
+     "Invite" / "邀请" while the page, the avatar menu and the /profile row all say "Alika
+     marafiki · Invite friends · 邀请朋友" — so on a phone, where this sheet is the most-used door,
+     the owner looked for the invite and did not recognise the one-word row as it. One name for
+     one destination, and it is as neutral as the old one: it names the act, not a reward. */
   const inviteRow: { href: string; label: string }[] =
-    inviteVisible ? [{ href: "/profile/invite", label: t.common.invite }] : [];
+    inviteVisible ? [{ href: "/profile/invite", label: t.profile.inviteFriends }] : [];
   const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState }[] = isAuthed
     ? [
         { href: "/positions",      label: t.common.positions },

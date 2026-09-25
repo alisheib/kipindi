@@ -131,12 +131,14 @@ longer resolves is reported `STALE` and fails the run — check `test:red-anchor
 behind a sideways drag. Measure it on a served build, then **ASK ALI as a numbered one-line choice** which column to
 give up, or to accept the scroll. ⛔ Not a session's decision: every candidate is a column he asked for by name.
 
-**d) House P&L as its own surface.** Ali chose to build it once rather than accrete signed money into the activity
-row. **Write the plan, show Ali, then build.** ⛔ It is not only 266/360/361 that stand in the way: D20b
-(`COMPLIANCE-DECISIONS.md`: "no house-liquidity report … no house lines on admin screens") and the
-`C5-D20-REPLAN.md` §4 Commit-7 default ("no results/P&L report … in the console beyond what a control needs") say it
-in terms. The plan must name every text it amends and get Ali's words for each — D20 is his ruling. It must also say
-what "P&L" counts when three placed stakes in four come back VOID.
+**d) House P&L as its own surface — ✅ PLAN WRITTEN 2026-09-26, ⏳ WAITING ON ALI'S ANSWERS, NOT BUILT.**
+👉 `plans/house-bots/HOUSE-PNL-PLAN.md` (three independent drafts, two refuters, one synthesis; plain English first).
+It proposes one owner-only **Results** tab: per EAT day of placement over the last 7 days, whole desk and per
+account, counted from `book.ts`'s own settled figure (so it cannot disagree with the loss stop), words not signs,
+under ONE dated D20b amendment whose exact text is in its §4. Its §11 holds **11 one-line choices** for Ali,
+recommended option first. ⛔ Build nothing until he answers; then commit the amendment with his words verbatim.
+It names every text it amends — D20b, replan 266 and its §4 Commit-7 default, C7 360/408 and the rest — because D20
+is Ali's ruling and each needs his words, not a session's.
 
 **e) ✅ READ 2026-09-26, and told to Ali:** the system's own switch-off at 2026-09-24 21:52:26 EAT carries
 `cause: GLOBAL_LOSS_STOP` — the desk's global daily loss limit tripped six minutes after it was switched on. Seven

@@ -122,9 +122,10 @@ For RG (responsible-gambling) gates, the check lives in the **service layer** (`
 | Document upload on `/profile/kyc` is stubbed | Medium | Object-storage integration sprint. |
 | Tax accrual on `/admin/finance` uses a placeholder formula | Low | TRA filing module sprint. |
 | Mock payments adapter | High (blocks live) | Selcom / Azampay aggregator contract sprint. |
-| Mock SMS provider | High (blocks live) | Twilio / Africa's Talking SMS sprint. |
 
 Every item above is a contract-pending integration — the platform code is ready to receive each adapter via the existing service interface.
+
+SMS: resolved 2026-09-16 (its "Mock SMS provider" row removed 2026-09-25) — Blackball is the live provider, delivery receipts proven end to end 2026-09-23 ([`BLACKBALL-SMS.md`](BLACKBALL-SMS.md)).
 
 ---
 

@@ -3,10 +3,10 @@
  * Drives the REAL UI in three browser contexts:
  *   A = referrer · B = referred player · Admin = officer
  *
- *   1. A registers, opens Invite & Earn, we read A's referral link
- *   2. B registers THROUGH A's link (referral ribbon shows)
- *   3. B confirms the email, then deposits → FIRST_DEPOSIT bonus fires (A + B each +2,000)
- *   4. A's Invite page now shows recruit #1 + earnings
+ *   1. A registers, opens Invite friends (/profile/invite), we read A's referral link
+ *   2. B registers THROUGH A's link (the ribbon says 'You were invited by A' and offers nothing)
+ *   3. B confirms the email, then deposits (no referral reward: the player invite is unpaid)
+ *   4. A's invite page now counts the friend and still says invites pay nothing
  *   5. B proposes two polls (one to approve, one to decline)
  *   6. Admin approves poll #1 (→ live market) and declines poll #2
  *   7. Board reflects LISTED + DECLINED
@@ -82,14 +82,14 @@ try {
   await submitRegister(A);
   check("A landed on /wallet/deposit after register — not on identity", new URL(A.url()).pathname === "/wallet/deposit", A.url());
 
-  // ── 2. A opens Invite & Earn, read the referral link ────────────────────
-  log("A opens Invite & Earn");
+  // ── 2. A opens Invite friends, read the referral link
+  log("A opens Invite friends");
   await A.goto(`${BASE}/profile/invite`, { waitUntil: "domcontentloaded" });
   await A.waitForTimeout(500);
-  const link = await A.locator('input[aria-label="Referral link"]').inputValue().catch(() => "");
+  const link = await A.locator("main textarea").first().inputValue().catch(() => "");
   const refCode = (link.match(/ref=([^&]+)/) || [])[1] || "";
   check("Invite page shows a referral link with ?ref= code", !!refCode, link);
-  check("Invite page shows 'No referrals yet' initially", (await A.locator("body").innerText()).includes("No referrals yet"));
+  check("Invite page shows 'No friends yet' initially", (await A.locator("body").innerText()).includes("No friends yet"));
   await shot(A, "A-invite-page-empty");
 
   // ── 3. B registers through A's link ─────────────────────────────────────
@@ -97,16 +97,16 @@ try {
   await register(B, B_PHONE, refCode);
   await B.waitForTimeout(300);
   const bBody = await B.locator("body").innerText();
-  check("Register page shows referral ribbon (invited / bonus)", /invited|referr|bonus|TZS\s*2,000/i.test(bBody), "ribbon copy present");
+  check("Register page shows the referral ribbon naming the inviter", /invited by/i.test(bBody), "ribbon copy present");
   await shot(B, "B-register-with-referral-ribbon");
   await submitRegister(B);
   check("B landed on /wallet/deposit after register — not on identity", new URL(B.url()).pathname === "/wallet/deposit", B.url());
 
-  // ── 4. B confirms the email, then deposits → FIRST_DEPOSIT bonus fires ─
+  // ── 4. B confirms the email, then deposits (the invite pays nothing) ─
   // ⭐ THE 2026-09-13 LADDER: register → confirm email → deposit. Registration confirms no address, so
   // the deposit screen shows the email door until the link is followed (the dev-only
   // `/api/dev/verify-link` returns the exact URL the email carries). No identity step stands on this path.
-  log("B confirms the email, then deposits (fires the referral bonus)");
+  log("B confirms the email, then deposits");
   const vl = await B.request.get(`${BASE}/api/dev/verify-link`).then((r) => r.json()).catch(() => null);
   check("B's email confirmation link is issued", !!vl?.url, JSON.stringify(vl)?.slice(0, 80));
   if (vl?.url) {
@@ -130,13 +130,13 @@ try {
   await B.waitForTimeout(800);
   check("B deposit completed (on /wallet)", new URL(B.url()).pathname === "/wallet", B.url());
 
-  // ── 5. A's Invite page now shows the recruit + earnings ─────────────────
-  log("A re-checks Invite & Earn (recruit + earnings)");
+  // ── 5. A's Invite page now counts the friend, and still pays nothing ────
+  log("A re-checks Invite friends (friend joined)");
   await A.goto(`${BASE}/profile/invite?ts=${Date.now()}`, { waitUntil: "domcontentloaded" });
   await A.waitForTimeout(600);
   const aBody = await A.locator("body").innerText();
-  check("A now has at least one referral (no longer empty)", !aBody.includes("No referrals yet"));
-  check("A shows earned TZS 2,000 (referrer bonus)", aBody.includes("2,000"), "earnings visible");
+  check("A now has at least one friend joined (no longer empty)", !aBody.includes("No friends yet"));
+  check("A's invite page names no earnings and says invites pay nothing", !/Earned|2,000/.test(aBody) && /no reward for invites/i.test(aBody));
   await shot(A, "A-invite-page-with-recruit");
 
   // ── 6. B proposes two polls ─────────────────────────────────────────────

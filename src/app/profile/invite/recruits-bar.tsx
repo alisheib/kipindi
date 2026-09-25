@@ -1,9 +1,9 @@
 /**
  * THE AGENT RECRUIT BOOK'S BAR — four lenses and a sort, on `/profile/invite`.
  *
- * ⭐ IT SITS ON THE AGENT DASHBOARD AND NOT ON THE PLAYER PROMO BODY, which is task 4.11's whole
- * finding — see `lib/affiliate/recruits.ts` for the three lines of shipped code that prove the
- * player body cannot be reached by any live viewer.
+ * ⭐ IT SITS ON THE AGENT DASHBOARD AND NOT ON THE PLAYER BODY (task 4.11). The player body is live for
+ * every player in good standing since 2026-09-25, but it lists only that player's own friends — capped,
+ * name and date — so it has nothing to filter by; see `lib/affiliate/recruits.ts`.
  *
  * ⛔ NO SEARCH. Every name in this book is `maskedRosterLabel` output — a mask, not a name — so a
  * search box would invite an agent to type a person's name and match nothing, or worse, to work

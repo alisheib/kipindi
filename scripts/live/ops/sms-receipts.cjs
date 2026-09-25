@@ -6,8 +6,11 @@
  *
  * ⭐ WHY IT EXISTS. `scripts/live/blackball-drive.mts` sends directly to the gateway and writes no
  * production row, so its receipts arrive as `sms.dlr.unknown_reference` — carrying the vendor's raw
- * status and description, which is the undocumented vocabulary `mapDlrStatus()` has to be extended
- * from. This is how that evidence is read back.
+ * status and description verbatim — and the batch's `sms.dlr.received` summary shows `applied: 0`,
+ * by design. A send PRODUCTION issued settles its own `SmsMessage` row instead: `sms.dlr.received`
+ * with `applied: 1` (docs/BLACKBALL-SMS.md §4.7–§4.8). The vendor's status list is documented (§3)
+ * and every token on it maps; a token outside it on a production row is audited as
+ * `sms.dlr.unmapped_status`. This is how that evidence is read back.
  *
  * ⛔ THE CROSS-CHECK. A connection through Railway's internal host "succeeds" and returns nothing,
  * which reads exactly like "no receipt arrived". So the probe first proves it is reading production

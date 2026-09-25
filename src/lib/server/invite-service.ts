@@ -191,10 +191,16 @@ export async function addContactsStructured(campaignId: string, rows: ContactRow
 /** Send all QUEUED entries (email via Postmark, phone via SMS). Best-effort per
  *  entry — a failed send marks that entry FAILED and the campaign continues.
  *
- *  SMS honesty: when no SMS provider is live (`smsConfigured()` is false), phone
- *  entries are left QUEUED and reported as `pending` rather than marked SENT —
- *  so the admin is never told "delivered" when nothing left the box. They go out
- *  automatically on the next Send once a provider (e.g. Selcom) is wired. */
+ *  SMS honesty: when SMS is not configured on this deployment (`smsConfigured()` is
+ *  false — `SMS_PROVIDER=blackball` needs the Blackball credentials and a valid
+ *  `SMS_SENDER_ID`), phone entries are left QUEUED and reported as `pending` rather
+ *  than marked SENT — so the admin is never told "delivered" when nothing left the
+ *  box. Entries over `INVITE_SMS_MAX_PER_SEND`, or a batch `sendBatch` refuses, stay
+ *  QUEUED as `pending` too; all of them go out on a later Send.
+ *  ⚠️ Blackball has been live since 2026-09-16, but while the bonus feature is
+ *  WITHDRAWN the whole function refuses below, before any send. U15
+ *  (docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) retires this phone half.
+ *  (corrected 2026-09-25 — this named Selcom as the provider still to be wired) */
 export async function sendCampaign(campaignId: string, adminId: string):
   Promise<{ ok: true; sent: number; failed: number; pending: number } | { ok: false; error: string }> {
   // Serialize per campaign so two concurrent "Send" clicks can't both read the

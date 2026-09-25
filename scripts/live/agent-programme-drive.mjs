@@ -18,7 +18,8 @@
  *   5 · Invitee   — officer issues an invitation BY EMAIL → link → create account (OTP) →
  *                   "Email me a code" → the code is read from the server outbox → accept →
  *                   application opens; officer's Approve names why it cannot fire yet
- *   6 · Player    — an ordinary signed-in player finds no invite / bonus solicitation
+ *   6 · Player    — an ordinary signed-in player gets the UNPAID invite share surface (a link, no money
+ *                   word, no agent dashboard) and no bonus / earnings solicitation
  *
  * ⛔ Every assertion is against RENDERED TEXT OR GEOMETRY, never against a status code alone.
  * A page that 200s with an empty body fails the CONTROL assertions.
@@ -441,9 +442,10 @@ const applicant = await applicantCtx.newPage();
 // ═══════════════════════ 5 · INVITEE — invitation, OTP, acceptance ═══════════════════════
 {
   await goto(officer, "/admin/agents");
-  // ⭐ AN EMAIL, NOT A PHONE (2026-09-08). No SMS provider is licensed — `sms.ts` ships
-  // `console` by default and both other adapters throw — so the officer's console promised a
-  // text that was never sent. The invitation and its code go through Postmark now.
+  // ⭐ AN EMAIL, NOT A PHONE (since 2026-09-08). When this shipped no SMS provider was licensed,
+  // so the officer's console promised a text that was never sent. Blackball went live 2026-09-16
+  // and the invitation stays on email BY DECISION (`issueInvitation`, agent-application-service.ts).
+  // The invitation and its code go through Postmark.
   await officer.locator('input[name="email"]').fill(EMAIL_INVITEE);
   await officer.locator('input[name="displayName"]').fill("Neema Invitee");
   await clickButton(officer, /^Invite$/);

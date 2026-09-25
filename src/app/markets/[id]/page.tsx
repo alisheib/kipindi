@@ -187,6 +187,11 @@ export default async function MarketDetail({
    * ⭐ A code is now minted only for an account the programme belongs to; everyone else
    * shares the plain link they always believed they were sharing. Same fix in
    * `positions/page.tsx`, which had the identical line.
+   * ⚠️ 2026-09-25 — THE PROGRAMME RETURNED, UNPAID. `invite` is ACTIVE, so every player in good
+   * standing now gets their code on this link BY DESIGN, and a friend who signs up through it is bound
+   * and counted (`docs/PLAYER-INVITE-UNPAID.md` §2). "Paying nothing" still holds only because
+   * `inviteRewards` is WITHDRAWN — flip it and every bind already written becomes payable on the
+   * recruit's next event (§12).
    */
   // ⭐ Standing, not role: a deactivated agent's code leaves the share link in the same instant
   // it leaves the bind (`inviteViewerFor` reads the same predicate the bind gate does).

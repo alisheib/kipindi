@@ -55,8 +55,9 @@ export async function AgentDashboard({
 
   /**
    * ⭐ PLAYER QUERY, TASK 4.11 — THE RECRUIT BOOK GETS ITS BAR, AND IT IS THIS COMPONENT'S LIST
-   * rather than the player promo body's, because the player body cannot be reached by a live
-   * viewer at all (see `lib/affiliate/recruits.ts` for the three lines that prove it).
+   * rather than the player body's: the agent's book is the long, money-bearing list. The player body
+   * (live for every player in good standing since 2026-09-25) lists only that player's own friends,
+   * capped, with nothing to filter by — see `lib/affiliate/recruits.ts`.
    *
    * 🔴 THE BOOK WAS UNBOUNDED, UNSORTED, UNPAGED AND UNFILTERED. `db.user.listByRecruiter` has no
    * `take`, so an agent with three hundred recruits rendered three hundred rows — and the DAL
