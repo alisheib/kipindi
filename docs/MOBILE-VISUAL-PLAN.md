@@ -31,8 +31,89 @@
 4. Close the session by rewriting this §0 block, ticking §1, adding a §2 entry, and updating the board row in `NEXT-PLAN.md`, all in the closing commit.
 
 ```
-▶ SESSION CLOSED 2026-09-25 (S19g) — this block replaces the previous one
-  **11 of 42 units closed · 84 defects filed (D84 is new) · no unit closed this session.**
+▶ SESSION CLOSED 2026-09-25 (S19h) — this block replaces the previous one
+  **11 of 42 units closed · 90 defects filed (D85–D90 are new) · U37's last code item shipped.**
+  ⛔ U37 is 🔵 NOT ✅: all four of its defects are live and GREEN locally, and the row turns ✅ only in
+  the commit that records the PRODUCTION numbers. That re-measure is the next act, not this one.
+  Shipped, guarded and LIVE this session: **D46 · D85 · D86 · D87 · D88 · D89** (`eb4acd4a`).
+  `qa:detail-order-hints` now runs **five** sections and is GREEN over 9 cells on production;
+  `test:time-axis` is new (28 assertions, its own in-process RED control).
+
+  ⭐ **THE BIGGEST FINDING IS NOT A DEFECT, IT IS A HOLE IN THE GATES.** D85 and D86 were 24px and
+  22px under Law 9's floor, on the page U37 had just finished, and **not one check in this
+  repository could see either**. `tap-target.test.mts:344` skips any interactive tag that declares
+  no height — *"declares nothing — the rendered half's job"* — an honest deferral to a rendered
+  gate whose population never included the comment thread; `qa:tap-truth`'s surfaces do not cover
+  it; and §4 of this very driver scopes itself to three known triggers, so it answers a confident
+  zero for every other control on the page. ⛔ So the new §5's population is **THE PAGE**, not a
+  list. A list is maintained by the same people who forget.
+
+  🔴 **AND §5 CRIED WOLF TWICE BEFORE IT WAS HONEST — THREE INSTRUMENTS FOR ONE QUESTION.**
+   1. Judging `getBoundingClientRect` convicted the market card's Details and share controls at
+      13×17 and 64×17 in all nine cells. Not defects: **D28 gave each a 40px `::after`**, which is
+      this project's sanctioned pattern, and §6 records that the card footer's gap and padding
+      exist to hold it. The reach is real; the element's own rect cannot see it.
+   2. Probing a 40px square by `elementFromPoint` convicted the same two again — because they are
+      **neighbours ~20px apart**, so a square centred on one must overlap the other. Two adjacent
+      controls cannot each own a clear 40px square, and Law 9 does not ask them to.
+   3. The honest instrument is the **hit area: the box UNION its pseudo-elements**, read the same
+      way D28 accounted for it. It credits the `::after` pattern, no neighbour can make it fail,
+      and it is what finally surfaced D88 and D89.
+  ⭐ A gate that convicts a closed, shipped fix is worse than no gate: it teaches people to ignore
+  it. Every exemption §5 grants is now PRINTED, because an exemption nobody reads is how a gate
+  stops policing the thing it was written for.
+
+  ⭐ **D89 IS THE ONE TO REMEMBER: A FLOOR BOUGHT FROM TEXT WIDTH HOLDS ONLY IN THE LANGUAGE IT WAS
+  MEASURED IN.** The card's Details control has its 40px height engineered to the pixel (9 + 17 +
+  14) and its WIDTH left to the translation, because the `::after` is `left:0; right:0`. Measured:
+  **63.9 wide in Swahili, 56.4 in English, 38 in Chinese** — under the floor, in every width, since
+  D28 closed it. ⛔ This plan's §A5 lens watches Swahili running 35–40% LONGER, which is the SAFE
+  direction; it is SHORT text that breaks a width-driven target, and Chinese is the short case here.
+  Re-measure every width-derived target in zh, not just sw.
+
+  ⛔ **D46'S FIX NEARLY BECAME A WORSE DEFECT THAN D46.** Filling the axis with whitespace is
+  correct, but `lightweight-charts` refuses to draw below `minBarSpacing`, default **0.5px**, and
+  the plot is **190px at a 320 viewport — measured, against the 210 first estimated**. That is a
+  ceiling of 380 slots; a 2,000-slot series would have clamped and shown the player **about a tenth
+  of their market's history, looking entirely normal**. The budget and the floor are now stated
+  together in one file and `test:time-axis` §7 asserts the PAIR, so neither can be raised alone.
+
+  🔴 **TWO RED CONTROLS BROKE A SECTION THEY WERE NOT NAMED FOR, BOTH BY DOM SURGERY.** RED_ORDER
+  moved the aside with `content.after(aside)` and RED_HEAD removed the heading node — faithful to
+  the pre-fix markup, and both made §4 report `trigger is 0x0` in some cells, because **this page
+  re-renders on a timer** (the countdown and the poller) and React reconciles against a tree the
+  harness has cut. The harness refused to certify either, which is the "each control breaks its OWN
+  section" rule earning its keep for the second session running. Both are now **CSS-only and
+  attribute-only**: RED_ORDER inverts the visual `order` (which is exactly the property §1 asserts)
+  and RED_HEAD unwires `aria-labelledby` and the heading's id. ⛔ **Never mutate the DOM of a page
+  that re-renders**, and note that a `0×0` box is now reported as an INSTRUMENT FAILURE rather than
+  a tap-floor finding — a node that is not laid out has not been measured.
+
+  ⭐ **U35'S LAST STEP IS NO LONGER BLOCKED, AND THE MECHANISM IS PROVEN END TO END.**
+  `qa:updown-history-strip` is written and committed. On 2026-09-25 it placed **12 bets that each
+  moved the wallet** and watched `updown-handover` settle rounds with real UP/DOWN outcomes. It has
+  not yet produced **13 settled rounds in one clean run**, which is the floor for two pages
+  (`PLAYER_PER_PAGE` = 12), so D37's strip has still not been watched across a page turn. What is
+  left is mechanical, and three things are now known that were not:
+   · ⛔ **`updown-advance` CAN NEVER SETTLE A ROUND** — its own header says so, and the first
+     version of this drive was built on it: three bets landed, three rounds VOIDED, three refunds,
+     and a P&L strip reading `TZS 0 · 0 decided`. A green-looking run about nothing. Use
+     `updown-handover` (`arm` then `settle`); it reports the round it opened and closed BY ID.
+   · ⛔ **THE LEAD IS ARITHMETIC.** Betting stops at `close − resultPhaseMinutes`, which is 60s for
+     a 5-minute chain and **180s for a 15-minute one**. A `leadSeconds` at or under 180 arms every
+     15-minute round ALREADY LOCKED and the round page renders no commit button at all. Use 200+.
+   · ⛔ **`/auth/demo` RESETS THE DEMO PLAYER'S BALANCE**, so fund AFTER signing in — and never
+     above the compaction threshold: `seed-wallet` answered `balance 5,100,000` and the page then
+     read **`TZS 2`**, because a naive `TZS ([\d,]+)` read of "TZS 2.1M" returns 2. The drive now
+     REFUSES a compacted figure instead of parsing one.
+
+  ⚠️ **AND THE DEV SERVER DIED MID-SESSION, WHICH IS WORTH KNOWING BEFORE IT COSTS AN HOUR.** After
+  a `globals.css` edit, Turbopack's CSS worker crashed (*"failed to receive message / reading packet
+  length"*) and EVERY route began answering 500 — not a CSS syntax error, and `tsc` stayed clean
+  throughout. A restart fixed it. ⛔ A fresh `next dev` starts with an EMPTY in-memory store, so
+  re-seed (`POST /api/dev-test/seed-markets`, and `stress-bulk-bet` for probability history) before
+  believing any measurement. ⚠️ Editing source while a drive runs against the same server is what
+  broke the first full drive run — sequence them.
   Shipped, guarded and LIVE: **D40 and D41** (`ee55a509`), the two open halves of **U37** that
   can be done from here. `qa:detail-order-hints` is **GREEN over 9 cells on production**
   (320/360/412 × sw/en/zh, signed in as `mobile01` with a side picked) after **171 failures**
@@ -156,7 +237,7 @@
    · **`results/page.tsx:481`** has a `<MarketCard>` call site that rendered zero cards on
      production, so `test:outcome`'s rule 2 may be governing an unreachable site.
 
-▶ NEXT: **U35** (drive D37's strip, then close it), then **U37**, **U11**, **U27**, **U31** — money truth first.
+▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
 
   1. ⭐ **U35's LAST STEP — D37's strip, on a screen.** Everything else in U35 is live and
@@ -367,7 +448,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U34 Signed-in header cluster (D31) | General | ✅ | S19 | `252a9f55` · `70c8bcaa` · `f438bc41` | eye **32→40px wide** (40×44 at 320/360/412, floor 40); accessible name "Hide password" → **"Ficha salio"**; the hidden-balance mask overflowed its box by **27.2px at TZS 0** → the box is now the MAX of both states and toggling moves **nothing** (header and overflow unchanged at all three widths) | yes — `red:tap-rung` **2/2**, and it was **1/2 until 2026-09-25**: the CashEye anchor still described the pre-D78 markup, so it could not inject and had been proving nothing | 2026-09-25 · production, signed in as mobile01 in SW. ⚠️ The delta flash is `absolute` in source but UNOBSERVED — it paints only on a balance CHANGE and this account is unfunded |
 | U35 Up & Down truth and fit (D36 · D37 · D45 · D52) | General | ⬜ | S19 | | | | board, round page, history |
 | U36 /live carousel, search and wall (D38 · D47 · D50) | General | ⬜ | S20 | | | | search survives a miss |
-| U37 Detail page copy, order and hints (D39 · D40 · D41 · D46) | General | 🔵 D39 + D40 + D41 live; D46 not startable here | S20 | `22fb75a9` · `ee55a509` | **D40** reading order DOM [0,1,2] vs visual [1,0,2] at **9 of 9 cells → [0,1,2]/[0,1,2]**, and the bet panel went from **no name and no heading at all** to an `<h2>` announced FIRST (it had been read under "Kigezo cha utatuzi"). **D41** the commission hint **1392.8px on one line in a 320 viewport, 23% readable → 100%**, wrapped, `text-transform: none`, 13px; trigger **14×10 → 40×40** with `elementFromPoint` reach at all four edges — **at a layout cost of 0px** | yes (`qa:detail-order-hints`: 171 failures against the unfixed production tree, then RED_ORDER 18 / RED_HEAD 18 / RED_FIT 53 / RED_TAP 54, each breaking its OWN section only; a green RED run exits 2) | ⛔ **NO LIVE DATE, DELIBERATELY — A DATE HERE WOULD READ AS ✅.** Both shipped defects ARE verified on production (`qa:detail-order-hints` GREEN over 9 cells, dates in §2 and in each cell). ⛔ **NOT CLOSED: D46 remains**, and §0 lists it as not startable on this machine — it needs an owner ruling (fill the gaps so time runs linearly, or drop the dates for a per-prediction axis), not code. The low critics-panel item (the third stat tile 8px shorter than the pair above it) is also untouched |
+| U37 Detail page copy, order and hints (D39 · D40 · D41 · D46) | General | 🔵 all four live; awaiting the production re-measure | S20 | `22fb75a9` · `ee55a509` · `eb4acd4a` | **D40** reading order DOM [0,1,2] vs visual [1,0,2] at **9 of 9 cells → [0,1,2]/[0,1,2]**, and the bet panel went from **no name and no heading at all** to an `<h2>` announced FIRST (it had been read under "Kigezo cha utatuzi"). **D41** the commission hint **1392.8px on one line in a 320 viewport, 23% readable → 100%**, wrapped, `text-transform: none`, 13px; trigger **14×10 → 40×40** with `elementFromPoint` reach at all four edges — **at a layout cost of 0px** | yes (`qa:detail-order-hints`: 171 failures against the unfixed production tree, then RED_ORDER 18 / RED_HEAD 18 / RED_FIT 53 / RED_TAP 54, each breaking its OWN section only; a green RED run exits 2) | ⛔ **NO LIVE DATE, DELIBERATELY — A DATE HERE WOULD READ AS ✅.** Both shipped defects ARE verified on production (`qa:detail-order-hints` GREEN over 9 cells, dates in §2 and in each cell). ⛔ **NOT CLOSED: D46 remains**, and §0 lists it as not startable on this machine — it needs an owner ruling (fill the gaps so time runs linearly, or drop the dates for a per-prediction axis), not code. The low critics-panel item (the third stat tile 8px shorter than the pair above it) is also untouched |
 | U38 One money grammar and number rules | General | ⬜ | S21 | | | | formats, signs, nowrap, tabular |
 | U39 Close the type ladder and icon set | General | ⬜ | S21 | | | | off-ladder literals, glyph sizes |
 | U40 Player copy and terminology (EN/SW/ZH) | General | ⬜ | S22 | | | | needs a native reader |
@@ -421,7 +502,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D43 | ⬜ | U10 |
 | D44 | ⬜ | U10 |
 | D45 | 🔵 shipped `c6ebbedf` 2026-09-24 — all FOUR wrappers onto `max-w-board`/`max-w-reading` + the house `px-3 lg:px-6`. ⭐ **Verified on production (`4b30a069`): content edge 16px on /updown, /updown/history AND /markets at 320/360/412** — measured as a DELTA against /markets in the same run, never against a remembered number. The tick waits on U35 (D37 on-screen) | U35 |
-| D46 | 🔵 shipped `HASH` 2026-09-25 — the axis is a TIME axis: the library's own whitespace fills the gaps, so a 2.6-day interval stops drawing the same width as a 95-second one | U37 |
+| D46 | 🔵 shipped `eb4acd4a` 2026-09-25 — the axis is a TIME axis: the library's own whitespace fills the gaps, so a 2.6-day interval stops drawing the same width as a 95-second one | U37 |
 | D47 | ⬜ | U36 |
 | D48 | ⬜ | U19 |
 | D49 | ✅ by design `ea84e4a9` 2026-09-23 (live) — §4 decision 11: the band stays where real history exists, trimmed 28 → 20 in Compact; never removed, no reserved space | U3 |
@@ -460,11 +541,11 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D82 | ⚪ examined 2026-09-24 and DECLINED — 180px is below WCAG's reflow width AND below the smallest supported phone; the proposed remedy was TESTED and does not work | U24 |
 | D83 | 🔵 shipped early `4dd78218` 2026-09-24 — signed-in notice bar, 36px at 360 and FINE at 320 | U27 |
 | D84 | ⬜ FILED 2026-09-25, not fixed — `/leaderboard` still carries D41's defect through the same `Tooltip` atom | U19 |
-| D85 | 🔵 shipped `HASH` 2026-09-25 — comment Report/Delete were ~15.8px tall and NO gate could see them | U37 |
-| D86 | 🔵 shipped `HASH` 2026-09-25 — the header Source link, ~55×18 in a row of 40×40 controls | U37 |
-| D87 | 🔵 shipped `HASH` 2026-09-25 — the probability chart had no heading, so D40's repaired outline still had a hole | U37 |
-| D88 | 🔵 shipped `HASH` 2026-09-25 — the criterion's source URL, a standalone link at 221×33 | U37 |
-| D89 | 🔵 shipped `HASH` 2026-09-25 — the card's Details control is 38px wide in CHINESE only; D28 measured it in one language | U3 |
+| D85 | 🔵 shipped `eb4acd4a` 2026-09-25 — comment Report/Delete were ~15.8px tall and NO gate could see them | U37 |
+| D86 | 🔵 shipped `eb4acd4a` 2026-09-25 — the header Source link, ~55×18 in a row of 40×40 controls | U37 |
+| D87 | 🔵 shipped `eb4acd4a` 2026-09-25 — the probability chart had no heading, so D40's repaired outline still had a hole | U37 |
+| D88 | 🔵 shipped `eb4acd4a` 2026-09-25 — the criterion's source URL, a standalone link at 221×33 | U37 |
+| D89 | 🔵 shipped `eb4acd4a` 2026-09-25 — the card's Details control is 38px wide in CHINESE only; D28 measured it in one language | U3 |
 | D90 | ⬜ FILED 2026-09-25, not fixed — the detail page's third KPI tile is ~7px shorter than the pair above it; needs a type-ladder rung or an owner ruling | U39 |
 
 | Seven-lens re-score (§13), done at the Seal from measurements | Responsiveness | UI/UX | Graphic | Video motion | Animation | Artist | Compatibility |
@@ -1314,7 +1395,7 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D43 | The leaderboard list is ranked by ROI and no row shows ROI: the podium prints +26.8% / +13.2% / −3.9%, then rows 2–6 drop the number they are sorted by and leave 105–142px empty at the right (critics panel) | `leaderboard/page.tsx:460` (list row) | U10 |
 | D44 | The tier word "Fedha" (silver) is printed in the money gold, and podium rings #2 and #3 are the same pale blue — while the tier chips on the same screen already own real silver and bronze inks (critics panel, sampled) | `leaderboard/page.tsx:320` (`accent: "gold"`), podium `:546` | U10 |
 | D45 | Up & Down's page gutter is 20px; every other surface, and Up & Down's own footer, sits on 16. The wrapper is `px-4` — which reads like 16 and is **20 on this project's scale** (critics panel, measured on 8 surfaces). 🔵 **FIXED AND LIVE `c6ebbedf`, verified on production `4b30a069`: 16px on /updown, /updown/history and /markets alike at 320/360/412.** ⛔ **THE SCOPE WAS FOUR WRAPPERS, NOT TWO** — this cell named ~~`updown/page.tsx:68,86`~~ (now :73,91) and missed `updown/loading.tsx` and both history files. ⭐ The guard already existed: `measure-system.test.mts` carried these four on an explicit exemption ratchet, so the fix was the LIST SHRINKING — and that also put both routes inside its page/loading tier-parity check for the first time, since a hand-typed pixel width matches no tier. ⛔ But that check matches `max-w-[NNNpx]` only, so it could never have caught the gutter alone; a second assertion now does, proven RED by reverting `px-3 lg:px-6` → `px-4` with the token width left in place | `updown/page.tsx:73,91`, `updown/loading.tsx`, `updown/history/page.tsx`, `history/loading.tsx` | U35 |
-| D46 | The detail probability chart spaces date ticks by data point: a two-day interval and a one-day interval are both 153px, so the slope misstates the rate of change (critics panel, measured). 🔵 **FIXED AND LIVE `HASH`.** ⛔ **THE CITATION WAS WRONG — AGAIN.** ~~`charts/chart-toggle.tsx`~~ is a collapsible wrapper with no axis and no library import; the renderer is **`charts/market-curve.tsx`**, and the deciding line was its `s.setData(…)` at :150. But the cell's ACCUSATION was right: `lightweight-charts` 5.2.1 has an ORDINAL time scale — one slot per item, multiplied by a single uniform `barSpacing` — which the library's own typings confirm, and which `terminal-chart.tsx` already states in its own words. ⭐ **MEASURED ON LIVE DATA, WORSE THAN FILED:** market `mkt_07204d65ca88106b160c` carries 11 readings over 112.4h with gaps from **95s to 2.60 days — a 2,362:1 range, every one drawn at the same width**, and the axis prints 17/18/20/21 Sep at equal spacing while 19 Sep does not exist on it at all. ⭐ **THE REMEDY IS THE LIBRARY'S OWN AND INVENTS NOTHING:** `timeGridFill` (`chart-series.ts`) reserves the missing width with **whitespace items** — `{ time }` with no value — which is what a gap IS, and which this repo already uses in `terminal-chart.tsx` "so an outage keeps its width". ⛔ **NEVER INTERPOLATED PROBABILITIES**: a drawn value between two bets is a reading nobody took, and this component's own rule is "Real data or nothing (A-5)". ⚠️ Order is load-bearing — fill, THEN `ascUnique`, whose tie rule keeps a real price over a whitespace marker; reversed, a gap marker could erase a price. ⛔ **AND THE FIX NEARLY BECAME A WORSE DEFECT.** The library refuses to draw below `minBarSpacing`, default **0.5px**, and the plot is **190px at a 320 viewport (measured, not the 210 first estimated)** — a ceiling of 380 slots. A 2,000-slot series would have clamped and shown the player **roughly a tenth of their market's history, looking entirely normal**. `minBarSpacing` is now 0.05 and `test:time-axis` §7 asserts the PAIR, so neither number can be raised alone | `charts/market-curve.tsx:150`, `charts/chart-series.ts` (`timeGridFill`) | U37 |
+| D46 | The detail probability chart spaces date ticks by data point: a two-day interval and a one-day interval are both 153px, so the slope misstates the rate of change (critics panel, measured). 🔵 **FIXED AND LIVE `eb4acd4a`.** ⛔ **THE CITATION WAS WRONG — AGAIN.** ~~`charts/chart-toggle.tsx`~~ is a collapsible wrapper with no axis and no library import; the renderer is **`charts/market-curve.tsx`**, and the deciding line was its `s.setData(…)` at :150. But the cell's ACCUSATION was right: `lightweight-charts` 5.2.1 has an ORDINAL time scale — one slot per item, multiplied by a single uniform `barSpacing` — which the library's own typings confirm, and which `terminal-chart.tsx` already states in its own words. ⭐ **MEASURED ON LIVE DATA, WORSE THAN FILED:** market `mkt_07204d65ca88106b160c` carries 11 readings over 112.4h with gaps from **95s to 2.60 days — a 2,362:1 range, every one drawn at the same width**, and the axis prints 17/18/20/21 Sep at equal spacing while 19 Sep does not exist on it at all. ⭐ **THE REMEDY IS THE LIBRARY'S OWN AND INVENTS NOTHING:** `timeGridFill` (`chart-series.ts`) reserves the missing width with **whitespace items** — `{ time }` with no value — which is what a gap IS, and which this repo already uses in `terminal-chart.tsx` "so an outage keeps its width". ⛔ **NEVER INTERPOLATED PROBABILITIES**: a drawn value between two bets is a reading nobody took, and this component's own rule is "Real data or nothing (A-5)". ⚠️ Order is load-bearing — fill, THEN `ascUnique`, whose tie rule keeps a real price over a whitespace marker; reversed, a gap marker could erase a price. ⛔ **AND THE FIX NEARLY BECAME A WORSE DEFECT.** The library refuses to draw below `minBarSpacing`, default **0.5px**, and the plot is **190px at a 320 viewport (measured, not the 210 first estimated)** — a ceiling of 380 slots. A 2,000-slot series would have clamped and shown the player **roughly a tenth of their market's history, looking entirely normal**. `minBarSpacing` is now 0.05 and `test:time-axis` §7 asserts the PAIR, so neither number can be raised alone | `charts/market-curve.tsx:150`, `charts/chart-series.ts` (`timeGridFill`) | U37 |
 | D47 | The /live hero truncates its own section label at 360 SW to "LILILO NA SHAKA…" — a relative clause whose head is exactly the part cut off, so the section never names itself (critics panel) | `mostContested` (`i18n-dict.ts:3254`) in the /live hero | U36 |
 | D48 | The sign-in form sets "Umesahau nenosiri?" as its dimmest label, dimmer than the static hint beside it and with no link ink, and carries the sign-up rules: the "Angalau herufi 8." hint, `minLength={8}` and an eight-dot placeholder that reads as a filled password (critics panel, code-confirmed) | `auth/login/page.tsx:288-296,310` | U19 |
 | D49 | A flat sparkline band — about 43px at ~1.06:1 against the card — renders on some cards and not others, so one list holds two card heights: /results 312 vs 278, /markets 354 vs 320 (critics panel, measured) | `market-card.tsx:390` (`MicroSpark … height={28} … area stretch`) | U3 |
@@ -1487,7 +1568,17 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - ⛔ **Source order is load-bearing.** `test:card-share` reads `.mcardp-share` / `.mcardp-details` by first match in the file; `test:tap-target` §6.1 matches a column-0
   `.mcardp-info {`; `test:betting-ink` reads the first `.mcardp-meta .live`. So the Compact block goes **after the last card rule (≈ `globals.css:5115`)**,
   indented. It never re-declares `.mcardp-info`'s box and never repeats the `tap-rung.anchors.mjs` declaration text.
-- Existing duplicates: `.mcardp-spark` (`:3923`/`:3938`), `.mcardp-traders` (`:3924`/`:3928`).
+- Existing duplicates: `.mcardp-spark` (`:3923`/`:3938`), `.mcardp-traders` (`:3924`/`:3928`).
+- 🔴 **D89 · `.mcardp-details` IS 38px WIDE IN CHINESE, AND D28 CLOSED IT AFTER MEASURING ONE LANGUAGE.**
+  Its 40px reach comes from an absolutely-positioned `::after` with `left:0; right:0`, so the HEIGHT was
+  engineered to the pixel (9 + 17 + 14) and the WIDTH was left to the translation. Measured 2026-09-25 on
+  the detail page's similar-markets rail: **63.9×40.3 sw ("Maelezo") · 56.4×40.3 en ("Details") ·
+  38×40.3 zh ("详情")** — two pixels under the floor, at every width, since the day it was closed.
+  ⭐ The lens was pointing the wrong way: §A5 watches Swahili running 35–40% LONGER, and it is SHORT text
+  that breaks a width-driven target. Fixed with `min-width: var(--tap-min)` on the pseudo-element, which
+  grows toward the card's own right padding — away from the share trigger on its left, the neighbour whose
+  clicks this same overlay swallowed once before. ⚠️ Found on the detail page's rail, so re-measure the
+  same control in zh on `/markets`, `/live`, `/watchlist` and the landing.
 - **D28 — the share control is under the tap floor on both axes (25–26 × 36–37px) on every card in every state.** Its `::after` hit box
   (`globals.css:5106`) grows to ≥ 40 × 40 centred on the glyph, and the gap to "Details" stays ≥ 8px so neither control steals the other's edge.
   Growing a `::after` box does not move the glyph, so the compact geometry above is unaffected — and the declaration text `tap-rung.anchors.mjs`
@@ -2335,6 +2426,27 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
   interval). The probability chart spaces points by index — the chart library's native behaviour — under calendar labels, so the slope
   misstates how fast the price moved. Either feed empty points for the missing intervals so time runs linearly, or drop the dates for an
   honest per-prediction axis. Guard: tick spacing is proportional to elapsed time on a fixture with uneven gaps. RED: remove the fill.
+- 🔴 **D85 · the comment `Report` and `Delete` buttons were ~15.8px tall** — an 11px glyph beside 10.5px
+  mono, in a box whose only height came from the unitless 1.5 body line-height: 24px under Law 9. ⛔ The
+  BLINDNESS is the finding — `tap-target.test.mts` skips any interactive tag that declares no height
+  ("declares nothing — the rendered half's job") and no rendered gate's population contained the comment
+  thread. Fixed with `min-h-[var(--tap-min)]` plus the §L6 negative-margin absorber, so the row does not
+  grow; the hole is closed by §5 of `qa:detail-order-hints`, whose population is THE PAGE, not a list.
+- 🔴 **D86 · the header `Source` link was ~55×18 in a row with two 40×40 controls.** Same remedy. ⛔ It is
+  NOT the criterion's inline URL (that is D88): §5 tells the two apart by rule — a link is exempt only
+  when the paragraph it sits in says more than the link does.
+- 🟠 **D87 · the probability chart had no heading**, so the page's signature visualisation was absent from
+  the outline D40 had just repaired — and §2 could not see it, because a heading-LEVEL check cannot see a
+  MISSING heading. The toggle's `<span>` became an `<h2>` with an id, reusing `market.probOverTime` (the
+  words already on the button), and the section carries `aria-labelledby`. Nothing moved: preflight resets
+  h1–h6 size, weight and margin to inherit.
+- 🟠 **D88 · the resolution criterion's source URL is a standalone link at 221×33.** Fixed with the floor
+  plus a 4px absorber. ⚠️ **AN OPEN RULING FOR ALI:** §A2 states the floor with two written exemptions and
+  says nothing about a link inside a sentence. Either it gains an inline-link exemption, or every
+  paragraph link in the product becomes a defect; §5 exempts them by a stated rule meanwhile.
+- ⚠️ **D90 (the third stat tile) LEFT THIS UNIT** — reassigned to U39, because the only two honest remedies
+  are a 13px/weight-400 rung in `ui/stat.tsx` or an owner ruling on 13.5px/bold, and both are type-ladder
+  work. The original bullet is kept below for the measurement it carries.
 - (low, critics panel) The detail page's third stat tile (INAISHA, the end date) is a lone full-width box about 8px shorter than the pair above
   it, so the three tiles read as two sizes of one object. Give the three one height, or make the date a line rather than a tile.
 
@@ -2356,7 +2468,16 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
 **U39 · [General] Close the type ladder and the icon set**
 - Remove the off-ladder literals the inspection counted (9, 9.5 mixed-case, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5 …) by moving each call site onto a rung;
   cap the sizes inside one card at three; put every control glyph on the 16/18/20/24 set.
-- `test:type-scale` gains a ratchet that may only shrink, and the icon set becomes a named contract.
+- `test:type-scale` gains a ratchet that may only shrink, and the icon set becomes a named contract.
+- 🟡 **D90 · INHERITED FROM U37, 2026-09-25 — the detail page's third KPI tile is ~7px shorter than the
+  pair above it**, so three tiles read as two sizes of one object. The mechanism is computable: the first
+  two are the kit `<Stat size="xl">` (value 18px, leading-tight) and the third is a local `KPI` whose mono
+  branch paints its value at 13px. The call site's own note already names the only two honest remedies, and
+  both are this unit's subject: **add a 13px/weight-400 rung to `ui/stat.tsx`**, or **an owner decision to
+  accept 13.5px/bold on a resolution timestamp**. ⛔ A third option (`auto-rows-fr` to equalise the boxes)
+  was mapped and rejected: it makes the phone strip ~7px taller on a live surface, and an adversarial check
+  found its guard would be blind at ≥640 — the driver loops phone widths only, so a missing `sm:` reset
+  would paint a dead ~91.5px row with all nine cells green.
 - Guard: the ratchet's count at 0 new off-ladder sizes; driver samples card and chrome type. RED: add one literal.
 - 📐 (critics panel) Icons with borrowed meanings: withdraw is an upload arrow, gambling harm is a pause glyph, and the scales stand for three
   different things across the rail, help and legal rows. The three /help contact rows use three plate materials and hues, one of them the YES
