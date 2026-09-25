@@ -88,8 +88,8 @@ async function seed(run: number): Promise<Fixtures> {
       evidence: "fixture", recordedBy: null, createdAt: when,
     }));
 
-  // A · a consenting player
-  await mk(p(1), { marketingOptIn: true });
+  // A · a consenting player — ⭐ deliberately given NO ResponsibleGambling row
+  const consentingId = await mk(p(1), { marketingOptIn: true });
   // B · a consenting player who is ALSO suppressed — the order case
   await mk(p(2), { marketingOptIn: true });
   await Promise.resolve(db.suppression.create({
@@ -117,6 +117,7 @@ async function seed(run: number): Promise<Fixtures> {
   return {
     consenting: p(1), suppressed: p(2), stranger: p(3), contactGiven: p(4), contactWithdrawn: p(5),
     serving: p(6), minimumServed: p(7), toggledOff: p(8), closed: p(9), overriddenPlayer: p(10),
+    consentingId,
   };
 }
 
@@ -164,6 +165,15 @@ async function runAssertions(gate: Gate, f: Fixtures, tag: string): Promise<void
   for (const phone of [f.consenting, f.suppressed, f.stranger, f.serving]) seen.add(reasonOf(await verdict(phone)));
   ok(p("13 · ACCEPT · four MUTUALLY EXCLUSIVE outcomes in one run — neither an always-open nor an always-closed gate can pass this"),
     seen.size === 4, `saw ${[...seen].sort().join(", ")}`);
+
+  // ── 🔴 ASKING THE QUESTION MUST NOT WRITE ────────────────────────────────────────────────
+  // `selfExclusionStanding` → `getRgSettings` ends in `db.responsible.upsert(fresh)` for any user
+  // with no row, so the obvious gate CREATES a ResponsibleGambling row per recipient. At §3c's
+  // 150,000-recipient audience that is 150,000 rows written by a decision not to message anyone.
+  // The consenting fixture is seeded with NO rg row, and the gate has already run on it above.
+  ok(p("14 · 🔴 the gate created NO ResponsibleGambling row — deciding must not write (150k recipients = 150k rows)"),
+    (await Promise.resolve(db.responsible.get(f.consentingId))) === null,
+    "a row here means the gate writes once per recipient");
 }
 
 /* ══ THE MODEL USED FOR PLANTING ════════════════════════════════════════════════════════════
@@ -174,6 +184,7 @@ type Defect = {
   swapOrder?: boolean;              // consent asked before suppression (OD11 broken)
   noBridge?: boolean;               // the `+` never added — every player becomes a stranger
   allowMinimumServed?: boolean;     // an elapsed self-exclusion re-permits marketing (D9)
+  writesRgRow?: boolean;            // the predicate is asked unguarded, so asking WRITES
   ledgerOverridesPlayer?: boolean;  // an imported row speaks over a player's own no (OD10)
 };
 
@@ -190,7 +201,8 @@ function gateWithDefect(d: Defect): Gate {
     const askConsent = async (): Promise<MarketingGateVerdict | null> => {
       const user = await Promise.resolve(db.user.findByPhone(d.noBridge ? identifier : `+${identifier}`));
       if (user) {
-        const rg = await selfExclusionStanding(user.id);
+        const hasRow = (await Promise.resolve(db.responsible.get(user.id))) !== null;
+        const rg = (d.writesRgRow || hasRow) ? await selfExclusionStanding(user.id) : ({ state: "none" } as const);
         const refuseRg = d.allowMinimumServed ? rg.state === "serving" : (rg.state === "serving" || rg.state === "minimum_served");
         if (refuseRg) return { ok: false, skipReason: "rg_self_excluded", detail: rg.state };
         if (!["ACTIVE", "PENDING_KYC"].includes(user.status)) return { ok: false, skipReason: "account_status", detail: user.status };
@@ -259,6 +271,11 @@ if (!PROVE_RED) {
       name: "an ELAPSED self-exclusion re-permits marketing (D9 — the isLockedOut lift, reintroduced)",
       defect: { allowMinimumServed: true },
       expect: "7 · ⭐ a 24-hour self-exclusion that ELAPSED A YEAR AGO is still refused (D9 — the period ending is not the person asking)",
+    },
+    {
+      name: "the RG predicate is asked unguarded, so ASKING WRITES a row per recipient (150k rows per campaign)",
+      defect: { writesRgRow: true },
+      expect: "14 · 🔴 the gate created NO ResponsibleGambling row — deciding must not write (150k recipients = 150k rows)",
     },
     {
       name: "an imported ledger row speaks over a player's own no (OD10 broken)",

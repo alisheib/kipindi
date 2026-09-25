@@ -87,7 +87,17 @@ export async function mayReceiveMarketingSms(msisdn: string): Promise<MarketingG
     // later. `minimum_served` is refused for exactly that reason: the period ending is not the
     // person asking to be marketed again. ⚠️ U10 adds cooling-off, harm markers and the
     // fresh-consent-after-restoration rule on top of this; it does not replace it.
-    const rg = await selfExclusionStanding(user.id);
+    // 🔴 THE ROW IS READ BEFORE THE PREDICATE IS ASKED, AND THAT IS NOT A MICRO-OPTIMISATION.
+    // `selfExclusionStanding` → `getRgSettings`, which ends in `await db.responsible.upsert(fresh)`
+    // (`responsible-gambling.ts:90`) for any user who has no row yet. So ASKING THE QUESTION
+    // WRITES. This gate runs once per recipient, and §3c's audience is 150,000 — a single
+    // campaign would have created up to 150,000 ResponsibleGambling rows on a live money
+    // platform as a side effect of deciding not to message people.
+    // ⛔ No row means no `selfExclusionUntil` has ever been set, which IS standing "none", so the
+    // early-out is exact rather than an approximation — and it is deliberately NOT a second copy
+    // of the predicate's logic. `test:marketing-consent` asserts the gate creates no row.
+    const hasRgRow = (await Promise.resolve(db.responsible.get(user.id))) !== null;
+    const rg = hasRgRow ? await selfExclusionStanding(user.id) : ({ state: "none" } as const);
     if (rg.state === "serving" || rg.state === "minimum_served") {
       return refuse("rg_self_excluded", `self-exclusion ${rg.state} (until ${rg.until})`);
     }
