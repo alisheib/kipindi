@@ -3171,3 +3171,33 @@ model Suppression {
   @@unique([channel, identifier, category])
   @@index([createdAt])
 }
+
+/// ⭐ ONE ROW PER MINTED OPT-OUT LINK (marketing U8, OD43). The token is the primary key, so
+/// uniqueness is the database's job rather than a convention.
+///
+/// 🔴 WHY THE ALPHABET IS NOT HEX, WITH THE ARITHMETIC WRITTEN OUT. OD43 pins the token at
+/// EIGHT characters and says it NEVER expires, so every collision is permanent. Eight hex
+/// characters is 16^8 = 4.3e9, and against §3c's 150,000-recipient campaign the birthday
+/// estimate n²/2N is about 2.6 EXPECTED COLLISIONS — near-certain, on the first campaign.
+/// The repo's ambiguity-free 32-character alphabet gives 32^8 = 1.1e12 and ~1% per campaign,
+/// which still compounds for ever — so the mint RETRIES on conflict rather than hoping.
+///
+/// ⛔ U42 MUST NOT MINT THESE WITH `createMany({ skipDuplicates: true })`. That emits
+/// `ON CONFLICT DO NOTHING` with no target, so a token collision would silently drop the whole
+/// recipient row: a person who is never messaged and never appears as a failure either.
+///
+/// ⚠️ This table exists because U8 ships at S4 and the recipient row does not exist until U35
+/// (S18). U42 writes into it at enqueue; nothing here assumes a campaign.
+model MarketingOptOutToken {
+  /// Eight characters from the ambiguity-free alphabet — no I, O, 0 or 1.
+  token      String            @id
+  channel    MessagingChannel
+  /// The ONE phone key, bare `255XXXXXXXXX`, same spelling as `Suppression.identifier`.
+  identifier String
+  category   MessagingCategory
+  createdAt  DateTime          @default(now())
+
+  /// A person can hold several links over several campaigns; every one of them keeps working.
+  @@index([identifier])
+  @@index([createdAt])
+}

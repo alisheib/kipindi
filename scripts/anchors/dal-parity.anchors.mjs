@@ -257,4 +257,50 @@ export const MUTATIONS = [
     to: `        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null,`,
     expect: `17.tiebreak.memory · BOTH memory readers break the tie on id, the same way`,
   },
+  /* ── §18 · the opt-out link (marketing U8) ──────────────────────────────────────────── */
+  {
+    // The identifier stops being carried: the token resolves to nothing, and the person
+    // holding that SMS can never leave. OD43's link never expires, so nor does the failure.
+    name: "prisma-dal.ts — toStoredMarketingOptOutToken stops carrying the identifier",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    identifier: t.identifier,`,
+    to: `    identifier: "",`,
+    expect: `18.read · toStoredMarketingOptOutToken maps "identifier" from the row`,
+  },
+  {
+    // The category never reaches Postgres, so the row cannot be matched to the suppression
+    // triple the gate asks about.
+    name: "prisma-dal.ts — marketingOptOutToken.create drops the category column",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `            category: row.category, createdAt: new Date(row.createdAt),`,
+    to: `            createdAt: new Date(row.createdAt),`,
+    expect: `18.create · marketingOptOutToken.create writes "category"`,
+  },
+  {
+    // ⛔ THE SILENT RE-POINT. An upsert quietly hands somebody else's live opt-out link to a
+    // different person — and the first person can then never leave.
+    name: "prisma-dal.ts — the token create becomes an upsert, silently re-pointing a live link",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        const created = await pc().marketingOptOutToken.create({`,
+    to: `        const created = await pc().marketingOptOutToken.upsert({`,
+    expect: `18.taken.prisma · the Prisma create turns its unique violation into null, and does not upsert`,
+  },
+  {
+    // The memory twin overwrites instead of refusing, so the two backends disagree about who
+    // a token belongs to — and every behavioural suite runs on the twin that is wrong.
+    name: "store.ts — the memory token create overwrites a token already held",
+    file: "src/lib/server/store.ts",
+    from: `      if (store.optOutTokens.has(row.token)) return null;`,
+    to: `      if (false) return null;`,
+    expect: `18.taken.memory · the memory create refuses a token already held, and does not overwrite`,
+  },
+  {
+    // ⛔ A delete on a link that OD43 says never expires.
+    name: "prisma-dal.ts — the token namespace grows a delete",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    find: async (token: string): Promise<StoredMarketingOptOutToken | null> => {`,
+    to: `    deleteMany: async (identifier: string): Promise<number> => 0,
+    find: async (token: string): Promise<StoredMarketingOptOutToken | null> => {`,
+    expect: `18.nodelete.prisma · the Prisma token namespace exposes NO delete`,
+  },
 ];

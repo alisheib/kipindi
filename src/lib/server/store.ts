@@ -428,6 +428,17 @@ export type StoredSuppression = {
   recordedBy: string | null;
   createdAt: string;
 };
+/** ⭐ ONE MINTED OPT-OUT LINK (U8, OD43). The token IS the key, so uniqueness is the database's
+ *  job. ⛔ Never expires — OD43 — which is exactly why a collision would be permanent and why
+ *  the mint retries rather than hoping. */
+export type StoredMarketingOptOutToken = {
+  token: string;
+  channel: MessagingChannel;
+  identifier: string;
+  category: MessagingCategory;
+  createdAt: string;
+};
+
 
 
 /**
@@ -1011,6 +1022,7 @@ declare global {
     smsMessages: Map<string, StoredSmsMessage>;
     messagingConsents: Map<string, StoredMessagingConsent>;
     suppressions: Map<string, StoredSuppression>;
+    optOutTokens: Map<string, StoredMarketingOptOutToken>;
   } | undefined;
 }
 
@@ -1042,6 +1054,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   smsMessages: new Map(),
   messagingConsents: new Map(),
   suppressions: new Map(),
+  optOutTokens: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -1067,6 +1080,7 @@ if (!store.inviteEntries)   store.inviteEntries = new Map();
 if (!store.smsMessages)     store.smsMessages = new Map();
 if (!store.messagingConsents) store.messagingConsents = new Map();
 if (!store.suppressions)    store.suppressions = new Map();
+if (!store.optOutTokens)    store.optOutTokens = new Map();
 
 const memoryDb = {
   // USER
@@ -2327,6 +2341,26 @@ const memoryDb = {
       Array.from(store.suppressions.values())
         .filter((r) => r.identifier === identifier)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
+  },
+  /* ═══ OPT-OUT TOKENS (marketing U8) ════════════════════════════════════════════════════
+   * ⛔ NO `delete`, IN EITHER TWIN. OD43 says the link never expires: a person who kept an
+   * SMS from a year ago must still be able to click out of it. Deleting the row is how that
+   * link starts answering "invalid token" to somebody trying to leave. */
+  marketingOptOutToken: {
+    /** ⭐ RETURNS null WHEN THE TOKEN IS ALREADY TAKEN, rather than throwing or overwriting —
+     *  the Prisma twin turns its unique violation into the same null, so the mint's retry loop
+     *  is one piece of code that behaves identically on both backends. ⛔ Overwriting would
+     *  silently re-point somebody else's live opt-out link at a different person. */
+    create: (row: StoredMarketingOptOutToken): StoredMarketingOptOutToken | null => {
+      if (store.optOutTokens.has(row.token)) return null;
+      store.optOutTokens.set(row.token, row);
+      return row;
+    },
+    find: (token: string): StoredMarketingOptOutToken | null => store.optOutTokens.get(token) ?? null,
+    listFor: (identifier: string): StoredMarketingOptOutToken[] =>
+      Array.from(store.optOutTokens.values())
+        .filter((r) => r.identifier === identifier)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.token.localeCompare(a.token)),
   },
 };
 

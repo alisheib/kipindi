@@ -1199,5 +1199,57 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     !/\{ createdAt: "desc" \}, \{ id: "desc" \}/.test('orderBy: { createdAt: "desc" },'));
 }
 
+/* ═══ §18 · MarketingOptOutToken — the opt-out link (marketing U8) ═════════════════════ */
+{
+  // ⭐ WHY A LOOKUP TABLE NEEDS THE SAME GUARD AS A MONEY ROW. This row is the ONLY thing
+  // standing between a person and the marketing they asked to stop: the token in their SMS
+  // resolves to an identifier through here. A field dropped from the Prisma create is a link
+  // that 404s for somebody trying to leave — and OD43 says the link never expires, so the
+  // failure is permanent and arrives months after the send that caused it.
+  const tKeys = storedKeys("StoredMarketingOptOutToken");
+  const tRead = region(dalSrc, "function toStoredMarketingOptOutToken(");
+  const tCreate = delegateMethod("marketingOptOutToken", "create");
+
+  ok("18.0 · the parser sees StoredMarketingOptOutToken's fields", tKeys.length >= 5, `saw ${tKeys.length}: ${tKeys.join(",")}`);
+  ok("18.0b · the read mapper region resolves", tRead.length > 80, `${tRead.length} chars`);
+  ok("18.0c · the create delegate resolves", tCreate.length > 100, `${tCreate.length} chars`);
+  for (const k of tKeys) {
+    ok(`18.read · toStoredMarketingOptOutToken maps "${k}" from the row`, readsFrom(tRead, k, "t"));
+    ok(`18.create · marketingOptOutToken.create writes "${k}"`, writesKey(tCreate, k) || mentions(tCreate, k));
+  }
+
+  const tPri = region(dalSrc, "\n  marketingOptOutToken: {");
+  const tMem = region(storeSrc, "\n  marketingOptOutToken: {");
+  // ⛔ OD43 · THE LINK NEVER EXPIRES, so there is no delete in either twin. A person who kept
+  // an SMS from a year ago must still be able to click out of it.
+  ok("18.nodelete.prisma · the Prisma token namespace exposes NO delete",
+    tPri.length > 200 && !/\bdelete\w*\s*:/.test(tPri), `${tPri.length} chars`);
+  ok("18.nodelete.memory · the memory token namespace exposes NO delete",
+    tMem.length > 200 && !/\bdelete\w*\s*:/.test(tMem), `${tMem.length} chars`);
+
+  // ⭐ A TAKEN TOKEN COMES BACK AS null IN BOTH TWINS — not a throw, and above all not an
+  // overwrite. `upsert` here would silently re-point somebody else's live opt-out link at a
+  // different person, and they would never be able to leave.
+  const tCreateMem = region(tMem, "create: (");
+  ok("18.taken.prisma · the Prisma create turns its unique violation into null, and does not upsert",
+    /P2002/.test(tCreate) && /return null/.test(tCreate) && !mentions(tCreate, "upsert"), "P2002 → null");
+  ok("18.taken.memory · the memory create refuses a token already held, and does not overwrite",
+    /has\(row\.token\)/.test(tCreateMem) && /return null/.test(tCreateMem), `${tCreateMem.length} chars`);
+
+  const tMembers = (block: string): string[] =>
+    Array.from(block.matchAll(/^\s{4}(\w+)\s*:/gm)).map((m) => m[1]).sort();
+  ok("18.parity · both twins expose the same members",
+    tMembers(tPri).length >= 3 && tMembers(tPri).join(",") === tMembers(tMem).join(","),
+    `prisma=[${tMembers(tPri)}] memory=[${tMembers(tMem)}]`);
+
+  // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
+  ok("18.c1 · CONTROL · `identifier: null,` in a read mapper does NOT count as carrying it",
+    !readsFrom("    token: t.token,\n    identifier: null,", "identifier", "t"));
+  ok("18.c2 · CONTROL · an upsert IS detected, so a silent re-point cannot pass as a create",
+    mentions("const x = await pc().marketingOptOutToken.upsert({", "upsert"));
+  ok("18.c3 · CONTROL · a create that throws instead of returning null is reported",
+    !/return null/.test("      const created = await pc().marketingOptOutToken.create({ data });"));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

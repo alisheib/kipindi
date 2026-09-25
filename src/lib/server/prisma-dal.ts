@@ -63,7 +63,8 @@ import type {
   StoredAgentInvitation,
   AgentApplicationStatus,
   AgentDocType, StoredKycStageRow, NotificationRedactScope,
-  StoredMessagingConsent, StoredSuppression, MessagingKey } from "./store";
+  StoredMessagingConsent, StoredSuppression, MessagingKey,
+  StoredMarketingOptOutToken } from "./store";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -186,6 +187,20 @@ function toStoredSuppression(s: SuppressionRow): StoredSuppression {
     evidence: s.evidence,
     recordedBy: s.recordedBy,
     createdAt: iso(s.createdAt),
+  };
+}
+
+/** MarketingOptOutToken row → StoredMarketingOptOutToken (marketing U8). ⛔ No update, no delete. */
+type MarketingOptOutTokenRow = {
+  token: string; channel: string; identifier: string; category: string; createdAt: Date;
+};
+function toStoredMarketingOptOutToken(t: MarketingOptOutTokenRow): StoredMarketingOptOutToken {
+  return {
+    token: t.token,
+    channel: t.channel as StoredMarketingOptOutToken["channel"],
+    identifier: t.identifier,
+    category: t.category as StoredMarketingOptOutToken["category"],
+    createdAt: iso(t.createdAt),
   };
 }
 
@@ -3323,6 +3338,39 @@ export const prismaDb = {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       });
       return rows.map(toStoredSuppression);
+    },
+  },
+  /* ═══ OPT-OUT TOKENS (marketing U8) ══════════════════════════════════════════════════════
+   * ⛔ NO `delete` — OD43's link never expires. */
+  marketingOptOutToken: {
+    /** ⭐ A TAKEN TOKEN COMES BACK AS null, NOT AS A THROW AND NOT AS AN OVERWRITE. `upsert`
+     *  here would silently re-point a live opt-out link at a different person; letting P2002
+     *  escape would make every caller handle a Prisma error code. The memory twin returns the
+     *  same null, so the mint's retry loop is one piece of code on both backends. */
+    create: async (row: StoredMarketingOptOutToken): Promise<StoredMarketingOptOutToken | null> => {
+      try {
+        const created = await pc().marketingOptOutToken.create({
+          data: {
+            token: row.token, channel: row.channel, identifier: row.identifier,
+            category: row.category, createdAt: new Date(row.createdAt),
+          },
+        });
+        return toStoredMarketingOptOutToken(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;
+        throw err;
+      }
+    },
+    find: async (token: string): Promise<StoredMarketingOptOutToken | null> => {
+      const row = await pc().marketingOptOutToken.findUnique({ where: { token } });
+      return row ? toStoredMarketingOptOutToken(row) : null;
+    },
+    listFor: async (identifier: string): Promise<StoredMarketingOptOutToken[]> => {
+      const rows = await pc().marketingOptOutToken.findMany({
+        where: { identifier },
+        orderBy: [{ createdAt: "desc" }, { token: "desc" }],
+      });
+      return rows.map(toStoredMarketingOptOutToken);
     },
   },
 };
