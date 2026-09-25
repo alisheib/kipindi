@@ -266,7 +266,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U9 | guard | ✅ | S6 | 4dfea77e | there was NO send loop to put the gate in — nothing looped over recipients and U7's gate had no caller → `dispatchSlice`, the loop's innermost step: the gate asked per recipient immediately before the one send, a refusal `skipped` never `failed`, settled by key; and a two-slice contract in which an opt-out, a self-exclusion and a break between the slices never reach the wire — the gate hoisted to list-build time SENDS the opted-out number | `test:marketing-consent` | yes · `red:marketing-consent` (13/13 — 8 gate + 5 loop, each on its own assertion) | 2026-09-25 · live on `4dfea77e` (production served it at 21:38 UTC). ⚠️ **RE-SCOPED, stated rather than dressed up:** there is no production loop until U43, and `send` has no default until U35 gives the wire a purpose, so the behaviour is proven by EXECUTION (36 assertions, a real opt-out through `stopMarketing`, a real `selfExclude` and `coolOff` between slices, a wire answering in reverse). U43 joins the contract as a second driver (§9 U43). What production proves is that the changed module chain LOADS: `/s/<token>` imports optout-service → consent → rg, and at `4dfea77e` it renders the Swahili invalid-link refusal with `noindex` |
 | U10 | engine | ✅ | S6 | f1ad4417 | a player who took a one-hour break was refused for ever as `account_status`, a restored self-excluder for ever, harm markers were never asked, and U7's "deciding must not write" fix still REWROTE any RG row whose pending limit had come due → one read-only standing predicate: an exclusion lifts only on an officer restore + six calendar months + a consent after the restore, a break only on a consent after it ended, a harm marker refuses for its window and an unreadable check refuses | `test:rg-doors` · `test:marketing-consent` | yes · `red:rg-doors` (19/19 real-file mutations, 8 of them on `marketing/rg.ts` and the gate) · `red:marketing-consent` | 2026-09-25 · live on `12c37673` then `4dfea77e`. ⚠️ No HTTP surface until U42, so proven by EXECUTION (`test:rg-doors` §8, 37 assertions, both lifts proven to EXIST, a control proving the no-write fixture really exercises the write path) — not by a live drive. ⚠️ Harm markers are NOT standing (nothing persists a flag) — an owner item in §0, not a hidden gap. D10 stays ⬜: an owner ruling |
 | U11 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | 18+ |
-| U12 | docs | ⬜ | — | — | — | `test:privacy-notice` | — | D12 published promise |
+| U12 | docs | ⬜ | — | — | — | `test:rg-policy` | — | D12 published promise |
 | U13 | engine | ⬜ | — | — | — | `test:marketing-window` | — | quiet hours |
 | U14 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | frequency cap |
 | U15 | guard | ⬜ | — | — | — | `test:marketing-engine` | — | D15 one send path |
@@ -1267,14 +1267,34 @@ Account-linked: `dob` must yield ≥18 at send time. Contact-only: marketable so
 recorded an explicit 18+ attestation (U33). Unknown → `skipped` with `age_unknown`.
 **Guard:** `test:marketing-consent`. **RED:** treat a null `dob` as adult → the fixture must fail.
 **Accept:** three fixtures — adult, minor, unknown — each with its own outcome.
+⭐ **BUILT S7 (2026-09-26).** One age definition — `ageOnPlatformDate` (EAT calendar date, whole years), wrapped
+as `marketingAge` because `isOfAge` folds "unreadable" into "minor" and marketing needs a THIRD answer: under 18
+→ `age_minor`, missing or unreadable → `age_unknown`, asked straight after harm markers (§5.6). ⛔ A contact is
+`age_unknown` until U33 records an attestation — no field carries one today, and reading an 18+ out of `source`
+or free-text `evidence` would be inventing it, so the contact path is SHUT until U33 builds what it waits on.
+⚠️ That changed U8's suite: its gate-facing contact is no longer "marketable" before a stop, so labels 1 and 12
+now pin the property they always meant — a stop turns the gate's answer into `suppressed`, and a resume gives
+back EXACTLY the pre-stop answer (the lift-ignored red case still fails it). ⚠️ Registration writes `User.dob`
+while KYC writes `KycSubmission.dob`; the gate reads the ACCOUNT's (OD14's wording).
 
 **U12 · The published promise, reconciled** — `/legal/responsible-gambling` (D12, OQ6)
 Build what exists (U10 + U11 suppress self-excluded, cooling-off, harm-marked and under-18 recipients).
 Then either build an age band and a vulnerability-segment definition, or re-version §4 to say only what
 runs — Ali's call, recorded. ⛔ The engine does not go live while the page claims something it cannot do.
-**Guard:** `test:privacy-notice` (the whitelist of audience attributes is asserted inside it, so the
-notice and the audience builder are gated by one suite). **RED:** add a behavioural field to the audience
-whitelist → red. **Accept:** the page and the engine agree, and the guard can prove it.
+**Guard:** `test:rg-policy` (re-scoped at S7 — see below). **RED:** `red:rg-policy`.
+**Accept:** the page and the engine agree, and the guard can prove it.
+⭐ **BUILT AND RULED S7 (2026-09-26), on Ali's delegation of that day** — the full record is
+`docs/COMPLIANCE-DECISIONS.md` 2026-09-26. Precedents: "build it first, then write it here" (2026-09-14, third)
+and "a public promise the code refuses is worse than a shorter one it keeps" (2026-09-05). So: the cheap
+protective half is **BUILT** — "under 25 in a vulnerability segment" is DEFINED as under 25 with a
+self-exclusion or a break ever on record, and refused as `rg_under25_history` with no lift until 25 (⛔ it
+excludes, never selects: Privacy §6 says "we do not profile you for marketing"); §4 is **RE-VERSIONED**
+(v2026-09-26) to name exactly the exclusions the gate runs; and "no sign-up nudges in the late-night window" is
+**CUT** — no window exists in code, and U13 may write a promise back when it builds one.
+⚠️ **Why the guard moved.** The key named above, `test:privacy-notice`, reads only the PRIVACY page, and the
+"audience whitelist" it was to assert is U24's and does not exist. `test:rg-policy` pins this page's version, a
+hash of its binding English and a COMPLIANCE-DECISIONS heading (the page had none of the three), and maps
+every §4 promise BY ITS WORDS to a named control in code — a promise with no control is D12 exactly, and red.
 
 **U13 · The send window** — `src/lib/marketing/window.ts` (D13, OQ5)
 `08:00–20:00 EAT`, evaluated server-side in the loop against `Africa/Dar_es_Salaam`; both candidate

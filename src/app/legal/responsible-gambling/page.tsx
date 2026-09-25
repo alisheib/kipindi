@@ -21,11 +21,15 @@ const TITLE: Record<Locale, string> = {
  * one date takes a `.2` suffix, as Privacy does.
  * ⭐ 2026-09-14.3 — every limit (not only deposit limits) waits 24 hours to loosen, and the session limit survives a new
  * sign-in (COMPLIANCE-DECISIONS 2026-09-14, eighth).
+ * ⭐ 2026-09-26 — §4 says only what the code does (COMPLIANCE-DECISIONS 2026-09-26). The marketing promise names the
+ * exclusions the marketing gate actually runs, the under-25 promise is BUILT (a self-exclusion or a break ever on
+ * record), and "no sign-up nudges in the late-night window" is CUT — no such window exists in code. ⛔ Do not restore
+ * it until one does; `test:rg-policy` refuses a §4 bullet with no control behind it.
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-14.3 · Aligned with the UK Gambling Commission LCCP and CEN Workshop Agreement 16221.",
-  sw: "Toleo 2026-09-14.3 · Imeoanishwa na UK Gambling Commission LCCP na CEN Workshop Agreement 16221.",
-  zh: "版本 2026-09-14.3 · 符合 UK Gambling Commission LCCP 及 CEN Workshop Agreement 16221。",
+  en: "Version 2026-09-26 · Aligned with the UK Gambling Commission LCCP and CEN Workshop Agreement 16221.",
+  sw: "Toleo 2026-09-26 · Imeoanishwa na UK Gambling Commission LCCP na CEN Workshop Agreement 16221.",
+  zh: "版本 2026-09-26 · 符合 UK Gambling Commission LCCP 及 CEN Workshop Agreement 16221。",
 };
 
 /**
@@ -81,9 +85,9 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="4" title="Operator responsibilities">
         <ul className="list-disc pl-5 space-y-1">
-          <li>No marketing to self-excluded players or players under 25 in vulnerability segments</li>
+          <li>No marketing messages to a self-excluded player, to a player on a break until they opt in again after it ends, to a player showing a sign of harm (section 3), or to anyone under 18 or whose age we cannot confirm</li>
+          <li>No marketing messages, ever, to a player under 25 who has self-excluded or taken a break</li>
           <li>No bonus offers tied to deposit increases</li>
-          <li>No sign-up nudges in the late-night window</li>
           <li>Free helpline displayed on every page footer</li>
         </ul>
       </LegalSection>
@@ -136,9 +140,9 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="4" title="Wajibu wa mwendeshaji">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Hakuna matangazo kwa wachezaji waliojizuia au wachezaji chini ya umri wa miaka 25 walio katika makundi yenye uangalifu maalum</li>
+          <li>Hakuna matangazo kwa mchezaji aliyejizuia, kwa mchezaji aliye kwenye mapumziko hadi atakapokubali tena baada ya mapumziko kuisha, kwa mchezaji anayeonyesha dalili ya madhara (sehemu ya 3), wala kwa mtu yeyote aliye chini ya umri wa miaka 18 au ambaye umri wake hatuwezi kuuthibitisha</li>
+          <li>Kamwe hakuna matangazo kwa mchezaji aliye chini ya umri wa miaka 25 aliyewahi kujizuia au kuchukua mapumziko</li>
           <li>Hakuna ofa za bonasi zinazohusishwa na ongezeko la fedha zinazowekwa</li>
-          <li>Hakuna ushawishi wa kujisajili katika kipindi cha usiku wa manane</li>
           <li>Namba ya msaada ya bure inaonyeshwa kwenye sehemu ya chini ya kila ukurasa</li>
         </ul>
       </LegalSection>
@@ -186,9 +190,9 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="4" title="运营方责任">
         <ul className="list-disc pl-5 space-y-1">
-          <li>不向已自我排除的玩家，或处于脆弱群体细分中、年龄低于 25 岁的玩家进行营销</li>
+          <li>不向已自我排除的玩家、处于冷静期的玩家（直至其在冷静期结束后重新同意）、出现伤害迹象的玩家（见第 3 节），以及未满 18 岁或无法确认年龄的人发送营销信息</li>
+          <li>绝不向曾经自我排除或进入冷静期、且年龄低于 25 岁的玩家发送营销信息</li>
           <li>不提供与提高充值挂钩的奖金优惠</li>
-          <li>不在深夜时段进行注册诱导</li>
           <li>在每个页面的页脚显示免费求助热线</li>
         </ul>
       </LegalSection>
