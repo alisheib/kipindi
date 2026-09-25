@@ -61,6 +61,7 @@
  * Guard: `npm run test:blackball` · `npm run red:blackball`.
  */
 import { toMsisdn255 } from "@/lib/phone-normalize";
+import { encodingFor } from "@/lib/sms-compose";
 
 /** Their documented ceiling — "List of messages to be sent (maximum 50)". */
 export const BATCH_MAX = 50;
@@ -82,14 +83,18 @@ const DEFAULT_TIMEOUT_MS = 8_000;
 export type SmsCoding = "GSM7" | "UCS2";
 
 /**
- * GSM 03.38 — the basic character set plus the extension table (the extension characters cost
- * two septets each, but they ARE representable, so they do not force UCS2).
+ * ⭐ THE GSM 03.38 TABLE MOVED TO `@/lib/sms-compose` ON 2026-09-25 (marketing plan U3, D4).
+ *
+ * 🔴 IT USED TO LIVE HERE, AND HERE IS A SERVER MODULE. So the only table in the codebase that knew
+ * what a message costs could not be imported by a composer screen without dragging the server graph
+ * into a browser chunk — which is why there was no segment arithmetic anywhere, and why an officer
+ * typing a campaign could not be told what they were about to spend.
+ *
+ * ⛔ AND IT MUST NOT BE COPIED BACK. `smsCodingFor` decides what the GATEWAY is told; `sizeSms`
+ * decides what the OFFICER is quoted. Two tables would disagree silently — the officer is shown one
+ * segment and billed three — so `test:campaign-compose` §5 asserts the two give the same answer over
+ * a corpus containing both encodings, and its red control plants exactly that divergence.
  */
-const GSM7_CHARS = new Set(
-  "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?" +
-    "¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà" +
-    "\f^{}\\[~]|€",
-);
 
 /**
  * The coding a message needs. ⛔ CHOSEN FROM THE TEXT, NEVER ASSUMED.
@@ -104,8 +109,10 @@ const GSM7_CHARS = new Set(
  * more likely to bill as several SMS. That is a price of correctness, not a reason to guess.
  */
 export function smsCodingFor(text: string): SmsCoding {
-  for (const ch of text) if (!GSM7_CHARS.has(ch)) return "UCS2";
-  return "GSM7";
+  // ⛔ DELEGATED, NOT REIMPLEMENTED — see the note above the (now moved) table. `SmsCoding` and
+  // `SmsEncoding` are the same two strings; the local alias stays because it is the name the
+  // gateway's own `coding` field uses and the Swagger enum it was read off.
+  return encodingFor(text);
 }
 
 export type BlackballEnv = {

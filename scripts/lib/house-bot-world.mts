@@ -192,6 +192,21 @@ export async function loadWorld() {
     }
   }
 
+  /**
+   * Settle a position's STATUS directly — a fixture of STATE, the same declared category as `backdate`'s fixture
+   * of time. It stands in for a real resolution so a console projection can be tested against every outcome
+   * without driving settlement, and it is the ONLY way to reach a LOSS: a losing bet pays nothing and writes no
+   * transaction at all, which is precisely the case a reader must not infer from the money.
+   */
+  async function setPositionStatus(positionId: string, status: string): Promise<void> {
+    if (onPostgres) {
+      await prisma()!.$executeRawUnsafe(`UPDATE "Position" SET "status" = $1::"PositionStatus" WHERE "id" = $2`, status, positionId);
+    } else {
+      const p = await mdal.positionStore.get(positionId);
+      p.status = status;
+    }
+  }
+
   /** Move a position's placement instant into the past (a fixture of time; see the header). */
   async function backdate(positionId: string, byMs: number): Promise<void> {
     if (onPostgres) {
@@ -225,7 +240,7 @@ export async function loadWorld() {
 
   return {
     svc, db, mdal, dal, constants, prisma, onPostgres, uid, iso,
-    user, setUserFields, poll, limits, switchOn, switchOff, bot, setCaps, intent, place, backdate, backdateIntent, ageHouseMinute, bal, positionsOf, txnsFor, seededBonus,
+    user, setUserFields, poll, limits, switchOn, switchOff, bot, setCaps, intent, place, backdate, backdateIntent, setPositionStatus, ageHouseMinute, bal, positionsOf, txnsFor, seededBonus,
     OPEN_CAPS, OPEN_LIMITS,
   };
 }

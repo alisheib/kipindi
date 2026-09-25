@@ -86,6 +86,20 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/platform-timezone.ts",
     "lib/display-label.ts",
     "lib/status-tone.ts",
+    // ⭐ ADDED 2026-09-25. Both are imported by `phone-input.tsx`, which is `"use client"`, and both
+    // are also imported by server modules (`sms.ts`, `selcom.ts`, `wallet/withdraw/page.tsx`) — the
+    // exact double-life this ratchet exists to police. They were NOT in this list, so the guard had
+    // no opinion about them at all: a module can be client-reachable for months and this suite stay
+    // green because it only ever walks what is named here.
+    "lib/phone-normalize.ts",
+    "lib/tz-msisdn.ts",
+    // ⭐ The whole reason U3 exists: the GSM-7 table used to live in `lib/server/sms-blackball.ts`,
+    // where a composer screen could not reach it without pulling the server graph into the browser.
+    // It is pinned here from the commit that moved it, not from the commit that first imports it.
+    "lib/sms-compose.ts",
+    // The statutory footer a composer screen renders beside the body; it imports only app-url
+    // and sms-compose, both zero-import, and must stay that way.
+    "lib/marketing/footer.ts",
   ];
   const offenders = [];
   let checked = 0;
