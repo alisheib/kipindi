@@ -58,7 +58,18 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   §3b carries the vendor's measured behaviour. ⛔ Read both before U39, U46 and U47 — each was drafted
   around an absence that no longer holds.
 
-◐ HALF-DONE: nothing. **S1 IS CLOSED — U1 and U2 are both ✅ LIVE and re-measured on production.**
+◐ HALF-DONE — ⚠️ READ FIRST, ON ANY MACHINE: **U3's CODE IS ON main AND DEPLOYING as of this
+  commit**, and its §1 row still reads ⬜ because a commit cannot name its own SHA — the row is ticked
+  by the NEXT commit, the one carrying the live re-measure. A ⬜ row claims nothing, so the board
+  stays honest meanwhile. ⛔ The tracker refuses a 🔵 with a placeholder commit and refuses a ✅
+  defect whose unit is not ✅ — both were tried this session and both were caught.
+
+  WHAT LANDED FOR U3: `src/lib/sms-compose.ts` (the GSM-7 table moved out of the server module, both
+  encodings, PACKED segments, `planSms`) · `smsCodingFor` delegating to it · `test:campaign-compose`
+  + `red:campaign-compose` in the `predeploy` chain · `sms-compose.ts` added to
+  `test:client-graph-safe`'s pinned set. OUTSTANDING: the live re-measure and the §1 tick, then U4.
+
+  **S1 IS CLOSED — U1 and U2 are both ✅ LIVE and re-measured on production.**
 
   ⭐ TO CONFIRM BOTH UNITS ON ANY MACHINE: `npm run test:phone-normalize` (91 assertions) ·
   `npm run red:phone-normalize` (21 proofs) · `npm run test:tz-msisdn` · `npm run red:tz-msisdn`
@@ -914,17 +925,45 @@ rebuilds the index per call.
 **Accept:** every verdict has a fixture; both call sites of the display formatter resolve to one
 function; the table's edition, sources and review date are in the file.
 
-**U3 · Segment arithmetic, one home** — `src/lib/sms-compose.ts` (pure) (D4)
-`SMS_LIMITS`, `sizeSms`, `composeSms`, `planSms`, `SMS_BODY_CAP`, the GSM-7 table and its extension set
-(`€ [ ] { } \ ^ | ~` cost **two septets**), UCS-2 at 70/67, an emoji at two UTF-16 units. 🔴 In the same
-commit, `smsCodingFor` in `sms-blackball.ts` **delegates** to this module, and the suite asserts identity
-over a corpus — without that, the price the officer read and the coding the gateway got come from two
-tables. Boundary vectors: 159/160/161, 305/306/307, 69/70/71, 133/134/135, plus a 160-septet body whose
-last character is an extension character.
-**Guard:** `test:campaign-compose`. **Also:** `test:shell-boundary`.
-**RED:** size the body before appending the footer — only the 307 vector flips, which is exactly why
-boundary vectors are chosen rather than round numbers.
-**Accept:** `smsCodingFor(s) === sizeSms(s).encoding` over the corpus; `bodyLen` is never used to price.
+**U3 · Segment arithmetic, one home** — `src/lib/sms-compose.ts` (pure, client-safe) (D4) — ✅ SHIPPED S2
+`SMS_LIMITS`, `sizeSms`, `planSms`, `encodingFor`, `offendingChars`, `SMS_MAX_SEGMENTS`, the GSM-7 basic
+table and its extension set (`€ [ ] { } \ ^ | ~` and form feed cost **two septets** each), UCS-2 at 70/67,
+an emoji at two UTF-16 units. 🔴 In the same commit `smsCodingFor` in `sms-blackball.ts` **delegates** to
+this module, and §5 asserts identity over a corpus — without that, the price the officer reads and the
+coding the gateway gets come from two tables. Boundary vectors: 159/160/161, 305/306/307, 69/70/71,
+133/134/135, plus a 160-septet body whose last character is an extension character.
+⭐ **THREE THINGS FOUND WHILE BUILDING IT, EACH OF WHICH CHANGES A NUMBER SOMEONE PAYS:**
+① **Segments are PACKED, not divided.** `ceil(units / perSegment)` is the arithmetic everyone writes and
+it is wrong: a two-septet character may not be SPLIT across a segment boundary. 152 plain characters then
+77 euro signs is 306 septets, which division prices as **2** segments and which actually sends as **3** —
+one segment of slack, or **TZS 900,000** at 150,000 recipients (§3c).
+② ⛔ **THE SPECIFIED BOUNDARY VECTORS CANNOT SEE THAT.** All eight round-number vectors above are plain
+text, and on plain text packing and division agree exactly. A suite built only from them would have looked
+thorough, passed, and never caught the defect that costs the money. The red control asserts this about
+itself: the division plant breaks **exactly one** assertion, and it is the extension-character one.
+③ ⚠️ **`String.length` is CORRECT for UCS-2** — it already counts an emoji as its two UTF-16 units — and
+wrong only for GSM-7 extension characters. That is why pricing from `bodyLen` looks fine: it agrees with
+the truth on every emoji and every Chinese body, and disagrees only on `€ [ ] { } \ ^ | ~`.
+⛔ **THE STANDARD IS NOT THE BILLER, AND THE MODULE SAYS SO.** All of this is GSM 03.38. No multi-segment
+message has ever been sent on this account, so none of it is reconciled against a Blackball invoice —
+`SMS_ARITHMETIC_VERIFIED_AGAINST_BILLER` is `false` and `planSms` marks every answer `estimated`. The one
+place the two could differ is whether the provider charges extension characters at two septets or counts
+characters. U52's capped live drive cross-checks a deliberately multi-segment body against the portal's
+own `COUNT` column (§3b: that column IS the billed segment count), and flips the flag from an invoice,
+never from a reading of the standard.
+⭐ `planSms` returns **quantity, never currency** — the rate is the provider's and belongs with the ledger
+(U49), not in a pure module that would go stale the day it changes and would then be a fabricated promise
+about money (§7.5). `SMS_MAX_SEGMENTS` is 2, computed from money: one segment to 150,000 contacts is
+TZS 900,000, so a third needs an owner's signature rather than a longer text box.
+**Guard:** `test:campaign-compose`. **Also:** `test:client-graph-safe`, whose pinned set this unit adds
+`sms-compose.ts` to — from the commit that MOVES the table, not the one that first imports it.
+**RED:** `red:campaign-compose`, 15 proofs — priced from `String.length`; UCS-2 counted by code point
+(the plausible over-correction); segments divided rather than packed; a second GSM-7 table that dropped
+the euro sign; an always-one-segment sizer; an always-GSM-7 sizer. ⛔ Two of the first plants written here
+were aimed at nothing and the control caught them — the baseline-plus-specific-assertion shape is what
+made that visible.
+**Accept:** `smsCodingFor(s) === sizeSms(s).encoding` over a corpus containing both encodings; `bodyLen`
+is never used to price; the moved table is asserted byte-for-byte against a copy of the pre-move string.
 
 **U4 · The statutory envelope** — `src/lib/sms-compose.ts`, `src/lib/marketing/footer.ts` (D5)
 The engine-appended footer, per locale, un-removable and counted:

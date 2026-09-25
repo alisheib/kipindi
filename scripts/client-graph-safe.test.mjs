@@ -93,6 +93,10 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // green because it only ever walks what is named here.
     "lib/phone-normalize.ts",
     "lib/tz-msisdn.ts",
+    // ⭐ The whole reason U3 exists: the GSM-7 table used to live in `lib/server/sms-blackball.ts`,
+    // where a composer screen could not reach it without pulling the server graph into the browser.
+    // It is pinned here from the commit that moved it, not from the commit that first imports it.
+    "lib/sms-compose.ts",
   ];
   const offenders = [];
   let checked = 0;
