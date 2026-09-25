@@ -26,7 +26,7 @@ import { getGlobalConfig } from "../market-config";
 // The levies this report states are READ from the double-entry ledger, never re-derived.
 import { houseAccountMovement } from "../ledger";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
-import { formatDateTime, formatTzs } from "@/lib/utils";
+import { adminCount, formatDateTime, formatTzs } from "@/lib/utils";
 import { buildFinanceWindow, type FinanceWindowArg } from "./finance-window";
 
 /** Standard regulator attestation block — three roles at the foot of every
@@ -107,10 +107,10 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       classification: "Regulator hand-off",
     },
     summary: [
-      { label: "Deposits (TZS)", value: dep.amount.toLocaleString("en-US"), tone: "neutral", delta: `${dep.count.toLocaleString()} txns` },
-      { label: "Withdrawals (TZS)", value: wd.amount.toLocaleString("en-US"), tone: "neutral", delta: `${wd.count.toLocaleString()} txns` },
-      { label: "Gross gaming revenue", value: ggr.toLocaleString("en-US"), tone: "good" },
-      { label: "Net gaming revenue", value: ngr.toLocaleString("en-US"), tone: ngr >= 0 ? "good" : "bad" },
+      { label: "Deposits (TZS)", num: dep.amount, format: "tzs", tone: "neutral", delta: adminCount(dep.count, "txn") },
+      { label: "Withdrawals (TZS)", num: wd.amount, format: "tzs", tone: "neutral", delta: adminCount(wd.count, "txn") },
+      { label: "Gross gaming revenue", num: ggr, format: "tzs", tone: "good" },
+      { label: "Net gaming revenue", num: ngr, format: "tzs", tone: ngr >= 0 ? "good" : "bad" },
     ],
     sections: [
       {
@@ -302,9 +302,9 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
       classification: "Confidential",
     },
     summary: [
-      { label: "Triggered entries", value: rows.length.toLocaleString(), tone: rows.length > 0 ? "bad" : "good" },
-      { label: "Total flagged volume (TZS)", value: rows.reduce((s, r) => s + r.amount, 0).toLocaleString(), tone: "neutral" },
-      { label: "Threshold (TZS)", value: cutoff.toLocaleString(), tone: "neutral" },
+      { label: "Triggered entries", num: rows.length, format: "integer", tone: rows.length > 0 ? "bad" : "good" },
+      { label: "Total flagged volume (TZS)", num: rows.reduce((s, r) => s + r.amount, 0), format: "tzs", tone: "neutral" },
+      { label: "Threshold (TZS)", num: cutoff, format: "tzs", tone: "neutral" },
     ],
     sections: [
       {
@@ -415,7 +415,7 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
       classification: "Regulator hand-off",
     },
     summary: [
-      { label: "Active entries", value: rows.length.toLocaleString(), tone: "neutral" },
+      { label: "Active entries", num: rows.length, format: "integer", tone: "neutral" },
       { label: "Hash algorithm", value: "SHA-256(salt:idType:idNumber)", tone: "neutral" },
       { label: "Schema version", value: "GBT-v1", tone: "neutral" },
     ],
@@ -503,8 +503,8 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
     summary: [
       // Rows IN THIS FILE vs rows in the log — two different numbers, both stated,
       // so they can never appear to contradict each other again.
-      { label: "Entries in this export", value: entries.length.toLocaleString(), tone: "neutral" },
-      { label: "Entries in the log", value: total.toLocaleString(), tone: "neutral" },
+      { label: "Entries in this export", num: entries.length, format: "integer", tone: "neutral" },
+      { label: "Entries in the log", num: total, format: "integer", tone: "neutral" },
       // Full-chain verification against the persisted DB — not just the in-memory
       // 10k ring. Falls back to in-memory when no DB is available.
       // Two DIFFERENT facts, stated separately, because collapsing them into one
@@ -702,6 +702,14 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
   // understates margin every time a market voids.
   const retainedSales = totalSales - totalRefunds;
   const marginPct = retainedSales > 0 ? ((ggr / retainedSales) * 100) : 0;
+  /* ⚠️ ROUNDED ONCE, HERE, TO THE ONE DECIMAL EVERY SURFACE PRINTS. The glance cell hands Excel the
+     raw fraction and Excel rounds it half-up in DECIMAL, while `toFixed` rounds the BINARY double —
+     so GGR 23,000 on 80,000 retained read 28.8% in the workbook and 28.7% in the PDF and in the
+     "Operator margin" row of the same file. `toPrecision(12)` strips the binary tail first. */
+  //   Half AWAY FROM ZERO, as Excel does: `Math.round(-287.5)` is −287, so a losing day's −28.75%
+  //   would read −28.7 here and −28.8% in the workbook.
+  const marginDec = Number(marginPct.toPrecision(12));
+  const marginShown = (Math.sign(marginDec) * Math.round(Math.abs(marginDec) * 10)) / 10;
 
   /* Net after taxes = GGR less what we hand over. All three printed values are integers read
      off (or derived from) the ledger, so the arithmetic on the face still closes exactly. */
@@ -753,15 +761,15 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
       classification: "Internal",
     },
     summary: [
-      { label: "Total sales (TZS)", value: totalSales.toLocaleString("en-US"), tone: "good", delta: `${ticketCount} tickets` },
-      { label: "GGR (TZS)", value: ggr.toLocaleString("en-US"), tone: ggr >= 0 ? "good" : "bad" },
-      { label: "Margin", value: `${marginPct.toFixed(1)}%`, tone: marginPct >= 5 ? "good" : "bad" },
+      { label: "Total sales (TZS)", num: totalSales, format: "tzs", tone: "good", delta: adminCount(ticketCount, "ticket") },
+      { label: "GGR (TZS)", num: ggr, format: "tzs", tone: ggr >= 0 ? "good" : "bad" },
+      { label: "Margin", num: marginShown / 100, format: "percent", tone: marginPct >= 5 ? "good" : "bad" },
       /* ⛔ OMITTED, NOT ZEROED, when the ledger could not be read — see the levy note above.
          A tax tile reading "0" is indistinguishable from a day that owed nothing. */
       ...(traTax === null || gbtLevy === null || netAfterTax === null ? [] : [
-        { label: `TRA ${(TRA_RATE * 100).toFixed(0)}% (booked)`, value: traTax.toLocaleString("en-US"), tone: "neutral" as const },
-        { label: `GBT ${(GBT_RATE * 100).toFixed(0)}% (booked)`, value: gbtLevy.toLocaleString("en-US"), tone: "neutral" as const },
-        { label: "Net after tax (TZS)", value: netAfterTax.toLocaleString("en-US"), tone: (netAfterTax >= 0 ? "good" : "bad") as "good" | "bad" },
+        { label: `TRA ${(TRA_RATE * 100).toFixed(0)}% (booked)`, num: traTax, format: "tzs" as const, tone: "neutral" as const },
+        { label: `GBT ${(GBT_RATE * 100).toFixed(0)}% (booked)`, num: gbtLevy, format: "tzs" as const, tone: "neutral" as const },
+        { label: "Net after tax (TZS)", num: netAfterTax, format: "tzs" as const, tone: (netAfterTax >= 0 ? "good" : "bad") as "good" | "bad" },
       ]),
     ],
     sections: [
@@ -778,7 +786,7 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
           { metric: "Total sales (stakes placed)", value: totalSales, count: ticketCount, note: "Tickets" },
           { metric: "Total payouts", value: totalPayouts, count: payouts.length, note: "" },
           { metric: "Gross gaming revenue (GGR)", value: ggr, count: null, note: "Sales − Payouts − Refunds" },
-          { metric: "Operator margin", value: null, count: null, note: `${marginPct.toFixed(1)}%` },
+          { metric: "Operator margin", value: null, count: null, note: `${marginShown.toFixed(1)}%` },
           /* ⭐ THE LEVY BASE IS PRINTED BESIDE THE LEVIES, so an auditor can see the 15% close
              on the face instead of taking it on trust — and so nobody re-derives the base from
              GGR again. It is the gross settlement fee: `HOUSE:COMMISSION` movement plus the two
@@ -900,9 +908,9 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
     reference: makeReference("KYCREV", generatorId),
     meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Internal" },
     summary: [
-      { label: "Approved identities", value: approved.length.toLocaleString("en-US") },
-      { label: "Due now", value: dueNow.toLocaleString("en-US"), tone: dueNow > 0 ? "bad" : "good" },
-      { label: "Due within 90 days", value: dueSoon.toLocaleString("en-US"), tone: dueSoon > 0 ? "neutral" : "good" },
+      { label: "Approved identities", num: approved.length, format: "integer" },
+      { label: "Due now", num: dueNow, format: "integer", tone: dueNow > 0 ? "bad" : "good" },
+      { label: "Due within 90 days", num: dueSoon, format: "integer", tone: dueSoon > 0 ? "neutral" : "good" },
     ],
     sections: [{
       title: "Re-verification roster",
@@ -1016,10 +1024,10 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
     reference: makeReference("RGENG", generatorId),
     meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Internal" },
     summary: [
-      { label: "Players with active limits", value: withAnyLimit.toLocaleString("en-US") },
-      { label: "Self-excluded", value: roster.selfExcluded.toLocaleString("en-US"), tone: "neutral" },
-      { label: "Cooled-off", value: roster.cooledOff.toLocaleString("en-US"), tone: "neutral" },
-      { label: "Pending limit increases", value: roster.pendingLimitIncrease.toLocaleString("en-US"), tone: roster.pendingLimitIncrease > 0 ? "neutral" : "good" },
+      { label: "Players with active limits", num: withAnyLimit, format: "integer" },
+      { label: "Self-excluded", num: roster.selfExcluded, format: "integer", tone: "neutral" },
+      { label: "Cooled-off", num: roster.cooledOff, format: "integer", tone: "neutral" },
+      { label: "Pending limit increases", num: roster.pendingLimitIncrease, format: "integer", tone: roster.pendingLimitIncrease > 0 ? "neutral" : "good" },
     ],
     sections: [
       {
@@ -1139,9 +1147,9 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
       classification: "Regulator hand-off",
     },
     summary: [
-      { label: "Voided markets", value: voidedMarkets.length.toLocaleString("en-US"), tone: voidedMarkets.length > 0 ? "neutral" : "good" },
-      { label: "Refund transactions", value: refunds.length.toLocaleString("en-US"), tone: "neutral" },
-      { label: "Stakes refunded (TZS)", value: Math.round(refundTotal).toLocaleString("en-US"), tone: "neutral" },
+      { label: "Voided markets", num: voidedMarkets.length, format: "integer", tone: voidedMarkets.length > 0 ? "neutral" : "good" },
+      { label: "Refund transactions", num: refunds.length, format: "integer", tone: "neutral" },
+      { label: "Stakes refunded (TZS)", num: Math.round(refundTotal), format: "tzs", tone: "neutral" },
     ],
     sections: [
       {

@@ -1,9 +1,8 @@
 /**
  * Aggregation queries for the admin dashboard.
  *
- * These compute on the in-memory store today. In production each function
- * becomes a single Postgres query. Function shapes match the SQL we expect
- * to write — no behaviour change at the call site.
+ * Each window is read with one SQL range query (`db.txn.listInRange`, or its in-memory twin)
+ * and aggregated here; the money figures delegate to `report-money`.
  *
  * All money values are in TZS (integer minor units would normally be cents,
  * but TZS has no fractional unit in practice, so we keep integers).
@@ -20,9 +19,10 @@ import { poolFee, levySplit, type FeeModel } from "../payout";
 /**
  * 🔴 `"today"` AND `"qtd"` ARE GONE FROM THIS UNION, AND THAT IS THE FIX — not re-pointing them.
  *
- * `periodToMs("today")` returned a ROLLING 24 HOURS while `resolveRange("today")`,
- * `report-money.periodBounds("today")` and `query/windows.inWindow("today")` all return the EAT
- * CALENDAR DAY. One word, two spans, on a platform that keeps one clock.
+ * `periodToMs("today")` returned a ROLLING 24 HOURS while `resolveRange("today")` and
+ * `query/windows.inWindow("today")` return the EAT CALENDAR DAY (as `report-money.periodBounds("today")`
+ * did, until that unused arm was deleted on 2026-09-25). One word, two spans, on a platform that
+ * keeps one clock.
  *
  * ⛔ THE OBVIOUS FIX — make this one the EAT day too — IS THE WRONG ONE, and it was measured
  * before being rejected. Every caller of the rolling window is on `/admin` and `/admin/live`, and
@@ -69,7 +69,8 @@ async function txnsInPeriod(w: Window) {
 }
 
 /**
- * GGR = Stakes − Payouts − Refunds (the operator's commission from the pool). This is the
+ * GGR = Stakes − Payouts − Refunds — a TURNOVER measure, NOT the operator's commission (it still
+ * holds stakes on positions that have not settled; see report-money's header). This is the
  * normative definition shared with the reports console — delegates to
  * `report-money.moneyForWindow` so every admin surface shows ONE GGR figure.
  * (Previously this returned Stakes/turnover only, mislabelled "GGR"; reconciled.)
@@ -80,8 +81,8 @@ export async function grossGamingRevenue(period: Window = "28d") {
 }
 
 /**
- * NGR = GGR − bonus cost − payment-processing fees — the pre-tax operator bottom
- * line. Delegates to the same `report-money` core as GGR so the definitions can
+ * NGR = GGR − bonus cost − agent commission − payment-processing fees — the pre-tax operator
+ * bottom line. Delegates to the same `report-money` core as GGR so the definitions can
  * never drift. (Previously this returned Stakes − Payouts, i.e. the value that is
  * actually GGR; reconciled to the normative NGR.)
  */
@@ -111,8 +112,9 @@ export type SettlementFeesByPoll = {
  * — so an accountant can see, poll by poll, whether it was `loser-share` (a % of the
  * losing side) or `capped-commission`, and reconcile the fee. The fee is recomputed
  * from the poll's OWN frozen snapshot + declared outcome via `poolFee` — the exact
- * function and inputs settlement used, so it equals the booked commission to the
- * shilling. Read-only; moves no money. Only YES/NO settlements bear a fee (VOID /
+ * function and inputs settlement used (a legacy snapshot where none was stored — see
+ * MONEY-GATE-REMEDIATION §3.3). The BOOKED figure is `HOUSE:COMMISSION` movement plus the levies
+ * debited out of it; this is a reconstruction for the per-poll view, not the ledger. Read-only; moves no money. Only YES/NO settlements bear a fee (VOID /
  * one-sided are full refunds at 0 fee and are omitted).
  */
 export async function settlementFeesByPoll(period: Window = "28d"): Promise<SettlementFeesByPoll> {

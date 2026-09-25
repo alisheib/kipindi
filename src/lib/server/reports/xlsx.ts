@@ -2,7 +2,7 @@ import ExcelJS from "exceljs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BRAND, COMPANY, fmtDate, fmtDateTime } from "./brand";
-import type { Report, Section, Column, Row, SignatureRow } from "./types";
+import { summaryText, type Report, type Section, type Column, type Row, type SignatureRow } from "./types";
 
 const LOGO_PNG_PATH = join(process.cwd(), "public/icons/mark-color-512.png");
 const LOGO_PNG_BUF = (() => {
@@ -104,7 +104,8 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
       };
     }
   }
-  // Logo gutter — column A, ~46px wide
+  // Column A STARTS as an 8-wide logo gutter; the glance labels and the sections may widen it
+  // (max rule). The logo is anchored absolute, so it keeps its position and size either way.
   sheet.getColumn(1).width = 8;
   sheet.getRow(1).height = 16;
   sheet.getRow(2).height = 22;
@@ -191,14 +192,41 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
     t.font = { name: "Calibri", size: 12, bold: true, color: { argb: argb(BRAND.royalDeep) } };
     sheet.getRow(cursor).height = 18;
     cursor++;
+    /**
+     * 🔴 A NUMBER IS WRITTEN AS A NUMBER, AND ITS DELTA GETS ITS OWN CELL. This block used to
+     * write `value + "   (" + delta + ")"` into B — so a headline figure reached Excel as the
+     * TEXT `"158,000   (11 txns)"`, which cannot be summed, compared or charted. Now B holds
+     * the raw figure with the same number format a table cell of that kind gets (`applyValue`),
+     * and C holds the delta.
+     * ⚠️ AND THE COLUMNS ARE SIZED FOR IT. Overflowing text spills into the empty cell beside it;
+     * a NUMBER wider than its column prints as `#####`. Column widths are otherwise set only by
+     * the sections below, which never see these figures — so the block sizes A and B itself, and
+     * `renderSection`'s max-rule can only widen them further, never shrink them back.
+     */
+    const widen = (n: number, chars: number) => {
+      const col = sheet.getColumn(n);
+      col.width = Math.max(col.width ?? 0, Math.min(60, chars));
+    };
     for (const k of report.summary) {
       const labelCell = sheet.getCell(`A${cursor}`);
-      labelCell.value = k.label;
+      labelCell.value = neutralizeFormula(k.label);
       labelCell.font = { name: "Calibri", size: 10, color: { argb: argb(BRAND.inkMuted) } };
+      widen(1, k.label.length + 2);
       const valueCell = sheet.getCell(`B${cursor}`);
-      valueCell.value = k.value + (k.delta ? `   (${k.delta})` : "");
+      // ⚠️ `NaN`/`Infinity` would serialise as `<v>NaN</v>`, a file Excel refuses to open; write the
+      // "—" the PDF prints instead.
+      if (k.num !== undefined && Number.isFinite(k.num)) applyValue(valueCell, k.num, k.format);
+      else valueCell.value = neutralizeFormula(summaryText(k));
+      // Bold 11pt in a column sized for 10pt text — the +4 is the headroom that keeps a
+      // right-aligned seven-figure sum off `#####`.
+      widen(2, summaryText(k).length + 4);
       const valueColor = k.tone === "good" ? BRAND.yes : k.tone === "bad" ? BRAND.no : BRAND.ink;
       valueCell.font = { name: "Calibri", size: 11, bold: true, color: { argb: argb(valueColor) } };
+      if (k.delta) {
+        const deltaCell = sheet.getCell(`C${cursor}`);
+        deltaCell.value = neutralizeFormula(k.delta);
+        deltaCell.font = { name: "Calibri", size: 9, color: { argb: argb(BRAND.inkSubtle) } };
+      }
       sheet.getRow(cursor).height = 15;
       cursor++;
     }
