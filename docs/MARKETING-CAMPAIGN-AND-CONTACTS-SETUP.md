@@ -1177,12 +1177,32 @@ recipient row — a person who is never messaged and never appears as a failure.
 sent to Google in a page path); `/s` must stay OUT of `PROTECTED_PREFIXES` (`proxy.ts:40`) or the no-login
 promise breaks; and every player lookup goes through `userPhoneKeyFor` (U7), never a bare `findByPhone`.
 
-**U9 · The gate runs in the loop, and the proof of it** — `test:marketing-consent`
+**U9 · The gate runs in the loop, and the proof of it** — `test:marketing-consent` — BUILT S6, RE-SCOPED
 The unit is the guard: a fixture that opts out **between** slice one and slice two, and must not receive
 slice two's message.
 **RED:** hoist the gate to list-build time → the suite must fail. ⭐ If it still passes, the suite was
 testing the list, not the send, and the control has found the worse defect.
 **Accept:** the mid-send opt-out fixture is red before the in-loop gate exists and green after.
+
+⛔ **RE-SCOPED BEFORE BUILDING (S6), BECAUSE THE PREMISE FAILED — and not the way the plan guessed.** There
+is no send loop to put a gate in: nothing loops over marketing recipients, `mayReceiveMarketingSms` has no
+caller outside tests, `SmsPurpose` has no `MARKETING` (D22) and `SmsMessage` has no `skipped` status. ⚠️ The
+loop is not U35 either, as §0 said — U35 is the tables; the loop is **U43** ("the slice", `engine.ts`).
+So U9 does not wrap a gate round nothing. It ships **the innermost step of U43's loop** —
+`dispatchSlice` in `src/lib/server/marketing/dispatch.ts`: the gate asked per recipient IMMEDIATELY before
+ONE send, a refusal `skipped` (never `failed`), results settled by KEY (never by position), a shop-wide
+refusal or an unanswerable gate `held` (nothing about the person was decided — U43 returns it to PENDING),
+a thrown transport `unconfirmed` (never retried by itself, OD23), and the RG audit line
+`marketing.suppressed.rg` written HERE, when a refusal is acted on (an audience count asks the same gate and
+must not write). ⛔ `send` has NO default — until U35 gives the wire an honest purpose, nothing in
+production can reach it through this step. And **the loop contract**: a real two-slice drive in which three
+people change their minds between the slices through the REAL acts (`stopMarketing`, `selfExclude`,
+`coolOff`), the wire answering in reverse order. ⭐ **U43 inherits it: its engine joins the contract as a
+second DRIVER and must pass the same assertions** — this is the proof U9 promised, waiting for its loop.
+**Measured:** the hoisted driver sends the opted-out number (red), `dispatchSlice` does not (green) ·
+`test:marketing-consent` 20 → 36 · `red:marketing-consent` 8 → 13 (loop: hoisted gate · settle by
+position · skip recorded as failed · unanswerable gate sends · RG refusal unaudited), each on its own
+assertion, after the shipped step and the defect-free model both pass the contract first.
 
 **U10 · The marketing RG predicate** — `src/lib/server/marketing/rg.ts` (D9, D10) — BUILT S6
 `marketingRgStanding(user, identifier)` built on the ONE standing definition (⛔ not `isLockedOut`, which is
@@ -1533,6 +1553,11 @@ shop-wide fact. Slice budget ≤50 recipients or 10 s, re-derived in U52.
 **Guard:** `test:marketing-engine`. **RED:** ⭐ five concurrent drivers over 1,000 rows must produce exactly
 1,000 sends — a single-driver test passes with or without the conditional claim, which is why the control
 is concurrent; and removing the unique index must fail it.
+⭐ **And U9's loop contract (added S6):** the "GATE each claimed row immediately before dispatch → ONE
+`sendBatch` → settle by `targetId`" middle of this slice already exists as `dispatchSlice` (U9) — call it,
+do not rewrite it — and the engine joins `test:marketing-consent`'s U9 section as a second DRIVER, passing
+the same assertions (an opt-out, a self-exclusion and a break between two slices never reach the wire).
+It supplies the real `send`, with `purpose: "MARKETING"` from U35.
 
 **U44 · The pump** — `src/lib/server/marketing/pump.ts` (OD19, OD20)
 Its own timer and its own leader lease, started from `instrumentation.register()`, yielding whenever the
