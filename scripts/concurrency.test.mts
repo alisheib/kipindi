@@ -279,6 +279,11 @@ async function makeMarket(): Promise<string> {
 {
   const cfg = getAffiliateConfig();
   if (cfg.enabled && cfg.prize.enabled && cfg.prize.milestone === "FIRST_BET") {
+    // ⭐ BOTH HALVES DECLARED (2026-09-25). The surface is ACTIVE by default, but the player
+    // programme pays nothing — and this section is about a race between THREE concurrent prize
+    // accruals. With the money off there is no prize to race for and the idempotency it guards
+    // would go untested while reporting green.
+    process.env.FEATURE_INVITEREWARDS = "ACTIVE";
     process.env.FEATURE_INVITE = "ACTIVE";
     try {
     const PRIZE = cfg.prize.amountTzs;
@@ -309,6 +314,7 @@ async function makeMarket(): Promise<string> {
     ok("F: referrer credited the prize exactly once", bonusDelta === PRIZE, `Δ=${bonusDelta} expected=${PRIZE}`);
     } finally {
       delete process.env.FEATURE_INVITE;
+      delete process.env.FEATURE_INVITEREWARDS;
     }
   } else {
     ok("F: skipped (prize/FIRST_BET not default-enabled)", true);

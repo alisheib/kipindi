@@ -21,8 +21,9 @@
  *   When a player-facing page or feature is ADDED, RENAMED, or REMOVED, add or
  *   update an intent branch in `stubReply()` below (keyword → reply + a
  *   citation to the route). Current intents: deposits, conviction dial,
- *   payouts/withdrawals, KYC, referral (agents only — NO citation, deliberately: see the
- *   branch itself), proposals (→ /proposals), escalation. Treat this list as the chatbot's
+ *   payouts/withdrawals, KYC, referral (the UNPAID player invite + the paid agent programme —
+ *   NO citation, deliberately: see the branch itself), proposals (→ /proposals), escalation.
+ *   Treat this list as the chatbot's
  *   knowledge index; a page without an intent here falls through to the
  *   "I'm not sure" → support handoff. (Live mode replaces this with the
  *   system prompt + web_search over the live site.)
@@ -333,18 +334,29 @@ function stubReply(userText: string, lang: Lang): Reply {
   }
 
   /**
-   * Referral — WITHDRAWN from the player product (2026-09-06).
+   * Referral — the UNPAID player invite (2026-09-25).
    *
-   * ⛔ THIS BRANCH USED TO TEACH THE PROGRAMME AND CITE `/profile/invite`. That page now
-   * returns the not-found view for an ordinary player, so the fallback was walking people
-   * to a dead door and promising rewards nobody could earn.
+   * 🔴 THIS BRANCH HAS NOW BEEN WRONG IN BOTH DIRECTIONS, which is why it says two things.
+   * ① It first TAUGHT the paid programme and cited `/profile/invite` — after the 2026-09-06
+   *    withdrawal that was a dead door and a promise of rewards nobody could earn.
+   * ② It was then rewritten to *"earning by referral is limited to approved 50pick Agents — it is
+   *    not part of an ordinary player account"*. True until 2026-09-25 and false now: every player
+   *    holds a link again. Left alone, the assistant would be telling players a live feature on
+   *    their own profile does not exist.
    *
-   * ⚠️ IT CANNOT ASK WHO IS TYPING. This is a keyword matcher over the message text, called
-   * from a client component with no session or role in scope — so the answer has to be true
-   * for EVERY asker, agent or player. It says the one thing that is: earning by referral is
-   * limited to approved agents. No citation, because the only page it could cite is one most
-   * askers cannot open. An approved agent asking this gets the full answer from the live
-   * model, whose system prompt carries the real rule; this is only the offline fallback.
+   * ⚠️ IT CANNOT ASK WHO IS TYPING. This is a keyword matcher over the message text, called from a
+   * client component with no session or role in scope — so the answer must be true for EVERY
+   * asker, agent or player. Both halves below are: anyone may invite and nobody is paid for it,
+   * and paid referral is the Agent programme.
+   *
+   * ⛔ AND IT NAMES THE DESTINATION IN WORDS RATHER THAN LINKING TO IT. A first version cited
+   * `/profile/invite`, and `test:withdrawn-features` §7 caught it: every link to that page must sit
+   * beside the gate that decides whether the viewer may open it, and this module has no viewer to
+   * gate on. The rule is right — a closed, suspended or self-excluded account still reaches this
+   * fallback, the page is genuinely not theirs, and a citation would have handed them a door that
+   * 404s. ⭐ The remedy is to satisfy the rule, not to exempt the file: "Profile → Invite friends"
+   * tells anyone who CAN open it exactly where to go, and renders no dead link to anyone who
+   * cannot. ⛔ Do not add a citation back.
    */
   if (/\b(referr?al|refer a friend|affiliate|invite|alika|tume|kiungo)\b/.test(t)) {
     return {
@@ -353,8 +365,8 @@ function stubReply(userText: string, lang: Lang): Reply {
       lang,
       text:
         lang === "sw"
-          ? "Kwa sasa kupata zawadi kwa kualika wengine ni kwa Mawakala walioidhinishwa wa 50pick pekee — si sehemu ya akaunti ya kawaida ya mchezaji. Kama unataka kuwa Wakala, wasiliana na huduma kwa wateja."
-          : "Earning by referral is currently limited to approved 50pick Agents — it is not part of an ordinary player account. If you would like to become an Agent, contact support.",
+          ? "Unaweza kualika marafiki: nenda Wasifu → Alika marafiki upate kiungo chako, ushiriki, na uone wanaojiunga kwenye orodha yako. 50pick hailipi zawadi yoyote kwa mialiko — kualika ni kushiriki tu. Kupata tume kwa kuleta wachezaji ni kwa Mawakala walioidhinishwa pekee, ambao hulipa ada na kukaguliwa; wasiliana na huduma kwa wateja kama unataka kuwa Wakala."
+          : "You can invite friends: go to Profile → Invite friends for your link, share it, and the people who sign up on it appear in your list. 50pick pays no reward for invites — inviting is sharing, not earning. Earning commission for bringing players is limited to approved 50pick Agents, who pay a fee and are vetted; contact support if you would like to become one.",
     };
   }
 

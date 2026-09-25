@@ -31,7 +31,7 @@ import { roundStore } from "@/lib/server/updown-dal";
 import { sideToOutcome } from "@/lib/server/updown-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
+import { ensureAffiliateAccount, inviteViewerFor, normalizeReferralCode } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
@@ -103,7 +103,7 @@ export default async function MarketDetail({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string }>;
+  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string; ref?: string }>;
 }) {
   const { t, locale } = await getServerT();
   const { id } = await params;
@@ -247,6 +247,14 @@ export default async function MarketDetail({
   // so the page swaps it out for an "awaiting settlement" card.
   const closedByTime = isClosedByTime(m) && !isResolved;
   const selectionClosed = isSelectionClosed(m) && !isResolved;
+  // D40 · ONE truth for "this panel can still take a bet", read by the bet aside's branch AND
+  // by the heading that names it. It used to be written out at the branch only, and the heading
+  // did not exist; the moment both needed it, a second copy of this expression would have been
+  // a second definition of when the market is open — the shape RULES.md §7 exists to forbid.
+  const bettingOpen = !isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed;
+  // The bet panel's heading id. Exactly one of the five aside branches renders at a time, so
+  // they all carry this id and `aria-labelledby` resolves in every state.
+  const BET_PANEL_HEADING = "bet-panel-heading";
   // COLD-START — the same rule the board and the card use (volume 0 +
   // predictors 0 on a live, still-open market), so the three surfaces can never
   // disagree about whether a market has a crowd price. One rule, one meaning.
@@ -460,11 +468,20 @@ export default async function MarketDetail({
           {isResolved && m.resolvedOutcome && (
             <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>
           )}
+          {/* 🔴 D86 · A STANDALONE CONTROL AT ~55x18, IN A ROW WITH TWO 40x40 ONES.
+              Measured ~55x18 in Swahili and ~40x18 in Chinese: it declared no height, so its box
+              came from the 12px type alone while WatchStar and ShareButton beside it are both 40
+              square. ⛔ It is NOT the criterion's inline source URL further down the page — that
+              one sits inside a sentence and is phrasing content, and Law 9 (DESIGN_AUTHORITY §A2)
+              is written about CONTROLS. This one stands alone in a control row, which is why it
+              is convicted and the prose link is not; the open question about inline links is
+              recorded in the register for Ali rather than decided here.
+              ⚠️ `-my-` absorbs the growth so the header row does not move. */}
           <a
             href={m.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 ml-auto text-[12px] font-mono text-text-muted hover:text-text"
+            className="inline-flex items-center gap-1 ml-auto min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
           >
             {t.common.source}
             <I.ext s={12} />
@@ -495,11 +512,199 @@ export default async function MarketDetail({
           On mobile (flex-col): aside renders first (order-1) so the
           betting widget is above-the-fold, then content below (order-2).
           On desktop (lg:grid): left=content, right=sticky aside. ── */}
+      {/* 🔴 D40 · THE BET PANEL IS NOW FIRST IN THE SOURCE, AND THAT IS THE WHOLE FIX.
+          `order` moves what a player SEES and never what the DOM says, so for as long as the
+          aside was source child 2 with `order-1`, a screen reader, a keyboard and reader mode
+          got it LAST. Measured on production 2026-09-25 at 320/360/412 x sw/en/zh: DOM
+          [0,1,2], visual [1,0,2], nine cells of nine. The outline read title -> "Nafasi zako"
+          -> "Kigezo cha utatuzi" -> the entire bet widget -> "Masoko yanayofanana", so the
+          money control on the page was announced under the heading for the small print.
+          ⛔ NOTHING MOVED ON SCREEN AND THE `order-*` CLASSES STAY. With source order
+          [aside, content, similar] and orders [1,2,3] the painted order is byte-identical to
+          before — that is the zero-diff this change has to hold, and the classes are what make
+          the intent survive the next reorder. Desktop is untouched for a different reason:
+          all three children are placed EXPLICITLY (`lg:col-start-*` / `lg:row-start-*`), and
+          explicit grid placement ignores source order outright.
+          ⚠️ Desktop reading order does change, aside-then-content. Both sit in row 1 at the
+          same y, so neither is "before" the other visually, and the mobile layout already
+          declares which one the player came for. */}
       {/* Desktop is an explicit 2-col x 2-row grid so the right column can carry a
           SECOND block under the sticky bet widget (Step 4). The left column spans
           both rows. Mobile is untouched: it stays a flex column and every child
           keeps the order it had. */}
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_360px] lg:grid-rows-[auto_auto] lg:items-start lg:gap-6">
+
+        {/* ══ RIGHT ASIDE — betting widget ══
+            order-1 on mobile (above-the-fold, first thing seen) AND first in the source since
+            D40, so the two agree; order-2 + sticky on desktop (stays in view while scrolling) */}
+        {/* ⭐ THE PANEL STICKS ONLY WITHIN ROW 1 (2026-09-14). A sticky box is held inside its
+            PARENT's box, not its grid cell. While this aside was itself the grid item its parent
+            was the whole grid, so on scroll the pinned panel rode down into row 2 and sat on the
+            full-width Similar markets cards (the third card's chips hidden at 1280). The wrapper
+            below is now the grid item and stretches to row 1's height, so the sticky aside
+            inside it stops at the end of row 1 and never enters the row below.
+            z-10 predates that: it stopped related cards, which then sat in this same column,
+            from painting over the stuck panel. Nothing reaches the panel now; it stays as a
+            cheap guard, well under the nav (z-40) and the Needle (z-45).
+            2026-09-13 — offset 72px = the 56px sticky header (an inline height in top-app-bar.tsx;
+            no token exists) + 16px air. The old spacing key resolved to 32px on this scale, so
+            the stuck card slid under the header. loading.tsx mirrors it. */}
+        <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
+        <aside className="space-y-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
+          {bettingOpen ? (
+            session ? (
+              <>
+              {/* D40 · THE ONLY BRANCH WITH NO HEADING OF ITS OWN, so it gets one that is read
+                  and not seen. The other four states already name themselves in a heading; this
+                  one opens on the dial, and a bet panel with no heading is what put the money
+                  control under "Resolution criterion" in the outline. Existing copy, already
+                  visible on this very page for a guest — `src/lib/i18n*` belongs to another
+                  session today, so nothing here mints a new string. */}
+              <h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2>
+              {/* Hedge warning — shown when player already has a position */}
+              {openPositions.length > 0 && (
+                <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
+                  {/* DG-A-14 · §T4 — "You already hold <side> here" is a sentence about the
+                      player's own money, not a section eyebrow, but it was set uppercase with
+                      0.14em tracking at text-micro (10px) — 2.5px under the 12.5px reading
+                      floor and dressed as an identifier. The uppercase and the tracking are
+                      dropped and the size moves to text-body-sm. The warning colour and the
+                      font-bold stay, so this line still reads as the louder half of the panel
+                      against the muted body directly below it. */}
+                  <p className="font-mono text-body-sm font-bold text-warning-fg">
+                    {t.market.youAlreadyHold} {heldLabel} {t.market.here}
+                  </p>
+                  <p className="mt-1 text-body-sm leading-snug text-text-muted">
+                    {/* ⛔ NO `fill({pct})` HERE ANY MORE. Both hedge bodies stated the
+                        RETIRED capped-commission rule and were unreachable behind the
+                        2026-08-04 guard; RULES.md §2.4 makes them live. They now quote no
+                        rate at all — the fee is stated by the payout projection directly
+                        below, and RULES.md §7 exists because a number written twice is a
+                        number that will disagree with itself. */}
+                    {hedgeBoth
+                      ? t.market.hedgeBothBody
+                      : hedgeOpposite
+                        ? t.market.hedgeOppositeBody
+                        : t.market.hedgeAddBody}
+                  </p>
+                  {/* B2 · the bonus consequence, and ONLY for a player who holds an
+                      unfulfilled grant. Separated from the hedge body above because it is a
+                      different fact about a different thing — one is what the market will do,
+                      this is what their bonus will not do. */}
+                  {bonusWagerWarning && (
+                    <p className="mt-2 pt-2 border-t border-warning-border text-body-sm leading-snug font-semibold text-warning-fg">
+                      {bonusWagerWarning}
+                    </p>
+                  )}
+                </div>
+              )}
+              {/* ⛔ The identity panel that replaced this dial for an unverified player from
+                  2026-09-05 to 2026-09-13 is deleted: a stake asks no identity question
+                  (`kyc-gate.ts`). Every signed-in player gets the dial. */}
+              <SidePicker
+                marketId={m.id}
+                marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
+                yesPool={m.yesPool}
+                noPool={m.noPool}
+                yesPct={yesPct}
+                resolutionAt={m.resolutionAt}
+                closesAt={m.selectionClosedAt ?? m.resolutionAt}
+                serverNow={Date.now()}
+                balance={myBalance}
+                initialSide={side === "YES" || side === "NO" ? side : undefined}
+                rates={marketRates}
+                minStake={stakeCfg.minStake}
+                maxStake={stakeCfg.maxStake}
+                boardHref="/markets"
+              />
+              </>
+            ) : (
+              /* Sign-in CTA — styled to invite prediction */
+              <div
+                className="rounded-xl border border-border bg-bg-elevated p-6 text-center"
+                style={{
+                  background:
+                    "radial-gradient(420px 160px at 50% 0%, oklch(45% 0.10 240 / 0.20), transparent 60%), " +
+                    "var(--hero-panel-grad)",
+                }}
+              >
+                <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+                  {t.market.signInToPredict}
+                </p>
+                <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
+                  {t.market.placeYourStake}
+                </h2>
+                <p className="mt-1.5 text-body-sm text-text-muted leading-snug">
+                  {t.market.browseForFree}
+                </p>
+                {(() => {
+                  const betNext = "/markets/" + m.id + (side === "YES" || side === "NO" ? `?side=${side}` : "");
+                  /**
+                   * 🔴 THE REFERRAL CODE USED TO DIE HERE, AND THAT MADE EVERY SHARED MARKET LINK A
+                   * LIE. `ShareButton` appends `?ref=<code>` to the URL a player sends; the friend
+                   * opens `/markets/<id>?ref=CODE`, reads the market, taps Sign up — and this CTA
+                   * rebuilt the query from `next` alone, so the code never reached
+                   * `/auth/register`, which is the ONLY reader of it. The sharer was told their
+                   * friends would be counted; not one of them ever was.
+                   *
+                   * ⚠️ IT PREDATES THE UNPAID INVITE — agents' shared market links were equally
+                   * dead — but that programme's links are rare and this one is every player's, so
+                   * it stops being a curiosity and becomes the common path.
+                   *
+                   * ⛔ NORMALISED, NOT PASSED THROUGH. `normalizeReferralCode` is the same one the
+                   * bind and the ribbon use, so a malformed or over-length code degrades to "no
+                   * ref" here exactly as it would there — never truncated into somebody else's
+                   * code. An unknown code still binds nothing; it simply renders no ribbon.
+                   * ⭐ No cookie and no storage: the code rides the query string the visitor is
+                   * already carrying, so nothing is tracked and the privacy notice is unchanged.
+                   */
+                  const shared = normalizeReferralCode(typeof sp.ref === "string" ? sp.ref : null);
+                  const q = `?next=${encodeURIComponent(betNext)}${shared ? `&ref=${encodeURIComponent(shared)}` : ""}`;
+                  return (
+                    <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
+                      <Link href={`/auth/register${q}` as never} className="btn btn-primary btn-md btn-pill">
+                        {t.common.signUp}
+                      </Link>
+                      <Link href={`/auth/login${q}` as never} className="btn btn-ghost btn-md btn-pill">
+                        {t.common.signIn}
+                      </Link>
+                    </div>
+                  );
+                })()}
+              </div>
+            )
+          ) : selectionClosed && !closedByTime ? (
+            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <I.hourglassOff s={18} className="text-gold-300" />
+              </div>
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+                {t.market.selectionClosedBadge}
+              </p>
+              <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h2>
+              <p className="mt-3 text-body-sm text-text-muted leading-snug">
+                {t.market.newPredictionsNotAccepted}
+                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatDeadline(m.resolutionAt)}.`}
+              </p>
+            </div>
+          ) : closedByTime ? (
+            <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-warning-fg">
+                {t.market.closedAwaitingSettlement}
+              </p>
+              <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.noMoreBets}</h2>
+              <p className="mt-1 text-[13px] italic text-text-subtle">{t.market.closedWaitSubtitle}</p>
+              <p className="mt-3 text-body-sm text-text-muted leading-snug">
+                {t.market.countdownEndedBody}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
+              <h2 id={BET_PANEL_HEADING} className="font-display text-[15px] font-semibold text-text">{t.market.marketClosedForPredictions}</h2>
+            </div>
+          )}
+        </aside>
+        </div>
 
         {/* ══ LEFT — market information & analysis ══
             order-2 on mobile (below the bet widget), order-1 on desktop (left col) */}
@@ -724,9 +929,19 @@ export default async function MarketDetail({
               </details>
             ) : null}
 
+            {/* 🔴 D88 · A STANDALONE LINK AT 221x33, SEVEN PIXELS UNDER THE FLOOR.
+                Measured 2026-09-25 at 320/360/412 in all three locales: 221.2x33, 259.7x33, 311.7x33,
+                with no pseudo-element behind it. ⛔ IT IS NOT AN INLINE PROSE LINK and must not be
+                excused as one: this paragraph contains an icon and this link and nothing else, so
+                the link IS the control — which is exactly how `qa:detail-order-hints` §5 tells the
+                two apart (a link is exempt only when its paragraph says more than it does).
+                ⚠️ The real inline case is elsewhere on this page and is deliberately left alone; the
+                open question of whether Law 9 should say anything about links inside a sentence is
+                recorded in the register for Ali rather than decided by this edit.
+                `-my-` absorbs the growth, so the criterion block does not get taller. */}
             <p className="mt-3 pt-3 border-t border-border/50 font-mono text-[11px] text-text-subtle flex items-center gap-1.5">
               <I.ext s={11} />
-              <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>
+              <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[var(--tap-min)] -my-[4px] py-[4px] items-center text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>
             </p>
           </section>
 
@@ -745,150 +960,6 @@ export default async function MarketDetail({
           )}
         </section>
 
-        {/* ══ RIGHT ASIDE — betting widget ══
-            order-1 on mobile (above-the-fold, first thing seen),
-            order-2 + sticky on desktop (stays in view while scrolling) */}
-        {/* ⭐ THE PANEL STICKS ONLY WITHIN ROW 1 (2026-09-14). A sticky box is held inside its
-            PARENT's box, not its grid cell. While this aside was itself the grid item its parent
-            was the whole grid, so on scroll the pinned panel rode down into row 2 and sat on the
-            full-width Similar markets cards (the third card's chips hidden at 1280). The wrapper
-            below is now the grid item and stretches to row 1's height, so the sticky aside
-            inside it stops at the end of row 1 and never enters the row below.
-            z-10 predates that: it stopped related cards, which then sat in this same column,
-            from painting over the stuck panel. Nothing reaches the panel now; it stays as a
-            cheap guard, well under the nav (z-40) and the Needle (z-45).
-            2026-09-13 — offset 72px = the 56px sticky header (an inline height in top-app-bar.tsx;
-            no token exists) + 16px air. The old spacing key resolved to 32px on this scale, so
-            the stuck card slid under the header. loading.tsx mirrors it. */}
-        <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
-        <aside className="space-y-3 lg:sticky lg:top-[72px] lg:z-10">
-          {!isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed ? (
-            session ? (
-              <>
-              {/* Hedge warning — shown when player already has a position */}
-              {openPositions.length > 0 && (
-                <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
-                  {/* DG-A-14 · §T4 — "You already hold <side> here" is a sentence about the
-                      player's own money, not a section eyebrow, but it was set uppercase with
-                      0.14em tracking at text-micro (10px) — 2.5px under the 12.5px reading
-                      floor and dressed as an identifier. The uppercase and the tracking are
-                      dropped and the size moves to text-body-sm. The warning colour and the
-                      font-bold stay, so this line still reads as the louder half of the panel
-                      against the muted body directly below it. */}
-                  <p className="font-mono text-body-sm font-bold text-warning-fg">
-                    {t.market.youAlreadyHold} {heldLabel} {t.market.here}
-                  </p>
-                  <p className="mt-1 text-body-sm leading-snug text-text-muted">
-                    {/* ⛔ NO `fill({pct})` HERE ANY MORE. Both hedge bodies stated the
-                        RETIRED capped-commission rule and were unreachable behind the
-                        2026-08-04 guard; RULES.md §2.4 makes them live. They now quote no
-                        rate at all — the fee is stated by the payout projection directly
-                        below, and RULES.md §7 exists because a number written twice is a
-                        number that will disagree with itself. */}
-                    {hedgeBoth
-                      ? t.market.hedgeBothBody
-                      : hedgeOpposite
-                        ? t.market.hedgeOppositeBody
-                        : t.market.hedgeAddBody}
-                  </p>
-                  {/* B2 · the bonus consequence, and ONLY for a player who holds an
-                      unfulfilled grant. Separated from the hedge body above because it is a
-                      different fact about a different thing — one is what the market will do,
-                      this is what their bonus will not do. */}
-                  {bonusWagerWarning && (
-                    <p className="mt-2 pt-2 border-t border-warning-border text-body-sm leading-snug font-semibold text-warning-fg">
-                      {bonusWagerWarning}
-                    </p>
-                  )}
-                </div>
-              )}
-              {/* ⛔ The identity panel that replaced this dial for an unverified player from
-                  2026-09-05 to 2026-09-13 is deleted: a stake asks no identity question
-                  (`kyc-gate.ts`). Every signed-in player gets the dial. */}
-              <SidePicker
-                marketId={m.id}
-                marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
-                yesPool={m.yesPool}
-                noPool={m.noPool}
-                yesPct={yesPct}
-                resolutionAt={m.resolutionAt}
-                closesAt={m.selectionClosedAt ?? m.resolutionAt}
-                serverNow={Date.now()}
-                balance={myBalance}
-                initialSide={side === "YES" || side === "NO" ? side : undefined}
-                rates={marketRates}
-                minStake={stakeCfg.minStake}
-                maxStake={stakeCfg.maxStake}
-                boardHref="/markets"
-              />
-              </>
-            ) : (
-              /* Sign-in CTA — styled to invite prediction */
-              <div
-                className="rounded-xl border border-border bg-bg-elevated p-6 text-center"
-                style={{
-                  background:
-                    "radial-gradient(420px 160px at 50% 0%, oklch(45% 0.10 240 / 0.20), transparent 60%), " +
-                    "var(--hero-panel-grad)",
-                }}
-              >
-                <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
-                  {t.market.signInToPredict}
-                </p>
-                <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
-                  {t.market.placeYourStake}
-                </h3>
-                <p className="mt-1.5 text-body-sm text-text-muted leading-snug">
-                  {t.market.browseForFree}
-                </p>
-                {(() => {
-                  const betNext = "/markets/" + m.id + (side === "YES" || side === "NO" ? `?side=${side}` : "");
-                  const q = `?next=${encodeURIComponent(betNext)}`;
-                  return (
-                    <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
-                      <Link href={`/auth/register${q}` as never} className="btn btn-primary btn-md btn-pill">
-                        {t.common.signUp}
-                      </Link>
-                      <Link href={`/auth/login${q}` as never} className="btn btn-ghost btn-md btn-pill">
-                        {t.common.signIn}
-                      </Link>
-                    </div>
-                  );
-                })()}
-              </div>
-            )
-          ) : selectionClosed && !closedByTime ? (
-            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <I.hourglassOff s={18} className="text-gold-300" />
-              </div>
-              <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
-                {t.market.selectionClosedBadge}
-              </p>
-              <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
-              <p className="mt-3 text-body-sm text-text-muted leading-snug">
-                {t.market.newPredictionsNotAccepted}
-                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatDeadline(m.resolutionAt)}.`}
-              </p>
-            </div>
-          ) : closedByTime ? (
-            <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
-              <p className="font-mono text-micro uppercase eyebrow font-bold text-warning-fg">
-                {t.market.closedAwaitingSettlement}
-              </p>
-              <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.noMoreBets}</h3>
-              <p className="mt-1 text-[13px] italic text-text-subtle">{t.market.closedWaitSubtitle}</p>
-              <p className="mt-3 text-body-sm text-text-muted leading-snug">
-                {t.market.countdownEndedBody}
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
-              <p className="font-display text-[15px] font-semibold text-text">{t.market.marketClosedForPredictions}</p>
-            </div>
-          )}
-        </aside>
-        </div>
         {/* ══ RELATED MARKETS — FULL WIDTH, BELOW BOTH COLUMNS ══
             🔴 THIS MOVED BACK ON 2026-08-25, AND THE REASON IS THAT ITS OWN PREMISE HAD
             STOPPED BEING TRUE. It sat in the right column, under the sticky bet widget,

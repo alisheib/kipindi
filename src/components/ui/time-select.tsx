@@ -159,9 +159,23 @@ export function TimeSelect({ value, defaultValue, onChange, error, size = "md", 
           24h
         </span>
       </div>
-      {preview && !errored && (
-        <span className="mt-0.5 font-mono text-[10px] text-text-subtle tabular-nums">= {preview}</span>
-      )}
+      {/* ⛔ THE ECHO'S SLOT IS ALWAYS DRAWN — it used to mount and unmount, and that made the
+          control CHANGE HEIGHT WHILE THE OFFICER TYPED. `preview` is empty until both segments
+          parse and is dropped again on `errored`, so this column measured 36px, then ~53px the
+          instant a valid time appeared, then 36px again on a typo — shoving everything below it
+          by 17px each way. Reserving the row costs nothing and removes the jump at all six call
+          sites (`ai-polls/poll-actions.tsx`, `desk/[id]/rules-form.tsx`, and this kit's own
+          `datetime-range-filter.tsx`).
+          ⛔ NOT SOLVED WITH `absolute`: at `poll-actions.tsx` and `rules-form.tsx` a helper/error
+          `<p>` sits directly beneath this row, and an out-of-flow echo would land on top of it.
+          ⚠️ The placeholder is a non-breaking space, hidden from the accessibility tree — an
+          empty slot must reserve space without announcing a blank label. */}
+      <span
+        className="mt-0.5 font-mono text-[10px] text-text-subtle tabular-nums"
+        aria-hidden={preview && !errored ? undefined : true}
+      >
+        {preview && !errored ? `= ${preview}` : " "}
+      </span>
     </div>
   );
 }

@@ -2098,6 +2098,19 @@ textarea::placeholder { color: var(--text-subtle); }
 /* ===========================================================================
    Legacy tooltip (kp-tooltip) — kept because existing components use it.
    The new kit's `.tooltip` class also resolves correctly above.
+
+   🟠 ONE CONSUMER LEFT, AND IT HAS A FILED DEFECT (D84, 2026-09-25). `InfoHint`
+   moved off this atom when D41 shipped, because `white-space: nowrap` below is
+   unusable on a phone: measured on production, a 201-character explanation
+   rendered as a 1392.8px single line in a 320px viewport — 23% of it readable,
+   and the rest unreachable rather than merely off-screen, because `body` is
+   `overflow-x: clip`. It also never resets `text-transform`, so it inherits
+   `uppercase` from whatever label it hangs off.
+   The remaining consumer is `leaderboard/page.tsx:637` (badge tiers): 14
+   triggers at 22×22px with popovers 264–380px wide, up to 72px past the right
+   edge at 320. ⛔ So do not read "kept because existing components use it" as
+   "this is fine" — it is kept because ONE surface has not been moved yet.
+   Move it to `InfoHint` + `InfoHintPanel` and this whole block can go.
    =========================================================================== */
 .kp-tooltip { position: relative; display: inline-flex; }
 .kp-tooltip-popover {
@@ -4525,6 +4538,20 @@ html[data-sheet-open] .route-enter { animation: none; }
   right: 0;
   top: -9px;
   bottom: -14px;
+  /* 🔴 D89 · THE VERTICAL REACH WAS ENGINEERED TO EXACTLY 40px AND THE HORIZONTAL REACH WAS
+     LEFT TO THE TRANSLATION. `left:0; right:0` makes this overlay exactly as wide as the link's
+     text, and the text is not the same width in every language: measured 2026-09-25 on the detail
+     page's similar-markets cards, the hit area is 63.9x40.3 in Swahili ("Maelezo") and 56.4x40.3
+     in English ("Details") — but **38x40.3 in Chinese ("详情")**, two pixels under Law 9's floor,
+     in every one of three widths.
+     ⛔ D28 MEASURED THIS CONTROL AND CLOSED IT, IN ONE LANGUAGE. That is the whole lesson: a floor
+     bought from text width holds only in the locale it was measured in, and the plan's own §A5 lens
+     is pointed the wrong way for it — Swahili running 35-40% LONGER is the safe direction, and it
+     is SHORT text that breaks a width-driven target. Chinese is the short case on this platform.
+     ⚠️ `min-width` and not a wider `right`: with `left` anchored, the overlay grows toward the
+     card's own right padding, away from the share trigger on its left — which is the neighbour
+     whose clicks this pseudo-element already swallowed once (see the note above). */
+  min-width: var(--tap-min);
 }
 .mcardp-timeleft { display:inline-flex; align-items:center; gap:6px; }
 

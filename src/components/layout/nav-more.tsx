@@ -207,8 +207,10 @@ export function NavMore({
                     <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
                   )}
                   {/* ⛔ THE GENERIC `comingSoon` FLAG IS GONE FROM THIS MENU, both branches.
-                      Invite was its only producer, and Invite is WITHDRAWN now, not coming
-                      soon — a withdrawn destination is filtered out upstream, never badged.
+                      Invite was its only producer, and a destination that is not part of the
+                      product is filtered out upstream, never badged.
+                      ⚠️ 2026-09-25 — invite is ACTIVE again (unpaid), and the rule is unchanged:
+                      it is in the list because it is LIVE, not badged because it is promised.
                       What is left would have been worse than dead code: a flag named
                       generically that hard-coded the INVITE label, so the next feature to set
                       it would have rendered Invite's copy. Proposals keeps its own

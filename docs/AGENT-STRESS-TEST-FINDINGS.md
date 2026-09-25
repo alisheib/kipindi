@@ -3,6 +3,19 @@
 **Run:** 2026-09-06 · 9 angles × refute-by-default verification · **293 agents** ·
 **142 findings raised, 78 confirmed.**
 
+> ⚠️ **ONE PREMISE IN THIS FILE EXPIRED ON 2026-09-25 — READ THIS BEFORE ACTING ON ANY FINDING.**
+> Findings throughout assume *"today invite is WITHDRAWN, so a PLAYER referrer pays nothing"* and
+> build controls on the `FEATURE_INVITE=ACTIVE` override. **`PRODUCT_STATE.invite` is now ACTIVE**:
+> a player binds with no override at all, and what is WITHDRAWN is the separate `inviteRewards`
+> state — the link is tracked, the platform pays nothing. So a PLAYER control must now drive
+> **`FEATURE_INVITEREWARDS=ACTIVE`**; `FEATURE_INVITE=ACTIVE` alone leaves `policyFor` refusing
+> every accrual with `player_rewards_withdrawn`, and the suite would assert TZS 0 everywhere while
+> looking like it had tested the promo.
+> ⭐ **Every REASON in this file still holds** — the stamp-at-bind rule, "a guard that chooses its
+> own population cannot fail", and the demand that a control drive the dormant branch. Only the
+> name of the switch, and which of the two is dormant, changed. See
+> [`PLAYER-INVITE-UNPAID.md`](PLAYER-INVITE-UNPAID.md) §10.
+
 ⛔ **This file exists so a 293-agent pass is not lost to a session boundary.** It is the
 evidence behind [`AGENT-PROGRAMME.md`](AGENT-PROGRAMME.md) and
 [`SESSION-PROMPT-AGENT-BUILD.md`](SESSION-PROMPT-AGENT-BUILD.md). Generated from the run's

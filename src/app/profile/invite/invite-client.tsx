@@ -74,9 +74,19 @@ function LinkField({ value, label }: { value: string; label: string }) {
 
 /**
  * Referral link + share controls. Client-only: clipboard + Web Share API.
- * Primary CTA is gold (brand rule); secondary share buttons are ghost.
+ * Primary CTA is gold on the PAID promo (brand rule); secondary share buttons are ghost.
+ *
+ * 🔴 `paid` ARRIVED 2026-09-25 BECAUSE A SCREENSHOT CAUGHT WHAT EVERY TEXT CHECK MISSED. With the
+ * unpaid invite live, this was still rendering a full-width GOLD button — the largest, loudest
+ * element on a page that pays nothing, and the single worst violation of §M3 (struck gold means
+ * money was EARNED) in the product. The page's server side had been carefully de-gilded; this
+ * client component was not, because it takes no props that say so.
+ * ⛔ AND A COLOUR AUDIT DID NOT FIND IT EITHER: `variant="gold"` paints a GRADIENT, so a scan of
+ * `backgroundColor` reads `rgba(0,0,0,0)` and sails past. Only looking at the rendered page did.
+ * ⭐ Threaded as a prop rather than read here: this is `"use client"`, and the product state lives
+ * on the server (`app-shell.tsx` does the same for the nav).
  */
-export function ReferralShare({ link, shareText }: { link: string; shareText: string }) {
+export function ReferralShare({ link, shareText, paid = false }: { link: string; shareText: string; paid?: boolean }) {
   const { toast } = useToast();
   const { t } = useT();
   const [copied, setCopied] = useState(false);
@@ -131,7 +141,7 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
           {copied ? t.common.copied : t.common.copy}
         </button>
       </div>
-      <Button variant="gold" size="lg" fullWidth leading={<I.share s={17} />} onClick={share}>
+      <Button variant={paid ? "gold" : "primary"} size="lg" fullWidth leading={<I.share s={17} />} onClick={share}>
         {t.profile.shareWithFriends}
       </Button>
       {/* 2-up on phones (3-up won't fit "Copy link" at 320), 3-up from sm.

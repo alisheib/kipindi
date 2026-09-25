@@ -161,4 +161,218 @@ export const MUTATIONS = [
     to: "      if (opts?.excludeHouse && p.houseBotId != null) continue;\n      const e = acc.get(p.userId) ?? { resolved: 0, staked: 0, paidOut: 0 };",
     expect: "16.d20.aggregates · ⛔ D20 · neither player-facing aggregate excludes a house-marked row in either twin: top contributors (Prisma and memory) and the leaderboard (memory and SQL) name no marker and take no excludeHouse option",
   },
+  /* ── §17 · the consent ledger and suppression (marketing U6) ────────────────────────
+   * ⭐ EIGHT MUTATIONS, ONE PER RULE §17 EXISTS TO HOLD. Four of them break an ABSENCE —
+   * the append-only and never-deleted rules — which is the half a guard usually cannot
+   * prove, because "nothing is there" is also what a broken check reports. */
+  {
+    // The verbatim-wording half of §5.7: the record keeps the field and stops carrying
+    // the text. Every consent row then proves nothing about what the person was shown.
+    name: "prisma-dal.ts — toStoredMessagingConsent stops carrying the verbatim wording",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    wording: c.wording,`,
+    to: `    wording: "",`,
+    expect: `17.read · toStoredMessagingConsent maps "wording" from the row`,
+  },
+  {
+    // The write half: the wording never reaches Postgres. Memory suites stay green.
+    name: "prisma-dal.ts — messagingConsent.create drops the wording column",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `wording: row.wording, locale: row.locale,`,
+    to: `locale: row.locale,`,
+    expect: `17.create · messagingConsent.create writes "wording"`,
+  },
+  {
+    // ⛔ THE APPEND-ONLY RULE BROKEN. An update path on an evidence table turns a record of
+    // what happened into an opinion about it.
+    name: "prisma-dal.ts — the consent ledger grows an update path",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    latestFor: async (key: MessagingKey): Promise<StoredMessagingConsent | null> => {`,
+    to: `    update: async (id: string): Promise<StoredMessagingConsent | null> => null,
+    latestFor: async (key: MessagingKey): Promise<StoredMessagingConsent | null> => {`,
+    expect: `17.append.prisma · the Prisma ledger exposes NO update and NO delete`,
+  },
+  {
+    // ⛔ THE NEVER-DELETED RULE BROKEN — this is how a person who opted out receives the
+    // next campaign.
+    name: "prisma-dal.ts — suppression grows a deleteMany",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    find: async (key: MessagingKey): Promise<StoredSuppression | null> => {`,
+    to: `    deleteMany: async (identifier: string): Promise<number> => 0,
+    find: async (key: MessagingKey): Promise<StoredSuppression | null> => {`,
+    expect: `17.nodelete.prisma · the Prisma suppression namespace exposes NO delete`,
+  },
+  {
+    // The upsert starts refreshing the row, so every re-import walks "when did they say no"
+    // forward and the evidence is always brand new.
+    // ⚠️ RE-ANCHORED FOR U8. This anchor quoted `update: {}`, and U8's lift changed that line
+    // — the anchor stopped matching and the control silently stopped controlling. The rule it
+    // guards is now "the update block touches nothing that is evidence", so this plants exactly
+    // that: `createdAt` back inside the block.
+    name: "prisma-dal.ts — re-suppression refreshes createdAt instead of leaving the original",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        update: { liftedAt: null, liftedReason: null },`,
+    to: `        update: { liftedAt: null, liftedReason: null, createdAt: new Date() },`,
+    expect: `17.idempotent.prisma · re-suppression is an UPSERT whose update block touches nothing that is evidence`,
+  },
+  {
+    // 🔴 U8 · THE SECOND FALSE SUCCESS. The update block goes back to being EMPTY — the shape
+    // this file asserted until U8 — so `stop → start again → stop again` hands back the LIFTED
+    // row and the person is told they will never be marketed again while the lift stands.
+    name: "prisma-dal.ts — re-suppression hands back the LIFTED row instead of re-arming it",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        update: { liftedAt: null, liftedReason: null },`,
+    to: `        update: {},`,
+    expect: `17.rearm.prisma · ⛔ …and it CLEARS THE LIFT, so re-suppression re-arms a lifted row rather than handing it back`,
+  },
+  {
+    // ⛔ THE LIFT BECOMES A DELETE — the evidence that this person once said no is destroyed,
+    // which is the whole reason §17 asserts the absence of a delete in both twins.
+    name: "prisma-dal.ts — the lift deletes the row instead of superseding it",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const hit = await pc().suppression.updateMany({`,
+    to: `      const hit = await pc().suppression.deleteMany({`,
+    expect: `17.lift.nodelete.prisma · ⛔ the lift writes an UPDATE and removes nothing`,
+  },
+  {
+    // ⛔ `find` STOPS MEANING ACTIVE — so a person who resubscribed is refused for ever, and
+    // the page's "start them again" is a success the send loop will not honour.
+    name: "prisma-dal.ts — the Prisma find stops asking whether the row is still refusing",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `          channel: key.channel, identifier: key.identifier, category: key.category,
+          liftedAt: null,
+        },
+      });
+      return row ? toStoredSuppression(row) : null;
+    },
+    /** ⭐ SUPERSEDE, NEVER DELETE (U8).`,
+    to: `          channel: key.channel, identifier: key.identifier, category: key.category,
+        },
+      });
+      return row ? toStoredSuppression(row) : null;
+    },
+    /** ⭐ SUPERSEDE, NEVER DELETE (U8).`,
+    expect: `17.active.prisma · the Prisma \`find\` returns only rows that are still refusing`,
+  },
+  {
+    // The twins disagree on a tie. Two rows in one millisecond then resolve one way in every
+    // test and the other way on production.
+    name: "prisma-dal.ts — latestFor loses the id tiebreak, so the twins disagree on a tie",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return row ? toStoredMessagingConsent(row) : null;`,
+    to: `        orderBy: { createdAt: "desc" },
+      });
+      return row ? toStoredMessagingConsent(row) : null;`,
+    expect: `17.tiebreak.prisma · BOTH Prisma readers order by createdAt DESC then id DESC`,
+  },
+  {
+    // The memory twin stops being idempotent: a re-import replaces the row and moves the date.
+    // ⚠️ RE-ANCHORED FOR U8 — the create body gained the two lines that clear the lift, so the
+    // one-line anchor this used to quote stopped matching and the control stopped controlling.
+    name: "store.ts — the memory suppression create stops returning the row already there",
+    file: "src/lib/server/store.ts",
+    from: `          r.liftedAt = null;
+          r.liftedReason = null;
+          return r;`,
+    to: `          r.liftedAt = null;
+          r.liftedReason = null;
+          break;`,
+    expect: `17.idempotent.memory · the memory twin returns the row ALREADY THERE instead of replacing it`,
+  },
+  {
+    // 🔴 U8 · the memory twin stops re-arming a lifted row, so re-suppression is a no-op and
+    // the page reports a stop that did not happen.
+    name: "store.ts — the memory create hands back the LIFTED row instead of re-arming it",
+    file: "src/lib/server/store.ts",
+    from: `          r.liftedAt = null;
+          r.liftedReason = null;
+          return r;`,
+    to: `          return r;`,
+    expect: `17.rearm.memory · ⛔ …and it clears the lift on that row, the same way the Prisma twin does`,
+  },
+  {
+    // ⛔ the memory `find` stops asking whether the row is still refusing — the twin that every
+    // behavioural suite in this repo actually runs on.
+    name: "store.ts — the memory find stops asking whether the row is still refusing",
+    file: "src/lib/server/store.ts",
+    from: `          return !r.liftedAt ? r : null;`,
+    to: `          return r;`,
+    expect: `17.active.memory · and so does the memory \`find\``,
+  },
+  {
+    // ⛔ the memory lift stops refusing an already-lifted row, so a SECOND lift walks the date
+    // forward — `liftedAt` is evidence, exactly as `createdAt` is.
+    name: "store.ts — a second lift is allowed to move the date forward",
+    file: "src/lib/server/store.ts",
+    from: `          if (r.liftedAt) return null;`,
+    to: `          if (r.liftedAt === undefined) return null;`,
+    expect: `17.lift.once.memory · and the memory lift refuses a row that is already lifted`,
+  },
+  {
+    // ⛔ The memory ledger grows a delete — the absence rule broken on the twin every
+    // behavioural suite actually runs on.
+    name: "store.ts — the memory consent ledger grows a delete",
+    file: "src/lib/server/store.ts",
+    from: `    listFor: (key: MessagingKey): StoredMessagingConsent[] =>`,
+    to: `    delete: (id: string): boolean => store.messagingConsents.delete(id),
+    listFor: (key: MessagingKey): StoredMessagingConsent[] =>`,
+    expect: `17.append.memory · the memory ledger exposes NO update and NO delete`,
+  },
+  {
+    // The MEMORY twin loses the tiebreak instead — the mirror of case 21, on the backend every
+    // behavioural suite actually runs on.
+    name: "store.ts — the memory latestFor loses the id tiebreak",
+    file: "src/lib/server/store.ts",
+    from: `        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0] ?? null,`,
+    to: `        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null,`,
+    expect: `17.tiebreak.memory · BOTH memory readers break the tie on id, the same way`,
+  },
+  /* ── §18 · the opt-out link (marketing U8) ──────────────────────────────────────────── */
+  {
+    // The identifier stops being carried: the token resolves to nothing, and the person
+    // holding that SMS can never leave. OD43's link never expires, so nor does the failure.
+    name: "prisma-dal.ts — toStoredMarketingOptOutToken stops carrying the identifier",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    identifier: t.identifier,`,
+    to: `    identifier: "",`,
+    expect: `18.read · toStoredMarketingOptOutToken maps "identifier" from the row`,
+  },
+  {
+    // The category never reaches Postgres, so the row cannot be matched to the suppression
+    // triple the gate asks about.
+    name: "prisma-dal.ts — marketingOptOutToken.create drops the category column",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `            category: row.category, createdAt: new Date(row.createdAt),`,
+    to: `            createdAt: new Date(row.createdAt),`,
+    expect: `18.create · marketingOptOutToken.create writes "category"`,
+  },
+  {
+    // ⛔ THE SILENT RE-POINT. An upsert quietly hands somebody else's live opt-out link to a
+    // different person — and the first person can then never leave.
+    name: "prisma-dal.ts — the token create becomes an upsert, silently re-pointing a live link",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        const created = await pc().marketingOptOutToken.create({`,
+    to: `        const created = await pc().marketingOptOutToken.upsert({`,
+    expect: `18.taken.prisma · the Prisma create turns its unique violation into null, and does not upsert`,
+  },
+  {
+    // The memory twin overwrites instead of refusing, so the two backends disagree about who
+    // a token belongs to — and every behavioural suite runs on the twin that is wrong.
+    name: "store.ts — the memory token create overwrites a token already held",
+    file: "src/lib/server/store.ts",
+    from: `      if (store.optOutTokens.has(row.token)) return null;`,
+    to: `      if (false) return null;`,
+    expect: `18.taken.memory · the memory create refuses a token already held, and does not overwrite`,
+  },
+  {
+    // ⛔ A delete on a link that OD43 says never expires.
+    name: "prisma-dal.ts — the token namespace grows a delete",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    find: async (token: string): Promise<StoredMarketingOptOutToken | null> => {`,
+    to: `    deleteMany: async (identifier: string): Promise<number> => 0,
+    find: async (token: string): Promise<StoredMarketingOptOutToken | null> => {`,
+    expect: `18.nodelete.prisma · the Prisma token namespace exposes NO delete`,
+  },
 ];

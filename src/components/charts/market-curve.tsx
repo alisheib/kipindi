@@ -25,9 +25,26 @@
 import { useEffect, useRef, useState } from "react";
 import type { IChartApi, ISeriesApi, UTCTimestamp } from "lightweight-charts";
 import { makeInkResolver, tokRaw } from "./ink-bridge";
-import { ascUnique } from "./chart-series";
+import { ascUnique, timeGridFill } from "./chart-series";
 
 export type CurvePoint = { t: string; ts: number; p: number };
+
+/**
+ * D46 · how many axis slots the time grid may use. Paired with `minBarSpacing: 0.05` below:
+ * 2,000 slots need 210 / 2000 = 0.105px each, and the floor allows 0.05, so `fitContent()` can
+ * always show the WHOLE window. ⛔ Raising this without lowering `minBarSpacing` silently clamps
+ * the view to a slice of the market's history. `test:time-axis` §7 asserts the pair.
+ */
+export const MAX_TIME_SLOTS = 2000;
+/**
+ * The narrowest plot this has to fit. **MEASURED, not estimated** — the chart canvas is
+ * 190x212 at a 320 viewport, 246 at 360 and 282 at 412 (local render, 2026-09-25). A 210px
+ * estimate was in this slot first and was 10% optimistic; the budget in `test:time-axis` §7 is
+ * only meaningful if this number is the real one.
+ */
+export const MIN_PLOT_PX = 190;
+/** The library floor set on the time scale below. */
+export const MIN_BAR_SPACING = 0.05;
 
 export function MarketCurve({
   series,
@@ -88,6 +105,18 @@ export function MarketCurve({
         timeScale: {
           borderColor: ink("--border"), timeVisible: true, secondsVisible: false,
           fixRightEdge: true, fixLeftEdge: true, lockVisibleTimeRangeOnResize: true,
+          // 🔴 D46 · `minBarSpacing` IS PART OF THE FIX, NOT A TUNING KNOB, AND LEAVING IT AT THE
+          //    DEFAULT WOULD HAVE TURNED ONE DEFECT INTO A WORSE ONE. The time-grid fill
+          //    (`timeGridFill`) reserves a slot per grid step so a two-day gap stops drawing the
+          //    same width as a one-day gap. But the library's default floor is **0.5px per slot**,
+          //    and the plot is **190px wide at a 320 viewport** — measured, 2026-09-25, not the
+          //    210px first estimated here. At 0.5px that is a ceiling of ~380 slots, so
+          //    `fitContent()` on a 2,000-slot series would clamp and show the player ROUGHLY A
+          //    TENTH OF THEIR MARKET'S HISTORY while looking perfectly normal.
+          //    0.05px per slot gives 190 / 0.05 = 3,800 — comfortably above `MAX_TIME_SLOTS`
+          //    (2,000), which is why the two numbers are stated together and why
+          //    `test:time-axis` §7 asserts the budget rather than trusting this comment.
+          minBarSpacing: 0.05,
           // The library's day-boundary tick leaks a bare day number (the
           // terminal's fix, applied here too): market windows span days, so the
           // boundary names its DAY in the platform locale over the already
@@ -147,7 +176,22 @@ export function MarketCurve({
     // ⛔ `ascUnique` — this site never sorted at all, and `Math.round(ts / 1000)` collapses
     //    two points inside one second onto one axis slot. A tie throws out of the effect and
     //    takes the whole route with it (chart-series.ts records the incident).
-    s.setData(ascUnique(pts.map((p) => ({ time: (Math.round(p.ts / 1000) + tzShift) as UTCTimestamp, value: p.p }))));
+    // 🔴 D46 · `timeGridFill` — and this site drew a DATE axis that was not a TIME axis. The
+    //    engine's time scale is ORDINAL: one slot per item, one uniform `barSpacing`. So under
+    //    calendar labels a two-day interval and a one-day interval were both 153px (critics
+    //    panel, measured), and the slope misstated the rate of change on the page where a player
+    //    is about to stake. The fill reserves the missing width with the library's own whitespace
+    //    items, which carry no reading — never an interpolated probability, because this
+    //    component's own rule is "Real data or nothing (A-5)" and a drawn value between two bets
+    //    is a measurement nobody took.
+    //    ⚠️ ORDER IS LOAD-BEARING: fill first, then `ascUnique`, whose tie rule keeps a real
+    //    reading over a whitespace marker on the same second. Reversed, a gap marker could erase
+    //    a price the platform read.
+    const filled = timeGridFill(
+      pts.map((p) => ({ time: (Math.round(p.ts / 1000) + tzShift) as UTCTimestamp, value: p.p })),
+      { maxSlots: MAX_TIME_SLOTS },
+    ) as Array<{ time: UTCTimestamp; value?: number }>;
+    s.setData(ascUnique(filled) as Parameters<typeof s.setData>[0]);
     if (fitKeyRef.current !== range) {
       chart.timeScale().fitContent();
       fitKeyRef.current = range;

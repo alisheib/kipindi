@@ -37,10 +37,15 @@ const EXCLUDED = [
   "/admin", "/admin/", "/admin/players/c123", "/ADMIN/players/c123", "//admin/players", "/%61dmin/players",
   "/api/health", "/auth/admin", "/auth/2fa", "/auth/reset-password?token=abc", "/auth/verify-email?token=abc",
   "/auth/demo?email=unverified", "/agent/invite/tok_9f8e7d",
+  // U8 · the marketing opt-out link, in the spellings a real one arrives in.
+  "/s", "/s/", "/s/K7M4PQR9", "/S/K7M4PQR9",
 ];
 for (const p of EXCLUDED) ok(`§2 excluded: ${p}`, gaLocation(W + p) === null);
 ok("§2 control · a look-alike prefix is NOT excluded (segment match, not string match)",
-  !gaExcluded("/administrator") && !gaExcluded("/apis") && gaLocation(`${W}/agent/invitations`) !== null);
+  !gaExcluded("/administrator") && !gaExcluded("/apis") && gaLocation(`${W}/agent/invitations`) !== null
+  // ⛔ `/s` is TWO CHARACTERS, so it is the prefix most likely to swallow a sibling route by
+  // string match. `/settings` and `/support` must keep reporting — the rule is a SEGMENT match.
+  && !gaExcluded("/settings") && !gaExcluded("/support") && !gaExcluded("/search"));
 ok("§2 control · the agent landing and status pages still report", gaLocation(`${W}/agent`) === `${W}/agent` && gaLocation(`${W}/agent/status?ref=app_1`) === `${W}/agent/status`);
 
 console.log("\n§3 · the query keeps campaign parameters only");

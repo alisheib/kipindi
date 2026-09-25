@@ -24,6 +24,7 @@ export function AvatarMenu({
   isAdmin = false,
   proposalsState = "COMING_SOON",
   inviteVisible = false,
+  invitePaid = false,
 }: {
   initials: string;
   name: string;
@@ -35,6 +36,14 @@ export function AvatarMenu({
   proposalsState?: ProposalsState;
   /** Resolved by the SERVER shell — a client component cannot know the viewer's role. */
   inviteVisible?: boolean;
+  /**
+   * ⭐ DOES THE INVITE PAY? Resolved by the SERVER shell (`playerInviteRewardsLive()`), for the
+   * same reason `inviteVisible` is: this module must not import `feature-state`, and a client
+   * cannot read a server product state. ⛔ DEFAULTING TO FALSE IS THE SAFE DIRECTION — a menu row
+   * that has lost its prop says "Invite friends" and offers nothing, rather than advertising
+   * earnings the programme is refusing.
+   */
+  invitePaid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -93,13 +102,31 @@ export function AvatarMenu({
 
   /** The rows actually rendered — Proposals is hidden entirely when DISABLED
    *  ("every entry point is hidden", `proposals-config.ts`). */
-  /* ⛔ A WITHDRAWN DESTINATION IS FILTERED OUT, NOT BADGED. Proposals has always been dropped
-     here when DISABLED; Invite now joins it. It used to render permanently wearing a gilt
-     "coming soon" flag — right while the programme was waiting for sign-off, wrong now that
-     referral earning belongs to vetted, approved AGENTS only. Filtering (rather than badging)
-     also keeps the current-page predicate below honest: it derives from `rows`, so a row that
-     cannot be reached can never be marked as where you are. */
-  const rows = MENU_ROWS.filter((r) => (!r.proposals || proposalsState !== "DISABLED") && (!r.invite || inviteVisible));
+  /* ⛔ A DESTINATION THIS VIEWER CANNOT REACH IS FILTERED OUT, NOT BADGED. Proposals has always
+     been dropped here when DISABLED; Invite is filtered by the same rule. It used to render
+     permanently wearing a gilt "coming soon" flag — right while the programme was waiting for
+     sign-off, wrong once it had been decided either way. Filtering (rather than badging) also
+     keeps the current-page predicate below honest: it derives from `rows`, so a row that cannot
+     be reached can never be marked as where you are.
+     ⚠️ 2026-09-25 — `inviteVisible` is now TRUE for every player in good standing (the unpaid
+     invite) and FALSE for a closed / suspended / self-excluded account or an agent out of
+     standing. The rule is unchanged; the population it admits is. */
+  /* ⭐ AND THE INVITE ROW CHANGES ITS WORDS WITH THE PROGRAMME (2026-09-25). "Invite & Earn" /
+     "Alika na upate zawadi" / "邀请赚钱" all promise money, in the one place a player reads before
+     the page has a chance to explain itself — a menu row is a claim made on every screen. Unpaid,
+     it takes the page's own label from the dictionary, so the row and its destination cannot
+     disagree, and `accent` is dropped with it: the gilt icon and the gold hover are §M3 money
+     tokens, and a share link earns nothing.
+     ⚠️ The override writes the RESOLVED label into all three locale fields on purpose — `Item`
+     then picks it whichever locale it is in. A second literal per language here would be a fourth
+     copy of a sentence the dictionary already owns. */
+  const rows = MENU_ROWS
+    .filter((r) => (!r.proposals || proposalsState !== "DISABLED") && (!r.invite || inviteVisible))
+    .map((r) =>
+      r.invite && !invitePaid
+        ? { ...r, en: t.profile.inviteFriends, sw: t.profile.inviteFriends, zh: t.profile.inviteFriends, accent: false }
+        : r,
+    );
   /* ⭐ DG-P-11 — WHICH ROW IS THE CURRENT PAGE, BY LONGEST MATCH.
      ⛔ Longest-match is load-bearing, not tidiness: `/profile` is a prefix of both
      `/profile/invite` and `/profile/kyc`, so a plain per-row test would raise THREE current

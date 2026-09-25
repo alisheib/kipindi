@@ -13,10 +13,10 @@
  * multiplier and stake numerals tween critically-damped, no snapping.
  */
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import { InfoHint } from "@/components/ui/info-hint";
+import { InfoHint, InfoHintPanel } from "@/components/ui/info-hint";
 import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -195,6 +195,17 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   // Locking never touches pos/side, so the current YES/NO pick + stake survive
   // a lock→unlock round-trip unchanged.
   const [armed, setArmed] = useState(false);
+  // D41 · which money explanation is open, if any. ONE at a time: three panels expanded at
+  // once would push the Place control off a 780px screen, and the player only ever asks one
+  // question. The panels are placed by their ROW rather than by the trigger — see info-hint.tsx
+  // for why (the eyebrow they hang off is 54-204px wide at 320, which is not a measure).
+  const [openHint, setOpenHint] = useState<"stake" | "mult" | "payout" | null>(null);
+  const hintUid = useId().replace(/:/g, "");
+  const hintId = (k: "stake" | "mult" | "payout") => `hint-${k}-${hintUid}`;
+  const toggleHint = useCallback(
+    (k: "stake" | "mult" | "payout") => setOpenHint((cur) => (cur === k ? null : k)),
+    [],
+  );
   // One-time coach hint ("drag to set stake") — shown until the player first
   // touches the dial, then dismissed forever (localStorage). Kit B1 affordance.
   const [showCoach, setShowCoach] = useState(false);
@@ -1440,11 +1451,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         </div>
         <div className="text-right min-w-0">
           <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1.5">
-            {t.dialog.stakeLabel}
-            <InfoHint
-              size={10}
-              label={t.dialog.poolSharePayout}
-            />
+            <InfoHint panelId={hintId("stake")} open={openHint === "stake"} onToggle={() => toggleHint("stake")} size={10}>
+              {t.dialog.stakeLabel}
+            </InfoHint>
           </p>
           {/*
             Kit `Input` atom — the SAME form field players have already
@@ -1520,6 +1529,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           )}
         </div>
       </div>
+      {/* D41 · the explanation belongs to the ROW, not to the 172px right-hand cell the trigger
+          sits in. Measured at 320: this row is 238px and the cell is 172 — and the multiplier
+          row's eyebrow is 54, which is why no version of this can live beside its trigger. */}
+      <InfoHintPanel id={hintId("stake")} open={openHint === "stake"}>
+        {t.dialog.poolSharePayout}
+      </InfoHintPanel>
 
       {/* Multiplier input — third coordinated entry point. Type a
           conviction strength directly (e.g. "2.50×") and the dial
@@ -1528,11 +1543,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           consistency. */}
       <div className="mt-3 grid grid-cols-[1fr_auto] gap-2 sm:gap-3 items-center">
         <p className="font-mono text-micro uppercase eyebrow text-text-subtle">
-          {t.common.multiplier}
-          <InfoHint
-            size={10}
-            label={t.common.highConvictionHint}
-          />
+          <InfoHint panelId={hintId("mult")} open={openHint === "mult"} onToggle={() => toggleHint("mult")} size={10}>
+            {t.common.multiplier}
+          </InfoHint>
         </p>
         <div className="text-right min-w-0">
           <Input
@@ -1578,6 +1591,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           )}
         </div>
       </div>
+      <InfoHintPanel id={hintId("mult")} open={openHint === "mult"}>
+        {t.common.highConvictionHint}
+      </InfoHintPanel>
 
       {/* Payout disclosure.
           - capped-commission polls (D3, license review · 2026-05): the potential
@@ -1592,16 +1608,21 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         return (
           <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5">
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">
-              {showEstimate ? t.dialog.estimatedWinningsLabel : t.common.payout2}
-              <InfoHint
-                size={10}
-                label={showEstimate
-                  // F2/F5 · the multiple is READ, not written. It was the literal "1.5×" in the
-                  // copy, and Up & Down runs 1.4× — so the hint disagreed with the button beside it.
-                  ? fill(t.dialog.estimateHowItWorks, { mult: String(Number((1 + (rates?.estimatedWinningsRate ?? 0)).toFixed(2))) })
-                  : fill(t.dialog.payoutHowItWorks, { pct: pctNum(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE), ceiling: fmtRate(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE) })}
-              />
+              <InfoHint panelId={hintId("payout")} open={openHint === "payout"} onToggle={() => toggleHint("payout")} size={10}>
+                {showEstimate ? t.dialog.estimatedWinningsLabel : t.common.payout2}
+              </InfoHint>
             </p>
+            {/* F2/F5 · the multiple and both rates are READ, not written. The multiple was once the
+                literal "1.5×" in the copy while Up & Down ran 1.4×, so the hint disagreed with the
+                button beside it. ⚠️ The ceiling is NOT the retired formula: this branch renders only
+                for a `capped-commission` poll (`showEstimate` is false exactly then), where
+                `fee = min(commissionRate·pool, feeCeilingRate·smaller)` is the live rule —
+                checked against payout.ts on 2026-09-25 before anyone "corrected" it. */}
+            <InfoHintPanel id={hintId("payout")} open={openHint === "payout"}>
+              {showEstimate
+                ? fill(t.dialog.estimateHowItWorks, { mult: String(Number((1 + (rates?.estimatedWinningsRate ?? 0)).toFixed(2))) })
+                : fill(t.dialog.payoutHowItWorks, { pct: pctNum(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE), ceiling: fmtRate(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE) })}
+            </InfoHintPanel>
             {showEstimate ? (
               <>
                 <p className="text-[18px] font-bold tabular-nums text-text leading-none">

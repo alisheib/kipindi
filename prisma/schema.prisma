@@ -3047,3 +3047,171 @@ model SmsMessage {
   @@index([createdAt])
   @@index([targetType, targetId])
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// MESSAGING CONSENT AND SUPPRESSION (marketing programme U6 — D7, D8)
+//
+// ⭐ WHY THESE ARE TWO TABLES AND NOT A COLUMN. `User.marketingOptIn` is a boolean: it
+// carries no channel, no category, no wording, no evidence and no history (D8), and it
+// cannot exist at all for somebody who is not a player. ETA Cap 442 s.32(1)(a) requires
+// consent, GN 478T reg 51(1) requires the record of it, and a boolean is not a record.
+//
+// ⛔ ZERO BACKFILL (OD8). No row is invented for an existing `marketingOptIn = true`.
+// A ledger that fabricates its own evidence is worse than no ledger, because it is
+// indistinguishable from one that does not.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// The delivery channel a consent or suppression applies to. SMS is the only one 50pick
+/// operates today; the column exists so an e-mail consent can never be read as an SMS one.
+enum MessagingChannel {
+  SMS
+}
+
+/// What the message is FOR. ⛔ Transactional traffic (OTP, payout notices) is not in here:
+/// it is not marketing, it needs no consent, and giving it a category would invite somebody
+/// to gate a login code on a marketing opt-in.
+enum MessagingCategory {
+  MARKETING
+}
+
+enum MessagingConsentStatus {
+  GIVEN
+  WITHDRAWN
+}
+
+/// Where the act happened. This is evidence, not decoration: ETA s.31(c) obliges us to be
+/// able to say where a person's details came from.
+enum MessagingConsentSource {
+  /// The tick box on the sign-up form.
+  REGISTRATION
+  /// The toggle at /profile/notifications.
+  PROFILE
+  /// The one-click opt-out page (U8).
+  OPT_OUT_PAGE
+  /// A STOP-style inbound keyword.
+  KEYWORD
+  /// A bulk import carrying an operator attestation of consent (OQ10).
+  IMPORT
+  /// Recorded by a member of staff, who is named in `recordedBy`.
+  OPERATOR
+  /// The 730-day inactivity lapse in `retention.ts`. ⚠️ Nothing writes this yet — U16 owns
+  /// making the lapse append its row. The value ships here because adding a value to an
+  /// EXISTING enum later costs its own migration one commit ahead (measured: Postgres 18.3
+  /// refuses `55P04 unsafe use of new value` in the transaction that adds it).
+  RETENTION_LAPSE
+}
+
+/// Why a number is suppressed. Every one of these is a person saying no, or the law saying
+/// it for them.
+enum SuppressionReason {
+  /// They withdrew consent — the opt-out page, a keyword, or the profile toggle.
+  WITHDRAWN
+  /// They complained.
+  COMPLAINT
+  /// Suppressed by staff, who is named in `recordedBy`.
+  OPERATOR
+  /// GN 478T reg 49(3) — no promotional material during a self-exclusion period.
+  SELF_EXCLUSION
+}
+
+/// ⭐ APPEND-ONLY, AND THAT IS THE WHOLE POINT. A row records what one person was shown and
+/// what they answered, at one instant. A withdrawal is a NEW row, never an edit of the row
+/// that granted consent — so the ledger can always answer "what was true on the day we sent
+/// that message", which is the question a regulator actually asks (GN 478T reg 51(1)).
+///
+/// ⛔ There is no `update` and no `delete` on this model in either store, by construction.
+/// `test:dal-parity` §17 asserts their ABSENCE, because an append-only table that quietly
+/// grows an update path stops being evidence and becomes an opinion.
+model MessagingConsent {
+  id         String                 @id @default(cuid())
+  channel    MessagingChannel
+  /// The ONE phone key — bare `255XXXXXXXXX`, exactly as `toMsisdn255` produces it (U1).
+  /// ⛔ Never a formatted or spaced number: two spellings of one person is two verdicts.
+  identifier String
+  category   MessagingCategory
+  status     MessagingConsentStatus
+  source     MessagingConsentSource
+  /// ⭐ VERBATIM, AND NEVER RE-RENDERED FROM CURRENT STRINGS (§5.7). What this person
+  /// actually read at the moment they answered. Re-rendering it from today's copy would
+  /// mean the record changes every time marketing rewords the form — which is precisely
+  /// the record being worthless.
+  wording    String
+  locale     Locale
+  /// Free-form proof of the act: the form version, the import attestation, the opt-out
+  /// token. ⛔ Never a raw phone number — `identifier` is the only place one belongs.
+  evidence   String?
+  /// The staff user who recorded it. NULL when the data subject acted for themselves.
+  recordedBy String?
+  createdAt  DateTime               @default(now())
+
+  /// The gate (U7) asks one question: the latest row for this triple.
+  @@index([channel, identifier, category, createdAt])
+  @@index([createdAt])
+}
+
+/// ⛔ A SUPPRESSION ROW IS NEVER DELETED. Not by contact deletion, not by re-import, not by
+/// erasure. It is the record that somebody said no, and deleting it is exactly how a person
+/// who opted out receives the next campaign. The unique triple makes re-suppression a no-op
+/// rather than a duplicate, so the "add it again" path is safe to call from anywhere.
+///
+/// ⭐ NEVER DELETED, BUT IT MAY BE SUPERSEDED (U8). A row with `liftedAt` set is no longer
+/// refusing anybody, and the row itself — with its ORIGINAL `createdAt` — is still there to
+/// answer "when did this person first say no". That is what makes U8's resubscribe button
+/// honest: without it, "start them again" would report a success while this row went on
+/// refusing for ever, which is precisely the false success U8's own copy forbids.
+model Suppression {
+  id         String            @id @default(cuid())
+  channel    MessagingChannel
+  /// The ONE phone key, same spelling as `MessagingConsent.identifier`.
+  identifier String
+  category   MessagingCategory
+  reason     SuppressionReason
+  /// What proves it: the ledger row id that withdrew, the complaint reference, the token.
+  evidence   String?
+  /// The staff user who recorded it. NULL when the data subject acted for themselves.
+  recordedBy String?
+  createdAt  DateTime          @default(now())
+  /// ⭐ WHEN THIS REFUSAL STOPPED APPLYING — NULL means it is still refusing. The gate reads
+  /// `liftedAt IS NULL` as "active"; nothing reads this column as a reason to delete the row.
+  /// ⛔ It is set ONCE. A second lift must not move it forward, for the same reason a re-import
+  /// must not move `createdAt` forward: the date is evidence, not a status flag.
+  liftedAt   DateTime?
+  /// Free text, the same shape as `evidence`: what lifted it. ⛔ NEVER a raw phone number
+  /// (§5.14) — `identifier` is the only place one belongs.
+  liftedReason String?
+
+  /// ⭐ THE GUARANTEE THE SEND LOOP LEANS ON (§5.6): suppression is asked FIRST, and this
+  /// index is what makes asking it per recipient affordable at 150k contacts (§3c).
+  @@unique([channel, identifier, category])
+  @@index([createdAt])
+}
+
+/// ⭐ ONE ROW PER MINTED OPT-OUT LINK (marketing U8, OD43). The token is the primary key, so
+/// uniqueness is the database's job rather than a convention.
+///
+/// 🔴 WHY THE ALPHABET IS NOT HEX, WITH THE ARITHMETIC WRITTEN OUT. OD43 pins the token at
+/// EIGHT characters and says it NEVER expires, so every collision is permanent. Eight hex
+/// characters is 16^8 = 4.3e9, and against §3c's 150,000-recipient campaign the birthday
+/// estimate n²/2N is about 2.6 EXPECTED COLLISIONS — near-certain, on the first campaign.
+/// The repo's ambiguity-free 32-character alphabet gives 32^8 = 1.1e12 and ~1% per campaign,
+/// which still compounds for ever — so the mint RETRIES on conflict rather than hoping.
+///
+/// ⛔ U42 MUST NOT MINT THESE WITH `createMany({ skipDuplicates: true })`. That emits
+/// `ON CONFLICT DO NOTHING` with no target, so a token collision would silently drop the whole
+/// recipient row: a person who is never messaged and never appears as a failure either.
+///
+/// ⚠️ This table exists because U8 ships at S4 and the recipient row does not exist until U35
+/// (S18). U42 writes into it at enqueue; nothing here assumes a campaign.
+model MarketingOptOutToken {
+  /// Eight characters from the ambiguity-free alphabet — no I, O, 0 or 1.
+  token      String            @id
+  channel    MessagingChannel
+  /// The ONE phone key, bare `255XXXXXXXXX`, same spelling as `Suppression.identifier`.
+  identifier String
+  category   MessagingCategory
+  createdAt  DateTime          @default(now())
+
+  /// A person can hold several links over several campaigns; every one of them keeps working.
+  @@index([identifier])
+  @@index([createdAt])
+}

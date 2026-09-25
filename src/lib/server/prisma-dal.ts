@@ -62,7 +62,9 @@ import type {
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
   AgentApplicationStatus,
-  AgentDocType, StoredKycStageRow, NotificationRedactScope } from "./store";
+  AgentDocType, StoredKycStageRow, NotificationRedactScope,
+  StoredMessagingConsent, StoredSuppression, MessagingKey,
+  StoredMarketingOptOutToken } from "./store";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -140,6 +142,72 @@ function toStoredSmsMessage(s: SmsMessageRow): StoredSmsMessage {
  * ⛔ A DateTime column MUST be "date": an ISO string reaching Prisma throws on Postgres
  * and nowhere else, so every memory-backed suite would stay green straight through it.
  */
+/**
+ * MessagingConsent row → StoredMessagingConsent (marketing U6).
+ *
+ * ⛔ THERE IS NO COLUMN MAP BESIDE THIS ONE, AND THAT IS THE POINT. `SMS_MESSAGE_COLUMN`
+ * exists to drive an `update`; this table has none and never will, so a column map here
+ * would be a writer with no reader — a thing that looks like a safety net and catches
+ * nothing. `dal-parity` §17 asserts the create and the read mapper instead, and asserts
+ * that `update` and `delete` are ABSENT.
+ */
+type MessagingConsentRow = {
+  id: string; channel: string; identifier: string; category: string; status: string;
+  source: string; wording: string; locale: string; evidence: string | null;
+  recordedBy: string | null; createdAt: Date;
+};
+function toStoredMessagingConsent(c: MessagingConsentRow): StoredMessagingConsent {
+  return {
+    id: c.id,
+    channel: c.channel as StoredMessagingConsent["channel"],
+    identifier: c.identifier,
+    category: c.category as StoredMessagingConsent["category"],
+    status: c.status as StoredMessagingConsent["status"],
+    source: c.source as StoredMessagingConsent["source"],
+    wording: c.wording,
+    locale: c.locale as StoredMessagingConsent["locale"],
+    evidence: c.evidence,
+    recordedBy: c.recordedBy,
+    createdAt: iso(c.createdAt),
+  };
+}
+
+/** Suppression row → StoredSuppression (marketing U6, lift U8). ⛔ No delete — a lift
+ *  SUPERSEDES the row (`liftedAt`), it never removes it. */
+type SuppressionRow = {
+  id: string; channel: string; identifier: string; category: string; reason: string;
+  evidence: string | null; recordedBy: string | null; createdAt: Date;
+  liftedAt: Date | null; liftedReason: string | null;
+};
+function toStoredSuppression(s: SuppressionRow): StoredSuppression {
+  return {
+    id: s.id,
+    channel: s.channel as StoredSuppression["channel"],
+    identifier: s.identifier,
+    category: s.category as StoredSuppression["category"],
+    reason: s.reason as StoredSuppression["reason"],
+    evidence: s.evidence,
+    recordedBy: s.recordedBy,
+    createdAt: iso(s.createdAt),
+    liftedAt: iso(s.liftedAt),
+    liftedReason: s.liftedReason,
+  };
+}
+
+/** MarketingOptOutToken row → StoredMarketingOptOutToken (marketing U8). ⛔ No update, no delete. */
+type MarketingOptOutTokenRow = {
+  token: string; channel: string; identifier: string; category: string; createdAt: Date;
+};
+function toStoredMarketingOptOutToken(t: MarketingOptOutTokenRow): StoredMarketingOptOutToken {
+  return {
+    token: t.token,
+    channel: t.channel as StoredMarketingOptOutToken["channel"],
+    identifier: t.identifier,
+    category: t.category as StoredMarketingOptOutToken["category"],
+    createdAt: iso(t.createdAt),
+  };
+}
+
 const SMS_MESSAGE_COLUMN: Record<keyof StoredSmsMessage, "date" | "plain" | null> = {
   reference: null,
   createdAt: null,
@@ -3199,6 +3267,152 @@ export const prismaDb = {
     listRecent: async (limit = 50): Promise<StoredSmsMessage[]> => {
       const rows = await pc().smsMessage.findMany({ orderBy: { createdAt: "desc" }, take: limit });
       return rows.map(toStoredSmsMessage);
+    },
+  },
+  /* ═══ MESSAGING CONSENT (marketing U6) ═══════════════════════════════════════════════
+   * ⛔ NO `update`, NO `delete` — the append-only rule, enforced by there being no method
+   * to call. `dal-parity` §17 asserts their absence in BOTH twins. */
+  messagingConsent: {
+    create: async (row: StoredMessagingConsent): Promise<StoredMessagingConsent> => {
+      const created = await pc().messagingConsent.create({
+        data: {
+          id: row.id, channel: row.channel, identifier: row.identifier, category: row.category,
+          status: row.status, source: row.source, wording: row.wording, locale: row.locale,
+          evidence: row.evidence, recordedBy: row.recordedBy,
+          createdAt: new Date(row.createdAt),
+        },
+      });
+      return toStoredMessagingConsent(created);
+    },
+    /** ⭐ The tiebreak on `id` matches the memory twin exactly: two rows can share a
+     *  millisecond, and a gate that breaks the tie differently in memory than in Postgres
+     *  answers differently in a test than it does on production. */
+    latestFor: async (key: MessagingKey): Promise<StoredMessagingConsent | null> => {
+      const row = await pc().messagingConsent.findFirst({
+        where: { channel: key.channel, identifier: key.identifier, category: key.category },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return row ? toStoredMessagingConsent(row) : null;
+    },
+    listFor: async (key: MessagingKey): Promise<StoredMessagingConsent[]> => {
+      const rows = await pc().messagingConsent.findMany({
+        where: { channel: key.channel, identifier: key.identifier, category: key.category },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return rows.map(toStoredMessagingConsent);
+    },
+  },
+
+  /* ═══ SUPPRESSION (marketing U6, lift U8) ════════════════════════════════════════════
+   * ⛔ NO `delete`, EVER — and ⛔ NOT BY RESUBSCRIBE EITHER. A lift SUPERSEDES the row. */
+  suppression: {
+    /** ⭐ IDEMPOTENT ON THE TRIPLE, and the update block is deliberate rather than a stub: a
+     *  repeat suppression must leave the ORIGINAL row's `createdAt` exactly where it is,
+     *  because that timestamp is the answer to "when did they say no". An update that
+     *  refreshed it would quietly move the date forward on every re-import.
+     *
+     *  🔴 IT CLEARS A LIFT, AND THAT IS THE SECOND FALSE SUCCESS — the one in the opposite
+     *  direction from the one U8 was written to prevent. Once a row can be lifted,
+     *  `stop → start again → stop again` returns through here, and an EMPTY update block
+     *  would hand back the LIFTED row untouched: the page would tell the person they will
+     *  never be marketed again while the suppression stayed lifted and the next campaign
+     *  sent to them. ⛔ So the update clears the lift and touches NOTHING else — above all
+     *  not `createdAt`, which is why this is not a plain overwrite. */
+    create: async (row: StoredSuppression): Promise<StoredSuppression> => {
+      const created = await pc().suppression.upsert({
+        where: {
+          channel_identifier_category: {
+            channel: row.channel, identifier: row.identifier, category: row.category,
+          },
+        },
+        update: { liftedAt: null, liftedReason: null },
+        create: {
+          id: row.id, channel: row.channel, identifier: row.identifier, category: row.category,
+          reason: row.reason, evidence: row.evidence, recordedBy: row.recordedBy,
+          createdAt: new Date(row.createdAt),
+          liftedAt: row.liftedAt === null ? null : new Date(row.liftedAt),
+          liftedReason: row.liftedReason,
+        },
+      });
+      return toStoredSuppression(created);
+    },
+    /** ⭐ ACTIVE ONLY — `liftedAt: null` is part of the QUESTION, not a filter applied after.
+     *  See the memory twin for why the plainest name is the one that answers safely: a caller
+     *  who forgets that rows can be lifted over-refuses, which is lawful; the arrangement
+     *  where they under-refuse is a breach. ⛔ The row is still there — `listFor` returns it. */
+    find: async (key: MessagingKey): Promise<StoredSuppression | null> => {
+      const row = await pc().suppression.findFirst({
+        where: {
+          channel: key.channel, identifier: key.identifier, category: key.category,
+          liftedAt: null,
+        },
+      });
+      return row ? toStoredSuppression(row) : null;
+    },
+    /** ⭐ SUPERSEDE, NEVER DELETE (U8). `updateMany` scoped to `liftedAt: null` does two jobs
+     *  in one statement: it is the only write, and it is what stops a SECOND lift moving the
+     *  date forward — the date is evidence, exactly as `createdAt` is. A count of 0 means
+     *  there was no ACTIVE row, and the caller is told null rather than a change that did not
+     *  happen. ⛔ `deleteMany` would satisfy the caller identically and is the whole reason
+     *  `dal-parity` §17 asserts the absence of a delete in both twins. */
+    lift: async (key: MessagingKey, reason: string | null, at: string): Promise<StoredSuppression | null> => {
+      const hit = await pc().suppression.updateMany({
+        where: {
+          channel: key.channel, identifier: key.identifier, category: key.category,
+          liftedAt: null,
+        },
+        data: { liftedAt: new Date(at), liftedReason: reason },
+      });
+      if (hit.count === 0) return null;
+      const row = await pc().suppression.findUnique({
+        where: {
+          channel_identifier_category: {
+            channel: key.channel, identifier: key.identifier, category: key.category,
+          },
+        },
+      });
+      return row ? toStoredSuppression(row) : null;
+    },
+    /** ⛔ EVERY ROW, LIFTED OR NOT. This is the reader that proves a lift removed nothing. */
+    listFor: async (identifier: string): Promise<StoredSuppression[]> => {
+      const rows = await pc().suppression.findMany({
+        where: { identifier },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return rows.map(toStoredSuppression);
+    },
+  },
+  /* ═══ OPT-OUT TOKENS (marketing U8) ══════════════════════════════════════════════════════
+   * ⛔ NO `delete` — OD43's link never expires. */
+  marketingOptOutToken: {
+    /** ⭐ A TAKEN TOKEN COMES BACK AS null, NOT AS A THROW AND NOT AS AN OVERWRITE. `upsert`
+     *  here would silently re-point a live opt-out link at a different person; letting P2002
+     *  escape would make every caller handle a Prisma error code. The memory twin returns the
+     *  same null, so the mint's retry loop is one piece of code on both backends. */
+    create: async (row: StoredMarketingOptOutToken): Promise<StoredMarketingOptOutToken | null> => {
+      try {
+        const created = await pc().marketingOptOutToken.create({
+          data: {
+            token: row.token, channel: row.channel, identifier: row.identifier,
+            category: row.category, createdAt: new Date(row.createdAt),
+          },
+        });
+        return toStoredMarketingOptOutToken(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;
+        throw err;
+      }
+    },
+    find: async (token: string): Promise<StoredMarketingOptOutToken | null> => {
+      const row = await pc().marketingOptOutToken.findUnique({ where: { token } });
+      return row ? toStoredMarketingOptOutToken(row) : null;
+    },
+    listFor: async (identifier: string): Promise<StoredMarketingOptOutToken[]> => {
+      const rows = await pc().marketingOptOutToken.findMany({
+        where: { identifier },
+        orderBy: [{ createdAt: "desc" }, { token: "desc" }],
+      });
+      return rows.map(toStoredMarketingOptOutToken);
     },
   },
 };

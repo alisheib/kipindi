@@ -65,3 +65,79 @@ export function ascUnique<T extends { time: number }>(items: readonly T[]): T[] 
   }
   return out;
 }
+
+/**
+ * D46 · MAKE THE AXIS A TIME AXIS.
+ *
+ * 🔴 THE DEFECT. lightweight-charts' time scale is ORDINAL, not continuous: it gives every item
+ * in `setData` exactly one slot and multiplies the slot distance by one uniform `barSpacing`. So
+ * a chart of event-driven readings under CALENDAR LABELS lies about rate of change — measured by
+ * the critics panel on the market detail page, a two-day interval and a one-day interval were
+ * both 153px, and on live market `mkt_07204d65ca88106b160c` (11 readings over 112.4h, gaps from
+ * 95s to 2.60 days) every gap drew the same width. A player reading the slope reads a rate the
+ * data does not support.
+ *
+ * ⭐ THE REMEDY IS THE LIBRARY'S OWN, AND IT INVENTS NOTHING. A whitespace item — `{ time }` with
+ * no value — reserves axis width and carries no reading, which is exactly what a gap IS. This
+ * repo already relies on that: `terminal-chart.tsx` feeds the server's dropped buckets as
+ * whitespace *"so an outage keeps its width"*, and its own comment states the premise this
+ * function acts on — *"the time scale is index-spaced, so each missing grid step needs a
+ * whitespace item"*.
+ * ⛔ IT MUST NEVER BE INTERPOLATED PROBABILITIES. A drawn value between two bets is a reading the
+ * platform never took, and `market-curve.tsx`'s own header states the rule it would break:
+ * *"Real data or nothing (A-5)"*. Whitespace says "time passed here"; a value says "we measured
+ * this". Only the first is true.
+ *
+ * ⚠️ AND IT IS SAFE ONLY BECAUSE OF THE TIE RULE ABOVE. Whitespace and a real reading can land on
+ * the same second; `ascUnique` keeps the reading. Written the other way round, a gap marker would
+ * ERASE a price the platform actually read.
+ *
+ * ── THE STEP, AND WHY IT IS BOUNDED ──────────────────────────────────────────────────────────
+ * `step = max(smallest gap, ceil(span / maxSlots))`. The smallest gap keeps the spacing exact
+ * whenever the reading count allows; the span/maxSlots floor stops a 95-second gap inside a
+ * four-month window from demanding 100,000 slots. So the guarantee this function makes is
+ * deliberately stated as a TOLERANCE, not an equality: for any two consecutive readings, the
+ * index distance between them times `step` equals the elapsed time to within one `step`. A guard
+ * that asserted exact proportionality would be asserting something no bounded grid can give.
+ *
+ * ⚠️ `maxSlots` is NOT a display choice and must not be tuned to make a chart look better. Raising
+ * it makes small gaps more exact and costs items; lowering it collapses small gaps toward equal
+ * width, which is the defect returning by degrees.
+ */
+export function timeGridFill<T extends { time: number }>(
+  data: readonly T[],
+  opts?: { maxSlots?: number },
+): Array<T | { time: number }> {
+  const maxSlots = Math.max(8, Math.floor(opts?.maxSlots ?? 4000));
+  const pts = [...data].sort((a, b) => a.time - b.time);
+  // One reading has no interval to misstate, so there is nothing to fill.
+  if (pts.length < 2) return [...pts];
+
+  const span = pts[pts.length - 1].time - pts[0].time;
+  let smallest = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const d = pts[i].time - pts[i - 1].time;
+    if (d > 0 && d < smallest) smallest = d;
+  }
+  // ⛔ EVERY READING INSIDE ONE SECOND, OR ONE INSTANT REPEATED. There is no grid to build and no
+  // defect to fix; returning the data untouched is the honest answer, not a degenerate step of 0.
+  if (!Number.isFinite(smallest) || smallest <= 0 || span <= 0) return [...pts];
+
+  const step = Math.max(smallest, Math.ceil(span / maxSlots));
+  const out: Array<T | { time: number }> = [];
+  for (let i = 0; i < pts.length; i++) {
+    out.push(pts[i]);
+    const next = pts[i + 1];
+    if (!next) break;
+    const gap = next.time - pts[i].time;
+    // How many slots this interval is worth, minus the reading that already occupies one.
+    const fill = Math.round(gap / step) - 1;
+    for (let k = 1; k <= fill; k++) {
+      const t = pts[i].time + Math.round((k * gap) / (fill + 1));
+      // Strictly between the two readings: a marker ON a reading's second would be a tie for
+      // `ascUnique` to resolve, and one more item for nothing.
+      if (t > pts[i].time && t < next.time) out.push({ time: t });
+    }
+  }
+  return out;
+}
