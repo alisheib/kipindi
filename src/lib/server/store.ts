@@ -1506,7 +1506,8 @@ const memoryDb = {
       return next;
     },
     listByStatus: (status: StoredTxn["status"]) => Array.from(store.txns.values()).filter((t) => t.status === status),
-    /** All transactions — analytics only. Avoids the user-by-user N+1 walk. */
+    /** Every transaction, ALL TIME. ⛔ Never on a windowed path — use `listInRange` (guarded by
+     *  `test:report-parity` §4 and `test:report-window-reads`). */
     listAll: (): StoredTxn[] => Array.from(store.txns.values()),
     /** In-memory twin of the Prisma DAL's SQL range query. Same bounds — `>= from`,
      *  `< to` — so a report cannot produce different totals depending on which store it

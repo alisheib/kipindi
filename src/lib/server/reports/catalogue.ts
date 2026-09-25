@@ -254,13 +254,13 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
     playerId: string; phone: string; triggerKind: string; amount: number;
     txnId: string; triggerAt: string; reviewStatus: string;
   };
-  // Single-pass over all transactions — no per-user loop.
+  // One pass over the PERIOD's transactions, windowed in the store (`listInRange`: >= start,
+  // < end — the bounds the skip below used to apply in JavaScript to the whole table), with no
+  // per-user loop. `test:report-window-reads`.
   const rows: Row[] = [];
   // Cache user lookups to avoid repeated findById for the same user.
   const userCache = new Map<string, { phone: string } | null>();
-  for (const t of await db.txn.listAll()) {
-    const at = new Date(t.createdAt).getTime();
-    if (at < bounds.start || at >= bounds.end) continue;
+  for (const t of await db.txn.listInRange(bounds.start, bounds.end)) {
 
     // An explicit AML hold is reportable whatever its type. Since 2026-09-13 only a legacy
     // withdrawal or a deposit owed back to an excluded player sits in AML_REVIEW.
@@ -286,8 +286,10 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
       reviewStatus: t.status,
     });
   }
-  // Largest first — an FIU reviewer reads top-down.
-  rows.sort((a, b) => b.amount - a.amount);
+  // Largest first — an FIU reviewer reads top-down. Ties by time, then id, so the order is fixed by
+  // the DATA: the store returns rows in its own order, and two equal amounts must not swap between
+  // two renders of the same filing.
+  rows.sort((a, b) => b.amount - a.amount || a.triggerAt.localeCompare(b.triggerAt) || a.txnId.localeCompare(b.txnId));
   return {
     title: "Financial Intelligence Unit · Suspicious-Activity Report",
     subtitle: `Transactions at or above the ${formatTzs(cutoff)} threshold, or paused for AML review`,
@@ -629,12 +631,11 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
   const dayEnd = dayStart + 24 * 3600_000;
   const dateLabel = eatDateLabel(dayStart);
 
-  // All confirmed transactions today
-  const allTxns = await db.txn.listAll();
-  const todayTxns = allTxns.filter((t) => {
-    const at = new Date(t.createdAt).getTime();
-    return at >= dayStart && at < dayEnd && t.status === "CONFIRMED";
-  });
+  /* All confirmed transactions today — the DAY, read in the store (`listInRange`: >= start, < end,
+     the exact bounds of the filter it replaces). This read the WHOLE Transaction table and kept one
+     day of it in JavaScript: every transaction ever recorded, pulled into a 512 MB container, and it
+     threw once against production (SESSION-PROMPT-FINANCE-SEAL §2). `test:report-window-reads`. */
+  const todayTxns = (await db.txn.listInRange(dayStart, dayEnd)).filter((t) => t.status === "CONFIRMED");
 
   // --- Core metrics ---
   const bets = todayTxns.filter((t) => t.type === "BET_PLACED");
@@ -1125,8 +1126,13 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
     predictors: m.predictorCount,
   }));
 
-  // Refunds grouped by market (a refund txn carries positionId; group by description/positionId tail).
-  const refundRows: Row[] = refunds.slice(0, 200).map((t) => ({
+  /* 🔴 NEWEST FIRST, THEN CAPPED. The section below tells the Gaming Board it shows "the most recent
+     200 of N" — but this took the FIRST 200 of an UNORDERED read (insertion order in memory, heap order
+     in Postgres), i.e. roughly the OLDEST. ISO timestamps sort as strings; the id breaks a tie.
+     `test:report-window-reads` §4. (This read stays ALL-TIME on purpose — see §3 of that suite.) */
+  const newestFirst = [...refunds].sort((a, b) =>
+    (b.createdAt < a.createdAt ? -1 : b.createdAt > a.createdAt ? 1 : 0) || b.id.localeCompare(a.id));
+  const refundRows: Row[] = newestFirst.slice(0, 200).map((t) => ({
     when: t.createdAt.slice(0, 10),
     player: maskUserId(t.userId),
     amount: Math.abs(t.amount),
