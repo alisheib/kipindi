@@ -10,6 +10,7 @@ import { Chip } from "@/components/ui/chip";
 import { Cash } from "@/components/ui/cash";
 import { AmountField } from "@/components/wallet/amount-field";
 import { formatTzs, fill, pctNum } from "@/lib/utils";
+import { formatTzPhone } from "@/lib/tz-msisdn";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { WithdrawConfirm } from "./withdraw-confirm";
 import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
@@ -269,8 +270,13 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             <FieldLegend>{t.wallet.destinationPhone}</FieldLegend>
             <Chip variant="neutral" size="sm" style={{ whiteSpace: "nowrap" }}>{t.wallet.destinationRegistered}</Chip>
           </div>
+          {/* 🔴 ONE HOME FOR THE 3-3-3 GROUPING. This line used to carry its own regex, which agreed
+              with the phone field on every nine-digit input and diverged on everything else: no
+              nine-digit cap, and it grouped every run of three rather than 3-3-3 specifically, so a
+              stored wire-form `255712345678` rendered "255 712 345 678". Two formatters that agree on
+              the happy path and differ on the malformed one are the pair nothing ever catches. */}
           <p className="mt-1.5 font-mono text-body-lg tabular-nums text-text">
-            +255 {registeredMsisdn.replace(/(\d{3})(?=\d)/g, "$1 ")}
+            +255 {formatTzPhone(registeredMsisdn)}
           </p>
           <p className="mt-1.5 text-body-sm leading-snug text-text-muted">{t.wallet.destinationLockedBody}</p>
           <input type="hidden" name="msisdn" value={registeredMsisdn} />

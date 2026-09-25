@@ -46,12 +46,32 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   §3b carries the vendor's measured behaviour. ⛔ Read both before U39, U46 and U47 — each was drafted
   around an absence that no longer holds.
 
-◐ HALF-DONE: nothing. U1 is ✅ LIVE and re-measured on production; U2 is the whole of what remains
-  in S1. ⭐ TO CONFIRM U1 ON ANY MACHINE: `npm run test:phone-normalize` (91 assertions),
-  `npm run red:phone-normalize` (21 proofs), and
-  `node scripts/live/marketing-u1-phone-key-drive.mjs 934f8d80` against production. The red
-  control's §0 baseline line is the discriminator — it asserts the SHIPPED implementation passes
-  BEFORE it plants anything, so "all proofs held" can never mean "nothing works".
+◐ HALF-DONE — ⚠️ READ THIS BEFORE ANYTHING ELSE, ON ANY MACHINE:
+  ⭐ U2's CODE IS ON main AND DEPLOYING as of this commit, and its §1 row still reads ⬜ because a
+  commit cannot name its own SHA — the row is ticked by the NEXT commit, the one carrying the live
+  re-measure. A ⬜ row claims nothing, so the board stays honest meanwhile.
+
+  WHAT LANDED: `src/lib/tz-msisdn.ts` (the TCRA v1.16 table, seven verdicts, the display formatter's
+  one home) · `phone-input.tsx` and `wallet/withdraw/page.tsx` both importing that formatter, the
+  second drifted copy deleted · `scripts/tz-msisdn.test.mts` with `test:tz-msisdn` + `red:tz-msisdn`
+  in the `predeploy` chain · and `tz-msisdn.ts` + `phone-normalize.ts` added to
+  `test:client-graph-safe`'s pinned set, which had never walked either of them.
+
+  OUTSTANDING FOR U2: the live re-measure and the §1 tick.
+  ⭐ TO CONFIRM BOTH UNITS ON ANY MACHINE: `npm run test:phone-normalize` (91 assertions) ·
+  `npm run red:phone-normalize` (21 proofs) · `npm run test:tz-msisdn` · `npm run red:tz-msisdn`
+  (24 proofs) · `node scripts/live/marketing-u1-phone-key-drive.mjs <sha>` against production. Each
+  red control opens with a §0 baseline asserting the SHIPPED code passes BEFORE anything is planted,
+  so "all proofs held" can never mean "nothing works".
+
+  ⛔ AND ONE ENVIRONMENT FACT EVERY WORKTREE LANE WILL HIT: `npm run build` CANNOT RUN in a worktree
+  whose `node_modules` is a junction. Turbopack refuses it — *"Symlink [project]/node_modules is
+  invalid, it points out of the filesystem root"* — and it fails the same way whichever checkout the
+  junction points at. So in a worktree the build proof is `typecheck` + `test:client-graph-safe`
+  (now that it actually walks these modules) + **the Railway deploy itself**, which runs the real
+  `next build`: if it fails, `?dpl=` never advances to your SHA and the live drive refuses to report.
+  ⛔ Do not "fix" this by deleting the junction and running `npm install` — and never remove a
+  worktree with `--force`, which has deleted the shared `node_modules/.bin` through the junction.
 
 ? OPEN OWNER ITEMS (each has a safe default that is BUILT — §4a):
   OQ1 Gaming Board advertising approval + our own advertising code of practice (GN 478T reg 56)
@@ -426,7 +446,7 @@ the **segment** count, i.e. the billed unit — the cross-check for U3's arithme
 
 Found at S1, 2026-09-25, by researching the regulator rather than trusting the plan. **TCRA has
 re-issued the National Numbering and Signaling Point Codes Plan three times since the edition U2 was
-drafted from** (Mar/Jun 2024 → v1.15 Jul 2025 → **v1.16, 1 July 2026**, doc
+drafted from** (June 2024 → v1.15 July 2025 → **v1.16, 1 July 2026**, doc
 `TCRA/DICT/CRTM/PLA-NMSP/002`). Codes **63, 64, 66, 70 and 72 all changed holder.** ⛔ Do not type
 U2's list into the module; U2's own commit rewrites that §9 paragraph against the edition it ships.
 
@@ -829,21 +849,63 @@ Extends the existing `test:phone-normalize` suite and its existing red control �
 **Accept:** every vector maps to one stated result; a 16-digit msisdn can no longer reach the gateway; the
 payout suites are green in the same run.
 
-**U2 · The Tanzanian number library** — `src/lib/tz-msisdn.ts` (pure, client-safe) (D3)
+**U2 · The Tanzanian number library** — `src/lib/tz-msisdn.ts` (pure, client-safe) (D3) — ✅ SHIPPED S1
 `parseTzNumber(raw) → { verdict, e164, msisdn, ndc, operator, display, reason }` with verdicts `ok |
 not_a_number | too_short | too_long | landline | foreign | unallocated_prefix`, each carrying **one
-sentence in words** for the operator, never a code. The NDC table carries its edition, its source URL and
-a `PLAN_REVIEWED` date **in the file**: 61/62 Halotel (Viettel) · 63 Amotel · 64 CooTel (Wiafrica) ·
-65/67/71/77 **Yas** (MIC — ⛔ 77 was Zantel; the estate rebranded from Tigo on 2024-11-26, and
-`payment-providers.ts` already reads "Mixx by Yas") · 66 Smile (data licensee; A2P reach **unproven**,
-flagged) · 68/69/78 Airtel · 72 MO Mobile · 73 TTCL · 74/75/76/79 Vodacom. Each row also names the wallet
-the deposit sheet already uses, so one network has one name across two screens. ⭐ Moves `formatTzPhone`
-out of `phone-input.tsx` into this module and has the input import it back — one home for the 3-3-3
-grouping. ⛔ No calendar-triggered assertion: the suite asserts the review date parses and PRINTS its age.
-**Guard:** `test:tz-msisdn` (new, in-memory `--prove-red`).
-**RED:** `verdictFor("701234567") === "ok"`; change one NDC's brand; re-inline the formatter.
-**Accept:** every verdict has a fixture; both call sites of the display formatter resolve to one function;
-the table's source and review date are in the file.
+sentence in words** for the operator, never a code. `isSendableTzNumber` is the one-line form.
+⛔ `e164` and `msisdn` are non-null **only** when the verdict is `ok`, so a refusal cannot hand out a
+number something downstream might send to.
+**The NDC table is TCRA v1.16 (issued 2026-07-01, doc `TCRA/DICT/CRTM/PLA-NMSP/002`)**, not the 2020
+edition this unit was drafted from — see §3d for the five rows that moved. Corroborated row by row
+against Google libphonenumber's TZ ranges and carrier map, which carry GSMA **IR21** provenance per
+range (the filing international aggregators actually route from); the two sources agree on every code
+except 60. The edition, publisher, document number, both source URLs and a human `reviewed` date are
+in the file.
+⭐ **Three rulings the research forced, none of them in the original text:**
+① **The operator is the RANGE HOLDER, not the network the subscriber is on.** ⭐ Mobile number
+portability has been LIVE in Tanzania since **March 2017**, under TCRA's own MNP Regulations — a
+ported number keeps its NDC and changes network, and has been able to for nine years.
+⚠️ **The instrument that nearly said otherwise is worth keeping.** The ITU's E.164 notification
+answers *"sans objet"* in its portability row, which reads like "not applicable — no portability
+here". It is not: that row asks for a **LINK** to a public real-time ported-number database, and TCRA
+supplied no URL. ⛔ A BLANK FIELD IS NOT A NEGATIVE FINDING — one careless reading of it would have
+licensed exactly the inference this rule forbids.
+⛔ `walletHint` is therefore display-only and **may never choose a payout rail** —
+§7 of the suite asserts no payment module and no wallet screen imports the table (the pure display
+formatter is allowed, and the withdraw page uses it). A withdrawal routed on "074… therefore M-Pesa"
+reaches the wrong provider for anyone who has ported.
+② **Where the regulator and the carriers disagree, the parser ACCEPTS and flags.** The asymmetry is
+not close: a number wrongly refused is dropped from every campaign for ever and nobody finds out; a
+number wrongly accepted costs TZS 6 and produces a receipt that never arrives — which, since §3a, is
+something this platform can see. NDC 60 is exactly that case and is marked `disputed` in the file.
+③ **064 is allocated on paper and dead on the wire** — Telxer Enterprise Limited, no carrier-map entry
+since 2022-09-08, excluded from libphonenumber's TZ mobile pattern, absent from TCRA's own quarterly
+subscriber table. ⛔ `isGatewayMsisdn` ACCEPTS `25564…` by design, so this module is the only thing in
+front of it; §5 asserts that seam in both directions.
+⚠️ **Reach is not uniform across the codes this calls `ok`.** Since 2025-06-16 an unregistered
+alphanumeric sender ID is blocked outright on Vodacom, Airtel, Yas and Zantel; Halotel and TTCL may
+REPLACE a registered one; numeric sender IDs are supported by nobody. `ok` means "a real Tanzanian
+mobile number", never "this will arrive looking the way you wrote it". U41 and U52 inherit this.
+⭐ Moves `formatTzPhone` out of `phone-input.tsx` into this module and has the input import it back —
+and takes the **second, drifted copy** with it: `wallet/withdraw/page.tsx` rendered the same shape with
+`.replace(/(\d{3})(?=\d)/g, "$1 ")`, which has no nine-digit cap and groups every run of three. The two
+agreed on every nine-digit input and diverged on everything else, which is why nothing caught it.
+⛔ No calendar-triggered assertion: the suite asserts the review date parses and PRINTS its age.
+⭐ Built for §3c's scale: every regex is a module-level constant and the NDC index is built once at
+module load. `tzTableBuildCount()` makes that falsifiable — measured at 20,000 parses in 23 ms
+(~870,000/s), so 150,000 rows cost about 0.2 s.
+**Guard:** `test:tz-msisdn` (in-memory `--prove-red`). **Also:** `test:client-graph-safe`, whose pinned
+set this unit ADDS `tz-msisdn.ts` and `phone-normalize.ts` to — ⚠️ that ratchet walks only a hard-coded
+list, so it had no opinion about either module and was decoration for them. ⛔ `test:shell-boundary`,
+named on this unit in the original draft, is E-70 (plain `<a>` across shells) and can neither pass nor
+fail on a module move.
+**RED:** `red:tz-msisdn`, 24 proofs — the 2020 answers for 63 and 66; ⛔ **070 refused as unallocated,
+which is the unit's own drafted control, backwards**; 064 accepted; the formatter re-inlined with the
+withdraw page's regex; a wallet screen importing the table; an always-ok and an always-refusing parser;
+a refusal that still hands out an msisdn; a disputed row refused rather than accepted; and a parser that
+rebuilds the index per call.
+**Accept:** every verdict has a fixture; both call sites of the display formatter resolve to one
+function; the table's edition, sources and review date are in the file.
 
 **U3 · Segment arithmetic, one home** — `src/lib/sms-compose.ts` (pure) (D4)
 `SMS_LIMITS`, `sizeSms`, `composeSms`, `planSms`, `SMS_BODY_CAP`, the GSM-7 table and its extension set
