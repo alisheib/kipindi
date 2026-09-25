@@ -875,6 +875,7 @@
     "test:chart-series": "tsx scripts/chart-series.test.mts",
     "test:updown-clock-guard": "tsx scripts/updown-clock-guard.test.mts",
     "test:updown-history-pnl": "tsx scripts/updown-history-pnl.test.mts",
+    "qa:d29-terminal": "node scripts/live/ops/d29-terminal-cards.mjs",
     "red:updown-history-pnl": "node scripts/updown-history-pnl-red.mjs",
     "test:client-error-report": "tsx scripts/client-error-report.test.mts",
     "test:translation-safety": "tsx scripts/translation-safety.test.mts",

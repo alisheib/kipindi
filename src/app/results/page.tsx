@@ -363,6 +363,25 @@ async function ResultsContent({
                     <span className="whitespace-nowrap text-no-300">{sideWord(t, "NO", line)} {winsIn(line, "NO")}</span>
                   </span>
                 ))}
+                {/* 🔴 D42 · THE THIRD ARC GETS ITS WORD. `OutcomeDonut` (below) divides by
+                    `yes + no + voided` and strokes the void share in `--text-subtle`, but this
+                    legend only ever printed the two SIDES — so part of the ring was painted and
+                    named nowhere. Measured on production 2026-09-25: 210 markets, arcs
+                    118.29° / 188.57° / 53.14° (they do sum to 360), legend "YES 69 · NO 110" =
+                    179. **31 markets — 14.76% of the circle — had no word at all.**
+                    🔴 AND IT WAS WORSE ON THE VOID FILTER. `linesShown` above keeps a product
+                    only when `winsIn(YES) + winsIn(NO) > 0`, so on `/results?out=void` EVERY row
+                    was dropped: 31 results, a FULL 360° grey circle, and a completely empty
+                    legend. A player who filtered to voids saw a solid ring and not one word.
+                    ⛔ A THIRD ROW, NOT A THIRD TERM on the side row — D64 measured that row
+                    running 10px past the viewport at 277px and 41px at 246px, so it may not grow
+                    wider. A new row costs ~12px of height against the donut's 38px.
+                    ⛔ The word comes from the lexicon (`statusVoid`, already in all three
+                    languages), never a literal — and it is NOT a side, so it is not run through
+                    `sideWord`: a refund has no direction (§C4). It carries the arc's own ink. */}
+                {voidCount > 0 && (
+                  <span className="whitespace-nowrap text-text-subtle">{t.market.statusVoid} {voidCount}</span>
+                )}
               </div>
             </div>
           )}

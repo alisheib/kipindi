@@ -349,7 +349,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D26 | 🔵 shipped early `f70789df` 2026-09-24 — both load shifts; the skeleton-sizing follow-ups are D72–D74 (`371690b6`, live) and the surface's real defect was D71 | U25 |
 | D27 | ⬜ | U16 |
 | D28 | ✅ `ea84e4a9` 2026-09-23 (live) | U3 |
-| D29 | 🔵 shipped `5c00588c` 2026-09-25 — the price gate is the POOL, not the phase, and the outcome is read before any absence branch. ⛔ **THE FILED ONE-TOKEN REMEDY WAS A REGRESSION** — see the §8 cell. Guarded in `test:outcome` (6 assertions + 3 controls, 5 product mutations proven RED). ⭐ NO new copy was needed | U32 |
+| D29 | 🔵 shipped `5c00588c` 2026-09-25 — the price gate is the POOL, not the phase, and the outcome is read before any absence branch. ⛔ **THE FILED ONE-TOKEN REMEDY WAS A REGRESSION** — see the §8 cell. Guarded in `test:outcome` (6 assertions + 3 controls, 5 product mutations proven RED). ⭐ NO new copy was needed. ⚠️ **The production check is BLIND and says so**: `qa:d29-terminal` read 12 cards and found NO settled or void card on any card surface (`/markets` is all Live; `/results` renders none at all), which is §0 trap 3 exactly — the code is proven by the unit guard, not by that sweep | U32 |
 | D30 | 🔵 shipped early `94a43227` + `07f736f9` 2026-09-23 (live) — the rail AND the sort listbox | U33 |
 | D31 | ◐ HALF — the mask overflow only (`252a9f55` 2026-09-23, local proof; the 32px eye, the 800ms flash and the "Hide password" label are still open) | U34 |
 | D32 | ◐ fixed parts live; the phone PAUSE control is DORMANT — the ticker renders nowhere since `adbc31e7`, and re-opens if it is ever re-sited | U33 |
@@ -362,7 +362,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D39 | 🔵 shipped `22fb75a9` 2026-09-24 — both money moments now read through `sideWord`. ⭐ Guarded by a NEW §3d in `test:labels` (3 passes + 7 controls) that catches the two shapes §3 and §3b are structurally blind to. ⛔ And fixing its guard exposed a far bigger one — see the cell | U37 |
 | D40 | ⬜ | U37 |
 | D41 | ⬜ | U37 |
-| D42 | ⬜ | U32 |
+| D42 | 🔵 shipped `1d3bbc28` 2026-09-25 — the third arc has its word, and the void-only view is no longer a wordless circle. Guarded in `test:outcome` (4 assertions + 3 controls, 4 product mutations proven RED) | U32 |
 | D43 | ⬜ | U10 |
 | D44 | ⬜ | U10 |
 | D45 | 🔵 shipped `c6ebbedf` 2026-09-24 — all FOUR wrappers onto `max-w-board`/`max-w-reading` + the house `px-3 lg:px-6`. ⭐ **Verified on production (`4b30a069`): content edge 16px on /updown, /updown/history AND /markets at 320/360/412** — measured as a DELTA against /markets in the same run, never against a remembered number. The tick waits on U35 (D37 on-screen) | U35 |
@@ -437,6 +437,23 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
 
 ## §2 — Session log (newest first)
 
+- **S19f · 2026-09-25 — D42, and a filter nobody had ever looked at.**
+  - **D42 (`1d3bbc28`)** — the ring's third arc has its word. Measured on production: 210 markets,
+    arcs 118.29° / 188.57° / 53.14°, legend "YES 69 · NO 110" = 179 — **31 markets, 14.76% of the
+    circle, painted and named nowhere.**
+  - 🔴 **AND WORSE THAN FILED, ON `/results?out=void`:** `linesShown` keeps a product only when it
+    has a YES or a NO, so the void-only view dropped EVERY legend row — **31 results, a full 360°
+    grey circle, and not one word on screen.** Nothing in the register mentioned it; it was found
+    by reading the filter rather than the defect. ⭐ That is why the fix is a SIBLING row and not a
+    third term inside the map: inside it, it renders zero times on exactly the view that was empty.
+  - ⛔ **EVERY FIGURE AND ADDRESS IN D42'S CELL WAS STALE** — 171 → 210 markets, 147 → 179 named,    24 → 31 unnamed, both line references off by ~200. The archive grew by 39 rows and the defect
+    grew with it; only the percentage held. And §9's arc triple "124/182/49" sums to **355°**, so it
+    cannot be a reading of this component — a `Ring` clamps to exactly 1 (ring.tsx:52).
+  - ⭐ **THIRD ROW, NOT THIRD TERM** — D64 measured that legend row 10px past the viewport at 277px
+    and 41px at 246px, so it may not grow wider. A row costs ~12px against the donut's 38px.
+  - ⭐ NO NEW COPY, for the third defect running: `t.market.statusVoid` already exists in all three
+    languages. ⛔ Not through `sideWord` — a refund has no direction (§C4).
+
 - **S19e · 2026-09-25 — D29, and the filed remedy that would have made it worse.**
   - **D29 (`5c00588c`)** — the price gate is the POOL, not the phase, and the settled outcome is read
     BEFORE any absence branch. Four edits, guarded in `test:outcome` (6 assertions + 3 controls,
@@ -462,6 +479,23 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
     improvement on a false one.
   - ⚠️ D29's cell also carried the singular `components/market/` path — the third defect this
     session whose citation would have sent a session to a file that does not exist.
+  - ⛔ **AND THE PRODUCTION PROBE FOR IT WAS WRONG TWICE BEFORE IT WAS RIGHT** — `qa:d29-terminal`,
+    kept because the next session will want it and because how it failed is the lesson:
+    · **v1 reported "2 PROVED".** It called a card terminal when its price slot was EMPTY — but a
+      LIVE cold-start card has exactly that, so it proved D29 over two live cards with no bets and
+      never looked at a settled or void one. A population that cannot contain the defect, scored
+      green. The tell was in its own output: `cap=null pct="—"`, which is the NO-PRICE branch, so
+      those cards had no `resolvedOutcome` and could not have been terminal.
+    · **v2 reported BLIND — also wrongly.** It read the status from `.chip`, and the kit's Chip
+      renders no such class, so every status came back null and nothing matched. A false green
+      became a false blind from the same instrument.
+    · **v3 reads the status word out of `.mcardp-top` and is BLIND for the right reason:** 12 cards,      all "Live". `/markets` lists only live markets and its recently-resolved strip is empty;
+      `/results` renders NO `MarketCard` at all. So no terminal card is reachable on production
+      today, which is §0 trap 3 — and why D29 rests on `test:outcome`'s five RED mutations.
+    ⭐ THE TRANSFERABLE PART: an instrument that can report BLIND will still report it for the wrong
+    reason. Check that the discriminator itself resolves before trusting either verdict.
+  - ⚠️ Noted, not filed: `results/page.tsx:481` has a `<MarketCard>` call site that rendered zero
+    cards on production today, so `test:outcome`'s rule 2 may be governing an unreachable site.
 
 - **S19d · 2026-09-24 — D39, and the comment-stripper that was hiding 7,077 lines from every scanner.**
   - **D39 (`22fb75a9`)** — two one-line edits through `sideWord`: the hedge warning's `heldLabel` and the
@@ -1153,7 +1187,7 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D39 | Market detail money copy shows the raw YES/NO enum in SW/ZH — on the hedge warning and the bet-placed modal — while the buttons beside them say NDIO/HAPANA or 是/否 (S04-detail-01, S04-detail-02). 🔵 **FIXED AND LIVE `22fb75a9`.** ⛔ **THREE CITATIONS IN THIS REGISTER WERE WRONG** and would each have cost a session: the path is `src/components/markets/…` (**markets, plural** — `market/` returns "No such file"); the code is `[...heldSides].join(" + ")`, NOT `heldSides.join(…)` — `heldSides` is a `Set` and has no `.join`, so a guard pinned to the quoted text would match nothing; and the "already-fixed sibling" comment at conviction-dial.tsx:1002 names the bet-placed NOTIFICATION, not the modal — the real in-file rule is at **:553-555**. ⭐ A sweep of every player surface confirmed these were the **last two** raw-enum leaks. ⚠️ Guard: §3d catches BOTH shapes §3/§3b miss — a stored side reaching copy through a VARIABLE (the `.side` read is two lines above the string) and a display-position template whose only literal text is " · " | `markets/[id]/page.tsx:357`, `components/markets/conviction-dial.tsx:1729` | U37 |
 | D40 | On the detail page the bet widget and the guest sign-in prompt are announced last, under the wrong heading: reading order does not match visual order (S04-detail-L04) | `markets/[id]/page.tsx:756` | U37 |
 | D41 | The InfoHint explanations for fee, multiplier and payout render as a one-line strip ~4× the screen width with a ~10×14px trigger, so on a phone the money explanation cannot be read or opened (S04-detail-03) | InfoHint in the stake panel | U37 |
-| D42 | The /results summary ring draws three arcs on the 171-market denominator but its legend names two ("NDIO 59 · HAPANA 88" = 147): 24 settled markets — 14% of the ring — sit in an arc named nowhere on the page (critics panel, three lenses) | `results/page.tsx:319` (`OutcomeDonut … voided`), legend `:324-331` prints YES · NO only | U32 |
+| D42 | The /results summary ring draws three arcs but its legend names two: settled markets sit in an arc named nowhere on the page (critics panel, three lenses). 🔵 **FIXED AND LIVE `1d3bbc28` 2026-09-25.** ⛔ **EVERY FIGURE AND ADDRESS IN THIS CELL WAS STALE** — struck and re-measured on production 2026-09-25: ~~171-market denominator~~ → **210**; ~~"NDIO 59 · HAPANA 88" = 147~~ → **"YES 69 · NO 110" = 179**; ~~24 markets, 14%~~ → **31 markets, 53.14° = 14.76%**; ~~`:319`~~ → the donut is `:528-542`; ~~legend `:324-331`~~ → `:348-372`. The archive grew by 39 rows and the defect grew with it; only the percentage held. ⛔ AND §9's arc triple "124/182/49" sums to **355°** and cannot be a reading of this component — a `Ring` clamps to exactly 1 (`ring.tsx:52`). Production emits **118.29 / 188.57 / 53.14**, which sums to 360. 🔴 **AND IT WAS WORSE THAN FILED, ON A FILTER NOBODY CHECKED:** `linesShown` (:258-260) keeps a product only when `winsIn(YES) + winsIn(NO) > 0`, so **`/results?out=void` dropped EVERY legend row — 31 results, a full 360° grey circle, and not one word on screen.** ⭐ Remedy: a THIRD ROW, not a third term (D64 measured that row 10px past the viewport at 277px), gated on `voidCount > 0`, wearing the arc's own ink, with the word from `t.market.statusVoid` — which already exists in all three languages, so NO new copy. ⛔ Not run through `sideWord`: a refund has no direction (§C4) | `results/page.tsx:528-542` (donut), `:348-372` (legend) | U32 |
 | D43 | The leaderboard list is ranked by ROI and no row shows ROI: the podium prints +26.8% / +13.2% / −3.9%, then rows 2–6 drop the number they are sorted by and leave 105–142px empty at the right (critics panel) | `leaderboard/page.tsx:460` (list row) | U10 |
 | D44 | The tier word "Fedha" (silver) is printed in the money gold, and podium rings #2 and #3 are the same pale blue — while the tier chips on the same screen already own real silver and bronze inks (critics panel, sampled) | `leaderboard/page.tsx:320` (`accent: "gold"`), podium `:546` | U10 |
 | D45 | Up & Down's page gutter is 20px; every other surface, and Up & Down's own footer, sits on 16. The wrapper is `px-4` — which reads like 16 and is **20 on this project's scale** (critics panel, measured on 8 surfaces). 🔵 **FIXED AND LIVE `c6ebbedf`, verified on production `4b30a069`: 16px on /updown, /updown/history and /markets alike at 320/360/412.** ⛔ **THE SCOPE WAS FOUR WRAPPERS, NOT TWO** — this cell named ~~`updown/page.tsx:68,86`~~ (now :73,91) and missed `updown/loading.tsx` and both history files. ⭐ The guard already existed: `measure-system.test.mts` carried these four on an explicit exemption ratchet, so the fix was the LIST SHRINKING — and that also put both routes inside its page/loading tier-parity check for the first time, since a hand-typed pixel width matches no tier. ⛔ But that check matches `max-w-[NNNpx]` only, so it could never have caught the gutter alone; a second assertion now does, proven RED by reverting `px-3 lg:px-6` → `px-4` with the token width left in place | `updown/page.tsx:73,91`, `updown/loading.tsx`, `updown/history/page.tsx`, `history/loading.tsx` | U35 |
