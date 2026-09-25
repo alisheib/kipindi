@@ -54,11 +54,13 @@
  * §6 · the standing invariant: no row in the store carries a msisdn the gateway cannot use.
  *
  * ⚠️ WHAT §4 DOES NOT COVER, DELIBERATELY. `0701234567` normalises to `255701234567`, which is
- * twelve digits starting `2557`, so the wire predicate ACCEPTS it — yet no licensee holds NDC 70.
- * The wire predicate is coarse on purpose: its job is "can the gateway dial this at all", and it
- * must not silently become a second, drifting copy of the numbering plan. Knowing that 70 is
- * unallocated is the job of the numbering-plan module and its own suite (plan U2). §4 asserts the
- * gap EXPLICITLY so that nobody later reads this suite as covering it.
+ * twelve digits starting `2557`, so the wire predicate ACCEPTS it without any view on who holds NDC
+ * 70. The predicate is coarse on purpose: its job is "can the gateway dial this at all", and it
+ * must not silently become a second, drifting copy of the numbering plan. ⭐ The cost of getting
+ * that wrong is measured, not imagined: NDC 70 was spare in the TCRA plan's 2020, 2024 and 2025
+ * editions and is allocated in the 2026 one. A table pinned here would have refused a real
+ * customer's number. Allocation is the numbering module's single job (plan U2). §4 asserts the gap
+ * EXPLICITLY so that nobody later reads this suite as covering it.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants the pre-fix implementations IN MEMORY and
  * requires the MATCHING assertion to fire — not merely "something failed". This file makes no
@@ -134,7 +136,8 @@ const VECTORS: Vector[] = [
   { raw: "+254712345678",    why: "🔴 D2 — Kenyan; billable today",           local: "254712345", msisdn: "254712345678", wire: false, foreign: true },
   { raw: "0222123456",       why: "🔴 D2 — Dar es Salaam landline",           local: "222123456", msisdn: "255222123456", wire: false },
   { raw: "255712345",        why: "🔴 D2 — truncated, nine digits",           local: "712345",    msisdn: "255712345",    wire: false },
-  { raw: "0701234567",       why: "⚠️ NDC 70 — dialable, but unallocated",    local: "701234567", msisdn: "255701234567", wire: true },
+  { raw: "0701234567",       why: "⚠️ NDC 70 — dialable; who holds it is not this module's business", local: "701234567", msisdn: "255701234567", wire: true },
+  { raw: "00712000101",      why: "🔴 D1 — IDD with no country code; 13 digits before the fix",      local: "712000101", msisdn: "255712000101", wire: true },
 ];
 
 /* ══ THE ASSERTIONS ══════════════════════════════════════════════════════════ */
@@ -249,7 +252,7 @@ function checkPure(impl: Impl, log: (line: string) => void): string[] {
   }
   // ⛔ The deliberate gap, asserted so it cannot be mistaken for coverage.
   ok(
-    "§4 ⚠️ the predicate accepts NDC 70 — it is coarse by design; the numbering plan lives in tz-msisdn.ts",
+    "§4 ⚠️ the predicate accepts NDC 70 with no view on who holds it — allocation is the numbering module's job",
     impl.isGatewayMsisdn("255701234567") === true,
   );
   ok(
@@ -389,6 +392,17 @@ if (!PROVE_RED) {
       impl: { ...REAL, toMsisdn255: NAIVE.toMsisdn255 },
       landed: () => NAIVE.toMsisdn255("00255712345678").length === 16,
       landedAs: `length = ${NAIVE.toMsisdn255("00255712345678").length}`,
+    },
+    {
+      // ⭐ FOUND BY AUDITING THE SUITE, NOT THE CODE. `00712000101` has been in §1 since August,
+      // labelled "double-zero fat finger" — the one input this file already called a real user
+      // mistake. Nothing anywhere evaluated `toMsisdn255` on it, and it produced a THIRTEEN-digit
+      // wire msisdn. A vector can sit in a suite for a month and still be untested by it.
+      name: "D1 · the pre-fix toMsisdn255 on the IDD-with-no-country-code vector (13 digits)",
+      expect: /^§2 toMsisdn255\("00712000101"\)/,
+      impl: { ...REAL, toMsisdn255: NAIVE.toMsisdn255 },
+      landed: () => NAIVE.toMsisdn255("00712000101") === "2550712000101",
+      landedAs: `NAIVE.toMsisdn255("00712000101") = "${NAIVE.toMsisdn255("00712000101")}" (${NAIVE.toMsisdn255("00712000101").length} digits)`,
     },
     {
       name: "D1 · the pre-fix normalizeTzLocalDigits (same ordering, opposite wrong answer)",

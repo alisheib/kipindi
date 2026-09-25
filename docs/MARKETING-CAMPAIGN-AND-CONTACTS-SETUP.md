@@ -30,8 +30,9 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: Session S1, IN FLIGHT 2026-09-25 — U1 (one phone key, and the wire refusal) + U2 (the
-  Tanzanian number library). ⚠️ U1's CODE IS ALREADY ON main — read ◐ HALF-DONE below FIRST.
+▶ NEXT: Session S1, IN FLIGHT 2026-09-25 — U2 (the Tanzanian number library), the second half of S1.
+  ⚠️ BEFORE BUILDING IT, READ §3d: the NDC table written into that unit's §9 text is the 2020 edition
+  of the TCRA plan and five of its rows are WRONG TODAY. Do not type it in.
 
 ✔ LAST SESSION: S0b, 2026-09-23 — the SMS rail was SEALED and its lessons folded into this plan
   (§3a, §3b). Still no product code here; the board is untouched at 0/52.
@@ -45,23 +46,12 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   §3b carries the vendor's measured behaviour. ⛔ Read both before U39, U46 and U47 — each was drafted
   around an absence that no longer holds.
 
-◐ HALF-DONE — ⚠️ READ THIS BEFORE ANYTHING ELSE, ON ANY MACHINE:
-  ⭐ U1's CODE IS ON main AND DEPLOYING as of this commit, while its §1 row still reads ⬜. That is
-  not the board lying — a commit cannot name its own SHA, so the row is ticked by the NEXT commit,
-  the one that also carries the live re-measure. §1 stays honest either way: a ⬜ row claims nothing.
-
-  WHAT LANDED: the IDD (`00`) strip in BOTH `toMsisdn255` and `normalizeTzLocalDigits` (D1) ·
-  `isGatewayMsisdn` in the same pure module · the per-message `BAD_MSISDN` refusal in `sendBatch`,
-  written BEFORE the row and BEFORE any request (D2) · results placed by input INDEX rather than
-  pushed · the cost floor now reading `prepared` so a refused INVITE cannot drag a good OTP under it
-  · the twelve-vector suite with its six sections · `red:phone-normalize` · and
-  `test:phone-normalize` added to the `predeploy` chain, which it was NOT in before.
-
-  WHAT IS OUTSTANDING FOR U1: the live re-measure on www.50pick.tz and the §1 tick.
-  ⭐ TO CONFIRM IT IS BUILT, ON ANY MACHINE: `npm run test:phone-normalize` and
-  `npm run red:phone-normalize`. Both green means U1 is built and only its live proof and its row
-  are missing. The RED control's §0 baseline line is the discriminator — it asserts the SHIPPED
-  implementation passes before it plants anything, so "all proofs held" cannot mean "nothing works".
+◐ HALF-DONE: nothing. U1 is ✅ LIVE and re-measured on production; U2 is the whole of what remains
+  in S1. ⭐ TO CONFIRM U1 ON ANY MACHINE: `npm run test:phone-normalize` (91 assertions),
+  `npm run red:phone-normalize` (21 proofs), and
+  `node scripts/live/marketing-u1-phone-key-drive.mjs 934f8d80` against production. The red
+  control's §0 baseline line is the discriminator — it asserts the SHIPPED implementation passes
+  BEFORE it plants anything, so "all proofs held" can never mean "nothing works".
 
 ? OPEN OWNER ITEMS (each has a safe default that is BUILT — §4a):
   OQ1 Gaming Board advertising approval + our own advertising code of practice (GN 478T reg 56)
@@ -203,7 +193,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Unit | Kind | Status | Session | Commit | Before → After (measured) | Guard | RED | Live ✅ (date) · notes |
 |---|---|---|---|---|---|---|---|---|
-| U1 | pure | ⬜ | — | — | — | `test:phone-normalize` | — | one phone key; `00255…` |
+| U1 | pure | ✅ | S1 | c0552156 | 4 malformed numbers billed as send attempts, one of them 16 digits → refused `BAD_MSISDN`, no row, no request | `test:phone-normalize` | yes · `red:phone-normalize` | 2026-09-25 · live on `934f8d80`: pasting `00255712345678` into /auth/register carries `712345678`, ⛔ not the pre-fix `255712345` |
 | U2 | pure | ⬜ | — | — | — | `test:tz-msisdn` | — | NDC → operator |
 | U3 | pure | ⬜ | — | — | — | `test:campaign-compose` | — | septets |
 | U4 | pure | ⬜ | — | — | — | `test:campaign-compose` | — | statutory footer |
@@ -260,8 +250,8 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Id | Owner | State | One line |
 |---|---|---|---|
-| D1 | U1 | ⬜ | `toMsisdn255("00255…")` produces a 16-digit MSISDN — latent today, live the day an importer exists |
-| D2 | U1 | ⬜ | no refusal at the wire boundary: a malformed number is billed as a send attempt |
+| D1 | U1 | ✅ | `toMsisdn255("00255…")` produces a 16-digit MSISDN — latent today, live the day an importer exists |
+| D2 | U1 | ✅ | no refusal at the wire boundary: a malformed number is billed as a send attempt |
 | D3 | U2 | ⬜ | no operator map; `tzPhone` accepts NDCs no licensee holds (60, 70) |
 | D4 | U3 | ⬜ | no segment arithmetic anywhere; the only GSM-7 table is inside a server module |
 | D5 | U4 | ⬜ | no statutory RG footer and no sender identity in any SMS body |
@@ -304,6 +294,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S1 | 2026-09-25 | **U1 ✅ LIVE — the first product code in this programme. D1 and D2 closed.** Worked in a worktree off `origin/main`: the checkout was on another session's branch (`mobile-s2`) with their files in the tree, and `main` moved twice under this lane mid-session. **Three premises in the plan were false and are corrected here rather than worked around.** ① U1's text said it extends "its existing red control" — `test:phone-normalize` had NO red control and never touched `toMsisdn255` at all, while §1's own rule needs a backticked `red:` key to tick a row; `red:phone-normalize` was added, in-process, costing the `red-anchors` ceiling zero (measured: **68 vs 65 on clean `origin/main` AND 68 vs 65 here** — that suite was already red and is not claimed). ② The suite gated nothing: it was in no `predeploy` chain. ③ §3d — the NDC table U2 was drafted from is the 2020 edition and five rows are wrong today. **Two findings came from auditing the instruments rather than the code:** `00712000101` has sat in this suite since August labelled "the double-zero fat finger", the one input it calls a real user mistake — and nothing anywhere evaluated `toMsisdn255` on it, which returned a THIRTEEN-digit msisdn; and `test:shell-boundary`, named on U2 as its gate, is E-70 (plain `<a>` across shells) and cannot pass or fail on a module move — the real import guard is `test:client-graph-safe`, whose pinned set a new module must be added to or the guard is decoration. Ali added two standing requirements mid-session, both written into the contract so they bind later units rather than living in a chat: **§5.15** (every grid ships paging, sorting, a determinate loading state, an empty state and a retryable error state) and **§3c** (the import is ~150k contacts or a `.vcf`, *and* could be small — which breaks D18's 1 MB server-action ceiling outright, makes a full send TZS 900,000 against a measured float of TZS 232, and rules out pairwise duplicate detection at 1.1 × 10¹⁰ comparisons). ⚠️ RECORDED, NOT FIXED — outside §6's permission: `payout-destination.ts`'s canonical `destination.msisdn` is computed at `wallet-service.ts:1597` and **never read again**; the ledger and the gateway both take `parse.data.msisdn`. Harmless today because the two are equal, but the comment describes a reader that does not exist. |
 | S0b | 2026-09-23 | **The SMS rail was sealed, and its lessons folded in — no code, board untouched at 0/52.** Delivery receipts now work end to end: a production-issued OTP was DELIVERED and its receipt settled the real row in 11 seconds (`applied: 1`, `unknownRef: 0`, `mismatch: 0`), after the gateway's first unattended batch of three receipts in one POST. §3a replaces the "no receipt has ever arrived" premise this plan was written on; §3b records the vendor's measured vocabulary and operational facts, plus the seven lessons from eleven days of chasing it — chief among them that four vendor claims of "it is fixed" produced four identical silences, that the real fault (a missing `?token=` on their saved URL) only became visible because our receiver records REFUSED attempts, and that our own probe was briefly mistaken for theirs until it was discriminated by `srcIp`. D21, OD41, §7.7, U46, U47 and U51 were rewritten against the new truth; every guard and unit count is unchanged. |
 | S0 | 2026-09-16 | **Planning only.** Nine agents: four research lenses (Tanzanian law · data model + engine · contacts + import · campaign UX), one draft, three adversarial critics (compliance/abuse/money · code truth · completeness/trackability), one revision. 52 critique findings, all resolved or refuted in writing. **Four critic claims were refuted with evidence:** (1) the `00255…` defect is *latent*, not live — every current caller is pre-validated, so it becomes live only when an importer exists; (2) `isLockedOut` is not "wrong" — Ali ruled on 2026-08-27 that a chosen period is a MINIMUM and the account is not reinstated by itself, so marketing needs its OWN predicate and ⛔ `isLockedOut` is not modified; (3) the helpline is not a citation-free assertion — the Gaming Board's own Advertising Code names `0800110051` three times while `support-config.ts:120` pins `0800 11 0011`, so the defect is real but the remedy is an owner question, not a silent edit; (4) routing campaign bodies through `test:cert-c1`/`c3` aims at a gate that structurally cannot fail — `comms-registry.ts` places SMS outside the module, so marketing gets its own wording assertion instead. Unit count was raised from 22 to **52** after measuring the shipped equivalent at Awarkeh (8,625 + 8,948 lines): 22 units would have been ~800 lines each, which is not half a session. ⚠️ Recorded as UNVERIFIED at S0 and to be re-scored at S1: §0a's self-sufficiency on a fresh machine, and whether the two-unit cadence holds for U30/U43. |
 
@@ -430,6 +421,82 @@ the **segment** count, i.e. the billed unit — the cross-check for U3's arithme
 7. ⚠️ **The webhook secret travelled through chat and WhatsApp during the fix.** Rotating it is an open
    owner item in `BLACKBALL-SMS.md`; if it is rotated while this programme runs, the campaign engine
    needs nothing — the secret lives only in Railway and the vendor's saved URL.
+
+### §3d — 🔴 THE NDC TABLE IN U2's §9 TEXT IS THE 2020 EDITION, AND FIVE ROWS ARE WRONG TODAY
+
+Found at S1, 2026-09-25, by researching the regulator rather than trusting the plan. **TCRA has
+re-issued the National Numbering and Signaling Point Codes Plan three times since the edition U2 was
+drafted from** (Mar/Jun 2024 → v1.15 Jul 2025 → **v1.16, 1 July 2026**, doc
+`TCRA/DICT/CRTM/PLA-NMSP/002`). Codes **63, 64, 66, 70 and 72 all changed holder.** ⛔ Do not type
+U2's list into the module; U2's own commit rewrites that §9 paragraph against the edition it ships.
+
+| NDC | U2's §9 text says | v1.16 (Jul 2026) says |
+|---|---|---|
+| 63 | Amotel | **Viettel (Halotel)** — Amotel's holder was *Mkulima African Telecommunication Co. Ltd*; dropped in 2024, reserved in v1.15, reassigned 2026 |
+| 64 | CooTel (Wiafrica) | **Telxer Enterprise Ltd — NOT operational** |
+| 66 | Smile, A2P reach unproven | **Airtel, operational** (Smile ceased; Vodacom bought it Apr 2024; reserved in v1.15; Airtel in v1.16) |
+| 70 | unallocated — U2's RED control plants `verdictFor("701234567") === "ok"` as the DEFECT | **Honora (Yas), operational.** ⛔ The specified red control is therefore BACKWARDS and must not be written as drafted |
+| 72 | MO Mobile | **Vodacom** |
+
+Unchanged and confirmed: 61/62 Viettel·Halotel · 65/67/71/77 Honora·**Yas** (77 was Zanzibar Telecom
+/ Zantel — the "formerly Zantel" claim holds; MIC Tanzania PLC is now **Honora Tanzania PLC**, Tigo →
+Yas on 2024-11-26) · 68/69/78 Airtel · 73 Tanzania Telecommunications Corporation (TTCL) ·
+74/75/76/79 Vodacom. **60 is still reserved** (`060AXXXXXX`, "Reserved for future use").
+
+⚠️ **D3's wording is half right and must be re-scored when U2 lands:** `tzPhone` does accept NDCs no
+licensee holds, but **60 is now the only such code in 6X/7X**, not "60 and 70".
+
+⭐ **THE LESSON THIS PROGRAMME KEEPS, AND WHY IT IS RECORDED HERE RATHER THAN IN U2:** a numbering
+table is a REGULATOR'S document with an edition, and it moved three times in the six years this
+plan's version was current. That is exactly why U1's `isGatewayMsisdn` is coarse (twelve digits,
+`255` then `6` or `7`) and refuses to know about allocation at all: a table on the money wire goes
+stale on TCRA's schedule, and its failure mode is **refusing to text a real customer**. U2's module
+therefore carries its edition, its source URL and a `PLAN_REVIEWED` date in the file, and its suite
+PRINTS that date's age rather than failing on it. ⚠️ The ITU's E.164 notification for Tanzania
+(1.XI.2024) is a primary source but is **two editions behind** — it still shows 66 as Vodacom and
+omits 79 — so it is a corroborating source, never the table.
+
+---
+
+### §3c — ⭐ THE SCALE THIS MUST ACTUALLY CARRY (Ali, 2026-09-25) — a premise the plan was NOT written on
+
+> *"keep in mind what we are planning now is not a small contact list to Excel list — it's 150k approx
+> contacts, or VCF."* · *"it could be small and could be large."*
+
+**Both ends of that range are requirements, and the small end is the trap.** A design that only works
+at 150,000 makes a 40-contact import feel broken (a job queue, a poll, a progress bar, three screens),
+and a design that only works at 40 loses the file. Every import unit is therefore specified for BOTH:
+the same code path, chosen by measured size, never a second implementation.
+
+**What 150,000 actually costs, computed rather than asserted:**
+
+| | |
+|---|---|
+| A 150k `.vcf` | tens of MB. ⛔ D18's **1 MB server-action ceiling** makes a direct upload impossible — the file cannot arrive the way the plan assumed |
+| One single-segment campaign to 150k | 150,000 × TZS 6 = **TZS 900,000**. The account's measured balance was **TZS 232** (§3), so a full send is ~3,900× the float on hand. ⭐ This is what makes U49's budget cap structural, not a nicety |
+| D20's serial `SmsMessage` UPDATE | 150,000 round trips where a grouped update is one. At 5 ms each that is **12½ minutes of pure latency** inside a job that also has to survive a restart |
+| D23's `withLock` | `pg_advisory_xact_lock` inside a `$transaction` with a **30 s** timeout. 150k rows cannot pass through it, and §5.5 already forbids holding it across a send or an import |
+| Duplicate detection | ⛔ pairwise comparison is 1.1 × 10¹⁰ comparisons. It is a hash on the ONE phone key (U1) — O(n) — or it does not ship |
+
+**What this binds, and it binds them now rather than at the unit:**
+
+1. ⛔ **The file never arrives through a server action.** U23/U27 upload in chunks to a staged row, or
+   direct to storage with the server reading it back — decided at U23, but the 1 MB ceiling is not
+   negotiable and must not be discovered at U27.
+2. ⭐ **Parse is STREAMING, never `readFile` then `split`.** A 40 MB vCard read whole is a 40 MB string
+   plus its parsed array in one request's heap. U25/U26 parse a stream into batches.
+3. ⭐ **Staging (U29) is the resume point, and the progress bar (U32) counts ROWS STAGED, not bytes
+   read.** An import that dies at row 120,000 resumes at 120,000. ⛔ A progress bar that is a timer is
+   the defect this plan already names.
+4. ⭐ **Every per-row helper is allocation-cheap by construction** — `parseTzNumber` (U2) is called
+   150,000 times per import, so its NDC lookup is a prebuilt map and its regexes are module-level
+   constants, never rebuilt per call. U2's suite asserts the table is built **once**.
+5. ⛔ **No `fetch-all-then-slice` anywhere** — not in the grid (§5.15), not in the pre-flight (U30), not
+   in the audience resolver (U24). The count and the page come from the database.
+6. ⚠️ **And the small end is asserted too:** every import unit carries a fixture of ~40 rows alongside
+   its large one, and the 40-row path must not show a queue, a poll, or an indeterminate spinner.
+
+---
 
 ## §4 — OWNER DECISIONS, TAKEN ON ALI'S DELEGATION
 

@@ -33,7 +33,7 @@ Ali, 2026-09-15: *"later any session please start with the mobile visual plan an
 | **Next** | Session S2 → U3 (the Compact market card) and U4 (the discovery bar). S1 (U1 + U2) is done and live since 2026-09-23. Two units per session |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit** |
 
-## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟠 **PLANNED 2026-09-16 · REFRESHED 2026-09-23 with the sealed SMS rail (§3a, §3b) · RUNS WHEN ALI SAYS SO, ON ANY PC** · 0/52 units ✅ · 0/25 defects ✅
+## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟢 **BUILDING — S1 started 2026-09-25; U1 is live** · 1/52 units ✅ · 2/25 defects ✅
 
 Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marketing campaign and contacts setup"* · *"make it perfectly working for 50pick, perfect design and logic."*
 **▶ Work order and tracker: [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md). Open it at §0 (RESUME AT), then §0a (the copy-paste session prompt), then §1 (status board).**

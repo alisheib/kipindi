@@ -121,12 +121,15 @@ export function toMsisdn255(raw: string): string {
  * TWELVE digits, `255` then `6` or `7`. That is the whole rule, and the narrowness is the point:
  * this predicate answers "can a gateway dial this", not "is this a real subscriber".
  *
- * ⛔ IT IS NOT A NUMBERING PLAN AND MUST NEVER GROW INTO ONE. `255701234567` passes here, yet no
- * licensee holds NDC 70. Which NDCs are allocated, to whom, and under which edition of the TCRA
- * plan is `tz-msisdn.ts`'s single job. A second copy of that table living on the wire would drift
- * from the first the week an operator is licensed, and the two would disagree about who can be
- * texted. `phone-normalize.test.mts` §4 asserts this gap out loud so it cannot be mistaken for
- * coverage.
+ * ⛔ IT IS NOT A NUMBERING PLAN AND MUST NEVER GROW INTO ONE. `255701234567` passes here, and this
+ * module has no opinion about whether anyone holds NDC 70 — deliberately. ⭐ THAT IS NOT A
+ * HYPOTHETICAL RISK: NDC 70 was spare in the TCRA plan's 2020, 2024 and 2025 editions and is
+ * allocated in the 2026 one, and 63, 64, 66 and 72 all changed holder over the same period. A
+ * numbering table on the money wire would go stale on the regulator's schedule, not ours, and the
+ * failure mode is refusing to text a real customer. Which NDCs are allocated, to whom, and under
+ * which edition is the single job of the numbering-plan module and its own suite, where the edition
+ * and its review date are recorded in the file. `phone-normalize.test.mts` §4 asserts this gap out
+ * loud so it cannot be mistaken for coverage.
  *
  * Lives in this module because it is pure and imports nothing, so the client may reach it too.
  *
