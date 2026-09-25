@@ -95,6 +95,8 @@ async function seed(run: number): Promise<Fixtures> {
   await Promise.resolve(db.suppression.create({
     id: `s${run}-${seq++}`, channel: "SMS", identifier: toMsisdn255(p(2)), category: "MARKETING",
     reason: "WITHDRAWN", evidence: "fixture", recordedBy: null, createdAt: "2026-01-01T00:00:00.000Z",
+    // U8 · a suppression that has NOT been lifted — the row is still refusing.
+    liftedAt: null, liftedReason: null,
   }));
   // C · a stranger with no ledger row at all
   // D · a contact who consented

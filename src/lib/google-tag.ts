@@ -38,6 +38,12 @@ export const GA_EXCLUDED_PREFIXES: readonly string[] = [
   "/auth/verify-email",   // ?token=
   "/auth/demo",
   "/agent/invite",        // the token is a path segment
+  // ⛔ U8's marketing opt-out. The token is a path SEGMENT here too, so stripping the query is
+  // no help: a plain GA4 install would send `50pick.tz/s/<token>` to Google on every hit, which
+  // is a live opt-out credential for a named person handed to a third party. ⭐ And the leak
+  // would be worst exactly where it matters — the people arriving here are the ones who asked
+  // to stop being marketed to.
+  "/s",
 ];
 
 /** Paths whose next segment is a player's own record: the id is replaced, the page is still counted. */
