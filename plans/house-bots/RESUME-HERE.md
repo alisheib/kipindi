@@ -123,7 +123,10 @@ Nothing here blocks betting.
 - ✅ **(b) is done:** the why-panel's `removed` guard lives in `AccountWhyPanel` and is RENDERED by 1.435b with a live
   answer (the one input where it alone stands); the door's own refusal is a new 1.541 case. Each has a mutation.
 
-**a) The full mutation fleets — ⏳ RUNNING since 2026-09-26 22:56 UTC on `754a7fe3`** (see §5). Console and engine
+**a) The full mutation fleets — ⏳ RUNNING since 2026-09-26 22:56 UTC on `754a7fe3`** (see §5). Found so far: console
+`355-all` came back WRONG-ASSERTION — its plain `Promise.all` crashed on a `null` slot added 09-24, so the suite died
+before 1.355's source pin. Re-aimed to a shape-keeping all-or-nothing combinator and re-driven: CAUGHT, by 1.355's
+behavioural half (a failed roster read must resolve). Console and engine
 were last driven WHOLE at `79c2962d` (2026-09-23: 305/305,
 65/65); they have grown to 340/80 since, and money+seam (63) and c5 (97) have no whole-fleet record. Per-mutation
 time is not measured here. Drive in slices under 3 hours (`--only <prefix,…>`), each under the lock, each into its
