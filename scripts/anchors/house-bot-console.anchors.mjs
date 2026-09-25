@@ -2497,9 +2497,9 @@ import { formatEat } from "@/lib/utils";`,
     /* ⚠️ RE-ANCHORED 2026-09-24: `consoleFeedRow` took a fourth argument (the day's budget map) when the
        `Left today` column landed. THE DEFECT IS UNCHANGED — a failed read answers `[]` instead of `null`. */
     from: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? null
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday, remaining));`,
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday, remaining, result));`,
     to: `  const feed: ConsoleFeedRow[] | null = feedPageRows == null ? []
-    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday, remaining));`,
+    : feedPageRows.rows.map((i) => consoleFeedRow(i, q.intentId, nowMs, leftToday, remaining, result));`,
     expect: "1.355 · a failed activity read is `feed === null`",
     suite: "console-mem",
   },
@@ -2544,6 +2544,33 @@ import { formatEat } from "@/lib/utils";`,
     from: `    (id) => (core.dayBooks == null ? null : (core.dayBooks.get(id)?.stakedTzs ?? 0)),`,
     to: `    (id) => core.dayBooks?.get(id)?.stakedTzs ?? null,`,
     expect: "1.626c · an account the day book holds NO row for reads the same on the desk as on its own page",
+    suite: "console-mem",
+  },
+  {
+    name: "626e-loss-goes-unnamed · a LOST stake stops being named, so the one outcome that leaves no transaction behind reads as though nothing had happened to it",
+    file: GATE,
+    /* 🔴 THE CASE A LEDGER-BASED READER CANNOT SEE. Measured on production: a WIN carries a payout (42/42) and a
+       VOID a refund (428/428), but a LOSS writes NOTHING (0 of 62) — so losing silently is exactly how this
+       column would fail if the outcome were ever inferred from the money instead of read from the position. */
+    from: `  LOSS: { word: "Lost", chip: TONE_CHIP.rose },`,
+    to: `  LOSS: null,`,
+    expect: "1.626e · a LOST stake is named even though it left NO transaction behind",
+    suite: "console-mem",
+  },
+  {
+    name: "626e-open-invents-a-result · a stake still running is given an outcome it does not have, so an undecided bet reads as settled",
+    file: GATE,
+    from: `  OPEN: null,`,
+    to: `  OPEN: { word: "Won", chip: TONE_CHIP.green },`,
+    expect: "1.626e · CONTROL · a stake still running carries NO result and keeps its own word",
+    suite: "console-mem",
+  },
+  {
+    name: "626e-position-never-read · the row stops consulting its own position, so no stake ever says how it ended and the chip is frozen on the intent's own word",
+    file: GATE,
+    from: `    const st = byPosition.get(row.positionId);`,
+    to: `    const st = undefined;`,
+    expect: "1.626e · a settled stake says how it ENDED",
     suite: "console-mem",
   },
   {

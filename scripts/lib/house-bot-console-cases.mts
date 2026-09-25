@@ -4006,7 +4006,7 @@ try {
          daily stake budget after the row, and the same fact in 361's `used X of Y` grammar as the cell's title.
          ⛔ BOTH ARE STILL FINISHED STRINGS OR `null`: the arithmetic happens in the reader, and a number crossing
          into the view model here is exactly what this equality exists to catch. */
-      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "leftToday", "leftTodayTitle", "marketHref", "marketName", "note", "productWord", "remaining", "remainingTitle", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
+      p1.feed.every((r: Any) => all(Object.keys(r).sort()) === all(["anchored", "due", "leftToday", "leftTodayTitle", "marketHref", "marketName", "note", "productWord", "remaining", "remainingTitle", "resultChip", "resultWord", "stake", "statusChip", "statusWord", "typeWord", "when", "whenTitle"])
         && typeof r.anchored === "boolean" && Object.entries(r).every(([k, v]) => k === "anchored" || typeof v === "string" || v === null)),
       j(Object.keys(p1.feed[0] ?? {}).sort()));
 
@@ -4070,12 +4070,14 @@ try {
          `house_condition_gone` because a fresh poll has no thin side to enter on. The cross-account case below
          is what carries the "not a sum of what is on screen" claim instead, and it carries it better. */
       const STAKES = [5_000, 3_000, 2_000];
+      const budPositions: Array<{ stakeTzs: number; positionId: string }> = [];
       await w.switchOn();
       for (const amt of STAKES) {
         const mkt = await w.poll({ graceMin: 0 });
         const i = await w.intent(bud, mkt.id, { kind: "OPENER", side: "YES", stakeTzs: amt });
         const r = await w.place(bud, i);
         if (!r.ok) throw new Error(`1.626c fixture bet refused: ${j(r)}`);
+        budPositions.push({ stakeTzs: amt, positionId: r.data.positionId });
         await new Promise((res) => setTimeout(res, 2));
       }
       /* ⭐ TWO ROWS THAT MOVE NO MONEY, and they are the point of the 2026-09-24 correction. The first cut
@@ -4284,6 +4286,49 @@ try {
         ok("1.626d · CONTROL · …and with that same row CONFIRMED the figure comes back — so the blank above was the unrecorded refund and not the fixture merely existing",
           healed != null && healed.remaining !== null,
           j({ afterConfirm: healed?.remaining }));
+      }
+
+      /* ━━ 1.626e · HOW THE STAKE ENDED — WON, LOST OR VOID (owner, 2026-09-25) ━━━━━━━━━━━━━━━━━━━
+       * The Outcome chip said whether the ENGINE got the stake down, which stops the moment the money is on the
+       * table. The owner asked to see wins and losses in red and green; he was offered the AMOUNT beside them,
+       * shown that it would need rulings 266 and 361 amended, and chose the word alone. So no ruling moved:
+       * this is a STATE, and the console paints states everywhere.
+       * 🔴 AND IT COMES FROM THE POSITION, NEVER FROM THE MONEY — the assertion below is the whole reason this
+       * block exists. MEASURED ON PRODUCTION: a WIN carries a `BET_PAYOUT` (42 of 42) and a VOID a `BET_REFUND`
+       * (428 of 428), but a LOSS pays nothing and writes NO transaction (0 of 62). "No money came back" is
+       * therefore LOST and STILL RUNNING at once, and a reader that inferred from the ledger would call an open
+       * stake a loss. */
+      {
+        if (budPositions.length !== 3) throw new Error(`1.626e fixture: expected 3 positions, got ${budPositions.length}`);
+        await w.setPositionStatus(budPositions[0].positionId, "WIN");
+        await w.setPositionStatus(budPositions[1].positionId, "LOSS");
+        /* budPositions[2] is left OPEN on purpose — the branch that must invent nothing. */
+        const rv = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", bud.botId, { tab: "activity" });
+        const row = (amt: number) => (rv.feed ?? []).find((r: Any) => r.stake === formatTzs(amt));
+        const won = row(5_000), lost = row(3_000), open = row(2_000);
+
+        ok("1.626e · a settled stake says how it ENDED, in the chip that used to say only that it was placed — Won and Lost, each in its own tone",
+          won?.resultWord === "Won" && lost?.resultWord === "Lost"
+            && won?.resultChip !== lost?.resultChip && won?.resultChip != null && lost?.resultChip != null,
+          j({ won: won?.resultWord, wonChip: won?.resultChip, lost: lost?.resultWord, lostChip: lost?.resultChip }));
+
+        /* 🔴 THE LOAD-BEARING ONE. This position has NO payout and NO refund — a loss writes neither — so a
+           reader inferring the outcome from the transactions it already holds would answer nothing here. */
+        ok("1.626e · a LOST stake is named even though it left NO transaction behind — the outcome is read from the position, never inferred from the money",
+          lost?.resultWord === "Lost"
+            && (await w.txnsFor(budPositions[1].positionId)).every((t: Any) => t.type === "BET_PLACED"),
+          j({ lost: lost?.resultWord, txnTypes: (await w.txnsFor(budPositions[1].positionId)).map((t: Any) => t.type) }));
+
+        /* ⛔ CONTROL · A STAKE STILL RUNNING INVENTS NOTHING and keeps the intent's own word. Two chips about one
+           row is how a screen comes to contradict itself. */
+        ok("1.626e · CONTROL · a stake still running carries NO result and keeps its own word — nothing is invented for an undecided bet",
+          open?.resultWord === null && open?.resultChip === null && open?.statusWord === placedRows[0]!.statusWord,
+          j({ open: open?.resultWord, word: open?.statusWord }));
+
+        /* ⛔ CONTROL · AND A ROW THAT NEVER PLACED HAS NO POSITION AND SO NO RESULT. */
+        ok("1.626e · CONTROL · a queued row has no position and therefore no result — the chip stays the intent's own",
+          idleRow != null && (rv.feed ?? []).find((r: Any) => r.stake === formatTzs(9_000))?.resultWord === null,
+          j({ queued: (rv.feed ?? []).find((r: Any) => r.stake === formatTzs(9_000))?.resultWord }));
       }
 
       /* ⛔ THE SLOTS GO BACK, AND THIS IS NOT TIDINESS — IT IS A DEFECT THIS BLOCK CAUSED AND HAD TO REPAIR.
@@ -6409,7 +6454,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        are money THIS module formats — a `formatTzs` figure and 361's own `used X of Y` sentence — so they are
        the section's own copy and 453 binds them, exactly like `stake` three fields along. Nothing operator-typed
        reaches either one. */
-    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.remaining, r.remainingTitle, r.statusWord, r.typeWord, r.productWord, r.note, r.marketHref]),
+    ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.remaining, r.remainingTitle, r.statusWord, r.resultWord, r.typeWord, r.productWord, r.note, r.marketHref]),
     ...(view.history ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.eventWord, r.change, r.who, r.moneyHref]),
     ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
     /* ⛔ AND THE WHOLE OF BOTH TOTAL MAPS, NOT ONLY THE ROWS THIS FIXTURE HAPPENED TO PAINT. A word map scanned
