@@ -349,7 +349,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | D26 | 🔵 shipped early `f70789df` 2026-09-24 — both load shifts; the skeleton-sizing follow-ups are D72–D74 (`371690b6`, live) and the surface's real defect was D71 | U25 |
 | D27 | ⬜ | U16 |
 | D28 | ✅ `ea84e4a9` 2026-09-23 (live) | U3 |
-| D29 | 🔵 shipped `5c00588c` 2026-09-25 — the price gate is the POOL, not the phase, and the outcome is read before any absence branch. ⛔ **THE FILED ONE-TOKEN REMEDY WAS A REGRESSION** — see the §8 cell. Guarded in `test:outcome` (6 assertions + 3 controls, 5 product mutations proven RED). ⭐ NO new copy was needed | U32 |
+| D29 | 🔵 shipped `5c00588c` 2026-09-25 — the price gate is the POOL, not the phase, and the outcome is read before any absence branch. ⛔ **THE FILED ONE-TOKEN REMEDY WAS A REGRESSION** — see the §8 cell. Guarded in `test:outcome` (6 assertions + 3 controls, 5 product mutations proven RED). ⭐ NO new copy was needed. ⚠️ **The production check is BLIND and says so**: `qa:d29-terminal` read 12 cards and found NO settled or void card on any card surface (`/markets` is all Live; `/results` renders none at all), which is §0 trap 3 exactly — the code is proven by the unit guard, not by that sweep | U32 |
 | D30 | 🔵 shipped early `94a43227` + `07f736f9` 2026-09-23 (live) — the rail AND the sort listbox | U33 |
 | D31 | ◐ HALF — the mask overflow only (`252a9f55` 2026-09-23, local proof; the 32px eye, the 800ms flash and the "Hide password" label are still open) | U34 |
 | D32 | ◐ fixed parts live; the phone PAUSE control is DORMANT — the ticker renders nowhere since `adbc31e7`, and re-opens if it is ever re-sited | U33 |
@@ -462,6 +462,23 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
     improvement on a false one.
   - ⚠️ D29's cell also carried the singular `components/market/` path — the third defect this
     session whose citation would have sent a session to a file that does not exist.
+  - ⛔ **AND THE PRODUCTION PROBE FOR IT WAS WRONG TWICE BEFORE IT WAS RIGHT** — `qa:d29-terminal`,
+    kept because the next session will want it and because how it failed is the lesson:
+    · **v1 reported "2 PROVED".** It called a card terminal when its price slot was EMPTY — but a
+      LIVE cold-start card has exactly that, so it proved D29 over two live cards with no bets and
+      never looked at a settled or void one. A population that cannot contain the defect, scored
+      green. The tell was in its own output: `cap=null pct="—"`, which is the NO-PRICE branch, so
+      those cards had no `resolvedOutcome` and could not have been terminal.
+    · **v2 reported BLIND — also wrongly.** It read the status from `.chip`, and the kit's Chip
+      renders no such class, so every status came back null and nothing matched. A false green
+      became a false blind from the same instrument.
+    · **v3 reads the status word out of `.mcardp-top` and is BLIND for the right reason:** 12 cards,      all "Live". `/markets` lists only live markets and its recently-resolved strip is empty;
+      `/results` renders NO `MarketCard` at all. So no terminal card is reachable on production
+      today, which is §0 trap 3 — and why D29 rests on `test:outcome`'s five RED mutations.
+    ⭐ THE TRANSFERABLE PART: an instrument that can report BLIND will still report it for the wrong
+    reason. Check that the discriminator itself resolves before trusting either verdict.
+  - ⚠️ Noted, not filed: `results/page.tsx:481` has a `<MarketCard>` call site that rendered zero
+    cards on production today, so `test:outcome`'s rule 2 may be governing an unreachable site.
 
 - **S19d · 2026-09-24 — D39, and the comment-stripper that was hiding 7,077 lines from every scanner.**
   - **D39 (`22fb75a9`)** — two one-line edits through `sideWord`: the hedge warning's `heldLabel` and the
