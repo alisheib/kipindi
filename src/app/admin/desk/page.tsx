@@ -684,7 +684,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                       variant is what lets ONE class list reach every cell instead of nine hand-edited ones.
                       ⛔ PHONE ONLY — `sm:` restores the kit's own 16px, so every width that already read well is
                       byte-identical. Measured after, not assumed: see the 360 read in §12.3. */}
-                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-4 sm:[&_th]:!px-4 max-sm:!text-caption">
+                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">
                     <thead className="max-sm:hidden font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         {/* ⛔ A FLOOR ON THE SUBJECT COLUMN, the roster's own measured one: without it the account
@@ -852,7 +852,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                             {/* ⚠️ BESIDE THE GAME: each Up & Down chain counts its own rounds, so `#1524` exists once per chain and
                                 identifies a round only with its game next to it. */}
                             <td className="hidden sm:table-cell p-3 tabular text-text-secondary">{r.roundNo ?? <span className="text-text-tertiary">—</span>}</td>
-                            <td className="hidden sm:table-cell p-3 min-w-[22ch] max-w-[34ch]">
+                            <td className="hidden sm:table-cell p-3 min-w-[16ch] max-w-[34ch]">
                               {r.marketHref === null ? (
                                 <span className="text-text-tertiary">—</span>
                               ) : r.marketName === null ? (

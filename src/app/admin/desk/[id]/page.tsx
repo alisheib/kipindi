@@ -601,7 +601,7 @@ async function AdminDeskAccountContent({
                       `.admin-tbl td`/`th` are (0,1,1) with 16px gutters, so the `p-3` below is DEAD, and halving
                       the gutter at phone width buys back more strip than the type could. `sm:` restores the kit's
                       own 16px, so every width that already read well is unchanged. */}
-                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-4 sm:[&_th]:!px-4 max-sm:!text-caption">
+                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">
                     <thead className="max-sm:hidden font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         {/* ⭐ LOWERED AT PHONE WIDTH ONLY so the second money answer reaches the strip. The
@@ -740,7 +740,7 @@ async function AdminDeskAccountContent({
                             {/* ⚠️ BESIDE THE GAME, because a round number is not unique on its own — each Up & Down chain counts its
                                 own, so `#1524` exists once per chain and identifies a round only with its game next to it. */}
                             <td className="hidden sm:table-cell p-3 tabular text-text-secondary">{r.roundNo ?? <span className="text-text-tertiary">—</span>}</td>
-                            <td className="hidden sm:table-cell p-3 min-w-[22ch] max-w-[34ch]">
+                            <td className="hidden sm:table-cell p-3 min-w-[16ch] max-w-[34ch]">
                               {r.marketHref === null ? (
                                 <span className="text-text-tertiary">—</span>
                               ) : r.marketName === null ? (
