@@ -33,7 +33,7 @@ Ali, 2026-09-15: *"later any session please start with the mobile visual plan an
 | **Next** | Session S2 → U3 (the Compact market card) and U4 (the discovery bar). S1 (U1 + U2) is done and live since 2026-09-23. Two units per session |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit** |
 
-## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟢 **BUILDING — S1+S2 done 2026-09-25; U1–U4 are live** · 5/52 units ✅ · 5/25 defects ✅
+## ▶ 0a · MARKETING CAMPAIGN & CONTACTS SETUP — `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP` · 🟢 **BUILDING — S1–S4 done 2026-09-25; U1–U7 are live, U8 half** · 7/52 units ✅ · 7/25 defects ✅ · 🔴 U7's gate had to bridge TWO phone formats (`+255…` on User, bare `255…` as the marketing key) or it would have found no player at all · 🟡 U8's page is not built and its resubscribe button needs a `liftedAt` decision first
 
 Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marketing campaign and contacts setup"* · *"make it perfectly working for 50pick, perfect design and logic."*
 **▶ Work order and tracker: [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md). Open it at §0 (RESUME AT), then §0a (the copy-paste session prompt), then §1 (status board).**

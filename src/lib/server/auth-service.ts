@@ -31,6 +31,7 @@ import { isLiveMoneyMode } from "./runtime-mode";
 import { selfExclusionStanding } from "./responsible-gambling";
 import { SUPPORT_PHONE } from "@/lib/server/support-config";
 import { TERMS_VERSION } from "@/lib/terms-version";
+import { appendMarketingConsent } from "@/lib/server/marketing/consent-ledger";
 
 /** Mask a phone for an audit payload — keep country code + last 2 (e.g.
  *  "+25570*****19"). The audit entry already carries actorId, so the full number
@@ -530,6 +531,23 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
       lastLoginAt: new Date().toISOString(),
       closedAt: null,
     });
+    // U6 · THE CONSENT LEDGER ROW FOR A TICKED BOX (D8).
+    // ⛔ ONLY WHEN THEY TICKED IT. An unticked box is not a withdrawal — it is the absence
+    // of consent, and writing a WITHDRAWN row for it would invent a decision this person
+    // never made. U7's gate reads "no row" as "no consent" — the same answer, without the
+    // fiction. ⛔ Zero backfill (OD8): nothing here reaches back over existing accounts.
+    if (reg.marketingOptIn === true) {
+      await appendMarketingConsent({
+        phoneE164: phone,
+        locale: "SW",
+        status: "GIVEN",
+        source: "REGISTRATION",
+        site: "REGISTRATION",
+        evidence: TERMS_VERSION,
+        recordedBy: null,
+      });
+    }
+
     // Auto-create wallet — starter balance is the admin-tunable
     // `starterBalanceTzs` config knob; defaults to 0 (no free funds).
     //
@@ -749,6 +767,23 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     lastLoginAt: new Date().toISOString(),
     closedAt: null,
   });
+
+  // U6 · THE CONSENT LEDGER ROW FOR A TICKED BOX (D8).
+  // ⛔ ONLY WHEN THEY TICKED IT. An unticked box is not a withdrawal — it is the absence
+  // of consent, and writing a WITHDRAWN row for it would invent a decision this person
+  // never made. U7's gate reads "no row" as "no consent" — the same answer, without the
+  // fiction. ⛔ Zero backfill (OD8): nothing here reaches back over existing accounts.
+  if (baseParse.data.marketingOptIn === true) {
+    await appendMarketingConsent({
+      phoneE164: phone,
+      locale: "SW",
+      status: "GIVEN",
+      source: "REGISTRATION",
+      site: "REGISTRATION",
+      evidence: TERMS_VERSION,
+      recordedBy: null,
+    });
+  }
 
   // Auto-create wallet. Tester phones get 100K TZS for QA sessions;
   // everyone else gets the configured starter balance (default 0).
