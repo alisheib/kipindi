@@ -30,24 +30,35 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: Session S4 — U7 (the ONE gate), then U8 (opt-out that works).
-  ⭐ U7 AND U8 NOW HAVE THEIR STORE. U6 shipped `MessagingConsent` and `Suppression` in both
-  DALs, so U7's `mayReceiveMarketingSms` reads `db.suppression.find(key)` and
-  `db.messagingConsent.latestFor(key)` — both take the SAME named `MessagingKey` triple, and both
-  twins break a createdAt tie on `id` so memory and Postgres answer identically.
-  ⛔ U7 MUST NOT NAME ITS PREDICATE `isSuppressed`. That identifier is already exported by
-  `src/lib/server/email-suppression.ts` and means something else entirely — bounced or
-  spam-complained, i.e. DELIVERABILITY, not consent. Two different questions under one name on a
-  live money platform is how a marketing send starts reading a bounce list.
-  ⚠️ AND THE LEDGER HAS FIVE WRITERS, NOT THE TWO U6 WIRED. `marketingOptIn` is written at
-  registration and the profile toggle (both now append a row), and ALSO by the 730-day retention
-  lapse, account closure (`user-service.ts:147`) and erasure (`erasure.ts:476`). U16 owns the lapse
-  explicitly; closure and erasure are unowned, and until they append, the ledger and the boolean
-  disagree after any of the three. Recorded in §2, not silently absorbed into U7.
-  ⚠️ ITS PREDECESSOR'S TRAP IS STILL OPEN: `test:campaign-compose` §12 asserts the marketing
-  footer's `0800110051` still DIFFERS from the published `0800 11 0011`. That is OQ4 — Ali's answer —
-  and making them agree as an "obvious cleanup" turns an open owner question into a silent product
-  decision, which is why the guard fails if you try.
+▶ NEXT: finish U8 — THE PAGE. Its store half is ✅ live (`5942332f`); nothing renders yet.
+
+  🔴 RESOLVE THIS BEFORE WRITING THE PAGE, BECAUSE IT DECIDES THE SCHEMA:
+  **U8 promises a resubscribe button, and as the tables stand today that button CANNOT work.**
+  U6 shipped `Suppression` with no lift path and `dal-parity` §17 asserts NO delete in either twin
+  (OD11 — rightly, since deleting one re-permits marketing to somebody who said stop). U7 asks
+  suppression FIRST. So a person who opts out and then clicks "start them again" would be told it
+  worked while the suppression row went on refusing them for ever — which is precisely the false
+  success U8's own text forbids.
+  ⭐ THE FIX THAT KEEPS BOTH PROMISES: a suppression row is never DELETED, but it may be
+  SUPERSEDED. Add a nullable `liftedAt` (+ `liftedReason`) — expand-only, one migration — have the
+  gate treat `liftedAt IS NULL` as active, and the evidence of the original refusal survives for
+  ever. ⛔ Then §17's "no delete" assertions STAY, and a new one says a lift never removes a row.
+  ⚠️ This was found by building U8's service, not by a failing test: nothing is red today, because
+  nothing writes a suppression row yet.
+
+  THEN the page itself: `src/app/s/[token]/{page,actions}.tsx`.
+  • Copy is already shipped in all three locales under `optout.*` (i18n parity 2467 each).
+  • The token's shape and alphabet are `src/lib/marketing/optout.ts`; the link builder and
+    `OPTOUT_TOKEN_CHARS`/`OPTOUT_PATH` already exist in `footer.ts` — ⛔ do not add new constants.
+  • Six states: loading · valid · already suppressed · resubscribed · invalid token · error.
+  • ⛔ One click, no confirmation step (the RED control plants a confirmation).
+  • ⛔ `/s` joins `GA_EXCLUDED_PREFIXES` (`google-tag.ts:32-41` already names this exact hazard for
+    the invite token) or the token is sent to Google inside a page path.
+  • ⛔ `/s` must stay OUT of `PROTECTED_PREFIXES` (`proxy.ts:40`) or the no-login promise breaks.
+  • ⛔ Every player lookup goes through `userPhoneKeyFor` (U7) — never a bare `findByPhone`.
+  • Pattern to copy: `/agent/invite/[token]` — force-dynamic, `params: Promise<{token}>`, resolution
+    in a service, a DISTINCT message per failure reason.
+  • The production half of Accept belongs to U42/U52, not here: nothing mints a token yet.
 
 ⚠️ AND A HABIT THIS LANE HAS NOW PAID FOR TWICE: **editing a file is exactly when a red anchor
   rots.** S2's own edits broke two (`otp-delivery`, `blackball`) and a parallel session noticed one
@@ -55,22 +66,19 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   a `scripts/anchors/*.anchors.mjs` quotes — an anchor that cannot inject is a control that has
   silently stopped controlling, and nothing else reports it.
 
-✔ LAST SESSION: S3b, 2026-09-25 — U6 ✅ LIVE on `32067c92`. **6/52 units, 7/25 defects (D7, D8).** ⭐ THE
-  UNIT WAS NEVER BLOCKED — THE BLOCKER WAS. `db-scratch.mts` uses `embedded-postgres`, not Docker,
-  and raised PostgreSQL 18.3 here; all 82 migrations apply from empty. The migration was generated
-  offline, applied for real, and proven 10/10 with two controls.
-  ⛔ AND THE PLAN'S OWN INSTRUCTION WAS STALE IN TWO PLACES: `dal-parity` was told to gain a
-  "§7 with its own planted-key control", but §7 has belonged to house bots since their build and
-  the gate already HAS a planted-key control at §0. U6 took §17 and extended the existing
-  `red:dal-parity` instead of inventing a second one — 1380 → 1440 assertions, 24/24 caught.
-  ⭐ THE RED CONTROL FOUND A HOLE IN THIS UNIT'S OWN GUARD: the tiebreak assertion asked whether
-  the ordering appeared ANYWHERE in the namespace, and each twin has TWO readers — so removing it
-  from `latestFor` left the gate GREEN because `listFor` still carried it. It counts both now.
-  ⚠️ AND A FINDING OUTSIDE THIS PROGRAMME, NOT FIXED HERE: `schema.prisma` has declared
-  `@@unique([provider, providerRef])` on `Transaction` since 2026-06-08 (`1112ee3c`) with NO
-  migration — production has only the non-unique index. See §2; §6 puts money tables outside this
-  programme's permission.
-
+✔ LAST SESSION: S4, 2026-09-25 — U7 ✅ LIVE, U8 🟡 store half live. **7/52 units, 7/25 defects.**
+  🔴 U7 SHIPPED WITH A DEFECT AND WAS FIXED IN THE SAME SESSION: `selfExclusionStanding` →
+  `getRgSettings` ends in `db.responsible.upsert(fresh)` (`responsible-gambling.ts:90`), so ASKING
+  THE GATE A QUESTION WROTE A ROW. Over §3c's 150,000-recipient audience that is 150,000
+  ResponsibleGambling rows created by deciding NOT to message people. Found by an adversarial read
+  of the shipped unit — nothing was red, because the defect writes correct-looking data.
+  ⭐ AND THE TRAP U7 EXISTS TO SURVIVE: this platform stores phone numbers in TWO formats.
+  `User.phoneE164` is `+255…` (`tzPhone`, `validators.ts:32-37`); the marketing key is bare `255…`
+  (`toMsisdn255`). Unequal for EVERY input. The obvious gate finds NO player, hands the whole player
+  base to the ledger branch, and never errors. `userPhoneKeyFor` is the bridge.
+  ⚠️ U8 IS 🟡 HALF DONE ON PURPOSE, not abandoned — its store is live and proven; its page is not
+  built, and the resubscribe/`liftedAt` decision above must be taken first. §10's rule applies: a
+  half-built unit is worse than a smaller one, so the page was not rushed at the end of a session.
 ✔ BEFORE IT: S2, 2026-09-25 — U3 and U4 both ✅ LIVE. **4/52 units, 5/25 defects.** The GSM-7
   table came out of the server module and the gateway now delegates to it; the statutory footer is
   computed, counted and un-removable, and the operator's budget is 111 rather than 160. ⭐ Two
@@ -99,7 +107,7 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   §3b carries the vendor's measured behaviour. ⛔ Read both before U39, U46 and U47 — each was drafted
   around an absence that no longer holds.
 
-◐ HALF-DONE: nothing. **S1, S2, S3 AND S3b ARE CLOSED — U1–U6 are ✅ LIVE and re-measured on production.**
+◐ HALF-DONE: **U8 — store half ✅ live (`5942332f`), page NOT built.** U1–U7 are ✅ LIVE and re-measured on production. The exact resume point is the ▶ NEXT block above.
 
 ⭐ THE MACHINE CAN VERIFY A MIGRATION, AND THE BLOCKER THAT SAID OTHERWISE WAS FALSE.
   S3b measured it: `scripts/db-scratch.mts` does NOT use Docker. It loads `embedded-postgres`
@@ -289,8 +297,8 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U4 | pure | ✅ | S2 | b760fefe | no sender identity and no RG footer in any SMS, and a body-only quote would be 49 septets short → footer computed, counted and un-removable; operator budget 111, not 160 | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `b760fefe`; the U2 drive re-run green on it, so the new modules did not break the client bundle |
 | U5 | guard | ✅ | S3 | 64d6bc05 | a 15-section helpline guard with NO red control at all, and a product half already built → 4/4 mutations caught each on its own assertion | `test:support-contact` | yes · `red:support-contact` | 2026-09-25 · live on `64d6bc05`: every helpline-LABELLED link on /legal/responsible-gambling dials the pinned 0800110011, while the support desk legitimately differs. ⛔ D6 stays ⬜ — its substance is OQ4 |
 | U6 | data | ✅ | S3b | 6429f86f | no consent ledger and no SMS suppression list anywhere, and `marketingOptIn` a bare boolean with no channel, wording, evidence or history → two append-only stores in BOTH DALs with named types, the 82nd migration generated offline and APPLIED on real PostgreSQL 18.3 (10/10, two controls), dal-parity 1380 → 1440 | `test:dal-parity` · `test:marketing-consent-ledger` | yes · `red:dal-parity` (24/24) · `red:marketing-consent-ledger` (4/4) | 2026-09-25 · live on `32067c92`: production starts `prisma migrate deploy && next start`, so serving AT that SHA is the migration having applied to the live database. 7/7 on the drive, three of them controls — and ⭐ the Swahili sentence the ledger stores VERBATIM is the sentence /auth/register really shows |
-| U7 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | the ONE gate |
-| U8 | visual | ⬜ | — | — | — | `test:marketing-optout` | — | `/s/[token]` |
+| U7 | engine | ✅ | S4 | e14e4204 + b60dc492 | nothing asked whether a number may be marketed at all, and a gate written the obvious way would have found NO player: `User.phoneE164` is `+255…` while the marketing key is bare `255…`, unequal for every input → one ordered gate, suppression first, with the bridge pinned in both directions and four mutually exclusive outcomes in one run | `test:marketing-consent` | yes · `red:marketing-consent` (4/4) | 2026-09-25 · live on `b60dc492`. ⚠️ The gate has no HTTP surface until U42, so its behaviour is proven by EXECUTION (15 assertions, 5/5 red) rather than by a live drive — stated plainly rather than dressed up as one. The deploy landing IS the build proof, and the U6 drive re-ran green on it |
+| U8 | visual | 🟡 | S4 | 5942332f | — STORE HALF ONLY — no token table existed and the obvious hex token would collide ≈2.6 times per 150k campaign → `MarketingOptOutToken` in both twins on the 32-char ambiguity-free alphabet, a taken token refused rather than upserted, dal-parity 1440 → 1461 | `test:dal-parity` §18 | yes · `red:dal-parity` (29/29) | store half live 2026-09-25 on `5942332f` — production starts `prisma migrate deploy && next start`, so serving AT that SHA is the 83rd migration having applied to the live database. 🟡 The PAGE is not built; the resubscribe / `liftedAt` decision in §0 must be taken before it is |
 | U9 | guard | ⬜ | — | — | — | `test:marketing-consent` | — | gate INSIDE the loop |
 | U10 | engine | ⬜ | — | — | — | `test:rg-doors` | — | D9 standing, not lockout |
 | U11 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | 18+ |
@@ -384,6 +392,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S4 | 2026-09-25 | **U7 ✅ LIVE (`b60dc492`); U8 🟡 store half live (`5942332f`), page not built.** ⭐ **The trap U7 exists to survive:** this platform stores phone numbers in TWO formats and nothing said so — `User.phoneE164` is `+255…` from `tzPhone` (`validators.ts:32-37`), the marketing key is bare `255…` from `toMsisdn255`, and they are unequal for EVERY input including `+255712345678` itself. So the obvious gate finds NO player, hands the entire player base to the ledger branch — the one branch that must never govern a player (OD10) — and never throws or logs. `userPhoneKeyFor` is the bridge and the suite pins it in BOTH directions, because a bridge asserted only in the working direction can be deleted without the guard noticing. 🔴 **U7 SHIPPED WITH A DEFECT AND WAS FIXED THE SAME SESSION:** `selfExclusionStanding` → `getRgSettings` ends in `db.responsible.upsert(fresh)` (`responsible-gambling.ts:90`), so ASKING THE GATE A QUESTION WROTE A ROW — 150,000 ResponsibleGambling rows per campaign, created by deciding NOT to message people. ⚠️ Found by an adversarial read of the SHIPPED unit, not by a failing test: the defect writes correct-looking data, so nothing went red. Assertion 14 now pins it and red case 4 plants it. ⛔ **Three of this plan's own instructions were stale again:** OD9 named a `MessagingConsent{GRANTED}` status the shipped enum does not have (it is `GIVEN`, matching the existing `privacy.marketing_consent.given` audit action) and OD9's `UNKNOWN` is not in the enum either — both corrected, with the 55P04 cost of adding it later recorded on OD9 itself. ⭐ **U8's premise failed twice over**, which is why only its store shipped: there is no recipient row to hang a token on until U35 (S18) and nothing mints one until U42 (S21), and `marketingFooter` has no callers outside its own test — so U8's stated Accept (a minted token suppressing on production) is unreachable at S4 and now belongs to U42/U52. 🔴 **And the number OD43's length hides:** the token is 8 characters and never expires, so the obvious hex `randomId(4)` (16⁸ = 4.3×10⁹) gives ≈2.6 EXPECTED collisions per 150k campaign — near-certain on the first one. The 32-char ambiguity-free alphabet gives ≈1%, still compounding, so a taken token is REFUSED rather than upserted (an upsert would silently re-point somebody else's live opt-out link). 🔴 **THE OPEN DESIGN QUESTION THIS SESSION SURFACED AND DID NOT HALF-APPLY:** U8 promises a resubscribe button, but suppression rows are never deleted and the gate asks suppression FIRST — so resubscribe would show a success that is not one. The fix is a nullable `liftedAt` (superseded, never deleted); it is written into ▶ NEXT rather than rushed into the live gate at the end of a long session. |
 | S3b | 2026-09-25 | **U6 ✅ LIVE on `32067c92` — D7 and D8 closed; the consent ledger and the SMS suppression list exist, in both stores.** ⭐ **The unit was never blocked — the blocker was.** §0 had stopped U6 for a whole session on "`docker` is not on PATH, so `db-scratch.mts` cannot raise a scratch Postgres". That script does not use Docker: it loads `embedded-postgres` (`:129-146`), whose 107 MB binaries are already installed, and it raised **PostgreSQL 18.3 — production's own major version** here. All 82 migrations apply from empty through the real `prisma migrate deploy`. The lesson is the one this lane keeps re-learning: **audit the instrument, not only the code** — the blocker named a MECHANISM (`docker`) and nobody opened the file to see whether that was the mechanism. ⛔ **Two more of the plan's own instructions were stale**, both because parallel programmes moved underneath it: `dal-parity` was to gain "§7 with its own planted-key control", but §7–§16 have been taken since house bots' build and the gate has had a planted-key control at §0 all along — so U6 took §17 and EXTENDED `red:dal-parity` rather than shipping a second control beside a working one. ⭐ **The red control then found a hole in this unit's own guard**: the tiebreak assertion asked whether the ordering appeared ANYWHERE in the namespace, and each twin has TWO readers — so planting its removal from `latestFor` left the gate GREEN, because `listFor` still carried it. An assertion a sibling can satisfy on your behalf is not an assertion about you; it counts both readers now, with a control proving one is not enough. ⭐ **And the enum rule is narrower than this plan states** — measured, not assumed: adding a value to an EXISTING enum cannot be used in the same transaction (`55P04 unsafe use of new value`), which binds U35/D22 adding `MARKETING` to `SmsPurpose`; a BRAND-NEW type created and used in one transaction is allowed, so U6's five types ship in ONE migration rather than two. 🔴 **A FINDING OUTSIDE THIS PROGRAMME, RECORDED AND NOT FIXED (§6 forbids it):** `schema.prisma` has declared `@@unique([provider, providerRef])` on `Transaction` since 2026-06-08 (`1112ee3c`, "Hardening sprint") with **no migration** — the init migration creates only a non-unique `Transaction_providerRef_idx`, so production has never had the constraint. Its own comment says "a retried webhook with the same providerRef must not" duplicate. Money is NOT leaking today: `settlePaymentWebhook` is idempotent in application code (`wallet-service.ts:1015`, `txn.status !== "PROCESSING"`). The exposure is that `findByProviderRef` is `findFirst({ where: { providerRef } })` — it does not even use the compound key — so two rows sharing a ref would resolve arbitrarily. ⚠️ It also means **`prisma migrate diff` sweeps it into any unrelated migration**, which is exactly what happened here: it was generated into U6's SQL and removed by hand before the commit. ⚠️ **Environment, recorded so it costs nobody else a session:** `prisma migrate dev` needs a shadow database, dies `P1017` on the embedded cluster and leaves ~14 orphaned `postgres.exe` holding `.pgscratch` against deletion — use `migrate diff --from-url` + `migrate deploy` instead; and ⛔ do not clear those orphans with a global kill, because sibling sessions run their own clusters and this session killed theirs. ⚠️ **Also recorded for U7:** `isSuppressed` is ALREADY an exported name (`email-suppression.ts`) meaning bounced/complained — deliverability, not consent — and `marketingOptIn` has FIVE writers, of which U6 wired two. |
 | S3 (part) | 2026-09-25 | **U5 ✅ LIVE.** ⭐ Its product half was ALREADY BUILT and the plan did not know: the statutory helpline is already one pinned constant with no setter, `global-error.tsx` already keeps its four hand-written copies BY DESIGN (root error boundary, imports nothing, renders when the root layout has already failed), and `test:support-contact` §15 already DISCOVERS every helpline-shaped literal there and pins each to the constant. Building it again would have been a second implementation of a working one. **What was actually missing was the control** — that suite is fifteen sections, among the most careful in this repo, and had NO `red:` key at all. `red:support-contact` ships it: 4/4 caught each on its own assertion, tree restored byte-identical, DECLARED anchors so the undeclared ratchet stays at 68. Two of the four are controls on the suite's own controls — §15.1 passes perfectly over a file that has stopped printing the helpline altogether, so one mutation DELETES a copy rather than drifting it. ⭐ **And the suite under test caught this unit's own first draft:** the mutation seeding an operator-settable helpline used the operator's REAL desk number as its literal, and §8 (no support-contact literal outside `support-config.ts`, sweep includes `scripts/`) refused to run at all. A red harness that seeds a real contact number into the tree is one that leaks one. ⚠️ **The live drive's first answer was also a false alarm** — it asserted every `tel:` link dials the helpline, but the page carries three and one is 50pick's own support desk under "Wasiliana nasi", which SHOULD be there and SHOULD differ. The defect was never "another number exists" but "a link that says helpline dials something else"; the drive now classifies by LABEL, with controls that it found at least two helpline links and at least one non-helpline link, so the classifier is proven to discriminate. ⛔ D6 stays ⬜: engineering half closed, substance is OQ4. ⛔ U6 NOT STARTED — no Docker and no `DATABASE_URL` on this machine, so a migration cannot be verified anywhere, and a push deploys it straight onto production. |
 | S2 | 2026-09-25 | **U3 and U4 ✅ LIVE — D4 and D5 closed.** The GSM-7 table came out of `lib/server/sms-blackball.ts` into a pure client-safe `sms-compose.ts` and the gateway now DELEGATES to it, so the price an officer is quoted and the coding the wire receives come from one table; the move is asserted lossless byte-for-byte against a copy of the pre-move string. **Two findings worth more than the units themselves.** ① **Segments are PACKED, not divided** — a two-septet extension character cannot be split across a boundary, so 152 plain characters then 77 euro signs is 306 septets, which `ceil()` prices as TWO segments and which sends as THREE; at 150,000 recipients that one unit of slack is TZS 900,000. ⛔ And **every boundary vector this plan SPECIFIED is blind to it** — all eight are plain text, and on plain text packing and division agree exactly, so the suite as drafted would have looked thorough, passed, and never caught the defect that costs the money. The red control now asserts that about itself: the division plant breaks exactly ONE assertion in the file. ② **`String.length` is CORRECT for UCS-2** — it already counts an emoji as its two UTF-16 units — and wrong only for GSM-7 extension characters, which is precisely why pricing from `bodyLen` looks fine. U4 made the statutory footer computed (49 septets), counted, and impossible to omit — there is no call shape that produces a marketing body without it — so the operator budget is 111 rather than 160; every Swahili fragment is copied from a shipped string with the line cited, and §12 ASSERTS the footer helpline still DIFFERS from the published one so that OQ4 cannot be closed by an "obvious cleanup". ⚠️ **Two red anchors rotted by this lane own edits** (`otp-delivery`, `blackball`) were flagged by a parallel session and re-anchored here, then re-proven by EXECUTION (8/8 and 11/11 on their own assertions, tree restored byte-identical). ⭐ Two of the first red plants written this session were AIMED AT NOTHING and the baseline-plus-named-assertion shape is what caught them. ⛔ Recorded: `npm run build` cannot run in a junction worktree, so the build proof is typecheck + client-graph-safe + the Railway deploy. |
@@ -621,10 +630,10 @@ is decided, with what it rules out. They are not questions.
 - **OD8 · `User.marketingOptIn = true` is consent for a player**, because the profile screen says so in
   the shipped wording; from the day U6 ships, every change to it ALSO appends a ledger row, so the ledger
   becomes complete going forward. ⛔ No backfill — a ledger row nobody was shown is a fabricated record.
-- **OD9 · An imported contact is marketable only when BOTH hold**: a `MessagingConsent{GRANTED}` row with
+- **OD9 · An imported contact is marketable only when BOTH hold**: a `MessagingConsent{GIVEN}` row with
   the **verbatim wording** the person was shown, **and** a first-party basis (our own form, our own
   event, our own agent roster — the person gave us the number). ⛔ A bought or third-party list is
-  STORED and never marketed; its rows carry `UNKNOWN` and the audience query cannot return them.
+  STORED and never marketed; its rows carry `UNKNOWN` and the audience query cannot return them. ⚠️ **`UNKNOWN` IS NOT IN THE SHIPPED ENUM.** U6 shipped `MessagingConsentStatus` as `GIVEN | WITHDRAWN`, because those are the only two states anything writes today. Adding `UNKNOWN` is a value on an EXISTING enum, which Postgres refuses to use in the transaction that adds it (`55P04`, measured on 18.3) — so it must ship in its OWN migration ONE COMMIT before U33 writes it.
 - **OD10 · Consent can never be granted by a file.** No column alias, no checkbox, no import path may set
   consent to granted; a withdrawn row can never be re-granted by a spreadsheet. ⛔ Un-buildable, not
   defaulted off.
@@ -1134,10 +1143,31 @@ disagree after any of those three. ⛔ Not absorbed into U6 — closure and eras
 Suppression first; then, if the number belongs to a `User`, that user governs (RG standing → account
 status → `marketingOptIn`); otherwise the ledger governs. ⛔ A contact-book row can never override a
 player's own "no".
-**Guard:** `test:marketing-consent`. **RED:** reorder consent before suppression → the suppressed-but-
-stale-consent fixture must send, and the suite must fail.
+**Guard:** `test:marketing-consent` (14 assertions on the real gate). **RED:** `red:marketing-consent`,
+in-process, 4/4 — consent asked before suppression, the phone bridge dropped, an elapsed self-exclusion
+re-permitting marketing, an imported row speaking over a player's own no. ⭐ It runs TWO controls before
+planting anything: the shipped gate green, and the defect-free MODEL proven to agree with it on every
+fixture, so a red case's failure is attributable to its flag rather than to a sloppy model.
 **Accept:** four mutually exclusive states in one run (allowed / suppressed / no consent / RG), so neither
-an always-open nor an always-closed gate can pass.
+an always-open nor an always-closed gate can pass. ✅ Asserted as a PROPERTY (assertion 13), not hoped for.
+
+🔴 **THE TRAP THIS UNIT FOUND, AND THE REASON IT IS THE MOST IMPORTANT LINE IN IT:** this platform
+stores phone numbers in **two** formats and nothing said so. `User.phoneE164` is written from `tzPhone`
+(`validators.ts:32-37`), which returns **`+255XXXXXXXXX`**; the marketing key, the SMS wire and
+`MessagingConsent.identifier` all use `toMsisdn255`, which returns **`255XXXXXXXXX`**. Measured: unequal
+for EVERY input, including `+255712345678` itself. So `db.user.findByPhone(<marketing key>)` returns null
+for **every player**, and the obvious gate would hand the entire player base to the ledger branch — the
+one branch that must never govern a player (OD10) — silently, with no error anywhere. `userPhoneKeyFor`
+is the bridge; assertions 12 and 12b pin it in BOTH directions, because a bridge asserted only in the
+working direction is a bridge that can be deleted without the guard noticing.
+⚠️ **Any later unit that looks a player up by a marketing key inherits this** — U8, U24, U30 and U44 all
+do. Use `userPhoneKeyFor`, never a bare `findByPhone`.
+
+⛔ **NOT in this unit, by design, so nobody reads a false completeness into it:** cooling-off and harm
+markers (U10), age (U11), the frequency cap (U14), the window (U13) and the Board's approval (U41) are
+separate gates in the loop. U7 answers suppression, consent, self-exclusion standing and account status.
+⭐ `minimum_served` is refused, not only `serving` — a 24-hour self-exclusion that elapsed a year ago is
+still a refusal (D9, OD12). U10 adds the rest ON TOP of this; it does not replace it.
 
 **U8 · Opt-out that works** — `src/app/s/[token]/{page,actions}.tsx`, `src/lib/marketing/optout.ts`
 An 8-character token minted per recipient at enqueue (unique index), never expiring, no login. One click
@@ -1150,6 +1180,34 @@ false success.
 **States:** loading · valid token · already suppressed · resubscribed · invalid token · error.
 **Accept:** a minted token suppresses on production in the U52 drive, and the number is refused at the
 next dispatch.
+
+⛔ **SCOPE CORRECTED BEFORE BUILDING (S4), because this unit's premise fails twice over.**
+① **There is no recipient row to hang a token on.** `SmsCampaign` does not exist; `InviteCampaign` /
+`InviteEntry` (`schema.prisma:783,806`) are the unrelated referral system and carry no token. The
+recipient table is U35 (S18) and the minting is U42 (S21) — both far downstream of S4. Worse, U35's own
+field list in this plan names no opt-out token column at all (the `claimToken` there is U43's slice
+token). So U8 ships **its own** token store, keyed by token and mirroring `Suppression`'s triple, which
+U42 later writes into at enqueue.
+② **Nothing mints one yet, so the production half of Accept cannot be met in S4.** `marketingFooter()`
+(`footer.ts:86`) builds the string `50pick 18+ 0800110051 Acha: 50pick.tz/s/<token>`, but `composeMarketing`
+and `marketingFooter` have **no callers outside `campaign-compose.test.mts`** — no message carries a `/s/`
+link today. ⭐ The production half therefore moves to **U42 (minting) and U52 (the Seal drive)**, and is
+NOT claimed here. What U8 proves on production is that the page serves, refuses a bad token without a
+false success, and suppresses a token planted through the DAL.
+
+🔴 **AND A COLLISION NUMBER OD43's LENGTH HIDES.** `randomId` returns **hex** (`crypto.ts:109-111`),
+so the obvious `randomId(4)` is 16⁸ = 4.3×10⁹ — about **2.6 expected collisions per 150k-recipient
+campaign** (§3c), i.e. near-certain. The repo's ambiguity-free 32-character `CODE_ALPHABET`
+(`agent-application-service.ts:1330`) gives 32⁸ = 1.1×10¹² and ~1% per campaign — and because OD43 says the
+token **never expires**, that 1% compounds for ever. ⛔ So the alphabet is the 32-character one, the column
+is UNIQUE, and **minting retries on conflict**. ⚠️ U42 must NOT use `createMany({ skipDuplicates: true })`:
+that emits `ON CONFLICT DO NOTHING` with no target, so a token collision would silently drop the whole
+recipient row — a person who is never messaged and never appears as a failure.
+
+⚠️ **Three things this unit needs that the plan does not say:** `/s` joins `GA_EXCLUDED_PREFIXES`
+(`google-tag.ts:32-41` already names this exact hazard for the invite token, so a token would otherwise be
+sent to Google in a page path); `/s` must stay OUT of `PROTECTED_PREFIXES` (`proxy.ts:40`) or the no-login
+promise breaks; and every player lookup goes through `userPhoneKeyFor` (U7), never a bare `findByPhone`.
 
 **U9 · The gate runs in the loop, and the proof of it** — `test:marketing-consent`
 The unit is the guard: a fixture that opts out **between** slice one and slice two, and must not receive
@@ -1351,7 +1409,7 @@ Keep what's in the book (default; counted `skipped`, ⛔ never `failed`) · take
 by **file row number** (⛔ not array index). A row whose contact is suppressed **collapses to keep**
 whatever was asked. ⛔ Consent is never written by an import path — a withdrawn row can never be
 re-granted by a file.
-**Guard:** `test:contacts-import`. **RED:** write `GRANTED` over a `WITHDRAWN` row → red; remove the
+**Guard:** `test:contacts-import`. **RED:** write `GIVEN` over a `WITHDRAWN` row → red; remove the
 suppressed collapse → red.
 **Accept:** the Apply button's label, the confirmation and the request all read the same `decide()`.
 
@@ -1370,7 +1428,7 @@ must fail.
 
 **U33 · Consent basis at import** — required before Apply enables (OD9, OD10, OQ10)
 A basis picker showing each option's **verbatim stored wording** in full, plus a required proof note
-(≥10 chars) and an explicit 18+ attestation. First-party bases write `GRANTED` ledger rows; ⭐ **"bought /
+(≥10 chars) and an explicit 18+ attestation. First-party bases write `GIVEN` ledger rows; ⭐ **"bought /
 third-party list" writes `UNKNOWN`**, and the dialog says so in one sentence before Apply — that is what
 stops this being a spam machine by default. The wording is copied onto every row the run creates and
 ⛔ never edited afterwards.
