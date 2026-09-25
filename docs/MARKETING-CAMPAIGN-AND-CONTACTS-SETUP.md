@@ -30,7 +30,8 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: Session S1 — U1 (one phone key, and the wire refusal) + U2 (the Tanzanian number library)
+▶ NEXT: Session S1, IN FLIGHT 2026-09-25 — U1 (one phone key, and the wire refusal) + U2 (the
+  Tanzanian number library). ⚠️ U1's CODE IS ALREADY ON main — read ◐ HALF-DONE below FIRST.
 
 ✔ LAST SESSION: S0b, 2026-09-23 — the SMS rail was SEALED and its lessons folded into this plan
   (§3a, §3b). Still no product code here; the board is untouched at 0/52.
@@ -44,7 +45,23 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   §3b carries the vendor's measured behaviour. ⛔ Read both before U39, U46 and U47 — each was drafted
   around an absence that no longer holds.
 
-◐ HALF-DONE: nothing.
+◐ HALF-DONE — ⚠️ READ THIS BEFORE ANYTHING ELSE, ON ANY MACHINE:
+  ⭐ U1's CODE IS ON main AND DEPLOYING as of this commit, while its §1 row still reads ⬜. That is
+  not the board lying — a commit cannot name its own SHA, so the row is ticked by the NEXT commit,
+  the one that also carries the live re-measure. §1 stays honest either way: a ⬜ row claims nothing.
+
+  WHAT LANDED: the IDD (`00`) strip in BOTH `toMsisdn255` and `normalizeTzLocalDigits` (D1) ·
+  `isGatewayMsisdn` in the same pure module · the per-message `BAD_MSISDN` refusal in `sendBatch`,
+  written BEFORE the row and BEFORE any request (D2) · results placed by input INDEX rather than
+  pushed · the cost floor now reading `prepared` so a refused INVITE cannot drag a good OTP under it
+  · the twelve-vector suite with its six sections · `red:phone-normalize` · and
+  `test:phone-normalize` added to the `predeploy` chain, which it was NOT in before.
+
+  WHAT IS OUTSTANDING FOR U1: the live re-measure on www.50pick.tz and the §1 tick.
+  ⭐ TO CONFIRM IT IS BUILT, ON ANY MACHINE: `npm run test:phone-normalize` and
+  `npm run red:phone-normalize`. Both green means U1 is built and only its live proof and its row
+  are missing. The RED control's §0 baseline line is the discriminator — it asserts the SHIPPED
+  implementation passes before it plants anything, so "all proofs held" cannot mean "nothing works".
 
 ? OPEN OWNER ITEMS (each has a safe default that is BUILT — §4a):
   OQ1 Gaming Board advertising approval + our own advertising code of practice (GN 478T reg 56)
@@ -619,6 +636,20 @@ row); marketing gets its own verbatim-wording assertion. ⛔ Do not aim a gate t
 
 **5.14 · No raw phone number in any audit payload, log line or error string** — `maskPhone` or nothing.
 The chain is unprunable: a marketing list inside it is one nobody can ever delete.
+
+**5.15 · EVERY LIST OR GRID THIS PROGRAMME SHIPS IS A COMPLETE ONE.** Ali, 2026-09-25: *"make sure
+any grid created, or any development, should fully satisfy our platform requirements — paging,
+sorting, loading, everything."* A table that renders rows is not a finished grid here. Each one ships
+**paging** (server-side once the contact book can exceed one screen — ⛔ never fetch-all-then-slice,
+which is how U45's D20 shape gets reinvented in the UI), **sorting** on the columns an operator
+actually works by, **a determinate loading state** (a `loading.tsx` plus in-place skeletons that hold
+the row height, so the page does not jump), **an empty state that says what to do next**, **an error
+state that can be retried without losing the filter**, and **the filter language the rest of the
+console already speaks** (§7.6, one filter language). The counts a grid prints are computed from the
+same resolver the send uses (U24), never from a second query — two numbers that disagree on a
+confirmation screen is the class §12 is written against. ⛔ This rule binds U20, U22, U23, U30, U32,
+U36, U38, U47 and U48; their §9 **States:** lines are the mechanical hold on it, and a `visual` unit
+whose states omit `loading` or `error` cannot be ticked ✅ (`test:marketing-setup-plan` §1c).
 
 ---
 
