@@ -37,6 +37,7 @@ import { getAffiliateConfig, setAffiliateConfig } from "../src/lib/server/affili
 import { getAgentConfig } from "../src/lib/server/agent-config.ts";
 import { inviteIsLiveFor, playerInviteRewardsLive } from "../src/lib/feature-state.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
+import { registerWithPassword } from "../src/lib/server/auth-service.ts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {
@@ -229,6 +230,51 @@ setAffiliateConfig({
   ok("6.count · ⭐ the KPI counts players who brought somebody, over every account and not a page",
     stats.referrerCount >= 12, String(stats.referrerCount));
   ok("6.unpaid · the admin read model carries the same one discriminator", stats.rewardsLive === false);
+}
+
+// ── §7 · THE REAL SIGN-UP PATH — the register form's own function, not `bindRecruit` alone ────
+// ⭐ ADDED 2026-09-26, the production verification. §2 calls `bindRecruit` directly, and nothing
+// anywhere called `registerWithPassword({ referralCode })` — the ONE call the register form makes
+// with the hidden `ref` field. So a regression in that hand-off (the bind moved below the session,
+// the argument dropped, the try/catch swallowing a throw) would have left every suite green while
+// no friend was ever counted. The link and the form's hidden `ref` were measured LIVE on 50pick.tz;
+// this closes the last step without creating an account on production.
+// ⚠️ The call throws at session creation (no request cookies in a script) — AFTER the bind, which
+// runs first (`auth-service.ts`); the account is recovered by phone, the pattern of auth-email-integrity.
+{
+  const PW = "Str0ng!Passw0rd#2026";
+  const signUp = async (phone: string, email: string, referralCode?: string) => {
+    try {
+      await registerWithPassword({
+        phone, email, password: PW, passwordConfirm: PW, dob: "1990-01-01",
+        acceptTerms: true, acceptAge: true, marketingOptIn: false, referralCode,
+      } as never);
+    } catch { /* cookie scope — the bind has already run */ }
+    return db.user.findByPhone(phone);
+  };
+
+  await mkFixtureUser("piu_signup_ref");
+  const code = (await ensureAffiliateAccount("piu_signup_ref")).code;
+  const before = (await getPlayerReferralSummary("piu_signup_ref")).recruitCount;
+
+  const friend = await signUp("+255788000701", "piu.signup.friend@example.test", code);
+  ok("7.created · the friend's account exists", !!friend);
+  ok("7.stamp · ⭐ signing up through the link attributes the friend to the inviter, as PLAYER",
+    friend?.recruitedBy === "piu_signup_ref" && friend?.recruitedProgramme === "PLAYER" && friend?.recruitedByCode === code,
+    JSON.stringify({ by: friend?.recruitedBy, prog: friend?.recruitedProgramme, code: friend?.recruitedByCode }));
+  const after = await getPlayerReferralSummary("piu_signup_ref");
+  ok("7.count · ⭐ the inviter's page counts them — the number Ali pays cash from",
+    after.recruitCount === before + 1 && after.recruits.length === before + 1, `count ${before} → ${after.recruitCount}`);
+  ok("7.unpaid · ⛔ and the inviter is paid nothing for it — no cash, no bonus, no reward row",
+    (await cashOf("piu_signup_ref")) === 0 && (await bonusOf("piu_signup_ref")) === 0
+      && (await db.referralReward.listByReferrer("piu_signup_ref")).length === 0);
+
+  // CONTROL — the stamp above is caused by the code, not by something every sign-up gets.
+  const stranger = await signUp("+255788000702", "piu.signup.stranger@example.test", "NOSUCHCODE");
+  ok("7.control · an unknown code attributes nobody, and the sign-up still succeeds",
+    !!stranger && !stranger.recruitedBy, JSON.stringify({ by: stranger?.recruitedBy }));
+  ok("7.control · …and it does not move the inviter's count",
+    (await getPlayerReferralSummary("piu_signup_ref")).recruitCount === before + 1);
 }
 
 console.log(`\nplayer-invite-unpaid: ${pass} passed, ${fail} failed`);

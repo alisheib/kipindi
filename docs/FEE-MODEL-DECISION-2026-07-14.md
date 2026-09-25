@@ -277,6 +277,14 @@ See `docs/F6-LIQUIDITY-DESIGN.md` §6.1.
 > account is `F6-LIQUIDITY-DESIGN.md` open-defect #1 (marked resolved there) and
 > CLAUDE.md's tax section. Left fenced here so nobody re-derives "the tax base is open"
 > from this record.
+>
+> ⛔ **CORRECTED AGAIN, 2026-09-25 (Finance Seal).** Two claims in this section — "GGR now
+> equals the commission we kept" and "the report and the ledger agree to the shilling" — were
+> FALSE on production data: GGR is a turnover measure that still holds stakes on open positions,
+> and the Daily Operations report multiplied GGR by the rates (the /admin/finance tile read ~14×
+> the booked levy). Since 2026-09-25 every report READS the booked `HOUSE:TRA_LEVY` /
+> `HOUSE:GBT_LEVY` and computes no levy at all. The Daily Operations report is INTERNAL, not a
+> regulator filing. Authority: `SESSION-PROMPT-FINANCE-SEAL.md` §5.
 
 ---
 

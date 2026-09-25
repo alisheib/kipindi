@@ -2,7 +2,10 @@
  * Sprint 4 · SECURITY, ACCESS CONTROL & ANTI-FRAUD.
  *   A. HTTP access control: anon + non-admin player are redirected off /admin/affiliate
  *   B. Server-side config validation rejects out-of-range values (same setter the admin action uses)
- *   C. In-process anti-fraud / money-integrity (affiliate-security endpoint)
+ *   C. In-process anti-fraud / money-integrity (affiliate-security endpoint). ⚠️ Since 2026-09-25 a PLAYER
+ *      referrer is paid nothing (docs/PLAYER-INVITE-UNPAID.md) and the route sets no override, so on the
+ *      shipped state C's prize-replay check reads 0 rows and fails; FEATURE_INVITEREWARDS=ACTIVE on the dev
+ *      server is the minimum to measure it.
  */
 import { chromium } from "playwright";
 const BASE = process.env.BASE || "http://localhost:3000";

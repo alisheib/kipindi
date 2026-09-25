@@ -25,7 +25,8 @@
  *
  * ⭐ The honest population for player-promo mechanics is a PLAYER referrer with the promo ON —
  * the same env override `withdrawn-features` §4 uses to keep the dormant ON path executable,
- * restored in a `finally`. §6 then proves the refusal with the override OFF, and §7 proves an
+ * restored in a `finally`. §6 then measures the SHIPPED state with the override OFF (the bind lands and
+ * pays NOTHING), and §7 proves an
  * approved AGENT on the identical path earns NO prize at all.
  */
 // ⚠️ THE BONUS WALLET IS WITHDRAWN FROM THE PRODUCT (`src/lib/feature-state.ts`), and since

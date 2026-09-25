@@ -64,9 +64,12 @@ export const MAX_DIGEST_REPLAY_DAYS = 90;
  * `/admin/retention`, so this is the figure that makes an existing statement true rather
  * than a new one someone has to be told about.
  *
- * ⚠️ Production has never issued an OTP (`SMS_PROVIDER=console`, zero rows, zero `otp.%`
- * audit actions ever), so this prune deletes nothing today. It is wired anyway: the day SMS
- * is switched on is the wrong day to discover that nothing expires a credential hash.
+ * ⚠️ Few rows reach this prune. SMS is live (Blackball, since 2026-09-16), but phone-code login
+ * is deliberately off (`OTP_ENABLED` unset, docs/BLACKBALL-SMS.md §7 step 6); production minted
+ * its first phone code on 2026-09-23, only to prove delivery receipts (§4.8). Agent-invitation
+ * email codes write `Otp` rows too (`agent-application-service.ts`). The prune keys on issue
+ * time, not channel, so no credential hash outlives its 30 days whichever path minted it.
+ * (corrected 2026-09-25 — this said production had never issued an OTP)
  */
 export const OTP_RETENTION_DAYS = 30;
 

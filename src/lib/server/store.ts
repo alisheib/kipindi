@@ -626,8 +626,8 @@ export type StoredSourceOfFunds = {
  * their referral surface is touched (visiting /profile/invite, or someone
  * registering with their code). Keyed by userId. `code` is the public,
  * shareable referral code embedded in their link. Running totals are
- * denormalised counters kept in sync by the affiliate service so the
- * Invite & Earn page and the admin leaderboard read in O(1).
+ * denormalised counters kept in sync by the affiliate service so
+ * /profile/invite and the /admin/affiliate roster read in O(1).
  */
 export type StoredAffiliateAccount = {
   userId: string;
@@ -852,7 +852,9 @@ export type StoredAgentInvitation = {
   id: string;
   applicationId: string | null;
   /** The phone a PRE-2026-09-08 token was bound to. ⚠️ NULL on every invitation since:
-   *  the programme delivers by email, because no SMS provider is licensed. */
+   *  the programme moved to email on 2026-09-08, when no SMS provider was licensed, and
+   *  deliberately STAYED on email after Blackball went live on 2026-09-16
+   *  (agent-application-service.ts `issueInvitation`). (corrected 2026-09-25) */
   phoneE164: string | null;
   /** ⭐ THE MAILBOX THE TOKEN IS BOUND TO, since 2026-09-08. Acceptance needs an OTP
    *  delivered to THIS address AND a signed-in account whose email matches it — a
@@ -1506,7 +1508,8 @@ const memoryDb = {
       return next;
     },
     listByStatus: (status: StoredTxn["status"]) => Array.from(store.txns.values()).filter((t) => t.status === status),
-    /** All transactions — analytics only. Avoids the user-by-user N+1 walk. */
+    /** Every transaction, ALL TIME. ⛔ Never on a windowed path — use `listInRange` (guarded by
+     *  `test:report-parity` §4 and `test:report-window-reads`). */
     listAll: (): StoredTxn[] => Array.from(store.txns.values()),
     /** In-memory twin of the Prisma DAL's SQL range query. Same bounds — `>= from`,
      *  `< to` — so a report cannot produce different totals depending on which store it

@@ -96,6 +96,12 @@ export function packPeriodLabel(period: string): string {
  *  fixed UTC+3, no DST). The statutory figures MUST cover exactly this calendar
  *  month — not a rolling 28-day window — so the pack's numbers match its label. */
 export function packPeriodBounds(period: string): { start: number; end: number } {
+  // ⛔ REFUSE A MALFORMED PERIOD rather than return NaN bounds. The prepare action takes `period`
+  // from a form field; NaN bounds read NOTHING in memory and THROW an opaque invalid-date error in
+  // Prisma — two different wrong answers for one bad input, on the filing an officer signs.
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) {
+    throw new Error(`Invalid pack period "${period}" (expected YYYY-MM)`);
+  }
   const [y, m] = period.split("-").map(Number);
   // ⛔ THE OFFSET IS IMPORTED, NOT RETYPED. This was a function-local
   // `const EAT_OFFSET_MS = 3 * 3600_000` — the THIRD independent literal of the same

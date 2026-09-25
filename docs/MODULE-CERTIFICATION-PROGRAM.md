@@ -176,7 +176,7 @@ given how it is built. Add to them; do not stop at them.
 
 ### A4 · OTP & SMS — `cert:a4`
 **Surfaces** `auth/otp` · **Owns** `sms` (`Otp` model)
-**Attack** Brute-force the code (what is the attempt ceiling, and is it per-code or per-account?) · replay after use · reuse across accounts · race two verifications · request-flood for cost (SMS is billed) · 🔴 **`auth-service.ts:170` passes a `"SW"` literal** — OTP SMS is hardcoded Swahili for every player regardless of locale (G5 failure) · does a suppressed/failed send tell the player, or hang?
+**Attack** Brute-force the code (what is the attempt ceiling, and is it per-code or per-account?) · replay after use · reuse across accounts · race two verifications · request-flood for cost (SMS is billed) · ✅ ~~OTP SMS hardcoded to a `"SW"` literal~~ — closed 2026-09-16 (`8fceee03`, corrected here 2026-09-25): `issueOtp` in `auth-service.ts` reads `User.locale` (EN/SW/ZH; SW is the default and the fallback on any error), pinned by `test:otp-delivery` §7 and `red:otp-delivery` — attack: does an EN/ZH player really get their language, and does ZH arrive intact? · ✅ a failed send now uses up the code, refunds the resend allowance, audits `sms.delivery_failed` and returns `SMS_UNDELIVERABLE` so the page can offer the password route (same commit) — still to attack: is a suppressed send surfaced too?
 **Exit** Attempt ceiling proven, replay impossible, OTP localised, send failure surfaced.
 
 ### A5 · Player 2FA — `cert:a5`
@@ -878,21 +878,21 @@ wallet? · a bonus expiring mid-bet.
 **Exit** Non-withdrawable invariant unbreakable, no double-grant, mixed-stake settlement exact.
 
 ### J3 · Invites & campaigns — `cert:j3`
-**Surfaces** `profile/invite` `admin/invites*` · **Owns** `invite-service` `share-token`
+**Surfaces** `admin/invites*` (+ `/auth/register?invite=`) · **Owns** `invite-service` `share-token` · ⚠️ `profile/invite` is NOT this module: it is the player referral page on `affiliate-service` (J4).
 **Existing** `test:invites` `test:invite-flow` · **Orphan** `marketing-invite-stress.mjs`
 **Attack** Forge a `share-token` · claim an invite twice · enumerate campaigns · invite a
 self-excluded account · a campaign past its end date · the branded OG image leaking data.
 **Exit** Token forgery impossible, claims exactly-once.
 
 ### J4 · Affiliates & referrals — `cert:j4` 💰
-**Surfaces** `admin/affiliate` · **Owns** `affiliate-service` `affiliate-config` (`ReferralReward`)
-**Existing** `test:referral` · **Orphans (6)** `affiliate-e2e` `affiliate-sprint1-stress`
-`affiliate-sprint2-ui-completeness` `affiliate-sprint3-kit-conformance` `affiliate-sprint4-security`
-`affiliate-sprint5-integration`
+**Surfaces** `admin/affiliate` `profile/invite` (the player's unpaid invite page, and the agent dashboard) · **Owns** `affiliate-service` `affiliate-config` (`ReferralReward`), and the `invite` / `inviteRewards` product states in `feature-state.ts` (`docs/PLAYER-INVITE-UNPAID.md`)
+**Existing** `test:referral` `test:player-invite-unpaid` (+ `red:player-invite-unpaid`) · **Orphans** `affiliate-e2e` `affiliate-sprint1-stress` `affiliate-sprint4-security` `affiliate-sprint5-integration` (`affiliate-sprint2-ui-completeness` and `affiliate-sprint3-kit-conformance` were deleted 2026-09-26: they audited the retired paid invite page)
 **Attack** Self-referral · cycles (A→B→A) · farm rewards with disposable accounts · claim a reward
-twice · reward on a self-excluded recruit · commission on a reversed/refunded deposit.
+twice · reward on a self-excluded recruit · commission on a reversed/refunded deposit · make a PLAYER
+referral pay with every admin reward mode at maximum · mint a link for a CLOSED / SUSPENDED /
+SELF_EXCLUDED account or a deactivated agent.
 **Exit** Self/cyclic referral impossible, rewards exactly-once, reversal claws back commission,
-6 orphans adopted or deleted.
+the remaining orphans adopted or deleted.
 **⭐ Agent tier (2026-09-07, `docs/AGENT-PROGRAMME.md`)** — J4 now also owns `agent-config`,
 `agent-application-service` (`AgentApplication`, `AgentApplicationDocument`, `AgentInvitation`)
 and the `/admin/agents*` console. **Gates:** `test:agent-policy` · `test:programme-isolation` ·
@@ -971,13 +971,13 @@ window enforced · 🔴 **PII masked in both compliance lists in the UI — is i
 **Exit** Deletion complete and chain-safe, retention enforced, exports masked.
 
 ### K5 · Reporting & exports — `cert:k5`
-**Surfaces** `admin/reports` `api/admin/reports/[id]` `api/admin/transactions/export` · **Owns** `reports/catalogue` (983 L) `reports/pdf` `reports/xlsx` `report-money` `report-pack`
-**Existing** `test:date-range` · **Orphans** `report-renderers-smoke.mjs` `reports-retest.mjs`
+**Surfaces** `admin/reports` `api/admin/reports/[id]` `api/admin/transactions/export` · **Owns** `reports/catalogue` `reports/pdf` `reports/xlsx` `report-money` `report-pack`
+**Existing** `test:date-range` `test:report-cells` `test:report-window-reads` `test:report-parity` `test:report-note-truth` `test:report-formats` · **Orphans** `report-renderers-smoke.mjs` (being wired — `SESSION-PROMPT-FINANCE-SEAL.md` §2)
 **Attack** 🔴 **Do PDF, XLSX and CSV agree with each other and with the ledger, to the shilling, for
 the same period?** · timezone boundaries at month-end · a period with zero rows · a period spanning
 the fee-model change · **formula injection in XLSX/CSV** (`=cmd|…`, `+`, `-`, `@` leading cells) ·
 a 100k-row export (memory, timeout) · PII masking (K4).
-**Exit** Three renderers reconcile to the ledger exactly, injection-safe, masked, bounded.
+**Exit** Three renderers agree with each other and with `report-money`; the commission and levy lines reconcile to the ledger (GGR/NGR are Transaction-table measures and cannot); injection-safe, masked, bounded.
 
 ### K6 · Events calendar — `cert:k6`
 **Surfaces** `admin/events` · **Owns** `events-service` `EventCalendar` · **Existing** `test:events`
@@ -990,7 +990,7 @@ timezone.
 **Attack** 🔴 **The silent-zero problem**: a failed query must render `unavailable`, never `0` — a
 zero is a claim. `AdminKpi`'s `unavailable` state and `AdminLoadError` exist; prove **every** tile
 uses them · does a cohort include self-excluded or deleted players? · do sparks/`dailyKpiSeries`
-match the ledger? · use `dataviz` for any new chart.
+match `report-money.summarise` over the same days? · use `dataviz` for any new chart.
 **Exit** No tile can render a fabricated zero, cohorts exclude deleted/excluded, series reconcile.
 
 ## L · Platform
@@ -1155,7 +1155,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | A1 Registration & onboarding | `cert:a1` | ⬜ |
 | A2 Login & sessions | `cert:a2` | ⬜ no dedicated gate today |
 | A3 Password recovery | `cert:a3` | ⬜ |
-| A4 OTP & SMS | `cert:a4` | ⬜ OTP hardcoded Swahili |
+| A4 OTP & SMS | `cert:a4` | ⬜ gate not written (OTP localisation + send-failure honesty fixed 2026-09-16, `test:otp-delivery`) |
 | A5 Player 2FA | `cert:a5` | ⬜ |
 | A6 Admin TOTP | `test:cert-a6` | 🟨 **honesty DONE 2026-07-31** (16 assertions) — health + boot now report the state. 🔴 Still OFF in production: run `ops:admin-2fa-readiness` and enrol an admin **before** flipping |
 | B1 Roles & domain grants | `cert:b1` | ⬜ |
@@ -1192,7 +1192,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | J1 Up & Down | `cert:j1` | ⛔ **BLOCKED** — unmerged branch |
 | J2 Bonus wallet | `cert:j2` | ⬜ |
 | J3 Invites & campaigns | `cert:j3` | ⬜ |
-| J4 Affiliates & referrals | `cert:j4` | ⬜ 6 orphans |
+| J4 Affiliates & referrals | `cert:j4` | ⬜ 4 orphans |
 | J5 Proposals & voting | `cert:j5` | ⬜ 5 orphans |
 | J6 Comments & moderation | `cert:j6` | ⬜ no named gate |
 | J7 Leaderboard & achievements | `cert:j7` | ⬜ N+1 at ~1k users |

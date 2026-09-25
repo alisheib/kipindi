@@ -14,10 +14,13 @@ want to track how many people he got with this link, i'll pay him cash not throu
 if needed"* … *"lets add it so users can start inviting each other."*
 
 **What changed.** `PRODUCT_STATE.invite` goes `WITHDRAWN → ACTIVE`, so every player in good standing again holds a
-referral code, link and QR, shares them from `/profile/invite` and from any market or position share sheet, and has the
+referral code, link and QR, shares them from `/profile/invite` and from the share sheet on a market's detail page or on
+a position (⚠️ *Corrected 2026-09-26:* this said "any market or position share sheet"; the compact share icon on market
+cards carries no code, `PLAYER-INVITE-UNPAID.md` §11), and has the
 people who sign up on that link attributed to them. A new, separate product state `inviteRewards` is **WITHDRAWN**:
 `policyFor`'s PLAYER branch refuses every accrual with `player_rewards_withdrawn`, so **the platform credits an
-ordinary player nothing for a referral**.
+ordinary player nothing for a referral**. This supersedes the 2026-09-07 control row "the player invite programme stays
+withdrawn" as to the invite only; that row carries an inline pointer back here. *(Added 2026-09-26.)*
 
 **Why this is not a regulated inducement.** A reward for bringing gamblers is an inducement under Gaming Board of
 Tanzania guidance, and that is the thing the previous withdrawal removed. What is live now offers the inviter nothing
@@ -45,8 +48,10 @@ the agent branch, so a player link would be one that could never bind).
 **Turning payment on later is one word** — `inviteRewards: "ACTIVE"` — and ⛔ **it needs Gaming Board clearance first**,
 because at that moment it becomes an inducement again. The paid path is kept executable while it sleeps.
 
-Enforced by `npm run test:player-invite-unpaid` (44 assertions) with `npm run red:player-invite-unpaid` (6/6 mutations
-proven to turn it red), in `predeploy`. Rule: `docs/RULES.md` §2.10a. Spec: `docs/PLAYER-INVITE-UNPAID.md`.
+Enforced by `npm run test:player-invite-unpaid` (44 assertions at the time) with `npm run red:player-invite-unpaid` (6/6 mutations
+proven to turn it red). ⚠️ *Corrected 2026-09-26:* this said both run in `predeploy`. Only the test does. The red
+control mutates the working tree, so it is run by hand, alone or through `npm run red:all`; CI's `test:red-anchors`
+checks only that its anchors still resolve. Rule: `docs/RULES.md` §2.10a. Spec: `docs/PLAYER-INVITE-UNPAID.md`.
 
 ---
 
@@ -2013,7 +2018,7 @@ into reversing the 2026-07-24 decision or breaking every developer machine).
 | Staff are refused as agents (approval would strip admin access) | `approveAgent` · `issueInvitation` |
 | `/admin/agents*` is the **compliance** domain with step-up 2FA; `/admin/affiliate` stays growth and shows the PLAYER promo only | `roles.ts` · `softRequireStaff("compliance")` · `getAdminAffiliateStats` |
 | Officer invitation requires the invitee's acceptance with an OTP to the officer-entered number; token hashed at rest, single-use, 14-day expiry, revocable | `issueInvitation` / `acceptInvitation` |
-| Public `/agent` reachable from the footer only — it explains and does not solicit ordinary players; the player invite programme stays **withdrawn** (`PRODUCT_STATE`) | `public-footer.tsx` · `inviteStateFor(viewer)` keyed on agent STANDING, not role · `test:withdrawn-features` |
+| Public `/agent` reachable from the footer only — it explains and does not solicit ordinary players; the player invite programme stays **withdrawn** (`PRODUCT_STATE`) ⚠️ *Superseded 2026-09-25 as to the PLAYER INVITE only: it is ACTIVE and UNPAID (`invite` ACTIVE, `inviteRewards` WITHDRAWN) — see § 2026-09-25. The rule that `/agent` is reached from the footer and does not solicit ordinary players stands.* | `public-footer.tsx` · `inviteStateFor(viewer)` keyed on agent STANDING, not role · `test:withdrawn-features` |
 | Referee national-ID scans are third-party data: 90-day hold from the decision, destroyed immediately on rejection, DSAR via the DPO without an account | `DATA-RETENTION.md` rows · `/legal/privacy` §9 · `retention.purge.daily` |
 | Agent terms (`/legal/agent-terms`, EN binding) accepted at submission with a version stamp on `AgentApplication` | `AGENT_TERMS_VERSION` · `submitForReview` |
 

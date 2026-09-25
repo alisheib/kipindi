@@ -231,6 +231,10 @@ contract on Railway, `docs/…expand-contract`): release 1 (2026-09-07) removed 
 `schema.prisma`, both DALs and every reader with **no DDL**, so a container still running the
 previous build never selects a column that is gone; release 2, after one deploy has run without
 reading it, is the one-line migration below. ⛔ Do not fold it into a feature migration.
+> 🔴 **RELEASE 2 IS ALREADY APPLIED ON PRODUCTION — folded into a feature migration, exactly as warned
+> (found 2026-09-25, marketing S6).** `20260925120000_marketing_consent_suppression` (marketing U6) was
+> generated with `prisma migrate diff`, which dropped `"tier"` without `IF EXISTS` along with F-05's dead
+> schema; production ran it on 2026-09-25. ⛔ Do not ship the file below — it would be a no-op.
 
 ```sql
 -- prisma/migrations/20260907140000_agent_tier_drop/migration.sql  (release 2 ONLY — release 1 went live 13:54 UTC 2026-09-07; SAFE TO SHIP NOW)

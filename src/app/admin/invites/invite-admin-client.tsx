@@ -155,7 +155,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
       const r = await sendCampaignAction(campaignId);
       if (r.ok) {
         router.refresh();
-        const extra = r.pending > 0 ? ` · ${r.pending} phone pending (SMS not live yet)` : "";
+        const extra = r.pending > 0 ? ` · ${r.pending} phone not sent yet — still queued for the next Send` : "";
         deferToast({ title: `Sent ${r.sent}${r.failed > 0 ? ` · ${r.failed} failed` : ""}${extra}`, variant: r.pending > 0 ? "warning" : "success" });
       } else toast({ title: "Couldn't send", description: r.error, variant: "danger" });
     });

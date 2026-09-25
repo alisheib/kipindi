@@ -159,9 +159,13 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
         onDiscard={() => setC(config)}
       />
       <UnsavedChangesGuard dirty={unsaved} body="The affiliate configuration has been changed but not saved. Leaving now discards the change." />
-      {/* Master switch + Save */}
+      {/* Master switch + Save.
+          ⭐ 2026-09-26 — WRAPS, because at a phone's width the plate, the toggle and Save left the
+          sentence ~110px, one or two words a line, measured on production at 390. The text now keeps
+          at least 14rem and the two controls drop to their own line (right-aligned) when they do not
+          fit beside it; on a laptop nothing moves. */}
       <div
-        className="flex items-center gap-4 rounded-lg border p-4"
+        className="flex flex-wrap items-center gap-4 rounded-lg border p-4"
         style={{
           borderColor: on ? "color-mix(in oklab, var(--royal-500) 28%, var(--border))" : "color-mix(in oklab, var(--warning-500) 36%, var(--border))",
           background: on ? "var(--bg-elevated)" : "color-mix(in oklab, var(--warning-500) 8%, var(--bg-elevated))",
@@ -174,7 +178,7 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
         >
           {on ? <I.megaphone s={plateGlyph(44)} /> : <I.pause s={plateGlyph(44)} />}
         </IconPlate>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 basis-[14rem]">
           <div className="text-[15px] font-bold">
             Program master switch · <span className="font-normal italic text-text-subtle text-body-sm">Swichi kuu</span>
           </div>
@@ -188,16 +192,18 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
               claiming an outcome the product has already refused. */}
           <div className="mt-0.5 text-[12px] text-text-muted">
             {!rewardsLive
-              ? "Unpaid — every player has an active referral link and the platform credits nothing for a referral (product state inviteRewards = WITHDRAWN). This switch is stored for the day rewards are turned back on."
+              ? "Unpaid — every player in good standing has a referral link, and the platform credits nothing for a referral (product state inviteRewards = WITHDRAWN). This switch is stored for the day rewards are turned back on."
               : on
                 ? "Live — every player has an active referral link and rewards are accruing."
                 : "Paused — links still resolve, but no new rewards accrue. Players see a paused banner."}
           </div>
         </div>
-        <Toggle on={on} onClick={() => setMaster(!on)} aria-label="Program master switch" />
-        <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={save}>
-          Save
-        </Button>
+        <div className="ml-auto flex items-center gap-4">
+          <Toggle on={on} onClick={() => setMaster(!on)} aria-label="Program master switch" />
+          <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={save}>
+            Save
+          </Button>
+        </div>
       </div>
 
       {/* Reward modes. DG-A-14: this eyebrow read "Reward modes · independently toggleable ·
@@ -290,8 +296,9 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
             )}
             <br />
             <span className="text-text-subtle">
-              What still works today: every player has a link, and the roster below counts who they
-              brought. Cash paid to an inviter outside the platform is recorded nowhere in 50pick.
+              What still works today: every player in good standing has a link (closed, suspended and
+              self-excluded accounts do not), and the roster below counts who they brought. Cash paid to an
+              inviter outside the platform is recorded nowhere in 50pick.
             </span>
           </div>
         </div>

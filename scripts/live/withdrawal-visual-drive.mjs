@@ -206,7 +206,7 @@ for (const locale of LOCALES) {
     for (const route of AGENT_ROUTES) {
       await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded", timeout: 60000 });
       await page.waitForTimeout(1200);
-      const slug = route.replace(///g, "_") || "_root";
+      const slug = route.replace(/\//g, "_") || "_root";
       await page.screenshot({ path: `${OUT}/${width}${slug}_${locale}.png`, fullPage: true });
       const a = await page.evaluate(auditInPage);
       const at = `${route} [${locale}] @${width}`;
@@ -222,7 +222,7 @@ for (const locale of LOCALES) {
 }
 await ctx.addCookies([{ name: "kp-locale", value: "en", domain: new URL(BASE).hostname, path: "/" }]);
 
-// ── The nav overflow menu must still be usable after Invite left it ─────────
+// ── The nav overflow (More) menu opens with its destinations (Invite is back in it since 2026-09-25) ──
 await page.setViewportSize({ width: 360, height: 900 });
 await page.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded", timeout: 60000 });
 const moreBtn = page.locator('button:has-text("More"), [aria-label*="More" i]').locator("visible=true").first();
@@ -230,7 +230,7 @@ if (await moreBtn.count()) {
   await moreBtn.click();
   await page.waitForTimeout(400);
   const items = await page.locator('[role="menu"] a, [role="dialog"] a, nav a').count();
-  ok("the More menu still opens with destinations after Invite left it", items > 0, `links=${items}`);
+  ok("the More menu opens with destinations", items > 0, `links=${items}`);
   await page.screenshot({ path: `${OUT}/360_more-open.png`, fullPage: false });
 } else {
   ok("the More control is present at 360", false, "no More button found");

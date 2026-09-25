@@ -75,8 +75,10 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
    * pages and failed on three of them for a reason that has nothing to do with the feature.
    * ⭐ So the LINK is asserted where it is genuinely server-rendered, the ABSENCE OF A MONEY
    * PROMISE is asserted on all four (that string would be in the payload wherever a label is),
-   * and the clicked-open chrome is left to the browser drive (`qa:agent-drive` §6), which is the
-   * only instrument that can actually see it.
+   * and the clicked-open chrome (avatar menu, More rail) is NOT measured here. ⛔ Nor by `qa:agent-drive`
+   * §6: it reads only the closed `nav, header` text and never opens a menu. `qa:invite-phone`
+   * (scripts/live/invite-prod-drive.mjs §1a/§1b) opens both menus and asserts the neutral label
+   * ("Invite friends", no "& Earn" / "upate zawadi" / "邀请赚钱").
    */
   for (const path of ["/profile", "/wallet", "/positions", "/markets"]) {
     const { status, html } = await get(path, cookie);
@@ -93,7 +95,7 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
        * ⭐ `/profile` is the one page whose invite row is SERVER-rendered, so it is the only place
        * this drive can hold the words to account — and it does it as a DELTA: the unpaid words must
        * be PRESENT here, which is what makes their absence elsewhere mean anything. The client
-       * chrome's own label is covered by `qa:agent-drive` §6, the only instrument that opens a menu.
+       * chrome's own label is NOT measured by this drive, nor by `qa:agent-drive` §6 — see the note above.
        */
       ok(`§1 ${path} ⭐ the row wears the UNPAID words`,
         /Invite friends|Alika marafiki|邀请朋友/.test(html),
@@ -106,21 +108,19 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
 }
 
 // ── §2 · THE INVITE PAGE IS A SHARE SURFACE, AND IT NAMES NO MONEY ─────────
-// 🔴 THIS SECTION IS WHAT THE FIRST RUN OF THIS DRIVE CORRECTED, TWICE, AND BOTH ARE
-// recorded because both were mistakes worth not repeating.
+// 🔴 From 2026-09-06 to 2026-09-25 this section asserted the NOT-FOUND view, because a player had no
+// invite page. Two lessons from that era still apply to anything that drives this route:
+//  1. A 200 here proves nothing on its own. This segment has a `loading.tsx`, so Next commits 200
+//     before the page throws `notFound()` — a REFUSED viewer also gets 200. The content assertions
+//     below carry this section, not the status.
+//  2. Never search the whole page for "coming soon": the shared nav can legitimately carry it for a
+//     different feature (it once matched the PROPOSALS badge). A true measurement over the wrong
+//     population is the most convincing way to be wrong.
 //
-//  1. It asserted `status === 404`. The status is **200** — this segment has a `loading.tsx`,
-//     so Next flushes the shell and commits the status before the page throws `notFound()`.
-//     The player still gets the not-found view. Asserting the status was asserting an
-//     assumption about a framework, not the behaviour that matters.
-//  2. It asserted the whole page contained no "coming soon" — and matched the PROPOSALS
-//     badge in the shared nav, which is a different feature, legitimately coming soon.
-//     A true measurement over the wrong population is the most convincing way to be wrong.
-//
-// ⭐ What matters, and what is measured now: the not-found view renders, and NOTHING of the
-// referral programme reaches the page. That second half is the security property — the
-// guard sits above the referral read precisely so no code is minted, no link is built and
-// no QR is drawn for someone the programme does not belong to.
+// ⭐ What is measured now: a player in good standing gets the live UNPAID body (a real code, link and
+// QR) and not one money word. The gate still sits above the referral read, so nothing is minted for a
+// viewer the seam refuses — the ORDER is proved in `test:withdrawn-features` §8 and WHO is refused in
+// `test:player-invite-unpaid` §1, not here.
 {
   const { status, html } = await get("/profile/invite", cookie);
   // ⭐ THE SHARE HALF — a real code, a real link, a real QR. These three were the SECURITY

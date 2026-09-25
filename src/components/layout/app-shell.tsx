@@ -143,9 +143,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const installInviteLive = installInviteIsLive();
   /** Non-null = signed in with an UNCONFIRMED address → show the standing bar. */
   let emailVerifyState: { email: string | null } | null = null;
-  /** The viewer's role, hoisted out of the session block for the feature-state read below.
-   *  ⚠️ Stays null when the user fetch FAILED — which resolves every role-gated feature to
-   *  hidden, the only safe direction for a failed read. */
   /** Who is asking about Invite — standing, not role. See `feature-state.ts` → `InviteViewer`. */
   let inviteViewer: InviteViewer = NO_VIEWER;
   if (session) {
@@ -266,7 +263,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const proposalsState = getProposalsConfig().state;
 
   /* ⭐ INVITE IS RESOLVED HERE, ONCE, BECAUSE THIS IS THE ONLY PLACE THAT KNOWS THE ROLE.
-     The three surfaces that offer Invite are all `"use client"` and none of them can read a
+     The shell's surfaces that offer Invite — the bottom rail, the top bar, the avatar menu and
+     (since 2026-09-26) the footer — are all `"use client"` and none of them can read a
      role — so the shell answers the question and threads the ANSWER down, exactly as
      `proposalsState` above already does. ⛔ Do not push `feature-state.ts` into those
      components to save a prop: importing a server module from a client file is what took
@@ -402,7 +400,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
           the footer is `"use client"`, so a `SUPPORT_EMAIL()` call inside it reads the browser
           bundle's module default and can never show the address an officer saved. */}
-      <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />
+      <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />
       {/* DG-P-11 — the rail's `More` needs the feature state for the same two reasons the bar
           and the footer already take it: DISABLED hides every proposals entry point, and the
           state flag (coming-soon / maintenance) must read the same on a phone as on a laptop. */}

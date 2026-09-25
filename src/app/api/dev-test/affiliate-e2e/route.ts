@@ -4,6 +4,11 @@
  * services (config, binding, accrual, wallet credits, notifications, read
  * models, anti-fraud, pause gating) and returns a per-assertion report.
  *
+ * ⚠️ SINCE 2026-09-25 THE PLAYER PROGRAMME PAYS NOTHING (`inviteRewards` WITHDRAWN): every money
+ * assertion here uses a PLAYER referrer and is refused (`player_rewards_withdrawn`) unless the dev
+ * server runs with FEATURE_INVITEREWARDS=ACTIVE. The maintained guards are `test:player-invite-unpaid`
+ * and `test:referral` (docs/PLAYER-INVITE-UNPAID.md §7-§8).
+ *
  * Returns 404 in production. POST with no body.
  */
 import { NextResponse } from "next/server";

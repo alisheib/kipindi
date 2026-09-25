@@ -42,12 +42,11 @@ let seq = 0;
 const localDigits = new Map<string, string>();
 
 /**
- * ⚠️ `role` EXISTS FOR THE 2026-09-06 ATTRIBUTION RULE, and it is not test plumbing.
- * A referral code only recruits if its owner may actually refer — today, `role === "AGENT"`
- * (`src/lib/feature-state.ts`). §F below drives the prize payer's exactly-once lock, so its
- * REFERRER must be an agent or `bindRecruit` refuses and the section measures nothing.
- * ⛔ Do not "fix" a failure here by relaxing the gate; `test:withdrawn-features` §5 asserts
- * the refusal deliberately.
+ * Fixture user with a funded wallet. ⚠️ `role` is VESTIGIAL — no call site passes it. It existed for the
+ * 2026-09-06 rule (only an agent's code recruited); since 2026-09-07 standing (`approvedAt`) decides, not
+ * role, and since 2026-09-25 an ordinary PLAYER's code recruits (the unpaid invite,
+ * docs/PLAYER-INVITE-UNPAID.md). §F uses a PLAYER referrer with FEATURE_INVITEREWARDS=ACTIVE; §F2 mints
+ * its agent with `approveFixtureAgent`.
  */
 async function fundedUser(id: string, balance: number, role: "PLAYER" | "AGENT" = "PLAYER"): Promise<void> {
   // A REGISTRABLE number. `tzPhone` — the schema the real registration path goes through —

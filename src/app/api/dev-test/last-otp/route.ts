@@ -4,13 +4,14 @@
  * Returns the most recent code sent to a given address. Returns 404 in production — never
  * reachable on a live deployment.
  *
- *   GET /api/dev-test/last-otp?phone=+255700000123        (the consoleSms ring)
+ *   GET /api/dev-test/last-otp?phone=+255700000123        (the `__50PICK_LAST_SMS` ring, fed by the sms.ts facade for any provider)
  *   GET /api/dev-test/last-otp?email=neema@50pick.test    (the Postmark outbox)
  *   { ok: true, code: "123456", at: 1714... }
  *
  * ⭐ ONE ROUTE, TWO CHANNELS, because there is one question: "what code did we just send
  * this person?" The agent invitation moved from SMS to email on 2026-09-08 (no SMS provider
- * is licensed), and a second `/api/dev-test/last-email-otp` beside this one would be the
+ * was licensed then; it has stayed on email by decision since Blackball went live on
+ * 2026-09-16), and a second `/api/dev-test/last-email-otp` beside this one would be the
  * §0a duplicate — two places to look for one fact, and a drive that reads the wrong one
  * fails with "no code" rather than with the reason.
  *

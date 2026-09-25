@@ -188,13 +188,12 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
     ],
     notes: [
       // 🔴 L57 (C5-D20-REPLAN ruling 268), corrected 2026-09-20. This note went to the GAMING BOARD saying
-      // "voids/refunds excluded from both sides". The code has never done that: `report-money.ts:155` is
-      // `const ggr = stakes - payouts - refunds`, and that file's own header (:19-21) states the reason —
-      // a refunded stake was still counted in Stakes, so without subtracting it GGR is overstated by the whole
-      // refunded amount AND SO IS THE TRA/GBT LEVY BASE COMPUTED FROM IT. Two other notes in this same file
-      // already say it correctly (:723 "Sales − Payouts − Refunds", :763 "…− refunded stakes"), so the pack was
-      // internally inconsistent as well as wrong. A regulator note is a statement about our own arithmetic; it is
-      // re-derived from the function that computes the figure, never written from memory of the definition.
+      // "voids/refunds excluded from both sides". The code has never done that: report-money's `summarise`
+      // computes `stakes - payouts - refunds`, and that file's header states the reason — a refunded stake is
+      // still counted in Stakes, so without subtracting it GGR is overstated by the whole refunded amount. The
+      // daily-ops notes in this file already said it correctly, so the pack was internally inconsistent as well
+      // as wrong. A regulator note is a statement about our own arithmetic; it is re-derived from the function
+      // that computes the figure, never written from memory of the definition.
       "GGR = total stakes − total payouts − refunded stakes. A refunded stake is returned in full and earns the operator nothing, so it is removed from the base.",
       "NGR = GGR − bonus cost − agent commission − payment-processing fees (pre-tax operator bottom line).",
       "Agent commission is contracted income paid to vetted agents out of the operator fee AFTER TRA and GBT levies; it does not reduce the levy base.",
@@ -254,13 +253,13 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
     playerId: string; phone: string; triggerKind: string; amount: number;
     txnId: string; triggerAt: string; reviewStatus: string;
   };
-  // Single-pass over all transactions — no per-user loop.
+  // One pass over the PERIOD's transactions, windowed in the store (`listInRange`: >= start,
+  // < end — the bounds the skip below used to apply in JavaScript to the whole table), with no
+  // per-user loop. `test:report-window-reads`.
   const rows: Row[] = [];
   // Cache user lookups to avoid repeated findById for the same user.
   const userCache = new Map<string, { phone: string } | null>();
-  for (const t of await db.txn.listAll()) {
-    const at = new Date(t.createdAt).getTime();
-    if (at < bounds.start || at >= bounds.end) continue;
+  for (const t of await db.txn.listInRange(bounds.start, bounds.end)) {
 
     // An explicit AML hold is reportable whatever its type. Since 2026-09-13 only a legacy
     // withdrawal or a deposit owed back to an excluded player sits in AML_REVIEW.
@@ -286,8 +285,10 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
       reviewStatus: t.status,
     });
   }
-  // Largest first — an FIU reviewer reads top-down.
-  rows.sort((a, b) => b.amount - a.amount);
+  // Largest first — an FIU reviewer reads top-down. Ties by time, then id, so the order is fixed by
+  // the DATA: the store returns rows in its own order, and two equal amounts must not swap between
+  // two renders of the same filing.
+  rows.sort((a, b) => b.amount - a.amount || a.triggerAt.localeCompare(b.triggerAt) || a.txnId.localeCompare(b.txnId));
   return {
     title: "Financial Intelligence Unit · Suspicious-Activity Report",
     subtitle: `Transactions at or above the ${formatTzs(cutoff)} threshold, or paused for AML review`,
@@ -621,20 +622,19 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
   // The day MUST be the Tanzanian calendar day. This previously used
   // `new Date().getFullYear()/getMonth()/getDate()`, which is SERVER-LOCAL — and the
   // Railway container runs UTC, so the window was 03:00 → 03:00 EAT. Since this report
-  // computes the TRA and GBT levies below, the tax was assessed on the wrong 24 hours,
-  // the hourly breakdown was shifted three hours end to end, and consecutive daily
-  // filings could not be reconciled against the (EAT-correct) monthly pack.
+  // reads the TRA and GBT levies booked over its window, they were summed over the wrong 24
+  // hours, the hourly breakdown was shifted three hours end to end, and consecutive daily
+  // reports could not be reconciled against the (EAT-correct) monthly pack.
   const nowMs = Date.now();
   const dayStart = startOfEatDay(nowMs);
   const dayEnd = dayStart + 24 * 3600_000;
   const dateLabel = eatDateLabel(dayStart);
 
-  // All confirmed transactions today
-  const allTxns = await db.txn.listAll();
-  const todayTxns = allTxns.filter((t) => {
-    const at = new Date(t.createdAt).getTime();
-    return at >= dayStart && at < dayEnd && t.status === "CONFIRMED";
-  });
+  /* All confirmed transactions today — the DAY, read in the store (`listInRange`: >= start, < end,
+     the exact bounds of the filter it replaces). This read the WHOLE Transaction table and kept one
+     day of it in JavaScript: every transaction ever recorded, pulled into a 512 MB container, and it
+     threw once against production (SESSION-PROMPT-FINANCE-SEAL §2). `test:report-window-reads`. */
+  const todayTxns = (await db.txn.listInRange(dayStart, dayEnd)).filter((t) => t.status === "CONFIRMED");
 
   // --- Core metrics ---
   const bets = todayTxns.filter((t) => t.type === "BET_PLACED");
@@ -711,8 +711,10 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
   const marginDec = Number(marginPct.toPrecision(12));
   const marginShown = (Math.sign(marginDec) * Math.round(Math.abs(marginDec) * 10)) / 10;
 
-  /* Net after taxes = GGR less what we hand over. All three printed values are integers read
-     off (or derived from) the ledger, so the arithmetic on the face still closes exactly. */
+  /* Net after taxes = GGR less the booked levies. GGR comes from the Transaction table and the two
+     levies from the ledger; all three are whole shillings, so the arithmetic on the face closes
+     exactly. (That it subtracts a fee-based tax from a turnover figure is an open owner question —
+     SESSION-PROMPT-FINANCE-SEAL §2.) */
   const netAfterTax = traTax === null || gbtLevy === null ? null : ggr - traTax - gbtLevy;
 
   // --- Hourly breakdown ---
@@ -831,11 +833,14 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
     notes: [
       // The stated methodology MUST match the computed one. This note previously read
       // "total stakes placed − total payouts", omitting the refund subtraction the code
-      // performs — so an auditor recomputing the tax from the printed formula derived a
-      // HIGHER GGR and a HIGHER liability than the document reports.
-      "GGR = total stakes placed − total payouts − refunded stakes. This is the operator's " +
-        "commission from the pool. Refunds are subtracted because a voided or one-sided " +
-        "market returns every stake in full, so no commission is earned on it.",
+      // performs — so an auditor recomputing from the printed formula derived a HIGHER GGR than
+      // the document reports.
+      // ⛔ AND IT CALLED GGR "the operator's commission from the pool" — false, and contradicted two
+      // notes lower by this same document's levy note. (The leading sentence is parsed verbatim by
+      // `test:report-note-truth`; keep it.)
+      "GGR = total stakes placed − total payouts − refunded stakes. It is a turnover measure, NOT " +
+        "the commission the operator keeps: it still contains stakes on positions that have not " +
+        "settled. Refunds are subtracted because a voided or one-sided market returns every stake in full.",
       /* 🔴 THESE TWO SENTENCES WERE ALREADY TRUE WHILE THE CODE ABOVE WAS NOT. They have said
          "of operator commission" all along; the arithmetic multiplied GGR, which is ~14× larger.
          The code now matches the prose, and the prose now says where the figure comes from. */
@@ -1125,8 +1130,13 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
     predictors: m.predictorCount,
   }));
 
-  // Refunds grouped by market (a refund txn carries positionId; group by description/positionId tail).
-  const refundRows: Row[] = refunds.slice(0, 200).map((t) => ({
+  /* 🔴 NEWEST FIRST, THEN CAPPED. The section below tells the Gaming Board it shows "the most recent
+     200 of N" — but this took the FIRST 200 of an UNORDERED read (insertion order in memory, heap order
+     in Postgres), i.e. roughly the OLDEST. ISO timestamps sort as strings; the id breaks a tie.
+     `test:report-window-reads` §4. (This read stays ALL-TIME on purpose — see §3 of that suite.) */
+  const newestFirst = [...refunds].sort((a, b) =>
+    (b.createdAt < a.createdAt ? -1 : b.createdAt > a.createdAt ? 1 : 0) || b.id.localeCompare(a.id));
+  const refundRows: Row[] = newestFirst.slice(0, 200).map((t) => ({
     when: t.createdAt.slice(0, 10),
     player: maskUserId(t.userId),
     amount: Math.abs(t.amount),

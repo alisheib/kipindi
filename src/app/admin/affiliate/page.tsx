@@ -81,9 +81,10 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
       <AdminBody>
         {/* KPIs. ⭐ The second and third tiles swap with the product state: "Active affiliates"
             counts referrers who were PAID and "Commission paid" sums what was paid — under the
-            unpaid invite both are structurally 0, and a permanent zero teaches an officer to stop
-            reading the row. What replaces them is what the operator actually acts on: how many
-            players have brought anyone, and how many arrivals there are to pay for in cash. */}
+            unpaid invite neither can grow, and a figure that never moves teaches an officer to stop
+            reading the row. What replaces them: "Players inviting" (how many players have brought anyone) and
+            "Paid by 50pick" (what the platform has actually paid on this programme — summed, see that
+            tile's note; TZS 0 on a clean unpaid history). */}
         <KpiGrid>
           <AdminKpi label="Total referrals"   sw="Marafiki wote"   value={stats.totalReferrals.toLocaleString()} delta="all-time" deltaDir="flat" />
           {paid ? (
@@ -137,6 +138,16 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
                   Cash paid to an inviter outside the platform is not recorded here.
                 </>
               )}
+              {/* ⭐ 2026-09-26 — THE OWNER HAD TO ASK WHERE PLAYERS FIND IT, from inside this console on a
+                  phone, where the player chrome does not exist. The answer belongs on the page that runs the
+                  programme. ⛔ Keep it in step with docs/PLAYER-INVITE-UNPAID.md §2, the one list of doors. */}
+              <p className="mt-2">
+                <span className="font-bold text-text">Where players find it · Wanapoipata:</span> on a phone,{" "}
+                <strong className="text-text">☰ Zaidi</strong> (bottom-right) → <strong className="text-text">Alika marafiki</strong>;
+                also the avatar menu, the site footer and the Profile page, every one named “Alika marafiki · Invite friends”
+                for a player. None of them shows inside this console — tap the ‹ at the top left (“Back to app” on a
+                wider screen) to see the player’s view.
+              </p>
             </div>
           </div>
         </AdminCard>

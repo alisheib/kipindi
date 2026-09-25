@@ -1,6 +1,6 @@
 # MARKETING CAMPAIGN & CONTACTS SETUP — work order and tracker
 
-**STATUS — 🟢 BUILDING. 8/52 units ✅ LIVE (U1–U8), 7/25 defects. 52 units · defects D1–D25 · 46 owner decisions taken on
+**STATUS — 🟢 BUILDING. 10/52 units ✅ LIVE (U1–U10), 8/25 defects. 52 units · defects D1–D25 · 46 owner decisions taken on
 Ali's delegation · 10 legal questions, each shipping with a safe default that IS built.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
@@ -13,7 +13,7 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 | **Opened** | 2026-09-16 (session S0 — planning only, no product code; committed 2026-09-17) |
 | **Owner instruction** | Ali, 2026-09-16: *"a page for contacts, with all its features, bulk and normal contact import, duplication detection, everything perfect, progress bars, loading systems, rendering perfection. Also campaign for broadcast SMS sending page… for Tanzanian numbers, the right formats, input validation"* · *"take decisions based on what you think is perfect and compatible with our platform… make it fully functional, a perfect version, you decide"* · *"save the plan and the prompt and push it, naming it the marketing campaign and contacts setup"* · *"make it perfectly working for 50pick, perfect design and logic"* |
 | **Scope** | `/admin/contacts` (the address book: single + bulk import, duplicate detection, pre-flight, determinate progress, export) and `/admin/campaigns` (broadcast SMS: compose, audience, confirm, send, results) — plus the permission layer neither can lawfully exist without |
-| **Repo / branch** | `F:\kipindi-main`, branch `main`. ⛔ Push to `main` is a LIVE deploy. ⛔ Never the House Bots checkout (`F:\kipindi-house-bots`), which runs its own programme in parallel |
+| **Repo / branch** | Your 50pick checkout — find it with `hostname && git rev-parse --show-toplevel && git worktree list`; ⛔ never copy a path from a doc (the office PC uses `F:\`, Ali-Blade15 `C:\`, and each has worktrees). Work lands on `main`: a checkout on another branch, or carrying another session's edits, means your own worktree off `origin/main`, pushed with `HEAD:main`. ⛔ Push to `main` is a LIVE deploy. ⛔ Never the House Bots checkout, which runs its own programme in parallel |
 | **Live state rule** | The broadcast surface ships **built and CLOSED**. Dispatch refuses until a Gaming Board advertising approval is recorded (§5.1). Contacts, compose, preview, estimate and test-send-to-self all work meanwhile |
 | **Evidence** | `.qa-shots/marketing-setup/<unit>/…` (gitignored). ⛔ A `shots/…png` path may only be written into a doc in the commit that also commits the PNG |
 | **Tracker guard** | `npm run test:marketing-setup-plan` · red control `npm run red:marketing-setup-plan` (the same file, `--prove-red`, plants in memory) |
@@ -30,143 +30,133 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: U9 and U10 — S6's pair. The previous unit is closed; see ✔ LAST SESSION.
+▶ NEXT: U11 and U12 — S7's pair. The previous units are closed; see ✔ LAST SESSION.
 
-  U9 · THE GATE INSIDE THE LOOP. U7 built the gate; nothing calls it yet. §5.6 fixes the order
-  — suppression → consent → self-exclusion → cooling-off → harm markers → age → frequency cap
-  → window → approval → dispatch — and requires it to run IMMEDIATELY BEFORE DISPATCH, per
-  recipient, so somebody who opts out in minute two does not receive minute four's message.
-  ⛔ A refusal is `skipped`, never `failed`.
-  ⚠️ VERIFY THE PREMISE FIRST, because this plan has been wrong about it before: there is no
-  send loop yet. Check what U35/U42 actually leave behind before designing against them.
+  U11 · 18+ IN THE GATE (D11). §5.6 puts age AFTER harm markers, so it is one more step in
+  `mayReceiveMarketingSms`'s player branch (and the ledger branch) — asked by `dispatchSlice`, which
+  already runs the whole gate per recipient. ⚠️ VERIFY THE PREMISE FIRST, as always:
+  · players — `User.dob` is `string | null`; registration requires 18+, but check what legacy and
+    dev-seeded rows hold before assuming "no null";
+  · contacts — the "explicit 18+ attestation" U11 reads is written by U33, which does not exist, so
+    TODAY every contact-only number must come back `age_unknown`. Build the refusal; do not invent the
+    attestation. Unknown age is `skipped`, never sent (OD14).
 
-  U10 · COOLING-OFF AND HARM MARKERS as a STANDING predicate (D9), never `isLockedOut` — which
-  lifts itself when the chosen period elapses, so a 24-hour exclusion would be marketable 25
-  hours later. U7 already refuses `minimum_served` for that reason; U10 adds the rest.
-  ⛔ `selfExclusionStanding` WRITES A ROW if you ask it unguarded (`responsible-gambling.ts:90`
-  → `db.responsible.upsert`). Read `db.responsible.get` FIRST and only ask the predicate when a
-  row exists. U7 shipped that defect and fixed it the same session; do not reintroduce it.
+  U12 · THE PUBLISHED PROMISE, RECONCILED (D12, OQ6). ⛔ This one ENDS AT AN OWNER RULING:
+  `/legal/responsible-gambling` §4 promises no marketing to "players under 25 in vulnerability
+  segments", and nothing defines that segment. Either build an age band + a segment definition, or
+  re-version §4 to say only what runs — Ali's call. Build the guard (`test:privacy-notice`'s audience
+  whitelist) and the safe default; ask Ali the one question; ⛔ do not re-version a legal page alone.
 
-✔ LAST SESSION: S5, 2026-09-25 — **U8 ✅ LIVE on `80a8b0a4`. 8/52 units, 7/25 defects.**
-  ⭐ THE DECISION S4 LEFT OPEN WAS TAKEN, AND IT WAS RIGHT: a suppression row is never DELETED
-  but may be SUPERSEDED. `liftedAt` + `liftedReason`, expand-only, one migration, generated
-  offline and proven FROM AN EMPTY DATABASE on real PostgreSQL 18.3 — 84 migrations, both
-  columns nullable, a SECOND lift touching 0 rows, the row still present after it. §17's "no
-  delete" assertions all stand, and new ones say a lift never removes a row.
+✔ LAST SESSION: S6, 2026-09-25 (Ali-Blade15, worktree `marketing-s6`) — **U9 ✅ LIVE on `4dfea77e`,
+  U10 ✅ LIVE on `f1ad4417`. 10/52 units, 8/25 defects.**
+  ⭐ U9's PREMISE FAILED, AND NOT THE WAY §0 GUESSED: there was no send loop to put the gate in —
+  and the loop is U43 ("the slice"), not U35 (the tables). So U9 shipped the loop's INNERMOST STEP,
+  `dispatchSlice` (`marketing/dispatch.ts`): the gate asked per recipient immediately before ONE
+  send; a refusal `skipped`, never `failed`; settled by KEY; a shop-wide refusal or an unanswerable
+  gate `held`; a thrown transport `unconfirmed`; the RG audit line written HERE when a refusal is
+  acted on. ⛔ `send` has no default until U35 gives the wire a purpose. And the LOOP CONTRACT U43
+  must pass: two slices, three people changing their minds between them through the real acts —
+  and the gate hoisted to list-build time SENDS the opted-out number (red), `dispatchSlice` does not.
+  🔴 U10 FOUND U7's "DECIDING MUST NOT WRITE" FIX WAS HALF A FIX: on an EXISTING row,
+  `selfExclusionStanding` → `getRgSettings` → `effectivize` REWRITES the row when a pending limit
+  change has come due. The predicate now reads `db.responsible.get` and computes through
+  `selfExclusionStandingOf`, the pure half split out so there is still ONE definition.
+  ⭐ AND THREE PREMISES CORRECTED: COOLED_OFF is never cleared, so U7 had been refusing anyone who ever
+  took a break FOR EVER as `account_status` (ruled: a break is standing — refused until a consent
+  AFTER it ended); a restore leaves NO column, only the `rg.self_exclusion.reopened` audit row, so
+  that is what is read; and HARM MARKERS CANNOT BE STANDING — nothing persists a flag.
+  ⭐ U7's order was not §5.6's (RG before consent); it is now, which also keeps the 10,000-row harm
+  scan off every non-consenting player.
+  ✔ Numbers: `test:rg-doors` 54 → 91 · `red:rg-doors` 11 → 19 · `test:marketing-consent` 15 → 36 ·
+  `red:marketing-consent` 5 → 13 · typecheck clean twice · both deploys confirmed via `?dpl=`.
+  ⭐ AND A REPO-WIDE STALE SWEEP (Ali: "remove any stale or confusing text about our topic"): 89
+  candidates, 74 confirmed by a second agent trying to refute each, fixed across docs, comments and
+  the schema's notes — "no callback has ever arrived", "no licensed SMS provider", "re-enable once
+  SMS goes live", E-330 still open, the plan's §10 off by one, `F:\` paths on a PC without an `F:`.
 
-  🔴 AND THE DECISION SURFACED A SECOND FALSE SUCCESS, POINTING THE OTHER WAY, THAT THIS PLAN
-  DID NOT NAME. `suppression.create` is an upsert with `update: {}`. Once a row can be lifted,
-  `stop → start again → stop again` returns through it, and an EMPTY update block hands back
-  the LIFTED row untouched — telling somebody they will never be marketed again while the
-  suppression stays lifted and the next campaign sends to them. ⛔ So the update CLEARS the
-  lift, and §17's `update: {}` assertion was REPLACED rather than softened: it now says what it
-  always meant — the block must not touch `createdAt`, and it must re-arm.
+  🔴 AND ONE FINDING ABOUT S3b's OWN WORK, NOT S6's — see the 🔴 block below ◐ HALF-DONE: U6's migration
+  dropped other lanes' schema and the eight trigram search indexes on production. Nothing is broken now;
+  S7 repairs it first.
 
-  🔴 AND A THIRD, FOUND BY RUNNING U7's SUITE RATHER THAN BY REASONING. The memory twin first
-  asked `r.liftedAt === null`, which is FALSE for a row carrying no lift field at all — so a
-  suppression written by any caller that had not been updated read as LIFTED, and a person who
-  said stop came back MARKETABLE. It failed OPEN, the one direction the law does not forgive.
-  It is now `!r.liftedAt`. ⭐ AND THE REASON `tsc` COULD NOT HAVE CAUGHT IT IS WORTH KNOWING
-  REPO-WIDE: `tsconfig.json` includes `scripts/**/*.ts`, and every suite in this repo is
-  `.mts` — so **no test file here is typechecked**. A DAL type change breaks fixtures silently.
+✔ BEFORE IT: S5 (U8 ✅), S4 (U7 ✅), S3/S3b (U5, U6 ✅), S2 (U3, U4 ✅), S1 (U1, U2 ✅), S0b, S0 —
+  each in §2, newest first. ⭐ The habit that found most of it: audit the INSTRUMENT, not only the code.
 
-  ⭐ THE RED CONTROL CAUGHT THE GUARD LYING, TWICE, AND BOTH ARE NOW CASES:
-  · the expiry plant reached nothing, because the assertion called the SHIPPED resolver rather
-    than the object under test — case 1 was green against a page whose links expire;
-  · the fail-closed fixture STOPPED BEING LEGACY: its number came from the tag's LENGTH, so
-    every red case shared one row and `create`'s idempotence re-armed it before the case that
-    needed it. A fixture that stops being the shape it is named for is a control that has
-    quietly stopped controlling.
+◐ HALF-DONE: ⛔ S7 IS IN FLIGHT — started 2026-09-26 on Ali-Blade15, worktree `C:/kipindi-marketing`,
+  branch `marketing-s7`. Scope: the U6 repair (the eight trigram indexes + a guard), U11, U12 and D10.
+  ⛔ Do not start S7 on another PC; this line is rewritten when S7 closes. U1–U10 are ✅ LIVE.
+  ⭐ Ali, 2026-09-26, on delegation: *"take any decision needed based on overall decisions I took ever
+  and architecture of platform, keep going until live."* S7 takes the open owner items under that
+  instruction and records each ruling, with the precedent it rests on, where it is taken.
 
-  ⭐ AND READING THE SCREENSHOTS FOUND WHAT NO ASSERTION DID: the invalid-token refusal passed
-  `optout.body` — "tap once to stop marketing messages" — onto a page that renders NO BUTTON.
-  Instructing an action the page does not offer, on the one page whose whole job is never to
-  make a false promise. Fixed, and now asserted.
+? OWNER ITEMS FOR ALI (none blocks U11; U12 needs the first):
+  1. OQ6 — build the "under-25 vulnerability segment" or re-version /legal/responsible-gambling §4.
+  2. D10 — `push-service` gates on `isLockedOut` and inherits the lift (a 24-hour self-excluder gets
+     push notifications 25 hours later). Filed, ⛔ not changed without Ali.
+  3. HARM MARKERS ARE NOT STANDING. A marker refuses marketing for its detector's window (≤ 8 days)
+     and no longer, because nothing persists a flag. Standing markers need a persisted,
+     officer-reviewed flag store — a product decision.
+  4. A player whose toggle stayed ON through a break or an exclusion cannot give the "fresh consent"
+     U10 requires without switching it off and on again. Lawful (it fails closed), but invisible to
+     them — a profile-screen question for the composer era.
+  5. ⭐ STILL OPEN FROM S5: the opt-out page's loudest controls are "Ingia" and "Jisajili".
+  6. OQ1–OQ10 unchanged. ⛔ OQ4 IS STILL A TRAP: the marketing footer carries the Board's 0800110051
+     while support-config publishes 0800 11 0011, and `test:campaign-compose` §12 ASSERTS THEY DIFFER.
 
-  ✔ U8's numbers: `test:marketing-optout` 54 assertions · `red:marketing-optout` 8/8, each on
-  its own named assertion, with the shipped page green in §0 first and the model faithful in
-  §0b · dal-parity 1461 → 1482 · `red:dal-parity` 29 → 35 · the visual drive 47/47 at 1280, 360
-  and 360+reduced-motion.
+🔴 FOUND AT S6, OURS, AND THE FIRST THING S7 DOES BEFORE U11 — U6's MIGRATION DROPPED OTHER LANES' SCHEMA.
+  `20260925120000_marketing_consent_suppression` was generated with `prisma migrate diff` against a
+  database that still held objects `schema.prisma` no longer declares, and the diff swept EVERY one of
+  them in, without `IF EXISTS`; production ran it on 2026-09-25 (U6 at `32067c92`). S3b removed one
+  such sweep by hand (the Transaction unique) and missed these:
+  · F-05's four retired tables, three columns and three enums, and AGENT-PROGRAMME's `AffiliateAgent.tier`
+    — ALL PLANNED DROPS, measured empty on production, so no data of consequence is lost; both lanes'
+    docs now say the step is already applied (their own SQL uses `IF EXISTS`, so no boot hazard);
+  · ⭐ the eight `*_trgm_idx` GIN indexes from `20260728030000_search_trgm_small_tables` — raw SQL that
+    `schema.prisma` cannot express, so the diff simply deleted them. Their own migration says they are
+    "a BET ON GROWTH, not a fix for a present slowness" (the planner ignores them at today's size), so
+    production search is unaffected NOW and the bet is lost until they are restored.
+  ▶ S7, BEFORE U11: (1) an expand-only migration re-creating the eight indexes with the original SQL
+  (`CREATE EXTENSION IF NOT EXISTS pg_trgm` + `CREATE INDEX IF NOT EXISTS … gin_trgm_ops`), proven FROM
+  EMPTY on the scratch cluster; (2) a guard that fails a new migration which DROPs an object created by
+  an earlier migration unless the drop is named, with its owning lane — it would have caught U6; (3)
+  `test:dead-schema` 3.2 is red on that U6 file (DROP without `IF EXISTS`) — ⛔ an APPLIED migration is
+  never edited, so the rule needs a dated exemption for it, not a rewrite.
+  ⛔ AND U35 WILL HIT THE SAME TRAP: `migrate diff` will emit these drops again every time until the
+  indexes are declared somewhere it can see. A unit's migration contains ONLY that unit's statements.
 
-✔ BEFORE IT: S4, 2026-09-25 — U7 ✅ LIVE, U8 store half. **7/52 units, 7/25 defects.**
-  🔴 U7 SHIPPED WITH A DEFECT AND WAS FIXED IN THE SAME SESSION: `selfExclusionStanding` →
-  `getRgSettings` ends in `db.responsible.upsert(fresh)` (`responsible-gambling.ts:90`), so
-  ASKING THE GATE A QUESTION WROTE A ROW — 150,000 ResponsibleGambling rows per campaign,
-  created by deciding NOT to message people.
-  ⭐ AND THE TRAP U7 EXISTS TO SURVIVE: this platform stores phone numbers in TWO formats.
-  `User.phoneE164` is `+255…` (`tzPhone`, `validators.ts:32-37`); the marketing key is bare
-  `255…` (`toMsisdn255`). Unequal for EVERY input. `userPhoneKeyFor` is the bridge.
-
-✔ BEFORE IT: S2, 2026-09-25 — U3 and U4 ✅ LIVE. The GSM-7 table came out of the server module
-  and the gateway now delegates to it; the operator's budget is 111 rather than 160.
-
-✔ BEFORE IT: S1, 2026-09-25 — U1 and U2 ✅ LIVE. **Five premises this plan was written on turned
-  out to be false and are corrected in the document, not worked around.** ⭐ The habit that found
-  most of it: audit the INSTRUMENT, not only the code.
-
-✔ AND BEFORE THAT: S0b (the SMS rail sealed) and S0 (this document and its three doors).
-
-◐ HALF-DONE: nothing. U1–U8 are ✅ LIVE and re-measured on production.
-
-⚠️ ENVIRONMENT — CORRECTED THIS SESSION, AND THE OLD NOTE WAS TOO NARROW:
-  ⛔ **`next dev` CANNOT RUN IN A JUNCTIONED WORKTREE EITHER**, not only `next build`. Turbopack
-  gives the same refusal — *"Symlink [project]/node_modules is invalid, it points out of the
-  filesystem root"* — and it dies while walking the app directory, AFTER printing "Ready", so it
-  looks like it started. ⭐ So a worktree lane has no local drive host of its own: photograph
-  the states from a checkout with REAL `node_modules`, at your own SHA, and put it back after.
-  ⛔ AND A DRIVE MUST TAKE FRESH NUMBERS EVERY RUN. `next dev` with no DATABASE_URL keeps the
-  store IN THE SERVER PROCESS, so this drive's second run found the number its first run had
-  already stopped and reported a page defect that was really its own fixture.
-  ⚠️ `npx prisma generate` in a junctioned worktree writes the client into the SIBLING checkout
-  it is junctioned to, and can fail `EPERM` on the engine DLL when that sibling has it open.
-
-⚠ A FINDING FOR ALI, NOT A DEFECT — §6 SAYS IT IS NOT THIS PROGRAMME'S TO TAKE:
-  ⭐ **The opt-out page's loudest controls are "Ingia" and "Jisajili" — sign in and register.**
-  `/s/<token>` carries the standard public shell, so a person who received a marketing SMS and
-  tapped "stop" lands on a page whose two most prominent buttons invite them to JOIN, with the
-  product's tab bar under it. Every promise U8 makes is kept and nothing is obstructed, but a
-  page that exists so somebody can leave should probably not upsell them while they do it.
-  Changing it means a route group or a conditional in the root layout — a design-system
-  decision, under the design freeze. ⛔ Not taken unilaterally; Ali's call.
-
-⚠️ ONE PROMISE THE LIVE DRIVE COULD NOT PROVE, STATED RATHER THAN IMPLIED: `/s` being excluded
-  from Google Analytics is NOT verifiable from production HTML — the tag is opt-in (PDPA, no
-  legitimate-interests ground), so the measurement id is absent from `/s/` AND from `/` alike,
-  and "absent on both" discriminates nothing. It is proven by `test:google-tag` (67 assertions,
-  including a look-alike control that `/settings` and `/support` still report) and by the
-  source-level assertion in `test:marketing-optout`. ⛔ Do not write it up as a live proof.
-
-? OPEN OWNER ITEMS (each has a safe default that is BUILT — §4a): OQ1–OQ10, unchanged.
-  ⛔ OQ4 IS STILL A TRAP: the marketing footer carries the Board's 0800110051 while
-  support-config publishes 0800 11 0011, and `test:campaign-compose` §12 ASSERTS THEY DIFFER.
+⚠ RECORDED, NOT OURS TO CHANGE: `selfExclude` keeps the FIRST `selfExclusionStartedAt` across a
+  restore and a new exclusion, so the cross-operator register's "when it began" can point at an older
+  exclusion. U10 does not trust that stamp (it counts from the last activation on record, else the
+  END date). And ERASURE CAN RE-OPEN MARKETING on Postgres — now U16's, written into its §9 text.
 
 ⚠ TRAPS — each cost someone a session somewhere:
-  ⛔ `test:red-anchors` counts UNDECLARED harnesses with `===` against a ceiling of 65. A new red
-     harness must either declare anchors or prove red IN MEMORY, and must contain NO write-call
-     token — not even in a comment. Baseline on clean main: **3098 passed / 4 failed, 68 vs 65**;
-     after this session **3111 / 4**, still 68 vs 65. ⛔ Do not claim or bump it.
-  ⛔ **EDITING A FILE IS EXACTLY WHEN A RED ANCHOR ROTS.** This session broke two of
-     `red:dal-parity`'s, on its own edits, and they were silently uninjectable until the red
-     control was RUN. ⭐ `npm run test:red-anchors` after touching any file an anchor quotes.
-  ⛔ `test:docs` fails on any `npm run <name>` or `scripts/<file>.<ext>` in `docs/*.md` that does
-     not exist. THIS DOCUMENT NAMES SUITES BY KEY ONLY, never with the words "npm run".
-  ⛔ `test:route-census` globs `page.tsx` from disk: a NEW CLIENT-FACING ROUTE CANNOT SHIP
-     without a ruling in `PLAYER-QUERY-CAMPAIGN.md` §4. It caught `/s/[token]`.
-  ⛔ `test:google-tag` §2's excluded list is HAND-WRITTEN — a new excluded prefix must be added
-     there too, with a look-alike control (`/s` is two characters; `/settings` must still report).
-  ⛔ A `curl` 200 is not proof a BROWSER reaches a page. Check reachability with a browser.
-  ⛔ Visual drives keep `HeadlessChrome` in the UA or `/api/pv` counts them as real visitors.
-  ⛔ `git commit --only <paths>`, and new files must be `git add`ed BY NAME first — `--only`
-     refuses a path git does not yet know. ⛔ Never `git add -A`.
-  ⛔ THE TRUNK MOVES UNDER YOU. `origin/main` advanced twice during this session; pull before
-     you start and before every push, and re-run your suites AFTER the merge, not before it.
+  ⛔ `test:red-anchors` is RED ON CLEAN MAIN with 4 failures that are not ours: the undeclared ceiling
+     (68 vs 65, 4.1 + 4.2) and two rotted anchors in other lanes (`query-bar.tsx`,
+     `updown-card-phase.ts`). Measured 3150 passed / 4 failed after S6. ⛔ Do not bump the ceiling.
+  ⛔ EDITING A FILE IS EXACTLY WHEN A RED ANCHOR ROTS. `responsible-gambling.ts` carries three
+     `rg-doors` anchors and one house-bot anchor; `marketing/rg.ts` and the gate now carry eight.
+     ⭐ `npm run test:red-anchors` after touching any file an anchor quotes.
+  ⛔ `red:rg-doors` WRITES THE REAL FILES while it runs (and restores them). Never run it while you or
+     another agent are editing those files.
+  ⛔ AUDIT ROWS WRITTEN BACK TO BACK CAN SHARE A MILLISECOND. U10 treats a restore that is not strictly
+     after the exclusion as no restore (the safe reading); a fixture must space the two rows.
+  ⛔ Ali-Blade15 checks out with `core.autocrlf=true`: every file is CRLF on disk, LF in the index. A
+     guard that anchors on "\n" text sees nothing there — `test:marketing-setup-plan` now normalises
+     on read, and a new guard must too.
+  ⛔ `test:docs` fails on any `npm run <name>` or `scripts/<file>.<ext>` in `docs/*.md` that does not
+     exist. THIS DOCUMENT NAMES SUITES BY KEY ONLY.
+  ⛔ `test:route-census` and `test:google-tag` §2 are hand-kept — a new route or excluded prefix
+     needs a ruling / an entry there.
+  ⛔ A `curl` 200 is not proof a BROWSER reaches a page, and a client crash is also a 200.
+  ⛔ `git commit --only <paths>`, new files `git add`ed BY NAME first. ⛔ Never `git add -A`.
+  ⛔ THE TRUNK MOVES UNDER YOU. Pull before you start and before every push, and re-run your suites
+     AFTER the merge.
 ```
 
 ---
 
 ## §0a — THE SESSION PROMPT (copy-paste, any PC, no memory required)
 
-> Paste everything between the lines into a fresh session in `F:\kipindi-main`.
+> Paste everything between the lines into a fresh session on any PC with a 50pick checkout (step 1 finds it).
 
 ---
 
@@ -174,7 +164,7 @@ You are continuing the **MARKETING CAMPAIGN & CONTACTS SETUP** programme for 50p
 
 **1 · Get the truth before you touch anything.**
 ```
-cd F:\kipindi-main
+hostname && git rev-parse --show-toplevel && git worktree list   # find YOUR checkout; never copy a path from a doc
 git status --short
 git branch --show-current          # expect: main
 git pull --ff-only
@@ -218,8 +208,10 @@ session, SPLIT IT FIRST and write the split into §2 — do not start and leave 
 - Two stores or it does not exist: every new `db.*` namespace lands in `src/lib/server/store.ts` AND
   `src/lib/server/prisma-dal.ts`, with **named** types (never an inline object literal in a DAL
   signature), and `test:dal-parity` gets a new section with its own planted-key control.
-- Migrations are expand-only, and an **enum value ships in its own migration one commit before anything
-  writes it** (Postgres refuses to use a value added in the same transaction).
+- Migrations are expand-only. A value added to an **EXISTING enum** (`ALTER TYPE … ADD VALUE`) **ships in
+  its own migration one commit before anything writes it** — Postgres refuses to use it in the transaction
+  that adds it (`55P04`, measured at S3b); this binds U35/D22's `MARKETING` and OD9's `UNKNOWN`. A
+  brand-new enum TYPE may be created and used in one migration (U6 did).
 - Swahili is the DEFAULT player language: every player-facing string is Swahili first. The admin console
   is English chrome with a Swahili gloss on headings only, and ⛔ a `sw` gloss is copied verbatim from
   text already shipped — never invented.
@@ -263,11 +255,11 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U3 | pure | ✅ | S2 | ccc32526 | no segment arithmetic anywhere and the only GSM-7 table locked inside a server module → one pure table, PACKED segments, the gateway delegating to it | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `ccc32526`. The delegation is proven by EXECUTION — `test:otp-delivery` and `test:sms-cost-guard` drive the real send path through `smsCodingFor`. ⛔ Biller reconciliation is U52 |
 | U4 | pure | ✅ | S2 | b760fefe | no sender identity and no RG footer in any SMS, and a body-only quote would be 49 septets short → footer computed, counted and un-removable; operator budget 111, not 160 | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `b760fefe`; the U2 drive re-run green on it, so the new modules did not break the client bundle |
 | U5 | guard | ✅ | S3 | 64d6bc05 | a 15-section helpline guard with NO red control at all, and a product half already built → 4/4 mutations caught each on its own assertion | `test:support-contact` | yes · `red:support-contact` | 2026-09-25 · live on `64d6bc05`: every helpline-LABELLED link on /legal/responsible-gambling dials the pinned 0800110011, while the support desk legitimately differs. ⛔ D6 stays ⬜ — its substance is OQ4 |
-| U6 | data | ✅ | S3b | 6429f86f | no consent ledger and no SMS suppression list anywhere, and `marketingOptIn` a bare boolean with no channel, wording, evidence or history → two append-only stores in BOTH DALs with named types, the 82nd migration generated offline and APPLIED on real PostgreSQL 18.3 (10/10, two controls), dal-parity 1380 → 1440 | `test:dal-parity` · `test:marketing-consent-ledger` | yes · `red:dal-parity` (24/24) · `red:marketing-consent-ledger` (4/4) | 2026-09-25 · live on `32067c92`: production starts `prisma migrate deploy && next start`, so serving AT that SHA is the migration having applied to the live database. 7/7 on the drive, three of them controls — and ⭐ the Swahili sentence the ledger stores VERBATIM is the sentence /auth/register really shows |
+| U6 | data | ✅ | S3b | 6429f86f | no consent ledger and no SMS suppression list anywhere, and `marketingOptIn` a bare boolean with no channel, wording, evidence or history → two append-only stores in BOTH DALs with named types, the 82nd migration generated offline and APPLIED on real PostgreSQL 18.3 (10/10, two controls), dal-parity 1380 → 1440 | `test:dal-parity` · `test:marketing-consent-ledger` | yes · `red:dal-parity` (24/24) · `red:marketing-consent-ledger` (4/4) | 2026-09-25 · live on `32067c92`: production starts `prisma migrate deploy && next start`, so serving AT that SHA is the migration having applied to the live database. 7/7 on the drive, three of them controls — and ⭐ the Swahili sentence the ledger stores VERBATIM is the sentence /auth/register really shows. 🔴 **Found at S6:** its migration also dropped other lanes' retired schema and the eight trigram search indexes — no consequential data lost, repair first in S7 (§0) |
 | U7 | engine | ✅ | S4 | e14e4204 + b60dc492 | nothing asked whether a number may be marketed at all, and a gate written the obvious way would have found NO player: `User.phoneE164` is `+255…` while the marketing key is bare `255…`, unequal for every input → one ordered gate, suppression first, with the bridge pinned in both directions and four mutually exclusive outcomes in one run | `test:marketing-consent` | yes · `red:marketing-consent` (4/4) | 2026-09-25 · live on `b60dc492`. ⚠️ The gate has no HTTP surface until U42, so its behaviour is proven by EXECUTION (15 assertions, 5/5 red) rather than by a live drive — stated plainly rather than dressed up as one. The deploy landing IS the build proof, and the U6 drive re-ran green on it |
 | U8 | visual | ✅ | S4 + S5 | 5942332f + 80a8b0a4 | the resubscribe button U8 promises COULD NOT HAVE WORKED — suppression rows are never deleted and U7's gate asks suppression FIRST, so "start them again" would have reported a success while the row refused for ever → a row is never DELETED but may be SUPERSEDED (`liftedAt`), one expand-only migration proven from an EMPTY database on real PostgreSQL 18.3, and stop → start → stop proven in one run with the GATE asked after every step | `test:marketing-optout` · `test:dal-parity` §17/§18 | yes · `red:marketing-optout` (8/8) · `red:dal-parity` (35/35) | 2026-09-25 · live on `80a8b0a4`: production starts `prisma migrate deploy && next start`, so serving AT that SHA is the 84th migration having applied to the live database. The production drive is 14/14 and REFUSED to report until it reached the SHA — `noindex` proven by DISCRIMINATION (`/s/<token>` answers `noindex, nofollow` while `/legal/responsible-gambling` answers `index, follow`), and a real signed-out browser LANDS on `/s/` while `/wallet` is sent to `/auth/login`, so the no-login check can fail. ⭐ Six states driven at **1280 and 360**, plus `prefers-reduced-motion: reduce`, and the screenshots OPENED AND READ — 47/47, and reading them found a defect no assertion had: the refusal told the reader to "tap once to stop" on a page that renders NO BUTTON. ⚠️ **The token-bearing states are driven against a local `next dev`, not production, and that is stated rather than dressed up:** nothing mints a token until U42, and the dev-test seed route correctly 404s in production. What production proves is that the page serves, refuses a bad token with no false success, and is NOT sent to sign in. |
-| U9 | guard | ⬜ | — | — | — | `test:marketing-consent` | — | gate INSIDE the loop |
-| U10 | engine | ⬜ | — | — | — | `test:rg-doors` | — | D9 standing, not lockout |
+| U9 | guard | ✅ | S6 | 4dfea77e | there was NO send loop to put the gate in — nothing looped over recipients and U7's gate had no caller → `dispatchSlice`, the loop's innermost step: the gate asked per recipient immediately before the one send, a refusal `skipped` never `failed`, settled by key; and a two-slice contract in which an opt-out, a self-exclusion and a break between the slices never reach the wire — the gate hoisted to list-build time SENDS the opted-out number | `test:marketing-consent` | yes · `red:marketing-consent` (13/13 — 8 gate + 5 loop, each on its own assertion) | 2026-09-25 · live on `4dfea77e` (production served it at 21:38 UTC). ⚠️ **RE-SCOPED, stated rather than dressed up:** there is no production loop until U43, and `send` has no default until U35 gives the wire a purpose, so the behaviour is proven by EXECUTION (36 assertions, a real opt-out through `stopMarketing`, a real `selfExclude` and `coolOff` between slices, a wire answering in reverse). U43 joins the contract as a second driver (§9 U43). What production proves is that the changed module chain LOADS: `/s/<token>` imports optout-service → consent → rg, and at `4dfea77e` it renders the Swahili invalid-link refusal with `noindex` |
+| U10 | engine | ✅ | S6 | f1ad4417 | a player who took a one-hour break was refused for ever as `account_status`, a restored self-excluder for ever, harm markers were never asked, and U7's "deciding must not write" fix still REWROTE any RG row whose pending limit had come due → one read-only standing predicate: an exclusion lifts only on an officer restore + six calendar months + a consent after the restore, a break only on a consent after it ended, a harm marker refuses for its window and an unreadable check refuses | `test:rg-doors` · `test:marketing-consent` | yes · `red:rg-doors` (19/19 real-file mutations, 8 of them on `marketing/rg.ts` and the gate) · `red:marketing-consent` | 2026-09-25 · live on `12c37673` then `4dfea77e`. ⚠️ No HTTP surface until U42, so proven by EXECUTION (`test:rg-doors` §8, 37 assertions, both lifts proven to EXIST, a control proving the no-write fixture really exercises the write path) — not by a live drive. ⚠️ Harm markers are NOT standing (nothing persists a flag) — an owner item in §0, not a hidden gap. D10 stays ⬜: an owner ruling |
 | U11 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | 18+ |
 | U12 | docs | ⬜ | — | — | — | `test:privacy-notice` | — | D12 published promise |
 | U13 | engine | ⬜ | — | — | — | `test:marketing-window` | — | quiet hours |
@@ -323,7 +315,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | D6 | U5 | ⬜ | the helpline we publish (0800 11 0011) is not the one the Gaming Board's code names |
 | D7 | U6 | ✅ | there is no SMS suppression list at all |
 | D8 | U6 | ✅ | `marketingOptIn` is a boolean with no channel, no wording and no ledger |
-| D9 | U10 | ⬜ | `isLockedOut` lifts itself when the chosen period elapses — marketing must not use it |
+| D9 | U10 | ✅ | `isLockedOut` lifts itself when the chosen period elapses — marketing must not use it |
 | D10 | U10 | ⬜ | `push-service` inherits that lift (filed here, changed only by owner ruling) |
 | D11 | U11 | ⬜ | nothing checks age before an outbound marketing message |
 | D12 | U12 | ⬜ | `/legal/responsible-gambling` §4 publishes three commitments with no code behind them |
@@ -359,6 +351,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S6 | 2026-09-25 | **U9 ✅ LIVE (`4dfea77e`) and U10 ✅ LIVE (`f1ad4417`) — 10/52 units, 8/25 defects (D9).** Run on Ali-Blade15 in its own worktree (`marketing-s6`) with a real `npm ci`, pushed `HEAD:main` unit by unit. ⭐ **U9's premise failed, and the plan had even named the wrong unit:** there was no send loop, and the loop is U43, not U35. Rather than wrap a gate round nothing, U9 shipped the loop's innermost step (`dispatchSlice`) and a two-slice contract that U43 must join as a driver; the gate hoisted to list-build time sends the opted-out number, and that is the red control. 🔴 **U10 found U7's no-write fix was half a fix** — an EXISTING row is still rewritten by `effectivize` — and three premises false: cooling-off was already refused for ever under the wrong reason (nothing clears `COOLED_OFF`), a restore leaves no column (only an audit row, which is what is now read), and harm markers cannot be standing (nothing persists a flag — owner item). The gate's order was not §5.6's; now it is. **Measured:** `test:rg-doors` 54 → 91, `red:rg-doors` 11 → 19 real-file mutations, `test:marketing-consent` 15 → 36, `red:marketing-consent` 5 → 13; typecheck clean; both deploys confirmed by `?dpl=`. ⚠️ **Two instrument defects of this lane's own, caught before they cost anything:** the tracker's red control scored 26/28 on CLEAN main on this PC — `core.autocrlf=true` puts CRLF on disk and two plants anchored on `"\n---\n\n## §10 —"` found nothing (it said so, loudly; the reader now normalises line endings, 28/28); and a first launch of the stale-text fixers passed a placeholder instead of the findings — stopped within seconds, before any agent had written, and relaunched reading the findings from disk. ⭐ **And Ali's standing instruction, applied repo-wide:** a find-and-refute sweep of stale SMS/Blackball/marketing text — 89 candidates, 74 confirmed by a second agent told to refute each — fixed in docs, code comments and schema notes, plus §10's off-by-one, the NEXT-PLAN "Next" cell stuck at S1, and BLACKBALL-SMS.md's pre-fix claims that the callback never fires. 🔴 **And the finding the next session must act on first, surfaced by the sweep's verifier running `test:dead-schema`:** U6's migration (S3b) was generated with `prisma migrate diff` and dropped other lanes' retired schema — F-05's four empty tables, three columns and three enums, AGENT-PROGRAMME's `AffiliateAgent.tier` — and the eight trigram search indexes, all without `IF EXISTS`, on production. Checked before concluding: the tables/columns were measured empty and already scheduled for dropping by their own lanes (whose SQL uses `IF EXISTS`, so no boot hazard — both docs now say the step is done), and the indexes were a bet on growth the planner ignores at today's size, so nothing is broken NOW. The repair (restore the indexes, a guard against a migration dropping another lane's objects, a dated `dead-schema` exemption for the applied file) is §0's first S7 item. |
 | S5 | 2026-09-25 | **U8 ✅ LIVE (`80a8b0a4`) — 8/52 units.** ⭐ **The decision S4 refused to rush was taken and it was right:** a suppression row is never DELETED but may be SUPERSEDED. `liftedAt` + `liftedReason`, expand-only, proven FROM AN EMPTY DATABASE on real PostgreSQL 18.3 — 84 migrations, both columns nullable, a SECOND lift touching 0 rows, the row still present. §17's "no delete" assertions all stand. 🔴 **AND THE DECISION SURFACED A SECOND FALSE SUCCESS THE PLAN DID NOT NAME**, pointing the other way: `suppression.create` is an upsert with `update: {}`, so once a row can be lifted, `stop → start again → stop again` hands back the LIFTED row — telling somebody they will never be marketed again while the lift stands and the next campaign sends. The update now CLEARS the lift, and §17's `update: {}` assertion was REPLACED rather than softened: it says what it always meant — the block must not touch `createdAt`, and it must re-arm. 🔴 **AND A THIRD, FOUND BY RUNNING U7's SUITE:** the memory twin asked `r.liftedAt === null`, which is FALSE for a row carrying no lift field — so an un-lifted suppression read as LIFTED and a person who said stop came back MARKETABLE. It failed OPEN. Now `!r.liftedAt`. ⭐ **And the repo-wide fact behind it:** `tsconfig.json` includes `scripts/**/*.ts` while every suite is `.mts`, so **no test file in this repo is typechecked** — a DAL type change breaks fixtures in silence. ⭐ **The red control caught the GUARD lying, twice:** the expiry plant reached nothing because the assertion called the SHIPPED resolver instead of the object under test, and the fail-closed fixture stopped being legacy once `create`'s idempotence re-armed it — a fixture that stops being the shape it is named for is a control that has quietly stopped controlling. Both are cases now; 8/8 caught. ⭐ **And reading the screenshots found what no assertion did:** the invalid-token refusal told the reader to "tap once to stop" on a page that renders NO BUTTON. ⚠️ **Two instrument defects of my own, both in the drive:** `button.first()` resolved to a hidden language-picker option in the SITE CHROME, and the text assertions could not fail — `optout.title` is the SAME STRING as the stop button's label, so "the stop button is on the page" was TRUE on a page with no button. Controls are counted by role and accessible name now. ⚠️ **`next dev` cannot run in a junctioned worktree either**, not only `next build` — same Turbopack symlink refusal, after printing "Ready". |
 | S4 | 2026-09-25 | **U7 ✅ LIVE (`b60dc492`); U8 🟡 store half live (`5942332f`), page not built.** ⭐ **The trap U7 exists to survive:** this platform stores phone numbers in TWO formats and nothing said so — `User.phoneE164` is `+255…` from `tzPhone` (`validators.ts:32-37`), the marketing key is bare `255…` from `toMsisdn255`, and they are unequal for EVERY input including `+255712345678` itself. So the obvious gate finds NO player, hands the entire player base to the ledger branch — the one branch that must never govern a player (OD10) — and never throws or logs. `userPhoneKeyFor` is the bridge and the suite pins it in BOTH directions, because a bridge asserted only in the working direction can be deleted without the guard noticing. 🔴 **U7 SHIPPED WITH A DEFECT AND WAS FIXED THE SAME SESSION:** `selfExclusionStanding` → `getRgSettings` ends in `db.responsible.upsert(fresh)` (`responsible-gambling.ts:90`), so ASKING THE GATE A QUESTION WROTE A ROW — 150,000 ResponsibleGambling rows per campaign, created by deciding NOT to message people. ⚠️ Found by an adversarial read of the SHIPPED unit, not by a failing test: the defect writes correct-looking data, so nothing went red. Assertion 14 now pins it and red case 4 plants it. ⛔ **Three of this plan's own instructions were stale again:** OD9 named a `MessagingConsent{GRANTED}` status the shipped enum does not have (it is `GIVEN`, matching the existing `privacy.marketing_consent.given` audit action) and OD9's `UNKNOWN` is not in the enum either — both corrected, with the 55P04 cost of adding it later recorded on OD9 itself. ⭐ **U8's premise failed twice over**, which is why only its store shipped: there is no recipient row to hang a token on until U35 (S18) and nothing mints one until U42 (S21), and `marketingFooter` has no callers outside its own test — so U8's stated Accept (a minted token suppressing on production) is unreachable at S4 and now belongs to U42/U52. 🔴 **And the number OD43's length hides:** the token is 8 characters and never expires, so the obvious hex `randomId(4)` (16⁸ = 4.3×10⁹) gives ≈2.6 EXPECTED collisions per 150k campaign — near-certain on the first one. The 32-char ambiguity-free alphabet gives ≈1%, still compounding, so a taken token is REFUSED rather than upserted (an upsert would silently re-point somebody else's live opt-out link). 🔴 **THE OPEN DESIGN QUESTION THIS SESSION SURFACED AND DID NOT HALF-APPLY:** U8 promises a resubscribe button, but suppression rows are never deleted and the gate asks suppression FIRST — so resubscribe would show a success that is not one. The fix is a nullable `liftedAt` (superseded, never deleted); it is written into ▶ NEXT rather than rushed into the live gate at the end of a long session. |
 | S3b | 2026-09-25 | **U6 ✅ LIVE on `32067c92` — D7 and D8 closed; the consent ledger and the SMS suppression list exist, in both stores.** ⭐ **The unit was never blocked — the blocker was.** §0 had stopped U6 for a whole session on "`docker` is not on PATH, so `db-scratch.mts` cannot raise a scratch Postgres". That script does not use Docker: it loads `embedded-postgres` (`:129-146`), whose 107 MB binaries are already installed, and it raised **PostgreSQL 18.3 — production's own major version** here. All 82 migrations apply from empty through the real `prisma migrate deploy`. The lesson is the one this lane keeps re-learning: **audit the instrument, not only the code** — the blocker named a MECHANISM (`docker`) and nobody opened the file to see whether that was the mechanism. ⛔ **Two more of the plan's own instructions were stale**, both because parallel programmes moved underneath it: `dal-parity` was to gain "§7 with its own planted-key control", but §7–§16 have been taken since house bots' build and the gate has had a planted-key control at §0 all along — so U6 took §17 and EXTENDED `red:dal-parity` rather than shipping a second control beside a working one. ⭐ **The red control then found a hole in this unit's own guard**: the tiebreak assertion asked whether the ordering appeared ANYWHERE in the namespace, and each twin has TWO readers — so planting its removal from `latestFor` left the gate GREEN, because `listFor` still carried it. An assertion a sibling can satisfy on your behalf is not an assertion about you; it counts both readers now, with a control proving one is not enough. ⭐ **And the enum rule is narrower than this plan states** — measured, not assumed: adding a value to an EXISTING enum cannot be used in the same transaction (`55P04 unsafe use of new value`), which binds U35/D22 adding `MARKETING` to `SmsPurpose`; a BRAND-NEW type created and used in one transaction is allowed, so U6's five types ship in ONE migration rather than two. 🔴 **A FINDING OUTSIDE THIS PROGRAMME, RECORDED AND NOT FIXED (§6 forbids it):** `schema.prisma` has declared `@@unique([provider, providerRef])` on `Transaction` since 2026-06-08 (`1112ee3c`, "Hardening sprint") with **no migration** — the init migration creates only a non-unique `Transaction_providerRef_idx`, so production has never had the constraint. Its own comment says "a retried webhook with the same providerRef must not" duplicate. Money is NOT leaking today: `settlePaymentWebhook` is idempotent in application code (`wallet-service.ts:1015`, `txn.status !== "PROCESSING"`). The exposure is that `findByProviderRef` is `findFirst({ where: { providerRef } })` — it does not even use the compound key — so two rows sharing a ref would resolve arbitrarily. ⚠️ It also means **`prisma migrate diff` sweeps it into any unrelated migration**, which is exactly what happened here: it was generated into U6's SQL and removed by hand before the commit. ⚠️ **Environment, recorded so it costs nobody else a session:** `prisma migrate dev` needs a shadow database, dies `P1017` on the embedded cluster and leaves ~14 orphaned `postgres.exe` holding `.pgscratch` against deletion — use `migrate diff --from-url` + `migrate deploy` instead; and ⛔ do not clear those orphans with a global kill, because sibling sessions run their own clusters and this session killed theirs. ⚠️ **Also recorded for U7:** `isSuppressed` is ALREADY an exported name (`email-suppression.ts`) meaning bounced/complained — deliverability, not consent — and `marketingOptIn` has FIVE writers, of which U6 wired two. |
@@ -378,6 +371,11 @@ send); balance **TZS 232** — thirty-eight single-segment messages; `BATCH_MAX`
 gateway failure is HTTP 400, so the `status` boolean is the only verdict; the success reply carries no
 per-message id. ✅ **Delivery receipts WORK** — see §3a, which supersedes the "no receipt has ever
 arrived" premise this plan was written on. Guide: `docs/BLACKBALL-SMS.md`.
+
+⚠️ **The paragraphs below are the 2026-09-16 BASELINE, kept as the "before" U1–U10 measure against — not
+today's state.** Since then U1–U8 built the phone key, the number library, the segment arithmetic, the
+footer, the helpline guard, the consent ledger, the suppression list, the one gate and the opt-out page,
+and U9–U10 the dispatch step and the RG standing. §1 is the current state.
 
 **Nothing on this platform checks marketing permission before an SMS.** There is no suppression list, no
 consent ledger, no opt-out, no age check and no responsible-gambling gate on the SMS rail.
@@ -865,7 +863,8 @@ text. The one-line summaries are in §1; what follows is what each one actually 
   may not read a number at all. **U30**
 - **D20 · `sendBatch` updates `SmsMessage` rows one at a time** — and the patch is identical for every row
   in a chunk, because the gateway's verdict is per-request. **U45**
-- **D21 · The DLR route updates `InviteEntry` only.** ⭐ Rewritten 2026-09-23: receipts now arrive and settle real rows in seconds (§3a), so this is no longer "a fan-out nothing feeds" — it is the one arm a campaign recipient needs and does not have. **U46**
+- **D21 · The DLR route fans out to `InviteEntry` only** — it settles the `SmsMessage` row for every
+  receipt, then has exactly one per-target arm, and a campaign recipient has none. ⭐ Rewritten 2026-09-23: receipts now arrive and settle real rows in seconds (§3a), so this is no longer "a fan-out nothing feeds" — it is the one arm a campaign recipient needs and does not have. **U46**
 - **D22 · No `MARKETING` purpose** — folding 50k rows into `INVITE` destroys the invite lane's meaning
   and makes a per-lane cost report impossible. **U35**
 - **D23 · The 30 s `withLock` timeout** makes the existing send shape unusable at campaign scale. **U43**
@@ -885,14 +884,16 @@ in the commit that first names it in code (§11a.1).
 
 ### Phase A — foundations and permission (U1–U16)
 
-**U1 · One phone key, and a refusal at the wire** — `src/lib/phone-normalize.ts`, `src/lib/server/sms.ts`
+**U1 · One phone key, and a refusal at the wire** — `src/lib/phone-normalize.ts`, `src/lib/server/sms.ts` — ✅ LIVE S1
 Fix D1 (`00`/IDD prefix, and `normalizeTzLocalDigits`'s matching wrong answer). Add D2: `sendBatch`
 refuses a message whose msisdn is not exactly 12 digits starting `2556|2557`, with code `BAD_MSISDN`,
 **before** the `SmsMessage` row is written. Twelve written-out vectors (⛔ not round numbers):
 `0712345678`, `712345678`, `255712345678`, `+255712345678`, `00255712345678`, `+255 712 345 678`,
 `255-712-345-678`, `+254712345678`, `0222123456`, `0701234567`, `'+255712345678` (our own export's
 formula guard), `255712345` (short).
-Extends the existing `test:phone-normalize` suite and its existing red control — ⛔ no new `red:` key.
+Extends `test:phone-normalize`. *(Corrected 2026-09-25: this said "and its existing red control — no new
+`red:` key"; the suite had NO red control, so S1 added `red:phone-normalize`, in-process, at zero cost to
+the `red-anchors` ceiling — §2 S1 ①.)*
 **Gates:** `test:phone-normalize`, `test:selcom`, `test:payout-rails`, `test:payout-destination`,
 `test:msisdn-prefill`, `test:otp-delivery`, `test:shell-boundary`.
 **RED:** restore the naive `startsWith("0")` branch → the `00255…` vector must fail.
@@ -1106,14 +1107,15 @@ toggle now append; the 730-day retention lapse (U16 owns it, explicitly), accoun
 (`user-service.ts:147`) and erasure (`erasure.ts:476`) do not. Until they do, the ledger and the boolean
 disagree after any of those three. ⛔ Not absorbed into U6 — closure and erasure are currently unowned.
 
-**U7 · The ONE gate** — `src/lib/server/marketing/consent.ts`
+**U7 · The ONE gate** — `src/lib/server/marketing/consent.ts` — ✅ LIVE S4 (order and RG step reworked at U10)
 `mayReceiveMarketingSms(msisdn) → { ok } | { ok:false, skipReason, detail }`, ordered exactly as §5.6.
 Suppression first; then, if the number belongs to a `User`, that user governs (RG standing → account
 status → `marketingOptIn`); otherwise the ledger governs. ⛔ A contact-book row can never override a
 player's own "no".
-**Guard:** `test:marketing-consent` (14 assertions on the real gate). **RED:** `red:marketing-consent`,
-in-process, 4/4 — consent asked before suppression, the phone bridge dropped, an elapsed self-exclusion
-re-permitting marketing, an imported row speaking over a player's own no. ⭐ It runs TWO controls before
+**Guard:** `test:marketing-consent` (the gate executed on real fixtures; it grew at U9/U10 — re-derive the
+count, never quote it). **RED:** `red:marketing-consent`, in-process — at U7: consent asked before
+suppression, the phone bridge dropped, an elapsed self-exclusion re-permitting marketing, an imported row
+speaking over a player's own no. ⭐ It runs TWO controls before
 planting anything: the shipped gate green, and the defect-free MODEL proven to agree with it on every
 fixture, so a red case's failure is attributable to its flag rather than to a sloppy model.
 **Accept:** four mutually exclusive states in one run (allowed / suppressed / no consent / RG), so neither
@@ -1137,7 +1139,7 @@ separate gates in the loop. U7 answers suppression, consent, self-exclusion stan
 ⭐ `minimum_served` is refused, not only `serving` — a 24-hour self-exclusion that elapsed a year ago is
 still a refusal (D9, OD12). U10 adds the rest ON TOP of this; it does not replace it.
 
-**U8 · Opt-out that works** — `src/app/s/[token]/{page,actions}.tsx`, `src/lib/marketing/optout.ts`
+**U8 · Opt-out that works** — `src/app/s/[token]/{page,actions}.tsx`, `src/lib/marketing/optout.ts` — ✅ LIVE S4 + S5
 An 8-character token minted per recipient at enqueue (unique index), never expiring, no login. One click
 writes: the suppression row, a `WITHDRAWN` ledger row carrying the page's exact wording, and — when the
 number belongs to a player — `marketingOptIn = false` through the **existing** `privacy.
@@ -1151,7 +1153,7 @@ next dispatch.
 
 ⛔ **SCOPE CORRECTED BEFORE BUILDING (S4), because this unit's premise fails twice over.**
 ① **There is no recipient row to hang a token on.** `SmsCampaign` does not exist; `InviteCampaign` /
-`InviteEntry` (`schema.prisma:783,806`) are the unrelated referral system and carry no token. The
+`InviteEntry` (`schema.prisma:783,806`) are the unrelated invite-CAMPAIGN system (`/admin/invites` — not the player referral link on `/profile/invite`, which is `AffiliateAgent` / `ReferralReward`) and carry no token. The
 recipient table is U35 (S19) and the minting is U42 (S22) — both far downstream of S4. Worse, U35's own
 field list in this plan names no opt-out token column at all (the `claimToken` there is U43's slice
 token). So U8 ships **its own** token store, keyed by token and mirroring `Suppression`'s triple, which
@@ -1160,8 +1162,11 @@ U42 later writes into at enqueue.
 (`footer.ts:86`) builds the string `50pick 18+ 0800110051 Acha: 50pick.tz/s/<token>`, but `composeMarketing`
 and `marketingFooter` have **no callers outside `campaign-compose.test.mts`** — no message carries a `/s/`
 link today. ⭐ The production half therefore moves to **U42 (minting) and U52 (the Seal drive)**, and is
-NOT claimed here. What U8 proves on production is that the page serves, refuses a bad token without a
-false success, and suppresses a token planted through the DAL.
+NOT claimed here. What U8 proves on production is that the page serves, answers `noindex`, refuses a
+bad token without a false success, and is NOT sent to sign in; the token-bearing states (stop, already
+stopped, start again) are proven on a local `next dev`, because the seed route that plants a token 404s in
+production (§1's U8 row). *(Corrected 2026-09-25: this said production "suppresses a token planted
+through the DAL", which the live drive did not do.)*
 
 🔴 **AND A COLLISION NUMBER OD43's LENGTH HIDES.** `randomId` returns **hex** (`crypto.ts:109-111`),
 so the obvious `randomId(4)` is 16⁸ = 4.3×10⁹ — about **2.6 expected collisions per 150k-recipient
@@ -1293,6 +1298,17 @@ after the first lapse. The guard is structural — grep the schema for phone/e-m
 owning model to appear in both files or be listed with a reason.
 **Guard:** `test:retention` + `test:dsar-secrets`. **RED:** add a model with a phone column → reported.
 **Accept:** `/admin/retention` and the published schedule name the same rows.
+🔴 **FOUND AT S6, OWNED HERE — ERASURE CAN RE-OPEN MARKETING, AND THE MEMORY STORE HIDES IT** (worked out
+from the code, not yet executed on Postgres). Erasure tombstones `User.phoneE164` to `erased:<id>`
+(`erasure.ts`) but touches neither `MessagingConsent` nor `Suppression`. On Postgres `findByPhone("+255…")`
+then returns null, so the gate falls to the LEDGER branch — and an erased player whose last ledger row is a
+registration or profile GIVEN passes. ⛔ The memory store refuses instead, because `usersByPhone` is written
+only on create and never re-indexed on update, so every suite (all run on memory) finds the erased row —
+a DAL-parity defect that makes the dangerous branch unreachable in tests. U16 must: write a WITHDRAWN ledger
+row (source `OPERATOR`, or a new erasure source) and a suppression row at erasure, fix the memory index, and
+prove the erased number is refused on BOTH stores. ⚠️ The lapse and closure writers (`retention.ts`,
+`user-service.ts`) also clear the boolean with no ledger row — seven `marketingOptIn` writer sites now, three
+unwired.
 
 ### Phase B — the contacts book (U17–U34)
 
@@ -1307,12 +1323,12 @@ load-bearing.
 **Accept:** a GROWTH session reaches the page; an unlisted role does not; the skeleton's declared height
 equals the real block.
 
-**U18 · The book** — `MarketingContact`, `ContactList`, `ContactListMember` + both DALs + `dal-parity` §8
+**U18 · The book** — `MarketingContact`, `ContactList`, `ContactListMember` + both DALs + a new `dal-parity` section
 `msisdn` (bare 255, `@unique` — OD3/OD32), `rawInput`, `displayName?`, `email?`, `ndc` (denormalised so
 the operator filter is an index scan), `operator?`, `source`, `sourceRef`, `userId?` (a LINK, never a
 copy — an erased player must not survive inside a marketing row), `consentState`, `suppressedAt`, `tags`,
 `notes`, `importId?`, audit columns; GIN index on `tags`, indexes on `ndc`, `consentState`, `createdAt`.
-**Guard:** `test:dal-parity` §8. **RED:** a planted key in one mapper only.
+**Guard:** `test:dal-parity` — a NEW section at the next free number (§1–§18 are taken: §6–§16 house bots, §17 U6, §18 U8; corrected 2026-09-25, this said §8), extending `red:dal-parity`. **RED:** a planted key in one mapper only.
 **Accept:** named types, both halves, the section's own control green.
 
 **U19 · Masked by construction** — `sensitive-fields.ts`, `read-tiers` §7/§8 (OD25)
@@ -1406,7 +1422,7 @@ sample back through the real parser.
 Rows are posted in batches of ≤2,000 (≈200 KB — a 5× margin under the 1 MB action limit) into staged
 rows; the run row carries the buckets, the written counters and a `cursor` that is an ordinal into the
 rows this run owns (⛔ never an offset into a query).
-**Guard:** `test:dal-parity` §9. **RED:** a planted key in one mapper only.
+**Guard:** `test:dal-parity` — a NEW section at the next free number (this said §9, which is taken), extending `red:dal-parity`. **RED:** a planted key in one mapper only.
 **Accept:** a closed tab, a reload and a redeploy all leave the run resumable, and the totals come back
 from the server.
 
@@ -1478,7 +1494,7 @@ Recipient: `msisdn`, `contactId?` (`SetNull`, never Cascade — deleting a conta
 we messaged them), `userId?` (stamped for the grid, ⛔ re-resolved at send), status, `smsReference?`
 (nullable-unique), `failureClass`, `error`, `skipReason`, `claimToken`, attempts, segments, cost,
 timestamps, **`@@unique([campaignId, msisdn])`**. ⛔ No stored counters.
-**Guard:** `test:dal-parity` §10. **RED:** planted key; drop the unique index → the U43 concurrency
+**Guard:** `test:dal-parity` — a NEW section at the next free number (this said §10, which is taken). **RED:** planted key; drop the unique index → the U43 concurrency
 control must fail.
 
 **U36 · The campaign list** — `/admin/campaigns` + its five doors + the nav badge (OD39)
@@ -1572,7 +1588,7 @@ duplicate.
 throw on an unmapped field, ⛔ no allow-list), turning 50 round trips into 1; and `settleMany(rows)` for the
 per-row recipient write-back as ONE `$transaction([...])`. ⛔ No raw SQL — it would have no memory twin, and
 every behavioural suite runs on memory.
-**Guard:** `test:dal-parity` §6 (three new lines) + `test:marketing-engine`.
+**Guard:** `test:dal-parity` §13 — the `SmsMessage` section (three new lines; this said §6, which is the house tables) + `test:marketing-engine`.
 **RED:** an unmapped field must throw; a patch applied to a reference outside the list must fail.
 
 **U46 · Receipts** — the DLR route's third arm (D21, OD41)
@@ -1703,8 +1719,9 @@ and write the split into §2 — a half-built unit is worse than a smaller one.
 1. **Per unit:** the guard is written first and proven RED against the real defect, then green; the unit's
    own suites pass; `npm run predeploy` passes (with the new key added to the chain in the same commit).
 2. **Two stores:** `test:dal-parity` gains a section with its own planted-key control.
-3. **Whole tree:** `node scripts/test-all.mjs`, diffed against clean `main`. ⚠️ 20 suites are already red
-   there; the only claim allowed is "no suite red that is not red on clean main". ⚠️ `predeploy` includes
+3. **Whole tree:** `node scripts/test-all.mjs`, run against clean `main` on this machine IN THE SAME SESSION
+   and diffed. ⚠️ Clean `main` is not all green and WHICH suites are red keeps changing — measure it, never
+   compare against a written number; the only claim allowed is "no suite red that is not red on clean main". ⚠️ `predeploy` includes
    `qa:live` and `test:admin-section-gate`, which need a dev server on the expected port.
 4. **Live, by discrimination:** after the deploy, confirm the build via `data-dpl-id`, then run the check
    that fails when the feature is absent. For U52, the evidence is the **refusal** (a suppressed number not
@@ -1772,7 +1789,11 @@ and write the split into §2 — a half-built unit is worse than a smaller one.
 
 ---
 
-## WIRING — what session S0 does when this plan is approved
+## WIRING — what session S0 did (2026-09-16/17) — RECORD
+
+> ⚠️ **A record of the programme's first session, not an instruction and not the current state.** The
+> counts it seeded (`0/52 · 0/25`) and the "nothing checks consent, suppression or opt-out" line it put in
+> three doors were true then; each session now keeps them current (§0a step 6). Read §0 and §1.
 
 **1 · Write the plan of record.** This document becomes `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`.
 

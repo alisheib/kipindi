@@ -31,7 +31,7 @@ async function authed(browser) {
 const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 const PAGES = [
-  ["/profile/invite", "Invite & Earn"],
+  ["/profile/invite", "Invite friends"],
   ["/profile", "profile"],
   ["/proposals", "proposals board"],
   ["/proposals/new", "create proposal"],
@@ -177,16 +177,10 @@ try {
     log("E.trigger: paused → player board read-only banner", /paused/i.test(await pp.evaluate(() => document.body.innerText)));
     await pp.close();
     await setP({ reset: true });
-    // E3 · admin affiliate: change commission rate + save persists
+    // E3 · admin affiliate while the invite is UNPAID: the chip says so and the reward cards cannot be switched on
     await p.goto(`${BASE}/admin/affiliate`, { waitUntil: "networkidle" });
-    const sw2 = p.locator('button[role="switch"][aria-label="Program master switch"]');
-    if ((await sw2.getAttribute("aria-checked")) === "false") await sw2.click();
-    const commField = p.locator("input.input.input-mono").first();
-    await commField.fill("42");
-    await p.locator(".btn.btn-gold", { hasText: "Save" }).first().click();
-    await p.waitForTimeout(800);
-    await p.reload({ waitUntil: "networkidle" });
-    log("E.admin affiliate commission edit persists (42)", (await p.locator("input.input.input-mono").first().inputValue()) === "42");
+    log("E.admin affiliate reads 'Unpaid — tracking only'", /Unpaid — tracking only/.test(await p.evaluate(() => document.body.innerText)));
+    log("E.admin affiliate commission toggle is disabled while unpaid", await p.locator('button[role="switch"][aria-label="Commission enabled"]').isDisabled());
     await setA({ reset: true });
     await p.close(); await ctx.close();
   }

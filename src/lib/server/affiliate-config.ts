@@ -12,6 +12,12 @@
  * Brand/compliance note: referral rewards are a regulated inducement under
  * Gaming Board of Tanzania guidance. The master switch lets the operator run
  * the whole program dark, or enable only the modes they've cleared.
+ *
+ * ⛔ SINCE 2026-09-25 THIS IS NOT WHAT DECIDES WHETHER A PLAYER IS PAID. The product state
+ * `inviteRewards` (feature-state.ts) is WITHDRAWN and `policyFor` refuses every PLAYER accrual
+ * ABOVE `enabled`, so the values here are stored but cannot pay a player, and the paused banner
+ * does not show. See docs/PLAYER-INVITE-UNPAID.md §4/§12. Agent commission is not read from here
+ * at all (agent-config.ts).
  */
 import { defineConfig } from "./define-config";
 
@@ -25,7 +31,7 @@ export type InviteTrigger = "SIGNUP" | "FIRST_BET";
 export type AffiliateConfig = {
   /** Master switch. When false, links still resolve (recruits still bind to
    *  their referrer) but NO new rewards accrue and players see a paused
-   *  banner. This is the lever the operator flips to run the program dark. */
+   *  banner (only while `inviteRewards` is ACTIVE). This is the lever the operator flips to run the program dark. */
   enabled: boolean;
 
   commission: {

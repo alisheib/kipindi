@@ -132,11 +132,13 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
            Proposals gets when DISABLED, three lines above, and it never wears a badge.
            ⭐ 2026-09-25: `inviteVisible` is TRUE for every player in good standing now (the unpaid
            invite), and FALSE for a closed/suspended/self-excluded account and for an agent out of
-           standing. ⛔ The label is `t.common.invite` — the neutral word — and must stay neutral:
-           `invitePaid` decides the wording in the avatar menu, and this rail has no room for a
-           promise it would have to retract. */
+           standing. ⛔ The label is `t.profile.inviteFriends` — the page's own name, the same words
+           the avatar menu, the /profile row, the bottom rail and the footer use (2026-09-26: the
+           bare verb "Invite" was not recognised as the invite on a phone) — and it must stay
+           neutral: `invitePaid` decides the wording in the avatar menu, and this menu has no room
+           for a promise it would have to retract. */
         ...(inviteVisible
-          ? [{ href: "/profile/invite", label: t.common.invite } as NavItem]
+          ? [{ href: "/profile/invite", label: t.profile.inviteFriends } as NavItem]
           : []),
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ]

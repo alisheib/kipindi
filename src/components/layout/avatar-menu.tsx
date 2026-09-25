@@ -34,12 +34,15 @@ export function AvatarMenu({
   seed?: string;
   isAdmin?: boolean;
   proposalsState?: ProposalsState;
-  /** Resolved by the SERVER shell — a client component cannot know the viewer's role. */
+  /** Resolved by the SERVER shell — a client component cannot know the viewer's standing. */
   inviteVisible?: boolean;
   /**
-   * ⭐ DOES THE INVITE PAY? Resolved by the SERVER shell (`playerInviteRewardsLive()`), for the
-   * same reason `inviteVisible` is: this module must not import `feature-state`, and a client
-   * cannot read a server product state. ⛔ DEFAULTING TO FALSE IS THE SAFE DIRECTION — a menu row
+   * ⭐ DOES THIS VIEWER'S INVITE DESTINATION PAY? Resolved by the SERVER shell as
+   * `playerInviteRewardsLive() || inviteViewer.agentInGoodStanding` (`app-shell.tsx`) — an agent in good
+   * standing's row leads to their paid commission dashboard and keeps "Invite & Earn"; a player's reads
+   * "Invite friends" while `inviteRewards` is WITHDRAWN. Threaded for the same reason `inviteVisible`
+   * is: this module must not import `feature-state`, and a client cannot read a server product
+   * state. ⛔ DEFAULTING TO FALSE IS THE SAFE DIRECTION — a menu row
    * that has lost its prop says "Invite friends" and offers nothing, rather than advertising
    * earnings the programme is refusing.
    */
@@ -339,8 +342,9 @@ type MenuRow = {
   accent?: boolean;
   /** Proposals rides the feature-state flag and is dropped entirely when DISABLED. */
   proposals?: boolean;
-  /** Invite rides the product feature state (`feature-state.ts`), resolved per ROLE by the
-   *  server shell. When it is not this viewer's, the row is filtered out entirely. */
+  /** Invite rides the product feature state (`feature-state.ts`), resolved per VIEWER by the
+   *  server shell — agent standing, or a player in good standing (`InviteViewer`), never the role.
+   *  When it is not this viewer's, the row is filtered out entirely. */
   invite?: boolean;
 };
 
@@ -407,10 +411,11 @@ function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge }: 
         {proposalsBadge && (
           <ProposalsStateBadge state={proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
         )}
-        {/* ⛔ No generic coming-soon badge here. Invite was its only producer and Invite is
-            WITHDRAWN — filtered out of `rows` above, never badged. Keeping a generically
-            named flag that hard-coded the INVITE label would have handed the next feature
-            to set it Invite's words. Proposals keeps its own badge, with its own state. */}
+        {/* ⛔ No generic coming-soon badge here. Invite was its only producer, and Invite is never
+            badged: a viewer who may not hold a link has the row filtered out of `rows` above, and
+            one who may (every player in good standing since 2026-09-25) sees it unbadged. Keeping a
+            generically named flag that hard-coded the INVITE label would have handed the next
+            feature to set it Invite's words. Proposals keeps its own badge, with its own state. */}
       </Link>
     </li>
   );

@@ -40,10 +40,26 @@ design.** See §4.
 - the list of who joined — masked name and date, newest first, capped at 50 with the cap **stated**
   when the list is shorter than the count;
 - one line, in their own language, saying invites pay nothing:
-  *"Inviting is sharing, not earning — 50pick pays no reward for invites. 18+."*
+  *"50pick pays no reward for invites. 18+."* (`inviteNoRewardNote`; the longer wording was cut on
+  2026-09-25 in `8a214a1a`)
 
-Entry points reappear with neutral wording (avatar menu, the profile settings row, the top bar and
-the More rail). On the register page the friend sees **"Invited by &lt;name&gt;"** and **no offer**.
+**Where a player finds it — five doors, every one named "Alika marafiki · Invite friends · 邀请朋友"**
+(the page's own title; one name for one destination), every one behind the same server-resolved
+`inviteVisible`:
+
+| Door | Phone (< 1024px) | Laptop |
+|---|---|---|
+| **Zaidi / More** — the ☰ at the bottom-right of the rail | ✅ the main phone door | — (no rail) |
+| **Avatar menu** — the initials circle, top-right | ✅ opens as a centred sheet | ✅ dropdown |
+| **Footer** — "Uadilifu / Fairness" column, every page | ✅ | ✅ |
+| **/profile** — the settings row | ✅ | ✅ |
+| **More ▾** in the top bar | — | ✅ |
+
+⚠️ Until 2026-09-26 the Zaidi row read the bare verb **"Alika" / "Invite"** while every other door
+said "Alika marafiki", and there was no footer link — on a phone the owner looked for the invite and
+did not recognise the one-word row as it. Both fixed; see §13.
+
+On the register page the friend sees **"Invited by &lt;name&gt;"** and **no offer**.
 
 **Shared links — what carries a code and what does not, measured:**
 
@@ -144,15 +160,16 @@ them.
 One word: `inviteRewards: "ACTIVE"` in `feature-state.ts`, or `FEATURE_INVITEREWARDS=ACTIVE` on the
 server. Everything the paid promo needs is still present and is still executed on every deploy —
 `test:referral` §1–§5, `test:rg-cash-incentive` §5, `test:agent-policy` §1, `test:programme-isolation`
-§2/§3, `test:concurrency` F and `test:withdrawn-features` §4 all drive the ON branch under that
-override, which is why it will not have rotted.
+§2/§3, `test:concurrency` F, `test:withdrawn-features` §4 and `test:house-bot-money` §11.6/§11.8
+all drive the ON branch under that override, which is why it will not have rotted.
 
 ⛔ **It becomes a regulated inducement at that moment.** Clear the reward structure with the Gaming
-Board of Tanzania first; then keep referrer commission ≤ 50% of margin (§2.10a).
+Board of Tanzania first (§2.10a); then keep referrer commission ≤ 50% of margin — guidance printed in
+`/admin/affiliate`'s compliance note, not a rule in `RULES.md`.
 
 ## 8 · The guard, and how it avoids being a suite of zeros
 
-`scripts/player-invite-unpaid.test.mts` — 44 assertions. A feature whose headline promise is a
+`scripts/player-invite-unpaid.test.mts` — 50 assertions. A feature whose headline promise is a
 NEGATIVE is the easiest kind to ship broken, because a suite asserting zeros passes just as well
 when the accrual engine is broken, the fixtures never bet, or the hooks are never called. So:
 
@@ -164,7 +181,14 @@ when the accrual engine is broken, the fixtures never bet, or the hooks are neve
   zero in §2/§3 is caused by the switch under test and by nothing else;
 - **§3** asks the resolver directly with every reward mode ON and a rate set — the assertion that
   says "0% would not have been the fix";
-- **§6** proves the operator's roster is complete and ranked by people, not capped at ten.
+- **§6** proves the operator's roster is complete and ranked by people, not capped at ten;
+- **§7** (2026-09-26) signs a friend up through `registerWithPassword({ referralCode })` — the ONE
+  call the register form makes with its hidden `ref` — and proves they are attributed (PLAYER, with
+  the code), counted on the inviter's page, and paid for by nobody; an unknown code is the control.
+  Before it, every suite called `bindRecruit` directly and nothing covered the form's hand-off.
+
+`npm run red:withdrawn-features` holds the other half: every door to the page must sit beside its
+gate (§7 of that suite) — **4/4** mutations caught, including the footer door added 2026-09-26.
 
 `npm run red:player-invite-unpaid` reintroduces six real defects — the resolver stops consulting
 the product state, the read model claims it pays, an agent out of standing falls back to the player
@@ -177,18 +201,21 @@ roster is cut to a top ten — and each turns **its own** assertion red. 6/6 pro
 |---|---|
 | `src/lib/feature-state.ts` | `inviteRewards` added; `invite` → ACTIVE; `InviteViewer.playerInviteEligible`; `playerInviteRewardsLive()` |
 | `src/lib/server/affiliate-service.ts` | `playerStandingFor`, `playerInviteEligibleFor`; the PLAYER refusal in `policyFor`; `rewardsLive` on both read models; ribbon gated; roster full + re-sorted; `referrerCount` |
-| `src/app/profile/invite/page.tsx` | every money element conditional on `rewardsLive`; royal instead of gold; the unpaid ladder and the no-reward line |
+| `src/app/profile/invite/page.tsx` | every money element conditional on `rewardsLive`; royal instead of gold; the no-reward line |
 | `src/app/admin/affiliate/page.tsx` | unpaid chip, swapped KPIs, paginated roster, compliance note |
 | `src/app/profile/page.tsx` | the settings row stops wearing the agent dashboard's words for a player |
 | `src/components/layout/{app-shell,top-app-bar,avatar-menu}.tsx` | `invitePaid` threaded; the menu row loses "& Earn" and its gilt accent |
-| `src/lib/i18n-dict.ts` | 10 keys × en/sw/zh |
+| `src/components/layout/{bottom-nav,top-app-bar,public-footer}.tsx` | (2026-09-26) every door says "Invite friends"; the footer door, behind `inviteVisible` |
+| `src/app/admin/affiliate/affiliate-admin-client.tsx` | (2026-09-26) the master-switch row wraps at phone width |
+| `scripts/live/invite-{prod,admin}-drive.mjs` · `npm run qa:invite-phone` / `qa:invite-admin` | the production drives of §13 |
+| `src/lib/i18n-dict.ts` | the unpaid page's own keys × en/sw/zh — `inviteFriends`/`inviteFriendsSub`, `friendsJoined`, `yourFriends`, `noFriendsYet`/`noFriendsBody`, `inviteNoRewardNote`, `inviteListCapped` |
 | `scripts/player-invite-unpaid.test.mts` + anchors | the new guard and its control |
-| `scripts/{withdrawn-features,agent-eligibility,agent-policy,programme-isolation,rg-cash-incentive,referral-signup,concurrency}.test.mts` | restated for the new product state — see §10 |
+| `scripts/{withdrawn-features,agent-eligibility,agent-policy,programme-isolation,rg-cash-incentive,referral-signup,concurrency}.test.mts` · `scripts/lib/house-bot-money-cases.mts` | restated for the new product state — see §10 |
 | `scripts/pre-deploy-live-check.mjs` | asserts the share surface is present AND no money word is |
 
 ## 10 · The guards that had to change, and why none of them was weakened
 
-Seven suites asserted the old product state. Each was **restated**, not relaxed — and two of them
+Eight suites asserted the old product state. Each was **restated**, not relaxed — and two of them
 found real defects while being rewritten:
 
 - `withdrawn-features` §1/§4/§5 — 69→86 assertions. §5a inverts (the bind lands, stamped PLAYER);
@@ -205,6 +232,10 @@ found real defects while being rewritten:
 - `rg-cash-incentive` §5, `referral-signup` §1–§6, `concurrency` F — same class: a section about a
   cash incentive, a prize, or a race between three prize accruals has nothing to measure with the
   money off.
+- `house-bot-money` §11.6/§11.8 (`scripts/lib/house-bot-money-cases.mts`) — drives the PLAYER prize
+  through the real deposit/bet hooks and set only `FEATURE_INVITE=ACTIVE`, so after the split it
+  silently read `prizes: []`; it now sets `FEATURE_INVITEREWARDS=ACTIVE` too (`1e49b3b9`). Missed by
+  the first pass and caught by the audit — this section said "seven" until 2026-09-26.
 
 ⚠️ `scripts/anchors/withdrawn-features.anchors.mjs` was **re-anchored**: the profile settings row no
 longer calls `inviteViewerFor` inline. An anchor that cannot inject is a control that has silently
@@ -271,3 +302,37 @@ The three reward cards are **disabled**, not hidden: their stored values survive
 untouched when the state flips. A banner says they are stored but not applied, names the one thing
 that changes it, and prices what they would pay. ⛔ Before this, an officer could enable commission,
 type 50%, press Save and get a success toast while nothing whatsoever happened.
+
+## 13 · Verified on PRODUCTION, 2026-09-26
+
+Until this date the work had only ever been checked on a local dev server. Measured on
+https://www.50pick.tz, read-only apart from the one write named below:
+
+| Check | Result |
+|---|---|
+| Live build contains the invite work | ✅ `?dpl=` = `360935a3`, which has `46e227a1` and `8a214a1a` as ancestors |
+| No Railway override turns money on | ✅ `railway variables` (service 50pick, production): **no `FEATURE_*` key at all** — neither `FEATURE_INVITEREWARDS` nor `FEATURE_INVITE` |
+| `/admin/affiliate`, laptop 1440 + phone 390 | ✅ **22/22** (`npm run qa:invite-admin`): chip "Unpaid — tracking only", the three reward toggles `disabled`, "stored, not applied" banner, "Paid by 50pick TZS 0", only two enabled controls (master switch · Save), roster present |
+| `/profile/invite` as a player, phone 390, sw/en/zh | ✅ code, `…/auth/register?ref=CODE`, QR, the joined dial, the no-reward line in each language, **no money word and no gilt** in `<main>` |
+| The link, opened signed OUT | ✅ lands on `/auth/register?ref=CODE`, the form's hidden `ref` carries it, the page names the inviter and makes no offer (GET only — no account created) |
+| Doors on a phone | ⚠️ present but hard to find: Zaidi read the bare "Alika", no footer link → **fixed in `5a904737`, verified LIVE 2026-09-26**: `qa:invite-phone` **70/70** on production (sw/en/zh — Zaidi row, avatar menu, footer tappable, /profile row, the page, the signed-out link) |
+| `/admin/affiliate` at 390 | ⚠️ the master-switch sentence was squeezed to ~110px → **fixed in `5a904737`, verified LIVE 2026-09-26**: `qa:invite-admin` **22/22** on production, the sentence wraps and the "Where players find it" note shows |
+
+⭐ The sign-up → attribution step was proven **locally, never on production** (no real account
+created there): `test:player-invite-unpaid` §7 above, and `qa:live` (281/282 locally — the one red
+was "at least one bettable market exists" on an unseeded in-memory board, unrelated).
+
+**How it was measured, and the costs** — so the next run is not rediscovered:
+- The QA player `mobile01`'s password in this laptop's `C:\kipindi-mobile\.env.qa.local` was
+  **stale** (`error=wrong_credentials`). With Ali's approval it was **reset on production
+  2026-09-26** (one row, `passwordSetVia = OFFICER_TEMP`, lock counters cleared; no SMS — the only
+  SMS senders are OTP, which is off, and invite campaigns). The new value is in that file on
+  ALI-BLADE15 only: ⛔ **the office PC's copy is now stale — copy the two `QA_MOBILE01_*` lines over.**
+- Signing in as `admin` signs Ali out of the console everywhere once (one session per account).
+- The live board never reaches `networkidle`, and a fresh browser gets the first-visit primer over
+  the rail; both drives handle it (see their headers).
+
+**Open — Ali's decisions, not defects:**
+1. §11 — should the small share icon on market **cards** carry the player's `?ref=`?
+2. Should the cash Ali pays inviters **off-platform** be recorded in 50pick (today it is recorded
+   nowhere, §3)?

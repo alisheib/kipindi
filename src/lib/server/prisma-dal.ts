@@ -1693,6 +1693,8 @@ export const prismaDb = {
       const rows = await pc().transaction.findMany({ where: { status } });
       return rows.map(toStoredTxn);
     },
+    /** Every transaction, ALL TIME. ⛔ Never on a windowed path — use `listInRange` below (guarded
+     *  by `test:report-parity` §4 and `test:report-window-reads`). */
     listAll: async (): Promise<StoredTxn[]> => {
       const rows = await pc().transaction.findMany();
       return rows.map(toStoredTxn);
