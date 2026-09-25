@@ -373,9 +373,74 @@ if (!process.argv.includes("--prove-red")) {
     for (const [k, v] of Object.entries(extra)) out[Number(k)] = v as string;
     return out;
   };
-  const withDone = (id: string, extra: Partial<Record<number, string>> = {}) => (w: World): World => ({
-    ...w, doc: setRow(w.doc, id, (c) => done(c, extra)), board: bumpBoard(w.board, 1),
-  });
+  /**
+   * 🔴 THE BOARD IS BUMPED TO THE COUNT THE PLANTED DOC ACTUALLY HAS, AND IT USED TO BE
+   * HARD-CODED TO 1.
+   *
+   * ⛔ THIS HARNESS'S CONTROLS HAD BEEN FAILING SINCE THE PROGRAMME PASSED ITS FIRST ✅ UNIT,
+   * WHICH MEANS `red:marketing-setup-plan` HAS BEEN PROVING NOTHING FOR FOUR SESSIONS. It read
+   * `bumpBoard(w.board, 1)` — correct on the day it was written, when exactly one unit was done
+   * — so every control world claimed "1 unit done" on a board whose plan said 7. §5 rightly
+   * reported the disagreement, the run printed RED CONTROL INVALID, and none of the fifteen
+   * planted lies below was ever evaluated. Measured 2026-09-25 against the previous commit:
+   * the plan had 7 ✅ rows and the control wrote 1.
+   *
+   * ⭐ A CONTROL THAT ENCODES A NUMBER THE WORLD IS GOING TO MOVE PAST IS A CONTROL WITH AN
+   * EXPIRY DATE ON IT. The counts are now DERIVED from the planted document, so this cannot rot
+   * again at 9 units, or at 52.
+   */
+  /**
+   * 🔴 THE STATUS CELL, NEVER THE WHOLE ROW — AND THE FIRST VERSION OF THESE HELPERS READ
+   * THE WHOLE ROW, WHICH IS HOW `firstUnitNotDone` ANSWERED "U5".
+   *
+   * U5 is ✅, and its NOTES cell legitimately says "⛔ D6 stays ⬜ — its substance is OQ4". A
+   * scan of the row for the glyph ⬜ therefore matched a sentence ABOUT another row's status,
+   * and the plant was aimed at a finished unit — where setting a commit breaks nothing, so it
+   * went MISSED against a tracker that was working perfectly.
+   * ⭐ A STATUS IS A CELL, NOT A WORD THAT APPEARS SOMEWHERE ON THE LINE. Every one of these
+   * reads column 2 and nothing else.
+   */
+  const rowCells = (line: string): string[] => line.replace(/^\||\|$/g, "").split("|").map((x) => x.trim());
+  const statusOf = (line: string): string => rowCells(line)[2] ?? "";
+  const idRows = (doc: string, prefix: string): string[] =>
+    doc.split(/\r?\n/).filter((l) => new RegExp(`^\\|\\s*${prefix}\\d+\\s*\\|`).test(l));
+  const doneUnitsIn = (doc: string): number =>
+    idRows(doc, "U").filter((l) => statusOf(l).includes("✅")).length;
+  const doneDefectsIn = (doc: string): number =>
+    idRows(doc, "D").filter((l) => statusOf(l).includes("✅")).length;
+
+  /**
+   * ⭐ A PLANT MUST FIND ITS OWN TARGET, OR IT DIES THE DAY THAT UNIT IS FINISHED.
+   *
+   * Three plants below aimed at `U3` and `U1` because those were ⬜ when this harness was
+   * written. They are ✅ now, so "a ⬜ row claiming a commit" was planted onto a row that
+   * legitimately claims one, and "▶ NEXT naming a finished unit" marked a unit ▶ NEXT does not
+   * name. Both went MISSED against a tracker that was working correctly — the harness was
+   * describing a board from four sessions ago.
+   */
+  const firstUnitNotDone = (doc: string): string => {
+    const hit = idRows(doc, "U").find((l) => statusOf(l) === "⬜");
+    return hit ? rowCells(hit)[0] : "U9";
+  };
+  /** The first unit id the ▶ NEXT line actually names — that is the one §4 is about. */
+  const unitNamedByNext = (doc: string): string => {
+    const line = (doc.match(/^\s*▶ NEXT:.*$/m) || [""])[0];
+    return (line.match(/U\d+/) || ["U9"])[0];
+  };
+  /** A defect whose OWNING unit is still ⬜ — the only shape "✅ before its unit" can take. */
+  const defectAheadOfItsUnit = (doc: string): string => {
+    const owners = new Map<string, string>();
+    for (const m of doc.matchAll(/^- \*\*(D\d+)\s·[^\n]*\*\*(U\d+)\*\*/gm)) owners.set(m[1], m[2]);
+    const status = new Map<string, string>();
+    for (const l of idRows(doc, "U")) status.set(rowCells(l)[0], statusOf(l));
+    for (const [d, u] of owners) if ((status.get(u) || "") === "⬜") return d;
+    return "D1";
+  };
+
+  const withDone = (id: string, extra: Partial<Record<number, string>> = {}) => (w: World): World => {
+    const doc = setRow(w.doc, id, (c) => done(c, extra));
+    return { ...w, doc, board: bumpBoard(w.board, doneUnitsIn(doc), doneDefectsIn(doc)) };
+  };
   const unitSlice = (doc: string, id: string) => {
     const start = doc.search(new RegExp(`^\\*\\*${id}\\s·`, "m"));
     const rest = doc.slice(start + 3);
@@ -398,7 +463,7 @@ if (!process.argv.includes("--prove-red")) {
     { name: "🔵 already carrying a live date", expect: /has no live date yet/,
       apply: (w) => ({ ...w, doc: setRow(w.doc, "U3", (c) => { const d = done(c); d[2] = "🔵"; return d; }) }) },
     { name: "⬜ claiming a commit", expect: /claims nothing/,
-      apply: (w) => ({ ...w, doc: setRow(w.doc, "U3", (c) => { c[4] = head; return c; }) }) },
+      apply: (w) => ({ ...w, doc: setRow(w.doc, firstUnitNotDone(w.doc), (c) => { c[4] = head; return c; }) }) },
     { name: "⏸ with no reason", expect: /states a reason/,
       apply: (w) => ({ ...w, doc: setRow(w.doc, "U3", (c) => { c[2] = "⏸"; c[8] = "—"; return c; }) }) },
     { name: "a status that is not in the legend", expect: /uses a legend status/,
@@ -434,8 +499,17 @@ if (!process.argv.includes("--prove-red")) {
     { name: "a defect its owning unit never mentions", expect: /is named inside its owning unit/,
       apply: (w) => ({ ...w, doc: editUnit(w.doc, "U12", (b) => b.replace(/\bD12\b/g, "Dxx")) }) },
     { name: "a defect ✅ while its unit is ⬜", expect: /only after its unit/,
-      apply: (w) => ({ ...w, doc: setRow(w.doc, "D1", (c) => { c[2] = "✅"; return c; }), board: bumpBoard(w.board, 0, 1) }) },
-    { name: "▶ NEXT naming a finished unit", expect: /which is not finished/, apply: withDone("U1") },
+      // ⛔ THE BOARD IS BUMPED TO THE COUNTS THE PLANTED DOC HAS, so §5 stays quiet and the
+      // ONE break this plant makes is the one that gets reported. A plant that also breaks the
+      // counts is a plant whose failure could be attributed to either.
+      apply: (w) => {
+        const doc = setRow(w.doc, defectAheadOfItsUnit(w.doc), (c) => { c[2] = "✅"; return c; });
+        return { ...w, doc, board: bumpBoard(w.board, doneUnitsIn(doc), doneDefectsIn(doc)) };
+      } },
+    // ⛔ THE UNIT ▶ NEXT ACTUALLY NAMES, read from the document. Hard-coding `U1` meant this
+    // plant marked a unit ▶ NEXT has not named since session 1 — it broke nothing §4 looks at.
+    { name: "▶ NEXT naming a finished unit", expect: /which is not finished/,
+      apply: (w) => withDone(unitNamedByNext(w.doc))(w) },
     { name: "NEXT-PLAN counts that disagree", expect: /units done agree/, apply: (w) => ({ ...w, board: bumpBoard(w.board, 3) }) },
     { name: "a NEXT-PLAN row that never links the plan", expect: /that row links this plan/,
       apply: (w) => ({ ...w, board: w.board.split(`(${PLAN_FILE})`).join("(elsewhere.md)") }) },
@@ -444,7 +518,11 @@ if (!process.argv.includes("--prove-red")) {
     { name: "a closure claim that is not earned", expect: /every unit is ✅/,
       apply: (w) => ({ ...w, doc: w.doc.replace(/^\*\*STATUS — [^\n]*/m, "**STATUS — 🏁 CLOSED**") }) },
     { name: "a legal question named but never asked", expect: /has a §4a row/,
-      apply: (w) => ({ ...w, doc: w.doc.replace("◐ HALF-DONE: nothing.", "◐ HALF-DONE: waiting on OQ99.") }) },
+      // ⛔ ANCHORED ON THE MARKER, NOT ON A SENTENCE. This plant used to quote
+      // "◐ HALF-DONE: nothing." verbatim — a line §0 stopped carrying the moment a unit went
+      // half-done, so the plant silently became a no-op. A control anchored to prose is a
+      // control that dies the next time somebody writes an honest status line.
+      apply: (w) => ({ ...w, doc: w.doc.replace(/^◐ HALF-DONE:.*$/m, "◐ HALF-DONE: waiting on OQ99.") }) },
     { name: "a legal question with no safe default", expect: /ships with a safe default/,
       apply: (w) => ({ ...w, doc: w.doc.replace(/^(\| OQ1 \|[^|]*\|)[^|]*\|/m, "$1 — |") }) },
   ];

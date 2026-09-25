@@ -321,6 +321,13 @@ async function runSurface(f: Fixtures): Promise<void> {
     /robots:\s*\{\s*index:\s*false/.test(pageSrc));
   ok("S5 · the page renders a MASKED number, never the raw one (§5.14)",
     /r\.masked/.test(pageSrc) && !/r\.identifier/.test(pageSrc));
+  // ⛔ THE REFUSAL MUST NOT INSTRUCT AN ACTION THE PAGE DOES NOT OFFER. The first version
+  // passed `optout.body` — "tap once to stop marketing messages" — into the invalid-token
+  // EmptyState, on a page that renders no button at all. Found by reading the screenshot, not
+  // by any assertion, which is why there is now an assertion.
+  const refusalBlock = pageSrc.match(/<EmptyState[^>]*t\.optout\.invalid[^>]*\/>/)?.[0] ?? "";
+  ok("S5b · ⛔ the invalid-token refusal does NOT tell the reader to tap a button that is not there",
+    refusalBlock.length > 0 && !/t\.optout\.body/.test(refusalBlock), refusalBlock.slice(0, 90));
   ok("S6 · a loading state exists — it is one of the unit's six",
     readFileSync(join(ROOT, "src/app/s/[token]/loading.tsx"), "utf8").length > 100);
   // ⭐ EVERY STATE HAS ITS OWN SENTENCE, IN ALL THREE LOCALES, AND THEY ARE ALL DIFFERENT.
@@ -335,6 +342,22 @@ async function runSurface(f: Fixtures): Promise<void> {
     ok(`S7.${locale} · each state has its own distinct sentence in ${locale.toUpperCase()}`,
       said.every((x) => typeof x === "string" && x.length > 0) && new Set(said).size === said.length,
       `${new Set(said).size} distinct of ${said.length}`);
+    // 🔴 DISTINCT IS NOT ENOUGH — NO SENTENCE MAY CONTAIN ANOTHER.
+    // ⚠️ WHAT PROMPTED THIS, STATED ACCURATELY: the U8 visual drive matched the FRAGMENT
+    // "utapokea tena" and passed on the page that says the opposite. Swahili `done` is
+    // "Imekamilika. HUTAPOKEA TENA matangazo kutoka 50pick" (you will NOT get them again) and
+    // `resubscribed` is "UTAPOKEA TENA matangazo ya 50pick" (you WILL) — one leading letter
+    // reverses the meaning, and a fragment cannot tell them apart. The drive now matches on a
+    // word boundary; this assertion guards the stronger property one level up, so a future
+    // rewording cannot make one state's WHOLE sentence live inside another's.
+    // ⛔ It currently reports "none", and it did before this session too — it is a standing
+    // property of the copy, not the thing that caught the drive.
+    const contained = [];
+    for (const a of said) for (const b of said) {
+      if (a !== b && b.toLowerCase().includes(a.toLowerCase())) contained.push(`"${a}" inside "${b}"`);
+    }
+    ok(`S7b.${locale} · 🔴 and NO state's sentence CONTAINS another's — a shorter one inside a longer one is a reader that reports the opposite of what the page says`,
+      contained.length === 0, contained.join(" | ") || "none");
   }
   ok("S8 · ⛔ the success sentence is rendered from the SERVER'S ANSWER, never painted on the click",
     /setState\(r\.ok \? r\.state : "error"\)/.test(clientSrc));
