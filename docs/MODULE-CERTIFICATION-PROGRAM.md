@@ -972,7 +972,7 @@ window enforced · 🔴 **PII masked in both compliance lists in the UI — is i
 
 ### K5 · Reporting & exports — `cert:k5`
 **Surfaces** `admin/reports` `api/admin/reports/[id]` `api/admin/transactions/export` · **Owns** `reports/catalogue` `reports/pdf` `reports/xlsx` `report-money` `report-pack`
-**Existing** `test:date-range` `test:report-cells` `test:report-window-reads` `test:report-parity` `test:report-note-truth` `test:report-formats` · **Orphans** `report-renderers-smoke.mjs` (being wired — `SESSION-PROMPT-FINANCE-SEAL.md` §2)
+**Existing** `test:date-range` `test:report-cells` `test:report-window-reads` `test:report-parity` `test:report-note-truth` `test:report-formats` `qa:report-renderers` (server) `verify:reports-live` (production, read-only) · **Orphans** none
 **Attack** 🔴 **Do PDF, XLSX and CSV agree with each other and with the ledger, to the shilling, for
 the same period?** · timezone boundaries at month-end · a period with zero rows · a period spanning
 the fee-model change · **formula injection in XLSX/CSV** (`=cmd|…`, `+`, `-`, `@` leading cells) ·
