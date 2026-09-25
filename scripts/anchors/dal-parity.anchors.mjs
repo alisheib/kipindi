@@ -299,7 +299,7 @@ export const MUTATIONS = [
     file: "src/lib/server/store.ts",
     from: `          return !r.liftedAt ? r : null;`,
     to: `          return r;`,
-    expect: `17.active.memory · and so does the memory \`find\``,
+    expect: `17.active.memory · and the memory \`find\` does too, reading the lift FALSILY so a row with no lift still REFUSES`,
   },
   {
     // ⛔ the memory lift stops refusing an already-lifted row, so a SECOND lift walks the date
