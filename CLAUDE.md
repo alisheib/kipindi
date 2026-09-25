@@ -534,7 +534,8 @@ table, for anything not listed here.
 | `visibility-states-test.mjs` | Top-bar / nav / CTAs per actor (public · player · admin). 44/44. |
 | `responsive-overflow-test.mjs` | 393/768/1024/1280/1440 across all public + auth routes. 70/70. |
 | `i18n-toggle-e2e.mjs` | EN/SW/ZH cookie + localStorage + `<html lang>` round trip + persistence. 13/13. |
-| `report-renderers-smoke.mjs` | Renders every catalogue entry (5 reports × PDF + XLSX) and checks magic bytes. 11/11. |
+| `npm run qa:report-renderers` | Every catalogue report × PDF/XLSX through the real `/api/admin/reports/[id]` route (status, content-type, magic bytes, filename) + the 400/404/anonymous refusals; the seed is checked. Needs `DISABLE_ADMIN_TOTP=true next dev` with no DATABASE_URL; localhost only. |
+| `npm run verify:reports-live` | Every catalogue report built READ-ONLY against PRODUCTION: totals vs rows, numeric tiles, the daily-ops levy tiles vs an independent ledger read. Run as `railway run --service Postgres npm run verify:reports-live` from a deployed checkout — never a `test:*` script. |
 | `break-it-player.mjs` | 23 manipulator scenarios — auth bypass, cookie tampering, stake validation, race, KYC, XSS, privilege escalation. |
 | `break-it-admin.mjs` | 10 admin-portal QA scenarios — anon + player gating, TOTP cookie spoofing, forged Server Actions, CSV gating. |
 | `multi-viewport-audit.mjs` | 99 routes × 4 viewports for layout overflow. |
@@ -883,11 +884,14 @@ code comment called itself *"naïve"*. It is gone.
 
 Nothing else. If you find yourself adding a deduction to a player's money, stop.
 
-**✅ RESOLVED 2026-07-15 — tax on what we KEEP.** The ledger and the statutory report
-now levy TRA/GBT on the same base: our actual commission. GGR is computed net of
-refunds (`stakes − payouts − refunds`) so a voided/one-sided poll — where we keep
-nothing — is taxed on nothing. Report == ledger, verified end-to-end. Rates live in
-admin config. See `docs/F6-LIQUIDITY-DESIGN.md` §6.1 and the decision doc.
+**✅ RESOLVED 2026-07-15 — tax on what we KEEP; ⚠️ CORRECTED 2026-09-25.** TRA and GBT
+are levied on our settlement FEE (`levySplit`, payout.ts) and BOOKED per settlement to
+`HOUSE:TRA_LEVY` / `HOUSE:GBT_LEVY`. Every report and the /admin/finance tile READ those
+accounts (`ledger.leviesBooked`); nothing multiplies a rate by GGR. GGR
+(`stakes − payouts − refunds`) is a TURNOVER measure — it still holds stakes on open
+positions — NOT our commission and NOT the levy base. ⛔ The "Report == ledger" line that
+used to stand here was false, and it is how the levy was over-stated ~14× on the finance tile.
+Rates live in admin config. Authority: `docs/SESSION-PROMPT-FINANCE-SEAL.md` §5.
 
 ## Gold budget (June 2026 design authority)
 

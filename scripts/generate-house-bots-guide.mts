@@ -232,10 +232,13 @@ ordinary money reports — house accounts appear there as normal players, which 
       its winnings, less the platform's usual charges.</td></tr>
     <tr><td><b>Lost</b></td><td>The market finished on the other side.</td><td>The stake is gone. This is what the
       daily loss limit counts.</td></tr>
-    <tr><td><b>Refunded</b></td><td>Nobody took the other side, so there was no real contest.</td><td>The whole
-      stake comes back. Neither a win nor a loss.</td></tr>
+    <tr><td><b>Void</b></td><td>Nobody took the other side, so there was no real contest.</td><td>The whole
+      stake comes back as a refund. Neither a win nor a loss.</td></tr>
   </tbody>
 </table>
+<p>The desk's <b>Activity</b> tab shows the same word in its <b>Outcome</b> column. Each row there is one round:
+<b>Opening</b> is what the account held before that stake left, <b>Stake</b> is the bet, and <b>Closing</b> is what
+it held right after — so Opening less Stake is always Closing. A later payout or refund does not change that row.</p>
 <div class="box"><b class="lead">Expect refunds on quiet markets — they are not a fault</b>
 <p>An Opener places the first bet on an empty market. If no player joins before it closes, the market is one-sided
 and everyone is refunded. That is the system working correctly: the account risked nothing and lost nothing. A run

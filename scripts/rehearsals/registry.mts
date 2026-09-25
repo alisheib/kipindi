@@ -113,10 +113,10 @@ export const REHEARSALS: readonly Rehearsal[] = [
       "NOT MEASURED, for two structural reasons. (1) Step 2 is not a script: 'boot the pre-merge SHA' needs a second " +
       "worktree with its own node_modules and a Prisma client without `houseBotId`, and hand-writing the unmarked rows " +
       "instead would rehearse §2 again rather than a rollback. (2) Steps 4–7 need `ops:house-bots-status --drift` and " +
-      "`ops:house-bots-remark`, keys on `origin/ops-lane` only — read read-only for the procedure, not merged, because " +
-      "lane 2 is renumbering the register inside that branch. ⭐ The drill's §0 ARMS ITSELF: it holds the four drift " +
-      "predicates as constants and compares them against `scripts/ops-house-bots-status.mts` the moment REL-M lands " +
-      "that file, so the two copies of the query cannot drift apart in silence. " +
+      "`ops:house-bots-remark` — keys in `package.json` on `main` since the ops-lane merge (they lived on " +
+      "`origin/ops-lane` only when this row was written), which this drill does not drive yet. ⭐ The drill's §0 holds " +
+      "the four drift predicates as constants and compares them against `scripts/ops-house-bots-status.mts`, now in " +
+      "the tree, so the two copies of the query cannot drift apart in silence. " +
       "THE PROCEDURE for the remainder: `plans/house-bots/RELEASE-LADDER.md` §10, ten numbered steps.",
     scenarios: ["S3"],
   },

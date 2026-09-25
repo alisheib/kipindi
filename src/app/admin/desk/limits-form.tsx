@@ -367,7 +367,7 @@ export function DeskLimitsForm({
          * ⭐ "USE RECOMMENDED VALUES" — THE CONTROL THE PLAN WROTE AND NOBODY WIRED (2026-09-21).
          *
          * `recommendedLimits()` has existed since the plan, its docblock says "Use recommended values fills
-         * these into the form and saves nothing", the switch-on sheet describes it and the operator guide
+         * these into the form and saves nothing", the switch-on sheet (deleted 2026-09-26) described it and the operator guide
          * documents it — and NOTHING in `src/app/admin/desk` ever called it. So the control was described in
          * three places and on the screen in none, and an officer had to type all eight required limits by hand
          * before the master switch could be offered at all.

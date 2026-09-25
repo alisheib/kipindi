@@ -340,9 +340,9 @@ struck rather than deleted because it was true when it was written.
 
 ## 2026-09-18 · D20's consequence for the ISO 27001 export — the regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the count
 
-**Status:** decided on branch `house-bots` (build ruling 501), to be built **before Commit 8**. ⚠️ **Prospective, not live:** the
+**Status:** decided on branch `house-bots` (build ruling 501), to be built **before Commit 8**. 🔴 **NOT BUILT, AND NO LONGER PROSPECTIVE (checked 2026-09-26 at `91c672c1`):** `buildIsoAudit` (`src/lib/server/reports/catalogue.ts`) still calls `getAuditPageDurable({ limit: ISO_EXPORT_LIMIT })` with no action filter. Every designation, switch event and engine switch-off writes a `house_bot.*` audit row (`HOUSE_AUDIT`, `src/lib/house-bot/constants.ts`), and the desk was first designated and switched on, on production, on 2026-09-21 — every switch event since, the engine's own switch-offs included, writes such a row — so such rows exist there. Whether a given export contains any is NOT MEASURED: it takes the OLDEST 25,000 rows, so the answer depends on the live row count. The exclusion is owed either way. Open work: `plans/house-bots/RESUME-HERE.md` §0b. (Was:) ~~Prospective, not live: the
 master switch ships OFF, so no `house_bot.*` row exists on production today — which is precisely why it is settled before the
-release commit rather than after. ⚠️ **Flagged to Ali as the one build decision here with a regulatory consequence:** he may want
+release commit rather than after.~~ ⚠️ **Flagged to Ali as the one build decision here with a regulatory consequence:** he may want
 his compliance advisor's eye on the wording of the exclusion note.
 
 **The gap, measured at `a1aa2e69`.** D20 already ruled the general case — no report, CSV, memo, column, line, chip, tag or record
@@ -637,7 +637,7 @@ players" — "normal players everywhere" for reports, and "drop them all" for th
 | # | Ruling |
 |---|---|
 | D20a | **Reports treat a house account exactly like any player's account.** The Gaming Board monthly pack, the FIU SAR, the match-integrity report, daily ops, every admin count (active and unique players, predictors, top contributors), the finance and insights figures and the harm and AML detectors carry no house memo, column, split, exclusion or line. |
-| D20b | **No admin-only house tools:** no house-liquidity report or house-market statement, no house filter or `house_bot_id` column on the transactions CSV, no per-bot CSV, no staff-edge alert, no house lines on admin screens, no house stake in decision audits, no house share in the emergency-void notice, no KYC house line, no internal record and no staff chip or row tag. This reverses D19b's report half; the private Board draft stays. |
+| D20b | **No admin-only house tools:** no house-liquidity report or house-market statement, no house filter or `house_bot_id` column on the transactions CSV, no per-bot CSV, no staff-edge alert, no house lines on admin screens, no house stake in decision audits, no house share in the emergency-void notice, no KYC house line, no internal record and no staff chip or row tag. This reverses D19b's report half; ~~the private Board draft stays~~ ⛔ struck by D21 (2026-09-20): there is no Board draft. |
 | D20c | **Unchanged:** D19 in full (nothing about house bots reaches a player or the holder), the console's gate that keeps house audit rows from any non-staff session, report completeness under house audit volume, erasure safety, marker integrity, the money rules (house stakes are cash only, never cashed out, and earn no wagering progress, commission or reward), the engine, consent, caps, the kill switch, admin alerts about a bot's state, and the console that controls the bots. |
 | D20d | **Accepted consequences:** statutory figures (GGR, levies, player counts) include 50pick's own house stakes as player activity; the harm and AML detectors can flag a house account like any player's. |
 
@@ -650,6 +650,12 @@ Nothing of the struck work ever reached production.
 and it is written here so that a stranger reading it in a year cannot mistake it for a paper the Gaming Board of
 Tanzania issued. **Ali reports** that the Board does not need a disclosure about house bots and would not act on one;
 **no document is on file**, none was requested and none is expected.
+
+**Ali's own words, verbatim** (2026-09-20; moved here 2026-09-26 from the 2026-09-21 handover, since deleted — spelling
+as he typed it): *"gaming board sai dhtey dont need any of fhtis"* / *"they dpnt need any documebnts"* / *"its not
+somehting againt their law they dont care"* / *"dont wast etime on gtbt hings as the monrey yo them is coming as a rel
+user so the dont car emuch"* / *"who plays"*. His instruction with them: no Board draft, no Board documents — strike the
+citations, do not rebuild it.
 
 | # | Ruling |
 |---|---|
@@ -689,14 +695,14 @@ Tanzania issued. **Ali reports** that the Board does not need a disclosure about
 - No prize, cashback, tournament or rank reward on house stakes (R4).
 
 ### The closeness rule, and why
-- **Up & Down closeness rule, all modes, at decision and at fire:** `|livePrice − openPrice| ≤ closenessPct × (upTarget − openPrice)` (default 25%). A missing price → skip `UD_NO_PRICE`.
+- **Up & Down closeness rule, all modes, at decision and at fire:** `|livePrice − openPrice| ≤ closenessPct × (upTarget − openPrice)` (default 25%). ⚠️ **As built since 2026-09-23** (`docs/HOUSE-BOTS.md` §12.2): for this test only, the band (the smaller of `upTarget − openPrice` and `openPrice − downTarget`, `udCloseness` in `src/lib/server/house-bot/decide.ts`) is floored at `openPrice × UD_CLOSENESS_FLOOR_BPS / 10 000` (5 bps), because a tick-floor margin had made the rule refuse every Up & Down stake; the player game still reads the round's own margin. A missing price → skip `UD_NO_PRICE`.
   - It is symmetric by design: the bot enters only while the round is still a coin flip. Momentum bettors can't farm it, and the house never cherry-picks the side that is already winning.
 
 ### Terms §10 notice
 ⛔ **Superseded by D19a (Ali, 2026-09-16):** no rulebook or Terms text changes, so no notice is due and nothing is waived. (Was:) Terms §10 (v2026-09-14, in all three languages) promises written notice in the app at least 14 days before a material change. This change is material and changes what the platform does, so neither the 2026-09-07 correction reasoning nor the 2026-09-13 "favourable to players" reasoning applies. The notice is waived on Ali's ruling alone (D2/D7), effective on deploy. Nothing is broadcast: the platform has no trilingual in-app notice channel (the `/admin/system` banner is one untranslated, dismissible string), and SMS cannot deliver in production either (`smsConfigured()` is false), so no other channel could stand in. ⚠️ Open defect, not fixed in this build: §10's in-app notice promise cannot be kept for any future change until a localised in-app notice exists — owner to decide. Existing players keep `acceptedTermsVersion`; no re-acceptance.
 
 ### Migration exception
-The two house migrations are applied to production from the build machine with `prisma migrate deploy` before the release merge (release step REL-2). This is an explicit exception to the 50pick-audit skill's "migrations reach production only through the deploy". It is needed because the start script applies DDL while the old container still serves. Ali's release "go" must name it.
+The two house migrations are applied to production from the build machine with `prisma migrate deploy` before the release merge (release step REL-2). This is an explicit exception to the 50pick-audit skill's "migrations reach production only through the deploy". It is needed because the start script applies DDL while the old container still serves. Ali's release "go" must name it. ⛔ **Never used (noted 2026-09-26):** both house migrations reached production through ordinary deploys of `main` before the release, so R2 was struck and no exception was taken (`docs/HOUSE-BOTS.md` §11).
 
 ### Not in this build
 - A password change or reset does not sign out the holder's other sessions (risk 7 below; owner default W5).
@@ -727,8 +733,8 @@ place stakes" and "Multiple accounts, **shared accounts** and account sales are 
 names no house-liquidity processing. Under D19 none of that text changes, so the platform operates accounts in a way
 its own published rules prohibit and its notice does not describe. A player who learns of it, or a regulator, could
 call that misleading. Ali accepted this on 2026-09-16 after being shown the sentences and an alternative neutral
-wording, and reports that the Gaming Board told him his answers are legally valid (no document on file; REL-4 asks for
-one). The holder's own consent is unaffected: they agree privately and give the owner their password (D5). ⚠️ **Corrected 2026-09-18 (ruling 503).** This sentence read "and type their own password", which the built code contradicts: `src/lib/server/house-bot/designation.ts` addresses the OFFICER throughout — `:79` `empty: "Enter their password."`, `:102` "That isn't their current password.", `:109` "Check the holder's password for an owner" — and **no field anywhere lets the holder type it**. D5 is the OWNER typing the HOLDER's account password, verified like a sign-in and never creating a session; `:158` and `:201` stand as written. ⛔ **The consent itself does not change** — the holder still agrees privately and still supplies the password; what the record stops saying is that the holder types it into a wizard, because no such wizard field exists.
+wording, and reports that the Gaming Board told him his answers are legally valid (no document on file, and by owner ruling D21 of 2026-09-20 none is owed:
+the Board needs nothing). The holder's own consent is unaffected: they agree privately and give the owner their password (D5). ⚠️ **Corrected 2026-09-18 (ruling 503).** This sentence read "and type their own password", which the built code contradicts: `src/lib/server/house-bot/designation.ts` addresses the OFFICER throughout — `:79` `empty: "Enter their password."`, `:102` "That isn't their current password.", `:109` "Check the holder's password for an owner" — and **no field anywhere lets the holder type it**. D5 is the OWNER typing the HOLDER's account password, verified like a sign-in and never creating a session; `:158` and `:201` stand as written. ⛔ **The consent itself does not change** — the holder still agrees privately and still supplies the password; what the record stops saying is that the holder types it into a wizard, because no such wizard field exists.
 1. **Licence class and levies.** House stakes are taxed within the fee, and the pool becomes a "book" (F6 §3). Ali reports to GBT.
 2. **Consent is knowledge, not proof.** Password-only (D5). Officer resets are blocked, but resets before the 2026-09-11 audit genesis are invisible.
 3. **Exploitation is bounded, not eliminated.** Alt accounts farming counters are capped per account, and G4 still applies. Caps, penalty box, closeness rule and exit-window hold are the controls.
@@ -737,7 +743,7 @@ one). The holder's own consent is unaffected: they agree privately and give the 
 6. **Delivery.** Merge conflicts with the parallel session are likely. `overlapSeconds` in production is unverified; the design is correct either way. ~~sw/zh legal text needs native review.~~ ⛔ **MOOT by D19a (2026-09-16); marked 2026-09-18, a line the D19a pass missed:** no rulebook, Terms, privacy, FAQ or chatbot text changes at all, so this build produces **no** sw/zh legal text to review. The leaderboard shows the holder's display name.
 7. A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13). Recommended hardening, as a separate platform commit: revoke at the three writers, re-mint the session of the device that made the change, and add login copy `kp_revoked=pw`. House consent is unaffected either way, because consent is the fingerprint, never a session. (also recorded as hardening H1, C9)
 
-Risks 8–12 (release and verification) are appended to this entry in build commit 8.
+Risks 8–12 (release and verification) ⏳ were owed by build commit 8 and were never appended; their sealed text is `plans/house-bots/04-amendments.md` S5, and each must be checked against today's code before it is copied here and into `docs/HOUSE-BOTS.md` §13.
 
 13. **Selection edge, bounded not eliminated.** Staff choose the poll and the moment, and can decline after seeing the computed side. They can also see what players cannot: positions with owner names and phones on the admin market page, AML views, and AI poll data (reasoning, confidence, reviewer). The side can't be typed, but it can be matched by waiting until the thinner side is the side they favour. Bounds: the blackout (AI result check recorded, or market reopened), the formula side and amount, staff-chosen caps inside the locks, the counterparty share limit and pro-rata counterparty caps, a durable record of every press (placed or refused), previews per officer, ~~the vetoes register~~ (⛔ **corrected 2026-09-18:** the presses-and-vetoes REGISTER surface was struck with R1 by D20 and never built; its DAL reader `listRegister` / `PressRegisterFilter` survives, and is KEPT: replan ruling 504 scheduled it for deletion on the ground that it had no consumer, and ruling 517 (2026-09-18) reversed that on measurement — `scripts/erasure.test.mts:711` reads the presses table through it to prove an erased holder leaves no trace there, so deleting it would have deleted a proof rather than a dead reader. It is held to that one caller by `test:dal-parity` 16.504. What bounds this risk is the durable audit row named just before, not a register anyone can open), ~~and the monthly staff-edge scorecard with its alert (W16)~~ — ⛔ **D20** (2026-09-17, entry above): the scorecard and the staff-edge alert are struck and un-built (replan rulings 265, 267); risk 13 has no report or alert measure, which Ali accepted knowingly (D20d).
 14. New with D17: a person chooses the moment of an opener stake and of any stake; opening empty markets is already superseded (UPDOWN D3, automated OPENER).
@@ -752,7 +758,7 @@ Risks 8–12 (release and verification) are appended to this entry in build comm
 - Ali alone switches house bots ON.
 - Every owner action writes an audit row in its `HOUSE_AUDIT` category: COMPLIANCE for designation, the switch, limits, rules, Enter now, targets and vetoes.
 - ~~The house-liquidity regulator report and CSV (R1) list house stakes, the Enter now register, targets and vetoes.~~ ⛔ **D20** (2026-09-17, D20b): there is no house report and no house CSV — never built. Every owner action's audit row stands (the line above), and reports treat a house account like any player's.
-- ~~The Board disclosure draft is tracked by `boardDisclosureSections`.~~ ⛔ **D20** (replan ruling 273 (a)): P1's disclosure tracking is struck, so `boardDisclosureSentAt` / `boardDisclosureSections` and `recordDisclosure` were un-built in C5-5b. The private draft is tracked by the draft document alone.
+- ~~The Board disclosure draft is tracked by `boardDisclosureSections`.~~ ⛔ **D20** (replan ruling 273 (a)): P1's disclosure tracking is struck, so `boardDisclosureSentAt` / `boardDisclosureSections` and `recordDisclosure` were un-built in C5-5b. ~~The private draft is tracked by the draft document alone.~~ ⛔ **D21** (2026-09-20): there is no draft and none is owed.
 
 ---
 

@@ -1486,7 +1486,7 @@ moderately busy platform was near the end of the process. The leaderboard was wo
 
 Parity is guarded, not assumed — `npm run test:report-parity` (28 assertions) drives both
 implementations over a fixture with a row sitting exactly on each window bound, because GGR
-feeds the TRA and GBT levies and a moved boundary moves money between two filings.
+and NGR are printed on the statutory pack and a moved boundary moves money between two filings.
 
 ⏳ **Still open, stated rather than implied fixed:** `reports/catalogue.ts` (3 sites) and
 `insights.ts` still walk the whole table — they are all-time statutory aggregates, so the

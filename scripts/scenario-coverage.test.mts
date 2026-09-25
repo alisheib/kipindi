@@ -347,7 +347,9 @@ ok("3.2 · ⛔ EVERY UNRESOLVED ID IS PRINTED BY NAME WITH ITS REASON. An id the
  * row cannot lower it; only writing the test can.
  */
 const UNRESOLVED_CEILING = 0;
-const NO_TEST_CEILING = 18;
+// 18 -> 3 on 2026-09-26: the printed count of this gate's own 3.4 run on that tree, set to exactly what it printed.
+// The three still untested: ENG-19 (the 1M timed load run, REL-0's window, PROGRESS L5); CA-18 and CA-31 (NOT BUILT — the desk strip has no tab-return re-read or Updated stamp, the runner no 8 s/45 s card — each needs a build or an owner ruling, never a deferral note).
+const NO_TEST_CEILING = 3;
 const noTest = [...DEFER, ...UNRES];
 ok(`3.3 · the unresolved count is held at ${UNRESOLVED_CEILING} — every id must be accounted for by some door, so a register row added without an owner turns this red on the day it lands instead of moving the published number quietly`,
   UNRES.length <= UNRESOLVED_CEILING,

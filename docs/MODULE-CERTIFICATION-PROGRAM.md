@@ -971,13 +971,13 @@ window enforced · 🔴 **PII masked in both compliance lists in the UI — is i
 **Exit** Deletion complete and chain-safe, retention enforced, exports masked.
 
 ### K5 · Reporting & exports — `cert:k5`
-**Surfaces** `admin/reports` `api/admin/reports/[id]` `api/admin/transactions/export` · **Owns** `reports/catalogue` (983 L) `reports/pdf` `reports/xlsx` `report-money` `report-pack`
-**Existing** `test:date-range` · **Orphans** `report-renderers-smoke.mjs` `reports-retest.mjs`
+**Surfaces** `admin/reports` `api/admin/reports/[id]` `api/admin/transactions/export` · **Owns** `reports/catalogue` `reports/pdf` `reports/xlsx` `report-money` `report-pack`
+**Existing** `test:date-range` `test:report-cells` `test:report-window-reads` `test:report-parity` `test:report-note-truth` `test:report-formats` `qa:report-renderers` (server) `verify:reports-live` (production, read-only) · **Orphans** none
 **Attack** 🔴 **Do PDF, XLSX and CSV agree with each other and with the ledger, to the shilling, for
 the same period?** · timezone boundaries at month-end · a period with zero rows · a period spanning
 the fee-model change · **formula injection in XLSX/CSV** (`=cmd|…`, `+`, `-`, `@` leading cells) ·
 a 100k-row export (memory, timeout) · PII masking (K4).
-**Exit** Three renderers reconcile to the ledger exactly, injection-safe, masked, bounded.
+**Exit** Three renderers agree with each other and with `report-money`; the commission and levy lines reconcile to the ledger (GGR/NGR are Transaction-table measures and cannot); injection-safe, masked, bounded.
 
 ### K6 · Events calendar — `cert:k6`
 **Surfaces** `admin/events` · **Owns** `events-service` `EventCalendar` · **Existing** `test:events`
@@ -990,7 +990,7 @@ timezone.
 **Attack** 🔴 **The silent-zero problem**: a failed query must render `unavailable`, never `0` — a
 zero is a claim. `AdminKpi`'s `unavailable` state and `AdminLoadError` exist; prove **every** tile
 uses them · does a cohort include self-excluded or deleted players? · do sparks/`dailyKpiSeries`
-match the ledger? · use `dataviz` for any new chart.
+match `report-money.summarise` over the same days? · use `dataviz` for any new chart.
 **Exit** No tile can render a fabricated zero, cohorts exclude deleted/excluded, series reconcile.
 
 ## L · Platform

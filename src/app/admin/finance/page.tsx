@@ -42,10 +42,11 @@ import { Tabs } from "@/components/ui/tabs";
 
 /** What each house account actually holds — so the owner doesn't have to guess. */
 const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
-  "HOUSE:COMMISSION": "our fee: pool + early-exit + withdrawal",
+  "HOUSE:COMMISSION": "our fee: pool + early-exit + withdrawal — already net of the levies",
   "HOUSE:AGGREGATOR": "the payment gateway's share",
   "HOUSE:TRA_LEVY": "TRA, levied on our commission",
   "HOUSE:GBT_LEVY": "GBT, levied on our commission",
+  "HOUSE:RG_SUSPENSE": "a self-excluded player's deposit — held, owed back",
   "HOUSE:TAX": "Statutory tax held — owed to the state, NOT ours",
   "HOUSE:RESERVE": "RETIRED — historical rows only",
   "SYSTEM:BONUS": "bonus issuance",
@@ -139,9 +140,6 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
   const provSeries = await providerStackedSeries(period, 14).catch(() => null);
   const provBars = provSeries?.bars ?? null;
   const providers = provSeries?.providers.map(txnProviderLabel) ?? null;
-  // Read-only 7-day daily trend for the GGR/NGR/active tile sparklines — each
-  // point is that day's REAL metric (canonical `summarise`), the metric's own
-  // recent history, not a proxy series. `spark()` hides an all-zero line.
   /**
    * 🔴 THE SPARKLINE IGNORED THE PICKER, UNDER A CAPTION THAT NAMED IT. These tiles caption
    * themselves `range.label` — "Last 28 days" — while the line beneath was hard-coded to 7 days,
@@ -163,14 +161,8 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
   const trends = await dailyKpiSeries(sparkWindow).catch(() => ({ ggr: [], ngr: [], active: [] }));
   const spark = (s: number[]) => (s.some((v) => v !== 0) ? s : undefined);
 
-  // Tax accrued — the REAL statutory levies, at the admin-configured rates, on
-  // the same basis the Daily Operations report files with (TRA + GBT levied on
-  // the operator's commission/GGR — see market-config.ts).
-  //
-  // This previously showed a FABRICATED `ggr * 0.05` "placeholder formula" and
-  // presented it to the owner as fact. Never ship an invented money figure: if we
-  // can't compute it, we show nothing. Negative GGR accrues no levy (you cannot
-  // owe tax on a loss), which matches reports/catalogue.ts's Math.max(0, ggr).
+  // Rates — read here ONLY for the fee-model caption on "Operator margin". The "Statutory levies"
+  // tile below reads the booked HOUSE:TRA_LEVY + HOUSE:GBT_LEVY and needs no rate (see its note).
   const rates = await getEffectiveConfig().catch(() => null);
   // Real balances from the double-entry ledger. Empty object without a DB.
   const houseBalances = await houseAccountBalances().catch(() => ({} as Record<string, number>));
@@ -327,14 +319,14 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
         </KpiGrid>
         <KpiGrid cols="3">
           <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : formatTzsCompact(ggr)}        unavailable={ggr === null} delta={`${range.label} · ${sparkLabel}`} series={spark(trends.ggr)} />
-          <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : formatTzsCompact(ngr)}        unavailable={ngr === null} delta={`net of bonus + fees · ${sparkLabel}`} series={spark(trends.ngr)} />
+          <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : formatTzsCompact(ngr)}        unavailable={ngr === null} delta={`net of bonus, agent commission + fees · ${sparkLabel}`} series={spark(trends.ngr)} />
           <div className="col-span-2 grid lg:col-span-1">
             <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
           </div>
         </KpiGrid>
         <KpiGrid cols="3">
           <div className="col-span-2 grid lg:col-span-1">
-            {/* ⛔ A-5, AND IT WAS THE ONE TILE ON THIS PAGE WITHOUT IT. A failed rates or ledger
+            {/* ⛔ A-5, AND IT WAS THE ONE TILE ON THIS PAGE WITHOUT IT. A failed ledger
                 read rendered a bare "—", which on a tax figure reads as ZERO — the fabricated
                 all-clear every sibling tile here already refuses. It now takes the same explicit
                 "n/a · couldn't compute" treatment as the eight tiles around it. */}

@@ -180,7 +180,7 @@ register→KYC→deposit→bet→(cashout|resolve)→payout→withdraw · referr
 
 **P2 (consistency & correctness):**
 - Reduce `any`/`eslint-disable` in money/compliance modules to 0 (47/92 today — triage, keep only justified).
-- Finance tax model: reconcile the finance-page 5% estimate to the config-driven TRA/GBT rates used in `daily-ops` (single source).
+- ~~Finance tax model: reconcile the finance-page 5% estimate to the config-driven TRA/GBT rates used in `daily-ops` (single source).~~ ✅ superseded 2026-09-25 — the tile and daily-ops READ the booked levies; no rate is applied (`SESSION-PROMPT-FINANCE-SEAL.md` §5).
 - Wallet payout-sum + stats-band full-txn scans → materialise/cache before high traffic.
 - ConfirmDialog `Tone` still includes `gold` — audit remaining callers; retire if unused.
 
@@ -241,7 +241,7 @@ Each phase ends with a committed batch-log entry (date · scope · gate result).
 | **Modals/confirms** roll their own scrim + focus-lock + Esc | 16 files `createPortal`, only 9 use `useModalLock`; SettleConfirm (resolver), ConfirmDialog, typed-SEAL (ceremony), typed-PAUSE (kill-switch), KYC-reject sheet, cancel-refund, sell/bet — each bespoke | one `<Modal>` primitive (portal + lock + Esc + scrim + focus-trap) + one `<ConfirmModal tier="medium|hard" typedWord?>` — all confirms flow through it |
 | **Two-officer / maker-checker** re-implemented per feature | resolve ceremony, `pack-actions`, `kyc-actions`, aml — each rolls audit-derived recommend→approve + self-block | one `twoOfficerGate({ subjectId, action, requireDistinctFrom })` server helper + one `<AttestationRail>` UI (already 3 near-identical rails) |
 | **Money formatting** | `formatTzs`/`formatTzsCompact` in 28 files, but **127** raw `toLocaleString` on money in components | route all money through `formatTzs*`; ban raw `toLocaleString` on TZS via lint |
-| **Period vocabularies** (4) | `analytics.Period` (today/7d/28d/qtd) vs `report-money.ReportPeriod` (today/7d/30d/mtd) vs reports PeriodPicker segments vs ad-hoc windows | one `Period` type + one `periodBounds()` (report-money already the seed); delete the analytics vocab |
+| **Period vocabularies** (4) | `analytics.Period` (today/7d/28d/qtd) vs `report-money.ReportPeriod` (today/7d/30d/mtd) vs reports PeriodPicker segments vs ad-hoc windows | ✅ resolved differently (Finance Seal, 2026-09-25): `"today"`/`"qtd"` deleted from `analytics.Period`; `resolveRange` (date-range.ts) owns the preset vocabulary; `ReportPeriod` cut to its one reader, `"30d"` |
 | **Persisted admin config** pattern copy-pasted | ~9 modules repeat globalThis-cache + `ensureHydrated` + load/save (`market-config`, `affiliate-config`, `ai-ops-config`, `bonus-config`, `proposals-config`, `platform-config`, `payment-ops`, `test-overrides`, `ai-poll-config`) | one `defineConfig(key, defaults, validate?)` factory → get/set/hydrate for free |
 | **Name resolution** | 41 occurrences of `displayName?.trim() || id` / `displayLabel(` / `officerName` / `nameOf` with different fallbacks | one `officerLabel(id)` / `playerLabel(id)` (handles system ids, masking, fallback) |
 | **Risk/quality/confidence band → colour** | 12 near-identical good/med/bad threshold→colour maps (KYC risk ≥70, poll quality ≥80/≥50, confidence, health) | one `band(value, {good,warn})` → token; one `<ScoreBadge>` |

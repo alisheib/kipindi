@@ -1,7 +1,7 @@
 # Up & Down — the final setup
 
 > ⛔ **Owner ruling D19 (Ali, 2026-09-16): house bots are never public.** No rulebook text discloses them; G2's house-bots
-> note is marked in place. The ruling: `plans/house-bots/PROGRESS.md` "OWNER RULING D19".
+> note is marked in place. The ruling of record: [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) "Owner ruling D19".
 
 **Written 2026-08-06 (session 31), from measurements against production, not from intent.**
 Ali: *"knowing now what data we have, what capabilities we have, analyse the whole flow and find

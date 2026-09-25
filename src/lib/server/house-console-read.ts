@@ -1511,7 +1511,7 @@ export type ConsoleLimitRow = {
    * ⭐ THE RECOMMENDED VALUE, AS PLAIN DIGITS, OR "" WHERE THERE IS NONE (2026-09-21).
    *
    * ⛔ `recommendedLimits()` HAS EXISTED SINCE THE PLAN AND NOTHING EVER CALLED IT. Its own docblock reads
-   * "Use recommended values fills these into the form and saves nothing", the switch-on sheet describes that
+   * "Use recommended values fills these into the form and saves nothing", the switch-on sheet (deleted 2026-09-26) described that
    * control, and the operator guide documents it — but no component in `src/app/admin/desk` referenced it, so
    * the control was never on the screen and an officer had to type all eight required limits by hand before
    * the master switch could be offered at all. A function written, documented in three places, and wired to
@@ -1752,7 +1752,7 @@ export async function houseUsageForConsole(
     limitsVersion: control ? control.limitsVersion : null,
     /* ⛔ NEUTRAL, AND IT SAYS WHAT THE CONTROL DOES NOT DO. "Nothing is saved yet" is the whole point: filling
      * and committing are different decisions on the form that sets the ceilings which stop money, and the
-     * switch-on sheet has always documented this control as one that fills and does not save. */
+     * switch-on sheet (deleted 2026-09-26) documented this control as one that fills and does not save; `docs/HOUSE-BOTS.md` §5.1 still does. */
     recommendCopy: {
       label: "Use recommended values",
       filledTitle: "Recommended values filled",

@@ -14,14 +14,23 @@
  * Auth is bootstrapped via /api/dev-test/seed-admin (creates an ADMIN with a
  * live session cookie in one call) — no brittle register-form automation.
  *
- *   DISABLE_ADMIN_TOTP=true npx next dev -p 3000
- *   BASE=http://localhost:3000  node scripts/report-renderers-smoke.mjs
+ *   rm -rf .next && DISABLE_ADMIN_TOTP=true npx next dev -p <port>     (NO DATABASE_URL)
+ *   BASE=http://localhost:<port> npm run qa:report-renderers
+ *
+ * ⛔ NEEDS A SERVER IT DOES NOT START, so it is a `qa:*` script and never `test:*` (`test:all`
+ * runs every `test:*`). `next start` will NOT do: the dev-test seeders 404 under production.
+ * ⛔ LOCALHOST ONLY. It seeds an ADMIN and 150 bets into whatever store the target serves, so it
+ * refuses any other host. Heavy: run the dev server under `~/heavy-node-lock.sh` on the laptop.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { chromium } from "playwright";
+import { request } from "playwright";
 
 const BASE = process.env.BASE || "http://localhost:3000";
+if (!["localhost", "127.0.0.1"].includes(new URL(BASE).hostname)) {
+  console.error(`qa:report-renderers REFUSED — ${BASE} is not localhost; this script seeds an ADMIN and bets.`);
+  process.exit(2);
+}
 const OUT = resolve(process.cwd(), ".50pick-shots/reports-smoke");
 mkdirSync(OUT, { recursive: true });
 
@@ -37,9 +46,8 @@ const REPORTS = [
   { id: "kyc-reverify",    slug: "kyc-re-verification-roster" },
   { id: "rg-engagement",   slug: "responsible-gambling-engagement" },
   { id: "match-integrity", slug: "match-integrity-quarterly-review" },
-  /* The one WINDOWED entry. Requested with no window params here, so it must still build and
-     must still state the window it fell back to — a document that cannot name its own period
-     is the defect this report was added to end. */
+  /* The one WINDOWED entry, requested with no window params: it must still BUILD. (That it states
+     the window it fell back to is `test:report-cells` §4's job, not this download check's.) */
   { id: "finance-window",  slug: "finance-selected-window" },
 ];
 
@@ -49,19 +57,24 @@ function log(label, ok, detail = "") {
   if (ok) pass++; else fail++;
 }
 
-const browser = await chromium.launch();
-const ctx = await browser.newContext();
+// An API request context — every check below is an HTTP call, so no browser binary is launched.
+const ctx = await request.newContext();
 
 // Bootstrap: seed an admin (sets the session cookie in this context) + a little
 // money/audit data so the reports have rows to render.
-const seed = await ctx.request.post(`${BASE}/api/dev-test/seed-admin`, { data: {} });
+const seed = await ctx.post(`${BASE}/api/dev-test/seed-admin`, { data: {} });
 log("admin seeded + session cookie set", seed.status() === 200, String(seed.status()));
-await ctx.request.post(`${BASE}/api/dev-test/stress-regulator-grade`, { data: { n: 20, u: 12, b: 150, r: 8 } }).catch(() => {});
+/* ⚠️ THE SEED IS CHECKED. Its result used to be discarded, so a refused seed (409 when the server
+   has a DATABASE_URL) left an empty store and every download still "passed" on empty documents. */
+const sr = await ctx.post(`${BASE}/api/dev-test/stress-regulator-grade`, { data: { n: 20, u: 12, b: 150, r: 8 } });
+const sj = sr.status() === 200 ? await sr.json().catch(() => null) : null;
+log("regulator-grade data seeded (bets accepted)", (sj?.bets?.accepted ?? 0) > 0,
+  `${sr.status()}${sj ? ` · ${sj.bets?.accepted ?? 0} bets accepted` : ""}`);
 
 for (const { id, slug } of REPORTS) {
   for (const fmt of ["pdf", "xlsx"]) {
     try {
-      const res = await ctx.request.get(`${BASE}/api/admin/reports/${id}?format=${fmt}`);
+      const res = await ctx.get(`${BASE}/api/admin/reports/${id}?format=${fmt}`);
       const buf = Buffer.from(await res.body());
       const ct = res.headers()["content-type"] || "";
       const cd = res.headers()["content-disposition"] || "";
@@ -78,18 +91,17 @@ for (const { id, slug } of REPORTS) {
 }
 
 // Negative cases — the route must reject a bad format and an unknown id.
-const badFmt = await ctx.request.get(`${BASE}/api/admin/reports/gbt-monthly?format=csv`);
+const badFmt = await ctx.get(`${BASE}/api/admin/reports/gbt-monthly?format=csv`);
 log("bad format → 400", badFmt.status() === 400, String(badFmt.status()));
-const unknown = await ctx.request.get(`${BASE}/api/admin/reports/does-not-exist?format=pdf`);
+const unknown = await ctx.get(`${BASE}/api/admin/reports/does-not-exist?format=pdf`);
 log("unknown report → 404", unknown.status() === 404, String(unknown.status()));
 
 // Authz — an anonymous (cookie-less) caller must never receive a report.
-const anon = await browser.newContext();
-const anonRes = await anon.request.get(`${BASE}/api/admin/reports/gbt-monthly?format=pdf`);
+const anon = await request.newContext();
+const anonRes = await anon.get(`${BASE}/api/admin/reports/gbt-monthly?format=pdf`, { maxRedirects: 0 });
 log("anonymous blocked (401/307)", anonRes.status() === 401 || anonRes.status() === 307, String(anonRes.status()));
-await anon.close();
+await anon.dispose();
 
-await ctx.close();
-await browser.close();
+await ctx.dispose();
 console.log(`\n${"=".repeat(60)}\nREPORTS SMOKE  PASS: ${pass}    FAIL: ${fail}\n${"=".repeat(60)}`);
 process.exit(fail > 0 ? 1 : 0);

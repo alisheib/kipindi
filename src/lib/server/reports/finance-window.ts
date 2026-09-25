@@ -84,7 +84,9 @@ export async function buildFinanceWindow(
       titleSw: "Muhtasari wa fedha",
       description:
         "Every figure from report-money.summarise over this window — the same primitive the " +
-        "console tiles read, so the two cannot disagree. CONFIRMED transactions only.",
+        "console tiles read, so the two cannot disagree — except the two ledger lines at the foot " +
+        "(commission and levies booked), which name their source in the Basis column. " +
+        "CONFIRMED transactions only.",
       columns: [
         { header: "Metric", key: "metric", width: 30 },
         { header: "Value", sub: "TZS", key: "value", format: "tzs", align: "right", width: 18 },

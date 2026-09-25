@@ -260,6 +260,8 @@
     "test:alerting": "tsx scripts/alerting.test.mts",
     "test:multi-container": "tsx scripts/multi-container.test.mts",
     "qa:finance-alignment": "node scripts/finance-filter-alignment.mjs",
+    "qa:report-renderers": "node scripts/report-renderers-smoke.mjs",
+    "verify:reports-live": "tsx scripts/reports-verify-live.mts --prod",
     "test:report-cells": "tsx scripts/report-cells.test.mts",
     "test:brand-assets": "tsx scripts/verify-brand-assets.mts",
     "test:finance-window": "tsx scripts/finance-window-truth.test.mts",
