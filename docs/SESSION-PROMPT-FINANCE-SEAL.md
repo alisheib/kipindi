@@ -77,8 +77,15 @@ is a second implementation that will drift.
   margin" row. `test:report-cells` 22/0 (§5 carries 13 of them — per-report tile counts pinned,
   exact number formats, the tie case, a negative and a NaN tile), RED **10/10**. The count deltas
   now use the repo's `adminCount()` (utils.ts) — "1 txns" is gone.
-- **`REPORT_PERIODS` and the `"today"`/`"mtd"` arms of `report-money.periodBounds` have NO
-  readers** — dead vocabulary, safe to delete in a tidy-up.
+- ~~**`REPORT_PERIODS` and the `"today"`/`"mtd"` arms of `report-money.periodBounds` have NO
+  readers**~~ ✅ **DELETED 2026-09-25**, and `"7d"` with them: it survived only as
+  `dailyKpiSeries`' DEFAULT, the rolling window that returned eight daily points with a short
+  first bar, and no caller used it. `ReportPeriod` is now `"30d"` alone (`/admin/insights`'
+  `categoryBreakdown("30d")`); `dailyKpiSeries` takes no default. In the same pass the module's
+  header — its "normative definitions" — stopped saying GGR is "the commission we keep", that the
+  levy is "15% of GGR" and that "the report and the ledger finally agree": all three false, and the
+  reason the over-tax was re-derived twice. NGR now names agent commission; analytics.ts' GGR/NGR
+  docs and its dangling `periodBounds("today")` pointer corrected.
 - **`reports-verify-live.mts` and `report-renderers-smoke.mjs` are NOT npm-wired**, so they never
   run in `test:all`. They are the only instruments that read real money and the real route.
 - ⚠️ **Rotate the production DB password.** It was echoed into a session transcript on 2026-09-25.
