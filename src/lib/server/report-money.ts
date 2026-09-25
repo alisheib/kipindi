@@ -189,8 +189,30 @@ function summarise(txns: StoredTxn[]): MoneySummary {
     depositCount: deposits.length,
     withdrawals: withdrawals.reduce((s, t) => s + Math.abs(t.amount), 0),
     withdrawalCount: withdrawals.length,
-    // Active = anyone with any txn in the window (bet, deposit, …).
-    activePlayers: new Set(txns.map((t) => t.userId)).size,
+    /**
+     * 🔴 THIS READ `txns`, NOT `conf` — the ONE figure in this function on a different basis
+     * from every other, and by accident rather than by decision: every money line above filters
+     * to CONFIRMED once at the top, and this line used the unfiltered parameter that happened to
+     * be in scope. So a player whose only activity in the window was a DECLINED deposit counted
+     * as "active", alongside PENDING, PROCESSING, AML_REVIEW, REVERSED and CANCELLED rows.
+     * ⭐ The rule is now stated rather than inherited: **an active player is one whose money
+     * actually moved.** That is the same basis the rest of this summary uses, and it is the same
+     * reasoning `buildFiuSar` already applies when it excludes FAILED/CANCELLED/REVERSED —
+     * "money that never moved at all … both buries the real signals and misstates the exposure".
+     * ⚠️ AML_REVIEW IS EXCLUDED DELIBERATELY, not overlooked, and the tempting argument for
+     * keeping it is out of date. "A large withdrawal sitting under the two-officer hold is
+     * obviously an active player" — except `WITHDRAWAL_AML_HOLD` has been OFF since the owner
+     * ruling of 2026-09-13 (`payments.ts`: "no officer reviews a payout before it is sent"), so
+     * no payout is held any more. What actually sits in AML_REVIEW now is deposits owed back to
+     * SELF-EXCLUDED players — a population it would be actively wrong to print as "active".
+     * ⛔ AND ONE BASIS, NOT TWO: `analytics.activePlayers` feeds a tile's VALUE while
+     * `dailyKpiSeries` feeds the sparkline UNDER it, both from this field. Two bases would put
+     * the number and its own trend line on different populations inside one tile.
+     * ⚠️ Measured before changing: on production over the 7 days to 2026-09-25 this moves NOTHING
+     * (12 distinct users either way) — the 3 FAILED rows belong to users who also transacted. It
+     * is changed while the delta is zero precisely so nobody has to reconcile a moved number.
+     */
+    activePlayers: new Set(conf.map((t) => t.userId)).size,
   };
 }
 

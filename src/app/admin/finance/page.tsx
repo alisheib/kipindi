@@ -203,30 +203,39 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
     buildBaseHref("/admin/finance", { range: sp.range, from: sp.from, to: sp.to, tab: t === "ledger" ? undefined : t }, "feepage") as Route;
   const feeModelLabel = rates?.feeModel === "loser-share" ? "loser-share (new polls)" : "capped-fee (new polls)";
   /**
-   * 🔴 THE LEVY WAS ACCRUED ON GGR, AND GGR IS NOT OUR COMMISSION (owner ruling, 2026-09-25).
-   * `traTaxOnCommissionRate` and `gbtLevyOnCommissionRate` are defined throughout this codebase
-   * as a fraction OF OUR FEE — `levySplit` (payout.ts) applies them to the settlement fee and
-   * the agent waterfall applies them to the gross fee — and the house standard is explicit that
-   * taxes are only ever on 50pick's commission, never on a player's money. GGR is stakes minus
-   * payouts minus refunds, so while positions are still open it also holds money that has not
-   * been earned and may yet be paid back out to players.
-   * ⭐ MEASURED, NOT ARGUED. Production, September 2026 EAT: GGR 803,675 · commission actually
-   * booked 50,045 · TRA+GBT actually booked 8,796. The old formula put 120,551 on this tile —
-   * about fourteen times the real liability, on the screen an owner reads tax off.
-   * ⛔ The basis is now the commission the LEDGER actually booked in this window, so the tile
-   * reconciles against the house accounts on this very page rather than against a formula.
-   * ⚠️ `buildDailyOps` (reports/catalogue.ts) still accrues its TRA/GBT lines on GGR. That is a
-   * REGULATOR-FILED document and is deliberately NOT changed here — it is raised with the owner
-   * separately. Until it is ruled on, this tile and that report use different bases on purpose.
+   * 🔴 THIS TILE HAS NOW BEEN WRONG TWICE, IN OPPOSITE DIRECTIONS, AND BOTH TIMES BECAUSE IT
+   * COMPUTED A TAX INSTEAD OF READING ONE.
+   *
+   * ① It accrued `GGR × (TRA + GBT)`. The rates are defined throughout this codebase as a
+   *   fraction OF OUR FEE — `levySplit` (payout.ts) applies them to the settlement fee, the agent
+   *   waterfall to the gross fee — and the house standard is explicit that taxes are only ever on
+   *   50pick's commission, never on a player's money. GGR is stakes − payouts − refunds, so while
+   *   positions are open it also holds money not yet earned. Production, Sept 2026 EAT: GGR
+   *   803,675 against 8,796 of levy actually booked. The tile printed **120,551 — 14× the real
+   *   liability**, on the screen an owner reads tax off.
+   * ② So it was changed to `HOUSE:COMMISSION movement × (TRA + GBT)` — and that was wrong too.
+   *   **`HOUSE:COMMISSION` IS ALREADY NET OF THE LEVIES.** Read one settlement group: commission
+   *   `+130`, then `SETTLEMENT_TRA_LEVY −13` and `SETTLEMENT_GBT_LEVY −7` DEBITED OUT OF THE SAME
+   *   ACCOUNT and credited to the levy accounts. Across all time the account's credits are 63,651
+   *   and its debits −9,523, and 6,320 (TRA) + 3,203 (GBT) = 9,523 exactly. Levying the balance
+   *   therefore taxes the post-tax figure: 54,128 × 15% = **8,119 against 9,523 booked, 15% low**.
+   *
+   * ⭐ NO FORMULA REPRODUCES THE BOOKED NUMBER, AND THAT IS THE POINT. Gross settlement commission
+   * × 15% = 9,447.75, not 9,523: each settlement rounds its own levy (GBT on a 130 fee is 6.5 →
+   * 7). And `WITHDRAWAL_FEE` (666) sits in the same account carrying NO levy at all — 251 levy
+   * entries against 251 settlement-commission entries. Any base we pick is a reconstruction.
+   * ⛔ SO THE TILE READS WHAT THE LEDGER BOOKED, and computes nothing. `HOUSE:TRA_LEVY` +
+   * `HOUSE:GBT_LEVY` movement in the window IS the liability this period accrued. It reconciles
+   * to the books by construction, cannot drift with per-settlement rounding, and is the figure a
+   * regulator would reconcile against. It also needs no rate config, so one less thing to fail.
+   * ⚠️ These accounts are credit-only (0 debits in 251 entries) — nothing has been remitted yet,
+   * so movement-in-window is accrual, which is what "levies" on a period screen means.
    */
   const houseMoved = await houseAccountMovement(period.start, period.end).catch(() => null);
-  const commissionBooked = houseMoved === null ? null : (houseMoved["HOUSE:COMMISSION"] ?? 0);
-  const taxAccrued = rates && commissionBooked !== null
-    ? Math.round(Math.max(0, commissionBooked) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
-    : null;
-  const levyBasisCaption = rates
-    ? `TRA ${(rates.traTaxOnCommissionRate * 100).toFixed(0)}% + GBT ${(rates.gbtLevyOnCommissionRate * 100).toFixed(0)}% of commission booked`
-    : undefined;
+  const taxAccrued = houseMoved === null
+    ? null
+    : Math.round((houseMoved["HOUSE:TRA_LEVY"] ?? 0) + (houseMoved["HOUSE:GBT_LEVY"] ?? 0));
+  const levyBasisCaption = "TRA + GBT as booked to the ledger";
 
   return (
     <>

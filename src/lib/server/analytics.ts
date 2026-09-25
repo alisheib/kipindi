@@ -17,18 +17,40 @@ import { moneyForWindow, EAT_OFFSET_MS } from "./report-money";
 import { listMarkets, ratesFor } from "./market-service";
 import { poolFee, levySplit, type FeeModel } from "../payout";
 
-export type Period = "today" | "7d" | "28d" | "qtd";
+/**
+ * 🔴 `"today"` AND `"qtd"` ARE GONE FROM THIS UNION, AND THAT IS THE FIX — not re-pointing them.
+ *
+ * `periodToMs("today")` returned a ROLLING 24 HOURS while `resolveRange("today")`,
+ * `report-money.periodBounds("today")` and `query/windows.inWindow("today")` all return the EAT
+ * CALENDAR DAY. One word, two spans, on a platform that keeps one clock.
+ *
+ * ⛔ THE OBVIOUS FIX — make this one the EAT day too — IS THE WRONG ONE, and it was measured
+ * before being rejected. Every caller of the rolling window is on `/admin` and `/admin/live`, and
+ * every one of them is already LABELLED honestly: "GGR · 24h", "NGR · 24h", `delta="last 24h"`,
+ * "24-hour money flow"; the variable is even called `active24h`. Nothing anywhere says "Today"
+ * over it, so there was no user-visible lie to repair — only a misnamed argument. Re-pointing it
+ * would have turned six correct captions into six wrong ones at a stroke, and it would have
+ * broken `moneyFlowSeries(…, 24)` structurally: the bucket is `(end − start) / 24`, so under the
+ * EAT day it is 12.5s at 00:05, 150s at 01:00 and NEVER reaches an hour at any instant of any
+ * day, beneath a card that says "TZS net per hour" — and at EAT midnight `bucketMs` is 0, giving
+ * 24 zero points with 24 identical labels, the fabricated flat zero those files forbid.
+ * ⭐ `src/lib/query/windows.ts` already rules on exactly this: calendar names are calendar
+ * windows, rolling names are rolling windows, and "do not regularise one into the other".
+ * So the rolling callers now ask for what they mean — `resolveRange({ range: "24h" })` — and
+ * `"today"` means the EAT calendar day everywhere in this repo, without exception.
+ * ⚠️ `"qtd"` goes for the same reason: it meant 91 ROLLING days here and the calendar quarter in
+ * `resolveRange`, up to 91 days apart. It had no string callers; `resolveRange` owns that id.
+ */
+export type Period = "7d" | "28d";
 /** Either a rolling window (Period, ending now) OR explicit epoch bounds
  *  [start, end) — the latter lets callers ask for a fixed calendar month
- *  (e.g. the statutory GBT monthly pack) instead of a rolling window. */
+ *  (e.g. the statutory GBT monthly pack), or any window `resolveRange` produced. */
 export type Window = Period | { start: number; end: number };
 
 function periodToMs(p: Period): number {
   switch (p) {
-    case "today": return 24 * 3600_000;
     case "7d":    return 7 * 24 * 3600_000;
     case "28d":   return 28 * 24 * 3600_000;
-    case "qtd":   return 91 * 24 * 3600_000;
   }
 }
 
@@ -52,7 +74,7 @@ async function txnsInPeriod(w: Window) {
  * `report-money.moneyForWindow` so every admin surface shows ONE GGR figure.
  * (Previously this returned Stakes/turnover only, mislabelled "GGR"; reconciled.)
  */
-export async function grossGamingRevenue(period: Window = "today") {
+export async function grossGamingRevenue(period: Window = "28d") {
   const { start, end } = windowBounds(period);
   return (await moneyForWindow(start, end)).ggr;
 }
@@ -63,7 +85,7 @@ export async function grossGamingRevenue(period: Window = "today") {
  * never drift. (Previously this returned Stakes − Payouts, i.e. the value that is
  * actually GGR; reconciled to the normative NGR.)
  */
-export async function netGamingRevenue(period: Window = "today") {
+export async function netGamingRevenue(period: Window = "28d") {
   const { start, end } = windowBounds(period);
   return (await moneyForWindow(start, end)).ngr;
 }
@@ -132,18 +154,18 @@ export async function settlementFeesByPoll(period: Window = "28d"): Promise<Sett
   return { rows, byModel, totalFee: rows.reduce((s, r) => s + r.fee, 0) };
 }
 
-export async function depositsTotal(period: Window = "today") {
+export async function depositsTotal(period: Window = "28d") {
   const ts = (await txnsInPeriod(period)).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
   return { amount: ts.reduce((s, t) => s + t.amount, 0), count: ts.length };
 }
 
-export async function withdrawalsTotal(period: Window = "today") {
+export async function withdrawalsTotal(period: Window = "28d") {
   const ts = (await txnsInPeriod(period)).filter((t) => t.type === "WITHDRAWAL" && t.status === "CONFIRMED");
   return { amount: ts.reduce((s, t) => s + Math.abs(t.amount), 0), count: ts.length };
 }
 
 /** Per-provider deposit/withdrawal totals with fees + net. */
-export async function providerSummary(period: Window = "today") {
+export async function providerSummary(period: Window = "28d") {
   const ts = await txnsInPeriod(period);
   const map: Record<string, { deposits: number; depositCount: number; withdrawals: number; withdrawalCount: number }> = {};
   for (const t of ts) {
@@ -170,10 +192,21 @@ export async function providerSummary(period: Window = "today") {
     .sort((a, b) => b.deposits - a.deposits);
 }
 
-/** Active players in the period — anyone with at least one bet or deposit. */
-export async function activePlayers(period: Window = "today") {
-  const ts = await txnsInPeriod(period);
-  return new Set(ts.map((t) => t.userId)).size;
+/**
+ * Active players in the period — distinct players whose money actually moved (CONFIRMED only).
+ *
+ * 🔴 THIS WAS A SECOND, DIVERGENT DEFINITION AND IT WAS WRONG IN TWO WAYS. Its docstring said
+ * "at least one bet or deposit" while the code filtered neither TYPE nor STATUS: `txnsInPeriod`
+ * is a bare `listInRange`, so a player whose only activity was a DECLINED deposit counted, and
+ * so did PENDING, AML_REVIEW, REVERSED and CANCELLED rows. The prose and the code disagreed, and
+ * both disagreed with `summarise()`.
+ * ⭐ IT NOW DELEGATES, exactly as `grossGamingRevenue` and `netGamingRevenue` above already do.
+ * That deletes the duplicate definition rather than fixing it twice — two functions answering
+ * "how many players were active" cannot drift apart if only one of them decides.
+ */
+export async function activePlayers(period: Window = "28d") {
+  const { start, end } = windowBounds(period);
+  return (await moneyForWindow(start, end)).activePlayers;
 }
 
 /** Real money owed to players = spendable balance PLUS funds on hold (in-flight
@@ -370,7 +403,7 @@ export function bucketGrain(start: number, end: number, buckets: number): { buck
  * the period. Each bucket has the net flow (deposits + bets stake) − (payouts +
  * cashouts + withdrawals). Useful for the money-flow area chart.
  */
-export async function moneyFlowSeries(period: Window = "today", buckets = 24) {
+export async function moneyFlowSeries(period: Window = "28d", buckets = 24) {
   const { start, end } = windowBounds(period);
   const totalMs = end - start;
   const bucketMs = totalMs / buckets;

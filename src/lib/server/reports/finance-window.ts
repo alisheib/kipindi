@@ -57,8 +57,17 @@ export async function buildFinanceWindow(
   const pnl = await dailyPnl(bounds).catch(() => null);
   const cfg = await getGlobalConfig().catch(() => null);
 
+  /**
+   * ⛔ THE LEVIES ARE READ, NOT COMPUTED — and `HOUSE:COMMISSION` is NOT the base. That account
+   * is already NET of the levies: each settlement credits the commission and then DEBITS
+   * `SETTLEMENT_TRA_LEVY` / `SETTLEMENT_GBT_LEVY` straight back out of it (all-time credits
+   * 63,651, debits −9,523 = TRA 6,320 + GBT 3,203 exactly). Nor does any formula reproduce the
+   * booked figure: each settlement rounds its own levy, and `WITHDRAWAL_FEE` sits in the same
+   * account carrying no levy at all. The ledger's own levy accounts are the liability.
+   */
   const levyRate = cfg ? cfg.traTaxOnCommissionRate + cfg.gbtLevyOnCommissionRate : null;
   const commissionBooked = moved ? (moved["HOUSE:COMMISSION"] ?? 0) : null;
+  const leviesBooked = moved ? (moved["HOUSE:TRA_LEVY"] ?? 0) + (moved["HOUSE:GBT_LEVY"] ?? 0) : null;
   const n = (v: number) => v.toLocaleString("en-US");
 
   const summary: SummaryItem[] = [
@@ -93,6 +102,17 @@ export async function buildFinanceWindow(
         { metric: "NGR", value: m.ngr, basis: "GGR − bonus − agent commission − fees" },
         { metric: "Deposits", value: m.deposits, basis: `${n(m.depositCount)} confirmed deposits` },
         { metric: "Withdrawals", value: m.withdrawals, basis: `${n(m.withdrawalCount)} confirmed withdrawals` },
+        /* ⛔ THE NOTES BELOW NAME "active players", SO THE DOCUMENT MUST PRINT ONE. A basis
+           stated on the face of a report for a figure the report does not contain is how the
+           next reader applies it to the wrong number. `format: "integer"`, not `tzs` — it is a
+           count of people, and money formatting on a headcount is its own small lie. */
+        { metric: "Active players", value: m.activePlayers, basis: "distinct players whose money moved (confirmed)" },
+        ...(commissionBooked === null ? [] : [
+          { metric: "Commission booked (net of levies)", value: commissionBooked, basis: "HOUSE:COMMISSION movement in this window" },
+        ]),
+        ...(leviesBooked === null ? [] : [
+          { metric: "Statutory levies booked", value: leviesBooked, basis: "HOUSE:TRA_LEVY + HOUSE:GBT_LEVY, read from the ledger" },
+        ]),
       ],
     },
     {
@@ -241,11 +261,15 @@ export async function buildFinanceWindow(
       "movement column beside them is.",
   ];
   notes.push(
-    levyRate !== null && commissionBooked !== null
-      ? `Statutory levies accrue on COMMISSION, never on GGR: commission booked in this window ` +
-          `${formatTzs(commissionBooked)} × ${(levyRate * 100).toFixed(0)}% (TRA + GBT).`
-      : "Statutory levy accrual is omitted here: the ledger or the rate configuration could not " +
-          "be read, and an unbacked tax figure is worse than none.",
+    leviesBooked !== null
+      ? `Statutory levies: ${formatTzs(leviesBooked)} accrued in this window, READ FROM THE LEDGER ` +
+          `(HOUSE:TRA_LEVY + HOUSE:GBT_LEVY), not computed from a rate. Levies are charged on ` +
+          `50pick's settlement commission, never on a player's money` +
+          (levyRate !== null ? ` (TRA ${(cfg!.traTaxOnCommissionRate * 100).toFixed(0)}% + GBT ${(cfg!.gbtLevyOnCommissionRate * 100).toFixed(0)}% of each settlement's fee, rounded per settlement)` : "") +
+          `. Commission shown in the house accounts section is NET of these levies, so multiplying ` +
+          `it by the rate would understate them — the booked figure above is the liability.`
+      : "Statutory levies are omitted here: the ledger could not be read, and an unbacked tax " +
+          "figure is worse than none.",
   );
 
   return {

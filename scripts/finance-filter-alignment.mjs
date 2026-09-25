@@ -117,8 +117,15 @@ for (const width of WIDTHS) {
     const d = await rect(".field-measure", i);
     const t = await rect("[role='group']", i);
     if (!d || !t) { ok(`§2 ${row} CONTROL · both boxes measurable`, false); continue; }
-    ok(`§2 ${row} · the date box and the time box share a top edge`,
-      Math.abs(d.top - t.top) <= 1, `date ${d.top} vs time ${t.top} (Δ${(d.top - t.top).toFixed(2)}px)`);
+    /* ⭐ THE INVARIANT MOVED WITH THE LAYOUT, AND THAT IS THE POINT OF RE-STATING IT. The owner's
+       complaint was "some up some down" when date and time shared a ROW: the fix then was a
+       common TOP edge. They are stacked now (a side-by-side row cannot give the date field the
+       187px it needs at 768 or 360), so the alignment that matters is a common LEFT edge and a
+       common width — a field that starts or ends short of its neighbour reads exactly as wrong.
+       ⛔ Asserting the old top-edge rule here would now be asserting that the layout never
+       changed, which is a guard describing the past. */
+    ok(`§2 ${row} · the date box and the time box share a left edge`,
+      Math.abs(d.left - t.left) <= 1, `date ${d.left} vs time ${t.left} (Δ${(d.left - t.left).toFixed(2)}px)`);
     ok(`§2 ${row} · and both are the 36px sm field`,
       Math.abs(d.h - 36) <= 1 && Math.abs(t.h - 36) <= 1, `date ${d.h}px, time ${t.h}px`);
   }
@@ -170,6 +177,35 @@ for (const width of WIDTHS) {
   for (const [i, c] of clip.entries()) {
     ok(`§4b date field ${i + 1} shows its whole date (no clipped year)`,
       c.scroll <= c.client + 1, `needs ${c.scroll}px, has ${c.client}px`);
+  }
+
+  /* 🔴 AND THE STRIP FITTING IS NOT THE WHOLE FIELD FITTING — the owner spotted what this probe
+     could not. The field is `overflow-hidden`; the segment strip is `flex-1` (so it will not
+     shrink below its min-content) and the calendar trigger is `shrink-0`. When the field is
+     narrow, the part that gets clipped is therefore the TRIGGER, not the text — the strip check
+     above stays green while the calendar glyph is sliced down its right edge. Measure the thing
+     that actually gets cut. */
+  const glyph = await page.evaluate(() => {
+    const out = [];
+    for (const field of document.querySelectorAll(".field-measure")) {
+      const btn = field.querySelector("button");
+      if (!btn) continue;
+      const f = field.getBoundingClientRect(), b = btn.getBoundingClientRect();
+      const svg = btn.querySelector("svg");
+      out.push({
+        overhang: +(b.right - f.right).toFixed(2),
+        btnW: +b.width.toFixed(2),
+        svgW: svg ? +svg.getBoundingClientRect().width.toFixed(2) : null,
+        svgOverhang: svg ? +(svg.getBoundingClientRect().right - f.right).toFixed(2) : null,
+      });
+    }
+    return out;
+  });
+  ok("§4c CONTROL · the calendar trigger was found in both date fields", glyph.length >= 2, `${glyph.length} trigger(s)`);
+  for (const [i, g] of glyph.entries()) {
+    ok(`§4c date field ${i + 1}'s calendar glyph is not clipped by the field edge`,
+      g.overhang <= 1 && (g.svgOverhang === null || g.svgOverhang <= 1),
+      `trigger overhangs the field by ${g.overhang}px (glyph by ${g.svgOverhang}px), button ${g.btnW}px wide`);
   }
 
   // ── §5 · the page does not scroll sideways in either state ──
