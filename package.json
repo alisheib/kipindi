@@ -852,6 +852,7 @@
     "fixture:player": "node scripts/live/up-fixture.mjs",
     "red:count-truth": "node scripts/red-count-truth.mjs",
     "test:support-contact": "tsx scripts/support-contact.test.mts",
+    "red:support-contact": "node scripts/red-support-contact.mjs",
     "test:social-links": "tsx scripts/social-links.test.mts",
     "red:social-home": "tsx scripts/social-links.test.mts --prove-red-home",
     "red:social-token": "tsx scripts/social-links.test.mts --prove-red-token",
@@ -910,7 +911,8 @@
     "qa:cls-budget": "node scripts/cls-budget.mjs",
     "qa:ghost-landing": "node scripts/ghost-landing.mjs",
     "qa:fairness-phone": "node scripts/fairness-phone.mjs",
-    "qa:signup-funnel": "node scripts/signup-funnel.mjs"
+    "qa:signup-funnel": "node scripts/signup-funnel.mjs",
+    "qa:detail-order-hints": "node scripts/detail-order-and-hints.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

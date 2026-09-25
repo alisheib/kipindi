@@ -30,16 +30,18 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: Session S3 — U5 (one helpline) + U6 (consent ledger + suppression).
-  ⚠️ U5 IS THE OQ4 UNIT, AND IT IS A TRAP FOR THE UNWARY. U4 shipped a marketing footer carrying the
-  Board's `0800110051` while `support-config.ts` still publishes `0800 11 0011`, and
-  `test:campaign-compose` §12 ASSERTS THEY DIFFER. ⛔ U5 removes the DUPLICATION of the published
-  number across its print sites; it does NOT reconcile the two numbers. Making them agree is OQ4 —
-  Ali's answer — and doing it as an "obvious cleanup" turns an open owner question into a silent
-  product decision, which is exactly why that guard fails if you try.
-  ⚠️ U6 is this programme's first schema change: expand-only, both stores, named types, a new
-  `dal-parity` section with its own planted-key control, and an enum value ships in its OWN migration
-  one commit before anything writes it.
+▶ NEXT: Session S3 (second half) — U6 (consent ledger + suppression), then S4.
+  ⚠️ U6 IS THIS PROGRAMME'S FIRST SCHEMA CHANGE, and it carries the rules that have not been
+  exercised yet: expand-only migrations · an enum value ships in its OWN migration ONE COMMIT before
+  anything writes it (Postgres refuses a value added in the same transaction) · **two stores or it
+  does not exist** — every new `db.*` namespace lands in `store.ts` AND `prisma-dal.ts` with NAMED
+  types, never an inline object literal in a DAL signature · and `test:dal-parity` gains a §7 with
+  its own planted-key control. ⛔ Zero backfill (OD8), and ⛔ a `Suppression` row is never deleted —
+  not by contact deletion, not by re-import.
+  ⚠️ AND ITS PREDECESSOR'S TRAP IS STILL OPEN: `test:campaign-compose` §12 asserts the marketing
+  footer's `0800110051` still DIFFERS from the published `0800 11 0011`. That is OQ4 — Ali's answer —
+  and making them agree as an "obvious cleanup" turns an open owner question into a silent product
+  decision, which is why the guard fails if you try.
 
 ⚠️ AND A HABIT THIS LANE HAS NOW PAID FOR TWICE: **editing a file is exactly when a red anchor
   rots.** S2's own edits broke two (`otp-delivery`, `blackball`) and a parallel session noticed one
@@ -47,7 +49,14 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   a `scripts/anchors/*.anchors.mjs` quotes — an anchor that cannot inject is a control that has
   silently stopped controlling, and nothing else reports it.
 
-✔ LAST SESSION: S2, 2026-09-25 — U3 and U4 both ✅ LIVE. **4/52 units, 5/25 defects.** The GSM-7
+✔ LAST SESSION: S3 (part), 2026-09-25 — U5 ✅ LIVE. **5/52 units, 5/25 defects.** ⭐ U5 found its own
+  PRODUCT HALF ALREADY BUILT by the support-and-care campaign. What was missing was that the
+  fifteen-section suite holding it had **no red control at all**, so U5 shipped one: 4/4 caught,
+  declared anchors, undeclared ratchet unmoved at 68. ⛔ D6 stays ⬜ — its engineering half is closed,
+  its substance is OQ4 and Ali has not answered it.
+  ⚠️ U6 IS BLOCKED ON THIS MACHINE; see ◐ below. ⛔ Do not push an unverified migration.
+
+✔ BEFORE IT: S2, 2026-09-25 — U3 and U4 both ✅ LIVE. **4/52 units, 5/25 defects.** The GSM-7
   table came out of the server module and the gateway now delegates to it; the statutory footer is
   computed, counted and un-removable, and the operator's budget is 111 rather than 160. ⭐ Two
   findings worth more than the units: the round-number boundary vectors this plan SPECIFIED cannot
@@ -75,8 +84,25 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   §3b carries the vendor's measured behaviour. ⛔ Read both before U39, U46 and U47 — each was drafted
   around an absence that no longer holds.
 
-◐ HALF-DONE: nothing. **S1 AND S2 ARE BOTH CLOSED — U1, U2, U3 and U4 are ✅ LIVE and
-  re-measured on production.**
+◐ HALF-DONE: nothing. **S1, S2 AND U5 ARE CLOSED — U1–U5 are ✅ LIVE and re-measured on production.**
+
+⛔ U6 IS BLOCKED ON THE MACHINE, NOT ON THE WORK — READ THIS BEFORE PICKING IT UP:
+  U6 is this programme's first schema change, and **this environment cannot verify a migration**:
+  `docker` is not on PATH, so `scripts/db-scratch.mts` cannot raise a scratch Postgres, and
+  `.env.local` carries no `DATABASE_URL`. There is therefore no database anywhere to apply a
+  migration against.
+  ⛔ AND PUSHING ONE ANYWAY IS NOT A SMALL RISK: a push to `main` deploys, and the deploy runs the
+  migration against PRODUCTION. An unverified migration whose first execution is on the live money
+  platform is exactly the action this plan's §11 forbids claiming and §0a's cadence assumes away.
+  `prisma migrate diff --from-empty --to-schema-datamodel --script` will GENERATE the SQL offline,
+  but generating it is not applying it, and the enum rule in §0a step 4 exists precisely because
+  Postgres behaves subtly on the apply.
+  ⭐ WHAT UNBLOCKS IT, either one: Docker Desktop running (then `scripts/db-scratch.mts` works and the
+  scratch port rule applies — ⚠️ sibling worktrees share 5433, so set `KP_SCRATCH_PORT`), or a
+  non-production `DATABASE_URL` in `.env.local`.
+  ⚠️ `test:dal-parity` itself needs NO database — it is deliberately source-level, because a guard
+  that talks to Postgres SKIPS when `DATABASE_URL` is absent and a skipped guard reads as a pass. So
+  the two-stores half of U6 is verifiable here; the migration half is not, and they ship together.
 
   
 
@@ -244,7 +270,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U2 | pure | ✅ | S1 | db44ebf3 | no operator map at all, and the table drafted for it had 5 of 19 rows wrong → TCRA v1.16, seven verdicts, 064 refused, two formatter copies collapsed to one | `test:tz-msisdn` | yes · `red:tz-msisdn` | 2026-09-25 · live on `db44ebf3`: the moved formatter groups 3-3-3 from its new home at 1280 and 360, and the deploy building at all is the client-graph proof |
 | U3 | pure | ✅ | S2 | ccc32526 | no segment arithmetic anywhere and the only GSM-7 table locked inside a server module → one pure table, PACKED segments, the gateway delegating to it | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `ccc32526`. The delegation is proven by EXECUTION — `test:otp-delivery` and `test:sms-cost-guard` drive the real send path through `smsCodingFor`. ⛔ Biller reconciliation is U52 |
 | U4 | pure | ✅ | S2 | b760fefe | no sender identity and no RG footer in any SMS, and a body-only quote would be 49 septets short → footer computed, counted and un-removable; operator budget 111, not 160 | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `b760fefe`; the U2 drive re-run green on it, so the new modules did not break the client bundle |
-| U5 | guard | ⬜ | — | — | — | `test:support-contact` | — | D6 helpline |
+| U5 | guard | ✅ | S3 | 64d6bc05 | a 15-section helpline guard with NO red control at all, and a product half already built → 4/4 mutations caught each on its own assertion | `test:support-contact` | yes · `red:support-contact` | 2026-09-25 · live on `64d6bc05`: every helpline-LABELLED link on /legal/responsible-gambling dials the pinned 0800110011, while the support desk legitimately differs. ⛔ D6 stays ⬜ — its substance is OQ4 |
 | U6 | data | ⬜ | — | — | — | `test:dal-parity` | — | consent + suppression |
 | U7 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | the ONE gate |
 | U8 | visual | ⬜ | — | — | — | `test:marketing-optout` | — | `/s/[token]` |
@@ -341,6 +367,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S3 (part) | 2026-09-25 | **U5 ✅ LIVE.** ⭐ Its product half was ALREADY BUILT and the plan did not know: the statutory helpline is already one pinned constant with no setter, `global-error.tsx` already keeps its four hand-written copies BY DESIGN (root error boundary, imports nothing, renders when the root layout has already failed), and `test:support-contact` §15 already DISCOVERS every helpline-shaped literal there and pins each to the constant. Building it again would have been a second implementation of a working one. **What was actually missing was the control** — that suite is fifteen sections, among the most careful in this repo, and had NO `red:` key at all. `red:support-contact` ships it: 4/4 caught each on its own assertion, tree restored byte-identical, DECLARED anchors so the undeclared ratchet stays at 68. Two of the four are controls on the suite's own controls — §15.1 passes perfectly over a file that has stopped printing the helpline altogether, so one mutation DELETES a copy rather than drifting it. ⭐ **And the suite under test caught this unit's own first draft:** the mutation seeding an operator-settable helpline used the operator's REAL desk number as its literal, and §8 (no support-contact literal outside `support-config.ts`, sweep includes `scripts/`) refused to run at all. A red harness that seeds a real contact number into the tree is one that leaks one. ⚠️ **The live drive's first answer was also a false alarm** — it asserted every `tel:` link dials the helpline, but the page carries three and one is 50pick's own support desk under "Wasiliana nasi", which SHOULD be there and SHOULD differ. The defect was never "another number exists" but "a link that says helpline dials something else"; the drive now classifies by LABEL, with controls that it found at least two helpline links and at least one non-helpline link, so the classifier is proven to discriminate. ⛔ D6 stays ⬜: engineering half closed, substance is OQ4. ⛔ U6 NOT STARTED — no Docker and no `DATABASE_URL` on this machine, so a migration cannot be verified anywhere, and a push deploys it straight onto production. |
 | S2 | 2026-09-25 | **U3 and U4 ✅ LIVE — D4 and D5 closed.** The GSM-7 table came out of `lib/server/sms-blackball.ts` into a pure client-safe `sms-compose.ts` and the gateway now DELEGATES to it, so the price an officer is quoted and the coding the wire receives come from one table; the move is asserted lossless byte-for-byte against a copy of the pre-move string. **Two findings worth more than the units themselves.** ① **Segments are PACKED, not divided** — a two-septet extension character cannot be split across a boundary, so 152 plain characters then 77 euro signs is 306 septets, which `ceil()` prices as TWO segments and which sends as THREE; at 150,000 recipients that one unit of slack is TZS 900,000. ⛔ And **every boundary vector this plan SPECIFIED is blind to it** — all eight are plain text, and on plain text packing and division agree exactly, so the suite as drafted would have looked thorough, passed, and never caught the defect that costs the money. The red control now asserts that about itself: the division plant breaks exactly ONE assertion in the file. ② **`String.length` is CORRECT for UCS-2** — it already counts an emoji as its two UTF-16 units — and wrong only for GSM-7 extension characters, which is precisely why pricing from `bodyLen` looks fine. U4 made the statutory footer computed (49 septets), counted, and impossible to omit — there is no call shape that produces a marketing body without it — so the operator budget is 111 rather than 160; every Swahili fragment is copied from a shipped string with the line cited, and §12 ASSERTS the footer helpline still DIFFERS from the published one so that OQ4 cannot be closed by an "obvious cleanup". ⚠️ **Two red anchors rotted by this lane own edits** (`otp-delivery`, `blackball`) were flagged by a parallel session and re-anchored here, then re-proven by EXECUTION (8/8 and 11/11 on their own assertions, tree restored byte-identical). ⭐ Two of the first red plants written this session were AIMED AT NOTHING and the baseline-plus-named-assertion shape is what caught them. ⛔ Recorded: `npm run build` cannot run in a junction worktree, so the build proof is typecheck + client-graph-safe + the Railway deploy. |
 | S1 | 2026-09-25 | **U1 ✅ LIVE — the first product code in this programme. D1 and D2 closed.** Worked in a worktree off `origin/main`: the checkout was on another session's branch (`mobile-s2`) with their files in the tree, and `main` moved twice under this lane mid-session. **Three premises in the plan were false and are corrected here rather than worked around.** ① U1's text said it extends "its existing red control" — `test:phone-normalize` had NO red control and never touched `toMsisdn255` at all, while §1's own rule needs a backticked `red:` key to tick a row; `red:phone-normalize` was added, in-process, costing the `red-anchors` ceiling zero (measured: **68 vs 65 on clean `origin/main` AND 68 vs 65 here** — that suite was already red and is not claimed). ② The suite gated nothing: it was in no `predeploy` chain. ③ §3d — the NDC table U2 was drafted from is the 2020 edition and five rows are wrong today. **Two findings came from auditing the instruments rather than the code:** `00712000101` has sat in this suite since August labelled "the double-zero fat finger", the one input it calls a real user mistake — and nothing anywhere evaluated `toMsisdn255` on it, which returned a THIRTEEN-digit msisdn; and `test:shell-boundary`, named on U2 as its gate, is E-70 (plain `<a>` across shells) and cannot pass or fail on a module move — the real import guard is `test:client-graph-safe`, whose pinned set a new module must be added to or the guard is decoration. Ali added two standing requirements mid-session, both written into the contract so they bind later units rather than living in a chat: **§5.15** (every grid ships paging, sorting, a determinate loading state, an empty state and a retryable error state) and **§3c** (the import is ~150k contacts or a `.vcf`, *and* could be small — which breaks D18's 1 MB server-action ceiling outright, makes a full send TZS 900,000 against a measured float of TZS 232, and rules out pairwise duplicate detection at 1.1 × 10¹⁰ comparisons). ⚠️ RECORDED, NOT FIXED — outside §6's permission: `payout-destination.ts`'s canonical `destination.msisdn` is computed at `wallet-service.ts:1597` and **never read again**; the ledger and the gateway both take `parse.data.msisdn`. Harmless today because the two are equal, but the comment describes a reader that does not exist.  **U2 ✅ LIVE — D3 closed.** The NDC table was researched from the regulator rather than trusted: TCRA has re-issued the numbering plan three times since the edition U2 was drafted from, and 63, 64, 66, 70 and 72 all changed holder, so five of nineteen rows were wrong — including the one the unit had chosen AS its red control (070 was spare in 2020 and is Honora/Yas, operational, in v1.16, so planting `verdictFor("701234567") === "ok"` as the DEFECT would have pinned the wrong answer permanently). Cross-checked row by row against libphonenumber TZ ranges and carrier map, which carry GSMA IR21 provenance; the two sources agree on every code except 60. **Three rulings the research forced:** the operator is the RANGE HOLDER and never the network, because MNP has been live in Tanzania since March 2017 — so `walletHint` is display-only and §7 asserts no money module reads the table; where the regulator and the carriers disagree the parser ACCEPTS and flags, because a false refusal is invisible for ever and a false send is a receipt that never arrives; and 064 is allocated on paper and dead on the wire, which `isGatewayMsisdn` cannot see by design, so this module is the only thing in front of it. ⚠️ **An instrument nearly lied about the most important one:** the ITU E.164 notification answers "sans objet" in its portability row, which reads like "no portability here" and in fact answers a request for a LINK to a database TCRA never published — a blank field is not a negative finding. Also folded in: the display formatter had a SECOND, drifted copy in `wallet/withdraw/page.tsx` (no nine-digit cap, groups every run of three) that agreed with the first on every nine-digit input and diverged on everything else; both now resolve to one function. ⛔ Recorded for every worktree lane: `npm run build` cannot run where `node_modules` is a junction (Turbopack refuses the symlink), so the build proof in a worktree is typecheck + client-graph-safe + the Railway deploy itself. |
 | S0b | 2026-09-23 | **The SMS rail was sealed, and its lessons folded in — no code, board untouched at 0/52.** Delivery receipts now work end to end: a production-issued OTP was DELIVERED and its receipt settled the real row in 11 seconds (`applied: 1`, `unknownRef: 0`, `mismatch: 0`), after the gateway's first unattended batch of three receipts in one POST. §3a replaces the "no receipt has ever arrived" premise this plan was written on; §3b records the vendor's measured vocabulary and operational facts, plus the seven lessons from eleven days of chasing it — chief among them that four vendor claims of "it is fixed" produced four identical silences, that the real fault (a missing `?token=` on their saved URL) only became visible because our receiver records REFUSED attempts, and that our own probe was briefly mistaken for theirs until it was discriminated by `srcIp`. D21, OD41, §7.7, U46, U47 and U51 were rewritten against the new truth; every guard and unit count is unchanged. |
@@ -1011,12 +1038,47 @@ produces one, which is the only way "un-removable" is true of software rather th
 document; the footer's length is asserted against a token of the real minted length; the 111 is
 computed from the footer and the single-segment limit, not written down.
 
-**U5 · One helpline** — `src/lib/support-config.ts` and its six print sites (D6)
-One constant, named sites, ⚠️ `global-error.tsx` keeps its hand-written copies **by design** (it must stay
-import-free) and the guard asserts they EQUAL the constant. ⛔ The published RG page's number is NOT
-changed here — OQ4 is Ali's to answer; this unit removes the duplication so the answer is a one-line
-change. **Guard:** `test:support-contact`. **RED:** change one site's literal → red.
-**Accept:** `grep` finds the number in exactly the declared places, all equal.
+**U5 · One helpline** — `src/lib/support-config.ts` and its print sites (D6) — ✅ SHIPPED S3
+🔴 **THE PRODUCT HALF OF THIS UNIT WAS ALREADY BUILT, AND THE PLAN DID NOT KNOW.** Measured at S3
+before writing any code: the statutory helpline is already ONE pinned constant with no setter and no
+persisted field; `global-error.tsx` already keeps its four hand-written copies **by design** (it is
+the root error boundary and must import nothing, because it renders when the root layout itself has
+failed); and `test:support-contact` §15 already **discovers** every helpline-shaped literal in that
+file rather than listing line numbers, asserts each equals the constant, and carries its own controls
+that the file still publishes the number at all and that the detector rejects a drifted copy. The
+support-and-care campaign shipped it. ⛔ Building it again would have been a second implementation of
+a working one.
+⭐ **WHAT WAS ACTUALLY MISSING WAS THE CONTROL.** `test:support-contact` is fifteen sections, one of
+the most careful suites in this repo — and it had **no `red:` key at all**. Fifteen sections on trust.
+§5.11 says every guard ships with a control that reintroduces the real defect, so this unit ships
+`red:support-contact`: four mutations, 4/4 caught each on its OWN named assertion, tree restored
+byte-identical.
+⭐ **DECLARED ANCHORS, NOT AN IN-MEMORY PLANT, AND THE REASON MATTERS.** The suite reads the tree from
+disk — that IS its method — so an in-memory plant would have to fake the whole sweep and would then be
+testing the fake. Mutating the real file is what proves the sweep sees it. Declaring the anchors in
+`scripts/anchors/support-contact.anchors.mjs` also keeps `test:red-anchors`'s undeclared count at 68
+against its ceiling of 65 — ⭐ measured before and after: **unchanged**.
+⚠️ **TWO OF THE FOUR MUTATIONS ARE CONTROLS ON THE SUITE'S OWN CONTROLS.** §15.1 passes perfectly over
+a file that has stopped printing the helpline altogether — every surviving copy still matches — so one
+mutation DELETES a copy rather than drifting it and requires §15.2 to be the thing that fires. Another
+drifts the `tel:` href while leaving the printed text right: a drifted display string is a bad number
+to read out; a drifted href dials one.
+⭐ **AND THE SUITE UNDER TEST CAUGHT THIS UNIT'S OWN FIRST DRAFT.** The mutation that makes the
+statutory helpline operator-settable first used the operator's REAL desk number as its replacement
+literal, and §8 — "no support contact is a literal outside `support-config.ts`", whose sweep includes
+`scripts/` — refused the whole harness because the tree was already red. A red harness that seeds a
+real contact number into the tree is a red harness that leaks one. The replacement is now plainly fake.
+⛔ **D6 IS NOT CLOSED BY THIS UNIT AND STAYS ⬜.** Its engineering half is done — one home, every copy
+pinned, drift now impossible and PROVEN impossible. Its substance is **which number is correct**, and
+that is OQ4: we publish `0800 11 0011`, the Board's own Advertising Code names `0800110051`. ⛔ Not a
+thing to settle by making them agree — `test:campaign-compose` §12 asserts the marketing footer's
+number still DIFFERS from the published one, precisely so an "obvious cleanup" fails instead of
+turning an open owner question into a silent product decision. When Ali answers, the constant moves
+and §15 forces all four copies to move with it.
+**Guard:** `test:support-contact` (already on `predeploy`; §13.1 asserts that).
+**RED:** `red:support-contact` — 4/4, declared anchors.
+**Accept:** `grep` finds the number in exactly the declared places, all equal — and, added here, the
+guard that says so is now proven able to fail.
 
 **U6 · Consent ledger + suppression** — schema, both DALs, `dal-parity` §7 (D7, D8)
 `MessagingConsent` (append-only: channel, `identifier` = the one key, category, status, source, **verbatim
