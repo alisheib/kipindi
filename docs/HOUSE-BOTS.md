@@ -1839,4 +1839,4 @@ refusal, asserted nowhere before, is a new 1.541 case. 1.435's count is eleven, 
 | `test:house-bot-reports` | both stores, 0 failed; 14.3 reads 3 → 4 |
 | `typecheck` | 0 errors |
 | `test:red-anchors` §3 | all 340 console anchors resolve exactly once (the re-aimed `626d-own-movement-ignored` included) |
-| New mutations | `626h-settlement-read-as-the-stake`, `626h-placed-row-borrows`, `368b-balance-leaks-into-the-budget-title`, `435b-why-panel-guard-dropped`, `541-why-explains-removed` — driven in the commit after this one |
+| Mutations | `red:house-bot-console --only` at `5f1737af`, in a tree nobody edited: **6 caught, 0 missed, 0 files left dirty** — `626h-settlement-read-as-the-stake`, `626h-placed-row-borrows`, `368b-balance-leaks-into-the-budget-title`, `435b-why-panel-guard-dropped`, `541-why-explains-removed`, and the re-aimed `626d-own-movement-ignored` |

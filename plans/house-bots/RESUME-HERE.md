@@ -161,10 +161,10 @@ git history. It is gone from the tip; rewriting history is Ali's decision alone.
   (`house-bot-ops-cases.mts:55-75`, `red-anchors.test.mts:240-264`); it would leave 67. ⛔ Never bump the ceiling.
 - `scripts/focus-and-fit.mjs:119`/`:122` counts every buried control as touching too, then reports the two as
   disjoint — "4 fully under the rail and 4 touching it" describes 4, not 8.
-- `test:house-bot-surfaces` 2.ids.1 is RED on clean `main` since the finance lane's `8acf067c`/`f2a81682`:
-  `src/app/admin/finance/page.tsx` names `houseAccountMovement` and `houseMoved` (the platform's own levy book, not
-  house bots). Our guard is doing its job; its allowlist is SHRINK-ONLY by design, so the fix is a neutral name in
-  that file — the finance lane's to make. Told to every live session on 2026-09-26. ⛔ Do not register the names.
+- ✅ `test:house-bot-surfaces` 2.ids.1 went RED on `main` from the finance lane's `8acf067c`/`f2a81682`
+  (`houseAccountMovement`/`houseMoved` in `src/app/admin/finance/page.tsx`); told on 2026-09-26, the finance session
+  fixed it at `558b8f7a` with a neutral `ledger.leviesBooked`. ⛔ The lesson stands: the guard's allowlist is
+  SHRINK-ONLY — a new house-shaped name on an admin surface is renamed, never registered.
 
 ## 1 · Traps that cost a run each — all still live
 
