@@ -18,10 +18,11 @@
  */
 import { mayReceiveMarketingSms, userPhoneKeyFor } from "../src/lib/server/marketing/consent.ts";
 import type { MarketingGateVerdict, MarketingSkipReason } from "../src/lib/server/marketing/consent.ts";
+import { marketingRgStanding } from "../src/lib/server/marketing/rg.ts";
 import { db } from "../src/lib/server/store.ts";
 import type { StoredUser, StoredResponsibleGambling } from "../src/lib/server/store.ts";
 import { toMsisdn255 } from "../src/lib/phone-normalize.ts";
-import { selfExclusionStanding } from "../src/lib/server/responsible-gambling.ts";
+import { selfExclusionStanding, selfExclusionStandingOf } from "../src/lib/server/responsible-gambling.ts";
 
 /* ⛔ FAILURE IS THE DEFAULT, SET BEFORE THE FIRST `await`. A suite whose verdict is written only
  * at the end scores GREEN when a promise never settles or the process exits early. */
@@ -58,7 +59,7 @@ function makeUser(id: string, phoneE164: string, over: Partial<StoredUser>): Sto
   };
 }
 
-const rgRow = (userId: string, selfExclusionUntil: string | null): StoredResponsibleGambling => ({
+const rgRow = (userId: string, selfExclusionUntil: string | null, patch: Partial<StoredResponsibleGambling> = {}): StoredResponsibleGambling => ({
   userId,
   dailyDepositLimit: null, weeklyDepositLimit: null, monthlyDepositLimit: null,
   dailyLossLimit: null, sessionTimeLimitMin: null, realityCheckIntervalMin: 60,
@@ -67,18 +68,21 @@ const rgRow = (userId: string, selfExclusionUntil: string | null): StoredRespons
   pendingIncreaseTo: null, pendingIncreaseEffectiveAt: null,
   pendingWeeklyIncreaseTo: null, pendingWeeklyIncreaseEffectiveAt: null,
   pendingMonthlyIncreaseTo: null, pendingMonthlyIncreaseEffectiveAt: null,
+  ...patch,
 } as StoredResponsibleGambling);
+const DAY = 86400_000;
+const daysFromNow = (d: number) => new Date(Date.now() + d * DAY).toISOString();
 
 type Fixtures = Record<string, string>;
 
 /** Seed one self-contained world and hand back the phone number for each case. */
 async function seed(run: number): Promise<Fixtures> {
   const p = (i: number) => phoneFor(run, i);
-  const mk = async (phone: string, over: Partial<StoredUser>, seUntil?: string | null) => {
+  const mk = async (phone: string, over: Partial<StoredUser>, seUntil?: string | null, rgPatch: Partial<StoredResponsibleGambling> = {}) => {
     const id = `u${run}-${seq++}`;
     // ⭐ Stored the way registration really stores it: `tzPhone` yields `+255…`, WITH the plus.
     await Promise.resolve(db.user.create(makeUser(id, `+${toMsisdn255(phone)}`, over)));
-    if (seUntil !== undefined) await Promise.resolve(db.responsible.upsert(rgRow(id, seUntil)));
+    if (seUntil !== undefined) await Promise.resolve(db.responsible.upsert(rgRow(id, seUntil, rgPatch)));
     return id;
   };
   const consent = async (phone: string, status: "GIVEN" | "WITHDRAWN", when: string) =>
@@ -116,10 +120,26 @@ async function seed(run: number): Promise<Fixtures> {
   await mk(p(10), { marketingOptIn: false });
   await consent(p(10), "GIVEN", "2026-03-01T00:00:00.000Z");
 
+  // ── U10 · cooling-off and the §5.6 order ───────────────────────────────────────────────────
+  // K · a player ON a break (the status `coolOff` really writes, and a timer still running)
+  await mk(p(11), { marketingOptIn: true, status: "COOLED_OFF" }, null, { coolingOffUntil: daysFromNow(2) });
+  // L · ⭐ a break that ended, then a consent given AFTER it — the lift must exist
+  await mk(p(12), { marketingOptIn: true, status: "COOLED_OFF" }, null, { coolingOffUntil: daysFromNow(-10) });
+  await consent(p(12), "GIVEN", daysFromNow(-5));
+  // M · ⭐ a break that ended yesterday, and the only consent PREDATES it (D9's shape, for breaks)
+  await mk(p(13), { marketingOptIn: true, status: "COOLED_OFF" }, null, { coolingOffUntil: daysFromNow(-1) });
+  await consent(p(13), "GIVEN", daysFromNow(-30));
+  // N · 🔴 a consenting player whose pending deposit-limit rise has COME DUE — the write U7's fix missed
+  const maturedId = await mk(p(14), { marketingOptIn: true }, null,
+    { dailyDepositLimit: 1_000, pendingIncreaseTo: 5_000, pendingIncreaseEffectiveAt: daysFromNow(-1) });
+  // O · a player SERVING a self-exclusion whose toggle is OFF — §5.6 asks consent first
+  await mk(p(15), { marketingOptIn: false, status: "SELF_EXCLUDED" }, daysFromNow(30));
+
   return {
     consenting: p(1), suppressed: p(2), stranger: p(3), contactGiven: p(4), contactWithdrawn: p(5),
     serving: p(6), minimumServed: p(7), toggledOff: p(8), closed: p(9), overriddenPlayer: p(10),
-    consentingId,
+    onBreak: p(11), breakOverReconsented: p(12), breakOverStale: p(13), matured: p(14), servingNoConsent: p(15),
+    consentingId, maturedId,
   };
 }
 
@@ -147,7 +167,7 @@ async function runAssertions(gate: Gate, f: Fixtures, tag: string): Promise<void
   // ── the player branch ───────────────────────────────────────────────────────────────────
   await expect("7 · ⭐ a 24-hour self-exclusion that ELAPSED A YEAR AGO is still refused (D9 — the period ending is not the person asking)", f.minimumServed, "rg_self_excluded");
   await expect("8 · a player whose own toggle is off is refused", f.toggledOff, "no_consent");
-  await expect("9 · a CLOSED account is refused on status, before consent is even reached", f.closed, "account_status");
+  await expect("9 · a CLOSED account is refused on status even though its toggle is on", f.closed, "account_status");
   await expect("10 · ⛔ an imported GIVEN row can NEVER speak over a player's own no (OD10)", f.overriddenPlayer, "no_consent");
 
   await expect("11 · an unusable number is refused before it can become a billed send", "123", "bad_msisdn");
@@ -176,6 +196,17 @@ async function runAssertions(gate: Gate, f: Fixtures, tag: string): Promise<void
   ok(p("14 · 🔴 the gate created NO ResponsibleGambling row — deciding must not write (150k recipients = 150k rows)"),
     (await Promise.resolve(db.responsible.get(f.consentingId))) === null,
     "a row here means the gate writes once per recipient");
+
+  // ── U10 · the RG STANDING, through the gate ─────────────────────────────────────────────
+  await expect("15 · a player ON a break is refused with its own reason, not as `account_status`", f.onBreak, "rg_cooling_off");
+  await expect("16 · ⭐ a break that ENDED does not reopen marketing by itself — the consent on file predates it (D9, breaks)", f.breakOverStale, "rg_cooling_off");
+  await expect("17 · ⭐ a break that ended, then a consent AFTER it: ALLOWED — the COOLED_OFF status nothing ever clears is admitted only then", f.breakOverReconsented, "ALLOWED");
+  const matured = await verdict(f.matured);
+  const maturedRow = await Promise.resolve(db.responsible.get(f.maturedId));
+  ok(p("18 · 🔴 a row whose pending limit rise has COME DUE is not rewritten by the gate — the write U7's fix missed"),
+    maturedRow?.pendingIncreaseTo === 5_000 && maturedRow?.dailyDepositLimit === 1_000,
+    `verdict ${reasonOf(matured)} · pending=${maturedRow?.pendingIncreaseTo} daily=${maturedRow?.dailyDepositLimit}`);
+  await expect("19 · §5.6 ORDER — a self-excluded player whose toggle is off is refused on CONSENT, which is asked first (the costly RG step never runs)", f.servingNoConsent, "no_consent");
 }
 
 /* ══ THE MODEL USED FOR PLANTING ════════════════════════════════════════════════════════════
@@ -185,9 +216,12 @@ async function runAssertions(gate: Gate, f: Fixtures, tag: string): Promise<void
 type Defect = {
   swapOrder?: boolean;              // consent asked before suppression (OD11 broken)
   noBridge?: boolean;               // the `+` never added — every player becomes a stranger
-  allowMinimumServed?: boolean;     // an elapsed self-exclusion re-permits marketing (D9)
-  writesRgRow?: boolean;            // the predicate is asked unguarded, so asking WRITES
+  lockoutSemantics?: boolean;       // RG read the way `isLockedOut` reads it: only a RUNNING period refuses (D9)
+  writesRgRow?: boolean;            // U7's first shape: `selfExclusionStanding` asked unguarded, so asking WRITES
+  readsThroughWriter?: boolean;     // U7's fix: guarded for a MISSING row, but an existing row still goes through the writer
   ledgerOverridesPlayer?: boolean;  // an imported row speaks over a player's own no (OD10)
+  rgBeforeConsent?: boolean;        // U7's order — RG asked before consent (§5.6 reversed, and the harm scan runs on everybody)
+  breakNeverAdmitted?: boolean;     // pre-U10: COOLED_OFF refused for ever as `account_status`, whatever the player later says
 };
 
 function gateWithDefect(d: Defect): Gate {
@@ -200,20 +234,48 @@ function gateWithDefect(d: Defect): Gate {
       const s = await Promise.resolve(db.suppression.find(key));
       return s ? { ok: false, skipReason: "suppressed", detail: "suppressed" } : null;
     };
+    // The RG step, or one of the three shapes this platform has shipped or nearly shipped instead of it.
+    const askRg = async (user: StoredUser): Promise<{ refusal: MarketingGateVerdict | null; coolingOffEnded: boolean }> => {
+      if (d.writesRgRow || d.readsThroughWriter) {
+        const hasRow = (await Promise.resolve(db.responsible.get(user.id))) !== null;
+        const rg = (d.writesRgRow || hasRow) ? await selfExclusionStanding(user.id) : ({ state: "none" } as const);
+        if (rg.state === "serving" || rg.state === "minimum_served") return { refusal: { ok: false, skipReason: "rg_self_excluded", detail: rg.state }, coolingOffEnded: false };
+      }
+      if (d.lockoutSemantics) {
+        const row = await Promise.resolve(db.responsible.get(user.id));
+        if (selfExclusionStandingOf(row?.selfExclusionUntil ?? null).state === "serving") return { refusal: { ok: false, skipReason: "rg_self_excluded", detail: "serving" }, coolingOffEnded: false };
+        const co = row?.coolingOffUntil ? Date.parse(row.coolingOffUntil) : NaN;
+        if (co > Date.now()) return { refusal: { ok: false, skipReason: "rg_cooling_off", detail: "on a break" }, coolingOffEnded: false };
+        return { refusal: null, coolingOffEnded: !Number.isNaN(co) };
+      }
+      const rg = await marketingRgStanding(user, identifier);
+      if (!rg.ok) return { refusal: { ok: false, skipReason: rg.skipReason, detail: rg.detail }, coolingOffEnded: false };
+      return { refusal: null, coolingOffEnded: rg.coolingOffEnded };
+    };
     const askConsent = async (): Promise<MarketingGateVerdict | null> => {
       const user = await Promise.resolve(db.user.findByPhone(d.noBridge ? identifier : `+${identifier}`));
       if (user) {
-        const hasRow = (await Promise.resolve(db.responsible.get(user.id))) !== null;
-        const rg = (d.writesRgRow || hasRow) ? await selfExclusionStanding(user.id) : ({ state: "none" } as const);
-        const refuseRg = d.allowMinimumServed ? rg.state === "serving" : (rg.state === "serving" || rg.state === "minimum_served");
-        if (refuseRg) return { ok: false, skipReason: "rg_self_excluded", detail: rg.state };
-        if (!["ACTIVE", "PENDING_KYC"].includes(user.status)) return { ok: false, skipReason: "account_status", detail: user.status };
-        if (user.marketingOptIn !== true) {
+        const consentRefusal = async (): Promise<MarketingGateVerdict | null> => {
+          if (user.marketingOptIn === true) return null;
           if (!d.ledgerOverridesPlayer) return { ok: false, skipReason: "no_consent", detail: "toggle off" };
           const l = await Promise.resolve(db.messagingConsent.latestFor(key));
-          if (l?.status === "GIVEN") return { ok: true };
-          return { ok: false, skipReason: "no_consent", detail: "toggle off" };
+          return l?.status === "GIVEN" ? null : { ok: false, skipReason: "no_consent", detail: "toggle off" };
+        };
+        let rg: { refusal: MarketingGateVerdict | null; coolingOffEnded: boolean };
+        if (d.rgBeforeConsent) {
+          rg = await askRg(user);
+          if (rg.refusal) return rg.refusal;
+          const c = await consentRefusal();
+          if (c) return c;
+        } else {
+          const c = await consentRefusal();
+          if (c) return c;
+          rg = await askRg(user);
+          if (rg.refusal) return rg.refusal;
         }
+        const statusOk = ["ACTIVE", "PENDING_KYC"].includes(user.status)
+          || (user.status === "COOLED_OFF" && rg.coolingOffEnded && !d.breakNeverAdmitted);
+        if (!statusOk) return { ok: false, skipReason: "account_status", detail: user.status };
         return { ok: true };
       }
       const latest = await Promise.resolve(db.messagingConsent.latestFor(key));
@@ -270,8 +332,8 @@ if (!PROVE_RED) {
       expect: "1 · a consenting player is ALLOWED",
     },
     {
-      name: "an ELAPSED self-exclusion re-permits marketing (D9 — the isLockedOut lift, reintroduced)",
-      defect: { allowMinimumServed: true },
+      name: "RG read the way isLockedOut reads it — only a RUNNING period refuses (D9 — the lift, reintroduced)",
+      defect: { lockoutSemantics: true },
       expect: "7 · ⭐ a 24-hour self-exclusion that ELAPSED A YEAR AGO is still refused (D9 — the period ending is not the person asking)",
     },
     {
@@ -283,6 +345,21 @@ if (!PROVE_RED) {
       name: "an imported ledger row speaks over a player's own no (OD10 broken)",
       defect: { ledgerOverridesPlayer: true },
       expect: "10 · ⛔ an imported GIVEN row can NEVER speak over a player's own no (OD10)",
+    },
+    {
+      name: "U7's own fix — a MISSING row is guarded, but an EXISTING row still goes through the writer (`effectivize`)",
+      defect: { readsThroughWriter: true },
+      expect: "18 · 🔴 a row whose pending limit rise has COME DUE is not rewritten by the gate — the write U7's fix missed",
+    },
+    {
+      name: "U7's order — RG asked BEFORE consent (§5.6 reversed; the 10,000-row harm scan runs on every non-consenting player)",
+      defect: { rgBeforeConsent: true },
+      expect: "19 · §5.6 ORDER — a self-excluded player whose toggle is off is refused on CONSENT, which is asked first (the costly RG step never runs)",
+    },
+    {
+      name: "pre-U10 — COOLED_OFF refused for ever as `account_status`, so a player who asks again after a break is never heard",
+      defect: { breakNeverAdmitted: true },
+      expect: "17 · ⭐ a break that ended, then a consent AFTER it: ALLOWED — the COOLED_OFF status nothing ever clears is admitted only then",
     },
   ];
 

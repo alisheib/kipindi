@@ -844,8 +844,8 @@ text. The one-line summaries are in §1; what follows is what each one actually 
   rather than removing them. **U5**
 - **D7 · There is no SMS suppression list.** **U6**
 - **D8 · `marketingOptIn` carries no channel, no wording, no evidence and no history.** **U6**
-- **D9 · `isLockedOut` lifts itself** when the chosen period elapses (`responsible-gambling.ts:382`), so a
-  24-hour self-exclusion is marketable 25 hours later. **U10**
+- **D9 · `isLockedOut` lifts itself** when the chosen period elapses (`responsible-gambling.ts`,
+  `isLockedOut`), so a 24-hour self-exclusion is marketable 25 hours later. **U10**
 - **D10 · `push-service` gates on that same predicate** and inherits the lift. Filed here; changed only
   by owner ruling. **U10**
 - **D11 · No age check anywhere on outbound messaging.** **U11**
@@ -1184,15 +1184,47 @@ slice two's message.
 testing the list, not the send, and the control has found the worse defect.
 **Accept:** the mid-send opt-out fixture is red before the in-loop gate exists and green after.
 
-**U10 · The marketing RG predicate** — `src/lib/server/marketing/rg.ts` (D9, D10)
-`marketingRgStanding(userId)` built on `selfExclusionStanding` (⛔ not `isLockedOut`, which is not
-modified), cooling-off, and `detectHarmMarkers`, with six-months-minimum semantics and a fresh
-post-restoration consent required. Each refusal carries its own skip reason and an audit line matching the
-`push.suppressed.rg_lockout` precedent. D10 is filed as an owner item, not silently changed.
-**Guard:** `test:rg-doors` + `test:marketing-consent`.
+**U10 · The marketing RG predicate** — `src/lib/server/marketing/rg.ts` (D9, D10) — BUILT S6
+`marketingRgStanding(user, identifier)` built on the ONE standing definition (⛔ not `isLockedOut`, which is
+not modified), cooling-off, and `detectHarmMarkers`, with six-months-minimum semantics and a fresh
+post-restoration consent required. Each refusal carries its own skip reason; the audit line matching the
+`push.suppressed.rg_lockout` precedent is written by the LOOP when it acts on the refusal (U9), never by
+the predicate — an audience count must not write to the chain. D10 is filed as an owner item, not silently
+changed.
+**Guard:** `test:rg-doors` §8 + `test:marketing-consent`.
 **RED:** plant a player whose standing is `minimum_served` — a control planting only `serving` would pass
 today and prove nothing.
 **Accept:** a player who self-excluded for 24 hours a year ago is still refused.
+
+⭐ **WHAT SHIPPED, AND THE FOUR PREMISES IT HAD TO CORRECT (S6, 2026-09-25):**
+① **U7's "deciding must not write" fix was half a fix.** It skipped `selfExclusionStanding` when no RG row
+existed — but on an EXISTING row that call still goes through `getRgSettings` → `effectivize`, which
+REWRITES the row whenever a pending limit change has come due (and, on the memory store, mutates the live
+object). The predicate now reads `db.responsible.get` and computes from the raw row through
+`selfExclusionStandingOf`, the pure half split out of `selfExclusionStanding` so there is still ONE
+definition — and `red:rg-doors`' existing `minimum_served` mutation now reaches marketing too.
+② **Cooling-off was already refused for ever — under the wrong reason.** Nothing ever clears `COOLED_OFF`,
+so U7 refused anyone who had ever taken even a one-hour break as `account_status`. ⭐ RULED ON DELEGATION: a
+break is standing for marketing — refused while it runs, and after it until the player consents again
+AFTER it ended; only then is the `COOLED_OFF` status admitted. (Betting still reads the timer, by design.)
+③ **The restore leaves no column.** `restorePlayerAction` writes only the audit row
+`rg.self_exclusion.reopened`, so that is what the predicate reads (`getAuditForTargetsDurable`, one indexed
+query, only for a player who has consented and served the minimum). A restore must postdate the latest
+`rg.self_exclusion.activated`; six months are six CALENDAR months and never under 182 days (the platform's
+"6m" is 182 days, shorter than some half-years), counted from the last activation or, without one, from the
+END date — the safe direction; and the consent must postdate the restore. Missing record → refuses.
+④ **Harm markers are NOT standing, and the plan's wording cannot be met as written.** Nothing persists a
+harm flag (no table, no namespace, no audit action — a code comment claiming otherwise was corrected), so a
+marker refuses for as long as its detector's window, ≤ 8 days. A check that cannot be read REFUSES (the
+compliance panel's `.catch(() => [])` turns a failed read into "no flags"). Standing harm markers need a
+persisted, officer-reviewed flag store — an owner item in §0, not invented here.
+⭐ **And U7's order was not §5.6's.** It asked self-exclusion before consent; the gate now asks suppression →
+consent → self-exclusion → cooling-off → harm markers → status, which also keeps the 10,000-transaction harm
+scan off every non-consenting player.
+**Measured:** `test:rg-doors` 54 → 91 (§8: 37 assertions, 4 mutually exclusive outcomes as a property, both
+lifts proven to EXIST) · `red:rg-doors` 11 → 19 mutations, each caught by its own named check, tree restored
+· `test:marketing-consent` 15 → 20 · `red:marketing-consent` 5 → 8, three of the plants being U7's SHIPPED
+shapes (the half-fix that still wrote, RG before consent, the permanent break refusal).
 
 **U11 · 18+** — the loop (D11)
 Account-linked: `dob` must yield ≥18 at send time. Contact-only: marketable solely when the import
