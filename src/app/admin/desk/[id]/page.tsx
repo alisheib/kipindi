@@ -56,6 +56,7 @@ import { UsageBar } from "../page";
 import { runDeskAccountAction, saveBotRulesAction } from "../actions";
 import { DeskRulesForm } from "./rules-form";
 import { DeskAccountActions } from "./account-actions";
+import { AccountWhyPanel } from "./why-panel";
 
 /** ⛔ A static neutral title (ruling 402). The account's own label is a GATED value and never reaches the tab. */
 export const metadata = { title: "Admin · Desk" };
@@ -360,33 +361,10 @@ async function AdminDeskAccountContent({
           )}
         </AdminCard>
 
-        {/* ⭐ THE ANSWER, IN THE CONSOLE'S OWN SENTENCES. Every line here is `CONSOLE_SKIP_SENTENCE` — the
-            engine's outcomes in the officer's words, from the one copy home (rulings 370(c), 453) — so a screen
-            and a feed never describe the same refusal two ways. ⛔ The count column is `shrink-0` beside a
-            `min-w-0` sentence (432(b)): a long reason wraps, the number never does. */}
-        {!view.removed && (
-          /* ⛔ THE GUARD IS THE PANEL'S OWN FIRST TERM, IN THE FORM 1.435 COUNTS (433(e)) — and the fragment
-             is what keeps it there. `{!view.removed && why && (` guards this card just as truly, but the pin
-             reads a literal shape, and a guard the instrument cannot see is a guard nobody will notice the
-             loss of. ⚠️ `why` is ALSO null on a removed account, because the door refuses one; that is a
-             second, independent answer, not this one. */
-          <>{why && (
-            <Callout tone="neutral" title="Why is it not staking?">
-              {why.headline}
-              {why.reasons.length > 0 && (
-                <ul className="mt-3 space-y-1">
-                  {why.reasons.map((r) => (
-                    <li key={r.text} className="flex items-baseline justify-between gap-4">
-                      <span className="min-w-0">{r.text}</span>
-                      <span className="tabular-nums shrink-0">{r.markets}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {why.scanned && <p className="text-caption mt-3">{why.scanned}</p>}
-            </Callout>
-          )}</>
-        )}
+        {/* ⭐ THE ANSWER, AND ITS `removed` GUARD, LIVE IN `AccountWhyPanel` (2026-09-26) — where the suite can
+            RENDER it (1.435b). As a bare wrapper here the guard could never fail: the door already refuses a
+            removed account, so deleting it changed nothing any instrument could see. */}
+        <AccountWhyPanel removed={view.removed} why={why} />
 
         {/* 358 · A REMOVED ACCOUNT IS READ-ONLY, AND THE CALLOUT IS THE STATE — not a failure and not an empty page.
             No action row is rendered here at all, because there is no action left to take. */}

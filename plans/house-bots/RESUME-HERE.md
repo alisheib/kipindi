@@ -6,7 +6,7 @@ claim in it was put to five adversarial refuters before it was committed.
 
 ---
 
-## ⚠️ THE LIVE STATE — read from production 2026-09-25 23:48 EAT and 2026-09-26 ≈ 00:40 EAT
+## ⚠️ THE LIVE STATE — read from production 2026-09-25 23:48 EAT and 2026-09-26 ≈ 00:10 EAT
 
 SELECT-only, in a session opened with `default_transaction_read_only=on`, ids never printed, ages computed in SQL,
 timestamps rendered as text in SQL. ⛔ **RE-READ BEFORE QUOTING** — a number in a file is wrong by however long the
@@ -89,27 +89,31 @@ carrying every figure (one view model, two layouts).
 5. **D19/D20 stand.** House bots are never public — not to players, not to the holder — and are ordinary players in
    every report.
 
-**Suite floors — a lower count is a regression, not drift:** console **845 memory / 604 Postgres** · engine
-**808 / 787** · money **132 / 150**. **Declared mutations:** console 335 · engine 80 · money 56 + seam 7 · c5 97 —
-all resolve exactly once (`test:red-anchors` §3, 2026-09-25).
+**Suite floors — a lower count is a regression, not drift:** console **854 memory / 613 Postgres** (2026-09-26) ·
+engine **808 / 787** · money **132 / 150**. **Declared mutations:** console 340 · engine 80 · money 56 + seam 7 ·
+c5 97 — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
 ## 0b · ▶ WHAT IS OPEN, in the order to work it
 
 Nothing here blocks betting.
 
-**⭐ FOUND 2026-09-26, before the list below — being fixed first:**
+**✅ FOUND AND FIXED 2026-09-26** (`docs/HOUSE-BOTS.md` §12.5 has the whole record):
 - 🔴 **Opening/Closing bracketed the SETTLEMENT on every settled Won or Void row** — 598 of 694 placed rows on the live
   desk. `feedRemainingLookup` matched the stake's movement on `positionId` alone; `BET_PAYOUT` and `BET_REFUND` carry
-  the same position and the scan is newest-first, so it took the payout or refund. Every fixture settled stakes by
-  flipping `Position.status` and wrote no money, so no case could see it.
-- 🔴 **1.368's D3 guard exempted `remaining`/`remainingTitle`** — names the row stopped carrying at `3859118f`, so the
-  exemption exempted nothing and the case passed only because its fixture paints no balance.
+  the same position and the scan is newest-first, so it took the payout or refund. Now it matches the stake's own
+  `BET_PLACED`, and a placed row whose debit is out of the scan answers nothing. Case 1.626h writes real settlement
+  money — every earlier fixture settled a stake by flipping `Position.status`, which is why none could see it.
+- 🔴 **1.368's D3 guard was vacuous twice** — it exempted `remaining`/`remainingTitle` (names the row stopped carrying
+  at `3859118f`) AND its account had no activity rows at all. It is now 1.368b, on a ledger that really paints
+  balances, taking its needles from what the rows paint.
 - 🔴 **`reports-mem` was RED on clean `main`** (14.3/14.3b): another lane's `8acf067c` deleted `"today"` from
   `analytics.Period`, and our case called `activePlayers("today")` through an `Any` — the window began at `NaN` and
-  every count was 0. It is why every red drive refused to start on 2026-09-25.
+  every count was 0. It is why every red drive refused to start on 2026-09-25. It now asks `resolveRange`.
+- ✅ **(b) is done:** the why-panel's `removed` guard lives in `AccountWhyPanel` and is RENDERED by 1.435b with a live
+  answer (the one input where it alone stands); the door's own refusal is a new 1.541 case. Each has a mutation.
 
 **a) The full mutation fleets.** Console and engine were last driven WHOLE at `79c2962d` (2026-09-23: 305/305,
-65/65); they have grown to 335/80 since, and money+seam (63) and c5 (97) have no whole-fleet record. Per-mutation
+65/65); they have grown to 340/80 since, and money+seam (63) and c5 (97) have no whole-fleet record. Per-mutation
 time is not measured here. Drive in slices under 3 hours (`--only <prefix,…>`), each under the lock, each into its
 own log, **never through a pipe**:
 ```bash
@@ -121,9 +125,7 @@ and its lock stops only a second copy of the SAME harness — so run drives in a
 here is **`C:/kipindi-hb-red`** (detached; its `node_modules` is a JUNCTION into this worktree's). An anchor that no
 longer resolves is reported `STALE` and fails the run — check `test:red-anchors` §3 first, not after hours.
 
-**b) The `{!view.removed && (` wrapper around the why-panel cannot fail.** `why` is already null for a removed account
-(`houseWhyIdleForConsole` refuses one), so the wrapper changes nothing that renders; it exists so case 1.435's
-literal count reaches 12. Give it a real RED control, or drop it and re-derive 1.435.
+**b) ✅ DONE 2026-09-26** — see the FIXED block above.
 
 **c) At 1280 the 12-column ledger is 1375px inside a 998px strip.** `Round`, `Game`, `Note` and the stop control sit
 behind a sideways drag. Measure it on a served build, then **ASK ALI as a numbered one-line choice** which column to
@@ -136,8 +138,17 @@ row. **Write the plan, show Ali, then build.** ⛔ It is not only 266/360/361 th
 in terms. The plan must name every text it amends and get Ali's words for each — D20 is his ruling. It must also say
 what "P&L" counts when three placed stakes in four come back VOID.
 
-**e) For Ali, not for a session:** the system switched the desk OFF at 2026-09-24 21:52:26 EAT (no actor). Read its
-recorded cause and tell him.
+**e) ✅ READ 2026-09-26, and told to Ali:** the system's own switch-off at 2026-09-24 21:52:26 EAT carries
+`cause: GLOBAL_LOSS_STOP` — the desk's global daily loss limit tripped six minutes after it was switched on. Seven
+rules saves followed, and a person switched it back on at 21:56:11. Nothing is a session's to change here.
+
+**g) 🔴 FOR ALI — a regulator document: ruling 501 was never built.** `C5-D20-REPLAN.md` ruling 501 (a session's
+ruling implementing D20) says the ISO 27001 regulator hand-off must EXCLUDE `house_bot.*` audit rows by category
+and SAY SO with the excluded count. `buildIsoAudit` (`src/lib/server/reports/catalogue.ts`) still reads the whole
+durable audit table unfiltered, and since the switch-on the desk writes those rows (`HOUSE_AUDIT`,
+`src/lib/house-bot/constants.ts`). Whether a given export contains one depends on the live row count (it takes the
+oldest 25,000) — NOT MEASURED. ⛔ Changing what a regulator receives is Ali's call, asked as a numbered choice;
+never built silently.
 
 **f) A house account label that is also a person's name sat in this file** (`cc211981`, 2026-09-24) and is in public
 git history. It is gone from the tip; rewriting history is Ali's decision alone.
@@ -150,6 +161,10 @@ git history. It is gone from the tip; rewriting history is Ali's decision alone.
   (`house-bot-ops-cases.mts:55-75`, `red-anchors.test.mts:240-264`); it would leave 67. ⛔ Never bump the ceiling.
 - `scripts/focus-and-fit.mjs:119`/`:122` counts every buried control as touching too, then reports the two as
   disjoint — "4 fully under the rail and 4 touching it" describes 4, not 8.
+- ✅ `test:house-bot-surfaces` 2.ids.1 went RED on `main` from the finance lane's `8acf067c`/`f2a81682`
+  (`houseAccountMovement`/`houseMoved` in `src/app/admin/finance/page.tsx`); told on 2026-09-26, the finance session
+  fixed it at `558b8f7a` with a neutral `ledger.leviesBooked`. ⛔ The lesson stands: the guard's allowlist is
+  SHRINK-ONLY — a new house-shaped name on an admin surface is renamed, never registered.
 
 ## 1 · Traps that cost a run each — all still live
 
@@ -199,7 +214,7 @@ npm run -s test:house-bot-rules
 npm run -s test:house-bot-disclosure
 npm run -s test:house-bot-surfaces
 npx tsx scripts/red-anchors.test.mts
-KP_SCRATCH_PORT=5453 npm run -s test:house-bot-console    # both stores; floor 845 / 604
+KP_SCRATCH_PORT=5453 npm run -s test:house-bot-console    # both stores; floor 854 / 613
 KP_SCRATCH_PORT=5453 npm run -s test:house-bot-engine     # floor 808 / 787
 KP_SCRATCH_PORT=5453 npm run -s test:house-bot-money      # floor 132 / 150
 KP_SCRATCH_PORT=5453 npm run -s test:dal-parity

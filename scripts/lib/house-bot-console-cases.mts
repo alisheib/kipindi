@@ -3041,6 +3041,26 @@ try {
             && !/cannot be read/i.test(backOn.headline),
           j({ unreadable: unreadable && unreadable.headline, readable: backOn && backOn.headline }));
       }
+
+      /* ⛔ 1.541 · THE DOOR REFUSES A REMOVED ACCOUNT (2026-09-26) — the first of the two answers 1.435b's panel
+       * guard backs up, and until now asserted nowhere: "there is nothing left for it to stake on" (358). The same
+       * stub as above presents THIS account as REMOVED, so the control is the identical account answering while
+       * it is not. */
+      {
+        const realGet = w.dal.houseBotStore.get;
+        let removedWhy: Any = "unset";
+        try {
+          w.dal.houseBotStore.get = async (...a: Any[]) => {
+            const b = await realGet.apply(w.dal.houseBotStore, a as Any);
+            return b == null ? b : { ...b, status: "REMOVED" };
+          };
+          removedWhy = await GATEM.houseWhyIdleForConsole(OFFICER, "/admin/desk", acct.botId);
+        } finally { w.dal.houseBotStore.get = realGet; }
+        ok("1.541 · a REMOVED account is not explained — the door answers `null`, because there is nothing left for it to stake on (358)",
+          removedWhy === null, j({ removedWhy }));
+        ok("1.541 · CONTROL · the same account NOT removed does get an answer — so the null above is the removal, not a door that answers nothing",
+          backOn !== null, j({ backOn: backOn && backOn.headline }));
+      }
     }
 
     /* ⭐ 456's OTHER HALF (Ali, 2026-09-23) · READING a holder's money and CHANGING it are both PLATFORM acts, and
@@ -3178,27 +3198,11 @@ try {
     ok("1.368 · 459 · the holder's own balance appears NOWHERE in this page's painted view model, in any form",
       !all(above).includes(formatTzs(5_000_000)) && !all(above).includes("5000000")
         && !/balance is [A-Z]|TZS 5,000,000/.test(all(above)), j(above.floorSentence));
-    /* 🔴 AND THE ACTIVITY TAB IS SCANNED SEPARATELY, BECAUSE THAT IS WHERE THE ONE EXCEPTION LIVES (D3 amended
-     * 2026-09-25). The view above is the OVERVIEW tab and carries no feed at all — so once a balance could
-     * legitimately appear on a row, the line above would have gone on passing while saying nothing about the
-     * surface that changed. That is a guard passing for the wrong reason, and this is the repair.
-     * ⛔ THE EXEMPTION IS TWO FIELDS BY NAME. Every other painted string on the activity view is still held to
-     * 459: a balance leaking into the floor sentence, a usage caption, a note or a market title still fires. */
-    {
-      const act = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId, { tab: "activity" });
-      const exempt = new Set(["remaining", "remainingTitle"]);
-      const scanned = all({
-        ...act,
-        feed: (act.feed ?? []).map((r: Any) => Object.fromEntries(Object.entries(r).filter(([k]) => !exempt.has(k)))),
-      });
-      ok("1.368 · 459 · D3 · on the ACTIVITY tab the balance appears in the two named cells and NOWHERE ELSE — the amendment is one exception, not a withdrawal of the rule",
-        !scanned.includes(formatTzs(5_000_000)) && !scanned.includes("5000000"),
-        j({ rows: (act.feed ?? []).length }));
-      /* ⭐ CONTROL · the scan really would see a balance on this view — without it the line above proves only
-         that the fixture's holder happens to have spent nothing. */
-      ok("1.368 · 459 · D3 · CONTROL · the same scan DOES report that balance when it is put back into a painted field",
-        all({ ...act, feed: [{ note: formatTzs(5_000_000) }] }).includes(formatTzs(5_000_000)), "");
-    }
+    /* 🔴 THE ACTIVITY TAB'S HALF OF THIS GUARD IS 1.368b, IN THE LEDGER BLOCK (1.626) — MOVED 2026-09-26, because
+     * here it was vacuous TWICE. Its exemption named `remaining`/`remainingTitle`, which the row stopped carrying at
+     * `3859118f`, so it exempted nothing; and this account has NO activity rows at all (a control measured 0), so
+     * the scan it ran over the activity tab was a scan of nothing. It now runs where the ledger really paints the
+     * holder's balance, and takes its needles from what the rows paint rather than from a typed figure. */
     /* ⛔ AND THE OTHER SIDE OF THE FLOOR IS A DIFFERENT SENTENCE, so the case above measures a BRANCH. */
     await w.setCaps(acct.botId, { balanceFloorTzs: 9_000_000 });
     const below = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId);
@@ -3566,13 +3570,34 @@ try {
        through the planner's own ladder. The twelfth is its LINK up in the account strip, and it is guarded for
        ruling 312 rather than 358: on a REMOVED account the door answers `null`, so an unguarded link would be
        a control that opens nothing — a dead control one click from the page saying the account is gone. The
-       count stays an EQUALITY either way, so a panel or a control that ships without its guard is still red. */
+       count stays an EQUALITY either way, so a panel or a control that ships without its guard is still red.
+       ⭐ TWELVE BECAME ELEVEN 2026-09-26, AND THE GUARD DID NOT GO AWAY — IT BECAME ONE THAT CAN FAIL. The
+       why-panel's wrapper could never change what rendered (the door already refuses a removed account), so it
+       existed only to make this count reach twelve. It now lives inside `AccountWhyPanel`, the page hands it
+       `removed={view.removed}` (pinned below), and 1.435b RENDERS it with a live answer to prove the guard bites. */
     ok("1.435 · 358 · every card of the account page is guarded by `removed` — the rail, the usage card, the floor sentence, the last placement and all four other panels",
       /* ⚠️ THE SOURCE IS DECOMMENTED, so a pin may not reach for a comment as its landmark — measured on the
          first run of this very assertion, which looked for the `312` note above the rail and found nothing. */
-      guards === 12 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
-        && /\{view\.removed && \(\s*<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(detail),
-      j({ guards }));
+      guards === 11 && /\{!view\.removed && \(\s*<Tabs/.test(detail)
+        && /\{view\.removed && \(\s*<SavedRulesCard rows=\{rulesRows\} reason=\{view\.rulesReason\} captions=\{false\} \/>/.test(detail)
+        && /<AccountWhyPanel removed=\{view\.removed\} why=\{why\} \/>/.test(detail),
+      j({ guards, whyPanelHandedRemoved: /<AccountWhyPanel removed=\{view\.removed\} why=\{why\} \/>/.test(detail) }));
+    /* ━━ 1.435b · THE WHY-PANEL'S `removed` GUARD, RENDERED — the red control it never had (2026-09-26) ━━━━━━━━━━━
+     * A LIVE answer is handed in with `removed: true`: the one input on which the guard is the only thing standing.
+     * The door refuses a removed account today, so no page render can reach this; the component can. */
+    {
+      const { createElement: h }: Any = await import("react");
+      const { renderToStaticMarkup }: Any = await import("react-dom/server");
+      const { AccountWhyPanel }: Any = await import("../../src/app/admin/desk/[id]/why-panel.tsx");
+      const liveWhy = { headline: "It looked at 4 markets and refused every one.", reasons: [{ text: "The price is stale.", markets: 4 }], scanned: "4 markets looked at." };
+      const onRemoved = renderToStaticMarkup(h(AccountWhyPanel, { removed: true, why: liveWhy }));
+      const onLive = renderToStaticMarkup(h(AccountWhyPanel, { removed: false, why: liveWhy }));
+      ok("1.435b · a REMOVED account is told nothing, even when handed a live answer — the panel's own guard, not the door's, is what stands here",
+        onRemoved === "", j({ onRemoved: onRemoved.slice(0, 120) }));
+      ok("1.435b · CONTROL · the SAME answer on a live account paints the panel, headline and reason — so the empty render above is the guard, not a panel that paints nothing",
+        onLive.includes("Why is it not staking?") && onLive.includes(liveWhy.headline) && onLive.includes(liveWhy.reasons[0].text),
+        j({ onLive: onLive.slice(0, 160) }));
+    }
     /* ⛔ AND THE TAB TESTS ARE STILL PURE, which is what keeps `test:tab-anchors` and the served probe able to read
      * this page's panels at all. */
     ok("1.435 · 433(e) · every tab test is the tab and NOTHING else, so no panel reads as `above the rail`",
@@ -4302,6 +4327,28 @@ try {
           placedRows[2]!.closingTitle != null && /EAT$/.test(placedRows[2]!.closingTitle),
           j(placedRows[2]?.closingTitle));
 
+        /* ━━ 1.368b · D3 · THE HOLDER'S BALANCE IS PAINTED IN THE LEDGER CELLS AND NOWHERE ELSE (2026-09-26) ━━━━━━━
+         * Moved here from 1.368, where it scanned an account with NO activity rows and exempted field names the row
+         * no longer carried — vacuous twice. ⭐ THE NEEDLES ARE WHAT THE ROWS PAINT: every Opening and Closing figure
+         * on this page, never a typed amount, so a rename, a new balance field or a different fixture balance cannot
+         * slide past. Everything else the activity view paints is scanned — the floor sentence, the usage captions,
+         * a note, a game title, the day's budget. */
+        {
+          const exempt = new Set(["opening", "closing", "closingTitle"]);
+          const needles = [...new Set(brows.flatMap((r: Any) => [r.opening, r.closing]).filter((v: Any): v is string => typeof v === "string"))];
+          const rowKeys = new Set(brows.flatMap((r: Any) => Object.keys(r)));
+          ok("1.368b · D3 · CONTROL · the population is REAL — the ledger paints at least three distinct balances, and every exempted field is one the row really carries",
+            needles.length >= 3 && [...exempt].every((k) => rowKeys.has(k)),
+            j({ needles, missing: [...exempt].filter((k) => !rowKeys.has(k)) }));
+          const scanned = all({ ...bv, feed: brows.map((r: Any) => Object.fromEntries(Object.entries(r).filter(([k]) => !exempt.has(k)))) });
+          const digitsOf = (s: string) => s.replace(/\D/g, "");
+          const leaked = needles.filter((n) => scanned.includes(n) || (digitsOf(n).length >= 7 && scanned.includes(digitsOf(n))));
+          ok("1.368b · 459 · D3 · on the activity view the holder's balance appears in the Opening/Closing cells and NOWHERE ELSE — the amendment is one exception, not a withdrawal of the rule",
+            needles.length >= 3 && leaked.length === 0, j({ leaked }));
+          ok("1.368b · D3 · CONTROL · the same scan DOES report a painted balance put back into any other field",
+            needles.length > 0 && all({ ...bv, feed: [{ note: needles[0] }] }).includes(needles[0]), "");
+        }
+
         /* 🔴 CONTROL · IT REFUSES TO CARRY ACROSS A MOVEMENT THE LEDGER DID NOT RECORD — the defect this column
          * would otherwise have shipped with, found by reading `wallet-service.ts` rather than by any suite.
          * A withdrawal that FAILS returns the cash to `balance` and writes NO new row: `:876` patches the existing
@@ -4378,6 +4425,78 @@ try {
         ok("1.626e · CONTROL · a queued row has no position and therefore no result — the chip stays the intent's own",
           idleRow != null && (rv.feed ?? []).find((r: Any) => r.stake === formatTzs(9_000))?.resultWord === null,
           j({ queued: (rv.feed ?? []).find((r: Any) => r.stake === formatTzs(9_000))?.resultWord }));
+
+        /* ━━ 1.626h · A SETTLED STAKE STILL BRACKETS ITSELF (2026-09-26) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         * 🔴 FOUND BY AN ADVERSARIAL READ, NEVER BY THIS SUITE — because every fixture above settles a stake by
+         * flipping `Position.status` and writes no money. On production a WIN writes a `BET_PAYOUT` and a VOID a
+         * `BET_REFUND`, BOTH carrying the stake's `positionId`, and the reader took the NEWEST movement with that
+         * position — the settlement — as the stake's own. Opening and Closing then bracketed the payout, not the
+         * stake. So this block writes the settlement money the product writes: newest, same position, a balance
+         * that is visibly NOT the stake's. */
+        {
+          const stakeClosing = (k: number) => 5_000_000 - STAKES.slice(0, k + 1).reduce((a, b) => a + b, 0);
+          const wal = await w.db.wallet.findByUserId(bud.userId);
+          const settle = async (k: number, type: "BET_PAYOUT" | "BET_REFUND", amount: number, balanceAfter: number) => {
+            const at = new Date().toISOString();
+            await w.db.txn.create({
+              id: `txn_settle_${type}_${budPositions[k].positionId}`, walletId: wal.id, userId: bud.userId, type,
+              status: "CONFIRMED", amount, fee: 0, taxWithheld: 0, balanceAfter, currency: "TZS", provider: "INTERNAL",
+              providerRef: null, msisdn: null, description: "fixture", positionId: budPositions[k].positionId,
+              amlReason: null, createdAt: at, updatedAt: at, completedAt: at,
+            } as Any);
+          };
+          /* The WIN (5,000) is paid 9,500; the OPEN one (2,000) is voided and refunded. Each settlement balance is
+             chosen to be a figure no stake row holds, so a reader that picked it up cannot pass by coincidence. */
+          await new Promise((res) => setTimeout(res, 5));
+          await settle(0, "BET_PAYOUT", 9_500, 4_981_500);
+          await w.setPositionStatus(budPositions[2].positionId, "VOID");
+          await settle(2, "BET_REFUND", 2_000, 4_983_500);
+          const sv = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", bud.botId, { tab: "activity" });
+          const srow = (amt: number) => (sv.feed ?? []).find((r: Any) => r.stake === formatTzs(amt));
+          const wonRow = srow(5_000), voidRow = srow(2_000);
+          ok("1.626h · a SETTLED stake's Opening and Closing still bracket THAT stake — the payout or refund that settled it carries the same position and is never read as the stake's own movement",
+            wonRow?.resultWord === "Won" && voidRow?.resultWord === "Void"
+              && wonRow?.closing === formatTzs(stakeClosing(0)) && wonRow?.opening === formatTzs(stakeClosing(0) + 5_000)
+              && voidRow?.closing === formatTzs(stakeClosing(2)) && voidRow?.opening === formatTzs(stakeClosing(2) + 2_000),
+            j({ won: { opening: wonRow?.opening, closing: wonRow?.closing, want: formatTzs(stakeClosing(0)) },
+                void: { opening: voidRow?.opening, closing: voidRow?.closing, want: formatTzs(stakeClosing(2)) } }));
+          /* ⛔ CONTROL · THE SETTLEMENT ROWS REALLY ARE THERE, AND REALLY ARE NEWER — so a reader that took the newest
+             movement for the position WOULD have painted them. Without this the assertion above could pass on a
+             fixture whose settlement never landed. */
+          const wonTx: Any[] = await w.txnsFor(budPositions[0].positionId);
+          const voidTx: Any[] = await w.txnsFor(budPositions[2].positionId);
+          const newest = (xs: Any[]) => [...xs].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0];
+          ok("1.626h · CONTROL · each settled position carries its settlement as its NEWEST movement, at a balance no stake row holds — so the bracket above is a measurement, not a fixture that never settled",
+            newest(wonTx)?.type === "BET_PAYOUT" && Number(newest(wonTx)?.balanceAfter) === 4_981_500
+              && newest(voidTx)?.type === "BET_REFUND" && Number(newest(voidTx)?.balanceAfter) === 4_983_500
+              && wonTx.some((t: Any) => t.type === "BET_PLACED") && voidTx.some((t: Any) => t.type === "BET_PLACED"),
+            j({ won: wonTx.map((t: Any) => [t.type, t.balanceAfter]), void: voidTx.map((t: Any) => [t.type, t.balanceAfter]) }));
+
+          /* ⛔ AND A PLACED ROW WHOSE OWN DEBIT IS NOT IN VIEW ANSWERS NOTHING. The carried rule prices the instant
+             the engine DECIDED — before a placed row's stake left — so borrowing it would paint a balance that still
+             holds the row's own stake. Production reaches this when a busy wallet pushes the debit past the scan. */
+          await w.dal.houseBotIntentStore.insert({
+            id: `hbi_626h_orphan_${bud.botId}`, houseBotId: bud.botId, botUserId: bud.userId, kind: "OPENER",
+            anchorKey: "mkt_626h_orphan", marketId: "mkt_626h_orphan", productLine: "MARKET",
+            triggerPositionId: null, triggerUserId: null, targetId: null, requestedById: null, entryCondition: null,
+            side: "YES", stakeTzs: 13_000, dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000),
+            status: "PLACED", reasonCode: null, why: null, decision: {}, attempts: 0, transientAttempts: 0,
+            nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: `pos_626h_orphan_${bud.botId}`,
+            finishedAt: null, alertedAt: null,
+          } as Any);
+          await new Promise((res) => setTimeout(res, 5));
+          const queuedMkt = await w.poll({ graceMin: 0 });
+          await w.intent(bud, queuedMkt.id, { kind: "OPENER", side: "YES", stakeTzs: 17_000 });
+          const ov = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", bud.botId, { tab: "activity" });
+          const orphan = (ov.feed ?? []).find((r: Any) => r.stake === formatTzs(13_000));
+          const queuedAfter = (ov.feed ?? []).find((r: Any) => r.stake === formatTzs(17_000));
+          ok("1.626h · a PLACED row whose own stake movement is not in view answers NOTHING — it never borrows the balance from before its own stake left",
+            orphan != null && orphan.closing === null && orphan.opening === null,
+            j({ closing: orphan?.closing, opening: orphan?.opening }));
+          ok("1.626h · CONTROL · a queued row minted just after it DOES carry a figure — so the blank above is the placed row refusing, not a ledger with nothing in it",
+            queuedAfter != null && queuedAfter.closing !== null && queuedAfter.opening === null,
+            j({ closing: queuedAfter?.closing, opening: queuedAfter?.opening }));
+        }
       }
 
       /* ⛔ THE SLOTS GO BACK, AND THIS IS NOT TIDINESS — IT IS A DEFECT THIS BLOCK CAUSED AND HAD TO REPAIR.

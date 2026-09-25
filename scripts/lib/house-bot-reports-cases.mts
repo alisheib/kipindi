@@ -4955,13 +4955,22 @@ await guard("14", async () => {
   const w: Any = await loadWorld();
   const AN: Any = await import("../../src/lib/server/analytics.ts");
   const { tallyWalletLiability }: Any = await import("../../src/lib/wallet-liability.ts");
+  const { resolveRange }: Any = await import("../../src/lib/server/date-range.ts");
+  /* 🔴 2026-09-25 · THIS SECTION WENT RED ON CLEAN `main` AND MEASURED NOTHING WHILE IT DID. `8acf067c` deleted
+     `"today"` from `analytics.Period` (it had meant a ROLLING 24 h there and the EAT day everywhere else), and this
+     file called `AN.activePlayers("today")` through an `Any`, so no compiler saw it: `periodToMs("today")` returned
+     `undefined`, the window started at `NaN`, and every count was 0 before and after the fixture. 14.3/14.3b caught
+     it — that is what they are for — but only when the red drive ran its baseline. ⭐ Ask for what is meant, from the
+     repo's ONE definition of "today": the EAT calendar day, `resolveRange`. `now + 1` because the window is
+     `[start, end)` and a fixture row can share the millisecond of the read that follows it. */
+  const todayEat = () => { const r = resolveRange({ range: "today" }, Date.now() + 1); return { start: r.start, end: r.end }; };
 
   const HOUSE_TZS = 3_100_000;   // distinctive, so a delta can only be this fixture's
   const TWIN_TZS = 3_100_000;
   const STAKE_TZS = 900_000_000; // large enough that the Top-10 place is not a coincidence
 
   const base = {
-    active: await AN.activePlayers("today"),
+    active: await AN.activePlayers(todayEat()),
     liability: (await AN.walletLiabilityByStatus()).activeTzs,
     unverified: await AN.unverifiedLiability(),
   };
@@ -5013,11 +5022,11 @@ await guard("14", async () => {
     } as never);
   };
   const quiet = await w.user({ balance: 1_000 });        // funded, but NO transaction today
-  const activeAfterQuiet = await AN.activePlayers("today");
+  const activeAfterQuiet = await AN.activePlayers(todayEat());
   await txnNow(holder.userId, "DEPOSIT", 50_000, "h");
-  const activeAfterHolder = await AN.activePlayers("today");
+  const activeAfterHolder = await AN.activePlayers(todayEat());
   await txnNow(twin, "DEPOSIT", 50_000, "t");
-  const activeAfterTwin = await AN.activePlayers("today");
+  const activeAfterTwin = await AN.activePlayers(todayEat());
 
   ok("14.3 · CRA-32 · ACTIVE PLAYERS COUNTS THE DESIGNATED HOLDER LIKE ANY PLAYER — a today transaction on the holder moves the count by exactly one",
     activeAfterHolder - activeAfterQuiet === 1, j({ before: activeAfterQuiet, after: activeAfterHolder }));

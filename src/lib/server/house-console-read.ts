@@ -4410,10 +4410,20 @@ function feedRemainingLookup(
     if (rows == null || rows.length === 0) return null;
     const at = Date.parse(row.createdAt);
     if (!Number.isFinite(at)) return null;
-    /* ⭐ THE ROW'S OWN MOVEMENT WHERE IT HAS ONE — `positionId` is unique on both the intent and the transaction.
-       This branch is EXACT and needs none of the care below: the figure was stamped by this very stake. */
-    const own = row.positionId == null ? undefined : rows.find((t) => t.positionId === row.positionId);
+    /* ⭐ THE ROW'S OWN STAKE MOVEMENT — its `BET_PLACED`, matched on the position. This branch is EXACT and needs
+       none of the care below: the figure was stamped by this very stake.
+       🔴 2026-09-26 · `positionId` IS NOT UNIQUE ON THE TRANSACTION, and this line once said it was. The refund
+       (`BET_REFUND`) and the payout (`BET_PAYOUT`) carry the same position (`market-service.ts`), `rows` is
+       NEWEST-FIRST, and a bare `find` therefore took the SETTLEMENT: every settled Won or Void row painted the
+       balance after its payout or refund as `Closing`, and that plus the stake as `Opening` — a bracket the wallet
+       never held, on three rows in four of the live desk. The stake's debit is the only movement that brackets it. */
+    const own = row.positionId == null ? undefined
+      : rows.find((t) => t.positionId === row.positionId && t.type === "BET_PLACED");
     if (own != null && own.balanceAfter != null) return remainingCell(own, landedAt(own), true);
+    /* ⛔ AND A PLACED ROW WHOSE OWN DEBIT IS NOT IN THE SCAN ANSWERS NOTHING. The carried rule below prices the
+       instant the engine DECIDED, which for a placed row is BEFORE its stake left the wallet — the very reason the
+       branch above exists — so borrowing it here would paint a balance that still holds this row's own stake. */
+    if (row.positionId != null) return null;
 
     /* Otherwise the last movement at or before this instant — the balance the wallet stood at, unchanged since. */
     let carried: StoredTxn | undefined;
