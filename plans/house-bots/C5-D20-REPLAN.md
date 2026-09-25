@@ -48,7 +48,7 @@ memo or column (W21, W22 moot).
 | 261–262 | R2 bulk words; 196's proof substitution | **STRIKE** with the display | recorded only |
 | 263 | The three R2 phrasings in the absence vocabulary | **KEEP** (the words stay needles: absence protection only widens) | ✅ |
 
-## 3. The new checkpoints (each: one `c5-step-fast` run, build → review lenses → fix, record in RESUME AT, push)
+## 3. The new checkpoints (each: one `c5-step-fast` run [script deleted 2026-09-26 as spent; git history keeps it], build → review lenses → fix, record in RESUME AT, push)
 
 - **C5-5 close** — 🟡 the running fixer (`wf_c2cd11aa-ef0`), told D20 at 15:02 UTC: finish the gate findings, skip the
   display polish, write `plans/house-bots/tools/c5-s5-mutations.json` with only surviving code's mutations.
@@ -95,12 +95,12 @@ memo or column (W21, W22 moot).
     written in `PROGRESS.md` at REL-4 step 2** (`git worktree add --detach <repo>-rel4 …` → work → push →
     `git worktree remove`), never the main checkout another session may be inside, and never a rebase or a force. On a
     conflict: stop, remove the temporary worktree, and resolve on the branch — never at the gate. ⛔ Read rulings 471
-    and 450 in §5 before any cross-branch step, and confirm with Ali.
+    and 450 in §5 before any cross-branch step, and confirm with Ali. [⚠️ Spent, noted 2026-09-26: that recipe was measured wrong (`PROGRESS.md` RESUME AT item 3); `main` is pushed per `RESUME-HERE.md` §0.]
 
 ## 4. What D20 changes in later commits (for their spec sessions)
 
-- **Commit 6 (non-disclosure):** unchanged in shape (private Board draft, chatbot guard D19d, docs, absence suite). The
-  draft must say reports and filings treat house accounts as ordinary player accounts and carry no house memo.
+- **Commit 6 (non-disclosure):** unchanged in shape (chatbot guard D19d, docs, absence suite). ~~The private Board draft~~
+  ⛔ STRUCK 2026-09-20 by owner ruling D21 (`docs/COMPLIANCE-DECISIONS.md`): the Gaming Board needs nothing; no draft is written.
 - **Commit 7 (console, the navbar link)** — see also rulings 264–266, 271 below: the console CONTROLS bots — designate, rules and limits, Start/pause, kill
   switch, Enter now and targets, engine health, the action feed, cap usage. **Struck:** the R2 overview exposure split
   (L39), the staff-edge href test (L38), R1 (e)'s two-admin flag (L35), the per-bot CSV and internal-record writers (L48).
@@ -125,7 +125,7 @@ bots and what keeps D19 true").
      CHECKs, the schema, both DAL twins, `rules.ts` fields, `FIELD_META`, `CLEAR_EXEMPT`, the rules-suite pins and fixtures),
      `ALERT_KEY.staffEdge`, `STAFF_EDGE_MIN_SETTLED` and `houseStaffScorecard`. Re-run `test:house-bot-migrations`,
      `test:dal-parity` and `test:house-bot-rules`. **W16 is moot.**
-266. **Commit 7's console shows money only as usage against a configured limit.** A figure the bot's own controls need
+266. **Commit 7's console shows money only as usage against a configured limit.** ⚠️ *Amended 2026-09-25 by the owner (D3, `docs/COMPLIANCE-DECISIONS.md`): the desk's activity-table `Opening`/`Closing` cells carry the holder's ledger balance — the one exception (C7-SPEC 373(f)/(g)).* A figure the bot's own controls need
      stays — today's loss against the daily loss cap, open exposure against the exposure cap, the kill switch's held amount
      if ruling 254's CAP_EXPOSURE figure is kept — written as "used X of Y". Struck from `03-design-spec.md` S1/S3 and PLAN
      §8: the lifetime and today "Book" card, "Today's net" as a results KPI, fee withheld, and the money tab's house chip on
@@ -634,7 +634,7 @@ bots and what keeps D19 true").
      450's bolded prohibition carried no supersede banner. A session obeying RESUME AT — the block the plan itself
      names as the truth source — would have refused the C5-8 merge Ali explicitly delegated, and would have allocated
      465 as its next free ruling number against ten already recorded. **So the rule, and it binds this session first:**
-     a ruling is not taken until (i) `PROGRESS.md`'s RESUME AT, standing list and affected register rows carry it,
+     a ruling is not taken until (i) `PROGRESS.md`'s RESUME AT (⚠️ retired 2026-09-23 — read `RESUME-HERE.md`), standing list and affected register rows carry it,
      (ii) every ruling it supersedes carries a supersede banner in place, (iii) the next-free-ruling number is
      corrected wherever it is written, and (iv) any generator that would re-raise the closed matter — the autonomous
      run prompt's Phase 0 among them — is edited, not just the copies it generates.
@@ -1528,7 +1528,7 @@ bots and what keeps D19 true").
      so nothing prepared a reader to treat them as new.
      - ⛔ **A list of excuses must be re-derived from a run, not inherited from a document.** The list is
        corrected to what the gate printed, with the baseline sha it was measured at written beside it, and
-       the correction is carried into `BRIEFING.md` **and** `plans/house-bots/tools/c7-step.js`, the
+       the correction is carried into `BRIEFING.md` **and** `plans/house-bots/tools/c7-step.js` [deleted 2026-09-26 as spent; git history keeps it], the
        GENERATOR that hands it to every future step (ruling 516(iv): a ruling that does not reach the
        generator re-raises the closed matter).
      - ⚠️ **`test:popup-fit`'s unreviewed population grew 66 → 68**, and the two additions are exactly the

@@ -11,10 +11,10 @@
  *     dependencies is outside what any lane may do here. Hand-writing an unmarked `Transaction` row and calling
  *     the result "the rollback" would rehearse DRIFT DETECTION over a fixture, not a rollback, and recording
  *     that as drill 2 is the true-measurement-of-the-wrong-population this programme exists to refuse.
- *   · **Steps 4–7 need instruments that live on another branch.** `ops:house-bots-status --drift` and
- *     `ops:house-bots-remark` are keys on `origin/ops-lane` only. They were read READ-ONLY (`git show
- *     origin/ops-lane:scripts/ops-house-bots-status.mts`) for §0's pin and for `RELEASE-LADDER.md` §10's
- *     procedure. ops-lane was NOT merged: lane 2 is renumbering the register inside it right now.
+ *   · **Steps 4–7 need instruments this drill does not drive.** `ops:house-bots-status --drift` and
+ *     `ops:house-bots-remark` were keys on `origin/ops-lane` only when this was written, read READ-ONLY for §0's
+ *     pin and for `RELEASE-LADDER.md` §10's procedure. ⚠️ Since the ops-lane merge they are keys in `package.json`
+ *     on `main`, and §0's pin runs against the file (re-checked 2026-09-26).
  *
  * ⭐ SO WHAT IS THIS, THEN. Everything the drill needs that DOES live on this branch, driven for real against a
  * scratch Postgres the run creates and drops:
@@ -110,8 +110,8 @@ let notMeasured = 0;
       !src.includes(`p."houseBotId" IS NOT NULL AND t."houseBotId" IS NULL AND 1 = 2 /* never */`));
   } else {
     notMeasured++;
-    console.log(`     NOT MEASURED — scripts/ops-house-bots-status.mts is not in this tree. It is a key on`);
-    console.log(`     origin/ops-lane only, and ops-lane was not merged (lane 2 is renumbering its register).`);
+    console.log(`     NOT MEASURED — scripts/ops-house-bots-status.mts is not in this tree. It has been on main`);
+    console.log(`     since the ops-lane merge, so a tree without it predates that merge.`);
     console.log(`     ⭐ THIS PIN ARMS ITSELF: the moment REL-M lands that file, the branch above starts running`);
     console.log(`     and this drill goes RED if the two copies of the drift query have drifted apart.`);
     console.log(`     Predicates held here: (a) ${PRED_A}`);
@@ -521,8 +521,8 @@ console.log(`            A second worktree checked out before the house commits,
 console.log(`            Prisma client that has no \`houseBotId\`. Installing dependencies is outside what any lane`);
 console.log(`            may do here, and simulating old code by hand would rehearse §2 over again, not a rollback.`);
 console.log(`   steps 4–7 · \`ops:house-bots-status -- --drift\`, then \`ops:house-bots-remark\` dry, \`--apply\`, and`);
-console.log(`            \`--apply\` a second time for 0 rows. Both are keys on origin/ops-lane only. §0 above arms`);
-console.log(`            itself the moment that file lands in this tree.`);
+console.log(`            \`--apply\` a second time for 0 rows. Both are keys in package.json on main (merged from`);
+console.log(`            ops-lane); this drill does not drive them yet. §0 above pins the drift query against that file.`);
 console.log(`   step 8 · the house book's realised figure read back against the ledger, AFTER a remark.`);
 console.log(`   ⭐ The ten-step procedure, with what each step must PRINT: plans/house-bots/RELEASE-LADDER.md §10.`);
 notMeasured += 3;

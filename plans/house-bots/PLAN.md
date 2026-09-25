@@ -22,7 +22,7 @@
 > # ⛔ OWNER RULING D19 — HOUSE BOTS ARE NEVER PUBLIC, AND THE HOLDER SEES NOTHING
 > **Owner ruling D19 (Ali, 2026-09-16), which outranks this plan: nothing about house bots reaches a player or the holder.**
 > The rulebooks, Terms, privacy notice, FAQ, home copy and chatbot keep exactly the words they have on `main`: no carve-out,
-> no disclosure line, no META or `TERMS_VERSION` bump and no announcement (D19a). The regulator draft stays private (D19b).
+> no disclosure line, no META or `TERMS_VERSION` bump and no announcement (D19a). ~~The regulator draft stays private (D19b).~~ ⛔ STRUCK 2026-09-20 (owner ruling D21, `docs/COMPLIANCE-DECISIONS.md`): the Gaming Board needs nothing and no draft is written.
 > The holder sees no chip, no explanatory line, no liquidity label on outcome notices and no house wording in any refusal,
 > and receives no house-bot notice or email at all; every alert goes to admins only (D19c). The chatbot discloses nothing
 > and never lies, kept so by a forbidden-phrase guard (D19d). Struck in this file: D2/D7; the holder notices in the Context,
@@ -505,7 +505,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 | Leaderboard, trader avatars, `predictorCount`, ticker | **unchanged (D6)**~~, pinned by a test~~ |
 
 ## 10. Public text and docs
-⛔ **Superseded by D19 (Ali, 2026-09-16):** the public text below is struck and never built. The rulebooks, Terms, privacy notice, FAQ, home copy and chatbot keep exactly the words they have on `main`: no carve-out, no disclosure line, no META or `TERMS_VERSION` bump and no announcement (D19a); there is no holder chip (D19c); the chatbot gets no bullet, only a guard that keeps false assurances out of the system prompt and `faq8a` (D19d); and the house refusals left the public dictionary (C4 ruling 148). The "Docs" half stands except its rulebook §8 supersede row: the docs are internal, and the Board draft stays private (D19b).
+⛔ **Superseded by D19 (Ali, 2026-09-16):** the public text below is struck and never built. The rulebooks, Terms, privacy notice, FAQ, home copy and chatbot keep exactly the words they have on `main`: no carve-out, no disclosure line, no META or `TERMS_VERSION` bump and no announcement (D19a); there is no holder chip (D19c); the chatbot gets no bullet, only a guard that keeps false assurances out of the system prompt and `faq8a` (D19d); and the house refusals left the public dictionary (C4 ruling 148). The "Docs" half stands except its rulebook §8 supersede row: the docs are internal. ~~The Board draft stays private (D19b).~~ ⛔ STRUCK 2026-09-20 (owner ruling D21): no Board draft is written.
 
 **Public text**
 - ~~**Rules:**~~
@@ -528,7 +528,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 
 ## 11. Build order
 **Setup and working rules**
-- Worktree: follow `plans/house-bots/README.md` → "Resume on any machine" (branch `house-bots` already exists on origin; the old `-b house-bots origin/main` form is superseded by S1). Never rebase the branch; merge `origin/main` into it. Stage by name only.
+- Worktree, branch and push recipe: `plans/house-bots/RESUME-HERE.md` §0 — the working branch is `bot-flow-seal` (`house-bots` is fully merged into `main`), on `C:/` on Ali-Blade15 and `F:/` on the office PC. Never rebase the branch; merge `origin/main` into it. Stage by name only.
 - Push the **branch** after every commit. Merge `origin/main` in often (never rebase: the branch is shared across machines); conflicts are expected in nav, admin-shell and docs.
 - **Before each push:** `test:all` green, then an **adversarial review workflow** (money / logic / UX lenses) on the commit's diff, with findings fixed first.
 
@@ -540,11 +540,11 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 | 3 | Designation, eligibility and password **services** (no actions yet) · `HOUSE_BOT` kind ~~+ `notifyHouseBotOwner` + owner email template~~ · `test:house-bot-designation` ⛔ **Superseded by D19 (Ali, 2026-09-16):** Commit 3 built `notifyHouseBotOwner` and the owner email template `houseBotOwnerHtml`, and the eighth session deleted both; the holder receives no house-bot notice or email (D19c; C4 ruling 149). |
 | 4 | Engine (§4) + remaining notifications (§7) + money hooks + `feed-copy.ts` · `test:house-bot-engine`, `test:house-bot-info-edge`, `test:house-bot-comms` · `red:house-bot-engine`. Idle while the switch is OFF. |
 | 5 | ~~Reporting (§9) + resolver exposure display +~~ ~~holder chip / SellButton~~ · `test:house-bot-reports` ⛔ **Superseded by D20 (Ali, 2026-09-17):** the §9 reporting splits and the resolver exposure display are struck; Commit 5 is re-planned in `C5-D20-REPLAN.md` §3 (C5-5b un-build, C5-6 R8 + R6, C5-7 absence sweep and served layer, C5-8 closing gates), and the holder chip and SellButton fall under D19c. ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder chip and no SellButton `houseStake` state are built; a house stake looks exactly like the holder's own bet (D19c). |
-| 6 | ~~Public text (§10)~~ · `test:house-bot-disclosure` ⛔ **Superseded by D19 (Ali, 2026-09-16):** no public text; Commit 6 is the non-disclosure commit (the private Board draft, the chatbot guard D19d, docs, the absence suite). |
+| 6 | ~~Public text (§10)~~ · `test:house-bot-disclosure` ⛔ **Superseded by D19 (Ali, 2026-09-16):** no public text; Commit 6 is the non-disclosure commit (the chatbot guard D19d, docs, the absence suite; ~~the private Board draft~~ STRUCK 2026-09-20 by owner ruling D21). |
 | 7 | Console: `actions.ts`, routes, UserPicker + DAL search, nav/RBAC, FAILURE-INVENTORY · `test:house-bot-console` · `red:house-bot-console` · `qa:house-bots-visual` |
 | 8 | `db:seed-house-bots-local`, `qa:house-bots-local`, `ops:house-bots-status` · docs finalised · end-to-end drive · verification record |
 
-**Release:** migrations applied to production from this machine first. **One merge to `main`** at a quiet hour: one deploy, which is a brief outage while `overlapSeconds` is null. The switch stays OFF and Ali turns it on.
+**Release:** migrations applied to production from this machine first. **One merge to `main`** at a quiet hour: one deploy, which is a brief outage while `overlapSeconds` is null. The switch stays OFF and Ali turns it on. (Done: the release shipped and the switch is the owner's — its live state is in `RESUME-HERE.md`, never here.)
 
 ## 12. Verification
 **New suites**
@@ -585,7 +585,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
   Run at 6 widths with overflow, clipping and control-height assertions, plus a `--sheet-missing` red control. **Each PNG opened and read.**
 - **Production after release:**
   - `dpl=` SHA equals the merge;
-  - `npm run ops:house-bots-status` read-only — **FIVE figures, not four** (corrected 2026-09-20: this line omitted "engine enabled", while PROGRESS.md:463, 04-amendments.md's R5 row and 00-NEW-SESSION-PROMPT.md:115 all name five): switch OFF, 0 bots, 0 marked rows, an engine boot row with its instant, and a fresh planner beat. ⛔ "Engine enabled" can only ever mean "an engine booted against this database and said so" — a refused start writes no row, so the command prints the boot instant and never "the engine is not disabled";
+  - `npm run ops:house-bots-status` read-only — **FIVE figures, not four** (corrected 2026-09-20: this line omitted "engine enabled", while PROGRESS.md's REL-5 checks and 04-amendments.md's R5 row both name five): switch OFF, 0 bots, 0 marked rows, an engine boot row with its instant, and a fresh planner beat. ⛔ "Engine enabled" can only ever mean "an engine booted against this database and said so" — a refused start writes no row, so the command prints the boot instant and never "the engine is not disabled";
   - owner renders the page, nav highlight correct, picker and check card with balance work **without designating**;
   - a non-owner role gets `AdminRestricted`;
   - ~~rules and terms in en/sw/zh show new text and versions;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the rules and terms keep exactly the words and versions they have on `main` (D19a);
@@ -763,13 +763,13 @@ On 2026-09-14 Ali asked for two features: **Enter now** (pick a poll and enter i
 Right after this plan is approved, these files are copied to **`plans/house-bots/ (branch house-bots) `** (durable; committed on branch `house-bots` and worked on only in its own worktree, so
 the parallel session can't sweep them):
 - `PLAN.md`: this file.
-- `00-NEW-SESSION-PROMPT.md`: the prompt below.
+- ~~`00-NEW-SESSION-PROMPT.md`: the prompt below.~~ (spent; deleted 2026-09-26, git keeps it; a session now starts at `RESUME-HERE.md`)
 - `01-scenario-register.md`: 241 scenarios with expected behaviour and the test for each, plus `TGT-01`…`TGT-40` added 2026-09-14.
 - `02-sealed-flows.md`: every flow, step by step.
 - `03-design-spec.md`: screen-by-screen design and the render protocol.
 - `04-amendments.md`: verified amendments A/C/R/P/S/F and N1–N2, all mandatory.
 
-> ⚠️ **Superseded 2026-09-13:** the plan now lives on branch `house-bots` under `plans/house-bots/`. The authoritative prompt is `plans/house-bots/00-NEW-SESSION-PROMPT.md` and progress is tracked in `plans/house-bots/PROGRESS.md`. The block below is the original draft, kept for the record.
+> ⚠️ **Superseded 2026-09-13 — the block below is the original draft prompt, kept only for the record; never act on it** (its `house-bots` branch, "rebase on origin/main often" and "master switch stays OFF" are all spent). The one entry point is `plans/house-bots/RESUME-HERE.md`.
 
 **Copy-paste prompt for the build session**
 ```
@@ -891,7 +891,7 @@ the resolution below is final.
   - A1 (no platform sign-out; hardening H1); A18; A20 retention; A22 recipients;
   - C2; C3; C6 limits consequences; C7 modals, routes and a11y; C14; C15 windows;
   - ~~R1 house-liquidity report + CSV; R2 exposure everywhere; R3 statutory notes;~~ R4 no prizes on house stakes; ⛔ **Superseded by D20 (Ali, 2026-09-17):** R1, R2 and R3 are struck (no house report or CSV, no house exposure line on any admin screen, no house statutory note); R4 stands, already built in the money seam.
-  - ~~P1 disclosure completeness (privacy notice, versions, chatbot,~~ Board draft). ⛔ **Superseded by D19 (Ali, 2026-09-16):** P1 is struck (no privacy line, version bump, chatbot bullet, FAQ sentence or disclosure tracking, D19a); the private Board draft stays (D19b), and the chatbot gets only the guard against false assurances (D19d).
+  - ~~P1 disclosure completeness (privacy notice, versions, chatbot,~~ Board draft). ⛔ **Superseded by D19 (Ali, 2026-09-16):** P1 is struck (no privacy line, version bump, chatbot bullet, FAQ sentence or disclosure tracking, D19a); ~~the private Board draft stays (D19b)~~ (STRUCK 2026-09-20 by owner ruling D21: no draft), and the chatbot gets only the guard against false assurances (D19d).
 - **Reporting and public text (final set):**
   - ~~R5 data-rights export: a holder `houseLiquidity` section; trigger players get excluded days only;~~ a `PENALTY_BOXED` event kept 7 years. ⛔ **Superseded by D20 (Ali, 2026-09-17):** R5 is struck with its owner-only internal record (C5-SPEC rulings 236–238, 240–242, 246); no export or record projects house data, the holder's and trigger players' doors carry nothing house (rulings 168–169 and 239's absence half), and the `PENALTY_BOXED` event stands.
   - R6 erasure leftovers: admin copy uses the `Player #` handle only; `house_bot_live` refusal; holder hook not gated by `HOUSE_BOT_ENGINE`.

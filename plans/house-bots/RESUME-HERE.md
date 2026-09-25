@@ -14,7 +14,7 @@ file has sat, and this section's own history proves it (below).
 
 | Fact | Value |
 |---|---|
-| Master switch | **ON since 2026-09-24 21:56:11 EAT.** ⛔ NO SESSION EVER TOUCHES IT — on or off is the owner's act |
+| Master switch | **ON since 2026-09-24 21:56:11 EAT.** ⛔ NO SESSION EVER TOUCHES IT. Turning it ON is the owner's act alone; the engine can switch it OFF itself (`ENGINE_FAULT`, `ENGINE_ERRORS`, `GLOBAL_LOSS_STOP`) and has |
 | Its trail (EAT) | 09-21: ON 16:42 · OFF 17:13 · ON 18:34 · OFF 18:42 · ON 18:56:11 — **09-24: OFF 18:50:55 · ON 21:46:20 · OFF 21:52:26 (no actor — the system) · ON 21:56:11** |
 | The engine | RUNNING — durable planner beat 4 s old at the read |
 | Accounts | **2 ACTIVE, 2 PAUSED** (the newest `PAUSED` event 2026-09-25 22:37 EAT) |
@@ -54,6 +54,17 @@ npm ci                                         # only if package-lock.json chang
   so it goes from the main checkout as a **pure ref update**, after merging `origin/main` into the branch:
   `git -C <drive>/kipindi-main fetch origin && git -C <drive>/kipindi-main push origin <sha>:main`.
   Parallel sessions push `main` all day — fetch and merge immediately before every push.
+- **The pre-push guard — once per NEW machine.** Ali-Blade15 has it (`C:/kipindi-house-bots-hooks/pre-push`,
+  re-checked 2026-09-25); the office PC's `F:/kipindi-house-bots-hooks` is recorded in its 2026-09-14 `PROGRESS.md`
+  row, not re-checked. Recipe (step 5 of the since-deleted `plans/house-bots/README.md`; only the message is new):
+  `git -C <drive>/kipindi-main config extensions.worktreeConfig true`, then
+  `git -C <drive>/kipindi-house-bots config --worktree core.hooksPath <drive>/kipindi-house-bots-hooks`, then create
+  `<drive>/kipindi-house-bots-hooks/pre-push`:
+  ```sh
+  #!/bin/sh
+  while read l s r x; do case "$r" in refs/heads/main) echo "BLOCKED: push main from kipindi-main"; exit 1;; esac; done
+  exit 0
+  ```
 - **Verify the deploy** before calling anything done: `curl -sSD - -o /dev/null https://50pick.tz/ | grep -o
   'dpl=[0-9a-f]*'` must print your sha.
 
@@ -112,7 +123,8 @@ Nothing here blocks betting.
 - ✅ **(b) is done:** the why-panel's `removed` guard lives in `AccountWhyPanel` and is RENDERED by 1.435b with a live
   answer (the one input where it alone stands); the door's own refusal is a new 1.541 case. Each has a mutation.
 
-**a) The full mutation fleets.** Console and engine were last driven WHOLE at `79c2962d` (2026-09-23: 305/305,
+**a) The full mutation fleets — ⏳ RUNNING since 2026-09-26 22:56 UTC on `754a7fe3`** (see §5). Console and engine
+were last driven WHOLE at `79c2962d` (2026-09-23: 305/305,
 65/65); they have grown to 340/80 since, and money+seam (63) and c5 (97) have no whole-fleet record. Per-mutation
 time is not measured here. Drive in slices under 3 hours (`--only <prefix,…>`), each under the lock, each into its
 own log, **never through a pipe**:
@@ -127,9 +139,21 @@ longer resolves is reported `STALE` and fails the run — check `test:red-anchor
 
 **b) ✅ DONE 2026-09-26** — see the FIXED block above.
 
-**c) At 1280 the 12-column ledger is 1375px inside a 998px strip.** `Round`, `Game`, `Note` and the stop control sit
-behind a sideways drag. Measure it on a served build, then **ASK ALI as a numbered one-line choice** which column to
-give up, or to accept the scroll. ⛔ Not a session's decision: every candidate is a column he asked for by name.
+**c) ⏳ MEASURED 2026-09-26, ASKED OF ALI — which column to give up at 1280, or keep the scroll.** On a locally served
+desk (fresh scratch DB, the tracked seeders, `next dev`), desk-wide activity table, every money cell filled with a
+7-digit balance as a live Opening/Closing is: **1251px in a 998px strip at 1280** (`Game`, `Note` and the stop control
+past the edge; as seeded, with blank ledger cells, 1161px). Hiding columns in the live DOM and re-measuring:
+
+| Give up at 1280 | Table | Over the strip |
+|---|---|---|
+| nothing (keep the scroll) | 1251 | 253px |
+| Note | 1120 | 122px |
+| Note + Type | 1023 | 25px |
+| Note + Type + Round | 998 | fits |
+
+No single column makes 1280 fit; at 1440 (strip 1158) dropping any one of Note, Type, Round, Outcome, Opening or
+Left today fits. The 1375px of 2026-09-25 was a different seed — quote this table, re-measured, never that figure.
+⛔ Not a session's decision: every candidate is a column he asked for by name or one kept on purpose (Type).
 
 **d) House P&L as its own surface — ✅ PLAN WRITTEN 2026-09-26, ⏳ WAITING ON ALI'S ANSWERS, NOT BUILT.**
 👉 `plans/house-bots/HOUSE-PNL-PLAN.md` (three independent drafts, two refuters, one synthesis; plain English first).
@@ -155,6 +179,22 @@ never built silently.
 **f) A house account label that is also a person's name sat in this file** (`cc211981`, 2026-09-24) and is in public
 git history. It is gone from the tip; rewriting history is Ali's decision alone.
 
+**h) FOR ALI — who can open the desk.** "Owner-only" in this code means the ADMIN role: `houseConsoleAudience`
+returns `isAdmin(role)` for every console route (`src/lib/server/house-console-read.ts`), so any ADMIN account can open
+the desk. Whether to narrow it to Ali's own account was listed as his decision on 2026-09-21 and no answer is recorded.
+The P&L plan (d) inherits the same audience, so this is worth asking beside it.
+
+**i) FOR ALI (his ask, never built) — the account finder on `/admin/desk/new` is search-only:** a 2-character floor,
+ten rows, no browse, filter, sort or page. Ali asked for BOTH a searchable dropdown and a full list (recorded 2026-09-21
+in `dcff8101`; `git diff --stat dcff8101 origin/main -- src/app/admin/desk/new/` was empty on 2026-09-26). Keep
+`DeskAccountPicker` and add the list beside it, inside three walls: no money anywhere on `/new` (the visual gate carries
+an inverted control), no name, phone or email on a row, and no 25+ character string typed into the wizard file
+(`test:house-bot-console` 1.388).
+
+**j) Two fire-path behaviours have no assertion** (register item B7 of 2026-09-22, never recorded closed; UNVERIFIED
+since — re-derive first): the fire heartbeat (`FIRE_HEARTBEAT_MS`) and the fire-time RG pre-check. `scripts/` names
+neither. Each needs a case and a mutation, both stores.
+
 **NOT OURS — report, never fix:**
 - `test:red-anchors` is red on clean `main`: two rotted anchors in other lanes' files (`bar-geometry` →
   `src/components/ui/query-bar.tsx`, `updown-handover` → `src/lib/updown-card-phase.ts`) and §4.1/4.2's ratchet at
@@ -163,6 +203,8 @@ git history. It is gone from the tip; rewriting history is Ali's decision alone.
   (`house-bot-ops-cases.mts:55-75`, `red-anchors.test.mts:240-264`); it would leave 67. ⛔ Never bump the ceiling.
 - `scripts/focus-and-fit.mjs:119`/`:122` counts every buried control as touching too, then reports the two as
   disjoint — "4 fully under the rail and 4 touching it" describes 4, not 8.
+- The desk's design measurement has never run: `qa:tab-candidates` short-circuits any railed page to "ALREADY A RAIL"
+  (`scripts/design-gate/tab-candidates.mjs:129`) and `measure.mjs` never calls `expandSectionRail`.
 - ✅ `test:house-bot-surfaces` 2.ids.1 went RED on `main` from the finance lane's `8acf067c`/`f2a81682`
   (`houseAccountMovement`/`houseMoved` in `src/app/admin/finance/page.tsx`); told on 2026-09-26, the finance session
   fixed it at `558b8f7a` with a neutral `ledger.leviesBooked`. ⛔ The lesson stands: the guard's allowlist is
@@ -182,7 +224,13 @@ git history. It is gone from the tip; rewriting history is Ali's decision alone.
   use") while an orphaned postgres from this checkout is alive; `db-scratch.mts` prints the stop command.
   `seed-house-bots-local.mts` is **not idempotent** (it places a real bet).
 - ⛔ **`kill` did not stop `next start` on Windows** (recorded in §12.4): a survivor holds the port and serves the OLD
-  build. Clear the port; never trust it.
+  build. Clear the port; never trust it. `taskkill /T /F` can also leave a `.next/dev/build/postcss.js` worker alive
+  when its parent died first: after every kill, list `node.exe` processes and their command lines, not just the port.
+- ⛔ **A typed decimal in a numeric box is stripped, not kept.** Keeping the dot crashes `/admin/config` via
+  `assertWinnerFloor` and opens a stake bypass past the 9-character cap (an audit of all 31 numeric call sites,
+  2026-09-21). Never "fix" it that way.
+- ⚠️ **Windows: `execSync` goes through cmd.exe, where `^` is the escape character**, so `<sha>^` silently resolves
+  to `<sha>`. Use explicit parent SHAs.
 - ⛔ **A typed-`Any` call survives another lane deleting its argument** — 14.3 above. When `main` moves under a house
   suite, run the suite; a green compile says nothing about `Any`.
 - ⛔ **A fixture that consumes a bounded resource** (the roster's 20 slots) breaks cases nowhere near it. Give the slots
@@ -194,7 +242,10 @@ git history. It is gone from the tip; rewriting history is Ali's decision alone.
 |---|---|
 | Every rule field, and the engine's reading of it | `docs/HOUSE-BOTS.md` §5 |
 | The console flow an officer walks | `docs/HOUSE-BOTS.md` §7 |
-| The verification record | `docs/HOUSE-BOTS.md` §12 (§12.3 `Left today`, §12.4 the ledger — §12.4 sits at the END of the file) |
+| How to stop the desk | `docs/HOUSE-BOTS.md` §11: "Rollback levers", and "If anything at all looks wrong" under "First switch-on" |
+| The officers' guide, and Ali's 2026-09-21 ruling on its tone | `docs/house-bots-desk-guide.html` (`npm run docs:house-bots-guide`); the ruling is `docs/HOUSE-BOTS.md` §11 "The officers' guide" |
+| The verification record | `docs/HOUSE-BOTS.md` §12 (§12.3 `Left today`, §12.4 the ledger, §12.5 the settlement fix) |
+| The build record — commit table, D19/D20 rulings, what waited on Ali | `plans/house-bots/PROGRESS.md` (history; nothing in it is current state) |
 | The console's money law (360, 361, 373) | `plans/house-bots/C7-SPEC.md`; ruling 266 is in `plans/house-bots/C5-D20-REPLAN.md` |
 | D3 and its 2026-09-25 amendment, D19, D20 | `docs/COMPLIANCE-DECISIONS.md` |
 
@@ -207,6 +258,12 @@ git history. It is gone from the tip; rewriting history is Ali's decision alone.
 4. **No house vocabulary on any player surface**, and none in the console's copy (ruling 453 — say "account").
 5. Never `git checkout --` / `restore` / bare `stash` / `reset --hard`; never `git add -A`.
 6. Update this file and `docs/HOUSE-BOTS.md` **in the same commit** as the change; push every green step, to `main`.
+7. Ali's bar before anything is called ready, his words: "full paging, sorting, validation", and a "perfect visual
+   and logical result".
+8. Never weaken a guard, lower a floor, widen an exemption or delete a proof. A pass-count floor only RISES, and only
+   to a count a run printed; a ratchet ceiling only FALLS. The one exception is a population floor whose population
+   was DELIBERATELY shrunk, re-derived to the printed count in the same commit with the reason stated (the 8.2.0
+   floor, 2026-09-26, after D21a's struck citations were deleted).
 
 ## 4 · The gates
 
@@ -224,12 +281,47 @@ KP_SCRATCH_PORT=5453 npm run -s qa:house-bot-fleet        # KP_FLEET_SILENT=1 is
 npm run build && npm run -s verify:house-bot-bundle
 ```
 The red drives are §0b a. The two browser gates are `qa:house-bots-visual` and `qa:desk-rules-flow`; both need a
-served desk. ⚠️ `qa:house-bots-visual` defaults to `KP_BASE=http://127.0.0.1:3021` and six widths — pass
-`KP_BASE=http://localhost:<port> KP_WIDTHS=360,1280`. Read every PNG: a green gate has twice certified a wrong screen.
+served desk. Read every PNG: a green gate has twice certified a wrong screen.
+
+**A served desk, from tracked files only** (the 2026-09-23 recipe used a scratchpad helper that was never committed):
+```bash
+KP_SCRATCH_PORT=5453 npm run db:scratch          # its own terminal; hold it. NEVER 5433 (a sibling checkout answers there)
+# create a FRESH database on 5453 (db:scratch reuses one data dir per checkout) and wait until it answers a query —
+# an open port is not a ready server ("the database system is starting up")
+export DATABASE_URL='postgresql://postgres:scratch@127.0.0.1:5453/<db>' USE_PRISMA_DAL=true
+npx prisma migrate deploy
+npx tsx scripts/seed-admin-local.mts && npx tsx scripts/seed-house-bots-local.mts   # not idempotent (§1)
+npx tsx scripts/seed-house-bot-panels-local.mts                                    # rows for activity/history
+MARKET_SCHEDULER=false UPDOWN_SCHEDULER=false HOUSE_BOT_ENGINE=false DISABLE_ADMIN_TOTP=true \
+  SESSION_SECRET=… OTP_PEPPER=… AUDIT_CHAIN_SECRET=… npx next dev -p 3031
+KP_BASE=http://localhost:3031 npm run -s qa:desk-rules-flow
+KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
+```
+- `qa:desk-rules-flow` mints its own admin and holder through `POST /api/dev-test/seed-admin`, which 404s under
+  `NODE_ENV=production` — it needs `next dev` and only a MIGRATED database.
+- `qa:house-bots-visual` signs in with `seed-admin-local.mts`'s localhost credentials and defaults to
+  `KP_BASE=http://127.0.0.1:3021` and six widths — always pass both. Its header drives `next start`; `next dev` can
+  serve stale CSS, so re-check a wrong-looking tile on `next start` before filing it.
+- ⚠️ The panels seed's PLACED rows have no ledger movement, so since 2026-09-26 their Opening/Closing are BLANK (a placed
+  row whose own debit is not in view answers nothing). A width measurement must fill them with a 7-digit figure.
 
 ## 5 · Handover log
 
-- **2026-09-25/26 overnight · Ali-Blade15.** Fast-forwarded `bot-flow-seal` to `origin/main` (308 behind). Read
-  production; found the switch date wrong and the system's own switch-off. Rewrote this file and put it to five
-  refuters, who found the ledger's settlement defect and the blind 1.368 exemption. Next: fix those three, then
-  §0b a → f.
+- **2026-09-25/26 overnight · Ali-Blade15 — everything below is on `main` and live unless marked.**
+  - Read production (read-only session): the switch has been ON since **2026-09-24 21:56:11 EAT**, not 09-21; the
+    system's own 21:52:26 switch-off was `GLOBAL_LOSS_STOP`. This file rewritten from that read and put to five
+    refuters (`f87be054`).
+  - 🔴 Fixed and LIVE (`6427ef64`): Opening/Closing bracketed the settlement on 598 of 694 live rows; 1.368's D3 guard
+    was vacuous twice; `reports-mem` was red on main (another lane's `"today"` deletion). (b) done: the why-panel
+    guard is rendered by 1.435b. Console floor 854/613; 6 new/re-aimed mutations 6/6 caught.
+  - (d) The House P&L plan is written (`608d292c`, `HOUSE-PNL-PLAN.md`) — 11 choices for Ali, nothing built.
+  - (c) The 1280 ledger measured on a served desk (table in §0b c) and put to Ali.
+  - The stale sweep (`c6b5e0fb`): 26 spent papers deleted, the survivors corrected, reviewed twice; the officers'
+    guide regenerated (Void, and the ledger row). Two reds other lanes put on `main` were closed: surfaces 2.ids.1 by
+    the finance lane after we told them, and reports 0.260.1 by classifying the marketing lane's new audit reader
+    (`467282dd`). `main` = `754a7fe3`.
+  - ⏳ **RUNNING (a):** the four fleets WHOLE on `754a7fe3` in `C:/kipindi-hb-red` (detached; its `node_modules` is a
+    junction — `cmd /c rmdir C:\kipindi-hb-red\node_modules` BEFORE `git worktree remove`), in slices under the
+    lock. Record the totals in §0b a and `docs/HOUSE-BOTS.md` §12.5 when they finish; a MISSED is a real gap.
+  - **For Ali:** the P&L choices (d), the 1280 column (c), ISO ruling 501 (g), who may open the desk (h), the
+    account-finder list (i), and the unconfirmed "half-configured account" decision in `docs/HOUSE-BOTS.md` §5.4.

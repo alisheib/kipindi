@@ -43,7 +43,7 @@ file is worthless the moment it describes an intention as a fact.
 | **A config change records WHICH field moved** | ✅ **live in code 2026-09-09.** Every config audit wrote `changes: updates`, and an admin settings form posts the WHOLE config — so a save that moved one field recorded all of them as changed, and `/admin/config` → History renders that blob into one truncated cell. That is how `agent.config.feeVatRatePct` went **18 → 0** unseen inside the Lipa destination save (see the agent row above). `changes` is now a real diff, `{ field: { from, to } }`, across market config, the `defineConfig` factory, payments control and Up & Down. ⭐ `before`/`after` are untouched and still complete — nothing was ever lost, the row was unreadable. §2.10 · `npm run test:config-audit-diff` |
 | **A withdrawal's hold and its Transaction row commit together** | ✅ **live in code 2026-09-09.** `withdraw`'s Phase A ran `withLock(…, async () => {` — and the lock's transaction is **not ambient** (`prisma-dal` resolves `tx ?? pc()`), so both writes autocommitted outside it. A failure between them left the player's money in `Wallet.hold` with no txn row: invisible to the reconcile sweep, to `/admin/payments` and to the trial balance alike. §2.7 · `npm run test:lock-tx-threading`. ✅ **The behavioural proof now exists** — `npm run e2e:money` ran against a real Postgres for the first time on 2026-09-09 (session 3): **64 passed, 0 failed**, all 28 ledger groups balanced, money conservation exact to 0.00 across deposit → bet → cash-out → settle → withdraw. ⚠️ It drives `withdraw()` Phase A only; it does **not** reach the AML dispatch window or `creditInternal`, whose guards stay structural |
 | Money rail refused when nobody chose one | ✅ **live in code 2026-09-08** — on LIVE money an unset or unrecognised `PAYMENT_AGGREGATOR` with no officer row resolves to NO provider and every deposit/withdrawal is refused with `PROVIDER_DOWN`, instead of silently running the mock (which fabricates confirmations). A *chosen* mock still runs — that is Ali's 2026-07-24 decision and is unchanged. `npm run test:payment-control` · `npm run red:payment-control`. ✅ **READ OFF THE LIVE SERVICE 2026-09-09** (`railway variables -s 50pick`): `PAYMENT_AGGREGATOR=selcom`, `SELCOM_WEBHOOK_SECRET` set, and `SystemConfig["payments.control"]` carries an officer row `provider: "selcom"` — so both the env and the officer path resolve to the real rail, and neither is the mock. ⛔ **`TEST_FUNDING` is UNSET with `NODE_ENV=production`, so `isLiveMoneyMode()` is TRUE**: this deployment is in LIVE money mode |
-| **House liquidity stakes** (§2.11) | ⏳ LANDING — decided 2026-09-13 (COMPLIANCE-DECISIONS, House bots entry); built on branch `house-bots`; nothing is live until the release merge, and the master switch ships OFF |
+| **House liquidity stakes** (§2.11) | ⏳ LIVE, NOT YET VERIFIED RULE BY RULE — decided 2026-09-13 (COMPLIANCE-DECISIONS, House bots entry); merged to `main`, first switched on by the owner 2026-09-21, staking on production since 2026-09-23. The §2.11 entry keeps its ⏳ until each rule in it is verified on production; the live state is `plans/house-bots/RESUME-HERE.md`, never quoted here |
 
 ---
 
@@ -258,7 +258,7 @@ changes are inseparable.
 > of that very test asserted the same thing and went RED. On a lopsided market a small hedge
 > on the thin side can pay many times both stakes.
 
-House liquidity stakes are the exception: a house bot holds one side per market and never trades against another bot (§2.11, ⏳ landing).
+House liquidity stakes are the exception: a house bot holds one side per market and never trades against another bot (§2.11, ⏳ live, not yet verified on production).
 
 ### 2.5 · Bonus wagering — only one side counts
 
@@ -322,7 +322,7 @@ confirming, and may proceed** — it is a warning, not a refusal (see §2.9).
 | **Guarded by** | `npm run test:bonus-one-side` (22 checks) · `npm run red:bonus-one-side` (6/6, incl. both pre-fix sources verbatim AND three over-corrections) |
 | **Audited** | `bonus.wagering_skipped_opposite_side` on the suppressed stake · `bonus.wagering_reversed` on the cancellation |
 
-House liquidity stakes are cash only and never advance or reverse wagering (§2.11, ⏳ landing).
+House liquidity stakes are cash only and never advance or reverse wagering (§2.11, ⏳ live, not yet verified on production).
 
 ### 2.6 · Free cancellation — 5 minutes, and the two conditions this section used to omit
 
@@ -368,7 +368,7 @@ as overstating a control to the Gaming Board, which `BOARD-DISCLOSURE-B-E.md` ex
 ⛔ Anyone quoting the 5-minute cancellation to a player, an auditor or the Board must say which
 product and which round length.
 
-House liquidity stakes can never be cancelled or cashed out, and a house counter lands only after the player's own free exit has closed (§2.11, ⏳ landing).
+House liquidity stakes can never be cancelled or cashed out, and a house counter lands only after the player's own free exit has closed (§2.11, ⏳ live, not yet verified on production).
 
 ### 2.7 · Withdrawal fee — 1.5%
 
@@ -557,7 +557,7 @@ is indistinguishable from a successful one.
 > was actually shown the 09-08 text. Read the rows; if any exist, the acceptance record needs an
 > officer note, not a silent rewrite.
 
-No commission, first-bet or turnover reward accrues on house-marked stakes (§2.11, ⏳ landing).
+No commission, first-bet or turnover reward accrues on house-marked stakes (§2.11, ⏳ live, not yet verified on production).
 
 ### 2.10a · The player invite is UNPAID — the link is tracked, the platform credits nothing
 
@@ -589,11 +589,11 @@ anchors still resolve.
 
 ### 2.11 · House liquidity stakes
 
-> ⏳ **LANDING.** Decided 2026-09-13; built on branch `house-bots`; nothing is live until the release merge, and the master switch ships OFF. The design authority is [`HOUSE-BOTS.md`](HOUSE-BOTS.md). Final text in build commit 8.
+> ⏳ **LIVE, NOT YET VERIFIED RULE BY RULE ON PRODUCTION.** Decided 2026-09-13; merged to `main`; the owner first switched the desk on 2026-09-21 and it has staked on production since 2026-09-23. Turning the master switch ON is the owner's act alone (the engine can switch it OFF itself), and its state is read, never quoted: [`RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md). The design authority is [`HOUSE-BOTS.md`](HOUSE-BOTS.md).
 
 - **Decided:** the House bots entry in `docs/COMPLIANCE-DECISIONS.md` (owner rulings **D1–D21**). ⚠️ **Corrected 2026-09-20.** This read "D1–D18", so the law file named none of the three rulings that actually govern the feature's relationship to the public and to a regulator: **D19** (never public), **D20** (a house account is an ordinary player's account in every report and every statutory filing — no house memo, column or line, so GGR, the levies and the player counts are the same figures whichever account placed the stake) and **D21** (2026-09-20: the Gaming Board needs nothing, the private draft is struck, and F6 §5 condition 1 stays waived by D1 and NOT satisfied).
-- **Enforced:** ⏳ build commit 2 — the house gates H0–H4 in the bet path ([`FLOWS.md`](FLOWS.md) §9), and the sanctioned player-path changes (d)–(g): a house position has no cash-out value and refuses a cash-out, gives no objection standing, and skips wagering reversal and referral accrual at settlement.
-- **Configured:** ⏳ build commit 7 — `/admin/desk`, owner only.
+- **Enforced:** in code since build commit 2 (⏳ not yet verified on production rule by rule) — the house gates H0–H4 in the bet path ([`FLOWS.md`](FLOWS.md) §9), and the sanctioned player-path changes (d)–(g): a house position has no cash-out value and refuses a cash-out, gives no objection standing, and skips wagering reversal and referral accrual at settlement.
+- **Configured:** `/admin/desk`, owner only (built in commit 7).
 - **Stated:** ⛔ **nowhere, by owner ruling D19 (2026-09-16).** No rulebook, Terms, privacy, FAQ or chatbot text mentions house bots, and a holder sees nothing on their own account. Build commit 6 proves the absence instead (`test:house-bot-disclosure`). ⚠️ **Corrected 2026-09-20:** it does **not** "keep the Gaming Board draft private" — **there is no draft** (owner ruling D21), and what the suite now holds is the absence itself: §5.1 pins the two rulebooks, Terms, the privacy notice and the whole dictionary byte-identical to `origin/main`; §5.2 proves no player-rendered surface PRINTS a house word; §6 holds the chatbot; §8 holds the struck draft's absence and the dated strike note on every one of its citations. The struck plan was a §8 carve-out, a §3/§4 disclosure line, Terms §4 and privacy §3 — ⛔ and none of them may be revived to "solve" accepted risk 21: a carve-out a player can read discloses the feature, and D19 outranks.
 
 ---
