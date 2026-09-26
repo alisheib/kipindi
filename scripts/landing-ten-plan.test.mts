@@ -16,6 +16,10 @@
  *      INHERIT-MANIFEST actually defines; ⬜ claims no commit.
  * §3 · §0 NAMES WHERE WE ARE — a dated state line and a Next line that names no finished row.
  * §4 · THE TWO DOORS AGREE — the ▶ 0b row in `docs/NEXT-PLAN.md` states the same ✅ count.
+ * §5 · NOTHING FROM THE DELIVERY IS DROPPED — Ali: *"every bit from the handover should be perfectly
+ *      applied with what we have."* §3's crosswalk has one P row per placement-map row and one K row per
+ *      checkbox in the delivery's own ACCEPTANCE.md (counted from that file, not written here), numbered
+ *      in order, each naming at least one §1 row that exists.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: `--prove-red` plants every lie on in-memory copies and requires the
  * matching rule to fire. This file writes no file.
@@ -31,19 +35,20 @@ const read = (rel: string) => readFileSync(new URL(rel, ROOT), "utf8").replace(/
 const DOC = "docs/LANDING-TEN.md";
 const MANIFEST = "docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md";
 const BOARD = "docs/NEXT-PLAN.md";
+const ACCEPTANCE = "docs/design-system/v4-2026-09-26-landing-ten/ACCEPTANCE.md";
 
 /** The full unit set. A split may ADD ids here; removing one needs a §0 note saying why. */
 const IDS = [
   "D0", "WP1", "WP2", "WP3", "WP4", "WP5", "WP6", "WP7", "WP8", "WP9", "WP10", "WP11", "WP12",
   "WP13", "WP14", "WP14b", "WP15", "WP16", "WP17", "RG",
-  "V15", "V16", "V17", "V18", "V19", "V20", "V21", "PANEL", "FUNNEL", "SW", "ZH", "DEV",
+  "V15", "V16", "V17", "V18", "V19", "V20", "V21", "GATE", "PANEL", "FUNNEL", "SW", "ZH", "DEV",
 ];
 const STATUSES = ["⬜", "🔨", "🔵", "✅", "⛔", "⏳"];
 const SHA = /\b[0-9a-f]{7,40}\b/;
 const DATE = /\b20\d{2}-\d{2}-\d{2}\b/;
 
 type Row = { id: string; unit: string; status: string; commit: string; note: string };
-type World = { doc: string; manifest: string; board: string; commitExists: (sha: string) => boolean };
+type World = { doc: string; manifest: string; board: string; acceptance: string; commitExists: (sha: string) => boolean };
 
 function rowsOf(doc: string): Row[] {
   const start = doc.indexOf("## §1 · Status board");
@@ -117,6 +122,27 @@ function check(w: World): string[] {
       if (Number(m[2]) !== rows.length) f.push(`§4 ▶ 0b says ${m[2]} units, the board has ${rows.length}`);
     }
   }
+  // §5 · nothing from the delivery is dropped
+  const wantK = (w.acceptance.match(/^- \[ \]/gm) ?? []).length;
+  const secA = w.acceptance.split(/^## /m).find((x) => x.startsWith("A.")) ?? "";
+  const wantP = secA.split("\n")
+    .filter((l) => l.startsWith("| ") && !l.startsWith("| Component") && !l.startsWith("|---")).length;
+  if (!wantK || !wantP) f.push(`§5 could not count the delivery's ACCEPTANCE items (${wantP} placement rows, ${wantK} checkboxes)`);
+  const s3 = w.doc.match(/## §3 · Crosswalk[\s\S]*?(?=\n## )/)?.[0] ?? "";
+  if (!s3) f.push("§5 §3 crosswalk is missing");
+  const xs = s3.split("\n").filter((l) => /^\| [PK]\d+ \|/.test(l))
+    .map((l) => l.split("|").slice(1, -1).map((c) => c.trim()));
+  const ps = xs.filter((c) => c[0].startsWith("P")), ks = xs.filter((c) => c[0].startsWith("K"));
+  if (ps.length !== wantP) f.push(`§5 the crosswalk has ${ps.length} P rows, the delivery's placement map has ${wantP}`);
+  if (ks.length !== wantK) f.push(`§5 the crosswalk has ${ks.length} K rows, the delivery's ACCEPTANCE has ${wantK} checkboxes`);
+  ps.forEach((c, i) => { if (c[0] !== `P${i + 1}`) f.push(`§5 crosswalk row ${c[0]} is out of order (expected P${i + 1})`); });
+  ks.forEach((c, i) => { if (c[0] !== `K${i + 1}`) f.push(`§5 crosswalk row ${c[0]} is out of order (expected K${i + 1})`); });
+  const known = new Set(rows.map((r) => r.id));
+  for (const c of xs) {
+    const cited = (c[2] ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (!cited.length) f.push(`§5 crosswalk ${c[0]} names no §1 row`);
+    for (const id of cited) if (!known.has(id)) f.push(`§5 crosswalk ${c[0]} names ${id}, which §1 does not have`);
+  }
   return f;
 }
 
@@ -124,7 +150,7 @@ const commitExists = (sha: string) => {
   try { execFileSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd: ROOT, stdio: "ignore" }); return true; }
   catch { return false; }
 };
-const world: World = { doc: read(DOC), manifest: read(MANIFEST), board: read(BOARD), commitExists };
+const world: World = { doc: read(DOC), manifest: read(MANIFEST), board: read(BOARD), acceptance: read(ACCEPTANCE), commitExists };
 
 if (!process.argv.includes("--prove-red")) {
   const fails = check(world);
@@ -156,13 +182,17 @@ const plants: [string, RegExp, World][] = [
   ["§0 undated", /§3 §0 has no dated/, { ...world, doc: world.doc.replace(/\*\*State \(20\d{2}-\d{2}-\d{2}\):\*\*/, "**State:**") }],
   ["§0 Next names a finished row", /§3 §0 Next names WP1/, { ...world, doc: world.doc.replace(/\*\*Next:\*\*[^\n]*/, "**Next:** WP1, the header") }],
   ["the board row disagrees", /§4 ▶ 0b says 7 ✅/, { ...world, board: world.board.replace(/v3 build \d+\//, "v3 build 7/") }],
+  ["a delivery item is dropped", /§5 the crosswalk has 56 K rows/, { ...world, doc: world.doc.split("\n").filter((l) => !l.startsWith("| K57 |")).join("\n") }],
+  ["the delivery grows an item", /ACCEPTANCE has 58 checkboxes/, { ...world, acceptance: world.acceptance + "\n- [ ] a new item\n" }],
+  ["an item names a row that does not exist", /§5 crosswalk K8 names WP99/, { ...world, doc: world.doc.replace(/^\| K8 \|([^|]*)\|[^|]*\|/m, "| K8 |$1| WP99 |") }],
+  ["an item is renumbered", /§5 crosswalk row P9 is out of order/, { ...world, doc: world.doc.replace(/^\| P8 \|/m, "| P9 |") }],
 ];
 
 let proved = 0;
 const clean = check(world);
 if (clean.length) { console.log(`INCONCLUSIVE: the clean world already fails (${clean[0]}) — fix it before proving red`); process.exit(1); }
 for (const [name, want, w] of plants) {
-  const planted = w.doc !== world.doc || w.board !== world.board;
+  const planted = w.doc !== world.doc || w.board !== world.board || w.acceptance !== world.acceptance;
   const fired = check(w).some((x) => want.test(x));
   const verdict = !planted ? "INCONCLUSIVE (plant did not apply)" : fired ? "PROVED" : "BLIND";
   if (planted && fired) proved++;
