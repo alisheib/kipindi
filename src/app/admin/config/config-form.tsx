@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
@@ -40,7 +40,25 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
   const formRef = useRef<HTMLFormElement>(null);
   /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
   const saveRef = useRef<HTMLButtonElement>(null);
-  const { dirty, markSaved, formProps } = useFormDirty(formRef);
+  const { dirty: fieldsDirty, markSaved, formProps } = useFormDirty(formRef);
+  /* ⛔ THE TOGGLE IS NOT IN THE FORM. `showEst` is React state posted by hand in `onSubmit`, so the
+     FormData snapshot never sees it — and with Save disabled while clean, a toggle-only change could
+     not have been saved at all. It is compared with what was last SAVED rather than with `config`, so
+     the bar does not flash back on in the beat between a save and the refresh that brings new props. */
+  const [savedShowEst, setSavedShowEst] = useState<boolean>(config.showEstimatedWinnings);
+  const dirty = fieldsDirty || showEst !== savedShowEst;
+  /* ⛔ A DISCARD RE-BASELINES AFTER THE RENDER IT CAUSES. Putting the fee model back re-mounts the
+     loser-share fields, and the snapshot taken on the line after `reset()` is of a form those fields
+     are not in yet — so the next keystroke would read dirty over nothing. */
+  const [discards, setDiscards] = useState(0);
+  useEffect(() => { if (discards > 0) markSaved(); }, [discards, markSaved]);
+  const discard = () => {
+    formRef.current?.reset();
+    setFeeModel(config.feeModel);
+    setShowEst(savedShowEst);
+    markSaved();
+    setDiscards((n) => n + 1);
+  };
 
   const runSave = (fd: FormData) => {
     start(async () => {
@@ -49,6 +67,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
       } else {
         markSaved();
+        setSavedShowEst(fd.get("showEstimatedWinnings") === "true");
         router.refresh();
         deferToast({
           title: "Global config updated",
@@ -319,7 +338,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         detail="These rates govern every market on the platform."
         saveAnchor={saveRef}
         onSave={() => formRef.current?.requestSubmit()}
-        onDiscard={() => { formRef.current?.reset(); markSaved(); }}
+        onDiscard={discard}
         saveLabel="Save · Hifadhi"
       />
       <UnsavedChangesGuard
@@ -328,7 +347,8 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
       />
 
       <div className="flex items-center gap-2 pt-1">
-        <Button ref={saveRef} type="submit" variant="primary" loading={pending} disabled={!mayAct} title={disabledReason}>
+        {/* Disabled while nothing has changed — the bar and this button answer "is there anything to save" with one `dirty`. */}
+        <Button ref={saveRef} type="submit" variant="primary" loading={pending} disabled={!mayAct || !dirty} title={disabledReason}>
           Save · Hifadhi
         </Button>
         {/* The old note here read "Combined tax + commission + reserve + aggregator

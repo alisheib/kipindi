@@ -2,7 +2,7 @@
 
 import { parseQuery, matchesQuery, fieldNames, PROPOSAL_SEARCH } from "@/lib/search";
 import { SearchBox } from "@/components/ui/search-box";
-import { useState, useMemo, useEffect, useTransition } from "react";
+import { useState, useMemo, useEffect, useRef, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Tabs } from "@/components/ui/tabs";
@@ -30,6 +30,7 @@ import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-servic
 import type { ProposalCategory, ProposalStatus } from "@/lib/server/store";
 import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction, editProposalAction } from "./actions";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import { formatTzs, cn } from "@/lib/utils";
 
 const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No official source", "Duplicate", "Past resolution", "Outside jurisdiction", "Officer decision"];
@@ -166,6 +167,8 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
   const overlay = useActionOverlay();
   const [pending, start] = useTransition();
   const [c, setC] = useState<ProposalsConfig>(config);
+  /** The config panel's own "Save config" — the bar's `saveAnchor`, so the two are never on screen together. */
+  const saveRef = useRef<HTMLButtonElement>(null);
   const [qFilter, setQFilter] = useState<QFilter>("all");
   const [sort, setSort] = useState<QSort>("score");
   const [dir, setDir] = useState<SortDir>("desc");
@@ -291,33 +294,41 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
     && (!eCloseDate || (/^\d{4}-\d{2}-\d{2}$/.test(eCloseDate) && eCloseDate < eResDate))
     && (!eSource.trim() || isValidHttpUrl(eSource));
 
+  /* ⛔ BOTH SAVES ON THIS SCREEN GO THROUGH `runAdminAction`, NOT A BARE try/catch. The catches
+     they replace swallowed EVERY throw, including the redirect an expired session or a step-up
+     throws — so the officer read "Server error" instead of being taken to sign in. The wrapper
+     rethrows navigation and turns anything else into the `{ ok:false, error }` already rendered. */
   const saveEdit = () => { if (!sel || !editValid) return;
     overlay.run("Saving edit…", "Updating the proposal.");
     start(async () => {
-      try {
-        const r = await editProposalAction(sel.id, {
-          titleEn: eTitle, titleSw: eTitleSw.trim() || null, titleZh: eTitleZh.trim() || null,
-          resolutionCriterion: eCriterion, category: eCategory, resolutionDate: eResDate,
-          selectionCloseDate: eCloseDate || null,
-          // Only send source when non-empty — a blank field means "leave unchanged",
-          // never "clear it" (a market's resolution source is required).
-          sourceUrl: eSource.trim() ? eSource.trim() : undefined,
-        });
-        if (r.ok) { overlay.succeed("Saved", "Proposal updated."); setEditing(false); refresh(); }
-        else overlay.fail("Couldn't save", r.error);
-      } catch { overlay.fail("Couldn't save", "Server error — please try again."); }
+      const r = await runAdminAction(() => editProposalAction(sel.id, {
+        titleEn: eTitle, titleSw: eTitleSw.trim() || null, titleZh: eTitleZh.trim() || null,
+        resolutionCriterion: eCriterion, category: eCategory, resolutionDate: eResDate,
+        selectionCloseDate: eCloseDate || null,
+        // Only send source when non-empty — a blank field means "leave unchanged",
+        // never "clear it" (a market's resolution source is required).
+        sourceUrl: eSource.trim() ? eSource.trim() : undefined,
+      }));
+      if (r.ok) { overlay.succeed("Saved", "Proposal updated."); setEditing(false); refresh(); }
+      else overlay.fail("Couldn't save", r.error);
     });
   };
 
-  const saveConfig = () => start(async () => {
-    // Wrap like every sibling mutation (saveEdit/approve/decline) — a thrown or
-    // network error here was previously uncaught, leaving the officer with no feedback.
-    try {
-      const r = await saveProposalsConfigAction(c);
-      if (r.ok) { toast({ title: "Proposals config saved · Imehifadhiwa", variant: "success" }); refresh(); }
-      else toast({ title: "Couldn't save", description: r.error, variant: "danger" });
-    } catch { toast({ title: "Couldn't save", description: "Server error — please try again.", variant: "danger" }); }
-  });
+  /* ⭐ `c` is re-seeded from what the server STORED, so `configDirty` compares like with like
+     once the refresh lands, and the bar goes clean on a save that really landed.
+     ⛔ Only if `c` is still what was SENT: the fields stay editable while the save runs, and an
+     edit made meanwhile must stay on screen and dirty, not be overwritten and called "Saved". */
+  const saveConfig = () => {
+    const sent = JSON.stringify(c);
+    start(async () => {
+      const r = await runAdminAction(() => saveProposalsConfigAction(c));
+      if (r.ok) {
+        setC((cur) => (JSON.stringify(cur) === sent ? r.config : cur));
+        toast({ title: "Proposals config saved · Imehifadhiwa", variant: "success" });
+        refresh();
+      } else toast({ title: "Couldn't save", description: r.error, variant: "danger" });
+    });
+  };
 
   const approve = () => { if (!sel) return;
     overlay.run("Approving & paying bonus…", "Crediting the proposer's bonus wallet.");
@@ -700,7 +711,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
           <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
             <span className="font-mono text-caption uppercase tracking-[0.1em]" style={{ color: meta.fg }}>{meta.label}</span>
             {canSaveConfig
-              ? <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
+              ? <Button ref={saveRef} variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} disabled={!configDirty} onClick={saveConfig}>Save config</Button>
               : <ControlLocked what="Save prize config" need={needSaveConfig} />}
           </div>
         </div>
@@ -754,6 +765,9 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
         * the sole dirty thing: `saveConfig` writes the config and nothing else, so offering it
         * beside an unsaved proposal edit would be a button that appears to save everything and
         * silently saves one third of it — worse than no button.
+        * ⛔ ONE SAVE ON SCREEN (Ali, 2026-09-26). `saveAnchor` is the panel's own "Save config", and
+        * the two share their words and their call: the bar's Save shows only while that button is
+        * out of sight — which includes the whole queue tab, where it is not rendered at all.
         */}
       <PendingChangesBar
         dirty={anyDirty}
@@ -761,6 +775,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
         detail={`Not saved yet: ${pendingWhat.join(" · ")}.`}
         saveLabel="Save config"
         onSave={configDirty && !editDirty && !noteDirty && canSaveConfig ? saveConfig : undefined}
+        saveAnchor={saveRef}
       />
       <UnsavedChangesGuard
         dirty={anyDirty}

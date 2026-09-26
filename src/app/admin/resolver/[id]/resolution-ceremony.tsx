@@ -273,12 +273,14 @@ export function ResolutionCeremony({
           Staging moves no money. A second officer must seal to settle.
         </p>
 
+        {/* ⛔ NO SAVE ON THIS BAR (Ali, 2026-09-26). Recording the attestation is a DECISION on
+            this market, not a save: a primary button in the bar would stage a verdict without
+            naming the market or the verdict. Warning + Discard only, like the other two bars in
+            this file; the bar names the panel button that records it. */}
         <PendingChangesBar
           dirty={typedWork}
           label="Attestation not recorded"
-          detail="The verdict and evidence excerpt are held in this page only."
-          saveLabel="Record Stage-1"
-          onSave={canSubmit && verdict ? () => fire(verdict, composedEvidence) : undefined}
+          detail="Use “Record Stage-1 attestation” to record it — the verdict and evidence excerpt are held in this page only."
           onDiscard={discardWork}
         />
         <UnsavedChangesGuard
