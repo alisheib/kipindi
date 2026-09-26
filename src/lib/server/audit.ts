@@ -206,11 +206,30 @@ function canonicalize(v: unknown): unknown {
 function normalizePayload(p: unknown): Record<string, unknown> | undefined {
   if (p == null) return undefined;
   try {
-    return JSON.parse(JSON.stringify(p)) as Record<string, unknown>;
+    return JSON.parse(JSON.stringify(p, roundFloatForStorage)) as Record<string, unknown>;
   } catch {
     // Unserialisable payload (cycles, BigInt). Never let an audit write fail on it.
     return { unserializable: true };
   }
+}
+
+/**
+ * 🔴 A FRACTION IS SIGNED AS THE DATABASE WILL STORE IT — 15 significant digits (2026-09-26).
+ *
+ * Measured on production: 9 `payouts.unavailable_derived` rows (2026-09-24) recompute under no key.
+ * Nothing touched them. Their payload carries `oldestStuckHours` — hours between two instants, a double
+ * that needs 17 significant digits — and the Prisma → Postgres `jsonb` round trip keeps 15–16: signed
+ * `54.744926944444444`, stored `54.74492694444444`. The same PROCESS's neighbouring rows (integers and
+ * words) verify; a local-Postgres probe dropped the last digit of 26 of 48 such floats.
+ * ⭐ A decimal of ≤15 significant digits survives any double round trip exactly (DBL_DIG), so rounding
+ * a FRACTION to 15 makes the signed bytes and the stored bytes identical by construction — the same
+ * principle `normalizePayload` already applies to `undefined`. Integers (amounts, counts, ids) pass
+ * untouched; no audit field means anything past its 15th significant digit.
+ * ⛔ The 9 existing rows cannot be repaired — rewriting a signed row is exactly what the chain exists
+ * to expose. They are the declared-baseline case (`scripts/audit-baseline.mts`), an officer's call.
+ */
+function roundFloatForStorage(_key: string, v: unknown): unknown {
+  return typeof v === "number" && Number.isFinite(v) && !Number.isInteger(v) ? Number(v.toPrecision(15)) : v;
 }
 
 function hashEntry(entry: Omit<AuditEntry, "entryHash">): string {
@@ -1146,8 +1165,10 @@ async function walkHashes(
 ): Promise<{
   total: number; verified: number; baselined: number; unattested: number;
   baselineDigest: string; firstUnattested: string | null;
+  sample: UnverifiableRow[];
 }> {
   const BATCH = 1000;
+  const sample: UnverifiableRow[] = [];
   // `seq` is a BIGSERIAL starting at 1, so a cursor of 0 selects the whole table on the first pass.
   // Kept as a plain bigint rather than `bigint | null` so the query args do not depend on a value
   // inferred from the query's own result (TS7022).
@@ -1196,6 +1217,12 @@ async function walkHashes(
       // accounted-for, digested member of a dated census. Outside it, it is a row that will not
       // recompute and that nobody has ever accounted for — which is what an in-place edit looks
       // like, and which must never be reported as a sound log.
+      // ⭐ WHICH rows, not only how many — identity only, never content, capped. The baseline tool's
+      // header promises the declaring officer sees the rows before attesting to them; a count alone
+      // could not tell three-day-old rows from launch-day ones (measured 2026-09-26: it could not).
+      if (sample.length < UNVERIFIABLE_SAMPLE_CAP) {
+        sample.push({ seq: Number(r.seq), id: r.id, createdAt: r.createdAt.toISOString(), category: r.category, action: r.action, beyondFrontier: r.seq > frontierSeq });
+      }
       if (r.seq <= frontierSeq) {
         baselined++;
         foldedAny = true;
@@ -1211,8 +1238,13 @@ async function walkHashes(
     total, verified, baselined, unattested,
     baselineDigest: foldedAny ? fold.digest("hex") : EMPTY_BASELINE_DIGEST,
     firstUnattested,
+    sample,
   };
 }
+
+/** One row that recomputes under no known signing key — its IDENTITY (never its payload). */
+export type UnverifiableRow = { seq: number; id: string; createdAt: string; category: string; action: string; beyondFrontier: boolean };
+const UNVERIFIABLE_SAMPLE_CAP = 50;
 
 /**
  * The census a baseline declaration is made of: how many rows cannot be re-verified at or below the
@@ -1221,13 +1253,16 @@ async function walkHashes(
  */
 export async function censusUnverifiable(opts: { upToSeq?: bigint } = {}): Promise<{
   frontierSeq: number; count: number; digest: string; scanned: number;
+  /** The first rows (up to 50, in chain order) that recompute under no known key — the ones a
+   *  declaration would accept for ever. Identity only. */
+  sample: UnverifiableRow[];
 }> {
   const db = prisma();
-  if (!db) return { frontierSeq: 0, count: 0, digest: EMPTY_BASELINE_DIGEST, scanned: 0 };
+  if (!db) return { frontierSeq: 0, count: 0, digest: EMPTY_BASELINE_DIGEST, scanned: 0, sample: [] };
   const top = await db.auditLog.findMany({ orderBy: { seq: "desc" }, take: 1, select: { seq: true } });
   const frontier = opts.upToSeq ?? top[0]?.seq ?? BigInt(0);
   const walk = await walkHashes(db, frontier);
-  return { frontierSeq: Number(frontier), count: walk.baselined, digest: walk.baselineDigest, scanned: walk.total };
+  return { frontierSeq: Number(frontier), count: walk.baselined, digest: walk.baselineDigest, scanned: walk.total, sample: walk.sample };
 }
 
 export async function verifyChainFull(): Promise<{
