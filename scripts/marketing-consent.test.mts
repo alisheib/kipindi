@@ -16,7 +16,7 @@
  * Run:  npm run test:marketing-consent
  * Red:  npm run red:marketing-consent
  */
-import { mayReceiveMarketingSms, userPhoneKeyFor } from "../src/lib/server/marketing/consent.ts";
+import { mayReceiveMarketingSms, userPhoneKeyFor, marketingAge, MARKETING_YOUNG_ADULT_AGE } from "../src/lib/server/marketing/consent.ts";
 import type { MarketingGateVerdict, MarketingSkipReason } from "../src/lib/server/marketing/consent.ts";
 import { marketingRgStanding } from "../src/lib/server/marketing/rg.ts";
 import { db } from "../src/lib/server/store.ts";
@@ -79,6 +79,12 @@ const rgRow = (userId: string, selfExclusionUntil: string | null, patch: Partial
 } as StoredResponsibleGambling);
 const DAY = 86400_000;
 const daysFromNow = (d: number) => new Date(Date.now() + d * DAY).toISOString();
+/** A date of birth `n` whole years (and a fortnight) ago, as registration stores it: `YYYY-MM-DD`. */
+const bornYearsAgo = (n: number): string => {
+  const d = new Date(Date.now() - 14 * DAY);
+  d.setUTCFullYear(d.getUTCFullYear() - n);
+  return d.toISOString().slice(0, 10);
+};
 
 type Fixtures = Record<string, string>;
 
@@ -142,10 +148,26 @@ async function seed(run: number): Promise<Fixtures> {
   // O · a player SERVING a self-exclusion whose toggle is OFF — §5.6 asks consent first
   await mk(p(15), { marketingOptIn: false, status: "SELF_EXCLUDED" }, daysFromNow(30));
 
+  // ── U11 · age, and U12 · the under-25 promise ──────────────────────────────────────────────
+  // P · a consenting player aged 16 — registration refuses this, so it is a typed-false date of birth
+  await mk(p(16), { marketingOptIn: true, dob: bornYearsAgo(16) });
+  // Q · a consenting player with NO date of birth (erasure nulls it; one dev seed writes null)
+  await mk(p(17), { marketingOptIn: true, dob: null });
+  // R · ⭐ aged 20, took a break, the break ended, consented again after it — U10 lifts, U12 must not
+  await mk(p(18), { marketingOptIn: true, status: "COOLED_OFF", dob: bornYearsAgo(20) }, null, { coolingOffUntil: daysFromNow(-30) });
+  await consent(p(18), "GIVEN", daysFromNow(-10));
+  // S · the SAME history at 30 — the control that the rule is the AGE BAND, not the history
+  await mk(p(19), { marketingOptIn: true, status: "COOLED_OFF", dob: bornYearsAgo(30) }, null, { coolingOffUntil: daysFromNow(-30) });
+  await consent(p(19), "GIVEN", daysFromNow(-10));
+  // T · aged 20 with NO history — the control that under 25 alone is not refused (the promise is
+  //     "under 25 IN a vulnerability segment", not "under 25")
+  await mk(p(20), { marketingOptIn: true, dob: bornYearsAgo(20) });
+
   return {
     consenting: p(1), suppressed: p(2), stranger: p(3), contactGiven: p(4), contactWithdrawn: p(5),
     serving: p(6), minimumServed: p(7), toggledOff: p(8), closed: p(9), overriddenPlayer: p(10),
     onBreak: p(11), breakOverReconsented: p(12), breakOverStale: p(13), matured: p(14), servingNoConsent: p(15),
+    minor: p(16), noDob: p(17), youngWithHistory: p(18), olderWithHistory: p(19), youngNoHistory: p(20),
     consentingId, maturedId,
   };
 }
@@ -168,7 +190,7 @@ async function runAssertions(gate: Gate, f: Fixtures, tag: string): Promise<void
   await expect("4 · a player serving a self-exclusion is refused", f.serving, "rg_self_excluded");
 
   // ── the ledger branch ───────────────────────────────────────────────────────────────────
-  await expect("5 · a contact who consented is ALLOWED", f.contactGiven, "ALLOWED");
+  await expect("5 · a contact who consented is refused ONLY on age — no 18+ attestation exists until U33 (OD14), and none is inferred", f.contactGiven, "age_unknown");
   await expect("6 · a contact who withdrew is refused, and the reason says so", f.contactWithdrawn, "consent_withdrawn");
 
   // ── the player branch ───────────────────────────────────────────────────────────────────
@@ -214,6 +236,18 @@ async function runAssertions(gate: Gate, f: Fixtures, tag: string): Promise<void
     maturedRow?.pendingIncreaseTo === 5_000 && maturedRow?.dailyDepositLimit === 1_000,
     `verdict ${reasonOf(matured)} · pending=${maturedRow?.pendingIncreaseTo} daily=${maturedRow?.dailyDepositLimit}`);
   await expect("19 · §5.6 ORDER — a self-excluded player whose toggle is off is refused on CONSENT, which is asked first (the costly RG step never runs)", f.servingNoConsent, "no_consent");
+
+  // ── U11 · AGE — adult, minor, unknown: three fixtures, three outcomes (the Accept line) ─────
+  await expect("20 · a consenting player aged 16 is refused as a minor", f.minor, "age_minor");
+  await expect("21 · ⭐ a consenting player with NO date of birth is refused as age_unknown — never treated as adult", f.noDob, "age_unknown");
+  const ages = new Set<string>();
+  for (const phone of [f.consenting, f.minor, f.noDob]) ages.add(reasonOf(await verdict(phone)));
+  ok(p("22 · ACCEPT (U11) · adult, minor and unknown give THREE different outcomes in one run"), ages.size === 3, `saw ${[...ages].sort().join(", ")}`);
+
+  // ── U12 · the published promise: under 25 IN a vulnerability segment ───────────────────────
+  await expect("23 · ⭐ aged 20 with a break on record is refused even after re-consenting — U10's lift does not reach the under-25 promise", f.youngWithHistory, "rg_under25_history");
+  await expect("24 · ⚠️ CONTROL — the SAME history at 30 is allowed: the rule is the age band, not the history", f.olderWithHistory, "ALLOWED");
+  await expect("25 · ⚠️ CONTROL — aged 20 with NO history is allowed: the promise is 'under 25 in a segment', not 'under 25'", f.youngNoHistory, "ALLOWED");
 }
 
 /* ══ THE MODEL USED FOR PLANTING ════════════════════════════════════════════════════════════
@@ -229,6 +263,9 @@ type Defect = {
   ledgerOverridesPlayer?: boolean;  // an imported row speaks over a player's own no (OD10)
   rgBeforeConsent?: boolean;        // U7's order — RG asked before consent (§5.6 reversed, and the harm scan runs on everybody)
   breakNeverAdmitted?: boolean;     // pre-U10: COOLED_OFF refused for ever as `account_status`, whatever the player later says
+  nullDobIsAdult?: boolean;         // U11's RED: a missing date of birth treated as adult
+  contactAgeAssumed?: boolean;      // pre-U11: a consenting contact marketed with no 18+ attestation
+  under25Ignored?: boolean;         // pre-U12: the published under-25 promise has no code behind it
 };
 
 function gateWithDefect(d: Defect): Gate {
@@ -242,22 +279,23 @@ function gateWithDefect(d: Defect): Gate {
       return s ? { ok: false, skipReason: "suppressed", detail: "suppressed" } : null;
     };
     // The RG step, or one of the three shapes this platform has shipped or nearly shipped instead of it.
-    const askRg = async (user: StoredUser): Promise<{ refusal: MarketingGateVerdict | null; coolingOffEnded: boolean }> => {
+    type RgAnswer = { refusal: MarketingGateVerdict | null; coolingOffEnded: boolean; rgHistory: boolean };
+    const askRg = async (user: StoredUser): Promise<RgAnswer> => {
       if (d.writesRgRow || d.readsThroughWriter) {
         const hasRow = (await Promise.resolve(db.responsible.get(user.id))) !== null;
         const rg = (d.writesRgRow || hasRow) ? await selfExclusionStanding(user.id) : ({ state: "none" } as const);
-        if (rg.state === "serving" || rg.state === "minimum_served") return { refusal: { ok: false, skipReason: "rg_self_excluded", detail: rg.state }, coolingOffEnded: false };
+        if (rg.state === "serving" || rg.state === "minimum_served") return { refusal: { ok: false, skipReason: "rg_self_excluded", detail: rg.state }, coolingOffEnded: false, rgHistory: true };
       }
       if (d.lockoutSemantics) {
         const row = await Promise.resolve(db.responsible.get(user.id));
-        if (selfExclusionStandingOf(row?.selfExclusionUntil ?? null).state === "serving") return { refusal: { ok: false, skipReason: "rg_self_excluded", detail: "serving" }, coolingOffEnded: false };
+        if (selfExclusionStandingOf(row?.selfExclusionUntil ?? null).state === "serving") return { refusal: { ok: false, skipReason: "rg_self_excluded", detail: "serving" }, coolingOffEnded: false, rgHistory: true };
         const co = row?.coolingOffUntil ? Date.parse(row.coolingOffUntil) : NaN;
-        if (co > Date.now()) return { refusal: { ok: false, skipReason: "rg_cooling_off", detail: "on a break" }, coolingOffEnded: false };
-        return { refusal: null, coolingOffEnded: !Number.isNaN(co) };
+        if (co > Date.now()) return { refusal: { ok: false, skipReason: "rg_cooling_off", detail: "on a break" }, coolingOffEnded: false, rgHistory: true };
+        return { refusal: null, coolingOffEnded: !Number.isNaN(co), rgHistory: Boolean(row?.selfExclusionUntil || row?.coolingOffUntil) };
       }
       const rg = await marketingRgStanding(user, identifier);
-      if (!rg.ok) return { refusal: { ok: false, skipReason: rg.skipReason, detail: rg.detail }, coolingOffEnded: false };
-      return { refusal: null, coolingOffEnded: rg.coolingOffEnded };
+      if (!rg.ok) return { refusal: { ok: false, skipReason: rg.skipReason, detail: rg.detail }, coolingOffEnded: false, rgHistory: true };
+      return { refusal: null, coolingOffEnded: rg.coolingOffEnded, rgHistory: rg.rgHistory };
     };
     const askConsent = async (): Promise<MarketingGateVerdict | null> => {
       const user = await Promise.resolve(db.user.findByPhone(d.noBridge ? identifier : `+${identifier}`));
@@ -268,7 +306,7 @@ function gateWithDefect(d: Defect): Gate {
           const l = await Promise.resolve(db.messagingConsent.latestFor(key));
           return l?.status === "GIVEN" ? null : { ok: false, skipReason: "no_consent", detail: "toggle off" };
         };
-        let rg: { refusal: MarketingGateVerdict | null; coolingOffEnded: boolean };
+        let rg: RgAnswer;
         if (d.rgBeforeConsent) {
           rg = await askRg(user);
           if (rg.refusal) return rg.refusal;
@@ -280,6 +318,13 @@ function gateWithDefect(d: Defect): Gate {
           rg = await askRg(user);
           if (rg.refusal) return rg.refusal;
         }
+        // Age, then the under-25 promise — the shipped gate's 2c/2d, each plantable on its own.
+        const age = d.nullDobIsAdult && !user.dob ? { band: "adult" as const, years: 30 } : marketingAge(user.dob);
+        if (age.band === "unknown") return { ok: false, skipReason: "age_unknown", detail: "no dob" };
+        if (age.band === "minor") return { ok: false, skipReason: "age_minor", detail: "minor" };
+        if (!d.under25Ignored && (age.years as number) < MARKETING_YOUNG_ADULT_AGE && rg.rgHistory) {
+          return { ok: false, skipReason: "rg_under25_history", detail: "under 25 with history" };
+        }
         const statusOk = ["ACTIVE", "PENDING_KYC"].includes(user.status)
           || (user.status === "COOLED_OFF" && rg.coolingOffEnded && !d.breakNeverAdmitted);
         if (!statusOk) return { ok: false, skipReason: "account_status", detail: user.status };
@@ -288,7 +333,8 @@ function gateWithDefect(d: Defect): Gate {
       const latest = await Promise.resolve(db.messagingConsent.latestFor(key));
       if (!latest) return { ok: false, skipReason: "no_consent", detail: "no row" };
       if (latest.status === "WITHDRAWN") return { ok: false, skipReason: "consent_withdrawn", detail: "withdrawn" };
-      return { ok: true };
+      if (d.contactAgeAssumed) return { ok: true };
+      return { ok: false, skipReason: "age_unknown", detail: "no attestation" };
     };
 
     if (d.swapOrder) {
@@ -545,6 +591,21 @@ if (!PROVE_RED) {
       name: "pre-U10 — COOLED_OFF refused for ever as `account_status`, so a player who asks again after a break is never heard",
       defect: { breakNeverAdmitted: true },
       expect: "17 · ⭐ a break that ended, then a consent AFTER it: ALLOWED — the COOLED_OFF status nothing ever clears is admitted only then",
+    },
+    {
+      name: "U11's RED — a missing date of birth is treated as ADULT",
+      defect: { nullDobIsAdult: true },
+      expect: "21 · ⭐ a consenting player with NO date of birth is refused as age_unknown — never treated as adult",
+    },
+    {
+      name: "pre-U11 — a consenting contact is marketed with no 18+ attestation on record",
+      defect: { contactAgeAssumed: true },
+      expect: "5 · a contact who consented is refused ONLY on age — no 18+ attestation exists until U33 (OD14), and none is inferred",
+    },
+    {
+      name: "pre-U12 — the published under-25 promise has no code behind it",
+      defect: { under25Ignored: true },
+      expect: "23 · ⭐ aged 20 with a break on record is refused even after re-consenting — U10's lift does not reach the under-25 promise",
     },
   ];
 

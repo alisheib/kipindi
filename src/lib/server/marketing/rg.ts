@@ -31,16 +31,20 @@ import { getAuditForTargetsDurable } from "@/lib/server/audit";
  * first, so the one expensive step (harm markers read up to 10,000 transactions) runs only for a
  * player who has already said yes.
  *
- * ⛔ `isLockedOut` is not modified and not called (OD12, §6). `push-service` still gates on it and
- * inherits the lift — D10, an owner ruling, deliberately NOT changed here.
+ * ⛔ `isLockedOut` is not modified and not called (OD12, §6). `push-service` and `watchlist-service` still
+ * call it, and since S7 (D10, on Ali's delegation of 2026-09-26) each also refuses a SELF_EXCLUDED account
+ * whatever the timer says — the lift no longer reaches either door.
  */
 
 export type MarketingRgSkipReason = "rg_self_excluded" | "rg_cooling_off" | "rg_harm_marker";
 
 export type MarketingRgStanding =
   /** `coolingOffEnded` — a break is on record, it has ended, AND the player consented again after it.
-   *  Only then may an account whose status still reads COOLED_OFF (nothing ever clears it) be marketed. */
-  | { ok: true; coolingOffEnded: boolean }
+   *  Only then may an account whose status still reads COOLED_OFF (nothing ever clears it) be marketed.
+   *  `rgHistory` — a self-exclusion or a break has EVER been on record (both end dates are never
+   *  cleared). The gate's under-25 rule reads it (U12): the published page promises no marketing to a
+   *  player under 25 in a vulnerability segment, and this is the segment that promise is built on. */
+  | { ok: true; coolingOffEnded: boolean; rgHistory: boolean }
   | { ok: false; skipReason: MarketingRgSkipReason; detail: string; until: string | null };
 
 /** What the audit chain proves about the account's self-exclusions — the only durable record of WHEN an
@@ -177,5 +181,5 @@ export async function marketingRgStanding(
     return refuse("rg_harm_marker", `harm markers: ${[...new Set(flags.map((f) => f.marker))].join(", ")}`, null);
   }
 
-  return { ok: true, coolingOffEnded };
+  return { ok: true, coolingOffEnded, rgHistory: Boolean(row?.selfExclusionUntil || row?.coolingOffUntil) };
 }

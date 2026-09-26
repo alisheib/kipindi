@@ -701,9 +701,16 @@ export const MUTATIONS = [
        anchor that stops resolving is a mutation that silently stops being driven. RE-ANCHORED AGAIN 2026-09-24:
        a NINTH, the activity panel's "Left today" scan, which takes `readDeskCore`'s third caller slot. THE DEFECT
        IS UNCHANGED — one failed read blanks the whole page instead of its own cell. */
+    /* 🔴 RE-AIMED 2026-09-26 — THE WHOLE-FLEET DRIVE CAUGHT IT AS WRONG-ASSERTION. The plain `Promise.all` swap
+       returns RAW values, and since the ninth slot (09-24) some callers pass `null` there, so `extraCR.status`
+       threw on EVERY render: the suite died in its first behavioural case, `0.throw` fired, and §4 — where 1.355's
+       source pin lives — never ran. That was a crash of the mutation's own making, not the defect. The defect is
+       an ALL-OR-NOTHING combinator: this one keeps the settled SHAPE, so nothing changes until a read rejects,
+       and then the whole reader rejects with it — which is exactly "one failure blanks the page". Driven: it is
+       caught by the BEHAVIOURAL half of 1.355 (a failed roster read must resolve), which is the stronger catch. */
     from: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR, extraCR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR, extraCR] = await Promise.all([`,
-    expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
+    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR, extraCR] = await ((ps: readonly unknown[]) => Promise.all(ps).then((vs) => vs.map((value) => ({ status: "fulfilled" as const, value }))))([`,
+    expect: "1.355 · a failed ROSTER read RESOLVES",
     suite: "console-mem",
   },
   {

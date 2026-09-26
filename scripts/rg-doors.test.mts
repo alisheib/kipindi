@@ -738,5 +738,72 @@ console.log("\n§8 · the marketing predicate is a STANDING, never a lockout (ma
   void MARKETING_RG_DEPS;
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// §9 — PUSH and WATCHLIST ALERTS respect the ruling too  (D10, marketing S7)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 D10. `push-service` and `watchlist-service` gated on `isLockedOut` alone, which lifts the moment the
+ * chosen period elapses — so a 24-hour self-excluder was pushed at, and sent "a market you follow closes
+ * soon", from hour 25, while sign-in and betting still refused them. Ali's 2026-08-27 ruling (the period
+ * is a MINIMUM; the account is not reinstated by itself) is enforced on those two doors the way the bet
+ * path enforces it: the STATUS decides. Closed on Ali's delegation of 2026-09-26.
+ * ⭐ A push in stub mode returns 0 whether it was suppressed or delivered, so "returned 0" proves nothing;
+ * the discriminator is the `[push-stub]` delivery line, caught with a console spy. Each suppression is
+ * paired with a DELIVERED control (restored; a cooled-off player whose break is over), or a door that
+ * pushed nobody would pass.
+ */
+console.log("\n§9 · push and watchlist alerts: the STATUS decides, not the timer (D10)\n");
+{
+  const { sendPushToUser, savePushSubscription } = await import("../src/lib/server/push-service.ts");
+  const { alertableWatcherIds } = await import("../src/lib/server/watchlist-service.ts");
+  const { getAuditForTargetsDurable } = await import("../src/lib/server/audit.ts");
+  const DAY = 864e5;
+  const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
+  const lines: string[] = [];
+  const realLog = console.log;
+  const delivered = async (userId: string): Promise<boolean> => {
+    lines.length = 0;
+    console.log = (...a: unknown[]) => { lines.push(a.map(String).join(" ")); };
+    try { await sendPushToUser(userId, { title: "t", body: "b" }); } finally { console.log = realLog; }
+    return lines.some((l) => l.startsWith(`[push-stub] To: ${userId} `));
+  };
+  const mk = async (id: string, status: string, patch?: Partial<StoredResponsibleGambling>) => {
+    await player(id);
+    await db.user.update(id, { status } as never);
+    if (patch) await rg(id, patch);
+    await savePushSubscription(id, { endpoint: `https://push.example/${id}`, p256dh: "k", auth: "a" });
+  };
+
+  await mk("d10_served", "SELF_EXCLUDED", { selfExclusionUntil: ago(365) });
+  ok("9.1 ⭐ a self-excluder whose 24 h ELAPSED A YEAR AGO, never reopened, is NOT pushed at (D10)", !(await delivered("d10_served")),
+    "a [push-stub] delivery line was printed");
+  // `push-service` fires its audit without awaiting it (the push must never wait on the chain), so the
+  // row lands a moment later — poll for it rather than sleep a guess.
+  let rows: Awaited<ReturnType<typeof getAuditForTargetsDurable>>["entries"] = [];
+  for (let i = 0; i < 40 && rows.length === 0; i++) {
+    rows = (await getAuditForTargetsDurable({ targetType: "User", targetIds: ["d10_served"], actions: ["push.suppressed.rg_lockout"], sinceIso: ago(1) })).entries;
+    if (rows.length === 0) await new Promise((r) => setTimeout(r, 50));
+  }
+  ok("9.1b …and the suppression is audited with the standing it rests on (minimum_served)",
+    rows.some((r) => (r.payload as { standing?: string } | undefined)?.standing === "minimum_served"), JSON.stringify(rows.map((r) => r.payload)));
+
+  await mk("d10_diverged", "SELF_EXCLUDED");
+  ok("9.2 a SELF_EXCLUDED account with no timer at all (diverged) is not pushed at", !(await delivered("d10_diverged")));
+
+  await mk("d10_restored", "ACTIVE", { selfExclusionUntil: ago(365) });
+  ok("9.3 ⚠️ CONTROL — a player an officer REOPENED (ACTIVE, the same past end date) IS pushed at", await delivered("d10_restored"),
+    "no [push-stub] line — the door pushes nobody");
+  await mk("d10_cooled", "COOLED_OFF", { coolingOffUntil: ago(2) });
+  ok("9.4 ⚠️ CONTROL — a cooled-off player whose break is OVER is pushed at: cooling-off keeps its timer (nothing clears COOLED_OFF)",
+    await delivered("d10_cooled"));
+
+  await db.watchlist.add("mkt_d10", "d10_served");
+  await db.watchlist.add("mkt_d10", "d10_restored");
+  const watchers = await alertableWatcherIds("mkt_d10");
+  ok("9.5 ⭐ the watchlist alert set drops the self-excluder whose period elapsed — \"a market you follow closes soon\" is engagement",
+    !watchers.includes("d10_served"), watchers.join(","));
+  ok("9.6 ⚠️ CONTROL — …and keeps the reopened player", watchers.includes("d10_restored"), watchers.join(","));
+}
+
 console.log(`\nrg-doors: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

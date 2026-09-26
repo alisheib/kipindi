@@ -20,7 +20,7 @@
 import webpush from "web-push";
 import { db } from "./store";
 import { audit } from "./audit";
-import { isLockedOut } from "./responsible-gambling";
+import { isLockedOut, selfExclusionStandingOf } from "./responsible-gambling";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 
 export type PushPayload = {
@@ -79,6 +79,24 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
         action: "push.suppressed.rg_lockout",
         actorId: userId, targetType: "User", targetId: userId,
         payload: { reason: lock.reason, until: lock.until },
+      });
+      return 0;
+    }
+    // D10 · THE STATUS DECIDES, NOT THE TIMER (Ali, 2026-08-27: a self-exclusion is a MINIMUM and the
+    // account is not reinstated by itself). `isLockedOut` lifts the moment the chosen period elapses, so
+    // a 24-hour self-excluder was pushed at from hour 25 — while sign-in and betting still refused
+    // them. Closed on Ali's delegation of 2026-09-26 (marketing S7) the way the bet path does it
+    // (`market-service`, "the STATUS decides"): until an officer reopens the account it stays
+    // SELF_EXCLUDED, and nothing is pushed. ⛔ `isLockedOut` itself is untouched (§6). Cooling-off keeps
+    // its timer on purpose — nothing clears COOLED_OFF, so a status rule would silence every former
+    // cooler for ever. The inbox row and email still go, exactly as during the period itself.
+    const holder = await Promise.resolve(db.user.findById(userId));
+    if (holder?.status === "SELF_EXCLUDED") {
+      audit({
+        category: "COMPLIANCE",
+        action: "push.suppressed.rg_lockout",
+        actorId: userId, targetType: "User", targetId: userId,
+        payload: { reason: "self_exclusion", until: lock.exclusionUntil, standing: selfExclusionStandingOf(lock.exclusionUntil).state },
       });
       return 0;
     }

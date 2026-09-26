@@ -1752,6 +1752,7 @@ refusal, asserted nowhere before, is a new 1.541 case. 1.435's count is eleven, 
 | `typecheck` | 0 errors |
 | `test:red-anchors` §3 | all 340 console anchors resolve exactly once (the re-aimed `626d-own-movement-ignored` included) |
 | Mutations | `red:house-bot-console --only` at `5f1737af`, in a tree nobody edited: **6 caught, 0 missed, 0 files left dirty** — `626h-settlement-read-as-the-stake`, `626h-placed-row-borrows`, `368b-balance-leaks-into-the-budget-title`, `435b-why-panel-guard-dropped`, `541-why-explains-removed`, and the re-aimed `626d-own-movement-ignored` |
+| **The four fleets, WHOLE** (2026-09-26/27) | **579 of 579 caught · 0 missed · 0 wrong-assertion · 0 stale · 0 files left dirty.** Console **340** (8 slices), engine **80** (Postgres halves included), money + seam **63**, all at `2b8ba0a2`; c5 **96** primaries (97 declarations, one combined pair): 35 at `2b8ba0a2` and 61 at `cf5dd07b` — the slices holding disclosure mutations cannot baseline green on an older commit, because 5.1 pins the published text to the LIVE `origin/main` by design. Driven in a dedicated detached tree, launched as an independent process, in slices under the lock. The first attempt (at `754a7fe3`) found `355-all` WRONG-ASSERTION — re-aimed in `1656d3b1` — and was then killed mid-mutation by a session ending (RESUME-HERE §1's trap) |
 
 ---
 

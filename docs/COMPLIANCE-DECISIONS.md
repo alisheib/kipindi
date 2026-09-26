@@ -6,6 +6,71 @@
 
 ---
 
+## 2026-09-26 · Cash paid to inviters stays OFF-platform and unrecorded; the card share icon carries no code
+
+**Authority.** Ali, 2026-09-26, answering two direct questions at the close of the invite's production
+verification (`docs/PLAYER-INVITE-UNPAID.md` §13).
+
+1. **Cash to inviters.** Asked *"should the cash you pay inviters outside 50pick be recorded in 50pick?"*,
+   with the note in the question itself that **paying for referrals is a regulated inducement even
+   off-platform**, Ali chose **"No, keep it off-platform."** 50pick therefore records no such payment:
+   `/admin/affiliate` counts friends joined and nothing else, and the platform itself still credits a
+   player referrer nothing (`inviteRewards` WITHDRAWN, § 2026-09-25 below). ⚠️ The regulatory status of
+   the owner's own cash payments is not changed by where they are recorded; that question sits with the
+   Gaming Board of Tanzania, and this entry records only that he was told.
+2. **Card share icon.** The compact share icon on market cards keeps carrying no `?ref=` (**"Keep as
+   is"**): wiring it would change AGENT commission attribution and put an account-minting write on the
+   busiest pages (`PLAYER-INVITE-UNPAID.md` §11).
+
+⛔ Do not add a cash-payment log, and do not wire the card icon, without a new dated decision here.
+
+---
+
+## 2026-09-26 · RG Policy v2026-09-26 — §4 says only what the code does; the under-25 promise is BUILT, the late-night bullet CUT
+
+**Authority.** Ali, 2026-09-26, delegating: *"take any decision needed based on overall decisions I took ever and
+architecture of platform, keep going until live."* Taken on that delegation in marketing session S7, resting on his
+own precedents, each named below. `/legal/responsible-gambling` §4 had not changed since the baseline commit
+(`678960c1`, 2026-06-05) and had never been checked against the code — the 2026-09-14 (third) entry below says so
+itself, and the 2026-09-12 (third) entry lists what it could not honour.
+
+**What §4 promised, and what was true.**
+
+| Promise (v2026-09-14.3) | Truth before S7 | Ruling |
+|---|---|---|
+| "No marketing to self-excluded players or players under 25 in vulnerability segments" | Self-excluded: the marketing gate refused them (U7/U10). "Under 25 in vulnerability segments": **no code** — nothing computed an age band or defined a segment | **BUILT** the cheap protective half and **RE-WORDED** to name exactly the exclusions that run |
+| "No bonus offers tied to deposit increases" | True — the bonus feature is WITHDRAWN (`feature-state.ts`) | kept; `test:rg-policy` goes red if the bonus returns, forcing a re-check |
+| "No sign-up nudges in the late-night window" | **No such window exists in code** | **CUT** — ⛔ do not restore until the control exists |
+| "Free helpline displayed on every page footer" | True (`PublicFooter` → `HELPLINE()`) | kept |
+
+**The precedents this rests on.** *2026-09-14 (third), this page:* "Do not restore … until the control exists: build it
+first, then write it here and re-version the policy." *2026-09-05, ruling ④:* "A public promise the code refuses is
+worse than a shorter one it keeps." *2026-08-20 (privacy):* correct the policy to actual behaviour rather than build
+to an overclaim. *2026-09-14 (fifth, eighth):* player protections that are cheap are BUILT, overclaims REWORDED.
+
+**The segment, defined rather than invented.** "Under 25 in a vulnerability segment" = the account's date of birth
+gives under 25 **and** a self-exclusion or a break has ever been on record (`ResponsibleGambling.selfExclusionUntil`
+/ `coolingOffUntil`, neither ever cleared). ⛔ It **excludes, never selects** — Privacy v2026-09-22 §6 says "we do not
+profile you for marketing", and a behavioural field used to CHOOSE who is messaged would make that false. Nothing
+lifts it: U10's re-consent lifts do not reach it; turning 25 does.
+
+**v2026-09-26 §4, English (binding):** (1) no marketing messages to a self-excluded player, to a player on a break
+until they opt in again after it ends, to a player showing a sign of harm (section 3), or to anyone under 18 or whose
+age we cannot confirm; (2) no marketing messages, ever, to a player under 25 who has self-excluded or taken a break;
+(3) no bonus offers tied to deposit increases; (4) free helpline displayed on every page footer.
+
+**Where it is enforced.** `src/lib/server/marketing/consent.ts` (`mayReceiveMarketingSms`: age U11,
+`MARKETING_YOUNG_ADULT_AGE` U12) and `src/lib/server/marketing/rg.ts` (self-exclusion, break, harm markers, U10).
+**Guard:** `test:rg-policy` — the version, a hash of the binding English, this heading, and every §4 bullet mapped to a
+named control in code; a bullet with no control is refused. **Red:** `red:rg-policy`.
+
+⚠️ **What this does NOT claim.** No marketing SMS is sent today — the campaign engine is not built and broadcast stays
+closed until the Gaming Board's written approval (MARKETING-CAMPAIGN-AND-CONTACTS-SETUP §4a OQ1). §4 describes the
+rules every marketing message will pass; it is true now because nothing is sent, and it stays true because every send
+must go through that gate (U9's dispatch step).
+
+---
+
 ## 2026-09-25 · The player invite is re-opened UNPAID — a tracked link that is not an inducement
 
 **Owner instruction (Ali, 2026-09-25), in his own words:** *"we have a way for people to share our links but we won't

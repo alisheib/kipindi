@@ -123,19 +123,18 @@ Nothing here blocks betting.
 - ✅ **(b) is done:** the why-panel's `removed` guard lives in `AccountWhyPanel` and is RENDERED by 1.435b with a live
   answer (the one input where it alone stands); the door's own refusal is a new 1.541 case. Each has a mutation.
 
-**a) The full mutation fleets — ⏳ RUNNING since 2026-09-26 22:56 UTC on `754a7fe3`** (see §5). Console and engine
-were last driven WHOLE at `79c2962d` (2026-09-23: 305/305,
-65/65); they have grown to 340/80 since, and money+seam (63) and c5 (97) have no whole-fleet record. Per-mutation
-time is not measured here. Drive in slices under 3 hours (`--only <prefix,…>`), each under the lock, each into its
-own log, **never through a pipe**:
-```bash
-KP_SCRATCH_PORT=5453 npm run red:house-bot-engine > red-engine.log 2>&1; echo "EXIT=$?" >> red-engine.log
-grep -E "MISSED|WRONG-ASSERTION|STALE|DIRTY|NOT MEASURED|RED: |EXIT=" red-*.log
-```
-⛔ A red runner **mutates tracked files in place**. It refuses to start only if a file IT mutates differs from HEAD,
-and its lock stops only a second copy of the SAME harness — so run drives in a tree nobody edits. The drive tree
-here is **`C:/kipindi-hb-red`** (detached; its `node_modules` is a JUNCTION into this worktree's). An anchor that no
-longer resolves is reported `STALE` and fails the run — check `test:red-anchors` §3 first, not after hours.
+**a) ✅ DONE 2026-09-27 — the four fleets driven WHOLE: 579 of 579 caught, 0 missed, 0 wrong-assertion, 0 stale,
+0 files left dirty.** Console 340, engine 80, money + seam 63 at `2b8ba0a2`; c5's 96 primaries at `2b8ba0a2` (35)
+and `cf5dd07b` (61) — a c5 slice holding a disclosure mutation baselines 5.1, which pins the LIVE `origin/main`, so
+it must run on a tree equal to current main. Found on the way: `355-all` (re-aimed, `1656d3b1`). The record is
+`docs/HOUSE-BOTS.md` §12.5. The drive tree is removed.
+**To drive them again** (~2 h on Ali-Blade15): a dedicated DETACHED worktree with a junctioned `node_modules`; slices
+of ~45 by name prefix (`--only <p1,p2,…>`; c5 takes `--slice a:b`), each under the lock, each into its own log with
+`echo "EXIT=$?"`, **never through a pipe**, a 60 s pause between slices; launched as an INDEPENDENT process (§1).
+Before starting, `test:red-anchors` §3 — an anchor that no longer resolves is reported `STALE` after hours.
+⛔ A red runner mutates tracked files in place and its lock stops only a second copy of the SAME harness — never run
+one in a tree anyone edits. Read results with
+`grep -E "MISSED|WRONG-ASSERTION|STALE|DIRTY|NOT MEASURED|RED: |EXIT=" <logs>`.
 
 **b) ✅ DONE 2026-09-26** — see the FIXED block above.
 
@@ -214,8 +213,15 @@ neither. Each needs a case and a mutation, both stores.
 
 - ⛔ **`npm ci` deletes `embedded-postgres`**, which is installed `--no-save` and is not in the lockfile. Every
   Postgres half then "never ran" and every red drive refuses. Put it back: `npm i -D --no-save
-  embedded-postgres@18.3.0-beta.17`. And `npm ci` here rewrites `C:/kipindi-hb-red` too, through its junction.
+  embedded-postgres@18.3.0-beta.17`. And while a drive tree junctions this `node_modules`, `npm ci` here rewrites it too.
 - ⛔ **`git worktree remove` deletes THROUGH a junctioned `node_modules`.** `cmd /c rmdir <tree>\node_modules` first.
+- 🔴 **A red drive started as a SESSION's background task dies with the session — mid-mutation** (2026-09-26 23:19 UTC).
+  It left a planted defect on disk (`git status` in the drive tree showed `house-console-read.ts` modified, +1 byte a
+  line: the harness's CRLF write), an orphaned `scripts/.red-house-bot-*.lock`, and the shared heavy-node lock held by
+  a dead process for up to 3 h. Recovery: confirm no `red-house-bot` node process lives; `git status` the DRIVE tree
+  only; restore the planted files from HEAD there; delete the harness lock; release the heavy lock only if its owner
+  is yours. ⭐ Launch long drives as an independent process (`Start-Process bash.exe <script> -WindowStyle Hidden`),
+  never as a session background task.
 - ⛔ **`Transaction.createdAt` is a NAIVE `timestamp`**; `HouseBotIntent`/`HouseBotEvent`/`HouseBotControl` times are
   `timestamptz`. The scratch cluster runs `Asia/Beirut`, so a raw-SQL fixture handed a JS `Date` lands **3 h in the
   future** and `findByUserWindow`'s `nowMs + 1` bound drops it. Bound BOTH ends of any freshness check.
@@ -320,8 +326,8 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     guide regenerated (Void, and the ledger row). Two reds other lanes put on `main` were closed: surfaces 2.ids.1 by
     the finance lane after we told them, and reports 0.260.1 by classifying the marketing lane's new audit reader
     (`467282dd`). `main` = `754a7fe3`.
-  - ⏳ **RUNNING (a):** the four fleets WHOLE on `754a7fe3` in `C:/kipindi-hb-red` (detached; its `node_modules` is a
-    junction — `cmd /c rmdir C:\kipindi-hb-red\node_modules` BEFORE `git worktree remove`), in slices under the
-    lock. Record the totals in §0b a and `docs/HOUSE-BOTS.md` §12.5 when they finish; a MISSED is a real gap.
+  - ✅ **(a) DONE:** the four fleets WHOLE — **579/579 caught, 0 missed, 0 stale, 0 dirty** (§0b a; `docs/HOUSE-BOTS.md`
+    §12.5). The first run found `355-all` stale-crashing (re-aimed) and was killed by a session ending mid-mutation
+    (recovered — §1's trap); the drive and sweep worktrees are removed, the scratch cluster stopped, the lock free.
   - **For Ali:** the P&L choices (d), the 1280 column (c), ISO ruling 501 (g), who may open the desk (h), the
     account-finder list (i), and the unconfirmed "half-configured account" decision in `docs/HOUSE-BOTS.md` §5.4.
