@@ -131,8 +131,9 @@ const invalidFields = () => page.evaluate(() =>
   [...document.querySelectorAll('main form input[aria-invalid="true"]')].map((i) => i.name));
 /**
  * ⛔ SUBMIT, THEN WAIT FOR THE TRANSITION TO END — NEVER A FIXED DELAY (2026-09-22). The form's Save is the kit's
- * Button with `loading={pending}`, which sets `aria-busy` and `disabled` for exactly as long as the server action is
- * in flight. A fixed 3–4 s wait raced it: on a dev server compiling the action's chunk on its first call — measured
+ * Button with `loading={pending}`, which sets `aria-busy` for exactly as long as the server action is in flight
+ * (`disabled` too — but since 2026-09-26 it also stays disabled once nothing is left to save, so it is NOT the
+ * end-of-flight signal; see below). A fixed 3–4 s wait raced it: on a dev server compiling the action's chunk on its first call — measured
  * at 24.5 s under load — every check after the submit read the form MID-FLIGHT (no toast yet, every control
  * disabled), and the failures cascaded through the next four sections. A gate that fails for a reason that has
  * nothing to do with the product teaches people to ignore it.
@@ -140,9 +141,13 @@ const invalidFields = () => page.evaluate(() =>
 const submitForm = async (maxMs = 120_000) => {
   await soft("submit", () => page.locator("main form button[type=submit]").click({ timeout: 4000 }));
   await page.waitForTimeout(250);
+  /* ⛔ SETTLED = NOT BUSY, NEVER "ENABLED AGAIN". Since 2026-09-26 (one Save on screen) the form's Save is
+     DISABLED once nothing is left to save — so after a save that LANDS it never re-enables, and waiting for
+     it did the full timeout, by which time the 4.5 s toast was gone and §7 read "no toast" over a save that
+     had landed. `aria-busy` is the kit Button's in-flight mark (button.tsx), set only while loading. */
   await page.waitForFunction(() => {
     const b = document.querySelector("main form button[type=submit]");
-    return !!b && !b.disabled && b.getAttribute("aria-busy") !== "true";
+    return !!b && b.getAttribute("aria-busy") !== "true";
   }, null, { timeout: maxMs }).catch(() => consoleErrors.push("soft(submit settle): the Save button stayed busy"));
   /* the toast paints on the next frame after the transition; the router refresh that follows a landed save may
      take a moment more, and the checks below read the toast first */
