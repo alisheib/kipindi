@@ -98,12 +98,16 @@ The gate does not reach zero, and the remainder is not code:
 
 ⚠️ The hero **rotates markets**, so any percentage pinned to a specific hero row is a snapshot.
 
-## Dormant, not wrong — do not "fix"
+## The live strip is back on `/` — lobby only (2026-09-26)
 
-After the ticker was removed by owner instruction, the `.ticker-viewport` / `.ticker-copy-dup` CSS
-and the `liveTickerLabel` keys in all three locales are **dormant**. `dead-css` stays green because
-`live-ticker.tsx` and `getTickerFeed` are deliberately still in the tree. A future session must not
-"repair" a strip nobody renders.
+~~After the ticker was removed by owner instruction, the `.ticker-viewport` / `.ticker-copy-dup` CSS
+and the `liveTickerLabel` keys in all three locales are **dormant**. … A future session must not
+"repair" a strip nobody renders.~~ **No longer true.** On 2026-09-26 Ali asked for the strip back,
+and it now paints above this page's content on `/` — and on `/markets`, `/live`, `/results`, nowhere
+else (`TICKER_ROUTES` in `src/lib/markets/ticker.ts`). It is live code: a defect in it is a real
+landing defect. It can be stopped (a control at its end, or a tap on the run), and a stopped or calm
+strip is a still, swipeable list. Guarded by `test:ticker-honesty` §11; record in
+`docs/MOBILE-VISUAL-PLAN.md` D32.
 
 ## Instrument defects found so far, and how
 

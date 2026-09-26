@@ -33,6 +33,7 @@ const LazyWinCelebration = lazy(() =>
   import("@/components/markets/win-celebration").then((m) => ({ default: m.WinCelebrationHost })),
 );
 import { TopAppBar } from "./top-app-bar";
+import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
@@ -44,6 +45,7 @@ import { SessionPresence } from "./session-presence";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/server/store";
 import { guestUser } from "@/lib/ui-stubs";
+import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
@@ -248,11 +250,31 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // JSX site so the two do not serialise; `getPlatformStats` is memoised on `globalThis` for 60s,
   // so on a warm shell this costs nothing at all. ⛔ It must never become a per-request scan —
   // this component renders on EVERY page (see the ONE-SCAN note in `platform-stats.ts`).
+  // ⚠️ READ ON EVERY PAGE, PAINTED ON FOUR (2026-09-26). The strip is lobby-only (`TICKER_ROUTES`),
+  // but this shell is the ROOT layout and is not re-rendered on a soft navigation — so a player who
+  // lands on /wallet and taps through to /markets has only the events this render handed down. A
+  // server-side "not on this page" skip would leave the lobby strip empty for exactly that player.
+  // 🟠 AND NOT READ FOR A SIGNED-IN PLAYER ON AN ACTIVE BREAK — and that is exactly as far as it goes.
+  // A courtesy, like the socials panel's: a scrolling run of other people's settlements is not what a
+  // player who asked for a break should meet, so the feed is not fetched and the strip renders null.
+  // ⚠️ WHAT THIS DOES NOT DO, written down so nobody believes more than the code does:
+  //   · A SELF-EXCLUDED person is never signed in — `selfExclude` revokes every session and
+  //     `assertSignInAllowed` refuses them — so they browse as a guest and see the lobby, strip
+  //     included, like any visitor. The `selfExclusionUntil` half of `promoSuppressed` only covers an
+  //     exclusion recorded without a session revoke. Same for a cooling-off player once
+  //     `coolOffAction` has signed them out, until they sign back in.
+  //   · The same settled markets are public on `/` (TrustBand), `/results` and `/live` regardless.
+  //   · It fails OPEN on an RG read error (see `promoSuppressed`).
+  // The strip is site content, not one of the "marketing messages" `/legal/responsible-gambling` §4
+  // governs (those are SMS, email and push). Recognising a signed-out person on a break would need a
+  // device marker — a new cookie, i.e. a Privacy-notice change — which is the owner's decision, open
+  // in `docs/MOBILE-VISUAL-PLAN.md` D32.
   // Site-wide operator banner (§9.3 #5) — maintenance notice takes priority over an active
   // broadcast. Cheap cached config read (graceful on failure).
-  // ⚠️ This was a Promise.all of two reads; the ticker feed was the second and went with the
-  // strip that painted it. One await is not worth a Promise.all.
-  const platformCfg = await getPlatformConfig().catch(() => null);
+  const [platformCfg, tickerEvents] = await Promise.all([
+    getPlatformConfig().catch(() => null),
+    promoSuppressed ? Promise.resolve([]) : getTickerFeed(locale).catch(() => []),
+  ]);
   const maintBanner = platformCfg?.maintenanceMode ? await maintenanceMessage().catch(() => null) : null;
   const announcement = platformCfg?.announcement?.active && platformCfg.announcement.message.trim()
     ? { message: platformCfg.announcement.message, tone: platformCfg.announcement.tone }
@@ -374,18 +396,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           serverNowMs={Date.now()}
         />
       )}
-      {/* ⛔ THE SCROLLING SETTLEMENT STRIP WAS REMOVED ON 2026-09-24, BY THE OWNER, AS A DESIGN
-          DECISION — it sat under the header on every page and read as an advertising marquee.
-          The FEATURE it showed is not lost and nothing about settlements changed: the landing
-          page still carries the settled strip (trust-band.tsx), which names the public source
-          and the amount for each of the last five, and /live and /results carry the same events
-          in full. What went is one auto-scrolling presentation of data that is stated better,
-          and statically, elsewhere.
-          ⚠️ `LiveTicker` and `getTickerFeed` are DELIBERATELY still in the tree. They are the
-          feature, not the decoration, and re-siting the strip is a render away. But nothing in
-          the shell may read the feed while nothing paints it — a server read with no reader on a
-          component that renders on EVERY page is exactly the cost `platform-stats.ts` warns
-          about — so the fetch below went with the markup, not just the markup. */}
+      {/* ⭐ THE LIVE STRIP — BACK, BUT ONLY IN THE LOBBY (owner decision 2026-09-26, revising the
+          removal of 2026-09-24, `adbc31e7`). On every page it ran above the deposit and withdrawal
+          forms, identity, limits and the bet screen, and read as an advertising marquee there. It now
+          paints on `/`, `/markets`, `/live` and `/results` only (`TICKER_ROUTES`, where the reasons
+          are written down), not for a SIGNED-IN player on an active break (the feed above is not
+          read — see the limits written there), and it can be stopped — by the control at its end or
+          a tap anywhere on it.
+          REAL settlements only, and NOTHING when the platform has settled nothing — `LiveTicker`
+          returns null on an empty list, so the strip stops existing rather than inventing a line. */}
+      <LiveTicker events={tickerEvents} />
       {/* ⭐ NO BOTTOM PADDING ON <main> (2026-09-13). It used to clear the fixed rail here AND
           `PublicFooter` clears it too — but the footer below is rendered unconditionally, so the
           document never ends at main, and the two stacked into ~250px of blank above the footer

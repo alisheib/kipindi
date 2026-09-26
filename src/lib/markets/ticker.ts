@@ -67,11 +67,12 @@ export type TickerRow = {
  * time baked into a server render is wrong the moment the page has been open a minute, and a
  * stale relative time is worse than none.
  *
- * ⚠️ `live-ticker.tsx` is a CLIENT component and the server feed reaches the store, so the
- * client must import this with `import type` (erased at compile time). A value import would
- * pull the server graph into a browser chunk — the failure that broke the build when `audit.ts`
- * dragged in `node:async_hooks`. Being pure and server-free, this file is safe either way; the
- * rule is kept because the next type to live here may not be.
+ * ⚠️ `live-ticker.tsx` is a CLIENT component and the server feed reaches the store. The TYPE still
+ * crosses with `import type`, but since 2026-09-26 the client also VALUE-imports `tickerShowsOn`
+ * from here — so THIS MODULE IS IN THE BROWSER BUNDLE. ⛔ It must therefore import NOTHING: one
+ * import of a server module here would pull the server graph into a browser chunk — the failure
+ * that broke the build when `audit.ts` dragged in `node:async_hooks`. `test:ticker-honesty` 11.14
+ * fails the moment an import statement appears in this file.
  */
 export type TickerEvent = {
   id: string;
@@ -88,6 +89,32 @@ export type TickerEvent = {
 /** How many settlements the strip carries. The run is duplicated for the marquee, so this is
  *  half the DOM cost; twelve was the synthetic array's length and reads as a wire feed. */
 export const TICKER_LIMIT = 12;
+
+/**
+ * The only pages the strip is painted on — the LOBBY, where a player is browsing what is on.
+ *
+ * ⭐ OWNER DECISION, 2026-09-26, and it REVISES the one of 2026-09-24. On the 24th the strip was
+ * removed from under the header on every page (`adbc31e7`: "reads as an advertising marquee"); two
+ * days later Ali asked for it back because it gave the platform its live feel, and asked for the
+ * best call rather than the old one. The strip was never wrong — its PLACEMENT was. On every page it
+ * ran above the deposit and withdrawal forms, identity checks, the responsible-gambling limits and
+ * the bet screen itself: places where a moving run of TZS figures is noise at best and a nudge at
+ * worst. So it returns to the four browsing surfaces and nowhere else.
+ *
+ * ⛔ AN ALLOWLIST OF EXACT PATHS, NEVER A PREFIX AND NEVER A DENYLIST. `/markets/<id>` is the bet
+ * screen (the dial) and must not match `/markets`; and a page added next month must start WITHOUT
+ * the strip, not inherit it because nobody remembered to exclude it. Adding a page here is a design
+ * decision about that page, made on purpose.
+ */
+export const TICKER_ROUTES: readonly string[] = ["/", "/markets", "/live", "/results"];
+
+/** True when the strip belongs on this page. `pathname` is `usePathname()` — no query, no hash.
+ *  A trailing slash is tolerated; anything else is an exact match against `TICKER_ROUTES`. */
+export function tickerShowsOn(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  const p = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  return TICKER_ROUTES.includes(p);
+}
 
 /**
  * The strip's events, most recently settled first.
