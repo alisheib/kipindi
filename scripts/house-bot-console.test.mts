@@ -295,7 +295,12 @@ await runTwoStores({
    * ⭐ 864/623 → 923/669 (2026-09-26), the counts that run PRINTED: C7 437, the Results tab — §2h's behavioural block on
    * both stores (audience, one arithmetic with the stop, outcomes and words, cohort, window, one read per day, a failed
    * day, removed accounts, grammar, containment, lexicon, layout) and, on the memory child, the source pins it
-   * brought (1.360 built, 1.361 widened, 1.437m's register pins, the five-tab rail). */
-  minPass: { memory: 923, postgres: 669 },
+   * brought (1.360 built, 1.361 widened, 1.437m's register pins, the five-tab rail).
+   * ⭐ 923/669 → 972/706 (2026-09-26), the counts that run PRINTED: RESUME-HERE §0c decision 4, the find step's list of
+   * every account — §2f2 on both stores (audience and route belt, the one parse and its refusal, sort and its total
+   * order, the two filters, paging past the end, links built from the validated parameters, the three walls, both
+   * empty states and the failed read) and, on the memory child, the source pins it brought (a server component, the
+   * shared rail with no window, the phone gutter). */
+  minPass: { memory: 972, postgres: 706 },
   dbPrefix: "hb_console",
 });

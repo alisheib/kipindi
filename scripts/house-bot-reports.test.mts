@@ -71,7 +71,11 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 249, postgres: 80 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 251, postgres: 80 }, dbPrefix: "hb_reports" });
+// ⭐ 249 → 251 MEMORY (2026-09-26, house-bots build step 4), the count that run PRINTED: c6c637c1 (the finance lane)
+// gave `censusUnverifiable` a bounded `sample` of `UnverifiableRow` and exported that type. 0.260.1 classifies the
+// type (a shape, not a reader); 0.260.2's census pin now names the sample, and asserts its row carries identity only
+// and its cap stays at or below 50, and the new control 0.260.c4b proves that pin still bites. Postgres unchanged.
 // ⭐ **MEASURED ON THE FULLY INTEGRATED TREE: 247/80 → 248 memory / 80 postgres, RAISED TO WHAT THE RUN PRINTED
 // AND TO NOTHING ELSE** (OMEGA-COMPILE01, 2026-09-21, after all five branches were merged into `ops-lane`).
 // `npm run test:house-bot-reports` printed ALL PASS with `0.pg · exit 0 · 80 passed (at least 80) · 0 failed`, and

@@ -50,6 +50,9 @@ const NOTIF = "src/lib/server/notification-service.ts";
 const NEW_ACTIONS = "src/app/admin/desk/new/actions.ts";
 const NEW_PAGE = "src/app/admin/desk/new/page.tsx";
 const NEW_CLIENT = "src/app/admin/desk/new/designate-wizard.tsx";
+/* ⭐ RESUME-HERE §0c decision 4 · the find step's list of every account, and the wizard's loader that ghosts it. */
+const LIST = "src/app/admin/desk/new/account-list.tsx";
+const NEW_LOADING = "src/app/admin/desk/new/loading.tsx";
 
 /* ⭐ C7 step 7 · the closing gates. The last four are GUARD files: the only way to show that an assertion whose
  * subject IS a guard can fail is to mutate the guard, and `318-expect-drift` on this very file is the precedent. */
@@ -3761,5 +3764,254 @@ import { formatEat } from "@/lib/utils";`,
     to: '    marketHref: i.marketId.length > 0 ? `${HOUSE_CONSOLE_PREFIX}/${encodeURIComponent(i.marketId)}` : null,',
     expect: "1.626b " + String.fromCharCode(0xB7) + " every activity row names the GAME",
     suite: "console-mem",
+  },
+
+  /* ── 2026-09-26 · RESUME-HERE §0c DECISION 4 · THE FIND STEP'S ACCOUNT LIST ─────────────────────────────────────
+   * Each puts back a shape the list could plausibly have shipped in: a door that reads for anyone, or for any route;
+   * a person's field or a wallet read on a directory of real players; a pager that lies about how many there are; an
+   * order that is not total; a filter that says the opposite of its chip; a refusal that is silent or that travels
+   * into the next link; a way in on a row that can only be refused; a failed roster painted as an empty desk; and a
+   * loader that no longer ghosts the card the page gained. Every `from` resolves exactly once in its own file. */
+  {
+    name: "list-gate-open · the account list stops asking its audience, so any signed-in account can read the whole directory with who is on the desk",
+    file: GATE,
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const p = parseAccountListQuery(query);`,
+    to: `  const p = parseAccountListQuery(query);`,
+    expect: "1.387L · audience · all eight non-owner roles",
+    suite: "console-mem",
+  },
+  {
+    name: "list-route-belt · the list's route belt is dropped, so a caller naming another section's route is answered by that route's domain",
+    file: GATE,
+    from: `  if (!isHouseConsoleRoute(route)) return null;
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const p = parseAccountListQuery(query);`,
+    to: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const p = parseAccountListQuery(query);`,
+    expect: "1.387L · audience · the route belt",
+    suite: "console-mem",
+  },
+  {
+    name: "list-email-on-row · a list row carries the holder's email beside the handle, on the screen most likely to end up in a screenshot",
+    file: GATE,
+    from: `    handle: playerHandle(u.id),
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),`,
+    to: `    handle: \`\${playerHandle(u.id)} \${u.email ?? ""}\`,
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),`,
+    expect: "1.387L · no name, phone or email · a holder with all three set",
+    suite: "console-mem",
+  },
+  {
+    name: "list-holder-arg · the list names every row by the OFFICER's handle, putting a staff account behind a player's mask",
+    file: GATE,
+    from: `    handle: playerHandle(u.id),
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),`,
+    to: `    handle: playerHandle(viewerUserId),
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),`,
+    expect: "1.420 · `playerHandle` is used for the HOLDER only",
+    suite: "console-mem",
+  },
+  {
+    name: "list-wallet-read · the list reads every wallet on the platform, on a page ruling 459 keeps free of money",
+    file: GATE,
+    from: `    (async () => db.user.list())(),
+    (async () => houseBotStore.listNonRemoved())(),
+  ]);`,
+    to: `    (async () => db.user.list())(),
+    (async () => houseBotStore.listNonRemoved())(),
+    (async () => db.wallet.listAll())(),
+  ]);`,
+    expect: "1.387L · no money · the list reads NO wallet at all",
+    suite: "console-mem",
+  },
+  {
+    name: "list-amount-cell · a date cell is dressed as money, so the moneyless page grows an amount element",
+    file: LIST,
+    from: `                    <td className="tabular text-text-secondary" title={r.joinedTitle ?? undefined}>{r.joined}</td>`,
+    to: `                    <td className="tabular text-text-secondary" title={r.joinedTitle ?? undefined}><span className="amount">{r.joined}</span></td>`,
+    expect: "1.387L · RENDERED · the list as served",
+    suite: "console-mem",
+  },
+  {
+    name: "list-goes-client · the list becomes a client file, publishing its prop names and every string it holds in a public chunk",
+    file: LIST,
+    from: `import type { Route } from "next";
+import Link from "next/link";`,
+    to: `"use client";
+import type { Route } from "next";
+import Link from "next/link";`,
+    expect: "1.388 · decision 4 · the find step's account list is a SERVER file",
+    suite: "console-mem",
+  },
+  {
+    name: "list-total-from-page · the list's total is the page's own length, so the pager never offers a second page",
+    file: GATE,
+    from: `    total: matched.length,`,
+    to: `    total: slice.length,`,
+    expect: "1.387L · paging · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "list-past-end-empty · a page past the end is served empty under a pager that says there are more",
+    file: GATE,
+    from: `  const page = consoleLastPage(matched.length, p.page, CONSOLE_LIST_PER_PAGE);`,
+    to: `  const page = p.page;`,
+    expect: "1.387L · paging · a page past the end is served as the LAST page",
+    suite: "console-mem",
+  },
+  {
+    name: "list-page-size · the page size becomes two hundred, so the find step paints the whole directory at once",
+    file: GATE,
+    from: `const CONSOLE_LIST_PER_PAGE = 20;`,
+    to: `const CONSOLE_LIST_PER_PAGE = 200;`,
+    expect: "1.387L · paging · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "list-no-tiebreak · the order loses its id tie-break, so accounts that share a key come back in whatever order the store holds them",
+    file: GATE,
+    from: `    return key || listCodeUnitOrder(a.u.id, b.u.id);`,
+    to: `    return key;`,
+    expect: "1.387L · sorting · Joined",
+    suite: "console-mem",
+  },
+  {
+    name: "list-never-first · accounts that never signed in sort FIRST when the newest sign-ins are asked for",
+    file: GATE,
+    from: `    if (!xs || !ys) return xs === ys ? 0 : xs ? -1 : 1;`,
+    to: `    if (!xs || !ys) return (xs === ys ? 0 : xs ? -1 : 1) * sign;`,
+    expect: "1.387L · sorting · Signed in",
+    suite: "console-mem",
+  },
+  {
+    name: "list-sort-ignored · the Account header's sort is ignored and the list stays in joining order under it",
+    file: GATE,
+    from: `    const key = sort === "account" ? sign * listCodeUnitOrder(a.handle, b.handle)`,
+    to: `    const key = sort === "no-such-column" ? sign * listCodeUnitOrder(a.handle, b.handle)`,
+    expect: "1.387L · sorting · Account",
+    suite: "console-mem",
+  },
+  {
+    name: "list-show-inverted · the Can-be-chosen chip shows exactly the accounts that cannot be",
+    file: GATE,
+    from: `  if (show === "can") return reason === null;`,
+    to: `  if (show === "can") return reason !== null;`,
+    expect: '1.387L · filtering · Show · "Can be chosen" holds only rows with no reason',
+    suite: "console-mem",
+  },
+  {
+    name: "list-window-unbounded · the sign-in windows lose their upper bound, so a stamp in the future counts as a recent sign-in",
+    file: GATE,
+    from: `  return signedMs > nowMs - span && signedMs <= nowMs;`,
+    to: `  return signedMs > nowMs - span;`,
+    expect: "1.387L · filtering · Signed in · the window is bounded at BOTH ends",
+    suite: "console-mem",
+  },
+  {
+    name: "list-never-means-any · the Never chip keeps every account, whatever its last sign-in",
+    file: GATE,
+    from: `  if (signed === "never") return signedMs === null;`,
+    to: `  if (signed === "never") return true;`,
+    expect: "1.387L · filtering · Signed in · the window is bounded at BOTH ends",
+    suite: "console-mem",
+  },
+  {
+    name: "list-refusal-silent · a sort the list cannot honour is dropped in silence, and the officer is shown an order nobody asked for",
+    file: GATE,
+    from: `  if (sortOne.repeated || (sortAsked != null && sortHit == null)) say("sort");`,
+    to: ``,
+    expect: "1.387L · validation · every parameter the list takes",
+    suite: "console-mem",
+  },
+  {
+    name: "list-refused-travels · a refused sort value rides into every link the list builds, so the next read is asked the same unanswerable question",
+    file: GATE,
+    from: `  const sort: ListSortKey = sortHit ?? CONSOLE_LIST_SORT_DEFAULT;`,
+    to: `  const sort: ListSortKey = (sortHit ?? sortAsked ?? CONSOLE_LIST_SORT_DEFAULT) as ListSortKey;`,
+    expect: "1.387L · validation · a refused value travels NOWHERE",
+    suite: "console-mem",
+  },
+  {
+    name: "list-blocked-link · a row that cannot be chosen is a way in anyway, to a check card that can only refuse it",
+    file: GATE,
+    from: `    href: e.reason === null ? consoleNewHref({ userId: e.u.id }) : null,`,
+    to: `    href: consoleNewHref({ userId: e.u.id }),`,
+    expect: "1.387L · links · a row that can be chosen opens",
+    suite: "console-mem",
+  },
+  {
+    name: "list-filter-keeps-page · every rail chip keeps the page, so narrowing the list lands on a page it no longer has",
+    file: GATE,
+    from: `  const params = consoleListParams(p);`,
+    to: `  const params = { ...consoleListParams(p), page: String(p.page) };`,
+    expect: "1.387L · links · every rail link stays on the wizard's own route",
+    suite: "console-mem",
+  },
+  {
+    name: "list-roster-fail-open · a failed roster read is painted as an empty desk, offering accounts already on it as choosable",
+    file: GATE,
+    from: `    : liveR.reason instanceof HouseSchemaNotReady ? [] : null;`,
+    to: `    : [];`,
+    expect: "1.387L · failed reads · 355 · a failed ROSTER read",
+    suite: "console-mem",
+  },
+  {
+    name: "list-find-only · the list is read on every step, so the check card's page pulls the whole directory for one account",
+    file: NEW_PAGE,
+    from: `  const list = step === "find" ? await houseAccountListForConsole(session?.userId ?? null, "/admin/desk", sp) : null;`,
+    to: `  const list = await houseAccountListForConsole(session?.userId ?? null, "/admin/desk", sp);`,
+    expect: "1.387L · the page · the list is read ONLY on the find step",
+    suite: "console-mem",
+  },
+  {
+    name: "list-pager-total-rows · the pager is drawn from the rows on screen, so it can never reach a second page",
+    file: LIST,
+    from: `            total={view.total}`,
+    to: `            total={rows.length}`,
+    expect: "1.387L · the list file · it spends the view as painted",
+    suite: "console-mem",
+  },
+  {
+    name: "list-rail-window · the shared rail draws its date window whatever it is handed, so the account list grows a window that filters nothing",
+    file: RAIL,
+    from: `      {presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">`,
+    to: `      {true && (<I18nProvider initial="en">`,
+    expect: "1.410 · decision 4 · the section's ONE rail draws its window only when it is handed one",
+    suite: "console-mem",
+  },
+  {
+    name: "list-loader-no-ghost · the wizard's loader stops ghosting the list's card, so the page drops by a whole table on the swap",
+    file: NEW_LOADING,
+    from: `          <SkTableCard cols={3} rows={20} minWidth={0} headW="w-[96px]" sw={false} sortable pager rowMinH={65}
+            beforeBody={
+              <div className="px-4 pb-3 space-y-3">
+                <div className="flex flex-col gap-2">
+                  <SkChip className="h-[44px] w-full max-w-[440px]" />
+                  <SkChip className="h-[44px] w-full max-w-[480px]" />
+                </div>
+                <SkBar className="h-[18px] w-[208px]" />
+              </div>
+            }
+          />`,
+    to: ``,
+    expect: "1.417 · the wizard loader's ghost sequence",
+    suite: "console-mem",
+  },
+  {
+    name: "list-ghost-rows-short · the list's ghost rows go back to a text row's height, twenty rows short of the tap-floor rows the page paints",
+    file: NEW_LOADING,
+    from: ` sortable pager rowMinH={65}`,
+    to: ` sortable pager`,
+    expect: "1.417 · decision 4 · the account list's ghost states the list's real facts",
+    suite: "console-mem",
+  },
+  {
+    name: "list-gate-unlisted · the list reader leaves the gate table, so no arity, viewer or own-route pin measures it",
+    file: REPORTS,
+    from: `houseAccountListForConsole: 3, `,
+    to: ``,
+    expect: "0.512 · ⛔ D19 · CONSOLE_GATES and the gate module's own exports agree",
+    suite: "reports-mem",
   },
 ];

@@ -6933,6 +6933,390 @@ function pickerReason(u: StoredUser, onDesk: boolean, isSelf: boolean): string |
   return null;
 }
 
+/* ═══ RESUME-HERE §0c DECISION 4 · THE FIND STEP'S ACCOUNT LIST (Ali's own ask; built 2026-09-26) ═════════════════
+ *
+ * The picker above answers an officer who already holds a handle, a phone or an id. This answers the one who does
+ * not: EVERY account on the platform, twenty to a page, sortable on its three columns and filtered on two axes,
+ * painted on the server. The picker stays exactly as it is; the list is a second card BELOW it, in the wizard's one
+ * form column, at every width.
+ *
+ * ⛔ THE SAME TWO READS THE PICKER TAKES, AND NOTHING ELSE (rulings 350, 356). `db.user.list()` and the ONE roster
+ * read — no wallet, no eligibility, no position count, and no new DAL member. A row's reason is `pickerReason` over
+ * the account row and the roster, the picker's own rule, so the two halves of the find step can never disagree about
+ * one account, and the check card stays the one place the full eligibility is asked.
+ * ⛔ THE THREE WALLS THE WIZARD ALREADY KEEPS:
+ *   · NO MONEY (459) — nothing here reads a wallet and nothing here formats an amount;
+ *   · NO NAME, PHONE OR EMAIL ON A ROW (346, 420) — a row names its account by its handle and nothing else, and no
+ *     sort key and no filter reads a person's field either. So the list has NO text search: search stays in the
+ *     picker, which is also what keeps a typed phone number out of the address bar;
+ *   · NO SENTENCE IN THE WIZARD'S CLIENT FILE (388) — the list is a SERVER component, and every word it paints is
+ *     built here and handed down finished.
+ * ⛔ FILTERED, SORTED AND PAGED IN JS, ON PURPOSE. "Can be chosen" IS `pickerReason`, and pushing it into SQL would be
+ * a second copy of that rule; `/admin/players` renders from the same full read. ⚠️ So the find step scales with the
+ * account table — every render of it materialises every account row once (`docs/HOUSE-BOTS.md` §7.1a).
+ * ⛔ A FAILED ROSTER READ IS A FAILED LIST, NEVER AN EMPTY DESK (355). The picker reads a failed roster as nobody on
+ * the desk, which offers an account already on it as choosable (the check card still refuses it); the list does not
+ * copy that. Only `HouseSchemaNotReady` reads as an empty roster, because nobody CAN be on a desk whose tables do
+ * not exist (421).
+ */
+
+/** Twenty to a page — the admin table size, written here for the reason `CONSOLE_TARGETS_PER_PAGE` states. */
+const CONSOLE_LIST_PER_PAGE = 20;
+/** One day as a SPAN, for the sign-in windows — "the past seven days" is a length of time, not seven EAT dates. */
+const CONSOLE_LIST_DAY_MS = 86_400_000;
+
+/**
+ * ⭐ EVERY WORD THE LIST PAINTS THAT IS NOT A ROW'S OWN VALUE, IN ONE HOME (ruling 388's rule, kept for a SERVER file
+ * too, so no file under the section is ever where one of these is first typed).
+ * ⛔ THE UNFILTERED EMPTY STATE IS UNREACHABLE WHILE A VIEWER EXISTS — the list always holds the officer's own
+ * account — and it is written anyway, because an empty table that does not say why is the defect 416 exists for.
+ */
+export const CONSOLE_LIST_COPY = {
+  title: "Every account",
+  regionLabel: "Account list",
+  loadError: "the account list",
+  never: "Never",
+  refusalTitle: CONSOLE_REFUSAL_TITLE,
+  empty: { title: "No accounts yet", body: "Every account on the platform is listed here once it is opened." },
+  emptyFiltered: { title: "Nothing matches this filter", body: "No account matches what the rail above is set to. Clear a chip to see more." },
+} as const;
+
+type ListAxisSpec = { label: string; all: string; members: readonly string[]; word: Readonly<Record<string, string>> };
+
+/**
+ * The rail's two axes. ⛔ An option's URL token is its own painted word, slugged (453, `consoleSlug`), so the address
+ * can never carry a word its label does not — and the parse below reads this same table, so the chip an officer
+ * clicks and the filter the server applies are one function.
+ */
+const CONSOLE_LIST_AXES = {
+  show: { label: "Show", all: "Every account", members: ["can", "cannot"], word: { can: "Can be chosen", cannot: "Cannot be chosen" } },
+  signed: { label: "Signed in", all: "Any time", members: ["7d", "30d", "never"], word: { "7d": "Past 7 days", "30d": "Past 30 days", never: CONSOLE_LIST_COPY.never } },
+} as const satisfies Record<string, ListAxisSpec>;
+type ListAxis = keyof typeof CONSOLE_LIST_AXES;
+type ListShow = (typeof CONSOLE_LIST_AXES.show.members)[number];
+type ListSigned = (typeof CONSOLE_LIST_AXES.signed.members)[number];
+
+/** The URL token one member of one axis is addressed by — its own painted word, slugged, and nothing else. */
+function listAxisToken(axis: ListAxis, member: string): string {
+  const a: ListAxisSpec = CONSOLE_LIST_AXES[axis];
+  return consoleSlug(a.word[member] ?? member);
+}
+
+/**
+ * The three columns, in the order they are drawn. ⛔ A sort token is the column's own header word, slugged (453), and
+ * none of the three reads a person's field: the Account column sorts by the HANDLE, which is the id's own tail.
+ */
+const CONSOLE_LIST_COLUMNS = [
+  { key: "account", label: "Account" },
+  { key: "joined", label: "Joined" },
+  { key: "signedIn", label: "Signed in" },
+] as const;
+type ListSortKey = (typeof CONSOLE_LIST_COLUMNS)[number]["key"];
+/** Joined, newest first — the platform's own players table opens the same way. A column newly clicked starts `desc`. */
+const CONSOLE_LIST_SORT_DEFAULT: ListSortKey = "joined";
+const listSortToken = (key: ListSortKey): string => consoleSlug(CONSOLE_LIST_COLUMNS.find((c) => c.key === key)?.label ?? key);
+
+/** What the find step hands the list's door: the REQUEST's own query string, untouched — the door validates it. */
+export type ConsoleAccountListQuery = {
+  show?: string | string[];
+  signed?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  page?: string | string[];
+};
+
+/** The parsed, validated address. `refusals` names every axis that was thrown away, by its own screen word. */
+type ListParsed = { show: ListShow | null; signed: ListSigned | null; sort: ListSortKey; dir: "asc" | "desc"; page: number; refusals: string[] };
+
+/**
+ * THE ONE PARSE, in `parseConsoleQuery`'s idiom: every parameter the list takes is checked against a closed list or a
+ * shape, and a value that fails is refused BY ITS SCREEN WORD, falls back to its default, and never travels into a
+ * link — while every VALID axis beside it stays in force. A repeated parameter is a refusal. A key the list does not
+ * own (the wizard's own `u` and `step` among them) is not read here at all, so it is never carried forward either.
+ */
+function parseAccountListQuery(query: ConsoleAccountListQuery | undefined): ListParsed {
+  const q = query ?? {};
+  const refusals: string[] = [];
+  const say = (word: string) => { if (!refusals.includes(word)) refusals.push(word); };
+
+  const closed = <T extends string>(raw: string | string[] | undefined, axis: ListAxis, word: string): T | null => {
+    const one = oneParam(raw);
+    if (one.repeated) { say(word); return null; }
+    if (one.value == null) return null;
+    const v = one.value.toLowerCase();
+    const a: ListAxisSpec = CONSOLE_LIST_AXES[axis];
+    const hit = a.members.find((m) => listAxisToken(axis, m) === v) ?? null;
+    if (hit == null) say(word);
+    return hit as T | null;
+  };
+  const show = closed<ListShow>(q.show, "show", "show");
+  const signed = closed<ListSigned>(q.signed, "signed", "signed in");
+
+  const sortOne = oneParam(q.sort);
+  const sortAsked = sortOne.value == null ? null : sortOne.value.toLowerCase();
+  const sortHit = sortAsked == null ? null : CONSOLE_LIST_COLUMNS.find((c) => listSortToken(c.key) === sortAsked)?.key ?? null;
+  if (sortOne.repeated || (sortAsked != null && sortHit == null)) say("sort");
+  const sort: ListSortKey = sortHit ?? CONSOLE_LIST_SORT_DEFAULT;
+
+  const dirOne = oneParam(q.dir);
+  const dirAsked = dirOne.value == null ? null : dirOne.value.toLowerCase();
+  const dirHit = dirAsked === "asc" || dirAsked === "desc" ? dirAsked : null;
+  if (dirOne.repeated || (dirAsked != null && dirHit == null)) say("sort direction");
+  const dir: "asc" | "desc" = dirHit ?? "desc";
+
+  /* ⛔ A PAGE IS A WHOLE NUMBER FROM 1, WRITTEN AS DIGITS — never `Number()`'s idea of one, which reads "1e3" as a
+     thousand and "0x10" as sixteen. A page past the end is NOT refused: it is served as the last page, below. */
+  const pageOne = oneParam(q.page);
+  const pageAsked = pageOne.value != null && /^\d+$/.test(pageOne.value) ? Number(pageOne.value) : Number.NaN;
+  const pageOk = Number.isSafeInteger(pageAsked) && pageAsked >= 1;
+  if (pageOne.repeated || (pageOne.value != null && !pageOk)) say("page");
+  const page = pageOk ? pageAsked : 1;
+
+  return { show, signed, sort, dir, page, refusals };
+}
+
+/** The list's live parameters — VALIDATED values only, each left out at its default, and never the page (411). */
+function consoleListParams(p: ListParsed): Record<string, string | undefined> {
+  return {
+    show: p.show == null ? undefined : listAxisToken("show", p.show),
+    signed: p.signed == null ? undefined : listAxisToken("signed", p.signed),
+    sort: p.sort === CONSOLE_LIST_SORT_DEFAULT ? undefined : listSortToken(p.sort),
+    dir: p.dir === "desc" ? undefined : p.dir,
+  };
+}
+
+/**
+ * The rail, built from the SAME parse the rows are read with. Every option keeps the sort and the other axis, drops
+ * the page (a filter change that kept it lands on a page the narrowed list may not have), and stays on the wizard's
+ * own route — the base is `CONSOLE_NEW_ROUTE`, from the route module, never composed here (319).
+ */
+function consoleListGroups(p: ListParsed): ConsoleFilterGroup[] {
+  const params = consoleListParams(p);
+  const live: Readonly<Record<ListAxis, string | null>> = { show: p.show, signed: p.signed };
+  return (Object.keys(CONSOLE_LIST_AXES) as ListAxis[]).map((axis) => {
+    const a: ListAxisSpec = CONSOLE_LIST_AXES[axis];
+    return {
+      param: axis,
+      label: a.label,
+      options: [
+        { key: "", label: a.all, href: consoleFeedLink(CONSOLE_NEW_ROUTE, params, { [axis]: undefined }), on: live[axis] == null },
+        ...a.members.map((m) => ({
+          key: listAxisToken(axis, m),
+          label: a.word[m] ?? m,
+          href: consoleFeedLink(CONSOLE_NEW_ROUTE, params, { [axis]: listAxisToken(axis, m) }),
+          on: live[axis] === m,
+        })),
+      ],
+    };
+  });
+}
+
+/** "Can be chosen" is the picker's own verdict: `pickerReason` found nothing that stops it. */
+function listShowHolds(show: ListShow | null, reason: string | null): boolean {
+  if (show === "can") return reason === null;
+  if (show === "cannot") return reason !== null;
+  return true;
+}
+
+/**
+ * ⛔ A SIGN-IN WINDOW IS BOUNDED AT BOTH ENDS (RESUME-HERE §1's freshness trap): a stamp in the FUTURE is in no window
+ * at all — only "Any time" shows it. `never` is an account with no sign-in recorded; a stamp that will not parse is
+ * neither "never" nor in a window, and its cell says so with a dash.
+ */
+function listSignedHolds(signed: ListSigned | null, signedMs: number | null, nowMs: number): boolean {
+  if (signed === null) return true;
+  if (signed === "never") return signedMs === null;
+  if (signedMs === null || !Number.isFinite(signedMs)) return false;
+  const span = (signed === "7d" ? 7 : 30) * CONSOLE_LIST_DAY_MS;
+  return signedMs > nowMs - span && signedMs <= nowMs;
+}
+
+/** Code-unit order — the same total order on either store and in every locale, which `localeCompare` is not. */
+const listCodeUnitOrder = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/** One account on its way to a row. ⛔ Server-only: the account row itself never reaches the view model. */
+type ListEntry = { u: StoredUser; handle: string; reason: string | null; joinedMs: number; signedMs: number | null };
+
+/**
+ * ⛔ ONE TOTAL ORDER, AND THE TIE-BREAK IS WHAT MAKES IT TOTAL. `db.user.list()` is `findMany` with no `orderBy` on
+ * Postgres and insertion order in memory, so a key alone would hand the two twins — and two renders — different
+ * pages wherever two accounts share it (the picker's `387-order` lesson): accounts opened in the same millisecond,
+ * two that never signed in, two whose ids end alike. The id breaks every tie, ascending, in both directions.
+ * ⛔ A MISSING INSTANT SORTS LAST IN BOTH DIRECTIONS, so the accounts that never signed in cannot crowd out the ones
+ * an officer is sorting to find.
+ */
+function listOrder(sort: ListSortKey, dir: "asc" | "desc"): (a: ListEntry, b: ListEntry) => number {
+  const sign = dir === "asc" ? 1 : -1;
+  const byTime = (x: number | null, y: number | null): number => {
+    const xs = x !== null && Number.isFinite(x);
+    const ys = y !== null && Number.isFinite(y);
+    if (!xs || !ys) return xs === ys ? 0 : xs ? -1 : 1;
+    return sign * ((x as number) - (y as number));
+  };
+  return (a, b) => {
+    const key = sort === "account" ? sign * listCodeUnitOrder(a.handle, b.handle)
+      : sort === "signedIn" ? byTime(a.signedMs, b.signedMs)
+      : byTime(a.joinedMs, b.joinedMs);
+    return key || listCodeUnitOrder(a.u.id, b.u.id);
+  };
+}
+
+/** One row, painted: the handle, the way in or none, the reason, and two instants as a date with the minute on hover. */
+function listRow(e: ListEntry): ConsoleAccountListRow {
+  const day = (ms: number) => formatEat(ms, "D MMM YYYY");
+  const stamp = (ms: number) => `${formatEat(ms, "D MMM YYYY")} ${formatEat(ms, "HH:MM")} ${EAT_LABEL}`;
+  const joinedOk = Number.isFinite(e.joinedMs);
+  const signedOk = e.signedMs !== null && Number.isFinite(e.signedMs);
+  return {
+    userId: e.u.id,
+    handle: e.handle,
+    /* ⛔ 432(a) · A ROW THAT CANNOT BE CHOSEN OPENS NOTHING. A way in to an account the check card must then refuse is a
+       control that could only ever be refused; the row says why instead, beneath its handle, as the picker does. */
+    href: e.reason === null ? consoleNewHref({ userId: e.u.id }) : null,
+    reason: e.reason,
+    joined: joinedOk ? day(e.joinedMs) : EM_DASH,
+    joinedTitle: joinedOk ? stamp(e.joinedMs) : null,
+    signedIn: e.signedMs === null ? CONSOLE_LIST_COPY.never : signedOk ? day(e.signedMs as number) : EM_DASH,
+    signedInTitle: signedOk ? stamp(e.signedMs as number) : null,
+  };
+}
+
+/** The count line: how many accounts, how many of them the filter kept, and how many of THOSE cannot be chosen. */
+function listCount(all: number, matched: readonly ListEntry[], filtered: boolean, showSet: boolean): string {
+  const noun = all === 1 ? "account" : "accounts";
+  const head = filtered ? `${formatNumber(matched.length)} of ${formatNumber(all)} ${noun}` : `${formatNumber(all)} ${noun}`;
+  const blocked = matched.filter((e) => e.reason !== null).length;
+  /* Under a Show chip the split is the filter itself — "all of these" or "none of these" — so it is not said twice. */
+  return blocked === 0 || showSet ? head : `${head}${SEP}${formatNumber(blocked)} cannot be chosen`;
+}
+
+/** One row of the list, painted. ⛔ The handle is the ONLY way a row names its account — never a name, a phone or an email. */
+export type ConsoleAccountListRow = {
+  /** The render's key. ⛔ It reaches markup only inside `href`, which is the wizard's own address for this account. */
+  userId: string;
+  /** "Player #TAIL". */
+  handle: string;
+  /** The wizard's check step for this account, or `null` when it cannot be chosen. */
+  href: string | null;
+  /** Why it cannot be chosen — the picker's own words — or `null`. */
+  reason: string | null;
+  joined: string;
+  joinedTitle: string | null;
+  signedIn: string;
+  signedInTitle: string | null;
+};
+
+/**
+ * THE LIST'S WHOLE VIEW MODEL. ⛔ Every key exists in every admitted state — a failed read included — so the page
+ * never meets a view whose keys come and go (358's lesson).
+ */
+export type ConsoleAccountListView = {
+  title: string;
+  regionLabel: string;
+  loadError: string;
+  refusalTitle: string;
+  /** The wizard's own route, from the route module — the base of every link below. */
+  route: string;
+  /** The three sortable headers, in order: each one's sort TOKEN and its word. */
+  columns: ReadonlyArray<{ field: string; label: string }>;
+  /** The sort token in force, and its direction. */
+  sort: string;
+  dir: "asc" | "desc";
+  /** The VALIDATED live parameters, each left out at its default; never the page and never a refused value. */
+  params: Record<string, string | undefined>;
+  filters: ConsoleFilterGroup[];
+  filtered: boolean;
+  queryRefusal: string | null;
+  /** The page SERVED — a page past the end is the last page. */
+  page: number;
+  perPage: number;
+  /** ⛔ `null` means a READ FAILED — `AdminLoadError`, never an empty table (355). */
+  rows: ConsoleAccountListRow[] | null;
+  /** The whole matched population, counted before the page is cut — never a page's length (344). `null` with `rows`. */
+  total: number | null;
+  count: string | null;
+  /** Non-null exactly when `rows` is an empty array, naming the cause (416). */
+  empty: ConsoleEmpty | null;
+};
+
+/**
+ * THE FIND STEP'S LIST, GATED (rulings 259, 340, 355, 387, 411, 453, 512). Arity THREE: the signed-in viewer, the
+ * calling file's own console route as a STRING LITERAL, and the request's query string.
+ *
+ * ⛔ THE ROUTE BELT COMES BEFORE THE AUDIENCE QUESTION, as on the Results tab: the audience answers any non-desk
+ * `/admin` route by that route's own DOMAIN — `/admin/players` would admit whoever may view players — and a row's
+ * reason says which accounts are ON THE DESK. So a route outside this section is refused before anything is asked
+ * or read, by the gate's own prefix belt rather than a list a merge can drop (ruling 341).
+ * ⛔ A REFUSED VIEWER GETS `null` AND TAKES NO READ (259).
+ */
+export async function houseAccountListForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  query?: ConsoleAccountListQuery,
+): Promise<ConsoleAccountListView | null> {
+  if (!isHouseConsoleRoute(route)) return null;
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const p = parseAccountListQuery(query);
+  const filtered = p.show !== null || p.signed !== null;
+  /* The shell: everything the card paints that is not a row, built for EVERY state — the rail and the refusal are
+     not reads, so a failed read takes neither with it. */
+  const shell = {
+    title: CONSOLE_LIST_COPY.title,
+    regionLabel: CONSOLE_LIST_COPY.regionLabel,
+    loadError: CONSOLE_LIST_COPY.loadError,
+    refusalTitle: CONSOLE_LIST_COPY.refusalTitle,
+    route: CONSOLE_NEW_ROUTE,
+    columns: CONSOLE_LIST_COLUMNS.map((c) => ({ field: listSortToken(c.key), label: c.label })),
+    sort: listSortToken(p.sort),
+    dir: p.dir,
+    params: consoleListParams(p),
+    filters: consoleListGroups(p),
+    filtered,
+    queryRefusal: consoleRefusalSentence(p.refusals),
+    perPage: CONSOLE_LIST_PER_PAGE,
+  };
+
+  /* ⛔ ONE SETTLED SET (355), each memory read inside an async thunk so a synchronous throw settles too. */
+  const [usersR, liveR] = await Promise.allSettled([
+    (async () => db.user.list())(),
+    (async () => houseBotStore.listNonRemoved())(),
+  ]);
+  /* ⛔ 355 AGAINST 421. A roster read that FAILED says nothing about who is on the desk, so the list cannot say which
+     accounts can be chosen and paints the failure instead. A database with no house tables is the other case: nobody
+     CAN be on a desk that does not exist, which is exactly the empty roster it reads as. */
+  const live: StoredHouseBot[] | null = liveR.status === "fulfilled" ? liveR.value
+    : liveR.reason instanceof HouseSchemaNotReady ? [] : null;
+  if (usersR.status !== "fulfilled" || live === null) {
+    return { ...shell, page: p.page, rows: null, total: null, count: null, empty: null };
+  }
+
+  const nowMs = Date.now();
+  const onDesk = new Set(live.map((b) => b.userId));
+  const entries: ListEntry[] = usersR.value.map((u) => ({
+    u,
+    handle: playerHandle(u.id),
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),
+    joinedMs: Date.parse(u.createdAt),
+    signedMs: u.lastLoginAt == null ? null : Date.parse(u.lastLoginAt),
+  }));
+  const matched = entries.filter((e) => listShowHolds(p.show, e.reason) && listSignedHolds(p.signed, e.signedMs, nowMs));
+  matched.sort(listOrder(p.sort, p.dir));
+  /* ⛔ A PAGE PAST THE END IS SERVED AS THE LAST PAGE, the section's own idiom (`consoleLastPage`) — never an empty
+     page under a pager that says there are more. */
+  const page = consoleLastPage(matched.length, p.page, CONSOLE_LIST_PER_PAGE);
+  const slice = matched.slice((page - 1) * CONSOLE_LIST_PER_PAGE, page * CONSOLE_LIST_PER_PAGE);
+  const rows = slice.map(listRow);
+  return {
+    ...shell,
+    page,
+    rows,
+    /* ⛔ THE WHOLE MATCHED POPULATION, NEVER THE PAGE (344) — the pager draws its last page from this number. */
+    total: matched.length,
+    count: listCount(entries.length, matched, filtered, p.show !== null),
+    empty: rows.length === 0 ? (filtered ? CONSOLE_LIST_COPY.emptyFiltered : CONSOLE_LIST_COPY.empty) : null,
+  };
+}
+
 /**
  * ⛔ THE CONSOLE'S OWN SENTENCE FOR EVERY ELIGIBILITY ROW (ruling 453, and the same shape `CONSOLE_ACT_REFUSAL`
  * already has one card over).
@@ -7087,7 +7471,7 @@ export type ConsoleCheckView = {
 export const CONSOLE_WIZARD_COPY = {
   searchLabel: "Search for an account",
   searchHint: "A handle, a phone number, or an account ID.",
-  searchIntro: "Search by handle, phone number or account ID. Only a player's own account can be used here, and only with their permission.",
+  searchIntro: "Search by handle, phone number or account ID, or choose from every account listed below. Only a player's own account can be used here, and only with their permission.",
   listLabel: "Accounts",
   consentTitle: "What the holder agrees to",
   consentBullets: [

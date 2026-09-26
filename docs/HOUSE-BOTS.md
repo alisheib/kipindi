@@ -754,12 +754,65 @@ Warnings: EMAIL_UNVERIFIED · IDENTITY_NOT_APPROVED · RECRUITED · OPEN_POSITIO
 | Route | What it is |
 |---|---|
 | `/admin/desk` | The landing page. Tabs: `roster` · `activity` · `limits` · `history` · `results` (what the desk's finished stakes came to over the last 7 EAT days, by day and by account, in words — C7 437, D20b amended 2026-09-26). Owner-only, which in code is the ADMIN role. |
-| `/admin/desk/new` | The designate wizard: find the account → check what the platform already knows → consent and name it → confirm with the holder's password. |
+| `/admin/desk/new` | The designate wizard: find the account (search it, or pick it from the list of every account — paged, sortable, filterable; §7.1a) → check what the platform already knows → consent and name it → confirm with the holder's password. |
 | `/admin/desk/[id]` | One account. Tabs: `overview` · `activity` · `rules` · `targets` · `history`. |
 
 ⛔ Every tab key lives in `src/lib/house-bot/console-routes.ts` and the list holds **only keys whose panel is
 built** — a rail option with no panel is a dead control, and an unrecognised `?tab=` resolves to the default
 rather than 404-ing.
+
+### 7.1a The find step — the picker, and the list of every account (2026-09-26, RESUME-HERE §0c decision 4)
+
+With no account in the address the wizard is on its FIND step, and it paints two cards, one above the other in
+the wizard's one form column at every width (never side by side — at the form measure two columns would leave
+each half too narrow to read at 1280):
+
+1. **The picker** (`DeskAccountPicker`, unchanged): type a handle, a phone number or an account ID; at least two
+   characters, at most ten answers, each a handle with a reason when it cannot be chosen.
+2. **Every account** (`src/app/admin/desk/new/account-list.tsx`, served by `houseAccountListForConsole`): for an
+   officer who does not already hold a handle, a phone or an id. Twenty to a page (`AdminPagination`), three
+   sortable columns (`SortTh`) — **Account** (the handle), **Joined**, **Signed in** — opening on Joined, newest
+   first, and two filters on the section's one rail (`activity-filters.tsx`, handed no date window): **Show** —
+   Every account · Can be chosen · Cannot be chosen — and **Signed in** — Any time · Past 7 days · Past 30 days ·
+   Never. A count line says how many accounts there are, how many the filter kept, and how many of those cannot be
+   chosen. A row that can be chosen IS the way in (the handle, at the tap floor, opens the check step for that
+   account); a row that cannot opens nothing and says why beneath its handle, in the picker's own words
+   ("Already on the desk", "A staff account", "Your own account", …).
+
+**What the list will not do, and why.**
+- ⛔ **No money anywhere** (459): it reads no wallet — the same two reads the picker takes, the account rows and
+  the one roster read, and nothing else. The visual gate's inverted money control covers the whole find step.
+- ⛔ **No name, phone or email on a row** (346, 420): every row names its account by its handle alone — and so
+  **there is no text search on the list**, no sort by a person's field, and none is accepted from the address
+  (`?sort=name` is refused like any other value it does not know). Searching stays in the picker, which also keeps a
+  typed phone number out of the address bar.
+- ⛔ **No sentence in a client file** (388): the list is a SERVER component; every word it paints is the gated
+  reader's (`CONSOLE_LIST_COPY` and the view model), handed down finished.
+
+**The address is validated part by part.** `show`, `signed`, `sort`, `dir` and `page` are each checked against
+their closed list or shape; a value that fails is refused BY ITS SCREEN WORD in the console's one refusal Callout
+("This address was not used in full"), falls back to its default, and never travels into a link — while every
+valid part beside it stays in force. A repeated parameter is a refusal; a page must be written as a whole number
+from 1 (`1e3` and `0x10` are refused); a page past the end is served as the last page, never an empty one. The
+sort ends every tie on the account id, ascending, so both stores and every render agree on one order; an account
+that never signed in sorts last in both directions. The sign-in windows are bounded at BOTH ends: a sign-in stamp
+in the future (clock skew) is in no window and shows only under Any time.
+
+**The reads.** A failed account read, or a failed roster read, is a failed LIST — the kit's failure treatment, never
+an empty table and never an empty desk. (⚠️ The picker still reads a failed roster as nobody on the desk and offers
+such an account as choosable; the check card refuses it, so nothing wrong can land, but the picker paints a state it
+does not know. Recorded, not fixed here.) A database with no house tables is a desk nobody is on (421).
+⚠️ **It scales with the account table.** Filtering, sorting and paging are done in memory on purpose — "can be
+chosen" IS the picker's rule, and pushing it into SQL would be a second copy of it; `/admin/players` renders from the
+same full read — so every render of the find step reads every account row once. The production account count was
+NOT MEASURED when this was built; read it SELECT-only before the directory grows by an order of magnitude.
+
+**Seeing it locally.** A served local desk holds too few accounts for a second page. `npx tsx
+scripts/seed-desk-accounts-local.mts` (loopback only, safe to re-run) adds forty-five plain player accounts spread
+over half a year and across every chip, three of them opened in the same millisecond and four that cannot be chosen.
+**The gates:** `test:house-bot-console` §2f2 (both stores; the three walls, paging, sorting, filtering, validation,
+links, failed reads, the rendered markup), 1.417 (the loader ghosts the list's card), and `qa:house-bots-visual`
+§5.9 on the find step at every width (three sortable headers with one in force, the tap floor, no sideways scroll).
 
 ### 7.2 Configuring an account, end to end
 
@@ -1949,7 +2002,35 @@ never vacuous, if that line ever becomes `return await`.
 and the holder read in `control.ts`). **Run 2026-09-26 on the committed tree:** `test:house-bot-engine` **825 memory /
 804 Postgres, 0 failed** — +17 on each store, the floor raised from 808/787 to those printed counts; `test:red-anchors`
 §3: all 21 resolve exactly once. The 21 mutations are driven after the push (`red:house-bot-engine --only 69,63`, in a
-detached tree at the live commit) and their result is recorded with the next commit.
+detached tree at the live commit) and their result is recorded with the next commit. **Driven 2026-09-26 at the live
+commit `d1ccdb2f`: 21 caught, 0 missed, 0 not measured, 0 files left dirty.**
+
+### 12.9 The find step's list of every account — built 2026-09-26 (RESUME-HERE §0c decision 4, build step 4)
+
+What it is and what it refuses to do is §7.1a. This is what proving it took.
+
+| Gate, on the committed tree | Printed |
+|---|---|
+| `test:house-bot-console` | **972 memory / 706 Postgres, 0 failed** — §2f2 on both stores; floor 923/669 → 972/706 |
+| `test:house-bot-reports` | **251 / 80, 0 failed** — floor 249 → 251 (below) |
+| `qa:house-bots-visual`, the desk's routes, 360–1440 | **519 passed, 0 failed, 0 NOT MEASURED** |
+| the same, on the list's own addresses (page 2; `page=0&sort=name`, both refused; the cannot-be-chosen view sorted by sign-in, ascending) | **112 passed, 0 failed, 2 NOT MEASURED** — the cannot-be-chosen view has no choosable handle, so the tap-floor measure of one has nothing to measure |
+| `test:filter-language` · `test:house-bot-surfaces` · `next build` · `verify:house-bot-bundle` · `qa:house-bot-console-probe` | green · green · compiled · green · 37/0 |
+
+**Found by the gate run, before the push:**
+- **The phone strip was 3px short.** Measured on a served 360: a handle and two dates came to 321px in the 318px
+  strip at the section's 8px gutter, so the list — and only the list — takes a 4px gutter below `sm`
+  (`max-sm:[&_td]:!px-1`). Step 1's one-gutter source check now reads `sm:` gutters with a look-behind for `max-`, so
+  it still refuses a gutter WIDENED by a breakpoint while allowing this one to narrow.
+- **The loader's table skeleton** gained an optional row height and the prop was never destructured — `tsc` red.
+- **`test:house-bot-reports` was red on `main`**, from the finance lane's `c6c637c1`: `censusUnverifiable` now returns
+  a bounded `sample` of `UnverifiableRow`, and the type was exported. 0.260.1 classifies it (a shape, not a reader);
+  0.260.2's pin names the sample and asserts its row carries identity only and its cap stays ≤ 50; a new control,
+  0.260.c4b, proves the pin still bites.
+
+**Declared mutations: 27**, every id starting `list-` in `scripts/anchors/house-bot-console.anchors.mjs` (26
+`console-mem`, 1 `reports-mem`); the console total is 400. They are driven after the push, in a detached tree at the
+live commit, and their result is recorded with the next commit.
 
 ---
 

@@ -102,8 +102,8 @@ The account page's ledger has the same shape in eight columns. Below `sm` it is 
 5. **D19/D20 stand.** House bots are never public — not to players, not to the holder — and are ordinary players in
    every report.
 
-**Suite floors — a lower count is a regression, not drift:** console **923 memory / 669 Postgres** (2026-09-26, step 3) · reports **249 / 80** · comms **52 / 50** ·
-engine **825 / 804** (step 5) · money **132 / 150**. **Declared mutations:** console 373 (340 + step 1's 8 + step 3's 25, 2026-09-26) · engine 101 (80 + step 5's 21) · money 56 + seam 7 ·
+**Suite floors — a lower count is a regression, not drift:** console **972 memory / 706 Postgres** (2026-09-26, step 4) · reports **251 / 80** (step 4: c6c637c1's census sample classified and pinned) · comms **52 / 50** ·
+engine **825 / 804** (step 5) · money **132 / 150**. **Declared mutations:** console 400 (340 + step 1's 8 + step 3's 25 + step 4's 27, 2026-09-26) · engine 101 (80 + step 5's 21) · money 56 + seam 7 ·
 c5 100 (99 primaries; step 8 added 3) — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
 ## 0b · ▶ WHAT IS OPEN, in the order to work it
@@ -213,7 +213,7 @@ pushed to `main` and verified serving before the next:**
    line is true on the day it lands — and REWRITE the plan's §4.3 template first (the plan's status line says how): it
    was drafted for an explicit owner approval, and Ali delegated instead. Quote his delegation (§0b) verbatim, say
    plainly the session decided under it, and name the real audience (the ADMIN role).
-4. **The account finder list** (decision 4), with its walls pinned and mutated.
+4. ✅ **BUILT 2026-09-26 — the account finder list** (decision 4), gates green before the push (`docs/HOUSE-BOTS.md` §7.1a, §12.9; console 972/706, 27 mutations): every account, twenty to a page, three sortable columns, two filters, the three walls pinned and mutated.
 5. ✅ **DONE 2026-09-26 — the fire-path assertions** (`docs/HOUSE-BOTS.md` §12.8; engine 825/804, 21 mutations) (decision 6): the fire heartbeat and the fire-time RG pre-check, both stores.
 6. **Ruling 543** (`C5-D20-REPLAN.md`): `audit()` promises fail-open but `chainSecret()` throws in production past
    that fallback, so three house writers can report a landed write as failed. Its schedule hung on the withdrawn
@@ -223,7 +223,19 @@ pushed to `main` and verified serving before the next:**
    removes exactly one entry, and parallel lanes move the count.
 8. ✅ **DONE 2026-09-26** (`test:house-bot-disclosure` 118/0, d.7/d.7b/d.7.c1; risk 12 states D1's owner-role reading) — owed text: accepted risks 8–12 were never written into either register (`docs/HOUSE-BOTS.md` §13); their sealed
    text is `04-amendments.md` S5 — check each against today's code before copying it into both registers identically.
-9. **Close:** drive the four fleets WHOLE again (§0b a's recipe), verify the deploy serves the final sha, and write the
+9. **Every desk table sorts, and none can grow past a page** — Ali, 2026-09-26, mid-session, as typed: *"before
+   finsihing amke su relaso all desk tbale sand grid sgot th erug tpaging pleas enad sroting etc.. to prveent vey rlong
+   grids"*. Measured before building: every table that GROWS already pages at 20 (desk activity and history; the
+   account's activity, targets and history; the find list). The roster is bounded by its limit (1–20) but unpaged, the
+   Results tables are bounded (7 days; at most 21 rows), and only the find list sorts. So: server-side sort on every
+   desk table, the reader parsing and building every link as the find list does, and the roster paged at 20.
+10. **No navigation looks stuck** — Ali, 2026-09-26, as typed: *"alos when jumoing from tba to anothe rmake sur eu ahve
+   th erigh tloading states and etc toamke percet and user to not to think it sstucl"*. A desk tab, sort, page or
+   filter link changes only the query; by the router's design that keeps the page's loading boundary mounted, so
+   `loading.tsx` is not shown again and the old panel may sit unchanged until the server answers (⏳ to be MEASURED
+   on a served build, before and after). Nothing in the app used `useLinkStatus` (grepped 2026-09-26). Every such
+   link must show at once that it is loading.
+11. **Close:** drive the four fleets WHOLE again (§0b a's recipe), verify the deploy serves the final sha, and write the
    handover in §5.
 
 ## 1 · Traps that cost a run each — all still live
@@ -377,3 +389,14 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     825/804), 21 declared mutations (3 on the Postgres twin's SQL). ⚠️ Recorded, not changed: `return finish(…)` inside
     fire()'s try is not awaited, so a store failure writing a terminal row escapes as a throw (16.69f0 pins it).
   - Step 8's three c5 mutations, driven at the live commit `ac631c35`: **3 caught, 0 missed, 0 broken-injection, 0 dirty.**
+  - The other steps' drives, each after its push at the live commit, re-read from their logs: step 1 **10/10 caught**
+    (console), step 3 **31/31** (console), step 5 **21/21** (engine, 0 not measured) — 0 missed, 0 files left dirty.
+  - ✅ **Step 4 BUILT** — the find step's list of every account (`docs/HOUSE-BOTS.md` §7.1a, §12.9): twenty to a page,
+    Account / Joined / Signed in sortable, Show and Signed-in filters on the section's one rail, every address part
+    validated and refused by name. Its gate run found three things before the push: a missing prop in the loader's
+    skeleton (tsc), a handle and two dates 3px wider than the 360 strip (a phone-only 4px gutter), and
+    `test:house-bot-reports` red from the finance lane's c6c637c1 (its census sample, now classified and pinned with a
+    control). Console 972/706, reports 251/80, visual 519/0 and 112/0 on the list's own routes (2 NOT MEASURED: the
+    cannot-be-chosen view has no choosable handle to measure). Its 27 mutations are driven after the push.
+  - ⏳ **Ali added two asks mid-session** — steps 9 and 10 above (every desk table sorts and pages; no navigation looks
+    stuck). The close became step 11.

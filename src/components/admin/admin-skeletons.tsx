@@ -243,6 +243,7 @@ export function SkTableCard({
   bodyMaxH = "",
   beforeBody,
   cellPy = 12,
+  rowMinH,
 }: {
   cols?: number;
   rows?: number;
@@ -279,6 +280,8 @@ export function SkTableCard({
    *  every row of an eight-page population. (A `SortTh` cell is unaffected either way:
    *  `.admin-tbl th[aria-sort]` is (0,2,0) and beats a `p-3` utility, so it stays 44.) */
   cellPy?: 12 | 16;
+  /** The body row's own height, where a cell holds a tap-floor control. See `SkTableRows.rowMinH`. */
+  rowMinH?: number;
 }) {
   return (
     <div className="glass-panel p-0">
@@ -295,6 +298,7 @@ export function SkTableCard({
         sortable={sortable}
         cellPy={cellPy}
         maxH={bodyMaxH}
+        rowMinH={rowMinH}
         className="px-4 pb-4"
       />
       {pager && <SkPager />}
@@ -317,6 +321,7 @@ export function SkTableRows({
   sortable = false,
   cellPy = 12,
   maxH = "",
+  rowMinH,
   className = "",
 }: {
   cols?: number;
@@ -326,6 +331,14 @@ export function SkTableRows({
   cellPy?: 12 | 16;
   /** The page's own height cap on the scroll box, verbatim. See `SkTableCard.bodyMaxH`. */
   maxH?: string;
+  /**
+   * ⭐ A BODY ROW WHOSE CELL HOLDS A TAP-FLOOR CONTROL IS TALLER THAN A TEXT ROW (added 2026-09-26 for the desk's
+   * account list, §K5 — the kit extended, not forked). A row whose first cell is a link at `--tap-min` (40px) inside
+   * `.admin-tbl td`'s 12px vertical padding is 12 + 40 + 12 + the 1px row border = 65px, not the 44.5 a text row is:
+   * twenty of them ghosted at 44.5 drop the page ~400px on the swap. Pass the page's own row height, in px.
+   * ⛔ Absent, nothing changes: every loader that does not pass it renders byte-for-byte what it did.
+   */
+  rowMinH?: number;
   className?: string;
 }) {
   return (
@@ -353,6 +366,7 @@ export function SkTableRows({
             className={`flex items-center gap-4 border-b border-dashed border-border-subtle last:border-b-0 ${
               cellPy === 16 ? "py-[16px]" : "py-[12px]"
             }`}
+            style={rowMinH ? { minHeight: rowMinH } : undefined}
           >
             {Array.from({ length: cols }).map((_, i) => (
               <SkBar key={i} className="h-[19.5px] flex-1 max-w-[110px]" />
