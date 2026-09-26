@@ -5076,8 +5076,10 @@ try {
        history ones have their own, different column counts. Measured: an unscoped read returned spans [9,9,3,4]
        and the pin failed for the right reason on the wrong population. */
     const feedPanel = /\{tab === "activity"[\s\S]*?<\/table>/.exec(detail)?.[0] ?? "";
+    /* ⭐ THE RECORD IS A KEYED FRAGMENT SINCE 2026-09-26 (the row, then its note's own line), so the ROW is the first
+       `</tr>` after that key — the note line carries no wide cell and is held by its own assertions below. */
     const wideCells = (panel: string): string[] => {
-      const row = /<tr key=\{`\$\{r\.whenTitle\}[\s\S]*?<\/tr>/.exec(panel)?.[0] ?? "";
+      const row = /<Fragment key=\{`\$\{r\.whenTitle\}[\s\S]*?<\/tr>/.exec(panel)?.[0] ?? "";
       const cuts = [...row.matchAll(/<td\s/g)].map((m) => m.index ?? 0);
       return cuts.map((start, k) => row.slice(start, cuts[k + 1] ?? row.length))
         .filter((cell) => /className="hidden sm:table-cell/.test(cell));
@@ -5090,7 +5092,9 @@ try {
       /* ⭐ "Left today" JOINED 2026-09-24, THIRD AND DIRECTLY AFTER Stake: ruling 1085 puts money "SECOND (and
          third where two exist)", and the claim MEASURED a few assertions below — the FIRST `.amount` cell is the SECOND WIDE cell of the
          second — is what keeps 373 true with two money columns on one row. */
-      all(feedHeaders) === all(["When (EAT)", "Opening", "Stake", "Closing", "Left today", "Outcome", "Type", "Round", "Game", "Note"]), j(feedHeaders));
+      /* ⭐ "Type" AND "Note" LEFT THEIR COLUMNS 2026-09-26 (RESUME-HERE §0c decision 2) — Type is the Outcome cell's
+         second line and Note a line of its own under its row; where each went is asserted in §2e2b below. */
+      all(feedHeaders) === all(["When (EAT)", "Opening", "Stake", "Closing", "Left today", "Outcome", "Round", "Game"]), j(feedHeaders));
     /* 🔴 THIS WAS A `.test()` ON THE STAKE CELL ALONE, UNDER A LABEL THAT SAID "the money cell" (found 2026-09-25).
      * `Left today` and `Remaining` already escaped it — both carry a `title=` and a null branch, so neither matches
      * the pinned literal — and it kept passing on the strength of Stake while claiming to govern all of them.
@@ -5121,7 +5125,7 @@ try {
       moneyHeaders.length >= 3 && moneyHeaders.every((c) => /!whitespace-normal/.test(c)),
       j({ moneyHeaders: moneyHeaders.length }));
     ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
-      feedHeaders.length === 10 && !feedHeaders.includes("Event"), j(feedHeaders));
+      feedHeaders.length === 8 && !feedHeaders.includes("Event"), j(feedHeaders));
 
     /* 🔴 THE CLAIM THIS RULING RESTS ON WAS ASSERTED IN THREE PLACES AND MEASURED IN NONE (found 2026-09-25).
      * C7-SPEC's Proof line and two comments in this file say "the first `.amount`-carrying cell is the row's
@@ -5251,7 +5255,7 @@ section("§2e3 · the desk landing page's activity and history panels");
       /* ⛔ `all`, NOT `j` — its per-account twin already uses `all`, and this one was one column away from
          comparing prefixes only. This suite's own header records the `317-word-hole` defect, where a long set
          compared under the truncating serialiser let a rename through unreported. */
-      all(feedHeaders) === all(["Account", "Opening", "Stake", "Closing", "Left today", "When (EAT)", "Outcome", "Type", "Round", "Game", "Note", ""]),
+      all(feedHeaders) === all(["Account", "Opening", "Stake", "Closing", "Left today", "When (EAT)", "Outcome", "Round", "Game", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
       j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
@@ -5259,6 +5263,97 @@ section("§2e3 · the desk landing page's activity and history panels");
     ok("1.373 · the desk feed's money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither landing table takes a `min-w-*` on the table itself",
       /<td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(panelOf("activity"))
         && !/admin-tbl min-w-/.test(landing), "");
+  }
+  /* ═══ §2e3b · THE LEDGER AT 1280 — WHERE `Type` AND `Note` WENT (RESUME-HERE §0c decision 2, 2026-09-26) ═══
+   * Both activity tables gave up two columns so the desk-wide one fits the ≈998px strip at 1280 (measured at its
+   * seven-digit worst case by `qa:house-bots-visual` §5.7). What only the source can say is that nothing the owner
+   * named was LOST on the way: the stake's type is the Outcome cell's second line in plain words — never a second
+   * chip (`8018653b`) — the note is a line of its own under its row from `sm` up, the phone's stack still carries
+   * both, and the two rows of one record read as one. Every assertion runs on BOTH pages, each with a control. */
+  {
+    const detailCode = decomment(read(DETAIL_PAGE));
+    const ledgers: [string, string, number][] = [
+      ["desk", panelOf("activity"), 10],
+      ["account", /\{tab === "activity"[\s\S]*?<\/table>/.exec(detailCode)?.[0] ?? "", 8],
+    ];
+    const rowOf = (panel: string) => /<Fragment key=\{`\$\{r\.whenTitle\}[\s\S]*?<\/tr>/.exec(panel)?.[0] ?? "";
+    const cellsOf = (row: string): string[] => {
+      const cuts = [...row.matchAll(/<td\s/g)].map((m) => m.index ?? 0);
+      return cuts.map((start, k) => row.slice(start, cuts[k + 1] ?? row.length));
+    };
+    const wideOf = (panel: string) => cellsOf(rowOf(panel)).filter((c) => /className="hidden sm:table-cell/.test(c));
+    const OUTCOME_CHIP = /<Chip size="sm" variant=\{r\.resultChip \?\? r\.statusChip\}>\{r\.resultWord \?\? r\.statusWord\}<\/Chip>/;
+    const TYPE_LINE = /<span className="block mt-1 text-body-sm text-text-secondary">\{r\.typeWord\}<\/span>/;
+    const typeHeld = (panel: string): boolean => {
+      const typeCells = wideOf(panel).filter((c) => /r\.typeWord/.test(c));
+      return typeCells.length === 1 && OUTCOME_CHIP.test(typeCells[0]) && TYPE_LINE.test(typeCells[0])
+        && (typeCells[0].match(/<Chip\b/g) ?? []).length === 1
+        && !/<th\s[^>]*>Type</.test(panel);
+    };
+    ok("1.373 · decision 2 · the stake's TYPE is the Outcome cell's second line on both ledgers, in plain words under the one chip — not a column, and never a second chip",
+      ledgers.every(([, p]) => typeHeld(p)), j(ledgers.map(([k, p]) => [k, wideOf(p).filter((c) => /r\.typeWord/.test(c)).length])));
+    ok("1.373 · decision 2 · CONTROL · the type as a second chip, the type line dropped, and a Type column restored are each reported",
+      ledgers.every(([, p]) => !typeHeld(p.replace(TYPE_LINE, "<Chip size=\"sm\">{r.typeWord}</Chip>"))
+        && !typeHeld(p.replace(TYPE_LINE, ""))
+        && !typeHeld(p.replace(/<td className="hidden sm:table-cell p-3">\s*<Chip/, '<td className="hidden sm:table-cell p-3">{r.typeWord}</td><td className="hidden sm:table-cell p-3"><Chip'))), "");
+    /* ⛔ THE NOTE'S LINE: after its row, inside the same keyed record, only when the row carries one, spanning every
+       column (the span is ALSO held by the derived colSpan rule), and held to a reading measure. */
+    /* ⚠️ `decomment` keeps a JSX comment's braces (`{` newlines `}`), so empty braces may sit between the two rows. */
+    const NOTE_LINE = /<\/tr>\s*(?:\{\s*\}\s*)*\{r\.note !== null && \(\s*<tr className=\{`\$\{NOTE_ROW\}\$\{r\.anchored \? " bg-bg-overlay" : ""\}`\}>\s*<td colSpan=\{(\d+)\} className="!pt-0">\s*<div className="max-w-\[80ch\] whitespace-normal text-body-sm text-text-secondary">\{r\.note\}<\/div>\s*<\/td>\s*<\/tr>\s*\)\}\s*<\/Fragment>/;
+    const noteHeld = (panel: string, cols: number): boolean =>
+      Number(NOTE_LINE.exec(panel)?.[1] ?? -1) === cols
+        && /<tr className=\{`border-b border-border-subtle\$\{r\.note !== null \? NOTED_ROW : ""\}\$\{r\.anchored \? " bg-bg-overlay" : ""\}`\}>/.test(rowOf(panel))
+        && !wideOf(panel).some((c) => /r\.note/.test(c))
+        && !/<th\s[^>]*>Note</.test(panel);
+    ok("1.373 · decision 2 · the NOTE is a full-width line of its own under its row on both ledgers — only on a row that carries one, spanning every column, and in no column",
+      ledgers.every(([, p, n]) => noteHeld(p, n)), j(ledgers.map(([k, p]) => [k, NOTE_LINE.exec(p)?.[1] ?? null])));
+    ok("1.373 · decision 2 · CONTROL · a note line that is never drawn, one short of the row, and a note back in a column are each reported",
+      ledgers.every(([, p, n]) => !noteHeld(p.replace("{r.note !== null && (", "{r.note === \"never\" && ("), n)
+        && !noteHeld(p.replace(/<td colSpan=\{\d+\} className="!pt-0">/, `<td colSpan={${n - 1}} className="!pt-0">`), n)
+        && !noteHeld(p.replace(/(<td className="hidden sm:table-cell p-3 tabular text-text-secondary">\{r\.roundNo)/, '<td className="hidden sm:table-cell p-3">{r.note}</td>$1'), n)), "");
+    /* ⛔ ONE VIEW MODEL, TWO LAYOUTS: the phone's stacked cell still carries the type and the note, as before. */
+    ok("1.373 · decision 2 · the phone's stacked cell still carries the type and the note on both ledgers — below `sm` nothing moved",
+      ledgers.every(([, p, n]) => {
+        const stack = cellsOf(rowOf(p)).find((c) => c.startsWith(`<td className="sm:hidden p-3" colSpan={${n}}>`)) ?? "";
+        return /\{r\.when\} · \{r\.typeWord\}/.test(stack) && /\{r\.note !== null && <p className="mt-1 text-caption text-text-secondary">\{r\.note\}<\/p>\}/.test(stack);
+      }), "");
+    /* ⛔ THE TWO ROWS READ AS ONE RECORD, and the hover colour is the KIT'S, read from the stylesheet — never typed. */
+    const constOf = (name: string) => new RegExp(`export const ${name} = "([^"]*)";`).exec(pageCode)?.[1] ?? "";
+    const NOTED = constOf("NOTED_ROW").trim().split(/\s+/);
+    const NOTE = constOf("NOTE_ROW").trim().split(/\s+/);
+    const kitHover = (/\.admin-tbl tbody tr:hover \{ background: ([^;]+); \}/.exec(read("src/app/globals.css"))?.[1] ?? "").replace(/, /g, ",").replace(/ /g, "_");
+    const pairHeld = (noted: string[], note: string[]): boolean =>
+      kitHover.length > 0
+        && note[0] === "hidden" && note.includes("sm:table-row") && note.includes("[&>td]:!shadow-none")
+        && note.includes(`[tr:hover+&]:bg-[${kitHover}]`)
+        && noted.includes("sm:!border-b-0") && noted.includes("[&:has(+tr:last-child)]:!border-b-0")
+        && noted.includes(`[&:has(+tr:hover)]:bg-[${kitHover}]`)
+        && ![...noted, ...note].some((c) => /min-w-|(^|:)!?p[xlr]?-/.test(c));
+    ok("1.373 · decision 2 · a row and its note line read as ONE record — the note line is hidden below `sm`, the row drops its divider, and each lights with the other in the kit's own hover colour",
+      pairHeld(NOTED, NOTE), j({ NOTED, NOTE, kitHover }));
+    ok("1.373 · decision 2 · CONTROL · the note line shown on a phone, the divider kept between the two rows, and the hover split are each reported",
+      !pairHeld(NOTED, NOTE.filter((c) => c !== "hidden")) && !pairHeld(NOTED.filter((c) => c !== "sm:!border-b-0"), NOTE)
+        && !pairHeld(NOTED, NOTE.filter((c) => !c.startsWith("[tr:hover+&]"))), "");
+    /* 🔴 THE DESK-WIDE TABLE'S SPANS WERE PINNED BY NOTHING (found 2026-09-26): the derived colSpan rule above reads
+       the ACCOUNT page only, so the landing page's typed `12` would have survived this very change unreported. Every
+       span on both ledgers — the empty state, the phone stack and the note line — equals that ledger's own header
+       count, read from its own thead. */
+    const headerCount = (panel: string) => [...(/<thead[\s\S]*?<\/thead>/.exec(panel)?.[0] ?? "").matchAll(/<th\s/g)].length;
+    const spansHeld = (panel: string, cols: number) => {
+      const spans = [...panel.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]));
+      return headerCount(panel) === cols && spans.length === 3 && spans.every((s) => s === cols);
+    };
+    ok("1.373 · decision 2 · every `colSpan` on BOTH ledgers — empty state, phone stack and note line — equals that ledger's own header count",
+      ledgers.every(([, p, n]) => spansHeld(p, n)),
+      j(ledgers.map(([k, p]) => [k, headerCount(p), [...p.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]))])));
+    ok("1.373 · decision 2 · CONTROL · a stale span on the desk-wide ledger is reported, which the account-page rule above could never see",
+      !spansHeld(ledgers[0][1].replace(/colSpan=\{\d+\}/, "colSpan={12}"), ledgers[0][2]), "");
+    /* ⛔ ONE GUTTER AT EVERY WIDTH on BOTH ledgers — the landing page's opener sweep above covers only its own file. */
+    const LEDGER_OPENER = '<table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">';
+    ok("1.373 · decision 2 · both activity ledgers open with the kit class and ONE 8px gutter at every width — no `sm:` gutter survives in the section",
+      ledgers.every(([, p]) => p.includes(LEDGER_OPENER))
+        && !sectionFiles.some((f) => /sm:\[&_t[dh]\]:!px-/.test(read(f))),
+      j(ledgers.map(([k, p]) => [k, /<table className="[^"]*"/.exec(p)?.[0] ?? null])));
   }
   /* ⛔ THE HOUR SUMMARY'S BELL LANDS ON THE WINDOW IT IS ABOUT. `parseEatLocal` requires a full instant and
      answers null for `14:00`, so the clock form resolved to "custom" over the last 24 hours — a different window
@@ -7402,7 +7497,9 @@ export default function Ruling513Control() {
      is `padding: 12px 16px` at (0,1,1), so 96px of a 318px strip went on gutters before a figure was drawn. That
      is a legitimate class on a money table; a WIDTH is not, and the difference is what this line still guards.
      The allowed set is CLOSED and spelled out, so a fifth class arriving on a table is reported like any width. */
-  const TABLE_CLASS_OK = new Set(["[&_td]:!px-1.5", "[&_th]:!px-1.5", "sm:[&_td]:!px-2", "sm:[&_th]:!px-2", "max-sm:!text-caption"]);
+  /* ⭐ SHRUNK 2026-09-26, never widened: the `sm:` 12px gutter left with RESUME-HERE §0c decision 2, so the activity
+     tables carry ONE gutter at every width and its two `sm:` spellings are no longer allowed on any table here. */
+  const TABLE_CLASS_OK = new Set(["[&_td]:!px-1.5", "[&_th]:!px-1.5", "max-sm:!text-caption"]);
   const openerClasses = (t: string) => (/className="([^"]*)"/.exec(t)?.[1] ?? "").split(/\s+/).filter(Boolean);
   ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column — and EVERY table on this page opens with the kit class and nothing but the declared gutter set, derived from the page rather than asked of one of them",
     tableOpeners.length >= 3 && tableOpeners.every((t: string) => {

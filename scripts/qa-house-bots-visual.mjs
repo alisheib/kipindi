@@ -32,7 +32,9 @@
  *   5. every empty-state message box is inside the viewport;
  *   6. ⛔ no house-vocabulary word anywhere in the rendered body — the shared vocabulary, never a new regex — AND, in
  *      the console's OWN subtree, none of ruling 453's four extra words either, in text or in an attribute. The
- *      sidebar legitimately renders "House" for /admin/house, so the 453 scan is scoped to the content region.
+ *      sidebar legitimately renders "House" for /admin/house, so the 453 scan is scoped to the content region;
+ *   7. from 1280 up, the ACTIVITY ledger fits its strip with no sideways scroll, measured with every money cell
+ *      filled to seven digits after the tile is written (RESUME-HERE §0c decision 2), with a control column.
  *
  * ⛔ NO POSTGRES OR NO SERVER IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED) — a visual gate that skips silently is
  * the "not applicable" verdict this programme has paid for twice.
@@ -649,6 +651,46 @@ try {
       if (facts.emptyBoxes.length) {
         ok(`§5.5 ${route} @${width} · every empty-state message box is inside the viewport`,
           facts.emptyBoxes.every((b) => b.left >= -1 && b.right <= facts.vw + 1), JSON.stringify(facts.emptyBoxes));
+      }
+      /* ⭐ §5.7 · THE LEDGER FITS ITS STRIP FROM 1280 UP, AT ITS WORST CASE (RESUME-HERE §0c decision 2, 2026-09-26).
+         The owner reads the activity ledger at 1280, where the strip is ≈998px, and the desk-wide table measured
+         1251px there — Round, Game and the stop control reachable only by dragging. Note and Type left their
+         columns and the gutter narrowed so the whole row fits; this is the check that keeps it so.
+         ⛔ AT THE WORST CASE, NOT AT WHATEVER THE SEED PAINTED. The panels seed's placed rows carry no ledger
+         movement, so their Opening and Closing are dashes, and a table of dashes fits where a table of balances
+         does not: every money cell is filled with a seven-digit figure first. It runs AFTER the tile was written
+         and on a page about to close, so no PNG ever shows an invented figure.
+         ⛔ WITH A CONTROL: one extra 160px column must make the same region scroll, or the measurement could not
+         have failed and says nothing. */
+      if (/[?&]tab=activity/.test(route) && width >= 1280 && !facts.firstRowEmpty) {
+        const fit = await p.evaluate(() => {
+          const table = [...document.querySelectorAll("table.admin-tbl")].find((t) => /Opening/.test(t.querySelector("thead")?.textContent ?? ""));
+          const region = table?.closest("[role='region']");
+          if (!table || !region) return null;
+          const shown = (el) => getComputedStyle(el).display !== "none";
+          const cells = [...table.querySelectorAll("tbody td.tabular.text-right")].filter(shown);
+          for (const td of cells) td.innerHTML = '<span class="amount">TZS 8,888,888</span>';
+          const measure = () => ({ scrollWidth: region.scrollWidth, clientWidth: region.clientWidth, tableWidth: Math.round(table.getBoundingClientRect().width) });
+          const filled = measure();
+          const rows = [...table.querySelectorAll("tbody tr")].filter(shown);
+          for (const tr of [table.querySelector("thead tr"), ...rows]) {
+            const extra = document.createElement(tr.closest("thead") ? "th" : "td");
+            extra.style.minWidth = "160px";
+            extra.textContent = "·";
+            tr.appendChild(extra);
+          }
+          const widened = measure();
+          /* A ledger row is a row with money cells; a note's own line has none. */
+          const ledgerRows = rows.filter((tr) => tr.querySelector("td.tabular.text-right")).length;
+          return { filledCells: cells.length, ledgerRows, rows: rows.length, filled, widened };
+        });
+        ok(`§5.7 ${route} @${width} · the activity ledger fits its strip with NO sideways scroll, every money cell at seven digits`,
+          fit !== null && fit.filled.scrollWidth <= fit.filled.clientWidth + 1, JSON.stringify(fit));
+        /* Four money columns on every ledger row — Opening, Stake, Closing, Left today — so a fill that missed a
+           column, or a page that painted no row, is reported rather than measured as a narrow table. */
+        ok(`§5.7 ${route} @${width} · CONTROL · …the fill reached all four money cells of every ledger row, and one more column makes the same region scroll`,
+          fit !== null && fit.ledgerRows >= 1 && fit.filledCells === 4 * fit.ledgerRows && fit.widened.scrollWidth > fit.widened.clientWidth + 1,
+          JSON.stringify(fit));
       }
       await p.close();
     }

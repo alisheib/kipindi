@@ -98,6 +98,15 @@ const TAB_GUIDANCE: Record<(typeof CONSOLE_TABS)[number], string> = {
  *  printed the same two words 34px apart, at 1280 and at 360. */
 const LIMITS_CARD_TITLE = "Global limits";
 
+/** ⭐ ONE LEDGER RECORD, UP TO TWO TABLE ROWS (2026-09-26) — both activity tables, one definition.
+ *  A row that carries a note is followed, from `sm` up, by the note's own full-width line, and the pair must read as
+ *  one record: the kit draws a divider under EVERY body row and lights only the row under the pointer, so the row
+ *  drops its divider (and, on a phone where the note line is hidden, whenever that line is the table's last), and
+ *  each of the two lights when the other is hovered, in the kit's own hover colour. The note line also refuses the
+ *  kit's hover bar, which the row itself never shows: its first cell is the phone's hidden stack. */
+export const NOTED_ROW = " sm:!border-b-0 [&:has(+tr:last-child)]:!border-b-0 [&:has(+tr:hover)]:bg-[color-mix(in_oklab,var(--bg-overlay)_50%,transparent)]";
+export const NOTE_ROW = "hidden sm:table-row [tr:hover+&]:bg-[color-mix(in_oklab,var(--bg-overlay)_50%,transparent)] [&>td]:!shadow-none";
+
 /**
  * One usage cell's two halves. The server owns the sentence (ruling 361's one grammar); this only lays it out, so the
  * used figure and its limit can sit on two lines in a narrow column while each half stays indivisible.
@@ -682,9 +691,11 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                       ≈30px, and it is a kit token rather than a hand-typed size.
                       ⛔ THE `!` IS LOAD-BEARING for exactly the reason the header below states, and the arbitrary
                       variant is what lets ONE class list reach every cell instead of nine hand-edited ones.
-                      ⛔ PHONE ONLY — `sm:` restores the kit's own 16px, so every width that already read well is
-                      byte-identical. Measured after, not assumed: see the 360 read in §12.3. */}
-                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">
+                      ⭐ THE SAME 8px GUTTER AT EVERY WIDTH SINCE 2026-09-26 (RESUME-HERE §0c decision 2). The desk-wide
+                      ledger measured 1251px inside the 998px strip at 1280; Note and Type left their columns (below)
+                      and the desktop gutter dropped from 12px to this one, so the table fits the strip it is read in
+                      and no column Ali named is lost. Measured after, not assumed: `docs/HOUSE-BOTS.md` §12.6. */}
+                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">
                     <thead className="max-sm:hidden font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         {/* ⛔ A FLOOR ON THE SUBJECT COLUMN, the roster's own measured one: without it the account
@@ -704,13 +715,16 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                         <th scope="col" className="text-right p-3 !whitespace-normal">Closing</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
                         <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
+                        {/* ⭐ THE STAKE'S TYPE IS THIS CELL'S SECOND LINE, IN PLAIN WORDS (2026-09-26) — it had a
+                            column of its own until the ledger had to fit 1280. The chip says how the stake ended and
+                            the line under it says what kind of stake it was: one chip, never two (`8018653b`). */}
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
-                        <th scope="col" className="text-left p-3">Type</th>
                         {/* ⛔ BESIDE PRODUCT, NOT FIRST — the account page says why in full. The
                             desk-wide table leads with Account and Stake, and neither may leave the 360 strip. */}
                         <th scope="col" className="text-left p-3">Round</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Game</th>
-                        <th scope="col" className="text-left p-3 !whitespace-normal">Note</th>
+                        {/* ⭐ NO `Note` COLUMN (2026-09-26): a row that carries a note gets a full-width line of its
+                            own directly beneath it, and a row without one spends no width on an em dash. */}
                         {/* ⛔ THE CONTROL COLUMN CARRIES NO HEADER WORD — the kit's own shape for a per-row control
                             (`/admin/kyc`, `/admin/approvals`): the control says what it does, and a header
                             repeating it would spend a column name on nothing. */}
@@ -719,13 +733,17 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={12} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={10} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
                              served markup, and a bounded record id is the one thing D19 says this section may
-                             never put in a response it does not have to. */
-                          <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
+                             never put in a response it does not have to.
+                             ⭐ ONE RECORD, UP TO TWO ROWS (2026-09-26): the row, and its note's own line when it has
+                             one. The pair reads as one record — no divider between them, one background, one hover —
+                             and the phone keeps its single stacked cell, which already carries the note. */
+                          <Fragment key={`${r.whenTitle}-${i}`}>
+                          <tr className={`border-b border-border-subtle${r.note !== null ? NOTED_ROW : ""}${r.anchored ? " bg-bg-overlay" : ""}`}>
                             {/* ⭐ THE PHONE'S OWN ROW SHAPE (owner, 2026-09-25) — the same decision and the same
                                 measurement as the account page's activity table, which carries the full argument.
                                 An eleven-column table is not readable at 360 by narrowing columns, so below `sm`
@@ -733,7 +751,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 ⛔ THE CONTROL COMES WITH IT. A phone that can see a queued stake but cannot stop it
                                 would be 432(a)'s dead control in its worst form — the row that carries the button
                                 on a wide screen is the row that carries it here, on the same condition. */}
-                            <td className="sm:hidden p-3" colSpan={12}>
+                            <td className="sm:hidden p-3" colSpan={10}>
                               <div className="flex items-start justify-between gap-2">
                                 {r.accountIsOperatorText
                                   ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-body-sm text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
@@ -845,8 +863,11 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 ended the officer wants the next fact, so the same chip becomes Won / Lost / Void.
                                 ⛔ ONE CHIP, NOT TWO — a second badge beside the first is how two states come to
                                 disagree about one row. A stake still running has no result and keeps "Placed". */}
-                            <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip></td>
-                            <td className="hidden sm:table-cell p-3 text-text">{r.typeWord}</td>
+                            <td className="hidden sm:table-cell p-3">
+                              <Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip>
+                              {/* The stake's type, as the chip's second line in plain words — never a second chip. */}
+                              <span className="block mt-1 text-body-sm text-text-secondary">{r.typeWord}</span>
+                            </td>
                             {/* The same cell as the account page's Activity tab, and it must stay the same:
                                 one reader builds both rows, so two renderings would be two truths. */}
                             {/* ⚠️ BESIDE THE GAME: each Up & Down chain counts its own rounds, so `#1524` exists once per chain and
@@ -865,7 +886,6 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                                 </Link>
                               )}
                             </td>
-                            <td className="hidden sm:table-cell p-3 text-text-secondary">{r.note ?? "\u2014"}</td>
                             <td className="hidden sm:table-cell p-3 text-right">
                               {/* ⛔ 432(a) · THE CONTROL IS DRAWN ONLY WHERE IT CAN DO SOMETHING. A stake already in
                                   flight cannot be stopped — the service refuses it — so no button is offered over
@@ -875,6 +895,17 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                               )}
                             </td>
                           </tr>
+                          {/* ⭐ THE NOTE'S OWN LINE, from `sm` up and only on a row that carries one. It spans the row
+                              and holds the sentence to a reading measure, so a long note starts where the eye already
+                              is instead of running under columns it has nothing to do with. */}
+                          {r.note !== null && (
+                            <tr className={`${NOTE_ROW}${r.anchored ? " bg-bg-overlay" : ""}`}>
+                              <td colSpan={10} className="!pt-0">
+                                <div className="max-w-[80ch] whitespace-normal text-body-sm text-text-secondary">{r.note}</div>
+                              </td>
+                            </tr>
+                          )}
+                          </Fragment>
                         ))
                       )}
                     </tbody>
