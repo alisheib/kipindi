@@ -327,6 +327,8 @@ export const dict = {
       //    officers signed — never who they were.
       twoOfficerSealed: "Two officers",
       oneOfficerSealed: "One officer",
+      // landing v3 (WP13): the third honest answer — the automatic resolver, which is not a person.
+      autoSealed: "Automatic",
       attestationPublishHint: "Resolution attestations publish here automatically the moment a market settles.",
       thMarket: "Market",
       thOutcome: "Outcome",
@@ -610,6 +612,10 @@ export const dict = {
       updownCta: "Play Up & Down",
       // 2026-09-14 · `{n}` is filled, never concatenated: Swahili puts the number after the noun. Callers: fill(t.home.updownRoundsLive, { n }).
       updownRoundsLive: "{n} rounds live now",
+      // landing v3 (WP12): the singular. The page printed "1 rounds live now" (production, 2026-09-26).
+      updownRoundsLiveOne: "1 round live now",
+      // landing v3 (WP12): the caption under the live round's price line.
+      udDashed: "Dashed line: the price when this round opened.",
       updownStartsSoon: "New rounds every few minutes",
       pickASideNow: "Pick a side now",
       pickASideStake: "Pick a side, stake TZS",
@@ -638,11 +644,12 @@ export const dict = {
       howEyebrow: "How 50pick works",
       howStep1H: "Pick a side",
       howStep1B: "Every market is one question with two answers. Stake what you want in shillings — the conviction needle shows where the crowd's money already sits.",
-      howStep2H: "Every result has a named source",
+      // landing v3 (WP11): short enough that the three step titles each hold one line at 1280.
+      howStep2H: "A named source",
       howStep2B: "Every market settles against a named public source: the meteorological agency, the league table, the Bank of Tanzania mid-rate. An officer signs it off — two, when two-officer authorisation is enabled.",
       howStep3H: "Winners split the pool",
       // 2026-09-13 · no speed promise and no single brand: a payout lands when the mobile-money network confirms it, and several networks pay out.
-      howStep3B: "The pool is shared between everyone who was right, minus a commission taken only from the losing side. Winnings land in your 50pick balance, ready to withdraw to mobile money.",
+      howStep3B: "The pool is shared between everyone who was right, minus a {pct}% commission taken only from the losing side. Winnings land in your 50pick balance, ready to withdraw to mobile money.",
 
       /* ── §1c THE GRID'S LENS ───────────────────────────────────────────────────────────
          The eyebrow NAMES THE ORDERING, so the grid is a claim rather than a sample (kit
@@ -678,6 +685,8 @@ export const dict = {
       settledPaid: "paid",
       settledVoid: "refunded",
       settledSeeAll: "All results",
+      // landing v3 (WP13): each settled row states when it settled, beside who signed it off.
+      settledOn: "Settled {date}",
     },
     market: {
       title: "Markets",
@@ -3014,6 +3023,8 @@ export const dict = {
       noVoidedSettlementsBody: "Kila soko kwenye rekodi hii lilitatuliwa kwa uamuzi. Soko lililobatilishwa litaonekana hapa iwapo dau zitarudishwa.",
       twoOfficerSealed: "Maafisa wawili",
       oneOfficerSealed: "Afisa mmoja",
+      // drafted, marked for native review; English is binding.
+      autoSealed: "Kiotomatiki",
       attestationPublishHint: "Uthibitisho wa utatuzi unachapishwa hapa moja kwa moja soko linapokamilika.",
       thMarket: "Soko",
       thOutcome: "Matokeo",
@@ -3260,6 +3271,9 @@ export const dict = {
       updownEyebrow: "Mchezo wa kasi · hai",
       updownCta: "Cheza Juu na Chini",
       updownRoundsLive: "raundi {n} hai sasa",
+      updownRoundsLiveOne: "raundi 1 hai sasa",
+      // drafted, marked for native review; English is binding.
+      udDashed: "Mstari wa vitone: bei raundi hii ilipofunguliwa.",
       updownStartsSoon: "Raundi mpya kila baada ya dakika chache",
       pickASideNow: "Chagua upande sasa",
       pickASideStake: "Chagua upande, weka dau kwa TZS",
@@ -3273,10 +3287,10 @@ export const dict = {
       howEyebrow: "50pick inafanya kazi vipi",
       howStep1H: "Chagua upande",
       howStep1B: "Kila soko ni swali moja lenye majibu mawili. Weka dau unalotaka kwa shilingi — sindano ya imani inaonyesha pesa za umati zilipo tayari.",
-      howStep2H: "Kila matokeo yana chanzo kilichotajwa",
+      howStep2H: "Chanzo kilichotajwa",
       howStep2B: "Kila soko linatatuliwa kwa chanzo rasmi cha umma kilichotajwa: wakala wa hali ya hewa, jedwali la ligi, kiwango cha kati cha Benki Kuu ya Tanzania. Afisa anathibitisha — wawili, pale idhini ya maafisa wawili inapowashwa.",
       howStep3H: "Washindi wanagawana bwawa",
-      howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni inayotozwa kwenye upande ulioshindwa pekee. Ushindi wako huingia kwenye salio lako la 50pick, tayari kutolewa kwa pesa ya simu.",
+      howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni ya {pct}% inayotozwa kwenye upande ulioshindwa pekee. Ushindi wako huingia kwenye salio lako la 50pick, tayari kutolewa kwa pesa ya simu.",
 
       gridEyebrowPool: "Bwawa kubwa kwanza",
       gridEyebrowNew: "Yamefunguliwa hivi punde",
@@ -3300,6 +3314,8 @@ export const dict = {
       settledPaid: "yalilipwa",
       settledVoid: "yalirejeshwa",
       settledSeeAll: "Matokeo yote",
+      // drafted, marked for native review; English is binding.
+      settledOn: "Iliamuliwa {date}",
     },
     market: {
       title: "Masoko",
@@ -5186,6 +5202,8 @@ export const dict = {
       noVoidedSettlementsBody: "此记录中的每个市场都已给出裁定。若曾退回本金，被作废的市场会显示在这里。",
       twoOfficerSealed: "两位审核员",
       oneOfficerSealed: "一位审核员",
+      // drafted, marked for native review; English is binding.
+      autoSealed: "自动结算",
       attestationPublishHint: "市场结算后结算证明会自动发布在此。",
       thMarket: "市场",
       thOutcome: "结果",
@@ -5430,6 +5448,9 @@ export const dict = {
       updownEyebrow: "快速游戏 · 进行中",
       updownCta: "玩涨跌",
       updownRoundsLive: "{n} 个回合进行中",
+      updownRoundsLiveOne: "1 个回合进行中",
+      // drafted, marked for native review; English is binding.
+      udDashed: "虚线：本轮开盘时的价格。",
       updownStartsSoon: "每隔几分钟就有新回合",
       pickASideNow: "立即选择一方",
       pickASideStake: "选择一方，用TZS投注",
@@ -5443,10 +5464,10 @@ export const dict = {
       howEyebrow: "50pick 如何运作",
       howStep1H: "选择一方",
       howStep1B: "每个市场都是一个问题、两个答案。用先令投注您想要的金额——信念指针显示大众资金目前所在的位置。",
-      howStep2H: "每个结果都有指定来源",
+      howStep2H: "指定来源",
       howStep2B: "每个市场都以指定的官方公开来源结算：气象局、联赛积分榜、坦桑尼亚银行中间价。由一名审核员签核——启用双审核员授权时为两名。",
       howStep3H: "赢家分享奖池",
-      howStep3B: "奖池由所有判断正确的人分享，扣除仅从失败一方收取的佣金。奖金存入您的 50pick 余额，可提现到移动支付账户。",
+      howStep3B: "奖池由所有判断正确的人分享，扣除仅从失败一方收取的 {pct}% 佣金。奖金存入您的 50pick 余额，可提现到移动支付账户。",
 
       gridEyebrowPool: "奖池最大优先",
       gridEyebrowNew: "刚刚开放",
@@ -5470,6 +5491,8 @@ export const dict = {
       settledPaid: "已支付",
       settledVoid: "已退还",
       settledSeeAll: "全部结果",
+      // drafted, marked for native review; English is binding.
+      settledOn: "{date} 结算",
     },
     market: {
       title: "市场",

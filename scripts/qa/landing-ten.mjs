@@ -686,6 +686,78 @@ const CHECKS = /* js */ `(() => {
     push("V14", bad);
   }
 
+  /* ── V15 the first screen shows a live market (landing v3) ───────────────────────────────────
+     The delivery's mobile reviewer: at 360 x 740 the first screen shows the pitch AND a live market
+     with its price and its YES/NO. So on every phone cell the featured card's price and its action
+     row must END by 740px of document, measured at the top of the page. 740 is a FIXED line, not the
+     viewport: the 360 cells are 780 tall, and a budget read off innerHeight would quietly grow with
+     the cell. A cell narrower than 360 is reported by V1/V2, not here — 740 is the delivery's frame.
+     No featured card at all is a finding, not a pass: a first screen without a market is the exact
+     state this class exists to catch. */
+  if (vw >= 360 && vw < 640) {
+    const bad = [];
+    const card = [...document.querySelectorAll(".kp-hero__card .mcardp")].find(vis);
+    if (!card) bad.push({ what: "no featured market in the hero", measured: "0 visible .kp-hero__card .mcardp", where: "hero" });
+    else {
+      for (const [q, name] of [[".mcardp-prob", "its price"], [".mcardp-actions", "its YES/NO"]]) {
+        const el = card.querySelector(q);
+        if (!el || !vis(el)) { bad.push({ what: "the featured card shows no " + name, measured: "0 visible " + q, where: sel(card) }); continue; }
+        const bottom = Math.round(el.getBoundingClientRect().bottom + scrollY);
+        if (bottom > 740) bad.push({ what: "the featured card's " + name.replace("its ", "") + " ends below the first screen", measured: bottom + "px > 740", where: sel(el) });
+      }
+    }
+    push("V15", bad);
+  } else push("V15", []);
+
+  /* ── V16 no promised winnings (landing v3) ──────────────────────────────────────────────────
+     Law 1 of the delivery and LAWS §C3: no "win TZS X" on an open market, no stake-times-multiplier
+     sum, in any of the three languages. The estimate is off on the landing by ruling (R3), so ANY
+     multiplier-of-a-stake string here is a finding. Read from visible text only — a string a
+     screen reader hears but nobody sees is still a claim, but a hidden sizer is not. */
+  {
+    const bad = [];
+    const PROMISE = [
+      [/\\bwin\\s+(up\\s+to\\s+)?TZS\\b/i, "win TZS"],
+      [/\\butashinda\\b/i, "utashinda"],
+      [/赢得\\s*TZS/, "赢得 TZS"],
+      [/\\bTZS\\s?[\\d,.]+\\s*[×x]\\s*\\d/i, "a stake times a multiplier"],
+      [/\\b\\d+(?:\\.\\d+)?\\s*[×x]\\s+(?:your\\s+)?stake\\b/i, "a multiple of your stake"],
+    ];
+    const seen = new Set();
+    for (const el of textLeaves()) {
+      const t = (el.textContent || "").replace(/\\s+/g, " ").trim();
+      for (const [re, name] of PROMISE) {
+        if (re.test(t) && !seen.has(t)) { seen.add(t); bad.push({ what: "a promised return: " + name, measured: JSON.stringify(t.slice(0, 60)), where: sel(el) }); }
+      }
+    }
+    push("V16", bad);
+  }
+
+  /* ── V17 no degenerate price anywhere a market is priced (landing v3) ──────────────────────
+     V11 catches a 0% / 100% price LEADING the page; V17 catches one anywhere on a card or a board
+     row. A one-sided market has no price (a price needs two sides, MOBILE-VISUAL ruling 13) and a
+     lopsided two-sided one is shown within 1-99 (L14), so a rendered 0% or 100% is always a
+     statement of certainty nobody's money made. Read per market surface, never off the whole page:
+     the conviction bar's reading is an aggregate, not a price. */
+  {
+    const bad = [];
+    const DEGEN = /(?:^|[^\\d.])(0|100)\\s?%/;
+    for (const surface of document.querySelectorAll(".mcardp, .kp-qrow")) {
+      if (!vis(surface)) continue;
+      for (const el of surface.querySelectorAll("*")) {
+        if (!vis(el)) continue;
+        const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("");
+        const joined = (own + " " + (el.children.length ? "" : "")).trim();
+        const full = (el.textContent || "").replace(/\\s+/g, " ").trim();
+        // a price reads as NUMBER then "%" — test the element's full text when it is small (a button
+        // label, a price cell), its own text otherwise, so a long sentence is not searched twice.
+        const probe = full.length <= 24 ? full : joined;
+        if (probe && DEGEN.test(probe)) { bad.push({ what: "a 0% or 100% price", measured: JSON.stringify(probe.slice(0, 40)), where: sel(surface) + " > " + sel(el) }); break; }
+      }
+    }
+    push("V17", bad);
+  }
+
   /* ── the text map V8 needs, compared across locales AFTER the sweep ──────────────────────── */
   const textMap = {};
   for (const s2 of [".kp-hero__headline", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-rg__say", ".kp-proof__cap"]) {
@@ -829,6 +901,24 @@ const REDS = {
         if (!m) return { applied: false, note: "no topic meta" };
         m.textContent = "4 hai · TZS 0";
         return { applied: /TZS\\s*0/.test(m.textContent), note: m.textContent }; })()`,
+  // landing v3 — push the featured card down past the first screen. A margin, not an inserted node:
+  // the hero is a grid of NAMED areas, and a new child would be auto-placed into a row of its own
+  // at the end rather than in front of the card.
+  V15: `(() => { const c = document.querySelector(".kp-hero__card");
+        if (!c) return { applied: false, note: "no .kp-hero__card" };
+        const before = Math.round(c.getBoundingClientRect().top + scrollY);
+        c.style.marginTop = "800px";
+        const after = Math.round(c.getBoundingClientRect().top + scrollY);
+        return { applied: after - before >= 700, note: "card top " + before + " -> " + after }; })()`,
+  V16: `(() => { const host = document.querySelector("main") || document.body;
+        const p = document.createElement("p"); p.textContent = "Win TZS 50,000 today";
+        p.style.cssText = "font-size:16px;color:#fff;position:relative";
+        host.prepend(p);
+        return { applied: p.getBoundingClientRect().height > 0, note: "planted a promised return" }; })()`,
+  V17: `(() => { const b = [...document.querySelectorAll(".mcardp .btn-yes, .mcardp-yes")].find((x) => x.getBoundingClientRect().width > 0);
+        if (!b) return { applied: false, note: "no visible YES button on a card" };
+        b.textContent = "YES @ 100%";
+        return { applied: b.textContent === "YES @ 100%", note: "a card button now reads 100%" }; })()`,
 };
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════ */

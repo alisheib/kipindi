@@ -69,24 +69,24 @@ row; this section does not repeat it.
 |---|---|---|---|---|
 | D0 | File the delivery, its acceptance record, this tracker; delete the dropped folder | 🔨 | | |
 | WP1 | Header collapse below 1100, Menu button, segmented language | ⛔ | | R1 kept the header; L4 |
-| WP2 | Hero order, trust lines, headline clamp, backdrop drawing removed | ⬜ | | R4(1) |
+| WP2 | Hero order, trust lines, headline clamp, backdrop drawing removed | 🔨 |  | R4(1) |
 | WP3 | Featured card: full question, meta + source, time top-right, 24h mark and delta | ⬜ | | |
 | WP4 | Question board rows: title link + YES@/NO@ buttons + time left | ⬜ | | |
 | WP5 | Pick slip: sheet below 1024, inline from 1024, after-placing share | ⬜ | | R2 |
 | WP6 | One-sided state on every card + the grid's degeneracy floor | ⬜ | | L14; delivers MOBILE-VISUAL ruling 13 |
 | WP7 | Estimate line on cards | ⛔ | | R3 |
-| WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | ⬜ | | |
+| WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | 🔨 |  |  |
 | WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
-| WP10 | Topics: six tiles, Other last, "All topics" as the section link | ⬜ | | |
-| WP11 | How it works: "A named source", the fee from config, h3 steps | ⬜ | | L3 |
-| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ⬜ | | R4(6) |
-| WP13 | Results: date, the market's own sign-off, source link, paid | ⬜ | | L2 |
+| WP10 | Topics: six tiles, Other last, "All topics" as the section link | 🔨 |  |  |
+| WP11 | How it works: "A named source", the fee from config, h3 steps | 🔨 |  | L3 |
+| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | 🔨 |  | R4(6) |
+| WP13 | Results: date, the market's own sign-off, source link, paid | 🔨 |  | L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ⬜ | | R1 |
 | WP14b | Share in card footers; Share on WhatsApp after placing | ⬜ | | |
 | WP15 | Motion and performance | ⬜ | | L12 |
 | WP16 | i18n: every new key in en, sw and zh | ⬜ | | |
-| WP17 | Accessibility: heading order, no nested controls, dialog semantics | ⬜ | | |
-| RG | Drop the RG line above the footer; chat bubble hides under a sheet | ⬜ | | R4(5), R4(7) |
+| WP17 | Accessibility: heading order, no nested controls, dialog semantics | 🔨 |  |  |
+| RG | Drop the RG line above the footer; chat bubble hides under a sheet | 🔨 |  | R4(5), R4(7) |
 | V15 | Gate: first screen at 360 × 740 | ⬜ | | |
 | V16 | Gate: no promised winnings | ⬜ | | |
 | V17 | Gate: no 0% or 100% price | ⬜ | | |
@@ -445,6 +445,9 @@ This codebase has been burned by every one of these:
 | V11 | Dead states | `TZS 0`; a 0%/100% price leading the page |
 | V12 | Settled honesty | a refund word over a market that was decided and simply had no pool |
 | V14 | Renders without JS | the page paints with scripting disabled |
+| V15 | First screen (v3) | on phone cells 360–639 wide, the featured card's price and YES/NO end by a FIXED 740px of document, measured at the top of the page — not the viewport, which is 780 on the 360 cells |
+| V16 | No promised winnings (v3) | visible text naming "win TZS", "utashinda", "赢得 TZS", or a stake times a multiplier |
+| V17 | No degenerate price (v3) | a 0% or 100% read inside any card or board row — the conviction bar's aggregate is not a price and is not read |
 
 ## Known gaps — stated, not implied
 

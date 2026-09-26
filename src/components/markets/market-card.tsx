@@ -370,7 +370,9 @@ export function MarketCard({
 
       <div className="mcardp-head">
         <div className="mcardp-qwrap">
-          <h3 className="mcardp-q">{title}</h3>
+          {/* The featured card is only ever the landing hero's, where it follows the page's h1
+              directly — so its question is the h2, and the heading order has no gap (WP17). */}
+          {featured ? <h2 className="mcardp-q">{title}</h2> : <h3 className="mcardp-q">{title}</h3>}
         </div>
         <div className="mcardp-prob">
           {/* 🔴 D29 · THE OUTCOME COMES FIRST, and it used to be gated on `isResolved` — which is

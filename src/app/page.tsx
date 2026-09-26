@@ -13,17 +13,22 @@ import {
 import { getCardCharts } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 import { getPlatformStats } from "@/lib/server/platform-stats";
-import { LandingHero } from "@/components/home/landing-hero";
+import { LandingHero, LandingProof } from "@/components/home/landing-hero";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { TopicTiles } from "@/components/home/topic-tiles";
 import { TrustBand } from "@/components/home/trust-band";
-import { RgLine } from "@/components/home/rg-line";
+import { UpdownBand, type UpdownBandRound } from "@/components/home/updown-band";
+import { roundStore } from "@/lib/server/updown-dal";
+import { getRoundDetail } from "@/lib/server/updown-board";
+import { pickLocalized } from "@/lib/localized";
 import { Reveal } from "@/components/layout/reveal";
 import { pricedYesPct } from "@/lib/markets/discovery";
 import { heroFigures, type HeroRow } from "@/lib/markets/hero";
 import { landingComposition, LANDING_GRID_SIZE } from "@/lib/markets/landing";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { getServerT } from "@/lib/i18n-server";
+import { getGlobalConfig } from "@/lib/server/market-config";
+import { ratesFrom } from "@/app/legal/rules/_shared";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +90,7 @@ export const metadata: Metadata = {
  * NAMES the lens, so the grid is a claim rather than a sample (kit §1c).
  */
 export default async function LandingPage() {
-  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats] = await Promise.all([
+  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     // The fast game is its own product line, so it never appears in the poll list above.
@@ -93,6 +98,9 @@ export default async function LandingPage() {
     listMarkets({ status: "LIVE", productLine: "UPDOWN" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     getSession(),
     getPlatformStats(),
+    // The rates every rule on this page quotes — the fee in "how it works" — from the SAME function
+    // the binding /legal/rules page reads them through (landing v3, WP11). Never a literal.
+    getGlobalConfig().then(ratesFrom),
   ]);
   const nowMs = Date.now();
   const liveAll = liveRaw.filter((m) => !isClosedByTime(m));
@@ -110,7 +118,8 @@ export default async function LandingPage() {
   // being dropped for a reason not visible from any public surface, and that needs a database read
   // this change cannot make. What is fixed here is the contradiction the page could see about
   // itself; the residual is recorded, not papered over.
-  const updownLiveCount = updownLiveRaw.filter((m) => !isSelectionClosed(m)).length;
+  const updownOpen = updownLiveRaw.filter((m) => !isSelectionClosed(m));
+  const updownLiveCount = updownOpen.length;
 
   // ── ONE decorated board read, four consumers ────────────────────────────────────────────────
   // The hero's figures, the grid, the topic tiles and the cards all fold over THIS array. Every
@@ -168,6 +177,34 @@ export default async function LandingPage() {
     .catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>);
   // One query for the whole board — never map getCardChart across a list.
   const cardCharts = await getCardCharts(drawnIds).catch(() => new Map());
+
+  // ── The Up & Down band's live round (landing v3, WP12) ────────────────────────────────────────
+  // The SOONEST round still taking bets — the one a visitor can act on first. ONE round read, through
+  // the same `getRoundDetail` the round page renders from, so the band and /updown/[id] cannot
+  // describe one round two ways. A failed read is not a zero: the band falls back to its copy and
+  // the link to /updown, and prints no round it could not read.
+  const soonestUd = [...updownOpen].sort(
+    (a, b) => Date.parse(a.selectionClosedAt ?? a.resolutionAt) - Date.parse(b.selectionClosedAt ?? b.resolutionAt),
+  )[0];
+  const udDetail = soonestUd
+    ? await roundStore.getByMarketId(soonestUd.id)
+        .then((r) => (r ? getRoundDetail(r.id) : null))
+        .catch(() => null)
+    : null;
+  const udRound: UpdownBandRound | null = udDetail && udDetail.round.state === "open"
+    ? {
+        roundId: udDetail.round.roundId,
+        assetName: pickLocalized(locale, udDetail.asset.nameEn, udDetail.asset.nameSw, udDetail.asset.nameZh),
+        durationMinutes: udDetail.round.durationMinutes,
+        decimals: udDetail.asset.decimals,
+        openPrice: udDetail.round.openPrice,
+        livePrice: udDetail.asset.livePrice,
+        series: udDetail.priceSeries?.map((p) => ({ ms: Date.parse(p.t), price: p.price })) ?? null,
+        opensAtMs: Date.parse(udDetail.round.opensAt),
+        betsCloseAtMs: Date.parse(udDetail.round.selectionClosedAt ?? udDetail.round.closesAt),
+        serverNowMs: udDetail.round.serverNowMs,
+      }
+    : null;
   const isAuthed = !!session;
 
   // ONE definition, shared with the hero and /markets — this was a fifth copy of the same nine
@@ -191,13 +228,17 @@ export default async function LandingPage() {
         t={t}
         locale={locale}
         isAuthed={isAuthed}
-        paidOutTzs={stats.paidOutTzs}
         nowMs={nowMs}
         cards={{ charts: cardCharts, traders: traderMap }}
       />
 
+      {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest
+          board. Directly under the hero since v3, so the hero's first screen is the pitch and a
+          live market (WP2 / V15). */}
+      <LandingProof figures={figures} t={t} locale={locale} paidOutTzs={stats.paidOutTzs} />
+
       {/* ── §1b HOW IT WORKS — chapter break: tinted band, 144 from the hero ───────────────── */}
-      <HowItWorks t={t} />
+      <HowItWorks t={t} feePct={rules.commissionPct} />
 
       {/* ── §1c PICK A SIDE NOW + §1d BROWSE BY TOPIC — one section, one surface, 48 between ── */}
       {/* 2026-09-13 — threshold 0: on a phone this band is so tall that 12% of it never fits the
@@ -290,73 +331,22 @@ export default async function LandingPage() {
 
             {/* 48px below the grid, same surface — it belongs to this section (kit §1d). */}
             <div style={{ marginTop: "var(--rh-close)" }}>
-              <TopicTiles topics={comp.topics} t={t} openCount={figures.openCount} />
+              <TopicTiles topics={comp.topics} t={t} />
             </div>
           </div>
         </Reveal>
       )}
 
-      {/* ── §1e UP & DOWN — 920 centred inside the 1280 column ────────────────────────────────
-          The fast game is a separate product line and never appears in the poll lists, so the
-          landing promotes it explicitly (it was otherwise invisible to a new visitor). Its
-          max-width is the whole fix for the ~500px hole a full-width two-item flex row left
-          at 1440. */}
-      <Reveal band="updown" className="kp-band kp-band--tight kp-band--closes">
-        <div className="kp-band__inner">
-          <Link href={"/updown" as never} className="kp-updown group">
-            <div className="kp-updown__row">
-              <div className="min-w-0">
-                <p className="kp-hero__eyebrow text-balance" style={{ marginBottom: "var(--sp-1)" }}>
-                  <span className="live-dot" /> {t.home.updownEyebrow}
-                </p>
-                <h2 className="kp-shead__h text-balance" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
-                <p className="kp-trust__b" style={{ maxWidth: "52ch" }}>{t.market.udTagline}</p>
-                <p className="kp-topic__m" style={{ paddingLeft: 0, marginTop: "var(--sp-2)" }}>
-                  {updownLiveCount > 0
-                    ? <span className="kp-topic__live">{fill(t.home.updownRoundsLive, { n: updownLiveCount })}</span>
-                    : t.home.updownStartsSoon}
-                </p>
-              </div>
-              {/* `max-w-full whitespace-normal`: the button is nowrap by its own class AND `shrink-0`,
-                  so at a 180px viewport (200% zoom) it stayed 229px wide and was the single widest
-                  thing on the document. It keeps `shrink-0` so it does not compress beside the copy
-                  at ordinary widths — it simply stops being allowed to exceed its container, and
-                  wraps to a second line only when it truly cannot fit. */}
-              {/* 🔴 `whitespace-normal` NEVER TOOK EFFECT. Re-measured on production: computed
-                  white-space stayed `nowrap` with the class present. The utility lives in
-                  `@layer utilities` and `.btn` is unlayered — and a cascade layer loses to unlayered
-                  CSS outright, regardless of specificity. The class was in the markup, the diff read
-                  correct, and the button was still 229px.
-                  An inline style is the one mechanism that cannot lose here, and it is scoped to this
-                  call site rather than changing `.btn` for every button on the platform. */}
-              <span className="btn btn-primary btn-lg shrink-0 max-w-full" style={{ whiteSpace: "normal" }}>
-                <I.trendingUp s={16} /> {t.home.updownCta}
-                <I.chevronRight s={14} />
-              </span>
-            </div>
-          </Link>
-        </div>
-      </Reveal>
+      {/* ── §1e UP & DOWN — the soonest live round, full width (landing v3, WP12; R4(6)) ──────── */}
+      <UpdownBand t={t} liveCount={updownLiveCount} round={udRound} />
 
       {/* ── §1f WHY THE RESULT CAN BE TRUSTED + §1g SETTLED + §1h RG ──────────────────────────
           Chapter break: tinted band, 144 from Up & Down, and it runs continuously into the
           footer's own claret rule (hence `--seam`). The settled strip and the RG line are parts
           of this act, not two more sections. */}
       <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} />
-
-      {/* The RG line sits inside the trust surface, above the footer. Rendered in its own
-          container so the band above can close its own padding.
-          ⭐ NO `paddingBottom` HERE — batch 4. `<PublicFooter>` (rendered by `app-shell.tsx`,
-          outside this page) opens with `mt-12`, and on THIS project's spacing scale that is
-          **128px**, not the 48px the Tailwind default would suggest (`tailwind.config.ts:200-215`,
-          where `"12": "128px"` is the last row — this citation said `:176` and had drifted).
-          A `--rh-close` here stacked on top of it, giving 176px of measured blank below a
-          one-line strip. The gap into the footer is the footer's own margin, on every page. */}
-      <div className="kp-band kp-band--overlay kp-band--seam" style={{ paddingBlock: 0, borderTop: 0 }}>
-        <div className="kp-band__inner">
-          <RgLine />
-        </div>
-      </div>
+      {/* ⛔ NO RG LINE HERE ANY MORE (landing v3, R4(5)). The 18+ roundel and the RG motto sit in the
+          hero's trust lines — on the first screen — and in the footer, which follows directly. */}
     </div>
   );
 }

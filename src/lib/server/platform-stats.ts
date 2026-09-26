@@ -20,7 +20,7 @@
  * with it in all three locales. If a "total paid out" figure is ever wanted back it belongs beside
  * this scan again — but as a live consumer, not as a query kept warm for nobody.
  */
-import { listMarkets, ratesFor, type StoredMarket } from "./market-service";
+import { listMarkets, ratesFor, AUTO_RESOLVER_ACTOR, type StoredMarket } from "./market-service";
 import { db } from "./store";
 import { poolFee } from "@/lib/payout";
 import type { TickerRow } from "@/lib/markets/ticker";
@@ -34,7 +34,34 @@ export type SettlementRow = Omit<TickerRow, "title"> & {
   titleZh: string | null;
   /** The public source the outcome was judged against — the settled strip names it. */
   sourceUrl: string;
+  /**
+   * Who signed THIS market off, read from its own stamps (landing v3, WP13): two distinct officers,
+   * one officer, or the automatic resolver. `null` when the market carries no stamp at all.
+   * ⛔ Never a fixed count: single-admin resolution is the default in every money mode
+   * (`test:two-admin` asserts the ABSENCE of a hard two-officer lock), and a strip that printed "two
+   * officers" over a one-officer verdict would be a regulatory finding, not a copy slip
+   * (INHERIT-MANIFEST L2). `/fairness` derives its own "two officers" the same way.
+   */
+  signoff: Signoff | null;
 };
+
+export type Signoff = "two" | "one" | "auto";
+
+/**
+ * The sign-off a market actually received.
+ * ⭐ The two stamps are the whole truth: a solo resolve stamps BOTH with the same officer, a
+ * two-officer resolve stamps two different officers, and the automatic resolver stamps its own
+ * actor. ⚠️ Every automatic actor is a `system_` id (`AUTO_RESOLVER_ACTOR`, and the demo auto-settle
+ * `system_demo_auto`); an officer id never is. Reading the prefix rather than listing ids means a
+ * future automatic path cannot be counted as a person signing.
+ */
+export function signoffOf(m: Pick<StoredMarket, "resolutionStage1By" | "resolutionStage2By">): Signoff | null {
+  const a = m.resolutionStage1By, b = m.resolutionStage2By;
+  if (!a && !b) return null;
+  const isAuto = (id: string | null) => !!id && (id === AUTO_RESOLVER_ACTOR || id.startsWith("system_"));
+  if (isAuto(a) || isAuto(b)) return "auto";
+  return a && b && a !== b ? "two" : "one";
+}
 
 export type PlatformStats = {
   /** Settled polls AND Up & Down rounds — see the productLine note in the read below. */
@@ -93,6 +120,7 @@ function toSettlementRow(m: StoredMarket): SettlementRow {
     titleSw: m.titleSw,
     titleZh: m.titleZh,
     sourceUrl: m.sourceUrl,
+    signoff: signoffOf(m),
   };
 }
 
