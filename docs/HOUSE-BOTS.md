@@ -1115,6 +1115,14 @@ asserts the ORDER, not just the presence. A gate not in the pipeline is not a ga
 2026-09-19: *he will not turn the switch on until a session tells him, in writing and on evidence, that it is
 ready.* So the sequence is fixed — a session states readiness, Ali decides — and a green gate is never permission.
 
+⚠️ **Who may switch the desk ON (decided 2026-09-26 under the owner's delegation):** D1's "Ali alone turns it on" is
+enforced as the platform's OWNER ROLE — ADMIN, the tier that alone runs staff, roles and the desk; who holds it is the
+owner's choice on `/admin/staff`. There is no per-account list (it would be a second, hidden notion of "owner" and would
+lock the desk off after an automatic stop). Every switch-on writes an event and a compliance audit row naming its actor
+and alerts every admin; switching OFF stays open to every ADMIN. The record is `docs/COMPLIANCE-DECISIONS.md`, entry
+`2026-09-26 · D1 READ AS THE OWNER ROLE`. ⛔ FS-09's other alerts (designation, verify, Start, rules and limits saves)
+are still NOT sent — an open build (RESUME-HERE §5).
+
 | Step | What it is | How it is proved |
 |---|---|---|
 | **R0** (T-1 day) | Merge `origin/main`. Everything green on ONE SHA. Checklist to Ali. | `npm run test:all`, every `red:house-bot-*`, `KP_SCRATCH_PORT=5453 npm run qa:house-bot-fleet` (lanes A–M on one database, with `KP_FLEET_SILENT=1` as its meta-mutation — register E, 2026-09-23: it is the ONLY instrument where several accounts decide under a real engine at once, and until today it ran when somebody remembered to run it), `npm run qa:house-bots-local`, `npm run qa:house-bots-visual`, the S4 rehearsals, the coverage gate (`npm run test:scenario-coverage` — read its printed bracket, do not tick it), `npm run ops:release-migration-parity` GO and `npm run ops:preflight-house-bot-migrations` GO |
@@ -1753,6 +1761,76 @@ refusal, asserted nowhere before, is a new 1.541 case. 1.435's count is eleven, 
 | `test:red-anchors` §3 | all 340 console anchors resolve exactly once (the re-aimed `626d-own-movement-ignored` included) |
 | Mutations | `red:house-bot-console --only` at `5f1737af`, in a tree nobody edited: **6 caught, 0 missed, 0 files left dirty** — `626h-settlement-read-as-the-stake`, `626h-placed-row-borrows`, `368b-balance-leaks-into-the-budget-title`, `435b-why-panel-guard-dropped`, `541-why-explains-removed`, and the re-aimed `626d-own-movement-ignored` |
 | **The four fleets, WHOLE** (2026-09-26 EAT) | **579 of 579 caught · 0 missed · 0 wrong-assertion · 0 stale · 0 files left dirty.** Console **340** (8 slices), engine **80** (Postgres halves included), money + seam **63**, all at `2b8ba0a2`; c5 **96** primaries (97 declarations, one combined pair): 35 at `2b8ba0a2` and 61 at `cf5dd07b` — the slices holding disclosure mutations cannot baseline green on an older commit, because 5.1 pins the published text to the LIVE `origin/main` by design. Driven in a dedicated detached tree, launched as an independent process, in slices under the lock. The first attempt (at `754a7fe3`) found `355-all` WRONG-ASSERTION — re-aimed in `1656d3b1` — and was then killed mid-mutation by a session ending (RESUME-HERE §1's trap) |
+
+### 12.6 The ledger fits the 1280 strip — built 2026-09-26 (RESUME-HERE §0c decision 2, build step 1)
+
+**What changed, on BOTH activity ledgers** (the desk-wide one and each account's): `Type` left its column and is the
+`Outcome` cell's second line — plain words under the one chip (`8018653b`'s one-chip rule); `Note` left its column and
+is a full-width line of its own under its row, from `sm` up and only on a row that carries one, held to an 80ch reading
+measure; and the gutter is ONE `!px-1.5` at every width. ⚠️ **On this project's spacing scale `px-1.5` is 8px and `px-2`
+is 12px** (`tailwind.config.ts` `spacing`) — so the desktop gutter went 12px → 8px, and phones were already 8px. The first
+draft of this record and of the code comments said "6px", which the compiled CSS disproved before anything shipped.
+Round, Opening, Stake, Closing, Left today, Outcome, Game, When and Account keep their columns; below `sm` the stacked
+phone cell is unchanged. The desk-wide table is ten columns, the account's eight.
+
+**One record, two rows.** A row and its note line read as one: the row drops the kit's divider above its note (and, on a
+phone where the note line is hidden, whenever that line is the table's last), each lights with the other in the kit's
+own hover colour, and the note line refuses the kit's hover bar, which the row itself never shows (its first cell is the
+phone's hidden stack). The classes live once, as `NOTED_ROW` / `NOTE_ROW` in `src/app/admin/desk/page.tsx`.
+
+**Found on the way — each would have shipped red or wrong:**
+- 🔴 **The desk-wide table's `colSpan`s were pinned by NOTHING.** The derived span rule read the account page only, so
+  the landing page's typed `12` would have survived this change unreported. §2e3b now holds every span on both ledgers
+  to that ledger's own header count, with a control on the desk-wide table.
+- ⛔ **`test:type-scale` §3 would have gone red.** The first draft put the type line and the note in `text-caption` —
+  11px prose under the 12.5px reading floor, on a shrink-only ratchet. Both are `text-body-sm`, the platform's shape for
+  a second line under a name.
+- ⛔ **`qa-house-bots-visual` §5.5 would have measured the wrong box.** It measures a spanning cell's first `<div>`, else
+  the whole cell — and a note cell spans a table that legitimately scrolls at 640–1024. The note's text is a `<div>`, so
+  the gate measures the sentence, not the strip under it.
+
+**What guards it now.** `test:house-bot-console` §2e3b (both ledgers, each assertion with a control): the type is the
+Outcome cell's second line and never a chip or a column; the note is its own spanning line only on a noted row and in no
+column; the phone stack still carries both; the pair reads as one record, the hover colour read from `globals.css`; one
+gutter on both openers and no `sm:` gutter anywhere in the section; every span equals its ledger's header count.
+`qa:house-bots-visual` **§5.7**: from 1280 up, on both activity routes, every money cell is filled to seven digits AFTER
+the tile is written and the ledger must not scroll sideways — with a control column that must make the same region
+scroll. Declared mutations: 8 new (`373-type-dropped`, `373-type-as-chip`, `373-note-never-drawn`,
+`373-note-line-short`, `373-note-on-the-phone`, `373-divider-splits-the-record`, `373-desktop-gutter-back`,
+`373-desk-span-stale`) and 2 re-aimed (`373-minw`, `373-activity-colspan-stale`); console anchors 340 → 348.
+
+**The width, MEASURED on a served `next start` build at the seven-digit worst case** (every money cell filled to
+`TZS 8,888,888` after the tile is written):
+
+| Ledger | 1280 (strip 998px) | 1440 (strip 1158px) |
+|---|---|---|
+| Account page (8 columns) | **998 — fits exactly** | 1158 — fits |
+| Desk-wide (10 columns) | **1133 — 135px over** (as seeded, 1045) | 1158 — fits |
+
+Per column at 1280, worst case, desk-wide: Account 150 · Opening 117 · Stake 117 · Closing 117 · Left today 117 ·
+When 128 · Outcome 110 · Round 51 · Game 131 · stop 93. ⚠️ **So decision 2 took the desk-wide ledger from 1251px to
+1133px and did NOT close it.** Its next lever, the Account column's 150px floor, can return at most 46px of the 135,
+so by the decision's own rule the 432(b) scroll is KEPT on the desk-wide ledger below 1440 — the subject and the first
+two money answers stay in the strip (§5.2 passes at every width) and the stop control is one short scroll away — and
+closing the rest is **the owner's call, put to him with the choices** (RESUME-HERE §0c decision 2). It is held by a
+RATCHET, not waved through: §5.7 fails if that overflow ever grows past 135px, and the account ledger and every width
+from 1440 up must still fit exactly. The seed's rows on page 1 carry no note, so the two-row record was not on screen
+in this run; its CSS was verified compiled (below) and its render is re-read on the next served run.
+
+**The gates** (under the heavy-node lock, on the tree that was committed, before the push):
+
+| Instrument | Result |
+|---|---|
+| `typecheck` | 0 errors |
+| `test:house-bot-console` | **864 memory / 623 Postgres, 0 failed** (floor raised from 854/613 — the printed counts) |
+| `test:house-bot-surfaces`, `test:tab-anchors`, `npm run build`, `verify:house-bot-bundle` | green |
+| `test:red-anchors` §3 | all 348 console anchors resolve exactly once; the only failures are the four that fail on clean `main` in other lanes' files (RESUME-HERE §0b) |
+| `test:type-scale` | RED — **and red identically on a clean copy of `origin/main` without this step** (§3 759 vs ratchet 744, §6 239 vs 235): other lanes' prose and tracking, not this step's, which adds only `text-body-sm` |
+| `qa:house-bots-visual` at 360/640/1024/1280/1440 | 394 passed, 1 failed — the desk-wide 1280 fit above, now held by its ratchet; tiles read at 360 and 1280 (both ledgers) |
+| CSS, checked without the lock | the step's classes compiled with the project's own Tailwind config and parsed by the build's PostCSS: every new selector generated as intended, and the 12px `sm:` gutter no longer generated |
+
+The owner said to go live once sure (RESUME-HERE §5 quotes him). The ten mutations are driven after the push, in a
+detached tree at the live commit, and their result is added here.
 
 ---
 

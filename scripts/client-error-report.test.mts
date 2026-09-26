@@ -142,6 +142,14 @@ console.log("\n§4 · RouteError sends it, and survives its own reload");
     /try \{[\s\S]*sendBeacon[\s\S]*catch/.test(re));
   ok("§4h ⛔ it does NOT scrub client-side and call it done", !/scrubText/.test(re),
     "a browser-side scrub is advice; the server owns it");
+
+  // 🔴 §4i · THE ROOT BOUNDARY REPORTS TOO. It did not until 2026-09-26, and a crash in the root
+  // layout — NavMore's hook-after-return, every soft sign-in/out for three days — was invisible.
+  const ge = readCode("src/app/global-error.tsx");
+  ok("§4i the ROOT boundary posts to the endpoint", /\/api\/client-error/.test(ge));
+  ok("§4j …with the message and the stack", /error\?\.message/.test(ge) && /error\?\.stack/.test(ge));
+  ok("§4k …by beacon", /navigator\.sendBeacon\(/.test(ge));
+  ok("§4l …wrapped, so the last surface in the product cannot throw", /try \{[\s\S]*sendBeacon[\s\S]*catch/.test(ge));
 }
 
 /* ── §5 · what it would have told us about the 2026-09-18 report ──────────────────────────── */

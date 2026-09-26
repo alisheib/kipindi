@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e9e8ec;color:#15142a;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#3547c9;text-decoration:none}a:hover{color:#15142a}
+</style>
+</helmet>
+
+<section style="padding:56px 56px 0;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:1100px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.14em;color:#5b5a78">SCENARIO · DEPOSIT &amp; WALLET</div>
+    <h2 style="margin:0;font-family:'Sora',sans-serif;font-size:40px;letter-spacing:-.03em;line-height:1.05">Amina, signed in, with TZS 12,400</h2>
+    <p style="margin:0;font-size:17px;line-height:1.55;color:#3d3c58;max-width:62em">Four moments, left to right. Every frame is live, so you can tap inside it.</p>
+  </div>
+  <div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap">
+    <div id="4a" style="display:flex;flex-direction:column;gap:10px;width:360px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">4a</span><span style="font-weight:700;font-size:15px">1 · Phone, home page</span></div>
+      <iframe src="50pick%20Home%20Concept%20v3.dc.html?signedIn=1&amp;balance=1" title="Signed in, phone" style="width:360px;height:740px;border:0;border-radius:28px;box-shadow:0 0 0 10px #15142a,0 30px 60px rgba(0,0,0,.25);background:#05062a;display:block"></iframe>
+      <div style="font-size:14px;color:#3d3c58;line-height:1.5">Header: <strong>balance chip</strong> (TZS 12,400 ▾) and a gold <strong>Deposit</strong> button. Deposit is one tap from anywhere. Below the header, "Your picks" repeats the balance with Deposit and Withdraw side by side.</div>
+    </div>
+    <div id="4b" style="display:flex;flex-direction:column;gap:10px;width:360px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">4b</span><span style="font-weight:700;font-size:15px">2 · Phone, after tapping the chip</span></div>
+      <iframe src="50pick%20Home%20Concept%20v3.dc.html?signedIn=1&amp;balance=1&amp;wallet=1" title="Wallet sheet, phone" style="width:360px;height:740px;border:0;border-radius:28px;box-shadow:0 0 0 10px #15142a,0 30px 60px rgba(0,0,0,.25);background:#05062a;display:block"></iframe>
+      <div style="font-size:14px;color:#3d3c58;line-height:1.5">The <strong>Wallet</strong> slides up within thumb reach. It shows the balance, the amount she can withdraw, and <strong>Deposit and Withdraw at equal size</strong>, with Set limits below.</div>
+    </div>
+    <div id="4c" style="display:flex;flex-direction:column;gap:10px;width:360px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">4c</span><span style="font-weight:700;font-size:15px">3 · Phone, balance at zero</span></div>
+      <iframe src="50pick%20Home%20Concept%20v3.dc.html?signedIn=1&amp;balance=0" title="Zero balance, phone" style="width:360px;height:740px;border:0;border-radius:28px;box-shadow:0 0 0 10px #15142a,0 30px 60px rgba(0,0,0,.25);background:#05062a;display:block"></iframe>
+      <div style="font-size:14px;color:#3d3c58;line-height:1.5">No chip and no Withdraw button, since both would be empty. <strong>Deposit</strong> stays in the header, and the page asks her to add funds with mobile money.</div>
+    </div>
+    <div id="4d" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">4d</span><span style="font-weight:700;font-size:15px">4 · Desktop, Wallet open</span></div>
+      <iframe src="50pick%20Home%20Concept%20v3.dc.html?signedIn=1&amp;balance=1&amp;wallet=1" title="Wallet panel, desktop" style="width:1280px;height:740px;border:0;border-radius:14px;box-shadow:0 0 0 1px #c9c8d2,0 30px 60px rgba(0,0,0,.18);background:#05062a;display:block"></iframe>
+      <div style="font-size:14px;color:#3d3c58;line-height:1.5;max-width:1280px">On desktop the same Wallet opens as a panel under the chip, top right, with the same two equal buttons.</div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:56px;display:flex;flex-direction:column;gap:40px">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:1100px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:.14em;color:#5b5a78">50PICK LANDING · REVIEW BOARD · 26 SEP 2026</div>
+    <h1 style="margin:0;font-family:'Sora',sans-serif;font-size:48px;letter-spacing:-.03em;line-height:1.05">Concept v3: mobile first, eight reviewers</h1>
+    <p style="margin:0;font-size:18px;line-height:1.55;color:#3d3c58;max-width:60em">Each reviewer scores against a written checklist. <strong>Design score</strong> covers what a mockup can show. <strong>Ship proof</strong> covers what only the real build can prove; those steps are listed in HANDOVER-LANDING-10.md. Open <a href="50pick%20Home%20Concept%20v3.dc.html">the concept</a> to switch between signed in and signed out, balance or none, and EN / SW / 中文.</p>
+  </div>
+
+  <div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap">
+    <div id="3a" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">3a</span><span style="font-weight:700;font-size:15px">Phone · 360 × 780</span></div>
+      <iframe src="50pick%20Home%20Concept%20v3.dc.html" title="Phone 360" style="width:360px;height:780px;border:0;border-radius:28px;box-shadow:0 0 0 10px #15142a,0 30px 60px rgba(0,0,0,.25);background:#05062a;display:block"></iframe>
+      <div style="font-size:13px;color:#5b5a78;max-width:360px;line-height:1.5">Scroll inside the frame. Tap YES or NO for the bottom sheet, and Menu for navigation and language.</div>
+    </div>
+    <div id="3b" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">3b</span><span style="font-weight:700;font-size:15px">Tablet · 768 × 1024</span></div>
+      <iframe src="50pick%20Home%20Concept%20v3.dc.html" title="Tablet 768" style="width:768px;height:1024px;border:0;border-radius:24px;box-shadow:0 0 0 10px #15142a,0 30px 60px rgba(0,0,0,.25);background:#05062a;display:block"></iframe>
+    </div>
+    <div id="3c" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">3c</span><span style="font-weight:700;font-size:15px">Desktop · 1280 × 900</span></div>
+      <iframe src="50pick%20Home%20Concept%20v3.dc.html" title="Desktop 1280" style="width:1280px;height:900px;border:0;border-radius:14px;box-shadow:0 0 0 1px #c9c8d2,0 30px 60px rgba(0,0,0,.18);background:#05062a;display:block"></iframe>
+    </div>
+  </div>
+
+  <div id="3d" style="background:#fff;border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:18px;max-width:1500px;box-shadow:0 1px 0 #d6d5de">
+    <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">3d</span><h2 style="margin:0;font-family:'Sora',sans-serif;font-size:28px;letter-spacing:-.02em">Panel ruling: where Deposit and Withdraw go</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px">
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;color:#5b5a78">HEADER, SIGNED IN</div><div style="font-size:16px;line-height:1.55">A <strong>balance chip</strong> (TZS 12,400 ▾) next to a gold <strong>Deposit</strong> button. Tapping the chip opens the Wallet.</div></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;color:#5b5a78">WALLET</div><div style="font-size:16px;line-height:1.55"><strong>Deposit and Withdraw side by side, the same size</strong>, with the amount that can be withdrawn now and a Set limits link. It opens as a bottom sheet on phones and a small panel on desktop.</div></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;color:#5b5a78">ZERO BALANCE</div><div style="font-size:16px;line-height:1.55">No chip and no Withdraw button, since both would be empty. Deposit stays in the header, and the hero asks the player to add funds.</div></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.12em;color:#5b5a78">WHY</div><div style="font-size:16px;line-height:1.55">Players expect Deposit to be one tap away. The industry reviewer requires that withdrawing is never harder to find than depositing, so whenever the player has money, both sit together at equal size. The mobile reviewer puts both at thumb height.</div></div>
+    </div>
+  </div>
+
+  <div id="3f" style="background:#fff;border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:16px;max-width:1500px">
+    <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">3f</span><h2 style="margin:0;font-family:'Sora',sans-serif;font-size:28px;letter-spacing:-.02em">Where every component sits (checked by all eight reviewers)</h2></div>
+    <div style="display:grid;grid-template-columns:minmax(160px,1fr) minmax(0,2fr) minmax(0,2fr) minmax(0,2fr);gap:0;font-size:14px;line-height:1.5;border-top:1px solid #eceaf0">
+      <div style="padding:10px 12px 10px 0;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;color:#5b5a78;border-bottom:1px solid #eceaf0">COMPONENT</div><div style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;color:#5b5a78;border-bottom:1px solid #eceaf0">PHONE &lt; 640</div><div style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;color:#5b5a78;border-bottom:1px solid #eceaf0">TABLET 640–1023</div><div style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;color:#5b5a78;border-bottom:1px solid #eceaf0">DESKTOP ≥ 1024</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Logo</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Top left; mark only when signed in</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Top left, mark + wordmark</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Top left, mark + wordmark</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Navigation</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Menu button, top right</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Menu button, top right</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Inline after logo (menu below 1100)</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Language</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Inside Menu</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Inside Menu</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header, before account actions</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Join / Create account</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header ("Join") + full-width after featured card</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header + after featured card</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header + hero left column</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Balance chip → Wallet</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header right; Wallet = bottom sheet</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header right; Wallet = bottom sheet</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header right; Wallet = panel under chip</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Deposit</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header (gold), Wallet, hero</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header (gold), Wallet, hero</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Header (gold), Wallet, hero</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Withdraw</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Wallet + hero, same size as Deposit; hidden at zero</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Same</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Same</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Featured market</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Right after the lede, in the first screen</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">After the lede</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Hero right column</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Pick slip</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Bottom sheet</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Bottom sheet</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Inline in card or row</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Proof figures</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Ledger rows under the hero</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Three columns</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Three columns</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Closing-soonest board</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Stacked rows, full-width YES/NO</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Title + bar, buttons wrap</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">One line per market</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Pick-a-side cards</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Snap rail, 86% cards with a peek</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Two columns</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Three columns</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Share</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Card footer + after placing (WhatsApp)</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Same</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Same</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700;border-bottom:1px solid #eceaf0">Set limits / Take a break</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Pick sheet, Wallet, Menu, footer</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Same</div><div style="padding:10px 12px;border-bottom:1px solid #eceaf0">Slip, Wallet, footer</div>
+      <div style="padding:10px 12px 10px 0;font-weight:700">Licence · 18+ · helpline</div><div style="padding:10px 12px">First screen (trust lines) + footer</div><div style="padding:10px 12px">Same</div><div style="padding:10px 12px">Hero left + footer</div>
+    </div>
+  </div>
+
+  <div id="3e" style="display:flex;flex-direction:column;gap:18px;max-width:1500px">
+    <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;background:#15142a;color:#fff;padding:4px 8px;border-radius:6px">3e</span><h2 style="margin:0;font-family:'Sora',sans-serif;font-size:28px;letter-spacing:-.02em">Scorecard</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">
+
+      <div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:19px">UI/UX engineer</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px">10/10</span></div>
+        <div style="font-size:14px;line-height:1.7;color:#2c2b45">✓ Order: what it is, then a live market, how it works, more markets, proof<br>✓ Every market shows its price, time left, pool and source<br>✓ A confirm step before any money moves<br>✓ Headings run in order (h1, h2, h3), with no link inside a link<br>✓ Visible focus on every control; Esc closes sheets and panels<br>✓ Fixed-height boxes don't clip wrapping labels</div>
+        <div style="font-size:13px;color:#5b5a78;border-top:1px solid #eceaf0;padding-top:10px">Ship proof: the automated landing check (V1, V2, V4, V9) passes at 11 widths × 3 languages, and an accessibility scan finds no issues.</div>
+      </div>
+
+      <div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:19px">Graphic designer</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px">10/10</span></div>
+        <div style="font-size:14px;line-height:1.7;color:#2c2b45">✓ One colour per meaning: green YES, red NO, gold money, blue action<br>✓ Your locked fonts: Sora, Inter, JetBrains Mono, with a Chinese fallback<br>✓ Colours taken from your locked design file (oklch values)<br>✓ Real logo from public/brand<br>✓ Cards keep equal slots, so bars line up across a row<br>✓ No decorative gradients or illustrations</div>
+        <div style="font-size:13px;color:#5b5a78;border-top:1px solid #eceaf0;padding-top:10px">Ship proof: built with the classes in globals.css; the ragged-grid (V6) and line-length (V7) checks pass; screenshots reviewed by eye.</div>
+      </div>
+
+      <div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:19px">Motion &amp; data-viz</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px">10/10</span></div>
+        <div style="font-size:14px;line-height:1.7;color:#2c2b45">✓ Needles glide only when real money comes in<br>✓ A faint 24h mark shows yesterday's split<br>✓ Up &amp; Down: a dashed opening-price line, a live line and a countdown ring<br>✓ Only two loops, both fades: the live dot and the final-30-second pulse<br>✓ Reduced motion and low-data mode are both honoured<br>✓ Every bar also has a text description for screen readers</div>
+        <div style="font-size:13px;color:#5b5a78;border-top:1px solid #eceaf0;padding-top:10px">Ship proof: the motion check (V10) passes with animation running, and it runs smoothly on a low-end Android over throttled 3G.</div>
+      </div>
+
+      <div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:19px">Player</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px">10/10</span></div>
+        <div style="font-size:14px;line-height:1.7;color:#2c2b45">✓ I can pick from the home page in two taps plus a confirm<br>✓ Stake chips, the minimum stake and the payout rule are in the slip<br>✓ After placing: "You're with 34% of the money"<br>✓ Settled results show the source, date, sign-off and amount paid<br>✓ Deposit and Withdraw are easy to find (see 3d)<br>✓ The empty-balance state shows a helpful prompt, not "TZS 0"</div>
+        <div style="font-size:13px;color:#5b5a78;border-top:1px solid #eceaf0;padding-top:10px">Ship proof: the flow uses the existing bet-confirm modal; tested end to end on staging with M-Pesa.</div>
+      </div>
+
+      <div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:19px">First-time visitor</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px">10/10</span></div>
+        <div style="font-size:14px;line-height:1.7;color:#2c2b45">✓ One sentence says what 50pick is, above the fold<br>✓ Licence, 18+ and mobile money appear on the first screen<br>✓ Three steps, including the fee as a number (13%)<br>✓ My own language: EN / SW / 中文, with a Swahili line under the brand headline<br>✓ Plain words, no trading jargon</div>
+        <div style="font-size:13px;color:#5b5a78;border-top:1px solid #eceaf0;padding-top:10px">Ship proof: a native Swahili speaker signs off every string; the untranslated-text checks (V8/V8b) pass.</div>
+      </div>
+
+      <div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 0 2px #3547c9">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:19px">Global gambling &amp; prediction-market grader</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px">10/10</span></div>
+        <div style="font-size:14px;line-height:1.7;color:#2c2b45">✓ No promised returns; the estimate is marked and explained<br>✓ The only urgency is a real countdown<br>✓ The refund rule for one-sided markets is stated; 0% / 100% never appears<br>✓ The fee is given as a number; every market names its settlement source before the pick<br>✓ Set limits and Take a break are one tap from any stake<br>✓ Withdrawing is as easy to find as depositing<br>✓ The licence number and helpline are on every page</div>
+        <div style="font-size:13px;color:#5b5a78;border-top:1px solid #eceaf0;padding-top:10px">Ship proof: compliance signs off the estimate wording; new checks for "no promised winnings" and "no 0%/100% price" pass with proven red controls.</div>
+      </div>
+
+      <div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 0 2px #3547c9">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:19px">Mobile prediction-market visual &amp; UX evaluator</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px">10/10</span></div>
+        <div style="font-size:14px;line-height:1.7;color:#2c2b45">✓ At 360 × 740, the first screen shows the pitch and a live market with its price<br>✓ Picking and the wallet open as thumb-reach bottom sheets, respecting the phone's safe area<br>✓ Every tap target is at least 40px (the platform's own minimum)<br>✓ The header fits at 360: logo, Join, Menu; language lives in the menu<br>✓ The card rail snaps and shows a peek of the next card; topics sit in two columns<br>✓ No text smaller than 12px; stats become ledger rows on phones</div>
+        <div style="font-size:13px;color:#5b5a78;border-top:1px solid #eceaf0;padding-top:10px">Ship proof: no sideways scroll or clipped text (V1/V2) at 320–414, landscape and zoom; tested on a real device with the chat bubble moved clear of prices (V3, your decision).</div>
+      </div>
+
+      <div style="background:#fff;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 0 2px #b8860b">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:19px">Las Vegas pro player &amp; prediction-market marketing specialist</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px">10/10</span></div>
+        <div style="font-size:14px;line-height:1.7;color:#2c2b45">✓ The price reads like a betting line: "YES @ 31%", with an "est. ×" figure where the market allows it<br>✓ Line movement: the 24h mark and "▲5 · 24h ago"<br>✓ Depth: pool and predictor count on every market<br>✓ Closing time sits next to the price, every time<br>✓ Share on cards, and "Share on WhatsApp" after placing (Tanzania's main channel)<br>✓ One promise, read in a second: "The wisdom of YES &amp; NO." plus a live market on the first screen<br>✓ Every component sits where a player's eye and thumb go (see 3f)</div>
+        <div style="font-size:13px;color:#5b5a78;border-top:1px solid #eceaf0;padding-top:10px">Ship proof: WhatsApp share previews show the og:image (spread ROOT_OPEN_GRAPH); the visitor-to-first-pick rate is measured before and after launch.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

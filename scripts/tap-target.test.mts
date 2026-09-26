@@ -55,6 +55,7 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { endOfOpenTag } from "./lib/jsx-open-tag.mts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const rd = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -85,39 +86,10 @@ const decomment = (s: string) =>
    .replace(/(^|[^:"'`\w/])\/\/[^\n]*/g, "$1");
 
 // ===========================================================================
-// THE READER — a JSX open-tag lexer.
+// THE READER — a JSX open-tag lexer. `endOfOpenTag` lives in `scripts/lib/jsx-open-tag.mts`
+// since 2026-09-26, moved byte-for-byte, because `test:single-save` reads every
+// `<PendingChangesBar>` with it and a second copy would drift. §0 below still proves it here.
 // ===========================================================================
-/**
- * Given the index of a tag's `<`, return the index of the `>` that closes the OPEN
- * tag. Tracks a stack of `"`, `'`, `` ` `` and `{`, and — the part every naive version
- * misses — treats `${` inside a template literal as pushing a new expression scope, so
- * a backtick nested inside an interpolation cannot close the outer template.
- */
-function endOfOpenTag(s: string, from: number): number {
-  let i = from + 1;
-  while (i < s.length && !/[\s/>]/.test(s[i])) i++;   // skip the tag name
-  const stack: string[] = [];
-  for (; i < s.length; i++) {
-    const c = s[i];
-    const top = stack[stack.length - 1];
-    if (top === '"' || top === "'") {
-      if (c === "\\") { i++; continue; }
-      if (c === top) stack.pop();
-      continue;
-    }
-    if (top === "`") {
-      if (c === "\\") { i++; continue; }
-      if (c === "`") { stack.pop(); continue; }
-      if (c === "$" && s[i + 1] === "{") { stack.push("{"); i++; }
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") { stack.push(c); continue; }
-    if (c === "{") { stack.push("{"); continue; }
-    if (c === "}") { if (top === "{") stack.pop(); continue; }
-    if (c === ">" && stack.length === 0) return i;
-  }
-  return -1;
-}
 
 console.log("\n§0 · the reader, proved on the three inputs that defeat a regex");
 {

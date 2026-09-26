@@ -32,7 +32,10 @@
  *   5. every empty-state message box is inside the viewport;
  *   6. ⛔ no house-vocabulary word anywhere in the rendered body — the shared vocabulary, never a new regex — AND, in
  *      the console's OWN subtree, none of ruling 453's four extra words either, in text or in an attribute. The
- *      sidebar legitimately renders "House" for /admin/house, so the 453 scan is scoped to the content region.
+ *      sidebar legitimately renders "House" for /admin/house, so the 453 scan is scoped to the content region;
+ *   7. from 1280 up, the ACTIVITY ledger fits its strip with no sideways scroll, measured with every money cell
+ *      filled to seven digits after the tile is written (RESUME-HERE §0c decision 2), with a control column — except
+ *      the desk-wide ledger below 1440, whose measured overflow is held by a ratchet that may only fall (§12.6);
  *
  * ⛔ NO POSTGRES OR NO SERVER IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED) — a visual gate that skips silently is
  * the "not applicable" verdict this programme has paid for twice.
@@ -649,6 +652,60 @@ try {
       if (facts.emptyBoxes.length) {
         ok(`§5.5 ${route} @${width} · every empty-state message box is inside the viewport`,
           facts.emptyBoxes.every((b) => b.left >= -1 && b.right <= facts.vw + 1), JSON.stringify(facts.emptyBoxes));
+      }
+      /* ⭐ §5.7 · THE LEDGER FITS ITS STRIP FROM 1280 UP, AT ITS WORST CASE (RESUME-HERE §0c decision 2, 2026-09-26).
+         The owner reads the activity ledger at 1280, where the strip is ≈998px, and the desk-wide table measured
+         1251px there — Round, Game and the stop control reachable only by dragging. Note and Type left their
+         columns and the gutter narrowed so the whole row fits; this is the check that keeps it so.
+         ⛔ AT THE WORST CASE, NOT AT WHATEVER THE SEED PAINTED. The panels seed's placed rows carry no ledger
+         movement, so their Opening and Closing are dashes, and a table of dashes fits where a table of balances
+         does not: every money cell is filled with a seven-digit figure first. It runs AFTER the tile was written
+         and on a page about to close, so no PNG ever shows an invented figure.
+         ⛔ WITH A CONTROL: one extra 160px column must make the same region scroll, or the measurement could not
+         have failed and says nothing. */
+      if (/[?&]tab=activity/.test(route) && width >= 1280 && !facts.firstRowEmpty) {
+        const fit = await p.evaluate(() => {
+          const table = [...document.querySelectorAll("table.admin-tbl")].find((t) => /Opening/.test(t.querySelector("thead")?.textContent ?? ""));
+          const region = table?.closest("[role='region']");
+          if (!table || !region) return null;
+          const shown = (el) => getComputedStyle(el).display !== "none";
+          const cells = [...table.querySelectorAll("tbody td.tabular.text-right")].filter(shown);
+          for (const td of cells) td.innerHTML = '<span class="amount">TZS 8,888,888</span>';
+          const measure = () => ({ scrollWidth: region.scrollWidth, clientWidth: region.clientWidth, tableWidth: Math.round(table.getBoundingClientRect().width) });
+          const filled = measure();
+          const rows = [...table.querySelectorAll("tbody tr")].filter(shown);
+          for (const tr of [table.querySelector("thead tr"), ...rows]) {
+            const extra = document.createElement(tr.closest("thead") ? "th" : "td");
+            extra.style.minWidth = "160px";
+            extra.textContent = "·";
+            tr.appendChild(extra);
+          }
+          const widened = measure();
+          /* A ledger row is a row with money cells; a note's own line has none. */
+          const ledgerRows = rows.filter((tr) => tr.querySelector("td.tabular.text-right")).length;
+          return { filledCells: cells.length, ledgerRows, rows: rows.length, filled, widened };
+        });
+        /* ⚠️ THE DESK-WIDE LEDGER DOES NOT FIT 1280 YET, AND THAT IS HELD BY A RATCHET, NOT WAVED THROUGH. Measured
+           2026-09-26 on this gate's first run: 1133px in the 998px strip at the seven-digit fill (135px over), after
+           decision 2's levers took it from 1251px. Decision 2's next lever — the Account floor — can return at most
+           46px, so by that decision's own rule the 432(b) scroll is kept below 1440 and closing the rest is the
+           owner's call (`docs/HOUSE-BOTS.md` §12.6). ⛔ The overflow may only SHRINK: lower the ceiling to what a run
+           prints, never raise it. The account page's ledger, and the desk-wide one from 1440 up, must fit exactly. */
+        const DESK_LEDGER_OVERFLOW_CEILING_PX = 135;
+        const deskWide = /^\/admin\/desk\?/.test(route);
+        const overflow = fit === null ? null : fit.filled.scrollWidth - fit.filled.clientWidth;
+        if (deskWide && width < 1440) {
+          ok(`§5.7 ${route} @${width} · the desk-wide ledger's remaining overflow at seven digits is within its ratchet (${DESK_LEDGER_OVERFLOW_CEILING_PX}px, reported to the owner) — it may only shrink`,
+            overflow !== null && overflow <= DESK_LEDGER_OVERFLOW_CEILING_PX + 1, JSON.stringify({ overflow, fit }));
+        } else {
+          ok(`§5.7 ${route} @${width} · the activity ledger fits its strip with NO sideways scroll, every money cell at seven digits`,
+            fit !== null && fit.filled.scrollWidth <= fit.filled.clientWidth + 1, JSON.stringify(fit));
+        }
+        /* Four money columns on every ledger row — Opening, Stake, Closing, Left today — so a fill that missed a
+           column, or a page that painted no row, is reported rather than measured as a narrow table. */
+        ok(`§5.7 ${route} @${width} · CONTROL · …the fill reached all four money cells of every ledger row, and one more column makes the same region scroll`,
+          fit !== null && fit.ledgerRows >= 1 && fit.filledCells === 4 * fit.ledgerRows && fit.widened.scrollWidth > fit.widened.clientWidth + 1,
+          JSON.stringify(fit));
       }
       await p.close();
     }

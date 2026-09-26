@@ -48,13 +48,15 @@ Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marke
 | **Since it was written** | ✅ Delivery receipts now WORK end to end — a production message was DELIVERED and its receipt settled the real row in 11 seconds. The plan was drafted when none had ever arrived; §3a replaces that premise, §3b carries the vendor's measured behaviour and the seven lessons from the eleven days it took |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit**. The tracker guard asserts the two doors agree |
 
-## ▶ 0b · THE LANDING PAGE'S TEN — `LANDING-TEN` · 🟢 **ENGINEERING COMPLETE 2026-09-24 · TWO OWNER DECISIONS REMAIN** · 12 of 14 gate classes at ZERO across 61 cells
+## ▶ 0b · THE LANDING PAGE'S TEN — `LANDING-TEN` · 🔨 **REOPENED 2026-09-26 FOR THE v3 BUILD** · v3 build 0/33 ✅ · the 2026-09-24 gate work below stands
 
 Ali, 2026-09-24: *"nothing less than 10 visually is accepted. not 9.99, only 10."*
-**▶ Record and rules: [`LANDING-TEN.md`](LANDING-TEN.md). Read it before touching `/`, and before trusting a green gate.**
+Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until pushed live and validated visually and logically."*
+**▶ Tracker: [`LANDING-TEN.md`](LANDING-TEN.md) §0 (RESUME AT) and §1 (status board). Record and rules: the rest of that file. Read it before touching `/`, and before trusting a green gate.**
 
 | | |
 |---|---|
+| **v3 build** | The v3 delivery is filed raw at `docs/design-system/v4-2026-09-26-landing-ten/`; its `INHERIT-MANIFEST.md` holds Ali's four rulings of 2026-09-26 (R1 Wallet sheet · R2 pick slip · R3 no estimate on cards · R4 eight small calls) and the seventeen places repo law beats the delivery (L1–L17); `LANDING-TEN.md` §3 maps all 72 of the delivery’s acceptance items to the row that delivers each. Read the next move from `LANDING-TEN.md` §0, never from this cell. **Rule:** every session rewrites §0 and ticks §1 in its own commits and updates this row's count in the same commit — `npm run test:landing-ten-plan` asserts the two agree |
 | **What shipped** | A five-critic panel scored `/` at 7.2/10 (design 8.1, content 6.9, display 6.7). The deliverable is an instrument, not a list of fixes: `npm run qa:landing-ten` — 14 classes over 61 cells (11 widths × 3 locales, plus first-visit / compact / reduced-motion / no-JS / client-hop / signed-in states, landscape and zoom), each class proved able to fail by a DELTA control |
 | **Where it stands** | **V11 368 → 0 · V12 1 → 0 · V7 2 → 0.** The hero now applies a price-quality floor, four routes got their share cards back, the settled strip holds its money column, and the market grid stops stretching single-column rows |
 | **⛔ NOT ENGINEERING** | **V3** (the chat bubble over live prices, 52–54 findings) and **V14** (the page does not render without JS, 2,108px against 7,361px) are both owner decisions — every remedy is a visible product trade. The gate does not reach zero and should not be forced to |

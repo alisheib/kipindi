@@ -6,6 +6,70 @@
 
 ---
 
+## 2026-09-26 · The LIVE strip: signed out, a person on a break sees the lobby like any visitor — no device-marker cookie (owner ruling)
+
+**Owner instruction (Ali, 2026-09-26), as typed:** *"leve at is"* — the answer to: *should a phone that started a
+break also hide the moving settlement strip while signed out? That needs a small device cookie, i.e. a
+Privacy-notice change* (the session's recommendation was to leave it).
+
+**What is true, and stays true:**
+- The LIVE settlement strip — re-sited the same day to `/`, `/markets`, `/live` and `/results` only (`2ab8830e`) —
+  is neither read nor painted for a SIGNED-IN player whose cooling-off or self-exclusion timer is running
+  (`promoSuppressed` in `app-shell.tsx`).
+- A self-excluded person cannot sign in, and starting a break signs the player out. Signed out, they see the lobby,
+  strip included, like any visitor — exactly as they already see `/results` and the landing's settled strip. The
+  strip is on-site content showing already-public settlements; it is not one of the "marketing messages" that RG
+  Policy §4 governs (SMS, email, push).
+- ⛔ **No device marker or cookie is set to recognise a signed-out person on a break.** Adding one is a
+  Privacy-notice change (`test:privacy-notice` pins the cookie census) and needs a NEW owner ruling. Do not "fix"
+  this as a gap.
+
+Guard: `test:ticker-honesty` 11.4 (the signed-in gate). Record: `docs/MOBILE-VISUAL-PLAN.md` D32 / U33.
+
+---
+
+## 2026-09-26 · D1 READ AS THE OWNER ROLE — decided by the session under the owner's delegation of 2026-09-26
+
+**Authority.** Ali, 2026-09-26, asked which ADMIN accounts are his and whether the second account that switched the
+desk ON had his authority, answered, as typed: *"for my asnwer u decide base don overlal platomfr arcgitecture and
+what make sense"*. **Ali did not approve this entry and has not read it; the house-bots session decided it on that
+delegation** (`plans/house-bots/RESUME-HERE.md` §0c decision 3, build step 2).
+
+**The question.** D1 says the master switch "ships OFF … and Ali alone turns it on", and the Accountability list says
+"Ali alone switches house bots ON". The code enforces the ADMIN role: `houseConsoleAudience` admits a viewer to the
+desk's door only when the STORED role is ADMIN. Measured SELECT-only on 2026-09-26: more than one account holds ADMIN,
+and the ON the desk is in now was thrown by a different ADMIN account from the one that made every designation.
+
+**Decided: on this platform "the owner" IS the ADMIN role, and D1 is enforced at that tier.**
+- `src/lib/server/roles.ts` calls ADMIN "Owner", and the same tier alone runs every owner-only surface: staff
+  (`/admin/staff`), roles (`/admin/roles`) and the desk. Who holds it is the owner's own choice, on the owner-only staff
+  page. A desk that named its owner by account id in a server setting would be a second, invisible notion of "owner"
+  that exists nowhere else on the platform.
+- That setting would also carry a lockout: the build step designed for it refuses switch-on when the setting is missing
+  or empty, so after an automatic loss stop nobody could switch the desk back on until someone edited the hosting
+  configuration. The managers who operate the desk would lose the one lever they use after a stop.
+- What keeps the ON lever accountable already exists and is kept: every switch-on writes a `SWITCH_ON` event and a
+  COMPLIANCE audit row, each naming the ACTOR by id (`src/lib/server/house-bot/switch-on.ts`), and alerts every admin
+  (`announceSwitchedOn`). Switching OFF stays open to every ADMIN — a stop lever anyone who sees a problem can reach.
+- ⚠️ **Stated, not implied: FS-09's other alerts are NOT wired.** `plans/house-bots/01-scenario-register.md` FS-09
+  planned an alert to every admin on each designation, start, rules save and limits save; only pause, remove and the
+  switch itself send one today (`announceRoster` has two callers). That gap exists whoever may switch the desk on, and
+  it is a separate build with its own cases, recorded in the house-bots handover — not closed by this entry.
+
+**What this does NOT change.** D1's switch still ships and stays owner-tier only: no staff role below ADMIN (finance,
+compliance, operations, support, audit) can open the desk or switch it, and a grant edit on `/admin/roles` cannot widen
+that (C7 341). D19, D20 and every other ruling are untouched. The measured second switcher is an ADMIN account — an
+owner-tier account — so the current ON is within D1 as read here.
+
+⚠️ **IF ALI REVERSES THIS.** It binds as a delegated decision until he rules. The narrower design is recorded and ready:
+a server-side check on SWITCH_ON only, the owner's account id(s) in a server setting never in this public repo, switch
+OFF open to every ADMIN (RESUME-HERE §0c decision 3's original row). One build step, with the lockout above stated to him.
+
+**Amends:** D1's "Ali alone turns it on" and the Accountability list's "Ali alone switches house bots ON" — each marked in
+place. **Does not amend:** D19, D20 and every amendment of them, D3, the switch's own ceremony, reasons and audit.
+
+---
+
 ## 2026-09-26 · House bots: ruling 501 WITHDRAWN — the ISO 27001 export stays unfiltered (owner: the exclusion is not required; the session kept it unfiltered)
 
 **Owner instruction (Ali, 2026-09-26), as typed:** *"this we dot cre gbt said it sok we need nothign we can decide
@@ -693,7 +757,7 @@ moving the notice first.
 
 | # | Ruling |
 |---|---|
-| D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. |
+| D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. ⚠️ **Read as the OWNER ROLE (ADMIN) since 2026-09-26 (delegated)** — see the dated entry `2026-09-26 · D1 READ AS THE OWNER ROLE` near the head of this log. |
 | D2/D7 | ⛔ **REVERSED by D19a (2026-09-16): no public text at all.** (Superseded text:) Amend the published Rules and Terms (en/sw/zh): a carve-out from the prohibited-conduct list for accounts 50pick operates, plus one disclosure line. **Effective on deploy, with no 14-day notice** (owner ruling; 50pick reports to GBT). |
 | D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance) ⛔ **— but it never RENDERS it (corrected 2026-09-18; a consequence of D20 through replan ruling 266, sharpened by C7 ruling 459, that the marking passes missed).** The wallet read exists and is used to derive a funded **STATE**; **no console surface paints a bare balance anywhere**, because it is a real person's money figure, it is the one number on these screens belonging to someone other than 50pick, and it is the one most likely to sit in a screenshot.  ⚠️ **AMENDED 2026-09-25 (owner): the desk’s ACTIVITY rows may paint it — see the dated entry `2026-09-25 · D3 AMENDED` near the head of this log. Everywhere else, including the designate wizard, the roster and every player surface, the prohibition stands.** |
 | D3b | **No payment feature.** The holder tops up through the normal deposit flow and is reimbursed out of band. While their bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
@@ -889,7 +953,7 @@ Risks 8–12 (release and verification) ⏳ were owed by build commit 8 and were
 20. **An officer may decide a market holding a stake they chose** (resolve, void, reopen or an objection ruling). There is no refusal (2026-07-24 guardrail, I10). ~~The mitigations are display, audit and alert only: the viewer sees "of which chosen by you", the decision audit records `requestedBy`,~~ ⛔ **D20** (2026-09-17): the admin line and the `requestedBy` key in the decision audit are struck and un-built (C5-5b, replan ruling 270 — no decision control, refusal or page condition reads a requester). The remaining mitigation is that `staff-stake-self-decided` alerts every admin (replan ruling 264).
 
 ### Accountability
-- Ali alone switches house bots ON.
+- Ali alone switches house bots ON. ⚠️ *Read as the owner ROLE — ADMIN, the tier that alone runs staff, roles and the desk — since 2026-09-26 (delegated; entry `2026-09-26 · D1 READ AS THE OWNER ROLE`). Every switch-on is audited with its actor and alerts every admin.*
 - Every owner action writes an audit row in its `HOUSE_AUDIT` category: COMPLIANCE for designation, the switch, limits, rules, Enter now, targets and vetoes.
 - ~~The house-liquidity regulator report and CSV (R1) list house stakes, the Enter now register, targets and vetoes.~~ ⛔ **D20** (2026-09-17, D20b): there is no house report and no house CSV — never built. Every owner action's audit row stands (the line above), and reports treat a house account like any player's.
 - ~~The Board disclosure draft is tracked by `boardDisclosureSections`.~~ ⛔ **D20** (replan ruling 273 (a)): P1's disclosure tracking is struck, so `boardDisclosureSentAt` / `boardDisclosureSections` and `recordDisclosure` were un-built in C5-5b. ~~The private draft is tracked by the draft document alone.~~ ⛔ **D21** (2026-09-20): there is no draft and none is owed.

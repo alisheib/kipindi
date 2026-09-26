@@ -819,8 +819,10 @@ export const MUTATIONS = [
     /* ⚠️ RE-ANCHORED AGAIN 2026-09-25: the desktop gutter dropped from `px-4` to `px-2`. At 1280 the
        desk-wide table measured 1519px inside a 998px strip, so four of its twelve columns — Round, Game,
        Note and the STOP CONTROL — were reachable only by dragging sideways. THE DEFECT IS UNCHANGED. */
-    from: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">`,
-    to: `                  <table className="admin-tbl min-w-[720px] [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">`,
+    /* ⚠️ RE-ANCHORED AGAIN 2026-09-26: the `sm:` gutter left with RESUME-HERE §0c decision 2 — one 8px gutter at
+       every width, Type and Note out of their columns, so the ledger fits the 1280 strip. THE DEFECT IS UNCHANGED. */
+    from: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">`,
+    to: `                  <table className="admin-tbl min-w-[720px] [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">`,
     expect: "1.373 · the money-bearing TABLE carries no `min-w-*` of its own",
     suite: "console-mem",
   },
@@ -2619,10 +2621,78 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "373-activity-colspan-stale · a column is added to the activity table and the spans are left behind, which every gate reads as healthy because a spanning cell renders as one cell whatever it says",
     file: DETAIL,
-    from: `                        <th scope="col" className="text-left p-3">Type</th>`,
-    to: `                        <th scope="col" className="text-left p-3">Type</th>
+    /* ⚠️ RE-ANCHORED 2026-09-26: the `Type` header it stood on left with RESUME-HERE §0c decision 2 (the type is the
+       Outcome cell's second line now). `Round` is the next header that exists once in this file. */
+    from: `                        <th scope="col" className="text-left p-3">Round</th>`,
+    to: `                        <th scope="col" className="text-left p-3">Round</th>
                         <th scope="col" className="text-left p-3">Extra</th>`,
     expect: "1.373 · every `colSpan` in the activity panel equals that panel's own header count",
+    suite: "console-mem",
+  },
+  /* ═══ RESUME-HERE §0c decision 2 · the ledger at 1280 (2026-09-26) — one mutation per new placement, each aimed at
+     the assertion in §2e3b that owns it. ═══ */
+  {
+    name: "373-type-dropped · the stake's type line leaves the Outcome cell, so a column the owner named disappears from the wide ledger",
+    file: PAGE,
+    from: `                              <span className="block mt-1 text-body-sm text-text-secondary">{r.typeWord}</span>`,
+    to: ``,
+    expect: "1.373 · decision 2 · the stake's TYPE is the Outcome cell's second line on both ledgers",
+    suite: "console-mem",
+  },
+  {
+    name: "373-type-as-chip · the stake's type is painted as a SECOND chip beside the outcome, so one row states two badges",
+    file: DETAIL,
+    from: `                              <span className="block mt-1 text-body-sm text-text-secondary">{r.typeWord}</span>`,
+    to: `                              <Chip size="sm">{r.typeWord}</Chip>`,
+    expect: "1.373 · decision 2 · the stake's TYPE is the Outcome cell's second line on both ledgers",
+    suite: "console-mem",
+  },
+  {
+    name: "373-note-never-drawn · the note's own line is never rendered, so a row's note vanishes from the wide ledger",
+    file: PAGE,
+    from: `                          {r.note !== null && (`,
+    to: `                          {r.note === "never" && (`,
+    expect: "1.373 · decision 2 · the NOTE is a full-width line of its own under its row on both ledgers",
+    suite: "console-mem",
+  },
+  {
+    name: "373-note-line-short · the note line spans one column fewer than its row, so it stops short of the ledger's edge",
+    file: DETAIL,
+    from: `                              <td colSpan={8} className="!pt-0">`,
+    to: `                              <td colSpan={7} className="!pt-0">`,
+    expect: "1.373 · decision 2 · the NOTE is a full-width line of its own under its row on both ledgers",
+    suite: "console-mem",
+  },
+  {
+    name: "373-note-on-the-phone · the note line is shown below `sm` too, so a phone reads every note twice — once in its stack and once beneath it",
+    file: PAGE,
+    from: `export const NOTE_ROW = "hidden sm:table-row `,
+    to: `export const NOTE_ROW = "table-row `,
+    expect: "1.373 · decision 2 · a row and its note line read as ONE record",
+    suite: "console-mem",
+  },
+  {
+    name: "373-divider-splits-the-record · the row keeps its divider above its own note, so one record reads as two",
+    file: PAGE,
+    from: `export const NOTED_ROW = " sm:!border-b-0 `,
+    to: `export const NOTED_ROW = " `,
+    expect: "1.373 · decision 2 · a row and its note line read as ONE record",
+    suite: "console-mem",
+  },
+  {
+    name: "373-desktop-gutter-back · the 12px desktop gutter returns on the account ledger, and the row no longer fits the strip it is read in",
+    file: DETAIL,
+    from: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">`,
+    to: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">`,
+    expect: "1.373 · decision 2 · both activity ledgers open with the kit class and ONE 8px gutter",
+    suite: "console-mem",
+  },
+  {
+    name: "373-desk-span-stale · the desk-wide ledger's empty state keeps a span from before the column change, which only the both-ledgers span rule can see",
+    file: PAGE,
+    from: `                        <AdminTableEmpty colSpan={10} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />`,
+    to: `                        <AdminTableEmpty colSpan={12} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />`,
+    expect: "1.373 · decision 2 · every `colSpan` on BOTH ledgers",
     suite: "console-mem",
   },
   {

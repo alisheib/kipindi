@@ -28,6 +28,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { parseCycleForm, CYCLE_BOUNDS } from "@/lib/ai-cycle-rules";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import { setCycleConfigAction, startNextCycleAction, closeCycleNowAction } from "./actions";
 /**
  * ⛔ THE SHELL'S GATE, NOT A SECOND ONE. These controls shipped reading a `canAct` prop the
@@ -67,6 +68,9 @@ export function CycleSettings(p: Props) {
   const [pauseOnEnd, setPauseOnEnd] = useState(!p.autoRoll);
   const [err, setErr] = useState<{ field?: string; message: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save — the confirm dialog's trigger. The bar draws no second one while this is
+     on screen, and when it does draw one, it presses THIS button (see `onSave` below). */
+  const saveRef = useRef<HTMLButtonElement>(null);
   /* ⛔ TWO SOURCES OF TRUTH FOR ONE QUESTION, OR-ED — and the OR is the point. The five money
      fields are UNCONTROLLED, so the snapshot hook owns them; `pauseOnEnd` is a kit <Toggle>,
      which is NOT a form field, so `FormData` cannot see it at all. Wiring only the hook would
@@ -128,7 +132,9 @@ export function CycleSettings(p: Props) {
     if (!fd) return;
 
     start(async () => {
-      const r = await setCycleConfigAction(fd);
+      /* A THROWN action (an expired session, a server fault) becomes `{ ok: false }` here, so it
+         lands in the same toast rather than ending the spinner in silence. */
+      const r = await runAdminAction(() => setCycleConfigAction(fd));
       if (!r.ok) {
         setErr({ field: r.field, message: r.error ?? "Save failed" });
         toast({ title: "Couldn't save", description: r.error, variant: "danger" });
@@ -229,12 +235,20 @@ export function CycleSettings(p: Props) {
       {err && !err.field && <p className="text-caption text-danger-fg">{err.message}</p>}
 
       {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      {/* ⛔ THE BAR PRESSES THE FORM'S BUTTON, IT DOES NOT SAVE PAST IT. Its Save used to call
+          `save()` directly — so the bar saved WITHOUT the "Save cycle settings?" dialog and its
+          not-retroactive warning, while the form's button always showed it: two Saves, two
+          ceremonies. Clicking the trigger runs the same `openGuard` and opens the same dialog,
+          whichever Save was pressed. What it presses is the form's real, focusable button — not
+          the hidden submit the header retired. */}
       <PendingChangesBar
         dirty={dirty && mayAct}
         saving={pending}
         detail="Cycle size and FX drive every projection on this page."
-        onSave={() => { if (guard()) save(); }}
+        saveAnchor={saveRef}
+        onSave={() => saveRef.current?.click()}
         onDiscard={() => { formRef.current?.reset(); setPauseOnEnd(!p.autoRoll); setErr(null); markSaved(); }}
+        saveLabel="Save settings"
       />
       <UnsavedChangesGuard dirty={dirty && mayAct} body="The AI cycle settings have been changed but not saved. Leaving now discards the change." />
 
@@ -257,7 +271,10 @@ export function CycleSettings(p: Props) {
           cancelLabel="Cancel"
           openGuard={guard}
           onConfirm={save}
-          trigger={<Button type="button" disabled={pending}>Save settings</Button>}
+          /* ⭐ Disabled while nothing has changed: a Save that is always pressable cannot tell the
+             officer whether there is anything left to save. `dirty` covers the five fields AND
+             the toggle (see its note above), so no edit can leave this button dead. */
+          trigger={<Button ref={saveRef} type="button" disabled={pending || !dirty}>Save settings</Button>}
         />
       ) : (
         // ⭐ The shared sentence names the ROLE and the DOMAIN, so the reader's next question

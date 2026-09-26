@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
@@ -11,6 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useDeferredToast } from "@/components/ui/toast";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { formatTzs } from "@/lib/utils";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import { createCampaignAction, addContactsStructuredAction, sendCampaignAction, cancelCampaignAction } from "./invite-actions";
 import { FieldLegend } from "@/components/ui/field-legend";
 
@@ -40,16 +41,22 @@ export function CreateCampaignForm() {
     name.trim() !== CAMPAIGN_DEFAULTS.name || bonus !== CAMPAIGN_DEFAULTS.bonus ||
     multiplier !== CAMPAIGN_DEFAULTS.multiplier || expiry !== CAMPAIGN_DEFAULTS.expiry ||
     messageEn !== CAMPAIGN_DEFAULTS.messageEn || messageSw !== CAMPAIGN_DEFAULTS.messageSw;
+  /** The form's own "Create campaign" — the bar's `saveAnchor`, so the two are never on screen together. */
+  const saveRef = useRef<HTMLButtonElement>(null);
 
+  /* ⛔ `runAdminAction`: a thrown action otherwise ends the spinner with no word said. It rethrows
+     a redirect and turns anything else into the `{ ok:false, error }` the toast renders.
+     ⭐ Success NAVIGATES to the new campaign, so the bar never reaches a "Saved" state here — the
+     toast is the confirmation, and `useDeferredToast` flushes it as this form unmounts. */
   const create = () => {
     if (!name.trim()) { toast({ title: "Enter a campaign name", variant: "danger" }); return; }
     start(async () => {
-      const r = await createCampaignAction({
+      const r = await runAdminAction(() => createCampaignAction({
         name: name.trim(), bonusAmountTzs: Math.round(bonus),
         wagerMultiplier: multiplier === "" ? undefined : Number(multiplier),
         expiresInDays: expiry === "" ? undefined : Number(expiry),
         messageEn, messageSw,
-      });
+      }));
       if (r.ok) { deferToast({ title: "Campaign created", variant: "success" }); router.push(`/admin/invites/${r.campaignId}` as Route); }
       else toast({ title: "Couldn't create", description: r.error, variant: "danger" });
     });
@@ -57,6 +64,9 @@ export function CreateCampaignForm() {
 
   return (
     <div className="space-y-3">
+      {/* ⛔ ONE SAVE ON SCREEN (Ali, 2026-09-26). `saveAnchor` is the form's own "Create campaign",
+          and the two share their words and their call: the bar's shows only while that one is
+          out of sight. */}
       <PendingChangesBar
         dirty={unsaved}
         saving={pending}
@@ -68,6 +78,7 @@ export function CreateCampaignForm() {
           setMessageEn(CAMPAIGN_DEFAULTS.messageEn); setMessageSw(CAMPAIGN_DEFAULTS.messageSw);
         }}
         saveLabel="Create campaign"
+        saveAnchor={saveRef}
       />
       <UnsavedChangesGuard dirty={unsaved} body="This invite campaign has been part-written and not created. Leaving now discards it." />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -91,7 +102,8 @@ export function CreateCampaignForm() {
           <Input aria-label="Message (Swahili)" size="sm" value={messageSw} onChange={(e) => setMessageSw(e.target.value)} />
         </div>
       </div>
-      <Button variant="primary" size="sm" leading={<I.plus s={14} />} loading={pending} onClick={create}>Create campaign</Button>
+      {/* ⭐ Disabled while the form still holds its defaults — there is nothing to create yet. */}
+      <Button ref={saveRef} variant="primary" size="sm" leading={<I.plus s={14} />} loading={pending} disabled={!unsaved} onClick={create}>Create campaign</Button>
     </div>
   );
 }

@@ -30,6 +30,7 @@
  *
  * @see src/lib/server/house-console-read.ts · src/lib/house-bot/console-routes.ts · plans/house-bots/C7-SPEC.md
  */
+import { Fragment } from "react";
 import type { Route } from "next";
 import { WayOutLink } from "../way-out-link";
 import Link from "next/link";
@@ -48,7 +49,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, houseWhyIdleForConsole, type ConsoleDetailView, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
 import { ActivityFilters } from "../activity-filters";
 import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab, consoleWhyHref } from "@/lib/house-bot/console-routes";
-import { UsageBar } from "../page";
+import { NOTED_ROW, NOTE_ROW, UsageBar } from "../page";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422): a client component under
  * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
  * act gate — and on an Owner-only route `mayAct` IS `mayView`, so that consultation would be a branch that can
@@ -577,9 +578,10 @@ async function AdminDeskAccountContent({
                   {/* ⭐ THE MONEY ANSWERS FIT ON A PHONE, AND THE LEVER IS PADDING — the whole argument is at the
                       desk-wide table's own activity table, which carries the same two classes for the same reason:
                       `.admin-tbl td`/`th` are (0,1,1) with 16px gutters, so the `p-3` below is DEAD, and halving
-                      the gutter at phone width buys back more strip than the type could. `sm:` restores the kit's
-                      own 16px, so every width that already read well is unchanged. */}
-                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">
+                      the gutter at phone width buys back more strip than the type could. Since 2026-09-26 the same
+                      8px gutter holds at every width, with Type and Note out of their columns — one ledger shape on
+                      both pages (RESUME-HERE §0c decision 2). */}
+                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">
                     <thead className="max-sm:hidden font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         {/* ⭐ LOWERED AT PHONE WIDTH ONLY so the second money answer reaches the strip. The
@@ -599,8 +601,9 @@ async function AdminDeskAccountContent({
                             paints a STATE, the roster still carries no balance, and no player surface carries it. */}
                         <th scope="col" className="text-right p-3 !whitespace-normal">Closing</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
+                        {/* ⭐ THE STAKE'S TYPE IS THIS CELL'S SECOND LINE, IN PLAIN WORDS — the desk-wide table's
+                            own decision (2026-09-26), so the two ledgers keep one shape. */}
                         <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
-                        <th scope="col" className="text-left p-3">Type</th>
                         {/* ⛔ BESIDE PRODUCT, NOT FIRST. The visual gate's §5.2 contract measures the first
                             THREE cells — today When · Stake · Outcome — and asserts the subject and the first
                             money answer are in the 360 strip without scrolling. Putting the game there would
@@ -608,18 +611,21 @@ async function AdminDeskAccountContent({
                             glance. Here it reads with Product, the other fact about what was played on. */}
                         <th scope="col" className="text-left p-3">Round</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Game</th>
-                        <th scope="col" className="text-left p-3 !whitespace-normal">Note</th>
+                        {/* ⭐ NO `Note` COLUMN — a row that carries a note gets its own full-width line beneath it. */}
                       </tr>
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={10} title={view.feedEmpty.title} body={view.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={8} title={view.feedEmpty.title} body={view.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
                              served markup, and a bounded record id is the one thing D19 says this section may
-                             never put in a response. */
-                          <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
+                             never put in a response.
+                             ⭐ ONE RECORD, UP TO TWO ROWS — the row and its note's own line; the classes that make
+                             the pair read as one live beside the desk-wide table, which renders the same shape. */
+                          <Fragment key={`${r.whenTitle}-${i}`}>
+                          <tr className={`border-b border-border-subtle${r.note !== null ? NOTED_ROW : ""}${r.anchored ? " bg-bg-overlay" : ""}`}>
                             {/* ⭐ THE PHONE'S OWN ROW SHAPE (owner, 2026-09-25). MEASURED, not preferred: with three
                                 money columns the third cell ended at 357 against a 339px strip — and that was with an
                                 em dash in it. A 9-column table cannot be read on a 360px phone by narrowing columns,
@@ -628,7 +634,7 @@ async function AdminDeskAccountContent({
                                 ⛔ ONE VIEW MODEL, TWO LAYOUTS — every string here is the same painted field the
                                 cells above use. Nothing is re-derived, re-formatted or re-worded for the phone, so
                                 the two shapes cannot drift into saying different things about one row. */}
-                            <td className="sm:hidden p-3" colSpan={10}>
+                            <td className="sm:hidden p-3" colSpan={8}>
                               <div className="flex items-start justify-between gap-2">
                                 {/* ⛔ THE SAME THREE BRANCHES THE WIDE TABLE PAINTS, in the same order and with the
                                     same words — a row with no stored title still gets its DOOR, because the market is
@@ -713,8 +719,11 @@ async function AdminDeskAccountContent({
                                 ended the officer wants the next fact, so the same chip becomes Won / Lost / Void.
                                 ⛔ ONE CHIP, NOT TWO — a second badge beside the first is how two states come to
                                 disagree about one row. A stake still running has no result and keeps "Placed". */}
-                            <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip></td>
-                            <td className="hidden sm:table-cell p-3 text-text">{r.typeWord}</td>
+                            <td className="hidden sm:table-cell p-3">
+                              <Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip>
+                              {/* The stake's type, as the chip's second line in plain words — never a second chip. */}
+                              <span className="block mt-1 text-body-sm text-text-secondary">{r.typeWord}</span>
+                            </td>
                             {/* ⚠️ BESIDE THE GAME, because a round number is not unique on its own — each Up & Down chain counts its
                                 own, so `#1524` exists once per chain and identifies a round only with its game next to it. */}
                             <td className="hidden sm:table-cell p-3 tabular text-text-secondary">{r.roundNo ?? <span className="text-text-tertiary">—</span>}</td>
@@ -732,8 +741,17 @@ async function AdminDeskAccountContent({
                                 </Link>
                               )}
                             </td>
-                            <td className="hidden sm:table-cell p-3 text-text-secondary">{r.note ?? "—"}</td>
                           </tr>
+                          {/* ⭐ THE NOTE'S OWN LINE, from `sm` up and only on a row that carries one — the desk-wide
+                              table's shape, held to a reading measure beneath its row. */}
+                          {r.note !== null && (
+                            <tr className={`${NOTE_ROW}${r.anchored ? " bg-bg-overlay" : ""}`}>
+                              <td colSpan={8} className="!pt-0">
+                                <div className="max-w-[80ch] whitespace-normal text-body-sm text-text-secondary">{r.note}</div>
+                              </td>
+                            </tr>
+                          )}
+                          </Fragment>
                         ))
                       )}
                     </tbody>

@@ -278,7 +278,8 @@ export function AddSourceForm() {
       )}
 
       <div className="flex gap-2">
-        <button ref={saveRef} type="submit" disabled={pending} className="btn btn-primary btn-md">
+        {/* Disabled while nothing has been typed or picked — the same `dirty` the bar and the guard read. */}
+        <button ref={saveRef} type="submit" disabled={pending || !dirty} className="btn btn-primary btn-md">
           {pending ? "Adding…" : "Add source"}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-md">
