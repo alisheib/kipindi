@@ -6,6 +6,35 @@
 
 ---
 
+## 2026-09-26 (second) · Marketing SMS — no Gaming Board approval, no PDPA registration, and the helpline is OURS (owner rulings on OQ1, OQ2, OQ4)
+
+**Owner instruction (Ali, 2026-09-26), as typed:** *"gaming board said they done tcar eit snor part of their approbla we
+cans end anythgina s logn as we have sms gaetway. pdf is not needed as well . the right helpline is ours."* Read as:
+the Gaming Board told him marketing SMS is not part of their approval — 50pick may send as long as it has an SMS
+gateway; PDPA registration is not needed; and the right helpline is 50pick's own. These are the three legal
+questions the marketing plan (`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §4a) reserved for the owner.
+
+| Question | Safe default that had shipped | Owner ruling | What changes |
+|---|---|---|---|
+| **OQ1** — does SMS marketing need the Board's (prior written) approval? | the broadcast surface built CLOSED, dispatch refusing until an approval record exists (OD17, U41) | **No** — the Board says it is not within their approval | OD17's approval gate is withdrawn: no `gbt.advertising_approval` record is required and U41 does not build one |
+| **OQ2** — must 50pick be registered with the Personal Data Protection Commission first? | a registration reference recorded before the first bulk import of non-account contacts | **Not needed** | the contacts import (U23–U33) does not wait on a registration reference |
+| **OQ4** — which helpline: ours (`0800 11 0011`) or the Board Code's (`0800110051`)? | the marketing footer carried the Board's number, and a guard asserted the two DIFFER | **Ours** | the footer now reads the one published number from `support-config.ts`; the guard asserts they are the SAME; D6 closed |
+
+⛔ **What these rulings do NOT change, stated so nobody reads more into them.** The Board's position removes an
+APPROVAL step; it does not remove the law every marketing SMS is under, which comes from elsewhere:
+- **Consent** — ETA Cap 442 s.32 and EPOCA GN 61 reg 7(4) (communications law, TCRA's field, not the Board's):
+  a marketing SMS still needs the recipient's consent, an identified sender and an opt-out in every message.
+- **Self-excluded players** — GN 478T reg 49(3) forbids promotional material to them during the exclusion, and
+  50pick's own published RG Policy §4 (v2026-09-26) promises more. Every responsible-gambling gate stays.
+- The engine still refuses minors, unknown ages and anyone suppressed, and the footer still carries the sender,
+  `18+`, the helpline and the stop link.
+
+**Where it is enforced:** `src/lib/marketing/footer.ts` (`STATUTORY_SMS_HELPLINE` = `support-config.ts`'s
+`HELPLINE_TEL()`), guarded by `test:campaign-compose` §12. The approval gate was never built, so withdrawing it
+removes no code.
+
+---
+
 ## 2026-09-26 · RG Policy v2026-09-26 — §4 says only what the code does; the under-25 promise is BUILT, the late-night bullet CUT
 
 **Authority.** Ali, 2026-09-26, delegating: *"take any decision needed based on overall decisions I took ever and
@@ -44,8 +73,9 @@ age we cannot confirm; (2) no marketing messages, ever, to a player under 25 who
 **Guard:** `test:rg-policy` — the version, a hash of the binding English, this heading, and every §4 bullet mapped to a
 named control in code; a bullet with no control is refused. **Red:** `red:rg-policy`.
 
-⚠️ **What this does NOT claim.** No marketing SMS is sent today — the campaign engine is not built and broadcast stays
-closed until the Gaming Board's written approval (MARKETING-CAMPAIGN-AND-CONTACTS-SETUP §4a OQ1). §4 describes the
+⚠️ **What this does NOT claim.** No marketing SMS is sent today — the campaign engine is not built yet. (This line
+also said broadcast waits on the Gaming Board's written approval; the owner ruled the same day that it does not —
+see 2026-09-26 (second), above.) §4 describes the
 rules every marketing message will pass; it is true now because nothing is sent, and it stays true because every send
 must go through that gate (U9's dispatch step).
 

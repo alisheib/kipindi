@@ -24,7 +24,8 @@ import { ageOnPlatformDate, MIN_AGE_YEARS } from "@/lib/id-documents";
  * Since S7 it also decides AGE (U11: under 18 or unknown refuses; a contact is `age_unknown` until U33
  * records an 18+ attestation) and the published under-25 promise (U12).
  * ⚠️ WHAT THIS GATE DOES **NOT** YET DECIDE, so nobody reads a false completeness into it: the frequency
- * cap (U14), the send window (U13) and the Board's approval (U41) are separate steps.
+ * cap (U14), the send window (U13) and the officer authorisation (U41) are separate steps. (There is no
+ * Gaming Board approval step: Ali ruled 2026-09-26 that marketing SMS is not part of its approval — OQ1.)
  * ⛔ AND IT IS ASKED BY THE LOOP, NOT BY A LIST: `dispatch.ts` (U9) asks it per recipient immediately
  * before the send, so somebody who opts out in minute two does not receive minute four's message.
  */

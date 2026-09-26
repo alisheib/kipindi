@@ -378,8 +378,8 @@ it. ✅ Delivery receipts WORK end to end since 2026-09-23: the gateway fires th
 echoes our `sms_…` reference, and settles the real `SmsMessage` row (11 s on the first
 production send). Railway keeps HTTP logs only for the CURRENT deployment — the audit chain
 is the durable record. Live state, the go-live order and the open vendor questions:
-`docs/BLACKBALL-SMS.md`. Marketing/broadcast SMS is a separate programme that ships CLOSED:
-`docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`.
+`docs/BLACKBALL-SMS.md`. Marketing/broadcast SMS is a separate programme, in build:
+`docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` (no Gaming Board approval needed — Ali, 2026-09-26).
 
 ## Persistence
 
@@ -596,8 +596,9 @@ full set (36 routes, all double-gated out of production).
 1. ~~**SMS contract**~~ — ✅ DONE 2026-09-16/23: Blackball is live
    (`SMS_PROVIDER=blackball`) and delivery receipts settle real rows. *(This
    line said OTP was still on `console`, corrected 2026-09-25.)* Marketing
-   SMS additionally needs the Gaming Board's written approval — see
-   `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §4a OQ1.
+   SMS needs no Gaming Board approval (Ali, 2026-09-26 — the Board says it is
+   not part of its approval); it waits only on the campaign engine
+   (`docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`).
 2. **GBT pre-application meeting** (regulator confirmation that the
    pari-mutuel pool model classifies as betting under their license).
 3. **Mobile-money aggregator agreement** — deposit / withdrawal flows

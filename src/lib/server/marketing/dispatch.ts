@@ -35,8 +35,9 @@ import type { SmsBatchOutcome, SmsOutbound } from "@/lib/server/sms";
  *
  * ⛔ `send` HAS NO DEFAULT. Until U35 adds `SmsPurpose.MARKETING` there is no honest purpose to give
  * `sendBatch` (folding marketing into `INVITE` or `OPS` is D22's defect), so nothing in production can
- * reach the wire through this function yet — which is also why the broadcast surface stays CLOSED
- * (OQ1). The caller that supplies the real `send` is U43.
+ * reach the wire through this function yet. (No Gaming Board approval gate is needed — Ali, 2026-09-26,
+ * OQ1 — so what keeps marketing off the wire today is only that the engine is not built.) The caller
+ * that supplies the real `send` is U43.
  *
  * ⭐ THE RG AUDIT LINE LIVES HERE, NOT IN THE GATE (U10). `push.suppressed.rg_lockout` is the precedent:
  * one COMPLIANCE row per RG refusal, against the ACCOUNT, never a phone number (§5.14). It is written

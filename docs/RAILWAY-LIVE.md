@@ -351,7 +351,7 @@ npm run test:backup-watchdog                # the alert-that-arrives proof, 24/2
 
 | | Item | Status |
 |---|---|---|
-| 1 | SMS provider | ✅ **DONE 2026-09-16** (corrected 2026-09-25) — `SMS_PROVIDER=blackball`, sender ID `50pick`; delivery receipts settle real rows since 2026-09-23 ([`BLACKBALL-SMS.md`](BLACKBALL-SMS.md) §4.8). Marketing SMS is a separate programme and stays closed until the Gaming Board's written approval ([`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) §4a, OQ1) |
+| 1 | SMS provider | ✅ **DONE 2026-09-16** (corrected 2026-09-25) — `SMS_PROVIDER=blackball`, sender ID `50pick`; delivery receipts settle real rows since 2026-09-23 ([`BLACKBALL-SMS.md`](BLACKBALL-SMS.md) §4.8). Marketing SMS is a separate programme; no Gaming Board approval is needed (Ali, 2026-09-26 — [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) §4a, OQ1), so it waits only on the campaign engine |
 | 2 | `DISABLE_ADMIN_TOTP=true` | 🔴 open — campaign E-255; forced-enrolment flow EXISTS in code (exempt `/admin/2fa/setup`), lockout fear is contradicted by `admin/layout.tsx:110-122`, but the flow has never been driven; prove locally → flip → drive a QA admin through enrolment live |
 | 3 | Health endpoint can't fail | ✅ **FIXED on main** (`795d31c1` + `test:health-readiness`) |
 | 3b | Railway healthcheck/overlap/draining | 🟡 authored on `launch-1k-phase2` (.railway/railway.ts, plan verified) — merge + `railway config apply` (Ali) |

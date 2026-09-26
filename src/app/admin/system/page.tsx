@@ -8,7 +8,7 @@ import { getSupportConfig } from "@/lib/server/support-config";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
-import { smsHealthSnapshot, smsBalanceSnapshot, sms as smsClient } from "@/lib/server/sms";
+import { smsHealthSnapshot, smsBalanceSnapshot, refreshSmsBalance, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { admissionSnapshot } from "@/lib/server/admission";
 import { retrySnapshot } from "@/lib/server/retry";
@@ -154,6 +154,10 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
   const session = await currentSession().catch(() => null);
   const auditCount = (await houseAuditForConsole(session?.userId ?? null, "/admin/system", getAuditPage({ limit: 100_000 }))).length;
   const smsHealth = smsHealthSnapshot();
+  // The balance is read LIVE from the gateway (free, sends nothing) when the in-process reading is
+  // missing or over a minute old — after a restart there is otherwise no figure to show at all.
+  // ⛔ Guarded like every reading on this page: a vendor hiccup must never 500 the system page.
+  await refreshSmsBalance({ maxAgeMs: 60_000 }).catch(() => null);
   const smsBalance = smsBalanceSnapshot();
   let totalUsers = 0;
   try { totalUsers = (await db.user.list()).length; } catch { /* graceful */ }
@@ -213,8 +217,10 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
               value that actually carries the fact rather than re-deriving it. The balance
               is here because an SMS costs TZS 6 (measured on the first live send), the
               account opened with TZS 250, and an SMS rail that runs out of credit is, once
-              OTP is the login path, a login outage. */}
-          <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.successRate === null ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent${smsBalance.tzs === null ? "" : ` · ${formatTzs(smsBalance.tzs)}`}`} deltaDir={smsBalance.belowAlert ? "down" : undefined} pulse={smsBalance.belowFloor} />
+              OTP is the login path, a login outage. The caption wraps by design (E-30), but
+              never INSIDE the amount — "TZS" at the end of one line and "185" on the next
+              read as two facts, so the amount's own space is made non-breaking. */}
+          <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.successRate === null ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent${smsBalance.tzs === null ? "" : ` · ${formatTzs(smsBalance.tzs).replace(" ", String.fromCharCode(0xa0))}`}`} deltaDir={smsBalance.belowAlert ? "down" : undefined} pulse={smsBalance.belowFloor} />
         </KpiGrid>
 
         {/* Maintenance mode — global pause of new bets + deposits (§9.3 #1) */}

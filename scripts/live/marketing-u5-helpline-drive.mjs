@@ -107,8 +107,8 @@ ok(`⭐ every helpline-labelled link DIALS it (${HELPLINE_TEL}) — the href is 
 ok("⛔ …and no helpline-labelled link dials the operator's own desk — the real three-week defect",
    !helplineLinks.some((l) => l.href.includes(OPERATOR_DESK) || l.label.includes(OPERATOR_DESK)),
    JSON.stringify(helplineLinks));
-ok("⛔ …nor the Gaming Board's 0800110051, which is OQ4 and must not appear here until Ali answers",
-   !body.includes("0800110051"), "the published page now carries the Board's number — that is an owner decision, not a cleanup");
+ok("⛔ …nor the Gaming Board Code's 0800110051 — OQ4 answered 2026-09-26: ours is the helpline",
+   !body.includes("0800110051"), "the published page carries the Board's number — Ali ruled ours is the right one");
 
 await page.screenshot({ path: `${SHOTS}/1280-responsible-gambling.png`, fullPage: false });
 

@@ -18,7 +18,7 @@
  *
  * Run: npm run test:sms-cost-guard
  */
-import { sendBatch, smsBalanceSnapshot } from "../src/lib/server/sms.ts";
+import { sendBatch, smsBalanceSnapshot, refreshSmsBalance } from "../src/lib/server/sms.ts";
 import { db } from "../src/lib/server/store.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 
@@ -211,6 +211,28 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
   await sendBatch(invite(3));
   const after = (await db.smsMessage.listRecent(10_000)).length;
   ok("§5 a batch held by the floor writes no SmsMessage rows (nothing was attempted)", after === before, `${before} -> ${after}`);
+}
+
+/* ══ §7 · THE OPERATOR'S LIVE READ — `refreshSmsBalance` (admin System page, 2026-09-26) ═══════ */
+// After a restart the in-process reading is empty and the admin card showed no balance at all. The live
+// read is the SAME free, authenticated endpoint `sendBatch` refreshes from, recorded in the SAME snapshot.
+{
+  resetBalance();
+  balanceReply = balanceIs(185);
+  balanceCalls = 0; calls = 0;
+  const first = await refreshSmsBalance();
+  ok("§7 with no reading, the live read asks the balance endpoint and returns the account's figure",
+    first === 185 && balanceCalls === 1, `got ${first}, ${balanceCalls} read(s)`);
+  ok("§7 …records it in the ONE snapshot, so /api/health and the alarm read the same figure", smsBalanceSnapshot().tzs === 185);
+  ok("§7 ⛔ …and it SENDS nothing — the balance endpoint is the only request", calls === 0, `${calls} send request(s)`);
+  const again = await refreshSmsBalance();
+  ok("§7 a reading under a minute old is reused — a page render cannot hammer the vendor", again === 185 && balanceCalls === 1, `${balanceCalls} read(s)`);
+  resetBalance();
+  balanceReply = balanceRefused;
+  const refused = await refreshSmsBalance();
+  ok("§7 ⛔ a REFUSED read (its 0.0 is not the account's balance) records nothing — unknown stays unknown, never low",
+    refused === null && smsBalanceSnapshot().tzs === null && !smsBalanceSnapshot().belowFloor, `got ${refused}`);
+  balanceReply = balanceRefused;
 }
 
 console.log(`\nsms-cost-guard: ${pass} passed, ${fail} failed`);

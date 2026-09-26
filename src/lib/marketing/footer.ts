@@ -25,20 +25,20 @@
  * ⭐ `18+` is a symbol rather than prose deliberately: the shipped sentence "miaka 18 au zaidi" is
  * fifteen septets and this footer has forty-nine to spend in total.
  *
- * ── 🔴 THE HELPLINE HERE IS NOT THE ONE `support-config.ts` PUBLISHES ────────
- * `support-config.ts` pins `0800 11 0011`. The Gaming Board's own Advertising Code names
- * `0800110051`, three times. That contradiction is OQ4, and it is ALI'S to answer — not a thing to
- * resolve by quietly making the two agree. ⛔ DO NOT "FIX" THIS FILE BY POINTING IT AT
- * `support-config.ts`: the safe default recorded in §4a is that the marketing footer carries the
- * REGULATOR'S number, because a statutory footer citing a helpline the regulator does not recognise
- * is the failure that matters, and no published page is changed silently. When OQ4 is answered, one
- * constant moves. `test:campaign-compose` §12 asserts the two are deliberately different and names
- * this note, so an "obvious cleanup" fails instead of shipping.
+ * ── THE HELPLINE IS THE ONE `support-config.ts` PUBLISHES — OQ4 ANSWERED ───────
+ * Until 2026-09-26 this footer carried the Gaming Board Advertising Code's `0800110051` while
+ * `support-config.ts` publishes `0800 11 0011`, and that contradiction was OQ4 — deliberately left
+ * unresolved until the owner answered. ⭐ Ali, 2026-09-26: *"the right helpline is ours."* So the footer
+ * now reads the ONE published number from `support-config.ts` (its dial form, no spaces — the same ten
+ * septets the Board's number took, so the 49-septet footer budget is unchanged). ⛔ Never a second
+ * helpline literal here again: `test:campaign-compose` §12 asserts the footer IS the published number
+ * and that the Board's number appears nowhere in it.
  *
  * Guard: `npm run test:campaign-compose`.
  */
 import { appUrl } from "@/lib/app-url";
 import { sizeSms, SMS_LIMITS, type SmsSize } from "@/lib/sms-compose";
+import { HELPLINE_TEL } from "@/lib/support-config";
 
 /** The opt-out path's token length. ⛔ The route itself is plan U8; this is the length it must mint. */
 export const OPTOUT_TOKEN_CHARS = 8;
@@ -46,11 +46,8 @@ export const OPTOUT_TOKEN_CHARS = 8;
 /** The opt-out path. `50pick.tz/s/<token>` — short because every character is a septet. */
 export const OPTOUT_PATH = "/s/";
 
-/**
- * 🔴 THE BOARD'S NUMBER, NOT OURS — see the header. OQ4 is open; this is the safe default that
- * ships meanwhile, and it deliberately differs from `support-config.ts`.
- */
-export const STATUTORY_SMS_HELPLINE = "0800110051";
+/** OURS — the number `support-config.ts` publishes, in dial form (OQ4, answered 2026-09-26). */
+export const STATUTORY_SMS_HELPLINE = HELPLINE_TEL();
 
 /** ETA s.32(1)(b): the sender must be identified, and at the START of the message. */
 export const SENDER_IDENTITY = "50pick";
@@ -80,7 +77,7 @@ export function shortDomain(): string {
 /**
  * The footer, exactly as it will be sent. ⛔ The leading newline is part of it and part of its cost.
  *
- * `\n50pick 18+ 0800110051 Acha: 50pick.tz/s/<token>`
+ * `\n50pick 18+ 0800110011 Acha: 50pick.tz/s/<token>`
  */
 export function marketingFooter(token: string, locale: MarketingLocale = "SW"): string {
   return `\n${SENDER_IDENTITY} 18+ ${STATUTORY_SMS_HELPLINE} ${STOP_WORD[locale]}: ${shortDomain()}${OPTOUT_PATH}${token}`;

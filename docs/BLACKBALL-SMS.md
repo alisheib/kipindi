@@ -15,8 +15,9 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 > ▶ **Bulk/marketing sending is a SEPARATE programme, in build:**
 > [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) — the contacts
 > book and the campaign engine. Where it stands lives only in its §0 and §1, so no count is restated
-> here. ⛔ It ships CLOSED until the Gaming Board advertising approval is on file, and Phase A builds
-> the consent, suppression, opt-out and responsible-gambling gates *before* anything can send.
+> here. No Gaming Board approval is needed (Ali, 2026-09-26 — the Board says marketing SMS is not part of
+> its approval); what gates a marketing send is the consent, suppression, opt-out, responsible-gambling and
+> age check Phase A built, asked per recipient before anything goes out.
 >
 > **Left with the vendor, none of it blocking:** the three whitelisted sender-ID strings with TCRA
 > confirmation, the interval between their 5 retries, and the `CODE` values that accompany failure

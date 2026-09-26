@@ -219,8 +219,9 @@ touched. `qa:sse-edge` takes `SSE_RESOLVE=<ip>` for exactly this; `curl` takes `
   was reversed):** `SMS_PROVIDER=blackball` since 2026-09-16, with `BLACKBALL_CLIENT_ID` /
   `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET` and `SMS_SENDER_ID=50pick`. Delivery
   receipts proven end to end 2026-09-23. Phone-code login stays off on purpose (`OTP_ENABLED`
-  unset). Marketing/bulk SMS stays CLOSED until the Gaming Board's written approval (OQ1 in
-  [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md)).
+  unset). Marketing/bulk SMS needs no Gaming Board approval (Ali, 2026-09-26, OQ1 in
+  [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md)); it waits only
+  on the campaign engine being built.
   Authority: [`BLACKBALL-SMS.md`](BLACKBALL-SMS.md).
 - **To remove at the switch (still set, no-op):** `SPORTS_API_PROVIDER` (markets are
   AI-generated), `DEMO_MODE_ENABLED` (read nowhere) — folded into the switch redeploy.

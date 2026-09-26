@@ -187,6 +187,26 @@ export function smsBalanceSnapshot(): {
   };
 }
 
+/**
+ * ⭐ READ THE ACCOUNT BALANCE NOW — `POST /api/account/balance`: authenticated, sends nothing, costs
+ * nothing — and record it in the ONE snapshot, so `/api/health`, the admin card and the low-balance
+ * alarm all read the same figure. Exactly the refresh `sendBatch` already does before a floor decision,
+ * lifted out so an operator can ask for it: the snapshot is in-process and empty after every restart, so
+ * the admin System page showed no balance at all until something happened to send (Ali, 2026-09-26:
+ * "check the app — you can know how much we have now"). A reading younger than `maxAgeMs` is reused,
+ * so a page render cannot hammer the vendor. ⛔ Never throws; a failed or refused read leaves the
+ * reading unknown, and unknown is never treated as low.
+ */
+export async function refreshSmsBalance(opts: { maxAgeMs?: number } = {}): Promise<number | null> {
+  const before = smsBalanceSnapshot();
+  if (before.tzs !== null && before.at !== null && Date.now() - before.at < (opts.maxAgeMs ?? 60_000)) return before.tzs;
+  const transport = pickTransport();
+  if (!transport?.balance) return before.tzs;
+  const fresh = await transport.balance().catch(() => null);
+  if (fresh !== null) recordBalance(fresh);
+  return smsBalanceSnapshot().tzs;
+}
+
 export function smsHealthSnapshot(): { sent: number; failed: number; successRate: number | null } {
   const h = health();
   const total = h.sent + h.failed;
