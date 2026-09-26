@@ -1115,6 +1115,14 @@ asserts the ORDER, not just the presence. A gate not in the pipeline is not a ga
 2026-09-19: *he will not turn the switch on until a session tells him, in writing and on evidence, that it is
 ready.* So the sequence is fixed — a session states readiness, Ali decides — and a green gate is never permission.
 
+⚠️ **Who may switch the desk ON (decided 2026-09-26 under the owner's delegation):** D1's "Ali alone turns it on" is
+enforced as the platform's OWNER ROLE — ADMIN, the tier that alone runs staff, roles and the desk; who holds it is the
+owner's choice on `/admin/staff`. There is no per-account list (it would be a second, hidden notion of "owner" and would
+lock the desk off after an automatic stop). Every switch-on writes an event and a compliance audit row naming its actor
+and alerts every admin; switching OFF stays open to every ADMIN. The record is `docs/COMPLIANCE-DECISIONS.md`, entry
+`2026-09-26 · D1 READ AS THE OWNER ROLE`. ⛔ FS-09's other alerts (designation, verify, Start, rules and limits saves)
+are still NOT sent — an open build (RESUME-HERE §5).
+
 | Step | What it is | How it is proved |
 |---|---|---|
 | **R0** (T-1 day) | Merge `origin/main`. Everything green on ONE SHA. Checklist to Ali. | `npm run test:all`, every `red:house-bot-*`, `KP_SCRATCH_PORT=5453 npm run qa:house-bot-fleet` (lanes A–M on one database, with `KP_FLEET_SILENT=1` as its meta-mutation — register E, 2026-09-23: it is the ONLY instrument where several accounts decide under a real engine at once, and until today it ran when somebody remembered to run it), `npm run qa:house-bots-local`, `npm run qa:house-bots-visual`, the S4 rehearsals, the coverage gate (`npm run test:scenario-coverage` — read its printed bracket, do not tick it), `npm run ops:release-migration-parity` GO and `npm run ops:preflight-house-bot-migrations` GO |
