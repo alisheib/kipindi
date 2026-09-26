@@ -70,10 +70,40 @@ const clickIfThere = (name) =>
   soft(`click ${name}`, () => page.getByRole("button", { name }).click({ timeout: 4000 }));
 
 const post = (path, data) => page.request.post(`${BASE}${path}`, { data });
+/**
+ * ⛔ THE BAR HAS TWO STATES ON ONE ELEMENT (2026-09-26): "dirty" (unsaved work, Discard, maybe Save) and, for
+ * 2.5 s after a save lands, "saved" (a word and no button). `bar()` reads ONLY the dirty state, so "the bar is
+ * up" (5.2, 8.5) cannot pass on a Saved bar and "the bar went away" (7.2) is not failed by one.
+ */
 const bar = () => page.evaluate(() => {
-  const el = document.querySelector(".kp-rail.fixed");
+  const el = document.querySelector('.kp-rail.fixed[data-pending-state="dirty"]');
   return el ? el.innerText.replace(/\s+/g, " ").trim() : null;
 });
+const savedBar = () => page.evaluate(() => {
+  const el = document.querySelector('.kp-rail.fixed[data-pending-state="saved"]');
+  return el ? { text: el.innerText.replace(/\s+/g, " ").trim(), buttons: el.querySelectorAll("button").length } : null;
+});
+/**
+ * ⚠️ THE SAVED STATE DWELLS 2.5 s AND `submitForm` SPENDS OVER 1 s SETTLING, so a read after it can race the
+ * dwell. This records the FIRST saved state the page paints; `savedSeen()` hands it back and stops recording.
+ */
+const watchSaved = () => page.evaluate(() => {
+  window.__kpSavedSeen = null;
+  const read = () => {
+    const el = document.querySelector('.kp-rail.fixed[data-pending-state="saved"]');
+    if (!el || window.__kpSavedSeen) return;
+    window.__kpSavedSeen = {
+      text: el.innerText.replace(/\s+/g, " ").trim(),
+      buttons: el.querySelectorAll("button").length,
+      role: el.getAttribute("role"),
+      live: el.getAttribute("aria-live"),
+    };
+  };
+  const mo = new MutationObserver(read);
+  mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-pending-state"] });
+  window.__kpSavedStop = () => mo.disconnect();
+});
+const savedSeen = () => page.evaluate(() => { window.__kpSavedStop?.(); return window.__kpSavedSeen ?? null; });
 const toasts = () => page.evaluate(() =>
   [...document.querySelectorAll("[role=region] [role=status], [role=region] [role=alert]")]
     .map((e) => e.innerText.replace(/\s+/g, " ").trim()).filter(Boolean));
@@ -283,6 +313,8 @@ await clickIfThere("Discard");
 await page.waitForTimeout(700);
 const afterDiscard = await boxState("product-updown");
 ok("4.1 Discard clears the pending bar", (await bar()) === null);
+/* ⛔ Discard is not a save, and a bar that said "Saved" here would be a lie about the officer's money rules. */
+ok("4.1b …and it does not claim a save", (await savedBar()) === null, JSON.stringify(await savedBar()));
 ok("4.2 …and puts the switch back, in the DOM AND in the paint",
   afterDiscard && afterDiscard.checked === false && afterDiscard.painted === false, JSON.stringify(afterDiscard));
 
@@ -333,6 +365,8 @@ await submitForm();
 const refusal = (await toasts()).join(" ~~ ");
 const marked = await invalidFields();
 ok("6.1 the save is refused and says so", /Couldn't save/.test(refusal), refusal.slice(0, 160));
+ok("6.1b …and the bar stays on the unsaved work — never \"Saved\" over a refusal",
+  (await bar()) !== null && (await savedBar()) === null, JSON.stringify({ bar: await bar(), saved: await savedBar() }));
 ok("6.2 EVERY wrong field is marked, not just the first", marked.length >= 2, JSON.stringify(marked));
 ok("6.3 …and the message says how many", /\d+ fields need fixing/.test(refusal) || marked.length === 1, refusal.slice(0, 160));
 ok("6.4 …and focus is taken to a marked field",
@@ -397,10 +431,15 @@ console.log("\n§7 · a save that lands");
 await clearToasts();
 await soft("switch poll-categories.sports", () => clickSwitch("poll-categories.sports"));
 await page.waitForTimeout(400);
+await soft("watch for Saved", () => watchSaved());
 await submitForm();
 const saved = (await toasts()).join(" ~~ ");
+const seenSaved = await soft("read Saved", () => savedSeen(), null);
 ok("7.1 the save lands once a category is chosen", /Saved/.test(saved) && !/Couldn't save/.test(saved), saved.slice(0, 160));
 ok("7.2 …and the pending bar goes away", (await bar()) === null);
+ok("7.2a …and in its place the bar says Saved, with no button, as the same polite status",
+  !!seenSaved && /^saved$/i.test(seenSaved.text) && seenSaved.buttons === 0 && seenSaved.role === "status" && seenSaved.live === "polite",
+  JSON.stringify(seenSaved));
 ok("7.2b …and the group's mark is gone", (await invalidFields()).length === 0, JSON.stringify(await invalidFields()));
 
 // a SECOND save straight after the first must not meet a version conflict
