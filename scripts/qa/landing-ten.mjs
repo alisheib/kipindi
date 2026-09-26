@@ -275,11 +275,23 @@ const CHECKS = /* js */ `(() => {
       overlays.push(el);
     }
     const TARGETS = ".kp-qrow__price, .kp-qrow__num, .kp-proof__num, .kp-topic__m, a.btn, button.btn, .mcardp-yes, .mcardp-no, .kp-shead__link";
+    /* ⚠️ THE SCREEN ENDS WHERE THE BOTTOM RAIL BEGINS — V15's own rule, applied here too (landing v3).
+       The rail is docked over the last ~64px and the page reserves that space, so a control whose
+       sampling line lies under it is BELOW THE FOLD, not buried: one scroll and it is clear. Counted
+       as occlusion, the first v3 run (2026-09-26) reported the proof figures, the CTAs and the
+       featured card's YES/NO peeking at the fold of the 320–768 frames as "buried". The rail is not exempted as an overlay; a target
+       whose centre is on the screen and still loses the hit test (the chat bubble) is still found. */
+    let fold = vh;
+    for (const o of overlays) {
+      const r = o.getBoundingClientRect();
+      if (r.width > vw * 0.6 && r.bottom >= vh - 1 && r.top > vh * 0.6) fold = Math.min(fold, r.top);
+    }
     const bad = [];
     for (const t of document.querySelectorAll(TARGETS)) {
       if (!vis(t)) continue;
       const r = t.getBoundingClientRect();
       if (r.bottom < 0 || r.top > vh) continue;
+      if (r.top + r.height / 2 >= fold) continue;             // below the fold: the rail's space, not an occlusion
       let buried = 0;
       for (let i = 0; i < 5; i++) {
         const x = r.left + (r.width * (i + 0.5)) / 5, y = r.top + r.height / 2;
@@ -798,7 +810,7 @@ const REDS = {
         e.style.cssText += ";overflow:hidden !important;white-space:nowrap !important;text-overflow:clip !important;max-width:20px !important;display:block !important";
         return { applied: e.scrollWidth > e.clientWidth + 1, note: e.scrollWidth + " vs " + e.clientWidth }; })()`,
 
-  V3: `(() => { const t = [...document.querySelectorAll(".kp-qrow__price, a.btn, .kp-proof__num")].find((x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.top >= 0 && r.top < innerHeight; });
+  V3: `(() => { const t = [...document.querySelectorAll(".kp-qrow__price, a.btn, .kp-proof__num")].find((x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.top >= 0 && r.top + r.height / 2 < innerHeight * 0.6; });
         if (!t) return { applied: false, note: "no on-screen target" };
         const r = t.getBoundingClientRect(); const f = document.createElement("div");
         f.style.cssText = "position:fixed;z-index:99999;background:#f00;width:" + Math.max(24, r.width) + "px;height:" + Math.max(24, r.height) + "px;left:" + r.left + "px;top:" + r.top + "px";
