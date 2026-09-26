@@ -2171,6 +2171,9 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   "src/app/api/dev-test/stress-regulator-grade/route.ts": "a dev-test route that answers 404 in production; it counts the ring's rows and checks their order",
   "src/lib/server/house-bot/eligibility.ts": "the designation's own officer lookup: an email read from the holder's rows, never a row handed on",
   "src/lib/server/house-bot/oversight.ts": "Commit 4's oversight alerts about what staff did with a bot: rows read by action and folded into two AlertOnce keys (ruling 264)",
+  /* Classified 2026-09-27, read from the source (`lastRecordedSwitchSeq`): the invite lane's Payable / Not payable switch
+     added the reader and 0.260.1 went red on the release branch at once — the guard doing its job. */
+  "src/lib/server/invite-rewards-switch.ts": "the invite Payable switch's own COMPLIANCE trail (affiliate.payable.on / .off), read by action and reduced to ONE number — the highest confirmed record seq — so /admin/affiliate can flag an older restored record; no row is handed on",
   "src/lib/server/kyc-risk.ts": "the KYC withdrawal refusals and the aml approvals, read by action and folded into counts and a recommendation",
   /* Classified 2026-09-26, read from the source (`readExclusionRecord`): the marketing lane's `f1ad4417` added the
      reader and 0.260.1 went red on `main` at once, which is the guard doing its job. */
@@ -2207,6 +2210,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/app/api/dev-test/stress-regulator-grade/route.ts": "folded",
   "src/lib/server/house-bot/eligibility.ts": "folded",
   "src/lib/server/house-bot/oversight.ts": "folded",
+  "src/lib/server/invite-rewards-switch.ts": "folded",
   "src/lib/server/kyc-risk.ts": "handedOn",
   "src/lib/server/marketing/rg.ts": "folded",
   "src/lib/server/notification-service.ts": "folded",

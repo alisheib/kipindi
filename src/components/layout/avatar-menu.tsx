@@ -38,9 +38,10 @@ export function AvatarMenu({
   inviteVisible?: boolean;
   /**
    * ⭐ DOES THIS VIEWER'S INVITE DESTINATION PAY? Resolved by the SERVER shell as
-   * `playerInviteRewardsLive() || inviteViewer.agentInGoodStanding` (`app-shell.tsx`) — an agent in good
+   * `invitePaysPlayersNow() || inviteViewer.agentInGoodStanding` (`app-shell.tsx`) — an agent in good
    * standing's row leads to their paid commission dashboard and keeps "Invite & Earn"; a player's reads
-   * "Invite friends" while `inviteRewards` is WITHDRAWN. Threaded for the same reason `inviteVisible`
+   * "Invite friends" unless the player invite actually PAYS: the Owner's switch Payable, the service-level
+   * pause off AND a reward armed ("Make payable → Nothing yet" is not paid). Threaded for the same reason `inviteVisible`
    * is: this module must not import `feature-state`, and a client cannot read a server product
    * state. ⛔ DEFAULTING TO FALSE IS THE SAFE DIRECTION — a menu row
    * that has lost its prop says "Invite friends" and offers nothing, rather than advertising

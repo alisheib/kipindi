@@ -139,7 +139,17 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * kind of list that CANNOT go stale silently, because any divergence in either direction is this
  * check failing by name. A bare count could be raised by one character; a name has to be typed.
  */
+/*
+ * ── 2026-09-27 · +1: `admin/affiliate/payable-switch.tsx`, the Owner's Payable / Not payable ceremonies (two
+ * `Modal`s, one per direction). Opened and judged like the twelve above: no `truncate`, no `line-clamp-*`, no
+ * `whitespace-nowrap`, no `text-ellipsis`, no `max-h-*`, no `overflow-hidden`, no fixed height on any text.
+ * Every sentence is a server-built prop of unbounded length (`invitePayableDialogs`) in a block that wraps;
+ * the heading carries `pr-8` so it cannot run under the close glyph; the radio cards' text sits in a `min-w-0`
+ * span; the footer is `flex-col-reverse sm:flex-row`, so two long labels stack on a phone; `maxWidth` 520/420
+ * is a MAX. The one fixed size is the 44px icon plate on the card, which holds a glyph and no text. PASSES.
+ */
 const REVIEWED: readonly string[] = [
+  "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
   "src/app/admin/agents/[id]/decision-rail.tsx",   // reviewed 2026-09-21
   "src/app/admin/agents/[id]/doc-grid.tsx",   // reviewed 2026-09-21
   "src/app/admin/agents/agents-client.tsx",   // reviewed 2026-09-21

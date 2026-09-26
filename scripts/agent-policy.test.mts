@@ -60,25 +60,27 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
    * ⭐ THE PLAYER SIDE, 2026-09-25 — TWO PRODUCT STATES, BOTH ASSERTED IN ONE PLACE.
    *
    * ⛔ ON THE SHIPPED STATE THE PLAYER BRANCH REFUSES, AND THAT REFUSAL IS THE PRODUCT: the
-   * platform pays a player nothing for an invite, in code rather than in a config row. It is
-   * asserted FIRST and without any override, because that is what production runs.
+   * platform pays a player nothing for an invite, by the Owner's switch rather than by a config
+   * row (2026-09-26: Not payable until the Owner's ceremony stores a sealed record, and this suite
+   * stores none). It is asserted FIRST and without any override, because that is what production
+   * runs until the Owner acts.
    *
    * ⭐ AND THE OLD CONTROLS SURVIVE INSIDE THE OVERRIDE. They are the ones that prove the paid
    * path still resolves correctly the day it is switched back on — deleting them would leave the
    * re-enablement untested, which is the rot `withdrawn-features` §4 exists to prevent.
    */
   const playerUnpaid = policyFor("PLAYER", { commissionPct: 20 }, playerCfg, agentCfg);
-  ok("1.playerunpaid · ⛔ SHIPPED STATE — the PLAYER programme REFUSES: inviteRewards is WITHDRAWN",
+  ok("1.playerunpaid · ⛔ SHIPPED STATE — the PLAYER programme REFUSES: invites are Not payable (no Owner record is stored)",
     !playerUnpaid.ok && playerUnpaid.refusal === "player_rewards_withdrawn", JSON.stringify(playerUnpaid));
-  // ⛔ AND IT OUTRANKS THE OPERATOR'S CONFIG. With every reward mode switched ON, the product state
-  // still refuses — this is the assertion that says "set the commission to 0%" was not the fix.
+  // ⛔ AND IT OUTRANKS THE OPERATOR'S CONFIG. With every reward mode switched ON, the switch still
+  // refuses — this is the assertion that says "set the commission to 0%" was not the fix.
   const playerAllModesOn = policyFor(
     "PLAYER",
     { commissionPct: 20 },
     { ...playerCfg, enabled: true, commission: { ...playerCfg.commission, enabled: true }, prize: { ...playerCfg.prize, enabled: true } },
     agentCfg,
   );
-  ok("1.playerconfig · ⛔ …even with every reward mode ON in the config — a product state outranks a row",
+  ok("1.playerconfig · ⛔ …even with every reward mode ON in the config — the Owner's switch outranks a config row",
     !playerAllModesOn.ok && playerAllModesOn.refusal === "player_rewards_withdrawn", JSON.stringify(playerAllModesOn));
 
   process.env.FEATURE_INVITEREWARDS = "ACTIVE";
@@ -174,7 +176,8 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
   const playerSnap = getAffiliateConfig();
   setAffiliateConfig({ enabled: true, commission: { enabled: true, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 } }, "test-officer");
   // ⭐ AND THE PLAYER MONEY NEEDS ITS OWN DECLARATION FOR THE SAME REASON THE BONUS WALLET DOES
-  // (2026-09-25). `inviteRewards` is WITHDRAWN on the shipped state, so without this the player
+  // (2026-09-25). Invites are Not payable on the shipped state (the Owner's switch since 2026-09-26;
+  // `FEATURE_INVITEREWARDS=ACTIVE` is the FORCED ceiling that bypasses it), so without this the player
   // arm of the control would pay nothing, the two arms would "agree" at zero, and the split this
   // section exists to prove would be untested — the gate-that-cannot-fail the note below forbids.
   process.env.FEATURE_INVITEREWARDS = "ACTIVE";

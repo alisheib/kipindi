@@ -885,12 +885,16 @@ self-excluded account · a campaign past its end date · the branded OG image le
 **Exit** Token forgery impossible, claims exactly-once.
 
 ### J4 · Affiliates & referrals — `cert:j4` 💰
-**Surfaces** `admin/affiliate` `profile/invite` (the player's unpaid invite page, and the agent dashboard) · **Owns** `affiliate-service` `affiliate-config` (`ReferralReward`), and the `invite` / `inviteRewards` product states in `feature-state.ts` (`docs/PLAYER-INVITE-UNPAID.md`)
-**Existing** `test:referral` `test:player-invite-unpaid` (+ `red:player-invite-unpaid`) · **Orphans** `affiliate-e2e` `affiliate-sprint1-stress` `affiliate-sprint4-security` `affiliate-sprint5-integration` (`affiliate-sprint2-ui-completeness` and `affiliate-sprint3-kit-conformance` were deleted 2026-09-26: they audited the retired paid invite page)
+**Surfaces** `admin/affiliate` (the Owner's Payable / Not payable switch) `profile/invite` (the player's invite page — unpaid unless the Owner makes it Payable — and the agent dashboard) · **Owns** `affiliate-service` `affiliate-config` `affiliate-rules` (`ReferralReward`), the `invite` / `inviteRewards` product states in `feature-state.ts`, and the Owner's sealed switch `invite-rewards-switch` / `invite-rewards-ceremony` (`docs/PLAYER-INVITE-UNPAID.md`)
+**Existing** `test:referral` `test:player-invite-unpaid` (+ `red:player-invite-unpaid`) `test:invite-payable-db` (+ `red:invite-payable-db`) `qa:invite-ceremony` (local only) · **Orphans** `affiliate-e2e` `affiliate-sprint1-stress` `affiliate-sprint4-security` `affiliate-sprint5-integration` (`affiliate-sprint2-ui-completeness` and `affiliate-sprint3-kit-conformance` were deleted 2026-09-26: they audited the retired paid invite page)
 **Attack** Self-referral · cycles (A→B→A) · farm rewards with disposable accounts · claim a reward
 twice · reward on a self-excluded recruit · commission on a reversed/refunded deposit · make a PLAYER
-referral pay with every admin reward mode at maximum · mint a link for a CLOSED / SUSPENDED /
-SELF_EXCLUDED account or a deactivated agent.
+referral pay with every admin reward mode at maximum · make it Payable without the Owner's ceremony
+(a hand-edited switch row, an older genuine record restored, a growth officer, a stale tab's Save;
+⚠️ the restored older record is a known, accepted limit — it PAYS and is flagged on the card, not
+blocked — so certify the flag, not a refusal) ·
+arm a reward tied to a deposit · mint a link for a CLOSED / SUSPENDED / SELF_EXCLUDED account or a
+deactivated agent.
 **Exit** Self/cyclic referral impossible, rewards exactly-once, reversal claws back commission,
 the remaining orphans adopted or deleted.
 **⭐ Agent tier (2026-09-07, `docs/AGENT-PROGRAMME.md`)** — J4 now also owns `agent-config`,

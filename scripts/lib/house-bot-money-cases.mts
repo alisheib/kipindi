@@ -1019,12 +1019,14 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
   }
 
   // (3) and (4) The deposit reads behind the recruiter prizes. ⚠️ Reachable only while the PLAYER referral programme
-  // PAYS, and since 2026-09-25 that is TWO product states, not one: `invite` is ACTIVE (the surface — a player holds a
-  // link and recruits are attributed) while `inviteRewards` is WITHDRAWN (the money — `policyFor` refuses every PLAYER
-  // accrual with `player_rewards_withdrawn`). ⛔ SETTING ONLY `FEATURE_INVITE` IS NOT ENOUGH ANY MORE, and it fails
-  // SILENTLY in the worst way: the bind still lands, the hooks still run, and the prize is simply never created — so
-  // 11.6/11.8 read `prizes: []` and this suite drops under its own `minPass`. Both switches are declared, and both are
-  // restored below. See docs/PLAYER-INVITE-UNPAID.md §7.
+  // PAYS, and since 2026-09-25 that is TWO switches, not one: `invite` is ACTIVE (the surface — a player holds a
+  // link and recruits are attributed) while the money is Not payable by default (since 2026-09-26 the Owner's switch on
+  // `/admin/affiliate`, under the `inviteRewards` ceiling — `policyFor` refuses every PLAYER accrual with
+  // `player_rewards_withdrawn` until the Owner makes invites payable). `FEATURE_INVITEREWARDS=ACTIVE` is the FORCED
+  // ceiling: payable without any stored record, which is what a suite needs. ⛔ SETTING ONLY `FEATURE_INVITE` IS NOT
+  // ENOUGH ANY MORE, and it fails SILENTLY in the worst way: the bind still lands, the hooks still run, and the prize is
+  // simply never created — so 11.6c/11.8 read `prizes: []` and this suite drops under its own `minPass`. Both switches are
+  // declared, and both are restored below. See docs/PLAYER-INVITE-UNPAID.md §7.
   const inviteBefore = process.env.FEATURE_INVITE;
   const rewardsBefore = process.env.FEATURE_INVITEREWARDS;
   process.env.FEATURE_INVITE = "ACTIVE";
@@ -1048,11 +1050,17 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
     };
     const prizesFor = async (recruit: string) => ((await w.db.referralReward.listByRecruit(recruit)) as Any[]).filter((r) => r.type === "PRIZE");
 
-    // (3) cumulativeDepositsTzs → onRecruitDeposit's DEPOSIT_THRESHOLD prize, through the real deposit webhook.
+    // (3) The real deposit webhook → onRecruitDeposit. ⛔ SINCE 2026-09-26 A DEPOSIT PAYS NO REFERRAL REWARD (Ali: the
+    // Responsible Gambling policy promises "No bonus offers tied to deposit increases"; the FIRST_DEPOSIT bonus and the
+    // DEPOSIT_THRESHOLD prize are RETIRED, and a save naming one is refused). This case used to pay a DEPOSIT_THRESHOLD
+    // prize through the webhook; it now proves that the webhook's confirmation of a recruit's deposit pays the recruiter
+    // NOTHING, with the same recruit's FIRST_BET prize as the control that the programme itself still pays. ⚠️ The
+    // ruling-173 cumulative read in the webhook now feeds only the retired-mode refusal's audit payload, so 11.5 keeps
+    // the read-level control and no longer reaches a prize through it.
     {
-      const set = AFFCFG.setAffiliateConfig({ enabled: true, prize: { enabled: true, milestone: "DEPOSIT_THRESHOLD", depositThresholdTzs: 10_000, amountTzs: 1_000, capPerReferrer: 0, requireDeposit: false } }, OFFICER);
+      const set = AFFCFG.setAffiliateConfig({ enabled: true, bonus: { enabled: false }, prize: { enabled: true, milestone: "FIRST_BET", minBetAmountTzs: 1_000, amountTzs: 1_000, capPerReferrer: 0, requireDeposit: false } }, OFFICER);
       const b = await w.bot({ balance: 0 });
-      await recruited(b);
+      const referrer = await recruited(b);
       await confirmedDeposit(b.userId, 6_000, "first");
       await markedRows(b, 1_001, "dep");
       const depositSum = (rows: Any[]) => rows.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED").reduce((s, t) => s + t.amount, 0);
@@ -1067,14 +1075,21 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
         createdAt: at, updatedAt: at, completedAt: null,
       } as Any);
       const settled = await WS.settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED" });
-      const prizes = await prizesFor(b.userId);
+      const rewardsAfterDeposit = (await w.db.referralReward.listByRecruit(b.userId)) as Any[];
+      const referrerAfterDeposit = (await w.bal(referrer)).balance;
       // READ, not arithmetic: after the confirmation, the plain window holds only the second deposit, the option both.
       const plainAfter = depositSum((await w.db.txn.findByUser(b.userId, 1000)) as Any[]);
       const excludedAfter = depositSum((await w.db.txn.findByUser(b.userId, 1000, { excludeHouseBets: true })) as Any[]);
-      ok("11.5 · CONTROL · with 1,001 house rows after the first deposit, the plain 1,000-row read counts only the second (6,000 < the 10,000 threshold), the option both (12,000)",
+      ok("11.5 · CONTROL · with 1,001 house rows after the first deposit, the plain 1,000-row read counts only the second deposit (6,000), the option both (12,000)",
         set.ok === true && plain === 0 && plainAfter === 6_000 && excludedAfter === 12_000, JSON.stringify({ set: set.ok, plain, plainAfter, excludedAfter }));
-      ok("11.6 · ⭐ ruling 173 · the real deposit confirmation counts BOTH deposits (12,000) and the recruiter's DEPOSIT_THRESHOLD prize is paid once",
-        settled.handled === true && prizes.length === 1, JSON.stringify({ settled, prizes: prizes.map((p) => [p.type, p.status, p.amountTzs]) }));
+      ok("11.6 · ⛔ RG policy · the real deposit confirmation pays the recruiter NOTHING — no reward row of any type, no credit (deposit-tied rewards are retired)",
+        settled.handled === true && rewardsAfterDeposit.length === 0 && referrerAfterDeposit === 0,
+        JSON.stringify({ settled, rewards: rewardsAfterDeposit.map((r) => [r.type, r.status, r.amountTzs]), referrerAfterDeposit }));
+      // CONTROL — the same recruit, the same config: the FIRST_BET prize still pays, so the zero above is the retirement's.
+      await AFF.onRecruitBet(b.userId, { stake: 5_000, houseBotId: null });
+      const prizes = await prizesFor(b.userId);
+      ok("11.6c · CONTROL · the same recruit's first bet still pays the recruiter's FIRST_BET prize, once",
+        prizes.length === 1 && prizes[0].status === "PAID" && prizes[0].amountTzs === 1_000, JSON.stringify(prizes.map((p) => [p.type, p.status, p.amountTzs])));
     }
 
     // (4) hasDeposited → onRecruitBet's FIRST_BET prize (requireDeposit).

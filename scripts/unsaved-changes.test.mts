@@ -149,6 +149,17 @@ const EXEMPT: Record<string, string> = {
    *    There is nothing to carry across a navigation, because there is no navigation: Cancel and the confirm are
    *    the only exits, and Cancel discards a CONFIRMATION rather than work in progress. */
   "app/admin/desk/[id]/account-actions.tsx": "① the reason, the holder's password and the typed word open inside <Modal>, with scrim-close disabled once anything is typed",
+  /* ⭐ THE SAME STRONGER FORM AS THE DESK CEREMONY, read 2026-09-26. The Owner's Payable / Not payable switch
+   *    (`payable-switch.tsx`) renders no typed control on the page itself: its reason <Textarea>, the typed words
+   *    <Input> and the "what pays from now" radios exist only inside a <Modal role="alertdialog"> that sets
+   *    `closeOnScrim={!pending && !dirty}` and `closeOnEsc={!pending && !dirty}`, where `dirty` is true once ANY
+   *    field is entered or the choice moves. So a stray click or key cannot dismiss typed work, and while the
+   *    request is in flight nothing can. ⚠️ THREE exits, not two (corrected 2026-09-27): Cancel, the confirm, AND
+   *    the dialog's own ✕ (`showClose={!pending}` — shown whenever nothing is sending, dirty or not), which runs
+   *    the same `close` as Cancel. Cancel and ✕ are each a deliberate press that discards a CONFIRMATION rather
+   *    than work in progress; neither can fire by a stray click on the scrim or a stray Escape. The
+   *    reward-settings editor on the same page is a different file, and it is not covered by this entry. */
+  "app/admin/affiliate/payable-switch.tsx": "① the reason, the typed words and the choice open inside <Modal>, with scrim-close and Escape disabled once anything is entered; Cancel and ✕ are the deliberate exits",
   "app/admin/payments/reconcile-controls.tsx": "① fields open inside <Modal>",
   "app/admin/payments/stuck-payout-controls.tsx": "① fields open inside <Modal>",
   "app/admin/players/[id]/balance-adjust-controls.tsx": "① fields open inside <Modal>",

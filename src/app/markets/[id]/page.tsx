@@ -191,9 +191,9 @@ export default async function MarketDetail({
    * `positions/page.tsx`, which had the identical line.
    * ⚠️ 2026-09-25 — THE PROGRAMME RETURNED, UNPAID. `invite` is ACTIVE, so every player in good
    * standing now gets their code on this link BY DESIGN, and a friend who signs up through it is bound
-   * and counted (`docs/PLAYER-INVITE-UNPAID.md` §2). "Paying nothing" still holds only because
-   * `inviteRewards` is WITHDRAWN — flip it and every bind already written becomes payable on the
-   * recruit's next event (§12).
+   * and counted (`docs/PLAYER-INVITE-UNPAID.md` §2). "Paying nothing" holds only while the Owner's
+   * switch on `/admin/affiliate` says Not payable (under the `inviteRewards` ceiling, 2026-09-26) — make
+   * invites payable and every bind already written earns on the recruit's next event (§12).
    */
   // ⭐ Standing, not role: a deactivated agent's code leaves the share link in the same instant
   // it leaves the bind (`inviteViewerFor` reads the same predicate the bind gate does).

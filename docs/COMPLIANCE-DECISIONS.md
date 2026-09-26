@@ -6,6 +6,132 @@
 
 ---
 
+## 2026-09-26 · Deposit-tied invite rewards retired — the RG policy's 'No bonus offers tied to deposit increases' stays true
+
+**Owner decision (Ali, 2026-09-26).** Invite rewards triggered by a deposit are retired, so that the
+published Responsible Gambling policy stays true. `/legal/responsible-gambling` §4, "Operator
+responsibilities" (v2026-09-26), promises *"No bonus offers tied to deposit increases"*. Two reward
+modes of the player invite were exactly that: the `FIRST_DEPOSIT` bonus (a bonus for depositing) and
+the `DEPOSIT_THRESHOLD` prize (a prize for depositing enough). Once invites can be made payable
+(§ 2026-09-26 · Invite payment becomes an Owner switch, below), arming either would make the
+published promise false.
+
+**What is retired, and where it is enforced.**
+- The bonus is paid on **sign-up** only (`BonusTrigger` is `SIGNUP` alone) and the prize on a
+  friend's **first bet** only (`PrizeMilestone` is `FIRST_BET` alone). `depositThresholdTzs` is gone.
+- A Save naming `FIRST_DEPOSIT` or `DEPOSIT_THRESHOLD` is refused, with a sentence that names the
+  policy (`DEPOSIT_TRIGGER_RETIRED_REASON`, `DEPOSIT_MILESTONE_RETIRED_REASON` in
+  `src/lib/affiliate-rules.ts`).
+- A stored row naming one loads with that mode switched OFF. It is never re-pointed at another
+  choice, because that would start paying a reward nobody armed.
+- The price the Owner confirms never quotes a retired mode.
+- A deposit pays no referral reward: the deposit hook (`onRecruitDeposit`) calls no payer, whatever
+  any config says. While invites are payable, a retired mode still armed (by the stored row or by
+  the config in hand) is refused out loud, with the audited refusal `player_deposit_trigger_retired`,
+  and the bonus and prize payers refuse anything but a SIGNUP bonus or a FIRST_BET prize the same way.
+- `/admin/affiliate` prints fixed lines naming the policy where the Trigger and Milestone choices
+  were. The register page's first-deposit offer is removed, with its `getOnFirstDeposit` key in
+  en/sw/zh, so the ribbon carries a sign-up offer only.
+
+**What stays.** The sign-up bonus, the first-bet prize and commission at settlement. `requireDeposit`
+on the first-bet prize stays too. It is an anti-fraud precondition (an account that never funded
+itself cannot farm prizes with free sign-ups), not a reward for depositing: the prize grows with
+nothing deposited. Its read now fails closed: a failed read pays nothing on that bet, and the friend's
+next qualifying bet re-checks.
+
+**What it does not change.** The RG policy's text and version are untouched; the code now keeps the
+promise. `test:rg-policy`'s control for that bullet still watches only the `bonus` feature state. The
+invite's half is held by `test:player-invite-unpaid` (`8.retired.*`), `test:invite-payable-db` §4 and
+their red controls. ⏳ Built 2026-09-26; not deployed or driven on production when this entry was
+written.
+
+---
+
+## 2026-09-26 · Invite payment becomes an Owner switch on /admin/affiliate — Not payable by default
+
+**Owner instruction (Ali, 2026-09-26)**, on `/admin/affiliate`, as the code records it
+(`invite-rewards-switch.ts`): *"when is this paid and when unpaid, what switch is responsible? … let's
+have 2 options, payable and not payable; if not payable keep everything locked."* He then ruled on
+each point below. ⏳ **Built 2026-09-26; not deployed or driven on production when this entry was
+written.** The build adds `inviteRewards` (`payable`, `paying`, `ceiling`) to `/api/health`, which is
+the one-curl check of whether it is live.
+
+**The rulings (binding), each with its reason:**
+
+| # | Ruling | Why |
+|---|---|---|
+| 1 | **Payable is an OWNER switch on `/admin/affiliate`.** Only the stored role `ADMIN` (the Owner) makes invites payable, with a written reason of 5–300 characters (measured after invisible characters are cleaned out and the rest is trimmed) and the typed words `MAKE PAYABLE`, compared exactly after trimming (no case folding). | The role is read from the user row, never from the session cookie, which is a photograph of a role at sign-in. A signed-in non-Owner's attempt writes a SECURITY `privilege_escalation_blocked` row; no session at all is answered "Your session ended — sign in again. Nothing changed.", with no SECURITY row. The words are exact because a control that starts 50pick's own money must not be armable by habit; the reason is cleaned because five zero-width spaces are not a reason. |
+| 2 | **No authenticator code in the ceremony.** Ali's explicit choice. | ⚠️ **Recorded with its cost.** The ceremony still checks the console's two-step status, but production runs with `DISABLE_ADMIN_TOTP=true` (`/api/health` → `security.adminTotp: "DISABLED"`, read 2026-09-26), so that check passes for any ADMIN session. On production the switch is protected by the Owner's signed-in session, the stored role, the reason and the typed words. |
+| 3 | **Only the Owner stops payment:** a reason only, one step, offered whenever the STORED record says Payable, whatever the ceiling. | Stopping is the safe direction, so it needs no typed words and does not consult the ceiling; a stored Payable under a kill, under FORCED or under the service-level pause is a payment waiting to resume, so it can always be recorded Not payable. The dialog promises exactly what the code does: "No new referral reward starts from the moment you confirm; a reward already being paid at that instant can still land." Every PLAYER credit (the prize, the bonus for each recipient, PLAYER commission) re-reads the switch inside its payer's lock immediately before crediting, so only a credit already past that read can land. The reward settings are kept, and locked; rewards already paid stay paid. |
+| 4 | **Not payable is the default and every failure mode.** | Inducement money fails closed. No row, a read that failed, a row that is not a correctly sealed, well-formed record, and a `SESSION_SECRET` rotation all read Not payable (`docs/PLAYER-INVITE-UNPAID.md` §6). |
+| 5 | **`FEATURE_INVITEREWARDS=WITHDRAWN` is the hard kill; `=ACTIVE` forces payment** (tests and infrastructure). | The kill outranks the page: under it the page cannot turn payment on, and says so. It still states the stored position (a stored Payable reads as suspended by the server, under the env or the code kill), the Owner can still stop, and lifting the kill resumes payment unless he has. Under FORCED the page states the stored position too, and what removing the setting would do. The forced ceiling keeps the paid path executed by the suites (`PLAYER-INVITE-UNPAID.md` §7); it bypasses the ceremony, and the page says "Forced on by the server" while it is set. Any other value falls back to the code, so a typo can neither force payment nor lift the kill. |
+| 6 | **The money path re-reads the switch fresh, and, while the switch says payable, the reward settings too.** | Config loads at container boot and is not propagated between containers, and a deploy runs the old and new containers side by side for about a minute (`railway.json` `overlapSeconds: 60`). A Stop pressed on one container must be obeyed by the accruals on the other, and an older container must not pay from settings it loaded at boot. A failed read refuses the accrual, and so does a missing settings row while invites are payable. |
+| 7 | **Rewards land as CASH while the bonus wallet is withdrawn.** | `referralRewardDestination()` answers CASH while the bonus wallet is withdrawn, so a player reward is credited as real, withdrawable balance (booked `BONUS_CREDIT`), with no wagering and no expiry. It is not withdrawable at once: a player's first withdrawal still needs their identity check (KYC is asked at withdrawal), and the Make-payable dialog says so. The dialog and the page say CASH. |
+| 8 | **Commission ≤ 50% of margin is ENFORCED; the window is 1–60 months, with no lifetime term.** | The 50% was printed guidance while the validator accepted rates up to 100%. It is now refused on save, repaired on load (a mode with any unreadable field, the rate included, loads switched OFF) and clamped again at accrual. The window was already held to 1–60 on save, but a stored row reached the payer unchecked, and a window of 0 means lifetime to `commissionWindowEnd`; it is now also repaired on load and clamped to 1–60 at accrual. |
+| 9 | **While Not payable every reward setting is locked, and the server refuses the Save.** | The refusal is decided on a fresh read of the switch under its lock, so a Save cannot land between a Stop and the page noticing. A Save that is allowed merges onto the settings re-read from their row, not onto a container's boot-time copy, and only if they are still the settings the page loaded (it posts only the changed fields, with the fingerprint of the settings the page loaded), so a stale tab cannot re-arm a reward the Owner switched off ("These settings changed since this page loaded — reload to see them."). A draft the server would refuse is not sent: the Save is disabled and the reason sits at the field (the rate is a whole percent). A Save that RAISES what the invite pays also writes a COMPLIANCE `affiliate.reward.terms` row (every money field moved, before and after, and who); if that row cannot be written the Save still lands, with a warning. A throw after the write began answers "Outcome unknown — reload to see the current state." `enabled` is dropped from every Save: the two states are the master. |
+| 10 | **Make payable defaults to "Nothing yet — switch every reward off".** | The shipped config has the prize ON at TZS 10,000 a head, so without this default switching on would pay it at once. The alternative, "The settings on this page", is accepted only while the settings are still the ones the Owner saw priced. |
+| 11 | ⛔ **Gaming Board of Tanzania clearance is still required before switching on.** | Paying referrers is a regulated inducement. The page and the Make-payable dialog both say so. No code checks the clearance, so the Owner's confirmation is where it is asserted. |
+
+**How it is stored.** One `SystemConfig` row, `invite.rewards.switch`, holding an HMAC-sealed record
+(payable, seq, when, who, reason), with no schema change. It is not a field of `affiliate.config`,
+because that row is what the reward-settings Save writes and it is merged at load. A record cannot be
+FORGED: without `SESSION_SECRET` a hand-edited row does not parse, and reads Not payable. ⚠️ **But an
+older GENUINE record can be REPLAYED, and this is a known, accepted limit:** the seal proves who
+wrote a record, not that it is the latest, so someone with database write access who puts back an
+earlier genuine record has it read as stored, and a restored Payable record pays. It is FLAGGED, not
+blocked. The card's provenance ends "· record #N", and when the stored number is below the highest
+one confirmed in the switch's COMPLIANCE trail the card says "The stored switch is older than its
+last recorded change…" and tells the Owner to check the database and set the switch again. Database
+write access is the boundary. ⚠️ **A `SESSION_SECRET` rotation fails CLOSED:** every stored record
+stops verifying, invites read Not payable, and the Owner redoes the ceremony to seal a new record.
+
+**The record each change leaves.** Before any write, every ceremony (Make payable and Stop paying
+alike) must have a COMPLIANCE `affiliate.payable.attempt` row naming who, which way, why and the
+record number DURABLY on file (`audit()` answers `recorded`, replan ruling 543); a database that
+refuses it changes nothing. After the
+writes, what now holds is READ BACK, and the answer is what the reads say. If the outcome cannot be read, or anything throws once a
+write has begun, the Owner is told "Outcome unknown — reload to see the current state." and the
+outcome row is written with `confirmed: false`. A change that lands leaves one COMPLIANCE row,
+`affiliate.payable.on` or `affiliate.payable.off` (target `InviteRewardsSwitch` ·
+`invite.rewards.switch`), carrying from, the stored position before, to, reason, seq, ceiling, start,
+the price and `confirmed: true`. A re-arm from the service-level pause (the stored record already
+Payable) is audited as the act (`rearmed: true`), even when the switch's own record could not be
+updated. The config write is audited separately, as every `affiliate.config` save already was
+(`affiliate.config.updated`), and a Save that raises what the invite pays adds `affiliate.reward.terms`.
+
+**What a player sees.** The paid wording on the player's surfaces ("Invite & Earn", the earnings
+dial, the requirements) shows only while invites actually pay (`invitePaysPlayers`): the switch
+composes Payable, the programme is on, AND at least one reward is armed, on the settings as last read
+from their row. `/api/health`'s `paying` answers the same question.
+
+**What this supersedes, and what it does not.**
+- ⚠️ **§ 2026-09-25 · The player invite is re-opened UNPAID** (below) put the zero in the code
+  constant (`inviteRewards` WITHDRAWN) and said *"Turning payment on later is one word"*. Both are
+  superseded here: the constant now reads ACTIVE and means only that the Owner's switch decides, and
+  payment is turned on by the Owner's ceremony, not by a code change or a deploy. Its companion,
+  `docs/PLAYER-INVITE-UNPAID.md` §12 ("There is no button"), is rewritten as "The one control — the
+  Owner's ceremony". That entry stays as history, with a dated pointer here.
+- **Unchanged.** The invite is still a tracked link that pays nothing by default, and "Paid by 50pick"
+  still sums only what 50pick actually paid. ⛔ **Cash to inviters stays off-platform and
+  unrecorded:** § 2026-09-26 · Cash paid to inviters stays OFF-platform (below) stands in full. Where
+  it says the platform credits a player referrer nothing because `inviteRewards` is WITHDRAWN, that
+  described the day it was written; the same zero is now the Not payable default. The card share icon
+  still carries no code. The agent programme is untouched: `policyFor`'s AGENT branch never reads the
+  switch. Who may hold a link is unchanged.
+
+**Where it is enforced.** `src/lib/feature-state.ts` (`inviteRewardsCeiling`),
+`src/lib/server/invite-rewards-switch.ts` (the sealed row, the strict parser, the composition, the
+fresh reads), `src/lib/server/invite-rewards-ceremony.ts` (the ceremony, the locked Save, every
+sentence of the state card and both dialogs), `src/lib/affiliate-rules.ts` (the 50% ceiling, the
+1–60 month window, validation, load repair, the clamp), `src/lib/server/affiliate-service.ts`
+(`policyFor` and the money path) and `src/app/admin/affiliate/actions.ts`. **Guards:** `npm run
+test:player-invite-unpaid` and `npm run test:invite-payable-db` (both in `predeploy`), with their red
+controls `npm run red:player-invite-unpaid` and `npm run red:invite-payable-db`. No count is quoted
+here; re-derive it by running them. Rule: `docs/RULES.md` §2.10a. Spec:
+`docs/PLAYER-INVITE-UNPAID.md` §3, §6, §12.
+
+---
+
 ## 2026-09-26 · D20b AMENDED — decided by the session under the owner's delegation of 2026-09-26
 
 **Authority.** Ali, 2026-09-26, delegating, as typed:
@@ -329,6 +455,11 @@ must go through that gate (U9's dispatch step).
 
 ## 2026-09-25 · The player invite is re-opened UNPAID — a tracked link that is not an inducement
 
+> ⚠️ **Amended 2026-09-26: see § 2026-09-26 · Invite payment becomes an Owner switch, above.** What
+> this entry says about where the zero lives and how payment is turned on
+> (`inviteRewards` WITHDRAWN in code; "one word") is superseded there: payment is now the Owner's
+> switch on `/admin/affiliate`, Not payable by default. Everything else in this entry stands.
+
 **Owner instruction (Ali, 2026-09-25), in his own words:** *"we have a way for people to share our links but we won't
 give them profit"* … *"no we don't want to pay anything on affiliate"* … *"we want sometimes unpaid affiliate but i
 want to track how many people he got with this link, i'll pay him cash not through 50pick, and we can keep that option
@@ -368,11 +499,16 @@ the agent branch, so a player link would be one that could never bind).
 
 **Turning payment on later is one word** — `inviteRewards: "ACTIVE"` — and ⛔ **it needs Gaming Board clearance first**,
 because at that moment it becomes an inducement again. The paid path is kept executable while it sleeps.
+⚠️ *Superseded 2026-09-26 as to "one word": payment is turned on by the Owner's ceremony on `/admin/affiliate`
+(§ 2026-09-26 · Invite payment becomes an Owner switch). The Gaming Board clearance stands.*
 
 Enforced by `npm run test:player-invite-unpaid` (44 assertions at the time) with `npm run red:player-invite-unpaid` (6/6 mutations
 proven to turn it red). ⚠️ *Corrected 2026-09-26:* this said both run in `predeploy`. Only the test does. The red
 control mutates the working tree, so it is run by hand, alone or through `npm run red:all`; CI's `test:red-anchors`
 checks only that its anchors still resolve. Rule: `docs/RULES.md` §2.10a. Spec: `docs/PLAYER-INVITE-UNPAID.md`.
+⚠️ *2026-09-26:* the "44 assertions" and "6/6 mutations" above are this entry's own. The suite and its
+control have grown since (§ 2026-09-26 · Invite payment becomes an Owner switch, and § 2026-09-26 ·
+Deposit-tied invite rewards retired, both above), so re-derive the counts rather than quote these.
 
 ---
 
