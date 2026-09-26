@@ -1893,6 +1893,20 @@ export const prismaDb = {
      * "withdrawals" because there had been none would read as a missing section rather
      * than as a true zero.
      */
+    /**
+     * The newest `limit` CONFIRMED rows of one type, `createdAt` then `id` descending.
+     * 🔴 WHY: match-integrity printed "the most recent 200 of N" refunds after reading the WHOLE
+     * Transaction table to find them. Its count and total come from `totalsByType` (SQL
+     * aggregates); this supplies the rows the section shows, and nothing else.
+     */
+    newestConfirmedOfType: async (type: StoredTxn["type"], limit: number): Promise<StoredTxn[]> => {
+      const rows = await pc().transaction.findMany({
+        where: { type, status: "CONFIRMED" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: Math.max(0, limit),
+      });
+      return rows.map(toStoredTxn);
+    },
     totalsByType: async (types: StoredTxn["type"][]): Promise<Record<string, { amount: number; count: number }>> => {
       const out: Record<string, { amount: number; count: number }> = {};
       for (const t of types) out[t] = { amount: 0, count: 0 };

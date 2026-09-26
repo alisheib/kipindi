@@ -1619,6 +1619,13 @@ const memoryDb = {
      * direction it decides itself; the landing's "paid out" band wants the signed
      * sum. Two questions, two methods.
      */
+    /** In-memory twin of the Prisma read: the newest `limit` CONFIRMED rows of one type,
+     *  `createdAt` then `id` descending — the order a "most recent N" disclosure promises. */
+    newestConfirmedOfType: (type: StoredTxn["type"], limit: number): StoredTxn[] =>
+      Array.from(store.txns.values())
+        .filter((t) => t.type === type && t.status === "CONFIRMED")
+        .sort((a, b) => (b.createdAt < a.createdAt ? -1 : b.createdAt > a.createdAt ? 1 : 0) || b.id.localeCompare(a.id))
+        .slice(0, Math.max(0, limit)),
     totalsByType: (types: StoredTxn["type"][]): Record<string, { amount: number; count: number }> => {
       const out: Record<string, { amount: number; count: number }> = {};
       for (const t of types) out[t] = { amount: 0, count: 0 };

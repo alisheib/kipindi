@@ -50,6 +50,7 @@
     "test:loser-share-fee": "tsx scripts/loser-share-fee.test.mts",
     "test:withdrawal": "tsx scripts/withdrawal-fee.test.mts",
     "e2e:money": "tsx scripts/money-e2e.test.mts",
+    "e2e:report-reads": "tsx scripts/report-reads-pg.e2e.mts",
     "e2e:fault": "tsx scripts/fault-injection-bet.test.mts",
     "test:settlement-gate": "tsx scripts/settlement-gate.test.mts",
     "test:concurrency": "tsx scripts/concurrency.test.mts",
