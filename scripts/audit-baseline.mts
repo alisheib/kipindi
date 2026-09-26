@@ -18,7 +18,11 @@
  * history predicts, stop and find out why first.
  *
  * ⛔ DRY RUN IS THE DEFAULT, and `--declare` against a non-loopback database additionally demands
- * `--yes-write-to-this-database`.
+ * `--yes-write-to-this-database`, `--by <officer id>` and `--expect-digest <sha256>`.
+ *
+ * ⭐ `--expect-digest` IS THE DIGEST THE OFFICER REVIEWED, and the declaration is REFUSED if the census
+ * taken at write time differs (2026-09-26). A census and a declaration are two runs; a row that stopped
+ * verifying between them would otherwise be accepted, permanently, without anyone having seen it.
  */
 import { censusUnverifiable, readUnverifiableBaseline, UNVERIFIABLE_BASELINE_ACTION, audit, verifyChainFull } from "../src/lib/server/audit";
 
@@ -45,6 +49,14 @@ if (declare && !loopback && !has("yes-write-to-this-database")) {
     `!! --declare would APPEND a compliance declaration to the audit chain on ${host}, which is not a\n` +
     `   loopback database. Re-run with --yes-write-to-this-database if that is genuinely the database\n` +
     `   you mean. (Census — without --declare — reads and writes nothing; start there.)`,
+  );
+  process.exit(2);
+}
+const expectDigest = str("expect-digest", "");
+if (declare && !loopback && (!by || !/^[0-9a-f]{64}$/.test(expectDigest))) {
+  console.error(
+    `!! A declaration on ${host} needs --by <officer id> (whose acceptance this is) and\n` +
+    `   --expect-digest <the 64-hex DIGEST from the census the officer reviewed>.`,
   );
   process.exit(2);
 }
@@ -94,6 +106,15 @@ if (!declare) {
   console.log(`\n  Nothing was written. Re-run with --declare to record this census in the chain.`);
   console.log(`  ⛔ Before you do: ${census.count} row(s) will be permanently accepted as un-attestable.`);
   process.exit(0);
+}
+
+if (expectDigest && expectDigest !== census.digest) {
+  console.error(
+    `\n!! REFUSED — the census at write time (digest ${census.digest}, ${census.count} row(s)) is NOT the one\n` +
+    `   the officer reviewed (${expectDigest}). Something changed between the two runs: census again, look\n` +
+    `   at the rows, and decide again. Nothing was written.`,
+  );
+  process.exit(2);
 }
 
 const entry = await audit({

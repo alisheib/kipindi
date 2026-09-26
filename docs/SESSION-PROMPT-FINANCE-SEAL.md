@@ -1,5 +1,14 @@
 # SESSION PROMPT — the Finance tab seal
 
+> ## ✅ STATUS: COMPLETE — LANE CLOSED 2026-09-26. NOTHING HERE IS FOR A SESSION TO PICK UP.
+> Every development item below is done, pushed to `main` and verified on production. The one thing
+> left is an OWNER action, not development: **Ali rotates the production DB password** (steps in §2,
+> including the GitHub backup secret). This file stays as the RECORD — §0 (the defect shape) and §5
+> (decisions not to be re-litigated) are cited as authority by CLAUDE.md, MONEY-GATE-REMEDIATION,
+> FEE-MODEL-DECISION and F6-LIQUIDITY. ⛔ Do not reopen it: a new finance question gets a NEW brief.
+> Worktree `C:\kipindi-finance` and branch `finance-seal-2` are deleted. The GitHub branch
+> `finance-seal` (session 1) is fully merged into `main` and holds no work of its own.
+
 > **Written to be picked up on ANOTHER MACHINE.** Everything a next session needs is in this
 > file and in git; nothing here depends on the local memory of the machine that wrote it.
 > Branch `finance-seal` (§1), merged to `main` and deployed live on 2026-09-25; follow-up branch
@@ -44,7 +53,7 @@ is a second implementation that will drift.
 
 ---
 
-## §2 · 🔴 STILL OPEN — pick these up
+## §2 · ✅ DONE — the queue as it was worked (history, not a to-do list)
 
 - ~~**`LEAD-A.2`** (`docs/MONEY-GATE-REMEDIATION.md`): the `market.resolved` audit payload records a
   levy figure the ledger never booked — the third site of the levy defect.~~ ❌ **NOT A DEFECT —
@@ -210,8 +219,7 @@ is a second implementation that will drift.
 - ⚠️ **Pre-existing, other lanes: `test:red-anchors` is red on main** — two declared mutation anchors
   no longer resolve (`bar-geometry` → `query-bar.tsx`, `updown-handover` → `updown-card-phase.ts`) and
   68 harnesses exceed the undeclared-anchor ceiling of 65. Not caused by this lane.
-- ✅ **THE AUDIT CHAIN'S "UNVERIFIED" — ROOT CAUSE FOUND AND FIXED 2026-09-26; one decision left for
-  Ali.** Production verified ITSELF through the real admin route (it holds `AUDIT_CHAIN_SECRET`; the
+- ✅ **THE AUDIT CHAIN'S "UNVERIFIED" — ROOT CAUSE FOUND, FIXED, AND THE 9 ROWS DECLARED 2026-09-26.** Production verified ITSELF through the real admin route (it holds `AUDIT_CHAIN_SECRET`; the
   laptop never did): **all 40,939 entries link** — nothing inserted, removed or reordered — but **9
   hashes recompute under no key**, so the ISO 27001 export a regulator would receive read UNVERIFIED.
   - **Which rows** (the census now PRINTS them — the tool's header promised the declaring officer would
@@ -230,14 +238,16 @@ is a second implementation that will drift.
     loss simulated; red on the old code) and **`npm run e2e:audit-roundtrip`** on a real local Postgres
     — 26 awkward entries, all re-verify; on the old code 15 fail with every link intact, i.e. production's
     symptom reproduced. Loopback-only (it writes audit rows).
-  - ❓ **FOR ALI — declare the baseline for those 9 rows.** They can never re-verify (rewriting a signed
-    row is exactly what the chain exists to expose), and the cause is now understood and closed — the
-    case the baseline exists for. `npm run audit:baseline -- --declare --by <officer id>
-    --yes-write-to-this-database`, run where `AUDIT_CHAIN_SECRET` is present (`railway run --service
-    50pick`, `DATABASE_URL` = the Postgres public URL), permanently records "these 9 rows, with this
-    digest, are accepted as they stand" under the officer's name; afterwards the export reads Intact and
-    ANY future mismatch is flagged as an edit. ⛔ Declare only AFTER this fix is deployed, and only on
-    Ali's explicit yes — the census immediately before declaring must still show exactly these 9.
+  - ✅ **DECLARED, on Ali's explicit yes (2026-09-26), after the fix was live (`b4440d99`).** The census
+    immediately before showed the same 9 rows and the same digest he approved; the declaration is chain
+    entry `aud_bmuikthvb46c92c_000000001` (2026-09-26 16:01 UTC), `--by usr_1b3e6fd5048b1d873e931715`
+    (Ali's officer account), digest `17c01bd31e4367948dfb998723a7304408b809f2e40542f0758531ce7d82a0f3`.
+    Production's own verifier then read **valid=true · baselined 9 · unattested 0 · linkBroken false**,
+    so the ISO 27001 export reads Intact, and ANY future row that fails to recompute is now an EDIT.
+    ⭐ `audit:baseline` now also REQUIRES `--by` and `--expect-digest <the reviewed digest>` for a
+    production declaration, and refuses when the census at write time differs from the one reviewed.
+    ⚠️ The first declare attempt hung on a dead Railway-proxy socket with no query running (nothing was
+    written); the retry added `connect_timeout/pool_timeout/socket_timeout` to the URL.
 - 🔴 **ALI'S ACTION — rotate the production DB password** (it was echoed into a session transcript on
   2026-09-25; a session must never rotate it itself). The steps, checked against this project's
   variables on 2026-09-26 (Postgres service: `POSTGRES_PASSWORD` is the source, `PGPASSWORD`,
