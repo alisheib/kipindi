@@ -1,11 +1,13 @@
 # SESSION PROMPT — the Finance tab seal
 
-> ## ✅ STATUS: COMPLETE — 2026-09-26. NOTHING HERE IS FOR A SESSION TO PICK UP.
+> ## ✅ STATUS: COMPLETE — LANE CLOSED 2026-09-26. NOTHING HERE IS FOR A SESSION TO PICK UP.
 > Every development item below is done, pushed to `main` and verified on production. The one thing
 > left is an OWNER action, not development: **Ali rotates the production DB password** (steps in §2,
 > including the GitHub backup secret). This file stays as the RECORD — §0 (the defect shape) and §5
 > (decisions not to be re-litigated) are cited as authority by CLAUDE.md, MONEY-GATE-REMEDIATION,
-> FEE-MODEL-DECISION and F6-LIQUIDITY. Worktree `C:\kipindi-finance` and branch `finance-seal-2` retired.
+> FEE-MODEL-DECISION and F6-LIQUIDITY. ⛔ Do not reopen it: a new finance question gets a NEW brief.
+> Worktree `C:\kipindi-finance` and branch `finance-seal-2` are deleted. The GitHub branch
+> `finance-seal` (session 1) is fully merged into `main` and holds no work of its own.
 
 > **Written to be picked up on ANOTHER MACHINE.** Everything a next session needs is in this
 > file and in git; nothing here depends on the local memory of the machine that wrote it.
