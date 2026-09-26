@@ -6,6 +6,28 @@
 
 ---
 
+## 2026-09-26 · The LIVE strip: signed out, a person on a break sees the lobby like any visitor — no device-marker cookie (owner ruling)
+
+**Owner instruction (Ali, 2026-09-26), as typed:** *"leve at is"* — the answer to: *should a phone that started a
+break also hide the moving settlement strip while signed out? That needs a small device cookie, i.e. a
+Privacy-notice change* (the session's recommendation was to leave it).
+
+**What is true, and stays true:**
+- The LIVE settlement strip — re-sited the same day to `/`, `/markets`, `/live` and `/results` only (`2ab8830e`) —
+  is neither read nor painted for a SIGNED-IN player whose cooling-off or self-exclusion timer is running
+  (`promoSuppressed` in `app-shell.tsx`).
+- A self-excluded person cannot sign in, and starting a break signs the player out. Signed out, they see the lobby,
+  strip included, like any visitor — exactly as they already see `/results` and the landing's settled strip. The
+  strip is on-site content showing already-public settlements; it is not one of the "marketing messages" that RG
+  Policy §4 governs (SMS, email, push).
+- ⛔ **No device marker or cookie is set to recognise a signed-out person on a break.** Adding one is a
+  Privacy-notice change (`test:privacy-notice` pins the cookie census) and needs a NEW owner ruling. Do not "fix"
+  this as a gap.
+
+Guard: `test:ticker-honesty` 11.4 (the signed-in gate). Record: `docs/MOBILE-VISUAL-PLAN.md` D32 / U33.
+
+---
+
 ## 2026-09-26 · House bots: ruling 501 WITHDRAWN — the ISO 27001 export stays unfiltered (owner: the exclusion is not required; the session kept it unfiltered)
 
 **Owner instruction (Ali, 2026-09-26), as typed:** *"this we dot cre gbt said it sok we need nothign we can decide

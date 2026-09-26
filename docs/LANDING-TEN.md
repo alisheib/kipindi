@@ -7,6 +7,382 @@
 >
 > **Read this before touching the landing page, and before trusting a green gate.**
 
+## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
+
+**State (2026-09-26):** D0 filed — the v3 delivery, its acceptance record, this tracker and the §2
+build plan are on `main`; the dropped folder in `C:\kipindi-main` is deleted once this push is live.
+**Next:** batch D1, the landing sections (§1 rows WP2, WP8, WP10, WP11, WP12, WP13, WP17, RG), built as
+§2.1 describes.
+
+Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until
+pushed live and validated visually and logically."* The delivery is filed raw at
+[`docs/design-system/v4-2026-09-26-landing-ten/`](design-system/v4-2026-09-26-landing-ten/). Its
+[`INHERIT-MANIFEST.md`](design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md) holds **Ali's four
+rulings (R1–R4)** and **every place our laws beat the delivery (L1–L17)**. Read it before building a
+row; this section does not repeat it.
+
+**How a session works this programme**
+- Find your checkout with `hostname && git rev-parse --show-toplevel && git worktree list`; never
+  copy a path from a doc. Work in your **own worktree off `origin/main`** (branch `landing-v3` is the
+  resume point), never in a tree another session holds. Stage files by name.
+- Heavy Node (dev server, build, tsc, Playwright) through `bash ~/heavy-node-lock.sh run landing <cmd>`
+  on ALI-BLADE15. Dev on `localhost` (never `127.0.0.1`), seeded with `POST /api/dev-test/seed-markets`
+  and `POST /api/dev-test/updown-seed`; sign in with `/auth/demo?deposit=0|1`.
+- Ship: `git fetch`, **merge** `origin/main` (never rebase, never force), `git push origin HEAD:main`,
+  then confirm production serves your sha (`?dpl=<sha>` on the asset URLs) before a row turns ✅.
+- A row turns 🔵 when its commit is live and ✅ only after it is **measured on production** at 360,
+  768 and 1280 in sw, en and zh — the frames looked at, not only the gate read.
+
+**Traps already met on this programme**
+1. `C:\kipindi-main` was 1,092 commits behind `origin/main` when the delivery landed in it. Never
+   build there.
+2. The delivery states numbers the platform does not: minimum stake TZS 100 (config says otherwise),
+   a hard-coded 13%, and a licence number starting with the digit **zero** (ours starts with the
+   letter **O**). Read every number from config or `support-config.ts` (L3).
+3. `pricedYesPct` rounds a lopsided two-sided pool (25,000 vs 100) to 100% — V17's defect in a
+   market that is not one-sided (L14).
+4. The concept re-renders the whole page every second and fakes a bet every 6s (`sim()`). Neither is
+   ported (L12).
+5. The gate's landmark selectors (V14's `.kp-hero`, `.kp-qrow`, `.kp-topic`, `.kp-settled__row`, the
+   V8 text map, the RED targets) are tied to class names. A rebuild re-points them in the same commit.
+
+## §0a · The paste-in prompt for the next session
+
+> Continue the 50pick landing v3 build. Read `docs/LANDING-TEN.md` §0 and §1 first, then
+> `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (Ali's rulings R1–R4 and laws
+> L1–L17), then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
+> Open the concept (`npx serve docs/design-system/v4-2026-09-26-landing-ten/design`, then
+> `50pick Home Concept v3.dc.html`, with `?signedIn=1&balance=1&wallet=1&locale=sw` as needed) at 360,
+> 768 and 1280 beside the build. Work the next ⬜ batch of §2.0 in order, in your own worktree off
+> `origin/main`. For each row: build it within `globals.css` tokens and existing components, run the
+> suites §2.1 names plus `npm run test:landing-ten-plan`, drive it locally at 360/768/1280 in sw/en/zh
+> and look at the frames, push to `main`, confirm the deployed sha, re-measure on production, then tick
+> the row and rewrite §0 in the same commit. The repo's laws win every conflict with the delivery;
+> a conflict nobody has ruled on goes to Ali as a numbered one-line choice, and into the manifest.
+
+## §1 · Status board — the v3 build
+
+⬜ not started · 🔨 building · 🔵 live, production not yet re-measured · ✅ measured on production ·
+⛔ not built, by ruling · ⏳ waits on Ali. Guarded by `npm run test:landing-ten-plan`.
+
+| ID | Unit | Status | Commit | Evidence / note |
+|---|---|---|---|---|
+| D0 | File the delivery, its acceptance record, this tracker; delete the dropped folder | 🔨 | | |
+| WP1 | Header collapse below 1100, Menu button, segmented language | ⛔ | | R1 kept the header; L4 |
+| WP2 | Hero order, trust lines, headline clamp, backdrop drawing removed | ⬜ | | R4(1) |
+| WP3 | Featured card: full question, meta + source, time top-right, 24h mark and delta | ⬜ | | |
+| WP4 | Question board rows: title link + YES@/NO@ buttons + time left | ⬜ | | |
+| WP5 | Pick slip: sheet below 1024, inline from 1024, after-placing share | ⬜ | | R2 |
+| WP6 | One-sided state on every card + the grid's degeneracy floor | ⬜ | | L14; delivers MOBILE-VISUAL ruling 13 |
+| WP7 | Estimate line on cards | ⛔ | | R3 |
+| WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | ⬜ | | |
+| WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
+| WP10 | Topics: six tiles, Other last, "All topics" as the section link | ⬜ | | |
+| WP11 | How it works: "A named source", the fee from config, h3 steps | ⬜ | | L3 |
+| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ⬜ | | R4(6) |
+| WP13 | Results: date, the market's own sign-off, source link, paid | ⬜ | | L2 |
+| WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ⬜ | | R1 |
+| WP14b | Share in card footers; Share on WhatsApp after placing | ⬜ | | |
+| WP15 | Motion and performance | ⬜ | | L12 |
+| WP16 | i18n: every new key in en, sw and zh | ⬜ | | |
+| WP17 | Accessibility: heading order, no nested controls, dialog semantics | ⬜ | | |
+| RG | Drop the RG line above the footer; chat bubble hides under a sheet | ⬜ | | R4(5), R4(7) |
+| V15 | Gate: first screen at 360 × 740 | ⬜ | | |
+| V16 | Gate: no promised winnings | ⬜ | | |
+| V17 | Gate: no 0% or 100% price | ⬜ | | |
+| V18 | Gate: every market shows price or state, time, pool, source | ⬜ | | |
+| V19 | Gate: Withdraw as reachable and as large as Deposit | ⬜ | | |
+| V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
+| V21 | Gate: the placement map, by bounding box | ⬜ | | |
+| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | R4 |
+| PANEL | The eight-reviewer re-score, recorded below | ⬜ | | |
+| FUNNEL | Visitors → sign-ups → first pick, measured before and after launch | ⬜ | | |
+| SW | Native Swahili sign-off of every new sw string | ⏳ | | Ali |
+| ZH | Native Chinese review of every new zh string | ⏳ | | Ali |
+| DEV | Real devices: low-end Android on 3G, iPhone SE Safari, Android at 130% text | ⏳ | | Ali's handsets |
+
+## §2 · The build plan — how each row is built
+
+Written 2026-09-26 from a read of the code at `4015e3b5`, every function below checked to exist by
+name. ⛔ **It cites functions and files, never line numbers** — lines rot within a day on this repo.
+If a name here no longer resolves, fix this section in the same commit as the code.
+
+### §2.0 · Order, and why it differs from the delivery's
+
+The delivery asks for WP1 → WP17 in number order, one PR each. This repo pushes to `main` (live), so
+a "PR" is a commit, and rows ship in **deploy batches**, each verified on production before the next:
+
+| Batch | Rows | Why here |
+|---|---|---|
+| D0 | D0 | The filing and this tracker, so any machine can resume |
+| D1 | WP2 · WP8 · WP10 · WP11 · WP12 · WP13 · WP17 · RG | Server-rendered landing sections: `/` only, no money path, no shared chrome |
+| D2 | WP3 · WP6 · WP4 · WP9 · WP14b · V16 · V17 · V18 | Market surfaces. `market-card.tsx` is shared with `/markets`, `/results`, `/watchlist` and the detail page, so every change here is **sitewide** and those pages are re-shot too |
+| D3 | WP5 · V20 · RG (bubble) | The pick slip: a new way to reach the bet path. Full `npm run test:all` before this push |
+| D4 | WP14 · V19 | The Wallet is global chrome, on every page; it goes last so the parallel ticker lane's `app-shell.tsx`/`globals.css` edits are merged first |
+| D5 | WP15 · V15 · V21 · PANEL · FUNNEL | The whole-page checks, once the layout is final; the production gate; the eight-reviewer re-score |
+
+A gate class is built **with** the row it certifies and its RED plant must PROVE against the built
+feature (a plant against a feature that does not exist yet cannot prove anything).
+
+### §2.1 · The rows
+
+**WP2 · Hero order** — `src/components/home/landing-hero.tsx`, `.kp-hero*` in `globals.css`, `src/app/page.tsx`
+- One DOM, ordered: eyebrow → `<h1>` → sw/zh sub-line (`home.heroHeadlineSub`, shown only when it
+  differs from the headline) → lede → **featured card** → CTAs → trust lines. From 1024 the block is two
+  columns — copy, CTAs and trust lines on the left, the featured card on the right — by CSS grid areas,
+  never a second copy of the DOM.
+- Headline `clamp(40px, 6.2vw, 88px)`, Sora 800, line-height 1, `text-wrap: balance`. The YES/NO inks come
+  from the headline's `\b(YES|NO)\b` split in `Headline`; the sub-line keeps its own NDIO/HAPANA (是/否)
+  inks (MOBILE-VISUAL ruling 12).
+- Trust lines: new keys `home.trustLicence` (with `LICENCE_NUMBER()` from `src/lib/support-config.ts`),
+  `home.trustMoney`, `home.trustSource`, plus the 18+ roundel, the RG line (R4(5)) and the helpline
+  (`HELPLINE()` / `HELPLINE_TEL()`, a `tel:` link) — the placement map puts licence, 18+ **and helpline** on
+  the first screen, which the concept's own trust lines forgot.
+- The lede drops the jargon word the before state used ("Trade questions…" → "Pick a side on questions…").
+- The proof rail, the conviction bar and the closing-soonest board move **below** the hero block.
+- Remove the faint dial drawing behind the hero (R4(1)).
+- Guards at risk: `test:betting-ink` §1 pins the proof-rail figure markup exactly; `test:hero-contract`
+  (the featured market is never also a board row); `scripts/qa/landing-ten.mjs` V14 landmarks and the
+  V8 text map name `.kp-hero` — keep the class or re-point the gate in the same commit. The hero's entrance
+  stagger is keyed to `.kp-hero__inner > *:nth-child(n)`; reordering children re-orders the animation.
+- ⚠️ First-screen budget (V15): header 56 + the LIVE strip (back on `/` since 2026-09-26) + the hero must
+  leave the featured card's price and YES/NO above 740px at 360 wide, **in sw**, whose sub-line and lede
+  are the longest. Measure it; if it does not fit, shorten spacing on the `--rh-*` phone rungs, never the text.
+
+**WP3 · Featured card** — `src/components/markets/market-card.tsx` (`featured` variant only), `TippingBar` in `src/components/brand.tsx`
+- Full question with no clamp (`.mcardp--featured .mcardp-q`).
+- Meta line: close date · "Settles on {source}". The source name comes from `listSources()`
+  (`src/lib/server/source-registry.ts`) matched on the market's `sourceUrl` host, falling back to the host.
+  `sourceUrl` is already passed to the card and currently unused.
+- Time left in the top-right corner, in `--text`, through `timeLeftLabel` (`src/lib/markets/time-left.ts`).
+- The 24h mark: a tick at `yesPct − move24h` on the bar plus "▲n · 24h ago" / "▼n · 24h ago". `move24h`
+  comes from `getCardCharts` (`src/lib/server/market-history.ts`), already fetched for the featured card;
+  **no mark when it is undefined**.
+- The bar gets `role="img"` and the full reading ("31% YES, 69% NO") as its label.
+- The landing's **grid cards** name their source too (V18: every market shows its source before the pick),
+  through a landing-only prop so `/markets` card geometry is untouched.
+- SOON (L17): `getSignalBadge` tests the English label `/^\d+m left$/`, so it never fires in sw or zh. Test the
+  milliseconds left instead.
+- Guards at risk: `MARKET_CARD_H` / `--mcard-h` size the `/markets` skeletons; keep these changes on the
+  featured variant or re-derive the height (`qa:card-geometry`).
+
+**WP4 · Question board rows** — `QuestionRow` in `landing-hero.tsx`, `.kp-qrow` in `globals.css`
+- The row stops being one `<Link>`: the title is its own link; the time left, the bar and the YES@/NO@
+  buttons are siblings (no interactive element inside another). Buttons at least 44px (`--h-control-md`).
+- Phone: title → meta → full-width bar row → full-width YES/NO pair. Tablet: title and bar side by side,
+  buttons wrap. Desktop: one line. The title keeps its 44ch measure.
+- Before D3 the buttons open `/markets/{id}?side=`; from D3 they open the pick slip.
+- An unpriced row shows no price (`pricedYesPct` returns null), never a 50.
+- Meta line: close date · "Settles on {source}" · pool · predictors (depth on every market, V18).
+
+**WP5 · Pick slip** (R2) — new `src/components/markets/pick-slip.tsx` (client)
+- Below 1024: `Modal` from `src/components/ui/modal.tsx` with `sheet` — which today docks only below 640,
+  so it gains a way to dock below 1024 — plus a drag handle and `env(safe-area-inset-bottom)` padding.
+  From 1024: the same content inline in the card or row. New portals are banned (`test:design-frozen`),
+  so the sheet goes through `Modal`.
+- Contents: time left · question · "Your pick: SIDE" · four chips from `quickStakes(min, max)`
+  (`src/components/updown/stake-math.ts`; at a 1,000 minimum these are 1,000/2,000/5,000/10,000), with
+  `min`/`max` from `stakeBoundsForMarket` (`src/lib/server/market-service.ts`) — never a literal ·
+  Confirm in the side's colour, 54px, full width · the minimum stake and the rule line (the fee from the
+  market's rates via `ratesFor` + `describeFeeModel`, never a literal: `test:rate-copy`) · Set limits ·
+  Take a break · Cancel.
+- Confirm posts `marketId`, `side`, `stake` and an `idempotencyKey` to `buyPositionAction`
+  (`src/app/markets/actions.ts`) — the same action the dial uses, so every limit, break, wallet and KYC
+  check is the server's. **No payout figure and no estimate** anywhere in the slip (law 40, R3).
+- A visitor never opens the slip: YES/NO sends them to `/auth/register?next=/markets/{id}?side=SIDE`.
+- After placing: "Placed. You're with {share}% of the money on {side}" — that side's pool share after the
+  stake, not a payout — and "Share on WhatsApp", built by `ShareButton`'s own link builder
+  (`card-share` allows only `share-button.tsx` to build a market share link). New key `common.shareWhatsApp`.
+- Chat bubble (R4(7)): `.cm-fab` hides while a modal sheet is open, read from the DOM the way
+  `isModalDialogOpen()` (`src/lib/modal-open.ts`) does. `test:stacking` pins the bubble's
+  `bottom`/`zIndex` lines; leave them.
+- Verification: place a real bet on the local in-memory store through the slip at 360 and 1280; check
+  the wallet debit and the position; Esc, backdrop and Cancel all close without betting; focus stays
+  trapped; the confirm cannot double-submit.
+
+**WP6 · One-sided markets** — `market-card.tsx`, `src/lib/markets/landing.ts`, the seven `<MarketCard>` call sites
+- A market is one-sided when it holds money and one side's pool is empty. The card gets the pools (or a
+  `oneSided` flag) as a **required** prop at all seven call sites — a default is how a caller that does not
+  know its product compiles. Never infer it from a rounded 0 or 100.
+- One-sided: "— One side only", the dashed rail (`--bar-empty-track`), buttons without a price, and the
+  note "No one has picked {side} yet. If betting closes one-sided, every stake is refunded."
+- Two-sided: the displayed price is kept within 1–99 (L14).
+- `landingGrid`: sort contested markets first, as a sort — a filter empties `test:landing-contract`'s
+  fixture (§2.1 control).
+- This delivers MOBILE-VISUAL ruling 13 on the card; that plan's U32 is told so.
+
+**WP7 · Estimate line** — ⛔ not built (R3).
+
+**WP8 · Proof rail and conviction** — `landing-hero.tsx`, `.kp-proof*`
+- Below 640: three ledger rows, label left and figure right. From 640: three columns.
+- The conviction bar's accessible label is the full `home.heroConvRead` reading, not "YES probability".
+- The live pip stays on the open-markets figure only. `test:betting-ink` §1 pins that markup.
+
+**WP9 · Pick-a-side grid** — the grid band in `src/app/page.tsx`, `.market-grid` scoped to the landing
+- Below 640: `grid-auto-flow: column; grid-auto-columns: 86%; overflow-x: auto;
+  scroll-snap-type: x mandatory`, cards `scroll-snap-align: start`; the page itself never scrolls sideways
+  (V1). 640–1023: two columns. From 1024: three.
+- Every card keeps the same slots so bars line up across a row (V6).
+- Guard at risk: `test:needle-rest` §4 sweeps `/` at 360 and 768 for the parked Needle resting on a control.
+
+**WP10 · Topics** — `src/components/home/topic-tiles.tsx`, `.kp-topics`
+- "All topics" becomes the section header link. Six tiles, ordered by live count, **Other last**; two
+  columns on phones, three from 1024. Slice to six **at render only** — slicing `comp.topics` breaks
+  `landingTopicsReconcile`, which the gate runs.
+
+**WP11 · How it works** — `src/components/home/how-it-works.tsx`
+- Step 2's title becomes "A named source" (all three locales). Step 3 states the fee as a number read from
+  config (`getEffectiveConfig` → `describeFeeModel`), passed in as a prop; the string carries `{pct}`.
+- The step-2 body keeps the dictionary's two-officer clause verbatim (MOBILE-VISUAL ruling 15).
+
+**WP12 · Up & Down band** — `src/app/page.tsx`, a new client ring component
+- The soonest open round among the live Up & Down markets: `roundStore.getByMarketId`
+  (`src/lib/server/updown-dal.ts`) then `getRoundDetail` (`src/lib/server/updown-board.ts`), which returns
+  the asset's names, `durationMinutes`, `openPrice`, `closesAt`, `serverNowMs` and `priceSeries`.
+- Shows: asset and duration · a mini price line with a dashed opening-price line · a countdown ring with
+  `role="timer"`, ticking on `subscribeSecond` (`src/lib/use-shared-second.ts`), `ud-count-pulse` only in
+  the final 30s · UP and DOWN links into the round with the side kept · "All rounds".
+- The band is one `<Link>` today; it becomes a container so its buttons are not nested in a link.
+- The plural: a new `…One` sibling key beside `updownRoundsLive` (the repo's plural convention).
+- Full width (R4(6)). With no live round, today's band.
+
+**WP13 · Results strip** — `src/components/home/trust-band.tsx`, `toSettlementRow` in `src/lib/server/platform-stats.ts`
+- Each row: outcome pill · question (a link) · settled date · **the market's own sign-off** · source (its own
+  link) · amount paid in gold. The sign-off is derived inside `toSettlementRow` from the distinct values of
+  `resolutionStage1By` / `resolutionStage2By`: two officers, one officer, or `AUTO_RESOLVER_ACTOR`
+  (automatic) — no new query (L2).
+- The trust band's claim becomes the section's `<h2>` (today its `<h3>`s sit under the Up & Down `<h2>`).
+- A silent row keeps its grid tracks. Guards at risk: `test:ticker-honesty` §9 and `test:outcome`/
+  `outcome-display` §4 regexes over `platform-stats.ts` and `trust-band.tsx`.
+
+**WP14 · Wallet** (R1) — `src/components/layout/wallet-balance-pill.tsx`, a new Wallet sheet/panel, `landing-hero.tsx`
+- The capsule's number becomes a `<button aria-expanded>` that opens the Wallet: a `Modal` sheet below
+  1024, a panel under the capsule from 1024. The eye (`CashEye`) stays a sibling inside the capsule.
+- The Wallet: the balance (gold) · the available amount, read exactly as `/wallet` reads it
+  (`db.wallet.findByUserId` → `balance`; bonus is separate and not withdrawable) · Deposit
+  (`/wallet/deposit`) and Withdraw (`/wallet/withdraw`) side by side at the same size · the mobile-money
+  note · Set limits · a link to the full wallet. A held or frozen wallet says so, as every money screen does.
+- At zero: no capsule, no Withdraw — a gold Deposit takes its place at every width. Never "TZS 0".
+- Phone header with a balance (scenario 4a): the capsule **and** a gold Deposit. Today Deposit is hidden below
+  640 for room. Make it fit before giving up: below 640 the capsule drops its "TZS" prefix (its accessible
+  name keeps "Wallet: TZS 12,400"), and Deposit may go icon-only with an accessible name. Measure at 320 and
+  360 in sw, en and zh with the bell and avatar present; nothing may fall under the 40px tap floor.
+- The signed-in hero: Your picks (open · awaiting result · paid this week, from `listPositionsForUser` and
+  the markets' `isSelectionClosed`), then the same Deposit/Withdraw pair, or the empty-balance prompt.
+  On phones it must not push the featured card below the first screen.
+- Guard to rewrite, not delete: `test:wallet-reach` §1 pins "the number links to /wallet". Under R1 it
+  opens the Wallet; the one-door rule and the eye-inside rule stay.
+
+**WP14b · Share** — card footers already carry `ShareButton compact` left of Details (`test:card-share`
+pins it exactly). What is added: "Share on WhatsApp" after placing (WP5).
+
+**WP15 · Motion and performance** — needles move only when a pool changes (`TippingBar` already starts at
+its target); per-second work only inside the ring and countdowns; reduced motion and Save-Data (mapped to
+`data-motion="reduced"`) turn off the price-line animation. No loops beyond the live dot and the final-30s pulse.
+
+**WP16 · i18n** — every new key in en, sw and zh in `src/lib/i18n-dict.ts`; `npm run test:i18n` forbids
+an sw or zh value equal to its en value unless listed in `IDENTICAL_OK`. New sw/zh strings carry the
+dictionary's "drafted, marked for native review" comment until rows SW and ZH close.
+
+**WP17 · Accessibility** — headings h1 → h2 → h3 with no gap; buttons are buttons and links are links, none
+nested; the global focus ring on every new control; dialog semantics from `Modal`.
+
+**V15–V21 · The new gate classes** — `scripts/qa/landing-ten.mjs`: each is a block inside `CHECKS` (a
+template string: escape backslashes, no backticks), a `REDS.Vn` plant, a row in the class table below.
+- V15 measures against a fixed **740px** line: the 360 cells are 780 tall.
+- V19 and the balance half of V20 need a **funded** session. `mobile01` on production is unfunded, so
+  those cells run locally through `/auth/demo?deposit=1`; production covers the zero-balance state.
+- V20's safe-area check needs an inset the headless browser does not have: emulate it or read the
+  computed padding, and say which in the class table.
+
+**PANEL · the eight reviewers** — the Review Board §3e checklists, run by eight independent agents against
+production frames, each told to refute; the scores and any instrument defects go below this section.
+
+**FUNNEL** — visitors → sign-ups → first pick for the seven days before the first v3 deploy and after the
+last, read-only from production.
+
+## §3 · Crosswalk — every item in the delivery's ACCEPTANCE, and the row that delivers it
+
+Ali, 2026-09-26: *"every bit from the handover should be perfectly applied with what we have."* Every
+placement-map row (P) and every checkbox (K) in the delivery's `ACCEPTANCE.md`, in its order, names the §1
+row(s) that deliver it — or the ruling that replaced it. `npm run test:landing-ten-plan` fails if the counts
+drift from that file or a row names an id §1 does not have. An item is done when its rows are ✅.
+
+| ID | Delivery item | §1 rows | How it is met here |
+|---|---|---|---|
+| P1 | Logo: top left; mark only when signed in (phone) | WP1 | R1 keeps the header: the mark below 1280 and the lockup from 1280, signed in or not |
+| P2 | Navigation: Menu button below 1100, inline above | WP1 | R1, L4: the bottom rail below 1024, inline nav with More from 1024 |
+| P3 | Language: inside the Menu, header on desktop | WP1 | R1, L4: the header's language menu at every width |
+| P4 | Join / Create account: header + after the featured card; hero left column on desktop | WP2 | The hero CTAs follow the featured card below 1024 and sit in the left column from 1024; the header keeps Sign in + Sign up (R1) |
+| P5 | Balance chip → Wallet: sheet below 1024, panel from 1024 | WP14 | R1 |
+| P6 | Deposit: header (gold), Wallet, hero | WP14 | R1, including the gold Deposit that replaces the capsule at zero |
+| P7 | Withdraw: Wallet + hero, same size as Deposit; hidden at zero | WP14, V19 | R1 |
+| P8 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | |
+| P9 | Pick slip: bottom sheet below 1024, inline from 1024 | WP5 | R2 |
+| P10 | Proof figures: ledger rows on phones, three columns above | WP8 | |
+| P11 | Closing-soonest board: stacked · title + bar · one line | WP4 | |
+| P12 | Pick-a-side cards: snap rail with a peek · two columns · three | WP9 | |
+| P13 | Share: card footer + after placing (WhatsApp) | WP14b, WP5 | |
+| P14 | Set limits / Take a break: pick sheet, Wallet, Menu, footer | WP5, WP14 | No Menu (R1); the footer already carries both |
+| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | Trust lines with `LICENCE_NUMBER()` and `HELPLINE()`; the footer already carries all three |
+| K1 | Every placement row verified at 360, 768, 1280 in sw, en, zh | V21, PANEL | |
+| K2 | 4a: phone, balance — chip + gold Deposit in the header; hero balance with equal Deposit/Withdraw | WP14 | The phone fit is measured (§2.1 WP14) |
+| K3 | 4b: chip opens the Wallet sheet — balance, withdrawable, equal pair, Set limits; Esc and backdrop close | WP14, V20 | |
+| K4 | 4c: zero — no chip, no Withdraw, header Deposit, empty-balance prompt, never "TZS 0" | WP14 | |
+| K5 | 4d: desktop Wallet panel under the chip | WP14 | |
+| K6 | Order: what it is → a live market → how it works → more markets → proof | WP2 | |
+| K7 | Every market shows price (or labelled state), time left, pool, source | WP3, WP4, WP6, V18 | |
+| K8 | A confirm step before any money moves | WP5 | |
+| K9 | Headings h1 → h2 → h3; no interactive element inside another | WP17 | |
+| K10 | Visible focus on every control; Esc closes every sheet and panel | WP17, V20 | |
+| K11 | No clipped or overflowing labels (V2) | GATE | |
+| K12 | One colour per meaning | GATE | `test:gold-is-money`, `test:contrast` |
+| K13 | Only the locked fonts, plus the CJK fallback | GATE | No new font; `--font-*` only |
+| K14 | Only locked tokens; the real brand mark | GATE | `test:design-frozen`, `test:tokens`; L5, L7 |
+| K15 | Equal card slots; bars align across a row (V6) | WP9, GATE | |
+| K16 | No decorative gradients or illustrations | WP2 | R4(1), L16 |
+| K17 | Needles move only on real pool changes | WP15 | |
+| K18 | 24h mark and delta on the featured card | WP3 | |
+| K19 | Up & Down: dashed open-price line, live line, ring countdown | WP12 | |
+| K20 | Only two loops, both opacity fades | WP15 | |
+| K21 | Reduced motion and Save-Data honoured | WP15 | |
+| K22 | Every bar and chart has a text description | WP3, WP8, WP12, WP17 | |
+| K23 | Pick from the home page: two taps plus confirm | WP5 | R2 |
+| K24 | Stake chips, the minimum stake and the rule line in the slip | WP5 | Minimum and fee from config (L3) |
+| K25 | After placing: "You're with X% of the money on {side}" | WP5 | |
+| K26 | Settled rows show source, date, sign-off, amount paid | WP13 | The market's own sign-off (L2) |
+| K27 | Deposit and Withdraw are where section A says | WP14 | |
+| K28 | One sentence says what 50pick is, above the fold | WP2 | |
+| K29 | Licence, 18+ and mobile money on the first screen | WP2, V15 | |
+| K30 | Three steps, including the fee as a number | WP11 | From config, never a literal (L3) |
+| K31 | EN / SW / 中文, with the sub-line under the brand headline | WP2 | The language menu stays (R1) |
+| K32 | No jargon | WP16 | |
+| K33 | No promised returns; the estimate is marked and qualified (V16) | V16, WP7 | No estimate on cards (R3) |
+| K34 | The only urgency is a real countdown | WP15 | L17 |
+| K35 | One-sided refund rule shown; no 0% / 100% price (V17) | WP6, V17 | L14 |
+| K36 | The fee is a number; the source is named before the pick | WP11, WP3, WP4, WP5 | |
+| K37 | Set limits and Take a break one tap from any stake | WP5 | |
+| K38 | Withdraw as easy to find as Deposit (V19) | WP14, V19 | |
+| K39 | Licence number and helpline on the page | WP2 | |
+| K40 | At 360 × 740 the first screen shows the pitch and a live market with price and YES/NO (V15) | V15, WP2 | |
+| K41 | Slip and Wallet are thumb-reach bottom sheets respecting the safe area (V20) | WP5, WP14, V20 | |
+| K42 | Every tap target at least 40px | GATE | V4 |
+| K43 | The header fits at 360 in every state and locale | WP14, GATE | |
+| K44 | Snap rail with a peek; topics in two columns | WP9, WP10 | |
+| K45 | No text under 12px; ledger rows for the proof figures | WP8, GATE | L6 |
+| K46 | The price reads as a line ("YES @ 31%"), with "est. ×" where allowed | WP4, WP7 | No estimate on cards (R3) |
+| K47 | Line movement shown (24h mark and delta) | WP3 | |
+| K48 | Depth (pool and predictors) on every market | WP3, WP4, V18 | |
+| K49 | Closing time next to every price | WP3, WP4, WP9 | |
+| K50 | Share on cards; WhatsApp after placing; the WhatsApp preview card works | WP14b, WP5 | Each market's `og:image` read on production |
+| K51 | Visitor → sign-up → first-pick funnel measured before and after | FUNNEL | |
+| K52 | `qa:landing-ten` V1–V21 clean at every cell (except Ali's open decisions) | GATE, V15, V16, V17, V18, V19, V20, V21 | |
+| K53 | Every new check (V15–V21) has a RED control reporting PROVED | V15, V16, V17, V18, V19, V20, V21 | |
+| K54 | `npm run test:all` + typecheck pass | GATE | |
+| K55 | Real devices | DEV | |
+| K56 | Native Swahili sign-off; native zh review | SW, ZH | |
+| K57 | The eight-reviewer scores recorded here | PANEL | |
+
 ## Running it
 
 ```

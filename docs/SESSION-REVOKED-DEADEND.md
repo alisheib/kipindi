@@ -328,6 +328,14 @@ no page error (before: the root error screen, reproduced identically on clean ma
   (`test:client-error-report` §4i–§4l).
 - It was found by a drive, not a gate: the LIVE-strip session's cooling-off case (2026-09-26).
 
+**✅ Verified on production `bcf6ed7b` (2026-09-26 ~15:45 EAT, `?dpl=` confirmed)**, as the QA player `mobile01`,
+one attempt each: signing in through the real password form landed on `/?welcome=back`; signing out through
+`/profile/sessions` (a Server Action) landed on `/` as a guest — **0 page errors, no root boundary, no crash
+report** in both directions (the account was left signed out). ⭐ And the new report was proven to fire: with
+the old `NavMore` shape planted on a local dev server (restored byte-identical after), the soft sign-out threw
+"Rendered fewer hooks than expected", the root boundary took the page ("Something broke too early to
+recover"), and the boundary posted to `/api/client-error`.
+
 ---
 
 ## 6. Still owed — ordered by what a player actually loses
