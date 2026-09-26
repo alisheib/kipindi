@@ -91,4 +91,4 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  * 17.53b holds that the walk wrote NEITHER an intent NOR an opener draw, and 17.53c is its control — the
  * PLANNER over that same account and market writes both, so 17.53b measures absence and not emptiness.
  * What a run PRINTED: `808 passed` memory and `787 passed` Postgres, ALL PASS on both stores, 0 failed. */
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 808, postgres: 787 }, dbPrefix: "hb_engine" });
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 825, postgres: 804 }, dbPrefix: "hb_engine" });

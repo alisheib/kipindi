@@ -1904,6 +1904,53 @@ expect). Driven after the push in a detached tree at the live commit `4da8ccd4`,
 daily-loss row can also read "ahead by" on a day whose settled profit exceeds its open stake; the owner's 2026-09-23
 ruling covered the SETTLED row only (C7 366 records it as not ruled on).
 
+### 12.8 The fire path's two unasserted behaviours — asserted 2026-09-26 (RESUME-HERE §0c decision 6, build step 5)
+
+**Why "two" is right.** Register B7 (`plans/house-bots/NEXT-SESSION-2026-09-22.md` item 7, readable at `9ec72e0d`)
+named THREE fire-path limbs with no assertion: the DAL claim-reclaim branch, the fire heartbeat and the fire-time RG
+pre-check. The carry-over into RESUME-HERE said two and never said why. Re-derived: the claim-reclaim limb had been
+asserted two days BEFORE the register — c13.d–g in `scripts/lib/house-bot-dal-cases.mts` (`8c6d6ccb`, 2026-09-20),
+with its mutations in `scripts/anchors/house-bot-dal-claim.anchors.mjs` (suites `dal-mem`/`dal-pg`, which no red
+harness drives — the anchor-rot guard covers them, and `ROLL_CALL_OWED` records why). The other two had nothing:
+- **The heartbeat** (`fire.ts` `fireClaimedIntent`, and `heartbeat` in both DAL twins): no script named
+  `FIRE_HEARTBEAT_MS` or called `.heartbeat(`, and no declared mutation touched it.
+- **The holder check at fire** (`fire.ts` step 4, through `readBotAndHolder`): only 16.17 reached it, and it could not
+  fail on it — a password change on a poll with locked money, where the seam refuses the same holder anyway.
+
+**What asserts them now** — `test:house-bot-engine` §16, on BOTH stores (step 5 is test-only; no `src` line changed):
+
+| Cases | What they hold |
+|---|---|
+| 16.69a | ONE timer, every `FIRE_HEARTBEAT_MS`, unref'd; a claim's TTL is more than three beats long |
+| 16.69b | a tick while the fire is still in flight extends THIS worker's claim to ≈ now + `CLAIM_TTL_SEC` |
+| 16.69c | the fire then places, and its timer is cleared only when it returns |
+| 16.69d · 16.69e | a heartbeat writes nothing on a row no longer CLAIMED (the placed row, which still carries the worker's id), and never extends another worker's claim |
+| 16.69f0 · 16.69f | a THROW out of fire still clears the timer and the in-flight entry (ruling 69's "a throw included"); 16.69f0 proves the throw really happens |
+| 16.69g · 16.69h | a heartbeat whose store fails is swallowed and the fire still places (ENG-33); 16.69h proves the listener hears a rejection at all |
+| 16.63a–c | a self-excluded holder, a cooling-off TIMER alone, and the holder's own daily loss limit asked about the row's stake each stop the bot AT FIRE: `botStopped` with that cause, the row CANCELLED(BOT_NOT_ACTIVE) — the loss limit never a requeue |
+| 16.63d–f | controls: a limit exactly equal to the stake, no RG state, and a break that has ended all go on to SKIPPED(CONDITION_GONE) with the bot ACTIVE |
+| 16.63g · 16.69i | fixture: every account those blocks made is REMOVED again |
+
+⭐ **How, without waiting 30 s:** the interval is captured at the fire's synchronous start (`setInterval` patched for
+that instant only; `clearInterval` hands every foreign handle to the real one) and the fire is parked at its first read,
+so a tick lands while the row is CLAIMED and in flight. ⭐ **Why an EMPTY poll for the RG cases:** the seam would refuse
+the same holder with the same row, so on a poll with money the only observable is WHERE fire stops; with nothing locked,
+a fire past step 4 ends SKIPPED(CONDITION_GONE) at the amount step, so only fire's own check can pause the account. The
+RG state is written directly — never through `selfExclude`/`coolOff`/`setLimits`, which fire the in-app holder hook
+asynchronously (the §19 race behind ruling 156) and would let a case pass for the wrong reason.
+
+⚠️ **Found on the way, not changed:** the only throw route out of `fire()` is `return finish(…)` inside its `try`, which
+is not awaited — so a store failure while writing a terminal row escapes as a throw (the poller records `threw` and the
+claim waits out `CLAIM_TTL_SEC`) instead of a quiet requeue. Harmless to money. 16.69f depends on it; 16.69f0 goes red,
+never vacuous, if that line ever becomes `return await`.
+
+**Declared mutations: 21**, in `scripts/anchors/house-bot-engine.anchors.mjs`, every id starting `69` or `63` (18
+`engine-mem`, 3 `engine-pg` on the Postgres twin's own SQL). Three edit shared modules (`constants.ts`, `consent.ts`,
+and the holder read in `control.ts`). **Run 2026-09-26 on the committed tree:** `test:house-bot-engine` **825 memory /
+804 Postgres, 0 failed** — +17 on each store, the floor raised from 808/787 to those printed counts; `test:red-anchors`
+§3: all 21 resolve exactly once. The 21 mutations are driven after the push (`red:house-bot-engine --only 69,63`, in a
+detached tree at the live commit) and their result is recorded with the next commit.
+
 ---
 
 ## 13. Accepted risks

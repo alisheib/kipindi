@@ -103,7 +103,7 @@ The account page's ledger has the same shape in eight columns. Below `sm` it is 
    every report.
 
 **Suite floors — a lower count is a regression, not drift:** console **923 memory / 669 Postgres** (2026-09-26, step 3) · reports **249 / 80** · comms **52 / 50** ·
-engine **808 / 787** · money **132 / 150**. **Declared mutations:** console 373 (340 + step 1's 8 + step 3's 25, 2026-09-26) · engine 80 · money 56 + seam 7 ·
+engine **825 / 804** (step 5) · money **132 / 150**. **Declared mutations:** console 373 (340 + step 1's 8 + step 3's 25, 2026-09-26) · engine 101 (80 + step 5's 21) · money 56 + seam 7 ·
 c5 100 (99 primaries; step 8 added 3) — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
 ## 0b · ▶ WHAT IS OPEN, in the order to work it
@@ -214,7 +214,7 @@ pushed to `main` and verified serving before the next:**
    was drafted for an explicit owner approval, and Ali delegated instead. Quote his delegation (§0b) verbatim, say
    plainly the session decided under it, and name the real audience (the ADMIN role).
 4. **The account finder list** (decision 4), with its walls pinned and mutated.
-5. **The fire-path assertions** (decision 6): the fire heartbeat and the fire-time RG pre-check, both stores.
+5. ✅ **DONE 2026-09-26 — the fire-path assertions** (`docs/HOUSE-BOTS.md` §12.8; engine 825/804, 21 mutations) (decision 6): the fire heartbeat and the fire-time RG pre-check, both stores.
 6. **Ruling 543** (`C5-D20-REPLAN.md`): `audit()` promises fail-open but `chainSecret()` throws in production past
    that fallback, so three house writers can report a landed write as failed. Its schedule hung on the withdrawn
    ruling 501; re-derive that it is still unbuilt (it was on 2026-09-26), then fix it with a case and a mutation.
@@ -372,3 +372,8 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     (risk 9's verify bucket is Redis-shared as RECORDED; risk 10's window is 180 s; risk 12 states D1's owner-role reading
     and FS-09's unsent alerts); `test:house-bot-disclosure` 118/0 (floor 114 → 118), 3 new c5 mutations, and
     `red:house-bot-c5` now fails a run on BROKEN-INJECTION instead of passing it silently.
+  - ✅ **Step 5 DONE** — the fire heartbeat and the fire-time holder check are asserted on both stores (16.69a–i, 16.63a–g),
+    each with a control, on an EMPTY poll so only fire's own check can pause the account; engine 825/804 (floor 808/787 →
+    825/804), 21 declared mutations (3 on the Postgres twin's SQL). ⚠️ Recorded, not changed: `return finish(…)` inside
+    fire()'s try is not awaited, so a store failure writing a terminal row escapes as a throw (16.69f0 pins it).
+  - Step 8's three c5 mutations, driven at the live commit `ac631c35`: **3 caught, 0 missed, 0 broken-injection, 0 dirty.**
