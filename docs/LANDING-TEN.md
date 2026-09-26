@@ -15,7 +15,7 @@ Your picks and the same Deposit/Withdraw pair. Measured on production 2026-09-27
 (zero balance, no picks); the FUNDED Wallet and hero are measured locally (no funded QA player on
 production). WP13's phone fix is live too. What the production gate still reports is named on the GATE row.
 **Next:** batch D2 (§2.0), **WP6 first**: production prints "YES @ 100% / NO @ 0%" on one-sided markets in
-the hero grid and the board (V17: 64 findings) — the one-sided state on every card, then WP3, WP4, WP9,
+the hero grid and the board (V17; the count is on the GATE row) — the one-sided state on every card, then WP3, WP4, WP9,
 WP14b and V18. Then D3 (the pick slip, WP5, and the chat bubble under sheets) and D5 (the gate + panel).
 
 Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until
