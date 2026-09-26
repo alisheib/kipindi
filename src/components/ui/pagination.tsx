@@ -8,6 +8,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { I } from "@/components/ui/glyphs";
+import { LinkPending } from "@/components/ui/link-pending";
 
 /** Admin table page size. */
 export const PER_PAGE = 20;
@@ -168,6 +169,8 @@ export function Pagination({
     ) : (
       <Link href={href(to) as never} className={cls} aria-label={aria}>
         {children}
+        {/* ⭐ A pressed page that is still loading says so — `link-pending.tsx`. Nothing at rest. */}
+        <LinkPending />
       </Link>
     );
 

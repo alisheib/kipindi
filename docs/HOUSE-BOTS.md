@@ -814,6 +814,36 @@ over half a year and across every chip, three of them opened in the same millise
 links, failed reads, the rendered markup), 1.417 (the loader ghosts the list's card), and `qa:house-bots-visual`
 §5.9 on the find step at every width (three sortable headers with one in force, the tap floor, no sideways scroll).
 
+### 7.1b A press that is still loading says so (2026-09-26, RESUME-HERE §0c build step 10)
+
+Every tab on the desk and on an account page, every sortable header, every pager and every filter chip changes only
+the address's query. The page's own `loading.tsx` does not take over for that, so until the server answered, the old
+panel sat on screen unchanged and nothing said the press had landed. The owner asked, as typed: *"when jumoing from
+tba to anothe rmake sur eu ahve th erigh tloading states and etc toamke percet and user to not to think it sstucl"*.
+
+**What an officer now sees, at every width:**
+- **The pressed control marks itself** with a thin travelling bar along its bottom edge — under a tab's label (where
+  its underline will land), under a header's label, inside a chip, at the foot of a page number. A tab's label takes
+  the selected ink at once and the underline it is replacing fades.
+- **What the press will replace dims**: the panels below the tabs for a tab, the rows of the table for a header, a page
+  or a chip. What it will not replace stays at full strength, and the cursor reads "working".
+- **Nothing flickers on a fast answer**: the mark and the dimming wait a moment (`--t-quick`) before they show, and the
+  new content arrives at full strength, never fading up out of the old grey.
+- **The date filter's Custom window** marks its chip while its Apply or Clear is on the way.
+- **On a low-end phone** (the reduced motion tier) the bar stops travelling but stays, so it still says "loading".
+
+**How.** One kit mark (`src/components/ui/link-pending.tsx`): `LinkPending` sits inside the section rail's links
+(`ui/tabs.tsx`), the sortable header (`admin/admin-sort.tsx`), the pager (`ui/pagination.tsx`) and the filter chip
+(`ui/filter-pill.tsx`), and reads the router's own pending flag (`useLinkStatus`); `PendingMark` is the same mark for
+the one navigation made in code. Its look and the dimming are one block of `globals.css` beside `.prog-sweep`,
+reusing the kit's own `progSweep` and `kp-fade`. It renders nothing at rest, so every control's markup is unchanged
+until it is pressed — which is also why it serves every admin table and player list that uses those kit controls,
+not only the desk.
+**The gates:** `test:house-bot-console` §4c (the mark inside each link, the Custom chip, its shape, the CSS — each with
+a control) and 8 declared `nav-` mutations; `qa:nav-pending` on a served build presses a real tab, chip, header, page
+and account tab at 1280 and 360 with the server's answer held, and measures the mark, the dimming, that `loading.tsx`
+did not take over, and the landing.
+
 ### 7.2 Configuring an account, end to end
 
 This is the whole path from "put an account on the desk" to "Start will run it".
@@ -2070,6 +2100,95 @@ next commit:
 - `ops-red-flag-dropped`: the key without `--prove-red`. Must fail `ops.red.1a`, and the entry exits 2.
 - `ops-red-closure-writes`: a file-writing call added to the detectors module. Must fail `ops.red.1d` ONLY, while §4
   stays at its count. §4 reads one file; `ops.red.1d` reads the closure.
+
+**Driven 2026-09-26 at the live commit `5b82a079`**, in a detached tree, each plant a never-called function holding a
+real `writeFileSync(` call, the memory child and §4 run after each, and each file restored (content-identical: an empty
+diff) before the next. Unplanted control: no `ops.red.*` failure, §4 at 67.
+- `ops-red-entry-writes` → **`ops.red.1c` and `ops.red.1d` fail, and §4 counts 68** — the key is back among the undeclared.
+- `ops-red-key-back-on-cases` → **`ops.red.1b` fails**, and `npm run red:house-bot-ops` **exits 2**.
+- `ops-red-flag-dropped` → **`ops.red.1a` fails**, and the entry **exits 2**.
+- `ops-red-closure-writes` → **`ops.red.1d` fails and nothing else, and §4 stays at 67** — the closure walk is the only guard
+  that can see a write one import away, which is why it exists.
+
+### 12.11 Ruling 543 — an audit that cannot be signed no longer reports a landed write as failed — built 2026-09-26 (RESUME-HERE §0c step 6)
+
+**What was wrong.** `audit()` promised it never rejects, but `chainSecret()` throws under `NODE_ENV=production` when
+`AUDIT_CHAIN_SECRET` is absent or equal to `SESSION_SECRET` — during SIGNING, past the fail-open fallback, because that
+fallback signs too. Every desk act that writes its compliance row after its own write had landed therefore reported the
+landed write as a failure. The worst was the kill switch: the desk WAS off and the officer read *"Nothing changed.
+Reload the page and try again."*, with no alert sent. Designate and Start said *"That could not be written. Nothing
+changed"*. Latent in production, where the secret is set and distinct (`docs/CLOUDFLARE-SETUP-GUIDE.md:123`), which is
+documentation rather than a measurement.
+
+**What changed.** `audit()` now always resolves, with a COPY of the entry carrying `recorded` and, when false, why:
+`UNSIGNED` (nothing written, nothing chained — the ring is never handed a hash that is not a hash) or `PERSIST_FAILED`
+(the database refused it; a signed copy is in this process's ring only). The ticket is spent either way, so on Postgres
+the loss is a countable hole, and the server log carries one `[audit] NOT RECORDED` line naming the action and ticket,
+never the payload. Every house writer reads the flag instead of catching a rejection. Five had built ruling 537's
+`recorded: false` on the rejection (limits save, rules save, Pause/Remove, sunset, switch-on), so fixing the contract
+alone would have flipped all five to `recorded: true`. `engineAudit` and `writePressAudit` answer null for an entry that
+did not land, so no event or press is stamped with the id of a row that does not exist, and the press repair still
+writes it. On the console, the kill switch, Start and designate now say both halves as a warning. The kill switch uses
+*"The desk is off. ⚠️ Its compliance record could not be written — tell whoever keeps the records."*; the other two use
+the acts' own one sentence. The designate toast turns amber on that warning.
+
+**Held by:** `test:house-bot-console` §2i, 2.543.0–11 on both stores, each with a control in the untouched env, plus
+2.543.8, the source law over every writer under `src/lib/server/house-bot/`: awaited into a name, `.recorded` read in
+the same block, no `try {` around the call. `test:house-bot-engine` 13.35b/c and 17.14b/c, plus 17.14d/e on Postgres,
+where a BEFORE INSERT trigger stands in for the outage. And `test:audit` 543.1–3, so the platform's own suite stops a
+lane that edits `audit.ts` without running a house suite. Declared mutations: fifteen new `543-*` (12 console, 3
+engine), plus `537-recorded`, `start-drops-its-warnings` and the money suite's `D19-5`, re-pointed at the lines they
+quote.
+
+⚠️ **Known siblings, not in this ruling:** `verifyChain()`, `verifyChainFull()` and the census call `chainSecret()`
+too, and still throw under the same misconfiguration, so the admin "verify chain" action and the ISO integrity report
+would error. Those are read paths. The password check and the consent void ignore their row's answer, since neither
+is reported to an officer as a landed act.
+
+**Run 2026-09-26 on the integrated tree** (`5b82a079` + steps 6 and 10, one lock acquisition, never piped):
+`test:house-bot-console` **1007 memory / 728 Postgres, 0 failed** (floor 972/706 → 1007/728, with step 10's §4c);
+`test:house-bot-engine` **829 / 810, 0 failed** (floor 825/804 → 829/810); `test:audit`, `test:audit-drain`,
+`test:audit-gap`, `test:audit-attest`, `test:ops-audit-flush`: exit 0; `test:dal-parity` 1482/0; ops 100/104,
+caps, money 132/150, reports 251/80, comms 52/50, disclosure 118/0: all pass; `typecheck`, `next build` and
+`verify:house-bot-bundle` green; `test:red-anchors` 3420 passed, the four known failures of other lanes only.
+`test:house-bot-designation` failed ONCE on Postgres at 6.9 — the recorded intermittent (its own note: Postgres only,
+always a refusal, green on re-run twice before) — and was **169 / 161, 0 failed** on the re-run twenty minutes later.
+⚠️ **NOT RENDERED:** the three warnings (designate's amber toast, Start's and the kill switch's warning) reuse the kit's
+existing warning toast and callout, and the suite proves each answer on both stores; showing them on a served page needs
+a build whose chain cannot sign (`AUDIT_CHAIN_SECRET` equal to `SESSION_SECRET`), which this pass did not stand up.
+The 18 declared mutations are driven after the push, at the live commit, and recorded with the next commit.
+
+### 12.12 A press that is still loading says so — built 2026-09-26 (RESUME-HERE §0c build step 10)
+
+What an officer sees and how it is built is §7.1b. This is what proving it took.
+
+**The premise was MEASURED, not assumed.** `qa:nav-pending` holds the server's answer to every client navigation and
+presses the app's own links. On every case at 1280 and 360 the old page was still on screen during the hold, with the
+address unchanged: the page's `loading.tsx` does not take over for a query-only change, so before this step nothing
+at all moved between the press and the answer.
+
+| Gate, on the integrated tree | Printed |
+|---|---|
+| `qa:nav-pending` — desk tab, desk filter chip, find-list header, pager and chip, account tab; 1280 and 360; plus the low-end tier | **111 passed, 0 failed, 0 NOT MEASURED** |
+| `qa:house-bots-visual` at 360 and 1280 (nothing at rest may change) | **208 passed, 0 failed, 0 NOT MEASURED** |
+| `test:house-bot-console` §4c (8 pins, each with a control) | inside the 1007 / 728 above |
+| `test:reduce-motion` · `test:keyframes` · `test:motion-ladder` · `test:filter-language` · `test:design-frozen` · `test:pager-reach` · `test:grid-paging` · `test:section-rail` · `test:ui-consistency` · `test:chip-contract` · `test:hooks-order` · `test:shell-boundary` | all exit 0 |
+| `test:tap-target` · `test:type-scale` | red with the SAME failures on `5b82a079` without this step (another lane's `generate-button.tsx`, the date filter's pre-existing `btn-xs`; type-scale 759 / 239) — NOT OURS |
+| `test:motion` | needs a served page on `BASE` (default `localhost:3000`); NOT MEASURED in the gate run, run against production after the deploy |
+
+**Found by the first served run, before the push:**
+- **The desk's filter chips marked themselves but dimmed nothing**: the desk's rail sits ABOVE its table's card, not
+  inside it, so "the rows of the pressed card" was an empty set. A console-scoped rule now dims what follows a pressed
+  filter rail; the probe's "after-filter" case measures it.
+- **The probe itself**: it waited for a tab rail on the find step, which has none (six cases NOT MEASURED rather than
+  passed), and its "not dimmed" control on the find step measured nothing and passed vacuously. It now waits for each
+  page's own data element, and the control must measure at least one element.
+- **Two account-tab landings stalled** on the first run and landed on the second, with RSC diagnostics now recorded on
+  any stall; the stall did not recur, so its cause is NOT established.
+
+**Declared mutations: 8**, every id starting `nav-` in `scripts/anchors/house-bot-console.anchors.mjs` (`console-mem`):
+the mark dropped from each of the four kit links and from the Custom chip, a mark painted at rest, rows that never dim,
+and a loop that runs on at the low-end tier. The console total is 420. Driven after the push, at the live commit.
 
 ---
 

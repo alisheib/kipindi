@@ -153,30 +153,30 @@ export async function saveHouseBotLimits(input: {
   /**
    * ⛔ THE WRITE HAS ALREADY LANDED BY THIS LINE, SO A FAILURE HERE MAY NOT BE REPORTED AS "NOTHING WAS SAVED".
    *
-   * MEASURED 2026-09-18 on a SERVED build, which is the only place it could have been: the audit module is
-   * documented as never rejecting and it fails OPEN on a database outage — but `chainSecret()` throws outright
-   * under `NODE_ENV=production` without a distinct `AUDIT_CHAIN_SECRET`, and that throw escapes the in-memory
+   * MEASURED 2026-09-18 on a SERVED build, which is the only place it could have been: the audit module was
+   * documented as never rejecting and it failed OPEN on a database outage — but `chainSecret()` threw outright
+   * under `NODE_ENV=production` without a distinct `AUDIT_CHAIN_SECRET`, and that throw escaped the in-memory
    * fallback too. The officer was told "Nothing was saved. Reload the page and try again." while the control row
    * HAD moved and the page still showed the old figures. A save that landed and says it did not is the most
    * expensive sentence this console can print: the next thing an officer does is type it again.
    * ⛔ SO THE OUTCOME IS THE TRUTH, AND THE GAP IS NAMED: the save is `ok`, `recorded` is false, and the console
    * says BOTH. It is never swallowed — a COMPLIANCE row that quietly did not write is the other half of the same
    * defect, and the caller renders a warning rather than a success.
+   * ⭐ AND SINCE REPLAN RULING 543 (2026-09-26) THE FLAG IS READ, NOT CAUGHT. `audit()` now RESOLVES an entry it
+   * cannot sign (and one the database refused) with `recorded` false instead of rejecting past its own fail-open,
+   * so the try this used to be would never reach its catch — and would report a record that was never written.
    */
-  let recorded = true;
-  try {
-    await audit({
-      category: HOUSE_AUDIT["house_bot.limits_saved"],
-      action: "house_bot.limits_saved",
-      actorId: input.actorId,
-      targetType: "HouseBotControl",
-      targetId: HOUSE_CONTROL_ID,
-      payload,
-    });
-  } catch (err) {
-    recorded = false;
-    console.error("[house-bot] the limits_saved compliance row could not be written (the limits DID change):",
-      err instanceof Error ? err.message : String(err));
+  const logged = await audit({
+    category: HOUSE_AUDIT["house_bot.limits_saved"],
+    action: "house_bot.limits_saved",
+    actorId: input.actorId,
+    targetType: "HouseBotControl",
+    targetId: HOUSE_CONTROL_ID,
+    payload,
+  });
+  const recorded = logged.recorded;
+  if (!recorded) {
+    console.error(`[house-bot] the limits_saved compliance row could not be written (the limits DID change): ${logged.unrecorded}`);
   }
   return { ok: true, limitsVersion: cas.row.limitsVersion, changes, recorded, conflicts: checked.conflicts };
 }

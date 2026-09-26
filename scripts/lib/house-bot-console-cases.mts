@@ -2504,11 +2504,14 @@ section("§2b · the limits save");
 
   /* ⛔ A SAVE THAT LANDED MAY NOT REPORT THAT NOTHING WAS SAVED — AND THIS WAS MEASURED ON A SERVED BUILD.
    *
-   * The audit module is documented as never rejecting and it fails OPEN on a database outage, so the first pass
+   * The audit module was documented as never rejecting and it failed OPEN on a database outage, so the first pass
    * awaited it after the write and let it speak for itself. Driven against `next start`, `chainSecret()` threw
    * outright (`NODE_ENV=production` without a distinct `AUDIT_CHAIN_SECRET`) — past the in-memory fallback too —
    * and the officer was told "Nothing was saved. Reload the page and try again." while the control row HAD moved.
    * The next thing an officer does with that sentence is type the change again.
+   * ⭐ SINCE REPLAN RULING 543 (2026-09-26) THE AUDIT NO LONGER THROWS HERE: it RESOLVES unrecorded (UNSIGNED), and the
+   * save reads that flag instead of catching a rejection — §2i holds the contract, and the declared `537-recorded`
+   * mutation now forces the flag read itself to lie. This case is unchanged, because the officer's answer is.
    * ⛔ THE FAULT IS INJECTED THROUGH THE AUDIT MODULE'S OWN PRECONDITION, not through a seam invented for a test:
    * under `NODE_ENV=production` it REQUIRES a chain secret distinct from the session secret, and both halves of
    * that are restored in a `finally`. ⛔ And the gap is never swallowed: `recorded` is FALSE, which is what makes
@@ -7989,6 +7992,463 @@ try {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2i · REPLAN RULING 543 — AN AUDIT THAT CANNOT BE SIGNED NO LONGER REPORTS A LANDED WRITE AS FAILED (2026-09-26)
+ *
+ * ⛔ WHAT WAS WRONG. `audit()` documented a fail-open it did not keep. `chainSecret()` throws under
+ * `NODE_ENV=production` without an `AUDIT_CHAIN_SECRET` distinct from `SESSION_SECRET`, and it threw DURING SIGNING —
+ * past the in-memory fallback, because that fallback signs too. So every house writer that awaited its compliance
+ * row after its own write had landed reported the landed write as a failure: a designation ("That could not be
+ * written. Nothing changed"), a Start, and the kill switch ("Nothing changed. Reload the page" — about a desk that
+ * WAS off). Five writers had meanwhile adopted ruling 537's `recorded: false` by CATCHING the rejection, so fixing the
+ * contract alone would have flipped every one of them to `recorded: true` over a row that was never written.
+ * ⛔ WHAT THIS BLOCK HOLDS, ON BOTH STORES: the contract itself (it resolves, it names the shortfall, nothing is
+ * written or chained, and the fault really was live), the three surfaces that used to lie (the kill switch, Start,
+ * designate) and the four writers whose recorded:false branch had no case at all (the rules save, Pause and Remove,
+ * switch-on and the staff cancel) — every one with a CONTROL in the untouched env — and, in the memory child, the
+ * source law over every house writer (2.543.8).
+ * ⛔ THE FAULT IS INJECTED THROUGH THE AUDIT MODULE'S OWN PRECONDITION, ONE CALL WIDE (`withUnsignableChain`): the
+ * queue is drained BEFORE the env moves, so no earlier fire-and-forget append is stamped under it, and again before it
+ * is put back, so nothing queued inside is stamped outside; every variable is restored in a `finally`. A write is
+ * asserted through `getAuditById`, the table and the event's own `auditId` — never through the ring's size, because
+ * other appends interleave.
+ * ⛔ EVERY DESK THIS BLOCK SWITCHES IS THE SCRATCH ONE — the two-store runner's own database, or the memory store.
+ * ⛔ THE ROSTER IS SHARED (20 slots): every account this block creates is REMOVED before it ends, and the master switch
+ * is put back where the block found it. The designation cases need a free slot on a roster earlier blocks have filled
+ * past its ceiling through the DAL, so the capacity read is scoped to 0 for exactly those two calls — a fixture of
+ * STATE, restored in a `finally`, the kind §2h uses for the day book — and never by raising the ceiling 1.359 and
+ * 1.412 measure, nor by removing an account another block left.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§2i · ruling 543 — an audit that cannot be signed never reports a landed write as failed");
+try {
+  const AUD: Any = await import("../../src/lib/server/audit.ts");
+  const KS: Any = await import("../../src/lib/server/house-bot/kill-switch.ts");
+  const { hashPassword, randomId }: Any = await import("../../src/lib/server/crypto.ts");
+  /** The tail every one of the console's missing-record sentences shares (switch on, switch off, and every act). */
+  const RECORD_GONE = "Its compliance record could not be written";
+  const SAME_SECRET = "same-secret-for-both-32-characters";
+  const REMOVE_543 = { to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } };
+
+  /**
+   * ⭐ ONE CALL WITH THE CHAIN UNSIGNABLE — `NODE_ENV=production` and either no `AUDIT_CHAIN_SECRET` ("absent") or one
+   * equal to `SESSION_SECRET` ("same"): the two halves of the precondition `chainSecret()` refuses on a served build.
+   * ⚠️ "same" rewrites SESSION_SECRET for the call, so it wraps only a bare `audit()`; every act uses "absent".
+   */
+  async function withUnsignableChain<T>(mode: "absent" | "same", fn: () => Promise<T>): Promise<T> {
+    await AUD.auditFlush();
+    const env0 = { node: process.env.NODE_ENV, chain: process.env.AUDIT_CHAIN_SECRET, session: process.env.SESSION_SECRET };
+    const put = (k: string, v: string | undefined): void => { if (v === undefined) delete (process.env as Any)[k]; else (process.env as Any)[k] = v; };
+    try {
+      put("NODE_ENV", "production");
+      if (mode === "absent") put("AUDIT_CHAIN_SECRET", undefined);
+      else { put("SESSION_SECRET", SAME_SECRET); put("AUDIT_CHAIN_SECRET", SAME_SECRET); }
+      return await fn();
+    } finally {
+      await AUD.auditFlush();
+      put("NODE_ENV", env0.node);
+      put("AUDIT_CHAIN_SECRET", env0.chain);
+      put("SESSION_SECRET", env0.session);
+    }
+  }
+  /** A promise's outcome as data, so a REJECTION is a failed assertion here and never a throw that skips the block. */
+  const settle = (p: Promise<Any>): Promise<{ v?: Any; e?: string }> =>
+    Promise.resolve(p).then((v) => ({ v }), (e: unknown) => ({ e: String((e as Error)?.message ?? e) }));
+  /** Rows the TABLE holds for one id — Postgres only; the memory store has no table, so its answer is 0. */
+  const tableRows = async (id: string): Promise<number> => (w.onPostgres
+    ? Number(((await w.prisma().$queryRawUnsafe(`SELECT count(*)::int AS n FROM "AuditLog" WHERE "id" = $1`, id)) as Any[])[0]?.n ?? -1)
+    : 0);
+  const ticketOf = (id: unknown): number => Number(/_(\d{9})$/.exec(String(id))?.[1] ?? Number.NaN);
+  const probe = (action: string) => ({ category: "SYSTEM", action, actorId: null, targetType: null, targetId: null, payload: { probe: action } });
+
+  /* ━━ 2.543.0–3 · THE CONTRACT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const before = AUD.verifyChain();
+    ok("2.543.0 · fixture · the audit chain this child has written so far verifies BEFORE this block touches it — so a break found below was made here",
+      before.valid === true, j(before));
+
+    const t0 = AUD.auditTicketsIssued();
+    const absent = await withUnsignableChain("absent", () => settle(AUD.audit(probe("probe.543.absent"))));
+    const t1 = AUD.auditTicketsIssued();
+    const u = absent.v;
+    ok("2.543.1 · ⭐ an append that cannot be SIGNED — production, no chain secret — RESOLVES, never rejects, and names its shortfall: recorded false, UNSIGNED, and a ticketed id this very call was issued",
+      absent.e === undefined && u?.recorded === false && u?.unrecorded === "UNSIGNED"
+        && String(u?.id).startsWith(`aud_${AUD.auditBootId()}_`) && ticketOf(u?.id) > t0 && ticketOf(u?.id) <= t1,
+      j({ rejected: absent.e ?? null, recorded: u?.recorded, unrecorded: u?.unrecorded, id: u?.id, tickets: [t0, t1] }));
+    const same = await withUnsignableChain("same", () => settle(AUD.audit(probe("probe.543.same"))));
+    ok("2.543.1b · …and the same answer when the chain secret EQUALS the session secret — the other half of the refusal, which a secret that is merely present does not pass",
+      same.e === undefined && same.v?.recorded === false && same.v?.unrecorded === "UNSIGNED" && AUD.getAuditById(same.v?.id) === undefined,
+      j({ rejected: same.e ?? null, recorded: same.v?.recorded, unrecorded: same.v?.unrecorded }));
+    const rows = u ? await tableRows(String(u.id)) : -1;
+    ok("2.543.2 · nothing of it was written ANYWHERE: the audit store has no entry for its id, on Postgres the table has no row, and its hash is a word rather than a hash",
+      u !== undefined && AUD.getAuditById(u.id) === undefined && rows === 0 && u.entryHash === "UNSIGNED" && u.prevHash === "UNSIGNED",
+      j({ inStore: u ? AUD.getAuditById(u.id) !== undefined : null, tableRows: rows, entryHash: u?.entryHash, prevHash: u?.prevHash }));
+    const live = await withUnsignableChain("absent", async () => {
+      try { AUD.verifyChain(); return "the verifier did not throw"; } catch (e) { return String((e as Error)?.message ?? e); }
+    });
+    ok("2.543.2c · CONTROL · the fault was LIVE for those calls: under the same env the chain's own verifier THROWS the refusal — so the resolve above is the fix, not an env change that never took",
+      /AUDIT_CHAIN_SECRET must be set in production/.test(live), live);
+    const signed = await settle(AUD.audit(probe("probe.543.signed")));
+    await AUD.auditFlush();
+    const signedRows = signed.v ? await tableRows(String(signed.v.id)) : -1;
+    const chain = AUD.verifyChain();
+    ok("2.543.3 · CONTROL · with the secret back the SAME append is recorded — so the flag is a measurement, not a constant — its entry is in the store, and the chain still verifies, so no unsigned entry ever joined it",
+      signed.e === undefined && signed.v?.recorded === true && signed.v?.unrecorded === undefined
+        && AUD.getAuditById(signed.v?.id) !== undefined && signedRows === (w.onPostgres ? 1 : 0) && chain.valid === true,
+      j({ rejected: signed.e ?? null, recorded: signed.v?.recorded, inStore: AUD.getAuditById(signed.v?.id) !== undefined, tableRows: signedRows, chain }));
+  }
+
+  /* ━━ THE ACTS — every desk below is this run's scratch desk; the block puts it back as it found it ━━━━━━━━━━━━ */
+  const ctl0: Any = await w.dal.houseBotControlStore.get();
+  const mine543: Array<{ botId: string; userId: string }> = [];
+  try {
+    await w.limits();
+    if (ctl0.enabled) await w.switchOff();
+    else if (ctl0.offCause === "SUNSET") { await w.switchOn(); await w.switchOff(); }
+    const WORD = GATEM.CONSOLE_SWITCH_ON_WORD;
+    const eventIds = async (kind: string): Promise<Set<string>> =>
+      new Set(((await w.dal.houseBotEventStore.listByKinds([kind], { limit: 500 })) as Any[]).map((e) => e.id));
+    const newEvent = async (kind: string, before: Set<string>): Promise<Any> =>
+      ((await w.dal.houseBotEventStore.listByKinds([kind], { limit: 500 })) as Any[]).find((e) => !before.has(e.id)) ?? null;
+    const eventOf = async (botId: string, kind: string): Promise<Any> =>
+      ((await w.dal.houseBotEventStore.listByBot(botId, { limit: 50 })).rows as Any[]).find((e) => e.kind === kind) ?? null;
+    const offBells = async (): Promise<Set<string>> => new Set(((await w.db.notification.findByUser(OFFICER, 1000)) as Any[])
+      .filter((r) => r.kind === "HOUSE_BOT" && /switched OFF/.test(String(r.titleEn ?? ""))).map((r) => r.id));
+    const act = (input: Any): Promise<Any> => GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input);
+    const fixtureBot = async (caps: Record<string, unknown> = {}): Promise<{ botId: string; userId: string }> => {
+      const b = await w.bot({ caps });
+      mine543.push(b);
+      return b;
+    };
+
+    /* ━━ 2.543.10 · SWITCH-ON — its recorded:false branch had no case ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const before = await eventIds("SWITCH_ON");
+      const on = await withUnsignableChain("absent", () => settle(GATEM.houseSwitchForConsole(OFFICER, "/admin/desk", { to: "ON", reason: "record check, switched on", typed: WORD })));
+      const ev = await newEvent("SWITCH_ON", before);
+      const row: Any = await w.dal.houseBotControlStore.get();
+      ok("2.543.10 · switching the desk ON while its compliance record cannot be signed: the desk IS on, the answer is a success, and it is a WARNING that the record could not be written — with no audit id on the event",
+        on.e === undefined && on.v?.ok === true && on.v?.changed === true && on.v?.on === true && on.v?.warn === true
+          && String(on.v?.note).includes(RECORD_GONE) && !NEUTRAL.test(String(on.v?.note))
+          && row.enabled === true && ev !== null && ev.auditId == null,
+        j({ threw: on.e ?? null, result: on.v, enabled: row.enabled, auditId: ev ? ev.auditId : "no event" }));
+      await w.switchOff();
+      const before2 = await eventIds("SWITCH_ON");
+      const onOk = await GATEM.houseSwitchForConsole(OFFICER, "/admin/desk", { to: "ON", reason: "record check, switched on again", typed: WORD });
+      const ev2 = await newEvent("SWITCH_ON", before2);
+      ok("2.543.10c · CONTROL · the same switch-on with the secret in place carries no note and no warning, and its event carries an audit id the audit store holds",
+        onOk.ok === true && onOk.changed === true && onOk.warn === false && onOk.note === null
+          && typeof ev2?.auditId === "string" && AUD.getAuditById(ev2.auditId) !== undefined,
+        j({ result: onOk, auditId: ev2?.auditId ?? null }));
+    }
+
+    /* ━━ 2.543.4 · THE KILL SWITCH — the worst of them: the desk WAS off and the officer read "Nothing changed" ━━━━ */
+    {
+      /* 4a · the SERVICE, with a recorder for the channel, so "the alert still went" is measured, not inferred. */
+      if (!(await w.dal.houseBotControlStore.get()).enabled) await w.switchOn();
+      const calls: Any[] = [];
+      const unused = async (): Promise<void> => { throw new Error("§2i: the kill switch speaks only on switchedOff"); };
+      const rec = { placed: unused, once: unused, security: unused, botStopped: unused, switchedOff: async (c: Any) => { calls.push(c); } };
+      const before = await eventIds("SWITCH_OFF");
+      const svc = await withUnsignableChain("absent", () => settle(KS.switchOffHouseBots({ cause: "MANUAL", byId: OFFICER, reason: "record check, service", alerts: rec })));
+      const ev = await newEvent("SWITCH_OFF", before);
+      const afterSvc: Any = await w.dal.houseBotControlStore.get();
+      ok("2.543.4a · ⭐ the kill switch while its compliance record cannot be signed: the desk IS off, the stop is reported as landed, the alert still goes out, the event carries no audit id — and the service says the record did not land",
+        svc.e === undefined && svc.v?.ok === true && svc.v?.changed === true && svc.v?.recorded === false
+          && afterSvc.enabled === false && calls.length === 1 && ev !== null && ev.auditId == null,
+        j({ threw: svc.e ?? null, result: svc.v, enabled: afterSvc.enabled, alerts: calls.length, auditId: ev ? ev.auditId : "no event" }));
+
+      /* 4b · the CONSOLE door the officer presses, with the REAL alert channel. */
+      await w.switchOn();
+      const bellsBefore = await offBells();
+      const before2 = await eventIds("SWITCH_OFF");
+      const viaConsole = await withUnsignableChain("absent", () => settle(GATEM.houseSwitchForConsole(OFFICER, "/admin/desk", { to: "OFF", reason: "record check, console" })));
+      const ev2 = await newEvent("SWITCH_OFF", before2);
+      const afterConsole: Any = await w.dal.houseBotControlStore.get();
+      const rang = [...(await offBells())].some((id) => !bellsBefore.has(id));
+      const c = viaConsole.v;
+      ok("2.543.4b · …and the CONSOLE says both, as a warning: the desk is off and its compliance record could not be written — never \"Nothing changed\" — the event carries no audit id, and the officer's bell still rang",
+        viaConsole.e === undefined && c?.ok === true && c?.changed === true && c?.on === false && c?.warn === true
+          && String(c?.note).startsWith("The desk is off.") && String(c?.note).includes(RECORD_GONE) && !NEUTRAL.test(String(c?.note))
+          && afterConsole.enabled === false && ev2 !== null && ev2.auditId == null && rang,
+        j({ threw: viaConsole.e ?? null, result: c, enabled: afterConsole.enabled, auditId: ev2 ? ev2.auditId : "no event", rang }));
+
+      /* 4c · CONTROL — the same console stop, the secret in place. */
+      await w.switchOn();
+      const before3 = await eventIds("SWITCH_OFF");
+      const plain = await GATEM.houseSwitchForConsole(OFFICER, "/admin/desk", { to: "OFF", reason: "record check, control" });
+      const ev3 = await newEvent("SWITCH_OFF", before3);
+      ok("2.543.4c · CONTROL · the same stop with the secret in place carries no record sentence and no warning, and stamps its event with an id the audit store holds — so the two above are the missing record's doing",
+        plain.ok === true && plain.changed === true && plain.warn === false && !String(plain.note ?? "").includes(RECORD_GONE)
+          && typeof ev3?.auditId === "string" && AUD.getAuditById(ev3.auditId) !== undefined,
+        j({ result: plain, auditId: ev3?.auditId ?? null }));
+    }
+
+    /* ━━ 2.543.5 · START ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      /** A stopped account Start will accept — the fixture 1.415 measured: a salt, real rules and the gap floor. */
+      const startable = async (): Promise<{ botId: string; userId: string }> => {
+        const b = await fixtureBot({ freqMinGapSec: 20 });
+        await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+        await w.setUserFields(b.userId, { passwordSalt: "case-salt-for-start-543" });
+        const cur: Any = await w.dal.houseBotStore.get(b.botId);
+        const rules: Any = R.DEFAULT_RULES_V1({ stakeBounds: { minTzs: 1_000, maxTzs: 10_000_000 } });
+        rules.scope.products.polls = true;
+        rules.scope.categories = ["macro"];
+        rules.modes.polls = { counter: true, fill: true, opener: true };
+        const saved = await w.dal.houseBotStore.saveRules(b.botId, cur.rulesVersion, { rules });
+        if (!saved.ok) throw new Error("§2i fixture: the Start account could not save its rules");
+        return b;
+      };
+      const a = await startable();
+      const started = await withUnsignableChain("absent", () => settle(act({ id: a.botId, act: "START" })));
+      const s = started.v;
+      const status = ((await w.dal.houseBotStore.get(a.botId)) as Any)?.status;
+      ok("2.543.5 · ⭐ Start while its compliance record cannot be signed: the account IS running, the answer is a success, and it is a WARNING carrying the record sentence — never \"That could not be written. Nothing changed\"",
+        started.e === undefined && s?.ok === true && s?.changed === true && s?.warn === true
+          && String(s?.note).includes(RECORD_GONE) && !NEUTRAL.test(String(s?.note)) && status === "ACTIVE",
+        j({ threw: started.e ?? null, result: s, status }));
+      const b = await startable();
+      const plain = await act({ id: b.botId, act: "START" });
+      ok("2.543.5c · CONTROL · the same Start with the secret in place says nothing about a record — so the sentence above is the missing record's, and not something Start always says",
+        plain.ok === true && plain.changed === true && !String(plain.note ?? "").includes(RECORD_GONE)
+          && ((await w.dal.houseBotStore.get(b.botId)) as Any)?.status === "ACTIVE",
+        j(plain));
+    }
+
+    /* ━━ 2.543.6 · DESIGNATE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const PW543 = "candidate-password-543";
+      /** A player with a REAL salted password, which is what `verifyHouseBotPassword` checks (§2f's recipe). */
+      const candidate = async (): Promise<string> => {
+        const id = await w.user({ role: "PLAYER", balance: 250_000 });
+        const salt = randomId(16);
+        await w.setUserFields(id, {
+          passwordHash: await hashPassword(PW543, salt), passwordSalt: salt,
+          passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE",
+        });
+        return id;
+      };
+      /* ⛔ THE CAPACITY READ, SCOPED TO THIS ONE CALL (see the block header): the ceiling is not what this case
+         measures, and a ROSTER_FULL here would be a fixture artefact masquerading as the assertion's own answer. */
+      const designateOnce = async (userId: string, label: string, unsignable: boolean): Promise<{ v?: Any; e?: string }> => {
+        const realCount = w.dal.houseBotStore.countLive;
+        w.dal.houseBotStore.countLive = async () => 0;
+        try {
+          const call = () => settle(GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId, label, password: PW543 }));
+          return unsignable ? await withUnsignableChain("absent", call) : await call();
+        } finally {
+          w.dal.houseBotStore.countLive = realCount;
+        }
+      };
+      const keep = async (userId: string): Promise<Any> => {
+        const bot: Any = await w.dal.houseBotStore.findLiveByUserId(userId);
+        if (bot) mine543.push({ botId: bot.id, userId });
+        return bot;
+      };
+      const u1 = await candidate();
+      const d1 = await designateOnce(u1, "Record check one", true);
+      const bot1 = await keep(u1);
+      ok("2.543.6 · ⭐ a designation while its compliance record cannot be signed: the account IS on the desk, the answer is a success, and it is a WARNING carrying the record sentence — never \"That could not be written. Nothing changed\", which sent the officer to spend another of the holder's attempts",
+        d1.e === undefined && d1.v?.ok === true && d1.v?.warn === true && String(d1.v?.note).includes(RECORD_GONE)
+          && !NEUTRAL.test(all(d1.v)) && bot1 !== null && bot1.status === "PAUSED",
+        j({ threw: d1.e ?? null, result: d1.v, bot: bot1?.status ?? null }));
+      const u2 = await candidate();
+      const d2 = await designateOnce(u2, "Record check two", false);
+      const bot2 = await keep(u2);
+      ok("2.543.6c · CONTROL · the same designation with the secret in place is a plain success — no warning and no record sentence — and the capacity read really was put back",
+        d2.e === undefined && d2.v?.ok === true && d2.v?.warn === false && !String(d2.v?.note).includes(RECORD_GONE) && bot2 !== null
+          && (await w.dal.houseBotStore.countLive()) > 0,
+        j({ threw: d2.e ?? null, result: d2.v }));
+    }
+
+    /* ━━ 2.543.7 · THE RULES SAVE — its recorded:false branch had no case ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const acct = await fixtureBot({ freqMinGapSec: 20 });
+      const RULE_IDS = R.RULE_NUMBER_FIELDS as readonly string[];
+      /** The whole form as the browser posts it (2h's recipe), with the counter delay window set by KEY. */
+      const post = async (minDelay: string): Promise<Any> => {
+        const f: Any = (await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId)).rulesForm;
+        const row: Any = await w.dal.houseBotStore.get(acct.botId);
+        const keyOf = (id: string): string => (f.rules as Any[])[RULE_IDS.indexOf(id)].key;
+        const numbers = Object.fromEntries((f.rules as Any[]).map((r: Any) => [r.key, r.value]));
+        return {
+          accountId: acct.botId,
+          baseVersion: row.rulesVersion,
+          values: { ...Object.fromEntries((f.caps as Any[]).map((x: Any) => [x.key, x.value])), "stake-max": "1000000" },
+          flags: Object.fromEntries((f.flags as Any[]).map((x: Any) => [x.key, x.on])),
+          lists: {
+            categories: (f.lists as Any[]).find((l: Any) => l.field === "categories").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+            chains: (f.lists as Any[]).find((l: Any) => l.field === "chains").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+          },
+          numbers: { ...numbers, [keyOf("counter.delayMinSec")]: minDelay, [keyOf("counter.delayMaxSec")]: "55" },
+          amountKind: f.amountKind.value,
+          schedule: {
+            days: (f.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value),
+            allDay: f.schedule.allDay,
+            windows: (f.schedule.windows as Any[]).map((x: Any) => ({ start: x.start, end: x.end })),
+          },
+        };
+      };
+      const body = await post("26");
+      const saved = await withUnsignableChain("absent", () => settle(GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", body)));
+      const stored: Any = await w.dal.houseBotStore.get(acct.botId);
+      ok("2.543.7 · a rules save while its compliance record cannot be signed still LANDS — the new value is on the row — and says the record did not: recorded false, never \"Nothing was saved\"",
+        saved.e === undefined && saved.v?.ok === true && saved.v?.recorded === false && stored.rules?.counter?.delayMinSec === 26,
+        j({ threw: saved.e ?? null, result: saved.v, stored: stored.rules?.counter?.delayMinSec }));
+      const good = await GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", await post("27"));
+      ok("2.543.7c · CONTROL · the same save with the secret in place reports its record written — so the flag above is a measurement and not a constant",
+        good.ok === true && good.recorded === true && ((await w.dal.houseBotStore.get(acct.botId)) as Any)?.rules?.counter?.delayMinSec === 27,
+        j(good));
+    }
+
+    /* ━━ 2.543.9 · PAUSE AND REMOVE — their recorded:false branch had no case ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const pa = await fixtureBot();
+      const paused = await withUnsignableChain("absent", () => settle(act({ id: pa.botId, act: "PAUSE", reason: "record check pause" })));
+      const pEvent = await eventOf(pa.botId, "PAUSED");
+      const re = await fixtureBot();
+      const removed = await withUnsignableChain("absent", () => settle(act({ id: re.botId, act: "REMOVE", reason: "record check removal", typed: GATEM.CONSOLE_REMOVE_WORD })));
+      const rEvent = await eventOf(re.botId, "REMOVED");
+      ok("2.543.9 · Pause and Remove while their compliance records cannot be signed: each account MOVED, each answer is a success carrying the record sentence as a WARNING, and neither event is stamped with the id of a row that does not exist",
+        paused.v?.ok === true && paused.v?.changed === true && paused.v?.warn === true && String(paused.v?.note).includes(RECORD_GONE)
+          && removed.v?.ok === true && removed.v?.changed === true && removed.v?.warn === true && String(removed.v?.note).includes(RECORD_GONE)
+          && ((await w.dal.houseBotStore.get(pa.botId)) as Any)?.status === "PAUSED" && ((await w.dal.houseBotStore.get(re.botId)) as Any)?.status === "REMOVED"
+          && pEvent !== null && pEvent.auditId == null && rEvent !== null && rEvent.auditId == null,
+        j({ pause: paused.v ?? paused.e, remove: removed.v ?? removed.e, pauseAuditId: pEvent?.auditId ?? "no event", removeAuditId: rEvent?.auditId ?? "no event" }));
+      const pc = await fixtureBot();
+      const pausedOk = await act({ id: pc.botId, act: "PAUSE", reason: "record check pause, control" });
+      const pcEvent = await eventOf(pc.botId, "PAUSED");
+      ok("2.543.9c · CONTROL · the same Pause with the secret in place is no warning, and its event carries an audit id the audit store holds",
+        pausedOk.ok === true && pausedOk.changed === true && pausedOk.warn === false
+          && typeof pcEvent?.auditId === "string" && AUD.getAuditById(pcEvent.auditId) !== undefined,
+        j({ result: pausedOk, auditId: pcEvent?.auditId ?? null }));
+    }
+
+    /* ━━ 2.543.11 · THE STAFF CANCEL — its recorded:false branch had no case ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const sc = await fixtureBot();
+      const market = await w.poll();
+      /** One QUEUED (PENDING) by-hand stake on the account — the only status the stop control is offered on. */
+      const queued = async (): Promise<string> => {
+        const id = w.constants.HOUSE_ID_PREFIX ? `${w.constants.HOUSE_ID_PREFIX.intent}${w.uid("x")}` : w.uid("hbi_");
+        await w.dal.houseBotIntentStore.insert({
+          id, houseBotId: sc.botId, botUserId: sc.userId, kind: "MANUAL", marketId: market.id, productLine: "MARKET",
+          anchorKey: w.constants.manualAnchorKey(OFFICER, crypto.randomUUID()), triggerPositionId: null, triggerUserId: null, targetId: null,
+          requestedById: OFFICER, entryCondition: "THIN", side: "YES", stakeTzs: 2_000,
+          dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000), status: "PENDING", reasonCode: null,
+          why: null, decision: {}, attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null,
+          claimedUntil: null, positionId: null, finishedAt: null, alertedAt: null,
+        } as Any);
+        return id;
+      };
+      const i1 = await queued();
+      const sub1 = crypto.randomUUID();
+      const cut = await withUnsignableChain("absent", () => settle(GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: i1, submitId: sub1, reason: "record check stop" })));
+      const press1: Any = await w.dal.pressStore.findByActorSubmit(OFFICER, sub1);
+      const ev1 = ((await w.dal.houseBotEventStore.listByBot(sc.botId, { limit: 50 })).rows as Any[])
+        .find((e) => e.kind === "STAFF_INTENT_CANCELLED" && (e.payload as Any)?.intentId === i1) ?? null;
+      ok("2.543.11 · the staff cancel while its decision record cannot be signed: the stake IS stopped, the answer is a success whose warning says the record is not written yet, and neither the press nor its event holds the id of a row that does not exist — so the lease repair still writes it",
+        cut.e === undefined && cut.v?.ok === true && cut.v?.changed === true && cut.v?.warn === true
+          && typeof cut.v?.note === "string" && !NEUTRAL.test(cut.v.note)
+          && ((await w.dal.houseBotIntentStore.get(i1)) as Any)?.status === "CANCELLED"
+          && press1 !== null && press1.auditId == null && ev1 !== null && ev1.auditId == null,
+        j({ threw: cut.e ?? null, result: cut.v, pressAuditId: press1?.auditId ?? "no press", eventAuditId: ev1?.auditId ?? "no event" }));
+      const i2 = await queued();
+      const sub2 = crypto.randomUUID();
+      const cut2 = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: i2, submitId: sub2, reason: "record check stop, control" });
+      const press2: Any = await w.dal.pressStore.findByActorSubmit(OFFICER, sub2);
+      ok("2.543.11c · CONTROL · the same cancel with the secret in place is no warning, and its press is audited with an id the audit store holds",
+        cut2.ok === true && cut2.changed === true && cut2.warn === false
+          && typeof press2?.auditId === "string" && AUD.getAuditById(press2.auditId) !== undefined,
+        j({ result: cut2, pressAuditId: press2?.auditId ?? null }));
+    }
+  } finally {
+    for (const b of mine543) await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], ...REMOVE_543 });
+    /* The master switch, put back where the block found it: ON if it was on; OFF with its own cause if it was off. */
+    const ctlNow: Any = await w.dal.houseBotControlStore.get();
+    if (ctl0.enabled && !ctlNow.enabled) await w.switchOn();
+    else if (!ctl0.enabled && (ctlNow.enabled || ctlNow.offCause !== ctl0.offCause)) {
+      if (!ctlNow.enabled) await w.switchOn();
+      await w.dal.houseBotControlStore.switchOff({ cause: ctl0.offCause ?? "MANUAL", byId: OFFICER, reason: "test" });
+    }
+  }
+  const stillLive = ((await w.dal.houseBotStore.listNonRemoved()) as Any[]).filter((b) => mine543.some((m) => m.botId === b.id));
+  const ctlEnd: Any = await w.dal.houseBotControlStore.get();
+  ok("2.543.t · teardown · every account this block created is off the roster again (the 20 slots are shared), and the master switch is where the block found it",
+    mine543.length >= 9 && stillLive.length === 0 && ctlEnd.enabled === ctl0.enabled
+      && (ctl0.enabled || ctlEnd.offCause === ctl0.offCause || (ctl0.offCause == null && ctlEnd.offCause === "MANUAL")),
+    j({ created: mine543.length, stillLive: stillLive.length, enabled: [ctl0.enabled, ctlEnd.enabled], offCause: [ctl0.offCause, ctlEnd.offCause] }));
+
+  /* ━━ 2.543.8 · THE SOURCE LAW OVER EVERY HOUSE WRITER (memory child — it reads files, not a store) ━━━━━━━━━━━━━━
+   * ⛔ WHY A LAW AND NOT ONLY THE CASES ABOVE. The defect this ruling closes was a SHAPE: five writers took their
+   * `recorded` from a catch around `audit()`, which since the contract fix can never run — so each would report a
+   * record that was never written, and a new writer copying any of them would too. The population is the directory,
+   * walked from disk; every call of the audit module's writer in it must be awaited into a name whose `.recorded` is
+   * read in the same block, and no `try {` may directly wrap one. */
+  if (STORE === "memory") {
+    const HB_DIR = "src/lib/server/house-bot";
+    const writerFiles = readdirSync(join(ROOT, HB_DIR)).filter((f) => f.endsWith(".ts")).sort().map((f) => `${HB_DIR}/${f}`);
+    /** Every call of `audit(` in one file, and every way it breaks the 543 law. Literals and regexes are blanked first,
+     *  so a brace inside a string cannot move the block boundary the law is measured against. */
+    const auditLaw = (rel: string, src: string): { calls: number; problems: string[] } => {
+      const code = blankLiterals(decomment(src), { regex: true });
+      const problems: string[] = [];
+      let calls = 0;
+      for (const m of code.matchAll(/(?<![\w.$])audit\s*\(/g)) {
+        calls++;
+        const at = m.index ?? 0;
+        const where = `${rel}:${code.slice(0, at).split("\n").length}`;
+        const bound = /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*\(?\s*await\s+$/.exec(code.slice(code.lastIndexOf("\n", at) + 1, at));
+        let open = -1;
+        for (let k = at - 1, depth = 0; k >= 0; k--) {
+          if (code[k] === "}") depth++;
+          else if (code[k] === "{") { if (depth === 0) { open = k; break; } depth--; }
+        }
+        let close = code.length;
+        for (let k = at, depth = 0; k < code.length; k++) {
+          if (code[k] === "{") depth++;
+          else if (code[k] === "}") { if (depth === 0) { close = k; break; } depth--; }
+        }
+        if (open >= 0 && /\btry\s*$/.test(code.slice(Math.max(0, open - 16), open))) problems.push(`${where} · a try { directly wraps the call — its catch can never run`);
+        if (!bound) { problems.push(`${where} · the call's answer is not awaited into a name`); continue; }
+        if (!new RegExp(`\\b${bound[1].replace(/\$/g, "\\$")}\\.recorded\\b`).test(code.slice(at, close))) {
+          problems.push(`${where} · ${bound[1]} = await audit(…) never reads ${bound[1]}.recorded in its block`);
+        }
+      }
+      return { calls, problems };
+    };
+    const law = writerFiles.map((rel) => ({ rel, ...auditLaw(rel, read(rel)) }));
+    const withCalls = law.filter((x) => x.calls > 0).map((x) => x.rel.slice(HB_DIR.length + 1));
+    const KNOWN = ["designation.ts", "limits-save.ts", "outcomes.ts", "press-audit.ts", "roster-actions.ts", "rules-save.ts", "sunset.ts", "switch-on.ts"];
+    const problems = law.flatMap((x) => x.problems);
+    ok("2.543.8 · ⛔ every house writer READS the flag: each audit( call under src/lib/server/house-bot/ — the directory walked from disk, the eight known writers among them — is awaited into a name whose .recorded is read in its own block, and no try { wraps one",
+      writerFiles.length >= 30 && KNOWN.every((f) => withCalls.includes(f)) && law.reduce((n, x) => n + x.calls, 0) >= KNOWN.length && problems.length === 0,
+      j({ files: writerFiles.length, writers: withCalls, calls: law.reduce((n, x) => n + x.calls, 0), problems }));
+    const plantInto = (rel: string, from: string, to: string): string => {
+      const src = read(rel);
+      return src.includes(from) ? src.replace(from, to) : "";
+    };
+    const caughtAgain = plantInto(`${HB_DIR}/switch-on.ts`, "  const entry = await audit({",
+      "  try { await audit({ category: \"SYSTEM\", action: \"planted.543\", actorId: null, targetType: null, targetId: null }); } catch { /* planted */ }\n  const entry = await audit({");
+    const flagIgnored = plantInto(`${HB_DIR}/outcomes.ts`, "  return entry.recorded ? entry.id : null;", "  return entry.id;");
+    const synthetic = {
+      caught: "async function f() {\n  let recorded = true;\n  try {\n    await audit({ action: \"x\" });\n  } catch {\n    recorded = false;\n  }\n}",
+      unread: "async function f() {\n  const entry = await audit({ action: \"x\" });\n  return entry.id;\n}",
+      bare: "async function f() {\n  await audit({ action: \"x\" });\n}",
+      clean: "async function f() {\n  const entry = await audit({ action: \"x { not a brace }\" });\n  return entry.recorded ? entry.id : null;\n}",
+    };
+    ok("2.543.8c · CONTROL · the law REPORTS the shapes it forbids — a try planted around a real writer's call, a real writer whose read of the flag is removed, and a caught, an unread and a bare call — and passes a clean one whose string carries a brace",
+      caughtAgain !== "" && auditLaw("switch-on.ts", caughtAgain).problems.length >= 2
+        && flagIgnored !== "" && auditLaw("outcomes.ts", flagIgnored).problems.length === 1
+        && auditLaw("caught.ts", synthetic.caught).problems.length >= 2 && auditLaw("unread.ts", synthetic.unread).problems.length === 1
+        && auditLaw("bare.ts", synthetic.bare).problems.length === 1 && auditLaw("clean.ts", synthetic.clean).problems.length === 0,
+      j({ caught: auditLaw("switch-on.ts", caughtAgain).problems, synthetic: Object.fromEntries(Object.entries(synthetic).map(([k, v]) => [k, auditLaw(`${k}.ts`, v).problems.length])) }));
+  }
+} catch (err) {
+  ok("0.throw.2i · no ruling-543 case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §3 · THE NEUTRAL LEXICON (ruling 453)
  * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -11315,6 +11775,76 @@ if (STORE === "memory") {
   ok("1.350 · 351 · the one seam member this step added is the one ruling 351 names, and it is the ONLY new one",
     /botRateUsage\(input: \{ houseBotId: string \| null \}/.test(dal350)
       && (dal350.match(/botRateUsage\(/g) ?? []).length === 3, j({ named: (dal350.match(/botRateUsage\(/g) ?? []).length }));
+  section("§4c · a pressed link says it is still loading (house-bots build step 10)");
+  /* ⭐ THE OWNER'S ASK, 2026-09-26: *"when jumoing from tba to anothe rmake sur eu ahve th erigh tloading states and etc
+   * toamke percet and user to not to think it sstucl"*. Every desk tab, sortable header, pager and filter chip changes
+   * only the query of the page it is on, and the page's loading.tsx does not take over for that (measured on a served
+   * build by `qa:nav-pending`, which also measures the mark and the dimming itself). THESE PINS HOLD THE SOURCE, so a
+   * later edit cannot drop the mark from one kit link — or render it outside the link, where the router would never
+   * report it pending — and leave every other gate green. */
+  /** Does a source render `<LinkPending />` INSIDE one of its own `<Link …>…</Link>` elements, imported from the kit? */
+  const navMarkInsideLink = (raw: string) => {
+    const code = decomment(raw);
+    return /import \{ LinkPending \} from "@\/components\/ui\/link-pending";/.test(code)
+      && [...code.matchAll(/<Link\b[\s\S]*?<\/Link>/g)].some((m) => m[0].includes("<LinkPending />"));
+  };
+  ok("1.nav.1a · ⭐ the section rail (ui/tabs.tsx) renders the pending mark INSIDE its own link — a pressed tab says it is loading",
+    navMarkInsideLink(read("src/components/ui/tabs.tsx")), "src/components/ui/tabs.tsx");
+  ok("1.nav.1b · ⭐ the sortable header (admin/admin-sort.tsx) renders the pending mark INSIDE its own link — a pressed header says it is loading",
+    navMarkInsideLink(read("src/components/admin/admin-sort.tsx")), "src/components/admin/admin-sort.tsx");
+  ok("1.nav.1c · ⭐ the pager (ui/pagination.tsx) renders the pending mark INSIDE its own link — a pressed page says it is loading",
+    navMarkInsideLink(read("src/components/ui/pagination.tsx")), "src/components/ui/pagination.tsx");
+  ok("1.nav.1d · ⭐ the filter chip (ui/filter-pill.tsx) renders the pending mark INSIDE its own link — a pressed chip says it is loading",
+    navMarkInsideLink(read("src/components/ui/filter-pill.tsx")), "src/components/ui/filter-pill.tsx");
+  {
+    /* ⭐ THE ONE NAVIGATION A PRESS STARTS IN CODE: the date filter's Custom Apply/Clear. Both router calls run inside
+     * the transition, and the Custom chip — a `<button>`, not a link — carries the same mark on its pending flag. */
+    const dtrShape = (raw: string) => {
+      const code = decomment(raw);
+      const custom = /<button\b[\s\S]*?\{t\.common\.rangeCustom\}[\s\S]*?<\/button>/.exec(code)?.[0] ?? "";
+      return /const \[navPending, startNav\] = useTransition\(\);/.test(code)
+        && /startNav\(\(\) => \{ if \(replace\) router\.replace\(to, \{ scroll: false \}\); else router\.push\(to, \{ scroll: false \}\); \}\);/.test(code)
+        && custom.includes("<PendingMark on={navPending} />");
+    };
+    const dtr = read("src/components/ui/datetime-range-filter.tsx");
+    ok("1.nav.1e · ⭐ the date filter's Custom window (ui/datetime-range-filter.tsx) navigates inside a transition and marks its chip while it is pending",
+      dtrShape(dtr), "src/components/ui/datetime-range-filter.tsx");
+    ok("1.nav.1ex · CONTROL · the same check refuses a Custom chip without the mark, and a navigation made outside the transition",
+      !dtrShape(dtr.replace("<PendingMark on={navPending} />", "")) && !dtrShape(dtr.replace("startNav(() => { if (replace)", "(() => { if (replace)")), "");
+  }
+  {
+    const tabsRaw = read("src/components/ui/tabs.tsx");
+    const moved = tabsRaw.replace("<LinkPending />", "").replace("</Link>", "</Link>\n<LinkPending />");
+    ok("1.nav.1x · CONTROL · the same check refuses a mark moved OUTSIDE the link, and a link with no mark at all — so the four above are measurements",
+      !navMarkInsideLink(moved) && !navMarkInsideLink(tabsRaw.replace("<LinkPending />", "")) && navMarkInsideLink(tabsRaw), "");
+  }
+  /** The mark is the ROUTER's answer, a client component, rendered ONLY while pending, aria-hidden, and wordless. */
+  const navMarkShape = (code: string) => /^\s*"use client";/.test(code)
+    && /import \{ useLinkStatus \} from "next\/link";/.test(code)
+    && /const \{ pending \} = useLinkStatus\(\);\s*return <PendingMark on=\{pending\} \/>;/.test(code)
+    && /return on \? <span data-link-pending="" aria-hidden="true" className="link-pending" \/> : null;/.test(code);
+  {
+    const lp = decomment(read("src/components/ui/link-pending.tsx"));
+    ok("1.nav.2 · the mark is the ROUTER's own answer (useLinkStatus), rendered ONLY while its link is pending — never a timer, never at rest — aria-hidden and carrying no words",
+      navMarkShape(lp), "");
+    ok("1.nav.2x · CONTROL · a mark rendered always, or one keyed on anything but the router's flag, is refused",
+      !navMarkShape(lp.replace("return on ?", "return true ?")) && !navMarkShape(lp.replace("useLinkStatus()", "useState(false)")), "");
+  }
+  /** The stylesheet draws it: what a press replaces dims, the mark waits before it shows, the loop is the kit's own and
+   *  stops at the low-end tier, and the link holds the mark only while it exists. */
+  const navCss = (s: string) => /\[data-section-rail\]:has\(\.link-pending\) ~ \*,\s*\[data-measure="console"\] \[data-filter-rail\]:has\(\.link-pending\) ~ \*,\s*\.glass-panel:has\(\.link-pending\) tbody \{\s*opacity: 0\.45;/.test(s)
+    && /\.link-pending \{[^}]*animation: kp-fade var\(--t-quick\) var\(--m-glide\) var\(--t-quick\) both;/.test(s)
+    && /\.link-pending::after \{[^}]*animation: progSweep [^;]*infinite;/.test(s)
+    && /\[data-motion="reduced"\] \.link-pending::after,\s*\[data-motion="minimal"\] \.link-pending::after \{ animation: none; \}/.test(s)
+    && /:is\(a, button\):has\(> \.link-pending\) \{ position: relative; \}/.test(s);
+  {
+    const css = read("src/app/globals.css");
+    ok("1.nav.3 · the CSS draws it: the panels after a pressed section rail or console filter rail and the rows of a pressed card dim, the mark enters after --t-quick, its loop is the kit's progSweep and stops at the low-end tier",
+      navCss(css), "");
+    ok("1.nav.3x · CONTROL · the same check refuses a stylesheet whose rows no longer dim, and one whose loop runs on at the low-end tier",
+      !navCss(css.replace(".glass-panel:has(.link-pending) tbody {", ".glass-panel:has(.link-pending) tfoot {"))
+        && !navCss(css.replace('[data-motion="reduced"] .link-pending::after,', '[data-motion="reduced"] .link-pending-x::after,')), "");
+  }
 }
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-console [${STORE}]: ${pass} passed, ${fail} failed`);

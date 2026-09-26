@@ -60,8 +60,39 @@ export type AuditEntry = {
   entryHash: string;         // HMAC over (id + prevHash + serialized row)
 };
 
+/**
+ * ⭐ WHAT `audit()` RESOLVES TO — the stamped entry, as a COPY, and whether it is IN THE LOG (replan ruling 543,
+ * 2026-09-26).
+ *
+ * 🔴 THE DEFECT THIS ENDS. `audit()` was documented never to reject, and callers were written against that — but
+ * `chainSecret()` throws under `NODE_ENV=production` when `AUDIT_CHAIN_SECRET` is absent or equal to
+ * `SESSION_SECRET`, and it threw DURING SIGNING, past the fail-open fallback (the fallback signs too). So a write
+ * that had already landed — a limits save, a designation, a Start, the kill switch — was reported to the officer
+ * as one that FAILED, and the correct response to that sentence (do it again) is the one this record cannot survive.
+ *
+ * ⛔ `recorded` IS A MEASUREMENT, NEVER A DEFAULT. True only when the entry is in the store this deployment reads —
+ * the `AuditLog` table with a DATABASE_URL, the ring without one. A caller that reports an act to an officer reads
+ * it and says BOTH halves: the act landed, its record did not. `unrecorded` says why:
+ *   · UNSIGNED — `chainSecret()` refused to sign. NOTHING was written anywhere: not the table, not the ring, and
+ *     the entry never joined the chain. Its `prevHash`/`entryHash` are the literal word, never a hash, and its
+ *     `id` names no row — a caller must never store it as a reference.
+ *   · PERSIST_FAILED — the database refused the append. A signed copy is in THIS process's ring only (the
+ *     platform's fail-open posture, unchanged), so a ring read finds it and a table read does not.
+ * Either way the ticket in `id` was consumed, so on Postgres the loss is a countable hole for `findAuditTicketGaps`.
+ * ⛔ ONLY THE RETURNED COPY CARRIES THESE TWO FIELDS. The ring object feeds `getAuditPage`, the no-database branches
+ * of the durable readers and from there the DSAR and ISO exports, and it stays exactly the signed row.
+ * ⚠️ NOT EXPORTED, DELIBERATELY: `test:house-bot-reports` 0.260.1 holds this module's exports to two exhaustive
+ * lists, and no caller needs the name — `(await audit(…)).recorded` is typed through `audit`'s own signature.
+ */
+type AuditResult = AuditEntry & {
+  recorded: boolean;
+  unrecorded?: "UNSIGNED" | "PERSIST_FAILED";
+};
+
 const MAX_IN_MEM = 10_000;
 const GENESIS = "GENESIS";
+/** The `prevHash`/`entryHash` of an entry that could not be signed — a WORD, so it can never pass for a hash. */
+const UNSIGNED = "UNSIGNED";
 
 // The single DB-global lock the whole chain serializes on (audit C6). Every
 // append across every Railway instance takes pg_advisory_xact_lock(this) before
@@ -490,8 +521,13 @@ async function selectHead(tx: Prisma.TransactionClient): Promise<string> {
  *      record before it proceeds).
  * The @@unique([prevHash]) index is the hard backstop: even if a code path ever
  * skipped the lock, two rows physically cannot share a prevHash — the loser gets
- * P2002 and we retry against the new head. Throws only after exhausting retries;
- * audit() turns that into a fail-open in-memory entry so the request never dies.
+ * P2002 and we retry against the new head. Throws on any other error at once, or
+ * after exhausting retries; audit() turns that into a ring-only entry AND SAYS SO
+ * (`recorded` false, PERSIST_FAILED — replan ruling 543), so the request never dies
+ * and the caller is never told that a row which did not land did.
+ * ⚠️ It SIGNS inside the transaction, so a `chainSecret()` refusal also lands here,
+ * before any INSERT; audit()'s own local stamp then refuses the same way and the
+ * answer is UNSIGNED — nothing written anywhere.
  */
 async function appendPersisted(
   entry: Omit<AuditEntry, "id" | "createdAt" | "prevHash" | "entryHash">,
@@ -550,7 +586,9 @@ async function appendPersisted(
 }
 
 /** In-memory stamp (dev / tests, no DATABASE_URL): the ring is the sole store
- *  and the chain roots at GENESIS each process. */
+ *  and the chain roots at GENESIS each process.
+ *  ⛔ IT SIGNS (`hashEntry` → `chainSecret()`), SO IT CAN THROW — which is exactly where the old fail-open promise
+ *  broke (replan ruling 543). Nothing calls it except `stampLocally`, the one stamp allowed to fail quietly. */
 function appendInMemory(
   entry: Omit<AuditEntry, "id" | "createdAt" | "prevHash" | "entryHash">,
   id: string,
@@ -568,21 +606,63 @@ function appendInMemory(
   return { ...partial, entryHash: hashEntry(partial) };
 }
 
+/**
+ * ⛔ THE ONE LOCAL STAMP THAT MAY FAIL WITHOUT FAILING THE CALLER (replan ruling 543). Both local paths — the
+ * fail-open after a refused persist, and the no-database store — SIGN, so under `NODE_ENV=production` without an
+ * `AUDIT_CHAIN_SECRET` distinct from `SESSION_SECRET` both used to throw straight out of `audit()`.
+ * ⛔ THE REFUSAL ITSELF IS RIGHT AND STAYS: a chain signed with the session secret is forgeable by anyone who can
+ * mint a session, and a placeholder must never anchor a real chain. What changes is only that it no longer
+ * ESCAPES — null here means "not signed, not chained, not kept", and `audit()` tells its caller so.
+ * ⛔ THE LOG LINE NAMES THE ACTION AND THE TICKET, NEVER THE PAYLOAD. The ticket is the hole `findAuditTicketGaps`
+ * will report; a payload is exactly what a log reader must not be handed.
+ */
+function stampLocally(
+  entry: Omit<AuditEntry, "id" | "createdAt" | "prevHash" | "entryHash">,
+  id: string,
+): AuditEntry | null {
+  try {
+    return appendInMemory(entry, id);
+  } catch (signErr) {
+    console.error(`[audit] NOT RECORDED — ${(signErr as Error)?.message ?? signErr} · ${entry.action} · ${id}`);
+    return null;
+  }
+}
+
+/**
+ * The answer for an entry that could not be signed. ⛔ RETURNED, NEVER CHAINED: it is not pushed to the ring and
+ * never persisted. A fake hash in the ring would break `verifyChain()` for every later reader; on Postgres an
+ * unverifiable row above the attestation baseline makes `verifyChainFull()` report TAMPERING (AR-3). So the entry
+ * is simply absent from the log, which is the truth, and its consumed ticket is the durable mark of that absence.
+ */
+function unsignedResult(entry: Omit<AuditEntry, "id" | "createdAt" | "prevHash" | "entryHash">, id: string): AuditResult {
+  return { ...entry, id, createdAt: new Date().toISOString(), prevHash: UNSIGNED, entryHash: UNSIGNED, recorded: false, unrecorded: "UNSIGNED" };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 /**
- * Record an audit entry. Resolves to the stamped entry. Callers may `await` it
- * (money/compliance events do, to guarantee the entry is durably chained before
- * they proceed) or fire-and-forget — it never rejects. All writes are serialized
+ * Record an audit entry. Resolves to a COPY of the stamped entry carrying `recorded`
+ * (and, when false, `unrecorded`: UNSIGNED or PERSIST_FAILED — see `AuditResult`).
+ * Callers may `await` it (money/compliance events do, to guarantee the entry is
+ * durably chained before they proceed) or fire-and-forget. All writes are serialized
  * through a per-process queue, and with a DB the head is read and advanced under
  * a DB-global advisory lock (audit C6), so no two callers — even across Railway
  * instances — can interleave and fork the chain.
+ *
+ * ⛔ IT NEVER REJECTS, AND SINCE REPLAN RULING 543 (2026-09-26) THAT IS TRUE RATHER THAN DOCUMENTED. The promise
+ * used to break in exactly one condition — production without an `AUDIT_CHAIN_SECRET` distinct from
+ * `SESSION_SECRET` — because the fail-open fallback SIGNS as well, and the throw escaped past it. Now an entry that
+ * cannot be signed resolves UNSIGNED: nothing written, nothing chained, the ticket spent, and one
+ * `[audit] NOT RECORDED` line in the server log. ⛔ So a caller that must tell an officer whether the record of an
+ * act exists READS `recorded` — it does not wrap this call in a try, whose catch would now never run and would
+ * leave it reporting a record that was never written. `test:house-bot-console` 2.543.8 holds every house writer
+ * to that.
  */
 export function audit(
   entry: Omit<AuditEntry, "id" | "createdAt" | "prevHash" | "entryHash">,
-): Promise<AuditEntry> {
+): Promise<AuditResult> {
   // ⛔ COUNTED HERE, SYNCHRONOUSLY, BEFORE THE CHAIN IS EXTENDED. See bumpPending: the rows a dying
   // process loses are the ones still WAITING their turn, and a counter bumped inside the `.then`
   // below would not have counted a single one of them.
@@ -593,34 +673,46 @@ export function audit(
   const id = allocateAuditId();
   const run = (globalThis.__50PICK_AUDIT_QUEUE ?? Promise.resolve())
     .catch(() => {}) // isolate from any prior task's failure
-    .then(async () => {
+    .then(async (): Promise<AuditResult> => {
       await hydrate(); // warm the read-cache ring once per process (no-op without a DB)
       // Normalise BEFORE hashing or storing, so the hashed bytes and the stored
       // bytes cannot diverge. See normalizePayload — undefined keys used to be
       // dropped by the hash and persisted as null, making the entry permanently
       // unverifiable.
       entry = { ...entry, payload: normalizePayload(entry.payload) };
-      let stamped: AuditEntry;
+      let stamped: AuditEntry | null = null;
+      let persistFailed = false;
+      let persistFailure: unknown;
       if (hasDatabase()) {
         try {
           // DB-authoritative + durably persisted before this resolves.
           stamped = await appendPersisted(entry, id);
         } catch (err) {
-          // Fail open: a DB outage must never break the request path. Keep a
-          // best-effort in-memory entry (not durable) and log loudly — the same
-          // posture as the rest of the platform (enforce at runtime, never crash).
-          console.error("[audit] persist failed (entry kept in ring only):", (err as Error)?.message ?? err);
-          stamped = appendInMemory(entry, id);
+          persistFailed = true;
+          persistFailure = (err as Error)?.message ?? err;
         }
-      } else {
-        stamped = appendInMemory(entry, id);
+      }
+      /* ⛔ 543 · THE FALLBACK AND THE NO-DATABASE STORE BOTH SIGN, so both go through the one stamp that may fail
+         without failing this call. Null means it could not be signed: the entry joins nothing and the caller is
+         told so — the ring is never handed an entry whose hash is not a hash. */
+      stamped ??= stampLocally(entry, id);
+      if (stamped === null) return unsignedResult(entry, id);
+      if (persistFailed) {
+        // Fail open: a DB outage must never break the request path. Keep a
+        // best-effort in-memory entry (not durable) and log loudly — the same
+        // posture as the rest of the platform (enforce at runtime, never crash).
+        console.error("[audit] persist failed (entry kept in ring only):", persistFailure);
       }
       ring.push(stamped);
       if (ring.length > MAX_IN_MEM) ring.shift();
       if (process.env.NODE_ENV !== "production") {
         console.log("[audit]", stamped.category, stamped.action, stamped.actorId ?? "system", stamped.targetType ? `${stamped.targetType}#${stamped.targetId}` : "");
       }
-      return stamped;
+      /* ⛔ 543 · A COPY CARRIES THE ANSWER; the ring object stays exactly the signed row. And a ring-only entry is
+         NOT recorded: it is in this process's cache and in no table, so a caller that treated it as the row would
+         stamp a reference to something no other instance, no export and no restart will ever see. */
+      if (!persistFailed) return { ...stamped, recorded: true };
+      return { ...stamped, recorded: false, unrecorded: "PERSIST_FAILED" };
     });
   // ⛔ DECREMENTED WHETHER IT LANDED OR THREW, and registered BEFORE the queue is re-pointed below,
   // so this microtask runs ahead of the next append's body. `audit()` is documented never to reject,

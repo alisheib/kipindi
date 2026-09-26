@@ -11,6 +11,7 @@
  *   // then slice with parsePage / render <SortTh ... /> headers
  */
 import Link from "next/link";
+import { LinkPending } from "@/components/ui/link-pending";
 
 export type SortDir = "asc" | "desc";
 
@@ -180,6 +181,8 @@ export function SortTh({
           className={`text-brand-300 transition-opacity ${isActive ? "" : "opacity-0 group-hover:opacity-60"}`}
           aria-hidden
         >{dir === "asc" ? "↑" : "↓"}</span>
+        {/* ⭐ A pressed header whose sorted rows are still on their way says so — `link-pending.tsx`. */}
+        <LinkPending />
       </Link>
     </th>
   );

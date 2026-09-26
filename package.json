@@ -523,6 +523,7 @@
     "qa:house-bot-console-probe": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-console-probe.mts",
     "qa:platform-pii-probe": "tsx scripts/db-scratch.mts --run npx tsx scripts/platform-pii-probe.mts",
     "test:admin-action-gate": "node scripts/admin-action-gate.test.mjs",
+    "qa:nav-pending": "node scripts/qa-nav-pending.mjs",
     "qa:house-bots-visual": "node scripts/qa-house-bots-visual.mjs",
     "qa:house-bot-panel-states": "node scripts/qa-house-bot-panel-states.mjs",
     "qa:house-bot-panel-faults": "node scripts/qa-house-bot-panel-faults.mjs",

@@ -1278,6 +1278,47 @@ bots and what keeps D19 true").
      - **Scheduled: before Commit 8**, with ruling 501's ISO work (⚠️ 501 withdrawn 2026-09-26 — 543 now stands alone: `plans/house-bots/RESUME-HERE.md` §0c step 6), because both touch the audit export and
        both are regulator-facing. ⛔ Not at C7 step 4 — the ceremony step must not also be re-writing the
        platform's audit contract underneath itself.
+     - ⭐ **BUILT 2026-09-26 (RESUME-HERE §0c step 6; `docs/HOUSE-BOTS.md` §12.11), and the remedy above was WRONG
+       AS WRITTEN, so it was re-derived before it was built.** Every line number this ruling cites had rotted
+       (the promise sat in `appendPersisted`'s docblock, not at `:345`), and five other things it said were wrong
+       or incomplete:
+       · ⛔ **"Fail open to the in-memory entry … eight lines away" was impossible.** `appendInMemory` SIGNS too
+         (`hashEntry` → `chainSecret()`); that fallback was exactly where the throw escaped, and the no-database
+         branch threw the same way. An entry that cannot be signed cannot be kept in the ring either: the ring is
+         the memory store's chain and Postgres's read cache, and a fake hash in it breaks `verifyChain()` for every
+         later reader. So the fix DEFINES a third outcome: `audit()` resolves an **UNSIGNED** copy that is returned
+         and NEVER chained. Its ticket is spent, which on Postgres is a countable hole. The server log carries one
+         `[audit] NOT RECORDED` line with the action and ticket, never the payload.
+       · **"Three house writers" undercounted.** `engineAudit` has five callers, among them the CONSOLE's kill
+         switch, the worst case: the desk WAS off while `actions.ts` told the officer *"Nothing changed. Reload the
+         page and try again."* and the switched-off alert was never sent. The planner's poison pass, a money duty,
+         also failed. `houseAudit` has ten call sites and `writePressAudit` two.
+       · ⛔ **"The contract moves, not the callers" could not hold literally.** Five writers had adopted ruling
+         537's `recorded: false` by CATCHING the rejection: limits save, rules save, Pause/Remove, sunset and
+         switch-on (press-cancel caught too). Once `audit()` stopped rejecting, every one would have reported
+         `recorded: true`. Each now READS the returned flag, in the same change.
+       · **The database-outage fail-open had the same defect in the other direction.** It returned a ring-only
+         entry with a real ticketed id, which callers stamped on events (`setAuditId`) and on presses (marking a
+         press audited, so the lease repair never wrote the row that was lost), and `recorded` read true. It now
+         resolves **PERSIST_FAILED** with `recorded` false. `engineAudit` and `writePressAudit` answer null for
+         any entry that did not land.
+       · "NOT LIVE" still rests on the two documents, not on a measurement. This lane had no production access
+         and did not re-derive it.
+       **What was built:** `audit()` resolves a COPY carrying `recorded`/`unrecorded`, and the ring object is
+       untouched; `stampLocally` is the one stamp allowed to fail; every house writer reads the flag. Designate,
+       Start and the kill switch say both halves as a WARNING (the kill switch adds `SWITCH_COPY.offNotRecorded`;
+       the other two reuse `ACT_COPY.notRecorded`), and the designate toast turns amber on it. **Held by:**
+       `test:house-bot-console` §2i (2.543.0–11 on both stores, each with a control; 2.543.8 is the source law over
+       every writer under `src/lib/server/house-bot/`). Also `test:house-bot-engine` 13.35b/c, 17.14b/c and, on
+       Postgres, 17.14d/e (a BEFORE INSERT trigger stands in for the outage), and `test:audit` 543.1–3 in the
+       platform's own suite. There are fifteen new declared mutations (twelve `console-mem`, two `engine-mem`, one
+       `engine-pg`), and `537-recorded`, `start-drops-its-warnings` and the money suite's `D19-5` were re-pointed
+       at the lines they quote. ⛔ The PERSIST_FAILED mutation is `engine-pg`, not `console-pg`, because
+       `console-pg` has no expect-drift roll-call and `test:house-bot-reports` 0.505 would go red on it.
+       ⚠️ **Known siblings, deliberately not widened into this step:** `verifyChain()`, `verifyChainFull()` and the
+       census call `chainSecret()` too, and still throw under the same misconfiguration, so the admin "verify
+       chain" action and the ISO integrity report would error. Those are read paths, and their own ruling if
+       ever wanted.
 
 ### Rulings of C7 step 3's VISUAL pass (544-546, 2026-09-19, OMEGA-COMPILE01)
 

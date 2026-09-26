@@ -3283,6 +3283,58 @@ textarea::placeholder { color: var(--text-subtle); }
 [data-motion="minimal"] .prog-sweep::after { animation: none; }
 @media (prefers-reduced-motion: reduce) { .prog-sweep::after { animation: none; } }
 
+/* ⭐ A NAVIGATION IN FLIGHT (house-bots build step 10, 2026-09-26) — what `link-pending.tsx` draws.
+   The owner asked that switching a tab never "looks stuck". Every kit link that changes only the query of the
+   page it sits on (the section rail, a sortable header, the pager, a filter chip) now marks itself while its
+   navigation is outstanding, and what the press is about to replace dims.
+   ⛔ ONE MARK, THE EXISTING MOTION: `progSweep` is the kit's travelling light (above) and `kp-fade` its plain
+   entrance — reused, never re-drawn (`test:keyframes`). The mark waits `--t-quick` before it shows, so an answer
+   that is already here never flickers a bar, and the loop is off at the low-end tier like every other loop,
+   leaving the static track to say "still loading" (`test:reduce-motion` 2.1).
+   ⛔ The control becomes the containing block only while its mark exists, so no guarded class string changed. */
+:is(a, button):has(> .link-pending) { position: relative; }
+.link-pending {
+  position: absolute;
+  left: var(--lp-inset, 8px);
+  right: var(--lp-inset, 8px);
+  bottom: var(--lp-bottom, 3px);
+  height: 2px;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  pointer-events: none;
+  background: color-mix(in oklab, var(--brand-500) 40%, transparent);
+  animation: kp-fade var(--t-quick) var(--m-glide) var(--t-quick) both;
+}
+.link-pending::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, var(--brand-300), transparent);
+  transform: translateX(-130%);
+  animation: progSweep 1.2s var(--m-glide) infinite;
+}
+/* Where it sits in each host: on a section rail it takes the underline's own place (`left-2` is 12px on this
+   scale); inside a chip it clears the rounded ends; under a header it underlines the label. */
+[data-section-rail] .link-pending { --lp-inset: 12px; --lp-bottom: 0px; }
+.kp-fchip .link-pending { --lp-inset: 14px; --lp-bottom: 5px; }
+th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
+/* The pressed section is the one arriving: its label takes the selected ink, and the underline it replaces fades. */
+[data-section-rail] a:has(> .link-pending) { color: var(--text); }
+[data-section-rail]:has(.link-pending) [data-tab-active="true"] .m-indicator { opacity: 0.35; }
+/* What the press will replace dims, after the same short wait — the panels below a pressed section rail, what follows
+   a pressed filter rail in the console (the desk's rail sits ABOVE its table's card, not inside it — measured by
+   `qa:nav-pending`, whose first run found the table undimmed), and the rows of the card whose header, pager or chip
+   was pressed. Coming back is instant: the new rows arrive at full strength, never fading up out of the old grey.
+   ⛔ The filter-rail rule is scoped to the console's `<main>`: the player lists keep their own filter behaviour. */
+[data-section-rail]:has(.link-pending) ~ *,
+[data-measure="console"] [data-filter-rail]:has(.link-pending) ~ *,
+.glass-panel:has(.link-pending) tbody {
+  opacity: 0.45;
+  cursor: progress;
+  transition: opacity var(--t-base) var(--m-glide) var(--t-quick);
+}
+[data-motion="reduced"] .link-pending::after,
+[data-motion="minimal"] .link-pending::after { animation: none; }
+@media (prefers-reduced-motion: reduce) { .link-pending::after { animation: none; } }
+
 /* Canonical market grid — keyed to a FIXED card width, not a fixed column
    count. Every card is the same size everywhere (markets, live, home); the grid
    simply fits as many columns as the available width allows. This is what makes

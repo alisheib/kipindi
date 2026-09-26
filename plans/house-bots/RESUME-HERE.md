@@ -102,8 +102,8 @@ The account page's ledger has the same shape in eight columns. Below `sm` it is 
 5. **D19/D20 stand.** House bots are never public — not to players, not to the holder — and are ordinary players in
    every report.
 
-**Suite floors — a lower count is a regression, not drift:** console **972 memory / 706 Postgres** (2026-09-26, step 4) · reports **251 / 80** (step 4: c6c637c1's census sample classified and pinned) · comms **52 / 50** ·
-engine **825 / 804** (step 5) · money **132 / 150**. **Declared mutations:** console 400 (340 + step 1's 8 + step 3's 25 + step 4's 27, 2026-09-26) · engine 101 (80 + step 5's 21) · money 56 + seam 7 ·
+**Suite floors — a lower count is a regression, not drift:** console **1007 memory / 728 Postgres** (2026-09-26, steps 6 and 10) · reports **251 / 80** (step 4: c6c637c1's census sample classified and pinned) · comms **52 / 50** ·
+engine **829 / 810** (step 6) · ops **100 / 104** (step 7) · money **132 / 150**. **Declared mutations:** console 420 (340 + step 1's 8 + step 3's 25 + step 4's 27 + step 6's 12 + step 10's 8, 2026-09-26) · engine 104 (80 + step 5's 21 + step 6's 3) · money 56 + seam 7 ·
 c5 100 (99 primaries; step 8 added 3) — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
 ## 0b · ▶ WHAT IS OPEN, in the order to work it
@@ -216,9 +216,12 @@ pushed to `main` and verified serving before the next:**
    plainly the session decided under it, and name the real audience (the ADMIN role).
 4. ✅ **LIVE 2026-09-26 — the account finder list** (decision 4; served at `c3c3b4a5`, verified by `dpl`), gates green before the push (`docs/HOUSE-BOTS.md` §7.1a, §12.9; console 972/706, 27 mutations): every account, twenty to a page, three sortable columns, two filters, the three walls pinned and mutated.
 5. ✅ **DONE 2026-09-26 — the fire-path assertions** (`docs/HOUSE-BOTS.md` §12.8; engine 825/804, 21 mutations) (decision 6): the fire heartbeat and the fire-time RG pre-check, both stores.
-6. **Ruling 543** (`C5-D20-REPLAN.md`): `audit()` promises fail-open but `chainSecret()` throws in production past
-   that fallback, so three house writers can report a landed write as failed. Its schedule hung on the withdrawn
-   ruling 501; re-derive that it is still unbuilt (it was on 2026-09-26), then fix it with a case and a mutation.
+6. ✅ **BUILT 2026-09-26 — ruling 543** (`docs/HOUSE-BOTS.md` §12.11; `C5-D20-REPLAN.md` 543): `audit()` now always
+   RESOLVES and says whether its row landed (`recorded`; UNSIGNED or PERSIST_FAILED), and every house writer reads that
+   flag instead of catching — a landed designation, Start, Pause/Remove, rules save, switch-on, kill switch or staff
+   cancel is reported as landed, with a warning that its compliance record did not, and no event carries a phantom
+   audit id. Console §2i, engine 13.35b/c + 17.14b–e, `test:audit` 543.1–3; 18 mutations. Shipped in ONE commit with
+   step 10 (tested together in one lock acquisition — the lock was contended by other lanes all evening).
 7. ✅ **BUILT 2026-09-26 — `red:house-bot-ops` has a write-free entry of its own** (`docs/HOUSE-BOTS.md` §12.10): the
    key runs `scripts/red-house-bot-ops.mts`, the pure detectors moved verbatim into `house-bot-ops-detectors.mts`, and
    `test:red-anchors` §4's undeclared count fell 68 → 67. Ops 100/104 (memory floor 89 → 100), red 50/50. ⚠️ Its gate
@@ -231,12 +234,12 @@ pushed to `main` and verified serving before the next:**
    account's activity, targets and history; the find list). The roster is bounded by its limit (1–20) but unpaged, the
    Results tables are bounded (7 days; at most 21 rows), and only the find list sorts. So: server-side sort on every
    desk table, the reader parsing and building every link as the find list does, and the roster paged at 20.
-10. **No navigation looks stuck** — Ali, 2026-09-26, as typed: *"alos when jumoing from tba to anothe rmake sur eu ahve
-   th erigh tloading states and etc toamke percet and user to not to think it sstucl"*. A desk tab, sort, page or
-   filter link changes only the query; by the router's design that keeps the page's loading boundary mounted, so
-   `loading.tsx` is not shown again and the old panel may sit unchanged until the server answers (⏳ to be MEASURED
-   on a served build, before and after). Nothing in the app used `useLinkStatus` (grepped 2026-09-26). Every such
-   link must show at once that it is loading.
+10. ✅ **BUILT 2026-09-26 — no navigation looks stuck** (Ali, as typed: *"alos when jumoing from tba to anothe rmake sur eu ahve
+   th erigh tloading states and etc toamke percet and user to not to think it sstucl"*; `docs/HOUSE-BOTS.md` §7.1b, §12.12).
+   MEASURED first: a held tab, sort, page or chip press left the old page on screen with nothing moving — `loading.tsx`
+   does not take over for a query-only change. Now every kit link that changes the page (section rail, sortable header,
+   pager, filter chip) and the date filter's Custom window marks itself at once, and what it will replace dims.
+   `qa:nav-pending` 111/0/0 at 1280 and 360; 8 `nav-` mutations.
 11. **Close:** drive the four fleets WHOLE again (§0b a's recipe), verify the deploy serves the final sha, and write the
    handover in §5.
 
@@ -408,4 +411,11 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     which `db-scratch.mts` no longer has, so `ops.pop.0p` failed and the red proof missed `ops.pop.walk` (49/50). Fixed in
     both places; ops 100/104, red 50/50. Measured against `c3c3b4a5` without the step: `test:house-bot-holder-lifecycle`
     2.2, `test:decomment` 2.1 and `test:live-target-safe` §1b are red identically there — other lanes' populations, NOT OURS.
-    Its four hand-driven mutations are driven after the push.
+    Its four hand-driven mutations, driven at the live commit `5b82a079`: **all four caught by exactly the cases
+    named** (entry write → 1c + 1d and §4 back to 68; key on the case list → 1b, exit 2; flag dropped → 1a, exit 2;
+    closure write → 1d only, §4 still 67). **LIVE at `5b82a079`** (deploy verified).
+  - ✅ **Steps 6 and 10 BUILT, one commit** — ruling 543 (`audit()` says whether its row landed; every house writer reads
+    it) and the loading marks (every tab, header, pager and chip says it is loading; what it replaces dims). One gate run
+    covered both: console 1007/728, engine 829/810, `qa:nav-pending` 111/0/0, visual 208/0, build and bundle green.
+    ⚠️ Not rendered: ruling 543's three warnings (they reuse the kit's warning toast/callout; the suite proves each
+    answer). The desk filter chips first dimmed nothing (their rail sits above the card) — fixed before the push.

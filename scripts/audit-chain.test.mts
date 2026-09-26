@@ -5,7 +5,7 @@
  * used to rehydrate the ring from Postgres on boot.
  */
 import {
-  audit, auditFlush, verifyChain, getAuditPage, getAuditForActor,
+  audit, auditFlush, verifyChain, getAuditPage, getAuditForActor, getAuditById,
   reconstructChainOrder, auditRingSize, classifyChainLinks,
 } from "../src/lib/server/audit.ts";
 
@@ -162,6 +162,45 @@ await (async () => {
   ok("an altered field is still detected", !vc().valid);
   live.action = originalAction;
   ok("chain valid again once the field is restored", vc().valid);
+
+// ═══ 12. Replan ruling 543 — an entry that cannot be SIGNED resolves unrecorded and never joins the chain ═══
+// `audit()` was documented never to reject, but `chainSecret()` throws under NODE_ENV=production without an
+// AUDIT_CHAIN_SECRET distinct from SESSION_SECRET — during SIGNING, past the fail-open fallback, which signs too.
+// So a caller that awaited its compliance row after its own write had landed reported the landed write as failed.
+// These mirror `test:house-bot-console` 2.543.1–3 in the PLATFORM's own suite, so a lane that edits this module
+// without ever running a house suite is stopped here. The env moves for one call and is restored in a `finally`;
+// the queue is drained on both sides of it.
+  {
+    const env0 = { node: process.env.NODE_ENV, chain: process.env.AUDIT_CHAIN_SECRET };
+    const put = (k: string, v: string | undefined): void => {
+      if (v === undefined) delete (process.env as Record<string, string | undefined>)[k];
+      else (process.env as Record<string, string | undefined>)[k] = v;
+    };
+    await auditFlush();
+    let res: { v?: Awaited<ReturnType<typeof audit>>; e?: string } = {};
+    let verifierSaid = "the verifier did not throw";
+    try {
+      put("NODE_ENV", "production");
+      put("AUDIT_CHAIN_SECRET", undefined);
+      res = await audit({ category: "SYSTEM", action: "probe.543", actorId: null, targetType: null, targetId: null })
+        .then((v) => ({ v }), (e: unknown) => ({ e: String((e as Error)?.message ?? e) }));
+      try { verifyChain(); } catch (e) { verifierSaid = String((e as Error)?.message ?? e); }
+      await auditFlush();
+    } finally {
+      put("NODE_ENV", env0.node);
+      put("AUDIT_CHAIN_SECRET", env0.chain);
+    }
+    ok("543.1 · an entry that cannot be SIGNED (production, no chain secret) RESOLVES — it never rejects — with recorded false and UNSIGNED",
+      res.e === undefined && res.v?.recorded === false && res.v?.unrecorded === "UNSIGNED");
+    ok("543.2 · …and nothing of it is kept: no entry for its id, and its hash is a word, not a hash",
+      res.v !== undefined && getAuditById(res.v.id) === undefined && res.v.entryHash === "UNSIGNED");
+    ok("543.2c · CONTROL · the fault was live for that call: under the same env the chain's own verifier throws the refusal",
+      /AUDIT_CHAIN_SECRET must be set in production/.test(verifierSaid));
+    const good = await audit({ category: "SYSTEM", action: "probe.543.control", actorId: null, targetType: null, targetId: null });
+    await auditFlush();
+    ok("543.3 · CONTROL · with the env restored the same append is recorded and kept, and the chain still verifies — the unsigned entry never joined it",
+      good.recorded === true && good.unrecorded === undefined && getAuditById(good.id) !== undefined && verifyChain().valid);
+  }
 })();
 
 // ── 🔴 THE LINK CHECK MUST NOT CRY WOLF ────────────────────────────────────────────────

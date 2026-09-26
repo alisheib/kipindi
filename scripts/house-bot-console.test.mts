@@ -300,7 +300,11 @@ await runTwoStores({
    * every account — §2f2 on both stores (audience and route belt, the one parse and its refusal, sort and its total
    * order, the two filters, paging past the end, links built from the validated parameters, the three walls, both
    * empty states and the failed read) and, on the memory child, the source pins it brought (a server component, the
-   * shared rail with no window, the phone gutter). */
-  minPass: { memory: 972, postgres: 706 },
+   * shared rail with no window, the phone gutter).
+   * ⭐ 972/706 → 1007/728 (2026-09-26), the counts that run PRINTED on the integrated tree: build step 6 (replan ruling
+   * 543) — §2i, an audit that cannot be signed no longer reports a landed write as failed, on both stores except the
+   * writer source law 2.543.8/8c — and build step 10, §4c on the memory child: a pressed link says it is loading (the
+   * mark inside each kit link and on the date filter's Custom chip, its shape, the CSS — each with a control). */
+  minPass: { memory: 1007, postgres: 728 },
   dbPrefix: "hb_console",
 });

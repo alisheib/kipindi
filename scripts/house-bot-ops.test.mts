@@ -47,8 +47,9 @@
  *     positions held by DIFFERENT bots, so "it wrote a bot id" cannot pass for "it wrote the RIGHT one".
  *   · memory 58, postgres 69 — steps 6 and 7: §5, the SUNSET. ⭐ THE TWO CHILDREN SPLIT THE TWO AUDIT
  *     OUTCOMES and each says which half it measured: the memory child FORCES the compliance row to fail
- *     (production without a distinct AUDIT_CHAIN_SECRET — the only way `audit()` can reject, since with a
- *     database it fails OPEN) and proves the desk still moved with `recorded: false`; the Postgres child
+ *     (production without a distinct AUDIT_CHAIN_SECRET — the one refusal the memory twin can meet; since
+ *     replan ruling 543 `audit()` resolves it unrecorded instead of rejecting, and the service reads the
+ *     flag) and proves the desk still moved with `recorded: false`; the Postgres child
  *     runs the real script and counts ONE global event, ONE compliance row and ONE alert, with controls
  *     for an account already REMOVED, a target already ENDED, and a QUEUED press that the sunset must not
  *     touch and the planner's own sweep then moves — so "untouched" is a measured difference.
