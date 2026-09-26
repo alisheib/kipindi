@@ -573,10 +573,13 @@ ok("8.6a the offer is STILL there after a second visit — a draft is not consum
   (await page.locator("main").getByText(/Unsaved changes from earlier/).count()) > 0,
   "the entry was deleted on mount; the work is gone");
 
-/* ⛔ IGNORE the offer — fill and save around it. That is the owner's own path. */
+/* ⛔ IGNORE the offer — fill and save around it. That is the owner's own path.
+   ⚠️ A REAL EDIT, NOT "Use starting values" (2026-09-26). That button fills EMPTY boxes only, and on this
+   form every box was filled by §7 — so the form stayed clean, and since the one-Save change a clean form's
+   Save is disabled: nothing was saved and 8.6b/8.6 read the draft offer that correctly survived. */
 await clearToasts();
-await clickIfThere("Use starting values");
-await page.waitForTimeout(800);
+await soft("fill bets-per-hour", () => page.locator('main form input[name="bets-per-hour"]').fill("19", { timeout: 4000 }));
+await page.waitForTimeout(400);
 await submitForm();
 ok("8.6b a clean save clears the offer ON SCREEN, with no reload",
   (await page.locator("main").getByText(/Unsaved changes from earlier/).count()) === 0,
