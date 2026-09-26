@@ -277,6 +277,13 @@ console.log("\n§4 · the ratchet — harnesses still outside the anchor audit")
    * 🎯 SO THE RED STANDS, WITH AN OWNER ON EACH HALF. Declaring either would have bought equality by
    * blinding a checker, and closing `main`'s inherited half from an integration branch would hide a
    * defect that is live on `main` right now.
+   *
+   * ✅ 2026-09-26 · THE `red:house-bot-ops` HALF IS CLOSED STRUCTURALLY, as named above: the key runs
+   * `scripts/red-house-bot-ops.mts`, a red entry of its own with no file-writing call, and is back in the
+   * in-process class. Nothing was declared, `isInProcess` was not widened, and the ceiling did not move —
+   * the count fell by exactly that one key, and what stays above the ceiling is other lanes'.
+   * `test:house-bot-ops` `ops.red.1` reads this section's rule out of this file and holds the entry, and
+   * everything it imports, to it — so a reshaped rule here is reported there by name.
    */
   const UNDECLARED_CEILING = 65;
   const declaredNames = new Set(declFiles.map((f) => f.replace(/\.anchors\.mjs$/, "")));
