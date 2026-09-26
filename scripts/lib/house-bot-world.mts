@@ -39,7 +39,14 @@ export async function loadWorld() {
   const uid = (p: string) => `${p}_${process.pid}_${++seq}`;
   const iso = (msFromNow = 0) => new Date(Date.now() + msFromNow).toISOString();
 
-  async function user(o: { id?: string; balance?: number; bonusBalance?: number; role?: string; passwordHash?: string | null; recruitedBy?: string | null } = {}): Promise<string> {
+  /**
+   * ⭐ `createdAt` AND `lastLoginAt` ARE OPTIONAL AND BOTH DEFAULT TO WHAT EVERY EXISTING CALLER ALREADY GOT (added
+   * 2026-09-26 for the find step's account list, which sorts and filters on exactly these two instants).
+   * ⛔ SET AT CREATE, NEVER THROUGH `setUserFields`: the Prisma twin's `update` converts `lastLoginAt` but not
+   * `createdAt`, and a raw SQL write of either is the naive-timestamp trap (RESUME-HERE §1) — `create` is the one
+   * path that converts both on both stores.
+   */
+  async function user(o: { id?: string; balance?: number; bonusBalance?: number; role?: string; passwordHash?: string | null; recruitedBy?: string | null; createdAt?: string; lastLoginAt?: string | null } = {}): Promise<string> {
     const id = o.id ?? uid("usr_hb");
     const now = iso();
     await db.user.create({
@@ -47,7 +54,7 @@ export async function loadWorld() {
       passwordHash: o.passwordHash ?? null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
       role: o.role ?? "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
       acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false, twoFactorEnabled: false,
-      avatarDataUrl: null, recruitedBy: o.recruitedBy ?? null, createdAt: now, updatedAt: now, lastLoginAt: null, closedAt: null,
+      avatarDataUrl: null, recruitedBy: o.recruitedBy ?? null, createdAt: o.createdAt ?? now, updatedAt: now, lastLoginAt: o.lastLoginAt ?? null, closedAt: null,
     } as never);
     await db.wallet.create({
       id: `wal_${id}`, userId: id, balance: o.balance ?? 0, pending: 0, hold: 0, bonusBalance: o.bonusBalance ?? 0,

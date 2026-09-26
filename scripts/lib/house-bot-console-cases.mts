@@ -112,6 +112,8 @@ const NEW_PAGE = `${SECTION}/new/page.tsx`;
 const NEW_LOADING = `${SECTION}/new/loading.tsx`;
 const NEW_ACTIONS = `${SECTION}/new/actions.ts`;
 const NEW_CLIENT = `${SECTION}/new/designate-wizard.tsx`;
+/** ⭐ RESUME-HERE §0c decision 4 · the find step's list of every account — a SERVER component, named for the same reason. */
+const NEW_LIST = `${SECTION}/new/account-list.tsx`;
 
 /**
  * ⛔ EVERY STRING OF A FILE THAT CAN REACH THE DOM, and only those (ruling 453). A module specifier is NOT one
@@ -5384,7 +5386,9 @@ section("§2e3 · the desk landing page's activity and history panels");
     const LEDGER_OPENER = '<table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">';
     ok("1.373 · decision 2 · both activity ledgers open with the kit class and ONE 8px gutter at every width — no `sm:` gutter survives in the section",
       ledgers.every(([, p]) => p.includes(LEDGER_OPENER))
-        && !sectionFiles.some((f) => /sm:\[&_t[dh]\]:!px-/.test(read(f))),
+        /* ⚠️ `(?<!max-)`: the rule is that no WIDER gutter comes back from `sm` up. A phone-only tightening
+           (`max-sm:`, the account list's, 2026-09-26) is the opposite direction and is not what this refuses. */
+        && !sectionFiles.some((f) => /(?<!max-)sm:\[&_t[dh]\]:!px-/.test(read(f))),
       j(ledgers.map(([k, p]) => [k, /<table className="[^"]*"/.exec(p)?.[0] ?? null])));
   }
   /* ⛔ THE HOUR SUMMARY'S BELL LANDS ON THE WINDOW IT IS ABOUT. `parseEatLocal` requires a full instant and
@@ -5913,6 +5917,536 @@ try {
    * partially filled `STATES` makes 3.453's own population floor fail too, which is the correct second report. */
   ok("0.throw · no behavioural case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
     false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 300));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2f2 · THE FIND STEP'S ACCOUNT LIST — `/admin/desk/new` with no account chosen (RESUME-HERE §0c decision 4)
+ *
+ * Ali asked for the searchable picker AND a full list — paged, sortable, filterable, "full paging, sorting,
+ * validation" — inside the wizard's three walls: no money anywhere on the page, no name, phone or email on a row,
+ * and no sentence in the client file.
+ * ⛔ EVERY ASSERTION HERE IS POPULATION-INDEPENDENT. By now the world holds every account §1–§2f created — role
+ * accounts, candidates, a bulk dozen, burners — and the memory twin's insertion order is not sorted order, so no case
+ * assumes a count or a position: each one WALKS EVERY PAGE, or picks out the fixtures this block tagged with its pid.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§2f2 · the account list on the find step (RESUME-HERE §0c decision 4)");
+try {
+  const LCOPY: Any = GATEM.CONSOLE_LIST_COPY;
+  const { playerHandle: handleOf }: Any = await import("../../src/lib/server/house-bot/alerts.ts");
+  /* ⚠️ THE NO-BREAK SPACE IS BUILT, NEVER TYPED: the Edit tool decodes a typed backslash-u into the raw character. */
+  const NB = String.fromCharCode(0xa0);
+  const DAY = 86_400_000;
+  const T0 = Date.now();
+  const ago = (ms: number): string => new Date(T0 - ms).toISOString();
+  const TAG = `finder${process.pid}`;
+  const listOf = (q: Record<string, unknown> = {}, viewer: string | null = OFFICER, route = "/admin/desk"): Promise<Any> =>
+    GATEM.houseAccountListForConsole(viewer, route, q);
+  /** Every page of one address, in order — the only honest way to ask about a population this block did not make. */
+  const walk = async (q: Record<string, unknown> = {}): Promise<{ pages: Any[]; rows: Any[] }> => {
+    const first = await listOf(q);
+    const pages: Any[] = [first];
+    const last = first?.total == null ? 1 : Math.max(1, Math.ceil(first.total / first.perPage));
+    for (let n = 2; n <= last; n++) pages.push(await listOf({ ...q, page: String(n) }));
+    return { pages, rows: pages.flatMap((v) => v?.rows ?? []) };
+  };
+  /** A player that CAN be chosen: a password hash and salt of its own. ⚠️ Not a credential — nothing here signs in. */
+  const chooser = async (id: string, o: { createdAt?: string; lastLoginAt?: string | null } = {}): Promise<string> => {
+    await w.user({ id, role: "PLAYER", ...o });
+    await w.setUserFields(id, { passwordHash: `hash-${TAG}`, passwordSalt: `salt-${TAG}` });
+    return id;
+  };
+
+  /* ── THE FIXTURES, every id carrying this run's tag ─────────────────────────────────────────────────────────── */
+  /* A holder with ALL THREE person fields set, so "no name, phone or email on a row" is a measurement of something. */
+  const PROBE = await chooser(`usr_${TAG}_probe`, { createdAt: ago(3 * DAY), lastLoginAt: ago(1 * DAY) });
+  const PROBE_NAME = "Finder Probe Name";
+  const PROBE_EMAIL = `${TAG}-probe@example.test`;
+  await w.setUserFields(PROBE, { displayName: PROBE_NAME, email: PROBE_EMAIL });
+  const probeRow: Any = await w.db.user.findById(PROBE);
+  const PROBE_PHONE: string = probeRow?.phoneE164 ?? "";
+  /* ⛔ THREE ACCOUNTS OPENED IN THE SAME MILLISECOND, STORED IN THE REVERSE OF THEIR ID ORDER — so on the memory twin the
+     store's own order is the opposite of the tie-break, and a missing tie-break is VISIBLE (the picker's `387-order`
+     lesson: a fixture whose insertion order already is the sorted order proves nothing about the sort). */
+  const TIE_AT = ago(40 * DAY);
+  const TIES = [`usr_${TAG}_tie_c`, `usr_${TAG}_tie_b`, `usr_${TAG}_tie_a`];
+  for (const id of TIES) await chooser(id, { createdAt: TIE_AT });
+  /* Two accounts that SHARE A HANDLE — a handle is the id's last six characters — stored in reverse id order too. */
+  const SAME = [`usr_${TAG}y_samehd`, `usr_${TAG}x_samehd`];
+  for (const id of SAME) await chooser(id, { createdAt: ago(41 * DAY) });
+  /* Two accounts that last signed in at the SAME instant, stored in reverse id order. */
+  const SIGNED_AT = ago(3 * DAY);
+  const SIGNED_TIES = [`usr_${TAG}_sig_b`, `usr_${TAG}_sig_a`];
+  for (const id of SIGNED_TIES) await chooser(id, { createdAt: ago(42 * DAY), lastLoginAt: SIGNED_AT });
+  /* The sign-in windows' four edges: two days ago, twenty days ago, three hours in the FUTURE, and never. */
+  const S2D = await chooser(`usr_${TAG}_s2d`, { createdAt: ago(50 * DAY), lastLoginAt: ago(2 * DAY) });
+  const S20D = await chooser(`usr_${TAG}_s20d`, { createdAt: ago(50 * DAY), lastLoginAt: ago(20 * DAY) });
+  const SFUT = await chooser(`usr_${TAG}_sfut`, { createdAt: ago(50 * DAY), lastLoginAt: new Date(T0 + 3 * 3_600_000).toISOString() });
+  const SNEVER = await chooser(`usr_${TAG}_snev`, { createdAt: ago(50 * DAY), lastLoginAt: null });
+  /* Two blocked kinds this block makes itself; the officer's own account and the desk's accounts are the other two. */
+  const STAFF = await chooser(`usr_${TAG}_staff`, { createdAt: ago(5 * DAY) });
+  await w.setUserFields(STAFF, { role: "SUPPORT" });
+  const CLOSED = await chooser(`usr_${TAG}_closed`, { createdAt: ago(5 * DAY) });
+  await w.setUserFields(CLOSED, { status: "CLOSED", closedAt: ago(1 * DAY) });
+  const onDeskIds: string[] = ((await w.dal.houseBotStore.listNonRemoved()) as Any[]).map((b: Any) => b.userId);
+
+  /* ━━ 1.387L · THE AUDIENCE, ON THE STORED ROW, AND NOT ONE READ BEFORE THE VERDICT (259, 387) ━━━━━━━━━━━━━━━━━ */
+  {
+    const spy = { users: 0, roster: 0 };
+    const orig = { users: w.db.user.list, roster: w.dal.houseBotStore.listNonRemoved };
+    const NON_OWNER = [...ROLES.STAFF_ROLES.filter((r: string) => r !== "ADMIN"), "PLAYER", "AGENT"] as string[];
+    const outsiders: Array<[string, string | null]> = [];
+    for (const role of NON_OWNER) outsiders.push([role, await w.user({ role })]);
+    outsiders.push(["signed out", null], ["no such account", "usr_no_such_account_at_all"]);
+    const answers: Array<[string, unknown]> = [];
+    let refusedReads = { users: -1, roster: -1 };
+    let beltAnswers: unknown[] = [];
+    let beltReads = { users: -1, roster: -1 };
+    let inSection: Any = null;
+    let owner: Any = null;
+    try {
+      w.db.user.list = (...a: Any[]) => { spy.users++; return orig.users.apply(w.db.user, a as Any); };
+      w.dal.houseBotStore.listNonRemoved = (...a: Any[]) => { spy.roster++; return orig.roster.apply(w.dal.houseBotStore, a as Any); };
+      for (const [who, id] of outsiders) answers.push([who, await listOf({}, id)]);
+      refusedReads = { ...spy };
+      beltAnswers = [await listOf({}, OFFICER, "/admin/players"), await listOf({}, OFFICER, "/admin"), await listOf({}, OFFICER, "/admin/deskx")];
+      beltReads = { users: spy.users - refusedReads.users, roster: spy.roster - refusedReads.roster };
+      inSection = await listOf({}, OFFICER, "/admin/desk/new");
+      owner = await listOf({}, OFFICER);
+    } finally {
+      w.db.user.list = orig.users; w.dal.houseBotStore.listNonRemoved = orig.roster;
+    }
+    ok("1.387L · audience · all eight non-owner roles, a signed-out caller and an unknown account get `null` and nothing else — and the reader took ZERO reads for any of them",
+      NON_OWNER.length === 8 && answers.length === 10 && answers.every(([, v]) => v === null)
+        && refusedReads.users === 0 && refusedReads.roster === 0,
+      j({ answers: answers.map(([who, v]) => [who, v === null ? null : "a view"]), refusedReads }));
+    ok("1.387L · audience · the route belt · the OWNER asking about a route OUTSIDE the desk's own section gets `null` with zero reads — the audience answers such a route by its own domain, and a row's reason says who is on the desk",
+      beltAnswers.length === 3 && beltAnswers.every((v) => v === null) && beltReads.users === 0 && beltReads.roster === 0,
+      j({ beltAnswers: beltAnswers.map((v) => (v === null ? null : "a view")), beltReads }));
+    ok("1.387L · audience · CONTROL · the owner on a route INSIDE the section gets a view, and it fired both reads through the very objects the spies watch — so every zero above is a measurement and not an unreached patch",
+      owner !== null && Array.isArray(owner.rows) && inSection !== null && Array.isArray(inSection.rows)
+        && spy.users - refusedReads.users - beltReads.users >= 2 && spy.roster - refusedReads.roster - beltReads.roster >= 2,
+      j({ spy, owner: owner !== null, inSection: inSection !== null }));
+  }
+
+  /* ━━ 1.387L · WALL 2 — NO NAME, PHONE OR EMAIL ON A ROW (346, 420) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const whole = await walk();
+    const probeRows = whole.rows.filter((r: Any) => r.userId === PROBE);
+    const pageText = whole.pages.map((v: Any) => all(v));
+    const carries = (s: string) => pageText.some((t: string) => t.includes(s));
+    /* ⚠️ EVERY INDEX IS GUARDED: a declared mutation that shortens the walk must redden ITS OWN label further down, not
+       throw here and take the rest of this section with it (which the drive would report as WRONG-ASSERTION). */
+    const probeOne: Any = probeRows[0] ?? null;
+    ok("1.387L · no name, phone or email · a holder with all three set is on the list as its HANDLE alone, and not one page of the whole list carries any of the three",
+      probeRows.length === 1 && probeOne?.handle === handleOf(PROBE) && String(probeOne?.handle ?? "").startsWith("Player #")
+        && !carries(PROBE_NAME) && !carries(PROBE_EMAIL)
+        && PROBE_PHONE.length > 5 && !carries(PROBE_PHONE) && !carries(PROBE_PHONE.replace(/^\+/, "")),
+      j({ rows: probeRows.length, handle: probeOne?.handle, pages: whole.pages.length }));
+    const planted = { ...(probeOne ?? {}), handle: `${probeOne?.handle} ${PROBE_EMAIL}` };
+    ok("1.387L · no name, phone or email · CONTROL · the holder's own record really carries all three, and the same scan fires on a list row planted with the email appended",
+      probeRow?.displayName === PROBE_NAME && probeRow?.email === PROBE_EMAIL && PROBE_PHONE.startsWith("+255")
+        && all(planted).includes(PROBE_EMAIL) && probeOne !== null && !all(probeOne).includes(PROBE_EMAIL),
+      j({ name: probeRow?.displayName === PROBE_NAME, email: probeRow?.email === PROBE_EMAIL, phone: PROBE_PHONE.length }));
+  }
+
+  /* ━━ 1.387L · WALL 1 — NO MONEY, NOT EVEN A READ OF IT (459, 356) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const wallet = w.db.wallet as Record<string, Any>;
+    const members = Object.keys(wallet).filter((k) => typeof wallet[k] === "function");
+    const origW: Record<string, Any> = Object.fromEntries(members.map((k) => [k, wallet[k]]));
+    const reads = { n: 0 };
+    let listed: Any = null;
+    let listReads = -1;
+    let checkReads = -1;
+    try {
+      for (const k of members) wallet[k] = (...a: Any[]) => { reads.n++; return origW[k].apply(wallet, a); };
+      listed = await walk();
+      listReads = reads.n;
+      await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", PROBE);
+      checkReads = reads.n - listReads;
+    } finally {
+      for (const k of members) wallet[k] = origW[k];
+    }
+    ok("1.387L · no money · the list reads NO wallet at all — every wallet member of the store spied, across every page — and no page carries a currency figure or even the unit",
+      members.length >= 3 && listReads === 0 && listed !== null && listed.pages.length >= 2
+        && listed.pages.every((v: Any) => !/TZS/.test(all(v))),
+      j({ members, listReads, pages: listed?.pages.length }));
+    ok("1.387L · no money · CONTROL · the check card's reader DOES read the wallet through the same spies, and the unit scan fires on a planted figure",
+      checkReads >= 1 && /TZS/.test(all({ ...listed?.pages[0], count: "TZS 5,000" })),
+      j({ checkReads }));
+  }
+
+  /* ━━ 1.387L · PAGING — twenty to a page, over a counting total, and a page past the end is the last page ━━━━━━━━ */
+  {
+    const everyone = (await w.db.user.list()) as Any[];
+    const whole = await walk();
+    const first = whole.pages[0];
+    const totalPages = Math.max(1, Math.ceil(first.total / 20));
+    const ids = whole.rows.map((r: Any) => r.userId as string);
+    const seen = new Set(ids);
+    const sizesRight = whole.pages.every((v: Any, i: number) => v.page === i + 1 && v.rows.length === Math.min(20, first.total - i * 20));
+    ok("1.387L · paging · twenty to a page, the total is the WHOLE population and never a page's length, every page holds exactly what the arithmetic says, and walking every page visits every account exactly once",
+      first.perPage === 20 && first.total === everyone.length && whole.pages.length === totalPages && sizesRight
+        && seen.size === ids.length && ids.length === first.total && everyone.every((u: Any) => seen.has(u.id)),
+      j({ perPage: first.perPage, total: first.total, users: everyone.length, pages: whole.pages.length, visited: ids.length }));
+    const past = await listOf({ page: "999" });
+    const lastPage = whole.pages[whole.pages.length - 1];
+    ok("1.387L · paging · a page past the end is served as the LAST page, with its rows — never an empty page under a pager that says there are more",
+      past.page === totalPages && past.rows.length > 0 && past.queryRefusal === null
+        && all(past.rows.map((r: Any) => r.userId)) === all(lastPage.rows.map((r: Any) => r.userId)),
+      j({ page: past.page, rows: past.rows.length, lastPage: totalPages }));
+    const bad: Array<[string, unknown]> = [["zero", "0"], ["a word", "abc"], ["a fraction", "1.5"], ["a negative", "-3"], ["an exponent", "1e3"], ["a repeat", ["1", "2"]]];
+    const refusedPages: Array<[string, Any]> = [];
+    for (const [what, v] of bad) refusedPages.push([what, await listOf({ page: v })]);
+    ok("1.387L · paging · a page that is not a whole number from 1 — zero, a word, a fraction, a negative, an exponent, a repeat — is refused BY NAME and page 1 is served",
+      refusedPages.every(([, v]) => v.page === 1 && typeof v.queryRefusal === "string" && v.queryRefusal.includes(": page.")
+        && all(v.rows.map((r: Any) => r.userId)) === all(first.rows.map((r: Any) => r.userId))),
+      j(refusedPages.map(([what, v]) => [what, v.page, v.queryRefusal])));
+    const asked2 = await listOf({ page: "2" });
+    ok("1.387L · paging · CONTROL · the population really spans more than one page, page 1 and page 2 hold different accounts, and a clean page number is honoured, not refused — so the refusals above are the parse and not a door that serves page 1 to everything",
+      first.total > 20 && whole.pages.length >= 2
+        && (whole.pages[1]?.rows ?? []).every((r: Any) => !first.rows.some((x: Any) => x.userId === r.userId))
+        && asked2.page === 2 && asked2.queryRefusal === null
+        && all(asked2.rows.map((r: Any) => r.userId)) === all((whole.pages[1]?.rows ?? []).map((r: Any) => r.userId)),
+      j({ total: first.total, pages: whole.pages.length, asked2: asked2.page }));
+  }
+  /* ━━ 1.387L · SORTING — every key, both directions, one total order on either store ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * ⛔ CHECKED AS A PROPERTY OF EVERY ADJACENT PAIR, over the concatenation of every page, against each account's own
+   * stored instant — never against a list typed here. A missing instant must come LAST in both directions, and equal
+   * keys must come in ascending id order: that tie-break is what makes the order total, and it is the half a fixture
+   * stored in id order could never test, which is why the three ties above were stored backwards. */
+  {
+    const raw = new Map(((await w.db.user.list()) as Any[]).map((u: Any) => [u.id as string, u]));
+    const at = (v: string | null | undefined): number | null => (v == null || !Number.isFinite(Date.parse(v)) ? null : Date.parse(v));
+    const cu = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+    const inOrder = (rows: Any[], key: (id: string) => number | string | null, dir: "asc" | "desc"): string[] => {
+      const bad: string[] = [];
+      for (let i = 1; i < rows.length; i++) {
+        const a = rows[i - 1].userId as string, b = rows[i].userId as string;
+        const ka = key(a), kb = key(b);
+        const fine = ka === null || kb === null ? kb === null && (ka !== null || cu(a, b) < 0)
+          : ka === kb ? cu(a, b) < 0
+          : dir === "asc" ? ka < kb : ka > kb;
+        if (!fine) bad.push(`${a} → ${b}`);
+      }
+      return bad;
+    };
+    const KEYS: Array<[string, (id: string) => number | string | null]> = [
+      ["joined", (id) => at(raw.get(id)?.createdAt)],
+      ["signed-in", (id) => at(raw.get(id)?.lastLoginAt)],
+      ["account", (id) => handleOf(id)],
+    ];
+    const walked: Record<string, { asc: Any[]; desc: Any[]; badAsc: string[]; badDesc: string[] }> = {};
+    for (const [token, key] of KEYS) {
+      const asc = (await walk({ sort: token, dir: "asc" })).rows;
+      const desc = (await walk({ sort: token, dir: "desc" })).rows;
+      walked[token] = { asc, desc, badAsc: inOrder(asc, key, "asc"), badDesc: inOrder(desc, key, "desc") };
+    }
+    const positions = (rows: Any[], ids: string[]) => ids.map((id) => rows.findIndex((r: Any) => r.userId === id));
+    const ascending = (p: number[]) => p.every((x) => x >= 0) && p.every((x, i) => i === 0 || p[i - 1] < x);
+    const J = walked["joined"], S = walked["signed-in"], A = walked["account"];
+    ok("1.387L · sorting · Joined · every page, concatenated, is in joining order BOTH ways with the id breaking every tie — and three accounts opened in the same millisecond come back in id order though the store holds them the other way round",
+      J.badAsc.length === 0 && J.badDesc.length === 0 && J.asc.length > 20 && J.asc.length === J.desc.length
+        && ascending(positions(J.asc, [...TIES].sort())) && ascending(positions(J.desc, [...TIES].sort())),
+      j({ asc: J.badAsc.slice(0, 2), desc: J.badDesc.slice(0, 2), ties: [positions(J.asc, [...TIES].sort()), positions(J.desc, [...TIES].sort())] }));
+    const nullsLast = (rows: Any[]) => {
+      const firstNull = rows.findIndex((r: Any) => at(raw.get(r.userId)?.lastLoginAt) === null);
+      return firstNull > 0 && rows.slice(firstNull).every((r: Any) => at(raw.get(r.userId)?.lastLoginAt) === null);
+    };
+    ok("1.387L · sorting · Signed in · …ordered by the last sign-in both ways, ties broken by the id — and an account that never signed in sorts LAST in BOTH directions",
+      S.badAsc.length === 0 && S.badDesc.length === 0 && nullsLast(S.asc) && nullsLast(S.desc)
+        && ascending(positions(S.asc, [...SIGNED_TIES].sort())) && ascending(positions(S.desc, [...SIGNED_TIES].sort())),
+      j({ asc: S.badAsc.slice(0, 2), desc: S.badDesc.slice(0, 2), nullsLast: [nullsLast(S.asc), nullsLast(S.desc)] }));
+    ok("1.387L · sorting · Account · …ordered by the HANDLE both ways — never a name, a phone or an email — and two accounts that share a handle are told apart by the id",
+      A.badAsc.length === 0 && A.badDesc.length === 0 && handleOf(SAME[0]) === handleOf(SAME[1])
+        && ascending(positions(A.asc, [...SAME].sort())) && ascending(positions(A.desc, [...SAME].sort())),
+      j({ asc: A.badAsc.slice(0, 2), desc: A.badDesc.slice(0, 2), handle: handleOf(SAME[0]) }));
+    const bare = await listOf({});
+    ok("1.387L · sorting · an address with no sort is Joined, newest first — the header the page marks in force, in the direction the kit's arrow draws — and the three headers are the three columns, in order",
+      bare.sort === "joined" && bare.dir === "desc"
+        && all(bare.rows.map((r: Any) => r.userId)) === all(J.desc.slice(0, 20).map((r: Any) => r.userId))
+        && all(bare.columns) === all([{ field: "account", label: "Account" }, { field: "joined", label: "Joined" }, { field: "signed-in", label: "Signed in" }]),
+      j({ sort: bare.sort, dir: bare.dir, columns: bare.columns }));
+    ok("1.387L · sorting · CONTROL · the two directions really differ over every key, and the pair checker reports two adjacent rows put the wrong way round",
+      KEYS.every(([token]) => walked[token].asc[0]?.userId !== walked[token].desc[0]?.userId)
+        && inOrder([J.asc[1], J.asc[0]], KEYS[0][1], "asc").length === 1
+        && inOrder([S.asc[S.asc.length - 1], S.asc[0]], KEYS[1][1], "asc").length === 1,
+      j(KEYS.map(([token]) => [token, walked[token].asc[0]?.userId, walked[token].desc[0]?.userId])));
+  }
+
+  /* ━━ 1.387L · FILTERING — the two axes, and the sign-in window bounded at BOTH ends ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const everyone = (await w.db.user.list()) as Any[];
+    const can = await walk({ show: "can-be-chosen" });
+    const cannot = await walk({ show: "cannot-be-chosen" });
+    ok("1.387L · filtering · Show · \"Can be chosen\" holds only rows with no reason, each one a way in; \"Cannot be chosen\" only rows with one, none a way in; and the two totals add up to the whole list",
+      can.rows.length > 0 && cannot.rows.length > 0
+        && can.rows.every((r: Any) => r.reason === null && r.href !== null) && cannot.rows.every((r: Any) => r.reason !== null && r.href === null)
+        && can.pages[0].total + cannot.pages[0].total === everyone.length
+        && can.pages[0].total === can.rows.length && cannot.pages[0].total === cannot.rows.length,
+      j({ can: can.pages[0].total, cannot: cannot.pages[0].total, all: everyone.length }));
+    const reasonOf = (id: string): string | null => cannot.rows.find((r: Any) => r.userId === id)?.reason ?? null;
+    ok("1.387L · filtering · Show · CONTROL · the cannot side really holds every blocked kind — the officer's own account, a staff account, a closed account and an account already on the desk — each with its own reason, and none of them on the can side",
+      reasonOf(OFFICER) === "Your own account" && reasonOf(STAFF) === "A staff account" && reasonOf(CLOSED) === "The account is closed"
+        && onDeskIds.length >= 1 && onDeskIds.every((id) => reasonOf(id) === "Already on the desk")
+        && [OFFICER, STAFF, CLOSED, ...onDeskIds].every((id) => !can.rows.some((r: Any) => r.userId === id)),
+      j({ officer: reasonOf(OFFICER), staff: reasonOf(STAFF), closed: reasonOf(CLOSED), onDesk: onDeskIds.slice(0, 3).map(reasonOf) }));
+    const idsOf = async (q: Record<string, unknown>) => new Set((await walk(q)).rows.map((r: Any) => r.userId as string));
+    const d7 = await idsOf({ signed: "past-7-days" });
+    const d30 = await idsOf({ signed: "past-30-days" });
+    const nev = await idsOf({ signed: "never" });
+    const anyTime = await idsOf({});
+    ok("1.387L · filtering · Signed in · the window is bounded at BOTH ends — two days ago is in both windows, twenty days ago only in the thirty-day one, a stamp three hours in the FUTURE in neither, and an account that never signed in only under Never",
+      d7.has(S2D) && d30.has(S2D) && !nev.has(S2D)
+        && !d7.has(S20D) && d30.has(S20D) && !nev.has(S20D)
+        && !d7.has(SFUT) && !d30.has(SFUT) && !nev.has(SFUT) && anyTime.has(SFUT)
+        && !d7.has(SNEVER) && !d30.has(SNEVER) && nev.has(SNEVER),
+      j({ s2d: [d7.has(S2D), d30.has(S2D)], s20d: [d7.has(S20D), d30.has(S20D)], future: [d7.has(SFUT), d30.has(SFUT), anyTime.has(SFUT)], never: nev.has(SNEVER) }));
+    const stampOf = (id: string): number | null => {
+      const v = everyone.find((u: Any) => u.id === id)?.lastLoginAt;
+      return v == null ? null : Date.parse(v);
+    };
+    const now2 = Date.now();
+    const inside = (ids: Set<string>, span: number) => [...ids].every((id) => { const s = stampOf(id); return s !== null && s > now2 - span - 60_000 && s <= now2; });
+    ok("1.387L · filtering · Signed in · every account a window serves really falls inside it, every account under Never has no sign-in at all, the seven-day window sits inside the thirty-day one, and Never holds EVERY such account",
+      inside(d7, 7 * DAY) && inside(d30, 30 * DAY) && [...nev].every((id) => stampOf(id) === null)
+        && [...d7].every((id) => d30.has(id))
+        && everyone.filter((u: Any) => u.lastLoginAt == null).length === nev.size && anyTime.size === everyone.length,
+      j({ d7: d7.size, d30: d30.size, never: nev.size, any: anyTime.size }));
+    ok("1.387L · filtering · Signed in · CONTROL · the window checker reports an account planted into a window it does not belong to — twenty days ago under seven days, a future stamp under thirty, a sign-in under Never",
+      !inside(new Set([...d7, S20D]), 7 * DAY) && !inside(new Set([...d30, SFUT]), 30 * DAY)
+        && ![...nev, S2D].every((id) => stampOf(id) === null),
+      "");
+  }
+
+  /* ━━ 1.387L · VALIDATION — every parameter checked, every refusal named, nothing refused ever travels ━━━━━━━━━━━━ */
+  {
+    const one = (word: string) => `One part of this address was not understood and was ignored: ${word}. The rest of the filter is in force.`;
+    const each: Array<[string, string, Any]> = [
+      ["show", "show", await listOf({ show: "maybe" })],
+      ["signed", "signed in", await listOf({ signed: "yesterday" })],
+      ["sort", "sort", await listOf({ sort: "balance" })],
+      ["dir", "sort direction", await listOf({ dir: "sideways" })],
+      ["page", "page", await listOf({ page: "two" })],
+    ];
+    ok("1.387L · validation · every parameter the list takes is checked against its closed list or its shape, and a value that is not on it is refused BY ITS SCREEN WORD — show, signed in, sort, sort direction, page — under the console's one refusal heading",
+      each.every(([, word, v]) => v.queryRefusal === one(word) && v.refusalTitle === GATEM.CONSOLE_REFUSAL_TITLE),
+      j(each.map(([k, , v]) => [k, v.queryRefusal])));
+    const combined = await listOf({ show: "can-be-chosen", signed: "past-30-days", sort: "bogus", dir: "sideways", page: "abc" });
+    ok("1.387L · validation · a refused part falls back to its default while every VALID part beside it stays in force — and one sentence names all three that were dropped",
+      combined.queryRefusal === "Parts of this address were not understood and were ignored: sort, sort direction and page. The rest of the filter is in force."
+        && combined.params.show === "can-be-chosen" && combined.params.signed === "past-30-days"
+        && combined.sort === "joined" && combined.dir === "desc" && combined.page === 1
+        && combined.filters[0].options.find((o: Any) => o.on)?.key === "can-be-chosen"
+        && combined.rows.every((r: Any) => r.reason === null),
+      j({ refusal: combined.queryRefusal, params: combined.params }));
+    const refused = await listOf({ show: "zzmaybe", signed: "zzyesterday", sort: "zzbalance", dir: "zzsideways", page: "zzpage", q: "zzsearch", step: "zzreview" });
+    const carried = (v: Any): string => [...Object.values(v.params), v.sort, v.dir, ...v.filters.flatMap((g: Any) => g.options.map((o: Any) => o.href))].join(" ");
+    ok("1.387L · validation · a refused value travels NOWHERE — not into the live parameters, not into the sort in force, not into a rail link — and a key the list does not own is dropped, never carried",
+      !/zz/.test(carried(refused)) && refused.sort === "joined"
+        && Object.keys(refused.params).sort().join(",") === "dir,show,signed,sort"
+        && Object.values(refused.params).every((x) => x === undefined),
+      j({ params: refused.params, hrefs: refused.filters.flatMap((g: Any) => g.options.map((o: Any) => o.href)).slice(0, 2) }));
+    const personSorts: Array<[string, Any]> = [];
+    for (const s of ["name", "phone", "email", "displayname"]) personSorts.push([s, await listOf({ sort: s })]);
+    ok("1.387L · validation · 420 · the list CANNOT be sorted by a person's name, phone or email — each is refused as a sort and the list keeps its own order",
+      personSorts.every(([, v]) => v.queryRefusal === one("sort") && v.sort === "joined"),
+      j(personSorts.map(([s, v]) => [s, v.sort])));
+    const clean = await listOf({ show: "cannot-be-chosen", signed: "never", sort: "account", dir: "asc", page: "1" });
+    const repeated = await listOf({ show: ["can-be-chosen", "cannot-be-chosen"] });
+    ok("1.387L · validation · CONTROL · a clean address is refused nothing and every part of it IS carried, the travel scan fires on a planted value, and the same parse DOES name a repeated parameter",
+      clean.queryRefusal === null && clean.params.show === "cannot-be-chosen" && clean.params.signed === "never"
+        && clean.params.sort === "account" && clean.params.dir === "asc"
+        && /zz/.test(carried({ ...clean, params: { ...clean.params, sort: "zzbalance" } }))
+        && repeated.queryRefusal === one("show") && repeated.params.show === undefined,
+      j({ clean: clean.params, repeated: repeated.queryRefusal }));
+  }
+
+  /* ━━ 1.387L · LINKS — a row is the way in exactly when it can be chosen, and the rail never loses the sort ━━━━━━━━ */
+  {
+    const everyRow = (await walk({})).rows;
+    ok("1.387L · links · a row that can be chosen opens the wizard's check step for exactly that account, and a row that cannot opens nothing",
+      everyRow.length > 20
+        && everyRow.every((r: Any) => (r.reason === null ? r.href === CR.consoleNewHref({ userId: r.userId }) : r.href === null))
+        && everyRow.some((r: Any) => r.href !== null) && everyRow.some((r: Any) => r.href === null),
+      j({ rows: everyRow.length, choosable: everyRow.filter((r: Any) => r.href !== null).length }));
+    const kept = await listOf({ sort: "account", dir: "asc", page: "2", signed: "never" });
+    const hrefs: string[] = kept.filters.flatMap((g: Any) => g.options.map((o: Any) => o.href as string));
+    const railHolds = (hs: string[]) => hs.every((h) => h.startsWith(`${CR.CONSOLE_NEW_ROUTE}?`) && !/[?&]page=/.test(h) && h.includes("sort=account") && h.includes("dir=asc"));
+    ok("1.387L · links · every rail link stays on the wizard's own route, DROPS the page and KEEPS the sort and the other axis — and exactly one option per axis is marked in force",
+      hrefs.length === 7 && railHolds(hrefs)
+        && kept.filters[0].options.every((o: Any) => o.href.includes("signed=never"))
+        && kept.filters.every((g: Any) => g.options.filter((o: Any) => o.on).length === 1)
+        && kept.filters[0].options.find((o: Any) => o.on)?.key === "" && kept.filters[1].options.find((o: Any) => o.on)?.key === "never",
+      j(hrefs.slice(0, 3)));
+    const tokens: Array<[string, string, string]> = kept.filters.flatMap((g: Any) => g.options.filter((o: Any) => o.key !== "").map((o: Any) => [g.param, o.key, o.label] as [string, string, string]));
+    const trips: boolean[] = [];
+    for (const [param, key] of tokens) trips.push((await listOf({ [param]: key })).queryRefusal === null);
+    ok("1.387L · links · 453 · every rail token is its option's own painted word, slugged — never a code — and every one round-trips through the door with nothing refused",
+      tokens.length === 5 && trips.length === 5 && trips.every(Boolean)
+        && tokens.every(([, key, label]) => key === label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))
+        && tokens.every(([, key]) => !NEUTRAL.test(key) && houseHits(key).length === 0),
+      j(tokens));
+    ok("1.387L · links · CONTROL · the rail check reports a planted link that keeps the page, and one that loses the sort",
+      !railHolds([...hrefs, `${CR.CONSOLE_NEW_ROUTE}?page=2&sort=account&dir=asc`])
+        && !railHolds([...hrefs, `${CR.CONSOLE_NEW_ROUTE}?signed=never`]),
+      "");
+  }
+  /* ━━ 1.387L · FAILED READS — 355 against 421, and the picker's latent defect NOT copied ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const origU = w.db.user.list;
+    const origR = w.dal.houseBotStore.listNonRemoved;
+    let usersFail: Any = null, rosterFail: Any = null, schemaGone: Any = null;
+    try {
+      w.db.user.list = () => { throw new Error("planted: the account read failed"); };
+      usersFail = await listOf({ sort: "account", page: "abc" });
+    } finally { w.db.user.list = origU; }
+    try {
+      w.dal.houseBotStore.listNonRemoved = () => Promise.reject(new Error("planted: the roster read failed"));
+      rosterFail = await listOf({});
+    } finally { w.dal.houseBotStore.listNonRemoved = origR; }
+    try {
+      w.dal.houseBotStore.listNonRemoved = () => Promise.reject(new w.dal.HouseSchemaNotReady("planted"));
+      schemaGone = await walk({});
+    } finally { w.dal.houseBotStore.listNonRemoved = origR; }
+    const normal = await walk({});
+    ok("1.387L · failed reads · 355 · a failed account read is a failed LIST — no rows, no total, no count and no empty state — while the rail, the sort and the refusal still paint",
+      usersFail !== null && usersFail.rows === null && usersFail.total === null && usersFail.count === null && usersFail.empty === null
+        && usersFail.filters.length === 2 && usersFail.sort === "account"
+        && typeof usersFail.queryRefusal === "string" && usersFail.queryRefusal.includes(": page."),
+      j({ rows: usersFail?.rows, total: usersFail?.total, refusal: usersFail?.queryRefusal }));
+    ok("1.387L · failed reads · 355 · a failed ROSTER read is a failed list too — never an empty desk that would offer an account already on it as choosable",
+      rosterFail !== null && rosterFail.rows === null && rosterFail.total === null && rosterFail.count === null,
+      j({ rows: rosterFail?.rows, total: rosterFail?.total }));
+    ok("1.387L · failed reads · 421 · a database with no house tables is a desk nobody is on — every row still paints, and no account reads as already on the desk",
+      schemaGone.rows.length > 20 && schemaGone.rows.every((r: Any) => r.reason !== "Already on the desk"),
+      j({ rows: schemaGone.rows.length }));
+    ok("1.387L · failed reads · CONTROL · the same address with both reads working paints the same accounts, and DOES mark the ones already on the desk — so each degraded shape above is a measurement",
+      normal.rows.length === schemaGone.rows.length && normal.rows.some((r: Any) => r.reason === "Already on the desk"),
+      j({ rows: normal.rows.length }));
+    STATES.push(["wizard-list-failed", usersFail]);
+  }
+
+  /* ━━ 1.387L · EMPTY — a filter that matches nothing names its cause (416) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  let emptyView: Any = null;
+  {
+    const origU = w.db.user.list;
+    let onlyMe: Any = null;
+    try {
+      /* The one account that always exists — the viewer's own, which can never be chosen. */
+      w.db.user.list = async () => ((await origU.apply(w.db.user, [] as Any)) as Any[]).filter((u: Any) => u.id === OFFICER);
+      emptyView = await listOf({ show: "can-be-chosen" });
+      onlyMe = await listOf({});
+    } finally { w.db.user.list = origU; }
+    ok("1.387L · empty · a filter that matches nothing is the kit's EMPTY state naming its own cause — no rows, a total of zero, the filtered sentence and a count that says so — never a failure and never a blank table",
+      emptyView.rows.length === 0 && emptyView.total === 0 && emptyView.count === "0 of 1 account"
+        && emptyView.empty?.title === LCOPY.emptyFiltered.title && emptyView.empty?.body === LCOPY.emptyFiltered.body,
+      j({ rows: emptyView?.rows, empty: emptyView?.empty, count: emptyView?.count }));
+    ok("1.387L · empty · CONTROL · the same one-account platform UNFILTERED is not empty — the officer's own account is on it and cannot be chosen — so the empty state above was earned by the filter",
+      onlyMe.rows.length === 1 && onlyMe.rows[0].userId === OFFICER && onlyMe.rows[0].reason === "Your own account"
+        && onlyMe.empty === null && onlyMe.count === `1 account ·${NB}1 cannot be chosen`,
+      j({ rows: onlyMe?.rows?.length, count: onlyMe?.count }));
+    STATES.push(["wizard-list-empty", emptyView]);
+  }
+
+  /* ━━ 1.387L · RENDERED — the three walls read off the list's own markup (memory child: the render reads no store) ━━ */
+  if (!w.onPostgres) {
+    try {
+      const { createElement: h }: Any = await import("react");
+      const { renderToStaticMarkup }: Any = await import("react-dom/server");
+      const { DeskAccountList }: Any = await import("../../src/app/admin/desk/new/account-list.tsx");
+      const render = (view: Any): string => renderToStaticMarkup(h(DeskAccountList, { view }));
+      const probePage = (await walk({})).pages.find((v: Any) => v.rows.some((r: Any) => r.userId === PROBE));
+      const blockedPage = await listOf({ show: "cannot-be-chosen" });
+      const refusedPage = await listOf({ sort: "zzbalance", show: "maybe" });
+      const failedPage = await (async () => {
+        const origU = w.db.user.list;
+        try { w.db.user.list = () => { throw new Error("planted"); }; return await listOf({}); } finally { w.db.user.list = origU; }
+      })();
+      const htmls = { probe: render(probePage), blocked: render(blockedPage), refused: render(refusedPage), failed: render(failedPage), empty: render(emptyView) };
+      const moneyIn = (html: string) => /class="[^"]*\bamount\b/.test(html) || /TZS/.test(html);
+      const sortCells = (html: string) => (html.match(/aria-sort="/g) ?? []).length;
+      const sortedCells = (html: string) => (html.match(/aria-sort="(?:ascending|descending)"/g) ?? []).length;
+      const personIn = (html: string) => [PROBE_NAME, PROBE_EMAIL, PROBE_PHONE].some((s) => s.length > 0 && html.includes(s));
+      const rowLinks = (html: string) => [...html.matchAll(/<a [^>]*href="\/admin\/desk\/new\?u=[^"]*"[^>]*>/g)].map((m) => m[0]);
+      ok("1.387L · RENDERED · the list as served — no money element and no currency, exactly three sortable headers with exactly one in force, none of the holder's three person fields, every choosable row's way in at the tap floor, and no way in on a row that cannot be chosen",
+        [htmls.probe, htmls.blocked].every((x) => !moneyIn(x) && sortCells(x) === 3 && sortedCells(x) === 1 && !personIn(x))
+          && htmls.probe.includes(handleOf(PROBE))
+          && rowLinks(htmls.probe).length === probePage.rows.filter((r: Any) => r.href !== null).length && rowLinks(htmls.probe).length >= 1
+          && rowLinks(htmls.probe).every((a) => /class="[^"]*min-h-\[var\(--tap-min\)\]/.test(a))
+          && rowLinks(htmls.blocked).length === 0 && blockedPage.rows.length >= 1,
+        j({ links: rowLinks(htmls.probe).length, sortCells: sortCells(htmls.probe), sorted: sortedCells(htmls.probe), money: moneyIn(htmls.probe) }));
+      ok("1.387L · RENDERED · a refused address paints the refusal Callout above the table and no header link carries the refused value, the failed read paints the kit's failure treatment and NO table, and the filtered-empty state paints the kit's empty row",
+        htmls.refused.includes(GATEM.CONSOLE_REFUSAL_TITLE) && htmls.refused.includes("were not understood") && !/zz/.test(htmls.refused)
+          && htmls.failed.includes(LCOPY.loadError) && !htmls.failed.includes("<table") && !htmls.failed.includes("aria-sort")
+          && htmls.empty.includes("data-table-empty") && htmls.empty.includes(LCOPY.emptyFiltered.title) && !htmls.empty.includes("?u="),
+        j({ refused: htmls.refused.length, failed: htmls.failed.length, empty: htmls.empty.length }));
+      const plantedEmail = render({ ...probePage, rows: probePage.rows.map((r: Any) => (r.userId === PROBE ? { ...r, handle: `${r.handle} ${PROBE_EMAIL}` } : r)) });
+      ok("1.387L · RENDERED · CONTROL · a money span planted into the markup and the email planted into a row's handle are each reported by the same scans",
+        moneyIn(`${htmls.probe}<span class="amount">TZS 5,000</span>`) && personIn(plantedEmail) && !personIn(htmls.probe),
+        "");
+    } catch (err) {
+      ok("1.387L · RENDERED · the list as served — the render itself threw, so none of its walls was read off markup", false,
+        String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+    }
+  }
+
+  /* ━━ 1.387L · THE PAGE AND THE LIST FILE, AT SOURCE (memory child: files, not a store) ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  if (!w.onPostgres) {
+    const pageSrc = decomment(read(NEW_PAGE));
+    const body = pageSrc.slice(pageSrc.indexOf("async function AdminDeskNewContent"));
+    const READ_LINE = /const list = step === "find" \? await houseAccountListForConsole\(session\?\.userId \?\? null, "\/admin\/desk", sp\) : null;/;
+    ok("1.387L · the page · the list is read ONLY on the find step, after the page's own audience verdict, with the request's address handed over untouched — and it is rendered only there, under the picker's card",
+      READ_LINE.test(pageSrc) && (pageSrc.match(/houseAccountListForConsole\(/g) ?? []).length === 1
+        && body.indexOf("houseConsoleAudience") >= 0 && body.indexOf("houseConsoleAudience") < body.indexOf("houseAccountListForConsole")
+        && /\{step === "find" && list !== null && <DeskAccountList view=\{list\} \/>\}/.test(pageSrc)
+        && pageSrc.indexOf("<DeskAccountPicker") > 0 && pageSrc.indexOf("<DeskAccountPicker") < pageSrc.indexOf("<DeskAccountList"),
+      "");
+    ok("1.387L · the page · CONTROL · a crafted `?u=` resolves to a step that is NOT find — the check, or the step it names — and no account resolves to find, so the guard has both values to decide between; and the pin fires on a page that reads the list unguarded",
+      CR.consoleWizardStep(undefined, true) === "check" && CR.consoleWizardStep("review", true) === "review"
+        && CR.consoleWizardStep(undefined, false) === "find" && CR.consoleWizardStep("review", false) === "find"
+        && !READ_LINE.test(pageSrc.replace('const list = step === "find" ? await', "const list = true ? await")),
+      "");
+    const listRaw = read(NEW_LIST);
+    const listSrc = decomment(listRaw);
+    ok("1.387L · the list file · it spends the view as painted — the pager's total is the view's counting field, the headers and the pager carry the view's own validated parameters, the rail takes the view's groups and NO window, the empty and failed branches are the kit's own, and nothing here filters, sorts, slices, routes or reads",
+      /total=\{view\.total\}/.test(listSrc) && !/total=\{[^}]*\.length\}/.test(listSrc)
+        && /sp=\{view\.params\}/.test(listSrc) && /baseHref=\{view\.route\}/.test(listSrc)
+        && /baseHref=\{buildBaseHref\(view\.route, view\.params, "page"\)\}/.test(listSrc)
+        && /<ActivityFilters groups=\{view\.filters\} \/>/.test(listSrc) && !/presets=/.test(listSrc)
+        && /rows === null \? \(/.test(listSrc) && /<AdminLoadError what=\{view\.loadError\} \/>/.test(listSrc)
+        && /rows\.length === 0 && view\.empty !== null \? \(/.test(listSrc) && /<AdminTableEmpty /.test(listSrc)
+        && (listSrc.match(/<SortTh /g) ?? []).length === 1
+        && !/\.filter\(|\.sort\(|\.slice\(|\/admin\/desk|house-bot-dal|@\/lib\/server\/house-bot|\bdb\./.test(listSrc)
+        && !listRaw.includes('"use client"'),
+      "");
+    ok("1.387L · the list file · CONTROL · the same pins fire on a total taken from the rows, on a header handed the raw address, and on a rail handed a window",
+      /total=\{[^}]*\.length\}/.test(listSrc.replace("total={view.total}", "total={rows.length}"))
+        && !/sp=\{view\.params\}/.test(listSrc.replace("sp={view.params}", "sp={sp}"))
+        && /presets=/.test(listSrc.replace("<ActivityFilters groups={view.filters} />", "<ActivityFilters groups={view.filters} presets={[]} presetDefault=\"all\" />")),
+      "");
+    const railSrc = decomment(read(`${SECTION}/activity-filters.tsx`));
+    ok("1.410 · decision 4 · the section's ONE rail draws its window only when it is handed one — both activity panels still pass theirs, the find step's list passes none — and the section still holds exactly one rail file",
+      /\{presets !== undefined && presetDefault !== undefined && \(<I18nProvider initial="en">/.test(railSrc)
+        && /presets\?: readonly string\[\];/.test(railSrc) && /presetDefault\?: string;/.test(railSrc)
+        && /presets=\{feedView\.feedPresets\}/.test(pageCode) && /presets=\{view\.feedPresets\}/.test(decomment(read(DETAIL_PAGE)))
+        && sectionFiles.filter((f) => /data-filter-rail/.test(decomment(read(f)))).length === 1,
+      "");
+    ok("1.410 · decision 4 · CONTROL · the same pin fires on the rail with its window drawn unconditionally again — the shape it had before the list existed",
+      !/\{presets !== undefined && presetDefault !== undefined && \(<I18nProvider initial="en">/.test(
+        railSrc.replace('{presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">', '{(<I18nProvider initial="en">'))
+        && railSrc.includes('{presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">'),
+      "");
+  }
+
+  /* The list's painted states, for §3's lexicon — the ordinary page, a refused address, the copy table itself. */
+  STATES.push(["wizard-list", await listOf({})]);
+  STATES.push(["wizard-list-refused", await listOf({ sort: "bogus", show: "maybe", page: "0" })]);
+  STATES.push(["wizard-list-filtered", await listOf({ show: "cannot-be-chosen", signed: "never", sort: "signed-in", dir: "asc" })]);
+  STATES.push(["wizard-list-copy", GATEM.CONSOLE_LIST_COPY]);
+} catch (err) {
+  ok("0.throw.2f2 · no account-list case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -7571,6 +8105,16 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     ...(view.resultAccounts ?? []).flatMap((r: Any) => [r.accountIsOperatorText ? null : r.accountName, r.accountHandle,
       ...[r.today, r.week].flatMap((c: Any) => [c?.text, c?.word, c?.figure])]),
     ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
+    /* ⭐ RESUME-HERE §0c decision 4 · THE FIND STEP'S ACCOUNT LIST. A row's two instants and their hover titles, the
+       rail's group and option words AND each option's key and link (a token is a painted word slugged, so the scan
+       covers the address bar by construction), the three header words and their sort tokens, the live parameters,
+       and the copy table's second empty state. A row's `handle` and `reason` are read by the rows branch above;
+       its `href` carries a record id and, like every other panel's, is not scanned. */
+    ...(view.rows ?? []).flatMap((r: Any) => [r.joined, r.joinedTitle, r.signedIn, r.signedInTitle]),
+    ...(view.filters ?? []).flatMap((g: Any) => [g.label, ...(g.options ?? []).flatMap((o: Any) => [o.label, o.key, o.href])]),
+    ...(view.columns ?? []).flatMap((c: Any) => [c.field, c.label]),
+    ...Object.values(view.params ?? {}),
+    view.emptyFiltered?.title, view.emptyFiltered?.body,
     /* ⛔ AND THE WHOLE OF BOTH TOTAL MAPS, NOT ONLY THE ROWS THIS FIXTURE HAPPENED TO PAINT. A word map scanned
        through its rendered rows is scanned at whatever coverage the fixture reached; scanned whole it is scanned
        at 100%, which is the only coverage a TOTAL map is worth having. */
@@ -7626,6 +8170,18 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
       && seen.has(GATEM.CONSOLE_ACCOUNT_WORD.gone) && seen.has(GATEM.CONSOLE_ACCOUNT_WORD.goneMany)
       && seen.has(GATEM.CONSOLE_RESULTS_NOTE),
     j({ states: scanned.filter(([n]) => n.startsWith("results")).map(([n, c]) => [n, c.length]) }));
+  /* ⭐ RESUME-HERE §0c decision 4 · AND THE FIND STEP'S LIST IS PROVEN PRESENT BY VALUE, for the same reason: its states
+     joined the list in §2f2, and a field rename on its view model would otherwise drop them out of the scan while
+     `hits.length === 0` still read as compliance. One word from each branch — the heading, both chip rows, the failed
+     and the filtered-empty states, a sign-in word, a date's hover title and a rail link. */
+  {
+    const LIST: Any = GATEM.CONSOLE_LIST_COPY;
+    ok("3.453 · decision 4 · …and the scan really did include the find step's account list — its heading, both chip rows, its failed and its filtered-empty states, the Never word, an EAT hover title and a rail link",
+      [LIST.title, LIST.loadError, LIST.never, LIST.emptyFiltered.title, LIST.emptyFiltered.body, "Can be chosen", "Past 30 days", "Signed in", "Any time"].every((s: string) => seen.has(s))
+        && [...seen].some((s) => /^\d{1,2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2} EAT$/.test(s))
+        && [...seen].some((s) => s.startsWith(`${CR.CONSOLE_NEW_ROUTE}?`)),
+      j({ states: scanned.filter(([n]) => n.startsWith("wizard-list")).map(([n, c]) => [n, c.length]) }));
+  }
   /* ⛔ THE SWEEP REALLY IS A SWEEP. A `copyOf` that quietly returned only the keys it used to type would pass
    * every assertion above, so the keys the typed list MISSED are named here — and nothing else names them. */
   {
@@ -7707,7 +8263,7 @@ if (STORE === "memory") {
        now the FIRST thing the extra prints. */
     allLits.length >= 1_332 && litHits.length === 0
       && sectionFiles.length >= 10
-      && [PAGE, LAYOUT, LOADING, LIVE, DETAIL_PAGE, NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT].every((f) => sectionFiles.includes(f))
+      && [PAGE, LAYOUT, LOADING, LIVE, DETAIL_PAGE, NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT, NEW_LIST].every((f) => sectionFiles.includes(f))
       && sectionUnscannable.length === 0 && lexiconFiles.length === sectionFiles.length + 1,
     /* ⛔ THE COUNT COMES FIRST, because `j()` truncates at 260 characters and the walked FILE LIST pushed
        `literals` off the end — so the number a later session must raise the floor TO was the one number this line
@@ -8920,6 +9476,8 @@ export default function Ruling513Control() {
         /^\{\s*const session = await currentSession\(\);\s*if \(!\(await houseConsoleAudience\(session\?\.userId \?\? null, "\/admin\/desk"\)\)\) return null;/.test(body)
           && body.indexOf("houseConsoleAudience") < body.indexOf("await searchParams")
           && body.indexOf("houseConsoleAudience") < body.indexOf("houseCheckForConsole")
+          /* ⭐ RESUME-HERE §0c decision 4 · and before the find step's account list, the page's second reader. */
+          && body.indexOf("houseConsoleAudience") < body.indexOf("houseAccountListForConsole")
           && body.indexOf("houseConsoleAudience") < body.indexOf("<AdminPageHead")
       )(wizardCode.slice(wizardCode.indexOf("async function AdminDeskNewContent"))
         .replace(/^async function AdminDeskNewContent\([^)]*\)[^{]*/, "")),
@@ -9015,7 +9573,7 @@ export default function Ruling513Control() {
     }
     /* ⛔ AND THE WIZARD READS NOTHING OF ITS OWN (340): no house module, no DAL, no eligibility, no designation. */
     ok("1.359 · 340 · no file under the wizard imports `eligibility.ts`, `designation.ts`, the DAL or `sensitive-reveal` — the check card is served by the gated reader alone",
-      [NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT].every((f) => {
+      [NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT, NEW_LIST].every((f) => {
         const c = decomment(read(f));
         return !/house-bot\/eligibility|house-bot\/designation|house-bot-dal|sensitive-reveal/.test(c);
       }), "");
@@ -9040,14 +9598,37 @@ export default function Ruling513Control() {
        ghost was a row short and the wrong way round — 34px at 1280, 43px at 360), and `SkFormCard` ghosted the
        CONSENT step's two fields and an unconditional submit button on a route that opens at the FIND step, which
        has one field and no button. The sequence below is the find card, ghost for ghost. */
-    ok("1.417 · the wizard loader's ghost sequence matches the page's own order — the head's action, the page's measure, the bar and the bar's own line, then the FIND step's card",
-      j(newGhosts) === j(["SkChip", "FormColumn", "div", "div", "SkBar", "div", "SkTitle", "div", "SkBar", "SkBar", "div", "SkBar", "SkBar", "SkBar"]), j(newGhosts));
+    /* ⭐ RE-DERIVED AT RESUME-HERE §0c DECISION 4, AND LONGER BY EXACTLY THE CARD THE PAGE GAINED. The find step now
+       paints a second card under the picker — every account, with its own two-row rail, its count line, a sortable
+       header row, twenty rows and a pager — so the loader ghosts that card too, in the page's order: the table card
+       (`SkTableCard`), and inside its `beforeBody` slot the rail's wrapper, its two chip rows and the count line. */
+    ok("1.417 · the wizard loader's ghost sequence matches the page's own order — the head's action, the page's measure, the bar and the bar's own line, the FIND step's card, then the account list's card with its rail and its count line",
+      all(newGhosts) === all(["SkChip", "FormColumn", "div", "div", "SkBar", "div", "SkTitle", "div", "SkBar", "SkBar", "div", "SkBar", "SkBar", "SkBar",
+        "SkTableCard", "div", "div", "SkChip", "SkChip", "SkBar"]), j(newGhosts));
     ok("1.417 · …and it ghosts at the PAGE'S OWN MEASURE with the PAGE'S OWN RHYTHM, so the swap cannot jump sideways or re-space itself",
       /<FormColumn measure="form" className="space-y-4">/.test(newLoader)
         && /<FormColumn measure="form" className="space-y-4">/.test(wizardSrc)
         && (wizardSrc.match(/<FormColumn measure="form"/g) ?? []).length === 1, "");
+    /* ⛔ THE SUBMIT CHECK IS ASKED OF THE FIND CARD'S OWN GHOST, which is where a submit would sit. The file-wide count
+       was a proxy that held while the find card was the only card: the list's two chip rows are 44px too, and they are
+       the page's real chips, not a button. The claim is unchanged — one 44px bar in the find card, the field. */
+    const findGhost = newLoader.slice(newLoader.indexOf('<div className="glass-panel p-4">'), newLoader.indexOf("<SkTableCard "));
     ok("1.417 · …and neither the loader nor the page ghosts a submit the find step does not have",
-      !/SkFormCard/.test(newLoader) && (newLoader.match(/h-\[44px\]/g) ?? []).length === 1, "");
+      !/SkFormCard/.test(newLoader) && findGhost.length > 100 && (findGhost.match(/h-\[44px\]/g) ?? []).length === 1, "");
+    /* ⭐ AND THE LIST'S GHOST STATES THE LIST'S REAL FACTS, read from the reader rather than typed twice: its column
+       count, its page size, a sortable header row (a `SortTh` cell is 44px, not a plain header's 35), a pager, no
+       minimum width (the real table takes none, so a 640px ghost would scroll sideways at 360 where the page does
+       not), and rows at the height a row whose first cell is a tap-floor link really is — 12 + 40 + 12 + 1. */
+    {
+      const listView: Any = await GATEM.houseAccountListForConsole(OFFICER, "/admin/desk", {});
+      const tableGhost = /<SkTableCard [^>]*?beforeBody=/.exec(newLoader)?.[0] ?? "";
+      ok("1.417 · decision 4 · the account list's ghost states the list's real facts — the reader's own column count and page size, a sortable header row, a pager, no minimum width and the tap-floor row height",
+        listView !== null && new RegExp(`cols=\\{${listView.columns.length}\\}`).test(tableGhost)
+          && new RegExp(`rows=\\{${listView.perPage}\\}`).test(tableGhost)
+          && /\bsortable\b/.test(tableGhost) && /\bpager\b/.test(tableGhost) && /minWidth=\{0\}/.test(tableGhost)
+          && /rowMinH=\{65\}/.test(tableGhost) && /sw=\{false\}/.test(tableGhost),
+        j({ tableGhost: tableGhost.slice(0, 200), cols: listView?.columns?.length, perPage: listView?.perPage }));
+    }
   }
 
   /* 1.422 · read-only is unreachable BY CONSTRUCTION on an Owner-only route, so no page may draw one. */
@@ -9563,7 +10144,11 @@ export default function Ruling513Control() {
      about, and the third argument below is that account's own `userId`, read from the roster the shell already
      holds. It is the HOLDER again, never `e.actorId`: the history's Who column carries the ACTOR, by id and never
      behind a player's mask, and the two are three lines apart in the same row. */
-    const HOLDER_ARGS = ["bot.userId", "bot.userId", "found.userId", "u.id", "id"];
+  /* ⭐ SIX SITES AT RESUME-HERE §0c DECISION 4 — the find step's account list names every row's account by its
+     handle, and the fifth argument below is that account's OWN id, from the row it paints: the holder-to-be again,
+     exactly as the picker's is. It is never `viewerUserId` — the officer's own account is a row on that list too,
+     and it is named by its own id like every other. */
+    const HOLDER_ARGS = ["bot.userId", "bot.userId", "found.userId", "u.id", "u.id", "id"];
     ok("1.420 · `playerHandle` is used for the HOLDER only, never for a staff actor — every call takes an account's own id, pinned by position",
       j(handleArgs) === j(HOLDER_ARGS), j({ found: handleArgs, want: HOLDER_ARGS }));
   }
@@ -9835,6 +10420,23 @@ export default function Ruling513Control() {
             && /copy\.consentBullets\.map/.test(decomment(read(NEW_CLIENT)))
             && !decomment(read(NEW_CLIENT)).includes(GATEM.CONSOLE_WIZARD_COPY.passwordHint),
           j({ bullets: GATEM.CONSOLE_WIZARD_COPY.consentBullets.length }));
+        /* ⭐ RESUME-HERE §0c decision 4 · WALL 3, AND THE FIND STEP'S LIST STANDS OUTSIDE IT BY BEING A SERVER FILE THAT
+           OWNS NO SENTENCE AT ALL. It is not a client file, so the six-string allowance above does not reach it — and
+           it needs none: every word it paints is `houseAccountListForConsole`'s. Held to the stricter rule on purpose,
+           so the day it gains a client directive it is already a file that types nothing. */
+        {
+          const listRaw = read(NEW_LIST);
+          const listProse = proseOf(listRaw, NEW_LIST);
+          ok("1.388 · decision 4 · the find step's account list is a SERVER file — no client directive, so neither its prop names nor its strings reach a public chunk — and it types no sentence at all: every 25+ character string in it is a class list",
+            !listRaw.includes('"use client"') && !clientFiles.includes(NEW_LIST) && listProse.length === 0
+              && domLiterals(NEW_LIST, listRaw).filter((x) => x.length >= 25 && isClassList(x)).length >= 3
+              && clientFiles.includes(NEW_CLIENT) && stray.length === 0,
+            j({ prose: listProse, classLists: domLiterals(NEW_LIST, listRaw).filter((x) => x.length >= 25 && isClassList(x)).length }));
+          ok("1.388 · decision 4 · CONTROL · the same scan reports the list's own empty-state sentence planted into that file, and the client-directive test sees a directive planted at its head",
+            proseOf(`${listRaw}\nconst LEAK = "${GATEM.CONSOLE_LIST_COPY.emptyFiltered.body}";`, NEW_LIST).length === 1
+              && `"use client";\n${listRaw}`.includes('"use client"') && !listRaw.includes('"use client"'),
+            "");
+        }
       }
       ok("1.388 · CONTROL · the measure fires on the prop name ruling 388 forbids, and the arming word is the SERVER's — no console client file types it",
         NEUTRAL.test("houseBotLabel") && houseHits("houseBotLabel").length > 0

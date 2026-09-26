@@ -1,11 +1,11 @@
 import { AdminPageHead } from "@/components/admin/admin-shell";
 import { AdminBody } from "@/components/admin/admin-body";
-import { SkBar, SkChip, SkTitle } from "@/components/admin/admin-skeletons";
+import { SkBar, SkChip, SkTableCard, SkTitle } from "@/components/admin/admin-skeletons";
 import { FormColumn } from "@/components/ui/form-column";
 
 /**
  * What is coming on the designation wizard, card for card and in the page's own order (C7-SPEC rulings 313, 417):
- * the head with its one back link, the step line and its bar, then the step's own card.
+ * the head with its one back link, the step line and its bar, then the step's own cards.
  *
  * ⛔ IT CARRIES THE PAGE'S REAL TITLE, AND THAT IS ONLY SAFE BECAUSE THE TITLE IS NEUTRAL (rulings 313, 453). A
  * `loading.tsx` is a Suspense fallback: it has no session and no viewer, so it cannot repeat the page's audience
@@ -15,9 +15,17 @@ import { FormColumn } from "@/components/ui/form-column";
  * exception). ⛔ The ACCOUNT page's loader is this section's one exception, because its real title is a gated value.
  *
  * ⛔ EVERY GHOST STATES THE PAGE'S REAL FACTS: the head's own back link at its own height, the step line's two rows
- * (the 10px bar and the bar's OWN default line beneath it) at the geometry `ProgressBar` really renders, and ONE
- * card — the FIND step's, because that is the step this route opens on with no account chosen. ⛔ NO PAGER GHOST
- * and no table ghost: this route renders neither on any step. ⛔ NO SUBMIT GHOST: the find step has no button.
+ * (the 10px bar and the bar's OWN default line beneath it) at the geometry `ProgressBar` really renders, and the two
+ * cards of the FIND step, because that is the step this route opens on with no account chosen: the picker's card, and
+ * — since RESUME-HERE §0c decision 4 — the list of every account under it. ⛔ NO SUBMIT GHOST: the find step has no
+ * button.
+ * ⭐ THE LIST'S GHOST IS THE LIST'S OWN SHAPE (ruling 417): its rail's two chip rows and the count line INSIDE the card
+ * (the kit's `beforeBody` slot, §K5 — never a second card), a sortable header row, twenty rows at the height a row
+ * whose first cell is a tap-floor link really is, and a pager, because the account table is unbounded in production
+ * and a real desk holds more than twenty accounts. ⚠️ Drawn for 1280, where each chip row is one line, and COMPUTED
+ * from the stylesheet (the kit's 44px chips, `.admin-tbl td`'s padding) rather than measured off a tile — a served
+ * swap is what confirms it. At 360 the rail wraps to more rows than a loader can know, and a row that cannot be chosen
+ * (a handle over its reason) is 61px against the choosable 65: both stated here, not hidden.
  */
 export default function AdminDeskNewLoading() {
   return (
@@ -61,6 +69,21 @@ export default function AdminDeskNewLoading() {
               <SkBar className="h-[13px] w-[196px]" />
             </div>
           </div>
+          {/* ⭐ THE LIST OF EVERY ACCOUNT (RESUME-HERE §0c decision 4) — three columns, the page size, no minimum width
+              (the real table takes none, so a 640px ghost would scroll sideways at 360 where the page does not), a
+              header row of sortable cells, and rows at the tap floor's height: `.admin-tbl td`'s 12px above and below a
+              40px link, and the row's own border. */}
+          <SkTableCard cols={3} rows={20} minWidth={0} headW="w-[96px]" sw={false} sortable pager rowMinH={65}
+            beforeBody={
+              <div className="px-4 pb-3 space-y-3">
+                <div className="flex flex-col gap-2">
+                  <SkChip className="h-[44px] w-full max-w-[440px]" />
+                  <SkChip className="h-[44px] w-full max-w-[480px]" />
+                </div>
+                <SkBar className="h-[18px] w-[208px]" />
+              </div>
+            }
+          />
         </FormColumn>
       </AdminBody>
     </>

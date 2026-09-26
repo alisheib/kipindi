@@ -40,6 +40,9 @@
  *      money figure inside it — as painted and again with every figure at seven digits — with a control column per
  *      table and a population control (C7 437). §5.2 reads only the FIRST table and licenses a phone scroll; this
  *      tab has two tables and a result you have to drag sideways to read is not one you can read.
+ *   9. on the designate wizard's FIND step, the list of every account (RESUME-HERE §0c decision 4): three sortable
+ *      headers with exactly one in force, every way in on a row at the tap floor, and NO sideways scroll at ANY
+ *      width, with a control column; and §5.2 holds that moneyless table's first row inside the strip whole.
  *
  * ⛔ NO POSTGRES OR NO SERVER IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED) — a visual gate that skips silently is
  * the "not applicable" verdict this programme has paid for twice.
@@ -607,6 +610,15 @@ try {
           facts.moneyOutsideStrip === 0, JSON.stringify({ moneyCount: facts.moneyCount, outside: facts.moneyOutsideStrip }));
         ok(`§5.2 ${route} @${width} · CONTROL · …and the surface really did paint money for that to be a measurement`,
           facts.moneyCount > 0, JSON.stringify({ moneyCount: facts.moneyCount }));
+      } else if (facts.firstCells.length && MONEYLESS) {
+        /* ⭐ RESUME-HERE §0c DECISION 4 · THE WIZARD'S FIND STEP PAINTS A TABLE NOW, AND IT HOLDS NO MONEY BY RULING (459).
+           §5.2's questions are about money columns, which this table has none of — and their 360 licence (the second
+           money answer one scroll away) was measured on usage PAIRS this table does not carry. So the moneyless table
+           is held to the STRICTER rule instead of borrowing a licence it never earned: every cell of its first row is
+           inside the visible strip, at every width, with nothing one scroll away. §5.9 below measures the whole table. */
+        const inBox = (c) => c.left >= c.boxLeft - 1 && c.right <= c.boxRight + 1;
+        ok(`§5.2 ${route} @${width} · ⛔ 459 · the moneyless table's first row is inside the visible strip — EVERY one of its cells, at every width, with nothing one scroll away`,
+          facts.firstCells.length >= 3 && facts.firstCells.every(inBox), JSON.stringify(facts.firstCells));
       } else if (facts.firstCells.length) {
         const [subject, first, second] = facts.firstCells;
         const inBox = (c) => c.left >= c.boxLeft - 1 && c.right <= c.boxRight + 1;
@@ -786,6 +798,61 @@ try {
                 && t.widened.scrollWidth > t.widened.clientWidth + 1 && t.widened.clientWidth <= t.painted.clientWidth + 1,
               JSON.stringify({ painted: { clientWidth: t.painted.clientWidth, amounts: t.painted.amounts }, filled: { amounts: t.filled.amounts, atSeven: t.filled.atSeven }, widened: t.widened }));
           }
+        }
+      }
+      /* ⭐ §5.9 · THE FIND STEP'S ACCOUNT LIST — THE WHOLE TABLE, AT EVERY WIDTH (RESUME-HERE §0c decision 4, 2026-09-26).
+         Ali's bar for it is "full paging, sorting, validation" and a perfect visual result, so what a person would look
+         for is asserted here rather than hoped for off a tile: all three headers are the kit's sortable cells with
+         exactly one in force, every way in on a row reaches the tap floor, and the table fits its own strip with NO
+         sideways scroll at ANY width — three real columns, never the activity table's phone stack.
+         ⛔ WITH A CONTROL, for §5.8's reason: one column wider than the strip must make the SAME strip scroll without
+         the strip growing, or "no sideways scroll" could not have failed. It runs after the tile was written.
+         ⛔ POPULATION: the find step only (no `?u=`); a find step that paints no table — a failed read paints its error
+         in place of the list — is NOT MEASURED, a report and never a pass, and so is a list with no choosable row, for
+         the tap half. Seed a served desk with `scripts/seed-desk-accounts-local.mts` so the pager is really drawn. */
+      if (MONEYLESS && !/[?&]u=/.test(route)) {
+        const finder = await p.evaluate(() => {
+          const tables = [...document.querySelectorAll("table.admin-tbl")];
+          const table = tables[0] ?? null;
+          const region = table ? table.closest("[role='region']") : null;
+          if (!table || !region) return { tables: tables.length, found: false };
+          const tapMin = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap-min")) || 44;
+          const heads = [...table.querySelectorAll("thead th")];
+          const sortHeads = heads.filter((th) => th.hasAttribute("aria-sort"));
+          const inForce = sortHeads.filter((th) => th.getAttribute("aria-sort") !== "none").length;
+          const links = [...table.querySelectorAll("tbody a[href*='?u=']")];
+          const short = links.filter((a) => a.getBoundingClientRect().height < tapMin - 0.5)
+            .map((a) => `${Math.round(a.getBoundingClientRect().height)}px:${(a.textContent ?? "").trim().slice(0, 16)}`);
+          const measure = () => ({ scrollWidth: region.scrollWidth, clientWidth: region.clientWidth, left: Math.round(region.getBoundingClientRect().left), right: Math.round(region.getBoundingClientRect().right) });
+          const painted = measure();
+          const rows = [...table.querySelectorAll("tbody tr")];
+          const extraPx = region.clientWidth + 160;
+          for (const tr of [table.querySelector("thead tr"), ...rows]) {
+            if (!tr) continue;
+            const extra = document.createElement(tr.closest("thead") ? "th" : "td");
+            extra.style.minWidth = `${extraPx}px`;
+            extra.textContent = "·";
+            tr.appendChild(extra);
+          }
+          const widened = measure();
+          return { tables: tables.length, found: true, heads: heads.length, sortHeads: sortHeads.length, inForce, links: links.length, short, rows: rows.length, painted, widened, tapMin, vw: window.innerWidth };
+        });
+        if (!finder.found) {
+          nm(`§5.9 ${route} @${width}`, `the find step painted no account table (${finder.tables} table(s)) — a failed read paints its error in place of the list, and a list that is not there is not measured`);
+        } else {
+          ok(`§5.9 ${route} @${width} · decision 4 · the account list's three headers are ALL the kit's sortable cells and exactly one is in force`,
+            finder.heads === 3 && finder.sortHeads === 3 && finder.inForce === 1, JSON.stringify({ heads: finder.heads, sortHeads: finder.sortHeads, inForce: finder.inForce }));
+          if (finder.links === 0) {
+            nm(`§5.9 ${route} @${width} · the tap floor`, `the list painted no choosable row (${finder.rows} row(s)), so no way in was measured — seed it with scripts/seed-desk-accounts-local.mts`);
+          } else {
+            ok(`§5.9 ${route} @${width} · decision 4 · every way in on a row reaches the ${finder.tapMin}px tap floor`, finder.short.length === 0, `${finder.links} links · short: ${finder.short.join(" | ")}`);
+          }
+          ok(`§5.9 ${route} @${width} · decision 4 · the account list fits its strip with NO sideways scroll at this width, and the strip itself is on screen`,
+            finder.painted.scrollWidth <= finder.painted.clientWidth + 1 && finder.painted.left >= -1 && finder.painted.right <= finder.vw + 1,
+            JSON.stringify({ vw: finder.vw, painted: finder.painted }));
+          ok(`§5.9 ${route} @${width} · decision 4 · CONTROL · one more column wider than the strip makes the SAME strip scroll without the strip growing`,
+            finder.widened.scrollWidth > finder.widened.clientWidth + 1 && finder.widened.clientWidth <= finder.painted.clientWidth + 1,
+            JSON.stringify({ painted: finder.painted, widened: finder.widened }));
         }
       }
       await p.close();
