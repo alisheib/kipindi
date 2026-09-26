@@ -4007,7 +4007,8 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-hero__trust > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--sp-3); align-items: center; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
 /* The helpline is a call a player can make from here, at the tap floor (§A2). ⭐ The REACH is an
-   out-of-flow `::after` (10px above and below a ~20px line = the 40px `--tap-min`), the platform's
+   out-of-flow `::after` (13px above and below the ~16px CONTENT box of an inline link — not its line
+   height, which V4 caught measuring 36px at ±10 — reaching 42px, over the 40px `--tap-min`), the platform's
    own pattern for a small link (see `.mcardp-share`): a 40px line box made the last trust line
    visibly taller than the three above it, which read as a stray gap. */
 .kp-hero__tel {
@@ -4020,7 +4021,7 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* Label and number are each unbreakable, the space between them is not: under large text the line
    breaks BETWEEN them and never inside "0800 11 0011". */
 .kp-hero__tel > span { white-space: nowrap; }
-.kp-hero__tel::after { content: ""; position: absolute; left: 0; right: 0; top: -10px; bottom: -10px; }
+.kp-hero__tel::after { content: ""; position: absolute; left: 0; right: 0; top: -13px; bottom: -13px; }
 
 /* 11px: the kit sets the minimum for NEW work at `--type-micro`, and this is new work. (This
    note used to justify itself against `.board-section-eyebrow`'s 10px — a rule nothing had
@@ -5371,13 +5372,13 @@ textarea::-webkit-resizer {
 /* The ring: time left to bet as an arc with the digits inside (96px, the delivery's size), and its
    caption under it on the eyebrow rung, free to wrap. The digits are the only thing on the page
    that change every second. */
-.kp-udring { flex: none; width: 112px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); text-align: center; }
+.kp-udring { flex: none; width: 128px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); text-align: center; }
 .kp-udring__dial { position: relative; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; }
 .kp-udring__svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .kp-udring__track { fill: none; stroke: var(--border); stroke-width: 3; }
 .kp-udring__arc { fill: none; stroke: var(--brand-400); stroke-width: 3; stroke-linecap: round; }
 .kp-udring__digits { position: relative; font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h3); font-variant-numeric: tabular-nums; line-height: 1; color: var(--text); }
-.kp-udring__cap { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; color: var(--text-subtle); overflow-wrap: anywhere; }
+.kp-udring__cap { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; color: var(--text-subtle); overflow-wrap: anywhere; text-wrap: balance; }
 
 /* ── §1f WHY THE RESULT CAN BE TRUSTED — one editorial claim, three demoted facts ─────────── */
 .kp-claim {

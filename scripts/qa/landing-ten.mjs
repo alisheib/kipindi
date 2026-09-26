@@ -696,6 +696,16 @@ const CHECKS = /* js */ `(() => {
      state this class exists to catch. */
   if (vw >= 360 && vw < 640) {
     const bad = [];
+    /* ⚠️ THE FIRST SCREEN ENDS WHERE THE BOTTOM RAIL BEGINS. The delivery's frame has no rail; ours
+       keeps one (R1), fixed over the last ~64px of the viewport, and a button under it is not on the
+       screen. So the line is 740 or the top of any wide fixed bar pinned to the bottom, whichever is
+       higher on the page (found building v3: the budget read the 740 and ignored the rail). */
+    let line = 740;
+    for (const el of document.querySelectorAll("body *")) {
+      if (getComputedStyle(el).position !== "fixed" || !vis(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width > vw * 0.6 && r.bottom >= vh - 1 && r.top > vh * 0.6) line = Math.min(line, Math.round(r.top));
+    }
     const card = [...document.querySelectorAll(".kp-hero__card .mcardp")].find(vis);
     if (!card) bad.push({ what: "no featured market in the hero", measured: "0 visible .kp-hero__card .mcardp", where: "hero" });
     else {
@@ -703,7 +713,7 @@ const CHECKS = /* js */ `(() => {
         const el = card.querySelector(q);
         if (!el || !vis(el)) { bad.push({ what: "the featured card shows no " + name, measured: "0 visible " + q, where: sel(card) }); continue; }
         const bottom = Math.round(el.getBoundingClientRect().bottom + scrollY);
-        if (bottom > 740) bad.push({ what: "the featured card's " + name.replace("its ", "") + " ends below the first screen", measured: bottom + "px > 740", where: sel(el) });
+        if (bottom > line) bad.push({ what: "the featured card's " + name.replace("its ", "") + " ends below the first screen", measured: bottom + "px > " + line + (line < 740 ? " (the bottom rail)" : ""), where: sel(el) });
       }
     }
     push("V15", bad);

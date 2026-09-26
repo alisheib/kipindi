@@ -445,7 +445,7 @@ This codebase has been burned by every one of these:
 | V11 | Dead states | `TZS 0`; a 0%/100% price leading the page |
 | V12 | Settled honesty | a refund word over a market that was decided and simply had no pool |
 | V14 | Renders without JS | the page paints with scripting disabled |
-| V15 | First screen (v3) | on phone cells 360–639 wide, the featured card's price and YES/NO end by a FIXED 740px of document, measured at the top of the page — not the viewport, which is 780 on the 360 cells |
+| V15 | First screen (v3) | on phone cells 360–639 wide, the featured card's price and YES/NO end by a FIXED 740px of document, measured at the top of the page — not the viewport, which is 780 on the 360 cells — or by the top of the fixed bottom rail when that is higher (a control under the rail is not on the screen) |
 | V16 | No promised winnings (v3) | visible text naming "win TZS", "utashinda", "赢得 TZS", or a stake times a multiplier |
 | V17 | No degenerate price (v3) | a 0% or 100% read inside any card or board row — the conviction bar's aggregate is not a price and is not read |
 

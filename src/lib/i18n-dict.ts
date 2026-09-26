@@ -3324,7 +3324,8 @@ export const dict = {
       settledVoid: "yalirejeshwa",
       settledSeeAll: "Matokeo yote",
       // drafted, marked for native review; English is binding.
-      settledOn: "Imelipwa {date}",
+      // "Imehitimishwa" (was concluded), not "Imelipwa" (was paid): a VOID row was refunded and a silent row paid nothing.
+      settledOn: "Imehitimishwa {date}",
       // drafted, marked for native review; English is binding.
       settledSourceNewTab: "hufungua chanzo cha matokeo katika kichupo kipya",
     },
